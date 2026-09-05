@@ -206,6 +206,22 @@ type Result struct {
 	// carimbo de tempo que o driver escolhe.
 	Objects []string
 
+	// CheckpointReused diz que esta execucao leu o extract do deposito em vez
+	// da origem -- ou seja, que a quota do fornecedor foi poupada.
+	//
+	// Ele esta aqui, e nao so no log, porque uma economia que nao aparece em
+	// lugar nenhum e indistinguivel de nao ter economizado.
+	CheckpointReused bool
+
+	// CheckpointPath e onde o deposito desta execucao esta. Vazio quando o
+	// checkpoint esta desligado.
+	CheckpointPath string
+
+	// CheckpointError diz por que o deposito nao pode ser gravado. A carga
+	// aconteceu; o que se perdeu foi a apolice, e a proxima tentativa vai ter
+	// de refazer o extract. Vazio quando gravou ou quando esta desligado.
+	CheckpointError string
+
 	// Diagnostics the destination reported per row, when it refused any.
 	RowErrors []string
 
@@ -258,6 +274,14 @@ func (r *Result) Args() []any {
 	}
 	if n := len(r.FailedSources); n > 0 {
 		args = append(args, "fontes_falharam", n)
+	}
+	// So quando ha algo a dizer: `checkpoint=false` em toda linha ensinaria a
+	// pular o campo, e a linha que importa e justamente a rara.
+	if r.CheckpointReused {
+		args = append(args, "checkpoint", "reaproveitado", "checkpoint_em", r.CheckpointPath)
+	}
+	if r.CheckpointError != "" {
+		args = append(args, "checkpoint_falhou", r.CheckpointError)
 	}
 	if len(r.Objects) == 1 {
 		args = append(args, "objeto", r.Objects[0])

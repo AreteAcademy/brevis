@@ -8,6 +8,68 @@ A tag de um módulo aninhado leva o prefixo do diretório: `sdk/v0.2.1`.
 
 ---
 
+## [0.44.0] — 2026-09-05
+
+### Adicionado: `sdk.Checkpoint` — não refazer o extract quando o resto falha
+
+Um extract que gastou 4.803 requisições e uma janela de quarenta minutos não
+deveria ser repetido porque uma coluna do destino mudou de tipo.
+
+```go
+sdk.Run(sdk.Pipeline{
+    Source:     /* ... */,
+    Checkpoint: sdk.Checkpoint{At: "gs://landing/_checkpoint", Store: gcs.New(cli)},
+    Target:     /* ... */,
+})
+```
+
+A tentativa 0 grava o extract bruto em `{At}/{run_id}/{pipeline}/` e marca
+completo. A tentativa 1 encontra o depósito e **não consulta a origem**.
+
+**Vem desligado, e o README diz quando não usar.** Se o extract e o load já são
+dois nós do DAG, isto não acrescenta nada — o motor já tenta cada nó de novo
+separadamente, e um load que falha não refaz o extract, que é outro nó que teve
+sucesso. O checkpoint é para quem precisa de um pod só, e custa uma escrita e
+uma leitura do volume inteiro em **toda** execução para socorrer a que falha.
+
+#### O que garante
+
+- **Um depósito incompleto nunca é retomado.** O manifesto é escrito por último;
+  sem ele o extract é refeito. Retomar de um extract interrompido carregaria
+  metade dos dados em silêncio.
+- **Um depósito só serve à run que o escreveu**, o que dispensa política de
+  validade e impede dado velho entrar como novo.
+- **Os `ingestion_id` de uma retomada são idênticos** aos da primeira tentativa.
+- **Falhar ao gravar não derruba a execução.** Ela segue e avisa.
+
+#### Duas decisões que o teste obrigou a tomar
+
+**O literal do número vai no manifesto.** Um payload decodificado com
+`PreserveNumbers` carrega `json.Number("19.0")`; relido como `float64` viraria
+`"19"` no `asText`, e a retomada gravaria um `ingestion_id` diferente do da
+primeira tentativa — exatamente a garantia que o checkpoint existe para dar. O
+modo é **observado do próprio fluxo**, não declarado: `PreserveNumbers` é campo
+do driver e o SDK só vê a interface, então um campo a manter em sincronia seria
+um campo que um dia fica errado, e o erro sairia calado dentro de um id.
+
+**A escrita é provada antes de a extração começar.** A falha mais comum é
+permissão no bucket, e descobri-la depois da extração significaria ter gasto
+exatamente a quota que o checkpoint existe para poupar. Falhando no meio, o
+fluxo degrada: cede o que já virou objeto, o que ficou no buffer, e segue direto
+da origem — sem uma segunda extração.
+
+E a releitura do próprio depósito no caminho feliz não é desperdício: ela faz o
+caminho da **retomada** rodar em toda execução bem-sucedida. Um caminho de
+recuperação que só roda em emergência é um caminho que ninguém nunca viu
+funcionar.
+
+### Adicionado: `Result.CheckpointReused`, `CheckpointPath`, `CheckpointError`
+
+Uma economia de quota que não aparece em lugar nenhum é indistinguível de não
+ter economizado. O log só menciona o checkpoint quando há o que dizer.
+
+---
+
 ## [0.43.0] — 2026-09-05
 
 ### Corrigido: `to.Files` escrevia no diretório errado, sem dizer

@@ -530,6 +530,72 @@ exists after the load, so a destination that stages and deletes leaves it empty 
 a reported path that is already gone is worse than none, because somebody will
 try to read it.
 
+## Not extracting twice
+
+An extract that spent 4,803 requests and a forty-minute window should not be
+repeated because a column at the destination changed type. Two ways to avoid
+it, and the first one needs nothing from this library.
+
+### Two nodes, which already works
+
+The engine retries each node on its own. When the extract and the load are two
+nodes, a load that fails is retried **without touching the extract** — it is a
+different node that already succeeded.
+
+```yaml
+nodes:
+  - id: extract_users
+    run: ./fetch-users          # to.Files{Path: "gs://landing/users/${BREVIS_RUN_ID}/"}
+  - id: load_users
+    run: ./load-users           # from.Files{Path: "gs://landing/users/${BREVIS_RUN_ID}/*.ndjson"}
+    retries: 3
+edges: [{from: extract_users, to: load_users}]
+```
+
+`BREVIS_RUN_ID` is the shared token — the engine injects it into every step —
+and `Result.Objects` gives the exact path the write produced. You also get two
+boxes on the screen instead of one, and an extract that is visibly a step that
+succeeded.
+
+Prefer this when the split is possible.
+
+### One pod: `Checkpoint`
+
+When the fetcher has to stay a single binary:
+
+```go
+sdk.Run(sdk.Pipeline{
+    Source:     sdk.Source{From: from.HTTP{URL: "https://api.exemplo.com/eventos"}},
+    Checkpoint: sdk.Checkpoint{At: "gs://landing/_checkpoint", Store: gcs.New(cli)},
+    Target:     sdk.Target{To: to.BigQuery{...}},
+})
+```
+
+Attempt 0 writes the raw extract under `{At}/{run_id}/{pipeline}/` and marks it
+complete. Attempt 1 finds it and **does not call the source at all**:
+
+```
+level=INFO msg="checkpoint reaproveitado: a origem nao sera consultada" registros=48213
+level=INFO msg=loaded checkpoint=reaproveitado checkpoint_em=gs://landing/_checkpoint/...
+```
+
+What it costs: the extract stops being a single streaming pass. The whole
+extract lands before the first row is loaded, and is then read back — one extra
+write and one extra read of the full volume, on **every** run, to rescue the one
+that fails. That is why it ships off.
+
+What it guarantees:
+
+- An incomplete depot is **never** resumed. The manifest is written last; without
+  it the extract is redone.
+- A depot only serves the run that wrote it, so no stale data enters as fresh.
+- The `ingestion_id` of a resumed run is **identical** to the first attempt's —
+  it is a UUID v5 of the payload, and the number literals survive the round trip.
+- Failing to write the depot does not kill the run: it warns, keeps going, and
+  fills `Result.CheckpointError`. The checkpoint is the insurance, not the goods.
+
+`Result.CheckpointReused` says whether the vendor's quota was actually spared.
+
 ## Reading from many sources
 
 ```go

@@ -192,3 +192,76 @@ Cada correção é conferida **revertendo-a** para provar que o teste morde.
   velho achando que é novo.
 - **Política de expiração.** O bucket resolve isso com lifecycle rule; o SDK
   escrevendo TTL seria uma segunda fonte da verdade.
+
+---
+
+## 9. O que a execução mudou (2026-09-05, `sdk/v0.44.0`)
+
+Executado. As seis fases fecharam, e as oito reversões mordem. Quatro pontos
+saíram diferentes do que o plano previa, e todos por um fato encontrado no
+caminho.
+
+### 9.1 O caminho do depósito não pode ser `{provider}/{entity}`
+
+O §5 propunha `{At}/{provider}/{entity}/{run_id}/`. **`Target` não tem esses
+campos** — a proveniência mudou para o Transform (`sdk.IngestionID()`), e o
+`Target` de hoje é `{To, Columns, Schema, PartitionBy, Dedup, FlushEvery}`.
+
+E não há identificador de passo: o `nodeID` chega ao `contextoDoRun` do motor
+mas **nunca é injetado no ambiente**. O SDK não sabe em que nó está.
+
+Ficou `{At}/{run_id}/{nome}-{hash}/`, onde o nome é o do pipeline. O hash existe
+porque o nome vira segmento de caminho e precisa ser saneado: sem ele, dois
+pipelines cujos nomes sanitizam para a mesma coisa dividiriam o depósito, e um
+retomaria do extract do outro — dado errado carregado em silêncio.
+
+### 9.2 A conferência de completude tem dois tempos, não um
+
+O I1 pedia "manifesto com contagem errada é recusado". Não dá para saber quantas
+linhas um objeto tem sem lê-lo, e lê-lo antes seria ler o extract duas vezes.
+
+Ficou assim: o **conjunto de partes** é conferido antes de qualquer carga, e isso
+basta porque toda parte é escrita de uma vez só (um PUT no object store, um
+rename no disco) — uma parte que existe é uma parte inteira. A **contagem** é
+conferida durante a releitura e falha alto se divergir, o que só acontece com o
+objeto adulterado depois de escrito.
+
+### 9.3 O literal do número precisou ir para o manifesto
+
+Não estava no plano, e sem isto o I3 seria falso.
+
+Um payload decodificado com `PreserveNumbers` carrega `json.Number("19.0")`.
+Passando por NDJSON e voltando sem `UseNumber`, ele vira `float64(19)`, e o
+`asText` diz `"19"` onde a primeira tentativa disse `"19.0"`. Duas tentativas da
+mesma run produziriam `ingestion_id` diferentes — exatamente a garantia que o
+checkpoint existe para dar.
+
+O modo é **observado do fluxo**, não declarado: `PreserveNumbers` é campo do
+driver, e o SDK só enxerga a interface `core.Reader`. Um campo `Checkpoint` que
+alguém tivesse de manter em sincronia com o driver seria um campo que um dia
+fica errado, e o erro sairia calado dentro de um id.
+
+### 9.4 O I5 exigiu duas coisas, não uma
+
+**Provar a escrita antes de extrair.** A falha mais comum é permissão no bucket.
+Descobri-la depois da extração significaria ter gasto exatamente a quota que o
+checkpoint existe para poupar. Um objeto `_inicio` resolve.
+
+**Degradar em vez de morrer, e sem repetir a origem.** Falhando no meio, o fluxo
+cede o que já virou objeto, relê o que ficou no buffer e segue direto da origem.
+O plano dizia "avisa e segue"; a implementação ingênua disso teria sido refazer o
+extract, que dobraria o custo do fornecedor no exato momento em que se estava
+tentando poupá-lo.
+
+### 9.5 Um efeito colateral que vale registrar
+
+A releitura do próprio depósito no caminho feliz faz o **caminho da retomada
+rodar em toda execução bem-sucedida**. Um caminho de recuperação que só roda em
+emergência é um caminho que ninguém nunca viu funcionar.
+
+### 9.6 Encontrado de passagem, não corrigido
+
+Os comentários de pacote em `sdk/sdk.go` e `sdk/pipeline.go` mostram um
+`sdk.Target{Provider:, Entity:, Key:, When:}` — quatro campos que **não existem
+mais**. Quem copiar o exemplo da documentação do pacote recebe código que não
+compila. Fora do escopo deste plano; fica anotado.

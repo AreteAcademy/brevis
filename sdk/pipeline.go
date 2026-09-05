@@ -46,6 +46,10 @@ type Pipeline struct {
 
 	Target Target
 
+	// Checkpoint guarda o extract bruto para que uma segunda tentativa da mesma
+	// run nao consulte a origem de novo. Zero desliga. Ver Checkpoint.
+	Checkpoint Checkpoint
+
 	// Name appears in logs. Defaults to provider/entity.
 	Name string
 
@@ -162,7 +166,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		return err
 	}
 
-	data, err := Extract(ctx, p.Source)
+	data, cp, err := extrairComCheckpoint(ctx, p)
 	if err != nil {
 		return err
 	}
@@ -170,6 +174,10 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
 	if res != nil {
+		// Depois do load: o deposito e escrito enquanto o fluxo corre, entao
+		// so agora se sabe se ele foi ate o fim.
+		cp.aplicar(res)
+
 		// The result comes back on the failure path too, by design, so that
 		// RowErrors is readable after a refusal. That makes the message the
 		// one thing that has to tell the two apart: "loaded" on a load that
