@@ -150,8 +150,6 @@ func ArrayAt(path ...string) Expander {
 //		...
 //	}
 //
-//	Guard: RejectIf("error")
-//
 // It inspects top-level fields of a JSON object. A body that is not one is
 // itself a rejection: an HTML error page served with 200 -- a portal in
 // maintenance, a WAF, a proxy -- is exactly what this check exists to catch,

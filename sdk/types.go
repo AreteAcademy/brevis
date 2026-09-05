@@ -25,7 +25,7 @@ type (
 	// Reader is a source: from.HTTP, and the drivers that follow it.
 	Reader = core.Reader
 
-	// Writer is a destination: to.BigQuery, and the drivers that follow it.
+	// Writer is a destination: bigquery.Table, to.Files, postgres.Table.
 	Writer = core.Writer
 
 	// ReadOptions and WriteOptions are what every driver honours, whatever it
@@ -85,7 +85,7 @@ type (
 // Bool returns a pointer to b, for the tri-state options where nil means
 // "not set" and has to be told apart from false.
 //
-//	Target{CreateTable: sdk.Bool(false)}   // never, not even on a first run
+//	bigquery.Table{CreateTable: sdk.Bool(false)}   // never, not even on a first run
 func Bool(b bool) *bool { return &b }
 
 // Wire formats accepted by Source.Format.

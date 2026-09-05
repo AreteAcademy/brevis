@@ -1,22 +1,10 @@
-// Package sdk is the front door: two calls to write a fetcher.
+// Package sdk is the front door: two calls to write a fetcher, Extract and
+// Load, with Transform between them.
 //
-//	data, err := sdk.Extract(ctx, sdk.Source{
-//		URL:      "https://api.open-meteo.com/v1/forecast?...",
-//		Records: func(r sdk.Response) ([]any, error) {
-//			doc, err := r.Object()
-//			if err != nil {
-//				return nil, err
-//			}
-//			return sdk.ParallelArrays("hourly", "time", "temperature_2m")(doc)
-//		},
-//	})
-//
-//	res, err := sdk.Load(ctx, data, sdk.Target{
-//		Provider: "open_meteo",
-//		Entity:   "hourly_temperature",
-//		Key:    sdk.Key("latitude", "longitude", "time"),
-//		When:   sdk.Field("time"),
-//	})
+// See the package Example for a runnable one. It lives in a compiled test
+// rather than in this comment, so it cannot drift away from the API -- the
+// snippet that used to be here had gone on documenting six fields that no
+// longer existed.
 //
 // Everything between those two calls that is not specific to the vendor lives
 // in here: config, retry, pagination, expansion, provenance, table creation,

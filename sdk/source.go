@@ -9,14 +9,11 @@ import (
 
 // Source says where records come from, and what every origin honours.
 //
-// The origin itself is From -- from.HTTP, from.Postgres, from.Files. What
+// The origin itself is From -- from.HTTP, from.Files, postgres.Query. What
 // lives here instead of in the driver is what is true of all of them: the
 // preview, the counters.
 //
-//	Source: sdk.Source{
-//		From:    from.HTTP{URL: "https://api.example.com/v1/events"},
-//		Preview: 5,
-//	}
+// See ExampleSource.
 type Source struct {
 	// From is the origin. Required.
 	From Reader

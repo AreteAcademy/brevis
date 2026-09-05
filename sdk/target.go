@@ -9,15 +9,11 @@ import (
 
 // Target says where records land, and what every destination honours.
 //
-// The destination itself is To -- to.BigQuery, to.Postgres, to.Files. What
-// lives here instead of in the driver is what is true of all of them: the
+// The destination itself is To -- bigquery.Table, postgres.Table, to.Files.
+// What lives here instead of in the driver is what is true of all of them: the
 // columns declared, the metadata asked for, the deduplication wanted.
 //
-//	Target: sdk.Target{
-//		To:      to.BigQuery{Dataset: "bronze", Table: "pedidos"},
-//		Columns: []string{"ingestion_id", "ingestion_loaded_at", "payload"},
-//		Columns: []string{"ingestion_id", "ingestion_loaded_at", "payload"},
-//	}
+// See ExampleTarget.
 type Target struct {
 	// To is the destination. Required.
 	To Writer

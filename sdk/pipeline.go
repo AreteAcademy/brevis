@@ -15,23 +15,8 @@ import (
 // Pipeline is a whole fetcher as a value. Run takes it from here: flags,
 // -dry-run, logging and the exit code.
 //
-//	func main() {
-//		sdk.Run(sdk.Pipeline{
-//			Source: sdk.Source{
-//				URL:    "https://api.example.com/events",
-//				Records: minhaLeitura,
-//			},
-//			Transform: []sdk.Transformer{
-//				sdk.Without("generationtime_ms"),
-//			},
-//			Target: sdk.Target{
-//				Provider: "example",
-//				Entity:   "events",
-//				Key:    sdk.Key("id"),
-//				When:   sdk.Field("created_at"),
-//			},
-//		})
-//	}
+// See ExamplePipeline for a runnable one, compiled with the rest of the
+// package so it stays true.
 //
 // Anything this does not cover is still reachable by calling Extract and Load
 // directly.

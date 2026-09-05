@@ -17,10 +17,8 @@ type FieldSelector func(payload any) (string, error)
 // An alias of FieldSelector, not a separate type. The two always had the same
 // signature and the same meaning: read a string out of the record.
 //
-//	sdk.Compute("source_key", sdk.Key("latitude", "longitude", "time"))
-//
 // One place produces the key, so the column and the ingestion_id cannot
-// diverge.
+// diverge. See ExampleKey for how it reaches Compute.
 type KeySelector = FieldSelector
 
 // keySeparator joins the fields of a composite source_key.
@@ -48,7 +46,7 @@ const keySeparator = "|"
 func Key(fields ...string) KeySelector {
 	return func(payload any) (string, error) {
 		if len(fields) == 0 {
-			return "", fmt.Errorf("Key precisa from ao menos um campo")
+			return "", fmt.Errorf("Key precisa de ao menos um campo")
 		}
 
 		obj, err := asObject(payload)
@@ -85,14 +83,14 @@ type Renderer func(any) (string, error)
 //
 // Use quando a chave precisa casar com a de um sistema que ja gravou linhas:
 //
-//	Key: sdk.KeyWith(pycompat.Texto, "provider", "id")
+// Ver ExampleKeyWith.
 //
 // Um valor que o Renderer recusa vira erro nomeando o CAMPO -- sem o nome,
 // quem le o erro nao sabe qual dos seis e.
 func KeyWith(render Renderer, fields ...string) KeySelector {
 	return func(payload any) (string, error) {
 		if len(fields) == 0 {
-			return "", fmt.Errorf("Key precisa from ao menos um campo")
+			return "", fmt.Errorf("Key precisa de ao menos um campo")
 		}
 
 		obj, err := asObject(payload)
@@ -126,7 +124,7 @@ func FixedKey(value string) KeySelector {
 
 // Field reads one payload field as the record timestamp.
 //
-//	When: Field("time")
+// Ver ExampleField.
 //
 // A missing field is an error naming it, for the same reason as Key.
 func Field(name string) FieldSelector {

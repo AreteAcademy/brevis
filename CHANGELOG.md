@@ -8,6 +8,44 @@ A tag de um módulo aninhado leva o prefixo do diretório: `sdk/v0.2.1`.
 
 ---
 
+## [0.44.1] — 2026-09-05
+
+### Corrigido: os exemplos da documentação não compilavam
+
+O comentário de pacote do `sdk` e o do `Pipeline` documentavam um
+`sdk.Source{URL:, Records:}` e um `sdk.Target{Provider:, Entity:, Key:, When:}`
+— **seis campos que não existem mais**. Quem copiasse o exemplo da porta de
+entrada recebia código que não compila.
+
+Ao varrer o pacote atrás da mesma podridão, apareceram mais oito:
+
+- `sdk.Compute("source_key", sdk.Key(...))` em dois comentários. Não é questão
+  de campo: `Compute` quer `func(map[string]any) (any, error)` e `Key` devolve
+  um `KeySelector`, que é `func(any) (string, error)`. Nunca compilou.
+- `Key:`, `When:` e `Guard:` — três campos de struct que não existem.
+- `Target{CreateTable: sdk.Bool(false)}` — `CreateTable` é do `bigquery.Table`.
+- `to.BigQuery{Dataset:, Table:}` — o tipo é `bigquery.Table`, e o campo é
+  `Name`. No mesmo exemplo, a linha `Columns:` estava duplicada.
+- `to.BigQuery`, `to.Postgres`, `from.Postgres` na prosa de quatro arquivos: os
+  nomes são `bigquery.Table`, `postgres.Table`, `postgres.Query`.
+
+### A causa, e o que mudou
+
+Nada compilava esses exemplos. Corrigir o texto sozinho deixaria a mesma
+armadilha armada para a próxima mudança de API.
+
+Os exemplos agora vivem em `example_test.go`, como funções `Example` de um
+`package sdk_test` externo — compiladas com o resto do pacote, e escritas com os
+mesmos `sdk.` que um consumidor escreve, então só enxergam o que é exportado.
+O godoc os mostra no mesmo lugar de antes. Devolver qualquer um dos exemplos
+antigos quebra o `go vet`.
+
+### Corrigido: `"Key precisa from ao menos um campo"`
+
+Uma substituição malfeita, em `Key` e `KeyWith`. Agora diz "precisa de".
+
+---
+
 ## [0.44.0] — 2026-09-05
 
 ### Adicionado: `sdk.Checkpoint` — não refazer o extract quando o resto falha

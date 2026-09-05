@@ -6,11 +6,11 @@ import (
 	"iter"
 )
 
-// Reader produces records. One implementation per origin: HTTP today,
-// Postgres, MySQL and files next.
+// Reader produces records. One implementation per origin: from.HTTP,
+// from.Files, from.Many, postgres.Query, mysql.Query.
 //
 // The driver is the value, not an enum: from.HTTP carries a URL and a Reading,
-// from.Postgres will carry a DSN and a query. Neither has to make room for the
+// postgres.Query carries a DSN and a query. Neither has to make room for the
 // other's fields, which is what keeps a source struct from collecting forty
 // options of which any one driver reads six.
 //

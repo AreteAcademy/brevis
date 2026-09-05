@@ -22,12 +22,9 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 
 // IngestionID writes the ingestion_id column.
 //
-//	Transform: []sdk.Transformer{
-//		sdk.Compute("provider", ...),
-//		sdk.Compute("entity", ...),
-//		sdk.Compute("source_key", sdk.Key("latitude", "longitude", "time")),
-//		sdk.IngestionID(),
-//	}
+// As quatro colunas de proveniencia precisam existir antes dele na cadeia.
+// Ver ExampleIngestionID; Compute nao recebe um KeySelector direto, entao a
+// chave vai dentro de uma funcao.
 //
 // The id is a deterministic UUID v5 over provider|entity|source_key|record_ts,
 // so the same record always gets the same id and a re-run is safe. The formula,
