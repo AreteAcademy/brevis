@@ -8,6 +8,52 @@ A tag de um módulo aninhado leva o prefixo do diretório: `sdk/v0.2.1`.
 
 ---
 
+## [0.45.0] — 2026-09-05
+
+### Adicionado: o pipeline conta ao motor em que etapa está
+
+Um passo do SDK era uma caixa cinza que virava verde. Entre "começou" e
+"acabou" havia quarenta minutos em que a tela não distinguia "baixando a página
+300 de 4.803" de "travado no handshake do Redshift".
+
+Agora ele anuncia, numa linha marcada em stdout:
+
+```
+@brevis:{"tipo":"sdk","versao":"v0.45.0","pipeline":"fetcher"}
+@brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"..."}
+@brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"paginas":300}
+```
+
+O cano já existia: o executor acompanha o log do pod enquanto o container vive.
+Sem callback, sem porta nova, sem RBAC novo — e como quem reconhece a marca é o
+runner, que não sabe qual executor produziu o evento, o executor local ganhou o
+mesmo de graça.
+
+**Só sob o motor.** Rodando à mão as linhas não servem a ninguém e sujariam o
+terminal de quem está depurando um fetcher.
+
+#### As etapas são medidas onde o trabalho acontece
+
+A cadeia é preguiçosa: `Extract` devolve um iterador e quem o puxa é o `Load`.
+Cronometrar as três chamadas diria **"extract: 3ms" numa extração de quarenta
+minutos** — a tela mentindo justamente sobre a etapa mais longa. Então o
+`extract` termina quando o fluxo se esgota, e não quando `Extract` retorna.
+
+E o **`transform` não reporta duração nenhuma.** Ele roda por registro,
+entremeado com a leitura: qualquer número que saísse dali seria o tempo de
+outra coisa — na prática o da extração, que dita o ritmo. Um `transform: 40min`
+ao lado de um `extract: 40min` faria alguém procurar o gargalo no lugar errado.
+Ele reporta o que só ele sabe: quantos entraram, quantos saíram, quantos foram
+pulados.
+
+### Adicionado: `sdk.VersaoDoSDK()`
+
+Lida do próprio binário via `runtime/debug`. É o que vira o selo na tela, e é
+por isso que o selo não tem como mentir: ninguém digita e ninguém mantém em
+sincronia. Devolve `"devel"` num checkout ou com `replace`, que é a verdade.
+
+---
+
 ## [0.44.1] — 2026-09-05
 
 ### Corrigido: os exemplos da documentação não compilavam

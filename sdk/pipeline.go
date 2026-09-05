@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"iter"
 	"log/slog"
 	"os"
 	"time"
@@ -141,21 +142,62 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 // that replaces the logger first. The log line here is the whole of a
 // fetcher's observability, so it is the part that most needs a test.
 func runPipeline(ctx context.Context, p *Pipeline) error {
+	rel := novoRelator(p.Run)
+	rel.anunciar(p.name())
+
 	// A declaracao e conferida contra o destino ANTES da extracao.
 	//
 	// A mesma conferencia roda de novo no Load, e nao e desperdicio: entre uma
 	// e outra a tabela pode mudar, e a do Load e a que decide. O que esta
 	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
 	// coluna nao bate significa ter gasto a janela inteira para isso.
+	rel.comecou(EtapaCheck)
 	if err := checkDestination(ctx, p.Target); err != nil {
+		rel.terminou(EtapaCheck, EstadoFalhou, nil)
+		return err
+	}
+	rel.terminou(EtapaCheck, EstadoPronto, nil)
+
+	rel.comecou(EtapaExtract)
+	data, cp, err := extrairComCheckpoint(ctx, p)
+	if err != nil {
+		rel.terminou(EtapaExtract, EstadoFalhou, nil)
 		return err
 	}
 
-	data, cp, err := extrairComCheckpoint(ctx, p)
-	if err != nil {
-		return err
+	// As etapas sao medidas onde o trabalho ACONTECE, e nao onde a chamada
+	// aparece no codigo. A cadeia e preguicosa: Extract devolve um iterador e
+	// quem o puxa e o Load, entao cronometrar as tres chamadas diria "extract:
+	// 3ms" numa extracao de quarenta minutos.
+	//
+	// O extract acaba quando o fluxo se esgota. O transform nao tem relogio
+	// proprio -- ele roda por registro, entremeado -- entao ele nao reporta
+	// duracao nenhuma: um numero ausente e melhor que um numero errado. O que
+	// ele reporta e o que so ele sabe, quantos registros entraram e quantos
+	// sairam.
+	if rel.ligado {
+		var entraram, sairam int64
+		data.Records = contar(data.Records, &entraram, func() { rel.comecou(EtapaTransform) })
+		data = Transform(data, p.Transform...)
+		data.Records = contar(data.Records, &sairam, nil)
+		data.Records = aoEsgotar(data.Records, func() {
+			rel.terminou(EtapaExtract, EstadoPronto, numerosDoExtract(data))
+			rel.terminou(EtapaTransform, EstadoPronto, map[string]any{
+				"entraram": entraram, "sairam": sairam, "pulados": entraram - sairam,
+			})
+			// Sem levas, nada foi escrito ate aqui: o Write so acontece depois
+			// de o fluxo se esgotar. Com levas ele ja comecou, e a etapa foi
+			// aberta la em cima.
+			if p.Target.FlushEvery == 0 {
+				rel.comecou(EtapaLoad)
+			}
+		})
+		if p.Target.FlushEvery > 0 {
+			rel.comecou(EtapaLoad)
+		}
+	} else {
+		data = Transform(data, p.Transform...)
 	}
-	data = Transform(data, p.Transform...)
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
 	if res != nil {
@@ -179,7 +221,50 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 			slog.Error("row rejected", "detail", line)
 		}
 	}
+
+	estado := EstadoPronto
+	if err != nil {
+		estado = EstadoFalhou
+	}
+	rel.terminou(EtapaLoad, estado, numerosDoLoad(res))
 	return err
+}
+
+// contar conta os registros que passam, e avisa no primeiro.
+//
+// So entra em cena sob o motor: fora dele nao ha quem leia as etapas, e a
+// cadeia nao paga nem uma chamada de funcao a mais por registro.
+func contar(linhas iter.Seq2[Envelope, error], n *int64, aoPrimeiro func()) iter.Seq2[Envelope, error] {
+	return func(yield func(Envelope, error) bool) {
+		primeiro := true
+		for env, err := range linhas {
+			if err == nil {
+				if primeiro {
+					primeiro = false
+					if aoPrimeiro != nil {
+						aoPrimeiro()
+					}
+				}
+				*n++
+			}
+			if !yield(env, err) {
+				return
+			}
+		}
+	}
+}
+
+// aoEsgotar avisa quando a origem acabou -- que e quando o extract terminou de
+// verdade, e nao quando Extract devolveu o iterador.
+func aoEsgotar(linhas iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
+	return func(yield func(Envelope, error) bool) {
+		for env, err := range linhas {
+			if !yield(env, err) {
+				return // quem consome desistiu: a origem nao se esgotou
+			}
+		}
+		fim()
+	}
 }
 
 // checkDestination pergunta ao destino, se ele souber responder.

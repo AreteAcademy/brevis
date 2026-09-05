@@ -134,9 +134,31 @@ As arestas do DAG continuam entre passos; a progressão fica dentro da caixa.
   preciso altura por nó no servidor.
 - Com 20 passos SDK viram 60 caixas na tela.
 
-**Recomendação: 6.A no MVP, 6.B depois, como expansão ao clicar no nó.** A faixa
-entrega o que foi pedido em uma semana; o aninhamento é uma tela de detalhe, e
-tela de detalhe não precisa entrar num MVP de três semanas.
+**Decidido: 6.B, os nós aninhados.** (2026-09-05)
+
+Eu tinha recomendado 6.A. A escolha foi 6.B, e ela é sustentável com três
+ajustes que tiram dela justamente o que a fazia cara:
+
+**As etapas empilham na VERTICAL, como linhas dentro do grupo — não como três
+caixas lado a lado.** Três caixas horizontais dentro de um card de 190px viram
+três selos ilegíveis, e alargar o grupo obrigaria a largura do nível a virar
+dinâmica também. Em linha, cada etapa cabe com nome, estado, duração e o número
+que ela produziu, que é o que serve às três da manhã. Um grupo com quatro linhas
+tem ~190px de altura: vinte passos SDK cabem na tela, e o problema das "60
+caixas" desaparece.
+
+E não vira mentira: as três linhas estão visivelmente DENTRO de um contêiner, e
+o que diz "roda em paralelo" na tela é ocupar a mesma coluna do grafo — o grupo
+ocupa uma coluna só.
+
+**A altura passa a ser por nó, no servidor.** Era o custo real do 6.B, e ele é
+inevitável: `desloc = -(len(ids)-1) * alturaNo / 2` assume altura fixa, e um
+grupo expandido passaria por cima do vizinho. Vira soma das alturas da coluna,
+centrada.
+
+**Um clique no cabeçalho recolhe.** É a válvula de escape para um DAG grande, e
+o estado é do cliente — não vai para o servidor nem para o banco.
+
 
 ## 7. O que cada etapa mostra
 
@@ -198,3 +220,85 @@ couber, **este** é o que aparece na demo.
 - **Etapa definida no YAML.** A tela deve refletir o que o código *faz*, não o
   que o YAML *declarou*. Declaração e execução divergem, e quando divergem é
   justamente a tela que precisa contar a verdade.
+
+---
+
+## 11. O selo de "construído com o SDK" (2026-09-05)
+
+Pedido junto com a decisão do §6: o nó precisa dizer que foi construído com o
+SDK.
+
+### O que o selo diz
+
+`SDK v0.44.1` — o nome e a **versão**, não só o nome.
+
+A versão é o que transforma um adorno em informação: com ela a tela responde
+"por que este passo se comporta diferente do vizinho" sem ninguém abrir o
+Dockerfile. Um selo que dissesse apenas "SDK" seria verdadeiro e inútil.
+
+### Como ele é sabido
+
+**Observado, não declarado.** O SDK se anuncia numa linha, ao arrancar:
+
+```
+@brevis:{"tipo":"sdk","versao":"v0.44.1","pipeline":"fetcher"}
+```
+
+A versão sai do `runtime/debug.ReadBuildInfo()` — o próprio binário sabe com que
+versão do módulo foi compilado. Ninguém digita, ninguém mantém em sincronia, e
+não há como o selo mentir: se ele aparece, o SDK rodou; a versão que ele mostra é
+a que está no binário.
+
+O mesmo motivo do checkpoint: um campo que alguém tivesse de manter em sincronia
+é um campo que um dia fica errado — e um selo errado é pior que selo nenhum,
+porque ele é justamente o que se olha para descartar hipóteses.
+
+### O que ele NÃO faz
+
+**Não aparece num nó que ainda não rodou.** Antes de a primeira linha chegar,
+não se sabe — e inventar a partir do YAML seria declarar em vez de observar,
+que é o que o §10 recusa.
+
+O caminho para cobrir isso existe e fica anotado: o motor já guarda as
+tentativas por nó, então um nó que se anunciou como SDK em alguma execução
+passada poderia mostrar o selo em cinza ("da última vez, era"). Precisa de uma
+consulta a mais e não muda nada do que aparece durante a execução, que é o que
+o MVP precisa.
+
+---
+
+## 12. O que a execução mudou (2026-09-05)
+
+Executado, fases 1 a 6. As doze reversões mordem. Três coisas saíram diferentes.
+
+### 12.1 O `transform` não podia ter relógio
+
+Estava no §7 como "sem progresso próprio", mas a implementação ingênua ainda
+lhe daria uma duração — e o primeiro teste a pegou reportando `ms: 0`. Virou
+regra explícita no código (`semRelogio`): um número ausente é melhor que um
+número errado, e um `transform: 40min` ao lado de `extract: 40min` manda alguém
+procurar o gargalo no lugar errado.
+
+Junto, uma armadilha maior: cronometrar as três **chamadas** diria "extract:
+3ms" numa extração de quarenta minutos, porque a cadeia é preguiçosa. O extract
+termina quando o **fluxo se esgota**, e há teste com origem lenta que morde
+exatamente isso.
+
+### 12.2 Uma guarda que não podia falhar
+
+`marcarEtapas` conferia `ehDoSDK()` antes de gravar — mas ele só é chamado
+depois de uma marca ter sido reconhecida. A reversão não mordeu, e estava certa:
+a verificação era inalcançável. Removida, com o motivo no comentário.
+
+### 12.3 Um teste que conferia o layout consigo mesmo
+
+O teste de sobreposição lia a altura **declarada** pelo nó. A reversão que
+quebrava o cálculo quebrava as duas juntas, e ele passava. Reescrito para medir
+a altura pelo que o nó **desenha** — a última etapa dentro dele. Aí morde.
+
+### 12.4 Sem animação na etapa que corre
+
+A etapa em `running` ganha o mesmo anel que um card em execução, em vez de
+pulsar. Duas gramáticas para "está acontecendo agora" na mesma tela é uma a
+mais, e `@keyframes` exigiria rodar o build do Tailwind, que a §15 mantém fora
+do caminho.

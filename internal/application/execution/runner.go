@@ -50,6 +50,11 @@ type Persistidor interface {
 	IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int) error
 	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
 		status run.Status, exit *int, erro string, log string) error
+
+	// RegistrarEtapas grava o estado das etapas de um passo do SDK, enquanto
+	// ele roda. E o que faz a tela avancar antes de o passo terminar.
+	RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
+		sdkVersao string, etapas json.RawMessage) error
 }
 
 // Runner executa um workflow inteiro.
@@ -249,6 +254,24 @@ func (r Runner) marcarInicio(ctx context.Context, nodeID string, tentativa int) 
 	}
 }
 
+// marcarEtapas grava o avanco das etapas. Falhar aqui NAO derruba o passo: a
+// tela e informativa, e a verdade sobre o passo continua sendo o exit code.
+// Trocar uma execucao por uma atualizacao de tela seria o negocio errado.
+//
+// So e chamado depois de uma marca ter sido reconhecida, que e o que garante
+// que um passo comum nao pague uma ida ao banco por linha de log. Conferir de
+// novo aqui seria uma verificacao que nao pode falhar.
+func (r Runner) marcarEtapas(ctx context.Context, nodeID string, tentativa int, c *coletorDeEtapas) {
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	dados, err := json.Marshal(c.Etapas)
+	if err != nil {
+		return
+	}
+	_ = r.Persist.RegistrarEtapas(ctx, r.RunID, nodeID, tentativa, c.Versao, dados)
+}
+
 func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, causa error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -355,7 +378,20 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 	// quando o pod que a produziu ja nao existe.
 	var completa janela
 
+	// As etapas que o passo anuncia, quando ele e um pipeline do SDK.
+	var etapas coletorDeEtapas
+
 	for e := range eventos {
+		// A linha marcada e o SDK falando com o motor, nao saida do programa.
+		// Ela vira etapa na tela e NAO entra no log nem no Report: quem olha
+		// quer ver as etapas, nao o JSON que as transportou.
+		if e.Kind == execution.EventLog {
+			if linha := strings.TrimSpace(e.Message); linha != "" && etapas.linha(linha) {
+				r.marcarEtapas(ctx, n.ID, tentativa, &etapas)
+				continue
+			}
+		}
+
 		if r.Report != nil {
 			r.Report.Evento(e)
 		}

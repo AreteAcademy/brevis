@@ -49,6 +49,30 @@
     return CORES[status] || CORES.pending;
   }
 
+  // O estado de uma ETAPA reusa a paleta dos passos: um `done` de etapa tem de
+  // ser o mesmo verde de um passo `success`, senao a tela ensina duas
+  // gramaticas de cor para a mesma ideia.
+  var CORES_ETAPA = { done: "success", running: "running", failed: "failed", aborted: "canceled" };
+
+  function corDaEtapa(estado) {
+    return cor(CORES_ETAPA[estado] || "pending");
+  }
+
+  // resumo condensa os numeros de uma etapa para caber numa linha. O detalhe
+  // inteiro fica no painel; aqui so cabe o que se le de relance.
+  function resumo(numeros) {
+    if (!numeros) return "";
+    var chaves = Object.keys(numeros);
+    if (!chaves.length) return "";
+    var partes = [];
+    for (var i = 0; i < chaves.length && partes.length < 2; i++) {
+      var v = numeros[chaves[i]];
+      if (v === null || v === undefined || v === "") continue;
+      partes.push(typeof v === "number" ? v.toLocaleString("pt-BR") : String(v));
+    }
+    return partes.join(" · ");
+  }
+
   function duracao(ms) {
     if (!ms) return "";
     if (ms < 1000) return ms + "ms";
@@ -89,7 +113,52 @@
             width: 8, height: 8, borderRadius: 9999, background: c.anel, flexShrink: 0,
           },
         }),
-        h("span", { style: { color: TINTA, fontSize: 13, fontWeight: 600 } }, d.label)
+        h("span", { style: { color: TINTA, fontSize: 13, fontWeight: 600 } }, d.label),
+        // O selo do SDK. Cor de ACENTO, nunca de estado: as cores de estado
+        // significam "como foi", e um selo pintado de verde diria uma coisa
+        // que ele nao sabe.
+        //
+        // Ele carrega a VERSAO. Um selo que so dissesse "SDK" seria verdadeiro
+        // e inutil; com a versao a tela responde "por que este passo se comporta
+        // diferente do vizinho" sem ninguem abrir o Dockerfile.
+        d.temEtapas
+          ? h(
+              "button",
+              {
+                title: d.recolhido ? "mostrar as etapas" : "recolher as etapas",
+                onClick: function (ev) {
+                  // Sem isto o clique tambem selecionaria o passo, e recolher
+                  // abriria o painel de detalhes junto.
+                  ev.stopPropagation();
+                  d.alternar();
+                },
+                style: {
+                  marginLeft: 2, padding: 0, width: 14, height: 14, flexShrink: 0,
+                  border: "none", background: "none", cursor: "pointer",
+                  color: MUDO, fontSize: 9, lineHeight: "14px",
+                },
+              },
+              d.recolhido ? "▸" : "▾"
+            )
+          : null,
+        d.sdk
+          ? h(
+              "span",
+              {
+                title: "construido com o Brevis SDK " + d.sdk,
+                style: {
+                  marginLeft: "auto", flexShrink: 0,
+                  padding: "1px 6px", borderRadius: 999,
+                  border: "1px solid color-mix(in srgb, " + OURO + " 45%, transparent)",
+                  background: "color-mix(in srgb, " + OURO + " 10%, transparent)",
+                  color: tema("--color-gold-strong", "#8a693d"),
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
+                  textTransform: "uppercase", whiteSpace: "nowrap",
+                },
+              },
+              "SDK " + d.sdk
+            )
+          : null
       ),
       d.acao
         ? h(
@@ -116,7 +185,48 @@
     );
   }
 
-  var TIPOS = { bravis: NoBravis };
+  // NoEtapa e uma fase DENTRO de um passo do SDK: extract, transform, load.
+  //
+  // Linha, e nao caixa lado a lado. Tres caixas horizontais num card de 230px
+  // viram tres selos ilegiveis; em linha cabe o nome, o estado, a duracao e o
+  // numero que a etapa produziu -- que e o que serve as tres da manha.
+  function NoEtapa(props) {
+    var d = props.data;
+    var c = corDaEtapa(d.estado);
+    var texto = resumo(d.numeros);
+    return h(
+      "div",
+      {
+        style: {
+          display: "flex", alignItems: "center", gap: 7,
+          width: 210, height: 20, padding: "0 8px",
+          borderRadius: 7,
+          border: "1px solid " + (d.estado === "pending" ? LINHA : "color-mix(in srgb, " + c.anel + " 28%, transparent)"),
+          background: "color-mix(in srgb, " + c.anel + " 7%, transparent)",
+          fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
+          fontSize: 10,
+          // A etapa que corre ganha o mesmo anel que o card de um passo em
+          // execucao -- e nao uma animacao propria. Duas gramaticas para "esta
+          // acontecendo agora" na mesma tela e uma a mais, e movimento aqui
+          // ainda obrigaria a respeitar prefers-reduced-motion num arquivo que
+          // nao tem build de CSS.
+          boxShadow: d.estado === "running"
+            ? "0 0 0 2px color-mix(in srgb, " + c.anel + " 22%, transparent)"
+            : "none",
+        },
+      },
+      h("span", {
+        style: { width: 5, height: 5, borderRadius: 9999, background: c.anel, flexShrink: 0 },
+      }),
+      h("span", { style: { color: TINTA, fontWeight: 600, letterSpacing: "0.02em" } }, d.nome),
+      h("span", { style: { marginLeft: "auto", color: MUDO, whiteSpace: "nowrap" } },
+        [texto, d.ms !== null && d.ms !== undefined ? duracao(d.ms) : ""]
+          .filter(Boolean).join("  ")
+      )
+    );
+  }
+
+  var TIPOS = { bravis: NoBravis, etapa: NoEtapa };
 
   // Inspetor: painel lateral do no selecionado. Aparece so quando ha selecao —
   // ocupar espaco fixo com "nada selecionado" reduz a area do grafo a toa.
@@ -188,6 +298,54 @@
           );
         })
       ),
+      // As etapas, com TODOS os numeros. Na caixa do grafo cabe o relance; o
+      // detalhe e aqui, que e onde se vai quando a linha do relance nao bastou.
+      props.etapas && props.etapas.length
+        ? h(
+            "div",
+            { style: { marginTop: 12 } },
+            h(
+              "div",
+              {
+                style: {
+                  color: tema("--color-gold-strong", "#8a693d"), fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 6,
+                },
+              },
+              d.sdk ? "Etapas · SDK " + d.sdk : "Etapas"
+            ),
+            props.etapas.map(function (et) {
+              var ce = corDaEtapa(et.data.estado);
+              var nums = et.data.numeros || {};
+              return h(
+                "div",
+                {
+                  key: et.data.nome,
+                  style: {
+                    padding: "5px 0", borderTop: "1px solid " + LINHA,
+                    display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap",
+                  },
+                },
+                h("span", { style: { color: ce.anel, fontSize: 11, fontWeight: 600, width: 74 } }, et.data.nome),
+                h("span", { style: { color: MUDO, fontSize: 11 } },
+                  et.data.ms !== null && et.data.ms !== undefined ? duracao(et.data.ms) : "—"),
+                Object.keys(nums).map(function (k) {
+                  return h(
+                    "span",
+                    {
+                      key: k,
+                      style: {
+                        color: TINTA, fontSize: 10,
+                        fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                      },
+                    },
+                    k + "=" + nums[k]
+                  );
+                })
+              );
+            })
+          )
+        : null,
       d.erro
         ? h(
             "pre",
@@ -257,6 +415,45 @@
       ? dados.nodes.filter(function (n) { return n.id === selecionado; })[0]
       : null;
 
+    // Recolher e do CLIENTE: e preferencia de quem olha, nao estado da
+    // execucao, entao nao vai ao servidor nem ao banco. E a valvula de escape
+    // para um DAG grande -- vinte passos do SDK expandidos sao muita linha.
+    var rec = React.useState({});
+    var recolhidos = rec[0], setRecolhidos = rec[1];
+    var alternar = React.useCallback(function (id) {
+      setRecolhidos(function (m) {
+        var novo = Object.assign({}, m);
+        if (novo[id]) delete novo[id]; else novo[id] = true;
+        return novo;
+      });
+    }, []);
+
+    var comEtapas = {};
+    dados.nodes.forEach(function (n) {
+      if (n.parentId) comEtapas[n.parentId] = true;
+    });
+
+    var nos = [];
+    dados.nodes.forEach(function (n) {
+      // Filho de um passo recolhido simplesmente nao entra.
+      if (n.parentId && recolhidos[n.parentId]) return;
+      if (!comEtapas[n.id]) {
+        nos.push(n);
+        return;
+      }
+      var d = Object.assign({}, n.data, {
+        temEtapas: true,
+        recolhido: !!recolhidos[n.id],
+        alternar: function () { alternar(n.id); },
+      });
+      // Recolhido, o grupo perde a altura declarada e volta a caber no
+      // conteudo: sem isto sobraria uma caixa alta e vazia.
+      nos.push(Object.assign({}, n, {
+        data: d,
+        style: recolhidos[n.id] ? undefined : n.style,
+      }));
+    });
+
     return h(
       "div",
       { style: { position: "relative", width: "100%", height: "100%" } },
@@ -276,7 +473,7 @@
       h(
         RF.ReactFlow,
         {
-          nodes: dados.nodes,
+          nodes: nos,
           edges: dados.edges,
           nodeTypes: TIPOS,
           fitView: true,
@@ -295,7 +492,11 @@
         h(RF.Background, { color: tema("--color-state-pending", "#c9bfae"), gap: 22, size: 1.4 }),
         h(RF.Controls, { showInteractive: false })
       ),
-      h(Inspetor, { no: noAtual, fechar: function () { setSelecionado(null); } })
+      h(Inspetor, {
+        no: noAtual,
+        etapas: dados.nodes.filter(function (n) { return n.parentId === selecionado; }),
+        fechar: function () { setSelecionado(null); },
+      })
     );
   }
 

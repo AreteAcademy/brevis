@@ -26,6 +26,16 @@ type noFlow struct {
 	Type     string         `json:"type"`
 	Position posicao        `json:"position"`
 	Data     map[string]any `json:"data"`
+
+	// Aninhamento: um passo do SDK vira um grupo, e as etapas dele viram nos
+	// filhos DENTRO dele. As arestas do DAG continuam entre passos, entao o
+	// grupo ocupa uma coluna so -- que e o que preserva "mesma coluna significa
+	// rodar em paralelo".
+	ParentID   string         `json:"parentId,omitempty"`
+	Extent     string         `json:"extent,omitempty"`
+	Style      map[string]any `json:"style,omitempty"`
+	Selectable *bool          `json:"selectable,omitempty"`
+	Draggable  *bool          `json:"draggable,omitempty"`
 }
 
 type posicao struct {
@@ -51,10 +61,28 @@ type respostaGrafo struct {
 
 // Espacamento do layout. Constantes e nao configuracao: o tamanho do no e fixo
 // no CSS, e deixar isso ajustavel so criaria duas fontes da verdade.
+//
+// A altura deixou de ser uma so. Um passo do SDK cresce com as etapas que
+// anuncia, e o `-(len(ids)-1) * alturaNo / 2` que centralizava a coluna
+// assumia altura fixa: um grupo expandido passava por cima do vizinho. Agora a
+// coluna e a SOMA das alturas dela.
 const (
-	larguraNivel = 260
-	alturaNo     = 110
+	larguraNivel  = 300
+	larguraNo     = 230
+	alturaCartao  = 84
+	alturaEtapa   = 26
+	topoDasEtapas = 74
+	rodapeDoGrupo = 10
+	folgaVertical = 26
 )
+
+// alturaDoNo e o que este passo ocupa na vertical.
+func alturaDoNo(etapas int) int {
+	if etapas == 0 {
+		return alturaCartao
+	}
+	return topoDasEtapas + etapas*alturaEtapa + rodapeDoGrupo
+}
 
 // grafoDoWorkflow desenha a definicao PUBLICADA, sem estado de execucao. E a
 // tela de "como este workflow e", que precisa funcionar para um workflow que
@@ -121,10 +149,18 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 		Nodes:    []noFlow{}, Edges: []arestaFlow{},
 	}
 
+	nao := false
 	for nivel, ids := range niveis {
-		// Centraliza cada coluna: um nivel de um no so fica alinhado ao centro
-		// dos demais, em vez de encostado no topo.
-		desloc := -(len(ids) - 1) * alturaNo / 2
+		// A coluna e medida antes de ser desenhada: as alturas variam, entao
+		// centralizar exige saber o total.
+		alturas := make([]int, len(ids))
+		total := (len(ids) - 1) * folgaVertical
+		for i, id := range ids {
+			alturas[i] = alturaDoNo(len(estados[id].Etapas))
+			total += alturas[i]
+		}
+
+		y := -total / 2
 		for i, id := range ids {
 			no := acharNo(def.Nodes, id)
 			dados := map[string]any{
@@ -132,7 +168,8 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 				"acao":   rotuloDaAcao(no),
 				"status": "pending",
 			}
-			if e, ok := estados[id]; ok {
+			e, temEstado := estados[id]
+			if temEstado {
 				dados["status"] = e.Status
 				dados["duracao_ms"] = e.DuracaoMs
 				dados["tentativa"] = e.Tentativa
@@ -142,12 +179,42 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 				if e.ExitCode != nil {
 					dados["exit_code"] = *e.ExitCode
 				}
+				// O selo. Ele existe porque foi OBSERVADO: o passo se anunciou.
+				// Nada no YAML o produz, entao ele nao tem como mentir.
+				if e.SdkVersao != "" {
+					dados["sdk"] = e.SdkVersao
+				}
 			}
-			resp.Nodes = append(resp.Nodes, noFlow{
+
+			passo := noFlow{
 				ID: id, Type: "brevis",
-				Position: posicao{X: nivel * larguraNivel, Y: desloc + i*alturaNo},
+				Position: posicao{X: nivel * larguraNivel, Y: y},
 				Data:     dados,
-			})
+			}
+			if len(e.Etapas) > 0 {
+				// O grupo precisa de tamanho declarado: o React Flow posiciona
+				// os filhos em relacao a ele, e sem tamanho eles vazam.
+				passo.Style = map[string]any{"width": larguraNo, "height": alturas[i]}
+			}
+			resp.Nodes = append(resp.Nodes, passo)
+
+			// Os filhos vem DEPOIS do pai no array: o React Flow exige.
+			for j, et := range e.Etapas {
+				resp.Nodes = append(resp.Nodes, noFlow{
+					ID: id + "::" + et.Nome, Type: "etapa",
+					ParentID: id, Extent: "parent",
+					Position: posicao{X: 10, Y: topoDasEtapas + j*alturaEtapa},
+					// Clicar numa etapa seleciona o PASSO: o painel de detalhes
+					// e do passo, e uma etapa selecionavel abriria um painel
+					// vazio.
+					Selectable: &nao, Draggable: &nao,
+					Data: map[string]any{
+						"nome": et.Nome, "estado": et.Estado,
+						"ms": et.Ms, "numeros": et.Numeros,
+					},
+				})
+			}
+			y += alturas[i] + folgaVertical
 		}
 	}
 

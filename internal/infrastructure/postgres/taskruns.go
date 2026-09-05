@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/jackc/pgx/v5"
 	"time"
@@ -27,6 +28,22 @@ func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID strin
 		ON CONFLICT (run_id, node_id, attempt) DO UPDATE
 		SET status = EXCLUDED.status, iniciado_em = now(), terminado_em = NULL, erro = ''`,
 		uuid.New(), runID, nodeID, dom.StatusRunning, tentativa)
+	return err
+}
+
+// RegistrarEtapas grava o avanco das etapas de um passo do SDK.
+//
+// Sobrescreve o array inteiro em vez de acrescentar: o coletor do runner ja
+// guarda UMA entrada por etapa, com o estado atual, e a tela quer quatro
+// blocos e nao um diario.
+func (r *RunRepo) RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID string,
+	tentativa int, sdkVersao string, etapas json.RawMessage) error {
+
+	_, err := r.pool.Exec(ctx, `
+		UPDATE task_runs
+		SET etapas = $4, sdk_versao = COALESCE(NULLIF($5, ''), sdk_versao)
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3`,
+		runID, nodeID, tentativa, etapas, sdkVersao)
 	return err
 }
 
@@ -79,7 +96,8 @@ func (r *RunRepo) PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID s
 func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string]EstadoNo, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT DISTINCT ON (node_id)
-		       node_id, status, attempt, exit_code, erro, iniciado_em, terminado_em
+		       node_id, status, attempt, exit_code, erro, iniciado_em, terminado_em,
+		       etapas, sdk_versao
 		FROM task_runs
 		WHERE run_id = $1
 		ORDER BY node_id, attempt DESC`, runID)
@@ -92,10 +110,12 @@ func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string
 	for linhas.Next() {
 		var e EstadoNo
 		var ini, fim *time.Time
+		var etapas []byte
 		if err := linhas.Scan(&e.NodeID, &e.Status, &e.Tentativa, &e.ExitCode,
-			&e.Erro, &ini, &fim); err != nil {
+			&e.Erro, &ini, &fim, &etapas, &e.SdkVersao); err != nil {
 			return nil, err
 		}
+		e.Etapas = etapasDoPasso(etapas, e.Status)
 		if ini != nil && fim != nil {
 			d := fim.Sub(*ini)
 			e.DuracaoMs = d.Milliseconds()
@@ -113,6 +133,56 @@ type EstadoNo struct {
 	ExitCode  *int   `json:"exit_code,omitempty"`
 	Erro      string `json:"erro,omitempty"`
 	DuracaoMs int64  `json:"duracao_ms"`
+
+	// Etapas sao as fases anunciadas por um passo do SDK. Vazio para um passo
+	// que nao e do SDK -- e a tela desse passo continua sendo a de sempre.
+	Etapas []Etapa `json:"etapas,omitempty"`
+
+	// SdkVersao e a versao que o passo anunciou, vazia quando nao e do SDK.
+	SdkVersao string `json:"sdk_versao,omitempty"`
+}
+
+// Etapa e uma fase de um passo do SDK, para a tela.
+type Etapa struct {
+	Nome    string         `json:"nome"`
+	Estado  string         `json:"estado"`
+	Ms      *int64         `json:"ms,omitempty"`
+	Em      string         `json:"em"`
+	Numeros map[string]any `json:"numeros,omitempty"`
+}
+
+// etapasDoPasso le as etapas gravadas e fecha as que ficaram em aberto.
+//
+// Um passo que morreu nao anuncia nada: se ele terminou com uma etapa ainda em
+// `running`, essa etapa foi INTERROMPIDA, e mostra-la girando para sempre seria
+// a tela mentindo sobre uma execucao que ja acabou.
+//
+// A regra vale na LEITURA, e nao na escrita, porque assim ela cobre tambem o
+// caso em que quem deveria fechar a etapa foi justamente quem morreu.
+func etapasDoPasso(dados []byte, status string) []Etapa {
+	if len(dados) == 0 {
+		return nil
+	}
+	var etapas []Etapa
+	if err := json.Unmarshal(dados, &etapas); err != nil {
+		return nil
+	}
+	if terminal(status) {
+		for i := range etapas {
+			if etapas[i].Estado == "running" {
+				etapas[i].Estado = "aborted"
+			}
+		}
+	}
+	return etapas
+}
+
+func terminal(status string) bool {
+	switch dom.Status(status) {
+	case dom.StatusSuccess, dom.StatusFailed, dom.StatusCanceled:
+		return true
+	}
+	return false
 }
 
 // LogDoPasso e a saida de uma tentativa, para a tela da execucao.
