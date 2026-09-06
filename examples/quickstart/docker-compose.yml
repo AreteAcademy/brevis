@@ -1,0 +1,122 @@
+# A complete Brevis stack, from a public API to a CSV on your disk.
+#
+#   docker compose up --build
+#   open http://localhost:8080
+#
+# What runs: Postgres, the API, the scheduler, and two fetchers built with the
+# SDK. `docker compose run --rm trigger` starts a run; the CSVs land in ./out.
+name: brevis-quickstart
+
+x-engine: &engine daniel3843/brevis:0.5.0
+x-db: &db postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: brevis
+      POSTGRES_PASSWORD: brevis
+      POSTGRES_DB: brevis
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      # Nothing starts before the database accepts a connection, or the first
+      # `up` fails on a race and the stack sits in a confusing restart loop.
+      test: ["CMD-SHELL", "pg_isready -U brevis -d brevis"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # The API does not apply schema, by design: whoever creates is not whoever
+  # migrates. This runs once and exits.
+  migrate:
+    image: *engine
+    command: ["migrate", "up"]
+    environment:
+      BREVIS_DATABASE_URL: *db
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+
+  # The fetchers are Go binaries built with the SDK. They are compiled into a
+  # volume the scheduler mounts, because in local mode a `run:` step executes
+  # inside the scheduler's own container.
+  build-fetchers:
+    image: golang:1.27
+    working_dir: /src
+    # CGO_ENABLED=0 is not decoration. This image is Debian and the worker is
+    # Alpine: a dynamically linked binary lands there and fails with
+    # "/bin/sh: /opt/brevis/bin/fetch-weather: not found" -- which reads as a
+    # missing file and is in fact a missing ELF interpreter. Static, and the
+    # binary runs anywhere.
+    environment:
+      CGO_ENABLED: "0"
+    command: ["go", "build", "-o", "/out/", "./cmd/..."]
+    volumes:
+      - ./fetchers:/src:ro
+      - fetcherbin:/out
+      - gocache:/root/.cache/go-build
+    restart: "no"
+
+  publish:
+    image: *engine
+    command: ["publish", "/workflows"]
+    environment:
+      BREVIS_DATABASE_URL: *db
+    volumes:
+      - ./workflows:/workflows:ro
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
+
+  api:
+    image: *engine
+    command: ["serve"]
+    environment:
+      BREVIS_ENV: local
+      BREVIS_HTTP_ADDR: ":8080"
+      BREVIS_DATABASE_URL: *db
+      BREVIS_LOG_LEVEL: info
+    ports: ["8080:8080"]
+    depends_on:
+      publish: {condition: service_completed_successfully}
+
+  # Without this service the stack ACCEPTS work and never runs it: the run is
+  # created, queued, and sits there forever. The API executes nothing, by
+  # design -- somebody has to drain the queue, and this is that somebody.
+  scheduler:
+    image: daniel3843/brevis:0.5.0-worker
+    command: ["scheduler", "--interval", "5s", "--concurrency", "2"]
+    environment:
+      BREVIS_ENV: local
+      BREVIS_DATABASE_URL: *db
+      BREVIS_LOG_LEVEL: info
+    volumes:
+      - fetcherbin:/opt/brevis/bin:ro
+      # Bind-mounted, not a named volume: the point of the example is that you
+      # open the CSV afterwards.
+      - ./out:/data
+    depends_on:
+      publish: {condition: service_completed_successfully}
+      build-fetchers: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  # `docker compose run --rm trigger` queues a run right now, without waiting
+  # for the schedule. The button in the UI does the same thing.
+  #
+  # The worker image, and not the API one: this needs a shell to work out
+  # today's date, and the API image is distroless -- there is no shell in it,
+  # which is the point of using distroless for a process that only serves HTTP.
+  trigger:
+    image: daniel3843/brevis:0.5.0-worker
+    entrypoint: ["/bin/sh", "-c"]
+    command: ['brevis backfill weather --from "$$(date -u +%F)" --to "$$(date -u +%F)"']
+    environment:
+      BREVIS_DATABASE_URL: *db
+    depends_on:
+      publish: {condition: service_completed_successfully}
+    profiles: [tools]
+
+volumes:
+  pgdata:
+  fetcherbin:
+  gocache:

@@ -1,0 +1,25 @@
+# API -> CSV -> daily summary, in two steps.
+#
+# `type: chain` means the order is the order of this file, and the parser turns
+# that into edges -- the engine only ever knows a DAG.
+schedule: "0 3 * * *"     # daily; the UI's "run now" ignores it
+type: chain
+tags: [example, weather]
+
+steps:
+  # Pulls an hourly forecast and lands it as CSV, one directory per run.
+  - id: fetch_weather
+    run: /opt/brevis/bin/fetch-weather
+    env:
+      OUT_DIR: /data
+
+  # Reads what the previous step wrote and folds it into one row per day.
+  #
+  # Nothing passes a path between the two: BREVIS_RUN_ID is injected into every
+  # step, so a run-scoped prefix is a token both of them can derive. And because
+  # the raw extract is already on disk, retrying this step alone costs the
+  # vendor nothing.
+  - id: daily_summary
+    run: /opt/brevis/bin/summarise-weather
+    env:
+      OUT_DIR: /data

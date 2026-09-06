@@ -10,6 +10,20 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.49.1] — 2026-09-06
+
+### Mudou: os números das etapas também estão em inglês
+
+Eles aparecem na TELA, dentro de cada etapa: `paginas` → `pages`,
+`tentativas_http` → `http_attempts`, `linhas` → `rows`, `registros` → `records`,
+`estrategia` → `strategy`, `objetos` → `objects`, `entraram`/`sairam`/`pulados`
+→ `in`/`out`/`dropped`, `estagios` → `stages`, `grupos` → `groups`.
+
+Passaram batido na primeira leva porque o motor os copia sem olhar — só
+apareceram ao ver a stack rodando de verdade.
+
+---
+
 ## [0.49.0] — 2026-09-06
 
 ### MUDANÇA INCOMPATÍVEL: uma origem CSV agora pode ser transformada

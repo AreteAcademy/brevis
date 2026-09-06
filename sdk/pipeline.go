@@ -295,20 +295,20 @@ func numerosDosEstagios(cs []StageResult) map[string]any {
 		return nil
 	}
 	n := map[string]any{
-		"entraram": cs[0].In,
-		"sairam":   cs[len(cs)-1].Out,
+		"in":  cs[0].In,
+		"out": cs[len(cs)-1].Out,
 	}
 	if len(cs) > 1 {
-		n["estagios"] = len(cs)
+		n["stages"] = len(cs)
 	}
-	var grupos int64
+	var groups int64
 	for _, c := range cs {
-		grupos += c.Groups
+		groups += c.Groups
 	}
-	if grupos > 0 {
-		n["grupos"] = grupos
+	if groups > 0 {
+		n["groups"] = groups
 	}
-	n["pulados"] = cs[0].In - cs[len(cs)-1].Out
+	n["dropped"] = cs[0].In - cs[len(cs)-1].Out
 	return n
 }
 

@@ -173,7 +173,7 @@ func TestTransformDizQuantosPulou(t *testing.T) {
 		t.Fatal(err)
 	}
 	fim := acharEtapa(t, eventos, "transform", "done")
-	if fim["entraram"] != 3.0 || fim["sairam"] != 2.0 || fim["pulados"] != 1.0 {
+	if fim["in"] != 3.0 || fim["out"] != 2.0 || fim["dropped"] != 1.0 {
 		t.Errorf("contagem errada: %v", fim)
 	}
 }

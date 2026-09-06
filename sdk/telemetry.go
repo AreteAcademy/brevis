@@ -188,10 +188,10 @@ func extractNumbers(d *Data) map[string]any {
 	st := d.Stats()
 	n := map[string]any{}
 	if st.Pages > 0 {
-		n["paginas"] = st.Pages
+		n["pages"] = st.Pages
 	}
 	if st.Attempts > 0 {
-		n["tentativas_http"] = st.Attempts
+		n["http_attempts"] = st.Attempts
 	}
 	return n
 }
@@ -201,15 +201,15 @@ func loadNumbers(res *Result) map[string]any {
 	if res == nil {
 		return nil
 	}
-	n := map[string]any{"linhas": res.Rows, "registros": res.Records}
+	n := map[string]any{"rows": res.Rows, "records": res.Records}
 	if res.Strategy != "" {
-		n["estrategia"] = res.Strategy
+		n["strategy"] = res.Strategy
 	}
 	if res.CheckpointReused {
-		n["checkpoint"] = "reaproveitado"
+		n["checkpoint"] = "reused"
 	}
 	if len(res.Objects) > 0 {
-		n["objetos"] = strconv.Itoa(len(res.Objects))
+		n["objects"] = strconv.Itoa(len(res.Objects))
 	}
 	return n
 }
