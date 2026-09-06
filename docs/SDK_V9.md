@@ -3,8 +3,8 @@
 > **HISTÓRICO — não é o estado atual.** Este documento vale para `sdk/v0.9.x`.
 > É um relatório do consumidor sobre a `v0.9.x`. Os dois defeitos que ele levanta foram corrigidos na `v0.12.0`.
 >
-> Para o SDK como ele é hoje: [`SDK_ARQUITETURA.md`](SDK_ARQUITETURA.md),
-> [`SDK_NOVO_DRIVER.md`](SDK_NOVO_DRIVER.md) e [`SDK_DECISOES.md`](SDK_DECISOES.md).
+> Para o SDK como ele é hoje: [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md),
+> [`SDK_NEW_DRIVER.md`](SDK_NEW_DRIVER.md) e [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
 
 > **OS OITO PRIMEIROS ITENS ESTÃO RESOLVIDOS**, o último na `sdk/v0.24.0`.
 > O **§9 foi aberto depois**, na `v0.27.2`, e é da mesma classe de "telemetria que

@@ -563,7 +563,7 @@ Ainda assim saiu como `v0.33.0`, por duas razões que não são de esforço:
 1. **O Redshift sai com verificação parcial.** Não existe imagem, e nenhum
    cluster foi tocado. Chamar de release candidate um driver que nunca falou com
    o servidor dele seria a promessa que este plano nomeia como risco.
-2. **Os três invariantes da §14 do `SDK_DECISOES.md` continuam abertos** — sem
+2. **Os três invariantes da §14 do `SDK_DECISIONS.md` continuam abertos** — sem
    inferência de tipo, validação antes do extract, e partição declarada. São
    decisão de produto, e um `1.0` que os deixa em aberto congela a superfície
    antes da conversa.

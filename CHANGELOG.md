@@ -1007,7 +1007,7 @@ tabela pode mudar, e a do `Load` é a que decide.
 
 `Target.PartitionBy`. Particionar por uma coluna que o `Schema` não declara é
 erro nomeando a coluna. Vazio mantém o padrão de antes — diária em
-`ingestion_loaded_at` — e a §14 do `SDK_DECISOES.md` registra por que a
+`ingestion_loaded_at` — e a §14 do `SDK_DECISIONS.md` registra por que a
 alternativa mais estrita foi considerada e não feita.
 
 ### Quem precisa mudar alguma coisa
@@ -1940,7 +1940,7 @@ prova contra o serviço de verdade.
   recusar nome já ocupado, `AutoID` por linha, e recusar sem identidade. Mais a
   precedência de configuração e o nível de log inválido, que não pode derrubar
   uma pipeline.
-- **[`docs/SDK_MATRIZ.md`](docs/SDK_MATRIZ.md)** — o que cada driver suporta,
+- **[`docs/SDK_MATRIX.md`](docs/SDK_MATRIX.md)** — o que cada driver suporta,
   as dez combinações recusadas com o motivo, e uma seção do que **ainda não é
   verdade**, para não ser descoberto em produção.
 

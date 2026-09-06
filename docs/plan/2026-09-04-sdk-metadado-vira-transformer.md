@@ -140,7 +140,7 @@ Três saídas, e a recomendação é a primeira:
 
 1. **Aceitar.** Autodetect cria `NULLABLE`; quem quer `NOT NULL` declara a tabela
    — com `CreateSQL` ou fora do SDK. É coerente com a decisão que o
-   [`SDK_DECISOES.md`](../SDK_DECISOES.md) §1 já tomou: *o SDK não infere tipo de
+   [`SDK_DECISIONS.md`](../SDK_DECISIONS.md) §1 já tomou: *o SDK não infere tipo de
    coluna*. Criar uma tabela com garantias que ele deduziu é a mesma sobreposição,
    uma camada acima. E o consumidor que motivou tudo isto **já declara a landing
    em DDL do dbt** — o caminho `CreateTable` é conveniência de primeira execução,

@@ -6,8 +6,8 @@ O roteiro das fases 2 a 4 de
 [`plan/2026-09-04-sdk-drivers-mvp.md`](plan/2026-09-04-sdk-drivers-mvp.md). A
 fase 1 (Files) já saiu, na `v0.20.0`, e serve de modelo: leia `sdk/from/files.go`
 e `sdk/to/files.go` ao lado deste documento.
-Para o mapa, veja [`SDK_ARQUITETURA.md`](SDK_ARQUITETURA.md); para as decisões
-que este roteiro pressupõe, [`SDK_DECISOES.md`](SDK_DECISOES.md).
+Para o mapa, veja [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md); para as decisões
+que este roteiro pressupõe, [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
 
 ---
 

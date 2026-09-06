@@ -9,8 +9,8 @@ e o módulo mudou de nome no meio (`bravis` → `brevis`, na `v0.25.0`).
 **Os onze defeitos estão fechados.** O último, o §3 do
 [`SDK_V9.md`](SDK_V9.md), na `v0.24.0`.
 
-Este documento não repete [`SDK_DECISOES.md`](SDK_DECISOES.md) (o que cada
-decisão custou) nem [`SDK_ARQUITETURA.md`](SDK_ARQUITETURA.md) (como o desenho
+Este documento não repete [`SDK_DECISIONS.md`](SDK_DECISIONS.md) (o que cada
+decisão custou) nem [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md) (como o desenho
 ficou). Ele guarda a outra metade: **como cada defeito apareceu**, o que ele
 custou antes de aparecer, e quais classes de defeito se repetiram — que é o que
 serve de checklist para a próxima versão.

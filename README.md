@@ -14,7 +14,7 @@ binary, running each step as a pod on Kubernetes.
 > The project is written in English. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Architecture and phasing: [`docs/plan.md`](docs/plan.md).
-Referência da linha de comando: [`docs/COMANDOS.md`](docs/COMANDOS.md).
+Referência da linha de comando: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 Per-phase reports: [`docs/phases/`](docs/phases/).
 
 ## SDK
@@ -69,7 +69,7 @@ The scheduler **creates** runs; the queue **executes** them. The two loops are
 independent: either can go down without affecting the other.
 
 The ten subcommands, with flags, environment variables, endpoints and Makefile
-targets: [`docs/COMANDOS.md`](docs/COMANDOS.md).
+targets: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 
 On Kubernetes, **each step becomes a pod** with the image declared in the YAML --
 there is no generic worker waiting for work; the work brings its own runtime. The
@@ -78,7 +78,7 @@ same file runs locally as a process. See
 
 The images are per role, not per project: **5.8 MB** for a Go step, 118 MB for
 Python, 620 MB for dbt (with the parse baked in, 2.7 s less per pod). See
-[`docs/IMAGENS.md`](docs/IMAGENS.md).
+[`docs/IMAGES.md`](docs/IMAGES.md).
 
 A workflow can declare **run parameters** -- what changes between two dispatches
 without editing the file:
@@ -125,7 +125,7 @@ make image-push            # daniel3843/brevis:<VERSION> e :<VERSION>-worker
 
 Two images of the same binary: `:<version>` is the API on distroless (it executes
 nothing, so it needs no shell) and `:<version>-worker` is Alpine with a shell, for
-the workflows' `run:` steps. Details in [`docs/PUBLICAR.md`](docs/PUBLICAR.md).
+the workflows' `run:` steps. Details in [`docs/PUBLISHING.md`](docs/PUBLISHING.md).
 
 ## Running locally
 

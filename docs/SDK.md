@@ -3,8 +3,8 @@
 > **HISTÓRICO — não é o estado atual.** Este documento vale para `sdk/v0.1`.
 > É o prompt original de construção, de 2026-09-02. A API mudou por completo desde então — `Fonte` virou `Source`, `ExtraMetadata` virou `Metadata`, `Guard`/`Expand` viraram `Records`, e os drivers viraram valores em `from`/`to`.
 >
-> Para o SDK como ele é hoje: [`SDK_ARQUITETURA.md`](SDK_ARQUITETURA.md),
-> [`SDK_NOVO_DRIVER.md`](SDK_NOVO_DRIVER.md) e [`SDK_DECISOES.md`](SDK_DECISOES.md).
+> Para o SDK como ele é hoje: [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md),
+> [`SDK_NEW_DRIVER.md`](SDK_NEW_DRIVER.md) e [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
 
 O primeiro recurso público do Brevis fora do orquestrador: uma biblioteca Go que
 resolve as duas pontas de um fetcher de dados. **Extract** abstrai a coleta por

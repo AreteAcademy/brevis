@@ -238,6 +238,6 @@ Dito aqui para não ser descoberto em produção:
   se faz no próprio caminho (`dia=2026-09-04/`), com o `RunContext`.
 - **O SDK infere os tipos das colunas do cliente** ao criar uma tabela no
   BigQuery — delegando ao autodetect do próprio BigQuery. As duas colunas dele
-  são declaradas; as suas, não. Ver §13 de [`SDK_DECISOES.md`](SDK_DECISOES.md).
+  são declaradas; as suas, não. Ver §13 de [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
 - **`to.Files` não deduplica**, e portanto uma reexecução escreve o lote de
   novo, num arquivo novo. Quem resolve isso é a camada de baixo.

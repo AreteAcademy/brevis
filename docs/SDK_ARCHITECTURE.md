@@ -3,8 +3,8 @@
 **Vale para** `sdk/v0.21.0` · **Atualizado em** 2026-09-04
 
 Este é o mapa. Para *por que* cada peça é assim, veja
-[`SDK_DECISOES.md`](SDK_DECISOES.md); para *como acrescentar um driver*, veja
-[`SDK_NOVO_DRIVER.md`](SDK_NOVO_DRIVER.md).
+[`SDK_DECISIONS.md`](SDK_DECISIONS.md); para *como acrescentar um driver*, veja
+[`SDK_NEW_DRIVER.md`](SDK_NEW_DRIVER.md).
 
 ---
 

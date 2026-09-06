@@ -51,7 +51,7 @@ Hoje a resposta honesta é "em nenhum código". É isso que precisa mudar.
 
 > **FECHADA.** I1 na `sdk/v0.18.0`, I5 na `v0.24.0`, e I2, I3 e I4 na
 > `v0.35.0`. Dois deles saíram por um caminho diferente do que esta spec
-> propõe — a §14 do [`SDK_DECISOES.md`](../SDK_DECISOES.md) registra qual e por
+> propõe — a §14 do [`SDK_DECISIONS.md`](../SDK_DECISIONS.md) registra qual e por
 > quê.
 
 ## 1. Os invariantes

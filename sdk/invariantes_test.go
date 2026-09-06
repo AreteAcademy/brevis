@@ -11,7 +11,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
-// Os três invariantes da §14 do SDK_DECISOES, como testes.
+// Os três invariantes da §14 do SDK_DECISIONS, como testes.
 //
 // Eles estavam escritos como "decisão de produto, não técnica" -- e ficaram
 // abertos meses. Um invariante que só existe em prosa é uma intenção; escrito

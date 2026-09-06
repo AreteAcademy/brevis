@@ -127,7 +127,7 @@ documentado para ninguém tratar a divergência como defeito.
 
 **I5 — Falhar ao gravar o checkpoint não derruba a execução.**
 O checkpoint é uma apólice, não o produto. Se o bucket recusa a escrita, o
-pipeline continua e **avisa** — mesma decisão do §13 do `SDK_DECISOES.md`
+pipeline continua e **avisa** — mesma decisão do §13 do `SDK_DECISIONS.md`
 ("um aviso vale mais que um armazém"). O que não pode acontecer é a execução
 morrer por causa do seguro.
 

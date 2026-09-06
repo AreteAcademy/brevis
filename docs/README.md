@@ -1,68 +1,77 @@
 # docs
 
-**Atualizado em** 2026-09-04
+**Updated on** 2026-09-06
 
 ---
 
 ## SDK
 
-Comece por aqui. Estes cinco descrevem o SDK como ele está hoje
-(`sdk/v0.21.0`) e respondem perguntas diferentes:
+Start here. These four describe the SDK as it is today, and each answers a
+different question:
 
-| documento | responde |
+| document | answers |
 |---|---|
-| [`SDK_ARQUITETURA.md`](SDK_ARQUITETURA.md) | **o quê e onde** — as quatro perguntas de um fetcher, o mapa dos pacotes, as duas interfaces, por onde um registro passa |
-| [`SDK_NOVO_DRIVER.md`](SDK_NOVO_DRIVER.md) | **como** — o roteiro para acrescentar Postgres, MySQL e Redshift, com as oito regras e o checklist |
-| [`SDK_MATRIZ.md`](SDK_MATRIZ.md) | **o que suporta o quê** — cada opção por driver, as combinações recusadas, e o que ainda não é verdade |
-| [`SDK_CONSUMIDOR.md`](SDK_CONSUMIDOR.md) | **como cada defeito apareceu** — os onze achados pelo primeiro consumidor, e as seis classes que se repetiram |
-| [`SDK_DECISOES.md`](SDK_DECISOES.md) | **por quê** — cada decisão, o que se tentou antes e o que aquilo custou |
+| [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md) | **what and where** — a fetcher's four questions, the package map, the two interfaces, the path a record takes |
+| [`SDK_NEW_DRIVER.md`](SDK_NEW_DRIVER.md) | **how** — the walkthrough for adding a driver, with the eight rules and the checklist |
+| [`SDK_MATRIX.md`](SDK_MATRIX.md) | **what supports what** — every option per driver, the refused combinations, and what is not true yet |
+| [`SDK_DECISIONS.md`](SDK_DECISIONS.md) | **why** — each decision, what was tried before it, and what that cost |
 
-A referência da API é o [godoc](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
-e o [`sdk/README.md`](../sdk/README.md); o histórico versão a versão é o
+Each carries a `Valid for` stamp naming the version it was checked against.
+When the stamp is behind the current tag, the document is a claim nobody has
+re-verified — read it that way.
+
+The API reference is the [godoc](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
+and [`sdk/README.md`](../sdk/README.md); the version-by-version history is
 [`CHANGELOG.md`](../CHANGELOG.md).
 
-## Operação
+## Operations
 
 | | |
 |---|---|
-| [`PUBLICAR.md`](PUBLICAR.md) | como publicar SDK e imagens |
-| [`IMAGENS.md`](IMAGENS.md) | as imagens Docker |
-| [`KUBERNETES.md`](KUBERNETES.md) | o deploy |
-| [`PARAMS.md`](PARAMS.md) | parâmetros de execução do engine |
+| [`PUBLISHING.md`](PUBLISHING.md) | how to publish the SDK and the images |
+| [`IMAGES.md`](IMAGES.md) | the Docker images |
+| [`KUBERNETES.md`](KUBERNETES.md) | the deployment |
+| [`PARAMS.md`](PARAMS.md) | the engine's run parameters |
+| [`COMMANDS.md`](COMMANDS.md) | the command-line reference |
 
-## Planos e specs
+## Plans and specs
 
-`plan/` guarda as specs, em ordem cronológica. Cada uma foi escrita antes da
-mudança e executada depois, então serve como registro do que se pediu e do que
-de fato saiu — **não** como descrição do estado atual.
+`plan/` holds the specs, in chronological order. Each was written before the
+change and executed after it, so it serves as a record of what was asked for and
+what actually shipped — **not** as a description of the current state.
 
-| spec | virou |
+| spec | became |
 |---|---|
 | [`2026-09-03-sdk-recebe-contexto-do-engine.md`](plan/2026-09-03-sdk-recebe-contexto-do-engine.md) | `v0.10.0` |
 | [`2026-09-03-sdk-conserto-do-merge.md`](plan/2026-09-03-sdk-conserto-do-merge.md) | `v0.12.0` |
-| [`2026-09-03-sdk-schema-declarado.md`](plan/2026-09-03-sdk-schema-declarado.md) | I1 = `v0.18.0`, I5 = `v0.24.0`, I2/I3/I4 = `v0.35.0` — veja §14 de `SDK_DECISOES.md` |
+| [`2026-09-03-sdk-schema-declarado.md`](plan/2026-09-03-sdk-schema-declarado.md) | I1 = `v0.18.0`, I5 = `v0.24.0`, I2/I3/I4 = `v0.35.0` — see §14 of `SDK_DECISIONS.md` |
 | [`2026-09-03-sdk-validacao-do-consumidor.md`](plan/2026-09-03-sdk-validacao-do-consumidor.md) | `v0.17.0` |
 | [`2026-09-04-sdk-uma-declaracao-de-colunas.md`](plan/2026-09-04-sdk-uma-declaracao-de-colunas.md) | `v0.18.0` |
-| [`2026-09-04-sdk-drivers-mvp.md`](plan/2026-09-04-sdk-drivers-mvp.md) | fase 0 = `v0.19.0`, fase 1 = `v0.20.0`; **fases 2–5 em aberto** |
+| [`2026-09-04-sdk-drivers-mvp.md`](plan/2026-09-04-sdk-drivers-mvp.md) | phase 0 = `v0.19.0`, phase 1 = `v0.20.0`; **phases 2–5 open** |
 | [`2026-09-04-sdk-metadado-vira-transformer.md`](plan/2026-09-04-sdk-metadado-vira-transformer.md) | `v0.24.0` |
-| [`2026-09-04-sdk-http-autenticacao.md`](plan/2026-09-04-sdk-http-autenticacao.md) | §3.2/3.3/3.4 = `v0.26.0`, §3.1 = `v0.27.0`; desvios na §6 da própria spec |
+| [`2026-09-04-sdk-http-autenticacao.md`](plan/2026-09-04-sdk-http-autenticacao.md) | §3.2/3.3/3.4 = `v0.26.0`, §3.1 = `v0.27.0`; the deviations are in §6 of the spec itself |
+| [`2026-09-05-contexto-entre-passos.md`](plan/2026-09-05-contexto-entre-passos.md) | **proposal** — what one step tells the next |
+| [`2026-09-06-open-threads.md`](plan/2026-09-06-open-threads.md) | **inventory** — what was left open, checked against the tree, and in what order to close it |
+| [`2026-09-06-english-only.md`](plan/2026-09-06-english-only.md) | **in progress** — the whole project in English, area by area |
 
-| [`2026-09-05-contexto-entre-passos.md`](plan/2026-09-05-contexto-entre-passos.md) | **proposta** — o que um passo diz ao seguinte |
+The specs are written in Portuguese where they were written that way, and they
+stay: a spec records a decision made on a date, and rewriting a record is not
+translating a project. New ones are in English.
 
-| [`2026-09-06-open-threads.md`](plan/2026-09-06-open-threads.md) | **inventário** — o que ficou aberto, verificado contra a árvore, e em que ordem fechar |
+`phases/` belongs to the **engine**, not the SDK: the orchestrator's build
+phases.
 
-`phases/` é do **engine**, não do SDK: as fases de construção do orquestrador.
+## History — these are not the current state
 
-## Histórico — não são o estado atual
+These describe versions that no longer exist. They stay for the record; nothing
+here should be read as today's API.
 
-Estes descrevem versões que já não existem. Ficam pelo registro; nada aqui deve
-ser lido como a API de hoje.
-
-| | descreve |
+| | describes |
 |---|---|
-| [`SDK.md`](SDK.md) | o prompt original de construção do SDK, de 2026-09-02 |
-| [`SDK_V2.md`](SDK_V2.md) | a evolução pedida para a `v0.2` |
-| [`SDK_LOAD.md`](SDK_LOAD.md) | o conserto do load da `v0.2.1` |
-| [`SDK_V9.md`](SDK_V9.md) | relatório do consumidor sobre a `v0.9.x` |
-| [`plan.md`](plan.md) | o plano original do engine |
-| [`gaps-yaml-vs-plano.md`](gaps-yaml-vs-plano.md) | levantamento de agosto |
+| [`SDK.md`](SDK.md) | the original build prompt for the SDK, from 2026-09-02 |
+| [`SDK_V2.md`](SDK_V2.md) | the evolution asked for in `v0.2` |
+| [`SDK_LOAD.md`](SDK_LOAD.md) | the load fix in `v0.2.1` |
+| [`SDK_V9.md`](SDK_V9.md) | the consumer's report on `v0.9.x` |
+| [`SDK_CONSUMIDOR.md`](SDK_CONSUMIDOR.md) | what the first consumer found between 2026-09-02 and 2026-09-04, and what changed because of it |
+| [`plan.md`](plan.md) | the engine's original build prompt |
+| [`gaps-yaml-vs-plano.md`](gaps-yaml-vs-plano.md) | a survey from August |

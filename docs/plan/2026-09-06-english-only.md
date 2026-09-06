@@ -25,7 +25,7 @@ function words in comment lines.
 | A | **Front door** — README, issue/PR templates, CONTRIBUTING | 0 | ✅ done |
 | B | **SDK root package** (godoc) | 0 | ✅ done |
 | C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 0 | ✅ done |
-| D | **Living docs** — `COMANDOS`, `KUBERNETES`, `IMAGENS`, `PUBLICAR`, `PARAMS`, `SDK_ARQUITETURA`, `SDK_DECISOES`, `SDK_MATRIZ`, `SDK_NOVO_DRIVER`, `plan.md` | ~700 | a contributor deciding how to help |
+| D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER`, `plan.md` | ~700 | a contributor deciding how to help |
 | E | **Engine internals** — `internal/`, `cmd/` | 238 | a contributor changing the engine |
 | F | **Web** — `web/`, templates | 143 | a contributor touching the UI |
 | G | **Infra** — `.github/`, `deployments/`, `migrations/` | 115 | whoever operates or fixes CI |

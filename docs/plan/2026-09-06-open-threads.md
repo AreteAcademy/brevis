@@ -73,7 +73,7 @@ Its user-facing content is fine — that is exactly what the rule exempts. Its
 | `site/css/styles.css`, `site/css/docs.css` | comments in Portuguese |
 | `site/js/main.js`, `site/js/docs.js` | comments in Portuguese |
 | `site/i18n.json` | the **keys** are Portuguese: `pular`, `nav_rotulo`, `hero_titulo`, `c1_valor` |
-| `docs/COMANDOS.md` | entirely Portuguese, 643 lines |
+| `docs/COMMANDS.md` | entirely Portuguese, 643 lines |
 
 The `i18n.json` keys are the awkward one. They are identifiers, so the rule
 covers them, and they are referenced from `templates/*.html` — renaming means
@@ -139,14 +139,14 @@ having written nothing.
 |---|---|---|
 | **a script named in Portuguese** | `.github/scripts/peso-do-motor.sh` | filename and comments. Its three siblings are `consumer-check.sh`, `generated-check.sh`, `pruning-check.sh` — the odd one out is also the one enforcing the most interesting invariant. `engine-weight.sh` would match. |
 | **a CI check that cannot fail** | `.github/workflows/build-site.yml:51` | `if grep -o 'href=…' index.html \| grep -E 'href="[0-9]' \| head -5; then` — the exit status comes from `head`, which always succeeds, so the branch always runs and prints its warning. It has been printing "potentially broken links" with zero matches. |
-| **two sources of truth for the CLI** | `docs/COMANDOS.md` (643 lines) vs `site/content/{pt,en}/docs/07-cli.md` | both document the ten subcommands and their flags. They agree today because both were written from the same `--help` output; nothing keeps them agreeing. |
-| **`COMANDOS.md` is unindexed** | `docs/README.md` | the root `README.md` links it twice; the docs index does not mention it. |
-| **seventeen documents in Portuguese** | `docs/*.md` | outside the historical set that `CONTRIBUTING.md` explicitly exempts (`CHANGELOG*`, older `plan/`). `SDK_DECISOES.md`, `SDK_MATRIZ.md`, `KUBERNETES.md` and `IMAGENS.md` are current references, not records. |
+| **two sources of truth for the CLI** | `docs/COMMANDS.md` (643 lines) vs `site/content/{pt,en}/docs/07-cli.md` | both document the ten subcommands and their flags. They agree today because both were written from the same `--help` output; nothing keeps them agreeing. |
+| **`COMMANDS.md` is unindexed** | `docs/README.md` | the root `README.md` links it twice; the docs index does not mention it. |
+| **seventeen documents in Portuguese** | `docs/*.md` | outside the historical set that `CONTRIBUTING.md` explicitly exempts (`CHANGELOG*`, older `plan/`). `SDK_DECISIONS.md`, `SDK_MATRIX.md`, `KUBERNETES.md` and `IMAGES.md` are current references, not records. |
 
 On the duplication: the website is the documentation users read, and `docs/` is
 what contributors read. Keeping both means writing the CLI reference twice. The
 cheaper resolution is to let the site own the user-facing reference and reduce
-`docs/COMANDOS.md` to what contributors need that users do not — which today is
+`docs/COMMANDS.md` to what contributors need that users do not — which today is
 the "known defects" section at its end.
 
 ---
@@ -168,7 +168,7 @@ Cheapest first, and each step leaves the tree in a state that ships.
    keys, `brevis marca`. Last, because they need a deprecation window and a
    changelog entry, not just a commit.
 7. **`docs/*.md` to English**, and resolve the CLI duplication while touching
-   `COMANDOS.md` anyway.
+   `COMMANDS.md` anyway.
 
 ---
 

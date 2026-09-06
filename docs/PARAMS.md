@@ -1,6 +1,6 @@
-# Parâmetros de execução
+# Run parameters
 
-O que muda entre dois disparos do mesmo workflow sem editar o arquivo.
+What changes between two runs of the same workflow without editing the file.
 
 ```yaml
 name: id_verification
@@ -22,67 +22,69 @@ steps:
       --select bronze_id_verification+
 ```
 
-| onde | como |
+| where | how |
 |---|---|
-| CLI local | `brevis run wf.yaml --param load_full=true` |
-| Backfill | `brevis backfill diario --from … --to … --param load_full=true` |
-| UI | formulário na página do workflow (aparece só se houver params) |
-| Cron | sempre os **padrões** — não há quem informe valores às 4 da manhã |
+| Local CLI | `brevis run wf.yaml --param load_full=true` |
+| Backfill | `brevis backfill daily --from … --to … --param load_full=true` |
+| UI | a form on the workflow's page (it shows up only when there are params) |
+| Cron | always the **defaults** — nobody is around to supply values at four in the morning |
 
-Os valores usados ficam gravados na coluna `runs.params`. "Com que parâmetros
-isso rodou?" é a primeira pergunta de qualquer investigação de backfill, e a
-resposta não pode depender de log.
+The values used are written to the `runs.params` column. "What parameters did
+this run with?" is the first question of any backfill investigation, and the
+answer must not depend on a log.
 
-## Tipos
+## Types
 
-`boolean`, `integer` e `string`. Sem `type`, é `string` — o tipo mais comum e o
-único que não muda o significado do valor.
+`boolean`, `integer` and `string`. With no `type` it is `string` — the most
+common one, and the only one that does not change the value's meaning.
 
-`enum` restringe a uma lista; `pattern` a uma expressão regular. Ambos são
-validados no servidor, e o formulário da UI escolhe o controle a partir do tipo
-(select para boolean e enum, number para integer).
+`enum` restricts to a list; `pattern` to a regular expression. Both are
+validated on the server, and the UI's form picks the control from the type (a
+select for boolean and enum, a number input for integer).
 
-## Injeção de shell
+## Shell injection
 
-O valor de um param vai **para dentro da linha de comando** do passo, e quem
-dispara um run não é necessariamente quem escreveu o workflow. Por isso um
-`string` sem `pattern` aceita apenas:
+A param's value goes **into the step's command line**, and whoever triggers a
+run is not necessarily whoever wrote the workflow. So a `string` with no
+`pattern` accepts only:
 
 ```
-letras  dígitos  _ . : / = , + @ -  espaço
+letters  digits  _ . : / = , + @ -  space
 ```
 
-Fora ficam aspas, `;`, `|`, `&`, `$`, crase, parênteses e redirecionamentos —
-tudo que o shell interpreta. `--date {{ .data }}` com `data = "; rm -rf /"` é
-recusado antes de o run existir.
+Left out are quotes, `;`, `|`, `&`, `$`, backticks, parentheses and
+redirections — everything the shell interprets. `--date {{ .date }}` with
+`date = "; rm -rf /"` is refused before the run exists.
 
-O conjunto cobre o que os params reais deste repositório precisam: datas,
-selectors do dbt, uids, caminhos, listas separadas por vírgula. Quem precisa
-mesmo de um caractere fora dele declara `pattern:` — e aí a decisão é explícita,
-do autor do workflow.
+The set covers what this repository's real params need: dates, dbt selectors,
+uids, paths, comma-separated lists. Whoever genuinely needs a character outside
+it declares a `pattern:` — and then the decision is explicit, and the workflow
+author's.
 
-## Erros que o desenho evita
+## Mistakes the design rules out
 
-- **Nome desconhecido é erro**, não silêncio: `--param lod_full=true` com typo
-  rodaria com o padrão e ninguém perceberia que o backfill não aconteceu.
-- **Template com nome errado falha na montagem da task**, citando os params
-  disponíveis. Sem `missingkey=error`, `{{ .lod_full }}` viraria string vazia e
-  o comando sairia silenciosamente errado — `--select ` sem alvo.
-- **Default inválido falha na publicação.** Um default recusado só apareceria no
-  primeiro disparo agendado, de madrugada.
+- **An unknown name is an error**, not silence: `--param lod_full=true` with a
+  typo would run with the default and nobody would notice the backfill did not
+  happen.
+- **A template with a wrong name fails when the task is assembled**, naming the
+  params that do exist. Without `missingkey=error`, `{{ .lod_full }}` would
+  become an empty string and the command would come out silently wrong --
+  `--select ` with no target.
+- **An invalid default fails at publish time.** A refused default would
+  otherwise only surface on the first scheduled run, in the middle of the night.
 
-## `image:` não é templatável
+## `image:` is not templatable
 
-De propósito. Quem dispara um run escolheria a imagem que o pod roda — ou seja,
-o código que executa. Só o comando é renderizado.
+On purpose. Whoever triggers a run would be choosing the image the pod runs --
+that is, the code that executes. Only the command is rendered.
 
-## Vindo do Kestra
+## Coming from Kestra
 
-`brevis/bin/from-kestra.py` no repositório de dados traduz `inputs:` para
-`params:` e `{{ inputs.x }}` para `{{ .x }}`, incluindo os condicionais
-(`x == true ? '--flag' : ''` vira `{{ if eq .x "true" }}`). Isso destravou 6 dos
-10 flows que antes não convertiam.
+`brevis/bin/from-kestra.py` in the data repository translates `inputs:` into
+`params:` and `{{ inputs.x }}` into `{{ .x }}`, conditionals included
+(`x == true ? '--flag' : ''` becomes `{{ if eq .x "true" }}`). That unblocked 6
+of the 10 flows that would not convert before.
 
-Ficam de fora: `{% if %}` do Jinja, funções (`now() | dateAdd(...)`) e
-expressões compostas. Nesses casos o conversor **aborta o arquivo** em vez de
-gerar um comando que só falha em execução.
+Left out: Jinja's `{% if %}`, functions (`now() | dateAdd(...)`) and compound
+expressions. In those cases the converter **aborts the file** rather than
+emitting a command that only fails at run time.
