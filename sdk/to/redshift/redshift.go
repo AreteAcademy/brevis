@@ -50,7 +50,7 @@ type Table struct {
 	// Name is the table, schema included. Required.
 	Name string
 
-	// Staging e o prefixo em S3 onde o lote e escrito antes do COPY.
+	// Staging is the S3 prefix the batch is written to before the COPY.
 	// Required: there is no inline path into Redshift.
 	Staging string
 
@@ -61,7 +61,7 @@ type Table struct {
 	// not accept a key -- if you need one, its place is behind the role.
 	IAMRole string
 
-	// Store escreve o arquivo de staging. Obrigatorio; use store/s3.
+	// Store writes the staging file. Required; use store/s3.
 	Store core.Store
 
 	// KeepStagedFile leaves the file in S3 after the COPY, for inspection.
@@ -79,7 +79,8 @@ type SQLExecutor interface {
 	Exec(ctx context.Context, sql string) error
 }
 
-// Describe satisfaz core.Writer. Nomeia a tabela, nunca o DSN nem a role.
+// Describe satisfies core.Writer. It names the table, never the DSN nor the
+// role.
 func (t Table) Describe() string { return "redshift:" + t.Name }
 
 // Write satisfaz core.Writer.
@@ -141,7 +142,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 			// The staging file stays if the cleanup fails: losing the load over a
 			// DELETE would trade a small problem for a big one. The warning is
 			// what says it stayed.
-			if err := t.apagar(ctx, local.Bucket, chave); err != nil {
+			if err := t.remove(ctx, local.Bucket, chave); err != nil {
 				avisarSobra(ctx, uri, err)
 			}
 		}()
@@ -284,7 +285,8 @@ func CopySQL(destino, uri, role string) string {
 		destino, uri, role)
 }
 
-// StagingTableSQL cria a temporaria com a MESMA forma do destino.
+// StagingTableSQL creates the temporary table with the SAME shape as the
+// destination.
 //
 // LIKE, and not a hand-written column list: a temporary table that does not
 // follow the destination is the one that makes the MERGE fail months later, when
@@ -293,7 +295,7 @@ func StagingTableSQL(destino, temp string) string {
 	return fmt.Sprintf("CREATE TEMP TABLE %s (LIKE %s)", temp, destino)
 }
 
-// MergeSQL monta o MERGE da dedup, com a lista de colunas NOMEADA.
+// MergeSQL builds the dedup's MERGE, with the column list NAMED.
 //
 // Always named, and the comment exists because the alternative already
 // happened: BigQuery's `INSERT ROW` matches by POSITION, and v0.12.0 shipped

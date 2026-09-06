@@ -30,11 +30,11 @@ import (
 //
 // Returns the intersection, in destination order.
 func reconcile(dest, incoming bigquery.Schema) ([]string, error) {
-	// A regra de NOMES vive em core.Reconcile, porque os quatro destinos com
-	// esquema tem o mesmo problema e foi ele que custou a v0.12.0. O que fica
-	// aqui e a conferencia de TIPO, que e do BigQuery: nos destinos SQL quem
-	// recusa o tipo errado e o proprio servidor, no INSERT.
-	nomes := func(s bigquery.Schema) []string {
+	// The NAME rule lives in core.Reconcile, because the four destinations with
+	// a schema have the same problem and it is what cost v0.12.0. What stays
+	// here is the TYPE check, which is BigQuery's: on the SQL destinations the
+	// server itself refuses the wrong type, at INSERT time.
+	names := func(s bigquery.Schema) []string {
 		out := make([]string, len(s))
 		for i, f := range s {
 			out[i] = f.Name
@@ -42,7 +42,7 @@ func reconcile(dest, incoming bigquery.Schema) ([]string, error) {
 		return out
 	}
 
-	cols, err := core.Reconcile(nomes(dest), nomes(incoming), namesOf(dest))
+	cols, err := core.Reconcile(names(dest), names(incoming), namesOf(dest))
 	if err != nil {
 		return nil, err
 	}

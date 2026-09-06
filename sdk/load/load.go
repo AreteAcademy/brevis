@@ -531,8 +531,8 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 		if err := obj.Delete(ctx); err != nil {
 			slog.WarnContext(ctx, "staged object left behind", "object", objName, "error", err)
 		}
-		// Apagado: nao se reporta caminho que ja nao existe, senao alguem
-		// tenta le-lo.
+		// Deleted: a path that no longer exists is not reported, or somebody
+		// tries to read it.
 		return int64(len(data)), "", nil, nil
 	}
 

@@ -30,27 +30,27 @@ type Response struct {
 
 	body []byte
 
-	// preservarNumeros repete a escolha da Source. Ele vive aqui porque o
-	// Response e o unico lugar que tem o corpo E sabe de que Source veio: sem
-	// isso, quem define Records decodifica por conta propria e precisa lembrar
-	// do UseNumber sozinho -- e esquecer e silencioso, porque `1` e `1.0`
-	// chegam como o mesmo float64 e a chave sai diferente da que o Python
-	// compunha.
-	preservarNumeros bool
+	// preserveNumbers repeats the Source's choice. It lives here because the
+	// Response is the only place that has the body AND knows which Source it
+	// came from: without it, whoever defines Records decodes on their own and
+	// has to remember UseNumber unaided -- and forgetting is silent, because
+	// `1` and `1.0` arrive as the same float64 and the key comes out different
+	// from the one Python composed.
+	preserveNumbers bool
 }
 
 // NewResponse builds one. Exported for the extract package; a fetcher
 // receives a Response, it does not construct one.
-func NewResponse(status int, header http.Header, url string, body []byte, preservarNumeros bool) Response {
+func NewResponse(status int, header http.Header, url string, body []byte, preserveNumbers bool) Response {
 	return Response{
 		Status: status, Header: header, URL: url,
-		body: body, preservarNumeros: preservarNumeros,
+		body: body, preserveNumbers: preserveNumbers,
 	}
 }
 
-// decodificar aplica a escolha da Source.
-func (r Response) decodificar(v any) error {
-	if !r.preservarNumeros {
+// decode aplica a escolha da Source.
+func (r Response) decode(v any) error {
+	if !r.preserveNumbers {
 		return json.Unmarshal(r.body, v)
 	}
 	dec := json.NewDecoder(bytes.NewReader(r.body))
@@ -75,14 +75,14 @@ func (r Response) Bytes() []byte { return r.body }
 //		return nil, err
 //	}
 //
-// Honra Source.PreserveNumbers: com ele ligado, os numeros chegam como
-// json.Number com o literal intacto. E deliberado que isto valha para JSON e
-// Object em vez de existir um terceiro metodo -- um metodo novo que decodifica
-// diferente dos dois que ja existem seria uma armadilha para quem chama o
-// errado, e quem chama o errado nao recebe erro nenhum: recebe uma chave
-// diferente.
+// It honours Source.PreserveNumbers: with it on, the numbers arrive as
+// json.Number with their literals intact. That this applies to JSON and Object
+// rather than there being a third method is deliberate -- a new method that
+// decoded differently from the two that already exist would be a trap for
+// whoever called the wrong one, and whoever calls the wrong one gets no error
+// at all: they get a different key.
 func (r Response) JSON(v any) error {
-	if err := r.decodificar(v); err != nil {
+	if err := r.decode(v); err != nil {
 		// A rejection, not a plain error: the body not matching is the source
 		// sending something that is not data, and that is a different call at
 		// three in the morning than a bug in the fetcher.
@@ -104,10 +104,10 @@ func (r Response) JSON(v any) error {
 // A body that is not a JSON object is an error saying so, rather than an
 // empty map -- an HTML error page served with 200 is exactly the case the
 // check exists for, and it must not read as "no fields set".
-// Honra Source.PreserveNumbers, como JSON.
+// It honours Source.PreserveNumbers, like JSON.
 func (r Response) Object() (map[string]any, error) {
 	var doc map[string]any
-	if err := r.decodificar(&doc); err != nil {
+	if err := r.decode(&doc); err != nil {
 		return nil, Reject("response %d is not a JSON object: %v (starts with %s)",
 			r.Status, err, snippet(r.body))
 	}

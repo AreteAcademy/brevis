@@ -77,17 +77,18 @@ func Text(v any) (string, error) {
 		// The literal preserves the distinction float64 loses: Python's json
 		// produces an int when there is no dot and no exponent, and a float when
 		// there is.
-		texto := t.String()
-		if !strings.ContainsAny(texto, ".eE") {
-			// int do Python. O texto do literal ja e a forma canonica, exceto
-			// pelo zero a esquerda e pelo mais, que JSON nao permite.
-			return texto, nil
+		text := t.String()
+		if !strings.ContainsAny(text, ".eE") {
+			// A Python int. The literal's text already is the canonical form,
+			// except for a leading zero and a leading plus, which JSON does
+			// not allow anyway.
+			return text, nil
 		}
 		f, err := t.Float64()
 		if err != nil {
-			return "", fmt.Errorf("pycompat.Text: %q is not a number: %w", texto, err)
+			return "", fmt.Errorf("pycompat.Text: %q is not a number: %w", text, err)
 		}
-		return floatPython(f)
+		return pythonFloat(f)
 
 	case int:
 		return strconv.FormatInt(int64(t), 10), nil
@@ -118,14 +119,14 @@ func Text(v any) (string, error) {
 		//
 		// Converted to float64 before formatting: Python has no 32-bit float,
 		// and formatting from the float32 is what Python would have seen.
-		return floatPython(float64(t))
+		return pythonFloat(float64(t))
 
 	case float64:
 		// inf and nan pass: no JSON literal produces either -- JSON cannot even
 		// represent them -- so the int/float ambiguity does not exist here.
 		// Refusing them would apply the rule where it has no reason to.
 		if math.IsNaN(t) || math.IsInf(t, 0) {
-			return floatPython(t)
+			return pythonFloat(t)
 		}
 
 		// REFUSES, for the same reason the default refuses.
@@ -155,8 +156,8 @@ func Text(v any) (string, error) {
 	}
 }
 
-// floatPython is Python's str() for a float.
-func floatPython(f float64) (string, error) {
+// pythonFloat is Python's str() for a float.
+func pythonFloat(f float64) (string, error) {
 	switch {
 	case math.IsNaN(f):
 		return "nan", nil
@@ -166,7 +167,7 @@ func floatPython(f float64) (string, error) {
 		return "-inf", nil
 	}
 
-	if forcaExpoente(f) {
+	if forcesExponent(f) {
 		return "", fmt.Errorf("pycompat.Text refuses %g: in this range Python's str() uses "+
 			"exponent notation (\"1e-05\", \"1e+16\"), whose exact shape is a CPython "+
 			"implementation detail. Imitating it would be a bet inside a KEY -- and a key "+
@@ -176,20 +177,20 @@ func floatPython(f float64) (string, error) {
 
 	// 'f' with precision -1 gives the shortest decimal representation that
 	// round-trips, which is the same one Python's repr uses inside this range.
-	texto := strconv.FormatFloat(f, 'f', -1, 64)
-	if !strings.ContainsAny(texto, ".") {
+	text := strconv.FormatFloat(f, 'f', -1, 64)
+	if !strings.ContainsAny(text, ".") {
 		// Python's float always shows the decimal part: str(19.0) is "19.0", and
 		// that is exactly the divergence that motivated this function.
-		texto += ".0"
+		text += ".0"
 	}
-	return texto, nil
+	return text, nil
 }
 
-// forcaExpoente diz se o Python usaria notação exponencial.
+// forcesExponent says whether Python would use exponent notation.
 //
-// A regra do repr do CPython é o expoente decimal fora de [-4, 16): abaixo de
-// 1e-4 ou a partir de 1e16. O zero está dentro (str(0.0) é "0.0").
-func forcaExpoente(f float64) bool {
+// CPython's repr rule is a decimal exponent outside [-4, 16): below 1e-4 or
+// from 1e16 up. Zero is inside it (str(0.0) is "0.0").
+func forcesExponent(f float64) bool {
 	if f == 0 {
 		return false
 	}
@@ -263,22 +264,23 @@ func falsoNoPython(v any) bool {
 	}
 }
 
-// TextAcceptingFloat64 e Text tratando float64 como o float do Python.
+// TextAcceptingFloat64 is Text treating a float64 as Python's float.
 //
-// Use quando voce SABE que o numero era float na origem -- e nao um int que o
-// encoding/json colapsou -- e nao pode ligar Source.PreserveNumbers.
+// Use it when you KNOW the number was a float at the source -- and not an int
+// that encoding/json collapsed -- and you cannot turn on
+// Source.PreserveNumbers.
 //
 //	Key: sdk.KeyWith(pycompat.TextAcceptingFloat64, "lat", "lon")
 //
-// O nome e comprido de proposito. Ele e a afirmacao "eu conferi": num campo que
-// era int no Python, isto produz "19.0" onde o Python produziu "19", e o
-// resultado nao e um erro -- e uma linha duplicada depois do merge.
+// The name is long on purpose. It is the assertion "I checked": on a field that
+// was an int in Python, this produces "19.0" where Python produced "19", and
+// the result is not an error -- it is a duplicated row after the merge.
 //
-// Onde der para ligar PreserveNumbers, ligue: o literal decide sozinho, e nao ha
-// o que conferir.
+// Wherever PreserveNumbers can be turned on, turn it on: the literal decides on
+// its own, and there is nothing left to check.
 func TextAcceptingFloat64(v any) (string, error) {
-	if f, ehFloat := v.(float64); ehFloat {
-		return floatPython(f)
+	if f, isFloat := v.(float64); isFloat {
+		return pythonFloat(f)
 	}
 	return Text(v)
 }

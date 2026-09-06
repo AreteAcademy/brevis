@@ -49,7 +49,7 @@ func IngestionID(fields ...string) Transformer {
 		func(v any) (string, error) { return asText(v), nil }, fields...)
 }
 
-// IngestionIDWith e IngestionID com a renderizacao injetada.
+// IngestionIDWith is IngestionID with the rendering injected.
 //
 // Use it when the id has to match one from a system that has already written rows:
 //

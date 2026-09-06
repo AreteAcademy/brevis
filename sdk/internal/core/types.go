@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"crypto/sha1" //nolint:gosec // UUID v5 e definido sobre SHA-1; nao e uso criptografico
+	"crypto/sha1" //nolint:gosec // UUID v5 is defined over SHA-1; this is not a cryptographic use
 	"fmt"
 	"hash"
 	"io"
@@ -593,7 +593,7 @@ func WithSchema(s Schema) LoadOption {
 	}
 }
 
-// WithPartitionBy nomeia a coluna de particionamento da tabela criada.
+// WithPartitionBy names the partitioning column of the created table.
 func WithPartitionBy(coluna string) LoadOption {
 	return func(cfg *LoadConfig) { cfg.PartitionBy = coluna }
 }

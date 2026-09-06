@@ -310,8 +310,8 @@ func comParseTime(dsn string) string {
 }
 
 // CheckDestination satisfaz core.DestinationChecker. Mesmo motivo do Postgres:
-// conferir antes custa uma consulta ao information_schema; conferir no Write
-// custa a janela inteira de quota do fornecedor.
+// checking early costs one information_schema query; checking in Write costs
+// the vendor's whole quota window.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	if len(columns) == 0 || (t.DSN == "" && t.DB == nil) || t.Name == "" {
 		return nil

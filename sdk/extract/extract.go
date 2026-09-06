@@ -297,7 +297,7 @@ func (c countingBody) Read(b []byte) (int, error) {
 	return n, err
 }
 
-// ehGzip diz se o CORPO da resposta esta comprimido.
+// isGzip says whether the response's BODY is compressed.
 //
 // This is not transfer compression: Go decompresses that on its own, and when it
 // does it removes the Content-Encoding -- so a Content-Encoding that survived
@@ -307,7 +307,7 @@ func (c countingBody) Read(b []byte) (int, error) {
 // is how nearly every open-data portal publishes a large file. from.Files already
 // decompressed by extension; the rule existed in the SDK and simply did not reach
 // HTTP.
-func ehGzip(resp *http.Response, url string) bool {
+func isGzip(resp *http.Response, url string) bool {
 	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
 		return true
 	}
@@ -321,14 +321,14 @@ func ehGzip(resp *http.Response, url string) bool {
 	return strings.HasSuffix(strings.ToLower(semQuery), ".gz")
 }
 
-// leituraGzip fecha os dois: o descompressor e a conexao debaixo dele. Finish
+// gzipReader closes both: the decompressor and the connection under it. Finish
 // so o de cima deixaria a conexao presa ate o timeout.
-type leituraGzip struct {
+type gzipReader struct {
 	*gzip.Reader
 	sob io.Closer
 }
 
-func (l leituraGzip) Close() error {
+func (l gzipReader) Close() error {
 	err := l.Reader.Close()
 	if e := l.sob.Close(); err == nil {
 		err = e
@@ -504,7 +504,8 @@ func checkPagination(source core.Source) error {
 //
 // The version is left out: it would come from a const that ages with every
 // release and that nobody remembers to bump -- and a UA that LIES about the
-// version is worse than one that does not state it. Quem precisa dela poe no proprio Header.
+// version is worse than one that does not state it. Whoever needs one puts it
+// on their own Header.
 const UserAgent = "brevis-sdk (+https://github.com/AreteAcademy/brevis)"
 
 // newClient builds the one client the whole walk shares.
@@ -663,14 +664,14 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 	}
 
 	var corpo io.ReadCloser = countingBody{ReadCloser: resp.Body, n: bytesRead}
-	if ehGzip(resp, pageURL) {
+	if isGzip(resp, pageURL) {
 		gz, err := gzip.NewReader(corpo)
 		if err != nil {
 			_ = resp.Body.Close()
 			release()
 			return nil, fmt.Errorf("the response announces gzip and is not: %w", err)
 		}
-		corpo = leituraGzip{Reader: gz, sob: resp.Body}
+		corpo = gzipReader{Reader: gz, sob: resp.Body}
 	}
 	body := corpo
 	p := &page{body: body, release: release}

@@ -40,16 +40,16 @@ func checkDeclaredAgainstTable(declared []string, schema bigquery.Schema, table 
 		strings.Join(absent, ", "), table, namesOf(schema))
 }
 
-// CheckDestination confere a declaracao contra a tabela real, sem carregar
-// nada.
+// CheckDestination checks the declaration against the real table, without
+// loading anything.
 //
-// A mesma conferencia ja roda no Load. O que muda e o MOMENTO: chamada antes
-// da extracao, ela custa uma consulta de metadados; chamada no Load, ela custa
-// a janela inteira de quota do fornecedor -- que e o invariante I3 do
+// The same check already runs in Load. What changes is the TIMING: called
+// before the extraction it costs one metadata query; called in Load it costs
+// the vendor's whole quota window -- which is invariant I3 of
 // plan/2026-09-03-sdk-schema-declarado.md.
 //
-// Uma tabela que ainda nao existe nao e erro: criar tabela e decisao do Load,
-// e recusar aqui tiraria o CreateTable do caminho.
+// A table that does not exist yet is not an error: creating a table is Load's
+// decision, and refusing here would take CreateTable out of the path.
 func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 	if len(columns) == 0 {
 		return nil

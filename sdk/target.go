@@ -208,8 +208,8 @@ type Result struct {
 	// nowhere is indistinguishable from not having saved anything.
 	CheckpointReused bool
 
-	// CheckpointPath e onde o deposito desta execucao esta. Vazio quando o
-	// checkpoint esta desligado.
+	// CheckpointPath is where this run's depot is. Empty when the checkpoint is
+	// off.
 	CheckpointPath string
 
 	// CheckpointError says why the depot could not be written. The load

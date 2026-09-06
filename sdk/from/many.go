@@ -144,9 +144,9 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		ctx, cancelar := context.WithCancel(ctx)
 		defer cancelar()
 
-		// Cada origem tem o SEU Stats, e eles são somados no fim. Um ponteiro
-		// compartilhado entre goroutines seria corrida de dados -- e o
-		// -race a acharia, mas só depois de alguém escrever o teste.
+		// Every source has its OWN Stats, and they are summed at the end. One
+		// pointer shared between goroutines would be a data race -- and -race
+		// would find it, but only after somebody wrote the test.
 		var mu sync.Mutex
 		var falhas []core.SourceFailure
 		total := core.Stats{}
@@ -176,8 +176,8 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 					porOrigem := core.Stats{}
 					opcoes := opt
 					opcoes.Stats = &porOrigem
-					// O preview é do conjunto e é montado aqui em cima; pedi-lo
-					// a cada origem imprimiria N tabelas.
+					// The preview belongs to the set and is assembled up here;
+					// asking each source for one would print N tables.
 					opcoes.Preview = 0
 
 					linhas, err := fonte.Read(ctx, opcoes)

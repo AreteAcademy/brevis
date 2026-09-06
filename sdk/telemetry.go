@@ -213,7 +213,7 @@ func SDKVersion() string {
 			}
 			return d.Version
 		}
-		// O proprio modulo, quando os testes do SDK rodam dentro dele.
+		// The module itself, when the SDK's own tests run inside it.
 		if info.Main.Path == modulePath {
 			return info.Main.Version
 		}

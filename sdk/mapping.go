@@ -79,7 +79,7 @@ func Key(fields ...string) KeySelector {
 // own.
 type Renderer func(any) (string, error)
 
-// KeyWith e Key com a renderizacao injetada.
+// KeyWith is Key with the rendering injected.
 //
 // Use it when the key has to match one from a system that has already written
 // rows:
@@ -169,7 +169,7 @@ func asObject(payload any) (map[string]any, error) {
 //
 // # It is NOT Python's str(), and the difference matters
 //
-//	valor    asText     str() do Python
+//	value    asText     Python's str()
 //	nil      ""         "None"
 //	true     "true"     "True"
 //	19.0     "19"       "19.0"

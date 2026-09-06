@@ -354,10 +354,9 @@ func ComputeText(name string, sel FieldSelector) Transformer {
 // ensure Transform's iterator type matches Data.Records.
 var _ func(func(Envelope, error) bool) = iter.Seq2[Envelope, error](nil)
 
-// SkipWithout descarta o registro quando um dos campos nomeados estiver
-// ausente ou nulo.
+// SkipWithout drops the record when any of the named fields is absent or null.
 //
-//	sdk.SkipWithout("id", "atualizado_em")
+//	sdk.SkipWithout("id", "updated_at")
 //
 // The name says the level, and that matters: RequireFields refuses the whole
 // RESPONSE when a field is missing -- the source changed shape. SkipWithout

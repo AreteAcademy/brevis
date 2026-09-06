@@ -260,8 +260,8 @@ func (d *Depot) rereadPart(ctx context.Context, part, numbers string, read *int6
 type Write struct {
 	d        *Depot
 	buf      bytes.Buffer
-	buffered int64 // records no buffer, ainda nao written
-	written  int64 // records que ja viraram part
+	buffered int64 // records in the buffer, not yet written
+	written  int64 // records that already became a part
 
 	parts []string
 

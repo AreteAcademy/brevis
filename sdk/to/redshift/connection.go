@@ -36,13 +36,13 @@ func (c conexao) Exec(ctx context.Context, sql string) error {
 	return err
 }
 
-// apagar remove o arquivo de staging.
+// remove deletes the staging file.
 //
 // core.Store has no Delete: it was designed for from.Files and to.Files, which
 // never delete. Rather than adding a method to the interface -- and forcing every
 // third-party store to implement it because of one driver -- the driver asks
 // whether that store knows how to delete.
-func (t Table) apagar(ctx context.Context, bucket, chave string) error {
+func (t Table) remove(ctx context.Context, bucket, chave string) error {
 	type apagador interface {
 		Delete(ctx context.Context, bucket, key string) error
 	}

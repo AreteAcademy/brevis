@@ -9,10 +9,10 @@ import (
 
 // CheckDestination satisfaz core.DestinationChecker.
 //
-// Ela existe para que a divergencia entre o que o fetcher declara e a tabela
-// real apareca ANTES da extracao. A conferencia em si e a mesma que o Write ja
-// fazia; o que muda e o momento, e num vendor com cota isso e a diferenca
-// entre uma consulta de metadados e a janela inteira de quota.
+// It exists so the divergence between what the fetcher declares and the real
+// table shows up BEFORE the extraction. The check itself is the same one Write
+// already did; what changes is the timing, and on a vendor with a quota that is
+// the difference between one metadata query and the whole quota window.
 func (b Table) CheckDestination(ctx context.Context, columns []string) error {
 	if len(columns) == 0 {
 		return nil

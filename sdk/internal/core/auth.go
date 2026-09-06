@@ -83,7 +83,7 @@ type Credential struct {
 // which is what holds the HTTP client.
 func (c *Credential) PrepareLogin(s Secret) { c.login = s }
 
-// Login troca segredos por um token, com o cliente do SDK.
+// Login trades secrets for a token, using the SDK's client.
 //
 //	Auth: &from.Credential{
 //	    Login: &from.Login{

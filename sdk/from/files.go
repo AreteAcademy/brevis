@@ -38,15 +38,15 @@ type Files struct {
 	// file of records usually is.
 	Format core.Format
 
-	// PreserveNumbers entrega os números JSON como json.Number, com o literal
-	// intacto, em vez de float64. Ligue quando a identidade depender da forma
-	// do número -- ver sdk.IngestionIDPython.
+	// PreserveNumbers hands the JSON numbers over as json.Number, with their
+	// literals intact, instead of float64. Turn it on when identity depends on
+	// the number's shape -- see sdk.IngestionIDPython.
 	PreserveNumbers bool
 
-	// Delimiter e o separador de campos do CSV. Zero usa a virgula.
+	// Delimiter is the CSV's field separator. Zero uses a comma.
 	//
-	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
-	// dados abertos.
+	// `;` is the de facto standard across much of Europe and in nearly every
+	// open-data portal.
 	Delimiter rune
 
 	// NoHeader, for CSV: treat every row as data with field_N keys. The

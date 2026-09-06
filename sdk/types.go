@@ -138,7 +138,7 @@ var (
 	WithDedup                  = core.WithDedup
 )
 
-// Os tipos de coluna. Ver Schema.
+// The column types. See Schema.
 const (
 	TypeString    = core.TypeString
 	TypeInt64     = core.TypeInt64

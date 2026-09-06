@@ -6,58 +6,58 @@ import (
 	"sync"
 )
 
-// credentialJar mantem a credencial FORA do jar e no cabecalho.
+// credentialJar keeps the credential OUT of the jar and on the header.
 //
-// O jar do Go casa cookie por prefixo de path, e um cookie sem Path herda o
-// diretorio da URL que o originou. Com a fonte em /api/proxy/occurrences a
-// credencial ficava presa a /api/proxy, e a renovacao em /api/auth/session ia
-// sem ela -- o §9 do SDK_V9.md. Marcar Path=/ na semente resolve metade: o
-// cookie REEMITIDO pela renovacao volta a ficar preso, agora em /api/auth, e
-// as paginas seguem com o valor velho. Renovacao que nao alcanca as paginas
-// nao renovou nada.
+// Go's jar matches a cookie by path prefix, and a cookie with no Path inherits
+// the directory of the URL that issued it. With the source on
+// /api/proxy/occurrences the credential was pinned to /api/proxy, and the
+// refresh on /api/auth/session went without it -- §9 of SDK_V9.md. Marking
+// Path=/ on the seed fixes half of it: the cookie REISSUED by the refresh gets
+// pinned again, now to /api/auth, and the pages carry on with the old value. A
+// refresh that does not reach the pages refreshed nothing.
 //
-// Entao a credencial deixa de ser cookie de jar e passa a ser cabecalho, que
-// vale para toda requisicao independente de path. O jar continua existindo
-// para os outros cookies -- e a invariante da v0.26.0 se mantem: cada cookie
-// mora num lugar so, e nenhum nome vai duas vezes.
+// So the credential stops being a jar cookie and becomes a header, which
+// applies to every request regardless of path. The jar goes on existing for the
+// other cookies -- and v0.26.0's invariant holds: every cookie lives in one
+// place, and no name goes twice.
 //
-// O efeito colateral util e o que o Store precisa: o valor rotacionado fica na
-// mao, em vez de enterrado no jar.
+// The useful side effect is what the Store needs: the rotated value is in hand,
+// rather than buried in the jar.
 type credentialJar struct {
 	inner http.CookieJar
 
-	// nomes sao os cookies que carregam a credencial. Fixo apos a montagem.
-	nomes map[string]bool
+	// names are the cookies carrying the credential. Fixed after assembly.
+	names map[string]bool
 
-	mu       sync.Mutex
-	rotacoes map[string]string
+	mu        sync.Mutex
+	rotations map[string]string
 }
 
-func newCredentialJar(inner http.CookieJar, nomes []string) *credentialJar {
-	j := &credentialJar{inner: inner, nomes: make(map[string]bool, len(nomes))}
-	for _, n := range nomes {
-		j.nomes[n] = true
+func newCredentialJar(inner http.CookieJar, names []string) *credentialJar {
+	j := &credentialJar{inner: inner, names: make(map[string]bool, len(names))}
+	for _, n := range names {
+		j.names[n] = true
 	}
 	return j
 }
 
-// SetCookies desvia o que e credencial e entrega o resto ao jar de verdade.
+// SetCookies diverts what is a credential and hands the rest to the real jar.
 func (j *credentialJar) SetCookies(u *url.URL, cookies []*http.Cookie) {
-	restantes := cookies[:0:0]
+	remaining := cookies[:0:0]
 	for _, c := range cookies {
-		if j.nomes[c.Name] {
+		if j.names[c.Name] {
 			j.mu.Lock()
-			if j.rotacoes == nil {
-				j.rotacoes = map[string]string{}
+			if j.rotations == nil {
+				j.rotations = map[string]string{}
 			}
-			j.rotacoes[c.Name] = c.Value
+			j.rotations[c.Name] = c.Value
 			j.mu.Unlock()
 			continue
 		}
-		restantes = append(restantes, c)
+		remaining = append(remaining, c)
 	}
-	if len(restantes) > 0 && j.inner != nil {
-		j.inner.SetCookies(u, restantes)
+	if len(remaining) > 0 && j.inner != nil {
+		j.inner.SetCookies(u, remaining)
 	}
 }
 
@@ -72,10 +72,10 @@ func (j *credentialJar) Cookies(u *url.URL) []*http.Cookie {
 func (j *credentialJar) Rotations() map[string]string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if len(j.rotacoes) == 0 {
+	if len(j.rotations) == 0 {
 		return nil
 	}
-	out := j.rotacoes
-	j.rotacoes = nil
+	out := j.rotations
+	j.rotations = nil
 	return out
 }

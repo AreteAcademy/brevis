@@ -31,7 +31,7 @@ func escreverEscalar(buf *bytes.Buffer, v any) bool {
 			buf.WriteString("false")
 		}
 	case string:
-		escreverTexto(buf, t)
+		writeText(buf, t)
 	case int:
 		buf.Write(strconv.AppendInt(buf.AvailableBuffer(), int64(t), 10))
 	case int32:
@@ -54,9 +54,9 @@ func escreverEscalar(buf *bytes.Buffer, v any) bool {
 	return true
 }
 
-// escreverTexto delega ao core: a mesma regra e precisa aqui e no canonico do
-// pycompat, e ter duas copias dela e ter duas chances de divergir do Python
-// without anybody noticing.
-func escreverTexto(buf *bytes.Buffer, s string) {
+// writeText delegates to core: the same rule is needed here and in pycompat's
+// canonical form, and keeping two copies of it is keeping two chances to
+// diverge from Python without anybody noticing.
+func writeText(buf *bytes.Buffer, s string) {
 	buf.Write(jsontext.AppendJSONString(buf.AvailableBuffer(), s))
 }

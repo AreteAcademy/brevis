@@ -310,8 +310,8 @@ func somar(res *Result, lr *core.LoadResult) {
 	res.Dedup = lr.Dedup
 	res.TableCreated = res.TableCreated || lr.TableCreated
 	res.RowErrors = append(res.RowErrors, lr.ErrorRows...)
-	// Acumula: com levas sao varios arquivos, e reportar so o ultimo faria o
-	// passo seguinte ler um pedaco.
+	// It accumulates: with batches there are several files, and reporting only
+	// the last one would make the next step read a fragment.
 	res.Objects = append(res.Objects, lr.Objects...)
 }
 

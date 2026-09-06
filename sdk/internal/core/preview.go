@@ -293,11 +293,11 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-// WritePreview escreve o preview onde o chamador pediu, ou em stderr.
+// WritePreview writes the preview where the caller asked, or to stderr.
 //
-// Existe para que cada driver novo nao repita a escolha do destino e o
-// tratamento do writer nil -- foi assim que o preview nasceu dentro do extract
-// e teve de ser movido quando o segundo driver apareceu.
+// It exists so every new driver does not repeat the choice of destination and
+// the handling of a nil writer -- that is how the preview was born inside
+// extract and had to be moved when the second driver showed up.
 func WritePreview(w io.Writer, amostra []any, orcamento int, st PreviewStats) {
 	if w == nil {
 		w = os.Stderr
@@ -305,9 +305,9 @@ func WritePreview(w io.Writer, amostra []any, orcamento int, st PreviewStats) {
 	_, _ = io.WriteString(w, RenderPreview(amostra, orcamento, st))
 }
 
-// LogExtract emite a linha de resumo que todo driver de leitura deve emitir,
-// com as mesmas chaves -- para que "quantas linhas e quanto tempo" se leia
-// igual, venha de HTTP, de arquivo ou de banco.
+// LogExtract emits the summary line every read driver should emit, with the
+// same keys -- so that "how many rows and how long" reads the same whether it
+// came from HTTP, from a file or from a database.
 func LogExtract(ctx context.Context, driver, fonte string, st PreviewStats) {
 	args := []any{
 		"driver", driver,
