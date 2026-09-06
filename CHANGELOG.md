@@ -6,6 +6,8 @@ Versões do SDK (`github.com/AreteAcademy/brevis/sdk`). O formato segue
 
 A tag de um módulo aninhado leva o prefixo do diretório: `sdk/v0.2.1`.
 
+O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
+
 ---
 
 ## [0.45.0] — 2026-09-05

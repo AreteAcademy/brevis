@@ -7,7 +7,7 @@
 # BUILDPLATFORM: compila SEMPRE na arquitetura nativa do builder e cruza para a
 # de destino. Sem isso, o build arm64 num runner amd64 roda sob emulacao QEMU e
 # leva minutos em vez de segundos.
-FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS build
 WORKDIR /src
 
 COPY go.mod go.sum ./
