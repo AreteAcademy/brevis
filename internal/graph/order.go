@@ -7,12 +7,12 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-// Niveis devolve os nos agrupados por nivel topologico: tudo no nivel N pode
-// rodar em paralelo, e o nivel N+1 so comeca quando o N termina.
+// Niveis returns the nodes grouped by topological level: everything at level N
+// can run in parallel, and level N+1 only starts when N finishes.
 //
-// Agrupar por nivel, em vez de devolver uma lista linear, e o que preserva o
-// paralelismo declarado. Uma ordenacao topologica simples serializaria
-// gold_metrics e gold_users, que sao independentes.
+// Grouping by level, rather than returning a linear list, is what preserves the
+// declared parallelism. A plain topological sort would serialize gold_metrics
+// and gold_users, which are independent.
 func Niveis(w wf.Workflow) ([][]string, error) {
 	entrada := make(map[string]int, len(w.Nodes))
 	saida := make(map[string][]string, len(w.Nodes))
@@ -24,8 +24,8 @@ func Niveis(w wf.Workflow) ([][]string, error) {
 		saida[e.From] = append(saida[e.From], e.To)
 	}
 
-	// primeiro nivel: tudo sem dependencia, na ordem do arquivo para a saida ser
-	// deterministica
+	// the first level: everything with no dependency, in the file's order so the
+	// output is deterministic
 	var atual []string
 	for _, n := range w.Nodes {
 		if entrada[n.ID] == 0 {
@@ -40,7 +40,7 @@ func Niveis(w wf.Workflow) ([][]string, error) {
 		vistos += len(atual)
 
 		var proximo []string
-		for _, n := range w.Nodes { // itera pelos nos, nao pelo mapa: determinismo
+		for _, n := range w.Nodes { // iterate the nodes, not the map: determinism
 			if !contem(atual, n.ID) {
 				continue
 			}
@@ -54,10 +54,10 @@ func Niveis(w wf.Workflow) ([][]string, error) {
 		atual = proximo
 	}
 
-	// Workflow.Validate ja recusa ciclos; esta guarda protege contra um grafo
-	// montado em codigo sem passar pela validacao.
+	// Workflow.Validate already refuses cycles; this guard protects against a
+	// graph assembled in code without going through the validation.
 	if vistos != len(w.Nodes) {
-		return nil, fmt.Errorf("grafo tem ciclo ou no inalcancavel (%d de %d nos ordenados)", vistos, len(w.Nodes))
+		return nil, fmt.Errorf("the graph has a cycle or an unreachable node (%d of %d nodes ordered)", vistos, len(w.Nodes))
 	}
 	return niveis, nil
 }

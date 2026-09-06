@@ -1,9 +1,8 @@
-// Um fetcher DE VERDADE, com o SDK de verdade, para o teste de ponta a ponta.
+// A REAL fetcher, with the real SDK, for the end-to-end test.
 //
-// Ele existe porque tudo o mais no caminho das etapas era testado com um
-// executor falso: a linha `@brevis:` nunca tinha atravessado um pipe do sistema
-// operacional, um bufio.Scanner e o laço de eventos do runner. Este binário faz
-// ela atravessar.
+// It exists because everything else on the stages path was tested with a
+// fake executor: the `@brevis:` line had never crossed an operating-system pipe,
+// a bufio.Scanner and the runner's event loop. This binary makes it cross.
 package main
 
 import (

@@ -45,15 +45,15 @@ const (
 // `--date {{ .date }}` with `date = "; rm -rf /"` would be arbitrary execution
 // on the worker.
 //
-// O conjunto cobre o que os params reais deste repositorio precisam — datas,
-// selectors do dbt, uids, caminhos, listas separadas por virgula — e deixa de
-// fora tudo que o shell interpreta: aspas, `;`, `|`, `&`, `$`, crase,
+// The set covers what this repository's real params need — dates, dbt selectors,
+// uids, paths, comma-separated lists — and leaves out everything the shell
+// interprets: quotes, `;`, `|`, `&`, `$`, backticks,
 // parenteses e redirecionamentos.
 var caracteresSeguros = regexp.MustCompile(`^[A-Za-z0-9_.:/=,+@\- ]*$`)
 
 var nomeDeParam = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
-// Validar confere a declaracao do param, nao o valor.
+// Validar checks the param's declaration, not the value.
 func (p Param) Validar() error {
 	if !nomeDeParam.MatchString(p.Nome) {
 		return fmt.Errorf("param %q: the name has to be lowercase, start with a letter and hold only letters, digits and _", p.Nome)
@@ -70,7 +70,7 @@ func (p Param) Validar() error {
 			return fmt.Errorf("param %q: the pattern is not valid: %w", p.Nome, err)
 		}
 	}
-	// O padrao precisa ser valido pelas proprias regras: um default recusado so
+	// The default has to be valid by its own rules: a refused default would only
 	// apareceria no primeiro disparo agendado, de madrugada.
 	if p.Padrao != "" {
 		if err := p.Aceita(p.Padrao); err != nil {
@@ -120,11 +120,12 @@ func (p Param) Aceita(valor string) error {
 	return nil
 }
 
-// Resolver mistura os valores informados com os padroes e valida tudo.
+// Resolver merges the supplied values with the defaults and validates all of
+// them.
 //
-// Chave desconhecida e ERRO, nao silencio: `--param lod_full=true` com typo
-// rodaria o workflow com o padrao e ninguem perceberia que o backfill nao
-// aconteceu.
+// An unknown key is an ERROR, not silence: `--param lod_full=true` with a typo
+// would run the workflow with the default and nobody would notice the backfill
+// did not happen.
 func (w Workflow) Resolver(informados map[string]string) (map[string]string, error) {
 	declarados := make(map[string]Param, len(w.Params))
 	for _, p := range w.Params {

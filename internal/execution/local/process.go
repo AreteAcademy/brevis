@@ -192,7 +192,7 @@ func (p *ProcessExecutor) Cancel(_ context.Context, execID string) error {
 
 func repassar(r io.Reader, stream, nodeID string, out chan<- execution.Event) {
 	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // linhas longas de log nao podem truncar a saida
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // long log lines must not truncate the output
 	for sc.Scan() {
 		out <- execution.Event{
 			Kind: execution.EventLog, NodeID: nodeID,

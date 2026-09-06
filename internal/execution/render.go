@@ -7,16 +7,16 @@ import (
 	"text/template"
 )
 
-// Renderizar substitui os params na linha de comando de um passo.
+// Renderizar substitutes the params into a step's command line.
 //
-// `text/template` da stdlib, com `missingkey=error`: um param com erro de
-// digitacao no YAML falha AQUI, com o nome do que faltou, em vez de virar string
-// vazia e produzir um comando silenciosamente errado — `--select ` sem alvo, ou
-// `--date` sem data.
+// The stdlib's `text/template`, with `missingkey=error`: a param with a typo in
+// the YAML fails HERE, naming what was missing, instead of becoming an empty
+// string and producing a silently wrong command — `--select ` with no target, or
+// `--date` with no date.
 //
 // So o comando e renderizado. `image:` NAO e templatavel de proposito: quem
-// dispara um run escolheria a imagem que o pod roda, o que e escolher o codigo
-// que executa.
+// triggers a run would be choosing the image the pod runs, which is choosing
+// the code that executes.
 func Renderizar(comando string, params map[string]string) (string, error) {
 	if !strings.Contains(comando, "{{") {
 		return comando, nil

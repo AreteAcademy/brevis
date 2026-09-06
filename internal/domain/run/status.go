@@ -1,13 +1,13 @@
-// Package run e o modelo de dominio de uma execucao e seus passos.
+// Package run is the domain model of a run and its steps.
 //
-// A secao 7 do plano e explicita: "nao utilizar simples booleans como
-// running = true". Estados sao um tipo, e transicoes sao validadas — um `Run`
-// nao pode ir de SUCCESS para RUNNING nem por descuido nem por corrida.
+// Section 7 of the plan is explicit: "do not use plain booleans such as
+// running = true". States are a type, and transitions are validated — a `Run`
+// cannot go from SUCCESS to RUNNING through carelessness or through a race.
 package run
 
 import "fmt"
 
-// Status e o estado de uma execucao.
+// Status is a run's state.
 type Status string
 
 const (
@@ -20,8 +20,8 @@ const (
 	StatusCanceled Status = "canceled"
 )
 
-// transicoes declara o grafo da secao 7. Manter como dado, e nao como cadeia de
-// ifs, torna a maquina inspecionavel e o teste exaustivo trivial.
+// transicoes declares section 7's graph. Keeping it as data, and not as a chain
+// of ifs, makes the machine inspectable and the exhaustive test trivial.
 var transicoes = map[Status][]Status{
 	StatusCreated:  {StatusQueued, StatusCanceled},
 	StatusQueued:   {StatusRunning, StatusCanceled},
@@ -29,21 +29,22 @@ var transicoes = map[Status][]Status{
 	StatusFailed:   {StatusRetrying},
 	StatusRetrying: {StatusQueued, StatusCanceled},
 
-	// terminais: sem saida. SUCCESS nao volta, e CANCELED tambem nao —
-	// re-executar cria um Run novo, preservando o historico do anterior.
+	// terminal: no way out. SUCCESS does not come back, and neither does
+	// CANCELED — re-running creates a new Run, preserving the previous one's
+	// history.
 	StatusSuccess:  {},
 	StatusCanceled: {},
 }
 
-// Terminal diz se o estado encerra a vida da execucao.
+// Terminal says whether the state ends the run's life.
 //
-// FAILED nao e terminal: ele pode ir para RETRYING. Quem decide se ainda ha
-// tentativa e a politica de retry, nao a maquina de estados.
+// FAILED is not terminal: it can go to RETRYING. What decides whether there is
+// an attempt left is the retry policy, not the state machine.
 func (s Status) Terminal() bool {
 	return s == StatusSuccess || s == StatusCanceled
 }
 
-// PodeIr diz se a transicao e permitida.
+// PodeIr says whether the transition is allowed.
 func (s Status) PodeIr(destino Status) bool {
 	for _, d := range transicoes[s] {
 		if d == destino {
@@ -53,8 +54,8 @@ func (s Status) PodeIr(destino Status) bool {
 	return false
 }
 
-// ErrTransicaoInvalida carrega os dois estados para que o erro diga o que
-// aconteceu, e nao apenas que algo foi recusado.
+// ErrTransicaoInvalida carries both states so the error says what happened, and
+// not merely that something was refused.
 type ErrTransicaoInvalida struct {
 	De, Para Status
 }
@@ -63,7 +64,7 @@ func (e ErrTransicaoInvalida) Error() string {
 	return fmt.Sprintf("transicao invalida: %s -> %s", e.De, e.Para)
 }
 
-// Valida devolve erro se a transicao nao existir no grafo.
+// Valida returns an error when the transition does not exist in the graph.
 func Valida(de, para Status) error {
 	if _, conhecido := transicoes[de]; !conhecido {
 		return fmt.Errorf("unknown state: %q", de)

@@ -102,7 +102,7 @@ type StepSpec struct {
 	Image     string       `yaml:"image"`
 	Resources ResourceSpec `yaml:"resources"`
 
-	// Env sao variaveis com valor literal no arquivo.
+	// Env are variables with a literal value in the file.
 	//
 	//	env:
 	//	  BREVIS_LOG_LEVEL: info
@@ -122,7 +122,7 @@ type StepSpec struct {
 	Shell *bool `yaml:"shell"`
 }
 
-// Parse le o YAML e devolve o workflow ja validado.
+// Parse reads the YAML and returns the workflow already validated.
 //
 // `caminho` serves two purposes: deriving the slug when the file carries no
 // `name`, and naming the file in error messages -- a graph error without the
@@ -182,7 +182,8 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 	return w, nil
 }
 
-// aparar tira espaco de nome e valor, e descarta entrada de nome vazio.
+// aparar trims the name and the value, and discards an entry with an empty
+// name.
 //
 // `GABRIEL_SESSION_COOKIE : gabriel-session/cookie` with a space before the
 // colon is valid YAML, and the space would travel inside the variable's name --
@@ -228,11 +229,11 @@ func normalizarTags(brutas []string) []string {
 	return out
 }
 
-// arestas transforma a declaracao em grafo.
+// arestas turns the declaration into a graph.
 //
-// `chain` e acucar: cada passo depende do anterior. Convertendo aqui, o motor de
-// execucao conhece apenas DAG — um formato a mais no arquivo, zero caminho a
-// mais no runtime.
+// `chain` is sugar: every step depends on the previous one. Converting here, the
+// execution engine knows only DAGs — one more format in the file, zero extra
+// paths at runtime.
 func arestas(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
 	var out []dominio.Edge
 

@@ -234,9 +234,8 @@ func (m Marca) CSS() string {
 }
 
 // comAlfa appends the alpha channel to a 6-digit colour. Short formats, or ones
-// that already
-// trazem alfa sao devolvidos intactos — misturar canais daria uma cor errada
-// em vez de um erro visivel.
+// that already carry alpha, are returned untouched — mixing channels would give
+// a wrong colour instead of a visible error.
 func comAlfa(cor, alfa string) string {
 	if len(cor) != 7 {
 		return cor
@@ -244,8 +243,8 @@ func comAlfa(cor, alfa string) string {
 	return cor + alfa
 }
 
-// Linhas quebra a frase para o template. A quebra e do autor, e transformá-la em
-// espaco mudaria o ritmo do texto na barra lateral.
+// Linhas splits the sentence for the template. The break is the author's, and
+// turning it into a space would change the text's rhythm in the sidebar.
 func (m Marca) Linhas() []string {
 	var out []string
 	for _, l := range strings.Split(m.Frase, "\n") {
@@ -260,16 +259,16 @@ type chave struct{}
 
 // EmContexto injeta a marca no contexto da requisicao.
 //
-// Contexto, e nao parametro de cada template: toda pagina precisa da marca, e
-// acrescentá-la a assinatura de dez componentes so para chegar ao layout base
-// tornaria cada tela nova uma chance de esquecer.
+// The context, and not a parameter on every template: every page needs the
+// brand, and adding it to ten components' signatures just to reach the base
+// layout would make each new screen a chance to forget.
 func EmContexto(ctx context.Context, m Marca) context.Context {
 	return context.WithValue(ctx, chave{}, m)
 }
 
-// De recupera a marca. Sem marca no contexto — um teste que renderiza direto, um
-// caminho que nao passou pelo middleware — devolve o padrao em vez de uma tela
-// sem nome nenhum.
+// De recovers the brand. With no brand in the context — a test rendering
+// directly, a path that did not pass through the middleware — it returns the
+// default rather than a screen with no name at all.
 func De(ctx context.Context) Marca {
 	if m, ok := ctx.Value(chave{}).(Marca); ok {
 		return m

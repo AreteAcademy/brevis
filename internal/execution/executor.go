@@ -42,8 +42,8 @@ type TaskExec struct {
 	// scratch (the step at attempt 0 again) and runs into the previous pod.
 	TentativaDoRun int
 
-	Command string // shell, para o ProcessExecutor
-	Action  string // nome no registry, para o GoExecutor
+	Command string // a shell line, for the ProcessExecutor
+	Action  string // the name in the registry, for the GoExecutor
 	With    map[string]any
 
 	// Image is this step's runtime. Empty in local mode (the command runs on the

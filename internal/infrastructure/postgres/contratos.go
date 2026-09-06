@@ -4,11 +4,11 @@ import (
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
 )
 
-// O que o runner espera deste repositorio, checado em tempo de compilacao.
+// What the runner expects of this repository, checked at compile time.
 //
-// Sem isto, uma assinatura que muda de um lado so aparece quando alguem
-// monta os dois — que hoje nao acontece em lugar nenhum do codigo, porque a
-// ligacao dispatcher -> Runner ainda nao existe.
+// Without this, a signature that changes on one side only shows up when somebody
+// assembles both — which today happens nowhere in the code, because the
+// dispatcher -> Runner link does not exist yet.
 var (
 	_ app.Historico   = (*RunRepo)(nil)
 	_ app.Persistidor = (*RunRepo)(nil)

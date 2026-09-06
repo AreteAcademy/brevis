@@ -65,8 +65,8 @@ type Persistidor interface {
 // not to the executor, so each executor can go on ignoring that the other
 // exists.
 type Runner struct {
-	Processo execution.Executor // atende `run:`; pode ser nil se so houver tasks Go
-	Go       execution.Executor // atende `action:`; pode ser nil
+	Processo execution.Executor // serves `run:`; may be nil when there are only Go tasks
+	Go       execution.Executor // serves `action:`; may be nil
 
 	WorkDir string
 	Env     map[string]string
@@ -499,7 +499,7 @@ func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[s
 	return env
 }
 
-// mesclarEnv junta o ambiente do runner com o desta execucao.
+// mesclarEnv merges the runner's environment with this run's.
 //
 // The runner's wins a collision: if somebody set BREVIS_RUN_PARAMS in the
 // configuration they meant to, and the engine does not overwrite explicit
@@ -523,7 +523,7 @@ func mesclarEnv(base, execucao map[string]string, acima ...map[string]string) ma
 	return out
 }
 
-// primeiraExecucao pergunta ao historico se este passo ja teve sucesso.
+// primeiraExecucao asks the history whether this step has ever succeeded.
 //
 // With no history configured the answer is "not the first": creating a table
 // without being sure is worse than not creating it, and the consumer can always

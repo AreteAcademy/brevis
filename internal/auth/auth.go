@@ -72,7 +72,7 @@ func GerarHash(senha string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(chave)), nil
 }
 
-// ConferirSenha compara a senha com o hash em tempo constante.
+// ConferirSenha compares the password against the hash in constant time.
 //
 // Returns false -- and not an error -- for a malformed hash: the caller is on a
 // login path, and the only safe answer there is "did not get in". The
@@ -148,7 +148,7 @@ func (c Credencial) Validar() error {
 // Sessao
 // ---------------------------------------------------------------------------
 
-// emitir monta o valor assinado do cookie: `<usuario>|<expira>|<hmac>`.
+// emitir builds the cookie's signed value: `<user>|<expiry>|<hmac>`.
 //
 // The signature covers the username AND the expiry. Covering only the username
 // would let the client choose its own validity; covering only the expiry would
@@ -208,7 +208,7 @@ type Portao struct {
 	Cred     Credencial
 	Proximo  http.Handler
 	Login    http.Handler // renderiza a tela de login
-	Inseguro bool         // http puro: manda o cookie sem a flag Secure
+	Inseguro bool         // plain http: sends the cookie without the Secure flag
 }
 
 // livre lists what answers without a session.
@@ -252,8 +252,8 @@ func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // Entrar checks the credential and writes the cookie. Returns false if it did not match.
 func (p *Portao) Entrar(w http.ResponseWriter, usuario, senha string) bool {
-	// As duas comparacoes correm SEMPRE, mesmo com usuario errado: sair cedo
-	// faz um usuario invalido responder mais rapido que um valido, e a
+	// Both comparisons ALWAYS run, even with the wrong user: returning early
+	// makes an invalid user answer faster than a valid one, and the
 	// diferenca de tempo entrega quais nomes existem.
 	usuarioOK := subtle.ConstantTimeCompare([]byte(usuario), []byte(p.Cred.Usuario)) == 1
 	senhaOK := ConferirSenha(p.Cred.Hash, senha)
@@ -312,13 +312,12 @@ type chave struct{}
 
 // EmContexto stores the request's operator. The layout uses it to decide
 // whether to show the sign-out button -- an installation with no credential
-// should not display a
-// botao que nao faz nada.
+// should not display a button that does nothing.
 func EmContexto(ctx context.Context, usuario string) context.Context {
 	return context.WithValue(ctx, chave{}, usuario)
 }
 
-// De devolve o operador da requisicao, ou vazio quando nao ha sessao.
+// De returns the request's operator, or empty when there is no session.
 func De(ctx context.Context) string {
 	u, _ := ctx.Value(chave{}).(string)
 	return u

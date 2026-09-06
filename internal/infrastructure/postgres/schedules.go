@@ -56,7 +56,7 @@ func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid
 
 	// `ultimo_slot` is NOT overwritten on update: republishing a workflow must
 	// not
-	// fazer o scheduler recriar slots ja materializados.
+	// make the scheduler recreate slots that were already materialized.
 	_, err = tx.Exec(ctx, `
 		INSERT INTO schedules (id, workflow_slug, cron, timezone, catchup, ativo)
 		VALUES ($1, $2, $3, $4, $5, true)

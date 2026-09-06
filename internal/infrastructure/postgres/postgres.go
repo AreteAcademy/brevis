@@ -1,8 +1,8 @@
-// Package postgres e o adaptador de persistencia.
+// Package postgres is the persistence adapter.
 //
-// O plano (secao 22) define o banco como fonte da verdade operacional. Aqui vive
-// so o encanamento: pool de conexoes, migrations e o health check. As queries de
-// dominio entram nas fases que as usam.
+// The plan (section 22) defines the database as the operational source of truth.
+// Only the plumbing lives here: the connection pool, the migrations and the
+// health check. The domain queries go into the phases that use them.
 package postgres
 
 import (
@@ -18,14 +18,14 @@ import (
 	"github.com/AreteAcademy/brevis/migrations"
 )
 
-// Pool envolve o pgxpool. O tipo existe para que o resto do sistema dependa de
-// algo nosso, e nao do driver diretamente.
+// Pool wraps pgxpool. The type exists so the rest of the system depends on
+// something of ours, and not on the driver directly.
 type Pool struct {
 	*pgxpool.Pool
 }
 
-// New abre o pool e verifica a conexao antes de devolver. Um pool que so falha
-// no primeiro uso transforma erro de configuracao em erro de request.
+// New opens the pool and checks the connection before returning. A pool that
+// only fails on first use turns a configuration error into a request error.
 func New(ctx context.Context, url string) (*Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
@@ -48,7 +48,8 @@ func New(ctx context.Context, url string) (*Pool, error) {
 	return &Pool{Pool: p}, nil
 }
 
-// Check e o contrato de health: um ping com prazo. Sem timeout, um banco lento
+// Check is the health contract: a ping with a deadline. Without a timeout, a
+// slow database
 // faria o readiness pendurar em vez de reprovar.
 func (p *Pool) Check(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -56,13 +57,14 @@ func (p *Pool) Check(ctx context.Context) error {
 	return p.Ping(ctx)
 }
 
-// Migrate aplica as migrations embutidas. Roda pelo subcomando `brevis migrate`,
-// nunca no `serve`: subir a aplicacao e migrar o schema tem blast radius
-// diferente, e juntar as duas faz um restart casual virar um DDL.
+// Migrate applies the embedded migrations. It runs through the `brevis migrate`
+// subcommand, never in `serve`: starting the application and migrating the
+// schema have a different blast radius, and joining the two turns a casual
+// restart into a DDL.
 func Migrate(ctx context.Context, url, direcao string) error {
 	cfg, err := pgx.ParseConfig(url)
 	if err != nil {
-		return fmt.Errorf("parse da BREVIS_DATABASE_URL: %w", err)
+		return fmt.Errorf("parsing BREVIS_DATABASE_URL: %w", err)
 	}
 
 	db := stdlib.OpenDB(*cfg)
@@ -73,7 +75,7 @@ func Migrate(ctx context.Context, url, direcao string) error {
 		return err
 	}
 
-	// "." porque o embed.FS tem a raiz no proprio diretorio migrations/.
+	// "." because the embed.FS is rooted at the migrations/ directory itself.
 	const dir = "."
 	switch direcao {
 	case "up":

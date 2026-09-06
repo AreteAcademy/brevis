@@ -39,7 +39,7 @@ type Schedule struct {
 
 	Ativo bool
 
-	// UltimoSlot e o ultimo slot ja materializado. Nulo = nunca rodou.
+	// UltimoSlot is the last slot already materialized. Nil = it never ran.
 	UltimoSlot *time.Time
 }
 

@@ -1,8 +1,8 @@
-// Package observability concentra logging, metricas e tracing.
+// Package observability holds logging, metrics and tracing.
 //
-// Na Phase 0 so existe logging. Metricas e tracing entram na Phase 0 do plano
-// apenas como health check; a secao 32 os detalha para fases posteriores, e a
-// regra 2 proibe antecipar.
+// In Phase 0 only logging exists. Metrics and tracing enter the plan's Phase 0
+// as a health check only; section 32 details them for later phases, and rule 2
+// forbids anticipating.
 package observability
 
 import (
@@ -11,8 +11,9 @@ import (
 	"strings"
 )
 
-// NewLogger devolve um logger estruturado. JSON fora do ambiente local porque e
-// o que os coletores esperam; texto no local porque a saida e lida por humanos.
+// NewLogger returns a structured logger. JSON outside the local environment
+// because that is what the collectors expect; text locally because the output is
+// read by humans.
 func NewLogger(env, nivel string) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: parseNivel(nivel)}
 

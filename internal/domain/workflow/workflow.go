@@ -386,7 +386,7 @@ func (w Workflow) encontrarCiclo() string {
 		for _, prox := range saida[id] {
 			switch estado[prox] {
 			case emUso:
-				// fecha o laco: recorta o caminho a partir de onde `prox` entrou
+				// closes the loop: it slices the path from where `prox` went in
 				for i, v := range caminho {
 					if v == prox {
 						achado = formatarCiclo(append(append([]string{}, caminho[i:]...), prox))
@@ -424,11 +424,11 @@ func formatarCiclo(ids []string) string {
 	return s
 }
 
-// quantidade e o formato do Kubernetes: inteiro ou decimal com sufixo opcional
-// (m for CPU; Ki/Mi/Gi/K/M/G for memory).
+// quantidade is Kubernetes's format: an integer or a decimal with an optional
+// suffix (m for CPU; Ki/Mi/Gi/K/M/G for memory).
 var quantidade = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?(m|[KMGTPE]i?)?$`)
 
-// validarRecursos recusa quantidade malformada na PUBLICACAO.
+// validarRecursos refuses a malformed quantity at PUBLISH time.
 //
 // Without this the error only shows up when the pod is created -- hours later,
 // in the middle of the night, as a 422 from the API server that names neither

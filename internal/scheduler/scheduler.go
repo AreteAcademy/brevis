@@ -195,7 +195,7 @@ func (s *Scheduler) criarEEnfileirar(ctx context.Context, slug string, def []byt
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
-			return nil // ja materializado: nada a fazer
+			return nil // already materialized: nothing to do
 		}
 		return err
 	}

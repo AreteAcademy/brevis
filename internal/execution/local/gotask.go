@@ -10,13 +10,13 @@ import (
 
 // GoExecutor roda tasks Go registradas, dentro do proprio processo.
 //
-// E o executor da secao 14: sem container, sem pod, sem processo filho. O ganho
-// e justamente esse — uma task Go simples nao paga startup de container, que foi
-// a medida que motivou este projeto (cold start de 38s contra 5s no benchmark
-// que originou o Brevis).
+// It is section 14's executor: no container, no pod, no child process. That is
+// exactly the gain — a simple Go task does not pay container startup, which was
+// the measurement that motivated this project (a 38s cold start against 5s in
+// the benchmark Brevis came out of).
 //
-// Diferente do ProcessExecutor, NAO ha restricao de ambiente: o codigo aqui foi
-// compilado junto com o binario, entao nao ha superficie de execucao arbitraria.
+// Unlike the ProcessExecutor, there is NO environment restriction: the code here
+// was compiled into the binary, so there is no arbitrary-execution surface.
 type GoExecutor struct {
 	reg *execution.Registry
 
@@ -35,13 +35,14 @@ func (g *GoExecutor) Name() string { return "go" }
 func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	task, ok := g.reg.Get(t.Action)
 	if !ok {
-		// Listar o que existe economiza uma ida a documentacao, e denuncia erro
+		// Listing what exists saves a trip to the documentation, and exposes a
+		// mistake
 		// de digitacao de imediato.
 		disponiveis := g.reg.Nomes()
 		if len(disponiveis) == 0 {
 			// Registro vazio e o caso comum hoje: `docker.run` e
-			// `kubernetes.run` estao no plano mas ainda nao existem. Dizer
-			// "disponiveis: []" faz parecer erro de digitacao no nome.
+			// `kubernetes.run` are in the plan but do not exist yet. Saying
+			// "available: []" makes it look like a typo in the name.
 			return nil, fmt.Errorf("task %q is not registered: no action is registered "+
 				"in this worker — use `run:` with a command, or register the action in "+
 				"the binary", t.Action)
@@ -71,8 +72,8 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 
 		eventos <- execution.Event{Kind: execution.EventStarted, NodeID: t.NodeID}
 
-		// Uma task que entra em panico nao pode derrubar o orquestrador junto:
-		// ela roda no MESMO processo, diferente de um pod. O panico vira falha
+		// A task that panics must not take the orchestrator down with it:
+		// it runs in the SAME process, unlike a pod. The panic becomes a failure
 		// daquela task.
 		var err error
 		func() {
@@ -85,8 +86,8 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 				NodeID: t.NodeID,
 				With:   t.With,
 				Log: func(msg string) {
-					// nao bloqueia se ninguem esta lendo: uma task ruidosa nao
-					// pode travar por causa do consumidor
+					// it does not block when nobody is reading: a noisy task
+					// must not stall because of its consumer
 					select {
 					case eventos <- execution.Event{
 						Kind: execution.EventLog, NodeID: t.NodeID,

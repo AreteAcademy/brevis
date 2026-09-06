@@ -228,15 +228,17 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso,
 	return out, linhas.Err()
 }
 
-// PassoQueFalhou devolve o node e a saida da ultima tentativa que falhou.
+// PassoQueFalhou returns the node and the output of the last attempt that
+// failed.
 //
-// `ORDER BY iniciado_em DESC` e nao `attempt DESC`: num grafo com varios passos,
-// a maior tentativa pode ser de um passo que ja tinha falhado e sido superado —
-// o que interessa e o que falhou POR ULTIMO, que e onde a execucao parou.
+// `ORDER BY iniciado_em DESC` and not `attempt DESC`: in a graph with several
+// steps, the highest attempt may belong to a step that had already failed and
+// been superseded — what matters is what failed LAST, which is where the run
+// stopped.
 //
-// Ausencia nao e erro: um run que morreu antes de qualquer passo comecar (imagem
-// inexistente, fila cancelada) nao tem task_run nenhuma, e o alerta sai sem esta
-// parte em vez de nao sair.
+// Absence is not an error: a run that died before any step started (a missing
+// image, a cancelled queue) has no task_run at all, and the alert goes out
+// without this part rather than not going out.
 func (r *RunRepo) PassoQueFalhou(ctx context.Context, runID uuid.UUID) (string, string, error) {
 	var passo, log string
 	err := r.pool.QueryRow(ctx, `

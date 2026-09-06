@@ -216,9 +216,9 @@ func AmbienteDasTasks(nomes []string) map[string]string {
 
 // toleracoes reads "key=value:effect,other=value:effect".
 //
-// Entrada malformada e IGNORADA em vez de virar erro de boot: uma toleracao
-// errada deixa o pod Pending, que e visivel; recusar o boot do scheduler por
-// causa dela pararia tambem os workflows que nao precisam daquele pool.
+// A malformed entry is IGNORED rather than becoming a boot error: a wrong
+// toleration leaves the pod Pending, which is visible; refusing the scheduler's
+// boot over it would also stop the workflows that do not need that pool.
 func toleracoes(chave string) []Toleracao {
 	var out []Toleracao
 	for _, entrada := range lista(chave) {
@@ -233,11 +233,12 @@ func toleracoes(chave string) []Toleracao {
 	return out
 }
 
-// TaskEnvDoAmbiente le BREVIS_TASK_ENV para quem nao carregou a Config inteira.
+// TaskEnvDoAmbiente reads BREVIS_TASK_ENV for whoever did not load the whole
+// Config.
 func TaskEnvDoAmbiente() []string { return lista("BREVIS_TASK_ENV") }
 
-// lista separa por virgula, ignorando vazios — "a,,b" e um erro de digitacao, e
-// um nome de secret vazio faria o pod inteiro ser recusado pelo servidor.
+// lista splits on commas, ignoring empties — "a,,b" is a typo, and an empty
+// secret name would make the server refuse the whole pod.
 func lista(chave string) []string {
 	var out []string
 	for _, p := range strings.Split(os.Getenv(chave), ",") {
@@ -248,7 +249,7 @@ func lista(chave string) []string {
 	return out
 }
 
-// pares le "chave=valor,outra=valor" — o formato de nodeSelector.
+// pares reads "key=value,other=value" — nodeSelector's format.
 func pares(chave string) map[string]string {
 	out := map[string]string{}
 	for _, p := range lista(chave) {

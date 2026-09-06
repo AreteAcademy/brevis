@@ -1,9 +1,9 @@
-// Package api expoe a interface HTTP do Brevis.
+// Package api exposes Brevis's HTTP interface.
 //
-// Usa net/http puro. O roteamento por metodo e path do ServeMux (Go 1.22+)
-// cobre o que precisamos, e a regra 6 do plano pede evitar framework quando a
-// stdlib resolve. O trabalho dificil deste sistema esta na fila, no scheduler e
-// na maquina de estados — nao no HTTP.
+// It uses plain net/http. ServeMux's method-and-path routing (Go 1.22+) covers
+// what is needed, and rule 6 of the plan asks to avoid a framework when the
+// stdlib does the job. This system's hard work is in the queue, in the scheduler
+// and in the state machine — not in the HTTP.
 package api
 
 import (
@@ -13,30 +13,32 @@ import (
 	"time"
 )
 
-// Server carrega o roteador e as dependencias que o readiness consulta.
+// Server carries the router and the dependencies readiness consults.
 type Server struct {
 	log      *slog.Logger
 	checkers map[string]Checker
 	mux      *http.ServeMux
 
-	// portao envolve o mux quando ha credencial. Nulo = interface aberta, que
+	// portao wraps the mux when there is a credential. Nil = an open interface,
+	// which
 	// so acontece em desenvolvimento (config.Load recusa o contrario).
 	portao *auth.Portao
 }
 
-// NewServer monta o roteador. Os checkers sao nomeados para que o /ready diga
-// QUAL dependencia falhou, e nao apenas que algo falhou.
+// NewServer builds the router. The checkers are named so that /ready says WHICH
+// dependency failed, and not merely that something did.
 //
-// `ui` pode ser nil: um processo que so serve health check nao precisa das
-// paginas, e exigi-las acoplaria o servidor ao banco sem necessidade.
+// `ui` may be nil: a process that only serves health checks does not need the
+// pages, and requiring them would couple the server to the database for no
+// reason.
 func NewServer(log *slog.Logger, checkers map[string]Checker, ui *UI) *Server {
 	return NewServerAutenticado(log, checkers, ui, auth.Credencial{}, false)
 }
 
-// NewServerAutenticado e o mesmo, exigindo sessao quando a credencial esta
-// configurada. `inseguro` manda o cookie sem a flag Secure — necessario apenas
-// para http puro em desenvolvimento, porque um cookie Secure nunca chega de
-// volta por http e o login pareceria simplesmente nao funcionar.
+// NewServerAutenticado is the same, requiring a session when the credential is
+// configured. `inseguro` sends the cookie without the Secure flag — needed only
+// for plain http in development, because a Secure cookie never comes back over
+// http and the login would look simply broken.
 func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 	cred auth.Credencial, inseguro bool,
 ) *Server {
@@ -55,7 +57,7 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 	return s
 }
 
-// ServeHTTP faz do Server um http.Handler, com log de acesso.
+// ServeHTTP makes Server an http.Handler, with an access log.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	inicio := time.Now()
 	rec := &gravador{ResponseWriter: w, status: http.StatusOK}
@@ -70,9 +72,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"status", rec.status, "duration_ms", time.Since(inicio).Milliseconds())
 }
 
-// HTTPServer devolve o servidor configurado. Os timeouts existem porque o
-// default do net/http e nenhum: sem eles, uma conexao lenta segura um handler
-// indefinidamente.
+// HTTPServer returns the configured server. The timeouts exist because
+// net/http's default is none: without them, a slow connection holds a handler
+// indefinitely.
 func (s *Server) HTTPServer(addr string) *http.Server {
 	return &http.Server{
 		Addr:              addr,
@@ -84,8 +86,8 @@ func (s *Server) HTTPServer(addr string) *http.Server {
 	}
 }
 
-// gravador captura o status para o log de acesso; o http.ResponseWriter nao o
-// expoe depois de escrito.
+// gravador captures the status for the access log; http.ResponseWriter does not
+// expose it after it is written.
 type gravador struct {
 	http.ResponseWriter
 	status int

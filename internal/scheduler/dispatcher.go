@@ -122,7 +122,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			d.wg.Wait() // shutdown gracioso: nao abandona execucao em voo
+			d.wg.Wait() // graceful shutdown: it does not abandon a run in flight
 			return nil
 		case <-tick.C:
 			if err := d.cicloDeClaim(ctx); err != nil {
@@ -282,7 +282,7 @@ func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 	}
 }
 
-// avisar manda o alerta de falha definitiva.
+// avisar sends the definitive-failure alert.
 //
 // Nothing here may interrupt the dispatcher: a webhook that is down is no
 // reason to stop draining the queue. A failure to warn becomes a log line, and
@@ -297,8 +297,8 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 		Tentativas: tentativas, Erro: causa.Error(), URLBase: d.URLBase,
 	}
 	// Os detalhes vem do banco: o dispatcher so conhece o id. Se a leitura
-	// falhar, o alerta sai mesmo assim — meia mensagem e melhor que nenhuma
-	// quando algo esta quebrado.
+	// fails, the alert goes out anyway — half a message beats none when
+	// something is broken.
 	if r, err := d.repo.Buscar(ctx, runID); err == nil {
 		a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
 		var def struct{ Tags []string }
@@ -309,8 +309,8 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 		d.log.Warn("alert without the run's details", "run", runID, "error", err)
 	}
 
-	// O passo e o log sao um plus: se a consulta falhar, o alerta sai sem eles.
-	// Meia mensagem chega; mensagem nenhuma, nao.
+	// The step and the log are a bonus: if the query fails, the alert goes out
+	// without them. Half a message arrives; no message does not.
 	if passo, log, err := d.repo.PassoQueFalhou(ctx, runID); err == nil {
 		a.Passo = passo
 		a.TrechoDoLog = ultimasLinhas(log, 15)
@@ -318,8 +318,8 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 		d.log.Warn("alert without the step that failed", "run", runID, "error", err)
 	}
 
-	// Contexto proprio: o da execucao pode estar cancelado (foi o cancelamento
-	// que trouxe ate aqui), e o alerta e justamente sobre isso.
+	// A context of its own: the run's may be cancelled (the cancellation is what
+	// brought us here), and the alert is about exactly that.
 	ctxAviso, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := d.Alertas.Falhou(ctxAviso, a); err != nil {
@@ -327,9 +327,10 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 	}
 }
 
-// ultimasLinhas devolve o FIM do log, que e onde um programa costuma dizer por
-// que parou. O comeco fica de fora de proposito: o alerta cabe numa notificacao
-// de celular, e o log inteiro esta a um clique de distancia na tela da execucao.
+// ultimasLinhas returns the END of the log, which is where a program usually
+// says why it stopped. The start is left out on purpose: the alert has to fit in
+// a notification
+// on a phone, and the whole log is one click away on the run's screen.
 func ultimasLinhas(texto string, n int) string {
 	if texto == "" {
 		return ""

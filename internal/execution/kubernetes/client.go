@@ -8,7 +8,8 @@
 //
 // The client is written on the stdlib, with no client-go. The official library
 // brings hundreds of dependencies and tens of MB for what here are four calls
-// REST: criar pod, ler status, ler log, apagar pod. A mesma escolha ja foi feita
+// REST: create a pod, read its status, read its log, delete it. The same choice
+// was already made
 // for React (a vendored bundle) and for the CSS (standalone Tailwind): a large
 // dependency's cost only pays for itself when a large fraction of it is used.
 package kubernetes

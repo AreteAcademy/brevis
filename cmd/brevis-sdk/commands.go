@@ -272,12 +272,13 @@ func init() {
 	runCmd.Flags().Bool("dry-run", false, "Extract only, don't load")
 }
 
-// columnsFor traduz a flag --metadata para a declaração que o SDK espera
+// columnsFor translates the --metadata flag into the declaration the SDK
 // desde a v0.24.0: as duas colunas de ingestão deixaram de ser um interruptor
-// e passaram a ser declaradas como qualquer outra.
+// and came to be declared like any other.
 //
-// O CLI não compõe linha nenhuma, então ele só declara o que o chamador
-// mandou; um lote sem essas colunas é recusado com o erro que as nomeia.
+// The CLI composes no row at all, so it only declares what the caller asked
+// for; a batch without those columns is refused with the error that names
+// them.
 // lerNDJSON reads one JSON object per line, in order.
 //
 // A Decoder rather than a Scanner: a Scanner has a line-length limit that stops

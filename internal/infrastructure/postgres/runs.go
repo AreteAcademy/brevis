@@ -17,15 +17,16 @@ type RunRepo struct{ pool *Pool }
 
 func NewRunRepo(p *Pool) *RunRepo { return &RunRepo{pool: p} }
 
-// ErrJaExiste sinaliza colisao de chave de idempotencia. Tipado para que o
-// chamador distinga "ja criei isso" de erro real — a diferenca entre um retry
-// benigno do scheduler e uma falha de banco.
+// ErrJaExiste signals an idempotency-key collision. Typed so the caller can tell
+// "I already created this" from a real error — the difference between a benign
+// scheduler retry and a database failure.
 var ErrJaExiste = errors.New("a run with this idempotency key already exists")
 
-// Criar insere o Run em CREATED.
+// Criar inserts the Run in CREATED.
 //
-// A colisao na unique de idempotency_key vira ErrJaExiste, nao erro generico: e
-// o caso da secao 29 — o scheduler caiu depois de criar e tenta de novo ao subir.
+// A collision on the idempotency_key unique becomes ErrJaExiste, not a generic
+// error: it is section 29's case — the scheduler died after creating and tries
+// again on the way back up.
 func (r *RunRepo) Criar(ctx context.Context, run dom.Run) (dom.Run, error) {
 	if run.ID == uuid.Nil {
 		run.ID = uuid.New()
@@ -56,11 +57,11 @@ func (r *RunRepo) Criar(ctx context.Context, run dom.Run) (dom.Run, error) {
 	return run, nil
 }
 
-// Transicionar aplica a mudanca de estado, validando ANTES de escrever.
+// Transicionar applies the state change, validating BEFORE writing.
 //
-// A validacao acontece contra o estado lido dentro da transacao, com FOR UPDATE:
-// ler fora dela permitiria que dois dispatchers lessem "queued" e ambos
-// escrevessem "running".
+// The validation happens against the state read inside the transaction, with FOR
+// UPDATE: reading outside it would let two dispatchers both read "queued" and
+// both write "running".
 func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Status) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -101,7 +102,7 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 	return tx.Commit(ctx)
 }
 
-// IncrementarTentativa sobe o contador ao reenfileirar por retry.
+// IncrementarTentativa bumps the counter when requeuing for a retry.
 func (r *RunRepo) IncrementarTentativa(ctx context.Context, id uuid.UUID) (int, error) {
 	var n int
 	err := r.pool.QueryRow(ctx,
@@ -109,7 +110,7 @@ func (r *RunRepo) IncrementarTentativa(ctx context.Context, id uuid.UUID) (int, 
 	return n, err
 }
 
-// RegistrarErro guarda a causa da falha.
+// RegistrarErro stores the cause of the failure.
 func (r *RunRepo) RegistrarErro(ctx context.Context, id uuid.UUID, msg string) error {
 	_, err := r.pool.Exec(ctx, `UPDATE runs SET erro = $2 WHERE id = $1`, id, msg)
 	return err
@@ -128,7 +129,7 @@ func (r *RunRepo) Buscar(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	return run, err
 }
 
-// ContarPorStatus e o que o criterio de aceite da PHASE 2 mede.
+// ContarPorStatus is what PHASE 2's acceptance criterion measures.
 func (r *RunRepo) ContarPorStatus(ctx context.Context) (map[dom.Status]int, error) {
 	linhas, err := r.pool.Query(ctx, `SELECT status, count(*) FROM runs GROUP BY status`)
 	if err != nil {
@@ -148,8 +149,8 @@ func (r *RunRepo) ContarPorStatus(ctx context.Context) (map[dom.Status]int, erro
 	return out, linhas.Err()
 }
 
-// ContarPorTrigger mostra a origem dos runs — distinguir backfill de agendado e
-// o que a secao 12 pede ao investigar um incidente.
+// ContarPorTrigger shows where the runs came from — telling a backfill from a
+// scheduled run is what section 12 asks for while investigating an incident.
 func (r *RunRepo) ContarPorTrigger(ctx context.Context) (map[string]int, error) {
 	linhas, err := r.pool.Query(ctx, `SELECT trigger_type, count(*) FROM runs GROUP BY trigger_type`)
 	if err != nil {
@@ -175,8 +176,8 @@ func ehViolacaoUnica(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.SQLState() == "23505"
 }
 
-// paramsOuVazio evita gravar NULL numa coluna NOT NULL DEFAULT '{}': um Run sem
-// params tem params vazios, nao ausentes.
+// paramsOuVazio avoids writing NULL into a NOT NULL DEFAULT '{}' column: a Run
+// with no params has empty params, not absent ones.
 func paramsOuVazio(p map[string]string) map[string]string {
 	if p == nil {
 		return map[string]string{}

@@ -483,12 +483,12 @@ var invalidoEmNome = regexp.MustCompile(`[^a-z0-9-]+`)
 
 // NomeDoPod produces a valid and STABLE name for the same attempt.
 //
-// Estavel importa: se o processo morrer entre criar o pod e registrar isso, a
-// tentativa seguinte encontra o pod existente (409 AlreadyExists) em vez de
-// subir um segundo pod rodando o mesmo dbt em paralelo com o primeiro.
+// STABLE matters: if the process dies between creating the pod and recording
+// that, the next attempt finds the existing pod (409 AlreadyExists) instead of
+// starting a second one running the same dbt in parallel with the first.
 //
-// O sufixo de hash resolve a colisao que o corte de 63 caracteres criaria entre
-// dois nodes de nome longo e prefixo comum.
+// The hash suffix resolves the collision the 63-character cut would create
+// between two long node names with a common prefix.
 func NomeDoPod(t execution.TaskExec) string {
 	base := sanitizar(t.Workflow + "-" + t.NodeID)
 	soma := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
@@ -513,8 +513,8 @@ func sanitizar(s string) string {
 	return s
 }
 
-// valorDeRotulo obedece o limite de 63 caracteres dos labels; o valor completo
-// goes in the annotation, which accepts far more.
+// valorDeRotulo obeys the labels' 63-character limit; the full value goes in the
+// annotation, which accepts far more.
 func valorDeRotulo(s string) string {
 	s = sanitizar(s)
 	if len(s) > 63 {

@@ -6,8 +6,8 @@ import (
 	"net/http"
 )
 
-// Checker e uma dependencia que o readiness consulta. Interface pequena de
-// proposito (regra 5): o postgres.Pool ja a satisfaz sem adaptador.
+// Checker is a dependency readiness consults. A small interface on purpose
+// (rule 5): postgres.Pool already satisfies it with no adapter.
 type Checker interface {
 	Check(ctx context.Context) error
 }
@@ -17,19 +17,20 @@ type respostaSaude struct {
 	Checks map[string]string `json:"checks,omitempty"`
 }
 
-// health responde liveness: o processo esta vivo e servindo.
+// health answers liveness: the process is alive and serving.
 //
-// NAO toca o banco, de proposito. Liveness que depende de dependencia externa
-// faz o Kubernetes MATAR o pod quando o banco oscila — trocando uma
-// indisponibilidade parcial por um crashloop.
+// It does NOT touch the database, on purpose. A liveness probe that depends on
+// an external dependency makes Kubernetes KILL the pod when the database wobbles
+// — trading a partial outage for a crashloop.
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
 	escreverJSON(w, http.StatusOK, respostaSaude{Status: "ok"})
 }
 
 // ready responde readiness: o processo consegue atender de fato.
 //
-// Aqui sim consulta as dependencias. Falha tira o pod do balanceador sem
-// mata-lo, que e o comportamento correto quando o banco esta fora.
+// Here it does consult the dependencies. A failure takes the pod out of the load
+// balancer without killing it, which is the correct behaviour when the database
+// is down.
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]string, len(s.checkers))
 	status := http.StatusOK
