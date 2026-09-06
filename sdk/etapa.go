@@ -149,9 +149,18 @@ func VersaoDoSDK() string {
 			return ""
 		}
 		for _, d := range info.Deps {
-			if d.Path == caminhoDoModulo {
-				return d.Version
+			if d.Path != caminhoDoModulo {
+				continue
 			}
+			// Um modulo SUBSTITUIDO (replace) reporta a versao que o go.mod
+			// pediu, e ela e ficcao: o codigo que esta rodando veio de um
+			// diretorio. Um selo dizendo "v0.0.0" -- ou pior, uma versao
+			// plausivel que nao e a que esta ali -- e pior que selo nenhum,
+			// porque ele e justamente o que se olha para descartar hipoteses.
+			if d.Replace != nil {
+				return ""
+			}
+			return d.Version
 		}
 		// O proprio modulo, quando os testes do SDK rodam dentro dele.
 		if info.Main.Path == caminhoDoModulo {

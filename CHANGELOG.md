@@ -10,6 +10,23 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.46.1] — 2026-09-05
+
+### Corrigido: o selo mentia num build com `replace`
+
+`VersaoDoSDK` devolvia a versão que o `go.mod` **pediu**, e num módulo
+substituído por `replace` ela é ficção: o código que está rodando veio de um
+diretório. Um fetcher construído com `replace ... => ../sdk` anunciava
+`v0.0.0`, ou pior, uma versão plausível que não era a que estava ali.
+
+Um selo errado é pior que selo nenhum, porque ele é justamente o que se olha
+para descartar hipóteses. Agora devolve `devel`, que é a verdade.
+
+Apareceu no primeiro teste que rodou um binário SDK **de verdade** ponta a
+ponta, em vez de um executor falso.
+
+---
+
 ## [0.46.0] — 2026-09-05
 
 ### Adicionado: `Reduce` — agregação com teto de memória

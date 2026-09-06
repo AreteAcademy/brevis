@@ -197,6 +197,20 @@ jobs:
           cd sdk
           go test -v -timeout 20m -run Integration ./load/... ./from/...
 
+      # O motor, com peças de verdade: um binário compilado com o SDK, o
+      # executor de processo, um pipe do sistema operacional e o Postgres.
+      #
+      # Tudo o mais no caminho das etapas era testado com executor falso: a
+      # linha `@brevis:` nunca tinha atravessado um pipe real, e foi assim que
+      # a v0.4.0 do motor saiu com a feature nunca exercitada ponta a ponta.
+      - name: Integração do motor
+        env:
+          BREVIS_IT_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
+          BREVIS_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
+        run: |
+          go run ./cmd/brevis migrate up
+          go test -v -timeout 10m -run Integration ./internal/...
+
       - name: Say what did not run
         if: env.GCP_CREDENTIALS == ''
         run: |
