@@ -1,7 +1,7 @@
 # As etapas do SDK na tela: Extract, Transform e Load ao vivo
 
 Data: 2026-09-05
-Estado: proposta
+Estado: executado (ver a seção final)
 Alvo: MVP (2 a 3 semanas)
 
 ## 1. O pedido

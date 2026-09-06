@@ -1,7 +1,7 @@
 # Retomada por checkpoint: não repetir o extract quando o resto falha
 
 Data: 2026-09-05
-Estado: proposta
+Estado: executado (ver a seção final)
 
 ## 1. O pedido
 
