@@ -406,3 +406,74 @@ func TestRenameNaoEncadeia(t *testing.T) {
 		}
 	}
 }
+
+// Five constructors -- Key, KeyWith, FixedKey, Field, Now -- produced a
+// FieldSelector, and NOTHING in the SDK accepted one. Every caller wrapped it by
+// hand, and two package comments documented the direct call for weeks: examples
+// that never compiled.
+func TestComputeTextTakesASelectorDirectly(t *testing.T) {
+	linha := map[string]any{"latitude": -23.55, "longitude": -46.63, "time": "2026-01-01T00:00"}
+
+	out, err := ComputeText("source_key", Key("latitude", "longitude", "time"))(linha)
+	if err != nil {
+		t.Fatalf("ComputeText: %v", err)
+	}
+	got := out.(map[string]any)["source_key"]
+	if got != "-23.55|-46.63|2026-01-01T00:00" {
+		t.Errorf("source_key = %v", got)
+	}
+}
+
+// It has to be the same result the hand-written wrapper produced, or upgrading
+// to it would change every ingestion_id already written.
+func TestComputeTextMatchesTheWrapperItReplaces(t *testing.T) {
+	linha := func() map[string]any {
+		return map[string]any{"a": "1", "b": 2.0, "time": "2026-01-01T00:00"}
+	}
+
+	novo, err := ComputeText("source_key", Key("a", "b"))(linha())
+	if err != nil {
+		t.Fatal(err)
+	}
+	velho, err := Compute("source_key", func(r map[string]any) (any, error) {
+		return Key("a", "b")(r)
+	})(linha())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if novo.(map[string]any)["source_key"] != velho.(map[string]any)["source_key"] {
+		t.Errorf("the key changed: %v against %v",
+			novo.(map[string]any)["source_key"], velho.(map[string]any)["source_key"])
+	}
+}
+
+// A selector that refuses reports the FIELD it refused: without the name,
+// nobody knows which of the six it was.
+func TestComputeTextNamesTheFieldASelectorRefused(t *testing.T) {
+	_, err := ComputeText("source_key", Key("id", "missing"))(map[string]any{"id": 1.0})
+	if err == nil {
+		t.Fatal("a missing field was accepted into the key")
+	}
+	if !strings.Contains(err.Error(), "missing") {
+		t.Errorf("the message does not name the field: %v", err)
+	}
+}
+
+// Everything Compute promises holds here.
+func TestComputeTextRefusesToOverwrite(t *testing.T) {
+	_, err := ComputeText("id", Field("other"))(map[string]any{"id": 1.0, "other": "x"})
+	if err == nil {
+		t.Fatal("it overwrote a field the record already had")
+	}
+}
+
+// And a nil selector fails saying what to pass, instead of panicking.
+func TestComputeTextWithNoSelectorSaysWhatToPass(t *testing.T) {
+	_, err := ComputeText("x", nil)(map[string]any{})
+	if err == nil {
+		t.Fatal("a nil selector was accepted")
+	}
+	if !strings.Contains(err.Error(), "sdk.Key") {
+		t.Errorf("the message does not say what to pass: %v", err)
+	}
+}

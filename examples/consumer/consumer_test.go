@@ -290,7 +290,7 @@ func TestConsumidorEscreveAsDuasColunasNaCadeia(t *testing.T) {
 	data = sdk.Transform(data,
 		sdk.Compute("provider", func(map[string]any) (any, error) { return "prova", nil }),
 		sdk.Compute("entity", func(map[string]any) (any, error) { return "linhas", nil }),
-		sdk.Compute("source_key", func(r map[string]any) (any, error) { return sdk.Key("id")(r) }),
+		sdk.ComputeText("source_key", sdk.Key("id")),
 		sdk.IngestionID("provider", "entity", "source_key", "id"),
 		sdk.IngestionLoadedAt(),
 	)

@@ -179,9 +179,7 @@ you give it:
 
 ```go
 sdk.Rename(map[string]string{"time": "observed_at"}),
-sdk.Compute("source_key", func(r map[string]any) (any, error) {
-	return sdk.Key("latitude", "longitude", "observed_at")(r)
-}),
+sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "observed_at")),
 sdk.IngestionID("provider", "entity", "source_key", "observed_at"),
 ```
 
@@ -219,7 +217,7 @@ func main() {
 		Transform: []sdk.Transformer{
 			sdk.Compute("provider", func(map[string]any) (any, error) { return "example", nil }),
 			sdk.Compute("entity", func(map[string]any) (any, error) { return "events", nil }),
-			sdk.Compute("source_key", func(r map[string]any) (any, error) { return sdk.Key("id")(r) }),
+			sdk.ComputeText("source_key", sdk.Key("id")),
 			sdk.IngestionID("provider", "entity", "source_key", "created_at"),
 			sdk.IngestionLoadedAt(),
 		},
@@ -1557,9 +1555,7 @@ Transform: []sdk.Transformer{
 	sdk.Accept("time", "temperature_2m", "latitude", "longitude"),
 	sdk.Compute("provider", ...),
 	sdk.Compute("entity", ...),
-	sdk.Compute("source_key", func(r map[string]any) (any, error) {
-		return sdk.Key("latitude", "longitude", "time")(r)
-	}),
+	sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time")),
 	sdk.IngestionID("provider", "entity", "source_key", "time"),
 	sdk.IngestionLoadedAt(),
 },

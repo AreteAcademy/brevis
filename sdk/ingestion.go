@@ -23,8 +23,8 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 // IngestionID writes the ingestion_id column.
 //
 // As quatro colunas de proveniencia precisam existir antes dele na cadeia.
-// See ExampleIngestionID; Compute does not take a KeySelector directly, so the
-// key goes inside a function.
+// See ExampleIngestionID. Compose the provenance columns with ComputeText,
+// which takes a selector directly.
 //
 // The id is a deterministic UUID v5 over provider|entity|source_key|record_ts,
 // so the same record always gets the same id and a re-run is safe. The formula,

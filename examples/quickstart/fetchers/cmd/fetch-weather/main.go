@@ -51,12 +51,8 @@ func main() {
 			// matters: IngestionID reads these four columns.
 			sdk.Compute("provider", func(map[string]any) (any, error) { return "open_meteo", nil }),
 			sdk.Compute("entity", func(map[string]any) (any, error) { return "hourly_weather", nil }),
-			sdk.Compute("source_key", func(r map[string]any) (any, error) {
-				return sdk.Key("latitude", "longitude", "time")(r)
-			}),
-			sdk.Compute("record_ts", func(r map[string]any) (any, error) {
-				return sdk.Field("time")(r)
-			}),
+			sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time")),
+			sdk.ComputeText("record_ts", sdk.Field("time")),
 			sdk.IngestionID(),
 			sdk.IngestionLoadedAt(),
 		},

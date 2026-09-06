@@ -10,6 +10,39 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.52.0] — 2026-09-06
+
+### Added: `ComputeText`, so a selector can be used directly
+
+```go
+sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time")),
+sdk.ComputeText("record_ts",  sdk.Field("time")),
+sdk.IngestionID(),
+```
+
+`Key`, `KeyWith`, `FixedKey`, `Field` and `Now` all produce a `FieldSelector`,
+and until now **nothing in the SDK accepted one**. Five constructors produced a
+type no function consumed, so every caller wrapped it by hand:
+
+```go
+sdk.Compute("source_key", func(r map[string]any) (any, error) {
+    return sdk.Key("latitude", "longitude", "time")(r)
+})
+```
+
+The wrapper was not a style choice: `Compute` takes
+`func(map[string]any) (any, error)` and a selector is `func(any) (string, error)`.
+Two package comments documented the direct call for weeks — examples that never
+compiled — which is the clearest evidence that the wrapper is not what anybody
+expects to write.
+
+There is a test asserting `ComputeText` produces **the same value** the wrapper
+produced. Anything else would change every `ingestion_id` already written.
+
+`Compute` is unchanged, for a computed value that is not text.
+
+---
+
 ## [0.51.0] — 2026-09-06
 
 ### Mudou: uma fase anunciada por elemento do pipeline, não quatro fixas

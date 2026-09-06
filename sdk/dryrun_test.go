@@ -48,7 +48,7 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 			Map(
 				Compute("provider", func(map[string]any) (any, error) { return "p", nil }),
 				Compute("entity", func(map[string]any) (any, error) { return "e", nil }),
-				Compute("source_key", func(r map[string]any) (any, error) { return Key("area", "year")(r) }),
+				ComputeText("source_key", Key("area", "year")),
 				Compute("record_ts", func(map[string]any) (any, error) { return "2026-01-01T00:00:00Z", nil }),
 				IngestionID(),
 			),

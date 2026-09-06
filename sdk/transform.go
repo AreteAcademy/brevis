@@ -315,6 +315,42 @@ func Compute(name string, fn func(record map[string]any) (any, error)) Transform
 	}
 }
 
+// ComputeText writes a text column composed by a selector.
+//
+//	sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time")),
+//	sdk.ComputeText("record_ts",  sdk.Field("time")),
+//	sdk.IngestionID(),
+//
+// It exists because Key, KeyWith, FixedKey, Field and Now all produce a
+// FieldSelector, and until now NOTHING in the SDK accepted one. Five
+// constructors produced a type no function consumed, so every caller wrapped it
+// by hand:
+//
+//	sdk.Compute("source_key", func(r map[string]any) (any, error) {
+//	    return sdk.Key("latitude", "longitude", "time")(r)
+//	})
+//
+// The wrapper is not a style choice: Compute takes
+// func(map[string]any) (any, error) and a selector is func(any) (string, error),
+// so they do not line up. Two package comments documented the direct call for
+// weeks -- examples that never compiled -- which is the clearest evidence that
+// the wrapper is not what anybody expects to write.
+//
+// Everything Compute promises holds here: overwriting an existing field is an
+// error, and a selector that refuses a value reports the FIELD it refused,
+// because without the name nobody knows which of the six it was.
+func ComputeText(name string, sel FieldSelector) Transformer {
+	if sel == nil {
+		return func(any) (any, error) {
+			return nil, fmt.Errorf("ComputeText(%q) got a nil selector; "+
+				"pass one, such as sdk.Key(\"id\") or sdk.Field(\"time\")", name)
+		}
+	}
+	return Compute(name, func(record map[string]any) (any, error) {
+		return sel(record)
+	})
+}
+
 // ensure Transform's iterator type matches Data.Records.
 var _ func(func(Envelope, error) bool) = iter.Seq2[Envelope, error](nil)
 

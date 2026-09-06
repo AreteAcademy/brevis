@@ -1,12 +1,12 @@
-// Package sdk_test carrega os exemplos da documentacao.
+// Package sdk_test carries the documentation's examples.
 //
-// Eles vivem aqui, e nao dentro de um comentario, porque um exemplo em
-// comentario nao compila -- e os dois que estavam em sdk.go e pipeline.go
-// passaram a documentar quatro campos de Target e dois de Source que tinham
-// deixado de existir. Quem copiasse recebia codigo que nao compila.
+// They live here, and not inside a comment, because an example in a comment does
+// not compile -- and the two that lived in sdk.go and pipeline.go went on
+// documenting four fields of Target and two of Source that had stopped existing.
+// Anyone who copied them got code that does not build.
 //
-// E `package sdk_test`, externo de proposito: assim o exemplo se escreve com
-// os mesmos `sdk.` que um consumidor escreve, e so enxerga o que e exportado.
+// It is `package sdk_test`, external on purpose: that way an example is written
+// with the same `sdk.` a consumer writes, and only sees what is exported.
 package sdk_test
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
 )
 
-// Um fetcher inteiro em duas chamadas: de onde vem, e para onde vai.
+// A whole fetcher in two calls: where it comes from, and where it goes.
 func Example() {
 	ctx := context.Background()
 
@@ -39,10 +39,10 @@ func Example() {
 		return
 	}
 
-	// O que se leva da origem.
+	// What we take from the source.
 	dados = sdk.Transform(dados, sdk.Accept("time", "temperature_2m"))
 
-	// Para onde vai, e com que colunas.
+	// Where it goes, and with which columns.
 	if _, err := sdk.Load(ctx, dados, sdk.Target{
 		To:      to.Files{Path: "./landing/temperatura/"},
 		Columns: []string{"time", "temperature_2m"},
@@ -51,8 +51,8 @@ func Example() {
 	}
 }
 
-// Pipeline e o mesmo fetcher como um valor: Run cuida das flags, do -dry-run,
-// do log e do codigo de saida.
+// Pipeline is the same fetcher as a value: Run handles the flags, the -dry-run,
+// the logging and the exit code.
 func ExamplePipeline() {
 	sdk.Run(sdk.Pipeline{
 		Source: sdk.Source{
@@ -76,48 +76,38 @@ func ExamplePipeline() {
 	})
 }
 
-// Key monta o source_key juntando campos do payload, na ordem dada.
+// Key composes the source_key by joining payload fields, in the order given.
 //
-// Ele produz um sdk.KeySelector, que o Compute nao aceita direto -- por isso a
-// funcao em volta.
+// It produces an sdk.KeySelector, and ComputeText is what writes one into a
+// column.
 func ExampleKey() {
-	_ = sdk.Compute("source_key", func(r map[string]any) (any, error) {
-		return sdk.Key("latitude", "longitude", "time")(r)
-	})
+	_ = sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time"))
 }
 
-// KeyWith e Key com a renderizacao injetada, para quando a chave precisa casar
-// com a de um sistema que ja gravou linhas.
+// KeyWith is Key with the rendering injected, for when the key has to match one
+// from a system that has already written rows.
 func ExampleKeyWith() {
-	_ = sdk.Compute("source_key", func(r map[string]any) (any, error) {
-		return sdk.KeyWith(pycompat.Text, "provider", "id")(r)
-	})
+	_ = sdk.ComputeText("source_key", sdk.KeyWith(pycompat.Text, "provider", "id"))
 }
 
-// Field le um campo do payload como carimbo do registro.
+// Field reads one payload field as the record's timestamp.
 func ExampleField() {
-	_ = sdk.Compute("record_ts", func(r map[string]any) (any, error) {
-		return sdk.Field("time")(r)
-	})
+	_ = sdk.ComputeText("record_ts", sdk.Field("time"))
 }
 
-// IngestionID escreve a coluna ingestion_id a partir das quatro colunas de
-// proveniencia, que precisam existir antes dele na cadeia.
+// IngestionID writes the ingestion_id column from the four provenance columns,
+// which have to exist before it in the chain.
 func ExampleIngestionID() {
 	_ = []sdk.Transformer{
 		sdk.Compute("provider", func(map[string]any) (any, error) { return "open_meteo", nil }),
 		sdk.Compute("entity", func(map[string]any) (any, error) { return "hourly_temperature", nil }),
-		sdk.Compute("source_key", func(r map[string]any) (any, error) {
-			return sdk.Key("latitude", "longitude", "time")(r)
-		}),
-		sdk.Compute("record_ts", func(r map[string]any) (any, error) {
-			return sdk.Field("time")(r)
-		}),
+		sdk.ComputeText("source_key", sdk.Key("latitude", "longitude", "time")),
+		sdk.ComputeText("record_ts", sdk.Field("time")),
 		sdk.IngestionID(),
 	}
 }
 
-// RejectIf recusa uma resposta 200 que traz {"error": true} no corpo.
+// RejectIf refuses a 200 whose body carries {"error": true}.
 func ExampleRejectIf() {
 	_ = from.HTTP{
 		URL: "https://api.exemplo.com/eventos",
@@ -134,8 +124,8 @@ func ExampleRejectIf() {
 	}
 }
 
-// Bool serve as opcoes de tres estados, onde nil ("nao dito") tem de ser
-// distinguivel de false.
+// Bool serves the three-state options, where nil ("not said") has to be
+// distinguishable from false.
 func ExampleBool() {
 	_ = bigquery.Table{
 		Dataset:     "landing",
@@ -144,7 +134,7 @@ func ExampleBool() {
 	}
 }
 
-// Source e a origem: o driver em From, mais o que vale para todos eles.
+// Source is the origin: the driver in From, plus what is true of all of them.
 func ExampleSource() {
 	_ = sdk.Source{
 		From:    from.HTTP{URL: "https://api.exemplo.com/v1/eventos"},
@@ -152,7 +142,7 @@ func ExampleSource() {
 	}
 }
 
-// Target e o destino: o driver em To, mais as colunas declaradas.
+// Target is the destination: the driver in To, plus the declared columns.
 func ExampleTarget() {
 	_ = sdk.Target{
 		To:      bigquery.Table{Dataset: "bronze", Name: "pedidos"},

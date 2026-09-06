@@ -18,7 +18,7 @@ type FieldSelector func(payload any) (string, error)
 // signature and the same meaning: read a string out of the record.
 //
 // One place produces the key, so the column and the ingestion_id cannot
-// diverge. See ExampleKey for how it reaches Compute.
+// diverge. ComputeText is what writes it into a column.
 type KeySelector = FieldSelector
 
 // keySeparator joins the fields of a composite source_key.
