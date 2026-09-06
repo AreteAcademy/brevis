@@ -159,6 +159,55 @@ it does not think it is broken.
 
 ---
 
+## 5.5 Found while checking this plan was complete
+
+Three threads that had never been in any message, found by sweeping the
+repository rather than by remembering.
+
+### `brevis-sdk load` reads nothing
+
+`cmd/brevis-sdk/commands.go`. The command's help says:
+
+```
+Load NDJSON data from stdin to BigQuery
+  cat data.ndjson | brevis load --project my-project --dataset landing --table raw_data
+```
+
+The implementation is:
+
+```go
+// TODO: read from stdin and parse NDJSON
+envelopes := []sdk.Envelope{}
+result, err := loader.Load(ctx, envelopes...)
+```
+
+It reads nothing, loads zero rows, and reports the result of loading zero rows.
+A documented command that succeeds while doing nothing is the worst failure this
+project recognises — worse than an error, because the pipe looks like it worked.
+
+**Fix, or delete the command.** Both are better than what is there.
+
+### The queue's tests never run in CI
+
+`internal/scheduler/dispatcher_test.go` gates 14 of its 15 tests behind
+`BREVIS_TEST_DATABASE_URL`, which **CI never sets** — only the Makefile does.
+So the claim path, the per-workflow limit, the backoff and the orphan recovery
+are exercised on a developer's laptop and nowhere else.
+
+This is the third instance of one pattern in this repository: the engine had no
+CI at all, the release workflow had never run, and now the queue's tests never
+run. Each was invisible because the job was green.
+
+The Integration job already has Postgres. Setting the variable there is one line.
+
+### The documentation site
+
+`site/` — 72 files, and it is where the Portuguese, English and Spanish
+translations live. It belongs to the repository owner and is not part of this
+plan; noted so "everything" means everything.
+
+---
+
 ## 6. What done looks like
 
 ```bash
