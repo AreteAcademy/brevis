@@ -37,44 +37,43 @@ func (e *Envelope) IngestionID() (string, error) {
 	return ComputeIngestionID(e.Provider, e.Entity, e.SourceKey, e.RecordTS)
 }
 
-// ComputeIngestionID computa a identidade deterministica de um registro.
+// ComputeIngestionID computes a record's deterministic identity.
 //
-// O contrato e: **determinista e estavel**. O mesmo registro produz o mesmo id,
-// hoje e daqui a tres anos, em qualquer maquina -- e e isso que faz uma
-// re-execucao ser um no-op em vez de uma duplicata.
+// The contract is: **deterministic and stable**. The same record produces the
+// same id, today and three years from now, on any machine -- and that is what
+// makes a re-run a no-op instead of a duplicate.
 //
-// Tres coisas definem o valor: o algoritmo (UUID v5 sobre SHA-1), a ORDEM dos
-// campos, e o separador "|". As tres sao congeladas, porque mudar qualquer uma
-// muda todo id ja gravado.
+// Three things define the value: the algorithm (UUID v5 over SHA-1), the ORDER
+// of the fields, and the "|" separator. All three are frozen, because changing
+// any of them changes every id already written.
 //
-// O NAMESPACE nao e congelado, e nao deveria ter sido: o valor padrao veio do
-// pipeline de um consumidor, e uma biblioteca que vai para todos os times nao
-// deve carregar a constante de um deles. Ver ComputeIngestionIDNo e
-// sdk.Namespace.
+// The NAMESPACE is not frozen, and should never have been: the default value
+// came from one consumer's pipeline, and a library going to every team must not
+// carry one team's constant. See ComputeIngestionIDNo and sdk.Namespace.
 //
-// Ela vive aqui, exportada, porque tem de haver exatamente UM lugar que
-// computa isto. Um fmt.Sprintf num fetcher pareceria identico e produziria um
-// id diferente no primeiro float formatado de outro jeito.
+// It lives here, exported, because there has to be exactly ONE place that
+// computes this. An fmt.Sprintf in a fetcher would look identical and produce a
+// different id on the first float formatted another way.
 func ComputeIngestionID(provider, entity, sourceKey, recordTS string) (string, error) {
 	return ComputeIngestionIDNo(NamespacePadrao, provider, entity, sourceKey, recordTS)
 }
 
-// ComputeIngestionIDNo computa o id num namespace escolhido.
+// ComputeIngestionIDNo computes the id in a chosen namespace.
 //
-// Namespaces diferentes produzem ids diferentes para o MESMO registro, e e para
-// isso que eles servem: dois pipelines que leem a mesma fonte e escrevem em
-// tabelas diferentes nao devem colidir, e dois que escrevem na MESMA tabela
-// precisam do mesmo namespace.
+// Different namespaces produce different ids for the SAME record, and that is
+// what they are for: two pipelines reading the same source and writing to
+// different tables must not collide, and two writing to the SAME table need the
+// same namespace.
 //
-// Trocar o namespace de um pipeline que ja gravou reescreve todo id dele. Nao
-// ha migracao barata disso: a proxima execucao grava tudo de novo com ids
-// novos, e o merge do bronze duplica a tabela.
+// Changing the namespace of a pipeline that has already written rewrites every
+// one of its ids. There is no cheap migration for that: the next run writes
+// everything again with new ids, and the bronze merge duplicates the table.
 func ComputeIngestionIDNo(namespace uuid.UUID, provider, entity, sourceKey, recordTS string) (string, error) {
-	// A chave e montada num buffer de pilha em vez de fmt.Sprintf: o Sprintf
-	// alocava a fatia de varargs e a string, e o []byte(key) alocava de novo,
-	// uma vez por registro. O RESULTADO e byte a byte o mesmo -- a formula e
-	// congelada, e ha teste com o valor exato conferido contra o uuid.uuid5
-	// do Python.
+	// The key is assembled in a stack buffer rather than with fmt.Sprintf:
+	// Sprintf allocated the varargs slice and the string, and []byte(key)
+	// allocated again, once per record. The RESULT is byte for byte the same --
+	// the formula is frozen, and there is a test with the exact value checked
+	// against Python's uuid.uuid5.
 	tamanho := len(provider) + len(entity) + len(sourceKey) + len(recordTS) + 3
 
 	var pilha [192]byte
@@ -95,20 +94,20 @@ func ComputeIngestionIDNo(namespace uuid.UUID, provider, entity, sourceKey, reco
 	return formatarUUID(uuidV5(namespace, chave)), nil
 }
 
-// digestos guarda os sha1 entre chamadas.
+// digestos keeps the sha1 states between calls.
 //
-// O uuid.NewSHA1 chama sha1.New() por invocacao, e o Sum(nil) aloca de novo:
-// tres alocacoes por registro para calcular um hash de 20 bytes. Numa carga de
-// milhoes, sao milhoes de digests criados e jogados fora.
+// uuid.NewSHA1 calls sha1.New() per invocation, and Sum(nil) allocates again:
+// three allocations per record to compute a 20-byte hash. On a load of millions,
+// that is millions of digests created and thrown away.
 var digestos = sync.Pool{New: func() any { return sha1.New() }}
 
-// uuidV5 e a mesma coisa que uuid.NewSHA1, sem as alocacoes.
+// uuidV5 is the same thing as uuid.NewSHA1, without the allocations.
 //
-// Reimplementar isto e mexer na FORMULA CONGELADA, entao ha duas redes: o teste
-// contra o valor do uuid.uuid5 do Python, que ja existia, e um teste
-// diferencial que compara esta funcao com a do proprio pacote uuid sobre
-// milhares de entradas aleatorias. Uma divergencia de um bit aqui mudaria todo
-// ingestion_id ja gravado.
+// Reimplementing this means touching the FROZEN FORMULA, so there are two nets:
+// the test against Python's uuid.uuid5 value, which already existed, and a
+// differential test comparing this function with the uuid package's own over
+// thousands of random inputs. A one-bit divergence here would change every
+// ingestion_id ever written.
 func uuidV5(espaco uuid.UUID, dados []byte) uuid.UUID {
 	h := digestos.Get().(hash.Hash)
 	defer digestos.Put(h)
@@ -127,21 +126,22 @@ func uuidV5(espaco uuid.UUID, dados []byte) uuid.UUID {
 	return u
 }
 
-// NamespacePadrao e o namespace usado por quem nao escolhe outro.
+// NamespacePadrao is the namespace used by anyone who does not choose another.
 //
-// O valor veio do VENDOR_NAMESPACE do pipeline de um consumidor, e esta aqui
-// como PADRAO e nao como constante por um motivo pratico: quem ja gravou
-// linhas com ele nao pode ter os ids reescritos. Um pipeline novo pode -- e
-// provavelmente deve -- escolher o seu, com sdk.Namespace.
+// The value came from one consumer pipeline's VENDOR_NAMESPACE, and it is here
+// as a DEFAULT rather than a constant for a practical reason: whoever has
+// already written rows with it cannot have their ids rewritten. A new pipeline
+// can -- and probably should -- choose its own, with sdk.Namespace.
 //
-// Resolvido uma vez, e nao a cada registro: a string e constante, e parsea-la
-// por linha e trabalho identico repetido milhoes de vezes numa carga.
+// Resolved once, and not per record: the string is constant, and parsing it per
+// row is identical work repeated millions of times in a load.
 var NamespacePadrao = uuid.MustParse("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7")
 
-// formatarUUID escreve o formato canonico direto num array de pilha.
+// formatarUUID writes the canonical form straight into a stack array.
 //
-// O uuid.String() monta uma fatia no heap e converte; aqui a unica alocacao e
-// a da string final, que precisa existir porque ela vai para o registro.
+// uuid.String() builds a slice on the heap and converts it; here the only
+// allocation is the final string, which has to exist because it goes into the
+// record.
 func formatarUUID(u uuid.UUID) string {
 	const hex = "0123456789abcdef"
 	var b [36]byte
@@ -185,17 +185,17 @@ type LoadResult struct {
 	TableCreated bool          // whether this load created the destination table
 	ErrorRows    []string      // error descriptions from BigQuery per row (truncated)
 
-	// Objects sao os objetos que esta carga escreveu E QUE CONTINUAM LA.
+	// Objects are the objects this load wrote AND THAT ARE STILL THERE.
 	//
-	// O to.Files escolhe o nome do arquivo -- ele carrega um carimbo de tempo,
-	// para uma segunda carga nao sobrescrever a primeira --, e ate a v0.43.0
-	// nao dizia qual escolheu. Quem escreveu nao sabia o que escreveu, e o log
-	// dizia "estrategia=file" sem dizer qual arquivo: a informacao que falta
-	// as tres da manha.
+	// to.Files picks the file's name -- it carries a timestamp, so a second load
+	// does not overwrite the first -- and up to v0.43.0 it did not say which it
+	// picked. Whoever wrote did not know what they had written, and the log said
+	// "strategy=file" without saying which file: the piece missing at three in
+	// the morning.
 	//
-	// "Que continuam la" e a regra, e ela exclui o staging que o destino
-	// apaga: um caminho reportado que ja nao existe e pior que nenhum, porque
-	// alguem vai tentar le-lo.
+	// "Still there" is the rule, and it excludes the staging the destination
+	// deletes: a reported path that no longer exists is worse than none, because
+	// somebody will try to read it.
 	Objects []string
 }
 
@@ -271,12 +271,12 @@ type LoadConfig struct {
 	// See sdk.Target.Columns for what it checks and when.
 	Columns []string
 
-	// Schema e a declaracao COM tipo. Quando presente, e dela que a tabela
-	// criada tira os tipos -- e nao de autodetect nenhum.
+	// Schema is the declaration WITH types. When present, it is where a created
+	// table takes its types from -- and not from any autodetect.
 	Schema Schema
 
-	// PartitionBy nomeia a coluna de particionamento da tabela criada. Vazio
-	// usa o padrao: diaria em ingestion_loaded_at.
+	// PartitionBy names the partitioning column of a created table. Empty uses
+	// the default: daily on ingestion_loaded_at.
 	PartitionBy string
 
 	// ClusterBy names the columns the created table is clustered on. The SDK
@@ -323,20 +323,20 @@ type Stats struct {
 	// reads is the same failure with extra steps.
 	CredentialExpiry time.Time
 
-	// FailedSources sao as origens que falharam e foram toleradas.
+	// FailedSources are the sources that failed and were tolerated.
 	//
-	// Vazio quando nao ha fonte composta, ou quando nenhuma falhou. Cheio, ele
-	// e a unica coisa que permite reprocessar so o que faltou -- sem ele, a
-	// proxima execucao refaz tudo.
+	// Empty when there is no composite source, or when none failed. Non-empty,
+	// it is the only thing that allows reprocessing just what is missing --
+	// without it, the next run redoes everything.
 	FailedSources []SourceFailure
 
-	// CredentialStoreError diz que a credencial rotacionada NAO foi guardada,
-	// e por que. Vazio quando nao ha store ou quando gravou.
+	// CredentialStoreError says the rotated credential was NOT stored, and why.
+	// Empty when there is no store or when it did store.
 	//
-	// A execucao nao para por isso: a carga acontece igual, e o que se perde e
-	// a rotacao. Mas o efeito e diferido -- a proxima execucao cai na semente,
-	// que um dia vence -- e um efeito diferido que so aparece em log e o que
-	// ninguem ve a tempo.
+	// The run does not stop for it: the load happens all the same, and what is
+	// lost is the rotation. But the effect is deferred -- the next run falls
+	// back to the seed, which one day expires -- and a deferred effect that only
+	// shows up in a log is the kind nobody sees in time.
 	CredentialStoreError string
 }
 
@@ -407,27 +407,27 @@ type Source struct {
 	// alive across runs. Nil means the request goes as Header describes it.
 	Auth *Credential
 
-	// PreserveNumbers entrega os numeros JSON como json.Number, com o literal
-	// intacto, em vez de float64.
+	// PreserveNumbers hands JSON numbers over as json.Number, with the literal
+	// intact, instead of float64.
 	//
-	// O padrao e float64, que e o que o encoding/json faz e o que todo
-	// transformer escrito ate hoje espera. Ligue quando a IDENTIDADE depender
-	// da forma do numero: `{"id": 19}` e `{"id": 19.0}` sao float64(19) nos
-	// dois casos, e no Python o primeiro era int e o segundo float -- str()
-	// "19" contra "19.0". Um fetcher portado que compunha a chave com str()
-	// nao consegue reproduzir o id sem o literal.
+	// The default is float64, which is what encoding/json does and what every
+	// transformer written so far expects. Turn it on when IDENTITY depends on
+	// the number's shape: `{"id": 19}` and `{"id": 19.0}` are both float64(19),
+	// and in Python the first was an int and the second a float -- str() "19"
+	// against "19.0". A ported fetcher that composed its key with str() cannot
+	// reproduce the id without the literal.
 	//
-	// O custo: um transformer que faz `r["x"].(float64)` deixa de funcionar,
-	// porque o valor passa a ser json.Number. Use TextoPython, ou
+	// The cost: a transformer doing `r["x"].(float64)` stops working, because
+	// the value becomes a json.Number. Use pycompat.Text, or
 	// json.Number.Float64().
 	PreserveNumbers bool
 
-	// Delimiter e o separador de campos do CSV. Zero usa a virgula.
+	// Delimiter is the CSV's field separator. Zero uses the comma.
 	//
-	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
-	// dados abertos brasileiro. Sem esta opcao, a saida era cair no Records e
-	// decodificar o CSV a mao -- ou seja, reimplementar o csv.Reader para
-	// trocar um caractere.
+	// `;` is the de-facto standard across much of Europe and in nearly every
+	// open-data portal. Without this option the way out was falling back to
+	// Records and decoding the CSV by hand -- that is, reimplementing csv.Reader
+	// to change one character.
 	Delimiter rune
 
 	// NoHeader, for CSV: treat every row as data with field_N keys. The
@@ -460,17 +460,17 @@ type Source struct {
 	OffsetKey   string
 	DataKey     string
 
-	// MoreKey e o caminho, separado por pontos, para um booleano na resposta
-	// que diz se ha proxima pagina. Falso encerra a paginacao.
+	// MoreKey is the dot-separated path to a boolean in the response saying
+	// whether there is a next page. False ends the pagination.
 	//
 	//	MoreKey: "pageMeta.hasNextPage"
 	//
-	// Ele nao e uma estrategia: e um CRITERIO DE PARADA, e combina com
-	// qualquer uma das quatro. Sem ele a parada e sempre a pagina vazia, o que
-	// custa uma requisicao a mais POR ORIGEM -- num fan-out de centenas de
-	// origens, centenas de requisicoes por execucao.
+	// It is not a strategy: it is a STOPPING CRITERION, and it combines with any
+	// of the four. Without it the stop is always the empty page, which costs one
+	// extra request PER SOURCE -- in a fan-out over hundreds of sources,
+	// hundreds of requests per run.
 	//
-	// A parada por pagina vazia continua valendo como rede de seguranca.
+	// Stopping on the empty page still applies, as a safety net.
 	MoreKey string
 
 	// FirstPage is the number the first page carries, for PageKey. Zero
@@ -584,8 +584,8 @@ func WithKeepStagedFile(keep bool) LoadOption {
 }
 
 // WithColumns declares the destination's columns. See LoadConfig.Columns.
-// WithSchema declara as colunas COM tipo, que e o que o destino precisa para
-// criar a tabela. Ver sdk.Target.Schema.
+// WithSchema declares the columns WITH types, which is what the destination
+// needs to create the table. See sdk.Target.Schema.
 func WithSchema(s Schema) LoadOption {
 	return func(cfg *LoadConfig) {
 		cfg.Schema = s
