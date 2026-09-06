@@ -7,24 +7,24 @@ import (
 	"strings"
 )
 
-// Param e um parametro de execucao: o que muda entre dois disparos do MESMO
-// workflow sem editar o arquivo.
+// Param is a run parameter: what changes between two triggers of the SAME
+// workflow without editing the file.
 //
-// Era a maior distancia entre este motor e o Kestra/Leoflow. Sem params nao ha
-// backfill (`load_full=true`) nem reprocessamento de janela, e oito dos 51 flows
-// do repositorio de dados sequer podiam ser convertidos — o comando deles carrega
-// `{{ inputs.start_date }}` e afins.
+// It was the largest distance between this engine and Kestra/Leoflow. Without
+// params there is no backfill (`load_full=true`) and no window reprocessing, and
+// eight of the data repository's 51 flows could not even be converted — their
+// command carries `{{ inputs.start_date }}` and the like.
 type Param struct {
 	Nome      string
 	Tipo      TipoParam
 	Padrao    string
 	Descricao string
 
-	// Enum restringe os valores aceitos. Vazio = qualquer um que passe no tipo.
+	// Enum restricts the accepted values. Empty = any that passes the type.
 	Enum []string
 
-	// Pattern e uma expressao regular que o valor precisa casar. Existe para o
-	// autor AMPLIAR o que o tipo `string` aceita por padrao — ver `seguro`.
+	// Pattern is a regular expression the value has to match. It exists for the
+	// author to WIDEN what the `string` type accepts by default — see `seguro`.
 	Pattern string
 }
 
@@ -36,14 +36,14 @@ const (
 	ParamInteiro TipoParam = "integer"
 )
 
-// caracteresSeguros e o que um `string` aceita quando o autor nao declara
+// caracteresSeguros is what a `string` accepts when the author declares no
 // `pattern`.
 //
-// Isto e defesa contra injecao de shell, nao purismo: o valor de um param vai
-// PARA DENTRO da linha de comando do passo, e quem dispara um run nao e
-// necessariamente quem escreveu o workflow. Sem a restricao,
-// `--date {{ .data }}` com `data = "; rm -rf /"` seria execucao arbitraria no
-// worker.
+// This is a defence against shell injection, not purism: a param's value goes
+// INTO the step's command line, and whoever triggers a run is not necessarily
+// whoever wrote the workflow. Without the restriction,
+// `--date {{ .date }}` with `date = "; rm -rf /"` would be arbitrary execution
+// on the worker.
 //
 // O conjunto cobre o que os params reais deste repositorio precisam — datas,
 // selectors do dbt, uids, caminhos, listas separadas por virgula — e deixa de

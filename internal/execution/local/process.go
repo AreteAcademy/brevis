@@ -1,11 +1,12 @@
-// Package local implementa a execucao de processos no host.
+// Package local implements running processes on the host.
 //
-// Existe por causa da emenda de 2026-08-31 a secao 3 do plano: o texto original
-// exigia Kubernetes para qualquer linguagem que nao fosse Go, o que inviabilizava
-// desenvolver na propria instancia.
+// It exists because of the 2026-08-31 amendment to section 3 of the plan: the
+// original text required Kubernetes for any language that was not Go, which made
+// developing on the instance itself impossible.
 //
-// A fronteira e codigo, nao convencao: New recusa-se a construir o executor fora
-// do modo local. Um `run:` sem limite declarado e o risco real — nao o comando.
+// The boundary is code, not convention: New refuses to build the executor
+// outside local mode. A `run:` with no declared limit is the real risk — not the
+// command.
 package local
 
 import (
@@ -22,7 +23,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// ProcessExecutor roda comandos arbitrarios como processos do host.
+// ProcessExecutor runs arbitrary commands as host processes.
 type ProcessExecutor struct {
 	shell string
 
@@ -30,8 +31,8 @@ type ProcessExecutor struct {
 	rodando map[string]context.CancelFunc
 }
 
-// ErrForaDoLocal e devolvido quando se tenta construir o executor fora do modo
-// local. Tipado para poder ser afirmado em teste.
+// ErrForaDoLocal is returned when the executor is built outside local mode.
+// Typed so a test can assert on it.
 type ErrForaDoLocal struct{ Env string }
 
 func (e ErrForaDoLocal) Error() string {
@@ -39,7 +40,7 @@ func (e ErrForaDoLocal) Error() string {
 		"fora do local, `run:` deve ir para o KubernetesExecutor", e.Env)
 }
 
-// New devolve o executor, ou recusa se o ambiente nao for local.
+// New returns the executor, or refuses when the environment is not local.
 func New(env string) (*ProcessExecutor, error) {
 	if env != "local" {
 		return nil, ErrForaDoLocal{Env: env}
@@ -47,17 +48,17 @@ func New(env string) (*ProcessExecutor, error) {
 	return &ProcessExecutor{shell: "/bin/sh", rodando: map[string]context.CancelFunc{}}, nil
 }
 
-// ambienteDaTask monta o env do processo: os literais, e os segredos lidos do
-// ambiente do proprio motor.
+// ambienteDaTask assembles the process's env: the literals, plus the secrets
+// read out of the engine's own environment.
 //
-// No Kubernetes a coordenada `gabriel-session/cookie` aponta um Secret. Aqui
-// nao ha Secret nenhum, entao o motor le a variavel de MESMO NOME do proprio
-// ambiente. A assimetria e deliberada e esta documentada no dominio; o que ela
-// nao pode fazer e falhar em silencio.
+// In Kubernetes the coordinate `gabriel-session/cookie` points at a Secret. Here
+// there is no Secret at all, so the engine reads the SAME-NAMED variable out of
+// its own environment. The asymmetry is deliberate and is documented in the
+// domain; what it must not do is fail in silence.
 //
-// Ausente e ERRO, e nao string vazia. Um GABRIEL_SESSION_COOKIE vazio vira um
-// header de cookie vazio e um 401 la na frente, culpando a API por uma
-// variavel que ninguem exportou.
+// Absent is an ERROR, and not an empty string. An empty GABRIEL_SESSION_COOKIE
+// becomes an empty cookie header and a 401 further down, blaming the API for a
+// variable nobody exported.
 func ambienteDaTask(t execution.TaskExec) ([]string, error) {
 	env := make(map[string]string, len(t.Env)+len(t.Secrets))
 	for k, v := range t.Env {
@@ -84,16 +85,17 @@ func ambienteDaTask(t execution.TaskExec) ([]string, error) {
 	for k, v := range env {
 		out = append(out, k+"="+v)
 	}
-	// Ordenado para que dois processos iguais tenham o mesmo env: sem isso, um
-	// diff entre duas execucoes vira ruido de ordem de mapa.
+	// Sorted so two identical processes get the same env: without it, a diff
+	// between two runs becomes map-ordering noise.
 	sort.Strings(out)
 	return out, nil
 }
 
 func (p *ProcessExecutor) Name() string { return "process" }
 
-// Execute dispara o comando e devolve o canal de eventos. O canal fecha quando o
-// processo termina — quem consome pode usar `range` sem coordenacao extra.
+// Execute fires the command and returns the event channel. The channel closes
+// when the process ends — the consumer can `range` over it with no extra
+// coordination.
 func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	if t.Command == "" {
 		return nil, fmt.Errorf("task %q has no command", t.NodeID)
@@ -101,8 +103,8 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 
 	ctx, cancel := context.WithCancel(ctx)
 	if t.Timeout > 0 {
-		// CommandContext mata o processo quando o contexto expira, entao o
-		// timeout vale para o comando inteiro, nao so para a espera.
+		// CommandContext kills the process when the context expires, so the
+		// timeout covers the whole command and not just the wait.
 		ctx, cancel = context.WithTimeout(ctx, t.Timeout)
 	}
 
@@ -110,16 +112,16 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	p.rodando[t.ExecutionID] = cancel
 	p.mu.Unlock()
 
-	// `sh -c` porque o YAML declara uma linha de shell ("python fetch.py"), nao
-	// um argv. Aceitar a linha e o ponto do `run:`.
+	// `sh -c` because the YAML declares a shell line ("python fetch.py"), not an
+	// argv. Accepting the line is the point of `run:`.
 	cmd := exec.CommandContext(ctx, p.shell, "-c", t.Command)
 	cmd.Dir = t.WorkDir
 
-	// Ambiente explicito, sem herdar o do processo pai: o orquestrador carrega
-	// credenciais que uma task nao deve enxergar por acidente.
+	// An explicit environment, without inheriting the parent process's: the
+	// orchestrator carries credentials a task must not see by accident.
 	//
-	// `secrets:` e justamente o opt-in nominal contra essa regra -- "esta, de
-	// proposito" -- e por isso ele resolve DEPOIS, podendo sobrescrever.
+	// `secrets:` is precisely the named opt-in against that rule -- "this one,
+	// on purpose" -- which is why it resolves AFTERWARDS, and can override.
 	ambiente, err := ambienteDaTask(t)
 	if err != nil {
 		cancel()
@@ -176,7 +178,7 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	return eventos, nil
 }
 
-// Cancel interrompe uma execucao em voo.
+// Cancel interrupts a run in flight.
 func (p *ProcessExecutor) Cancel(_ context.Context, execID string) error {
 	p.mu.Lock()
 	cancel, ok := p.rodando[execID]

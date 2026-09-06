@@ -1,16 +1,16 @@
-// Package kubernetes executa cada passo de um workflow como um POD proprio.
+// Package kubernetes runs each step of a workflow as a POD of its own.
 //
-// A dinamica e a da secao 2 do plano, e e o que separa este motor de um worker
-// monolitico: o pod sobe com a imagem EXATA do passo, roda um comando, reporta e
-// morre. Um passo de dbt sobe a imagem de dbt com 1Gi; o fetcher em Go ao lado
-// sobe uma imagem de 10 MB com 32Mi. Numa imagem unica os dois pagariam o maior
-// dos dois — em bytes de pull, em memoria reservada e em superficie.
+// The dynamic is section 2's, and it is what separates this engine from a
+// monolithic worker: the pod starts with the step's EXACT image, runs a command,
+// reports and dies. A dbt step starts the dbt image with 1Gi; the Go fetcher next
+// to it starts a 10 MB image with 32Mi. Under a single image both would pay the
+// larger of the two — in pull bytes, in reserved memory and in surface.
 //
-// O cliente e escrito sobre a stdlib, sem client-go. A biblioteca oficial traz
-// centenas de dependencias e dezenas de MB para o que aqui sao quatro chamadas
+// The client is written on the stdlib, with no client-go. The official library
+// brings hundreds of dependencies and tens of MB for what here are four calls
 // REST: criar pod, ler status, ler log, apagar pod. A mesma escolha ja foi feita
-// para o React (bundle vendorizado) e para o CSS (Tailwind standalone): o custo
-// de uma dependencia grande so se paga quando se usa uma fracao grande dela.
+// for React (a vendored bundle) and for the CSS (standalone Tailwind): a large
+// dependency's cost only pays for itself when a large fraction of it is used.
 package kubernetes
 
 import (
@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-// Caminhos que o kubelet monta em todo pod com service account.
+// The paths the kubelet mounts in every pod with a service account.
 const (
 	dirSA        = "/var/run/secrets/kubernetes.io/serviceaccount"
 	arquivoToken = dirSA + "/token"
@@ -36,15 +36,16 @@ const (
 	arquivoNS    = dirSA + "/namespace"
 )
 
-// Cliente fala com o servidor de API.
+// Cliente speaks to the API server.
 type Cliente struct {
 	base      string
 	namespace string
 	http      *http.Client
 
-	// O token e lido do disco a cada uso, com cache curto. Tokens projetados
-	// EXPIRAM e o kubelet os reescreve no lugar; guardar o valor no boot faz o
-	// processo comecar a receber 401 depois de uma hora — falha que aparece
+	// The token is read off disk on every use, with a short cache. Projected
+	// tokens EXPIRE and the kubelet rewrites them in place; keeping the value
+	// from boot makes the process start getting 401s after an hour — a failure
+	// that shows up
 	// tarde e parece problema de RBAC.
 	mu         sync.Mutex
 	token      string
@@ -53,14 +54,14 @@ type Cliente struct {
 	lerArquivo func(string) ([]byte, error)
 }
 
-// ErrForaDoCluster e devolvido quando nao ha service account montada.
+// ErrForaDoCluster is returned when there is no service account mounted.
 type ErrForaDoCluster struct{ Motivo string }
 
 func (e ErrForaDoCluster) Error() string {
 	return "fora de um cluster Kubernetes: " + e.Motivo
 }
 
-// NoCluster monta o cliente a partir do ambiente que o kubelet injeta.
+// NoCluster builds the client out of the environment the kubelet injects.
 func NoCluster() (*Cliente, error) {
 	host, porta := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
 	if host == "" || porta == "" {
@@ -85,15 +86,15 @@ func NoCluster() (*Cliente, error) {
 	return &Cliente{
 		base:      fmt.Sprintf("https://%s", net_(host, porta)),
 		namespace: strings.TrimSpace(string(ns)),
-		// Sem timeout no cliente: o GET de log com follow fica aberto pela
-		// duracao inteira da task. O corte vem do contexto de cada chamada.
+		// No timeout on the client: the log GET with follow stays open for the
+		// task's whole duration. The cut comes from each call's context.
 		http:       &http.Client{Transport: transporte},
 		tokenTTL:   time.Minute,
 		lerArquivo: os.ReadFile,
 	}, nil
 }
 
-// Namespace onde os pods sao criados.
+// Namespace is where the pods are created.
 func (c *Cliente) Namespace() string { return c.namespace }
 
 func (c *Cliente) autorizar(r *http.Request) error {
@@ -132,9 +133,9 @@ func (c *Cliente) requisicao(ctx context.Context, metodo, caminho string, corpo 
 	return c.http.Do(req)
 }
 
-// erroDaAPI transforma o Status do Kubernetes em erro legivel. O corpo tras o
-// motivo real ("pods is forbidden: ... cannot create resource"), e descarta-lo
-// deixaria so "422", que nao ajuda ninguem.
+// erroDaAPI turns Kubernetes's Status into a readable error. The body carries
+// the real reason ("pods is forbidden: ... cannot create resource"), and
+// discarding it would leave only "422", which helps nobody.
 func erroDaAPI(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 	var status struct {
@@ -187,8 +188,9 @@ func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
 	return p, nil
 }
 
-// Logs abre o stream de saida do container. Com `follow`, a resposta so termina
-// quando o container termina — e por isso que nao ha timeout no http.Client.
+// Logs opens the container's output stream. With `follow`, the response only
+// ends when the container ends — which is why there is no timeout on the
+// http.Client.
 func (c *Cliente) Logs(ctx context.Context, nome string, seguir bool) (io.ReadCloser, error) {
 	q := url.Values{}
 	q.Set("container", nomeContainer)
@@ -213,7 +215,7 @@ func (c *Cliente) ApagarPod(ctx context.Context, nome string) error {
 	if err != nil {
 		return err
 	}
-	// 404 e sucesso para quem apaga: o objetivo era o pod nao existir mais.
+	// A 404 is success for a delete: the goal was for the pod to be gone.
 	if res.StatusCode >= 300 && res.StatusCode != http.StatusNotFound {
 		return erroDaAPI(res)
 	}

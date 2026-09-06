@@ -5,23 +5,24 @@ import (
 	"strings"
 )
 
-// TetoDoLog e quanto da saida de um passo vai para o banco.
+// TetoDoLog is how much of a step's output goes to the database.
 //
-// 128 KB cobre com folga uma run de dbt com 60 nos (~25 KB de texto) e ainda
-// segura um backfill barulhento. O teto existe porque um `while true; do echo`
-// num workflow qualquer nao pode encher o disco do Postgres.
+// 128 KB comfortably covers a dbt run with 60 nodes (~25 KB of text) and still
+// holds a noisy backfill. The ceiling exists because a `while true; do echo` in
+// any workflow must not be able to fill Postgres's disk.
 const TetoDoLog = 128 << 10
 
-// fatiaDoInicio e quanto do teto fica reservado para o COMECO da saida quando
-// ela nao cabe inteira. So o fim seria mais simples, mas perderia o comando que
-// rodou e a configuracao que ele imprimiu na largada — metade do diagnostico.
+// fatiaDoInicio is how much of the ceiling is reserved for the START of the
+// output when it does not fit whole. Only the end would be simpler, but it would
+// lose the command that ran and the configuration it printed at the outset —
+// half the diagnosis.
 const fatiaDoInicio = TetoDoLog / 4
 
-// janela acumula a saida de um passo respeitando o teto, guardando o comeco e o
-// fim e dizendo quanto descartou no meio.
+// janela accumulates a step's output within the ceiling, keeping the start and
+// the end and saying how much it discarded in the middle.
 //
-// A alternativa — cortar quando estoura e ficar so com o comeco — perde
-// exatamente o trecho onde um programa relata por que falhou.
+// The alternative — cutting when it overflows and keeping only the start — loses
+// exactly the stretch where a program reports why it failed.
 type janela struct {
 	inicio  strings.Builder
 	fim     []string // buffer circular das linhas recentes
@@ -29,7 +30,7 @@ type janela struct {
 	cortado int      // bytes descartados no meio
 }
 
-// Escrever acrescenta uma linha.
+// Escrever appends one line.
 func (j *janela) Escrever(linha string) {
 	n := len(linha) + 1 // +1 pela quebra
 
@@ -42,8 +43,9 @@ func (j *janela) Escrever(linha string) {
 	j.fim = append(j.fim, linha)
 	j.fimLen += n
 
-	// Descarta pela frente ate voltar ao teto. O que sai daqui ja passou pelo
-	// comeco, entao e mesmo o miolo — a parte menos util das duas pontas.
+	// It discards from the front until it is back under the ceiling. What leaves
+	// here already went past the start, so it really is the middle — the least
+	// useful part of the two ends.
 	for j.fimLen > TetoDoLog-fatiaDoInicio && len(j.fim) > 1 {
 		j.cortado += len(j.fim[0]) + 1
 		j.fimLen -= len(j.fim[0]) + 1
@@ -51,17 +53,17 @@ func (j *janela) Escrever(linha string) {
 	}
 }
 
-// String monta o texto final, com a marca do que ficou de fora.
+// String assembles the final text, with a marker for what was left out.
 //
-// Toda linha sai terminada em quebra, inclusive a ultima: um log em que as
-// primeiras linhas terminam em \n e as ultimas nao e desconfortavel de ler e
-// arma armadilha para quem for concatenar depois.
+// Every line comes out newline-terminated, the last one included: a log where
+// the first lines end in \n and the last ones do not is uncomfortable to read and
+// sets a trap for whoever concatenates it later.
 func (j *janela) String() string {
 	if j.cortado == 0 {
 		return j.inicio.String() + linhas(j.fim)
 	}
-	// A marca e explicita: um log truncado em silencio faz o leitor concluir
-	// que o programa parou ali.
+	// The marker is explicit: a log truncated in silence makes the reader
+	// conclude the program stopped there.
 	var b strings.Builder
 	b.WriteString(j.inicio.String())
 	fmt.Fprintf(&b, "\n[... %s omitted by the %s per-step limit ...]\n\n",
@@ -70,8 +72,8 @@ func (j *janela) String() string {
 	return b.String()
 }
 
-// linhas junta terminando cada uma com quebra. Vazio continua vazio — nao gera
-// uma quebra solta.
+// linhas joins them terminating each with a newline. Empty stays empty — it does
+// not produce a stray newline.
 func linhas(ls []string) string {
 	if len(ls) == 0 {
 		return ""

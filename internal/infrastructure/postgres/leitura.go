@@ -9,13 +9,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Este arquivo concentra as consultas de LEITURA que a UI faz.
+// This file holds the READ queries the UI makes.
 //
-// Separado dos repositorios de escrita de proposito: a UI precisa de projecoes
-// achatadas e agregados, que nao correspondem as entidades de dominio. Misturar
-// as duas coisas faria o dominio carregar campos que so existem para a tela.
+// Kept apart from the write repositories on purpose: the UI needs flattened
+// projections and aggregates, which do not correspond to the domain's entities.
+// Mixing the two would make the domain carry fields that exist only for the
+// screen.
 
-// ResumoRun e uma linha da lista de execucoes.
+// ResumoRun is one row of the run list.
 type ResumoRun struct {
 	ID           string
 	WorkflowSlug string
@@ -29,7 +30,7 @@ type ResumoRun struct {
 	Erro         string
 }
 
-// ResumoWorkflow junta o workflow, sua agenda e o estado da ultima execucao.
+// ResumoWorkflow joins the workflow, its schedule and the last run's state.
 type ResumoWorkflow struct {
 	Slug         string
 	Nome         string
@@ -43,19 +44,19 @@ type ResumoWorkflow struct {
 	UltimoStatus string
 	TotalRuns    int
 
-	// Da ultima execucao — a coluna "Latest Run" da lista.
+	// From the last run — the list's "Latest Run" column.
 	UltimaRunID *string
 	UltimaRunEm *time.Time
 
 	Tags []string
 
-	// ProximaRun nao vem do banco: e calculada a partir do cron, no consumidor.
-	// Guardar no banco exigiria recalcular a cada mudanca de agenda e conviver
-	// com o valor obsoleto entre uma e outra.
+	// ProximaRun does not come from the database: it is computed from the cron,
+	// in the consumer. Storing it would demand a recompute on every schedule
+	// change and living with a stale value in between.
 	ProximaRun *time.Time
 }
 
-// Indicadores e o cabecalho do Overview.
+// Indicadores is the Overview's header.
 type Indicadores struct {
 	Total        int
 	Sucesso      int
@@ -65,11 +66,11 @@ type Indicadores struct {
 	DuracaoMedia time.Duration
 }
 
-// Razao devolve o percentual de `parte` sobre o total ja concluido.
+// Razao returns `parte` as a percentage of everything already finished.
 //
-// O denominador exclui o que ainda esta correndo: contar uma run em andamento
-// como "nao-sucesso" faz a taxa despencar durante um pico de trabalho e subir
-// sozinha depois, sem que nada tenha mudado.
+// The denominator excludes what is still running: counting an in-flight run as
+// a "non-success" makes the rate plunge during a burst of work and climb back on
+// its own afterwards, with nothing having changed.
 func (i Indicadores) Razao(parte int) float64 {
 	concluidas := i.Sucesso + i.Falha
 	if concluidas == 0 {
@@ -78,7 +79,7 @@ func (i Indicadores) Razao(parte int) float64 {
 	return float64(parte) * 100 / float64(concluidas)
 }
 
-// Balde e uma coluna do grafico de execucoes.
+// Balde is one column of the run chart.
 type Balde struct {
 	Inicio       time.Time
 	Sucesso      int
@@ -88,10 +89,10 @@ type Balde struct {
 	DuracaoMedia time.Duration
 }
 
-// Total soma o balde inteiro — a altura da coluna.
+// Total sums the whole bucket — the column's height.
 func (b Balde) Total() int { return b.Sucesso + b.Falha + b.Executando + b.Fila }
 
-// AgendaResumo e o minimo para calcular o proximo disparo.
+// AgendaResumo is the minimum needed to compute the next trigger.
 type AgendaResumo struct {
 	WorkflowSlug string
 	Cron         string
@@ -99,7 +100,7 @@ type AgendaResumo struct {
 	Ativo        bool
 }
 
-// ResumoProjeto conta o que existe sob um projeto.
+// ResumoProjeto counts what exists under a project.
 type ResumoProjeto struct {
 	Slug      string
 	Nome      string
@@ -108,12 +109,12 @@ type ResumoProjeto struct {
 	CriadoEm  time.Time
 }
 
-// LeituraRepo serve a UI.
+// LeituraRepo serves the UI.
 type LeituraRepo struct{ pool *Pool }
 
 func NewLeituraRepo(p *Pool) *LeituraRepo { return &LeituraRepo{pool: p} }
 
-// ContagemPorStatus alimenta os cartoes do dashboard.
+// ContagemPorStatus feeds the dashboard's cards.
 func (r *LeituraRepo) ContagemPorStatus(ctx context.Context) (map[string]int, error) {
 	linhas, err := r.pool.Query(ctx, `SELECT status, count(*) FROM runs GROUP BY status`)
 	if err != nil {
@@ -133,7 +134,7 @@ func (r *LeituraRepo) ContagemPorStatus(ctx context.Context) (map[string]int, er
 	return out, linhas.Err()
 }
 
-// UltimasRuns lista as execucoes mais recentes.
+// UltimasRuns lists the most recent runs.
 func (r *LeituraRepo) UltimasRuns(ctx context.Context, limite int) ([]ResumoRun, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
@@ -148,8 +149,8 @@ func (r *LeituraRepo) UltimasRuns(ctx context.Context, limite int) ([]ResumoRun,
 	return varrerRuns(linhas)
 }
 
-// varrerRuns le as colunas que UltimasRuns e EmAndamento selecionam, na mesma
-// ordem. Duas varreduras identicas divergiriam na primeira coluna nova.
+// varrerRuns reads the columns UltimasRuns and EmAndamento select, in the same
+// order. Two identical scans would diverge on the first new column.
 func varrerRuns(linhas pgx.Rows) ([]ResumoRun, error) {
 	var out []ResumoRun
 	for linhas.Next() {
@@ -160,8 +161,9 @@ func varrerRuns(linhas pgx.Rows) ([]ResumoRun, error) {
 			return nil, err
 		}
 		r.IniciadoEm = ini
-		// Duracao so existe quando a execucao de fato comecou E terminou;
-		// calcular com um dos lados nulo produziria numero sem significado.
+		// Duracao only exists when the run actually started AND finished;
+		// computing it with either side null would produce a meaningless
+		// number.
 		if ini != nil && fim != nil {
 			d := fim.Sub(*ini)
 			r.Duracao = &d
@@ -171,7 +173,7 @@ func varrerRuns(linhas pgx.Rows) ([]ResumoRun, error) {
 	return out, linhas.Err()
 }
 
-// Workflows lista os workflows publicados com sua agenda e ultimo estado.
+// Workflows lists the published workflows with their schedule and last state.
 func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT w.slug, w.name, p.slug,
@@ -180,11 +182,11 @@ func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 		       s.workflow_slug IS NOT NULL, s.ultimo_slot,
 		       COALESCE(u.status, ''), u.id::text, u.criado_em,
 		       (SELECT count(*) FROM runs WHERE workflow_slug = w.slug),
-		       -- A chave Tags pode nao existir (workflow publicado antes do
-		       -- campo) ou vir como JSON null (sem tags). Nos dois casos a
-		       -- expansao estoura com "cannot extract elements from a scalar" e
-		       -- derruba a lista inteira por causa de UMA linha. O CASE
-		       -- normaliza para array vazio antes de expandir.
+		       -- The Tags key may not exist (a workflow published before the
+		       -- field) or arrive as JSON null (no tags). In both cases the
+		       -- expansion blows up with "cannot extract elements from a scalar"
+		       -- and takes the whole list down over ONE row. The CASE normalizes
+		       -- it to an empty array before expanding.
 		       COALESCE((
 		           SELECT array_agg(t) FROM jsonb_array_elements_text(
 		               CASE WHEN jsonb_typeof(w.definicao->'Tags') = 'array'
@@ -193,9 +195,9 @@ func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 		FROM workflows w
 		JOIN projects p ON p.id = w.project_id
 		LEFT JOIN schedules s ON s.workflow_slug = w.slug
-		-- LATERAL em vez de subselect por coluna: assim id, status e instante da
-		-- ultima execucao vem da MESMA linha. Tres subselects independentes
-		-- poderiam misturar runs diferentes.
+		-- LATERAL rather than a subselect per column: this way the id, the status
+		-- and the instant of the last run come from the SAME row. Three
+		-- independent subselects could mix different runs.
 		LEFT JOIN LATERAL (
 		    SELECT id, status, criado_em FROM runs
 		    WHERE workflow_slug = w.slug ORDER BY criado_em DESC LIMIT 1
@@ -219,7 +221,7 @@ func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 	return out, linhas.Err()
 }
 
-// Projetos lista os projetos com seus totais.
+// Projetos lists the projects with their totals.
 func (r *LeituraRepo) Projetos(ctx context.Context) ([]ResumoProjeto, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT p.slug, p.name, p.created_at,
@@ -244,7 +246,7 @@ func (r *LeituraRepo) Projetos(ctx context.Context) ([]ResumoProjeto, error) {
 	return out, linhas.Err()
 }
 
-// ProfundidadeDaFila mostra a fila no dashboard.
+// ProfundidadeDaFila shows the queue on the dashboard.
 func (r *LeituraRepo) ProfundidadeDaFila(ctx context.Context) (pendentes, reivindicados int, err error) {
 	err = r.pool.QueryRow(ctx, `
 		SELECT count(*) FILTER (WHERE reivindicado_em IS NULL),
@@ -253,10 +255,10 @@ func (r *LeituraRepo) ProfundidadeDaFila(ctx context.Context) (pendentes, reivin
 	return
 }
 
-// Indicadores agrega a janela recente para os quatro cartoes do topo.
+// Indicadores aggregates the recent window for the four cards at the top.
 //
-// Uma consulta so, com FILTER, em vez de quatro: sao quatro varreduras da mesma
-// tabela sobre o mesmo predicado de tempo.
+// One query, with FILTER, rather than four: those would be four scans of the
+// same table over the same time predicate.
 func (r *LeituraRepo) Indicadores(ctx context.Context, janela time.Duration) (Indicadores, error) {
 	var i Indicadores
 	var mediaMs *float64
@@ -280,11 +282,11 @@ func (r *LeituraRepo) Indicadores(ctx context.Context, janela time.Duration) (In
 	return i, nil
 }
 
-// ExecucoesPorHora devolve uma coluna por hora, INCLUSIVE as vazias.
+// ExecucoesPorHora returns one column per hour, the empty ones INCLUDED.
 //
-// O `generate_series` a esquerda e o ponto: sem ele, uma hora sem execucao
-// simplesmente nao apareceria e o grafico comprimiria o tempo, dando a impressao
-// de atividade continua onde houve um buraco.
+// The left `generate_series` is the point: without it an hour with no run
+// simply would not appear, and the chart would compress time, giving the
+// impression of continuous activity where there was a gap.
 func (r *LeituraRepo) ExecucoesPorHora(ctx context.Context, horas int) ([]Balde, error) {
 	linhas, err := r.pool.Query(ctx, `
 		WITH janela AS (
@@ -325,10 +327,10 @@ func (r *LeituraRepo) ExecucoesPorHora(ctx context.Context, horas int) ([]Balde,
 	return out, linhas.Err()
 }
 
-// EmAndamento lista o que esta correndo ou esperando vez, mais antigo primeiro.
+// EmAndamento lists what is running or waiting its turn, oldest first.
 //
-// A ordem e crescente de proposito: quem esta ha mais tempo na fila e o que
-// merece atencao, e ordenar pelo mais recente esconderia exatamente isso.
+// The order is ascending on purpose: whatever has been in the queue longest is
+// what deserves attention, and sorting by most recent would hide exactly that.
 func (r *LeituraRepo) EmAndamento(ctx context.Context, limite int) ([]ResumoRun, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
@@ -344,8 +346,8 @@ func (r *LeituraRepo) EmAndamento(ctx context.Context, limite int) ([]ResumoRun,
 	return varrerRuns(linhas)
 }
 
-// Agendas devolve todas as agendas, ativas ou nao. A lista de DAGs mostra as
-// pausadas tambem — some-las da tela seria esconder o motivo de nada rodar.
+// Agendas returns every schedule, active or not. The DAG list shows the paused
+// ones too — hiding them from the screen would hide the reason nothing runs.
 func (r *LeituraRepo) Agendas(ctx context.Context) ([]AgendaResumo, error) {
 	linhas, err := r.pool.Query(ctx,
 		`SELECT workflow_slug, cron, timezone, ativo FROM schedules ORDER BY workflow_slug`)
@@ -365,7 +367,7 @@ func (r *LeituraRepo) Agendas(ctx context.Context) ([]AgendaResumo, error) {
 	return out, linhas.Err()
 }
 
-// RunsDoWorkflow lista as execucoes de um workflow so, para a tela dele.
+// RunsDoWorkflow lists the runs of a single workflow, for its own screen.
 func (r *LeituraRepo) RunsDoWorkflow(ctx context.Context, slug string, limite int) ([]ResumoRun, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
@@ -381,7 +383,7 @@ func (r *LeituraRepo) RunsDoWorkflow(ctx context.Context, slug string, limite in
 	return varrerRuns(linhas)
 }
 
-// FiltroRuns e a consulta da tela de execucoes. Campos vazios nao filtram.
+// FiltroRuns is the run screen's query. Empty fields do not filter.
 type FiltroRuns struct {
 	Estado   string
 	Workflow string
@@ -391,8 +393,8 @@ type FiltroRuns struct {
 	Offset   int
 }
 
-// where monta o predicado e os argumentos juntos, para que um nunca saia de
-// sincronia com o outro — o jeito mais comum de errar SQL dinamico.
+// where builds the predicate and the arguments together, so one never drifts
+// out of sync with the other — the most common way to get dynamic SQL wrong.
 func (f FiltroRuns) where() (string, []any) {
 	cond := []string{"true"}
 	var args []any
@@ -415,7 +417,7 @@ func (f FiltroRuns) where() (string, []any) {
 	return strings.Join(cond, " AND "), args
 }
 
-// Runs lista execucoes com filtro e paginacao.
+// Runs lists runs with filtering and pagination.
 func (r *LeituraRepo) Runs(ctx context.Context, f FiltroRuns) ([]ResumoRun, error) {
 	if f.Limite <= 0 {
 		f.Limite = 50
@@ -437,8 +439,8 @@ func (r *LeituraRepo) Runs(ctx context.Context, f FiltroRuns) ([]ResumoRun, erro
 	return varrerRuns(linhas)
 }
 
-// ContarRuns devolve o total do MESMO filtro, para a paginacao saber quantas
-// paginas existem.
+// ContarRuns returns the total for the SAME filter, so the pagination knows how
+// many pages there are.
 func (r *LeituraRepo) ContarRuns(ctx context.Context, f FiltroRuns) (int, error) {
 	predicado, args := f.where()
 	var n int

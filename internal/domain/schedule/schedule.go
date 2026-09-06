@@ -1,12 +1,13 @@
-// Package schedule decide QUANDO um workflow deve rodar.
+// Package schedule decides WHEN a workflow should run.
 //
-// A secao 37 do plano separa as responsabilidades sem ambiguidade: o scheduler
-// CRIA runs, a fila as EXECUTA. Este pacote nao conhece fila, executor nem
-// banco — ele responde a uma pergunta pura: dados o cron, o fuso, o ultimo slot
+// Section 37 of the plan separates the responsibilities without ambiguity: the
+// scheduler CREATES runs, the queue EXECUTES them. This package knows nothing of
+// the queue, the executor or the database — it answers a pure question: given
+// the cron, the timezone, the last slot
 // materializado e o instante atual, quais slots faltam?
 //
-// Isolar isso e o que torna a politica de catchup testavel sem relogio falso e
-// sem Postgres.
+// Isolating that is what makes the catchup policy testable with no fake clock
+// and no Postgres.
 package schedule
 
 import (
@@ -16,7 +17,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// TriggerType diz por que um run nasceu (secao 12).
+// TriggerType says why a run came into being (section 12).
 type TriggerType string
 
 const (
@@ -44,8 +45,9 @@ type Schedule struct {
 
 // Parse valida o cron e o fuso, devolvendo o agendador pronto.
 //
-// Valida os dois JUNTOS porque um cron valido num fuso invalido nao agenda nada,
-// e o erro so apareceria no laco do scheduler, longe de quem escreveu o arquivo.
+// It validates both TOGETHER because a valid cron in an invalid timezone
+// schedules nothing, and the error would only surface in the scheduler's loop,
+// far from whoever wrote the file.
 func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 	tz := s.Timezone
 	if tz == "" {
@@ -56,7 +58,7 @@ func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 		return nil, nil, fmt.Errorf("timezone %q is not valid: %w", tz, err)
 	}
 
-	// Sem segundos: "0 2 * * *" e cron de 5 campos, como no YAML do plano.
+	// No seconds: "0 2 * * *" is a 5-field cron, as in the plan's YAML.
 	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	sched, err := p.Parse(s.Cron)
 	if err != nil {
@@ -65,18 +67,19 @@ func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 	return sched, loc, nil
 }
 
-// Slots devolve os instantes que ainda precisam virar Run, ate `agora`.
+// Slots returns the instants that still have to become a Run, up to `agora`.
 //
 // A politica de catchup e a decisao central desta fase:
 //
-//   - catchup=true  → TODOS os slots perdidos viram run. Serve para pipeline em
-//     que cada dia tem significado proprio e uma lacuna precisa ser preenchida.
-//   - catchup=false → apenas o slot mais recente. Serve para o caso em que so o
+//   - catchup=true  → EVERY missed slot becomes a run. It serves a pipeline
+//     where each day has a meaning of its own and a gap has to be filled.
+//   - catchup=false → only the most recent slot. It serves the case where only
+//     the
 //     estado atual importa, e reprocessar trinta dias seria desperdicio.
 //
-// `limite` corta a quantidade: um workflow parado por meses com catchup=true
-// criaria milhares de runs de uma vez e afogaria a fila. Devolver o excedente
-// como `truncado` deixa isso visivel em vez de silencioso.
+// `limite` caps the count: a workflow stopped for months with catchup=true would
+// create thousands of runs at once and drown the queue. Returning the excess as
+// `truncado` makes that visible instead of silent.
 func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncado bool, err error) {
 	if !s.Ativo {
 		return nil, false, nil
@@ -86,19 +89,20 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 		return nil, false, err
 	}
 
-	// Ponto de partida: o ultimo slot materializado, ou o instante atual quando
+	// The starting point: the last materialized slot, or the current instant
+	// when
 	// a agenda nunca rodou. Comecar do zero criaria a historia inteira do cron.
 	de := agora.In(loc)
 	if s.UltimoSlot != nil {
 		de = s.UltimoSlot.In(loc)
 	}
 
-	// Sem catchup, so o slot MAIS RECENTE interessa — a lacuna e descartada por
-	// definicao. Percorre sem acumular, e o limite nao se aplica: nao ha o que
-	// truncar quando so um slot sera materializado.
+	// Without catchup, only the MOST RECENT slot matters — the gap is discarded
+	// by definition. It walks without accumulating, and the cap does not apply:
+	// there is nothing to truncate when only one slot will be materialized.
 	//
-	// O teto de iteracoes protege contra agenda com ultimo_slot muito antigo,
-	// que faria o laco varrer anos de cron a cada ciclo.
+	// The iteration ceiling protects against a schedule with a very old
+	// ultimo_slot, which would make the loop walk years of cron every cycle.
 	if !s.Catchup {
 		const maxIter = 500_000
 		var ultimo time.Time
@@ -124,7 +128,7 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 		de = prox
 
 		// Trunca e SINALIZA. O restante entra nos ciclos seguintes, porque o
-		// marcador avanca a cada slot materializado.
+		// The marker advances on every materialized slot.
 		if limite > 0 && len(slots) >= limite {
 			return slots, true, nil
 		}
@@ -132,7 +136,7 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 	return slots, false, nil
 }
 
-// Proximo devolve o proximo disparo depois de `agora`, para exibicao.
+// Proximo returns the next trigger after `agora`, for display.
 func (s Schedule) Proximo(agora time.Time) (time.Time, error) {
 	sched, loc, err := s.Parse()
 	if err != nil {

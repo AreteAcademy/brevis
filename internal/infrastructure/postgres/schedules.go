@@ -19,9 +19,10 @@ func NewWorkflowRepo(p *Pool) *WorkflowRepo { return &WorkflowRepo{pool: p} }
 
 // Publicar grava o workflow e sua agenda numa transacao.
 //
-// As duas coisas juntas, e nao em chamadas separadas: publicar o grafo sem a
-// agenda deixaria um workflow que nunca dispara, e a agenda sem o grafo faria o
-// scheduler criar runs de algo que nao existe.
+// Both things together, and not in separate calls: publishing the graph without
+// the schedule would leave a workflow that never fires, and the schedule without
+// the graph would make the scheduler create runs for something that does not
+// exist.
 func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid.UUID) error {
 	def, err := json.Marshal(w)
 	if err != nil {
@@ -45,15 +46,16 @@ func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid
 	}
 
 	if w.Schedule == "" {
-		// Sem cron: remove a agenda se existia. Tirar o `schedule` do YAML deve
-		// desagendar, nao deixar a agenda antiga viva.
+		// No cron: it removes the schedule if there was one. Taking `schedule`
+		// out of the YAML has to unschedule, not leave the old schedule alive.
 		if _, err := tx.Exec(ctx, `DELETE FROM schedules WHERE workflow_slug = $1`, w.Slug); err != nil {
 			return err
 		}
 		return tx.Commit(ctx)
 	}
 
-	// `ultimo_slot` NAO e sobrescrito no update: republicar um workflow nao pode
+	// `ultimo_slot` is NOT overwritten on update: republishing a workflow must
+	// not
 	// fazer o scheduler recriar slots ja materializados.
 	_, err = tx.Exec(ctx, `
 		INSERT INTO schedules (id, workflow_slug, cron, timezone, catchup, ativo)
@@ -79,17 +81,19 @@ func (r *WorkflowRepo) Definicao(ctx context.Context, slug string) (wf.Workflow,
 	return w, json.Unmarshal(bruto, &w)
 }
 
-// Podar remove do projeto os workflows que NAO estao na lista, junto com suas
+// Podar removes from the project the workflows that are NOT in the list, along
+// with their
 // agendas. Devolve os slugs removidos.
 //
-// Existe porque publicar so adicionava: tirar um arquivo da pasta nao tirava
-// nada do banco, e o scheduler continuava materializando runs de um workflow que
-// ninguem enxergava mais. Com agendas de 15 minutos, isso e trabalho invisivel
-// rodando para sempre.
+// It exists because publishing only ever added: taking a file out of the folder
+// took nothing out of the database, and the scheduler went on materializing runs
+// for a workflow nobody could see any more. With 15-minute schedules, that is
+// invisible work running forever.
 //
-// O historico (`runs`) NAO e apagado: ele referencia o slug como texto, nao por
-// chave estrangeira, justamente para sobreviver a remocao da definicao. Apagar
-// a execucao junto seria apagar a evidencia do que aconteceu.
+// The history (`runs`) is NOT deleted: it references the slug as text, not
+// through a foreign key, precisely so it survives the definition's removal.
+// Deleting the runs along with it would be deleting the evidence of what
+// happened.
 func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []string) ([]string, error) {
 	linhas, err := r.pool.Query(ctx, `
 		DELETE FROM workflows
@@ -115,8 +119,9 @@ func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []st
 		return nil, nil
 	}
 
-	// A agenda vive numa tabela separada, ligada por slug em texto — o CASCADE
-	// nao a alcanca, e uma agenda orfa continuaria criando runs.
+	// The schedule lives in a separate table, linked by slug as text — the
+	// CASCADE does not reach it, and an orphaned schedule would go on creating
+	// runs.
 	if _, err := r.pool.Exec(ctx,
 		`DELETE FROM schedules WHERE workflow_slug = ANY($1)`, removidos); err != nil {
 		return removidos, err
@@ -129,7 +134,7 @@ type ScheduleRepo struct{ pool *Pool }
 
 func NewScheduleRepo(p *Pool) *ScheduleRepo { return &ScheduleRepo{pool: p} }
 
-// Ativas lista as agendas que o scheduler deve avaliar.
+// Ativas lists the schedules the scheduler has to evaluate.
 func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT workflow_slug, cron, timezone, catchup, ativo, ultimo_slot
@@ -151,20 +156,20 @@ func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
 	return out, linhas.Err()
 }
 
-// AvancarSlot marca ate onde a agenda ja foi materializada.
+// AvancarSlot records how far the schedule has been materialized.
 //
-// A condicao `ultimo_slot IS NULL OR ultimo_slot < $2` torna a operacao
-// idempotente e segura sob concorrencia: dois schedulers avaliando a mesma
-// agenda nunca fazem o marcador retroceder.
-// DefinirAtivo pausa ou retoma uma agenda e devolve o estado resultante.
+// The condition `ultimo_slot IS NULL OR ultimo_slot < $2` makes the operation
+// idempotent and safe under concurrency: two schedulers evaluating the same
+// schedule never make the marker go backwards.
+// DefinirAtivo pauses or resumes a schedule and returns the resulting state.
 //
-// Devolve em vez de so gravar porque a UI alterna sem saber o valor atual: sem o
-// retorno, a tela precisaria de uma segunda consulta e ficaria sujeita a corrida
-// entre dois operadores clicando ao mesmo tempo.
+// It returns rather than only writing because the UI toggles without knowing the
+// current value: without the return, the screen would need a second query and
+// would be open to a race between two operators clicking at the same time.
 //
-// Pausar NAO cancela o que ja esta na fila: os runs materializados sao trabalho
-// aceito, e descarta-los ao pausar surpreenderia quem so queria parar de criar
-// novos.
+// Pausing does NOT cancel what is already queued: materialized runs are accepted
+// work, and discarding them on a pause would surprise somebody who only wanted
+// to stop creating new ones.
 func (r *ScheduleRepo) DefinirAtivo(ctx context.Context, slug string, ativo bool) (bool, error) {
 	var resultado bool
 	err := r.pool.QueryRow(ctx, `

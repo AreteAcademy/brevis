@@ -7,29 +7,30 @@ import (
 	"sync"
 )
 
-// Task e uma unidade de trabalho escrita em Go, compilada junto com o binario.
+// Task is a unit of work written in Go, compiled into the binary.
 //
 // A secao 14 do plano e categorica: "Nao executar codigo arbitrario recebido
 // pela API. Tasks locais devem ser compiladas e registradas no runtime". O
-// registry existe para tornar isso estrutural — o YAML so pode citar o NOME de
-// algo que ja esta no binario, nunca fornecer o codigo.
+// The registry exists to make that structural — the YAML can only name
+// something that is already in the binary, never supply the code.
 type Task interface {
 	Name() string
 	Run(ctx context.Context, in Input) error
 }
 
-// Input e o que a task recebe.
+// Input is what the task receives.
 type Input struct {
 	NodeID string
 	With   map[string]any
 
-	// Log emite uma linha para o fluxo de eventos. Existe para que a task
-	// reporte progresso sem conhecer canais nem o executor.
+	// Log emits one line into the event stream. It exists so the task can report
+	// progress without knowing about channels or the executor.
 	Log func(msg string)
 }
 
-// Texto le um parametro obrigatorio de `with`. Conveniencia com erro util: uma
-// task que faz a asserção de tipo na mao repete a mesma mensagem ruim.
+// Texto reads a required parameter out of `with`. A convenience with a useful
+// error: a task doing the type assertion by hand repeats the same poor
+// message.
 func (i Input) Texto(chave string) (string, error) {
 	v, ok := i.With[chave]
 	if !ok {
@@ -42,8 +43,8 @@ func (i Input) Texto(chave string) (string, error) {
 	return s, nil
 }
 
-// Registry guarda as tasks disponiveis. Seguro para uso concorrente porque o
-// dispatcher consulta de varias goroutines.
+// Registry holds the available tasks. Safe for concurrent use because the
+// dispatcher queries it from several goroutines.
 type Registry struct {
 	mu    sync.RWMutex
 	tasks map[string]Task
@@ -53,10 +54,11 @@ func NewRegistry() *Registry {
 	return &Registry{tasks: map[string]Task{}}
 }
 
-// Register adiciona uma task.
+// Register adds a task.
 //
-// Recusa nome duplicado em vez de sobrescrever: registro silenciosamente
-// substituido e um bug que so aparece em producao, quando a task errada roda.
+// It refuses a duplicate name rather than overwriting: a silently replaced
+// registration is a bug that only shows up in production, when the wrong task
+// runs.
 func (r *Registry) Register(t Task) error {
 	nome := t.Name()
 	if nome == "" {
@@ -74,15 +76,15 @@ func (r *Registry) Register(t Task) error {
 
 // MustRegister registra e entra em panico se falhar.
 //
-// Para uso em `init()` ou no boot: um registro invalido e erro de programacao, e
-// falhar no start e melhor que descobrir na primeira execucao agendada.
+// For use in `init()` or at boot: an invalid registration is a programming
+// error, and failing at start beats finding out on the first scheduled run.
 func (r *Registry) MustRegister(t Task) {
 	if err := r.Register(t); err != nil {
 		panic(err)
 	}
 }
 
-// Get busca uma task pelo nome.
+// Get looks a task up by name.
 func (r *Registry) Get(nome string) (Task, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -90,8 +92,8 @@ func (r *Registry) Get(nome string) (Task, bool) {
 	return t, ok
 }
 
-// Nomes lista o que esta registrado, ordenado. Serve ao erro de task
-// desconhecida: dizer o que existe economiza uma ida a documentacao.
+// Nomes lists what is registered, sorted. It serves the unknown-task error:
+// saying what does exist saves a trip to the documentation.
 func (r *Registry) Nomes() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -104,8 +106,8 @@ func (r *Registry) Nomes() []string {
 	return out
 }
 
-// FuncTask adapta uma funcao a interface Task, para os casos em que um tipo
-// proprio seria cerimonia sem ganho.
+// FuncTask adapts a function to the Task interface, for the cases where a type
+// of its own would be ceremony with no gain.
 type FuncTask struct {
 	Nome string
 	Fn   func(ctx context.Context, in Input) error
