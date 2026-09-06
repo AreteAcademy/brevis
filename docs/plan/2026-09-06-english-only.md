@@ -26,8 +26,8 @@ function words in comment lines.
 | B | **SDK root package** (godoc) | 0 | ✅ done |
 | C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 0 | ✅ done |
 | D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER` | 0 | ✅ done |
-| E | **Engine internals** — `internal/`, `cmd/` | 238 | a contributor changing the engine |
-| F | **Web** — `web/`, templates | 143 | a contributor touching the UI |
+| E | **Engine internals** — `internal/`, `cmd/` | 0 | ✅ done |
+| F | **Web** — `web/`, templates, and the Portuguese identifiers `internal/` shares with them | 143 + identifiers | a contributor touching the UI |
 | G | **Infra** — `.github/`, `deployments/`, `migrations/` | 115 | whoever operates or fixes CI |
 | H | **Test comments** | 664 | whoever reads a failing test |
 | I | **Test function names** | ~235 | whoever reads a failing test's OUTPUT |
