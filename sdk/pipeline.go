@@ -302,23 +302,6 @@ func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, origem
 	}
 }
 
-// aoPrimeiro warns when the first record goes through -- which is when the
-// transform actually started doing something.
-func aoPrimeiro(linhas iter.Seq2[Envelope, error], f func()) iter.Seq2[Envelope, error] {
-	return func(yield func(Envelope, error) bool) {
-		primeiro := true
-		for env, err := range linhas {
-			if err == nil && primeiro {
-				primeiro = false
-				f()
-			}
-			if !yield(env, err) {
-				return
-			}
-		}
-	}
-}
-
 // aoEsgotar avisa quando a origem acabou -- que e quando o extract finished de
 // verdade, e nao quando Extract devolveu o iterador.
 func aoEsgotar(linhas iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {

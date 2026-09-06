@@ -104,7 +104,7 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 	for _, et := range e.Etapas {
 		porNome[et.Nome] = et
 	}
-	for _, nome := range []string{"check", "extract", "transform", "load"} {
+	for _, nome := range []string{"check", "extract", "map", "load"} {
 		et, ok := porNome[nome]
 		if !ok {
 			t.Errorf("a etapa %q não chegou ao banco (chegaram: %v)", nome, e.Etapas)
@@ -114,13 +114,13 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 			t.Errorf("etapa %q terminou em %q", nome, et.Estado)
 		}
 	}
-	// What only the transform knows.
-	if n := porNome["transform"].Numeros; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
+	// What only a Map stage knows.
+	if n := porNome["map"].Numeros; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
 		t.Errorf("the transform did not report its counts: %v", porNome["transform"].Numeros)
 	}
-	// And the transform still has no clock.
-	if porNome["transform"].Ms != nil {
-		t.Errorf("o transform reportou duração: %v", *porNome["transform"].Ms)
+	// And a Map stage still has no clock.
+	if porNome["map"].Ms != nil {
+		t.Errorf("a map stage reported a duration: %v", *porNome["map"].Ms)
 	}
 
 	// A marca NÃO pode ter virado log do passo.
