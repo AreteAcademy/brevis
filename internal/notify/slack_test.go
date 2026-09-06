@@ -65,7 +65,7 @@ func TestMensagemTemOContextoDaFalha(t *testing.T) {
 		"schedule",                      // origem
 		"saiu com codigo 2",             // a causa
 		"brevis.zarv.net/runs/1f2e3d4c", // link direto
-		"01/09/2026 01:00",              // data logica no fuso local
+		dataLogicaEsperada(),            // data logica, no fuso de quem formata
 	} {
 		if !strings.Contains(corpo, esperado) {
 			t.Errorf("mensagem sem %q:\n%s", esperado, corpo)
@@ -141,5 +141,29 @@ func TestDominioCaiParaOPrefixoDoSlug(t *testing.T) {
 	}
 	if !strings.Contains(*recebido, "`platform`") {
 		t.Errorf("dominio nao derivado do slug:\n%s", *recebido)
+	}
+}
+
+// dataLogicaEsperada rende a data do alerta no fuso do PROCESSO.
+//
+// Cravar "01/09/2026 01:00" prendia o teste a UTC-3: ele passava na máquina de
+// quem o escreveu e reprovava no CI, que roda em UTC -- e foi assim que ele
+// derrubou o release da v0.4.0, no único portão que ninguém tinha exercitado.
+func dataLogicaEsperada() string {
+	return time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("02/01/2006 15:04")
+}
+
+// A hora sozinha é ambígua, e a ambiguidade não é teórica: o pod formata em
+// UTC e quem lê está em UTC-3. Sem o fuso, o mesmo evento é "01:00" para um e
+// "04:00" para o outro, e ninguém percebe que está falando da mesma falha.
+func TestDataLogicaDizOFuso(t *testing.T) {
+	s, recebido := capturar(t, 200, "ok")
+	if err := s.Falhou(context.Background(), alerta()); err != nil {
+		t.Fatal(err)
+	}
+
+	fuso := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("MST")
+	if !strings.Contains(*recebido, dataLogicaEsperada()+" "+fuso) {
+		t.Errorf("a data lógica saiu sem o fuso %q:\n%s", fuso, *recebido)
 	}
 }

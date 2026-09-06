@@ -126,7 +126,16 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		campos = append(campos, campo(fmt.Sprintf("*Tentativas:*\n%d", a.Tentativas)))
 	}
 	if a.LogicalDate != nil {
-		campos = append(campos, campo("*Data lógica:*\n"+a.LogicalDate.Local().Format("02/01/2006 15:04")))
+		// O FUSO vai junto, e nao e enfeite: o mesmo evento renderiza
+		// "01:00" na maquina de quem desenvolve (UTC-3) e "04:00" no pod
+		// (UTC), porque Local() e o fuso de QUEM FORMATA. Sem o marcador,
+		// duas pessoas comparando a mesma falha as tres da manha discordam
+		// sobre a hora dela.
+		//
+		// Continua sendo Local(), e nao UTC fixo: quem opera decide, pondo TZ
+		// no deployment -- e agora a mensagem diz qual foi a decisao.
+		campos = append(campos, campo("*Data lógica:*\n"+
+			a.LogicalDate.Local().Format("02/01/2006 15:04 MST")))
 	}
 
 	blocos := []bloco{
