@@ -225,3 +225,73 @@ motivou este documento.
 | **forma** | `Reduce` entre `Transform` e `Target`, com `Fechar` opcional sobre os grupos |
 | **prova** | teste que fixa o teto de memória com a entrada crescendo 100× |
 | **vizinhos** | `JSONCanonico` aceitando decimal computado; CSV com delimitador e gzip |
+
+---
+
+## 9. O que a execução mudou (2026-09-05, `sdk/v0.46.0`)
+
+Executado inteiro: os quinze agregadores, `Personalizado`, as cinco recusas,
+`Reduce`/`Agrupar`/`Fechar`, o teste de memória, e os dois pedidos vizinhos da
+§6. Nove reversões mordem.
+
+### 9.1 O teste de memória, na primeira versão, não valia nada
+
+A §5 pedia "medir alocações e pico de heap". A primeira implementação media
+**depois** do fold — e ali o estado dos grupos já está morto: o `fechar` produziu
+a saída e o Go recolhe o resto, então o `GC` apagava justamente o que se queria
+medir. Um agregador que guardava um milhão de linhas passava com 3 MB.
+
+Só apareceu porque escrevi, junto, um segundo teste que alimenta **a mesma
+medição** com um agregador que guarda linhas e exige que ela reprove. Ele
+reprovou a medição, não o código.
+
+A medição corrigida entra como uma sonda: um agregador a mais, cujo `Somar` roda
+uma vez por registro — enquanto todo o estado dos grupos está vivo. Os números:
+
+| | 10 mil | 100 mil | 1 milhão |
+|---|---|---|---|
+| agregadores da §2 | 3,2 MB | 3,2 MB | 3,2 MB |
+| um que guarda linhas | 6,8 MB | 39,8 MB | 76,6 MB (200 mil) |
+
+**Um teste de promessa precisa vir com o teste da própria sensibilidade.** Sem
+o segundo, o primeiro teria passado para sempre sem nunca poder falhar.
+
+### 9.2 As recusas precisaram existir como função
+
+A §3 dizia "recusar, nomeando", com a mensagem. Mas se `sdk.Mediana` não existe,
+o que se recebe é `undefined: sdk.Mediana` — e a mensagem não chega a ninguém.
+
+Elas existem como funções que falham na **validação**, antes da extração. Quem
+escreve `sdk.Mediana("x")` fica sabendo por que, e as duas saídas — em vez de
+implementá-la à mão guardando as linhas, que é o desfecho que a regra evita.
+
+### 9.3 Um acréscimo que o plano não pediu
+
+Um agregador que nomeia um campo que **nenhuma linha** tem produzia uma coluna
+de nulos, calada. Agora é erro, nomeando o errado e listando os disponíveis. Um
+campo ausente em *algumas* linhas continua sendo ignorado, como no SQL.
+
+Custa um conjunto de nomes por execução, não por grupo — o teto da §1 continua
+de pé.
+
+### 9.4 Texto numérico é número
+
+Não estava no plano. Um CSV entrega tudo como texto, e `Soma("valor")` sobre
+`"12.5"` recusar obrigaria um transformer só para converter. `12.5` não é
+ambíguo. O que não converte vira erro nomeando o campo **e o valor** — sem o
+valor, ninguém acha a linha culpada num milhão.
+
+Já `comparar` (que serve `Min`/`Max`/`MinPor`/`MaxPor`) **não** faz isso: lá,
+misturar `10` e `"9"` faria o máximo depender da ordem de chegada, e o resultado
+mudaria entre execuções. Coerção onde ela é inequívoca, recusa onde ela decidiria
+por conta própria.
+
+### 9.5 O que continua fora
+
+`SomaSe` e agregadores condicionais, pelo motivo da §7 do próprio plano. E
+aproximações (`DistintosAprox` por HyperLogLog), que precisam dizer o erro na
+assinatura e são decisão à parte.
+
+Uma etapa `reduce` na tela também ficou fora: a lista de etapas do motor é
+fechada, e o motor `v0.4.0` já está publicado — uma etapa que ele não conhece é
+ignorada. Entra quando houver outro release do motor.

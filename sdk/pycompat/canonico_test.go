@@ -152,3 +152,36 @@ func TestJSONCanonicoRecusaOQueNaoSabe(t *testing.T) {
 		t.Errorf("o erro não diz o caminho: %v", err)
 	}
 }
+
+// A saída existia para o escalar e faltava para o composto -- que é onde caem
+// os registros construídos por quem agrega. Uma média é decimal por definição:
+// não há literal para preservar, e não há o que adivinhar.
+func TestJSONCanonicoAceitandoFloat64(t *testing.T) {
+	linha := map[string]any{"media": 48.0, "n": 3.5, "nome": "sul"}
+
+	if _, err := JSONCanonico(linha); err == nil {
+		t.Fatal("o estrito precisa continuar recusando float64 cru")
+	}
+
+	b, err := JSONCanonicoAceitandoFloat64(linha)
+	if err != nil {
+		t.Fatalf("o permissivo recusou um registro computado: %v", err)
+	}
+	// 48.0 e não 48: é o que o json.dumps do Python escreve para um float.
+	if got, quero := string(b), `{"media":48.0,"n":3.5,"nome":"sul"}`; got != quero {
+		t.Errorf("saiu %s, esperado %s", got, quero)
+	}
+}
+
+// E ele desce nas estruturas: o problema aparece justamente no composto.
+func TestJSONCanonicoAceitandoFloat64Aninhado(t *testing.T) {
+	b, err := JSONCanonicoAceitandoFloat64(map[string]any{
+		"tot": []any{1.0, map[string]any{"x": 2.0}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, quero := string(b), `{"tot":[1.0,{"x":2.0}]}`; got != quero {
+		t.Errorf("saiu %s, esperado %s", got, quero)
+	}
+}

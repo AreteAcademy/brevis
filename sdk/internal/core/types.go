@@ -422,6 +422,14 @@ type Source struct {
 	// json.Number.Float64().
 	PreserveNumbers bool
 
+	// Delimitador e o separador de campos do CSV. Zero usa a virgula.
+	//
+	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
+	// dados abertos brasileiro. Sem esta opcao, a saida era cair no Records e
+	// decodificar o CSV a mao -- ou seja, reimplementar o csv.Reader para
+	// trocar um caractere.
+	Delimitador rune
+
 	// NoHeader, for CSV: treat every row as data with field_N keys. The
 	// default uses the first row as column names. Ignored for other formats.
 	NoHeader bool

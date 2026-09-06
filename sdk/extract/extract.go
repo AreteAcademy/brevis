@@ -2,6 +2,7 @@ package extract
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -294,6 +295,44 @@ func (c countingBody) Read(b []byte) (int, error) {
 	n, err := c.ReadCloser.Read(b)
 	atomic.AddInt64(c.n, int64(n))
 	return n, err
+}
+
+// ehGzip diz se o CORPO da resposta esta comprimido.
+//
+// Nao e a compressao de transporte: o Go ja descomprime essa sozinho, e quando
+// o faz remove o Content-Encoding -- entao um Content-Encoding que sobreviveu
+// ate aqui significa que ninguem descomprimiu.
+//
+// O caso que importa e outro: um `.csv.gz` servido como CONTEUDO, que e como
+// quase todo portal de dados abertos publica arquivo grande. O from.Files ja
+// descomprimia pela extensao; a regra existia no SDK e so nao alcancava o HTTP.
+func ehGzip(resp *http.Response, url string) bool {
+	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])) {
+	case "application/gzip", "application/x-gzip":
+		return true
+	}
+	// A extensao, por ultimo: um servidor que manda application/json num .gz
+	// esta dizendo algo mais especifico que o nome do arquivo.
+	semQuery, _, _ := strings.Cut(url, "?")
+	return strings.HasSuffix(strings.ToLower(semQuery), ".gz")
+}
+
+// leituraGzip fecha os dois: o descompressor e a conexao debaixo dele. Fechar
+// so o de cima deixaria a conexao presa ate o timeout.
+type leituraGzip struct {
+	*gzip.Reader
+	sob io.Closer
+}
+
+func (l leituraGzip) Close() error {
+	err := l.Reader.Close()
+	if e := l.sob.Close(); err == nil {
+		err = e
+	}
+	return err
 }
 
 // page is one fetched HTTP response, plus whatever had to be buffered to
@@ -622,7 +661,17 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		return nil, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 	}
 
-	body := countingBody{ReadCloser: resp.Body, n: bytesRead}
+	var corpo io.ReadCloser = countingBody{ReadCloser: resp.Body, n: bytesRead}
+	if ehGzip(resp, pageURL) {
+		gz, err := gzip.NewReader(corpo)
+		if err != nil {
+			_ = resp.Body.Close()
+			release()
+			return nil, fmt.Errorf("a resposta se anuncia gzip e nao e: %w", err)
+		}
+		corpo = leituraGzip{Reader: gz, sob: resp.Body}
+	}
+	body := corpo
 	p := &page{body: body, release: release}
 
 	if source.FollowLinks {
@@ -919,7 +968,11 @@ type Decoder interface {
 func NewDecoder(r io.Reader, source core.Source) Decoder {
 	switch source.Format {
 	case "csv":
-		return &csvDecoder{r: csv.NewReader(r), noHeader: source.NoHeader}
+		leitor := csv.NewReader(r)
+		if source.Delimitador != 0 {
+			leitor.Comma = source.Delimitador
+		}
+		return &csvDecoder{r: leitor, noHeader: source.NoHeader}
 	case "ndjson":
 		return &ndjsonDecoder{dec: decodificadorJSON(r, source)}
 	case "json":

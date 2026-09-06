@@ -36,6 +36,13 @@ type Pipeline struct {
 	// run nao consulte a origem de novo. Zero desliga. Ver Checkpoint.
 	Checkpoint Checkpoint
 
+	// Reduce agrega o fluxo entre o Transform e o Target. Nil passa direto.
+	//
+	// Ele DRENA a origem antes de a primeira linha ir ao destino -- e isso e
+	// inerente a agregar, nao uma escolha. O que continua valendo e o teto: a
+	// memoria e proporcional ao numero de GRUPOS, nunca ao de registros.
+	Reduce *Reduce
+
 	// Name appears in logs. Defaults to provider/entity.
 	Name string
 
@@ -152,6 +159,13 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
 	// coluna nao bate significa ter gasto a janela inteira para isso.
 	rel.comecou(EtapaCheck)
+	// O Reduce e conferido junto com o destino, e pelo mesmo motivo: um
+	// agregador que nao existe ou um nome que colide sao erros de montagem, e
+	// descobri-los depois da extracao custaria a janela do fornecedor.
+	if err := p.Reduce.validar(); err != nil {
+		rel.terminou(EtapaCheck, EstadoFalhou, nil)
+		return err
+	}
 	if err := checkDestination(ctx, p.Target); err != nil {
 		rel.terminou(EtapaCheck, EstadoFalhou, nil)
 		return err
@@ -197,6 +211,12 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	} else {
 		data = Transform(data, p.Transform...)
+	}
+
+	// Depois do Transform e depois das medicoes: o que o transform conta e o
+	// que ELE viu, e o Reduce muda o numero de linhas.
+	if p.Reduce != nil {
+		data.Records = p.Reduce.aplicar(data.Records)
 	}
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)

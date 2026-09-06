@@ -39,10 +39,33 @@ import (
 // so quer uma chave estavel quer outra coisa -- o RFC 8785 (JCS) -- e as duas
 // nao devem ser a mesma funcao: confundi-las seria pior que nao ter nenhuma.
 func JSONCanonico(v any) ([]byte, error) {
-	return escrever(make([]byte, 0, 256), v)
+	return escrever(make([]byte, 0, 256), v, Texto)
 }
 
-func escrever(dst []byte, v any) ([]byte, error) {
+// JSONCanonicoAceitandoFloat64 e o JSONCanonico para registros COMPUTADOS.
+//
+// O JSONCanonico recusa um float64 cru pela mesma razao que o Texto recusa: num
+// valor DECODIFICADO nao ha como saber se a origem via inteiro ou decimal, e
+// `1` contra `1.0` muda a chave.
+//
+// Num valor que voce CALCULOU -- uma media, um arredondamento -- essa
+// ambiguidade nao existe: e decimal por definicao, e nunca houve literal. Use
+// esta quando o registro e seu.
+//
+//	linha["media"] = total / n
+//	b, err := pycompat.JSONCanonicoAceitandoFloat64(linha)
+//
+// A saida existia para o escalar (TextoAceitandoFloat64) e faltava para o
+// composto -- que e justamente onde caem os registros construidos por quem
+// agrega. Sem ela, o contorno era entregar um json.Number cujo literal tivesse
+// ponto: sem o ponto, `48` sai como `48` onde a referencia escreve `48.0`, e o
+// consumidor acaba reimplementando metade da formatacao de decimais para
+// alimentar a formatacao de decimais.
+func JSONCanonicoAceitandoFloat64(v any) ([]byte, error) {
+	return escrever(make([]byte, 0, 256), v, TextoAceitandoFloat64)
+}
+
+func escrever(dst []byte, v any, render func(any) (string, error)) ([]byte, error) {
 	switch t := v.(type) {
 	case nil:
 		// null, e nao "None": isto e JSON, e o json.dumps escreve JSON. So os
@@ -77,7 +100,7 @@ func escrever(dst []byte, v any) ([]byte, error) {
 			dst = jsontext.AppendJSONString(dst, k)
 			dst = append(dst, ':')
 			var err error
-			if dst, err = escrever(dst, t[k]); err != nil {
+			if dst, err = escrever(dst, t[k], render); err != nil {
 				return nil, fmt.Errorf("em %q: %w", k, err)
 			}
 		}
@@ -90,7 +113,7 @@ func escrever(dst []byte, v any) ([]byte, error) {
 				dst = append(dst, ',')
 			}
 			var err error
-			if dst, err = escrever(dst, e); err != nil {
+			if dst, err = escrever(dst, e, render); err != nil {
 				return nil, fmt.Errorf("no índice %d: %w", i, err)
 			}
 		}
@@ -100,7 +123,7 @@ func escrever(dst []byte, v any) ([]byte, error) {
 		// Numero. O Texto ja e o repr do Python para float e o literal para
 		// int, que e exatamente o que o json.dumps escreve -- e ele RECUSA um
 		// float64 cru, pelo mesmo motivo que esta funcao nao pode adivinhar.
-		texto, err := Texto(v)
+		texto, err := render(v)
 		if err != nil {
 			return nil, err
 		}

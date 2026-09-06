@@ -10,6 +10,92 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.46.0] — 2026-09-05
+
+### Adicionado: `Reduce` — agregação com teto de memória
+
+Executa `docs/plan/2026-09-05-sdk-agregadores.md`, a quarta rodada de
+contribuição de consumidor.
+
+```go
+Reduce: &sdk.Reduce{
+    Por: sdk.Agrupar("regiao", "ano"),
+    Agg: map[string]sdk.Agregador{
+        "total":      sdk.Soma("valor"),
+        "nome_final": sdk.MaxPor("nome", "ano"),
+    },
+},
+```
+
+**Uma regra decide o que existe aqui: todo agregador usa memória constante por
+grupo.** O modelo do SDK é um fluxo, e um agregador que guardasse as linhas
+desfaria isso em silêncio — o sintoma chega como um pod morto por falta de
+memória às cinco da manhã. Com a regra, o custo continua dizível:
+`memória = grupos × estado`, e a entrada não entra nessa conta.
+
+Quinze agregadores — `Conta`, `ContaDe`, `Soma`, `Media`, `Min`, `Max`,
+`Primeiro`, `Ultimo`, `MinPor`, `MaxPor`, `Variancia`, `Desvio`, `Algum`,
+`Todos`, `Amplitude` — e `Personalizado`, que é a porta de baixo. Os quinze são
+construídos com ela, o que garante que a porta funciona.
+
+`Fechar` roda uma passada sobre os **grupos** depois do fluxo, para uma redução
+global ou uma projeção final. A saída sai ordenada pela chave do grupo.
+
+#### A prova, e a prova da prova
+
+O teste que importa não é "a soma está certa": é que a memória **não cresça com
+a entrada**. Cem grupos fixos, entrada crescendo 100×, teto de heap fixo.
+
+Medido: **3,2 MB com 10 mil, 100 mil e 1 milhão de registros** — plano.
+
+E a primeira versão dessa medição **não valia nada**: ela media depois do fold,
+quando o estado dos grupos já estava morto, e um agregador que guardava um
+milhão de linhas passava com 3 MB. Só apareceu porque existe um segundo teste
+que alimenta a mesma medição com um agregador que *guarda* linhas e exige que
+ela reprove. Corrigida, ele vai a 76,6 MB.
+
+#### O que não existe, e diz isso
+
+`Mediana`, `Quantil`, `Distintos`, `Moda` e `Coletar` existem como funções que
+**recusam na montagem**, antes da extração — com as duas saídas que existem
+(SQL no destino, ou `Personalizado` assumindo o custo).
+
+Elas existem em vez de simplesmente faltar porque `undefined: sdk.Mediana` não
+ensina nada, e o passo seguinte de quem recebe isso é escrever à mão guardando
+as linhas — exatamente o que a regra impede.
+
+#### E um campo com nome errado é recusado
+
+Um agregador que nomeia um campo que **nenhuma linha** tem produzia uma coluna
+de nulos que ninguém notaria. Agora é erro, nomeando o errado e listando os
+disponíveis. Um campo ausente em *algumas* linhas continua normal, ignorado como
+no SQL.
+
+### Adicionado: `pycompat.JSONCanonicoAceitandoFloat64`
+
+A saída existia para o escalar (`TextoAceitandoFloat64`) e faltava para o
+composto — que é justamente onde caem os registros construídos por quem agrega.
+Numa média calculada não há ambiguidade: é decimal por definição, e nunca houve
+literal.
+
+Sem ela, o contorno era entregar um `json.Number` com ponto no literal: sem o
+ponto, `48` sai como `48` onde a referência escreve `48.0`, e o consumidor
+acabava reimplementando metade da formatação de decimais para alimentar a
+formatação de decimais.
+
+### Adicionado: `Delimitador` no CSV, e gzip no `from.HTTP`
+
+```go
+from.HTTP{URL: ".../dados.csv.gz", Format: sdk.FormatCSV, Delimitador: ';'}
+```
+
+`;` é o padrão de fato em boa parte da Europa e nos portais de dados abertos, e
+`.csv.gz` é como eles publicam arquivo grande. A descompressão segue
+`Content-Encoding`, depois `Content-Type`, depois a extensão — o `from.Files` já
+fazia pela extensão, então a regra existia no SDK e só não alcançava o HTTP.
+
+---
+
 ## [0.45.0] — 2026-09-05
 
 ### Adicionado: o pipeline conta ao motor em que etapa está

@@ -359,6 +359,23 @@ func main() {
 }
 ```
 
+## CSV with `;`, and gzip over HTTP
+
+```go
+from.HTTP{URL: "https://portal.exemplo/dados.csv.gz", Format: sdk.FormatCSV, Delimitador: ';'}
+```
+
+`;` is the de-facto standard across much of Europe and in most open-data
+portals, and `.csv.gz` is how they publish anything large. Without these, the
+way out was `Records` with the raw bytes — reimplementing `csv.Reader` to change
+one character.
+
+Decompression follows `Content-Encoding`, then `Content-Type`, then the `.gz`
+extension. Transfer compression is not this: Go already handles that one and
+strips the header, so a `Content-Encoding` that survived means nobody
+decompressed. `from.Files` already did this by extension — the rule existed in
+the SDK and just did not reach HTTP.
+
 ## CSV headers
 
 By default the first CSV row is consumed as the column names, so a file with a
@@ -595,6 +612,85 @@ What it guarantees:
   fills `Result.CheckpointError`. The checkpoint is the insurance, not the goods.
 
 `Result.CheckpointReused` says whether the vendor's quota was actually spared.
+
+## Aggregating without losing the memory promise
+
+```go
+sdk.Run(sdk.Pipeline{
+    Source: /* ... */,
+    Reduce: &sdk.Reduce{
+        Por: sdk.Agrupar("regiao", "ano"),
+        Agg: map[string]sdk.Agregador{
+            "linhas":     sdk.Conta(),
+            "total":      sdk.Soma("valor"),
+            "media":      sdk.Media("valor"),
+            "nome_final": sdk.MaxPor("nome", "ano"),
+        },
+    },
+    Target: /* ... */,
+})
+```
+
+`Reduce` sits between `Transform` and `Target`.
+
+**One rule decides what exists here: every aggregator uses constant memory per
+group.** That is not a preference — it is what keeps the SDK's promise. The
+model is a stream, and an aggregator that kept the rows would undo that
+silently; the symptom arrives as a pod killed by the OOM killer at 5am.
+
+So the cost stays sayable:
+
+```
+memory = number of groups × aggregator state
+```
+
+The input does not appear in that sum. There is a test that proves it, not a
+paragraph that claims it: a hundred fixed groups with the input growing 100×,
+asserting the heap ceiling holds — and a second test that feeds the same
+measurement an aggregator which *does* keep rows, to prove the measurement can
+fail.
+
+| | |
+|---|---|
+| counting | `Conta`, `ContaDe` |
+| arithmetic | `Soma`, `Media`, `Variancia`, `Desvio`, `Amplitude` |
+| extremes | `Min`, `Max`, `MinPor`, `MaxPor` |
+| position | `Primeiro`, `Ultimo` |
+| booleans | `Algum`, `Todos` |
+| anything else | `Personalizado` |
+
+`MaxPor("nome", "ano")` — *the name from the row with the largest year* — is the
+one that is usually missing, and its absence is what makes people keep the rows
+so they can pick later.
+
+### What does not exist, and says so
+
+`Mediana`, `Quantil`, `Distintos`, `Moda` and `Coletar` exist as functions that
+**refuse at assembly time**, before the extract runs:
+
+```
+sdk.Mediana não existe: ela precisa de todas as linhas do grupo, e este
+agregador roda em memória constante. Duas saídas: calcule no destino, com SQL,
+ou use sdk.Personalizado -- e assuma o custo de memória explicitamente.
+```
+
+They exist rather than simply being absent because `undefined: sdk.Mediana` from
+the compiler teaches nothing, and the next move is to write it by hand — keeping
+the rows, which is exactly what the rule is there to prevent.
+
+### A global pass over the groups
+
+```go
+Fechar: func(grupos iter.Seq2[sdk.Grupo, map[string]any]) ([]map[string]any, error)
+```
+
+It sees the **groups**, never the records — which is what allows a global
+reduction, a join against a small table, or a final projection without undoing
+the guarantee.
+
+Output is ordered by group key. The row's identity comes from its content, so
+order changes nothing — but a `-sample` that returns different rows each run
+gets in the way of whoever is debugging.
 
 ## Reading from many sources
 

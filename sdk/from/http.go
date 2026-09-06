@@ -67,6 +67,12 @@ type HTTP struct {
 	//	}
 	Auth *Credential
 
+	// Delimitador e o separador de campos do CSV. Zero usa a virgula.
+	//
+	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
+	// dados abertos.
+	Delimitador rune
+
 	// NoHeader, for CSV: treat every row as data with field_N keys.
 	NoHeader bool
 
@@ -161,6 +167,7 @@ func (h HTTP) source(opt core.ReadOptions) core.Source {
 		Format:          h.Format,
 		Auth:            h.Auth,
 		NoHeader:        h.NoHeader,
+		Delimitador:     h.Delimitador,
 		PreserveNumbers: h.PreserveNumbers,
 		FollowLinks:     h.FollowLinks,
 		CursorKey:       h.CursorKey,
