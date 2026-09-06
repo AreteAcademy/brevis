@@ -54,7 +54,7 @@ func TestJanelaAvisaOQueCortou(t *testing.T) {
 	for i := 0; i < 4000; i++ {
 		j.Escrever(strings.Repeat("z", 300))
 	}
-	if !strings.Contains(j.String(), "omitidos pelo limite") {
+	if !strings.Contains(j.String(), "omitted by the") {
 		t.Error("cortou sem avisar")
 	}
 }

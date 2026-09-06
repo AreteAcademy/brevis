@@ -600,7 +600,8 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 	}
 	if r.Processo == nil {
 		if imagem != "" {
-			return nil, t, fmt.Errorf("step %q declara `image: %s`, mas este processo nao tem executor de pods nem de processo", n.ID, imagem)
+			return nil, t, fmt.Errorf("step %q declares `image: %s`, but this process has "+
+				"neither a pod executor nor a process executor", n.ID, imagem)
 		}
 		return nil, t, fmt.Errorf("step %q usa `run:`, mas nenhum executor de processo foi configurado", n.ID)
 	}

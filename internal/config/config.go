@@ -127,7 +127,7 @@ func Load() (Config, error) {
 	if v := os.Getenv("BREVIS_SHUTDOWN_TIMEOUT_SECONDS"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err != nil {
-			return Config{}, fmt.Errorf("BREVIS_SHUTDOWN_TIMEOUT_SECONDS: %q nao e um inteiro", v)
+			return Config{}, fmt.Errorf("BREVIS_SHUTDOWN_TIMEOUT_SECONDS: %q is not an integer", v)
 		}
 		c.ShutdownTimeout = time.Duration(n) * time.Second
 	}
@@ -138,7 +138,7 @@ func Load() (Config, error) {
 	switch c.Pods.Modo {
 	case "auto", "on", "off":
 	default:
-		return Config{}, fmt.Errorf("BREVIS_PODS: %q invalido (auto, on ou off)", c.Pods.Modo)
+		return Config{}, fmt.Errorf("BREVIS_PODS: %q is not valid (auto, on or off)", c.Pods.Modo)
 	}
 	if err := c.Auth.Validar(); err != nil {
 		return Config{}, err
@@ -158,8 +158,8 @@ func Load() (Config, error) {
 	// team to turn authentication off for good.
 	if c.Env != "local" && !c.Auth.Ativa() {
 		return Config{}, fmt.Errorf(
-			"BREVIS_ENV=%s exige credencial: defina BREVIS_AUTH_USUARIO, "+
-				"BREVIS_AUTH_SENHA_HASH (gere com `brevis hash`) e "+
+			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USUARIO, "+
+				"BREVIS_AUTH_SENHA_HASH (generate one with `brevis hash`) and "+
 				"BREVIS_AUTH_SEGREDO", c.Env)
 	}
 	return c, nil

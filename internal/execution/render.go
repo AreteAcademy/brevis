@@ -23,7 +23,7 @@ func Renderizar(comando string, params map[string]string) (string, error) {
 	}
 	t, err := template.New("passo").Option("missingkey=error").Parse(comando)
 	if err != nil {
-		return "", fmt.Errorf("comando com template invalido: %w", err)
+		return "", fmt.Errorf("the command has an invalid template: %w", err)
 	}
 
 	var saida strings.Builder

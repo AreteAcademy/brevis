@@ -143,7 +143,7 @@ func TestErroDeCoordenadaNaoEcoaOSegredo(t *testing.T) {
 		t.Errorf("o erro imprimiu o segredo:\n%v", err)
 	}
 	// E continua ensinando o formato, que e o motivo do erro existir.
-	if !strings.Contains(err.Error(), "nome-do-secret/chave") {
+	if !strings.Contains(err.Error(), "secret-name/key") {
 		t.Errorf("o erro deixou de ensinar o formato: %v", err)
 	}
 }

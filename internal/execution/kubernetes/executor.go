@@ -206,7 +206,7 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			if agendamento := e.porQueNaoAgendou(ctx, nome); agendamento != "" {
 				motivo = agendamento
 			}
-			return Pod{}, fmt.Errorf("pod %s nao comecou em %s: %s",
+			return Pod{}, fmt.Errorf("pod %s did not start within %s: %s",
 				nome, e.opts.EsperaParaIniciar, motivo)
 		}
 
@@ -299,7 +299,7 @@ func (e *Executor) Cancel(ctx context.Context, execID string) error {
 	nome, ok := e.emVoo[execID]
 	e.mu.Unlock()
 	if !ok {
-		return fmt.Errorf("execucao %q nao esta rodando", execID)
+		return fmt.Errorf("run %q is not running", execID)
 	}
 	return e.api.ApagarPod(ctx, nome)
 }

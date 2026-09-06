@@ -33,7 +33,7 @@ type Input struct {
 func (i Input) Texto(chave string) (string, error) {
 	v, ok := i.With[chave]
 	if !ok {
-		return "", fmt.Errorf("parametro %q ausente em `with`", chave)
+		return "", fmt.Errorf("parameter %q is missing from `with`", chave)
 	}
 	s, ok := v.(string)
 	if !ok {
@@ -60,13 +60,13 @@ func NewRegistry() *Registry {
 func (r *Registry) Register(t Task) error {
 	nome := t.Name()
 	if nome == "" {
-		return fmt.Errorf("task sem nome")
+		return fmt.Errorf("task with no name")
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, existe := r.tasks[nome]; existe {
-		return fmt.Errorf("task %q ja registrada", nome)
+		return fmt.Errorf("task %q is already registered", nome)
 	}
 	r.tasks[nome] = t
 	return nil

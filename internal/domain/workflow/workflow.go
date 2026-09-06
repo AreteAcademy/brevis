@@ -205,7 +205,7 @@ type Edge struct {
 // cycle, because a graph with a dangling edge cannot be walked.
 func (w Workflow) Validate() error {
 	if w.Slug == "" {
-		return fmt.Errorf("workflow sem slug")
+		return fmt.Errorf("workflow with no slug")
 	}
 	if len(w.Nodes) == 0 {
 		return fmt.Errorf("workflow %q has no steps at all", w.Slug)
@@ -226,14 +226,14 @@ func (w Workflow) Validate() error {
 		case temRun && temAction:
 			return fmt.Errorf("step %q declara `run` e `action`; use um dos dois", n.ID)
 		case !temRun && !temAction:
-			return fmt.Errorf("step %q nao declara nem `run` nem `action`", n.ID)
+			return fmt.Errorf("step %q declares neither `run` nor `action`", n.ID)
 		case temRun && len(n.With) > 0:
-			return fmt.Errorf("step %q usa `with`, que so vale com `action`", n.ID)
+			return fmt.Errorf("step %q uses `with`, which only applies with `action`", n.ID)
 		}
 	}
 
 	if w.MaxAtivos < 0 {
-		return fmt.Errorf("workflow %q: concurrency negativa (%d); use 0 para sem limite", w.Slug, w.MaxAtivos)
+		return fmt.Errorf("workflow %q: negative concurrency (%d); use 0 for no limit", w.Slug, w.MaxAtivos)
 	}
 	if err := validarRecursos(w.Slug, "workflow", w.Resources); err != nil {
 		return err
@@ -316,8 +316,9 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 		// A variable defined in both places is ambiguous, and any tie-break
 		// chosen here would be a rule nobody remembers.
 		if _, colide := env[nome]; colide {
-			return fmt.Errorf("workflow %q, %s: %q esta em `env` e em `secrets`; "+
-				"a mesma variavel nao pode ter valor literal e vir de um segredo", slug, onde, nome)
+			return fmt.Errorf("workflow %q, %s: %q is in both `env` and `secrets`; "+
+				"the same variable cannot have a literal value and come from a secret",
+				slug, onde, nome)
 		}
 
 		// The value does NOT go into the message. The most likely cause of an
@@ -326,10 +327,10 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 		// error that teaches the format does not need to repeat what it got.
 		segredo, chave, ok := strings.Cut(coord, "/")
 		if !ok || segredo == "" || chave == "" || strings.Contains(chave, "/") {
-			return fmt.Errorf("workflow %q, %s: secrets[%q] nao e uma coordenada "+
-				"(recebi %d caracteres). Use `nome-do-secret/chave`, como "+
-				"`gabriel-session/cookie`. Se o valor colado ai for o segredo em si, "+
-				"ele ja esta no git: troque a chave e rotacione o segredo",
+			return fmt.Errorf("workflow %q, %s: secrets[%q] is not a coordinate "+
+				"(got %d characters). Use `secret-name/key`, as in "+
+				"`gabriel-session/cookie`. If the value pasted there is the secret "+
+				"itself, it is already in git: change the key and rotate the secret",
 				slug, onde, nome, len(coord))
 		}
 	}
@@ -340,10 +341,10 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 // underscore, not starting with a digit.
 func validarNomeDeVar(nome string) error {
 	if nome == "" {
-		return fmt.Errorf("nome de variavel vazio")
+		return fmt.Errorf("empty variable name")
 	}
 	if nome[0] >= '0' && nome[0] <= '9' {
-		return fmt.Errorf("nome de variavel %q comeca com digito", nome)
+		return fmt.Errorf("variable name %q starts with a digit", nome)
 	}
 	for _, r := range nome {
 		ok := r == '_' ||
@@ -351,8 +352,8 @@ func validarNomeDeVar(nome string) error {
 			(r >= 'A' && r <= 'Z') ||
 			(r >= '0' && r <= '9')
 		if !ok {
-			return fmt.Errorf("nome de variavel %q tem caractere invalido %q; "+
-				"use letras, digitos e sublinhado", nome, r)
+			return fmt.Errorf("variable name %q has an invalid character %q; "+
+				"use letters, digits and underscores", nome, r)
 		}
 	}
 	return nil
@@ -441,7 +442,7 @@ func validarRecursos(slug, onde string, r Resources) error {
 			continue
 		}
 		if !quantidade.MatchString(valor) {
-			return fmt.Errorf("workflow %q, %s: %s=%q nao e uma quantidade valida (ex.: 200m, 1, 512Mi, 2Gi)",
+			return fmt.Errorf("workflow %q, %s: %s=%q is not a valid quantity (e.g. 200m, 1, 512Mi, 2Gi)",
 				slug, onde, campo, valor)
 		}
 	}

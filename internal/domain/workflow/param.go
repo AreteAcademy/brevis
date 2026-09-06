@@ -56,25 +56,25 @@ var nomeDeParam = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 // Validar confere a declaracao do param, nao o valor.
 func (p Param) Validar() error {
 	if !nomeDeParam.MatchString(p.Nome) {
-		return fmt.Errorf("param %q: o nome deve ser minusculo, comecar por letra e conter apenas letras, digitos e _", p.Nome)
+		return fmt.Errorf("param %q: the name has to be lowercase, start with a letter and hold only letters, digits and _", p.Nome)
 	}
 	switch p.Tipo {
 	case ParamTexto, ParamBool, ParamInteiro:
 	case "":
-		return fmt.Errorf("param %q sem tipo (string, boolean ou integer)", p.Nome)
+		return fmt.Errorf("param %q has no type (string, boolean or integer)", p.Nome)
 	default:
 		return fmt.Errorf("param %q: tipo %q desconhecido", p.Nome, p.Tipo)
 	}
 	if p.Pattern != "" {
 		if _, err := regexp.Compile(p.Pattern); err != nil {
-			return fmt.Errorf("param %q: pattern invalido: %w", p.Nome, err)
+			return fmt.Errorf("param %q: the pattern is not valid: %w", p.Nome, err)
 		}
 	}
 	// O padrao precisa ser valido pelas proprias regras: um default recusado so
 	// apareceria no primeiro disparo agendado, de madrugada.
 	if p.Padrao != "" {
 		if err := p.Aceita(p.Padrao); err != nil {
-			return fmt.Errorf("param %q: valor padrao invalido: %w", p.Nome, err)
+			return fmt.Errorf("param %q: the default value is not valid: %w", p.Nome, err)
 		}
 	}
 	return nil
@@ -85,12 +85,12 @@ func (p Param) Aceita(valor string) error {
 	switch p.Tipo {
 	case ParamBool:
 		if valor != "true" && valor != "false" {
-			return fmt.Errorf("%q nao e booleano (use true ou false)", valor)
+			return fmt.Errorf("%q is not a boolean (use true or false)", valor)
 		}
 		return nil
 	case ParamInteiro:
 		if _, err := strconv.Atoi(valor); err != nil {
-			return fmt.Errorf("%q nao e inteiro", valor)
+			return fmt.Errorf("%q is not an integer", valor)
 		}
 		return nil
 	}
@@ -101,7 +101,7 @@ func (p Param) Aceita(valor string) error {
 				return nil
 			}
 		}
-		return fmt.Errorf("%q nao esta entre os valores aceitos (%s)", valor, strings.Join(p.Enum, ", "))
+		return fmt.Errorf("%q is not one of the accepted values (%s)", valor, strings.Join(p.Enum, ", "))
 	}
 	if p.Pattern != "" {
 		re, err := regexp.Compile(p.Pattern)
@@ -109,13 +109,13 @@ func (p Param) Aceita(valor string) error {
 			return err
 		}
 		if !re.MatchString(valor) {
-			return fmt.Errorf("%q nao casa com o pattern %q", valor, p.Pattern)
+			return fmt.Errorf("%q does not match the pattern %q", valor, p.Pattern)
 		}
 		return nil
 	}
 	if !caracteresSeguros.MatchString(valor) {
-		return fmt.Errorf("%q tem caractere que o shell interpreta; "+
-			"declare um `pattern` no param se o valor precisa mesmo dele", valor)
+		return fmt.Errorf("%q has a character the shell interprets; "+
+			"declare a `pattern` on the param if the value genuinely needs it", valor)
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func (w Workflow) Resolver(informados map[string]string) (map[string]string, err
 
 	for nome := range informados {
 		if _, existe := declarados[nome]; !existe {
-			return nil, fmt.Errorf("workflow %q nao declara o param %q (declarados: %s)",
+			return nil, fmt.Errorf("workflow %q does not declare the param %q (declared: %s)",
 				w.Slug, nome, nomesDe(w.Params))
 		}
 	}

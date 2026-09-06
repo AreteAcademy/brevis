@@ -96,7 +96,7 @@ func (p *ProcessExecutor) Name() string { return "process" }
 // processo termina — quem consome pode usar `range` sem coordenacao extra.
 func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	if t.Command == "" {
-		return nil, fmt.Errorf("task %q sem comando", t.NodeID)
+		return nil, fmt.Errorf("task %q has no command", t.NodeID)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -182,7 +182,7 @@ func (p *ProcessExecutor) Cancel(_ context.Context, execID string) error {
 	cancel, ok := p.rodando[execID]
 	p.mu.Unlock()
 	if !ok {
-		return fmt.Errorf("execucao %q nao esta rodando", execID)
+		return fmt.Errorf("run %q is not running", execID)
 	}
 	cancel()
 	return nil

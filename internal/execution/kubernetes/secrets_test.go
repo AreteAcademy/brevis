@@ -138,7 +138,7 @@ func TestSemListaNenhumSecretPassa(t *testing.T) {
 	if err == nil {
 		t.Fatal("sem lista de liberados, o Secret passou")
 	}
-	if !strings.Contains(err.Error(), "nenhum esta") {
+	if !strings.Contains(err.Error(), "neither is any") {
 		t.Errorf("o erro nao explica que a lista esta vazia: %v", err)
 	}
 }

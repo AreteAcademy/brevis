@@ -128,18 +128,18 @@ func (c Credencial) Ativa() bool {
 func (c Credencial) Validar() error {
 	if !c.Ativa() {
 		if c.Usuario != "" || c.Hash != "" {
-			return errors.New("credencial pela metade: BREVIS_AUTH_USUARIO e " +
-				"BREVIS_AUTH_SENHA_HASH precisam vir juntos")
+			return errors.New("a half-configured credential: BREVIS_AUTH_USUARIO and " +
+				"BREVIS_AUTH_SENHA_HASH have to come together")
 		}
 		return nil
 	}
 	if !strings.HasPrefix(c.Hash, "pbkdf2-sha256$") {
-		return errors.New("BREVIS_AUTH_SENHA_HASH nao esta no formato esperado; " +
-			"gere com `brevis hash`")
+		return errors.New("BREVIS_AUTH_SENHA_HASH is not in the expected format; " +
+			"generate one with `brevis hash`")
 	}
 	if len(c.Segredo) < 32 {
-		return errors.New("BREVIS_AUTH_SEGREDO precisa de ao menos 32 bytes " +
-			"(gere com `openssl rand -base64 48`)")
+		return errors.New("BREVIS_AUTH_SEGREDO needs at least 32 bytes " +
+			"(generate one with `openssl rand -base64 48`)")
 	}
 	return nil
 }

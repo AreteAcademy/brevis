@@ -283,10 +283,11 @@ func (o Opcoes) permiteSecret(nome string) error {
 		}
 	}
 	if len(o.SecretsPermitidos) == 0 {
-		return fmt.Errorf("o secret %q nao esta liberado para workflows, e nenhum esta: "+
-			"a instalacao decide quais existem, em BREVIS_POD_ALLOWED_SECRETS", nome)
+		return fmt.Errorf("secret %q is not allowed for workflows, and neither is any "+
+			"other: the installation decides which exist, in "+
+			"BREVIS_POD_ALLOWED_SECRETS", nome)
 	}
-	return fmt.Errorf("o secret %q nao esta em BREVIS_POD_ALLOWED_SECRETS (liberados: %s)",
+	return fmt.Errorf("secret %q is not in BREVIS_POD_ALLOWED_SECRETS (allowed: %s)",
 		nome, strings.Join(o.SecretsPermitidos, ", "))
 }
 
@@ -319,10 +320,11 @@ func (o Opcoes) comPadroes() Opcoes {
 func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	o = o.comPadroes()
 	if t.Image == "" {
-		return Pod{}, fmt.Errorf("step %q sem imagem: em Kubernetes cada passo e um pod, e o pod precisa saber o que rodar", t.NodeID)
+		return Pod{}, fmt.Errorf("step %q has no image: in Kubernetes every step is a "+
+			"pod, and the pod has to know what to run", t.NodeID)
 	}
 	if t.Command == "" {
-		return Pod{}, fmt.Errorf("step %q sem comando", t.NodeID)
+		return Pod{}, fmt.Errorf("step %q has no command", t.NodeID)
 	}
 
 	c := Container{

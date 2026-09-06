@@ -117,12 +117,12 @@ func Carregar(caminho string) (Marca, error) {
 		return m, nil
 	}
 	if err != nil {
-		return m, fmt.Errorf("lendo %s: %w", caminho, err)
+		return m, fmt.Errorf("reading %s: %w", caminho, err)
 	}
 	// Decodes ONTO the default: yaml.v3 only writes the fields present in the
 	// file, so the rest survives.
 	if err := yaml.Unmarshal(conteudo, &m); err != nil {
-		return Padrao(), fmt.Errorf("%s: yaml invalido: %w", caminho, err)
+		return Padrao(), fmt.Errorf("%s: invalid yaml: %w", caminho, err)
 	}
 	if err := m.Validar(); err != nil {
 		return Padrao(), fmt.Errorf("%s: %w", caminho, err)
@@ -140,11 +140,11 @@ var hex = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`
 // failure state behind a selector.
 func (m Marca) Validar() error {
 	if strings.TrimSpace(m.Titulo) == "" {
-		return fmt.Errorf("titulo nao pode ser vazio")
+		return fmt.Errorf("the title cannot be empty")
 	}
 	for nome, cor := range m.Tema.cores() {
 		if !hex.MatchString(cor) {
-			return fmt.Errorf("cor %s: %q nao e um hexadecimal (#rgb, #rrggbb ou #rrggbbaa)", nome, cor)
+			return fmt.Errorf("colour %s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", nome, cor)
 		}
 	}
 	if err := validarLogo(m.Logo); err != nil {
@@ -171,8 +171,8 @@ func validarLogo(logo string) error {
 	if strings.HasPrefix(logo, "https://") || strings.HasPrefix(logo, "http://") {
 		return nil
 	}
-	return fmt.Errorf("logo %q: use https://, http:// ou um caminho interno "+
-		"comecando em /", logo)
+	return fmt.Errorf("logo %q: use https://, http:// or an internal path "+
+		"starting with /", logo)
 }
 
 func (t Tema) cores() map[string]string {

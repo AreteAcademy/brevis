@@ -130,7 +130,7 @@ type StepSpec struct {
 func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 	var s Spec
 	if err := yaml.Unmarshal(conteudo, &s); err != nil {
-		return dominio.Workflow{}, fmt.Errorf("%s: yaml invalido: %w", caminho, err)
+		return dominio.Workflow{}, fmt.Errorf("%s: invalid yaml: %w", caminho, err)
 	}
 
 	slug := s.Name

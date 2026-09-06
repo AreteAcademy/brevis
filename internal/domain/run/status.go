@@ -66,7 +66,7 @@ func (e ErrTransicaoInvalida) Error() string {
 // Valida devolve erro se a transicao nao existir no grafo.
 func Valida(de, para Status) error {
 	if _, conhecido := transicoes[de]; !conhecido {
-		return fmt.Errorf("estado desconhecido: %q", de)
+		return fmt.Errorf("unknown state: %q", de)
 	}
 	if !de.PodeIr(para) {
 		return ErrTransicaoInvalida{De: de, Para: para}

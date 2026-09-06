@@ -122,7 +122,7 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 	// yet, and the screen should show the whole graph in grey.
 	estados, err := u.execs.EstadoDosNos(ctx, id)
 	if err != nil {
-		u.log.Warn("estado dos nos indisponivel", "run", id, "erro", err)
+		u.log.Warn("node state unavailable", "run", id, "error", err)
 		estados = nil
 	}
 	u.responderGrafo(w, def, estados, id.String(), string(execucao.Status))
@@ -234,7 +234,7 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		u.log.Error("serializando grafo", "slug", def.Slug, "erro", err)
+		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
 	}
 }
 

@@ -42,10 +42,11 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 			// Registro vazio e o caso comum hoje: `docker.run` e
 			// `kubernetes.run` estao no plano mas ainda nao existem. Dizer
 			// "disponiveis: []" faz parecer erro de digitacao no nome.
-			return nil, fmt.Errorf("task %q nao registrada: nenhuma acao foi registrada "+
-				"neste worker — use `run:` com um comando, ou registre a acao no binario", t.Action)
+			return nil, fmt.Errorf("task %q is not registered: no action is registered "+
+				"in this worker — use `run:` with a command, or register the action in "+
+				"the binary", t.Action)
 		}
-		return nil, fmt.Errorf("task %q nao registrada (disponiveis: %v)", t.Action, disponiveis)
+		return nil, fmt.Errorf("task %q is not registered (available: %v)", t.Action, disponiveis)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -121,7 +122,7 @@ func (g *GoExecutor) Cancel(_ context.Context, execID string) error {
 	cancel, ok := g.rodando[execID]
 	g.mu.Unlock()
 	if !ok {
-		return fmt.Errorf("execucao %q nao esta rodando", execID)
+		return fmt.Errorf("run %q is not running", execID)
 	}
 	cancel()
 	return nil

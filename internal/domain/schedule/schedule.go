@@ -53,14 +53,14 @@ func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 	}
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
-		return nil, nil, fmt.Errorf("timezone %q invalido: %w", tz, err)
+		return nil, nil, fmt.Errorf("timezone %q is not valid: %w", tz, err)
 	}
 
 	// Sem segundos: "0 2 * * *" e cron de 5 campos, como no YAML do plano.
 	p := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
 	sched, err := p.Parse(s.Cron)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cron %q invalido: %w", s.Cron, err)
+		return nil, nil, fmt.Errorf("cron %q is not valid: %w", s.Cron, err)
 	}
 	return sched, loc, nil
 }

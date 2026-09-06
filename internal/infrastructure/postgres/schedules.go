@@ -63,7 +63,7 @@ func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid
 		    catchup = EXCLUDED.catchup, atualizado_em = now()`,
 		uuid.New(), w.Slug, w.Schedule, "UTC", false)
 	if err != nil {
-		return fmt.Errorf("publicando agenda de %q: %w", w.Slug, err)
+		return fmt.Errorf("publishing the schedule for %q: %w", w.Slug, err)
 	}
 	return tx.Commit(ctx)
 }

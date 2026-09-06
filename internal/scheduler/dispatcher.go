@@ -126,11 +126,11 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			return nil
 		case <-tick.C:
 			if err := d.cicloDeClaim(ctx); err != nil {
-				d.log.Error("ciclo de claim", "erro", err)
+				d.log.Error("claim cycle", "error", err)
 			}
 		case <-recuperacao.C:
 			if n, err := d.RecuperarOrfaos(ctx); err != nil {
-				d.log.Error("recuperando orfaos", "erro", err)
+				d.log.Error("recovering orphans", "error", err)
 			} else if n > 0 {
 				d.log.Warn("runs orfas recuperadas", "quantidade", n)
 			}
@@ -216,7 +216,7 @@ func (d *Dispatcher) processar(ctx context.Context, it queue.Item) {
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRunning); err != nil {
 		// An invalid transition here means another dispatcher took the same run,
 		// or that it was cancelled. Not our error: release and move on.
-		d.log.Warn("nao pude marcar running", "run", it.RunID, "erro", err)
+		d.log.Warn("could not mark running", "run", it.RunID, "error", err)
 		_ = d.fila.Release(ctx, it.ID, 0)
 		return
 	}
@@ -224,7 +224,7 @@ func (d *Dispatcher) processar(ctx context.Context, it queue.Item) {
 	err := d.executar(ctx, it.RunID)
 	if err == nil {
 		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusSuccess); err != nil {
-			d.log.Error("marcando success", "run", it.RunID, "erro", err)
+			d.log.Error("marking success", "run", it.RunID, "error", err)
 		}
 		_ = d.fila.Done(ctx, it.ID)
 		return
@@ -237,14 +237,14 @@ func (d *Dispatcher) processar(ctx context.Context, it queue.Item) {
 func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 	_ = d.repo.RegistrarErro(ctx, it.RunID, causa.Error())
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
-		d.log.Error("marcando failed", "run", it.RunID, "erro", err)
+		d.log.Error("marking failed", "run", it.RunID, "error", err)
 		_ = d.fila.Done(ctx, it.ID)
 		return
 	}
 
 	tentativa, err := d.repo.IncrementarTentativa(ctx, it.RunID)
 	if err != nil {
-		d.log.Error("incrementando tentativa", "run", it.RunID, "erro", err)
+		d.log.Error("incrementing the attempt", "run", it.RunID, "error", err)
 		_ = d.fila.Done(ctx, it.ID)
 		return
 	}
@@ -252,7 +252,7 @@ func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 	if tentativa >= d.cfg.MaxTentativas {
 		// Exhausted: leaves the queue and stays FAILED, which is not terminal in
 		// the state machine but is the end of this run.
-		d.log.Warn("tentativas esgotadas", "run", it.RunID, "tentativas", tentativa)
+		d.log.Warn("out of attempts", "run", it.RunID, "attempts", tentativa)
 		// The alert goes out HERE, and not on every failure: warning on every
 		// attempt would turn a successful retry into two alerts and a silence,
 		// and a channel that cries wolf stops being read.
@@ -262,12 +262,12 @@ func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 	}
 
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRetrying); err != nil {
-		d.log.Error("marcando retrying", "run", it.RunID, "erro", err)
+		d.log.Error("marking retrying", "run", it.RunID, "error", err)
 		_ = d.fila.Done(ctx, it.ID)
 		return
 	}
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusQueued); err != nil {
-		d.log.Error("reenfileirando", "run", it.RunID, "erro", err)
+		d.log.Error("requeuing", "run", it.RunID, "error", err)
 		_ = d.fila.Done(ctx, it.ID)
 		return
 	}
@@ -276,9 +276,9 @@ func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 	// an instant retry against a dependency that is down only burns the
 	// queue.
 	atraso := d.cfg.BackoffBase * time.Duration(1<<uint(tentativa-1))
-	d.log.Info("reenfileirado", "run", it.RunID, "tentativa", tentativa, "atraso", atraso)
+	d.log.Info("requeued", "run", it.RunID, "attempt", tentativa, "delay", atraso)
 	if err := d.fila.Release(ctx, it.ID, atraso); err != nil {
-		d.log.Error("devolvendo a fila", "run", it.RunID, "erro", err)
+		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
 	}
 }
 
@@ -306,7 +306,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 			a.Tags = def.Tags
 		}
 	} else {
-		d.log.Warn("alerta sem detalhes do run", "run", runID, "erro", err)
+		d.log.Warn("alert without the run's details", "run", runID, "error", err)
 	}
 
 	// O passo e o log sao um plus: se a consulta falhar, o alerta sai sem eles.
@@ -315,7 +315,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 		a.Passo = passo
 		a.TrechoDoLog = ultimasLinhas(log, 15)
 	} else {
-		d.log.Warn("alerta sem o passo que falhou", "run", runID, "erro", err)
+		d.log.Warn("alert without the step that failed", "run", runID, "error", err)
 	}
 
 	// Contexto proprio: o da execucao pode estar cancelado (foi o cancelamento
@@ -323,7 +323,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 	ctxAviso, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := d.Alertas.Falhou(ctxAviso, a); err != nil {
-		d.log.Error("nao consegui avisar da falha", "run", runID, "erro", err)
+		d.log.Error("could not announce the failure", "run", runID, "error", err)
 	}
 }
 

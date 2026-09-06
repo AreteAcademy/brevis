@@ -168,8 +168,8 @@ func proximasExecucoes(agendas []postgres.AgendaResumo, agora time.Time, limite 
 		if err != nil {
 			// An invalid cron in the database must not take the whole dashboard
 			// down; the schedule simply does not show up in the list.
-			log.Warn("cron invalido ao calcular proximo disparo",
-				"workflow", a.WorkflowSlug, "cron", a.Cron, "erro", err)
+			log.Warn("invalid cron while computing the next trigger",
+				"workflow", a.WorkflowSlug, "cron", a.Cron, "error", err)
 			continue
 		}
 		out = append(out, pages.ProximaExecucao{
@@ -489,7 +489,7 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	// A missing history does not block the screen: the definition is the main content.
 	ultimas, err := u.leitura.RunsDoWorkflow(r.Context(), slug, 10)
 	if err != nil {
-		u.log.Warn("historico do workflow indisponivel", "workflow", slug, "erro", err)
+		u.log.Warn("the workflow's history is unavailable", "workflow", slug, "error", err)
 	}
 	u.render(w, r, pages.Workflow(def, ultimas))
 }
@@ -511,7 +511,7 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 	// useful, and a freshly queued run legitimately has no steps yet.
 	logs, err := u.execs.LogsDaRun(r.Context(), id)
 	if err != nil {
-		u.log.Warn("logs da execucao indisponiveis", "run", id, "erro", err)
+		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
 	}
 	u.render(w, r, pages.Run(execucao, logs))
 }
@@ -523,7 +523,7 @@ func (u *UI) alternar(w http.ResponseWriter, r *http.Request) {
 		u.erro(w, r, err)
 		return
 	}
-	u.log.Info("agenda alternada", "workflow", slug, "ativo", ativo)
+	u.log.Info("schedule toggled", "workflow", slug, "active", ativo)
 	u.voltar(w, r)
 }
 
@@ -548,7 +548,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		// An invalid param is an INPUT error, not the server's: a 500 here would
 		// send the operator looking for a defect in the platform rather than in
 		// the value they typed.
-		u.log.Warn("disparo recusado", "workflow", slug, "erro", err)
+		u.log.Warn("trigger refused", "workflow", slug, "error", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -605,12 +605,12 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	// The brand travels in the context: every template reaches it without it
 	// having to enter each page's signature.
 	if err := c.Render(branding.EmContexto(r.Context(), u.marca), w); err != nil {
-		u.log.Error("renderizando pagina", "path", r.URL.Path, "erro", err)
+		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
 }
 
 func (u *UI) erro(w http.ResponseWriter, r *http.Request, err error) {
-	u.log.Error("consultando dados da ui", "path", r.URL.Path, "erro", err)
+	u.log.Error("querying the ui's data", "path", r.URL.Path, "error", err)
 	http.Error(w, "erro interno", http.StatusInternalServerError)
 }
 
@@ -633,7 +633,7 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
 			// burst of failures is the only sign somebody is guessing, and
 			// without a log it does not exist. The password never enters
 			// here.
-			u.log.Warn("login recusado", "usuario", usuario, "origem", r.RemoteAddr)
+			u.log.Warn("login refused", "user", usuario, "origin", r.RemoteAddr)
 
 			// 200, and not a redirect: the form comes back filled in with the
 			// destination and the error in the same response.
@@ -644,7 +644,7 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
 			}))
 			return
 		}
-		u.log.Info("login", "usuario", usuario)
+		u.log.Info("login", "user", usuario)
 		http.Redirect(w, r, destino, http.StatusSeeOther)
 	})
 

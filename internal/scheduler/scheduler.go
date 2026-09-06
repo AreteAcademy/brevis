@@ -72,7 +72,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			return nil
 		case <-tick.C:
 			if n, err := s.Ciclo(ctx, time.Now()); err != nil {
-				s.log.Error("ciclo do scheduler", "erro", err)
+				s.log.Error("scheduler cycle", "error", err)
 			} else if n > 0 {
 				s.log.Info("runs criados", "quantidade", n)
 			}
@@ -93,7 +93,7 @@ func (s *Scheduler) Ciclo(ctx context.Context, agora time.Time) (int, error) {
 		n, err := s.materializar(ctx, a, agora)
 		if err != nil {
 			// One schedule with an invalid cron must not stop the others from running.
-			s.log.Error("materializando agenda", "workflow", a.WorkflowSlug, "erro", err)
+			s.log.Error("materializing the schedule", "workflow", a.WorkflowSlug, "error", err)
 			continue
 		}
 		criados += n
@@ -120,7 +120,7 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, agora); err != nil {
 			return 0, err
 		}
-		s.log.Info("agenda iniciada", "workflow", a.WorkflowSlug,
+		s.log.Info("schedule started", "workflow", a.WorkflowSlug,
 			"cron", a.Cron, "primeiro_slot_apos", agora.Format(time.RFC3339))
 		return 0, nil
 	}
@@ -272,7 +272,7 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		}
 	}
 	if alvo == nil {
-		return 0, fmt.Errorf("workflow %q nao tem agenda ativa", slug)
+		return 0, fmt.Errorf("workflow %q has no active schedule", slug)
 	}
 
 	cronSched, loc, err := alvo.Parse()

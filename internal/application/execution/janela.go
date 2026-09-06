@@ -64,7 +64,7 @@ func (j *janela) String() string {
 	// que o programa parou ali.
 	var b strings.Builder
 	b.WriteString(j.inicio.String())
-	fmt.Fprintf(&b, "\n[... %s omitidos pelo limite de %s por passo ...]\n\n",
+	fmt.Fprintf(&b, "\n[... %s omitted by the %s per-step limit ...]\n\n",
 		emKB(j.cortado), emKB(TetoDoLog))
 	b.WriteString(linhas(j.fim))
 	return b.String()

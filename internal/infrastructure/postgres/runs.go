@@ -20,7 +20,7 @@ func NewRunRepo(p *Pool) *RunRepo { return &RunRepo{pool: p} }
 // ErrJaExiste sinaliza colisao de chave de idempotencia. Tipado para que o
 // chamador distinga "ja criei isso" de erro real — a diferenca entre um retry
 // benigno do scheduler e uma falha de banco.
-var ErrJaExiste = errors.New("run com esta chave de idempotencia ja existe")
+var ErrJaExiste = errors.New("a run with this idempotency key already exists")
 
 // Criar insere o Run em CREATED.
 //
@@ -71,7 +71,7 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 	var atual dom.Status
 	if err := tx.QueryRow(ctx, `SELECT status FROM runs WHERE id = $1 FOR UPDATE`, id).Scan(&atual); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("run %s nao existe", id)
+			return fmt.Errorf("run %s does not exist", id)
 		}
 		return err
 	}
