@@ -16,12 +16,12 @@ import (
 	"github.com/AreteAcademy/brevis/internal/queue"
 )
 
-// Scheduler materializa slots em Runs e os enfileira.
+// Scheduler materialises slots into Runs and enqueues them.
 //
-// Ele CRIA runs e nada mais. Quem executa e o Dispatcher, consumindo a fila —
-// a §37 e explicita em nao misturar as duas responsabilidades. Na pratica isso
-// significa que o Scheduler pode cair sem interromper nenhuma execucao em voo, e
-// o Dispatcher pode cair sem perder nenhum slot.
+// It CREATES runs and nothing else. Whoever executes is the Dispatcher, draining
+// the queue -- §37 is explicit about not mixing the two responsibilities. In
+// practice that means the Scheduler can go down without interrupting a single
+// in-flight run, and the Dispatcher can go down without losing a single slot.
 type Scheduler struct {
 	agendas   *postgres.ScheduleRepo
 	workflows *postgres.WorkflowRepo
@@ -32,12 +32,12 @@ type Scheduler struct {
 	intervalo   time.Duration
 	maxPorCiclo int
 
-	// Prioridade menor que a de trabalho novo: um backfill grande nao pode
-	// atrasar a operacao corrente.
+	// A lower priority than new work: a large backfill must not delay the
+	// current operation.
 	prioridadeBackfill int
 }
 
-// OpcoesScheduler parametriza o laco.
+// OpcoesScheduler parameterises the loop.
 type OpcoesScheduler struct {
 	Intervalo   time.Duration
 	MaxPorCiclo int
@@ -50,8 +50,9 @@ func NewScheduler(a *postgres.ScheduleRepo, w *postgres.WorkflowRepo, r *postgre
 		o.Intervalo = 10 * time.Second
 	}
 	if o.MaxPorCiclo <= 0 {
-		// Teto por agenda e por ciclo: um workflow parado por meses com
-		// catchup=true criaria milhares de runs de uma vez e afogaria a fila.
+		// A ceiling per schedule and per cycle: a workflow idle for months with
+		// catchup=true would create thousands of runs at once and drown the
+		// queue.
 		o.MaxPorCiclo = 100
 	}
 	return &Scheduler{
@@ -60,7 +61,7 @@ func NewScheduler(a *postgres.ScheduleRepo, w *postgres.WorkflowRepo, r *postgre
 	}
 }
 
-// Run avalia as agendas periodicamente ate o contexto ser cancelado.
+// Run evaluates the schedules periodically until the context is cancelled.
 func (s *Scheduler) Run(ctx context.Context) error {
 	tick := time.NewTicker(s.intervalo)
 	defer tick.Stop()
@@ -79,8 +80,8 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	}
 }
 
-// Ciclo avalia todas as agendas uma vez. Exportado para ser testavel com um
-// instante fixo, sem esperar o relogio.
+// Ciclo evaluates every schedule once. Exported so it can be tested with a fixed
+// instant, without waiting on a clock.
 func (s *Scheduler) Ciclo(ctx context.Context, agora time.Time) (int, error) {
 	agendas, err := s.agendas.Ativas(ctx)
 	if err != nil {
@@ -91,7 +92,7 @@ func (s *Scheduler) Ciclo(ctx context.Context, agora time.Time) (int, error) {
 	for _, a := range agendas {
 		n, err := s.materializar(ctx, a, agora)
 		if err != nil {
-			// Uma agenda com cron invalido nao pode impedir as outras de rodar.
+			// One schedule with an invalid cron must not stop the others from running.
 			s.log.Error("materializando agenda", "workflow", a.WorkflowSlug, "erro", err)
 			continue
 		}
@@ -101,18 +102,20 @@ func (s *Scheduler) Ciclo(ctx context.Context, agora time.Time) (int, error) {
 }
 
 func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time.Time) (int, error) {
-	// Agenda nunca materializada precisa de um marco antes de qualquer coisa.
+	// A schedule that has never been materialised needs a marker before
+	// anything else.
 	//
-	// Sem ele, `Slots` parte do proprio `agora`, e o proximo horario do cron e
-	// sempre estritamente futuro: o laco quebra na primeira volta, nada e
-	// materializado, e como nada e materializado o marcador nunca sai de NULL.
-	// A agenda fica presa nesse ciclo para sempre — foi o que deixou 18
-	// workflows registrados em dev sem UMA execucao automatica, inclusive um
-	// `*/30`, com todas as runs da tela vindo de disparo manual.
+	// Without one, `Slots` starts from `agora` itself, and cron's next time is
+	// always strictly in the future: the loop breaks on the first turn, nothing
+	// is materialised, and because nothing is materialised the marker never
+	// leaves NULL. The schedule stays stuck in that cycle forever -- which is
+	// what left 18 workflows registered in dev without ONE automatic run,
+	// including a `*/30`, with every run on the screen coming from a manual
+	// trigger.
 	//
-	// Plantar `agora` diz o que se quer dizer: uma agenda comeca a contar de
-	// quando entrou no ar, e dispara no primeiro horario depois disso. Sem
-	// executar nada neste ciclo — o slot anterior a registro nao e nosso.
+	// Planting `agora` says what is meant: a schedule starts counting from when
+	// it went live, and fires at the first time after that. Without running
+	// anything this cycle -- the slot before registration is not ours.
 	if a.UltimoSlot == nil {
 		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, agora); err != nil {
 			return 0, err
@@ -127,8 +130,8 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 		return 0, err
 	}
 	if truncado {
-		// Visivel, nao silencioso: truncar sem avisar faz parecer que a lacuna
-		// foi coberta.
+		// Visible, not silent: truncating without warning makes it look as
+		// though the gap was covered.
 		s.log.Warn("slots truncados no ciclo", "workflow", a.WorkflowSlug,
 			"limite", s.maxPorCiclo, "obs", "o restante entra nos proximos ciclos")
 	}
@@ -147,8 +150,8 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 
 	var criados int
 	for _, slot := range slots {
-		// Agendamento usa os PADROES: nao ha quem informe valores as quatro da
-		// manha, e um cron que exigisse params nunca dispararia.
+		// Scheduling uses the DEFAULTS: there is nobody to supply values at four
+		// in the morning, and a cron that required params would never fire.
 		padroes, err := def.Resolver(nil)
 		if err != nil {
 			return criados, fmt.Errorf("params padrao de %q: %w", a.WorkflowSlug, err)
@@ -159,8 +162,9 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 		}
 		criados++
 
-		// Avanca o marcador a CADA slot, e nao ao fim do laco: se o processo
-		// cair no meio, os slots ja materializados nao sao recriados.
+		// The marker advances at EVERY slot, and not at the end of the loop: if
+		// the process dies midway, the slots already materialised are not
+		// recreated.
 		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, slot); err != nil {
 			return criados, err
 		}
@@ -168,12 +172,12 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 	return criados, nil
 }
 
-// criarEEnfileirar cria o Run e o coloca na fila.
+// criarEEnfileirar creates the Run and puts it in the queue.
 //
-// A chave de idempotencia e `slug:trigger:slot`. E o que torna o scheduler
-// seguro sob reinicio: se ele cair depois de criar o Run e antes de avancar o
-// marcador, a tentativa seguinte colide na unique em vez de duplicar — o caso
-// exato da secao 29.
+// The idempotency key is `slug:trigger:slot`. It is what makes the scheduler
+// safe across a restart: if it dies after creating the Run and before advancing
+// the marker, the next attempt collides on the unique instead of duplicating --
+// exactly §29's case.
 func (s *Scheduler) criarEEnfileirar(ctx context.Context, slug string, def []byte,
 	slot time.Time, trigger sch.TriggerType, prioridade int, params map[string]string,
 	maxAtivos int) error {
@@ -202,12 +206,12 @@ func (s *Scheduler) criarEEnfileirar(ctx context.Context, slug string, def []byt
 	return s.fila.Enqueue(ctx, r.ID, prioridade, time.Time{})
 }
 
-// Disparar cria um Run manual e o enfileira agora.
+// Disparar creates a manual Run and enqueues it now.
 //
-// Prioridade acima do trabalho agendado: quem clicou esta olhando a tela. Um run
-// manual nao tem `logical_date` — nao pertence a slot nenhum (secao 12) — e a
-// chave de idempotencia usa o SEGUNDO do clique, o que torna dois cliques
-// seguidos um unico run em vez de dois.
+// A higher priority than scheduled work: whoever clicked is looking at the
+// screen. A manual run has no `logical_date` -- it belongs to no slot (§12) --
+// and the idempotency key uses the SECOND of the click, which makes two clicks
+// in a row a single run rather than two.
 func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 	params map[string]string) (uuid.UUID, error) {
 	def, err := s.workflows.Definicao(ctx, slug)
@@ -219,8 +223,9 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 		return uuid.Nil, err
 	}
 
-	// Resolvido contra a DEFINICAO: valor invalido ou param inexistente falha
-	// aqui, na hora do clique, e nao dentro do pod meia hora depois.
+	// Resolved against the DEFINITION: an invalid value or a param that does not
+	// exist fails here, at the moment of the click, and not inside the pod half
+	// an hour later.
 	valores, err := def.Resolver(params)
 	if err != nil {
 		return uuid.Nil, err
@@ -247,11 +252,11 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 	return r.ID, s.fila.Enqueue(ctx, r.ID, 10, time.Time{})
 }
 
-// Backfill materializa os slots de um intervalo passado.
+// Backfill materialises the slots of a past interval.
 //
-// Entra na fila como qualquer outro run, respeitando concorrencia e prioridade —
-// a secao 12 e explicita nisso. A prioridade negativa faz o backfill ceder a vez
-// para trabalho corrente em vez de competir com ele.
+// It enters the queue like any other run, honouring concurrency and priority --
+// §12 is explicit about that. The negative priority makes a backfill give way to
+// current work instead of competing with it.
 func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time,
 	params map[string]string) (int, error) {
 	agendas, err := s.agendas.Ativas(ctx)
@@ -284,16 +289,16 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		return 0, err
 	}
 
-	// Os params valem para TODOS os slots do intervalo. E o caso de uso do
-	// backfill: "reprocessa janeiro inteiro com load_full=true".
+	// The params apply to EVERY slot in the interval. That is backfill's use
+	// case: "reprocess the whole of January with load_full=true".
 	valores, err := def.Resolver(params)
 	if err != nil {
 		return 0, err
 	}
 
-	// Um instante ANTES de `de`, para que um slot exatamente em `de` entre:
-	// `Next(t)` devolve o proximo estritamente depois de `t`, entao comecar em
-	// `de` excluiria o slot das 00:00 num backfill de um dia inteiro.
+	// An instant BEFORE `de`, so a slot exactly at `de` is included: `Next(t)`
+	// returns the next one strictly after `t`, so starting at `de` would exclude
+	// the 00:00 slot in a full-day backfill.
 	var criados int
 	for cursor := de.In(loc).Add(-time.Nanosecond); ; {
 		prox := cronSched.Next(cursor)
@@ -308,7 +313,8 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		cursor = prox
 	}
 
-	// O backfill NAO mexe em ultimo_slot: ele preenche o passado, e avancar o
-	// marcador faria o scheduler pular slots futuros que ainda nao aconteceram.
+	// A backfill does NOT touch ultimo_slot: it fills the past, and advancing
+	// the marker would make the scheduler skip future slots that have not
+	// happened yet.
 	return criados, nil
 }

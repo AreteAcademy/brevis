@@ -1,9 +1,9 @@
-// Package workflow (application) traduz o arquivo YAML para o dominio.
+// Package workflow (application) translates the YAML file into the domain.
 //
-// A separacao existe porque a secao 22 do plano e explicita: depois de publicado,
-// o banco e a fonte da verdade, nao o arquivo. O YAML e ENTRADA de publicacao —
-// entra aqui, vira dominio, e o dominio e que persiste. Mudar o formato do
-// arquivo nao deve tocar as invariantes do grafo.
+// The separation exists because §22 of the plan is explicit: once published, the
+// database is the source of truth, not the file. The YAML is publishing INPUT --
+// it comes in here, becomes domain, and the domain is what persists. Changing the
+// file format must not touch the graph's invariants.
 package workflow
 
 import (
@@ -16,7 +16,7 @@ import (
 	dominio "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-// Spec espelha o YAML, e so isso. Campos frouxos aqui, invariantes no dominio.
+// Spec mirrors the YAML, and nothing more. Loose fields here, invariants in the domain.
 type Spec struct {
 	Name      string       `yaml:"name"`
 	Schedule  string       `yaml:"schedule"`
@@ -26,20 +26,21 @@ type Spec struct {
 	Resources ResourceSpec `yaml:"resources"`
 	Params    []ParamSpec  `yaml:"params"`
 
-	// Env e Secrets valem para todo passo; o passo sobrescreve nome a nome.
+	// Env and Secrets apply to every step; a step overrides them name by name.
 	Env     map[string]string `yaml:"env"`
 	Secrets map[string]string `yaml:"secrets"`
-	// Concurrency e o `concurrency.limit` do Kestra, com o mesmo nome que a
-	// maioria dos orquestradores usa.
+	// Concurrency is Kestra's `concurrency.limit`, under the name most
+	// orchestrators use.
 	Concurrency int        `yaml:"concurrency"`
 	Steps       []StepSpec `yaml:"steps"`
 }
 
-// ResourceSpec e o pedido de CPU e memoria no formato do Kubernetes.
+// ResourceSpec is the CPU and memory request in Kubernetes' format.
 //
-// `limits` separado de `requests` porque a diferenca entre os dois e a diferenca
-// entre "quanto reservo" e "quando me matam": um dbt que estoura o limite morre
-// com OOMKilled, um que so passa do request continua rodando.
+// `limits` kept apart from `requests` because the difference between them is the
+// difference between "how much I reserve" and "when I get killed": a dbt that
+// blows the limit dies with OOMKilled, one that merely exceeds the request keeps
+// running.
 type ResourceSpec struct {
 	CPU    string `yaml:"cpu"`
 	Memory string `yaml:"memory"`
@@ -56,7 +57,7 @@ func (r ResourceSpec) dominio() dominio.Resources {
 	}
 }
 
-// ParamSpec e um parametro de execucao como escrito no arquivo.
+// ParamSpec is a run parameter as written in the file.
 //
 //	params:
 //	  - name: load_full
@@ -77,8 +78,9 @@ type ParamSpec struct {
 func (p ParamSpec) dominio() dominio.Param {
 	tipo := dominio.TipoParam(strings.TrimSpace(p.Type))
 	if tipo == "" {
-		// `string` como padrao: e o tipo mais comum e o unico que nao muda o
-		// significado do valor. Exigir a chave em todo param seria ruido.
+		// `string` as the default: it is the most common type and the only one
+		// that does not change the value's meaning. Requiring the key on every
+		// param would be noise.
 		tipo = dominio.ParamTexto
 	}
 	return dominio.Param{
@@ -88,7 +90,7 @@ func (p ParamSpec) dominio() dominio.Param {
 	}
 }
 
-// StepSpec e um passo como escrito no arquivo.
+// StepSpec is a step as written in the file.
 type StepSpec struct {
 	ID        string         `yaml:"id"`
 	Run       string         `yaml:"run"`
@@ -106,25 +108,25 @@ type StepSpec struct {
 	//	  BREVIS_LOG_LEVEL: info
 	Env map[string]string `yaml:"env"`
 
-	// Secrets sao variaveis cujo valor NAO esta no arquivo: a chave e o nome
-	// da variavel, o valor e onde encontra-la.
+	// Secrets are variables whose value is NOT in the file: the key is the
+	// variable's name, the value is where to find it.
 	//
 	//	secrets:
 	//	  GABRIEL_SESSION_COOKIE: gabriel-session/cookie
 	Secrets map[string]string `yaml:"secrets"`
 
-	// Shell: ponteiro para distinguir "nao declarou" de "declarou false". Sem o
-	// ponteiro, todo passo sem a chave viraria `shell: false` e as imagens com
-	// shell — a maioria — passariam a receber argv, quebrando qualquer comando
-	// com pipe ou variavel.
+	// Shell: a pointer, to tell "did not declare" from "declared false". Without
+	// the pointer, every step without the key would become `shell: false` and
+	// images that do have a shell -- most of them -- would start receiving an
+	// argv, breaking any command with a pipe or a variable.
 	Shell *bool `yaml:"shell"`
 }
 
 // Parse le o YAML e devolve o workflow ja validado.
 //
-// `caminho` serve para dois fins: derivar o slug quando o arquivo nao traz
-// `name`, e citar o arquivo nas mensagens de erro — um erro de grafo sem o nome
-// do arquivo e inutil quando ha dezenas deles.
+// `caminho` serves two purposes: deriving the slug when the file carries no
+// `name`, and naming the file in error messages -- a graph error without the
+// file's name is useless when there are dozens of them.
 func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 	var s Spec
 	if err := yaml.Unmarshal(conteudo, &s); err != nil {
@@ -148,8 +150,9 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 		Schedule: strings.TrimSpace(s.Schedule),
 		Tags:     normalizarTags(s.Tags),
 
-		// A imagem do workflow e o runtime padrao dos passos: em Kubernetes cada
-		// passo vira um pod, e e ela que decide o que aquele pod sabe fazer.
+		// The workflow's image is the steps' default runtime: in Kubernetes each
+		// step becomes a pod, and it is the image that decides what that pod
+		// knows how to do.
 		Image:     strings.TrimSpace(s.Image),
 		Resources: s.Resources.dominio(),
 		MaxAtivos: s.Concurrency,
@@ -181,9 +184,10 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 
 // aparar tira espaco de nome e valor, e descarta entrada de nome vazio.
 //
-// `GABRIEL_SESSION_COOKIE : gabriel-session/cookie` com espaco antes dos dois
-// pontos e YAML valido, e o espaco iria junto no nome da variavel — o pod
-// sobe, o binario nao acha a variavel, e nada no caminho diz por que.
+// `GABRIEL_SESSION_COOKIE : gabriel-session/cookie` with a space before the
+// colon is valid YAML, and the space would travel inside the variable's name --
+// the pod starts, the binary does not find the variable, and nothing along the
+// way says why.
 func aparar(m map[string]string) map[string]string {
 	if len(m) == 0 {
 		return nil
@@ -201,9 +205,9 @@ func aparar(m map[string]string) map[string]string {
 	return out
 }
 
-// normalizarTags apara espacos, descarta vazias e deduplica preservando a ordem
-// do arquivo. Sem isso, `tags: [dbt, dbt , ""]` viraria tres chips na tela, dois
-// deles iguais e um em branco.
+// normalizarTags trims spaces, drops empty ones and deduplicates while keeping
+// the file's order. Without it, `tags: [dbt, dbt , ""]` would become three chips
+// on the screen, two of them identical and one blank.
 func normalizarTags(brutas []string) []string {
 	if len(brutas) == 0 {
 		return nil
@@ -257,9 +261,9 @@ func arestas(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
 func parseKind(t string) (dominio.Kind, error) {
 	switch strings.TrimSpace(t) {
 	case "", string(dominio.KindDAG):
-		// Sem `type`, assume DAG: e o modelo geral, e um arquivo sem dependencias
-		// declaradas vira um grafo de nos soltos, que roda em paralelo. `chain`
-		// precisa ser pedido, porque impoe ordem.
+		// With no `type`, assume DAG: it is the general model, and a file with no
+		// declared dependencies becomes a graph of loose nodes that run in
+		// parallel. `chain` has to be asked for, because it imposes order.
 		return dominio.KindDAG, nil
 	case string(dominio.KindChain):
 		return dominio.KindChain, nil
