@@ -86,11 +86,11 @@ func IngestionIDWith(render Renderer, fields ...string) Transformer {
 // again, and the bronze merge duplicates the table.
 func Namespace(ns uuid.UUID) Identity { return Identity{ns: ns} }
 
-// Identity compoe os transformers de identidade num namespace escolhido.
-// Ver Namespace.
+// Identity composes the identity transformers under a chosen namespace. See
+// Namespace.
 type Identity struct{ ns uuid.UUID }
 
-// IngestionID e sdk.IngestionID no namespace escolhido.
+// IngestionID is sdk.IngestionID under the chosen namespace.
 func (i Identity) IngestionID(fields ...string) Transformer {
 	return i.IngestionIDWith(func(v any) (string, error) { return asText(v), nil }, fields...)
 }

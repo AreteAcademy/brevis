@@ -55,11 +55,11 @@ func Key(fields ...string) KeySelector {
 		}
 
 		parts := make([]string, 0, len(fields))
-		for _, campo := range fields {
-			v, ok := obj[campo]
+		for _, field := range fields {
+			v, ok := obj[field]
 			if !ok {
 				return "", fmt.Errorf("field %q is not in the payload; available: %s",
-					campo, availableKeys(obj))
+					field, availableKeys(obj))
 			}
 			parts = append(parts, asText(v))
 		}
@@ -100,17 +100,17 @@ func KeyWith(render Renderer, fields ...string) KeySelector {
 		}
 
 		parts := make([]string, 0, len(fields))
-		for _, campo := range fields {
-			v, ok := obj[campo]
+		for _, field := range fields {
+			v, ok := obj[field]
 			if !ok {
 				return "", fmt.Errorf("field %q is not in the payload; available: %s",
-					campo, availableKeys(obj))
+					field, availableKeys(obj))
 			}
-			texto, err := render(v)
+			text, err := render(v)
 			if err != nil {
-				return "", fmt.Errorf("field %q: %w", campo, err)
+				return "", fmt.Errorf("field %q: %w", field, err)
 			}
-			parts = append(parts, texto)
+			parts = append(parts, text)
 		}
 
 		return strings.Join(parts, keySeparator), nil
@@ -203,13 +203,13 @@ func asText(v any) string {
 }
 
 func availableKeys(obj map[string]any) string {
-	nomes := make([]string, 0, len(obj))
+	names := make([]string, 0, len(obj))
 	for k := range obj {
-		nomes = append(nomes, k)
+		names = append(names, k)
 	}
-	sort.Strings(nomes)
-	if len(nomes) == 0 {
+	sort.Strings(names)
+	if len(names) == 0 {
 		return "(empty payload)"
 	}
-	return strings.Join(nomes, ", ")
+	return strings.Join(names, ", ")
 }

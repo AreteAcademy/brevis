@@ -529,18 +529,18 @@ func newClient(source core.Source) (*http.Client, *credentialJar, error) {
 	// The names the credential occupies come from the Cookie header itself,
 	// where the Applier has just written it. They stay out of the jar and travel
 	// in the header on every request -- see credentialJar.
-	var nomes []string
+	var names []string
 	if raw := http.Header(source.Header).Get("Cookie"); raw != "" {
 		cookies, err := http.ParseCookie(raw)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Header[\"Cookie\"] is not a valid cookie header: %w", err)
 		}
 		for _, c := range cookies {
-			nomes = append(nomes, c.Name)
+			names = append(names, c.Name)
 		}
 	}
 
-	cj := newCredentialJar(jar, nomes)
+	cj := newCredentialJar(jar, names)
 	return &http.Client{Timeout: source.Timeout, Jar: cj}, cj, nil
 }
 
@@ -663,17 +663,16 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		return nil, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 	}
 
-	var corpo io.ReadCloser = countingBody{ReadCloser: resp.Body, n: bytesRead}
+	var body io.ReadCloser = countingBody{ReadCloser: resp.Body, n: bytesRead}
 	if isGzip(resp, pageURL) {
-		gz, err := gzip.NewReader(corpo)
+		gz, err := gzip.NewReader(body)
 		if err != nil {
 			_ = resp.Body.Close()
 			release()
 			return nil, fmt.Errorf("the response announces gzip and is not: %w", err)
 		}
-		corpo = gzipReader{Reader: gz, sob: resp.Body}
+		body = gzipReader{Reader: gz, sob: resp.Body}
 	}
-	body := corpo
 	p := &page{body: body, release: release}
 
 	if source.FollowLinks {
@@ -746,30 +745,30 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 // the path is wrong. Treating missing as the end would make pagination stop at
 // the first page in silence -- which is worse than not having the
 // optimisation.
-func lerTemMais(body []byte, caminho string) (bool, error) {
-	var atual any
-	if err := json.Unmarshal(body, &atual); err != nil {
-		return false, fmt.Errorf("MoreKey %q needs a JSON page: %w", caminho, err)
+func lerTemMais(body []byte, path string) (bool, error) {
+	var current any
+	if err := json.Unmarshal(body, &current); err != nil {
+		return false, fmt.Errorf("MoreKey %q needs a JSON page: %w", path, err)
 	}
 
-	partes := strings.Split(caminho, ".")
-	for i, parte := range partes {
-		obj, ok := atual.(map[string]any)
+	parts := strings.Split(path, ".")
+	for i, part := range parts {
+		obj, ok := current.(map[string]any)
 		if !ok {
 			return false, fmt.Errorf("MoreKey %q: %q is not an object",
-				caminho, strings.Join(partes[:i], "."))
+				path, strings.Join(parts[:i], "."))
 		}
-		v, existe := obj[parte]
-		if !existe {
+		v, exists := obj[part]
+		if !exists {
 			return false, fmt.Errorf("MoreKey %q: the page has no %q. An absent field is not "+
 				"treated as the end of the pagination, because that would stop at the first "+
 				"page in silence -- check the path, or drop MoreKey and let the empty page "+
-				"be the stop", caminho, parte)
+				"be the stop", path, part)
 		}
-		atual = v
+		current = v
 	}
 
-	switch t := atual.(type) {
+	switch t := current.(type) {
 	case bool:
 		return t, nil
 	case nil:
@@ -777,7 +776,7 @@ func lerTemMais(body []byte, caminho string) (bool, error) {
 		return false, nil
 	default:
 		return false, fmt.Errorf("MoreKey %q led to a %T, and it has to lead to a boolean",
-			caminho, atual)
+			path, current)
 	}
 }
 
@@ -970,11 +969,11 @@ type Decoder interface {
 func NewDecoder(r io.Reader, source core.Source) Decoder {
 	switch source.Format {
 	case "csv":
-		leitor := csv.NewReader(r)
+		reader := csv.NewReader(r)
 		if source.Delimiter != 0 {
-			leitor.Comma = source.Delimiter
+			reader.Comma = source.Delimiter
 		}
-		return &csvDecoder{r: leitor, noHeader: source.NoHeader}
+		return &csvDecoder{r: reader, noHeader: source.NoHeader}
 	case "ndjson":
 		return &ndjsonDecoder{dec: decodificadorJSON(r, source)}
 	case "json":

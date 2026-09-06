@@ -42,7 +42,7 @@ func (c conexao) Exec(ctx context.Context, sql string) error {
 // never delete. Rather than adding a method to the interface -- and forcing every
 // third-party store to implement it because of one driver -- the driver asks
 // whether that store knows how to delete.
-func (t Table) remove(ctx context.Context, bucket, chave string) error {
+func (t Table) remove(ctx context.Context, bucket, key string) error {
 	type apagador interface {
 		Delete(ctx context.Context, bucket, key string) error
 	}
@@ -50,7 +50,7 @@ func (t Table) remove(ctx context.Context, bucket, chave string) error {
 	if !sabe {
 		return fmt.Errorf("this store does not delete; set KeepStagedFile to silence this")
 	}
-	return d.Delete(ctx, bucket, chave)
+	return d.Delete(ctx, bucket, key)
 }
 
 func esconderDSN(err error, dsn string) error {

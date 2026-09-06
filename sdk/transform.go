@@ -71,7 +71,7 @@ func Transform(data *Data, fns ...Transformer) *Data {
 		source:  data.source,
 		start:   data.start,
 		stats:   data.stats,
-		Records: transformAll(data.Records, fns, data.origem()),
+		Records: transformAll(data.Records, fns, data.sourceName()),
 	}
 }
 

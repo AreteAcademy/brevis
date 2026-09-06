@@ -197,7 +197,7 @@ func Max(field string) Aggregator { return extremo(field, +1) }
 
 func extremo(field string, sinal int) Aggregator {
 	type estado struct {
-		valor any
+		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
@@ -209,19 +209,19 @@ func extremo(field string, sinal int) Aggregator {
 			}
 			e := acc.(*estado)
 			if !e.viu {
-				e.valor, e.viu = v, true
+				e.value, e.viu = v, true
 				return nil
 			}
-			cmp, err := compare(v, e.valor, field)
+			cmp, err := compare(v, e.value, field)
 			if err != nil {
 				return err
 			}
 			if cmp*sinal > 0 {
-				e.valor = v
+				e.value = v
 			}
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
 	})
 	return comCampos(a, field)
 }
@@ -238,7 +238,7 @@ func Last(field string) Aggregator { return pontaDo(field, false) }
 
 func pontaDo(field string, primeiro bool) Aggregator {
 	type estado struct {
-		valor any
+		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
@@ -252,10 +252,10 @@ func pontaDo(field string, primeiro bool) Aggregator {
 			if primeiro && e.viu {
 				return nil
 			}
-			e.valor, e.viu = v, true
+			e.value, e.viu = v, true
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
 	})
 	return comCampos(a, field)
 }
@@ -268,15 +268,15 @@ func pontaDo(field string, primeiro bool) Aggregator {
 // It is the one that is usually missing, and its absence is what makes people
 // keep the rows so they can pick later -- which is exactly what the
 // constant-memory rule forbids.
-func MinBy(valor, key string) Aggregator { return porExtremo(valor, key, -1) }
+func MinBy(value, key string) Aggregator { return porExtremo(value, key, -1) }
 
 // MaxBy returns the `value` of the row where `key` is largest.
-func MaxBy(valor, key string) Aggregator { return porExtremo(valor, key, +1) }
+func MaxBy(value, key string) Aggregator { return porExtremo(value, key, +1) }
 
 func porExtremo(campoValor, campoChave string, sinal int) Aggregator {
 	type estado struct {
 		key   any
-		valor any
+		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
@@ -288,7 +288,7 @@ func porExtremo(campoValor, campoChave string, sinal int) Aggregator {
 			}
 			e := acc.(*estado)
 			if !e.viu {
-				e.key, e.valor, e.viu = k, r[campoValor], true
+				e.key, e.value, e.viu = k, r[campoValor], true
 				return nil
 			}
 			cmp, err := compare(k, e.key, campoChave)
@@ -296,11 +296,11 @@ func porExtremo(campoValor, campoChave string, sinal int) Aggregator {
 				return err
 			}
 			if cmp*sinal > 0 {
-				e.key, e.valor = k, r[campoValor]
+				e.key, e.value = k, r[campoValor]
 			}
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
 	})
 	return comCampos(a, campoValor, campoChave)
 }
@@ -574,12 +574,12 @@ func (d *Reduce) apply(rows iter.Seq2[Envelope, error]) iter.Seq2[Envelope, erro
 			return
 		}
 
-		saida, err := d.fechar(groups)
+		out, err := d.closeIt(groups)
 		if err != nil {
 			yield(Envelope{}, err)
 			return
 		}
-		for _, row := range saida {
+		for _, row := range out {
 			if !yield(Envelope{Payload: row}, nil) {
 				return
 			}
@@ -669,9 +669,9 @@ func (d *Reduce) checkFields(seen map[string]bool) error {
 	if len(missing) == 0 {
 		return nil
 	}
-	nomes := sortedKeys(missing)
+	names := sortedKeys(missing)
 	return fmt.Errorf("the reduction names %s, which no row has. The available fields are: %s",
-		strings.Join(quoted(nomes), ", "), strings.Join(sortedKeys(seen), ", "))
+		strings.Join(quoted(names), ", "), strings.Join(sortedKeys(seen), ", "))
 }
 
 func (d *Reduce) keyOf(row map[string]any) (string, map[string]any, error) {
@@ -691,7 +691,7 @@ func (d *Reduce) keyOf(row map[string]any) (string, map[string]any, error) {
 	return b.String(), values, nil
 }
 
-func (d *Reduce) fechar(groups []*accumulatedGroup) ([]map[string]any, error) {
+func (d *Reduce) closeIt(groups []*accumulatedGroup) ([]map[string]any, error) {
 	rows := make([]map[string]any, 0, len(groups))
 	for _, g := range groups {
 		row := make(map[string]any, len(g.values)+len(d.Agg))

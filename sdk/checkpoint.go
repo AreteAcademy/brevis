@@ -63,7 +63,7 @@ type Checkpoint struct {
 // checkpointState is what happened to the depot on this run. The fields are
 // filled while the stream runs, and read once it ends.
 type estadoCheckpoint struct {
-	caminho       string
+	path          string
 	reaproveitado bool
 	erro          string
 }
@@ -72,7 +72,7 @@ func (e *estadoCheckpoint) aplicar(r *Result) {
 	if e == nil || r == nil {
 		return
 	}
-	r.CheckpointPath = e.caminho
+	r.CheckpointPath = e.path
 	r.CheckpointReused = e.reaproveitado
 	r.CheckpointError = e.erro
 }
@@ -87,11 +87,11 @@ func (e *estadoCheckpoint) aplicar(r *Result) {
 // a depot, and one would resume from the other's extract -- wrong data loaded
 // in silence, which is the worst way to fail.
 func (p *Pipeline) caminhoDoCheckpoint() string {
-	nome := p.name()
+	name := p.name()
 	h := fnv.New32a()
-	_, _ = h.Write([]byte(nome))
+	_, _ = h.Write([]byte(name))
 	return fmt.Sprintf("%s/%s/%s-%08x/",
-		strings.TrimSuffix(p.Checkpoint.At, "/"), segmento(p.Run.ID), segmento(nome), h.Sum32())
+		strings.TrimSuffix(p.Checkpoint.At, "/"), segmento(p.Run.ID), segmento(name), h.Sum32())
 }
 
 // segment turns free text into a path component.
@@ -139,7 +139,7 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	if err != nil {
 		return nil, est, err
 	}
-	est.caminho = dep.Path()
+	est.path = dep.Path()
 
 	// On the first attempt there is nothing to resume -- the path carries the
 	// run id, and this run starts here. Not looking avoids a warning per run
@@ -161,7 +161,7 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	if err := dep.Reserve(ctx, p.name(), p.Run.ID); err != nil {
 		est.erro = err.Error()
 		slog.WarnContext(ctx, "checkpoint unavailable; the run goes on without it",
-			"pipeline", p.name(), "checkpoint", est.caminho, "error", err)
+			"pipeline", p.name(), "checkpoint", est.path, "error", err)
 		return data, est, nil
 	}
 
@@ -176,18 +176,18 @@ func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Depot,
 	m, err := dep.Manifest(ctx)
 	if err != nil {
 		slog.InfoContext(ctx, "no usable checkpoint; redoing the extract",
-			"pipeline", p.name(), "checkpoint", est.caminho, "reason", err)
+			"pipeline", p.name(), "checkpoint", est.path, "reason", err)
 		return nil, false
 	}
 	if err := dep.Check(ctx, m); err != nil {
 		slog.WarnContext(ctx, "checkpoint incomplete; redoing the extract",
-			"pipeline", p.name(), "checkpoint", est.caminho, "reason", err)
+			"pipeline", p.name(), "checkpoint", est.path, "reason", err)
 		return nil, false
 	}
 
 	est.reaproveitado = true
 	slog.InfoContext(ctx, "checkpoint reused: the source will not be queried",
-		"pipeline", p.name(), "checkpoint", est.caminho,
+		"pipeline", p.name(), "checkpoint", est.path,
 		"records", m.Records, "attempt", p.Run.Attempt)
 
 	stats := p.Source.Stats
@@ -210,13 +210,13 @@ func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Depot,
 // successful execution. A recovery path that only runs in an emergency is a
 // path nobody has ever seen work.
 func materializar(ctx context.Context, dep *checkpoint.Depot,
-	origem iter.Seq2[Envelope, error], p *Pipeline, est *estadoCheckpoint) iter.Seq2[Envelope, error] {
+	source iter.Seq2[Envelope, error], p *Pipeline, est *estadoCheckpoint) iter.Seq2[Envelope, error] {
 
-	nome, run := p.name(), p.Run.ID
+	name, run := p.name(), p.Run.ID
 
 	return func(yield func(Envelope, error) bool) {
 		esc := dep.Writer()
-		proximo, parar := iter.Pull2(origem)
+		proximo, parar := iter.Pull2(source)
 		defer parar()
 
 		// degrade gives up on the depot without giving up on the run: it yields
@@ -226,7 +226,7 @@ func materializar(ctx context.Context, dep *checkpoint.Depot,
 		degradar := func(causa error, pendente *Envelope) {
 			est.erro = causa.Error()
 			slog.WarnContext(ctx, "checkpoint interrompido; a execucao segue sem ele",
-				"pipeline", nome, "checkpoint", est.caminho, "erro", causa)
+				"pipeline", name, "checkpoint", est.path, "erro", causa)
 
 			for env, err := range dep.Reread(ctx, esc.Written()) {
 				if !yield(env, err) {
@@ -275,7 +275,7 @@ func materializar(ctx context.Context, dep *checkpoint.Depot,
 			}
 		}
 
-		if err := esc.Finish(ctx, nome, run); err != nil {
+		if err := esc.Finish(ctx, name, run); err != nil {
 			degradar(err, nil)
 			return
 		}

@@ -49,10 +49,10 @@ import (
 // the record's fields and not its position; it affects the preview, and anything
 // that depends on order. That is why concurrency is opt-in.
 type Many struct {
-	// Sources são as origens. Obrigatório, ou Discover.
+	// Sources são as sources. Obrigatório, ou Discover.
 	Sources []core.Reader
 
-	// Discover monta as origens em runtime, dentro do pipeline.
+	// Discover monta as sources em runtime, dentro do pipeline.
 	//
 	//	Discover: func(ctx context.Context) ([]sdk.Reader, error) {
 	//	    // a GET that lists the partitions, and one source per partition
@@ -87,22 +87,22 @@ type Many struct {
 // the process down at the moment the message mattered most.
 func (m Many) Describe() string {
 	if len(m.Sources) == 0 {
-		return "many: (nenhuma origem)"
+		return "many: (nenhuma source)"
 	}
 	if m.Sources[0] == nil {
-		return fmt.Sprintf("many: %d origens", len(m.Sources))
+		return fmt.Sprintf("many: %d sources", len(m.Sources))
 	}
-	return fmt.Sprintf("many: %d origens, a primeira %s", len(m.Sources), m.Sources[0].Describe())
+	return fmt.Sprintf("many: %d sources, a primeira %s", len(m.Sources), m.Sources[0].Describe())
 }
 
 // Read satisfaz core.Reader.
 func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error) {
 	if len(m.Sources) > 0 && m.Discover != nil {
 		return nil, fmt.Errorf("from.Many declara Sources e Discover, e as duas montam a " +
-			"lista de origens -- a que perde perderia em silêncio")
+			"lista de sources -- a que perde perderia em silêncio")
 	}
 
-	origens := m.Sources
+	sources := m.Sources
 	if m.Discover != nil {
 		// Discovery happens HERE, inside Read, and not while the pipeline is
 		// assembled: an error from it is an extract error, handled like any
@@ -111,10 +111,10 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		if err != nil {
 			return nil, fmt.Errorf("from.Many: discovering the sources: %w", err)
 		}
-		origens = descobertas
+		sources = descobertas
 	}
 
-	if len(origens) == 0 {
+	if len(sources) == 0 {
 		if m.Discover != nil {
 			return nil, fmt.Errorf("from.Many: Discover returned no source at all. Zero " +
 				"sources is not the same as zero records: a run that read nothing because " +
@@ -124,12 +124,12 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		return nil, fmt.Errorf("from.Many needs at least one source in Sources, " +
 			"or a Discover")
 	}
-	for i, s := range origens {
+	for i, s := range sources {
 		if s == nil {
 			return nil, fmt.Errorf("from.Many: source %d is nil", i)
 		}
 	}
-	m.Sources = origens
+	m.Sources = sources
 
 	trabalhadores := m.Workers
 	if trabalhadores < 1 {
@@ -139,28 +139,28 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		trabalhadores = len(m.Sources)
 	}
 
-	inicio := time.Now()
+	start := time.Now()
 	return func(yield func(core.Envelope, error) bool) {
-		ctx, cancelar := context.WithCancel(ctx)
-		defer cancelar()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		// Every source has its OWN Stats, and they are summed at the end. One
 		// pointer shared between goroutines would be a data race -- and -race
 		// would find it, but only after somebody wrote the test.
 		var mu sync.Mutex
-		var falhas []core.SourceFailure
+		var failures []core.SourceFailure
 		total := core.Stats{}
 
 		type resultado struct {
 			env core.Envelope
 			err error
-			// origem is filled only when err comes from OPENING the source,
+			// source is filled only when err comes from OPENING the source,
 			// because that is when it is possible to say which one failed.
-			origem core.Reader
+			source core.Reader
 		}
 
 		fila := make(chan int)
-		saida := make(chan resultado)
+		out := make(chan resultado)
 
 		var wg sync.WaitGroup
 		for w := 0; w < trabalhadores; w++ {
@@ -168,7 +168,7 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 			go func() {
 				defer wg.Done()
 				for i := range fila {
-					fonte := m.Sources[i]
+					src := m.Sources[i]
 
 					// One Stats per source, summed at the end: that way the
 					// result's counters describe the whole read and not the
@@ -180,18 +180,18 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 					// asking each source for one would print N tables.
 					opcoes.Preview = 0
 
-					linhas, err := fonte.Read(ctx, opcoes)
+					rows, err := src.Read(ctx, opcoes)
 					if err != nil {
 						select {
-						case saida <- resultado{err: err, origem: fonte}:
+						case out <- resultado{err: err, source: src}:
 						case <-ctx.Done():
 						}
 						continue
 					}
 
-					for env, err := range linhas {
+					for env, err := range rows {
 						select {
-						case saida <- resultado{env: env, err: err, origem: fonte}:
+						case out <- resultado{env: env, err: err, source: src}:
 						case <-ctx.Done():
 							return
 						}
@@ -219,44 +219,44 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 				}
 			}
 		}()
-		go func() { wg.Wait(); close(saida) }()
+		go func() { wg.Wait(); close(out) }()
 
-		linhas := 0
-		var amostra []any
+		rows := 0
+		var sample []any
 		abortou := false
 
-		for r := range saida {
+		for r := range out {
 			if r.err != nil {
 				if m.OnError != core.ContinueOnError {
-					yield(core.Envelope{}, fmt.Errorf("%s: %w", r.origem.Describe(), r.err))
+					yield(core.Envelope{}, fmt.Errorf("%s: %w", r.source.Describe(), r.err))
 					abortou = true
-					cancelar()
+					cancel()
 					break
 				}
 				mu.Lock()
-				falhas = append(falhas, core.SourceFailure{
-					Source: r.origem.Describe(), Err: r.err.Error(),
+				failures = append(failures, core.SourceFailure{
+					Source: r.source.Describe(), Err: r.err.Error(),
 				})
 				mu.Unlock()
 				slog.WarnContext(ctx, "a source failed and was tolerated",
-					"source", r.origem.Describe(), "error", r.err)
+					"source", r.source.Describe(), "error", r.err)
 				continue
 			}
 
-			linhas++
-			if opt.Preview > 0 && len(amostra) < opt.Preview {
-				amostra = append(amostra, r.env.Payload)
+			rows++
+			if opt.Preview > 0 && len(sample) < opt.Preview {
+				sample = append(sample, r.env.Payload)
 			}
 			if !yield(r.env, nil) {
-				cancelar()
+				cancel()
 				break
 			}
 		}
 
 		// Drains whatever is in flight, so no goroutine stays stuck writing to a
 		// channel nobody reads any more.
-		cancelar()
-		for range saida { //nolint:revive // draining is the point
+		cancel()
+		for range out { //nolint:revive // draining is the point
 		}
 
 		if abortou {
@@ -264,8 +264,8 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		}
 
 		mu.Lock()
-		total.FailedSources = falhas
-		copiaFalhas := append([]core.SourceFailure(nil), falhas...)
+		total.FailedSources = failures
+		copiaFalhas := append([]core.SourceFailure(nil), failures...)
 		mu.Unlock()
 
 		if opt.Stats != nil {
@@ -278,20 +278,20 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 			opt.Stats.FailedSources = total.FailedSources
 		}
 
-		decorrido := time.Since(inicio)
+		elapsed := time.Since(start)
 		core.LogExtract(ctx, "many", m.Describe(), core.PreviewStats{
-			Rows: linhas, Pages: total.Pages, Bytes: total.Bytes, Duration: decorrido,
+			Rows: rows, Pages: total.Pages, Bytes: total.Bytes, Duration: elapsed,
 		})
 		if opt.Preview > 0 {
-			core.WritePreview(opt.PreviewWriter, amostra, opt.PreviewBytes, core.PreviewStats{
-				Rows: linhas, Pages: total.Pages, Bytes: total.Bytes, Duration: decorrido,
+			core.WritePreview(opt.PreviewWriter, sample, opt.PreviewBytes, core.PreviewStats{
+				Rows: rows, Pages: total.Pages, Bytes: total.Bytes, Duration: elapsed,
 			})
 		}
 
 		// Zero records from N healthy sources is a result. Zero because all N
 		// failed is a broken run, and the two must not look the same to whoever
 		// reads the log.
-		if linhas == 0 && len(copiaFalhas) == len(m.Sources) {
+		if rows == 0 && len(copiaFalhas) == len(m.Sources) {
 			yield(core.Envelope{}, core.ErrEverySourceFailed(len(m.Sources), copiaFalhas[0]))
 		}
 	}, nil

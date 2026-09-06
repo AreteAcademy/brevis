@@ -127,8 +127,9 @@ func (d Target) validate() error {
 	return nil
 }
 
-// colunas devolve a declaracao efetiva, venha de Columns ou de Schema.
-func (d Target) colunas() []string {
+// declaredColumns returns the effective declaration, whether it came from
+// Columns or from Schema.
+func (d Target) declaredColumns() []string {
 	if len(d.Schema) > 0 {
 		return d.Schema.Names()
 	}
@@ -138,7 +139,7 @@ func (d Target) colunas() []string {
 // options folds the Target into what every driver receives.
 func (d Target) options(run RunContext) core.WriteOptions {
 	return core.WriteOptions{
-		Columns:     d.colunas(),
+		Columns:     d.declaredColumns(),
 		Schema:      d.Schema,
 		PartitionBy: d.PartitionBy,
 		Dedup:       d.Dedup,

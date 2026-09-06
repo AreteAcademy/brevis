@@ -36,7 +36,8 @@ type Pipeline struct {
 	// not go back to the source. Zero turns it off. See Checkpoint.
 	Checkpoint Checkpoint
 
-	// Reduce agrega o fluxo entre o Transform e o Target. Nil passa direto.
+	// Reduce aggregates the stream between Transform and Target. Nil passes
+	// straight through.
 	//
 	// It DRAINS the source before the first row reaches the destination -- and
 	// that is inherent to aggregating, not a choice. What still holds is the
@@ -160,7 +161,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	rep := newReporter(p.Run)
 	rep.announce(p.name())
 
-	// A declaracao e conferida contra o destino ANTES da extracao.
+	// A declaracao e conferida contra o target ANTES da extracao.
 	//
 	// The same check runs again in the Load, and that is not waste: between the
 	// two the table can change, and the Load's is the one that decides. What
@@ -297,17 +298,17 @@ func (p *Pipeline) montar() ([]Stage, error) {
 // the source's raw rows and called them records, with no warning. A preview
 // that answers a different question with the same confidence is worse than no
 // preview, because it is what people run INSTEAD of writing.
-func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, origem string) {
+func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, source string) {
 	for i, st := range stages {
-		data.Records = st.apply(data.Records, &contagens[i], origem)
+		data.Records = st.apply(data.Records, &contagens[i], source)
 	}
 }
 
 // aoEsgotar warns when the source has run out -- which is when the extract
 // really finished, and not when Extract returned the iterator.
-func aoEsgotar(linhas iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
+func aoEsgotar(rows iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
-		for env, err := range linhas {
+		for env, err := range rows {
 			if !yield(env, err) {
 				return // the consumer gave up: the source did not run out
 			}
@@ -329,7 +330,7 @@ func checkDestination(ctx context.Context, t Target) error {
 	if !sabe {
 		return nil
 	}
-	return verificador.CheckDestination(ctx, t.colunas())
+	return verificador.CheckDestination(ctx, t.declaredColumns())
 }
 
 // runDryRun extracts and maps without writing, printing the first n
@@ -380,11 +381,11 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	// million went. With this, finding out is one line instead of bisecting the
 	// pipeline by hand.
 	for _, c := range contagens {
-		linha := fmt.Sprintf("  %-10s %9d -> %9d", c.Kind, c.In, c.Out)
+		row := fmt.Sprintf("  %-10s %9d -> %9d", c.Kind, c.In, c.Out)
 		if c.Kind == StageAggregate {
-			linha += fmt.Sprintf("   (%d groups)", c.Groups)
+			row += fmt.Sprintf("   (%d groups)", c.Groups)
 		}
-		_, _ = fmt.Fprintln(os.Stdout, linha)
+		_, _ = fmt.Fprintln(os.Stdout, row)
 	}
 	_, _ = fmt.Fprintln(os.Stdout)
 

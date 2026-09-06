@@ -298,20 +298,20 @@ func plural(n int, one, many string) string {
 // It exists so every new driver does not repeat the choice of destination and
 // the handling of a nil writer -- that is how the preview was born inside
 // extract and had to be moved when the second driver showed up.
-func WritePreview(w io.Writer, amostra []any, orcamento int, st PreviewStats) {
+func WritePreview(w io.Writer, sample []any, orcamento int, st PreviewStats) {
 	if w == nil {
 		w = os.Stderr
 	}
-	_, _ = io.WriteString(w, RenderPreview(amostra, orcamento, st))
+	_, _ = io.WriteString(w, RenderPreview(sample, orcamento, st))
 }
 
 // LogExtract emits the summary line every read driver should emit, with the
 // same keys -- so that "how many rows and how long" reads the same whether it
 // came from HTTP, from a file or from a database.
-func LogExtract(ctx context.Context, driver, fonte string, st PreviewStats) {
+func LogExtract(ctx context.Context, driver, src string, st PreviewStats) {
 	args := []any{
 		"driver", driver,
-		"source", fonte,
+		"source", src,
 		"rows", st.Rows,
 		"duration", RoundDuration(st.Duration),
 	}

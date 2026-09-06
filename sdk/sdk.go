@@ -36,7 +36,7 @@ type Data struct {
 	stats  *core.Stats
 }
 
-// origem names where these records came from, for the error messages.
+// sourceName says where these records came from, for the error messages.
 //
 // A Data built by hand -- `&sdk.Data{Records: mySequence}` -- has no driver,
 // and reaching for `source.From.Describe()` on it was a nil dereference. That
@@ -44,7 +44,7 @@ type Data struct {
 // used it: the only way to exercise a Transform chain from a test was to have a
 // real source, which is the same hole that made -dry-run unable to check a
 // Stages pipeline.
-func (d *Data) origem() string {
+func (d *Data) sourceName() string {
 	if d == nil || d.source.From == nil {
 		return "data"
 	}
@@ -108,9 +108,9 @@ func Extract(ctx context.Context, source Source) (*Data, error) {
 // It runs HERE, between the read and the Transform, and not as a transformer:
 // that way it does not depend on a position in the chain, and no ordering can
 // contaminate the snapshot with fields the chain itself wrote.
-func comRetrato(linhas iter.Seq2[Envelope, error], nome string) iter.Seq2[Envelope, error] {
+func comRetrato(rows iter.Seq2[Envelope, error], name string) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
-		for env, err := range linhas {
+		for env, err := range rows {
 			if err != nil {
 				if !yield(env, err) {
 					return
@@ -128,10 +128,10 @@ func comRetrato(linhas iter.Seq2[Envelope, error], nome string) iter.Seq2[Envelo
 				}
 				continue
 			}
-			if _, ocupado := obj[nome]; ocupado {
+			if _, ocupado := obj[name]; ocupado {
 				yield(Envelope{}, fmt.Errorf("Source.Snapshot quer gravar o retrato em %q, "+
-					"e a fonte já manda um campo com esse nome -- gravar por cima perderia o "+
-					"que veio da fonte. Escolha outro nome", nome))
+					"e a src já manda um field com esse name -- gravar por cima perderia o "+
+					"que veio da src. Escolha outro name", name))
 				return
 			}
 
@@ -139,7 +139,7 @@ func comRetrato(linhas iter.Seq2[Envelope, error], nome string) iter.Seq2[Envelo
 			for k, v := range obj {
 				retrato[k] = v
 			}
-			obj[nome] = retrato
+			obj[name] = retrato
 
 			if !yield(env, nil) {
 				return
@@ -253,9 +253,9 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 			return nil
 		}
 		levas++
-		inicio := time.Now()
+		start := time.Now()
 		lr, err := target.To.Write(ctx, leva, opcoes)
-		res.LoadTime += time.Since(inicio)
+		res.LoadTime += time.Since(start)
 		if lr != nil {
 			somar(res, lr)
 		}

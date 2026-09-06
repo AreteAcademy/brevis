@@ -76,7 +76,7 @@ type WriteOptions struct {
 	Schema Schema
 
 	// PartitionBy names the partitioning column of a created table.
-	// Vazio deixa o destino usar o padrao dele.
+	// Empty lets the destination use its own default.
 	PartitionBy string
 
 	// Dedup selects deduplication. What it costs, and whether it is supported

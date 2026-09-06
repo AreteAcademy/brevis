@@ -89,49 +89,49 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if opt.Dedup == "" {
 		res.Dedup = core.DedupNone
 	}
-	inicio := time.Now()
-	falhar := func(err error) (*core.LoadResult, error) {
-		res.Duration = time.Since(inicio)
+	start := time.Now()
+	fail := func(err error) (*core.LoadResult, error) {
+		res.Duration = time.Since(start)
 		return res, err
 	}
 
 	if err := t.checar(); err != nil {
-		return falhar(err)
+		return fail(err)
 	}
 	if len(envelopes) == 0 {
-		return falhar(nil)
+		return fail(nil)
 	}
 	if err := core.CheckColumns(opt.Columns, envelopes); err != nil {
-		return falhar(err)
+		return fail(err)
 	}
 
 	// The columns come from the declaration and not from the batch: on Redshift
 	// the SDK does not read the schema before loading, so the declaration IS the
 	// contract -- and CheckColumns has already checked it against the whole
 	// batch.
-	colunas := opt.Columns
-	if len(colunas) == 0 {
-		colunas = camposDe(envelopes)
+	columns := opt.Columns
+	if len(columns) == 0 {
+		columns = camposDe(envelopes)
 	}
 
-	dados, err := EncodeNDJSON(envelopes, colunas)
+	payload, err := EncodeNDJSON(envelopes, columns)
 	if err != nil {
-		return falhar(err)
+		return fail(err)
 	}
-	res.BytesStaged = int64(len(dados))
+	res.BytesStaged = int64(len(payload))
 
-	local, err := core.ParseLocation(t.Staging)
+	loc, err := core.ParseLocation(t.Staging)
 	if err != nil {
-		return falhar(fmt.Errorf("redshift: Staging: %w", err))
+		return fail(fmt.Errorf("redshift: Staging: %w", err))
 	}
-	chave := strings.TrimSuffix(local.Prefix, "/") + "/" +
+	key := strings.TrimSuffix(loc.Prefix, "/") + "/" +
 		fmt.Sprintf("brevis-%d.ndjson", time.Now().UnixNano())
-	chave = strings.TrimPrefix(chave, "/")
+	key = strings.TrimPrefix(key, "/")
 
-	if err := t.Store.Create(ctx, local.Bucket, chave, bytes.NewReader(dados)); err != nil {
-		return falhar(fmt.Errorf("redshift: staging to s3://%s/%s: %w", local.Bucket, chave, err))
+	if err := t.Store.Create(ctx, loc.Bucket, key, bytes.NewReader(payload)); err != nil {
+		return fail(fmt.Errorf("redshift: staging to s3://%s/%s: %w", loc.Bucket, key, err))
 	}
-	uri := "s3://" + local.Bucket + "/" + chave
+	uri := "s3://" + loc.Bucket + "/" + key
 
 	if t.KeepStagedFile {
 		// Only when it stays. Reporting a path the cleanup will delete would be
@@ -142,7 +142,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 			// The staging file stays if the cleanup fails: losing the load over a
 			// DELETE would trade a small problem for a big one. The warning is
 			// what says it stayed.
-			if err := t.remove(ctx, local.Bucket, chave); err != nil {
+			if err := t.remove(ctx, loc.Bucket, key); err != nil {
 				avisarSobra(ctx, uri, err)
 			}
 		}()
@@ -150,7 +150,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 
 	exec, fechar, err := t.executor(ctx)
 	if err != nil {
-		return falhar(err)
+		return fail(err)
 	}
 	defer fechar()
 
@@ -158,17 +158,17 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if res.Dedup == core.DedupMerge {
 		comandos = append([]string{StagingTableSQL(t.Name, tempName)},
 			comandos...)
-		comandos = append(comandos, MergeSQL(t.Name, tempName, colunas), DropSQL(tempName))
+		comandos = append(comandos, MergeSQL(t.Name, tempName, columns), DropSQL(tempName))
 	}
 
 	for _, sql := range comandos {
 		if err := exec.Exec(ctx, sql); err != nil {
-			return falhar(fmt.Errorf("redshift: %w", err))
+			return fail(fmt.Errorf("redshift: %w", err))
 		}
 	}
 
 	res.RowsLoaded = int64(len(envelopes))
-	return falhar(nil)
+	return fail(nil)
 }
 
 const tempName = "brevis_stage"
@@ -216,7 +216,7 @@ func (t Table) checar() error {
 // Exported so it is testable without a cluster, and written with a single
 // growing buffer: a batch of hundreds of thousands of rows must not allocate a
 // buffer per record.
-func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
+func EncodeNDJSON(envelopes []core.Envelope, columns []string) ([]byte, error) {
 	var buf bytes.Buffer
 	// A rough estimate, only to avoid the first few growths.
 	buf.Grow(len(envelopes) * 128)
@@ -225,8 +225,8 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 	// Handing a map[string]any to json.Encoder per record cost five allocations
 	// per row -- the encoder sorts the keys and boxes every value, and none of
 	// that changes between records.
-	chaves := make([][]byte, len(colunas))
-	for i, c := range colunas {
+	chaves := make([][]byte, len(columns))
+	for i, c := range columns {
 		b, err := json.Marshal(c)
 		if err != nil {
 			return nil, fmt.Errorf("redshift: column %q: %w", c, err)
@@ -246,7 +246,7 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 
 		buf.WriteByte('{')
 		primeiro := true
-		for j, c := range colunas {
+		for j, c := range columns {
 			v, tem := obj[c]
 			if !tem {
 				// A missing column does not become null: with FORMAT AS JSON
@@ -280,9 +280,9 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 // BigQuery's INSERT ROW does -- and that is why the risk that cost v0.12.0 does
 // not exist here. What does exist is the role: an access key in this string would
 // end up in the cluster's query log.
-func CopySQL(destino, uri, role string) string {
+func CopySQL(target, uri, role string) string {
 	return fmt.Sprintf("COPY %s FROM '%s' IAM_ROLE '%s' FORMAT AS JSON 'auto' TIMEFORMAT 'auto'",
-		destino, uri, role)
+		target, uri, role)
 }
 
 // StagingTableSQL creates the temporary table with the SAME shape as the
@@ -291,8 +291,8 @@ func CopySQL(destino, uri, role string) string {
 // LIKE, and not a hand-written column list: a temporary table that does not
 // follow the destination is the one that makes the MERGE fail months later, when
 // somebody adds a column.
-func StagingTableSQL(destino, temp string) string {
-	return fmt.Sprintf("CREATE TEMP TABLE %s (LIKE %s)", temp, destino)
+func StagingTableSQL(target, temp string) string {
+	return fmt.Sprintf("CREATE TEMP TABLE %s (LIKE %s)", temp, target)
 }
 
 // MergeSQL builds the dedup's MERGE, with the column list NAMED.
@@ -300,25 +300,25 @@ func StagingTableSQL(destino, temp string) string {
 // Always named, and the comment exists because the alternative already
 // happened: BigQuery's `INSERT ROW` matches by POSITION, and v0.12.0 shipped
 // with the columns swapped because nobody had seen the generated SQL.
-func MergeSQL(destino, origem string, colunas []string) string {
-	nomes := make([]string, len(colunas))
-	valores := make([]string, len(colunas))
-	for i, c := range colunas {
-		nomes[i] = citar(c)
-		valores[i] = origem + "." + citar(c)
+func MergeSQL(target, source string, columns []string) string {
+	names := make([]string, len(columns))
+	values := make([]string, len(columns))
+	for i, c := range columns {
+		names[i] = quote(c)
+		values[i] = source + "." + quote(c)
 	}
 	return fmt.Sprintf(
 		"MERGE INTO %s USING %s ON %s.%s = %s.%s "+
 			"WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)",
-		destino, origem,
-		destino, citar(core.MetadataID), origem, citar(core.MetadataID),
-		strings.Join(nomes, ", "), strings.Join(valores, ", "))
+		target, source,
+		target, quote(core.MetadataID), source, quote(core.MetadataID),
+		strings.Join(names, ", "), strings.Join(values, ", "))
 }
 
 // DropSQL apaga a temporaria.
 func DropSQL(temp string) string { return "DROP TABLE IF EXISTS " + temp }
 
-func citar(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
+func quote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
 
 func camposDe(envelopes []core.Envelope) []string {
 	vistos := map[string]bool{}

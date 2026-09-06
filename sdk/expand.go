@@ -58,23 +58,23 @@ func ParallelArrays(block string, fields ...string) Expander {
 
 		arrays := make(map[string][]any, len(fields))
 		size := -1
-		for _, campo := range fields {
-			v, ok := source[campo]
+		for _, field := range fields {
+			v, ok := source[field]
 			if !ok {
 				return nil, fmt.Errorf("field %q is not in %q; available: %s",
-					campo, block, availableKeys(source))
+					field, block, availableKeys(source))
 			}
 			arr, ok := v.([]any)
 			if !ok {
-				return nil, fmt.Errorf("field %q is not an array, got %T", campo, v)
+				return nil, fmt.Errorf("field %q is not an array, got %T", field, v)
 			}
 			if size == -1 {
 				size = len(arr)
 			} else if len(arr) != size {
 				return nil, fmt.Errorf("arrays of different lengths: %q has %d, expected %d -- "+
-					"pairing them by index would join the wrong readings", campo, len(arr), size)
+					"pairing them by index would join the wrong readings", field, len(arr), size)
 			}
-			arrays[campo] = arr
+			arrays[field] = arr
 		}
 
 		// Everything outside the block describes the series as a whole and is
@@ -98,8 +98,8 @@ func ParallelArrays(block string, fields ...string) Expander {
 			for k, v := range common {
 				r[k] = v
 			}
-			for _, campo := range fields {
-				r[campo] = arrays[campo][i]
+			for _, field := range fields {
+				r[field] = arrays[field][i]
 			}
 			records = append(records, r)
 		}
@@ -185,8 +185,8 @@ func RejectIf(fields ...string) func(Response) error {
 		}
 		status := r.Status
 
-		for _, campo := range fields {
-			v, ok := doc[campo]
+		for _, field := range fields {
+			v, ok := doc[field]
 			if !ok || !truthy(v) {
 				continue
 			}
@@ -194,10 +194,10 @@ func RejectIf(fields ...string) func(Response) error {
 			// between "the API said no" and knowing why.
 			for _, reason := range []string{"reason", "message", "detail", "error_description"} {
 				if m, ok := doc[reason].(string); ok && m != "" {
-					return core.Reject("response %d flagged with %q: %s", status, campo, m)
+					return core.Reject("response %d flagged with %q: %s", status, field, m)
 				}
 			}
-			return core.Reject("response %d flagged with %q: %v", status, campo, v)
+			return core.Reject("response %d flagged with %q: %v", status, field, v)
 		}
 		return nil
 	}
@@ -211,10 +211,10 @@ func RequireFields(fields ...string) func(Response) error {
 		if err != nil {
 			return err
 		}
-		for _, campo := range fields {
-			if _, ok := doc[campo]; !ok {
+		for _, field := range fields {
+			if _, ok := doc[field]; !ok {
 				return core.Reject("response %d is missing field %q; available: %s",
-					r.Status, campo, availableKeys(doc))
+					r.Status, field, availableKeys(doc))
 			}
 		}
 		return nil

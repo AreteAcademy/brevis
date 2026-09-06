@@ -77,21 +77,21 @@ func ComputeIngestionIDNo(namespace uuid.UUID, provider, entity, sourceKey, reco
 	tamanho := len(provider) + len(entity) + len(sourceKey) + len(recordTS) + 3
 
 	var pilha [192]byte
-	var chave []byte
+	var key []byte
 	if tamanho <= len(pilha) {
-		chave = pilha[:0]
+		key = pilha[:0]
 	} else {
-		chave = make([]byte, 0, tamanho)
+		key = make([]byte, 0, tamanho)
 	}
-	chave = append(chave, provider...)
-	chave = append(chave, '|')
-	chave = append(chave, entity...)
-	chave = append(chave, '|')
-	chave = append(chave, sourceKey...)
-	chave = append(chave, '|')
-	chave = append(chave, recordTS...)
+	key = append(key, provider...)
+	key = append(key, '|')
+	key = append(key, entity...)
+	key = append(key, '|')
+	key = append(key, sourceKey...)
+	key = append(key, '|')
+	key = append(key, recordTS...)
 
-	return formatarUUID(uuidV5(namespace, chave)), nil
+	return formatarUUID(uuidV5(namespace, key)), nil
 }
 
 // digestos keeps the sha1 states between calls.
@@ -108,13 +108,13 @@ var digestos = sync.Pool{New: func() any { return sha1.New() }}
 // differential test comparing this function with the uuid package's own over
 // thousands of random inputs. A one-bit divergence here would change every
 // ingestion_id ever written.
-func uuidV5(espaco uuid.UUID, dados []byte) uuid.UUID {
+func uuidV5(espaco uuid.UUID, data []byte) uuid.UUID {
 	h := digestos.Get().(hash.Hash)
 	defer digestos.Put(h)
 
 	h.Reset()
 	_, _ = h.Write(espaco[:])
-	_, _ = h.Write(dados)
+	_, _ = h.Write(data)
 
 	var soma [sha1.Size]byte
 	resumo := h.Sum(soma[:0])
@@ -594,8 +594,8 @@ func WithSchema(s Schema) LoadOption {
 }
 
 // WithPartitionBy names the partitioning column of the created table.
-func WithPartitionBy(coluna string) LoadOption {
-	return func(cfg *LoadConfig) { cfg.PartitionBy = coluna }
+func WithPartitionBy(column string) LoadOption {
+	return func(cfg *LoadConfig) { cfg.PartitionBy = column }
 }
 
 func WithColumns(columns []string) LoadOption {

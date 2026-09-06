@@ -7,8 +7,8 @@
 //
 // The depot is a directory of numbered parts plus a manifest:
 //
-//	{At}/{run_id}/{pipeline}/parte-00000.ndjson
-//	{At}/{run_id}/{pipeline}/parte-00001.ndjson
+//	{At}/{run_id}/{pipeline}/part-00000.ndjson
+//	{At}/{run_id}/{pipeline}/part-00001.ndjson
 //	{At}/{run_id}/{pipeline}/_completo
 //
 // `_completo` is written LAST, and it is what authorises a resume. Without it
@@ -33,7 +33,7 @@ import (
 // purpose while the code around them is English.
 //
 // They are data, not prose. A depot written by a released SDK holds
-// `_completo` and `parte-00000.ndjson`; a build looking for `_complete` finds
+// `_completo` and `part-00000.ndjson`; a build looking for `_complete` finds
 // nothing, logs "no usable checkpoint" and re-extracts -- which spends exactly
 // the vendor quota this package exists to save. Renaming them is a migration,
 // and it is not one worth doing for a word.
@@ -281,7 +281,7 @@ func (d *Depot) Writer() *Write {
 func (e *Write) Add(env core.Envelope) error {
 	data, err := json.Marshal(env.Payload)
 	if err != nil {
-		return fmt.Errorf("registro %d do checkpoint: %w", e.written+e.buffered, err)
+		return fmt.Errorf("record %d do checkpoint: %w", e.written+e.buffered, err)
 	}
 
 	// Once discovered, never again: the decoder is fixed per source, so the
@@ -360,10 +360,10 @@ func (e *Write) Written() *Manifest {
 // run pays no memory at all for a path that only executes when the bucket fails
 // midway.
 func (e *Write) Pending() iter.Seq2[core.Envelope, error] {
-	dados := e.buf.Bytes()
+	data := e.buf.Bytes()
 	numbers := e.numbers
 	return func(yield func(core.Envelope, error) bool) {
-		dec := json.NewDecoder(bytes.NewReader(dados))
+		dec := json.NewDecoder(bytes.NewReader(data))
 		if numbers == NumbersLiteral {
 			dec.UseNumber()
 		}
