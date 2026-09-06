@@ -169,21 +169,21 @@ func Ponto(status string) templ.Component {
 func rotuloEstado(s string) string {
 	switch s {
 	case "success":
-		return "sucesso"
+		return "success"
 	case "failed":
-		return "falha"
+		return "failed"
 	case "running":
-		return "executando"
+		return "running"
 	case "queued":
-		return "na fila"
+		return "queued"
 	case "retrying":
-		return "repetindo"
+		return "retrying"
 	case "canceled":
-		return "cancelado"
+		return "canceled"
 	case "pending":
-		return "aguardando"
+		return "pending"
 	case "":
-		return "nunca rodou"
+		return "never ran"
 	}
 	return s
 }
@@ -567,7 +567,7 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(baldes) == 0 {
-			templ_7745c5c3_Err = Vazio("Sem execuções na janela.", "brevis scheduler").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Vazio("No run in the window.", "brevis scheduler").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -585,7 +585,7 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"h-[240px] w-full min-w-[560px]\" role=\"img\" aria-label=\"Execuções por hora\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"h-[240px] w-full min-w-[560px]\" role=\"img\" aria-label=\"Runs per hour\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -945,9 +945,9 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var54 string
-				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("pico de duração média: " + Duracao(picoDuracao(baldes)))
+				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("peak average duration: " + Duracao(picoDuracao(baldes)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 190, Col: 67}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 190, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 				if templ_7745c5c3_Err != nil {
@@ -1007,11 +1007,11 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legenda("var(--color-state-success)", "sucesso").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legenda("var(--color-state-success)", "success").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legenda("var(--color-state-failed)", "falha").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legenda("var(--color-state-failed)", "failed").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1019,7 +1019,7 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = legenda("var(--color-gold)", "duração média").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = legenda("var(--color-gold)", "average duration").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1110,7 +1110,7 @@ func Rosca(i postgres.Indicadores) templ.Component {
 			templ_7745c5c3_Var61 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<div class=\"flex flex-col items-center\"><svg viewBox=\"0 0 120 120\" class=\"h-[190px] w-[190px]\" role=\"img\" aria-label=\"Distribuição das execuções\"><circle cx=\"60\" cy=\"60\" r=\"46\" fill=\"none\" stroke=\"var(--color-ink)\" stroke-opacity=\"0.07\" stroke-width=\"16\"></circle> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "<div class=\"flex flex-col items-center\"><svg viewBox=\"0 0 120 120\" class=\"h-[190px] w-[190px]\" role=\"img\" aria-label=\"Run distribution\"><circle cx=\"60\" cy=\"60\" r=\"46\" fill=\"none\" stroke=\"var(--color-ink)\" stroke-opacity=\"0.07\" stroke-width=\"16\"></circle> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1211,7 +1211,7 @@ func Rosca(i postgres.Indicadores) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</text> <text x=\"60\" y=\"74\" text-anchor=\"middle\" class=\"fill-muted text-[9px] tracking-[0.14em]\">EXECUÇÕES</text></svg></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</text> <text x=\"60\" y=\"74\" text-anchor=\"middle\" class=\"fill-muted text-[9px] tracking-[0.14em]\">RUNS</text></svg></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1342,19 +1342,19 @@ func linkDoBalde(b postgres.Balde) string {
 func dicaDoBalde(b postgres.Balde) string {
 	partes := []string{b.Inicio.Local().Format("02/01 15h")}
 	if b.Sucesso > 0 {
-		partes = append(partes, fmt.Sprintf("%d sucesso", b.Sucesso))
+		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
 	}
 	if b.Falha > 0 {
-		partes = append(partes, fmt.Sprintf("%d falha", b.Falha))
+		partes = append(partes, fmt.Sprintf("%d failed", b.Falha))
 	}
 	if n := b.Executando + b.Fila; n > 0 {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
 	if b.DuracaoMedia > 0 {
-		partes = append(partes, "média "+Duracao(&b.DuracaoMedia))
+		partes = append(partes, "avg "+Duracao(&b.DuracaoMedia))
 	}
 	if len(partes) == 1 {
-		return partes[0] + " · sem execuções"
+		return partes[0] + " · no runs"
 	}
 	return strings.Join(partes, " · ")
 }
@@ -1449,10 +1449,10 @@ func arcos(i postgres.Indicadores) []Arco {
 	}{
 		// Variavel CSS, e nao hexadecimal: o SVG e servido dentro da pagina,
 		// entao a rosca segue o tema do cliente como qualquer outro elemento.
-		{i.Sucesso, "var(--color-state-success)", "sucesso", "success"},
-		{i.Falha, "var(--color-state-failed)", "falha", "failed"},
-		{i.EmExecucao, "var(--color-state-running)", "executando", "running"},
-		{i.Pendentes, "var(--color-state-queued)", "na fila", "queued"},
+		{i.Sucesso, "var(--color-state-success)", "success", "success"},
+		{i.Falha, "var(--color-state-failed)", "failed", "failed"},
+		{i.EmExecucao, "var(--color-state-running)", "running", "running"},
+		{i.Pendentes, "var(--color-state-queued)", "queued", "queued"},
 	}
 
 	var out []Arco
@@ -1466,7 +1466,7 @@ func arcos(i postgres.Indicadores) []Arco {
 			Cor:    f.cor,
 			Dash:   fmt.Sprintf("%d %d", tamanho, perimetro-tamanho),
 			Offset: -acumulado,
-			Dica: fmt.Sprintf("%d %s (%.0f%%) — clique para ver a lista",
+			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
 				f.n, f.nome, float64(f.n)*100/float64(i.Total)),
 			Link: "/runs?estado=" + f.estado,
 		})
@@ -1506,13 +1506,13 @@ func Quando(t *time.Time) string {
 	d := time.Since(*t)
 	switch {
 	case d < 0:
-		return "em " + curto(-d)
+		return "in " + curto(-d)
 	case d < time.Minute:
-		return "agora"
+		return "now"
 	case d < 24*time.Hour:
-		return "há " + curto(d)
+		return curto(d) + " ago"
 	}
-	return t.Local().Format("02/01 15:04")
+	return t.Local().Format("Jan 02 15:04")
 }
 
 func curto(d time.Duration) string {
@@ -1631,7 +1631,7 @@ func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" class=\"w-[min(680px,92vw)] rounded-[20px] border border-line bg-surface p-0 text-ink shadow-warm backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]\"><div class=\"flex items-start justify-between gap-4 border-b border-line px-6 py-4\"><div><p class=\"kicker\">Falha na execução</p><p class=\"display mt-1 text-2xl\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 86, "\" class=\"w-[min(680px,92vw)] rounded-[20px] border border-line bg-surface p-0 text-ink shadow-warm backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]\"><div class=\"flex items-start justify-between gap-4 border-b border-line px-6 py-4\"><div><p class=\"kicker\">Run failure</p><p class=\"display mt-1 text-2xl\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1644,7 +1644,7 @@ func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Fechar\">fechar</button></form></div><div class=\"px-6 py-5\"><div class=\"mb-4 flex flex-wrap items-center gap-3 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "</p></div><form method=\"dialog\"><button autofocus class=\"rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink\" aria-label=\"Fechar\">close</button></form></div><div class=\"px-6 py-5\"><div class=\"mb-4 flex flex-wrap items-center gap-3 text-xs\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1665,7 +1665,7 @@ func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" class=\"text-gold-strong hover:underline\">abrir a execução</a> <span class=\"font-mono text-[0.7rem] text-muted/70\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" class=\"text-gold-strong hover:underline\">open the run</a> <span class=\"font-mono text-[0.7rem] text-muted/70\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

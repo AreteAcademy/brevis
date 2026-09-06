@@ -48,12 +48,12 @@ func TestJanelaDePaginas(t *testing.T) {
 // que agora tem duas seria uma tela vazia sem explicacao.
 func TestTrocarFiltroReiniciaPagina(t *testing.T) {
 	f := Filtro{Tag: "acme", Pagina: 7, PorPagina: PorPaginaPadrao}
-	if u := f.Com("estado", "failed"); contemTexto(u, "pagina=") {
+	if u := f.Com("state", "failed"); contemTexto(u, "page=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
 	// Navegar entre paginas preserva o resto do filtro.
 	u := f.ComPagina(3)
-	if !contemTexto(u, "tag=acme") || !contemTexto(u, "pagina=3") {
+	if !contemTexto(u, "tag=acme") || !contemTexto(u, "page=3") {
 		t.Errorf("URL de pagina = %q", u)
 	}
 }
@@ -61,21 +61,21 @@ func TestTrocarFiltroReiniciaPagina(t *testing.T) {
 // Terceiro clique no mesmo cabecalho remove a ordenacao.
 func TestComOrdemAlternaEDepoisLimpa(t *testing.T) {
 	f := Filtro{PorPagina: PorPaginaPadrao}
-	primeiro := f.ComOrdem("ultima")
-	if !contemTexto(primeiro, "ordem=ultima") || contemTexto(primeiro, "dir=desc") {
+	primeiro := f.ComOrdem("last")
+	if !contemTexto(primeiro, "sort=last") || contemTexto(primeiro, "dir=desc") {
 		t.Errorf("primeiro clique = %q, queria ascendente", primeiro)
 	}
 
-	f.Ordem = "ultima"
-	if segundo := f.ComOrdem("ultima"); !contemTexto(segundo, "dir=desc") {
+	f.Ordem = "last"
+	if segundo := f.ComOrdem("last"); !contemTexto(segundo, "dir=desc") {
 		t.Errorf("segundo clique = %q, queria descendente", segundo)
 	}
 
 	f.Desc = true
-	if terceiro := f.ComOrdem("ultima"); contemTexto(terceiro, "ordem=") {
+	if terceiro := f.ComOrdem("last"); contemTexto(terceiro, "sort=") {
 		t.Errorf("terceiro clique = %q, queria sem ordenacao", terceiro)
 	}
-	if f.Seta("ultima") != "↓" || f.Seta("workflow") != "" {
+	if f.Seta("last") != "↓" || f.Seta("workflow") != "" {
 		t.Error("a seta so aparece na coluna ordenada")
 	}
 }
@@ -85,10 +85,10 @@ func TestFiltroDeRunsRemovePeriodo(t *testing.T) {
 	if !f.Ativo() {
 		t.Error("filtro com periodo deveria contar como ativo")
 	}
-	if u := f.Com("estado", ""); contemTexto(u, "estado=") {
+	if u := f.Com("state", ""); contemTexto(u, "state=") {
 		t.Errorf("remover o estado deixou %q", u)
 	}
-	if !contemTexto(f.Com("estado", ""), "de=") {
+	if !contemTexto(f.Com("state", ""), "from=") {
 		t.Error("remover o estado nao pode levar o periodo junto")
 	}
 	if (FiltroRuns{}).Ativo() {

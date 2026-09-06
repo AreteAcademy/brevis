@@ -186,11 +186,11 @@ func proximasExecucoes(agendas []postgres.AgendaResumo, agora time.Time, limite 
 func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.FiltroRuns{
-		Estado:    estadoValido(q.Get("estado")),
+		Estado:    estadoValido(q.Get("state")),
 		Workflow:  q.Get("workflow"),
-		De:        q.Get("de"),
-		Ate:       q.Get("ate"),
-		Pagina:    pagina(q.Get("pagina")),
+		De:        q.Get("from"),
+		Ate:       q.Get("to"),
+		Pagina:    pagina(q.Get("page")),
 		PorPagina: pages.PorPaginaPadrao,
 	}
 
@@ -289,12 +289,12 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.Filtro{
 		Busca:     strings.TrimSpace(q.Get("q")),
-		Estado:    estadoValido(q.Get("estado")),
-		Ativo:     q.Get("ativo"),
+		Estado:    estadoValido(q.Get("state")),
+		Ativo:     q.Get("active"),
 		Tag:       q.Get("tag"),
-		Ordem:     ordemValida(q.Get("ordem")),
+		Ordem:     ordemValida(q.Get("sort")),
 		Desc:      q.Get("dir") == "desc",
-		Pagina:    pagina(q.Get("pagina")),
+		Pagina:    pagina(q.Get("page")),
 		PorPagina: pages.PorPaginaPadrao,
 	}
 
@@ -308,7 +308,7 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 // would only produce a list in an unexplained order.
 func ordemValida(s string) string {
 	switch s {
-	case "workflow", "agenda", "proxima", "ultima":
+	case "workflow", "schedule", "next", "last":
 		return s
 	}
 	return ""
@@ -344,11 +344,11 @@ func ordenar(ws []postgres.ResumoWorkflow, f pages.Filtro) {
 
 func temValor(w postgres.ResumoWorkflow, campo string) bool {
 	switch campo {
-	case "agenda":
+	case "schedule":
 		return w.Cron != ""
-	case "proxima":
+	case "next":
 		return w.ProximaRun != nil
-	case "ultima":
+	case "last":
 		return w.UltimaRunEm != nil
 	}
 	return true
@@ -356,11 +356,11 @@ func temValor(w postgres.ResumoWorkflow, campo string) bool {
 
 func comparaCampo(a, b postgres.ResumoWorkflow, campo string) int {
 	switch campo {
-	case "agenda":
+	case "schedule":
 		return strings.Compare(a.Cron, b.Cron)
-	case "proxima":
+	case "next":
 		return comparaTempo(a.ProximaRun, b.ProximaRun)
-	case "ultima":
+	case "last":
 		return comparaTempo(a.UltimaRunEm, b.UltimaRunEm)
 	}
 	return strings.Compare(a.Slug, b.Slug)
@@ -620,15 +620,15 @@ func (u *UI) erro(w http.ResponseWriter, r *http.Request, err error) {
 func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		u.render(w, r, pages.Login(pages.DadosLogin{
-			Destino: auth.Destino(r.URL.Query().Get("de")),
+			Destino: auth.Destino(r.URL.Query().Get("next")),
 		}))
 	})
 
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
-		destino := auth.Destino(r.FormValue("de"))
-		usuario := r.FormValue("usuario")
+		destino := auth.Destino(r.FormValue("next"))
+		usuario := r.FormValue("username")
 
-		if !portao.Entrar(w, usuario, r.FormValue("senha")) {
+		if !portao.Entrar(w, usuario, r.FormValue("password")) {
 			// Logged as a warning, with the attempted username and the origin: a
 			// burst of failures is the only sign somebody is guessing, and
 			// without a log it does not exist. The password never enters

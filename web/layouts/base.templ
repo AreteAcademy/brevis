@@ -6,38 +6,42 @@ import (
 	"github.com/AreteAcademy/brevis/web/assets"
 )
 
-// Base e o esqueleto de toda pagina.
+// Base is the skeleton of every page.
 //
-// A secao 17 do plano pede SSR primeiro, com ilhas interativas apenas onde a
-// interacao justifica (React Flow, na PHASE 6). Nada de SPA: o HTML chega pronto.
+// Section 17 of the plan asks for SSR first, with interactive islands only where
+// the interaction justifies one (React Flow, in PHASE 6). No SPA: the HTML
+// arrives finished.
 //
-// A identidade visual segue a Arete Academy — pergaminho quente, ouro e serifa
-// nos titulos. Os tokens estao em `web/assets/app.src.css`; aqui so se compoe.
+// The visual identity follows Arete Academy — warm parchment, gold and a serif
+// for the titles. The tokens are in `web/assets/app.src.css`; here they are only
+// composed.
 
-// Pagina descreve o contexto de cada tela. Um struct em vez de cinco parametros
-// posicionais: quando o quinto entrou, a chamada ja tinha virado adivinhacao.
+// Pagina describes each screen's context. A struct rather than five positional
+// parameters: by the time the fifth went in, the call had already become
+// guesswork.
 type Pagina struct {
 	Titulo string
 
-	// Kicker e a migalha em versalete acima do titulo ("DASHBOARD", "WORKFLOWS").
+	// Kicker is the small-caps crumb above the title ("DASHBOARD", "WORKFLOWS").
 	Kicker string
 
-	// Ativo casa com a chave do item de menu.
+	// Ativo matches the menu item's key.
 	Ativo string
 
-	// Acoes ocupa o canto direito do cabecalho. Nulo = sem botoes.
+	// Acoes occupies the header's right-hand corner. Nil = no buttons.
 	Acoes templ.Component
 
-	// Ilha traz os assets extras das telas interativas.
+	// Ilha carries the extra assets of the interactive screens.
 	Ilha Ilha
 
-	// Largo tira o limite de largura. A DAG usa a tela inteira; texto, nao.
+	// Largo removes the width limit. The DAG uses the whole screen; text does
+	// not.
 	Largo bool
 }
 
-// Ilha lista os assets extras de uma pagina interativa. Existe porque so a tela
-// da DAG carrega React (~350 KB): embutir isso no Base faria toda pagina SSR
-// pagar por uma interatividade que nao usa.
+// Ilha lists an interactive page's extra assets. It exists because only the DAG
+// screen loads React (~350 KB): embedding that in Base would make every SSR page
+// pay for an interactivity it does not use.
 type Ilha struct {
 	CSS []string
 	JS  []string
@@ -46,20 +50,22 @@ type Ilha struct {
 templ Base(p Pagina) {
 	{{ marca := branding.De(ctx) }}
 	<!DOCTYPE html>
-	<html lang="pt-BR" class="h-full">
+	<html lang="en" class="h-full">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ p.Titulo } · { marca.Titulo }</title>
-			// As duas fontes sao servidas do binario. O preload evita o pulo de
-			// layout no titulo em serifa, que e a primeira coisa que o olho vai.
+			// Both fonts are served from the binary. The preload avoids the
+			// layout jump on the serif title, which is the first thing the eye
+			// goes to.
 			<link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href="/assets/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="stylesheet" href="/assets/app.css"/>
-			// Tema do cliente DEPOIS da folha compilada: sao as mesmas variaveis
-			// que o Tailwind emite, e todo utilitario resolve a cor por
-			// `var(--color-*)` — sobrescreve-las aqui repinta a interface inteira
-			// sem recompilar CSS. Sai vazio quando o tema e o padrao.
+			// The client's theme AFTER the compiled sheet: they are the same
+			// variables Tailwind emits, and every utility resolves its colour
+			// through `var(--color-*)` — overriding them here repaints the whole
+			// interface with no CSS recompile. It comes out empty when the theme
+			// is the default.
 			if css := marca.CSS(); css != "" {
 				@templ.Raw("<style>" + css + "</style>")
 			}
@@ -97,12 +103,12 @@ templ Base(p Pagina) {
 					}
 				</main>
 			</div>
-			// Interacoes basicas (dialogos, dicas dos graficos) em toda pagina.
-			// Fica no fim do body para nao bloquear a renderizacao — o HTML ja
-			// chega completo, o script so o enriquece.
+			// The basic interactions (dialogs, chart tooltips) on every page. It
+			// sits at the end of the body so it does not block rendering — the
+			// HTML already arrives complete, the script only enriches it.
 			<script src="/assets/ui.js" defer></script>
-			// Depois, em ordem: os UMD do React precisam existir antes do shim,
-			// e o shim antes do bundle do React Flow.
+			// Then, in order: React's UMD builds have to exist before the shim,
+			// and the shim before React Flow's bundle.
 			for _, src := range p.Ilha.JS {
 				<script src={ src }></script>
 			}
@@ -120,10 +126,10 @@ templ sidebar(ativo string, marca branding.Marca) {
 	<aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface/60">
 		<div class="px-7 pt-7 pb-8">
 			<a href="/" class="flex items-center gap-3">
-				// h-9 casa com a altura da caixa do titulo em serifa: a logo
-				// acompanha o texto em vez de competir com ele.
+				// h-9 matches the height of the serif title's box: the logo sits
+				// with the text rather than competing with it.
 				if marca.Logo == branding.LogoPadrao {
-					// Inline, para o simbolo herdar a cor do tema.
+					// Inline, so the symbol inherits the theme's colour.
 					<span class="block h-9 w-9 shrink-0 text-gold">
 						@templ.Raw(assets.LogoSVG)
 					</span>
@@ -140,8 +146,8 @@ templ sidebar(ativo string, marca branding.Marca) {
 			for _, i := range []item{
 				{"/", "Overview", "overview"},
 				{"/workflows", "Workflows", "workflows"},
-				{"/runs", "Execuções", "runs"},
-				{"/projects", "Projetos", "projects"},
+				{"/runs", "Runs", "runs"},
+				{"/projects", "Projects", "projects"},
 			} {
 				if i.Chave == ativo {
 					<a
@@ -162,11 +168,12 @@ templ sidebar(ativo string, marca branding.Marca) {
 				}
 			}
 		</nav>
-		// Rodape: a frase do cliente e, abaixo dela, a atribuicao. A quebra de
-		// linha da frase e preservada — ela e do autor, e virar espaco mudaria o
-		// ritmo do texto.
-		// Aparece so quando ha sessao: numa instalacao sem credencial, um botao
-		// de sair nao teria de onde sair.
+		// The footer: the client's phrase and, below it, the attribution. The
+		// phrase's line break is preserved — it belongs to the author, and
+		// turning it into a space would change the text's rhythm.
+		//
+		// It appears only when there is a session: in an installation with no
+		// credential, a sign-out button would have nowhere to sign out of.
 		if operador := auth.De(ctx); operador != "" {
 			<form method="post" action="/logout" class="px-7 pb-5">
 				<button
@@ -174,7 +181,7 @@ templ sidebar(ativo string, marca branding.Marca) {
 					class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-muted transition-colors hover:bg-gold-wash hover:text-ink"
 				>
 					<span class="truncate">{ operador }</span>
-					<span class="ml-3 shrink-0 tracking-wide uppercase">Sair</span>
+					<span class="ml-3 shrink-0 tracking-wide uppercase">Sign out</span>
 				</button>
 			</form>
 		}
@@ -198,8 +205,9 @@ templ sidebar(ativo string, marca branding.Marca) {
 					}
 				</p>
 			}
-			// Nao vem da configuracao — vem daqui. Nenhum valor de YAML remove
-			// esta linha, e e por isso que ela nao e um campo da Marca.
+			// It does not come from the configuration — it comes from here. No
+			// YAML value removes this line, and that is why it is not a field of
+			// Marca.
 			<a
 				href="https://github.com/AreteAcademy/brevis"
 				target="_blank"

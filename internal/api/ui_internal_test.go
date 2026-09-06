@@ -153,14 +153,14 @@ func TestOrdenarPorUltimaExecucao(t *testing.T) {
 	}
 
 	asc := base()
-	ordenar(asc, pages.Filtro{Ordem: "ultima"})
+	ordenar(asc, pages.Filtro{Ordem: "last"})
 	igual(t, slugs(asc), []string{"c_antiga", "b_recente", "a_nunca"})
 
 	// O ausente fica por ultimo NAS DUAS direcoes: tratar nulo como "muito
 	// antigo" faria a lista comecar por quem nunca rodou justamente ao procurar
 	// a execucao mais recente.
 	desc := base()
-	ordenar(desc, pages.Filtro{Ordem: "ultima", Desc: true})
+	ordenar(desc, pages.Filtro{Ordem: "last", Desc: true})
 	igual(t, slugs(desc), []string{"b_recente", "c_antiga", "a_nunca"})
 }
 
@@ -170,7 +170,7 @@ func TestOrdenarPorAgendaMandaSemCronParaOFim(t *testing.T) {
 		{Slug: "cinco", Cron: "0 5 * * *"},
 		{Slug: "quatro", Cron: "0 4 * * *"},
 	}
-	ordenar(ws, pages.Filtro{Ordem: "agenda"})
+	ordenar(ws, pages.Filtro{Ordem: "schedule"})
 	igual(t, slugs(ws), []string{"quatro", "cinco", "sem_cron"})
 }
 
@@ -178,7 +178,7 @@ func TestOrdenarPorAgendaMandaSemCronParaOFim(t *testing.T) {
 // lugar a cada carregamento da pagina.
 func TestOrdenacaoEhEstavel(t *testing.T) {
 	ws := []postgres.ResumoWorkflow{{Slug: "zulu"}, {Slug: "alfa"}, {Slug: "mike"}}
-	ordenar(ws, pages.Filtro{Ordem: "ultima"})
+	ordenar(ws, pages.Filtro{Ordem: "last"})
 	igual(t, slugs(ws), []string{"alfa", "mike", "zulu"})
 }
 

@@ -33,21 +33,21 @@ templ Ponto(status string) {
 func rotuloEstado(s string) string {
 	switch s {
 	case "success":
-		return "sucesso"
+		return "success"
 	case "failed":
-		return "falha"
+		return "failed"
 	case "running":
-		return "executando"
+		return "running"
 	case "queued":
-		return "na fila"
+		return "queued"
 	case "retrying":
-		return "repetindo"
+		return "retrying"
 	case "canceled":
-		return "cancelado"
+		return "canceled"
 	case "pending":
-		return "aguardando"
+		return "pending"
 	case "":
-		return "nunca rodou"
+		return "never ran"
 	}
 	return s
 }
@@ -154,14 +154,14 @@ const (
 // "quanto tempo".
 templ Execucoes(baldes []postgres.Balde) {
 	if len(baldes) == 0 {
-		@Vazio("Sem execuções na janela.", "brevis scheduler")
+		@Vazio("No run in the window.", "brevis scheduler")
 	} else {
 		<div class="overflow-x-auto">
 			<svg
 				viewBox={ fmt.Sprintf("0 0 %d %d", larguraGrafico, alturaGrafico) }
 				class="h-[240px] w-full min-w-[560px]"
 				role="img"
-				aria-label="Execuções por hora"
+				aria-label="Runs per hour"
 			>
 				// Grade horizontal: quatro linhas bastam para dar escala sem
 				// virar papel milimetrado.
@@ -187,7 +187,7 @@ templ Execucoes(baldes []postgres.Balde) {
 					// sem esta ancora ela seria uma linha sem unidade: o pico diz a
 					// que corresponde o ponto mais alto.
 					<text x={ fmt.Sprint(larguraGrafico) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
-						{ "pico de duração média: " + Duracao(picoDuracao(baldes)) }
+						{ "peak average duration: " + Duracao(picoDuracao(baldes)) }
 					</text>
 				}
 				for _, m := range marcasDeHora(baldes) {
@@ -196,10 +196,10 @@ templ Execucoes(baldes []postgres.Balde) {
 			</svg>
 		</div>
 		<div class="mt-3 flex flex-wrap gap-4 text-xs text-muted">
-			@legenda("var(--color-state-success)", "sucesso")
-			@legenda("var(--color-state-failed)", "falha")
+			@legenda("var(--color-state-success)", "success")
+			@legenda("var(--color-state-failed)", "failed")
 			@legenda("var(--color-state-running)", "em curso")
-			@legenda("var(--color-gold)", "duração média")
+			@legenda("var(--color-gold)", "average duration")
 		</div>
 	}
 }
@@ -215,7 +215,7 @@ templ legenda(cor, texto string) {
 // so relativa: 95% de vinte execucoes nao e 95% de duas mil.
 templ Rosca(i postgres.Indicadores) {
 	<div class="flex flex-col items-center">
-		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Distribuição das execuções">
+		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Run distribution">
 			<circle cx="60" cy="60" r="46" fill="none" stroke="var(--color-ink)" stroke-opacity="0.07" stroke-width="16"></circle>
 			for _, a := range arcos(i) {
 				<a href={ templ.SafeURL(a.Link) } class="grafico-alvo" data-dica={ a.Dica }>
@@ -233,7 +233,7 @@ templ Rosca(i postgres.Indicadores) {
 				</a>
 			}
 			<text x="60" y="58" text-anchor="middle" class="fill-ink font-serif text-[26px] font-semibold">{ fmt.Sprint(i.Total) }</text>
-			<text x="60" y="74" text-anchor="middle" class="fill-muted text-[9px] tracking-[0.14em]">EXECUÇÕES</text>
+			<text x="60" y="74" text-anchor="middle" class="fill-muted text-[9px] tracking-[0.14em]">RUNS</text>
 		</svg>
 	</div>
 }
@@ -361,19 +361,19 @@ func linkDoBalde(b postgres.Balde) string {
 func dicaDoBalde(b postgres.Balde) string {
 	partes := []string{b.Inicio.Local().Format("02/01 15h")}
 	if b.Sucesso > 0 {
-		partes = append(partes, fmt.Sprintf("%d sucesso", b.Sucesso))
+		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
 	}
 	if b.Falha > 0 {
-		partes = append(partes, fmt.Sprintf("%d falha", b.Falha))
+		partes = append(partes, fmt.Sprintf("%d failed", b.Falha))
 	}
 	if n := b.Executando + b.Fila; n > 0 {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
 	if b.DuracaoMedia > 0 {
-		partes = append(partes, "média "+Duracao(&b.DuracaoMedia))
+		partes = append(partes, "avg "+Duracao(&b.DuracaoMedia))
 	}
 	if len(partes) == 1 {
-		return partes[0] + " · sem execuções"
+		return partes[0] + " · no runs"
 	}
 	return strings.Join(partes, " · ")
 }
@@ -468,10 +468,10 @@ func arcos(i postgres.Indicadores) []Arco {
 	}{
 		// Variavel CSS, e nao hexadecimal: o SVG e servido dentro da pagina,
 		// entao a rosca segue o tema do cliente como qualquer outro elemento.
-		{i.Sucesso, "var(--color-state-success)", "sucesso", "success"},
-		{i.Falha, "var(--color-state-failed)", "falha", "failed"},
-		{i.EmExecucao, "var(--color-state-running)", "executando", "running"},
-		{i.Pendentes, "var(--color-state-queued)", "na fila", "queued"},
+		{i.Sucesso, "var(--color-state-success)", "success", "success"},
+		{i.Falha, "var(--color-state-failed)", "failed", "failed"},
+		{i.EmExecucao, "var(--color-state-running)", "running", "running"},
+		{i.Pendentes, "var(--color-state-queued)", "queued", "queued"},
 	}
 
 	var out []Arco
@@ -485,7 +485,7 @@ func arcos(i postgres.Indicadores) []Arco {
 			Cor:    f.cor,
 			Dash:   fmt.Sprintf("%d %d", tamanho, perimetro-tamanho),
 			Offset: -acumulado,
-			Dica: fmt.Sprintf("%d %s (%.0f%%) — clique para ver a lista",
+			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
 				f.n, f.nome, float64(f.n)*100/float64(i.Total)),
 			Link: "/runs?estado=" + f.estado,
 		})
@@ -525,13 +525,13 @@ func Quando(t *time.Time) string {
 	d := time.Since(*t)
 	switch {
 	case d < 0:
-		return "em " + curto(-d)
+		return "in " + curto(-d)
 	case d < time.Minute:
-		return "agora"
+		return "now"
 	case d < 24*time.Hour:
-		return "há " + curto(d)
+		return curto(d) + " ago"
 	}
-	return t.Local().Format("02/01 15:04")
+	return t.Local().Format("Jan 02 15:04")
 }
 
 func curto(d time.Duration) string {
@@ -587,7 +587,7 @@ templ DialogoErro(runID, workflow, status, mensagem string) {
 	>
 		<div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
 			<div>
-				<p class="kicker">Falha na execução</p>
+				<p class="kicker">Run failure</p>
 				<p class="display mt-1 text-2xl">{ workflow }</p>
 			</div>
 			// `method="dialog"` fecha sem JavaScript: e o proprio navegador que
@@ -597,13 +597,13 @@ templ DialogoErro(runID, workflow, status, mensagem string) {
 					autofocus
 					class="rounded-full border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
 					aria-label="Fechar"
-				>fechar</button>
+				>close</button>
 			</form>
 		</div>
 		<div class="px-6 py-5">
 			<div class="mb-4 flex flex-wrap items-center gap-3 text-xs">
 				@Estado(status)
-				<a href={ templ.SafeURL("/runs/" + runID) } class="text-gold-strong hover:underline">abrir a execução</a>
+				<a href={ templ.SafeURL("/runs/" + runID) } class="text-gold-strong hover:underline">open the run</a>
 				<span class="font-mono text-[0.7rem] text-muted/70">{ runID }</span>
 			</div>
 			<pre class="max-h-[50vh] overflow-auto rounded-[14px] border border-state-failed/20 bg-state-failed/5 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-state-failed">{ mensagem }</pre>

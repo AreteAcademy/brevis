@@ -40,43 +40,43 @@ type ProximaExecucao struct {
 templ Overview(d DadosOverview) {
 	@layouts.Base(layouts.Pagina{Titulo: "Overview", Kicker: "Dashboard", Ativo: "overview"}) {
 		<div class="grid grid-cols-2 gap-5 lg:grid-cols-4">
-			@components.Indicador("Taxa de sucesso", pct(d.Ind.Razao(d.Ind.Sucesso)),
-				fmt.Sprintf("%d de %d concluídas", d.Ind.Sucesso, d.Ind.Sucesso+d.Ind.Falha), "text-state-success")
-			@components.Indicador("Taxa de falha", pct(d.Ind.Razao(d.Ind.Falha)),
+			@components.Indicador("Success rate", pct(d.Ind.Razao(d.Ind.Sucesso)),
+				fmt.Sprintf("%d of %d finished", d.Ind.Sucesso, d.Ind.Sucesso+d.Ind.Falha), "text-state-success")
+			@components.Indicador("Failure rate", pct(d.Ind.Razao(d.Ind.Falha)),
 				notaFalha(d.Ind.Falha), matizFalha(d.Ind.Falha))
-			@components.Indicador("Em execução", fmt.Sprint(d.Ind.EmExecucao),
+			@components.Indicador("Running", fmt.Sprint(d.Ind.EmExecucao),
 				duracaoMedia(d.Ind.DuracaoMedia), "text-state-running")
-			@components.Indicador("Na fila", fmt.Sprint(d.Ind.Pendentes),
-				fmt.Sprintf("%d itens na fila", d.Pendentes), "text-state-queued")
+			@components.Indicador("Queued", fmt.Sprint(d.Ind.Pendentes),
+				fmt.Sprintf("%d items queued", d.Pendentes), "text-state-queued")
 		</div>
 		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
-			@components.Cartao("Execuções por hora") {
+			@components.Cartao("Runs per hour") {
 				<p class="-mt-2 mb-5 text-sm text-muted">
 					Contagem e duração média nas últimas { fmt.Sprint(int(d.Janela.Hours())) } horas.
 				</p>
 				@components.Execucoes(d.Baldes)
 			}
-			@components.Cartao("Distribuição") {
+			@components.Cartao("Distribution") {
 				@components.Rosca(d.Ind)
 				<dl class="mt-4 space-y-1.5 text-sm">
-					@linhaDist("Sucesso", d.Ind.Sucesso, "bg-state-success")
-					@linhaDist("Falha", d.Ind.Falha, "bg-state-failed")
-					@linhaDist("Executando", d.Ind.EmExecucao, "bg-state-running")
-					@linhaDist("Na fila", d.Ind.Pendentes, "bg-state-queued")
+					@linhaDist("Success", d.Ind.Sucesso, "bg-state-success")
+					@linhaDist("Failure", d.Ind.Falha, "bg-state-failed")
+					@linhaDist("Running", d.Ind.EmExecucao, "bg-state-running")
+					@linhaDist("Queued", d.Ind.Pendentes, "bg-state-queued")
 				</dl>
 			}
 		</div>
 		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
 			@components.Cartao("Em andamento") {
 				if len(d.EmCurso) == 0 {
-					@components.Vazio("Nada em execução agora.", "")
+					@components.Vazio("Nothing running right now.", "")
 				} else {
 					<table class="w-full text-sm">
 						<thead>
 							<tr class="border-b border-line text-left">
 								@th("Workflow", "")
 								@th("Origem", "")
-								@th("Início", "")
+								@th("Started", "")
 								@th("Estado", "text-right")
 							</tr>
 						</thead>
@@ -101,16 +101,16 @@ templ Overview(d DadosOverview) {
 					</table>
 				}
 			}
-			@components.Cartao("Próximas execuções") {
+			@components.Cartao("Upcoming runs") {
 				if len(d.Proximas) == 0 {
-					@components.Vazio("Nenhuma agenda ativa.", "brevis publish arquivo.yaml")
+					@components.Vazio("No active schedule.", "brevis publish file.yaml")
 				} else {
 					<table class="w-full text-sm">
 						<thead>
 							<tr class="border-b border-line text-left">
 								@th("Workflow", "")
-								@th("Agenda", "")
-								@th("Próximo disparo", "text-right")
+								@th("Schedule", "")
+								@th("Next trigger", "text-right")
 							</tr>
 						</thead>
 						<tbody class="divide-y divide-line-soft">
@@ -135,8 +135,8 @@ templ Overview(d DadosOverview) {
 		</div>
 		<section class="mt-6">
 			<div class="mb-3 flex items-baseline justify-between">
-				<h2 class="kicker">Execuções recentes</h2>
-				<a href="/runs" class="text-xs text-gold-strong hover:underline">ver todas</a>
+				<h2 class="kicker">Recent runs</h2>
+				<a href="/runs" class="text-xs text-gold-strong hover:underline">see all</a>
 			</div>
 			@tabelaRuns(d.Recentes, Paginacao{})
 		</section>
@@ -184,14 +184,14 @@ templ paginacao(p Paginacao) {
 	if p.Total > 0 {
 		<div class="flex flex-wrap items-center justify-between gap-4 border-t border-line px-6 py-4 text-xs text-muted">
 			<span>
-				{ fmt.Sprintf("%d–%d de %d", p.Primeiro(), p.Ultimo(), p.Total) }
+				{ fmt.Sprintf("%d–%d of %d", p.Primeiro(), p.Ultimo(), p.Total) }
 			</span>
 			if p.Paginas() > 1 {
 				<nav class="flex items-center gap-1">
 					if p.Pagina > 1 {
-						<a href={ templ.SafeURL(p.LinkPagina(p.Pagina - 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">anterior</a>
+						<a href={ templ.SafeURL(p.LinkPagina(p.Pagina - 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">previous</a>
 					} else {
-						<span class="rounded-full border border-line-soft px-3 py-1 text-line">anterior</span>
+						<span class="rounded-full border border-line-soft px-3 py-1 text-line">previous</span>
 					}
 					for _, n := range p.Janela() {
 						if n == p.Pagina {
@@ -201,9 +201,9 @@ templ paginacao(p Paginacao) {
 						}
 					}
 					if p.Pagina < p.Paginas() {
-						<a href={ templ.SafeURL(p.LinkPagina(p.Pagina + 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">próxima</a>
+						<a href={ templ.SafeURL(p.LinkPagina(p.Pagina + 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">next</a>
 					} else {
-						<span class="rounded-full border border-line-soft px-3 py-1 text-line">próxima</span>
+						<span class="rounded-full border border-line-soft px-3 py-1 text-line">next</span>
 					}
 				</nav>
 			}
@@ -244,7 +244,7 @@ func (f Filtro) Com(campo, valor string) string {
 
 // ComPagina navega sem tocar em mais nada.
 func (f Filtro) ComPagina(n int) string {
-	return f.url("pagina", fmt.Sprint(n), false)
+	return f.url("page", fmt.Sprint(n), false)
 }
 
 // ComOrdem alterna a direcao quando o campo ja e o ordenado, e comeca ascendente
@@ -257,11 +257,11 @@ func (f Filtro) ComOrdem(campo string) string {
 		// Terceiro clique remove a ordenacao e volta a ordem natural.
 		g := f
 		g.Ordem, g.Desc = "", false
-		return g.url("pagina", "", true)
+		return g.url("page", "", true)
 	}
 	g := f
 	g.Desc = false
-	return g.url("ordem", campo, true)
+	return g.url("sort", campo, true)
 }
 
 // Seta e o indicador de direcao no cabecalho.
@@ -283,18 +283,18 @@ func (f Filtro) url(campo, valor string, reiniciaPagina bool) string {
 		}
 	}
 	poe("q", f.Busca)
-	poe("estado", f.Estado)
-	poe("ativo", f.Ativo)
+	poe("state", f.Estado)
+	poe("active", f.Ativo)
 	poe("tag", f.Tag)
-	poe("ordem", f.Ordem)
+	poe("sort", f.Ordem)
 	if f.Desc {
 		poe("dir", "desc")
 	}
 	if !reiniciaPagina && f.Pagina > 1 {
-		poe("pagina", fmt.Sprint(f.Pagina))
+		poe("page", fmt.Sprint(f.Pagina))
 	}
 	if f.PorPagina > 0 && f.PorPagina != PorPaginaPadrao {
-		poe("por", fmt.Sprint(f.PorPagina))
+		poe("per", fmt.Sprint(f.PorPagina))
 	}
 	if valor == "" {
 		q.Del(campo)
@@ -372,7 +372,7 @@ func (p Paginacao) Janela() []int {
 }
 
 templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, filtrados int) {
-	@layouts.Base(layouts.Pagina{Titulo: "Workflows", Kicker: "Orquestração", Ativo: "workflows", Largo: true}) {
+	@layouts.Base(layouts.Pagina{Titulo: "Workflows", Kicker: "Orchestration", Ativo: "workflows", Largo: true}) {
 		<form method="get" action="/workflows" class="mb-5">
 			<div class="flex items-center gap-3 rounded-full border border-line bg-surface px-5 py-3 shadow-warm-sm">
 				<svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -388,8 +388,8 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 				/>
 				// Os demais filtros seguem como campos ocultos: buscar nao pode
 				// apagar o estado que o operador ja tinha escolhido.
-				<input type="hidden" name="estado" value={ f.Estado }/>
-				<input type="hidden" name="ativo" value={ f.Ativo }/>
+				<input type="hidden" name="state" value={ f.Estado }/>
+				<input type="hidden" name="active" value={ f.Ativo }/>
 				<input type="hidden" name="tag" value={ f.Tag }/>
 				<button type="submit" class="shrink-0 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px">
 					Buscar
@@ -397,15 +397,15 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 			</div>
 		</form>
 		<div class="mb-6 flex flex-wrap items-center gap-2">
-			@chip(f.Com("estado", ""), "Todos", f.Estado == "", "")
-			@chip(f.Com("estado", "success"), "Sucesso", f.Estado == "success", "bg-state-success")
-			@chip(f.Com("estado", "failed"), "Falha", f.Estado == "failed", "bg-state-failed")
-			@chip(f.Com("estado", "running"), "Executando", f.Estado == "running", "bg-state-running")
-			@chip(f.Com("estado", "queued"), "Na fila", f.Estado == "queued", "bg-state-queued")
+			@chip(f.Com("state", ""), "All", f.Estado == "", "")
+			@chip(f.Com("state", "success"), "Success", f.Estado == "success", "bg-state-success")
+			@chip(f.Com("state", "failed"), "Failure", f.Estado == "failed", "bg-state-failed")
+			@chip(f.Com("state", "running"), "Running", f.Estado == "running", "bg-state-running")
+			@chip(f.Com("state", "queued"), "Queued", f.Estado == "queued", "bg-state-queued")
 			<span class="mx-2 h-5 w-px bg-line"></span>
-			@chip(f.Com("ativo", ""), "Todos", f.Ativo == "", "")
-			@chip(f.Com("ativo", "active"), "Ativos", f.Ativo == "active", "")
-			@chip(f.Com("ativo", "paused"), "Pausados", f.Ativo == "paused", "")
+			@chip(f.Com("active", ""), "All", f.Ativo == "", "")
+			@chip(f.Com("active", "active"), "Active", f.Ativo == "active", "")
+			@chip(f.Com("active", "paused"), "Paused", f.Ativo == "paused", "")
 			if len(tags) > 0 {
 				<span class="mx-2 h-5 w-px bg-line"></span>
 				for _, t := range tags {
@@ -417,11 +417,11 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 			{ contagem(filtrados, "workflow", "workflows") }
 			if filtrados != total {
 				<span class="ml-2 text-sm text-muted">de { fmt.Sprint(total) }</span>
-				<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">limpar filtros</a>
+				<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
 			}
 		</p>
 		if len(ws) == 0 {
-			@components.Vazio("Nenhum workflow com esses filtros.", "brevis publish arquivo.yaml")
+			@components.Vazio("No workflow matches these filters.", "brevis publish file.yaml")
 		} else {
 			<div class="overflow-hidden rounded-[20px] border border-line bg-surface shadow-warm-sm">
 				<table class="w-full text-sm">
@@ -429,9 +429,9 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 						<tr class="border-b border-line bg-parchment-soft/60 text-left">
 							@th("", "w-16 pl-6")
 							@thOrdenavel("Workflow", "workflow", f, "")
-							@thOrdenavel("Agenda", "agenda", f, "")
-							@thOrdenavel("Próxima execução", "proxima", f, "")
-							@thOrdenavel("Última execução", "ultima", f, "")
+							@thOrdenavel("Schedule", "schedule", f, "")
+							@thOrdenavel("Next run", "next", f, "")
+							@thOrdenavel("Last run", "last", f, "")
 							@th("Tags", "")
 							@th("", "w-24 pr-6 text-right")
 						</tr>
@@ -450,7 +450,7 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 								</td>
 								<td class="py-3 pr-3">
 									if w.Cron == "" {
-										<span class="text-xs text-muted">só disparo manual</span>
+										<span class="text-xs text-muted">manual trigger only</span>
 									} else {
 										<span class="inline-flex items-center gap-1.5 font-mono text-xs text-ink">
 											<svg class="h-3.5 w-3.5 text-gold" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
@@ -469,7 +469,7 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 										<span class="text-ink">{ components.Instante(w.ProximaRun) }</span>
 										<span class="ml-1.5 text-muted">{ components.Quando(w.ProximaRun) }</span>
 									} else if w.TemAgenda && !w.Ativo {
-										<span class="text-muted">pausado</span>
+										<span class="text-muted">paused</span>
 									} else {
 										<span class="text-muted">—</span>
 									}
@@ -482,9 +482,9 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 											</span>
 											@components.Ponto(w.UltimoStatus)
 										</a>
-										<p class="text-[0.7rem] text-muted">{ fmt.Sprint(w.TotalRuns) } execuções</p>
+										<p class="text-[0.7rem] text-muted">{ fmt.Sprint(w.TotalRuns) } runs</p>
 									} else {
-										<span class="text-xs text-muted">nunca rodou</span>
+										<span class="text-xs text-muted">never ran</span>
 									}
 								</td>
 								<td class="py-3 pr-3">
@@ -518,7 +518,7 @@ templ interruptor(w postgres.ResumoWorkflow) {
 			if w.Ativo {
 				<button
 					type="submit"
-					title="Pausar a agenda"
+					title="Pause the schedule"
 					aria-label={ "Pausar " + w.Slug }
 					class="flex h-5 w-9 items-center rounded-full bg-state-success/80 px-0.5 transition-colors hover:bg-state-success"
 				>
@@ -527,7 +527,7 @@ templ interruptor(w postgres.ResumoWorkflow) {
 			} else {
 				<button
 					type="submit"
-					title="Retomar a agenda"
+					title="Resume the schedule"
 					aria-label={ "Retomar " + w.Slug }
 					class="flex h-5 w-9 items-center rounded-full bg-line px-0.5 transition-colors hover:bg-muted/40"
 				>
@@ -536,7 +536,7 @@ templ interruptor(w postgres.ResumoWorkflow) {
 			}
 		</form>
 	} else {
-		<span class="block h-5 w-9" title="Sem agenda: só disparo manual"></span>
+		<span class="block h-5 w-9" title="No schedule: manual trigger only"></span>
 	}
 }
 
@@ -546,8 +546,8 @@ templ disparar(slug string) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") } class="inline">
 		<button
 			type="submit"
-			title="Executar agora"
-			aria-label={ "Executar " + slug }
+			title="Run now"
+			aria-label={ "Run " + slug }
 			class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-gold-strong transition-colors hover:border-gold hover:bg-gold-wash"
 		>
 			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
@@ -606,12 +606,12 @@ func (f FiltroRuns) url(campo, valor string, reiniciaPagina bool) string {
 			q.Set(k, v)
 		}
 	}
-	poe("estado", f.Estado)
+	poe("state", f.Estado)
 	poe("workflow", f.Workflow)
-	poe("de", f.De)
-	poe("ate", f.Ate)
+	poe("from", f.De)
+	poe("to", f.Ate)
 	if !reiniciaPagina && f.Pagina > 1 {
-		poe("pagina", fmt.Sprint(f.Pagina))
+		poe("page", fmt.Sprint(f.Pagina))
 	}
 	if valor == "" {
 		q.Del(campo)
@@ -625,7 +625,7 @@ func (f FiltroRuns) url(campo, valor string, reiniciaPagina bool) string {
 }
 
 func (f FiltroRuns) Com(campo, valor string) string { return f.url(campo, valor, true) }
-func (f FiltroRuns) ComPagina(n int) string         { return f.url("pagina", fmt.Sprint(n), false) }
+func (f FiltroRuns) ComPagina(n int) string         { return f.url("page", fmt.Sprint(n), false) }
 
 // Ativo diz se ha algum recorte — sem isso a tela mostraria a barra de "filtros
 // aplicados" vazia.
@@ -634,25 +634,25 @@ func (f FiltroRuns) Ativo() bool {
 }
 
 templ Runs(runs []postgres.ResumoRun, f FiltroRuns, total int) {
-	@layouts.Base(layouts.Pagina{Titulo: "Execuções", Kicker: "Histórico", Ativo: "runs"}) {
+	@layouts.Base(layouts.Pagina{Titulo: "Runs", Kicker: "History", Ativo: "runs"}) {
 		<div class="mb-5 flex flex-wrap items-center gap-2">
-			@chip(f.Com("estado", ""), "Todos", f.Estado == "", "")
-			@chip(f.Com("estado", "success"), "Sucesso", f.Estado == "success", "bg-state-success")
-			@chip(f.Com("estado", "failed"), "Falha", f.Estado == "failed", "bg-state-failed")
-			@chip(f.Com("estado", "running"), "Executando", f.Estado == "running", "bg-state-running")
-			@chip(f.Com("estado", "queued"), "Na fila", f.Estado == "queued", "bg-state-queued")
+			@chip(f.Com("state", ""), "All", f.Estado == "", "")
+			@chip(f.Com("state", "success"), "Success", f.Estado == "success", "bg-state-success")
+			@chip(f.Com("state", "failed"), "Failure", f.Estado == "failed", "bg-state-failed")
+			@chip(f.Com("state", "running"), "Running", f.Estado == "running", "bg-state-running")
+			@chip(f.Com("state", "queued"), "Queued", f.Estado == "queued", "bg-state-queued")
 			if f.Workflow != "" {
 				<span class="mx-2 h-5 w-px bg-line"></span>
 				@filtroAplicado("workflow", f.Workflow, f.Com("workflow", ""))
 			}
 			if f.Rotulo != "" {
-				@filtroAplicado("período", f.Rotulo, f.Com("de", "")+"&ate=")
+				@filtroAplicado("period", f.Rotulo, f.Com("from", "")+"&to=")
 			}
 		</div>
 		<p class="mb-3 font-serif text-xl text-ink">
-			{ contagem(total, "execução", "execuções") }
+			{ contagem(total, "run", "runs") }
 			if f.Ativo() {
-				<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">limpar filtros</a>
+				<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
 			}
 		</p>
 		@tabelaRuns(runs, Paginacao{
@@ -673,9 +673,9 @@ templ filtroAplicado(rotulo, valor, remover string) {
 }
 
 templ Projetos(ps []postgres.ResumoProjeto) {
-	@layouts.Base(layouts.Pagina{Titulo: "Projetos", Kicker: "Organização", Ativo: "projects"}) {
+	@layouts.Base(layouts.Pagina{Titulo: "Projects", Kicker: "Organization", Ativo: "projects"}) {
 		if len(ps) == 0 {
-			@components.Vazio("Nenhum projeto ainda.", "brevis publish --project meu-projeto")
+			@components.Vazio("No project yet.", "brevis publish --project my-project")
 		} else {
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 				for _, p := range ps {
@@ -688,7 +688,7 @@ templ Projetos(ps []postgres.ResumoProjeto) {
 								<dd class="font-serif text-2xl text-ink">{ fmt.Sprint(p.Workflows) }</dd>
 							</div>
 							<div>
-								<dt class="text-xs text-muted">Execuções</dt>
+								<dt class="text-xs text-muted">Runs</dt>
 								<dd class="font-serif text-2xl text-ink">{ fmt.Sprint(p.Runs) }</dd>
 							</div>
 						</dl>
@@ -702,7 +702,7 @@ templ Projetos(ps []postgres.ResumoProjeto) {
 
 templ tabelaRuns(runs []postgres.ResumoRun, p Paginacao) {
 	if len(runs) == 0 {
-		@components.Vazio("Nenhuma execução ainda.", "brevis scheduler")
+		@components.Vazio("No run yet.", "brevis scheduler")
 	} else {
 		<div class="overflow-hidden rounded-[20px] border border-line bg-surface shadow-warm-sm">
 			<table class="w-full text-sm">
@@ -712,7 +712,7 @@ templ tabelaRuns(runs []postgres.ResumoRun, p Paginacao) {
 						@th("Workflow", "")
 						@th("Origem", "")
 						@th("Slot", "")
-						@th("Duração", "")
+						@th("Duration", "")
 						@th("Criado", "text-right")
 						@th("", "w-16 pr-6")
 					</tr>
@@ -723,7 +723,7 @@ templ tabelaRuns(runs []postgres.ResumoRun, p Paginacao) {
 							<td class="px-3 py-3 pl-6">
 								@components.Estado(r.Status)
 								if r.Tentativa > 0 {
-									<span class="ml-2 text-[0.7rem] text-state-retrying">tentativa { fmt.Sprint(r.Tentativa+1) }</span>
+									<span class="ml-2 text-[0.7rem] text-state-retrying">attempt { fmt.Sprint(r.Tentativa+1) }</span>
 								}
 							</td>
 							<td class="px-3 py-3">
@@ -785,7 +785,7 @@ templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 			if w.Schedule != "" {
 				<span class="font-mono text-xs text-ink">{ w.Schedule }</span>
 			} else {
-				<span>só disparo manual</span>
+				<span>manual trigger only</span>
 			}
 			for _, t := range w.Tags {
 				@components.Etiqueta(t, "/workflows?tag="+t)
@@ -798,7 +798,7 @@ templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 		if len(ultimas) > 0 {
 			<section class="mt-6">
 				<div class="mb-3 flex items-baseline justify-between">
-					<h2 class="kicker">Execuções deste workflow</h2>
+					<h2 class="kicker">This workflow's runs</h2>
 					<a href={ templ.SafeURL("/runs?workflow=" + w.Slug) } class="text-xs text-gold-strong hover:underline">
 						ver todas
 					</a>
@@ -813,7 +813,7 @@ templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 // com o estado de cada passo depende de JavaScript.
 templ Run(r run.Run, logs []postgres.LogDoPasso) {
 	@layouts.Base(layouts.Pagina{
-		Titulo: r.WorkflowSlug, Kicker: "Execução", Ativo: "runs",
+		Titulo: r.WorkflowSlug, Kicker: "Run", Ativo: "runs",
 		Ilha: dagAssets, Largo: true,
 	}) {
 		<div class="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
@@ -825,7 +825,7 @@ templ Run(r run.Run, logs []postgres.LogDoPasso) {
 			if r.Attempt > 0 {
 				<span class="text-xs text-state-retrying">tentativa { fmt.Sprint(r.Attempt+1) }</span>
 			}
-			<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">ver definição</a>
+			<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
 			<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
 		</div>
 		if r.Erro != "" {
@@ -853,7 +853,7 @@ func duracaoMs(ms int64) string {
 templ saidaDosPassos(logs []postgres.LogDoPasso) {
 	if len(logs) > 0 {
 		<section class="mt-8">
-			<h2 class="display mb-4 text-xl text-ink">Saída dos passos</h2>
+			<h2 class="display mb-4 text-xl text-ink">Step output</h2>
 			<div class="space-y-2">
 				for _, p := range logs {
 					<details class="group rounded-2xl border border-line bg-surface">
@@ -861,16 +861,16 @@ templ saidaDosPassos(logs []postgres.LogDoPasso) {
 							@components.Estado(p.Status)
 							<span class="font-medium text-ink">{ p.NodeID }</span>
 							if p.Tentativa > 0 {
-								<span class="text-xs text-state-retrying">tentativa { fmt.Sprint(p.Tentativa+1) }</span>
+								<span class="text-xs text-state-retrying">attempt { fmt.Sprint(p.Tentativa+1) }</span>
 							}
 							if p.ExitCode != nil {
-								<span class="font-mono text-xs text-muted">saída { fmt.Sprint(*p.ExitCode) }</span>
+								<span class="font-mono text-xs text-muted">exit { fmt.Sprint(*p.ExitCode) }</span>
 							}
 							if p.DuracaoMs > 0 {
 								<span class="text-xs text-muted">{ duracaoMs(p.DuracaoMs) }</span>
 							}
 							if p.Log == "" {
-								<span class="text-xs text-muted/70 italic">sem saída registrada</span>
+								<span class="text-xs text-muted/70 italic">no output recorded</span>
 							}
 						</summary>
 						if p.Erro != "" {
@@ -928,19 +928,19 @@ func matizFalha(n int) string {
 
 func notaFalha(n int) string {
 	if n == 0 {
-		return "nenhuma falha na janela"
+		return "no failure in the window"
 	}
 	if n == 1 {
-		return "1 execução falhou"
+		return "1 run failed"
 	}
-	return fmt.Sprintf("%d execuções falharam", n)
+	return fmt.Sprintf("%d runs failed", n)
 }
 
 func duracaoMedia(d time.Duration) string {
 	if d == 0 {
-		return "sem duração medida"
+		return "no duration measured"
 	}
-	return "duração média " + components.Duracao(&d)
+	return "average duration " + components.Duracao(&d)
 }
 
 // inicioOuCriacao mostra quando o trabalho comecou de fato; para quem ainda esta
@@ -968,7 +968,7 @@ templ formularioDeParams(w wf.Workflow) {
 		action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
 		class="mb-5 rounded-[20px] border border-line bg-surface p-6 shadow-warm-sm"
 	>
-		<p class="kicker mb-4">Executar com parâmetros</p>
+		<p class="kicker mb-4">Run with parameters</p>
 		<div class="flex flex-wrap items-end gap-4">
 			for _, p := range w.Params {
 				<label class="flex min-w-[180px] flex-col gap-1">
@@ -1001,7 +1001,7 @@ templ formularioDeParams(w wf.Workflow) {
 			<button
 				type="submit"
 				class="rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px"
-			>Executar</button>
+			>Run</button>
 		</div>
 	</form>
 }
