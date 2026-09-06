@@ -64,7 +64,7 @@ func pipelineDeTeste(origem Reader, caixa *[]Envelope) *Pipeline {
 	}
 }
 
-func TestEtapasSaemNaOrdem(t *testing.T) {
+func TestPhasesFollowThePipelineShape(t *testing.T) {
 	var caixa []Envelope
 	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
 		registros: []any{map[string]any{"id": 1}, map[string]any{"id": 2}},
@@ -82,12 +82,15 @@ func TestEtapasSaemNaOrdem(t *testing.T) {
 		}
 		trilha = append(trilha, ev["name"].(string)+":"+ev["state"].(string))
 	}
+	// One phase per element of the pipeline's SHAPE: the source, each stage in
+	// order, the destination. A single `transform` box could not tell "216
+	// became 9" from "216 became 216 and then 9".
 	querido := []string{
 		"sdk",
 		"check:running", "check:done",
 		"extract:running",
-		"transform:running",
-		"extract:done", "transform:done",
+		"map:running",
+		"extract:done", "map:done",
 		"load:running", "load:done",
 	}
 	if strings.Join(trilha, " ") != strings.Join(querido, " ") {
@@ -98,7 +101,7 @@ func TestEtapasSaemNaOrdem(t *testing.T) {
 // O anuncio carrega a versao, porque um selo que so diz "SDK" e verdadeiro e
 // inutil: a versao e o que responde "por que este passo se comporta diferente
 // do vizinho" sem ninguem abrir o Dockerfile.
-func TestAnuncioCarregaAVersao(t *testing.T) {
+func TestTheAnnouncementCarriesTheVersion(t *testing.T) {
 	var caixa []Envelope
 	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
 		registros: []any{map[string]any{"id": 1}}, leituras: new(int),
@@ -123,7 +126,7 @@ func TestAnuncioCarregaAVersao(t *testing.T) {
 // A cadeia e preguicosa: cronometrar as chamadas diria "extract: 3ms" numa
 // extracao de quarenta minutos, e a tela mentiria justamente sobre a etapa
 // mais longa.
-func TestDuracaoDoExtractMedeAExtracaoDeVerdade(t *testing.T) {
+func TestTheSourceDurationMeasuresTheRealExtraction(t *testing.T) {
 	var caixa []Envelope
 	p := pipelineDeTeste(origemLenta{
 		registros: []any{map[string]any{"id": 1}, map[string]any{"id": 2}, map[string]any{"id": 3}},
@@ -143,7 +146,7 @@ func TestDuracaoDoExtractMedeAExtracaoDeVerdade(t *testing.T) {
 
 // O transform nao reporta duracao. Ele roda por registro, entremeado com a
 // leitura, entao qualquer numero que saisse dali seria o tempo de outra coisa.
-func TestTransformNaoInventaDuracao(t *testing.T) {
+func TestAMapStageInventsNoDuration(t *testing.T) {
 	var caixa []Envelope
 	eventos, err := etapasDe(t, pipelineDeTeste(origemLenta{
 		registros: []any{map[string]any{"id": 1}}, pausa: 20 * time.Millisecond,
@@ -151,15 +154,15 @@ func TestTransformNaoInventaDuracao(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fim := acharEtapa(t, eventos, "transform", "done")
+	fim := acharEtapa(t, eventos, "map", "done")
 	if _, tem := fim["ms"]; tem {
-		t.Errorf("o transform reportou duracao: %v", fim)
+		t.Errorf("a map stage reported a duration: %v", fim)
 	}
 }
 
 // O que so o transform sabe: quantos entraram, quantos sairam, quantos foram
 // pulados.
-func TestTransformDizQuantosPulou(t *testing.T) {
+func TestAMapStageSaysHowManyItDropped(t *testing.T) {
 	var caixa []Envelope
 	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
 		registros: []any{
@@ -172,7 +175,7 @@ func TestTransformDizQuantosPulou(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fim := acharEtapa(t, eventos, "transform", "done")
+	fim := acharEtapa(t, eventos, "map", "done")
 	if fim["in"] != 3.0 || fim["out"] != 2.0 || fim["dropped"] != 1.0 {
 		t.Errorf("contagem errada: %v", fim)
 	}
@@ -180,7 +183,7 @@ func TestTransformDizQuantosPulou(t *testing.T) {
 
 // Fora do motor nao ha quem leia as etapas, e sujar o terminal de quem depura
 // um fetcher seria custo sem retorno.
-func TestForaDoMotorNaoAnunciaNada(t *testing.T) {
+func TestOutsideTheEngineNothingIsAnnounced(t *testing.T) {
 	var caixa []Envelope
 	p := pipelineDeTeste(origemContada{
 		registros: []any{map[string]any{"id": 1}}, leituras: new(int),
@@ -202,7 +205,7 @@ func TestForaDoMotorNaoAnunciaNada(t *testing.T) {
 
 // O teto existe porque o stream de log vira escrita em banco do outro lado: um
 // pipeline em laco derrubaria o Postgres pelo caminho do log.
-func TestTetoDeEtapas(t *testing.T) {
+func TestThePhaseCap(t *testing.T) {
 	var buf bytes.Buffer
 	anterior := phaseOutput
 	phaseOutput = &buf
@@ -210,7 +213,7 @@ func TestTetoDeEtapas(t *testing.T) {
 
 	r := newReporter(RunContext{ID: "run-1"})
 	for i := 0; i < phaseCap*3; i++ {
-		r.started(PhaseExtract)
+		r.started(PhaseSource)
 	}
 	if n := strings.Count(buf.String(), phaseMarker); n != phaseCap {
 		t.Errorf("emitiu %d linhas, o teto e %d", n, phaseCap)
@@ -235,4 +238,79 @@ func duracaoDaEtapa(t *testing.T, eventos []map[string]any, nome string) float64
 		t.Fatalf("a etapa %s nao reportou duracao", nome)
 	}
 	return ms
+}
+
+// The screen has to show the pipeline the consumer DECLARED.
+//
+// Two Map stages share a name, and the phases used to be keyed by name -- so
+// three declared stages collapsed into two boxes, and a single `transform` box
+// could not tell "216 rows became 9" from "216 became 216 and then 9". The
+// structure never reached the display.
+func TestEachStageGetsItsOwnBox(t *testing.T) {
+	var caixa []Envelope
+	eventos, err := etapasDe(t, &Pipeline{
+		Name:   "fetcher",
+		Source: Source{From: origemContada{registros: registros(), leituras: new(int)}},
+		Stages: []Stage{
+			Map(SkipWithout("provider")),
+			Aggregate(Reduce{By: GroupBy("provider"), Agg: map[string]Aggregator{"n": Count()}}),
+			Map(Compute("x", func(map[string]any) (any, error) { return 1, nil })),
+		},
+		Target: Target{To: destinoQueGuarda{recebido: &caixa}},
+		Run:    RunContext{ID: "run-boxes"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Every phase that finished, by position.
+	porIndice := map[float64]map[string]any{}
+	for _, ev := range eventos {
+		if ev["type"] == "stage" && ev["state"] == "done" {
+			porIndice[ev["index"].(float64)] = ev
+		}
+	}
+	if len(porIndice) != 6 {
+		t.Fatalf("%d boxes finished, want 6 (check, source, map, aggregate, map, target): %v",
+			len(porIndice), porIndice)
+	}
+
+	nomes := []string{"check", "extract", "map", "aggregate", "map", "load"}
+	for i, quero := range nomes {
+		ev := porIndice[float64(i)]
+		if ev == nil {
+			t.Fatalf("no box at position %d", i)
+		}
+		if ev["name"] != quero {
+			t.Errorf("position %d is %q, want %q", i, ev["name"], quero)
+		}
+	}
+
+	// The aggregation's numbers belong to the aggregation, not to a sum of
+	// everything: 2 records in, 1 group out.
+	agg := porIndice[3]
+	if agg["in"] != 2.0 || agg["out"] != 1.0 || agg["groups"] != 1.0 {
+		t.Errorf("the aggregation's counts are wrong: %v", agg)
+	}
+	// And the map after it saw the aggregated row, not the raw ones.
+	if depois := porIndice[4]; depois["in"] != 1.0 {
+		t.Errorf("the map after the aggregation saw %v records, want 1", depois["in"])
+	}
+}
+
+// The card is half a card without saying WHICH source and WHICH destination.
+func TestTheSourceAndTargetSayWhichTheyAre(t *testing.T) {
+	var caixa []Envelope
+	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
+		registros: registros(), leituras: new(int),
+	}, &caixa))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d := acharEtapa(t, eventos, "extract", "done")["detail"]; d != "origem.teste" {
+		t.Errorf("the source does not say which it is: %v", d)
+	}
+	if d := acharEtapa(t, eventos, "load", "done")["detail"]; d != "destino.teste" {
+		t.Errorf("the destination does not say which it is: %v", d)
+	}
 }

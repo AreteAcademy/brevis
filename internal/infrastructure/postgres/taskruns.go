@@ -145,6 +145,7 @@ type EstadoNo struct {
 
 // Etapa is one phase of an SDK step, for the screen.
 type Etapa struct {
+	Indice  int            `json:"indice"`
 	Nome    string         `json:"nome"`
 	Estado  string         `json:"estado"`
 	Ms      *int64         `json:"ms,omitempty"`

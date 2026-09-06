@@ -177,10 +177,10 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	}
 	rep.finished(PhaseCheck, StateDone, nil)
 
-	rep.started(PhaseExtract)
+	rep.started(PhaseSource)
 	data, cp, err := extrairComCheckpoint(ctx, p)
 	if err != nil {
-		rep.finished(PhaseExtract, StateFailed, nil)
+		rep.finished(PhaseSource, StateFailed, nil)
 		return err
 	}
 
@@ -195,26 +195,42 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// knows, how many records went in and how many came out.
 	contagens := make([]StageResult, len(stages))
 
+	// One phase per stage, in the order they run, so the screen shows the
+	// pipeline the consumer declared instead of one box called "transform".
+	//
+	// The positions are reserved UP FRONT: the source is announced before the
+	// stages exist as boxes, and the target after them, so their indices have to
+	// be known before the first record moves.
 	if rep.on {
-		var entraram int64
-		data.Records = counting(data.Records, &entraram, func() {})
-		data.Records = aoPrimeiro(data.Records, func() { rep.started(PhaseTransform) })
-	}
-	aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
-	if rep.on {
+		indicesDosEstagios := make([]int, len(stages))
+		for i := range stages {
+			indicesDosEstagios[i] = rep.proximoIndice()
+		}
+		indiceDoAlvo := rep.proximoIndice()
+
+		for i, st := range stages {
+			rep.startedAtIndex(st.kind, indicesDosEstagios[i])
+		}
+		aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
+
 		data.Records = aoEsgotar(data.Records, func() {
-			rep.finished(PhaseExtract, StateDone, extractNumbers(data))
-			rep.finished(PhaseTransform, StateDone, numerosDosEstagios(contagens))
+			rep.finished(PhaseSource, StateDone, sourceNumbers(data, p))
+			for i, st := range stages {
+				rep.finishedAtIndex(st.kind, indicesDosEstagios[i], StateDone,
+					stageNumbers(contagens[i]))
+			}
 			// Without batches nothing has been written yet: the Write only
 			// happens once the stream runs dry. With batches it already
-			// started, and the phase was opened above.
+			// started, and the phase was opened below.
 			if p.Target.FlushEvery == 0 {
-				rep.started(PhaseLoad)
+				rep.startedAtIndex(PhaseTarget, indiceDoAlvo)
 			}
 		})
 		if p.Target.FlushEvery > 0 {
-			rep.started(PhaseLoad)
+			rep.startedAtIndex(PhaseTarget, indiceDoAlvo)
 		}
+	} else {
+		aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
 	}
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
@@ -245,7 +261,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	if err != nil {
 		estado = StateFailed
 	}
-	rep.finished(PhaseLoad, estado, loadNumbers(res))
+	rep.finished(PhaseTarget, estado, loadNumbers(res))
 	return err
 }
 
@@ -301,29 +317,6 @@ func aoPrimeiro(linhas iter.Seq2[Envelope, error], f func()) iter.Seq2[Envelope,
 			}
 		}
 	}
-}
-
-// numerosDosEstagios condensa as contagens por estagio na linha do transform.
-func numerosDosEstagios(cs []StageResult) map[string]any {
-	if len(cs) == 0 {
-		return nil
-	}
-	n := map[string]any{
-		"in":  cs[0].In,
-		"out": cs[len(cs)-1].Out,
-	}
-	if len(cs) > 1 {
-		n["stages"] = len(cs)
-	}
-	var groups int64
-	for _, c := range cs {
-		groups += c.Groups
-	}
-	if groups > 0 {
-		n["groups"] = groups
-	}
-	n["dropped"] = cs[0].In - cs[len(cs)-1].Out
-	return n
 }
 
 // aoEsgotar avisa quando a origem acabou -- que e quando o extract finished de

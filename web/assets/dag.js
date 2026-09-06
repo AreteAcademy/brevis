@@ -185,21 +185,41 @@
     );
   }
 
-  // NoEtapa e uma fase DENTRO de um passo do SDK: extract, transform, load.
+  // Os numeros que valem a pena aparecer na linha, e a ordem deles. O resto
+  // fica no painel: uma linha de 20px cabe duas grandezas, nao seis.
+  var DESTAQUE = ["in", "out", "groups", "rows", "pages", "objects"];
+
+  function numerosDaEtapa(numeros) {
+    if (!numeros) return [];
+    var out = [];
+    for (var i = 0; i < DESTAQUE.length && out.length < 2; i++) {
+      var k = DESTAQUE[i];
+      var v = numeros[k];
+      if (v === null || v === undefined || v === "") continue;
+      out.push({ chave: k, valor: typeof v === "number" ? v.toLocaleString("pt-BR") : String(v) });
+    }
+    return out;
+  }
+
+  // NoEtapa e uma fase DENTRO de um passo do SDK: a origem, cada estagio na
+  // ordem em que roda, o destino.
   //
   // Linha, e nao caixa lado a lado. Tres caixas horizontais num card de 230px
-  // viram tres selos ilegiveis; em linha cabe o nome, o estado, a duracao e o
-  // numero que a etapa produziu -- que e o que serve as tres da manha.
+  // viram tres selos ilegiveis; em linha cabe o tipo, a identidade e o numero
+  // que a fase produziu -- que e o que serve as tres da manha.
   function NoEtapa(props) {
     var d = props.data;
     var c = corDaEtapa(d.estado);
-    var texto = resumo(d.numeros);
+    var nums = numerosDaEtapa(d.numeros);
+    var detalhe = d.numeros && d.numeros.detail;
+
     return h(
       "div",
       {
+        title: detalhe || "",
         style: {
           display: "flex", alignItems: "center", gap: 7,
-          width: 210, height: 20, padding: "0 8px",
+          width: 210, height: 24, padding: "0 8px",
           borderRadius: 7,
           border: "1px solid " + (d.estado === "pending" ? LINHA : "color-mix(in srgb, " + c.anel + " 28%, transparent)"),
           background: "color-mix(in srgb, " + c.anel + " 7%, transparent)",
@@ -207,9 +227,7 @@
           fontSize: 10,
           // A etapa que corre ganha o mesmo anel que o card de um passo em
           // execucao -- e nao uma animacao propria. Duas gramaticas para "esta
-          // acontecendo agora" na mesma tela e uma a mais, e movimento aqui
-          // ainda obrigaria a respeitar prefers-reduced-motion num arquivo que
-          // nao tem build de CSS.
+          // acontecendo agora" na mesma tela e uma a mais.
           boxShadow: d.estado === "running"
             ? "0 0 0 2px color-mix(in srgb, " + c.anel + " 22%, transparent)"
             : "none",
@@ -218,10 +236,33 @@
       h("span", {
         style: { width: 5, height: 5, borderRadius: 9999, background: c.anel, flexShrink: 0 },
       }),
-      h("span", { style: { color: TINTA, fontWeight: 600, letterSpacing: "0.02em" } }, d.nome),
-      h("span", { style: { marginLeft: "auto", color: MUDO, whiteSpace: "nowrap" } },
-        [texto, d.ms !== null && d.ms !== undefined ? duracao(d.ms) : ""]
-          .filter(Boolean).join("  ")
+      // O TIPO da fase: source, map, aggregate, target.
+      h("span", {
+        style: { color: TINTA, fontWeight: 600, letterSpacing: "0.02em", flexShrink: 0 },
+      }, d.rotulo || d.nome),
+      // A identidade, quando ha uma: qual origem, qual destino. E o que
+      // transforma "extract, 743ms" em meia carta numa carta inteira.
+      detalhe
+        ? h("span", {
+            style: {
+              color: MUDO, fontSize: 9, flex: 1, minWidth: 0,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+            },
+          }, detalhe)
+        : h("span", { style: { flex: 1 } }),
+      // Os numeros, com o nome junto: "216" sozinho nao diz de que.
+      h("span",
+        { style: { display: "flex", gap: 6, flexShrink: 0, whiteSpace: "nowrap" } },
+        nums.map(function (n) {
+          return h("span", { key: n.chave, style: { color: MUDO } },
+            h("span", { style: { color: TINTA, fontVariantNumeric: "tabular-nums" } }, n.valor),
+            " " + n.chave
+          );
+        }),
+        d.ms !== null && d.ms !== undefined
+          ? h("span", { style: { color: MUDO } }, duracao(d.ms))
+          : null
       )
     );
   }
@@ -326,7 +367,8 @@
                     display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap",
                   },
                 },
-                h("span", { style: { color: ce.anel, fontSize: 11, fontWeight: 600, width: 74 } }, et.data.nome),
+                h("span", { style: { color: ce.anel, fontSize: 11, fontWeight: 600, width: 74 } },
+                  et.data.rotulo || et.data.nome),
                 h("span", { style: { color: MUDO, fontSize: 11 } },
                   et.data.ms !== null && et.data.ms !== undefined ? duracao(et.data.ms) : "—"),
                 Object.keys(nums).map(function (k) {

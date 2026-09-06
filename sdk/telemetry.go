@@ -23,13 +23,24 @@ import (
 // that did not fit on one line simply would not arrive.
 const phaseMarker = "@brevis:"
 
-// The phases a pipeline announces. A closed list on purpose: an unknown phase
-// is ignored by the engine rather than inventing a box on the screen.
+// The phases a pipeline announces.
+//
+// They mirror the pipeline's SHAPE, not a fixed lifecycle: one for the source,
+// one for each stage in the order they run, one for the destination. A pipeline
+// with Map -> Aggregate -> Map announces five phases, and the screen shows five
+// boxes.
+//
+// It used to collapse every stage into a single `transform`, which meant the
+// screen could not tell "216 rows became 9" from "216 rows became 216 and then
+// 9": the structure the consumer declared never reached the display.
 const (
-	PhaseCheck     = "check"
-	PhaseExtract   = "extract"
-	PhaseTransform = "transform"
-	PhaseLoad      = "load"
+	PhaseCheck  = "check"
+	PhaseSource = "extract" // on the wire it stays `extract`; the screen says Source
+	PhaseTarget = "load"    // likewise: `load` on the wire, Target on the screen
+
+	// The stage kinds, matching StageMap and StageAggregate.
+	PhaseMap       = "map"
+	PhaseAggregate = "aggregate"
 )
 
 // States of a phase. `aborted` is not emitted here: the engine decides it, on
@@ -57,6 +68,8 @@ type reporter struct {
 	emitted   int
 	on        bool
 	startedAt map[string]time.Time
+	indices   map[string]int
+	proximo   int
 }
 
 // newReporter returns a reporter that is on only under the engine.
@@ -67,6 +80,7 @@ func newReporter(run RunContext) *reporter {
 	return &reporter{
 		on:        run.FromEngine(),
 		startedAt: map[string]time.Time{},
+		indices:   map[string]int{},
 	}
 }
 
@@ -83,11 +97,36 @@ func (r *reporter) announce(pipeline string) {
 	})
 }
 
-func (r *reporter) started(phase string) {
+func (r *reporter) started(phase string) { r.startedAtIndex(phase, r.proximoIndice()) }
+
+// startedAtIndex opens a phase at a KNOWN position.
+//
+// The position, and not the name, is what identifies a phase: a pipeline with
+// two Map stages announces `map` twice, and keying by name would make the
+// second overwrite the first -- three declared stages collapsing into two boxes
+// on the screen, with no warning.
+func (r *reporter) startedAtIndex(phase string, index int) {
 	r.mu.Lock()
-	r.startedAt[phase] = time.Now()
+	r.startedAt[chaveDoRelogio(phase, index)] = time.Now()
+	r.indices[phase] = index
 	r.mu.Unlock()
-	r.emit(map[string]any{"type": "stage", "name": phase, "state": StateRunning})
+	r.emit(map[string]any{"type": "stage", "index": index, "name": phase, "state": StateRunning})
+}
+
+// chaveDoRelogio keys a phase's start by POSITION as well as name: two Map
+// stages share a name, and keying by name alone would give the second one the
+// first one's start time.
+func chaveDoRelogio(phase string, index int) string {
+	return phase + "#" + strconv.Itoa(index)
+}
+
+// proximoIndice hands the next free position to a phase announced without one.
+func (r *reporter) proximoIndice() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	n := r.proximo
+	r.proximo++
+	return n
 }
 
 // finished closes the phase. The numbers go with it because a state without a
@@ -95,19 +134,30 @@ func (r *reporter) started(phase string) {
 // pages, 48,213 rows".
 // withoutClock are the phases that report no duration.
 //
+// Map and Aggregate run per record, interleaved with the read, so any number
+// coming out of them would be the time of something else.
+//
 // Transform runs per record, interleaved with the read, so any number coming
 // out of it would be the time of something else -- in practice the extraction's,
 // which is what sets the pace of the stream. A missing number beats a wrong
 // one, and a `transform: 40min` next to an `extract: 40min` would send someone
 // looking for the bottleneck in the wrong place.
-var withoutClock = map[string]bool{PhaseTransform: true}
+var withoutClock = map[string]bool{PhaseMap: true, PhaseAggregate: true}
 
 func (r *reporter) finished(phase, state string, numbers map[string]any) {
 	r.mu.Lock()
-	since, had := r.startedAt[phase]
+	index := r.indices[phase]
+	r.mu.Unlock()
+	r.finishedAtIndex(phase, index, state, numbers)
+}
+
+// finishedAtIndex closes a phase at a known position. See startedAtIndex.
+func (r *reporter) finishedAtIndex(phase string, index int, state string, numbers map[string]any) {
+	r.mu.Lock()
+	since, had := r.startedAt[chaveDoRelogio(phase, index)]
 	r.mu.Unlock()
 
-	ev := map[string]any{"type": "stage", "name": phase, "state": state}
+	ev := map[string]any{"type": "stage", "index": index, "name": phase, "state": state}
 	if had && !withoutClock[phase] {
 		ev["ms"] = time.Since(since).Milliseconds()
 	}
@@ -180,28 +230,52 @@ func SDKVersion() string {
 
 const modulePath = "github.com/AreteAcademy/brevis/sdk"
 
-// extractNumbers is what the extraction phase produced.
-func extractNumbers(d *Data) map[string]any {
+// sourceNumbers is what the source phase produced, plus WHICH source it was.
+//
+// The identity goes on the wire because a box that says "extract, 743ms" is
+// half a card: the useful half is "from.HTTP api.open-meteo.com".
+func sourceNumbers(d *Data, p *Pipeline) map[string]any {
+	n := map[string]any{}
+	if p != nil && p.Source.From != nil {
+		n["detail"] = p.Source.From.Describe()
+	}
 	if d == nil {
-		return nil
+		return n
 	}
 	st := d.Stats()
-	n := map[string]any{}
 	if st.Pages > 0 {
 		n["pages"] = st.Pages
 	}
 	if st.Attempts > 0 {
 		n["http_attempts"] = st.Attempts
 	}
+	if st.Bytes > 0 {
+		n["bytes"] = st.Bytes
+	}
 	return n
 }
 
-// loadNumbers is what the load produced.
+// stageNumbers is what one stage did.
+func stageNumbers(c StageResult) map[string]any {
+	n := map[string]any{"in": c.In, "out": c.Out}
+	if c.In != c.Out {
+		n["dropped"] = c.In - c.Out
+	}
+	if c.Groups > 0 {
+		n["groups"] = c.Groups
+	}
+	return n
+}
+
+// loadNumbers is what the target phase produced, plus WHICH destination.
 func loadNumbers(res *Result) map[string]any {
 	if res == nil {
 		return nil
 	}
 	n := map[string]any{"rows": res.Rows, "records": res.Records}
+	if res.Table != "" {
+		n["detail"] = res.Table
+	}
 	if res.Strategy != "" {
 		n["strategy"] = res.Strategy
 	}

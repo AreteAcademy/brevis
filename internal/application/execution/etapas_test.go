@@ -162,3 +162,47 @@ func TestSeloNosDoisFormatos(t *testing.T) {
 		}
 	}
 }
+
+// Dois `map` no mesmo pipeline sao DUAS caixas.
+//
+// Chavear por nome fazia o segundo sobrescrever o primeiro: tres estagios
+// declarados viravam duas caixas na tela, sem aviso.
+func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
+	var c coletorDeEtapas
+	for _, l := range []string{
+		`@brevis:{"type":"stage","index":0,"name":"map","state":"done","in":100,"out":90}`,
+		`@brevis:{"type":"stage","index":1,"name":"aggregate","state":"done","in":90,"out":9,"groups":9}`,
+		`@brevis:{"type":"stage","index":2,"name":"map","state":"done","in":9,"out":9}`,
+	} {
+		if !c.linha(l) {
+			t.Fatalf("marca nao reconhecida: %s", l)
+		}
+	}
+	if len(c.Etapas) != 3 {
+		t.Fatalf("viraram %d caixas, esperado 3: %+v", len(c.Etapas), c.Etapas)
+	}
+	// E na ordem do pipeline, que e o que a tela desenha.
+	for i, quero := range []string{"map", "aggregate", "map"} {
+		if c.Etapas[i].Nome != quero || c.Etapas[i].Indice != i {
+			t.Errorf("posicao %d: %+v, esperado %q", i, c.Etapas[i], quero)
+		}
+	}
+	// O primeiro map nao foi engolido pelo segundo.
+	if c.Etapas[0].Numeros["in"] != 100.0 {
+		t.Errorf("o primeiro map perdeu os numeros: %+v", c.Etapas[0].Numeros)
+	}
+}
+
+// As linhas podem chegar fora de ordem; a tela nao pode.
+func TestAsCaixasSaemNaOrdemDoPipeline(t *testing.T) {
+	var c coletorDeEtapas
+	c.linha(`@brevis:{"type":"stage","index":3,"name":"load","state":"running"}`)
+	c.linha(`@brevis:{"type":"stage","index":0,"name":"check","state":"done"}`)
+	c.linha(`@brevis:{"type":"stage","index":1,"name":"extract","state":"done"}`)
+
+	for i, quero := range []string{"check", "extract", "load"} {
+		if c.Etapas[i].Nome != quero {
+			t.Fatalf("ordem: %+v", c.Etapas)
+		}
+	}
+}

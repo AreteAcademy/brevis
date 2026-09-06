@@ -70,7 +70,7 @@ const (
 	larguraNivel  = 300
 	larguraNo     = 230
 	alturaCartao  = 84
-	alturaEtapa   = 26
+	alturaEtapa   = 30
 	topoDasEtapas = 74
 	rodapeDoGrupo = 10
 	folgaVertical = 26
@@ -211,6 +211,10 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 					Data: map[string]any{
 						"nome": et.Nome, "estado": et.Estado,
 						"ms": et.Ms, "numeros": et.Numeros,
+						// The label the screen shows. `extract` and `load` are
+						// the wire's names, kept for compatibility; what a
+						// person reads is what they mean.
+						"rotulo": rotuloDaEtapa(et.Nome),
 					},
 				})
 			}
@@ -232,6 +236,21 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		u.log.Error("serializando grafo", "slug", def.Slug, "erro", err)
 	}
+}
+
+// rotuloDaEtapa is what a person reads on the box.
+//
+// The wire keeps `extract` and `load` because renaming them would make an
+// already-published engine stop drawing an older fetcher's phases. The screen is
+// free to say what they mean.
+func rotuloDaEtapa(nome string) string {
+	switch nome {
+	case "extract":
+		return "source"
+	case "load":
+		return "target"
+	}
+	return nome
 }
 
 func acharNo(nodes []wf.Node, id string) wf.Node {
