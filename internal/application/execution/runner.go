@@ -1,9 +1,9 @@
-// Package execution (application) percorre o grafo e executa os nos.
+// Package execution (application) walks the graph and runs its nodes.
 //
-// Esta e a versao LOCAL: sem fila, sem persistencia, sem scheduler — essas
-// pecas tem fase propria no plano (§37, fases 2 e 4). O que existe aqui e o
-// suficiente para `brevis run arquivo.yaml` rodar na propria instancia, que foi
-// o pedido.
+// This is the LOCAL version: no queue, no persistence, no scheduler -- those
+// pieces have phases of their own in the plan (§37, phases 2 and 4). What lives
+// here is enough for `brevis run file.yaml` to run on the instance itself,
+// which is what was asked for.
 package execution
 
 import (
@@ -24,24 +24,25 @@ import (
 	"time"
 )
 
-// Reporter recebe os eventos da execucao. Interface pequena para que a CLI, os
-// testes e o persistidor possam observar o mesmo fluxo.
+// Reporter receives the execution's events. A small interface so the CLI, the
+// tests and the persister can all watch the same stream.
 type Reporter interface {
 	Evento(execution.Event)
 }
 
-// Persistidor grava o estado de cada passo. Opcional: o `brevis run` local nao
-// tem banco, e exigi-lo tornaria a execucao ad-hoc dependente de infraestrutura.
-// Historico responde se um passo ja teve sucesso antes. E o que decide se
-// esta e a PRIMEIRA execucao dele — informacao que o passo nao tem e que so o
-// engine possui.
+// Persistidor records each step's state. Optional: the local `brevis run` has
+// no database, and requiring one would make an ad-hoc execution depend on
+// infrastructure.
+// Historico answers whether a step has ever succeeded. It is what decides
+// whether this is its FIRST run -- something the step does not know and only
+// the engine holds.
 //
-// Interface pequena e declarada aqui, no consumidor, e nao no pacote que a
-// implementa.
+// A small interface, declared here in the consumer rather than in the package
+// that implements it.
 //
-// A pergunta e por (workflow, passo), nao por workflow: um workflow com tres
-// fetchers escrevendo em tres tabelas criaria apenas a do primeiro passo se a
-// resposta fosse do workflow inteiro, e as outras duas falhariam em silencio.
+// The question is per (workflow, step), not per workflow: a workflow with three
+// fetchers writing to three tables would create only the first step's if the
+// answer covered the whole workflow, and the other two would fail in silence.
 type Historico interface {
 	PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error)
 }
@@ -51,17 +52,18 @@ type Persistidor interface {
 	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
 		status run.Status, exit *int, erro string, log string) error
 
-	// RegistrarEtapas grava o estado das etapas de um passo do SDK, enquanto
-	// ele roda. E o que faz a tela avancar antes de o passo terminar.
+	// RegistrarEtapas records the phases of an SDK step while it runs. It is
+	// what makes the screen advance before the step finishes.
 	RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
 		sdkVersao string, etapas json.RawMessage) error
 }
 
-// Runner executa um workflow inteiro.
+// Runner runs a whole workflow.
 //
-// Guarda DOIS executores e escolhe por no: `run:` vai para o de processo,
-// `action:` resolve no registry Go. A escolha e do runner, e nao do executor,
-// para que cada executor continue ignorando a existencia do outro.
+// It holds TWO executors and picks per node: `run:` goes to the process one,
+// `action:` resolves in the Go registry. The choice belongs to the runner and
+// not to the executor, so each executor can go on ignoring that the other
+// exists.
 type Runner struct {
 	Processo execution.Executor // atende `run:`; pode ser nil se so houver tasks Go
 	Go       execution.Executor // atende `action:`; pode ser nil
@@ -70,59 +72,61 @@ type Runner struct {
 	Env     map[string]string
 	Report  Reporter
 
-	// Timeout por no. Zero = sem limite.
+	// Timeout per node. Zero means no limit.
 	Timeout time.Duration
 
-	// MaxTentativas por no. Zero ou 1 = tentativa unica.
+	// MaxTentativas per node. Zero or 1 means a single attempt.
 	MaxTentativas int
 	BackoffBase   time.Duration
 
-	// Persist e RunID sao usados juntos: sem os dois, o estado por passo nao e
-	// gravado e a DAG na UI aparece sem estado de execucao.
+	// Persist and RunID are used together: without both, per-step state is not
+	// recorded and the DAG in the UI shows up with no execution state.
 	Persist Persistidor
 	RunID   uuid.UUID
 
-	// Params sao os valores desta execucao. Entram no comando do passo por
-	// template (ver execution.Renderizar) e no ambiente do passo, para que um
-	// fetcher que use o SDK os enxergue sem receber nada por argumento.
+	// Params are this run's values. They reach the step's command through a
+	// template (see execution.Renderizar) and the step's environment, so a
+	// fetcher using the SDK sees them without being handed an argument.
 	Params map[string]string
 
-	// Trigger diz por que este Run existe: schedule, manual ou backfill.
+	// Trigger says why this Run exists: schedule, manual or backfill.
 	Trigger string
 
-	// LogicalDate e o slot que este Run representa. Nulo em disparo manual.
+	// LogicalDate is the slot this Run stands for. Nil on a manual trigger.
 	LogicalDate *time.Time
 
-	// Historico decide se um passo esta rodando pela primeira vez. Nulo
-	// significa que nao da para saber — e nesse caso o passo recebe
-	// first=false, porque criar tabela sem certeza e pior que nao criar.
+	// Historico decides whether a step is running for the first time. Nil means
+	// there is no way to know -- and then the step gets first=false, because
+	// creating a table without being sure is worse than not creating it.
 	Historico Historico
 
-	// Vagas limita quantos PASSOS correm ao mesmo tempo — em Kubernetes, quantos
-	// pods existem simultaneamente. Nulo = sem limite.
+	// Vagas caps how many STEPS run at once -- in Kubernetes, how many pods
+	// exist simultaneously. Nil means no limit.
 	//
-	// Precisa ser compartilhado entre todos os Runners do processo, e por isso e
-	// injetado em vez de criado aqui: o teto e do CLUSTER, nao de um workflow.
-	// Sem ele, o limite de concorrencia do dispatcher contava RUNS — cinco runs
-	// com tres passos paralelos cada davam quinze pods, nao cinco.
+	// It has to be shared across every Runner in the process, which is why it
+	// is injected rather than created here: the ceiling belongs to the CLUSTER,
+	// not to one workflow. Without it, the dispatcher's concurrency limit
+	// counted RUNS -- five runs with three parallel steps each gave fifteen
+	// pods, not five.
 	Vagas chan struct{}
 
-	// TentativaDoRun e a tentativa deste RUN, contada pelo dispatcher. Entra no
-	// nome do pod para que um retry nao reencontre o pod da tentativa anterior.
+	// TentativaDoRun is this RUN's attempt, counted by the dispatcher. It goes
+	// into the pod name so a retry does not find the previous attempt's pod.
 	TentativaDoRun int
 
-	// Pods executa passos como pod no Kubernetes. Quando presente, ele atende
-	// todo passo que declara `image:` — e a mesma DAG roda em pod no cluster e
-	// em processo na maquina, sem alterar o YAML.
+	// Pods runs steps as pods in Kubernetes. When present it serves every step
+	// that declares `image:` -- and the same DAG runs as a pod in the cluster
+	// and as a process on a laptop, with no change to the YAML.
 	Pods execution.Executor
 }
 
-// Run percorre o grafo por niveis: tudo dentro de um nivel roda em paralelo, e o
-// nivel seguinte so comeca quando o anterior fecha inteiro.
+// Run walks the graph by levels: everything inside a level runs in parallel,
+// and the next level only starts once the previous one closes entirely.
 //
-// Para na PRIMEIRA falha do nivel, sem iniciar o proximo. Continuar depois de um
-// erro produziria resultado parcial que parece completo — foi assim que uma
-// pipeline ficou 28 dias atrasada sem ninguem ver, no sistema que este substitui.
+// It stops at the FIRST failure in a level, without starting the next. Carrying
+// on after an error would produce a partial result that looks complete -- which
+// is how a pipeline ran 28 days late without anyone seeing it, in the system
+// this one replaces.
 func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	niveis, err := graph.Niveis(w)
 	if err != nil {
@@ -169,10 +173,11 @@ func (r Runner) rodarNivel(ctx context.Context, w wf.Workflow, nivel []string, p
 	return nil
 }
 
-// rodarNo executa um no, com retry.
+// rodarNo runs one node, with retry.
 //
-// O retry e POR NO, e nao apenas por Run como no dispatcher: refazer o workflow
-// inteiro porque um `notify.sh` falhou desperdicaria o trabalho ja concluido.
+// The retry is PER NODE, and not only per Run as in the dispatcher: redoing the
+// whole workflow because a `notify.sh` failed would throw away the work already
+// finished.
 func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 	tentativas := r.MaxTentativas
 	if tentativas < 1 {
@@ -181,9 +186,9 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 
 	var ultima error
 	for t := 1; t <= tentativas; t++ {
-		// A vaga e tomada por TENTATIVA, nao pelo passo inteiro: segurar o lugar
-		// durante o backoff deixaria uma vaga do cluster ociosa esperando um
-		// relogio.
+		// The slot is taken per ATTEMPT, not for the whole step: holding it
+		// through the backoff would leave a cluster slot idle waiting on a
+		// clock.
 		libera, err := r.ocupar(ctx)
 		if err != nil {
 			return err
@@ -199,7 +204,7 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		if t == tentativas {
 			break
 		}
-		// Nao insiste se o contexto morreu: seria retry contra um cancelamento.
+		// Does not insist once the context is gone: that would be a retry against a cancellation.
 		if ctx.Err() != nil {
 			break
 		}
@@ -220,12 +225,12 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 	return ultima
 }
 
-// ocupar toma uma vaga e devolve a funcao que a libera.
+// ocupar takes a slot and returns the function that frees it.
 //
-// Bloqueia ate haver lugar — e esse o comportamento pedido: com dez passos
-// prontos e cinco vagas, cinco correm e os outros esperam, entrando conforme as
-// vagas se abrem. Recusar em vez de esperar transformaria excesso de trabalho em
-// falha, quando ele e apenas fila.
+// It blocks until there is room, and that is the asked-for behaviour: with ten
+// ready steps and five slots, five run and the rest wait, entering as slots
+// open. Refusing instead of waiting would turn an excess of work into a
+// failure, when it is only a queue.
 func (r Runner) ocupar(ctx context.Context) (func(), error) {
 	if r.Vagas == nil {
 		return func() {}, nil
@@ -239,9 +244,9 @@ func (r Runner) ocupar(ctx context.Context) (func(), error) {
 	}
 }
 
-// marcarInicio e marcarFim so gravam quando ha persistidor E RunID. Falha ao
-// gravar nao interrompe a execucao: perder o registro de um passo e ruim, mas
-// abortar o workflow por causa disso e pior.
+// marcarInicio and marcarFim only record when there is both a persister AND a
+// RunID. A write failure does not interrupt the run: losing a step's record is
+// bad, but aborting the workflow over it is worse.
 func (r Runner) marcarInicio(ctx context.Context, nodeID string, tentativa int) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -254,13 +259,13 @@ func (r Runner) marcarInicio(ctx context.Context, nodeID string, tentativa int) 
 	}
 }
 
-// marcarEtapas grava o avanco das etapas. Falhar aqui NAO derruba o passo: a
-// tela e informativa, e a verdade sobre o passo continua sendo o exit code.
-// Trocar uma execucao por uma atualizacao de tela seria o negocio errado.
+// marcarEtapas records the phases as they advance. Failing here does NOT bring
+// the step down: the screen is informative, and the truth about a step remains
+// its exit code. Trading a run for a screen update would be the wrong bargain.
 //
-// So e chamado depois de uma marca ter sido reconhecida, que e o que garante
-// que um passo comum nao pague uma ida ao banco por linha de log. Conferir de
-// novo aqui seria uma verificacao que nao pode falhar.
+// It is only called after a marker has been recognised, which is what keeps an
+// ordinary step from paying a database round trip per log line. Checking again
+// here would be a verification that cannot fail.
 func (r Runner) marcarEtapas(ctx context.Context, nodeID string, tentativa int, c *coletorDeEtapas) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -281,8 +286,9 @@ func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, cau
 	if causa != nil {
 		status, msg = run.StatusFailed, causa.Error()
 		var passo *ErroDePasso
-		// Exit 0 nao e gravado: uma task Go que falha nao tem processo, e um
-		// zero na coluna leria como "terminou bem" ao lado de status failed.
+		// Exit 0 is not recorded: a Go task that fails has no process, and a
+		// zero in that column would read as "finished fine" next to a failed
+		// status.
 		if errors.As(causa, &passo) && passo.ExitCode != 0 {
 			exit = &passo.ExitCode
 		}
@@ -295,21 +301,22 @@ func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, cau
 	}
 }
 
-// ErroDePasso e a falha de um passo, com o contexto necessario para entende-la
-// sem abrir log nenhum: o codigo de saida, o que ele significa, e as ultimas
-// linhas que o processo escreveu em stderr.
+// ErroDePasso is a step's failure, with the context needed to understand it
+// without opening a log: the exit code, what it means, and the last lines the
+// process wrote to stderr.
 //
-// Antes so sobrava "saiu com codigo 127" — tecnicamente correto e inutil. A
-// causa (`/bin/sh: python: not found`) passava pelos eventos como log e era
-// descartada ali mesmo, entao a tela mostrava o sintoma sem a explicacao.
+// Before, all that survived was "exited with code 127" -- technically correct
+// and useless. The cause (`/bin/sh: python: not found`) went through the events
+// as a log line and was dropped right there, so the screen showed the symptom
+// without the explanation.
 type ErroDePasso struct {
 	NodeID   string
 	ExitCode int
 	Mensagem string
 
-	// Saida sao as ultimas linhas de stderr. Guardar so as ultimas, e nao tudo,
-	// porque um processo verboso encheria a coluna de erro do banco — e a causa
-	// quase sempre esta no fim.
+	// Saida is the last few lines of stderr. Only the last ones, and not all of
+	// them, because a chatty process would fill the database's error column --
+	// and the cause is almost always at the end.
 	Saida []string
 }
 
@@ -324,9 +331,10 @@ func (e *ErroDePasso) Error() string {
 	return cabecalho + "\n" + strings.Join(e.Saida, "\n")
 }
 
-// dicaDoCodigo traduz os codigos de saida que o shell reserva. Sao os que mais
-// confundem: 127 nao e erro da aplicacao, e sim comando inexistente — a
-// diferenca entre procurar defeito no codigo e procurar na imagem.
+// dicaDoCodigo translates the exit codes the shell reserves. They are the most
+// confusing ones: 127 is not an application error but a missing command -- the
+// difference between looking for a defect in the code and looking in the
+// image.
 func dicaDoCodigo(c int) string {
 	switch c {
 	case 126:
@@ -345,18 +353,19 @@ func dicaDoCodigo(c int) string {
 	return ""
 }
 
-// linhasDeContexto e quantas linhas de stderr acompanham a falha. Cinco cobrem
-// uma stack trace curta ou a mensagem final de um comando sem afogar a tela.
+// linhasDeContexto is how many lines of stderr travel with a failure. Five
+// cover a short stack trace or a command's closing message without drowning the
+// screen.
 const linhasDeContexto = 5
 
-// tentar roda o passo uma vez e devolve a saida completa (com teto) junto com o
-// desfecho. A saida sobe mesmo em caso de sucesso: um passo que terminou bem
-// mas produziu pouca coisa e um sinal, e so se percebe olhando o log.
+// tentar runs the step once and returns the complete output (capped) along with
+// the outcome. The output comes back on success too: a step that finished fine
+// but produced very little is a signal, and it is only visible in the log.
 func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa int) (string, error) {
-	// Consultado uma vez por tentativa, e nao dentro de montar, porque montar
-	// nao deve fazer I/O. Um retry do mesmo run nao reabre a primeira
-	// execucao: se a tentativa 1 gravou linha, PassoJaTeveSucesso ja responde
-	// que sim; se falhou, continua sendo a primeira, que e o correto.
+	// Asked once per attempt, and not inside montar, because building a task
+	// must not do I/O. A retry of the same run does not reopen the first
+	// execution: if attempt 1 wrote a row, PassoJaTeveSucesso already answers
+	// yes; if it failed, this is still the first, which is right.
 	primeira := r.primeiraExecucao(ctx, w.Slug, n.ID)
 
 	exec, tarefa, err := r.montar(w, n, tentativa, primeira)
@@ -372,19 +381,20 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 	var falha *ErroDePasso
 	var stderr, stdout []string
 
-	// A saida inteira (com teto) vai para o banco. As janelas de 5 linhas
-	// abaixo continuam existindo para a MENSAGEM de erro, que precisa caber num
-	// alerta do Slack; esta guarda o que o operador vai querer ler depois,
-	// quando o pod que a produziu ja nao existe.
+	// The whole output (capped) goes to the database. The 5-line windows below
+	// still exist for the error MESSAGE, which has to fit in a Slack alert;
+	// this one keeps what the operator will want to read later, when the pod
+	// that produced it is long gone.
 	var completa janela
 
-	// As etapas que o passo anuncia, quando ele e um pipeline do SDK.
+	// The phases the step announces, when it is an SDK pipeline.
 	var etapas coletorDeEtapas
 
 	for e := range eventos {
-		// A linha marcada e o SDK falando com o motor, nao saida do programa.
-		// Ela vira etapa na tela e NAO entra no log nem no Report: quem olha
-		// quer ver as etapas, nao o JSON que as transportou.
+		// A marked line is the SDK talking to the engine, not the program's
+		// output. It becomes a phase on the screen and does NOT enter the log
+		// or the Report: whoever looks wants to see the phases, not the JSON
+		// that carried them.
 		if e.Kind == execution.EventLog {
 			if linha := strings.TrimSpace(e.Message); linha != "" && etapas.linha(linha) {
 				r.marcarEtapas(ctx, n.ID, tentativa, &etapas)
@@ -395,14 +405,15 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 		if r.Report != nil {
 			r.Report.Evento(e)
 		}
-		// Mantem uma janela deslizante das ultimas linhas. E preciso coletar
-		// SEMPRE, e nao so depois de falhar: quando o evento de falha chega, as
-		// linhas que o explicam ja passaram.
+		// Keeps a sliding window of the last lines. It has to collect ALWAYS,
+		// and not only after a failure: by the time the failure event arrives,
+		// the lines that explain it have already gone by.
 		//
-		// Os dois fluxos, separados: nem todo programa escreve erro em stderr.
-		// O dbt imprime "Parsing Error / Env var required but not provided" em
-		// STDOUT, e capturar so stderr deixava a falha como "saiu com codigo 2",
-		// sem a causa que estava na tela o tempo todo.
+		// The two streams, kept apart: not every program writes errors to
+		// stderr. dbt prints "Parsing Error / Env var required but not
+		// provided" on STDOUT, and capturing only stderr left the failure as
+		// "exited with code 2", without the cause that was on screen the whole
+		// time.
 		if e.Kind == execution.EventLog {
 			if linha := strings.TrimSpace(e.Message); linha != "" {
 				completa.Escrever(linha)
@@ -423,9 +434,9 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 	if falha == nil {
 		return completa.String(), nil
 	}
-	// stderr primeiro: quando existe, e onde o programa quis reportar erro.
-	// stdout so entra na ausencia dele, para nao encher a mensagem com a saida
-	// normal de um comando que apenas terminou mal.
+	// stderr first: when it exists, it is where the program meant to report an
+	// error. stdout only enters in its absence, so the message is not filled
+	// with the ordinary output of a command that merely ended badly.
 	falha.Saida = stderr
 	if len(falha.Saida) == 0 {
 		falha.Saida = stdout
@@ -433,11 +444,13 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 	return completa.String(), falha
 }
 
-// Prefixo das variaveis que descrevem ESTA execucao, separado do BREVIS_SDK_
-// que configura o SDK: um diz o que o SDK faz, o outro o que este disparo e.
+// Prefix of the variables that describe THIS run, kept apart from the
+// BREVIS_SDK_ that configures the SDK: one says what the SDK does, the other
+// what this particular dispatch is.
 //
-// Nao e canal privado. O processo do passo pode ler o proprio ambiente, e
-// alguem vai ler. O que se promete e que ele NAO PRECISA — nao que nao consiga.
+// This is not a private channel. The step's process can read its own
+// environment, and somebody will. What is promised is that it does NOT HAVE TO
+// -- not that it cannot.
 const (
 	envRunID          = "BREVIS_RUN_ID"
 	envRunFirst       = "BREVIS_RUN_FIRST"
@@ -447,25 +460,25 @@ const (
 	envRunParams      = "BREVIS_RUN_PARAMS"
 )
 
-// contextoDoRun monta o que o engine sabe sobre esta execucao e o passo nao.
+// contextoDoRun builds what the engine knows about this run and the step does not.
 //
-// primeira e resolvida antes, pelo chamador, porque exige ida ao banco e
-// montar a task nao deve fazer I/O.
+// primeira is resolved beforehand, by the caller, because it needs a database
+// round trip and building a task must not do I/O.
 func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[string]string {
 	env := map[string]string{}
 
-	// Sem RunID nao ha run gerenciado: e o caminho de `brevis run`, que executa
-	// um YAML na hora e nao pertence a historico nenhum.
+	// With no RunID there is no managed run: this is the `brevis run` path,
+	// which executes a YAML on the spot and belongs to no history.
 	//
-	// Injetar o UUID zero aqui seria pior que nao injetar nada: o SDK decide
-	// que esta sob o engine pela PRESENCA do id, entao um fetcher rodado a mao
-	// passaria a logar "running under Brevis" com um id inventado. Os params
-	// continuam indo, porque `--param` e justamente como se passa entrada
-	// nesse caminho.
+	// Injecting the zero UUID here would be worse than injecting nothing: the
+	// SDK decides it is under the engine by the PRESENCE of the id, so a
+	// fetcher run by hand would start logging "running under Brevis" with an
+	// invented id. The params still go, because `--param` is precisely how
+	// input is passed on this path.
 	if r.RunID != uuid.Nil {
 		env[envRunID] = r.RunID.String()
 		env[envRunFirst] = strconv.FormatBool(primeira)
-		// Comeca em zero, como a coluna task_runs.attempt.
+		// Starts at zero, like the task_runs.attempt column.
 		env[envRunAttempt] = strconv.Itoa(tentativa)
 	}
 
@@ -476,8 +489,8 @@ func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[s
 		env[envRunLogicalDate] = r.LogicalDate.UTC().Format(time.RFC3339)
 	}
 	if len(r.Params) > 0 {
-		// Erro impossivel: map[string]string sempre serializa. Ignorar aqui e
-		// preferivel a devolver um erro que nenhum chamador poderia tratar.
+		// An impossible error: a map[string]string always serialises. Ignoring
+		// it here beats returning an error no caller could act on.
 		if b, err := json.Marshal(r.Params); err == nil {
 			env[envRunParams] = string(b)
 		}
@@ -488,12 +501,12 @@ func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[s
 
 // mesclarEnv junta o ambiente do runner com o desta execucao.
 //
-// O do runner ganha em colisao: se alguem definiu BREVIS_RUN_PARAMS na
-// configuracao, foi porque quis, e o engine nao sobrescreve configuracao
-// explicita.
-// mesclarEnv junta os mapas em ordem crescente de precedencia, exceto o
-// primeiro: `base` (o ambiente global do motor) vence o contexto do run, que e
-// como sempre foi, e o que vem depois vence `base`.
+// The runner's wins a collision: if somebody set BREVIS_RUN_PARAMS in the
+// configuration they meant to, and the engine does not overwrite explicit
+// configuration.
+// mesclarEnv merges the maps in increasing order of precedence, except the
+// first: `base` (the engine's global environment) beats the run context, which
+// is how it has always been, and whatever comes after beats `base`.
 func mesclarEnv(base, execucao map[string]string, acima ...map[string]string) map[string]string {
 	out := make(map[string]string, len(base)+len(execucao))
 	for k, v := range execucao {
@@ -512,15 +525,16 @@ func mesclarEnv(base, execucao map[string]string, acima ...map[string]string) ma
 
 // primeiraExecucao pergunta ao historico se este passo ja teve sucesso.
 //
-// Sem historico configurado a resposta e "nao e a primeira": criar tabela sem
-// certeza e pior que nao criar, e o consumidor sempre pode pedir explicitamente.
+// With no history configured the answer is "not the first": creating a table
+// without being sure is worse than not creating it, and the consumer can always
+// ask explicitly.
 func (r Runner) primeiraExecucao(ctx context.Context, slug, nodeID string) bool {
 	if r.Historico == nil {
 		return false
 	}
 	jaTeve, err := r.Historico.PassoJaTeveSucesso(ctx, slug, nodeID, r.RunID)
 	if err != nil {
-		// Falha de consulta nao pode virar criacao de tabela por engano.
+		// A failed query must not turn into a table created by mistake.
 		return false
 	}
 	return !jaTeve
@@ -536,11 +550,12 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		NodeID:      n.ID,
 		Workflow:    w.Slug,
 		RunID:       r.RunID.String(),
-		// A tentativa entra no NOME do pod. Sem ela, um retry reencontra o pod
-		// da tentativa anterior — e como o executor adota pod existente (para
-		// nao subir dois iguais quando o processo morre no meio), ele fica
-		// preso ao pod quebrado para sempre. Foi assim em dev: um pod Pending
-		// por CPU insuficiente foi readotado a cada retry.
+		// The attempt goes into the pod's NAME. Without it, a retry finds the
+		// previous attempt's pod again -- and because the executor adopts an
+		// existing pod (so it does not start two identical ones when the
+		// process dies midway), it stays stuck on the broken pod forever. That
+		// is what happened in dev: a pod Pending on insufficient CPU was
+		// re-adopted on every retry.
 		Tentativa:  tentativa,
 		Image:      imagem,
 		Shell:      n.UsaShell(),
@@ -549,11 +564,11 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		CPUMax:     recursos.CPULimit,
 		MemoriaMax: recursos.MemoryLimit,
 		WorkDir:    r.WorkDir,
-		// Ordem, do mais fraco ao mais forte: contexto do run, ambiente
-		// global do motor, `env:` do workflow, `env:` do passo. O passo
-		// vence o global de proposito -- na outra ordem, uma variavel
-		// declarada no arquivo perderia calada para um BREVIS_TASK_ENV que
-		// alguem configurou meses atras.
+		// Order, weakest to strongest: run context, the engine's global
+		// environment, the workflow's `env:`, the step's `env:`. The step
+		// beats the global on purpose -- the other way round, a variable
+		// declared in the file would lose in silence to a BREVIS_TASK_ENV
+		// somebody configured months ago.
 		Env:     mesclarEnv(r.Env, r.contextoDoRun(n.ID, primeira, tentativa), w.EnvDe(n)),
 		Secrets: w.SecretsDe(n),
 		Timeout: r.Timeout,
@@ -567,18 +582,19 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		return r.Go, t, nil
 	}
 
-	// O comando e renderizado AQUI, na montagem da task, e nao na publicacao:
-	// o mesmo workflow roda com params diferentes a cada disparo, e um comando
-	// congelado no banco perderia isso.
+	// The command is rendered HERE, when the task is built, and not at publish
+	// time: the same workflow runs with different params on every dispatch, and
+	// a command frozen in the database would lose that.
 	comando, err := execution.Renderizar(n.Run, r.Params)
 	if err != nil {
 		return nil, t, fmt.Errorf("step %q: %w", n.ID, err)
 	}
 	t.Command = comando
 
-	// Um passo com `image:` roda em POD quando ha executor de pods. E a
-	// diferenca entre o modo local e o cluster, e ela mora AQUI, num lugar so —
-	// o YAML e identico nos dois, e o executor nao sabe qual e o outro.
+	// A step with `image:` runs as a POD when a pod executor exists. That is the
+	// difference between local mode and the cluster, and it lives HERE, in one
+	// place -- the YAML is identical in both, and neither executor knows the
+	// other exists.
 	if imagem != "" && r.Pods != nil {
 		return r.Pods, t, nil
 	}
@@ -588,9 +604,10 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		}
 		return nil, t, fmt.Errorf("step %q usa `run:`, mas nenhum executor de processo foi configurado", n.ID)
 	}
-	// Local com `image:` declarada: roda na propria instancia e AVISA. Silenciar
-	// faria parecer que o passo rodou na imagem declarada, que e o tipo de
-	// engano que so aparece quando o resultado ja esta errado.
+	// Local with an `image:` declared: runs on the instance itself and WARNS.
+	// Staying quiet would make it look as though the step ran in the declared
+	// image, which is the kind of mistake that only surfaces once the result is
+	// already wrong.
 	if imagem != "" && r.Report != nil {
 		r.Report.Evento(execution.Event{
 			Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",

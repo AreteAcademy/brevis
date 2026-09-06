@@ -1,8 +1,8 @@
-// Package workflow e o modelo de dominio de um fluxo e seu grafo.
+// Package workflow is the domain model of a flow and its graph.
 //
-// O dominio nao sabe o que e YAML. A traducao do arquivo para estas structs
-// vive em internal/application/workflow — assim o formato de arquivo pode mudar
-// sem tocar as invariantes.
+// The domain does not know what YAML is. Translating the file into these
+// structs lives in internal/application/workflow -- so the file format can
+// change without touching the invariants.
 package workflow
 
 import (
@@ -11,9 +11,9 @@ import (
 	"strings"
 )
 
-// Kind distingue como o grafo foi declarado. `chain` e acucar sintatico: o
-// parser o converte em arestas antes de chegar aqui, entao o motor de execucao
-// so conhece DAG. Um motor so, dois jeitos de escrever.
+// Kind distinguishes how the graph was declared. `chain` is syntactic sugar:
+// the parser turns it into edges before it gets here, so the execution engine
+// only ever knows a DAG. One engine, two ways of writing.
 type Kind string
 
 const (
@@ -21,105 +21,108 @@ const (
 	KindDAG   Kind = "dag"
 )
 
-// Workflow e a definicao de um fluxo. Imutavel depois de publicado: a secao 22
-// do plano exige que uma Run guarde o snapshot da versao que a originou.
+// Workflow is a flow's definition. Immutable once published: §22 of the plan
+// requires a Run to keep a snapshot of the version that produced it.
 type Workflow struct {
 	Slug     string
 	Name     string
 	Kind     Kind
 	Schedule string // cron; vazio = so disparo manual
 
-	// Tags classificam o workflow para busca e filtro na UI. Sao rotulos livres
-	// do autor do YAML, nao dominio: nada no motor depende delas.
+	// Tags classify the workflow for search and filtering in the UI. They are
+	// free-form labels from the YAML's author, not domain: nothing in the
+	// engine depends on them.
 	Tags []string
 
-	// Image e o runtime padrao dos passos. Em Kubernetes CADA passo vira um pod,
-	// e a imagem e o que define o que aquele pod sabe fazer: um passo de dbt
-	// sobe a imagem de dbt, um binario Go sobe uma imagem de 10 MB. Declarar
-	// aqui evita repetir a mesma linha em dez passos; o passo sobrescreve quando
-	// precisa de outro runtime.
+	// Image is the steps' default runtime. In Kubernetes EVERY step becomes a
+	// pod, and the image is what defines what that pod knows how to do: a dbt
+	// step brings up the dbt image, a Go binary brings up a 10 MB one.
+	// Declaring it here avoids repeating the same line in ten steps; a step
+	// overrides it when it needs a different runtime.
 	Image string
 
-	// Resources e o pedido padrao de CPU e memoria, pela mesma razao.
+	// Resources is the default CPU and memory request, for the same reason.
 	Resources Resources
 
-	// Env sao variaveis de ambiente que todo passo recebe. Valor literal, e
-	// por isso NAO servem para segredo: o YAML esta no git.
+	// Env are environment variables every step receives. A literal value, which
+	// is why they are NOT for secrets: the YAML is in git.
 	Env map[string]string
 
-	// Secrets sao variaveis cujo valor o motor nao ve nem guarda. Ver Node.
+	// Secrets are variables whose value the engine neither sees nor stores. See Node.
 	Secrets map[string]string
 
-	// Params sao os valores que mudam entre dois disparos do mesmo workflow —
-	// `load_full`, uma janela de datas, um limite. Ver param.go.
+	// Params are the values that change between two dispatches of the same
+	// workflow -- `load_full`, a date window, a limit. See param.go.
 	Params []Param
 
-	// MaxAtivos limita execucoes simultaneas DESTE workflow. Zero = sem limite.
+	// MaxAtivos caps simultaneous runs OF THIS workflow. Zero means no limit.
 	//
-	// E diferente do teto global de passos: aquele protege o CLUSTER, este
-	// protege o DADO. Um `*/15` que leva 20 minutos se sobrepoe a si mesmo, e
-	// dois `dbt build` no mesmo modelo ao mesmo tempo disputam a mesma tabela.
+	// It differs from the global step ceiling: that one protects the CLUSTER,
+	// this one protects the DATA. A `*/15` that takes 20 minutes overlaps
+	// itself, and two `dbt build` on the same model at once fight over the same
+	// table.
 	MaxAtivos int
 
 	Nodes []Node
 	Edges []Edge
 }
 
-// Node e uma unidade de trabalho. Exatamente uma forma de execucao deve estar
-// preenchida — `Run` (comando) ou `Action` (acao tipada com parametros).
+// Node is a unit of work. Exactly one form of execution must be filled in --
+// `Run` (a command) or `Action` (a typed action with parameters).
 type Node struct {
 	ID     string
 	Run    string
 	Action string
 	With   map[string]any
 
-	// Image sobrescreve a do workflow. Vazio = herda.
+	// Image overrides the workflow's. Empty inherits.
 	Image string
 
-	// Resources dimensiona o pod deste passo. O ganho de separar por passo e
-	// concreto: um fetcher em Go cabe em 64Mi enquanto o dbt ao lado pede 1Gi, e
-	// numa imagem unica os dois pagariam o maior dos dois.
+	// Resources sizes this step's pod. The gain from separating per step is
+	// concrete: a Go fetcher fits in 64Mi while the dbt next to it asks for
+	// 1Gi, and under a single image both would pay the larger of the two.
 	Resources Resources
 
-	// Shell decide como o comando entra no container. Nulo = com shell, que e o
-	// que `run:` sugere ("python fetch.py"). Falso passa o argv direto, para
-	// imagem distroless — onde `sh -c` falharia com "no such file or directory",
-	// erro que nao diz nada sobre a causa.
+	// Shell decides how the command enters the container. Nil means with a
+	// shell, which is what `run:` suggests ("python fetch.py"). False passes the
+	// argv directly, for a distroless image -- where `sh -c` would fail with
+	// "no such file or directory", an error that says nothing about the
+	// cause.
 	Shell *bool
 
-	// Env sao variaveis de ambiente deste passo, com valor literal no arquivo.
-	// Sobrescrevem as do workflow, nome a nome.
+	// Env are this step's environment variables, with a literal value in the
+	// file. They override the workflow's, name by name.
 	//
 	//	env:
 	//	  BREVIS_LOG_LEVEL: info
 	Env map[string]string
 
-	// Secrets sao variaveis cujo VALOR nunca aparece no arquivo. A chave e o
-	// nome da variavel; o valor e onde encontra-la, no formato `secret/chave`.
+	// Secrets are variables whose VALUE never appears in the file. The key is
+	// the variable's name; the value is where to find it, as `secret/key`.
 	//
 	//	secrets:
 	//	  GABRIEL_SESSION_COOKIE: gabriel-session/cookie
 	//
-	// Sao duas chaves e nao uma de proposito. Com uma so, o caminho mais curto
-	// para fazer funcionar seria colar o segredo no YAML — e o YAML esta no
-	// git. `env:` aceita literal, `secrets:` nao aceita.
+	// Two keys and not one, on purpose. With a single one, the shortest path to
+	// making it work would be pasting the secret into the YAML -- and the YAML
+	// is in git. `env:` accepts a literal, `secrets:` does not.
 	//
-	// Onde a coordenada resolve depende do executor, e a assimetria e
-	// deliberada:
+	// Where the coordinate resolves depends on the executor, and the asymmetry
+	// is deliberate:
 	//
 	//   Kubernetes  valueFrom.secretKeyRef{name: gabriel-session, key: cookie}
-	//   local       a variavel de mesmo nome no ambiente do proprio motor,
-	//               e ausente e ERRO — nao string vazia
+	//   local       the variable of the same name in the engine's own
+	//               environment, and missing is an ERROR -- not an empty string
 	//
-	// Em qualquer um dos dois o motor repassa sem ler: o valor nao entra em
-	// log, nem no banco, nem no comando renderizado.
+	// In either case the engine passes it on without reading: the value enters
+	// no log, no database and no rendered command.
 	Secrets map[string]string
 }
 
-// Resources sao pedidos e limites de um pod, no formato do Kubernetes
-// ("200m", "1Gi"). Texto e nao numero de proposito: o formato e do Kubernetes, e
-// converter para uma unidade nossa so criaria um segundo vocabulario para a
-// mesma coisa.
+// Resources are a pod's requests and limits, in Kubernetes' own format
+// ("200m", "1Gi"). Text and not a number on purpose: the format belongs to
+// Kubernetes, and converting to a unit of our own would only create a second
+// vocabulary for the same thing.
 type Resources struct {
 	CPU         string
 	Memory      string
@@ -127,15 +130,15 @@ type Resources struct {
 	MemoryLimit string
 }
 
-// Vazio diz se nada foi declarado — o pod entao sobe sem `resources`, herdando
-// o LimitRange do namespace.
+// Vazio says whether nothing was declared -- the pod then starts without
+// `resources`, inheriting the namespace's LimitRange.
 func (r Resources) Vazio() bool {
 	return r.CPU == "" && r.Memory == "" && r.CPULimit == "" && r.MemoryLimit == ""
 }
 
-// ComPadrao preenche o que o passo nao declarou com o do workflow. Herdar campo
-// a campo, e nao o bloco inteiro, permite um passo pedir so mais memoria sem
-// perder a CPU do padrao.
+// ComPadrao fills what the step did not declare from the workflow's. Inheriting
+// field by field, rather than the whole block, lets a step ask for more memory
+// alone without losing the default CPU.
 func (r Resources) ComPadrao(p Resources) Resources {
 	if r.CPU == "" {
 		r.CPU = p.CPU
@@ -165,15 +168,15 @@ func (w Workflow) RecursosDe(n Node) Resources {
 	return n.Resources.ComPadrao(w.Resources)
 }
 
-// EnvDe resolve as variaveis literais efetivas de um passo: as do workflow,
-// com as do passo por cima.
+// EnvDe resolves a step's effective literal variables: the workflow's, with
+// the step's on top.
 func (w Workflow) EnvDe(n Node) map[string]string { return sobrepor(w.Env, n.Env) }
 
-// SecretsDe resolve os segredos efetivos de um passo, pela mesma regra.
+// SecretsDe resolves a step's effective secrets, by the same rule.
 func (w Workflow) SecretsDe(n Node) map[string]string { return sobrepor(w.Secrets, n.Secrets) }
 
-// sobrepor devolve base com cima por cima, sem mutar nenhum dos dois: os mapas
-// vem do workflow publicado e sao lidos por todos os passos ao mesmo tempo.
+// sobrepor returns base with cima on top, mutating neither: the maps come from
+// the published workflow and are read by every step at the same time.
 func sobrepor(base, cima map[string]string) map[string]string {
 	if len(base) == 0 && len(cima) == 0 {
 		return nil
@@ -188,18 +191,18 @@ func sobrepor(base, cima map[string]string) map[string]string {
 	return out
 }
 
-// UsaShell diz se o comando entra por `sh -c`.
+// UsaShell says whether the command enters through `sh -c`.
 func (n Node) UsaShell() bool { return n.Shell == nil || *n.Shell }
 
-// Edge liga dois nos: From roda antes de To.
+// Edge links two nodes: From runs before To.
 type Edge struct {
 	From string
 	To   string
 }
 
-// Validate aplica as invariantes que a secao 5 do plano exige antes de salvar.
-// A ordem importa: IDs duplicados e dependencias ausentes sao verificados antes
-// do ciclo, porque um grafo com aresta pendurada nao pode ser percorrido.
+// Validate applies the invariants §5 of the plan requires before saving.
+// Order matters: duplicate IDs and missing dependencies are checked before the
+// cycle, because a graph with a dangling edge cannot be walked.
 func (w Workflow) Validate() error {
 	if w.Slug == "" {
 		return fmt.Errorf("workflow sem slug")
@@ -279,9 +282,9 @@ func (w Workflow) Validate() error {
 		return err
 	}
 	for _, n := range w.Nodes {
-		// Contra o efetivo, e nao contra o declarado: um `env:` no workflow e
-		// um `secrets:` de mesmo nome no passo colidem exatamente igual, e so
-		// a visao herdada enxerga isso.
+		// Against the effective view, not the declared one: an `env:` on the
+		// workflow and a `secrets:` of the same name on the step collide just
+		// the same, and only the inherited view sees it.
 		if err := validarAmbiente(w.Slug, "step "+n.ID, w.EnvDe(n), w.SecretsDe(n)); err != nil {
 			return err
 		}
@@ -293,11 +296,11 @@ func (w Workflow) Validate() error {
 	return nil
 }
 
-// validarAmbiente recusa o que viraria uma variavel errada em silencio.
+// validarAmbiente refuses what would silently become the wrong variable.
 //
-// O nome vem primeiro porque um nome invalido de variavel de ambiente e
-// aceito pelo YAML e recusado pelo servidor do Kubernetes muito depois, com
-// uma mensagem que fala de campo de container e nao de linha de arquivo.
+// The name comes first because an invalid environment variable name is accepted
+// by the YAML and refused by the Kubernetes server much later, with a message
+// about a container field rather than a file line.
 func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 	for nome := range env {
 		if err := validarNomeDeVar(nome); err != nil {
@@ -310,17 +313,17 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 			return fmt.Errorf("workflow %q, %s: secrets: %w", slug, onde, err)
 		}
 
-		// Uma variavel definida nos dois lugares e ambigua, e qualquer
-		// desempate que eu escolhesse seria uma regra que ninguem lembra.
+		// A variable defined in both places is ambiguous, and any tie-break
+		// chosen here would be a rule nobody remembers.
 		if _, colide := env[nome]; colide {
 			return fmt.Errorf("workflow %q, %s: %q esta em `env` e em `secrets`; "+
 				"a mesma variavel nao pode ter valor literal e vir de um segredo", slug, onde, nome)
 		}
 
-		// O valor NAO entra na mensagem. O caso mais provavel de coordenada
-		// invalida e alguem ter colado o segredo de verdade -- e `brevis
-		// validate` roda na CI, cujo log muita gente le. Um erro que ensina o
-		// formato nao precisa repetir o que recebeu.
+		// The value does NOT go into the message. The most likely cause of an
+		// invalid coordinate is somebody having pasted the real secret -- and
+		// `brevis validate` runs in CI, whose log plenty of people read. An
+		// error that teaches the format does not need to repeat what it got.
 		segredo, chave, ok := strings.Cut(coord, "/")
 		if !ok || segredo == "" || chave == "" || strings.Contains(chave, "/") {
 			return fmt.Errorf("workflow %q, %s: secrets[%q] nao e uma coordenada "+
@@ -333,8 +336,8 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 	return nil
 }
 
-// validarNomeDeVar aceita o que um shell POSIX aceita: letras, digitos e
-// sublinhado, sem comecar com digito.
+// validarNomeDeVar accepts what a POSIX shell accepts: letters, digits and
+// underscore, not starting with a digit.
 func validarNomeDeVar(nome string) error {
 	if nome == "" {
 		return fmt.Errorf("nome de variavel vazio")
@@ -357,8 +360,8 @@ func validarNomeDeVar(nome string) error {
 
 // encontrarCiclo devolve o caminho do ciclo, ou vazio se o grafo for aciclico.
 //
-// Devolve o CAMINHO, nao apenas um booleano: quem escreveu a DAG precisa saber
-// quais steps fecham o laco para corrigi-lo.
+// It returns the PATH, not just a boolean: whoever wrote the DAG needs to know
+// which steps close the loop in order to fix it.
 func (w Workflow) encontrarCiclo() string {
 	saida := make(map[string][]string, len(w.Nodes))
 	for _, e := range w.Edges {
@@ -366,7 +369,7 @@ func (w Workflow) encontrarCiclo() string {
 	}
 
 	const (
-		novo = iota // sem iota, emUso e pronto repetiriam o valor de novo
+		novo = iota // without iota, emUso and pronto would repeat novo's value
 		emUso
 		pronto
 	)
@@ -421,13 +424,14 @@ func formatarCiclo(ids []string) string {
 }
 
 // quantidade e o formato do Kubernetes: inteiro ou decimal com sufixo opcional
-// (m para CPU; Ki/Mi/Gi/K/M/G para memoria).
+// (m for CPU; Ki/Mi/Gi/K/M/G for memory).
 var quantidade = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?(m|[KMGTPE]i?)?$`)
 
 // validarRecursos recusa quantidade malformada na PUBLICACAO.
 //
-// Sem isto o erro so aparece quando o pod e criado — horas depois, no meio da
-// madrugada, como um 422 do servidor de API que nao cita o arquivo nem o passo.
+// Without this the error only shows up when the pod is created -- hours later,
+// in the middle of the night, as a 422 from the API server that names neither
+// the file nor the step.
 func validarRecursos(slug, onde string, r Resources) error {
 	for campo, valor := range map[string]string{
 		"cpu": r.CPU, "memory": r.Memory,

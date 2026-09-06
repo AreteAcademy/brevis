@@ -15,21 +15,21 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// nomeContainer e fixo: o pod tem um container so, e um nome estavel torna o
-// `kubectl logs` previsivel sem consultar o spec.
+// nomeContainer is fixed: the pod has a single container, and a stable name
+// makes `kubectl logs` predictable without reading the spec.
 const nomeContainer = "step"
 
-// Pod e o subconjunto do objeto que este motor usa. Escrever as structs a mao,
-// em vez de importar as do client-go, mantem a arvore de dependencias pequena e
-// deixa visivel exatamente o que se envia ao servidor de API.
+// Pod is the subset of the object this engine uses. Writing the structs by hand
+// instead of importing client-go's keeps the dependency tree small and makes it
+// visible exactly what is sent to the API server.
 type Pod struct {
 	APIVersion string   `json:"apiVersion,omitempty"`
 	Kind       string   `json:"kind,omitempty"`
 	Metadata   Metadata `json:"metadata"`
 	Spec       PodSpec  `json:"spec,omitempty"`
-	// Ponteiro porque `omitempty` nao omite struct vazia: sem ele, todo pod
-	// criado enviaria `"status":{}` ao servidor — inofensivo, mas e ruido num
-	// objeto que se le para depurar.
+	// A pointer because `omitempty` does not omit an empty struct: without it
+	// every created pod would send `"status":{}` to the server -- harmless, but
+	// noise in an object people read to debug.
 	Status *PodStatus `json:"status,omitempty"`
 }
 
@@ -51,11 +51,11 @@ type PodSpec struct {
 	Containers            []Container       `json:"containers"`
 }
 
-// Volume e um PersistentVolumeClaim montado no pod.
+// Volume is a PersistentVolumeClaim mounted into the pod.
 //
-// So PVC, e nao a uniao de tudo que o Kubernetes aceita: o motor monta volume
-// para um proposito -- guardar a credencial rotacionada entre execucoes -- e
-// um campo que existe para um proposito nao deve aceitar dez formas.
+// PVC only, and not the union of everything Kubernetes accepts: the engine
+// mounts a volume for one purpose -- keeping a rotated credential between runs
+// -- and a field that exists for one purpose should not accept ten shapes.
 type Volume struct {
 	Name string    `json:"name"`
 	PVC  *FontePVC `json:"persistentVolumeClaim,omitempty"`
@@ -95,14 +95,14 @@ type Container struct {
 
 type Var struct {
 	Name string `json:"name"`
-	// Value com omitempty porque uma Var que vem de secret manda `valueFrom`,
-	// e mandar `"value":""` junto faz o servidor recusar as duas.
+	// Value with omitempty because a Var coming from a secret sends `valueFrom`,
+	// and sending `"value":""` alongside makes the server refuse both.
 	Value     string    `json:"value,omitempty"`
 	ValueFrom *FonteVar `json:"valueFrom,omitempty"`
 }
 
-// FonteVar aponta uma variavel para uma chave de um Secret. O valor nunca
-// passa pelo motor: quem le e o kubelet, na hora de subir o container.
+// FonteVar points a variable at a key of a Secret. The value never passes
+// through the engine: the kubelet reads it when starting the container.
 type FonteVar struct {
 	SecretKeyRef *RefChave `json:"secretKeyRef,omitempty"`
 }
@@ -130,7 +130,7 @@ type PodStatus struct {
 	ContainerStatuses []StatusContainer `json:"containerStatuses,omitempty"`
 }
 
-// Condicao carrega o PodScheduled, onde o scheduler explica por que nao coube.
+// Condicao carries PodScheduled, where the scheduler explains why it did not fit.
 type Condicao struct {
 	Type    string `json:"type"`
 	Status  string `json:"status"`
@@ -156,7 +156,7 @@ type StatusContainer struct {
 	} `json:"state"`
 }
 
-// Fase devolve a fase atual; vazia enquanto o servidor nao respondeu com status.
+// Fase returns the current phase; empty until the server answers with a status.
 func (p Pod) Fase() string {
 	if p.Status == nil {
 		return ""
@@ -164,13 +164,13 @@ func (p Pod) Fase() string {
 	return p.Status.Phase
 }
 
-// Terminou diz se o pod chegou a um estado final.
+// Terminou says whether the pod reached a final state.
 func (p Pod) Terminou() bool {
 	f := p.Fase()
 	return f == "Succeeded" || f == "Failed"
 }
 
-// Saida devolve o codigo de saida do container e se ele ja terminou.
+// Saida returns the container's exit code and whether it has finished.
 func (p Pod) Saida() (int, bool) {
 	if p.Status == nil {
 		return 0, false
@@ -183,11 +183,12 @@ func (p Pod) Saida() (int, bool) {
 	return 0, false
 }
 
-// MotivoDeEspera explica por que o container ainda nao rodou.
+// MotivoDeEspera explains why the container has not run yet.
 //
-// E a informacao mais util quando um passo "nao faz nada": ImagePullBackOff e
-// CreateContainerConfigError sao problemas de configuracao que, sem isto,
-// apareceriam apenas como um pod parado ate o timeout.
+// It is the most useful piece of information when a step "does nothing":
+// ImagePullBackOff and CreateContainerConfigError are configuration problems
+// that, without this, would show up only as a pod sitting still until the
+// timeout.
 func (p Pod) MotivoDeEspera() string {
 	if p.Status == nil {
 		return ""
@@ -204,9 +205,10 @@ func (p Pod) MotivoDeEspera() string {
 	return ""
 }
 
-// Opcoes parametriza como os pods sao criados. Sao decisoes da INSTALACAO —
-// credenciais, pool de nos, conta de servico —, nao do autor do workflow: um
-// YAML de pipeline nao deve poder escolher a service account com que roda.
+// Opcoes parameterises how pods are created. These are the INSTALLATION's
+// decisions -- credentials, node pool, service account -- not the workflow
+// author's: a pipeline YAML must not get to pick the service account it runs
+// as.
 type Opcoes struct {
 	Namespace         string
 	ServiceAccount    string
@@ -216,61 +218,64 @@ type Opcoes struct {
 	EnvFromSecrets    []string
 	EnvFromConfigMaps []string
 
-	// CredencialPVC e CredencialPath montam um volume onde o SDK guarda a
-	// credencial rotacionada entre execucoes.
+	// CredencialPVC and CredencialPath mount a volume where the SDK keeps the
+	// credential it rotates between runs.
 	//
-	// Com os dois definidos, TODO pod de passo ganha o volume e a env
-	// BREVIS_CREDENTIAL_DIR apontando para o mount. Sem eles nada muda -- e e
-	// assim que a feature continua sendo atalho, e nao requisito.
+	// With both set, EVERY step pod gets the volume and a BREVIS_CREDENTIAL_DIR
+	// env pointing at the mount. Without them nothing changes -- which is how
+	// the feature stays a shortcut rather than a requirement.
 	//
-	// A credencial no volume vai cifrada; a chave e um Secret comum, que entra
-	// por EnvFromSecrets. O motor nao a ve nem precisa dela.
+	// The credential on the volume is encrypted; the key is an ordinary Secret,
+	// arriving through EnvFromSecrets. The engine neither sees it nor needs
+	// it.
 	CredencialPVC  string
 	CredencialPath string
 
-	// SecretsPermitidos sao os Secrets que um YAML pode citar em `secrets:`.
+	// SecretsPermitidos are the Secrets a YAML may name in `secrets:`.
 	//
-	// Existe porque `secrets:` inverte quem escolhe. EnvFromSecrets vem do
-	// ambiente do scheduler: a INSTALACAO decide. `secrets:` esta no arquivo,
-	// e o arquivo e escrito por outra pessoa -- sem esta lista, um workflow
-	// poderia montar qualquer Secret do namespace, inclusive o do banco do
-	// proprio Brevis, e rodar um comando arbitrario com ele em maos.
+	// It exists because `secrets:` inverts who chooses. EnvFromSecrets comes
+	// from the scheduler's environment: the INSTALLATION decides. `secrets:` is
+	// in the file, and the file is written by somebody else -- without this
+	// list, a workflow could mount any Secret in the namespace, including
+	// Brevis's own database secret, and run an arbitrary command holding it.
 	//
-	// Vazia nega tudo. Negar por padrao custa uma variavel na instalacao;
-	// permitir por padrao custa o inverso, e o inverso e irreversivel.
+	// Empty denies everything. Denying by default costs one variable in the
+	// installation; allowing by default costs the opposite, and the opposite is
+	// irreversible.
 	//
-	// A divisao final e essa: a instalacao diz QUAIS segredos existem para
-	// workflows, o YAML diz QUAL passo recebe cada um.
+	// The final division is this: the installation says WHICH secrets exist for
+	// workflows, the YAML says WHICH step receives each one.
 	SecretsPermitidos []string
 	Labels            map[string]string
 	Shell             []string
-	// EsperaParaIniciar e quanto um pod pode ficar sem comecar antes de o passo
-	// desistir. Existe porque `Pending` nao e erro para o Kubernetes: um pod que
-	// nao cabe em no nenhum fica ali para sempre, e sem este limite a etapa
-	// espera junto — sem log, sem falha, sem retry. Aconteceu em dev com um
-	// request de CPU maior que o livre no pool.
+	// EsperaParaIniciar is how long a pod may go without starting before the
+	// step gives up. It exists because `Pending` is not an error to Kubernetes:
+	// a pod that fits on no node sits there forever, and without this limit the
+	// step waits along with it -- no log, no failure, no retry. It happened in
+	// dev with a CPU request larger than the pool's free capacity.
 	EsperaParaIniciar time.Duration
 
-	// ManterPodEmFalha deixa o pod para inspecao quando o passo falha. O de
-	// sucesso e sempre apagado: milhares de pods Completed poluem o namespace e
-	// nao dizem nada que o historico do Brevis nao diga melhor.
+	// ManterPodEmFalha leaves the pod around for inspection when a step fails.
+	// A successful one is always deleted: thousands of Completed pods clutter
+	// the namespace and say nothing Brevis's own history does not say better.
 	ManterPodEmFalha bool
 }
 
 const (
 	nomeVolumeCredencial = "brevis-credentials"
 
-	// A mesma variavel que o SDK le. Esta escrita aqui e nao importada do
-	// modulo do SDK de proposito: o motor nao depende do SDK, e o acoplamento
-	// entre os dois e este nome -- que esta documentado nos dois lados.
+	// The same variable the SDK reads. Written here rather than imported from
+	// the SDK module on purpose: the engine does not depend on the SDK, and the
+	// coupling between them is this name -- documented on both sides.
 	envDiretorioCredencial = "BREVIS_CREDENTIAL_DIR"
 )
 
-// permiteSecret decide se um YAML pode citar este Secret.
+// permiteSecret decides whether a YAML may name this Secret.
 //
-// A recusa acontece na MONTAGEM do pod e nao no servidor: um secretKeyRef para
-// um Secret proibido nem sequer e proibido pelo Kubernetes -- ele monta, e o
-// erro que se ve e outro. Aqui a mensagem diz o nome e onde liberar.
+// The refusal happens while BUILDING the pod and not at the server: a
+// secretKeyRef to a forbidden Secret is not even forbidden by Kubernetes -- it
+// mounts, and the error one sees is a different one. Here the message names it
+// and says where to allow it.
 func (o Opcoes) permiteSecret(nome string) error {
 	for _, p := range o.SecretsPermitidos {
 		if p == nome {
@@ -292,23 +297,25 @@ func (o Opcoes) comPadroes() Opcoes {
 	if o.Namespace == "" {
 		o.Namespace = "default"
 	}
-	// O PVC e que liga a feature; o path tem padrao porque a escolha dele nao
-	// e uma decisao de ninguem -- so precisa ser um lugar previsivel.
+	// The PVC is what turns the feature on; the path has a default because
+	// choosing it is nobody's decision -- it only has to be a predictable
+	// place.
 	if o.CredencialPVC != "" && o.CredencialPath == "" {
 		o.CredencialPath = "/var/brevis/credentials"
 	}
 	if o.EsperaParaIniciar <= 0 {
-		// Dez minutos cobrem pull de imagem grande (a de dbt tem 620 MB) e um
-		// scale-up do autoscaler, sem deixar uma etapa presa a madrugada toda.
+		// Ten minutes cover pulling a large image (the dbt one is 620 MB) and an
+		// autoscaler scale-up, without leaving a step stuck all night.
 		o.EsperaParaIniciar = 10 * time.Minute
 	}
 	return o
 }
 
-// MontarPod traduz uma task no objeto que vai para o servidor de API.
+// MontarPod translates a task into the object that goes to the API server.
 //
-// Funcao pura: recebe task e opcoes, devolve o objeto. E o que permite testar o
-// spec inteiro — imagem, comando, recursos, rotulos — sem cluster nenhum.
+// A pure function: it takes a task and options and returns the object. That is
+// what makes it possible to test the whole spec -- image, command, resources,
+// labels -- with no cluster at all.
 func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	o = o.comPadroes()
 	if t.Image == "" {
@@ -326,14 +333,14 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	if t.Shell {
 		c.Command = append(append([]string{}, o.Shell...), t.Command)
 	} else {
-		// Sem shell o comando e um argv. Divisao por espaco e simples de
-		// proposito: quem precisa de aspas, pipe ou variavel precisa de shell,
-		// e nesse caso `shell: false` e a escolha errada.
+		// Without a shell the command is an argv. Splitting on spaces is simple
+		// on purpose: anyone who needs quotes, a pipe or a variable needs a
+		// shell, and in that case `shell: false` is the wrong choice.
 		c.Command = strings.Fields(t.Command)
 	}
 
-	// Ambiente ordenado: dois pods com o mesmo conteudo tem de gerar o mesmo
-	// JSON, senao a comparacao entre dois deploys vira ruido.
+	// A sorted environment: two pods with the same content have to produce the
+	// same JSON, or comparing two deploys turns into noise.
 	chaves := make([]string, 0, len(t.Env))
 	for k := range t.Env {
 		chaves = append(chaves, k)
@@ -343,9 +350,9 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		c.Env = append(c.Env, Var{Name: k, Value: t.Env[k]})
 	}
 
-	// Os segredos vao pela mesma lista, mas por referencia: o valor nao esta
-	// aqui e nunca esteve -- o kubelet o resolve ao subir o container. Um dump
-	// deste JSON mostra a coordenada, e nao o segredo.
+	// The secrets travel in the same list, but by reference: the value is not
+	// here and never was -- the kubelet resolves it when starting the
+	// container. A dump of this JSON shows the coordinate, not the secret.
 	segredos := make([]string, 0, len(t.Secrets))
 	for k := range t.Secrets {
 		segredos = append(segredos, k)
@@ -362,9 +369,9 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		})
 	}
 
-	// O volume da credencial, quando a instalacao o configurou. A env aponta
-	// para o mount, e e a mesma que o SDK le rodando na maquina de alguem com
-	// BREVIS_CREDENTIAL_DIR=./.brevis -- o mesmo codigo nos dois.
+	// The credential volume, when the installation configured one. The env
+	// points at the mount, and it is the same one the SDK reads on somebody's
+	// laptop with BREVIS_CREDENTIAL_DIR=./.brevis -- the same code in both.
 	if o.CredencialPVC != "" {
 		if _, jaTem := t.Env[envDiretorioCredencial]; !jaTem {
 			c.Env = append(c.Env, Var{Name: envDiretorioCredencial, Value: o.CredencialPath})
@@ -385,9 +392,9 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	}
 
 	spec := PodSpec{
-		// Never: quem decide sobre nova tentativa e o dispatcher, que conta
-		// tentativas e aplica backoff. Deixar o kubelet reiniciar por conta
-		// criaria uma segunda politica de retry, invisivel para o historico.
+		// Never: the dispatcher decides about another attempt, counting attempts
+		// and applying backoff. Letting the kubelet restart on its own would
+		// create a second retry policy, invisible to the history.
 		RestartPolicy:      "Never",
 		ServiceAccountName: o.ServiceAccount,
 		NodeSelector:       o.NodeSelector,
@@ -404,8 +411,8 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		spec.ImagePullSecrets = append(spec.ImagePullSecrets, RefLocal{Name: s})
 	}
 	if t.Timeout > 0 {
-		// Rede de seguranca do lado do cluster: se o processo do Brevis morrer,
-		// o pod ainda para sozinho em vez de rodar para sempre.
+		// A safety net on the cluster's side: if the Brevis process dies, the
+		// pod still stops on its own instead of running forever.
 		segundos := int64(t.Timeout.Seconds())
 		spec.ActiveDeadlineSeconds = &segundos
 	}
@@ -431,9 +438,9 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 			Name:      NomeDoPod(t),
 			Namespace: o.Namespace,
 			Labels:    rotulos,
-			// A anotacao guarda o valor INTEIRO; o rotulo guarda a versao
-			// sanitizada. Assim o filtro por rotulo funciona e o valor original
-			// nao se perde.
+			// The annotation keeps the WHOLE value; the label keeps the
+			// sanitised one. That way filtering by label works and the original
+			// value is not lost.
 			Annotations: map[string]string{
 				"brevis.dev/workflow": t.Workflow,
 				"brevis.dev/node":     t.NodeID,
@@ -472,7 +479,7 @@ func recursos(t execution.TaskExec) *Recursos {
 
 var invalidoEmNome = regexp.MustCompile(`[^a-z0-9-]+`)
 
-// NomeDoPod produz um nome valido e ESTAVEL para a mesma tentativa.
+// NomeDoPod produces a valid and STABLE name for the same attempt.
 //
 // Estavel importa: se o processo morrer entre criar o pod e registrar isso, a
 // tentativa seguinte encontra o pod existente (409 AlreadyExists) em vez de
@@ -505,7 +512,7 @@ func sanitizar(s string) string {
 }
 
 // valorDeRotulo obedece o limite de 63 caracteres dos labels; o valor completo
-// vai na anotacao, que aceita bem mais.
+// goes in the annotation, which accepts far more.
 func valorDeRotulo(s string) string {
 	s = sanitizar(s)
 	if len(s) > 63 {
@@ -514,7 +521,7 @@ func valorDeRotulo(s string) string {
 	return s
 }
 
-// net junta host e porta cuidando de IPv6, onde o host vem sem colchetes.
+// net joins host and port taking care of IPv6, where the host arrives without brackets.
 func net_(host, porta string) string { return net.JoinHostPort(host, porta) }
 
 type tlsConfig struct{ pool *x509.CertPool }
