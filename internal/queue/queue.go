@@ -1,13 +1,14 @@
-// Package queue e a fila persistente da secao 8 do plano.
+// Package queue is the persistent queue from §8 of the plan.
 //
-// A fila mora no Postgres, nao em canal de memoria: "Nunca depender
-// exclusivamente de in-memory channel para jobs criticos". Um processo que morre
-// com itens em canal perde trabalho; um que morre com itens em tabela nao.
+// The queue lives in Postgres, not in an in-memory channel: "never depend
+// exclusively on an in-memory channel for critical jobs". A process that dies
+// with items in a channel loses work; one that dies with items in a table does
+// not.
 //
-// O claim usa `FOR UPDATE SKIP LOCKED`, que e o padrao para fila em Postgres:
-// varios dispatchers competem pela mesma tabela sem bloquear uns aos outros e
-// sem entregar o mesmo item duas vezes. A alternativa — SELECT seguido de UPDATE
-// — tem corrida entre as duas instrucoes.
+// The claim uses `FOR UPDATE SKIP LOCKED`, the standard pattern for a queue in
+// Postgres: several dispatchers compete over the same table without blocking
+// each other and without handing out the same item twice. The alternative -- a
+// SELECT followed by an UPDATE -- has a race between the two statements.
 package queue
 
 import (
@@ -19,7 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Item e uma entrada da fila.
+// Item is one entry in the queue.
 type Item struct {
 	ID           int64
 	RunID        uuid.UUID
@@ -27,30 +28,29 @@ type Item struct {
 	DisponivelEm time.Time
 }
 
-// Queue opera sobre queue_items.
+// Queue operates on queue_items.
 type Queue struct {
 	pool *pgxpool.Pool
 }
 
 func New(pool *pgxpool.Pool) *Queue { return &Queue{pool: pool} }
 
-// Enqueue coloca um run na fila.
+// Enqueue puts a run in the queue. `disponivelEm` zero means NOW, measured by
+// the DATABASE's clock.
 //
-// `ON CONFLICT DO NOTHING` na unique de run_id: enfileirar duas vezes o mesmo
-// run e no-op, nao erro. E o comportamento que a secao 29 pede — a operacao
-// tolera repeticao.
-// Enqueue poe o run na fila. `disponivelEm` zero significa AGORA, medido pelo
-// relogio do BANCO.
+// `ON CONFLICT DO NOTHING` on run_id's unique: enqueueing the same run twice is
+// a no-op, not an error. That is the behaviour §29 asks for -- the operation
+// tolerates repetition.
 //
-// A diferenca importa: o relogio do processo pode estar alguns milissegundos a
-// frente do relogio do Postgres, e um item gravado com `time.Now()` do
-// aplicativo fica invisivel ate o banco alcanca-lo. Nao e perda — o proximo
-// ciclo pega —, mas e latencia inexplicavel, e foi o que fez um teste de
-// concorrencia entregar 4 itens onde 5 estavam prontos.
+// The clock difference matters: the process's clock can be a few milliseconds
+// ahead of Postgres's, and an item written with the application's `time.Now()`
+// stays invisible until the database catches up. Nothing is lost -- the next
+// cycle picks it up -- but it is unexplainable latency, and it is what made a
+// concurrency test hand out 4 items where 5 were ready.
 func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, prioridade int, disponivelEm time.Time) error {
 	var quando any = disponivelEm
 	if disponivelEm.IsZero() {
-		quando = nil // COALESCE resolve para now() do banco
+		quando = nil // COALESCE resolves to the database's now()
 	}
 	_, err := q.pool.Exec(ctx, `
 		INSERT INTO queue_items (run_id, prioridade, disponivel_em)
@@ -63,30 +63,31 @@ func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, prioridade int, di
 	return nil
 }
 
-// Claim reivindica ate `limite` itens para este worker.
+// Claim claims up to `limite` items for this worker.
 //
-// O limite e como a concorrencia e imposta: o dispatcher pede apenas as vagas
-// que tem livres. Nao existe caminho em que mais itens saiam da fila do que a
-// concorrencia permite, porque quem conta as vagas e quem pede.
+// The limit is how concurrency is enforced: the dispatcher asks only for the
+// slots it has free. There is no path in which more items leave the queue than
+// concurrency allows, because whoever counts the slots is whoever asks.
 func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, error) {
 	if limite <= 0 {
 		return nil, nil
 	}
 
-	// O limite por workflow e imposto AQUI, na propria consulta de claim, pelo
-	// mesmo motivo que a concorrencia global e imposta no pedido: nao existe
-	// caminho em que mais itens saiam da fila do que o permitido. Reivindicar e
-	// depois devolver seria uma janela em que dois dispatchers ja teriam pegado
-	// o mesmo workflow.
+	// The per-workflow limit is enforced HERE, inside the claim query itself,
+	// for the same reason global concurrency is enforced in the request: there
+	// is no path in which more items leave the queue than allowed. Claiming and
+	// then handing back would be a window in which two dispatchers had already
+	// taken the same workflow.
 	//
-	// `em_voo` conta itens RE IVINDICADOS, e nao runs em `running`: entre o
-	// claim e a transicao de estado ha um instante em que o run ainda esta
-	// `queued`, e contar por status abriria exatamente essa fresta.
+	// `em_voo` counts CLAIMED items, not runs in `running`: between the claim
+	// and the state transition there is an instant where the run is still
+	// `queued`, and counting by status would open exactly that gap.
 	//
-	// `posicao` e o que impede o segundo problema: sem ele, tres itens do mesmo
-	// workflow com limite 1 sairiam TODOS no mesmo lote, porque a contagem nao
-	// muda no meio da consulta. Com a numeracao por workflow, o item so passa se
-	// `em_voo + sua posicao` couber no limite.
+	// `posicao` is what prevents the second problem: without it, three items of
+	// the same workflow with a limit of 1 would ALL come out in the same batch,
+	// because the count does not change mid-query. With the per-workflow
+	// numbering, an item only passes if `em_voo + its position` fits the
+	// limit.
 	linhas, err := q.pool.Query(ctx, `
 		WITH em_voo AS (
 			SELECT r.workflow_slug, count(*) AS n
@@ -140,16 +141,16 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	return itens, linhas.Err()
 }
 
-// Done remove o item: o trabalho terminou e nao volta.
+// Done removes the item: the work finished and does not come back.
 func (q *Queue) Done(ctx context.Context, id int64) error {
 	_, err := q.pool.Exec(ctx, `DELETE FROM queue_items WHERE id = $1`, id)
 	return err
 }
 
-// Release devolve o item a fila, disponivel apos `atraso`.
+// Release returns the item to the queue, available after `atraso`.
 //
-// Usado no retry e quando um dispatcher e interrompido antes de concluir: o item
-// volta a ficar livre em vez de ficar preso a um worker que morreu.
+// Used on retry and when a dispatcher is interrupted before finishing: the item
+// becomes free again instead of staying stuck on a worker that died.
 func (q *Queue) Release(ctx context.Context, id int64, atraso time.Duration) error {
 	_, err := q.pool.Exec(ctx, `
 		UPDATE queue_items
@@ -159,16 +160,17 @@ func (q *Queue) Release(ctx context.Context, id int64, atraso time.Duration) err
 	return err
 }
 
-// Recuperar devolve a fila os itens reivindicados ha mais tempo que `limite`.
+// Recuperar returns to the queue the items claimed longer ago than `limite`.
 //
-// E a rede de seguranca contra worker morto: sem isso, um item reivindicado por
-// um processo que caiu ficaria preso para sempre. Era exatamente o modo de falha
-// das execucoes zumbis que travaram pipelines por 33 dias no sistema anterior.
+// It is the safety net against a dead worker: without it, an item claimed by a
+// process that crashed would stay stuck forever. That was exactly the failure
+// mode of the zombie runs that jammed pipelines for 33 days in the previous
+// system.
 func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, error) {
-	// Devolve os itens, e nao apenas a contagem: quem recupera precisa saber
-	// QUAIS runs ficaram penduradas para corrigir tambem o estado delas. Com a
-	// contagem sozinha, o item voltava para a fila mas o Run seguia "running"
-	// para sempre — a metade do bug que isto conserta.
+	// It returns the items, not just the count: whoever recovers needs to know
+	// WHICH runs were left dangling in order to fix their state too. With the
+	// count alone, the item went back to the queue but the Run stayed "running"
+	// forever -- the half of the bug this fixes.
 	linhas, err := q.pool.Query(ctx, `
 		UPDATE queue_items
 		SET reivindicado_em = NULL, reivindicado_por = NULL
@@ -192,7 +194,7 @@ func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, er
 	return out, linhas.Err()
 }
 
-// Tamanho conta os itens pendentes e os reivindicados, para observabilidade.
+// Tamanho counts pending and claimed items, for observability.
 func (q *Queue) Tamanho(ctx context.Context) (pendentes, reivindicados int, err error) {
 	err = q.pool.QueryRow(ctx, `
 		SELECT
