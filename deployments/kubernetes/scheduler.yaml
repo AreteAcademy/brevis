@@ -57,7 +57,7 @@ spec:
             # nunca do YAML do workflow.
             - name: BREVIS_POD_ENV_FROM_SECRETS
               value: brevis-task-env
-            # Pool de nos das tasks. No cluster de dev da Zarv e arm64 (t2a),
+            # Pool de nos das tasks. A dev cluster on arm64 (t2a),
             # e sem o selector as tasks caem em qualquer no.
             - name: BREVIS_POD_NODE_SELECTOR
               value: "kubernetes.io/arch=arm64"
@@ -78,7 +78,7 @@ spec:
             # Sem ela o alerta diz o que falhou mas obriga quem le a procurar a
             # execucao na mao.
             - name: BREVIS_UI_URL
-              value: https://brevis.zarv.net
+              value: https://brevis.example.com
           resources:
             # O scheduler so orquestra: o trabalho pesado esta nos pods que ele
             # cria. Estes numeros sao para um processo Go que fala HTTP e SQL.

@@ -16,13 +16,13 @@ func tarefa() execution.TaskExec {
 		NodeID:      "bronze_workspace",
 		Workflow:    "platform_workspace",
 		RunID:       "1f2e3d4c-0000-0000-0000-000000000000",
-		Image:       "us-central1-docker.pkg.dev/zarv/apps/dbt:1.10.3",
+		Image:       "us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3",
 		Command:     "dbt build --select bronze_workspace+",
 		Shell:       true,
 		CPU:         "200m",
 		Memoria:     "1Gi",
 		MemoriaMax:  "2Gi",
-		Env:         map[string]string{"STAGE": "prod", "GOOGLE_PROJECT_ID": "zarv"},
+		Env:         map[string]string{"STAGE": "prod", "GOOGLE_PROJECT_ID": "acme"},
 		Timeout:     30 * time.Minute,
 	}
 }

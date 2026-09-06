@@ -284,7 +284,7 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 
 	var projeto uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO projects (id, slug, name) VALUES ($1,'zarv','zarv') RETURNING id`,
+		INSERT INTO projects (id, slug, name) VALUES ($1,'acme','acme') RETURNING id`,
 		uuid.New()).Scan(&projeto); err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestPodarSemDiferencaNaoRemoveNada(t *testing.T) {
 
 	var projeto uuid.UUID
 	if err := pool.QueryRow(ctx, `
-		INSERT INTO projects (id, slug, name) VALUES ($1,'zarv','zarv') RETURNING id`,
+		INSERT INTO projects (id, slug, name) VALUES ($1,'acme','acme') RETURNING id`,
 		uuid.New()).Scan(&projeto); err != nil {
 		t.Fatal(err)
 	}

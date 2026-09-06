@@ -16,7 +16,7 @@ func opcoesComLiberacao() Opcoes {
 func tarefaComSegredo() execution.TaskExec {
 	return execution.TaskExec{
 		NodeID:  "fetch_occurrences",
-		Image:   "zarv-data-pipeline-go:local",
+		Image:   "data-pipeline-go:local",
 		Command: "/usr/local/bin/gabriel",
 		Env:     map[string]string{"BREVIS_LOG_LEVEL": "info"},
 		Secrets: map[string]string{"GABRIEL_SESSION_COOKIE": "gabriel-session/cookie"},

@@ -33,7 +33,7 @@ spec:
           # `--prune` torna a pasta a fonte da verdade: workflow que sai do
           # ConfigMap sai do banco, junto com a agenda. Sem ele, remover um YAML
           # deixaria a agenda dele criando runs para sempre.
-          args: ["publish", "/workflows", "--project", "zarv", "--prune"]
+          args: ["publish", "/workflows", "--project", "acme", "--prune"]
           env:
             - name: BREVIS_DATABASE_URL
               valueFrom: {secretKeyRef: {name: brevis-db, key: url}}

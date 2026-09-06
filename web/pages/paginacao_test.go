@@ -47,13 +47,13 @@ func TestJanelaDePaginas(t *testing.T) {
 // Trocar de filtro volta para a pagina 1: continuar na pagina 7 de um resultado
 // que agora tem duas seria uma tela vazia sem explicacao.
 func TestTrocarFiltroReiniciaPagina(t *testing.T) {
-	f := Filtro{Tag: "zarv", Pagina: 7, PorPagina: PorPaginaPadrao}
+	f := Filtro{Tag: "acme", Pagina: 7, PorPagina: PorPaginaPadrao}
 	if u := f.Com("estado", "failed"); contemTexto(u, "pagina=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
 	// Navegar entre paginas preserva o resto do filtro.
 	u := f.ComPagina(3)
-	if !contemTexto(u, "tag=zarv") || !contemTexto(u, "pagina=3") {
+	if !contemTexto(u, "tag=acme") || !contemTexto(u, "pagina=3") {
 		t.Errorf("URL de pagina = %q", u)
 	}
 }

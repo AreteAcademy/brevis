@@ -48,13 +48,13 @@ func TestLoadRejeitaTimeoutInvalido(t *testing.T) {
 // scheduler, mas o dbt dentro da task recebia "Env var required but not
 // provided". A task nao herda o ambiente — o que ela precisa e declarado.
 func TestAmbienteDasTasksRepassaOQueFoiDeclarado(t *testing.T) {
-	t.Setenv("GOOGLE_PROJECT_ID", "zarv-dev")
+	t.Setenv("GOOGLE_PROJECT_ID", "acme-dev")
 	t.Setenv("STAGE", "local")
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://brevis:senha@db/brevis")
 
 	env := AmbienteDasTasks([]string{"GOOGLE_PROJECT_ID", "STAGE"})
 
-	if env["GOOGLE_PROJECT_ID"] != "zarv-dev" || env["STAGE"] != "local" {
+	if env["GOOGLE_PROJECT_ID"] != "acme-dev" || env["STAGE"] != "local" {
 		t.Errorf("nao repassou o declarado: %v", env)
 	}
 	if _, vazou := env["BREVIS_DATABASE_URL"]; vazou {
@@ -115,7 +115,7 @@ func TestCuringaNaoLevaAsVariaveisDoProprioBrevis(t *testing.T) {
 func TestLoadLeOAmbienteDeCadaCampo(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_SLACK_WEBHOOK", "https://hooks.slack.com/services/abc")
-	t.Setenv("BREVIS_UI_URL", "https://brevis.zarv.net")
+	t.Setenv("BREVIS_UI_URL", "https://brevis.example.com")
 	t.Setenv("BREVIS_TASK_ENV", "GOOGLE_PROJECT_ID,STAGE")
 	t.Setenv("BREVIS_POD_SERVICE_ACCOUNT", "brevis-task")
 	t.Setenv("BREVIS_POD_TOLERATIONS", "kubernetes.io/arch=arm64:NoSchedule")
@@ -127,7 +127,7 @@ func TestLoadLeOAmbienteDeCadaCampo(t *testing.T) {
 	if c.SlackWebhook != "https://hooks.slack.com/services/abc" {
 		t.Errorf("SlackWebhook = %q", c.SlackWebhook)
 	}
-	if c.UIURL != "https://brevis.zarv.net" {
+	if c.UIURL != "https://brevis.example.com" {
 		t.Errorf("UIURL = %q", c.UIURL)
 	}
 	if len(c.TaskEnv) != 2 {

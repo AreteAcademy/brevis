@@ -178,16 +178,32 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 	}
 }
 
-// classificar deriva dominio e pipeline das tags, com o slug como reserva.
+// tagsDeTecnologia are tags that name HOW a pipeline is built, not what it is
+// about. They never make a good domain in an alert.
+var tagsDeTecnologia = map[string]bool{
+	"dbt": true, "python": true, "go": true, "sql": true, "spark": true,
+}
+
+// classificar derives domain and pipeline from the tags, with the slug as a
+// fallback.
 //
-// A convencao segue a do repositorio de dados: a primeira tag e o produto
-// ("zarv"), a segunda e o dominio ("id", "platform"). Sem tags, o slug ja diz o
-// suficiente para nao deixar o alerta anonimo.
+// The convention is the one the data repository uses: the first tag is the
+// product, the rest describe the subject. So the first is skipped BY POSITION
+// -- it used to be skipped by name, with the product's name written into this
+// file, which made a library carry one installation's vocabulary.
+//
+// With no tags, the slug already says enough to keep the alert from being
+// anonymous.
 func (s *Slack) classificar(a Alerta) (dominio, pipeline string) {
 	pipeline = a.Workflow
 	dominio = "-"
-	for _, t := range a.Tags {
-		if t != "zarv" && t != "dbt" && t != "python" {
+
+	candidatas := a.Tags
+	if len(candidatas) > 1 {
+		candidatas = candidatas[1:]
+	}
+	for _, t := range candidatas {
+		if !tagsDeTecnologia[t] {
 			dominio = t
 			break
 		}

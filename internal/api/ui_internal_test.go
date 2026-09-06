@@ -12,9 +12,9 @@ import (
 func lista() []postgres.ResumoWorkflow {
 	return []postgres.ResumoWorkflow{
 		{Slug: "id_verification", Cron: "0 4 * * *", Ativo: true, TemAgenda: true,
-			UltimoStatus: "success", Tags: []string{"zarv", "id"}},
+			UltimoStatus: "success", Tags: []string{"acme", "id"}},
 		{Slug: "platform_workspace", Cron: "0 5 * * *", Ativo: true, TemAgenda: true,
-			UltimoStatus: "failed", Tags: []string{"zarv", "platform"}},
+			UltimoStatus: "failed", Tags: []string{"acme", "platform"}},
 		{Slug: "vendors_inmet", Cron: "30 6 * * *", Ativo: false, TemAgenda: true,
 			UltimoStatus: "success", Tags: []string{"vendors"}},
 		// Sem agenda: nunca teve cron, e nao deve aparecer como "pausado".
@@ -56,8 +56,8 @@ func TestFiltrar(t *testing.T) {
 		// O caso que motivou o teste: "pausado" e agenda desligada, nao ausencia
 		// de agenda. Juntar os dois esconderia o workflow que alguem pausou.
 		{"pausados nao incluem quem nunca teve agenda", pages.Filtro{Ativo: "paused"}, []string{"vendors_inmet"}},
-		{"tag", pages.Filtro{Tag: "zarv"}, []string{"id_verification", "platform_workspace"}},
-		{"combinado", pages.Filtro{Tag: "zarv", Estado: "success"}, []string{"id_verification"}},
+		{"tag", pages.Filtro{Tag: "acme"}, []string{"id_verification", "platform_workspace"}},
+		{"combinado", pages.Filtro{Tag: "acme", Estado: "success"}, []string{"id_verification"}},
 		{"nada casa", pages.Filtro{Busca: "inexistente"}, nil},
 	}
 	for _, c := range casos {
@@ -71,13 +71,13 @@ func TestFiltrar(t *testing.T) {
 // encolhesse a cada clique, nao haveria como voltar de um filtro para outro.
 func TestTagsDeNaoEncolhemComOFiltro(t *testing.T) {
 	todos := lista()
-	igual(t, tagsDe(todos), []string{"id", "platform", "vendors", "zarv"})
+	igual(t, tagsDe(todos), []string{"acme", "id", "platform", "vendors"})
 
 	so := filtrar(todos, pages.Filtro{Tag: "vendors"})
 	if len(so) != 1 {
 		t.Fatalf("esperava 1 linha filtrada, veio %d", len(so))
 	}
-	igual(t, tagsDe(todos), []string{"id", "platform", "vendors", "zarv"})
+	igual(t, tagsDe(todos), []string{"acme", "id", "platform", "vendors"})
 }
 
 func TestProximaDoWorkflow(t *testing.T) {

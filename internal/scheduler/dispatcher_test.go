@@ -433,7 +433,7 @@ func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "id_verification", IdempotencyKey: "falha",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["zarv","id","dbt"]}`),
+		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","id","dbt"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -453,7 +453,7 @@ func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 		return errors.New(`step "run": saiu com codigo 2`)
 	}, semLog())
 	d.Alertas = avisos
-	d.URLBase = "https://brevis.zarv.net"
+	d.URLBase = "https://brevis.example.com"
 
 	go func() { _ = d.Run(ctx) }()
 
@@ -665,7 +665,7 @@ func TestRetryQueDaCertoNaoAlerta(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "id_verification", IdempotencyKey: "retry-ok",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["zarv","id"]}`),
+		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","id"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -725,7 +725,7 @@ func TestAlertaCarregaOPassoEOLog(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "vendors_inmet_observation", IdempotencyKey: "com-log",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["zarv","vendors"]}`),
+		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","vendors"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)

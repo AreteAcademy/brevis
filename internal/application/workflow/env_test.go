@@ -12,7 +12,7 @@ env:
   BREVIS_LOG_LEVEL: info
 steps:
   - id: fetch_occurrences
-    image: zarv-data-pipeline-go:local
+    image: data-pipeline-go:local
     shell: false
     run: /usr/local/bin/gabriel
     secrets:
@@ -20,7 +20,7 @@ steps:
     env:
       BREVIS_LOG_LEVEL: debug
   - id: dbt_build
-    image: zarv-data-pipeline-dbt:local
+    image: data-pipeline-dbt:local
     run: dbt build
 `
 

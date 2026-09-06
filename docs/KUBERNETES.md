@@ -40,7 +40,7 @@ subir o dbt de 1.10 para 1.11 num pipeline obriga a subir em todos.
 name: platform_workspace
 schedule: "0 5 * * *"
 
-image: us-central1-docker.pkg.dev/zarv/apps/dbt:1.10.3   # padrão dos passos
+image: us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3   # padrão dos passos
 resources:
   cpu: 200m
   memory: 1Gi
@@ -51,7 +51,7 @@ steps:
     run: dbt build --select bronze_workspace+
 
   - id: notificar
-    image: ghcr.io/zarvhq/notify:0.3   # binário Go: outro runtime, outro tamanho
+    image: ghcr.io/acme/notify:0.3   # binário Go: outro runtime, outro tamanho
     shell: false                       # distroless não tem shell
     run: /notify --canal dados
     resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
@@ -401,7 +401,7 @@ alerta chegue.
 kubectl apply -f deployments/kubernetes/rbac.yaml
 kubectl -n dados create secret generic brevis-db --from-literal=url='postgres://...'
 kubectl -n dados create secret generic brevis-task-env \
-  --from-literal=STAGE=prod --from-literal=GOOGLE_PROJECT_ID=zarv-...
+  --from-literal=STAGE=prod --from-literal=GOOGLE_PROJECT_ID=acme-...
 kubectl -n dados create configmap brevis-brand --from-file=brand.yaml
 kubectl apply -f deployments/kubernetes/api.yaml -f deployments/kubernetes/scheduler.yaml
 ```

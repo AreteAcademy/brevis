@@ -11,7 +11,7 @@ import (
 func tarefaSimples() execution.TaskExec {
 	return execution.TaskExec{
 		NodeID:  "fetch_occurrences",
-		Image:   "zarv-data-pipeline-go:local",
+		Image:   "data-pipeline-go:local",
 		Command: "/usr/local/bin/gabriel",
 	}
 }

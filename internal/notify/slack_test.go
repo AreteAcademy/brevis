@@ -34,8 +34,8 @@ func alerta() notify.Alerta {
 		Workflow: "id_verification", RunID: "1f2e3d4c-0000-0000-0000-000000000000",
 		Status: "failed", Trigger: "schedule", Tentativas: 3, LogicalDate: &quando,
 		Erro:    "nivel 1: step \"run\": saiu com codigo 2\nDatabase Error in model x",
-		Tags:    []string{"zarv", "id", "dbt"},
-		URLBase: "https://brevis.zarv.net",
+		Tags:    []string{"acme", "id", "dbt"},
+		URLBase: "https://brevis.example.com",
 	}
 }
 
@@ -59,13 +59,13 @@ func TestMensagemTemOContextoDaFalha(t *testing.T) {
 
 	corpo := *recebido
 	for _, esperado := range []string{
-		"id_verification",               // pipeline
-		"`id`",                          // dominio, vindo das tags
-		"FAILED",                        // status
-		"schedule",                      // origem
-		"saiu com codigo 2",             // a causa
-		"brevis.zarv.net/runs/1f2e3d4c", // link direto
-		dataLogicaEsperada(),            // data logica, no fuso de quem formata
+		"id_verification",                  // pipeline
+		"`id`",                             // dominio, vindo das tags
+		"FAILED",                           // status
+		"schedule",                         // origem
+		"saiu com codigo 2",                // a causa
+		"brevis.example.com/runs/1f2e3d4c", // link direto
+		dataLogicaEsperada(),               // data logica, no fuso de quem formata
 	} {
 		if !strings.Contains(corpo, esperado) {
 			t.Errorf("mensagem sem %q:\n%s", esperado, corpo)
