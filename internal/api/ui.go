@@ -265,11 +265,11 @@ func rotuloDoPeriodo(de, ate *time.Time) string {
 		if ate.Sub(*de) == time.Hour {
 			return l.Format("02/01 15h") + "–" + ate.Local().Format("15h")
 		}
-		return l.Format("02/01 15:04") + " → " + ate.Local().Format("02/01 15:04")
+		return l.Format("Jan 02 15:04") + " → " + ate.Local().Format("Jan 02 15:04")
 	case de != nil:
-		return "a partir de " + de.Local().Format("02/01 15:04")
+		return "from " + de.Local().Format("Jan 02 15:04")
 	case ate != nil:
-		return "até " + ate.Local().Format("02/01 15:04")
+		return "until " + ate.Local().Format("Jan 02 15:04")
 	}
 	return ""
 }
@@ -556,7 +556,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		// The idempotency key collided: two clicks in the same second become one
 		// run. Going back to the list is the right behaviour -- there is no new
 		// run to go to.
-		u.log.Info("disparo ignorado por idempotencia", "workflow", slug)
+		u.log.Info("trigger ignored by idempotency", "workflow", slug)
 		u.voltar(w, r)
 		return
 	}
@@ -640,7 +640,7 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
 			w.WriteHeader(http.StatusUnauthorized)
 			u.render(w, r, pages.Login(pages.DadosLogin{
 				Destino: destino,
-				Erro:    "Usuário ou senha inválidos.",
+				Erro:    "Invalid username or password.",
 			}))
 			return
 		}

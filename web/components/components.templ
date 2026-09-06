@@ -520,9 +520,9 @@ func Duracao(d *time.Duration) string {
 	return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
-// Quando escreve o instante em relativo ate um dia, e em data absoluta depois.
-// "há 3 min" responde a pergunta de operacao; "12/03 04:00" responde a de
-// audit, and the boundary between the two sits around a day.
+// Quando writes the instant relatively up to a day, and as an absolute date
+// afterwards. "3 min ago" answers the operations question; "Mar 12 04:00"
+// answers the audit one, and the boundary between the two sits around a day.
 func Quando(t *time.Time) string {
 	if t == nil {
 		return "—"

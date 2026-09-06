@@ -118,7 +118,7 @@ func Overview(d DadosOverview) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"-mt-2 mb-5 text-sm text-muted\">Contagem e duração média nas últimas ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<p class=\"-mt-2 mb-5 text-sm text-muted\">Count and average duration over the last ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -131,7 +131,7 @@ func Overview(d DadosOverview) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " horas.</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " hours.</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1781,7 +1781,7 @@ func alterna(atual, valor string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Execuções, projetos e detalhe
+// Runs, projects and detail
 // ---------------------------------------------------------------------------
 
 // FiltroRuns is the run screen's slice. It arrives through the query string, so
@@ -1789,7 +1789,7 @@ func alterna(atual, valor string) string {
 type FiltroRuns struct {
 	Estado   string
 	Workflow string
-	De       string // AAAA-MM-DDTHH, o mesmo formato que o grafico emite
+	De       string // YYYY-MM-DDTHH, the same format the chart emits
 	Ate      string
 	Rotulo   string // descricao legivel do periodo, montada no servidor
 
@@ -2433,7 +2433,7 @@ func Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, " dependências</span> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 157, " dependencies</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

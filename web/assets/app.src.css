@@ -9,11 +9,11 @@
 @source "../components";
 
 /* ---------------------------------------------------------------------------
-   Tipografia — servida do proprio binario, nao do Google Fonts.
-   Mesma decisao dos bundles UMD do React: a UI tem que funcionar num cluster
-   sem saida para a internet, e uma fonte que nao carrega degrada para uma pilha
-   visualmente diferente no meio da tela.
-   Variaveis: um arquivo cobre 100..900, entao nao ha um woff2 por peso.
+   Typography — served from the binary itself, not from Google Fonts.
+   The same decision as React's UMD bundles: the UI has to work in a cluster with
+   no route to the internet, and a font that does not load degrades to a visually
+   different stack halfway down the screen.
+   Variable fonts: one file covers 100..900, so there is no woff2 per weight.
 --------------------------------------------------------------------------- */
 @font-face {
   font-family: "Cormorant Garamond";
@@ -57,9 +57,9 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Paleta — identidade da Arete Academy (areteacademy.com.br).
-   Pergaminho quente + ouro + serifa, no lugar do slate escuro anterior. As
-   variaveis carregam os MESMOS valores do site, nao aproximacoes.
+   Palette — Arete Academy's identity (areteacademy.com.br).
+   Warm parchment + gold + a serif, in place of the previous dark slate. The
+   variables carry the site's EXACT values, not approximations.
 --------------------------------------------------------------------------- */
 @theme {
   --color-parchment: #f4efe4;
@@ -73,8 +73,8 @@
   --color-gold-strong: #8a693d;
   --color-gold-wash: #aa845014;
 
-  /* Estados. Dessaturados de proposito: verde e vermelho de painel puro
-     brigam com o pergaminho e gritam mais alto que a informacao. */
+  /* States. Desaturated on purpose: a dashboard's pure green and red fight the
+     parchment and shout louder than the information. */
   --color-state-success: #4c7a56;
   --color-state-failed: #b0503c;
   --color-state-running: #3f6d8f;
@@ -129,9 +129,9 @@ body {
     0 0 24px oklch(from var(--color-gold) l c h / 12%);
 }
 
-/* Grade do fundo "mission control": as duas listras cruzadas do zarv-lens. Vive
-   numa camada propria, e nao no body, para ficar sob o conteudo com opacidade
-   sem levar o texto junto. */
+/* The "mission control" background grid: two crossed stripe layers. It lives in
+   a layer of its own, and not on the body, so it sits under the content with
+   opacity without taking the text along. */
 .grade-fundo {
   background-image:
     linear-gradient(var(--color-line) 1px, transparent 1px),
@@ -214,10 +214,9 @@ dialog:focus {
 
 /* React Flow's controls.
    The xyflow bundle ships fixed colours (white on the button, black on the icon)
-   and is
-   carregado DEPOIS da folha compilada, entao vence em especificidade igual —
-   por isso os seletores aqui sao duplos. Sem isto, um tema escuro fica com um
-   bloco branco no canto do grafo. */
+   and is loaded AFTER the compiled sheet, so it wins at equal specificity —
+   which is why the selectors here are doubled. Without this, a dark theme ends
+   up with a white block in the graph's corner. */
 .react-flow .react-flow__controls-button {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-line);

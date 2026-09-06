@@ -52,7 +52,7 @@ templ Overview(d DadosOverview) {
 		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_320px]">
 			@components.Cartao("Runs per hour") {
 				<p class="-mt-2 mb-5 text-sm text-muted">
-					Contagem e duração média nas últimas { fmt.Sprint(int(d.Janela.Hours())) } horas.
+					Count and average duration over the last { fmt.Sprint(int(d.Janela.Hours())) } hours.
 				</p>
 				@components.Execucoes(d.Baldes)
 			}
@@ -587,7 +587,7 @@ func alterna(atual, valor string) string {
 }
 
 // ---------------------------------------------------------------------------
-// Execuções, projetos e detalhe
+// Runs, projects and detail
 // ---------------------------------------------------------------------------
 
 // FiltroRuns is the run screen's slice. It arrives through the query string, so
@@ -595,7 +595,7 @@ func alterna(atual, valor string) string {
 type FiltroRuns struct {
 	Estado   string
 	Workflow string
-	De       string // AAAA-MM-DDTHH, o mesmo formato que o grafico emite
+	De       string // YYYY-MM-DDTHH, the same format the chart emits
 	Ate      string
 	Rotulo   string // descricao legivel do periodo, montada no servidor
 
@@ -788,7 +788,7 @@ templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 	}) {
 		<div class="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
 			<span>{ fmt.Sprint(len(w.Nodes)) } passos</span>
-			<span>{ fmt.Sprint(len(w.Edges)) } dependências</span>
+			<span>{ fmt.Sprint(len(w.Edges)) } dependencies</span>
 			if w.Schedule != "" {
 				<span class="font-mono text-xs text-ink">{ w.Schedule }</span>
 			} else {

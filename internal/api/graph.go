@@ -90,7 +90,7 @@ func alturaDoNo(etapas int) int {
 func (u *UI) grafoDoWorkflow(w http.ResponseWriter, r *http.Request) {
 	def, err := u.defs.Definicao(r.Context(), r.PathValue("slug"))
 	if err != nil {
-		http.Error(w, "workflow nao encontrado", http.StatusNotFound)
+		http.Error(w, "workflow not found", http.StatusNotFound)
 		return
 	}
 	u.responderGrafo(w, def, nil, "", "")
@@ -109,7 +109,7 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 
 	execucao, err := u.execs.Buscar(ctx, id)
 	if err != nil {
-		http.Error(w, "run nao encontrada", http.StatusNotFound)
+		http.Error(w, "run not found", http.StatusNotFound)
 		return
 	}
 	var def wf.Workflow
@@ -148,7 +148,7 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 		Nodes:    []noFlow{}, Edges: []arestaFlow{},
 	}
 
-	nao := false
+	off := false
 	for nivel, ids := range niveis {
 		// The column is measured before it is drawn: the heights vary, so
 		// centring requires knowing the total.
@@ -207,7 +207,7 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 					// Clicking a phase selects the STEP: the details panel belongs
 					// to the step, and a selectable phase would open an empty
 					// one.
-					Selectable: &nao, Draggable: &nao,
+					Selectable: &off, Draggable: &off,
 					Data: map[string]any{
 						"nome": et.Nome, "estado": et.Estado,
 						"ms": et.Ms, "numeros": et.Numeros,
