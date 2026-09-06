@@ -1,243 +1,256 @@
-# SDK — o que cada driver suporta
+# SDK — what each driver supports
 
-**Vale para** `sdk/v0.24.0` · **Atualizado em** 2026-09-04
+**Valid for** `sdk/v0.52.0` · **Updated on** 2026-09-06
 
-O que funciona com o quê, e o que acontece quando não funciona. Um driver que
-**ignora** uma opção não aparece aqui: neste SDK ele a recusa nomeando a opção
-e o driver.
+What works with what, and what happens when it does not. A driver that
+**ignores** an option does not appear here: in this SDK it refuses, naming the
+option and the driver.
 
 ---
 
-## 1. Origens
+## 1. Sources
 
-| | `from.HTTP` | `from.Files` |
-|---|---|---|
-| formatos | JSON, NDJSON, CSV, XML | JSON, NDJSON, CSV, XML |
-| streaming | sim | sim |
-| `Preview` | sim | sim |
-| `Stats` (páginas, tentativas, bytes) | sim | páginas = arquivos; sem tentativas |
-| paginação | Link header, cursor, offset | não se aplica |
-| retry com backoff | sim (429, 5xx, rede) | não |
-| `RateLimiter` | sim | não |
-| `Records` | sim | não se aplica: um arquivo não é uma resposta |
-| compressão | o que o servidor negociar | `.gz` pela extensão |
-| ordem determinística | ordem da paginação | **sim, garantida** |
-
-### `from.HTTP`, ponto a ponto
-
-| | |
-|---|---|
-| `Method`, `Body`, `Header` | POST e PUT com corpo e cabeçalhos próprios |
-| `Timeout` / `TotalTimeout` | por tentativa / pela caminhada inteira |
-| `RetryConfig` | tentativas, backoff exponencial, jitter, `Retry-After` |
-| `FollowLinks` | RFC 8288, `rel="next"` |
-| `CursorKey` | cursor no corpo, devolvido como parâmetro de mesmo nome |
-| `PageKey` + `FirstPage` | número de página, avança de um em um |
-| `OffsetKey` + `PageSize` | offset em linhas, avançado a cada página |
-| `MaxPages` | teto da caminhada; cursor repetido também para |
-| `DataKey` | desembrulha o array; **recusado junto de `Records`** |
-| `Header["Cookie"]` | semeia o jar; `Set-Cookie` renova por nome na página seguinte |
-| `Auth.Value` + `Apply` | de onde vem o segredo e como ele entra na requisição |
-| `Auth.TTL` | cacheia o login em memória, sob trava; nunca toca disco |
-| `Auth.Refresh` | um GET antes da primeira página; o jar absorve o `Set-Cookie` |
-| `Auth.Refresh.ExpiresAt` + `WarnAfter` | avisa antes da credencial vencer — no log **e** em `Stats.CredentialExpiry` |
-
-**Duas estratégias de paginação juntas é erro**, não regra de precedência — a
-perdedora seria um campo escrito que não faz nada.
-
-**Todo 2xx** chega ao `Records`, `204` e `206` incluídos. Não-2xx é erro com
-status e corpo, com retry onde faz sentido.
-
-## A matriz, e o que ela promete
-
-Nove drivers com `Metadata`, `Dedup`, `CreateTable` e `Preview` são 36
-combinações. **Esta tabela é um teste**, não um texto: `sdk/capabilities_test.go`
-confere cada linha contra o código, e falha se um driver aceitar uma opção sem
-implementá-la.
-
-Para cada combinação só há duas respostas aceitáveis. A terceira — "aceita e
-ignora" — é a classe de defeito que este projeto mais encontrou em si mesmo.
-
-| destino | `Dedup` | `CreateTable` | `Preview` | `Metadata` |
+| | `from.HTTP` | `from.Files` | `postgres.Query` | `mysql.Query` |
 |---|---|---|---|---|
-| `bigquery.Table` | `MERGE` | **sim**, o BigQuery infere os tipos | sim | transformers |
-| `postgres.Table` | `ON CONFLICT DO NOTHING` | **não existe** — a tabela precisa existir | sim | transformers |
-| `mysql.Table` | `INSERT IGNORE` | **não existe** | sim | transformers |
-| `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **não existe** | sim | transformers |
-| `to.Files` | **recusado**, nomeando `Dedup` | **não existe** | sim | transformers |
+| formats | JSON, NDJSON, CSV, XML | JSON, NDJSON, CSV, XML | rows | rows |
+| streaming | yes | yes | yes | yes |
+| `Preview` | yes | yes | yes | yes |
+| `Stats` (pages, attempts, bytes) | yes | pages = files; no attempts | one page | one page |
+| pagination | Link header, cursor, offset | not applicable | in your SQL, by key | in your SQL, by key |
+| retry with backoff | yes (429, 5xx, network) | no | no | no |
+| `RateLimiter` | yes | no | no | no |
+| `Records` | yes | not applicable: a file is not a response | not applicable | not applicable |
+| compression | whatever the server negotiates | `.gz` by extension | not applicable | not applicable |
+| deterministic order | the pagination's order | **yes, guaranteed** | your `ORDER BY` | your `ORDER BY` |
 
-**Por que só o BigQuery cria tabela.** Ele tem um serviço que infere os tipos a
-partir do dado, e a `v0.16.0` usa exatamente isso, sobrepondo só as duas colunas
-do SDK. Postgres, MySQL e Redshift não têm equivalente, e deduzir
-`NUMERIC(18,2)` de um número do `encoding/json` seria adivinhar — a única coisa
-que este SDK decidiu não fazer. Nos três, o erro lista as colunas do lote para o
-DDL sair de uma leitura.
+### `from.HTTP`, point by point
 
-**Um diretório não tem chave única nem esquema**, então `to.Files` recusa
-`Dedup` em vez de oferecer uma flag que não faz nada.
+| | |
+|---|---|
+| `Method`, `Body`, `Header` | POST and PUT with their own body and headers |
+| `Timeout` / `TotalTimeout` | per attempt / across the whole walk |
+| `RetryConfig` | attempts, exponential backoff, jitter, `Retry-After` |
+| `FollowLinks` | RFC 8288, `rel="next"` |
+| `CursorKey` | a cursor in the body, sent back as a parameter of the same name |
+| `PageKey` + `FirstPage` | a page number, advancing one at a time |
+| `OffsetKey` + `PageSize` | an offset in rows, advanced on every page |
+| `MaxPages` | the walk's ceiling; a repeated cursor also stops it |
+| `MoreKey` | a boolean in the response saying whether there is a next page |
+| `DataKey` | unwraps the array; **refused alongside `Records`** |
+| `Header["Cookie"]` | seeds the jar; `Set-Cookie` refreshes by name on the next page |
+| `Auth.Value` + `Apply` | where the secret comes from and how it enters the request |
+| `Auth.Login` | trades secrets for a token, using the SDK's own client |
+| `Auth.TTL` | caches the login in memory, under a lock; never touches disk |
+| `Auth.Refresh` | a GET before the first page; the jar absorbs the `Set-Cookie` |
+| `Auth.Refresh.Store` | keeps the rotated credential between runs |
+| `Auth.Refresh.ExpiresAt` + `WarnAfter` | warns before the credential expires — in the log **and** in `Stats.CredentialExpiry` |
 
-## Vazão medida
+**Two pagination strategies together is an error**, not a precedence rule — the
+loser would be a written field that does nothing.
 
-Números de `-bench Carga…`, contra os containers do `docker-compose.drivers.yml`,
-10 mil linhas de 5 colunas por execução, **com o toolchain Go 1.27**. Servem
-para comparar as estratégias, não como promessa de produção — a máquina, a rede
-e a largura da linha mudam tudo.
+**Every 2xx** reaches `Records`, `204` and `206` included. A non-2xx is an error
+with the status and the body, with a retry where that makes sense.
 
-E o toolchain também: medindo o mesmo código no Go 1.25 e no 1.27, o
-`EncodeNDJSON` do Redshift saiu de 13 para 40.017 alocações por causa de uma
-mudança de escape analysis, sem nada no código mudar. Um número de alocações é
-propriedade do código **mais o compilador**.
+### `from.Files`, point by point
 
-| destino | estratégia | linhas/s | alocações por linha |
+| | |
+|---|---|
+| `Path` | `./x/*.csv`, `/var/data/`, `s3://b/p/*.ndjson`, `gs://b/p/` |
+| `Store` | `nil` is disk; `s3.New(...)`, `gcs.New(...)` |
+| `NoHeader` | a CSV with no header, keyed by `field_N` |
+
+An empty directory is a result, not a failure. A `.gz` that is not gzip fails
+naming the file.
+
+### `from/postgres` and `from/mysql`, point by point
+
+| | |
+|---|---|
+| `postgres.Query{DSN, SQL, Args}` | reads a SELECT, one row per record, **as a stream** |
+| `mysql.Query{DSN, SQL, Args}` | the parameters are `?`; also a stream |
+| types | from the declared **OID** on Postgres and from `information_schema.data_type` on MySQL — not from the Go type, which does not tell `DATE` from `TIMESTAMPTZ` |
+| paginate by KEY | `WHERE id > $1 ORDER BY id LIMIT $2`. There is no `Offset` field, on purpose: OFFSET on a large table is O(n²) |
+
+---
+
+## 2. The matrix, and what it promises
+
+**This table is a test**, not a piece of prose: `sdk/capabilities_test.go`
+checks every row against the code, and fails if a driver accepts an option
+without implementing it.
+
+For each combination there are only two acceptable answers. The third — "accepts
+and ignores" — is the class of defect this project has found most often in
+itself.
+
+| destination | `Dedup` | `CreateTable` | `Preview` | `Metadata` |
+|---|---|---|---|---|
+| `bigquery.Table` | `MERGE` | **yes**, BigQuery infers the types | yes | transformers |
+| `postgres.Table` | `ON CONFLICT DO NOTHING` | **does not exist** — the table has to exist | yes | transformers |
+| `mysql.Table` | `INSERT IGNORE` | **does not exist** | yes | transformers |
+| `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **does not exist** | yes | transformers |
+| `to.Files` | **refused**, naming `Dedup` | **does not exist** | yes | transformers |
+
+**Why only BigQuery creates a table.** It has a service that infers the types
+from the data, and `v0.16.0` uses exactly that, overriding only the SDK's two
+columns. Postgres, MySQL and Redshift have no equivalent, and deducing
+`NUMERIC(18,2)` from an `encoding/json` number would be guessing — the one thing
+this SDK decided not to do. On all three, the error lists the batch's columns so
+the DDL comes out of one reading.
+
+**A directory has no unique key and no schema**, so `to.Files` refuses `Dedup`
+rather than offering a flag that does nothing.
+
+## Measured throughput
+
+Numbers from `-bench Carga…`, against the containers in
+`docker-compose.drivers.yml`, 10 thousand rows of 5 columns per run, **on the Go
+1.27 toolchain**. They are for comparing the strategies, not a production
+promise — the machine, the network and the row's width change everything.
+
+And so does the toolchain: measuring the same code on Go 1.25 and 1.27,
+Redshift's `EncodeNDJSON` went from 13 to 40,017 allocations because of an
+escape-analysis change, with nothing in the code changing. An allocation count is
+a property of the code **plus the compiler**.
+
+| destination | strategy | rows/s | allocations per row |
 |---|---|---|---|
-| `postgres.Table` | `COPY FROM STDIN` | ~434 000 | ~19 |
-| `mysql.Table` | `INSERT` multi-linha | ~137 000 | ~1 |
+| `postgres.Table` | `COPY FROM STDIN` | ~434,000 | ~19 |
+| `mysql.Table` | multi-row `INSERT` | ~137,000 | ~1 |
 
-A diferença de vazão é a diferença entre `COPY` e `INSERT`, e não de cuidado: o
-MySQL não tem `COPY` confiável. A de alocações é o inverso — o caminho do pgx
-tipa cada valor, e o do `database/sql` passa `any` adiante.
-
-### `from/postgres` e `to/postgres`, ponto a ponto
-
-| | |
-|---|---|
-| `postgres.Query{DSN, SQL, Args}` | lê um SELECT, uma linha por registro, **em fluxo** |
-| `postgres.Table{DSN, Name}` | carrega por `COPY FROM STDIN` |
-| `Dedup: DedupMerge` | `INSERT … ON CONFLICT (ingestion_id) DO NOTHING` |
-| índice único | **exigido**, nunca criado — um loader que cria índice trava tabela de produção |
-| `CreateTable` | **não existe**: a tabela precisa existir, e o erro lista as colunas do lote |
-
-Os tipos vêm do **OID declarado** na leitura e do `data_type` na escrita — não do
-tipo Go, que não distingue `DATE` de `TIMESTAMPTZ`.
-
-### `from/mysql` e `to/mysql`, ponto a ponto
-
-| | |
-|---|---|
-| `mysql.Query{DSN, SQL, Args}` | parâmetros são `?`; lê em fluxo |
-| `mysql.Table{DSN, Name, BatchSize}` | `INSERT` multi-linha em transação |
-| `BatchSize` | existe aqui e **não** no Postgres: não há `COPY`, e pacote grande esbarra em `max_allowed_packet` |
-| `Dedup: DedupMerge` | `INSERT IGNORE`, com o mesmo índice único exigido |
-| tipos | de `information_schema.data_type` — sem ele, `DECIMAL` e `INT` virariam base64 |
-
-### `to/redshift`, ponto a ponto
-
-| | |
-|---|---|
-| `redshift.Table{DSN, Name, Staging, IAMRole, Store}` | `COPY` a partir do S3; **não há caminho inline** |
-| `IAMRole` | role ARN; **chave de acesso é recusada** — ela acabaria no log de query do cluster |
-| `Dedup: DedupMerge` | temp `LIKE` destino, `COPY`, `MERGE … WHEN NOT MATCHED`, `DROP` |
-| `KeepStagedFile` | deixa o objeto no S3 para inspeção |
-
-**Verificação parcial, e está no README e não no rodapé:** não existe imagem do
-Redshift. O que é testado sem cluster é a geração do SQL como função pura, a
-escrita do staging e a ordem dos comandos; o que **não** é testado é que um
-cluster de verdade aceita esse SQL.
-
-### `from.Files`, ponto a ponto
-
-| | |
-|---|---|
-| `Path` | `./x/*.csv`, `/var/dados/`, `s3://b/p/*.ndjson`, `gs://b/p/` |
-| `Store` | `nil` é disco; `s3.New(...)`, `gcs.New(...)` |
-| `NoHeader` | CSV sem cabeçalho, chaveado por `field_N` |
-
-Diretório vazio é resultado, não falha. Um `.gz` que não é gzip falha nomeando
-o arquivo.
+The throughput difference is the difference between `COPY` and `INSERT`, and not
+one of care: MySQL has no reliable `COPY`. The allocation difference is the
+inverse — pgx's path types every value, and `database/sql`'s passes `any` along.
 
 ---
 
-## 2. Destinos
+## 3. Destinations
 
-| | `bigquery.Table` | `to.Files` |
-|---|---|---|
-| `Columns` (declaração) | sim | sim |
-| as duas colunas de ingestão | do `Transform`; `NOT NULL` quando declaradas | do `Transform` |
-| `Dedup: DedupMerge` | sim, via `MERGE` | **recusado** |
-| criar o destino | `CreateTable`, `CreateSQL` | cria o diretório |
-| particionamento | dia em `ingestion_loaded_at` | `PartitionBy` vira `campo=valor/` |
-| clusterização | `ClusterBy` | não se aplica |
-| compressão | do formato staged | `Compress` (gzip) |
-| escrita atômica | job do BigQuery | temp+rename, ou um PUT |
-| formatos escritos | NDJSON | NDJSON, CSV |
+| | `bigquery.Table` | `to.Files` | `postgres.Table` | `mysql.Table` | `redshift.Table` |
+|---|---|---|---|---|---|
+| `Columns` (the declaration) | yes | yes | yes | yes | yes |
+| the two ingestion columns | from `Transform`; `NOT NULL` when declared | from `Transform` | from `Transform` | from `Transform` | from `Transform` |
+| `Dedup: DedupMerge` | yes, through `MERGE` | **refused** | `ON CONFLICT` | `INSERT IGNORE` | `MERGE` |
+| creating the destination | `CreateTable`, `CreateSQL` | creates the directory | **no** | **no** | **no** |
+| partitioning | by day on `ingestion_loaded_at` | `PartitionBy` becomes `field=value/` | not applicable | not applicable | not applicable |
+| clustering | `ClusterBy` | not applicable | not applicable | not applicable | not applicable |
+| compression | from the staged format | `Compress` (gzip) | not applicable | not applicable | not applicable |
+| atomic write | a BigQuery job | temp+rename, or one PUT | one transaction | one transaction | `COPY` + `MERGE` |
+| written formats | NDJSON | NDJSON, CSV | rows | rows | NDJSON via S3 |
 
-### As combinações recusadas, e por quê
+### The refused combinations, and why
 
-| combinação | o que acontece |
+| combination | what happens |
 |---|---|
-| `DedupMerge` sem `ingestion_id` em `Columns` | **erro** — o merge casa nessa coluna |
-| `DedupMerge` + `RequirePartitionFilter` | **erro** — o merge varre todas as partições e não dá para escopar |
-| opções de partição sem `ingestion_loaded_at` em `Columns` | **erro** — particiona-se nessa coluna |
-| `Dedup` em `to.Files` | **erro** — um diretório não tem chave para casar |
-| Parquet em `to.Files` | **erro** — traria o Arrow para quem só queria um arquivo |
-| `Records` + `DataKey` | **erro** — os dois dizem onde estão os registros |
-| `Path` de nuvem sem `Store`, ou `Store` de outro esquema | **erro** nomeando os dois lados |
-| `CreateTable` sem `CreateSQL` num destino SQL | **erro** — o SDK não infere tipo (fases 2–4) |
+| `DedupMerge` with no `ingestion_id` in `Columns` | **error** — the merge matches on that column |
+| `DedupMerge` + `RequirePartitionFilter` | **error** — the merge scans every partition and cannot be scoped |
+| partition options with no `ingestion_loaded_at` in `Columns` | **error** — that is the column it partitions on |
+| `Dedup` on `to.Files` | **error** — a directory has no key to match on |
+| Parquet on `to.Files` | **error** — it would drag Arrow in for somebody who only wanted a file |
+| `Records` + `DataKey` | **error** — both say where the records are |
+| a cloud `Path` with no `Store`, or a `Store` for another scheme | **error** naming both sides |
+| `DedupMerge` with no unique index on Postgres/MySQL | **error** — `ON CONFLICT`/`INSERT IGNORE` would have nothing to match, and every run would insert duplicates |
+| an access key instead of `IAMRole` on Redshift | **error** — the key would end up in the cluster's query log |
 
-### `bigquery.Table`, ponto a ponto
+### `bigquery.Table`, point by point
 
 | | |
 |---|---|
-| `Project`, `Dataset` | caem no ambiente; ver as constantes `Env*` |
-| `Name` | sem padrão |
-| `StagingBucket`, `StagingPrefix` | acima de `InlineLimit`, passa pelo GCS |
-| `InlineLimit` | zero usa 5000 |
-| `CreateTable` | tri-estado: `nil` deixa a engine decidir |
-| `CreateSQL` | a sua DDL, conferida contra a tabela produzida |
-| `ClusterBy` | colunas conferidas contra as linhas antes de submeter |
-| `PartitionExpiration` | zero mantém para sempre |
-| `KeepStagedFile` | o zero value apaga |
+| `Project`, `Dataset` | fall back to the environment; see the `Env*` constants |
+| `Name` | no default |
+| `StagingBucket`, `StagingPrefix` | above `InlineLimit`, it goes through GCS |
+| `InlineLimit` | zero uses 5000 |
+| `CreateTable` | three-state: `nil` lets the engine decide |
+| `CreateSQL` | your DDL, checked against the table it produced |
+| `ClusterBy` | columns checked against the rows before submitting |
+| `PartitionExpiration` | zero keeps them forever |
+| `KeepStagedFile` | the zero value deletes |
 
-O SDK **nunca** altera uma tabela que existe. Divergência é erro, não migração.
+The SDK **never** alters a table that exists. A divergence is an error, not a
+migration.
+
+### `to/postgres` and `to/mysql`, point by point
+
+| | |
+|---|---|
+| `postgres.Table{DSN, Name}` | loads through `COPY FROM STDIN` |
+| `mysql.Table{DSN, Name, BatchSize}` | a multi-row `INSERT` in a transaction |
+| `BatchSize` | exists here and **not** on Postgres: there is no `COPY`, and a large packet runs into `max_allowed_packet` |
+| a unique index | **required**, never created — a loader that creates an index can lock a production table |
+| `CreateTable` | **does not exist**: the table has to exist, and the error lists the batch's columns |
+
+### `to/redshift`, point by point
+
+| | |
+|---|---|
+| `redshift.Table{DSN, Name, Staging, IAMRole, Store}` | `COPY` from S3; **there is no inline path** |
+| `IAMRole` | a role ARN; **an access key is refused** — it would end up in the cluster's query log |
+| `Dedup: DedupMerge` | a temp `LIKE` the destination, `COPY`, `MERGE … WHEN NOT MATCHED`, `DROP` |
+| `KeepStagedFile` | leaves the object in S3 for inspection |
+
+**Partial verification, and it is here rather than in a footnote:** there is no
+Redshift image. What is tested without a cluster is the SQL generation as a pure
+function, the staging write and the order of the commands; what is **not** tested
+is that a real cluster accepts that SQL.
 
 ---
 
-## 3. O que está provado, e como
+## 4. What is proven, and how
 
-Toda linha acima tem teste. O que se prova contra o serviço de verdade, e não
-só em memória:
+Every row above has a test. **649 tests** run in the module, and this is where
+they are:
 
-| driver | contra o quê | testes |
-|---|---|---|
-| `from.HTTP` | `httptest` — HTTP de verdade | 39 |
-| `from.Files` (disco) | sistema de arquivos | 10 |
-| `to.Files` (disco) | sistema de arquivos | 12 |
-| `from.Files` / `to.Files` (S3) | MinIO, em container | 4 |
-| `from.Files` / `to.Files` (GCS) | bucket real | 1 |
-| `bigquery.Table` | BigQuery real | 17 |
-| `bigquery.Table` | em memória | 64 |
+| package | tests |
+|---|---|
+| `sdk` (the facade) | 164 |
+| `extract` | 105 |
+| `load` | 76 |
+| `internal/core` | 59 |
+| `from` | 46 |
+| `to/redshift` | 39 |
+| `to/postgres` | 32 |
+| `pycompat` | 30 |
+| `from/postgres` | 21 |
+| `to`, `from/mysql` | 17 each |
+| `to/mysql` | 15 |
+| `internal/jsontext` | 13 |
+| `to/bigquery` | 9 |
+| `store/gcs` | 5 |
+| `internal/checkpoint` | 1 |
 
-São **236 testes** no módulo, e 80% de cobertura com a integração ligada.
+What is proven against the real service, and not only in memory: `from.HTTP`
+against `httptest`, the file drivers against the filesystem, S3 against MinIO in
+a container, Postgres and MySQL against their containers, GCS and BigQuery
+against real ones.
 
 ```bash
-# os de disco e de HTTP rodam sempre
+# the disk and HTTP ones always run
 go test ./...
 
-# os de nuvem pedem as variáveis
-docker compose -f docker-compose.drivers.yml up -d minio
+# the cloud ones ask for the variables
+docker compose -f docker-compose.drivers.yml up -d minio postgres mysql
 BREVIS_IT_S3_ENDPOINT=http://localhost:9000 \
-BREVIS_IT_PROJECT=meu-projeto BREVIS_IT_DATASET=bravis_it \
-BREVIS_IT_BUCKET=meu-bucket \
+BREVIS_IT_PROJECT=my-project BREVIS_IT_DATASET=brevis_it \
+BREVIS_IT_BUCKET=my-bucket \
   go test ./... -run Integration
 ```
 
-**Sem as variáveis eles pulam**, e a suíte normal segue offline. É de propósito:
-um teste que precisa de credencial e falha sem ela vira um teste que todo mundo
-aprende a ignorar.
+**Without the variables they skip**, and the normal suite stays offline. That is
+on purpose: a test that needs a credential and fails without one becomes a test
+everybody learns to ignore.
 
 ---
 
-## 4. O que ainda não é verdade
+## 5. What is not true yet
 
-Dito aqui para não ser descoberto em produção:
+Said here so it is not discovered in production:
 
-- **Postgres, MySQL e Redshift não existem ainda.** Fases 2 a 4 do
-  [plano](plan/2026-09-04-sdk-drivers-mvp.md).
-- **Parquet não é escrito** por nenhum destino.
-- **`from.Files` não é incremental**: ele lê o que o caminho nomeia. Uma janela
-  se faz no próprio caminho (`dia=2026-09-04/`), com o `RunContext`.
-- **O SDK infere os tipos das colunas do cliente** ao criar uma tabela no
-  BigQuery — delegando ao autodetect do próprio BigQuery. As duas colunas dele
-  são declaradas; as suas, não. Ver §13 de [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
-- **`to.Files` não deduplica**, e portanto uma reexecução escreve o lote de
-  novo, num arquivo novo. Quem resolve isso é a camada de baixo.
+- **Parquet is written** by no destination.
+- **`from.Files` is not incremental**: it reads what the path names. A window is
+  made in the path itself (`day=2026-09-04/`), with the `RunContext`.
+- **The SDK infers the types of the client's columns** when creating a BigQuery
+  table — by delegating to BigQuery's own autodetect. Its own two columns are
+  declared; yours are not. See §13 of [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
+- **`to.Files` does not deduplicate**, so a re-run writes the batch again, into a
+  new file. The layer below is what resolves that.
+- **Redshift is not exercised against a cluster**, only against its SQL. See §3.
