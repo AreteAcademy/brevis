@@ -140,6 +140,23 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 	tick := time.NewTicker(e.Intervalo)
 	defer tick.Stop()
 
+	// O seguidor de log escreve no MESMO canal que o chamador fecha ao
+	// terminar. Sem esperar por ele, `close(eventos)` podia disparar com um
+	// envio em voo -- `send on closed channel`, que derruba o processo inteiro
+	// e nao so a execucao. O -race achou isto na primeira vez que o modulo
+	// raiz foi testado no CI.
+	//
+	// Cancelar antes de esperar e o que limita a espera: o corpo da resposta
+	// de log fecha com o contexto, entao o seguidor sai. Perder o resto do
+	// acompanhamento ao vivo nao custa nada -- o drenarLogs le o log inteiro
+	// logo depois, que e como as ultimas linhas ja chegavam.
+	ctxLogs, pararLogs := context.WithCancel(ctx)
+	var seguidores sync.WaitGroup
+	defer func() {
+		pararLogs()
+		seguidores.Wait()
+	}()
+
 	var ultimoMotivo string
 	seguindo := false
 	comecou := time.Now()
@@ -168,7 +185,11 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 		// ve a saida do dbt ao vivo, e nao so no fim.
 		if !seguindo && pod.Fase() == "Running" {
 			seguindo = true
-			go e.seguirLogs(ctx, nome, t, eventos)
+			seguidores.Add(1)
+			go func() {
+				defer seguidores.Done()
+				e.seguirLogs(ctxLogs, nome, t, eventos)
+			}()
 		}
 
 		// Pod que nao sai de Pending nao e erro para o Kubernetes: ele espera

@@ -37,13 +37,13 @@ jobs:
 
       # O CSS e os _templ.go sao embutidos no binario e vao versionados; se
       # alguem esquecer de rodar `make generate`, a imagem sai com a UI antiga.
-      # Falhar aqui e melhor que descobrir na tela.
+      #
+      # Este passo rodava so o templ, apesar de o comentario dizer que cobria o
+      # `make generate` -- e foi por essa fresta que um app.css velho chegou a
+      # imagem 0.4.0. O script confere os DOIS geradores, com as duas versoes
+      # pinadas.
       - name: Conferir artefatos gerados
-        run: |
-          go install github.com/a-h/templ/cmd/templ@latest
-          templ generate
-          git diff --exit-code -- web/ \
-            || { echo "::error::rode 'make generate' e commite os arquivos gerados"; exit 1; }
+        run: ./.github/scripts/generated-check.sh
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3

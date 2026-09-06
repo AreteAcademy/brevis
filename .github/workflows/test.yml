@@ -84,6 +84,15 @@ jobs:
           git diff --exit-code go.mod go.sum \
             || { echo "::error::rode 'go mod tidy' e commite"; exit 1; }
 
+      # Os artefatos gerados de web/ vao versionados, porque a imagem nao tem
+      # Node nem templ. Conferir aqui pega o CSS velho no push, e nao so na
+      # hora de publicar.
+      - name: Artefatos gerados
+        run: ./.github/scripts/generated-check.sh
+
+      - name: Peso do motor
+        run: ./.github/scripts/peso-do-motor.sh
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:

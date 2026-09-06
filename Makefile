@@ -4,6 +4,11 @@ BIN := bin/brevis
 # --- Imagem -----------------------------------------------------------------
 # REGISTRY/NAMESPACE ficam em variavel para que um fork publique no proprio
 # espaco sem editar arquivo nenhum: `make image-push NAMESPACE=outro`.
+# O Tailwind e PINADO. `releases/latest` fazia dois desenvolvedores gerarem CSS
+# diferente do mesmo fonte -- e foi o que deixou um app.css velho passar pelo
+# portao do release e carimbar uma imagem `-dirty`.
+TAILWIND_VERSAO ?= v4.3.3
+
 REGISTRY  ?= docker.io
 NAMESPACE ?= daniel3843
 IMAGEM    ?= $(REGISTRY)/$(NAMESPACE)/brevis
@@ -55,13 +60,15 @@ dev: ## Hot reload: recompila e reinicia a cada mudanca (exige `make up` antes)
 
 tailwind-install: ## Baixa o binario standalone do Tailwind (sem Node)
 	@mkdir -p bin
-	@ARCH=$$(uname -m | sed 's/x86_64/x64/'); OS=$$(uname -s | tr 'A-Z' 'a-z'); \
-	 curl -sSL -o bin/tailwindcss \
-	   "https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-$$OS-$$ARCH" \
-	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss instalado"
+	@ARCH=$$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/'); \
+	 OS=$$(uname -s | tr 'A-Z' 'a-z' | sed 's/darwin/macos/'); \
+	 curl -sSLf -o bin/tailwindcss \
+	   "https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSAO)/tailwindcss-$$OS-$$ARCH" \
+	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss $(TAILWIND_VERSAO) instalado"
 
 generate: ## Gera os _templ.go e o CSS
-	@command -v templ >/dev/null || { echo "instale: go install github.com/a-h/templ/cmd/templ@latest"; exit 1; }
+	@command -v templ >/dev/null || { echo "instale: go install github.com/a-h/templ/cmd/templ@$$(go list -m -f '{{.Version}}' github.com/a-h/templ)"; exit 1; }
+	@test -x bin/tailwindcss && ./bin/tailwindcss --help 2>&1 | head -1 | grep -q "$(patsubst v%,%,$(TAILWIND_VERSAO))" || $(MAKE) tailwind-install
 	@templ generate
 	@./bin/tailwindcss -i web/assets/app.src.css -o web/assets/app.css --minify
 
