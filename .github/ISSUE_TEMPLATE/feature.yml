@@ -1,35 +1,36 @@
-name: Proposta
-description: Sugerir um recurso ou mudança
+name: Proposal
+description: Suggest a feature or a change
 labels: [enhancement]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Qual problema isso resolve
+      label: Which problem this solves
       description: |
-        O caso concreto, não o recurso. "Preciso paginar uma API que devolve o
-        cursor num header customizado" diz mais que "adicionar suporte a header".
+        The concrete case, not the feature. "I need to paginate an API that
+        returns the cursor in a custom header" says more than "add header
+        support".
     validations:
       required: true
 
   - type: textarea
     id: workaround
     attributes:
-      label: Como você resolve hoje
-      description: Se dá para resolver fora do SDK, isso pesa contra somar superfície pública.
+      label: How you solve it today
+      description: If it can be solved outside the SDK, that weighs against adding public surface.
     validations:
       required: true
 
   - type: textarea
     id: proposal
     attributes:
-      label: Como você imagina a API
+      label: How you picture the API
       render: go
 
   - type: checkboxes
     id: constraints
     attributes:
-      label: Restrições do projeto
+      label: Project constraints
       options:
-        - label: Não exige dependência nova no SDK (hoje são três; o argumento do projeto é o tamanho do binário)
-        - label: Ou exige, e eu justifiquei acima por que vale
+        - label: Needs no new dependency in the SDK (there are three today; the project's argument is binary size)
+        - label: Or it does, and I justified above why that is worth it

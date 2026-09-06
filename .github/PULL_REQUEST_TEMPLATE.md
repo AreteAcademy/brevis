@@ -1,23 +1,24 @@
-## O que muda
+## What changes
 
-<!-- Uma frase. O diff mostra o quê; aqui diga o porquê. -->
+<!-- One sentence. The diff shows what; here, say why. -->
 
-## Por que
+## Why
 
-<!-- O problema que isso resolve. Se corrige bug, o que estava errado e desde quando. -->
+<!-- The problem this solves. For a bug fix: what was wrong, and since when. -->
 
-## Como provar
+## How it is proven
 
 <!--
-Que teste falharia sem esta mudança? Para correção de bug, o teste é a prova
-de que o bug existia — não "adicionei testes", mas qual comportamento eles
-travam.
+Which test would fail without this change? For a bug fix, the test IS the proof
+the bug existed -- not "added tests", but which behaviour they pin down.
+
+If you fixed something, revert your fix and check the test goes red. A test that
+cannot fail is worse than no test, because it buys confidence it has not earned.
 -->
 
 ## Checklist
 
-- [ ] `go test ./... -race` passa
-- [ ] `golangci-lint run` sem achados
-- [ ] Nenhum campo público novo sem implementação
-- [ ] Documentação atualizada se o comportamento mudou
-- [ ] `CHANGELOG.md` atualizado se afeta o SDK público
+- [ ] `go test ./...` passes at the repository root and in `sdk/`
+- [ ] `golangci-lint run ./...` is clean in both modules
+- [ ] Generated artefacts are up to date (`make generate`, then commit `web/`)
+- [ ] Comments, identifiers and error messages are in **English** (see CONTRIBUTING.md)

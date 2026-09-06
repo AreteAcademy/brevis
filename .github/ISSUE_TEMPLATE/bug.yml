@@ -1,18 +1,18 @@
 name: Bug
-description: Algo não funciona como documentado
+description: Something does not work as documented
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Antes de abrir: a `sdk/v0.1.0` está publicada e quebrada de forma
-        irreversível. Se você está nela, atualize para a mais recente — não é bug novo.
+        Before opening: `sdk/v0.1.0` is published and irreversibly broken. If you
+        are on it, upgrade to the latest -- that is not a new bug.
 
   - type: input
     id: version
     attributes:
-      label: Versão
-      description: "`go list -m github.com/AreteAcademy/brevis/sdk`, ou `brevis version` para o CLI"
+      label: Version
+      description: "`go list -m github.com/AreteAcademy/brevis/sdk`, or `brevis version` for the CLI"
       placeholder: v0.2.1
     validations:
       required: true
@@ -20,7 +20,7 @@ body:
   - type: dropdown
     id: component
     attributes:
-      label: Componente
+      label: Component
       options: [sdk/extract, sdk/load, CLI, engine, site, CI]
     validations:
       required: true
@@ -28,27 +28,27 @@ body:
   - type: textarea
     id: expected
     attributes:
-      label: O que você esperava
-      description: E onde isso está documentado, se estiver.
+      label: What you expected
+      description: And where that is documented, if it is.
     validations:
       required: true
 
   - type: textarea
     id: actual
     attributes:
-      label: O que aconteceu
-      description: Mensagem de erro completa, se houver. Não recorte o stack trace.
+      label: What happened
+      description: The complete error message, if there is one. Do not trim the stack trace.
     validations:
       required: true
 
   - type: textarea
     id: repro
     attributes:
-      label: Como reproduzir
+      label: How to reproduce
       description: |
-        O menor programa que mostra o problema. Se envolve HTTP, um
-        `httptest.Server` que devolva a resposta problemática vale mais que
-        descrever a API real.
+        The smallest program that shows the problem. If HTTP is involved, an
+        `httptest.Server` returning the offending response is worth more than a
+        description of the real API.
       render: go
     validations:
       required: true
@@ -56,5 +56,5 @@ body:
   - type: input
     id: goversion
     attributes:
-      label: Versão do Go
+      label: Go version
       placeholder: go1.25.7 darwin/arm64

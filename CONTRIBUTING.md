@@ -1,115 +1,73 @@
-# Contribuindo com o Brevis
+# Contributing to Brevis
 
-## Estrutura
+## The project speaks English
 
-Três módulos Go independentes, cada um com seu `go.mod`:
+Code, comments, identifiers, error messages, commit messages, tests, plans and
+documentation are written in **English**. That is not a style preference: a
+contributor in Berlin or Osaka reads the same comment as the person who wrote it,
+and a comment nobody can read is a comment that stops being maintained.
 
-| diretório | módulo | o que é |
-|---|---|---|
-| `/` | `github.com/AreteAcademy/brevis` | a engine |
-| `/sdk` | `github.com/AreteAcademy/brevis/sdk` | SDK público, publicado no proxy |
-| `/cmd/brevis` | (módulo raiz) | o binário do Brevis: `serve`, `scheduler`, `migrate`, `publish`, `validate`, `backfill` |
-| `/cmd/brevis-sdk` | `github.com/AreteAcademy/brevis/cmd/brevis-sdk` | CLI do SDK: `extract`, `load` |
-| `/examples` | `github.com/AreteAcademy/brevis/examples` | exemplos, com `replace` para `../sdk` |
+The website's user-facing documentation is translated to Portuguese, English and
+Spanish. Everything else, including this repository, is English only.
 
-O SDK tem módulo próprio para manter as dependências mínimas: hoje são três
-diretas (`bigquery`, `storage`, `uuid`). **Pense duas vezes antes de somar uma
-quarta** — o argumento do projeto é o tamanho do binário.
+Some historical documents predate this rule and are kept as they were written —
+`CHANGELOG.md`, `CHANGELOG-motor.md` and the older files in `docs/plan/`. They
+are a record of decisions made on a date, and rewriting a record is not the same
+as translating a project. New entries are in English.
 
-## Rodando os testes
+## What a change has to carry
 
-```bash
-cd sdk && go test ./... -race
-cd examples && go build ./... && go test ./...
-```
+**A test that would fail without it.** For a bug fix, the test is the proof the
+bug existed — not "added tests", but which behaviour it pins down.
 
-Os testes do SDK são offline: `httptest.Server` no lugar de APIs reais. Nenhum
-teste da suíte normal toca a rede ou o GCP.
+**Proof that the test bites.** Revert your fix and check the test goes red. A
+test that cannot fail is worse than no test: it buys confidence it has not
+earned. Several tests in this repository were found to be unable to fail, and
+each was found this way.
 
-Os testes de integração do `load` são a exceção e ficam travados atrás de
-`-short` e de variáveis de ambiente:
+**A comment saying why, where the why is not obvious.** The diff shows what
+changed. The comment exists for the person who, two years from now, will look at
+a strange-looking line and want to "simplify" it. Most of the comments in this
+repository name the incident that produced the line.
 
-```bash
-export BREVIS_IT_PROJECT=meu-projeto
-export BREVIS_IT_DATASET=bravis_it     # precisa existir
-export BREVIS_IT_BUCKET=meu-bucket     # para a estratégia GCS
-go test ./load/... -run Integration
-```
-
-Use um dataset e um bucket **dedicados**: os testes criam tabelas `it_*` e as
-apagam no `t.Cleanup`, mas uma execução interrompida deixa uma para trás, e
-apagar o dataset inteiro é a limpeza mais simples. O bucket precisa estar
-colocado com o dataset — um dataset `US` com bucket em outra região faz o load
-job falhar só na estratégia GCS.
-
-Eles pagam por si: na primeira execução real acharam quatro defeitos que os
-testes em memória não podiam pegar — `CreateTable` e `DedupMerge` que não
-compunham, `Load` mutando a fatia do chamador, `ClusterBy` sem validação, e o
-`DeleteAfterLoad` que nunca limpava.
-
-## Lint
-
-O CI roda `golangci-lint` v2.13.2. Para rodar igual localmente:
+## Running it
 
 ```bash
-cd sdk && golangci-lint run --timeout=5m ./...
+go test ./...          # the engine, at the root
+cd sdk && go test ./...  # the SDK, a separate module
+
+make generate          # regenerates web/ (templ + Tailwind, both pinned)
 ```
 
-Não suprima achado com `//nolint` sem explicar o porquê na mesma linha.
+Two modules, two `go.mod`. The engine does not import the SDK, and
+`.github/scripts/peso-do-motor.sh` enforces it: the API and the scheduler are one
+7 MB binary, and the data drivers live in the task pods.
 
-## Padrões que o projeto leva a sério
-
-**Campo público que não faz nada é pior que campo ausente.** Quem preenche
-acredita ter configurado algo. Se não dá para implementar agora, não declare —
-ou recuse explicitamente, como `LoadConfig.Format` faz com `"parquet"`.
-
-**Verificação que não pode falhar não é verificação.** O projeto já teve um
-passo de CI com `go build ... || true` seguido de `echo "✅ compilou"`, que
-escondeu seis exemplos que não compilavam. Se um passo não puder ficar
-vermelho, ele não está testando nada.
-
-**Documentação que descreve comportamento inexistente é pior que documentação
-ausente.** Os exemplos em `examples/` compilam no CI e os `Example` de godoc
-são compilados pelo `go test` justamente para isso.
-
-**Número errado em telemetria é pior que número ausente**, porque ninguém
-desconfia dele.
-
-## Commits
-
-Convencional, e o corpo explica **por quê**, não o quê — o diff já mostra o
-quê:
-
-```
-fix(sdk/load): batch load jobs, honest formats, and the envelope contract
-
-table.Inserter() é a streaming insert API: cobrada por linha, e as linhas
-ficam num buffer onde o DML não as enxerga por até 90 minutos...
-```
-
-Escopos: `sdk`, `sdk/extract`, `sdk/load`, `cli`, `ci`, `site`, `docs`.
-
-## Publicando o SDK
+Before opening a pull request:
 
 ```bash
-git tag sdk/v0.2.2      # o prefixo do diretório é obrigatório
-git push origin sdk/v0.2.2
+golangci-lint run ./...                     # in both modules
+./.github/scripts/generated-check.sh        # web/ artefacts are current
+./.github/scripts/peso-do-motor.sh          # the engine stays lean
+./.github/scripts/pruning-check.sh          # a consumer only compiles what it imports
 ```
 
-O `publish-sdk.yml` cuida do resto. Duas coisas que custaram uma versão
-queimada:
+## Things this project refuses
 
-1. **O proxy é imutável.** Depois que uma versão é buscada uma vez, o conteúdo
-   está congelado — apagar a tag não desfaz nada. Por isso existe um gate que
-   compila um consumidor descartável antes do release.
-2. **A URL do proxy usa case-encoding**: `AreteAcademy` vira `!arete!academy`.
-   Use `go list -m`, que codifica sozinho.
+**A public field that does nothing.** If it is not read, it is not there.
 
-A `v0.1.0` está publicada e quebrada para sempre. Não repita.
+**A number that is always zero.** It teaches people to skip the field, and then
+nobody sees the one time it is real.
 
-## Abrindo um PR
+**Dropping data in silence.** Failing loudly is a one-line problem; a silent
+divergence is a duplicate that turns up weeks later in a report.
 
-- Um assunto por PR.
-- Teste que falharia sem a mudança. Para correção de bug, o teste é a prova de
-  que o bug existia.
-- CI verde. Não peça revisão com vermelho.
+**Guessing where the answer is not knowable.** Refusing, naming what is missing,
+beats a default that is right half the time.
+
+## The SDK's dependencies
+
+Three, and adding a fourth needs an argument. Go prunes dependencies by package
+imported, never by field used — which is why the drivers are values in `from/`
+and `to/`: a fetcher that never imports the BigQuery destination never builds it.
+`pruning-check.sh` is what keeps that true.

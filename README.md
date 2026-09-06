@@ -7,13 +7,15 @@
 [![SDK](https://img.shields.io/github/v/tag/AreteAcademy/brevis?filter=sdk/*&label=sdk&color=aa8450)](https://github.com/AreteAcademy/brevis/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-aa8450.svg)](LICENSE)
 
-Engine de transformação e orquestração de dados, em Go. Substitui o par
-Kestra/Leoflow (orquestração) e o dbt (transformação) por um binário único, com
-execução em pod no Kubernetes.
+A data transformation and orchestration engine, in Go. It replaces the
+Kestra/Leoflow pair (orchestration) and dbt (transformation) with a single
+binary, running each step as a pod on Kubernetes.
 
-Arquitetura e faseamento: [`docs/plan.md`](docs/plan.md).
+> The project is written in English. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Architecture and phasing: [`docs/plan.md`](docs/plan.md).
 Referência da linha de comando: [`docs/COMANDOS.md`](docs/COMANDOS.md).
-Relatórios por fase: [`docs/phases/`](docs/phases/).
+Per-phase reports: [`docs/phases/`](docs/phases/).
 
 ## SDK
 
@@ -21,62 +23,65 @@ Relatórios por fase: [`docs/phases/`](docs/phases/).
 go get github.com/AreteAcademy/brevis/sdk@latest
 ```
 
-Extração HTTP com retry, timeout, guard e paginação; carga em lote para o
-BigQuery. Requer Go 1.23+.
+HTTP extraction with retry, timeout, guard and pagination; batched loading into
+BigQuery, Postgres, MySQL, Redshift and files. Requires Go 1.23+.
 
-- Referência da API: [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
-- Guia e decisões de desenho: [`docs/SDK.md`](docs/SDK.md) · [`sdk/README.md`](sdk/README.md)
-- Exemplos executáveis: [`examples/`](examples/)
-- Histórico de versões: [`CHANGELOG.md`](CHANGELOG.md)
+- API reference: [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
+- Guide and design decisions: [`sdk/README.md`](sdk/README.md)
+- Runnable examples: [`examples/`](examples/) — start with
+  [`examples/quickstart/`](examples/quickstart/), a full stack from a public API
+  to a CSV
+- Version history: [`CHANGELOG.md`](CHANGELOG.md)
 
-> **Não use a `v0.1.0`.** Ela foi publicada com um `go.mod` quebrado e o proxy
-> do Go é imutável, então não há como corrigi-la. Comece na `v0.1.1`.
+> **Do not use `v0.1.0`.** It was published with a broken `go.mod`, and the Go
+> proxy is immutable, so there is no fixing it. Start at `v0.1.1`.
 
-CLI do SDK: [`cmd/brevis-sdk/`](cmd/brevis-sdk/) — `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest`
+SDK CLI: [`cmd/brevis-sdk/`](cmd/brevis-sdk/) — `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest`
 
-O binário do Brevis em si (`serve`, `scheduler`, `migrate`, `publish`) é
-[`cmd/brevis/`](cmd/brevis/), construído com `make build`.
+The Brevis binary itself (`serve`, `scheduler`, `migrate`, `publish`) is
+[`cmd/brevis/`](cmd/brevis/), built with `make build`.
 
-**Estado: PHASE 6 concluída.** Workflows em YAML, fila persistente, scheduler com
-cron, backfill, UI server-rendered (Overview com métricas e gráficos, lista de
-workflows com busca/filtros/pausar/executar) e visualização da DAG com o estado
-de cada passo ao vivo — ver `docs/phases/`.
+**Status: PHASE 6 complete.** YAML workflows, a persistent queue, a cron
+scheduler, backfill, a server-rendered UI (an overview with metrics and charts, a
+workflow list with search, filters, pause and run) and a DAG view showing each
+step's state live — with an SDK step expanding into one box per element of its
+pipeline. See `docs/phases/`.
 
-A interface segue a identidade da [Aretê Academy](https://areteacademy.com.br):
-pergaminho, ouro e serifa. Fontes e bundles são servidos do próprio binário — a
-UI funciona sem saída para a internet.
+Fonts and bundles are served from the binary itself — the UI works with no route
+to the internet.
 
-**Marca branca**: título, subtítulo, frase e paleta saem de um YAML
-(`brand.example.yaml` → `brand.yaml`, ou `BREVIS_BRAND_FILE`). As cores
-sobrescrevem as variáveis CSS em tempo de execução, então trocar o tema não
-recompila nada. O rodapé "Powered by Brevis" não vem da configuração — vem do
-código.
+**White label**: title, subtitle, phrase and palette come from a YAML
+(`brand.example.yaml` → `brand.yaml`, or `BREVIS_BRAND_FILE`). The colours
+override the CSS variables at runtime, so changing the theme recompiles nothing.
+The "Powered by Brevis" footer does not come from configuration — it comes from
+the code.
 
 ```bash
-brevis validate examples/            # valida sem banco, serve na CI
-brevis run examples/hello.yaml       # executa agora, na propria instancia
+brevis validate examples/            # validates with no database; good for CI
+brevis run examples/hello.yaml       # runs now, on this instance
 
 brevis publish examples/hello.yaml   # grava workflow e agenda no banco
 brevis scheduler --concurrency 5     # materializa slots e executa
 brevis backfill diario --from 2026-01-01 --to 2026-01-31
 ```
 
-O scheduler **cria** runs; a fila os **executa**. Os dois laços são independentes:
-um pode cair sem afetar o outro.
+The scheduler **creates** runs; the queue **executes** them. The two loops are
+independent: either can go down without affecting the other.
 
-Os dez subcomandos, com flags, variáveis de ambiente, endpoints e alvos do
-Makefile: [`docs/COMANDOS.md`](docs/COMANDOS.md).
+The ten subcommands, with flags, environment variables, endpoints and Makefile
+targets: [`docs/COMANDOS.md`](docs/COMANDOS.md).
 
-Em Kubernetes, **cada passo vira um pod** com a imagem declarada no YAML — não há
-worker genérico esperando trabalho, é o trabalho que traz o seu runtime. O mesmo
-arquivo roda local como processo. Ver [`docs/KUBERNETES.md`](docs/KUBERNETES.md).
+On Kubernetes, **each step becomes a pod** with the image declared in the YAML --
+there is no generic worker waiting for work; the work brings its own runtime. The
+same file runs locally as a process. See
+[`docs/KUBERNETES.md`](docs/KUBERNETES.md).
 
-As imagens são por papel, não por projeto: **5,8 MB** para um passo em Go,
-118 MB para Python, 620 MB para dbt (com o parse já embutido, 2,7 s a menos por
-pod). Ver [`docs/IMAGENS.md`](docs/IMAGENS.md).
+The images are per role, not per project: **5.8 MB** for a Go step, 118 MB for
+Python, 620 MB for dbt (with the parse baked in, 2.7 s less per pod). See
+[`docs/IMAGENS.md`](docs/IMAGENS.md).
 
-Um workflow pode declarar **parâmetros de execução** — o que muda entre dois
-disparos sem editar o arquivo:
+A workflow can declare **run parameters** -- what changes between two dispatches
+without editing the file:
 
 ```yaml
 params:
@@ -97,50 +102,52 @@ brevis run wf.yaml --param load_full=true
 brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
-Na UI, um workflow com params ganha formulário no lugar do botão simples.
+In the UI, a workflow with params gets a form instead of the plain button.
 
-`concurrency: 1` limita execuções simultâneas do mesmo workflow — o que impede
-um `*/15` de se sobrepor a si mesmo.
+`concurrency: 1` caps simultaneous runs of the same workflow -- which stops a
+`*/15` from overlapping itself.
 
-O YAML aceita `type: chain` (ordem do arquivo) ou `type: dag` com `depends_on`.
-`chain` é açúcar: vira arestas no parser, e o motor conhece apenas DAG.
+The YAML accepts `type: chain` (the file's order) or `type: dag` with
+`depends_on`. `chain` is sugar: it becomes edges in the parser, and the engine
+only ever knows a DAG.
 
-`examples/hello.yaml` é o único que **roda** em qualquer lugar — os outros dois
-vieram do plano e mostram o formato, chamando `python`, `docker.run` e
-`./notify.sh`, que não existem na imagem do worker.
+`examples/quickstart/` is the one that **runs** end to end, against a public API.
+`examples/hello.yaml` runs anywhere; the other two came from the plan and show
+the format, calling `python`, `docker.run` and `./notify.sh`, which do not exist
+in the worker image.
 
-## Imagem
+## Images
 
 ```bash
 docker login -u daniel3843
 make image-push            # daniel3843/brevis:<VERSION> e :<VERSION>-worker
 ```
 
-Duas imagens do mesmo binário: `:<versao>` é a API em distroless (não executa
-nada, então não precisa de shell) e `:<versao>-worker` é alpine com shell, para
-os passos `run:` dos workflows. Detalhes em [`docs/PUBLICAR.md`](docs/PUBLICAR.md).
+Two images of the same binary: `:<version>` is the API on distroless (it executes
+nothing, so it needs no shell) and `:<version>-worker` is Alpine with a shell, for
+the workflows' `run:` steps. Details in [`docs/PUBLICAR.md`](docs/PUBLICAR.md).
 
-## Local
+## Running locally
 
 ```bash
-make dev     # hot reload: templ + tailwind + go build a cada mudanca
+make dev     # hot reload: templ + tailwind + go build on every change
 make up      # Postgres + API
-make smoke   # confere /health e /ready
+make smoke   # checks /health and /ready
 make logs
 make down
 ```
 
 ```bash
-make check   # gofmt + vet + testes
-make build   # binario em bin/
+make check   # gofmt + vet + tests
+make build   # binary in bin/
 ```
 
-## Configuração
+## Configuration
 
-| variável | padrão | |
+| variable | default | |
 |---|---|---|
-| `BREVIS_DATABASE_URL` | — | **obrigatória** |
-| `BREVIS_ENV` | `local` | `local` usa log em texto; o resto, JSON |
+| `BREVIS_DATABASE_URL` | — | **required** |
+| `BREVIS_ENV` | `local` | `local` logs as text; anything else, JSON |
 | `BREVIS_HTTP_ADDR` | `:8080` | |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | |
@@ -149,12 +156,12 @@ make build   # binario em bin/
 
 | | |
 |---|---|
-| `GET /health` | liveness — **não** consulta o banco |
-| `GET /ready` | readiness — consulta, e nomeia a dependência que falhou |
+| `GET /health` | liveness — does **not** touch the database |
+| `GET /ready` | readiness — does, and names the dependency that failed |
 
-A separação é deliberada: liveness que depende de dependência externa faz o
-Kubernetes matar o pod quando o banco oscila, em vez de apenas tirá-lo do
-balanceador.
+The separation is deliberate: a liveness probe that depends on an external
+dependency makes Kubernetes kill the pod when the database wobbles, instead of
+merely taking it out of the load balancer.
 
 ## Migrations
 
@@ -162,5 +169,5 @@ balanceador.
 brevis migrate up|down|status
 ```
 
-Embutidas no binário e aplicadas por subcomando próprio — o `serve` nunca altera
-schema.
+Embedded in the binary and applied by their own subcommand -- `serve` never
+changes the schema.
