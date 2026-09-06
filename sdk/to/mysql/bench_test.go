@@ -24,7 +24,7 @@ func BenchmarkCargaMySQL(b *testing.B) {
 		b.Skip("BREVIS_IT_MYSQL_DSN não definida")
 	}
 
-	db, err := sql.Open("mysql", frommy.ComParseTime(d))
+	db, err := sql.Open("mysql", frommy.WithParseTime(d))
 	if err != nil {
 		b.Fatal(err)
 	}

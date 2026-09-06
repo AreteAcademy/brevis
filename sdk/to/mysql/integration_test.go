@@ -28,7 +28,7 @@ func dsn(t *testing.T) string {
 
 func abrir(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := sql.Open("mysql", frommy.ComParseTime(dsn(t)))
+	db, err := sql.Open("mysql", frommy.WithParseTime(dsn(t)))
 	if err != nil {
 		t.Fatalf("abrindo: %v", err)
 	}
