@@ -11,15 +11,15 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// Este arquivo implementa o fluxo da secao 20 do plano:
+// This file implements the flow from §20 of the plan:
 //
-//	definicao no banco -> API -> JSON do React Flow -> UI
+//	definition in the database -> API -> React Flow JSON -> UI
 //
-// O React Flow e camada de VISUALIZACAO, nunca fonte da verdade. O layout sai
-// daqui, do servidor, reaproveitando o mesmo `graph.Niveis` que o executor usa
-// para decidir o que roda em paralelo. Assim o desenho corresponde a execucao
-// real: nos na mesma coluna sao os que rodam juntos de fato, e nao um palpite
-// de um algoritmo de layout no navegador.
+// React Flow is a VIEW layer, never the source of truth. The layout comes from
+// here, from the server, reusing the same `graph.Niveis` the executor uses to
+// decide what runs in parallel. That way the drawing matches the real execution:
+// nodes in the same column are the ones that actually run together, rather than
+// a guess by a layout algorithm in the browser.
 
 type noFlow struct {
 	ID       string         `json:"id"`
@@ -27,10 +27,10 @@ type noFlow struct {
 	Position posicao        `json:"position"`
 	Data     map[string]any `json:"data"`
 
-	// Aninhamento: um passo do SDK vira um grupo, e as etapas dele viram nos
-	// filhos DENTRO dele. As arestas do DAG continuam entre passos, entao o
-	// grupo ocupa uma coluna so -- que e o que preserva "mesma coluna significa
-	// rodar em paralelo".
+	// Nesting: an SDK step becomes a group, and its phases become child nodes
+	// INSIDE it. The DAG's edges stay between steps, so the group occupies a
+	// single column -- which is what preserves "same column means runs in
+	// parallel".
 	ParentID   string         `json:"parentId,omitempty"`
 	Extent     string         `json:"extent,omitempty"`
 	Style      map[string]any `json:"style,omitempty"`
@@ -59,13 +59,13 @@ type respostaGrafo struct {
 	Edges    []arestaFlow `json:"edges"`
 }
 
-// Espacamento do layout. Constantes e nao configuracao: o tamanho do no e fixo
-// no CSS, e deixar isso ajustavel so criaria duas fontes da verdade.
+// Layout spacing. Constants and not configuration: the node's size is fixed in
+// the CSS, and making this adjustable would only create two sources of truth.
 //
-// A altura deixou de ser uma so. Um passo do SDK cresce com as etapas que
-// anuncia, e o `-(len(ids)-1) * alturaNo / 2` que centralizava a coluna
-// assumia altura fixa: um grupo expandido passava por cima do vizinho. Agora a
-// coluna e a SOMA das alturas dela.
+// The height stopped being a single value. An SDK step grows with the phases it
+// announces, and the `-(len(ids)-1) * alturaNo / 2` that centred the column
+// assumed a fixed height: an expanded group ran over its neighbour. The column
+// is now the SUM of its heights.
 const (
 	larguraNivel  = 300
 	larguraNo     = 230
@@ -76,7 +76,7 @@ const (
 	folgaVertical = 26
 )
 
-// alturaDoNo e o que este passo ocupa na vertical.
+// alturaDoNo is what this step occupies vertically.
 func alturaDoNo(etapas int) int {
 	if etapas == 0 {
 		return alturaCartao
@@ -84,9 +84,9 @@ func alturaDoNo(etapas int) int {
 	return topoDasEtapas + etapas*alturaEtapa + rodapeDoGrupo
 }
 
-// grafoDoWorkflow desenha a definicao PUBLICADA, sem estado de execucao. E a
-// tela de "como este workflow e", que precisa funcionar para um workflow que
-// nunca rodou.
+// grafoDoWorkflow draws the PUBLISHED definition, with no execution state. It is
+// the "what this workflow looks like" screen, which has to work for a workflow
+// that never ran.
 func (u *UI) grafoDoWorkflow(w http.ResponseWriter, r *http.Request) {
 	def, err := u.defs.Definicao(r.Context(), r.PathValue("slug"))
 	if err != nil {
@@ -96,9 +96,9 @@ func (u *UI) grafoDoWorkflow(w http.ResponseWriter, r *http.Request) {
 	u.responderGrafo(w, def, nil, "", "")
 }
 
-// grafoDaRun desenha o SNAPSHOT gravado no Run, nao a definicao atual: se o
-// workflow foi editado depois, a tela de uma execucao passada tem que continuar
-// mostrando o grafo que de fato rodou (secao 22).
+// grafoDaRun draws the SNAPSHOT stored on the Run, not the current definition:
+// if the workflow was edited afterwards, a past run's screen has to keep showing
+// the graph that actually ran (§22).
 func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
@@ -118,8 +118,8 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Estado ausente nao e erro: uma run recem-enfileirada ainda nao tem nenhum
-	// passo iniciado, e a tela deve mostrar o grafo todo em cinza.
+	// A missing state is not an error: a freshly queued run has no step started
+	// yet, and the screen should show the whole graph in grey.
 	estados, err := u.execs.EstadoDosNos(ctx, id)
 	if err != nil {
 		u.log.Warn("estado dos nos indisponivel", "run", id, "erro", err)
@@ -133,26 +133,25 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 
 	niveis, err := graph.Niveis(def)
 	if err != nil {
-		// Chegar aqui significa grafo ciclico gravado no banco. Nao e 500: e um
-		// dado invalido, e a mensagem tem que dizer isso na tela.
+		// Getting here means a cyclic graph stored in the database. Not a 500:
+		// it is invalid data, and the message has to say so on the screen.
 		http.Error(w, "grafo invalido: "+err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 
 	resp := respostaGrafo{
 		Slug: def.Slug, RunID: runID, Status: status,
-		// `failed` NAO entra: a maquina de estados da secao 7 permite
-		// failed -> retrying, entao o cliente ainda precisa consultar (mais
-		// devagar). Marcar failed como terminal congelaria a tela no meio de um
-		// retry em andamento.
+		// `failed` does NOT count: §7's state machine allows failed -> retrying,
+		// so the client still has to poll (more slowly). Marking failed as
+		// terminal would freeze the screen in the middle of a retry.
 		Terminal: status == "success" || status == "canceled",
 		Nodes:    []noFlow{}, Edges: []arestaFlow{},
 	}
 
 	nao := false
 	for nivel, ids := range niveis {
-		// A coluna e medida antes de ser desenhada: as alturas variam, entao
-		// centralizar exige saber o total.
+		// The column is measured before it is drawn: the heights vary, so
+		// centring requires knowing the total.
 		alturas := make([]int, len(ids))
 		total := (len(ids) - 1) * folgaVertical
 		for i, id := range ids {
@@ -179,8 +178,9 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 				if e.ExitCode != nil {
 					dados["exit_code"] = *e.ExitCode
 				}
-				// O selo. Ele existe porque foi OBSERVADO: o passo se anunciou.
-				// Nada no YAML o produz, entao ele nao tem como mentir.
+				// The badge. It exists because it was OBSERVED: the step announced
+				// itself. Nothing in the YAML produces it, so it has no way to
+				// lie.
 				if e.SdkVersao != "" {
 					dados["sdk"] = e.SdkVersao
 				}
@@ -192,21 +192,21 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 				Data:     dados,
 			}
 			if len(e.Etapas) > 0 {
-				// O grupo precisa de tamanho declarado: o React Flow posiciona
-				// os filhos em relacao a ele, e sem tamanho eles vazam.
+				// The group needs a declared size: React Flow positions the
+				// children relative to it, and without a size they spill out.
 				passo.Style = map[string]any{"width": larguraNo, "height": alturas[i]}
 			}
 			resp.Nodes = append(resp.Nodes, passo)
 
-			// Os filhos vem DEPOIS do pai no array: o React Flow exige.
+			// The children come AFTER the parent in the array: React Flow requires it.
 			for j, et := range e.Etapas {
 				resp.Nodes = append(resp.Nodes, noFlow{
 					ID: id + "::" + et.Nome, Type: "etapa",
 					ParentID: id, Extent: "parent",
 					Position: posicao{X: 10, Y: topoDasEtapas + j*alturaEtapa},
-					// Clicar numa etapa seleciona o PASSO: o painel de detalhes
-					// e do passo, e uma etapa selecionavel abriria um painel
-					// vazio.
+					// Clicking a phase selects the STEP: the details panel belongs
+					// to the step, and a selectable phase would open an empty
+					// one.
 					Selectable: &nao, Draggable: &nao,
 					Data: map[string]any{
 						"nome": et.Nome, "estado": et.Estado,
@@ -221,8 +221,9 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 	for _, e := range def.Edges {
 		resp.Edges = append(resp.Edges, arestaFlow{
 			ID: e.From + "->" + e.To, Source: e.From, Target: e.To,
-			// So anima a aresta que chega no que esta correndo agora: animar
-			// tudo vira ruido e some com a informacao.
+			// Only the edge arriving at what is running now is animated:
+			// animating everything turns into noise and buries the
+			// information.
 			Animated: estados[e.To].Status == "running",
 		})
 	}
@@ -242,7 +243,7 @@ func acharNo(nodes []wf.Node, id string) wf.Node {
 	return wf.Node{}
 }
 
-// rotuloDaAcao e a segunda linha do card: o que o no faz, nao como se chama.
+// rotuloDaAcao is the card's second line: what the node does, not what it is called.
 func rotuloDaAcao(n wf.Node) string {
 	if n.Action != "" {
 		return n.Action

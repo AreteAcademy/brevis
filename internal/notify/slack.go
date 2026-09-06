@@ -1,14 +1,14 @@
-// Package notify avisa quando uma execucao falha.
+// Package notify warns when a run fails.
 //
-// Existe porque era a maior ausencia frente ao Kestra: os 51 flows daquele
-// repositorio tinham, cada um, o MESMO bloco `errors: alert_slack` copiado —
-// vinte linhas de payload repetidas cinquenta vezes. Aqui o alerta e uma
-// propriedade da INSTALACAO: configura-se o webhook uma vez e todo workflow
-// passa a avisar, com opcao de silenciar um.
+// It exists because it was the biggest gap against Kestra: the 51 flows in that
+// repository each carried the SAME copied `errors: alert_slack` block -- twenty
+// lines of payload repeated fifty times. Here the alert is a property of the
+// INSTALLATION: configure the webhook once and every workflow starts warning,
+// with the option to silence one.
 //
-// O webhook nao vem do YAML do workflow de proposito. Ele e uma credencial: quem
-// tiver acesso a URL posta no canal como se fosse a plataforma, e um arquivo de
-// pipeline nao e lugar para isso.
+// The webhook does not come from the workflow's YAML, on purpose. It is a
+// credential: whoever has the URL posts in the channel as if they were the
+// platform, and a pipeline file is no place for that.
 package notify
 
 import (
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-// Alerta e o que se conta sobre uma falha.
+// Alerta is what gets told about a failure.
 type Alerta struct {
 	Workflow    string
 	RunID       string
@@ -32,38 +32,40 @@ type Alerta struct {
 	LogicalDate *time.Time
 	Erro        string
 
-	// Passo e o node que falhou. Vem como campo proprio, e nao so embutido no
-	// texto do erro, porque e a primeira coisa que quem esta de plantao procura:
-	// "qual passo?" antes de "por que?".
+	// Passo is the node that failed. It arrives as a field of its own, and not
+	// only embedded in the error text, because it is the first thing whoever is
+	// on call looks for: "which step?" before "why?".
 	Passo string
 
-	// TrechoDoLog sao as ultimas linhas da saida daquele passo, lidas de
-	// `task_runs.log`. Sem isto o alerta diz que algo falhou; com isto ele diz o
-	// que falhou e por que, sem ninguem precisar abrir a tela as 4h.
+	// TrechoDoLog is the last few lines of that step's output, read from
+	// `task_runs.log`. Without it the alert says something failed; with it the
+	// alert says what failed and why, without anyone opening the screen at
+	// 4am.
 	TrechoDoLog string
 
-	// Tags do workflow viram os campos "Dominio" e "Pipeline" da mensagem — no
-	// Kestra isso vinha de `labels`, e e o que faz o alerta ser acionavel sem
-	// abrir a tela.
+	// The workflow's tags become the message's "Domain" and "Pipeline" fields --
+	// in Kestra that came from `labels`, and it is what makes an alert
+	// actionable without opening the screen.
 	Tags []string
 
-	// URLBase da UI, para o link direto da execucao. Vazia = sem link.
+	// URLBase of the UI, for the run's direct link. Empty means no link.
 	URLBase string
 }
 
-// Notificador manda o alerta. Interface pequena para que o dispatcher nao
-// conheca Slack — e para que o teste nao precise de rede.
+// Notificador sends the alert. A small interface so the dispatcher knows nothing
+// of Slack -- and so the test needs no network.
 type Notificador interface {
 	Falhou(ctx context.Context, a Alerta) error
 }
 
-// Slack posta num Incoming Webhook.
+// Slack posts to an Incoming Webhook.
 type Slack struct {
 	Webhook string
 	Cliente *http.Client
 
-	// Ambiente aparece no cabecalho ("prod", "dev"). Sem isso, um alerta de
-	// homologacao as tres da manha e indistinguivel de um de producao.
+	// Ambiente appears in the header ("prod", "dev"). Without it, a staging
+	// alert at three in the morning is indistinguishable from a production
+	// one.
 	Ambiente string
 }
 
@@ -71,13 +73,13 @@ func NovoSlack(webhook, ambiente string) *Slack {
 	return &Slack{
 		Webhook:  webhook,
 		Ambiente: ambiente,
-		// Timeout curto: avisar e importante, mas travar o dispatcher esperando
-		// o Slack seria trocar um incidente por outro.
+		// A short timeout: warning matters, but jamming the dispatcher waiting on
+		// Slack would trade one incident for another.
 		Cliente: &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
-// Falhou posta a mensagem.
+// Falhou posts the message.
 func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 	if s.Webhook == "" {
 		return nil
@@ -99,9 +101,9 @@ func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode >= 300 {
-		// O Slack responde texto puro ("invalid_payload", "no_service"), nao
-		// JSON. Repassar o corpo e o que permite distinguir webhook revogado de
-		// payload malformado sem abrir o navegador.
+		// Slack answers with plain text ("invalid_payload", "no_service"), not
+		// JSON. Passing the body through is what lets one tell a revoked webhook
+		// from a malformed payload without opening a browser.
 		motivo, _ := io.ReadAll(io.LimitReader(res.Body, 512))
 		return fmt.Errorf("slack respondeu %s: %s", res.Status, strings.TrimSpace(string(motivo)))
 	}
@@ -126,14 +128,15 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		campos = append(campos, campo(fmt.Sprintf("*Tentativas:*\n%d", a.Tentativas)))
 	}
 	if a.LogicalDate != nil {
-		// O FUSO vai junto, e nao e enfeite: o mesmo evento renderiza
-		// "01:00" na maquina de quem desenvolve (UTC-3) e "04:00" no pod
-		// (UTC), porque Local() e o fuso de QUEM FORMATA. Sem o marcador,
-		// duas pessoas comparando a mesma falha as tres da manha discordam
-		// sobre a hora dela.
+		// The TIMEZONE travels with it, and that is not decoration: the same
+		// event renders "01:00" on the developer's machine (UTC-3) and "04:00"
+		// in the pod (UTC), because Local() is the timezone of WHOEVER FORMATS.
+		// Without the marker, two people comparing the same failure at three in
+		// the morning disagree about when it happened.
 		//
-		// Continua sendo Local(), e nao UTC fixo: quem opera decide, pondo TZ
-		// no deployment -- e agora a mensagem diz qual foi a decisao.
+		// It stays Local(), and not fixed UTC: whoever operates decides, by
+		// setting TZ on the deployment -- and now the message says which
+		// decision that was.
 		campos = append(campos, campo("*Data lógica:*\n"+
 			a.LogicalDate.Local().Format("02/01/2006 15:04 MST")))
 	}
@@ -147,16 +150,18 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 	}
 
 	if a.Erro != "" {
-		// A mensagem de erro ja carrega as ultimas linhas de stderr; cortar em
-		// 900 caracteres evita o limite de 3000 do bloco do Slack, que faria a
-		// mensagem inteira ser recusada em vez de truncada.
+		// The error message already carries the last lines of stderr; cutting at
+		// 900 characters stays under Slack's 3000-character block limit, which
+		// would otherwise make the whole message be refused rather than
+		// truncated.
 		blocos = append(blocos, bloco{"type": "section", "text": bloco{
 			"type": "mrkdwn", "text": "```" + truncar(a.Erro, 900) + "```",
 		}})
 	}
-	// O log entra DEPOIS do erro e separado dele: o erro e a conclusao, o log e
-	// a evidencia. Juntos num bloco so, o Slack corta os dois no mesmo limite e
-	// costuma sobrar a evidencia sem a conclusao.
+	// The log goes in AFTER the error and separate from it: the error is the
+	// conclusion, the log is the evidence. In a single block Slack cuts both at
+	// the same limit, and what usually survives is the evidence without the
+	// conclusion.
 	if a.TrechoDoLog != "" {
 		blocos = append(blocos, bloco{"type": "section", "text": bloco{
 			"type": "mrkdwn", "text": "*Últimas linhas:*\n```" + truncar(a.TrechoDoLog, 900) + "```",
@@ -170,9 +175,9 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 	}
 
 	return map[string]any{
-		// `text` fora dos blocos e o que aparece na notificacao do celular e na
-		// lista de canais. Sem ele o Slack mostra "This content can't be
-		// displayed" no preview.
+		// `text` outside the blocks is what shows in the phone notification and
+		// in the channel list. Without it Slack shows "This content can't be
+		// displayed" in the preview.
 		"text":   fmt.Sprintf(":rotating_light: %s falhou", a.Workflow),
 		"blocks": blocos,
 	}

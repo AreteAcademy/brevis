@@ -5,26 +5,27 @@ import (
 	"strings"
 )
 
-// marcaDoSDK e o prefixo que o SDK usa para falar com o motor pelo stdout.
+// marcaDoSDK is the prefix the SDK uses to speak to the engine through stdout.
 //
-// O cano ja existia: o executor acompanha o log do pod enquanto o container
-// vive, e este laco ve toda linha, uma a uma. Reconhecer aqui -- e nao no
-// executor -- faz o executor LOCAL ganhar o mesmo de graca, porque este codigo
-// nao sabe qual deles produziu o evento.
+// The pipe already existed: the executor follows the pod's log while the
+// container lives, and this loop sees every line, one by one. Recognising it
+// here -- and not in the executor -- makes the LOCAL executor get the same for
+// free, because this code does not know which of them produced the event.
 const marcaDoSDK = "@brevis:"
 
-// tetoDeEtapas limita quantas transicoes um passo pode registrar.
+// tetoDeEtapas caps how many transitions one step may record.
 //
-// O stream de log vira escrita em banco aqui. Sem teto, um pipeline em laco
-// derrubaria o Postgres pelo caminho do log -- e o log e justamente o que nao
-// pode parar de funcionar quando algo esta errado. O SDK ja se limita; este e o
-// teto de quem nao confia no que veio pelo cano.
+// The log stream becomes a database write here. Without a cap, a pipeline in a
+// loop would take Postgres down through the log path -- and the log is precisely
+// what must not stop working when something is wrong. The SDK caps itself; this
+// is the cap of somebody who does not trust what came down the pipe.
 const tetoDeEtapas = 60
 
-// Etapa e uma fase de um passo do SDK, como ela esta agora.
+// Etapa is one phase of an SDK step, as it stands now.
 //
-// EtapaGravada e o mesmo tipo sob o nome pelo qual ele atravessa o banco: e o
-// que um teste de fora do pacote precisa para conferir o que foi gravado.
+// EtapaGravada is the same type under the name it travels through the database
+// with: it is what a test outside this package needs to check what was
+// recorded.
 type Etapa struct {
 	Nome    string         `json:"nome"`
 	Estado  string         `json:"estado"`
@@ -33,43 +34,44 @@ type Etapa struct {
 	Numeros map[string]any `json:"numeros,omitempty"`
 }
 
-// etapasConhecidas e uma lista fechada de proposito: uma etapa que este motor
-// nao conhece e ignorada, em vez de virar um bloco sem sentido na tela.
-// EtapaGravada e o formato em que uma Etapa vai para o JSONB.
+// etapasConhecidas is a closed list on purpose: a phase this engine does not
+// know is ignored, rather than becoming a meaningless box on the screen.
+// EtapaGravada is the shape an Etapa takes in the JSONB column.
 type EtapaGravada = Etapa
 
 var etapasConhecidas = map[string]bool{
 	"check": true, "extract": true, "transform": true, "load": true,
 }
 
-// coletorDeEtapas monta o estado das etapas a partir das linhas marcadas.
+// coletorDeEtapas builds the phases' state out of the marked lines.
 //
-// Uma etapa e UMA entrada que muda de estado, e nao duas linhas de historico:
-// a tela mostra quatro blocos, nao um diario.
+// A phase is ONE entry that changes state, not two lines of history: the screen
+// shows four boxes, not a diary.
 type coletorDeEtapas struct {
 	Versao string
 	Etapas []Etapa
 	vistos int
 }
 
-// linha consome uma linha de log. Devolve true quando ela era uma marca -- e
-// nesse caso ela NAO deve entrar no log do passo: quem olha a tela quer ver
-// etapas, nao JSON no console.
+// linha consumes one log line. It returns true when the line was a marker -- and
+// in that case it must NOT enter the step's log: whoever looks at the screen
+// wants to see phases, not JSON in a console.
 func (c *coletorDeEtapas) linha(msg string) bool {
 	corpo, ok := strings.CutPrefix(msg, marcaDoSDK)
 	if !ok {
 		return false
 	}
 
-	// DOIS formatos, e o segundo e uma ponte com data de validade.
+	// TWO formats, and the second is a bridge with an expiry date.
 	//
-	// O SDK ate a v0.47.0 falava em portugues: {"tipo":"etapa","nome",
-	// "estado","versao","em"}. Da v0.48.0 em diante fala ingles:
-	// {"type":"stage","name","state","version","at"}. Um motor que so
-	// entendesse o novo faria as etapas de um fetcher antigo sumirem da tela --
-	// sem erro, sem log, so a caixa cinza de volta.
+	// The SDK up to v0.47.0 spoke Portuguese: {"tipo":"etapa","nome","estado",
+	// "versao","em"}. From v0.48.0 on it speaks English: {"type":"stage","name",
+	// "state","version","at"}. An engine that only understood the new one would
+	// make an older fetcher's phases vanish from the screen -- no error, no log,
+	// just the grey box back.
 	//
-	// A ponte sai quando nao houver fetcher em producao abaixo da v0.48.0.
+	// The bridge goes away once no fetcher below v0.48.0 remains in
+	// production.
 	var ev struct {
 		Tipo   string `json:"type"`
 		Versao string `json:"version"`
@@ -85,20 +87,21 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 		EmPT     string `json:"em"`
 	}
 	if err := json.Unmarshal([]byte(corpo), &ev); err != nil {
-		// Uma marca ilegivel volta a ser log: esconde-la faria sumir da tela a
-		// unica pista de que algo esta escrevendo lixo no lugar errado.
+		// An unreadable marker goes back to being a log line: hiding it would
+		// remove from the screen the only clue that something is writing
+		// rubbish in the wrong place.
 		return false
 	}
 
-	// O formato antigo preenche os campos novos, e o resto do codigo so
-	// enxerga um formato.
+	// The old format fills in the new fields, and the rest of the code sees only
+	// one format.
 	if ev.Tipo == "" {
 		ev.Tipo, ev.Versao = traduzirTipo(ev.TipoPT), ev.VersaoPT
 		ev.Nome, ev.Estado, ev.Em = ev.NomePT, ev.EstadoPT, ev.EmPT
 	}
 
 	if c.vistos >= tetoDeEtapas {
-		return true // consumida, mas nao registrada
+		return true // consumed, but not recorded
 	}
 	c.vistos++
 
@@ -119,7 +122,7 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 	return true
 }
 
-// aplicar substitui a etapa de mesmo nome, mantendo a ordem de chegada.
+// aplicar replaces the phase of the same name, keeping arrival order.
 func (c *coletorDeEtapas) aplicar(e Etapa) {
 	for i := range c.Etapas {
 		if c.Etapas[i].Nome == e.Nome {
@@ -130,11 +133,11 @@ func (c *coletorDeEtapas) aplicar(e Etapa) {
 	c.Etapas = append(c.Etapas, e)
 }
 
-// camposReservados sao os que viram colunas proprias da Etapa; o resto do
-// objeto e numero que a etapa produziu.
+// camposReservados are the ones that become the Etapa's own columns; the rest of
+// the object is numbers the phase produced.
 var camposReservados = map[string]bool{
 	"type": true, "name": true, "state": true, "ms": true, "at": true, "version": true,
-	// Os do formato antigo; ver coletorDeEtapas.linha.
+	// The old format's; see coletorDeEtapas.linha.
 	"tipo": true, "nome": true, "estado": true, "em": true, "versao": true,
 }
 
@@ -154,10 +157,10 @@ func numerosDe(corpo string) map[string]any {
 	return tudo
 }
 
-// traduzirTipo mapeia o tipo do formato antigo. Ver coletorDeEtapas.linha.
+// traduzirTipo maps the old format's type. See coletorDeEtapas.linha.
 func traduzirTipo(pt string) string {
 	if pt == "etapa" {
 		return "stage"
 	}
-	return pt // "sdk" e igual nos dois
+	return pt // "sdk" is the same in both
 }
