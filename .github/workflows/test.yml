@@ -207,9 +207,15 @@ jobs:
         env:
           BREVIS_IT_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
           BREVIS_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
+          # The queue's own tests read THIS one, and CI never set it: 14 of the
+          # 15 in dispatcher_test.go skipped, so the claim path, the
+          # per-workflow limit, the backoff and the orphan recovery ran on a
+          # laptop and nowhere else. The job was green the whole time.
+          BREVIS_TEST_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
         run: |
           go run ./cmd/brevis migrate up
           go test -v -timeout 10m -run Integration ./internal/...
+          go test -v -timeout 10m ./internal/scheduler/ ./internal/queue/
 
       - name: Say what did not run
         if: env.GCP_CREDENTIALS == ''
@@ -318,14 +324,19 @@ jobs:
           go vet ./...
           echo "✅ engine builds"
 
-      - name: Build the SDK CLI
+      - name: Build and test the SDK CLI
         run: |
           # Its own module, so it pins a released SDK and only breaks on a
           # bump. Nothing else would catch it.
+          #
+          # `go test` and not only build: the `load` command shipped reading
+          # NOTHING from stdin -- it loaded zero rows and printed "Load
+          # completed" -- and a build plus a vet had nothing to say about it.
           cd cmd/brevis-sdk
           go build ./...
           go vet ./...
-          echo "✅ SDK CLI builds"
+          go test ./... -count=1
+          echo "✅ SDK CLI builds and passes""
 
       - name: Build and test examples
         run: |

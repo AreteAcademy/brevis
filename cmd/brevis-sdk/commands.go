@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -116,8 +118,21 @@ Examples:
 			log.Fatalf("Create loader failed: %v", err)
 		}
 
-		// TODO: read from stdin and parse NDJSON
-		envelopes := []sdk.Envelope{}
+		envelopes, err := lerNDJSON(cmd.InOrStdin())
+		if err != nil {
+			log.Fatalf("Reading stdin: %v", err)
+		}
+
+		// Nothing on stdin is refused, not loaded.
+		//
+		// This command used to read nothing at all: it built an empty slice,
+		// loaded zero rows, and printed "Load completed / Rows: 0". A pipe whose
+		// upstream produced nothing looked exactly like a pipe that worked, and
+		// the help text promised it read NDJSON from stdin.
+		if len(envelopes) == 0 {
+			log.Fatal("nothing on stdin: this command loads the NDJSON piped into it, " +
+				"one JSON object per line")
+		}
 
 		result, err := loader.Load(ctx, envelopes...)
 		if err != nil {
@@ -263,6 +278,30 @@ func init() {
 //
 // O CLI não compõe linha nenhuma, então ele só declara o que o chamador
 // mandou; um lote sem essas colunas é recusado com o erro que as nomeia.
+// lerNDJSON reads one JSON object per line, in order.
+//
+// A Decoder rather than a Scanner: a Scanner has a line-length limit that stops
+// reading in SILENCE when a record crosses it, and a landing record with a large
+// payload crosses 64 KB more often than it seems.
+//
+// The line number goes into the error because a malformed record among thousands
+// is unfindable without it.
+func lerNDJSON(r io.Reader) ([]sdk.Envelope, error) {
+	dec := json.NewDecoder(r)
+	var out []sdk.Envelope
+	for linha := 1; ; linha++ {
+		var payload any
+		err := dec.Decode(&payload)
+		if errors.Is(err, io.EOF) {
+			return out, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", linha, err)
+		}
+		out = append(out, sdk.Envelope{Payload: payload})
+	}
+}
+
 func columnsFor(metadata bool) []string {
 	if !metadata {
 		return nil
