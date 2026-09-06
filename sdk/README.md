@@ -613,6 +613,56 @@ What it guarantees:
 
 `Result.CheckpointReused` says whether the vendor's quota was actually spared.
 
+## Seeing what would land, before it lands
+
+```
+$ ./fetcher -dry-run
+
+dry-run weather-daily -> ./landing/daily/ (9 records, 1 page(s), 1 attempt(s), 812ms)
+  map              216 ->       216
+  aggregate        216 ->         9   (9 groups)
+  map                9 ->         9
+
+{"day":"2026-09-04","temp_mean":20.88,"ingestion_id":"f062785c-…"}
+...
+```
+
+`-dry-run` runs **the same assembly the real run does**: the same stages, in the
+same order, with the same refusals. What it prints is what would land, record for
+record — there is a test that asserts exactly that, because the two paths drifted
+once and the preview showed the source's raw rows with the same confidence.
+
+It does not call the destination, on purpose: that needs credentials a laptop may
+not have, and a preview that demanded BigQuery access to print five rows would
+stop being the cheap check it exists to be.
+
+The per-stage counts are the point. "9 records" says nothing about where the
+other two hundred went.
+
+## Testing what you wrote
+
+The two extension points are testable without a request and without a
+destination.
+
+**`Records`** is where the vendor logic lives — the guard against a 200 that
+carries an error, the shape of the payload, the expansion:
+
+```go
+r := sdk.NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)
+_, err := minhaLeitura(r)   // expects a Reject
+```
+
+The third argument mirrors the driver's `PreserveNumbers`, and it is not a
+detail: with it off, `19` and `19.0` are the same `float64`, and a key composed
+from them differs from production's.
+
+**A chain of transformers** runs over a `Data` you build:
+
+```go
+d := &sdk.Data{Records: minhaSequencia}
+out := sdk.Transform(d, sdk.Compute("b", ...))
+```
+
 ## Aggregating without losing the memory promise
 
 ```go

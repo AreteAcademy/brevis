@@ -136,6 +136,28 @@ func ArrayAt(path ...string) Expander {
 	}
 }
 
+// NewResponse builds a Response, so the Records function you wrote can be
+// tested.
+//
+// You do not need this in production: from.HTTP builds one for every page and
+// hands it to Records. It exists because Records is where the vendor logic
+// lives -- the guard against a 200 that carries an error, the shape of the
+// payload, the expansion -- and until now that logic could only be exercised by
+// making a real request.
+//
+//	r := sdk.NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)
+//	_, err := minhaLeitura(r)   // expects a Reject
+//
+// preserveNumbers has to be here, and it is not a detail: it mirrors the
+// driver's PreserveNumbers, and with it off `1` and `1.0` both arrive as
+// float64. A test that could not set it would pass while production composed a
+// different key.
+//
+// Set Header and URL on the returned value when the fetcher reads them.
+func NewResponse(status int, body []byte, preserveNumbers bool) Response {
+	return core.NewResponse(status, nil, "", body, preserveNumbers)
+}
+
 // RejectIf rejects a response whose body carries one of these fields set to a
 // truthy value. Plenty of APIs answer 200 with {"error": true} -- unchecked,
 // that document lands in the warehouse as if it were data.

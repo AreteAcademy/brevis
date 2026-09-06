@@ -130,3 +130,62 @@ read by prefix with a loud failure when no such column exists.
 That is a point in favour of `Stages` and of the CSV support that came with it —
 which is why this report ends as a request to finish them, not to reconsider
 them.
+
+---
+
+## 6. What the execution changed (2026-09-06, `sdk/v0.50.0`)
+
+Executed. Five reverts bite. Three things the report did not have.
+
+### 6.1 §1 is worse than described
+
+The dry-run does not "ignore `Stages`": declaring `Stages` next to `Transform`
+is an error, so on a `Stages` pipeline `p.Transform` is **empty** and the
+dry-run applied **nothing at all**.
+
+### 6.2 The defect is older than `Stages`
+
+`Reduce` shipped in `v0.46.0` and desugars into stages, and `runDryRun` never
+called `p.stages()`. A `Reduce` pipeline's dry-run has been printing
+unaggregated rows since then. Framing this as a `Stages` bug would have left
+that out of both the fix and the changelog.
+
+### 6.3 The dry-run also skipped validation
+
+`runPipeline` calls `p.stages()`, `st.validate()` and `checkDestination()`. The
+dry-run called none. A `Median`, an incomplete `Custom`, or `Stages` next to
+`Transform` passed the preview and failed only on the real run — the check
+existed and was not on the path people use to check.
+
+### 6.4 Where I disagreed with §2
+
+The report offers `ApplyStages` **or** fixing the dry-run, "one is enough".
+Neither closes the hole that repeats, and §3 names the pattern but draws a
+principle where a **test** was needed.
+
+The comment inside `runDryRun` already said:
+
+> *a dry-run that printed untransformed records would show a payload -- and an
+> ingestion_id -- that is not what lands*
+
+which is exactly what it did. A comment asserting a property the code had lost
+is what let this survive review. So the fix is not only "apply the stages": it
+is that both paths call the same two functions, plus a test that asserts the
+dry-run and the run produce the same records. Without it the fix has an expiry
+date.
+
+`ApplyStages` was **not** added: with a correct dry-run and a usable `Data`, it
+adds no capability -- only another door to maintain.
+
+### 6.5 A fourth hole, which §2 understates
+
+`Transform` is exported, takes an exported struct with an exported field, and
+**segfaulted** when a consumer built one:
+
+```go
+d := &sdk.Data{Records: mySequence}
+sdk.Transform(d, ...)   // panic: nil pointer dereference
+```
+
+So it was not only `Stages` that could not be exercised from outside. The
+release criterion in §3 is right, and it should have caught this too.

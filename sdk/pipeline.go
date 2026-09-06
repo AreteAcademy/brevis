@@ -166,20 +166,10 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
 	// coluna nao bate significa ter gasto a janela inteira para isso.
 	rep.started(PhaseCheck)
-	// The stages are checked alongside the destination, and for the same
-	// reason: an aggregator that does not exist, a name that collides, or
-	// Stages declared next to Transform are assembly errors -- and finding
-	// them after the extract would cost the vendor's window.
-	stages, err := p.stages()
+	stages, err := p.montar()
 	if err != nil {
 		rep.finished(PhaseCheck, StateFailed, nil)
 		return err
-	}
-	for _, st := range stages {
-		if err := st.validate(); err != nil {
-			rep.finished(PhaseCheck, StateFailed, nil)
-			return err
-		}
 	}
 	if err := checkDestination(ctx, p.Target); err != nil {
 		rep.finished(PhaseCheck, StateFailed, nil)
@@ -194,16 +184,6 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		return err
 	}
 
-	// As etapas sao medidas onde o trabalho ACONTECE, e nao onde a chamada
-	// aparece no codigo. A cadeia e preguicosa: Extract devolve um iterador e
-	// quem o puxa e o Load, entao cronometrar as tres chamadas diria "extract:
-	// 3ms" numa extracao de quarenta minutos.
-	//
-	// O extract acaba quando o fluxo se esgota. O transform nao tem relogio
-	// proprio -- ele roda por registro, entremeado -- entao ele nao reporta
-	// duracao nenhuma: um numero ausente e melhor que um numero errado. O que
-	// ele reporta e o que so ele sabe, quantos registros entraram e quantos
-	// sairam.
 	// The stages are measured where the work HAPPENS, not where the call
 	// appears in the code. The chain is lazy: Extract returns an iterator and
 	// the Load is what pulls it, so timing the three calls would report
@@ -214,16 +194,13 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// all: a missing number beats a wrong one. What it reports is what only it
 	// knows, how many records went in and how many came out.
 	contagens := make([]StageResult, len(stages))
-	origem := p.Source.From.Describe()
 
 	if rep.on {
 		var entraram int64
 		data.Records = counting(data.Records, &entraram, func() {})
 		data.Records = aoPrimeiro(data.Records, func() { rep.started(PhaseTransform) })
 	}
-	for i, st := range stages {
-		data.Records = st.apply(data.Records, &contagens[i], origem)
-	}
+	aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
 	if rep.on {
 		data.Records = aoEsgotar(data.Records, func() {
 			rep.finished(PhaseExtract, StateDone, extractNumbers(data))
@@ -270,6 +247,43 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	}
 	rep.finished(PhaseLoad, estado, loadNumbers(res))
 	return err
+}
+
+// montar resolves the stages and refuses what cannot run.
+//
+// It is PURE: no I/O, so the -dry-run can call exactly the same thing the real
+// run calls. An aggregator that does not exist, a name that collides with a
+// group field, or Stages declared next to Transform are assembly errors, and
+// finding them after the extract would cost the vendor's window.
+func (p *Pipeline) montar() ([]Stage, error) {
+	if err := p.Target.validate(); err != nil {
+		return nil, err
+	}
+	stages, err := p.stages()
+	if err != nil {
+		return nil, err
+	}
+	for _, st := range stages {
+		if err := st.validate(); err != nil {
+			return nil, err
+		}
+	}
+	return stages, nil
+}
+
+// aplicarEstagios wires the stages onto the stream, in order, counting what
+// passes through each.
+//
+// The run and the -dry-run call THIS, and not two similar loops. That is the
+// whole point: the dry-run used to apply `p.Transform` on its own, which is
+// empty whenever Stages is declared -- so a Stages pipeline's preview showed
+// the source's raw rows and called them records, with no warning. A preview
+// that answers a different question with the same confidence is worse than no
+// preview, because it is what people run INSTEAD of writing.
+func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, origem string) {
+	for i, st := range stages {
+		data.Records = st.apply(data.Records, &contagens[i], origem)
+	}
 }
 
 // aoPrimeiro warns when the first record goes through -- which is when the
@@ -350,13 +364,28 @@ func checkDestination(ctx context.Context, t Target) error {
 func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	start := time.Now()
 
+	// The SAME assembly the real run does. A -dry-run that skipped it would
+	// pass on a pipeline the run refuses -- and the refusal is the whole point
+	// of checking before writing.
+	//
+	// checkDestination is NOT called here, and that is deliberate: it asks the
+	// destination, which needs credentials a laptop may not have. A -dry-run
+	// that demanded BigQuery access to print five rows would stop being the
+	// cheap check it exists to be.
+	stages, err := p.montar()
+	if err != nil {
+		return err
+	}
+
 	data, err := Extract(ctx, p.Source)
 	if err != nil {
 		return err
 	}
-	// Transform runs here too: a dry-run that printed untransformed records
+
+	// The stages run here too: a dry-run that printed untransformed records
 	// would show a payload -- and an ingestion_id -- that is not what lands.
-	data = Transform(data, p.Transform...)
+	contagens := make([]StageResult, len(stages))
+	aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
 
 	// Provenance must be stamped the same way Load would, or the printed
 	// ingestion_id would not be the one that lands.
@@ -366,9 +395,21 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	}
 
 	stats := data.Stats()
-	_, _ = fmt.Fprintf(os.Stdout, "dry-run %s -> %s (%d records, %d page(s), %d attempt(s), %s)\n\n",
+	_, _ = fmt.Fprintf(os.Stdout, "dry-run %s -> %s (%d records, %d page(s), %d attempt(s), %s)\n",
 		p.name(), p.Target.To.Describe(), len(envelopes), stats.Pages, stats.Attempts,
 		time.Since(start).Round(time.Millisecond))
+
+	// Per stage, because "5,515 records" says nothing about where the other six
+	// million went. With this, finding out is one line instead of bisecting the
+	// pipeline by hand.
+	for _, c := range contagens {
+		linha := fmt.Sprintf("  %-10s %9d -> %9d", c.Kind, c.In, c.Out)
+		if c.Kind == StageAggregate {
+			linha += fmt.Sprintf("   (%d groups)", c.Groups)
+		}
+		_, _ = fmt.Fprintln(os.Stdout, linha)
+	}
+	_, _ = fmt.Fprintln(os.Stdout)
 
 	for i, env := range envelopes {
 		if i == n {

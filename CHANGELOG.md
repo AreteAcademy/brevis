@@ -10,6 +10,70 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.50.0] — 2026-09-06
+
+Executa `docs/plan/2026-09-06-sdk-stages-are-unverifiable.md`.
+
+### Corrigido: o `-dry-run` não aplicava os estágios
+
+E era pior do que o relatório descreve. Declarar `Stages` junto com `Transform`
+é erro, então num pipeline com `Stages` o `p.Transform` está **vazio** — o
+dry-run não aplicava nada. Ele imprimia as linhas cruas da origem e as chamava
+de registros, sem aviso.
+
+O defeito é mais velho que o `Stages`: o `Reduce` saiu na `v0.46.0` e desaçucara
+em estágios, e o `runDryRun` nunca chamou `p.stages()`. **O dry-run de um
+pipeline com `Reduce` vem mostrando linhas não agregadas desde a v0.46.0.**
+
+E ele também pulava a validação: um `Median`, um `Custom` incompleto ou
+`Stages` junto com `Transform` passavam no dry-run e só falhavam na execução
+real. A conferência existia e não estava no caminho que as pessoas usam para
+conferir.
+
+Os dois caminhos passam a chamar as **mesmas** funções — `montar()` e
+`aplicarEstagios()` — e há um teste que exige que o dry-run e o run produzam os
+mesmos registros. Sem ele, a correção teria prazo de validade: foi um comentário
+afirmando essa propriedade, dentro de um código que já a tinha perdido, que
+deixou o defeito passar.
+
+O `checkDestination` continua fora do dry-run, e isso é deliberado: ele consulta
+o destino, que exige credencial que uma máquina de desenvolvimento pode não ter.
+
+### Adicionado: as contagens por estágio no `-dry-run`
+
+```
+  map              216 ->       216
+  aggregate        216 ->         9   (9 groups)
+```
+
+"9 registros" não diz nada sobre onde foram os outros duzentos.
+
+### Corrigido: `Transform` estourava num `Data` construído à mão
+
+```go
+d := &sdk.Data{Records: minhaSequencia}
+sdk.Transform(d, ...)   // panic: nil pointer dereference
+```
+
+Uma struct exportada, com campo exportado, que estourava quando alguém de fora a
+usava. O `Data` sem driver agora se descreve como `"data"` nas mensagens de erro.
+
+### Adicionado: `sdk.NewResponse`
+
+`Records` é onde mora a lógica de fornecedor, e o `Response` que ela recebe não
+podia ser construído de fora do módulo — então essa lógica só podia ser
+exercitada fazendo uma requisição de verdade.
+
+```go
+r := sdk.NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)
+```
+
+O terceiro argumento espelha o `PreserveNumbers` do driver, e não é detalhe: com
+ele desligado, `19` e `19.0` são o mesmo `float64`, e um teste que não pudesse
+defini-lo passaria enquanto a produção compõe outra chave.
+
+---
+
 ## [0.49.1] — 2026-09-06
 
 ### Mudou: os números das etapas também estão em inglês

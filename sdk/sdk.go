@@ -36,6 +36,21 @@ type Data struct {
 	stats  *core.Stats
 }
 
+// origem names where these records came from, for the error messages.
+//
+// A Data built by hand -- `&sdk.Data{Records: mySequence}` -- has no driver,
+// and reaching for `source.From.Describe()` on it was a nil dereference. That
+// made a struct with an exported field, exported to consumers, panic when they
+// used it: the only way to exercise a Transform chain from a test was to have a
+// real source, which is the same hole that made -dry-run unable to check a
+// Stages pipeline.
+func (d *Data) origem() string {
+	if d == nil || d.source.From == nil {
+		return "data"
+	}
+	return d.source.From.Describe()
+}
+
 // Stats reports what the fetch actually did: pages walked and HTTP attempts
 // spent, retries included. Attempts above Pages means the source was flaky.
 //
