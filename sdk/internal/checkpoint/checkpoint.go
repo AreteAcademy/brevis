@@ -1,19 +1,19 @@
-// Package checkpoint guarda o extract bruto de uma execucao para que uma
-// segunda tentativa da MESMA run nao precise tocar na origem de novo.
+// Package checkpoint keeps a run's raw extract so a second attempt of the SAME
+// run does not have to touch the source again.
 //
-// O ativo protegido e a quota do fornecedor: um extract que gastou 4.803
-// requisicoes e uma janela de 40 minutos nao pode ser refeito porque uma
-// coluna do destino mudou de tipo.
+// The asset it protects is the vendor's quota: an extract that spent 4,803
+// requests and a forty-minute window must not be redone because a column at the
+// destination changed type.
 //
-// O deposito e um diretorio com partes numeradas e um manifesto:
+// The depot is a directory of numbered parts plus a manifest:
 //
-//	{At}/{provider}/{entity}/{run_id}/parte-00000.ndjson
-//	{At}/{provider}/{entity}/{run_id}/parte-00001.ndjson
-//	{At}/{provider}/{entity}/{run_id}/_completo
+//	{At}/{run_id}/{pipeline}/parte-00000.ndjson
+//	{At}/{run_id}/{pipeline}/parte-00001.ndjson
+//	{At}/{run_id}/{pipeline}/_completo
 //
-// O `_completo` e escrito POR ULTIMO e e o que autoriza a retomada. Sem ele o
-// deposito e um extract interrompido, e retomar de um extract interrompido
-// carregaria metade dos dados em silencio -- que e o pior jeito de falhar.
+// `_completo` is written LAST, and it is what authorises a resume. Without it
+// the depot is an interrupted extract, and resuming from an interrupted extract
+// would load half the data in silence -- the worst way to fail.
 package checkpoint
 
 import (
@@ -34,31 +34,32 @@ const (
 	arquivoInicio    = "_inicio"
 	versaoManifesto  = 1
 
-	// bytesPorParte limita a memoria da escrita, nao o tamanho do extract: o
-	// buffer e despejado ao cruzar isto, entao um extract de 40 GB passa por
-	// aqui com 8 MB na mao.
+	// bytesPorParte bounds the writer's memory, not the extract's size: the
+	// buffer is flushed on crossing it, so a 40 GB extract goes through here
+	// holding 8 MB.
 	bytesPorParte = 8 << 20
 )
 
-// Numeros diz como os numeros do payload foram decodificados na origem, e e a
-// unica coisa que faz a volta pelo NDJSON ser fiel.
+// Numeros says how the payload's numbers were decoded at the source, and it is
+// the one thing that makes the round trip through NDJSON faithful.
 //
-// Um payload que veio de um decodificador com UseNumber carrega json.Number,
-// cujo literal `19.0` sobrevive; sem isso a releitura devolveria float64(19) e
-// o asText diria "19" onde a primeira tentativa disse "19.0". Duas tentativas
-// da mesma run produziriam ingestion_id diferentes -- exatamente a garantia
-// que o checkpoint existe para dar.
+// A payload that came from a decoder with UseNumber carries json.Number, whose
+// literal `19.0` survives; without it the re-read would return float64(19) and
+// asText would say "19" where the first attempt said "19.0". Two attempts of the
+// same run would produce different ingestion_ids -- exactly the guarantee the
+// checkpoint exists to give.
 //
-// Nao e declarado por quem configura: e OBSERVADO do proprio fluxo, porque
-// PreserveNumbers e campo do driver e o SDK so ve a interface. Um campo que
-// alguem tivesse de manter em sincronia com o driver seria um campo que um dia
-// fica errado, e o erro sairia calado num id.
+// It is not declared by whoever configures: it is OBSERVED from the stream
+// itself, because PreserveNumbers is a driver field and the SDK only sees the
+// interface. A field somebody had to keep in sync with the driver would be a
+// field that one day goes wrong, and the error would come out silently inside
+// an id.
 const (
 	NumerosFloat   = "float"
 	NumerosLiteral = "literal"
 )
 
-// Manifesto e o `_completo`.
+// Manifesto is the `_completo` object.
 type Manifesto struct {
 	Versao    int      `json:"versao"`
 	Registros int64    `json:"registros"`
@@ -69,7 +70,7 @@ type Manifesto struct {
 	GravadoEm string   `json:"gravado_em"`
 }
 
-// Deposito e um diretorio de checkpoint, no disco ou num object store.
+// Deposito is a checkpoint directory, on disk or in an object store.
 type Deposito struct {
 	caminho string // como foi configurado, para a mensagem
 	bucket  string
@@ -78,8 +79,9 @@ type Deposito struct {
 	store   core.Store // nunca nil: local vira discoLocal
 }
 
-// Novo abre o deposito em caminho. O store segue a regra dos drivers: nil e o
-// disco local, e um esquema que nao casa com o store e erro que nomeia os dois.
+// Novo opens the depot at a path. The store follows the drivers' rule: nil is
+// the local filesystem, and a scheme that does not match the store is an error
+// naming both.
 func Novo(caminho string, store core.Store) (*Deposito, error) {
 	if caminho == "" {
 		return nil, fmt.Errorf("checkpoint sem caminho")
@@ -108,7 +110,7 @@ func Novo(caminho string, store core.Store) (*Deposito, error) {
 	}, nil
 }
 
-// Caminho e o deposito inteiro, do jeito que se cola num navegador.
+// Caminho is the whole depot, in the form you paste into a browser.
 func (d *Deposito) Caminho() string {
 	if d.esquema == "" {
 		return d.prefixo
@@ -118,11 +120,11 @@ func (d *Deposito) Caminho() string {
 
 func (d *Deposito) chave(nome string) string { return d.prefixo + nome }
 
-// Reservar prova que da para gravar ANTES de a extracao comecar.
+// Reservar proves writing works BEFORE the extraction starts.
 //
-// Sem isto a falha mais comum -- credencial sem permissao no bucket -- so
-// apareceria depois de a primeira parte encher, ou seja, depois de ja ter
-// gastado parte da quota que o checkpoint existe para poupar.
+// Without it the most common failure -- a credential without permission on the
+// bucket -- would only surface once the first part filled up, that is, after
+// having already spent part of the quota the checkpoint exists to save.
 func (d *Deposito) Reservar(ctx context.Context, pipeline, run string) error {
 	marca, err := json.Marshal(map[string]string{
 		"pipeline": pipeline, "run": run,
@@ -134,9 +136,9 @@ func (d *Deposito) Reservar(ctx context.Context, pipeline, run string) error {
 	return d.store.Create(ctx, d.bucket, d.chave(arquivoInicio), bytes.NewReader(marca))
 }
 
-// Manifesto le o `_completo`. Ausente ou ilegivel devolve erro: quem chama
-// trata os dois do mesmo jeito -- refazer o extract -- e a mensagem entra no
-// log para nao virar um "refiz e nao disse por que".
+// Manifesto reads `_completo`. Missing or unreadable returns an error: the
+// caller treats both the same way -- redo the extract -- and the message goes to
+// the log so it does not become a "redone, and never said why".
 func (d *Deposito) Manifesto(ctx context.Context) (*Manifesto, error) {
 	r, err := d.store.Open(ctx, d.bucket, d.chave(arquivoManifesto))
 	if err != nil {
@@ -154,15 +156,15 @@ func (d *Deposito) Manifesto(ctx context.Context) (*Manifesto, error) {
 	return &m, nil
 }
 
-// Conferir recusa um deposito que nao esta inteiro, ANTES de a carga comecar.
+// Conferir refuses a depot that is not whole, BEFORE the load starts.
 //
-// Confere o conjunto de partes, e isso basta porque toda parte e escrita de uma
-// vez so -- um PUT unico no object store, um rename no disco. Uma parte que
-// existe e uma parte inteira; o que pode faltar e a parte, nao um pedaco dela.
+// It checks the SET of parts, and that is enough because every part is written
+// in one go -- a single PUT in object storage, a rename on disk. A part that
+// exists is a whole part; what can be missing is the part, not a piece of it.
 //
-// A contagem de registros e conferida na releitura (ver Reler), porque nao ha
-// como saber quantas linhas tem um objeto sem le-lo -- e ler tudo aqui seria
-// ler o extract duas vezes.
+// The record count is checked on the re-read (see Reler), because there is no
+// way to know how many lines an object holds without reading it -- and reading
+// everything here would read the extract twice.
 func (d *Deposito) Conferir(ctx context.Context, m *Manifesto) error {
 	if len(m.Partes) == 0 {
 		if m.Registros == 0 {
@@ -187,10 +189,11 @@ func (d *Deposito) Conferir(ctx context.Context, m *Manifesto) error {
 	return nil
 }
 
-// Reler devolve os registros na ordem em que a extracao os produziu.
+// Reler yields the records in the order the extraction produced them.
 //
-// A ordem sai do manifesto, e nao do List: o manifesto e quem sabe a ordem
-// original, e uma Key posicional muda o ingestion_id se a sequencia mudar.
+// The order comes from the manifest, not from List: the manifest is what knows
+// the original order, and a positional Key changes the ingestion_id if the
+// sequence changes.
 func (d *Deposito) Reler(ctx context.Context, m *Manifesto) iter.Seq2[core.Envelope, error] {
 	return func(yield func(core.Envelope, error) bool) {
 		var lidos int64
@@ -204,9 +207,9 @@ func (d *Deposito) Reler(ctx context.Context, m *Manifesto) iter.Seq2[core.Envel
 				return // quem consome desistiu
 			}
 		}
-		// A contagem so fecha aqui, e uma divergencia significa objeto
-		// adulterado depois de escrito. Gritar e o certo: seguir calado
-		// carregaria menos linhas do que a primeira tentativa carregou.
+		// The count only closes here, and a divergence means an object was
+		// tampered with after it was written. Shouting is right: carrying on
+		// quietly would load fewer rows than the first attempt loaded.
 		if lidos != m.Registros {
 			yield(core.Envelope{}, fmt.Errorf(
 				"checkpoint corrompido em %s: o manifesto diz %d registros e as partes tem %d",
@@ -254,24 +257,25 @@ type Escrita struct {
 	sabeNumero bool
 }
 
-// Escrever comeca uma escrita no deposito.
+// Escrever starts a write into the depot.
 func (d *Deposito) Escrever() *Escrita {
 	return &Escrita{d: d, numeros: NumerosFloat}
 }
 
-// Add guarda um registro no buffer. So falha se o payload nao serializar, e
-// nesse caso o registro NAO entrou -- a distincao importa para quem degrada,
-// que precisa saber se ainda tem de ceder este registro.
+// Add puts a record in the buffer. It only fails when the payload does not
+// serialise, and then the record did NOT go in -- the distinction matters to
+// whoever degrades, who needs to know whether this record still has to be
+// yielded.
 func (e *Escrita) Add(env core.Envelope) error {
 	data, err := json.Marshal(env.Payload)
 	if err != nil {
 		return fmt.Errorf("registro %d do checkpoint: %w", e.gravados+e.noBuffer, err)
 	}
 
-	// Uma vez descoberto, nunca mais: o decodificador e fixo por origem, entao
-	// o primeiro numero que aparecer decide o modo do fluxo inteiro. Ate la a
-	// busca para no primeiro numero encontrado, e um payload sem numero nenhum
-	// nao custa nada porque nao ha o que preservar.
+	// Once discovered, never again: the decoder is fixed per source, so the
+	// first number that turns up decides the mode for the whole stream. Until
+	// then the search stops at the first number found, and a payload with no
+	// numbers at all costs nothing because there is nothing to preserve.
 	if !e.sabeNumero {
 		if achou, literal := formaDoNumero(env.Payload); achou {
 			e.sabeNumero = true
@@ -287,11 +291,11 @@ func (e *Escrita) Add(env core.Envelope) error {
 	return nil
 }
 
-// Cheio diz que ja da para despejar uma parte.
+// Cheio says there is enough to flush a part.
 func (e *Escrita) Cheio() bool { return e.buf.Len() >= bytesPorParte }
 
-// Despejar grava o buffer como uma parte. Se falhar, o buffer fica INTACTO:
-// os registros continuam pendentes, e quem degrada os cede de Pendentes.
+// Despejar writes the buffer as one part. On failure the buffer is left INTACT:
+// the records stay pending, and whoever degrades yields them from Pendentes.
 func (e *Escrita) Despejar(ctx context.Context) error {
 	if e.buf.Len() == 0 {
 		return nil
@@ -307,8 +311,8 @@ func (e *Escrita) Despejar(ctx context.Context) error {
 	return nil
 }
 
-// Finish despeja o que sobrou e escreve o manifesto POR ULTIMO. E o manifesto
-// que transforma um diretorio de partes num checkpoint retomavel.
+// Finish flushes what is left and writes the manifest LAST. It is the manifest
+// that turns a directory of parts into a resumable checkpoint.
 func (e *Escrita) Finish(ctx context.Context, pipeline, run string) error {
 	if err := e.Despejar(ctx); err != nil {
 		return err
@@ -328,9 +332,9 @@ func (e *Escrita) Finish(ctx context.Context, pipeline, run string) error {
 	return nil
 }
 
-// Gravadas descreve o que ja virou parte, para ser relido quando a escrita
-// falhou no meio. A contagem e exata, entao a conferencia de Reler continua
-// valendo neste caminho.
+// Gravadas describes what already became a part, to be re-read when the write
+// failed midway. The count is exact, so Reler's check still holds on this
+// path.
 func (e *Escrita) Gravadas() *Manifesto {
 	return &Manifesto{
 		Versao: versaoManifesto, Registros: e.gravados,
@@ -338,11 +342,11 @@ func (e *Escrita) Gravadas() *Manifesto {
 	}
 }
 
-// Pendentes sao os registros que estao no buffer e nunca chegaram a um objeto.
+// Pendentes are the records sitting in the buffer that never reached an object.
 //
-// Decodifica de volta em vez de guardar uma segunda copia: assim a execucao
-// normal nao paga memoria nenhuma por um caminho que so roda quando o bucket
-// falha no meio.
+// It decodes them back rather than keeping a second copy: that way the normal
+// run pays no memory at all for a path that only executes when the bucket fails
+// midway.
 func (e *Escrita) Pendentes() iter.Seq2[core.Envelope, error] {
 	dados := e.buf.Bytes()
 	numeros := e.numeros
@@ -364,8 +368,8 @@ func (e *Escrita) Pendentes() iter.Seq2[core.Envelope, error] {
 	}
 }
 
-// formaDoNumero procura o primeiro valor numerico do payload e diz se ele veio
-// como literal (json.Number) ou como float64.
+// formaDoNumero looks for the payload's first numeric value and says whether it
+// arrived as a literal (json.Number) or as a float64.
 func formaDoNumero(v any) (achou, literal bool) {
 	switch t := v.(type) {
 	case json.Number:

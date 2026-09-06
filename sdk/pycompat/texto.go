@@ -1,10 +1,11 @@
-// Package pycompat renderiza valores como o Python renderiza, para quem esta
-// portando um fetcher de Python mantendo a MESMA landing e os MESMOS ids.
+// Package pycompat renders values the way Python renders them, for anyone
+// porting a Python fetcher while keeping the SAME landing table and the SAME
+// ids.
 //
-// Ele vive num subpacote, e nao no nucleo, porque e uma PONTE PARA UMA
-// MIGRACAO e nao um conceito de ETL. Um time que comeca um pipeline novo em Go
-// nao tem com o que casar, e a estrutura diz isso: quem precisa importa, quem
-// nao precisa nem sabe que existe.
+// It lives in a subpackage, and not in the core, because it is a BRIDGE FOR A
+// MIGRATION and not an ETL concept. A team starting a new pipeline in Go has
+// nothing to match, and the structure says so: whoever needs it imports it,
+// whoever does not never learns it exists.
 //
 //	Key:       sdk.KeyWith(pycompat.Text, "provider", "id"),
 //	Transform: []sdk.Transformer{sdk.IngestionIDWith(pycompat.Text)},
@@ -18,46 +19,46 @@ import (
 	"strings"
 )
 
-// Text renderiza um valor como o `str()` do Python renderiza.
+// Text renders a value the way Python's `str()` renders it.
 //
-// Ela existe para quem esta portando um fetcher de Python para Go mantendo a
-// MESMA landing e o MESMO ingestion_id. Se o Python fazia `str(record["id"])`
-// para compor a chave, o Go precisa produzir exatamente aquele texto -- senao
-// a mesma leitura recebe um id diferente, e o que aparece do outro lado nao e
-// um erro: e uma linha duplicada depois do merge do bronze.
+// It exists for anyone porting a Python fetcher to Go while keeping the SAME
+// landing table and the SAME ingestion_id. If Python did `str(record["id"])` to
+// compose the key, Go has to produce exactly that text -- otherwise the same
+// reading gets a different id, and what shows up on the other side is not an
+// error: it is a duplicated row after the bronze merge.
 //
-// O SDK NAO usa esta funcao por padrao. Ver sdk.IngestionIDWith e sdk.KeyWith, e
-// para como pedir que usem.
+// The SDK does NOT use this function by default. See sdk.IngestionIDWith and
+// sdk.KeyWith for how to ask it to.
 //
-//	Go (asText, o padrao)      Python (str)
+//	Go (asText, the default)   Python (str)
 //	nil        ""              None       "None"
 //	true       "true"          True       "True"
 //	19.0       "19"            19.0       "19.0"
 //
-// # A faixa em que ela RECUSA, e por que recusar e melhor
+// # The range where it REFUSES, and why refusing is better
 //
-// O `str()` do Python muda para notacao exponencial quando o expoente decimal
-// sai de [-4, 16): `str(1e-5)` e `"1e-05"`, `str(1e16)` e `"1e+16"`. A forma
-// exata desse texto -- quantos digitos no expoente, o sinal, o zero a esquerda
-// -- e detalhe de implementacao do CPython, e imita-la seria apostar que a
-// aposta esta certa numa CHAVE.
+// Python's `str()` switches to exponent notation when the decimal exponent
+// leaves [-4, 16): `str(1e-5)` is `"1e-05"`, `str(1e16)` is `"1e+16"`. The exact
+// shape of that text -- how many digits in the exponent, the sign, the leading
+// zero -- is a CPython implementation detail, and imitating it would be betting
+// that the bet is right inside a KEY.
 //
-// Entao nessa faixa ela devolve erro nomeando o valor. Uma chave que falha alto
-// e um problema de uma linha; uma chave que diverge em silencio e uma
-// duplicata que aparece semanas depois, num relatorio, sem ninguem saber de
-// onde veio.
+// So in that range it returns an error naming the value. A key that fails loudly
+// is a one-line problem; a key that diverges in silence is a duplicate that
+// turns up weeks later, in a report, with nobody knowing where it came from.
 //
-// # O que ela NAO consegue recuperar
+// # What it cannot recover
 //
-// O `encoding/json` decodifica todo numero como float64, entao `{"id": 19}` e
-// `{"id": 19.0}` chegam identicos ao Go -- e no Python o primeiro era `int`
-// (str = "19") e o segundo `float` (str = "19.0").
+// `encoding/json` decodes every number as a float64, so `{"id": 19}` and
+// `{"id": 19.0}` reach Go identical -- and in Python the first was an `int`
+// (str = "19") and the second a `float` (str = "19.0").
 //
-// Um float64 e tratado como o float do Python, que e a escolha certa para um
-// numero que era float na origem e a ERRADA para um que era int. Para nao
-// depender disso, ligue Source.PreserveNumbers: o literal chega intacto como
-// json.Number, e aqui ele decide sozinho -- com ponto ou expoente e float, sem
-// e int, exatamente como o json do Python decide.
+// A float64 is treated as Python's float, which is the right choice for a number
+// that was a float at the source and the WRONG one for a number that was an int.
+// To stop depending on that, turn on Source.PreserveNumbers: the literal arrives
+// intact as a json.Number, and here it decides on its own -- with a dot or an
+// exponent it is a float, without one it is an int, exactly as Python's json
+// decides.
 func Text(v any) (string, error) {
 	switch t := v.(type) {
 	case nil:
@@ -73,8 +74,9 @@ func Text(v any) (string, error) {
 		return t, nil
 
 	case json.Number:
-		// O literal preserva a distincao que o float64 perde: o json do Python
-		// produz int quando nao ha ponto nem expoente, e float quando ha.
+		// The literal preserves the distinction float64 loses: Python's json
+		// produces an int when there is no dot and no exponent, and a float when
+		// there is.
 		texto := t.String()
 		if !strings.ContainsAny(texto, ".eE") {
 			// int do Python. O texto do literal ja e a forma canonica, exceto
@@ -109,38 +111,38 @@ func Text(v any) (string, error) {
 		return strconv.FormatUint(t, 10), nil
 
 	case float32:
-		// Um float32 NAO vem de JSON decodificado -- o encoding/json nunca
-		// produz um --, entao ele so chega aqui se o consumidor o pos no
-		// registro, e nesse caso ele e float sem ambiguidade. E o unico
-		// flutuante que da para renderizar sem adivinhar.
+		// A float32 does NOT come from decoded JSON -- encoding/json never
+		// produces one -- so it only reaches here if the consumer put it in the
+		// record, and in that case it is unambiguously a float. It is the only
+		// floating value that can be rendered without guessing.
 		//
-		// Convertido para float64 antes de formatar: o Python nao tem float de
-		// 32 bits, e formatar a partir do float32 e o que o Python veria.
+		// Converted to float64 before formatting: Python has no 32-bit float,
+		// and formatting from the float32 is what Python would have seen.
 		return floatPython(float64(t))
 
 	case float64:
-		// inf e nan passam: nenhum literal JSON produz um deles -- o JSON nem
-		// os representa --, entao a ambiguidade int/float nao existe aqui.
-		// Recusa-los seria aplicar a regra onde ela nao tem razao.
+		// inf and nan pass: no JSON literal produces either -- JSON cannot even
+		// represent them -- so the int/float ambiguity does not exist here.
+		// Refusing them would apply the rule where it has no reason to.
 		if math.IsNaN(t) || math.IsInf(t, 0) {
 			return floatPython(t)
 		}
 
-		// RECUSA, pela mesma razao que o default recusa.
+		// REFUSES, for the same reason the default refuses.
 		//
-		// Um float64 so chega aqui quando o literal JA SE PERDEU: o
-		// encoding/json decodifica `1` e `1.0` no mesmo float64, e o Python
-		// via int num caso e float no outro. Escolher uma das duas acerta
-		// metade das vezes, e a metade errada e uma linha duplicada semanas
-		// depois -- que e exatamente o que esta funcao existe para evitar.
+		// A float64 only reaches here once the literal is ALREADY LOST:
+		// encoding/json decodes `1` and `1.0` into the same float64, and Python
+		// saw an int in one case and a float in the other. Picking either one is
+		// right half the time, and the wrong half is a duplicated row weeks
+		// later -- which is exactly what this function exists to prevent.
 		//
-		// Ate a v0.39.0 ela escolhia "1.0" em silencio, e a limitacao estava
-		// DOCUMENTADA. Documentar uma divergencia nao e o mesmo que impedi-la,
-		// e o default logo abaixo recusava pelo mesmo motivo -- a incoerencia
-		// era minha.
-		return "", fmt.Errorf("pycompat.Text recebeu um float64 (%v), e a essa altura o "+
-			"literal do JSON já se perdeu: `1` e `1.0` viram o mesmo float64, e o Python "+
-			"via int num caso e float no outro. Ligue Source.PreserveNumbers para o número "+
+		// Up to v0.39.0 it silently picked "1.0", and the limitation was
+		// DOCUMENTED. Documenting a divergence is not the same as preventing it,
+		// and the default just below refused for the same reason -- the
+		// inconsistency was mine.
+		return "", fmt.Errorf("pycompat.Text got a float64 (%v), and by now the JSON "+
+			"literal is already lost: `1` and `1.0` become the same float64, and Python "+
+			"saw an int in one case and a float in the other. Turn on Source.PreserveNumbers "+
 			"chegar como json.Number com o literal intacto. Se a origem era mesmo float e "+
 			"você quer renderizar como float, diga isso: pycompat.TextAcceptingFloat64", t)
 
@@ -152,7 +154,7 @@ func Text(v any) (string, error) {
 	}
 }
 
-// floatPython e o str() do Python para float.
+// floatPython is Python's str() for a float.
 func floatPython(f float64) (string, error) {
 	switch {
 	case math.IsNaN(f):
@@ -164,18 +166,19 @@ func floatPython(f float64) (string, error) {
 	}
 
 	if forcaExpoente(f) {
-		return "", fmt.Errorf("pycompat.Text recusa %g: nessa faixa o str() do Python usa "+
-			"notação exponencial (\"1e-05\", \"1e+16\"), cujo formato exato é detalhe do "+
-			"CPython. Imitar seria apostar numa CHAVE -- e uma chave que diverge em silêncio "+
-			"vira duplicata semanas depois. Componha esse campo você mesmo, ou tire-o da chave", f)
+		return "", fmt.Errorf("pycompat.Text refuses %g: in this range Python's str() uses "+
+			"exponent notation (\"1e-05\", \"1e+16\"), whose exact shape is a CPython "+
+			"implementation detail. Imitating it would be a bet inside a KEY -- and a key "+
+			"that diverges in silence becomes a duplicate weeks later. Compose that field "+
+			"yourself, or take it out of the key", f)
 	}
 
-	// 'f' com precisão -1 dá a representação decimal mais curta que faz o
-	// round-trip, que é a mesma que o repr do Python usa dentro desta faixa.
+	// 'f' with precision -1 gives the shortest decimal representation that
+	// round-trips, which is the same one Python's repr uses inside this range.
 	texto := strconv.FormatFloat(f, 'f', -1, 64)
 	if !strings.ContainsAny(texto, ".") {
-		// O float do Python sempre mostra a parte decimal: str(19.0) é "19.0",
-		// e é exatamente essa a divergência que motivou esta função.
+		// Python's float always shows the decimal part: str(19.0) is "19.0", and
+		// that is exactly the divergence that motivated this function.
 		texto += ".0"
 	}
 	return texto, nil
@@ -193,16 +196,18 @@ func forcaExpoente(f float64) bool {
 	return abs < 1e-4 || abs >= 1e16
 }
 
-// TextOrEmpty e o idioma `str(x or "")` do Python, que e o mais comum na
-// composicao de chave -- 14 dos fetchers levantados o usam.
+// TextOrEmpty is Python's `str(x or "")` idiom, the most common one in key
+// composition -- 14 of the fetchers surveyed use it.
 //
-// O `or ""` e a verdade-falsidade do Python, e ela nao e a do Go: `None`, `""`,
-// `0`, `0.0`, `[]` e `{}` sao todos falsos la, e viram string vazia. Escrever
-// isso a mao da cerca de 25 linhas por consumidor, e errar um dos seis casos e
-// silencioso -- o valor falso vira texto na chave e o id sai diferente.
+// The `or ""` is Python's truthiness, and it is not Go's: `None`, `""`, `0`,
+// `0.0`, `[]` and `{}` are all falsy there, and become an empty string. Writing
+// that by hand costs about 25 lines per consumer, and getting one of the six
+// cases wrong is silent -- the falsy value becomes text in the key and the id
+// comes out different.
 //
-// Repare que `0` e `0.0` viram "" e nao "0": e contraintuitivo, e e o que o
-// Python faz. Um port que escrever isso a mao vai acertar None e errar o zero.
+// Note that `0` and `0.0` become "" and not "0": it is counter-intuitive, and it
+// is what Python does. A port written by hand will get None right and the zero
+// wrong.
 func TextOrEmpty(v any) (string, error) {
 	if falsoNoPython(v) {
 		return "", nil
@@ -210,9 +215,9 @@ func TextOrEmpty(v any) (string, error) {
 	return Text(v)
 }
 
-// falsoNoPython implementa a verdade-falsidade dos tipos que um registro JSON
-// produz. O resto -- um objeto qualquer -- e verdadeiro no Python por padrao, e
-// aqui cai no Text, que recusa o que nao sabe renderizar.
+// falsoNoPython implements the truthiness of the types a JSON record produces.
+// Anything else -- some arbitrary object -- is truthy in Python by default, and
+// here falls through to Text, which refuses what it cannot render.
 func falsoNoPython(v any) bool {
 	switch t := v.(type) {
 	case nil:

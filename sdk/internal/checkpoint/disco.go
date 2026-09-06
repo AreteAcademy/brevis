@@ -11,22 +11,23 @@ import (
 	"sort"
 )
 
-// discoLocal atende os tres verbos do core.Store no sistema de arquivos, para
-// o checkpoint nao precisar de dois caminhos de codigo.
+// discoLocal serves core.Store's three verbs on the filesystem, so the
+// checkpoint does not need two code paths.
 //
-// Um `At` local nao e so conveniencia de teste: e o que faz o checkpoint
-// funcionar num executor local e num pod com volume montado, que e onde ele
-// custa menos e serve igual.
+// A local `At` is not only a testing convenience: it is what makes the
+// checkpoint work under a local executor and in a pod with a mounted volume,
+// which is where it costs least and serves just as well.
 type discoLocal struct{}
 
 func (discoLocal) Scheme() string { return "" }
 
-// List devolve os arquivos do diretorio, ordenados. Nao desce em subdiretorio:
-// as partes de um checkpoint sao todas irmas, e descer traria arquivo de outro.
+// List returns the directory's files, sorted. It does not descend into
+// subdirectories: a checkpoint's parts are all siblings, and descending would
+// bring in another checkpoint's files.
 func (discoLocal) List(_ context.Context, _, prefixo string) ([]string, error) {
 	entradas, err := os.ReadDir(prefixo)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil // deposito que ainda nao existe nao e erro
+		return nil, nil // a depot that does not exist yet is not an error
 	}
 	if err != nil {
 		return nil, err
@@ -45,9 +46,9 @@ func (discoLocal) Open(_ context.Context, _, chave string) (io.ReadCloser, error
 	return os.Open(filepath.Clean(chave))
 }
 
-// Create escreve num temporario e renomeia. No mesmo sistema de arquivos o
-// rename e atomico, entao uma parte que existe e uma parte inteira -- que e a
-// premissa de Conferir.
+// Create writes to a temporary file and renames. On the same filesystem the
+// rename is atomic, so a part that exists is a whole part -- which is Conferir's
+// premise.
 func (discoLocal) Create(_ context.Context, _, chave string, r io.Reader) error {
 	dir := filepath.Dir(chave)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
