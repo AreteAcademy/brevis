@@ -11,10 +11,10 @@ import (
 
 // Estado desenha o estado de um Run.
 //
-// Cores dessaturadas de proposito: verde e vermelho de painel puro brigam com o
-// pergaminho e gritam mais alto que a informacao. A forma tambem carrega
-// significado — o ponto e cheio no que ja terminou e anelado no que segue vivo —
-// para nao depender so de cor.
+// The colours are desaturated on purpose: a dashboard's pure green and red fight
+// the parchment and shout louder than the information. The shape carries meaning
+// too — the dot is filled for what has finished and ringed for what is still
+// alive — so it does not depend on colour alone.
 templ Estado(status string) {
 	<span class={ "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", classeEstado(status) }>
 		<span class={ "h-1.5 w-1.5 rounded-full", pontoEstado(status) }></span>
@@ -22,7 +22,8 @@ templ Estado(status string) {
 	</span>
 }
 
-// Ponto e a versao minima, para tabelas densas onde o rotulo ja aparece na coluna.
+// Ponto is the minimal version, for dense tables where the label is already in
+// the column.
 templ Ponto(status string) {
 	<span
 		class={ "inline-block h-2.5 w-2.5 rounded-full", pontoEstado(status) }
@@ -98,8 +99,9 @@ templ Cartao(rotulo string) {
 	</section>
 }
 
-// Indicador e um dos quatro numeros do topo do Overview. O numero em serifa
-// grande e o que da o tom editorial — em sans ele viraria mais um dashboard.
+// Indicador is one of the four numbers at the top of the Overview. The large
+// serif number is what sets the editorial tone — in sans it would become just
+// another dashboard.
 templ Indicador(rotulo, valor, nota string, matiz string) {
 	<div class="rounded-[20px] border border-line bg-surface px-6 py-5 shadow-warm-sm">
 		<p class="kicker">{ rotulo }</p>
@@ -110,8 +112,9 @@ templ Indicador(rotulo, valor, nota string, matiz string) {
 	</div>
 }
 
-// Vazio comunica ausencia de dado sem parecer erro. Uma tabela vazia sem
-// explicacao faz o operador procurar defeito onde nao ha.
+// Vazio communicates the absence of data without looking like an error. An empty
+// table with no explanation sends the operator looking for a defect where there
+// is none.
 templ Vazio(msg, dica string) {
 	<div class="rounded-[20px] border border-dashed border-line px-6 py-12 text-center">
 		<p class="font-serif text-lg text-muted">{ msg }</p>
@@ -121,7 +124,7 @@ templ Vazio(msg, dica string) {
 	</div>
 }
 
-// Etiqueta e um chip de tag. Vira link quando `rota` existe, para filtrar.
+// Etiqueta is a tag chip. It becomes a link when `rota` exists, to filter.
 templ Etiqueta(texto, rota string) {
 	if rota != "" {
 		<a
@@ -134,12 +137,12 @@ templ Etiqueta(texto, rota string) {
 }
 
 // ---------------------------------------------------------------------------
-// Graficos
+// Charts
 //
-// SVG gerado no servidor, sem biblioteca. Sao duas formas simples sobre dados
-// que ja estao na mao; puxar uma lib de grafico para isto traria um bundle e
-// uma dependencia de runtime que a §15 evita — e o SSR continua valendo para
-// quem desligou o JavaScript.
+// SVG generated on the server, with no library. They are two simple shapes over
+// data that is already in hand; pulling a charting library in for this would
+// bring a bundle and a runtime dependency §15 avoids — and the SSR keeps working
+// for whoever turned JavaScript off.
 // ---------------------------------------------------------------------------
 
 const (
@@ -149,8 +152,8 @@ const (
 	margemBaixo    = 26
 )
 
-// Execucoes desenha uma coluna empilhada por hora, com a linha de duracao media
-// por cima — as duas leituras que a tela de Overview precisa cruzar: "quantas" e
+// Execucoes draws one stacked column per hour, with the average-duration line on
+// top — the two readings the Overview screen has to cross: "how many" and
 // "quanto tempo".
 templ Execucoes(baldes []postgres.Balde) {
 	if len(baldes) == 0 {
@@ -163,15 +166,15 @@ templ Execucoes(baldes []postgres.Balde) {
 				role="img"
 				aria-label="Runs per hour"
 			>
-				// Grade horizontal: quatro linhas bastam para dar escala sem
+				// A horizontal grid: four lines are enough to give scale without
 				// virar papel milimetrado.
 				for _, l := range linhasDeGrade(baldes) {
 					<line x1={ fmt.Sprint(margemEsq) } y1={ fmt.Sprint(l.Y) } x2={ fmt.Sprint(larguraGrafico) } y2={ fmt.Sprint(l.Y) } stroke="var(--color-ink)" stroke-opacity="0.08"></line>
 					<text x="0" y={ fmt.Sprint(l.Y + 4) } class="fill-muted text-[11px]">{ l.Rotulo }</text>
 				}
 				for _, b := range barras(baldes) {
-					// A coluna inteira e o alvo, nao so a barra: com uma unica
-					// execucao a barra tem 2px de altura, e exigir a mira exata
+					// The whole column is the target, not just the bar: with a
+					// single run the bar is 2px tall, and demanding exact aim
 					// tornaria o grafico decorativo.
 					<a href={ templ.SafeURL(b.Link) } class="grafico-alvo" data-dica={ b.Dica }>
 						<rect class="grafico-faixa" x={ fmt.Sprint(b.XFaixa) } y="0" width={ fmt.Sprint(b.LarguraFaixa) } height={ fmt.Sprint(alturaGrafico - margemBaixo) } rx="3"></rect>
@@ -183,9 +186,9 @@ templ Execucoes(baldes []postgres.Balde) {
 				}
 				if d := linhaDuracao(baldes); d != "" {
 					<path d={ d } fill="none" stroke="var(--color-gold)" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"></path>
-					// A curva de duracao tem escala propria (ver linhaDuracao), entao
-					// sem esta ancora ela seria uma linha sem unidade: o pico diz a
-					// que corresponde o ponto mais alto.
+					// The duration curve has a scale of its own (see linhaDuracao),
+					// so without this anchor it would be a line with no unit: the
+					// peak says what the highest point corresponds to.
 					<text x={ fmt.Sprint(larguraGrafico) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
 						{ "peak average duration: " + Duracao(picoDuracao(baldes)) }
 					</text>
@@ -212,7 +215,7 @@ templ legenda(cor, texto string) {
 }
 
 // Rosca resume a mesma janela em proporcao. O total no centro evita a leitura
-// so relativa: 95% de vinte execucoes nao e 95% de duas mil.
+// only relative: 95% of twenty runs is not 95% of two thousand.
 templ Rosca(i postgres.Indicadores) {
 	<div class="flex flex-col items-center">
 		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Run distribution">
@@ -239,7 +242,8 @@ templ Rosca(i postgres.Indicadores) {
 }
 
 // ---------------------------------------------------------------------------
-// Calculo das formas. Fica em Go, e nao no template, porque template com
+// The shapes' arithmetic. It stays in Go, and not in the template, because a
+// template with
 // aritmetica no meio do markup e ilegivel e impossivel de testar.
 // ---------------------------------------------------------------------------
 
@@ -263,12 +267,12 @@ type Marca struct {
 	Rotulo string
 }
 
-// teto arredonda o maximo para cima ate um valor divisivel por 4 em passos
-// "redondos", para a coluna mais alta nao encostar no topo E para os rotulos do
-// eixo cairem em numeros legiveis.
+// teto rounds the maximum up to a value divisible by 4 in "round" steps, so the
+// tallest column does not touch the top AND the axis labels land on readable
+// numbers.
 //
-// A versao anterior dividia o maximo cru por quatro e produzia eixos como
-// 0/6/12/18/25 — cada rotulo com um intervalo diferente do anterior.
+// The previous version divided the raw maximum by four and produced axes like
+// 0/6/12/18/25 — every label a different interval from the one before it.
 func teto(baldes []postgres.Balde) int {
 	max := 0
 	for _, b := range baldes {
@@ -284,7 +288,7 @@ func teto(baldes []postgres.Balde) int {
 			return passo * 4
 		}
 	}
-	// Acima de 20 mil, arredonda para o milhar de cima divisivel por 4.
+	// Above twenty thousand, it rounds up to the next thousand divisible by 4.
 	return ((max + 3999) / 4000) * 4000
 }
 
@@ -317,8 +321,8 @@ func barras(baldes []postgres.Balde) []Barra {
 			return 0
 		}
 		h := n * util / max
-		// Um pixel minimo: uma unica falha entre centenas de sucessos ainda
-		// precisa ser vista — e o caso em que o grafico mais importa.
+		// A minimum pixel: a single failure among hundreds of successes still
+		// has to be visible — it is the case where the chart matters most.
 		if h < 2 {
 			h = 2
 		}
@@ -349,7 +353,7 @@ func barras(baldes []postgres.Balde) []Barra {
 	return out
 }
 
-// linkDoBalde leva a hora exata na lista de execucoes. E o que transforma o
+// linkDoBalde leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
 func linkDoBalde(b postgres.Balde) string {
@@ -378,7 +382,7 @@ func dicaDoBalde(b postgres.Balde) string {
 	return strings.Join(partes, " · ")
 }
 
-// picoDuracao e o maior valor da curva — a referencia da escala secundaria.
+// picoDuracao is the curve's largest value — the secondary scale's reference.
 func picoDuracao(baldes []postgres.Balde) *time.Duration {
 	var maior time.Duration
 	for _, b := range baldes {
@@ -392,8 +396,9 @@ func picoDuracao(baldes []postgres.Balde) *time.Duration {
 	return &maior
 }
 
-// linhaDuracao normaliza a duracao media pela PROPRIA escala, nao pela de
-// contagem: sao grandezas diferentes, e o valor aqui e a forma da curva.
+// linhaDuracao normalizes the average duration by its OWN scale, not by the
+// count's: they are different magnitudes, and what matters here is the curve's
+// shape.
 func linhaDuracao(baldes []postgres.Balde) string {
 	var maior time.Duration
 	for _, b := range baldes {
@@ -413,8 +418,8 @@ func linhaDuracao(baldes []postgres.Balde) string {
 	comando := "M"
 	for i, bl := range baldes {
 		if bl.DuracaoMedia == 0 {
-			// Corta a linha em vez de ligar dois picos por cima de um vazio,
-			// que inventaria duracao numa hora sem execucao nenhuma.
+			// It cuts the line rather than joining two peaks over a gap, which
+			// would invent a duration for an hour with no run at all.
 			comando = "M"
 			continue
 		}
@@ -430,7 +435,7 @@ func marcasDeHora(baldes []postgres.Balde) []Marca {
 	area := larguraGrafico - margemEsq
 	passo := float64(area) / float64(len(baldes))
 
-	// Mostra no maximo 8 rotulos: mais que isso vira borrao ilegivel.
+	// It shows at most 8 labels: more than that becomes an illegible blur.
 	salto := len(baldes)/8 + 1
 	var out []Marca
 	for i, b := range baldes {
@@ -453,8 +458,8 @@ type Arco struct {
 	Link   string
 }
 
-// arcos monta a rosca com dasharray sobre um circulo unico. O perimetro e
-// 2*pi*46 ≈ 289; cada fatia recebe seu pedaco e desloca a proxima.
+// arcos builds the donut with a dasharray over a single circle. The perimeter is
+// 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
 func arcos(i postgres.Indicadores) []Arco {
 	const perimetro = 289
 	if i.Total == 0 {
@@ -466,8 +471,8 @@ func arcos(i postgres.Indicadores) []Arco {
 		nome   string
 		estado string
 	}{
-		// Variavel CSS, e nao hexadecimal: o SVG e servido dentro da pagina,
-		// entao a rosca segue o tema do cliente como qualquer outro elemento.
+		// A CSS variable, and not a hex value: the SVG is served inside the page,
+		// so the donut follows the client's theme like any other element.
 		{i.Sucesso, "var(--color-state-success)", "success", "success"},
 		{i.Falha, "var(--color-state-failed)", "failed", "failed"},
 		{i.EmExecucao, "var(--color-state-running)", "running", "running"},
@@ -498,8 +503,8 @@ func arcos(i postgres.Indicadores) []Arco {
 // Formatadores compartilhados
 // ---------------------------------------------------------------------------
 
-// Duracao escolhe a unidade pela ordem de grandeza. "0.4s" diz mais que "400ms"
-// numa coluna onde o vizinho leva minutos.
+// Duracao picks the unit by order of magnitude. "0.4s" says more than "400ms" in
+// a column whose neighbour takes minutes.
 func Duracao(d *time.Duration) string {
 	if d == nil {
 		return "—"
@@ -517,7 +522,7 @@ func Duracao(d *time.Duration) string {
 
 // Quando escreve o instante em relativo ate um dia, e em data absoluta depois.
 // "há 3 min" responde a pergunta de operacao; "12/03 04:00" responde a de
-// auditoria, e a fronteira entre as duas fica por volta de um dia.
+// audit, and the boundary between the two sits around a day.
 func Quando(t *time.Time) string {
 	if t == nil {
 		return "—"
@@ -544,7 +549,7 @@ func curto(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// Instante e a data completa, para colunas de auditoria.
+// Instante is the full date, for audit columns.
 func Instante(t *time.Time) string {
 	if t == nil {
 		return "—"
@@ -555,17 +560,18 @@ func Instante(t *time.Time) string {
 // ---------------------------------------------------------------------------
 // Erro em dialogo
 //
-// Antes o erro ocupava uma linha inteira abaixo da execucao, dentro da tabela.
-// Com stack trace de verdade isso empurrava o resto da lista para fora da tela e
-// misturava duas coisas — a lista e o detalhe. Agora a linha guarda um botao, e
+// The error used to occupy a whole row below the run, inside the table. With a
+// real stack trace that pushed the rest of the list off the screen and mixed two
+// things — the list and the detail. Now the row holds a button, and
 // o texto vive num <dialog> nativo: ESC fecha, o backdrop escurece e o foco fica
-// preso dentro dele sem uma linha de JavaScript nossa.
+// trapped inside it without a line of JavaScript of ours.
 // ---------------------------------------------------------------------------
 
 templ BotaoErro(runID string) {
-	// <a> e nao <button>: com o href, o erro tem endereco proprio — copiar o
-	// link leva outra pessoa direto para ele. O script intercepta o clique e
-	// abre o dialogo; sem JavaScript, o link ainda navega para a execucao.
+	// An <a> and not a <button>: with the href, the error has an address of its
+	// own — copying the link takes somebody else straight to it. The script
+	// intercepts the click and opens the dialog; without JavaScript, the link
+	// still navigates to the run.
 	<a
 		href={ templ.SafeURL("#erro-" + runID) }
 		data-dialogo={ "erro-" + runID }
@@ -590,7 +596,8 @@ templ DialogoErro(runID, workflow, status, mensagem string) {
 				<p class="kicker">Run failure</p>
 				<p class="display mt-1 text-2xl">{ workflow }</p>
 			</div>
-			// `method="dialog"` fecha sem JavaScript: e o proprio navegador que
+			// `method="dialog"` closes without JavaScript: the browser itself is
+			// what
 			// trata o submit deste form.
 			<form method="dialog">
 				<button

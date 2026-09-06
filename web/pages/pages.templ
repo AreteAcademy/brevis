@@ -17,8 +17,8 @@ import (
 // Overview
 // ---------------------------------------------------------------------------
 
-// DadosOverview e tudo que a tela inicial mostra. Um struct em vez de sete
-// parametros: a assinatura ja estava ilegivel com quatro.
+// DadosOverview is everything the landing screen shows. A struct rather than
+// seven parameters: the signature was already illegible with four.
 type DadosOverview struct {
 	Janela    time.Duration
 	Ind       postgres.Indicadores
@@ -151,14 +151,15 @@ templ linhaDist(rotulo string, valor int, matiz string) {
 	</div>
 }
 
-// th e o cabecalho de coluna. O respiro vertical (py-4) e deliberado: colado no
-// titulo, o cabecalho competia com a primeira linha em vez de separar dela.
+// th is a column header. The vertical breathing room (py-4) is deliberate:
+// pressed against the title, the header competed with the first row instead of
+// separating from it.
 templ th(texto, extra string) {
 	<th class={ "px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted", extra }>{ texto }</th>
 }
 
-// thOrdenavel e a mesma coluna, clicavel. A seta so aparece na coluna ativa —
-// mostrar uma em cada cabecalho vira ruido.
+// thOrdenavel is the same column, clickable. The arrow appears only on the
+// active column — one in every header becomes noise.
 templ thOrdenavel(texto, campo string, f Filtro, extra string) {
 	<th class={ "px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em]", extra, corDaColuna(f, campo) }>
 		<a href={ templ.SafeURL(f.ComOrdem(campo)) } class="inline-flex items-center gap-1 hover:text-gold-strong">
@@ -215,8 +216,9 @@ templ paginacao(p Paginacao) {
 // Workflows — a lista de DAGs
 // ---------------------------------------------------------------------------
 
-// Filtro guarda o estado da barra de busca. Vive na URL, nao em memoria: assim
-// um filtro aplicado pode ser colado no chat de plantao e abre igual do outro
+// Filtro holds the search bar's state. It lives in the URL, not in memory: that
+// way an applied filter can be pasted into the on-call chat and opens the same
+// on the other
 // lado.
 type Filtro struct {
 	Busca  string
@@ -224,8 +226,9 @@ type Filtro struct {
 	Ativo  string // active | paused
 	Tag    string
 
-	// Ordem e o campo de ordenacao; Desc inverte. Vivem na URL pelo mesmo motivo
-	// dos filtros: uma tela ordenada precisa poder ser colada para outra pessoa.
+	// Ordem is the sort field; Desc inverts it. They live in the URL for the same
+	// reason the filters do: a sorted screen has to be pasteable to somebody
+	// else.
 	Ordem string
 	Desc  bool
 
@@ -233,22 +236,22 @@ type Filtro struct {
 	PorPagina int
 }
 
-// Com devolve a mesma URL trocando um campo — como cada chip vira link, o resto
-// do filtro precisa sobreviver ao clique.
+// Com returns the same URL with one field swapped — since every chip becomes a
+// link, the rest of the filter has to survive the click.
 //
-// Trocar filtro sempre volta para a primeira pagina: continuar na pagina 7 de um
-// resultado que agora tem duas seria uma tela vazia sem explicacao.
+// Changing a filter always returns to the first page: staying on page 7 of a
+// result that now has two would be an empty screen with no explanation.
 func (f Filtro) Com(campo, valor string) string {
 	return f.url(campo, valor, true)
 }
 
-// ComPagina navega sem tocar em mais nada.
+// ComPagina navigates without touching anything else.
 func (f Filtro) ComPagina(n int) string {
 	return f.url("page", fmt.Sprint(n), false)
 }
 
-// ComOrdem alterna a direcao quando o campo ja e o ordenado, e comeca ascendente
-// quando e outro — o comportamento que qualquer tabela ensina.
+// ComOrdem flips the direction when the field is already the sorted one, and
+// starts ascending when it is another — the behaviour any table teaches.
 func (f Filtro) ComOrdem(campo string) string {
 	if f.Ordem == campo && !f.Desc {
 		return f.url("dir", "desc", true)
@@ -307,8 +310,8 @@ func (f Filtro) url(campo, valor string, reiniciaPagina bool) string {
 	return "/workflows?" + q.Encode()
 }
 
-// PorPaginaPadrao e o tamanho de pagina das listas. Vinte e cinco cabe numa tela
-// de laptop sem rolagem interminavel e sem obrigar a paginar a cada olhada.
+// PorPaginaPadrao is the lists' page size. Twenty-five fits a laptop screen
+// without endless scrolling and without forcing a page turn on every glance.
 const PorPaginaPadrao = 25
 
 // Paginacao e o rodape de qualquer lista paginada.
@@ -317,8 +320,8 @@ type Paginacao struct {
 	PorPagina int
 	Total     int
 
-	// LinkPagina monta a URL de cada pagina. Injetado para que o mesmo
-	// componente sirva /workflows e /runs, que tem filtros diferentes.
+	// LinkPagina builds each page's URL. Injected so the same component serves
+	// /workflows and /runs, which have different filters.
 	LinkPagina func(int) string
 }
 
@@ -348,8 +351,8 @@ func (p Paginacao) Ultimo() int {
 	return fim
 }
 
-// Janela devolve os numeros de pagina a mostrar, centrados no atual. Listar
-// todas quebraria o rodape com cem paginas.
+// Janela returns the page numbers to show, centred on the current one. Listing
+// them all would break the footer with a hundred pages.
 func (p Paginacao) Janela() []int {
 	total := p.Paginas()
 	de, ate := p.Pagina-2, p.Pagina+2
@@ -386,8 +389,8 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 					placeholder="Buscar workflow"
 					class="w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
 				/>
-				// Os demais filtros seguem como campos ocultos: buscar nao pode
-				// apagar o estado que o operador ja tinha escolhido.
+				// The other filters go along as hidden fields: searching must not
+				// erase the state the operator had already chosen.
 				<input type="hidden" name="state" value={ f.Estado }/>
 				<input type="hidden" name="active" value={ f.Ativo }/>
 				<input type="hidden" name="tag" value={ f.Tag }/>
@@ -510,8 +513,9 @@ templ Workflows(ws []postgres.ResumoWorkflow, tags []string, f Filtro, total, fi
 	}
 }
 
-// interruptor pausa e retoma a agenda. E um form, e nao um checkbox com JS: sem
-// script a pagina continua operavel, e um POST deixa claro que ha efeito.
+// interruptor pauses and resumes the schedule. It is a form, and not a checkbox
+// with JS: with no script the page stays operable, and a POST makes it clear
+// there is an effect.
 templ interruptor(w postgres.ResumoWorkflow) {
 	if w.TemAgenda {
 		<form method="post" action={ templ.SafeURL("/workflows/" + w.Slug + "/toggle") }>
@@ -540,8 +544,8 @@ templ interruptor(w postgres.ResumoWorkflow) {
 	}
 }
 
-// disparar e o botao sem parametros — usado na LISTA, onde nao ha espaco para
-// um formulario e onde os padroes sao a escolha certa.
+// disparar is the button with no parameters — used in the LIST, where there is
+// no room for a form and where the defaults are the right choice.
 templ disparar(slug string) {
 	<form method="post" action={ templ.SafeURL("/workflows/" + slug + "/trigger") } class="inline">
 		<button
@@ -573,8 +577,8 @@ templ chip(rota, texto string, ativo bool, ponto string) {
 	}
 }
 
-// alterna faz o chip de tag funcionar como liga/desliga: clicar na tag ja ativa
-// remove o filtro em vez de reaplicar o mesmo valor.
+// alterna makes the tag chip work as a toggle: clicking an already-active tag
+// removes the filter instead of reapplying the same value.
 func alterna(atual, valor string) string {
 	if atual == valor {
 		return ""
@@ -586,8 +590,8 @@ func alterna(atual, valor string) string {
 // Execuções, projetos e detalhe
 // ---------------------------------------------------------------------------
 
-// FiltroRuns e o recorte da tela de execucoes. Chega por query string, entao um
-// grafico do dashboard pode apontar para "as execucoes daquela hora" com um link.
+// FiltroRuns is the run screen's slice. It arrives through the query string, so
+// a dashboard chart can point at "that hour's runs" with a link.
 type FiltroRuns struct {
 	Estado   string
 	Workflow string
@@ -627,7 +631,8 @@ func (f FiltroRuns) url(campo, valor string, reiniciaPagina bool) string {
 func (f FiltroRuns) Com(campo, valor string) string { return f.url(campo, valor, true) }
 func (f FiltroRuns) ComPagina(n int) string         { return f.url("page", fmt.Sprint(n), false) }
 
-// Ativo diz se ha algum recorte — sem isso a tela mostraria a barra de "filtros
+// Ativo says whether there is any slice — without it the screen would show the
+// "filters
 // aplicados" vazia.
 func (f FiltroRuns) Ativo() bool {
 	return f.Estado != "" || f.Workflow != "" || f.De != "" || f.Ate != ""
@@ -661,9 +666,9 @@ templ Runs(runs []postgres.ResumoRun, f FiltroRuns, total int) {
 	}
 }
 
-// filtroAplicado mostra um recorte vindo de outra tela (o clique no grafico, por
-// exemplo) com o jeito de remove-lo ao lado — um filtro que so se tira mexendo
-// na URL nao e um filtro, e uma armadilha.
+// filtroAplicado shows a slice that came from another screen (a click on the
+// chart, for instance) with the way to remove it beside it — a filter you can
+// only take off by editing the URL is not a filter, it is a trap.
 templ filtroAplicado(rotulo, valor, remover string) {
 	<span class="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
 		<span class="text-gold-strong">{ rotulo }:</span>
@@ -748,8 +753,9 @@ templ tabelaRuns(runs []postgres.ResumoRun, p Paginacao) {
 			</table>
 			@paginacao(p)
 		</div>
-		// Os dialogos ficam FORA da tabela: <dialog> dentro de <tbody> e HTML
-		// invalido, e o navegador o move para fora — quebrando o layout da linha.
+		// The dialogs sit OUTSIDE the table: a <dialog> inside a <tbody> is
+		// invalid HTML, and the browser moves it out — breaking the row's
+		// layout.
 		for _, r := range runs {
 			if r.Erro != "" {
 				@components.DialogoErro(r.ID, r.WorkflowSlug, r.Status, r.Erro)
@@ -758,9 +764,9 @@ templ tabelaRuns(runs []postgres.ResumoRun, p Paginacao) {
 	}
 }
 
-// dagAssets e a ordem exata de carregamento da ilha. A ordem nao e estilo: o
-// shim referencia `React` no instante em que roda, e o bundle do React Flow
-// referencia `jsxRuntime` no dele. Trocar duas linhas aqui deixa a tela branca.
+// dagAssets is the island's exact load order. The order is not style: the shim
+// references `React` the instant it runs, and React Flow's bundle references
+// `jsxRuntime` in its own. Swapping two lines here leaves the screen blank.
 var dagAssets = layouts.Ilha{
 	CSS: []string{"/assets/vendor/xyflow.css"},
 	JS: []string{
@@ -772,8 +778,9 @@ var dagAssets = layouts.Ilha{
 	},
 }
 
-// Workflow mostra a definicao publicada. Sem estado de execucao: e a tela de
-// "como este workflow e", e precisa servir tambem um workflow que nunca rodou.
+// Workflow shows the published definition. With no run state: it is the screen
+// for "what this workflow is", and it has to serve a workflow that never ran
+// too.
 templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 	@layouts.Base(layouts.Pagina{
 		Titulo: w.Slug, Kicker: "Workflow", Ativo: "workflows",
@@ -809,8 +816,8 @@ templ Workflow(w wf.Workflow, ultimas []postgres.ResumoRun) {
 	}
 }
 
-// Run mostra uma execucao. O cabecalho vem do servidor ja renderizado; so a DAG
-// com o estado de cada passo depende de JavaScript.
+// Run shows one run. The header comes from the server already rendered; only the
+// DAG with each step's state depends on JavaScript.
 templ Run(r run.Run, logs []postgres.LogDoPasso) {
 	@layouts.Base(layouts.Pagina{
 		Titulo: r.WorkflowSlug, Kicker: "Run", Ativo: "runs",
@@ -836,20 +843,20 @@ templ Run(r run.Run, logs []postgres.LogDoPasso) {
 	}
 }
 
-// duracaoMs adapta os milissegundos que a consulta devolve ao formatador
-// existente, que fala em time.Duration.
+// duracaoMs adapts the milliseconds the query returns to the existing formatter,
+// which speaks in time.Duration.
 func duracaoMs(ms int64) string {
 	d := time.Duration(ms) * time.Millisecond
 	return components.Duracao(&d)
 }
 
-// saidaDosPassos mostra o log de cada tentativa.
+// saidaDosPassos shows each attempt's log.
 //
-// Existe porque o log vivia so no pod, e o pod e apagado quando o passo termina:
-// uma pipeline que falhava as 4h deixava "falha" na tela e nada mais. Renderizado
-// no servidor dentro de <details>, sem JavaScript e sem uma segunda chamada — o
-// grafo acima ja e polido de segundo em segundo, e anexar log aquele JSON
-// encareceria cada poll.
+// It exists because the log lived only in the pod, and the pod is deleted when
+// the step ends: a pipeline that failed at 4am left "failed" on the screen and
+// nothing else. Rendered on the server inside a <details>, with no JavaScript
+// and no second call — the graph above is already polled second by second, and
+// attaching the log to that JSON would make every poll more expensive.
 templ saidaDosPassos(logs []postgres.LogDoPasso) {
 	if len(logs) > 0 {
 		<section class="mt-8">
@@ -877,9 +884,9 @@ templ saidaDosPassos(logs []postgres.LogDoPasso) {
 							<p class="mx-5 mb-3 rounded-xl bg-state-failed/5 px-4 py-2.5 text-xs text-state-failed">{ p.Erro }</p>
 						}
 						if p.Log != "" {
-							// `overflow-auto` com altura maxima: uma saida de dbt
-							// com centenas de linhas nao pode empurrar o resto da
-							// pagina para fora da tela.
+							// `overflow-auto` with a maximum height: a dbt output
+							// with hundreds of lines must not push the rest of the
+							// page off the screen.
 							<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-xl bg-parchment-soft px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
 						}
 					</details>
@@ -889,8 +896,8 @@ templ saidaDosPassos(logs []postgres.LogDoPasso) {
 	}
 }
 
-// dag e o ponto de montagem da ilha. A altura e fixa de proposito: com `h-full`
-// dentro de um container que rola, o canvas do React Flow nasce com 0px e o
+// dag is the island's mount point. The height is fixed on purpose: with `h-full`
+// inside a scrolling container, React Flow's canvas is born at 0px and the
 // grafo some.
 templ dag(src string) {
 	<div
@@ -907,8 +914,8 @@ templ dag(src string) {
 
 func pct(v float64) string { return fmt.Sprintf("%.1f%%", v) }
 
-// contagem concorda o substantivo com o numero. "1 workflows" e o tipo de
-// detalhe que faz a tela parecer gerada, nao escrita.
+// contagem agrees the noun with the number. "1 workflows" is the kind of detail
+// that makes a screen look generated rather than written.
 func contagem(n int, singular, plural string) string {
 	if n == 1 {
 		return fmt.Sprintf("1 %s", singular)
@@ -916,9 +923,9 @@ func contagem(n int, singular, plural string) string {
 	return fmt.Sprintf("%d %s", n, plural)
 }
 
-// matizFalha deixa o numero neutro quando nao ha falha nenhuma: pintar de
-// vermelho um "0.0%" ensina o olho a ignorar a cor justamente na tela em que ela
-// precisa significar alguma coisa.
+// matizFalha leaves the number neutral when there is no failure at all: painting
+// a "0.0%" red teaches the eye to ignore the colour on exactly the screen where
+// it has to mean something.
 func matizFalha(n int) string {
 	if n == 0 {
 		return "text-ink"
@@ -943,8 +950,8 @@ func duracaoMedia(d time.Duration) string {
 	return "average duration " + components.Duracao(&d)
 }
 
-// inicioOuCriacao mostra quando o trabalho comecou de fato; para quem ainda esta
-// na fila, o que importa e ha quanto tempo espera.
+// inicioOuCriacao shows when the work actually started; for whatever is still in
+// the queue, what matters is how long it has been waiting.
 func inicioOuCriacao(r postgres.ResumoRun) *time.Time {
 	if r.IniciadoEm != nil {
 		return r.IniciadoEm
@@ -955,13 +962,13 @@ func inicioOuCriacao(r postgres.ResumoRun) *time.Time {
 var _ = strings.TrimSpace
 
 
-// formularioDeParams e o disparo COM valores — a diferenca entre rodar o
-// workflow e reprocessar uma janela.
+// formularioDeParams is the trigger WITH values — the difference between running
+// the workflow and reprocessing a window.
 //
-// Os campos vem da declaracao do YAML, e o `name` leva o prefixo `param.` para
-// nao colidir com campos futuros do proprio form. Tipos viram controles: boolean
-// e um select, integer e um number, enum e um select — cada um recusando no
-// navegador o que o servidor recusaria de novo depois.
+// The fields come from the YAML's declaration, and the `name` carries a `param.`
+// prefix so it does not collide with the form's own future fields. Types become
+// controls: a boolean is a select, an integer is a number, an enum is a select —
+// each refusing in the browser what the server would refuse again afterwards.
 templ formularioDeParams(w wf.Workflow) {
 	<form
 		method="post"
@@ -1014,8 +1021,8 @@ templ opcao(valor, padrao string) {
 	}
 }
 
-// tipoDeCampo escolhe o controle do navegador. `number` para inteiro faz o
-// teclado do celular abrir certo e barra letra antes do servidor precisar.
+// tipoDeCampo picks the browser's control. `number` for an integer makes a
+// phone's keyboard open right and blocks a letter before the server has to.
 func tipoDeCampo(p wf.Param) string {
 	if p.Tipo == wf.ParamInteiro {
 		return "number"
