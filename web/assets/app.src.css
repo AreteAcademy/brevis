@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* Onde procurar classes. Aponta para os .templ (fonte) e para os _templ.go
-   gerados: o Tailwind v4 detecta sozinho na maioria dos casos, mas arquivos
-   gerados costumam ficar de fora das heuristicas padrao, e uma classe nao
-   detectada some do CSS sem aviso. */
+/* Where to look for classes. It points at the .templ files (the source) and at
+   the generated _templ.go ones: Tailwind v4 detects them on its own in most
+   cases, but generated files tend to fall outside the default heuristics, and an
+   undetected class disappears from the CSS with no warning. */
 @source "../layouts";
 @source "../pages";
 @source "../components";
@@ -91,8 +91,8 @@
   --radius-panel: 28px;
 }
 
-/* Fundo do site: brilho dourado no topo sobre o degrade de pergaminho. E o que
-   da a sensacao de papel iluminado em vez de bloco de cor chapado. */
+/* The site's background: a golden glow at the top over the parchment gradient.
+   It is what gives the sense of lit paper rather than a flat block of colour. */
 body {
   background:
     radial-gradient(circle at top, rgba(170, 132, 80, 0.12), transparent 34%),
@@ -100,8 +100,8 @@ body {
   background-attachment: fixed;
 }
 
-/* Titulos em serifa com entrelinha curta — o site usa 0.95, que so funciona
-   porque o Cormorant tem altura-x baixa. */
+/* Serif titles with tight leading — the site uses 0.95, which only works because
+   Cormorant has a low x-height. */
 .display {
   font-family: var(--font-serif);
   font-weight: 600;
@@ -109,8 +109,8 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* Rotulo em versalete dourado. No site marca cada secao ("VISAO", "TRILHAS");
-   aqui faz o mesmo papel em cima de cada painel. */
+/* A golden small-caps label. On the site it marks each section ("VISION",
+   "TRACKS"); here it plays the same role above each panel. */
 .kicker {
   font-size: 0.7rem;
   font-weight: 700;
@@ -119,10 +119,10 @@ body {
   color: var(--color-gold-strong);
 }
 
-/* Anel e halo no acento, para destacar UM cartao sobre o fundo. Mesmo recurso
-   do zarv-lens, com o token daqui. `oklch(from ...)` deriva a transparencia da
-   propria cor do tema, entao um cliente que troque o acento leva o halo junto —
-   sem uma segunda variavel para manter em sincronia. */
+/* A ring and a halo in the accent, to lift ONE card off the background.
+   `oklch(from ...)` derives the transparency from the theme's own colour, so a
+   client who changes the accent takes the halo along — with no second variable
+   to keep in sync. */
 .glow-accent {
   box-shadow:
     0 0 0 1px oklch(from var(--color-gold) l c h / 30%),
@@ -144,14 +144,14 @@ body {
     oklch(from var(--color-gold) l c h / 14%), transparent);
 }
 
-/* Tabular nums nas colunas numericas: sem isso os digitos dancam quando a
-   tabela atualiza, e a leitura de uma coluna de duracoes fica ruim. */
+/* Tabular nums in the numeric columns: without them the digits dance when the
+   table refreshes, and a column of durations becomes hard to read. */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Sombra do site: larga, baixa opacidade, tonalizada com a tinta quente em vez
-   de preto puro — preto sobre pergaminho suja. */
+/* The site's shadow: wide, low opacity, tinted with the warm ink rather than
+   pure black — black over parchment looks dirty. */
 .shadow-warm {
   box-shadow: 0 20px 60px rgba(33, 24, 15, 0.08);
 }
@@ -159,8 +159,9 @@ body {
   box-shadow: 0 8px 24px rgba(33, 24, 15, 0.06);
 }
 
-/* Dica dos graficos. Fora do fluxo e sem transicao de posicao: seguir o cursor
-   com animacao gera arrasto e a dica chega depois do olho. */
+/* The charts' tooltip. Out of the flow and with no position transition:
+   following the cursor with animation produces drag, and the tooltip arrives
+   after the eye. */
 .grafico-dica {
   position: fixed;
   z-index: 50;
@@ -177,8 +178,8 @@ body {
   color: var(--color-ink);
 }
 
-/* Alvos clicaveis do grafico. O realce no hover e o que comunica que a barra
-   leva a algum lugar — sem ele, so o cursor denuncia, e tarde demais. */
+/* The chart's clickable targets. The hover highlight is what says the bar leads
+   somewhere — without it only the cursor gives it away, and too late. */
 .grafico-alvo {
   cursor: pointer;
 }
@@ -197,22 +198,23 @@ body {
   fill: rgba(170, 132, 80, 0.09);
 }
 
-/* O reset do Tailwind zera a margem de todo elemento, e com isso o <dialog>
-   perde o `margin: auto` que o navegador usa para centraliza-lo — ele nascia
-   colado no canto superior esquerdo. */
+/* Tailwind's reset zeroes every element's margin, and with it the <dialog> loses
+   the `margin: auto` the browser uses to centre it — it was being born stuck to
+   the top-left corner. */
 dialog {
   margin: auto;
 }
 
-/* O foco cai no proprio <dialog> quando ele abre, e o contorno padrao do
-   navegador (azul) destoa da paleta. O foco visivel continua existindo nos
-   controles de dentro, que e onde ele importa. */
+/* The focus lands on the <dialog> itself when it opens, and the browser's
+   default outline (blue) clashes with the palette. The visible focus still exists
+   on the controls inside, which is where it matters. */
 dialog:focus {
   outline: none;
 }
 
-/* Controles do React Flow.
-   O bundle do xyflow traz cores fixas (branco no botao, preto no icone) e e
+/* React Flow's controls.
+   The xyflow bundle ships fixed colours (white on the button, black on the icon)
+   and is
    carregado DEPOIS da folha compilada, entao vence em especificidade igual —
    por isso os seletores aqui sao duplos. Sem isto, um tema escuro fica com um
    bloco branco no canto do grafo. */

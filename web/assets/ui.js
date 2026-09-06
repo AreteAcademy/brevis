@@ -1,9 +1,9 @@
-// Interacoes das paginas SSR. Um arquivo pequeno, carregado em toda pagina, com
-// duas responsabilidades: abrir os dialogos de erro e dar vida aos graficos.
+// The SSR pages' interactions. A small file, loaded on every page, with two
+// responsibilities: opening the error dialogs and giving the charts life.
 //
-// Delegacao de eventos em vez de um listener por elemento: as tabelas sao
-// re-renderizadas pelo servidor a cada navegacao, e listeners presos a linhas
-// especificas morreriam junto com elas.
+// Event delegation rather than one listener per element: the tables are
+// re-rendered by the server on every navigation, and listeners bound to specific
+// rows would die along with them.
 (function () {
   "use strict";
 
@@ -16,13 +16,15 @@
       if (d && typeof d.showModal === "function") d.showModal();
       return;
     }
-    // Clique no backdrop fecha. O <dialog> nao distingue backdrop de conteudo
-    // sozinho: o alvo do clique E o proprio dialog quando se acerta a moldura.
+    // A click on the backdrop closes it. A <dialog> does not tell the backdrop
+    // from its content on its own: the click's target IS the dialog itself when
+    // the frame is hit.
     if (e.target.tagName === "DIALOG") e.target.close();
   });
 
-  // Abrir por link: /runs#erro-<id> ja chega com o dialogo aberto. Serve para
-  // mandar a falha exata para alguem em vez de "abre a lista e procura".
+  // Opening by link: /runs#erro-<id> arrives with the dialog already open. It
+  // serves for sending somebody the exact failure instead of "open the list and
+  // look".
   function abrirPeloHash() {
     if (!location.hash) return;
     var d = document.getElementById(location.hash.slice(1));
@@ -35,8 +37,9 @@
 
   // --- Tooltip dos graficos ------------------------------------------------
   //
-  // O <title> do SVG ate mostra o valor, mas so depois de um segundo parado e
-  // com a aparencia do sistema operacional. Aqui a dica aparece na hora, segue o
+  // The SVG's <title> does show the value, but only after a second of hovering
+  // and with the operating system's appearance. Here the tooltip appears at
+  // once, follows the
   // cursor e usa a mesma tipografia do resto da pagina.
   var dica = null;
 
@@ -48,7 +51,8 @@
     }
     dica.textContent = texto;
     dica.style.display = "block";
-    // Posiciona acima e a direita do cursor, virando para o outro lado quando
+    // It sits above and to the right of the cursor, flipping to the other side
+    // when
     // esbarra na borda — senao a dica sai da tela nas ultimas colunas.
     var largura = dica.offsetWidth;
     var esquerda = x + 14;
@@ -62,16 +66,17 @@
   }
 
   document.addEventListener("mousemove", function (e) {
-    // `closest` nao existe em todo alvo possivel de evento (o proprio document,
-    // por exemplo). Sem a guarda, um mousemove fora de qualquer elemento lanca
-    // TypeError e mata o listener para o resto da sessao.
+    // `closest` does not exist on every possible event target (the document
+    // itself, for instance). Without the guard, a mousemove outside any element
+    // throws a TypeError and kills the listener for the rest of the session.
     if (!e.target || typeof e.target.closest !== "function") return;
     var alvo = e.target.closest("[data-dica]");
     if (alvo) mostrar(alvo.dataset.dica, e.clientX, e.clientY);
     else esconder();
   });
 
-  // Rolar com a dica aberta a deixaria flutuando sobre outro ponto do grafico.
+  // Scrolling with the tooltip open would leave it floating over another point
+  // of the chart.
   window.addEventListener("scroll", esconder, { passive: true });
   document.addEventListener("mouseleave", esconder);
 })();

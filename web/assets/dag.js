@@ -1,25 +1,26 @@
-// Ilha interativa da DAG (secao 20 do plano).
+// The DAG's interactive island (section 20 of the plan).
 //
-// Escrita em JS puro, sem JSX e sem bundler, de proposito: a secao 15 proibe
-// Node no build ("Tailwind standalone, sem npm"), e um passo de transpilacao so
-// para esta tela traria toolchain inteira de volta. `React.createElement` e
-// verboso, mas o custo fica nesta unica pagina.
+// Written in plain JS, with no JSX and no bundler, on purpose: section 15
+// forbids Node in the build ("standalone Tailwind, no npm"), and a transpile
+// step just for this screen would bring the whole toolchain back.
+// `React.createElement` is verbose, but the cost stays on this one page.
 //
-// O React Flow NAO e fonte da verdade: posicao dos nos, arestas e estado vem
-// prontos do servidor, calculados pelo mesmo `graph.Niveis` que o executor usa.
-// Aqui so se desenha.
+// React Flow is NOT the source of truth: node positions, edges and state arrive
+// ready from the server, computed by the same `graph.Niveis` the executor uses.
+// Here they are only drawn.
 (function () {
   "use strict";
 
   var h = React.createElement;
   var RF = window.ReactFlow;
 
-  // As cores sao LIDAS do CSS, nao repetidas aqui. A instalacao pode ter tema
-  // proprio (ver internal/branding), e uma paleta fixa neste arquivo faria a
-  // ilha da DAG ser a unica parte da tela a ignorar a customizacao.
+  // The colours are READ from the CSS, not repeated here. An installation can
+  // have a theme of its own (see internal/branding), and a fixed palette in this
+  // file would make the DAG island the one part of the screen that ignores the
+  // customization.
   //
-  // Resolvidas uma vez, no carregamento: getComputedStyle a cada nó re-renderizado
-  // forcaria recalculo de estilo no meio do desenho do grafo.
+  // Resolved once, at load: a getComputedStyle on every re-rendered node would
+  // force a style recalculation in the middle of drawing the graph.
   function tema(nome, reserva) {
     try {
       var v = getComputedStyle(document.documentElement).getPropertyValue(nome);
@@ -36,30 +37,30 @@
   var OURO = tema("--color-gold", "#aa8450");
 
   var CORES = {
-    success: { anel: tema("--color-state-success", "#4c7a56"), rotulo: "sucesso" },
-    failed: { anel: tema("--color-state-failed", "#b0503c"), rotulo: "falha" },
-    running: { anel: tema("--color-state-running", "#3f6d8f"), rotulo: "executando" },
-    retrying: { anel: tema("--color-state-retrying", "#a35f28"), rotulo: "repetindo" },
-    queued: { anel: tema("--color-state-queued", "#b3822f"), rotulo: "na fila" },
-    canceled: { anel: tema("--color-state-canceled", "#8a8175"), rotulo: "cancelado" },
-    pending: { anel: tema("--color-state-pending", "#c9bfae"), rotulo: "aguardando" },
+    success: { anel: tema("--color-state-success", "#4c7a56"), rotulo: "success" },
+    failed: { anel: tema("--color-state-failed", "#b0503c"), rotulo: "failed" },
+    running: { anel: tema("--color-state-running", "#3f6d8f"), rotulo: "running" },
+    retrying: { anel: tema("--color-state-retrying", "#a35f28"), rotulo: "retrying" },
+    queued: { anel: tema("--color-state-queued", "#b3822f"), rotulo: "queued" },
+    canceled: { anel: tema("--color-state-canceled", "#8a8175"), rotulo: "canceled" },
+    pending: { anel: tema("--color-state-pending", "#c9bfae"), rotulo: "pending" },
   };
 
   function cor(status) {
     return CORES[status] || CORES.pending;
   }
 
-  // O estado de uma ETAPA reusa a paleta dos passos: um `done` de etapa tem de
-  // ser o mesmo verde de um passo `success`, senao a tela ensina duas
-  // gramaticas de cor para a mesma ideia.
+  // A STAGE's state reuses the steps' palette: a stage's `done` has to be the
+  // same green as a step's `success`, or the screen teaches two colour grammars
+  // for the same idea.
   var CORES_ETAPA = { done: "success", running: "running", failed: "failed", aborted: "canceled" };
 
   function corDaEtapa(estado) {
     return cor(CORES_ETAPA[estado] || "pending");
   }
 
-  // resumo condensa os numeros de uma etapa para caber numa linha. O detalhe
-  // inteiro fica no painel; aqui so cabe o que se le de relance.
+  // resumo condenses a stage's numbers to fit on one line. The whole detail
+  // stays in the panel; only what is read at a glance fits here.
   function resumo(numeros) {
     if (!numeros) return "";
     var chaves = Object.keys(numeros);
@@ -68,7 +69,7 @@
     for (var i = 0; i < chaves.length && partes.length < 2; i++) {
       var v = numeros[chaves[i]];
       if (v === null || v === undefined || v === "") continue;
-      partes.push(typeof v === "number" ? v.toLocaleString("pt-BR") : String(v));
+      partes.push(typeof v === "number" ? v.toLocaleString("en-US") : String(v));
     }
     return partes.join(" · ");
   }
@@ -80,9 +81,9 @@
     return Math.floor(ms / 60000) + "m" + Math.round((ms % 60000) / 1000) + "s";
   }
 
-  // NoBravis e o card de um passo. Custom node em vez do default porque o
-  // default so mostra um rotulo — e o que o operador precisa saber num incidente
-  // e o estado, a duracao e se houve retry.
+  // NoBravis is a step's card. A custom node rather than the default because the
+  // default only shows a label — and what the operator needs to know during an
+  // incident is the state, the duration and whether there was a retry.
   function NoBravis(props) {
     var d = props.data;
     var c = cor(d.status);
@@ -96,8 +97,9 @@
           background: PAPEL,
           padding: "11px 13px",
           fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
-          // `color-mix` em vez de concatenar alfa ao hexadecimal: a cor pode
-          // vir de uma variavel CSS resolvida, e "var(--x)1f" nao e cor nenhuma.
+          // `color-mix` rather than concatenating alpha onto the hex: the
+          // colour may come from a resolved CSS variable, and "var(--x)1f" is no
+          // colour at all.
           boxShadow:
             d.status === "running"
               ? "0 0 0 3px color-mix(in srgb, " + c.anel + " 14%, transparent), 0 8px 24px rgba(33,24,15,.06)"
@@ -115,17 +117,18 @@
         }),
         h("span", { style: { color: TINTA, fontSize: 13, fontWeight: 600 } }, d.label),
         // O selo do SDK. Cor de ACENTO, nunca de estado: as cores de estado
-        // significam "como foi", e um selo pintado de verde diria uma coisa
-        // que ele nao sabe.
+        // mean "how it went", and a badge painted green would say something it
+        // does not know.
         //
-        // Ele carrega a VERSAO. Um selo que so dissesse "SDK" seria verdadeiro
-        // e inutil; com a versao a tela responde "por que este passo se comporta
-        // diferente do vizinho" sem ninguem abrir o Dockerfile.
+        // It carries the VERSION. A badge that only said "SDK" would be true
+        // and useless; with the version the screen answers "why does this step
+        // behave differently from its neighbour" without anybody opening the
+        // Dockerfile.
         d.temEtapas
           ? h(
               "button",
               {
-                title: d.recolhido ? "mostrar as etapas" : "recolher as etapas",
+                title: d.recolhido ? "show the stages" : "collapse the stages",
                 onClick: function (ev) {
                   // Sem isto o clique tambem selecionaria o passo, e recolher
                   // abriria o painel de detalhes junto.
@@ -145,7 +148,7 @@
           ? h(
               "span",
               {
-                title: "construido com o Brevis SDK " + d.sdk,
+                title: "built with the Brevis SDK " + d.sdk,
                 style: {
                   marginLeft: "auto", flexShrink: 0,
                   padding: "1px 6px", borderRadius: 999,
@@ -185,8 +188,8 @@
     );
   }
 
-  // Os numeros que valem a pena aparecer na linha, e a ordem deles. O resto
-  // fica no painel: uma linha de 20px cabe duas grandezas, nao seis.
+  // The numbers worth showing on the line, and their order. The rest stays in
+  // the panel: a 20px line fits two magnitudes, not six.
   var DESTAQUE = ["in", "out", "groups", "rows", "pages", "objects"];
 
   function numerosDaEtapa(numeros) {
@@ -196,17 +199,18 @@
       var k = DESTAQUE[i];
       var v = numeros[k];
       if (v === null || v === undefined || v === "") continue;
-      out.push({ chave: k, valor: typeof v === "number" ? v.toLocaleString("pt-BR") : String(v) });
+      out.push({ chave: k, valor: typeof v === "number" ? v.toLocaleString("en-US") : String(v) });
     }
     return out;
   }
 
-  // NoEtapa e uma fase DENTRO de um passo do SDK: a origem, cada estagio na
-  // ordem em que roda, o destino.
+  // NoEtapa is a phase INSIDE an SDK step: the source, each stage in the order
+  // it runs, the target.
   //
-  // Linha, e nao caixa lado a lado. Tres caixas horizontais num card de 230px
-  // viram tres selos ilegiveis; em linha cabe o tipo, a identidade e o numero
-  // que a fase produziu -- que e o que serve as tres da manha.
+  // A row, and not boxes side by side. Three horizontal boxes in a 230px card
+  // become three illegible badges; in a row there is space for the type, the
+  // identity and the number the phase produced -- which is what serves at three
+  // in the morning.
   function NoEtapa(props) {
     var d = props.data;
     var c = corDaEtapa(d.estado);
@@ -225,9 +229,9 @@
           background: "color-mix(in srgb, " + c.anel + " 7%, transparent)",
           fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
           fontSize: 10,
-          // A etapa que corre ganha o mesmo anel que o card de um passo em
-          // execucao -- e nao uma animacao propria. Duas gramaticas para "esta
-          // acontecendo agora" na mesma tela e uma a mais.
+          // The running stage gets the same ring a running step's card gets --
+          // and not an animation of its own. Two grammars for "this is happening
+          // now" on the same screen is one too many.
           boxShadow: d.estado === "running"
             ? "0 0 0 2px color-mix(in srgb, " + c.anel + " 22%, transparent)"
             : "none",
@@ -240,8 +244,9 @@
       h("span", {
         style: { color: TINTA, fontWeight: 600, letterSpacing: "0.02em", flexShrink: 0 },
       }, d.rotulo || d.nome),
-      // A identidade, quando ha uma: qual origem, qual destino. E o que
-      // transforma "extract, 743ms" em meia carta numa carta inteira.
+      // The identity, when there is one: which source, which target. It is
+      // what
+      // turns "extract, 743ms" from half a card into a whole one.
       detalhe
         ? h("span", {
             style: {
@@ -251,7 +256,8 @@
             },
           }, detalhe)
         : h("span", { style: { flex: 1 } }),
-      // Os numeros, com o nome junto: "216" sozinho nao diz de que.
+      // The numbers, with their name alongside: "216" on its own says nothing
+      // about what.
       h("span",
         { style: { display: "flex", gap: 6, flexShrink: 0, whiteSpace: "nowrap" } },
         nums.map(function (n) {
@@ -269,19 +275,20 @@
 
   var TIPOS = { bravis: NoBravis, etapa: NoEtapa };
 
-  // Inspetor: painel lateral do no selecionado. Aparece so quando ha selecao —
-  // ocupar espaco fixo com "nada selecionado" reduz a area do grafo a toa.
+  // The inspector: the selected node's side panel. It appears only when there is
+  // a selection — taking up fixed space with "nothing selected" shrinks the
+  // graph's area for nothing.
   function Inspetor(props) {
     var n = props.no;
     if (!n) return null;
     var d = n.data;
     var c = cor(d.status);
     var linhas = [
-      ["passo", n.id],
-      ["estado", c.rotulo],
-      d.acao ? ["comando", d.acao] : null,
-      d.duracao_ms ? ["duracao", duracao(d.duracao_ms)] : null,
-      typeof d.tentativa === "number" ? ["tentativa", String(d.tentativa + 1)] : null,
+      ["step", n.id],
+      ["state", c.rotulo],
+      d.acao ? ["command", d.acao] : null,
+      d.duracao_ms ? ["duration", duracao(d.duracao_ms)] : null,
+      typeof d.tentativa === "number" ? ["attempt", String(d.tentativa + 1)] : null,
       typeof d.exit_code === "number" ? ["exit code", String(d.exit_code)] : null,
     ].filter(Boolean);
 
@@ -339,8 +346,9 @@
           );
         })
       ),
-      // As etapas, com TODOS os numeros. Na caixa do grafo cabe o relance; o
-      // detalhe e aqui, que e onde se vai quando a linha do relance nao bastou.
+      // The stages, with EVERY number. The graph's box fits the glance; the
+      // detail is here, which is where you go when the glance's line was not
+      // enough.
       props.etapas && props.etapas.length
         ? h(
             "div",
@@ -424,14 +432,15 @@
           .then(function (g) {
             if (!vivo) return;
             setDados({ nodes: g.nodes || [], edges: g.edges || [], carregando: false, erro: "" });
-            // Live update por polling, nao por WebSocket: o dado muda em
-            // segundos, nao em milissegundos, e um GET repetido nao precisa de
-            // conexao persistente nem de reconexao.
+            // Live updates by polling, not by WebSocket: the data changes in
+            // seconds, not in milliseconds, and a repeated GET needs neither a
+            // persistent connection nor reconnection logic.
             //
-            // O intervalo segue o estado. `failed` nao e terminal no dominio —
-            // um retry o move para `retrying` — mas insistir de 2 em 2s numa run
-            // que provavelmente esgotou as tentativas e trafego a toa; 10s ainda
-            // pega o retry sem custar nada. Terminal de verdade nao consulta mais.
+            // The interval follows the state. `failed` is not terminal in the
+            // domain — a retry moves it to `retrying` — but insisting every 2s
+            // on a run that has probably run out of attempts is traffic for
+            // nothing; 10s still catches the retry at no cost. A genuinely
+            // terminal one stops polling.
             var proximo = g.terminal ? 0 : g.status === "failed" ? 10000 : 2000;
             if (proximo && g.run_id) timer = setTimeout(buscar, proximo);
           })
@@ -451,15 +460,17 @@
       };
     }, [props.src]);
 
-    // Reaplica o estado no no selecionado a cada atualizacao: sem isto o painel
-    // congelaria no instante do clique enquanto o grafo continua avancando.
+    // It reapplies the state to the selected node on every update: without this
+    // the panel would freeze at the instant of the click while the graph keeps
+    // moving.
     var noAtual = selecionado
       ? dados.nodes.filter(function (n) { return n.id === selecionado; })[0]
       : null;
 
-    // Recolher e do CLIENTE: e preferencia de quem olha, nao estado da
-    // execucao, entao nao vai ao servidor nem ao banco. E a valvula de escape
-    // para um DAG grande -- vinte passos do SDK expandidos sao muita linha.
+    // Collapsing belongs to the CLIENT: it is a preference of whoever is
+    // looking, not run state, so it goes neither to the server nor to the
+    // database. It is the escape valve for a large DAG -- twenty expanded SDK
+    // steps are a lot of rows.
     var rec = React.useState({});
     var recolhidos = rec[0], setRecolhidos = rec[1];
     var alternar = React.useCallback(function (id) {
@@ -477,7 +488,7 @@
 
     var nos = [];
     dados.nodes.forEach(function (n) {
-      // Filho de um passo recolhido simplesmente nao entra.
+      // A collapsed step's child simply does not go in.
       if (n.parentId && recolhidos[n.parentId]) return;
       if (!comEtapas[n.id]) {
         nos.push(n);
@@ -488,8 +499,8 @@
         recolhido: !!recolhidos[n.id],
         alternar: function () { alternar(n.id); },
       });
-      // Recolhido, o grupo perde a altura declarada e volta a caber no
-      // conteudo: sem isto sobraria uma caixa alta e vazia.
+      // Collapsed, the group loses its declared height and fits its content
+      // again: without this a tall empty box would be left over.
       nos.push(Object.assign({}, n, {
         data: d,
         style: recolhidos[n.id] ? undefined : n.style,
@@ -509,7 +520,7 @@
                 color: "#8f4030", fontSize: 12,
               },
             },
-            "falha ao carregar o grafo: " + dados.erro
+            "could not load the graph: " + dados.erro
           )
         : null,
       h(
@@ -523,8 +534,8 @@
           minZoom: 0.2,
           proOptions: { hideAttribution: false },
           defaultEdgeOptions: { style: { stroke: OURO, strokeWidth: 1.4 } },
-          // Visualizacao, nao edicao: arrastar no e reconectar aresta ficam
-          // desligados ate a fase do editor. Pan e zoom seguem livres.
+          // Viewing, not editing: dragging a node and reconnecting an edge stay
+          // off until the editor phase. Pan and zoom remain free.
           nodesDraggable: false,
           nodesConnectable: false,
           edgesFocusable: false,
