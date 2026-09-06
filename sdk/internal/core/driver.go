@@ -71,8 +71,7 @@ type WriteOptions struct {
 	// Schema is the declaration WITH types, and it is what a destination needs
 	// in order to CREATE the table. Empty means the consumer declared only the
 	// names, or nothing -- and in that case a destination that would create the
-	// table has to refuse
-	// em vez de inferir.
+	// table has to refuse rather than infer.
 	Schema Schema
 
 	// PartitionBy names the partitioning column of a created table.

@@ -1,161 +1,166 @@
-# SDK — como acrescentar um driver
+# SDK — how to add a driver
 
-**Vale para** `sdk/v0.21.0` · **Atualizado em** 2026-09-04
+**Valid for** `sdk/v0.52.0` · **Updated on** 2026-09-06
 
-O roteiro das fases 2 a 4 de
-[`plan/2026-09-04-sdk-drivers-mvp.md`](plan/2026-09-04-sdk-drivers-mvp.md). A
-fase 1 (Files) já saiu, na `v0.20.0`, e serve de modelo: leia `sdk/from/files.go`
-e `sdk/to/files.go` ao lado deste documento.
-Para o mapa, veja [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md); para as decisões
-que este roteiro pressupõe, [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
+Five drivers were added this way: Files, Postgres, MySQL and Redshift, plus
+BigQuery before them. Read `sdk/from/postgres/postgres.go` and
+`sdk/to/postgres/postgres.go` alongside this document — they are the shortest
+complete pair.
+
+For the map, see [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md); for the decisions
+this walkthrough assumes, [`SDK_DECISIONS.md`](SDK_DECISIONS.md).
 
 ---
 
-## 1. O esqueleto
+## 1. The skeleton
 
-Um driver é um tipo com os campos que **só ele** tem, mais um método:
+A driver is a type carrying the fields **only it** has, plus one method:
 
 ```go
-// sdk/from/postgres.go
-package from
+// sdk/from/postgres/postgres.go
+package postgres
 
-type Postgres struct {
+type Query struct {
     DSN       string
-    Query     string
+    SQL       string
     Args      []any
     FetchSize int
+    Timeout   time.Duration
+    Conn      *pgx.Conn
 }
 
-func (p Postgres) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error)
-func (p Postgres) Describe() string
+func (q Query) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error)
+func (q Query) Describe() string
 ```
 
 ```go
-// sdk/to/postgres.go
-package to
+// sdk/to/postgres/postgres.go
+package postgres
 
-type Postgres struct {
-    DSN       string
-    Table     string
-    BatchSize int
+type Table struct {
+    DSN  string
+    Name string
+    Conn *pgx.Conn
 }
 
-func (p Postgres) Write(ctx context.Context, records []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error)
-func (p Postgres) Describe() string
+func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error)
+func (t Table) Describe() string
 ```
 
-O mesmo nome nos dois pacotes é de propósito: `from.Postgres` tem `Query`,
-`to.Postgres` tem `Table`, e nenhum carrega o campo do outro.
+Two packages with the same name is on purpose, and the consumer imports them as
+`frompg` and `topg` when both are needed: the read side has `SQL`, the write side
+has `Name`, and neither carries the other's field.
 
 ---
 
-## 2. As nove regras
+## 2. The nine rules
 
-### 2.1 Um driver com dependência mora no próprio pacote
+### 2.1 A driver with a dependency lives in its own package
 
-`from` e `to` guardam os drivers que só precisam da biblioteca padrão. Qualquer
-um com SDK de fornecedor atrás — BigQuery, Postgres, Redshift — vai para o seu
-próprio pacote: `to/bigquery`, `to/postgres`.
+`from` and `to` hold the drivers that need only the standard library. Any one
+with a vendor SDK behind it — BigQuery, Postgres, MySQL, Redshift — goes into a
+package of its own: `to/bigquery`, `to/postgres`.
 
-Dividir pacote com um driver caro tem o mesmo efeito que a raiz importá-lo.
-Aconteceu na `v0.20.0`: `to.BigQuery` e `to.Files` juntos faziam escrever um
-arquivo compilar o Google, 461 pacotes onde deviam ser 195.
+Sharing a package with an expensive driver has the same effect as the root
+importing it. It happened in `v0.20.0`: `to.BigQuery` and `to.Files` together
+made writing a file compile Google in, 461 packages where it should have been
+195.
 
-### 2.2 A raiz não pode importar o seu pacote
+### 2.2 The root must not import your package
 
-Se `sdk` passar a importar `from/postgres`, todo consumidor compila o `pgx` — e
-a propriedade que a fase 0 comprou morre. `examples/consumer/pruning_test.go`
-acusa. **Não conserte o teste; conserte o import.**
+If `sdk` starts importing `from/postgres`, every consumer compiles `pgx` — and
+the property phase 0 bought dies. `examples/consumer/pruning_test.go` says so,
+and `.github/scripts/pruning-check.sh` runs it in CI. **Do not fix the test; fix
+the import.**
 
-Acrescente o seu caso lá, com o controle: quem importa o seu pacote *tem* de
-receber a sua dependência, senão o teste passaria com um driver que não carrega
-nada.
+Add your case there, with the control: whoever imports your package *has* to get
+your dependency, or the test would pass with a driver that carries nothing.
 
-### 2.3 O backend de nuvem também é um valor
+### 2.3 The cloud backend is a value too
 
-Se `from.Files` importasse S3 e GCS, ler um CSV local compilaria os dois. Por
-isso `core.Store` é passado em vez de escolhido dentro do driver, e mora em
-`store/s3` e `store/gcs`.
+If `from.Files` imported S3 and GCS, reading a local CSV would compile both. That
+is why `core.Store` is passed in rather than chosen inside the driver, and lives
+in `store/s3` and `store/gcs`.
 
-Vale para qualquer driver que fale com mais de um backend: **o que varia vira
-valor, e o valor mora no seu próprio pacote.**
+It holds for any driver that speaks to more than one backend: **what varies
+becomes a value, and the value lives in its own package.**
 
-### 2.4 Streaming, sempre
+### 2.4 Streaming, always
 
-`Read` devolve um `iter.Seq2` que **produz sob demanda**. Um driver que
-materializa a origem inteira antes de devolver põe um export de 5 GB na
-memória.
+`Read` returns an `iter.Seq2` that **produces on demand**. A driver that
+materializes the whole source before returning puts a 5 GB export in memory.
 
-Escreva o teste que falha se você bufferizar — o do HTTP é
-`extract.TestBodyStreamsFully`, e ele existe porque essa regressão já aconteceu:
-um `cancelAttempt()` cedo demais truncava o corpo, e nenhum teste via.
+Write the test that fails if you buffer — HTTP's is
+`extract.TestBodyStreamsFully`, and it exists because that regression already
+happened: a `cancelAttempt()` called too early truncated the body, and no test
+saw it.
 
-### 2.5 Nada de inferir tipo
+### 2.5 No type inference
 
-O SDK não adivinha o tipo de uma coluna. No BigQuery a `v0.16.0` resolve isso
-delegando a inferência ao próprio BigQuery — carrega numa tabela descartável com
-autodetect, lê o schema e sobrepõe só as duas colunas que são do SDK.
+The SDK does not guess a column's type. On BigQuery, `v0.16.0` resolves that by
+delegating the inference to BigQuery itself — it loads into a throwaway table
+with autodetect, reads the schema and overrides only the SDK's two columns.
 
-**Postgres, MySQL e Redshift não têm esse serviço.** Então, para eles:
+**Postgres, MySQL and Redshift have no such service.** So for them:
 
-> A tabela precisa existir, ou você passa o DDL em `CreateSQL`.
+> The table has to exist, or you pass the DDL in `CreateSQL`.
 
-Um `CreateTable: true` sem `CreateSQL` num destino SQL é **erro nomeando a
-limitação**, e a mensagem lista as colunas que o lote traz, para o DDL sair de
-uma leitura. Não é uma lacuna a preencher depois com inferência: é a decisão.
+A `CreateTable: true` with no `CreateSQL` on a SQL destination is an **error
+naming the limitation**, and the message lists the columns the batch carries so
+the DDL comes out of one reading. It is not a gap to be filled later with
+inference: it is the decision.
 
-### 2.6 Opção que o driver não suporta é erro, não silêncio
+### 2.6 An option the driver does not support is an error, not silence
 
-`Dedup` num destino de arquivos, `ClusterBy` no Postgres, `RateLimiter` numa
-origem de disco: erro nomeando a opção e o driver.
+`Dedup` on a file destination, `ClusterBy` on Postgres, a `RateLimiter` on a
+disk source: an error naming the option and the driver.
 
-É a lição que a `v0.16.0` aplicou ao `AutoID` — proveniência junto dele seria
-escrita e nunca lida, então é recusada nomeando os campos. Um campo aceito e
-ignorado é o defeito que este SDK mais achou em si mesmo.
+A field accepted and ignored is the defect this SDK has found most often in
+itself.
 
-### 2.7 SQL gerado é função pura
+### 2.7 Generated SQL is a pure function
 
-Monte o SQL fora do método que precisa de conexão:
+Build the SQL outside the method that needs a connection:
 
 ```go
-func mergeSQL(dest, temp string, cols []string, key string) string
-func reconcile(dest, incoming Schema) (cols []string, err error)
+func InsertSQL(target, source string, columns []string) string
+func core.Reconcile(dest, incoming []string, target string) ([]string, error)
 ```
 
-Não é estilo. O `MERGE` do BigQuery ficou **três versões** com `INSERT ROW`, que
-casa colunas por **posição**, com um comentário afirmando que casava por nome —
-e nenhum teste unitário jamais tinha visto a string gerada, porque ela nascia
-dentro de um método com cliente.
+It is not style. BigQuery's `MERGE` spent **three versions** on `INSERT ROW`,
+which matches columns by **position**, with a comment claiming it matched by
+name — and no unit test had ever seen the generated string, because it was born
+inside a method that held a client.
 
-E **crase ou aspas em todo identificador**: `full`, `range` e `comment` são
-reservadas e aparecem em coluna de consumidor de verdade.
+And **backticks or quotes on every identifier**: `full`, `range` and `comment`
+are reserved and show up in a real consumer's columns.
 
-### 2.8 A reconciliação é assimétrica
+### 2.8 Reconciliation is asymmetric
 
-Ao casar o registro com o destino, use a mesma regra que o `reconcile` já usa:
+When matching the record against the destination, use the same rule
+`core.Reconcile` already uses:
 
-| situação | o que fazer |
+| situation | what to do |
 |---|---|
-| campo no registro que o destino não tem | **erro** nomeando o campo |
-| coluna no destino que o registro não traz | segue, fica NULL |
-| tipos incompatíveis no mesmo nome | **erro** nomeando a coluna e os dois tipos |
+| a field in the record the destination does not have | **error** naming the field |
+| a column in the destination the record does not carry | carry on, it stays NULL |
+| incompatible types under the same name | **error** naming the column and both types |
 
-Descartar dado em silêncio é o pior modo de falhar: some sem sinal. Coluna que
-fica NULL é legítima numa landing.
+Discarding data in silence is the worst way to fail: it vanishes with no signal.
+A column that stays NULL is legitimate in a landing table.
 
-Na fase 2 o `reconcile` sobe de `sdk/load` para `internal/core` e passa a servir
-os três destinos SQL.
+`Reconcile` lives in `internal/core` and serves all four SQL destinations.
 
-### 2.9 Não altere nem apague nada
+### 2.9 Alter nothing and delete nothing
 
-Vale para todos os drivers o princípio escrito no godoc de `load.prepareTable`: um loader que sabe
-fazer `ALTER` sabe apagar história. Divergência é erro, não migração. E não crie
-índice — confira que o índice único de `ingestion_id` existe e recuse nomeando-o
-se não existir.
+The principle written in `load.prepareTable`'s godoc holds for every driver: a
+loader that can `ALTER` can erase history. A divergence is an error, not a
+migration. And do not create an index — check that the unique index on
+`ingestion_id` exists and refuse naming it when it does not.
 
 ---
 
-## 3. As duas colunas de metadado, por dialeto
+## 3. The two metadata columns, per dialect
 
 | | `ingestion_id` | `ingestion_loaded_at` |
 |---|---|---|
@@ -164,110 +169,118 @@ se não existir.
 | MySQL | `VARCHAR(36) NOT NULL` | `DATETIME(6) NOT NULL` |
 | Redshift | `VARCHAR(36) NOT NULL` | `TIMESTAMPTZ NOT NULL` |
 
-`WriteOptions.Metadata` diz se acrescentar; `WriteOptions.AutoID` diz se o id é
-aleatório. A proveniência já vem resolvida no `Envelope` — o driver não lê o
-registro do cliente para descobrir o que identifica uma linha.
+**The driver does not add them.** Since `v0.24.0` they are transformers — the
+consumer places `sdk.IngestionID(...)` and `sdk.IngestionLoadedAt()` in the
+chain, and the row that reaches `Write` already carries them. There is no
+`WriteOptions.Metadata` and no `AutoID`: a destination that stamped a column
+after the chain would be writing something the declaration check never saw.
 
-## 4. Dedup, por dialeto
+What the driver does is honour `WriteOptions.Columns`, which names them.
 
-| destino | como |
+## 4. Dedup, per dialect
+
+| destination | how |
 |---|---|
 | BigQuery | `MERGE ... WHEN NOT MATCHED THEN INSERT (cols) VALUES (...)` |
 | Postgres | staging + `INSERT ... ON CONFLICT (ingestion_id) DO NOTHING` |
-| MySQL | `INSERT IGNORE`, com índice único em `ingestion_id` |
-| Redshift | `COPY` para staging + `MERGE`, com as colunas **nomeadas** |
-| Files | não suportado — erro dizendo isso |
+| MySQL | `INSERT IGNORE`, with a unique index on `ingestion_id` |
+| Redshift | `COPY` into staging + `MERGE`, with the columns **named** |
+| Files | not supported — an error saying so |
 
-Todos exigem `Metadata`, porque casam em `ingestion_id`. Todos são recusados
-junto de `AutoID`, porque um id aleatório não casa com nada.
+All of them match on `ingestion_id`, so all of them need it declared in
+`Columns`, and the SQL ones need the unique index to exist. They **require** the
+index and never create one.
 
 ---
 
-## 5. Mapeamento de tipo para os drivers SQL
+## 5. Type mapping for the SQL drivers
 
-O registro vira JSON, então cada tipo precisa de uma escolha **escrita**:
+The record becomes JSON, so every type needs a **written** choice:
 
-| SQL | Go | JSON | por quê |
+| SQL | Go | JSON | why |
 |---|---|---|---|
-| `NUMERIC` / `DECIMAL` | `string` | string | `float64` perde precisão em dinheiro |
+| `NUMERIC` / `DECIMAL` | `string` | string | a `float64` loses precision on money |
 | `TIMESTAMPTZ` | `time.Time` | RFC 3339 | |
-| `DATE` | `time.Time` | `YYYY-MM-DD` | sem hora falsa |
-| `BYTEA` / `BLOB` | `[]byte` | base64 | `encoding/json` já faz |
-| `JSON` / `JSONB` | `json.RawMessage` | aninhado | não reserializar |
+| `DATE` | `time.Time` | `YYYY-MM-DD` | with no invented time |
+| `BYTEA` / `BLOB` | `[]byte` | base64 | `encoding/json` already does it |
+| `JSON` / `JSONB` | `json.RawMessage` | nested | do not reserialize |
 | `UUID` | `string` | string | |
 | `NULL` | `nil` | `null` | |
-| array PG | `[]any` | array | |
+| a PG array | `[]any` | array | |
 
-Uma tabela escrita e testada linha a linha não é inferência: é uma decisão
-revisável. No MySQL, `database/sql` devolve `[]byte` para quase tudo quando se
-lê em `any` — a conversão sai de `Rows.ColumnTypes()`, e sem isso todo `INT`
-vira string de bytes.
+A written table, tested line by line, is not inference: it is a reviewable
+decision. On Postgres the conversion comes from the column's declared **OID**;
+on MySQL from `Rows.ColumnTypes()`, because `database/sql` returns `[]byte` for
+nearly everything when read into an `any` — without it every `INT` becomes a
+string of bytes.
+
+The two directions are in `sdk/from/postgres/types.go` and
+`sdk/to/postgres/types.go`, with their MySQL counterparts alongside.
 
 ---
 
-## 6. Testes
+## 6. Tests
 
-Ligue os containers com `docker-compose.drivers.yml` e trave por variável de
-ambiente, como os testes do BigQuery já são:
+Bring the containers up with `docker-compose.drivers.yml` and gate on an
+environment variable, the way the BigQuery tests already are:
 
-| serviço | serve a | variável |
+| service | serves | variable |
 |---|---|---|
-| `postgres:17-alpine` | `from.Postgres`, `to.Postgres` | `BREVIS_IT_PG_DSN` |
-| `mysql:8` | `from.MySQL`, `to.MySQL` | `BREVIS_IT_MYSQL_DSN` |
-| `minio/minio` | `s3://` de `Files` e o staging do Redshift | `BREVIS_IT_S3_ENDPOINT` |
+| `postgres:17-alpine` | `postgres.Query`, `postgres.Table` | `BREVIS_IT_PG_DSN` |
+| `mysql:8` | `mysql.Query`, `mysql.Table` | `BREVIS_IT_MYSQL_DSN` |
+| `minio/minio` | `s3://` for `Files` and Redshift's staging | `BREVIS_IT_S3_ENDPOINT` |
 
-O compose já existe: `docker-compose.drivers.yml`, na raiz. O MinIO já é usado
-pelos testes do `Files`.
+GCS has no good emulator; `gs://` runs against the real bucket the BigQuery
+suite already uses.
 
-GCS não tem emulador bom; `gs://` vai contra o bucket real que a suíte do
-BigQuery já usa.
+**Per driver, at minimum:**
 
-**Por driver, no mínimo:**
-
-1. um teste que prova que uma linha **realmente** entra ou sai. Os em memória
-   provam os bytes que montamos, não o que o servidor aceita — e foi a primeira
-   execução dos de integração que achou quatro defeitos de uma vez;
-2. o mapeamento de tipo, linha a linha da tabela do §5, com `NULL`, `NUMERIC` e
+1. a test proving a row **actually** goes in or comes out. The in-memory ones
+   prove the bytes we assembled, not what the server accepts — and it was the
+   first run of the integration tests that found four defects at once;
+2. the type mapping, line by line from §5's table, with `NULL`, `NUMERIC` and
    `JSONB`;
-3. um que **falha** se o driver bufferizar em vez de fazer streaming;
-4. o SQL gerado afirmado como função pura, sem cliente;
-5. o caso de poda em `examples/consumer/pruning_test.go`, com o controle;
-6. um exemplo executável em `examples/`, que roda de primeira. Foi um exemplo
-   que não rodava que achou o buraco do `03-basic-load`.
+3. one that **fails** if the driver buffers instead of streaming;
+4. the generated SQL asserted as a pure function, with no client;
+5. the pruning case in `examples/consumer/pruning_test.go`, with the control;
+6. a runnable example under `examples/`, that works the first time. It was an
+   example that did not run which found the hole in `03-basic-load`.
 
-**Verifique que o teste morde.** Reverta a correção e confirme que ele falha,
-antes de dar por bom. Esta é a regra que mais achou defeito neste projeto.
-
----
-
-## 7. Checklist de pronto
-
-- [ ] `Read`/`Write` e `Describe` implementados
-- [ ] driver com dependência está no próprio pacote
-- [ ] a raiz continua sem importar o pacote — teste de poda com o controle,
-      **incluindo o pipeline completo dos dois lados**
-- [ ] backend que varia mora no próprio pacote, passado como valor
-- [ ] streaming provado por um teste que falharia sem ele
-- [ ] tipos mapeados por tabela escrita, com teste por linha
-- [ ] `CreateTable` sem inferência: tabela existente ou `CreateSQL`
-- [ ] opção não suportada é erro nomeando a opção e o driver
-- [ ] SQL gerado é puro e testado; identificadores citados
-- [ ] `reconcile` assimétrico
-- [ ] nada de `ALTER`, `DROP` ou criação de índice
-- [ ] integração contra container, travada por variável de ambiente
-- [ ] exemplo executável que roda de primeira
-- [ ] `CHANGELOG` com o diff de migração por extenso
-- [ ] `go test ./... -race` verde, `golangci-lint run ./...` limpo
-- [ ] `cmd/brevis-sdk` continua compilando (módulo próprio, pin sobe depois da tag)
+**Check that the test bites.** Revert the fix and confirm it fails, before
+calling it done. This is the rule that has found the most defects in this
+project.
 
 ---
 
-## 8. A pergunta final
+## 7. Done checklist
 
-Pegue um fetcher escrito por quem nunca viu o SDK e responda lendo só o
-`main.go`:
+- [ ] `Read`/`Write` and `Describe` implemented
+- [ ] a driver with a dependency is in its own package
+- [ ] the root still does not import the package — the pruning test with the
+      control, **the complete pipeline from both sides included**
+- [ ] a backend that varies lives in its own package, passed as a value
+- [ ] streaming proven by a test that would fail without it
+- [ ] types mapped by a written table, with a test per row
+- [ ] `CreateTable` with no inference: an existing table or `CreateSQL`
+- [ ] an unsupported option is an error naming the option and the driver
+- [ ] generated SQL is pure and tested; identifiers quoted
+- [ ] asymmetric `Reconcile`
+- [ ] no `ALTER`, no `DROP`, no index creation
+- [ ] integration against a container, gated on an environment variable
+- [ ] a runnable example that works the first time
+- [ ] `CHANGELOG` with the migration diff written out
+- [ ] `go test ./... -race` green, `golangci-lint run ./...` clean
+- [ ] `cmd/brevis-sdk` still compiles (its own module; the pin moves after the tag)
 
-> De onde vem, o que sai em cada coluna, para onde vai, e quanto pesa o binário?
+---
 
-As três primeiras a arquitetura já entrega. A quarta é a poda, e é ela que diz
-se o SDK está pronto para quem não usa BigQuery.
+## 8. The final question
+
+Take a fetcher written by somebody who has never seen the SDK and answer by
+reading only its `main.go`:
+
+> Where does it come from, what comes out in each column, where does it go, and
+> how big is the binary?
+
+The architecture already delivers the first three. The fourth is the pruning, and
+it is what says whether the SDK is ready for somebody who does not use BigQuery.
