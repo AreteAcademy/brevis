@@ -67,18 +67,18 @@ type HTTP struct {
 	//	}
 	Auth *Credential
 
-	// Delimiter e o separador de campos do CSV. Zero usa a virgula.
+	// Delimiter is the CSV's field separator. Zero uses a comma.
 	//
-	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
-	// dados abertos.
+	// `;` is the de facto standard across much of Europe and in nearly every
+	// open-data portal.
 	Delimiter rune
 
 	// NoHeader, for CSV: treat every row as data with field_N keys.
 	NoHeader bool
 
-	// PreserveNumbers entrega os números JSON como json.Number, com o literal
-	// intacto. Ligue quando a identidade depender da forma do número -- ver
-	// sdk.IngestionIDPython.
+	// PreserveNumbers hands the JSON numbers over as json.Number, with the
+	// literal intact. Turn it on when identity depends on the number's shape --
+	// see sdk.IngestionIDPython.
 	PreserveNumbers bool
 
 	// Pagination. Exactly one strategy may be set; two is an error, because
@@ -96,16 +96,17 @@ type HTTP struct {
 	DataKey     string
 	MaxPages    int
 
-	// MoreKey e o caminho, separado por pontos, para um booleano na resposta
-	// que diz se ha proxima pagina -- "pageMeta.hasNextPage". Falso encerra.
+	// MoreKey is the dot-separated path to a boolean in the response saying
+	// whether there is a next page -- "pageMeta.hasNextPage". False ends the
+	// walk.
 	//
-	// Nao e uma estrategia e sim um CRITERIO DE PARADA: combina com qualquer
-	// uma das quatro. Sem ele a parada e a pagina vazia, o que custa uma
-	// requisicao a mais por origem -- e num fan-out de centenas de origens
-	// isso e centenas de requisicoes por execucao.
+	// It is not a strategy but a STOPPING CRITERION: it combines with any of
+	// the four. Without it the stop is the empty page, which costs one extra
+	// request per source -- and on a fan-out of hundreds of sources that is
+	// hundreds of requests per run.
 	//
-	// A parada por pagina vazia continua valendo como rede de seguranca: uma
-	// API que mente no campo nao pode virar laco infinito.
+	// Stopping on an empty page stays in place as a safety net: an API that
+	// lies in the field must not become an infinite loop.
 	MoreKey string
 
 	// PageKey is the query parameter holding the page NUMBER. It advances by

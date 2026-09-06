@@ -178,7 +178,7 @@ func TestCheckpointComParteFaltandoRefazOExtract(t *testing.T) {
 	if leituras != 2 {
 		t.Errorf("a origem foi lida %d vezes; um deposito capenga tem de ser descartado", leituras)
 	}
-	if !strings.Contains(log, "checkpoint incompleto") {
+	if !strings.Contains(log, "checkpoint incomplete") {
 		t.Errorf("descartar um checkpoint calado esconde a causa:\n%s", log)
 	}
 	// E o que foi carregado tem de ser o conjunto inteiro, nao o que sobrou.
@@ -220,7 +220,7 @@ func TestCheckpointComContagemErradaFalhaAlto(t *testing.T) {
 	if err == nil {
 		t.Fatal("um checkpoint que mente na contagem tem de falhar, nao carregar menos em silencio")
 	}
-	if !strings.Contains(err.Error(), "corrompido") {
+	if !strings.Contains(err.Error(), "corrupt") {
 		t.Errorf("a mensagem nao diz o que houve: %v", err)
 	}
 }
@@ -376,7 +376,7 @@ func TestCheckpointForaDoMotorAvisaEmVezDeIgnorar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("rodar a mao nao pode falhar: %v", err)
 	}
-	if !strings.Contains(log, "checkpoint desligado") {
+	if !strings.Contains(log, "checkpoint off") {
 		t.Errorf("desligar em silencio esconde uma configuracao que nao esta valendo:\n%s", log)
 	}
 }

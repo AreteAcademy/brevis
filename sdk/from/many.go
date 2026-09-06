@@ -116,16 +116,17 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 
 	if len(origens) == 0 {
 		if m.Discover != nil {
-			return nil, fmt.Errorf("from.Many: o Discover não devolveu origem nenhuma. Zero " +
-				"origens não é o mesmo que zero registros: uma execução que não leu nada " +
-				"porque não havia o que ler é diferente de uma que não sabia onde ler")
+			return nil, fmt.Errorf("from.Many: Discover returned no source at all. Zero " +
+				"sources is not the same as zero records: a run that read nothing because " +
+				"there was nothing to read is different from one that did not know where " +
+				"to read")
 		}
-		return nil, fmt.Errorf("from.Many precisa de ao menos uma origem em Sources, " +
-			"ou de um Discover")
+		return nil, fmt.Errorf("from.Many needs at least one source in Sources, " +
+			"or a Discover")
 	}
 	for i, s := range origens {
 		if s == nil {
-			return nil, fmt.Errorf("from.Many: a origem %d é nil", i)
+			return nil, fmt.Errorf("from.Many: source %d is nil", i)
 		}
 	}
 	m.Sources = origens
@@ -237,7 +238,7 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 					Source: r.origem.Describe(), Err: r.err.Error(),
 				})
 				mu.Unlock()
-				slog.WarnContext(ctx, "origem falhou e foi tolerada",
+				slog.WarnContext(ctx, "a source failed and was tolerated",
 					"source", r.origem.Describe(), "error", r.err)
 				continue
 			}

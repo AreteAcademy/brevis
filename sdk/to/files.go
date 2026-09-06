@@ -59,7 +59,7 @@ func (f Files) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 		return nil, err
 	}
 
-	loc, err := core.ParseLocation(comoDiretorio(f.Path))
+	loc, err := core.ParseLocation(asDirectory(f.Path))
 	if err != nil {
 		return nil, err
 	}
@@ -98,39 +98,40 @@ func (f Files) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 		Strategy:    "file",
 		Format:      string(format),
 		Dedup:       core.DedupNone,
-		// O caminho COMPLETO, e nao a chave: o que sai daqui tem de poder
-		// voltar num from.Files sem ninguem remontar o esquema e o bucket.
-		Objects: []string{referencia(loc, key)},
+		// The FULL path, and not the key: what comes out of here has to be
+		// able to go back into a from.Files without anybody reassembling the
+		// scheme and the bucket.
+		Objects: []string{reference(loc, key)},
 	}, nil
 }
 
 // Describe satisfies core.Writer.
 //
-// Ele nomeia o DIRETORIO, que e o que foi configurado. O arquivo escrito sai
-// em Result.Objects -- e sao coisas diferentes: um Describe que mudasse a cada
-// carga deixaria de identificar o destino no log.
+// It names the DIRECTORY, which is what was configured. The written file comes
+// out in Result.Objects -- and they are different things: a Describe that
+// changed on every load would stop identifying the destination in the log.
 func (f Files) Describe() string { return f.Path }
 
-// comoDiretorio garante que o Path seja lido como diretorio.
+// asDirectory makes sure Path is read as a directory.
 //
-// O ParseLocation e escrito para LEITURA, onde o ultimo segmento sem barra e o
-// nome de um objeto -- "s3://bucket/dia=1/dados.ndjson". Aqui ele e sempre
-// diretorio, porque o nome do arquivo e deste driver: ele carrega um carimbo de
-// tempo, para uma segunda carga nao sobrescrever a primeira.
+// ParseLocation is written for READING, where the last segment with no slash is
+// an object's name -- "s3://bucket/day=1/data.ndjson". Here it is always a
+// directory, because the file's name belongs to this driver: it carries a
+// timestamp, so a second load does not overwrite the first.
 //
-// Sem isto, `to.Files{Path: "s3://bucket/landing"}` escrevia em
-// `s3://bucket/parte-...` -- o `landing` era descartado como se fosse nome de
-// arquivo, e nada dizia. O arquivo aparecia um nivel acima, e quem fosse
-// procura-lo no lugar configurado nao acharia.
-func comoDiretorio(p string) string {
+// Without this, `to.Files{Path: "s3://bucket/landing"}` wrote to
+// `s3://bucket/part-...` -- the `landing` was discarded as if it were a file
+// name, and nothing said so. The file turned up one level above, and whoever
+// looked for it in the configured place would not find it.
+func asDirectory(p string) string {
 	if p == "" || strings.HasSuffix(p, "/") {
 		return p
 	}
 	return p + "/"
 }
 
-// referencia monta o caminho que o from.Files consegue reler.
-func referencia(loc core.Location, key string) string {
+// reference builds the path from.Files is able to read back.
+func reference(loc core.Location, key string) string {
 	if loc.Scheme == "" {
 		return key
 	}

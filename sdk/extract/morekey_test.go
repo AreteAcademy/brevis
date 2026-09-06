@@ -116,7 +116,7 @@ func TestMoreKeyAusenteNaoEFimDaPaginacao(t *testing.T) {
 	if err == nil {
 		t.Fatal("um campo ausente passou como 'não há mais'")
 	}
-	for _, quero := range []string{"pageMeta", "confira o caminho"} {
+	for _, quero := range []string{"pageMeta", "check the path"} {
 		if !strings.Contains(err.Error(), quero) {
 			t.Errorf("o erro não diz %q: %v", quero, err)
 		}
@@ -170,7 +170,7 @@ func TestMoreKeyQueNaoLevaABooleano(t *testing.T) {
 	_, err := JSON(context.Background(), core.Source{
 		URL: srv.URL, DataKey: "data", MoreKey: "meta.next",
 	}, nil)
-	if err == nil || !strings.Contains(err.Error(), "booleano") {
+	if err == nil || !strings.Contains(err.Error(), "boolean") {
 		t.Errorf("erro = %v", err)
 	}
 }

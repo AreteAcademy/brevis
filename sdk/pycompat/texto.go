@@ -85,7 +85,7 @@ func Text(v any) (string, error) {
 		}
 		f, err := t.Float64()
 		if err != nil {
-			return "", fmt.Errorf("TextoPython: %q não é um número: %w", texto, err)
+			return "", fmt.Errorf("pycompat.Text: %q is not a number: %w", texto, err)
 		}
 		return floatPython(f)
 
@@ -143,14 +143,15 @@ func Text(v any) (string, error) {
 		return "", fmt.Errorf("pycompat.Text got a float64 (%v), and by now the JSON "+
 			"literal is already lost: `1` and `1.0` become the same float64, and Python "+
 			"saw an int in one case and a float in the other. Turn on Source.PreserveNumbers "+
-			"chegar como json.Number com o literal intacto. Se a origem era mesmo float e "+
-			"você quer renderizar como float, diga isso: pycompat.TextAcceptingFloat64", t)
+			"so the number arrives as a json.Number with its literal intact. If the source "+
+			"really was a float and you want it rendered as one, say so: "+
+			"pycompat.TextAcceptingFloat64", t)
 
 	default:
-		return "", fmt.Errorf("pycompat.Text não sabe renderizar %T como o str() do Python "+
-			"renderizaria. Ela cobre nil, bool, string, número e json.Number -- o resto o "+
-			"Python formata com regras do tipo, e adivinhar numa chave produz duplicata "+
-			"silenciosa", v)
+		return "", fmt.Errorf("pycompat.Text does not know how to render a %T the way "+
+			"Python's str() would. It covers nil, bool, string, number and json.Number -- "+
+			"the rest Python formats with the type's own rules, and guessing inside a key "+
+			"produces a silent duplicate", v)
 	}
 }
 

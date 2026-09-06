@@ -343,7 +343,7 @@ func TestDiscoverVazioNaoEZeroRegistros(t *testing.T) {
 	if err == nil {
 		t.Fatal("zero origens passou como zero registros")
 	}
-	if !strings.Contains(err.Error(), "não devolveu origem nenhuma") {
+	if !strings.Contains(err.Error(), "returned no source at all") {
 		t.Errorf("erro = %v", err)
 	}
 }

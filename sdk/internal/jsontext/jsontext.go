@@ -1,43 +1,44 @@
-// Package jsontext escreve texto JSON como o Python escreve.
+// Package jsontext writes JSON text the way Python writes it.
 //
-// Ele e um pacote FOLHA -- so a stdlib, e nem isso alem do utf8 -- de
-// proposito: o pycompat precisa dele e nao deve arrastar o net/http junto, que
-// e o que aconteceu quando esta funcao morava no core. A verificacao de poda
-// pegou.
+// It is a LEAF package -- only the stdlib, and not even much of that beyond
+// utf8 -- on purpose: pycompat needs it and must not drag net/http along, which
+// is what happened when this function lived in core. The pruning check caught
+// it.
 package jsontext
 
 import (
 	"unicode/utf8"
 )
 
-// AppendJSONString escreve s como uma string JSON, sem escapar HTML.
+// AppendJSONString writes s as a JSON string, without escaping HTML.
 //
-// Ela existe num lugar so porque a mesma regra e precisa em dois: o NDJSON que
-// o Redshift le, e o canonico que reproduz o json.dumps do Python. O
-// encoding/json escapa `<`, `>` e `&` por padrao e o Python nao escapa nenhum
-// dos tres -- e uma diferenca de escape muda a CHAVE, sem erro.
+// It exists in one place because the same rule is needed in two: the NDJSON
+// Redshift reads, and the canonical form that reproduces Python's json.dumps.
+// encoding/json escapes `<`, `>` and `&` by default and Python escapes none of
+// the three -- and a difference in escaping changes the KEY, with no error.
 //
-// O conhecimento existia no driver do Redshift e nao era compartilhado; a
-// segunda vez que ele foi necessario custou noventa linhas escritas de novo.
+// The knowledge existed in the Redshift driver and was not shared; the second
+// time it was needed it cost ninety lines written again.
 //
-// A saida e comparada byte a byte com o encoding/json configurado sem escape de
-// HTML, em teste -- a afirmacao nao e "esta certo", e "e identico ao stdlib".
+// The output is compared byte for byte against encoding/json configured without
+// HTML escaping, in a test -- the claim is not "it is right", it is "it is
+// identical to the stdlib".
 func AppendJSONString(dst []byte, s string) []byte {
-	if jsonSimples(s) {
+	if isPlainJSON(s) {
 		dst = append(dst, '"')
 		dst = append(dst, s...)
 		return append(dst, '"')
 	}
 
 	dst = append(dst, '"')
-	inicio := 0
+	start := 0
 	for i := 0; i < len(s); {
 		if b := s[i]; b < utf8.RuneSelf {
 			if b >= 0x20 && b != '"' && b != '\\' {
 				i++
 				continue
 			}
-			dst = append(dst, s[inicio:i]...)
+			dst = append(dst, s[start:i]...)
 			switch b {
 			case '"':
 				dst = append(dst, `\"`...)
@@ -55,7 +56,7 @@ func AppendJSONString(dst []byte, s string) []byte {
 				dst = append(dst, hex[b>>4], hex[b&0xF])
 			}
 			i++
-			inicio = i
+			start = i
 			continue
 		}
 
@@ -64,20 +65,21 @@ func AppendJSONString(dst []byte, s string) []byte {
 			// Byte invalido. O encoding/json do Go 1.25 escreve a sequencia
 			// escapada e o do 1.27 escreve os bytes de U+FFFD; as duas sao o
 			// mesmo code point, e o teste compara o VALOR nesses casos.
-			dst = append(dst, s[inicio:i]...)
+			dst = append(dst, s[start:i]...)
 			dst = append(dst, "\ufffd"...)
 			i += tamanho
-			inicio = i
+			start = i
 			continue
 		}
 		i += tamanho
 	}
-	dst = append(dst, s[inicio:]...)
+	dst = append(dst, s[start:]...)
 	return append(dst, '"')
 }
 
-// jsonSimples diz se a string pode ir entre aspas sem nenhum escape.
-func jsonSimples(s string) bool {
+// isPlainJSON says whether the string can go inside quotes with no escaping at
+// all.
+func isPlainJSON(s string) bool {
 	for i := 0; i < len(s); i++ {
 		b := s[i]
 		if b < 0x20 || b == '"' || b == '\\' || b >= utf8.RuneSelf {

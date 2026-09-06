@@ -46,7 +46,7 @@ const keySeparator = "|"
 func Key(fields ...string) KeySelector {
 	return func(payload any) (string, error) {
 		if len(fields) == 0 {
-			return "", fmt.Errorf("Key precisa de ao menos um campo")
+			return "", fmt.Errorf("Key needs at least one field")
 		}
 
 		obj, err := asObject(payload)
@@ -91,7 +91,7 @@ type Renderer func(any) (string, error)
 func KeyWith(render Renderer, fields ...string) KeySelector {
 	return func(payload any) (string, error) {
 		if len(fields) == 0 {
-			return "", fmt.Errorf("Key precisa de ao menos um campo")
+			return "", fmt.Errorf("Key needs at least one field")
 		}
 
 		obj, err := asObject(payload)
@@ -156,7 +156,7 @@ func Now() FieldSelector {
 func asObject(payload any) (map[string]any, error) {
 	obj, ok := payload.(map[string]any)
 	if !ok {
-		return nil, fmt.Errorf("payload precisa ser um objeto JSON para selecionar fields, veio %T", payload)
+		return nil, fmt.Errorf("the payload has to be a JSON object to select fields, got %T", payload)
 	}
 	return obj, nil
 }

@@ -125,8 +125,8 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	// different and nothing would ever be reused. Saying so beats ignoring it
 	// in silence -- somebody configured this expecting it to work.
 	if p.Run.ID == "" {
-		slog.WarnContext(ctx, "checkpoint desligado: sem "+core.EnvRunID+
-			" nao ha chave estavel entre tentativas",
+		slog.WarnContext(ctx, "checkpoint off: with no "+core.EnvRunID+
+			" there is no stable key between attempts",
 			"pipeline", p.name(), "checkpoint", p.Checkpoint.At)
 		d, err := Extract(ctx, p.Source)
 		return d, est, err
@@ -135,11 +135,11 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	// Wrong configuration is an ERROR, not a warning: a scheme that does not
 	// match the Store will never write, and carrying on with a warning would
 	// hide that on every run until the day somebody needed to resume.
-	dep, err := checkpoint.Novo(p.caminhoDoCheckpoint(), p.Checkpoint.Store)
+	dep, err := checkpoint.New(p.caminhoDoCheckpoint(), p.Checkpoint.Store)
 	if err != nil {
 		return nil, est, err
 	}
-	est.caminho = dep.Caminho()
+	est.caminho = dep.Path()
 
 	// On the first attempt there is nothing to resume -- the path carries the
 	// run id, and this run starts here. Not looking avoids a warning per run
@@ -158,10 +158,10 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	// Prove writing works BEFORE spending the quota. The most common failure
 	// is permissions, and finding it after the extraction would mean having
 	// spent exactly what the checkpoint exists to save.
-	if err := dep.Reservar(ctx, p.name(), p.Run.ID); err != nil {
+	if err := dep.Reserve(ctx, p.name(), p.Run.ID); err != nil {
 		est.erro = err.Error()
-		slog.WarnContext(ctx, "checkpoint indisponivel; a execucao segue sem ele",
-			"pipeline", p.name(), "checkpoint", est.caminho, "erro", err)
+		slog.WarnContext(ctx, "checkpoint unavailable; the run goes on without it",
+			"pipeline", p.name(), "checkpoint", est.caminho, "error", err)
 		return data, est, nil
 	}
 
@@ -170,32 +170,32 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 }
 
 // resume reads the previous attempt's depot, when it is whole.
-func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Deposito,
+func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Depot,
 	est *estadoCheckpoint) (*Data, bool) {
 
-	m, err := dep.Manifesto(ctx)
+	m, err := dep.Manifest(ctx)
 	if err != nil {
-		slog.InfoContext(ctx, "sem checkpoint utilizavel; refazendo o extract",
-			"pipeline", p.name(), "checkpoint", est.caminho, "motivo", err)
+		slog.InfoContext(ctx, "no usable checkpoint; redoing the extract",
+			"pipeline", p.name(), "checkpoint", est.caminho, "reason", err)
 		return nil, false
 	}
-	if err := dep.Conferir(ctx, m); err != nil {
-		slog.WarnContext(ctx, "checkpoint incompleto; refazendo o extract",
-			"pipeline", p.name(), "checkpoint", est.caminho, "motivo", err)
+	if err := dep.Check(ctx, m); err != nil {
+		slog.WarnContext(ctx, "checkpoint incomplete; redoing the extract",
+			"pipeline", p.name(), "checkpoint", est.caminho, "reason", err)
 		return nil, false
 	}
 
 	est.reaproveitado = true
-	slog.InfoContext(ctx, "checkpoint reaproveitado: a origem nao sera consultada",
+	slog.InfoContext(ctx, "checkpoint reused: the source will not be queried",
 		"pipeline", p.name(), "checkpoint", est.caminho,
-		"registros", m.Registros, "tentativa", p.Run.Attempt)
+		"records", m.Records, "attempt", p.Run.Attempt)
 
 	stats := p.Source.Stats
 	if stats == nil {
 		stats = &core.Stats{}
 	}
 	return &Data{
-		Records: dep.Reler(ctx, m),
+		Records: dep.Reread(ctx, m),
 		source:  p.Source,
 		start:   time.Now(),
 		// Pages and attempts stay at zero, and that is the truth: this run
@@ -209,13 +209,13 @@ func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Deposito,
 // Reading it back is not waste: it makes the RESUME path run on every
 // successful execution. A recovery path that only runs in an emergency is a
 // path nobody has ever seen work.
-func materializar(ctx context.Context, dep *checkpoint.Deposito,
+func materializar(ctx context.Context, dep *checkpoint.Depot,
 	origem iter.Seq2[Envelope, error], p *Pipeline, est *estadoCheckpoint) iter.Seq2[Envelope, error] {
 
 	nome, run := p.name(), p.Run.ID
 
 	return func(yield func(Envelope, error) bool) {
-		esc := dep.Escrever()
+		esc := dep.Writer()
 		proximo, parar := iter.Pull2(origem)
 		defer parar()
 
@@ -228,12 +228,12 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 			slog.WarnContext(ctx, "checkpoint interrompido; a execucao segue sem ele",
 				"pipeline", nome, "checkpoint", est.caminho, "erro", causa)
 
-			for env, err := range dep.Reler(ctx, esc.Gravadas()) {
+			for env, err := range dep.Reread(ctx, esc.Written()) {
 				if !yield(env, err) {
 					return
 				}
 			}
-			for env, err := range esc.Pendentes() {
+			for env, err := range esc.Pending() {
 				if !yield(env, err) {
 					return
 				}
@@ -267,9 +267,9 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 				degradar(e, &env) // it never entered the buffer, so it goes by hand
 				return
 			}
-			if esc.Cheio() {
-				if e := esc.Despejar(ctx); e != nil {
-					degradar(e, nil) // already in the buffer; Pendentes yields it
+			if esc.Full() {
+				if e := esc.Flush(ctx); e != nil {
+					degradar(e, nil) // already in the buffer; Pending yields it
 					return
 				}
 			}
@@ -280,7 +280,7 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 			return
 		}
 
-		for env, err := range dep.Reler(ctx, esc.Gravadas()) {
+		for env, err := range dep.Reread(ctx, esc.Written()) {
 			if !yield(env, err) {
 				return
 			}

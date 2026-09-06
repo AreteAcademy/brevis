@@ -668,7 +668,7 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		if err != nil {
 			_ = resp.Body.Close()
 			release()
-			return nil, fmt.Errorf("a resposta se anuncia gzip e nao e: %w", err)
+			return nil, fmt.Errorf("the response announces gzip and is not: %w", err)
 		}
 		corpo = leituraGzip{Reader: gz, sob: resp.Body}
 	}
@@ -748,22 +748,22 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 func lerTemMais(body []byte, caminho string) (bool, error) {
 	var atual any
 	if err := json.Unmarshal(body, &atual); err != nil {
-		return false, fmt.Errorf("MoreKey %q precisa de uma pagina JSON: %w", caminho, err)
+		return false, fmt.Errorf("MoreKey %q needs a JSON page: %w", caminho, err)
 	}
 
 	partes := strings.Split(caminho, ".")
 	for i, parte := range partes {
 		obj, ok := atual.(map[string]any)
 		if !ok {
-			return false, fmt.Errorf("MoreKey %q: %q nao e um objeto",
+			return false, fmt.Errorf("MoreKey %q: %q is not an object",
 				caminho, strings.Join(partes[:i], "."))
 		}
 		v, existe := obj[parte]
 		if !existe {
-			return false, fmt.Errorf("MoreKey %q: a pagina nao tem %q. Um campo ausente nao e "+
-				"tratado como fim da paginacao, porque isso pararia na primeira pagina em "+
-				"silencio -- confira o caminho, ou tire o MoreKey e deixe a parada por pagina "+
-				"vazia", caminho, parte)
+			return false, fmt.Errorf("MoreKey %q: the page has no %q. An absent field is not "+
+				"treated as the end of the pagination, because that would stop at the first "+
+				"page in silence -- check the path, or drop MoreKey and let the empty page "+
+				"be the stop", caminho, parte)
 		}
 		atual = v
 	}
@@ -775,7 +775,7 @@ func lerTemMais(body []byte, caminho string) (bool, error) {
 		// null is the shape several APIs use for "that's the end".
 		return false, nil
 	default:
-		return false, fmt.Errorf("MoreKey %q levou a um %T, e precisa levar a um booleano",
+		return false, fmt.Errorf("MoreKey %q led to a %T, and it has to lead to a boolean",
 			caminho, atual)
 	}
 }

@@ -29,18 +29,27 @@ import (
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
+// The names below are the ON-DISK FORMAT, and they stay in Portuguese on
+// purpose while the code around them is English.
+//
+// They are data, not prose. A depot written by a released SDK holds
+// `_completo` and `parte-00000.ndjson`; a build looking for `_complete` finds
+// nothing, logs "no usable checkpoint" and re-extracts -- which spends exactly
+// the vendor quota this package exists to save. Renaming them is a migration,
+// and it is not one worth doing for a word.
 const (
-	arquivoManifesto = "_completo"
-	arquivoInicio    = "_inicio"
-	versaoManifesto  = 1
+	manifestFile    = "_completo"
+	startFile       = "_inicio"
+	partPattern     = "parte-%05d.ndjson"
+	manifestVersion = 1
 
-	// bytesPorParte bounds the writer's memory, not the extract's size: the
+	// bytesPerPart bounds the writer's memory, not the extract's size: the
 	// buffer is flushed on crossing it, so a 40 GB extract goes through here
 	// holding 8 MB.
-	bytesPorParte = 8 << 20
+	bytesPerPart = 8 << 20
 )
 
-// Numeros says how the payload's numbers were decoded at the source, and it is
+// The Numbers constants say how the payload's numbers were decoded at the source, and it is
 // the one thing that makes the round trip through NDJSON faithful.
 //
 // A payload that came from a decoder with UseNumber carries json.Number, whose
@@ -55,77 +64,80 @@ const (
 // field that one day goes wrong, and the error would come out silently inside
 // an id.
 const (
-	NumerosFloat   = "float"
-	NumerosLiteral = "literal"
+	NumbersFloat   = "float"
+	NumbersLiteral = "literal"
 )
 
-// Manifesto is the `_completo` object.
-type Manifesto struct {
-	Versao    int      `json:"versao"`
-	Registros int64    `json:"registros"`
-	Partes    []string `json:"partes"`
-	Numeros   string   `json:"numeros"`
+// Manifest is the `_completo` object.
+//
+// The json tags are the on-disk format and stay as they were written; see the
+// note on manifestFile above.
+type Manifest struct {
+	Version   int      `json:"versao"`
+	Records   int64    `json:"registros"`
+	Parts     []string `json:"partes"`
+	Numbers   string   `json:"numeros"`
 	Pipeline  string   `json:"pipeline,omitempty"`
 	Run       string   `json:"run,omitempty"`
-	GravadoEm string   `json:"gravado_em"`
+	WrittenAt string   `json:"gravado_em"`
 }
 
-// Deposito is a checkpoint directory, on disk or in an object store.
-type Deposito struct {
-	caminho string // como foi configurado, para a mensagem
-	bucket  string
-	prefixo string // termina em "/"
-	esquema string
-	store   core.Store // nunca nil: local vira discoLocal
+// Depot is a checkpoint directory, on disk or in an object store.
+type Depot struct {
+	path   string // as it was configured, for the message
+	bucket string
+	prefix string // ends in "/"
+	scheme string
+	store  core.Store // never nil: local becomes localDisk
 }
 
-// Novo opens the depot at a path. The store follows the drivers' rule: nil is
+// New opens the depot at a path. The store follows the drivers' rule: nil is
 // the local filesystem, and a scheme that does not match the store is an error
 // naming both.
-func Novo(caminho string, store core.Store) (*Deposito, error) {
-	if caminho == "" {
-		return nil, fmt.Errorf("checkpoint sem caminho")
+func New(path string, store core.Store) (*Depot, error) {
+	if path == "" {
+		return nil, fmt.Errorf("checkpoint with no path")
 	}
-	loc, err := core.ParseLocation(comoDiretorio(caminho))
+	loc, err := core.ParseLocation(asDirectory(path))
 	if err != nil {
-		return nil, fmt.Errorf("checkpoint %q: %w", caminho, err)
+		return nil, fmt.Errorf("checkpoint %q: %w", path, err)
 	}
 	switch {
 	case loc.Scheme == "" && store != nil:
-		return nil, fmt.Errorf("o checkpoint %q e um caminho local, mas recebeu um Store %s; "+
-			"tire o Store, ou aponte At para %s://", caminho, store.Scheme(), store.Scheme())
+		return nil, fmt.Errorf("checkpoint %q is a local path but got a %s Store; "+
+			"drop the Store, or point At at %s://", path, store.Scheme(), store.Scheme())
 	case loc.Scheme != "" && store == nil:
-		return nil, fmt.Errorf("o checkpoint %q precisa de um Store %s; passe um, "+
-			"por exemplo Store: %s.New(...)", caminho, loc.Scheme, loc.Scheme)
+		return nil, fmt.Errorf("checkpoint %q needs a %s Store; pass one, "+
+			"for example Store: %s.New(...)", path, loc.Scheme, loc.Scheme)
 	case loc.Scheme != "" && store.Scheme() != loc.Scheme:
-		return nil, fmt.Errorf("o checkpoint %q e %s, mas o Store atende %s",
-			caminho, loc.Scheme, store.Scheme())
+		return nil, fmt.Errorf("checkpoint %q is %s, but the Store serves %s",
+			path, loc.Scheme, store.Scheme())
 	}
 	if loc.Scheme == "" {
-		store = discoLocal{}
+		store = localDisk{}
 	}
-	return &Deposito{
-		caminho: caminho, bucket: loc.Bucket, prefixo: loc.Prefix,
-		esquema: loc.Scheme, store: store,
+	return &Depot{
+		path: path, bucket: loc.Bucket, prefix: loc.Prefix,
+		scheme: loc.Scheme, store: store,
 	}, nil
 }
 
 // Caminho is the whole depot, in the form you paste into a browser.
-func (d *Deposito) Caminho() string {
-	if d.esquema == "" {
-		return d.prefixo
+func (d *Depot) Path() string {
+	if d.scheme == "" {
+		return d.prefix
 	}
-	return d.esquema + "://" + d.bucket + "/" + d.prefixo
+	return d.scheme + "://" + d.bucket + "/" + d.prefix
 }
 
-func (d *Deposito) chave(nome string) string { return d.prefixo + nome }
+func (d *Depot) key(name string) string { return d.prefix + name }
 
-// Reservar proves writing works BEFORE the extraction starts.
+// Reserve proves writing works BEFORE the extraction starts.
 //
 // Without it the most common failure -- a credential without permission on the
 // bucket -- would only surface once the first part filled up, that is, after
 // having already spent part of the quota the checkpoint exists to save.
-func (d *Deposito) Reservar(ctx context.Context, pipeline, run string) error {
+func (d *Depot) Reserve(ctx context.Context, pipeline, run string) error {
 	marca, err := json.Marshal(map[string]string{
 		"pipeline": pipeline, "run": run,
 		"iniciado_em": time.Now().UTC().Format(time.RFC3339),
@@ -133,110 +145,110 @@ func (d *Deposito) Reservar(ctx context.Context, pipeline, run string) error {
 	if err != nil {
 		return err
 	}
-	return d.store.Create(ctx, d.bucket, d.chave(arquivoInicio), bytes.NewReader(marca))
+	return d.store.Create(ctx, d.bucket, d.key(startFile), bytes.NewReader(marca))
 }
 
-// Manifesto reads `_completo`. Missing or unreadable returns an error: the
+// Manifest reads `_completo`. Missing or unreadable returns an error: the
 // caller treats both the same way -- redo the extract -- and the message goes to
 // the log so it does not become a "redone, and never said why".
-func (d *Deposito) Manifesto(ctx context.Context) (*Manifesto, error) {
-	r, err := d.store.Open(ctx, d.bucket, d.chave(arquivoManifesto))
+func (d *Depot) Manifest(ctx context.Context) (*Manifest, error) {
+	r, err := d.store.Open(ctx, d.bucket, d.key(manifestFile))
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = r.Close() }()
 
-	var m Manifesto
+	var m Manifest
 	if err := json.NewDecoder(r).Decode(&m); err != nil {
-		return nil, fmt.Errorf("manifesto ilegivel: %w", err)
+		return nil, fmt.Errorf("unreadable manifest: %w", err)
 	}
-	if m.Versao != versaoManifesto {
-		return nil, fmt.Errorf("manifesto na versao %d, esta build le a %d", m.Versao, versaoManifesto)
+	if m.Version != manifestVersion {
+		return nil, fmt.Errorf("manifest at version %d, this build reads %d", m.Version, manifestVersion)
 	}
 	return &m, nil
 }
 
-// Conferir refuses a depot that is not whole, BEFORE the load starts.
+// Check refuses a depot that is not whole, BEFORE the load starts.
 //
 // It checks the SET of parts, and that is enough because every part is written
 // in one go -- a single PUT in object storage, a rename on disk. A part that
 // exists is a whole part; what can be missing is the part, not a piece of it.
 //
-// The record count is checked on the re-read (see Reler), because there is no
+// The record count is checked on the re-read (see Reread), because there is no
 // way to know how many lines an object holds without reading it -- and reading
 // everything here would read the extract twice.
-func (d *Deposito) Conferir(ctx context.Context, m *Manifesto) error {
-	if len(m.Partes) == 0 {
-		if m.Registros == 0 {
-			return nil // extract vazio, e isso e legitimo
+func (d *Depot) Check(ctx context.Context, m *Manifest) error {
+	if len(m.Parts) == 0 {
+		if m.Records == 0 {
+			return nil // an empty extract, and that is legitimate
 		}
-		return fmt.Errorf("o manifesto diz %d registros e nao lista nenhuma parte", m.Registros)
+		return fmt.Errorf("the manifest says %d records and lists no part", m.Records)
 	}
 
-	chaves, err := d.store.List(ctx, d.bucket, d.prefixo)
+	keys, err := d.store.List(ctx, d.bucket, d.prefix)
 	if err != nil {
-		return fmt.Errorf("listando o checkpoint: %w", err)
+		return fmt.Errorf("listing the checkpoint: %w", err)
 	}
-	presentes := make(map[string]bool, len(chaves))
-	for _, k := range chaves {
-		presentes[path.Base(k)] = true
+	present := make(map[string]bool, len(keys))
+	for _, k := range keys {
+		present[path.Base(k)] = true
 	}
-	for _, p := range m.Partes {
-		if !presentes[p] {
-			return fmt.Errorf("falta a parte %q das %d que o manifesto lista", p, len(m.Partes))
+	for _, p := range m.Parts {
+		if !present[p] {
+			return fmt.Errorf("part %q is missing, of the %d the manifest lists", p, len(m.Parts))
 		}
 	}
 	return nil
 }
 
-// Reler yields the records in the order the extraction produced them.
+// Reread yields the records in the order the extraction produced them.
 //
 // The order comes from the manifest, not from List: the manifest is what knows
 // the original order, and a positional Key changes the ingestion_id if the
 // sequence changes.
-func (d *Deposito) Reler(ctx context.Context, m *Manifesto) iter.Seq2[core.Envelope, error] {
+func (d *Depot) Reread(ctx context.Context, m *Manifest) iter.Seq2[core.Envelope, error] {
 	return func(yield func(core.Envelope, error) bool) {
-		var lidos int64
-		for _, parte := range m.Partes {
-			ok, err := d.relerParte(ctx, parte, m.Numeros, &lidos, yield)
+		var read int64
+		for _, part := range m.Parts {
+			ok, err := d.rereadPart(ctx, part, m.Numbers, &read, yield)
 			if err != nil {
 				yield(core.Envelope{}, err)
 				return
 			}
 			if !ok {
-				return // quem consome desistiu
+				return // the consumer gave up
 			}
 		}
 		// The count only closes here, and a divergence means an object was
 		// tampered with after it was written. Shouting is right: carrying on
 		// quietly would load fewer rows than the first attempt loaded.
-		if lidos != m.Registros {
+		if read != m.Records {
 			yield(core.Envelope{}, fmt.Errorf(
-				"checkpoint corrompido em %s: o manifesto diz %d registros e as partes tem %d",
-				d.Caminho(), m.Registros, lidos))
+				"checkpoint corrupt at %s: the manifest says %d records and the parts hold %d",
+				d.Path(), m.Records, read))
 		}
 	}
 }
 
-func (d *Deposito) relerParte(ctx context.Context, parte, numeros string, lidos *int64,
+func (d *Depot) rereadPart(ctx context.Context, part, numbers string, read *int64,
 	yield func(core.Envelope, error) bool) (bool, error) {
 
-	r, err := d.store.Open(ctx, d.bucket, d.chave(parte))
+	r, err := d.store.Open(ctx, d.bucket, d.key(part))
 	if err != nil {
-		return false, fmt.Errorf("lendo a parte %q do checkpoint: %w", parte, err)
+		return false, fmt.Errorf("reading part %q of the checkpoint: %w", part, err)
 	}
 	defer func() { _ = r.Close() }()
 
 	dec := json.NewDecoder(r)
-	if numeros == NumerosLiteral {
+	if numbers == NumbersLiteral {
 		dec.UseNumber()
 	}
 	for dec.More() {
 		var payload any
 		if err := dec.Decode(&payload); err != nil {
-			return false, fmt.Errorf("parte %q, registro %d: %w", parte, *lidos, err)
+			return false, fmt.Errorf("part %q, record %d: %w", part, *read, err)
 		}
-		*lidos++
+		*read++
 		if !yield(core.Envelope{Payload: payload}, nil) {
 			return false, nil
 		}
@@ -244,32 +256,32 @@ func (d *Deposito) relerParte(ctx context.Context, parte, numeros string, lidos 
 	return true, nil
 }
 
-// Escrita acumula o extract e o despeja em partes.
-type Escrita struct {
-	d        *Deposito
+// Write acumula o extract e o despeja em parts.
+type Write struct {
+	d        *Depot
 	buf      bytes.Buffer
-	noBuffer int64 // registros no buffer, ainda nao gravados
-	gravados int64 // registros que ja viraram parte
+	buffered int64 // records no buffer, ainda nao written
+	written  int64 // records que ja viraram part
 
-	partes []string
+	parts []string
 
-	numeros    string
+	numbers    string
 	sabeNumero bool
 }
 
-// Escrever starts a write into the depot.
-func (d *Deposito) Escrever() *Escrita {
-	return &Escrita{d: d, numeros: NumerosFloat}
+// Writer starts a write into the depot.
+func (d *Depot) Writer() *Write {
+	return &Write{d: d, numbers: NumbersFloat}
 }
 
 // Add puts a record in the buffer. It only fails when the payload does not
 // serialise, and then the record did NOT go in -- the distinction matters to
 // whoever degrades, who needs to know whether this record still has to be
 // yielded.
-func (e *Escrita) Add(env core.Envelope) error {
+func (e *Write) Add(env core.Envelope) error {
 	data, err := json.Marshal(env.Payload)
 	if err != nil {
-		return fmt.Errorf("registro %d do checkpoint: %w", e.gravados+e.noBuffer, err)
+		return fmt.Errorf("registro %d do checkpoint: %w", e.written+e.buffered, err)
 	}
 
 	// Once discovered, never again: the decoder is fixed per source, so the
@@ -280,85 +292,85 @@ func (e *Escrita) Add(env core.Envelope) error {
 		if achou, literal := formaDoNumero(env.Payload); achou {
 			e.sabeNumero = true
 			if literal {
-				e.numeros = NumerosLiteral
+				e.numbers = NumbersLiteral
 			}
 		}
 	}
 
 	e.buf.Write(data)
 	e.buf.WriteByte('\n')
-	e.noBuffer++
+	e.buffered++
 	return nil
 }
 
-// Cheio says there is enough to flush a part.
-func (e *Escrita) Cheio() bool { return e.buf.Len() >= bytesPorParte }
+// Full says there is enough to flush a part.
+func (e *Write) Full() bool { return e.buf.Len() >= bytesPerPart }
 
-// Despejar writes the buffer as one part. On failure the buffer is left INTACT:
-// the records stay pending, and whoever degrades yields them from Pendentes.
-func (e *Escrita) Despejar(ctx context.Context) error {
+// Flush writes the buffer as one part. On failure the buffer is left INTACT:
+// the records stay pending, and whoever degrades yields them from Pending.
+func (e *Write) Flush(ctx context.Context) error {
 	if e.buf.Len() == 0 {
 		return nil
 	}
-	nome := fmt.Sprintf("parte-%05d.ndjson", len(e.partes))
-	if err := e.d.store.Create(ctx, e.d.bucket, e.d.chave(nome), bytes.NewReader(e.buf.Bytes())); err != nil {
-		return fmt.Errorf("gravando %s no checkpoint: %w", nome, err)
+	name := fmt.Sprintf(partPattern, len(e.parts))
+	if err := e.d.store.Create(ctx, e.d.bucket, e.d.key(name), bytes.NewReader(e.buf.Bytes())); err != nil {
+		return fmt.Errorf("writing %s into the checkpoint: %w", name, err)
 	}
-	e.partes = append(e.partes, nome)
-	e.gravados += e.noBuffer
-	e.noBuffer = 0
+	e.parts = append(e.parts, name)
+	e.written += e.buffered
+	e.buffered = 0
 	e.buf.Reset()
 	return nil
 }
 
 // Finish flushes what is left and writes the manifest LAST. It is the manifest
 // that turns a directory of parts into a resumable checkpoint.
-func (e *Escrita) Finish(ctx context.Context, pipeline, run string) error {
-	if err := e.Despejar(ctx); err != nil {
+func (e *Write) Finish(ctx context.Context, pipeline, run string) error {
+	if err := e.Flush(ctx); err != nil {
 		return err
 	}
-	m := Manifesto{
-		Versao: versaoManifesto, Registros: e.gravados, Partes: e.partes,
-		Numeros: e.numeros, Pipeline: pipeline, Run: run,
-		GravadoEm: time.Now().UTC().Format(time.RFC3339),
+	m := Manifest{
+		Version: manifestVersion, Records: e.written, Parts: e.parts,
+		Numbers: e.numbers, Pipeline: pipeline, Run: run,
+		WrittenAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	data, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
-	if err := e.d.store.Create(ctx, e.d.bucket, e.d.chave(arquivoManifesto), bytes.NewReader(data)); err != nil {
-		return fmt.Errorf("gravando o manifesto do checkpoint: %w", err)
+	if err := e.d.store.Create(ctx, e.d.bucket, e.d.key(manifestFile), bytes.NewReader(data)); err != nil {
+		return fmt.Errorf("writing the checkpoint's manifest: %w", err)
 	}
 	return nil
 }
 
-// Gravadas describes what already became a part, to be re-read when the write
-// failed midway. The count is exact, so Reler's check still holds on this
+// Written describes what already became a part, to be re-read when the write
+// failed midway. The count is exact, so Reread's check still holds on this
 // path.
-func (e *Escrita) Gravadas() *Manifesto {
-	return &Manifesto{
-		Versao: versaoManifesto, Registros: e.gravados,
-		Partes: e.partes, Numeros: e.numeros,
+func (e *Write) Written() *Manifest {
+	return &Manifest{
+		Version: manifestVersion, Records: e.written,
+		Parts: e.parts, Numbers: e.numbers,
 	}
 }
 
-// Pendentes are the records sitting in the buffer that never reached an object.
+// Pending are the records sitting in the buffer that never reached an object.
 //
 // It decodes them back rather than keeping a second copy: that way the normal
 // run pays no memory at all for a path that only executes when the bucket fails
 // midway.
-func (e *Escrita) Pendentes() iter.Seq2[core.Envelope, error] {
+func (e *Write) Pending() iter.Seq2[core.Envelope, error] {
 	dados := e.buf.Bytes()
-	numeros := e.numeros
+	numbers := e.numbers
 	return func(yield func(core.Envelope, error) bool) {
 		dec := json.NewDecoder(bytes.NewReader(dados))
-		if numeros == NumerosLiteral {
+		if numbers == NumbersLiteral {
 			dec.UseNumber()
 		}
 		for dec.More() {
 			var payload any
 			if err := dec.Decode(&payload); err != nil {
-				yield(core.Envelope{}, fmt.Errorf("relendo o buffer do checkpoint: %w", err))
+				yield(core.Envelope{}, fmt.Errorf("re-reading the checkpoint's buffer: %w", err))
 				return
 			}
 			if !yield(core.Envelope{Payload: payload}, nil) {
@@ -392,7 +404,7 @@ func formaDoNumero(v any) (achou, literal bool) {
 	return false, false
 }
 
-func comoDiretorio(p string) string {
+func asDirectory(p string) string {
 	if p == "" || strings.HasSuffix(p, "/") {
 		return p
 	}
