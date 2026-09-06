@@ -5,6 +5,6 @@ module quickstart
 
 go 1.23.0
 
-require github.com/AreteAcademy/brevis/sdk v0.49.0
+require github.com/AreteAcademy/brevis/sdk v0.49.1
 
 require github.com/google/uuid v1.6.0 // indirect
