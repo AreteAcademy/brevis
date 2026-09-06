@@ -25,7 +25,7 @@ function words in comment lines.
 | A | **Front door** — README, issue/PR templates, CONTRIBUTING | 0 | ✅ done |
 | B | **SDK root package** (godoc) | 0 | ✅ done |
 | C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 0 | ✅ done |
-| D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER`, `plan.md` | ~700 | a contributor deciding how to help |
+| D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER` | 0 | ✅ done |
 | E | **Engine internals** — `internal/`, `cmd/` | 238 | a contributor changing the engine |
 | F | **Web** — `web/`, templates | 143 | a contributor touching the UI |
 | G | **Infra** — `.github/`, `deployments/`, `migrations/` | 115 | whoever operates or fixes CI |
@@ -34,6 +34,10 @@ function words in comment lines.
 
 Deliberately **not** on the list, with the reason written down:
 
+- **`docs/plan.md` and `docs/gaps-yaml-vs-plano.md`.** Listed under D at
+  first. `docs/README.md` classifies both as history — the engine's original
+  build prompt and an August survey — so they leave D under the rule below.
+  Found while doing D.
 - **`CHANGELOG.md`, `CHANGELOG-motor.md` and `docs/plan/` (1,797 lines).** They
   record decisions made on a date. Rewriting a record is not translating a
   project. New entries are in English.
