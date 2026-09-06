@@ -336,7 +336,7 @@ jobs:
           go build ./...
           go vet ./...
           go test ./... -count=1
-          echo "✅ SDK CLI builds and passes""
+          echo "✅ SDK CLI builds and passes"
 
       - name: Build and test examples
         run: |
