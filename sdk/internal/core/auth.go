@@ -50,18 +50,19 @@ type Credential struct {
 	// case this exists for.
 	TTL time.Duration
 
-	// Login troca segredos por um token vindo do CORPO da resposta, que e a
-	// forma que a maioria das APIs usa. Nil pula.
+	// Login trades secrets for a token that comes in the response BODY, which
+	// is the shape most APIs use. Nil skips it.
 	//
-	// Ele existe porque o contorno -- por o login dentro de Value, que e uma
-	// func -- funciona e tem um custo escondido: a requisicao de login passa a
-	// ser a UNICA do fetcher sem retry, sem rate limit, sem timeout por
-	// tentativa e sem redacao de segredo no log. E ela e a que carrega as
-	// credenciais.
+	// It exists because the workaround -- putting the login inside Value, which
+	// is a func -- works and carries a hidden cost: the login request becomes
+	// the ONLY one in the fetcher with no retry, no rate limit, no per-attempt
+	// timeout and no secret redaction in the log. And it is the one carrying
+	// the credentials.
 	//
-	// Value continua existindo e continua valendo para o que nao cabe aqui --
-	// um secret manager, um arquivo, uma env. Login e Value juntos e erro:
-	// duas fontes para o mesmo segredo, e a que perde perde em silencio.
+	// Value still exists and still covers what does not fit here -- a secret
+	// manager, a file, an environment variable. Login and Value together is an
+	// error: two sources for the same secret, and the one that loses loses in
+	// silence.
 	Login *Login
 
 	// Refresh optionally calls an endpoint before the first page to renew a
@@ -72,15 +73,15 @@ type Credential struct {
 	cached   string
 	cachedAt time.Time
 
-	// login e a Secret que o extract monta a partir de Login, com o cliente
-	// dele. Ela vive aqui, e nao em Login, porque e o Get que a chama -- e o
-	// Get e quem tem a trava e o TTL.
+	// login is the Secret extract builds out of Login, with its own client. It
+	// lives here, and not in Login, because Get is what calls it -- and Get is
+	// what holds the lock and the TTL.
 	login Secret
 }
 
-// PrepararLogin instala a Secret que faz o login. Chamada pelo extract, que e
-// quem tem o cliente HTTP.
-func (c *Credential) PrepararLogin(s Secret) { c.login = s }
+// PrepareLogin installs the Secret that performs the login. Called by extract,
+// which is what holds the HTTP client.
+func (c *Credential) PrepareLogin(s Secret) { c.login = s }
 
 // Login troca segredos por um token, com o cliente do SDK.
 //
@@ -88,41 +89,41 @@ func (c *Credential) PrepararLogin(s Secret) { c.login = s }
 //	    Login: &from.Login{
 //	        URL:    "https://api.example.com/oauth/token",
 //	        Method: "POST",
-//	        Body:   from.JSONBody(map[string]any{"client_id": id, "client_secret": segredo}),
-//	        Token:  from.CampoJSON("data.accessToken"),
+//	        Body:   from.JSONBody(map[string]any{"client_id": id, "client_secret": secret}),
+//	        Token:  from.JSONToken("data.accessToken"),
 //	    },
 //	    Apply: from.AsBearer,
 //	    TTL:   50 * time.Minute,
 //	}
 //
-// O que ele compra nao e conveniencia: e a requisicao mais sensivel do fetcher
-// deixar de ser a unica sem retry, sem rate limit, sem timeout e sem redacao no
-// log. Escrita a mao, ela costuma sair com http.DefaultClient -- que nao tem
-// timeout nenhum.
+// What it buys is not convenience: it is the fetcher's most sensitive request
+// no longer being the only one with no retry, no rate limit, no timeout and no
+// redaction in the log. Written by hand, it usually comes out on
+// http.DefaultClient -- which has no timeout at all.
 //
-// Combine com TTL: sem ele o login acontece uma vez por execucao, e algumas
-// APIs limitam a FREQUENCIA de autenticacao em vez da de requisicoes.
+// Pair it with TTL: without one the login happens once per run, and some APIs
+// rate-limit the FREQUENCY of authentication rather than that of requests.
 type Login struct {
-	// URL do endpoint de login. Obrigatoria.
+	// URL of the login endpoint. Required.
 	URL string
 
-	// Method e o verbo. Vazio usa POST -- que e o que um login e.
+	// Method is the verb. Empty uses POST -- which is what a login is.
 	Method string
 
-	// Body monta o corpo. Nil manda sem corpo.
+	// Body builds the request body. Nil sends none.
 	//
-	// E uma func e nao bytes porque o corpo carrega segredo: ele e montado na
-	// hora da requisicao e nao fica vivo num campo de struct que qualquer
-	// dump de configuracao imprimiria.
-	Body func(ctx context.Context) (contentType string, corpo []byte, err error)
+	// It is a func and not bytes because the body carries a secret: it is
+	// built at request time and does not sit alive in a struct field that any
+	// configuration dump would print.
+	Body func(ctx context.Context) (contentType string, body []byte, err error)
 
-	// Header sao cabecalhos proprios do login -- uma chave de API que
-	// autoriza a troca, por exemplo.
+	// Header are the login's own headers -- an API key authorizing the trade,
+	// for instance.
 	Header map[string][]string
 
-	// Token le o token do CORPO da resposta. Obrigatorio: se o token viesse
-	// num cookie, o caminho seria Refresh.
-	Token func(corpo []byte) (string, error)
+	// Token reads the token out of the response BODY. Required: if the token
+	// arrived in a cookie, the path would be Refresh.
+	Token func(body []byte) (string, error)
 }
 
 // Refresh renews a credential that expires, by asking the API to reissue it.
@@ -183,7 +184,7 @@ type Refresh struct {
 // sees one attempt, not one per goroutine.
 func (c *Credential) Get(ctx context.Context) (string, error) {
 	if c.Value == nil && c.Login == nil {
-		return "", fmt.Errorf("Credential precisa de Value ou de Login")
+		return "", fmt.Errorf("Credential needs either Value or Login")
 	}
 
 	c.mu.Lock()
@@ -193,37 +194,38 @@ func (c *Credential) Get(ctx context.Context) (string, error) {
 		return c.cached, nil
 	}
 
-	// O store vem antes da semente. Um valor guardado e o resultado da ultima
-	// rotacao; a semente e o que alguem colou uma vez, e pode ja ter vencido.
+	// The store comes before the seed. A stored value is the result of the
+	// last rotation; the seed is what somebody pasted in once, and it may have
+	// expired already.
 	if c.Refresh != nil && c.Refresh.Store != nil {
-		guardado, err := c.Refresh.Store.Load()
+		stored, err := c.Refresh.Store.Load()
 		if err != nil {
-			// Ler falhou de verdade -- permissao, disco. Nao e motivo para
-			// parar: a semente ainda pode servir, e parar aqui trocaria uma
-			// credencial talvez velha por nenhuma.
+			// The read genuinely failed -- permissions, disk. That is no
+			// reason to stop: the seed may still work, and stopping here would
+			// trade a possibly stale credential for none at all.
 			slog.WarnContext(ctx, "credential store: could not be read",
 				"store", c.Refresh.Store.Describe(),
 				"falling_back_to", "Credential.Value",
 				"error", err)
-		} else if guardado != "" {
-			c.cached, c.cachedAt = guardado, time.Now()
-			return guardado, nil
+		} else if stored != "" {
+			c.cached, c.cachedAt = stored, time.Now()
+			return stored, nil
 		}
 	}
 
-	produzir := c.Value
-	if produzir == nil {
-		// O Login e feito por quem tem o cliente HTTP -- o extract --, e
-		// chega aqui como uma Secret ja fechada sobre ele. Ver
-		// extract.PrepararLogin.
-		produzir = c.login
+	produce := c.Value
+	if produce == nil {
+		// The Login is performed by whoever holds the HTTP client -- extract
+		// -- and arrives here as a Secret already closed over it. See
+		// extract.prepareLogin.
+		produce = c.login
 	}
-	if produzir == nil {
-		return "", fmt.Errorf("credential: Login declarado mas não preparado; isto é um " +
-			"defeito do SDK, não da sua configuração")
+	if produce == nil {
+		return "", fmt.Errorf("credential: Login is declared but was never prepared; this " +
+			"is a defect in the SDK, not in your configuration")
 	}
 
-	v, err := produzir(ctx)
+	v, err := produce(ctx)
 	if err != nil {
 		return "", fmt.Errorf("credential: %w", err)
 	}
@@ -241,23 +243,23 @@ func (c *Credential) Check() error {
 		return nil
 	}
 	if c.Value == nil && c.Login == nil {
-		return fmt.Errorf("Auth.Value e Auth.Login estão os dois nil, e um dos dois precisa " +
-			"existir: Value produz o segredo, Login o troca por um token. Para uma variável " +
-			"de ambiente, from.FromEnv(\"NOME\")")
+		return fmt.Errorf("Auth.Value and Auth.Login are both nil, and one of the two has " +
+			"to exist: Value produces the secret, Login trades for a token. For an " +
+			"environment variable, from.FromEnv(\"NAME\")")
 	}
 	if c.Value != nil && c.Login != nil {
-		return fmt.Errorf("Auth.Value e Auth.Login estão os dois preenchidos, e os dois " +
-			"produzem o mesmo segredo -- a que perdesse perderia em silêncio. Login faz a " +
-			"requisição com o cliente do SDK; Value é para o que não é uma requisição HTTP")
+		return fmt.Errorf("Auth.Value and Auth.Login are both set, and both produce the " +
+			"same secret -- whichever lost would lose in silence. Login makes the request " +
+			"with the SDK's client; Value is for what is not an HTTP request")
 	}
 	if c.Login != nil {
 		if c.Login.URL == "" {
-			return fmt.Errorf("Auth.Login.URL está vazia: é o endpoint que troca os segredos " +
-				"pelo token")
+			return fmt.Errorf("Auth.Login.URL is empty: it is the endpoint that trades the " +
+				"secrets for the token")
 		}
 		if c.Login.Token == nil {
-			return fmt.Errorf("Auth.Login.Token é nil: é o que diz ONDE o token está no corpo " +
-				"da resposta. Use from.CampoJSON(\"data.accessToken\")")
+			return fmt.Errorf("Auth.Login.Token is nil: it is what says WHERE the token is " +
+				"in the response body. Use from.JSONToken(\"data.accessToken\")")
 		}
 	}
 	if c.Apply == nil {
@@ -271,17 +273,17 @@ func (c *Credential) Check() error {
 		return fmt.Errorf("Auth.Refresh.URL is empty: it is the endpoint that reissues " +
 			"the credential")
 	}
-	// A recusa do store acontece aqui, na montagem: descobrir que a
-	// credencial nao seria guardada depois da carga inteira e tarde demais.
+	// The store's refusal happens here, at assembly time: finding out that the
+	// credential would not have been stored after the whole load is too late.
 	if v, ok := c.Refresh.Store.(CredentialStoreChecker); ok {
 		if err := v.CheckStore(); err != nil {
 			return err
 		}
 	}
 	if c.Refresh.Store != nil && c.Refresh.ExpiresAt == nil {
-		// Aviso e nao recusa: ha fontes cuja renovacao nao devolve validade
-		// nenhuma, e para elas o store ainda vale. Mas quem escolhe isso tem
-		// de escolher sabendo.
+		// A warning and not a refusal: there are sources whose refresh returns
+		// no validity at all, and for those the store is still worth having.
+		// But whoever chooses that has to choose it knowingly.
 		slog.Warn("credential store without ExpiresAt: a refresh that did not authenticate will be saved",
 			"store", c.Refresh.Store.Describe(),
 			"why", "the status is 200 either way, so the body is the only place the difference shows",
@@ -364,40 +366,41 @@ func JSONField(name string) func([]byte) (time.Time, error) {
 	}
 }
 
-// CampoJSON le um campo do corpo da resposta, por caminho separado por pontos.
+// JSONToken reads the token from a field of the response body, by a
+// dot-separated path.
 //
-//	Token: from.CampoJSON("data.accessToken")
+//	Token: from.JSONToken("data.accessToken")
 //
-// O caminho aceita pontos porque a convencao larga poe o token dentro de um
-// envelope, e nao na raiz.
+// The path takes dots because the wide convention puts the token inside an
+// envelope, and not at the root.
 //
-// Um campo ausente e ERRO nomeando o caminho -- e nao string vazia. Um token
-// vazio vira um cabecalho de autorizacao vazio e um 401 mais adiante, culpando
-// a API por um caminho que este lado escreveu errado.
-func CampoJSON(caminho string) func([]byte) (string, error) {
-	return func(corpo []byte) (string, error) {
-		var atual any
-		if err := json.Unmarshal(corpo, &atual); err != nil {
-			return "", fmt.Errorf("a resposta do login não é JSON: %w", err)
+// An absent field is an ERROR naming the path -- and not an empty string. An
+// empty token becomes an empty authorization header and a 401 further down,
+// blaming the API for a path this side wrote wrong.
+func JSONToken(path string) func([]byte) (string, error) {
+	return func(body []byte) (string, error) {
+		var current any
+		if err := json.Unmarshal(body, &current); err != nil {
+			return "", fmt.Errorf("the login response is not JSON: %w", err)
 		}
 
-		partes := strings.Split(caminho, ".")
-		for i, parte := range partes {
-			obj, ok := atual.(map[string]any)
+		parts := strings.Split(path, ".")
+		for i, part := range parts {
+			obj, ok := current.(map[string]any)
 			if !ok {
-				return "", fmt.Errorf("%q: %q não é um objeto",
-					caminho, strings.Join(partes[:i], "."))
+				return "", fmt.Errorf("%q: %q is not an object",
+					path, strings.Join(parts[:i], "."))
 			}
-			v, existe := obj[parte]
-			if !existe {
-				return "", fmt.Errorf("%q: a resposta não tem %q. Confira o caminho -- um "+
-					"token ausente viraria um cabeçalho vazio e um 401 mais adiante, "+
-					"culpando a API", caminho, parte)
+			v, found := obj[part]
+			if !found {
+				return "", fmt.Errorf("%q: the response has no %q. Check the path -- an "+
+					"absent token would become an empty header and a 401 further down, "+
+					"blaming the API", path, part)
 			}
-			atual = v
+			current = v
 		}
 
-		switch t := atual.(type) {
+		switch t := current.(type) {
 		case string:
 			return t, nil
 		case json.Number:
@@ -405,35 +408,35 @@ func CampoJSON(caminho string) func([]byte) (string, error) {
 		case float64:
 			return strconv.FormatFloat(t, 'f', -1, 64), nil
 		default:
-			return "", fmt.Errorf("%q levou a um %T, e um token precisa ser texto", caminho, atual)
+			return "", fmt.Errorf("%q led to a %T, and a token has to be text", path, current)
 		}
 	}
 }
 
-// JSONBody monta um corpo JSON para o Login.
+// JSONBody builds a JSON body for the Login.
 //
-//	Body: from.JSONBody(map[string]any{"client_id": id, "client_secret": segredo})
+//	Body: from.JSONBody(map[string]any{"client_id": id, "client_secret": secret})
 //
-// A serializacao acontece na hora da requisicao, e nao aqui: o corpo carrega
-// segredo, e um []byte guardado num campo de struct aparece em qualquer dump
-// de configuracao.
+// The serialization happens at request time, and not here: the body carries a
+// secret, and a []byte kept in a struct field shows up in any configuration
+// dump.
 func JSONBody(v any) func(context.Context) (string, []byte, error) {
 	return func(context.Context) (string, []byte, error) {
 		b, err := json.Marshal(v)
 		if err != nil {
-			return "", nil, fmt.Errorf("montando o corpo do login: %w", err)
+			return "", nil, fmt.Errorf("building the login body: %w", err)
 		}
 		return "application/json", b, nil
 	}
 }
 
-// FormBody monta um corpo application/x-www-form-urlencoded, que e o formato
-// que o OAuth2 usa.
-func FormBody(campos map[string]string) func(context.Context) (string, []byte, error) {
+// FormBody builds an application/x-www-form-urlencoded body, which is the
+// format OAuth2 uses.
+func FormBody(fields map[string]string) func(context.Context) (string, []byte, error) {
 	return func(context.Context) (string, []byte, error) {
 		v := url.Values{}
-		for k, valor := range campos {
-			v.Set(k, valor)
+		for k, value := range fields {
+			v.Set(k, value)
 		}
 		return "application/x-www-form-urlencoded", []byte(v.Encode()), nil
 	}

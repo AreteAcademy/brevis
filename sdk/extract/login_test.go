@@ -70,7 +70,7 @@ func credencialDeLogin(srv *httptest.Server) *core.Credential {
 		Login: &core.Login{
 			URL:   srv.URL + "/oauth/token",
 			Body:  core.JSONBody(map[string]any{"client_secret": "meu-segredo"}),
-			Token: core.CampoJSON("data.accessToken"),
+			Token: core.JSONToken("data.accessToken"),
 		},
 		Apply: core.AsBearer,
 	}
@@ -196,15 +196,15 @@ func TestLoginRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
 	}{
 		{"Login e Value juntos", &core.Credential{
 			Value: core.FromEnv("PATH"), Apply: core.AsBearer,
-			Login: &core.Login{URL: "http://x", Token: core.CampoJSON("t")},
-		}, "os dois preenchidos"},
+			Login: &core.Login{URL: "http://x", Token: core.JSONToken("t")},
+		}, "both set"},
 		{"Login sem URL", &core.Credential{
-			Apply: core.AsBearer, Login: &core.Login{Token: core.CampoJSON("t")},
+			Apply: core.AsBearer, Login: &core.Login{Token: core.JSONToken("t")},
 		}, "URL"},
 		{"Login sem Token", &core.Credential{
 			Apply: core.AsBearer, Login: &core.Login{URL: "http://x"},
 		}, "Token"},
-		{"nem Value nem Login", &core.Credential{Apply: core.AsBearer}, "os dois nil"},
+		{"nem Value nem Login", &core.Credential{Apply: core.AsBearer}, "both nil"},
 	}
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
@@ -223,11 +223,11 @@ func TestLoginRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
 // 401 mais adiante, culpando a API por um caminho que este lado escreveu
 // errado.
 func TestCampoJSONAusenteEErro(t *testing.T) {
-	_, err := core.CampoJSON("data.accessToken")([]byte(`{"data":{"outro":"x"}}`))
+	_, err := core.JSONToken("data.accessToken")([]byte(`{"data":{"outro":"x"}}`))
 	if err == nil {
 		t.Fatal("campo ausente passou")
 	}
-	for _, quero := range []string{"accessToken", "cabeçalho vazio"} {
+	for _, quero := range []string{"accessToken", "empty header"} {
 		if !strings.Contains(err.Error(), quero) {
 			t.Errorf("o erro não diz %q: %v", quero, err)
 		}

@@ -68,8 +68,8 @@ func (j *credentialJar) Cookies(u *url.URL) []*http.Cookie {
 	return j.inner.Cookies(u)
 }
 
-// Rotacoes devolve os valores reemitidos desde a ultima chamada, ou nil.
-func (j *credentialJar) Rotacoes() map[string]string {
+// Rotations returns the values reissued since the last call, or nil.
+func (j *credentialJar) Rotations() map[string]string {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if len(j.rotacoes) == 0 {

@@ -48,21 +48,21 @@ func authenticate(ctx context.Context, source *core.Source) error {
 	return nil
 }
 
-// guardar persiste a credencial rotacionada, e nao derruba a execucao se nao
-// conseguir.
+// keep persists the rotated credential, and does not bring the run down when
+// it cannot.
 //
-// A carga vai acontecer de qualquer jeito -- o que se perde e a rotacao, e o
-// custo disso e alguem recolar a semente na proxima janela. Derrubar uma
-// extracao boa por causa de uma escrita e trocar um problema pequeno por um
-// grande.
+// The load is going to happen either way -- what is lost is the rotation, and
+// the cost of that is somebody pasting the seed back in on the next window.
+// Bringing a good extraction down over a write is trading a small problem for a
+// large one.
 //
-// Mas grita: ERROR no log E em Stats, porque um aviso que so existe no log e a
-// morte silenciosa com passos a mais.
-func guardar(ctx context.Context, store core.CredentialStore, valor string, stats *core.Stats) {
-	if store == nil || valor == "" {
+// But it shouts: ERROR in the log AND in Stats, because a warning that exists
+// only in the log is the silent death with extra steps.
+func keep(ctx context.Context, store core.CredentialStore, value string, stats *core.Stats) {
+	if store == nil || value == "" {
 		return
 	}
-	if err := store.Save(valor); err != nil {
+	if err := store.Save(value); err != nil {
 		slog.ErrorContext(ctx, "credential store: the rotated credential was not saved",
 			"store", store.Describe(),
 			"effect", "the next run falls back to Credential.Value, which expires",
@@ -75,14 +75,14 @@ func guardar(ctx context.Context, store core.CredentialStore, valor string, stat
 	slog.DebugContext(ctx, "credential store: rotated credential saved", "store", store.Describe())
 }
 
-// aplicarRotacao reescreve o cabecalho Cookie com os valores reemitidos, e diz
-// se reescreveu.
+// applyRotation rewrites the Cookie header with the reissued values, and says
+// whether it rewrote anything.
 //
-// Reescreve por NOME, preservando os cookies que a renovacao nao tocou: um
-// cabecalho com dois cookies, dos quais a API reemitiu um, tem de continuar
-// com os dois.
-func aplicarRotacao(source *core.Source, rotacoes map[string]string) bool {
-	if len(rotacoes) == 0 {
+// It rewrites BY NAME, preserving the cookies the refresh did not touch: a
+// header with two cookies, one of which the API reissued, has to come out still
+// carrying both.
+func applyRotation(source *core.Source, rotations map[string]string) bool {
+	if len(rotations) == 0 {
 		return false
 	}
 
@@ -90,22 +90,23 @@ func aplicarRotacao(source *core.Source, rotacoes map[string]string) bool {
 	if h == nil {
 		h = http.Header{}
 	}
-	atuais, err := http.ParseCookie(h.Get("Cookie"))
+	current, err := http.ParseCookie(h.Get("Cookie"))
 	if err != nil {
-		// O cabecalho foi montado pelo Applier e ja passou por ParseCookie na
-		// montagem do cliente; chegar aqui invalido nao deveria acontecer, e
-		// perder a rotacao e melhor que perder a credencial inteira.
+		// The header was built by the Applier and already went through
+		// ParseCookie when the client was assembled; arriving here invalid
+		// should not happen, and losing the rotation beats losing the whole
+		// credential.
 		return false
 	}
 
-	var partes []string
-	for _, c := range atuais {
-		if novo, tem := rotacoes[c.Name]; tem {
-			c.Value = novo
+	var parts []string
+	for _, c := range current {
+		if fresh, ok := rotations[c.Name]; ok {
+			c.Value = fresh
 		}
-		partes = append(partes, c.Name+"="+c.Value)
+		parts = append(parts, c.Name+"="+c.Value)
 	}
-	h.Set("Cookie", strings.Join(partes, "; "))
+	h.Set("Cookie", strings.Join(parts, "; "))
 	source.Header = h
 	return true
 }
@@ -116,23 +117,23 @@ func aplicarRotacao(source *core.Source, rotacoes map[string]string) bool {
 // retry and a blip on the renewal costs the whole run. Same RetryConfig, same
 // backoff, same reading of Retry-After.
 func renewRequest(ctx context.Context, client *http.Client, source core.Source, method, rawURL string) ([]byte, error) {
-	return requisitar(ctx, client, source, method, rawURL, nil)
+	return request(ctx, client, source, method, rawURL, nil)
 }
 
-// requisitar faz UMA requisicao com as garantias da caminhada: retry, backoff,
-// Retry-After e redacao de segredo na mensagem.
+// request makes ONE request with the walk's guarantees: retry, backoff,
+// Retry-After and secret redaction in the message.
 //
-// Ela serve a renovacao e o login. As duas sao "uma requisicao fora do fluxo de
-// paginas", e escrever a segunda de novo teria dado a ela metade das garantias
-// -- que e exatamente o que o item 9 aponta acontecer quando o consumidor a
-// escreve a mao.
-func requisitar(ctx context.Context, client *http.Client, source core.Source, method, rawURL string, corpo []byte) ([]byte, error) {
-	rotulo := "refresh"
-	if corpo != nil || method == "POST" {
-		rotulo = "login"
+// It serves both the refresh and the login. Both are "a request outside the
+// page flow", and writing the second one again would have given it half the
+// guarantees -- which is exactly what item 9 points out happens when the
+// consumer writes it by hand.
+func request(ctx context.Context, client *http.Client, source core.Source, method, rawURL string, body []byte) ([]byte, error) {
+	label := "refresh"
+	if body != nil || method == "POST" {
+		label = "login"
 	}
 	fail := func(format string, a ...any) ([]byte, error) {
-		return nil, fmt.Errorf(rotulo+" "+redactURL(rawURL)+": "+format, a...)
+		return nil, fmt.Errorf(label+" "+redactURL(rawURL)+": "+format, a...)
 	}
 
 	attempts := 1
@@ -141,20 +142,21 @@ func requisitar(ctx context.Context, client *http.Client, source core.Source, me
 	}
 
 	for attempt := 0; attempt < attempts; attempt++ {
-		var leitor io.Reader
-		if corpo != nil {
-			// Um leitor NOVO por tentativa: o anterior foi consumido, e um
-			// retry com o corpo esgotado manda uma requisicao vazia -- que a
-			// API recusa com uma mensagem sobre o corpo, e nao sobre o retry.
-			leitor = bytes.NewReader(corpo)
+		var reader io.Reader
+		if body != nil {
+			// A FRESH reader per attempt: the previous one was consumed, and a
+			// retry with an exhausted body sends an empty request -- which the
+			// API refuses with a message about the body, and not about the
+			// retry.
+			reader = bytes.NewReader(body)
 		}
-		req, err := http.NewRequestWithContext(ctx, method, rawURL, leitor)
+		req, err := http.NewRequestWithContext(ctx, method, rawURL, reader)
 		if err != nil {
 			return fail("%w", err)
 		}
-		// O cabecalho vai INTEIRO, com a credencial. Era exatamente isto que
-		// faltava no §9: a renovacao dependia do jar, o jar casava por path, e
-		// /api/auth/session nao casava com a fonte em /api/proxy.
+		// The header goes WHOLE, credential included. This is exactly what §9
+		// was missing: the refresh depended on the jar, the jar matched by
+		// path, and /api/auth/session did not match a source on /api/proxy.
 		req.Header = http.Header(source.Header).Clone()
 
 		resp, err := client.Do(req)
@@ -166,14 +168,14 @@ func requisitar(ctx context.Context, client *http.Client, source core.Source, me
 			return fail("after %d attempt(s): %w", attempt+1, err)
 		}
 
-		body, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		payload, readErr := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		_ = resp.Body.Close()
 
 		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 			if readErr != nil {
 				return fail("read response: %w", readErr)
 			}
-			return body, nil
+			return payload, nil
 		}
 
 		if shouldRetryStatus(resp.StatusCode) && attempt < attempts-1 {
@@ -184,7 +186,7 @@ func requisitar(ctx context.Context, client *http.Client, source core.Source, me
 		// A refresh that fails is not a warning to move past: every page
 		// after it would go out with a credential the API just refused, and
 		// the run would fail anyway -- later, and blaming the data endpoint.
-		return fail("http %d: %s", resp.StatusCode, string(body))
+		return fail("http %d: %s", resp.StatusCode, string(payload))
 	}
 
 	return fail("out of attempts")
@@ -208,47 +210,49 @@ func renew(ctx context.Context, client *http.Client, source *core.Source, jar *c
 		return err
 	}
 
-	// O que a renovacao reemitiu passa a valer para as paginas, e vale JA:
-	// sem isto a renovacao renova para ninguem, porque o valor novo ficaria
-	// so no jar, preso ao diretorio da URL de renovacao.
+	// What the refresh reissued starts applying to the pages, and it applies
+	// NOW: without this the refresh refreshes for nobody, because the new value
+	// would stay in the jar alone, bound to the refresh URL's directory.
 	//
-	// Persistir e outra coisa, e vem depois. Ver persistir(), abaixo.
-	rotacionou := aplicarRotacao(source, jar.Rotacoes())
+	// Persisting is a different thing, and it comes after. See persist(), below.
+	rotated := applyRotation(source, jar.Rotations())
 
-	persistir := func() {
-		if rotacionou {
-			guardar(ctx, r.Store, http.Header(source.Header).Get("Cookie"), stats)
+	persist := func() {
+		if rotated {
+			keep(ctx, r.Store, http.Header(source.Header).Get("Cookie"), stats)
 		}
 	}
 
 	if r.ExpiresAt == nil {
-		// Sem sinal de validade nao ha o que conferir, e quem configurou
-		// abriu mao dele -- com o aviso que Credential.Check emite.
-		persistir()
+		// With no validity signal there is nothing to check, and whoever
+		// configured it gave that up -- with the warning Credential.Check
+		// emits.
+		persist()
 		return nil
 	}
 
 	expires, err := r.ExpiresAt(body)
 	if err != nil {
-		// NAO grava. O NextAuth responde 200 com corpo `null` e Set-Cookie
-		// esvaziando os valores quando a sessao nao autenticou -- entao o que
-		// chegaria ao store seria a credencial de uma sessao deslogada.
+		// Does NOT write. NextAuth answers 200 with a `null` body and a
+		// Set-Cookie emptying the values when the session did not
+		// authenticate -- so what would reach the store is the credential of a
+		// logged-out session.
 		//
-		// E como a ordem de leitura e store-antes-da-semente, gravar isso
-		// envenena: da proxima vez o valor morto vence, trocar a env por uma
-		// credencial boa deixa de resolver, e a unica saida vira apagar o
-		// objeto a mao. O sintoma para quem opera e 401 sem explicacao, num
-		// pipeline que ontem funcionava.
+		// And since the read order is store-before-seed, writing that poisons:
+		// next time the dead value wins, swapping the env var for a good
+		// credential stops fixing anything, and the only way out becomes
+		// deleting the object by hand. The symptom for whoever operates it is
+		// a 401 with no explanation, on a pipeline that worked yesterday.
 		//
-		// O vendor em Python que originou isto ja conhecia a armadilha: o
-		// seed_cookie conferia antes de gravar, "para que um valor morto nao
-		// pouse como a linha mais nova".
+		// The Python vendor this came from already knew the trap: seed_cookie
+		// checked before writing, "so that a dead value does not land as the
+		// newest row".
 		return fmt.Errorf("refresh %s: %w", redactURL(r.URL), err)
 	}
 	if stats != nil {
 		stats.CredentialExpiry = expires
 	}
-	persistir()
+	persist()
 
 	warnAfter := r.WarnAfter
 	if warnAfter == 0 {
@@ -275,67 +279,68 @@ func renew(ctx context.Context, client *http.Client, source *core.Source, jar *c
 	return nil
 }
 
-// prepararLogin monta a Secret que faz o login com o cliente da caminhada.
+// prepareLogin builds the Secret that performs the login with the walk's
+// client.
 //
-// Ela roda ANTES do Credential.Get, e o resultado passa a valer para o TTL e
-// para a trava que o Get ja tem: um login cacheado por uma hora e um login por
-// execucao sao coisas diferentes, e algumas APIs limitam a FREQUENCIA de
-// autenticacao em vez da de requisicoes.
+// It runs BEFORE Credential.Get, and the result comes under the TTL and the
+// lock Get already has: a login cached for an hour and a login per run are
+// different things, and some APIs rate-limit the FREQUENCY of authentication
+// rather than that of requests.
 //
-// O cliente e o mesmo das paginas, e e esse o ponto do item: retry, backoff,
-// Retry-After e redacao de segredo no log passam a valer para a requisicao que
-// carrega as credenciais -- que, escrita a mao, costuma sair com
-// http.DefaultClient e sem timeout nenhum.
-func prepararLogin(client *http.Client, source core.Source) {
+// The client is the pages' client, and that is the point of the item: retry,
+// backoff, Retry-After and secret redaction in the log start applying to the
+// request that carries the credentials -- which, written by hand, usually comes
+// out on http.DefaultClient with no timeout at all.
+func prepareLogin(client *http.Client, source core.Source) {
 	l := source.Auth.Login
 	if l == nil {
 		return
 	}
 
-	source.Auth.PrepararLogin(func(ctx context.Context) (string, error) {
-		metodo := l.Method
-		if metodo == "" {
-			// Um login e um POST. GET poria o segredo na query string, e a
-			// query string vai para log de servidor e de proxy.
-			metodo = "POST"
+	source.Auth.PrepareLogin(func(ctx context.Context) (string, error) {
+		method := l.Method
+		if method == "" {
+			// A login is a POST. GET would put the secret in the query string,
+			// and the query string reaches server and proxy logs.
+			method = "POST"
 		}
 
-		var tipo string
-		var corpo []byte
+		var contentType string
+		var body []byte
 		if l.Body != nil {
 			var err error
-			tipo, corpo, err = l.Body(ctx)
+			contentType, body, err = l.Body(ctx)
 			if err != nil {
-				return "", fmt.Errorf("login %s: montando o corpo: %w", redactURL(l.URL), err)
+				return "", fmt.Errorf("login %s: building the body: %w", redactURL(l.URL), err)
 			}
 		}
 
-		fonte := source
-		cabecalho := http.Header(l.Header).Clone()
-		// A credencial ainda nao existe: e ela que esta sendo obtida. Mandar o
-		// cabecalho da fonte aqui vazaria o que houver nele para o endpoint de
-		// login, que pode ser de outro host.
-		if cabecalho == nil {
-			cabecalho = http.Header{}
+		src := source
+		header := http.Header(l.Header).Clone()
+		// The credential does not exist yet: it is what is being obtained.
+		// Sending the source's header here would leak whatever is in it to the
+		// login endpoint, which may live on another host.
+		if header == nil {
+			header = http.Header{}
 		}
-		if tipo != "" {
-			cabecalho.Set("Content-Type", tipo)
+		if contentType != "" {
+			header.Set("Content-Type", contentType)
 		}
-		fonte.Header = cabecalho
+		src.Header = header
 
-		resposta, err := requisitar(ctx, client, fonte, metodo, l.URL, corpo)
+		response, err := request(ctx, client, src, method, l.URL, body)
 		if err != nil {
 			return "", err
 		}
 
-		token, err := l.Token(resposta)
+		token, err := l.Token(response)
 		if err != nil {
 			return "", fmt.Errorf("login %s: %w", redactURL(l.URL), err)
 		}
 		if token == "" {
-			return "", fmt.Errorf("login %s: o token veio vazio. Um token vazio vira um "+
-				"cabeçalho de autorização vazio e um 401 mais adiante, culpando a API",
-				redactURL(l.URL))
+			return "", fmt.Errorf("login %s: the token came back empty. An empty token "+
+				"becomes an empty authorization header and a 401 further down, blaming "+
+				"the API", redactURL(l.URL))
 		}
 		return token, nil
 	})

@@ -10,86 +10,88 @@ import (
 	"strings"
 )
 
-// CredentialStore guarda o valor rotacionado entre execucoes.
+// CredentialStore keeps the rotated value between runs.
 //
-// Duas funcoes, e de proposito: uma abstracao com uma implementacao so e um
-// palpite sobre a segunda. Quando existir um store em rede, o formato dele vai
-// ensinar coisas que hoje seriam adivinhadas -- o que se faz agora e nao
-// impedir, mantendo leitura e escrita atras destas duas.
+// Two methods, and that is on purpose: an abstraction with a single
+// implementation is a guess about the second one. When a networked store
+// exists, its shape will teach things that today would be invented -- what can
+// be done now is to not stand in the way, by keeping the read and the write
+// behind these two.
 type CredentialStore interface {
-	// Load devolve o valor guardado. Ausente devolve ("", nil): nao ha valor
-	// nao e erro, e o chamador cai na semente.
+	// Load returns the stored value. Absent returns ("", nil): there is no
+	// value is not an error, and the caller falls back to the seed.
 	Load() (string, error)
 
-	// Save grava o valor rotacionado.
+	// Save writes the rotated value.
 	Save(value string) error
 
-	// Describe nomeia o store para log, sem revelar nada do valor.
+	// Describe names the store for the log, revealing nothing of the value.
 	Describe() string
 }
 
-// CredentialStoreChecker e implementado por um store que sabe recusar
-// configuracao invalida antes da execucao comecar.
+// CredentialStoreChecker is implemented by a store that can refuse invalid
+// configuration before the run starts.
 //
-// Opcional para que um store de terceiro nao precise implementa-lo, e usado
-// por Credential.Check: descobrir que a credencial nao seria guardada DEPOIS
-// da carga inteira e tarde demais para agir.
+// Optional, so that a third-party store need not implement it, and used by
+// Credential.Check: finding out that the credential would not have been stored
+// AFTER the whole load is too late to act on.
 type CredentialStoreChecker interface {
 	CheckStore() error
 }
 
-// Nomes das variaveis que a plataforma injeta.
+// Names of the variables the platform injects.
 const (
 	EnvCredentialDir = "BREVIS_CREDENTIAL_DIR"
 	EnvCredentialKey = "BREVIS_CREDENTIAL_KEY"
 )
 
-// FileStore guarda a credencial num arquivo cifrado dentro de um diretorio que
-// alguem forneceu.
+// FileStore keeps the credential in an encrypted file inside a directory
+// somebody supplied.
 //
-// O SDK nao aprende Kubernetes, nem GCS, nem banco: ele abre um arquivo. Quem
-// monta o volume e problema da plataforma, e e isso que deixa a mesma feature
-// rodar em ./.brevis na maquina de alguem.
+// The SDK learns neither Kubernetes, nor GCS, nor a database: it opens a file.
+// Who mounts the volume is the platform's problem, and that is what lets the
+// same feature run in ./.brevis on somebody's laptop.
 type FileStore struct {
-	// Name e o nome do arquivo, sem extensao. Obrigatorio.
+	// Name is the file name, without an extension. Required.
 	//
-	// Vem do chamador e nunca da URL: URL carrega segredo em query string, e
-	// nome de arquivo vaza para log, listagem e backup.
+	// It comes from the caller and never from the URL: a URL carries secrets
+	// in its query string, and a file name leaks into logs, listings and
+	// backups.
 	Name string
 
-	// Dir e o diretorio. Vazio consulta BREVIS_CREDENTIAL_DIR; vazio nos dois
-	// desliga o store, dizendo no log que desligou.
+	// Dir is the directory. Empty falls back to BREVIS_CREDENTIAL_DIR; empty
+	// in both turns the store off, saying in the log that it did.
 	Dir string
 
-	// Key e a chave de 32 bytes em base64. Vazia consulta
-	// BREVIS_CREDENTIAL_KEY; vazia nos dois grava em claro, dizendo uma vez
-	// no log que esta em claro.
+	// Key is the 32-byte key, in base64. Empty falls back to
+	// BREVIS_CREDENTIAL_KEY; empty in both writes in the clear, saying once in
+	// the log that it is in the clear.
 	//
-	// Para um diretorio a recomendacao e USAR: um diretorio e mais facil de
-	// acabar compartilhado do que um bucket com IAM. O que protege quando nao
-	// ha chave e a permissao 0700, e so.
+	// For a directory the recommendation is to USE one: a directory is easier
+	// to end up shared than a bucket with IAM. What protects the value when
+	// there is no key is mode 0700, and nothing else.
 	Key string
 }
 
-// CheckStore satisfaz CredentialStoreChecker: recusa na montagem, e loga uma
-// vez quando o store fica desligado.
+// CheckStore satisfies CredentialStoreChecker: it refuses at assembly time,
+// and logs once when the store ends up off.
 func (f FileStore) CheckStore() error {
-	arq, err := f.resolver()
+	file, err := f.resolve()
 	if err != nil {
 		return err
 	}
-	if arq == nil {
+	if file == nil {
 		slog.Info("credential store is off",
 			"reason", "neither FileStore.Dir nor "+EnvCredentialDir+" is set",
 			"effect", "the rotated credential lives for this run only")
 		return nil
 	}
-	WarnIfPlaintext(arq.env, arq.caminho)
-	slog.Debug("credential store is on", "file", arq.caminho)
+	WarnIfPlaintext(file.env, file.path)
+	slog.Debug("credential store is on", "file", file.path)
 	return nil
 }
 
-// Describe nomeia o arquivo, nunca o conteudo.
+// Describe names the file, never its contents.
 func (f FileStore) Describe() string {
 	dir := f.Dir
 	if dir == "" {
@@ -101,30 +103,32 @@ func (f FileStore) Describe() string {
 	return filepath.Join(dir, f.Name+".cred")
 }
 
-// Load devolve o valor guardado, ou "" quando o store esta desligado.
+// Load returns the stored value, or "" when the store is off.
 func (f FileStore) Load() (string, error) {
-	arq, err := f.resolver()
-	if err != nil || arq == nil {
+	file, err := f.resolve()
+	if err != nil || file == nil {
 		return "", err
 	}
-	return arq.Load()
+	return file.Load()
 }
 
-// Save grava o valor. Com o store desligado nao faz nada e nao reclama: quem
-// nao configurou diretorio ja foi avisado uma vez, na montagem.
-func (f FileStore) Save(valor string) error {
-	arq, err := f.resolver()
-	if err != nil || arq == nil {
+// Save writes the value. With the store off it does nothing and does not
+// complain: whoever configured no directory was already told once, at assembly
+// time.
+func (f FileStore) Save(value string) error {
+	file, err := f.resolve()
+	if err != nil || file == nil {
 		return err
 	}
-	return arq.Save(valor)
+	return file.Save(value)
 }
 
-// resolver resolve diretorio e chave.
+// resolve settles the directory and the key.
 //
-// Devolve (nil, nil) quando nao ha diretorio: o store desligado e um estado
-// normal -- e como a feature continua sendo atalho e nao requisito.
-func (f FileStore) resolver() (*arquivoDeCredencial, error) {
+// It returns (nil, nil) when there is no directory: the store being off is a
+// normal state -- it is how the feature stays a shortcut rather than a
+// requirement.
+func (f FileStore) resolve() (*credentialFile, error) {
 	if strings.TrimSpace(f.Name) == "" {
 		return nil, fmt.Errorf("FileStore.Name is empty: it names the file, and it must " +
 			"come from you rather than from the URL -- a URL carries secrets in its " +
@@ -142,26 +146,26 @@ func (f FileStore) resolver() (*arquivoDeCredencial, error) {
 		return nil, nil
 	}
 
-	chave := f.Key
-	if chave == "" {
-		chave = os.Getenv(EnvCredentialKey)
+	key := f.Key
+	if key == "" {
+		key = os.Getenv(EnvCredentialKey)
 	}
-	env, err := NewCredentialBox(chave)
+	env, err := NewCredentialBox(key)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := prepararDiretorio(dir); err != nil {
+	if err := prepareDirectory(dir); err != nil {
 		return nil, err
 	}
 
-	return &arquivoDeCredencial{caminho: filepath.Join(dir, f.Name+".cred"), env: env}, nil
+	return &credentialFile{path: filepath.Join(dir, f.Name+".cred"), env: env}, nil
 }
 
-// prepararDiretorio cria o diretorio a 0700, e recusa um que ja exista com
-// permissao mais frouxa: um volume compartilhado com 0777 e um diretorio
-// publico, e guardar credencial nele nao e melhor que nao guardar.
-func prepararDiretorio(dir string) error {
+// prepareDirectory creates the directory at 0700, and refuses one that
+// already exists with looser permissions: a shared volume at 0777 is a public
+// directory, and keeping a credential in it is no better than not keeping it.
+func prepareDirectory(dir string) error {
 	info, err := os.Stat(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -175,68 +179,69 @@ func prepararDiretorio(dir string) error {
 		return fmt.Errorf("credential store: %s is not a directory", dir)
 	}
 
-	if modo := info.Mode().Perm(); modo&0o077 != 0 {
+	if mode := info.Mode().Perm(); mode&0o077 != 0 {
 		return fmt.Errorf("credential store: %s is mode %04o, and anyone on the host or "+
 			"the shared volume can read what goes in it. Use 0700 -- `chmod 700 %s` on a "+
 			"local directory, or mountOptions on the volume (for gcsfuse: "+
-			"dir-mode=0700,file-mode=0600)", dir, modo, dir)
+			"dir-mode=0700,file-mode=0600)", dir, mode, dir)
 	}
 	return nil
 }
 
-type arquivoDeCredencial struct {
-	caminho string
-	env     CredentialBox
+type credentialFile struct {
+	path string
+	env  CredentialBox
 }
 
-func (a *arquivoDeCredencial) Describe() string { return a.caminho }
+func (c *credentialFile) Describe() string { return c.path }
 
-// Load devolve o valor guardado, ou "" quando nao ha um utilizavel.
+// Load returns the stored value, or "" when there is no usable one.
 //
-// Arquivo ausente e "nao ha valor", nao erro: e a primeira execucao de todas.
-func (a *arquivoDeCredencial) Load() (string, error) {
-	bruto, err := os.ReadFile(a.caminho)
+// An absent file is "there is no value", not an error: it is the very first
+// run.
+func (c *credentialFile) Load() (string, error) {
+	raw, err := os.ReadFile(c.path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("credential store: read %s: %w", a.caminho, err)
+		return "", fmt.Errorf("credential store: read %s: %w", c.path, err)
 	}
-	return a.env.Open(bruto, a.caminho), nil
+	return c.env.Open(raw, c.path), nil
 }
 
-// Save grava o valor, cifrado, de forma atomica.
+// Save writes the value, encrypted, atomically.
 //
-// Temporario no MESMO diretorio e rename: um pod morto no meio da escrita nao
-// pode deixar um arquivo pela metade, que decifraria com erro e mandaria o
-// proximo run para a semente em silencio.
+// A temporary file in the SAME directory plus a rename: a pod killed mid-write
+// must not leave a half-written file behind, which would fail to decrypt and
+// would send the next run to the seed in silence.
 //
-// Last writer wins, and that is a choice rather than an oversight: checked
-// no fornecedor que motivou esta feature que rotacionar NAO invalida o token
-// anterior, entao dois pods renovando ao mesmo tempo gravam dois valores que
-// ambos funcionam. Para um fornecedor que invalide o anterior, isto nao serve
-// -- e a advertencia esta na doc de Refresh.Store.
-func (a *arquivoDeCredencial) Save(valor string) error {
-	conteudo, err := a.env.Seal(valor)
+// Last writer wins, and that is a choice rather than an oversight: with the
+// provider that motivated this feature it was checked that rotating does NOT
+// invalidate the previous token, so two pods refreshing at the same time write
+// two values that both work. For a provider that does invalidate the previous
+// one, this does not hold -- and the warning is in Refresh.Store's doc.
+func (c *credentialFile) Save(value string) error {
+	payload, err := c.env.Seal(value)
 	if err != nil {
 		return err
 	}
 
-	dir := filepath.Dir(a.caminho)
+	dir := filepath.Dir(c.path)
 	tmp, err := os.CreateTemp(dir, ".cred-*")
 	if err != nil {
 		return fmt.Errorf("credential store: temp file in %s: %w", dir, err)
 	}
-	defer func() { _ = os.Remove(tmp.Name()) }() // no-op quando o rename deu certo
+	defer func() { _ = os.Remove(tmp.Name()) }() // a no-op when the rename worked
 
-	// Sem Chmod: os.CreateTemp ja cria com 0600, e um chmod explicito seria um
-	// no-op num gcsfuse -- ou um erro, dependendo da montagem.
-	if _, err := tmp.Write(conteudo); err != nil {
+	// No Chmod: os.CreateTemp already creates at 0600, and an explicit chmod
+	// would be a no-op on gcsfuse -- or an error, depending on the mount.
+	if _, err := tmp.Write(payload); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("credential store: write: %w", err)
 	}
-	// Sync antes do rename: sem ele, o rename pode chegar ao disco antes do
-	// conteudo, e uma queda deixa um arquivo vazio no lugar de um valido.
+	// Sync before the rename: without it the rename can reach the disk before
+	// the contents, and a crash leaves an empty file where a valid one was.
 	if err := tmp.Sync(); err != nil {
 		_ = tmp.Close()
 		return fmt.Errorf("credential store: sync: %w", err)
@@ -245,7 +250,7 @@ func (a *arquivoDeCredencial) Save(valor string) error {
 		return fmt.Errorf("credential store: close: %w", err)
 	}
 
-	if err := os.Rename(tmp.Name(), a.caminho); err != nil {
+	if err := os.Rename(tmp.Name(), c.path); err != nil {
 		return fmt.Errorf("credential store: rename into place: %w", err)
 	}
 	return nil

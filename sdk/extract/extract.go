@@ -115,11 +115,11 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 	// same transport -- which is the point. What the report noted is that a
 	// login request written by hand goes out with none of that.
 	if source.Auth != nil && source.Auth.Login != nil {
-		provisorio, _, err := newClient(source)
+		provisional, _, err := newClient(source)
 		if err != nil {
 			return nil, err
 		}
-		prepararLogin(provisorio, source)
+		prepareLogin(provisional, source)
 	}
 
 	// Before the client, so a secret applied as a cookie is seeded into the
@@ -242,7 +242,7 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 			// credential lives in the header, applying it is explicit -- and
 			// without this line page 2 would go out with the value page 1 has
 			// just replaced.
-			aplicarRotacao(&source, credJar.Rotacoes())
+			applyRotation(&source, credJar.Rotations())
 
 			emitted, next, err := drainPage(ctxTotal, source, page, emit)
 			rows += emitted

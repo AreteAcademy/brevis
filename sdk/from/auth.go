@@ -11,21 +11,28 @@ import (
 // keep the credential alive. See HTTP.Auth.
 type Credential = core.Credential
 
-// Login troca segredos por um token vindo do corpo da resposta, com o cliente
-// do SDK. Ver Credential.Login.
+// Login trades secrets for a token coming in the response body, using the
+// SDK's client. See Credential.Login.
 type Login = core.Login
 
-// CampoJSON lê o token de um campo do corpo, por caminho separado por pontos:
-// CampoJSON("data.accessToken").
-func CampoJSON(caminho string) func([]byte) (string, error) { return core.CampoJSON(caminho) }
+// JSONToken reads the token from a field of the body, by a dot-separated path:
+// JSONToken("data.accessToken").
+func JSONToken(path string) func([]byte) (string, error) { return core.JSONToken(path) }
 
-// JSONBody monta um corpo JSON para o Login.
+// CampoJSON is the former name of JSONToken.
+//
+// Deprecated: use JSONToken. It is kept because it shipped in a published
+// version, and removing it would break a build with no way to see why from the
+// error alone. It will go in v1.
+func CampoJSON(path string) func([]byte) (string, error) { return core.JSONToken(path) }
+
+// JSONBody builds a JSON body for the Login.
 func JSONBody(v any) func(context.Context) (string, []byte, error) { return core.JSONBody(v) }
 
-// FormBody monta um corpo application/x-www-form-urlencoded, que é o formato
-// que o OAuth2 usa.
-func FormBody(campos map[string]string) func(context.Context) (string, []byte, error) {
-	return core.FormBody(campos)
+// FormBody builds an application/x-www-form-urlencoded body, which is the
+// format OAuth2 uses.
+func FormBody(fields map[string]string) func(context.Context) (string, []byte, error) {
+	return core.FormBody(fields)
 }
 
 // Refresh renews a credential that expires, by calling the endpoint that
