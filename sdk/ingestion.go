@@ -23,8 +23,8 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 // IngestionID writes the ingestion_id column.
 //
 // As quatro colunas de proveniencia precisam existir antes dele na cadeia.
-// Ver ExampleIngestionID; Compute nao recebe um KeySelector direto, entao a
-// chave vai dentro de uma funcao.
+// See ExampleIngestionID; Compute does not take a KeySelector directly, so the
+// key goes inside a function.
 //
 // The id is a deterministic UUID v5 over provider|entity|source_key|record_ts,
 // so the same record always gets the same id and a re-run is safe. The formula,
@@ -51,38 +51,39 @@ func IngestionID(fields ...string) Transformer {
 
 // IngestionIDWith e IngestionID com a renderizacao injetada.
 //
-// Use quando o id precisa casar com o de um sistema que ja gravou linhas:
+// Use it when the id has to match one from a system that has already written rows:
 //
 //	sdk.IngestionIDWith(pycompat.Text)
 //
-// O padrao NAO usa isto, e o motivo nao e preferencia: trocar a renderizacao
-// mudaria o ingestion_id de toda linha que o Go ja gravou. Um fetcher em
-// producao passaria a escrever ids novos para as mesmas leituras, e o resultado
-// e a tabela inteira duplicada no proximo merge. A escolha e por fetcher.
+// The default does NOT use this, and the reason is not preference: changing the
+// rendering would change the ingestion_id of every row Go has already written. A
+// fetcher in production would start writing new ids for the same readings, and
+// the result is the whole table duplicated on the next merge. The choice is per
+// fetcher.
 func IngestionIDWith(render Renderer, fields ...string) Transformer {
 	return ingestionIDCom(core.NamespacePadrao, render, fields...)
 }
 
-// Namespace escolhe o namespace UUID em que a identidade e computada.
+// Namespace chooses the UUID namespace the identity is computed in.
 //
-//	sdk.Namespace(meuNamespace).IngestionID()
+//	sdk.Namespace(myNamespace).IngestionID()
 //
-// Namespaces diferentes produzem ids diferentes para o MESMO registro, e e
-// para isso que servem: dois pipelines que leem a mesma fonte e escrevem em
-// tabelas diferentes nao devem colidir, e dois que escrevem na MESMA tabela
-// precisam do mesmo.
+// Different namespaces produce different ids for the SAME record, and that is
+// what they are for: two pipelines reading the same source and writing to
+// different tables must not collide, and two writing to the SAME table need the
+// same one.
 //
-// O padrao existe e continua existindo porque quem ja gravou linhas com ele
-// nao pode ter os ids reescritos. Um pipeline NOVO deveria escolher o seu:
-// um namespace por landing e o que impede que duas fontes diferentes gerem o
-// mesmo id por coincidencia de chave.
+// The default exists and continues to exist because whoever has already written
+// rows with it cannot have their ids rewritten. A NEW pipeline should choose its
+// own: one namespace per landing table is what stops two different sources
+// producing the same id by a coincidence of keys.
 //
-//	// uma vez, no fetcher, e nunca mais
-//	var meuNamespace = uuid.MustParse("...")
+//	// once, in the fetcher, and never again
+//	var myNamespace = uuid.MustParse("...")
 //
-// Trocar o namespace de um pipeline que ja gravou reescreve todo id dele. Nao
-// ha migracao barata: a proxima execucao grava tudo de novo, e o merge do
-// bronze duplica a tabela.
+// Changing the namespace of a pipeline that has already written rewrites every
+// one of its ids. There is no cheap migration: the next run writes everything
+// again, and the bronze merge duplicates the table.
 func Namespace(ns uuid.UUID) Identity { return Identity{ns: ns} }
 
 // Identity compoe os transformers de identidade num namespace escolhido.
@@ -120,8 +121,8 @@ func ingestionIDCom(ns uuid.UUID, render Renderer, fields ...string) Transformer
 				ColumnIngestionID)
 		}
 
-		// Array de pilha: sao sempre quatro, e um slice no heap por registro
-		// numa carga de milhoes e trabalho identico repetido.
+		// A stack array: there are always four, and a heap slice per record on a
+		// load of millions is identical work repeated.
 		var parts [4]string
 		var missing []string
 		for i, name := range names {

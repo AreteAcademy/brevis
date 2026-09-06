@@ -53,10 +53,10 @@ type (
 	// LoadResult is the low-level load outcome. Prefer Result.
 	LoadResult = core.LoadResult
 
-	// SourceFailure diz qual origem falhou e por quê, numa fonte composta.
+	// SourceFailure says which source failed, and why, in a composite source.
 	SourceFailure = core.SourceFailure
 
-	// FailurePolicy diz o que from.Many faz quando uma origem falha.
+	// FailurePolicy says what from.Many does when a source fails.
 	FailurePolicy = core.FailurePolicy
 
 	// Schema is the destination's declaration with a type on each column, and
@@ -151,7 +151,7 @@ const (
 	TypeBytes     = core.TypeBytes
 )
 
-// As políticas de falha de uma fonte composta. Ver from.Many.
+// The failure policies of a composite source. See from.Many.
 const (
 	AbortOnError    = core.AbortOnError
 	ContinueOnError = core.ContinueOnError

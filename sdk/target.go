@@ -75,33 +75,32 @@ type Target struct {
 	// driver's to say.
 	Dedup core.Dedup
 
-	// FlushEvery escreve a cada N registros lidos, em vez de acumular a
-	// leitura inteira em memoria. Zero acumula tudo, que continua sendo o
-	// padrao.
+	// FlushEvery writes every N records read, instead of accumulating the whole
+	// read in memory. Zero accumulates everything, which remains the default.
 	//
-	// Uma leitura de milhares de origens nao cabe necessariamente na memoria:
-	// o lote inteiro fica vivo, e o destino monta uma SEGUNDA copia dele para
-	// serializar. Com FlushEvery, o teto e N registros mais a copia de N.
+	// A read over thousands of sources does not necessarily fit in memory: the
+	// whole batch stays alive, and the destination builds a SECOND copy of it to
+	// serialise. With FlushEvery the ceiling is N records plus the copy of N.
 	//
-	// O que se paga por isso, e precisa ser dito:
+	// What that costs, and it has to be said:
 	//
-	//   - a carga deixa de ser ATOMICA. Uma falha na terceira leva deixa as
-	//     duas primeiras gravadas, e a re-execucao depende de Dedup para nao
-	//     duplicar. Sem DedupMerge, uma falha no meio duplica o que ja entrou.
-	//   - com DedupMerge cada leva paga o proprio MERGE, entao N pequeno
-	//     multiplica o custo no destino.
+	//   - the load stops being ATOMIC. A failure on the third batch leaves the
+	//     first two written, and the re-run depends on Dedup not to duplicate.
+	//     Without DedupMerge, a failure midway duplicates what already went in.
+	//   - with DedupMerge each batch pays its own MERGE, so a small N multiplies
+	//     the cost at the destination.
 	//
-	// O Result soma as levas: Rows, Ignored e Bytes sao o total, e RowErrors
-	// junta as de todas.
+	// Result sums the batches: Rows, Ignored and Bytes are the total, and
+	// RowErrors gathers them all.
 	FlushEvery int
 }
 
-// ValidateTarget confere o que a fachada consegue conferir sem tocar o
-// destino: a declaracao consigo mesma.
+// ValidateTarget checks what the facade can check without touching the
+// destination: the declaration against itself.
 //
-// Exportada porque um fetcher pode querer falhar cedo, num teste ou num
-// -dry-run, sem cliente de nuvem nenhum -- e porque um invariante que so da
-// para exercitar com servidor de pe e um invariante que ninguem exercita.
+// Exported because a fetcher may want to fail early, in a test or a -dry-run,
+// with no cloud client at all -- and because an invariant that can only be
+// exercised with a server running is an invariant nobody exercises.
 func ValidateTarget(t Target) error { return t.validate() }
 
 // validate checks what the facade owns. What the destination needs is the
@@ -179,43 +178,43 @@ type Result struct {
 	// silent death happens in the first place.
 	CredentialExpiry time.Time
 
-	// CredentialStoreError diz que a credencial rotacionada nao foi guardada.
-	// A carga aconteceu; o que se perdeu foi a rotacao, e a próxima execucao
-	// cai na semente. Vazio quando nao ha store ou quando gravou.
+	// CredentialStoreError says the rotated credential was not stored. The load
+	// happened; what was lost is the rotation, and the next run falls back to
+	// the seed. Empty when there is no store or when it did store.
 	CredentialStoreError string
 
-	// FailedSources sao as origens que falharam e foram toleradas por
-	// from.Many com ContinueOnError. Vazio quando nao houve.
+	// FailedSources are the sources that failed and were tolerated by from.Many
+	// with ContinueOnError. Empty when there were none.
 	//
-	// Ele esta aqui, e nao so no log, porque e a unica coisa que permite
-	// reprocessar o que faltou. Um fan-out que perde 3.000 de 4.803 origens e
-	// nao diz quais obriga a proxima execucao a refazer tudo.
+	// It is here, and not only in the log, because it is the only thing that
+	// allows reprocessing what is missing. A fan-out that loses 3,000 of 4,803
+	// sources and does not say which forces the next run to redo everything.
 	FailedSources []core.SourceFailure
 
-	// Objects são os objetos que a carga escreveu e que continuam lá.
+	// Objects are the objects the load wrote and that are still there.
 	//
-	// Com to.Files, o arquivo. Com um destino que estagia e apaga, vazio -- um
-	// caminho reportado que já não existe é pior que nenhum.
+	// With to.Files, the file. With a destination that stages and deletes,
+	// empty -- a reported path that no longer exists is worse than none.
 	//
-	// Ele existe para o caso de um passo escrever o arquivo e outro lê-lo: sem
-	// isto, quem escreveu não sabe o que escreveu, porque o nome carrega um
-	// carimbo de tempo que o driver escolhe.
+	// It exists for the case where one step writes the file and another reads
+	// it: without this, whoever wrote does not know what they wrote, because the
+	// name carries a timestamp the driver chooses.
 	Objects []string
 
-	// CheckpointReused diz que esta execucao leu o extract do deposito em vez
-	// da origem -- ou seja, que a quota do fornecedor foi poupada.
+	// CheckpointReused says this run read the extract from the depot instead of
+	// from the source -- that is, that the vendor's quota was spared.
 	//
-	// Ele esta aqui, e nao so no log, porque uma economia que nao aparece em
-	// lugar nenhum e indistinguivel de nao ter economizado.
+	// It is here, and not only in the log, because a saving that shows up
+	// nowhere is indistinguishable from not having saved anything.
 	CheckpointReused bool
 
 	// CheckpointPath e onde o deposito desta execucao esta. Vazio quando o
 	// checkpoint esta desligado.
 	CheckpointPath string
 
-	// CheckpointError diz por que o deposito nao pode ser gravado. A carga
-	// aconteceu; o que se perdeu foi a apolice, e a proxima tentativa vai ter
-	// de refazer o extract. Vazio quando gravou ou quando esta desligado.
+	// CheckpointError says why the depot could not be written. The load
+	// happened; what was lost is the insurance, and the next attempt will have
+	// to redo the extract. Empty when it wrote or when it is off.
 	CheckpointError string
 
 	// Stages is what each stage did: how many records went in, how many came
@@ -248,13 +247,13 @@ func (r *Result) Args() []any {
 		"duration", r.Duration,
 	}
 
-	// Contadores que nem todo driver preenche saem quando estao zerados.
+	// Counters not every driver fills are left out when they are zero.
 	//
-	// "um numero que e sempre zero e pior que numero nenhum" e principio deste
-	// projeto, e a linha de um pipeline SQL o violava: os drivers de banco nao
-	// contam bytes, entao `extract_bytes=0 bytes=0 formato=""` aparecia em
-	// toda execucao, ensinando quem le a pular esses campos -- e quando o
-	// pipeline de HTTP mostrasse zero de verdade, ninguem veria.
+	// "a number that is always zero is worse than no number" is a principle of
+	// this project, and a SQL pipeline's log line broke it: the database drivers
+	// do not count bytes, so `extract_bytes=0 bytes=0 format=""` showed on every
+	// run, teaching whoever read to skip those fields -- and when an HTTP
+	// pipeline showed a real zero, nobody would see it.
 	if r.ExtractBytes > 0 {
 		args = append(args, "extract_bytes", r.ExtractBytes)
 	}
@@ -278,8 +277,9 @@ func (r *Result) Args() []any {
 	if n := len(r.FailedSources); n > 0 {
 		args = append(args, "failed_sources", n)
 	}
-	// So quando ha algo a dizer: `checkpoint=false` em toda linha ensinaria a
-	// pular o campo, e a linha que importa e justamente a rara.
+	// Only when there is something to say: `checkpoint=false` on every line
+	// would teach people to skip the field, and the line that matters is
+	// precisely the rare one.
 	if r.CheckpointReused {
 		args = append(args, "checkpoint", "reused", "checkpoint_at", r.CheckpointPath)
 	}
@@ -289,8 +289,8 @@ func (r *Result) Args() []any {
 	if len(r.Objects) == 1 {
 		args = append(args, "object", r.Objects[0])
 	} else if len(r.Objects) > 1 {
-		// Com FlushEvery sao varios, e despejar cinquenta caminhos numa linha
-		// de log a torna ilegivel. A lista inteira esta em Result.Objects.
+		// With FlushEvery there are several, and dumping fifty paths into one
+		// log line makes it unreadable. The whole list is in Result.Objects.
 		args = append(args, "objects", len(r.Objects), "first", r.Objects[0])
 	}
 	return args

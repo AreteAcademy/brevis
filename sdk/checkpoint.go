@@ -258,18 +258,18 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 				break
 			}
 			if err != nil {
-				// A origem falhou: o extract nao terminou, e sem manifesto
-				// ninguem vai retomar deste deposito pela metade.
+				// The source failed: the extract did not finish, and with no
+				// manifest nobody will resume from this half-written depot.
 				yield(Envelope{}, err)
 				return
 			}
 			if e := esc.Add(env); e != nil {
-				degradar(e, &env) // nao entrou no buffer, entao vai a mao
+				degradar(e, &env) // it never entered the buffer, so it goes by hand
 				return
 			}
 			if esc.Cheio() {
 				if e := esc.Despejar(ctx); e != nil {
-					degradar(e, nil) // ja esta no buffer; Pendentes o cede
+					degradar(e, nil) // already in the buffer; Pendentes yields it
 					return
 				}
 			}

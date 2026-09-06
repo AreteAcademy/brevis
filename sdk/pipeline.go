@@ -32,15 +32,16 @@ type Pipeline struct {
 
 	Target Target
 
-	// Checkpoint guarda o extract bruto para que uma segunda tentativa da mesma
-	// run nao consulte a origem de novo. Zero desliga. Ver Checkpoint.
+	// Checkpoint keeps the raw extract so a second attempt of the same run does
+	// not go back to the source. Zero turns it off. See Checkpoint.
 	Checkpoint Checkpoint
 
 	// Reduce agrega o fluxo entre o Transform e o Target. Nil passa direto.
 	//
-	// Ele DRENA a origem antes de a primeira linha ir ao destino -- e isso e
-	// inerente a agregar, nao uma escolha. O que continua valendo e o teto: a
-	// memoria e proporcional ao numero de GRUPOS, nunca ao de registros.
+	// It DRAINS the source before the first row reaches the destination -- and
+	// that is inherent to aggregating, not a choice. What still holds is the
+	// ceiling: memory is proportional to the number of GROUPS, never to the
+	// number of records.
 	Reduce *Reduce
 
 	// Stages replaces Transform and Reduce with an ordered list, for a
@@ -161,10 +162,10 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 
 	// A declaracao e conferida contra o destino ANTES da extracao.
 	//
-	// A mesma conferencia roda de novo no Load, e nao e desperdicio: entre uma
-	// e outra a tabela pode mudar, e a do Load e a que decide. O que esta
-	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
-	// coluna nao bate significa ter gasto a janela inteira para isso.
+	// The same check runs again in the Load, and that is not waste: between the
+	// two the table can change, and the Load's is the one that decides. What
+	// this first one buys is the vendor's quota -- finding out in the Load that
+	// a column does not match means having spent the whole window on it.
 	rep.started(PhaseCheck)
 	stages, err := p.montar()
 	if err != nil {
@@ -235,8 +236,8 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
 	if res != nil {
-		// Depois do load: o deposito e escrito enquanto o fluxo corre, entao
-		// so agora se sabe se ele foi ate o fim.
+		// After the load: the depot is written while the stream runs, so only
+		// now is it known whether it made it to the end.
 		cp.aplicar(res)
 		res.Stages = contagens
 
@@ -302,24 +303,24 @@ func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, origem
 	}
 }
 
-// aoEsgotar avisa quando a origem acabou -- que e quando o extract finished de
-// verdade, e nao quando Extract devolveu o iterador.
+// aoEsgotar warns when the source has run out -- which is when the extract
+// really finished, and not when Extract returned the iterator.
 func aoEsgotar(linhas iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		for env, err := range linhas {
 			if !yield(env, err) {
-				return // quem consome desistiu: a origem nao se esgotou
+				return // the consumer gave up: the source did not run out
 			}
 		}
 		fim()
 	}
 }
 
-// checkDestination pergunta ao destino, se ele souber responder.
+// checkDestination asks the destination, if it knows how to answer.
 //
-// Opcional de proposito: um diretorio de arquivos nao tem esquema para
-// conferir, e o Redshift precisaria de um cluster de pe. Um destino que nao
-// pode conferir cedo nao deve ser obrigado a fingir que pode.
+// Optional on purpose: a directory of files has no schema to check, and Redshift
+// would need a running cluster. A destination that cannot check early must not
+// be forced to pretend it can.
 func checkDestination(ctx context.Context, t Target) error {
 	if err := t.validate(); err != nil {
 		return err

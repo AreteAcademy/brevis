@@ -108,19 +108,19 @@ func transformAll(upstream iter.Seq2[Envelope, error], fns []Transformer, origin
 
 // applyAll runs the chain, reporting whether the record was skipped.
 //
-// Ele faz UMA copia do registro antes da cadeia, e a partir dai os
-// transformers escrevem no lugar.
+// It makes ONE copy of the record before the chain, and from there on the
+// transformers write in place.
 //
-// Antes, cada transformer devolvia um mapa novo, "porque o chamador ainda pode
-// estar segurando o mapa". Isso e verdade exatamente uma vez -- para o mapa que
-// o decodificador acabou de entregar, e que o preview do extract guarda para
-// mostrar o que a FONTE mandou. Depois da primeira copia, o unico que segura o
-// registro e a propria cadeia, e as outras seis copias eram trabalho identico
-// repetido por registro: seis mapas por linha, numa carga de milhoes.
+// Before, each transformer returned a new map, "because the caller may still be
+// holding it". That is true exactly once -- for the map the decoder has just
+// handed over, which the extract's preview keeps in order to show what the
+// SOURCE sent. After the first copy, the only thing holding the record is the
+// chain itself, and the other six copies were identical work repeated per
+// record: six maps per row, on a load of millions.
 //
-// A copia fica AQUI, num lugar so, e nao dentro de cada transformer -- que e o
-// que torna a economia estrutural em vez de uma otimizacao a ser lembrada em
-// cada driver novo.
+// The copy lives HERE, in one place, and not inside each transformer -- which is
+// what makes the saving structural instead of an optimisation to be remembered
+// in every new driver.
 func applyAll(fns []Transformer, payload any) (any, bool, error) {
 	if obj, ehObjeto := payload.(map[string]any); ehObjeto && len(fns) > 0 {
 		copia := make(map[string]any, len(obj))
@@ -180,9 +180,9 @@ func Accept(fields ...string) Transformer {
 			return payload, nil
 		}
 
-		// Os ausentes sao conferidos ANTES de apagar qualquer coisa: recusar
-		// depois de ter mexido no registro deixaria o erro descrevendo um
-		// registro que ja nao existe.
+		// The missing ones are checked BEFORE anything is deleted: refusing after
+		// having touched the record would leave the error describing a record
+		// that no longer exists.
 		var missing []string
 		for _, f := range fields {
 			if _, present := obj[f]; !present {
@@ -254,11 +254,11 @@ func Rename(names map[string]string) Transformer {
 				strings.Join(clashes, ", "))
 		}
 
-		// Dois passos, e nao um: aplicar as trocas uma a uma no lugar faria
-		// {a: b, b: c} sobre um registro que so tem `a` mover o valor para
-		// `c` ou parar em `b`, dependendo da ordem em que o mapa foi
-		// percorrido. Lendo tudo antes de escrever, o resultado e o mesmo que
-		// montar um mapa novo -- que era o comportamento anterior.
+		// Two passes, not one: applying the swaps one by one in place would make
+		// {a: b, b: c} over a record that only has `a` move the value to `c` or
+		// stop at `b`, depending on the order the map was walked in. Reading
+		// everything before writing gives the same result as building a new map
+		// -- which was the previous behaviour.
 		type troca struct {
 			para  string
 			valor any
@@ -323,31 +323,31 @@ var _ func(func(Envelope, error) bool) = iter.Seq2[Envelope, error](nil)
 //
 //	sdk.SkipWithout("id", "atualizado_em")
 //
-// O nome diz o nivel, e isso importa: RequireFields recusa a RESPOSTA inteira
-// quando um campo falta -- e a fonte mudou de forma. SkipWithout descarta UM
-// registro. Duas coisas diferentes com nomes parecidos seriam a mesma armadilha
-// que este SDK ja encontrou em si mesmo.
+// The name says the level, and that matters: RequireFields refuses the whole
+// RESPONSE when a field is missing -- the source changed shape. SkipWithout
+// drops ONE record. Two different things with similar names would be the same
+// trap this SDK has already fallen into against itself.
 //
-// Descartar e nao falhar: uma linha sem o campo que compoe a chave nao pode
-// entrar -- ela nao tem identidade estavel --, mas ela tambem nao e motivo
-// para derrubar a janela inteira. Quem quiser que seja usa Accept, que recusa.
+// Dropping rather than failing: a row without the field that composes the key
+// cannot go in -- it has no stable identity -- but it is also no reason to bring
+// the whole window down. Anyone who wants it to be uses Accept, which refuses.
 //
-// Vale para o caso que todo consumidor escreve a mao: um closure com type
-// assertion por campo, repetido em cada fetcher, onde errar um deles e
-// silencioso.
+// It covers the case every consumer writes by hand: a closure with a type
+// assertion per field, repeated in each fetcher, where getting one of them wrong
+// is silent.
 //
-// Ausente e nulo sao a mesma coisa aqui, e e deliberado: uma chave composta com
-// um nulo no meio produz um id que parece valido e colide com outro registro
-// que tenha o mesmo nulo na mesma posicao.
+// Missing and null are the same thing here, and that is deliberate: a key
+// composed with a null in the middle produces an id that looks valid and
+// collides with another record carrying the same null in the same position.
 func SkipWithout(fields ...string) Transformer {
 	return func(payload any) (any, error) {
 		if len(fields) == 0 {
-			return nil, fmt.Errorf("SkipWithout precisa de ao menos um campo")
+			return nil, fmt.Errorf("SkipWithout needs at least one field")
 		}
 		obj, ok := payload.(map[string]any)
 		if !ok {
-			// Sem campos para exigir, o registro passa: e a mesma escolha que
-			// Accept e Without fazem para um payload que nao e objeto.
+			// With no fields to require, the record passes: the same choice
+			// Accept and Without make for a payload that is not an object.
 			return payload, nil
 		}
 		for _, f := range fields {

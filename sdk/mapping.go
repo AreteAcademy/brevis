@@ -68,25 +68,26 @@ func Key(fields ...string) KeySelector {
 	}
 }
 
-// Renderer transforma um valor do registro no texto que entra na chave.
+// Renderer turns a record's value into the text that goes into the key.
 //
-// Ele existe porque a IDENTIDADE de uma linha e a concatenacao desses textos,
-// e um sistema de origem que renderizava diferente produz ids diferentes para
-// as mesmas leituras. Nao ha erro nesse dia: ha uma duplicata semanas depois.
+// It exists because a row's IDENTITY is the concatenation of those texts, and a
+// source system that rendered differently produces different ids for the same
+// readings. There is no error on that day: there is a duplicate weeks later.
 //
-// O SDK traz uma implementacao pronta em sdk/pycompat, para quem esta portando
-// de Python. Qualquer outra origem -- um ETL em Ruby, um job em Scala -- passa
-// a sua.
+// The SDK ships one implementation in sdk/pycompat, for anyone porting from
+// Python. Any other origin -- an ETL in Ruby, a job in Scala -- passes its
+// own.
 type Renderer func(any) (string, error)
 
 // KeyWith e Key com a renderizacao injetada.
 //
-// Use quando a chave precisa casar com a de um sistema que ja gravou linhas:
+// Use it when the key has to match one from a system that has already written
+// rows:
 //
 // Ver ExampleKeyWith.
 //
-// Um valor que o Renderer recusa vira erro nomeando o CAMPO -- sem o nome,
-// quem le o erro nao sabe qual dos seis e.
+// A value the Renderer refuses becomes an error naming the FIELD -- without the
+// name, whoever reads the error does not know which of the six it is.
 func KeyWith(render Renderer, fields ...string) KeySelector {
 	return func(payload any) (string, error) {
 		if len(fields) == 0 {
@@ -166,23 +167,23 @@ func asObject(payload any) (map[string]any, error) {
 // -23.55 stays "-23.55" rather than becoming "-23.550000". JSON numbers all
 // arrive as float64, so an integer id must not pick up a ".0" tail.
 //
-// # Ele NAO e o str() do Python, e a diferenca importa
+// # It is NOT Python's str(), and the difference matters
 //
 //	valor    asText     str() do Python
 //	nil      ""         "None"
 //	true     "true"     "True"
 //	19.0     "19"       "19.0"
 //
-// Isto e o padrao e continua sendo, por um motivo que nao e preferencia:
-// trocar a renderizacao muda o ingestion_id de TODA linha que o Go ja gravou.
-// Um fetcher em producao passaria a escrever ids novos para as mesmas
-// leituras, e o resultado nao e um erro -- e a tabela inteira duplicada no
-// proximo merge.
+// This is the default and remains so, for a reason that is not preference:
+// changing the rendering changes the ingestion_id of EVERY row Go has already
+// written. A fetcher in production would start writing new ids for the same
+// readings, and the result is not an error -- it is the whole table duplicated
+// on the next merge.
 //
-// Quem esta portando um fetcher de Python e precisa casar com o que ja esta na
-// landing usa KeyPython e IngestionIDPython, que rendem com TextoPython. A
-// escolha e por fetcher, escrita no fetcher, e nao um padrao global que muda
-// o significado de quem nao pediu.
+// Anyone porting a Python fetcher who needs to match what is already in the
+// landing table uses KeyWith and IngestionIDWith with pycompat.Text. The choice
+// is per fetcher, written in the fetcher, and not a global default that changes
+// the meaning for people who did not ask.
 func asText(v any) string {
 	switch t := v.(type) {
 	case string:

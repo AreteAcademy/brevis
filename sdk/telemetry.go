@@ -181,7 +181,7 @@ func (r *reporter) emit(ev map[string]any) {
 	ev["at"] = time.Now().UTC().Format(time.RFC3339Nano)
 	line, err := json.Marshal(ev)
 	if err != nil {
-		return // um evento que nao serializa nao vale derrubar o pipeline
+		return // an event that does not serialise is not worth killing the pipeline for
 	}
 	// Ignored on purpose: if stdout no longer accepts writes the pipeline has
 	// a bigger problem, and failing because of telemetry would trade an

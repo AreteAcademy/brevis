@@ -38,29 +38,28 @@ type Source struct {
 	// the stream is drained: that is when the counters are final.
 	Stats *core.Stats
 
-	// Snapshot guarda o registro COMO A FONTE ENTREGOU, sob este nome, antes
-	// de qualquer Transform. Vazio nao guarda nada.
+	// Snapshot keeps the record AS THE SOURCE DELIVERED IT, under this name,
+	// before any Transform. Empty keeps nothing.
 	//
 	//	Source: sdk.Source{From: ..., Snapshot: "payload"}
 	//
-	// # By que aqui e nao um Transformer
+	// # Why here and not a Transformer
 	//
-	// O retrato do registro cru precisa ser tirado antes de qualquer campo
-	// derivado. Como transformer, ele dependeria da POSICAO na cadeia -- e
-	// inverter a ordem nao da erro: da um registro "cru" que carrega os campos
-	// que a propria cadeia acabou de escrever, e ninguem percebe ate alguem
-	// consultar o dado meses depois.
+	// The snapshot of the raw record has to be taken before any derived field.
+	// As a transformer it would depend on its POSITION in the chain -- and
+	// getting the order wrong is not an error: it gives a "raw" record carrying
+	// the fields the chain itself has just written, and nobody notices until
+	// somebody queries the data months later.
 	//
-	// Aqui a garantia e estrutural: o retrato e tirado onde o registro sai da
-	// fonte, e nao ha ordem que possa contamina-lo.
+	// Here the guarantee is structural: the snapshot is taken where the record
+	// leaves the source, and no ordering can contaminate it.
 	//
-	// # O que ele copia
+	// # What it copies
 	//
-	// Uma copia rasa do mapa. Os campos de primeiro nivel ficam isolados do
-	// que a cadeia faz depois, que e onde os transformers escrevem. Um valor
-	// ANINHADO continua compartilhado -- um transformer que altere o conteudo
-	// de um sub-objeto altera o retrato tambem. Nenhum transformer embutido
-	// faz isso.
+	// A shallow copy of the map. The top-level fields are isolated from what the
+	// chain does afterwards, which is where the transformers write. A NESTED
+	// value stays shared -- a transformer that changes a sub-object's contents
+	// changes the snapshot too. No built-in transformer does that.
 	Snapshot string
 }
 

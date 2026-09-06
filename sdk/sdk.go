@@ -102,11 +102,12 @@ func Extract(ctx context.Context, source Source) (*Data, error) {
 	return &Data{Records: lines, source: source, start: start, stats: stats}, nil
 }
 
-// comRetrato grava o registro como a fonte entregou, sob o nome pedido.
+// comRetrato records the row as the source delivered it, under the requested
+// name.
 //
-// Roda AQUI, entre a leitura e o Transform, e nao como transformer: assim ele
-// nao depende da posicao na cadeia, e nao ha ordem que possa contaminar o
-// retrato com campos que a propria cadeia escreveu.
+// It runs HERE, between the read and the Transform, and not as a transformer:
+// that way it does not depend on a position in the chain, and no ordering can
+// contaminate the snapshot with fields the chain itself wrote.
 func comRetrato(linhas iter.Seq2[Envelope, error], nome string) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		for env, err := range linhas {
@@ -119,9 +120,9 @@ func comRetrato(linhas iter.Seq2[Envelope, error], nome string) iter.Seq2[Envelo
 
 			obj, ok := env.Payload.(map[string]any)
 			if !ok {
-				// Um registro que nao e objeto nao tem campos para retratar, e
-				// inventar um envelope aqui seria dar forma ao dado de quem
-				// deliberadamente nao usa objetos.
+				// A record that is not an object has no fields to snapshot, and
+				// wrapping it in a map would change the shape for anyone who
+				// deliberately does not use objects.
 				if !yield(env, nil) {
 					return
 				}
@@ -233,13 +234,13 @@ func collect(data *Data, _ Target) ([]Envelope, error) {
 	return envelopes, nil
 }
 
-// loadEmLevas escreve a cada FlushEvery registros, para que uma leitura longa
-// tenha memoria limitada.
+// loadEmLevas writes every FlushEvery records, so a long read has bounded
+// memory.
 //
-// A carga deixa de ser atomica, e isso esta dito no campo. Aqui esta o que o
-// codigo faz com isso: uma leva que falha PARA, e o Result devolvido carrega o
-// que as levas anteriores ja gravaram -- porque esconder que 40 mil linhas
-// entraram seria pior que dizer.
+// The load stops being atomic, and the field says so. Here is what the code does
+// about it: a batch that fails STOPS, and the Result returned carries what the
+// earlier batches already wrote -- because hiding that 40,000 rows went in would
+// be worse than saying so.
 func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext, start time.Time) (*Result, error) {
 	res := &Result{Table: target.To.Describe()}
 	opcoes := target.options(run)
@@ -297,9 +298,9 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 	return res, nil
 }
 
-// somar acumula uma leva no resultado. Diferente de apply, que substitui: com
-// levas, o total e a soma, e um Rows que so contasse a ultima leva mentiria
-// para quem le a linha do pipeline.
+// somar accumulates a batch into the result. Unlike apply, which replaces: with
+// batches the total is the sum, and a Rows counting only the last batch would
+// lie to whoever reads the pipeline's log line.
 func somar(res *Result, lr *core.LoadResult) {
 	res.Rows += lr.RowsLoaded
 	res.Ignored += lr.RowsIgnored
