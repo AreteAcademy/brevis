@@ -12,15 +12,15 @@ import (
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 )
 
-// Este arquivo fecha uma divida aberta desde a PHASE 2: a tabela `task_runs`
-// existia no schema mas nunca era populada, entao o retry era por Run e nao
-// havia estado por passo. A visualizacao da DAG precisa exatamente disso.
+// This file closes a debt left open since PHASE 2: the `task_runs` table existed
+// in the schema but was never populated, so retries were per Run and there was
+// no per-step state. The DAG view needs exactly that.
 
-// IniciarTask registra o inicio de um passo.
+// IniciarTask records a step's start.
 //
-// `ON CONFLICT DO UPDATE` na chave (run, node, tentativa): reexecutar o mesmo
-// passo na mesma tentativa e idempotente, o que importa quando o dispatcher
-// recupera um item de worker morto e o refaz.
+// `ON CONFLICT DO UPDATE` on the (run, node, attempt) key: re-running the same
+// step on the same attempt is idempotent, which matters when the dispatcher
+// recovers an item from a dead worker and redoes it.
 func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int) error {
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO task_runs (id, run_id, node_id, status, attempt, iniciado_em)
@@ -31,11 +31,11 @@ func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID strin
 	return err
 }
 
-// RegistrarEtapas grava o avanco das etapas de um passo do SDK.
+// RegistrarEtapas records the advance of an SDK step's phases.
 //
-// Sobrescreve o array inteiro em vez de acrescentar: o coletor do runner ja
-// guarda UMA entrada por etapa, com o estado atual, e a tela quer quatro
-// blocos e nao um diario.
+// It overwrites the whole array rather than appending: the runner's collector
+// already keeps ONE entry per phase, with its current state, and the screen
+// wants four boxes rather than a diary.
 func (r *RunRepo) RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID string,
 	tentativa int, sdkVersao string, etapas json.RawMessage) error {
 
@@ -47,7 +47,7 @@ func (r *RunRepo) RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID s
 	return err
 }
 
-// TerminarTask registra o desfecho.
+// TerminarTask records the outcome.
 func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string,
 	tentativa int, status dom.Status, exit *int, erro string, log string) error {
 
@@ -59,20 +59,21 @@ func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, nodeID stri
 	return err
 }
 
-// PassoJaTeveSucesso responde se este passo, neste workflow, ja terminou bem
-// antes — em qualquer run anterior.
+// PassoJaTeveSucesso answers whether this step, in this workflow, has ever
+// finished well before -- in any earlier run.
 //
-// E o que decide se a execucao atual e a PRIMEIRA daquele passo, informacao
-// que vai para o ambiente do passo e que o SDK usa para criar a tabela de
-// destino. A alternativa seria o SDK inferir de "a tabela nao existe", e aí
-// alguem apaga a tabela por engano e a proxima execucao se acha a primeira.
+// It is what decides whether the current run is that step's FIRST, information
+// that goes into the step's environment and that the SDK uses to create the
+// destination table. The alternative would be for the SDK to infer it from "the
+// table does not exist", and then somebody drops the table by mistake and the
+// next run believes it is the first.
 //
-// Por (workflow, passo), nao por workflow: um workflow com tres fetchers
-// escrevendo em tres tabelas criaria apenas a do primeiro passo se a resposta
-// fosse do workflow inteiro.
+// Per (workflow, step), not per workflow: a workflow with three fetchers writing
+// to three tables would create only the first step's if the answer covered the
+// whole workflow.
 //
-// `exceto` e o run corrente, excluido para que a propria tentativa em curso
-// nao conte como sucesso anterior.
+// `exceto` is the current run, excluded so the attempt in progress does not
+// count as an earlier success.
 func (r *RunRepo) PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error) {
 	var existe bool
 	err := r.pool.QueryRow(ctx, `
@@ -88,11 +89,11 @@ func (r *RunRepo) PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID s
 	return existe, err
 }
 
-// EstadoDosNos devolve o estado de cada no na ULTIMA tentativa de cada um.
+// EstadoDosNos returns each node's state on its LAST attempt.
 //
-// `DISTINCT ON` em vez de max(attempt) num subselect: a tentativa mais recente e
-// a que interessa na tela, e uma tentativa antiga que falhou nao deve pintar o
-// no de vermelho depois de o retry ter dado certo.
+// `DISTINCT ON` rather than max(attempt) in a subselect: the most recent
+// attempt is the one that matters on screen, and an old attempt that failed must
+// not paint the node red after the retry succeeded.
 func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string]EstadoNo, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT DISTINCT ON (node_id)
@@ -125,7 +126,7 @@ func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string
 	return out, linhas.Err()
 }
 
-// EstadoNo e o estado de um passo, para a UI.
+// EstadoNo is a step's state, for the UI.
 type EstadoNo struct {
 	NodeID    string `json:"node_id"`
 	Status    string `json:"status"`
@@ -134,15 +135,15 @@ type EstadoNo struct {
 	Erro      string `json:"erro,omitempty"`
 	DuracaoMs int64  `json:"duracao_ms"`
 
-	// Etapas sao as fases anunciadas por um passo do SDK. Vazio para um passo
-	// que nao e do SDK -- e a tela desse passo continua sendo a de sempre.
+	// Etapas are the phases announced by an SDK step. Empty for a step that is
+	// not an SDK one -- and that step's screen stays exactly as it was.
 	Etapas []Etapa `json:"etapas,omitempty"`
 
-	// SdkVersao e a versao que o passo anunciou, vazia quando nao e do SDK.
+	// SdkVersao is the version the step announced, empty when it is not an SDK step.
 	SdkVersao string `json:"sdk_versao,omitempty"`
 }
 
-// Etapa e uma fase de um passo do SDK, para a tela.
+// Etapa is one phase of an SDK step, for the screen.
 type Etapa struct {
 	Nome    string         `json:"nome"`
 	Estado  string         `json:"estado"`
@@ -151,14 +152,14 @@ type Etapa struct {
 	Numeros map[string]any `json:"numeros,omitempty"`
 }
 
-// etapasDoPasso le as etapas gravadas e fecha as que ficaram em aberto.
+// etapasDoPasso reads the recorded phases and closes the ones left open.
 //
-// Um passo que morreu nao anuncia nada: se ele terminou com uma etapa ainda em
-// `running`, essa etapa foi INTERROMPIDA, e mostra-la girando para sempre seria
-// a tela mentindo sobre uma execucao que ja acabou.
+// A step that died announces nothing: if it finished with a phase still
+// `running`, that phase was INTERRUPTED, and showing it spinning forever would
+// be the screen lying about a run that is already over.
 //
-// A regra vale na LEITURA, e nao na escrita, porque assim ela cobre tambem o
-// caso em que quem deveria fechar a etapa foi justamente quem morreu.
+// The rule applies on READ, not on write, because that way it also covers the
+// case where whoever should have closed the phase is precisely who died.
 func etapasDoPasso(dados []byte, status string) []Etapa {
 	if len(dados) == 0 {
 		return nil
@@ -185,7 +186,7 @@ func terminal(status string) bool {
 	return false
 }
 
-// LogDoPasso e a saida de uma tentativa, para a tela da execucao.
+// LogDoPasso is one attempt's output, for the run's screen.
 type LogDoPasso struct {
 	NodeID    string
 	Tentativa int
@@ -196,11 +197,12 @@ type LogDoPasso struct {
 	DuracaoMs int64
 }
 
-// LogsDaRun devolve a saida de cada tentativa de cada passo, em ordem de
-// execucao.
+// LogsDaRun returns the output of every attempt of every step, in execution
+// order.
 //
-// TODAS as tentativas, nao so a ultima: quando um passo passa na segunda, o que
-// explica a primeira falha esta justamente na tentativa que a tela descartaria.
+// EVERY attempt, not only the last: when a step passes on the second, what
+// explains the first failure is precisely in the attempt the screen would
+// discard.
 func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT node_id, attempt, status, exit_code, erro, log,

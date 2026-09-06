@@ -13,8 +13,9 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// API e o que o executor precisa do servidor. Interface no consumidor: e ela
-// que permite testar o ciclo de vida inteiro do pod contra um servidor falso.
+// API is what the executor needs from the server. An interface in the consumer:
+// it is what makes it possible to test the pod's whole lifecycle against a fake
+// server.
 type API interface {
 	CriarPod(ctx context.Context, p Pod) (Pod, error)
 	LerPod(ctx context.Context, nome string) (Pod, error)
@@ -22,19 +23,19 @@ type API interface {
 	ApagarPod(ctx context.Context, nome string) error
 }
 
-// Executor roda cada passo como um pod.
+// Executor runs each step as a pod.
 //
-// O ciclo e sempre o mesmo: cria o pod, espera sair de Pending, acompanha o log
-// enquanto roda, le o codigo de saida e apaga. Nenhum estado vive aqui alem dos
-// pods em voo — se o processo reiniciar, os pods continuam rodando e o
-// dispatcher os reencontra pelo nome deterministico.
+// The cycle is always the same: create the pod, wait for it to leave Pending,
+// follow the log while it runs, read the exit code and delete it. No state lives
+// here beyond the in-flight pods -- if the process restarts, the pods keep
+// running and the dispatcher finds them again by their deterministic name.
 type Executor struct {
 	api  API
 	opts Opcoes
 
-	// Intervalo de sondagem do status. Sondar e nao observar (watch) e
-	// deliberado: um watch exige reconexao, resync e tratamento de eventos
-	// perdidos para ganhar segundos numa task que dura minutos.
+	// Status polling interval. Polling rather than watching is deliberate: a
+	// watch needs reconnection, resync and handling of missed events to gain
+	// seconds on a task that lasts minutes.
 	Intervalo time.Duration
 
 	mu    sync.Mutex
@@ -51,8 +52,9 @@ func NewExecutor(api API, o Opcoes) *Executor {
 
 func (e *Executor) Name() string { return "kubernetes" }
 
-// Execute cria o pod e devolve o canal de eventos. O canal fecha quando o pod
-// termina — mesma forma do executor local, entao o runner nao distingue os dois.
+// Execute creates the pod and returns the event channel. The channel closes when
+// the pod finishes -- the same shape as the local executor, so the runner cannot
+// tell them apart.
 func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	spec, err := MontarPod(t, e.opts)
 	if err != nil {
@@ -61,10 +63,10 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 
 	criado, err := e.api.CriarPod(ctx, spec)
 	if err != nil {
-		// AlreadyExists nao e erro: o nome e deterministico por tentativa, entao
-		// isto significa que uma execucao anterior criou o pod e morreu antes de
-		// registrar. Adotar o pod existente evita rodar o mesmo dbt duas vezes
-		// em paralelo.
+		// AlreadyExists is not an error: the name is deterministic per attempt,
+		// so this means an earlier run created the pod and died before
+		// recording it. Adopting the existing pod avoids running the same dbt
+		// twice in parallel.
 		if !strings.Contains(err.Error(), "already exists") {
 			return nil, err
 		}
@@ -105,9 +107,9 @@ func (e *Executor) acompanhar(ctx context.Context, nome string, t execution.Task
 		return
 	}
 
-	// O log e drenado ate o fim ANTES de reportar o desfecho: fechar o canal com
-	// linhas ainda no buffer perderia justamente as ultimas, que sao as que
-	// explicam a falha.
+	// The log is drained to the end BEFORE reporting the outcome: closing the
+	// channel with lines still buffered would lose precisely the last ones,
+	// which are the ones that explain the failure.
 	e.drenarLogs(ctx, nome, t, eventos)
 
 	codigo, terminou := pod.Saida()
@@ -122,8 +124,8 @@ func (e *Executor) acompanhar(ctx context.Context, nome string, t execution.Task
 		msg = fmt.Sprintf("saiu com codigo %d", codigo)
 	}
 	if pod.Motivo() != "" {
-		// DeadlineExceeded, OOMKilled, Evicted: e a diferenca entre "o codigo
-		// falhou" e "o cluster matou o processo".
+		// DeadlineExceeded, OOMKilled, Evicted: the difference between "the code
+		// failed" and "the cluster killed the process".
 		msg += " (" + pod.Motivo() + ")"
 	}
 	eventos <- execution.Event{
@@ -133,23 +135,23 @@ func (e *Executor) acompanhar(ctx context.Context, nome string, t execution.Task
 	e.limpar(nome, false)
 }
 
-// esperarSair sonda ate o pod terminar, reportando por que ele espera.
+// esperarSair polls until the pod finishes, reporting why it is waiting.
 func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.TaskExec,
 	eventos chan<- execution.Event) (Pod, error) {
 
 	tick := time.NewTicker(e.Intervalo)
 	defer tick.Stop()
 
-	// O seguidor de log escreve no MESMO canal que o chamador fecha ao
-	// terminar. Sem esperar por ele, `close(eventos)` podia disparar com um
-	// envio em voo -- `send on closed channel`, que derruba o processo inteiro
-	// e nao so a execucao. O -race achou isto na primeira vez que o modulo
-	// raiz foi testado no CI.
+	// The log follower writes to the SAME channel the caller closes on the way
+	// out. Without waiting for it, `close(eventos)` could fire with a send in
+	// flight -- `send on closed channel`, which brings down the whole process
+	// and not just the run. The -race detector found this the first time the
+	// root module was tested in CI.
 	//
-	// Cancelar antes de esperar e o que limita a espera: o corpo da resposta
-	// de log fecha com o contexto, entao o seguidor sai. Perder o resto do
-	// acompanhamento ao vivo nao custa nada -- o drenarLogs le o log inteiro
-	// logo depois, que e como as ultimas linhas ja chegavam.
+	// Cancelling before waiting is what bounds the wait: the log response's
+	// body closes with the context, so the follower exits. Losing the rest of
+	// the live follow costs nothing -- drenarLogs reads the whole log right
+	// afterwards, which is how the last lines already arrived.
 	ctxLogs, pararLogs := context.WithCancel(ctx)
 	var seguidores sync.WaitGroup
 	defer func() {
@@ -170,9 +172,9 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			return pod, nil
 		}
 
-		// Um pod parado em ImagePullBackOff ou CreateContainerConfigError nao
-		// produz log nenhum: sem reportar o motivo, o passo pareceria travado
-		// ate o timeout, sem uma linha explicando.
+		// A pod stuck in ImagePullBackOff or CreateContainerConfigError produces
+		// no log at all: without reporting the reason, the step would look
+		// jammed until the timeout, with not a line explaining it.
 		if motivo := pod.MotivoDeEspera(); motivo != "" && motivo != ultimoMotivo {
 			ultimoMotivo = motivo
 			eventos <- execution.Event{
@@ -181,8 +183,8 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			}
 		}
 
-		// Assim que o container roda, o log e seguido em paralelo — o operador
-		// ve a saida do dbt ao vivo, e nao so no fim.
+		// As soon as the container runs, the log is followed in parallel -- the
+		// operator sees dbt's output live rather than only at the end.
 		if !seguindo && pod.Fase() == "Running" {
 			seguindo = true
 			seguidores.Add(1)
@@ -192,10 +194,10 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			}()
 		}
 
-		// Pod que nao sai de Pending nao e erro para o Kubernetes: ele espera
-		// para sempre por um no que caiba. Sem este corte, a etapa espera junto
-		// — sem falha e sem retry —, que foi como um request de CPU maior que o
-		// livre no pool travou uma run inteira em dev.
+		// A pod that never leaves Pending is not an error to Kubernetes: it
+		// waits forever for a node it fits on. Without this cut-off the step
+		// waits with it -- no failure and no retry -- which is how a CPU request
+		// larger than the pool's free capacity jammed an entire run in dev.
 		if !seguindo && time.Since(comecou) > e.opts.EsperaParaIniciar {
 			motivo := pod.MotivoDeEspera()
 			if motivo == "" {
@@ -216,9 +218,9 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 	}
 }
 
-// porQueNaoAgendou le a condicao PodScheduled, que e onde o scheduler explica
-// "Insufficient cpu" ou "didn't match node affinity". Sem isso a mensagem diria
-// apenas "Pending", que nao ajuda ninguem.
+// porQueNaoAgendou reads the PodScheduled condition, which is where the
+// scheduler explains "Insufficient cpu" or "didn't match node affinity".
+// Without it the message would say only "Pending", which helps nobody.
 func (e *Executor) porQueNaoAgendou(ctx context.Context, nome string) string {
 	pod, err := e.api.LerPod(ctx, nome)
 	if err != nil || pod.Status == nil {
@@ -232,22 +234,22 @@ func (e *Executor) porQueNaoAgendou(ctx context.Context, nome string) string {
 	return ""
 }
 
-// seguirLogs acompanha a saida enquanto o container vive.
+// seguirLogs follows the output while the container lives.
 func (e *Executor) seguirLogs(ctx context.Context, nome string, t execution.TaskExec, eventos chan<- execution.Event) {
 	corpo, err := e.api.Logs(ctx, nome, true)
 	if err != nil {
-		return // o log pode nao estar pronto; drenarLogs ainda le no fim
+		return // the log may not be ready; drenarLogs still reads it at the end
 	}
 	defer func() { _ = corpo.Close() }()
 	copiar(corpo, t.NodeID, eventos)
 }
 
-// drenarLogs le a saida completa depois que o pod termina.
+// drenarLogs reads the complete output once the pod has finished.
 //
-// Sem seguir: o container ja acabou, e `follow` numa saida encerrada apenas
-// devolve o mesmo conteudo. As linhas repetidas do trecho ja transmitido sao o
-// preco de nao perder o final — e perder o final e o que impede entender a
-// falha.
+// Without following: the container is over, and `follow` on a closed output only
+// returns the same content. The repeated lines from the stretch already streamed
+// are the price of not losing the end -- and losing the end is what stops anyone
+// understanding the failure.
 func (e *Executor) drenarLogs(ctx context.Context, nome string, t execution.TaskExec, eventos chan<- execution.Event) {
 	corpo, err := e.api.Logs(ctx, nome, false)
 	if err != nil {
@@ -263,13 +265,13 @@ func (e *Executor) drenarLogs(ctx context.Context, nome string, t execution.Task
 
 func copiar(r io.Reader, nodeID string, eventos chan<- execution.Event) {
 	s := bufio.NewScanner(r)
-	// Linha de dbt com SQL pode passar de 64 KB, o limite padrao do Scanner —
-	// e um Scanner que estoura para de ler em silencio.
+	// A dbt line carrying SQL can exceed 64 KB, the Scanner's default limit --
+	// and a Scanner that overflows stops reading in silence.
 	s.Buffer(make([]byte, 0, 64<<10), 1<<20)
 	for s.Scan() {
-		// O log do pod vem por um stream so: o Kubernetes nao separa stdout de
-		// stderr. Marcar tudo como stdout seria mentira menor que o contrario,
-		// mas a informacao de origem simplesmente nao existe aqui.
+		// The pod's log arrives on a single stream: Kubernetes does not separate
+		// stdout from stderr. Marking everything as stdout is a smaller lie than
+		// the opposite, but the origin information simply does not exist here.
 		eventos <- execution.Event{
 			Kind: execution.EventLog, NodeID: nodeID,
 			Stream: "stdout", Message: s.Text(),
@@ -277,14 +279,15 @@ func copiar(r io.Reader, nodeID string, eventos chan<- execution.Event) {
 	}
 }
 
-// limpar apaga o pod, respeitando a opcao de manter os que falharam.
+// limpar deletes the pod, honouring the option to keep the failed ones.
 func (e *Executor) limpar(nome string, sucesso bool) {
 	if !sucesso && e.opts.ManterPodEmFalha {
 		return
 	}
-	// Contexto proprio: o da execucao ja pode estar cancelado (foi o
-	// cancelamento que trouxe ate aqui), e apagar e justamente o que nao pode
-	// ser pulado — pod orfao consome quota do namespace para sempre.
+	// A context of its own: the run's may already be cancelled (the
+	// cancellation is what brought us here), and deleting is precisely what
+	// must not be skipped -- an orphaned pod consumes namespace quota
+	// forever.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	_ = e.api.ApagarPod(ctx, nome)
