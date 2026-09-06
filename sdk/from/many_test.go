@@ -329,7 +329,7 @@ func TestDiscoverQueFalhaEErroDoExtract(t *testing.T) {
 	if err == nil {
 		t.Fatal("a descoberta falhou e a execução seguiu")
 	}
-	if !strings.Contains(err.Error(), "descobrindo as origens") {
+	if !strings.Contains(err.Error(), "discovering the sources") {
 		t.Errorf("o erro não diz o que falhou: %v", err)
 	}
 }

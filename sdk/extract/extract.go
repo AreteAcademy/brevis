@@ -107,13 +107,13 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 		source.MaxPages = defaultMaxPages
 	}
 
-	// O login roda com um cliente PROVISORIO, e nao com o da caminhada: a
-	// credencial ainda nao existe quando ele acontece, entao o jar do cliente
-	// definitivo nao teria o que semear.
+	// The login runs with a PROVISIONAL client, not the walk's: the credential
+	// does not exist yet when it happens, so the definitive client's jar would
+	// have nothing to seed.
 	//
-	// Provisorio no jar, e nao no resto: mesmo Timeout, mesmo RetryConfig,
-	// mesmo transporte -- que e o ponto. O que o item 9 aponta e que a
-	// requisicao de login, escrita a mao, sai sem nada disso.
+	// Provisional in the jar, not in the rest: same Timeout, same RetryConfig,
+	// same transport -- which is the point. What the report noted is that a
+	// login request written by hand goes out with none of that.
 	if source.Auth != nil && source.Auth.Login != nil {
 		provisorio, _, err := newClient(source)
 		if err != nil {
@@ -237,11 +237,11 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 			if source.Stats != nil {
 				source.Stats.Pages = pages
 			}
-			// Uma API pode reemitir a sessao em QUALQUER resposta, nao so na
-			// de renovacao. Antes o jar absorvia isso sozinho; agora que a
-			// credencial mora no cabecalho, aplicar e explicito -- e sem esta
-			// linha a pagina 2 iria com o valor que a pagina 1 acabou de
-			// substituir.
+			// An API can reissue the session on ANY response, not only on the
+			// renewal one. The jar used to absorb that on its own; now that the
+			// credential lives in the header, applying it is explicit -- and
+			// without this line page 2 would go out with the value page 1 has
+			// just replaced.
 			aplicarRotacao(&source, credJar.Rotacoes())
 
 			emitted, next, err := drainPage(ctxTotal, source, page, emit)
@@ -299,13 +299,14 @@ func (c countingBody) Read(b []byte) (int, error) {
 
 // ehGzip diz se o CORPO da resposta esta comprimido.
 //
-// Nao e a compressao de transporte: o Go ja descomprime essa sozinho, e quando
-// o faz remove o Content-Encoding -- entao um Content-Encoding que sobreviveu
-// ate aqui significa que ninguem descomprimiu.
+// This is not transfer compression: Go decompresses that on its own, and when it
+// does it removes the Content-Encoding -- so a Content-Encoding that survived
+// this far means nobody decompressed.
 //
-// O caso que importa e outro: um `.csv.gz` servido como CONTEUDO, que e como
-// quase todo portal de dados abertos publica arquivo grande. O from.Files ja
-// descomprimia pela extensao; a regra existia no SDK e so nao alcancava o HTTP.
+// The case that matters is a different one: a `.csv.gz` served as CONTENT, which
+// is how nearly every open-data portal publishes a large file. from.Files already
+// decompressed by extension; the rule existed in the SDK and simply did not reach
+// HTTP.
 func ehGzip(resp *http.Response, url string) bool {
 	if strings.EqualFold(resp.Header.Get("Content-Encoding"), "gzip") {
 		return true
@@ -314,8 +315,8 @@ func ehGzip(resp *http.Response, url string) bool {
 	case "application/gzip", "application/x-gzip":
 		return true
 	}
-	// A extensao, por ultimo: um servidor que manda application/json num .gz
-	// esta dizendo algo mais especifico que o nome do arquivo.
+	// The extension, last: a server sending application/json for a .gz is saying
+	// something more specific than the file name.
 	semQuery, _, _ := strings.Cut(url, "?")
 	return strings.HasSuffix(strings.ToLower(semQuery), ".gz")
 }
@@ -345,8 +346,8 @@ type page struct {
 	number   int    // page number this page was fetched at, for page paging
 	release  func()
 
-	// temMais e o que MoreKey leu nesta pagina, e sabeSeTemMais distingue
-	// "a resposta disse que nao ha mais" de "ninguem perguntou".
+	// temMais is what MoreKey read on this page, and sabeSeTemMais tells "the
+	// response said there are no more" from "nobody asked".
 	temMais       bool
 	sabeSeTemMais bool
 
@@ -418,15 +419,15 @@ func drainPage(ctx context.Context, source core.Source, p *page, yield func(core
 // nextPageURL resolves where the following page lives, or "" when the current
 // page was the last one.
 func nextPageURL(source core.Source, p *page, emitted int) (string, error) {
-	// A resposta dizendo que nao ha mais pagina vence todas as estrategias.
+	// The response saying there is no next page beats every strategy.
 	//
-	// Sem isso, a parada e sempre a pagina vazia -- o que custa UMA requisicao
-	// a mais por origem. Num fan-out de centenas de origens sao centenas de
-	// requisicoes desperdicadas por execucao.
+	// Without it the stop is always the empty page -- which costs ONE extra
+	// request per source. In a fan-out over hundreds of sources that is hundreds
+	// of wasted requests per run.
 	//
-	// A parada por pagina vazia continua existindo, como rede de seguranca:
-	// uma API que mente no campo, ou que para de mandar o campo, nao pode
-	// virar um laco infinito.
+	// Stopping on the empty page still exists, as a safety net: an API that lies
+	// in that field, or stops sending it, must not turn into an infinite
+	// loop.
 	if p.sabeSeTemMais && !p.temMais {
 		return "", nil
 	}
@@ -499,11 +500,11 @@ func checkPagination(source core.Source) error {
 	return nil
 }
 
-// UserAgent e como o SDK se identifica.
+// UserAgent is how the SDK identifies itself.
 //
-// A versao nao entra: ela viria de um const que envelhece a cada release e que
-// ninguem lembra de subir -- e um UA que MENTE a versao e pior que um que nao
-// a diz. Quem precisa dela poe no proprio Header.
+// The version is left out: it would come from a const that ages with every
+// release and that nobody remembers to bump -- and a UA that LIES about the
+// version is worse than one that does not state it. Quem precisa dela poe no proprio Header.
 const UserAgent = "brevis-sdk (+https://github.com/AreteAcademy/brevis)"
 
 // newClient builds the one client the whole walk shares.
@@ -524,9 +525,9 @@ func newClient(source core.Source) (*http.Client, *credentialJar, error) {
 		return nil, nil, fmt.Errorf("cookie jar: %w", err)
 	}
 
-	// Os nomes que a credencial ocupa saem do proprio cabecalho Cookie, que e
-	// onde o Applier acabou de escreve-la. Eles ficam de fora do jar e vao por
-	// cabecalho em toda requisicao -- ver credentialJar.
+	// The names the credential occupies come from the Cookie header itself,
+	// where the Applier has just written it. They stay out of the jar and travel
+	// in the header on every request -- see credentialJar.
 	var nomes []string
 	if raw := http.Header(source.Header).Get("Cookie"); raw != "" {
 		cookies, err := http.ParseCookie(raw)
@@ -604,16 +605,16 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		if source.Header != nil {
 			req.Header = http.Header(source.Header).Clone()
 		}
-		// O cabecalho Cookie fica: e onde a credencial mora, e o
-		// credentialJar garante que o jar nunca guarda um cookie de mesmo
-		// nome -- entao nenhum nome vai duas vezes. Os outros cookies o
-		// cliente acrescenta a partir do jar.
+		// The Cookie header stays: it is where the credential lives, and
+		// credentialJar guarantees the jar never keeps a cookie of the same
+		// name -- so no name goes twice. The client adds the other cookies from
+		// the jar.
 
-		// Uma biblioteca HTTP que nao se identifica manda
-		// "Go-http-client/1.1", e alguns provedores publicos limitam ou
-		// bloqueiam esse UA -- o que aparece como 403 intermitente, o tipo de
-		// falha que custa meia manha para diagnosticar. Um Header do chamador
-		// vence: quem precisa se passar por outra coisa continua podendo.
+		// An HTTP library that does not identify itself sends
+		// "Go-http-client/1.1", and some public providers throttle or block that
+		// UA -- which shows up as an intermittent 403, the kind of failure that
+		// costs half a morning to diagnose. A caller's Header wins: anyone who
+		// needs to look like something else still can.
 		if req.Header.Get("User-Agent") == "" {
 			req.Header.Set("User-Agent", UserAgent)
 		}
@@ -735,15 +736,15 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 	return p, nil
 }
 
-// lerTemMais le o booleano que diz se ha proxima pagina.
+// lerTemMais reads the boolean saying whether there is a next page.
 //
-// O caminho e separado por pontos -- "pageMeta.hasNextPage" -- porque a
-// convencao larga poe esse campo dentro de um objeto de metadados, e nao na
-// raiz.
+// The path is dot-separated -- "pageMeta.hasNextPage" -- because the common
+// convention puts that field inside a metadata object rather than at the root.
 //
-// Um campo AUSENTE nao e "nao ha mais": e a API mudou de forma, ou o caminho
-// esta errado. Tratar ausente como fim faria a paginacao parar na primeira
-// pagina em silencio -- que e pior que nao ter a otimizacao.
+// A MISSING field is not "there are no more": either the API changed shape or
+// the path is wrong. Treating missing as the end would make pagination stop at
+// the first page in silence -- which is worse than not having the
+// optimisation.
 func lerTemMais(body []byte, caminho string) (bool, error) {
 	var atual any
 	if err := json.Unmarshal(body, &atual); err != nil {
@@ -771,7 +772,7 @@ func lerTemMais(body []byte, caminho string) (bool, error) {
 	case bool:
 		return t, nil
 	case nil:
-		// null e a forma que varias APIs usam para "acabou".
+		// null is the shape several APIs use for "that's the end".
 		return false, nil
 	default:
 		return false, fmt.Errorf("MoreKey %q levou a um %T, e precisa levar a um booleano",

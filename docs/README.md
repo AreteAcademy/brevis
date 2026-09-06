@@ -49,6 +49,8 @@ de fato saiu — **não** como descrição do estado atual.
 
 | [`2026-09-05-contexto-entre-passos.md`](plan/2026-09-05-contexto-entre-passos.md) | **proposta** — o que um passo diz ao seguinte |
 
+| [`2026-09-06-open-threads.md`](plan/2026-09-06-open-threads.md) | **inventário** — o que ficou aberto, verificado contra a árvore, e em que ordem fechar |
+
 `phases/` é do **engine**, não do SDK: as fases de construção do orquestrador.
 
 ## Histórico — não são o estado atual

@@ -12,43 +12,42 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Many lê de N origens e entrega tudo como uma sequência só.
+// Many reads from N sources and delivers everything as a single sequence.
 //
 //	From: from.Many{
-//	    Sources: fontes,              // uma por município, por conta, por dia
+//	    Sources: sources,             // one per city, per account, per day
 //	    Workers: 8,
 //	    OnError: sdk.ContinueOnError,
 //	},
 //
-// Todo ETL que lê de muitas origens escreve o mesmo laço: itera, tolera a falha
-// de algumas, registra quais falharam, acumula. Este é esse laço, escrito uma
-// vez.
+// Every ETL that reads from many sources writes the same loop: iterate, tolerate
+// some failures, record which failed, accumulate. This is that loop, written
+// once.
 //
-// # A tolerância a falha, e por que ela não é o padrão
+// # Failure tolerance, and why it is not the default
 //
-// Com AbortOnError -- o padrão -- a primeira falha para tudo, que é o que o SDK
-// sempre fez. Num fan-out de milhares de origens isso é caro: a leitura 3.000
-// derruba as 1.803 que já tinham dado certo, e a próxima execução refaz as
-// 3.000.
+// With AbortOnError -- the default -- the first failure stops everything, which
+// is what the SDK has always done. In a fan-out over thousands of sources that
+// is expensive: read number 3,000 brings down the 1,803 that had already
+// succeeded, and the next run redoes all 3,000.
 //
-// Com ContinueOnError, a origem que falha é registrada em
-// Result.FailedSources e a leitura segue. É a mesma política que o load já tem
-// para uma linha ruim -- ele a reporta em ErrorRows e continua --, e a
-// assimetria entre os dois lados era o que faltava.
+// With ContinueOnError, a source that fails is recorded in Result.FailedSources
+// and the read carries on. It is the same policy the load already has for a bad
+// row -- it reports it in ErrorRows and continues -- and the asymmetry between
+// the two sides was what was missing.
 //
-// O padrão continua sendo abortar porque mudá-lo em silêncio faria uma execução
-// que hoje falha passar a "dar certo" com metade do dado.
+// The default stays "abort" because changing it silently would turn a run that
+// fails today into one that "succeeds" with half the data.
 //
-// # A ordem
+// # Ordering
 //
-// Com Workers em 0 ou 1, as origens são lidas em ordem e a sequência é
-// determinística -- duas execuções sobre as mesmas origens produzem a mesma
-// sequência.
+// With Workers at 0 or 1, the sources are read in order and the sequence is
+// deterministic -- two runs over the same sources produce the same sequence.
 //
-// Acima disso, NÃO. Os registros chegam na ordem em que as origens respondem, e
-// isso muda entre execuções. Isso não afeta o ingestion_id, que sai dos campos
-// do registro e não da posição; afeta o preview, e afeta qualquer coisa que
-// dependa de ordem. Concorrência é opt-in por isso.
+// Above that, NO. Records arrive in the order the sources answer, and that
+// changes between runs. It does not affect the ingestion_id, which comes from
+// the record's fields and not its position; it affects the preview, and anything
+// that depends on order. That is why concurrency is opt-in.
 type Many struct {
 	// Sources são as origens. Obrigatório, ou Discover.
 	Sources []core.Reader
@@ -56,37 +55,36 @@ type Many struct {
 	// Discover monta as origens em runtime, dentro do pipeline.
 	//
 	//	Discover: func(ctx context.Context) ([]sdk.Reader, error) {
-	//	    // um GET que lista as partições, e uma origem por partição
+	//	    // a GET that lists the partitions, and one source per partition
 	//	}
 	//
-	// A lista às vezes só se conhece na execução -- uma origem por partição,
-	// por conta, por dia. Montada ANTES do sdk.Run, ela fica fora do pipeline:
-	// sem retry, sem timeout, sem log, e sem aparecer no Result quando falha.
-	// Aqui ela roda dentro, e o erro dela é o erro do extract.
+	// The list is sometimes only known at run time -- one source per partition,
+	// per account, per day. Built BEFORE sdk.Run it sits outside the pipeline:
+	// no retry, no timeout, no log, and nothing in the Result when it fails.
+	// Here it runs inside, and its error is the extract's error.
 	//
-	// Declarar Discover e Sources é erro: duas listas de origens, e a que
-	// perde perde em silêncio.
+	// Declaring both Discover and Sources is an error: two lists of sources, and
+	// the one that loses loses in silence.
 	Discover func(ctx context.Context) ([]core.Reader, error)
 
-	// Workers é quantas origens são lidas ao mesmo tempo. Zero ou 1 lê em
-	// ordem, uma de cada vez.
+	// Workers is how many sources are read at once. Zero or 1 reads in order,
+	// one at a time.
 	//
-	// O teto útil depende do que está do outro lado: milhares de requisições
-	// ao mesmo host esbarram no pool de conexões do transporte, e o
-	// RateLimiter da origem continua valendo por origem.
+	// The useful ceiling depends on what is on the other side: thousands of
+	// requests to the same host run into the transport's connection pool, and
+	// the source's RateLimiter still applies per source.
 	Workers int
 
-	// OnError diz o que fazer quando uma origem falha. Zero é AbortOnError.
+	// OnError says what to do when a source fails. Zero is AbortOnError.
 	OnError core.FailurePolicy
 }
 
-// Describe satisfaz core.Reader.
+// Describe satisfies core.Reader.
 //
-// Ele e chamado no caminho de ERRO -- e onde a mensagem de uma configuracao
-// invalida vai buscar o nome da origem --, entao ele nao pode estourar com uma
-// configuracao invalida. Foi um teste de configuracao invalida que encontrou
-// isso: uma origem nil derrubava o processo justamente quando a mensagem mais
-// importava.
+// It is called on the ERROR path -- it is where an invalid configuration's
+// message goes to find the source's name -- so it must not panic on an invalid
+// configuration. A test of exactly that found the problem: a nil source brought
+// the process down at the moment the message mattered most.
 func (m Many) Describe() string {
 	if len(m.Sources) == 0 {
 		return "many: (nenhuma origem)"
@@ -106,12 +104,12 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 
 	origens := m.Sources
 	if m.Discover != nil {
-		// A descoberta acontece AQUI, dentro do Read, e não na montagem do
-		// pipeline: um erro dela é um erro do extract, com o mesmo tratamento
-		// que qualquer outro -- e não um panic num main antes de tudo começar.
+		// Discovery happens HERE, inside Read, and not while the pipeline is
+		// assembled: an error from it is an extract error, handled like any
+		// other -- and not a panic in a main before anything has started.
 		descobertas, err := m.Discover(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("from.Many: descobrindo as origens: %w", err)
+			return nil, fmt.Errorf("from.Many: discovering the sources: %w", err)
 		}
 		origens = descobertas
 	}
@@ -155,8 +153,8 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		type resultado struct {
 			env core.Envelope
 			err error
-			// origem é preenchido só quando err vem da ABERTURA da fonte,
-			// porque é aí que dá para dizer qual falhou.
+			// origem is filled only when err comes from OPENING the source,
+			// because that is when it is possible to say which one failed.
 			origem core.Reader
 		}
 
@@ -171,8 +169,9 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 				for i := range fila {
 					fonte := m.Sources[i]
 
-					// Um Stats por origem, somado no fim: assim os contadores
-					// do resultado descrevem a leitura inteira e não a última.
+					// One Stats per source, summed at the end: that way the
+					// result's counters describe the whole read and not the
+					// last source.
 					porOrigem := core.Stats{}
 					opcoes := opt
 					opcoes.Stats = &porOrigem
@@ -253,10 +252,10 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 			}
 		}
 
-		// Drena o que estiver em voo, para que nenhuma goroutine fique presa
-		// escrevendo num canal que ninguém mais lê.
+		// Drains whatever is in flight, so no goroutine stays stuck writing to a
+		// channel nobody reads any more.
 		cancelar()
-		for range saida { //nolint:revive // drenar é o efeito
+		for range saida { //nolint:revive // draining is the point
 		}
 
 		if abortou {
@@ -288,9 +287,9 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 			})
 		}
 
-		// Zero registro de N origens boas é um resultado. Zero porque as N
-		// falharam é uma execução quebrada, e as duas não podem parecer a
-		// mesma coisa para quem lê o log.
+		// Zero records from N healthy sources is a result. Zero because all N
+		// failed is a broken run, and the two must not look the same to whoever
+		// reads the log.
 		if linhas == 0 && len(copiaFalhas) == len(m.Sources) {
 			yield(core.Envelope{}, core.ErrTodasAsFontesFalharam(len(m.Sources), copiaFalhas[0]))
 		}
