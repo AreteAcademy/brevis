@@ -9,27 +9,27 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 )
 
-func credencial(t *testing.T, usuario, senha string) auth.Credencial {
+func credencial(t *testing.T, usuario, senha string) auth.Credential {
 	t.Helper()
-	h, err := auth.GerarHash(senha)
+	h, err := auth.GenerateHash(senha)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return auth.Credencial{
-		Usuario: usuario, Hash: h,
-		Segredo: []byte("um-segredo-de-teste-com-mais-de-32-bytes"),
+	return auth.Credential{
+		User: usuario, Hash: h,
+		Secret: []byte("um-segredo-de-teste-com-mais-de-32-bytes"),
 	}
 }
 
 func TestHashConfereASenhaCerta(t *testing.T) {
-	h, err := auth.GerarHash("senha-correta-longa")
+	h, err := auth.GenerateHash("senha-correta-longa")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !auth.ConferirSenha(h, "senha-correta-longa") {
+	if !auth.CheckPassword(h, "senha-correta-longa") {
 		t.Error("a senha correta foi recusada")
 	}
-	if auth.ConferirSenha(h, "senha-errada-longa!") {
+	if auth.CheckPassword(h, "senha-errada-longa!") {
 		t.Error("a senha errada foi aceita")
 	}
 }
@@ -37,8 +37,8 @@ func TestHashConfereASenhaCerta(t *testing.T) {
 // Dois hashes da MESMA senha precisam diferir: sem sal, hashes iguais no banco
 // entregam quais operadores escolheram a mesma senha.
 func TestHashUsaSalAleatorio(t *testing.T) {
-	a, _ := auth.GerarHash("mesma-senha-aqui")
-	b, _ := auth.GerarHash("mesma-senha-aqui")
+	a, _ := auth.GenerateHash("mesma-senha-aqui")
+	b, _ := auth.GenerateHash("mesma-senha-aqui")
 	if a == b {
 		t.Error("dois hashes da mesma senha sairam iguais — nao ha sal")
 	}
@@ -52,10 +52,10 @@ func TestHashMalformadoNaoAutentica(t *testing.T) {
 		"pbkdf2-sha256$600000$!!!$!!!", "md5$1$x$y",
 		"pbkdf2-sha256$600000$c2Fs$", // chave vazia
 	} {
-		if auth.ConferirSenha(h, "qualquer-coisa") {
+		if auth.CheckPassword(h, "qualquer-coisa") {
 			t.Errorf("hash malformado %q autenticou", h)
 		}
-		if auth.ConferirSenha(h, "") {
+		if auth.CheckPassword(h, "") {
 			t.Errorf("hash malformado %q autenticou com senha vazia", h)
 		}
 	}
@@ -67,7 +67,7 @@ func TestHashMalformadoNaoAutentica(t *testing.T) {
 func TestDisparoAnonimoEBloqueado(t *testing.T) {
 	portao := &auth.Portao{
 		Cred: credencial(t, "operador", "senha-de-teste-longa"),
-		Proximo: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("a requisicao anonima chegou ao handler protegido")
 			w.WriteHeader(http.StatusOK)
 		}),
@@ -83,8 +83,8 @@ func TestDisparoAnonimoEBloqueado(t *testing.T) {
 
 func TestGetAnonimoVaiParaOLogin(t *testing.T) {
 	portao := &auth.Portao{
-		Cred:    credencial(t, "operador", "senha-de-teste-longa"),
-		Proximo: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+		Cred: credencial(t, "operador", "senha-de-teste-longa"),
+		Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
 	}
 
 	rec := httptest.NewRecorder()
@@ -104,7 +104,7 @@ func TestSondasEAssetsPassamSemSessao(t *testing.T) {
 	var chegou []string
 	portao := &auth.Portao{
 		Cred: credencial(t, "operador", "senha-de-teste-longa"),
-		Proximo: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			chegou = append(chegou, r.URL.Path)
 		}),
 	}
@@ -121,13 +121,13 @@ func TestSessaoValidaPassaELevaOUsuario(t *testing.T) {
 	var visto string
 	portao := &auth.Portao{
 		Cred: cred,
-		Proximo: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			visto = auth.De(r.Context())
 		}),
 	}
 
 	login := httptest.NewRecorder()
-	if !portao.Entrar(login, "operador", "senha-de-teste-longa") {
+	if !portao.SignIn(login, "operador", "senha-de-teste-longa") {
 		t.Fatal("a credencial correta foi recusada")
 	}
 	cookie := login.Result().Cookies()[0]
@@ -151,7 +151,7 @@ func TestCookieForjadoNaoEntra(t *testing.T) {
 	cred := credencial(t, "operador", "senha-de-teste-longa")
 	portao := &auth.Portao{
 		Cred: cred,
-		Proximo: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("um cookie forjado passou pelo portao")
 			w.WriteHeader(http.StatusOK)
 		}),
@@ -172,16 +172,16 @@ func TestCookieForjadoNaoEntra(t *testing.T) {
 // Trocar o segredo derruba as sessoes — e a alavanca de emergencia.
 func TestTrocarOSegredoInvalidaSessoes(t *testing.T) {
 	cred := credencial(t, "operador", "senha-de-teste-longa")
-	emissor := &auth.Portao{Cred: cred, Proximo: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
+	emissor := &auth.Portao{Cred: cred, Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
 	rec := httptest.NewRecorder()
-	emissor.Entrar(rec, "operador", "senha-de-teste-longa")
+	emissor.SignIn(rec, "operador", "senha-de-teste-longa")
 	cookie := rec.Result().Cookies()[0]
 
 	novo := cred
-	novo.Segredo = []byte("outro-segredo-completamente-diferente-32")
+	novo.Secret = []byte("outro-segredo-completamente-diferente-32")
 	portao := &auth.Portao{
 		Cred: novo,
-		Proximo: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("a sessao sobreviveu a troca do segredo")
 		}),
 	}
@@ -198,21 +198,21 @@ func TestDestinoExternoEDescartado(t *testing.T) {
 		"/runs?pagina=2":            "/runs?pagina=2",
 		"":                          "/",
 	} {
-		if d := auth.Destino(bruto); d != esperado {
-			t.Errorf("Destino(%q) = %q; esperava %q", bruto, d, esperado)
+		if d := auth.Target(bruto); d != esperado {
+			t.Errorf("Target(%q) = %q; esperava %q", bruto, d, esperado)
 		}
 	}
 }
 
 func TestCredencialPelaMetadeERecusada(t *testing.T) {
-	if err := (auth.Credencial{Usuario: "operador"}).Validar(); err == nil {
+	if err := (auth.Credential{User: "operador"}).Validate(); err == nil {
 		t.Error("usuario sem hash foi aceito — a porta ficaria aberta achando que fechou")
 	}
-	if err := (auth.Credencial{Hash: "pbkdf2-sha256$1$a$b"}).Validar(); err == nil {
+	if err := (auth.Credential{Hash: "pbkdf2-sha256$1$a$b"}).Validate(); err == nil {
 		t.Error("hash sem usuario foi aceito")
 	}
-	curto := auth.Credencial{Usuario: "o", Hash: "pbkdf2-sha256$1$a$b", Segredo: []byte("curto")}
-	if err := curto.Validar(); err == nil {
+	curto := auth.Credential{User: "o", Hash: "pbkdf2-sha256$1$a$b", Secret: []byte("curto")}
+	if err := curto.Validate(); err == nil {
 		t.Error("segredo curto demais foi aceito")
 	}
 }

@@ -9,20 +9,20 @@ import (
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
-func lista() []postgres.ResumoWorkflow {
-	return []postgres.ResumoWorkflow{
-		{Slug: "id_verification", Cron: "0 4 * * *", Ativo: true, TemAgenda: true,
+func lista() []postgres.WorkflowSummary {
+	return []postgres.WorkflowSummary{
+		{Slug: "id_verification", Cron: "0 4 * * *", Active: true, TemAgenda: true,
 			UltimoStatus: "success", Tags: []string{"acme", "id"}},
-		{Slug: "platform_workspace", Cron: "0 5 * * *", Ativo: true, TemAgenda: true,
+		{Slug: "platform_workspace", Cron: "0 5 * * *", Active: true, TemAgenda: true,
 			UltimoStatus: "failed", Tags: []string{"acme", "platform"}},
-		{Slug: "vendors_inmet", Cron: "30 6 * * *", Ativo: false, TemAgenda: true,
+		{Slug: "vendors_inmet", Cron: "30 6 * * *", Active: false, TemAgenda: true,
 			UltimoStatus: "success", Tags: []string{"vendors"}},
 		// Sem agenda: nunca teve cron, e nao deve aparecer como "pausado".
 		{Slug: "protect_ad_hoc", TemAgenda: false, UltimoStatus: ""},
 	}
 }
 
-func slugs(ws []postgres.ResumoWorkflow) []string {
+func slugs(ws []postgres.WorkflowSummary) []string {
 	out := make([]string, len(ws))
 	for i, w := range ws {
 		out[i] = w.Slug
@@ -45,20 +45,20 @@ func igual(t *testing.T, obtido, esperado []string) {
 func TestFiltrar(t *testing.T) {
 	casos := []struct {
 		nome     string
-		f        pages.Filtro
+		f        pages.Filter
 		esperado []string
 	}{
-		{"sem filtro", pages.Filtro{}, []string{"id_verification", "platform_workspace", "vendors_inmet", "protect_ad_hoc"}},
-		{"busca parcial", pages.Filtro{Busca: "verif"}, []string{"id_verification"}},
-		{"busca ignora caixa", pages.Filtro{Busca: "PLATFORM"}, []string{"platform_workspace"}},
-		{"ultimo estado", pages.Filtro{Estado: "failed"}, []string{"platform_workspace"}},
-		{"ativos", pages.Filtro{Ativo: "active"}, []string{"id_verification", "platform_workspace"}},
+		{"sem filtro", pages.Filter{}, []string{"id_verification", "platform_workspace", "vendors_inmet", "protect_ad_hoc"}},
+		{"busca parcial", pages.Filter{Busca: "verif"}, []string{"id_verification"}},
+		{"busca ignora caixa", pages.Filter{Busca: "PLATFORM"}, []string{"platform_workspace"}},
+		{"ultimo estado", pages.Filter{State: "failed"}, []string{"platform_workspace"}},
+		{"ativos", pages.Filter{Active: "active"}, []string{"id_verification", "platform_workspace"}},
 		// O caso que motivou o teste: "pausado" e agenda desligada, nao ausencia
 		// de agenda. Juntar os dois esconderia o workflow que alguem pausou.
-		{"pausados nao incluem quem nunca teve agenda", pages.Filtro{Ativo: "paused"}, []string{"vendors_inmet"}},
-		{"tag", pages.Filtro{Tag: "acme"}, []string{"id_verification", "platform_workspace"}},
-		{"combinado", pages.Filtro{Tag: "acme", Estado: "success"}, []string{"id_verification"}},
-		{"nada casa", pages.Filtro{Busca: "inexistente"}, nil},
+		{"pausados nao incluem quem nunca teve agenda", pages.Filter{Active: "paused"}, []string{"vendors_inmet"}},
+		{"tag", pages.Filter{Tag: "acme"}, []string{"id_verification", "platform_workspace"}},
+		{"combinado", pages.Filter{Tag: "acme", State: "success"}, []string{"id_verification"}},
+		{"nada casa", pages.Filter{Busca: "inexistente"}, nil},
 	}
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestTagsDeNaoEncolhemComOFiltro(t *testing.T) {
 	todos := lista()
 	igual(t, tagsDe(todos), []string{"acme", "id", "platform", "vendors"})
 
-	so := filtrar(todos, pages.Filtro{Tag: "vendors"})
+	so := filtrar(todos, pages.Filter{Tag: "vendors"})
 	if len(so) != 1 {
 		t.Fatalf("esperava 1 linha filtrada, veio %d", len(so))
 	}
@@ -83,23 +83,23 @@ func TestTagsDeNaoEncolhemComOFiltro(t *testing.T) {
 func TestProximaDoWorkflow(t *testing.T) {
 	agora := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
 
-	ativo := postgres.ResumoWorkflow{Slug: "a", Cron: "0 5 * * *", Timezone: "UTC", Ativo: true}
+	ativo := postgres.WorkflowSummary{Slug: "a", Cron: "0 5 * * *", Timezone: "UTC", Active: true}
 	if p := proximaDoWorkflow(ativo, agora); p == nil || !p.Equal(time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC)) {
 		t.Errorf("proximo = %v, quero 05:00 do mesmo dia", p)
 	}
 
 	// Pausado nao tem proximo disparo: mostrar um enganaria quem pausou.
-	pausado := postgres.ResumoWorkflow{Slug: "b", Cron: "0 5 * * *", Ativo: false}
+	pausado := postgres.WorkflowSummary{Slug: "b", Cron: "0 5 * * *", Active: false}
 	if p := proximaDoWorkflow(pausado, agora); p != nil {
 		t.Errorf("workflow pausado devolveu proximo disparo: %v", p)
 	}
 
-	semCron := postgres.ResumoWorkflow{Slug: "c", Ativo: true}
+	semCron := postgres.WorkflowSummary{Slug: "c", Active: true}
 	if p := proximaDoWorkflow(semCron, agora); p != nil {
 		t.Errorf("workflow sem cron devolveu proximo disparo: %v", p)
 	}
 
-	invalido := postgres.ResumoWorkflow{Slug: "d", Cron: "isto nao e cron", Ativo: true}
+	invalido := postgres.WorkflowSummary{Slug: "d", Cron: "isto nao e cron", Active: true}
 	if p := proximaDoWorkflow(invalido, agora); p != nil {
 		t.Errorf("cron invalido devolveu proximo disparo: %v", p)
 	}
@@ -107,12 +107,12 @@ func TestProximaDoWorkflow(t *testing.T) {
 
 func TestProximasExecucoesOrdenaEIgnoraInvalidas(t *testing.T) {
 	agora := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
-	agendas := []postgres.AgendaResumo{
-		{WorkflowSlug: "tarde", Cron: "0 22 * * *", Timezone: "UTC", Ativo: true},
-		{WorkflowSlug: "cedo", Cron: "0 5 * * *", Timezone: "UTC", Ativo: true},
-		{WorkflowSlug: "pausada", Cron: "* * * * *", Timezone: "UTC", Ativo: false},
+	agendas := []postgres.ScheduleSummary{
+		{WorkflowSlug: "tarde", Cron: "0 22 * * *", Timezone: "UTC", Active: true},
+		{WorkflowSlug: "cedo", Cron: "0 5 * * *", Timezone: "UTC", Active: true},
+		{WorkflowSlug: "pausada", Cron: "* * * * *", Timezone: "UTC", Active: false},
 		// Uma agenda quebrada no banco nao pode derrubar o dashboard inteiro.
-		{WorkflowSlug: "quebrada", Cron: "@@@", Timezone: "UTC", Ativo: true},
+		{WorkflowSlug: "quebrada", Cron: "@@@", Timezone: "UTC", Active: true},
 	}
 
 	out := proximasExecucoes(agendas, agora, 8, slog.New(slog.DiscardHandler))
@@ -126,10 +126,10 @@ func TestProximasExecucoesOrdenaEIgnoraInvalidas(t *testing.T) {
 
 func TestProximasExecucoesRespeitaLimite(t *testing.T) {
 	agora := time.Now()
-	var agendas []postgres.AgendaResumo
+	var agendas []postgres.ScheduleSummary
 	for i := 0; i < 20; i++ {
-		agendas = append(agendas, postgres.AgendaResumo{
-			WorkflowSlug: "w", Cron: "0 * * * *", Timezone: "UTC", Ativo: true,
+		agendas = append(agendas, postgres.ScheduleSummary{
+			WorkflowSlug: "w", Cron: "0 * * * *", Timezone: "UTC", Active: true,
 		})
 	}
 	if out := proximasExecucoes(agendas, agora, 5, slog.New(slog.DiscardHandler)); len(out) != 5 {
@@ -137,15 +137,15 @@ func TestProximasExecucoesRespeitaLimite(t *testing.T) {
 	}
 }
 
-func comTempo(slug string, ultima *time.Time, proxima *time.Time) postgres.ResumoWorkflow {
-	return postgres.ResumoWorkflow{Slug: slug, UltimaRunEm: ultima, ProximaRun: proxima, TemAgenda: true}
+func comTempo(slug string, ultima *time.Time, proxima *time.Time) postgres.WorkflowSummary {
+	return postgres.WorkflowSummary{Slug: slug, UltimaRunEm: ultima, ProximaRun: proxima, TemAgenda: true}
 }
 
 func TestOrdenarPorUltimaExecucao(t *testing.T) {
 	t1 := time.Date(2026, 3, 1, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC)
-	base := func() []postgres.ResumoWorkflow {
-		return []postgres.ResumoWorkflow{
+	base := func() []postgres.WorkflowSummary {
+		return []postgres.WorkflowSummary{
 			comTempo("b_recente", &t2, nil),
 			comTempo("a_nunca", nil, nil),
 			comTempo("c_antiga", &t1, nil),
@@ -153,49 +153,49 @@ func TestOrdenarPorUltimaExecucao(t *testing.T) {
 	}
 
 	asc := base()
-	ordenar(asc, pages.Filtro{Ordem: "last"})
+	ordenar(asc, pages.Filter{Sort: "last"})
 	igual(t, slugs(asc), []string{"c_antiga", "b_recente", "a_nunca"})
 
 	// O ausente fica por ultimo NAS DUAS direcoes: tratar nulo como "muito
 	// antigo" faria a lista comecar por quem nunca rodou justamente ao procurar
 	// a execucao mais recente.
 	desc := base()
-	ordenar(desc, pages.Filtro{Ordem: "last", Desc: true})
+	ordenar(desc, pages.Filter{Sort: "last", Desc: true})
 	igual(t, slugs(desc), []string{"b_recente", "c_antiga", "a_nunca"})
 }
 
 func TestOrdenarPorAgendaMandaSemCronParaOFim(t *testing.T) {
-	ws := []postgres.ResumoWorkflow{
+	ws := []postgres.WorkflowSummary{
 		{Slug: "sem_cron"},
 		{Slug: "cinco", Cron: "0 5 * * *"},
 		{Slug: "quatro", Cron: "0 4 * * *"},
 	}
-	ordenar(ws, pages.Filtro{Ordem: "schedule"})
+	ordenar(ws, pages.Filter{Sort: "schedule"})
 	igual(t, slugs(ws), []string{"quatro", "cinco", "sem_cron"})
 }
 
 // Empate resolvido pelo slug: sem isso, duas linhas "nunca rodou" trocariam de
 // lugar a cada carregamento da pagina.
 func TestOrdenacaoEhEstavel(t *testing.T) {
-	ws := []postgres.ResumoWorkflow{{Slug: "zulu"}, {Slug: "alfa"}, {Slug: "mike"}}
-	ordenar(ws, pages.Filtro{Ordem: "last"})
+	ws := []postgres.WorkflowSummary{{Slug: "zulu"}, {Slug: "alfa"}, {Slug: "mike"}}
+	ordenar(ws, pages.Filter{Sort: "last"})
 	igual(t, slugs(ws), []string{"alfa", "mike", "zulu"})
 }
 
 func TestRecortarPagina(t *testing.T) {
-	var ws []postgres.ResumoWorkflow
+	var ws []postgres.WorkflowSummary
 	for i := 0; i < 7; i++ {
-		ws = append(ws, postgres.ResumoWorkflow{Slug: string(rune('a' + i))})
+		ws = append(ws, postgres.WorkflowSummary{Slug: string(rune('a' + i))})
 	}
-	f := pages.Filtro{Pagina: 2, PorPagina: 3}
+	f := pages.Filter{Page: 2, PorPagina: 3}
 	igual(t, slugs(recortar(ws, f)), []string{"d", "e", "f"})
 
 	// Pagina alem do fim acontece ao filtrar estando numa pagina alta; tem de
 	// voltar vazia em vez de estourar o slice.
-	if r := recortar(ws, pages.Filtro{Pagina: 9, PorPagina: 3}); r != nil {
+	if r := recortar(ws, pages.Filter{Page: 9, PorPagina: 3}); r != nil {
 		t.Errorf("pagina fora do intervalo devolveu %d linhas", len(r))
 	}
-	igual(t, slugs(recortar(ws, pages.Filtro{Pagina: 3, PorPagina: 3})), []string{"g"})
+	igual(t, slugs(recortar(ws, pages.Filter{Page: 3, PorPagina: 3})), []string{"g"})
 }
 
 func TestEstadoValidoRecusaDesconhecido(t *testing.T) {

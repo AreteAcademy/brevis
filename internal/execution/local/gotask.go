@@ -30,7 +30,8 @@ func NewGoExecutor(reg *execution.Registry) *GoExecutor {
 
 func (g *GoExecutor) Name() string { return "go" }
 
-// Execute resolve a task no registry e a roda numa goroutine, transmitindo os
+// Execute resolves the task in the registry and runs it in a goroutine,
+// streaming the
 // eventos.
 func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	task, ok := g.reg.Get(t.Action)
@@ -40,7 +41,7 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 		// de digitacao de imediato.
 		disponiveis := g.reg.Nomes()
 		if len(disponiveis) == 0 {
-			// Registro vazio e o caso comum hoje: `docker.run` e
+			// An empty registry is the common case today: `docker.run` and
 			// `kubernetes.run` are in the plan but do not exist yet. Saying
 			// "available: []" makes it look like a typo in the name.
 			return nil, fmt.Errorf("task %q is not registered: no action is registered "+

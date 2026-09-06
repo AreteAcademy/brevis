@@ -17,7 +17,7 @@ type WorkflowRepo struct{ pool *Pool }
 
 func NewWorkflowRepo(p *Pool) *WorkflowRepo { return &WorkflowRepo{pool: p} }
 
-// Publicar grava o workflow e sua agenda numa transacao.
+// Publicar writes the workflow and its schedule in one transaction.
 //
 // Both things together, and not in separate calls: publishing the graph without
 // the schedule would leave a workflow that never fires, and the schedule without
@@ -70,8 +70,8 @@ func (r *WorkflowRepo) Publicar(ctx context.Context, w wf.Workflow, projeto uuid
 	return tx.Commit(ctx)
 }
 
-// Definicao le o grafo publicado.
-func (r *WorkflowRepo) Definicao(ctx context.Context, slug string) (wf.Workflow, error) {
+// Definition le o grafo publicado.
+func (r *WorkflowRepo) Definition(ctx context.Context, slug string) (wf.Workflow, error) {
 	var bruto []byte
 	if err := r.pool.QueryRow(ctx,
 		`SELECT definicao FROM workflows WHERE slug = $1`, slug).Scan(&bruto); err != nil {
@@ -148,7 +148,7 @@ func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
 	for linhas.Next() {
 		var s sch.Schedule
 		if err := linhas.Scan(&s.WorkflowSlug, &s.Cron, &s.Timezone,
-			&s.Catchup, &s.Ativo, &s.UltimoSlot); err != nil {
+			&s.Catchup, &s.Active, &s.LastSlot); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
@@ -179,7 +179,7 @@ func (r *ScheduleRepo) DefinirAtivo(ctx context.Context, slug string, ativo bool
 	return resultado, err
 }
 
-// Alternar inverte o estado atual numa unica ida ao banco.
+// Alternar flips the current state in a single round trip to the database.
 func (r *ScheduleRepo) Alternar(ctx context.Context, slug string) (bool, error) {
 	var resultado bool
 	err := r.pool.QueryRow(ctx, `

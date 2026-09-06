@@ -16,31 +16,31 @@ import (
 // Mixing the two would make the domain carry fields that exist only for the
 // screen.
 
-// ResumoRun is one row of the run list.
-type ResumoRun struct {
+// RunSummary is one row of the run list.
+type RunSummary struct {
 	ID           string
 	WorkflowSlug string
 	Status       string
 	TriggerType  string
-	Tentativa    int
+	Attempt      int
 	LogicalDate  *time.Time
-	CriadoEm     time.Time
-	IniciadoEm   *time.Time
-	Duracao      *time.Duration
-	Erro         string
+	CreatedAt    time.Time
+	StartedAt    *time.Time
+	Duration     *time.Duration
+	Err          string
 }
 
-// ResumoWorkflow joins the workflow, its schedule and the last run's state.
-type ResumoWorkflow struct {
+// WorkflowSummary joins the workflow, its schedule and the last run's state.
+type WorkflowSummary struct {
 	Slug         string
 	Nome         string
 	Projeto      string
 	Cron         string
 	Timezone     string
 	Catchup      bool
-	Ativo        bool
+	Active       bool
 	TemAgenda    bool
-	UltimoSlot   *time.Time
+	LastSlot     *time.Time
 	UltimoStatus string
 	TotalRuns    int
 
@@ -56,8 +56,8 @@ type ResumoWorkflow struct {
 	ProximaRun *time.Time
 }
 
-// Indicadores is the Overview's header.
-type Indicadores struct {
+// Indicators is the Overview's header.
+type Indicators struct {
 	Total        int
 	Sucesso      int
 	Falha        int
@@ -66,12 +66,12 @@ type Indicadores struct {
 	DuracaoMedia time.Duration
 }
 
-// Razao returns `parte` as a percentage of everything already finished.
+// Ratio returns `parte` as a percentage of everything already finished.
 //
 // The denominator excludes what is still running: counting an in-flight run as
 // a "non-success" makes the rate plunge during a burst of work and climb back on
 // its own afterwards, with nothing having changed.
-func (i Indicadores) Razao(parte int) float64 {
+func (i Indicators) Ratio(parte int) float64 {
 	concluidas := i.Sucesso + i.Falha
 	if concluidas == 0 {
 		return 0
@@ -79,8 +79,8 @@ func (i Indicadores) Razao(parte int) float64 {
 	return float64(parte) * 100 / float64(concluidas)
 }
 
-// Balde is one column of the run chart.
-type Balde struct {
+// Bucket is one column of the run chart.
+type Bucket struct {
 	Inicio       time.Time
 	Sucesso      int
 	Falha        int
@@ -90,32 +90,32 @@ type Balde struct {
 }
 
 // Total sums the whole bucket — the column's height.
-func (b Balde) Total() int { return b.Sucesso + b.Falha + b.Executando + b.Fila }
+func (b Bucket) Total() int { return b.Sucesso + b.Falha + b.Executando + b.Fila }
 
-// AgendaResumo is the minimum needed to compute the next trigger.
-type AgendaResumo struct {
+// ScheduleSummary is the minimum needed to compute the next trigger.
+type ScheduleSummary struct {
 	WorkflowSlug string
 	Cron         string
 	Timezone     string
-	Ativo        bool
+	Active       bool
 }
 
-// ResumoProjeto counts what exists under a project.
-type ResumoProjeto struct {
+// ProjectSummary counts what exists under a project.
+type ProjectSummary struct {
 	Slug      string
 	Nome      string
 	Workflows int
 	Runs      int
-	CriadoEm  time.Time
+	CreatedAt time.Time
 }
 
-// LeituraRepo serves the UI.
-type LeituraRepo struct{ pool *Pool }
+// ReadRepo serves the UI.
+type ReadRepo struct{ pool *Pool }
 
-func NewLeituraRepo(p *Pool) *LeituraRepo { return &LeituraRepo{pool: p} }
+func NewReadRepo(p *Pool) *ReadRepo { return &ReadRepo{pool: p} }
 
-// ContagemPorStatus feeds the dashboard's cards.
-func (r *LeituraRepo) ContagemPorStatus(ctx context.Context) (map[string]int, error) {
+// CountByStatus feeds the dashboard's cards.
+func (r *ReadRepo) CountByStatus(ctx context.Context) (map[string]int, error) {
 	linhas, err := r.pool.Query(ctx, `SELECT status, count(*) FROM runs GROUP BY status`)
 	if err != nil {
 		return nil, err
@@ -134,8 +134,8 @@ func (r *LeituraRepo) ContagemPorStatus(ctx context.Context) (map[string]int, er
 	return out, linhas.Err()
 }
 
-// UltimasRuns lists the most recent runs.
-func (r *LeituraRepo) UltimasRuns(ctx context.Context, limite int) ([]ResumoRun, error) {
+// LatestRuns lists the most recent runs.
+func (r *ReadRepo) LatestRuns(ctx context.Context, limite int) ([]RunSummary, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
 		       logical_date, criado_em, iniciado_em, terminado_em, erro
@@ -149,24 +149,24 @@ func (r *LeituraRepo) UltimasRuns(ctx context.Context, limite int) ([]ResumoRun,
 	return varrerRuns(linhas)
 }
 
-// varrerRuns reads the columns UltimasRuns and EmAndamento select, in the same
+// varrerRuns reads the columns LatestRuns and InFlight select, in the same
 // order. Two identical scans would diverge on the first new column.
-func varrerRuns(linhas pgx.Rows) ([]ResumoRun, error) {
-	var out []ResumoRun
+func varrerRuns(linhas pgx.Rows) ([]RunSummary, error) {
+	var out []RunSummary
 	for linhas.Next() {
-		var r ResumoRun
+		var r RunSummary
 		var ini, fim *time.Time
-		if err := linhas.Scan(&r.ID, &r.WorkflowSlug, &r.Status, &r.TriggerType, &r.Tentativa,
-			&r.LogicalDate, &r.CriadoEm, &ini, &fim, &r.Erro); err != nil {
+		if err := linhas.Scan(&r.ID, &r.WorkflowSlug, &r.Status, &r.TriggerType, &r.Attempt,
+			&r.LogicalDate, &r.CreatedAt, &ini, &fim, &r.Err); err != nil {
 			return nil, err
 		}
-		r.IniciadoEm = ini
-		// Duracao only exists when the run actually started AND finished;
+		r.StartedAt = ini
+		// Duration only exists when the run actually started AND finished;
 		// computing it with either side null would produce a meaningless
 		// number.
 		if ini != nil && fim != nil {
 			d := fim.Sub(*ini)
-			r.Duracao = &d
+			r.Duration = &d
 		}
 		out = append(out, r)
 	}
@@ -174,7 +174,7 @@ func varrerRuns(linhas pgx.Rows) ([]ResumoRun, error) {
 }
 
 // Workflows lists the published workflows with their schedule and last state.
-func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
+func (r *ReadRepo) Workflows(ctx context.Context) ([]WorkflowSummary, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT w.slug, w.name, p.slug,
 		       COALESCE(s.cron, ''), COALESCE(s.timezone, ''),
@@ -208,11 +208,11 @@ func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 	}
 	defer linhas.Close()
 
-	var out []ResumoWorkflow
+	var out []WorkflowSummary
 	for linhas.Next() {
-		var w ResumoWorkflow
+		var w WorkflowSummary
 		if err := linhas.Scan(&w.Slug, &w.Nome, &w.Projeto, &w.Cron, &w.Timezone,
-			&w.Catchup, &w.Ativo, &w.TemAgenda, &w.UltimoSlot, &w.UltimoStatus,
+			&w.Catchup, &w.Active, &w.TemAgenda, &w.LastSlot, &w.UltimoStatus,
 			&w.UltimaRunID, &w.UltimaRunEm, &w.TotalRuns, &w.Tags); err != nil {
 			return nil, err
 		}
@@ -221,8 +221,8 @@ func (r *LeituraRepo) Workflows(ctx context.Context) ([]ResumoWorkflow, error) {
 	return out, linhas.Err()
 }
 
-// Projetos lists the projects with their totals.
-func (r *LeituraRepo) Projetos(ctx context.Context) ([]ResumoProjeto, error) {
+// Projects lists the projects with their totals.
+func (r *ReadRepo) Projects(ctx context.Context) ([]ProjectSummary, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT p.slug, p.name, p.created_at,
 		       (SELECT count(*) FROM workflows w WHERE w.project_id = p.id),
@@ -235,10 +235,10 @@ func (r *LeituraRepo) Projetos(ctx context.Context) ([]ResumoProjeto, error) {
 	}
 	defer linhas.Close()
 
-	var out []ResumoProjeto
+	var out []ProjectSummary
 	for linhas.Next() {
-		var p ResumoProjeto
-		if err := linhas.Scan(&p.Slug, &p.Nome, &p.CriadoEm, &p.Workflows, &p.Runs); err != nil {
+		var p ProjectSummary
+		if err := linhas.Scan(&p.Slug, &p.Nome, &p.CreatedAt, &p.Workflows, &p.Runs); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -246,8 +246,8 @@ func (r *LeituraRepo) Projetos(ctx context.Context) ([]ResumoProjeto, error) {
 	return out, linhas.Err()
 }
 
-// ProfundidadeDaFila shows the queue on the dashboard.
-func (r *LeituraRepo) ProfundidadeDaFila(ctx context.Context) (pendentes, reivindicados int, err error) {
+// QueueDepth shows the queue on the dashboard.
+func (r *ReadRepo) QueueDepth(ctx context.Context) (pendentes, reivindicados int, err error) {
 	err = r.pool.QueryRow(ctx, `
 		SELECT count(*) FILTER (WHERE reivindicado_em IS NULL),
 		       count(*) FILTER (WHERE reivindicado_em IS NOT NULL)
@@ -255,12 +255,12 @@ func (r *LeituraRepo) ProfundidadeDaFila(ctx context.Context) (pendentes, reivin
 	return
 }
 
-// Indicadores aggregates the recent window for the four cards at the top.
+// Indicators aggregates the recent window for the four cards at the top.
 //
 // One query, with FILTER, rather than four: those would be four scans of the
 // same table over the same time predicate.
-func (r *LeituraRepo) Indicadores(ctx context.Context, janela time.Duration) (Indicadores, error) {
-	var i Indicadores
+func (r *ReadRepo) Indicators(ctx context.Context, janela time.Duration) (Indicators, error) {
+	var i Indicators
 	var mediaMs *float64
 	err := r.pool.QueryRow(ctx, `
 		SELECT count(*),
@@ -282,12 +282,12 @@ func (r *LeituraRepo) Indicadores(ctx context.Context, janela time.Duration) (In
 	return i, nil
 }
 
-// ExecucoesPorHora returns one column per hour, the empty ones INCLUDED.
+// RunsPerHour returns one column per hour, the empty ones INCLUDED.
 //
 // The left `generate_series` is the point: without it an hour with no run
 // simply would not appear, and the chart would compress time, giving the
 // impression of continuous activity where there was a gap.
-func (r *LeituraRepo) ExecucoesPorHora(ctx context.Context, horas int) ([]Balde, error) {
+func (r *ReadRepo) RunsPerHour(ctx context.Context, horas int) ([]Bucket, error) {
 	linhas, err := r.pool.Query(ctx, `
 		WITH janela AS (
 		    SELECT generate_series(
@@ -311,9 +311,9 @@ func (r *LeituraRepo) ExecucoesPorHora(ctx context.Context, horas int) ([]Balde,
 	}
 	defer linhas.Close()
 
-	var out []Balde
+	var out []Bucket
 	for linhas.Next() {
-		var b Balde
+		var b Bucket
 		var mediaMs *float64
 		if err := linhas.Scan(&b.Inicio, &b.Sucesso, &b.Falha, &b.Executando,
 			&b.Fila, &mediaMs); err != nil {
@@ -327,11 +327,11 @@ func (r *LeituraRepo) ExecucoesPorHora(ctx context.Context, horas int) ([]Balde,
 	return out, linhas.Err()
 }
 
-// EmAndamento lists what is running or waiting its turn, oldest first.
+// InFlight lists what is running or waiting its turn, oldest first.
 //
 // The order is ascending on purpose: whatever has been in the queue longest is
 // what deserves attention, and sorting by most recent would hide exactly that.
-func (r *LeituraRepo) EmAndamento(ctx context.Context, limite int) ([]ResumoRun, error) {
+func (r *ReadRepo) InFlight(ctx context.Context, limite int) ([]RunSummary, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
 		       logical_date, criado_em, iniciado_em, terminado_em, erro
@@ -346,9 +346,9 @@ func (r *LeituraRepo) EmAndamento(ctx context.Context, limite int) ([]ResumoRun,
 	return varrerRuns(linhas)
 }
 
-// Agendas returns every schedule, active or not. The DAG list shows the paused
+// Schedules returns every schedule, active or not. The DAG list shows the paused
 // ones too — hiding them from the screen would hide the reason nothing runs.
-func (r *LeituraRepo) Agendas(ctx context.Context) ([]AgendaResumo, error) {
+func (r *ReadRepo) Schedules(ctx context.Context) ([]ScheduleSummary, error) {
 	linhas, err := r.pool.Query(ctx,
 		`SELECT workflow_slug, cron, timezone, ativo FROM schedules ORDER BY workflow_slug`)
 	if err != nil {
@@ -356,10 +356,10 @@ func (r *LeituraRepo) Agendas(ctx context.Context) ([]AgendaResumo, error) {
 	}
 	defer linhas.Close()
 
-	var out []AgendaResumo
+	var out []ScheduleSummary
 	for linhas.Next() {
-		var a AgendaResumo
-		if err := linhas.Scan(&a.WorkflowSlug, &a.Cron, &a.Timezone, &a.Ativo); err != nil {
+		var a ScheduleSummary
+		if err := linhas.Scan(&a.WorkflowSlug, &a.Cron, &a.Timezone, &a.Active); err != nil {
 			return nil, err
 		}
 		out = append(out, a)
@@ -367,8 +367,8 @@ func (r *LeituraRepo) Agendas(ctx context.Context) ([]AgendaResumo, error) {
 	return out, linhas.Err()
 }
 
-// RunsDoWorkflow lists the runs of a single workflow, for its own screen.
-func (r *LeituraRepo) RunsDoWorkflow(ctx context.Context, slug string, limite int) ([]ResumoRun, error) {
+// WorkflowRuns lists the runs of a single workflow, for its own screen.
+func (r *ReadRepo) WorkflowRuns(ctx context.Context, slug string, limite int) ([]RunSummary, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT id::text, workflow_slug, status, trigger_type, attempt,
 		       logical_date, criado_em, iniciado_em, terminado_em, erro
@@ -383,9 +383,9 @@ func (r *LeituraRepo) RunsDoWorkflow(ctx context.Context, slug string, limite in
 	return varrerRuns(linhas)
 }
 
-// FiltroRuns is the run screen's query. Empty fields do not filter.
-type FiltroRuns struct {
-	Estado   string
+// RunFilter is the run screen's query. Empty fields do not filter.
+type RunFilter struct {
+	State    string
 	Workflow string
 	De       *time.Time
 	Ate      *time.Time
@@ -395,15 +395,15 @@ type FiltroRuns struct {
 
 // where builds the predicate and the arguments together, so one never drifts
 // out of sync with the other — the most common way to get dynamic SQL wrong.
-func (f FiltroRuns) where() (string, []any) {
+func (f RunFilter) where() (string, []any) {
 	cond := []string{"true"}
 	var args []any
 	poe := func(sql string, valor any) {
 		args = append(args, valor)
 		cond = append(cond, fmt.Sprintf(sql, len(args)))
 	}
-	if f.Estado != "" {
-		poe("status = $%d", f.Estado)
+	if f.State != "" {
+		poe("status = $%d", f.State)
 	}
 	if f.Workflow != "" {
 		poe("workflow_slug = $%d", f.Workflow)
@@ -418,7 +418,7 @@ func (f FiltroRuns) where() (string, []any) {
 }
 
 // Runs lists runs with filtering and pagination.
-func (r *LeituraRepo) Runs(ctx context.Context, f FiltroRuns) ([]ResumoRun, error) {
+func (r *ReadRepo) Runs(ctx context.Context, f RunFilter) ([]RunSummary, error) {
 	if f.Limite <= 0 {
 		f.Limite = 50
 	}
@@ -439,9 +439,9 @@ func (r *LeituraRepo) Runs(ctx context.Context, f FiltroRuns) ([]ResumoRun, erro
 	return varrerRuns(linhas)
 }
 
-// ContarRuns returns the total for the SAME filter, so the pagination knows how
+// CountRuns returns the total for the SAME filter, so the pagination knows how
 // many pages there are.
-func (r *LeituraRepo) ContarRuns(ctx context.Context, f FiltroRuns) (int, error) {
+func (r *ReadRepo) CountRuns(ctx context.Context, f RunFilter) (int, error) {
 	predicado, args := f.where()
 	var n int
 	err := r.pool.QueryRow(ctx,

@@ -52,13 +52,13 @@ const NomeDoCookie = "brevis_sessao"
 // Password hash
 // ---------------------------------------------------------------------------
 
-// GerarHash produces the text that goes into the configuration, as
+// GenerateHash produces the text that goes into the configuration, as
 // `pbkdf2-sha256$<iterations>$<salt>$<key>`.
 //
 // The format carries the iteration count with it because that number will
 // change: when we double the cost a few years from now, old hashes have to keep
 // verifying. A format that stores only the digest forces invalidating everyone.
-func GerarHash(senha string) (string, error) {
+func GenerateHash(senha string) (string, error) {
 	sal := make([]byte, 16)
 	if _, err := rand.Read(sal); err != nil {
 		return "", err
@@ -72,12 +72,12 @@ func GerarHash(senha string) (string, error) {
 		base64.RawStdEncoding.EncodeToString(chave)), nil
 }
 
-// ConferirSenha compares the password against the hash in constant time.
+// CheckPassword compares the password against the hash in constant time.
 //
 // Returns false -- and not an error -- for a malformed hash: the caller is on a
 // login path, and the only safe answer there is "did not get in". The
-// configuration error is caught at boot, by Credencial.Validar.
-func ConferirSenha(hash, senha string) bool {
+// configuration error is caught at boot, by Credential.Validate.
+func CheckPassword(hash, senha string) bool {
 	partes := strings.Split(hash, "$")
 	if len(partes) != 4 || partes[0] != "pbkdf2-sha256" {
 		return false
@@ -102,32 +102,33 @@ func ConferirSenha(hash, senha string) bool {
 }
 
 // ---------------------------------------------------------------------------
-// Credencial
+// Credential
 // ---------------------------------------------------------------------------
 
-// Credencial e o operador unico da instalacao, vindo da configuracao.
-type Credencial struct {
-	Usuario string
-	Hash    string
+// Credential is the installation's single operator, coming from the
+// configuration.
+type Credential struct {
+	User string
+	Hash string
 
-	// Segredo signs the session cookie. Changing it drops every session, which
+	// Secret signs the session cookie. Changing it drops every session, which
 	// is the emergency lever when a leak is suspected.
-	Segredo []byte
+	Secret []byte
 }
 
-// Ativa says whether a credential is configured.
-func (c Credencial) Ativa() bool {
-	return c.Usuario != "" && c.Hash != ""
+// Enabled says whether a credential is configured.
+func (c Credential) Enabled() bool {
+	return c.User != "" && c.Hash != ""
 }
 
-// Validar refuses a half-finished configuration.
+// Validate refuses a half-finished configuration.
 //
 // Half configured is worse than nothing: whoever filled in the username
 // believes they closed the door. Failing at boot is the only way that belief
 // does not last until the incident.
-func (c Credencial) Validar() error {
-	if !c.Ativa() {
-		if c.Usuario != "" || c.Hash != "" {
+func (c Credential) Validate() error {
+	if !c.Enabled() {
+		if c.User != "" || c.Hash != "" {
 			return errors.New("a half-configured credential: BREVIS_AUTH_USUARIO and " +
 				"BREVIS_AUTH_SENHA_HASH have to come together")
 		}
@@ -137,7 +138,7 @@ func (c Credencial) Validar() error {
 		return errors.New("BREVIS_AUTH_SENHA_HASH is not in the expected format; " +
 			"generate one with `brevis hash`")
 	}
-	if len(c.Segredo) < 32 {
+	if len(c.Secret) < 32 {
 		return errors.New("BREVIS_AUTH_SEGREDO needs at least 32 bytes " +
 			"(generate one with `openssl rand -base64 48`)")
 	}
@@ -154,19 +155,19 @@ func (c Credencial) Validar() error {
 // would let the client choose its own validity; covering only the expiry would
 // let it swap users. It is HMAC, and not a hash of the concatenated secret,
 // because the naive construction is vulnerable to length extension.
-func (c Credencial) emitir(agora time.Time) string {
-	corpo := c.Usuario + "|" + strconv.FormatInt(agora.Add(ValidadeDaSessao).Unix(), 10)
+func (c Credential) emitir(agora time.Time) string {
+	corpo := c.User + "|" + strconv.FormatInt(agora.Add(ValidadeDaSessao).Unix(), 10)
 	return corpo + "|" + base64.RawURLEncoding.EncodeToString(c.assinar(corpo))
 }
 
-func (c Credencial) assinar(corpo string) []byte {
-	m := hmac.New(sha256.New, c.Segredo)
+func (c Credential) assinar(corpo string) []byte {
+	m := hmac.New(sha256.New, c.Secret)
 	m.Write([]byte(corpo))
 	return m.Sum(nil)
 }
 
 // conferirSessao valida assinatura e prazo do cookie.
-func (c Credencial) conferirSessao(valor string, agora time.Time) bool {
+func (c Credential) conferirSessao(valor string, agora time.Time) bool {
 	i := strings.LastIndex(valor, "|")
 	if i < 0 {
 		return false
@@ -184,8 +185,8 @@ func (c Credencial) conferirSessao(valor string, agora time.Time) bool {
 	}
 
 	usuario, prazo, ok := strings.Cut(corpo, "|")
-	if !ok || usuario != c.Usuario {
-		// Usuario diferente do configurado: a credencial mudou desde o login.
+	if !ok || usuario != c.User {
+		// User diferente do configurado: a credencial mudou desde o login.
 		return false
 	}
 	expira, err := strconv.ParseInt(prazo, 10, 64)
@@ -205,10 +206,10 @@ func (c Credencial) conferirSessao(valor string, agora time.Time) bool {
 // on that list out of necessity -- a /health that asks for a password kills the
 // pod.
 type Portao struct {
-	Cred     Credencial
-	Proximo  http.Handler
+	Cred     Credential
+	Next     http.Handler
 	Login    http.Handler // renderiza a tela de login
-	Inseguro bool         // plain http: sends the cookie without the Secure flag
+	Insecure bool         // plain http: sends the cookie without the Secure flag
 }
 
 // livre lists what answers without a session.
@@ -225,14 +226,14 @@ func livre(caminho string) bool {
 
 func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case !p.Cred.Ativa(), livre(r.URL.Path):
-		p.Proximo.ServeHTTP(w, r)
+	case !p.Cred.Enabled(), livre(r.URL.Path):
+		p.Next.ServeHTTP(w, r)
 		return
 	}
 
 	cookie, err := r.Cookie(NomeDoCookie)
 	if err == nil && p.Cred.conferirSessao(cookie.Value, time.Now()) {
-		p.Proximo.ServeHTTP(w, r.WithContext(EmContexto(r.Context(), p.Cred.Usuario)))
+		p.Next.ServeHTTP(w, r.WithContext(IntoContext(r.Context(), p.Cred.User)))
 		return
 	}
 
@@ -250,13 +251,13 @@ func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, destino, http.StatusSeeOther)
 }
 
-// Entrar checks the credential and writes the cookie. Returns false if it did not match.
-func (p *Portao) Entrar(w http.ResponseWriter, usuario, senha string) bool {
+// SignIn checks the credential and writes the cookie. Returns false if it did not match.
+func (p *Portao) SignIn(w http.ResponseWriter, usuario, senha string) bool {
 	// Both comparisons ALWAYS run, even with the wrong user: returning early
 	// makes an invalid user answer faster than a valid one, and the
 	// diferenca de tempo entrega quais nomes existem.
-	usuarioOK := subtle.ConstantTimeCompare([]byte(usuario), []byte(p.Cred.Usuario)) == 1
-	senhaOK := ConferirSenha(p.Cred.Hash, senha)
+	usuarioOK := subtle.ConstantTimeCompare([]byte(usuario), []byte(p.Cred.User)) == 1
+	senhaOK := CheckPassword(p.Cred.Hash, senha)
 	if !usuarioOK || !senhaOK {
 		return false
 	}
@@ -270,22 +271,22 @@ func (p *Portao) Entrar(w http.ResponseWriter, usuario, senha string) bool {
 		// external origin, and Strict would hide the cookie on exactly that
 		// one.
 		SameSite: http.SameSiteLaxMode,
-		Secure:   !p.Inseguro,
+		Secure:   !p.Insecure,
 		Expires:  time.Now().Add(ValidadeDaSessao),
 	})
 	return true
 }
 
-// Sair apaga o cookie.
-func (p *Portao) Sair(w http.ResponseWriter) {
+// SignOut apaga o cookie.
+func (p *Portao) SignOut(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name: NomeDoCookie, Value: "", Path: "/",
-		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: !p.Inseguro,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: !p.Insecure,
 		MaxAge: -1,
 	})
 }
 
-// escaparDestino permite apenas caminho interno no `?de=`.
+// escaparDestino allows only an internal path in `?next=`.
 //
 // Without this, `/login?de=https://malicious` would make our own login screen
 // hand the authenticated operator away -- the classic open redirect.
@@ -296,8 +297,8 @@ func escaparDestino(alvo string) string {
 	return alvo
 }
 
-// Destino saneia o `?de=` na hora de redirecionar pos-login.
-func Destino(bruto string) string {
+// Target saneia o `?de=` na hora de redirecionar pos-login.
+func Target(bruto string) string {
 	if bruto == "" {
 		return "/"
 	}
@@ -310,10 +311,10 @@ func Destino(bruto string) string {
 
 type chave struct{}
 
-// EmContexto stores the request's operator. The layout uses it to decide
+// IntoContext stores the request's operator. The layout uses it to decide
 // whether to show the sign-out button -- an installation with no credential
 // should not display a button that does nothing.
-func EmContexto(ctx context.Context, usuario string) context.Context {
+func IntoContext(ctx context.Context, usuario string) context.Context {
 	return context.WithValue(ctx, chave{}, usuario)
 }
 

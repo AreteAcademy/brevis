@@ -45,7 +45,7 @@ func TestEtapaEUmaEntradaQueMuda(t *testing.T) {
 		t.Fatalf("virou %d entradas, esperado 1: %+v", len(c.Etapas), c.Etapas)
 	}
 	e := c.Etapas[0]
-	if e.Estado != "done" || e.Ms == nil || *e.Ms != 2400 {
+	if e.State != "done" || e.Ms == nil || *e.Ms != 2400 {
 		t.Errorf("nao atualizou: %+v", e)
 	}
 	if e.Numeros["paginas"] != 300.0 {
@@ -134,7 +134,7 @@ func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 				t.Fatalf("etapas: %+v", c.Etapas)
 			}
 			e := c.Etapas[0]
-			if e.Nome != "extract" || e.Estado != "done" || e.Ms == nil || *e.Ms != 2400 {
+			if e.Nome != "extract" || e.State != "done" || e.Ms == nil || *e.Ms != 2400 {
 				t.Errorf("etapa: %+v", e)
 			}
 			// E os numeros da etapa nao podem trazer os campos do protocolo.

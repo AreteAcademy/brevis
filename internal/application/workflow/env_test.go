@@ -50,7 +50,7 @@ func TestEnvHerdaDoWorkflowEOPassoSobrescreve(t *testing.T) {
 }
 
 // TestSegredoSoVaiParaOPassoQueDeclarou: e a razao de existir a chave por
-// passo. Com BREVIS_POD_ENV_FROM_SECRETS o cookie entrava no pod do dbt
+// passo. With BREVIS_POD_ENV_FROM_SECRETS o cookie entrava no pod do dbt
 // tambem, que nao precisa dele.
 func TestSegredoSoVaiParaOPassoQueDeclarou(t *testing.T) {
 	w, err := Parse("gabriel.yaml", []byte(arquivoDoGabriel))

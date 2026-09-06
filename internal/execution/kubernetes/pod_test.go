@@ -135,7 +135,7 @@ func TestNomeDoPodEhEstavelPorTentativa(t *testing.T) {
 	}
 
 	outra := tarefa()
-	outra.Tentativa = 1
+	outra.Attempt = 1
 	if c := k8s.NomeDoPod(outra); c == a {
 		t.Error("tentativas diferentes deveriam gerar pods diferentes")
 	}

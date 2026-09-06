@@ -3,18 +3,18 @@ package pages
 import "testing"
 
 func TestPaginacaoContas(t *testing.T) {
-	p := Paginacao{Pagina: 3, PorPagina: 25, Total: 63}
+	p := Pagination{Page: 3, PorPagina: 25, Total: 63}
 	if p.Paginas() != 3 {
 		t.Errorf("paginas = %d, quero 3", p.Paginas())
 	}
-	if p.Primeiro() != 51 || p.Ultimo() != 63 {
-		t.Errorf("intervalo = %d–%d, quero 51–63", p.Primeiro(), p.Ultimo())
+	if p.First() != 51 || p.Last() != 63 {
+		t.Errorf("intervalo = %d–%d, quero 51–63", p.First(), p.Last())
 	}
 
 	// Lista vazia nao pode dizer "1–0 de 0".
-	vazia := Paginacao{Pagina: 1, PorPagina: 25, Total: 0}
-	if vazia.Primeiro() != 0 || vazia.Paginas() != 1 {
-		t.Errorf("vazia: primeiro=%d paginas=%d", vazia.Primeiro(), vazia.Paginas())
+	vazia := Pagination{Page: 1, PorPagina: 25, Total: 0}
+	if vazia.First() != 0 || vazia.Paginas() != 1 {
+		t.Errorf("vazia: primeiro=%d paginas=%d", vazia.First(), vazia.Paginas())
 	}
 }
 
@@ -31,8 +31,8 @@ func TestJanelaDePaginas(t *testing.T) {
 		{1, 50, []int{1, 2}},
 	}
 	for _, c := range casos {
-		p := Paginacao{Pagina: c.pagina, PorPagina: 25, Total: c.total}
-		j := p.Janela()
+		p := Pagination{Page: c.pagina, PorPagina: 25, Total: c.total}
+		j := p.Window()
 		if len(j) != len(c.esperado) {
 			t.Fatalf("pagina %d de %d: %v, quero %v", c.pagina, p.Paginas(), j, c.esperado)
 		}
@@ -47,12 +47,12 @@ func TestJanelaDePaginas(t *testing.T) {
 // Trocar de filtro volta para a pagina 1: continuar na pagina 7 de um resultado
 // que agora tem duas seria uma tela vazia sem explicacao.
 func TestTrocarFiltroReiniciaPagina(t *testing.T) {
-	f := Filtro{Tag: "acme", Pagina: 7, PorPagina: PorPaginaPadrao}
-	if u := f.Com("state", "failed"); contemTexto(u, "page=") {
+	f := Filter{Tag: "acme", Page: 7, PorPagina: DefaultPerPage}
+	if u := f.With("state", "failed"); contemTexto(u, "page=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
 	// Navegar entre paginas preserva o resto do filtro.
-	u := f.ComPagina(3)
+	u := f.WithPage(3)
 	if !contemTexto(u, "tag=acme") || !contemTexto(u, "page=3") {
 		t.Errorf("URL de pagina = %q", u)
 	}
@@ -60,38 +60,38 @@ func TestTrocarFiltroReiniciaPagina(t *testing.T) {
 
 // Terceiro clique no mesmo cabecalho remove a ordenacao.
 func TestComOrdemAlternaEDepoisLimpa(t *testing.T) {
-	f := Filtro{PorPagina: PorPaginaPadrao}
-	primeiro := f.ComOrdem("last")
+	f := Filter{PorPagina: DefaultPerPage}
+	primeiro := f.WithSort("last")
 	if !contemTexto(primeiro, "sort=last") || contemTexto(primeiro, "dir=desc") {
 		t.Errorf("primeiro clique = %q, queria ascendente", primeiro)
 	}
 
-	f.Ordem = "last"
-	if segundo := f.ComOrdem("last"); !contemTexto(segundo, "dir=desc") {
+	f.Sort = "last"
+	if segundo := f.WithSort("last"); !contemTexto(segundo, "dir=desc") {
 		t.Errorf("segundo clique = %q, queria descendente", segundo)
 	}
 
 	f.Desc = true
-	if terceiro := f.ComOrdem("last"); contemTexto(terceiro, "sort=") {
+	if terceiro := f.WithSort("last"); contemTexto(terceiro, "sort=") {
 		t.Errorf("terceiro clique = %q, queria sem ordenacao", terceiro)
 	}
-	if f.Seta("last") != "↓" || f.Seta("workflow") != "" {
+	if f.Arrow("last") != "↓" || f.Arrow("workflow") != "" {
 		t.Error("a seta so aparece na coluna ordenada")
 	}
 }
 
 func TestFiltroDeRunsRemovePeriodo(t *testing.T) {
-	f := FiltroRuns{Estado: "failed", De: "2026-09-01T02:00:00Z", Ate: "2026-09-01T03:00:00Z"}
-	if !f.Ativo() {
+	f := RunFilter{State: "failed", De: "2026-09-01T02:00:00Z", Ate: "2026-09-01T03:00:00Z"}
+	if !f.Active() {
 		t.Error("filtro com periodo deveria contar como ativo")
 	}
-	if u := f.Com("state", ""); contemTexto(u, "state=") {
+	if u := f.With("state", ""); contemTexto(u, "state=") {
 		t.Errorf("remover o estado deixou %q", u)
 	}
-	if !contemTexto(f.Com("state", ""), "from=") {
+	if !contemTexto(f.With("state", ""), "from=") {
 		t.Error("remover o estado nao pode levar o periodo junto")
 	}
-	if (FiltroRuns{}).Ativo() {
+	if (RunFilter{}).Active() {
 		t.Error("filtro vazio nao esta ativo")
 	}
 }

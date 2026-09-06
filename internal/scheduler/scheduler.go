@@ -116,7 +116,7 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 	// Planting `agora` says what is meant: a schedule starts counting from when
 	// it went live, and fires at the first time after that. Without running
 	// anything this cycle -- the slot before registration is not ours.
-	if a.UltimoSlot == nil {
+	if a.LastSlot == nil {
 		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, agora); err != nil {
 			return 0, err
 		}
@@ -139,7 +139,7 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 		return 0, nil
 	}
 
-	def, err := s.workflows.Definicao(ctx, a.WorkflowSlug)
+	def, err := s.workflows.Definition(ctx, a.WorkflowSlug)
 	if err != nil {
 		return 0, err
 	}
@@ -157,7 +157,7 @@ func (s *Scheduler) materializar(ctx context.Context, a sch.Schedule, agora time
 			return criados, fmt.Errorf("params padrao de %q: %w", a.WorkflowSlug, err)
 		}
 		if err := s.criarEEnfileirar(ctx, a.WorkflowSlug, bruto, slot,
-			sch.TriggerSchedule, 0, padroes, def.MaxAtivos); err != nil {
+			sch.TriggerSchedule, 0, padroes, def.MaxActive); err != nil {
 			return criados, err
 		}
 		criados++
@@ -187,11 +187,11 @@ func (s *Scheduler) criarEEnfileirar(ctx context.Context, slug string, def []byt
 	r, err := s.runs.Criar(ctx, dom.Run{
 		WorkflowSlug:   slug,
 		IdempotencyKey: chave,
-		Definicao:      def,
+		Definition:     def,
 		TriggerType:    string(trigger),
 		LogicalDate:    &slot,
 		Params:         params,
-		MaxAtivos:      maxAtivos,
+		MaxActive:      maxAtivos,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
@@ -214,7 +214,7 @@ func (s *Scheduler) criarEEnfileirar(ctx context.Context, slug string, def []byt
 // in a row a single run rather than two.
 func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 	params map[string]string) (uuid.UUID, error) {
-	def, err := s.workflows.Definicao(ctx, slug)
+	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("workflow %q: %w", slug, err)
 	}
@@ -235,14 +235,14 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 	r, err := s.runs.Criar(ctx, dom.Run{
 		WorkflowSlug:   slug,
 		IdempotencyKey: chave,
-		Definicao:      bruto,
+		Definition:     bruto,
 		TriggerType:    string(sch.TriggerManual),
 		Params:         valores,
-		MaxAtivos:      def.MaxAtivos,
+		MaxActive:      def.MaxActive,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
-			return uuid.Nil, nil // clique repetido no mesmo segundo
+			return uuid.Nil, nil // a repeated click within the same second
 		}
 		return uuid.Nil, err
 	}
@@ -280,7 +280,7 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		return 0, err
 	}
 
-	def, err := s.workflows.Definicao(ctx, slug)
+	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
 		return 0, err
 	}
@@ -306,7 +306,7 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 			break
 		}
 		if err := s.criarEEnfileirar(ctx, slug, bruto, prox,
-			sch.TriggerBackfill, s.prioridadeBackfill, valores, def.MaxAtivos); err != nil {
+			sch.TriggerBackfill, s.prioridadeBackfill, valores, def.MaxActive); err != nil {
 			return criados, err
 		}
 		criados++

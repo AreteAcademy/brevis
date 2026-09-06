@@ -39,20 +39,20 @@ type defsFake struct {
 	err error
 }
 
-func (d defsFake) Definicao(context.Context, string) (wf.Workflow, error) { return d.w, d.err }
+func (d defsFake) Definition(context.Context, string) (wf.Workflow, error) { return d.w, d.err }
 
 type execsFake struct {
 	run     dom.Run
-	estados map[string]postgres.EstadoNo
+	estados map[string]postgres.NodeState
 	err     error
 }
 
 func (e execsFake) Buscar(context.Context, uuid.UUID) (dom.Run, error) { return e.run, e.err }
-func (e execsFake) LogsDaRun(context.Context, uuid.UUID) ([]postgres.LogDoPasso, error) {
+func (e execsFake) LogsDaRun(context.Context, uuid.UUID) ([]postgres.StepLog, error) {
 	return nil, nil
 }
 
-func (e execsFake) EstadoDosNos(context.Context, uuid.UUID) (map[string]postgres.EstadoNo, error) {
+func (e execsFake) EstadoDosNos(context.Context, uuid.UUID) (map[string]postgres.NodeState, error) {
 	return e.estados, nil
 }
 
@@ -97,8 +97,8 @@ func pedir(t *testing.T, ui *api.UI, caminho string) (*http.Response, grafo) {
 	return res, g
 }
 
-func novaUI(d api.Definicoes, e api.Execucoes) *api.UI {
-	return api.NewUI(nil, d, e, nil, branding.Padrao(), slog.New(slog.DiscardHandler))
+func novaUI(d api.Definicoes, e api.RunsChart) *api.UI {
+	return api.NewUI(nil, d, e, nil, branding.Default(), slog.New(slog.DiscardHandler))
 }
 
 func TestGrafoDoWorkflowPoeNiveisEmColunas(t *testing.T) {
@@ -158,11 +158,11 @@ func TestGrafoDaRunAplicaEstadoPorNo(t *testing.T) {
 	def, _ := json.Marshal(diamante())
 	saida := 2
 	ui := novaUI(defsFake{err: errors.New("nao deve consultar a definicao publicada")}, execsFake{
-		run: dom.Run{ID: id, WorkflowSlug: "diamante", Status: dom.StatusRunning, Definicao: def},
-		estados: map[string]postgres.EstadoNo{
+		run: dom.Run{ID: id, WorkflowSlug: "diamante", Status: dom.StatusRunning, Definition: def},
+		estados: map[string]postgres.NodeState{
 			"a": {NodeID: "a", Status: "success", DuracaoMs: 1200},
 			"b": {NodeID: "b", Status: "running"},
-			"c": {NodeID: "c", Status: "failed", Tentativa: 2, ExitCode: &saida, Erro: "boom"},
+			"c": {NodeID: "c", Status: "failed", Attempt: 2, ExitCode: &saida, Err: "boom"},
 		},
 	})
 
@@ -208,7 +208,7 @@ func TestGrafoDaRunMarcaTerminal(t *testing.T) {
 	id := uuid.New()
 	def, _ := json.Marshal(diamante())
 	ui := novaUI(defsFake{}, execsFake{
-		run: dom.Run{ID: id, Status: dom.StatusSuccess, Definicao: def},
+		run: dom.Run{ID: id, Status: dom.StatusSuccess, Definition: def},
 	})
 	_, g := pedir(t, ui, "/api/runs/"+id.String()+"/graph")
 	if !g.Terminal {
@@ -249,19 +249,19 @@ func TestGrafoRecusaEntradasInvalidas(t *testing.T) {
 func quatroEtapas() []postgres.Etapa {
 	ms := int64(2400)
 	return []postgres.Etapa{
-		{Nome: "check", Estado: "done"},
-		{Nome: "extract", Estado: "done", Ms: &ms, Numeros: map[string]any{"paginas": 300}},
-		{Nome: "transform", Estado: "done", Numeros: map[string]any{"pulados": 13}},
-		{Nome: "load", Estado: "running"},
+		{Nome: "check", State: "done"},
+		{Nome: "extract", State: "done", Ms: &ms, Numeros: map[string]any{"paginas": 300}},
+		{Nome: "transform", State: "done", Numeros: map[string]any{"pulados": 13}},
+		{Nome: "load", State: "running"},
 	}
 }
 
-func grafoComEtapas(t *testing.T, estados map[string]postgres.EstadoNo) grafo {
+func grafoComEtapas(t *testing.T, estados map[string]postgres.NodeState) grafo {
 	t.Helper()
 	id := uuid.New()
 	def, _ := json.Marshal(diamante())
 	ui := novaUI(defsFake{}, execsFake{
-		run:     dom.Run{ID: id, WorkflowSlug: "diamante", Status: dom.StatusRunning, Definicao: def},
+		run:     dom.Run{ID: id, WorkflowSlug: "diamante", Status: dom.StatusRunning, Definition: def},
 		estados: estados,
 	})
 	res, g := pedir(t, ui, "/api/runs/"+id.String()+"/graph")
@@ -275,7 +275,7 @@ func grafoComEtapas(t *testing.T, estados map[string]postgres.EstadoNo) grafo {
 // continuam entre passos, entao o grupo ocupa uma coluna so -- e "mesma coluna
 // significa rodar em paralelo" continua verdade.
 func TestPassoDoSDKViraGrupoComAsEtapasDentro(t *testing.T) {
-	g := grafoComEtapas(t, map[string]postgres.EstadoNo{
+	g := grafoComEtapas(t, map[string]postgres.NodeState{
 		"b": {NodeID: "b", Status: "running", Etapas: quatroEtapas(), SdkVersao: "v0.44.1"},
 	})
 
@@ -328,7 +328,7 @@ func TestPassoDoSDKViraGrupoComAsEtapasDentro(t *testing.T) {
 // dele -- e nao pela altura que ele declara. Conferir contra a declarada seria
 // conferir o layout consigo mesmo: quem errasse as duas juntas passaria.
 func TestColunaNaoSobrepoeComUmNoExpandido(t *testing.T) {
-	g := grafoComEtapas(t, map[string]postgres.EstadoNo{
+	g := grafoComEtapas(t, map[string]postgres.NodeState{
 		"b": {NodeID: "b", Status: "running", Etapas: quatroEtapas(), SdkVersao: "v0.44.1"},
 		"c": {NodeID: "c", Status: "pending"},
 	})
@@ -379,7 +379,7 @@ func TestColunaNaoSobrepoeComUmNoExpandido(t *testing.T) {
 
 // O selo diz que o passo foi construido com o SDK, e com que versao.
 func TestSeloDoSDKSaiNoNo(t *testing.T) {
-	g := grafoComEtapas(t, map[string]postgres.EstadoNo{
+	g := grafoComEtapas(t, map[string]postgres.NodeState{
 		"b": {NodeID: "b", Status: "running", Etapas: quatroEtapas(), SdkVersao: "v0.44.1"},
 		"c": {NodeID: "c", Status: "success"},
 	})
@@ -401,7 +401,7 @@ func TestSeloDoSDKSaiNoNo(t *testing.T) {
 // filhos, sem campo novo. Etapa faltando nunca pode mudar a tela de um passo
 // que funciona.
 func TestPassoComumNaoGanhaCampoNovo(t *testing.T) {
-	g := grafoComEtapas(t, map[string]postgres.EstadoNo{
+	g := grafoComEtapas(t, map[string]postgres.NodeState{
 		"a": {NodeID: "a", Status: "success", DuracaoMs: 1200},
 	})
 	for _, n := range g.Nodes {

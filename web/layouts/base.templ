@@ -16,45 +16,45 @@ import (
 // for the titles. The tokens are in `web/assets/app.src.css`; here they are only
 // composed.
 
-// Pagina describes each screen's context. A struct rather than five positional
+// Page describes each screen's context. A struct rather than five positional
 // parameters: by the time the fifth went in, the call had already become
 // guesswork.
-type Pagina struct {
-	Titulo string
+type Page struct {
+	Title string
 
 	// Kicker is the small-caps crumb above the title ("DASHBOARD", "WORKFLOWS").
 	Kicker string
 
-	// Ativo matches the menu item's key.
-	Ativo string
+	// Active matches the menu item's key.
+	Active string
 
-	// Acoes occupies the header's right-hand corner. Nil = no buttons.
-	Acoes templ.Component
+	// Actions occupies the header's right-hand corner. Nil = no buttons.
+	Actions templ.Component
 
-	// Ilha carries the extra assets of the interactive screens.
-	Ilha Ilha
+	// Island carries the extra assets of the interactive screens.
+	Island Island
 
-	// Largo removes the width limit. The DAG uses the whole screen; text does
+	// Wide removes the width limit. The DAG uses the whole screen; text does
 	// not.
-	Largo bool
+	Wide bool
 }
 
-// Ilha lists an interactive page's extra assets. It exists because only the DAG
+// Island lists an interactive page's extra assets. It exists because only the DAG
 // screen loads React (~350 KB): embedding that in Base would make every SSR page
 // pay for an interactivity it does not use.
-type Ilha struct {
+type Island struct {
 	CSS []string
 	JS  []string
 }
 
-templ Base(p Pagina) {
+templ Base(p Page) {
 	{{ marca := branding.De(ctx) }}
 	<!DOCTYPE html>
 	<html lang="en" class="h-full">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ p.Titulo } · { marca.Titulo }</title>
+			<title>{ p.Title } · { marca.Title }</title>
 			// Both fonts are served from the binary. The preload avoids the
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
@@ -69,13 +69,13 @@ templ Base(p Pagina) {
 			if css := marca.CSS(); css != "" {
 				@templ.Raw("<style>" + css + "</style>")
 			}
-			for _, href := range p.Ilha.CSS {
+			for _, href := range p.Island.CSS {
 				<link rel="stylesheet" href={ href }/>
 			}
 		</head>
 		<body class="h-full font-sans text-ink antialiased">
 			<div class="flex h-full">
-				@sidebar(p.Ativo, marca)
+				@sidebar(p.Active, marca)
 				<main class="flex-1 overflow-y-auto">
 					<header class="sticky top-0 z-10 border-b border-line bg-parchment-soft/85 px-10 py-6 backdrop-blur">
 						<div class="flex items-end justify-between gap-6">
@@ -83,16 +83,16 @@ templ Base(p Pagina) {
 								if p.Kicker != "" {
 									<p class="kicker mb-1.5">{ p.Kicker }</p>
 								}
-								<h1 class="display text-3xl text-ink">{ p.Titulo }</h1>
+								<h1 class="display text-3xl text-ink">{ p.Title }</h1>
 							</div>
-							if p.Acoes != nil {
+							if p.Actions != nil {
 								<div class="flex shrink-0 items-center gap-3">
-									@p.Acoes
+									@p.Actions
 								</div>
 							}
 						</div>
 					</header>
-					if p.Largo {
+					if p.Wide {
 						<div class="px-10 py-8">
 							{ children... }
 						</div>
@@ -109,7 +109,7 @@ templ Base(p Pagina) {
 			<script src="/assets/ui.js" defer></script>
 			// Then, in order: React's UMD builds have to exist before the shim,
 			// and the shim before React Flow's bundle.
-			for _, src := range p.Ilha.JS {
+			for _, src := range p.Island.JS {
 				<script src={ src }></script>
 			}
 		</body>
@@ -122,24 +122,24 @@ type item struct {
 	Chave string
 }
 
-templ sidebar(ativo string, marca branding.Marca) {
+templ sidebar(ativo string, marca branding.Brand) {
 	<aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface/60">
 		<div class="px-7 pt-7 pb-8">
 			<a href="/" class="flex items-center gap-3">
 				// h-9 matches the height of the serif title's box: the logo sits
 				// with the text rather than competing with it.
-				if marca.Logo == branding.LogoPadrao {
+				if marca.Logo == branding.DefaultLogo {
 					// Inline, so the symbol inherits the theme's colour.
 					<span class="block h-9 w-9 shrink-0 text-gold">
 						@templ.Raw(assets.LogoSVG)
 					</span>
 				} else if marca.Logo != "" {
-					<img src={ marca.Logo } alt={ marca.Titulo } class="h-9 w-9 shrink-0 rounded-lg object-contain"/>
+					<img src={ marca.Logo } alt={ marca.Title } class="h-9 w-9 shrink-0 rounded-lg object-contain"/>
 				}
-				<span class="display block text-[2rem] leading-none tracking-[0.02em] text-ink">{ marca.Titulo }</span>
+				<span class="display block text-[2rem] leading-none tracking-[0.02em] text-ink">{ marca.Title }</span>
 			</a>
-			if marca.Subtitulo != "" {
-				<p class="kicker mt-2">{ marca.Subtitulo }</p>
+			if marca.Subtitle != "" {
+				<p class="kicker mt-2">{ marca.Subtitle }</p>
 			}
 		</div>
 		<nav class="flex-1 px-4">
@@ -186,7 +186,7 @@ templ sidebar(ativo string, marca branding.Marca) {
 			</form>
 		}
 		<div class="border-t border-line-soft px-7 py-6">
-			if linhas := marca.Linhas(); len(linhas) > 0 {
+			if linhas := marca.Lines(); len(linhas) > 0 {
 				<p class="font-serif text-[0.95rem] leading-snug text-muted italic">
 					for i, l := range linhas {
 						if i == 0 {
@@ -207,13 +207,13 @@ templ sidebar(ativo string, marca branding.Marca) {
 			}
 			// It does not come from the configuration — it comes from here. No
 			// YAML value removes this line, and that is why it is not a field of
-			// Marca.
+			// Brand.
 			<a
 				href="https://github.com/AreteAcademy/brevis"
 				target="_blank"
 				rel="noreferrer"
 				class="mt-4 block text-[0.68rem] tracking-[0.1em] text-muted/60 uppercase transition-colors hover:text-gold-strong"
-			>{ branding.Atribuicao }</a>
+			>{ branding.Attribution }</a>
 		</div>
 	</aside>
 }

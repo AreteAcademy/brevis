@@ -472,7 +472,7 @@ func TestSemVagasNaoHaLimite(t *testing.T) {
 func TestTentativaChegaNaTask(t *testing.T) {
 	var vistas []int
 	espiao := &executorEspiao{aoExecutar: func(tk execution.TaskExec) {
-		vistas = append(vistas, tk.Tentativa)
+		vistas = append(vistas, tk.Attempt)
 	}}
 
 	w := wf.Workflow{Slug: "w", Image: "img", Nodes: []wf.Node{{ID: "a", Run: "x"}}}

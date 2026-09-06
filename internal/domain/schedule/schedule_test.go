@@ -19,8 +19,8 @@ func ptr(t time.Time) *time.Time { return &t }
 // cada dia tem significado proprio.
 func TestCatchupTruePreencheALacuna(t *testing.T) {
 	s := Schedule{
-		Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Ativo: true,
-		UltimoSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
+		Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Active: true,
+		LastSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
 	}
 	slots, truncado, err := s.Slots(emUTC("2026-01-05T03:00:00Z"), 0)
 	if err != nil {
@@ -41,8 +41,8 @@ func TestCatchupTruePreencheALacuna(t *testing.T) {
 // desperdicio quando apenas o estado atual importa.
 func TestCatchupFalseSoOMaisRecente(t *testing.T) {
 	s := Schedule{
-		Cron: "0 2 * * *", Timezone: "UTC", Catchup: false, Ativo: true,
-		UltimoSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
+		Cron: "0 2 * * *", Timezone: "UTC", Catchup: false, Active: true,
+		LastSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
 	}
 	slots, _, err := s.Slots(emUTC("2026-01-05T03:00:00Z"), 0)
 	if err != nil {
@@ -60,8 +60,8 @@ func TestCatchupFalseSoOMaisRecente(t *testing.T) {
 // corta e SINALIZA, em vez de truncar em silencio.
 func TestLimiteTruncaESinaliza(t *testing.T) {
 	s := Schedule{
-		Cron: "0 * * * *", Timezone: "UTC", Catchup: true, Ativo: true,
-		UltimoSlot: ptr(emUTC("2026-01-01T00:00:00Z")),
+		Cron: "0 * * * *", Timezone: "UTC", Catchup: true, Active: true,
+		LastSlot: ptr(emUTC("2026-01-01T00:00:00Z")),
 	}
 	slots, truncado, err := s.Slots(emUTC("2026-02-01T00:00:00Z"), 10)
 	if err != nil {
@@ -77,7 +77,7 @@ func TestLimiteTruncaESinaliza(t *testing.T) {
 
 // Agenda nova nao materializa a historia inteira do cron: comeca de agora.
 func TestSemUltimoSlotNaoCriaHistoria(t *testing.T) {
-	s := Schedule{Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Ativo: true}
+	s := Schedule{Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Active: true}
 	slots, _, err := s.Slots(emUTC("2026-06-15T03:00:00Z"), 0)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestSemUltimoSlotNaoCriaHistoria(t *testing.T) {
 // O fuso muda o instante em UTC do disparo — e o caso do horario brasileiro,
 // onde "02:00" nao e 02:00Z.
 func TestTimezoneMudaOInstante(t *testing.T) {
-	base := Schedule{Cron: "0 2 * * *", Ativo: true, UltimoSlot: ptr(emUTC("2026-06-10T00:00:00Z"))}
+	base := Schedule{Cron: "0 2 * * *", Active: true, LastSlot: ptr(emUTC("2026-06-10T00:00:00Z"))}
 
 	utc := base
 	utc.Timezone = "UTC"
@@ -120,8 +120,8 @@ func TestTimezoneMudaOInstante(t *testing.T) {
 
 func TestAgendaInativaNaoProduzSlot(t *testing.T) {
 	s := Schedule{
-		Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Ativo: false,
-		UltimoSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
+		Cron: "0 2 * * *", Timezone: "UTC", Catchup: true, Active: false,
+		LastSlot: ptr(emUTC("2026-01-01T02:00:00Z")),
 	}
 	slots, _, err := s.Slots(emUTC("2026-01-05T03:00:00Z"), 0)
 	if err != nil {
@@ -148,8 +148,8 @@ func TestValidacao(t *testing.T) {
 
 // O YAML do autor: "0 2 * * *" todo dia as 02:00.
 func TestCronDoExemploDoAutor(t *testing.T) {
-	s := Schedule{Cron: "0 2 * * *", Timezone: "UTC", Ativo: true}
-	prox, err := s.Proximo(emUTC("2026-03-10T23:30:00Z"))
+	s := Schedule{Cron: "0 2 * * *", Timezone: "UTC", Active: true}
+	prox, err := s.Next(emUTC("2026-03-10T23:30:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,8 +164,8 @@ func TestCronDoExemploDoAutor(t *testing.T) {
 // ponta que criou 1.100 runs onde deveria criar 1.
 func TestCatchupFalseNaoEhContornadoPelaTruncagem(t *testing.T) {
 	s := Schedule{
-		Cron: "0 * * * *", Timezone: "UTC", Catchup: false, Ativo: true,
-		UltimoSlot: ptr(emUTC("2026-01-01T00:00:00Z")),
+		Cron: "0 * * * *", Timezone: "UTC", Catchup: false, Active: true,
+		LastSlot: ptr(emUTC("2026-01-01T00:00:00Z")),
 	}
 	// dois meses de lacuna horaria contra um limite de 100 por ciclo
 	slots, truncado, err := s.Slots(emUTC("2026-03-01T00:00:00Z"), 100)

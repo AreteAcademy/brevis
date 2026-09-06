@@ -25,14 +25,14 @@ const fatiaDoInicio = TetoDoLog / 4
 // exactly the stretch where a program reports why it failed.
 type janela struct {
 	inicio  strings.Builder
-	fim     []string // buffer circular das linhas recentes
+	fim     []string // a ring buffer of the recent lines
 	fimLen  int      // bytes vivos em `fim`
 	cortado int      // bytes descartados no meio
 }
 
 // Escrever appends one line.
 func (j *janela) Escrever(linha string) {
-	n := len(linha) + 1 // +1 pela quebra
+	n := len(linha) + 1 // +1 for the newline
 
 	if j.inicio.Len()+n <= fatiaDoInicio {
 		j.inicio.WriteString(linha)

@@ -49,8 +49,7 @@ func New(ctx context.Context, url string) (*Pool, error) {
 }
 
 // Check is the health contract: a ping with a deadline. Without a timeout, a
-// slow database
-// faria o readiness pendurar em vez de reprovar.
+// slow database would make readiness hang instead of failing.
 func (p *Pool) Check(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

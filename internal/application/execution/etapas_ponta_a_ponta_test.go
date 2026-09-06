@@ -96,7 +96,7 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 	if err := json.Unmarshal(espiao.etapas, &etapas); err != nil {
 		t.Fatalf("etapas ilegiveis: %v — %s", err, espiao.etapas)
 	}
-	if len(etapas) != 1 || etapas[0].Nome != "extract" || etapas[0].Estado != "done" {
+	if len(etapas) != 1 || etapas[0].Nome != "extract" || etapas[0].State != "done" {
 		t.Fatalf("etapas: %+v", etapas)
 	}
 

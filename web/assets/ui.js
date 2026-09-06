@@ -35,7 +35,7 @@
   abrirPeloHash();
   window.addEventListener("hashchange", abrirPeloHash);
 
-  // --- Tooltip dos graficos ------------------------------------------------
+  // --- The charts' tooltip --------------------------------------------------
   //
   // The SVG's <title> does show the value, but only after a second of hovering
   // and with the operating system's appearance. Here the tooltip appears at

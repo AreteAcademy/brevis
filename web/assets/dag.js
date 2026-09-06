@@ -116,7 +116,8 @@
           },
         }),
         h("span", { style: { color: TINTA, fontSize: 13, fontWeight: 600 } }, d.label),
-        // O selo do SDK. Cor de ACENTO, nunca de estado: as cores de estado
+        // The SDK badge. An ACCENT colour, never a state one: the state
+        // colours
         // mean "how it went", and a badge painted green would say something it
         // does not know.
         //
@@ -130,7 +131,8 @@
               {
                 title: d.recolhido ? "show the stages" : "collapse the stages",
                 onClick: function (ev) {
-                  // Sem isto o clique tambem selecionaria o passo, e recolher
+                  // Without this the click would also select the step, and
+                  // collapsing
                   // abriria o painel de detalhes junto.
                   ev.stopPropagation();
                   d.alternar();

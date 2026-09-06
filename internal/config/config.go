@@ -42,7 +42,7 @@ type Config struct {
 	SlackWebhook string
 
 	// Auth is the operator credential that closes the interface. See internal/auth.
-	Auth auth.Credencial
+	Auth auth.Credential
 
 	// UIURL builds the run's link in the alert. Without it the alert says what
 	// failed but makes the reader hunt for the run by hand.
@@ -102,10 +102,10 @@ func Load() (Config, error) {
 		TaskEnv:      lista("BREVIS_TASK_ENV"),
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),
 		UIURL:        os.Getenv("BREVIS_UI_URL"),
-		Auth: auth.Credencial{
-			Usuario: os.Getenv("BREVIS_AUTH_USUARIO"),
-			Hash:    os.Getenv("BREVIS_AUTH_SENHA_HASH"),
-			Segredo: []byte(os.Getenv("BREVIS_AUTH_SEGREDO")),
+		Auth: auth.Credential{
+			User:   os.Getenv("BREVIS_AUTH_USUARIO"),
+			Hash:   os.Getenv("BREVIS_AUTH_SENHA_HASH"),
+			Secret: []byte(os.Getenv("BREVIS_AUTH_SEGREDO")),
 		},
 		Pods: PodsConfig{
 			Modo:              get("BREVIS_PODS", "auto"),
@@ -140,7 +140,7 @@ func Load() (Config, error) {
 	default:
 		return Config{}, fmt.Errorf("BREVIS_PODS: %q is not valid (auto, on or off)", c.Pods.Modo)
 	}
-	if err := c.Auth.Validar(); err != nil {
+	if err := c.Auth.Validate(); err != nil {
 		return Config{}, err
 	}
 	// Outside local, starting without a credential is refused.
@@ -156,7 +156,7 @@ func Load() (Config, error) {
 	// `local` is left out because there the server listens on the developer's
 	// own machine, and demanding a password on every `make up` would push the
 	// team to turn authentication off for good.
-	if c.Env != "local" && !c.Auth.Ativa() {
+	if c.Env != "local" && !c.Auth.Enabled() {
 		return Config{}, fmt.Errorf(
 			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USUARIO, "+
 				"BREVIS_AUTH_SENHA_HASH (generate one with `brevis hash`) and "+

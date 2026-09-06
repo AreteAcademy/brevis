@@ -33,7 +33,7 @@ func alerta() notify.Alerta {
 	return notify.Alerta{
 		Workflow: "id_verification", RunID: "1f2e3d4c-0000-0000-0000-000000000000",
 		Status: "failed", Trigger: "schedule", Tentativas: 3, LogicalDate: &quando,
-		Erro:    "nivel 1: step \"run\": saiu com codigo 2\nDatabase Error in model x",
+		Err:     "nivel 1: step \"run\": saiu com codigo 2\nDatabase Error in model x",
 		Tags:    []string{"acme", "id", "dbt"},
 		URLBase: "https://brevis.example.com",
 	}
@@ -79,7 +79,7 @@ func TestMensagemTemOContextoDaFalha(t *testing.T) {
 func TestErroLongoEhTruncado(t *testing.T) {
 	s, recebido := capturar(t, 200, "ok")
 	a := alerta()
-	a.Erro = strings.Repeat("linha muito comprida de stack trace ", 200)
+	a.Err = strings.Repeat("linha muito comprida de stack trace ", 200)
 
 	if err := s.Falhou(context.Background(), a); err != nil {
 		t.Fatal(err)

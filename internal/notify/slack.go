@@ -30,7 +30,7 @@ type Alerta struct {
 	Trigger     string
 	Tentativas  int
 	LogicalDate *time.Time
-	Erro        string
+	Err         string
 
 	// Passo is the node that failed. It arrives as a field of its own, and not
 	// only embedded in the error text, because it is the first thing whoever is
@@ -116,16 +116,16 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 	dominio, pipeline := s.classificar(a)
 
 	campos := []bloco{
-		campo("*Domínio:*\n`" + dominio + "`"),
+		campo("*Domain:*\n`" + dominio + "`"),
 		campo("*Pipeline:*\n`" + pipeline + "`"),
 		campo("*Status:*\n:x: " + strings.ToUpper(a.Status)),
-		campo("*Origem:*\n`" + a.Trigger + "`"),
+		campo("*Trigger:*\n`" + a.Trigger + "`"),
 	}
 	if a.Passo != "" {
-		campos = append(campos, campo("*Passo:*\n`"+a.Passo+"`"))
+		campos = append(campos, campo("*Step:*\n`"+a.Passo+"`"))
 	}
 	if a.Tentativas > 0 {
-		campos = append(campos, campo(fmt.Sprintf("*Tentativas:*\n%d", a.Tentativas)))
+		campos = append(campos, campo(fmt.Sprintf("*Attempts:*\n%d", a.Tentativas)))
 	}
 	if a.LogicalDate != nil {
 		// The TIMEZONE travels with it, and that is not decoration: the same
@@ -137,7 +137,7 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		// It stays Local(), and not fixed UTC: whoever operates decides, by
 		// setting TZ on the deployment -- and now the message says which
 		// decision that was.
-		campos = append(campos, campo("*Data lógica:*\n"+
+		campos = append(campos, campo("*Logical date:*\n"+
 			a.LogicalDate.Local().Format("02/01/2006 15:04 MST")))
 	}
 
@@ -149,13 +149,13 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		{"type": "section", "fields": campos},
 	}
 
-	if a.Erro != "" {
+	if a.Err != "" {
 		// The error message already carries the last lines of stderr; cutting at
 		// 900 characters stays under Slack's 3000-character block limit, which
 		// would otherwise make the whole message be refused rather than
 		// truncated.
 		blocos = append(blocos, bloco{"type": "section", "text": bloco{
-			"type": "mrkdwn", "text": "```" + truncar(a.Erro, 900) + "```",
+			"type": "mrkdwn", "text": "```" + truncar(a.Err, 900) + "```",
 		}})
 	}
 	// The log goes in AFTER the error and separate from it: the error is the
@@ -164,13 +164,13 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 	// conclusion.
 	if a.TrechoDoLog != "" {
 		blocos = append(blocos, bloco{"type": "section", "text": bloco{
-			"type": "mrkdwn", "text": "*Últimas linhas:*\n```" + truncar(a.TrechoDoLog, 900) + "```",
+			"type": "mrkdwn", "text": "*Last lines:*\n```" + truncar(a.TrechoDoLog, 900) + "```",
 		}})
 	}
 	if a.URLBase != "" && a.RunID != "" {
 		url := strings.TrimRight(a.URLBase, "/") + "/runs/" + a.RunID
 		blocos = append(blocos, bloco{"type": "context", "elements": []bloco{
-			{"type": "mrkdwn", "text": "<" + url + "|abrir a execução> · `" + a.RunID + "`"},
+			{"type": "mrkdwn", "text": "<" + url + "|open the run> · `" + a.RunID + "`"},
 		}})
 	}
 
@@ -178,7 +178,7 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		// `text` outside the blocks is what shows in the phone notification and
 		// in the channel list. Without it Slack shows "This content can't be
 		// displayed" in the preview.
-		"text":   fmt.Sprintf(":rotating_light: %s falhou", a.Workflow),
+		"text":   fmt.Sprintf(":rotating_light: %s failed", a.Workflow),
 		"blocks": blocos,
 	}
 }

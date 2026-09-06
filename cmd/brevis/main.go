@@ -1,4 +1,4 @@
-// Command brevis e o binario unico da plataforma.
+// Command brevis is the platform's single binary.
 //
 // One binary with subcommands, not several binaries: the plan (section 2)
 // describes the API, the scheduler and the workers as roles of the same system,
@@ -119,7 +119,7 @@ func cmdMigrate() *cobra.Command {
 // or in CI, with no database and no server, is what makes the rule useful rather
 // than bureaucratic.
 // emLinha prints the params in a stable order — two identical runs have to
-// produzir o mesmo log.
+// produce the same log.
 func emLinha(m map[string]string) string {
 	chaves := make([]string, 0, len(m))
 	for k := range m {
@@ -236,7 +236,7 @@ func cmdHash() *cobra.Command {
 				return fmt.Errorf("password too short (%d characters); "+
 					"use at least 12 — this is the only way into the panel", len(senha))
 			}
-			h, err := auth.GerarHash(senha)
+			h, err := auth.GenerateHash(senha)
 			if err != nil {
 				return err
 			}
@@ -283,24 +283,24 @@ func cmdBrand() *cobra.Command {
 		Short:   "Validate a brand file (needs no database)",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// Carregar treats absence as "use the default", which is right at
+			// Load treats absence as "use the default", which is right at
 			// boot and wrong here: whoever asked to validate a path expects to
 			// be told it does not exist.
 			if _, err := os.Stat(args[0]); err != nil {
 				return err
 			}
-			m, err := branding.Carregar(args[0])
+			m, err := branding.Load(args[0])
 			if err != nil {
 				return err
 			}
 			logo := m.Logo
-			if logo == branding.LogoPadrao {
+			if logo == branding.DefaultLogo {
 				logo += "  (built-in symbol)"
 			}
-			fmt.Printf("  ok    %s · %s\n", m.Titulo, m.Subtitulo)
+			fmt.Printf("  ok    %s · %s\n", m.Title, m.Subtitle)
 			fmt.Printf("        logo      %s\n", logo)
-			fmt.Printf("        accent    %s\n", m.Tema.Destaque)
-			fmt.Printf("        %s\n", branding.Atribuicao)
+			fmt.Printf("        accent    %s\n", m.Theme.Accent)
+			fmt.Printf("        %s\n", branding.Attribution)
 			return nil
 		},
 	}
@@ -653,7 +653,7 @@ func cmdScheduler() *cobra.Command {
 					return err
 				}
 				var w wfdom.Workflow
-				if err := json.Unmarshal(r.Definicao, &w); err != nil {
+				if err := json.Unmarshal(r.Definition, &w); err != nil {
 					return err
 				}
 				return app.Runner{
@@ -786,7 +786,7 @@ func cmdBackfill() *cobra.Command {
 }
 
 // acoesDaUI wires the screen's two effects — pause a schedule and run now — to
-// the components that already implement them. It exists to keep the `api.Acoes`
+// the components that already implement them. It exists to keep the `api.Actions`
 // interface small: the UI must not be able to do anything else to the system.
 type acoesDaUI struct {
 	agendas *postgres.ScheduleRepo
@@ -834,22 +834,22 @@ func serve(ctx context.Context) error {
 	// YAML) and does not stop the interface from starting — taking the API down
 	// over a colour would be worse than serving it with the default theme and a
 	// warning in the log.
-	marca, err := branding.Carregar(cfg.BrandFile)
+	marca, err := branding.Load(cfg.BrandFile)
 	if err != nil {
 		log.Warn("visual identity ignored", "file", cfg.BrandFile, "error", err)
-	} else if marca.Titulo != branding.Padrao().Titulo {
-		log.Info("visual identity loaded", "file", cfg.BrandFile, "title", marca.Titulo)
+	} else if marca.Title != branding.Default().Title {
+		log.Info("visual identity loaded", "file", cfg.BrandFile, "title", marca.Title)
 	}
 
-	ui := api.NewUI(postgres.NewLeituraRepo(pool), postgres.NewWorkflowRepo(pool),
+	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
 		runsRepo, acoesDaUI{agendas: agendas, sched: sched}, marca, log)
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
 	srv := api.NewServerAutenticado(log, map[string]api.Checker{"postgres": pool}, ui,
 		cfg.Auth, cfg.Env == "local").HTTPServer(cfg.HTTPAddr)
-	if cfg.Auth.Ativa() {
-		log.Info("interface is protected", "user", cfg.Auth.Usuario)
+	if cfg.Auth.Enabled() {
+		log.Info("interface is protected", "user", cfg.Auth.User)
 	} else {
 		log.Warn("interface is OPEN: anyone can trigger a workflow",
 			"hint", "set BREVIS_AUTH_USUARIO and BREVIS_AUTH_SENHA_HASH")

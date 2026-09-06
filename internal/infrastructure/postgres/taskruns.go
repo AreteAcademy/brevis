@@ -94,7 +94,7 @@ func (r *RunRepo) PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID s
 // `DISTINCT ON` rather than max(attempt) in a subselect: the most recent
 // attempt is the one that matters on screen, and an old attempt that failed must
 // not paint the node red after the retry succeeded.
-func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string]EstadoNo, error) {
+func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string]NodeState, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT DISTINCT ON (node_id)
 		       node_id, status, attempt, exit_code, erro, iniciado_em, terminado_em,
@@ -107,13 +107,13 @@ func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string
 	}
 	defer linhas.Close()
 
-	out := map[string]EstadoNo{}
+	out := map[string]NodeState{}
 	for linhas.Next() {
-		var e EstadoNo
+		var e NodeState
 		var ini, fim *time.Time
 		var etapas []byte
-		if err := linhas.Scan(&e.NodeID, &e.Status, &e.Tentativa, &e.ExitCode,
-			&e.Erro, &ini, &fim, &etapas, &e.SdkVersao); err != nil {
+		if err := linhas.Scan(&e.NodeID, &e.Status, &e.Attempt, &e.ExitCode,
+			&e.Err, &ini, &fim, &etapas, &e.SdkVersao); err != nil {
 			return nil, err
 		}
 		e.Etapas = etapasDoPasso(etapas, e.Status)
@@ -126,13 +126,13 @@ func (r *RunRepo) EstadoDosNos(ctx context.Context, runID uuid.UUID) (map[string
 	return out, linhas.Err()
 }
 
-// EstadoNo is a step's state, for the UI.
-type EstadoNo struct {
+// NodeState is a step's state, for the UI.
+type NodeState struct {
 	NodeID    string `json:"node_id"`
 	Status    string `json:"status"`
-	Tentativa int    `json:"attempt"`
+	Attempt   int    `json:"attempt"`
 	ExitCode  *int   `json:"exit_code,omitempty"`
-	Erro      string `json:"erro,omitempty"`
+	Err       string `json:"erro,omitempty"`
 	DuracaoMs int64  `json:"duracao_ms"`
 
 	// Etapas are the phases announced by an SDK step. Empty for a step that is
@@ -147,7 +147,7 @@ type EstadoNo struct {
 type Etapa struct {
 	Indice  int            `json:"indice"`
 	Nome    string         `json:"nome"`
-	Estado  string         `json:"estado"`
+	State   string         `json:"estado"`
 	Ms      *int64         `json:"ms,omitempty"`
 	Em      string         `json:"em"`
 	Numeros map[string]any `json:"numeros,omitempty"`
@@ -171,8 +171,8 @@ func etapasDoPasso(dados []byte, status string) []Etapa {
 	}
 	if terminal(status) {
 		for i := range etapas {
-			if etapas[i].Estado == "running" {
-				etapas[i].Estado = "aborted"
+			if etapas[i].State == "running" {
+				etapas[i].State = "aborted"
 			}
 		}
 	}
@@ -187,13 +187,13 @@ func terminal(status string) bool {
 	return false
 }
 
-// LogDoPasso is one attempt's output, for the run's screen.
-type LogDoPasso struct {
+// StepLog is one attempt's output, for the run's screen.
+type StepLog struct {
 	NodeID    string
-	Tentativa int
+	Attempt   int
 	Status    string
 	ExitCode  *int
-	Erro      string
+	Err       string
 	Log       string
 	DuracaoMs int64
 }
@@ -204,7 +204,7 @@ type LogDoPasso struct {
 // EVERY attempt, not only the last: when a step passes on the second, what
 // explains the first failure is precisely in the attempt the screen would
 // discard.
-func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso, error) {
+func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, error) {
 	linhas, err := r.pool.Query(ctx, `
 		SELECT node_id, attempt, status, exit_code, erro, log,
 		       COALESCE(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000, 0)::bigint
@@ -216,11 +216,11 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso,
 	}
 	defer linhas.Close()
 
-	var out []LogDoPasso
+	var out []StepLog
 	for linhas.Next() {
-		var p LogDoPasso
-		if err := linhas.Scan(&p.NodeID, &p.Tentativa, &p.Status, &p.ExitCode,
-			&p.Erro, &p.Log, &p.DuracaoMs); err != nil {
+		var p StepLog
+		if err := linhas.Scan(&p.NodeID, &p.Attempt, &p.Status, &p.ExitCode,
+			&p.Err, &p.Log, &p.DuracaoMs); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -228,7 +228,7 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso,
 	return out, linhas.Err()
 }
 
-// PassoQueFalhou returns the node and the output of the last attempt that
+// FailedStep returns the node and the output of the last attempt that
 // failed.
 //
 // `ORDER BY iniciado_em DESC` and not `attempt DESC`: in a graph with several
@@ -239,7 +239,7 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]LogDoPasso,
 // Absence is not an error: a run that died before any step started (a missing
 // image, a cancelled queue) has no task_run at all, and the alert goes out
 // without this part rather than not going out.
-func (r *RunRepo) PassoQueFalhou(ctx context.Context, runID uuid.UUID) (string, string, error) {
+func (r *RunRepo) FailedStep(ctx context.Context, runID uuid.UUID) (string, string, error) {
 	var passo, log string
 	err := r.pool.QueryRow(ctx, `
 		SELECT node_id, log

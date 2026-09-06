@@ -63,7 +63,7 @@ func TestCriterioDeAceite_100Runs_Concorrencia5(t *testing.T) {
 		r, err := repo.Criar(ctx, dom.Run{
 			WorkflowSlug:   "teste",
 			IdempotencyKey: fmt.Sprintf("aceite-%d", i),
-			Definicao:      []byte(`{}`),
+			Definition:     []byte(`{}`),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -175,12 +175,12 @@ func TestIdempotenciaImpedeRunDuplicado(t *testing.T) {
 	ctx := context.Background()
 	repo := postgres.NewRunRepo(pool)
 
-	r := dom.Run{WorkflowSlug: "w", IdempotencyKey: "mesma-chave", Definicao: []byte(`{}`)}
+	r := dom.Run{WorkflowSlug: "w", IdempotencyKey: "mesma-chave", Definition: []byte(`{}`)}
 	if _, err := repo.Criar(ctx, r); err != nil {
 		t.Fatal(err)
 	}
 	_, err := repo.Criar(ctx, dom.Run{
-		WorkflowSlug: "w", IdempotencyKey: "mesma-chave", Definicao: []byte(`{}`),
+		WorkflowSlug: "w", IdempotencyKey: "mesma-chave", Definition: []byte(`{}`),
 	})
 	if !errors.Is(err, postgres.ErrJaExiste) {
 		t.Fatalf("erro = %v, queria ErrJaExiste", err)
@@ -194,7 +194,7 @@ func TestEnqueueEhIdempotente(t *testing.T) {
 	repo := postgres.NewRunRepo(pool)
 	fila := queue.New(pool.Pool)
 
-	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "k", Definicao: []byte(`{}`)})
+	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "k", Definition: []byte(`{}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestClaimNaoEntregaOMesmoItemDuasVezes(t *testing.T) {
 	const n = 20
 	for i := 0; i < n; i++ {
 		r, err := repo.Criar(ctx, dom.Run{
-			WorkflowSlug: "w", IdempotencyKey: fmt.Sprintf("c-%d", i), Definicao: []byte(`{}`),
+			WorkflowSlug: "w", IdempotencyKey: fmt.Sprintf("c-%d", i), Definition: []byte(`{}`),
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -273,7 +273,7 @@ func TestRecuperarDevolveItemDeWorkerMorto(t *testing.T) {
 	repo := postgres.NewRunRepo(pool)
 	fila := queue.New(pool.Pool)
 
-	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "z", Definicao: []byte(`{}`)})
+	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "z", Definition: []byte(`{}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +311,7 @@ func TestRecuperarOrfaosDevolveORunAFila(t *testing.T) {
 	repo := postgres.NewRunRepo(pool)
 	fila := queue.New(pool.Pool)
 
-	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "orfa", Definicao: []byte(`{}`)})
+	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "orfa", Definition: []byte(`{}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +352,7 @@ func TestRecuperarOrfaosDevolveORunAFila(t *testing.T) {
 	if depois.Attempt != 1 {
 		t.Errorf("tentativa = %d; a morte do worker consome uma tentativa", depois.Attempt)
 	}
-	if depois.Erro == "" {
+	if depois.Err == "" {
 		t.Error("o run precisa registrar POR QUE foi recuperado")
 	}
 	if pendentes, _, _ := fila.Tamanho(ctx); pendentes != 1 {
@@ -368,7 +368,7 @@ func TestOrfaoParaDeVoltarQuandoEsgotaTentativas(t *testing.T) {
 	repo := postgres.NewRunRepo(pool)
 	fila := queue.New(pool.Pool)
 
-	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "orfa2", Definicao: []byte(`{}`)})
+	r, err := repo.Criar(ctx, dom.Run{WorkflowSlug: "w", IdempotencyKey: "orfa2", Definition: []byte(`{}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +433,7 @@ func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "id_verification", IdempotencyKey: "falha",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","id","dbt"]}`),
+		TriggerType: "schedule", Definition: []byte(`{"Tags":["acme","id","dbt"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -480,8 +480,8 @@ func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 	if len(a.Tags) != 3 || a.Tags[1] != "id" {
 		t.Errorf("tags do snapshot nao chegaram: %v", a.Tags)
 	}
-	if !strings.Contains(a.Erro, "codigo 2") {
-		t.Errorf("alerta sem a causa: %q", a.Erro)
+	if !strings.Contains(a.Err, "codigo 2") {
+		t.Errorf("alerta sem a causa: %q", a.Err)
 	}
 	if a.URLBase == "" || a.RunID != r.ID.String() {
 		t.Errorf("alerta sem o link da execucao: %+v", a)
@@ -499,7 +499,7 @@ func TestFalhaAoAvisarNaoDerrubaODispatcher(t *testing.T) {
 	fila := queue.New(pool.Pool)
 
 	r, _ := repo.Criar(ctx, dom.Run{
-		WorkflowSlug: "w", IdempotencyKey: "x", Definicao: []byte(`{}`),
+		WorkflowSlug: "w", IdempotencyKey: "x", Definition: []byte(`{}`),
 	})
 	_ = repo.Transicionar(ctx, r.ID, dom.StatusQueued)
 	_ = fila.Enqueue(ctx, r.ID, 0, time.Time{})
@@ -536,7 +536,7 @@ func enfileirar(t *testing.T, repo *postgres.RunRepo, fila *queue.Queue,
 	for i := 0; i < quantos; i++ {
 		r, err := repo.Criar(ctx, dom.Run{
 			WorkflowSlug: slug, IdempotencyKey: fmt.Sprintf("%s-%d", slug, i),
-			Definicao: []byte(`{}`), MaxAtivos: maxAtivos,
+			Definition: []byte(`{}`), MaxActive: maxAtivos,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -665,7 +665,7 @@ func TestRetryQueDaCertoNaoAlerta(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "id_verification", IdempotencyKey: "retry-ok",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","id"]}`),
+		TriggerType: "schedule", Definition: []byte(`{"Tags":["acme","id"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -725,7 +725,7 @@ func TestAlertaCarregaOPassoEOLog(t *testing.T) {
 
 	r, err := repo.Criar(ctx, dom.Run{
 		WorkflowSlug: "vendors_inmet_observation", IdempotencyKey: "com-log",
-		TriggerType: "schedule", Definicao: []byte(`{"Tags":["acme","vendors"]}`),
+		TriggerType: "schedule", Definition: []byte(`{"Tags":["acme","vendors"]}`),
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -272,9 +272,9 @@ func init() {
 	runCmd.Flags().Bool("dry-run", false, "Extract only, don't load")
 }
 
-// columnsFor translates the --metadata flag into the declaration the SDK
-// desde a v0.24.0: as duas colunas de ingestão deixaram de ser um interruptor
-// and came to be declared like any other.
+// columnsFor translates the --metadata flag into the declaration the SDK has
+// expected since v0.24.0: the two ingestion columns stopped being a switch and
+// came to be declared like any other.
 //
 // The CLI composes no row at all, so it only declares what the caller asked
 // for; a batch without those columns is refused with the error that names

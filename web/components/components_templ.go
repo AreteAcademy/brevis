@@ -17,13 +17,13 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// Estado desenha o estado de um Run.
+// State desenha o estado de um Run.
 //
 // The colours are desaturated on purpose: a dashboard's pure green and red fight
 // the parchment and shout louder than the information. The shape carries meaning
 // too — the dot is filled for what has finished and ringed for what is still
 // alive — so it does not depend on colour alone.
-func Estado(status string) templ.Component {
+func State(status string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -105,9 +105,9 @@ func Estado(status string) templ.Component {
 	})
 }
 
-// Ponto is the minimal version, for dense tables where the label is already in
+// Dot is the minimal version, for dense tables where the label is already in
 // the column.
-func Ponto(status string) templ.Component {
+func Dot(status string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -225,8 +225,8 @@ func pontoEstado(s string) string {
 	return "bg-state-pending"
 }
 
-// Cartao e o painel base: superficie clara, borda fina, sombra quente e larga.
-func Cartao(rotulo string) templ.Component {
+// Card is the base panel: a light surface, a thin border, a warm wide shadow.
+func Card(rotulo string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -282,10 +282,10 @@ func Cartao(rotulo string) templ.Component {
 	})
 }
 
-// Indicador is one of the four numbers at the top of the Overview. The large
+// Metric is one of the four numbers at the top of the Overview. The large
 // serif number is what sets the editorial tone — in sans it would become just
 // another dashboard.
-func Indicador(rotulo, valor, nota string, matiz string) templ.Component {
+func Metric(rotulo, valor, nota string, matiz string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -385,10 +385,10 @@ func Indicador(rotulo, valor, nota string, matiz string) templ.Component {
 	})
 }
 
-// Vazio communicates the absence of data without looking like an error. An empty
+// Empty communicates the absence of data without looking like an error. An empty
 // table with no explanation sends the operator looking for a defect where there
 // is none.
-func Vazio(msg, dica string) templ.Component {
+func Empty(msg, dica string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -453,8 +453,8 @@ func Vazio(msg, dica string) templ.Component {
 	})
 }
 
-// Etiqueta is a tag chip. It becomes a link when `rota` exists, to filter.
-func Etiqueta(texto, rota string) templ.Component {
+// Tag is a tag chip. It becomes a link when `rota` exists, to filter.
+func Tag(texto, rota string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -545,10 +545,10 @@ const (
 	margemBaixo    = 26
 )
 
-// Execucoes draws one stacked column per hour, with the average-duration line on
+// RunsChart draws one stacked column per hour, with the average-duration line on
 // top — the two readings the Overview screen has to cross: "how many" and
 // "quanto tempo".
-func Execucoes(baldes []postgres.Balde) templ.Component {
+func RunsChart(baldes []postgres.Bucket) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -570,7 +570,7 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(baldes) == 0 {
-			templ_7745c5c3_Err = Vazio("No run in the window.", "brevis scheduler").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = Empty("No run in the window.", "brevis scheduler").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -948,9 +948,9 @@ func Execucoes(baldes []postgres.Balde) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var54 string
-				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("peak average duration: " + Duracao(picoDuracao(baldes)))
+				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("peak average duration: " + Duration(picoDuracao(baldes)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 193, Col: 64}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 193, Col: 65}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 				if templ_7745c5c3_Err != nil {
@@ -1092,7 +1092,7 @@ func legenda(cor, texto string) templ.Component {
 
 // Rosca resume a mesma janela em proporcao. O total no centro evita a leitura
 // only relative: 95% of twenty runs is not 95% of two thousand.
-func Rosca(i postgres.Indicadores) templ.Component {
+func Rosca(i postgres.Indicators) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1243,7 +1243,7 @@ type Grade struct {
 	Rotulo string
 }
 
-type Marca struct {
+type Brand struct {
 	X      int
 	Rotulo string
 }
@@ -1254,7 +1254,7 @@ type Marca struct {
 //
 // The previous version divided the raw maximum by four and produced axes like
 // 0/6/12/18/25 — every label a different interval from the one before it.
-func teto(baldes []postgres.Balde) int {
+func teto(baldes []postgres.Bucket) int {
 	max := 0
 	for _, b := range baldes {
 		if t := b.Total(); t > max {
@@ -1273,7 +1273,7 @@ func teto(baldes []postgres.Balde) int {
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(baldes []postgres.Balde) []Grade {
+func linhasDeGrade(baldes []postgres.Bucket) []Grade {
 	max := teto(baldes)
 	util := alturaGrafico - margemBaixo
 	var out []Grade
@@ -1287,7 +1287,7 @@ func linhasDeGrade(baldes []postgres.Balde) []Grade {
 	return out
 }
 
-func barras(baldes []postgres.Balde) []Barra {
+func barras(baldes []postgres.Bucket) []Barra {
 	max := teto(baldes)
 	util := alturaGrafico - margemBaixo
 	area := larguraGrafico - margemEsq
@@ -1337,13 +1337,13 @@ func barras(baldes []postgres.Balde) []Barra {
 // linkDoBalde leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
-func linkDoBalde(b postgres.Balde) string {
+func linkDoBalde(b postgres.Bucket) string {
 	de := b.Inicio.UTC().Format(time.RFC3339)
 	ate := b.Inicio.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
-func dicaDoBalde(b postgres.Balde) string {
+func dicaDoBalde(b postgres.Bucket) string {
 	partes := []string{b.Inicio.Local().Format("02/01 15h")}
 	if b.Sucesso > 0 {
 		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
@@ -1355,7 +1355,7 @@ func dicaDoBalde(b postgres.Balde) string {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
 	if b.DuracaoMedia > 0 {
-		partes = append(partes, "avg "+Duracao(&b.DuracaoMedia))
+		partes = append(partes, "avg "+Duration(&b.DuracaoMedia))
 	}
 	if len(partes) == 1 {
 		return partes[0] + " · no runs"
@@ -1364,7 +1364,7 @@ func dicaDoBalde(b postgres.Balde) string {
 }
 
 // picoDuracao is the curve's largest value — the secondary scale's reference.
-func picoDuracao(baldes []postgres.Balde) *time.Duration {
+func picoDuracao(baldes []postgres.Bucket) *time.Duration {
 	var maior time.Duration
 	for _, b := range baldes {
 		if b.DuracaoMedia > maior {
@@ -1380,7 +1380,7 @@ func picoDuracao(baldes []postgres.Balde) *time.Duration {
 // linhaDuracao normalizes the average duration by its OWN scale, not by the
 // count's: they are different magnitudes, and what matters here is the curve's
 // shape.
-func linhaDuracao(baldes []postgres.Balde) string {
+func linhaDuracao(baldes []postgres.Bucket) string {
 	var maior time.Duration
 	for _, b := range baldes {
 		if b.DuracaoMedia > maior {
@@ -1412,18 +1412,18 @@ func linhaDuracao(baldes []postgres.Balde) string {
 	return strings.TrimSpace(b.String())
 }
 
-func marcasDeHora(baldes []postgres.Balde) []Marca {
+func marcasDeHora(baldes []postgres.Bucket) []Brand {
 	area := larguraGrafico - margemEsq
 	passo := float64(area) / float64(len(baldes))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
 	salto := len(baldes)/8 + 1
-	var out []Marca
+	var out []Brand
 	for i, b := range baldes {
 		if i%salto != 0 {
 			continue
 		}
-		out = append(out, Marca{
+		out = append(out, Brand{
 			X:      margemEsq + int(float64(i)*passo+passo/2),
 			Rotulo: b.Inicio.Local().Format("15h"),
 		})
@@ -1441,7 +1441,7 @@ type Arco struct {
 
 // arcos builds the donut with a dasharray over a single circle. The perimeter is
 // 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
-func arcos(i postgres.Indicadores) []Arco {
+func arcos(i postgres.Indicators) []Arco {
 	const perimetro = 289
 	if i.Total == 0 {
 		return nil
@@ -1484,9 +1484,9 @@ func arcos(i postgres.Indicadores) []Arco {
 // Formatadores compartilhados
 // ---------------------------------------------------------------------------
 
-// Duracao picks the unit by order of magnitude. "0.4s" says more than "400ms" in
+// Duration picks the unit by order of magnitude. "0.4s" says more than "400ms" in
 // a column whose neighbour takes minutes.
-func Duracao(d *time.Duration) string {
+func Duration(d *time.Duration) string {
 	if d == nil {
 		return "—"
 	}
@@ -1501,10 +1501,10 @@ func Duracao(d *time.Duration) string {
 	return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
-// Quando writes the instant relatively up to a day, and as an absolute date
+// When writes the instant relatively up to a day, and as an absolute date
 // afterwards. "3 min ago" answers the operations question; "Mar 12 04:00"
 // answers the audit one, and the boundary between the two sits around a day.
-func Quando(t *time.Time) string {
+func When(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
@@ -1530,8 +1530,8 @@ func curto(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// Instante is the full date, for audit columns.
-func Instante(t *time.Time) string {
+// Timestamp is the full date, for audit columns.
+func Timestamp(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
@@ -1539,13 +1539,13 @@ func Instante(t *time.Time) string {
 }
 
 // ---------------------------------------------------------------------------
-// Erro em dialogo
+// Err em dialogo
 //
 // The error used to occupy a whole row below the run, inside the table. With a
 // real stack trace that pushed the rest of the list off the screen and mixed two
-// things — the list and the detail. Now the row holds a button, and
-// o texto vive num <dialog> nativo: ESC fecha, o backdrop escurece e o foco fica
-// trapped inside it without a line of JavaScript of ours.
+// things — the list and the detail. Now the row holds a button, and the text
+// lives in a native <dialog>: ESC closes it, the backdrop dims and the focus
+// stays trapped inside it without a line of JavaScript of ours.
 // ---------------------------------------------------------------------------
 func BotaoErro(runID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -1653,7 +1653,7 @@ func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Estado(status).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = State(status).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

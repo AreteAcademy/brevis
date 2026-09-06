@@ -24,38 +24,38 @@ import (
 // for the titles. The tokens are in `web/assets/app.src.css`; here they are only
 // composed.
 
-// Pagina describes each screen's context. A struct rather than five positional
+// Page describes each screen's context. A struct rather than five positional
 // parameters: by the time the fifth went in, the call had already become
 // guesswork.
-type Pagina struct {
-	Titulo string
+type Page struct {
+	Title string
 
 	// Kicker is the small-caps crumb above the title ("DASHBOARD", "WORKFLOWS").
 	Kicker string
 
-	// Ativo matches the menu item's key.
-	Ativo string
+	// Active matches the menu item's key.
+	Active string
 
-	// Acoes occupies the header's right-hand corner. Nil = no buttons.
-	Acoes templ.Component
+	// Actions occupies the header's right-hand corner. Nil = no buttons.
+	Actions templ.Component
 
-	// Ilha carries the extra assets of the interactive screens.
-	Ilha Ilha
+	// Island carries the extra assets of the interactive screens.
+	Island Island
 
-	// Largo removes the width limit. The DAG uses the whole screen; text does
+	// Wide removes the width limit. The DAG uses the whole screen; text does
 	// not.
-	Largo bool
+	Wide bool
 }
 
-// Ilha lists an interactive page's extra assets. It exists because only the DAG
+// Island lists an interactive page's extra assets. It exists because only the DAG
 // screen loads React (~350 KB): embedding that in Base would make every SSR page
 // pay for an interactivity it does not use.
-type Ilha struct {
+type Island struct {
 	CSS []string
 	JS  []string
 }
 
-func Base(p Pagina) templ.Component {
+func Base(p Page) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -82,9 +82,9 @@ func Base(p Pagina) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(p.Titulo)
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 57, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 57, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -95,9 +95,9 @@ func Base(p Pagina) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
-		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Titulo)
+		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 57, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 57, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -113,7 +113,7 @@ func Base(p Pagina) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		for _, href := range p.Ilha.CSS {
+		for _, href := range p.Island.CSS {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<link rel=\"stylesheet\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -136,7 +136,7 @@ func Base(p Pagina) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = sidebar(p.Ativo, marca).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = sidebar(p.Active, marca).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -168,9 +168,9 @@ func Base(p Pagina) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.Titulo)
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 86, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 86, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -180,12 +180,12 @@ func Base(p Pagina) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if p.Acoes != nil {
+		if p.Actions != nil {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"flex shrink-0 items-center gap-3\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = p.Acoes.Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = p.Actions.Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -198,7 +198,7 @@ func Base(p Pagina) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if p.Largo {
+		if p.Wide {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"px-10 py-8\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -229,7 +229,7 @@ func Base(p Pagina) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, src := range p.Ilha.JS {
+		for _, src := range p.Island.JS {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<script src=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -262,7 +262,7 @@ type item struct {
 	Chave string
 }
 
-func sidebar(ativo string, marca branding.Marca) templ.Component {
+func sidebar(ativo string, marca branding.Brand) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -287,7 +287,7 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if marca.Logo == branding.LogoPadrao {
+		if marca.Logo == branding.DefaultLogo {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, " <span class=\"block h-9 w-9 shrink-0 text-gold\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -319,9 +319,9 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(marca.Titulo)
+			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(marca.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 137, Col: 47}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 137, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -337,9 +337,9 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
-		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Titulo)
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 139, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 139, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -349,15 +349,15 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if marca.Subtitulo != "" {
+		if marca.Subtitle != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"kicker mt-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Subtitulo)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(marca.Subtitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 142, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 142, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -469,7 +469,7 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if linhas := marca.Linhas(); len(linhas) > 0 {
+		if linhas := marca.Lines(); len(linhas) > 0 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p class=\"font-serif text-[0.95rem] leading-snug text-muted italic\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -546,9 +546,9 @@ func sidebar(ativo string, marca branding.Marca) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var22 string
-		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(branding.Atribuicao)
+		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(branding.Attribution)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 216, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/layouts/base.templ`, Line: 216, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {

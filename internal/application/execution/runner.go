@@ -556,7 +556,7 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		// process dies midway), it stays stuck on the broken pod forever. That
 		// is what happened in dev: a pod Pending on insufficient CPU was
 		// re-adopted on every retry.
-		Tentativa:  tentativa,
+		Attempt:    tentativa,
 		Image:      imagem,
 		Shell:      n.UsaShell(),
 		CPU:        recursos.CPU,

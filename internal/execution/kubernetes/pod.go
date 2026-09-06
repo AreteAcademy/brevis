@@ -492,7 +492,7 @@ var invalidoEmNome = regexp.MustCompile(`[^a-z0-9-]+`)
 func NomeDoPod(t execution.TaskExec) string {
 	base := sanitizar(t.Workflow + "-" + t.NodeID)
 	soma := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
-		t.RunID, t.NodeID, t.TentativaDoRun, t.Tentativa)))
+		t.RunID, t.NodeID, t.TentativaDoRun, t.Attempt)))
 	sufixo := hex.EncodeToString(soma[:4])
 
 	const maxNome = 63
@@ -532,8 +532,8 @@ func (t tlsConfig) build() *tls.Config {
 	return &tls.Config{RootCAs: t.pool, MinVersion: tls.VersionTLS12}
 }
 
-// Motivo e o `reason` do status (DeadlineExceeded, OOMKilled, Evicted) — a
-// diferenca entre "o codigo falhou" e "o cluster matou o processo".
+// Motivo is the status's `reason` (DeadlineExceeded, OOMKilled, Evicted) — the
+// difference between "the code failed" and "the cluster killed the process".
 func (p Pod) Motivo() string {
 	if p.Status == nil {
 		return ""

@@ -17,7 +17,7 @@ import (
 type Param struct {
 	Nome      string
 	Tipo      TipoParam
-	Padrao    string
+	Default   string
 	Descricao string
 
 	// Enum restricts the accepted values. Empty = any that passes the type.
@@ -53,8 +53,8 @@ var caracteresSeguros = regexp.MustCompile(`^[A-Za-z0-9_.:/=,+@\- ]*$`)
 
 var nomeDeParam = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
 
-// Validar checks the param's declaration, not the value.
-func (p Param) Validar() error {
+// Validate checks the param's declaration, not the value.
+func (p Param) Validate() error {
 	if !nomeDeParam.MatchString(p.Nome) {
 		return fmt.Errorf("param %q: the name has to be lowercase, start with a letter and hold only letters, digits and _", p.Nome)
 	}
@@ -72,8 +72,8 @@ func (p Param) Validar() error {
 	}
 	// The default has to be valid by its own rules: a refused default would only
 	// apareceria no primeiro disparo agendado, de madrugada.
-	if p.Padrao != "" {
-		if err := p.Aceita(p.Padrao); err != nil {
+	if p.Default != "" {
+		if err := p.Aceita(p.Default); err != nil {
 			return fmt.Errorf("param %q: the default value is not valid: %w", p.Nome, err)
 		}
 	}
@@ -143,7 +143,7 @@ func (w Workflow) Resolver(informados map[string]string) (map[string]string, err
 	for _, p := range w.Params {
 		valor, informado := informados[p.Nome]
 		if !informado {
-			valor = p.Padrao
+			valor = p.Default
 		}
 		if err := p.Aceita(valor); err != nil {
 			return nil, fmt.Errorf("param %q: %w", p.Nome, err)

@@ -16,8 +16,8 @@ func comParams(ps ...wf.Param) wf.Workflow {
 
 func TestResolverUsaOPadraoEOInformado(t *testing.T) {
 	w := comParams(
-		wf.Param{Nome: "load_full", Tipo: wf.ParamBool, Padrao: "false"},
-		wf.Param{Nome: "days", Tipo: wf.ParamInteiro, Padrao: "7"},
+		wf.Param{Nome: "load_full", Tipo: wf.ParamBool, Default: "false"},
+		wf.Param{Nome: "days", Tipo: wf.ParamInteiro, Default: "7"},
 	)
 
 	out, err := w.Resolver(map[string]string{"load_full": "true"})
@@ -35,7 +35,7 @@ func TestResolverUsaOPadraoEOInformado(t *testing.T) {
 // Chave desconhecida e ERRO, nao silencio: `--param lod_full=true` com typo
 // rodaria com o padrao e ninguem perceberia que o backfill nao aconteceu.
 func TestParamDesconhecidoEhRecusado(t *testing.T) {
-	w := comParams(wf.Param{Nome: "load_full", Tipo: wf.ParamBool, Padrao: "false"})
+	w := comParams(wf.Param{Nome: "load_full", Tipo: wf.ParamBool, Default: "false"})
 
 	_, err := w.Resolver(map[string]string{"lod_full": "true"})
 	if err == nil {
@@ -116,7 +116,7 @@ func TestPatternAmpliaOQueEhAceito(t *testing.T) {
 
 // Default invalido so apareceria no primeiro disparo agendado, de madrugada.
 func TestPadraoInvalidoFalhaNaPublicacao(t *testing.T) {
-	w := comParams(wf.Param{Nome: "days", Tipo: wf.ParamInteiro, Padrao: "muitos"})
+	w := comParams(wf.Param{Nome: "days", Tipo: wf.ParamInteiro, Default: "muitos"})
 	if err := w.Validate(); err == nil {
 		t.Fatal("valor padrao invalido passou na validacao")
 	}
@@ -131,7 +131,7 @@ func TestDeclaracaoInvalidaEhRecusada(t *testing.T) {
 		{Nome: "ok", Tipo: wf.ParamTexto, Pattern: "[("}, // regex quebrada
 	}
 	for _, p := range casos {
-		if err := p.Validar(); err == nil {
+		if err := p.Validate(); err == nil {
 			t.Errorf("declaracao invalida aceita: %+v", p)
 		}
 	}

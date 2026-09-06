@@ -7,11 +7,11 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-func baldesCom(totais ...int) []postgres.Balde {
+func baldesCom(totais ...int) []postgres.Bucket {
 	base := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
-	out := make([]postgres.Balde, len(totais))
+	out := make([]postgres.Bucket, len(totais))
 	for i, n := range totais {
-		out[i] = postgres.Balde{Inicio: base.Add(time.Duration(i) * time.Hour), Sucesso: n}
+		out[i] = postgres.Bucket{Inicio: base.Add(time.Duration(i) * time.Hour), Sucesso: n}
 	}
 	return out
 }
@@ -59,7 +59,7 @@ func TestLinhasDeGradeSaoEquidistantes(t *testing.T) {
 // Uma unica falha entre centenas de sucessos ainda precisa ser vista — e o caso
 // em que o grafico mais importa.
 func TestBarraMinimaSobrevive(t *testing.T) {
-	baldes := []postgres.Balde{{Sucesso: 400, Falha: 1}}
+	baldes := []postgres.Bucket{{Sucesso: 400, Falha: 1}}
 	b := barras(baldes)[0]
 	if b.HFalha < 2 {
 		t.Errorf("altura da falha = %d, sumiria da tela", b.HFalha)
@@ -74,7 +74,7 @@ func TestBarraMinimaSobrevive(t *testing.T) {
 // inventaria duracao onde nao houve execucao nenhuma.
 func TestLinhaDeDuracaoCortaNoVazio(t *testing.T) {
 	base := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
-	baldes := []postgres.Balde{
+	baldes := []postgres.Bucket{
 		{Inicio: base, Sucesso: 1, DuracaoMedia: time.Second},
 		{Inicio: base.Add(time.Hour)},
 		{Inicio: base.Add(2 * time.Hour), Sucesso: 1, DuracaoMedia: 2 * time.Second},
@@ -100,7 +100,7 @@ func contarM(s string) int {
 }
 
 func TestArcosDaRoscaFecham(t *testing.T) {
-	i := postgres.Indicadores{Total: 10, Sucesso: 7, Falha: 2, EmExecucao: 1}
+	i := postgres.Indicators{Total: 10, Sucesso: 7, Falha: 2, EmExecucao: 1}
 	arcos := arcos(i)
 	if len(arcos) != 3 {
 		t.Fatalf("obtive %d arcos, quero 3 (fatia zerada nao vira arco)", len(arcos))
@@ -112,12 +112,12 @@ func TestArcosDaRoscaFecham(t *testing.T) {
 	if arcos[1].Offset >= 0 || arcos[2].Offset >= arcos[1].Offset {
 		t.Errorf("deslocamentos nao acumulam: %v", []int{arcos[0].Offset, arcos[1].Offset, arcos[2].Offset})
 	}
-	if len(arcos2(postgres.Indicadores{})) != 0 {
+	if len(arcos2(postgres.Indicators{})) != 0 {
 		t.Error("sem execucoes a rosca nao desenha fatia nenhuma")
 	}
 }
 
-func arcos2(i postgres.Indicadores) []Arco { return arcos(i) }
+func arcos2(i postgres.Indicators) []Arco { return arcos(i) }
 
 func TestDuracaoEscolheUnidade(t *testing.T) {
 	casos := []struct {
@@ -130,11 +130,11 @@ func TestDuracaoEscolheUnidade(t *testing.T) {
 		{3*time.Hour + 4*time.Minute, "3h 04m"},
 	}
 	for _, c := range casos {
-		if obtido := Duracao(&c.d); obtido != c.esperado {
-			t.Errorf("Duracao(%s) = %s, quero %s", c.d, obtido, c.esperado)
+		if obtido := Duration(&c.d); obtido != c.esperado {
+			t.Errorf("Duration(%s) = %s, quero %s", c.d, obtido, c.esperado)
 		}
 	}
-	if Duracao(nil) != "—" {
+	if Duration(nil) != "—" {
 		t.Error("duracao ausente deve virar travessao, nao zero")
 	}
 }

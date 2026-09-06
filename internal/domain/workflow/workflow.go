@@ -55,13 +55,13 @@ type Workflow struct {
 	// workflow -- `load_full`, a date window, a limit. See param.go.
 	Params []Param
 
-	// MaxAtivos caps simultaneous runs OF THIS workflow. Zero means no limit.
+	// MaxActive caps simultaneous runs OF THIS workflow. Zero means no limit.
 	//
 	// It differs from the global step ceiling: that one protects the CLUSTER,
 	// this one protects the DATA. A `*/15` that takes 20 minutes overlaps
 	// itself, and two `dbt build` on the same model at once fight over the same
 	// table.
-	MaxAtivos int
+	MaxActive int
 
 	Nodes []Node
 	Edges []Edge
@@ -130,9 +130,9 @@ type Resources struct {
 	MemoryLimit string
 }
 
-// Vazio says whether nothing was declared -- the pod then starts without
+// Empty says whether nothing was declared -- the pod then starts without
 // `resources`, inheriting the namespace's LimitRange.
-func (r Resources) Vazio() bool {
+func (r Resources) Empty() bool {
 	return r.CPU == "" && r.Memory == "" && r.CPULimit == "" && r.MemoryLimit == ""
 }
 
@@ -232,8 +232,8 @@ func (w Workflow) Validate() error {
 		}
 	}
 
-	if w.MaxAtivos < 0 {
-		return fmt.Errorf("workflow %q: negative concurrency (%d); use 0 for no limit", w.Slug, w.MaxAtivos)
+	if w.MaxActive < 0 {
+		return fmt.Errorf("workflow %q: negative concurrency (%d); use 0 for no limit", w.Slug, w.MaxActive)
 	}
 	if err := validarRecursos(w.Slug, "workflow", w.Resources); err != nil {
 		return err
@@ -256,15 +256,15 @@ func (w Workflow) Validate() error {
 		}
 	}
 
-	if w.MaxAtivos < 0 {
-		return fmt.Errorf("workflow %q: concurrency negativa (%d); use 0 para sem limite", w.Slug, w.MaxAtivos)
+	if w.MaxActive < 0 {
+		return fmt.Errorf("workflow %q: concurrency negativa (%d); use 0 para sem limite", w.Slug, w.MaxActive)
 	}
 	if err := validarRecursos(w.Slug, "workflow", w.Resources); err != nil {
 		return err
 	}
 	vistosParams := make(map[string]struct{}, len(w.Params))
 	for _, p := range w.Params {
-		if err := p.Validar(); err != nil {
+		if err := p.Validate(); err != nil {
 			return fmt.Errorf("workflow %q: %w", w.Slug, err)
 		}
 		if _, ja := vistosParams[p.Nome]; ja {

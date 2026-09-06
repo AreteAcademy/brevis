@@ -85,7 +85,7 @@ func (p ParamSpec) dominio() dominio.Param {
 	}
 	return dominio.Param{
 		Nome: strings.TrimSpace(p.Name), Tipo: tipo,
-		Padrao: p.Default, Descricao: p.Description,
+		Default: p.Default, Descricao: p.Description,
 		Enum: p.Enum, Pattern: p.Pattern,
 	}
 }
@@ -155,7 +155,7 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 		// knows how to do.
 		Image:     strings.TrimSpace(s.Image),
 		Resources: s.Resources.dominio(),
-		MaxAtivos: s.Concurrency,
+		MaxActive: s.Concurrency,
 		Env:       aparar(s.Env),
 		Secrets:   aparar(s.Secrets),
 	}

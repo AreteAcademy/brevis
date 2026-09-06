@@ -44,8 +44,8 @@ func (s Status) Terminal() bool {
 	return s == StatusSuccess || s == StatusCanceled
 }
 
-// PodeIr says whether the transition is allowed.
-func (s Status) PodeIr(destino Status) bool {
+// CanGo says whether the transition is allowed.
+func (s Status) CanGo(destino Status) bool {
 	for _, d := range transicoes[s] {
 		if d == destino {
 			return true
@@ -54,23 +54,23 @@ func (s Status) PodeIr(destino Status) bool {
 	return false
 }
 
-// ErrTransicaoInvalida carries both states so the error says what happened, and
+// ErrInvalidTransition carries both states so the error says what happened, and
 // not merely that something was refused.
-type ErrTransicaoInvalida struct {
+type ErrInvalidTransition struct {
 	De, Para Status
 }
 
-func (e ErrTransicaoInvalida) Error() string {
+func (e ErrInvalidTransition) Error() string {
 	return fmt.Sprintf("transicao invalida: %s -> %s", e.De, e.Para)
 }
 
-// Valida returns an error when the transition does not exist in the graph.
-func Valida(de, para Status) error {
+// Validate returns an error when the transition does not exist in the graph.
+func Validate(de, para Status) error {
 	if _, conhecido := transicoes[de]; !conhecido {
 		return fmt.Errorf("unknown state: %q", de)
 	}
-	if !de.PodeIr(para) {
-		return ErrTransicaoInvalida{De: de, Para: para}
+	if !de.CanGo(para) {
+		return ErrInvalidTransition{De: de, Para: para}
 	}
 	return nil
 }

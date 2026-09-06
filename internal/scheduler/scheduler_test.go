@@ -301,7 +301,7 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 
 	// Uma execucao antiga do que vai sair: o historico tem de sobreviver.
 	if _, err := postgres.NewRunRepo(pool).Criar(ctx, dom.Run{
-		WorkflowSlug: sai.Slug, IdempotencyKey: "antiga", Definicao: []byte(`{}`),
+		WorkflowSlug: sai.Slug, IdempotencyKey: "antiga", Definition: []byte(`{}`),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -314,10 +314,10 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 		t.Fatalf("removidos = %v, quero apenas %s", removidos, sai.Slug)
 	}
 
-	if _, err := repo.Definicao(ctx, sai.Slug); err == nil {
+	if _, err := repo.Definition(ctx, sai.Slug); err == nil {
 		t.Error("o workflow removido ainda tem definicao no banco")
 	}
-	if _, err := repo.Definicao(ctx, fica.Slug); err != nil {
+	if _, err := repo.Definition(ctx, fica.Slug); err != nil {
 		t.Errorf("o workflow que ficou sumiu: %v", err)
 	}
 

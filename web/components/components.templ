@@ -9,22 +9,22 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// Estado desenha o estado de um Run.
+// State desenha o estado de um Run.
 //
 // The colours are desaturated on purpose: a dashboard's pure green and red fight
 // the parchment and shout louder than the information. The shape carries meaning
 // too — the dot is filled for what has finished and ringed for what is still
 // alive — so it does not depend on colour alone.
-templ Estado(status string) {
+templ State(status string) {
 	<span class={ "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", classeEstado(status) }>
 		<span class={ "h-1.5 w-1.5 rounded-full", pontoEstado(status) }></span>
 		{ rotuloEstado(status) }
 	</span>
 }
 
-// Ponto is the minimal version, for dense tables where the label is already in
+// Dot is the minimal version, for dense tables where the label is already in
 // the column.
-templ Ponto(status string) {
+templ Dot(status string) {
 	<span
 		class={ "inline-block h-2.5 w-2.5 rounded-full", pontoEstado(status) }
 		title={ rotuloEstado(status) }
@@ -89,8 +89,8 @@ func pontoEstado(s string) string {
 	return "bg-state-pending"
 }
 
-// Cartao e o painel base: superficie clara, borda fina, sombra quente e larga.
-templ Cartao(rotulo string) {
+// Card is the base panel: a light surface, a thin border, a warm wide shadow.
+templ Card(rotulo string) {
 	<section class="rounded-[20px] border border-line bg-surface p-6 shadow-warm-sm">
 		if rotulo != "" {
 			<p class="kicker mb-4">{ rotulo }</p>
@@ -99,10 +99,10 @@ templ Cartao(rotulo string) {
 	</section>
 }
 
-// Indicador is one of the four numbers at the top of the Overview. The large
+// Metric is one of the four numbers at the top of the Overview. The large
 // serif number is what sets the editorial tone — in sans it would become just
 // another dashboard.
-templ Indicador(rotulo, valor, nota string, matiz string) {
+templ Metric(rotulo, valor, nota string, matiz string) {
 	<div class="rounded-[20px] border border-line bg-surface px-6 py-5 shadow-warm-sm">
 		<p class="kicker">{ rotulo }</p>
 		<p class={ "display mt-2 text-[2.6rem] leading-none", matiz }>{ valor }</p>
@@ -112,10 +112,10 @@ templ Indicador(rotulo, valor, nota string, matiz string) {
 	</div>
 }
 
-// Vazio communicates the absence of data without looking like an error. An empty
+// Empty communicates the absence of data without looking like an error. An empty
 // table with no explanation sends the operator looking for a defect where there
 // is none.
-templ Vazio(msg, dica string) {
+templ Empty(msg, dica string) {
 	<div class="rounded-[20px] border border-dashed border-line px-6 py-12 text-center">
 		<p class="font-serif text-lg text-muted">{ msg }</p>
 		if dica != "" {
@@ -124,8 +124,8 @@ templ Vazio(msg, dica string) {
 	</div>
 }
 
-// Etiqueta is a tag chip. It becomes a link when `rota` exists, to filter.
-templ Etiqueta(texto, rota string) {
+// Tag is a tag chip. It becomes a link when `rota` exists, to filter.
+templ Tag(texto, rota string) {
 	if rota != "" {
 		<a
 			href={ templ.SafeURL(rota) }
@@ -152,12 +152,12 @@ const (
 	margemBaixo    = 26
 )
 
-// Execucoes draws one stacked column per hour, with the average-duration line on
+// RunsChart draws one stacked column per hour, with the average-duration line on
 // top — the two readings the Overview screen has to cross: "how many" and
 // "quanto tempo".
-templ Execucoes(baldes []postgres.Balde) {
+templ RunsChart(baldes []postgres.Bucket) {
 	if len(baldes) == 0 {
-		@Vazio("No run in the window.", "brevis scheduler")
+		@Empty("No run in the window.", "brevis scheduler")
 	} else {
 		<div class="overflow-x-auto">
 			<svg
@@ -190,7 +190,7 @@ templ Execucoes(baldes []postgres.Balde) {
 					// so without this anchor it would be a line with no unit: the
 					// peak says what the highest point corresponds to.
 					<text x={ fmt.Sprint(larguraGrafico) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
-						{ "peak average duration: " + Duracao(picoDuracao(baldes)) }
+						{ "peak average duration: " + Duration(picoDuracao(baldes)) }
 					</text>
 				}
 				for _, m := range marcasDeHora(baldes) {
@@ -216,7 +216,7 @@ templ legenda(cor, texto string) {
 
 // Rosca resume a mesma janela em proporcao. O total no centro evita a leitura
 // only relative: 95% of twenty runs is not 95% of two thousand.
-templ Rosca(i postgres.Indicadores) {
+templ Rosca(i postgres.Indicators) {
 	<div class="flex flex-col items-center">
 		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Run distribution">
 			<circle cx="60" cy="60" r="46" fill="none" stroke="var(--color-ink)" stroke-opacity="0.07" stroke-width="16"></circle>
@@ -262,7 +262,7 @@ type Grade struct {
 	Rotulo string
 }
 
-type Marca struct {
+type Brand struct {
 	X      int
 	Rotulo string
 }
@@ -273,7 +273,7 @@ type Marca struct {
 //
 // The previous version divided the raw maximum by four and produced axes like
 // 0/6/12/18/25 — every label a different interval from the one before it.
-func teto(baldes []postgres.Balde) int {
+func teto(baldes []postgres.Bucket) int {
 	max := 0
 	for _, b := range baldes {
 		if t := b.Total(); t > max {
@@ -292,7 +292,7 @@ func teto(baldes []postgres.Balde) int {
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(baldes []postgres.Balde) []Grade {
+func linhasDeGrade(baldes []postgres.Bucket) []Grade {
 	max := teto(baldes)
 	util := alturaGrafico - margemBaixo
 	var out []Grade
@@ -306,7 +306,7 @@ func linhasDeGrade(baldes []postgres.Balde) []Grade {
 	return out
 }
 
-func barras(baldes []postgres.Balde) []Barra {
+func barras(baldes []postgres.Bucket) []Barra {
 	max := teto(baldes)
 	util := alturaGrafico - margemBaixo
 	area := larguraGrafico - margemEsq
@@ -356,13 +356,13 @@ func barras(baldes []postgres.Balde) []Barra {
 // linkDoBalde leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
-func linkDoBalde(b postgres.Balde) string {
+func linkDoBalde(b postgres.Bucket) string {
 	de := b.Inicio.UTC().Format(time.RFC3339)
 	ate := b.Inicio.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
-func dicaDoBalde(b postgres.Balde) string {
+func dicaDoBalde(b postgres.Bucket) string {
 	partes := []string{b.Inicio.Local().Format("02/01 15h")}
 	if b.Sucesso > 0 {
 		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
@@ -374,7 +374,7 @@ func dicaDoBalde(b postgres.Balde) string {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
 	if b.DuracaoMedia > 0 {
-		partes = append(partes, "avg "+Duracao(&b.DuracaoMedia))
+		partes = append(partes, "avg "+Duration(&b.DuracaoMedia))
 	}
 	if len(partes) == 1 {
 		return partes[0] + " · no runs"
@@ -383,7 +383,7 @@ func dicaDoBalde(b postgres.Balde) string {
 }
 
 // picoDuracao is the curve's largest value — the secondary scale's reference.
-func picoDuracao(baldes []postgres.Balde) *time.Duration {
+func picoDuracao(baldes []postgres.Bucket) *time.Duration {
 	var maior time.Duration
 	for _, b := range baldes {
 		if b.DuracaoMedia > maior {
@@ -399,7 +399,7 @@ func picoDuracao(baldes []postgres.Balde) *time.Duration {
 // linhaDuracao normalizes the average duration by its OWN scale, not by the
 // count's: they are different magnitudes, and what matters here is the curve's
 // shape.
-func linhaDuracao(baldes []postgres.Balde) string {
+func linhaDuracao(baldes []postgres.Bucket) string {
 	var maior time.Duration
 	for _, b := range baldes {
 		if b.DuracaoMedia > maior {
@@ -431,18 +431,18 @@ func linhaDuracao(baldes []postgres.Balde) string {
 	return strings.TrimSpace(b.String())
 }
 
-func marcasDeHora(baldes []postgres.Balde) []Marca {
+func marcasDeHora(baldes []postgres.Bucket) []Brand {
 	area := larguraGrafico - margemEsq
 	passo := float64(area) / float64(len(baldes))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
 	salto := len(baldes)/8 + 1
-	var out []Marca
+	var out []Brand
 	for i, b := range baldes {
 		if i%salto != 0 {
 			continue
 		}
-		out = append(out, Marca{
+		out = append(out, Brand{
 			X:      margemEsq + int(float64(i)*passo+passo/2),
 			Rotulo: b.Inicio.Local().Format("15h"),
 		})
@@ -460,7 +460,7 @@ type Arco struct {
 
 // arcos builds the donut with a dasharray over a single circle. The perimeter is
 // 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
-func arcos(i postgres.Indicadores) []Arco {
+func arcos(i postgres.Indicators) []Arco {
 	const perimetro = 289
 	if i.Total == 0 {
 		return nil
@@ -503,9 +503,9 @@ func arcos(i postgres.Indicadores) []Arco {
 // Formatadores compartilhados
 // ---------------------------------------------------------------------------
 
-// Duracao picks the unit by order of magnitude. "0.4s" says more than "400ms" in
+// Duration picks the unit by order of magnitude. "0.4s" says more than "400ms" in
 // a column whose neighbour takes minutes.
-func Duracao(d *time.Duration) string {
+func Duration(d *time.Duration) string {
 	if d == nil {
 		return "—"
 	}
@@ -520,10 +520,10 @@ func Duracao(d *time.Duration) string {
 	return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
 }
 
-// Quando writes the instant relatively up to a day, and as an absolute date
+// When writes the instant relatively up to a day, and as an absolute date
 // afterwards. "3 min ago" answers the operations question; "Mar 12 04:00"
 // answers the audit one, and the boundary between the two sits around a day.
-func Quando(t *time.Time) string {
+func When(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
@@ -549,8 +549,8 @@ func curto(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// Instante is the full date, for audit columns.
-func Instante(t *time.Time) string {
+// Timestamp is the full date, for audit columns.
+func Timestamp(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
@@ -558,13 +558,13 @@ func Instante(t *time.Time) string {
 }
 
 // ---------------------------------------------------------------------------
-// Erro em dialogo
+// Err em dialogo
 //
 // The error used to occupy a whole row below the run, inside the table. With a
 // real stack trace that pushed the rest of the list off the screen and mixed two
-// things — the list and the detail. Now the row holds a button, and
-// o texto vive num <dialog> nativo: ESC fecha, o backdrop escurece e o foco fica
-// trapped inside it without a line of JavaScript of ours.
+// things — the list and the detail. Now the row holds a button, and the text
+// lives in a native <dialog>: ESC closes it, the backdrop dims and the focus
+// stays trapped inside it without a line of JavaScript of ours.
 // ---------------------------------------------------------------------------
 
 templ BotaoErro(runID string) {
@@ -609,7 +609,7 @@ templ DialogoErro(runID, workflow, status, mensagem string) {
 		</div>
 		<div class="px-6 py-5">
 			<div class="mb-4 flex flex-wrap items-center gap-3 text-xs">
-				@Estado(status)
+				@State(status)
 				<a href={ templ.SafeURL("/runs/" + runID) } class="text-gold-strong hover:underline">open the run</a>
 				<span class="font-mono text-[0.7rem] text-muted/70">{ runID }</span>
 			</div>

@@ -16,7 +16,7 @@ func TestCaminhoFeliz(t *testing.T) {
 			t.Fatalf("transicao para %s: %v", s, err)
 		}
 	}
-	if r.IniciadoEm == nil || r.TerminadoEm == nil {
+	if r.StartedAt == nil || r.FinishedAt == nil {
 		t.Error("running e success devem carimbar os tempos")
 	}
 }
@@ -44,7 +44,7 @@ func TestReenfileirarLimpaCarimbos(t *testing.T) {
 	_ = r.Transition(StatusRetrying, agora)
 	_ = r.Transition(StatusQueued, agora)
 
-	if r.IniciadoEm != nil || r.TerminadoEm != nil {
+	if r.StartedAt != nil || r.FinishedAt != nil {
 		t.Error("reenfileirado deve limpar os carimbos da tentativa anterior")
 	}
 }
@@ -61,14 +61,14 @@ func TestTransicoesInvalidasSaoRecusadas(t *testing.T) {
 		{StatusFailed, StatusRunning},   // retry passa pela fila
 	}
 	for _, c := range casos {
-		err := Valida(c.de, c.para)
+		err := Validate(c.de, c.para)
 		if err == nil {
 			t.Errorf("%s -> %s devia ser recusada", c.de, c.para)
 			continue
 		}
-		var inv ErrTransicaoInvalida
+		var inv ErrInvalidTransition
 		if !errors.As(err, &inv) {
-			t.Errorf("%s -> %s devolveu %T, queria ErrTransicaoInvalida", c.de, c.para, err)
+			t.Errorf("%s -> %s devolveu %T, queria ErrInvalidTransition", c.de, c.para, err)
 		}
 	}
 }
@@ -87,17 +87,17 @@ func TestFailedNaoEhTerminal(t *testing.T) {
 // Cancelar deve ser possivel de qualquer estado ativo — e so de estados ativos.
 func TestCancelamento(t *testing.T) {
 	for _, de := range []Status{StatusCreated, StatusQueued, StatusRunning, StatusRetrying} {
-		if err := Valida(de, StatusCanceled); err != nil {
+		if err := Validate(de, StatusCanceled); err != nil {
 			t.Errorf("devia poder cancelar a partir de %s: %v", de, err)
 		}
 	}
-	if err := Valida(StatusSuccess, StatusCanceled); err == nil {
+	if err := Validate(StatusSuccess, StatusCanceled); err == nil {
 		t.Error("nao se cancela o que ja teve sucesso")
 	}
 }
 
 func TestEstadoDesconhecido(t *testing.T) {
-	if err := Valida(Status("inventado"), StatusQueued); err == nil {
+	if err := Validate(Status("inventado"), StatusQueued); err == nil {
 		t.Error("esperava erro para estado desconhecido")
 	}
 }

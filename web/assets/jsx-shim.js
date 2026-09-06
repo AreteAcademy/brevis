@@ -1,7 +1,7 @@
 // React Flow's UMD bundle depends on `react/jsx-runtime`, which React 18 does
 // NOT
-// publica em UMD — so em ESM/CJS. Sem este shim o script do xyflow lanca
-// "jsxRuntime is not defined" e a tela fica em branco.
+// publish as UMD — only as ESM/CJS. Without this shim the xyflow script throws
+// "jsxRuntime is not defined" and the screen stays blank.
 //
 // The reimplementation is faithful: `jsx`/`jsxs` differ from `createElement`
 // only in taking the children inside props and the key as a third argument.

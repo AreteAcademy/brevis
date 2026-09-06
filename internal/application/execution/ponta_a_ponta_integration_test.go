@@ -110,8 +110,8 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 			t.Errorf("a etapa %q não chegou ao banco (chegaram: %v)", nome, e.Etapas)
 			continue
 		}
-		if et.Estado != "done" {
-			t.Errorf("etapa %q terminou em %q", nome, et.Estado)
+		if et.State != "done" {
+			t.Errorf("etapa %q terminou em %q", nome, et.State)
 		}
 	}
 	// What only a Map stage knows.

@@ -3,8 +3,8 @@
 // Section 37 of the plan separates the responsibilities without ambiguity: the
 // scheduler CREATES runs, the queue EXECUTES them. This package knows nothing of
 // the queue, the executor or the database — it answers a pure question: given
-// the cron, the timezone, the last slot
-// materializado e o instante atual, quais slots faltam?
+// the cron, the timezone, the last materialized slot and the current instant,
+// which slots are missing?
 //
 // Isolating that is what makes the catchup policy testable with no fake clock
 // and no Postgres.
@@ -28,22 +28,22 @@ const (
 	TriggerRetry    TriggerType = "retry"
 )
 
-// Schedule e a agenda de um workflow.
+// Schedule is a workflow's schedule.
 type Schedule struct {
 	WorkflowSlug string
 	Cron         string
 	Timezone     string
 
-	// Catchup=false materializa apenas o slot mais recente perdido. Ver Slots.
+	// Catchup=false materializes only the most recent missed slot. See Slots.
 	Catchup bool
 
-	Ativo bool
+	Active bool
 
-	// UltimoSlot is the last slot already materialized. Nil = it never ran.
-	UltimoSlot *time.Time
+	// LastSlot is the last slot already materialized. Nil = it never ran.
+	LastSlot *time.Time
 }
 
-// Parse valida o cron e o fuso, devolvendo o agendador pronto.
+// Parse validates the cron and the timezone, returning a ready scheduler.
 //
 // It validates both TOGETHER because a valid cron in an invalid timezone
 // schedules nothing, and the error would only surface in the scheduler's loop,
@@ -69,19 +69,18 @@ func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 
 // Slots returns the instants that still have to become a Run, up to `agora`.
 //
-// A politica de catchup e a decisao central desta fase:
+// The catchup policy is this phase's central decision:
 //
 //   - catchup=true  → EVERY missed slot becomes a run. It serves a pipeline
 //     where each day has a meaning of its own and a gap has to be filled.
 //   - catchup=false → only the most recent slot. It serves the case where only
-//     the
-//     estado atual importa, e reprocessar trinta dias seria desperdicio.
+//     the current state matters, and reprocessing thirty days would be waste.
 //
 // `limite` caps the count: a workflow stopped for months with catchup=true would
 // create thousands of runs at once and drown the queue. Returning the excess as
 // `truncado` makes that visible instead of silent.
 func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncado bool, err error) {
-	if !s.Ativo {
+	if !s.Active {
 		return nil, false, nil
 	}
 	sched, loc, err := s.Parse()
@@ -91,10 +90,11 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 
 	// The starting point: the last materialized slot, or the current instant
 	// when
-	// a agenda nunca rodou. Comecar do zero criaria a historia inteira do cron.
+	// the schedule never ran. Starting from zero would create the cron's entire
+	// history.
 	de := agora.In(loc)
-	if s.UltimoSlot != nil {
-		de = s.UltimoSlot.In(loc)
+	if s.LastSlot != nil {
+		de = s.LastSlot.In(loc)
 	}
 
 	// Without catchup, only the MOST RECENT slot matters — the gap is discarded
@@ -127,8 +127,8 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 		slots = append(slots, prox)
 		de = prox
 
-		// Trunca e SINALIZA. O restante entra nos ciclos seguintes, porque o
-		// The marker advances on every materialized slot.
+		// It truncates and SIGNALS. The rest goes into the following cycles,
+		// because the marker advances on every materialized slot.
 		if limite > 0 && len(slots) >= limite {
 			return slots, true, nil
 		}
@@ -136,8 +136,8 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 	return slots, false, nil
 }
 
-// Proximo returns the next trigger after `agora`, for display.
-func (s Schedule) Proximo(agora time.Time) (time.Time, error) {
+// Next returns the next trigger after `agora`, for display.
+func (s Schedule) Next(agora time.Time) (time.Time, error) {
 	sched, loc, err := s.Parse()
 	if err != nil {
 		return time.Time{}, err

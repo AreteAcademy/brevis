@@ -153,7 +153,7 @@ func TestForaDoLocalExigeCredencial(t *testing.T) {
 		t.Fatal("BREVIS_ENV=prod subiu sem credencial")
 	}
 
-	h, err := auth.GerarHash("senha-de-teste-longa")
+	h, err := auth.GenerateHash("senha-de-teste-longa")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestForaDoLocalExigeCredencial(t *testing.T) {
 	if err != nil {
 		t.Fatalf("com credencial completa deveria subir: %v", err)
 	}
-	if !c.Auth.Ativa() {
+	if !c.Auth.Enabled() {
 		t.Error("a credencial nao chegou na Config")
 	}
 }

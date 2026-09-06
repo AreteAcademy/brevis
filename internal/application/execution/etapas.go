@@ -35,7 +35,7 @@ const tetoDeEtapas = 60
 type Etapa struct {
 	Indice  int            `json:"indice"`
 	Nome    string         `json:"nome"`
-	Estado  string         `json:"estado"`
+	State   string         `json:"estado"`
 	Ms      *int64         `json:"ms,omitempty"`
 	Em      string         `json:"em"`
 	Numeros map[string]any `json:"numeros,omitempty"`
@@ -91,7 +91,7 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 		Tipo   string `json:"type"`
 		Versao string `json:"version"`
 		Nome   string `json:"name"`
-		Estado string `json:"state"`
+		State  string `json:"state"`
 		Ms     *int64 `json:"ms"`
 		Em     string `json:"at"`
 		Indice *int   `json:"index"`
@@ -113,7 +113,7 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 	// one format.
 	if ev.Tipo == "" {
 		ev.Tipo, ev.Versao = traduzirTipo(ev.TipoPT), ev.VersaoPT
-		ev.Nome, ev.Estado, ev.Em = ev.NomePT, ev.EstadoPT, ev.EmPT
+		ev.Nome, ev.State, ev.Em = ev.NomePT, ev.EstadoPT, ev.EmPT
 	}
 
 	if c.vistos >= tetoDeEtapas {
@@ -138,7 +138,7 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 			indice = *ev.Indice
 		}
 		c.aplicar(Etapa{
-			Indice: indice, Nome: ev.Nome, Estado: ev.Estado, Ms: ev.Ms, Em: ev.Em,
+			Indice: indice, Nome: ev.Nome, State: ev.State, Ms: ev.Ms, Em: ev.Em,
 			Numeros: numerosDe(corpo),
 		})
 		return true

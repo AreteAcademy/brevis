@@ -88,7 +88,7 @@ func alturaDoNo(etapas int) int {
 // the "what this workflow looks like" screen, which has to work for a workflow
 // that never ran.
 func (u *UI) grafoDoWorkflow(w http.ResponseWriter, r *http.Request) {
-	def, err := u.defs.Definicao(r.Context(), r.PathValue("slug"))
+	def, err := u.defs.Definition(r.Context(), r.PathValue("slug"))
 	if err != nil {
 		http.Error(w, "workflow not found", http.StatusNotFound)
 		return
@@ -113,7 +113,7 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var def wf.Workflow
-	if err := json.Unmarshal(execucao.Definicao, &def); err != nil {
+	if err := json.Unmarshal(execucao.Definition, &def); err != nil {
 		u.erro(w, r, err)
 		return
 	}
@@ -129,7 +129,7 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
-	estados map[string]postgres.EstadoNo, runID, status string) {
+	estados map[string]postgres.NodeState, runID, status string) {
 
 	niveis, err := graph.Niveis(def)
 	if err != nil {
@@ -171,9 +171,9 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 			if temEstado {
 				dados["status"] = e.Status
 				dados["duracao_ms"] = e.DuracaoMs
-				dados["tentativa"] = e.Tentativa
-				if e.Erro != "" {
-					dados["erro"] = e.Erro
+				dados["tentativa"] = e.Attempt
+				if e.Err != "" {
+					dados["erro"] = e.Err
 				}
 				if e.ExitCode != nil {
 					dados["exit_code"] = *e.ExitCode
@@ -209,7 +209,7 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 					// one.
 					Selectable: &off, Draggable: &off,
 					Data: map[string]any{
-						"nome": et.Nome, "estado": et.Estado,
+						"nome": et.Nome, "estado": et.State,
 						"ms": et.Ms, "numeros": et.Numeros,
 						// The label the screen shows. `extract` and `load` are
 						// the wire's names, kept for compatibility; what a

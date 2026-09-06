@@ -9,9 +9,10 @@ import (
 
 // Task is a unit of work written in Go, compiled into the binary.
 //
-// A secao 14 do plano e categorica: "Nao executar codigo arbitrario recebido
-// pela API. Tasks locais devem ser compiladas e registradas no runtime". O
-// The registry exists to make that structural — the YAML can only name
+// Section 14 of the plan is categorical: "Do not execute arbitrary code
+// received through the API. Local tasks must be compiled and registered in the
+// runtime". The registry exists to make that structural — the YAML can only
+// name
 // something that is already in the binary, never supply the code.
 type Task interface {
 	Name() string

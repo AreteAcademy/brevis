@@ -44,9 +44,9 @@ func (r *RunRepo) Criar(ctx context.Context, run dom.Run) (dom.Run, error) {
 		                  trigger_type, logical_date, params, max_ativos)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING criado_em`,
-		run.ID, run.WorkflowSlug, run.IdempotencyKey, run.Status, run.Attempt, run.Definicao,
-		run.TriggerType, run.LogicalDate, paramsOuVazio(run.Params), run.MaxAtivos,
-	).Scan(&run.CriadoEm)
+		run.ID, run.WorkflowSlug, run.IdempotencyKey, run.Status, run.Attempt, run.Definition,
+		run.TriggerType, run.LogicalDate, paramsOuVazio(run.Params), run.MaxActive,
+	).Scan(&run.CreatedAt)
 
 	if err != nil {
 		if ehViolacaoUnica(err) {
@@ -76,7 +76,7 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 		}
 		return err
 	}
-	if err := dom.Valida(atual, para); err != nil {
+	if err := dom.Validate(atual, para); err != nil {
 		return fmt.Errorf("run %s: %w", id, err)
 	}
 
@@ -124,8 +124,8 @@ func (r *RunRepo) Buscar(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
-			&run.Definicao, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxAtivos,
-			&run.Erro, &run.CriadoEm, &run.IniciadoEm, &run.TerminadoEm)
+			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
+			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt)
 	return run, err
 }
 

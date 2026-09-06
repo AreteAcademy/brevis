@@ -28,14 +28,14 @@ type TaskExec struct {
 	ExecutionID string
 	NodeID      string
 
-	// Workflow, RunID and Tentativa do not change the run — they identify it.
+	// Workflow, RunID and Attempt do not change the run — they identify it.
 	// In Kubernetes they become the pod's labels, and they are what makes it
 	// possible to find "that run's pods" without searching by name.
 	Workflow string
 	RunID    string
 
 	// The STEP's attempt, within one execution of the run.
-	Tentativa int
+	Attempt int
 
 	// TentativaDoRun is the RUN's, counted by the dispatcher. Both go into the
 	// pod's name: without the second, a dispatcher retry recreates the run from

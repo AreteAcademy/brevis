@@ -32,7 +32,7 @@ type Server struct {
 // pages, and requiring them would couple the server to the database for no
 // reason.
 func NewServer(log *slog.Logger, checkers map[string]Checker, ui *UI) *Server {
-	return NewServerAutenticado(log, checkers, ui, auth.Credencial{}, false)
+	return NewServerAutenticado(log, checkers, ui, auth.Credential{}, false)
 }
 
 // NewServerAutenticado is the same, requiring a session when the credential is
@@ -40,7 +40,7 @@ func NewServer(log *slog.Logger, checkers map[string]Checker, ui *UI) *Server {
 // for plain http in development, because a Secure cookie never comes back over
 // http and the login would look simply broken.
 func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
-	cred auth.Credencial, inseguro bool,
+	cred auth.Credential, inseguro bool,
 ) *Server {
 	s := &Server{log: log, checkers: checkers, mux: http.NewServeMux()}
 	s.mux.HandleFunc("GET /health", s.health)
@@ -48,8 +48,8 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 	if ui != nil {
 		ui.Registrar(s.mux)
 	}
-	if cred.Ativa() {
-		s.portao = &auth.Portao{Cred: cred, Proximo: s.mux, Inseguro: inseguro}
+	if cred.Enabled() {
+		s.portao = &auth.Portao{Cred: cred, Next: s.mux, Insecure: inseguro}
 		if ui != nil {
 			ui.RegistrarLogin(s.mux, s.portao)
 		}

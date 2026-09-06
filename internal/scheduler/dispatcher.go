@@ -36,10 +36,10 @@ type Repo interface {
 	RegistrarErro(ctx context.Context, id uuid.UUID, msg string) error
 	Buscar(ctx context.Context, id uuid.UUID) (dom.Run, error)
 
-	// PassoQueFalhou returns the node and the output of the last failed
+	// FailedStep returns the node and the output of the last failed
 	// attempt. It feeds the alert: without it the alert says something failed,
 	// and whoever is on call has to open the screen to find out what.
-	PassoQueFalhou(ctx context.Context, id uuid.UUID) (passo, log string, err error)
+	FailedStep(ctx context.Context, id uuid.UUID) (passo, log string, err error)
 }
 
 // Config parameterises the dispatcher.
@@ -294,7 +294,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 
 	a := notify.Alerta{
 		RunID: runID.String(), Status: string(dom.StatusFailed),
-		Tentativas: tentativas, Erro: causa.Error(), URLBase: d.URLBase,
+		Tentativas: tentativas, Err: causa.Error(), URLBase: d.URLBase,
 	}
 	// Os detalhes vem do banco: o dispatcher so conhece o id. Se a leitura
 	// fails, the alert goes out anyway — half a message beats none when
@@ -302,7 +302,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 	if r, err := d.repo.Buscar(ctx, runID); err == nil {
 		a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
 		var def struct{ Tags []string }
-		if json.Unmarshal(r.Definicao, &def) == nil {
+		if json.Unmarshal(r.Definition, &def) == nil {
 			a.Tags = def.Tags
 		}
 	} else {
@@ -311,7 +311,7 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 
 	// The step and the log are a bonus: if the query fails, the alert goes out
 	// without them. Half a message arrives; no message does not.
-	if passo, log, err := d.repo.PassoQueFalhou(ctx, runID); err == nil {
+	if passo, log, err := d.repo.FailedStep(ctx, runID); err == nil {
 		a.Passo = passo
 		a.TrechoDoLog = ultimasLinhas(log, 15)
 	} else {
