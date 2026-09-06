@@ -27,7 +27,7 @@ function words in comment lines.
 | C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 0 | ✅ done |
 | D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER` | 0 | ✅ done |
 | E | **Engine internals** — `internal/`, `cmd/` | 0 | ✅ done |
-| F | **Web** — `web/`, templates, and the Portuguese identifiers `internal/` shares with them | 143 + identifiers | a contributor touching the UI |
+| F | **Web** — `web/`, templates, the visible UI, and the identifiers `internal/` shares with them | 0 | ✅ done |
 | G | **Infra** — `.github/`, `deployments/`, `migrations/` | 115 | whoever operates or fixes CI |
 | H | **Test comments** | 664 | whoever reads a failing test |
 | I | **Test function names** | ~235 | whoever reads a failing test's OUTPUT |
@@ -107,6 +107,14 @@ produced two proofs that the fast way is destructive:
 The comments in this repository are the part that carries the *why*. Most of them
 name the incident that produced the line. Machine-translating them keeps the
 words and loses the reason, which is the only thing they were for.
+
+**The detector had a hole, found while doing F.** It looked for Portuguese
+function words, so a short comment like `// Card e o painel base` read as
+English and passed through threads E and F both. A second detector — `X e o`,
+`sao`, `nao`, `ja`, `tambem`, `seria` — found 36 more lines, four of them
+user-facing: the whole Slack failure alert, and the fallback brand identity
+every installation without a `brand.yaml` gets. Both detectors are run from here
+on.
 
 **Each area lands as its own commit, with the full suite green**: both modules'
 tests, `-race` on the engine, `golangci-lint` on both, and the four gates
