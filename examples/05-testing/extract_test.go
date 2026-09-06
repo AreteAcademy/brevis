@@ -45,8 +45,8 @@ func TestFetchAndProcess(t *testing.T) {
 
 	var seen []string
 	n, err := FetchAndProcess(context.Background(), server.URL, func(env sdk.Envelope) error {
-		row := env.Payload.(map[string]string)
-		seen = append(seen, row["name"])
+		row := env.Payload.(map[string]any)
+		seen = append(seen, fmt.Sprint(row["name"]))
 		return nil
 	})
 	if err != nil {

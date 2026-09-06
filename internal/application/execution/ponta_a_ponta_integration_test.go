@@ -114,11 +114,11 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 			t.Errorf("etapa %q terminou em %q", nome, et.Estado)
 		}
 	}
-	// O que só o transform sabe.
-	if n := porNome["transform"].Numeros; n == nil || n["entraram"] != 2.0 || n["sairam"] != 2.0 {
-		t.Errorf("o transform não reportou as contagens: %v", porNome["transform"].Numeros)
+	// What only the transform knows.
+	if n := porNome["transform"].Numeros; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
+		t.Errorf("the transform did not report its counts: %v", porNome["transform"].Numeros)
 	}
-	// E o transform continua sem relógio.
+	// And the transform still has no clock.
 	if porNome["transform"].Ms != nil {
 		t.Errorf("o transform reportou duração: %v", *porNome["transform"].Ms)
 	}
