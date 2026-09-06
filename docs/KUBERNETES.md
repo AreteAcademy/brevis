@@ -1,46 +1,47 @@
-# Execução em Kubernetes — um pod por passo
+# Running on Kubernetes — one pod per step
 
-## A dinâmica
+## How it moves
 
 ```
 scheduler                          cluster
 ─────────                          ───────
-lê a agenda
-cria o Run  ──────────────────►  (nada ainda)
-percorre o grafo
-  para cada passo pronto:
-    monta o Pod  ──────────────►  Pod: imagem do passo, comando do passo
-    acompanha o status  ◄───────  Pending → Running → Succeeded/Failed
-    segue o log         ◄───────  stdout do container
-    lê o exit code      ◄───────  containerStatuses[0].terminated
-    apaga o pod  ──────────────►  (some)
+reads the schedule
+creates the Run  ─────────────►  (nothing yet)
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step's image, the step's command
+    follows the status  ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  the container's stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod  ──────────►  (gone)
 ```
 
-O pod sobe com a **imagem exata daquele passo** e um comando. Não há worker
-genérico esperando trabalho: o trabalho é que traz o seu runtime.
+The pod starts with **that step's exact image** and a command. There is no
+generic worker waiting for work: the work is what brings its own runtime.
 
-## Por que isso é o ponto do projeto
+## Why this is the point of the project
 
-Um worker monolítico obriga a imagem a conter tudo que qualquer passo possa
-precisar. Na prática:
+A monolithic worker forces the image to contain everything any step might need.
+In practice:
 
-| | imagem única | pod por passo |
+| | one image | one pod per step |
 |---|---|---|
-| passo de dbt | 1,9 GB, 1Gi de RAM | 1,9 GB, 1Gi |
-| fetcher em Go ao lado | **1,9 GB, 1Gi** | **12 MB, 32Mi** |
-| trocar a versão do dbt | rebuild de tudo | uma linha no YAML daquele workflow |
-| um passo que vaza memória | derruba o worker e os vizinhos | morre sozinho |
+| a dbt step | 1.9 GB, 1Gi of RAM | 1.9 GB, 1Gi |
+| a Go fetcher next to it | **1.9 GB, 1Gi** | **12 MB, 32Mi** |
+| changing the dbt version | rebuild everything | one line in that workflow's YAML |
+| a step that leaks memory | takes the worker and its neighbours down | dies on its own |
 
-O terceiro item é o menos óbvio e o mais caro no dia a dia: com imagem única,
-subir o dbt de 1.10 para 1.11 num pipeline obriga a subir em todos.
+The third item is the least obvious and the most expensive day to day: with a
+single image, moving dbt from 1.10 to 1.11 on one pipeline forces moving it on
+all of them.
 
-## O YAML
+## The YAML
 
 ```yaml
 name: platform_workspace
 schedule: "0 5 * * *"
 
-image: us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3   # padrão dos passos
+image: us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3   # the steps' default
 resources:
   cpu: 200m
   memory: 1Gi
@@ -50,177 +51,185 @@ steps:
   - id: bronze_workspace
     run: dbt build --select bronze_workspace+
 
-  - id: notificar
-    image: ghcr.io/acme/notify:0.3   # binário Go: outro runtime, outro tamanho
-    shell: false                       # distroless não tem shell
-    run: /notify --canal dados
+  - id: notify
+    image: ghcr.io/acme/notify:0.3   # a Go binary: another runtime, another size
+    shell: false                       # distroless has no shell
+    run: /notify --channel data
     resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
     depends_on: [bronze_workspace]
 ```
 
-`image` e `resources` no topo são o padrão; o passo sobrescreve o que precisar,
-campo a campo — um passo pode pedir só mais memória sem perder a CPU do padrão.
+`image` and `resources` at the top are the defaults; a step overrides what it
+needs, field by field — a step can ask for more memory alone without losing the
+default's CPU.
 
-`shell: false` passa o comando como argv. Existe para imagem distroless, onde
-`/bin/sh` não existe e `sh -c` falharia com "no such file or directory" — erro
-correto e que não diz nada sobre a causa.
+`shell: false` passes the command as argv. It exists for distroless images,
+where `/bin/sh` does not exist and `sh -c` would fail with "no such file or
+directory" — a correct error that says nothing about the cause.
 
-## O mesmo YAML roda local
+## The same YAML runs locally
 
-`BREVIS_PODS=auto` (padrão): sem service account montada, o passo roda como
-processo na própria instância e o `image:` é **ignorado com aviso no log** —
-silenciar faria parecer que rodou na imagem declarada.
+`BREVIS_PODS=auto` (the default): with no service account mounted, the step runs
+as a process on the instance itself and the `image:` is **ignored with a warning
+in the log** — silencing it would make it look as though it ran on the declared
+image.
 
-No deploy do cluster use `BREVIS_PODS=on`: ali, ficar sem cluster tem de ser erro
-de boot. Com `auto`, uma falha de montagem da service account faria o scheduler
-executar tudo dentro do próprio pod de 128Mi, em silêncio.
+In the cluster's deployment use `BREVIS_PODS=on`: there, ending up without a
+cluster has to be a boot error. With `auto`, a failure to mount the service
+account would make the scheduler run everything inside its own 128Mi pod, in
+silence.
 
-## O que o scheduler faz (e o que não faz)
+## What the scheduler does (and does not do)
 
-Ele **não** executa dbt nem Python. Ele fala HTTP com o servidor de API e SQL com
-o Postgres — por isso o Deployment pede 50m de CPU e 128Mi. O trabalho pesado
-está nos pods que ele cria.
+It does **not** run dbt or Python. It speaks HTTP to the API server and SQL to
+Postgres — which is why the Deployment asks for 50m of CPU and 128Mi. The heavy
+work is in the pods it creates.
 
-Quatro chamadas REST, escritas sobre a stdlib: criar pod, ler status, ler log,
-apagar pod. Sem `client-go`: a biblioteca oficial traz centenas de dependências e
-dezenas de MB para isto — a mesma conta que levou a vendorizar o React em vez de
-adotar npm.
+Four REST calls, written on the stdlib: create a pod, read the status, read the
+log, delete the pod. No `client-go`: the official library brings hundreds of
+dependencies and tens of MB for this — the same arithmetic that led to
+vendoring React instead of adopting npm.
 
-## Decisões que a implementação fixa
+## Decisions the implementation pins down
 
-- **`restartPolicy: Never`.** Quem conta tentativas e aplica backoff é o
-  dispatcher. Deixar o kubelet reiniciar criaria uma segunda política de retry,
-  invisível para o histórico.
-- **Nome determinístico** por (run, passo, tentativa). Se o processo morrer entre
-  criar o pod e registrar isso, a tentativa seguinte adota o pod existente em vez
-  de subir um segundo rodando o mesmo dbt em paralelo.
-- **`activeDeadlineSeconds`** espelha o timeout. É a rede de segurança do lado do
-  cluster: se o Brevis morrer, o pod ainda para sozinho.
-- **Motivo da espera vira log.** `ImagePullBackOff` e `CreateContainerConfigError`
-  não produzem saída nenhuma; sem reportá-los, o passo pareceria travado até o
-  timeout, sem uma linha explicando.
-- **O log é drenado depois do fim**, além de seguido ao vivo. Fechar o canal com
-  linhas no buffer perderia justamente as últimas — as que explicam a falha.
-- **Pod de sucesso é apagado; o que falha pode ficar** (`BREVIS_POD_MANTER_EM_FALHA`).
-  Milhares de pods `Completed` poluem o namespace e não dizem nada que o
-  histórico do Brevis não diga melhor.
-- **O `reason` do cluster entra na mensagem de falha.** `OOMKilled` e
-  `DeadlineExceeded` pedem ações opostas de "o código falhou".
+- **`restartPolicy: Never`.** The dispatcher is what counts attempts and applies
+  backoff. Letting the kubelet restart would create a second retry policy,
+  invisible to the history.
+- **A deterministic name** per (run, step, attempt). If the process dies between
+  creating the pod and recording that, the next attempt adopts the existing pod
+  instead of starting a second one running the same dbt in parallel.
+- **`activeDeadlineSeconds`** mirrors the timeout. It is the safety net on the
+  cluster's side: if Brevis dies, the pod still stops on its own.
+- **The reason for waiting becomes a log line.** `ImagePullBackOff` and
+  `CreateContainerConfigError` produce no output at all; without reporting them,
+  the step would look stuck until the timeout, with no line explaining it.
+- **The log is drained after the end**, as well as followed live. Closing the
+  channel with lines in the buffer would lose exactly the last ones — the ones
+  that explain the failure.
+- **A successful pod is deleted; a failed one can stay**
+  (`BREVIS_POD_MANTER_EM_FALHA`). Thousands of `Completed` pods clutter the
+  namespace and say nothing that Brevis's own history does not say better.
+- **The cluster's `reason` goes into the failure message.** `OOMKilled` and
+  `DeadlineExceeded` call for the opposite actions from "the code failed".
 
-## Variáveis dentro da task
+## Variables inside the task
 
-A task não herda o ambiente do orquestrador — ele carrega `BREVIS_DATABASE_URL`
-com credencial, e um workflow é um comando arbitrário escrito por outra pessoa.
+The task does not inherit the orchestrator's environment — it carries
+`BREVIS_DATABASE_URL` with a credential, and a workflow is an arbitrary command
+written by somebody else.
 
-Há dois caminhos, e a diferença entre eles é **quem escolhe**.
+There are two paths, and the difference between them is **who chooses**.
 
-### Da instalação, para toda task
+### From the installation, for every task
 
-| modo | mecanismo |
+| mode | mechanism |
 |---|---|
-| pod | `BREVIS_POD_ENV_FROM_SECRETS=meu-secret` → vira `envFrom.secretRef` no pod. As variáveis vão do Secret direto para a task, **sem passar pelo scheduler**. |
-| local | `BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE` → repassa essas do ambiente do processo. `NOME=valor` define literal; `*` repassa tudo menos as `BREVIS_*`. |
+| pod | `BREVIS_POD_ENV_FROM_SECRETS=my-secret` → becomes an `envFrom.secretRef` on the pod. The variables go from the Secret straight to the task, **without passing through the scheduler**. |
+| local | `BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE` → passes those through from the process's environment. `NAME=value` sets a literal; `*` passes everything except the `BREVIS_*` ones. |
 
-Em ambos, `PATH` e `HOME` entram sempre: sem `PATH` nenhum comando resolve, e o
-erro seria um "not found" que não explica nada.
+In both, `PATH` and `HOME` always go in: without `PATH` no command resolves, and
+the error would be a "not found" that explains nothing.
 
-O alcance é **todo passo de todo workflow**. Para uma credencial que só um
-fetcher usa, isso é mais alcance que necessidade: o cookie de um vendor entra
-também no pod do `dbt build` ao lado.
+The reach is **every step of every workflow**. For a credential only one fetcher
+uses, that is more reach than need: one vendor's cookie also enters the
+`dbt build` pod next door.
 
-### Do YAML, por passo
+### From the YAML, per step
 
 ```yaml
 steps:
   - id: fetch_occurrences
     run: /usr/local/bin/gabriel
     env:
-      BREVIS_LOG_LEVEL: info              # literal — o arquivo está no git
+      BREVIS_LOG_LEVEL: info              # a literal — the file is in git
     secrets:
       GABRIEL_SESSION_COOKIE: gabriel-session/cookie
 ```
 
-São duas chaves e não uma de propósito. Com uma só, o caminho mais curto para
-fazer funcionar seria colar o segredo no YAML.
+They are two keys and not one on purpose. With only one, the shortest path to
+making it work would be pasting the secret into the YAML.
 
 | | `env:` | `secrets:` |
 |---|---|---|
-| o valor está no arquivo | sim | **não**, só a coordenada |
-| em pod | `env: [{name, value}]` | `valueFrom.secretKeyRef` — quem lê é o kubelet |
-| em local | literal | a variável de mesmo nome no ambiente do motor; **ausente é erro** |
+| the value is in the file | yes | **no**, only the coordinate |
+| in a pod | `env: [{name, value}]` | `valueFrom.secretKeyRef` — the kubelet is what reads it |
+| locally | a literal | the same-named variable in the engine's environment; **absent is an error** |
 
-Os dois herdam do workflow para o passo, nome a nome, como `image` e
-`resources`. Precedência, do mais fraco ao mais forte: ambiente global do motor,
-`env:` do workflow, `env:` do passo.
+Both inherit from the workflow down to the step, name by name, like `image` and
+`resources`. Precedence, weakest to strongest: the engine's global environment,
+the workflow's `env:`, the step's `env:`.
 
-### E a instalação continua decidendo quais segredos existem
+### And the installation still decides which secrets exist
 
-`secrets:` inverte quem escolhe, e o YAML é escrito por outra pessoa. Sem
-limite, um workflow montaria qualquer Secret do namespace — inclusive o do banco
-do próprio Brevis — e rodaria um comando arbitrário com ele em mãos.
+`secrets:` inverts who chooses, and the YAML is written by somebody else.
+Without a limit, a workflow would mount any Secret in the namespace — Brevis's
+own database included — and run an arbitrary command with it in hand.
 
 ```bash
 BREVIS_POD_ALLOWED_SECRETS=gabriel-session,ana-api
 ```
 
-**Vazia nega tudo.** Negar por padrão custa uma variável na instalação; permitir
-por padrão custa o inverso, e o inverso é irreversível. A recusa acontece na
-montagem do pod, com o nome do Secret e onde liberá-lo — não no servidor, que
-aceitaria o `secretKeyRef` e falharia depois por outro motivo.
+**Empty denies everything.** Denying by default costs one variable in the
+installation; allowing by default costs the inverse, and the inverse is
+irreversible. The refusal happens while the pod is being assembled, naming the
+Secret and where to allow it — not at the server, which would accept the
+`secretKeyRef` and fail later for another reason.
 
-A divisão final: **a instalação diz quais segredos existem para workflows, o
-YAML diz qual passo recebe cada um.**
+The final split: **the installation says which secrets exist for workflows, the
+YAML says which step gets each one.**
 
-## O volume da credencial
+## The credential volume
 
-Uma credencial que **rotaciona** — um cookie de sessão com janela deslizante —
-morre com o pod se o valor novo não for a lugar nenhum. Sem isso, alguém recola
-a semente por janela, para sempre.
+A credential that **rotates** — a session cookie with a sliding window — dies
+with the pod when the new value goes nowhere. Without this, somebody re-pastes
+the seed once per window, forever.
 
-Com um volume, a troca é outra: a variável de ambiente deixa de guardar o valor
-**rotativo** e passa a guardar uma chave **estática**. Cola-se uma vez.
+With a volume, the trade is different: the environment variable stops holding
+the **rotating** value and starts holding a **static** key. It is pasted once.
 
 ```bash
 BREVIS_POD_CREDENTIAL_PVC=brevis-credentials
-BREVIS_POD_CREDENTIAL_PATH=/var/brevis/credentials   # opcional, é o padrão
+BREVIS_POD_CREDENTIAL_PATH=/var/brevis/credentials   # optional, this is the default
 ```
 
-Com o PVC definido, **todo pod de passo** ganha o volume e a env
-`BREVIS_CREDENTIAL_DIR` apontando para o mount — que é a mesma variável que o
-SDK lê quando alguém roda na própria máquina com `BREVIS_CREDENTIAL_DIR=./.brevis`.
-O mesmo código nos dois. Sem o PVC, nada muda.
+With the PVC set, **every step's pod** gets the volume and a
+`BREVIS_CREDENTIAL_DIR` env pointing at the mount — the same variable the SDK
+reads when somebody runs on their own machine with
+`BREVIS_CREDENTIAL_DIR=./.brevis`. The same code in both. Without the PVC,
+nothing changes.
 
-Um passo que declare o próprio `BREVIS_CREDENTIAL_DIR` no `env:` vence a
-injeção, e a variável não vai duplicada.
+A step that declares its own `BREVIS_CREDENTIAL_DIR` in `env:` beats the
+injection, and the variable does not go in twice.
 
-### O conteúdo é cifrado, e o motor não tem a chave
+### The contents are encrypted, and the engine does not have the key
 
-O SDK grava AES-256-GCM com a chave de `BREVIS_CREDENTIAL_KEY`, que é um Secret
-comum e entra por `BREVIS_POD_ENV_FROM_SECRETS` ou por `secrets:` no YAML. **Sem
-chave o SDK recusa a ligar o store** em vez de gravar em claro — um volume vira
-snapshot, snapshot vira backup, e backup vira um lugar onde ninguém lembra que
-há credencial.
+The SDK writes AES-256-GCM with the key from `BREVIS_CREDENTIAL_KEY`, which is
+an ordinary Secret and arrives through `BREVIS_POD_ENV_FROM_SECRETS` or through
+`secrets:` in the YAML. **Without a key the SDK refuses to turn the store on**
+rather than writing in the clear — a volume becomes a snapshot, a snapshot
+becomes a backup, and a backup becomes a place where nobody remembers there is a
+credential.
 
 ```bash
-head -c 32 /dev/urandom | base64    # a chave, uma vez
+head -c 32 /dev/urandom | base64    # the key, once
 ```
 
-> **A recomendação mudou.** O caminho abaixo continua funcionando e é o que
-> serve quem não tem GCS — mas para guardar uma credencial rotativa, prefira
-> `gcs.Credential{Bucket, Object}` do SDK: não mexe no cluster, não cria
-> `PersistentVolume` (que não é namespaced), a escrita de objeto **é** atômica
-> onde o `rename` do gcsfuse não é, e a concorrência sai por
-> `ifGenerationMatch` em vez de uma trava aproximada. O mais forte: um objeto
-> **sobrevive a refazer a infraestrutura**, e um PVC morre com o cluster — e é
-> justamente numa recriação de ambiente que ninguém lembra que havia uma
-> credencial rotativa em algum lugar.
+> **The recommendation has changed.** The path below still works and is what
+> serves whoever has no GCS — but to keep a rotating credential, prefer the
+> SDK's `gcs.Credential{Bucket, Object}`: it does not touch the cluster, it
+> creates no `PersistentVolume` (which is not namespaced), an object write **is**
+> atomic where gcsfuse's `rename` is not, and concurrency comes out through
+> `ifGenerationMatch` instead of an approximate lock. The strongest one: an
+> object **survives rebuilding the infrastructure**, and a PVC dies with the
+> cluster — and it is precisely during an environment rebuild that nobody
+> remembers there was a rotating credential somewhere.
 
-### O PV, para GCS Fuse
+### The PV, for GCS Fuse
 
-O cluster de dev é GKE, e `ReadWriteMany` ali não é EFS. Das três opções, a que
-serve é o **GCS Fuse CSI**: RWX de verdade, e o custo de guardar alguns KB é de
-centavos. `Filestore` tem instância mínima de 1 TiB; um Persistent Disk RWO não
-compartilha entre nós.
+The dev cluster is GKE, and `ReadWriteMany` there is not EFS. Of the three
+options, the one that serves is the **GCS Fuse CSI**: real RWX, and the cost of
+keeping a few KB is cents. `Filestore` has a 1 TiB minimum instance; an RWO
+Persistent Disk does not share between nodes.
 
 ```yaml
 apiVersion: v1
@@ -229,10 +238,10 @@ metadata:
   name: brevis-credentials
 spec:
   accessModes: [ReadWriteMany]
-  capacity: {storage: 1Gi}      # ignorado pelo gcsfuse; o campo é obrigatório
+  capacity: {storage: 1Gi}      # ignored by gcsfuse; the field is required
   storageClassName: ""
-  # O SDK recusa diretório com permissão frouxa, então o modo vem do mount:
-  # um volume compartilhado a 0755 é legível por todo pod que o monta.
+  # The SDK refuses a directory with loose permissions, so the mode comes from
+  # the mount: a shared volume at 0755 is readable by every pod that mounts it.
   mountOptions:
     - implicit-dirs
     - uid=0
@@ -241,53 +250,55 @@ spec:
     - file-mode=0600
   csi:
     driver: gcsfuse.csi.storage.gke.io
-    volumeHandle: SEU-BUCKET
+    volumeHandle: YOUR-BUCKET
 ```
 
-Confirme antes que o driver está habilitado (`gcsFuseCsiDriver` no addon config)
-e que a service account dos pods tem `roles/storage.objectAdmin` no bucket.
+Confirm first that the driver is enabled (`gcsFuseCsiDriver` in the addon
+config) and that the pods' service account has `roles/storage.objectAdmin` on
+the bucket.
 
-**Uma ressalva honesta:** `rename` no gcsfuse **não é atômico** como num POSIX de
-verdade. O SDK grava em temporário e renomeia, o que cobre a queda no meio da
-escrita num sistema de arquivos normal; no gcsfuse, para um arquivo de poucos KB
-escrito por um pod de cada vez, o risco é baixo — mas é real, e é mais um motivo
-para manter `concurrency: 1` no workflow que usa isso.
+**One honest caveat:** `rename` on gcsfuse is **not atomic** the way it is on a
+real POSIX filesystem. The SDK writes to a temporary file and renames, which
+covers a crash mid-write on a normal filesystem; on gcsfuse, for a file of a few
+KB written by one pod at a time, the risk is low — but it is real, and it is one
+more reason to keep `concurrency: 1` on the workflow that uses this.
 
-O SDK grava **último a escrever vence**, e isso é escolha: no fornecedor que
-motivou a feature, rotacionar não invalida o token anterior, então dois valores
-concorrentes ambos funcionam. Para um fornecedor que invalide o anterior, não
-use sem uma trava sua.
+The SDK writes **last writer wins**, and that is a choice: with the provider
+that motivated the feature, rotating does not invalidate the previous token, so
+two concurrent values both work. For a provider that does invalidate the
+previous one, do not use this without a lock of your own.
 
-## Segurança
+## Security
 
-Duas contas, e é a separação que importa:
+Two accounts, and the separation is what matters:
 
-| conta | permissão |
+| account | permission |
 |---|---|
-| `brevis-scheduler` | criar, ler, listar, observar e apagar pods; ler logs. Sem `update`, sem `patch`. |
-| `brevis-task` | **nenhuma** |
+| `brevis-scheduler` | create, read, list, watch and delete pods; read logs. No `update`, no `patch`. |
+| `brevis-task` | **none** |
 
-O pod de task executa comandos vindos de um YAML. Se herdasse a conta do
-scheduler, qualquer workflow poderia criar pods, ler secrets e escalar sozinho.
-Com uma conta sem role, o pior que um comando arbitrário faz é usar as
-credenciais que a instalação deu explicitamente a ele — via
-`BREVIS_POD_ENV_FROM_SECRETS`, que vem do ambiente do scheduler, ou via um
-`secrets:` do YAML **que só alcança os Secrets em `BREVIS_POD_ALLOWED_SECRETS`**.
+The task's pod runs commands that came out of a YAML. If it inherited the
+scheduler's account, any workflow could create pods, read secrets and scale
+itself. With an account that has no role, the worst an arbitrary command does is
+use the credentials the installation explicitly gave it — through
+`BREVIS_POD_ENV_FROM_SECRETS`, which comes from the scheduler's environment, or
+through a `secrets:` in the YAML **that only reaches the Secrets in
+`BREVIS_POD_ALLOWED_SECRETS`**.
 
-O YAML nunca amplia o conjunto; ele só escolhe, dentro do que a instalação
-liberou, qual passo recebe o quê.
+The YAML never widens the set; it only chooses, within what the installation
+allowed, which step gets what.
 
-## Concorrência: três limites
+## Concurrency: three limits
 
-| onde | conta | protege |
+| where | counts | protects |
 |---|---|---|
-| `--concurrency` | RUNS simultâneos no dispatcher | o processo |
-| `--max-pods` | PASSOS simultâneos = pods vivos | o **cluster** |
-| `concurrency:` no YAML | runs simultâneos **do mesmo workflow** | o **dado** |
+| `--concurrency` | simultaneous RUNS in the dispatcher | the process |
+| `--max-pods` | simultaneous STEPS = live pods | the **cluster** |
+| `concurrency:` in the YAML | simultaneous runs **of the same workflow** | the **data** |
 
-O terceiro é o que impede um `*/15` que leva 20 minutos de se sobrepor a si
-mesmo — dois `dbt build` no mesmo modelo disputando a mesma tabela. Trinta e seis
-dos 51 flows do repositório de dados declaravam esse limite no Kestra.
+The third is what stops a `*/15` that takes 20 minutes from overlapping itself —
+two `dbt build`s on the same model fighting over the same table. Thirty-six of
+the data repository's 51 flows declared that limit in Kestra.
 
 ```yaml
 name: id_verification_today
@@ -295,107 +306,110 @@ schedule: "5-59/15 * * * *"
 concurrency: 1
 ```
 
-Ele é imposto **na própria consulta de claim**, pelo mesmo motivo que o limite
-global: não existe caminho em que mais itens saiam da fila do que o permitido.
-Reivindicar e depois devolver seria uma janela em que dois dispatchers já teriam
-pegado o mesmo workflow.
+It is enforced **in the claim query itself**, for the same reason the global
+limit is: there is no path in which more items leave the queue than are allowed.
+Claiming and then handing back would be a window in which two dispatchers had
+already taken the same workflow.
 
-Dois detalhes que a implementação fixa:
+Two details the implementation pins down:
 
-- **Conta itens reivindicados, não runs em `running`.** Entre o claim e a
-  transição de estado há um instante em que o run ainda está `queued`; contar por
-  status abriria exatamente essa fresta.
-- **Numeração por workflow dentro do lote.** Sem ela, três itens do mesmo
-  workflow com limite 1 sairiam todos no mesmo claim — a contagem não muda no
-  meio da consulta.
+- **It counts claimed items, not runs in `running`.** Between the claim and the
+  state transition there is an instant where the run is still `queued`; counting
+  by status would open exactly that gap.
+- **Numbering per workflow inside the batch.** Without it, three items of the
+  same workflow with a limit of 1 would all come out in the same claim — the
+  count does not change partway through the query.
 
-Um workflow no limite **não bloqueia os outros**: a fila é compartilhada, e
-travar tudo por causa de um seria pior que não ter limite.
+A workflow at its limit **does not block the others**: the queue is shared, and
+stalling everything because of one would be worse than having no limit.
 
-Só o primeiro não basta: cinco runs com três passos paralelos cada dariam
-**quinze** pods. O `--max-pods` é um semáforo compartilhado por todos os runs do
-processo — com dez passos prontos e cinco vagas, cinco correm e os demais entram
-conforme as vagas se abrem.
+The first alone is not enough: five runs with three parallel steps each would
+mean **fifteen** pods. `--max-pods` is a semaphore shared by every run in the
+process — with ten steps ready and five slots, five run and the rest go in as
+slots open up.
 
-Medido, com dez passos sem dependência entre si e `--max-pods 5`:
+Measured, with ten steps that do not depend on each other and `--max-pods 5`:
 
 ```
-passos | pico_simultaneo | duracao_total
-    10 |               5 | 00:00:12
+steps | peak_simultaneous | total_duration
+   10 |                 5 | 00:00:12
 ```
 
-Dois lotes de seis segundos. O pico bateu exatamente no teto — nem seis (que
-seria vazamento) nem menos (que seria o limite virando serialização).
+Two batches of six seconds. The peak landed exactly on the ceiling — not six
+(which would be a leak) and not fewer (which would be the limit turning into
+serialization).
 
-A vaga é tomada **por tentativa**, não pelo passo inteiro: segurar o lugar
-durante o backoff de um retry deixaria uma vaga do cluster ociosa esperando um
-relógio.
+The slot is taken **per attempt**, not for the whole step: holding the place
+during a retry's backoff would leave a slot in the cluster idle waiting on a
+clock.
 
-O semáforo vive no processo, e o Deployment tem uma réplica com `Recreate` por
-isso. Com duas réplicas, cada uma teria o próprio teto — quando houver eleição de
-líder ou contagem no banco, o limite passa a ser global de verdade.
+The semaphore lives in the process, and that is why the Deployment has one
+replica with `Recreate`. With two replicas each would have its own ceiling —
+when there is leader election or a count in the database, the limit becomes
+genuinely global.
 
-## Vindo do Leoflow
+## Coming from Leoflow
 
-O que lá era um arquivo de empacotamento por DAG (`schema_version`, `dag_id`,
-`base_image`, `build.platforms`, `tasks.<id>.execution`) aqui se divide em dois
-lugares, por uma razão: **o que é do pipeline fica no YAML; o que é da
-instalação fica no ambiente do scheduler.**
+What was a per-DAG packaging file there (`schema_version`, `dag_id`,
+`base_image`, `build.platforms`, `tasks.<id>.execution`) splits into two places
+here, for one reason: **what belongs to the pipeline stays in the YAML; what
+belongs to the installation stays in the scheduler's environment.**
 
-| Leoflow (por DAG) | Brevis | onde |
+| Leoflow (per DAG) | Brevis | where |
 |---|---|---|
 | `dag_id`, `description`, `tags` | `name`, `tags` | workflow |
-| `base_image` | `image:` | workflow (por passo, com padrão) |
-| `tasks.run.resources` | `resources:` | workflow (por passo) |
-| `variables: [...]` | `BREVIS_POD_ENV_FROM_SECRETS` | instalação |
-| `execution.service_account` | `BREVIS_POD_SERVICE_ACCOUNT` | instalação |
-| `execution.node_selector` | `BREVIS_POD_NODE_SELECTOR` | instalação |
-| `execution.tolerations` | `BREVIS_POD_TOLERATIONS` | instalação |
-| `build.platforms` | — | a imagem é construída fora, uma vez |
+| `base_image` | `image:` | workflow (per step, with a default) |
+| `tasks.run.resources` | `resources:` | workflow (per step) |
+| `variables: [...]` | `BREVIS_POD_ENV_FROM_SECRETS` | installation |
+| `execution.service_account` | `BREVIS_POD_SERVICE_ACCOUNT` | installation |
+| `execution.node_selector` | `BREVIS_POD_NODE_SELECTOR` | installation |
+| `execution.tolerations` | `BREVIS_POD_TOLERATIONS` | installation |
+| `build.platforms` | — | the image is built elsewhere, once |
 | `params.get('x')` (Airflow) | `params:` + `{{ .x }}` | workflow |
-| `alerts.on_failure` | `BREVIS_SLACK_WEBHOOK` | instalação |
-| `connections` | **não existe** | — |
+| `alerts.on_failure` | `BREVIS_SLACK_WEBHOOK` | installation |
+| `connections` | **does not exist** | — |
 
-Service account no YAML do pipeline seria a inversão perigosa: um arquivo de
-workflow escolhendo com que identidade roda no cluster. Por isso essas três
-ficam no ambiente do scheduler.
+A service account in the pipeline's YAML would be the dangerous inversion: a
+workflow file choosing which identity it runs as in the cluster. That is why
+those three stay in the scheduler's environment.
 
-**Não há registro nem build por DAG.** No Leoflow, publicar um DAG novo passava
-por `leoflow deploy`; aqui a pasta é o artefato — um ConfigMap com os YAMLs e um
-Job que roda `brevis publish --prune`. Ver `publish-job.yaml`.
+**There is no per-DAG registry and no per-DAG build.** In Leoflow, publishing a
+new DAG went through `leoflow deploy`; here the folder is the artifact — a
+ConfigMap with the YAMLs and a Job that runs `brevis publish --prune`. See
+`publish-job.yaml`.
 
-**A ausência que sobra é *connection*** — não há conexão nomeada. O alerta de
-falha existe (ver abaixo).
+**The absence that remains is *connection*** — there is no named connection. The
+failure alert does exist (see below).
 
-## Alerta de falha
+## Failure alerting
 
 ```bash
 kubectl -n dados create secret generic brevis-slack \
   --from-literal=webhook='https://hooks.slack.com/services/...'
 ```
 
-Configurado o webhook, **todo workflow passa a avisar** — sem repetir bloco
-nenhum no YAML. Era a diferença de desenho frente ao Kestra: lá, os 51 flows
-carregavam cada um o mesmo `errors: alert_slack` copiado, vinte linhas de payload
-cinquenta vezes.
+With the webhook configured, **every workflow starts announcing** — with no
+block repeated in any YAML. That was the design difference against Kestra:
+there, all 51 flows each carried the same copied `errors: alert_slack`, twenty
+lines of payload fifty times.
 
-Três decisões:
+Three decisions:
 
-- **O alerta sai quando o run DESISTE**, não a cada tentativa. Avisar em toda
-  falha transformaria um retry bem-sucedido em dois alertas e um silêncio, e
-  canal que grita à toa deixa de ser lido.
-- **O webhook nunca vem do YAML.** É credencial: quem tem a URL posta no canal
-  como se fosse a plataforma.
-- **Falhar ao avisar não derruba nada.** Webhook fora do ar vira log; o run
-  termina em FAILED e a fila continua sendo consumida.
+- **The alert fires when the run GIVES UP**, not on every attempt. Announcing
+  every failure would turn a successful retry into two alerts and a silence, and
+  a channel that shouts for nothing stops being read.
+- **The webhook never comes from the YAML.** It is a credential: whoever has the
+  URL posts in the channel as if they were the platform.
+- **Failing to announce takes nothing down.** A webhook that is down becomes a
+  log line; the run ends FAILED and the queue goes on being consumed.
 
-A mensagem traz domínio e pipeline (das `tags`, com o prefixo do slug como
-reserva), origem, tentativas, data lógica, as últimas linhas do erro e o link
-direto para a execução. O erro é truncado em 900 caracteres — o bloco do Slack
-recusa a mensagem *inteira* acima de 3000, então truncar é o que garante que o
-alerta chegue.
+The message carries the domain and the pipeline (from the `tags`, with the
+slug's prefix as a fallback), the trigger, the attempts, the logical date, the
+error's last lines and a direct link to the run. The error is truncated at 900
+characters — Slack's block refuses the *whole* message above 3000, so truncating
+is what guarantees the alert arrives.
 
-## Aplicar
+## Applying
 
 ```bash
 kubectl apply -f deployments/kubernetes/rbac.yaml
@@ -406,15 +420,17 @@ kubectl -n dados create configmap brevis-brand --from-file=brand.yaml
 kubectl apply -f deployments/kubernetes/api.yaml -f deployments/kubernetes/scheduler.yaml
 ```
 
-`job-exemplo.yaml` mostra, escrito à mão, o pod que o scheduler monta — útil para
-conferir o que o cluster vai receber antes de qualquer coisa rodar.
+`job-exemplo.yaml` shows, written by hand, the pod the scheduler assembles —
+useful for checking what the cluster is going to receive before anything runs.
 
-## O que ainda não existe
+## What does not exist yet
 
-- **Volumes.** Nenhum passo monta PVC ou emptyDir; o que precisa passar entre
-  passos vai pelo warehouse. `volumes:` no YAML é o próximo passo natural.
-- **Eleição de líder.** Uma réplica do scheduler, e é por isso que o Deployment
-  usa `Recreate`.
-- **Job/CronJob nativo.** Os pods são criados diretamente. Um `Job` traria retry
-  do lado do cluster, que é justamente a segunda política de retry que se evitou.
-- **Sidecars e initContainers.**
+- **Volumes.** No step mounts a PVC or an emptyDir; what has to pass between
+  steps goes through the warehouse. `volumes:` in the YAML is the natural next
+  step.
+- **Leader election.** One scheduler replica, and that is why the Deployment
+  uses `Recreate`.
+- **A native Job/CronJob.** The pods are created directly. A `Job` would bring
+  retry on the cluster's side, which is exactly the second retry policy that was
+  avoided.
+- **Sidecars and initContainers.**
