@@ -9,11 +9,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// executor devolve como rodar SQL no cluster.
+// executor returns how to run SQL on the cluster.
 //
-// O Redshift fala o protocolo do Postgres, entao o pgx serve -- e ele ja e
-// dependencia do driver de Postgres. Um consumidor que importa este pacote
-// paga o pgx e nao paga o driver do MySQL nem o do BigQuery.
+// Redshift speaks Postgres' protocol, so pgx serves -- and it is already a
+// dependency of the Postgres driver. A consumer importing this package pays for
+// pgx and does not pay for the MySQL driver or the BigQuery one.
 func (t Table) executor(ctx context.Context) (SQLExecutor, func(), error) {
 	if t.Executor != nil {
 		return t.Executor, func() {}, nil
@@ -38,10 +38,10 @@ func (c conexao) Exec(ctx context.Context, sql string) error {
 
 // apagar remove o arquivo de staging.
 //
-// O core.Store nao tem Delete: ele foi desenhado para from.Files e to.Files,
-// que nunca apagam. Em vez de acrescentar um metodo a interface -- e obrigar
-// todo store de terceiro a implementa-lo por causa de um driver --, o driver
-// pergunta se aquele store sabe apagar.
+// core.Store has no Delete: it was designed for from.Files and to.Files, which
+// never delete. Rather than adding a method to the interface -- and forcing every
+// third-party store to implement it because of one driver -- the driver asks
+// whether that store knows how to delete.
 func (t Table) apagar(ctx context.Context, bucket, chave string) error {
 	type apagador interface {
 		Delete(ctx context.Context, bucket, key string) error
@@ -60,11 +60,12 @@ func esconderDSN(err error, dsn string) error {
 	return fmt.Errorf("%s", strings.ReplaceAll(err.Error(), dsn, "REDACTED"))
 }
 
-// avisarSobra diz que o arquivo de staging ficou para tras.
+// avisarSobra says the staging file was left behind.
 //
-// Nao derruba a carga: as linhas ja entraram, e trocar uma carga boa por um
-// erro de limpeza seria trocar um problema pequeno por um grande. Mas nao fica
-// calado -- um objeto orfao por execucao vira conta no fim do mes.
+// It does not bring the load down: the rows are already in, and trading a good
+// load for a cleanup error would trade a small problem for a big one. But it does
+// not stay quiet -- one orphaned object per run becomes a bill at the end of the
+// month.
 func avisarSobra(ctx context.Context, uri string, err error) {
 	slog.WarnContext(ctx, "redshift: the staged file was left behind",
 		"object", uri,

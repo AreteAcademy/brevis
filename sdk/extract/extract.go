@@ -985,12 +985,12 @@ func NewDecoder(r io.Reader, source core.Source) Decoder {
 	}
 }
 
-// decodificadorJSON monta o decoder, com ou sem preservacao do literal.
+// decodificadorJSON builds the decoder, with or without preserving the literal.
 //
-// Sem UseNumber, `{"id": 19}` e `{"id": 19.0}` chegam identicos como float64 --
-// e no Python o primeiro era int e o segundo float, com str() diferentes. Um
-// fetcher portado que compunha a chave com str() nao consegue reproduzir o id
-// sem o literal.
+// Without UseNumber, `{"id": 19}` and `{"id": 19.0}` arrive identical as
+// float64 -- and in Python the first was an int and the second a float, with
+// different str(). A ported fetcher that composed its key with str() cannot
+// reproduce the id without the literal.
 func decodificadorJSON(r io.Reader, source core.Source) *json.Decoder {
 	dec := json.NewDecoder(r)
 	if source.PreserveNumbers {

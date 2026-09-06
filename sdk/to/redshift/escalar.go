@@ -7,19 +7,19 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/jsontext"
 )
 
-// escreverEscalar escreve os tipos que um registro JSON quase sempre carrega,
-// sem passar pelo json.Encoder. Devolve false quando nao sabe escrever.
+// escreverEscalar writes the types a JSON record almost always carries, without
+// going through json.Encoder. It returns false when it does not know how.
 //
-// Existe por uma medicao, e a medicao mudou de sinal entre duas versoes do Go:
-// passar `any` ao Encoder custava UMA alocacao por valor no Go 1.27 -- 40 mil
-// para 10 mil linhas de quatro colunas -- e quase nenhuma no 1.25, porque a
-// analise de escape era outra. O numero de alocacoes nao e propriedade do
-// codigo; e do codigo mais o compilador. Escrever o escalar direto no buffer
-// nao depende de nenhum dos dois.
+// It exists because of a measurement, and the measurement changed sign between
+// two versions of Go: handing `any` to the Encoder cost ONE allocation per value
+// on Go 1.27 -- 40,000 for 10,000 rows of four columns -- and almost none on
+// 1.25, because escape analysis was different. The allocation count is not a
+// property of the code; it is a property of the code plus the compiler. Writing
+// the scalar straight into the buffer depends on neither.
 //
-// A saida e comparada byte a byte com json.Marshal no teste, para todos os
-// casos que costumam quebrar quem escreve isto a mao: aspas, contrabarra,
-// caracteres de controle, unicode e UTF-8 invalido.
+// The output is compared byte for byte against json.Marshal in the test, for
+// every case that usually breaks whoever writes this by hand: quotes,
+// backslashes, control characters, unicode and invalid UTF-8.
 func escreverEscalar(buf *bytes.Buffer, v any) bool {
 	switch t := v.(type) {
 	case nil:
@@ -41,8 +41,9 @@ func escreverEscalar(buf *bytes.Buffer, v any) bool {
 	case uint64:
 		buf.Write(strconv.AppendUint(buf.AvailableBuffer(), t, 10))
 	case float64:
-		// NaN e Inf nao existem em JSON, e o encoder recusa. Aqui a recusa e
-		// devolver false: o encoder produz o erro, com a mensagem dele.
+		// NaN and Inf do not exist in JSON, and the encoder refuses them. Here
+		// refusing means returning false: the encoder raises the error, with its
+		// own message.
 		if t != t || t > 1.7976931348623157e308 || t < -1.7976931348623157e308 {
 			return false
 		}
@@ -55,7 +56,7 @@ func escreverEscalar(buf *bytes.Buffer, v any) bool {
 
 // escreverTexto delega ao core: a mesma regra e precisa aqui e no canonico do
 // pycompat, e ter duas copias dela e ter duas chances de divergir do Python
-// sem ninguem notar.
+// without anybody noticing.
 func escreverTexto(buf *bytes.Buffer, s string) {
 	buf.Write(jsontext.AppendJSONString(buf.AvailableBuffer(), s))
 }

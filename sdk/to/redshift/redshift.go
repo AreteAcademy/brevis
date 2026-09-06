@@ -1,19 +1,20 @@
 // Package redshift writes records into Amazon Redshift.
 //
-// # O que este driver NAO tem, e por que voce precisa saber
+// # What this driver does NOT have, and why you need to know
 //
-// Nao existe imagem do Redshift para rodar local. Entao, diferente de todo
-// outro destino deste SDK, ele sai com **verificacao parcial**:
+// There is no Redshift image to run locally. So, unlike every other destination
+// in this SDK, it ships with **partial verification**:
 //
-//	testado sem cluster   a geracao do SQL (COPY e MERGE), como funcao pura,
-//	                      e a escrita do arquivo de staging no S3
-//	NAO testado           que o cluster aceita esse SQL
+//	tested without a cluster   the SQL generation (COPY and MERGE), as a pure
+//	                           function, and writing the staging file to S3
+//	NOT tested                 that the cluster accepts that SQL
 //
-// Isto esta aqui, e nao num rodape, porque e a informacao que muda a decisao
-// de quem vai usar. O que da para testar sem cluster e exatamente o que o
-// mergeSQL e o reconcile do BigQuery ja provaram valer: SQL montado dentro de
-// um metodo com cliente nunca tinha sido visto por um teste, e foi assim que a
-// v0.12.0 saiu com casamento posicional.
+// This is here, and not in a footnote, because it is the information that
+// changes the decision of whoever is about to use it. What can be tested without
+// a cluster is exactly what mergeSQL and BigQuery's reconcile have already
+// proven worth testing: SQL assembled inside a method holding a client had never
+// been seen by a test, and that is how v0.12.0 shipped with positional
+// matching.
 package redshift
 
 import (
@@ -28,52 +29,52 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Table carrega registros numa tabela do Redshift, via COPY a partir do S3.
+// Table loads records into a Redshift table, via COPY from S3.
 //
 //	To: redshift.Table{
 //	    DSN:     os.Getenv("RS_DSN"),
-//	    Name:    "landing.pedidos",
-//	    Staging: "s3://meu-bucket/stage/",
+//	    Name:    "landing.orders",
+//	    Staging: "s3://my-bucket/stage/",
 //	    IAMRole: "arn:aws:iam::123456789012:role/redshift-copy",
-//	    Store:   s3.New(cliente),
+//	    Store:   s3.New(client),
 //	}
 //
-// INSERT linha a linha no Redshift e inviavel: e um banco colunar, e cada
-// INSERT paga o custo de um bloco. A carga certa e COPY a partir do S3, que e
-// por que o driver de arquivos vem antes no roadmap -- a camada de staging e a
-// mesma.
+// Row-by-row INSERT into Redshift is unworkable: it is a columnar database, and
+// each INSERT pays the cost of a block. The right load is COPY from S3, which is
+// why the files driver comes first in the roadmap -- the staging layer is the
+// same one.
 type Table struct {
-	// DSN e a conexao ao cluster, no dialeto do Postgres. Obrigatoria.
+	// DSN is the connection to the cluster, in Postgres' dialect. Required.
 	DSN string
 
-	// Name e a tabela, com esquema. Obrigatoria.
+	// Name is the table, schema included. Required.
 	Name string
 
 	// Staging e o prefixo em S3 onde o lote e escrito antes do COPY.
-	// Obrigatorio: nao ha caminho inline no Redshift.
+	// Required: there is no inline path into Redshift.
 	Staging string
 
-	// IAMRole e o papel que o cluster assume para ler o S3. Obrigatorio.
+	// IAMRole is the role the cluster assumes to read S3. Required.
 	//
-	// E role, e nao chave de acesso, de proposito: uma chave na URL do COPY
-	// acaba no log de query do cluster, que muita gente le. Este driver nao
-	// aceita chave -- se voce precisa de uma, o lugar dela e a role.
+	// A role, and not an access key, on purpose: a key in the COPY's URL ends up
+	// in the cluster's query log, which plenty of people read. This driver does
+	// not accept a key -- if you need one, its place is behind the role.
 	IAMRole string
 
 	// Store escreve o arquivo de staging. Obrigatorio; use store/s3.
 	Store core.Store
 
-	// KeepStagedFile deixa o arquivo no S3 depois do COPY, para inspecao.
+	// KeepStagedFile leaves the file in S3 after the COPY, for inspection.
 	KeepStagedFile bool
 
-	// Executor roda o SQL no cluster. Nil abre uma conexao pelo DSN.
+	// Executor runs the SQL on the cluster. Nil opens a connection from the DSN.
 	//
-	// Existe para que a geracao do SQL seja testavel sem cluster, que e a
-	// unica parte deste driver que da para testar sem cluster.
+	// It exists so the SQL generation is testable without a cluster, which is
+	// the only part of this driver that can be tested without one.
 	Executor SQLExecutor
 }
 
-// SQLExecutor e o minimo que este driver precisa de uma conexao.
+// SQLExecutor is the minimum this driver needs from a connection.
 type SQLExecutor interface {
 	Exec(ctx context.Context, sql string) error
 }
@@ -103,9 +104,10 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return falhar(err)
 	}
 
-	// As colunas vem da declaracao, e nao do lote: no Redshift o SDK nao le o
-	// esquema antes de carregar, entao a declaracao E o contrato -- e ela ja
-	// foi conferida contra o lote inteiro pelo CheckColumns.
+	// The columns come from the declaration and not from the batch: on Redshift
+	// the SDK does not read the schema before loading, so the declaration IS the
+	// contract -- and CheckColumns has already checked it against the whole
+	// batch.
 	colunas := opt.Columns
 	if len(colunas) == 0 {
 		colunas = camposDe(envelopes)
@@ -131,14 +133,14 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	uri := "s3://" + local.Bucket + "/" + chave
 
 	if t.KeepStagedFile {
-		// So quando ele fica. Reportar um caminho que a limpeza vai apagar
-		// seria pior que nao reportar: alguem tentaria le-lo.
+		// Only when it stays. Reporting a path the cleanup will delete would be
+		// worse than reporting none: somebody would try to read it.
 		res.Objects = []string{uri}
 	} else {
 		defer func() {
-			// O arquivo de staging fica se a limpeza falhar: perder a carga
-			// por causa de um DELETE seria trocar um problema pequeno por um
-			// grande. O aviso e o que diz que ele ficou.
+			// The staging file stays if the cleanup fails: losing the load over a
+			// DELETE would trade a small problem for a big one. The warning is
+			// what says it stayed.
 			if err := t.apagar(ctx, local.Bucket, chave); err != nil {
 				avisarSobra(ctx, uri, err)
 			}
@@ -208,20 +210,20 @@ func (t Table) checar() error {
 	return nil
 }
 
-// EncodeNDJSON serializa o lote no formato que o COPY le.
+// EncodeNDJSON serialises the batch into the format COPY reads.
 //
-// Exportada para ser testavel sem cluster, e escrita com um unico buffer que
-// cresce: um lote de centenas de milhares de linhas nao pode alocar um buffer
-// por registro.
+// Exported so it is testable without a cluster, and written with a single
+// growing buffer: a batch of hundreds of thousands of rows must not allocate a
+// buffer per record.
 func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 	var buf bytes.Buffer
-	// Estimativa grosseira, so para evitar as primeiras dobras.
+	// A rough estimate, only to avoid the first few growths.
 	buf.Grow(len(envelopes) * 128)
 
-	// As chaves sao as mesmas em toda linha, entao sao serializadas UMA vez.
-	// Passar um map[string]any ao json.Encoder por registro custava cinco
-	// alocacoes por linha -- o encoder ordena as chaves e caixa cada valor,
-	// e nada disso muda entre registros.
+	// The keys are the same on every row, so they are serialised ONCE.
+	// Handing a map[string]any to json.Encoder per record cost five allocations
+	// per row -- the encoder sorts the keys and boxes every value, and none of
+	// that changes between records.
 	chaves := make([][]byte, len(colunas))
 	for i, c := range colunas {
 		b, err := json.Marshal(c)
@@ -232,7 +234,7 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 	}
 
 	enc := json.NewEncoder(&buf)
-	// O COPY le JSON, nao HTML: escapar < e > so aumentaria o arquivo.
+	// COPY reads JSON, not HTML: escaping < and > would only make the file bigger.
 	enc.SetEscapeHTML(false)
 
 	for i, e := range envelopes {
@@ -246,9 +248,9 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 		for j, c := range colunas {
 			v, tem := obj[c]
 			if !tem {
-				// Coluna ausente nao vira null: com FORMAT AS JSON 'auto' a
-				// ausencia deixa a coluna NULL, e escrever null explicito
-				// custaria bytes sem mudar nada.
+				// A missing column does not become null: with FORMAT AS JSON
+				// 'auto' the absence leaves the column NULL, and writing an
+				// explicit null would cost bytes without changing anything.
 				continue
 			}
 			if !primeiro {
@@ -257,12 +259,12 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 			primeiro = false
 			buf.Write(chaves[j])
 			if !escreverEscalar(&buf, v) {
-				// Composto: o encoder resolve, e paga uma alocacao.
+				// Composite: the encoder handles it, and pays one allocation.
 				if err := enc.Encode(v); err != nil {
 					return nil, fmt.Errorf("redshift: row %d, column %q: %w", i+1, c, err)
 				}
-				// O Encode termina em \n, que aqui e separador de LINHA e nao
-				// pode aparecer no meio do objeto.
+				// Encode ends in \n, which here is a ROW separator and must not
+				// appear in the middle of the object.
 				buf.Truncate(buf.Len() - 1)
 			}
 		}
@@ -271,12 +273,12 @@ func EncodeNDJSON(envelopes []core.Envelope, colunas []string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// CopySQL monta o COPY.
+// CopySQL builds the COPY.
 //
-// FORMAT AS JSON 'auto' casa por NOME de campo, que e o oposto do que o
-// INSERT ROW do BigQuery faz -- e e por isso que aqui nao ha o risco que
-// custou a v0.12.0. O que ha e a role: uma chave de acesso nesta string
-// acabaria no log de query do cluster.
+// FORMAT AS JSON 'auto' matches by field NAME, which is the opposite of what
+// BigQuery's INSERT ROW does -- and that is why the risk that cost v0.12.0 does
+// not exist here. What does exist is the role: an access key in this string would
+// end up in the cluster's query log.
 func CopySQL(destino, uri, role string) string {
 	return fmt.Sprintf("COPY %s FROM '%s' IAM_ROLE '%s' FORMAT AS JSON 'auto' TIMEFORMAT 'auto'",
 		destino, uri, role)
@@ -284,18 +286,18 @@ func CopySQL(destino, uri, role string) string {
 
 // StagingTableSQL cria a temporaria com a MESMA forma do destino.
 //
-// LIKE, e nao uma lista de colunas escrita a mao: a temporaria que nao
-// acompanha o destino e a que faz o MERGE falhar meses depois, quando alguem
-// acrescenta uma coluna.
+// LIKE, and not a hand-written column list: a temporary table that does not
+// follow the destination is the one that makes the MERGE fail months later, when
+// somebody adds a column.
 func StagingTableSQL(destino, temp string) string {
 	return fmt.Sprintf("CREATE TEMP TABLE %s (LIKE %s)", temp, destino)
 }
 
 // MergeSQL monta o MERGE da dedup, com a lista de colunas NOMEADA.
 //
-// Nomeada sempre, e o comentario existe porque a alternativa ja aconteceu: o
-// `INSERT ROW` do BigQuery casa por POSICAO, e a v0.12.0 saiu com as colunas
-// trocadas de lugar porque ninguem tinha visto o SQL gerado.
+// Always named, and the comment exists because the alternative already
+// happened: BigQuery's `INSERT ROW` matches by POSITION, and v0.12.0 shipped
+// with the columns swapped because nobody had seen the generated SQL.
 func MergeSQL(destino, origem string, colunas []string) string {
 	nomes := make([]string, len(colunas))
 	valores := make([]string, len(colunas))
