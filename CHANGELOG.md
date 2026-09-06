@@ -10,6 +10,34 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.48.0] — 2026-09-05
+
+### MUDANÇA INCOMPATÍVEL: o protocolo de etapas fala inglês
+
+As linhas que o SDK escreve no stdout para o motor mudaram de chave:
+
+```
+antes: @brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"..."}
+agora: @brevis:{"type":"stage","name":"extract","state":"running","at":"..."}
+```
+
+**O motor precisa subir antes dos fetchers.** Um motor que só entende o formato
+antigo faz as etapas de um fetcher novo sumirem da tela — sem erro, sem log, só
+a caixa cinza de volta. O motor a partir da próxima versão entende os **dois**,
+e essa ponte sai quando não houver fetcher em produção abaixo desta versão.
+
+Apareceu porque um teste quebrou: a tradução dos comentários mexeu nas chaves
+dentro das strings, e o teste da ordem das etapas pegou. Sem ele, o protocolo
+teria mudado calado.
+
+### Traduzido: comentários e identificadores internos do pacote raiz
+
+`reduce.go`, `checkpoint.go`, `telemetry.go` e o que eles tocam. As mensagens de
+erro que o usuário lê também — `"o campo %q vale %v, que não é um número"` virou
+`"field %q holds %v, which is not a number"`.
+
+---
+
 ## [0.47.0] — 2026-09-05
 
 ### MUDANÇA INCOMPATÍVEL: a API exportada agora é toda em inglês

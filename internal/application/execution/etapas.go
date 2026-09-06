@@ -61,19 +61,40 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 		return false
 	}
 
+	// DOIS formatos, e o segundo e uma ponte com data de validade.
+	//
+	// O SDK ate a v0.47.0 falava em portugues: {"tipo":"etapa","nome",
+	// "estado","versao","em"}. Da v0.48.0 em diante fala ingles:
+	// {"type":"stage","name","state","version","at"}. Um motor que so
+	// entendesse o novo faria as etapas de um fetcher antigo sumirem da tela --
+	// sem erro, sem log, so a caixa cinza de volta.
+	//
+	// A ponte sai quando nao houver fetcher em producao abaixo da v0.48.0.
 	var ev struct {
-		Tipo   string `json:"tipo"`
-		Versao string `json:"versao"`
-		Nome   string `json:"nome"`
-		Estado string `json:"estado"`
+		Tipo   string `json:"type"`
+		Versao string `json:"version"`
+		Nome   string `json:"name"`
+		Estado string `json:"state"`
 		Ms     *int64 `json:"ms"`
-		Em     string `json:"em"`
-		Extra  map[string]any
+		Em     string `json:"at"`
+
+		TipoPT   string `json:"tipo"`
+		VersaoPT string `json:"versao"`
+		NomePT   string `json:"nome"`
+		EstadoPT string `json:"estado"`
+		EmPT     string `json:"em"`
 	}
 	if err := json.Unmarshal([]byte(corpo), &ev); err != nil {
 		// Uma marca ilegivel volta a ser log: esconde-la faria sumir da tela a
 		// unica pista de que algo esta escrevendo lixo no lugar errado.
 		return false
+	}
+
+	// O formato antigo preenche os campos novos, e o resto do codigo so
+	// enxerga um formato.
+	if ev.Tipo == "" {
+		ev.Tipo, ev.Versao = traduzirTipo(ev.TipoPT), ev.VersaoPT
+		ev.Nome, ev.Estado, ev.Em = ev.NomePT, ev.EstadoPT, ev.EmPT
 	}
 
 	if c.vistos >= tetoDeEtapas {
@@ -85,7 +106,7 @@ func (c *coletorDeEtapas) linha(msg string) bool {
 	case "sdk":
 		c.Versao = ev.Versao
 		return true
-	case "etapa":
+	case "stage":
 		if !etapasConhecidas[ev.Nome] {
 			return true
 		}
@@ -112,7 +133,9 @@ func (c *coletorDeEtapas) aplicar(e Etapa) {
 // camposReservados sao os que viram colunas proprias da Etapa; o resto do
 // objeto e numero que a etapa produziu.
 var camposReservados = map[string]bool{
-	"tipo": true, "nome": true, "estado": true, "ms": true, "em": true, "versao": true,
+	"type": true, "name": true, "state": true, "ms": true, "at": true, "version": true,
+	// Os do formato antigo; ver coletorDeEtapas.linha.
+	"tipo": true, "nome": true, "estado": true, "em": true, "versao": true,
 }
 
 func numerosDe(corpo string) map[string]any {
@@ -129,4 +152,12 @@ func numerosDe(corpo string) map[string]any {
 		return nil
 	}
 	return tudo
+}
+
+// traduzirTipo mapeia o tipo do formato antigo. Ver coletorDeEtapas.linha.
+func traduzirTipo(pt string) string {
+	if pt == "etapa" {
+		return "stage"
+	}
+	return pt // "sdk" e igual nos dois
 }

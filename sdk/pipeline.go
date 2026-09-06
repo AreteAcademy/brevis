@@ -156,8 +156,8 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 // that replaces the logger first. The log line here is the whole of a
 // fetcher's observability, so it is the part that most needs a test.
 func runPipeline(ctx context.Context, p *Pipeline) error {
-	rel := novoRelator(p.Run)
-	rel.anunciar(p.name())
+	rep := newReporter(p.Run)
+	rep.announce(p.name())
 
 	// A declaracao e conferida contra o destino ANTES da extracao.
 	//
@@ -165,32 +165,32 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// e outra a tabela pode mudar, e a do Load e a que decide. O que esta
 	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
 	// coluna nao bate significa ter gasto a janela inteira para isso.
-	rel.comecou(PhaseCheck)
+	rep.started(PhaseCheck)
 	// The stages are checked alongside the destination, and for the same
 	// reason: an aggregator that does not exist, a name that collides, or
 	// Stages declared next to Transform are assembly errors -- and finding
 	// them after the extract would cost the vendor's window.
 	stages, err := p.stages()
 	if err != nil {
-		rel.terminou(PhaseCheck, StateFailed, nil)
+		rep.finished(PhaseCheck, StateFailed, nil)
 		return err
 	}
 	for _, st := range stages {
 		if err := st.validate(); err != nil {
-			rel.terminou(PhaseCheck, StateFailed, nil)
+			rep.finished(PhaseCheck, StateFailed, nil)
 			return err
 		}
 	}
 	if err := checkDestination(ctx, p.Target); err != nil {
-		rel.terminou(PhaseCheck, StateFailed, nil)
+		rep.finished(PhaseCheck, StateFailed, nil)
 		return err
 	}
-	rel.terminou(PhaseCheck, StateDone, nil)
+	rep.finished(PhaseCheck, StateDone, nil)
 
-	rel.comecou(PhaseExtract)
+	rep.started(PhaseExtract)
 	data, cp, err := extrairComCheckpoint(ctx, p)
 	if err != nil {
-		rel.terminou(PhaseExtract, StateFailed, nil)
+		rep.finished(PhaseExtract, StateFailed, nil)
 		return err
 	}
 
@@ -216,27 +216,27 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	contagens := make([]StageResult, len(stages))
 	origem := p.Source.From.Describe()
 
-	if rel.ligado {
+	if rep.on {
 		var entraram int64
 		data.Records = counting(data.Records, &entraram, func() {})
-		data.Records = aoPrimeiro(data.Records, func() { rel.comecou(PhaseTransform) })
+		data.Records = aoPrimeiro(data.Records, func() { rep.started(PhaseTransform) })
 	}
 	for i, st := range stages {
 		data.Records = st.apply(data.Records, &contagens[i], origem)
 	}
-	if rel.ligado {
+	if rep.on {
 		data.Records = aoEsgotar(data.Records, func() {
-			rel.terminou(PhaseExtract, StateDone, numerosDoExtract(data))
-			rel.terminou(PhaseTransform, StateDone, numerosDosEstagios(contagens))
+			rep.finished(PhaseExtract, StateDone, extractNumbers(data))
+			rep.finished(PhaseTransform, StateDone, numerosDosEstagios(contagens))
 			// Without batches nothing has been written yet: the Write only
 			// happens once the stream runs dry. With batches it already
 			// started, and the phase was opened above.
 			if p.Target.FlushEvery == 0 {
-				rel.comecou(PhaseLoad)
+				rep.started(PhaseLoad)
 			}
 		})
 		if p.Target.FlushEvery > 0 {
-			rel.comecou(PhaseLoad)
+			rep.started(PhaseLoad)
 		}
 	}
 
@@ -268,7 +268,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	if err != nil {
 		estado = StateFailed
 	}
-	rel.terminou(PhaseLoad, estado, numerosDoLoad(res))
+	rep.finished(PhaseLoad, estado, loadNumbers(res))
 	return err
 }
 
@@ -312,7 +312,7 @@ func numerosDosEstagios(cs []StageResult) map[string]any {
 	return n
 }
 
-// aoEsgotar avisa quando a origem acabou -- que e quando o extract terminou de
+// aoEsgotar avisa quando a origem acabou -- que e quando o extract finished de
 // verdade, e nao quando Extract devolveu o iterador.
 func aoEsgotar(linhas iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {

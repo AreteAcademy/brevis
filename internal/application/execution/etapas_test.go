@@ -113,3 +113,52 @@ func TestTetoProtegeOBanco(t *testing.T) {
 		t.Errorf("registrou %d transicoes, o teto e %d", c.vistos, tetoDeEtapas)
 	}
 }
+
+// O motor tem de entender os DOIS formatos.
+//
+// O SDK ate a v0.47.0 falava em portugues; da v0.48.0 em diante fala ingles. Um
+// motor que so entendesse o novo faria as etapas de um fetcher antigo sumirem
+// da tela -- sem erro, sem log, so a caixa cinza de volta.
+func TestOsDoisFormatosDoProtocolo(t *testing.T) {
+	casos := map[string]string{
+		"ingles (v0.48+)":         `@brevis:{"type":"stage","name":"extract","state":"done","ms":2400,"at":"agora","paginas":300}`,
+		"portugues (ate a v0.47)": `@brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"em":"agora","paginas":300}`,
+	}
+	for nome, linha := range casos {
+		t.Run(nome, func(t *testing.T) {
+			var c coletorDeEtapas
+			if !c.linha(linha) {
+				t.Fatal("a marca nao foi reconhecida")
+			}
+			if len(c.Etapas) != 1 {
+				t.Fatalf("etapas: %+v", c.Etapas)
+			}
+			e := c.Etapas[0]
+			if e.Nome != "extract" || e.Estado != "done" || e.Ms == nil || *e.Ms != 2400 {
+				t.Errorf("etapa: %+v", e)
+			}
+			// E os numeros da etapa nao podem trazer os campos do protocolo.
+			if e.Numeros["paginas"] != 300.0 {
+				t.Errorf("numeros: %+v", e.Numeros)
+			}
+			for _, reservado := range []string{"tipo", "type", "nome", "name", "estado", "state", "em", "at"} {
+				if _, tem := e.Numeros[reservado]; tem {
+					t.Errorf("o campo de protocolo %q vazou para os numeros: %+v", reservado, e.Numeros)
+				}
+			}
+		})
+	}
+}
+
+// O selo, nos dois formatos.
+func TestSeloNosDoisFormatos(t *testing.T) {
+	for _, linha := range []string{
+		`@brevis:{"type":"sdk","version":"v0.48.0","pipeline":"f"}`,
+		`@brevis:{"tipo":"sdk","versao":"v0.47.0","pipeline":"f"}`,
+	} {
+		var c coletorDeEtapas
+		if !c.linha(linha) || c.Versao == "" {
+			t.Errorf("versao nao chegou de %q: %q", linha, c.Versao)
+		}
+	}
+}

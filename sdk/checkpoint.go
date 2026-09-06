@@ -13,8 +13,8 @@ import (
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Checkpoint guarda o extract bruto desta execucao para que uma SEGUNDA
-// TENTATIVA da mesma run nao precise consultar a origem de novo.
+// Checkpoint keeps this run's raw extract so that a SECOND ATTEMPT of the same
+// run does not have to go back to the source.
 //
 //	sdk.Run(sdk.Pipeline{
 //		Source:     /* ... */,
@@ -22,45 +22,46 @@ import (
 //		Target:     /* ... */,
 //	})
 //
-// O que ele compra e a quota do fornecedor. Um extract que gastou 4.803
-// requisicoes e quarenta minutos nao deveria ser refeito porque uma coluna do
-// destino mudou de tipo.
+// What it buys is the vendor's quota. An extract that spent 4,803 requests and
+// forty minutes should not be repeated because a column at the destination
+// changed type.
 //
-// O que ele custa: a extracao deixa de ser uma passada unica. O extract
-// inteiro pousa no deposito antes de a primeira linha ser carregada, e depois
-// e relido de la -- uma escrita e uma leitura a mais do volume, em TODA
-// execucao, para socorrer a que falha. By isso vem desligado.
+// What it costs: the extraction stops being a single pass. The whole extract
+// lands in the depot before the first row is loaded, and is then read back --
+// one extra write and one extra read of the volume, on EVERY run, to rescue the
+// one that fails. That is why it ships off.
 //
-// # Quando NAO usar
+// # When NOT to use it
 //
-// Se o extract e o load ja sao dois passos do DAG, isto nao acrescenta nada: o
-// motor ja tenta cada passo de novo separadamente, entao um load que falha nao
-// refaz o extract, que e outro no que teve sucesso. Escreva com to.Files, leia
-// Result.Objects, e passe adiante. E menos codigo e da dois nos na tela em vez
-// de um.
+// If the extract and the load are already two nodes of the DAG, this adds
+// nothing: the engine already retries each node on its own, so a load that
+// fails does not redo the extract, which is another node that succeeded. Write
+// with to.Files, read Result.Objects, and pass it along. That is less code and
+// gives two boxes on the screen instead of one.
 //
-// # Garantias
+// # Guarantees
 //
-//   - Um deposito incompleto NUNCA e retomado. O manifesto e escrito por
-//     ultimo; sem ele o extract e refeito.
-//   - Um deposito so serve a run que o escreveu. Nada e reaproveitado entre
-//     execucoes, entao nao ha dado velho entrando como novo.
-//   - Os ingestion_id de uma retomada sao IDENTICOS aos da primeira tentativa.
-//   - Falhar ao gravar o deposito nao derruba a execucao: ela segue e avisa.
+//   - An incomplete depot is NEVER resumed. The manifest is written last;
+//     without it the extract is redone.
+//   - A depot only serves the run that wrote it. Nothing is reused between
+//     runs, so no stale data enters as fresh.
+//   - The ingestion_ids of a resumed run are IDENTICAL to the first attempt's.
+//   - Failing to write the depot does not kill the run: it carries on and
+//     warns.
 type Checkpoint struct {
-	// At e o diretorio raiz dos depositos. Vazio desliga.
+	// At is the root directory of the depots. Empty turns it off.
 	//
-	// O caminho efetivo leva a run e o pipeline por baixo dele, porque uma run
-	// tem varios passos e dois passos nao podem dividir o mesmo deposito.
+	// The effective path carries the run and the pipeline underneath it,
+	// because a run has several steps and two steps must not share a depot.
 	At string
 
-	// Store e o backend de object storage, como nos drivers. Nil e o disco
-	// local.
+	// Store is the object storage backend, as in the drivers. Nil is the local
+	// filesystem.
 	Store core.Store
 }
 
-// estadoCheckpoint e o que aconteceu com o deposito nesta execucao. Os campos
-// sao preenchidos enquanto o fluxo corre, e lidos depois que ele termina.
+// checkpointState is what happened to the depot on this run. The fields are
+// filled while the stream runs, and read once it ends.
 type estadoCheckpoint struct {
 	caminho       string
 	reaproveitado bool
@@ -76,15 +77,15 @@ func (e *estadoCheckpoint) aplicar(r *Result) {
 	r.CheckpointError = e.erro
 }
 
-// caminhoDoCheckpoint monta o deposito desta execucao:
+// checkpointPath builds this run's depot:
 //
-//	{At}/{run_id}/{nome}-{hash}/
+//	{At}/{run_id}/{name}-{hash}/
 //
-// A run identifica a execucao e o nome identifica o passo. O hash esta ai
-// porque o nome vira um segmento de caminho e precisa ser saneado: sem ele
-// dois pipelines cujos nomes sanitizam para a mesma coisa dividiriam o
-// deposito, e um retomaria do extract do outro -- dado errado carregado em
-// silencio, que e o pior jeito de falhar.
+// The run identifies the execution and the name identifies the step. The hash
+// is there because the name becomes a path segment and has to be sanitised:
+// without it, two pipelines whose names sanitise to the same thing would share
+// a depot, and one would resume from the other's extract -- wrong data loaded
+// in silence, which is the worst way to fail.
 func (p *Pipeline) caminhoDoCheckpoint() string {
 	nome := p.name()
 	h := fnv.New32a()
@@ -93,7 +94,7 @@ func (p *Pipeline) caminhoDoCheckpoint() string {
 		strings.TrimSuffix(p.Checkpoint.At, "/"), segmento(p.Run.ID), segmento(nome), h.Sum32())
 }
 
-// segmento deixa um texto livre virar um pedaco de caminho.
+// segment turns free text into a path component.
 func segmento(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -111,7 +112,7 @@ func segmento(s string) string {
 	return b.String()
 }
 
-// extrairComCheckpoint e o Extract do runPipeline, com o deposito no meio.
+// extractWithCheckpoint is runPipeline's Extract, with the depot in between.
 func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheckpoint, error) {
 	est := &estadoCheckpoint{}
 
@@ -120,9 +121,9 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 		return d, est, err
 	}
 
-	// Sem run id nao ha chave estavel: cada execucao escreveria num lugar
-	// diferente e nada seria reaproveitado nunca. Dizer e melhor que ignorar
-	// em silencio -- alguem configurou isto esperando que funcionasse.
+	// With no run id there is no stable key: every run would write somewhere
+	// different and nothing would ever be reused. Saying so beats ignoring it
+	// in silence -- somebody configured this expecting it to work.
 	if p.Run.ID == "" {
 		slog.WarnContext(ctx, "checkpoint desligado: sem "+core.EnvRunID+
 			" nao ha chave estavel entre tentativas",
@@ -131,18 +132,18 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 		return d, est, err
 	}
 
-	// Configuracao errada e ERRO, nao aviso: um esquema que nao casa com o
-	// Store nunca vai gravar, e seguir avisando esconderia isso em toda
-	// execucao ate o dia em que alguem precisasse retomar.
+	// Wrong configuration is an ERROR, not a warning: a scheme that does not
+	// match the Store will never write, and carrying on with a warning would
+	// hide that on every run until the day somebody needed to resume.
 	dep, err := checkpoint.Novo(p.caminhoDoCheckpoint(), p.Checkpoint.Store)
 	if err != nil {
 		return nil, est, err
 	}
 	est.caminho = dep.Caminho()
 
-	// Na primeira tentativa nao ha o que retomar -- o caminho leva o id da run,
-	// e esta run comeca aqui. Nao procurar evita um aviso por execucao dizendo
-	// que nao achou o que nao podia existir.
+	// On the first attempt there is nothing to resume -- the path carries the
+	// run id, and this run starts here. Not looking avoids a warning per run
+	// saying it did not find what could not exist.
 	if p.Run.Attempt > 0 {
 		if d, ok := retomar(ctx, p, dep, est); ok {
 			return d, est, nil
@@ -154,9 +155,9 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 		return nil, est, err
 	}
 
-	// Provar que da para gravar ANTES de gastar a quota. A falha mais comum e
-	// permissao, e descobri-la depois da extracao significaria ter gasto
-	// exatamente aquilo que o checkpoint existe para poupar.
+	// Prove writing works BEFORE spending the quota. The most common failure
+	// is permissions, and finding it after the extraction would mean having
+	// spent exactly what the checkpoint exists to save.
 	if err := dep.Reservar(ctx, p.name(), p.Run.ID); err != nil {
 		est.erro = err.Error()
 		slog.WarnContext(ctx, "checkpoint indisponivel; a execucao segue sem ele",
@@ -168,7 +169,7 @@ func extrairComCheckpoint(ctx context.Context, p *Pipeline) (*Data, *estadoCheck
 	return data, est, nil
 }
 
-// retomar le o deposito da tentativa anterior, quando ele esta inteiro.
+// resume reads the previous attempt's depot, when it is whole.
 func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Deposito,
 	est *estadoCheckpoint) (*Data, bool) {
 
@@ -197,17 +198,17 @@ func retomar(ctx context.Context, p *Pipeline, dep *checkpoint.Deposito,
 		Records: dep.Reler(ctx, m),
 		source:  p.Source,
 		start:   time.Now(),
-		// Paginas e tentativas ficam em zero, e e a verdade: esta execucao nao
-		// buscou pagina nenhuma.
+		// Pages and attempts stay at zero, and that is the truth: this run
+		// fetched no pages at all.
 		stats: stats,
 	}, true
 }
 
-// materializar drena a origem para o deposito e devolve o que foi gravado.
+// materialise drains the source into the depot and yields what was written.
 //
-// A releitura nao e desperdicio de teste: ela faz o caminho da RETOMADA rodar
-// em toda execucao bem-sucedida. Um caminho de recuperacao que so roda em
-// emergencia e um caminho que ninguem nunca viu funcionar.
+// Reading it back is not waste: it makes the RESUME path run on every
+// successful execution. A recovery path that only runs in an emergency is a
+// path nobody has ever seen work.
 func materializar(ctx context.Context, dep *checkpoint.Deposito,
 	origem iter.Seq2[Envelope, error], p *Pipeline, est *estadoCheckpoint) iter.Seq2[Envelope, error] {
 
@@ -218,9 +219,10 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 		proximo, parar := iter.Pull2(origem)
 		defer parar()
 
-		// degradar desiste do deposito sem desistir da execucao: cede o que ja
-		// virou objeto, o que ficou no buffer, e segue direto da origem. Nao
-		// escreve manifesto, entao ninguem retoma de um deposito capenga.
+		// degrade gives up on the depot without giving up on the run: it yields
+		// what already became an object, what stayed in the buffer, and then
+		// carries on straight from the source. It writes no manifest, so nobody
+		// resumes from a crippled depot.
 		degradar := func(causa error, pendente *Envelope) {
 			est.erro = causa.Error()
 			slog.WarnContext(ctx, "checkpoint interrompido; a execucao segue sem ele",

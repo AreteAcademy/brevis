@@ -34,19 +34,19 @@ func (o origemLenta) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, err
 func etapasDe(t *testing.T, p *Pipeline) ([]map[string]any, error) {
 	t.Helper()
 	var buf bytes.Buffer
-	anterior := saidaDasEtapas
-	saidaDasEtapas = &buf
-	defer func() { saidaDasEtapas = anterior }()
+	anterior := phaseOutput
+	phaseOutput = &buf
+	defer func() { phaseOutput = anterior }()
 
 	err := runPipeline(context.Background(), p)
 
 	var eventos []map[string]any
 	for _, linha := range strings.Split(buf.String(), "\n") {
-		if !strings.HasPrefix(linha, marcaEtapa) {
+		if !strings.HasPrefix(linha, phaseMarker) {
 			continue
 		}
 		var ev map[string]any
-		if e := json.Unmarshal([]byte(strings.TrimPrefix(linha, marcaEtapa)), &ev); e != nil {
+		if e := json.Unmarshal([]byte(strings.TrimPrefix(linha, phaseMarker)), &ev); e != nil {
 			t.Fatalf("linha marcada ilegivel %q: %v", linha, e)
 		}
 		eventos = append(eventos, ev)
@@ -76,11 +76,11 @@ func TestEtapasSaemNaOrdem(t *testing.T) {
 
 	var trilha []string
 	for _, ev := range eventos {
-		if ev["tipo"] == "sdk" {
+		if ev["type"] == "sdk" {
 			trilha = append(trilha, "sdk")
 			continue
 		}
-		trilha = append(trilha, ev["nome"].(string)+":"+ev["estado"].(string))
+		trilha = append(trilha, ev["name"].(string)+":"+ev["state"].(string))
 	}
 	querido := []string{
 		"sdk",
@@ -106,10 +106,10 @@ func TestAnuncioCarregaAVersao(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(eventos) == 0 || eventos[0]["tipo"] != "sdk" {
+	if len(eventos) == 0 || eventos[0]["type"] != "sdk" {
 		t.Fatalf("o primeiro evento tem de ser o anuncio, veio %v", eventos)
 	}
-	if v, _ := eventos[0]["versao"].(string); v == "" {
+	if v, _ := eventos[0]["version"].(string); v == "" {
 		t.Error("o anuncio saiu sem versao")
 	}
 	if eventos[0]["pipeline"] != "fetcher" {
@@ -204,23 +204,23 @@ func TestForaDoMotorNaoAnunciaNada(t *testing.T) {
 // pipeline em laco derrubaria o Postgres pelo caminho do log.
 func TestTetoDeEtapas(t *testing.T) {
 	var buf bytes.Buffer
-	anterior := saidaDasEtapas
-	saidaDasEtapas = &buf
-	defer func() { saidaDasEtapas = anterior }()
+	anterior := phaseOutput
+	phaseOutput = &buf
+	defer func() { phaseOutput = anterior }()
 
-	r := novoRelator(RunContext{ID: "run-1"})
-	for i := 0; i < tetoDeEtapas*3; i++ {
-		r.comecou(PhaseExtract)
+	r := newReporter(RunContext{ID: "run-1"})
+	for i := 0; i < phaseCap*3; i++ {
+		r.started(PhaseExtract)
 	}
-	if n := strings.Count(buf.String(), marcaEtapa); n != tetoDeEtapas {
-		t.Errorf("emitiu %d linhas, o teto e %d", n, tetoDeEtapas)
+	if n := strings.Count(buf.String(), phaseMarker); n != phaseCap {
+		t.Errorf("emitiu %d linhas, o teto e %d", n, phaseCap)
 	}
 }
 
 func acharEtapa(t *testing.T, eventos []map[string]any, nome, estado string) map[string]any {
 	t.Helper()
 	for _, ev := range eventos {
-		if ev["nome"] == nome && ev["estado"] == estado {
+		if ev["name"] == nome && ev["state"] == estado {
 			return ev
 		}
 	}

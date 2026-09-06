@@ -44,7 +44,7 @@ func vendas() []map[string]any {
 	}
 }
 
-func TestAgregadoresCalculamOQuePrometem(t *testing.T) {
+func TestAggregatorsComputeWhatTheyPromise(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By: GroupBy("regiao"),
 		Agg: map[string]Aggregator{
@@ -89,7 +89,7 @@ func TestAgregadoresCalculamOQuePrometem(t *testing.T) {
 
 // Um grupo sem nenhum valor devolve nulo, não zero. Zero é um número que
 // alguém vai somar; nulo diz que não havia o que somar.
-func TestGrupoSemValorDevolveNuloENaoZero(t *testing.T) {
+func TestAGroupWithNoValuesReturnsNullNotZero(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("g"),
 		Agg: map[string]Aggregator{"total": Sum("v"), "media": Mean("v"), "n": Count()},
@@ -105,7 +105,7 @@ func TestGrupoSemValorDevolveNuloENaoZero(t *testing.T) {
 
 // Welford: a fórmula ingênua perde todos os dígitos com valores grandes e
 // próximos, e devolve variância NEGATIVA.
-func TestVarianciaSobreviveAValoresGrandes(t *testing.T) {
+func TestVarianceSurvivesLargeValues(t *testing.T) {
 	base := 1e9
 	var registros []map[string]any
 	for _, d := range []float64{0, 1, 2, 3, 4} {
@@ -130,7 +130,7 @@ func TestVarianciaSobreviveAValoresGrandes(t *testing.T) {
 
 // Um campo com nome errado produziria uma coluna de nulos, e ninguém
 // perceberia. Ele é recusado nomeando o que existe.
-func TestCampoQueNenhumaLinhaTemERecusado(t *testing.T) {
+func TestAFieldNoRowHasIsRefused(t *testing.T) {
 	d := &Reduce{By: GroupBy("regiao"), Agg: map[string]Aggregator{"total": Sum("vlaor")}}
 	var erro error
 	for _, err := range d.apply(linhasDe(vendas()...)) {
@@ -148,7 +148,7 @@ func TestCampoQueNenhumaLinhaTemERecusado(t *testing.T) {
 
 // Tipos misturados no mesmo campo são erro: a ordem entre 10 e "9" dependeria
 // da ordem de chegada, e o máximo mudaria entre execuções.
-func TestTiposMisturadosSaoErro(t *testing.T) {
+func TestMixedTypesAreAnError(t *testing.T) {
 	d := &Reduce{By: GroupBy("g"), Agg: map[string]Aggregator{"maior": Max("v")}}
 	var erro error
 	for _, err := range d.apply(linhasDe(
@@ -162,14 +162,14 @@ func TestTiposMisturadosSaoErro(t *testing.T) {
 	if erro == nil {
 		t.Fatal("misturar número e texto passou")
 	}
-	if !strings.Contains(erro.Error(), "ordem de chegada") {
+	if !strings.Contains(erro.Error(), "arrival order") {
 		t.Errorf("a mensagem não diz o problema: %v", erro)
 	}
 }
 
 // Um texto que é um número É um número: um CSV entrega tudo como texto, e
 // recusá-lo obrigaria um transformer só para converter.
-func TestTextoNumericoSoma(t *testing.T) {
+func TestNumericTextAddsUp(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("g"),
 		Agg: map[string]Aggregator{"total": Sum("v")},
@@ -183,7 +183,7 @@ func TestTextoNumericoSoma(t *testing.T) {
 }
 
 // GroupBy() sem campos reduz o fluxo inteiro a uma linha -- o total geral.
-func TestAgruparSemCamposDaOTotalGeral(t *testing.T) {
+func TestGroupByWithNoFieldsGivesTheGrandTotal(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		Agg: map[string]Aggregator{"total": Sum("valor"), "n": Count()},
 	}, vendas()...)
@@ -197,7 +197,7 @@ func TestAgruparSemCamposDaOTotalGeral(t *testing.T) {
 
 // Finish vê os GRUPOS, não os registros -- é o que permite a fase global sem
 // desfazer a garantia de memória.
-func TestFecharVeOsGrupos(t *testing.T) {
+func TestFinishSeesTheGroups(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("regiao"),
 		Agg: map[string]Aggregator{"total": Sum("valor")},
@@ -222,7 +222,7 @@ func TestFecharVeOsGrupos(t *testing.T) {
 
 // As recusas falham na MONTAGEM, antes da extração: descobri-las depois
 // custaria a janela do fornecedor.
-func TestOQueNaoCabeRecusaAntesDeExtrair(t *testing.T) {
+func TestWhatDoesNotFitRefusesBeforeExtracting(t *testing.T) {
 	for nome, a := range map[string]Aggregator{
 		"Median":   Median("v"),
 		"Quantile": Quantile("v", 0.9),
@@ -236,7 +236,7 @@ func TestOQueNaoCabeRecusaAntesDeExtrair(t *testing.T) {
 			continue
 		}
 		// A mensagem tem de dizer as duas saídas, porque elas existem.
-		for _, esperado := range []string{"memória constante", "SQL", "sdk.Custom"} {
+		for _, esperado := range []string{"constant", "SQL", "sdk.Custom"} {
 			if !strings.Contains(err.Error(), esperado) {
 				t.Errorf("%s: a mensagem não diz %q: %v", nome, esperado, err)
 			}
@@ -244,12 +244,12 @@ func TestOQueNaoCabeRecusaAntesDeExtrair(t *testing.T) {
 	}
 }
 
-func TestNomeQueColideComOGrupoERecusado(t *testing.T) {
+func TestANameCollidingWithTheGroupIsRefused(t *testing.T) {
 	err := (&Reduce{
 		By:  GroupBy("regiao"),
 		Agg: map[string]Aggregator{"regiao": Count()},
 	}).validate()
-	if err == nil || !strings.Contains(err.Error(), "dois valores") {
+	if err == nil || !strings.Contains(err.Error(), "two values") {
 		t.Errorf("colisão de nome passou: %v", err)
 	}
 }
@@ -336,7 +336,7 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 // Cem grupos fixos, a entrada crescendo 100x. Se o teto se mantiver, a promessa
 // está no código e não só na documentação -- e é esta a regressão mais provável
 // desta feature: alguém acrescentar um agregador que guarda linhas.
-func TestMemoriaNaoCresceComAEntrada(t *testing.T) {
+func TestMemoryDoesNotGrowWithTheInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("mede heap com 1M de registros")
 	}
@@ -362,7 +362,7 @@ func TestMemoriaNaoCresceComAEntrada(t *testing.T) {
 // E a medição acima só vale se ela for capaz de PEGAR o defeito. Este
 // agregador guarda as linhas -- exatamente o que a regra proíbe -- e o mesmo
 // teto tem de reprová-lo.
-func TestAMedicaoPegaUmAgregadorQueGuardaLinhas(t *testing.T) {
+func TestTheMeasurementCatchesAnAggregatorThatKeepsRows(t *testing.T) {
 	if testing.Short() {
 		t.Skip("mede heap")
 	}
