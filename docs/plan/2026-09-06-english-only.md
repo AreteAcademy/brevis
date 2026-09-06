@@ -24,7 +24,7 @@ function words in comment lines.
 |---|---|---|---|
 | A | **Front door** — README, issue/PR templates, CONTRIBUTING | 0 | ✅ done |
 | B | **SDK root package** (godoc) | 0 | ✅ done |
-| C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 466 | anyone who imports the SDK |
+| C | **SDK drivers** — `from/`, `to/`, `extract/`, `pycompat` | 0 | ✅ done |
 | D | **Living docs** — `COMANDOS`, `KUBERNETES`, `IMAGENS`, `PUBLICAR`, `PARAMS`, `SDK_ARQUITETURA`, `SDK_DECISOES`, `SDK_MATRIZ`, `SDK_NOVO_DRIVER`, `plan.md` | ~700 | a contributor deciding how to help |
 | E | **Engine internals** — `internal/`, `cmd/` | 238 | a contributor changing the engine |
 | F | **Web** — `web/`, templates | 143 | a contributor touching the UI |
@@ -42,6 +42,20 @@ Deliberately **not** on the list, with the reason written down:
   not the current state.
 
 There is one exception worth making inside that rule, in §4.
+
+**A second exception, found while doing C.** The checkpoint's ON-DISK FORMAT
+stays Portuguese while the code around it is English: the file `_completo`, the
+part pattern `parte-%05d.ndjson`, and the manifest keys `versao`, `registros`,
+`partes`, `numeros`. They are data, not prose, and a depot written by a released
+SDK has to stay readable.
+
+Two blind renames went at those keys during C. The count test caught
+`registros`. Nothing would have caught `numeros`, and that is the expensive
+one: without it `UseNumber` never turns on, `19.0` comes back as `19`, and every
+`ingestion_id` of a resumed attempt differs from the first attempt's -- with no
+error and no log, surfacing as a duplicated row after the next merge.
+`TestTheManifestKeysAreTheOnDiskFormat` now pins all five names and says what
+each one costs.
 
 ---
 
