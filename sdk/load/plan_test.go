@@ -16,18 +16,18 @@ func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
 	casos := []struct {
 		nome  string
 		cfg   *core.LoadConfig
-		quero ComoCriar
+		quero HowToCreate
 		erro  bool
 	}{
 		{
 			"com Schema, monta o DDL da declaração",
 			&core.LoadConfig{Schema: core.Schema{{Name: "a", Type: core.TypeString}}},
-			CriarPorSchema, false,
+			CreateFromSchema, false,
 		},
 		{
 			"com CreateSQL, roda o DDL de quem escreveu",
 			&core.LoadConfig{CreateSQL: "CREATE TABLE t (a STRING)"},
-			CriarPorSQL, false,
+			CreateFromSQL, false,
 		},
 		{
 			"CreateSQL vence o Schema: um DDL escrito à mão diz mais",
@@ -35,7 +35,7 @@ func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
 				CreateSQL: "CREATE TABLE t (a NUMERIC(18,2))",
 				Schema:    core.Schema{{Name: "a", Type: core.TypeNumeric}},
 			},
-			CriarPorSQL, false,
+			CreateFromSQL, false,
 		},
 		{
 			"sem nenhum dos dois, RECUSA -- e é isto que o I2 exige",
@@ -46,7 +46,7 @@ func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
 
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
-			got, err := PlanoDeCriacao(c.cfg, "d.t")
+			got, err := CreationPlan(c.cfg, "d.t")
 			if c.erro {
 				if err == nil {
 					t.Fatal("aceitou criar tabela sem dizer os tipos -- o autodetect voltou")
@@ -59,7 +59,7 @@ func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
 				return
 			}
 			if err != nil {
-				t.Fatalf("PlanoDeCriacao: %v", err)
+				t.Fatalf("CreationPlan: %v", err)
 			}
 			if got != c.quero {
 				t.Errorf("= %v, esperado %v", got, c.quero)
@@ -125,10 +125,10 @@ func TestI2ColunasDoSDKVencemADeclaracao(t *testing.T) {
 
 // TestI4ParticaoSaiDaDeclaracao.
 func TestI4ParticaoSaiDaDeclaracao(t *testing.T) {
-	if got := particaoDe(&core.LoadConfig{PartitionBy: "minha_coluna"}); got != "minha_coluna" {
+	if got := partitionOf(&core.LoadConfig{PartitionBy: "minha_coluna"}); got != "minha_coluna" {
 		t.Errorf("= %q, a declaração devia vencer", got)
 	}
-	if got := particaoDe(&core.LoadConfig{}); got != core.MetadataLoadedAt {
+	if got := partitionOf(&core.LoadConfig{}); got != core.MetadataLoadedAt {
 		t.Errorf("= %q, sem declaração fica o padrão documentado", got)
 	}
 }

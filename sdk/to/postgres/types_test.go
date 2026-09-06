@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TestParaColunaLinhaALinha e o lado da ESCRITA da tabela de tipos.
+// TestParaColunaLinhaALinha e o lado da ESCRITA da tabela de types.
 //
 // Ele existe por um defeito concreto: o registro do SDK e JSON, entao um
 // timestamp nele e uma STRING RFC 3339. O COPY binario do pgx quer um
@@ -56,9 +56,9 @@ func TestParaColunaLinhaALinha(t *testing.T) {
 
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
-			got, err := paraColuna(c.valor, c.tipo)
+			got, err := toColumn(c.valor, c.tipo)
 			if err != nil {
-				t.Fatalf("paraColuna: %v", err)
+				t.Fatalf("toColumn: %v", err)
 			}
 			if ts, ok := c.quero.(time.Time); ok {
 				gt, ok := got.(time.Time)
@@ -77,7 +77,7 @@ func TestParaColunaLinhaALinha(t *testing.T) {
 // TestParaColunaJSONSerializa: um mapa numa coluna jsonb tem de virar
 // documento, nao a representacao Go de um mapa.
 func TestParaColunaJSONSerializa(t *testing.T) {
-	got, err := paraColuna(map[string]any{"a": 1}, "jsonb")
+	got, err := toColumn(map[string]any{"a": 1}, "jsonb")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestParaColunaJSONSerializa(t *testing.T) {
 // TestParaColunaDataTrunca: uma coluna date nao guarda hora, e mandar uma hora
 // que o registro nao tinha e inventar dado.
 func TestParaColunaDataTrunca(t *testing.T) {
-	got, err := paraColuna("2026-09-05T23:59:59Z", "date")
+	got, err := toColumn("2026-09-05T23:59:59Z", "date")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestParaColunaDataTrunca(t *testing.T) {
 // TestParaColunaErroDizOFormato: "cannot find encode plan" nao diz a ninguem o
 // que fazer. Este erro diz.
 func TestParaColunaErroDizOFormato(t *testing.T) {
-	_, err := paraColuna("cinco de setembro", "timestamp with time zone")
+	_, err := toColumn("cinco de setembro", "timestamp with time zone")
 	if err == nil {
 		t.Fatal("texto que nao e data passou")
 	}
@@ -121,7 +121,7 @@ func TestParaColunaErroDizOFormato(t *testing.T) {
 // ruido, e pode levar dado que ninguem quer em log.
 func TestParaColunaElideValorLongo(t *testing.T) {
 	longo := strings.Repeat("x", 4000)
-	_, err := paraColuna(longo, "date")
+	_, err := toColumn(longo, "date")
 	if err == nil {
 		t.Fatal("passou")
 	}
@@ -135,20 +135,20 @@ func TestParaColunaElideValorLongo(t *testing.T) {
 //
 // Passando a string crua, o pgx tenta um plano de encode string->numeric, ele
 // falha, e o pgx constrói um erro só para cair no plano seguinte -- uma vez por
-// linha. Numa carga de 10 mil linhas isso era ~30% das alocações, todas em
+// linha. Numa carga de 10 mil rows isso era ~30% das alocações, todas em
 // newEncodeError e fmt.Errorf: trabalho para produzir um erro que ninguém lê.
 //
 // Medido contra o servidor: 290.529 alocações passaram a 190.506, a memória
 // caiu de 7,1 MB para 4,5 MB, e a vazão subiu de 352 mil para ~434 mil
-// linhas/s.
+// rows/s.
 func TestNumericVaiTipadoENaoComoTexto(t *testing.T) {
-	got, err := paraColuna("1234567890123456.78", "numeric")
+	got, err := toColumn("1234567890123456.78", "numeric")
 	if err != nil {
 		t.Fatal(err)
 	}
 	n, ok := got.(pgtype.Numeric)
 	if !ok {
-		t.Fatalf("paraColuna devolveu %T; o pgx encoda pgtype.Numeric direto e "+
+		t.Fatalf("toColumn devolveu %T; o pgx encoda pgtype.Numeric direto e "+
 			"paga um erro construído por linha para qualquer outra coisa", got)
 	}
 	if !n.Valid {
@@ -167,10 +167,10 @@ func TestNumericVaiTipadoENaoComoTexto(t *testing.T) {
 
 // TestNumericInvalidoDizOQueRecebeu, sem despejar o valor inteiro em log.
 func TestNumericInvalidoDizOQueRecebeu(t *testing.T) {
-	if _, err := paraColuna("dez reais", "numeric"); err == nil {
+	if _, err := toColumn("dez reais", "numeric"); err == nil {
 		t.Fatal("texto que não é número passou")
 	}
-	if _, err := paraColuna(strings.Repeat("9", 4000)+"x", "numeric"); err != nil {
+	if _, err := toColumn(strings.Repeat("9", 4000)+"x", "numeric"); err != nil {
 		if len(err.Error()) > 300 {
 			t.Errorf("a mensagem tem %d bytes; o valor devia ter sido elidido", len(err.Error()))
 		}
@@ -180,7 +180,7 @@ func TestNumericInvalidoDizOQueRecebeu(t *testing.T) {
 // TestNumericNaoTextualPassaComoVeio: quem recusa é o servidor, com a mensagem
 // dele, que é melhor que uma nossa adivinhando.
 func TestNumericNaoTextualPassaComoVeio(t *testing.T) {
-	got, err := paraColuna(float64(10.5), "numeric")
+	got, err := toColumn(float64(10.5), "numeric")
 	if err != nil {
 		t.Fatal(err)
 	}

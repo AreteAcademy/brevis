@@ -46,67 +46,90 @@ func (l *Loader) prepareTable(ctx context.Context, table *bigquery.Table, data [
 			"create it, or create it yourself", nameOf(table))
 	}
 
-	comoCriar, err := PlanoDeCriacao(l.cfg, nameOf(table))
+	how, err := CreationPlan(l.cfg, nameOf(table))
 	if err != nil {
 		return false, err
 	}
-	if comoCriar == CriarPorSQL {
+	if how == CreateFromSQL {
 		return false, l.createFromSQL(ctx, table)
 	}
 	return false, l.createFromSchema(ctx, table, prov)
 }
 
-// ComoCriar diz de onde sai a forma da tabela.
-type ComoCriar int
+// HowToCreate says where the table's shape comes from.
+type HowToCreate int
 
 const (
-	// CriarPorSQL roda o DDL do consumidor.
-	CriarPorSQL ComoCriar = iota
-	// CriarPorSchema monta o DDL a partir da declaracao tipada.
-	CriarPorSchema
+	// CreateFromSQL runs the consumer's DDL.
+	CreateFromSQL HowToCreate = iota
+	// CreateFromSchema builds the DDL out of the typed declaration.
+	CreateFromSchema
 )
 
-// PlanoDeCriacao decide como criar a tabela, ou recusa.
+// ComoCriar is the former name of HowToCreate.
 //
-// Funcao PURA, e exportada, pelo motivo que este SDK ja pagou uma vez: uma
-// decisao tomada dentro de um metodo com cliente nunca e vista por um teste.
-// O mergeSQL e o reconcile existem por isso, e o invariante I2 -- "o SDK nunca
-// infere schema" -- so vira propriedade verificavel se der para exercita-lo
-// sem um projeto do BigQuery.
-func PlanoDeCriacao(cfg *core.LoadConfig, tabela string) (ComoCriar, error) {
+// Deprecated: use HowToCreate. It is kept because it shipped in a published
+// version. It will go in v1.
+type ComoCriar = HowToCreate
+
+// The former names of the two constants, kept for the same reason.
+//
+// Deprecated: use CreateFromSQL and CreateFromSchema. They will go in v1.
+const (
+	CriarPorSQL    = CreateFromSQL
+	CriarPorSchema = CreateFromSchema
+)
+
+// CreationPlan decides how to create the table, or refuses.
+//
+// A PURE function, and exported, for the reason this SDK has already paid
+// once: a decision made inside a method that holds a client is never seen by a
+// test. mergeSQL and reconcile exist for that, and invariant I2 -- "the SDK
+// never infers a schema" -- only becomes a checkable property if it can be
+// exercised without a BigQuery project.
+func CreationPlan(cfg *core.LoadConfig, table string) (HowToCreate, error) {
 	if cfg.CreateSQL != "" {
-		return CriarPorSQL, nil
+		return CreateFromSQL, nil
 	}
 	if len(cfg.Schema) > 0 {
-		return CriarPorSchema, nil
+		return CreateFromSchema, nil
 	}
 	return 0, fmt.Errorf("table %s does not exist and CreateTable is set, but nothing says "+
 		"what type each column is. Declare Target.Schema -- the same list as Columns, with a "+
 		"Type on each entry -- or pass CreateSQL with your own DDL. The SDK does not infer: a "+
 		"type taken from the first batch changes the day a field arrives whole instead of "+
-		"fractional, and nobody writes anything", tabela)
+		"fractional, and nobody writes anything", table)
 }
 
-// createFromSchema cria a tabela a partir da declaracao, e de nada mais.
+// PlanoDeCriacao is the former name of CreationPlan.
+//
+// Deprecated: use CreationPlan. It is kept because it shipped in a published
+// version. It will go in v1.
+func PlanoDeCriacao(cfg *core.LoadConfig, table string) (HowToCreate, error) {
+	return CreationPlan(cfg, table)
+}
+
+// createFromSchema creates the table out of the declaration, and out of
+// nothing else.
 func (l *Loader) createFromSchema(ctx context.Context, table *bigquery.Table, prov provenance) error {
-	esquema, err := bigquerySchema(l.cfg.Schema)
+	schema, err := bigquerySchema(l.cfg.Schema)
 	if err != nil {
 		return err
 	}
-	meta := typedTable(l.cfg, esquema, prov)
+	meta := typedTable(l.cfg, schema, prov)
 	if err := table.Create(ctx, meta); err != nil {
 		return fmt.Errorf("creating %s: %w", nameOf(table), err)
 	}
 	return nil
 }
 
-// bigquerySchema traduz a declaracao para o dialeto do BigQuery.
+// bigquerySchema translates the declaration into BigQuery's dialect.
 //
-// A tabela e curta e escrita, e nao um mapeamento esperto: quem precisa de
-// NUMERIC(18,2), de um REPEATED ou de um RECORD escreve o DDL em CreateSQL,
-// que continua existindo exatamente para isso.
+// The table is short and written out, and not a clever mapping: whoever needs
+// NUMERIC(18,2), a REPEATED or a RECORD writes the DDL in CreateSQL, which goes
+// on existing for exactly that.
 func bigquerySchema(s core.Schema) (bigquery.Schema, error) {
-	tipos := map[core.ColumnType]bigquery.FieldType{
+	types := map[core.ColumnType]bigquery.FieldType{
 		core.TypeString:    bigquery.StringFieldType,
 		core.TypeInt64:     bigquery.IntegerFieldType,
 		core.TypeFloat64:   bigquery.FloatFieldType,
@@ -120,15 +143,15 @@ func bigquerySchema(s core.Schema) (bigquery.Schema, error) {
 
 	out := make(bigquery.Schema, 0, len(s))
 	for _, c := range s {
-		// As duas colunas do SDK tem forma propria, e ela vence a declaracao:
-		// ingestion_id e ingestion_loaded_at sao dele, e um NULLABLE ali
-		// deixaria a dedup casar com nulo.
-		if propria, minha := metadataSchema[c.Name]; minha {
-			out = append(out, propria)
+		// The SDK's two columns have a shape of their own, and it beats the
+		// declaration: ingestion_id and ingestion_loaded_at are its own, and a
+		// NULLABLE there would let the dedup match on null.
+		if own, mine := metadataSchema[c.Name]; mine {
+			out = append(out, own)
 			continue
 		}
-		t, conhecido := tipos[c.Type]
-		if !conhecido {
+		t, known := types[c.Type]
+		if !known {
 			return nil, fmt.Errorf("column %q has type %q, which BigQuery has no equivalent for",
 				c.Name, c.Type)
 		}
@@ -363,10 +386,11 @@ func typedTable(cfg *core.LoadConfig, inferred bigquery.Schema, prov provenance)
 		Labels:      tableLabels(prov),
 		TimePartitioning: &bigquery.TimePartitioning{
 			Type: bigquery.DayPartitioningType,
-			// Declarada quando o consumidor declara; senao, a coluna que diz
-			// quando a linha foi escrita -- que e por onde uma landing e lida
-			// quase sempre, e a unica que o SDK sabe que existe.
-			Field:                  particaoDe(cfg),
+			// Declared when the consumer declares one; otherwise the column
+			// that says when the row was written -- which is how a landing
+			// table is read almost always, and the only one the SDK knows
+			// exists.
+			Field:                  partitionOf(cfg),
 			Expiration:             cfg.PartitionExpiration,
 			RequirePartitionFilter: cfg.RequirePartitionFilter,
 		},
@@ -377,8 +401,8 @@ func typedTable(cfg *core.LoadConfig, inferred bigquery.Schema, prov provenance)
 	return meta
 }
 
-// particaoDe resolve a coluna de particionamento.
-func particaoDe(cfg *core.LoadConfig) string {
+// partitionOf settles the partitioning column.
+func partitionOf(cfg *core.LoadConfig) string {
 	if cfg.PartitionBy != "" {
 		return cfg.PartitionBy
 	}

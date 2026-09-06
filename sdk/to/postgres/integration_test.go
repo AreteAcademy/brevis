@@ -97,7 +97,7 @@ func TestIntegrationUmaLinhaRealmenteEntra(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 3 {
-		t.Errorf("o servidor tem %d linhas, esperado 3", n)
+		t.Errorf("o servidor tem %d rows, esperado 3", n)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestIntegrationDedupCarregaOMesmoLoteDuasVezes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 5 {
-		t.Errorf("a tabela tem %d linhas depois de duas cargas do mesmo lote", n)
+		t.Errorf("a tabela tem %d rows depois de duas cargas do mesmo lote", n)
 	}
 }
 
@@ -393,7 +393,7 @@ func TestIntegrationPostgresParaPostgres(t *testing.T) {
 
 	primeira := rodar()
 	if primeira.Rows != 100 {
-		t.Errorf("primeira carga: %d linhas, esperado 100", primeira.Rows)
+		t.Errorf("primeira carga: %d rows, esperado 100", primeira.Rows)
 	}
 
 	segunda := rodar()
@@ -407,7 +407,7 @@ func TestIntegrationPostgresParaPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 100 {
-		t.Errorf("o destino tem %d linhas depois de duas execuções idênticas", n)
+		t.Errorf("o destino tem %d rows depois de duas execuções idênticas", n)
 	}
 
 	// E a precisão sobreviveu à travessia inteira: NUMERIC no Postgres, string

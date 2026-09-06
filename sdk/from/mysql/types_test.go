@@ -50,7 +50,7 @@ func TestParaJSONLinhaALinha(t *testing.T) {
 
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
-			b, err := json.Marshal(ParaJSON(c.valor, c.declarado))
+			b, err := json.Marshal(ToJSON(c.valor, c.declarado))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -70,8 +70,8 @@ func TestParaJSONLinhaALinha(t *testing.T) {
 func TestOsDoisCaminhosDeInstanteConcordam(t *testing.T) {
 	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
-	comParse := ParaJSON(instante, "DATETIME")
-	semParse := ParaJSON([]byte("2026-09-05 12:30:00"), "DATETIME")
+	comParse := ToJSON(instante, "DATETIME")
+	semParse := ToJSON([]byte("2026-09-05 12:30:00"), "DATETIME")
 
 	if comParse != semParse {
 		t.Errorf("os caminhos divergem: com parseTime %v, sem %v", comParse, semParse)
@@ -85,7 +85,7 @@ func TestOsDoisCaminhosDeInstanteConcordam(t *testing.T) {
 // dia na primeira conversao de fuso.
 func TestDateNaoGanhaHora(t *testing.T) {
 	d := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
-	if got := ParaJSON(d, "DATE"); got != "2026-09-05" {
+	if got := ToJSON(d, "DATE"); got != "2026-09-05" {
 		t.Errorf("DATE = %v, esperado sem hora", got)
 	}
 }

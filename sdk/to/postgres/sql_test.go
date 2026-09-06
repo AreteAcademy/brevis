@@ -66,7 +66,7 @@ func TestPartirNome(t *testing.T) {
 		{"a.b.c", "", "", true},
 	}
 	for _, c := range casos {
-		e, tb, err := partirNome(c.nome)
+		e, tb, err := splitName(c.nome)
 		if (err != nil) != c.erro {
 			t.Errorf("%q: erro = %v, esperado erro=%v", c.nome, err, c.erro)
 			continue
@@ -77,15 +77,15 @@ func TestPartirNome(t *testing.T) {
 	}
 }
 
-// TestLinhasSegueAOrdemDaTabela: COPY FROM casa por POSICAO. Se as linhas
+// TestLinhasSegueAOrdemDaTabela: COPY FROM casa por POSICAO. Se as rows
 // saissem na ordem do registro, cada valor pousaria na coluna errada -- e o
-// banco aceitaria calado sempre que os tipos coincidissem.
+// banco aceitaria calado sempre que os types coincidissem.
 func TestLinhasSegueAOrdemDaTabela(t *testing.T) {
 	envelopes := []core.Envelope{
 		{Payload: map[string]any{"c": 3, "a": 1, "b": 2}},
 		{Payload: map[string]any{"b": 20, "a": 10}}, // sem "c"
 	}
-	l := &linhas{colunas: []string{"a", "b", "c"}, envelopes: envelopes}
+	l := &rows{columns: []string{"a", "b", "c"}, envelopes: envelopes}
 
 	if !l.Next() {
 		t.Fatal("sem primeira linha")
@@ -123,7 +123,7 @@ func TestLinhasNaoAlocaPorLinha(t *testing.T) {
 	for i := range envelopes {
 		envelopes[i] = core.Envelope{Payload: map[string]any{"a": i}}
 	}
-	l := &linhas{colunas: []string{"a"}, envelopes: envelopes}
+	l := &rows{columns: []string{"a"}, envelopes: envelopes}
 
 	alocacoes := testing.AllocsPerRun(100, func() {
 		l.i = 0
@@ -135,6 +135,6 @@ func TestLinhasNaoAlocaPorLinha(t *testing.T) {
 	})
 	// Zero e o alvo: o buffer e alocado uma vez, fora do laco medido.
 	if alocacoes > 0 {
-		t.Errorf("%.0f alocacoes para 1000 linhas; o buffer deveria ser reusado", alocacoes)
+		t.Errorf("%.0f alocacoes para 1000 rows; o buffer deveria ser reusado", alocacoes)
 	}
 }

@@ -25,8 +25,8 @@ func BenchmarkCargaPostgres(b *testing.B) {
 	conn := conectarBench(b, d)
 	nome := tabelaBench(b, conn)
 
-	const linhas = 10000
-	lote := make([]sdk.Envelope, linhas)
+	const rows = 10000
+	lote := make([]sdk.Envelope, rows)
 	agora := time.Now().UTC().Format(time.RFC3339)
 	for i := range lote {
 		lote[i] = sdk.Envelope{Payload: map[string]any{
@@ -47,5 +47,5 @@ func BenchmarkCargaPostgres(b *testing.B) {
 		}
 	}
 	b.StopTimer()
-	b.ReportMetric(float64(linhas*b.N)/b.Elapsed().Seconds(), "linhas/s")
+	b.ReportMetric(float64(rows*b.N)/b.Elapsed().Seconds(), "rows/s")
 }

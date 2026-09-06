@@ -1,7 +1,7 @@
 // Package mysql reads records out of MySQL.
 //
-// Importa o driver do MySQL sobre database/sql. Um fetcher que le HTTP,
-// arquivos ou Postgres nunca o compila.
+// It imports the MySQL driver on top of database/sql. A fetcher that reads
+// HTTP, files or Postgres never compiles it.
 package mysql
 
 import (
@@ -12,50 +12,51 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // registra o driver "mysql"
+	_ "github.com/go-sql-driver/mysql" // registers the "mysql" driver
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Query le o resultado de um SELECT, uma linha por registro.
+// Query reads the result of a SELECT, one row per record.
 //
 //	From: mysql.Query{
 //	    DSN: os.Getenv("MYSQL_DSN"),
-//	    SQL: "SELECT * FROM pedidos WHERE id > ? ORDER BY id LIMIT ?",
-//	    Args: []any{ultimoID, 50000},
+//	    SQL: "SELECT * FROM orders WHERE id > ? ORDER BY id LIMIT ?",
+//	    Args: []any{lastID, 50000},
 //	}
 //
-// O driver acrescenta `parseTime=true` ao DSN se voce esquecer. O resultado e
-// o mesmo sem ele -- ha caminho para o texto cru --, mas com ele o instante
-// nao precisa ser reparseado em Go uma vez por linha.
+// The driver appends `parseTime=true` to the DSN if you forget it. The result
+// is the same without it -- there is a path for the raw text -- but with it the
+// instant does not have to be reparsed in Go once per row.
 type Query struct {
-	// DSN e a string de conexao, no formato do driver:
+	// DSN is the connection string, in the driver's format:
 	//
-	//	usuario:senha@tcp(host:3306)/banco
+	//	user:password@tcp(host:3306)/database
 	//
-	// Carrega senha, entao nunca aparece em log nem em Describe().
+	// It carries a password, so it never appears in a log nor in Describe().
 	DSN string
 
-	// SQL e a consulta. Os parametros sao `?`, e nao $1.
+	// SQL is the query. The parameters are `?`, and not $1.
 	//
-	// Pagine por CHAVE e nao por OFFSET: OFFSET numa tabela grande e O(n^2),
-	// porque o servidor conta as linhas descartadas a cada pagina.
+	// Paginate by KEY and not by OFFSET: OFFSET on a large table is O(n^2),
+	// because the server counts the discarded rows on every page.
 	SQL string
 
-	// Args sao os parametros de `?`. Opcional.
+	// Args are the parameters for `?`. Optional.
 	Args []any
 
-	// Timeout limita a consulta inteira. Zero significa sem limite.
+	// Timeout bounds the whole query. Zero means no bound.
 	Timeout time.Duration
 
-	// DB reusa um pool que voce ja tem. Nil abre um e o fecha ao fim.
+	// DB reuses a pool you already have. Nil opens one and closes it at the
+	// end.
 	DB *sql.DB
 }
 
-// Describe satisfaz core.Reader. Diz a consulta, nunca o DSN.
-func (q Query) Describe() string { return "mysql: " + resumir(q.SQL) }
+// Describe satisfies core.Reader. It says the query, never the DSN.
+func (q Query) Describe() string { return "mysql: " + summarize(q.SQL) }
 
-// Read satisfaz core.Reader.
+// Read satisfies core.Reader.
 func (q Query) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error) {
 	if q.DSN == "" && q.DB == nil {
 		return nil, fmt.Errorf("mysql.Query needs DSN (or DB)")
@@ -65,121 +66,121 @@ func (q Query) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.E
 	}
 
 	if q.Timeout > 0 {
-		var cancelar context.CancelFunc
-		ctx, cancelar = context.WithTimeout(ctx, q.Timeout)
-		defer cancelar()
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, q.Timeout)
+		defer cancel()
 	}
 
-	db, fechar, err := q.abrir()
+	db, closeDB, err := q.open()
 	if err != nil {
 		return nil, err
 	}
 
-	// A consulta e disparada aqui, e nao dentro do iterador: um DSN errado ou
-	// uma tabela inexistente voltam como erro de Extract, e nao como o
-	// primeiro item de uma sequencia que o chamador precisa drenar.
+	// The query is fired here, and not inside the iterator: a wrong DSN or a
+	// missing table come back as an Extract error, and not as the first item of
+	// a sequence the caller has to drain.
 	rows, err := db.QueryContext(ctx, q.SQL, q.Args...)
 	if err != nil {
-		fechar()
-		return nil, fmt.Errorf("mysql: %w", esconderDSN(err, q.DSN))
+		closeDB()
+		return nil, fmt.Errorf("mysql: %w", hideDSN(err, q.DSN))
 	}
 
-	tipos, err := rows.ColumnTypes()
+	types, err := rows.ColumnTypes()
 	if err != nil {
 		_ = rows.Close()
-		fechar()
+		closeDB()
 		return nil, fmt.Errorf("mysql: reading column types: %w", err)
 	}
 
-	inicio := time.Now()
+	start := time.Now()
 	return func(yield func(core.Envelope, error) bool) {
-		defer fechar()
+		defer closeDB()
 		defer func() { _ = rows.Close() }()
 
-		nomes := make([]string, len(tipos))
-		declarados := make([]string, len(tipos))
-		for i, t := range tipos {
-			nomes[i], declarados[i] = t.Name(), strings.ToUpper(t.DatabaseTypeName())
+		names := make([]string, len(types))
+		declared := make([]string, len(types))
+		for i, t := range types {
+			names[i], declared[i] = t.Name(), strings.ToUpper(t.DatabaseTypeName())
 		}
 
-		// Os destinos sao reusados entre linhas: um Scan por linha alocando
-		// N ponteiros e N valores multiplicaria por dois o custo de cada
-		// registro, e o Scan copia para os alvos antes de devolver.
-		alvos := make([]any, len(tipos))
-		celulas := make([]any, len(tipos))
-		for i := range alvos {
-			alvos[i] = &celulas[i]
+		// The destinations are reused across rows: one Scan per row allocating
+		// N pointers and N values would double the cost of every record, and
+		// Scan copies into the targets before returning.
+		targets := make([]any, len(types))
+		cells := make([]any, len(types))
+		for i := range targets {
+			targets[i] = &cells[i]
 		}
 
-		linhas := 0
-		var amostra []any
+		count := 0
+		var sample []any
 
 		defer func() {
 			if opt.Stats != nil {
 				opt.Stats.Pages, opt.Stats.Attempts = 1, 1
 			}
-			decorrido := time.Since(inicio)
+			elapsed := time.Since(start)
 			core.LogExtract(ctx, "mysql", q.Describe(), core.PreviewStats{
-				Rows: linhas, Pages: 1, Duration: decorrido,
+				Rows: count, Pages: 1, Duration: elapsed,
 			})
 			if opt.Preview > 0 {
-				core.WritePreview(opt.PreviewWriter, amostra, opt.PreviewBytes, core.PreviewStats{
-					Rows: linhas, Pages: 1, Duration: decorrido,
+				core.WritePreview(opt.PreviewWriter, sample, opt.PreviewBytes, core.PreviewStats{
+					Rows: count, Pages: 1, Duration: elapsed,
 				})
 			}
 		}()
 
 		for rows.Next() {
-			if err := rows.Scan(alvos...); err != nil {
-				yield(core.Envelope{}, fmt.Errorf("mysql: reading row %d: %w", linhas+1, err))
+			if err := rows.Scan(targets...); err != nil {
+				yield(core.Envelope{}, fmt.Errorf("mysql: reading row %d: %w", count+1, err))
 				return
 			}
 
-			registro := make(map[string]any, len(nomes))
-			for i, nome := range nomes {
-				registro[nome] = ParaJSON(celulas[i], declarados[i])
+			record := make(map[string]any, len(names))
+			for i, name := range names {
+				record[name] = ToJSON(cells[i], declared[i])
 			}
 
-			linhas++
-			if opt.Preview > 0 && len(amostra) < opt.Preview {
-				amostra = append(amostra, registro)
+			count++
+			if opt.Preview > 0 && len(sample) < opt.Preview {
+				sample = append(sample, record)
 			}
-			if !yield(core.Envelope{Payload: registro}, nil) {
+			if !yield(core.Envelope{Payload: record}, nil) {
 				return
 			}
 		}
 
 		if err := rows.Err(); err != nil {
-			yield(core.Envelope{}, fmt.Errorf("mysql: after %d row(s): %w", linhas, err))
+			yield(core.Envelope{}, fmt.Errorf("mysql: after %d row(s): %w", count, err))
 		}
 	}, nil
 }
 
-func (q Query) abrir() (*sql.DB, func(), error) {
+func (q Query) open() (*sql.DB, func(), error) {
 	if q.DB != nil {
 		return q.DB, func() {}, nil
 	}
-	db, err := sql.Open("mysql", ComParseTime(q.DSN))
+	db, err := sql.Open("mysql", WithParseTime(q.DSN))
 	if err != nil {
 		return nil, nil, fmt.Errorf("mysql: DSN is not valid")
 	}
 	return db, func() { _ = db.Close() }, nil
 }
 
-// ComParseTime garante parseTime=true no DSN.
+// WithParseTime makes sure parseTime=true is on the DSN.
 //
-// Sem ele o driver devolve DATETIME e TIMESTAMP como []byte. O ParaJSON tem
-// caminho para isso e produz o mesmo RFC 3339 -- entao o resultado nao muda, e
-// ha teste provando que nao muda.
+// Without it the driver returns DATETIME and TIMESTAMP as []byte. ToJSON has a
+// path for that and produces the same RFC 3339 -- so the result does not
+// change, and there is a test proving it does not.
 //
-// O que muda e o CUSTO: sem parseTime, cada instante e reparseado de texto em
-// Go, uma vez por linha, depois de o driver ja ter feito o trabalho. Numa
-// carga de centenas de milhares de linhas isso e uma alocacao e um parse por
-// registro, de graca.
+// What changes is the COST: without parseTime every instant is reparsed from
+// text in Go, once per row, after the driver already did the work. On a load of
+// hundreds of thousands of rows that is one allocation and one parse per
+// record, for free.
 //
-// Acrescentar e melhor que recusar: quem esqueceu nao tem como saber que era
-// isso, e o resultado seria identico de qualquer forma.
-func ComParseTime(dsn string) string {
+// Appending beats refusing: whoever forgot has no way to know this was it, and
+// the result would be identical either way.
+func WithParseTime(dsn string) string {
 	if strings.Contains(dsn, "parseTime=") {
 		return dsn
 	}
@@ -189,7 +190,13 @@ func ComParseTime(dsn string) string {
 	return dsn + "?parseTime=true"
 }
 
-func resumir(sql string) string {
+// ComParseTime is the former name of WithParseTime.
+//
+// Deprecated: use WithParseTime. It is kept because it shipped in a published
+// version. It will go in v1.
+func ComParseTime(dsn string) string { return WithParseTime(dsn) }
+
+func summarize(sql string) string {
 	s := strings.TrimSpace(sql)
 	if i := strings.IndexAny(s, "\n\r"); i >= 0 {
 		s = strings.TrimSpace(s[:i]) + " …"
@@ -200,7 +207,7 @@ func resumir(sql string) string {
 	return s
 }
 
-func esconderDSN(err error, dsn string) error {
+func hideDSN(err error, dsn string) error {
 	if err == nil || dsn == "" || !strings.Contains(err.Error(), dsn) {
 		return err
 	}
