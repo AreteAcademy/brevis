@@ -40,16 +40,16 @@ jobs:
           fail_ci_if_error: false
 
   motor:
-    name: Motor
+    name: Engine
     runs-on: ubuntu-latest
 
     # O modulo RAIZ -- runner, executores, API, notify, scheduler.
     #
-    # Ele nao tinha CI nenhum: todo job deste arquivo e do quality.yml faz
-    # `cd sdk`, e o unico `go test ./...` na raiz vivia no portao do release.
-    # Como o release nunca tinha rodado, o motor chegou a v0.4.0 sem um teste
-    # ter rodado fora da maquina de quem escreveu -- e a primeira tentativa de
-    # publicar morreu num teste preso ao fuso de quem o escreveu.
+    # It had no CI at all: every job in this file and in quality.yml does
+    # `cd sdk`, and the only `go test ./...` at the root lived in the release
+    # gate. Since the release had never run, the engine reached v0.4.0 without a
+    # test having run outside the machine of whoever wrote it -- and the first
+    # attempt to publish died on a test pinned to that person's timezone.
     steps:
       - uses: actions/checkout@v4
 
@@ -67,15 +67,16 @@ jobs:
             exit 1
           fi
 
-      - name: Build e vet
+      - name: Build and vet
         run: |
           go build ./...
           go vet ./...
 
-      # -race porque o runner e concorrente por desenho: ele executa niveis do
+      # -race because the runner is concurrent by design: it executes levels of
+      # the
       # DAG em paralelo e drena eventos de varios executores. Uma corrida aqui
       # aparece como uma execucao que falha uma vez em cinquenta.
-      - name: Testes
+      - name: Tests
         run: go test -race ./...
 
       - name: go mod tidy
@@ -84,13 +85,14 @@ jobs:
           git diff --exit-code go.mod go.sum \
             || { echo "::error::rode 'go mod tidy' e commite"; exit 1; }
 
-      # Os artefatos gerados de web/ vao versionados, porque a imagem nao tem
-      # Node nem templ. Conferir aqui pega o CSS velho no push, e nao so na
+      # web/'s generated artifacts are versioned, because the image has neither
+      # Node nor templ. Checking here catches stale CSS at push time, and not
+      # only at
       # hora de publicar.
-      - name: Artefatos gerados
+      - name: Generated artifacts
         run: ./.github/scripts/generated-check.sh
 
-      - name: Peso do motor
+      - name: Engine weight
         run: ./.github/scripts/peso-do-motor.sh
 
       - name: golangci-lint
@@ -102,11 +104,10 @@ jobs:
   integration:
     name: Integration
     runs-on: ubuntu-latest
-    # Os testes de integração são os únicos que provam que uma linha realmente
-    # entra e sai. Existiam desde a v0.2.1 e ficaram parados atrás de uma
-    # variável de ambiente até a v0.11.0 -- quando finalmente rodaram, acharam
-    # quatro defeitos numa execução. Um teste atrás de variável é um teste que
-    # não roda.
+    # The integration tests are the only ones that prove a row actually goes in
+    # and comes out. They existed since v0.2.1 and sat behind an environment
+    # variable until v0.11.0 -- when they finally ran, they found four defects in
+    # one execution. A test behind a variable is a test that does not run.
     env:
       BREVIS_IT_S3_ENDPOINT: http://localhost:9000
       BREVIS_IT_S3_KEY: brevis
@@ -124,8 +125,8 @@ jobs:
           go-version: '1.27'
           cache: true
 
-      # docker run, e não um service container: a imagem oficial do MinIO
-      # precisa de "server /data" como comando, e services do Actions não
+      # docker run, and not a service container: MinIO's official image needs
+      # "server /data" as its command, and Actions services do not
       # aceitam command.
       - name: Start MinIO
         run: |
@@ -141,29 +142,29 @@ jobs:
             fi
             sleep 2
           done
-          echo "::error::O MinIO não subiu; os testes de S3 não teriam rodado"
+          echo "::error::MinIO did not start; the S3 tests would not have run"
           docker logs minio
           exit 1
 
-      # O Postgres sobe pelo mesmo compose que roda na máquina de quem
-      # desenvolve, e não por um service container -- assim o comando que
-      # conserta na CI é o mesmo que conserta local.
+      # Postgres comes up through the same compose that runs on a developer's
+      # machine, and not through a service container -- so the command that fixes
+      # CI is the command that fixes local.
       - name: Start Postgres and MySQL
         run: |
           docker compose -f docker-compose.drivers.yml up -d postgres mysql
-          for servico in postgres mysql; do
-            pronto=""
+          for service in postgres mysql; do
+            ready=""
             for i in $(seq 1 60); do
-              estado=$(docker compose -f docker-compose.drivers.yml ps "$servico" --format '{{.Health}}')
-              if [ "$estado" = "healthy" ]; then pronto=1; break; fi
+              state=$(docker compose -f docker-compose.drivers.yml ps "$service" --format '{{.Health}}')
+              if [ "$state" = "healthy" ]; then ready=1; break; fi
               sleep 2
             done
-            if [ -z "$pronto" ]; then
-              echo "::error::O $servico não subiu; os testes dele não teriam rodado"
-              docker compose -f docker-compose.drivers.yml logs "$servico"
+            if [ -z "$ready" ]; then
+              echo "::error::$service did not start; its tests would not have run"
+              docker compose -f docker-compose.drivers.yml logs "$service"
               exit 1
             fi
-            echo "$servico no ar"
+            echo "$service is up"
           done
 
       - name: Integration - object storage (MinIO)
@@ -171,16 +172,16 @@ jobs:
           cd sdk
           go test -v -timeout 10m -run Integration ./from/...
 
-      - name: Poda de dependência por driver
+      - name: Dependency pruning per driver
         run: .github/scripts/pruning-check.sh
 
-      - name: Integration - Postgres e MySQL
+      - name: Integration - Postgres and MySQL
         run: |
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
 
-      # secrets não pode ser usado em if: de step, então vira variável de
-      # ambiente no job e a checagem é sobre ela.
+      # secrets cannot be used in a step's if:, so it becomes a job-level
+      # environment variable and the check is against that.
       - name: Authenticate to Google Cloud
         if: env.GCP_CREDENTIALS != ''
         uses: google-github-actions/auth@v2
@@ -197,13 +198,13 @@ jobs:
           cd sdk
           go test -v -timeout 20m -run Integration ./load/... ./from/...
 
-      # O motor, com peças de verdade: um binário compilado com o SDK, o
-      # executor de processo, um pipe do sistema operacional e o Postgres.
+      # The engine, with real parts: a binary compiled against the SDK, the
+      # process executor, an operating-system pipe and Postgres.
       #
-      # Tudo o mais no caminho das etapas era testado com executor falso: a
-      # linha `@brevis:` nunca tinha atravessado um pipe real, e foi assim que
-      # a v0.4.0 do motor saiu com a feature nunca exercitada ponta a ponta.
-      - name: Integração do motor
+      # Everything else on the stages path was tested with a fake executor: the
+      # `@brevis:` line had never crossed a real pipe, and that is how the
+      # engine's v0.4.0 shipped with the feature never exercised end to end.
+      - name: Engine integration
         env:
           BREVIS_IT_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
           BREVIS_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
@@ -220,8 +221,8 @@ jobs:
       - name: Say what did not run
         if: env.GCP_CREDENTIALS == ''
         run: |
-          echo "::warning::A integração do BigQuery não rodou: falta o secret"
-          echo "::warning::GCP_CREDENTIALS e as variáveis BREVIS_IT_PROJECT,"
+          echo "::warning::The BigQuery integration did not run: the secret is missing"
+          echo "::warning::GCP_CREDENTIALS and the BREVIS_IT_PROJECT,"
           echo "::warning::BREVIS_IT_DATASET e BREVIS_IT_BUCKET. Dezessete"
           echo "::warning::testes ficaram em SKIP."
 

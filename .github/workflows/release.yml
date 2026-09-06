@@ -10,12 +10,12 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      versao:
+      version:
         description: "Versao a publicar (ex.: 0.1.0)"
         required: true
 
 env:
-  IMAGEM: docker.io/daniel3843/brevis
+  IMAGE: docker.io/daniel3843/brevis
 
 jobs:
   imagens:
@@ -53,23 +53,23 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Definir versao
+      - name: Definir version
         id: v
         run: |
-          if [ -n "${{ inputs.versao }}" ]; then
-            echo "versao=${{ inputs.versao }}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           else
-            echo "versao=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
-      # A versao do arquivo VERSION e a da tag precisam bater. Sem esta
+      # A version do file VERSION e a da tag precisam bater. Sem esta
       # checagem, `brevis version` dentro da imagem mentiria sobre a tag que a
       # publicou — e e por ela que se rastreia um incidente.
       - name: Conferir VERSION
         run: |
-          arquivo=$(cat VERSION)
-          if [ "$arquivo" != "${{ steps.v.outputs.versao }}" ]; then
-            echo "::error::VERSION=$arquivo difere da tag ${{ steps.v.outputs.versao }}"
+          file=$(cat VERSION)
+          if [ "$file" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::VERSION=$file difere da tag ${{ steps.v.outputs.version }}"
             exit 1
           fi
 
@@ -80,9 +80,9 @@ jobs:
           target: api
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.IMAGEM }}:${{ steps.v.outputs.versao }},${{ env.IMAGEM }}:latest
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }},${{ env.IMAGE }}:latest
           build-args: |
-            VERSAO=${{ steps.v.outputs.versao }}
+            VERSION=${{ steps.v.outputs.version }}
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -94,9 +94,9 @@ jobs:
           target: worker
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.IMAGEM }}:${{ steps.v.outputs.versao }}-worker,${{ env.IMAGEM }}:latest-worker
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}-worker,${{ env.IMAGE }}:latest-worker
           build-args: |
-            VERSAO=${{ steps.v.outputs.versao }}
+            VERSION=${{ steps.v.outputs.version }}
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

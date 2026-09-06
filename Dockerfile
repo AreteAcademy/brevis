@@ -27,9 +27,9 @@ RUN test -f web/assets/vendor/xyflow.js || { echo "web/assets/vendor ausente"; e
 
 # Versao carimbada no binario. `brevis version` dentro do container e a unica
 # forma confiavel de saber o que esta rodando quando a tag da imagem foi movida.
-ARG VERSAO=dev
+ARG VERSION=dev
 ARG COMMIT=""
-ARG DATA=""
+ARG BUILD_DATE=""
 
 # TARGETOS/TARGETARCH vem do buildx. Sem eles, um build multi-arch compilaria
 # tudo para a arquitetura do builder e a imagem arm64 traria um binario amd64 —
@@ -41,7 +41,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
-      -ldflags="-s -w -X main.Versao=${VERSAO} -X main.Commit=${COMMIT} -X main.Data=${DATA}" \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
       -o /out/brevis ./cmd/brevis
 
 # Duas imagens do MESMO binario, porque os dois papeis tem exigencias opostas.
@@ -49,12 +49,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # `api` so serve HTTP: nao executa nada, entao distroless (sem shell, superficie
 # minima) e possivel e desejavel.
 FROM gcr.io/distroless/static-debian12:nonroot AS api
-ARG VERSAO=dev
+ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis" \
       org.opencontainers.image.description="Engine de orquestracao e transformacao de dados" \
       org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
-      org.opencontainers.image.version="${VERSAO}" \
+      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="Apache-2.0"
 COPY --from=build /out/brevis /usr/local/bin/brevis
@@ -67,12 +67,12 @@ CMD ["serve"]
 # scheduler na imagem distroless deixaria todo run falhando com "no such file or
 # directory", que e o pior tipo de erro: correto e incompreensivel.
 FROM alpine:3.20 AS worker
-ARG VERSAO=dev
+ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis worker" \
       org.opencontainers.image.description="Brevis com shell, para executar os passos dos workflows" \
       org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
-      org.opencontainers.image.version="${VERSAO}" \
+      org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}"
 RUN apk add --no-cache ca-certificates tini
 COPY --from=build /out/brevis /usr/local/bin/brevis

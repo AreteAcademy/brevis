@@ -61,13 +61,13 @@ func raiz() *cobra.Command {
 	return c
 }
 
-// Versao is stamped at build time (-ldflags). "dev" is the value for whoever
+// Version is stamped at build time (-ldflags). "dev" is the value for whoever
 // built straight with `go build`, and telling that apart from a release
 // artifact matters when somebody reports odd behaviour.
 var (
-	Versao = "dev"
-	Commit = ""
-	Data   = ""
+	Version   = "dev"
+	Commit    = ""
+	BuildDate = ""
 )
 
 func cmdVersion() *cobra.Command {
@@ -75,12 +75,12 @@ func cmdVersion() *cobra.Command {
 		Use:   "version",
 		Short: "Print the binary's version",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			fmt.Printf("brevis %s\n", Versao)
+			fmt.Printf("brevis %s\n", Version)
 			if Commit != "" {
 				fmt.Printf("  commit  %s\n", Commit)
 			}
-			if Data != "" {
-				fmt.Printf("  build   %s\n", Data)
+			if BuildDate != "" {
+				fmt.Printf("  build   %s\n", BuildDate)
 			}
 			fmt.Printf("  go      %s %s/%s\n", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 			return nil

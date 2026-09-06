@@ -1,64 +1,70 @@
 .DEFAULT_GOAL := help
 BIN := bin/brevis
 
-# --- Imagem -----------------------------------------------------------------
-# REGISTRY/NAMESPACE ficam em variavel para que um fork publique no proprio
-# espaco sem editar arquivo nenhum: `make image-push NAMESPACE=outro`.
-# O Tailwind e PINADO. `releases/latest` fazia dois desenvolvedores gerarem CSS
-# diferente do mesmo fonte -- e foi o que deixou um app.css velho passar pelo
-# portao do release e carimbar uma imagem `-dirty`.
+# --- Image -----------------------------------------------------------------
+# REGISTRY/NAMESPACE are variables so a fork can publish into its own namespace
+# without editing any file: `make image-push NAMESPACE=other`.
+# Tailwind is PINNED. `releases/latest` made two developers generate different
+# CSS from the same source -- and that is what let a stale app.css get past the
+# release gate and stamp an image `-dirty`.
 TAILWIND_VERSAO ?= v4.3.3
 
 REGISTRY  ?= docker.io
 NAMESPACE ?= daniel3843
-IMAGEM    ?= $(REGISTRY)/$(NAMESPACE)/brevis
-VERSAO    ?= $(shell cat VERSION)
-# `-dirty` quando ha mudanca nao commitada. Sem o sufixo, `brevis version`
-# dentro da imagem apontaria para um commit que NAO contem o codigo publicado —
-# e e por essa informacao que se rastreia um incidente.
+IMAGE    ?= $(REGISTRY)/$(NAMESPACE)/brevis
+VERSION    ?= $(shell cat VERSION)
+# `-dirty` when there is an uncommitted change. Without the suffix, `brevis
+# version` inside the image would point at a commit that does NOT contain the
+# published code — and that is the field an incident is traced by.
 COMMIT    ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo desconhecido)$(shell git diff --quiet HEAD 2>/dev/null || echo -dirty)
-DATA      ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+BUILD_DATE      ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# As duas arquiteturas que importam: Apple Silicon no desenvolvimento e amd64/arm64
-# no cluster. Uma imagem so-amd64 roda no Mac por emulacao, devagar e escondendo
-# problemas de arquitetura ate o deploy.
+# The two architectures that matter: Apple Silicon in development and
+# amd64/arm64 in the cluster. An amd64-only image runs on a Mac through
+# emulation, slowly and hiding architecture problems until the deploy.
 PLATAFORMAS ?= linux/amd64,linux/arm64
 DB_URL := postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable
-# Banco SEPARADO para os testes de integracao. Desde que a stack local passou a
-# subir um scheduler de verdade, rodar os testes contra `brevis` era uma corrida:
-# o scheduler do compose reivindicava os itens que o teste acabara de enfileirar
-# e o criterio de aceite falhava sem nada estar errado.
+# A SEPARATE database for the integration tests. Since the local stack started
+# bringing up a real scheduler, running the tests against `brevis` was a race:
+# the compose's scheduler claimed the items the test had just queued and the
+# acceptance criterion failed with nothing being wrong.
 TEST_DB_URL := postgres://brevis:brevis@localhost:5432/brevis_test?sslmode=disable
 
-help: ## Lista os alvos
+help: ## Lists the targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
-build: generate ## Compila o binario em bin/ (gera templ e css antes)
-	@go build -trimpath -o $(BIN) ./cmd/brevis
+# The same -ldflags the image uses. Without them `make build` produced a binary
+# reporting `brevis dev`, with no commit and no date, while the documentation
+# promised the version stamped in -- and telling a local build from a release
+# artifact is exactly what those fields are for.
+build: generate ## Builds the binary into bin/ (generates templ and css first)
+	@go build -trimpath \
+	  -ldflags="-X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildDate=$(BUILD_DATE)" \
+	  -o $(BIN) ./cmd/brevis
 
-test: ## Roda os testes (os de integracao pulam sem Postgres)
+test: ## Runs the tests (the integration ones skip without Postgres)
 	@go test ./...
 
-test-int: test-db ## Roda tudo, inclusive integracao (exige `make up`)
+test-int: test-db ## Runs everything, integration included (needs `make up`)
 	@BREVIS_TEST_DATABASE_URL="$(TEST_DB_URL)" go test ./... -count=1
 
-test-db: ## Cria e migra o banco de testes (idempotente)
+test-db: ## Creates and migrates the test database (idempotent)
 	@docker compose exec -T postgres psql -U brevis -d postgres -tAc \
 	  "SELECT 1 FROM pg_database WHERE datname='brevis_test'" | grep -q 1 \
 	  || docker compose exec -T postgres createdb -U brevis brevis_test
 	@BREVIS_DATABASE_URL="$(TEST_DB_URL)" go run ./cmd/brevis migrate up >/dev/null
 
-check: ## gofmt + vet + testes (portao antes de commitar)
+check: ## gofmt + vet + tests (the gate before committing)
 	@test -z "$$(gofmt -l cmd internal migrations)" || { echo "gofmt pendente:"; gofmt -l cmd internal migrations; exit 1; }
 	@go vet ./...
 	@go test ./...
 
-dev: ## Hot reload: recompila e reinicia a cada mudanca (exige `make up` antes)
+dev: ## Hot reload: rebuilds and restarts on every change (needs `make up` first)
 	@command -v air >/dev/null || { echo "instale: go install github.com/air-verse/air@latest"; exit 1; }
 	@test -x bin/tailwindcss || $(MAKE) tailwind-install
 	@BREVIS_DATABASE_URL="$(DB_URL)" air
 
-tailwind-install: ## Baixa o binario standalone do Tailwind (sem Node)
+tailwind-install: ## Downloads the standalone Tailwind binary (no Node)
 	@mkdir -p bin
 	@ARCH=$$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/'); \
 	 OS=$$(uname -s | tr 'A-Z' 'a-z' | sed 's/darwin/macos/'); \
@@ -66,47 +72,47 @@ tailwind-install: ## Baixa o binario standalone do Tailwind (sem Node)
 	   "https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSAO)/tailwindcss-$$OS-$$ARCH" \
 	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss $(TAILWIND_VERSAO) instalado"
 
-generate: ## Gera os _templ.go e o CSS
+generate: ## Generates the _templ.go files and the CSS
 	@command -v templ >/dev/null || { echo "instale: go install github.com/a-h/templ/cmd/templ@$$(go list -m -f '{{.Version}}' github.com/a-h/templ)"; exit 1; }
 	@test -x bin/tailwindcss && ./bin/tailwindcss --help 2>&1 | head -1 | grep -q "$(patsubst v%,%,$(TAILWIND_VERSAO))" || $(MAKE) tailwind-install
 	@templ generate
 	@./bin/tailwindcss -i web/assets/app.src.css -o web/assets/app.css --minify
 
-image: generate ## Constroi as imagens para a arquitetura local (nao publica)
-	@docker build --target api  -t $(IMAGEM):$(VERSAO)        -t $(IMAGEM):latest \
-	  --build-arg VERSAO=$(VERSAO) --build-arg COMMIT=$(COMMIT) --build-arg DATA=$(DATA) .
-	@docker build --target worker -t $(IMAGEM):$(VERSAO)-worker -t $(IMAGEM):latest-worker \
-	  --build-arg VERSAO=$(VERSAO) --build-arg COMMIT=$(COMMIT) --build-arg DATA=$(DATA) .
-	@echo "  $(IMAGEM):$(VERSAO)  e  $(IMAGEM):$(VERSAO)-worker"
+image: generate ## Builds the images for the local architecture (does not publish)
+	@docker build --target api  -t $(IMAGE):$(VERSION)        -t $(IMAGE):latest \
+	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) .
+	@docker build --target worker -t $(IMAGE):$(VERSION)-worker -t $(IMAGE):latest-worker \
+	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) .
+	@echo "  $(IMAGE):$(VERSION)  e  $(IMAGE):$(VERSION)-worker"
 
-image-push: generate ## Publica multi-arch no registry (exige `docker login`)
+image-push: generate ## Publishes multi-arch to the registry (needs `docker login`)
 	@docker buildx inspect brevis >/dev/null 2>&1 || docker buildx create --name brevis --use
 	@docker buildx build --builder brevis --platform $(PLATAFORMAS) --target api \
-	  --build-arg VERSAO=$(VERSAO) --build-arg COMMIT=$(COMMIT) --build-arg DATA=$(DATA) \
-	  -t $(IMAGEM):$(VERSAO) -t $(IMAGEM):latest --push .
+	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
+	  -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --push .
 	@docker buildx build --builder brevis --platform $(PLATAFORMAS) --target worker \
-	  --build-arg VERSAO=$(VERSAO) --build-arg COMMIT=$(COMMIT) --build-arg DATA=$(DATA) \
-	  -t $(IMAGEM):$(VERSAO)-worker -t $(IMAGEM):latest-worker --push .
-	@echo "publicado: $(IMAGEM):$(VERSAO) (+ -worker)"
+	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
+	  -t $(IMAGE):$(VERSION)-worker -t $(IMAGE):latest-worker --push .
+	@echo "publicado: $(IMAGE):$(VERSION) (+ -worker)"
 
-image-smoke: ## Confere que as imagens locais sobem e reportam a versao
-	@docker run --rm $(IMAGEM):$(VERSAO) version
-	@docker run --rm $(IMAGEM):$(VERSAO)-worker version
+image-smoke: ## Checks the local images start and report their version
+	@docker run --rm $(IMAGE):$(VERSION) version
+	@docker run --rm $(IMAGE):$(VERSION)-worker version
 	@# --entrypoint: o worker entra por `tini -- brevis`, entao um `sh` solto
 	@# viraria subcomando do brevis. O shell existe para o WORKFLOW usar.
-	@docker run --rm --entrypoint sh $(IMAGEM):$(VERSAO)-worker -c 'echo "  shell ok no worker"'
+	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok no worker"'
 
-up: ## Sobe Postgres + API + scheduler localmente
+up: ## Brings up Postgres + API + scheduler locally
 	@docker compose up --build -d
 	@echo "api em http://localhost:8080/health"
 
-down: ## Derruba o ambiente local
+down: ## Tears the local environment down
 	@docker compose down
 
-logs: ## Acompanha os logs da API
+logs: ## Follows the API's logs
 	@docker compose logs -f api
 
-smoke: ## Verifica /health e /ready contra o ambiente local
+smoke: ## Checks /health and /ready against the local environment
 	@printf 'health: '; curl -fsS localhost:8080/health && echo
 	@printf 'ready:  '; curl -fsS localhost:8080/ready  && echo
 
