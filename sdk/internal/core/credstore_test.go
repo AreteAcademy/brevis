@@ -58,7 +58,7 @@ func TestGuardaEDevolve(t *testing.T) {
 	if strings.Contains(string(bruto), "eyJhbGciOiJkaXIi") {
 		t.Error("a credencial esta em claro no arquivo")
 	}
-	if !strings.HasPrefix(string(bruto), formatoCifrado+"\n") {
+	if !strings.HasPrefix(string(bruto), formatEncrypted+"\n") {
 		t.Errorf("o arquivo nao comeca com a versao: %q", bruto[:min(20, len(bruto))])
 	}
 }
@@ -90,7 +90,7 @@ func TestNonceNaoSeRepete(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, corpo, _ := primeiraLinha(bruto)
+		_, corpo, _ := firstLine(bruto)
 		nonce := string(corpo[:12])
 		if vistos[nonce] {
 			t.Fatalf("nonce repetido na escrita %d", i)
@@ -128,7 +128,7 @@ func TestSemChaveGravaEmClaro(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(string(bruto), formatoClaro+"\n") {
+	if !strings.HasPrefix(string(bruto), formatPlaintext+"\n") {
 		t.Errorf("o claro tambem precisa de versao na primeira linha: %q", bruto)
 	}
 }
@@ -142,7 +142,7 @@ func TestClaroAvisaUmaVezSo(t *testing.T) {
 	}
 	t.Setenv(EnvCredentialDir, dir)
 	t.Setenv(EnvCredentialKey, "")
-	avisos.Delete(filepath.Join(dir, "x.cred"))
+	warned.Delete(filepath.Join(dir, "x.cred"))
 
 	var buf bytes.Buffer
 	anterior := slog.Default()
@@ -174,7 +174,7 @@ func TestComChaveNaoGravaEmClaro(t *testing.T) {
 	if strings.Contains(string(bruto), "session=abc==") {
 		t.Error("com chave, gravou em claro")
 	}
-	if !strings.HasPrefix(string(bruto), formatoCifrado+"\n") {
+	if !strings.HasPrefix(string(bruto), formatEncrypted+"\n") {
 		t.Errorf("cabecalho errado: %q", bruto[:min(20, len(bruto))])
 	}
 }
@@ -291,8 +291,8 @@ func TestArquivoIlegivelCaiNaSemente(t *testing.T) {
 	casos := map[string][]byte{
 		"versao futura": []byte("brevis-cred/9\nqualquer coisa aqui dentro"),
 		"sem versao":    []byte("nao tem newline nenhum"),
-		"truncado":      []byte(formatoCifrado + "\ncurto"),
-		"nao decifra":   append([]byte(formatoCifrado+"\n"), make([]byte, 60)...),
+		"truncado":      []byte(formatEncrypted + "\ncurto"),
+		"nao decifra":   append([]byte(formatEncrypted+"\n"), make([]byte, 60)...),
 		"arquivo vazio": {},
 	}
 	for nome, conteudo := range casos {

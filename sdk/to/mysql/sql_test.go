@@ -29,22 +29,22 @@ func TestInsertSQLIgnoraNaDedup(t *testing.T) {
 	}
 }
 
-// TestQualificarCitaCadaParte: citar "banco.tabela" inteiro criaria uma tabela
+// TestQualificarCitaCadaParte: quote "banco.tabela" inteiro criaria uma tabela
 // chamada literalmente "banco.tabela".
 func TestQualificarCitaCadaParte(t *testing.T) {
-	if got := qualificar("landing.pedidos"); got != "`landing`.`pedidos`" {
-		t.Errorf("qualificar = %s", got)
+	if got := qualify("landing.pedidos"); got != "`landing`.`pedidos`" {
+		t.Errorf("qualify = %s", got)
 	}
-	if got := qualificar("pedidos"); got != "`pedidos`" {
-		t.Errorf("qualificar = %s", got)
+	if got := qualify("pedidos"); got != "`pedidos`" {
+		t.Errorf("qualify = %s", got)
 	}
 }
 
 // TestCitarEscapaCrase: uma crase dentro do nome fecharia o identificador e o
 // resto viraria SQL.
 func TestCitarEscapaCrase(t *testing.T) {
-	if got := citar("a`b"); got != "`a``b`" {
-		t.Errorf("citar = %s", got)
+	if got := quote("a`b"); got != "`a``b`" {
+		t.Errorf("quote = %s", got)
 	}
 }
 
@@ -58,10 +58,10 @@ func TestInsertSQLPalavraReservada(t *testing.T) {
 
 // TestPartirNome cobre o banco implicito.
 func TestPartirNome(t *testing.T) {
-	if b, tb := partirNome("landing.pedidos"); b != "landing" || tb != "pedidos" {
+	if b, tb := splitName("landing.pedidos"); b != "landing" || tb != "pedidos" {
 		t.Errorf("= (%q, %q)", b, tb)
 	}
-	if b, tb := partirNome("pedidos"); b != "" || tb != "pedidos" {
+	if b, tb := splitName("pedidos"); b != "" || tb != "pedidos" {
 		t.Errorf("= (%q, %q); banco vazio significa o do DSN", b, tb)
 	}
 }

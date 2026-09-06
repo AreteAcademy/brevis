@@ -99,7 +99,7 @@ func extrairCorpoMultipart(b []byte) []byte {
 func credencial(t *testing.T, g *gcsFalso) Credential {
 	t.Helper()
 	t.Setenv(core.EnvCredentialKey, "")
-	geracoes.Delete("gs://b/obj")
+	generations.Delete("gs://b/obj")
 	return Credential{Bucket: "b", Object: "obj", Client: g.servidor(t)}
 }
 

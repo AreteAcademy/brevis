@@ -9,147 +9,147 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // registra o driver "mysql"
+	_ "github.com/go-sql-driver/mysql" // registers the "mysql" driver
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Table carrega registros numa tabela do MySQL.
+// Table loads records into a MySQL table.
 //
-//	To: mysql.Table{DSN: os.Getenv("MYSQL_DSN"), Name: "landing.pedidos"}
+//	To: mysql.Table{DSN: os.Getenv("MYSQL_DSN"), Name: "landing.orders"}
 //
-// A tabela precisa EXISTIR. Este driver nao a cria e nao infere tipo: deduzir
-// DECIMAL(18,2) de um numero JSON e adivinhar, e adivinhar tipo e a unica
-// coisa que este SDK decidiu nao fazer.
+// The table has to EXIST. This driver does not create it and infers no types:
+// deducing DECIMAL(18,2) from a JSON number is guessing, and guessing a type is
+// the one thing this SDK decided not to do.
 type Table struct {
-	// DSN e a string de conexao. Obrigatoria, e nunca aparece em log.
+	// DSN is the connection string. Required, and never appears in a log.
 	DSN string
 
-	// Name e a tabela, com o banco quando ele nao for o do DSN.
+	// Name is the table, with the database when it is not the DSN's.
 	Name string
 
-	// BatchSize e quantas linhas vao por INSERT. Zero usa 1000.
+	// BatchSize is how many rows go per INSERT. Zero uses 1000.
 	//
-	// Este campo existe aqui e NAO existe no driver do Postgres, e a diferenca
-	// e real: o Postgres tem COPY FROM STDIN, que manda tudo em fluxo. O MySQL
-	// nao tem equivalente confiavel -- LOAD DATA LOCAL INFILE costuma vir
-	// desabilitado no servidor e no cliente --, entao a carga e INSERT
-	// multi-linha, e o tamanho do lote e uma escolha de quem carrega:
-	// pacotes grandes esbarram em max_allowed_packet.
+	// This field exists here and does NOT exist on the Postgres driver, and the
+	// difference is real: Postgres has COPY FROM STDIN, which streams
+	// everything. MySQL has no reliable equivalent -- LOAD DATA LOCAL INFILE
+	// usually ships disabled on both server and client -- so the load is a
+	// multi-row INSERT, and the batch size is a choice for whoever loads:
+	// large packets run into max_allowed_packet.
 	BatchSize int
 
-	// DB reusa um pool. Nil abre um e o fecha ao fim.
+	// DB reuses a pool. Nil opens one and closes it at the end.
 	DB *sql.DB
 }
 
-const loteDefault = 1000
+const defaultBatch = 1000
 
-// Describe satisfaz core.Writer. Nomeia a tabela, nunca o DSN.
+// Describe satisfies core.Writer. It names the table, never the DSN.
 func (t Table) Describe() string { return "mysql:" + t.Name }
 
-// Write satisfaz core.Writer.
+// Write satisfies core.Writer.
 func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error) {
 	res := &core.LoadResult{Dedup: opt.Dedup, Strategy: "insert"}
 	if opt.Dedup == "" {
 		res.Dedup = core.DedupNone
 	}
-	inicio := time.Now()
-	falhar := func(err error) (*core.LoadResult, error) {
-		res.Duration = time.Since(inicio)
+	start := time.Now()
+	fail := func(err error) (*core.LoadResult, error) {
+		res.Duration = time.Since(start)
 		return res, err
 	}
 
 	if t.DSN == "" && t.DB == nil {
-		return falhar(fmt.Errorf("mysql.Table needs DSN (or DB)"))
+		return fail(fmt.Errorf("mysql.Table needs DSN (or DB)"))
 	}
 	if t.Name == "" {
-		return falhar(fmt.Errorf("mysql.Table needs Name"))
+		return fail(fmt.Errorf("mysql.Table needs Name"))
 	}
 	if len(envelopes) == 0 {
-		return falhar(nil)
+		return fail(nil)
 	}
 	if err := core.CheckColumns(opt.Columns, envelopes); err != nil {
-		return falhar(err)
+		return fail(err)
 	}
 
-	db, fechar, err := t.abrir()
+	db, closeDB, err := t.open()
 	if err != nil {
-		return falhar(err)
+		return fail(err)
 	}
-	defer fechar()
+	defer closeDB()
 
-	banco, tabela := partirNome(t.Name)
-	colunasDaTabela, tipos, err := colunasDe(ctx, db, banco, tabela)
+	database, table := splitName(t.Name)
+	tableColumns, types, err := columnsOf(ctx, db, database, table)
 	if err != nil {
-		return falhar(err)
+		return fail(err)
 	}
-	if len(colunasDaTabela) == 0 {
-		return falhar(fmt.Errorf("table %s does not exist. This driver does not create it and "+
+	if len(tableColumns) == 0 {
+		return fail(fmt.Errorf("table %s does not exist. This driver does not create it and "+
 			"does not infer types -- guessing DECIMAL(18,2) from a JSON number is the one thing "+
 			"this SDK will not do. Create it with the columns the batch carries: %s",
-			t.Name, strings.Join(camposDe(envelopes), ", ")))
+			t.Name, strings.Join(fieldsOf(envelopes), ", ")))
 	}
 
-	colunas, err := core.Reconcile(colunasDaTabela, camposDe(envelopes), t.Name)
+	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
 	if err != nil {
-		return falhar(err)
+		return fail(err)
 	}
 
 	if res.Dedup == core.DedupMerge {
-		if err := conferirIndiceUnico(ctx, db, banco, tabela); err != nil {
-			return falhar(err)
+		if err := checkUniqueIndex(ctx, db, database, table); err != nil {
+			return fail(err)
 		}
 	}
 
-	linhas, err := t.inserir(ctx, db, colunas, tipos, envelopes, res.Dedup == core.DedupMerge)
-	res.RowsLoaded = linhas
-	res.RowsIgnored = int64(len(envelopes)) - linhas
+	count, err := t.insert(ctx, db, columns, types, envelopes, res.Dedup == core.DedupMerge)
+	res.RowsLoaded = count
+	res.RowsIgnored = int64(len(envelopes)) - count
 	if res.Dedup != core.DedupMerge {
 		res.RowsIgnored = 0
 	}
-	return falhar(err)
+	return fail(err)
 }
 
-// inserir manda INSERT multi-linha em lotes, dentro de uma transacao.
+// insert sends multi-row INSERTs in batches, inside a transaction.
 //
-// O SQL e montado uma vez por lote e reusado; os argumentos vao num slice
-// reaproveitado. Montar a string por linha custaria uma concatenacao por
-// registro, que numa carga de centenas de milhares e o custo dominante.
-func (t Table) inserir(ctx context.Context, db *sql.DB, colunas []string, tipos map[string]string, envelopes []core.Envelope, ignorar bool) (int64, error) {
-	tamanho := t.BatchSize
-	if tamanho <= 0 {
-		tamanho = loteDefault
+// The SQL is built once per batch and reused; the arguments go in a reused
+// slice. Building the string per row would cost one concatenation per record,
+// which on a load of hundreds of thousands is the dominant cost.
+func (t Table) insert(ctx context.Context, db *sql.DB, columns []string, types map[string]string, envelopes []core.Envelope, ignore bool) (int64, error) {
+	size := t.BatchSize
+	if size <= 0 {
+		size = defaultBatch
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("mysql: begin: %w", err)
 	}
-	defer func() { _ = tx.Rollback() }() // no-op depois do commit
+	defer func() { _ = tx.Rollback() }() // a no-op after the commit
 
 	var total int64
-	args := make([]any, 0, tamanho*len(colunas))
+	args := make([]any, 0, size*len(columns))
 
-	for inicio := 0; inicio < len(envelopes); inicio += tamanho {
-		fim := min(inicio+tamanho, len(envelopes))
-		bloco := envelopes[inicio:fim]
+	for start := 0; start < len(envelopes); start += size {
+		end := min(start+size, len(envelopes))
+		block := envelopes[start:end]
 
 		args = args[:0]
-		for i, e := range bloco {
+		for i, e := range block {
 			obj, err := core.AsObject(e.Payload)
 			if err != nil {
-				return total, fmt.Errorf("mysql: row %d: %w", inicio+i+1, err)
+				return total, fmt.Errorf("mysql: row %d: %w", start+i+1, err)
 			}
-			for _, c := range colunas {
-				v, err := paraColuna(obj[c], tipos[c])
+			for _, c := range columns {
+				v, err := toColumn(obj[c], types[c])
 				if err != nil {
-					return total, fmt.Errorf("mysql: row %d, column %q: %w", inicio+i+1, c, err)
+					return total, fmt.Errorf("mysql: row %d, column %q: %w", start+i+1, c, err)
 				}
 				args = append(args, v)
 			}
 		}
 
-		tag, err := tx.ExecContext(ctx, InsertSQL(t.Name, colunas, len(bloco), ignorar), args...)
+		tag, err := tx.ExecContext(ctx, InsertSQL(t.Name, columns, len(block), ignore), args...)
 		if err != nil {
 			return total, fmt.Errorf("mysql: insert into %s: %w", t.Name, err)
 		}
@@ -166,82 +166,85 @@ func (t Table) inserir(ctx context.Context, db *sql.DB, colunas []string, tipos 
 	return total, nil
 }
 
-// InsertSQL monta o INSERT multi-linha.
+// InsertSQL builds the multi-row INSERT.
 //
-// Exportada e pura porque SQL montado dentro de um metodo com cliente nunca foi
-// visto por um teste -- foi assim que o MERGE do BigQuery saiu com casamento
-// posicional e custou a v0.12.0. As colunas sao NOMEADAS, sempre.
+// Exported and pure because SQL built inside a method that holds a client was
+// never seen by a test -- that is how BigQuery's MERGE shipped with a
+// positional match and cost v0.12.0. The columns are NAMED, always.
 //
-// `ignorar` vira INSERT IGNORE, que e a dedup do MySQL: com indice unico em
-// ingestion_id, a linha repetida e descartada em vez de derrubar o lote.
-func InsertSQL(tabela string, colunas []string, linhas int, ignorar bool) string {
-	nomes := make([]string, len(colunas))
-	for i, c := range colunas {
-		nomes[i] = citar(c)
+// `ignore` becomes INSERT IGNORE, which is MySQL's dedup: with a unique index
+// on ingestion_id, a repeated row is discarded rather than taking the batch
+// down.
+func InsertSQL(table string, columns []string, rows int, ignore bool) string {
+	names := make([]string, len(columns))
+	for i, c := range columns {
+		names[i] = quote(c)
 	}
 
-	umaLinha := "(" + strings.TrimSuffix(strings.Repeat("?,", len(colunas)), ",") + ")"
-	valores := make([]string, linhas)
-	for i := range valores {
-		valores[i] = umaLinha
+	oneRow := "(" + strings.TrimSuffix(strings.Repeat("?,", len(columns)), ",") + ")"
+	values := make([]string, rows)
+	for i := range values {
+		values[i] = oneRow
 	}
 
-	verbo := "INSERT"
-	if ignorar {
-		verbo = "INSERT IGNORE"
+	verb := "INSERT"
+	if ignore {
+		verb = "INSERT IGNORE"
 	}
 	return fmt.Sprintf("%s INTO %s (%s) VALUES %s",
-		verbo, qualificar(tabela), strings.Join(nomes, ", "), strings.Join(valores, ", "))
+		verb, qualify(table), strings.Join(names, ", "), strings.Join(values, ", "))
 }
 
-// citar usa crase, que e o delimitador do MySQL. Uma coluna chamada `order` e
-// legitima, e sem crase ela vira erro de sintaxe no meio de uma carga.
-func citar(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" }
+// quote uses a backtick, which is MySQL's delimiter. A column called `order` is
+// legitimate, and unquoted it becomes a syntax error in the middle of a load.
+func quote(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" }
 
-// qualificar cita cada parte de "banco.tabela" separadamente: citar o nome
-// inteiro criaria uma tabela chamada "banco.tabela".
-func qualificar(nome string) string {
-	partes := strings.Split(nome, ".")
-	for i, p := range partes {
-		partes[i] = citar(p)
+// qualify quotes each part of "database.table" separately: quoting the whole
+// name would create a table called "database.table".
+func qualify(name string) string {
+	parts := strings.Split(name, ".")
+	for i, p := range parts {
+		parts[i] = quote(p)
 	}
-	return strings.Join(partes, ".")
+	return strings.Join(parts, ".")
 }
 
-func partirNome(nome string) (banco, tabela string) {
-	if i := strings.Index(nome, "."); i >= 0 {
-		return nome[:i], nome[i+1:]
+func splitName(name string) (database, table string) {
+	if i := strings.Index(name, "."); i >= 0 {
+		return name[:i], name[i+1:]
 	}
-	return "", nome
+	return "", name
 }
 
-// colunasDe le o esquema real: os nomes na ordem declarada e o tipo de cada um.
-func colunasDe(ctx context.Context, db *sql.DB, banco, tabela string) ([]string, map[string]string, error) {
-	// DATABASE() cobre o caso de o banco vir do DSN e nao do Name.
+// columnsOf reads the real schema: the names in declared order and the type of
+// each one.
+func columnsOf(ctx context.Context, db *sql.DB, database, table string) ([]string, map[string]string, error) {
+	// DATABASE() covers the case of the database coming from the DSN rather
+	// than from Name.
 	rows, err := db.QueryContext(ctx,
 		`SELECT column_name, data_type FROM information_schema.columns
 		 WHERE table_schema = COALESCE(NULLIF(?, ''), DATABASE()) AND table_name = ?
-		 ORDER BY ordinal_position`, banco, tabela)
+		 ORDER BY ordinal_position`, database, table)
 	if err != nil {
-		return nil, nil, fmt.Errorf("mysql: reading the schema of %s: %w", tabela, err)
+		return nil, nil, fmt.Errorf("mysql: reading the schema of %s: %w", table, err)
 	}
 	defer func() { _ = rows.Close() }()
 
 	var out []string
-	tipos := map[string]string{}
+	types := map[string]string{}
 	for rows.Next() {
-		var c, tipo string
-		if err := rows.Scan(&c, &tipo); err != nil {
+		var c, typ string
+		if err := rows.Scan(&c, &typ); err != nil {
 			return nil, nil, err
 		}
 		out = append(out, c)
-		tipos[c] = strings.ToLower(tipo)
+		types[c] = strings.ToLower(typ)
 	}
-	return out, tipos, rows.Err()
+	return out, types, rows.Err()
 }
 
-// conferirIndiceUnico exige o indice, e nao o cria.
-func conferirIndiceUnico(ctx context.Context, db *sql.DB, banco, tabela string) error {
+// checkUniqueIndex requires the index, and does not create it.
+func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table string) error {
 	var n int
 	err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM information_schema.statistics s
@@ -251,7 +254,7 @@ func conferirIndiceUnico(ctx context.Context, db *sql.DB, banco, tabela string) 
 		   AND (SELECT COUNT(*) FROM information_schema.statistics x
 		        WHERE x.table_schema = s.table_schema AND x.table_name = s.table_name
 		          AND x.index_name = s.index_name) = 1`,
-		banco, tabela, core.MetadataID).Scan(&n)
+		database, table, core.MetadataID).Scan(&n)
 	if err != nil {
 		return fmt.Errorf("mysql: checking the unique index: %w", err)
 	}
@@ -261,31 +264,31 @@ func conferirIndiceUnico(ctx context.Context, db *sql.DB, banco, tabela string) 
 			"duplicates. This driver does not create indexes, because a loader that can "+
 			"create one can lock a production table: "+
 			"CREATE UNIQUE INDEX idx_%s ON %s (%s)",
-			core.MetadataID, tabela, core.MetadataID, tabela, core.MetadataID)
+			core.MetadataID, table, core.MetadataID, table, core.MetadataID)
 	}
 	return nil
 }
 
-func camposDe(envelopes []core.Envelope) []string {
-	vistos := map[string]bool{}
+func fieldsOf(envelopes []core.Envelope) []string {
+	seen := map[string]bool{}
 	for _, e := range envelopes {
 		obj, err := core.AsObject(e.Payload)
 		if err != nil {
 			continue
 		}
 		for k := range obj {
-			vistos[k] = true
+			seen[k] = true
 		}
 	}
-	out := make([]string, 0, len(vistos))
-	for k := range vistos {
+	out := make([]string, 0, len(seen))
+	for k := range seen {
 		out = append(out, k)
 	}
 	sort.Strings(out)
 	return out
 }
 
-func (t Table) abrir() (*sql.DB, func(), error) {
+func (t Table) open() (*sql.DB, func(), error) {
 	if t.DB != nil {
 		return t.DB, func() {}, nil
 	}
@@ -314,14 +317,14 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 		return nil
 	}
 
-	db, fechar, err := t.abrir()
+	db, closeDB, err := t.open()
 	if err != nil {
 		return err
 	}
-	defer fechar()
+	defer closeDB()
 
-	banco, tabela := partirNome(t.Name)
-	daTabela, _, err := colunasDe(ctx, db, banco, tabela)
+	database, table := splitName(t.Name)
+	daTabela, _, err := columnsOf(ctx, db, database, table)
 	if err != nil || len(daTabela) == 0 {
 		return err
 	}

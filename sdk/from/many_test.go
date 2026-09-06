@@ -181,7 +181,7 @@ func TestManyTodasFalharemNaoEZeroLinhas(t *testing.T) {
 	if err == nil {
 		t.Fatal("todas as origens falharam e a execução deu certo")
 	}
-	if !strings.Contains(err.Error(), "as 2 origens falharam") {
+	if !strings.Contains(err.Error(), "all 2 sources failed") {
 		t.Errorf("o erro não diz que foram todas: %v", err)
 	}
 }

@@ -6,30 +6,30 @@ import (
 	"time"
 )
 
-// paraColuna converte o valor do registro no que o driver aceita.
+// toColumn converts the record's value into what the driver accepts.
 //
-// Pelo mesmo motivo do Postgres: o registro do SDK e JSON, e um instante nele
-// e uma STRING RFC 3339. O driver do MySQL manda a string como texto, e o
-// servidor recusa com "Incorrect datetime value" -- ou pior, aceita e guarda
-// zero, dependendo do sql_mode.
+// For the same reason as Postgres: the SDK's record is JSON, and an instant in
+// it is an RFC 3339 STRING. The MySQL driver sends the string as text, and the
+// server refuses with "Incorrect datetime value" -- or worse, accepts it and
+// stores zero, depending on sql_mode.
 //
-//	coluna                  aceita
-//	datetime/timestamp      string RFC 3339, time.Time, ou epoch
-//	date                    string YYYY-MM-DD ou RFC 3339
-//	decimal/numeric         string, preservada
-//	json                    serializado
-//	o resto                 passa como veio
-func paraColuna(v any, tipo string) (any, error) {
+//	column                  accepts
+//	datetime/timestamp      RFC 3339 string, time.Time, or an epoch
+//	date                    YYYY-MM-DD string or RFC 3339
+//	decimal/numeric         string, preserved
+//	json                    serialized
+//	everything else         passes through
+func toColumn(v any, typ string) (any, error) {
 	if v == nil {
 		return nil, nil
 	}
 
-	switch tipo {
+	switch typ {
 	case "datetime", "timestamp":
-		return paraInstante(v, tipo)
+		return toInstant(v, typ)
 
 	case "date":
-		t, err := paraInstante(v, tipo)
+		t, err := toInstant(v, typ)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +57,7 @@ func paraColuna(v any, tipo string) (any, error) {
 	}
 }
 
-func paraInstante(v any, tipo string) (any, error) {
+func toInstant(v any, typ string) (any, error) {
 	switch t := v.(type) {
 	case time.Time:
 		return t, nil
@@ -71,7 +71,7 @@ func paraInstante(v any, tipo string) (any, error) {
 			}
 		}
 		return nil, fmt.Errorf("%q is not a timestamp this column (%s) accepts: use RFC 3339, "+
-			"as in 2026-09-05T12:30:00Z", elidir(t), tipo)
+			"as in 2026-09-05T12:30:00Z", elide(t), typ)
 	case float64:
 		return time.Unix(int64(t), 0).UTC(), nil
 	case int64:
@@ -79,11 +79,11 @@ func paraInstante(v any, tipo string) (any, error) {
 	case int:
 		return time.Unix(int64(t), 0).UTC(), nil
 	default:
-		return nil, fmt.Errorf("a %T cannot go into a %s column", v, tipo)
+		return nil, fmt.Errorf("a %T cannot go into a %s column", v, typ)
 	}
 }
 
-func elidir(s string) string {
+func elide(s string) string {
 	if len(s) <= 40 {
 		return s
 	}

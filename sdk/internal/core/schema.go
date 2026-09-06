@@ -6,76 +6,75 @@ import (
 	"strings"
 )
 
-// ColumnType e o tipo de uma coluna declarada.
+// ColumnType is the type of a declared column.
 //
-// A lista e curta de proposito. Ela nao e o sistema de tipos de nenhum banco:
-// e o conjunto minimo que um registro JSON produz, com um nome so para cada
-// coisa. Quem precisa de NUMERIC(18,2), de VARCHAR com tamanho ou de um tipo
-// que so um destino tem escreve o DDL em CreateSQL -- que continua existindo
-// exatamente para isso.
+// The list is short on purpose. It is not any database's type system: it is the
+// minimum set a JSON record produces, with one name per thing. Whoever needs
+// NUMERIC(18,2), a sized VARCHAR or a type only one destination has writes the
+// DDL in CreateSQL -- which goes on existing for exactly that.
 type ColumnType string
 
 const (
-	// TypeString e texto. No BigQuery, STRING.
+	// TypeString is text. In BigQuery, STRING.
 	TypeString ColumnType = "string"
 
-	// TypeInt64 e inteiro de 64 bits.
+	// TypeInt64 is a 64-bit integer.
 	TypeInt64 ColumnType = "int64"
 
-	// TypeFloat64 e ponto flutuante. NAO use para dinheiro: um float perde
-	// centavos em valores grandes, e o prejuizo aparece meses depois num
-	// relatorio que ninguem confere. Para dinheiro, TypeNumeric.
+	// TypeFloat64 is floating point. Do NOT use it for money: a float loses
+	// cents on large values, and the damage turns up months later in a report
+	// nobody double-checks. For money, TypeNumeric.
 	TypeFloat64 ColumnType = "float64"
 
-	// TypeNumeric e decimal exato.
+	// TypeNumeric is exact decimal.
 	TypeNumeric ColumnType = "numeric"
 
-	// TypeBool e booleano.
+	// TypeBool is a boolean.
 	TypeBool ColumnType = "bool"
 
-	// TypeTimestamp e instante com fuso.
+	// TypeTimestamp is an instant with a timezone.
 	TypeTimestamp ColumnType = "timestamp"
 
-	// TypeDate e data sem hora.
+	// TypeDate is a date with no time.
 	TypeDate ColumnType = "date"
 
-	// TypeJSON e um documento aninhado.
+	// TypeJSON is a nested document.
 	TypeJSON ColumnType = "json"
 
-	// TypeBytes e binario.
+	// TypeBytes is binary.
 	TypeBytes ColumnType = "bytes"
 )
 
-// Column e uma coluna declarada: o nome, o tipo, e se ela aceita nulo.
+// Column is a declared column: the name, the type, and whether it takes null.
 type Column struct {
-	// Name e o nome da coluna no destino. Obrigatorio.
+	// Name is the column's name in the destination. Required.
 	Name string
 
-	// Type e o tipo. Obrigatorio -- um tipo em branco seria uma inferencia
-	// disfarcada de declaracao.
+	// Type is the type. Required -- a blank type would be an inference wearing
+	// a declaration's clothes.
 	Type ColumnType
 
-	// Required marca NOT NULL. O padrao e aceitar nulo, que e o que uma
-	// tabela de landing legitimamente faz: uma coluna que a fonte as vezes
-	// nao manda.
+	// Required marks NOT NULL. The default is to take null, which is what a
+	// landing table legitimately does: a column the source sometimes does not
+	// send.
 	Required bool
 }
 
-// Schema e a declaracao do destino, na ordem do DDL.
+// Schema is the destination's declaration, in DDL order.
 //
-// Ela existe porque o SDK NAO infere tipo. Um destino que oferecesse
-// autodetect faria os tipos sairem do dado -- e o dado de uma execucao nao e o
-// dado da proxima: um campo que veio inteiro hoje e decimal amanha muda o tipo
-// da coluna sem ninguem escrever nada.
+// It exists because the SDK does NOT infer types. A destination offering
+// autodetect would make the types come from the data -- and one run's data is
+// not the next run's: a field that arrived whole today and fractional tomorrow
+// changes the column's type with nobody writing anything.
 //
 //	Schema: sdk.Schema{
 //	    {Name: "ingestion_id",        Type: sdk.TypeString,    Required: true},
 //	    {Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
-//	    {Name: "temperatura",         Type: sdk.TypeFloat64},
+//	    {Name: "temperature",         Type: sdk.TypeFloat64},
 //	}
 type Schema []Column
 
-// Names devolve os nomes, na ordem declarada.
+// Names returns the names, in declared order.
 func (s Schema) Names() []string {
 	out := make([]string, len(s))
 	for i, c := range s {
@@ -84,60 +83,60 @@ func (s Schema) Names() []string {
 	return out
 }
 
-// Has diz se a coluna esta declarada.
-func (s Schema) Has(nome string) bool {
+// Has says whether the column is declared.
+func (s Schema) Has(name string) bool {
 	for _, c := range s {
-		if c.Name == nome {
+		if c.Name == name {
 			return true
 		}
 	}
 	return false
 }
 
-// Check recusa uma declaracao que nao pode estar certa.
+// Check refuses a declaration that cannot be right.
 func (s Schema) Check() error {
 	if len(s) == 0 {
 		return nil
 	}
 
-	vistos := make(map[string]bool, len(s))
-	var duplicadas, semNome, semTipo, tipoInvalido []string
+	seen := make(map[string]bool, len(s))
+	var duplicated, unnamed, untyped, badType []string
 
 	for i, c := range s {
-		nome := strings.TrimSpace(c.Name)
-		if nome == "" {
-			semNome = append(semNome, fmt.Sprintf("posição %d", i))
+		name := strings.TrimSpace(c.Name)
+		if name == "" {
+			unnamed = append(unnamed, fmt.Sprintf("position %d", i))
 			continue
 		}
-		if vistos[nome] {
-			duplicadas = append(duplicadas, nome)
+		if seen[name] {
+			duplicated = append(duplicated, name)
 		}
-		vistos[nome] = true
+		seen[name] = true
 
 		switch c.Type {
 		case "":
-			semTipo = append(semTipo, nome)
+			untyped = append(untyped, name)
 		case TypeString, TypeInt64, TypeFloat64, TypeNumeric,
 			TypeBool, TypeTimestamp, TypeDate, TypeJSON, TypeBytes:
 		default:
-			tipoInvalido = append(tipoInvalido, fmt.Sprintf("%s (%q)", nome, c.Type))
+			badType = append(badType, fmt.Sprintf("%s (%q)", name, c.Type))
 		}
 	}
 
 	for _, p := range []struct {
-		lista []string
-		msg   string
+		list []string
+		msg  string
 	}{
-		{semNome, "Schema has a column with no name at %s"},
-		{duplicadas, "Schema declares %s more than once, and the second one would be ignored"},
-		{semTipo, "Schema leaves %s without a Type -- a blank type would be an inference " +
+		{unnamed, "Schema has a column with no name at %s"},
+		{duplicated, "Schema declares %s more than once, and the second one would be ignored"},
+		{untyped, "Schema leaves %s without a Type -- a blank type would be an inference " +
 			"wearing a declaration's clothes. Use sdk.TypeString, TypeInt64, TypeFloat64, " +
 			"TypeNumeric, TypeBool, TypeTimestamp, TypeDate, TypeJSON or TypeBytes"},
-		{tipoInvalido, "Schema uses a type that does not exist: %s"},
+		{badType, "Schema uses a type that does not exist: %s"},
 	} {
-		if len(p.lista) > 0 {
-			sort.Strings(p.lista)
-			return fmt.Errorf(p.msg, strings.Join(p.lista, ", "))
+		if len(p.list) > 0 {
+			sort.Strings(p.list)
+			return fmt.Errorf(p.msg, strings.Join(p.list, ", "))
 		}
 	}
 	return nil

@@ -291,7 +291,7 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		// failed is a broken run, and the two must not look the same to whoever
 		// reads the log.
 		if linhas == 0 && len(copiaFalhas) == len(m.Sources) {
-			yield(core.Envelope{}, core.ErrTodasAsFontesFalharam(len(m.Sources), copiaFalhas[0]))
+			yield(core.Envelope{}, core.ErrEverySourceFailed(len(m.Sources), copiaFalhas[0]))
 		}
 	}, nil
 }
