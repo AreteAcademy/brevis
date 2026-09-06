@@ -114,7 +114,7 @@ func TestCheckpointNaSegundaTentativaNaoTocaNaOrigem(t *testing.T) {
 	if len(segunda) != 2 {
 		t.Fatalf("a retomada carregou %d registros, esperado 2", len(segunda))
 	}
-	if !strings.Contains(log, "checkpoint=reaproveitado") {
+	if !strings.Contains(log, "checkpoint=reused") {
 		t.Errorf("o log nao diz que reaproveitou; uma economia invisivel e indistinguivel de nao ter economizado:\n%s", log)
 	}
 }
@@ -328,7 +328,7 @@ func TestCheckpointQueNaoGravaNaoDerrubaAExecucao(t *testing.T) {
 	if len(caixa) != 2 {
 		t.Errorf("carregou %d registros, esperado 2", len(caixa))
 	}
-	if !strings.Contains(log, "checkpoint_falhou") {
+	if !strings.Contains(log, "checkpoint_failed") {
 		t.Errorf("a falha do deposito precisa aparecer no resultado:\n%s", log)
 	}
 }
@@ -357,7 +357,7 @@ func TestCheckpointQueFalhaNoMeioDegradaSemRepetirAOrigem(t *testing.T) {
 	if len(caixa) != 2 {
 		t.Errorf("carregou %d registros, esperado 2 -- degradar nao pode perder linha", len(caixa))
 	}
-	if !strings.Contains(log, "checkpoint_falhou") {
+	if !strings.Contains(log, "checkpoint_failed") {
 		t.Errorf("a interrupcao precisa aparecer no resultado:\n%s", log)
 	}
 }

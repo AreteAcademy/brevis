@@ -237,15 +237,15 @@ func (r *Result) Args() []any {
 		"records", r.Records,
 		"lines", r.Rows,
 		"ignored", r.Ignored,
-		"paginas", r.Pages,
+		"pages", r.Pages,
 		"attempts", r.Attempts,
 		"table", r.Table,
-		"estrategia", r.Strategy,
+		"strategy", r.Strategy,
 		"dedup", r.Dedup,
-		"tabela_criada", r.TableCreated,
+		"table_created", r.TableCreated,
 		"extract", r.ExtractTime,
 		"load", r.LoadTime,
-		"duracao", r.Duration,
+		"duration", r.Duration,
 	}
 
 	// Contadores que nem todo driver preenche saem quando estao zerados.
@@ -262,7 +262,7 @@ func (r *Result) Args() []any {
 		args = append(args, "bytes", r.Bytes)
 	}
 	if r.Format != "" {
-		args = append(args, "formato", r.Format)
+		args = append(args, "format", r.Format)
 	}
 	// Only when there is one: a key that is always the zero time on every
 	// line teaches people to skip it, and then it is invisible on the one
@@ -276,22 +276,22 @@ func (r *Result) Args() []any {
 		args = append(args, "credential_not_saved", r.CredentialStoreError)
 	}
 	if n := len(r.FailedSources); n > 0 {
-		args = append(args, "fontes_falharam", n)
+		args = append(args, "failed_sources", n)
 	}
 	// So quando ha algo a dizer: `checkpoint=false` em toda linha ensinaria a
 	// pular o campo, e a linha que importa e justamente a rara.
 	if r.CheckpointReused {
-		args = append(args, "checkpoint", "reaproveitado", "checkpoint_em", r.CheckpointPath)
+		args = append(args, "checkpoint", "reused", "checkpoint_at", r.CheckpointPath)
 	}
 	if r.CheckpointError != "" {
-		args = append(args, "checkpoint_falhou", r.CheckpointError)
+		args = append(args, "checkpoint_failed", r.CheckpointError)
 	}
 	if len(r.Objects) == 1 {
-		args = append(args, "objeto", r.Objects[0])
+		args = append(args, "object", r.Objects[0])
 	} else if len(r.Objects) > 1 {
 		// Com FlushEvery sao varios, e despejar cinquenta caminhos numa linha
 		// de log a torna ilegivel. A lista inteira esta em Result.Objects.
-		args = append(args, "objetos", len(r.Objects), "primeiro", r.Objects[0])
+		args = append(args, "objects", len(r.Objects), "first", r.Objects[0])
 	}
 	return args
 }

@@ -83,8 +83,10 @@ func TestFilesLeCSVComCabecalho(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("%d registros, esperado 2", len(got))
 	}
-	// O decoder de CSV devolve map[string]string, e é assim desde sempre.
-	if got[0].Payload.(map[string]string)["nome"] != "ana" {
+	// The CSV decoder yields map[string]any -- the same record model as every
+	// other source. It used to yield map[string]string, and that meant no
+	// transformer worked on a CSV at all.
+	if got[0].Payload.(map[string]any)["nome"] != "ana" {
 		t.Errorf("a primeira linha não virou registro: %v", got[0].Payload)
 	}
 }

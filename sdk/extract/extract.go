@@ -1025,7 +1025,17 @@ func (d *csvDecoder) Next(ctx context.Context) (core.Envelope, error) {
 		return core.Envelope{}, err
 	}
 
-	obj := make(map[string]string, len(record))
+	// map[string]any, and not map[string]string.
+	//
+	// The record model of this SDK is a JSON object, and every transformer,
+	// every aggregator and every destination reads that type. A CSV source
+	// yielding a different map meant NO transformer worked on it: the message
+	// was "Compute needs a JSON object, got map[string]string", which reads as
+	// a bug in the caller's code and is not.
+	//
+	// The values stay strings -- a CSV has no types, and inventing them here
+	// would guess. Sum and friends accept numeric text for exactly that reason.
+	obj := make(map[string]any, len(record))
 	for i, value := range record {
 		if d.noHeader {
 			obj[fmt.Sprintf("field_%d", i)] = value

@@ -10,6 +10,41 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.49.0] — 2026-09-06
+
+### MUDANÇA INCOMPATÍVEL: uma origem CSV agora pode ser transformada
+
+O decoder de CSV entregava `map[string]string`, e o modelo de registro do SDK é
+um objeto JSON — `map[string]any`. Na prática isso significava que **nenhum
+transformer funcionava sobre um CSV**:
+
+```
+format error in dados.csv, record 0: transformer 0:
+Compute needs a JSON object, got map[string]string
+```
+
+A mensagem lê como erro de quem chamou, e não é. Agora todo driver entrega o
+mesmo modelo. Os valores continuam texto — um CSV não tem tipos, e inventá-los
+aqui seria adivinhar; `Sum` e companhia aceitam texto numérico exatamente por
+isso.
+
+Quem fazia `env.Payload.(map[string]string)` precisa trocar para
+`map[string]any`.
+
+Apareceu ao montar o exemplo de ponta a ponta: um passo lia o CSV que o outro
+tinha escrito, e não havia como transformá-lo.
+
+### Mudou: as chaves do log de resultado estão em inglês
+
+`paginas` → `pages`, `estrategia` → `strategy`, `duracao` → `duration`,
+`formato` → `format`, `objeto` → `object`, `tabela_criada` → `table_created`,
+`fontes_falharam` → `failed_sources`, `checkpoint=reaproveitado` →
+`checkpoint=reused`, `checkpoint_falhou` → `checkpoint_failed`.
+
+Quem tiver alerta ou dashboard casando nessas chaves precisa ajustar.
+
+---
+
 ## [0.48.0] — 2026-09-05
 
 ### MUDANÇA INCOMPATÍVEL: o protocolo de etapas fala inglês

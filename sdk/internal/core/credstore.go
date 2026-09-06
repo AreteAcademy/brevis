@@ -211,7 +211,7 @@ func (a *arquivoDeCredencial) Load() (string, error) {
 // pode deixar um arquivo pela metade, que decifraria com erro e mandaria o
 // proximo run para a semente em silencio.
 //
-// Last a escrever vence, e isso e uma escolha e nao um descuido: verificado
+// Last writer wins, and that is a choice rather than an oversight: checked
 // no fornecedor que motivou esta feature que rotacionar NAO invalida o token
 // anterior, entao dois pods renovando ao mesmo tempo gravam dois valores que
 // ambos funcionam. Para um fornecedor que invalide o anterior, isto nao serve

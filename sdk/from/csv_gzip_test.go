@@ -138,22 +138,16 @@ func TestFilesComDelimitador(t *testing.T) {
 	}
 }
 
-// comoMapa normaliza o payload: o decoder de CSV entrega map[string]string, o
-// de JSON entrega map[string]any.
+// comoMapa narrows the payload. Every source yields the same record model, so
+// there is nothing to normalise -- this only fails loudly if that stops being
+// true.
 func comoMapa(t *testing.T, p any) map[string]any {
 	t.Helper()
-	switch m := p.(type) {
-	case map[string]any:
-		return m
-	case map[string]string:
-		out := make(map[string]any, len(m))
-		for k, v := range m {
-			out[k] = v
-		}
-		return out
+	m, ok := p.(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected payload: %T", p)
 	}
-	t.Fatalf("payload inesperado: %T", p)
-	return nil
+	return m
 }
 
 func contemTudo(s string, partes ...string) bool {

@@ -177,12 +177,12 @@ func TestCSVWithHeader(t *testing.T) {
 		t.Fatalf("CSV() error: %v", err)
 	}
 
-	var rows []map[string]string
+	var rows []map[string]any
 	for env, err := range lines {
 		if err != nil {
 			t.Fatalf("row error: %v", err)
 		}
-		rows = append(rows, env.Payload.(map[string]string))
+		rows = append(rows, env.Payload.(map[string]any))
 	}
 
 	if len(rows) != 2 {
@@ -206,12 +206,12 @@ func TestCSVWithoutHeader(t *testing.T) {
 		t.Fatalf("CSV() error: %v", err)
 	}
 
-	var rows []map[string]string
+	var rows []map[string]any
 	for env, err := range lines {
 		if err != nil {
 			t.Fatalf("row error: %v", err)
 		}
-		rows = append(rows, env.Payload.(map[string]string))
+		rows = append(rows, env.Payload.(map[string]any))
 	}
 
 	if len(rows) != 3 {

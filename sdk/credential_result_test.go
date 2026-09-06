@@ -77,14 +77,14 @@ func TestArgsOmiteCredencialQuandoNaoHa(t *testing.T) {
 // E aí, quando um pipeline de HTTP mostrasse zero de verdade, ninguém veria.
 func TestArgsOmiteContadorZerado(t *testing.T) {
 	vazio := fmt.Sprint((&Result{Rows: 10}).Args()...)
-	for _, chave := range []string{"extract_bytes", "bytes", "formato"} {
+	for _, chave := range []string{"extract_bytes", "bytes", "format"} {
 		if strings.Contains(vazio, chave) {
 			t.Errorf("%q aparece com valor zerado: %s", chave, vazio)
 		}
 	}
 
 	cheio := fmt.Sprint((&Result{ExtractBytes: 1, Bytes: 2, Format: "ndjson"}).Args()...)
-	for _, chave := range []string{"extract_bytes", "bytes", "formato"} {
+	for _, chave := range []string{"extract_bytes", "bytes", "format"} {
 		if !strings.Contains(cheio, chave) {
 			t.Errorf("%q sumiu mesmo tendo valor: %s", chave, cheio)
 		}

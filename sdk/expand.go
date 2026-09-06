@@ -35,7 +35,7 @@ type Expander func(payload any) ([]any, error)
 func ParallelArrays(block string, fields ...string) Expander {
 	return func(payload any) ([]any, error) {
 		if len(fields) == 0 {
-			return nil, fmt.Errorf("ParallelArrays precisa from ao menos um campo")
+			return nil, fmt.Errorf("ParallelArrays needs at least one field")
 		}
 
 		doc, err := asObject(payload)
