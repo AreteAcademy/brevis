@@ -1,362 +1,395 @@
-# SDK — as decisões, e o que cada uma custou
+# SDK — the decisions, and what each one cost
 
-**Vale para** `sdk/v0.21.0` · **Atualizado em** 2026-09-04
+**Valid for** `sdk/v0.52.0` · **Updated on** 2026-09-06
 
-Cada linha aqui já foi decidida ao contrário uma vez. Este documento existe
-para que a próxima sessão não desfaça uma lição paga — e para que, quando
-desfizer, seja de propósito e sabendo o preço.
+Every line here was once decided the other way. This document exists so the next
+session does not undo a lesson that has already been paid for — and so that,
+when it does undo one, it does so deliberately and knowing the price.
 
-Formato: **a decisão**, o que se tentou antes, e o que isso custou.
-
----
-
-## 1. O SDK não infere tipo de coluna
-
-**Onde vale:** todos os destinos.
-
-No BigQuery a criação de tabela delega a inferência ao próprio BigQuery: carrega
-o lote numa tabela descartável com autodetect, lê o schema e sobrepõe **só** as
-duas colunas que são do SDK. Custa um job a mais, na execução que cria a tabela.
-
-**Por que não inferir em Go:** um `float64` do `encoding/json` viraria `FLOAT64`
-numa coluna que o consumidor queria `NUMERIC`, e a inferência estaria de volta
-pela porta dos fundos, justo nas colunas de dinheiro.
-
-**Consequência assumida:** Postgres, MySQL e Redshift não têm serviço de
-autodetect, então neles a tabela precisa existir ou o DDL vem em `CreateSQL`.
-Isso é a decisão, não uma lacuna.
+The format: **the decision**, what was tried before it, and what that cost.
 
 ---
 
-## 2. As colunas vêm do `Transform`; o destino é declarado em `Columns`
+## 1. The SDK does not infer a column's type
 
-**Custou três reviravoltas.** A pergunta "quem produz as colunas?" mudou de
-resposta na `v0.1.1` (agnóstico), na `v0.2.1` (contrato de seis colunas fixas) e
-na `v0.9.0` (agnóstico de novo).
+**Where it holds:** every destination.
 
-Na `v0.9.0` o SDK parou de preencher três das seis colunas e **nada do lado do
-consumidor acusou** — a tabela seguiu existindo, com as colunas lá, vazias. O
-sintoma chegou dias depois como erro de tipo do BigQuery, e a causa levou três
-versões para ser isolada.
+On BigQuery, table creation delegates the inference to BigQuery itself: it loads
+the batch into a throwaway table with autodetect, reads the schema and overrides
+**only** the two columns that are the SDK's. It costs one extra job, on the run
+that creates the table.
 
-**A forma final:** o `Transform` compõe a linha; `Target.Columns` declara as
-colunas do destino, **incluindo as duas que o SDK preenche**. Conferida contra
-a linha nos dois sentidos e contra o destino real.
+**Why not infer in Go:** an `encoding/json` `float64` would become a `FLOAT64`
+on a column the consumer wanted as `NUMERIC`, and the inference would be back in
+through the back door, precisely on the money columns.
 
-**Por que `Columns` não pode viver no `Transform`:** o metadado é acrescentado
-no `Write`, depois de toda a cadeia. Um `Schema` na cadeia que nomeasse
-`ingestion_id` falharia — foi por isso que a lista vivia incompleta, e não por
-descuido de quem escrevia o fetcher.
+**The accepted consequence:** Postgres, MySQL and Redshift have no autodetect
+service, so on them the table has to exist or the DDL comes in `CreateSQL`. That
+is the decision, not a gap.
 
 ---
 
-## 3. `Accept` e `Columns` são duas verificações, e as duas valem
+## 2. The columns come from `Transform`; the destination is declared in `Columns`
 
-| | pergunta | pega |
+**It cost three reversals.** The question "who produces the columns?" changed its
+answer in `v0.1.1` (agnostic), in `v0.2.1` (a contract of six fixed columns) and
+in `v0.9.0` (agnostic again).
+
+In `v0.9.0` the SDK stopped filling three of the six columns and **nothing on the
+consumer's side said so** — the table went on existing, with the columns there,
+empty. The symptom arrived days later as a BigQuery type error, and the cause
+took three versions to isolate.
+
+**The final shape:** `Transform` composes the row; `Target.Columns` declares the
+destination's columns, **the two the SDK fills included**. It is checked against
+the row both ways and against the real destination.
+
+**Why `Columns` cannot live in `Transform`:** at the time, the metadata was added
+in `Write`, after the whole chain. A `Schema` in the chain that named
+`ingestion_id` would have failed — which is why the list used to live
+incomplete, and not through carelessness on the part of whoever wrote the
+fetcher. Since `v0.24.0` the metadata is a transformer and the row reaching
+`Write` already carries it, so the check has no special case left.
+
+---
+
+## 3. `Accept` and `Columns` are two checks, and both are worth having
+
+| | question | catches |
 |---|---|---|
-| `Accept` | a fonte ainda manda o que eu leio? | o vendor parar de mandar um campo |
-| `Columns` | a linha tem as colunas da tabela? | o fetcher esquecer de compor uma |
+| `Accept` | does the source still send what I read? | the vendor dropping a field |
+| `Columns` | does the row have the table's columns? | the fetcher forgetting to compose one |
 
-Fundir as duas para ter "um schema só" trocaria clareza por um buraco de
-detecção.
+Merging the two to have "a single schema" would trade clarity for a detection
+hole.
 
-**Sobre o nome:** a etapa (a) já se chamou `Schema`, e um fetcher real acabava
-com **duas linhas `sdk.Schema` querendo dizer coisas diferentes**. E não voltou
-a se chamar `Only`, que estaria livre: o `Only` original **descartava campo
-ausente em silêncio**, e devolver o mesmo nome com a semântica invertida é a
-troca silenciosa que a `v0.9.0` custou caro.
-
----
-
-## 4. O driver é um valor, em subpacotes
-
-**Não é um enum.** `Source.Driver string` existiu e não despachava nada — era
-uma validação que recusava tudo menos o único driver implementado. Foi removido
-na `v0.19.0`, junto com `DriverHTTP` e `DriverBigQuery`, porque ninguém os lia.
-
-**Três razões, em ordem de peso:**
-
-1. **Poda de dependência.** Go poda por pacote importado, nunca por campo usado.
-   Antes da fase 0 eram 458 pacotes e 21 MB para quem só importava o SDK, porque
-   a raiz importava `sdk/load` e ele importa BigQuery, Arrow e Thrift. Hoje:
-   190 na raiz, 197 com `from`, e o binário caiu para 9,1 MB.
-2. **Colisão de nome.** `Postgres` existe nos dois lados com configuração
-   diferente. Um tipo só com os dois conjuntos de campos traz de volta o campo
-   morto.
-3. **Erro de compilação.** Não existe mais campo onde escrever um driver que não
-   existe.
-
-**O mesmo raciocínio desceu um nível na `v0.20.0`.** `from.Files` serve disco,
-S3 e GCS, e você escolheu "um driver só, o esquema do caminho decide". Se ele
-importasse os três backends, ler um CSV local compilaria a AWS **e** o Google —
-contradizendo a razão 1. Então o backend virou valor também: `core.Store`,
-passado de fora, morando em `store/s3` e `store/gcs`. Um driver, três
-backends, e quem lê disco paga 194 pacotes.
-
-**E a `v0.20.0` errou o lado de baixo disso**, o que vale registrar: `to.BigQuery`
-e `to.Files` saíram no mesmo pacote, então escrever um arquivo compilava o
-Google — 461 pacotes e 21 MB onde deviam ser 195. O teste de poda não pegou
-porque só cobria o lado `from`. Consertado na `v0.21.0`, com a regra escrita:
-**um driver com SDK de fornecedor atrás mora no próprio pacote**, e o teste
-cobre o pipeline completo, dos dois lados.
-
-**Consequência assumida:** `Records` voltou para `from.HTTP` na `v0.19.0`,
-desfazendo parte da `v0.18.0`. Lá ele subira para `Pipeline` porque `Source` era
-config e ele não era; com o driver sendo um valor, `from.HTTP` **é** a origem
-HTTP inteira, e um `Pipeline.Records` seria campo morto para `from.Postgres`.
+**On the name:** step (a) was once called `Schema`, and a real fetcher ended up
+with **two `sdk.Schema` lines meaning different things**. And it did not go back
+to being called `Only`, which was free: the original `Only` **discarded a missing
+field in silence**, and handing the same name back with the semantics inverted is
+the silent swap `v0.9.0` paid dearly for.
 
 ---
 
-## 5. Um campo que não faz nada é um defeito
+## 4. The driver is a value, in subpackages
 
-A classe de erro que este SDK mais achou em si mesmo. O inventário:
+**It is not an enum.** `Source.Driver string` existed and dispatched nothing — it
+was a validation that refused everything but the single implemented driver. It
+was removed in `v0.19.0`, along with `DriverHTTP` and `DriverBigQuery`, because
+nobody read them.
 
-| o quê | como terminou |
+**Three reasons, in order of weight:**
+
+1. **Dependency pruning.** Go prunes by imported package, never by used field.
+   Before phase 0 it was 458 packages and 21 MB for anyone who imported the SDK
+   at all, because the root imported `sdk/load` and that imports BigQuery, Arrow
+   and Thrift. Today, measured on `v0.52.0`: 194 at the root, 199 with `from`.
+2. **Name collision.** `Postgres` exists on both sides with different
+   configuration. A single type with both sets of fields brings the dead field
+   back.
+3. **A compile error.** There is no longer a field in which to write a driver
+   that does not exist.
+
+**The same reasoning went one level down in `v0.20.0`.** `from.Files` serves
+disk, S3 and GCS, and the choice was "one driver, the path's scheme decides". If
+it imported all three backends, reading a local CSV would compile AWS **and**
+Google — contradicting reason 1. So the backend became a value too: `core.Store`,
+passed in from outside, living in `store/s3` and `store/gcs`. One driver, three
+backends, and whoever reads from disk pays 199 packages.
+
+**And `v0.20.0` got the bottom half of that wrong**, which is worth recording:
+`to.BigQuery` and `to.Files` shipped in the same package, so writing a file
+compiled Google in — 461 packages and 21 MB where it should have been 195. The
+pruning test did not catch it because it only covered the `from` side. Fixed in
+`v0.21.0`, with the rule written down: **a driver with a vendor SDK behind it
+lives in its own package**, and the test covers the complete pipeline, from both
+sides.
+
+**The accepted consequence:** `Records` went back to `from.HTTP` in `v0.19.0`,
+undoing part of `v0.18.0`. There it had moved up to `Pipeline` because `Source`
+was configuration and it was not; with the driver being a value, `from.HTTP`
+**is** the whole HTTP source, and a `Pipeline.Records` would be a dead field for
+`postgres.Query`.
+
+---
+
+## 5. A field that does nothing is a defect
+
+The class of error this SDK has found most often in itself. The inventory:
+
+| what | how it ended |
 |---|---|
-| `applyLayout` escrita e nunca chamada | `CreateTable` era flag sem efeito |
-| três `With*` sem re-export | inalcançáveis de fora do módulo |
-| `MetadataNamespace` aceito, validado, ignorado | removido |
-| `SourceKeyField` declarado, zero leituras | removido |
-| `Result.Pages` e `Attempts` sempre zero | ligados ao `Stats` |
-| `DeleteAfterLoad` documentado "default: true" | um `bool` não consegue; virou `KeepStagedFile` |
-| `core.ExtractOption` sem opção, sem consumidor, sem re-export | removido |
-| `Source.Driver`, `DriverHTTP`, `DriverBigQuery` | removidos na `v0.19.0` |
+| `applyLayout` written and never called | `CreateTable` was a flag with no effect |
+| three `With*` with no re-export | unreachable from outside the module |
+| `MetadataNamespace` accepted, validated, ignored | removed |
+| `SourceKeyField` declared, zero reads | removed |
+| `Result.Pages` and `Attempts` always zero | wired to `Stats` |
+| `DeleteAfterLoad` documented as "default: true" | a `bool` cannot do that; it became `KeepStagedFile` |
+| `core.ExtractOption` with no option, no consumer, no re-export | removed |
+| `Source.Driver`, `DriverHTTP`, `DriverBigQuery` | removed in `v0.19.0` |
+| the five `FieldSelector` constructors with nothing accepting one | `ComputeText`, in `v0.52.0` |
 
-**A contramedida que funciona:** provas de consumidor escritas **de fora do
-módulo**, em `examples/consumer/`. Elas compilam contra a árvore de trabalho e
-rodam na CI, então uma quebra de superfície aparece antes de virar release. Três
-defeitos passaram por testes que viviam dentro do pacote e provavam o que o
-autor enxergava.
+**The countermeasure that works:** consumer proofs written **from outside the
+module**, in `examples/consumer/`. They compile against the working tree and run
+in CI, so a surface break shows up before it becomes a release. Three defects got
+past tests that lived inside the package and proved what the author could see.
 
-E, quando um campo depende de outro, **recuse em vez de ignorar**. O bloco
-`Metadata` acabou removido na `v0.24.0` por essa razão levada ao limite: um
-"interruptor" com quatro campos obrigatórios não é um interruptor, e o `AutoID`
-— criado para dar um estado simples — virou o terceiro motivo de confusão. As
-duas colunas viraram transformers, e a exceção à regra "as colunas vêm do
-Transform" desapareceu.
-
----
-
-## 6. Uma verificação que não pode falhar é pior que nenhuma
-
-`verify-publication` montava URLs de proxy à mão, sem codificação de maiúsculas,
-sempre dava 404 e terminava com `exit 0`. **Passou verde por versões.**
-
-Desde então: verifique que o teste **morde**. Reverta a correção e confirme que
-ele falha, antes de dar por bom. Foi assim que se achou que o teste do MERGE
-posicional realmente pegava o defeito, e que a contagem de bytes cobria os dois
-caminhos de leitura.
-
-O mesmo vale para testes de poda: o caso "quem importa `to` recebe o BigQuery" é
-o controle, sem o qual o teste passaria com um SDK que não carrega nada.
+And when one field depends on another, **refuse rather than ignore**. The
+`Metadata` block was removed in `v0.24.0` for that reason taken to its limit: a
+"switch" with four required fields is not a switch, and `AutoID` — created to
+give it a simple state — became the third source of confusion. The two columns
+became transformers, and the exception to the rule "the columns come from
+Transform" disappeared.
 
 ---
 
-## 7. SQL montado dentro de um método com cliente nunca foi visto por um teste
+## 6. A check that cannot fail is worse than no check
 
-O `MERGE` do BigQuery ficou **três versões** com `INSERT ROW`, que casa colunas
-por **posição**, sob um comentário afirmando que casava por nome. Só funcionava
-porque os schemas coincidiam por acidente. Num destino de schema fixo, o
-`latitude` do consumidor caiu em `ingestion_id`.
+`verify-publication` assembled proxy URLs by hand, with no uppercase encoding,
+always got a 404 and ended with `exit 0`. **It passed green for versions.**
 
-**Regra:** `mergeSQL` e `reconcile` são funções puras, testadas sob `-short`. E
-crase ou aspas em **todo** identificador: `full`, `range` e `comment` são
-reservadas e aparecem em coluna real.
+Since then: check that the test **bites**. Revert the fix and confirm it fails,
+before calling it done. That is how it was established that the positional-MERGE
+test really caught the defect, and that the byte count covered both read paths.
 
----
+The same holds for the pruning tests: the case "whoever imports `to` gets
+BigQuery" is the control, without which the test would pass with an SDK that
+carries nothing.
 
-## 8. Descartar dado em silêncio é o pior modo de falhar
-
-A regra assimétrica da reconciliação, que vale em toda comparação
-registro-contra-destino:
-
-- campo no registro que o destino não tem → **erro** nomeando o campo;
-- coluna no destino que o registro não traz → NULL, legítimo;
-- tipo incompatível → **erro** nomeando a coluna e os dois tipos.
-
-Some sem sinal é pior que falhar alto. A saída para quem quis mesmo descartar é
-o `Without` no `Transform`, que diz isso em voz alta.
+The same rule caught two blind renames going at the checkpoint's on-disk format
+during the English-only work, and produced
+`TestTheManifestKeysAreTheOnDiskFormat` when it turned out nothing guarded the
+one key whose loss is silent.
 
 ---
 
-## 9. Zero registros é um resultado, não uma falha
+## 7. SQL built inside a method that holds a client was never seen by a test
 
-Só o `200` passava; `201`, `204` e `206` derrubavam a execução com `http NNN`.
-Um vendor que responde `204` numa janela vazia virava pipeline vermelho.
+BigQuery's `MERGE` spent **three versions** on `INSERT ROW`, which matches
+columns by **position**, under a comment claiming it matched by name. It only
+worked because the schemas coincided by accident. On a destination with a fixed
+schema, the consumer's `latitude` landed in `ingestion_id`.
 
-Hoje **todo 2xx** chega ao `Records`, porque o que aqueles códigos significam é
-convenção do vendor e só o fetcher sabe. Não-2xx segue como estava.
-
-E a validação roda **por resposta**, não por registro: uma resposta de erro
-carrega zero registros, então um validador por registro nunca seria chamado
-sobre ela — a falha chegaria como "0 linhas", que não diz nada.
-
----
-
-## 10. Recusa da fonte ≠ erro de programação
-
-`sdk.Reject` e `errors.Is(err, sdk.ErrRejected)`. Os dois derrubam a execução,
-mas um mapa nil e "o vendor mandou HTML no lugar de JSON" pedem coisas
-diferentes de quem está de plantão — e reexecutar a mesma janela só resolve um.
-
-`Response.Object()` e `JSON()` também devolvem recusa: um corpo que não é o
-esperado é a fonte mandando algo que não é dado, com ou sem helper no meio.
+**The rule:** `mergeSQL`, `InsertSQL` and `core.Reconcile` are pure functions,
+tested under `-short`. And backticks or quotes on **every** identifier: `full`,
+`range` and `comment` are reserved and show up in real columns.
 
 ---
 
-## 11. O que é congelado
+## 8. Discarding data in silence is the worst way to fail
 
-Mudar qualquer um destes quebra idempotência com toda carga anterior, em
-silêncio:
+The asymmetric reconciliation rule, which holds in every record-against-
+destination comparison:
 
-| | valor |
+- a field in the record the destination does not have → **an error** naming the
+  field;
+- a column in the destination the record does not carry → NULL, legitimate;
+- an incompatible type → **an error** naming the column and both types.
+
+Vanishing with no signal is worse than failing loudly. The way out for whoever
+really did mean to discard is `Without` in `Transform`, which says so out loud.
+
+---
+
+## 9. Zero records is a result, not a failure
+
+Only `200` used to pass; `201`, `204` and `206` failed the run with `http NNN`. A
+vendor answering `204` on an empty window turned the pipeline red.
+
+Today **every 2xx** reaches `Records`, because what those codes mean is the
+vendor's convention and only the fetcher knows. Non-2xx stays as it was.
+
+And validation runs **per response**, not per record: an error response carries
+zero records, so a per-record validator would never be called on it — the failure
+would arrive as "0 rows", which says nothing.
+
+---
+
+## 10. A refusal from the source ≠ a programming error
+
+`sdk.Reject` and `errors.Is(err, sdk.ErrRejected)`. Both fail the run, but a nil
+map and "the vendor sent HTML instead of JSON" ask different things of whoever is
+on call — and re-running the same window only resolves one of them.
+
+`Response.Object()` and `JSON()` return a refusal too: a body that is not what was
+expected is the source sending something that is not data, helper in the middle
+or not.
+
+---
+
+## 11. What is frozen
+
+Changing any of these breaks idempotence with every previous load, in silence:
+
+| | value |
 |---|---|
-| namespace do `ingestion_id` | `e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7` |
-| chave do UUID v5 | `provider\|entity\|source_key\|record_ts` |
-| separador do `Key()` | `\|` |
+| the `ingestion_id` namespace | `e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7` |
+| the UUID v5 key | `provider\|entity\|source_key\|record_ts` |
+| the `Key()` separator | `\|` |
+| the checkpoint's on-disk format | `_completo`, `parte-%05d.ndjson`, and the manifest keys |
 
-Conferido byte a byte contra `uuid.uuid5` do Python, porque uma linha escrita
-aqui tem de casar com a que um fetcher Python escreve para o mesmo registro.
+Checked byte for byte against Python's `uuid.uuid5`, because a row written here
+has to match the one a Python fetcher writes for the same record.
 
-`MetadataNamespace` já existiu como opção configurável — aceita, validada,
-default-ada e **ignorada**. Um contrato configurável não é contrato.
-
----
-
-## 12. Publicação
-
-**O proxy de módulos do Go é imutável.** Apagar a tag no git não despublica a
-versão. A `v0.1.0` saiu com um `go.mod` fixando uma revisão inexistente e está
-quebrada para sempre; o `README` avisa.
-
-Consequências práticas:
-
-- errou uma versão? lance a próxima. Nunca tente apagar a tag.
-- `cmd/brevis-sdk` é módulo próprio e compila contra o **publicado**, então
-  toda quebra de API falha aquele passo da CI uma vez, e o pin só sobe depois da
-  tag existir. É para isso que ele existe — foi ele que pegou o rename do
-  `ExtraMetadata` e a mudança de assinatura do `extract`.
-- `pkg.go.dev` renderiza o README **da versão publicada**, não do branch. Um
-  conserto de README precisa de tag para aparecer.
+`MetadataNamespace` once existed as a configurable option — accepted, validated,
+defaulted and **ignored**. A configurable contract is not a contract.
 
 ---
 
-## 13. Credencial: um aviso vale mais que um armazém
+## 12. Publishing
 
-O SDK **não guarda credencial nenhuma**. Nem em disco, nem no warehouse, nem
-num store abstraído.
+**Go's module proxy is immutable.** Deleting the tag in git does not unpublish
+the version. `v0.1.0` shipped with a `go.mod` pinning a revision that does not
+exist and is broken forever; the `README` says so.
 
-A tentação era grande e tinha caso de uso: um fornecedor sem login programático,
-cujo cookie um humano cola no navegador e cuja expiração desliza. O consumidor
-tinha resolvido guardando o cookie numa tabela do `bronze` — onze cópias de uma
-credencial **pessoal**, legíveis por qualquer `dataViewer` do dataset. O dataset
-foi liberado para ver dado de fornecedor, e quem concedeu esse acesso não sabia
-que ele passou a incluir isso.
+The practical consequences:
 
-A alternativa aparente era o SDK oferecer um store decente. Não é o que ele faz,
-por uma medição:
+- got a version wrong? release the next one. Never try to delete the tag.
+- `cmd/brevis-sdk` is a module of its own and compiles against the **published**
+  SDK, so every API break fails that CI step once, and the pin only moves after
+  the tag exists. That is what it is for — it is what caught the `ExtraMetadata`
+  rename and the `extract` signature change.
+- an exported name that shipped is kept as a deprecated alias rather than
+  deleted: a deletion breaks a consumer's build with an error that names a
+  symbol and explains nothing. `from.CampoJSON`, `from/mysql.ComParseTime`,
+  `from/postgres.ParaJSON`, `load.ComoCriar` and their neighbours are alive for
+  that reason, each held down by a test, and they go in `v1`.
+- `pkg.go.dev` renders the README **of the published version**, not of the
+  branch. A README fix needs a tag before it shows.
+
+---
+
+## 13. Credentials: a warning is worth more than a store
+
+The SDK stores **no credential of its own accord**. Not on disk, not in the
+warehouse, not in an abstracted store — a store only exists where the consumer
+hands one over, and it is off by default.
+
+The temptation was strong and had a use case: a vendor with no programmatic
+login, whose cookie a human pastes out of the browser and whose expiry slides.
+The consumer had solved it by keeping the cookie in a `bronze` table — eleven
+copies of a **personal** credential, readable by any `dataViewer` on the dataset.
+The dataset had been opened up so people could see vendor data, and whoever
+granted that access did not know it had come to include this.
+
+The apparent alternative was for the SDK to offer a decent store. That is not
+what it does by default, because of one measurement:
 
 ```
-1. GET /auth/session com o token guardado -> Set-Cookie com um token NOVO
-2. GET /dados com o token ANTIGO          -> HTTP 200
+1. GET /auth/session with the stored token -> Set-Cookie with a NEW token
+2. GET /data with the OLD token            -> HTTP 200
 ```
 
-**O token antigo sobrevive à rotação.** Cada um vale a própria janela, contada
-de quando foi emitido. Então não guardar nada funciona, e o custo é conhecido e
-único: alguém recola a credencial uma vez por janela, em vez de nunca.
+**The old token survives the rotation.** Each one is valid for its own window,
+counted from when it was issued. So storing nothing works, and the cost is known
+and singular: somebody re-pastes the credential once per window, instead of
+never.
 
-Trocar "nunca recolar" por "recolar por mês" só é honesto se a pessoa souber
-**quando** — senão a pipeline morre calada no dia 31, com um 401 que não diz que
-a causa é validade. É isso que o `Refresh.ExpiresAt` + `WarnAfter` entregam no
-lugar do armazenamento, e vale mais: **um store adia o problema; um aviso o
-resolve.**
+Trading "never re-paste" for "re-paste monthly" is only honest if the person
+knows **when** — otherwise the pipeline dies quietly on the 31st, with a 401 that
+does not say the cause is an expiry. That is what `Refresh.ExpiresAt` +
+`WarnAfter` deliver in place of storage, and it is worth more: **a store defers
+the problem; a warning resolves it.**
 
-E o aviso não é só um `slog.Warn`. Ele vai também em `Stats.CredentialExpiry` e
-sobe até a linha do pipeline, porque uma linha de log numa pipeline horária é
-exatamente o tipo de coisa que ninguém lê — e um aviso invisível é a mesma morte
-silenciosa com passos a mais. Vale a §6 deste documento: uma verificação que não
-pode falhar é pior que nenhuma, e um aviso que ninguém vê é primo disso.
+And the warning is not just a `slog.Warn`. It goes into
+`Stats.CredentialExpiry` as well and rises to the pipeline's line, because a log
+line in an hourly pipeline is exactly the kind of thing nobody reads — and an
+invisible warning is the same silent death with extra steps. §6 of this document
+applies: a check that cannot fail is worse than none, and a warning nobody sees
+is its cousin.
 
-O que fica em memória, e só em memória, é o `TTL`: o cache de um login para uma
-API que limita a frequência de autenticação. Sob trava — não por cerimônia: sem
-ela, N goroutines fazem N logins, que é exatamente o que essas APIs bloqueiam.
+**What changed since:** `Refresh.Store` exists, and it is opt-in. It is what
+turns the environment variable from holding the ROTATING value into holding a
+STATIC seed, pasted once. `from.FileStore` writes an encrypted file into a
+directory somebody mounted; `gcs.Credential` writes an object with
+`ifGenerationMatch`. Neither is on unless the consumer names it, and without a
+key the SDK refuses to turn the store on rather than writing in the clear.
+
+What stays in memory, and only in memory, is the `TTL`: the cache of a login for
+an API that rate-limits authentication frequency. Under a lock — not out of
+ceremony: without it, N goroutines make N logins, which is exactly what those
+APIs block.
 
 ---
 
-## 14. Os três invariantes, fechados
+## 14. The three invariants, closed
 
-A [`plan/2026-09-03-sdk-schema-declarado.md`](plan/2026-09-03-sdk-schema-declarado.md)
-pediu cinco invariantes. Três ficaram abertos por meses, sob o título "onde a
-discussão continua" — que é onde um invariante vai morrer. Fechados na
+[`plan/2026-09-03-sdk-schema-declarado.md`](plan/2026-09-03-sdk-schema-declarado.md)
+asked for five invariants. Three stayed open for months, under the heading "where
+the discussion continues" — which is where an invariant goes to die. Closed in
 `sdk/v0.35.0`.
 
-### I2 — o SDK nunca infere schema
+### I2 — the SDK never infers a schema
 
-O BigQuery era o único destino que ainda inferia: `CreateTable` criava a tabela
-com o autodetect dele. Postgres, MySQL e Redshift já recusavam.
+BigQuery was the only destination still inferring: `CreateTable` created the
+table with its autodetect. Postgres, MySQL and Redshift already refused.
 
-O custo não era teórico. O tipo da coluna saía do **primeiro lote**, então um
-campo que chegava inteiro hoje e fracionário amanhã mudava o tipo da coluna sem
-ninguém escrever nada.
+The cost was not theoretical. The column's type came from the **first batch**, so
+a field that arrived whole today and fractional tomorrow changed the column's
+type with nobody writing anything.
 
-Fechado com `Target.Schema` — a mesma lista de `Columns`, com um `Type` em cada
-entrada. `CreateTable` sem `Schema` e sem `CreateSQL` é **erro nomeando o que
-falta**. O `inferSchema` foi apagado.
+Closed with `Target.Schema` — the same list as `Columns`, with a `Type` on each
+entry. `CreateTable` with no `Schema` and no `CreateSQL` is **an error naming
+what is missing**. `inferSchema` was deleted.
 
-A decisão vive em `load.PlanoDeCriacao`, **função pura**, pelo motivo que este
-SDK já pagou uma vez: uma decisão tomada dentro de um método com cliente nunca é
-vista por um teste. Um invariante que só dá para exercitar com um projeto do
-BigQuery de pé é um invariante que ninguém exercita.
+The decision lives in `load.CreationPlan`, a **pure function**, for the reason
+this SDK has already paid once: a decision made inside a method that holds a
+client is never seen by a test. An invariant you can only exercise with a live
+BigQuery project is an invariant nobody exercises.
 
-### I3 — a divergência aparece antes do extract
+### I3 — the divergence shows up before the extract
 
-A conferência declarado-contra-tabela já existia; ela rodava no `Load`, com o
-lote na mão. Num fornecedor com cota, chegar até ali significa ter gasto a
-**janela inteira de quota** para descobrir que uma coluna não bate.
+The declared-against-table check already existed; it ran in `Load`, with the
+batch in hand. On a vendor with a quota, getting there means having spent the
+**whole quota window** to find out that a column does not match.
 
-Fechado com `core.DestinationChecker`, chamado pelo `runPipeline` **antes** do
-`Extract`. Implementado por BigQuery, Postgres e MySQL.
+Closed with `core.DestinationChecker`, called by `runPipeline` **before**
+`Extract`. Implemented by BigQuery, Postgres and MySQL.
 
-É opcional de propósito: um diretório de arquivos não tem esquema para conferir,
-e o Redshift precisaria de um cluster de pé. Um destino que não pode conferir
-cedo não deve ser obrigado a fingir que pode.
+It is optional on purpose: a directory of files has no schema to check, and
+Redshift would need a running cluster. A destination that cannot check early must
+not be forced to pretend it can.
 
-A conferência do `Load` **continua**, e não é desperdício: entre uma e outra a
-tabela pode mudar, e a do `Load` é a que decide. O que a primeira compra é a
-quota.
+`Load`'s check **stays**, and is not waste: between the two the table can change,
+and `Load`'s is the one that decides. What the first one buys is the quota.
 
-### I4 — a partição é declarada
+### I4 — the partition is declared
 
-Era diária em `ingestion_loaded_at`, escolhida pelo SDK. Agora é
-`Target.PartitionBy`, e particionar por uma coluna que o `Schema` não declara é
-erro nomeando a coluna.
+It used to be daily on `ingestion_loaded_at`, chosen by the SDK. Now it is
+`Target.PartitionBy`, and partitioning by a column the `Schema` does not declare
+is an error naming the column.
 
-**Fechado com uma ressalva escrita:** vazio mantém o padrão de antes. O
-invariante como escrito diz "o SDK não escolhe layout", e um padrão é uma
-escolha. A alternativa — exigir `PartitionBy` sempre que `CreateTable` estiver
-ligado — foi considerada e não feita: uma tabela de landing sem partição custa
-uma varredura completa em cada `MERGE` do bronze, e um erro que empurra alguém a
-escrever `PartitionBy` sem pensar produz a mesma partição com mais passos.
+**Closed with a written caveat:** empty keeps the previous default. The invariant
+as written says "the SDK does not choose the layout", and a default is a choice.
+The alternative — requiring `PartitionBy` whenever `CreateTable` is on — was
+considered and not done: a landing table with no partition costs a full scan on
+every `MERGE` the bronze layer runs, and an error that pushes somebody into
+writing `PartitionBy` without thinking produces the same partition with more
+steps.
 
-### I1 e I5 já estavam fechados, por outro caminho
+### I1 and I5 were already closed, by another route
 
-**I1** ("nenhuma coluna existe no destino sem estar escrita no fetcher") veio na
-`v0.18.0`, com `Columns` em vez do bloco `Schema{}` que a spec propunha.
+**I1** ("no column exists in the destination without being written in the
+fetcher") arrived in `v0.18.0`, with `Columns` instead of the `Schema{}` block
+the spec proposed.
 
-**I5** ("como cada coluna é preenchida é declarado") veio na `v0.24.0`, quando o
-metadado virou transformer: *como* cada coluna é preenchida está na cadeia de
-`Transform`, e não num campo `From` por coluna. É mais simples que a proposta, e
-foi pedido exatamente por isso.
+**I5** ("how each column is filled is declared") arrived in `v0.24.0`, when the
+metadata became a transformer: *how* each column is filled is in the `Transform`
+chain, and not in a per-column `From` field. It is simpler than the proposal, and
+was asked for exactly because of that.
 
 ---
 
-## 15. Onde a discussão continua
+## 15. Where the discussion continues
 
-Nada em aberto da spec do schema declarado. O que segue sem resposta é de outro
-lugar:
+Nothing open from the declared-schema spec. What is still unanswered comes from
+elsewhere:
 
-- **`v1.0.0`** — o roadmap dos drivers aponta para `v1.0.0-rc` na fase 5, e ela
-  saiu como `v0.33.x`. Os dois motivos estão escritos na §9 daquele plano: o
-  Redshift sai com verificação parcial, e um `1.0` congela a superfície.
-- **O `Execute` instala o logger padrão do processo**, o que é decisão de
-  aplicação e não de biblioteca. Marcado para revisão antes do `1.0`.
+- **`v1.0.0`** — the drivers' roadmap points at a `v1.0.0-rc` in phase 5, and
+  phase 5 shipped as `v0.33.0` instead. The two reasons are written in §9 of that
+  plan: Redshift ships with partial verification, and a `1.0` freezes the
+  surface. The deprecated aliases from the English-only work are a second reason
+  to keep it open: they are meant to go in `v1`, and going to `1.0` before they
+  do would freeze them in.
+- **`Execute` installs the process's default logger**, which is an application
+  decision and not a library's. Flagged for review before `1.0`.
