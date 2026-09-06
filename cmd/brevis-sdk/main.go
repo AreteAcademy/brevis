@@ -13,7 +13,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "brevis",
+	Use:     "brevis-sdk",
 	Short:   "Extract and load data to BigQuery",
 	Long:    "Brevis CLI: High-performance data extraction and loading. No schema opinions.",
 	Version: fmt.Sprintf("%s (%s)", version, commit),

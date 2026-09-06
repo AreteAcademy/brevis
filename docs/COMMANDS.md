@@ -1,195 +1,187 @@
-# Comandos
+# Commands
 
-Referência da linha de comando. As saídas abaixo foram capturadas do binário
-compilado deste commit, não escritas à mão.
+The command-line reference. The outputs below were captured from the binary
+built at this commit, not written by hand.
 
-## Dois binários, nomes parecidos
+## Two binaries, similar names
 
 |  | `brevis` | `brevis-sdk` |
 |---|---|---|
-| **o que é** | o engine: orquestra, agenda, executa e serve a UI | o CLI do SDK: extrai de HTTP e carrega no BigQuery |
-| **fonte** | [`cmd/brevis/`](../cmd/brevis/) | [`cmd/brevis-sdk/`](../cmd/brevis-sdk/) |
-| **módulo** | o do repositório | próprio (`go.mod` separado, SDK fixado por versão) |
-| **instalar** | `make build` → `bin/brevis` | `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest` |
-| **precisa de Postgres** | na maioria dos subcomandos | nunca |
+| **what it is** | the engine: it orchestrates, schedules, executes and serves the UI | the SDK's CLI: it extracts from HTTP and loads into BigQuery |
+| **source** | [`cmd/brevis/`](../cmd/brevis/) | [`cmd/brevis-sdk/`](../cmd/brevis-sdk/) |
+| **module** | the repository's | its own (a separate `go.mod`, with the SDK pinned by version) |
+| **install** | `make build` → `bin/brevis` | `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest` |
+| **needs Postgres** | for most subcommands | never |
 
-> O `Use:` do cobra em `cmd/brevis-sdk` está como `"brevis"`, então o help dele
-> se anuncia com o nome do engine. O binário instalado chama-se `brevis-sdk`.
-> Ver [Defeitos conhecidos](#defeitos-conhecidos).
-
-## Instalar
+## Installing
 
 ```bash
-make build                    # engine → bin/brevis, com versão e commit carimbados
+make build                    # engine → bin/brevis, with version and commit stamped in
 docker run daniel3843/brevis:latest version
 go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest
 ```
 
-**O engine não tem release taggeada.** As 30 tags do repositório são todas do
-SDK (`sdk/v0.23.0` e anteriores); o módulo raiz não tem nenhuma. Consequências
-práticas:
-
-- `go install github.com/AreteAcademy/brevis/cmd/brevis@latest` resolve para
-  uma pseudo-versão do último commit do branch, não para a `0.3.0` do arquivo
-  `VERSION`. Compila — `web/assets/app.css` e os `_templ.go` estão versionados,
-  então não é preciso rodar `make generate` —, mas o binário resultante reporta
-  `brevis dev`, sem commit nem data, porque os `-ldflags` só entram pelo
-  `make build` e pelo `docker build`.
-- Para uma versão rastreável, o caminho é a **imagem** (`:0.3.0`) ou o
-  `make build` local.
-
-Enquanto não houver uma tag `v0.3.0` na raiz, o `go install` do engine não é o
-caminho a recomendar em documentação de primeiro uso.
+The engine is released as tags on the root module (`v0.6.0` at the time of
+writing) and as images. `go install
+github.com/AreteAcademy/brevis/cmd/brevis@latest` resolves to the latest tag,
+but the binary it produces reports `brevis dev`, with no commit and no date:
+the `-ldflags` only come in through `make build` and `docker build`. For a
+traceable version, use the **image** or a local `make build`.
 
 ---
 
-# `brevis` — o engine
+# `brevis` — the engine
 
 ```
-Brevis — engine de transformacao e orquestracao de dados
+Brevis — a data transformation and orchestration engine
 
 Available Commands:
-  backfill    Materializa slots passados de um workflow
-  hash        Gera o hash de BREVIS_AUTH_SENHA_HASH (le a senha do terminal)
-  marca       Valida um arquivo de marca (nao precisa de banco)
-  migrate     Aplica as migrations de schema
-  publish     Publica workflows e suas agendas no banco
-  run         Executa um workflow localmente
-  scheduler   Materializa agendas em runs e as executa
-  serve       Sobe a API HTTP
-  validate    Valida arquivos de workflow (nao precisa de banco)
-  version     Mostra a versao do binario
+  backfill    Materialize a workflow's past slots
+  brand       Validate a brand file (needs no database)
+  hash        Generate the BREVIS_AUTH_SENHA_HASH hash (reads the password from the terminal)
+  migrate     Apply the schema migrations
+  publish     Publish workflows and their schedules to the database
+  run         Run a workflow locally
+  scheduler   Materialize schedules into runs and execute them
+  serve       Start the HTTP API
+  validate    Validate workflow files (needs no database)
+  version     Print the binary's version
 ```
 
-| comando | banco | credencial fora de `local` | papel |
+| command | database | credential outside `local` | role |
 |---|---|---|---|
-| [`serve`](#brevis-serve) | **sim** | **exigida** | API + UI |
-| [`scheduler`](#brevis-scheduler) | **sim** | **exigida** | os dois laços: cria e executa |
-| [`migrate`](#brevis-migrate) | **sim** | **exigida** | schema |
-| [`publish`](#brevis-publish) | **sim** | **exigida** | grava workflow e agenda |
-| [`backfill`](#brevis-backfill) | **sim** | **exigida** | reprocessa um intervalo |
-| [`run`](#brevis-run) | não | — | executa agora, na própria instância |
-| [`validate`](#brevis-validate) | não | — | valida YAML de workflow |
-| [`marca`](#brevis-marca) | não | — | valida YAML de marca |
-| [`hash`](#brevis-hash) | não | — | gera o hash da senha |
-| [`version`](#brevis-version) | não | — | versão, commit, build |
+| [`serve`](#brevis-serve) | **yes** | **required** | API + UI |
+| [`scheduler`](#brevis-scheduler) | **yes** | **required** | both loops: it creates and it executes |
+| [`migrate`](#brevis-migrate) | **yes** | **required** | schema |
+| [`publish`](#brevis-publish) | **yes** | **required** | writes the workflow and the schedule |
+| [`backfill`](#brevis-backfill) | **yes** | **required** | reprocesses a range |
+| [`run`](#brevis-run) | no | — | runs now, on the instance itself |
+| [`validate`](#brevis-validate) | no | — | validates workflow YAML |
+| [`brand`](#brevis-brand) | no | — | validates brand YAML |
+| [`hash`](#brevis-hash) | no | — | generates the password hash |
+| [`version`](#brevis-version) | no | — | version, commit, build |
 
-A coluna do banco vem de um fato só: os cinco primeiros chamam `config.Load()`,
-que **falha no boot** sem `BREVIS_DATABASE_URL`. Os outros cinco não a chamam —
-e é por isso que `validate` serve na CI, onde não há Postgres.
+The database column comes from a single fact: the first five call
+`config.Load()`, which **fails at boot** without `BREVIS_DATABASE_URL`. The
+other five do not call it — and that is why `validate` works in CI, where there
+is no Postgres.
 
-Os mesmos cinco herdam a regra de credencial: com `BREVIS_ENV` diferente de
-`local`, subir sem `BREVIS_AUTH_USUARIO` + `BREVIS_AUTH_SENHA_HASH` +
-`BREVIS_AUTH_SEGREDO` é **erro de boot**, não aviso. A UI dispara `dbt build`
-contra o warehouse; aberta na internet, ela é um controle remoto do warehouse.
+The same five inherit the credential rule: with `BREVIS_ENV` set to anything
+other than `local`, starting without `BREVIS_AUTH_USUARIO` +
+`BREVIS_AUTH_SENHA_HASH` + `BREVIS_AUTH_SEGREDO` is a **boot error**, not a
+warning. The UI fires `dbt build` against the warehouse; open on the internet,
+it is a remote control for the warehouse.
 
 ---
 
 ## `brevis serve`
 
-Sobe a API HTTP e a interface. Sem flags — tudo vem do ambiente.
+Starts the HTTP API and the interface. No flags — everything comes from the
+environment.
 
 ```bash
 brevis serve
 ```
 
-Encerra em `SIGINT`/`SIGTERM` com shutdown graceful de
-`BREVIS_SHUTDOWN_TIMEOUT_SECONDS` (padrão 15 s), para que um deploy não corte
-requisições em voo.
+It shuts down on `SIGINT`/`SIGTERM` with a graceful shutdown of
+`BREVIS_SHUTDOWN_TIMEOUT_SECONDS` (15 s by default), so a deploy does not cut
+requests in flight.
 
-Este processo **não materializa agendas**. O disparo manual da tela chama o
-mesmo scheduler, sem o laço — a regra "o scheduler cria os runs" continua com
-um dono só. Para as agendas rodarem, é preciso um `brevis scheduler` ao lado.
+This process **does not materialize schedules**. The screen's manual trigger
+calls the same scheduler, without the loop — the rule "the scheduler creates the
+runs" keeps a single owner. For the schedules to run, a `brevis scheduler` has
+to be running alongside.
 
-`CMD` da imagem `api` (distroless, sem shell).
+It is the `api` image's `CMD` (distroless, no shell).
 
 ---
 
 ## `brevis scheduler`
 
-Os dois laços do sistema, no mesmo processo e independentes: o **scheduler**
-materializa agendas em runs, o **dispatcher** tira da fila e executa. Um pode
-cair sem interromper o outro.
+The system's two loops, in the same process and independent: the **scheduler**
+materializes schedules into runs, the **dispatcher** takes them off the queue and
+executes them. One can go down without interrupting the other.
 
 ```bash
 brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--interval` | duration | `10s` | intervalo entre ciclos do scheduler |
-| `--concurrency` | int | `5` | **runs** simultâneos |
-| `--max-pods` | int | `5` | **passos** simultâneos no total |
+| `--interval` | duration | `10s` | interval between the scheduler's cycles |
+| `--concurrency` | int | `5` | simultaneous **runs** |
+| `--max-pods` | int | `5` | simultaneous **steps** in total |
 
-`--concurrency` e `--max-pods` contam coisas diferentes, e isso é deliberado:
-cinco runs com três passos paralelos cada dariam quinze pods se o único limite
-fosse o de runs.
+`--concurrency` and `--max-pods` count different things, and that is deliberate:
+five runs with three parallel steps each would mean fifteen pods if the run
+limit were the only one.
 
-Onde cada passo roda depende de `BREVIS_PODS` e de haver cluster:
+Where each step runs depends on `BREVIS_PODS` and on whether there is a cluster:
 
-| `BREVIS_PODS` | com cluster | sem cluster |
+| `BREVIS_PODS` | with a cluster | without one |
 |---|---|---|
-| `auto` (padrão) | passo com `image:` vira pod | tudo em processo local, com aviso no log |
-| `on` | passo com `image:` vira pod | **erro de boot** |
-| `off` | tudo em processo local | tudo em processo local |
+| `auto` (default) | a step with `image:` becomes a pod | everything runs as a local process, with a warning in the log |
+| `on` | a step with `image:` becomes a pod | **boot error** |
+| `off` | everything runs as a local process | everything runs as a local process |
 
-`on` existe para o deploy que não pode silenciosamente virar execução local.
+`on` exists for the deployment that must not silently become local execution.
 
-Sem `BREVIS_SLACK_WEBHOOK` o processo avisa no boot que falhas não serão
-comunicadas — uma instalação que falha em silêncio é descoberta pelo cliente,
-não pelo time.
+Without `BREVIS_SLACK_WEBHOOK` the process warns at boot that failures will not
+be announced — an installation that fails in silence is discovered by the
+customer, not by the team.
 
-`CMD` da imagem `worker` (alpine com shell, porque os passos `run:` precisam).
+It is the `worker` image's `CMD` (alpine with a shell, because the `run:` steps
+need one).
 
 ---
 
 ## `brevis migrate`
 
 ```bash
-brevis migrate up      # aplica o que falta
-brevis migrate down    # desfaz a última
-brevis migrate status  # mostra o estado
+brevis migrate up      # applies what is missing
+brevis migrate down    # undoes the last one
+brevis migrate status  # shows the state
 ```
 
-Aceita exatamente um argumento, entre `up`, `down` e `status`. As migrations
-estão embutidas no binário (`migrations/`, seis arquivos até aqui) e são
-aplicadas por subcomando próprio — **`serve` nunca altera schema**.
+It takes exactly one argument, one of `up`, `down` and `status`. The migrations
+are embedded in the binary (`migrations/`) and are applied by a subcommand of
+their own — **`serve` never alters the schema**.
 
-Sem a variável do banco, falha na hora:
+Without the database variable, it fails immediately:
 
 ```
 $ brevis migrate status
-erro: BREVIS_DATABASE_URL e obrigatoria
+error: BREVIS_DATABASE_URL is required
 ```
 
 ---
 
 ## `brevis validate`
 
-Valida um ou mais arquivos de workflow. Aceita arquivo **ou diretório** — num
-diretório, casa `*.y*ml` e ordena, para que dois runs produzam o mesmo log.
+Validates one or more workflow files. It takes a file **or a directory** — in a
+directory it matches `*.y*ml` and sorts, so two runs produce the same log.
 
 ```bash
 $ brevis validate examples/
-  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
-  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *
-  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+  ok    daily_analytics              dag  5 steps, 5 dependencies  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencies  cron 0 2 * * *
+  ok    hello                        dag  4 steps, 4 dependencies  (manual)
 ```
 
-Não toca no banco e não sobe servidor, então roda no editor e na CI. Sai com
-código diferente de zero e conta as falhas:
+It does not touch the database and starts no server, so it runs in the editor and
+in CI. It exits non-zero and counts the failures:
 
 ```
-$ brevis validate quebrado.yaml
-  ERRO  quebrado.yaml: ...
-erro: 1 de 1 arquivo(s) com erro
+$ brevis validate broken.yaml
+  ERROR broken.yaml: workflow "x" has no steps at all
+error: 1 of 1 file(s) had errors
 ```
 
 ---
 
 ## `brevis run`
 
-Executa um workflow **agora, na própria instância**: sem fila, sem banco, sem
+Runs a workflow **now, on the instance itself**: no queue, no database, no
 scheduler.
 
 ```bash
@@ -197,145 +189,151 @@ brevis run examples/hello.yaml
 brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--param` | repetível | — | `chave=valor` de um parâmetro declarado no workflow |
-| `--workdir` | string | o diretório do arquivo | diretório de trabalho dos passos |
-| `--retries` | int | `1` | tentativas por passo (`1` = sem retry) |
-| `--timeout` | duration | `0` | timeout por passo (`0` = sem limite) |
+| `--param` | repeatable | — | `key=value` for a parameter declared in the workflow |
+| `--workdir` | string | the file's directory | the steps' working directory |
+| `--retries` | int | `1` | attempts per step (`1` = no retry) |
+| `--timeout` | duration | `0` | timeout per step (`0` = no limit) |
 
-`--param` sem `=` é **erro**, não aviso: `--param load_full` rodaria com o
-padrão e o operador acharia que o valor foi aplicado.
+`--param` with no `=` is an **error**, not a warning: `--param load_full` would
+run with the default and the operator would believe the value had been applied.
 
-Três limites que valem saber antes de usar em produção:
+Three limits worth knowing before using it in production:
 
-- **Só opera com `BREVIS_ENV=local`** (vazio conta como local). Fora disso o
-  executor de processo recusa construir.
-- **Um passo com `image:` roda na própria instância**, não em pod — e avisa. O
-  `run` não monta executor de Kubernetes; quem faz isso é o `scheduler`.
-- **Não há registry de tasks Go.** Um `action:` de task não registrada falha
-  citando as disponíveis, porque tasks são registradas por quem compila o
-  binário e o CLI genérico não conhece nenhuma.
+- **It only operates with `BREVIS_ENV=local`** (empty counts as local). Outside
+  that, the process executor refuses to be built.
+- **A step with `image:` runs on the instance itself**, not in a pod — and says
+  so. `run` assembles no Kubernetes executor; the `scheduler` is what does.
+- **There is no Go task registry.** An `action:` for an unregistered task fails
+  naming the ones that exist, because tasks are registered by whoever compiles
+  the binary and the generic CLI knows none.
 
-A saída é prefixada pelo passo, que é o que a torna legível quando vários
-correm em paralelo no mesmo nível:
+The output is prefixed by the step, which is what keeps it readable when several
+run in parallel at the same level:
 
 ```
-workflow hello (dag, 4 steps) em examples
+workflow hello (dag, 4 steps) in examples
   ▶ preparar
     preparar | preparando
   ✓ preparar
-  ▶ extrair
   ▶ validar
+  ▶ extrair
 ```
 
 ---
 
 ## `brevis publish`
 
-Grava os workflows e as agendas no banco. Aceita arquivo ou diretório, como o
-`validate`.
+Writes the workflows and the schedules to the database. It takes a file or a
+directory, like `validate`.
 
 ```bash
 brevis publish examples/hello.yaml
 brevis publish workflows/ --project acme --prune
 ```
 
-| flag | tipo | padrão | |
+| flag | type | default | |
 |---|---|---|---|
-| `--project` | string | `default` | slug do projeto |
-| `--prune` | bool | `false` | remove do projeto os workflows ausentes da lista publicada |
+| `--project` | string | `default` | the project's slug |
+| `--prune` | bool | `false` | removes from the project the workflows absent from the published list |
 
 ```
 $ brevis publish examples/
-  publicado  daily_analytics          (manual)
-  publicado  daily-report             cron 0 2 * * *
-  publicado  hello                    (manual)
+  published  daily_analytics          (manual)
+  published  daily-report             cron 0 2 * * *
+  published  hello                    (manual)
 ```
 
-**`--prune` é opcional e não padrão** por um motivo prático: `publish
-um-arquivo.yaml` não pode apagar os outros 48 do projeto só porque não foram
-citados na linha de comando. Com `--prune`, o histórico dos removidos é
-preservado.
+**`--prune` is optional and not the default** for a practical reason: `publish
+one-file.yaml` must not delete the project's other 48 just because they were not
+named on the command line. With `--prune`, the removed ones keep their history.
 
-O projeto é criado se não existir (`ON CONFLICT DO UPDATE`), o que mantém a FK
-honesta enquanto não há gestão de projetos.
+The project is created if it does not exist (`ON CONFLICT DO UPDATE`), which
+keeps the FK honest while there is no project management.
 
 ---
 
 ## `brevis backfill`
 
-Materializa slots passados de um workflow já publicado. **Enfileira, não
-executa** — quem executa é o `scheduler`.
+Materializes the past slots of an already-published workflow. It **queues, it
+does not execute** — the `scheduler` is what executes.
 
 ```bash
-brevis backfill diario --from 2026-01-01 --to 2026-01-31
-brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
+brevis backfill daily --from 2026-01-01 --to 2026-01-31
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
 ```
 
-| flag | tipo | | |
+| flag | type | | |
 |---|---|---|---|
-| `--from` | string | **obrigatória** | data inicial, `AAAA-MM-DD` |
-| `--to` | string | **obrigatória** | data final, `AAAA-MM-DD` |
-| `--param` | repetível | — | vale para **todos** os slots do intervalo |
+| `--from` | string | **required** | start date, `YYYY-MM-DD` |
+| `--to` | string | **required** | end date, `YYYY-MM-DD` |
+| `--param` | repeatable | — | applies to **every** slot in the range |
 
-`--to` inclui o dia inteiro: internamente o fim vira `23:59:59` daquela data.
-Data em outro formato é erro com a dica embutida (`use AAAA-MM-DD`).
+`--to` includes the whole day: internally the end becomes `23:59:59` of that
+date. A date in another format is an error with the hint built in (`use
+YYYY-MM-DD`).
 
 ```
-  31 run(s) de backfill enfileirados para diario (2026-01-01 a 2026-01-31)
-  rode `brevis scheduler` para executa-los
+  31 backfill run(s) queued for daily (2026-01-01 to 2026-01-31)
+  run `brevis scheduler` to execute them
 ```
 
-O caso de uso central é exatamente "reprocessa janeiro inteiro com
+The central use case is exactly "reprocess the whole of January with
 `load_full=true`".
 
 ---
 
-## `brevis marca`
+## `brevis brand`
 
-Valida um arquivo de identidade visual sem subir o servidor.
+Validates a visual-identity file without starting the server.
 
 ```bash
-$ brevis marca brand.example.yaml
+$ brevis brand brand.example.yaml
   ok    Brevis · Orquestração
-        logo      /assets/logo.svg  (simbolo embutido)
-        destaque  #aa8450
+        logo      /assets/logo.svg  (built-in symbol)
+        accent    #aa8450
         Powered by Brevis
 ```
 
-Existe pelo mesmo motivo do `validate`: um hexadecimal errado no `brand.yaml`
-só apareceria quando o container subisse, e a mensagem chegaria pelo log do pod
-— longe de quem editou o arquivo. Aqui o erro volta no pull request.
+`brevis marca` still works as an alias: that was the command's name in a
+released version, and a script calling it must not start printing "unknown
+command".
 
-Diferença de comportamento em relação ao boot: **arquivo ausente é erro**. No
-`serve`, ausência significa "usa a identidade padrão"; quem pediu para validar
-um caminho espera saber que ele não existe.
+It exists for the same reason `validate` does: a wrong hex value in `brand.yaml`
+would only surface when the container started, and the message would arrive
+through the pod's log — far from whoever edited the file. Here the error comes
+back in the pull request.
+
+One behavioural difference from boot: **a missing file is an error**. In `serve`,
+absence means "use the default identity"; whoever asked to validate a path
+expects to be told it does not exist.
 
 ---
 
 ## `brevis hash`
 
-Gera o hash de `BREVIS_AUTH_SENHA_HASH`.
+Generates the `BREVIS_AUTH_SENHA_HASH` hash.
 
 ```bash
 $ brevis hash
-senha:
+password:
 BREVIS_AUTH_SENHA_HASH:
 pbkdf2-sha256$...
 
-Falta ainda BREVIS_AUTH_USUARIO e um BREVIS_AUTH_SEGREDO de 32+ bytes
+Still missing: BREVIS_AUTH_USUARIO and a BREVIS_AUTH_SEGREDO of 32+ bytes
 (openssl rand -base64 48).
 ```
 
-A senha é lida do terminal **sem eco**, nunca de argumento: argumento aparece
-no `ps` de qualquer processo da máquina e fica no histórico do shell. Com a
-entrada redirecionada (script de provisionamento), lê da entrada padrão.
+The password is read from the terminal **without echo**, never from an argument:
+an argument shows up in any process's `ps` on the machine and stays in the
+shell's history. With the input redirected (a provisioning script), it reads from
+standard input.
 
-Recusa senha com menos de 12 caracteres — este é o único acesso ao painel.
+It refuses a password under 12 characters — this is the only way into the panel.
 
-O hash vai sozinho para **stdout** e os rótulos para **stderr**, então
-`brevis hash > hash.txt` grava só o que interessa.
+The hash goes to **stdout** on its own and the labels to **stderr**, so `brevis
+hash > hash.txt` writes only what matters.
 
 ---
 
@@ -343,34 +341,35 @@ O hash vai sozinho para **stdout** e os rótulos para **stderr**, então
 
 ```bash
 $ brevis version
-brevis 0.3.0
+brevis 0.6.0
   commit  bb832ff
-  build   2026-09-04T12:00:00Z
-  go      go1.25.7 darwin/arm64
+  build   2026-09-06T12:00:00Z
+  go      go1.27.0 darwin/arm64
 ```
 
-Versão, commit e data são carimbados no build por `-ldflags`. Compilado direto
-com `go build`, sai `brevis dev` sem commit nem data — e distinguir isso de um
-artefato de release importa quando alguém reporta comportamento estranho. O
-`make image` acrescenta `-dirty` ao commit quando há mudança não commitada.
+The version, the commit and the date are stamped at build time by `-ldflags`.
+Built straight with `go build`, it prints `brevis dev` with no commit and no
+date — and telling that apart from a release artifact matters when somebody
+reports odd behaviour. `make image` appends `-dirty` to the commit when there is
+an uncommitted change.
 
 ---
 
-# `brevis-sdk` — o CLI do SDK
+# `brevis-sdk` — the SDK's CLI
 
-Extrai de HTTP e carrega no BigQuery sem escrever Go. Módulo próprio, com o SDK
-fixado por versão (hoje `sdk v0.23.0`).
+Extracts from HTTP and loads into BigQuery without writing Go. A module of its
+own, with the SDK pinned by version.
 
 ```bash
 go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest
 ```
 
-| comando | |
+| command | |
 |---|---|
-| [`extract`](#brevis-sdk-extract) | extrai de uma URL e imprime |
-| [`load`](#brevis-sdk-load) | carrega NDJSON da entrada padrão no BigQuery — **não implementado** |
-| [`run`](#brevis-sdk-run) | extrai e carrega num comando |
-| `version` | versão e commit |
+| [`extract`](#brevis-sdk-extract) | extracts from a URL and prints |
+| [`load`](#brevis-sdk-load) | loads NDJSON from standard input into BigQuery |
+| [`run`](#brevis-sdk-run) | extracts and loads in one command |
+| `version` | version and commit |
 
 ## `brevis-sdk extract`
 
@@ -380,264 +379,97 @@ brevis-sdk extract https://api.example.com/data.json --format json --output json
 brevis-sdk extract https://api.example.com/data --retries 5 --timeout 60s
 ```
 
-| flag | curta | tipo | padrão | |
+| flag | short | type | default | |
 |---|---|---|---|---|
-| `--format` | `-f` | string | vazio | `csv`, `json`, `ndjson`, `xml`; vazio tenta autodetectar |
-| `--timeout` | `-t` | duration | `30s` | timeout por tentativa |
-| `--total-timeout` | | duration | `5m` | timeout somando as tentativas |
-| `--retries` | `-r` | int | `3` | tentativas máximas |
-| `--output` | `-o` | string | `table` | `table` ou `json` |
+| `--format` | `-f` | string | empty | `csv`, `json`, `ndjson`, `xml`; empty tries to auto-detect |
+| `--timeout` | `-t` | duration | `30s` | timeout per attempt |
+| `--total-timeout` | | duration | `5m` | timeout across all attempts |
+| `--retries` | `-r` | int | `3` | maximum attempts |
+| `--output` | `-o` | string | `table` | `table` or `json` |
 
-Com `--output json`, cada linha sai como um objeto JSON — é o formato que
-alimentaria um `brevis-sdk load` por pipe. Formato não reconhecido cai em CSV
-em silêncio.
+With `--output json`, every row comes out as a JSON object — the format that
+feeds a `brevis-sdk load` through a pipe. An unrecognized format falls back to
+CSV in silence.
 
 ## `brevis-sdk load`
 
-> **Não faz nada ainda.** O código tem `// TODO: read from stdin and parse
-> NDJSON` e carrega uma lista vazia, então reporta `Rows: 0` sem ler a entrada
-> padrão. Os exemplos do `--help` descrevem o comportamento pretendido, não o
-> atual. **Não use, e não anuncie.**
+Reads NDJSON from standard input and loads it into BigQuery.
 
-| flag | curta | padrão | |
+```bash
+brevis-sdk extract https://api.example.com/data.csv --output json \
+  | brevis-sdk load --project my-project --dataset landing --table raw_data
+```
+
+| flag | short | default | |
 |---|---|---|---|
-| `--project` | `-p` | — | **obrigatória** |
+| `--project` | `-p` | — | **required** |
 | `--dataset` | `-d` | `landing` | |
 | `--table` | `-t` | `raw_data` | |
-| `--metadata` | `-m` | `false` | acrescenta `ingestion_id` e `ingestion_loaded_at` |
+| `--metadata` | `-m` | `false` | adds `ingestion_id` and `ingestion_loaded_at` |
+
+Empty input is refused rather than loaded: a pipe whose upstream produced
+nothing used to be indistinguishable from one that worked. A line that does not
+parse is named.
 
 ## `brevis-sdk run`
 
-Extrai de uma URL e carrega no BigQuery em um comando.
+Extracts from a URL and loads into BigQuery in one command.
 
 ```bash
-brevis-sdk run https://api.example.com/data.csv --project meu-projeto
-brevis-sdk run https://api.example.com/data.csv --project meu-projeto --dry-run
+brevis-sdk run https://api.example.com/data.csv --project my-project
+brevis-sdk run https://api.example.com/data.csv --project my-project --dry-run
 ```
 
-| flag | curta | padrão | |
+| flag | short | default | |
 |---|---|---|---|
-| `--project` | `-p` | — | **obrigatória** |
+| `--project` | `-p` | — | **required** |
 | `--dataset` | `-d` | `landing` | |
 | `--table` | `-t` | `raw_data` | |
 | `--metadata` | `-m` | `false` | |
-| `--dry-run` | | `false` | extrai e para antes de carregar |
+| `--dry-run` | | `false` | extracts and stops before loading |
 
-**Só lê CSV.** O formato está fixo em `sdk.FormatCSV` no código, e não há flag
-`--format` aqui. Uma URL JSON é lida como CSV e o resultado não presta.
+**It only reads CSV.** The format is fixed at `sdk.FormatCSV` in the code, and
+there is no `--format` flag here. A JSON URL is read as CSV and the result is
+useless.
 
-`--dry-run` é o caminho útil hoje: extrai, conta linhas e erros, e não escreve
-nada.
-
-Para qualquer coisa além disso, o SDK em Go é o caminho — um fetcher inteiro
-cabe em vinte linhas, com flags, retry, paginação, procedência e código de
-saída vindos de `sdk.Run`. Ver [`examples/08-fetcher-minimo`](../examples/08-fetcher-minimo/).
+For anything beyond that, the Go SDK is the path — a whole fetcher fits in
+twenty lines, with flags, retry, pagination, provenance and the exit code all
+coming from `sdk.Run`. See
+[`examples/08-fetcher-minimo`](../examples/08-fetcher-minimo/).
 
 ---
 
-# Variáveis de ambiente
+# Environment variables
 
-Lidas uma vez, no boot, por `config.Load()` — nada consulta o ambiente depois.
+Read once, at boot, by `config.Load()` — nothing consults the environment
+afterwards.
 
-## Obrigatórias
+## Required
 
-| variável | |
+| variable | |
 |---|---|
-| `BREVIS_DATABASE_URL` | Postgres. Ausente = **erro de boot** nos cinco subcomandos que usam banco |
+| `BREVIS_DATABASE_URL` | Postgres. Absent = **boot error** in the five subcommands that use the database |
 
-## Processo
+## Process
 
-| variável | padrão | |
+| variable | default | |
 |---|---|---|
-| `BREVIS_ENV` | `local` | `local` usa log em texto e libera a UI sem senha; o resto exige credencial e loga JSON |
-| `BREVIS_HTTP_ADDR` | `:8080` | endereço de escuta |
+| `BREVIS_ENV` | `local` | `local` uses text logging and opens the UI without a password; anything else requires a credential and logs JSON |
+| `BREVIS_HTTP_ADDR` | `:8080` | listen address |
 | `BREVIS_LOG_LEVEL` | `info` | |
-| `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | inteiro; valor não numérico é erro de boot |
-| `BREVIS_BRAND_FILE` | `brand.yaml` | identidade visual; ausente = padrão |
-| `BREVIS_UI_URL` | — | base do link da execução no alerta |
-| `BREVIS_SLACK_WEBHOOK` | — | destino do alerta de falha definitiva. Vazio = ninguém é avisado |
+| `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | an integer; a non-numeric value is a boot error |
+| `BREVIS_BRAND_FILE` | `brand.yaml` | visual identity; absent = the default |
+| `BREVIS_UI_URL` | — | the base of the run's link in an alert |
+| `BREVIS_SLACK_WEBHOOK` | — | where the definitive-failure alert goes. Empty = nobody is told |
 
-## Autenticação
+## Authentication
 
-| variável | |
+| variable | |
 |---|---|
-| `BREVIS_AUTH_USUARIO` | usuário do painel |
-| `BREVIS_AUTH_SENHA_HASH` | hash `pbkdf2-sha256$...`, gerado por `brevis hash` |
-| `BREVIS_AUTH_SEGREDO` | 32+ bytes para assinar a sessão (`openssl rand -base64 48`) |
+| `BREVIS_AUTH_USUARIO` | the panel's user |
+| `BREVIS_AUTH_SENHA_HASH` | a `pbkdf2-sha256$...` hash, generated by `brevis hash` |
+| `BREVIS_AUTH_SEGREDO` | 32+ bytes to sign the session (`openssl rand -base64 48`) |
 
-As três vêm juntas ou nenhuma vem. **Metade configurada é erro de boot**: quem
-preencheu o usuário acredita que fechou a porta, e um aviso no log não desfaz
-essa crença.
-
-## Ambiente das tasks
-
-| variável | padrão | |
-|---|---|---|
-| `BREVIS_TASK_ENV` | vazio | o que **todo** passo recebe; para um passo só, use `env:`/`secrets:` no YAML |
-
-A task **não herda** o ambiente do orquestrador — herdar entregaria a
-credencial do Postgres a todo passo de todo pipeline. O que ela precisa é
-declarado:
-
-```bash
-BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # repassa essas duas do processo
-BREVIS_TASK_ENV=STAGE=prod                # define um literal
-BREVIS_TASK_ENV='*'                       # repassa tudo MENOS as BREVIS_*
-```
-
-`PATH` e `HOME` entram sempre. Um nome ausente **não** vira string vazia:
-`GOOGLE_PROJECT_ID=""` faria o dbt falhar com uma mensagem pior que a de
-variável ausente.
-
-Com só `PATH` e `HOME` e sem pods, o `scheduler` avisa no boot — um `dbt` ali
-falharia com "Env var required but not provided", que não aponta para a causa.
-
-## Kubernetes
-
-Decisões da **instalação**, não do workflow: um pipeline não deve poder
-escolher a service account com que roda.
-
-| variável | padrão | formato | |
-|---|---|---|---|
-| `BREVIS_PODS` | `auto` | `auto`, `on` ou `off` | valor inválido é erro de boot |
-| `BREVIS_POD_NAMESPACE` | o do cluster | | |
-| `BREVIS_POD_SERVICE_ACCOUNT` | — | | |
-| `BREVIS_POD_PULL_SECRETS` | — | lista por vírgula | |
-| `BREVIS_POD_ENV_FROM_SECRETS` | — | lista por vírgula | em modo pod, é daqui que vem o ambiente da task |
-| `BREVIS_POD_ENV_FROM_CONFIGMAPS` | — | lista por vírgula | |
-| `BREVIS_POD_ALLOWED_SECRETS` | — | lista por vírgula | quais Secrets um `secrets:` de YAML pode citar. **Vazia nega todos** |
-| `BREVIS_POD_CREDENTIAL_PVC` | — | nome do PVC | monta o volume da credencial em todo pod de passo e injeta `BREVIS_CREDENTIAL_DIR`. Ausente, nada muda |
-| `BREVIS_POD_CREDENTIAL_PATH` | `/var/brevis/credentials` | caminho | onde montar |
-| `BREVIS_POD_NODE_SELECTOR` | — | `chave=valor,outra=valor` | |
-| `BREVIS_POD_TOLERATIONS` | — | `chave=valor:efeito,...` | só o operador `Equal` |
-| `BREVIS_POD_MANTER_EM_FALHA` | `false` | `true` mantém o pod para inspeção | |
-
-Em listas, vazios são ignorados: `a,,b` é erro de digitação, e um nome de
-secret vazio faria o servidor recusar o pod inteiro. Uma **toleração
-malformada é ignorada** em vez de virar erro de boot — ela deixa o pod
-`Pending`, que é visível, enquanto recusar o boot pararia também os workflows
-que não precisam daquele pool.
-
-`Exists` não é aceito como operador: toleraria qualquer taint com aquela chave,
-amplo demais para uma decisão vinda de variável de ambiente.
-
-## Testes
-
-| variável | |
-|---|---|
-| `BREVIS_TEST_DATABASE_URL` | banco dos testes de integração; sem ela, eles pulam |
-
----
-
-# Endpoints HTTP
-
-## Saúde
-
-| | |
-|---|---|
-| `GET /health` | liveness — **não** consulta o banco |
-| `GET /ready` | readiness — consulta, e nomeia a dependência que falhou |
-
-A separação é deliberada: liveness que depende de serviço externo faz o
-Kubernetes **matar o pod** quando o banco oscila, em vez de apenas tirá-lo do
-balanceador.
-
-## Interface
-
-| | |
-|---|---|
-| `GET /` | overview com métricas e gráficos |
-| `GET /runs` | execuções |
-| `GET /runs/{id}` | uma execução, com a DAG e o estado de cada passo |
-| `GET /workflows` | lista com busca e filtros |
-| `GET /workflows/{slug}` | um workflow |
-| `GET /projects` | projetos |
-| `POST /workflows/{slug}/toggle` | pausa e retoma a agenda |
-| `POST /workflows/{slug}/trigger` | dispara agora (formulário, se houver `params`) |
-| `GET /login` · `POST /login` · `POST /logout` | sessão |
-| `GET /assets/` | fontes e bundles, servidos do binário |
-
-## JSON
-
-| | |
-|---|---|
-| `GET /api/workflows/{slug}/graph` | a DAG declarada |
-| `GET /api/runs/{id}/graph` | a DAG com o estado de cada passo |
-
-`POST /workflows/{slug}/trigger` executa `dbt build` contra o warehouse. É por
-isso que `BREVIS_ENV` diferente de `local` exige credencial.
-
----
-
-# Makefile
-
-```
-$ make help
-  build        Compila o binario em bin/ (gera templ e css antes)
-  test         Roda os testes (os de integracao pulam sem Postgres)
-  test-int     Roda tudo, inclusive integracao (exige `make up`)
-  test-db      Cria e migra o banco de testes (idempotente)
-  check        gofmt + vet + testes (portao antes de commitar)
-  dev          Hot reload: recompila e reinicia a cada mudanca
-  generate     Gera os _templ.go e o CSS
-  image        Constroi as imagens para a arquitetura local (nao publica)
-  image-push   Publica multi-arch no registry (exige `docker login`)
-  image-smoke  Confere que as imagens locais sobem e reportam a versao
-  up           Sobe Postgres + API + scheduler localmente
-  down         Derruba o ambiente local
-  logs         Acompanha os logs da API
-  smoke        Verifica /health e /ready contra o ambiente local
-```
-
-O ciclo curto:
-
-```bash
-make up      # Postgres + API + scheduler
-make smoke   # health e ready
-make logs
-make down
-```
-
-`make dev` exige `air` e o Tailwind standalone (`make tailwind-install` baixa,
-sem Node). `make generate` exige `templ`.
-
-Os testes de integração usam um banco **separado** (`brevis_test`): desde que a
-stack local passou a subir um scheduler de verdade, rodar contra `brevis` era
-uma corrida — o scheduler do compose reivindicava os itens que o teste acabara
-de enfileirar, e o critério de aceite falhava sem nada estar errado.
-
-`make image` produz duas imagens do mesmo binário:
-
-| tag | base | por quê |
-|---|---|---|
-| `:<versao>` | distroless | a API só serve HTTP, não executa nada — sem shell |
-| `:<versao>-worker` | alpine + tini | os passos `run:` precisam de shell |
-
-`REGISTRY`, `NAMESPACE` e `VERSAO` são variáveis, então um fork publica no
-próprio espaço com `make image-push NAMESPACE=outro`.
-
----
-
-# Defeitos conhecidos
-
-Levantados ao escrever este documento, todos em `cmd/brevis-sdk`. Nada aqui
-está no engine.
-
-| | onde | |
-|---|---|---|
-| **`load` não lê a entrada padrão** | `commands.go` | `// TODO` explícito; carrega lista vazia e reporta `Rows: 0`. O `--help` descreve o que ainda não existe |
-| **`run` ignora o formato** | `commands.go` | fixo em `sdk.FormatCSV`, sem flag `--format`; uma URL JSON é lida como CSV |
-| **o help se anuncia como `brevis`** | `main.go` | `Use: "brevis"` no binário `brevis-sdk` — colide com o nome do engine |
-| **versão fixa no código** | `main.go` | `version = "0.1.0"` em minúscula, enquanto o `VERSION` do repo está em `0.3.0` |
-| **`make build` erra o nome** | `Makefile` | grava `brevis-sdk-sdk` e anuncia `./brevis-sdk`; o `install` diz "Installed: brevis" |
-| **README aponta para si mesmo** | `README.md` | o link para `cmd/brevis` vai para `../brevis-sdk/`, e o `go work init` sugerido cita `./cmd/brevis` em vez de `./cmd/brevis-sdk` |
-
-Fora do `cmd/brevis-sdk`, um item de empacotamento: **o módulo raiz não tem
-tag**, então `go install .../cmd/brevis@latest` pega o último commit e produz um
-binário que se identifica como `dev`. Ver [Instalar](#instalar).
-
-**Para o site:** dos três comandos do `brevis-sdk`, só `extract` e
-`run --dry-run` fazem o que dizem. Ao levar comandos para a landing page, use
-os dez do engine e o `extract`; para carga no BigQuery, aponte o SDK em Go, não
-o `load` do CLI. E prefira `make build` ou a imagem ao `go install` do engine,
-enquanto não houver tag na raiz.
+All three come together or none does. **Half-configured is a boot error**:
+whoever filled in the user believes they closed the door, and a warning in the
+log does not undo that belief.

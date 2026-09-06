@@ -24,9 +24,9 @@ var extractCmd = &cobra.Command{
 Supported formats: CSV, JSON, NDJSON, XML (auto-detected from Content-Type or URL)
 
 Examples:
-  brevis extract https://api.example.com/data.csv
-  brevis extract https://api.example.com/data.json --format json
-  brevis extract https://api.example.com/data --timeout 60s --retries 5`,
+  brevis-sdk extract https://api.example.com/data.csv
+  brevis-sdk extract https://api.example.com/data.json --format json
+  brevis-sdk extract https://api.example.com/data --timeout 60s --retries 5`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		url := args[0]
@@ -93,8 +93,8 @@ var loadCmd = &cobra.Command{
 Reads NDJSON from stdin. Each line should be a valid JSON object.
 
 Examples:
-  cat data.ndjson | brevis load --project my-project --dataset landing --table raw_data
-  brevis extract https://api.example.com/data.csv --output json | brevis load --project my-project --dataset landing --table raw_data`,
+  cat data.ndjson | brevis-sdk load --project my-project --dataset landing --table raw_data
+  brevis-sdk extract https://api.example.com/data.csv --output json | brevis-sdk load --project my-project --dataset landing --table raw_data`,
 	Run: func(cmd *cobra.Command, args []string) {
 		projectID, _ := cmd.Flags().GetString("project")
 		dataset, _ := cmd.Flags().GetString("dataset")
@@ -153,8 +153,8 @@ var runCmd = &cobra.Command{
 	Long: `Extract from URL and load to BigQuery in one pipeline.
 
 Examples:
-  brevis run https://api.example.com/data.csv --project my-project --dataset landing --table raw_data
-  brevis run https://api.example.com/data.json --project my-project --dataset landing --table raw_data --metadata`,
+  brevis-sdk run https://api.example.com/data.csv --project my-project --dataset landing --table raw_data
+  brevis-sdk run https://api.example.com/data.json --project my-project --dataset landing --table raw_data --metadata`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		url := args[0]

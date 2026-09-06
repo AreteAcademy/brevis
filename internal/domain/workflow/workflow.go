@@ -208,7 +208,7 @@ func (w Workflow) Validate() error {
 		return fmt.Errorf("workflow sem slug")
 	}
 	if len(w.Nodes) == 0 {
-		return fmt.Errorf("workflow %q nao tem nenhum step", w.Slug)
+		return fmt.Errorf("workflow %q has no steps at all", w.Slug)
 	}
 
 	vistos := make(map[string]struct{}, len(w.Nodes))

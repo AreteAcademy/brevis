@@ -1,8 +1,8 @@
 // Command brevis e o binario unico da plataforma.
 //
-// Um binario com subcomandos, nao varios binarios: o plano (secao 2) descreve
-// API, scheduler e workers como papeis do mesmo sistema, e um binario so mantem
-// uma versao, uma imagem e um caminho de build.
+// One binary with subcommands, not several binaries: the plan (section 2)
+// describes the API, the scheduler and the workers as roles of the same system,
+// and a single binary keeps one version, one image and one build path.
 package main
 
 import (
@@ -44,7 +44,7 @@ import (
 
 func main() {
 	if err := raiz().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "erro:", err)
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
@@ -52,18 +52,18 @@ func main() {
 func raiz() *cobra.Command {
 	c := &cobra.Command{
 		Use:           "brevis",
-		Short:         "Brevis — engine de transformacao e orquestracao de dados",
+		Short:         "Brevis — a data transformation and orchestration engine",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdMarca(), cmdHash(), cmdRun(), cmdPublish(),
+	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(),
 		cmdScheduler(), cmdBackfill(), cmdVersion())
 	return c
 }
 
-// Versao e carimbada no build (-ldflags). "dev" e o valor de quem compilou
-// direto com `go build`, e distinguir isso de um artefato de release importa
-// quando alguem reporta um comportamento estranho.
+// Versao is stamped at build time (-ldflags). "dev" is the value for whoever
+// built straight with `go build`, and telling that apart from a release
+// artifact matters when somebody reports odd behaviour.
 var (
 	Versao = "dev"
 	Commit = ""
@@ -73,7 +73,7 @@ var (
 func cmdVersion() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
-		Short: "Mostra a versao do binario",
+		Short: "Print the binary's version",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			fmt.Printf("brevis %s\n", Versao)
 			if Commit != "" {
@@ -91,7 +91,7 @@ func cmdVersion() *cobra.Command {
 func cmdServe() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
-		Short: "Sobe a API HTTP",
+		Short: "Start the HTTP API",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return serve(cmd.Context())
 		},
@@ -101,7 +101,7 @@ func cmdServe() *cobra.Command {
 func cmdMigrate() *cobra.Command {
 	return &cobra.Command{
 		Use:       "migrate [up|down|status]",
-		Short:     "Aplica as migrations de schema",
+		Short:     "Apply the schema migrations",
 		Args:      cobra.ExactArgs(1),
 		ValidArgs: []string{"up", "down", "status"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -114,10 +114,11 @@ func cmdMigrate() *cobra.Command {
 	}
 }
 
-// cmdValidate existe para dar retorno ANTES de publicar. A secao 5 do plano
-// manda validar a DAG antes de salvar; poder rodar isso no editor ou na CI, sem
-// banco e sem servidor, e o que torna a regra util em vez de burocratica.
-// emLinha imprime os params numa ordem estavel — dois runs iguais tem de
+// cmdValidate exists to give an answer BEFORE publishing. Section 5 of the plan
+// says to validate the DAG before saving; being able to run that in the editor
+// or in CI, with no database and no server, is what makes the rule useful rather
+// than bureaucratic.
+// emLinha prints the params in a stable order — two identical runs have to
 // produzir o mesmo log.
 func emLinha(m map[string]string) string {
 	chaves := make([]string, 0, len(m))
@@ -132,10 +133,11 @@ func emLinha(m map[string]string) string {
 	return strings.Join(partes, " ")
 }
 
-// paramsDaLinha traduz `--param chave=valor` repetido num mapa.
+// paramsDaLinha turns repeated `--param key=value` into a map.
 //
-// Entrada sem `=` e ERRO e nao aviso: `--param load_full` (esquecendo o valor)
-// rodaria com o padrao, e o operador acharia que o backfill aconteceu.
+// An entry with no `=` is an ERROR and not a warning: `--param load_full`
+// (forgetting the value) would run with the default, and the operator would
+// believe the backfill happened.
 func paramsDaLinha(entradas []string) (map[string]string, error) {
 	if len(entradas) == 0 {
 		return nil, nil
@@ -144,16 +146,16 @@ func paramsDaLinha(entradas []string) (map[string]string, error) {
 	for _, e := range entradas {
 		chave, valor, ok := strings.Cut(e, "=")
 		if !ok || strings.TrimSpace(chave) == "" {
-			return nil, fmt.Errorf("--param %q: use chave=valor", e)
+			return nil, fmt.Errorf("--param %q: use key=value", e)
 		}
 		out[strings.TrimSpace(chave)] = valor
 	}
 	return out, nil
 }
 
-// expandir resolve arquivos e diretorios numa lista de YAMLs, em ordem estavel.
-// A ordem importa: publicar duas vezes a mesma pasta tem de produzir o mesmo log,
-// senao a diferenca entre dois deploys vira ruido.
+// expandir resolves files and directories into a list of YAMLs, in a stable
+// order. The order matters: publishing the same folder twice has to produce the
+// same log, or the difference between two deploys becomes noise.
 func expandir(alvos []string) ([]string, error) {
 	var arquivos []string
 	for _, alvo := range alvos {
@@ -172,7 +174,7 @@ func expandir(alvos []string) ([]string, error) {
 		arquivos = append(arquivos, encontrados...)
 	}
 	if len(arquivos) == 0 {
-		return nil, fmt.Errorf("nenhum arquivo .yaml encontrado em %v", alvos)
+		return nil, fmt.Errorf("no .yaml file found in %v", alvos)
 	}
 	sort.Strings(arquivos)
 	return arquivos, nil
@@ -180,8 +182,8 @@ func expandir(alvos []string) ([]string, error) {
 
 func cmdValidate() *cobra.Command {
 	return &cobra.Command{
-		Use:   "validate <arquivo.yaml|diretorio> ...",
-		Short: "Valida arquivos de workflow (nao precisa de banco)",
+		Use:   "validate <file.yaml|directory> ...",
+		Short: "Validate workflow files (needs no database)",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			arquivos, err := expandir(args)
@@ -193,91 +195,97 @@ func cmdValidate() *cobra.Command {
 			for _, a := range arquivos {
 				conteudo, err := os.ReadFile(a)
 				if err != nil {
-					fmt.Printf("  ERRO  %s: %v\n", a, err)
+					fmt.Printf("  ERROR %s: %v\n", a, err)
 					falhas++
 					continue
 				}
 				w, err := spec.Parse(a, conteudo)
 				if err != nil {
-					fmt.Printf("  ERRO  %v\n", err)
+					fmt.Printf("  ERROR %v\n", err)
 					falhas++
 					continue
 				}
-				fmt.Printf("  ok    %-28s %s  %d steps, %d dependencias%s\n",
+				fmt.Printf("  ok    %-28s %s  %d steps, %d dependencies%s\n",
 					w.Slug, w.Kind, len(w.Nodes), len(w.Edges), agenda(w.Schedule))
 			}
 			if falhas > 0 {
-				return fmt.Errorf("%d de %d arquivo(s) com erro", falhas, len(arquivos))
+				return fmt.Errorf("%d of %d file(s) had errors", falhas, len(arquivos))
 			}
 			return nil
 		},
 	}
 }
 
-// cmdHash gera o hash de senha que vai para a configuracao.
+// cmdHash generates the password hash that goes into the configuration.
 //
-// A senha e lida do terminal, nao de um argumento: argumento aparece no `ps` de
-// qualquer processo da maquina e fica gravado no historico do shell.
+// The password is read from the terminal, not from an argument: an argument
+// shows up in any process's `ps` on the machine and is written to the shell's
+// history.
 func cmdHash() *cobra.Command {
 	return &cobra.Command{
 		Use:   "hash",
-		Short: "Gera o hash de BREVIS_AUTH_SENHA_HASH (le a senha do terminal)",
+		Short: "Generate the BREVIS_AUTH_SENHA_HASH hash (reads the password from the terminal)",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			fmt.Fprint(os.Stderr, "senha: ")
+			fmt.Fprint(os.Stderr, "password: ")
 			senha, err := lerSenha()
 			if err != nil {
 				return err
 			}
 			if len(senha) < 12 {
-				return fmt.Errorf("senha curta demais (%d caracteres); "+
-					"use ao menos 12 — este e o unico acesso ao painel", len(senha))
+				return fmt.Errorf("password too short (%d characters); "+
+					"use at least 12 — this is the only way into the panel", len(senha))
 			}
 			h, err := auth.GerarHash(senha)
 			if err != nil {
 				return err
 			}
-			// O hash vai para stdout sozinho, para poder ser redirecionado; os
-			// rotulos vao para stderr.
+			// The hash goes to stdout on its own, so it can be redirected; the
+			// labels go to stderr.
 			fmt.Fprintln(os.Stderr, "\nBREVIS_AUTH_SENHA_HASH:")
 			fmt.Println(h)
-			fmt.Fprintln(os.Stderr, "\nFalta ainda BREVIS_AUTH_USUARIO e um "+
-				"BREVIS_AUTH_SEGREDO de 32+ bytes (openssl rand -base64 48).")
+			fmt.Fprintln(os.Stderr, "\nStill missing: BREVIS_AUTH_USUARIO and a "+
+				"BREVIS_AUTH_SEGREDO of 32+ bytes (openssl rand -base64 48).")
 			return nil
 		},
 	}
 }
 
-// lerSenha le uma linha sem eco quando ha terminal, e da entrada padrao quando
-// nao ha — o segundo caso e o de um script de provisionamento.
+// lerSenha reads a line without echo when there is a terminal, and from
+// standard input when there is not — the second case is a provisioning
+// script.
 func lerSenha() (string, error) {
 	info, err := os.Stdin.Stat()
 	if err != nil {
 		return "", err
 	}
 	if info.Mode()&os.ModeCharDevice == 0 {
-		// Entrada redirecionada: sem terminal para desligar o eco.
+		// Redirected input: no terminal on which to turn the echo off.
 		linha, err := bufio.NewReader(os.Stdin).ReadString('\n')
 		return strings.TrimRight(linha, "\r\n"), err
 	}
 	return semEco()
 }
 
-// cmdMarca valida um arquivo de marca sem subir o servidor.
+// cmdBrand validates a brand file without starting the server.
 //
-// Existe pelo mesmo motivo do `validate`: hoje um hexadecimal errado no
-// brand.yaml so aparece quando o container sobe, e a mensagem chega pelo log do
-// pod — longe de quem editou o arquivo. A CI da instalacao chama isto e o erro
-// volta no pull request.
-func cmdMarca() *cobra.Command {
+// It exists for the same reason `validate` does: today a wrong hex value in
+// brand.yaml only shows up when the container starts, and the message arrives
+// through the pod's log — far from whoever edited the file. The installation's
+// CI calls this and the error comes back in the pull request.
+//
+// `marca` is kept as an alias: it was the command's name in a released version,
+// and a script calling it must not start printing "unknown command".
+func cmdBrand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "marca <brand.yaml>",
-		Short: "Valida um arquivo de marca (nao precisa de banco)",
-		Args:  cobra.ExactArgs(1),
+		Use:     "brand <brand.yaml>",
+		Aliases: []string{"marca"},
+		Short:   "Validate a brand file (needs no database)",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			// Carregar trata ausencia como "usa o padrao", que e certo no boot
-			// e errado aqui: quem pediu para validar um caminho espera saber
-			// que ele nao existe.
+			// Carregar treats absence as "use the default", which is right at
+			// boot and wrong here: whoever asked to validate a path expects to
+			// be told it does not exist.
 			if _, err := os.Stat(args[0]); err != nil {
 				return err
 			}
@@ -287,19 +295,19 @@ func cmdMarca() *cobra.Command {
 			}
 			logo := m.Logo
 			if logo == branding.LogoPadrao {
-				logo += "  (simbolo embutido)"
+				logo += "  (built-in symbol)"
 			}
 			fmt.Printf("  ok    %s · %s\n", m.Titulo, m.Subtitulo)
 			fmt.Printf("        logo      %s\n", logo)
-			fmt.Printf("        destaque  %s\n", m.Tema.Destaque)
+			fmt.Printf("        accent    %s\n", m.Tema.Destaque)
 			fmt.Printf("        %s\n", branding.Atribuicao)
 			return nil
 		},
 	}
 }
 
-// cmdRun executa um workflow na propria instancia. Sem fila, sem banco, sem
-// scheduler — e o caminho curto que a emenda a secao 3 habilitou.
+// cmdRun runs a workflow on the instance itself. No queue, no database, no
+// scheduler — the short path the amendment to section 3 enabled.
 func cmdRun() *cobra.Command {
 	var paramsCrus []string
 	var (
@@ -308,8 +316,8 @@ func cmdRun() *cobra.Command {
 		timeout    time.Duration
 	)
 	c := &cobra.Command{
-		Use:   "run <arquivo.yaml>",
-		Short: "Executa um workflow localmente",
+		Use:   "run <file.yaml>",
+		Short: "Run a workflow locally",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			conteudo, err := os.ReadFile(args[0])
@@ -342,7 +350,7 @@ func cmdRun() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("workflow %s (%s, %d steps) em %s\n", w.Slug, w.Kind, len(w.Nodes), workDir)
+			fmt.Printf("workflow %s (%s, %d steps) in %s\n", w.Slug, w.Kind, len(w.Nodes), workDir)
 			if len(valores) > 0 {
 				fmt.Printf("  params: %s\n\n", emLinha(valores))
 			}
@@ -350,38 +358,38 @@ func cmdRun() *cobra.Command {
 			runner := app.Runner{
 				Params:   valores,
 				Processo: exec,
-				// Registry vazio no `run`: tasks Go sao registradas por quem
-				// compila o binario, e o CLI generico nao conhece nenhuma.
-				// `action:` de uma task nao registrada falha citando as
-				// disponiveis, que e o comportamento util aqui.
+				// An empty Registry in `run`: Go tasks are registered by
+				// whoever compiles the binary, and the generic CLI knows none.
+				// An `action:` for an unregistered task fails naming the ones
+				// that exist, which is the useful behaviour here.
 				Go:            local.NewGoExecutor(execution.NewRegistry()),
 				MaxTentativas: tentativas,
 				BackoffBase:   time.Second,
 				Timeout:       timeout,
 				WorkDir:       workDir,
-				// PATH e HOME sempre; o resto so o que BREVIS_TASK_ENV nomear.
-				// Herdar o ambiente entregaria a credencial do banco a todo
-				// passo de todo pipeline.
+				// PATH and HOME always; beyond that, only what BREVIS_TASK_ENV
+				// names. Inheriting the environment would hand the database's
+				// credential to every step of every pipeline.
 				Env:    config.AmbienteDasTasks(config.TaskEnvDoAmbiente()),
 				Report: consoleReporter{},
 			}
 			if err := runner.Run(cmd.Context(), w); err != nil {
 				return err
 			}
-			fmt.Printf("\nworkflow %s concluido\n", w.Slug)
+			fmt.Printf("\nworkflow %s finished\n", w.Slug)
 			return nil
 		},
 	}
-	c.Flags().StringVar(&workDir, "workdir", "", "diretorio de trabalho (padrao: o do arquivo)")
+	c.Flags().StringVar(&workDir, "workdir", "", "working directory (default: the file's own)")
 	c.Flags().StringArrayVar(&paramsCrus, "param", nil,
-		"valor de um parametro declarado no workflow (chave=valor; repetivel)")
-	c.Flags().IntVar(&tentativas, "retries", 1, "tentativas por step (1 = sem retry)")
-	c.Flags().DurationVar(&timeout, "timeout", 0, "timeout por step (0 = sem limite)")
+		"value for a parameter declared in the workflow (key=value; repeatable)")
+	c.Flags().IntVar(&tentativas, "retries", 1, "attempts per step (1 = no retry)")
+	c.Flags().DurationVar(&timeout, "timeout", 0, "timeout per step (0 = no limit)")
 	return c
 }
 
-// consoleReporter imprime os eventos prefixados pelo step, que e o que torna a
-// saida legivel quando varios rodam em paralelo no mesmo nivel.
+// consoleReporter prints the events prefixed by the step, which is what keeps
+// the output readable when several run in parallel at the same level.
 type consoleReporter struct{}
 
 func (consoleReporter) Evento(e execution.Event) {
@@ -408,8 +416,8 @@ func agenda(cron string) string {
 	return "  cron " + cron
 }
 
-// abrir monta pool e repositorios. Repetido em tres subcomandos; um helper
-// evita divergirem no tratamento de erro.
+// abrir builds the pool and the repositories. Repeated in three subcommands; a
+// helper keeps them from diverging in how they handle an error.
 func abrir(ctx context.Context) (*postgres.Pool, config.Config, error) {
 	cfg, err := config.Load()
 	if err != nil {
@@ -423,8 +431,8 @@ func cmdPublish() *cobra.Command {
 	var projeto string
 	var podar bool
 	c := &cobra.Command{
-		Use:   "publish <arquivo.yaml|diretorio> ...",
-		Short: "Publica workflows e suas agendas no banco",
+		Use:   "publish <file.yaml|directory> ...",
+		Short: "Publish workflows and their schedules to the database",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -434,9 +442,9 @@ func cmdPublish() *cobra.Command {
 			}
 			defer pool.Close()
 
-			// Um projeto padrao para o modo local. A secao 4 tem Project como
-			// entidade de primeira classe; ate haver gestao de projetos, este
-			// slug fixo mantem a FK honesta sem inventar hierarquia.
+			// A default project for local mode. Section 4 has Project as a
+			// first-class entity; until there is project management, this fixed
+			// slug keeps the FK honest without inventing a hierarchy.
 			var idProjeto uuid.UUID
 			err = pool.QueryRow(ctx, `
 				INSERT INTO projects (id, slug, name) VALUES ($1, $2, $2)
@@ -446,9 +454,10 @@ func cmdPublish() *cobra.Command {
 				return err
 			}
 
-			// Aceita diretorio como o `validate` ja aceitava: a instalacao monta
-			// uma PASTA de workflows, e obrigar o chamador a expandir o glob
-			// deixaria o comando refem do shell de quem chama.
+			// It takes a directory the way `validate` already did: an
+			// installation assembles a FOLDER of workflows, and forcing the
+			// caller to expand the glob would leave the command hostage to
+			// whoever's shell is calling.
 			arquivos, err := expandir(args)
 			if err != nil {
 				return err
@@ -468,7 +477,7 @@ func cmdPublish() *cobra.Command {
 				if err := repo.Publicar(ctx, w, idProjeto); err != nil {
 					return err
 				}
-				fmt.Printf("  publicado  %-24s %s\n", w.Slug, agenda(w.Schedule))
+				fmt.Printf("  published  %-24s %s\n", w.Slug, agenda(w.Schedule))
 				publicados = append(publicados, w.Slug)
 			}
 
@@ -478,26 +487,27 @@ func cmdPublish() *cobra.Command {
 					return err
 				}
 				for _, slug := range removidos {
-					fmt.Printf("  removido   %-24s (nao esta mais na pasta)\n", slug)
+					fmt.Printf("  removed    %-24s (no longer in the folder)\n", slug)
 				}
 			}
 			return nil
 		},
 	}
-	c.Flags().StringVar(&projeto, "project", "default", "slug do projeto")
-	// Opcional e nao padrao: `publish um-arquivo.yaml` nao pode apagar os outros
-	// 48 do projeto so porque nao foram citados na linha de comando.
+	c.Flags().StringVar(&projeto, "project", "default", "the project's slug")
+	// Optional and not the default: `publish one-file.yaml` must not delete the
+	// project's other 48 just because they were not named on the command line.
 	c.Flags().BoolVar(&podar, "prune", false,
-		"remove do projeto os workflows ausentes da lista publicada (o historico e preservado)")
+		"remove from the project the workflows absent from the published list (history is preserved)")
 	return c
 }
 
-// executorDePods decide entre pod e processo, uma vez, no boot.
+// executorDePods decides between a pod and a process, once, at boot.
 //
-// `auto` e o padrao porque o mesmo binario roda nos dois lugares: no laptop nao
-// ha service account montada e ele cai para processo local; no cluster ha, e ele
-// passa a criar pods. `on` existe para o deploy que NAO pode silenciosamente
-// virar execucao local — ali, ficar sem cluster tem de ser erro de boot.
+// `auto` is the default because the same binary runs in both places: on a
+// laptop there is no service account mounted and it falls back to a local
+// process; in a cluster there is, and it starts creating pods. `on` exists for
+// the deployment that must NOT silently become local execution — there, ending
+// up without a cluster has to be a boot error.
 func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, error) {
 	if cfg.Pods.Modo == "off" {
 		return nil, nil
@@ -507,8 +517,8 @@ func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, er
 	if err != nil {
 		var fora k8s.ErrForaDoCluster
 		if errors.As(err, &fora) && cfg.Pods.Modo == "auto" {
-			log.Info("sem cluster: passos com `image:` vao rodar na propria instancia",
-				"motivo", fora.Motivo)
+			log.Info("no cluster: steps with `image:` will run on the instance itself",
+				"reason", fora.Motivo)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("BREVIS_PODS=%s: %w", cfg.Pods.Modo, err)
@@ -518,7 +528,7 @@ func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, er
 	if ns == "" {
 		ns = cliente.Namespace()
 	}
-	log.Info("executando passos como pods", "namespace", ns,
+	log.Info("running steps as pods", "namespace", ns,
 		"service_account", cfg.Pods.ServiceAccount)
 
 	return k8s.NewExecutor(cliente, k8s.Opcoes{
@@ -536,9 +546,10 @@ func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, er
 	}), nil
 }
 
-// toleracoesDoPod traduz a configuracao para o objeto do Kubernetes. `Equal` e
-// o unico operador aceito: `Exists` toleraria QUALQUER taint com aquela chave,
-// que e amplo demais para uma decisao vinda de variavel de ambiente.
+// toleracoesDoPod translates the configuration into Kubernetes's object.
+// `Equal` is the only operator accepted: `Exists` would tolerate ANY taint with
+// that key, which is too broad for a decision coming from an environment
+// variable.
 func toleracoesDoPod(cfg []config.Toleracao) []k8s.Toleracao {
 	var out []k8s.Toleracao
 	for _, t := range cfg {
@@ -555,7 +566,7 @@ func cmdScheduler() *cobra.Command {
 	var maxPods int
 	c := &cobra.Command{
 		Use:   "scheduler",
-		Short: "Materializa agendas em runs e as executa",
+		Short: "Materialize schedules into runs and execute them",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
@@ -574,19 +585,22 @@ func cmdScheduler() *cobra.Command {
 				postgres.NewScheduleRepo(pool), postgres.NewWorkflowRepo(pool), runs, fila, log,
 				scheduler.OpcoesScheduler{Intervalo: intervalo})
 
-			// O dispatcher precisa saber EXECUTAR um run. Le a definicao gravada
-			// no proprio Run — o snapshot da secao 22 — e nao o YAML em disco,
-			// que pode ter mudado desde o disparo.
-			// O executor de processo e OPCIONAL fora do modo local. Em cluster
-			// todo passo tem `image:` e vira pod; exigir o executor local aqui
-			// fazia o scheduler recusar o boot em prod com "ProcessExecutor so
-			// opera com BREVIS_ENV=local" — um guarda escrito para `brevis run`
-			// que nunca deveria ter valido para este caminho.
+			// The dispatcher has to know how to EXECUTE a run. It reads the
+			// definition stored on the Run itself — section 22's snapshot — and
+			// not the YAML on disk, which may have changed since the trigger.
 			//
-			// A variavel e do tipo da INTERFACE, e nao do ponteiro concreto:
-			// atribuir um `*ProcessExecutor` nil a uma interface produz uma
-			// interface NAO-nil, e o runner chamaria metodo em ponteiro nulo em
-			// vez de reportar "nenhum executor de processo configurado".
+			// The process executor is OPTIONAL outside local mode. In a cluster
+			// every step has an `image:` and becomes a pod; requiring the local
+			// executor here made the scheduler refuse to boot in production with
+			// "ProcessExecutor only operates with BREVIS_ENV=local" — a guard
+			// written for `brevis run` that should never have applied to this
+			// path.
+			//
+			// The variable has the INTERFACE's type, and not the concrete
+			// pointer's: assigning a nil `*ProcessExecutor` to an interface
+			// produces a NON-nil interface, and the runner would call a method
+			// on a null pointer instead of reporting "no process executor
+			// configured".
 			var processo execution.Executor
 			if exec, err := local.New(cfg.Env); err == nil {
 				processo = exec
@@ -595,39 +609,42 @@ func cmdScheduler() *cobra.Command {
 				if !errors.As(err, &fora) {
 					return err
 				}
-				// Passo sem `image:` falha citando isso, e so ele — nao o
-				// scheduler inteiro.
-				log.Info("sem executor de processo; todo passo precisa de `image:`")
+				// A step with no `image:` fails saying so, and only that step —
+				// not the whole scheduler.
+				log.Info("no process executor; every step needs an `image:`")
 			}
-			// Executor de pods: em cluster, cada passo com `image:` vira um pod
-			// proprio. Fora do cluster, `pods` fica nulo e tudo roda em processo
-			// local — o MESMO YAML nos dois casos.
+			// The pod executor: in a cluster, every step with an `image:`
+			// becomes a pod of its own. Outside a cluster, `pods` stays nil and
+			// everything runs as a local process — the SAME YAML in both
+			// cases.
 			pods, err := executorDePods(cfg, log)
 			if err != nil {
 				return err
 			}
 
-			// Resolvido uma vez, no boot: o ambiente do processo nao muda, e
-			// relê-lo por run so multiplicaria chamadas ao sistema.
-			// O teto de PODS. Compartilhado por todos os runs deste processo:
-			// com dez passos prontos e cinco vagas, cinco correm e os demais
-			// entram conforme as vagas se abrem.
+			// Settled once, at boot: the process's environment does not change,
+			// and re-reading it per run would only multiply system calls.
 			//
-			// Separado de --concurrency de proposito: aquele conta RUNS, este
-			// conta PASSOS. Cinco runs com tres passos paralelos cada dariam
-			// quinze pods se o unico limite fosse o de runs.
+			// The POD ceiling. Shared by every run in this process: with ten
+			// steps ready and five slots, five run and the rest go in as slots
+			// open up.
+			//
+			// Separate from --concurrency on purpose: that one counts RUNS, this
+			// one counts STEPS. Five runs with three parallel steps each would
+			// mean fifteen pods if the only limit were the run limit.
 			vagas := make(chan struct{}, maxPods)
 
 			ambienteDasTasks := config.AmbienteDasTasks(cfg.TaskEnv)
-			// Em modo pod o ambiente da task vem dos Secrets do cluster
-			// (BREVIS_POD_ENV_FROM_SECRETS), nao daqui. Avisar mesmo assim
-			// mandava o operador procurar um problema que nao existe.
+			// In pod mode the task's environment comes from the cluster's
+			// Secrets (BREVIS_POD_ENV_FROM_SECRETS), not from here. Warning
+			// anyway sent the operator looking for a problem that does not
+			// exist.
 			if len(ambienteDasTasks) <= 2 && pods == nil {
-				// So PATH e HOME. Um `dbt` aqui falha com "Env var required but
-				// not provided", que nao aponta para a causa — dizer isto no
-				// boot poupa a investigacao.
-				log.Warn("tasks recebem apenas PATH e HOME",
-					"dica", "declare o que elas precisam em BREVIS_TASK_ENV (ex.: GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE)")
+				// Only PATH and HOME. A `dbt` here fails with "Env var required
+				// but not provided", which does not point at the cause — saying
+				// this at boot saves the investigation.
+				log.Warn("tasks get only PATH and HOME",
+					"hint", "declare what they need in BREVIS_TASK_ENV (e.g. GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE)")
 			}
 
 			executar := func(ctx context.Context, id uuid.UUID) error {
@@ -640,34 +657,37 @@ func cmdScheduler() *cobra.Command {
 					return err
 				}
 				return app.Runner{
-					// Os params do RUN, nao do workflow: e o snapshot da
-					// entrada daquela execucao. Entram no comando por template
-					// e no ambiente do passo, para que um fetcher que use o SDK
-					// os enxergue sem receber nada por argumento.
+					// The RUN's params, not the workflow's: it is the snapshot
+					// of that execution's input. They go into the command
+					// through the template and into the step's environment, so
+					// a fetcher using the SDK sees them without being passed
+					// anything as an argument.
 					Params:   r.Params,
 					Processo: processo,
 					Pods:     pods,
 					Go:       local.NewGoExecutor(execution.NewRegistry()),
 					Env:      ambienteDasTasks,
 					Report:   consoleReporter{},
-					// Sem isto a tabela `task_runs` fica vazia e a DAG na tela
-					// nao tem estado por passo — era a divida aberta na PHASE 2.
+					// Without this the `task_runs` table stays empty and the DAG
+					// on screen has no per-step state — the debt left open in
+					// PHASE 2.
 					Persist: runs,
 					RunID:   id,
-					// A tentativa DO RUN entra no nome do pod. Sem ela, o retry
-					// do dispatcher recomeca o run do zero — passo na tentativa
-					// 0 de novo — e reencontra o pod da tentativa anterior, que
-					// pode estar preso em Pending para sempre.
+					// The RUN's attempt goes into the pod's name. Without it,
+					// the dispatcher's retry restarts the run from zero — the
+					// step at attempt 0 again — and runs into the previous
+					// attempt's pod, which may be stuck in Pending forever.
 					TentativaDoRun: r.Attempt,
 					Vagas:          vagas,
 
-					// O que o passo nao tem como saber e o engine tem. Vai
-					// para o ambiente dele como BREVIS_RUN_*, e o SDK usa para
-					// decidir, entre outras coisas, se cria a tabela de
-					// destino na primeira execucao.
+					// What the step has no way of knowing and the engine does.
+					// It goes into the step's environment as BREVIS_RUN_*, and
+					// the SDK uses it to decide, among other things, whether to
+					// create the destination table on the first run.
 					//
-					// Sem Historico a resposta e sempre "nao e a primeira":
-					// criar tabela sem certeza e pior que nao criar.
+					// Without Historico the answer is always "it is not the
+					// first": creating a table without being sure is worse than
+					// not creating it.
 					Historico:   runs,
 					Trigger:     r.TriggerType,
 					LogicalDate: r.LogicalDate,
@@ -680,32 +700,32 @@ func cmdScheduler() *cobra.Command {
 			if cfg.SlackWebhook != "" {
 				disp.Alertas = notify.NovoSlack(cfg.SlackWebhook, cfg.Env)
 				disp.URLBase = cfg.UIURL
-				log.Info("alerta de falha ativo", "destino", "slack")
+				log.Info("failure alerting is on", "destination", "slack")
 			} else {
-				// Dito no boot, uma vez: uma instalacao que falha em silencio
-				// costuma ser descoberta pelo cliente, nao pelo time.
-				log.Warn("sem BREVIS_SLACK_WEBHOOK: falhas nao serao avisadas")
+				// Said at boot, once: an installation that fails in silence
+				// tends to be discovered by the customer, not by the team.
+				log.Warn("no BREVIS_SLACK_WEBHOOK: failures will not be announced")
 			}
 
-			log.Info("scheduler e dispatcher no ar",
-				"intervalo", intervalo.String(), "concorrencia", concorrencia)
+			log.Info("scheduler and dispatcher are up",
+				"interval", intervalo.String(), "concurrency", concorrencia)
 
-			// Os dois lacos correm juntos, e independentes: o scheduler CRIA, o
-			// dispatcher EXECUTA. E a separacao que a secao 37 exige — um pode
-			// cair sem interromper o outro.
+			// The two loops run together, and independently: the scheduler
+			// CREATES, the dispatcher EXECUTES. It is the separation section 37
+			// requires — one can go down without interrupting the other.
 			erros := make(chan error, 2)
 			go func() { erros <- sched.Run(ctx) }()
 			go func() { erros <- disp.Run(ctx) }()
 
 			<-ctx.Done()
-			log.Info("encerrando")
+			log.Info("shutting down")
 			return <-erros
 		},
 	}
-	c.Flags().DurationVar(&intervalo, "interval", 10*time.Second, "intervalo entre ciclos")
-	c.Flags().IntVar(&concorrencia, "concurrency", 5, "runs simultaneos")
+	c.Flags().DurationVar(&intervalo, "interval", 10*time.Second, "interval between cycles")
+	c.Flags().IntVar(&concorrencia, "concurrency", 5, "simultaneous runs")
 	c.Flags().IntVar(&maxPods, "max-pods", 5,
-		"passos simultaneos no total (em Kubernetes, o teto de pods do cluster)")
+		"simultaneous steps in total (in Kubernetes, the cluster's pod ceiling)")
 	return c
 }
 
@@ -714,19 +734,19 @@ func cmdBackfill() *cobra.Command {
 	var de, ate string
 	c := &cobra.Command{
 		Use:   "backfill <workflow>",
-		Short: "Materializa slots passados de um workflow",
+		Short: "Materialize a workflow's past slots",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			inicio, err := time.Parse("2006-01-02", de)
 			if err != nil {
-				return fmt.Errorf("--from: %w (use AAAA-MM-DD)", err)
+				return fmt.Errorf("--from: %w (use YYYY-MM-DD)", err)
 			}
 			fim, err := time.Parse("2006-01-02", ate)
 			if err != nil {
-				return fmt.Errorf("--to: %w (use AAAA-MM-DD)", err)
+				return fmt.Errorf("--to: %w (use YYYY-MM-DD)", err)
 			}
-			// Fim do dia: `--to 2026-01-31` deve incluir o dia 31 inteiro.
+			// End of day: `--to 2026-01-31` has to include the whole 31st.
 			fim = fim.Add(24*time.Hour - time.Second)
 
 			pool, cfg, err := abrir(ctx)
@@ -748,26 +768,26 @@ func cmdBackfill() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Printf("  %d run(s) de backfill enfileirados para %s (%s a %s)\n",
+			fmt.Printf("  %d backfill run(s) queued for %s (%s to %s)\n",
 				n, args[0], de, ate)
-			fmt.Println("  rode `brevis scheduler` para executa-los")
+			fmt.Println("  run `brevis scheduler` to execute them")
 			return nil
 		},
 	}
-	c.Flags().StringVar(&de, "from", "", "data inicial (AAAA-MM-DD)")
-	c.Flags().StringVar(&ate, "to", "", "data final (AAAA-MM-DD)")
-	// O caso de uso central do backfill: "reprocessa janeiro inteiro com
-	// load_full=true". Os valores valem para todos os slots do intervalo.
+	c.Flags().StringVar(&de, "from", "", "start date (YYYY-MM-DD)")
+	c.Flags().StringVar(&ate, "to", "", "end date (YYYY-MM-DD)")
+	// The backfill's central use case: "reprocess the whole of January with
+	// load_full=true". The values apply to every slot in the range.
 	c.Flags().StringArrayVar(&paramsCrus, "param", nil,
-		"valor de um parametro do workflow (chave=valor; repetivel)")
+		"value for a workflow parameter (key=value; repeatable)")
 	_ = c.MarkFlagRequired("from")
 	_ = c.MarkFlagRequired("to")
 	return c
 }
 
-// acoesDaUI liga os dois efeitos da tela — pausar agenda e executar agora — aos
-// componentes que ja os implementam. Existe para que a interface `api.Acoes`
-// fique pequena: a UI nao deve poder fazer mais nada no sistema.
+// acoesDaUI wires the screen's two effects — pause a schedule and run now — to
+// the components that already implement them. It exists to keep the `api.Acoes`
+// interface small: the UI must not be able to do anything else to the system.
 type acoesDaUI struct {
 	agendas *postgres.ScheduleRepo
 	sched   *scheduler.Scheduler
@@ -789,7 +809,8 @@ func serve(ctx context.Context) error {
 	}
 	log := observability.NewLogger(cfg.Env, cfg.LogLevel)
 
-	// Encerra em SIGINT/SIGTERM. Sem isso, um deploy corta requisicoes em voo.
+	// Shuts down on SIGINT/SIGTERM. Without this, a deploy cuts requests in
+	// flight.
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -799,42 +820,44 @@ func serve(ctx context.Context) error {
 	}
 	defer pool.Close()
 
-	// A UI nao ganha caminho proprio para criar Run: ela chama o MESMO
-	// scheduler, para que a regra da secao 37 ("o scheduler cria runs") continue
-	// tendo um dono so. Aqui ele e usado sem o laco — nenhuma agenda e
-	// materializada por este processo, so o disparo manual.
+	// The UI gets no path of its own for creating a Run: it calls the SAME
+	// scheduler, so that section 37's rule ("the scheduler creates runs") keeps
+	// having a single owner. Here it is used without the loop — no schedule is
+	// materialized by this process, only the manual trigger.
 	agendas := postgres.NewScheduleRepo(pool)
 	runsRepo := postgres.NewRunRepo(pool)
 	sched := scheduler.NewScheduler(agendas, postgres.NewWorkflowRepo(pool), runsRepo,
 		queue.New(pool.Pool), log, scheduler.OpcoesScheduler{})
 
-	// A identidade visual e opcional: sem arquivo, a instalacao usa a padrao.
-	// Um erro AQUI e de conteudo (cor invalida, YAML quebrado) e nao impede a
-	// interface de subir — derrubar a API por causa de uma cor seria pior que
-	// servi-la com o tema padrao e um aviso no log.
+	// The visual identity is optional: with no file, the installation uses the
+	// default one. An error HERE is about content (an invalid colour, broken
+	// YAML) and does not stop the interface from starting — taking the API down
+	// over a colour would be worse than serving it with the default theme and a
+	// warning in the log.
 	marca, err := branding.Carregar(cfg.BrandFile)
 	if err != nil {
-		log.Warn("identidade visual ignorada", "arquivo", cfg.BrandFile, "erro", err)
+		log.Warn("visual identity ignored", "file", cfg.BrandFile, "error", err)
 	} else if marca.Titulo != branding.Padrao().Titulo {
-		log.Info("identidade visual carregada", "arquivo", cfg.BrandFile, "titulo", marca.Titulo)
+		log.Info("visual identity loaded", "file", cfg.BrandFile, "title", marca.Titulo)
 	}
 
 	ui := api.NewUI(postgres.NewLeituraRepo(pool), postgres.NewWorkflowRepo(pool),
 		runsRepo, acoesDaUI{agendas: agendas, sched: sched}, marca, log)
-	// `inseguro` acompanha o ambiente: em local o servidor escuta http puro, e
-	// um cookie Secure nunca voltaria — o login pareceria nao funcionar.
+	// `inseguro` follows the environment: locally the server listens on plain
+	// http, and a Secure cookie would never come back — the login would look
+	// broken.
 	srv := api.NewServerAutenticado(log, map[string]api.Checker{"postgres": pool}, ui,
 		cfg.Auth, cfg.Env == "local").HTTPServer(cfg.HTTPAddr)
 	if cfg.Auth.Ativa() {
-		log.Info("interface protegida", "usuario", cfg.Auth.Usuario)
+		log.Info("interface is protected", "user", cfg.Auth.Usuario)
 	} else {
-		log.Warn("interface ABERTA: qualquer um dispara workflow",
-			"dica", "defina BREVIS_AUTH_USUARIO e BREVIS_AUTH_SENHA_HASH")
+		log.Warn("interface is OPEN: anyone can trigger a workflow",
+			"hint", "set BREVIS_AUTH_USUARIO and BREVIS_AUTH_SENHA_HASH")
 	}
 
 	erros := make(chan error, 1)
 	go func() {
-		log.Info("api ouvindo", "addr", cfg.HTTPAddr)
+		log.Info("api listening", "addr", cfg.HTTPAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			erros <- err
 		}
@@ -844,11 +867,11 @@ func serve(ctx context.Context) error {
 	case err := <-erros:
 		return err
 	case <-ctx.Done():
-		log.Info("encerrando", "timeout", cfg.ShutdownTimeout.String())
+		log.Info("shutting down", "timeout", cfg.ShutdownTimeout.String())
 	}
 
-	// Contexto proprio: o de cima ja esta cancelado pelo sinal, e usa-lo aqui
-	// abortaria o shutdown no mesmo instante em que ele comeca.
+	// A context of its own: the one above is already cancelled by the signal,
+	// and using it here would abort the shutdown the instant it starts.
 	ctxEnc, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	return srv.Shutdown(ctxEnc)

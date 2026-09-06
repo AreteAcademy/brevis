@@ -133,7 +133,7 @@ func Load() (Config, error) {
 	}
 
 	if c.DatabaseURL == "" {
-		return Config{}, fmt.Errorf("BREVIS_DATABASE_URL e obrigatoria")
+		return Config{}, fmt.Errorf("BREVIS_DATABASE_URL is required")
 	}
 	switch c.Pods.Modo {
 	case "auto", "on", "off":

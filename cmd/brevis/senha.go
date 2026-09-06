@@ -8,23 +8,25 @@ import (
 	"strings"
 )
 
-// semEco le uma linha do terminal com o eco desligado.
+// semEco reads a line from the terminal with the echo turned off.
 //
-// A stdlib nao expoe controle de terminal, e a alternativa seria adicionar
-// `golang.org/x/term` por uma unica chamada. Delegar ao `stty` custa um
-// processo filho num comando interativo que roda uma vez por instalacao — e
-// mantem a arvore de dependencias como esta.
+// The stdlib exposes no terminal control, and the alternative would be adding
+// `golang.org/x/term` for a single call. Delegating to `stty` costs one child
+// process in an interactive command that runs once per installation — and keeps
+// the dependency tree as it is.
 //
-// Se o `stty` nao existir, a senha e lida com eco em vez de o comando falhar:
-// quem esta gerando um hash num container minimo prefere digitar a senha
-// visivel a nao conseguir gerar o hash. O aviso deixa a escolha consciente.
+// If `stty` is not there, the password is read with echo on rather than the
+// command failing: whoever is generating a hash inside a minimal container
+// would rather type the password visibly than not be able to generate the hash
+// at all. The warning makes the choice a conscious one.
 func semEco() (string, error) {
 	restaurar, err := desligarEco()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "\n(aviso: sem `stty`; a senha aparecera na tela)")
+		fmt.Fprintln(os.Stderr, "\n(warning: no `stty`; the password will show on screen)")
 	} else {
-		// Em qualquer saida — inclusive erro de leitura — o terminal volta ao
-		// normal. Sem isto, um Ctrl-C no meio deixa o shell do operador mudo.
+		// On any exit — a read error included — the terminal goes back to
+		// normal. Without this, a Ctrl-C partway through leaves the operator's
+		// shell mute.
 		defer restaurar()
 	}
 
