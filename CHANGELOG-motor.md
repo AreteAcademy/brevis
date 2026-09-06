@@ -9,6 +9,51 @@ A tag do motor é `vX.Y.Z`, sem prefixo; a do SDK leva `sdk/`.
 
 ---
 
+## [0.5.0] — 2026-09-06
+
+### Corrigido: `panic: send on closed channel` no executor Kubernetes
+
+`seguirLogs` escrevia no mesmo canal que `Execute` fecha ao terminar, e ninguém
+esperava por ele. Em produção isso derruba **o processo inteiro**, não só a
+execução — e o processo é a API ou o scheduler.
+
+Achado pelo `-race` na primeira vez que o módulo raiz foi testado no CI. O que
+nos leva a:
+
+### O motor não tinha CI nenhum
+
+Todo job do `test.yml` e do `quality.yml` fazia `cd sdk`. O único
+`go test ./...` na raiz vivia no portão do release — e como o release nunca
+tinha rodado, o runner, os executores, a API e o scheduler chegaram à `0.4.0`
+sem um teste ter rodado fora da máquina de quem escreveu.
+
+Agora há um job `Motor`: gofmt, build, vet, `go test -race`, `go mod tidy`,
+artefatos gerados, peso do binário e lint. O módulo estava sujo — onze problemas
+de lint, porque nunca tinha sido lintado.
+
+### Adicionado: o protocolo de etapas aceita os dois formatos
+
+O SDK até a `v0.47.0` falava português (`{"tipo":"etapa","nome","estado"}`); da
+`v0.48.0` em diante fala inglês (`{"type":"stage","name","state"}`). Este motor
+entende **os dois**.
+
+A ponte sai quando não houver fetcher em produção abaixo da `v0.48.0`. Sem ela,
+subir o SDK novo faria as etapas sumirem da tela — sem erro, sem log, só a caixa
+cinza de volta.
+
+### Adicionado: teste de ponta a ponta com um binário SDK de verdade
+
+Compila um fetcher com o SDK, roda pelo executor de processo e confere as etapas
+no Postgres. Antes disso, tudo no caminho era testado com executor falso: a
+linha `@brevis:` nunca tinha atravessado um pipe do sistema operacional.
+
+### Corrigido: o alerta do Slack não dizia o fuso da data lógica
+
+`Local()` é o fuso de quem formata: o mesmo evento virava `01:00` na máquina de
+quem desenvolve e `04:00` no pod. Agora a mensagem diz qual foi.
+
+---
+
 ## [0.4.0] — 2026-09-05
 
 **A primeira imagem publicada.** Até aqui o motor só existia em código: não
