@@ -7,7 +7,7 @@
 # SDK. `docker compose run --rm trigger` starts a run; the CSVs land in ./out.
 name: brevis-quickstart
 
-x-engine: &engine daniel3843/brevis:0.5.0
+x-engine: &engine daniel3843/brevis:0.6.0
 x-db: &db postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
 
 services:
@@ -84,7 +84,7 @@ services:
   # created, queued, and sits there forever. The API executes nothing, by
   # design -- somebody has to drain the queue, and this is that somebody.
   scheduler:
-    image: daniel3843/brevis:0.5.0-worker
+    image: daniel3843/brevis:0.6.0-worker
     command: ["scheduler", "--interval", "5s", "--concurrency", "2"]
     environment:
       BREVIS_ENV: local
@@ -107,7 +107,7 @@ services:
   # today's date, and the API image is distroless -- there is no shell in it,
   # which is the point of using distroless for a process that only serves HTTP.
   trigger:
-    image: daniel3843/brevis:0.5.0-worker
+    image: daniel3843/brevis:0.6.0-worker
     entrypoint: ["/bin/sh", "-c"]
     command: ['brevis backfill weather --from "$$(date -u +%F)" --to "$$(date -u +%F)"']
     environment:

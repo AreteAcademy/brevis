@@ -12,8 +12,8 @@ cloud.google.com/go/storage v1.30.0 h1:g1yrbxAWOrvg/594228pETWkOi00MLTrOWfh56veU
 cloud.google.com/go/storage v1.30.0/go.mod h1:xAVretHSROm1BQX4IIsoVgJqw0LqOyX+I/O2GzRAzdE=
 filippo.io/edwards25519 v1.1.0 h1:FNf4tywRC1HmFuKW5xopWpigGjJKiJSV0Cqo0cJWDaA=
 filippo.io/edwards25519 v1.1.0/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4VDT4=
-github.com/AreteAcademy/brevis/sdk v0.49.1 h1:adlRq4jK4lw6NSdbI3UalGESYGf6nXUsVQCeG2F+3uA=
-github.com/AreteAcademy/brevis/sdk v0.49.1/go.mod h1:b2BJIq2rs0p2d9Y1ZGzKk/1y1dBEYYsWL+JJKQIYPGk=
+github.com/AreteAcademy/brevis/sdk v0.51.0 h1:+qCsce6eQnTR6qYU+A3p+TBDBjz5fnYkn4G4/N9CQWI=
+github.com/AreteAcademy/brevis/sdk v0.51.0/go.mod h1:b2BJIq2rs0p2d9Y1ZGzKk/1y1dBEYYsWL+JJKQIYPGk=
 github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
 github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/apache/arrow/go/v11 v11.0.0 h1:hqauxvFQxww+0mEU/2XHG6LT7eZternCZq+A5Yly2uM=

@@ -10,6 +10,36 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.51.0] — 2026-09-06
+
+### Mudou: uma fase anunciada por elemento do pipeline, não quatro fixas
+
+O SDK anunciava quatro fases de ciclo de vida e **colapsava todos os estágios**
+numa só, chamada `transform`. Um pipeline com `Map → Aggregate → Map` aparecia
+como uma caixa dizendo `stages=3` — e a tela não conseguia distinguir "216
+linhas viraram 9" de "216 viraram 216 e depois 9". A estrutura que você declara
+nunca chegava ao display.
+
+Agora é uma fase por elemento da **forma** do pipeline: a origem, cada estágio
+na ordem em que roda, o destino.
+
+Cada fase carrega um `index`, e é ele — não o nome — que a identifica. Dois
+`Map` compartilham nome, e chavear por nome fazia o segundo sobrescrever o
+primeiro.
+
+E as fases de origem e destino passam a dizer **qual** origem e **qual**
+destino (`detail`). Uma caixa que diz "extract, 743ms" é meia carta.
+
+**Exige o motor `v0.6.0`.** Um motor anterior ignora as fases `map` e
+`aggregate` — a tela volta a mostrar só `extract` e `load`. Na rede os nomes
+`extract` e `load` foram mantidos de propósito: renomeá-los faria um motor já
+publicado parar de desenhar as fases de um fetcher mais antigo.
+
+`PhaseExtract` e `PhaseLoad` viraram `PhaseSource` e `PhaseTarget`;
+`PhaseTransform` deu lugar a `PhaseMap` e `PhaseAggregate`.
+
+---
+
 ## [0.50.0] — 2026-09-06
 
 Executa `docs/plan/2026-09-06-sdk-stages-are-unverifiable.md`.

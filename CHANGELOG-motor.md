@@ -9,6 +9,26 @@ A tag do motor é `vX.Y.Z`, sem prefixo; a do SDK leva `sdk/`.
 
 ---
 
+## [0.6.0] — 2026-09-06
+
+### Adicionado: uma caixa por elemento do pipeline
+
+O SDK `v0.51.0` anuncia uma fase para a origem, uma para cada estágio na ordem
+em que roda, e uma para o destino. Este motor as aceita, chaveadas por
+**posição** — dois `Map` compartilham nome, e chavear por nome fazia o segundo
+sobrescrever o primeiro.
+
+Cada caixa mostra o que ela é (`from.HTTP …`, `to.Files …`) e o que fez.
+
+Um fetcher até a `v0.50.0` continua desenhando: sem `index`, a caixa é
+identificada pelo nome, como sempre foi.
+
+**Suba este motor antes dos fetchers.** Um motor `0.5.0` com um fetcher
+`0.51.0` ignora as fases `map` e `aggregate`, e a tela volta a mostrar só
+`extract` e `load`.
+
+---
+
 ## [0.5.0] — 2026-09-06
 
 ### Corrigido: `panic: send on closed channel` no executor Kubernetes
