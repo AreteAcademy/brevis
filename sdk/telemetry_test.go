@@ -210,7 +210,7 @@ func TestTetoDeEtapas(t *testing.T) {
 
 	r := novoRelator(RunContext{ID: "run-1"})
 	for i := 0; i < tetoDeEtapas*3; i++ {
-		r.comecou(EtapaExtract)
+		r.comecou(PhaseExtract)
 	}
 	if n := strings.Count(buf.String(), marcaEtapa); n != tetoDeEtapas {
 		t.Errorf("emitiu %d linhas, o teto e %d", n, tetoDeEtapas)

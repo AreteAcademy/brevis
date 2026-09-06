@@ -43,7 +43,7 @@ type Source struct {
 	//
 	//	Source: sdk.Source{From: ..., Snapshot: "payload"}
 	//
-	// # Por que aqui e nao um Transformer
+	// # By que aqui e nao um Transformer
 	//
 	// O retrato do registro cru precisa ser tirado antes de qualquer campo
 	// derivado. Como transformer, ele dependeria da POSICAO na cadeia -- e

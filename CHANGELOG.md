@@ -10,6 +10,74 @@ O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 ---
 
+## [0.47.0] — 2026-09-05
+
+### MUDANÇA INCOMPATÍVEL: a API exportada agora é toda em inglês
+
+Executa a §6 de `docs/plan/2026-09-05-sdk-stackable-stages.md`. **Sem aliases**:
+os nomes em português deixam de existir nesta versão.
+
+| antes | agora |
+|---|---|
+| `Agrupar` | `GroupBy` |
+| `Conta` / `ContaDe` | `Count` / `CountOf` |
+| `Soma` / `Media` | `Sum` / `Mean` |
+| `Primeiro` / `Ultimo` | `First` / `Last` |
+| `MinPor` / `MaxPor` | `MinBy` / `MaxBy` |
+| `Variancia` / `Desvio` | `Variance` / `StdDev` |
+| `Algum` / `Todos` | `Any` / `All` |
+| `Amplitude` | `Range` |
+| `Personalizado` | `Custom` |
+| `Mediana` / `Quantil` / `Moda` / `Coletar` / `Distintos` | `Median` / `Quantile` / `Mode` / `Collect` / `Distinct` |
+| `Agregador` / `Acumulador` / `Agrupamento` / `Grupo` | `Aggregator` / `Accumulator` / `Grouping` / `Group` |
+| `Reduce.Por` / `.Fechar` | `.By` / `.Finish` |
+| `Accumulator.Iniciar` / `.Somar` / `.Valor` | `.Init` / `.Add` / `.Value` |
+| `Group.Campos` / `.Valores` | `.Fields` / `.Values` |
+| `VersaoDoSDK` | `SDKVersion` |
+| `Delimitador` | `Delimiter` |
+| `pycompat.Texto` / `TextoOuVazio` / `TextoAceitandoFloat64` | `Text` / `TextOrEmpty` / `TextAcceptingFloat64` |
+| `pycompat.JSONCanonico` | `pycompat.CanonicalJSON` |
+
+`MaxPor` era a evidência mais clara: metade inglês, metade português, num
+identificador só. Para uma biblioteca lida por qualquer time, os nomes
+exportados são a parte que todo mundo lê.
+
+### Adicionado: `Stages` — Transform e Reduce em qualquer ordem, quantos forem
+
+```go
+Stages: []sdk.Stage{
+    sdk.Map(normalise),
+    sdk.Aggregate(sdk.Reduce{By: sdk.GroupBy("area", "year"), Agg: ...}),
+    sdk.Map(sdk.IngestionID()),
+},
+```
+
+O defeito que motivou: a identidade de uma linha vem do registro que **pousa**,
+e depois de uma agregação esse registro só existe no fim. Com `Reduce` entre
+`Transform` e `Target`, a única saída era construir o id dentro do `Finish` —
+reimplementando o `IngestionID` à mão. **Uma feature que obriga a contornar
+outra não está pronta.**
+
+A alternativa mínima era um `TransformAfter`, e ela não respondia "por que duas
+fases e não três". A ordem passa a ser explícita na lista.
+
+`Transform` e `Reduce` continuam como atalho e viram `Stages`. Declarar os dois
+juntos é **erro**: duas descrições da mesma coisa, e uma perderia calada.
+
+### Adicionado: `Result.Stages`
+
+Quantos registros entraram e saíram de cada estágio, e quantos grupos uma
+agregação produziu. Sem isso, "5.515 linhas" não diz nada sobre onde foram os
+outros seis milhões, e descobrir é bissecar o pipeline à mão.
+
+### Adicionado: um `Aggregate` recusa registros que já têm identidade
+
+Ele não estouraria sozinho — agregaria o id e produziria uma chave que não
+corresponde a nada, que é pior. A regra "identidade por último" deixa de ser
+convenção e vira invariante conferida.
+
+---
+
 ## [0.46.1] — 2026-09-05
 
 ### Corrigido: o selo mentia num build com `replace`

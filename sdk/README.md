@@ -362,7 +362,7 @@ func main() {
 ## CSV with `;`, and gzip over HTTP
 
 ```go
-from.HTTP{URL: "https://portal.exemplo/dados.csv.gz", Format: sdk.FormatCSV, Delimitador: ';'}
+from.HTTP{URL: "https://portal.exemplo/dados.csv.gz", Format: sdk.FormatCSV, Delimiter: ';'}
 ```
 
 `;` is the de-facto standard across much of Europe and in most open-data
@@ -619,12 +619,12 @@ What it guarantees:
 sdk.Run(sdk.Pipeline{
     Source: /* ... */,
     Reduce: &sdk.Reduce{
-        Por: sdk.Agrupar("regiao", "ano"),
-        Agg: map[string]sdk.Agregador{
-            "linhas":     sdk.Conta(),
-            "total":      sdk.Soma("valor"),
-            "media":      sdk.Media("valor"),
-            "nome_final": sdk.MaxPor("nome", "ano"),
+        By: sdk.GroupBy("regiao", "ano"),
+        Agg: map[string]sdk.Aggregator{
+            "linhas":     sdk.Count(),
+            "total":      sdk.Sum("valor"),
+            "media":      sdk.Mean("valor"),
+            "nome_final": sdk.MaxBy("nome", "ano"),
         },
     },
     Target: /* ... */,
@@ -652,36 +652,71 @@ fail.
 
 | | |
 |---|---|
-| counting | `Conta`, `ContaDe` |
-| arithmetic | `Soma`, `Media`, `Variancia`, `Desvio`, `Amplitude` |
-| extremes | `Min`, `Max`, `MinPor`, `MaxPor` |
-| position | `Primeiro`, `Ultimo` |
-| booleans | `Algum`, `Todos` |
-| anything else | `Personalizado` |
+| counting | `Count`, `CountOf` |
+| arithmetic | `Sum`, `Mean`, `Variance`, `StdDev`, `Range` |
+| extremes | `Min`, `Max`, `MinBy`, `MaxBy` |
+| position | `First`, `Last` |
+| booleans | `Any`, `All` |
+| anything else | `Custom` |
 
-`MaxPor("nome", "ano")` — *the name from the row with the largest year* — is the
+`MaxBy("nome", "ano")` — *the name from the row with the largest year* — is the
 one that is usually missing, and its absence is what makes people keep the rows
 so they can pick later.
 
 ### What does not exist, and says so
 
-`Mediana`, `Quantil`, `Distintos`, `Moda` and `Coletar` exist as functions that
+`Median`, `Quantile`, `Distinct`, `Mode` and `Collect` exist as functions that
 **refuse at assembly time**, before the extract runs:
 
 ```
-sdk.Mediana não existe: ela precisa de todas as linhas do grupo, e este
+sdk.Median não existe: ela precisa de todas as linhas do grupo, e este
 agregador roda em memória constante. Duas saídas: calcule no destino, com SQL,
-ou use sdk.Personalizado -- e assuma o custo de memória explicitamente.
+ou use sdk.Custom -- e assuma o custo de memória explicitamente.
 ```
 
-They exist rather than simply being absent because `undefined: sdk.Mediana` from
+They exist rather than simply being absent because `undefined: sdk.Median` from
 the compiler teaches nothing, and the next move is to write it by hand — keeping
 the rows, which is exactly what the rule is there to prevent.
+
+### More than one phase: `Stages`
+
+Identity is derived from the record that **lands**, and after an aggregation
+that record does not exist until the aggregation is done. So the stage that
+computes it has to run *after*:
+
+```go
+Stages: []sdk.Stage{
+    sdk.Map(normalise),
+    sdk.Aggregate(sdk.Reduce{By: sdk.GroupBy("area", "year"), Agg: ...}),
+    sdk.Map(sdk.IngestionID()),   // last, over the row that lands
+},
+```
+
+`Transform` and `Reduce` stay as shorthand for the common case and desugar into
+exactly this. Declaring `Stages` next to either of them is an error — two
+descriptions of the same thing, and one would lose in silence.
+
+**Two stages is already a lot.** Read that as a warning. Aggregation is usually
+the warehouse's job: SQL over a landed table is easier to re-run, easier to fix,
+and does not spend the vendor's window. A four-stage pipeline is probably
+solving the problem in the wrong place.
+
+An `Aggregate` that receives records already carrying `ingestion_id` is
+**refused**, naming it. It would not raise on its own — it would aggregate the
+id and produce a key that corresponds to nothing, which is worse.
+
+`Result.Stages` says what each stage did:
+
+```go
+res.Stages  // [{map 8120433 2034112 0} {aggregate 2034112 5515 5515}]
+```
+
+Without it, "5,515 rows" says nothing about where the other six million went.
 
 ### A global pass over the groups
 
 ```go
-Fechar: func(grupos iter.Seq2[sdk.Grupo, map[string]any]) ([]map[string]any, error)
+Finish: func(grupos iter.Seq2[sdk.Group, map[string]any]) ([]map[string]any, error)
 ```
 
 It sees the **groups**, never the records — which is what allows a global
@@ -850,11 +885,11 @@ import "github.com/AreteAcademy/brevis/sdk/pycompat"
 
 From: from.HTTP{URL: url, PreserveNumbers: true},
 
-Key:       sdk.KeyWith(pycompat.Texto, "provider", "id"),
-Transform: []sdk.Transformer{sdk.IngestionIDWith(pycompat.Texto)},
+Key:       sdk.KeyWith(pycompat.Text, "provider", "id"),
+Transform: []sdk.Transformer{sdk.IngestionIDWith(pycompat.Text)},
 ```
 
-`pycompat.JSONCanonico` is
+`pycompat.CanonicalJSON` is
 `json.dumps(v, sort_keys=True, separators=(",",":"), ensure_ascii=False)` — the
 shape a Python fetcher uses to derive a key when the source has no stable id.
 Reproducing it by hand costs about ninety lines and has three traps, each of
@@ -866,7 +901,7 @@ It matches **Python**, not a standard. A team starting a new ETL that just wants
 a stable key wants RFC 8785 (JCS) instead, and the two must not be the same
 function — see the CHANGELOG for why that one is not here yet.
 
-`pycompat.TextoOuVazio` is `str(x or "")`, the idiom most ports use. Note that
+`pycompat.TextOrEmpty` is `str(x or "")`, the idiom most ports use. Note that
 `0` and `0.0` become `""` and not `"0"` — that is Python's truthiness, and it is
 the case a hand-written version gets wrong.
 
@@ -875,7 +910,7 @@ A `float64` only reaches the renderer once the literal is gone — `encoding/jso
 decodes `1` and `1.0` into the same value, and Python saw an `int` in one case
 and a `float` in the other. Picking one is right half the time, and the wrong
 half is a duplicate row. Turn on `PreserveNumbers`; if the source really was a
-float and you cannot, say so with `pycompat.TextoAceitandoFloat64`.
+float and you cannot, say so with `pycompat.TextAcceptingFloat64`.
 
 The same applies outside `[1e-4, 1e16)`, where Python's `str()` switches to
 exponent notation whose exact shape is a CPython implementation detail.

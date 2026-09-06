@@ -25,19 +25,19 @@ const marcaEtapa = "@brevis:"
 // As etapas que o pipeline anuncia. Lista fechada de proposito: uma etapa
 // desconhecida e ignorada pelo motor em vez de inventar bloco na tela.
 const (
-	EtapaCheck     = "check"
-	EtapaExtract   = "extract"
-	EtapaTransform = "transform"
-	EtapaLoad      = "load"
+	PhaseCheck     = "check"
+	PhaseExtract   = "extract"
+	PhaseTransform = "transform"
+	PhaseLoad      = "load"
 )
 
 // Estados de uma etapa. `aborted` nao e emitido daqui: quem o decide e o motor,
 // ao ver o passo terminar com uma etapa ainda em running -- porque um processo
 // que morreu nao emite nada.
 const (
-	EstadoRodando = "running"
-	EstadoPronto  = "done"
-	EstadoFalhou  = "failed"
+	StateRunning = "running"
+	StateDone    = "done"
+	StateFailed  = "failed"
 )
 
 // tetoDeEtapas limita quantas transicoes um processo pode anunciar.
@@ -77,7 +77,7 @@ func novoRelator(run RunContext) *relator {
 func (r *relator) anunciar(pipeline string) {
 	r.emitir(map[string]any{
 		"tipo":     "sdk",
-		"versao":   VersaoDoSDK(),
+		"versao":   SDKVersion(),
 		"pipeline": pipeline,
 	})
 }
@@ -86,7 +86,7 @@ func (r *relator) comecou(etapa string) {
 	r.mu.Lock()
 	r.inicio[etapa] = time.Now()
 	r.mu.Unlock()
-	r.emitir(map[string]any{"tipo": "etapa", "nome": etapa, "estado": EstadoRodando})
+	r.emitir(map[string]any{"tipo": "etapa", "nome": etapa, "estado": StateRunning})
 }
 
 // terminou fecha a etapa. Os numeros vao junto porque estado sem numero nao
@@ -99,7 +99,7 @@ func (r *relator) comecou(etapa string) {
 // extracao, que e quem dita o ritmo do fluxo. Um numero ausente e melhor que um
 // numero errado, e um `transform: 40min` ao lado de `extract: 40min` faria
 // alguem procurar o gargalo no lugar errado.
-var semRelogio = map[string]bool{EtapaTransform: true}
+var semRelogio = map[string]bool{PhaseTransform: true}
 
 func (r *relator) terminou(etapa, estado string, numeros map[string]any) {
 	r.mu.Lock()
@@ -138,11 +138,11 @@ func (r *relator) emitir(ev map[string]any) {
 	_, _ = io.WriteString(saidaDasEtapas, marcaEtapa+string(linha)+"\n")
 }
 
-// VersaoDoSDK e a versao deste modulo, lida do proprio binario.
+// SDKVersion e a versao deste modulo, lida do proprio binario.
 //
 // Devolve "devel" quando o fetcher foi compilado a partir de um checkout ou de
 // um replace -- que e a verdade, e melhor que inventar um numero.
-func VersaoDoSDK() string {
+func SDKVersion() string {
 	versao := func() string {
 		info, ok := debug.ReadBuildInfo()
 		if !ok {

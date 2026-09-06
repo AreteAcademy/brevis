@@ -28,7 +28,7 @@ func TestIngestionIDComPycompatCasaComOPython(t *testing.T) {
 	}
 
 	// source_key entra como json.Number, que e o que PreserveNumbers entrega
-	// -- um float64 cru o Texto recusa, porque ali o literal ja se perdeu.
+	// -- um float64 cru o Text recusa, porque ali o literal ja se perdeu.
 	registro := func() map[string]any {
 		return map[string]any{
 			"provider": "acme", "entity": nil,
@@ -36,7 +36,7 @@ func TestIngestionIDComPycompatCasaComOPython(t *testing.T) {
 		}
 	}
 
-	saida, err := sdk.IngestionIDWith(pycompat.Texto)(registro())
+	saida, err := sdk.IngestionIDWith(pycompat.Text)(registro())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,7 @@ print(uuid.uuid5(ns, chave))`
 	}
 	quero := strings.TrimSpace(string(b))
 	if got != quero {
-		t.Errorf("IngestionIDWith(pycompat.Texto) = %s, e o Python dá %s", got, quero)
+		t.Errorf("IngestionIDWith(pycompat.Text) = %s, e o Python dá %s", got, quero)
 	}
 
 	// E o padrão NÃO casa. É essa a divergência que motivou tudo, e mantê-la é
@@ -73,7 +73,7 @@ print(uuid.uuid5(ns, chave))`
 func TestKeyWithCasaComOPython(t *testing.T) {
 	registro := map[string]any{"a": nil, "b": json.Number("19.0"), "c": true}
 
-	got, err := sdk.KeyWith(pycompat.Texto, "a", "b", "c")(registro)
+	got, err := sdk.KeyWith(pycompat.Text, "a", "b", "c")(registro)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestKeyWithCasaComOPython(t *testing.T) {
 // consumidor pela porta que ele usa, e nomeia o campo -- sem o nome, quem lê o
 // erro não sabe qual dos seis é.
 func TestKeyWithRecusaFloat64NomeandoOCampo(t *testing.T) {
-	_, err := sdk.KeyWith(pycompat.Texto, "a", "b")(map[string]any{
+	_, err := sdk.KeyWith(pycompat.Text, "a", "b")(map[string]any{
 		"a": "ok", "b": float64(19),
 	})
 	if err == nil {
@@ -111,7 +111,7 @@ func TestKeyWithRecusaFloat64NomeandoOCampo(t *testing.T) {
 // TestKeyWithRecusaNomeandoOCampo: sem o nome, quem lê o erro não sabe qual
 // dos seis campos é.
 func TestKeyWithRecusaNomeandoOCampo(t *testing.T) {
-	_, err := sdk.KeyWith(pycompat.Texto, "a", "b")(map[string]any{"a": "ok", "b": 1e-5})
+	_, err := sdk.KeyWith(pycompat.Text, "a", "b")(map[string]any{"a": "ok", "b": 1e-5})
 	if err == nil {
 		t.Fatal("a faixa exponencial passou")
 	}
@@ -149,13 +149,13 @@ func TestTextoOuVazioEOIdiomaDoPython(t *testing.T) {
 	quero := strings.Split(strings.TrimSuffix(string(b), "\x00"), "\x00")
 
 	for i, c := range casos {
-		got, err := pycompat.TextoOuVazio(c.valor)
+		got, err := pycompat.TextOrEmpty(c.valor)
 		if err != nil {
-			t.Errorf("TextoOuVazio(%#v): %v", c.valor, err)
+			t.Errorf("TextOrEmpty(%#v): %v", c.valor, err)
 			continue
 		}
 		if got != quero[i] {
-			t.Errorf("TextoOuVazio(%#v) = %q, e str(%s or '') = %q",
+			t.Errorf("TextOrEmpty(%#v) = %q, e str(%s or '') = %q",
 				c.valor, got, c.literal, quero[i])
 		}
 	}
@@ -195,7 +195,7 @@ func TestDivergenciaEntreOPadraoEOPython(t *testing.T) {
 			t.Errorf("Key(%#v) = %q, a tabela diz %q", c.entrada, padrao, c.padrao)
 		}
 
-		python, err := sdk.KeyWith(pycompat.Texto, "v")(map[string]any{"v": c.entrada})
+		python, err := sdk.KeyWith(pycompat.Text, "v")(map[string]any{"v": c.entrada})
 		if err != nil {
 			t.Fatalf("KeyWith(%#v): %v", c.entrada, err)
 		}

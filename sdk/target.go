@@ -218,6 +218,13 @@ type Result struct {
 	// de refazer o extract. Vazio quando gravou ou quando esta desligado.
 	CheckpointError string
 
+	// Stages is what each stage did: how many records went in, how many came
+	// out, and how many groups an aggregation produced.
+	//
+	// With four stages, "5,515 rows" says nothing about where the other six
+	// million went. Without this, finding out means bisecting by hand.
+	Stages []StageResult
+
 	// Diagnostics the destination reported per row, when it refused any.
 	RowErrors []string
 

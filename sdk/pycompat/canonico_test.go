@@ -39,9 +39,9 @@ func TestJSONCanonicoContraOPythonDeVerdade(t *testing.T) {
 
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
-			got, err := JSONCanonico(c.valor)
+			got, err := CanonicalJSON(c.valor)
 			if err != nil {
-				t.Fatalf("JSONCanonico: %v", err)
+				t.Fatalf("CanonicalJSON: %v", err)
 			}
 
 			script := "import json,sys\n" +
@@ -77,7 +77,7 @@ func TestJSONCanonicoRecusaFloat64(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"n":19}`), &m); err != nil {
 		t.Fatal(err)
 	}
-	_, err := JSONCanonico(m)
+	_, err := CanonicalJSON(m)
 	if err == nil {
 		t.Fatal("um float64 passou; o literal já se perdeu e ele adivinhou")
 	}
@@ -91,7 +91,7 @@ func TestJSONCanonicoRecusaFloat64(t *testing.T) {
 // TestJSONCanonicoPreservaInteiroGrande: a armadilha 3 -- 2^53+1 não sobrevive
 // a um float64.
 func TestJSONCanonicoPreservaInteiroGrande(t *testing.T) {
-	got, err := JSONCanonico(obj(`{"n":9007199254740993}`))
+	got, err := CanonicalJSON(obj(`{"n":9007199254740993}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestJSONCanonicoPreservaInteiroGrande(t *testing.T) {
 // TestJSONCanonicoNaoEscapaHTML: a armadilha 1, e o SDK já sabia dela -- no
 // driver do Redshift, sem compartilhar.
 func TestJSONCanonicoNaoEscapaHTML(t *testing.T) {
-	got, err := JSONCanonico(obj(`{"h":"<&>"}`))
+	got, err := CanonicalJSON(obj(`{"h":"<&>"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestJSONCanonicoEDeterministico(t *testing.T) {
 	m := obj(`{"z":1,"a":2,"m":3,"b":4,"y":5}`)
 	var primeiro string
 	for i := 0; i < 50; i++ {
-		got, err := JSONCanonico(m)
+		got, err := CanonicalJSON(m)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -144,7 +144,7 @@ func TestJSONCanonicoEDeterministico(t *testing.T) {
 // TestJSONCanonicoRecusaOQueNaoSabe: um tipo que um registro JSON não produz é
 // erro nomeando o caminho, e não um palpite dentro de uma chave.
 func TestJSONCanonicoRecusaOQueNaoSabe(t *testing.T) {
-	_, err := JSONCanonico(map[string]any{"a": map[string]any{"b": struct{}{}}})
+	_, err := CanonicalJSON(map[string]any{"a": map[string]any{"b": struct{}{}}})
 	if err == nil {
 		t.Fatal("um struct passou")
 	}
@@ -159,11 +159,11 @@ func TestJSONCanonicoRecusaOQueNaoSabe(t *testing.T) {
 func TestJSONCanonicoAceitandoFloat64(t *testing.T) {
 	linha := map[string]any{"media": 48.0, "n": 3.5, "nome": "sul"}
 
-	if _, err := JSONCanonico(linha); err == nil {
+	if _, err := CanonicalJSON(linha); err == nil {
 		t.Fatal("o estrito precisa continuar recusando float64 cru")
 	}
 
-	b, err := JSONCanonicoAceitandoFloat64(linha)
+	b, err := CanonicalJSONAcceptingFloat64(linha)
 	if err != nil {
 		t.Fatalf("o permissivo recusou um registro computado: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestJSONCanonicoAceitandoFloat64(t *testing.T) {
 
 // E ele desce nas estruturas: o problema aparece justamente no composto.
 func TestJSONCanonicoAceitandoFloat64Aninhado(t *testing.T) {
-	b, err := JSONCanonicoAceitandoFloat64(map[string]any{
+	b, err := CanonicalJSONAcceptingFloat64(map[string]any{
 		"tot": []any{1.0, map[string]any{"x": 2.0}},
 	})
 	if err != nil {

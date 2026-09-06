@@ -67,42 +67,42 @@ func Transform(data *Data, fns ...Transformer) *Data {
 	if data == nil || len(fns) == 0 {
 		return data
 	}
-
-	source := data.source
-	upstream := data.Records
-
 	return &Data{
-		source: source,
-		start:  data.start,
-		stats:  data.stats,
-		Records: func(yield func(Envelope, error) bool) {
-			i := 0
-			for env, err := range upstream {
-				if err != nil {
-					if !yield(Envelope{}, err) {
-						return
-					}
-					continue
-				}
+		source:  data.source,
+		start:   data.start,
+		stats:   data.stats,
+		Records: transformAll(data.Records, fns, data.source.From.Describe()),
+	}
+}
 
-				payload, skip, err := applyAll(fns, env.Payload)
-				if err != nil {
-					yield(Envelope{}, &FormatError{
-						URL: source.From.Describe(), Line: i, Cause: err,
-					})
+// transformAll is Transform over a bare stream. Stage uses it, and so does
+// Transform: one chain, one place where a record can be skipped or refused.
+func transformAll(upstream iter.Seq2[Envelope, error], fns []Transformer, origin string) iter.Seq2[Envelope, error] {
+	return func(yield func(Envelope, error) bool) {
+		i := 0
+		for env, err := range upstream {
+			if err != nil {
+				if !yield(Envelope{}, err) {
 					return
 				}
-				i++
-				if skip {
-					continue
-				}
-
-				env.Payload = payload
-				if !yield(env, nil) {
-					return
-				}
+				continue
 			}
-		},
+
+			payload, skip, err := applyAll(fns, env.Payload)
+			if err != nil {
+				yield(Envelope{}, &FormatError{URL: origin, Line: i, Cause: err})
+				return
+			}
+			i++
+			if skip {
+				continue
+			}
+
+			env.Payload = payload
+			if !yield(env, nil) {
+				return
+			}
+		}
 	}
 }
 

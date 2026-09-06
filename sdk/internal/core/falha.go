@@ -12,7 +12,7 @@ type SourceFailure struct {
 	// Source é o Describe() da origem, já sem segredo.
 	Source string
 
-	// Err é a mensagem. Texto e não error porque isto atravessa o Result e é
+	// Err é a mensagem. Text e não error porque isto atravessa o Result e é
 	// serializado por quem observa a execução.
 	Err string
 }

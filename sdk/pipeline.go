@@ -43,6 +43,13 @@ type Pipeline struct {
 	// memoria e proporcional ao numero de GRUPOS, nunca ao de registros.
 	Reduce *Reduce
 
+	// Stages replaces Transform and Reduce with an ordered list, for a
+	// pipeline that needs more than one of each. See Stage.
+	//
+	// Declaring it together with either of them is an error: they describe the
+	// same thing, and one would lose in silence.
+	Stages []Stage
+
 	// Name appears in logs. Defaults to provider/entity.
 	Name string
 
@@ -158,24 +165,32 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// e outra a tabela pode mudar, e a do Load e a que decide. O que esta
 	// primeira compra e a quota do fornecedor -- descobrir no Load que uma
 	// coluna nao bate significa ter gasto a janela inteira para isso.
-	rel.comecou(EtapaCheck)
-	// O Reduce e conferido junto com o destino, e pelo mesmo motivo: um
-	// agregador que nao existe ou um nome que colide sao erros de montagem, e
-	// descobri-los depois da extracao custaria a janela do fornecedor.
-	if err := p.Reduce.validar(); err != nil {
-		rel.terminou(EtapaCheck, EstadoFalhou, nil)
+	rel.comecou(PhaseCheck)
+	// The stages are checked alongside the destination, and for the same
+	// reason: an aggregator that does not exist, a name that collides, or
+	// Stages declared next to Transform are assembly errors -- and finding
+	// them after the extract would cost the vendor's window.
+	stages, err := p.stages()
+	if err != nil {
+		rel.terminou(PhaseCheck, StateFailed, nil)
 		return err
+	}
+	for _, st := range stages {
+		if err := st.validate(); err != nil {
+			rel.terminou(PhaseCheck, StateFailed, nil)
+			return err
+		}
 	}
 	if err := checkDestination(ctx, p.Target); err != nil {
-		rel.terminou(EtapaCheck, EstadoFalhou, nil)
+		rel.terminou(PhaseCheck, StateFailed, nil)
 		return err
 	}
-	rel.terminou(EtapaCheck, EstadoPronto, nil)
+	rel.terminou(PhaseCheck, StateDone, nil)
 
-	rel.comecou(EtapaExtract)
+	rel.comecou(PhaseExtract)
 	data, cp, err := extrairComCheckpoint(ctx, p)
 	if err != nil {
-		rel.terminou(EtapaExtract, EstadoFalhou, nil)
+		rel.terminou(PhaseExtract, StateFailed, nil)
 		return err
 	}
 
@@ -189,34 +204,40 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// duracao nenhuma: um numero ausente e melhor que um numero errado. O que
 	// ele reporta e o que so ele sabe, quantos registros entraram e quantos
 	// sairam.
+	// The stages are measured where the work HAPPENS, not where the call
+	// appears in the code. The chain is lazy: Extract returns an iterator and
+	// the Load is what pulls it, so timing the three calls would report
+	// "extract: 3ms" on a forty-minute extraction.
+	//
+	// The extract ends when the stream runs dry. Transform has no clock of its
+	// own -- it runs per record, interleaved -- so it reports no duration at
+	// all: a missing number beats a wrong one. What it reports is what only it
+	// knows, how many records went in and how many came out.
+	contagens := make([]StageResult, len(stages))
+	origem := p.Source.From.Describe()
+
 	if rel.ligado {
-		var entraram, sairam int64
-		data.Records = contar(data.Records, &entraram, func() { rel.comecou(EtapaTransform) })
-		data = Transform(data, p.Transform...)
-		data.Records = contar(data.Records, &sairam, nil)
+		var entraram int64
+		data.Records = counting(data.Records, &entraram, func() {})
+		data.Records = aoPrimeiro(data.Records, func() { rel.comecou(PhaseTransform) })
+	}
+	for i, st := range stages {
+		data.Records = st.apply(data.Records, &contagens[i], origem)
+	}
+	if rel.ligado {
 		data.Records = aoEsgotar(data.Records, func() {
-			rel.terminou(EtapaExtract, EstadoPronto, numerosDoExtract(data))
-			rel.terminou(EtapaTransform, EstadoPronto, map[string]any{
-				"entraram": entraram, "sairam": sairam, "pulados": entraram - sairam,
-			})
-			// Sem levas, nada foi escrito ate aqui: o Write so acontece depois
-			// de o fluxo se esgotar. Com levas ele ja comecou, e a etapa foi
-			// aberta la em cima.
+			rel.terminou(PhaseExtract, StateDone, numerosDoExtract(data))
+			rel.terminou(PhaseTransform, StateDone, numerosDosEstagios(contagens))
+			// Without batches nothing has been written yet: the Write only
+			// happens once the stream runs dry. With batches it already
+			// started, and the phase was opened above.
 			if p.Target.FlushEvery == 0 {
-				rel.comecou(EtapaLoad)
+				rel.comecou(PhaseLoad)
 			}
 		})
 		if p.Target.FlushEvery > 0 {
-			rel.comecou(EtapaLoad)
+			rel.comecou(PhaseLoad)
 		}
-	} else {
-		data = Transform(data, p.Transform...)
-	}
-
-	// Depois do Transform e depois das medicoes: o que o transform conta e o
-	// que ELE viu, e o Reduce muda o numero de linhas.
-	if p.Reduce != nil {
-		data.Records = p.Reduce.aplicar(data.Records)
 	}
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
@@ -224,6 +245,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		// Depois do load: o deposito e escrito enquanto o fluxo corre, entao
 		// so agora se sabe se ele foi ate o fim.
 		cp.aplicar(res)
+		res.Stages = contagens
 
 		// The result comes back on the failure path too, by design, so that
 		// RowErrors is readable after a refusal. That makes the message the
@@ -242,36 +264,52 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	}
 
-	estado := EstadoPronto
+	estado := StateDone
 	if err != nil {
-		estado = EstadoFalhou
+		estado = StateFailed
 	}
-	rel.terminou(EtapaLoad, estado, numerosDoLoad(res))
+	rel.terminou(PhaseLoad, estado, numerosDoLoad(res))
 	return err
 }
 
-// contar conta os registros que passam, e avisa no primeiro.
-//
-// So entra em cena sob o motor: fora dele nao ha quem leia as etapas, e a
-// cadeia nao paga nem uma chamada de funcao a mais por registro.
-func contar(linhas iter.Seq2[Envelope, error], n *int64, aoPrimeiro func()) iter.Seq2[Envelope, error] {
+// aoPrimeiro warns when the first record goes through -- which is when the
+// transform actually started doing something.
+func aoPrimeiro(linhas iter.Seq2[Envelope, error], f func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		primeiro := true
 		for env, err := range linhas {
-			if err == nil {
-				if primeiro {
-					primeiro = false
-					if aoPrimeiro != nil {
-						aoPrimeiro()
-					}
-				}
-				*n++
+			if err == nil && primeiro {
+				primeiro = false
+				f()
 			}
 			if !yield(env, err) {
 				return
 			}
 		}
 	}
+}
+
+// numerosDosEstagios condensa as contagens por estagio na linha do transform.
+func numerosDosEstagios(cs []StageResult) map[string]any {
+	if len(cs) == 0 {
+		return nil
+	}
+	n := map[string]any{
+		"entraram": cs[0].In,
+		"sairam":   cs[len(cs)-1].Out,
+	}
+	if len(cs) > 1 {
+		n["estagios"] = len(cs)
+	}
+	var grupos int64
+	for _, c := range cs {
+		grupos += c.Groups
+	}
+	if grupos > 0 {
+		n["grupos"] = grupos
+	}
+	n["pulados"] = cs[0].In - cs[len(cs)-1].Out
+	return n
 }
 
 // aoEsgotar avisa quando a origem acabou -- que e quando o extract terminou de

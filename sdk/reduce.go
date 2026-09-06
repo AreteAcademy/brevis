@@ -13,11 +13,11 @@ import (
 // Reduce agrega o fluxo antes de ele chegar ao destino.
 //
 //	Reduce: &sdk.Reduce{
-//		Por: sdk.Agrupar("regiao", "ano"),
-//		Agg: map[string]sdk.Agregador{
-//			"linhas":     sdk.Conta(),
-//			"total":      sdk.Soma("valor"),
-//			"nome_final": sdk.MaxPor("nome", "ano"),
+//		By: sdk.GroupBy("regiao", "ano"),
+//		Agg: map[string]sdk.Aggregator{
+//			"linhas":     sdk.Count(),
+//			"total":      sdk.Sum("valor"),
+//			"nome_final": sdk.MaxBy("nome", "ano"),
 //		},
 //	}
 //
@@ -35,62 +35,62 @@ import (
 //
 //	memoria = numero de grupos x estado dos agregadores
 //
-// A ENTRADA nao aparece nessa conta. Por isso Mediana, Quantil, Distintos
-// exato, Moda e Coletar nao existem -- e a mensagem de quem procurar por eles
+// A ENTRADA nao aparece nessa conta. By isso Median, Quantile, Distinct
+// exato, Mode e Collect nao existem -- e a mensagem de quem procurar por eles
 // diz as duas saidas que existem.
 type Reduce struct {
-	// Por sao os campos que formam a chave do grupo. Agrupar() sem campos
+	// By sao os campos que formam a chave do grupo. GroupBy() sem campos
 	// reduz o fluxo inteiro a uma linha so.
-	Por Agrupamento
+	By Grouping
 
 	// Agg sao as colunas calculadas, pelo nome que elas terao na saida.
-	Agg map[string]Agregador
+	Agg map[string]Aggregator
 
-	// Fechar roda uma passada sobre os GRUPOS depois que o fluxo acaba, para
+	// Finish roda uma passada sobre os GRUPOS depois que o fluxo acaba, para
 	// uma reducao global, uma junção com uma tabela pequena, ou uma projecao
 	// final.
 	//
 	// Ele ve os grupos, nunca os registros -- e e isso que permite a fase
 	// global sem desfazer a garantia: a memoria continua proporcional ao
 	// numero de grupos.
-	Fechar func(grupos iter.Seq2[Grupo, map[string]any]) ([]map[string]any, error)
+	Finish func(grupos iter.Seq2[Group, map[string]any]) ([]map[string]any, error)
 }
 
-// Grupo e a chave de um grupo, com os campos na ordem de Agrupar.
-type Grupo struct {
-	Campos  []string
-	Valores map[string]any
+// Group e a chave de um grupo, com os campos na ordem de GroupBy.
+type Group struct {
+	Fields []string
+	Values map[string]any
 }
 
-// Agrupamento sao os campos que formam a chave.
-type Agrupamento struct{ campos []string }
+// Grouping sao os campos que formam a chave.
+type Grouping struct{ campos []string }
 
-// Agrupar nomeia os campos da chave do grupo, na ordem em que aparecem.
+// GroupBy nomeia os campos da chave do grupo, na ordem em que aparecem.
 //
 // Sem campos, o fluxo inteiro vira um grupo so -- que e como se pede um total
 // geral.
-func Agrupar(campos ...string) Agrupamento { return Agrupamento{campos: campos} }
+func GroupBy(campos ...string) Grouping { return Grouping{campos: campos} }
 
-// Acumulador e a porta de baixo: o que fazer quando os agregadores prontos nao
+// Accumulator e a porta de baixo: o que fazer quando os agregadores prontos nao
 // cobrem o caso.
 //
 // Os agregadores deste pacote sao construidos com ela, o que garante que a
 // porta funciona -- e nao e uma saida de emergencia que ninguem testou.
-type Acumulador struct {
-	// Iniciar cria o estado de um grupo novo.
-	Iniciar func() any
+type Accumulator struct {
+	// Init cria o estado de um grupo novo.
+	Init func() any
 
-	// Somar incorpora um registro ao estado.
-	Somar func(acc any, r map[string]any) error
+	// Add incorpora um registro ao estado.
+	Add func(acc any, r map[string]any) error
 
-	// Valor fecha o estado na coluna de saida.
-	Valor func(acc any) (any, error)
+	// Value fecha o estado na coluna de saida.
+	Value func(acc any) (any, error)
 }
 
-// Agregador e uma coluna calculada. Use os construtores deste arquivo, ou
-// Personalizado para o que eles nao cobrem.
-type Agregador struct {
-	acc Acumulador
+// Aggregator e uma coluna calculada. Use os construtores deste arquivo, ou
+// Custom para o que eles nao cobrem.
+type Aggregator struct {
+	acc Accumulator
 
 	// recusa e o motivo de este agregador nao poder existir. Ver o fim deste
 	// arquivo.
@@ -101,49 +101,49 @@ type Agregador struct {
 	campos []string
 }
 
-// Personalizado embrulha um Acumulador.
+// Custom embrulha um Accumulator.
 //
 // A memoria e SUA a partir daqui: um estado que cresce com as linhas desfaz a
 // garantia do Reduce, e o SDK nao tem como conferir isso por voce.
-func Personalizado(a Acumulador) Agregador {
-	return Agregador{acc: a}
+func Custom(a Accumulator) Aggregator {
+	return Aggregator{acc: a}
 }
 
 // --- Os agregadores -------------------------------------------------------
 
-// Conta conta as linhas do grupo.
-func Conta() Agregador {
-	return Personalizado(Acumulador{
-		Iniciar: func() any { return new(int64) },
-		Somar:   func(acc any, _ map[string]any) error { *acc.(*int64)++; return nil },
-		Valor:   func(acc any) (any, error) { return *acc.(*int64), nil },
+// Count conta as linhas do grupo.
+func Count() Aggregator {
+	return Custom(Accumulator{
+		Init:  func() any { return new(int64) },
+		Add:   func(acc any, _ map[string]any) error { *acc.(*int64)++; return nil },
+		Value: func(acc any) (any, error) { return *acc.(*int64), nil },
 	})
 }
 
-// ContaDe conta as linhas em que o campo nao e nulo.
-func ContaDe(campo string) Agregador {
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return new(int64) },
-		Somar: func(acc any, r map[string]any) error {
+// CountOf conta as linhas em que o campo nao e nulo.
+func CountOf(campo string) Aggregator {
+	a := Custom(Accumulator{
+		Init: func() any { return new(int64) },
+		Add: func(acc any, r map[string]any) error {
 			if r[campo] != nil {
 				*acc.(*int64)++
 			}
 			return nil
 		},
-		Valor: func(acc any) (any, error) { return *acc.(*int64), nil },
+		Value: func(acc any) (any, error) { return *acc.(*int64), nil },
 	})
 	return comCampos(a, campo)
 }
 
-// Soma soma o campo. Nulo e ausente sao ignorados, como no SQL.
-func Soma(campo string) Agregador {
+// Sum soma o campo. Nulo e ausente sao ignorados, como no SQL.
+func Sum(campo string) Aggregator {
 	type estado struct {
 		total float64
 		viu   bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numeroDe(r, campo)
 			if err != nil || !ok {
 				return err
@@ -152,7 +152,7 @@ func Soma(campo string) Agregador {
 			e.total, e.viu = e.total+n, true
 			return nil
 		},
-		Valor: func(acc any) (any, error) {
+		Value: func(acc any) (any, error) {
 			e := acc.(*estado)
 			if !e.viu {
 				return nil, nil // grupo sem nenhum valor: nulo, nao zero
@@ -163,15 +163,15 @@ func Soma(campo string) Agregador {
 	return comCampos(a, campo)
 }
 
-// Media e a media aritmetica do campo, ignorando nulos.
-func Media(campo string) Agregador {
+// Mean e a media aritmetica do campo, ignorando nulos.
+func Mean(campo string) Aggregator {
 	type estado struct {
 		soma float64
 		n    int64
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numeroDe(r, campo)
 			if err != nil || !ok {
 				return err
@@ -180,7 +180,7 @@ func Media(campo string) Agregador {
 			e.soma, e.n = e.soma+n, e.n+1
 			return nil
 		},
-		Valor: func(acc any) (any, error) {
+		Value: func(acc any) (any, error) {
 			e := acc.(*estado)
 			if e.n == 0 {
 				return nil, nil
@@ -192,19 +192,19 @@ func Media(campo string) Agregador {
 }
 
 // Min e o menor valor do campo. Max e o maior.
-func Min(campo string) Agregador { return extremo(campo, -1) }
+func Min(campo string) Aggregator { return extremo(campo, -1) }
 
 // Max e o maior valor do campo.
-func Max(campo string) Agregador { return extremo(campo, +1) }
+func Max(campo string) Aggregator { return extremo(campo, +1) }
 
-func extremo(campo string, sinal int) Agregador {
+func extremo(campo string, sinal int) Aggregator {
 	type estado struct {
 		valor any
 		viu   bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			v := r[campo]
 			if v == nil {
 				return nil
@@ -223,28 +223,28 @@ func extremo(campo string, sinal int) Agregador {
 			}
 			return nil
 		},
-		Valor: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
 	})
 	return comCampos(a, campo)
 }
 
-// Primeiro e o primeiro valor nao nulo visto no grupo. Ultimo e o ultimo.
+// First e o primeiro valor nao nulo visto no grupo. Last e o ultimo.
 //
-// "Primeiro" e na ordem em que a origem entregou: para uma origem sem ordem
+// "First" e na ordem em que a origem entregou: para uma origem sem ordem
 // definida, ele nao e determinista, e isso e da origem, nao daqui.
-func Primeiro(campo string) Agregador { return pontaDo(campo, true) }
+func First(campo string) Aggregator { return pontaDo(campo, true) }
 
-// Ultimo e o ultimo valor nao nulo visto no grupo.
-func Ultimo(campo string) Agregador { return pontaDo(campo, false) }
+// Last e o ultimo valor nao nulo visto no grupo.
+func Last(campo string) Aggregator { return pontaDo(campo, false) }
 
-func pontaDo(campo string, primeiro bool) Agregador {
+func pontaDo(campo string, primeiro bool) Aggregator {
 	type estado struct {
 		valor any
 		viu   bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			v := r[campo]
 			if v == nil {
 				return nil
@@ -256,31 +256,31 @@ func pontaDo(campo string, primeiro bool) Agregador {
 			e.valor, e.viu = v, true
 			return nil
 		},
-		Valor: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
 	})
 	return comCampos(a, campo)
 }
 
-// MinPor devolve o `valor` da linha em que `chave` e minima. MaxPor, a maxima.
+// MinBy devolve o `valor` da linha em que `chave` e minima. MaxBy, a maxima.
 //
-//	sdk.MaxPor("nome", "ano")   // o nome da linha de maior ano
+//	sdk.MaxBy("nome", "ano")   // o nome da linha de maior ano
 //
 // E o que normalmente falta e faz alguem guardar as linhas para depois
 // escolher -- que e justamente o que a regra da memoria constante proibe.
-func MinPor(valor, chave string) Agregador { return porExtremo(valor, chave, -1) }
+func MinBy(valor, chave string) Aggregator { return porExtremo(valor, chave, -1) }
 
-// MaxPor devolve o `valor` da linha em que `chave` e maxima.
-func MaxPor(valor, chave string) Agregador { return porExtremo(valor, chave, +1) }
+// MaxBy devolve o `valor` da linha em que `chave` e maxima.
+func MaxBy(valor, chave string) Aggregator { return porExtremo(valor, chave, +1) }
 
-func porExtremo(campoValor, campoChave string, sinal int) Agregador {
+func porExtremo(campoValor, campoChave string, sinal int) Aggregator {
 	type estado struct {
 		chave any
 		valor any
 		viu   bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			k := r[campoChave]
 			if k == nil {
 				return nil
@@ -299,30 +299,30 @@ func porExtremo(campoValor, campoChave string, sinal int) Agregador {
 			}
 			return nil
 		},
-		Valor: func(acc any) (any, error) { return acc.(*estado).valor, nil },
+		Value: func(acc any) (any, error) { return acc.(*estado).valor, nil },
 	})
 	return comCampos(a, campoValor, campoChave)
 }
 
-// Variancia e a variancia amostral do campo. Desvio e a raiz dela.
+// Variance e a variancia amostral do campo. StdDev e a raiz dela.
 //
-// Por Welford, numa passada: a formula ingenua (soma dos quadrados menos o
+// By Welford, numa passada: a formula ingenua (soma dos quadrados menos o
 // quadrado da soma) perde todos os digitos significativos quando os valores sao
 // grandes e proximos entre si, e o resultado sai negativo.
-func Variancia(campo string) Agregador { return welford(campo, false) }
+func Variance(campo string) Aggregator { return welford(campo, false) }
 
-// Desvio e o desvio padrao amostral do campo.
-func Desvio(campo string) Agregador { return welford(campo, true) }
+// StdDev e o desvio padrao amostral do campo.
+func StdDev(campo string) Aggregator { return welford(campo, true) }
 
-func welford(campo string, raiz bool) Agregador {
+func welford(campo string, raiz bool) Aggregator {
 	type estado struct {
 		n    float64
 		medi float64
 		m2   float64
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			x, ok, err := numeroDe(r, campo)
 			if err != nil || !ok {
 				return err
@@ -334,7 +334,7 @@ func welford(campo string, raiz bool) Agregador {
 			e.m2 += d * (x - e.medi)
 			return nil
 		},
-		Valor: func(acc any) (any, error) {
+		Value: func(acc any) (any, error) {
 			e := acc.(*estado)
 			if e.n < 2 {
 				return nil, nil // variancia amostral de um ponto nao existe
@@ -349,21 +349,21 @@ func welford(campo string, raiz bool) Agregador {
 	return comCampos(a, campo)
 }
 
-// Algum e verdadeiro quando alguma linha tem o campo verdadeiro. Todos, quando
+// Any e verdadeiro quando alguma linha tem o campo verdadeiro. All, quando
 // todas tem.
-func Algum(campo string) Agregador { return booleano(campo, false) }
+func Any(campo string) Aggregator { return booleano(campo, false) }
 
-// Todos e verdadeiro quando todas as linhas tem o campo verdadeiro.
-func Todos(campo string) Agregador { return booleano(campo, true) }
+// All e verdadeiro quando todas as linhas tem o campo verdadeiro.
+func All(campo string) Aggregator { return booleano(campo, true) }
 
-func booleano(campo string, todos bool) Agregador {
+func booleano(campo string, todos bool) Aggregator {
 	type estado struct {
 		v   bool
 		viu bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{v: todos} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{v: todos} },
+		Add: func(acc any, r map[string]any) error {
 			v := r[campo]
 			if v == nil {
 				return nil
@@ -371,7 +371,7 @@ func booleano(campo string, todos bool) Agregador {
 			b, ok := v.(bool)
 			if !ok {
 				return fmt.Errorf("o campo %q vale %v (%T), e não um booleano; "+
-					"Algum e Todos leem booleanos", campo, v, v)
+					"Any e All leem booleanos", campo, v, v)
 			}
 			e := acc.(*estado)
 			e.viu = true
@@ -382,7 +382,7 @@ func booleano(campo string, todos bool) Agregador {
 			}
 			return nil
 		},
-		Valor: func(acc any) (any, error) {
+		Value: func(acc any) (any, error) {
 			e := acc.(*estado)
 			if !e.viu {
 				return nil, nil
@@ -393,15 +393,15 @@ func booleano(campo string, todos bool) Agregador {
 	return comCampos(a, campo)
 }
 
-// Amplitude e a diferenca entre o maior e o menor valor do campo.
-func Amplitude(campo string) Agregador {
+// Range e a diferenca entre o maior e o menor valor do campo.
+func Range(campo string) Aggregator {
 	type estado struct {
 		min, max float64
 		viu      bool
 	}
-	a := Personalizado(Acumulador{
-		Iniciar: func() any { return &estado{} },
-		Somar: func(acc any, r map[string]any) error {
+	a := Custom(Accumulator{
+		Init: func() any { return &estado{} },
+		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numeroDe(r, campo)
 			if err != nil || !ok {
 				return err
@@ -414,7 +414,7 @@ func Amplitude(campo string) Agregador {
 			e.min, e.max = math.Min(e.min, n), math.Max(e.max, n)
 			return nil
 		},
-		Valor: func(acc any) (any, error) {
+		Value: func(acc any) (any, error) {
 			e := acc.(*estado)
 			if !e.viu {
 				return nil, nil
@@ -425,7 +425,7 @@ func Amplitude(campo string) Agregador {
 	return comCampos(a, campo)
 }
 
-func comCampos(a Agregador, campos ...string) Agregador {
+func comCampos(a Aggregator, campos ...string) Aggregator {
 	a.campos = campos
 	return a
 }
@@ -524,15 +524,15 @@ func comoNumero(v any) (float64, bool) {
 // de um valor que contem o separador.
 const separadorDeGrupo = "\x00"
 
-func (d *Reduce) validar() error {
+func (d *Reduce) validate() error {
 	if d == nil {
 		return nil
 	}
-	if len(d.Agg) == 0 && d.Fechar == nil {
-		return fmt.Errorf("Reduce sem Agg e sem Fechar não faz nada; " +
+	if len(d.Agg) == 0 && d.Finish == nil {
+		return fmt.Errorf("Reduce sem Agg e sem Finish não faz nada; " +
 			"remova-o, ou diga o que ele calcula")
 	}
-	for _, campo := range d.Por.campos {
+	for _, campo := range d.By.campos {
 		if _, colide := d.Agg[campo]; colide {
 			return fmt.Errorf("%q é campo do grupo e nome de agregador ao mesmo tempo; "+
 				"a coluna teria dois valores", campo)
@@ -545,9 +545,9 @@ func (d *Reduce) validar() error {
 		if a.recusa != nil {
 			return fmt.Errorf("em %q: %w", nome, a.recusa)
 		}
-		if a.acc.Iniciar == nil || a.acc.Somar == nil || a.acc.Valor == nil {
-			return fmt.Errorf("o agregador %q está incompleto: Personalizado precisa "+
-				"de Iniciar, Somar e Valor", nome)
+		if a.acc.Init == nil || a.acc.Add == nil || a.acc.Value == nil {
+			return fmt.Errorf("o agregador %q está incompleto: Custom precisa "+
+				"de Init, Add e Value", nome)
 		}
 	}
 	return nil
@@ -560,8 +560,8 @@ type grupoAcumulado struct {
 	ordem   int
 }
 
-// aplicar drena o fluxo, agrega e devolve as linhas resultantes.
-func (d *Reduce) aplicar(linhas iter.Seq2[Envelope, error]) iter.Seq2[Envelope, error] {
+// apply drena o fluxo, agrega e devolve as linhas resultantes.
+func (d *Reduce) apply(linhas iter.Seq2[Envelope, error]) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		grupos, vistos, err := d.dobrar(linhas)
 		if err != nil {
@@ -590,6 +590,9 @@ func (d *Reduce) dobrar(linhas iter.Seq2[Envelope, error]) ([]*grupoAcumulado, m
 	porChave := map[string]*grupoAcumulado{}
 	var ordem []*grupoAcumulado
 	vistos := map[string]bool{}
+	// A identidade e conferida na PRIMEIRA linha: se ela chegou aqui, chegou em
+	// todas, e conferir uma vez custa nada num milhao.
+	primeira := true
 
 	for env, err := range linhas {
 		if err != nil {
@@ -598,6 +601,12 @@ func (d *Reduce) dobrar(linhas iter.Seq2[Envelope, error]) ([]*grupoAcumulado, m
 		row, err := comoRegistro(env.Payload)
 		if err != nil {
 			return nil, nil, err
+		}
+		if primeira {
+			primeira = false
+			if err := refuseIdentity(row); err != nil {
+				return nil, nil, err
+			}
 		}
 		for k := range row {
 			vistos[k] = true
@@ -615,13 +624,13 @@ func (d *Reduce) dobrar(linhas iter.Seq2[Envelope, error]) ([]*grupoAcumulado, m
 				ordem:   len(ordem),
 			}
 			for nome, a := range d.Agg {
-				g.estados[nome] = a.acc.Iniciar()
+				g.estados[nome] = a.acc.Init()
 			}
 			porChave[chave] = g
 			ordem = append(ordem, g)
 		}
 		for nome, a := range d.Agg {
-			if err := a.acc.Somar(g.estados[nome], row); err != nil {
+			if err := a.acc.Add(g.estados[nome], row); err != nil {
 				return nil, nil, fmt.Errorf("agregador %q: %w", nome, err)
 			}
 		}
@@ -652,7 +661,7 @@ func (d *Reduce) conferirCampos(vistos map[string]bool) error {
 			}
 		}
 	}
-	for _, c := range d.Por.campos {
+	for _, c := range d.By.campos {
 		if !vistos[c] {
 			faltando[c] = true
 		}
@@ -666,12 +675,12 @@ func (d *Reduce) conferirCampos(vistos map[string]bool) error {
 }
 
 func (d *Reduce) chaveDe(row map[string]any) (string, map[string]any, error) {
-	if len(d.Por.campos) == 0 {
+	if len(d.By.campos) == 0 {
 		return "", map[string]any{}, nil
 	}
 	var b strings.Builder
-	valores := make(map[string]any, len(d.Por.campos))
-	for i, campo := range d.Por.campos {
+	valores := make(map[string]any, len(d.By.campos))
+	for i, campo := range d.By.campos {
 		if i > 0 {
 			b.WriteString(separadorDeGrupo)
 		}
@@ -690,7 +699,7 @@ func (d *Reduce) fechar(grupos []*grupoAcumulado) ([]map[string]any, error) {
 			row[k] = v
 		}
 		for nome, a := range d.Agg {
-			v, err := a.acc.Valor(g.estados[nome])
+			v, err := a.acc.Value(g.estados[nome])
 			if err != nil {
 				return nil, fmt.Errorf("agregador %q: %w", nome, err)
 			}
@@ -699,12 +708,12 @@ func (d *Reduce) fechar(grupos []*grupoAcumulado) ([]map[string]any, error) {
 		linhas = append(linhas, row)
 	}
 
-	if d.Fechar == nil {
+	if d.Finish == nil {
 		return linhas, nil
 	}
-	return d.Fechar(func(yield func(Grupo, map[string]any) bool) {
+	return d.Finish(func(yield func(Group, map[string]any) bool) {
 		for i, g := range grupos {
-			if !yield(Grupo{Campos: d.Por.campos, Valores: g.valores}, linhas[i]) {
+			if !yield(Group{Fields: d.By.campos, Values: g.valores}, linhas[i]) {
 				return
 			}
 		}
@@ -721,7 +730,7 @@ func comoRegistro(p any) (map[string]any, error) {
 
 // nomesOrdenados torna as mensagens de erro estáveis: sem isto, um pipeline com
 // dois agregadores inválidos reclamaria de um diferente a cada execução.
-func nomesOrdenados(m map[string]Agregador) []string {
+func nomesOrdenados(m map[string]Aggregator) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)
@@ -751,37 +760,37 @@ func aspas(s []string) []string {
 //
 // Estes quatro existem como FUNÇÃO e recusam na montagem, antes da extração.
 //
-// Não é o mesmo que não existir. Quem escreve `sdk.Mediana("x")` e recebe
+// Não é o mesmo que não existir. Quem escreve `sdk.Median("x")` e recebe
 // "undefined" do compilador vai implementá-la à mão -- guardando as linhas do
 // grupo, que é exatamente o que a regra da memória constante existe para
 // impedir. Quem recebe a mensagem abaixo fica sabendo POR QUE, e as duas saídas
 // que existem.
 
-// Mediana não existe: ela precisa de todas as linhas do grupo.
+// Median não existe: ela precisa de todas as linhas do grupo.
 //
-// Calcule no destino, com SQL, ou use Personalizado e assuma o custo de memória
+// Calcule no destino, com SQL, ou use Custom e assuma o custo de memória
 // explicitamente.
-func Mediana(campo string) Agregador { return recusar("Mediana", "todas as linhas do grupo") }
+func Median(campo string) Aggregator { return recusar("Median", "todas as linhas do grupo") }
 
-// Quantil não existe, pelo mesmo motivo de Mediana.
-func Quantil(campo string, q float64) Agregador {
-	return recusar("Quantil", "todas as linhas do grupo")
+// Quantile não existe, pelo mesmo motivo de Median.
+func Quantile(campo string, q float64) Aggregator {
+	return recusar("Quantile", "todas as linhas do grupo")
 }
 
-// Distintos não existe: a contagem exata precisa de um conjunto por grupo, que
+// Distinct não existe: a contagem exata precisa de um conjunto por grupo, que
 // cresce com a cardinalidade da entrada.
-func Distintos(campo string) Agregador { return recusar("Distintos", "um conjunto por grupo") }
+func Distinct(campo string) Aggregator { return recusar("Distinct", "um conjunto por grupo") }
 
-// Moda não existe: ela precisa de um mapa de frequências por grupo.
-func Moda(campo string) Agregador { return recusar("Moda", "um mapa de frequências por grupo") }
+// Mode não existe: ela precisa de um mapa de frequências por grupo.
+func Mode(campo string) Aggregator { return recusar("Mode", "um mapa de frequências por grupo") }
 
-// Coletar não existe: juntar as linhas do grupo é literalmente o que a regra
+// Collect não existe: juntar as linhas do grupo é literalmente o que a regra
 // proíbe.
-func Coletar(campo string) Agregador { return recusar("Coletar", "todas as linhas do grupo") }
+func Collect(campo string) Aggregator { return recusar("Collect", "todas as linhas do grupo") }
 
-func recusar(nome, custo string) Agregador {
-	return Agregador{recusa: fmt.Errorf(
+func recusar(nome, custo string) Aggregator {
+	return Aggregator{recusa: fmt.Errorf(
 		"sdk.%s não existe: ela precisa de %s, e este agregador roda em memória "+
 			"constante. Duas saídas: calcule no destino, com SQL, ou use "+
-			"sdk.Personalizado -- e assuma o custo de memória explicitamente", nome, custo)}
+			"sdk.Custom -- e assuma o custo de memória explicitamente", nome, custo)}
 }

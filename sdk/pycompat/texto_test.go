@@ -51,13 +51,13 @@ var comoOPythonRenderiza = []struct {
 // TestTextoContraATabela é a rede que roda em qualquer lugar.
 func TestTextoContraATabela(t *testing.T) {
 	for _, c := range comoOPythonRenderiza {
-		got, err := Texto(c.entrada)
+		got, err := Text(c.entrada)
 		if err != nil {
-			t.Errorf("Texto(%#v): %v", c.entrada, err)
+			t.Errorf("Text(%#v): %v", c.entrada, err)
 			continue
 		}
 		if got != c.python {
-			t.Errorf("Texto(%#v) = %q, o str() do Python dá %q", c.entrada, got, c.python)
+			t.Errorf("Text(%#v) = %q, o str() do Python dá %q", c.entrada, got, c.python)
 		}
 	}
 }
@@ -93,13 +93,13 @@ func TestTextoContraOPythonDeVerdade(t *testing.T) {
 			t.Errorf("a tabela fixada diz que str(%s) é %q, e este python3 dá %q",
 				c.literal, c.python, linhas[i])
 		}
-		got, err := Texto(c.entrada)
+		got, err := Text(c.entrada)
 		if err != nil {
-			t.Errorf("Texto(%#v): %v", c.entrada, err)
+			t.Errorf("Text(%#v): %v", c.entrada, err)
 			continue
 		}
 		if got != linhas[i] {
-			t.Errorf("Texto(%#v) = %q, e str(%s) = %q", c.entrada, got, c.literal, linhas[i])
+			t.Errorf("Text(%#v) = %q, e str(%s) = %q", c.entrada, got, c.literal, linhas[i])
 		}
 	}
 }
@@ -109,19 +109,19 @@ func TestTextoContraOPythonDeVerdade(t *testing.T) {
 // produz duplicata em silêncio.
 func TestTextoRecusaAFaixaExponencial(t *testing.T) {
 	// Pela porta que aceita float: a política do expoente é sobre floats, e o
-	// Texto recusa float64 antes de chegar nela.
+	// Text recusa float64 antes de chegar nela.
 	recusados := []float64{1e-5, 9.99e-5, -1e-5, 1e16, -1e16, 1e300, math.SmallestNonzeroFloat64}
 	for _, f := range recusados {
-		if got, err := TextoAceitandoFloat64(f); err == nil {
-			t.Errorf("TextoAceitandoFloat64(%g) devolveu %q em vez de recusar", f, got)
+		if got, err := TextAcceptingFloat64(f); err == nil {
+			t.Errorf("TextAcceptingFloat64(%g) devolveu %q em vez de recusar", f, got)
 		}
 	}
 
 	// E as bordas de dentro passam: a faixa é [1e-4, 1e16).
 	aceitos := []float64{0, 1e-4, -1e-4, 9.999999999999998e15, 0.1}
 	for _, f := range aceitos {
-		if _, err := TextoAceitandoFloat64(f); err != nil {
-			t.Errorf("TextoAceitandoFloat64(%g) recusou dentro da faixa: %v", f, err)
+		if _, err := TextAcceptingFloat64(f); err != nil {
+			t.Errorf("TextAcceptingFloat64(%g) recusou dentro da faixa: %v", f, err)
 		}
 	}
 }
@@ -129,7 +129,7 @@ func TestTextoRecusaAFaixaExponencial(t *testing.T) {
 // TestTextoRecusaFloat64 é o item 11 da segunda rodada, e conserta uma
 // incoerência que era minha.
 //
-// O `default` do Texto recusava dizendo que "adivinhar numa chave produz
+// O `default` do Text recusava dizendo que "adivinhar numa chave produz
 // duplicata silenciosa", e o `case float64` logo acima adivinhava em silêncio.
 // A limitação estava DOCUMENTADA -- e documentar uma divergência não é o mesmo
 // que impedi-la.
@@ -142,12 +142,12 @@ func TestTextoRecusaFloat64(t *testing.T) {
 	// inf e nan ficam de fora: nenhum literal JSON produz um deles, então a
 	// ambiguidade int/float não existe ali e a regra não teria razão.
 	for _, f := range []float64{0, 1, 19.0, -20.04} {
-		got, err := Texto(f)
+		got, err := Text(f)
 		if err == nil {
-			t.Errorf("Texto(%v) devolveu %q; o literal já se perdeu e ele adivinhou", f, got)
+			t.Errorf("Text(%v) devolveu %q; o literal já se perdeu e ele adivinhou", f, got)
 			continue
 		}
-		for _, quero := range []string{"PreserveNumbers", "TextoAceitandoFloat64"} {
+		for _, quero := range []string{"PreserveNumbers", "TextAcceptingFloat64"} {
 			if !strings.Contains(err.Error(), quero) {
 				t.Errorf("o erro não oferece a saída %q: %v", quero, err)
 			}
@@ -159,7 +159,7 @@ func TestTextoRecusaFloat64(t *testing.T) {
 // é float sem ambiguidade -- é o único flutuante que dá para renderizar sem
 // adivinhar.
 func TestTextoAceitaFloat32(t *testing.T) {
-	got, err := Texto(float32(19))
+	got, err := Text(float32(19))
 	if err != nil {
 		t.Fatalf("float32 recusado: %v", err)
 	}
@@ -196,13 +196,13 @@ func TestTextoAceitandoFloat64CasaComOPython(t *testing.T) {
 	quero := strings.Split(strings.TrimSuffix(string(b), "\x00"), "\x00")
 
 	for i, f := range valores {
-		got, err := TextoAceitandoFloat64(f)
+		got, err := TextAcceptingFloat64(f)
 		if err != nil {
-			t.Errorf("TextoAceitandoFloat64(%v): %v", f, err)
+			t.Errorf("TextAcceptingFloat64(%v): %v", f, err)
 			continue
 		}
 		if got != quero[i] {
-			t.Errorf("TextoAceitandoFloat64(%v) = %q, e str(%v) = %q", f, got, f, quero[i])
+			t.Errorf("TextAcceptingFloat64(%v) = %q, e str(%v) = %q", f, got, f, quero[i])
 		}
 	}
 }
@@ -212,8 +212,8 @@ func TestTextoAceitandoFloat64CasaComOPython(t *testing.T) {
 // evitar.
 func TestTextoRecusaOQueNaoSabe(t *testing.T) {
 	for _, v := range []any{map[string]any{"a": 1}, []any{1, 2}, struct{}{}} {
-		if got, err := Texto(v); err == nil {
-			t.Errorf("Texto(%#v) devolveu %q em vez de recusar", v, got)
+		if got, err := Text(v); err == nil {
+			t.Errorf("Text(%#v) devolveu %q em vez de recusar", v, got)
 		}
 	}
 }
@@ -225,12 +225,12 @@ func TestTextoEspeciais(t *testing.T) {
 		math.Inf(-1): "-inf",
 	}
 	for f, quero := range casos {
-		got, err := Texto(f)
+		got, err := Text(f)
 		if err != nil || got != quero {
-			t.Errorf("Texto(%v) = (%q, %v), esperado %q", f, got, err, quero)
+			t.Errorf("Text(%v) = (%q, %v), esperado %q", f, got, err, quero)
 		}
 	}
-	if got, _ := Texto(math.NaN()); got != "nan" {
+	if got, _ := Text(math.NaN()); got != "nan" {
 		t.Errorf("NaN = %q", got)
 	}
 }
@@ -239,7 +239,7 @@ func TestTextoEspeciais(t *testing.T) {
 // utilizável de verdade.
 //
 // Sem ele, {"id": 19} e {"id": 19.0} chegam idênticos como float64(19), e o
-// Python via int num caso e float no outro. Desde a v0.40.0 o Texto RECUSA esse
+// Python via int num caso e float no outro. Desde a v0.40.0 o Text RECUSA esse
 // float64 em vez de escolher uma das duas -- porque escolher acerta metade das
 // vezes, e a metade errada é uma duplicata.
 func TestPreserveNumbersRecuperaADistincaoQueOFloatPerde(t *testing.T) {
@@ -247,8 +247,8 @@ func TestPreserveNumbersRecuperaADistincaoQueOFloatPerde(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"inteiro":19,"decimal":19.0}`), &semPreservar); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Texto(semPreservar["inteiro"]); err == nil {
-		t.Error("sem preservar, o Texto adivinhou em vez de recusar")
+	if _, err := Text(semPreservar["inteiro"]); err == nil {
+		t.Error("sem preservar, o Text adivinhou em vez de recusar")
 	}
 
 	// Preservando: o literal decide, exatamente como o json do Python decide.
@@ -258,11 +258,11 @@ func TestPreserveNumbersRecuperaADistincaoQueOFloatPerde(t *testing.T) {
 	if err := dec.Decode(&comPreservar); err != nil {
 		t.Fatal(err)
 	}
-	inteiro, err := Texto(comPreservar["inteiro"])
+	inteiro, err := Text(comPreservar["inteiro"])
 	if err != nil {
 		t.Fatal(err)
 	}
-	decimal, err := Texto(comPreservar["decimal"])
+	decimal, err := Text(comPreservar["decimal"])
 	if err != nil {
 		t.Fatal(err)
 	}

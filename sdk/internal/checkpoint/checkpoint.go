@@ -307,9 +307,9 @@ func (e *Escrita) Despejar(ctx context.Context) error {
 	return nil
 }
 
-// Fechar despeja o que sobrou e escreve o manifesto POR ULTIMO. E o manifesto
+// Finish despeja o que sobrou e escreve o manifesto POR ULTIMO. E o manifesto
 // que transforma um diretorio de partes num checkpoint retomavel.
-func (e *Escrita) Fechar(ctx context.Context, pipeline, run string) error {
+func (e *Escrita) Finish(ctx context.Context, pipeline, run string) error {
 	if err := e.Despejar(ctx); err != nil {
 		return err
 	}

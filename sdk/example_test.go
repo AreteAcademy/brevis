@@ -90,7 +90,7 @@ func ExampleKey() {
 // com a de um sistema que ja gravou linhas.
 func ExampleKeyWith() {
 	_ = sdk.Compute("source_key", func(r map[string]any) (any, error) {
-		return sdk.KeyWith(pycompat.Texto, "provider", "id")(r)
+		return sdk.KeyWith(pycompat.Text, "provider", "id")(r)
 	})
 }
 

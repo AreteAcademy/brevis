@@ -6,8 +6,8 @@
 // nao tem com o que casar, e a estrutura diz isso: quem precisa importa, quem
 // nao precisa nem sabe que existe.
 //
-//	Key:       sdk.KeyWith(pycompat.Texto, "provider", "id"),
-//	Transform: []sdk.Transformer{sdk.IngestionIDWith(pycompat.Texto)},
+//	Key:       sdk.KeyWith(pycompat.Text, "provider", "id"),
+//	Transform: []sdk.Transformer{sdk.IngestionIDWith(pycompat.Text)},
 package pycompat
 
 import (
@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-// Texto renderiza um valor como o `str()` do Python renderiza.
+// Text renderiza um valor como o `str()` do Python renderiza.
 //
 // Ela existe para quem esta portando um fetcher de Python para Go mantendo a
 // MESMA landing e o MESMO ingestion_id. Se o Python fazia `str(record["id"])`
@@ -58,7 +58,7 @@ import (
 // depender disso, ligue Source.PreserveNumbers: o literal chega intacto como
 // json.Number, e aqui ele decide sozinho -- com ponto ou expoente e float, sem
 // e int, exatamente como o json do Python decide.
-func Texto(v any) (string, error) {
+func Text(v any) (string, error) {
 	switch t := v.(type) {
 	case nil:
 		return "None", nil
@@ -138,14 +138,14 @@ func Texto(v any) (string, error) {
 		// DOCUMENTADA. Documentar uma divergencia nao e o mesmo que impedi-la,
 		// e o default logo abaixo recusava pelo mesmo motivo -- a incoerencia
 		// era minha.
-		return "", fmt.Errorf("pycompat.Texto recebeu um float64 (%v), e a essa altura o "+
+		return "", fmt.Errorf("pycompat.Text recebeu um float64 (%v), e a essa altura o "+
 			"literal do JSON já se perdeu: `1` e `1.0` viram o mesmo float64, e o Python "+
 			"via int num caso e float no outro. Ligue Source.PreserveNumbers para o número "+
 			"chegar como json.Number com o literal intacto. Se a origem era mesmo float e "+
-			"você quer renderizar como float, diga isso: pycompat.TextoAceitandoFloat64", t)
+			"você quer renderizar como float, diga isso: pycompat.TextAcceptingFloat64", t)
 
 	default:
-		return "", fmt.Errorf("pycompat.Texto não sabe renderizar %T como o str() do Python "+
+		return "", fmt.Errorf("pycompat.Text não sabe renderizar %T como o str() do Python "+
 			"renderizaria. Ela cobre nil, bool, string, número e json.Number -- o resto o "+
 			"Python formata com regras do tipo, e adivinhar numa chave produz duplicata "+
 			"silenciosa", v)
@@ -164,7 +164,7 @@ func floatPython(f float64) (string, error) {
 	}
 
 	if forcaExpoente(f) {
-		return "", fmt.Errorf("pycompat.Texto recusa %g: nessa faixa o str() do Python usa "+
+		return "", fmt.Errorf("pycompat.Text recusa %g: nessa faixa o str() do Python usa "+
 			"notação exponencial (\"1e-05\", \"1e+16\"), cujo formato exato é detalhe do "+
 			"CPython. Imitar seria apostar numa CHAVE -- e uma chave que diverge em silêncio "+
 			"vira duplicata semanas depois. Componha esse campo você mesmo, ou tire-o da chave", f)
@@ -193,7 +193,7 @@ func forcaExpoente(f float64) bool {
 	return abs < 1e-4 || abs >= 1e16
 }
 
-// TextoOuVazio e o idioma `str(x or "")` do Python, que e o mais comum na
+// TextOrEmpty e o idioma `str(x or "")` do Python, que e o mais comum na
 // composicao de chave -- 14 dos fetchers levantados o usam.
 //
 // O `or ""` e a verdade-falsidade do Python, e ela nao e a do Go: `None`, `""`,
@@ -203,16 +203,16 @@ func forcaExpoente(f float64) bool {
 //
 // Repare que `0` e `0.0` viram "" e nao "0": e contraintuitivo, e e o que o
 // Python faz. Um port que escrever isso a mao vai acertar None e errar o zero.
-func TextoOuVazio(v any) (string, error) {
+func TextOrEmpty(v any) (string, error) {
 	if falsoNoPython(v) {
 		return "", nil
 	}
-	return Texto(v)
+	return Text(v)
 }
 
 // falsoNoPython implementa a verdade-falsidade dos tipos que um registro JSON
 // produz. O resto -- um objeto qualquer -- e verdadeiro no Python por padrao, e
-// aqui cai no Texto, que recusa o que nao sabe renderizar.
+// aqui cai no Text, que recusa o que nao sabe renderizar.
 func falsoNoPython(v any) bool {
 	switch t := v.(type) {
 	case nil:
@@ -257,12 +257,12 @@ func falsoNoPython(v any) bool {
 	}
 }
 
-// TextoAceitandoFloat64 e Texto tratando float64 como o float do Python.
+// TextAcceptingFloat64 e Text tratando float64 como o float do Python.
 //
 // Use quando voce SABE que o numero era float na origem -- e nao um int que o
 // encoding/json colapsou -- e nao pode ligar Source.PreserveNumbers.
 //
-//	Key: sdk.KeyWith(pycompat.TextoAceitandoFloat64, "lat", "lon")
+//	Key: sdk.KeyWith(pycompat.TextAcceptingFloat64, "lat", "lon")
 //
 // O nome e comprido de proposito. Ele e a afirmacao "eu conferi": num campo que
 // era int no Python, isto produz "19.0" onde o Python produziu "19", e o
@@ -270,9 +270,9 @@ func falsoNoPython(v any) bool {
 //
 // Onde der para ligar PreserveNumbers, ligue: o literal decide sozinho, e nao ha
 // o que conferir.
-func TextoAceitandoFloat64(v any) (string, error) {
+func TextAcceptingFloat64(v any) (string, error) {
 	if f, ehFloat := v.(float64); ehFloat {
 		return floatPython(f)
 	}
-	return Texto(v)
+	return Text(v)
 }

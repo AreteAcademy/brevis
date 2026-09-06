@@ -45,7 +45,7 @@ func TestHTTPComDelimitadorPontoEVirgula(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	linhas := lerTudo(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV, Delimitador: ';'})
+	linhas := lerTudo(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV, Delimiter: ';'})
 	if len(linhas) != 2 {
 		t.Fatalf("saiu com %d linhas: %v", len(linhas), linhas)
 	}
@@ -96,7 +96,7 @@ func TestHTTPDescomprimeGzip(t *testing.T) {
 			defer srv.Close()
 
 			linhas := lerTudo(t, from.HTTP{
-				URL: srv.URL + caso.caminho, Format: core.FormatCSV, Delimitador: ';',
+				URL: srv.URL + caso.caminho, Format: core.FormatCSV, Delimiter: ';',
 			})
 			if len(linhas) != 2 || linhas[1]["municipio"] != "Rio" {
 				t.Errorf("não descomprimiu: %v", linhas)
@@ -132,7 +132,7 @@ func TestFilesComDelimitador(t *testing.T) {
 	if err := os.WriteFile(caminho, csvPontoEVirgula(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	linhas := lerTudo(t, from.Files{Path: caminho, Format: core.FormatCSV, Delimitador: ';'})
+	linhas := lerTudo(t, from.Files{Path: caminho, Format: core.FormatCSV, Delimiter: ';'})
 	if len(linhas) != 2 || linhas[0]["municipio"] != "São Paulo" {
 		t.Errorf("linhas: %v", linhas)
 	}

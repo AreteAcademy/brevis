@@ -43,11 +43,11 @@ type Files struct {
 	// do número -- ver sdk.IngestionIDPython.
 	PreserveNumbers bool
 
-	// Delimitador e o separador de campos do CSV. Zero usa a virgula.
+	// Delimiter e o separador de campos do CSV. Zero usa a virgula.
 	//
 	// `;` e o padrao de fato em boa parte da Europa e em quase todo portal de
 	// dados abertos.
-	Delimitador rune
+	Delimiter rune
 
 	// NoHeader, for CSV: treat every row as data with field_N keys. The
 	// default uses the first row as column names.
@@ -222,7 +222,7 @@ func (f Files) drain(ctx context.Context, loc core.Location, key string,
 
 	decoder := extract.NewDecoder(r, core.Source{
 		Format: format, NoHeader: f.NoHeader, PreserveNumbers: f.PreserveNumbers,
-		Delimitador: f.Delimitador,
+		Delimiter: f.Delimiter,
 	})
 	if decoder == nil {
 		return 0, fmt.Errorf("unsupported format %q", format)

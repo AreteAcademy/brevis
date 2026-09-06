@@ -9,7 +9,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/jsontext"
 )
 
-// JSONCanonico serializa o registro como o Python serializa em
+// CanonicalJSON serializa o registro como o Python serializa em
 //
 //	json.dumps(v, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 //
@@ -17,7 +17,7 @@ import (
 // origem nao tem id estavel.
 //
 //	Key: func(p any) (string, error) {
-//	    b, err := pycompat.JSONCanonico(p)
+//	    b, err := pycompat.CanonicalJSON(p)
 //	    return string(b), err
 //	}
 //
@@ -29,7 +29,7 @@ import (
 //  1. o encoding/json escapa `<`, `>` e `&`; o Python nao escapa nenhum dos
 //     tres. A regra vive em jsontext.AppendJSONString, num lugar so;
 //  2. sem Source.PreserveNumbers, `1` e `1.0` chegam como o mesmo float64 --
-//     e aqui isso e ERRO, nao um palpite. Ver Texto;
+//     e aqui isso e ERRO, nao um palpite. Ver Text;
 //  3. inteiro de precisao arbitraria perde precisao ao passar por float64, e o
 //     json.Number preserva o literal.
 //
@@ -38,13 +38,13 @@ import (
 // Ela casa com o PYTHON, e nao com um padrao. Quem esta comecando um ETL novo e
 // so quer uma chave estavel quer outra coisa -- o RFC 8785 (JCS) -- e as duas
 // nao devem ser a mesma funcao: confundi-las seria pior que nao ter nenhuma.
-func JSONCanonico(v any) ([]byte, error) {
-	return escrever(make([]byte, 0, 256), v, Texto)
+func CanonicalJSON(v any) ([]byte, error) {
+	return escrever(make([]byte, 0, 256), v, Text)
 }
 
-// JSONCanonicoAceitandoFloat64 e o JSONCanonico para registros COMPUTADOS.
+// CanonicalJSONAcceptingFloat64 e o CanonicalJSON para registros COMPUTADOS.
 //
-// O JSONCanonico recusa um float64 cru pela mesma razao que o Texto recusa: num
+// O CanonicalJSON recusa um float64 cru pela mesma razao que o Text recusa: num
 // valor DECODIFICADO nao ha como saber se a origem via inteiro ou decimal, e
 // `1` contra `1.0` muda a chave.
 //
@@ -53,16 +53,16 @@ func JSONCanonico(v any) ([]byte, error) {
 // esta quando o registro e seu.
 //
 //	linha["media"] = total / n
-//	b, err := pycompat.JSONCanonicoAceitandoFloat64(linha)
+//	b, err := pycompat.CanonicalJSONAcceptingFloat64(linha)
 //
-// A saida existia para o escalar (TextoAceitandoFloat64) e faltava para o
+// A saida existia para o escalar (TextAcceptingFloat64) e faltava para o
 // composto -- que e justamente onde caem os registros construidos por quem
 // agrega. Sem ela, o contorno era entregar um json.Number cujo literal tivesse
 // ponto: sem o ponto, `48` sai como `48` onde a referencia escreve `48.0`, e o
 // consumidor acaba reimplementando metade da formatacao de decimais para
 // alimentar a formatacao de decimais.
-func JSONCanonicoAceitandoFloat64(v any) ([]byte, error) {
-	return escrever(make([]byte, 0, 256), v, TextoAceitandoFloat64)
+func CanonicalJSONAcceptingFloat64(v any) ([]byte, error) {
+	return escrever(make([]byte, 0, 256), v, TextAcceptingFloat64)
 }
 
 func escrever(dst []byte, v any, render func(any) (string, error)) ([]byte, error) {
@@ -120,7 +120,7 @@ func escrever(dst []byte, v any, render func(any) (string, error)) ([]byte, erro
 		return append(dst, ']'), nil
 
 	default:
-		// Numero. O Texto ja e o repr do Python para float e o literal para
+		// Numero. O Text ja e o repr do Python para float e o literal para
 		// int, que e exatamente o que o json.dumps escreve -- e ele RECUSA um
 		// float64 cru, pelo mesmo motivo que esta funcao nao pode adivinhar.
 		texto, err := render(v)
@@ -131,7 +131,7 @@ func escrever(dst []byte, v any, render func(any) (string, error)) ([]byte, erro
 			return jsontext.AppendJSONString(dst, texto), nil
 		}
 		if !ehNumero(texto) {
-			return nil, fmt.Errorf("JSONCanonico não sabe serializar %T. Ela cobre o que um "+
+			return nil, fmt.Errorf("CanonicalJSON não sabe serializar %T. Ela cobre o que um "+
 				"registro JSON produz: nil, bool, string, número, objeto e lista", v)
 		}
 		return append(dst, texto...), nil
@@ -140,7 +140,7 @@ func escrever(dst []byte, v any, render func(any) (string, error)) ([]byte, erro
 
 // ehNumero confere que o texto e um literal JSON de numero.
 //
-// A conferencia existe porque o Texto rende bool como "True" e nil como "None",
+// A conferencia existe porque o Text rende bool como "True" e nil como "None",
 // que sao Python e nao JSON -- e os dois ja foram tratados acima. Ela e a rede
 // que impede um tipo novo de escapar pelo default e sair como literal invalido.
 func ehNumero(s string) bool {

@@ -320,7 +320,7 @@ func ehGzip(resp *http.Response, url string) bool {
 	return strings.HasSuffix(strings.ToLower(semQuery), ".gz")
 }
 
-// leituraGzip fecha os dois: o descompressor e a conexao debaixo dele. Fechar
+// leituraGzip fecha os dois: o descompressor e a conexao debaixo dele. Finish
 // so o de cima deixaria a conexao presa ate o timeout.
 type leituraGzip struct {
 	*gzip.Reader
@@ -969,8 +969,8 @@ func NewDecoder(r io.Reader, source core.Source) Decoder {
 	switch source.Format {
 	case "csv":
 		leitor := csv.NewReader(r)
-		if source.Delimitador != 0 {
-			leitor.Comma = source.Delimitador
+		if source.Delimiter != 0 {
+			leitor.Comma = source.Delimiter
 		}
 		return &csvDecoder{r: leitor, noHeader: source.NoHeader}
 	case "ndjson":

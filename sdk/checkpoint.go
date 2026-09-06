@@ -29,7 +29,7 @@ import (
 // O que ele custa: a extracao deixa de ser uma passada unica. O extract
 // inteiro pousa no deposito antes de a primeira linha ser carregada, e depois
 // e relido de la -- uma escrita e uma leitura a mais do volume, em TODA
-// execucao, para socorrer a que falha. Por isso vem desligado.
+// execucao, para socorrer a que falha. By isso vem desligado.
 //
 // # Quando NAO usar
 //
@@ -273,7 +273,7 @@ func materializar(ctx context.Context, dep *checkpoint.Deposito,
 			}
 		}
 
-		if err := esc.Fechar(ctx, nome, run); err != nil {
+		if err := esc.Finish(ctx, nome, run); err != nil {
 			degradar(err, nil)
 			return
 		}

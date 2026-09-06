@@ -53,7 +53,7 @@ func IngestionID(fields ...string) Transformer {
 //
 // Use quando o id precisa casar com o de um sistema que ja gravou linhas:
 //
-//	sdk.IngestionIDWith(pycompat.Texto)
+//	sdk.IngestionIDWith(pycompat.Text)
 //
 // O padrao NAO usa isto, e o motivo nao e preferencia: trocar a renderizacao
 // mudaria o ingestion_id de toda linha que o Go ja gravou. Um fetcher em
@@ -83,19 +83,19 @@ func IngestionIDWith(render Renderer, fields ...string) Transformer {
 // Trocar o namespace de um pipeline que ja gravou reescreve todo id dele. Nao
 // ha migracao barata: a proxima execucao grava tudo de novo, e o merge do
 // bronze duplica a tabela.
-func Namespace(ns uuid.UUID) Identidade { return Identidade{ns: ns} }
+func Namespace(ns uuid.UUID) Identity { return Identity{ns: ns} }
 
-// Identidade compoe os transformers de identidade num namespace escolhido.
+// Identity compoe os transformers de identidade num namespace escolhido.
 // Ver Namespace.
-type Identidade struct{ ns uuid.UUID }
+type Identity struct{ ns uuid.UUID }
 
 // IngestionID e sdk.IngestionID no namespace escolhido.
-func (i Identidade) IngestionID(fields ...string) Transformer {
+func (i Identity) IngestionID(fields ...string) Transformer {
 	return i.IngestionIDWith(func(v any) (string, error) { return asText(v), nil }, fields...)
 }
 
 // IngestionIDWith e sdk.IngestionIDWith no namespace escolhido.
-func (i Identidade) IngestionIDWith(render Renderer, fields ...string) Transformer {
+func (i Identity) IngestionIDWith(render Renderer, fields ...string) Transformer {
 	return ingestionIDCom(i.ns, render, fields...)
 }
 
