@@ -1,10 +1,11 @@
-// Package config carrega e valida a configuracao do processo a partir do
-// ambiente.
+// Package config loads and validates the process's configuration from the
+// environment.
 //
-// Fica fora da arvore descrita na secao 36 do plano, que nao previu um pacote
-// para isso. A alternativa seria espalhar os os.Getenv por cmd/ e
-// infrastructure/; um ponto unico de leitura e validacao vale o desvio, e a
-// regra 7 pede que decisoes assim sejam explicitas em vez de silenciosas.
+// It sits outside the tree §36 of the plan describes, which did not foresee a
+// package for this. The alternative was scattering os.Getenv across cmd/ and
+// infrastructure/; a single point of reading and validation is worth the
+// detour, and rule 7 asks that decisions like this one be explicit rather than
+// silent.
 package config
 
 import (
@@ -16,8 +17,8 @@ import (
 	"time"
 )
 
-// Config e o estado imutavel derivado do ambiente. Tudo que o processo precisa
-// para subir esta aqui — nada le o ambiente depois do boot.
+// Config is the immutable state derived from the environment. Everything the
+// process needs to start is here -- nothing reads the environment after boot.
 type Config struct {
 	Env             string
 	HTTPAddr        string
@@ -25,35 +26,37 @@ type Config struct {
 	LogLevel        string
 	ShutdownTimeout time.Duration
 
-	// BrandFile aponta o YAML de identidade visual. Opcional: sem ele a
-	// interface usa a identidade padrao.
+	// BrandFile points at the visual identity YAML. Optional: without it the
+	// interface uses the default identity.
 	BrandFile string
 
-	// TaskEnv lista o que o processo repassa para as tasks locais. Ver
-	// AmbienteDasTasks — o padrao NAO herda o ambiente, e isso e deliberado.
+	// TaskEnv lists what the process passes on to local tasks. See
+	// AmbienteDasTasks -- the default does NOT inherit the environment, and
+	// that is deliberate.
 	TaskEnv []string
 
-	// SlackWebhook recebe o alerta de falha definitiva. Vazio = ninguem e
-	// avisado. Vem do ambiente, e nunca do YAML: quem tem a URL posta no canal
-	// como se fosse a plataforma.
+	// SlackWebhook receives the alert for a definitive failure. Empty means
+	// nobody is told. It comes from the environment and never from the YAML:
+	// whoever holds the URL posts in the channel as if they were the
+	// platform.
 	SlackWebhook string
 
-	// Auth e a credencial de operador que fecha a interface. Ver internal/auth.
+	// Auth is the operator credential that closes the interface. See internal/auth.
 	Auth auth.Credencial
 
-	// UIURL monta o link da execucao no alerta. Sem ela o alerta diz o que
-	// falhou, mas obriga quem le a procurar a run na mao.
+	// UIURL builds the run's link in the alert. Without it the alert says what
+	// failed but makes the reader hunt for the run by hand.
 	UIURL string
 
-	// Pods parametriza a execucao em Kubernetes. Sao decisoes da INSTALACAO —
-	// com que identidade e credenciais os pods sobem —, e por isso vem do
-	// ambiente e nao do YAML do workflow: um pipeline nao deve poder escolher a
-	// service account com que roda.
+	// Pods parameterises execution in Kubernetes. These are the INSTALLATION's
+	// decisions -- which identity and credentials the pods start with -- which
+	// is why they come from the environment and not the workflow's YAML: a
+	// pipeline must not get to pick the service account it runs as.
 	Pods PodsConfig
 }
 
 type PodsConfig struct {
-	// Modo: auto (usa pods quando ha cluster), on (exige) ou off (nunca).
+	// Mode: auto (use pods when a cluster is there), on (require) or off (never).
 	Modo              string
 	Namespace         string
 	ServiceAccount    string
@@ -61,33 +64,34 @@ type PodsConfig struct {
 	EnvFromSecrets    []string
 	EnvFromConfigMaps []string
 
-	// SecretsPermitidos limita o que um `secrets:` de YAML pode citar. Vazia
-	// nega tudo: a instalacao decide quais segredos existem para workflows, e
-	// o YAML decide qual passo recebe cada um.
+	// SecretsPermitidos limits what a YAML's `secrets:` may name. Empty denies
+	// everything: the installation decides which secrets exist for workflows,
+	// and the YAML decides which step receives each one.
 	SecretsPermitidos []string
 
-	// CredencialPVC e CredencialPath montam o volume onde o SDK guarda a
-	// credencial rotacionada. Sem o PVC, nada muda.
+	// CredencialPVC and CredencialPath mount the volume where the SDK keeps the
+	// credential it rotates. Without the PVC, nothing changes.
 	CredencialPVC  string
 	CredencialPath string
 	NodeSelector   map[string]string
-	// Toleracoes no formato "chave=valor:efeito", separadas por virgula. O pool
-	// arm64 da Zarv tem taint, e sem toleracao o pod da task fica Pending para
-	// sempre — sem erro, so parado.
+	// Tolerations in "key=value:effect" form, comma separated. An arm64 pool
+	// commonly carries a taint, and without a toleration the task's pod stays
+	// Pending forever -- no error, just stopped.
 	Toleracoes    []Toleracao
 	ManterEmFalha bool
 }
 
-// Toleracao espelha o campo do pod, sem importar o tipo do Kubernetes.
+// Toleracao mirrors the pod's field, without importing Kubernetes' type.
 type Toleracao struct {
 	Chave  string
 	Valor  string
 	Efeito string
 }
 
-// Load monta a Config e falha no boot se algo obrigatorio faltar. Falhar cedo e
-// deliberado: um processo que sobe sem DATABASE_URL so descobre o problema no
-// primeiro request, e ai o readiness ja mentiu para o orquestrador.
+// Load builds the Config and fails at boot if something required is missing.
+// Failing early is deliberate: a process that starts without DATABASE_URL only
+// finds out on the first request, and by then readiness has already lied to the
+// orchestrator.
 func Load() (Config, error) {
 	c := Config{
 		Env:          get("BREVIS_ENV", "local"),
@@ -139,18 +143,19 @@ func Load() (Config, error) {
 	if err := c.Auth.Validar(); err != nil {
 		return Config{}, err
 	}
-	// Fora do local, subir sem credencial e recusado.
+	// Outside local, starting without a credential is refused.
 	//
-	// A interface dispara pipeline: um POST em /workflows/<slug>/trigger roda um
-	// `dbt build` que escreve no data warehouse. Aberta na internet, ela e um
-	// controle remoto do warehouse para qualquer pessoa — foi exatamente o
-	// estado em que o ambiente de dev subiu, e ninguem percebeu porque nada
-	// falhava. Um aviso no log nao teria bastado: ninguem le o log de um
-	// processo que funciona. Falhar no boot e o que torna o descuido visivel.
+	// The interface triggers pipelines: a POST to /workflows/<slug>/trigger runs
+	// a `dbt build` that writes to the warehouse. Open on the internet, it is a
+	// remote control for the warehouse available to anyone -- which is exactly
+	// the state the dev environment came up in, and nobody noticed because
+	// nothing failed. A warning in the log would not have been enough: nobody
+	// reads the log of a process that works. Failing at boot is what makes the
+	// oversight visible.
 	//
-	// `local` fica de fora porque ali o servidor escuta a maquina de quem
-	// desenvolve, e exigir senha a cada `make up` empurraria o time a desligar
-	// a autenticacao de vez.
+	// `local` is left out because there the server listens on the developer's
+	// own machine, and demanding a password on every `make up` would push the
+	// team to turn authentication off for good.
 	if c.Env != "local" && !c.Auth.Ativa() {
 		return Config{}, fmt.Errorf(
 			"BREVIS_ENV=%s exige credencial: defina BREVIS_AUTH_USUARIO, "+
@@ -160,22 +165,25 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-// AmbienteDasTasks monta o ambiente que cada passo local recebe.
+// AmbienteDasTasks builds the environment each local step receives.
 //
-// A task NAO herda o ambiente do orquestrador. A razao e concreta: o processo do
-// Brevis carrega BREVIS_DATABASE_URL com usuario e senha do Postgres, e um
-// workflow e um comando arbitrario escrito por outra pessoa — herdar por padrao
-// entregaria a credencial do banco a todo passo de todo pipeline.
+// A task does NOT inherit the orchestrator's environment. The reason is
+// concrete: the Brevis process carries BREVIS_DATABASE_URL with the Postgres
+// user and password, and a workflow is an arbitrary command written by somebody
+// else -- inheriting by default would hand the database credential to every
+// step of every pipeline.
 //
-// O que a task precisa, entao, e declarado: `BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE`
-// repassa essas duas do ambiente do processo. `NOME=valor` define um literal.
-// `*` repassa tudo MENOS as BREVIS_* — o curinga existe para quem precisa, e a
-// excecao existe porque a configuracao do orquestrador nunca e trabalho da task.
+// What the task needs is therefore declared:
+// `BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE` passes those two from the process's
+// environment. `NAME=value` sets a literal. `*` passes everything EXCEPT the
+// BREVIS_* ones -- the wildcard exists for those who need it, and the exception
+// exists because the orchestrator's configuration is never the task's business.
 //
-// PATH e HOME entram sempre: sem PATH nenhum comando resolve, e o erro seria um
-// "not found" que nao explica nada.
-// Funcao de pacote e nao metodo: `brevis run` roda sem banco e por isso sem
-// Config — mas precisa do mesmo ambiente.
+// PATH and HOME always go in: without PATH no command resolves, and the error
+// would be a "not found" that explains nothing.
+//
+// A package function and not a method: `brevis run` runs without a database and
+// therefore without a Config -- but needs the same environment.
 func AmbienteDasTasks(nomes []string) map[string]string {
 	env := map[string]string{
 		"PATH": os.Getenv("PATH"),
@@ -196,9 +204,9 @@ func AmbienteDasTasks(nomes []string) map[string]string {
 			env[nome] = valor
 			continue
 		}
-		// Nome sem valor: repassa se existir. Ausente NAO vira string vazia —
-		// `GOOGLE_PROJECT_ID=""` faria o dbt falhar mais tarde, com uma
-		// mensagem pior do que a de variavel ausente.
+		// A name with no value: passed on if it exists. Missing does NOT become
+		// an empty string -- `GOOGLE_PROJECT_ID=""` would make dbt fail later,
+		// with a message worse than the one for a missing variable.
 		if v, existe := os.LookupEnv(entrada); existe {
 			env[entrada] = v
 		}
@@ -206,7 +214,7 @@ func AmbienteDasTasks(nomes []string) map[string]string {
 	return env
 }
 
-// toleracoes le "chave=valor:efeito,outra=valor:efeito".
+// toleracoes reads "key=value:effect,other=value:effect".
 //
 // Entrada malformada e IGNORADA em vez de virar erro de boot: uma toleracao
 // errada deixa o pod Pending, que e visivel; recusar o boot do scheduler por

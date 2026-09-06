@@ -1,13 +1,14 @@
-// Package branding carrega a identidade visual da instalacao.
+// Package branding loads the installation's visual identity.
 //
-// Existe porque a interface vai ser usada por clientes diferentes, e cada um
-// quer o proprio nome, a propria frase e as proprias cores. O que NAO se
-// customiza e a atribuicao "Powered by Brevis": ela nao vem da configuracao,
-// vem do codigo, e por isso nao ha valor de YAML capaz de removê-la.
+// It exists because the interface will be used by different customers, and each
+// wants its own name, its own phrase and its own colours. What is NOT
+// customisable is the "Powered by Brevis" attribution: it does not come from
+// configuration, it comes from the code, and so there is no YAML value capable
+// of removing it.
 //
-// A escolha por YAML segue o resto do projeto — workflows sao YAML, e um segundo
-// mecanismo de configuracao (banco, painel, variaveis de ambiente para vinte
-// cores) seria um jeito novo de fazer a mesma coisa.
+// Choosing YAML follows the rest of the project -- workflows are YAML, and a
+// second configuration mechanism (a database, a panel, environment variables
+// for twenty colours) would be a new way of doing the same thing.
 package branding
 
 import (
@@ -20,34 +21,35 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Marca e a identidade de uma instalacao.
+// Marca is an installation's identity.
 type Marca struct {
-	// Titulo aparece na barra lateral e no <title> das paginas.
+	// Titulo appears in the sidebar and in the pages' <title>.
 	Titulo string `yaml:"titulo"`
 
-	// Subtitulo e o versalete sob o titulo.
+	// Subtitulo is the small-caps line under the title.
 	Subtitulo string `yaml:"subtitulo"`
 
-	// Frase e a citacao do rodape da barra lateral. Multiplas linhas sao
-	// preservadas — a quebra faz parte do ritmo do texto.
+	// Frase is the quotation in the sidebar's footer. Multiple lines are
+	// preserved -- the break is part of the text's rhythm.
 	Frase string `yaml:"frase"`
 
-	// Logo e a marca grafica ao lado do titulo. Aceita URL absoluta (a logo
-	// hospedada do cliente) ou caminho interno comecando em `/assets/`.
+	// Logo is the graphic mark next to the title. It accepts an absolute URL
+	// (the customer's hosted logo) or an internal path starting at `/assets/`.
 	//
-	// Vazio cai no simbolo embutido, e o padrao e interno de proposito: uma
-	// logo que depende de host externo some quando aquele host cai, quando o
-	// cluster nao tem saida para a internet, ou quando o cliente reorganiza o
-	// proprio site. A tela de uma ferramenta de operacao nao pode quebrar por
-	// causa disso.
+	// Empty falls back to the embedded symbol, and the default is internal on
+	// purpose: a logo that depends on an external host disappears when that host
+	// goes down, when the cluster has no route to the internet, or when the
+	// customer reorganises their own site. An operations tool's screen must not
+	// break over that.
 	Logo string `yaml:"logo"`
 
 	Tema Tema `yaml:"tema"`
 }
 
-// Tema sao as cores. Cada campo mapeia para uma variavel CSS que o Tailwind ja
-// emite; sobrescreve-las em tempo de execucao repinta a interface inteira sem
-// recompilar CSS, porque TODO utilitario resolve a cor por `var(--color-*)`.
+// Tema is the colours. Each field maps to a CSS variable Tailwind already
+// emits; overriding them at runtime repaints the whole interface without
+// recompiling CSS, because EVERY utility resolves its colour through
+// `var(--color-*)`.
 type Tema struct {
 	Fundo         string `yaml:"fundo"`
 	FundoSuave    string `yaml:"fundo_suave"`
@@ -66,14 +68,14 @@ type Tema struct {
 	Aguardando string `yaml:"aguardando"`
 }
 
-// LogoPadrao e o simbolo embutido, servido do proprio binario.
+// LogoPadrao is the embedded symbol, served from the binary itself.
 const LogoPadrao = "/assets/logo.svg"
 
-// Atribuicao e fixa. Nao e campo de configuracao de proposito: e a unica coisa
-// da tela que o cliente nao escolhe.
+// Atribuicao is fixed. Not a configuration field, on purpose: it is the one
+// thing on the screen the customer does not choose.
 const Atribuicao = "Powered by Brevis"
 
-// Padrao e a identidade Arete, usada quando nao ha arquivo de marca.
+// Padrao is the default identity, used when there is no brand file.
 func Padrao() Marca {
 	return Marca{
 		Titulo:    "Brevis",
@@ -99,12 +101,12 @@ func Padrao() Marca {
 	}
 }
 
-// Carregar le o arquivo de marca. Ausencia NAO e erro: a instalacao padrao nao
-// tem arquivo nenhum, e exigi-lo faria o container falhar no boot por causa de
-// uma customizacao opcional.
+// Carregar reads the brand file. Absence is NOT an error: the default
+// installation has no file at all, and requiring one would make the container
+// fail at boot over an optional customisation.
 //
-// Campos ausentes herdam o padrao, entao um arquivo com duas linhas — so o nome
-// e a frase — e um arquivo valido.
+// Missing fields inherit the default, so a two-line file -- just the name and
+// the phrase -- is a valid file.
 func Carregar(caminho string) (Marca, error) {
 	m := Padrao()
 	if caminho == "" {
@@ -117,8 +119,8 @@ func Carregar(caminho string) (Marca, error) {
 	if err != nil {
 		return m, fmt.Errorf("lendo %s: %w", caminho, err)
 	}
-	// Decodifica SOBRE o padrao: o yaml.v3 so escreve os campos presentes no
-	// arquivo, entao o resto permanece.
+	// Decodes ONTO the default: yaml.v3 only writes the fields present in the
+	// file, so the rest survives.
 	if err := yaml.Unmarshal(conteudo, &m); err != nil {
 		return Padrao(), fmt.Errorf("%s: yaml invalido: %w", caminho, err)
 	}
@@ -130,12 +132,12 @@ func Carregar(caminho string) (Marca, error) {
 
 var hex = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
 
-// Validar recusa cor que nao seja hexadecimal.
+// Validar refuses a colour that is not hexadecimal.
 //
-// Isto e seguranca, nao purismo: os valores do tema sao escritos dentro de um
-// bloco <style> na pagina. Uma string livre ali poderia fechar a declaracao e
-// injetar CSS arbitrario — que, num painel de operacao, e capaz de esconder um
-// estado de falha atras de um seletor.
+// This is security, not purism: the theme's values are written inside a <style>
+// block on the page. A free-form string there could close the declaration and
+// inject arbitrary CSS -- which, on an operations panel, is capable of hiding a
+// failure state behind a selector.
 func (m Marca) Validar() error {
 	if strings.TrimSpace(m.Titulo) == "" {
 		return fmt.Errorf("titulo nao pode ser vazio")
@@ -151,13 +153,14 @@ func (m Marca) Validar() error {
 	return nil
 }
 
-// validarLogo aceita apenas https://, http:// e caminho interno.
+// validarLogo accepts only https://, http:// and an internal path.
 //
-// Pelo mesmo motivo das cores: o valor vai para o `src` de uma <img>. Um
-// `javascript:` ou um `data:text/html,...` ali executa script na sessao de quem
-// abriu o painel — e quem edita o arquivo de marca pode nao ser quem opera o
-// cluster. A lista e de permissao, nao de bloqueio: recusar `javascript:` por
-// nome deixa passar o proximo esquema que alguem inventar.
+// For the same reason as the colours: the value goes into an <img>'s `src`. A
+// `javascript:` or a `data:text/html,...` there runs script in the session of
+// whoever opened the panel -- and whoever edits the brand file may not be
+// whoever operates the cluster. The list is an allowlist, not a blocklist:
+// refusing `javascript:` by name lets through the next scheme somebody
+// invents.
 func validarLogo(logo string) error {
 	if logo == "" {
 		return nil
@@ -183,10 +186,10 @@ func (t Tema) cores() map[string]string {
 	}
 }
 
-// CSS devolve as variaveis a injetar no <head>.
+// CSS returns the variables to inject into the <head>.
 //
-// Vazio quando o tema e o padrao: a folha compilada ja tem esses valores, e
-// repeti-los seria bytes em toda pagina para nao mudar nada.
+// Empty when the theme is the default: the compiled sheet already carries those
+// values, and repeating them would be bytes on every page to change nothing.
 func (m Marca) CSS() string {
 	padrao := Padrao().Tema
 	if m.Tema == padrao {
@@ -208,9 +211,9 @@ func (m Marca) CSS() string {
 	escreve("--color-gold", m.Tema.Destaque)
 	escreve("--color-gold-strong", m.Tema.DestaqueForte)
 
-	// Derivadas: linha e realce sao a mesma cor com transparencia. Calcular
-	// aqui, e nao pedir ao cliente, evita que ele configure uma borda que nao
-	// combina com a propria tinta que escolheu.
+	// Derived: line and highlight are the same colour with transparency.
+	// Computing them here, rather than asking the customer, keeps them from
+	// configuring a border that clashes with the ink they picked.
 	escreve("--color-line", comAlfa(m.Tema.Tinta, "1a"))
 	escreve("--color-line-soft", comAlfa(m.Tema.Tinta, "0d"))
 	escreve("--color-gold-wash", comAlfa(m.Tema.Destaque, "14"))
@@ -223,14 +226,15 @@ func (m Marca) CSS() string {
 	escreve("--color-state-canceled", m.Tema.Cancelado)
 	escreve("--color-state-pending", m.Tema.Aguardando)
 
-	// O fundo do body e um degrade escrito a mao no CSS-fonte, entao nao segue
-	// as variaveis sozinho.
+	// The body's background is a hand-written gradient in the source CSS, so it
+	// does not follow the variables on its own.
 	fmt.Fprintf(&b, "}body{background:linear-gradient(180deg,%s 0%%,%s 44%%,%s 100%%);}",
 		m.Tema.FundoSuave, m.Tema.Fundo, m.Tema.FundoSuave)
 	return b.String()
 }
 
-// comAlfa anexa o canal alfa a uma cor de 6 digitos. Formatos curtos ou que ja
+// comAlfa appends the alpha channel to a 6-digit colour. Short formats, or ones
+// that already
 // trazem alfa sao devolvidos intactos — misturar canais daria uma cor errada
 // em vez de um erro visivel.
 func comAlfa(cor, alfa string) string {
