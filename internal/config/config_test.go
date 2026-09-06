@@ -76,7 +76,7 @@ func TestSemDeclaracaoSoPathEHome(t *testing.T) {
 }
 
 func TestValorLiteralEVariavelAusente(t *testing.T) {
-	os.Unsetenv("NAO_EXISTE")
+	_ = os.Unsetenv("NAO_EXISTE")
 	env := AmbienteDasTasks([]string{"STAGE=prod", "NAO_EXISTE"})
 
 	if env["STAGE"] != "prod" {

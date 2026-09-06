@@ -97,7 +97,7 @@ func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode >= 300 {
 		// O Slack responde texto puro ("invalid_payload", "no_service"), nao
 		// JSON. Repassar o corpo e o que permite distinguir webhook revogado de

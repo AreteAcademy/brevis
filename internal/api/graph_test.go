@@ -120,7 +120,7 @@ func TestGrafoDoWorkflowPoeNiveisEmColunas(t *testing.T) {
 			t.Errorf("no %s com type %q, quero brevis (o custom node)", n.ID, n.Type)
 		}
 	}
-	if !(x["a"] < x["b"] && x["b"] < x["d"]) {
+	if x["a"] >= x["b"] || x["b"] >= x["d"] {
 		t.Errorf("colunas fora de ordem: a=%d b=%d d=%d", x["a"], x["b"], x["d"])
 	}
 	if x["b"] != x["c"] {
@@ -279,7 +279,7 @@ func TestPassoDoSDKViraGrupoComAsEtapasDentro(t *testing.T) {
 		"b": {NodeID: "b", Status: "running", Etapas: quatroEtapas(), SdkVersao: "v0.44.1"},
 	})
 
-	var pai int = -1
+	pai := -1
 	var filhos []int
 	for i, n := range g.Nodes {
 		if n.ID == "b" {

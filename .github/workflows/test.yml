@@ -39,6 +39,57 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
+  motor:
+    name: Motor
+    runs-on: ubuntu-latest
+
+    # O modulo RAIZ -- runner, executores, API, notify, scheduler.
+    #
+    # Ele nao tinha CI nenhum: todo job deste arquivo e do quality.yml faz
+    # `cd sdk`, e o unico `go test ./...` na raiz vivia no portao do release.
+    # Como o release nunca tinha rodado, o motor chegou a v0.4.0 sem um teste
+    # ter rodado fora da maquina de quem escreveu -- e a primeira tentativa de
+    # publicar morreu num teste preso ao fuso de quem o escreveu.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: gofmt
+        run: |
+          arquivos=$(gofmt -l . | grep -v '^sdk/' || true)
+          if [ -n "$arquivos" ]; then
+            echo "::error::gofmt: $arquivos"
+            exit 1
+          fi
+
+      - name: Build e vet
+        run: |
+          go build ./...
+          go vet ./...
+
+      # -race porque o runner e concorrente por desenho: ele executa niveis do
+      # DAG em paralelo e drena eventos de varios executores. Uma corrida aqui
+      # aparece como uma execucao que falha uma vez em cinquenta.
+      - name: Testes
+        run: go test -race ./...
+
+      - name: go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum \
+            || { echo "::error::rode 'go mod tidy' e commite"; exit 1; }
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.13.2
+          args: --timeout=5m
+
   integration:
     name: Integration
     runs-on: ubuntu-latest

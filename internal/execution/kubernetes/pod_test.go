@@ -151,7 +151,7 @@ func TestNomeDoPodObedeceOLimiteDoKubernetes(t *testing.T) {
 		t.Errorf("nome com %d caracteres: %q", len(nome), nome)
 	}
 	for _, r := range nome {
-		if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
 			t.Fatalf("caractere invalido %q em %q", r, nome)
 		}
 	}

@@ -136,7 +136,7 @@ func (c *Cliente) requisicao(ctx context.Context, metodo, caminho string, corpo 
 // motivo real ("pods is forbidden: ... cannot create resource"), e descarta-lo
 // deixaria so "422", que nao ajuda ninguem.
 func erroDaAPI(res *http.Response) error {
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	var status struct {
 		Message string `json:"message"`
 		Reason  string `json:"reason"`
@@ -159,7 +159,7 @@ func (c *Cliente) CriarPod(ctx context.Context, p Pod) (Pod, error) {
 	if res.StatusCode >= 300 {
 		return Pod{}, erroDaAPI(res)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	var criado Pod
 	if err := json.NewDecoder(res.Body).Decode(&criado); err != nil {
@@ -178,7 +178,7 @@ func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
 	if res.StatusCode >= 300 {
 		return Pod{}, erroDaAPI(res)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	var p Pod
 	if err := json.NewDecoder(res.Body).Decode(&p); err != nil {
@@ -217,6 +217,6 @@ func (c *Cliente) ApagarPod(ctx context.Context, nome string) error {
 	if res.StatusCode >= 300 && res.StatusCode != http.StatusNotFound {
 		return erroDaAPI(res)
 	}
-	res.Body.Close()
+	_ = res.Body.Close()
 	return nil
 }

@@ -66,7 +66,7 @@ func Migrate(ctx context.Context, url, direcao string) error {
 	}
 
 	db := stdlib.OpenDB(*cfg)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	goose.SetBaseFS(migrations.FS)
 	if err := goose.SetDialect("postgres"); err != nil {

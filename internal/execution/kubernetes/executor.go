@@ -217,7 +217,7 @@ func (e *Executor) seguirLogs(ctx context.Context, nome string, t execution.Task
 	if err != nil {
 		return // o log pode nao estar pronto; drenarLogs ainda le no fim
 	}
-	defer corpo.Close()
+	defer func() { _ = corpo.Close() }()
 	copiar(corpo, t.NodeID, eventos)
 }
 
@@ -236,7 +236,7 @@ func (e *Executor) drenarLogs(ctx context.Context, nome string, t execution.Task
 		}
 		return
 	}
-	defer corpo.Close()
+	defer func() { _ = corpo.Close() }()
 	copiar(corpo, t.NodeID, eventos)
 }
 

@@ -393,7 +393,7 @@ func (consoleReporter) Evento(e execution.Event) {
 		if e.Stream == "stderr" {
 			destino = os.Stderr
 		}
-		fmt.Fprintf(destino, "    %s | %s\n", e.NodeID, e.Message)
+		_, _ = fmt.Fprintf(destino, "    %s | %s\n", e.NodeID, e.Message)
 	case execution.EventSucceeded:
 		fmt.Printf("  ✓ %s\n", e.NodeID)
 	case execution.EventFailed:
