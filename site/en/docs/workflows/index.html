@@ -215,7 +215,55 @@ resources:
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB <code>dbt build</code>, instead of both paying the size of the larger one. See <a href="/en/docs/pod-per-step/">Pod per step</a>.</p>
 <h2 id="step-fields">Step fields<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>required</strong></td><td>unique in the workflow; the name shown in the graph and logs</td></tr><tr><td><code>run</code></td><td></td><td>the command</td></tr><tr><td><code>image</code></td><td></td><td>the step's image; without it, inherits the top-level one</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> runs without a shell — required on distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>list of <code>id</code>s that must finish first</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> and <code>limits</code> for that step</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>under what state of its dependencies this step runs — see below</td></tr><tr><td><code>on_error</code></td><td></td><td>announces this step's failures — see below</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>required</strong></td><td>unique in the workflow; the name shown in the graph and logs</td></tr><tr><td><code>run</code></td><td></td><td>the command</td></tr><tr><td><code>image</code></td><td></td><td>the step's image; without it, inherits the top-level one</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> runs without a shell — required on distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>list of <code>id</code>s that must finish first; an entry may be <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>a step with no command, for a <code>start</code> or an <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> and <code>limits</code> for that step</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>under what state of its dependencies this step runs — see below</td></tr><tr><td><code>on_error</code></td><td></td><td>announces this step's failures — see below</td></tr></tbody></table></div>
+<h2 id="saying-what-an-arrow-means">Saying what an arrow means<a class="anchor" href="#saying-what-an-arrow-means" aria-label="link">#</a></h2>
+<p>A dependency can carry a label, shown on the arrow in the graph.</p>
+<div class="code-block" data-code="steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: additional data}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: changed existing data"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: determine_load_type
+    <span class="t-k">run</span>: ./decide.sh
+
+  - <span class="t-k">id</span>: load_full
+    <span class="t-k">run</span>: ./full.sh
+    <span class="t-k">depends_on</span>:
+      - {step: determine_load_type, label: additional data}
+
+  - <span class="t-k">id</span>: load_delta
+    <span class="t-k">run</span>: ./delta.sh
+    <span class="t-k">depends_on</span>:
+      - <span class="t-k">step</span>: determine_load_type
+        <span class="t-k">label</span>: changed existing data</code></pre></div>
+<p>The bare form — <code>depends_on: [extract]</code> — keeps working and stays the normal one. Most dependencies have nothing to say, and a label on every arrow is noise.</p>
+<p>The labels earn their place on a <strong>branch</strong>: two arrows leaving the same step with nothing written on them is a diagram that requires opening the source to read, which is the one thing a graph exists to avoid.</p>
+<h2 id="a-step-that-does-nothing">A step that does nothing<a class="anchor" href="#a-step-that-does-nothing" aria-label="link">#</a></h2>
+<div class="code-block" data-code="steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: start
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+
+  - <span class="t-k">id</span>: end
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+    <span class="t-k">depends_on</span>: [load_full, load_delta, report]</code></pre></div>
+<p><code>marker: true</code> is a step with no command. It runs nothing, succeeds instantly, and appears on the graph.</p>
+<p>It is not decoration. An <code>end</code> that depends on every branch turns <em>did the whole thing finish?</em> into one node instead of six arrows to follow — and it behaves like any other step, so an <code>end</code> under a failed branch is <strong>skipped</strong>, not green.</p>
+<p><strong>A step with no <code>run:</code> and no <code>marker: true</code> is still refused.</strong> The two cases must not collapse into one: an empty command is almost always a mistake, and <code>marker: true</code> is how somebody says they meant it. A marker that also declares <code>run:</code> is refused too — that is a file saying two things.</p>
 <h2 id="running-a-step-only-when-something-failed">Running a step only when something failed<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
 <p>By default a step runs when everything before it worked. <code>when:</code> changes that.</p>
 <div class="code-block" data-code="steps:
@@ -299,7 +347,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#minimum-structure">Minimum structure</a></li><li class="toc-2"><a href="#order-chain-or-dag">Order: chain or dag</a></li><li class="toc-2"><a href="#schedule">Schedule</a></li><li class="toc-2"><a href="#image-and-resources">Image and resources</a></li><li class="toc-2"><a href="#step-fields">Step fields</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Running a step only when something failed</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">A step that does not run is skipped</a></li><li class="toc-3"><a href="#all-success-here-is-not-all-success-in-airflow">all_success here is not all_success in Airflow</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Announcing a step&#x27;s failures</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publishing</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">Minimum structure</a></li><li class="toc-2"><a href="#order-chain-or-dag">Order: chain or dag</a></li><li class="toc-2"><a href="#schedule">Schedule</a></li><li class="toc-2"><a href="#image-and-resources">Image and resources</a></li><li class="toc-2"><a href="#step-fields">Step fields</a></li><li class="toc-2"><a href="#saying-what-an-arrow-means">Saying what an arrow means</a></li><li class="toc-2"><a href="#a-step-that-does-nothing">A step that does nothing</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Running a step only when something failed</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">A step that does not run is skipped</a></li><li class="toc-3"><a href="#all-success-here-is-not-all-success-in-airflow">all_success here is not all_success in Airflow</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Announcing a step&#x27;s failures</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publishing</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

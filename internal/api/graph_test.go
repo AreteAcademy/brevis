@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -77,6 +78,7 @@ type graph struct {
 		Source   string `json:"source"`
 		Target   string `json:"target"`
 		Animated bool   `json:"animated"`
+		Label    string `json:"label"`
 	} `json:"edges"`
 }
 
@@ -543,4 +545,85 @@ func TestTheNodeCarriesWhatTheStepPublished(t *testing.T) {
 		t.Errorf("a step with no dependencies carries an available key: %v",
 			byID["extract"])
 	}
+}
+
+// TestAnEdgeLabelReachesTheDrawing.
+//
+// A branch with two outgoing arrows and no labels is a diagram that requires
+// opening the source to read, which is the one thing a graph exists to avoid.
+func TestAnEdgeLabelReachesTheDrawing(t *testing.T) {
+	w := wf.Workflow{
+		Slug: "loads",
+		Nodes: []wf.Node{
+			{ID: "decide", Run: "./decide.sh"},
+			{ID: "full", Run: "./full.sh"},
+			{ID: "delta", Run: "./delta.sh"},
+		},
+		Edges: []wf.Edge{
+			{From: "decide", To: "full", Label: "additional data"},
+			{From: "decide", To: "delta", Label: "changed existing data"},
+		},
+	}
+	_, g := request(t, newUI(defsFake{w: w}, execsFake{}), "/api/workflows/loads/graph")
+
+	got := map[string]string{}
+	for _, e := range g.Edges {
+		got[e.Target] = e.Label
+	}
+	if got["full"] != "additional data" || got["delta"] != "changed existing data" {
+		t.Errorf("the labels did not reach the payload: %v", got)
+	}
+}
+
+// An unlabelled edge carries no label, so the payload of every workflow written
+// before this feature is what it was.
+//
+// The first version of this test grepped the whole body for `"label"` and
+// failed: nodes have carried a `label` since the graph existed. Asserting on
+// the edges is the check it meant to be.
+func TestAnUnlabelledEdgeCarriesNoLabel(t *testing.T) {
+	res, g := request(t, newUI(defsFake{w: diamond()}, execsFake{}), "/api/workflows/diamond/graph")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", res.StatusCode)
+	}
+	if len(g.Edges) == 0 {
+		t.Fatal("the diamond has no edges")
+	}
+	for _, e := range g.Edges {
+		if e.Label != "" {
+			t.Errorf("%s -> %s grew a label: %q", e.Source, e.Target, e.Label)
+		}
+	}
+	// And the key is omitted rather than sent empty, so the bytes are the ones
+	// an already-deployed screen was reading.
+	body := rawBody(t, newUI(defsFake{w: diamond()}, execsFake{}), "/api/workflows/diamond/graph")
+	edges := body[strings.Index(body, `"edges"`):]
+	if strings.Contains(edges, `"label"`) {
+		t.Errorf("an unlabelled edge emitted an empty label key:\n%s", edges)
+	}
+}
+
+// A marker says what it is rather than showing an empty subtitle, which would
+// read as a step whose command failed to load.
+func TestAMarkerSaysWhatItIs(t *testing.T) {
+	w := wf.Workflow{
+		Slug:  "markers",
+		Nodes: []wf.Node{{ID: "start", Marker: true}, {ID: "work", Run: "./work.sh"}},
+		Edges: []wf.Edge{{From: "start", To: "work"}},
+	}
+	_, g := request(t, newUI(defsFake{w: w}, execsFake{}), "/api/workflows/markers/graph")
+	for _, n := range g.Nodes {
+		if n.ID == "start" && n.Data["acao"] != "marker" {
+			t.Errorf("the marker's subtitle is %v", n.Data["acao"])
+		}
+	}
+}
+
+func rawBody(t *testing.T, ui *api.UI, path string) string {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	return rec.Body.String()
 }

@@ -112,10 +112,65 @@ steps:
 | `run` | | o comando |
 | `image` | | a imagem do passo; sem ela, herda a do topo |
 | `shell` | `true` | `false` executa sem shell — necessário em distroless |
-| `depends_on` | | lista de `id` que precisam terminar antes |
+| `depends_on` | | lista de `id` que precisam terminar antes; uma entrada pode ser `{step, label}` |
+| `marker` | `false` | um passo sem comando, para um `start` ou um `end` |
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
 | `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
+
+## Dizendo o que uma seta significa
+
+Uma dependência pode carregar um rótulo, mostrado na seta do grafo.
+
+```yaml
+steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: dados adicionais}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: dados que mudaram
+```
+
+A forma simples — `depends_on: [extract]` — continua funcionando e continua
+sendo a normal. A maioria das dependências não tem nada a dizer, e um rótulo em
+toda seta é ruído.
+
+Os rótulos ganham o lugar deles numa **bifurcação**: duas setas saindo do mesmo
+passo sem nada escrito é um diagrama que exige abrir o código para ler, que é
+exatamente o que um grafo existe para evitar.
+
+## Um passo que não faz nada
+
+```yaml
+steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]
+```
+
+`marker: true` é um passo sem comando. Ele não roda nada, dá certo na hora, e
+aparece no grafo.
+
+Não é enfeite. Um `end` que depende de todos os ramos transforma *terminou tudo?*
+num nó só, em vez de seis setas para seguir — e ele se comporta como qualquer
+outro passo, então um `end` embaixo de um ramo que falhou fica **skipped**, não
+verde.
+
+**Um passo sem `run:` e sem `marker: true` continua recusado.** Os dois casos não
+podem virar um: um comando vazio é quase sempre um engano, e o `marker: true` é
+como alguém diz que fez de propósito. Um marker que também declara `run:` também
+é recusado — isso é um arquivo dizendo duas coisas.
 
 ## Rodando um passo só quando algo falhou
 

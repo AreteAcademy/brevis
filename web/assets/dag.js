@@ -723,7 +723,17 @@
           fitViewOptions: { padding: 0.2 },
           minZoom: 0.2,
           proOptions: { hideAttribution: false },
-          defaultEdgeOptions: { style: { stroke: GOLD, strokeWidth: 1.4 } },
+          defaultEdgeOptions: {
+            style: { stroke: GOLD, strokeWidth: 1.4 },
+            // Only edges that carry a label render one, and it has to read as
+            // part of the drawing rather than as a tooltip that got stuck: the
+            // parchment behind it is what keeps the arrow from striking through
+            // the words.
+            labelStyle: { fill: MUTED, fontSize: 11, fontWeight: 500 },
+            labelBgStyle: { fill: SURFACE, fillOpacity: 0.92 },
+            labelBgPadding: [6, 3],
+            labelBgBorderRadius: 6,
+          },
           // Viewing, not editing: dragging a node and reconnecting an edge stay
           // off until the editor phase. Pan and zoom remain free.
           nodesDraggable: false,

@@ -112,10 +112,64 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `run` | | the command |
 | `image` | | the step's image; without it, inherits the top-level one |
 | `shell` | `true` | `false` runs without a shell — required on distroless |
-| `depends_on` | | list of `id`s that must finish first |
+| `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
+| `marker` | `false` | a step with no command, for a `start` or an `end` |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `on_error` | | announces this step's failures — see below |
+
+## Saying what an arrow means
+
+A dependency can carry a label, shown on the arrow in the graph.
+
+```yaml
+steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: additional data}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: changed existing data
+```
+
+The bare form — `depends_on: [extract]` — keeps working and stays the normal
+one. Most dependencies have nothing to say, and a label on every arrow is noise.
+
+The labels earn their place on a **branch**: two arrows leaving the same step
+with nothing written on them is a diagram that requires opening the source to
+read, which is the one thing a graph exists to avoid.
+
+## A step that does nothing
+
+```yaml
+steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]
+```
+
+`marker: true` is a step with no command. It runs nothing, succeeds instantly,
+and appears on the graph.
+
+It is not decoration. An `end` that depends on every branch turns *did the whole
+thing finish?* into one node instead of six arrows to follow — and it behaves
+like any other step, so an `end` under a failed branch is **skipped**, not
+green.
+
+**A step with no `run:` and no `marker: true` is still refused.** The two cases
+must not collapse into one: an empty command is almost always a mistake, and
+`marker: true` is how somebody says they meant it. A marker that also declares
+`run:` is refused too — that is a file saying two things.
 
 ## Running a step only when something failed
 

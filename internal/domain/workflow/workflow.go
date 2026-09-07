@@ -100,6 +100,19 @@ type Node struct {
 	Runtime string
 	Tools   []string
 
+	// Marker says this step does nothing and exists to be a point in the graph.
+	//
+	//	- id: start
+	//	  marker: true
+	//
+	// It is the EmptyOperator every orchestrator ends up with, and it is not
+	// decoration: an `end` that depends on everything turns "did the whole
+	// thing finish?" into one node instead of six arrows to follow. Without it,
+	// Validate refuses a step with neither `run` nor `action` -- correctly,
+	// because that is almost always a mistake, and the two cases must not
+	// collapse into one.
+	Marker bool
+
 	// When is the trigger rule: under what state of its dependencies this step
 	// runs at all. Empty is WhenAllSuccess, which is what every workflow
 	// published before this existed means.
@@ -350,6 +363,20 @@ func validateOnError(slug, step string, o *OnError) error {
 type Edge struct {
 	From string
 	To   string
+
+	// Label is what this dependency MEANS, shown on the arrow.
+	//
+	//	depends_on:
+	//	  - {step: determine_load_type, label: changed existing data}
+	//
+	// Empty is the normal case and draws nothing. It exists for the branch: a
+	// step with two outgoing arrows and no labels is a diagram that requires
+	// opening the source to read, which is the one thing a graph is for.
+	//
+	// Additive in the stored document, like Runtime and Tools: a Workflow is
+	// written whole as JSON with no tags, so an older engine ignores the field
+	// and this one reading an older document gets "".
+	Label string
 }
 
 // Validate applies the invariants §5 of the plan requires before saving.
@@ -375,10 +402,21 @@ func (w Workflow) Validate() error {
 
 		temRun, temAction := n.Run != "", n.Action != ""
 		switch {
+		case n.Marker && (temRun || temAction):
+			// A marker that also declares work is a file saying two things. It
+			// is refused rather than silently preferring one, because either
+			// reading loses something somebody wrote.
+			return fmt.Errorf("step %q is a `marker` and also declares `run` or `action`; "+
+				"a marker does nothing", n.ID)
+		case n.Marker:
+			// Fine: a marker is the one step allowed to declare no work.
 		case temRun && temAction:
 			return fmt.Errorf("step %q declares both `run` and `action`; use one of the two", n.ID)
 		case !temRun && !temAction:
-			return fmt.Errorf("step %q declares neither `run` nor `action`", n.ID)
+			// Still refused, and deliberately: an empty `run:` is almost always
+			// a mistake, and `marker: true` is how somebody says they meant it.
+			return fmt.Errorf("step %q declares neither `run` nor `action` "+
+				"(if it is meant to do nothing, say `marker: true`)", n.ID)
 		case temRun && len(n.With) > 0:
 			return fmt.Errorf("step %q uses `with`, which only applies with `action`", n.ID)
 		}

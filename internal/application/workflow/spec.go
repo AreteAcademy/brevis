@@ -96,7 +96,7 @@ type StepSpec struct {
 	Run       string         `yaml:"run"`
 	Action    string         `yaml:"action"`
 	With      map[string]any `yaml:"with"`
-	DependsOn []string       `yaml:"depends_on"`
+	DependsOn []Dependency   `yaml:"depends_on"`
 
 	// Image e Resources sobrescrevem os do workflow. Ausentes = herda.
 	Image     string       `yaml:"image"`
@@ -142,6 +142,10 @@ type StepSpec struct {
 	// workflow written before this existed means.
 	When string `yaml:"when"`
 
+	// Marker is a step that does nothing and exists to be a point in the
+	// graph -- a `start`, an `end`, a join. See dominio.Node.Marker.
+	Marker bool `yaml:"marker"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -152,6 +156,43 @@ type StepSpec struct {
 	// declared-and-empty, and a zero OnError would look like a step asking to
 	// be announced to nowhere.
 	OnError *OnErrorSpec `yaml:"on_error"`
+}
+
+// Dependency is one entry of `depends_on`. It accepts both shapes:
+//
+//	depends_on: [extract]
+//	depends_on:
+//	  - {step: determine_load_type, label: changed existing data}
+//
+// The bare form stays the normal one -- most dependencies have nothing to say
+// and a label on every arrow is noise. The object exists for the branch, where
+// two arrows leaving the same step with no labels is a diagram that requires
+// opening the source to read.
+type Dependency struct {
+	Step  string `yaml:"step"`
+	Label string `yaml:"label"`
+}
+
+// UnmarshalYAML accepts a scalar or a mapping.
+//
+// The scalar branch is what keeps every workflow ever written working: a list
+// of strings decodes exactly as it did, and nothing in a published file has to
+// change.
+func (d *Dependency) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		return value.Decode(&d.Step)
+	}
+	// A named type without the method, or this recurses forever.
+	type plain Dependency
+	var p plain
+	if err := value.Decode(&p); err != nil {
+		return err
+	}
+	*d = Dependency(p)
+	if d.Step == "" {
+		return fmt.Errorf("a `depends_on` entry has a label but no `step`")
+	}
+	return nil
 }
 
 // OnErrorSpec is a step's alert declaration as written in the file.
@@ -226,6 +267,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Runtime: strings.ToLower(strings.TrimSpace(st.Runtime)),
 			Tools:   normalizeTools(st.Tools),
 			When:    strings.ToLower(strings.TrimSpace(st.When)),
+			Marker:  st.Marker,
 			OnError: st.OnError.dominio(),
 		})
 	}
@@ -326,7 +368,11 @@ func edges(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
 	case dominio.KindDAG:
 		for _, st := range steps {
 			for _, dep := range st.DependsOn {
-				out = append(out, dominio.Edge{From: dep, To: st.ID})
+				out = append(out, dominio.Edge{
+					From:  strings.TrimSpace(dep.Step),
+					To:    st.ID,
+					Label: strings.TrimSpace(dep.Label),
+				})
 			}
 		}
 	}

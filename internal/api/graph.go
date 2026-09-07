@@ -51,6 +51,11 @@ type flowEdge struct {
 	Source   string `json:"source"`
 	Target   string `json:"target"`
 	Animated bool   `json:"animated"`
+
+	// Label is what the dependency means, and it is omitted when there is
+	// none -- which is most of them. An unlabelled edge's payload stays byte
+	// for byte what it was.
+	Label string `json:"label,omitempty"`
 }
 
 type graphResponse struct {
@@ -299,7 +304,7 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 
 	for _, e := range def.Edges {
 		resp.Edges = append(resp.Edges, flowEdge{
-			ID: e.From + "->" + e.To, Source: e.From, Target: e.To,
+			ID: e.From + "->" + e.To, Source: e.From, Target: e.To, Label: e.Label,
 			// Only the edge arriving at what is running now is animated:
 			// animating everything turns into noise and buries the
 			// information.
@@ -339,6 +344,12 @@ func findNode(nodes []wf.Node, id string) wf.Node {
 
 // actionLabel is the card's second line: what the node does, not what it is called.
 func actionLabel(n wf.Node) string {
+	// A marker runs nothing, and an empty subtitle would make it look like a
+	// step whose command failed to load. Saying what it is costs one line and
+	// stops somebody from opening the YAML to find out why it is blank.
+	if n.Marker {
+		return "marker"
+	}
 	if n.Action != "" {
 		return n.Action
 	}

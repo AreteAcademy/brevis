@@ -215,7 +215,55 @@ resources:
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>É isto que faz um fetcher em Go custar 12 MB e 32Mi ao lado de um <code>dbt build</code> de 1,9 GB, em vez de os dois pagarem o tamanho do maior. Ver <a href="/docs/pod-per-step/">Pod por passo</a>.</p>
 <h2 id="campos-do-passo">Campos do passo<a class="anchor" href="#campos-do-passo" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>obrigatório</strong></td><td>único no workflow; é o nome que aparece no grafo e nos logs</td></tr><tr><td><code>run</code></td><td></td><td>o comando</td></tr><tr><td><code>image</code></td><td></td><td>a imagem do passo; sem ela, herda a do topo</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> executa sem shell — necessário em distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>lista de <code>id</code> que precisam terminar antes</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> e <code>limits</code> daquele passo</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>sob que estado das dependências este passo roda — veja abaixo</td></tr><tr><td><code>on_error</code></td><td></td><td>anuncia as falhas deste passo — veja abaixo</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>obrigatório</strong></td><td>único no workflow; é o nome que aparece no grafo e nos logs</td></tr><tr><td><code>run</code></td><td></td><td>o comando</td></tr><tr><td><code>image</code></td><td></td><td>a imagem do passo; sem ela, herda a do topo</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> executa sem shell — necessário em distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>lista de <code>id</code> que precisam terminar antes; uma entrada pode ser <code>{step, label}</code></td></tr><tr><td><code>marker</code></td><td><code>false</code></td><td>um passo sem comando, para um <code>start</code> ou um <code>end</code></td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> e <code>limits</code> daquele passo</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>sob que estado das dependências este passo roda — veja abaixo</td></tr><tr><td><code>on_error</code></td><td></td><td>anuncia as falhas deste passo — veja abaixo</td></tr></tbody></table></div>
+<h2 id="dizendo-o-que-uma-seta-significa">Dizendo o que uma seta significa<a class="anchor" href="#dizendo-o-que-uma-seta-significa" aria-label="link">#</a></h2>
+<p>Uma dependência pode carregar um rótulo, mostrado na seta do grafo.</p>
+<div class="code-block" data-code="steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: dados adicionais}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: dados que mudaram"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: determine_load_type
+    <span class="t-k">run</span>: ./decide.sh
+
+  - <span class="t-k">id</span>: load_full
+    <span class="t-k">run</span>: ./full.sh
+    <span class="t-k">depends_on</span>:
+      - {step: determine_load_type, label: dados adicionais}
+
+  - <span class="t-k">id</span>: load_delta
+    <span class="t-k">run</span>: ./delta.sh
+    <span class="t-k">depends_on</span>:
+      - <span class="t-k">step</span>: determine_load_type
+        <span class="t-k">label</span>: dados que mudaram</code></pre></div>
+<p>A forma simples — <code>depends_on: [extract]</code> — continua funcionando e continua sendo a normal. A maioria das dependências não tem nada a dizer, e um rótulo em toda seta é ruído.</p>
+<p>Os rótulos ganham o lugar deles numa <strong>bifurcação</strong>: duas setas saindo do mesmo passo sem nada escrito é um diagrama que exige abrir o código para ler, que é exatamente o que um grafo existe para evitar.</p>
+<h2 id="um-passo-que-nao-faz-nada">Um passo que não faz nada<a class="anchor" href="#um-passo-que-nao-faz-nada" aria-label="link">#</a></h2>
+<div class="code-block" data-code="steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: start
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+
+  - <span class="t-k">id</span>: end
+    <span class="t-k">marker</span>: <span class="t-n">true</span>
+    <span class="t-k">depends_on</span>: [load_full, load_delta, report]</code></pre></div>
+<p><code>marker: true</code> é um passo sem comando. Ele não roda nada, dá certo na hora, e aparece no grafo.</p>
+<p>Não é enfeite. Um <code>end</code> que depende de todos os ramos transforma <em>terminou tudo?</em> num nó só, em vez de seis setas para seguir — e ele se comporta como qualquer outro passo, então um <code>end</code> embaixo de um ramo que falhou fica <strong>skipped</strong>, não verde.</p>
+<p><strong>Um passo sem <code>run:</code> e sem <code>marker: true</code> continua recusado.</strong> Os dois casos não podem virar um: um comando vazio é quase sempre um engano, e o <code>marker: true</code> é como alguém diz que fez de propósito. Um marker que também declara <code>run:</code> também é recusado — isso é um arquivo dizendo duas coisas.</p>
 <h2 id="rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou<a class="anchor" href="#rodando-um-passo-so-quando-algo-falhou" aria-label="link">#</a></h2>
 <p>Por padrão um passo roda quando tudo antes dele deu certo. O <code>when:</code> muda isso.</p>
 <div class="code-block" data-code="steps:
@@ -299,7 +347,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#estrutura-minima">Estrutura mínima</a></li><li class="toc-2"><a href="#ordem-chain-ou-dag">Ordem: chain ou dag</a></li><li class="toc-2"><a href="#agenda">Agenda</a></li><li class="toc-2"><a href="#imagem-e-recursos">Imagem e recursos</a></li><li class="toc-2"><a href="#campos-do-passo">Campos do passo</a></li><li class="toc-2"><a href="#rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou</a></li><li class="toc-3"><a href="#um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica skipped</a></li><li class="toc-3"><a href="#all-success-aqui-nao-e-o-all-success-do-airflow">all_success aqui não é o all_success do Airflow</a></li><li class="toc-2"><a href="#anunciando-a-falha-de-um-passo">Anunciando a falha de um passo</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validacao">Validação</a></li><li class="toc-2"><a href="#publicando">Publicando</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#estrutura-minima">Estrutura mínima</a></li><li class="toc-2"><a href="#ordem-chain-ou-dag">Ordem: chain ou dag</a></li><li class="toc-2"><a href="#agenda">Agenda</a></li><li class="toc-2"><a href="#imagem-e-recursos">Imagem e recursos</a></li><li class="toc-2"><a href="#campos-do-passo">Campos do passo</a></li><li class="toc-2"><a href="#dizendo-o-que-uma-seta-significa">Dizendo o que uma seta significa</a></li><li class="toc-2"><a href="#um-passo-que-nao-faz-nada">Um passo que não faz nada</a></li><li class="toc-2"><a href="#rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou</a></li><li class="toc-3"><a href="#um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica skipped</a></li><li class="toc-3"><a href="#all-success-aqui-nao-e-o-all-success-do-airflow">all_success aqui não é o all_success do Airflow</a></li><li class="toc-2"><a href="#anunciando-a-falha-de-um-passo">Anunciando a falha de um passo</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validacao">Validação</a></li><li class="toc-2"><a href="#publicando">Publicando</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

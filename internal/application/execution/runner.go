@@ -595,6 +595,19 @@ const contextLines = 5
 // the outcome. The output comes back on success too: a step that finished fine
 // but produced very little is a signal, and it is only visible in the log.
 func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt int) (string, error) {
+	// A marker does nothing and succeeds. Short-circuited HERE rather than
+	// given an executor that runs `true`: an empty pod on a cluster costs a
+	// scheduling round trip and an image pull to accomplish nothing, and on a
+	// laptop it costs a process. The point of the step is the shape of the
+	// graph, not the work.
+	//
+	// It still goes through markStart and markEnd around this call, so it
+	// appears on the screen as a step that ran -- which is what makes an `end`
+	// that depends on everything answer "did the whole thing finish?".
+	if n.Marker {
+		return "", nil
+	}
+
 	// Asked once per attempt, and not inside montar, because building a task
 	// must not do I/O. A retry of the same run does not reopen the first
 	// execution: if attempt 1 wrote a row, StepHasSucceeded already answers

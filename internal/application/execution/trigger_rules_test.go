@@ -57,6 +57,12 @@ func flow(t *testing.T, w wf.Workflow, failing ...string) (*ran, *spyPersister, 
 		broken[f] = true
 	}
 	for _, n := range w.Nodes {
+		if n.Marker {
+			// A marker declares no work, and Validate refuses one that does.
+			// Registering a task for it would make this helper build a
+			// workflow the engine would never accept.
+			continue
+		}
 		id := n.ID
 		reg.MustRegister(execution.FuncTask{TaskName: id, Fn: func(context.Context, execution.Input) error {
 			done.add(id)
@@ -67,7 +73,9 @@ func flow(t *testing.T, w wf.Workflow, failing ...string) (*ran, *spyPersister, 
 		}})
 	}
 	for i := range w.Nodes {
-		w.Nodes[i].Action = w.Nodes[i].ID
+		if !w.Nodes[i].Marker {
+			w.Nodes[i].Action = w.Nodes[i].ID
+		}
 	}
 
 	spy := &spyPersister{}
@@ -277,5 +285,67 @@ func TestTheRulesApplyWithNoPersister(t *testing.T) {
 	}
 	if !done.has("notify") {
 		t.Error("the handler did not run without a persister")
+	}
+}
+
+// A marker runs, succeeds and appears on the screen -- without an executor,
+// without a pod, and without an image pull to accomplish nothing.
+func TestAMarkerRunsWithoutAnExecutor(t *testing.T) {
+	reg := execution.NewRegistry()
+	done := &ran{}
+	reg.MustRegister(execution.FuncTask{TaskName: "work", Fn: func(context.Context, execution.Input) error {
+		done.add("work")
+		return nil
+	}})
+
+	w := wf.Workflow{
+		Slug: "w",
+		Nodes: []wf.Node{
+			{ID: "start", Marker: true},
+			{ID: "work", Action: "work"},
+			{ID: "end", Marker: true},
+		},
+		Edges: []wf.Edge{{From: "start", To: "work"}, {From: "work", To: "end"}},
+	}
+	spy := &spyPersister{}
+	// No Processo and no Pods: a marker that needed either would fail here
+	// with "no process executor configured", which is exactly the point.
+	err := app.Runner{
+		Go: local.NewGoExecutor(reg), Persist: spy, RunID: uuid.New(),
+	}.Run(context.Background(), w)
+	if err != nil {
+		t.Fatalf("a workflow of two markers and one step failed: %v", err)
+	}
+	if !done.has("work") {
+		t.Error("the real step did not run")
+	}
+	if len(spy.skips()) != 0 {
+		t.Errorf("something was skipped: %v", spy.skips())
+	}
+}
+
+// TestAnEndMarkerWaitsForEverything.
+//
+// It is what the step is for: an `end` that depends on every branch turns "did
+// the whole thing finish?" into one node instead of six arrows to follow. So it
+// must NOT run when a branch failed -- a green `end` under a red branch is the
+// worst possible version of this feature.
+func TestAnEndMarkerDoesNotRunWhenABranchFailed(t *testing.T) {
+	w := wf.Workflow{
+		Slug: "w",
+		Nodes: []wf.Node{
+			{ID: "left"}, {ID: "right"}, {ID: "end", Marker: true},
+		},
+		Edges: []wf.Edge{{From: "left", To: "end"}, {From: "right", To: "end"}},
+	}
+	done, spy, err := flow(t, w, "right")
+	if err == nil {
+		t.Fatal("the run should have failed")
+	}
+	if done.has("end") {
+		t.Error("the end marker ran under a failed branch")
+	}
+	if _, recorded := spy.skips()["end"]; !recorded {
+		t.Error("the end marker was not recorded as skipped")
 	}
 }
