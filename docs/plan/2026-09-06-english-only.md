@@ -1,7 +1,8 @@
 # English only: closing every open thread
 
 **Written on** 2026-09-06 · **Base** `sdk/v0.51.0`, engine `v0.6.0`
-**Status** threads A–J and §4 closed on 2026-09-06; §5 is what is left
+**Status** threads A–J, §4 and §5.5 closed. What is left needs a cluster (§5.2),
+credentials (§5.3), or belongs to the repository owner (`site/`) — see §5.
 
 Contributors are joining from outside Brazil. The project's language is English
 — code, comments, identifiers, error messages, tests, commit messages and
@@ -189,9 +190,10 @@ compile — which is evidence that the wrapper is not what anyone expects to wri
 `FieldSelector` and `KeySelector` are **produced and never consumed** by the SDK:
 nothing takes one as a parameter. That is the actual defect.
 
-**Not fixed in this plan.** It changes the composition of `source_key`, which
-feeds `ingestion_id`, and it deserves its own round with its own tests. Written
-down here so it stops living in a chat message.
+**Closed by `ComputeText`, in `sdk/v0.52.0`.** It takes a `FieldSelector`
+directly, and there is a test asserting it produces the same value the hand-rolled
+closure produced — anything else would have changed every `ingestion_id` already
+written. `Compute` is unchanged, for a computed value that is not text.
 
 ### 5.2 The Kubernetes log path has never been exercised
 
@@ -245,7 +247,9 @@ It reads nothing, loads zero rows, and reports the result of loading zero rows.
 A documented command that succeeds while doing nothing is the worst failure this
 project recognises — worse than an error, because the pipe looks like it worked.
 
-**Fix, or delete the command.** Both are better than what is there.
+**Fixed.** It reads the NDJSON from stdin, and empty stdin is refused rather
+than loaded: a pipe whose upstream produced nothing used to look exactly like a
+pipe that worked.
 
 ### The queue's tests never run in CI
 
@@ -258,7 +262,9 @@ This is the third instance of one pattern in this repository: the engine had no
 CI at all, the release workflow had never run, and now the queue's tests never
 run. Each was invisible because the job was green.
 
-The Integration job already has Postgres. Setting the variable there is one line.
+**Done.** `test.yml` sets `BREVIS_TEST_DATABASE_URL` on the Integration job,
+which already had Postgres. The claim path, the per-workflow limit, the backoff
+and the orphan recovery now run on every push.
 
 ### The documentation site
 
