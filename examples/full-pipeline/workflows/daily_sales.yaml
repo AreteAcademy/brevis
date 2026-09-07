@@ -1,0 +1,93 @@
+# Every shape the engine has, in one workflow.
+#
+# The point is not the pipeline -- it reads CSVs and writes a summary -- it is
+# that each step is here because it demonstrates something the graph can do.
+# Open http://localhost:8080 after `make up` and read the drawing beside this
+# file.
+name: daily_sales
+type: dag
+schedule: "0 4 * * *"          # daily; the button in the UI ignores it
+tags: [example, sales, go]
+
+steps:
+  # `marker: true` -- a step with no command. It is where the graph BEGINS, and
+  # it costs no process and no pod.
+  - id: start
+    marker: true
+
+  # Lists what there is to load and publishes it as a list. Nothing here knows
+  # how many partitions exist; the next step finds out from this one.
+  - id: discover
+    run: /opt/brevis/bin/pipeline discover
+    runtime: go
+    depends_on: [start]
+    group: ingestion
+
+  # `for_each:` -- ONE node on the graph, one process per element, each with its
+  # own row, its own retry and its own exit code. The card shows [3].
+  #
+  # The list travels in the context, which is capped at 4 KB, so the fan-out is
+  # bounded without anybody inventing a limit.
+  - id: load
+    run: /opt/brevis/bin/pipeline load
+    runtime: go
+    for_each: discover.partitions
+    group: ingestion
+    depends_on:
+      - {step: discover, label: one per partition}
+    # `on_error:` -- this step announces its own failures, beside the run-level
+    # alert. Where the message goes is the installation's decision, never this
+    # file's.
+    on_error:
+      type: SLACK
+
+  # A mapped step publishes nothing downstream -- four instances cannot share
+  # one key -- so counting what landed is a step of its own. That is the reason
+  # this exists, and it is worth seeing.
+  - id: check
+    run: /opt/brevis/bin/pipeline check
+    runtime: go
+    depends_on: [load]
+    group: reporting
+
+  # `unless_empty:` -- a KEY, not an expression. `check` decided and published a
+  # boolean; the engine reads one key and asks whether it is empty. With no rows
+  # this step is `skipped`, and so is everything under it.
+  - id: report
+    run: /opt/brevis/bin/pipeline report
+    runtime: go
+    unless_empty: check.has_rows
+    group: reporting
+    depends_on:
+      - {step: check, label: only if rows landed}
+
+  # `uses:` -- another workflow's steps take this one's place at PUBLISH. They
+  # arrive as `quality.count_rows` and `quality.assert_freshness`, in a box of
+  # their own. One run, one graph, one pool -- there is no child run to wait on.
+  - id: quality
+    uses: quality_checks
+    depends_on: [report]
+
+  # `when: any_failed` -- runs precisely when something above it did not make
+  # it. On a good night it is `skipped`, which is a state of its own and not a
+  # failure.
+  - id: notify_failure
+    run: /opt/brevis/bin/pipeline notify
+    runtime: go
+    when: any_failed
+    depends_on: [load, report]
+
+  # `when: all_done` -- runs either way. It is the case that is impossible
+  # without trigger rules: cleanup has to happen whether or not the thing
+  # before it worked.
+  - id: cleanup
+    run: /opt/brevis/bin/pipeline cleanup
+    runtime: go
+    when: all_done
+    depends_on: [report, quality]
+
+  # The other marker. An `end` that depends on the last thing turns "did it all
+  # finish?" into one node instead of six arrows to follow.
+  - id: end
+    marker: true
+    depends_on: [cleanup]

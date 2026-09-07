@@ -1,0 +1,153 @@
+# The whole stack: Postgres, the API, the scheduler, the alert pod, and one Go
+# binary built from ./pipeline.
+#
+# Use the Makefile beside this file rather than driving compose by hand:
+#
+#   make up      brings it all up and waits until the workflows are published
+#   make run     queues a run right now
+#   make down    stops everything and forgets the volumes
+name: brevis-full-pipeline
+
+# BUILT FROM THIS TREE, not pulled from a registry.
+#
+# Everything this example demonstrates -- `when:`, `unless_empty:`, `for_each:`,
+# `group:`, `uses:`, markers, the alert outbox -- is newer than any published
+# image. Pinning a tag would make `make up` fail on the first workflow with
+# "`when` is not valid", which reads as the example being wrong.
+#
+# It also means the example is a gate: if the engine stops running it, this
+# stops coming up.
+x-engine: &engine
+  build:
+    context: ../..
+    target: api
+x-worker: &worker
+  build:
+    context: ../..
+    target: worker
+x-db: &db postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: brevis
+      POSTGRES_PASSWORD: brevis
+      POSTGRES_DB: brevis
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      # Nothing starts before the database accepts a connection, or the first
+      # `up` fails on a race and the stack sits in a confusing restart loop.
+      test: ["CMD-SHELL", "pg_isready -U brevis -d brevis"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # Whoever serves is not whoever migrates. This runs once and exits.
+  migrate:
+    <<: *engine
+    command: ["migrate", "up"]
+    environment:
+      BREVIS_DATABASE_URL: *db
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+
+  # The steps are one Go binary, compiled into a volume the scheduler mounts:
+  # in local mode a `run:` step executes inside the scheduler's own container.
+  #
+  # CGO_ENABLED=0 is not decoration. This image is Debian and the worker is
+  # Alpine: a dynamically linked binary lands there and fails with
+  # "not found" -- which reads as a missing file and is a missing ELF
+  # interpreter.
+  build:
+    image: golang:1.27
+    working_dir: /src
+    environment:
+      CGO_ENABLED: "0"
+    command: ["go", "build", "-o", "/out/", "./cmd/..."]
+    volumes:
+      - ./pipeline:/src:ro
+      - bin:/out
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    restart: "no"
+
+  # `uses:` is expanded HERE, at publish. Both files go in together, because a
+  # child has to be in the same publish -- expansion that read the database
+  # would make `brevis validate` answer a different question from this.
+  publish:
+    <<: *engine
+    command: ["publish", "/workflows"]
+    environment:
+      BREVIS_DATABASE_URL: *db
+    volumes:
+      - ./workflows:/workflows:ro
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
+
+  api:
+    <<: *engine
+    command: ["serve"]
+    environment:
+      BREVIS_ENV: local
+      BREVIS_HTTP_ADDR: ":8080"
+      BREVIS_DATABASE_URL: *db
+      BREVIS_LOG_LEVEL: info
+      # /metrics on a port of its own, never on the one the UI is on.
+      BREVIS_METRICS_ADDR: ":9090"
+    ports: ["8080:8080", "9090:9090"]
+    depends_on:
+      publish: {condition: service_completed_successfully}
+
+  # Without this the stack ACCEPTS work and never runs it: the run is created,
+  # queued, and sits there. The API executes nothing, by design.
+  scheduler:
+    <<: *worker
+    command: ["scheduler", "--interval", "5s", "--concurrency", "2", "--max-pods", "4"]
+    environment:
+      BREVIS_ENV: local
+      BREVIS_DATABASE_URL: *db
+      BREVIS_LOG_LEVEL: info
+      BREVIS_METRICS_ADDR: ":9090"
+      # What the steps are allowed to see. Without DATA_DIR here they get PATH
+      # and HOME and nothing else -- inheriting the environment would hand the
+      # database's credential to every step of every pipeline.
+      BREVIS_TASK_ENV: DATA_DIR
+      DATA_DIR: /data
+    ports: ["9091:9090"]
+    volumes:
+      - bin:/opt/brevis/bin:ro
+      # Bind-mounted, not a named volume: the point is that you open the files
+      # afterwards and see what each step wrote.
+      - ./data:/data
+    depends_on:
+      publish: {condition: service_completed_successfully}
+      build: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  # The third role of the same binary. It exists because of WHERE an alert is
+  # written: the scheduler records it in the same transaction as the failure,
+  # and something has to drain that table and survive a Slack outage.
+  #
+  # It refuses to start with no channel, so it only comes up with a webhook
+  # configured -- `make up WEBHOOK=https://hooks.slack.com/...`.
+  alert:
+    <<: *worker
+    command: ["alert", "--interval", "1s"]
+    environment:
+      BREVIS_ENV: local
+      BREVIS_DATABASE_URL: *db
+      BREVIS_SLACK_WEBHOOK: ${WEBHOOK:-}
+      BREVIS_UI_URL: http://localhost:8080
+      BREVIS_METRICS_ADDR: ""
+    depends_on:
+      publish: {condition: service_completed_successfully}
+    profiles: [alerting]
+
+volumes:
+  pgdata:
+  bin:
+  gocache:
+  gomod:

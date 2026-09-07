@@ -11,6 +11,25 @@ go build ./...   # they all compile
 go test ./...    # 05 and consumer have real tests
 ```
 
+## The whole engine, in one workflow
+
+### [full-pipeline](full-pipeline/) — every shape the graph has
+
+```bash
+cd examples/full-pipeline
+make up      # builds the engine from this tree, brings the stack up
+make run     # queues a run
+make down
+```
+
+Markers, `when:`, `unless_empty:`, `for_each:`, `group:`, `uses:` and edge
+labels, in two workflow files and one Go binary. `make empty` and
+`make nothing` walk the branches that are usually invisible — the graph fills
+with `skipped`, and every skipped step says which step stopped it.
+
+Unlike the examples below, it pins a **published** SDK: it is what somebody gets
+from `go get`, not a gate on the working tree.
+
 ## Extract
 
 ### [01-basic-extract](01-basic-extract/) — the smallest useful case

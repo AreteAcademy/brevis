@@ -1,0 +1,5 @@
+# What the runs write, and what the Makefile rebuilds from data/partitions.
+# The committed input is data/partitions; everything else here is output.
+incoming/
+landing/
+reports/

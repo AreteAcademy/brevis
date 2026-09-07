@@ -1,0 +1,22 @@
+# A workflow that is useful on its own AND reusable from another.
+#
+# `brevis publish` expands it into daily_sales, prefixing the ids -- and it
+# stays publishable and runnable by itself, because expansion COPIES rather than
+# consumes.
+name: quality_checks
+type: dag
+tags: [example, quality, go]
+
+steps:
+  - id: count_rows
+    run: /opt/brevis/bin/pipeline quality-count
+    runtime: go
+
+  # The key names count_rows, and after expansion it names
+  # `quality.count_rows` -- the reference moves with the prefix, so the same
+  # file works standalone and inlined.
+  - id: assert_freshness
+    run: /opt/brevis/bin/pipeline quality-freshness
+    runtime: go
+    depends_on: [count_rows]
+    unless_empty: count_rows.rows

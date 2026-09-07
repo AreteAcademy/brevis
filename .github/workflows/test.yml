@@ -383,6 +383,24 @@ jobs:
           working-directory: cmd/brevis-sdk
           args: --timeout=5m
 
+      - name: Build the full-pipeline example
+        run: |
+          # A module of its own, pinning a PUBLISHED SDK -- it is what somebody
+          # gets from `go get`, not a gate on the working tree like the other
+          # examples. Nothing else compiles it, so without this step it rots
+          # quietly and `make up` fails for whoever tries it first.
+          cd examples/full-pipeline/pipeline
+          go build ./...
+          go vet ./...
+          echo "✅ the full-pipeline example builds"
+
+      - name: The full-pipeline example's workflows are valid
+        run: |
+          # It uses every shape the engine has, so this is also the broadest
+          # end-to-end check the parser gets: markers, when, unless_empty,
+          # for_each, group, uses and edge labels in two files.
+          go run ./cmd/brevis validate examples/full-pipeline/workflows
+
       - name: Build and test examples
         run: |
           # No '|| true' here. This step used to swallow every failure and
