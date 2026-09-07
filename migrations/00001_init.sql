@@ -1,8 +1,8 @@
 -- +goose Up
--- Phase 0 cria apenas as duas entidades que provam o caminho ponta a ponta.
--- A secao 22 do plano lista dez (workflow_versions, runs, task_runs,
--- queue_items, ...); elas nascem nas fases que as usam — a regra 2 proibe
--- antecipar, e schema sem caso de uso envelhece errado.
+-- Phase 0 creates only the two entities that prove the end-to-end path.
+-- Section 22 of the plan lists ten (workflow_versions, runs, task_runs,
+-- queue_items, ...); they are born in the phases that use them — rule 2 forbids
+-- anticipating, and a schema with no use case ages wrong.
 
 CREATE TABLE projects (
     id          UUID PRIMARY KEY,
@@ -20,8 +20,8 @@ CREATE TABLE workflows (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-    -- slug e unico DENTRO do projeto, nao globalmente: dois projetos podem ter
-    -- um workflow `daily_ingest` sem colidir.
+    -- The slug is unique WITHIN the project, not globally: two projects can
+    -- each have a `daily_ingest` workflow without colliding.
     UNIQUE (project_id, slug)
 );
 

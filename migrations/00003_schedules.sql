@@ -1,28 +1,28 @@
 -- +goose Up
--- Agendas e a origem de cada Run.
+-- Schedules, and where each Run came from.
 --
--- A secao 37 separa as responsabilidades: o scheduler CRIA runs, a fila as
--- EXECUTA. Por isso `schedules` nao tem nada de execucao — nem status de run,
--- nem contador de tentativa.
+-- Section 37 separates the responsibilities: the scheduler CREATES runs, the
+-- queue EXECUTES them. Which is why `schedules` holds nothing about execution —
+-- no run status, no attempt counter.
 
--- A definicao do grafo passa a viver no banco (secao 22: "Nunca depender
--- exclusivamente do arquivo YAML apos o workflow ser publicado").
+-- The graph's definition starts living in the database (section 22: "Never
+-- depend exclusively on the YAML file after the workflow has been published").
 ALTER TABLE workflows ADD COLUMN definicao JSONB NOT NULL DEFAULT '{}'::jsonb;
 
--- Por que o Run existe (secao 12). Sem isso nao da para distinguir um backfill
--- de uma execucao agendada ao investigar um incidente.
+-- Why the Run exists (section 12). Without it there is no telling a backfill
+-- from a scheduled run while investigating an incident.
 ALTER TABLE runs ADD COLUMN trigger_type TEXT NOT NULL DEFAULT 'manual';
 
--- O slot logico que este Run representa. Nulo para disparo manual, que nao
--- pertence a nenhum slot.
+-- The logical slot this Run represents. Null for a manual trigger, which
+-- belongs to no slot.
 ALTER TABLE runs ADD COLUMN logical_date TIMESTAMPTZ;
 
 CREATE TABLE schedules (
     id             UUID PRIMARY KEY,
 
-    -- Uma agenda por workflow nesta fase. A secao 22 sugere N (um cron diario e
-    -- outro de reconciliacao, por exemplo); quando isso for necessario, a unique
-    -- sai e um nome de agenda entra.
+    -- One schedule per workflow in this phase. Section 22 suggests N (a daily
+    -- cron and a reconciliation one, for instance); when that is needed, the
+    -- unique goes and a schedule name comes in.
     workflow_slug  TEXT        NOT NULL UNIQUE,
 
     cron           TEXT        NOT NULL,
@@ -30,8 +30,8 @@ CREATE TABLE schedules (
     catchup        BOOLEAN     NOT NULL DEFAULT false,
     ativo          BOOLEAN     NOT NULL DEFAULT true,
 
-    -- Ultimo slot JA materializado em Run. E o que impede o scheduler de
-    -- recriar a mesma lacuna a cada ciclo.
+    -- The last slot ALREADY materialized into a Run. It is what stops the
+    -- scheduler from recreating the same gap on every cycle.
     ultimo_slot    TIMESTAMPTZ,
 
     criado_em      TIMESTAMPTZ NOT NULL DEFAULT now(),

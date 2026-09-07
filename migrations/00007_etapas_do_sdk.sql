@@ -1,22 +1,24 @@
 -- +goose Up
--- Guarda as etapas que um passo do SDK anuncia enquanto roda.
+-- Stores the stages an SDK step announces while it runs.
 --
--- Ate aqui um passo do SDK era uma caixa cinza que virava verde. Entre
--- "comecou" e "acabou" havia quarenta minutos em que a tela nao distinguia
--- "baixando a pagina 300 de 4.803" de "travado no handshake do Redshift".
+-- Until now an SDK step was a grey box that turned green. Between "started" and
+-- "finished" there were forty minutes in which the screen could not tell
+-- "downloading page 300 of 4,803" from "stuck on Redshift's handshake".
 --
--- JSONB numa coluna, e nao uma tabela propria: sao no maximo quatro registros
--- de ~60 bytes por tentativa, sempre lidos junto com a linha pai e nunca
--- consultados sozinhos. E task_runs ja e chaveada por (run_id, node_id,
--- attempt), entao as etapas ficam por tentativa sem FK nova e sem join novo.
+-- JSONB in a column, and not a table of its own: they are at most four records
+-- of ~60 bytes per attempt, always read alongside the parent row and never
+-- queried on their own. And task_runs is already keyed by (run_id, node_id,
+-- attempt), so the stages sit per attempt with no new FK and no new join.
 --
--- Quem escreve aplica um teto; ver `tetoDeEtapas` no SDK e o coletor no runner.
+-- The writer applies a ceiling; see `tetoDeEtapas` in the SDK and the collector
+-- in the runner.
 ALTER TABLE task_runs ADD COLUMN etapas JSONB NOT NULL DEFAULT '[]'::jsonb;
 
--- A versao do SDK que o passo anunciou, vazia para um passo que nao e do SDK.
+-- The SDK version the step announced, empty for a step that is not an SDK one.
 --
--- Ela vem do proprio binario (runtime/debug), nao do YAML: ninguem digita e
--- ninguem mantem em sincronia, entao o selo na tela nao tem como mentir.
+-- It comes from the binary itself (runtime/debug), not from the YAML: nobody
+-- types it and nobody keeps it in sync, so the badge on the screen has no way to
+-- lie.
 ALTER TABLE task_runs ADD COLUMN sdk_versao TEXT NOT NULL DEFAULT '';
 
 -- +goose Down

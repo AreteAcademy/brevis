@@ -1,11 +1,11 @@
 -- +goose Up
--- Parametros de execucao (secao 12: um Run precisa registrar POR QUE e COM QUE
--- valores rodou).
+-- Run parameters (section 12: a Run has to record WHY and WITH WHAT values it
+-- ran).
 --
--- Coluna propria, e nao dentro de `definicao`: a definicao e o snapshot do
--- GRAFO, imutavel; os params sao a entrada daquela execucao. Misturar os dois
--- faria dois disparos do mesmo workflow terem snapshots diferentes sem que nada
--- no workflow tivesse mudado.
+-- A column of its own, and not inside `definicao`: the definition is the GRAPH's
+-- snapshot, immutable; the params are that run's input. Mixing the two would
+-- make two triggers of the same workflow have different snapshots with nothing
+-- in the workflow having changed.
 ALTER TABLE runs ADD COLUMN params JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 -- +goose Down

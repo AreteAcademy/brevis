@@ -1,20 +1,20 @@
 -- +goose Up
--- Limite de execucoes simultaneas POR WORKFLOW (o `concurrency.limit` do Kestra).
+-- The limit on simultaneous runs PER WORKFLOW (Kestra's `concurrency.limit`).
 --
--- 36 dos 51 flows do repositorio de dados declaravam esse limite, cinco deles em
--- cadencia de 15 ou 30 minutos. Sem ele, um `*/15` que leva 20 minutos se
--- sobrepoe a si mesmo — dois `dbt build` no MESMO modelo, ao mesmo tempo.
+-- 36 of the data repository's 51 flows declared that limit, five of them on a
+-- 15- or 30-minute cadence. Without it, a `*/15` that takes 20 minutes overlaps
+-- itself — two `dbt build`s on the SAME model, at the same time.
 --
--- A coluna vive no RUN, e nao so no workflow, pelo mesmo motivo de `definicao`:
--- e um snapshot. Baixar o limite de 3 para 1 nao pode mudar o significado de
--- runs que ja estavam na fila. E, na pratica, tira um JOIN com `workflows` do
--- caminho mais quente do sistema — a consulta de claim.
+-- The column lives on the RUN, and not only on the workflow, for the same reason
+-- `definicao` does: it is a snapshot. Lowering the limit from 3 to 1 must not
+-- change the meaning of runs that were already queued. And in practice it takes
+-- a JOIN with `workflows` off the system's hottest path — the claim query.
 ALTER TABLE runs ADD COLUMN max_ativos INT NOT NULL DEFAULT 0;
 
 COMMENT ON COLUMN runs.max_ativos IS
   'Execucoes simultaneas permitidas para este workflow. 0 = sem limite.';
 
--- O claim passa a agrupar itens reivindicados por workflow.
+-- The claim starts grouping claimed items by workflow.
 CREATE INDEX queue_items_reivindicados_idx ON queue_items (run_id)
   WHERE reivindicado_em IS NOT NULL;
 

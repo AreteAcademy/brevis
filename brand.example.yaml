@@ -1,51 +1,57 @@
-# Identidade visual da instalacao.
+# The installation's visual identity.
 #
-# Copie para `brand.yaml` na raiz (ou aponte BREVIS_BRAND_FILE) e ajuste. Todos
-# os campos sao opcionais: o que voce nao escrever mantem o padrao, entao um
-# arquivo com apenas `titulo:` ja e valido.
+# Copy it to `brand.yaml` at the root (or point BREVIS_BRAND_FILE at it) and
+# adjust. Every field is optional: what you do not write keeps the default, so a
+# file with only `title:` is already valid.
 #
-# O que NAO se customiza: a linha "Powered by Brevis" no rodape da barra
-# lateral. Ela nao e um campo deste arquivo — vem do codigo.
-
-titulo: Brevis                # barra lateral e <title> das paginas
-subtitulo: Orquestração       # versalete sob o titulo
-
-# Marca grafica ao lado do titulo, na barra lateral e na tela de entrada.
-# Aceita URL (https:// ou http://) ou caminho interno comecando em `/`.
-# Ausente, usa o simbolo embutido do Brevis, que acompanha a cor do tema.
+# An unrecognized key is an ERROR, not a field that gets ignored: a typo used to
+# leave the installation on the default identity while somebody looked for the
+# reason their colours had not applied. The names became English in v0.7 -- a
+# file still using `titulo:` and `tema:` fails saying so.
 #
-# Uma logo hospedada fora depende daquele host: se ele cair, ou se o cluster nao
-# tiver saida para a internet, a imagem nao carrega — o resto da interface segue
-# funcionando, mas conte com isso ao escolher.
-# logo: https://exemplo.com/marca.svg
+# What is NOT customizable: the "Powered by Brevis" line in the sidebar's
+# footer. It is not a field of this file — it comes from the code.
 
-# A quebra de linha e preservada: ela define o ritmo da frase na barra lateral.
-frase: |
-  Clareza, estrutura e virtude
-  também fazem parte
-  de quem constrói.
+title: Brevis                 # the sidebar and the pages' <title>
+subtitle: Orchestration       # the small caps under the title
 
-# Cores. Hexadecimal (#rgb, #rrggbb ou #rrggbbaa) — qualquer outra coisa e
-# recusada no boot, e a instalacao sobe com o tema padrao e um aviso no log.
+# The graphic mark next to the title, in the sidebar and on the sign-in screen.
+# It takes a URL (https:// or http://) or an internal path starting with `/`.
+# Absent, it uses Brevis's embedded symbol, which follows the theme's colour.
 #
-# `--color-line` e o realce dourado sao derivados de `tinta` e `destaque`, com
-# transparencia. Nao ha campo para eles de proposito: uma borda que nao combina
-# com a propria tinta escolhida e um erro que ninguem quer poder cometer.
-tema:
-  fundo: "#f4efe4"           # papel
-  fundo_suave: "#fbf8f1"     # topo e base do degrade
-  superficie: "#fffdf8"      # cartoes e tabelas
-  tinta: "#21180f"           # texto principal
-  texto_suave: "#6e6254"     # texto secundario
-  destaque: "#aa8450"        # detalhes e links
-  destaque_forte: "#8a693d"  # versaletes
+# A logo hosted elsewhere depends on that host: if it goes down, or if the
+# cluster has no route to the internet, the image does not load — the rest of the
+# interface keeps working, but count on that when choosing.
+# logo: https://example.com/mark.svg
 
-  # Estados de execucao. Valem a pena manter distinguiveis entre si mesmo em
-  # tela ruim — sao a informacao mais importante do painel.
-  sucesso: "#4c7a56"
-  falha: "#b0503c"
-  executando: "#3f6d8f"
-  fila: "#b3822f"
-  repetindo: "#a35f28"
-  cancelado: "#8a8175"
-  aguardando: "#a89b8a"
+# The line break is preserved: it sets the phrase's rhythm in the sidebar.
+phrase: |
+  Clarity, structure and virtue
+  are also part
+  of whoever builds.
+
+# Colours. Hex values (#rgb, #rrggbb or #rrggbbaa) — anything else is refused at
+# boot, and the installation comes up with the default theme and a warning in the
+# log.
+#
+# `--color-line` and the golden highlight are derived from `ink` and `accent`,
+# with transparency. There is deliberately no field for them: a border that does
+# not match the very ink you chose is a mistake nobody should be able to make.
+theme:
+  background: "#f4efe4"       # paper
+  background_soft: "#fbf8f1"  # the gradient's top and bottom
+  surface: "#fffdf8"          # cards and tables
+  ink: "#21180f"              # the main text
+  muted: "#6e6254"            # secondary text
+  accent: "#aa8450"           # details and links
+  accent_strong: "#8a693d"    # small caps
+
+  # The run states. They are worth keeping distinguishable from each other even
+  # on a poor screen — they are the panel's most important information.
+  success: "#4c7a56"
+  failed: "#b0503c"
+  running: "#3f6d8f"
+  queued: "#b3822f"
+  retrying: "#a35f28"
+  canceled: "#8a8175"
+  pending: "#a89b8a"

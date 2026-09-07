@@ -36,7 +36,7 @@ func TestArquivoAusenteUsaOPadrao(t *testing.T) {
 
 // Campo ausente herda o padrao: um arquivo de duas linhas e um arquivo valido.
 func TestCamposAusentesHerdamOPadrao(t *testing.T) {
-	m, err := branding.Load(escrever(t, "titulo: Acme Dados\n"))
+	m, err := branding.Load(escrever(t, "title: Acme Dados\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,11 +53,11 @@ func TestCamposAusentesHerdamOPadrao(t *testing.T) {
 
 func TestTemaCustomizadoViraCSS(t *testing.T) {
 	m, err := branding.Load(escrever(t, `
-titulo: Acme
-tema:
-  tinta: "#101820"
-  destaque: "#c02a2a"
-  sucesso: "#0f8f4f"
+title: Acme
+theme:
+  ink: "#101820"
+  accent: "#c02a2a"
+  success: "#0f8f4f"
 `))
 	if err != nil {
 		t.Fatal(err)
@@ -82,10 +82,10 @@ tema:
 // de falha atras de um seletor.
 func TestCorInvalidaEhRecusada(t *testing.T) {
 	venenos := []string{
-		`tema: {tinta: "red"}`,
-		`tema: {tinta: "#12345"}`,
-		`tema: {destaque: "#fff;} body{display:none} .x{color:#fff"}`,
-		`tema: {sucesso: "url(http://exemplo/x)"}`,
+		`theme: {ink: "red"}`,
+		`theme: {ink: "#12345"}`,
+		`theme: {accent: "#fff;} body{display:none} .x{color:#fff"}`,
+		`theme: {success: "url(http://exemplo/x)"}`,
 	}
 	for _, v := range venenos {
 		if _, err := branding.Load(escrever(t, v)); err == nil {
@@ -95,13 +95,13 @@ func TestCorInvalidaEhRecusada(t *testing.T) {
 }
 
 func TestTituloVazioEhRecusado(t *testing.T) {
-	if _, err := branding.Load(escrever(t, `titulo: "   "`)); err == nil {
+	if _, err := branding.Load(escrever(t, `title: "   "`)); err == nil {
 		t.Error("titulo em branco deixaria a barra lateral sem nome")
 	}
 }
 
 func TestYamlQuebradoVoltaAoPadrao(t *testing.T) {
-	m, err := branding.Load(escrever(t, "titulo: [isto: nao\n  fecha"))
+	m, err := branding.Load(escrever(t, "title: [isto: nao\n  fecha"))
 	if err == nil {
 		t.Error("yaml invalido deveria ser reportado")
 	}
@@ -112,7 +112,7 @@ func TestYamlQuebradoVoltaAoPadrao(t *testing.T) {
 
 // A quebra de linha e do autor: virar espaco mudaria o ritmo do texto.
 func TestFrasePreservaAsLinhas(t *testing.T) {
-	m, err := branding.Load(escrever(t, "frase: |\n  Primeira\n  Segunda\n  Terceira\n"))
+	m, err := branding.Load(escrever(t, "phrase: |\n  Primeira\n  Segunda\n  Terceira\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestFrasePreservaAsLinhas(t *testing.T) {
 	if len(linhas) != 3 || linhas[0] != "Primeira" || linhas[2] != "Terceira" {
 		t.Errorf("linhas = %q", linhas)
 	}
-	sem, _ := branding.Load(escrever(t, `frase: ""`))
+	sem, _ := branding.Load(escrever(t, `phrase: ""`))
 	if len(sem.Lines()) != 0 {
 		t.Error("frase vazia nao deveria render linha nenhuma")
 	}
@@ -143,7 +143,12 @@ func TestAtribuicaoNaoVemDaConfiguracao(t *testing.T) {
 	if branding.Attribution != "Powered by Brevis" {
 		t.Errorf("atribuicao = %q", branding.Attribution)
 	}
-	m, err := branding.Load(escrever(t, "titulo: Acme\natribuicao: Powered by Acme\npowered_by: \"\"\n"))
+	// Desde que campo desconhecido virou erro, a garantia ficou mais forte: a
+	// tentativa nao e ignorada, e recusada nomeando o campo.
+	if _, err := branding.Load(escrever(t, "title: Acme\natribuicao: Powered by Acme\n")); err == nil {
+		t.Error("um campo inventado no YAML passou calado")
+	}
+	m, err := branding.Load(escrever(t, "title: Acme\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

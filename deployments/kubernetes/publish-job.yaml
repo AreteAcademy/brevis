@@ -1,9 +1,11 @@
-# Publicacao dos workflows — o equivalente ao `leoflow deploy` por DAG.
+# Publishing the workflows — the equivalent of Leoflow's per-DAG
+# `leoflow deploy`.
 #
-# A diferenca de desenho: no Leoflow cada DAG e um artefato registrado (e, quando
-# tem codigo proprio, uma imagem construida). Aqui a PASTA e o artefato: um
-# ConfigMap com os YAMLs, e um Job que os aplica. Publicar um workflow novo e
-# atualizar o ConfigMap e rodar o Job de novo — nao ha build por DAG.
+# The design difference: in Leoflow each DAG is a registered artifact (and, when
+# it has code of its own, a built image). Here the FOLDER is the artifact: a
+# ConfigMap with the YAMLs, and a Job that applies them. Publishing a new
+# workflow is updating the ConfigMap and running the Job again — there is no
+# per-DAG build.
 #
 #   kubectl -n dados create configmap brevis-workflows \
 #     --from-file=brevis/workflows/ --dry-run=client -o yaml | kubectl apply -f -
@@ -15,8 +17,9 @@ metadata:
   name: brevis-publish
   namespace: dados
 spec:
-  # O Job nao repete sozinho: publicar e idempotente, mas um erro aqui e de
-  # CONTEUDO (YAML invalido, cron impossivel) e repetir nao conserta.
+  # The Job does not retry on its own: publishing is idempotent, but an error
+  # here is about CONTENT (invalid YAML, an impossible cron) and retrying does
+  # not fix it.
   backoffLimit: 0
   ttlSecondsAfterFinished: 3600
   template:

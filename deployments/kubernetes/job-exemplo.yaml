@@ -1,6 +1,7 @@
-# Não é para aplicar: é o pod que o Brevis CRIA, escrito à mão, para leitura.
+# Not meant to be applied: it is the pod Brevis CREATES, written by hand, to be
+# read.
 #
-# Quando um passo assim é publicado…
+# When a step like this is published…
 #
 #   name: platform_workspace
 #   image: us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3
@@ -9,13 +10,13 @@
 #     - id: bronze_workspace
 #       run: dbt build --select bronze_workspace+
 #
-# …o scheduler monta exatamente isto:
+# …the scheduler assembles exactly this:
 apiVersion: v1
 kind: Pod
 metadata:
-  # Determinístico por (run, passo, tentativa). Se o scheduler morrer entre
-  # criar o pod e registrar isso, a próxima tentativa reencontra ESTE pod em vez
-  # de subir um segundo rodando o mesmo dbt em paralelo.
+  # Deterministic per (run, step, attempt). If the scheduler dies between
+  # creating the pod and recording that, the next attempt runs into THIS pod
+  # instead of starting a second one running the same dbt in parallel.
   name: platform-workspace-bronze-workspace-a632ae46
   namespace: dados
   labels:
@@ -24,12 +25,13 @@ metadata:
     brevis.dev/node: bronze-workspace
     brevis.dev/run: 1f2e3d4c-0000-0000-0000-000000000000
   annotations:
-    # O valor original: rótulo tem limite de 63 caracteres e alfabeto restrito.
+    # The original value: a label is limited to 63 characters and a restricted
+    # alphabet.
     brevis.dev/workflow: platform_workspace
 spec:
-  restartPolicy: Never          # quem conta tentativas é o dispatcher
+  restartPolicy: Never          # the dispatcher is what counts attempts
   serviceAccountName: brevis-task
-  activeDeadlineSeconds: 1800   # rede de segurança do lado do cluster
+  activeDeadlineSeconds: 1800   # the safety net on the cluster's side
   containers:
     - name: step
       image: us-central1-docker.pkg.dev/acme/apps/dbt:1.10.3

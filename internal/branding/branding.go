@@ -12,8 +12,11 @@
 package branding
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -24,14 +27,14 @@ import (
 // Brand is an installation's identity.
 type Brand struct {
 	// Title appears in the sidebar and in the pages' <title>.
-	Title string `yaml:"titulo"`
+	Title string `yaml:"title"`
 
 	// Subtitle is the small-caps line under the title.
-	Subtitle string `yaml:"subtitulo"`
+	Subtitle string `yaml:"subtitle"`
 
 	// Frase is the quotation in the sidebar's footer. Multiple lines are
 	// preserved -- the break is part of the text's rhythm.
-	Frase string `yaml:"frase"`
+	Frase string `yaml:"phrase"`
 
 	// Logo is the graphic mark next to the title. It accepts an absolute URL
 	// (the customer's hosted logo) or an internal path starting at `/assets/`.
@@ -43,7 +46,7 @@ type Brand struct {
 	// break over that.
 	Logo string `yaml:"logo"`
 
-	Theme Theme `yaml:"tema"`
+	Theme Theme `yaml:"theme"`
 }
 
 // Theme is the colours. Each field maps to a CSS variable Tailwind already
@@ -51,21 +54,21 @@ type Brand struct {
 // recompiling CSS, because EVERY utility resolves its colour through
 // `var(--color-*)`.
 type Theme struct {
-	Fundo         string `yaml:"fundo"`
-	FundoSuave    string `yaml:"fundo_suave"`
-	Superficie    string `yaml:"superficie"`
-	Tinta         string `yaml:"tinta"`
-	TextoSuave    string `yaml:"texto_suave"`
-	Accent        string `yaml:"destaque"`
-	DestaqueForte string `yaml:"destaque_forte"`
+	Fundo         string `yaml:"background"`
+	FundoSuave    string `yaml:"background_soft"`
+	Superficie    string `yaml:"surface"`
+	Tinta         string `yaml:"ink"`
+	TextoSuave    string `yaml:"muted"`
+	Accent        string `yaml:"accent"`
+	DestaqueForte string `yaml:"accent_strong"`
 
-	Sucesso    string `yaml:"sucesso"`
-	Falha      string `yaml:"falha"`
-	Executando string `yaml:"executando"`
-	Fila       string `yaml:"fila"`
-	Repetindo  string `yaml:"repetindo"`
-	Cancelado  string `yaml:"cancelado"`
-	Aguardando string `yaml:"aguardando"`
+	Sucesso    string `yaml:"success"`
+	Falha      string `yaml:"failed"`
+	Executando string `yaml:"running"`
+	Fila       string `yaml:"queued"`
+	Repetindo  string `yaml:"retrying"`
+	Cancelado  string `yaml:"canceled"`
+	Aguardando string `yaml:"pending"`
 }
 
 // DefaultLogo is the embedded symbol, served from the binary itself.
@@ -121,8 +124,17 @@ func Load(caminho string) (Brand, error) {
 	}
 	// Decodes ONTO the default: yaml.v3 only writes the fields present in the
 	// file, so the rest survives.
-	if err := yaml.Unmarshal(conteudo, &m); err != nil {
-		return Default(), fmt.Errorf("%s: invalid yaml: %w", caminho, err)
+	//
+	// KnownFields, so an unrecognized key is an ERROR. Before this, a typo --
+	// or a file still using the pre-v0.7 Portuguese keys, `titulo:` and
+	// `tema:` -- was ignored in silence, and the installation came up with the
+	// default identity while somebody looked for the reason their colours had
+	// not been applied.
+	dec := yaml.NewDecoder(bytes.NewReader(conteudo))
+	dec.KnownFields(true)
+	if err := dec.Decode(&m); err != nil && !errors.Is(err, io.EOF) {
+		return Default(), fmt.Errorf("%s: %w (the field names are the ones in "+
+			"brand.example.yaml; they became English in v0.7)", caminho, err)
 	}
 	if err := m.Validate(); err != nil {
 		return Default(), fmt.Errorf("%s: %w", caminho, err)

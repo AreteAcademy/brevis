@@ -1,15 +1,18 @@
-# Identidade do scheduler e a permissao MINIMA para criar pods de task.
+# The scheduler's identity and the MINIMUM permission needed to create task
+# pods.
 #
-# Duas contas, nao uma:
+# Two accounts, not one:
 #
-#   brevis-scheduler  cria e apaga pods. E a unica que precisa dessa permissao.
-#   brevis-task       a identidade com que os pods de task rodam — SEM nenhuma
-#                     permissao no cluster.
+#   brevis-scheduler  creates and deletes pods. The only one that needs that
+#                     permission.
+#   brevis-task       the identity the task pods run as — with NO permission in
+#                     the cluster.
 #
-# A separacao e o ponto: o pod de task executa comandos vindos de um YAML. Se ele
-# herdasse a conta do scheduler, qualquer workflow poderia criar pods, ler
-# secrets e escalar sozinho. Com uma conta sem role, o pior que um comando
-# arbitrario faz e usar as credenciais que a instalacao deu explicitamente a ele.
+# The separation is the point: the task's pod runs commands that came out of a
+# YAML. If it inherited the scheduler's account, any workflow could create pods,
+# read secrets and scale itself. With an account that has no role, the worst an
+# arbitrary command does is use the credentials the installation explicitly gave
+# it.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -21,10 +24,10 @@ kind: ServiceAccount
 metadata:
   name: brevis-task
   namespace: dados
-  # Workload Identity: e por aqui que o pod de task fala com o BigQuery, sem
-  # nenhuma chave em arquivo.
+  # Workload Identity: this is how the task's pod speaks to BigQuery, with no
+  # key in a file.
   # annotations:
-  #   iam.gke.io/gcp-service-account: brevis-task@PROJETO.iam.gserviceaccount.com
+  #   iam.gke.io/gcp-service-account: brevis-task@PROJECT.iam.gserviceaccount.com
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -32,9 +35,9 @@ metadata:
   name: brevis-scheduler
   namespace: dados
 rules:
-  # Sem `update` e sem `patch`: o scheduler cria, observa e apaga. Ele nunca
-  # edita um pod em voo, e uma permissao a mais aqui e uma a mais para quem
-  # comprometer o processo.
+  # No `update` and no `patch`: the scheduler creates, watches and deletes. It
+  # never edits a pod in flight, and one more permission here is one more for
+  # whoever compromises the process.
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["create", "get", "list", "watch", "delete"]

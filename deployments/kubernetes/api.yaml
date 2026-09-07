@@ -1,5 +1,5 @@
-# A API e a UI. Nao executa nada — por isso a imagem distroless, sem shell, e um
-# ServiceAccount sem permissao nenhuma no cluster.
+# The API and the UI. It runs nothing — hence the distroless image, with no
+# shell, and a ServiceAccount with no permission in the cluster at all.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,8 +33,9 @@ spec:
               value: /etc/brevis/brand.yaml
           volumeMounts:
             - {name: brand, mountPath: /etc/brevis, readOnly: true}
-          # /health nao toca o banco e /ready toca: liveness que depende do banco
-          # reinicia a API por causa de um failover do Postgres, o que so piora.
+          # /health does not touch the database and /ready does: a liveness
+          # probe that depends on the database restarts the API because of a
+          # Postgres failover, which only makes things worse.
           livenessProbe:
             httpGet: {path: /health, port: http}
             periodSeconds: 10

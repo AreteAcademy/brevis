@@ -1,22 +1,23 @@
-# O scheduler: cria runs a partir das agendas e as executa criando um pod por
-# passo. Ele nao executa dbt nem Python — quem faz isso e o pod que ele cria.
+# The scheduler: it creates runs out of the schedules and executes them by
+# creating one pod per step. It runs neither dbt nor Python — the pod it creates
+# is what does that.
 #
-# Por isso a imagem aqui e a `-worker` do Brevis (21 MB) e nao a do pipeline:
-# este processo so fala HTTP com o servidor de API.
+# Which is why the image here is Brevis's `-worker` (21 MB) and not the
+# pipeline's: this process only speaks HTTP to the API server.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: brevis-scheduler
   namespace: dados
 spec:
-  # UMA replica. O dispatcher usa `FOR UPDATE SKIP LOCKED`, entao duas nao
-  # entregariam o mesmo item — mas duas tambem MATERIALIZARIAM os mesmos slots,
-  # e a protecao contra isso e a chave de idempotencia, nao um lock. Uma replica
-  # mantem o comportamento obvio ate haver eleicao de lider.
+  # ONE replica. The dispatcher uses `FOR UPDATE SKIP LOCKED`, so two would not
+  # hand out the same item — but two would also MATERIALIZE the same slots, and
+  # what protects against that is the idempotency key, not a lock. One replica
+  # keeps the behaviour obvious until there is leader election.
   replicas: 1
   strategy:
-    # Recreate e nao RollingUpdate: com duas replicas no ar durante o rollout, a
-    # nova comecaria a materializar agendas antes de a antiga sair.
+    # Recreate and not RollingUpdate: with two replicas up during the rollout,
+    # the new one would start materializing schedules before the old one left.
     type: Recreate
   selector:
     matchLabels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: scheduler}
@@ -32,13 +33,13 @@ spec:
       containers:
         - name: scheduler
           image: daniel3843/brevis:0.2.1-worker
-          # DOIS tetos, e a diferenca importa:
-          #   --concurrency  quantos RUNS o dispatcher executa ao mesmo tempo
-          #   --max-pods     quantos PASSOS existem ao mesmo tempo = pods no cluster
+          # TWO ceilings, and the difference matters:
+          #   --concurrency  how many RUNS the dispatcher executes at once
+          #   --max-pods     how many STEPS exist at once = pods in the cluster
           #
-          # Com cinco pods de teto: dez passos prontos, cinco correm, e os
-          # demais entram conforme as vagas se abrem. Sem --max-pods, cinco runs
-          # com tres passos paralelos cada dariam quinze pods.
+          # With a ceiling of five pods: ten steps ready, five run, and the rest
+          # go in as slots open up. Without --max-pods, five runs with three
+          # parallel steps each would mean fifteen pods.
           args: ["scheduler", "--interval", "10s", "--concurrency", "10", "--max-pods", "5"]
           env:
             - name: BREVIS_ENV
@@ -46,42 +47,45 @@ spec:
             - name: BREVIS_DATABASE_URL
               valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
 
-            # `on` e nao `auto`: neste deploy, ficar sem cluster tem de ser erro
-            # de boot. Com `auto`, uma falha de montagem da service account faria
-            # o scheduler rodar TUDO dentro deste pod de 128Mi, em silencio.
+            # `on` and not `auto`: in this deployment, ending up without a
+            # cluster has to be a boot error. With `auto`, a failure to mount the
+            # service account would make the scheduler run EVERYTHING inside this
+            # 128Mi pod, in silence.
             - name: BREVIS_PODS
               value: "on"
             - name: BREVIS_POD_SERVICE_ACCOUNT
               value: brevis-task
-            # Credenciais dos pods de task. A lista vem daqui, da instalacao —
-            # nunca do YAML do workflow.
+            # The task pods' credentials. The list comes from here, from the
+            # installation — never from the workflow's YAML.
             - name: BREVIS_POD_ENV_FROM_SECRETS
               value: brevis-task-env
-            # Pool de nos das tasks. A dev cluster on arm64 (t2a),
-            # e sem o selector as tasks caem em qualquer no.
+            # The tasks' node pool. The dev cluster runs on arm64 (t2a), and
+            # without the selector the tasks land on any node.
             - name: BREVIS_POD_NODE_SELECTOR
               value: "kubernetes.io/arch=arm64"
-            # O pool arm64 tem taint; sem a toleracao o pod da task fica Pending
-            # para sempre — sem erro, so parado.
+            # The arm64 pool is tainted; without the toleration the task's pod
+            # stays Pending forever — with no error, just stopped.
             - name: BREVIS_POD_TOLERATIONS
               value: "kubernetes.io/arch=arm64:NoSchedule"
-            # Em incidente, `true` deixa o pod que falhou de pe para inspecao.
+            # During an incident, `true` leaves the failed pod up for
+            # inspection.
             - name: BREVIS_POD_MANTER_EM_FALHA
               value: "false"
 
-            # Alerta de falha. O webhook e credencial: quem tem a URL posta no
-            # canal como se fosse a plataforma, entao ele vive num Secret e
-            # nunca no YAML do workflow.
+            # Failure alerting. The webhook is a credential: whoever has the URL
+            # posts in the channel as if they were the platform, so it lives in a
+            # Secret and never in the workflow's YAML.
             - name: BREVIS_SLACK_WEBHOOK
               valueFrom:
                 secretKeyRef: {name: brevis-slack, key: webhook, optional: true}
-            # Sem ela o alerta diz o que falhou mas obriga quem le a procurar a
-            # execucao na mao.
+            # Without it the alert says what failed but forces the reader to
+            # find the run by hand.
             - name: BREVIS_UI_URL
               value: https://brevis.example.com
           resources:
-            # O scheduler so orquestra: o trabalho pesado esta nos pods que ele
-            # cria. Estes numeros sao para um processo Go que fala HTTP e SQL.
+            # The scheduler only orchestrates: the heavy work is in the pods it
+            # creates. These numbers are for a Go process that speaks HTTP and
+            # SQL.
             requests: {cpu: 50m, memory: 128Mi}
             limits: {memory: 256Mi}
           securityContext:

@@ -305,6 +305,11 @@ would only surface when the container started, and the message would arrive
 through the pod's log — far from whoever edited the file. Here the error comes
 back in the pull request.
 
+An unrecognized key is an error too. Before v0.7 it was ignored, so a typo left
+the installation on the default identity with nothing said; the field names also
+became English in that version, and a file still using `titulo:` fails naming
+it.
+
 One behavioural difference from boot: **a missing file is an error**. In `serve`,
 absence means "use the default identity"; whoever asked to validate a path
 expects to be told it does not exist.
