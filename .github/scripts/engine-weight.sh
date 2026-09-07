@@ -33,6 +33,11 @@ failed=0
 # exporter, the total lands under the ceiling anyway, and the gate says nothing
 # while the image grows a serialization library it never serializes with.
 # See docs/plan/2026-09-08-observability.md, section 1.
+#
+# go.mod DOES list prometheus/common and client_model, and that is not a
+# contradiction: they are test-only, so the reference parser can check the
+# exposition this repository writes by hand. This check measures what
+# ./cmd/brevis links, which is the thing that ships.
 for forbidden in \
   "AreteAcademy/brevis/sdk" \
   "cloud.google.com/go/bigquery" \
