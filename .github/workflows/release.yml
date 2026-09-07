@@ -18,7 +18,7 @@ env:
   IMAGE: docker.io/daniel3843/brevis
 
 jobs:
-  imagens:
+  images:
     runs-on: ubuntu-latest
     permissions:
       contents: read
