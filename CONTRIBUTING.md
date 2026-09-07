@@ -10,6 +10,12 @@ and a comment nobody can read is a comment that stops being maintained.
 The website's user-facing documentation is translated to Portuguese, English and
 Spanish. Everything else, including this repository, is English only.
 
+A few names stay Portuguese on purpose, and each one says so where it lives:
+the on-disk and wire formats. The `Param` JSON keys, `postgres.Stage`'s tags, the
+migrations' columns, the checkpoint depot's file names, the graph payload
+`dag.js` reads, and `data-dica` / `grafico-*`. They are data, not prose, and
+renaming one is a migration rather than a translation.
+
 Some historical documents predate this rule and are kept as they were written —
 `CHANGELOG.md`, `CHANGELOG-motor.md` and the older files in `docs/plan/`. They
 are a record of decisions made on a date, and rewriting a record is not the same

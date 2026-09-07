@@ -303,6 +303,24 @@ identifier in the two JavaScript files and twelve Portuguese file names.
 policy in the drivers plan: a name that shipped in a published version is kept
 as an alias held down by a test, and goes in v1.
 
+### Thread J was reported closed once before it was
+
+Every count in this plan — A through J — came from a detector whose vocabulary
+was **typed out by hand**. A hand-typed list has holes in it by construction, and
+this one had about forty: `lerNDJSON`, `Alternar`, `Ativas`, `AvancarSlot`,
+`Baldes`, `Cliente`, `Recuperar`, `Ambiente`, `temMais`, `carregando`,
+`aoEsgotar` and their neighbours all read as English to it.
+
+What closed it is a check that does not depend on anybody remembering a word:
+split each identifier into its words, and flag any word absent from
+`/usr/share/dict/words` that matches Portuguese morphology. It is noisier — it
+flags `DoesNotHandOut` and every `Param` — but its blind spots are not the
+author's blind spots, which is the whole point.
+
+It is not wired into CI. It needs a system dictionary a runner may not have, and
+the allowlist it would need to stay quiet is the same hand-maintained list that
+failed here. `CONTRIBUTING.md` states the rule; this is how to audit it.
+
 ### The method, and why it is the inverse of thread H's
 
 A rename tool that walks the source and rewrites **only at code positions** —
@@ -364,3 +382,13 @@ into `dag.js` rather than here, where the next person to look will be.
   codigo %d`, `morto por SIGKILL`, `execucao orfa`, `comando nao encontrado`.
   They are what somebody reads at three in the morning, so they went with the
   identifiers.
+- **The login redirect and the login screen used different query parameters.**
+  Thread F renamed the form's field from `de` to `next` on both sides and missed
+  the redirect that writes the query string, in another package. An operator who
+  followed a deep link while logged out signed in and landed on `/` — the filter,
+  the page and the workflow they were looking at gone, with nothing saying why.
+  The test that should have caught it asserted only that the `Location` header
+  mentions `/runs`, which the broken version does too. The parameter is now a
+  constant with both ends reading it, the value is percent-encoded (a
+  destination carrying its own query string used to lose everything after the
+  first `&`), and the test checks the decoded round trip.
