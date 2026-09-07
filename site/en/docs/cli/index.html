@@ -143,6 +143,15 @@
 <div class="table-wrap"><table><thead><tr><th>flag</th><th>type</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>10s</code></td><td>interval between cycles</td></tr><tr><td><code>--concurrency</code></td><td>int</td><td><code>5</code></td><td>simultaneous <strong>runs</strong></td></tr><tr><td><code>--max-pods</code></td><td>int</td><td><code>5</code></td><td>simultaneous <strong>steps</strong> in total</td></tr></tbody></table></div>
 <p><code>CMD</code> of the <code>worker</code> image (alpine with a shell, because <code>run:</code> steps need one).</p>
 <hr>
+<h2 id="alert">alert<a class="anchor" href="#alert" aria-label="link">#</a></h2>
+<p>Delivers the alerts the scheduler recorded. A third process beside <code>serve</code> and <code>scheduler</code>.</p>
+<div class="code-block" data-code="brevis alert --interval 1s --max-attempts 6"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> alert <span class="t-n">--interval</span> 1s <span class="t-n">--max-attempts</span> 6</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>type</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>--interval</code></td><td>duration</td><td><code>1s</code></td><td>interval between delivery cycles</td></tr><tr><td><code>--max-attempts</code></td><td>int</td><td><code>6</code></td><td>tries before an alert is recorded as undelivered</td></tr></tbody></table></div>
+<p><strong>It exists because of where an alert is written, not because delivery deserves a process.</strong> The scheduler records the alert in the same transaction as the failure that justifies it — either the run is out of attempts and the alert exists, or neither happened. Something then has to drain that table, and it has to survive both a Slack outage and its own restart. Before this, a failing webhook meant a log line and an alert that was simply gone.</p>
+<p>It refuses to start with no channel configured (<code>BREVIS_SLACK_WEBHOOK</code>). A delivery process with nowhere to deliver drains the outbox into "undelivered" as fast as it fills, and those rows look exactly like Slack rejecting them.</p>
+<p>An alert it gives up on is <strong>kept</strong>: "raised, not delivered, 4 attempts, 403 from Slack" is the row that matters, because it is the case where somebody is waiting for a message that is not coming.</p>
+<p><code>CMD</code> of the <code>worker</code> image.</p>
+<hr>
 <h2 id="migrate">migrate<a class="anchor" href="#migrate" aria-label="link">#</a></h2>
 <div class="code-block" data-code="brevis migrate up      # applies what is missing
 brevis migrate down    # reverts the last one
@@ -223,7 +232,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#marca">marca</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
+      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#marca">marca</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
     </aside>
   </main>
 </div>
