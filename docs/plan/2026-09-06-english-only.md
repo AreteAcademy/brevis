@@ -1,7 +1,7 @@
 # English only: closing every open thread
 
 **Written on** 2026-09-06 · **Base** `sdk/v0.51.0`, engine `v0.6.0`
-**Status** threads A–I and §4 closed on 2026-09-06; §7 is what is left
+**Status** threads A–J and §4 closed on 2026-09-06; §5 is what is left
 
 Contributors are joining from outside Brazil. The project's language is English
 — code, comments, identifiers, error messages, tests, commit messages and
@@ -31,7 +31,7 @@ function words in comment lines.
 | G | **Infra** — `.github/`, `deployments/`, `migrations/`, Makefile, Dockerfile, composes | 0 | ✅ done |
 | H | **Test comments** | 0 | ✅ done |
 | I | **Test function names** | 0 | ✅ done |
-| J | **Portuguese identifiers in code** | 170 | see §7 — found by finishing H |
+| J | **Portuguese identifiers in code** | 0 | ✅ done — see §7 |
 
 Deliberately **not** on the list, with the reason written down:
 
@@ -285,40 +285,82 @@ tests green, and a `CONTRIBUTING.md` that states the rule so the count stays at
 zero without anybody policing it.
 
 That command counts **comment lines**, which is what every count in this plan
-measured. §7 is what it does not see.
+measured. §7 is what it did not see, and it is closed too. What the two of them
+together still do not see is prose inside strings; the operator-facing messages
+were swept by hand in §7.
 
 ---
 
-## 7. What finishing H turned up: the identifiers
+## 7. The identifiers, and how they were renamed
 
-The comment detectors run over comments. The code itself was never counted, and
-it is not clean:
+Found by finishing H: the comment detectors run over comments, and the code
+itself had never been counted. It was not clean — 145 distinct Portuguese
+identifiers in the engine, 25 in the SDK, 7 in `examples/`, plus every
+identifier in the two JavaScript files and twelve Portuguese file names.
 
-| | distinct Portuguese identifiers | exported |
+**Done, in five commits.** What is left is the four deprecated SDK aliases —
+`CampoJSON`, `ComoCriar`, `CriarPorSQL`, `CriarPorSchema` — which stay by the
+policy in the drivers plan: a name that shipped in a published version is kept
+as an alias held down by a test, and goes in v1.
+
+### The method, and why it is the inverse of thread H's
+
+A rename tool that walks the source and rewrites **only at code positions** —
+never inside a comment, a string, a raw string or a rune literal. Thread H
+produced five mangled comments by doing the opposite, so this one cannot see
+prose at all. Doc comments naming a moved symbol were then fixed in a second
+pass, restricted to unambiguous symbol names.
+
+That restriction is not decorative. The first attempt at the test files ran the
+comment-side pass over a map of GENERIC words, and it did what generic
+substitution always does here: `"--param %q"` became `"--prm %q"`, the JSON tag
+`json:"erro"` became `json:"failure"`, and `"data.accessToken"` became a
+different key. Reverted and redone.
+
+The check that closes it is a **literal-by-literal diff** against the previous
+commit: parse both versions, compare the set of string and comment spans, and
+require every difference to be one this commit meant to make.
+
+### Where the rename stopped, and why
+
+| | stays | because |
 |---|---|---|
-| engine (`internal/`, `cmd/`, `web/`) | 145 | 41 |
-| `sdk/` | 25 | 4 |
-| `examples/` | 7 | 0 |
+| `Param`'s JSON keys | `Nome`, `Tipo`, `Descricao` | a Workflow is stored whole as JSON in `workflows.definicao` and `runs.definicao` with no tags, so the Go field NAME was the key |
+| `postgres.Stage`'s tags | `nome`, `estado`, `numeros`, `indice`, `em` | the `task_runs.etapas` JSONB column |
+| the migrations' columns | `criado_em`, `definicao`, … | the applied schema |
+| the checkpoint depot | `_completo`, `parte-%05d.ndjson` | a depot written by a released SDK |
+| the graph payload | `nome`, `estado`, `numeros`, `rotulo`, `acao`, `erro`, `tentativa`, `duracao_ms` | the wire between `internal/api/graph.go` and `dag.js` |
+| `grafico-dica`, `data-dica` | | a CSS class, a data attribute and the script that reads them, in three files |
 
-The four exported SDK names are the deprecated aliases — `CampoJSON`,
-`CriarPorSQL`, `CriarPorSchema`, `ErrorContext` — and they **stay**, by the
-policy in §3 of the drivers plan: a name that shipped in a published version is
-kept as an alias held down by a test, and goes in v1. Nothing else in the SDK's
-public surface is Portuguese.
+The first one needed **holding down**, and that is the expensive lesson of this
+thread. `Param`'s fields were renamed before anyone noticed the struct was
+persisted: `json.Unmarshal` ignores a key it does not know, so every published
+workflow would have come back with a param carrying no name, no type and no
+description — no error, no log, a trigger form rendering an empty field, and the
+validation refusing a value the author had declared as valid.
 
-The engine's 41 are all inside `internal/`, so none of them is anybody's API:
-`ErroDePasso`, `Portao`, `Etapa`, `Vagas`, `SecretsPermitidos`, `TetoDoLog`,
-`MontarPod`, `PassoJaTeveSucesso` and their neighbours. Renaming them is safe and
-mechanical — and it is exactly the shape of edit that mangled prose five times
-during H, so it wants the same method: rename, build, then read the diff for
-half-translated lines.
+It now carries explicit tags pinning the old keys, and
+`TestTheParamKeysAreTheOnDiskFormat` asserts all six of them plus the count, so
+a seventh field added without a tag fails. Verified it bites by dropping the
+tags: three failures, each naming its key.
 
-**Not started here, deliberately.** It is a separate change with a separate
-diff, and putting it in the same commit as the test translations would have made
-both unreviewable.
+The last two rows are a different kind of stop. Both sides ship in one image, so
+renaming them together is safe in principle — but a browser holding the page
+across a deploy keeps the old script and receives the new JSON, and every stage
+box loses its name until somebody reloads. Eight words are not worth that; they
+move when there is a reason to touch the payload anyway. The reason is written
+into `dag.js` rather than here, where the next person to look will be.
 
-### The one on-disk name inside that count
+### Three defects the sweep turned up
 
-`internal/domain/run`'s `EstadoPT` is not a translation candidate: it maps a
-status to the Portuguese word the UI used to show. Whatever happens to the
-identifier, the *values* are a display decision, not code.
+- **`Workflow.Validate` ran the same two checks twice** — `MaxActive < 0` and
+  `validateResources` over the workflow and every node — in one function, with
+  the second copy in Portuguese. The second could never report anything the
+  first had not.
+- **`brand.yaml`'s colour error named the Go field**, not the YAML key: `colour
+  falha` for a file that says `failed:`. It sent whoever was fixing it looking
+  for a key that is not in their file.
+- **The operator-facing failure strings were still Portuguese** — `saiu com
+  codigo %d`, `morto por SIGKILL`, `execucao orfa`, `comando nao encontrado`.
+  They are what somebody reads at three in the morning, so they went with the
+  identifiers.
