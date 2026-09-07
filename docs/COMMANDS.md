@@ -238,6 +238,15 @@ brevis publish workflows/ --project acme --prune
 | `--project` | string | `default` | the project's slug |
 | `--prune` | bool | `false` | removes from the project the workflows absent from the published list |
 
+It refuses the whole publish on the first invalid workflow: a duplicated step
+id, a dependency that does not exist, a cycle, a malformed resource quantity, a
+param whose default fails its own type, an environment variable name a shell
+would not accept, and a `runtime:` or `tools:` outside the vocabulary — that
+last one naming what IS valid, see [`RUNTIME.md`](RUNTIME.md).
+
+Refusing here is the point: every one of those is otherwise found on a screen,
+days later, by somebody who did not write the file.
+
 ```
 $ brevis publish examples/
   published  daily_analytics          (manual)

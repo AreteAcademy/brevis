@@ -152,11 +152,19 @@ func TestDetectReadsTheCommand(t *testing.T) {
 			run:  "python {{ .script }} --date {{ .date }}", runtime: rt.Python,
 		},
 
-		// --- action: is exact, not a guess ------------------------------
+		// --- action: says nothing, and the corpus test is why ------------
 		{
-			name: "a registered Go task",
-			// It runs in the engine's own process. Nothing to infer.
-			action: "sync.users", runtime: rt.Go,
+			name: "an action contributes no runtime",
+			// The first version returned Go here. `action: docker.run` runs an
+			// arbitrary image, and calling it Go is a confident lie -- telling
+			// a real in-process task from a dispatch one needs the executor's
+			// registry, which a pure function does not have.
+			action: "docker.run",
+		},
+		{
+			name:   "an action with an image is read from the image",
+			action: "kubernetes.run", image: "ghcr.io/acme/dbt-runner:1.7",
+			tools: []string{rt.DBT},
 		},
 
 		// --- the image ---------------------------------------------------

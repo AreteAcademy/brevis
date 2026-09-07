@@ -32,6 +32,7 @@ and [`sdk/README.md`](../sdk/README.md); the version-by-version history is
 | [`IMAGES.md`](IMAGES.md) | the Docker images |
 | [`KUBERNETES.md`](KUBERNETES.md) | the deployment |
 | [`PARAMS.md`](PARAMS.md) | the engine's run parameters |
+| [`RUNTIME.md`](RUNTIME.md) | what a step runs in, on the graph: `runtime:` and `tools:` |
 | [`COMMANDS.md`](COMMANDS.md) | the command-line reference |
 
 ## Plans and specs

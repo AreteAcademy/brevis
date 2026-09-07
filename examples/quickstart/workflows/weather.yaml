@@ -10,6 +10,10 @@ steps:
   # Pulls an hourly forecast and lands it as CSV, one directory per run.
   - id: fetch_weather
     run: /opt/brevis/bin/fetch-weather
+    # A bare binary path tells the engine nothing, so the graph would draw no
+    # runtime chip. `runtime:` is exactly for this: the author knows what the
+    # compiled thing is, and the parser cannot.
+    runtime: go
     env:
       OUT_DIR: /data
 
@@ -21,5 +25,6 @@ steps:
   # vendor nothing.
   - id: daily_summary
     run: /opt/brevis/bin/summarise-weather
+    runtime: go
     env:
       OUT_DIR: /data

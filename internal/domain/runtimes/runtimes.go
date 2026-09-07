@@ -133,18 +133,23 @@ func (d Detection) Empty() bool { return d.Runtime == "" && len(d.Tools) == 0 }
 // Detect works out what a step runs in, from the fields the workflow already
 // carries.
 //
-// `action` is EXACT: a registered Go task runs inside the engine's own process,
-// so there is nothing to guess.
+// `action` contributes NOTHING, and that is a correction the corpus test forced.
 //
-// Everything else is a reading of `run` and `image`, and the two are not equal.
+// The first version returned Go for any action, reasoning that an action is a
+// task registered in this binary. Two of the repository's own examples use
+// `action: kubernetes.run` and `action: docker.run` -- dispatch actions whose
+// payload is an arbitrary image -- and both came out labelled Go, which is a
+// confident lie about a step that runs somebody else's container.
+//
+// Telling a real in-process task from a dispatch one needs the executor's
+// registry, and this function is pure on purpose. Blank is the honest answer.
+//
+// What is left is a reading of `run` and `image`, and the two are not equal.
 // The command wins for the runtime, because the command is what executes; the
 // image only supplies one when the command supplied none. Tools come from both.
 // An image named `python:3.12` running `dbt build` is a dbt step.
 func Detect(run, image, action string) Detection {
-	if strings.TrimSpace(action) != "" {
-		// A Go task, registered in this binary. Not a heuristic.
-		return Detection{Runtime: Go, Source: SourceInferred}
-	}
+	_ = action
 
 	fromRun := fromCommand(run)
 	fromImage := fromImageRef(image)
