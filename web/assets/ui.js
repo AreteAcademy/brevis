@@ -39,30 +39,34 @@
   //
   // The SVG's <title> does show the value, but only after a second of hovering
   // and with the operating system's appearance. Here the tooltip appears at
-  // once, follows the
-  // cursor e usa a mesma tipografia do resto da pagina.
-  var dica = null;
+  // once, follows the cursor and uses the same typography as the rest of the
+  // page.
+  //
+  // `grafico-dica` and `data-dica` stay Portuguese: the class is in
+  // app.src.css and the attribute is written by the templates, and the three
+  // only move together. See the note in dag.js.
+  var tip = null;
 
-  function mostrar(texto, x, y) {
-    if (!dica) {
-      dica = document.createElement("div");
-      dica.className = "grafico-dica";
-      document.body.appendChild(dica);
+  function show(text, x, y) {
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "grafico-dica";
+      document.body.appendChild(tip);
     }
-    dica.textContent = texto;
-    dica.style.display = "block";
+    tip.textContent = text;
+    tip.style.display = "block";
     // It sits above and to the right of the cursor, flipping to the other side
-    // when
-    // esbarra na borda — senao a dica sai da tela nas ultimas colunas.
-    var largura = dica.offsetWidth;
-    var esquerda = x + 14;
-    if (esquerda + largura > window.innerWidth - 8) esquerda = x - largura - 14;
-    dica.style.left = esquerda + "px";
-    dica.style.top = y - dica.offsetHeight - 12 + "px";
+    // when it meets the edge -- otherwise the tooltip leaves the screen on the
+    // last columns.
+    var width = tip.offsetWidth;
+    var left = x + 14;
+    if (left + width > window.innerWidth - 8) left = x - width - 14;
+    tip.style.left = left + "px";
+    tip.style.top = y - tip.offsetHeight - 12 + "px";
   }
 
-  function esconder() {
-    if (dica) dica.style.display = "none";
+  function hide() {
+    if (tip) tip.style.display = "none";
   }
 
   document.addEventListener("mousemove", function (e) {
@@ -70,13 +74,13 @@
     // itself, for instance). Without the guard, a mousemove outside any element
     // throws a TypeError and kills the listener for the rest of the session.
     if (!e.target || typeof e.target.closest !== "function") return;
-    var alvo = e.target.closest("[data-dica]");
-    if (alvo) mostrar(alvo.dataset.dica, e.clientX, e.clientY);
-    else esconder();
+    var target = e.target.closest("[data-dica]");
+    if (target) show(target.dataset.dica, e.clientX, e.clientY);
+    else hide();
   });
 
   // Scrolling with the tooltip open would leave it floating over another point
   // of the chart.
-  window.addEventListener("scroll", esconder, { passive: true });
-  document.addEventListener("mouseleave", esconder);
+  window.addEventListener("scroll", hide, { passive: true });
+  document.addEventListener("mouseleave", hide);
 })();
