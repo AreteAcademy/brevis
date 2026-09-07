@@ -13,14 +13,14 @@ import (
 	"github.com/AreteAcademy/brevis/internal/notify"
 )
 
-func capture(t *testing.T, status int, resposta string) (*notify.Slack, *string) {
+func capture(t *testing.T, status int, response string) (*notify.Slack, *string) {
 	t.Helper()
 	var recebido string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		recebido = string(b)
 		w.WriteHeader(status)
-		_, _ = w.Write([]byte(resposta))
+		_, _ = w.Write([]byte(response))
 	}))
 	t.Cleanup(srv.Close)
 
@@ -28,20 +28,20 @@ func capture(t *testing.T, status int, resposta string) (*notify.Slack, *string)
 	return s, &recebido
 }
 
-func alert() notify.Alerta {
-	quando := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC)
-	return notify.Alerta{
+func alert() notify.Alert {
+	when := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC)
+	return notify.Alert{
 		Workflow: "id_verification", RunID: "1f2e3d4c-0000-0000-0000-000000000000",
-		Status: "failed", Trigger: "schedule", Tentativas: 3, LogicalDate: &quando,
+		Status: "failed", Trigger: "schedule", Attempts: 3, LogicalDate: &when,
 		Err:     "level 1: step \"run\": exited with code 2\nDatabase Error in model x",
 		Tags:    []string{"acme", "id", "dbt"},
-		URLBase: "https://brevis.example.com",
+		BaseURL: "https://brevis.example.com",
 	}
 }
 
 func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 	s, recebido := capture(t, 200, "ok")
-	if err := s.Falhou(context.Background(), alert()); err != nil {
+	if err := s.Failed(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,9 +64,9 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 		"`id`",                             // domain, coming from the tags
 		"FAILED",                           // status
 		"schedule",                         // origin
-		"exited with code 2",               // a causa
-		"brevis.example.com/runs/1f2e3d4c", // link direto
-		expectedLogicalDate(),              // data logica, no fuso de quem formata
+		"exited with code 2",               // the cause
+		"brevis.example.com/runs/1f2e3d4c", // the direct link
+		expectedLogicalDate(),              // the logical date, in the formatter's zone
 	} {
 		if !strings.Contains(corpo, esperado) {
 			t.Errorf("the message is missing %q:\n%s", esperado, corpo)
@@ -82,7 +82,7 @@ func TestALongErrorIsTruncated(t *testing.T) {
 	a := alert()
 	a.Err = strings.Repeat("a very long stack-trace line ", 200)
 
-	if err := s.Falhou(context.Background(), a); err != nil {
+	if err := s.Failed(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
 	if len(*recebido) > 3000 {
@@ -106,7 +106,7 @@ func TestTheEnvironmentShowsInTheHeader(t *testing.T) {
 	defer srv.Close()
 
 	s := notify.NovoSlack(srv.URL, "dev")
-	if err := s.Falhou(context.Background(), alert()); err != nil {
+	if err := s.Failed(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -116,7 +116,7 @@ func TestTheEnvironmentShowsInTheHeader(t *testing.T) {
 // browser.
 func TestASlackErrorCarriesTheReason(t *testing.T) {
 	s, _ := capture(t, 403, "invalid_token")
-	err := s.Falhou(context.Background(), alert())
+	err := s.Failed(context.Background(), alert())
 	if err == nil {
 		t.Fatal("expected an error")
 	}
@@ -128,7 +128,7 @@ func TestASlackErrorCarriesTheReason(t *testing.T) {
 // With no webhook configured it is not an error: the installation simply does not
 // alert.
 func TestWithNoWebhookItDoesNothing(t *testing.T) {
-	if err := (&notify.Slack{}).Falhou(context.Background(), alert()); err != nil {
+	if err := (&notify.Slack{}).Failed(context.Background(), alert()); err != nil {
 		t.Errorf("an installation with no webhook became an error: %v", err)
 	}
 }
@@ -140,7 +140,7 @@ func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
 	a.Tags = nil
 	a.Workflow = "platform_workspace"
 
-	if err := s.Falhou(context.Background(), a); err != nil {
+	if err := s.Failed(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(*recebido, "`platform`") {
@@ -148,7 +148,7 @@ func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
 	}
 }
 
-// expectedLogicalDate rende a data do alert no fuso do PROCESSO.
+// expectedLogicalDate renders the alert's date in the PROCESS's timezone.
 //
 // Pinning "01/09/2026 01:00" tied the test to UTC-3: it passed on the machine of
 // whoever wrote it and failed in CI, which runs in UTC -- and that is how it took
@@ -163,7 +163,7 @@ func expectedLogicalDate() string {
 // talking about the same failure.
 func TestTheLogicalDateSaysTheZone(t *testing.T) {
 	s, recebido := capture(t, 200, "ok")
-	if err := s.Falhou(context.Background(), alert()); err != nil {
+	if err := s.Failed(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 

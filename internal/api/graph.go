@@ -243,14 +243,14 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 // The wire keeps `extract` and `load` because renaming them would make an
 // already-published engine stop drawing an older fetcher's phases. The screen is
 // free to say what they mean.
-func stageLabel(nome string) string {
-	switch nome {
+func stageLabel(name string) string {
+	switch name {
 	case "extract":
 		return "source"
 	case "load":
 		return "target"
 	}
-	return nome
+	return name
 }
 
 func findNode(nodes []wf.Node, id string) wf.Node {

@@ -31,13 +31,13 @@ func TestAppendJSONStringAgreesWithTheEncoder(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		nome := strings.Map(func(r rune) rune {
+		name := strings.Map(func(r rune) rune {
 			if r < 0x20 {
 				return '_'
 			}
 			return r
 		}, c.s)
-		t.Run(nome, func(t *testing.T) {
+		t.Run(name, func(t *testing.T) {
 			var buf bytes.Buffer
 			enc := json.NewEncoder(&buf)
 			enc.SetEscapeHTML(false)

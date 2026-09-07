@@ -29,7 +29,7 @@ func TestResultCarriesTheCredentialsExpiry(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	dados, err := Extract(context.Background(), Source{
+	data, err := Extract(context.Background(), Source{
 		From: from.HTTP{
 			URL:     srv.URL + "/dados",
 			DataKey: "results",
@@ -47,7 +47,7 @@ func TestResultCarriesTheCredentialsExpiry(t *testing.T) {
 		t.Fatalf("Extract: %v", err)
 	}
 
-	res, err := loadWith(context.Background(), dados,
+	res, err := loadWith(context.Background(), data,
 		Target{To: fakeTarget{}, Columns: []string{"id"}}, RunContext{})
 	if err != nil {
 		t.Fatalf("load: %v", err)
@@ -78,17 +78,17 @@ func TestArgsOmitsTheCredentialWhenThereIsNone(t *testing.T) {
 // fields. And then, when an HTTP pipeline showed a genuine zero, nobody would
 // see it.
 func TestArgsOmitsAZeroedCounter(t *testing.T) {
-	vazio := fmt.Sprint((&Result{Rows: 10}).Args()...)
-	for _, chave := range []string{"extract_bytes", "bytes", "format"} {
-		if strings.Contains(vazio, chave) {
-			t.Errorf("%q aparece com valor zerado: %s", chave, vazio)
+	empty := fmt.Sprint((&Result{Rows: 10}).Args()...)
+	for _, key := range []string{"extract_bytes", "bytes", "format"} {
+		if strings.Contains(empty, key) {
+			t.Errorf("%q aparece com valor zerado: %s", key, empty)
 		}
 	}
 
-	cheio := fmt.Sprint((&Result{ExtractBytes: 1, Bytes: 2, Format: "ndjson"}).Args()...)
-	for _, chave := range []string{"extract_bytes", "bytes", "format"} {
-		if !strings.Contains(cheio, chave) {
-			t.Errorf("%q sumiu mesmo tendo valor: %s", chave, cheio)
+	full := fmt.Sprint((&Result{ExtractBytes: 1, Bytes: 2, Format: "ndjson"}).Args()...)
+	for _, key := range []string{"extract_bytes", "bytes", "format"} {
+		if !strings.Contains(full, key) {
+			t.Errorf("%q sumiu mesmo tendo valor: %s", key, full)
 		}
 	}
 }

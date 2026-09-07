@@ -249,16 +249,16 @@ func TestExtractExpandsAndMaps(t *testing.T) {
 		t.Fatalf("expected 2 readings, got %d", len(envelopes))
 	}
 
-	primeiro := envelopes[0].Payload.(map[string]any)
-	if primeiro["source_key"] != "-23.55|-46.63|2026-01-01T00:00" {
-		t.Errorf("source_key = %q", primeiro["source_key"])
+	first := envelopes[0].Payload.(map[string]any)
+	if first["source_key"] != "-23.55|-46.63|2026-01-01T00:00" {
+		t.Errorf("source_key = %q", first["source_key"])
 	}
-	if primeiro[ColumnIngestionID] == nil || primeiro[ColumnIngestionID] == "" {
+	if first[ColumnIngestionID] == nil || first[ColumnIngestionID] == "" {
 		t.Error("a cadeia não escreveu ingestion_id")
 	}
 
 	segundo := envelopes[1].Payload.(map[string]any)
-	if primeiro[ColumnIngestionID] == segundo[ColumnIngestionID] {
+	if first[ColumnIngestionID] == segundo[ColumnIngestionID] {
 		t.Error("duas leituras diferentes colidiram no mesmo id")
 	}
 }
@@ -638,7 +638,7 @@ func TestEvery2xxReachesRecords(t *testing.T) {
 	casos := []struct {
 		status int
 		corpo  string
-		linhas int
+		lines  int
 	}{
 		{200, `[{"a":1},{"a":2}]`, 2},
 		{201, `[{"a":1}]`, 1},
@@ -680,8 +680,8 @@ func TestEvery2xxReachesRecords(t *testing.T) {
 				}
 				n++
 			}
-			if n != c.linhas {
-				t.Errorf("http %d rendeu %d registros, esperado %d", c.status, n, c.linhas)
+			if n != c.lines {
+				t.Errorf("http %d rendeu %d registros, esperado %d", c.status, n, c.lines)
 			}
 		})
 	}
@@ -695,15 +695,15 @@ func TestANon2xxStillFails(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	chamou := false
+	called := false
 	_, err := Extract(context.Background(), Source{From: from.HTTP{
 		URL:     srv.URL,
-		Records: func(Response) ([]any, error) { chamou = true; return nil, nil },
+		Records: func(Response) ([]any, error) { called = true; return nil, nil },
 	}})
 	if err == nil {
 		t.Fatal("um 404 tem de falhar")
 	}
-	if chamou {
+	if called {
 		t.Error("um não-2xx não é resposta de sucesso; Records não deve vê-lo")
 	}
 	var se *SourceError

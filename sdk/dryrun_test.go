@@ -11,21 +11,21 @@ import (
 )
 
 // capturarSaida runs f with stdout redirected, and returns what it printed.
-func capturarSaida(t *testing.T, f func() error) (string, error) {
+func captureOutput(t *testing.T, f func() error) (string, error) {
 	t.Helper()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	anterior := os.Stdout
+	previous := os.Stdout
 	os.Stdout = w
 
-	erro := f()
+	failure := f()
 
-	os.Stdout = anterior
+	os.Stdout = previous
 	_ = w.Close()
-	saida, _ := io.ReadAll(r)
-	return string(saida), erro
+	output, _ := io.ReadAll(r)
+	return string(output), failure
 }
 
 // pipelineDeEstagios is the shape the defect report described: a source whose
@@ -39,7 +39,7 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 	}
 	return &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: countedSource{registros: rows, leituras: new(int)}},
+		Source: Source{From: countedSource{records: rows, leituras: new(int)}},
 		Stages: []Stage{
 			Aggregate(Reduce{
 				By:  GroupBy("area", "year"),
@@ -71,16 +71,16 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 // different question is worse than none.
 func TestDryRunProducesExactlyWhatTheRunWouldLand(t *testing.T) {
 	var doRun []Envelope
-	if _, err := rodar(t, pipelineDeEstagios(&doRun)); err != nil {
+	if _, err := runIt(t, pipelineDeEstagios(&doRun)); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 
 	var doDry []Envelope
-	saida, err := capturarSaida(t, func() error {
+	output, err := captureOutput(t, func() error {
 		return runDryRun(context.Background(), pipelineDeEstagios(&doDry), 100)
 	})
 	if err != nil {
-		t.Fatalf("dry-run: %v\n%s", err, saida)
+		t.Fatalf("dry-run: %v\n%s", err, output)
 	}
 
 	if len(doRun) == 0 {
@@ -91,10 +91,10 @@ func TestDryRunProducesExactlyWhatTheRunWouldLand(t *testing.T) {
 	}
 
 	// The dry-run does not write, so what it produced is what it printed.
-	impressos := registrosImpressos(t, saida)
+	impressos := printedRecords(t, output)
 	if len(impressos) != len(doRun) {
 		t.Fatalf("dry-run printed %d records, the run landed %d:\n%s",
-			len(impressos), len(doRun), saida)
+			len(impressos), len(doRun), output)
 	}
 	for i, esperado := range doRun {
 		querido, _ := json.Marshal(esperado.Payload)
@@ -109,20 +109,20 @@ func TestDryRunProducesExactlyWhatTheRunWouldLand(t *testing.T) {
 // nothing about where the other six million went.
 func TestDryRunPrintsWhatEachStageDid(t *testing.T) {
 	var box []Envelope
-	saida, err := capturarSaida(t, func() error {
+	output, err := captureOutput(t, func() error {
 		return runDryRun(context.Background(), pipelineDeEstagios(&box), 100)
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, esperado := range []string{"aggregate", "groups", "map"} {
-		if !strings.Contains(saida, esperado) {
-			t.Errorf("the preview does not say %q:\n%s", esperado, saida)
+		if !strings.Contains(output, esperado) {
+			t.Errorf("the preview does not say %q:\n%s", esperado, output)
 		}
 	}
 	// 4 rows in, 3 groups out.
-	if !strings.Contains(saida, "4 ->         3") {
-		t.Errorf("the aggregation's counts are missing:\n%s", saida)
+	if !strings.Contains(output, "4 ->         3") {
+		t.Errorf("the aggregation's counts are missing:\n%s", output)
 	}
 }
 
@@ -138,34 +138,34 @@ func TestDryRunRefusesWhatTheRunWouldRefuse(t *testing.T) {
 			p.Stages = []Stage{Aggregate(Reduce{By: GroupBy("area"), Agg: map[string]Aggregator{"m": Median("n")}})}
 		},
 	}
-	for nome, quebrar := range casos {
+	for name, quebrar := range casos {
 		p := pipelineDeEstagios(&box)
 		quebrar(p)
 
-		_, errRun := rodar(t, p)
+		_, errRun := runIt(t, p)
 		if errRun == nil {
-			t.Fatalf("%s: the run accepted it; the test is checking nothing", nome)
+			t.Fatalf("%s: the run accepted it; the test is checking nothing", name)
 		}
-		_, errDry := capturarSaida(t, func() error {
+		_, errDry := captureOutput(t, func() error {
 			return runDryRun(context.Background(), p, 5)
 		})
 		if errDry == nil {
-			t.Errorf("%s: the dry-run passed on a pipeline the run refuses", nome)
+			t.Errorf("%s: the dry-run passed on a pipeline the run refuses", name)
 		}
 	}
 }
 
 // registrosImpressos reads back the records the preview printed.
-func registrosImpressos(t *testing.T, saida string) []any {
+func printedRecords(t *testing.T, output string) []any {
 	t.Helper()
 	var out []any
-	for _, linha := range strings.Split(saida, "\n") {
-		linha = strings.TrimSpace(linha)
-		if !strings.HasPrefix(linha, "{") {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "{") {
 			continue
 		}
 		var v any
-		if err := json.NewDecoder(bytes.NewReader([]byte(linha))).Decode(&v); err != nil {
+		if err := json.NewDecoder(bytes.NewReader([]byte(line))).Decode(&v); err != nil {
 			continue
 		}
 		out = append(out, v)
@@ -182,7 +182,7 @@ func registrosImpressos(t *testing.T, saida string) []any {
 func TestRecordsLogicCanBeTestedWithoutARequest(t *testing.T) {
 	// The guard a real fetcher writes: plenty of APIs answer 200 with an error
 	// in the body.
-	minhaLeitura := func(r Response) ([]any, error) {
+	myRead := func(r Response) ([]any, error) {
 		doc, err := r.Object()
 		if err != nil {
 			return nil, err
@@ -193,11 +193,11 @@ func TestRecordsLogicCanBeTestedWithoutARequest(t *testing.T) {
 		return ParallelArrays("hourly", "time", "temp")(doc)
 	}
 
-	if _, err := minhaLeitura(NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)); err == nil {
+	if _, err := myRead(NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)); err == nil {
 		t.Error("a 200 carrying an error passed the guard")
 	}
 
-	rows, err := minhaLeitura(NewResponse(200,
+	rows, err := myRead(NewResponse(200,
 		[]byte(`{"hourly":{"time":["t1","t2"],"temp":[1,2]},"lat":9}`), false))
 	if err != nil {
 		t.Fatalf("a good response was refused: %v", err)

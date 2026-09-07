@@ -147,10 +147,10 @@ func (w Workflow) Resolver(given map[string]string) (map[string]string, error) {
 		declared[p.Name] = p
 	}
 
-	for nome := range given {
-		if _, existe := declared[nome]; !existe {
+	for name := range given {
+		if _, existe := declared[name]; !existe {
 			return nil, fmt.Errorf("workflow %q does not declare the param %q (declared: %s)",
-				w.Slug, nome, namesOf(w.Params))
+				w.Slug, name, namesOf(w.Params))
 		}
 	}
 

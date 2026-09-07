@@ -51,9 +51,9 @@ func TestItRunsAndReportsSuccess(t *testing.T) {
 	if events[0].Kind != execution.EventStarted {
 		t.Errorf("first event = %v, wanted started", events[0].Kind)
 	}
-	ultimo := events[len(events)-1]
-	if ultimo.Kind != execution.EventSucceeded {
-		t.Errorf("last event = %v, wanted succeeded", ultimo.Kind)
+	last := events[len(events)-1]
+	if last.Kind != execution.EventSucceeded {
+		t.Errorf("last event = %v, wanted succeeded", last.Kind)
 	}
 	if !hasLog(events, "ola", "stdout") {
 		t.Error("it did not capture the command's output")
@@ -89,12 +89,12 @@ func TestItReportsAFailureWithTheExitCode(t *testing.T) {
 	}
 	events := collectOutput(t, ev)
 
-	ultimo := events[len(events)-1]
-	if ultimo.Kind != execution.EventFailed {
-		t.Fatalf("last event = %v, wanted failed", ultimo.Kind)
+	last := events[len(events)-1]
+	if last.Kind != execution.EventFailed {
+		t.Fatalf("last event = %v, wanted failed", last.Kind)
 	}
-	if ultimo.ExitCode != 3 {
-		t.Errorf("exit = %d, wanted 3", ultimo.ExitCode)
+	if last.ExitCode != 3 {
+		t.Errorf("exit = %d, wanted 3", last.ExitCode)
 	}
 }
 
@@ -129,15 +129,15 @@ func TestCancelInterrompe(t *testing.T) {
 	if err := p.Cancel(context.Background(), "5"); err != nil {
 		t.Fatal(err)
 	}
-	ultimo := collectOutput(t, ev)
-	if k := ultimo[len(ultimo)-1].Kind; k != execution.EventFailed {
+	last := collectOutput(t, ev)
+	if k := last[len(last)-1].Kind; k != execution.EventFailed {
 		t.Errorf("last event = %v, wanted failed after the cancellation", k)
 	}
 }
 
-func hasLog(events []execution.Event, msg, stream string) bool {
+func hasLog(events []execution.Event, msg, stream1 string) bool {
 	for _, e := range events {
-		if e.Kind == execution.EventLog && e.Stream == stream && strings.Contains(e.Message, msg) {
+		if e.Kind == execution.EventLog && e.Stream == stream1 && strings.Contains(e.Message, msg) {
 			return true
 		}
 	}

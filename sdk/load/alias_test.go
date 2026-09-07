@@ -13,8 +13,8 @@ import (
 func TestDeprecatedNamesStillResolve(t *testing.T) {
 	cfg := &core.LoadConfig{CreateSQL: "CREATE TABLE t (id STRING)"}
 
-	var velho ComoCriar
-	velho, err := PlanoDeCriacao(cfg, "d.t")
+	var old ComoCriar
+	old, err := PlanoDeCriacao(cfg, "d.t")
 	if err != nil {
 		t.Fatalf("PlanoDeCriacao: %v", err)
 	}
@@ -22,8 +22,8 @@ func TestDeprecatedNamesStillResolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreationPlan: %v", err)
 	}
-	if velho != novo {
-		t.Fatalf("the alias diverged: PlanoDeCriacao=%v CreationPlan=%v", velho, novo)
+	if old != novo {
+		t.Fatalf("the alias diverged: PlanoDeCriacao=%v CreationPlan=%v", old, novo)
 	}
 	if CriarPorSQL != CreateFromSQL || CriarPorSchema != CreateFromSchema {
 		t.Fatal("the constant aliases diverged from what they alias")

@@ -22,7 +22,7 @@ func simpleTask() execution.TaskExec {
 func TestTheCredentialVolumeMountsAndInjectsTheDirectory(t *testing.T) {
 	pod, err := BuildPod(simpleTask(), Options{
 		CredentialPVC: "brevis-credentials",
-	}.comPadroes())
+	}.withDefaults())
 	if err != nil {
 		t.Fatalf("BuildPod: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestTheVolumesPathIsConfigurable(t *testing.T) {
 	pod, err := BuildPod(simpleTask(), Options{
 		CredentialPVC:  "meu-pvc",
 		CredentialPath: "/mnt/cred",
-	}.comPadroes())
+	}.withDefaults())
 	if err != nil {
 		t.Fatalf("BuildPod: %v", err)
 	}
@@ -72,7 +72,7 @@ func TestTheVolumesPathIsConfigurable(t *testing.T) {
 // than a requirement -- an installation that did not configure it must see no
 // difference.
 func TestWithNoPVCNothingChanges(t *testing.T) {
-	pod, err := BuildPod(simpleTask(), Options{}.comPadroes())
+	pod, err := BuildPod(simpleTask(), Options{}.withDefaults())
 	if err != nil {
 		t.Fatalf("BuildPod: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestTheStepsEnvBeatsTheDefaultDirectory(t *testing.T) {
 	task := simpleTask()
 	task.Env = map[string]string{"BREVIS_CREDENTIAL_DIR": "/outro/lugar"}
 
-	pod, err := BuildPod(task, Options{CredentialPVC: "pvc"}.comPadroes())
+	pod, err := BuildPod(task, Options{CredentialPVC: "pvc"}.withDefaults())
 	if err != nil {
 		t.Fatalf("BuildPod: %v", err)
 	}

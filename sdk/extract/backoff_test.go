@@ -13,7 +13,7 @@ import (
 // no jitter is a choice, not a mistake.
 func TestBackoffWithoutJitterDoesNotPanic(t *testing.T) {
 	casos := []struct {
-		nome string
+		name string
 		cfg  core.RetryConfig
 	}{
 		{"so MaxAttempts", core.RetryConfig{MaxAttempts: 5}},
@@ -22,7 +22,7 @@ func TestBackoffWithoutJitterDoesNotPanic(t *testing.T) {
 		{"zerado", core.RetryConfig{}},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			for attempt := 0; attempt < 4; attempt++ {
 				if d := calculateBackoff(attempt, &c.cfg); d < 0 {
 					t.Errorf("backoff negativo na tentativa %d: %v", attempt, d)

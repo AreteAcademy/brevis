@@ -19,20 +19,20 @@ import (
 // This test checks that every field reaches the other side.
 func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	var (
-		metodo   string
-		corpo    string
-		header   string
-		caminho  string
-		chamadas int
+		metodo string
+		corpo  string
+		header string
+		path   string
+		calls  int
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		chamadas++
+		calls++
 		metodo = r.Method
 		b := make([]byte, r.ContentLength)
 		_, _ = r.Body.Read(b)
 		corpo = string(b)
 		header = r.Header.Get("X-Cliente")
-		caminho = r.URL.Path
+		path = r.URL.Path
 		_, _ = w.Write([]byte(`[{"id":1}]`))
 	}))
 	defer srv.Close()
@@ -74,8 +74,8 @@ func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	if header != "brevis" {
 		t.Errorf("Header não chegou: %q", header)
 	}
-	if caminho != "/v1/eventos" {
-		t.Errorf("URL não chegou inteira: %q", caminho)
+	if path != "/v1/eventos" {
+		t.Errorf("URL não chegou inteira: %q", path)
 	}
 
 	// The options that cross every driver.
@@ -96,7 +96,7 @@ func TestHTTPForwardsEachFormat(t *testing.T) {
 	casos := []struct {
 		formato core.Format
 		corpo   string
-		campo   string
+		field   string
 	}{
 		{core.FormatJSON, `[{"a":"1"}]`, "a"},
 		{core.FormatNDJSON, `{"a":"1"}` + "\n", "a"},

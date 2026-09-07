@@ -12,7 +12,7 @@ type Checker interface {
 	Check(ctx context.Context) error
 }
 
-type respostaSaude struct {
+type healthResponse struct {
 	Status string            `json:"status"`
 	Checks map[string]string `json:"checks,omitempty"`
 }
@@ -23,7 +23,7 @@ type respostaSaude struct {
 // an external dependency makes Kubernetes KILL the pod when the database wobbles
 // — trading a partial outage for a crashloop.
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, respostaSaude{Status: "ok"})
+	writeJSON(w, http.StatusOK, healthResponse{Status: "ok"})
 }
 
 // ready responde readiness: o processo consegue atender de fato.
@@ -35,16 +35,16 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	checks := make(map[string]string, len(s.checkers))
 	status := http.StatusOK
 
-	for nome, c := range s.checkers {
+	for name, c := range s.checkers {
 		if err := c.Check(r.Context()); err != nil {
-			checks[nome] = err.Error()
+			checks[name] = err.Error()
 			status = http.StatusServiceUnavailable
 			continue
 		}
-		checks[nome] = "ok"
+		checks[name] = "ok"
 	}
 
-	corpo := respostaSaude{Status: "ok", Checks: checks}
+	corpo := healthResponse{Status: "ok", Checks: checks}
 	if status != http.StatusOK {
 		corpo.Status = "unavailable"
 	}

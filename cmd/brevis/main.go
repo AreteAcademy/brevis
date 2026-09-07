@@ -698,8 +698,8 @@ func cmdScheduler() *cobra.Command {
 				Worker: "local", MaxConcorrente: concurrency,
 			}, q, runs, executar, log)
 			if cfg.SlackWebhook != "" {
-				disp.Alertas = notify.NovoSlack(cfg.SlackWebhook, cfg.Env)
-				disp.URLBase = cfg.UIURL
+				disp.Alerts = notify.NovoSlack(cfg.SlackWebhook, cfg.Env)
+				disp.BaseURL = cfg.UIURL
 				log.Info("failure alerting is on", "destination", "slack")
 			} else {
 				// Said at boot, once: an installation that fails in silence

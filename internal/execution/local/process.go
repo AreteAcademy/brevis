@@ -66,13 +66,13 @@ func ambienteDaTask(t execution.TaskExec) ([]string, error) {
 	}
 
 	var missing []string
-	for nome, coord := range t.Secrets {
-		v, existe := os.LookupEnv(nome)
+	for name, coord := range t.Secrets {
+		v, existe := os.LookupEnv(name)
 		if !existe || v == "" {
-			missing = append(missing, fmt.Sprintf("%s (secrets: %s)", nome, coord))
+			missing = append(missing, fmt.Sprintf("%s (secrets: %s)", name, coord))
 			continue
 		}
-		env[nome] = v
+		env[name] = v
 	}
 	if len(missing) > 0 {
 		sort.Strings(missing)

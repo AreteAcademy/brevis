@@ -60,14 +60,14 @@ func TestFilesPathGoesBackIntoFromFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{
+	data, err := sdk.Extract(context.Background(), sdk.Source{
 		From: from.Files{Path: res.Objects[0]},
 	})
 	if err != nil {
 		t.Fatalf("Extract do caminho reportado: %v", err)
 	}
 	n := 0
-	for env, err := range dados.Records {
+	for env, err := range data.Records {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,11 +97,11 @@ func TestFilesDescribeIsStillTheDirectory(t *testing.T) {
 func TestFilesWithFlushEveryReportsAllOfThem(t *testing.T) {
 	dir := t.TempDir()
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{From: fonteDeN{10}})
+	data, err := sdk.Extract(context.Background(), sdk.Source{From: sourceOfN{10}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := sdk.Load(context.Background(), dados, sdk.Target{
+	res, err := sdk.Load(context.Background(), data, sdk.Target{
 		To: to.Files{Path: dir}, FlushEvery: 3,
 	})
 	if err != nil {
@@ -110,17 +110,17 @@ func TestFilesWithFlushEveryReportsAllOfThem(t *testing.T) {
 	if len(res.Objects) != 4 {
 		t.Fatalf("Objects = %v, esperado 4 arquivos (3+3+3+1)", res.Objects)
 	}
-	for _, caminho := range res.Objects {
-		if _, err := os.Stat(caminho); err != nil {
-			t.Errorf("%s não existe: %v", caminho, err)
+	for _, path := range res.Objects {
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("%s não existe: %v", path, err)
 		}
 	}
 }
 
-type fonteDeN struct{ n int }
+type sourceOfN struct{ n int }
 
-func (fonteDeN) Describe() string { return "fonte de teste" }
-func (f fonteDeN) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+func (sourceOfN) Describe() string { return "fonte de teste" }
+func (f sourceOfN) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
 	return func(yield func(sdk.Envelope, error) bool) {
 		for i := 0; i < f.n; i++ {
 			if !yield(sdk.Envelope{Payload: map[string]any{"i": i}}, nil) {
@@ -177,15 +177,15 @@ func TestFilesObjectInObjectStorage(t *testing.T) {
 	}
 }
 
-type storeFalso struct{ chaves *[]string }
+type storeFalso struct{ keys *[]string }
 
 func (storeFalso) Scheme() string                                         { return "s3" }
 func (storeFalso) List(context.Context, string, string) ([]string, error) { return nil, nil }
 func (storeFalso) Open(context.Context, string, string) (io.ReadCloser, error) {
 	return nil, nil
 }
-func (s storeFalso) Create(_ context.Context, _, chave string, r io.Reader) error {
-	*s.chaves = append(*s.chaves, chave)
+func (s storeFalso) Create(_ context.Context, _, key string, r io.Reader) error {
+	*s.keys = append(*s.keys, key)
 	_, _ = io.ReadAll(r)
 	return nil
 }

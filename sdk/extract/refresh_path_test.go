@@ -26,8 +26,8 @@ import (
 // API is.
 func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 	casos := []struct {
-		nome    string
-		fonte   string
+		name    string
+		source  string
 		renovar string
 	}{
 		{"prefixos diferentes", "/api/proxy/occurrences", "/api/auth/session"},
@@ -37,15 +37,15 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			var mu sync.Mutex
-			var cookieNaRenovacao string
-			var cookieNasPaginas []string
+			var cookieOnRefresh string
+			var cookieOnPages []string
 
 			mux := http.NewServeMux()
 			mux.HandleFunc(c.renovar, func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
-				cookieNaRenovacao = r.Header.Get("Cookie")
+				cookieOnRefresh = r.Header.Get("Cookie")
 				mu.Unlock()
 
 				// Like the real API: with no credential, it answers null.
@@ -56,9 +56,9 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 				http.SetCookie(w, &http.Cookie{Name: "session", Value: "renovado=="})
 				_, _ = fmt.Fprintf(w, `{"expires":%q}`, time.Now().Add(30*24*time.Hour).Format(time.RFC3339))
 			})
-			mux.HandleFunc(c.fonte, func(w http.ResponseWriter, r *http.Request) {
+			mux.HandleFunc(c.source, func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
-				cookieNasPaginas = append(cookieNasPaginas, r.Header.Get("Cookie"))
+				cookieOnPages = append(cookieOnPages, r.Header.Get("Cookie"))
 				mu.Unlock()
 				_, _ = fmt.Fprint(w, `{"ok":1}`)
 			})
@@ -67,7 +67,7 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 
 			var stats core.Stats
 			seq, err := JSON(context.Background(), core.Source{
-				URL:   srv.URL + c.fonte,
+				URL:   srv.URL + c.source,
 				Stats: &stats,
 				Auth: &core.Credential{
 					Value: func(context.Context) (string, error) { return "session=colado==", nil },
@@ -87,7 +87,7 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 				}
 			}
 
-			if cookieNaRenovacao == "" {
+			if cookieOnRefresh == "" {
 				t.Error("a renovacao foi SEM a credencial")
 			}
 			// And the REISSUED cookie has to apply to the pages, or the refresh
@@ -97,7 +97,7 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 			//
 			// O servidor de teste reemite SEM Path, de proposito: e o padrao
 			// of RFC 6265 is the case that breaks.
-			for _, got := range cookieNasPaginas {
+			for _, got := range cookieOnPages {
 				if got == "" {
 					t.Error("a pagina foi sem credencial nenhuma")
 				}

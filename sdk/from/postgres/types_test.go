@@ -17,10 +17,10 @@ import (
 // a concrete cost when it is wrong -- which is why each case says what it is.
 func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
-		nome    string
-		entrada any
-		want    string // the JSON that comes out
-		porque  string
+		name   string
+		input  any
+		want   string // the JSON that comes out
+		porque string
 	}{
 		{
 			"NULL vira null", nil, `null`,
@@ -115,8 +115,8 @@ func TestToJSONRowByRow(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
-			b, err := json.Marshal(ParaJSON(c.entrada))
+		t.Run(c.name, func(t *testing.T) {
+			b, err := json.Marshal(ParaJSON(c.input))
 			if err != nil {
 				t.Fatalf("serializando: %v", err)
 			}
@@ -125,7 +125,7 @@ func TestToJSONRowByRow(t *testing.T) {
 				if c.porque != "" {
 					msg += "\n  " + c.porque
 				}
-				t.Errorf(msg, c.entrada, b, c.want)
+				t.Errorf(msg, c.input, b, c.want)
 			}
 		})
 	}

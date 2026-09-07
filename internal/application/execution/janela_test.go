@@ -35,9 +35,9 @@ func TestTheWindowRespectsTheCeiling(t *testing.T) {
 func TestTheWindowKeepsBothEnds(t *testing.T) {
 	var j window
 	j.Write("COMECO-DA-SAIDA")
-	enchimento := strings.Repeat("y", 500)
+	filler := strings.Repeat("y", 500)
 	for i := 0; i < 3000; i++ {
-		j.Write(enchimento)
+		j.Write(filler)
 	}
 	j.Write("ERRO-NO-FIM")
 

@@ -131,12 +131,12 @@ func TestIngestionLoadedAtWritesNowInUTC(t *testing.T) {
 	if !ok {
 		t.Fatalf("ingestion_loaded_at = %T", got[ColumnIngestionLoadedAt])
 	}
-	quando, err := time.Parse(time.RFC3339, v)
+	when, err := time.Parse(time.RFC3339, v)
 	if err != nil {
 		t.Fatalf("não é RFC 3339: %q", v)
 	}
-	if d := time.Since(quando); d > time.Minute || d < -time.Minute {
-		t.Errorf("ingestion_loaded_at = %v, esperado agora", quando)
+	if d := time.Since(when); d > time.Minute || d < -time.Minute {
+		t.Errorf("ingestion_loaded_at = %v, esperado agora", when)
 	}
 	if !strings.HasSuffix(v, "Z") {
 		t.Errorf("esperado UTC: %q", v)
@@ -167,13 +167,13 @@ func TestIngestionLoadedAtRefusesToOverwrite(t *testing.T) {
 // arithmetic
 // which the next test measures.
 func TestTransformersWriteInPlace(t *testing.T) {
-	linha := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
-	saida := aplica(t, IngestionID(), linha)
+	line := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
+	output := aplica(t, IngestionID(), line)
 
-	if _, ok := linha[ColumnIngestionID]; !ok {
+	if _, ok := line[ColumnIngestionID]; !ok {
 		t.Error("o transformer devolveu um mapa novo; a economia da cadeia depende de ele escrever no lugar")
 	}
-	if fmt.Sprint(saida) != fmt.Sprint(linha) {
+	if fmt.Sprint(output) != fmt.Sprint(line) {
 		t.Error("o que voltou não é o mesmo mapa que entrou")
 	}
 }
@@ -188,15 +188,15 @@ func TestTransformersWriteInPlace(t *testing.T) {
 func TestTransformDoesNotMutateWhatExtractDelivered(t *testing.T) {
 	original := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
 
-	saida, pulou, err := applyAll([]Transformer{IngestionID(), IngestionLoadedAt()}, original)
-	if err != nil || pulou {
-		t.Fatalf("applyAll: %v, pulou=%v", err, pulou)
+	output, skipped, err := applyAll([]Transformer{IngestionID(), IngestionLoadedAt()}, original)
+	if err != nil || skipped {
+		t.Fatalf("applyAll: %v, pulou=%v", err, skipped)
 	}
 
 	if len(original) != 4 {
 		t.Errorf("a cadeia escreveu no registro do extract: %v", original)
 	}
-	obj := saida.(map[string]any)
+	obj := output.(map[string]any)
 	if len(obj) != 6 {
 		t.Errorf("a saída não tem as duas colunas novas: %v", obj)
 	}
@@ -211,9 +211,9 @@ func TestTheChainMakesOneCopyOnly(t *testing.T) {
 		Without("extra"),
 	}
 
-	alocacoes := testing.AllocsPerRun(200, func() {
-		linha := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t", "lixo": 1}
-		if _, _, err := applyAll(fns, linha); err != nil {
+	allocations := testing.AllocsPerRun(200, func() {
+		line := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t", "lixo": 1}
+		if _, _, err := applyAll(fns, line); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -221,10 +221,10 @@ func TestTheChainMakesOneCopyOnly(t *testing.T) {
 	// The input row costs one map, the chain's copy costs another. Four
 	// transformers that each copied would cost four more -- and it is that
 	// difference the ceiling catches, not an absolute allocation count.
-	const teto float64 = 12
-	if alocacoes > teto {
+	const ceiling float64 = 12
+	if allocations > ceiling {
 		t.Errorf("%.0f alocações para uma linha e quatro transformers (teto %.0f); "+
-			"algum transformer voltou a copiar o mapa", alocacoes, teto)
+			"algum transformer voltou a copiar o mapa", allocations, ceiling)
 	}
-	t.Logf("%.0f alocações", alocacoes)
+	t.Logf("%.0f alocações", allocations)
 }

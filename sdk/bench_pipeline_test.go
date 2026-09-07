@@ -36,20 +36,20 @@ func BenchmarkExtractTransform(b *testing.B) {
 
 	// The SDK itself logs on every extract, and the log's io would enter the
 	// measurement.
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		dados, err := Extract(context.Background(), Source{
+		data, err := Extract(context.Background(), Source{
 			From: from.HTTP{URL: srv.URL, DataKey: "results"},
 		})
 		if err != nil {
 			b.Fatal(err)
 		}
-		dados = Transform(dados,
+		data = Transform(data,
 			Accept("id", "nome", "valor", "ts"),
 			Compute("provider", func(map[string]any) (any, error) { return "bench", nil }),
 			Compute("entity", func(map[string]any) (any, error) { return "registros", nil }),
@@ -58,7 +58,7 @@ func BenchmarkExtractTransform(b *testing.B) {
 			IngestionLoadedAt(),
 		)
 		n := 0
-		for _, err := range dados.Records {
+		for _, err := range data.Records {
 			if err != nil {
 				b.Fatal(err)
 			}

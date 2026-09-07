@@ -45,8 +45,8 @@ const keySize = 32
 // enough not to ask for a password in the middle of an investigation.
 const SessionLifetime = 12 * time.Hour
 
-// NomeDoCookie is the session cookie's name.
-const NomeDoCookie = "brevis_sessao"
+// CookieName is the session cookie's name.
+const CookieName = "brevis_sessao"
 
 // ---------------------------------------------------------------------------
 // Password hash
@@ -155,8 +155,8 @@ func (c Credential) Validate() error {
 // would let the client choose its own validity; covering only the expiry would
 // let it swap users. It is HMAC, and not a hash of the concatenated secret,
 // because the naive construction is vulnerable to length extension.
-func (c Credential) emitir(agora time.Time) string {
-	corpo := c.User + "|" + strconv.FormatInt(agora.Add(SessionLifetime).Unix(), 10)
+func (c Credential) issue(now time.Time) string {
+	corpo := c.User + "|" + strconv.FormatInt(now.Add(SessionLifetime).Unix(), 10)
 	return corpo + "|" + base64.RawURLEncoding.EncodeToString(c.assinar(corpo))
 }
 
@@ -167,7 +167,7 @@ func (c Credential) assinar(corpo string) []byte {
 }
 
 // checkSession valida assinatura e prazo do cookie.
-func (c Credential) checkSession(value string, agora time.Time) bool {
+func (c Credential) checkSession(value string, now time.Time) bool {
 	i := strings.LastIndex(value, "|")
 	if i < 0 {
 		return false
@@ -189,11 +189,11 @@ func (c Credential) checkSession(value string, agora time.Time) bool {
 		// User diferente do configurado: a credencial mudou desde o login.
 		return false
 	}
-	expira, err := strconv.ParseInt(prazo, 10, 64)
+	expires, err := strconv.ParseInt(prazo, 10, 64)
 	if err != nil {
 		return false
 	}
-	return agora.Unix() < expira
+	return now.Unix() < expires
 }
 
 // ---------------------------------------------------------------------------
@@ -213,25 +213,25 @@ type Gate struct {
 }
 
 // livre lists what answers without a session.
-func livre(caminho string) bool {
-	switch caminho {
+func free(path string) bool {
+	switch path {
 	case "/health", "/ready", "/login", "/logout":
 		return true
 	}
 	// The assets are public by nature: the CSS, fonts and JS of the login screen
 	// itself. Protecting them would break the page that asks for the
 	// password.
-	return strings.HasPrefix(caminho, "/assets/")
+	return strings.HasPrefix(path, "/assets/")
 }
 
 func (p *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case !p.Cred.Enabled(), livre(r.URL.Path):
+	case !p.Cred.Enabled(), free(r.URL.Path):
 		p.Next.ServeHTTP(w, r)
 		return
 	}
 
-	cookie, err := r.Cookie(NomeDoCookie)
+	cookie, err := r.Cookie(CookieName)
 	if err == nil && p.Cred.checkSession(cookie.Value, time.Now()) {
 		p.Next.ServeHTTP(w, r.WithContext(IntoContext(r.Context(), p.Cred.User)))
 		return
@@ -262,8 +262,8 @@ func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
 		return false
 	}
 	http.SetCookie(w, &http.Cookie{
-		Name:  NomeDoCookie,
-		Value: p.Cred.emitir(time.Now()),
+		Name:  CookieName,
+		Value: p.Cred.issue(time.Now()),
 		Path:  "/",
 		// HttpOnly: an XSS in the interface cannot read the session.
 		HttpOnly: true,
@@ -280,7 +280,7 @@ func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
 // SignOut apaga o cookie.
 func (p *Gate) SignOut(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name: NomeDoCookie, Value: "", Path: "/",
+		Name: CookieName, Value: "", Path: "/",
 		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: !p.Insecure,
 		MaxAge: -1,
 	})

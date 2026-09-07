@@ -20,9 +20,9 @@ func TestToColumnRowByRow(t *testing.T) {
 	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
 	casos := []struct {
-		nome   string
-		valor  any
-		tipo   string
+		name   string
+		value  any
+		kind   string
 		quero  any
 		porque string
 	}{
@@ -56,8 +56,8 @@ func TestToColumnRowByRow(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
-			got, err := toColumn(c.valor, c.tipo)
+		t.Run(c.name, func(t *testing.T) {
+			got, err := toColumn(c.value, c.kind)
 			if err != nil {
 				t.Fatalf("toColumn: %v", err)
 			}

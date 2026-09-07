@@ -442,8 +442,8 @@ func TestProvenanceComesFromTheBatch(t *testing.T) {
 		t.Errorf("os labels não saíram do lote: %v", labels)
 	}
 
-	if vazio := provenanceOf(nil); vazio.Provider != "" {
-		t.Errorf("um lote vazio não tem proveniência: %+v", vazio)
+	if empty := provenanceOf(nil); empty.Provider != "" {
+		t.Errorf("um lote vazio não tem proveniência: %+v", empty)
 	}
 }
 

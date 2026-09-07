@@ -16,22 +16,22 @@ import (
 // what every destination does on a refusal -- the result exists so RowErrors is
 // readable afterwards.
 type fakeTarget struct {
-	falha bool
-	rows  []string
+	failure1 bool
+	rows     []string
 }
 
 func (fakeTarget) Describe() string { return "destino.teste" }
 
 func (d fakeTarget) Write(context.Context, []Envelope, WriteOptions) (*LoadResult, error) {
 	res := &LoadResult{RowsLoaded: 2, ErrorRows: d.rows}
-	if d.falha {
+	if d.failure1 {
 		res.RowsLoaded = 0
 		return res, context.DeadlineExceeded
 	}
 	return res, nil
 }
 
-func rodaCapturandoLog(t *testing.T, destino Writer) string {
+func runCapturingLog(t *testing.T, target Writer) string {
 	t.Helper()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -40,13 +40,13 @@ func rodaCapturandoLog(t *testing.T, destino Writer) string {
 	defer srv.Close()
 
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	_ = runPipeline(context.Background(), &Pipeline{
 		Source: Source{From: from.HTTP{URL: srv.URL}},
-		Target: Target{To: destino},
+		Target: Target{To: target},
 	})
 
 	return buf.String()
@@ -59,33 +59,33 @@ func rodaCapturandoLog(t *testing.T, destino Writer) string {
 // apart. And a "loaded" at INFO during a failure never reaches whoever watches
 // ERROR.
 func TestTheLogDoesNotSayLoadedWhenItDidNot(t *testing.T) {
-	saida := rodaCapturandoLog(t, fakeTarget{falha: true, rows: []string{"linha 0 recusada"}})
+	output := runCapturingLog(t, fakeTarget{failure1: true, rows: []string{"linha 0 recusada"}})
 
-	if strings.Contains(saida, "msg=loaded") {
-		t.Errorf("uma carga que falhou logou \"loaded\":\n%s", saida)
+	if strings.Contains(output, "msg=loaded") {
+		t.Errorf("uma carga que falhou logou \"loaded\":\n%s", output)
 	}
-	if !strings.Contains(saida, `msg="load failed"`) {
-		t.Errorf("a falha precisa aparecer na linha que resume:\n%s", saida)
+	if !strings.Contains(output, `msg="load failed"`) {
+		t.Errorf("a falha precisa aparecer na linha que resume:\n%s", output)
 	}
-	if !strings.Contains(saida, "level=ERROR msg=\"load failed\"") {
-		t.Errorf("a linha que resume uma falha tem de ser ERROR:\n%s", saida)
+	if !strings.Contains(output, "level=ERROR msg=\"load failed\"") {
+		t.Errorf("a linha que resume uma falha tem de ser ERROR:\n%s", output)
 	}
 	// And the counters are still there, which is why the result comes back.
-	if !strings.Contains(saida, "lines=0") || !strings.Contains(saida, "records=2") {
-		t.Errorf("os contadores se perderam na troca:\n%s", saida)
+	if !strings.Contains(output, "lines=0") || !strings.Contains(output, "records=2") {
+		t.Errorf("os contadores se perderam na troca:\n%s", output)
 	}
-	if !strings.Contains(saida, "row rejected") {
-		t.Errorf("as linhas recusadas sumiram:\n%s", saida)
+	if !strings.Contains(output, "row rejected") {
+		t.Errorf("as linhas recusadas sumiram:\n%s", output)
 	}
 }
 
 func TestTheLogSaysLoadedWhenItLoaded(t *testing.T) {
-	saida := rodaCapturandoLog(t, fakeTarget{})
+	output := runCapturingLog(t, fakeTarget{})
 
-	if !strings.Contains(saida, "level=INFO msg=loaded") {
-		t.Errorf("uma carga que funcionou tem de logar loaded em INFO:\n%s", saida)
+	if !strings.Contains(output, "level=INFO msg=loaded") {
+		t.Errorf("uma carga que funcionou tem de logar loaded em INFO:\n%s", output)
 	}
-	if strings.Contains(saida, "load failed") {
-		t.Errorf("uma carga que funcionou não pode logar falha:\n%s", saida)
+	if strings.Contains(output, "load failed") {
+		t.Errorf("uma carga que funcionou não pode logar falha:\n%s", output)
 	}
 }

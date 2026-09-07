@@ -23,7 +23,7 @@ import (
 func Example() {
 	ctx := context.Background()
 
-	dados, err := sdk.Extract(ctx, sdk.Source{
+	data, err := sdk.Extract(ctx, sdk.Source{
 		From: from.HTTP{
 			URL: "https://api.open-meteo.com/v1/forecast?latitude=-23.5&longitude=-46.6&hourly=temperature_2m",
 			Records: func(r sdk.Response) ([]any, error) {
@@ -40,10 +40,10 @@ func Example() {
 	}
 
 	// What we take from the source.
-	dados = sdk.Transform(dados, sdk.Accept("time", "temperature_2m"))
+	data = sdk.Transform(data, sdk.Accept("time", "temperature_2m"))
 
 	// Where it goes, and with which columns.
-	if _, err := sdk.Load(ctx, dados, sdk.Target{
+	if _, err := sdk.Load(ctx, data, sdk.Target{
 		To:      to.Files{Path: "./landing/temperatura/"},
 		Columns: []string{"time", "temperature_2m"},
 	}); err != nil {

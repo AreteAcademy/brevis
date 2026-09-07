@@ -30,35 +30,35 @@ func BenchmarkMySQLLoad(b *testing.B) {
 	}
 	b.Cleanup(func() { _ = db.Close() })
 
-	nome := fmt.Sprintf("bench_%d", time.Now().UnixNano())
+	name := fmt.Sprintf("bench_%d", time.Now().UnixNano())
 	if _, err := db.Exec(fmt.Sprintf(`CREATE TABLE %s (
 		ingestion_id VARCHAR(36) NOT NULL, ingestion_loaded_at DATETIME(6) NOT NULL,
-		provider VARCHAR(64), source_key VARCHAR(64), valor DECIMAL(18,2))`, nome)); err != nil {
+		provider VARCHAR(64), source_key VARCHAR(64), valor DECIMAL(18,2))`, name)); err != nil {
 		b.Fatal(err)
 	}
-	b.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + nome) })
+	b.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
 
-	const linhas = 10000
-	lote := make([]sdk.Envelope, linhas)
-	agora := time.Now().UTC().Format(time.RFC3339)
+	const lines = 10000
+	lote := make([]sdk.Envelope, lines)
+	now := time.Now().UTC().Format(time.RFC3339)
 	for i := range lote {
 		lote[i] = sdk.Envelope{Payload: map[string]any{
 			"ingestion_id":        fmt.Sprintf("id-%06d", i),
-			"ingestion_loaded_at": agora,
+			"ingestion_loaded_at": now,
 			"provider":            "bench",
 			"source_key":          fmt.Sprintf("k%d", i),
 			"valor":               "10.50",
 		}}
 	}
 
-	destino := tomy.Table{DSN: d, Name: nome}
+	target := tomy.Table{DSN: d, Name: name}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := destino.Write(context.Background(), lote, sdk.WriteOptions{}); err != nil {
+		if _, err := target.Write(context.Background(), lote, sdk.WriteOptions{}); err != nil {
 			b.Fatal(err)
 		}
 	}
 	b.StopTimer()
-	b.ReportMetric(float64(linhas*b.N)/b.Elapsed().Seconds(), "linhas/s")
+	b.ReportMetric(float64(lines*b.N)/b.Elapsed().Seconds(), "linhas/s")
 }

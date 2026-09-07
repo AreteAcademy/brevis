@@ -58,7 +58,7 @@ type TaskRun struct {
 // Transition moves the Run, validating. It stamps the times here, and not in
 // the caller, so that no path exists that changes the state without recording
 // when.
-func (r *Run) Transition(para Status, agora time.Time) error {
+func (r *Run) Transition(para Status, now time.Time) error {
 	if err := Validate(r.Status, para); err != nil {
 		return err
 	}
@@ -67,10 +67,10 @@ func (r *Run) Transition(para Status, agora time.Time) error {
 	switch para {
 	case StatusRunning:
 		if r.StartedAt == nil {
-			r.StartedAt = &agora
+			r.StartedAt = &now
 		}
 	case StatusSuccess, StatusCanceled:
-		r.FinishedAt = &agora
+		r.FinishedAt = &now
 	case StatusQueued:
 		// requeued by a retry: the run starts over, so the previous stamps no
 		// longer hold for the new attempt
@@ -80,7 +80,7 @@ func (r *Run) Transition(para Status, agora time.Time) error {
 }
 
 // Transition moves the TaskRun, with the same validation.
-func (t *TaskRun) Transition(para Status, agora time.Time) error {
+func (t *TaskRun) Transition(para Status, now time.Time) error {
 	if err := Validate(t.Status, para); err != nil {
 		return err
 	}
@@ -89,10 +89,10 @@ func (t *TaskRun) Transition(para Status, agora time.Time) error {
 	switch para {
 	case StatusRunning:
 		if t.StartedAt == nil {
-			t.StartedAt = &agora
+			t.StartedAt = &now
 		}
 	case StatusSuccess, StatusFailed, StatusCanceled:
-		t.FinishedAt = &agora
+		t.FinishedAt = &now
 	}
 	return nil
 }

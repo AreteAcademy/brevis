@@ -592,7 +592,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, l := range linhasDeGrade(buckets) {
+			for _, l := range gridLines(buckets) {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<line x1=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -760,9 +760,9 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var40 string
-				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.YSucesso))
+				templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.YSucceeded))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 60}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var40)
 				if templ_7745c5c3_Err != nil {
@@ -775,7 +775,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var41 string
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Width))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 				if templ_7745c5c3_Err != nil {
@@ -788,7 +788,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var42 string
 				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HSucceeded))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 126}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 128}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 				if templ_7745c5c3_Err != nil {
@@ -812,9 +812,9 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var44 string
-				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.YFalha))
+				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.YFailed))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 59}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var44)
 				if templ_7745c5c3_Err != nil {
@@ -827,7 +827,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var45 string
 				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Width))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 88}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 				if templ_7745c5c3_Err != nil {
@@ -840,7 +840,7 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var46 string
 				templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HFailed))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 121}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 122}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 				if templ_7745c5c3_Err != nil {
@@ -1229,16 +1229,16 @@ func Rosca(i postgres.Indicators) templ.Component {
 // ---------------------------------------------------------------------------
 
 type Bar struct {
-	X, Width             int
-	BandX, BandWidth     int
-	YSucesso, HSucceeded int
-	YFalha, HFailed      int
-	YOutros, HOutros     int
-	Dica                 string
-	Link                 string
+	X, Width               int
+	BandX, BandWidth       int
+	YSucceeded, HSucceeded int
+	YFailed, HFailed       int
+	YOutros, HOutros       int
+	Dica                   string
+	Link                   string
 }
 
-type Grade struct {
+type GridLine struct {
 	Y     int
 	Label string
 }
@@ -1264,22 +1264,22 @@ func ceiling(buckets []postgres.Bucket) int {
 	if max == 0 {
 		return 4
 	}
-	for _, passo := range []int{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000} {
-		if passo*4 >= max {
-			return passo * 4
+	for _, step := range []int{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000} {
+		if step*4 >= max {
+			return step * 4
 		}
 	}
 	// Above twenty thousand, it rounds up to the next thousand divisible by 4.
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(buckets []postgres.Bucket) []Grade {
+func gridLines(buckets []postgres.Bucket) []GridLine {
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
-	var out []Grade
+	var out []GridLine
 	for i := 0; i <= 4; i++ {
 		value := max * i / 4
-		out = append(out, Grade{
+		out = append(out, GridLine{
 			Y:     util - util*i/4,
 			Label: fmt.Sprint(value),
 		})
@@ -1291,8 +1291,8 @@ func bars(buckets []postgres.Bucket) []Bar {
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
-	width := int(passo * 0.62)
+	step := float64(area) / float64(len(buckets))
+	width := int(step * 0.62)
 	if width < 2 {
 		width = 2
 	}
@@ -1312,21 +1312,21 @@ func bars(buckets []postgres.Bucket) []Bar {
 
 	var out []Bar
 	for i, b := range buckets {
-		bandStart := margemEsq + int(float64(i)*passo)
-		x := bandStart + (int(passo)-width)/2
+		bandStart := margemEsq + int(float64(i)*step)
+		x := bandStart + (int(step)-width)/2
 		hs, hf := alt(b.Succeeded), alt(b.Failed)
 		ho := alt(b.Running + b.Queued)
 
 		base := util
 		bar := Bar{
 			X: x, Width: width,
-			BandX: bandStart, BandWidth: int(passo),
+			BandX: bandStart, BandWidth: int(step),
 			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
 		}
 		base -= hs
-		bar.YSucesso, bar.HSucceeded = base, hs
+		bar.YSucceeded, bar.HSucceeded = base, hs
 		base -= hf
-		bar.YFalha, bar.HFailed = base, hf
+		bar.YFailed, bar.HFailed = base, hf
 		base -= ho
 		bar.YOutros, bar.HOutros = base, ho
 		out = append(out, bar)
@@ -1393,7 +1393,7 @@ func durationLine(buckets []postgres.Bucket) string {
 
 	util := chartHeight - bottomMargin
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
+	step := float64(area) / float64(len(buckets))
 
 	var b strings.Builder
 	command := "M"
@@ -1404,7 +1404,7 @@ func durationLine(buckets []postgres.Bucket) string {
 			command = "M"
 			continue
 		}
-		x := margemEsq + int(float64(i)*passo+passo/2)
+		x := margemEsq + int(float64(i)*step+step/2)
 		y := util - int(float64(util)*0.86*float64(bl.MeanDuration)/float64(maior))
 		fmt.Fprintf(&b, "%s%d %d ", command, x, y)
 		command = "L"
@@ -1414,7 +1414,7 @@ func durationLine(buckets []postgres.Bucket) string {
 
 func hourTicks(buckets []postgres.Bucket) []Brand {
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
+	step := float64(area) / float64(len(buckets))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
 	salto := len(buckets)/8 + 1
@@ -1424,7 +1424,7 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 			continue
 		}
 		out = append(out, Brand{
-			X:     margemEsq + int(float64(i)*passo+passo/2),
+			X:     margemEsq + int(float64(i)*step+step/2),
 			Label: b.Start.Local().Format("15h"),
 		})
 	}

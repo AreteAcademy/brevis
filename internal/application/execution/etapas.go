@@ -148,10 +148,10 @@ func (c *stageCollector) line(msg string) bool {
 
 // positionFor is the position an unindexed phase belongs at: the one it already
 // occupies, or the next free one.
-func (c *stageCollector) positionFor(nome string) int {
+func (c *stageCollector) positionFor(name string) int {
 	maior := -1
 	for _, e := range c.Stages {
-		if e.TaskName == nome {
+		if e.TaskName == name {
 			return e.Index
 		}
 		if e.Index > maior {

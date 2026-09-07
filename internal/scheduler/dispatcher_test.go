@@ -79,18 +79,18 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 
 	// It holds every run until we release, so the steady state is observable.
 	segurar := make(chan struct{})
-	var rodando atomic.Int32
+	var running atomic.Int32
 	var pico atomic.Int32
 
 	executar := func(ctx context.Context, _ uuid.UUID) error {
-		n := rodando.Add(1)
+		n := running.Add(1)
 		for {
 			p := pico.Load()
 			if n <= p || pico.CompareAndSwap(p, n) {
 				break
 			}
 		}
-		defer rodando.Add(-1)
+		defer running.Add(-1)
 		<-segurar
 		return nil
 	}
@@ -106,10 +106,10 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 
 	// Espera o estado estabilizar em maxConc em voo.
 	prazo := time.After(10 * time.Second)
-	for rodando.Load() < maxConc {
+	for running.Load() < maxConc {
 		select {
 		case <-prazo:
-			t.Fatalf("only %d in flight after 10s, wanted %d", rodando.Load(), maxConc)
+			t.Fatalf("only %d in flight after 10s, wanted %d", running.Load(), maxConc)
 		case <-time.After(20 * time.Millisecond):
 		}
 	}
@@ -119,13 +119,13 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pendentes, reivindicados, err := queue.Tamanho(ctx)
+	pending, claimed, err := queue.Size(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Logf("runs: %v | queue: %d pending, %d claimed | in flight: %d",
-		count, pendentes, reivindicados, rodando.Load())
+		count, pending, claimed, running.Load())
 
 	if got := count[dom.StatusRunning]; got != maxConc {
 		t.Errorf("RUNNING = %d, wanted %d", got, maxConc)
@@ -136,8 +136,8 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 	if p := pico.Load(); p > maxConc {
 		t.Errorf("pico de concorrencia = %d, excedeu o maximo de %d", p, maxConc)
 	}
-	if pendentes+reivindicados != total {
-		t.Errorf("the queue holds %d items, wanted %d -- something was lost", pendentes+reivindicados, total)
+	if pending+claimed != total {
+		t.Errorf("the queue holds %d items, wanted %d -- something was lost", pending+claimed, total)
 	}
 
 	// Release, and confirm all 100 finish with nothing lost.
@@ -160,9 +160,9 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 	parar()
 	wg.Wait()
 
-	pendentes, reivindicados, _ = queue.Tamanho(ctx)
-	if pendentes+reivindicados != 0 {
-		t.Errorf("the queue should be empty, it holds %d pending and %d claimed", pendentes, reivindicados)
+	pending, claimed, _ = queue.Size(ctx)
+	if pending+claimed != 0 {
+		t.Errorf("the queue should be empty, it holds %d pending and %d claimed", pending, claimed)
 	}
 	if p := pico.Load(); p > maxConc {
 		t.Errorf("pico de concorrencia = %d durante toda a corrida", p)
@@ -172,7 +172,7 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 // Section 29 asks that a critical operation tolerate repetition. The concrete
 // case: the
 // scheduler cria o Run, morre antes de registrar e tenta de novo ao subir.
-func TestIdempotenciaImpedeRunDuplicado(t *testing.T) {
+func TestIdempotencyPreventsADuplicateRun(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewRunRepo(pool)
@@ -205,12 +205,12 @@ func TestEnqueueIsIdempotent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	pendentes, _, err := queue.Tamanho(ctx)
+	pending, _, err := queue.Size(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pendentes != 1 {
-		t.Errorf("the queue holds %d items, wanted 1", pendentes)
+	if pending != 1 {
+		t.Errorf("the queue holds %d items, wanted 1", pending)
 	}
 }
 
@@ -286,7 +286,7 @@ func TestRecoverReturnsADeadWorkersItem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, reivindicados, _ := queue.Tamanho(ctx); reivindicados != 1 {
+	if _, claimed, _ := queue.Size(ctx); claimed != 1 {
 		t.Fatal("esperava 1 item reivindicado")
 	}
 	items, err := queue.Recuperar(ctx, 0) // a zero limit: everything claimed comes back
@@ -299,7 +299,7 @@ func TestRecoverReturnsADeadWorkersItem(t *testing.T) {
 	if len(items) == 1 && items[0].RunID != r.ID {
 		t.Errorf("the recovered item points at %s, wanted %s", items[0].RunID, r.ID)
 	}
-	if pendentes, _, _ := queue.Tamanho(ctx); pendentes != 1 {
+	if pending, _, _ := queue.Size(ctx); pending != 1 {
 		t.Error("o item deveria estar livre de novo")
 	}
 }
@@ -345,20 +345,20 @@ func TestRecoveringOrphansPutsTheRunBackInTheQueue(t *testing.T) {
 		t.Fatalf("recovered %d orphans, wanted 1", n)
 	}
 
-	depois, err := repo.Get(ctx, r.ID)
+	after, err := repo.Get(ctx, r.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if depois.Status != dom.StatusQueued {
-		t.Errorf("the run stayed at %s; wanted queued, ready for another worker", depois.Status)
+	if after.Status != dom.StatusQueued {
+		t.Errorf("the run stayed at %s; wanted queued, ready for another worker", after.Status)
 	}
-	if depois.Attempt != 1 {
-		t.Errorf("attempt = %d; the worker dying spends an attempt", depois.Attempt)
+	if after.Attempt != 1 {
+		t.Errorf("attempt = %d; the worker dying spends an attempt", after.Attempt)
 	}
-	if depois.Err == "" {
+	if after.Err == "" {
 		t.Error("the run has to record WHY it was recovered")
 	}
-	if pendentes, _, _ := queue.Tamanho(ctx); pendentes != 1 {
+	if pending, _, _ := queue.Size(ctx); pending != 1 {
 		t.Error("the item should be free for another worker")
 	}
 }
@@ -395,22 +395,22 @@ func TestAnOrphanStopsComingBackWhenTheAttemptsRunOut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	depois, _ := repo.Get(ctx, r.ID)
-	if depois.Status != dom.StatusFailed {
-		t.Errorf("the run is at %s; with the attempts spent it has to stop at failed", depois.Status)
+	after, _ := repo.Get(ctx, r.ID)
+	if after.Status != dom.StatusFailed {
+		t.Errorf("the run is at %s; with the attempts spent it has to stop at failed", after.Status)
 	}
-	if pendentes, reivindicados, _ := queue.Tamanho(ctx); pendentes+reivindicados != 0 {
-		t.Errorf("the queue holds %d items; the spent orphan has to leave it", pendentes+reivindicados)
+	if pending, claimed, _ := queue.Size(ctx); pending+claimed != 0 {
+		t.Errorf("the queue holds %d items; the spent orphan has to leave it", pending+claimed)
 	}
 }
 
 type alertaFalso struct {
 	mu       sync.Mutex
-	recebido []notify.Alerta
+	recebido []notify.Alert
 	failure  error
 }
 
-func (a *alertaFalso) Falhou(_ context.Context, al notify.Alerta) error {
+func (a *alertaFalso) Failed(_ context.Context, al notify.Alert) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.recebido = append(a.recebido, al)
@@ -455,16 +455,16 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 	}, queue, repo, func(context.Context, uuid.UUID) error {
 		return errors.New(`step "run": exited with code 2`)
 	}, noLog())
-	d.Alertas = avisos
-	d.URLBase = "https://brevis.example.com"
+	d.Alerts = avisos
+	d.BaseURL = "https://brevis.example.com"
 
 	go func() { _ = d.Run(ctx) }()
 
 	// Espera o run esgotar as tentativas.
 	prazo := time.Now().Add(15 * time.Second)
 	for time.Now().Before(prazo) {
-		atual, _ := repo.Get(ctx, r.ID)
-		if atual.Status == dom.StatusFailed && atual.Attempt >= 3 {
+		current, _ := repo.Get(ctx, r.ID)
+		if current.Status == dom.StatusFailed && current.Attempt >= 3 {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -486,7 +486,7 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 	if !strings.Contains(a.Err, "codigo 2") {
 		t.Errorf("the alert has no cause: %q", a.Err)
 	}
-	if a.URLBase == "" || a.RunID != r.ID.String() {
+	if a.BaseURL == "" || a.RunID != r.ID.String() {
 		t.Errorf("the alert has no link to the run: %+v", a)
 	}
 }
@@ -513,16 +513,16 @@ func TestAFailureToNotifyDoesNotTakeTheDispatcherDown(t *testing.T) {
 	}, queue, repo, func(context.Context, uuid.UUID) error {
 		return errors.New("falhou")
 	}, noLog())
-	d.Alertas = &alertaFalso{failure: errors.New("slack respondeu 500")}
+	d.Alerts = &alertaFalso{failure: errors.New("slack respondeu 500")}
 
 	go func() { _ = d.Run(ctx) }()
 
 	prazo := time.Now().Add(10 * time.Second)
 	for time.Now().Before(prazo) {
-		atual, _ := repo.Get(ctx, r.ID)
-		if atual.Status == dom.StatusFailed {
+		current, _ := repo.Get(ctx, r.ID)
+		if current.Status == dom.StatusFailed {
 			cancel()
-			if pendentes, reivindicados, _ := queue.Tamanho(ctx); pendentes+reivindicados != 0 {
+			if pending, claimed, _ := queue.Size(ctx); pending+claimed != 0 {
 				t.Errorf("the item got stuck in the queue after the alert failed")
 			}
 			return
@@ -682,23 +682,23 @@ func TestASucceedingRetryDoesNotAlert(t *testing.T) {
 	}
 
 	avisos := &alertaFalso{}
-	var chamadas int32
+	var calls int32
 	d := scheduler.New(scheduler.Config{
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 3,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, queue, repo, func(context.Context, uuid.UUID) error {
-		if atomic.AddInt32(&chamadas, 1) == 1 {
+		if atomic.AddInt32(&calls, 1) == 1 {
 			return errors.New(`step "run": exited with code 2`)
 		}
 		return nil // the second attempt passes
 	}, noLog())
-	d.Alertas = avisos
+	d.Alerts = avisos
 
 	go func() { _ = d.Run(ctx) }()
 
 	prazo := time.Now().Add(15 * time.Second)
 	for time.Now().Before(prazo) {
-		if atual, _ := repo.Get(ctx, r.ID); atual.Status == dom.StatusSuccess {
+		if current, _ := repo.Get(ctx, r.ID); current.Status == dom.StatusSuccess {
 			break
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -706,8 +706,8 @@ func TestASucceedingRetryDoesNotAlert(t *testing.T) {
 	cancel()
 	time.Sleep(150 * time.Millisecond)
 
-	if atual, _ := repo.Get(context.Background(), r.ID); atual.Status != dom.StatusSuccess {
-		t.Fatalf("the run finished as %s; the test needs it to pass on the second try", atual.Status)
+	if current, _ := repo.Get(context.Background(), r.ID); current.Status != dom.StatusSuccess {
+		t.Fatalf("the run finished as %s; the test needs it to pass on the second try", current.Status)
 	}
 	if n := avisos.total(); n != 0 {
 		t.Errorf("%d alert(s) went out for a run that recovered on its own", n)
@@ -759,7 +759,7 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		}
 		return errors.New(`step "fetch_observations": exited with code 1`)
 	}, noLog())
-	d.Alertas = avisos
+	d.Alerts = avisos
 
 	go func() { _ = d.Run(ctx) }()
 
@@ -779,10 +779,10 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		t.Fatal("nenhum alert saiu")
 	}
 	a := avisos.recebido[0]
-	if a.Passo != "fetch_observations" {
-		t.Errorf("Passo = %q; expected the node that failed", a.Passo)
+	if a.Step != "fetch_observations" {
+		t.Errorf("Step = %q; expected the node that failed", a.Step)
 	}
-	if !strings.Contains(a.TrechoDoLog, "503 Service Unavailable") {
-		t.Errorf("TrechoDoLog does not carry the cause: %q", a.TrechoDoLog)
+	if !strings.Contains(a.LogExcerpt, "503 Service Unavailable") {
+		t.Errorf("LogExcerpt does not carry the cause: %q", a.LogExcerpt)
 	}
 }

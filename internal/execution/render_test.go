@@ -69,7 +69,7 @@ func TestACommandWithNoTemplatePassesThrough(t *testing.T) {
 // A multi-line script has to come out whole: collapsing it into one line would
 // make the
 // primeiro `#` comentar o resto.
-func TestMultiLinhaSobrevive(t *testing.T) {
+func TestAMultiLineScriptSurvives(t *testing.T) {
 	cmd := "set -e\n# comentario\npython3 -m x --date {{ .data }}\necho fim"
 	out, err := execution.Render(cmd, map[string]string{"data": "2026-09-01"})
 	if err != nil {

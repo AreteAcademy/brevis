@@ -61,17 +61,17 @@ func NewRegistry() *Registry {
 // registration is a bug that only shows up in production, when the wrong task
 // runs.
 func (r *Registry) Register(t Task) error {
-	nome := t.Name()
-	if nome == "" {
+	name := t.Name()
+	if name == "" {
 		return fmt.Errorf("task with no name")
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, existe := r.tasks[nome]; existe {
-		return fmt.Errorf("task %q is already registered", nome)
+	if _, existe := r.tasks[name]; existe {
+		return fmt.Errorf("task %q is already registered", name)
 	}
-	r.tasks[nome] = t
+	r.tasks[name] = t
 	return nil
 }
 
@@ -86,10 +86,10 @@ func (r *Registry) MustRegister(t Task) {
 }
 
 // Get looks a task up by name.
-func (r *Registry) Get(nome string) (Task, bool) {
+func (r *Registry) Get(name string) (Task, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	t, ok := r.tasks[nome]
+	t, ok := r.tasks[name]
 	return t, ok
 }
 

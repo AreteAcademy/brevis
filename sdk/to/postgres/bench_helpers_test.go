@@ -19,7 +19,7 @@ func envOuPular(b *testing.B) string {
 	return d
 }
 
-func conectarBench(b *testing.B, dsn string) *pgx.Conn {
+func connectBench(b *testing.B, dsn string) *pgx.Conn {
 	b.Helper()
 	conn, err := pgx.Connect(context.Background(), dsn)
 	if err != nil {
@@ -29,14 +29,14 @@ func conectarBench(b *testing.B, dsn string) *pgx.Conn {
 	return conn
 }
 
-func tabelaBench(b *testing.B, conn *pgx.Conn) string {
+func benchTable(b *testing.B, conn *pgx.Conn) string {
 	b.Helper()
-	nome := fmt.Sprintf("bench_%d", time.Now().UnixNano())
+	name := fmt.Sprintf("bench_%d", time.Now().UnixNano())
 	if _, err := conn.Exec(context.Background(), fmt.Sprintf(`CREATE TABLE %s (
 		ingestion_id TEXT NOT NULL, ingestion_loaded_at TIMESTAMPTZ NOT NULL,
-		provider TEXT, source_key TEXT, valor NUMERIC(18,2))`, nome)); err != nil {
+		provider TEXT, source_key TEXT, valor NUMERIC(18,2))`, name)); err != nil {
 		b.Fatal(err)
 	}
-	b.Cleanup(func() { _, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+nome) })
-	return nome
+	b.Cleanup(func() { _, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+name) })
+	return name
 }

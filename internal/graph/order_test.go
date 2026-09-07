@@ -6,7 +6,7 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-func TestNiveisEmCadeia(t *testing.T) {
+func TestLevelsInAChain(t *testing.T) {
 	w := wf.Workflow{
 		Nodes: []wf.Node{{ID: "a"}, {ID: "b"}, {ID: "c"}},
 		Edges: []wf.Edge{{From: "a", To: "b"}, {From: "b", To: "c"}},
@@ -22,7 +22,7 @@ func TestNiveisEmCadeia(t *testing.T) {
 
 // The point of grouping by level: gold_metrics and gold_users are independent
 // e devem sair juntas. Uma ordenacao topologica linear as serializaria.
-func TestNiveisPreservamParalelismo(t *testing.T) {
+func TestLevelsPreserveParallelism(t *testing.T) {
 	w := wf.Workflow{
 		Nodes: []wf.Node{{ID: "silver"}, {ID: "metrics"}, {ID: "users"}, {ID: "publish"}},
 		Edges: []wf.Edge{

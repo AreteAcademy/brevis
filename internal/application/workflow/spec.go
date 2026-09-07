@@ -127,20 +127,20 @@ type StepSpec struct {
 // `caminho` serves two purposes: deriving the slug when the file carries no
 // `name`, and naming the file in error messages -- a graph error without the
 // file's name is useless when there are dozens of them.
-func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
+func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 	var s Spec
 	if err := yaml.Unmarshal(conteudo, &s); err != nil {
-		return dominio.Workflow{}, fmt.Errorf("%s: invalid yaml: %w", caminho, err)
+		return dominio.Workflow{}, fmt.Errorf("%s: invalid yaml: %w", path, err)
 	}
 
 	slug := s.Name
 	if slug == "" {
-		slug = strings.TrimSuffix(filepath.Base(caminho), filepath.Ext(caminho))
+		slug = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	}
 
 	kind, err := parseKind(s.Type)
 	if err != nil {
-		return dominio.Workflow{}, fmt.Errorf("%s: %w", caminho, err)
+		return dominio.Workflow{}, fmt.Errorf("%s: %w", path, err)
 	}
 
 	w := dominio.Workflow{
@@ -173,11 +173,11 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 
 	w.Edges, err = edges(kind, s.Steps)
 	if err != nil {
-		return dominio.Workflow{}, fmt.Errorf("%s: %w", caminho, err)
+		return dominio.Workflow{}, fmt.Errorf("%s: %w", path, err)
 	}
 
 	if err := w.Validate(); err != nil {
-		return dominio.Workflow{}, fmt.Errorf("%s: %w", caminho, err)
+		return dominio.Workflow{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return w, nil
 }
@@ -213,17 +213,17 @@ func normalizeTags(brutas []string) []string {
 	if len(brutas) == 0 {
 		return nil
 	}
-	vistas := make(map[string]struct{}, len(brutas))
+	seen := make(map[string]struct{}, len(brutas))
 	out := make([]string, 0, len(brutas))
 	for _, t := range brutas {
 		t = strings.TrimSpace(t)
 		if t == "" {
 			continue
 		}
-		if _, ja := vistas[t]; ja {
+		if _, ja := seen[t]; ja {
 			continue
 		}
-		vistas[t] = struct{}{}
+		seen[t] = struct{}{}
 		out = append(out, t)
 	}
 	return out

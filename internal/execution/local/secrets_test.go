@@ -46,8 +46,8 @@ func TestAMissingSecretFailsBeforeRunning(t *testing.T) {
 		},
 		"vazia": func(t *testing.T) { t.Setenv("GABRIEL_SESSION_COOKIE", "") },
 	}
-	for nome, preparar := range casos {
-		t.Run(nome, func(t *testing.T) {
+	for name, preparar := range casos {
+		t.Run(name, func(t *testing.T) {
 			preparar(t)
 
 			_, err := ambienteDaTask(execution.TaskExec{

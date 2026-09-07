@@ -50,12 +50,12 @@ type History interface {
 type Persister interface {
 	IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int) error
 	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
-		status run.Status, exit *int, erro string, log string) error
+		status run.Status, exit *int, failure string, log string) error
 
 	// RecordStages records the phases of an SDK step while it runs. It is
 	// what makes the screen advance before the step finishes.
 	RecordStages(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
-		sdkVersion string, etapas json.RawMessage) error
+		sdkVersion string, stages json.RawMessage) error
 }
 
 // Runner runs a whole workflow.
@@ -179,13 +179,13 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string, por
 // whole workflow because a `notify.sh` failed would throw away the work already
 // finished.
 func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
-	tentativas := r.MaxAttempts
-	if tentativas < 1 {
-		tentativas = 1
+	attempts := r.MaxAttempts
+	if attempts < 1 {
+		attempts = 1
 	}
 
 	var last error
-	for t := 1; t <= tentativas; t++ {
+	for t := 1; t <= attempts; t++ {
 		// The slot is taken per ATTEMPT, not for the whole step: holding it
 		// through the backoff would leave a cluster slot idle waiting on a
 		// clock.
@@ -194,14 +194,14 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 			return err
 		}
 		r.markStart(ctx, n.ID, t-1)
-		var saida string
-		saida, last = r.tentar(ctx, w, n, t-1)
-		r.markEnd(ctx, n.ID, t-1, last, saida)
+		var outgoing string
+		outgoing, last = r.tentar(ctx, w, n, t-1)
+		r.markEnd(ctx, n.ID, t-1, last, outgoing)
 		libera()
 		if last == nil {
 			return nil
 		}
-		if t == tentativas {
+		if t == attempts {
 			break
 		}
 		// Does not insist once the context is gone: that would be a retry against a cancellation.
@@ -213,7 +213,7 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		if r.Report != nil {
 			r.Report.Evento(execution.Event{
 				Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
-				Message: fmt.Sprintf("attempt %d/%d failed, retrying in %s", t, tentativas, espera),
+				Message: fmt.Sprintf("attempt %d/%d failed, retrying in %s", t, attempts, espera),
 			})
 		}
 		select {
@@ -277,20 +277,20 @@ func (r Runner) markStages(ctx context.Context, nodeID string, attempt int, c *s
 	_ = r.Persist.RecordStages(ctx, r.RunID, nodeID, attempt, c.Version, data)
 }
 
-func (r Runner) markEnd(ctx context.Context, nodeID string, attempt int, causa error, log string) {
+func (r Runner) markEnd(ctx context.Context, nodeID string, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
 	status, msg := run.StatusSuccess, ""
 	var exit *int
-	if causa != nil {
-		status, msg = run.StatusFailed, causa.Error()
-		var passo *StepError
+	if cause != nil {
+		status, msg = run.StatusFailed, cause.Error()
+		var step *StepError
 		// Exit 0 is not recorded: a Go task that fails has no process, and a
 		// zero in that column would read as "finished fine" next to a failed
 		// status.
-		if errors.As(causa, &passo) && passo.ExitCode != 0 {
-			exit = &passo.ExitCode
+		if errors.As(cause, &step) && step.ExitCode != 0 {
+			exit = &step.ExitCode
 		}
 	}
 	if err := r.Persist.TerminarTask(ctx, r.RunID, nodeID, attempt, status, exit, msg, log); err != nil && r.Report != nil {
@@ -388,7 +388,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 	var completa window
 
 	// The phases the step announces, when it is an SDK pipeline.
-	var etapas stageCollector
+	var stages stageCollector
 
 	for e := range eventos {
 		// A marked line is the SDK talking to the engine, not the program's
@@ -396,8 +396,8 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 		// or the Report: whoever looks wants to see the phases, not the JSON
 		// that carried them.
 		if e.Kind == execution.EventLog {
-			if line := strings.TrimSpace(e.Message); line != "" && etapas.line(line) {
-				r.markStages(ctx, n.ID, attempt, &etapas)
+			if line := strings.TrimSpace(e.Message); line != "" && stages.line(line) {
+				r.markStages(ctx, n.ID, attempt, &stages)
 				continue
 			}
 		}
@@ -460,11 +460,11 @@ const (
 	envRunParams      = "BREVIS_RUN_PARAMS"
 )
 
-// contextoDoRun builds what the engine knows about this run and the step does not.
+// runContext builds what the engine knows about this run and the step does not.
 //
 // primeira is resolved beforehand, by the caller, because it needs a database
 // round trip and building a task must not do I/O.
-func (r Runner) contextoDoRun(nodeID string, first bool, attempt int) map[string]string {
+func (r Runner) runContext(nodeID string, first bool, attempt int) map[string]string {
 	env := map[string]string{}
 
 	// With no RunID there is no managed run: this is the `brevis run` path,
@@ -569,7 +569,7 @@ func (r Runner) build(w wf.Workflow, n wf.Node, attempt int, first bool) (execut
 		// beats the global on purpose -- the other way round, a variable
 		// declared in the file would lose in silence to a BREVIS_TASK_ENV
 		// somebody configured months ago.
-		Env:     mesclarEnv(r.Env, r.contextoDoRun(n.ID, first, attempt), w.EnvDe(n)),
+		Env:     mesclarEnv(r.Env, r.runContext(n.ID, first, attempt), w.EnvDe(n)),
 		Secrets: w.SecretsDe(n),
 		Timeout: r.Timeout,
 	}

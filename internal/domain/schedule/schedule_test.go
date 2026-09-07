@@ -89,9 +89,9 @@ func TestWithNoLastSlotItCreatesNoHistory(t *testing.T) {
 	}
 }
 
-// O fuso muda o instante em UTC do disparo — e o caso do horario brasileiro,
-// where "02:00" is not 02:00Z.
-func TestTimezoneMudaOInstante(t *testing.T) {
+// The timezone changes the firing's instant in UTC -- which is the Brazilian
+// case, where "02:00" is not 02:00Z.
+func TestTheTimezoneChangesTheInstant(t *testing.T) {
 	base := Schedule{Cron: "0 2 * * *", Active: true, LastSlot: ptr(inUTC("2026-06-10T00:00:00Z"))}
 
 	utc := base
@@ -137,7 +137,7 @@ func TestAnInactiveScheduleProducesNoSlot(t *testing.T) {
 // The cron and the zone are validated together: a valid cron in an invalid zone
 // schedules nothing, and the error would surface far from whoever wrote the
 // file.
-func TestValidacao(t *testing.T) {
+func TestValidation(t *testing.T) {
 	if _, _, err := (Schedule{Cron: "invalido", Timezone: "UTC"}).Parse(); err == nil {
 		t.Error("expected an invalid-cron error")
 	}

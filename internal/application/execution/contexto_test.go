@@ -65,13 +65,13 @@ func runStep(t *testing.T, r app.Runner) execution.TaskExec {
 
 func TestTheStepsEnvironmentCarriesTheRunsContext(t *testing.T) {
 	id := uuid.New()
-	quando := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
+	when := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
 
 	task := runStep(t, app.Runner{
 		RunID:       id,
 		Params:      map[string]string{"load_full": "true"},
 		Trigger:     "backfill",
-		LogicalDate: &quando,
+		LogicalDate: &when,
 		History:     &historico{jaTeve: false},
 	})
 
@@ -88,12 +88,12 @@ func TestTheStepsEnvironmentCarriesTheRunsContext(t *testing.T) {
 		t.Errorf("BREVIS_RUN_LOGICAL_DATE = %q", task.Env["BREVIS_RUN_LOGICAL_DATE"])
 	}
 
-	var params map[string]string
-	if err := json.Unmarshal([]byte(task.Env["BREVIS_RUN_PARAMS"]), &params); err != nil {
+	var prms map[string]string
+	if err := json.Unmarshal([]byte(task.Env["BREVIS_RUN_PARAMS"]), &prms); err != nil {
 		t.Fatalf("BREVIS_RUN_PARAMS is not JSON: %v", err)
 	}
-	if params["load_full"] != "true" {
-		t.Errorf("params = %v", params)
+	if prms["load_full"] != "true" {
+		t.Errorf("params = %v", prms)
 	}
 }
 
@@ -124,8 +124,7 @@ func TestAStepWithAPreviousSuccessIsNotTheFirst(t *testing.T) {
 
 func TestWithNoHistoryItInventsNoFirstRun(t *testing.T) {
 	// Creating a table without being sure is worse than not creating it:
-	// whoever wants one asks
-	// explicitamente no codigo do fetcher.
+	// whoever wants one asks for it explicitly in the fetcher's code.
 	task := runStep(t, app.Runner{RunID: uuid.New()})
 
 	if task.Env["BREVIS_RUN_FIRST"] != "false" {
@@ -214,14 +213,14 @@ func TestTheAttemptStartsAtZeroAsInTheDatabase(t *testing.T) {
 // production -- the rest of the file tests isolated fields.
 func TestTheDispatchersPath(t *testing.T) {
 	id := uuid.New()
-	quando := time.Date(2026, 9, 3, 4, 0, 0, 0, time.UTC)
+	when := time.Date(2026, 9, 3, 4, 0, 0, 0, time.UTC)
 
 	task := runStep(t, app.Runner{
 		RunID:       id,
 		RunAttempt:  0,
 		Params:      map[string]string{"load_full": "true"},
 		Trigger:     "schedule",
-		LogicalDate: &quando,
+		LogicalDate: &when,
 		History:     &historico{jaTeve: false},
 		Env:         map[string]string{"PATH": "/usr/bin", "HOME": "/root"},
 	})

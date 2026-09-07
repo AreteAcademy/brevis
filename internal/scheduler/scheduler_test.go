@@ -56,10 +56,10 @@ func build(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *post
 	return s, runs, queue, pool
 }
 
-func setLastSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
+func setLastSlot(t *testing.T, pool *postgres.Pool, when time.Time) {
 	t.Helper()
 	if _, err := pool.Exec(context.Background(),
-		`UPDATE schedules SET ultimo_slot = $1 WHERE workflow_slug = 'diario'`, quando); err != nil {
+		`UPDATE schedules SET ultimo_slot = $1 WHERE workflow_slug = 'diario'`, when); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -87,9 +87,9 @@ func TestTheSchedulerCreatesARunAndEnqueuesIt(t *testing.T) {
 	if porTrigger["schedule"] != 1 {
 		t.Errorf("trigger_type = %v, wanted schedule", porTrigger)
 	}
-	pendentes, _, _ := queue.Tamanho(ctx)
-	if pendentes != 1 {
-		t.Errorf("the queue holds %d, wanted 1 -- the scheduler creates AND enqueues", pendentes)
+	pending, _, _ := queue.Size(ctx)
+	if pending != 1 {
+		t.Errorf("the queue holds %d, wanted 1 -- the scheduler creates AND enqueues", pending)
 	}
 }
 
@@ -100,19 +100,19 @@ func TestARepeatedCycleDoesNotDuplicate(t *testing.T) {
 	s, runs, _, pool := build(t, "0 2 * * *", true)
 	ctx := context.Background()
 	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
-	agora := inUTC("2026-01-04T03:00:00Z")
+	now := inUTC("2026-01-04T03:00:00Z")
 
-	primeiro, err := s.Cycle(ctx, agora)
+	first, err := s.Cycle(ctx, now)
 	if err != nil {
 		t.Fatal(err)
 	}
-	segundo, err := s.Cycle(ctx, agora)
+	segundo, err := s.Cycle(ctx, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if primeiro != 3 { // 02, 03, 04
-		t.Errorf("first cycle created %d, wanted 3", primeiro)
+	if first != 3 { // 02, 03, 04
+		t.Errorf("first cycle created %d, wanted 3", first)
 	}
 	if segundo != 0 {
 		t.Errorf("second cycle created %d, wanted 0", segundo)
@@ -161,9 +161,9 @@ func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
 	if porTrigger["backfill"] != 5 {
 		t.Errorf("trigger = %v, wanted 5 backfill", porTrigger)
 	}
-	pendentes, _, _ := queue.Tamanho(ctx)
-	if pendentes != 5 {
-		t.Errorf("the queue holds %d, wanted 5", pendentes)
+	pending, _, _ := queue.Size(ctx)
+	if pending != 5 {
+		t.Errorf("the queue holds %d, wanted 5", pending)
 	}
 
 	var prio int
@@ -180,20 +180,20 @@ func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
 func TestABackfillDoesNotAdvanceTheMarker(t *testing.T) {
 	s, _, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	marcador := inUTC("2026-03-01T02:00:00Z")
-	setLastSlot(t, pool, marcador)
+	marker := inUTC("2026-03-01T02:00:00Z")
+	setLastSlot(t, pool, marker)
 
 	if _, err := s.Backfill(ctx, "diario", inUTC("2026-01-01T00:00:00Z"), inUTC("2026-01-03T23:59:00Z"), nil); err != nil {
 		t.Fatal(err)
 	}
 
-	var depois time.Time
+	var after time.Time
 	if err := pool.QueryRow(ctx,
-		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&depois); err != nil {
+		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
-	if !depois.Equal(marcador) {
-		t.Errorf("ultimo_slot = %v, should still be %v", depois, marcador)
+	if !after.Equal(marker) {
+		t.Errorf("ultimo_slot = %v, should still be %v", after, marker)
 	}
 }
 
@@ -202,8 +202,8 @@ func TestABackfillDoesNotAdvanceTheMarker(t *testing.T) {
 func TestRepublishingPreservesTheMarker(t *testing.T) {
 	_, _, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	marcador := inUTC("2026-05-01T02:00:00Z")
-	setLastSlot(t, pool, marcador)
+	marker := inUTC("2026-05-01T02:00:00Z")
+	setLastSlot(t, pool, marker)
 
 	var projeto uuid.UUID
 	if err := pool.QueryRow(ctx, `SELECT id FROM projects LIMIT 1`).Scan(&projeto); err != nil {
@@ -217,14 +217,14 @@ func TestRepublishingPreservesTheMarker(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var depois time.Time
+	var after time.Time
 	var cron string
 	if err := pool.QueryRow(ctx,
-		`SELECT ultimo_slot, cron FROM schedules WHERE workflow_slug = 'diario'`).Scan(&depois, &cron); err != nil {
+		`SELECT ultimo_slot, cron FROM schedules WHERE workflow_slug = 'diario'`).Scan(&after, &cron); err != nil {
 		t.Fatal(err)
 	}
-	if !depois.Equal(marcador) {
-		t.Errorf("ultimo_slot = %v; republishing must not recreate the past", depois)
+	if !after.Equal(marker) {
+		t.Errorf("ultimo_slot = %v; republishing must not recreate the past", after)
 	}
 	if cron != "0 3 * * *" {
 		t.Errorf("cron = %q; the new one should win", cron)
@@ -309,12 +309,12 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	removidos, err := repo.Podar(ctx, projeto, []string{fica.Slug})
+	removed, err := repo.Podar(ctx, projeto, []string{fica.Slug})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(removidos) != 1 || removidos[0] != sai.Slug {
-		t.Fatalf("removidos = %v, want apenas %s", removidos, sai.Slug)
+	if len(removed) != 1 || removed[0] != sai.Slug {
+		t.Fatalf("removidos = %v, want apenas %s", removed, sai.Slug)
 	}
 
 	if _, err := repo.Definition(ctx, sai.Slug); err == nil {
@@ -364,12 +364,12 @@ func TestPruningWithNoDifferenceRemovesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	removidos, err := repo.Podar(ctx, projeto, []string{"so_esse"})
+	removed, err := repo.Podar(ctx, projeto, []string{"so_esse"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(removidos) != 0 {
-		t.Errorf("it removed %v for no reason", removidos)
+	if len(removed) != 0 {
+		t.Errorf("it removed %v for no reason", removed)
 	}
 }
 
@@ -417,21 +417,21 @@ func TestTheFirstRunMarkerIsPlantedOnlyOnce(t *testing.T) {
 	if _, err := s.Cycle(ctx, inUTC("2026-01-01T10:05:00Z")); err != nil {
 		t.Fatal(err)
 	}
-	var primeiro time.Time
+	var first time.Time
 	if err := pool.QueryRow(ctx,
-		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&primeiro); err != nil {
+		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&first); err != nil {
 		t.Fatal(err)
 	}
 
 	if _, err := s.Cycle(ctx, inUTC("2026-01-01T10:10:00Z")); err != nil {
 		t.Fatal(err)
 	}
-	var depois time.Time
+	var after time.Time
 	if err := pool.QueryRow(ctx,
-		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&depois); err != nil {
+		`SELECT ultimo_slot FROM schedules WHERE workflow_slug = 'diario'`).Scan(&after); err != nil {
 		t.Fatal(err)
 	}
-	if !depois.Equal(primeiro) {
-		t.Errorf("the marker moved from %s to %s -- the schedule would never catch up to a time", primeiro, depois)
+	if !after.Equal(first) {
+		t.Errorf("the marker moved from %s to %s -- the schedule would never catch up to a time", first, after)
 	}
 }

@@ -291,23 +291,23 @@ func (w Workflow) Validate() error {
 // by the YAML and refused by the Kubernetes server much later, with a message
 // about a container field rather than a file line.
 func validateEnvironment(slug, where string, env, secrets map[string]string) error {
-	for nome := range env {
-		if err := validateVarName(nome); err != nil {
+	for name := range env {
+		if err := validateVarName(name); err != nil {
 			return fmt.Errorf("workflow %q, %s: env: %w", slug, where, err)
 		}
 	}
 
-	for nome, coord := range secrets {
-		if err := validateVarName(nome); err != nil {
+	for name, coord := range secrets {
+		if err := validateVarName(name); err != nil {
 			return fmt.Errorf("workflow %q, %s: secrets: %w", slug, where, err)
 		}
 
 		// A variable defined in both places is ambiguous, and any tie-break
 		// chosen here would be a rule nobody remembers.
-		if _, colide := env[nome]; colide {
+		if _, colide := env[name]; colide {
 			return fmt.Errorf("workflow %q, %s: %q is in both `env` and `secrets`; "+
 				"the same variable cannot have a literal value and come from a secret",
-				slug, where, nome)
+				slug, where, name)
 		}
 
 		// The value does NOT go into the message. The most likely cause of an
@@ -320,7 +320,7 @@ func validateEnvironment(slug, where string, env, secrets map[string]string) err
 				"(got %d characters). Use `secret-name/key`, as in "+
 				"`gabriel-session/cookie`. If the value pasted there is the secret "+
 				"itself, it is already in git: change the key and rotate the secret",
-				slug, where, nome, len(coord))
+				slug, where, name, len(coord))
 		}
 	}
 	return nil
@@ -328,21 +328,21 @@ func validateEnvironment(slug, where string, env, secrets map[string]string) err
 
 // validateVarName accepts what a POSIX shell accepts: letters, digits and
 // underscore, not starting with a digit.
-func validateVarName(nome string) error {
-	if nome == "" {
+func validateVarName(name string) error {
+	if name == "" {
 		return fmt.Errorf("empty variable name")
 	}
-	if nome[0] >= '0' && nome[0] <= '9' {
-		return fmt.Errorf("variable name %q starts with a digit", nome)
+	if name[0] >= '0' && name[0] <= '9' {
+		return fmt.Errorf("variable name %q starts with a digit", name)
 	}
-	for _, r := range nome {
+	for _, r := range name {
 		ok := r == '_' ||
 			(r >= 'a' && r <= 'z') ||
 			(r >= 'A' && r <= 'Z') ||
 			(r >= '0' && r <= '9')
 		if !ok {
 			return fmt.Errorf("variable name %q has an invalid character %q; "+
-				"use letters, digits and underscores", nome, r)
+				"use letters, digits and underscores", name, r)
 		}
 	}
 	return nil
@@ -353,9 +353,9 @@ func validateVarName(nome string) error {
 // It returns the PATH, not just a boolean: whoever wrote the DAG needs to know
 // which steps close the loop in order to fix it.
 func (w Workflow) findCycle() string {
-	saida := make(map[string][]string, len(w.Nodes))
+	outgoing := make(map[string][]string, len(w.Nodes))
 	for _, e := range w.Edges {
-		saida[e.From] = append(saida[e.From], e.To)
+		outgoing[e.From] = append(outgoing[e.From], e.To)
 	}
 
 	const (
@@ -372,7 +372,7 @@ func (w Workflow) findCycle() string {
 		state[id] = emUso
 		path = append(path, id)
 
-		for _, prox := range saida[id] {
+		for _, prox := range outgoing[id] {
 			switch state[prox] {
 			case emUso:
 				// closes the loop: it slices the path from where `prox` went in

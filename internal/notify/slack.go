@@ -22,40 +22,40 @@ import (
 	"time"
 )
 
-// Alerta is what gets told about a failure.
-type Alerta struct {
+// Alert is what gets told about a failure.
+type Alert struct {
 	Workflow    string
 	RunID       string
 	Status      string
 	Trigger     string
-	Tentativas  int
+	Attempts    int
 	LogicalDate *time.Time
 	Err         string
 
-	// Passo is the node that failed. It arrives as a field of its own, and not
+	// Step is the node that failed. It arrives as a field of its own, and not
 	// only embedded in the error text, because it is the first thing whoever is
 	// on call looks for: "which step?" before "why?".
-	Passo string
+	Step string
 
-	// TrechoDoLog is the last few lines of that step's output, read from
+	// LogExcerpt is the last few lines of that step's output, read from
 	// `task_runs.log`. Without it the alert says something failed; with it the
 	// alert says what failed and why, without anyone opening the screen at
 	// 4am.
-	TrechoDoLog string
+	LogExcerpt string
 
 	// The workflow's tags become the message's "Domain" and "Pipeline" fields --
 	// in Kestra that came from `labels`, and it is what makes an alert
 	// actionable without opening the screen.
 	Tags []string
 
-	// URLBase of the UI, for the run's direct link. Empty means no link.
-	URLBase string
+	// BaseURL of the UI, for the run's direct link. Empty means no link.
+	BaseURL string
 }
 
 // Notificador sends the alert. A small interface so the dispatcher knows nothing
 // of Slack -- and so the test needs no network.
 type Notificador interface {
-	Falhou(ctx context.Context, a Alerta) error
+	Failed(ctx context.Context, a Alert) error
 }
 
 // Slack posts to an Incoming Webhook.
@@ -79,8 +79,8 @@ func NovoSlack(webhook, ambiente string) *Slack {
 	}
 }
 
-// Falhou posts the message.
-func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
+// Failed posts the message.
+func (s *Slack) Failed(ctx context.Context, a Alert) error {
 	if s.Webhook == "" {
 		return nil
 	}
@@ -112,7 +112,7 @@ func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 
 type bloco map[string]any
 
-func (s *Slack) message(a Alerta) map[string]any {
+func (s *Slack) message(a Alert) map[string]any {
 	dominio, pipeline := s.classificar(a)
 
 	fields := []bloco{
@@ -121,11 +121,11 @@ func (s *Slack) message(a Alerta) map[string]any {
 		field("*Status:*\n:x: " + strings.ToUpper(a.Status)),
 		field("*Trigger:*\n`" + a.Trigger + "`"),
 	}
-	if a.Passo != "" {
-		fields = append(fields, field("*Step:*\n`"+a.Passo+"`"))
+	if a.Step != "" {
+		fields = append(fields, field("*Step:*\n`"+a.Step+"`"))
 	}
-	if a.Tentativas > 0 {
-		fields = append(fields, field(fmt.Sprintf("*Attempts:*\n%d", a.Tentativas)))
+	if a.Attempts > 0 {
+		fields = append(fields, field(fmt.Sprintf("*Attempts:*\n%d", a.Attempts)))
 	}
 	if a.LogicalDate != nil {
 		// The TIMEZONE travels with it, and that is not decoration: the same
@@ -162,13 +162,13 @@ func (s *Slack) message(a Alerta) map[string]any {
 	// conclusion, the log is the evidence. In a single block Slack cuts both at
 	// the same limit, and what usually survives is the evidence without the
 	// conclusion.
-	if a.TrechoDoLog != "" {
+	if a.LogExcerpt != "" {
 		blocos = append(blocos, bloco{"type": "section", "text": bloco{
-			"type": "mrkdwn", "text": "*Last lines:*\n```" + truncar(a.TrechoDoLog, 900) + "```",
+			"type": "mrkdwn", "text": "*Last lines:*\n```" + truncar(a.LogExcerpt, 900) + "```",
 		}})
 	}
-	if a.URLBase != "" && a.RunID != "" {
-		url := strings.TrimRight(a.URLBase, "/") + "/runs/" + a.RunID
+	if a.BaseURL != "" && a.RunID != "" {
+		url := strings.TrimRight(a.BaseURL, "/") + "/runs/" + a.RunID
 		blocos = append(blocos, bloco{"type": "context", "elements": []bloco{
 			{"type": "mrkdwn", "text": "<" + url + "|open the run> · `" + a.RunID + "`"},
 		}})
@@ -199,7 +199,7 @@ var tagsDeTecnologia = map[string]bool{
 //
 // With no tags, the slug already says enough to keep the alert from being
 // anonymous.
-func (s *Slack) classificar(a Alerta) (dominio, pipeline string) {
+func (s *Slack) classificar(a Alert) (dominio, pipeline string) {
 	pipeline = a.Workflow
 	dominio = "-"
 

@@ -57,7 +57,7 @@ func (e execsFake) NodeStates(context.Context, uuid.UUID) (map[string]postgres.N
 	return e.states, nil
 }
 
-type grafo struct {
+type graph struct {
 	Slug     string `json:"slug"`
 	RunID    string `json:"run_id"`
 	Status   string `json:"status"`
@@ -80,15 +80,15 @@ type grafo struct {
 	} `json:"edges"`
 }
 
-func request(t *testing.T, ui *api.UI, caminho string) (*http.Response, grafo) {
+func request(t *testing.T, ui *api.UI, path string) (*http.Response, graph) {
 	t.Helper()
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, caminho, nil))
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 
 	res := rec.Result()
-	var g grafo
+	var g graph
 	corpo, _ := io.ReadAll(res.Body)
 	if res.StatusCode == http.StatusOK {
 		if err := json.Unmarshal(corpo, &g); err != nil {
@@ -98,7 +98,7 @@ func request(t *testing.T, ui *api.UI, caminho string) (*http.Response, grafo) {
 	return res, g
 }
 
-func newUI(d api.Definicoes, e api.RunsChart) *api.UI {
+func newUI(d api.Definitions, e api.RunsChart) *api.UI {
 	return api.NewUI(nil, d, e, nil, branding.Default(), slog.New(slog.DiscardHandler))
 }
 
@@ -220,9 +220,9 @@ func TestTheRunGraphMarksTerminal(t *testing.T) {
 
 func TestTheGraphRefusesInvalidInput(t *testing.T) {
 	casos := []struct {
-		nome     string
+		name     string
 		ui       *api.UI
-		caminho  string
+		path     string
 		esperado int
 	}{
 		{"workflow inexistente", newUI(defsFake{err: errors.New("no rows")}, execsFake{}),
@@ -238,8 +238,8 @@ func TestTheGraphRefusesInvalidInput(t *testing.T) {
 		}}, execsFake{}), "/api/workflows/ciclo/graph", http.StatusUnprocessableEntity},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
-			res, _ := request(t, c.ui, c.caminho)
+		t.Run(c.name, func(t *testing.T) {
+			res, _ := request(t, c.ui, c.path)
 			if res.StatusCode != c.esperado {
 				t.Errorf("status = %d, want %d", res.StatusCode, c.esperado)
 			}
@@ -258,7 +258,7 @@ func fourStages() []postgres.Stage {
 	}
 }
 
-func graphWithStages(t *testing.T, states map[string]postgres.NodeState) grafo {
+func graphWithStages(t *testing.T, states map[string]postgres.NodeState) graph {
 	t.Helper()
 	id := uuid.New()
 	def, _ := json.Marshal(diamond())
@@ -282,34 +282,34 @@ func TestAnSDKStepBecomesAGroupWithTheStagesInside(t *testing.T) {
 	})
 
 	pai := -1
-	var filhos []int
+	var children []int
 	for i, n := range g.Nodes {
 		if n.ID == "b" {
 			pai = i
 		}
 		if n.ParentID == "b" {
-			filhos = append(filhos, i)
+			children = append(children, i)
 		}
 	}
 	if pai < 0 {
 		t.Fatal("the step vanished from the graph")
 	}
-	if len(filhos) != 4 {
-		t.Fatalf("it came out with %d stages, expected 4", len(filhos))
+	if len(children) != 4 {
+		t.Fatalf("it came out with %d stages, expected 4", len(children))
 	}
 
 	// React Flow requires the parent BEFORE the children in the array.
-	for _, f := range filhos {
+	for _, f := range children {
 		if f < pai {
 			t.Fatal("a child came out before the parent; React Flow does not build the group")
 		}
 	}
 
-	altura, ok := g.Nodes[pai].Style["height"].(float64)
-	if !ok || altura <= 0 {
+	height, ok := g.Nodes[pai].Style["height"].(float64)
+	if !ok || height <= 0 {
 		t.Fatalf("the group came out with no declared height: %v", g.Nodes[pai].Style)
 	}
-	for _, f := range filhos {
+	for _, f := range children {
 		n := g.Nodes[f]
 		if n.Type != "etapa" || n.Extent != "parent" {
 			t.Errorf("filho mal formado: %+v", n)
@@ -317,8 +317,8 @@ func TestAnSDKStepBecomesAGroupWithTheStagesInside(t *testing.T) {
 		if n.Selectable == nil || *n.Selectable {
 			t.Errorf("a selectable stage would open an empty panel: %+v", n)
 		}
-		if float64(n.Position.Y)+26 > altura {
-			t.Errorf("stage %s spills out of the group: y=%d, height=%v", n.ID, n.Position.Y, altura)
+		if float64(n.Position.Y)+26 > height {
+			t.Errorf("stage %s spills out of the group: y=%d, height=%v", n.ID, n.Position.Y, height)
 		}
 	}
 }
@@ -347,7 +347,7 @@ func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 		}
 	}
 
-	altura := func(id string) int {
+	height := func(id string) int {
 		if f := fundo[id]; f > 0 {
 			return f + 10 // a folga de rodape do grupo
 		}
@@ -370,13 +370,13 @@ func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 
 	// b e c estao no MESMO nivel do diamond: um tem de acabar antes de o
 	// outro comecar.
-	cima, baixo, alturaDeCima := b, c, altura("b")
+	top, bottom, topHeight := b, c, height("b")
 	if c < b {
-		cima, baixo, alturaDeCima = c, b, altura("c")
+		top, bottom, topHeight = c, b, height("c")
 	}
-	if cima+alturaDeCima > baixo {
+	if top+topHeight > bottom {
 		t.Errorf("os nos se sobrepoem: um vai de %d a %d, o outro comeca em %d",
-			cima, cima+alturaDeCima, baixo)
+			top, top+topHeight, bottom)
 	}
 }
 

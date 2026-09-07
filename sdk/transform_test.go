@@ -362,11 +362,11 @@ func TestAcceptPassesScalarsThrough(t *testing.T) {
 // The order matters against IngestionID: it reads the row after every
 // Transformer, so a rename before it forces naming the new name.
 func TestIngestionIDReadsItAfterTheRename(t *testing.T) {
-	linha := map[string]any{
+	line := map[string]any{
 		"provider": "p", "entity": "e", "source_key": "k", "time": "2026-01-01T00:00",
 	}
 
-	renomeado, err := Rename(map[string]string{"time": "observed_at"})(linha)
+	renomeado, err := Rename(map[string]string{"time": "observed_at"})(line)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -412,9 +412,9 @@ func TestRenameDoesNotChain(t *testing.T) {
 // hand, and two package comments documented the direct call for weeks: examples
 // that never compiled.
 func TestComputeTextTakesASelectorDirectly(t *testing.T) {
-	linha := map[string]any{"latitude": -23.55, "longitude": -46.63, "time": "2026-01-01T00:00"}
+	line := map[string]any{"latitude": -23.55, "longitude": -46.63, "time": "2026-01-01T00:00"}
 
-	out, err := ComputeText("source_key", Key("latitude", "longitude", "time"))(linha)
+	out, err := ComputeText("source_key", Key("latitude", "longitude", "time"))(line)
 	if err != nil {
 		t.Fatalf("ComputeText: %v", err)
 	}
@@ -427,23 +427,23 @@ func TestComputeTextTakesASelectorDirectly(t *testing.T) {
 // It has to be the same result the hand-written wrapper produced, or upgrading
 // to it would change every ingestion_id already written.
 func TestComputeTextMatchesTheWrapperItReplaces(t *testing.T) {
-	linha := func() map[string]any {
+	line := func() map[string]any {
 		return map[string]any{"a": "1", "b": 2.0, "time": "2026-01-01T00:00"}
 	}
 
-	novo, err := ComputeText("source_key", Key("a", "b"))(linha())
+	novo, err := ComputeText("source_key", Key("a", "b"))(line())
 	if err != nil {
 		t.Fatal(err)
 	}
-	velho, err := Compute("source_key", func(r map[string]any) (any, error) {
+	old, err := Compute("source_key", func(r map[string]any) (any, error) {
 		return Key("a", "b")(r)
-	})(linha())
+	})(line())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if novo.(map[string]any)["source_key"] != velho.(map[string]any)["source_key"] {
+	if novo.(map[string]any)["source_key"] != old.(map[string]any)["source_key"] {
 		t.Errorf("the key changed: %v against %v",
-			novo.(map[string]any)["source_key"], velho.(map[string]any)["source_key"])
+			novo.(map[string]any)["source_key"], old.(map[string]any)["source_key"])
 	}
 }
 

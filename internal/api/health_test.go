@@ -34,7 +34,7 @@ func TestHealthIgnoresABrokenDependency(t *testing.T) {
 	}
 }
 
-func TestReadyOkQuandoTudoResponde(t *testing.T) {
+func TestReadyIsOkWhenEverythingAnswers(t *testing.T) {
 	s := testServer(map[string]Checker{"postgres": checkerFalso{}})
 
 	rec := httptest.NewRecorder()
@@ -43,7 +43,7 @@ func TestReadyOkQuandoTudoResponde(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, wanted 200", rec.Code)
 	}
-	var corpo respostaSaude
+	var corpo healthResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &corpo); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestReadyFailsAndSaysWhichDependency(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, wanted 503", rec.Code)
 	}
-	var corpo respostaSaude
+	var corpo healthResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &corpo); err != nil {
 		t.Fatal(err)
 	}

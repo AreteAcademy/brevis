@@ -14,24 +14,24 @@ import (
 // noticed, because no test looked at the message. These do.
 func TestFormatErrorMessage(t *testing.T) {
 	casos := []struct {
-		nome string
+		name string
 		err  *FormatError
 		quer string
 	}{
 		{
-			nome: "sem registro",
+			name: "sem registro",
 			err:  &FormatError{URL: "https://api.example.com/v1", Line: -1, Cause: errors.New("not a JSON object")},
 			quer: "format error in https://api.example.com/v1: not a JSON object",
 		},
 		{
-			nome: "com registro",
+			name: "com registro",
 			err:  &FormatError{URL: "https://api.example.com/v1", Line: 7, Cause: errors.New("building source_key: missing lat")},
 			quer: "format error in https://api.example.com/v1, record 7: building source_key: missing lat",
 		},
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got := c.err.Error()
 			if got != c.quer {
 				t.Errorf("mensagem\n  got:  %q\n  want: %q", got, c.quer)

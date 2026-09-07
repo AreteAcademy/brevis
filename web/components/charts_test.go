@@ -39,16 +39,16 @@ func TestTheScalesCeilingIsRoundAndDivisibleByFour(t *testing.T) {
 }
 
 func TestTheGridLinesAreEquidistant(t *testing.T) {
-	rows := linhasDeGrade(bucketsWith(27))
+	rows := gridLines(bucketsWith(27))
 	if len(rows) != 5 {
 		t.Fatalf("obtive %d linhas, want 5", len(rows))
 	}
 	// A 1px tolerance: the division is integer, so a 214px area in four
 	// faixas alterna 53 e 54. Exigir igualdade exata testaria o arredondamento,
 	// not the grid.
-	passo := rows[0].Y - rows[1].Y
+	step := rows[0].Y - rows[1].Y
 	for i := 1; i < len(rows)-1; i++ {
-		if d := rows[i].Y - rows[i+1].Y; d < passo-1 || d > passo+1 {
+		if d := rows[i].Y - rows[i+1].Y; d < step-1 || d > step+1 {
 			t.Fatalf("grade irregular: %v", rows)
 		}
 	}
@@ -59,15 +59,15 @@ func TestTheGridLinesAreEquidistant(t *testing.T) {
 
 // A single failure among hundreds of successes still has to be seen -- it is the
 // case in which the chart matters most.
-func TestBarraMinimaSobrevive(t *testing.T) {
+func TestTheSmallestBarSurvives(t *testing.T) {
 	buckets := []postgres.Bucket{{Succeeded: 400, Failed: 1}}
 	b := bars(buckets)[0]
 	if b.HFailed < 2 {
 		t.Errorf("altura da falha = %d, sumiria da tela", b.HFailed)
 	}
-	if b.YFalha+b.HFailed != b.YSucesso {
+	if b.YFailed+b.HFailed != b.YSucceeded {
 		t.Errorf("pilha desalinhada: falha termina em %d e sucesso comeca em %d",
-			b.YFalha+b.HFailed, b.YSucesso)
+			b.YFailed+b.HFailed, b.YSucceeded)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestTheDonutsArcsClose(t *testing.T) {
 
 func arcs2(i postgres.Indicators) []Arco { return arcos(i) }
 
-func TestDuracaoEscolheUnidade(t *testing.T) {
+func TestTheDurationPicksItsUnit(t *testing.T) {
 	casos := []struct {
 		d        time.Duration
 		esperado string

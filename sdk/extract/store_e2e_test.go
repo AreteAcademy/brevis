@@ -33,7 +33,7 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 
 	var mu sync.Mutex
 	var vistos []string
-	geracao := 0
+	generation := 0
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, r *http.Request) {
@@ -47,8 +47,8 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 			_, _ = fmt.Fprint(w, `null`)
 			return
 		}
-		geracao++
-		http.SetCookie(w, &http.Cookie{Name: "session", Value: fmt.Sprintf("rotacionado-%d", geracao)})
+		generation++
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: fmt.Sprintf("rotacionado-%d", generation)})
 		_, _ = fmt.Fprintf(w, `{"expires":%q}`, time.Now().Add(30*24*time.Hour).Format(time.RFC3339))
 	})
 	mux.HandleFunc("/api/proxy/occurrences", func(w http.ResponseWriter, _ *http.Request) {
@@ -57,8 +57,8 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	rodar := func(semente string) error {
-		fonte := core.Source{
+	runIt := func(semente string) error {
+		source := core.Source{
 			URL: srv.URL + "/api/proxy/occurrences",
 			Auth: &core.Credential{
 				Value: func(context.Context) (string, error) {
@@ -75,7 +75,7 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 				},
 			},
 		}
-		seq, err := JSON(context.Background(), fonte, nil)
+		seq, err := JSON(context.Background(), source, nil)
 		if err != nil {
 			return err
 		}
@@ -88,12 +88,12 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 	}
 
 	// First: the seed exists, and the rotation is written.
-	if err := rodar("colado-pelo-humano"); err != nil {
+	if err := runIt("colado-pelo-humano"); err != nil {
 		t.Fatalf("primeira execucao: %v", err)
 	}
 
 	// Second: the seed is GONE. Only the volume has a credential.
-	if err := rodar(""); err != nil {
+	if err := runIt(""); err != nil {
 		t.Fatalf("segunda execucao, sem a semente: %v", err)
 	}
 
@@ -140,15 +140,15 @@ func TestAFailedWriteDoesNotStopTheRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("a execucao morreu por causa da escrita: %v", err)
 	}
-	linhas := 0
+	lines := 0
 	for _, err := range seq {
 		if err != nil {
 			t.Fatalf("iterando: %v", err)
 		}
-		linhas++
+		lines++
 	}
-	if linhas != 1 {
-		t.Errorf("linhas = %d; a extracao devia ter acontecido", linhas)
+	if lines != 1 {
+		t.Errorf("linhas = %d; a extracao devia ter acontecido", lines)
 	}
 	if stats.CredentialStoreError == "" {
 		t.Error("a falha de escrita nao chegou a Stats; so o log a teria")
@@ -166,7 +166,7 @@ func (storeQueNaoGrava) Describe() string      { return "store de teste" }
 // it would be repeating, somewhere else, the mistake of keeping a credential
 // where one is not kept.
 func TestTheCredentialNeverAppearsInALog(t *testing.T) {
-	const segredo = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..MUlTVFJP"
+	const secret = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..MUlTVFJP"
 	const rotacionado = "ROTACIONADO-eyJhbGciOiJkaXI"
 
 	dir := t.TempDir()
@@ -188,15 +188,15 @@ func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 	defer srv.Close()
 
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	// Debug: se algo vazasse so no nivel mais baixo, o teste tem de ver.
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	seq, err := JSON(context.Background(), core.Source{
 		URL: srv.URL + "/api/proxy/dados",
 		Auth: &core.Credential{
-			Value: func(context.Context) (string, error) { return "session=" + segredo, nil },
+			Value: func(context.Context) (string, error) { return "session=" + secret, nil },
 			Apply: core.AsCookie,
 			Refresh: &core.Refresh{
 				URL:       srv.URL + "/api/auth/session",
@@ -215,13 +215,13 @@ func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 	}
 
 	log := buf.String()
-	for nome, valor := range map[string]string{"a semente": segredo, "o rotacionado": rotacionado} {
-		if strings.Contains(log, valor) {
-			t.Errorf("%s vazou para o log:\n%s", nome, log)
+	for name, value := range map[string]string{"a semente": secret, "o rotacionado": rotacionado} {
+		if strings.Contains(log, value) {
+			t.Errorf("%s vazou para o log:\n%s", name, log)
 		}
 		// Nem truncada: um prefixo de credencial ainda e credencial parcial.
-		if strings.Contains(log, valor[:16]) {
-			t.Errorf("%s vazou truncada para o log:\n%s", nome, log)
+		if strings.Contains(log, value[:16]) {
+			t.Errorf("%s vazou truncada para o log:\n%s", name, log)
 		}
 	}
 }

@@ -171,9 +171,9 @@ func (c *Cliente) CreatePod(ctx context.Context, p Pod) (Pod, error) {
 }
 
 // LerPod devolve o estado atual.
-func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
+func (c *Cliente) LerPod(ctx context.Context, name string) (Pod, error) {
 	res, err := c.request(ctx, http.MethodGet,
-		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome, nil)
+		"/api/v1/namespaces/"+c.namespace+"/pods/"+name, nil)
 	if err != nil {
 		return Pod{}, err
 	}
@@ -192,14 +192,14 @@ func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
 // Logs opens the container's output stream. With `follow`, the response only
 // ends when the container ends — which is why there is no timeout on the
 // http.Client.
-func (c *Cliente) Logs(ctx context.Context, nome string, follow1 bool) (io.ReadCloser, error) {
+func (c *Cliente) Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error) {
 	q := url.Values{}
 	q.Set("container", containerName)
 	if follow1 {
 		q.Set("follow", "true")
 	}
 	res, err := c.request(ctx, http.MethodGet,
-		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome+"/log?"+q.Encode(), nil)
+		"/api/v1/namespaces/"+c.namespace+"/pods/"+name+"/log?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -210,9 +210,9 @@ func (c *Cliente) Logs(ctx context.Context, nome string, follow1 bool) (io.ReadC
 }
 
 // DeletePod remove o pod.
-func (c *Cliente) DeletePod(ctx context.Context, nome string) error {
+func (c *Cliente) DeletePod(ctx context.Context, name string) error {
 	res, err := c.request(ctx, http.MethodDelete,
-		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome, nil)
+		"/api/v1/namespaces/"+c.namespace+"/pods/"+name, nil)
 	if err != nil {
 		return err
 	}

@@ -746,7 +746,7 @@ func pagination(p Pagination) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if p.Paginas() > 1 {
+			if p.Pages() > 1 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<nav class=\"flex items-center gap-1\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -827,7 +827,7 @@ func pagination(p Pagination) templ.Component {
 						}
 					}
 				}
-				if p.Page < p.Paginas() {
+				if p.Page < p.Pages() {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<a href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -885,8 +885,8 @@ type Filter struct {
 	Sort string
 	Desc bool
 
-	Page      int
-	PorPagina int
+	Page    int
+	PerPage int
 }
 
 // With returns the same URL with one field swapped — since every chip becomes a
@@ -933,24 +933,24 @@ func (f Filter) Arrow(field string) string {
 
 func (f Filter) url(field, value string, resetsPage bool) string {
 	q := url.Values{}
-	poe := func(k, v string) {
+	put := func(k, v string) {
 		if v != "" {
 			q.Set(k, v)
 		}
 	}
-	poe("q", f.Search)
-	poe("state", f.State)
-	poe("active", f.Active)
-	poe("tag", f.Tag)
-	poe("sort", f.Sort)
+	put("q", f.Search)
+	put("state", f.State)
+	put("active", f.Active)
+	put("tag", f.Tag)
+	put("sort", f.Sort)
 	if f.Desc {
-		poe("dir", "desc")
+		put("dir", "desc")
 	}
 	if !resetsPage && f.Page > 1 {
-		poe("page", fmt.Sprint(f.Page))
+		put("page", fmt.Sprint(f.Page))
 	}
-	if f.PorPagina > 0 && f.PorPagina != DefaultPerPage {
-		poe("per", fmt.Sprint(f.PorPagina))
+	if f.PerPage > 0 && f.PerPage != DefaultPerPage {
+		put("per", fmt.Sprint(f.PerPage))
 	}
 	if value == "" {
 		q.Del(field)
@@ -969,20 +969,20 @@ const DefaultPerPage = 25
 
 // Pagination is the footer of any paginated list.
 type Pagination struct {
-	Page      int
-	PorPagina int
-	Total     int
+	Page    int
+	PerPage int
+	Total   int
 
 	// PageLink builds each page's URL. Injected so the same component serves
 	// /workflows and /runs, which have different filters.
 	PageLink func(int) string
 }
 
-func (p Pagination) Paginas() int {
-	if p.PorPagina <= 0 {
+func (p Pagination) Pages() int {
+	if p.PerPage <= 0 {
 		return 1
 	}
-	n := (p.Total + p.PorPagina - 1) / p.PorPagina
+	n := (p.Total + p.PerPage - 1) / p.PerPage
 	if n < 1 {
 		return 1
 	}
@@ -993,11 +993,11 @@ func (p Pagination) First() int {
 	if p.Total == 0 {
 		return 0
 	}
-	return (p.Page-1)*p.PorPagina + 1
+	return (p.Page-1)*p.PerPage + 1
 }
 
 func (p Pagination) Last() int {
-	end := p.Page * p.PorPagina
+	end := p.Page * p.PerPage
 	if end > p.Total {
 		return p.Total
 	}
@@ -1007,7 +1007,7 @@ func (p Pagination) Last() int {
 // Window returns the page numbers to show, centred on the current one. Listing
 // them all would break the footer with a hundred pages.
 func (p Pagination) Window() []int {
-	total := p.Paginas()
+	total := p.Pages()
 	de, ate := p.Page-2, p.Page+2
 	if de < 1 {
 		ate += 1 - de
@@ -1464,7 +1464,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = pagination(Pagination{
-					Page: f.Page, PorPagina: f.PorPagina, Total: filtered,
+					Page: f.Page, PerPage: f.PerPage, Total: filtered,
 					PageLink: f.WithPage,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
@@ -1793,23 +1793,23 @@ type RunFilter struct {
 	Ate      string
 	Label    string // descricao legivel do periodo, montada no servidor
 
-	Page      int
-	PorPagina int
+	Page    int
+	PerPage int
 }
 
 func (f RunFilter) url(field, value string, resetsPage bool) string {
 	q := url.Values{}
-	poe := func(k, v string) {
+	put := func(k, v string) {
 		if v != "" {
 			q.Set(k, v)
 		}
 	}
-	poe("state", f.State)
-	poe("workflow", f.Workflow)
-	poe("from", f.De)
-	poe("to", f.Ate)
+	put("state", f.State)
+	put("workflow", f.Workflow)
+	put("from", f.De)
+	put("to", f.Ate)
 	if !resetsPage && f.Page > 1 {
-		poe("page", fmt.Sprint(f.Page))
+		put("page", fmt.Sprint(f.Page))
 	}
 	if value == "" {
 		q.Del(field)
@@ -1933,7 +1933,7 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = runsTable(runs, Pagination{
-				Page: f.Page, PorPagina: f.PorPagina, Total: total, PageLink: f.WithPage,
+				Page: f.Page, PerPage: f.PerPage, Total: total, PageLink: f.WithPage,
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

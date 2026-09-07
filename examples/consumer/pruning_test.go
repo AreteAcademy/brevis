@@ -15,7 +15,7 @@ import (
 // driver is not to import its package.
 func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 	casos := []struct {
-		nome     string
+		name     string
 		pacotes  []string
 		proibido bool
 	}{
@@ -43,7 +43,7 @@ func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), "cloud.google.com/go/bigquery")
 
 			if c.proibido && carrega {
@@ -62,7 +62,7 @@ func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 // AWS nor Google. With the three in a single package, it would.
 func TestReadingALocalFileCompilesNoCloud(t *testing.T) {
 	casos := []struct {
-		nome     string
+		name     string
 		pacotes  []string
 		procura  string
 		esperado bool
@@ -82,7 +82,7 @@ func TestReadingALocalFileCompilesNoCloud(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), c.procura)
 			if carrega != c.esperado {
 				t.Errorf("carries %q = %v, expected %v", c.procura, carrega, c.esperado)

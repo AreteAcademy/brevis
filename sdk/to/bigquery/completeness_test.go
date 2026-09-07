@@ -21,7 +21,7 @@ import (
 // fails when somebody adds a field to LoadConfig and forgets to wire it up
 // here, which is exactly when you want to be bothered.
 func TestEveryLoadConfigFieldIsReachable(t *testing.T) {
-	campos := camposDe(t, "../../internal/core/types.go", "LoadConfig")
+	fields := fieldsOf(t, "../../internal/core/types.go", "LoadConfig")
 	escritos := escritosPor(t, "bigquery.go")
 
 	// These the adapter does not write, and for stated reasons.
@@ -31,57 +31,57 @@ func TestEveryLoadConfigFieldIsReachable(t *testing.T) {
 		"Entity":   "vem do lote, não do Target -- ver Write",
 	}
 
-	var faltando []string
-	for _, c := range campos {
+	var missing []string
+	for _, c := range fields {
 		if escritos[c] {
 			continue
 		}
 		if _, ok := naoSeAplica[c]; ok {
 			continue
 		}
-		faltando = append(faltando, c)
+		missing = append(missing, c)
 	}
 
-	if len(faltando) > 0 {
-		sort.Strings(faltando)
+	if len(missing) > 0 {
+		sort.Strings(missing)
 		t.Errorf("LoadConfig tem %s, e bigquery.Table não os define nem os declara "+
 			"inaplicáveis. Quem usa a fachada não consegue ajustá-los, e nada avisa.",
-			strings.Join(faltando, ", "))
+			strings.Join(missing, ", "))
 	}
 }
 
 var (
-	campoRe   = regexp.MustCompile(`(?m)^\t([A-Z][A-Za-z0-9]*)\s`)
+	fieldRe   = regexp.MustCompile(`(?m)^\t([A-Z][A-Za-z0-9]*)\s`)
 	escritaRe = regexp.MustCompile(`(?m)^\t+([A-Z][A-Za-z0-9]*):`)
 	atribRe   = regexp.MustCompile(`cfg\.([A-Z][A-Za-z0-9]*)\s*(,|=)`)
 )
 
-func camposDe(t *testing.T, caminho, tipo string) []string {
+func fieldsOf(t *testing.T, path, kind string) []string {
 	t.Helper()
-	data, err := os.ReadFile(caminho)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("lendo %s: %v", caminho, err)
+		t.Fatalf("lendo %s: %v", path, err)
 	}
 	s := string(data)
-	i := strings.Index(s, "type "+tipo+" struct {")
+	i := strings.Index(s, "type "+kind+" struct {")
 	if i < 0 {
-		t.Fatalf("%s não achado em %s", tipo, caminho)
+		t.Fatalf("%s não achado em %s", kind, path)
 	}
 	corpo := s[i:]
 	corpo = corpo[:strings.Index(corpo, "\n}")]
 
 	var out []string
-	for _, m := range campoRe.FindAllStringSubmatch(corpo, -1) {
+	for _, m := range fieldRe.FindAllStringSubmatch(corpo, -1) {
 		out = append(out, m[1])
 	}
 	return out
 }
 
-func escritosPor(t *testing.T, caminho string) map[string]bool {
+func escritosPor(t *testing.T, path string) map[string]bool {
 	t.Helper()
-	data, err := os.ReadFile(caminho)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("lendo %s: %v", caminho, err)
+		t.Fatalf("lendo %s: %v", path, err)
 	}
 	s := string(data)
 

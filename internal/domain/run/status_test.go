@@ -7,12 +7,12 @@ import (
 )
 
 // O caminho feliz da secao 7: created -> queued -> running -> success.
-func TestCaminhoFeliz(t *testing.T) {
+func TestTheHappyPath(t *testing.T) {
 	r := &Run{Status: StatusCreated}
-	agora := time.Now()
+	now := time.Now()
 
 	for _, s := range []Status{StatusQueued, StatusRunning, StatusSuccess} {
-		if err := r.Transition(s, agora); err != nil {
+		if err := r.Transition(s, now); err != nil {
 			t.Fatalf("transition to %s: %v", s, err)
 		}
 	}
@@ -24,10 +24,10 @@ func TestCaminhoFeliz(t *testing.T) {
 // O ciclo de retry: failed -> retrying -> queued, e de volta a running.
 func TestTheRetryCycle(t *testing.T) {
 	r := &Run{Status: StatusRunning}
-	agora := time.Now()
+	now := time.Now()
 
 	for _, s := range []Status{StatusFailed, StatusRetrying, StatusQueued, StatusRunning} {
-		if err := r.Transition(s, agora); err != nil {
+		if err := r.Transition(s, now); err != nil {
 			t.Fatalf("transition to %s: %v", s, err)
 		}
 	}
@@ -36,13 +36,13 @@ func TestTheRetryCycle(t *testing.T) {
 // Re-queueing clears the stamps: the new attempt does not inherit the previous
 // one's times, otherwise the reported duration would be another run's.
 func TestRequeueingClearsTheStamps(t *testing.T) {
-	agora := time.Now()
+	now := time.Now()
 	r := &Run{Status: StatusCreated}
-	_ = r.Transition(StatusQueued, agora)
-	_ = r.Transition(StatusRunning, agora)
-	_ = r.Transition(StatusFailed, agora)
-	_ = r.Transition(StatusRetrying, agora)
-	_ = r.Transition(StatusQueued, agora)
+	_ = r.Transition(StatusQueued, now)
+	_ = r.Transition(StatusRunning, now)
+	_ = r.Transition(StatusFailed, now)
+	_ = r.Transition(StatusRetrying, now)
+	_ = r.Transition(StatusQueued, now)
 
 	if r.StartedAt != nil || r.FinishedAt != nil {
 		t.Error("re-queued has to clear the previous attempt's stamps")
@@ -87,7 +87,7 @@ func TestFailedIsNotTerminal(t *testing.T) {
 
 // Cancelling has to be possible from any active state -- and only from active
 // ones.
-func TestCancelamento(t *testing.T) {
+func TestCancelling(t *testing.T) {
 	for _, de := range []Status{StatusCreated, StatusQueued, StatusRunning, StatusRetrying} {
 		if err := Validate(de, StatusCanceled); err != nil {
 			t.Errorf("it should be possible to cancel from %s: %v", de, err)
@@ -98,7 +98,7 @@ func TestCancelamento(t *testing.T) {
 	}
 }
 
-func TestEstadoDesconhecido(t *testing.T) {
+func TestAnUnknownState(t *testing.T) {
 	if err := Validate(Status("inventado"), StatusQueued); err == nil {
 		t.Error("expected an error for an unknown state")
 	}

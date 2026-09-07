@@ -13,59 +13,59 @@ import (
 )
 
 // fonteFalsa entrega N registros, ou falha.
-type fonteFalsa struct {
-	nome      string
-	linhas    int
-	erroAbrir error
-	errAfter  int // > 0: it fails after N rows
+type fakeSource struct {
+	name     string
+	lines    int
+	openErr  error
+	errAfter int // > 0: it fails after N rows
 }
 
-func (f fonteFalsa) Describe() string { return f.nome }
+func (f fakeSource) Describe() string { return f.name }
 
-func (f fonteFalsa) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
-	if f.erroAbrir != nil {
-		return nil, f.erroAbrir
+func (f fakeSource) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+	if f.openErr != nil {
+		return nil, f.openErr
 	}
 	return func(yield func(sdk.Envelope, error) bool) {
-		for i := 0; i < f.linhas; i++ {
+		for i := 0; i < f.lines; i++ {
 			if f.errAfter > 0 && i == f.errAfter {
-				yield(sdk.Envelope{}, fmt.Errorf("%s quebrou na linha %d", f.nome, i))
+				yield(sdk.Envelope{}, fmt.Errorf("%s quebrou na linha %d", f.name, i))
 				return
 			}
-			if !yield(sdk.Envelope{Payload: map[string]any{"origem": f.nome, "i": i}}, nil) {
+			if !yield(sdk.Envelope{Payload: map[string]any{"origem": f.name, "i": i}}, nil) {
 				return
 			}
 		}
 	}, nil
 }
 
-func drenar(t *testing.T, fonte sdk.Reader, stats *sdk.Stats) ([]map[string]any, error) {
+func drain(t *testing.T, source sdk.Reader, stats *sdk.Stats) ([]map[string]any, error) {
 	t.Helper()
-	dados, err := sdk.Extract(context.Background(), sdk.Source{From: fonte, Stats: stats})
+	data, err := sdk.Extract(context.Background(), sdk.Source{From: source, Stats: stats})
 	if err != nil {
 		return nil, err
 	}
-	var linhas []map[string]any
-	for env, err := range dados.Records {
+	var lines []map[string]any
+	for env, err := range data.Records {
 		if err != nil {
-			return linhas, err
+			return lines, err
 		}
-		linhas = append(linhas, env.Payload.(map[string]any))
+		lines = append(lines, env.Payload.(map[string]any))
 	}
-	return linhas, nil
+	return lines, nil
 }
 
 // TestManyJoinsTheSources: o caso base.
 func TestManyJoinsTheSources(t *testing.T) {
-	linhas, err := drenar(t, from.Many{Sources: []sdk.Reader{
-		fonteFalsa{nome: "a", linhas: 2},
-		fonteFalsa{nome: "b", linhas: 3},
+	lines, err := drain(t, from.Many{Sources: []sdk.Reader{
+		fakeSource{name: "a", lines: 2},
+		fakeSource{name: "b", lines: 3},
 	}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(linhas) != 5 {
-		t.Errorf("%d linhas, esperado 5", len(linhas))
+	if len(lines) != 5 {
+		t.Errorf("%d linhas, esperado 5", len(lines))
 	}
 }
 
@@ -73,39 +73,39 @@ func TestManyJoinsTheSources(t *testing.T) {
 // deterministic, and that is why it is the default. Concurrency is opt-in
 // precisely because it gives that up.
 func TestManySequentialKeepsTheOrder(t *testing.T) {
-	fontes := []sdk.Reader{
-		fonteFalsa{nome: "a", linhas: 2},
-		fonteFalsa{nome: "b", linhas: 2},
-		fonteFalsa{nome: "c", linhas: 2},
+	sources := []sdk.Reader{
+		fakeSource{name: "a", lines: 2},
+		fakeSource{name: "b", lines: 2},
+		fakeSource{name: "c", lines: 2},
 	}
-	var anterior string
-	for tentativa := 0; tentativa < 20; tentativa++ {
-		linhas, err := drenar(t, from.Many{Sources: fontes}, nil)
+	var previous string
+	for attempt := 0; attempt < 20; attempt++ {
+		lines, err := drain(t, from.Many{Sources: sources}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		var ordem []string
-		for _, l := range linhas {
-			ordem = append(ordem, fmt.Sprintf("%s%v", l["origem"], l["i"]))
+		var order []string
+		for _, l := range lines {
+			order = append(order, fmt.Sprintf("%s%v", l["origem"], l["i"]))
 		}
-		atual := strings.Join(ordem, ",")
-		if atual != "a0,a1,b0,b1,c0,c1" {
-			t.Fatalf("ordem = %s", atual)
+		current := strings.Join(order, ",")
+		if current != "a0,a1,b0,b1,c0,c1" {
+			t.Fatalf("ordem = %s", current)
 		}
-		if tentativa > 0 && atual != anterior {
-			t.Fatalf("a ordem variou entre execuções: %s e %s", anterior, atual)
+		if attempt > 0 && current != previous {
+			t.Fatalf("a ordem variou entre execuções: %s e %s", previous, current)
 		}
-		anterior = atual
+		previous = current
 	}
 }
 
 // TestManyAbortsByDefault: changing the default in silence would make a run that
 // fails today start "working" with half the data.
 func TestManyAbortsByDefault(t *testing.T) {
-	_, err := drenar(t, from.Many{Sources: []sdk.Reader{
-		fonteFalsa{nome: "boa", linhas: 2},
-		fonteFalsa{nome: "ruim", erroAbrir: fmt.Errorf("504")},
-		fonteFalsa{nome: "outra", linhas: 2},
+	_, err := drain(t, from.Many{Sources: []sdk.Reader{
+		fakeSource{name: "boa", lines: 2},
+		fakeSource{name: "ruim", openErr: fmt.Errorf("504")},
+		fakeSource{name: "outra", lines: 2},
 	}}, nil)
 	if err == nil {
 		t.Fatal("o padrão tolerou uma falha")
@@ -122,19 +122,19 @@ func TestManyAbortsByDefault(t *testing.T) {
 // do not.
 func TestManyContinuesAndSaysWhichFailed(t *testing.T) {
 	var stats sdk.Stats
-	linhas, err := drenar(t, from.Many{
+	lines, err := drain(t, from.Many{
 		Sources: []sdk.Reader{
-			fonteFalsa{nome: "a", linhas: 2},
-			fonteFalsa{nome: "quebrada", erroAbrir: fmt.Errorf("504 do fornecedor")},
-			fonteFalsa{nome: "c", linhas: 3},
+			fakeSource{name: "a", lines: 2},
+			fakeSource{name: "quebrada", openErr: fmt.Errorf("504 do fornecedor")},
+			fakeSource{name: "c", lines: 3},
 		},
 		OnError: sdk.ContinueOnError,
 	}, &stats)
 	if err != nil {
 		t.Fatalf("ContinueOnError abortou: %v", err)
 	}
-	if len(linhas) != 5 {
-		t.Errorf("%d linhas, esperado 5 -- as boas têm de sobreviver à ruim", len(linhas))
+	if len(lines) != 5 {
+		t.Errorf("%d linhas, esperado 5 -- as boas têm de sobreviver à ruim", len(lines))
 	}
 	if len(stats.FailedSources) != 1 {
 		t.Fatalf("falhas = %v, esperado uma", stats.FailedSources)
@@ -149,10 +149,10 @@ func TestManyContinuesAndSaysWhichFailed(t *testing.T) {
 // failed just as much as one that never opened.
 func TestAFailureMidwayThroughASourceCountsToo(t *testing.T) {
 	var stats sdk.Stats
-	linhas, err := drenar(t, from.Many{
+	lines, err := drain(t, from.Many{
 		Sources: []sdk.Reader{
-			fonteFalsa{nome: "meia", linhas: 10, errAfter: 3},
-			fonteFalsa{nome: "inteira", linhas: 2},
+			fakeSource{name: "meia", lines: 10, errAfter: 3},
+			fakeSource{name: "inteira", lines: 2},
 		},
 		OnError: sdk.ContinueOnError,
 	}, &stats)
@@ -160,8 +160,8 @@ func TestAFailureMidwayThroughASourceCountsToo(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The 3 the source delivered before breaking count: they were read.
-	if len(linhas) != 5 {
-		t.Errorf("%d linhas, esperado 5 (3 da meia + 2 da inteira)", len(linhas))
+	if len(lines) != 5 {
+		t.Errorf("%d linhas, esperado 5 (3 da meia + 2 da inteira)", len(lines))
 	}
 	if len(stats.FailedSources) != 1 || stats.FailedSources[0].Source != "meia" {
 		t.Errorf("falhas = %v", stats.FailedSources)
@@ -172,10 +172,10 @@ func TestAFailureMidwayThroughASourceCountsToo(t *testing.T) {
 // result; zero because all N failed is a broken run, and the two must not
 // podem parecer a mesma coisa.
 func TestEveryySourceFailingIsNotZeroRows(t *testing.T) {
-	_, err := drenar(t, from.Many{
+	_, err := drain(t, from.Many{
 		Sources: []sdk.Reader{
-			fonteFalsa{nome: "a", erroAbrir: fmt.Errorf("504")},
-			fonteFalsa{nome: "b", erroAbrir: fmt.Errorf("503")},
+			fakeSource{name: "a", openErr: fmt.Errorf("504")},
+			fakeSource{name: "b", openErr: fmt.Errorf("503")},
 		},
 		OnError: sdk.ContinueOnError,
 	}, nil)
@@ -190,28 +190,28 @@ func TestEveryySourceFailingIsNotZeroRows(t *testing.T) {
 // TestManyConcurrentReadsEverything: with concurrency the order changes, the set
 // does not.
 func TestManyConcurrentReadsEverything(t *testing.T) {
-	var fontes []sdk.Reader
+	var sources []sdk.Reader
 	for i := 0; i < 50; i++ {
-		fontes = append(fontes, fonteFalsa{nome: fmt.Sprintf("f%02d", i), linhas: 4})
+		sources = append(sources, fakeSource{name: fmt.Sprintf("f%02d", i), lines: 4})
 	}
 
-	linhas, err := drenar(t, from.Many{Sources: fontes, Workers: 8}, nil)
+	lines, err := drain(t, from.Many{Sources: sources, Workers: 8}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(linhas) != 200 {
-		t.Fatalf("%d linhas, esperado 200", len(linhas))
+	if len(lines) != 200 {
+		t.Fatalf("%d linhas, esperado 200", len(lines))
 	}
-	vistas := map[string]int{}
-	for _, l := range linhas {
-		vistas[l["origem"].(string)]++
+	seen := map[string]int{}
+	for _, l := range lines {
+		seen[l["origem"].(string)]++
 	}
-	if len(vistas) != 50 {
-		t.Errorf("%d origens apareceram, esperado 50", len(vistas))
+	if len(seen) != 50 {
+		t.Errorf("%d origens apareceram, esperado 50", len(seen))
 	}
-	for nome, n := range vistas {
+	for name, n := range seen {
 		if n != 4 {
-			t.Errorf("%s entregou %d linhas", nome, n)
+			t.Errorf("%s entregou %d linhas", name, n)
 		}
 	}
 }
@@ -220,7 +220,7 @@ func TestManyConcurrentReadsEverything(t *testing.T) {
 // read, and not the last source.
 func TestManySumsTheCounters(t *testing.T) {
 	var stats sdk.Stats
-	if _, err := drenar(t, from.Many{
+	if _, err := drain(t, from.Many{
 		Sources: []sdk.Reader{contadora{2}, contadora{3}, contadora{5}},
 		Workers: 3,
 	}, &stats); err != nil {
@@ -232,28 +232,28 @@ func TestManySumsTheCounters(t *testing.T) {
 }
 
 // countingSource fills the Stats it receives, like a real driver.
-type contadora struct{ paginas int }
+type contadora struct{ pages int }
 
-func (c contadora) Describe() string { return fmt.Sprintf("contadora(%d)", c.paginas) }
+func (c contadora) Describe() string { return fmt.Sprintf("contadora(%d)", c.pages) }
 func (c contadora) Read(_ context.Context, opt sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
 	return func(yield func(sdk.Envelope, error) bool) {
 		if opt.Stats != nil {
-			opt.Stats.Pages = c.paginas
+			opt.Stats.Pages = c.pages
 		}
-		yield(sdk.Envelope{Payload: map[string]any{"n": c.paginas}}, nil)
+		yield(sdk.Envelope{Payload: map[string]any{"n": c.pages}}, nil)
 	}, nil
 }
 
 // TestManyStopsReadingWhenTheConsumerStops: a break in the consumer's loop must
 // not leave a goroutine stuck writing into a channel nobody reads.
 func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
-	var fontes []sdk.Reader
+	var sources []sdk.Reader
 	for i := 0; i < 20; i++ {
-		fontes = append(fontes, fonteFalsa{nome: fmt.Sprintf("f%d", i), linhas: 1000})
+		sources = append(sources, fakeSource{name: fmt.Sprintf("f%d", i), lines: 1000})
 	}
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{
-		From: from.Many{Sources: fontes, Workers: 4},
+	data, err := sdk.Extract(context.Background(), sdk.Source{
+		From: from.Many{Sources: sources, Workers: 4},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +263,7 @@ func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 	go func() {
 		defer close(feito)
 		n := 0
-		for _, err := range dados.Records {
+		for _, err := range data.Records {
 			if err != nil {
 				t.Error(err)
 				return
@@ -284,10 +284,10 @@ func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 
 // TestManyRefusesInvalidConfiguration.
 func TestManyRefusesInvalidConfiguration(t *testing.T) {
-	if _, err := drenar(t, from.Many{}, nil); err == nil {
+	if _, err := drain(t, from.Many{}, nil); err == nil {
 		t.Error("aceitou zero origens")
 	}
-	if _, err := drenar(t, from.Many{Sources: []sdk.Reader{nil}}, nil); err == nil {
+	if _, err := drain(t, from.Many{Sources: []sdk.Reader{nil}}, nil); err == nil {
 		t.Error("aceitou uma origem nil")
 	}
 }
@@ -304,19 +304,19 @@ func timeout() <-chan struct{} {
 // outside the pipeline: no retry, no timeout, no log, and no appearance in the
 // Result when it fails.
 func TestDiscoverBuildsTheSourcesInsideThePipeline(t *testing.T) {
-	linhas, err := drenar(t, from.Many{
+	lines, err := drain(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) {
 			return []sdk.Reader{
-				fonteFalsa{nome: "descoberta-a", linhas: 2},
-				fonteFalsa{nome: "descoberta-b", linhas: 3},
+				fakeSource{name: "descoberta-a", lines: 2},
+				fakeSource{name: "descoberta-b", lines: 3},
 			}, nil
 		},
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(linhas) != 5 {
-		t.Errorf("%d linhas, esperado 5", len(linhas))
+	if len(lines) != 5 {
+		t.Errorf("%d linhas, esperado 5", len(lines))
 	}
 }
 
@@ -324,7 +324,7 @@ func TestDiscoverBuildsTheSourcesInsideThePipeline(t *testing.T) {
 // any other extract error, and not as a panic in a main before anything
 // starts.
 func TestAFailingDiscoverIsAnExtractError(t *testing.T) {
-	_, err := drenar(t, from.Many{
+	_, err := drain(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) {
 			return nil, fmt.Errorf("o endpoint que lista as partições devolveu 503")
 		},
@@ -341,7 +341,7 @@ func TestAFailingDiscoverIsAnExtractError(t *testing.T) {
 // there was nothing to read is different from one that did not know where to
 // read.
 func TestAnEmptyDiscoverIsNotZeroRecords(t *testing.T) {
-	_, err := drenar(t, from.Many{
+	_, err := drain(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) { return nil, nil },
 	}, nil)
 	if err == nil {
@@ -355,8 +355,8 @@ func TestAnEmptyDiscoverIsNotZeroRecords(t *testing.T) {
 // TestDiscoverAndSourcesTogetherIsRefused: two lists of sources, and the loser
 // would lose in silence.
 func TestDiscoverAndSourcesTogetherIsRefused(t *testing.T) {
-	_, err := drenar(t, from.Many{
-		Sources:  []sdk.Reader{fonteFalsa{nome: "a", linhas: 1}},
+	_, err := drain(t, from.Many{
+		Sources:  []sdk.Reader{fakeSource{name: "a", lines: 1}},
 		Discover: func(context.Context) ([]sdk.Reader, error) { return nil, nil },
 	}, nil)
 	if err == nil {

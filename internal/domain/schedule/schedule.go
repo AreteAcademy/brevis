@@ -79,7 +79,7 @@ func (s Schedule) Parse() (cron.Schedule, *time.Location, error) {
 // `limite` caps the count: a workflow stopped for months with catchup=true would
 // create thousands of runs at once and drown the queue. Returning the excess as
 // `truncado` makes that visible instead of silent.
-func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncado bool, err error) {
+func (s Schedule) Slots(now time.Time, limite int) (slots []time.Time, truncado bool, err error) {
 	if !s.Active {
 		return nil, false, nil
 	}
@@ -92,7 +92,7 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 	// when
 	// the schedule never ran. Starting from zero would create the cron's entire
 	// history.
-	de := agora.In(loc)
+	de := now.In(loc)
 	if s.LastSlot != nil {
 		de = s.LastSlot.In(loc)
 	}
@@ -108,7 +108,7 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 		var last time.Time
 		for i := 0; i < maxIter; i++ {
 			prox := sched.Next(de)
-			if prox.After(agora) {
+			if prox.After(now) {
 				break
 			}
 			last, de = prox, prox
@@ -121,7 +121,7 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 
 	for {
 		prox := sched.Next(de)
-		if prox.After(agora) {
+		if prox.After(now) {
 			break
 		}
 		slots = append(slots, prox)
@@ -137,10 +137,10 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 }
 
 // Next returns the next trigger after `agora`, for display.
-func (s Schedule) Next(agora time.Time) (time.Time, error) {
+func (s Schedule) Next(now time.Time) (time.Time, error) {
 	sched, loc, err := s.Parse()
 	if err != nil {
 		return time.Time{}, err
 	}
-	return sched.Next(agora.In(loc)), nil
+	return sched.Next(now.In(loc)), nil
 }

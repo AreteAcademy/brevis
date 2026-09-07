@@ -44,7 +44,7 @@ func equal(t *testing.T, obtido, esperado []string) {
 
 func TestFiltrar(t *testing.T) {
 	casos := []struct {
-		nome     string
+		name     string
 		f        pages.Filter
 		esperado []string
 	}{
@@ -62,7 +62,7 @@ func TestFiltrar(t *testing.T) {
 		{"nada casa", pages.Filter{Search: "inexistente"}, nil},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			equal(t, slugs(filtrar(list(), c.f)), c.esperado)
 		})
 	}
@@ -72,43 +72,43 @@ func TestFiltrar(t *testing.T) {
 // if it shrank on every click, there would be no way back from one filter to
 // another.
 func TestTheTagsDoNotShrinkWithTheFilter(t *testing.T) {
-	todos := list()
-	equal(t, tagsDe(todos), []string{"acme", "id", "platform", "vendors"})
+	all := list()
+	equal(t, tagsDe(all), []string{"acme", "id", "platform", "vendors"})
 
-	so := filtrar(todos, pages.Filter{Tag: "vendors"})
+	so := filtrar(all, pages.Filter{Tag: "vendors"})
 	if len(so) != 1 {
 		t.Fatalf("expected 1 filtered row, got %d", len(so))
 	}
-	equal(t, tagsDe(todos), []string{"acme", "id", "platform", "vendors"})
+	equal(t, tagsDe(all), []string{"acme", "id", "platform", "vendors"})
 }
 
 func TestTheWorkflowsNextRun(t *testing.T) {
-	agora := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
+	now := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
 
 	ativo := postgres.WorkflowSummary{Slug: "a", Cron: "0 5 * * *", Timezone: "UTC", Active: true}
-	if p := proximaDoWorkflow(ativo, agora); p == nil || !p.Equal(time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC)) {
+	if p := proximaDoWorkflow(ativo, now); p == nil || !p.Equal(time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC)) {
 		t.Errorf("next = %v, want 05:00 do mesmo dia", p)
 	}
 
 	// Paused has no next firing: showing one would mislead whoever paused it.
 	pausado := postgres.WorkflowSummary{Slug: "b", Cron: "0 5 * * *", Active: false}
-	if p := proximaDoWorkflow(pausado, agora); p != nil {
+	if p := proximaDoWorkflow(pausado, now); p != nil {
 		t.Errorf("workflow pausado devolveu next disparo: %v", p)
 	}
 
 	semCron := postgres.WorkflowSummary{Slug: "c", Active: true}
-	if p := proximaDoWorkflow(semCron, agora); p != nil {
+	if p := proximaDoWorkflow(semCron, now); p != nil {
 		t.Errorf("a workflow with no cron returned a next firing: %v", p)
 	}
 
 	invalido := postgres.WorkflowSummary{Slug: "d", Cron: "this is not a cron", Active: true}
-	if p := proximaDoWorkflow(invalido, agora); p != nil {
+	if p := proximaDoWorkflow(invalido, now); p != nil {
 		t.Errorf("cron invalido devolveu next disparo: %v", p)
 	}
 }
 
 func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
-	agora := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
+	now := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
 	agendas := []postgres.ScheduleSummary{
 		{WorkflowSlug: "tarde", Cron: "0 22 * * *", Timezone: "UTC", Active: true},
 		{WorkflowSlug: "cedo", Cron: "0 5 * * *", Timezone: "UTC", Active: true},
@@ -118,7 +118,7 @@ func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
 		{WorkflowSlug: "quebrada", Cron: "@@@", Timezone: "UTC", Active: true},
 	}
 
-	out := proximasExecucoes(agendas, agora, 8, slog.New(slog.DiscardHandler))
+	out := nextRuns(agendas, now, 8, slog.New(slog.DiscardHandler))
 	if len(out) != 2 {
 		t.Fatalf("obtive %d entradas, want 2 (a pausada e a quebrada ficam de fora)", len(out))
 	}
@@ -128,20 +128,20 @@ func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
 }
 
 func TestNextRunsRespectsTheLimit(t *testing.T) {
-	agora := time.Now()
+	now := time.Now()
 	var agendas []postgres.ScheduleSummary
 	for i := 0; i < 20; i++ {
 		agendas = append(agendas, postgres.ScheduleSummary{
 			WorkflowSlug: "w", Cron: "0 * * * *", Timezone: "UTC", Active: true,
 		})
 	}
-	if out := proximasExecucoes(agendas, agora, 5, slog.New(slog.DiscardHandler)); len(out) != 5 {
+	if out := nextRuns(agendas, now, 5, slog.New(slog.DiscardHandler)); len(out) != 5 {
 		t.Errorf("obtive %d, want 5", len(out))
 	}
 }
 
-func withTimes(slug string, ultima *time.Time, proxima *time.Time) postgres.WorkflowSummary {
-	return postgres.WorkflowSummary{Slug: slug, LastRunAt: ultima, NextRun: proxima, HasSchedule: true}
+func withTimes(slug string, last1 *time.Time, proxima *time.Time) postgres.WorkflowSummary {
+	return postgres.WorkflowSummary{Slug: slug, LastRunAt: last1, NextRun: proxima, HasSchedule: true}
 }
 
 func TestSortingByLastRun(t *testing.T) {
@@ -156,14 +156,14 @@ func TestSortingByLastRun(t *testing.T) {
 	}
 
 	asc := base()
-	ordenar(asc, pages.Filter{Sort: "last"})
+	sortBy(asc, pages.Filter{Sort: "last"})
 	equal(t, slugs(asc), []string{"c_antiga", "b_recente", "a_nunca"})
 
 	// The absent one goes last in BOTH directions: treating null as "very old"
 	// would make the list start with the ones that never ran precisely when
 	// looking for the most recent run.
 	desc := base()
-	ordenar(desc, pages.Filter{Sort: "last", Desc: true})
+	sortBy(desc, pages.Filter{Sort: "last", Desc: true})
 	equal(t, slugs(desc), []string{"b_recente", "c_antiga", "a_nunca"})
 }
 
@@ -173,7 +173,7 @@ func TestSortingByScheduleSendsTheCronlessToTheEnd(t *testing.T) {
 		{Slug: "cinco", Cron: "0 5 * * *"},
 		{Slug: "quatro", Cron: "0 4 * * *"},
 	}
-	ordenar(ws, pages.Filter{Sort: "schedule"})
+	sortBy(ws, pages.Filter{Sort: "schedule"})
 	equal(t, slugs(ws), []string{"quatro", "cinco", "sem_cron"})
 }
 
@@ -181,7 +181,7 @@ func TestSortingByScheduleSendsTheCronlessToTheEnd(t *testing.T) {
 // places on every page load.
 func TestTheSortIsStable(t *testing.T) {
 	ws := []postgres.WorkflowSummary{{Slug: "zulu"}, {Slug: "alfa"}, {Slug: "mike"}}
-	ordenar(ws, pages.Filter{Sort: "last"})
+	sortBy(ws, pages.Filter{Sort: "last"})
 	equal(t, slugs(ws), []string{"alfa", "mike", "zulu"})
 }
 
@@ -190,15 +190,15 @@ func TestSlicingAPage(t *testing.T) {
 	for i := 0; i < 7; i++ {
 		ws = append(ws, postgres.WorkflowSummary{Slug: string(rune('a' + i))})
 	}
-	f := pages.Filter{Page: 2, PorPagina: 3}
+	f := pages.Filter{Page: 2, PerPage: 3}
 	equal(t, slugs(recortar(ws, f)), []string{"d", "e", "f"})
 
 	// A page past the end happens when filtering while on a high page; it has to
 	// voltar vazia em vez de estourar o slice.
-	if r := recortar(ws, pages.Filter{Page: 9, PorPagina: 3}); r != nil {
+	if r := recortar(ws, pages.Filter{Page: 9, PerPage: 3}); r != nil {
 		t.Errorf("pagina fora do intervalo devolveu %d linhas", len(r))
 	}
-	equal(t, slugs(recortar(ws, pages.Filter{Page: 3, PorPagina: 3})), []string{"g"})
+	equal(t, slugs(recortar(ws, pages.Filter{Page: 3, PerPage: 3})), []string{"g"})
 }
 
 func TestAValidStateRefusesAnUnknownOne(t *testing.T) {

@@ -13,33 +13,33 @@ import (
 
 // paginatorWithMeta serves N pages and says, in the body, whether there is a
 // next one.
-func paginatorWithMeta(t *testing.T, paginas int, mente bool) (*httptest.Server, *int) {
+func paginatorWithMeta(t *testing.T, pages int, mente bool) (*httptest.Server, *int) {
 	t.Helper()
-	var pedidas int
+	var requested int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pedidas++
+		requested++
 		p := 1
 		if v := r.URL.Query().Get("page"); v != "" {
 			_, _ = fmt.Sscanf(v, "%d", &p)
 		}
-		temMais := p < paginas
+		temMais := p < pages
 		if mente {
 			// It lies, always saying there is more; the safety net (an empty
 			// page
 			// vazia) tem de encerrar mesmo assim.
 			temMais = true
 		}
-		linhas := `[{"n":1}]`
-		if p > paginas {
-			linhas = `[]`
+		lines := `[{"n":1}]`
+		if p > pages {
+			lines = `[]`
 		}
-		_, _ = fmt.Fprintf(w, `{"pageMeta":{"hasNextPage":%t},"results":%s}`, temMais, linhas)
+		_, _ = fmt.Fprintf(w, `{"pageMeta":{"hasNextPage":%t},"results":%s}`, temMais, lines)
 	}))
 	t.Cleanup(srv.Close)
-	return srv, &pedidas
+	return srv, &requested
 }
 
-func contar(t *testing.T, s core.Source) int {
+func count(t *testing.T, s core.Source) int {
 	t.Helper()
 	seq, err := JSON(context.Background(), s, nil)
 	if err != nil {
@@ -59,45 +59,45 @@ func contar(t *testing.T, s core.Source) int {
 // page costs one extra request PER SOURCE, and on a fan-out of hundreds of
 // sources that is hundreds of requests per run.
 func TestMoreKeyStopsWithoutAskingForTheEmptyPage(t *testing.T) {
-	srv, pedidas := paginatorWithMeta(t, 3, false)
+	srv, requested := paginatorWithMeta(t, 3, false)
 
-	linhas := contar(t, core.Source{
+	lines := count(t, core.Source{
 		URL: srv.URL, PageKey: "page", DataKey: "results", MoreKey: "pageMeta.hasNextPage",
 	})
-	if linhas != 3 {
-		t.Errorf("%d linhas, esperado 3", linhas)
+	if lines != 3 {
+		t.Errorf("%d linhas, esperado 3", lines)
 	}
-	if *pedidas != 3 {
-		t.Errorf("%d requisições, esperado 3 -- a quarta é a que o MoreKey economiza", *pedidas)
+	if *requested != 3 {
+		t.Errorf("%d requisições, esperado 3 -- a quarta é a que o MoreKey economiza", *requested)
 	}
 }
 
 // TestWithoutMoreKeyItAsksForTheEmptyPage is the other side: without it, the
 // fourth request happens. It is the measure of what the item saves.
 func TestWithoutMoreKeyItAsksForTheEmptyPage(t *testing.T) {
-	srv, pedidas := paginatorWithMeta(t, 3, false)
+	srv, requested := paginatorWithMeta(t, 3, false)
 
-	contar(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
-	if *pedidas != 4 {
-		t.Errorf("%d requisições, esperado 4 -- a quarta volta vazia e é o que encerra", *pedidas)
+	count(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
+	if *requested != 4 {
+		t.Errorf("%d requisições, esperado 4 -- a quarta volta vazia e é o que encerra", *requested)
 	}
 }
 
 // TestMoreKeyDoesNotReplaceTheSafetyNet: an API that lies in the field must not
 // become an infinite loop.
 func TestMoreKeyDoesNotReplaceTheSafetyNet(t *testing.T) {
-	srv, pedidas := paginatorWithMeta(t, 2, true)
+	srv, requested := paginatorWithMeta(t, 2, true)
 
-	linhas := contar(t, core.Source{
+	lines := count(t, core.Source{
 		URL: srv.URL, PageKey: "page", DataKey: "results", MoreKey: "pageMeta.hasNextPage",
 	})
-	if linhas != 2 {
-		t.Errorf("%d linhas, esperado 2", linhas)
+	if lines != 2 {
+		t.Errorf("%d linhas, esperado 2", lines)
 	}
 	// The third comes back empty and ends it, despite the field saying there is
 	// more.
-	if *pedidas != 3 {
-		t.Errorf("%d requisições; a parada por página vazia devia ter encerrado", *pedidas)
+	if *requested != 3 {
+		t.Errorf("%d requisições; a parada por página vazia devia ter encerrado", *requested)
 	}
 }
 
@@ -130,9 +130,9 @@ func TestAnAbsentMoreKeyIsNotTheEndOfPagination(t *testing.T) {
 // the
 // raiz.
 func TestMoreKeyAtTheRoot(t *testing.T) {
-	var pedidas int
+	var requested int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		pedidas++
+		requested++
 		p := 1
 		if v := r.URL.Query().Get("page"); v != "" {
 			_, _ = fmt.Sscanf(v, "%d", &p)
@@ -141,13 +141,13 @@ func TestMoreKeyAtTheRoot(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if n := contar(t, core.Source{
+	if n := count(t, core.Source{
 		URL: srv.URL, PageKey: "page", DataKey: "data", MoreKey: "has_more",
 	}); n != 2 {
 		t.Errorf("%d linhas, esperado 2", n)
 	}
-	if pedidas != 2 {
-		t.Errorf("%d requisições, esperado 2", pedidas)
+	if requested != 2 {
+		t.Errorf("%d requisições, esperado 2", requested)
 	}
 }
 
@@ -159,7 +159,7 @@ func TestANullMoreKeyIsTheEnd(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if n := contar(t, core.Source{URL: srv.URL, DataKey: "data", MoreKey: "next"}); n != 1 {
+	if n := count(t, core.Source{URL: srv.URL, DataKey: "data", MoreKey: "next"}); n != 1 {
 		t.Errorf("%d linhas, esperado 1", n)
 	}
 }

@@ -59,21 +59,21 @@ func TestInsertSQLConflictsOnIngestionID(t *testing.T) {
 // TestSplitName covers the implicit schema and a name with too many parts.
 func TestSplitName(t *testing.T) {
 	casos := []struct {
-		nome, esquema, tabela string
-		erro                  bool
+		name, esquema, table string
+		failure              bool
 	}{
 		{"pedidos", "public", "pedidos", false},
 		{"landing.pedidos", "landing", "pedidos", false},
 		{"a.b.c", "", "", true},
 	}
 	for _, c := range casos {
-		e, tb, err := splitName(c.nome)
-		if (err != nil) != c.erro {
-			t.Errorf("%q: erro = %v, esperado erro=%v", c.nome, err, c.erro)
+		e, tb, err := splitName(c.name)
+		if (err != nil) != c.failure {
+			t.Errorf("%q: erro = %v, esperado erro=%v", c.name, err, c.failure)
 			continue
 		}
-		if !c.erro && (e != c.esquema || tb != c.tabela) {
-			t.Errorf("%q = (%q, %q), esperado (%q, %q)", c.nome, e, tb, c.esquema, c.tabela)
+		if !c.failure && (e != c.esquema || tb != c.table) {
+			t.Errorf("%q = (%q, %q), esperado (%q, %q)", c.name, e, tb, c.esquema, c.table)
 		}
 	}
 }
@@ -128,7 +128,7 @@ func TestRowsDoesNotAllocatePerRow(t *testing.T) {
 	}
 	l := &rows{columns: []string{"a"}, envelopes: envelopes}
 
-	alocacoes := testing.AllocsPerRun(100, func() {
+	allocations := testing.AllocsPerRun(100, func() {
 		l.i = 0
 		for l.Next() {
 			if _, err := l.Values(); err != nil {
@@ -138,7 +138,7 @@ func TestRowsDoesNotAllocatePerRow(t *testing.T) {
 	})
 	// Zero is the target: the buffer is allocated once, outside the measured
 	// loop.
-	if alocacoes > 0 {
-		t.Errorf("%.0f alocacoes para 1000 rows; o buffer deveria ser reusado", alocacoes)
+	if allocations > 0 {
+		t.Errorf("%.0f alocacoes para 1000 rows; o buffer deveria ser reusado", allocations)
 	}
 }

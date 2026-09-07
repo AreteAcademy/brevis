@@ -14,44 +14,44 @@ import (
 // declared parallelism. A plain topological sort would serialize gold_metrics
 // and gold_users, which are independent.
 func Levels(w wf.Workflow) ([][]string, error) {
-	entrada := make(map[string]int, len(w.Nodes))
-	saida := make(map[string][]string, len(w.Nodes))
+	inDegree := make(map[string]int, len(w.Nodes))
+	outgoing := make(map[string][]string, len(w.Nodes))
 	for _, n := range w.Nodes {
-		entrada[n.ID] = 0
+		inDegree[n.ID] = 0
 	}
 	for _, e := range w.Edges {
-		entrada[e.To]++
-		saida[e.From] = append(saida[e.From], e.To)
+		inDegree[e.To]++
+		outgoing[e.From] = append(outgoing[e.From], e.To)
 	}
 
 	// the first level: everything with no dependency, in the file's order so the
 	// output is deterministic
-	var atual []string
+	var current []string
 	for _, n := range w.Nodes {
-		if entrada[n.ID] == 0 {
-			atual = append(atual, n.ID)
+		if inDegree[n.ID] == 0 {
+			current = append(current, n.ID)
 		}
 	}
 
 	var levels [][]string
 	vistos := 0
-	for len(atual) > 0 {
-		levels = append(levels, atual)
-		vistos += len(atual)
+	for len(current) > 0 {
+		levels = append(levels, current)
+		vistos += len(current)
 
 		var next []string
 		for _, n := range w.Nodes { // iterate the nodes, not the map: determinism
-			if !contains(atual, n.ID) {
+			if !contains(current, n.ID) {
 				continue
 			}
-			for _, dest := range saida[n.ID] {
-				entrada[dest]--
-				if entrada[dest] == 0 {
+			for _, dest := range outgoing[n.ID] {
+				inDegree[dest]--
+				if inDegree[dest] == 0 {
 					next = append(next, dest)
 				}
 			}
 		}
-		atual = next
+		current = next
 	}
 
 	// Workflow.Validate already refuses cycles; this guard protects against a

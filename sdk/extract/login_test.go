@@ -16,16 +16,16 @@ import (
 
 // serverWithLogin trades a secret for a token and requires the token on the
 // data endpoint.
-func serverWithLogin(t *testing.T, falharVezes int32) (*httptest.Server, *atomic.Int32) {
+func serverWithLogin(t *testing.T, failTimes int32) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var logins atomic.Int32
-	var falhas atomic.Int32
-	falhas.Store(falharVezes)
+	var failures atomic.Int32
+	failures.Store(failTimes)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
 		logins.Add(1)
-		if falhas.Add(-1) >= 0 {
+		if failures.Add(-1) >= 0 {
 			http.Error(w, "indisponível", http.StatusServiceUnavailable)
 			return
 		}
@@ -66,7 +66,7 @@ func lerTudo(t *testing.T, s core.Source) error {
 	return nil
 }
 
-func credencialDeLogin(srv *httptest.Server) *core.Credential {
+func loginCredential(srv *httptest.Server) *core.Credential {
 	return &core.Credential{
 		Login: &core.Login{
 			URL:   srv.URL + "/oauth/token",
@@ -82,7 +82,7 @@ func credencialDeLogin(srv *httptest.Server) *core.Credential {
 func TestLoginTradesSecretsForAToken(t *testing.T) {
 	srv, logins := serverWithLogin(t, 0)
 
-	if err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: credencialDeLogin(srv)}); err != nil {
+	if err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)}); err != nil {
 		t.Fatalf("Read: %v", err)
 	}
 	if logins.Load() != 1 {
@@ -98,7 +98,7 @@ func TestLoginHasRetry(t *testing.T) {
 
 	err := lerTudo(t, core.Source{
 		URL:  srv.URL + "/dados",
-		Auth: credencialDeLogin(srv),
+		Auth: loginCredential(srv),
 		RetryConfig: &core.RetryConfig{
 			MaxAttempts: 3, InitialBackoff: time.Millisecond, MaxBackoff: time.Millisecond,
 		},
@@ -115,7 +115,7 @@ func TestLoginHasRetry(t *testing.T) {
 // rather than that of requests.
 func TestLoginCachesWithTTL(t *testing.T) {
 	srv, logins := serverWithLogin(t, 0)
-	cred := credencialDeLogin(srv)
+	cred := loginCredential(srv)
 	cred.TTL = time.Hour
 
 	for i := 0; i < 3; i++ {
@@ -152,7 +152,7 @@ func TestALoginThatFailsStopsTheRun(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: credencialDeLogin(srv)})
+	err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)})
 	if err == nil {
 		t.Fatal("o login falhou e a execução seguiu")
 	}
@@ -176,12 +176,12 @@ func TestLoginDoesNotLeakTheSourcesHeader(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	fonte := core.Source{
+	source := core.Source{
 		URL:    srv.URL + "/dados",
 		Header: map[string][]string{"X-Segredo-Da-Fonte": {"não deveria ir"}},
-		Auth:   credencialDeLogin(srv),
+		Auth:   loginCredential(srv),
 	}
-	if err := lerTudo(t, fonte); err != nil {
+	if err := lerTudo(t, source); err != nil {
 		t.Fatal(err)
 	}
 	if vistoNoLogin != "" {
@@ -192,7 +192,7 @@ func TestLoginDoesNotLeakTheSourcesHeader(t *testing.T) {
 // TestLoginRefusesConfigurationThatCannotWork.
 func TestLoginRefusesConfigurationThatCannotWork(t *testing.T) {
 	casos := []struct {
-		nome string
+		name string
 		cred *core.Credential
 		diz  string
 	}{
@@ -209,7 +209,7 @@ func TestLoginRefusesConfigurationThatCannotWork(t *testing.T) {
 		{"nem Value nem Login", &core.Credential{Apply: core.AsBearer}, "both nil"},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			_, err := JSON(context.Background(), core.Source{URL: "http://x", Auth: c.cred}, nil)
 			if err == nil {
 				t.Fatal("passou")

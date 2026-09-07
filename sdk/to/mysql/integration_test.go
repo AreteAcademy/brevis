@@ -26,7 +26,7 @@ func dsn(t *testing.T) string {
 	return d
 }
 
-func abrir(t *testing.T) *sql.DB {
+func open(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("mysql", frommy.WithParseTime(dsn(t)))
 	if err != nil {
@@ -39,17 +39,17 @@ func abrir(t *testing.T) *sql.DB {
 	return db
 }
 
-func tabela(t *testing.T, db *sql.DB, ddl string) string {
+func table(t *testing.T, db *sql.DB, ddl string) string {
 	t.Helper()
-	nome := fmt.Sprintf("t_%d", time.Now().UnixNano())
-	if _, err := db.Exec(fmt.Sprintf("CREATE TABLE %s (%s)", nome, ddl)); err != nil {
-		t.Fatalf("criando %s: %v", nome, err)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	if _, err := db.Exec(fmt.Sprintf("CREATE TABLE %s (%s)", name, ddl)); err != nil {
+		t.Fatalf("criando %s: %v", name, err)
 	}
-	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + nome) })
-	return nome
+	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
+	return name
 }
 
-const colunasPadrao = "" +
+const defaultColumns = "" +
 	"ingestion_id VARCHAR(36) NOT NULL," +
 	"ingestion_loaded_at DATETIME(6) NOT NULL," +
 	"provider VARCHAR(64)," +
@@ -58,11 +58,11 @@ const colunasPadrao = "" +
 
 func lote(n int) []sdk.Envelope {
 	out := make([]sdk.Envelope, n)
-	agora := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339)
 	for i := range out {
 		out[i] = sdk.Envelope{Payload: map[string]any{
 			"ingestion_id":        fmt.Sprintf("id-%04d", i),
-			"ingestion_loaded_at": agora,
+			"ingestion_loaded_at": now,
 			"provider":            "teste",
 			"source_key":          fmt.Sprintf("k%d", i),
 			"valor":               "10.50",
@@ -74,10 +74,10 @@ func lote(n int) []sdk.Envelope {
 // TestIntegrationARowActuallyGoesIn: the in-memory tests prove the bytes
 // we assembled, not what the server accepts.
 func TestIntegrationARowActuallyGoesIn(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, colunasPadrao)
+	db := open(t)
+	name := table(t, db, defaultColumns)
 
-	res, err := tomy.Table{DSN: dsn(t), Name: nome}.Write(
+	res, err := tomy.Table{DSN: dsn(t), Name: name}.Write(
 		context.Background(), lote(3), sdk.WriteOptions{})
 	if err != nil {
 		t.Fatalf("Write: %v", err)
@@ -87,7 +87,7 @@ func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 	}
 
 	var n int
-	if err := db.QueryRow("SELECT count(*) FROM " + nome).Scan(&n); err != nil {
+	if err := db.QueryRow("SELECT count(*) FROM " + name).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 3 {
@@ -98,8 +98,8 @@ func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 // TestIntegrationTheTablesOrder: every value has to land in the right column
 // when the table's order is not the record's.
 func TestIntegrationTheTablesOrder(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, "valor DECIMAL(18,2), provider VARCHAR(64), "+
+	db := open(t)
+	name := table(t, db, "valor DECIMAL(18,2), provider VARCHAR(64), "+
 		"ingestion_loaded_at DATETIME(6) NOT NULL, ingestion_id VARCHAR(36) NOT NULL")
 
 	l := []sdk.Envelope{{Payload: map[string]any{
@@ -108,43 +108,43 @@ func TestIntegrationTheTablesOrder(t *testing.T) {
 		"provider":            "acme",
 		"valor":               "99.90",
 	}}}
-	if _, err := (tomy.Table{DSN: dsn(t), Name: nome}).Write(
+	if _, err := (tomy.Table{DSN: dsn(t), Name: name}).Write(
 		context.Background(), l, sdk.WriteOptions{}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
-	var id, prov, valor string
-	if err := db.QueryRow("SELECT ingestion_id, provider, valor FROM "+nome).
-		Scan(&id, &prov, &valor); err != nil {
+	var id, prov, value string
+	if err := db.QueryRow("SELECT ingestion_id, provider, valor FROM "+name).
+		Scan(&id, &prov, &value); err != nil {
 		t.Fatal(err)
 	}
-	if id != "abc" || prov != "acme" || valor != "99.90" {
-		t.Errorf("valores trocados: id=%q provider=%q valor=%q", id, prov, valor)
+	if id != "abc" || prov != "acme" || value != "99.90" {
+		t.Errorf("valores trocados: id=%q provider=%q valor=%q", id, prov, value)
 	}
 }
 
 // TestIntegrationDedupLoadsTheSameBatchTwice is the done criterion of
 // phase 3: the same pipeline as phase 2, with one row swapped.
 func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, colunasPadrao)
-	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", nome)); err != nil {
+	db := open(t)
+	name := table(t, db, defaultColumns)
+	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", name)); err != nil {
 		t.Fatal(err)
 	}
 
-	destino := tomy.Table{DSN: dsn(t), Name: nome}
+	target := tomy.Table{DSN: dsn(t), Name: name}
 	l := lote(5)
 	opt := sdk.WriteOptions{Dedup: sdk.DedupMerge}
 
-	primeira, err := destino.Write(context.Background(), l, opt)
+	first1, err := target.Write(context.Background(), l, opt)
 	if err != nil {
 		t.Fatalf("primeira: %v", err)
 	}
-	if primeira.RowsLoaded != 5 {
-		t.Errorf("primeira: %d carregadas", primeira.RowsLoaded)
+	if first1.RowsLoaded != 5 {
+		t.Errorf("primeira: %d carregadas", first1.RowsLoaded)
 	}
 
-	segunda, err := destino.Write(context.Background(), l, opt)
+	segunda, err := target.Write(context.Background(), l, opt)
 	if err != nil {
 		t.Fatalf("segunda: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	}
 
 	var n int
-	if err := db.QueryRow("SELECT count(*) FROM " + nome).Scan(&n); err != nil {
+	if err := db.QueryRow("SELECT count(*) FROM " + name).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 5 {
@@ -166,10 +166,10 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 // has
 // nothing to match and every run would insert duplicates.
 func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, colunasPadrao)
+	db := open(t)
+	name := table(t, db, defaultColumns)
 
-	_, err := tomy.Table{DSN: dsn(t), Name: nome}.Write(
+	_, err := tomy.Table{DSN: dsn(t), Name: name}.Write(
 		context.Background(), lote(1), sdk.WriteOptions{Dedup: sdk.DedupMerge})
 	if err == nil {
 		t.Fatal("dedup sem índice único passou")
@@ -183,15 +183,15 @@ func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
 // the
 // way out written down.
 func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, colunasPadrao)
+	db := open(t)
+	name := table(t, db, defaultColumns)
 
 	l := []sdk.Envelope{{Payload: map[string]any{
 		"ingestion_id":        "x",
 		"ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
 		"coluna_inexistente":  1,
 	}}}
-	_, err := tomy.Table{DSN: dsn(t), Name: nome}.Write(context.Background(), l, sdk.WriteOptions{})
+	_, err := tomy.Table{DSN: dsn(t), Name: name}.Write(context.Background(), l, sdk.WriteOptions{})
 	if err == nil {
 		t.Fatal("campo sem coluna passou")
 	}
@@ -204,8 +204,8 @@ func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
 
 // TestIntegrationTheReadIsStreamed falha se o driver bufferizar.
 func TestIntegrationTheReadIsStreamed(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, "i INT, texto TEXT")
+	db := open(t)
+	name := table(t, db, "i INT, texto TEXT")
 	// 20 thousand rows through recursion: MySQL has no generate_series, and the
 	// default
 	// recursion limit is 1000.
@@ -215,37 +215,37 @@ func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	// pool happened to pick, and the next INSERT may go out on another -- a test
 	// that
 	// passes by luck is worse than a slow test.
-	conexao, err := db.Conn(context.Background())
+	conn, err := db.Conn(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = conexao.Close() }()
+	defer func() { _ = conn.Close() }()
 
-	if _, err := conexao.ExecContext(context.Background(),
+	if _, err := conn.ExecContext(context.Background(),
 		"SET SESSION cte_max_recursion_depth = 50000"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := conexao.ExecContext(context.Background(), fmt.Sprintf(`INSERT INTO %s
+	if _, err := conn.ExecContext(context.Background(), fmt.Sprintf(`INSERT INTO %s
 		WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM s WHERE n < 20000)
-		SELECT n, REPEAT('x', 500) FROM s`, nome)); err != nil {
+		SELECT n, REPEAT('x', 500) FROM s`, name)); err != nil {
 		t.Fatal(err)
 	}
 
-	seq, err := frommy.Query{DSN: dsn(t), SQL: "SELECT i, texto FROM " + nome + " ORDER BY i"}.
+	seq, err := frommy.Query{DSN: dsn(t), SQL: "SELECT i, texto FROM " + name + " ORDER BY i"}.
 		Read(context.Background(), sdk.ReadOptions{})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
 
 	var n int
-	if err := db.QueryRow("SELECT count(*) FROM " + nome).Scan(&n); err != nil {
+	if err := db.QueryRow("SELECT count(*) FROM " + name).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 20000 {
 		t.Fatalf("a tabela tem %d linhas; o teste precisa das 20 mil para significar algo", n)
 	}
 
-	inicio := time.Now()
+	start := time.Now()
 	recebeu := false
 	for _, err := range seq {
 		if err != nil {
@@ -257,7 +257,7 @@ func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	if !recebeu {
 		t.Fatal("nenhuma linha")
 	}
-	if d := time.Since(inicio); d > 2*time.Second {
+	if d := time.Since(start); d > 2*time.Second {
 		t.Errorf("a primeira linha levou %s; o driver parece bufferizar", d)
 	}
 }
@@ -267,8 +267,8 @@ func TestIntegrationTheReadIsStreamed(t *testing.T) {
 // database/sql returns []byte for nearly everything when read into an any,
 // so without the declared type every DECIMAL would become base64 in the JSON.
 func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
-	db := abrir(t)
-	nome := tabela(t, db, `
+	db := open(t)
+	name := table(t, db, `
 		numerico DECIMAL(20,2),
 		data DATE,
 		instante DATETIME(6),
@@ -279,23 +279,23 @@ func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 		vazio VARCHAR(8)`)
 	if _, err := db.Exec(fmt.Sprintf(`INSERT INTO %s VALUES
 		('123456789012345678.99', '2026-09-05', '2026-09-05 12:30:00',
-		 '{"a":[1,2]}', 0xDEADBEEF, 42, 'ola', NULL)`, nome)); err != nil {
+		 '{"a":[1,2]}', 0xDEADBEEF, 42, 'ola', NULL)`, name)); err != nil {
 		t.Fatal(err)
 	}
 
-	seq, err := frommy.Query{DSN: dsn(t), SQL: "SELECT * FROM " + nome}.
+	seq, err := frommy.Query{DSN: dsn(t), SQL: "SELECT * FROM " + name}.
 		Read(context.Background(), sdk.ReadOptions{})
 	if err != nil {
 		t.Fatalf("Read: %v", err)
 	}
-	var linha map[string]any
+	var line map[string]any
 	for e, err := range seq {
 		if err != nil {
 			t.Fatal(err)
 		}
-		linha = e.Payload.(map[string]any)
+		line = e.Payload.(map[string]any)
 	}
-	if linha == nil {
+	if line == nil {
 		t.Fatal("nenhuma linha")
 	}
 
@@ -307,32 +307,32 @@ func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 		"texto":    "ola",
 		"vazio":    nil,
 	}
-	for campo, quero := range esperado {
-		if got := linha[campo]; got != quero {
-			t.Errorf("%s = %#v (%T), esperado %#v", campo, got, got, quero)
+	for field, quero := range esperado {
+		if got := line[field]; got != quero {
+			t.Errorf("%s = %#v (%T), esperado %#v", field, got, got, quero)
 		}
 	}
-	if _, ok := linha["documento"].(map[string]any); !ok {
-		t.Errorf("documento = %#v; JSON devia chegar aninhado", linha["documento"])
+	if _, ok := line["documento"].(map[string]any); !ok {
+		t.Errorf("documento = %#v; JSON devia chegar aninhado", line["documento"])
 	}
-	if b, ok := linha["bytes"].([]byte); !ok || len(b) != 4 {
-		t.Errorf("bytes = %#v; VARBINARY devia chegar como []byte", linha["bytes"])
+	if b, ok := line["bytes"].([]byte); !ok || len(b) != 4 {
+		t.Errorf("bytes = %#v; VARBINARY devia chegar como []byte", line["bytes"])
 	}
 }
 
 // TestIntegrationMySQLToMySQL is phase 3's done criterion: the same
 // pipeline as phase 2, with one row swapped.
 func TestIntegrationMySQLToMySQL(t *testing.T) {
-	db := abrir(t)
+	db := open(t)
 
-	origem := tabela(t, db, "id INT, nome VARCHAR(64), valor DECIMAL(18,2), atualizado_em DATETIME(6)")
+	src := table(t, db, "id INT, nome VARCHAR(64), valor DECIMAL(18,2), atualizado_em DATETIME(6)")
 	if _, err := db.Exec(fmt.Sprintf(`INSERT INTO %s
 		WITH RECURSIVE s(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM s WHERE n < 100)
-		SELECT n, CONCAT('registro ', n), n * 1.5, NOW(6) FROM s`, origem)); err != nil {
+		SELECT n, CONCAT('registro ', n), n * 1.5, NOW(6) FROM s`, src)); err != nil {
 		t.Fatal(err)
 	}
 
-	destino := tabela(t, db, `
+	target := table(t, db, `
 		ingestion_id VARCHAR(36) NOT NULL,
 		ingestion_loaded_at DATETIME(6) NOT NULL,
 		provider VARCHAR(32) NOT NULL,
@@ -341,20 +341,20 @@ func TestIntegrationMySQLToMySQL(t *testing.T) {
 		record_ts VARCHAR(64) NOT NULL,
 		nome VARCHAR(64),
 		valor DECIMAL(18,2)`)
-	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", destino)); err != nil {
+	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", target)); err != nil {
 		t.Fatal(err)
 	}
 
-	rodar := func() *sdk.Result {
+	runIt := func() *sdk.Result {
 		t.Helper()
-		dados, err := sdk.Extract(context.Background(), sdk.Source{
+		data, err := sdk.Extract(context.Background(), sdk.Source{
 			From: frommy.Query{DSN: dsn(t),
-				SQL: "SELECT id, nome, valor, atualizado_em FROM " + origem + " ORDER BY id"},
+				SQL: "SELECT id, nome, valor, atualizado_em FROM " + src + " ORDER BY id"},
 		})
 		if err != nil {
 			t.Fatalf("Extract: %v", err)
 		}
-		dados = sdk.Transform(dados,
+		data = sdk.Transform(data,
 			sdk.Compute("source_key", func(r map[string]any) (any, error) {
 				return fmt.Sprint(r["id"]), nil
 			}),
@@ -365,8 +365,8 @@ func TestIntegrationMySQLToMySQL(t *testing.T) {
 			sdk.IngestionID(),
 			sdk.IngestionLoadedAt(),
 		)
-		res, err := sdk.Load(context.Background(), dados, sdk.Target{
-			To: tomy.Table{DSN: dsn(t), Name: destino},
+		res, err := sdk.Load(context.Background(), data, sdk.Target{
+			To: tomy.Table{DSN: dsn(t), Name: target},
 			Columns: []string{"ingestion_id", "ingestion_loaded_at", "provider", "entity",
 				"source_key", "record_ts", "nome", "valor"},
 			Dedup: sdk.DedupMerge,
@@ -377,26 +377,26 @@ func TestIntegrationMySQLToMySQL(t *testing.T) {
 		return res
 	}
 
-	if primeira := rodar(); primeira.Rows != 100 {
-		t.Errorf("primeira carga: %d linhas, esperado 100", primeira.Rows)
+	if first1 := runIt(); first1.Rows != 100 {
+		t.Errorf("primeira carga: %d linhas, esperado 100", first1.Rows)
 	}
-	if segunda := rodar(); segunda.Rows != 0 || segunda.Ignored != 100 {
+	if segunda := runIt(); segunda.Rows != 0 || segunda.Ignored != 100 {
 		t.Errorf("segunda carga: %d carregadas e %d ignoradas", segunda.Rows, segunda.Ignored)
 	}
 
 	var n int
-	if err := db.QueryRow("SELECT count(*) FROM " + destino).Scan(&n); err != nil {
+	if err := db.QueryRow("SELECT count(*) FROM " + target).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 100 {
 		t.Errorf("o destino tem %d linhas depois de duas execuções idênticas", n)
 	}
 
-	var valor string
-	if err := db.QueryRow("SELECT valor FROM " + destino + " WHERE source_key = '2'").Scan(&valor); err != nil {
+	var value string
+	if err := db.QueryRow("SELECT valor FROM " + target + " WHERE source_key = '2'").Scan(&value); err != nil {
 		t.Fatal(err)
 	}
-	if valor != "3.00" {
-		t.Errorf("valor = %q, esperado \"3.00\"", valor)
+	if value != "3.00" {
+		t.Errorf("valor = %q, esperado \"3.00\"", value)
 	}
 }

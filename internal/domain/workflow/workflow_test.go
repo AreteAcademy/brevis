@@ -64,11 +64,11 @@ func TestValidateRequiresExactlyOneWayToRun(t *testing.T) {
 		"run e action":           {ID: "a", Run: "echo", Action: "docker.run"},
 		"with, no action":        {ID: "a", Run: "echo", With: map[string]any{"image": "x"}},
 	}
-	for nome, n := range casos {
-		t.Run(nome, func(t *testing.T) {
+	for name, n := range casos {
+		t.Run(name, func(t *testing.T) {
 			w := Workflow{Slug: "x", Nodes: []Node{n}}
 			if err := w.Validate(); err == nil {
-				t.Fatalf("expected an error for %q", nome)
+				t.Fatalf("expected an error for %q", name)
 			}
 		})
 	}

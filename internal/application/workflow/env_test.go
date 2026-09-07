@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const arquivoDoGabriel = `
+const gabrielsFile = `
 name: vendors_gabriel_occurrence
 type: chain
 env:
@@ -29,7 +29,7 @@ steps:
 // lose the
 // outras variaveis do workflow.
 func TestEnvIsInheritedFromTheWorkflowAndTheStepOverrides(t *testing.T) {
-	w, err := Parse("gabriel.yaml", []byte(arquivoDoGabriel))
+	w, err := Parse("gabriel.yaml", []byte(gabrielsFile))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestEnvIsInheritedFromTheWorkflowAndTheStepOverrides(t *testing.T) {
 // exists. With BREVIS_POD_ENV_FROM_SECRETS the cookie also went into dbt's pod,
 // which does not need it.
 func TestASecretOnlyGoesToTheStepThatDeclaredIt(t *testing.T) {
-	w, err := Parse("gabriel.yaml", []byte(arquivoDoGabriel))
+	w, err := Parse("gabriel.yaml", []byte(gabrielsFile))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -81,8 +81,8 @@ func TestSecretsRefusesWhatIsNotACoordinate(t *testing.T) {
 		"nome invalido":     "GABRIEL-SESSION-COOKIE: gabriel-session/cookie",
 		"name with a space": "'GABRIEL COOKIE': gabriel-session/cookie",
 	}
-	for nome, line := range casos {
-		t.Run(nome, func(t *testing.T) {
+	for name, line := range casos {
+		t.Run(name, func(t *testing.T) {
 			yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    secrets:\n      " + line + "\n"
 			if _, err := Parse("x.yaml", []byte(yaml)); err == nil {
 				t.Fatalf("it accepted %q", line)

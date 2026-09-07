@@ -13,9 +13,9 @@ import (
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-func escreve(t *testing.T, dir, nome, conteudo string) {
+func escreve(t *testing.T, dir, name, conteudo string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, nome), []byte(conteudo), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(conteudo), 0o600); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -62,12 +62,12 @@ func TestFilesLeEmOrdemDeterminística(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var ordem []string
+		var order []string
 		for _, e := range got {
-			ordem = append(ordem, e.Payload.(map[string]any)["n"].(string))
+			order = append(order, e.Payload.(map[string]any)["n"].(string))
 		}
-		if strings.Join(ordem, "") != "abc" {
-			t.Fatalf("ordem = %v, esperado a,b,c em toda execução", ordem)
+		if strings.Join(order, "") != "abc" {
+			t.Fatalf("ordem = %v, esperado a,b,c em toda execução", order)
 		}
 	}
 }

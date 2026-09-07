@@ -21,11 +21,11 @@ import (
 // and
 // ifGenerationMatch de verdade.
 type fakeGCS struct {
-	mu        sync.Mutex
-	conteudo  []byte
-	geracao   int64
-	existe    bool
-	conflitos int
+	mu         sync.Mutex
+	conteudo   []byte
+	generation int64
+	existe     bool
+	conflitos  int
 }
 
 func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
@@ -44,7 +44,7 @@ func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
 				http.Error(w, `{"error":{"code":404}}`, http.StatusNotFound)
 				return
 			}
-			w.Header().Set("x-goog-generation", fmt.Sprint(g.geracao))
+			w.Header().Set("x-goog-generation", fmt.Sprint(g.generation))
 			w.Header().Set("Content-Length", fmt.Sprint(len(g.conteudo)))
 			_, _ = w.Write(g.conteudo)
 			return
@@ -53,7 +53,7 @@ func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
 		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/upload/") {
 			q := r.URL.Query()
 			if v := q.Get("ifGenerationMatch"); v != "" {
-				esperado := v == fmt.Sprint(g.geracao)
+				esperado := v == fmt.Sprint(g.generation)
 				if v == "0" {
 					esperado = !g.existe
 				}
@@ -66,10 +66,10 @@ func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
 			}
 			corpo, _ := io.ReadAll(r.Body)
 			g.conteudo = extrairCorpoMultipart(corpo)
-			g.geracao++
+			g.generation++
 			g.existe = true
 			_ = json.NewEncoder(w).Encode(map[string]any{
-				"name": "obj", "bucket": "b", "generation": fmt.Sprint(g.geracao),
+				"name": "obj", "bucket": "b", "generation": fmt.Sprint(g.generation),
 			})
 			return
 		}
@@ -99,7 +99,7 @@ func extrairCorpoMultipart(b []byte) []byte {
 	return []byte(corpo)
 }
 
-func credencial(t *testing.T, g *fakeGCS) Credential {
+func credential(t *testing.T, g *fakeGCS) Credential {
 	t.Helper()
 	t.Setenv(core.EnvCredentialKey, "")
 	generations.Delete("gs://b/obj")
@@ -109,7 +109,7 @@ func credencial(t *testing.T, g *fakeGCS) Credential {
 // TestItStoresAndReturns: o caminho feliz.
 func TestItStoresAndReturns(t *testing.T) {
 	g := &fakeGCS{}
-	c := credencial(t, g)
+	c := credential(t, g)
 
 	if v, err := c.Load(); err != nil || v != "" {
 		t.Fatalf("objeto ausente = (%q, %v); devia ser vazio sem erro", v, err)
@@ -131,7 +131,7 @@ func TestItStoresAndReturns(t *testing.T) {
 // real one and last-writer-wins, which is what a volume would allow.
 func TestTheConditionalWrite(t *testing.T) {
 	g := &fakeGCS{}
-	c := credencial(t, g)
+	c := credential(t, g)
 
 	if err := c.Save("primeiro"); err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func TestTheConditionalWrite(t *testing.T) {
 
 	// Another process writes from outside, advancing the generation.
 	g.mu.Lock()
-	g.geracao++
+	g.generation++
 	g.conteudo = []byte("brevis-cred/1p\nde-outro-processo")
 	g.mu.Unlock()
 
@@ -166,14 +166,14 @@ func TestTheConditionalWrite(t *testing.T) {
 // simultaneous ones would both write, and the older could arrive last.
 func TestTheFirstWriteUsesDoesNotExist(t *testing.T) {
 	g := &fakeGCS{}
-	c := credencial(t, g)
+	c := credential(t, g)
 
 	if _, err := c.Load(); err != nil { // objeto ausente, geracao 0
 		t.Fatal(err)
 	}
 	// Outro processo cria o objeto antes.
 	g.mu.Lock()
-	g.existe, g.geracao, g.conteudo = true, 7, []byte("brevis-cred/1p\nde-outro")
+	g.existe, g.generation, g.conteudo = true, 7, []byte("brevis-cred/1p\nde-outro")
 	g.mu.Unlock()
 
 	if err := c.Save("meu"); err != nil {

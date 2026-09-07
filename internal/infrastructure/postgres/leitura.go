@@ -247,11 +247,11 @@ func (r *ReadRepo) Projects(ctx context.Context) ([]ProjectSummary, error) {
 }
 
 // QueueDepth shows the queue on the dashboard.
-func (r *ReadRepo) QueueDepth(ctx context.Context) (pendentes, claimed int, err error) {
+func (r *ReadRepo) QueueDepth(ctx context.Context) (pending, claimed int, err error) {
 	err = r.pool.QueryRow(ctx, `
 		SELECT count(*) FILTER (WHERE reivindicado_em IS NULL),
 		       count(*) FILTER (WHERE reivindicado_em IS NOT NULL)
-		FROM queue_items`).Scan(&pendentes, &claimed)
+		FROM queue_items`).Scan(&pending, &claimed)
 	return
 }
 
@@ -398,21 +398,21 @@ type RunFilter struct {
 func (f RunFilter) where() (string, []any) {
 	cond := []string{"true"}
 	var args []any
-	poe := func(sql string, value any) {
+	put := func(sql string, value any) {
 		args = append(args, value)
 		cond = append(cond, fmt.Sprintf(sql, len(args)))
 	}
 	if f.State != "" {
-		poe("status = $%d", f.State)
+		put("status = $%d", f.State)
 	}
 	if f.Workflow != "" {
-		poe("workflow_slug = $%d", f.Workflow)
+		put("workflow_slug = $%d", f.Workflow)
 	}
 	if f.De != nil {
-		poe("criado_em >= $%d", *f.De)
+		put("criado_em >= $%d", *f.De)
 	}
 	if f.Ate != nil {
-		poe("criado_em < $%d", *f.Ate)
+		put("criado_em < $%d", *f.Ate)
 	}
 	return strings.Join(cond, " AND "), args
 }

@@ -18,7 +18,7 @@ func TestAMarkedLineIsConsumed(t *testing.T) {
 // And what is NOT a marker stays a log line. Swallowing a similar-looking line
 // would erase from the screen the output of a program that merely happened to
 // write something alike.
-func TestLinhaComumContinuaSendoLog(t *testing.T) {
+func TestAPlainLineStaysALogLine(t *testing.T) {
 	var c stageCollector
 	for _, line := range []string{
 		"rodando o extract",
@@ -63,8 +63,8 @@ func TestTheArrivalOrderIsPreserved(t *testing.T) {
 	c.line(`@brevis:{"tipo":"etapa","nome":"extract","estado":"done"}`)
 
 	querido := []string{"check", "extract", "load"}
-	for i, nome := range querido {
-		if c.Stages[i].TaskName != nome {
+	for i, name := range querido {
+		if c.Stages[i].TaskName != name {
 			t.Fatalf("ordem: %+v, esperada %v", c.Stages, querido)
 		}
 	}
@@ -108,7 +108,7 @@ func TestTheBadgeComesFromTheAnnouncement(t *testing.T) {
 // it, a pipeline in a loop would take Postgres down through the log's path --
 // and the log is the thing that must not stop working when something is
 // wrong.
-func TestTetoProtegeOBanco(t *testing.T) {
+func TestTheCeilingProtectsTheDatabase(t *testing.T) {
 	var c stageCollector
 	for i := 0; i < stageCeiling*3; i++ {
 		c.line(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running"}`)
@@ -128,8 +128,8 @@ func TestBothFormatsOfTheProtocol(t *testing.T) {
 		"ingles (v0.48+)":         `@brevis:{"type":"stage","name":"extract","state":"done","ms":2400,"at":"agora","paginas":300}`,
 		"portugues (ate a v0.47)": `@brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"em":"agora","paginas":300}`,
 	}
-	for nome, line := range casos {
-		t.Run(nome, func(t *testing.T) {
+	for name, line := range casos {
+		t.Run(name, func(t *testing.T) {
 			var c stageCollector
 			if !c.line(line) {
 				t.Fatal("the marker was not recognized")
@@ -155,7 +155,7 @@ func TestBothFormatsOfTheProtocol(t *testing.T) {
 }
 
 // The badge, in both formats.
-func TestSeloNosDoisFormatos(t *testing.T) {
+func TestTheBadgeInBothFormats(t *testing.T) {
 	for _, line := range []string{
 		`@brevis:{"type":"sdk","version":"v0.48.0","pipeline":"f"}`,
 		`@brevis:{"tipo":"sdk","versao":"v0.47.0","pipeline":"f"}`,

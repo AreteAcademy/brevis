@@ -80,9 +80,9 @@ func TestWithParseTime(t *testing.T) {
 		"u:s@tcp(h:3306)/db?charset=utf8":    "u:s@tcp(h:3306)/db?charset=utf8&parseTime=true",
 		"u:s@tcp(h:3306)/db?parseTime=false": "u:s@tcp(h:3306)/db?parseTime=false",
 	}
-	for entrada, quero := range casos {
-		if got := comParseTime(entrada); got != quero {
-			t.Errorf("comParseTime(%q) = %q, esperado %q", entrada, got, quero)
+	for input, quero := range casos {
+		if got := comParseTime(input); got != quero {
+			t.Errorf("comParseTime(%q) = %q, esperado %q", input, got, quero)
 		}
 	}
 }

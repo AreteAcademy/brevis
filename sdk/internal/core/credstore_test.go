@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func chaveDeTeste(t *testing.T) string {
+func testKey(t *testing.T) string {
 	t.Helper()
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -30,7 +30,7 @@ func storePronto(t *testing.T) (FileStore, string) {
 		t.Fatal(err)
 	}
 	t.Setenv(EnvCredentialDir, dir)
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 	return FileStore{Name: "gabriel-session"}, dir
 }
 
@@ -39,16 +39,16 @@ func storePronto(t *testing.T) (FileStore, string) {
 func TestItStoresAndReturns(t *testing.T) {
 	s, dir := storePronto(t)
 
-	const valor = "session=eyJhbGciOiJkaXIi..QUJDRA=="
-	if err := s.Save(valor); err != nil {
+	const value = "session=eyJhbGciOiJkaXIi..QUJDRA=="
+	if err := s.Save(value); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	got, err := s.Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if got != valor {
-		t.Errorf("Load = %q, esperado %q", got, valor)
+	if got != value {
+		t.Errorf("Load = %q, esperado %q", got, value)
 	}
 
 	// And the value is not in the clear in the file.
@@ -118,12 +118,12 @@ func TestWithoutAKeyItWritesInTheClear(t *testing.T) {
 		t.Fatalf("sem chave virou erro: %v", err)
 	}
 
-	const valor = "session=abc=="
-	if err := s.Save(valor); err != nil {
+	const value = "session=abc=="
+	if err := s.Save(value); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	got, err := s.Load()
-	if err != nil || got != valor {
+	if err != nil || got != value {
 		t.Fatalf("Load = (%q, %v)", got, err)
 	}
 
@@ -148,9 +148,9 @@ func TestPlaintextWarnsOnlyOnce(t *testing.T) {
 	warned.Delete(filepath.Join(dir, "x.cred"))
 
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	s := FileStore{Name: "x"}
 	for i := 0; i < 5; i++ {
@@ -250,7 +250,7 @@ func TestALooseDirectoryIsRefused(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv(EnvCredentialDir, dir)
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 
 	err := FileStore{Name: "x"}.CheckStore()
 	if err == nil {
@@ -265,7 +265,7 @@ func TestALooseDirectoryIsRefused(t *testing.T) {
 func TestPermissions(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "criado-por-mim")
 	t.Setenv(EnvCredentialDir, dir)
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 
 	s := FileStore{Name: "x"}
 	if err := s.Save("v"); err != nil {
@@ -300,8 +300,8 @@ func TestAnUnreadableFileFallsBackToTheSeed(t *testing.T) {
 		"nao decifra":   append([]byte(formatEncrypted+"\n"), make([]byte, 60)...),
 		"arquivo vazio": {},
 	}
-	for nome, conteudo := range casos {
-		t.Run(nome, func(t *testing.T) {
+	for name, conteudo := range casos {
+		t.Run(name, func(t *testing.T) {
 			s, dir := storePronto(t)
 			if err := os.WriteFile(filepath.Join(dir, "gabriel-session.cred"), conteudo, 0o600); err != nil {
 				t.Fatal(err)
@@ -329,12 +329,12 @@ func TestASwappedKeyDoesNotDecrypt(t *testing.T) {
 	}
 	t.Setenv(EnvCredentialDir, dir)
 
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 	if err := (FileStore{Name: "x"}).Save("segredo"); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 	got, err := FileStore{Name: "x"}.Load()
 	if err != nil {
 		t.Fatalf("chave trocada virou erro: %v", err)
@@ -346,18 +346,18 @@ func TestASwappedKeyDoesNotDecrypt(t *testing.T) {
 
 // TestAdulteracaoEDetectada: GCM autentica. Um byte trocado no texto cifrado
 // has to invalidate, and not produce garbage that becomes a credential.
-func TestAdulteracaoEDetectada(t *testing.T) {
+func TestTamperingIsDetected(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("segredo"); err != nil {
 		t.Fatal(err)
 	}
-	caminho := filepath.Join(dir, "gabriel-session.cred")
-	bruto, err := os.ReadFile(caminho)
+	path := filepath.Join(dir, "gabriel-session.cred")
+	bruto, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	bruto[len(bruto)-1] ^= 0xff
-	if err := os.WriteFile(caminho, bruto, 0o600); err != nil {
+	if err := os.WriteFile(path, bruto, 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -370,7 +370,7 @@ func TestAdulteracaoEDetectada(t *testing.T) {
 // the URL, and it must not escape the directory either.
 func TestANameThatIsAPathIsRefused(t *testing.T) {
 	t.Setenv(EnvCredentialDir, t.TempDir())
-	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
+	t.Setenv(EnvCredentialKey, testKey(t))
 
 	for _, ruim := range []string{"", "../fora", "sub/dir", ".", ".."} {
 		if err := (FileStore{Name: ruim}).CheckStore(); err == nil {
@@ -385,10 +385,10 @@ func TestConcurrentWritesDoNotCorrupt(t *testing.T) {
 	s, _ := storePronto(t)
 
 	pronto := make(chan struct{})
-	fim := make(chan struct{})
+	end := make(chan struct{})
 	for i := 0; i < 8; i++ {
 		go func(i int) {
-			defer func() { fim <- struct{}{} }()
+			defer func() { end <- struct{}{} }()
 			<-pronto
 			for j := 0; j < 30; j++ {
 				if err := s.Save(strings.Repeat("v", i+1)); err != nil {
@@ -411,7 +411,7 @@ func TestConcurrentWritesDoNotCorrupt(t *testing.T) {
 	}
 	close(pronto)
 	for i := 0; i < 8; i++ {
-		<-fim
+		<-end
 	}
 }
 

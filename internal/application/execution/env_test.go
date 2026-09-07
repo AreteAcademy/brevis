@@ -26,7 +26,7 @@ func TestTheEnvironmentsPrecedence(t *testing.T) {
 
 	casos := map[string]string{"com_env": "passo", "sem_env": "workflow"}
 	for _, n := range w.Nodes {
-		env := mesclarEnv(r.Env, r.contextoDoRun(n.ID, false, 0), w.EnvDe(n))
+		env := mesclarEnv(r.Env, r.runContext(n.ID, false, 0), w.EnvDe(n))
 
 		if got := env["NIVEL"]; got != casos[n.ID] {
 			t.Errorf("%s: NIVEL = %q, expected %q", n.ID, got, casos[n.ID])

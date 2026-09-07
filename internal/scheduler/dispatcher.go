@@ -92,11 +92,11 @@ type Dispatcher struct {
 	executar Executar
 	log      *slog.Logger
 
-	// Alertas warns when a run gives up. Nil means nobody is told.
-	Alertas notify.Notificador
+	// Alerts warns when a run gives up. Nil means nobody is told.
+	Alerts notify.Notificador
 
-	// URLBase of the UI, for the link in the alert.
-	URLBase string
+	// BaseURL of the UI, for the link in the alert.
+	BaseURL string
 
 	mu    sync.Mutex
 	emVoo int
@@ -234,8 +234,8 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 }
 
 // falhar decide entre retry e desistencia.
-func (d *Dispatcher) fail(ctx context.Context, it queue.Item, causa error) {
-	_ = d.repo.RecordError(ctx, it.RunID, causa.Error())
+func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
+	_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
 		d.log.Error("marking failed", "run", it.RunID, "error", err)
 		_ = d.queue.Done(ctx, it.ID)
@@ -256,7 +256,7 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, causa error) {
 		// The alert goes out HERE, and not on every failure: warning on every
 		// attempt would turn a successful retry into two alerts and a silence,
 		// and a channel that cries wolf stops being read.
-		d.avisar(ctx, it.RunID, attempt, causa)
+		d.avisar(ctx, it.RunID, attempt, cause)
 		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
@@ -287,14 +287,14 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, causa error) {
 // Nothing here may interrupt the dispatcher: a webhook that is down is no
 // reason to stop draining the queue. A failure to warn becomes a log line, and
 // the run's state in the database remains the source of truth.
-func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, attempts int, causa error) {
-	if d.Alertas == nil {
+func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, attempts int, cause error) {
+	if d.Alerts == nil {
 		return
 	}
 
-	a := notify.Alerta{
+	a := notify.Alert{
 		RunID: runID.String(), Status: string(dom.StatusFailed),
-		Tentativas: attempts, Err: causa.Error(), URLBase: d.URLBase,
+		Attempts: attempts, Err: cause.Error(), BaseURL: d.BaseURL,
 	}
 	// Os detalhes vem do banco: o dispatcher so conhece o id. Se a leitura
 	// fails, the alert goes out anyway — half a message beats none when
@@ -312,17 +312,17 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, attempts int, 
 	// The step and the log are a bonus: if the query fails, the alert goes out
 	// without them. Half a message arrives; no message does not.
 	if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
-		a.Passo = step
-		a.TrechoDoLog = lastLines(log, 15)
+		a.Step = step
+		a.LogExcerpt = lastLines(log, 15)
 	} else {
 		d.log.Warn("alert without the step that failed", "run", runID, "error", err)
 	}
 
 	// A context of its own: the run's may be cancelled (the cancellation is what
 	// brought us here), and the alert is about exactly that.
-	ctxAviso, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	noticeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := d.Alertas.Falhou(ctxAviso, a); err != nil {
+	if err := d.Alerts.Failed(noticeCtx, a); err != nil {
 		d.log.Error("could not announce the failure", "run", runID, "error", err)
 	}
 }

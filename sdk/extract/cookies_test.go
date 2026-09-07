@@ -31,7 +31,7 @@ func TestTheCallersCookieArrivesWhole(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, core.Source{
+	drain(t, core.Source{
 		URL:    srv.URL,
 		Header: map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
@@ -64,7 +64,7 @@ func TestARenewedCookieSurvivesIntoTheNextPage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, core.Source{
+	drain(t, core.Source{
 		URL:     srv.URL,
 		PageKey: "page",
 		DataKey: "results",
@@ -95,7 +95,7 @@ func TestTheCookieDoesNotGoTwice(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, core.Source{
+	drain(t, core.Source{
 		URL:     srv.URL,
 		PageKey: "page",
 		DataKey: "results",
@@ -132,14 +132,14 @@ func TestTheCallersHeaderIsNotMutated(t *testing.T) {
 	defer srv.Close()
 
 	h := map[string][]string{"Cookie": {"session-token=" + paddedJWT}}
-	drenar(t, core.Source{URL: srv.URL, Header: h})
+	drain(t, core.Source{URL: srv.URL, Header: h})
 
 	if got := http.Header(h).Get("Cookie"); got != "session-token="+paddedJWT {
 		t.Errorf("o SDK mexeu no header do caller: %q", got)
 	}
 }
 
-func drenar(t *testing.T, s core.Source) {
+func drain(t *testing.T, s core.Source) {
 	t.Helper()
 	seq, err := JSON(context.Background(), s, nil)
 	if err != nil {
@@ -168,7 +168,7 @@ func TestASecurePrefixedCookieDoesNotVanishSilently(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, core.Source{URL: srv.URL, Auth: &core.Credential{
+	drain(t, core.Source{URL: srv.URL, Auth: &core.Credential{
 		Value: func(context.Context) (string, error) {
 			return "__Secure-authjs.session-token=abc==", nil
 		},

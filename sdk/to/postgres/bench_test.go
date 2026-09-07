@@ -22,27 +22,27 @@ func BenchmarkPostgresLoad(b *testing.B) {
 	if d = envOuPular(b); d == "" {
 		return
 	}
-	conn := conectarBench(b, d)
-	nome := tabelaBench(b, conn)
+	conn := connectBench(b, d)
+	name := benchTable(b, conn)
 
 	const rows = 10000
 	lote := make([]sdk.Envelope, rows)
-	agora := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339)
 	for i := range lote {
 		lote[i] = sdk.Envelope{Payload: map[string]any{
 			"ingestion_id":        fmt.Sprintf("id-%06d", i),
-			"ingestion_loaded_at": agora,
+			"ingestion_loaded_at": now,
 			"provider":            "bench",
 			"source_key":          fmt.Sprintf("k%d", i),
 			"valor":               "10.50",
 		}}
 	}
 
-	destino := topg.Table{DSN: d, Name: nome}
+	target := topg.Table{DSN: d, Name: name}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := destino.Write(context.Background(), lote, sdk.WriteOptions{}); err != nil {
+		if _, err := target.Write(context.Background(), lote, sdk.WriteOptions{}); err != nil {
 			b.Fatal(err)
 		}
 	}

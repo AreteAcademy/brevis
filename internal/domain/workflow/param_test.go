@@ -48,9 +48,9 @@ func TestAnUnknownParamIsRefused(t *testing.T) {
 	}
 }
 
-func TestTiposSaoValidados(t *testing.T) {
+func TestTheTypesAreValidated(t *testing.T) {
 	casos := []struct {
-		param wf.Param
+		prm   wf.Param
 		value string
 		ok    bool
 	}{
@@ -65,12 +65,12 @@ func TestTiposSaoValidados(t *testing.T) {
 		{wf.Param{Name: "t", Type: wf.ParamString, Pattern: `^\d{4}-\d{2}-\d{2}$`}, "ontem", false},
 	}
 	for _, c := range casos {
-		err := c.param.Accepts(c.value)
+		err := c.prm.Accepts(c.value)
 		if c.ok && err != nil {
-			t.Errorf("%s=%q refused: %v", c.param.Type, c.value, err)
+			t.Errorf("%s=%q refused: %v", c.prm.Type, c.value, err)
 		}
 		if !c.ok && err == nil {
-			t.Errorf("%s=%q accepted and should not be", c.param.Type, c.value)
+			t.Errorf("%s=%q accepted and should not be", c.prm.Type, c.value)
 		}
 	}
 }

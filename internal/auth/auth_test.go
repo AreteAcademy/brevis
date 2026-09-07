@@ -103,18 +103,18 @@ func TestGetAnonimoVaiParaOLogin(t *testing.T) {
 // the
 // pod em ciclo, e o operador procura o problema no lugar errado.
 func TestProbesAndAssetsPassWithNoSession(t *testing.T) {
-	var chegou []string
+	var arrived []string
 	gate := &auth.Gate{
 		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-			chegou = append(chegou, r.URL.Path)
+			arrived = append(arrived, r.URL.Path)
 		}),
 	}
-	for _, caminho := range []string{"/health", "/ready", "/assets/app.css", "/assets/fonts/x.woff2"} {
-		gate.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", caminho, nil))
+	for _, path := range []string{"/health", "/ready", "/assets/app.css", "/assets/fonts/x.woff2"} {
+		gate.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", path, nil))
 	}
-	if len(chegou) != 4 {
-		t.Errorf("%v got through; expected the four free routes", chegou)
+	if len(arrived) != 4 {
+		t.Errorf("%v got through; expected the four free routes", arrived)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestAForgedCookieDoesNotGetIn(t *testing.T) {
 		"",
 	} {
 		req := httptest.NewRequest("GET", "/runs", nil)
-		req.AddCookie(&http.Cookie{Name: auth.NomeDoCookie, Value: value})
+		req.AddCookie(&http.Cookie{Name: auth.CookieName, Value: value})
 		gate.ServeHTTP(httptest.NewRecorder(), req)
 	}
 }

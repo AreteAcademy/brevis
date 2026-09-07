@@ -11,23 +11,23 @@ import (
 //
 // A pipe whose upstream produced nothing looked exactly like a pipe that worked.
 func TestLoadReadsTheNDJSONOnStdin(t *testing.T) {
-	entrada := `{"id":1,"name":"a"}
+	input := `{"id":1,"name":"a"}
 {"id":2,"name":"b"}
 {"id":3,"name":"c"}`
 
-	envelopes, err := lerNDJSON(strings.NewReader(entrada))
+	envelopes, err := lerNDJSON(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("reading: %v", err)
 	}
 	if len(envelopes) != 3 {
 		t.Fatalf("read %d records, want 3", len(envelopes))
 	}
-	primeiro, ok := envelopes[0].Payload.(map[string]any)
+	first, ok := envelopes[0].Payload.(map[string]any)
 	if !ok {
 		t.Fatalf("payload is %T, want a JSON object", envelopes[0].Payload)
 	}
-	if primeiro["name"] != "a" {
-		t.Errorf("first record: %v", primeiro)
+	if first["name"] != "a" {
+		t.Errorf("first record: %v", first)
 	}
 	// Order is the file's order: a positional key depends on it.
 	last := envelopes[2].Payload.(map[string]any)

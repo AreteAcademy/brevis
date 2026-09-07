@@ -57,7 +57,7 @@ func TestTheTasksEnvironmentPassesOnWhatWasDeclared(t *testing.T) {
 	if env["GOOGLE_PROJECT_ID"] != "acme-dev" || env["STAGE"] != "local" {
 		t.Errorf("it did not pass on what was declared: %v", env)
 	}
-	if _, vazou := env["BREVIS_DATABASE_URL"]; vazou {
+	if _, leaked := env["BREVIS_DATABASE_URL"]; leaked {
 		t.Error("the database credential reached the task")
 	}
 	if env["PATH"] == "" {

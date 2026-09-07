@@ -130,7 +130,7 @@ func withIngestionOnRow(row map[string]any) map[string]any {
 
 func withIngestion(n int) []core.Envelope {
 	out := envelopes(n)
-	agora := time.Now().UTC().Format(time.RFC3339)
+	now := time.Now().UTC().Format(time.RFC3339)
 	for i := range out {
 		row := out[i].Payload.(map[string]any)
 		id, err := core.ComputeIngestionID(out[i].Provider, out[i].Entity,
@@ -140,7 +140,7 @@ func withIngestion(n int) []core.Envelope {
 		}
 		nova := map[string]any{
 			core.MetadataID:       id,
-			core.MetadataLoadedAt: agora,
+			core.MetadataLoadedAt: now,
 		}
 		for k, v := range row {
 			nova[k] = v
@@ -834,7 +834,7 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 	table := client.Dataset(env.dataset).Table(name)
 	t.Cleanup(func() { _ = table.Delete(context.Background()) })
 
-	const expiracao = 30 * 24 * time.Hour
+	const expiry = 30 * 24 * time.Hour
 
 	loader, err := New(ctx, nil,
 		core.WithProjectID(env.project),
@@ -842,7 +842,7 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 		core.WithTable(name),
 		core.WithCreateTable(true),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
-		core.WithPartitionExpiration(expiracao),
+		core.WithPartitionExpiration(expiry),
 		core.WithRequirePartitionFilter(true),
 	)
 	if err != nil {
@@ -859,9 +859,9 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 	if meta.TimePartitioning == nil {
 		t.Fatal("a tabela saiu sem particionamento")
 	}
-	if meta.TimePartitioning.Expiration != expiracao {
+	if meta.TimePartitioning.Expiration != expiry {
 		t.Errorf("PartitionExpiration = %v, esperado %v",
-			meta.TimePartitioning.Expiration, expiracao)
+			meta.TimePartitioning.Expiration, expiry)
 	}
 	if !meta.TimePartitioning.RequirePartitionFilter {
 		t.Error("RequirePartitionFilter não chegou à tabela")
@@ -886,14 +886,14 @@ func TestIntegrationKeepStagedFile(t *testing.T) {
 	ctx := context.Background()
 
 	for _, c := range []struct {
-		nome    string
+		name    string
 		manter  bool
 		esperar int
 	}{
 		{"o padrão apaga", false, 0},
 		{"KeepStagedFile mantém", true, 1},
 	} {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			client, name := createTable(ctx, t, env, bigquery.Schema{
 				{Name: "amount", Type: bigquery.IntegerFieldType},
 				{Name: "label", Type: bigquery.StringFieldType},
@@ -962,15 +962,15 @@ func TestIntegrationInlineLimitPicksTheStrategy(t *testing.T) {
 	ctx := context.Background()
 
 	for _, c := range []struct {
-		nome     string
+		name     string
 		limite   int
-		linhas   int
+		lines    int
 		esperada string
 	}{
 		{"abaixo do limite vai inline", 10, 3, "inline"},
 		{"acima do limite passa pelo GCS", 2, 3, "gcs"},
 	} {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			_, name := createTable(ctx, t, env, bigquery.Schema{
 				{Name: "amount", Type: bigquery.IntegerFieldType},
 				{Name: "label", Type: bigquery.StringFieldType},
@@ -986,16 +986,16 @@ func TestIntegrationInlineLimitPicksTheStrategy(t *testing.T) {
 			if err != nil {
 				t.Fatalf("New: %v", err)
 			}
-			res, err := loader.Load(ctx, envelopes(c.linhas)...)
+			res, err := loader.Load(ctx, envelopes(c.lines)...)
 			if err != nil {
 				t.Fatalf("load: %v", err)
 			}
 			if res.Strategy != c.esperada {
 				t.Errorf("com limite %d e %d linhas a estratégia foi %q, esperada %q",
-					c.limite, c.linhas, res.Strategy, c.esperada)
+					c.limite, c.lines, res.Strategy, c.esperada)
 			}
-			if res.RowsLoaded != int64(c.linhas) {
-				t.Errorf("%d linhas escritas, esperado %d", res.RowsLoaded, c.linhas)
+			if res.RowsLoaded != int64(c.lines) {
+				t.Errorf("%d linhas escritas, esperado %d", res.RowsLoaded, c.lines)
 			}
 		})
 	}
@@ -1185,7 +1185,7 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linha := map[string]any{
+	line := map[string]any{
 		"ingestion_id":        id,
 		"ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
 		"provider":            "open_meteo",
@@ -1194,12 +1194,12 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 		"payload":             map[string]any{"temperature_2m": 14.1},
 	}
 
-	if _, err := loader.Load(ctx, core.Envelope{Payload: linha}); err != nil {
+	if _, err := loader.Load(ctx, core.Envelope{Payload: line}); err != nil {
 		t.Fatalf("primeira carga: %v", err)
 	}
 	// The second must not re-ingest: it is what the merge exists to do, and it
 	// matches on exactly the column the chain wrote.
-	res, err := loader.Load(ctx, core.Envelope{Payload: linha})
+	res, err := loader.Load(ctx, core.Envelope{Payload: line})
 	if err != nil {
 		t.Fatalf("segunda carga: %v", err)
 	}

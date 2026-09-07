@@ -18,11 +18,11 @@ import (
 // request.
 func TestAuthAppliesTheSecret(t *testing.T) {
 	casos := []struct {
-		nome      string
-		aplicar   core.Applier
-		segredo   string
-		cabecalho string
-		esperado  string
+		name     string
+		applyTo  core.Applier
+		secret   string
+		header   string
+		esperado string
 	}{
 		{"bearer", core.AsBearer, "abc", "Authorization", "Bearer abc"},
 		{"cookie inteiro", core.AsCookie, "session=abc==", "Cookie", "session=abc=="},
@@ -30,22 +30,22 @@ func TestAuthAppliesTheSecret(t *testing.T) {
 		{"header proprio", core.AsHeader("X-API-Key"), "abc", "X-API-Key", "abc"},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			var visto string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				visto = r.Header.Get(c.cabecalho)
+				visto = r.Header.Get(c.header)
 				_, _ = fmt.Fprint(w, `{"ok":1}`)
 			}))
 			defer srv.Close()
 
-			segredo := c.segredo
-			drenar(t, core.Source{URL: srv.URL, Auth: &core.Credential{
-				Value: func(context.Context) (string, error) { return segredo, nil },
-				Apply: c.aplicar,
+			secret := c.secret
+			drain(t, core.Source{URL: srv.URL, Auth: &core.Credential{
+				Value: func(context.Context) (string, error) { return secret, nil },
+				Apply: c.applyTo,
 			}})
 
 			if visto != c.esperado {
-				t.Errorf("%s = %q, esperado %q", c.cabecalho, visto, c.esperado)
+				t.Errorf("%s = %q, esperado %q", c.header, visto, c.esperado)
 			}
 		})
 	}
@@ -56,7 +56,7 @@ func TestAuthAppliesTheSecret(t *testing.T) {
 // new one -- with nothing written anywhere.
 func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 	var mu sync.Mutex
-	var dados []string
+	var data []string
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/session", func(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +71,7 @@ func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 		c, _ := r.Cookie("session")
 		mu.Lock()
 		if c != nil {
-			dados = append(dados, c.Value)
+			data = append(data, c.Value)
 		}
 		mu.Unlock()
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
@@ -80,7 +80,7 @@ func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 	defer srv.Close()
 
 	var stats core.Stats
-	drenar(t, core.Source{
+	drain(t, core.Source{
 		URL:   srv.URL + "/dados",
 		Stats: &stats,
 		Auth: &core.Credential{
@@ -93,8 +93,8 @@ func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 		},
 	})
 
-	if len(dados) != 1 || dados[0] != "renovado==" {
-		t.Errorf("a pagina foi com %v; esperava o cookie reemitido pela renovacao", dados)
+	if len(data) != 1 || data[0] != "renovado==" {
+		t.Errorf("a pagina foi com %v; esperava o cookie reemitido pela renovacao", data)
 	}
 	if stats.CredentialExpiry.IsZero() {
 		t.Error("Stats.CredentialExpiry ficou zerado; a validade nao chegou a quem observa")
@@ -105,13 +105,13 @@ func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 // every page with a credential the API just denied, and the error
 // aparece culpando o endpoint de dados.
 func TestARefreshThatFailsStopsTheRun(t *testing.T) {
-	var pediuDados atomic.Bool
+	var askedForData atomic.Bool
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/session", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "sessao expirada", http.StatusUnauthorized)
 	})
 	mux.HandleFunc("/dados", func(w http.ResponseWriter, r *http.Request) {
-		pediuDados.Store(true)
+		askedForData.Store(true)
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	})
 	srv := httptest.NewServer(mux)
@@ -132,7 +132,7 @@ func TestARefreshThatFailsStopsTheRun(t *testing.T) {
 	if !strings.Contains(err.Error(), "refresh") || !strings.Contains(err.Error(), "401") {
 		t.Errorf("o erro nao diz que foi a renovacao: %v", err)
 	}
-	if pediuDados.Load() {
+	if askedForData.Load() {
 		t.Error("pediu dados depois da renovacao falhar")
 	}
 }
@@ -188,7 +188,7 @@ func TestWithoutTTLItDoesNotCache(t *testing.T) {
 // become a 401, or a written field that does nothing.
 func TestAuthRefusesConfigurationThatCannotWork(t *testing.T) {
 	casos := []struct {
-		nome string
+		name string
 		cred *core.Credential
 		diz  string
 	}{
@@ -204,7 +204,7 @@ func TestAuthRefusesConfigurationThatCannotWork(t *testing.T) {
 		}, "ExpiresAt"},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			_, err := JSON(context.Background(), core.Source{URL: "http://x", Auth: c.cred}, nil)
 			if err == nil {
 				t.Fatal("passou")
@@ -234,7 +234,7 @@ func TestAuthDoesNotMutateTheCallersHeader(t *testing.T) {
 	defer srv.Close()
 
 	h := map[string][]string{"X-Trace": {"1"}}
-	drenar(t, core.Source{URL: srv.URL, Header: h, Auth: &core.Credential{
+	drain(t, core.Source{URL: srv.URL, Header: h, Auth: &core.Credential{
 		Value: func(context.Context) (string, error) { return "segredo", nil },
 		Apply: core.AsBearer,
 	}})
@@ -248,11 +248,11 @@ func TestAuthDoesNotMutateTheCallersHeader(t *testing.T) {
 // network blip on the refresh killed the whole run while the
 // mesma queda no endpoint de dados custava um retry.
 func TestRefreshRetries(t *testing.T) {
-	var tentativas atomic.Int32
+	var attempts atomic.Int32
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth", func(w http.ResponseWriter, _ *http.Request) {
-		if tentativas.Add(1) < 3 {
+		if attempts.Add(1) < 3 {
 			http.Error(w, "indisponivel", http.StatusServiceUnavailable)
 			return
 		}
@@ -264,7 +264,7 @@ func TestRefreshRetries(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	drenar(t, core.Source{
+	drain(t, core.Source{
 		URL: srv.URL + "/dados",
 		RetryConfig: &core.RetryConfig{
 			MaxAttempts: 3, InitialBackoff: time.Millisecond, MaxBackoff: time.Millisecond,
@@ -276,7 +276,7 @@ func TestRefreshRetries(t *testing.T) {
 		},
 	})
 
-	if n := tentativas.Load(); n != 3 {
+	if n := attempts.Load(); n != 3 {
 		t.Errorf("a renovacao tentou %d vezes, esperado 3", n)
 	}
 }

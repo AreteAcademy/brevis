@@ -43,9 +43,9 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 	defer pool.Close()
 
 	dir := t.TempDir()
-	binario := buildFetcher(t, dir)
-	entrada := filepath.Join(dir, "entrada.ndjson")
-	if err := os.WriteFile(entrada, []byte(
+	binary := buildFetcher(t, dir)
+	input := filepath.Join(dir, "entrada.ndjson")
+	if err := os.WriteFile(input, []byte(
 		`{"id":1,"ts":"2026-09-05T00:00:00Z"}`+"\n"+
 			`{"id":2,"ts":"2026-09-05T01:00:00Z"}`+"\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -64,17 +64,17 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 	}
 	w := wf.Workflow{
 		Slug:  "e2e",
-		Nodes: []wf.Node{{ID: "collectOutput", Run: binario + " 2>&1"}},
+		Nodes: []wf.Node{{ID: "collectOutput", Run: binary + " 2>&1"}},
 	}
 	// The step's WorkDir is the test's directory, because the fetcher reads
 	// "entrada.ndjson" relative to it. The cwd is RESTORED at the end: leaving it
 	// in a temporary directory would break any later test in this package that
 	// uses a relative path -- and this very test does, to compile the fetcher.
-	anterior, err := os.Getwd()
+	previous, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chdir(anterior) })
+	t.Cleanup(func() { _ = os.Chdir(previous) })
 	if err := os.Chdir(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -82,11 +82,11 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	estados, err := repo.NodeStates(ctx, runID)
+	states, err := repo.NodeStates(ctx, runID)
 	if err != nil {
 		t.Fatalf("estado: %v", err)
 	}
-	e, ok := estados["collectOutput"]
+	e, ok := states["collectOutput"]
 	if !ok {
 		t.Fatal("the step never reached the database")
 	}
@@ -101,27 +101,27 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		t.Errorf("with a replace the version has to be \"devel\", got %q", e.SdkVersion)
 	}
 
-	porNome := map[string]postgres.Stage{}
+	byName := map[string]postgres.Stage{}
 	for _, et := range e.Stages {
-		porNome[et.Name] = et
+		byName[et.Name] = et
 	}
-	for _, nome := range []string{"check", "extract", "map", "load"} {
-		et, ok := porNome[nome]
+	for _, name := range []string{"check", "extract", "map", "load"} {
+		et, ok := byName[name]
 		if !ok {
-			t.Errorf("stage %q never reached the database (these did: %v)", nome, e.Stages)
+			t.Errorf("stage %q never reached the database (these did: %v)", name, e.Stages)
 			continue
 		}
 		if et.State != "done" {
-			t.Errorf("stage %q finished at %q", nome, et.State)
+			t.Errorf("stage %q finished at %q", name, et.State)
 		}
 	}
 	// What only a Map stage knows.
-	if n := porNome["map"].Numbers; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
-		t.Errorf("the transform did not report its counts: %v", porNome["transform"].Numbers)
+	if n := byName["map"].Numbers; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
+		t.Errorf("the transform did not report its counts: %v", byName["transform"].Numbers)
 	}
 	// And a Map stage still has no clock.
-	if porNome["map"].Ms != nil {
-		t.Errorf("a map stage reported a duration: %v", *porNome["map"].Ms)
+	if byName["map"].Ms != nil {
+		t.Errorf("a map stage reported a duration: %v", *byName["map"].Ms)
 	}
 
 	// The marker must NOT have become the step's log.
@@ -139,13 +139,13 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 // buildFetcher builds the testdata binary, which is a module of its own.
 func buildFetcher(t *testing.T, dir string) string {
 	t.Helper()
-	saida := filepath.Join(dir, "fetcher")
-	cmd := exec.Command("go", "build", "-o", saida, ".")
+	output := filepath.Join(dir, "fetcher")
+	cmd := exec.Command("go", "build", "-o", output, ".")
 	cmd.Dir = "testdata/fetcher"
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("compilando o fetcher: %v\n%s", err, out)
 	}
-	return saida
+	return output
 }
 
 func createRun(ctx context.Context, pool *postgres.Pool, id uuid.UUID) error {

@@ -10,7 +10,7 @@ import (
 
 // optionsAllowing is what an installation that authorized this Secret passes.
 func optionsAllowing() Options {
-	return Options{AllowedSecrets: []string{"gabriel-session", "cofre"}}.comPadroes()
+	return Options{AllowedSecrets: []string{"gabriel-session", "cofre"}}.withDefaults()
 }
 
 func taskWithSecret() execution.TaskExec {
@@ -31,22 +31,22 @@ func TestASecretBecomesASecretKeyRef(t *testing.T) {
 		t.Fatalf("BuildPod: %v", err)
 	}
 
-	var achou *Var
+	var found *Var
 	for i, v := range pod.Spec.Containers[0].Env {
 		if v.Name == "GABRIEL_SESSION_COOKIE" {
-			achou = &pod.Spec.Containers[0].Env[i]
+			found = &pod.Spec.Containers[0].Env[i]
 		}
 	}
-	if achou == nil {
+	if found == nil {
 		t.Fatal("the secret's variable did not go into the container")
 	}
-	if achou.Value != "" {
-		t.Errorf("the value was materialized into the pod: %q", achou.Value)
+	if found.Value != "" {
+		t.Errorf("the value was materialized into the pod: %q", found.Value)
 	}
-	if achou.ValueFrom == nil || achou.ValueFrom.SecretKeyRef == nil {
+	if found.ValueFrom == nil || found.ValueFrom.SecretKeyRef == nil {
 		t.Fatal("no valueFrom.secretKeyRef")
 	}
-	if got := achou.ValueFrom.SecretKeyRef; got.Name != "gabriel-session" || got.Key != "cookie" {
+	if got := found.ValueFrom.SecretKeyRef; got.Name != "gabriel-session" || got.Key != "cookie" {
 		t.Errorf("coordenada errada: %+v", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestThePodsEnvironmentIsDeterministic(t *testing.T) {
 	task.Env["Z"] = "2"
 	task.Secrets["OUTRO"] = "cofre/chave"
 
-	var primeiro string
+	var first string
 	for i := 0; i < 20; i++ {
 		pod, err := BuildPod(task, optionsAllowing())
 		if err != nil {
@@ -103,11 +103,11 @@ func TestThePodsEnvironmentIsDeterministic(t *testing.T) {
 		}
 		b, _ := json.Marshal(pod.Spec.Containers[0].Env)
 		if i == 0 {
-			primeiro = string(b)
+			first = string(b)
 			continue
 		}
-		if string(b) != primeiro {
-			t.Fatalf("ordem instavel:\n%s\n%s", primeiro, b)
+		if string(b) != first {
+			t.Fatalf("ordem instavel:\n%s\n%s", first, b)
 		}
 	}
 }
@@ -137,7 +137,7 @@ func TestTheYAMLDoesNotChooseWhichSecretToMount(t *testing.T) {
 // installation; allowing by default costs the reverse, and the reverse cannot be
 // undone.
 func TestWithNoListNoSecretGetsThrough(t *testing.T) {
-	_, err := BuildPod(taskWithSecret(), Options{}.comPadroes())
+	_, err := BuildPod(taskWithSecret(), Options{}.withDefaults())
 	if err == nil {
 		t.Fatal("with no allow-list, the Secret got through")
 	}
@@ -153,7 +153,7 @@ func TestWithNoSecretsInTheYAMLNothingChanges(t *testing.T) {
 	task := taskWithSecret()
 	task.Secrets = nil
 
-	if _, err := BuildPod(task, Options{}.comPadroes()); err != nil {
+	if _, err := BuildPod(task, Options{}.withDefaults()); err != nil {
 		t.Errorf("a workflow with no secrets started failing: %v", err)
 	}
 }

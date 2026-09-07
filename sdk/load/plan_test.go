@@ -16,10 +16,10 @@ import (
 // exercise it.
 func TestI2CreationPlanNeverInfers(t *testing.T) {
 	casos := []struct {
-		nome  string
-		cfg   *core.LoadConfig
-		quero HowToCreate
-		erro  bool
+		name    string
+		cfg     *core.LoadConfig
+		quero   HowToCreate
+		failure bool
 	}{
 		{
 			"com Schema, monta o DDL da declaração",
@@ -47,9 +47,9 @@ func TestI2CreationPlanNeverInfers(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			got, err := CreationPlan(c.cfg, "d.t")
-			if c.erro {
+			if c.failure {
 				if err == nil {
 					t.Fatal("aceitou criar tabela sem dizer os tipos -- o autodetect voltou")
 				}

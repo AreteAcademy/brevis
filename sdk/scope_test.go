@@ -31,29 +31,29 @@ func TestTheSnapshotDoesNotDependOnThePositionInTheChain(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{
+	data, err := sdk.Extract(context.Background(), sdk.Source{
 		From: from.HTTP{URL: srv.URL}, Snapshot: "payload",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// A cadeia escreve DEPOIS do retrato, e escreve bastante.
-	dados = sdk.Transform(dados,
+	data = sdk.Transform(data,
 		sdk.Compute("derivado", func(map[string]any) (any, error) { return "novo", nil }),
 		sdk.Rename(map[string]string{"id": "source_key"}),
 	)
 
-	var linha map[string]any
-	for env, err := range dados.Records {
+	var line map[string]any
+	for env, err := range data.Records {
 		if err != nil {
 			t.Fatal(err)
 		}
-		linha = env.Payload.(map[string]any)
+		line = env.Payload.(map[string]any)
 	}
 
-	retrato, ok := linha["payload"].(map[string]any)
+	retrato, ok := line["payload"].(map[string]any)
 	if !ok {
-		t.Fatalf("sem retrato: %v", linha)
+		t.Fatalf("sem retrato: %v", line)
 	}
 	if _, contaminado := retrato["derivado"]; contaminado {
 		t.Errorf("o retrato carrega um campo que a cadeia escreveu: %v", retrato)
@@ -61,8 +61,8 @@ func TestTheSnapshotDoesNotDependOnThePositionInTheChain(t *testing.T) {
 	if retrato["id"] != "1" {
 		t.Errorf("o retrato perdeu o nome original do campo: %v", retrato)
 	}
-	if linha["source_key"] != "1" {
-		t.Errorf("a cadeia não rodou sobre o registro: %v", linha)
+	if line["source_key"] != "1" {
+		t.Errorf("a cadeia não rodou sobre o registro: %v", line)
 	}
 }
 
@@ -75,14 +75,14 @@ func TestTheSnapshotRefusesToOverwriteWhatTheSourceSent(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{
+	data, err := sdk.Extract(context.Background(), sdk.Source{
 		From: from.HTTP{URL: srv.URL}, Snapshot: "payload",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	var visto error
-	for _, err := range dados.Records {
+	for _, err := range data.Records {
 		if err != nil {
 			visto = err
 		}
@@ -105,14 +105,14 @@ func TestSkipWithoutDropsInsteadOfFailing(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	dados, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
+	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	dados = sdk.Transform(dados, sdk.SkipWithout("id"))
+	data = sdk.Transform(data, sdk.SkipWithout("id"))
 
 	var ids []string
-	for env, err := range dados.Records {
+	for env, err := range data.Records {
 		if err != nil {
 			t.Fatalf("SkipWithout derrubou a janela: %v", err)
 		}
@@ -127,26 +127,26 @@ func TestSkipWithoutDropsInsteadOfFailing(t *testing.T) {
 // it, not to the
 // biblioteca.
 func TestTheNamespaceChangesTheID(t *testing.T) {
-	registro := func() map[string]any {
+	record := func() map[string]any {
 		return map[string]any{
 			"provider": "acme", "entity": "pedidos",
 			"source_key": "1", "record_ts": "2026-09-05T12:00:00Z",
 		}
 	}
 
-	padrao, err := sdk.IngestionID()(registro())
+	fallback, err := sdk.IngestionID()(record())
 	if err != nil {
 		t.Fatal(err)
 	}
 	meu := uuid.MustParse("11111111-2222-3333-4444-555555555555")
-	outro, err := sdk.Namespace(meu).IngestionID()(registro())
+	outro, err := sdk.Namespace(meu).IngestionID()(record())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	idPadrao := padrao.(map[string]any)[sdk.ColumnIngestionID].(string)
+	defaultID := fallback.(map[string]any)[sdk.ColumnIngestionID].(string)
 	idOutro := outro.(map[string]any)[sdk.ColumnIngestionID].(string)
-	if idPadrao == idOutro {
+	if defaultID == idOutro {
 		t.Error("namespaces diferentes produziram o mesmo id; então o namespace não é usado")
 	}
 }
@@ -156,14 +156,14 @@ func TestTheNamespaceChangesTheID(t *testing.T) {
 // namespace has to be byte for byte the
 // de antes.
 func TestTheDefaultNamespaceHasNotChanged(t *testing.T) {
-	saida, err := sdk.IngestionID()(map[string]any{
+	output, err := sdk.IngestionID()(map[string]any{
 		"provider": "open_meteo", "entity": "hourly",
 		"source_key": "123", "record_ts": "2026-09-05T12:00:00Z",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := saida.(map[string]any)[sdk.ColumnIngestionID].(string)
+	got := output.(map[string]any)[sdk.ColumnIngestionID].(string)
 
 	// This value has been the same since v0.1.x, checked against Python's
 	// uuid.uuid5. If it changes, every row already written has lost its
@@ -178,26 +178,26 @@ func TestTheDefaultNamespaceHasNotChanged(t *testing.T) {
 // variation between runs.
 func TestAChosenNamespaceIsDeterministic(t *testing.T) {
 	meu := sdk.Namespace(uuid.MustParse("11111111-2222-3333-4444-555555555555"))
-	var anterior string
+	var previous string
 	for i := 0; i < 5; i++ {
-		saida, err := meu.IngestionID()(map[string]any{
+		output, err := meu.IngestionID()(map[string]any{
 			"provider": "a", "entity": "b", "source_key": "c", "record_ts": "d",
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := saida.(map[string]any)[sdk.ColumnIngestionID].(string)
-		if i > 0 && got != anterior {
-			t.Fatalf("o id variou entre execuções: %s e %s", anterior, got)
+		got := output.(map[string]any)[sdk.ColumnIngestionID].(string)
+		if i > 0 && got != previous {
+			t.Fatalf("o id variou entre execuções: %s e %s", previous, got)
 		}
-		anterior = got
+		previous = got
 	}
 }
 
 // countingTarget records every batch it receives.
 type countingTarget struct {
-	levas    [][]int
-	falharEm int // > 0: a leva N falha
+	levas  [][]int
+	failAt int // > 0: a leva N falha
 }
 
 func (d *countingTarget) Describe() string { return "destino de teste" }
@@ -208,8 +208,8 @@ func (d *countingTarget) Write(_ context.Context, envs []sdk.Envelope, _ sdk.Wri
 		ids = append(ids, e.Payload.(map[string]any)["i"].(int))
 	}
 	d.levas = append(d.levas, ids)
-	if d.falharEm > 0 && len(d.levas) == d.falharEm {
-		return &sdk.LoadResult{RowsLoaded: 0}, fmt.Errorf("a leva %d falhou", d.falharEm)
+	if d.failAt > 0 && len(d.levas) == d.failAt {
+		return &sdk.LoadResult{RowsLoaded: 0}, fmt.Errorf("a leva %d falhou", d.failAt)
 	}
 	return &sdk.LoadResult{RowsLoaded: int64(len(envs))}, nil
 }
@@ -217,19 +217,19 @@ func (d *countingTarget) Write(_ context.Context, envs []sdk.Envelope, _ sdk.Wri
 // TestFlushEveryWritesInBatches: a long read must not have the whole batch alive
 // in memory, and the destination builds a second copy of it to serialize.
 func TestFlushEveryWritesInBatches(t *testing.T) {
-	destino := &countingTarget{}
-	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
-		To: destino, FlushEvery: 3,
+	target := &countingTarget{}
+	res, err := sdk.Load(context.Background(), dataOf(t, 10), sdk.Target{
+		To: target, FlushEvery: 3,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(destino.levas) != 4 {
-		t.Fatalf("%d levas, esperado 4 (3+3+3+1)", len(destino.levas))
+	if len(target.levas) != 4 {
+		t.Fatalf("%d levas, esperado 4 (3+3+3+1)", len(target.levas))
 	}
-	if len(destino.levas[3]) != 1 {
-		t.Errorf("a última leva tem %d, esperado 1", len(destino.levas[3]))
+	if len(target.levas[3]) != 1 {
+		t.Errorf("a última leva tem %d, esperado 1", len(target.levas[3]))
 	}
 
 	// The Result sums the batches. A Rows counting only the last one would lie
@@ -241,12 +241,12 @@ func TestFlushEveryWritesInBatches(t *testing.T) {
 
 // TestFlushEveryZeroAccumulatesEverything: the default does not change.
 func TestFlushEveryZeroAccumulatesEverything(t *testing.T) {
-	destino := &countingTarget{}
-	if _, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{To: destino}); err != nil {
+	target := &countingTarget{}
+	if _, err := sdk.Load(context.Background(), dataOf(t, 10), sdk.Target{To: target}); err != nil {
 		t.Fatal(err)
 	}
-	if len(destino.levas) != 1 || len(destino.levas[0]) != 10 {
-		t.Errorf("levas = %v; sem FlushEvery a carga é uma só", destino.levas)
+	if len(target.levas) != 1 || len(target.levas[0]) != 10 {
+		t.Errorf("levas = %v; sem FlushEvery a carga é uma só", target.levas)
 	}
 }
 
@@ -255,9 +255,9 @@ func TestFlushEveryZeroAccumulatesEverything(t *testing.T) {
 // -- whoever
 // re-runs it needs to know that 6 rows are already there.
 func TestFlushEveryFailingMidwaySaysWhatWentIn(t *testing.T) {
-	destino := &countingTarget{falharEm: 3}
-	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
-		To: destino, FlushEvery: 3,
+	target := &countingTarget{failAt: 3}
+	res, err := sdk.Load(context.Background(), dataOf(t, 10), sdk.Target{
+		To: target, FlushEvery: 3,
 	})
 	if err == nil {
 		t.Fatal("a leva falhou e o Load deu certo")
@@ -270,19 +270,19 @@ func TestFlushEveryFailingMidwaySaysWhatWentIn(t *testing.T) {
 	}
 }
 
-func dadosDe(t *testing.T, n int) *sdk.Data {
+func dataOf(t *testing.T, n int) *sdk.Data {
 	t.Helper()
-	dados, err := sdk.Extract(context.Background(), sdk.Source{From: fonteDeN{n}})
+	data, err := sdk.Extract(context.Background(), sdk.Source{From: sourceOfN{n}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return dados
+	return data
 }
 
-type fonteDeN struct{ n int }
+type sourceOfN struct{ n int }
 
-func (fonteDeN) Describe() string { return "fonte de teste" }
-func (f fonteDeN) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+func (sourceOfN) Describe() string { return "fonte de teste" }
+func (f sourceOfN) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
 	return func(yield func(sdk.Envelope, error) bool) {
 		for i := 0; i < f.n; i++ {
 			if !yield(sdk.Envelope{Payload: map[string]any{"i": i}}, nil) {

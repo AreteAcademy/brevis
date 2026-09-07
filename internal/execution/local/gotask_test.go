@@ -26,9 +26,9 @@ func lastKind(ev []execution.Event) execution.EventKind {
 
 func TestTheGoExecutorRunsARegisteredTask(t *testing.T) {
 	reg := execution.NewRegistry()
-	var rodou atomic.Bool
+	var ran atomic.Bool
 	reg.MustRegister(execution.FuncTask{TaskName: "sync", Fn: func(_ context.Context, in execution.Input) error {
-		rodou.Store(true)
+		ran.Store(true)
 		in.Log("sincronizando")
 		return nil
 	}})
@@ -40,7 +40,7 @@ func TestTheGoExecutorRunsARegisteredTask(t *testing.T) {
 	}
 	events := collectEvents(ev)
 
-	if !rodou.Load() {
+	if !ran.Load() {
 		t.Error("the task did not run")
 	}
 	if lastKind(events) != execution.EventSucceeded {
@@ -75,7 +75,7 @@ func TestTheGoExecutorListsTheAvailableTasksForAnUnknownOne(t *testing.T) {
 
 // A task runs in the SAME process, unlike a pod: a panic must not
 // derrubar o orquestrador junto.
-func TestGoExecutorContemPanico(t *testing.T) {
+func TestTheGoExecutorContainsAPanic(t *testing.T) {
 	reg := execution.NewRegistry()
 	reg.MustRegister(execution.FuncTask{TaskName: "explode", Fn: func(context.Context, execution.Input) error {
 		panic("boom")
@@ -107,7 +107,7 @@ func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 		}
 	}})
 
-	inicio := time.Now()
+	start := time.Now()
 	ev, err := local.NewGoExecutor(reg).Execute(context.Background(), execution.TaskExec{
 		ExecutionID: "1", NodeID: "n", Action: "lenta", Timeout: 100 * time.Millisecond,
 	})
@@ -116,30 +116,30 @@ func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 	}
 	events := collectEvents(ev)
 
-	if d := time.Since(inicio); d > time.Second {
+	if d := time.Since(start); d > time.Second {
 		t.Errorf("it took %s; the timeout did not interrupt", d)
 	}
-	ultimo := events[len(events)-1]
-	if ultimo.Kind != execution.EventFailed {
-		t.Fatalf("last event = %v, wanted failed", ultimo.Kind)
+	last := events[len(events)-1]
+	if last.Kind != execution.EventFailed {
+		t.Fatalf("last event = %v, wanted failed", last.Kind)
 	}
-	if !strings.Contains(ultimo.Message, "timeout") {
-		t.Errorf("message = %q; it should mention the timeout", ultimo.Message)
+	if !strings.Contains(last.Message, "timeout") {
+		t.Errorf("message = %q; it should mention the timeout", last.Message)
 	}
 }
 
 func TestTheGoExecutorPropagatesTheTasksError(t *testing.T) {
 	reg := execution.NewRegistry()
-	falha := errors.New("source unavailable")
+	failure1 := errors.New("source unavailable")
 	reg.MustRegister(execution.FuncTask{TaskName: "falha", Fn: func(context.Context, execution.Input) error {
-		return falha
+		return failure1
 	}})
 
 	ev, _ := local.NewGoExecutor(reg).Execute(context.Background(),
 		execution.TaskExec{ExecutionID: "1", NodeID: "n", Action: "falha"})
 	events := collectEvents(ev)
 
-	if !errors.Is(events[len(events)-1].Err, falha) {
+	if !errors.Is(events[len(events)-1].Err, failure1) {
 		t.Error("the task's error did not reach the event")
 	}
 }

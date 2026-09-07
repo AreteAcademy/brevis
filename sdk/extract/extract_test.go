@@ -405,7 +405,7 @@ func TestTotalTimeoutStopsTheWalk(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	inicio := time.Now()
+	start := time.Now()
 	lines, err := JSON(context.Background(), core.Source{
 		URL:          srv.URL,
 		FollowLinks:  true,
@@ -418,7 +418,7 @@ func TestTotalTimeoutStopsTheWalk(t *testing.T) {
 	for range lines {
 	}
 
-	if d := time.Since(inicio); d > 2*time.Second {
+	if d := time.Since(start); d > 2*time.Second {
 		t.Errorf("a caminhada durou %v; o TotalTimeout não a parou", d)
 	}
 }

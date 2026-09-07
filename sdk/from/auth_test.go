@@ -19,13 +19,13 @@ func TestCampoJSONStillReadsWhatJSONTokenReads(t *testing.T) {
 	if err != nil {
 		t.Fatalf("JSONToken: %v", err)
 	}
-	velho, err := from.CampoJSON("data.accessToken")(body)
+	old, err := from.CampoJSON("data.accessToken")(body)
 	if err != nil {
 		t.Fatalf("CampoJSON: %v", err)
 	}
 
-	if novo != velho {
-		t.Fatalf("the alias diverged: JSONToken=%q CampoJSON=%q", novo, velho)
+	if novo != old {
+		t.Fatalf("the alias diverged: JSONToken=%q CampoJSON=%q", novo, old)
 	}
 	if novo != "abc123" {
 		t.Fatalf("read %q, want %q", novo, "abc123")

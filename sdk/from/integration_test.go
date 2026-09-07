@@ -68,11 +68,11 @@ func s3Client(t *testing.T) (*awss3.Client, string) {
 	return client, bucket
 }
 
-func envOr(k, padrao string) string {
+func envOr(k, fallback string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
 	}
-	return padrao
+	return fallback
 }
 
 func limpa(c *awss3.Client, bucket string) {
@@ -93,13 +93,13 @@ func TestIntegrationS3RoundTrip(t *testing.T) {
 	ctx := context.Background()
 	store := s3.New(client)
 
-	registros := []core.Envelope{
+	records := []core.Envelope{
 		{Payload: map[string]any{"sku": "W-1", "quantidade": 3}},
 		{Payload: map[string]any{"sku": "W-2", "quantidade": 9}},
 	}
 
 	res, err := to.Files{Path: "s3://" + bucket + "/landing/", Store: store}.
-		Write(ctx, registros, core.WriteOptions{})
+		Write(ctx, records, core.WriteOptions{})
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -113,33 +113,33 @@ func TestIntegrationS3RoundTrip(t *testing.T) {
 		t.Fatalf("Read: %v", err)
 	}
 
-	var lidos []map[string]any
+	var read1 []map[string]any
 	for env, err := range seq {
 		if err != nil {
 			t.Fatalf("iterando: %v", err)
 		}
-		lidos = append(lidos, env.Payload.(map[string]any))
+		read1 = append(read1, env.Payload.(map[string]any))
 	}
 
-	if len(lidos) != 2 {
-		t.Fatalf("%d registros de volta, esperado 2", len(lidos))
+	if len(read1) != 2 {
+		t.Fatalf("%d registros de volta, esperado 2", len(read1))
 	}
-	if lidos[0]["sku"] != "W-1" || lidos[1]["sku"] != "W-2" {
-		t.Errorf("os registros voltaram diferentes: %v", lidos)
+	if read1[0]["sku"] != "W-1" || read1[1]["sku"] != "W-2" {
+		t.Errorf("os registros voltaram diferentes: %v", read1)
 	}
 }
 
 // The order is a contract, and in a bucket it depends on the server's
 // listing.
-func TestIntegrationS3LeEmOrdem(t *testing.T) {
+func TestIntegrationS3ReadsInOrder(t *testing.T) {
 	client, bucket := s3Client(t)
 	ctx := context.Background()
 	store := s3.New(client)
 
 	// Written out of order on purpose.
-	for _, nome := range []string{"c", "a", "b"} {
-		corpo := fmt.Sprintf(`{"n":%q}`+"\n", nome)
-		if err := store.Create(ctx, bucket, "p/"+nome+".ndjson", bytes.NewReader([]byte(corpo))); err != nil {
+	for _, name := range []string{"c", "a", "b"} {
+		corpo := fmt.Sprintf(`{"n":%q}`+"\n", name)
+		if err := store.Create(ctx, bucket, "p/"+name+".ndjson", bytes.NewReader([]byte(corpo))); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -150,15 +150,15 @@ func TestIntegrationS3LeEmOrdem(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var ordem []string
+		var order []string
 		for env, err := range seq {
 			if err != nil {
 				t.Fatal(err)
 			}
-			ordem = append(ordem, env.Payload.(map[string]any)["n"].(string))
+			order = append(order, env.Payload.(map[string]any)["n"].(string))
 		}
-		if strings.Join(ordem, "") != "abc" {
-			t.Fatalf("ordem = %v, esperado a,b,c em toda execução", ordem)
+		if strings.Join(order, "") != "abc" {
+			t.Fatalf("ordem = %v, esperado a,b,c em toda execução", order)
 		}
 	}
 }
@@ -247,13 +247,13 @@ func TestIntegrationGCSRoundTrip(t *testing.T) {
 		}
 	})
 
-	registros := []core.Envelope{
+	records := []core.Envelope{
 		{Payload: map[string]any{"sku": "W-1"}},
 		{Payload: map[string]any{"sku": "W-2"}},
 	}
 
 	if _, err := (to.Files{Path: "gs://" + bucket + "/" + prefixo, Store: store}).
-		Write(ctx, registros, core.WriteOptions{}); err != nil {
+		Write(ctx, records, core.WriteOptions{}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 

@@ -18,7 +18,7 @@ func typicalChain() []Transformer {
 	}
 }
 
-func registro(i int) map[string]any {
+func record(i int) map[string]any {
 	return map[string]any{
 		"id":    fmt.Sprint(i),
 		"nome":  "registro qualquer",
@@ -36,7 +36,7 @@ func BenchmarkTransformChain(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		payload, _, err := applyAll(fns, registro(i))
+		payload, _, err := applyAll(fns, record(i))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -56,7 +56,7 @@ func BenchmarkOneTransformerAlone(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, _, err := applyAll(fns, registro(i)); err != nil {
+		if _, _, err := applyAll(fns, record(i)); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -74,11 +74,11 @@ func BenchmarkIngestionID(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		copia := make(map[string]any, len(r))
+		copy1 := make(map[string]any, len(r))
 		for k, v := range r {
-			copia[k] = v
+			copy1[k] = v
 		}
-		if _, _, err := applyAll(fns, copia); err != nil {
+		if _, _, err := applyAll(fns, copy1); err != nil {
 			b.Fatal(err)
 		}
 	}

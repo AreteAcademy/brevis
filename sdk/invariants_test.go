@@ -63,13 +63,13 @@ func TestI2ColumnsAndSchemaTogetherIsRefused(t *testing.T) {
 // whole quota window spent to find out that a column does not match.
 func TestI3ChecksBeforeTheExtract(t *testing.T) {
 	var extraiu bool
-	fonte := fonteQueRegistra{&extraiu}
+	source := recordingSource{&extraiu}
 
 	p := sdk.Pipeline{
 		Name:   "i3",
-		Source: sdk.Source{From: fonte},
+		Source: sdk.Source{From: source},
 		Target: sdk.Target{
-			To:      destinoQueRecusa{},
+			To:      refusingTarget{},
 			Columns: []string{"coluna_que_nao_existe"},
 		},
 	}
@@ -100,21 +100,21 @@ func TestI4ThePartitionIsDeclared(t *testing.T) {
 	}
 }
 
-type fonteQueRegistra struct{ chamou *bool }
+type recordingSource struct{ called *bool }
 
-func (f fonteQueRegistra) Describe() string { return "fonte de teste" }
-func (f fonteQueRegistra) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
-	*f.chamou = true
+func (f recordingSource) Describe() string { return "fonte de teste" }
+func (f recordingSource) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+	*f.called = true
 	return func(yield func(sdk.Envelope, error) bool) {}, nil
 }
 
-type destinoQueRecusa struct{}
+type refusingTarget struct{}
 
-func (destinoQueRecusa) Describe() string { return "destino de teste" }
-func (destinoQueRecusa) Write(context.Context, []sdk.Envelope, sdk.WriteOptions) (*sdk.LoadResult, error) {
+func (refusingTarget) Describe() string { return "destino de teste" }
+func (refusingTarget) Write(context.Context, []sdk.Envelope, sdk.WriteOptions) (*sdk.LoadResult, error) {
 	return nil, fmt.Errorf("não deveria chegar aqui")
 }
-func (destinoQueRecusa) CheckDestination(_ context.Context, columns []string) error {
+func (refusingTarget) CheckDestination(_ context.Context, columns []string) error {
 	return fmt.Errorf("the declaration lists %s, which the table does not have. "+
 		"Caught before the extract, so no source quota was spent", strings.Join(columns, ", "))
 }

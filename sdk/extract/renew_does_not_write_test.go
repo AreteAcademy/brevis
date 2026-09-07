@@ -17,9 +17,9 @@ import (
 
 // spyStore records what was written, touching neither disk nor cloud.
 type spyStore struct {
-	mu        sync.Mutex
-	guardado  string
-	gravacoes int
+	mu       sync.Mutex
+	guardado string
+	writes   int
 }
 
 func (s *spyStore) Load() (string, error) {
@@ -32,39 +32,39 @@ func (s *spyStore) Save(v string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.guardado = v
-	s.gravacoes++
+	s.writes++
 	return nil
 }
 
 func (s *spyStore) Describe() string { return "store espiao" }
 
-func (s *spyStore) estado() (string, int) {
+func (s *spyStore) state() (string, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.guardado, s.gravacoes
+	return s.guardado, s.writes
 }
 
 // loggedOutSession imitates NextAuth for a session that did not authenticate:
 // HTTP 200, a `null` body, and a Set-Cookie CLEARING the values. There is no
 // error status at all -- the body is the only place the difference shows.
-func loggedOutSession(t *testing.T, cookieDeSaida string) (*httptest.Server, *int) {
+func loggedOutSession(t *testing.T, outCookie string) (*httptest.Server, *int) {
 	t.Helper()
-	var paginas int
+	var pages int
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
-		http.SetCookie(w, &http.Cookie{Name: "session", Value: cookieDeSaida})
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: outCookie})
 		_, _ = fmt.Fprint(w, `null`)
 	})
 	mux.HandleFunc("/api/proxy/dados", func(w http.ResponseWriter, _ *http.Request) {
-		paginas++
+		pages++
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return srv, &paginas
+	return srv, &pages
 }
 
-func rodarComStore(t *testing.T, srv *httptest.Server, store core.CredentialStore, expiresAt func([]byte) (time.Time, error)) error {
+func runWithStore(t *testing.T, srv *httptest.Server, store core.CredentialStore, expiresAt func([]byte) (time.Time, error)) error {
 	t.Helper()
 	seq, err := JSON(context.Background(), core.Source{
 		URL: srv.URL + "/api/proxy/dados",
@@ -101,7 +101,7 @@ func TestARefreshThatDoesNotAuthenticateDoesNotWrite(t *testing.T) {
 	srv, _ := loggedOutSession(t, "")
 	store := &spyStore{}
 
-	err := rodarComStore(t, srv, store, core.JSONField("expires"))
+	err := runWithStore(t, srv, store, core.JSONField("expires"))
 	if err == nil {
 		t.Fatal("a renovacao nao autenticada devia falhar a execucao")
 	}
@@ -109,10 +109,10 @@ func TestARefreshThatDoesNotAuthenticateDoesNotWrite(t *testing.T) {
 		t.Errorf("o erro nao aponta a validade ausente: %v", err)
 	}
 
-	guardado, gravacoes := store.estado()
-	if gravacoes != 0 {
+	guardado, writes := store.state()
+	if writes != 0 {
 		t.Errorf("gravou %d vez(es) numa renovacao que nao autenticou; guardou %q",
-			gravacoes, guardado)
+			writes, guardado)
 	}
 }
 
@@ -132,13 +132,13 @@ func TestAGoodRefreshStillWrites(t *testing.T) {
 	defer srv.Close()
 
 	store := &spyStore{}
-	if err := rodarComStore(t, srv, store, core.JSONField("expires")); err != nil {
+	if err := runWithStore(t, srv, store, core.JSONField("expires")); err != nil {
 		t.Fatalf("execucao boa falhou: %v", err)
 	}
 
-	guardado, gravacoes := store.estado()
-	if gravacoes != 1 {
-		t.Fatalf("gravacoes = %d, esperado 1", gravacoes)
+	guardado, writes := store.state()
+	if writes != 1 {
+		t.Fatalf("gravacoes = %d, esperado 1", writes)
 	}
 	if !strings.Contains(guardado, "rotacionado") {
 		t.Errorf("guardou %q, esperava o valor rotacionado", guardado)
@@ -153,11 +153,11 @@ func TestWithoutExpiresAtItWrites(t *testing.T) {
 	srv, _ := loggedOutSession(t, "seja-la-o-que-for")
 	store := &spyStore{}
 
-	if err := rodarComStore(t, srv, store, nil); err != nil {
+	if err := runWithStore(t, srv, store, nil); err != nil {
 		t.Fatalf("sem ExpiresAt a execucao devia seguir: %v", err)
 	}
-	if _, gravacoes := store.estado(); gravacoes != 1 {
-		t.Errorf("gravacoes = %d, esperado 1", gravacoes)
+	if _, writes := store.state(); writes != 1 {
+		t.Errorf("gravacoes = %d, esperado 1", writes)
 	}
 }
 
@@ -168,7 +168,7 @@ func TestWithoutExpiresAtItWrites(t *testing.T) {
 // PERSISTIDA.
 func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 	var mu sync.Mutex
-	var cookieNaPagina string
+	var cookieOnPage string
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
@@ -177,14 +177,14 @@ func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 	})
 	mux.HandleFunc("/api/proxy/dados", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
-		cookieNaPagina = r.Header.Get("Cookie")
+		cookieOnPage = r.Header.Get("Cookie")
 		mu.Unlock()
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	fonte := core.Source{
+	source := core.Source{
 		URL: srv.URL + "/api/proxy/dados",
 		Auth: &core.Credential{
 			Value: func(context.Context) (string, error) { return "session=velho", nil },
@@ -197,7 +197,7 @@ func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 			},
 		},
 	}
-	seq, err := JSON(context.Background(), fonte, nil)
+	seq, err := JSON(context.Background(), source, nil)
 	if err != nil {
 		t.Fatalf("JSON: %v", err)
 	}
@@ -209,8 +209,8 @@ func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if !strings.Contains(cookieNaPagina, "rotacionado") {
-		t.Errorf("a pagina foi com %q; a rotacao deixou de valer para a execucao", cookieNaPagina)
+	if !strings.Contains(cookieOnPage, "rotacionado") {
+		t.Errorf("a pagina foi com %q; a rotacao deixou de valer para a execucao", cookieOnPage)
 	}
 }
 
@@ -221,9 +221,9 @@ func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 // stays poisonable, and nothing at runtime will reveal that.
 func TestAStoreWithoutExpiresAtWarnsAtAssembly(t *testing.T) {
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	c := &core.Credential{
 		Value:   func(context.Context) (string, error) { return "x", nil },
@@ -247,9 +247,9 @@ func TestAStoreWithoutExpiresAtWarnsAtAssembly(t *testing.T) {
 // ensina a ignorar avisos.
 func TestAStoreWithExpiresAtDoesNotWarn(t *testing.T) {
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	c := &core.Credential{
 		Value: func(context.Context) (string, error) { return "x", nil },

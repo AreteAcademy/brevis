@@ -16,15 +16,15 @@ import (
 // sdkSpeaker is a step that speaks the way the SDK speaks: one marked line
 // per
 // transicao, no meio da saida normal.
-type sdkSpeaker struct{ linhas []string }
+type sdkSpeaker struct{ lines []string }
 
 func (sdkSpeaker) Name() string                         { return "falador" }
 func (sdkSpeaker) Cancel(context.Context, string) error { return nil }
 
 func (f sdkSpeaker) Execute(context.Context, execution.TaskExec) (<-chan execution.Event, error) {
-	ch := make(chan execution.Event, len(f.linhas)+2)
+	ch := make(chan execution.Event, len(f.lines)+2)
 	ch <- execution.Event{Kind: execution.EventStarted}
-	for _, l := range f.linhas {
+	for _, l := range f.lines {
 		ch <- execution.Event{Kind: execution.EventLog, NodeID: "collectOutput", Stream: "stdout", Message: l}
 	}
 	ch <- execution.Event{Kind: execution.EventSucceeded}
@@ -34,10 +34,10 @@ func (f sdkSpeaker) Execute(context.Context, execution.TaskExec) (<-chan executi
 
 // spyPersister keeps what the runner asked to be written.
 type spyPersister struct {
-	etapas json.RawMessage
-	versao string
-	log    string
-	chamou int
+	stages  json.RawMessage
+	version string
+	log     string
+	called  int
 }
 
 func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, string, int) error { return nil }
@@ -49,18 +49,18 @@ func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ 
 }
 
 func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ string, _ int,
-	versao string, etapas json.RawMessage) error {
-	p.chamou++
-	p.versao, p.etapas = versao, etapas
+	version string, stages json.RawMessage) error {
+	p.called++
+	p.version, p.stages = version, stages
 	return nil
 }
 
 // spyReporter keeps what would reach the CLI's screen.
-type spyReporter struct{ linhas []string }
+type spyReporter struct{ lines []string }
 
 func (r *spyReporter) Evento(e execution.Event) {
 	if e.Kind == execution.EventLog {
-		r.linhas = append(r.linhas, e.Message)
+		r.lines = append(r.lines, e.Message)
 	}
 }
 
@@ -73,13 +73,13 @@ func (r *spyReporter) Evento(e execution.Event) {
 // executor
 // ganha o mesmo de graca.
 func TestStagesArriveThroughTheStepsLog(t *testing.T) {
-	espiao := &spyPersister{}
+	spy := &spyPersister{}
 	tela := &spyReporter{}
 	r := app.Runner{
 		RunID:   uuid.New(),
-		Persist: espiao,
+		Persist: spy,
 		Report:  tela,
-		Processo: sdkSpeaker{linhas: []string{
+		Processo: sdkSpeaker{lines: []string{
 			`@brevis:{"tipo":"sdk","versao":"v0.44.1","pipeline":"clima"}`,
 			"buscando a pagina 1",
 			`@brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"agora"}`,
@@ -91,33 +91,33 @@ func TestStagesArriveThroughTheStepsLog(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	if espiao.versao != "v0.44.1" {
-		t.Errorf("the version never reached the database: %q", espiao.versao)
+	if spy.version != "v0.44.1" {
+		t.Errorf("the version never reached the database: %q", spy.version)
 	}
-	var etapas []app.RecordedStage
-	if err := json.Unmarshal(espiao.etapas, &etapas); err != nil {
-		t.Fatalf("etapas ilegiveis: %v — %s", err, espiao.etapas)
+	var stages []app.RecordedStage
+	if err := json.Unmarshal(spy.stages, &stages); err != nil {
+		t.Fatalf("etapas ilegiveis: %v — %s", err, spy.stages)
 	}
-	if len(etapas) != 1 || etapas[0].TaskName != "extract" || etapas[0].State != "done" {
-		t.Fatalf("etapas: %+v", etapas)
+	if len(stages) != 1 || stages[0].TaskName != "extract" || stages[0].State != "done" {
+		t.Fatalf("etapas: %+v", stages)
 	}
 
 	// The marker must NOT become a log line: whoever is watching wants the
 	// stages, not the JSON that
 	// as transportou.
-	if strings.Contains(espiao.log, "@brevis:") {
-		t.Errorf("the marked line ended up in the step's log:\n%s", espiao.log)
+	if strings.Contains(spy.log, "@brevis:") {
+		t.Errorf("the marked line ended up in the step's log:\n%s", spy.log)
 	}
 	// Nem na tela do CLI.
-	for _, l := range tela.linhas {
+	for _, l := range tela.lines {
 		if strings.Contains(l, "@brevis:") {
 			t.Errorf("the marked line went to the Report: %q", l)
 		}
 	}
 	// E a saida de verdade continua inteira.
 	for _, esperada := range []string{"buscando a pagina 1", "pronto"} {
-		if !strings.Contains(espiao.log, esperada) {
-			t.Errorf("a saida do programa se perdeu junto: %q sumiu de\n%s", esperada, espiao.log)
+		if !strings.Contains(spy.log, esperada) {
+			t.Errorf("a saida do programa se perdeu junto: %q sumiu de\n%s", esperada, spy.log)
 		}
 	}
 }
@@ -125,16 +125,16 @@ func TestStagesArriveThroughTheStepsLog(t *testing.T) {
 // A step that is not an SDK one records no stage at all -- and does not pay a
 // round trip to the database per log line.
 func TestAPlainStepRecordsNoStages(t *testing.T) {
-	espiao := &spyPersister{}
+	spy := &spyPersister{}
 	r := app.Runner{
 		RunID:    uuid.New(),
-		Persist:  espiao,
-		Processo: sdkSpeaker{linhas: []string{"compilando", "pronto"}},
+		Persist:  spy,
+		Processo: sdkSpeaker{lines: []string{"compilando", "pronto"}},
 	}
 	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
 		t.Fatal(err)
 	}
-	if espiao.chamou != 0 {
-		t.Errorf("it wrote stages %d times for a step that is not an SDK one", espiao.chamou)
+	if spy.called != 0 {
+		t.Errorf("it wrote stages %d times for a step that is not an SDK one", spy.called)
 	}
 }

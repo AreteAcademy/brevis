@@ -21,49 +21,49 @@ type apiFalsa struct {
 	mu sync.Mutex
 
 	fases     []k8s.Pod // devolvidas em ordem, a ultima repete
-	lidas     int
+	read1     int
 	log       string
-	erroLog   error
-	erroCriar error
+	logErr    error
+	createErr error
 
-	criados  []k8s.Pod
-	apagados []string
+	created []k8s.Pod
+	deleted []string
 }
 
 func (a *apiFalsa) CreatePod(_ context.Context, p k8s.Pod) (k8s.Pod, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.erroCriar != nil {
-		return k8s.Pod{}, a.erroCriar
+	if a.createErr != nil {
+		return k8s.Pod{}, a.createErr
 	}
-	a.criados = append(a.criados, p)
+	a.created = append(a.created, p)
 	return p, nil
 }
 
 func (a *apiFalsa) LerPod(_ context.Context, _ string) (k8s.Pod, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	i := a.lidas
+	i := a.read1
 	if i >= len(a.fases) {
 		i = len(a.fases) - 1
 	}
-	a.lidas++
+	a.read1++
 	return a.fases[i], nil
 }
 
 func (a *apiFalsa) Logs(_ context.Context, _ string, _ bool) (io.ReadCloser, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if a.erroLog != nil {
-		return nil, a.erroLog
+	if a.logErr != nil {
+		return nil, a.logErr
 	}
 	return io.NopCloser(strings.NewReader(a.log)), nil
 }
 
-func (a *apiFalsa) DeletePod(_ context.Context, nome string) error {
+func (a *apiFalsa) DeletePod(_ context.Context, name string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.apagados = append(a.apagados, nome)
+	a.deleted = append(a.deleted, name)
 	return nil
 }
 
@@ -114,26 +114,26 @@ func TestASuccessfulPodReportsTheLogAndIsDeleted(t *testing.T) {
 	events := runStep(t, api, task())
 
 	var succeeded bool
-	var linhas []string
+	var lines []string
 	for _, e := range events {
 		switch e.Kind {
 		case execution.EventSucceeded:
 			succeeded = true
 		case execution.EventLog:
-			linhas = append(linhas, e.Message)
+			lines = append(lines, e.Message)
 		}
 	}
 	if !succeeded {
 		t.Fatalf("no success event: %+v", events)
 	}
-	if len(linhas) == 0 || !strings.Contains(strings.Join(linhas, "\n"), "Completed successfully") {
-		t.Errorf("the pod's log did not arrive: %v", linhas)
+	if len(lines) == 0 || !strings.Contains(strings.Join(lines, "\n"), "Completed successfully") {
+		t.Errorf("the pod's log did not arrive: %v", lines)
 	}
-	if len(api.apagados) != 1 {
-		t.Errorf("a successful pod has to be deleted (deleted=%v)", api.apagados)
+	if len(api.deleted) != 1 {
+		t.Errorf("a successful pod has to be deleted (deleted=%v)", api.deleted)
 	}
-	if len(api.criados) != 1 || api.criados[0].Spec.Containers[0].Image != task().Image {
-		t.Errorf("pod criado errado: %+v", api.criados)
+	if len(api.created) != 1 || api.created[0].Spec.Containers[0].Image != task().Image {
+		t.Errorf("pod criado errado: %+v", api.created)
 	}
 }
 
@@ -144,20 +144,20 @@ func TestAFailingPodCarriesTheExitCode(t *testing.T) {
 	}
 	events := runStep(t, api, task())
 
-	var falha *execution.Event
+	var failure1 *execution.Event
 	for i := range events {
 		if events[i].Kind == execution.EventFailed {
-			falha = &events[i]
+			failure1 = &events[i]
 		}
 	}
-	if falha == nil {
+	if failure1 == nil {
 		t.Fatalf("no failure event: %+v", events)
 	}
-	if falha.ExitCode != 2 {
-		t.Errorf("exit code = %d, want 2", falha.ExitCode)
+	if failure1.ExitCode != 2 {
+		t.Errorf("exit code = %d, want 2", failure1.ExitCode)
 	}
-	if !strings.Contains(falha.Message, "code 2") {
-		t.Errorf("message = %q", falha.Message)
+	if !strings.Contains(failure1.Message, "code 2") {
+		t.Errorf("message = %q", failure1.Message)
 	}
 }
 
@@ -193,13 +193,13 @@ func TestTheReasonForWaitingIsReported(t *testing.T) {
 
 	api := &apiFalsa{fases: []k8s.Pod{preso, preso, withOutput("Failed", 1)}}
 
-	var achou bool
+	var found bool
 	for _, e := range runStep(t, api, task()) {
 		if e.Kind == execution.EventLog && strings.Contains(e.Message, "ImagePullBackOff") {
-			achou = true
+			found = true
 		}
 	}
-	if !achou {
+	if !found {
 		t.Error("the reason for waiting was not reported -- the step would look hung with no explanation")
 	}
 }
@@ -208,7 +208,7 @@ func TestTheReasonForWaitingIsReported(t *testing.T) {
 // morreu antes de registrar. Adotar evita subir um segundo rodando o mesmo dbt.
 func TestAnAlreadyExistingPodIsAdopted(t *testing.T) {
 	api := &apiFalsa{
-		erroCriar: errors.New(`pods "x" already exists`),
+		createErr: errors.New(`pods "x" already exists`),
 		fases:     []k8s.Pod{withOutput("Succeeded", 0)},
 	}
 	events := runStep(t, api, task())
@@ -223,7 +223,7 @@ func TestAnAlreadyExistingPodIsAdopted(t *testing.T) {
 // A creation failure (RBAC, quota, an invalid image) has to surface as the step's
 // error, rather than become a ghost pod nobody follows.
 func TestACreationErrorReachesTheCaller(t *testing.T) {
-	api := &apiFalsa{erroCriar: errors.New(`pods is forbidden: cannot create resource "pods"`)}
+	api := &apiFalsa{createErr: errors.New(`pods is forbidden: cannot create resource "pods"`)}
 	e := k8s.NewExecutor(api, k8s.Options{})
 	if _, err := e.Execute(context.Background(), task()); err == nil {
 		t.Fatal("expected an error")
@@ -243,8 +243,8 @@ func TestAFailedPodMayBeKeptForInspection(t *testing.T) {
 	}
 	for range ch {
 	}
-	if len(api.apagados) != 0 {
-		t.Errorf("a failed pod was deleted despite the option: %v", api.apagados)
+	if len(api.deleted) != 0 {
+		t.Errorf("a failed pod was deleted despite the option: %v", api.deleted)
 	}
 }
 
@@ -255,7 +255,7 @@ func TestAFailedPodMayBeKeptForInspection(t *testing.T) {
 // inteira em dev.
 func TestAPodThatDoesNotStartFailsWithTheSchedulersReason(t *testing.T) {
 	preso := phase("Pending")
-	preso.Status.Conditions = []k8s.Condicao{{
+	preso.Status.Conditions = []k8s.Condition{{
 		Type: "PodScheduled", Status: "False", Reason: "Unschedulable",
 		Message: "0/8 nodes are available: 6 Insufficient cpu.",
 	}}
@@ -268,18 +268,18 @@ func TestAPodThatDoesNotStartFailsWithTheSchedulersReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var falha *execution.Event
+	var failure1 *execution.Event
 	for ev := range ch {
 		if ev.Kind == execution.EventFailed {
 			e := ev
-			falha = &e
+			failure1 = &e
 		}
 	}
-	if falha == nil {
+	if failure1 == nil {
 		t.Fatal("the step never failed -- it would stay stuck forever")
 	}
-	if !strings.Contains(falha.Message, "Insufficient cpu") {
-		t.Errorf("the message does not say why it was not scheduled: %q", falha.Message)
+	if !strings.Contains(failure1.Message, "Insufficient cpu") {
+		t.Errorf("the message does not say why it was not scheduled: %q", failure1.Message)
 	}
 }
 
@@ -290,7 +290,7 @@ func TestTheNameChangesWithTheRunsAttempt(t *testing.T) {
 	a := task()
 	b := task()
 	b.RunAttempt = 1
-	if k8s.NomeDoPod(a) == k8s.NomeDoPod(b) {
+	if k8s.PodName(a) == k8s.PodName(b) {
 		t.Error("attempts diferentes do run geraram o mesmo pod")
 	}
 }

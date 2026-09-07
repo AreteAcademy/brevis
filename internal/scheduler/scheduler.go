@@ -82,7 +82,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 
 // Ciclo evaluates every schedule once. Exported so it can be tested with a fixed
 // instant, without waiting on a clock.
-func (s *Scheduler) Cycle(ctx context.Context, agora time.Time) (int, error) {
+func (s *Scheduler) Cycle(ctx context.Context, now time.Time) (int, error) {
 	agendas, err := s.agendas.Ativas(ctx)
 	if err != nil {
 		return 0, err
@@ -90,7 +90,7 @@ func (s *Scheduler) Cycle(ctx context.Context, agora time.Time) (int, error) {
 
 	var created int
 	for _, a := range agendas {
-		n, err := s.materialize(ctx, a, agora)
+		n, err := s.materialize(ctx, a, now)
 		if err != nil {
 			// One schedule with an invalid cron must not stop the others from running.
 			s.log.Error("materializing the schedule", "workflow", a.WorkflowSlug, "error", err)
@@ -101,7 +101,7 @@ func (s *Scheduler) Cycle(ctx context.Context, agora time.Time) (int, error) {
 	return created, nil
 }
 
-func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, agora time.Time) (int, error) {
+func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Time) (int, error) {
 	// A schedule that has never been materialised needs a marker before
 	// anything else.
 	//
@@ -117,15 +117,15 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, agora time.
 	// it went live, and fires at the first time after that. Without running
 	// anything this cycle -- the slot before registration is not ours.
 	if a.LastSlot == nil {
-		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, agora); err != nil {
+		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, now); err != nil {
 			return 0, err
 		}
 		s.log.Info("schedule started", "workflow", a.WorkflowSlug,
-			"cron", a.Cron, "primeiro_slot_apos", agora.Format(time.RFC3339))
+			"cron", a.Cron, "primeiro_slot_apos", now.Format(time.RFC3339))
 		return 0, nil
 	}
 
-	slots, truncado, err := a.Slots(agora, s.maxPerCycle)
+	slots, truncado, err := a.Slots(now, s.maxPerCycle)
 	if err != nil {
 		return 0, err
 	}
@@ -212,7 +212,7 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 // screen. A manual run has no `logical_date` -- it belongs to no slot (§12) --
 // and the idempotency key uses the SECOND of the click, which makes two clicks
 // in a row a single run rather than two.
-func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
+func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 	params map[string]string) (uuid.UUID, error) {
 	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
@@ -231,7 +231,7 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, agora time.Time,
 		return uuid.Nil, err
 	}
 
-	key := fmt.Sprintf("%s:%s:%s", slug, sch.TriggerManual, agora.UTC().Truncate(time.Second).Format(time.RFC3339))
+	key := fmt.Sprintf("%s:%s:%s", slug, sch.TriggerManual, now.UTC().Truncate(time.Second).Format(time.RFC3339))
 	r, err := s.runs.Create(ctx, dom.Run{
 		WorkflowSlug:   slug,
 		IdempotencyKey: key,

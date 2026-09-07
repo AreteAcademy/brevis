@@ -12,11 +12,11 @@ import (
 
 func writeFile(t *testing.T, conteudo string) string {
 	t.Helper()
-	caminho := filepath.Join(t.TempDir(), "brand.yaml")
-	if err := os.WriteFile(caminho, []byte(conteudo), 0o600); err != nil {
+	path := filepath.Join(t.TempDir(), "brand.yaml")
+	if err := os.WriteFile(path, []byte(conteudo), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return caminho
+	return path
 }
 
 // A missing file is the NORMAL case -- the default installation has none. Failing

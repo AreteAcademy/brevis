@@ -168,7 +168,7 @@ templ RunsChart(buckets []postgres.Bucket) {
 			>
 				// A horizontal grid: four lines are enough to give scale without
 				// virar papel milimetrado.
-				for _, l := range linhasDeGrade(buckets) {
+				for _, l := range gridLines(buckets) {
 					<line x1={ fmt.Sprint(margemEsq) } y1={ fmt.Sprint(l.Y) } x2={ fmt.Sprint(chartWidth) } y2={ fmt.Sprint(l.Y) } stroke="var(--color-ink)" stroke-opacity="0.08"></line>
 					<text x="0" y={ fmt.Sprint(l.Y + 4) } class="fill-muted text-[11px]">{ l.Label }</text>
 				}
@@ -178,8 +178,8 @@ templ RunsChart(buckets []postgres.Bucket) {
 					// tornaria o grafico decorativo.
 					<a href={ templ.SafeURL(b.Link) } class="grafico-alvo" data-dica={ b.Dica }>
 						<rect class="grafico-faixa" x={ fmt.Sprint(b.BandX) } y="0" width={ fmt.Sprint(b.BandWidth) } height={ fmt.Sprint(chartHeight - bottomMargin) } rx="3"></rect>
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YSucesso) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HSucceeded) } rx="2" fill="var(--color-state-success)"></rect>
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YFalha) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HFailed) } rx="2" fill="var(--color-state-failed)"></rect>
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YSucceeded) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HSucceeded) } rx="2" fill="var(--color-state-success)"></rect>
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YFailed) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HFailed) } rx="2" fill="var(--color-state-failed)"></rect>
 						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YOutros) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HOutros) } rx="2" fill="var(--color-state-running)"></rect>
 						<title>{ b.Dica }</title>
 					</a>
@@ -250,14 +250,14 @@ templ Rosca(i postgres.Indicators) {
 type Bar struct {
 	X, Width         int
 	BandX, BandWidth int
-	YSucesso, HSucceeded int
-	YFalha, HFailed     int
+	YSucceeded, HSucceeded int
+	YFailed, HFailed     int
 	YOutros, HOutros   int
 	Dica               string
 	Link               string
 }
 
-type Grade struct {
+type GridLine struct {
 	Y      int
 	Label string
 }
@@ -283,22 +283,22 @@ func ceiling(buckets []postgres.Bucket) int {
 	if max == 0 {
 		return 4
 	}
-	for _, passo := range []int{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000} {
-		if passo*4 >= max {
-			return passo * 4
+	for _, step := range []int{1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000} {
+		if step*4 >= max {
+			return step * 4
 		}
 	}
 	// Above twenty thousand, it rounds up to the next thousand divisible by 4.
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(buckets []postgres.Bucket) []Grade {
+func gridLines(buckets []postgres.Bucket) []GridLine {
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
-	var out []Grade
+	var out []GridLine
 	for i := 0; i <= 4; i++ {
 		value := max * i / 4
-		out = append(out, Grade{
+		out = append(out, GridLine{
 			Y:      util - util*i/4,
 			Label: fmt.Sprint(value),
 		})
@@ -310,8 +310,8 @@ func bars(buckets []postgres.Bucket) []Bar {
 	max := ceiling(buckets)
 	util := chartHeight - bottomMargin
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
-	width := int(passo * 0.62)
+	step := float64(area) / float64(len(buckets))
+	width := int(step * 0.62)
 	if width < 2 {
 		width = 2
 	}
@@ -331,21 +331,21 @@ func bars(buckets []postgres.Bucket) []Bar {
 
 	var out []Bar
 	for i, b := range buckets {
-		bandStart := margemEsq + int(float64(i)*passo)
-		x := bandStart + (int(passo)-width)/2
+		bandStart := margemEsq + int(float64(i)*step)
+		x := bandStart + (int(step)-width)/2
 		hs, hf := alt(b.Succeeded), alt(b.Failed)
 		ho := alt(b.Running + b.Queued)
 
 		base := util
 		bar := Bar{
 			X: x, Width: width,
-			BandX: bandStart, BandWidth: int(passo),
+			BandX: bandStart, BandWidth: int(step),
 			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
 		}
 		base -= hs
-		bar.YSucesso, bar.HSucceeded = base, hs
+		bar.YSucceeded, bar.HSucceeded = base, hs
 		base -= hf
-		bar.YFalha, bar.HFailed = base, hf
+		bar.YFailed, bar.HFailed = base, hf
 		base -= ho
 		bar.YOutros, bar.HOutros = base, ho
 		out = append(out, bar)
@@ -412,7 +412,7 @@ func durationLine(buckets []postgres.Bucket) string {
 
 	util := chartHeight - bottomMargin
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
+	step := float64(area) / float64(len(buckets))
 
 	var b strings.Builder
 	command := "M"
@@ -423,7 +423,7 @@ func durationLine(buckets []postgres.Bucket) string {
 			command = "M"
 			continue
 		}
-		x := margemEsq + int(float64(i)*passo+passo/2)
+		x := margemEsq + int(float64(i)*step+step/2)
 		y := util - int(float64(util)*0.86*float64(bl.MeanDuration)/float64(maior))
 		fmt.Fprintf(&b, "%s%d %d ", command, x, y)
 		command = "L"
@@ -433,7 +433,7 @@ func durationLine(buckets []postgres.Bucket) string {
 
 func hourTicks(buckets []postgres.Bucket) []Brand {
 	area := chartWidth - margemEsq
-	passo := float64(area) / float64(len(buckets))
+	step := float64(area) / float64(len(buckets))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
 	salto := len(buckets)/8 + 1
@@ -443,7 +443,7 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 			continue
 		}
 		out = append(out, Brand{
-			X:      margemEsq + int(float64(i)*passo+passo/2),
+			X:      margemEsq + int(float64(i)*step+step/2),
 			Label: b.Start.Local().Format("15h"),
 		})
 	}

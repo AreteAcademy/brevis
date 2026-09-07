@@ -44,9 +44,9 @@ type Leitura interface {
 	QueueDepth(ctx context.Context) (int, int, error)
 }
 
-// Definicoes reads a workflow's published definition. Kept apart from `Leitura`
+// Definitions reads a workflow's published definition. Kept apart from `Leitura`
 // because it returns the domain, not a screen projection.
-type Definicoes interface {
+type Definitions interface {
 	Definition(ctx context.Context, slug string) (wf.Workflow, error)
 }
 
@@ -62,20 +62,20 @@ type RunsChart interface {
 // schedule and ask for a run now.
 type Actions interface {
 	Alternar(ctx context.Context, slug string) (bool, error)
-	Disparar(ctx context.Context, slug string, agora time.Time, params map[string]string) (uuid.UUID, error)
+	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string) (uuid.UUID, error)
 }
 
 // UI registers the server-rendered pages and the JSON the React island consumes.
 type UI struct {
 	leitura Leitura
-	defs    Definicoes
+	defs    Definitions
 	execs   RunsChart
 	actions Actions
 	brand   branding.Brand
 	log     *slog.Logger
 }
 
-func NewUI(l Leitura, d Definicoes, e RunsChart, a Actions, m branding.Brand, log *slog.Logger) *UI {
+func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, m branding.Brand, log *slog.Logger) *UI {
 	return &UI{leitura: l, defs: d, execs: e, actions: a, brand: m, log: log}
 }
 
@@ -126,7 +126,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	pendentes, _, err := u.leitura.QueueDepth(ctx)
+	pending, _, err := u.leitura.QueueDepth(ctx)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -142,20 +142,20 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		Ind:      ind,
 		Baldes:   baldes,
 		EmCurso:  emCurso,
-		Proximas: proximasExecucoes(agendas, time.Now(), 8, u.log),
+		Proximas: nextRuns(agendas, time.Now(), 8, u.log),
 		Recentes: recentes,
-		Pending:  pendentes,
+		Pending:  pending,
 	}))
 }
 
-// proximasExecucoes computes each active schedule's next dispatch and returns
+// nextRuns computes each active schedule's next dispatch and returns
 // the soonest first.
 //
 // The computation lives here and not in the database: cron is a domain rule
 // (`schedule`), and reimplementing it in SQL would create a second reading of
 // the same field -- one that would one day diverge from the one the scheduler
 // actually uses.
-func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limite int,
+func nextRuns(agendas []postgres.ScheduleSummary, now time.Time, limite int,
 	log *slog.Logger) []pages.NextRun {
 
 	var out []pages.NextRun
@@ -164,7 +164,7 @@ func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limi
 			continue
 		}
 		s := sch.Schedule{WorkflowSlug: a.WorkflowSlug, Cron: a.Cron, Timezone: a.Timezone, Active: true}
-		prox, err := s.Next(agora)
+		prox, err := s.Next(now)
 		if err != nil {
 			// An invalid cron in the database must not take the whole dashboard
 			// down; the schedule simply does not show up in the list.
@@ -186,12 +186,12 @@ func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limi
 func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.RunFilter{
-		State:     validState(q.Get("state")),
-		Workflow:  q.Get("workflow"),
-		De:        q.Get("from"),
-		Ate:       q.Get("to"),
-		Page:      page(q.Get("page")),
-		PorPagina: pages.DefaultPerPage,
+		State:    validState(q.Get("state")),
+		Workflow: q.Get("workflow"),
+		De:       q.Get("from"),
+		Ate:      q.Get("to"),
+		Page:     page(q.Get("page")),
+		PerPage:  pages.DefaultPerPage,
 	}
 
 	de, ate := instante(f.De), instante(f.Ate)
@@ -205,7 +205,7 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 
 	query := postgres.RunFilter{
 		State: f.State, Workflow: f.Workflow, De: de, Ate: ate,
-		Limite: f.PorPagina, Offset: (f.Page - 1) * f.PorPagina,
+		Limite: f.PerPage, Offset: (f.Page - 1) * f.PerPage,
 	}
 	total, err := u.leitura.CountRuns(r.Context(), query)
 	if err != nil {
@@ -275,33 +275,33 @@ func periodLabel(de, ate *time.Time) string {
 }
 
 func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
-	todos, err := u.leitura.Workflows(r.Context())
+	all, err := u.leitura.Workflows(r.Context())
 	if err != nil {
 		u.failure(w, r, err)
 		return
 	}
 
-	agora := time.Now()
-	for i := range todos {
-		todos[i].NextRun = proximaDoWorkflow(todos[i], agora)
+	now := time.Now()
+	for i := range all {
+		all[i].NextRun = proximaDoWorkflow(all[i], now)
 	}
 
 	q := r.URL.Query()
 	f := pages.Filter{
-		Search:    strings.TrimSpace(q.Get("q")),
-		State:     validState(q.Get("state")),
-		Active:    q.Get("active"),
-		Tag:       q.Get("tag"),
-		Sort:      validOrder(q.Get("sort")),
-		Desc:      q.Get("dir") == "desc",
-		Page:      page(q.Get("page")),
-		PorPagina: pages.DefaultPerPage,
+		Search:  strings.TrimSpace(q.Get("q")),
+		State:   validState(q.Get("state")),
+		Active:  q.Get("active"),
+		Tag:     q.Get("tag"),
+		Sort:    validOrder(q.Get("sort")),
+		Desc:    q.Get("dir") == "desc",
+		Page:    page(q.Get("page")),
+		PerPage: pages.DefaultPerPage,
 	}
 
-	filtered := filtrar(todos, f)
-	ordenar(filtered, f)
-	u.render(w, r, pages.Workflows(recortar(filtered, f), tagsDe(todos), f,
-		len(todos), len(filtered)))
+	filtered := filtrar(all, f)
+	sortBy(filtered, f)
+	u.render(w, r, pages.Workflows(recortar(filtered, f), tagsDe(all), f,
+		len(all), len(filtered)))
 }
 
 // validOrder limits sorting to the columns that exist -- without it, `?ordem=;`
@@ -314,13 +314,13 @@ func validOrder(s string) string {
 	return ""
 }
 
-// ordenar applies the chosen column.
+// sortBy applies the chosen column.
 //
 // Two rules the naive inversion (comparing with the arguments swapped) broke: a
 // MISSING value stays last in both directions -- sorting by "last run" must not
 // start with the ones that never ran -- and the slug tie-break is always
 // ascending, or two equivalent rows swap places on every load.
-func ordenar(ws []postgres.WorkflowSummary, f pages.Filter) {
+func sortBy(ws []postgres.WorkflowSummary, f pages.Filter) {
 	if f.Sort == "" {
 		return
 	}
@@ -382,23 +382,23 @@ func comparaTempo(a, b *time.Time) int {
 // rather than overflowing the slice -- which happens when filtering while on a
 // high page.
 func recortar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowSummary {
-	de := (f.Page - 1) * f.PorPagina
+	de := (f.Page - 1) * f.PerPage
 	if de >= len(ws) {
 		return nil
 	}
-	ate := de + f.PorPagina
+	ate := de + f.PerPage
 	if ate > len(ws) {
 		ate = len(ws)
 	}
 	return ws[de:ate]
 }
 
-func proximaDoWorkflow(w postgres.WorkflowSummary, agora time.Time) *time.Time {
+func proximaDoWorkflow(w postgres.WorkflowSummary, now time.Time) *time.Time {
 	if !w.Active || w.Cron == "" {
 		return nil
 	}
 	s := sch.Schedule{WorkflowSlug: w.Slug, Cron: w.Cron, Timezone: w.Timezone, Active: true}
-	prox, err := s.Next(agora)
+	prox, err := s.Next(now)
 	if err != nil {
 		return nil
 	}
@@ -538,8 +538,8 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 	}
 	params := map[string]string{}
 	for key, values := range r.PostForm {
-		if nome, ok := strings.CutPrefix(key, "param."); ok && len(values) > 0 {
-			params[nome] = values[0]
+		if name, ok := strings.CutPrefix(key, "param."); ok && len(values) > 0 {
+			params[name] = values[0]
 		}
 	}
 
@@ -593,11 +593,11 @@ func parseMesmoHost(r *http.Request) string {
 	if err != nil || u.Host != r.Host {
 		return ""
 	}
-	caminho := u.EscapedPath()
+	path := u.EscapedPath()
 	if u.RawQuery != "" {
-		caminho += "?" + u.RawQuery
+		path += "?" + u.RawQuery
 	}
-	return caminho
+	return path
 }
 
 func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {

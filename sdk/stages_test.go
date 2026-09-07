@@ -22,9 +22,9 @@ func csvRows() []any {
 // around another feature is not finished.
 func TestIdentityIsComputedAfterTheAggregation(t *testing.T) {
 	var box []Envelope
-	log, err := rodar(t, &Pipeline{
+	log, err := runIt(t, &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: countedSource{registros: csvRows(), leituras: new(int)}},
+		Source: Source{From: countedSource{records: csvRows(), leituras: new(int)}},
 		Stages: []Stage{
 			Aggregate(Reduce{
 				By:  GroupBy("area", "year"),
@@ -70,9 +70,9 @@ func TestIdentityIsComputedAfterTheAggregation(t *testing.T) {
 // to nothing. Which is worse.
 func TestAggregateRefusesRecordsThatAlreadyHaveIdentity(t *testing.T) {
 	var box []Envelope
-	_, err := rodar(t, &Pipeline{
+	_, err := runIt(t, &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: countedSource{registros: csvRows(), leituras: new(int)}},
+		Source: Source{From: countedSource{records: csvRows(), leituras: new(int)}},
 		Stages: []Stage{
 			Map(
 				Compute("provider", func(map[string]any) (any, error) { return "p", nil }),
@@ -133,7 +133,7 @@ func TestResultCountsEachStage(t *testing.T) {
 	var box []Envelope
 	p := &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: countedSource{registros: csvRows(), leituras: new(int)}},
+		Source: Source{From: countedSource{records: csvRows(), leituras: new(int)}},
 		Stages: []Stage{
 			Map(SkipWithout("id")),
 			Aggregate(Reduce{By: GroupBy("area"), Agg: map[string]Aggregator{"n": Count()}}),

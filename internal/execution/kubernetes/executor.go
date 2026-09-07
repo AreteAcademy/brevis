@@ -18,9 +18,9 @@ import (
 // server.
 type API interface {
 	CreatePod(ctx context.Context, p Pod) (Pod, error)
-	LerPod(ctx context.Context, nome string) (Pod, error)
-	Logs(ctx context.Context, nome string, follow1 bool) (io.ReadCloser, error)
-	DeletePod(ctx context.Context, nome string) error
+	LerPod(ctx context.Context, name string) (Pod, error)
+	Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error)
+	DeletePod(ctx context.Context, name string) error
 }
 
 // Executor runs each step as a pod.
@@ -44,7 +44,7 @@ type Executor struct {
 
 func NewExecutor(api API, o Options) *Executor {
 	return &Executor{
-		api: api, opts: o.comPadroes(),
+		api: api, opts: o.withDefaults(),
 		Interval: time.Second,
 		inFlight: map[string]string{},
 	}
@@ -72,10 +72,10 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 		}
 		created = spec
 	}
-	nome := created.Metadata.Name
+	name := created.Metadata.Name
 
 	e.mu.Lock()
-	e.inFlight[t.ExecutionID] = nome
+	e.inFlight[t.ExecutionID] = name
 	e.mu.Unlock()
 
 	events := make(chan execution.Event, 64)
@@ -86,40 +86,40 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 			delete(e.inFlight, t.ExecutionID)
 			e.mu.Unlock()
 		}()
-		e.follow(ctx, nome, t, events)
+		e.follow(ctx, name, t, events)
 	}()
 	return events, nil
 }
 
-func (e *Executor) follow(ctx context.Context, nome string, t execution.TaskExec, events chan<- execution.Event) {
+func (e *Executor) follow(ctx context.Context, name string, t execution.TaskExec, events chan<- execution.Event) {
 	events <- execution.Event{
 		Kind: execution.EventStarted, NodeID: t.NodeID,
-		Message: fmt.Sprintf("pod %s (%s)", nome, t.Image),
+		Message: fmt.Sprintf("pod %s (%s)", name, t.Image),
 	}
 
-	pod, err := e.esperarSair(ctx, nome, t, events)
+	pod, err := e.esperarSair(ctx, name, t, events)
 	if err != nil {
 		events <- execution.Event{
 			Kind: execution.EventFailed, NodeID: t.NodeID,
 			Message: err.Error(), Err: err,
 		}
-		e.cleanUp(nome, false)
+		e.cleanUp(name, false)
 		return
 	}
 
 	// The log is drained to the end BEFORE reporting the outcome: closing the
 	// channel with lines still buffered would lose precisely the last ones,
 	// which are the ones that explain the failure.
-	e.drainLogs(ctx, nome, t, events)
+	e.drainLogs(ctx, name, t, events)
 
 	codigo, finished := pod.Output()
 	if pod.Fase() == "Succeeded" {
 		events <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID, ExitCode: codigo}
-		e.cleanUp(nome, true)
+		e.cleanUp(name, true)
 		return
 	}
 
-	msg := fmt.Sprintf("pod %s terminou em %s", nome, pod.Fase())
+	msg := fmt.Sprintf("pod %s terminou em %s", name, pod.Fase())
 	if finished {
 		msg = fmt.Sprintf("exited with code %d", codigo)
 	}
@@ -132,11 +132,11 @@ func (e *Executor) follow(ctx context.Context, nome string, t execution.TaskExec
 		Kind: execution.EventFailed, NodeID: t.NodeID,
 		ExitCode: codigo, Message: msg, Err: errors.New(msg),
 	}
-	e.cleanUp(nome, false)
+	e.cleanUp(name, false)
 }
 
 // esperarSair polls until the pod finishes, reporting why it is waiting.
-func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.TaskExec,
+func (e *Executor) esperarSair(ctx context.Context, name string, t execution.TaskExec,
 	events chan<- execution.Event) (Pod, error) {
 
 	tick := time.NewTicker(e.Interval)
@@ -164,9 +164,9 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 	started := time.Now()
 
 	for {
-		pod, err := e.api.LerPod(ctx, nome)
+		pod, err := e.api.LerPod(ctx, name)
 		if err != nil {
-			return Pod{}, fmt.Errorf("lendo pod %s: %w", nome, err)
+			return Pod{}, fmt.Errorf("lendo pod %s: %w", name, err)
 		}
 		if pod.Finished() {
 			return pod, nil
@@ -190,7 +190,7 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			seguidores.Add(1)
 			go func() {
 				defer seguidores.Done()
-				e.followLogs(ctxLogs, nome, t, events)
+				e.followLogs(ctxLogs, name, t, events)
 			}()
 		}
 
@@ -203,11 +203,11 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 			if reason == "" {
 				reason = "fase " + pod.Fase()
 			}
-			if scheduling := e.whyNotScheduled(ctx, nome); scheduling != "" {
+			if scheduling := e.whyNotScheduled(ctx, name); scheduling != "" {
 				reason = scheduling
 			}
 			return Pod{}, fmt.Errorf("pod %s did not start within %s: %s",
-				nome, e.opts.EsperaParaIniciar, reason)
+				name, e.opts.EsperaParaIniciar, reason)
 		}
 
 		select {
@@ -221,8 +221,8 @@ func (e *Executor) esperarSair(ctx context.Context, nome string, t execution.Tas
 // whyNotScheduled reads the PodScheduled condition, which is where the
 // scheduler explains "Insufficient cpu" or "didn't match node affinity".
 // Without it the message would say only "Pending", which helps nobody.
-func (e *Executor) whyNotScheduled(ctx context.Context, nome string) string {
-	pod, err := e.api.LerPod(ctx, nome)
+func (e *Executor) whyNotScheduled(ctx context.Context, name string) string {
+	pod, err := e.api.LerPod(ctx, name)
 	if err != nil || pod.Status == nil {
 		return ""
 	}
@@ -235,8 +235,8 @@ func (e *Executor) whyNotScheduled(ctx context.Context, nome string) string {
 }
 
 // followLogs follows the output while the container lives.
-func (e *Executor) followLogs(ctx context.Context, nome string, t execution.TaskExec, events chan<- execution.Event) {
-	corpo, err := e.api.Logs(ctx, nome, true)
+func (e *Executor) followLogs(ctx context.Context, name string, t execution.TaskExec, events chan<- execution.Event) {
+	corpo, err := e.api.Logs(ctx, name, true)
 	if err != nil {
 		return // the log may not be ready; drainLogs still reads it at the end
 	}
@@ -250,8 +250,8 @@ func (e *Executor) followLogs(ctx context.Context, nome string, t execution.Task
 // returns the same content. The repeated lines from the stretch already streamed
 // are the price of not losing the end -- and losing the end is what stops anyone
 // understanding the failure.
-func (e *Executor) drainLogs(ctx context.Context, nome string, t execution.TaskExec, events chan<- execution.Event) {
-	corpo, err := e.api.Logs(ctx, nome, false)
+func (e *Executor) drainLogs(ctx context.Context, name string, t execution.TaskExec, events chan<- execution.Event) {
+	corpo, err := e.api.Logs(ctx, name, false)
 	if err != nil {
 		events <- execution.Event{
 			Kind: execution.EventLog, NodeID: t.NodeID, Stream: "stderr",
@@ -280,7 +280,7 @@ func copiar(r io.Reader, nodeID string, events chan<- execution.Event) {
 }
 
 // limpar deletes the pod, honouring the option to keep the failed ones.
-func (e *Executor) cleanUp(nome string, succeeded bool) {
+func (e *Executor) cleanUp(name string, succeeded bool) {
 	if !succeeded && e.opts.KeepFailedPod {
 		return
 	}
@@ -290,16 +290,16 @@ func (e *Executor) cleanUp(nome string, succeeded bool) {
 	// forever.
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	_ = e.api.DeletePod(ctx, nome)
+	_ = e.api.DeletePod(ctx, name)
 }
 
 // Cancel deletes the pod of the run in flight.
 func (e *Executor) Cancel(ctx context.Context, execID string) error {
 	e.mu.Lock()
-	nome, ok := e.inFlight[execID]
+	name, ok := e.inFlight[execID]
 	e.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("run %q is not running", execID)
 	}
-	return e.api.DeletePod(ctx, nome)
+	return e.api.DeletePod(ctx, name)
 }

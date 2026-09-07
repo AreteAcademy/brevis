@@ -20,9 +20,9 @@ import (
 // Refusing is what makes the test able to fail: a checkpoint that did not spare
 // the source would go unnoticed if the source simply answered again.
 type countedSource struct {
-	registros []any
-	leituras  *int
-	soUmaVez  bool
+	records  []any
+	leituras *int
+	soUmaVez bool
 }
 
 func (countedSource) Describe() string { return "origem.teste" }
@@ -32,7 +32,7 @@ func (o countedSource) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, e
 	if o.soUmaVez && *o.leituras > 1 {
 		return nil, fmt.Errorf("a origem foi consultada %d vezes", *o.leituras)
 	}
-	regs := o.registros
+	regs := o.records
 	return func(yield func(Envelope, error) bool) {
 		for _, r := range regs {
 			if !yield(Envelope{Payload: r}, nil) {
@@ -45,31 +45,31 @@ func (o countedSource) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, e
 // keepingTarget stores what it received, including when it refuses the load.
 type keepingTarget struct {
 	recebido *[]Envelope
-	falhar   bool
+	fail     bool
 }
 
 func (keepingTarget) Describe() string { return "destino.teste" }
 
 func (d keepingTarget) Write(_ context.Context, envs []Envelope, _ WriteOptions) (*LoadResult, error) {
 	*d.recebido = append(*d.recebido, envs...)
-	if d.falhar {
+	if d.fail {
 		return &LoadResult{}, fmt.Errorf("o destino recusou a carga")
 	}
 	return &LoadResult{RowsLoaded: int64(len(envs)), Strategy: "teste"}, nil
 }
 
-func rodar(t *testing.T, p *Pipeline) (string, error) {
+func runIt(t *testing.T, p *Pipeline) (string, error) {
 	t.Helper()
 	var buf bytes.Buffer
-	anterior := slog.Default()
+	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
-	defer slog.SetDefault(anterior)
+	defer slog.SetDefault(previous)
 
 	err := runPipeline(context.Background(), p)
 	return buf.String(), err
 }
 
-func registros() []any {
+func twoRecords() []any {
 	return []any{
 		map[string]any{"provider": "p", "entity": "e", "source_key": "a", "record_ts": "2026-09-05T00:00:00Z"},
 		map[string]any{"provider": "p", "entity": "e", "source_key": "b", "record_ts": "2026-09-05T01:00:00Z"},
@@ -84,14 +84,14 @@ func registros() []any {
 func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}
+	src := countedSource{records: twoRecords(), leituras: &leituras, soUmaVez: true}
 
-	var primeira []Envelope
-	_, err := rodar(t, &Pipeline{
+	var first1 []Envelope
+	_, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origem},
+		Source:     Source{From: src},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: keepingTarget{recebido: &primeira, falhar: true}},
+		Target:     Target{To: keepingTarget{recebido: &first1, fail: true}},
 		Run:        RunContext{ID: "run-1", Attempt: 0},
 	})
 	if err == nil {
@@ -99,9 +99,9 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 	}
 
 	var segunda []Envelope
-	log, err := rodar(t, &Pipeline{
+	log, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origem},
+		Source:     Source{From: src},
 		Checkpoint: Checkpoint{At: dir},
 		Target:     Target{To: keepingTarget{recebido: &segunda}},
 		Run:        RunContext{ID: "run-1", Attempt: 1},
@@ -125,18 +125,18 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{registros: registros(), leituras: &leituras}
+	src := countedSource{records: twoRecords(), leituras: &leituras}
 
-	var caixa []Envelope
-	p := func(tentativa int) *Pipeline {
+	var box []Envelope
+	p := func(attempt int) *Pipeline {
 		return &Pipeline{
-			Name: "fetcher", Source: Source{From: origem},
+			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &caixa}},
-			Run:        RunContext{ID: "run-2", Attempt: tentativa},
+			Target:     Target{To: keepingTarget{recebido: &box}},
+			Run:        RunContext{ID: "run-2", Attempt: attempt},
 		}
 	}
-	if _, err := rodar(t, p(0)); err != nil {
+	if _, err := runIt(t, p(0)); err != nil {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
 
@@ -144,9 +144,9 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 	// extract
 	// interrupted, and resuming from there would load half the data in
 	// silence.
-	apagar(t, dir, "_completo")
+	remove(t, dir, "_completo")
 
-	log, err := rodar(t, p(1))
+	log, err := runIt(t, p(1))
 	if err != nil {
 		t.Fatalf("segunda tentativa: %v\n%s", err, log)
 	}
@@ -159,23 +159,23 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{registros: registros(), leituras: &leituras}
+	src := countedSource{records: twoRecords(), leituras: &leituras}
 
-	var caixa []Envelope
-	p := func(tentativa int) *Pipeline {
+	var box []Envelope
+	p := func(attempt int) *Pipeline {
 		return &Pipeline{
-			Name: "fetcher", Source: Source{From: origem},
+			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &caixa}},
-			Run:        RunContext{ID: "run-3", Attempt: tentativa},
+			Target:     Target{To: keepingTarget{recebido: &box}},
+			Run:        RunContext{ID: "run-3", Attempt: attempt},
 		}
 	}
-	if _, err := rodar(t, p(0)); err != nil {
+	if _, err := runIt(t, p(0)); err != nil {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
-	apagar(t, dir, "parte-00000.ndjson")
+	remove(t, dir, "parte-00000.ndjson")
 
-	log, err := rodar(t, p(1))
+	log, err := runIt(t, p(1))
 	if err != nil {
 		t.Fatalf("segunda tentativa: %v\n%s", err, log)
 	}
@@ -186,8 +186,8 @@ func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 		t.Errorf("descartar um checkpoint calado esconde a causa:\n%s", log)
 	}
 	// And what was loaded has to be the whole set, not what was left over.
-	if len(caixa) != 4 {
-		t.Errorf("carregou %d registros nas duas tentativas, esperado 4", len(caixa))
+	if len(box) != 4 {
+		t.Errorf("carregou %d registros nas duas tentativas, esperado 4", len(box))
 	}
 }
 
@@ -200,28 +200,28 @@ func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{registros: registros(), leituras: &leituras}
+	src := countedSource{records: twoRecords(), leituras: &leituras}
 
-	var caixa []Envelope
-	p := func(tentativa int) *Pipeline {
+	var box []Envelope
+	p := func(attempt int) *Pipeline {
 		return &Pipeline{
-			Name: "fetcher", Source: Source{From: origem},
+			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &caixa}},
-			Run:        RunContext{ID: "run-4", Attempt: tentativa},
+			Target:     Target{To: keepingTarget{recebido: &box}},
+			Run:        RunContext{ID: "run-4", Attempt: attempt},
 		}
 	}
-	if _, err := rodar(t, p(0)); err != nil {
+	if _, err := runIt(t, p(0)); err != nil {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
 
-	caminho := achar(t, dir, "_completo")
+	path := find(t, dir, "_completo")
 	var m map[string]any
-	lerJSON(t, caminho, &m)
+	lerJSON(t, path, &m)
 	m["registros"] = 99
-	gravarJSON(t, caminho, m)
+	gravarJSON(t, path, m)
 
-	_, err := rodar(t, p(1))
+	_, err := runIt(t, p(1))
 	if err == nil {
 		t.Fatal("um checkpoint que mente na contagem tem de falhar, nao carregar menos em silencio")
 	}
@@ -236,30 +236,30 @@ func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}
+	src := countedSource{records: twoRecords(), leituras: &leituras, soUmaVez: true}
 
-	var daOrigem, doCheckpoint []Envelope
-	p := func(tentativa int, caixa *[]Envelope) *Pipeline {
+	var fromSource, doCheckpoint []Envelope
+	p := func(attempt int, box *[]Envelope) *Pipeline {
 		return &Pipeline{
-			Name: "fetcher", Source: Source{From: origem},
+			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
 			Transform:  []Transformer{IngestionID()},
-			Target:     Target{To: keepingTarget{recebido: caixa}},
-			Run:        RunContext{ID: "run-5", Attempt: tentativa},
+			Target:     Target{To: keepingTarget{recebido: box}},
+			Run:        RunContext{ID: "run-5", Attempt: attempt},
 		}
 	}
-	if _, err := rodar(t, p(0, &daOrigem)); err != nil {
+	if _, err := runIt(t, p(0, &fromSource)); err != nil {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
-	if log, err := rodar(t, p(1, &doCheckpoint)); err != nil {
+	if log, err := runIt(t, p(1, &doCheckpoint)); err != nil {
 		t.Fatalf("retomada: %v\n%s", err, log)
 	}
 
-	if len(daOrigem) != len(doCheckpoint) {
-		t.Fatalf("%d registros da origem contra %d do checkpoint", len(daOrigem), len(doCheckpoint))
+	if len(fromSource) != len(doCheckpoint) {
+		t.Fatalf("%d registros da origem contra %d do checkpoint", len(fromSource), len(doCheckpoint))
 	}
-	for i := range daOrigem {
-		a := daOrigem[i].Payload.(map[string]any)["ingestion_id"]
+	for i := range fromSource {
+		a := fromSource[i].Payload.(map[string]any)["ingestion_id"]
 		b := doCheckpoint[i].Payload.(map[string]any)["ingestion_id"]
 		if a != b {
 			t.Errorf("registro %d: id %v da origem, %v do checkpoint", i, a, b)
@@ -279,31 +279,31 @@ func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := countedSource{
-		registros: []any{map[string]any{"id": json.Number("19.0"), "n": json.Number("1e21")}},
-		leituras:  &leituras, soUmaVez: true,
+	src := countedSource{
+		records:  []any{map[string]any{"id": json.Number("19.0"), "n": json.Number("1e21")}},
+		leituras: &leituras, soUmaVez: true,
 	}
 
-	var caixa []Envelope
-	p := func(tentativa int) *Pipeline {
+	var box []Envelope
+	p := func(attempt int) *Pipeline {
 		return &Pipeline{
-			Name: "fetcher", Source: Source{From: origem},
+			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &caixa}},
-			Run:        RunContext{ID: "run-6", Attempt: tentativa},
+			Target:     Target{To: keepingTarget{recebido: &box}},
+			Run:        RunContext{ID: "run-6", Attempt: attempt},
 		}
 	}
-	if _, err := rodar(t, p(0)); err != nil {
+	if _, err := runIt(t, p(0)); err != nil {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
-	if log, err := rodar(t, p(1)); err != nil {
+	if log, err := runIt(t, p(1)); err != nil {
 		t.Fatalf("retomada: %v\n%s", err, log)
 	}
 
-	if len(caixa) != 2 {
-		t.Fatalf("carregou %d registros, esperado 2", len(caixa))
+	if len(box) != 2 {
+		t.Fatalf("carregou %d registros, esperado 2", len(box))
 	}
-	for i, env := range caixa {
+	for i, env := range box {
 		row := env.Payload.(map[string]any)
 		if got := asText(row["id"]); got != "19.0" {
 			t.Errorf("registro %d: id virou %q, esperado \"19.0\"", i, got)
@@ -321,19 +321,19 @@ func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 // trading a rare failure for a failure on every run.
 func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 	var leituras int
-	var caixa []Envelope
-	log, err := rodar(t, &Pipeline{
+	var box []Envelope
+	log, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeQueRecusa{}},
-		Target:     Target{To: keepingTarget{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &box}},
 		Run:        RunContext{ID: "run-7", Attempt: 0},
 	})
 	if err != nil {
 		t.Fatalf("a execucao morreu por causa do checkpoint: %v\n%s", err, log)
 	}
-	if len(caixa) != 2 {
-		t.Errorf("carregou %d registros, esperado 2", len(caixa))
+	if len(box) != 2 {
+		t.Errorf("carregou %d registros, esperado 2", len(box))
 	}
 	if !strings.Contains(log, "checkpoint_failed") {
 		t.Errorf("a falha do deposito precisa aparecer no resultado:\n%s", log)
@@ -349,12 +349,12 @@ func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 // without redoing the extract, which is precisely what was being spared.
 func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T) {
 	var leituras int
-	var caixa []Envelope
-	log, err := rodar(t, &Pipeline{
+	var box []Envelope
+	log, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}},
+		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras, soUmaVez: true}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeRefusingParts{}},
-		Target:     Target{To: keepingTarget{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &box}},
 		Run:        RunContext{ID: "run-8", Attempt: 0},
 	})
 	if err != nil {
@@ -363,8 +363,8 @@ func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T)
 	if leituras != 1 {
 		t.Errorf("a origem foi lida %d vezes; degradar nao pode custar uma segunda extracao", leituras)
 	}
-	if len(caixa) != 2 {
-		t.Errorf("carregou %d registros, esperado 2 -- degradar nao pode perder linha", len(caixa))
+	if len(box) != 2 {
+		t.Errorf("carregou %d registros, esperado 2 -- degradar nao pode perder linha", len(box))
 	}
 	if !strings.Contains(log, "checkpoint_failed") {
 		t.Errorf("a interrupcao precisa aparecer no resultado:\n%s", log)
@@ -374,12 +374,12 @@ func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T)
 // Outside the engine there is no stable key, and that is SAID.
 func TestOutsideTheEngineTheCheckpointWarnsInsteadOfIgnoring(t *testing.T) {
 	var leituras int
-	var caixa []Envelope
-	log, err := rodar(t, &Pipeline{
+	var box []Envelope
+	log, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: t.TempDir()},
-		Target:     Target{To: keepingTarget{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &box}},
 		Run:        RunContext{}, // no id: running by hand
 	})
 	if err != nil {
@@ -394,12 +394,12 @@ func TestOutsideTheEngineTheCheckpointWarnsInsteadOfIgnoring(t *testing.T) {
 // never write.
 func TestACheckpointWithTheWrongStoreIsAnError(t *testing.T) {
 	var leituras int
-	var caixa []Envelope
-	_, err := rodar(t, &Pipeline{
+	var box []Envelope
+	_, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "gs://balde/cp", Store: storeQueRecusa{}}, // store e s3
-		Target:     Target{To: keepingTarget{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &box}},
 		Run:        RunContext{ID: "run-9"},
 	})
 	if err == nil {
@@ -433,8 +433,8 @@ func (storeQueRecusa) Create(context.Context, string, string, io.Reader) error {
 // spent.
 type storeRefusingParts struct{ storeQueRecusa }
 
-func (storeRefusingParts) Create(_ context.Context, _, chave string, _ io.Reader) error {
-	if strings.Contains(chave, "parte-") {
+func (storeRefusingParts) Create(_ context.Context, _, key string, _ io.Reader) error {
+	if strings.Contains(key, "parte-") {
 		return fmt.Errorf("balde cheio")
 	}
 	return nil
@@ -442,31 +442,31 @@ func (storeRefusingParts) Create(_ context.Context, _, chave string, _ io.Reader
 
 // --- file helpers ---
 
-func achar(t *testing.T, raiz, nome string) string {
+func find(t *testing.T, raiz, name string) string {
 	t.Helper()
 	var achado string
 	err := filepath.Walk(raiz, func(p string, _ os.FileInfo, err error) error {
-		if err == nil && filepath.Base(p) == nome {
+		if err == nil && filepath.Base(p) == name {
 			achado = p
 		}
 		return nil
 	})
 	if err != nil || achado == "" {
-		t.Fatalf("nao achei %q em %s", nome, raiz)
+		t.Fatalf("nao achei %q em %s", name, raiz)
 	}
 	return achado
 }
 
-func apagar(t *testing.T, raiz, nome string) {
+func remove(t *testing.T, raiz, name string) {
 	t.Helper()
-	if err := os.Remove(achar(t, raiz, nome)); err != nil {
+	if err := os.Remove(find(t, raiz, name)); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func lerJSON(t *testing.T, caminho string, v any) {
+func lerJSON(t *testing.T, path string, v any) {
 	t.Helper()
-	data, err := os.ReadFile(caminho) //nolint:gosec // caminho de teste
+	data, err := os.ReadFile(path) //nolint:gosec // caminho de teste
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -475,13 +475,13 @@ func lerJSON(t *testing.T, caminho string, v any) {
 	}
 }
 
-func gravarJSON(t *testing.T, caminho string, v any) {
+func gravarJSON(t *testing.T, path string, v any) {
 	t.Helper()
 	data, err := json.Marshal(v)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(caminho, data, 0o600); err != nil {
+	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
 }

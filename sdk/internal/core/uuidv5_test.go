@@ -19,9 +19,9 @@ func TestUUIDv5AgreesWithThePackage(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
 
 	for i := 0; i < 5000; i++ {
-		dados := make([]byte, r.Intn(400))
-		for j := range dados {
-			dados[j] = byte(r.Intn(256))
+		data := make([]byte, r.Intn(400))
+		for j := range data {
+			data[j] = byte(r.Intn(256))
 		}
 
 		var espaco uuid.UUID
@@ -29,10 +29,10 @@ func TestUUIDv5AgreesWithThePackage(t *testing.T) {
 			espaco[j] = byte(r.Intn(256))
 		}
 
-		quero := uuid.NewSHA1(espaco, dados)
-		got := uuidV5(espaco, dados)
+		quero := uuid.NewSHA1(espaco, data)
+		got := uuidV5(espaco, data)
 		if got != quero {
-			t.Fatalf("divergiu em %d bytes de dados:\n  meu  %s\n  uuid %s", len(dados), got, quero)
+			t.Fatalf("divergiu em %d bytes de dados:\n  meu  %s\n  uuid %s", len(data), got, quero)
 		}
 	}
 }
@@ -40,15 +40,15 @@ func TestUUIDv5AgreesWithThePackage(t *testing.T) {
 // TestUUIDv5InTheRealNamespace covers the case production uses, including the
 // an empty key and one much larger than the stack buffer.
 func TestUUIDv5InTheRealNamespace(t *testing.T) {
-	entradas := [][]byte{
+	entries := [][]byte{
 		nil,
 		[]byte(""),
 		[]byte("open_meteo|hourly|123|2026-09-05T12:00:00Z"),
 		make([]byte, 1000),
 	}
-	for _, dados := range entradas {
-		if got, quero := uuidV5(DefaultNamespace, dados), uuid.NewSHA1(DefaultNamespace, dados); got != quero {
-			t.Errorf("%d bytes: meu %s, uuid %s", len(dados), got, quero)
+	for _, data := range entries {
+		if got, quero := uuidV5(DefaultNamespace, data), uuid.NewSHA1(DefaultNamespace, data); got != quero {
+			t.Errorf("%d bytes: meu %s, uuid %s", len(data), got, quero)
 		}
 	}
 }

@@ -14,10 +14,10 @@ import (
 
 // numberedPage returns three one-row pages and then an empty one, recording the
 // sequence of numbers it received.
-func numberedPage(t *testing.T, chave string, vistos *[]string) *httptest.Server {
+func numberedPage(t *testing.T, key string, vistos *[]string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bruto := r.URL.Query().Get(chave)
+		bruto := r.URL.Query().Get(key)
 		*vistos = append(*vistos, bruto)
 
 		n, err := strconv.Atoi(bruto)
@@ -45,10 +45,10 @@ func TestPageKeyAdvancesOneAtATime(t *testing.T) {
 	srv := numberedPage(t, "page", &vistos)
 	defer srv.Close()
 
-	linhas := colher(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
+	lines := gather(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
 
-	if linhas != 2 {
-		t.Errorf("linhas = %d, esperado 2 (paginas 1 e 2)", linhas)
+	if lines != 2 {
+		t.Errorf("linhas = %d, esperado 2 (paginas 1 e 2)", lines)
 	}
 	if got := strings.Join(vistos, ","); got != "1,2,3" {
 		t.Errorf("paginas pedidas = %q, esperado \"1,2,3\"", got)
@@ -60,10 +60,10 @@ func TestPageKeyAdvancesOneAtATime(t *testing.T) {
 // inteira em silencio.
 func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 	casos := []struct {
-		nome      string
-		url       func(string) string
-		primeira  int
-		sequencia string
+		name   string
+		url    func(string) string
+		first1 int
+		seq    string
 	}{
 		{"padrao comeca em 1", func(u string) string { return u }, 0, "1,2,3"},
 		{"FirstPage escolhe onde comecar", func(u string) string { return u }, 2, "2,3"},
@@ -71,19 +71,19 @@ func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 		{"a url vence ate contra FirstPage", func(u string) string { return u + "?page=2" }, 9, "2,3"},
 	}
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
+		t.Run(c.name, func(t *testing.T) {
 			var vistos []string
 			srv := numberedPage(t, "page", &vistos)
 			defer srv.Close()
 
-			colher(t, core.Source{
+			gather(t, core.Source{
 				URL:       c.url(srv.URL),
 				PageKey:   "page",
-				FirstPage: c.primeira,
+				FirstPage: c.first1,
 				DataKey:   "results",
 			})
-			if got := strings.Join(vistos, ","); got != c.sequencia {
-				t.Errorf("paginas pedidas = %q, esperado %q", got, c.sequencia)
+			if got := strings.Join(vistos, ","); got != c.seq {
+				t.Errorf("paginas pedidas = %q, esperado %q", got, c.seq)
 			}
 		})
 	}
@@ -97,7 +97,7 @@ func TestAZeroIndexedAPISaysSoInTheURL(t *testing.T) {
 	srv := numberedPage(t, "page", &vistos)
 	defer srv.Close()
 
-	colher(t, core.Source{URL: srv.URL + "?page=0", PageKey: "page", DataKey: "results"})
+	gather(t, core.Source{URL: srv.URL + "?page=0", PageKey: "page", DataKey: "results"})
 	if got := strings.Join(vistos, ","); got != "0,1,2,3" {
 		t.Errorf("paginas pedidas = %q, esperado \"0,1,2,3\"", got)
 	}
@@ -135,7 +135,7 @@ func TestPageSizeAloneIsRefused(t *testing.T) {
 	}
 }
 
-func colher(t *testing.T, s core.Source) int {
+func gather(t *testing.T, s core.Source) int {
 	t.Helper()
 	seq, err := JSON(context.Background(), s, nil)
 	if err != nil {

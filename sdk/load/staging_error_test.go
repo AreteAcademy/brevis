@@ -28,13 +28,13 @@ func TestStagingErrorNamesTheBucketAndTheWayOut(t *testing.T) {
 	}}
 
 	for _, causa := range []struct {
-		nome string
+		name string
 		err  error
 	}{
 		{"sentinela do storage", storage.ErrBucketNotExist},
 		{"404 da api json", &googleapi.Error{Code: 404, Message: "The specified bucket does not exist"}},
 	} {
-		t.Run(causa.nome, func(t *testing.T) {
+		t.Run(causa.name, func(t *testing.T) {
 			msg := l.stagingError(causa.err, 12000).Error()
 
 			for _, exigido := range []string{

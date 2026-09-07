@@ -200,8 +200,8 @@ func AmbienteDasTasks(names []string) map[string]string {
 			}
 			continue
 		}
-		if nome, value, ok := strings.Cut(input, "="); ok {
-			env[nome] = value
+		if name, value, ok := strings.Cut(input, "="); ok {
+			env[name] = value
 			continue
 		}
 		// A name with no value: passed on if it exists. Missing does NOT become

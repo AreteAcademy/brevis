@@ -124,14 +124,14 @@ type Resources struct {
 
 type PodStatus struct {
 	Phase             string            `json:"phase,omitempty"`
-	Conditions        []Condicao        `json:"conditions,omitempty"`
+	Conditions        []Condition       `json:"conditions,omitempty"`
 	Reason            string            `json:"reason,omitempty"`
 	Message           string            `json:"message,omitempty"`
 	ContainerStatuses []StatusContainer `json:"containerStatuses,omitempty"`
 }
 
-// Condicao carries PodScheduled, where the scheduler explains why it did not fit.
-type Condicao struct {
+// Condition carries PodScheduled, where the scheduler explains why it did not fit.
+type Condition struct {
 	Type    string `json:"type"`
 	Status  string `json:"status"`
 	Reason  string `json:"reason,omitempty"`
@@ -276,22 +276,22 @@ const (
 // secretKeyRef to a forbidden Secret is not even forbidden by Kubernetes -- it
 // mounts, and the error one sees is a different one. Here the message names it
 // and says where to allow it.
-func (o Options) permiteSecret(nome string) error {
+func (o Options) permiteSecret(name string) error {
 	for _, p := range o.AllowedSecrets {
-		if p == nome {
+		if p == name {
 			return nil
 		}
 	}
 	if len(o.AllowedSecrets) == 0 {
 		return fmt.Errorf("secret %q is not allowed for workflows, and neither is any "+
 			"other: the installation decides which exist, in "+
-			"BREVIS_POD_ALLOWED_SECRETS", nome)
+			"BREVIS_POD_ALLOWED_SECRETS", name)
 	}
 	return fmt.Errorf("secret %q is not in BREVIS_POD_ALLOWED_SECRETS (allowed: %s)",
-		nome, strings.Join(o.AllowedSecrets, ", "))
+		name, strings.Join(o.AllowedSecrets, ", "))
 }
 
-func (o Options) comPadroes() Options {
+func (o Options) withDefaults() Options {
 	if len(o.Shell) == 0 {
 		o.Shell = []string{"/bin/sh", "-c"}
 	}
@@ -318,7 +318,7 @@ func (o Options) comPadroes() Options {
 // what makes it possible to test the whole spec -- image, command, resources,
 // labels -- with no cluster at all.
 func BuildPod(t execution.TaskExec, o Options) (Pod, error) {
-	o = o.comPadroes()
+	o = o.withDefaults()
 	if t.Image == "" {
 		return Pod{}, fmt.Errorf("step %q has no image: in Kubernetes every step is a "+
 			"pod, and the pod has to know what to run", t.NodeID)
@@ -361,13 +361,13 @@ func BuildPod(t execution.TaskExec, o Options) (Pod, error) {
 	}
 	sort.Strings(secrets)
 	for _, k := range secrets {
-		nome, key, _ := strings.Cut(t.Secrets[k], "/")
-		if err := o.permiteSecret(nome); err != nil {
+		name, key, _ := strings.Cut(t.Secrets[k], "/")
+		if err := o.permiteSecret(name); err != nil {
 			return Pod{}, fmt.Errorf("step %q, secrets[%q]: %w", t.NodeID, k, err)
 		}
 		c.Env = append(c.Env, Var{
 			Name:      k,
-			ValueFrom: &VarSource{SecretKeyRef: &KeyRef{Name: nome, Key: key}},
+			ValueFrom: &VarSource{SecretKeyRef: &KeyRef{Name: name, Key: key}},
 		})
 	}
 
@@ -437,7 +437,7 @@ func BuildPod(t execution.TaskExec, o Options) (Pod, error) {
 		APIVersion: "v1",
 		Kind:       "Pod",
 		Metadata: Metadata{
-			Name:      NomeDoPod(t),
+			Name:      PodName(t),
 			Namespace: o.Namespace,
 			Labels:    labels,
 			// The annotation keeps the WHOLE value; the label keeps the
@@ -481,7 +481,7 @@ func resources(t execution.TaskExec) *Resources {
 
 var invalidInName = regexp.MustCompile(`[^a-z0-9-]+`)
 
-// NomeDoPod produces a valid and STABLE name for the same attempt.
+// PodName produces a valid and STABLE name for the same attempt.
 //
 // STABLE matters: if the process dies between creating the pod and recording
 // that, the next attempt finds the existing pod (409 AlreadyExists) instead of
@@ -489,7 +489,7 @@ var invalidInName = regexp.MustCompile(`[^a-z0-9-]+`)
 //
 // The hash suffix resolves the collision the 63-character cut would create
 // between two long node names with a common prefix.
-func NomeDoPod(t execution.TaskExec) string {
+func PodName(t execution.TaskExec) string {
 	base := sanitize(t.Workflow + "-" + t.NodeID)
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
 		t.RunID, t.NodeID, t.RunAttempt, t.Attempt)))

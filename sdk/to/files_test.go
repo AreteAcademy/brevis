@@ -26,17 +26,17 @@ func lote(n int) []core.Envelope {
 
 func unico(t *testing.T, dir string) string {
 	t.Helper()
-	var achados []string
+	var found []string
 	_ = filepath.Walk(dir, func(p string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
-			achados = append(achados, p)
+			found = append(found, p)
 		}
 		return nil
 	})
-	if len(achados) != 1 {
-		t.Fatalf("%d arquivos em %s, esperado 1: %v", len(achados), dir, achados)
+	if len(found) != 1 {
+		t.Fatalf("%d arquivos em %s, esperado 1: %v", len(found), dir, found)
 	}
-	return achados[0]
+	return found[0]
 }
 
 func TestFilesWritesNDJSON(t *testing.T) {
@@ -54,12 +54,12 @@ func TestFilesWritesNDJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linhas := strings.Split(strings.TrimSpace(string(corpo)), "\n")
-	if len(linhas) != 3 {
-		t.Fatalf("%d linhas, esperado 3", len(linhas))
+	lines := strings.Split(strings.TrimSpace(string(corpo)), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("%d linhas, esperado 3", len(lines))
 	}
 	var row map[string]any
-	if err := json.Unmarshal([]byte(linhas[0]), &row); err != nil {
+	if err := json.Unmarshal([]byte(lines[0]), &row); err != nil {
 		t.Fatalf("a primeira linha não é JSON: %v", err)
 	}
 	if row["sku"] != "A" {
@@ -96,11 +96,11 @@ func TestFilesComprime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	caminho := unico(t, dir)
-	if !strings.HasSuffix(caminho, ".gz") {
-		t.Errorf("o arquivo não terminou em .gz: %s", caminho)
+	path := unico(t, dir)
+	if !strings.HasSuffix(path, ".gz") {
+		t.Errorf("o arquivo não terminou em .gz: %s", path)
 	}
-	f, err := os.Open(caminho) //nolint:gosec
+	f, err := os.Open(path) //nolint:gosec
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestFilesRefusesAFormatItDoesNotWrite(t *testing.T) {
 }
 
 // The declaration holds on every destination, not only on BigQuery.
-func TestFilesConfereColumns(t *testing.T) {
+func TestFilesChecksColumns(t *testing.T) {
 	_, err := Files{Path: t.TempDir() + "/"}.Write(context.Background(), lote(1),
 		core.WriteOptions{Columns: []string{"sku", "quantidade", "faltando"}})
 	if err == nil {
@@ -137,22 +137,22 @@ func TestFilesConfereColumns(t *testing.T) {
 
 func TestFilesWritesCSVWithTheUnionOfTheFields(t *testing.T) {
 	dir := t.TempDir()
-	registros := []core.Envelope{
+	records := []core.Envelope{
 		{Payload: map[string]any{"a": 1, "b": 2}},
 		{Payload: map[string]any{"a": 3}}, // no "b"
 	}
 	if _, err := (Files{Path: dir + "/", Format: core.FormatCSV}).
-		Write(context.Background(), registros, core.WriteOptions{}); err != nil {
+		Write(context.Background(), records, core.WriteOptions{}); err != nil {
 		t.Fatal(err)
 	}
 
 	corpo, _ := os.ReadFile(unico(t, dir))
-	linhas := strings.Split(strings.TrimSpace(string(corpo)), "\n")
-	if linhas[0] != "a,b" {
-		t.Errorf("cabeçalho = %q, esperado a união ordenada", linhas[0])
+	lines := strings.Split(strings.TrimSpace(string(corpo)), "\n")
+	if lines[0] != "a,b" {
+		t.Errorf("cabeçalho = %q, esperado a união ordenada", lines[0])
 	}
-	if linhas[2] != "3," {
-		t.Errorf("a linha sem b = %q; o campo ausente tem de ficar vazio na coluna certa", linhas[2])
+	if lines[2] != "3," {
+		t.Errorf("a linha sem b = %q; o campo ausente tem de ficar vazio na coluna certa", lines[2])
 	}
 }
 
@@ -167,9 +167,9 @@ func TestFilesDoesNotOverwriteThePreviousBatch(t *testing.T) {
 		}
 	}
 
-	entradas, _ := os.ReadDir(dir)
-	if len(entradas) != 2 {
-		t.Errorf("%d arquivos depois de duas cargas, esperado 2", len(entradas))
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 2 {
+		t.Errorf("%d arquivos depois de duas cargas, esperado 2", len(entries))
 	}
 }
 
@@ -180,8 +180,8 @@ func TestFilesLeavesNoTemporaryFile(t *testing.T) {
 	if _, err := (Files{Path: dir + "/"}).Write(context.Background(), lote(1), core.WriteOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	entradas, _ := os.ReadDir(dir)
-	for _, e := range entradas {
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), ".brevis-") {
 			t.Errorf("sobrou um temporário: %s", e.Name())
 		}
@@ -218,15 +218,15 @@ func TestFilesRefusesDedup(t *testing.T) {
 // acrescenta.
 func TestFilesPartitionsByTheRowsColumn(t *testing.T) {
 	dir := t.TempDir()
-	registros := []core.Envelope{{Payload: map[string]any{
+	records := []core.Envelope{{Payload: map[string]any{
 		"sku": "W-1", "ingestion_loaded_at": "2026-09-04T10:00:00Z",
 	}}}
 
 	if _, err := (Files{Path: dir + "/", PartitionBy: "ingestion_loaded_at"}).
-		Write(context.Background(), registros, core.WriteOptions{}); err != nil {
+		Write(context.Background(), records, core.WriteOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if caminho := unico(t, dir); !strings.Contains(caminho, "ingestion_loaded_at=2026-09-04") {
-		t.Errorf("o caminho não foi particionado: %s", caminho)
+	if path := unico(t, dir); !strings.Contains(path, "ingestion_loaded_at=2026-09-04") {
+		t.Errorf("o caminho não foi particionado: %s", path)
 	}
 }

@@ -3,18 +3,18 @@ package pages
 import "testing"
 
 func TestPaginationCounts(t *testing.T) {
-	p := Pagination{Page: 3, PorPagina: 25, Total: 63}
-	if p.Paginas() != 3 {
-		t.Errorf("paginas = %d, want 3", p.Paginas())
+	p := Pagination{Page: 3, PerPage: 25, Total: 63}
+	if p.Pages() != 3 {
+		t.Errorf("paginas = %d, want 3", p.Pages())
 	}
 	if p.First() != 51 || p.Last() != 63 {
 		t.Errorf("intervalo = %d–%d, want 51–63", p.First(), p.Last())
 	}
 
 	// An empty list must not say "1-0 of 0".
-	vazia := Pagination{Page: 1, PorPagina: 25, Total: 0}
-	if vazia.First() != 0 || vazia.Paginas() != 1 {
-		t.Errorf("vazia: primeiro=%d paginas=%d", vazia.First(), vazia.Paginas())
+	vazia := Pagination{Page: 1, PerPage: 25, Total: 0}
+	if vazia.First() != 0 || vazia.Pages() != 1 {
+		t.Errorf("vazia: primeiro=%d paginas=%d", vazia.First(), vazia.Pages())
 	}
 }
 
@@ -31,10 +31,10 @@ func TestThePageWindow(t *testing.T) {
 		{1, 50, []int{1, 2}},
 	}
 	for _, c := range casos {
-		p := Pagination{Page: c.page, PorPagina: 25, Total: c.total}
+		p := Pagination{Page: c.page, PerPage: 25, Total: c.total}
 		j := p.Window()
 		if len(j) != len(c.esperado) {
-			t.Fatalf("pagina %d de %d: %v, want %v", c.page, p.Paginas(), j, c.esperado)
+			t.Fatalf("pagina %d de %d: %v, want %v", c.page, p.Pages(), j, c.esperado)
 		}
 		for i := range j {
 			if j[i] != c.esperado[i] {
@@ -47,7 +47,7 @@ func TestThePageWindow(t *testing.T) {
 // Changing the filter goes back to page 1: staying on page 7 of a result that now
 // has two would be an empty screen with no explanation.
 func TestChangingTheFilterResetsThePage(t *testing.T) {
-	f := Filter{Tag: "acme", Page: 7, PorPagina: DefaultPerPage}
+	f := Filter{Tag: "acme", Page: 7, PerPage: DefaultPerPage}
 	if u := f.With("state", "failed"); containsText(u, "page=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
@@ -60,10 +60,10 @@ func TestChangingTheFilterResetsThePage(t *testing.T) {
 
 // Terceiro clique no mesmo cabecalho remove a ordenacao.
 func TestWithAnOrderItTogglesAndThenClears(t *testing.T) {
-	f := Filter{PorPagina: DefaultPerPage}
-	primeiro := f.WithSort("last")
-	if !containsText(primeiro, "sort=last") || containsText(primeiro, "dir=desc") {
-		t.Errorf("first click = %q, wanted ascending", primeiro)
+	f := Filter{PerPage: DefaultPerPage}
+	first := f.WithSort("last")
+	if !containsText(first, "sort=last") || containsText(first, "dir=desc") {
+		t.Errorf("first click = %q, wanted ascending", first)
 	}
 
 	f.Sort = "last"
@@ -72,8 +72,8 @@ func TestWithAnOrderItTogglesAndThenClears(t *testing.T) {
 	}
 
 	f.Desc = true
-	if terceiro := f.WithSort("last"); containsText(terceiro, "sort=") {
-		t.Errorf("third click = %q, wanted no sorting", terceiro)
+	if third := f.WithSort("last"); containsText(third, "sort=") {
+		t.Errorf("third click = %q, wanted no sorting", third)
 	}
 	if f.Arrow("last") != "↓" || f.Arrow("workflow") != "" {
 		t.Error("the arrow only shows on the sorted column")

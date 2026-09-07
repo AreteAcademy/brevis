@@ -145,14 +145,14 @@ func TestBoolEstaExportado(t *testing.T) {
 
 func TestTheEnginesConstantsAreExported(t *testing.T) {
 	// The consumer needs them to write a test like this one.
-	for nome, v := range map[string]string{
+	for name, v := range map[string]string{
 		"EnvRunID":         sdk.EnvRunID,
 		"EnvRunFirst":      sdk.EnvRunFirst,
 		"EnvRunParams":     sdk.EnvRunParams,
 		"ParamCreateTable": sdk.ParamCreateTable,
 	} {
 		if v == "" {
-			t.Errorf("%s is empty", nome)
+			t.Errorf("%s is empty", name)
 		}
 	}
 }
@@ -305,10 +305,10 @@ func TestAConsumerWritesBothColumnsInTheChain(t *testing.T) {
 		if err != nil {
 			t.Fatalf("registro %d: %v", n, err)
 		}
-		linha := env.Payload.(map[string]any)
-		for _, coluna := range []string{sdk.ColumnIngestionID, sdk.ColumnIngestionLoadedAt} {
-			if v, tem := linha[coluna]; !tem || v == "" {
-				t.Errorf("record %d came out without %s: %v", n, coluna, linha)
+		line := env.Payload.(map[string]any)
+		for _, column := range []string{sdk.ColumnIngestionID, sdk.ColumnIngestionLoadedAt} {
+			if v, tem := line[column]; !tem || v == "" {
+				t.Errorf("record %d came out without %s: %v", n, column, line)
 			}
 		}
 		n++

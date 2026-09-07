@@ -18,11 +18,11 @@ func BenchmarkEncodeNDJSON(b *testing.B) {
 			"valor": "10.50", "nome": "registro qualquer",
 		}}
 	}
-	colunas := []string{"ingestion_id", "provider", "valor", "nome"}
+	columns := []string{"ingestion_id", "provider", "valor", "nome"}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := EncodeNDJSON(envelopes, colunas); err != nil {
+		if _, err := EncodeNDJSON(envelopes, columns); err != nil {
 			b.Fatal(err)
 		}
 	}

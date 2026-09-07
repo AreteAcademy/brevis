@@ -130,14 +130,14 @@ func TestAPodWithNoImageIsRefused(t *testing.T) {
 // instead of
 // vez de subir um segundo rodando o mesmo dbt em paralelo.
 func TestThePodsNameIsStablePerAttempt(t *testing.T) {
-	a := k8s.NomeDoPod(task())
-	if b := k8s.NomeDoPod(task()); a != b {
+	a := k8s.PodName(task())
+	if b := k8s.PodName(task()); a != b {
 		t.Errorf("the same attempt produced %q and %q", a, b)
 	}
 
 	outra := task()
 	outra.Attempt = 1
-	if c := k8s.NomeDoPod(outra); c == a {
+	if c := k8s.PodName(outra); c == a {
 		t.Error("attempts diferentes deveriam gerar pods diferentes")
 	}
 }
@@ -147,23 +147,23 @@ func TestThePodsNameObeysKubernetesLimit(t *testing.T) {
 	tk.Workflow = strings.Repeat("workflow-de-nome-absurdamente-longo-", 3)
 	tk.NodeID = strings.Repeat("passo-tambem-enorme-", 3)
 
-	nome := k8s.NomeDoPod(tk)
-	if len(nome) > 63 {
-		t.Errorf("a name with %d characters: %q", len(nome), nome)
+	name := k8s.PodName(tk)
+	if len(name) > 63 {
+		t.Errorf("a name with %d characters: %q", len(name), name)
 	}
-	for _, r := range nome {
+	for _, r := range name {
 		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
-			t.Fatalf("caractere invalido %q em %q", r, nome)
+			t.Fatalf("caractere invalido %q em %q", r, name)
 		}
 	}
-	if strings.HasPrefix(nome, "-") || strings.HasSuffix(nome, "-") {
-		t.Errorf("a name may neither start nor end with a hyphen: %q", nome)
+	if strings.HasPrefix(name, "-") || strings.HasSuffix(name, "-") {
+		t.Errorf("a name may neither start nor end with a hyphen: %q", name)
 	}
 
 	// Two long names sharing a prefix must not collide after the trim.
 	outro := tk
 	outro.NodeID = strings.Repeat("passo-tambem-enorme-", 3) + "-b"
-	if k8s.NomeDoPod(outro) == nome {
+	if k8s.PodName(outro) == name {
 		t.Error("the 63-character trim created a collision between two steps")
 	}
 }

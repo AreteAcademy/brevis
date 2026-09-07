@@ -48,15 +48,15 @@ func New(pool *pgxpool.Pool) *Queue { return &Queue{pool: pool} }
 // cycle picks it up -- but it is unexplainable latency, and it is what made a
 // concurrency test hand out 4 items where 5 were ready.
 func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, priority int, availableAt time.Time) error {
-	var quando any = availableAt
+	var when any = availableAt
 	if availableAt.IsZero() {
-		quando = nil // COALESCE resolves to the database's now()
+		when = nil // COALESCE resolves to the database's now()
 	}
 	_, err := q.pool.Exec(ctx, `
 		INSERT INTO queue_items (run_id, prioridade, disponivel_em)
 		VALUES ($1, $2, COALESCE($3::timestamptz, now()))
 		ON CONFLICT (run_id) DO NOTHING`,
-		runID, priority, quando)
+		runID, priority, when)
 	if err != nil {
 		return fmt.Errorf("enfileirando run %s: %w", runID, err)
 	}
@@ -194,12 +194,12 @@ func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, er
 	return out, rows.Err()
 }
 
-// Tamanho counts pending and claimed items, for observability.
-func (q *Queue) Tamanho(ctx context.Context) (pendentes, reivindicados int, err error) {
+// Size counts pending and claimed items, for observability.
+func (q *Queue) Size(ctx context.Context) (pending, claimed int, err error) {
 	err = q.pool.QueryRow(ctx, `
 		SELECT
 			count(*) FILTER (WHERE reivindicado_em IS NULL),
 			count(*) FILTER (WHERE reivindicado_em IS NOT NULL)
-		FROM queue_items`).Scan(&pendentes, &reivindicados)
+		FROM queue_items`).Scan(&pending, &claimed)
 	return
 }

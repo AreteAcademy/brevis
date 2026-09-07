@@ -30,18 +30,18 @@ func TestIngestionIDWithPycompatMatchesPython(t *testing.T) {
 	// source_key goes in as a json.Number, which is what PreserveNumbers
 	// delivers -- Text refuses a bare float64, because by then the literal is
 	// already lost.
-	registro := func() map[string]any {
+	record := func() map[string]any {
 		return map[string]any{
 			"provider": "acme", "entity": nil,
 			"source_key": json.Number("19.0"), "record_ts": true,
 		}
 	}
 
-	saida, err := sdk.IngestionIDWith(pycompat.Text)(registro())
+	output, err := sdk.IngestionIDWith(pycompat.Text)(record())
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := saida.(map[string]any)[sdk.ColumnIngestionID].(string)
+	got := output.(map[string]any)[sdk.ColumnIngestionID].(string)
 
 	script := `
 import uuid
@@ -60,11 +60,11 @@ print(uuid.uuid5(ns, chave))`
 	// And the default does NOT match. That is the divergence that motivated all
 	// of this, and keeping it is a written decision: changing the default would
 	// rewrite the id of every row Go has already written.
-	saidaPadrao, err := sdk.IngestionID()(registro())
+	defaultOutput, err := sdk.IngestionID()(record())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if padrao := saidaPadrao.(map[string]any)[sdk.ColumnIngestionID].(string); padrao == quero {
+	if fallback := defaultOutput.(map[string]any)[sdk.ColumnIngestionID].(string); fallback == quero {
 		t.Error("o padrão passou a casar com o Python; se foi intencional, a decisão " +
 			"documentada em asText mudou e este teste precisa ser reescrito")
 	}
@@ -72,9 +72,9 @@ print(uuid.uuid5(ns, chave))`
 
 // TestKeyWithMatchesPython: the same, for the key.
 func TestKeyWithMatchesPython(t *testing.T) {
-	registro := map[string]any{"a": nil, "b": json.Number("19.0"), "c": true}
+	record := map[string]any{"a": nil, "b": json.Number("19.0"), "c": true}
 
-	got, err := sdk.KeyWith(pycompat.Text, "a", "b", "c")(registro)
+	got, err := sdk.KeyWith(pycompat.Text, "a", "b", "c")(record)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,12 +82,12 @@ func TestKeyWithMatchesPython(t *testing.T) {
 		t.Errorf("KeyWith = %q, o Python daria \"None|19.0|True\"", got)
 	}
 
-	padrao, err := sdk.Key("a", "b", "c")(registro)
+	fallback, err := sdk.Key("a", "b", "c")(record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if padrao != "|19.0|true" {
-		t.Errorf("Key = %q -- se mudou, o padrão mudou", padrao)
+	if fallback != "|19.0|true" {
+		t.Errorf("Key = %q -- se mudou, o padrão mudou", fallback)
 	}
 }
 
@@ -129,7 +129,7 @@ func TestTextOrEmptyIsPythonsIdiom(t *testing.T) {
 	}
 
 	casos := []struct {
-		valor   any
+		value   any
 		literal string
 	}{
 		{nil, "None"}, {"", "''"}, {json.Number("0.0"), "0.0"}, {int64(0), "0"},
@@ -150,14 +150,14 @@ func TestTextOrEmptyIsPythonsIdiom(t *testing.T) {
 	quero := strings.Split(strings.TrimSuffix(string(b), "\x00"), "\x00")
 
 	for i, c := range casos {
-		got, err := pycompat.TextOrEmpty(c.valor)
+		got, err := pycompat.TextOrEmpty(c.value)
 		if err != nil {
-			t.Errorf("TextOrEmpty(%#v): %v", c.valor, err)
+			t.Errorf("TextOrEmpty(%#v): %v", c.value, err)
 			continue
 		}
 		if got != quero[i] {
 			t.Errorf("TextOrEmpty(%#v) = %q, e str(%s or '') = %q",
-				c.valor, got, c.literal, quero[i])
+				c.value, got, c.literal, quero[i])
 		}
 	}
 }
@@ -171,9 +171,9 @@ func TestTextOrEmptyIsPythonsIdiom(t *testing.T) {
 // row Go has already written.
 func TestTheDivergenceBetweenTheDefaultAndPython(t *testing.T) {
 	casos := []struct {
-		entrada any
-		padrao  string
-		python  string
+		input    any
+		fallback string
+		python   string
 	}{
 		{nil, "", "None"},
 		{true, "true", "True"},
@@ -189,20 +189,20 @@ func TestTheDivergenceBetweenTheDefaultAndPython(t *testing.T) {
 		// The default is exercised through the front door, with a single-field
 		// key: asText is private, and a test that reached it from inside would
 		// stop proving what the consumer sees.
-		padrao, err := sdk.Key("v")(map[string]any{"v": c.entrada})
+		fallback, err := sdk.Key("v")(map[string]any{"v": c.input})
 		if err != nil {
-			t.Fatalf("Key(%#v): %v", c.entrada, err)
+			t.Fatalf("Key(%#v): %v", c.input, err)
 		}
-		if padrao != c.padrao {
-			t.Errorf("Key(%#v) = %q, a tabela diz %q", c.entrada, padrao, c.padrao)
+		if fallback != c.fallback {
+			t.Errorf("Key(%#v) = %q, a tabela diz %q", c.input, fallback, c.fallback)
 		}
 
-		python, err := sdk.KeyWith(pycompat.Text, "v")(map[string]any{"v": c.entrada})
+		python, err := sdk.KeyWith(pycompat.Text, "v")(map[string]any{"v": c.input})
 		if err != nil {
-			t.Fatalf("KeyWith(%#v): %v", c.entrada, err)
+			t.Fatalf("KeyWith(%#v): %v", c.input, err)
 		}
 		if python != c.python {
-			t.Errorf("KeyWith(%#v) = %q, a tabela diz %q", c.entrada, python, c.python)
+			t.Errorf("KeyWith(%#v) = %q, a tabela diz %q", c.input, python, c.python)
 		}
 	}
 }
@@ -218,7 +218,7 @@ func TestTheUserAgentIsOursAndNotGos(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, sdk.Source{From: from.HTTP{URL: srv.URL}})
+	drain(t, sdk.Source{From: from.HTTP{URL: srv.URL}})
 
 	if strings.Contains(visto, "Go-http-client") {
 		t.Errorf("o UA é o padrão do Go: %q", visto)
@@ -238,7 +238,7 @@ func TestTheCallersUserAgentWins(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	drenar(t, sdk.Source{From: from.HTTP{
+	drain(t, sdk.Source{From: from.HTTP{
 		URL:    srv.URL,
 		Header: map[string][]string{"User-Agent": {"meu-fetcher/2.0"}},
 	}})
@@ -259,7 +259,7 @@ func TestResponsePreserveNumbersReachesObject(t *testing.T) {
 
 	tipos := map[bool]string{}
 	for _, preservar := range []bool{false, true} {
-		drenar(t, sdk.Source{From: from.HTTP{
+		drain(t, sdk.Source{From: from.HTTP{
 			URL:             srv.URL,
 			PreserveNumbers: preservar,
 			Records: func(r sdk.Response) ([]any, error) {
@@ -267,9 +267,9 @@ func TestResponsePreserveNumbersReachesObject(t *testing.T) {
 				if err != nil {
 					return nil, err
 				}
-				linhas := doc["results"].([]any)
-				tipos[preservar] = fmt.Sprintf("%T", linhas[0].(map[string]any)["id"])
-				return linhas, nil
+				lines := doc["results"].([]any)
+				tipos[preservar] = fmt.Sprintf("%T", lines[0].(map[string]any)["id"])
+				return lines, nil
 			},
 		}})
 	}
@@ -282,13 +282,13 @@ func TestResponsePreserveNumbersReachesObject(t *testing.T) {
 	}
 }
 
-func drenar(t *testing.T, fonte sdk.Source) {
+func drain(t *testing.T, source sdk.Source) {
 	t.Helper()
-	dados, err := sdk.Extract(context.Background(), fonte)
+	data, err := sdk.Extract(context.Background(), source)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	for _, err := range dados.Records {
+	for _, err := range data.Records {
 		if err != nil {
 			t.Fatalf("iterando: %v", err)
 		}

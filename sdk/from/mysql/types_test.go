@@ -15,8 +15,8 @@ import (
 // base64 in the JSON, and so would an INT.
 func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
-		nome      string
-		valor     any
+		name      string
+		value     any
 		declarado string
 		quero     string
 		porque    string
@@ -51,8 +51,8 @@ func TestToJSONRowByRow(t *testing.T) {
 	}
 
 	for _, c := range casos {
-		t.Run(c.nome, func(t *testing.T) {
-			b, err := json.Marshal(ToJSON(c.valor, c.declarado))
+		t.Run(c.name, func(t *testing.T) {
+			b, err := json.Marshal(ToJSON(c.value, c.declarado))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -84,11 +84,11 @@ func TestTheTwoInstantPathsAgree(t *testing.T) {
 	}
 }
 
-// TestADateGainsNoTime: 00:00:00 is a time nobody wrote, and it walks a
-// dia na primeira conversao de fuso.
+// TestADateGainsNoTime: 00:00:00 is a time nobody wrote, and it walks a day on
+// the first timezone conversion.
 func TestADateGainsNoTime(t *testing.T) {
 	d := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 	if got := ToJSON(d, "DATE"); got != "2026-09-05" {
-		t.Errorf("DATE = %v, esperado sem hora", got)
+		t.Errorf("DATE = %v, expected no time", got)
 	}
 }
