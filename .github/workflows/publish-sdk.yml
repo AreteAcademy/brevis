@@ -54,9 +54,9 @@ jobs:
           cd sdk
           go test -v -race ./...
 
-      # O gate rodava só os testes, então uma árvore com o lint vermelho
-      # publicou duas versões antes de alguém olhar o test.yml. Uma release
-      # é imutável; o momento de descobrir é aqui.
+      # The gate ran only the tests, so a tree with a red lint published two
+      # versions before anybody looked at test.yml. A release is immutable; the
+      # moment to find out is here.
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
@@ -64,22 +64,22 @@ jobs:
           working-directory: sdk
           args: --timeout=5m
 
-      # A poda por driver estava só no test.yml, então a v0.41.0 publicou com
-      # uma regressão de dependência: o pycompat passou a arrastar o net/http,
-      # o Integration ficou vermelho, e o publish passou mesmo assim. Uma
-      # release é imutável -- a verificação tem de estar ANTES da tag, e não
-      # num workflow que roda em paralelo.
+      # The per-driver pruning check lived only in test.yml, so v0.41.0
+      # published with a dependency regression: pycompat started dragging
+      # net/http in, Integration went red, and the publish passed anyway. A
+      # release is immutable -- the check has to be BEFORE the tag, and not in a
+      # workflow that runs in parallel.
       #
-      # É a mesma lacuna que o lint teve até a v0.27.2, pela mesma razão: a
-      # verificação existia e não estava no caminho que importa.
+      # It is the same gap the lint had until v0.27.2, for the same reason: the
+      # check existed and was not on the path that matters.
       - name: Gate - a poda por driver
         run: .github/scripts/pruning-check.sh
 
       - name: Gate - a clean consumer must compile against this tree
-        # Roda ANTES do create-release e antes de avisar o proxy, para que um
-        # go.mod ruim ainda possa ser consertado apagando a tag. Depois que o
-        # proxy guarda uma versão ela é imutável para sempre -- foi assim que a
-        # v0.1.0 se queimou.
+        # It runs BEFORE create-release and before notifying the proxy, so a bad
+        # go.mod can still be fixed by deleting the tag. Once the proxy has
+        # stored a version it is immutable forever -- that is how v0.1.0 burned
+        # itself.
         run: .github/scripts/consumer-check.sh local
 
   create-release:
@@ -157,8 +157,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # O consumidor vive num script do repositório, então este job precisa
-      # dele -- antes ele não fazia checkout porque o programa era inline.
+      # The consumer lives in a script in the repository, so this job needs the
+      # checkout -- before, it did not check out because the program was
+      # inline.
       - uses: actions/checkout@v4
 
       - name: Set up Go
@@ -193,6 +194,6 @@ jobs:
           exit 1
 
       - name: Build a real consumer against the published module
-        # A prova de que o proxy serve o que dissemos que serve: módulo limpo,
-        # sem replace, do jeito que alguém que faz go get o vê.
+        # The proof that the proxy serves what we said it serves: a clean
+        # module, with no replace, the way somebody running go get sees it.
         run: .github/scripts/consumer-check.sh "${{ needs.create-release.outputs.version }}"

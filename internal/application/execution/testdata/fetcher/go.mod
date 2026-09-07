@@ -1,7 +1,8 @@
-// Módulo PRÓPRIO, e não um pacote da raiz: um fetcher importa o SDK, e o SDK
-// traz BigQuery, S3 e MySQL atrás. Pendurá-lo no go.mod do motor arrastaria
-// essa árvore para o módulo que peso-do-motor.sh existe para manter magro.
-module fetcherdeteste
+// A module of ITS OWN, and not a package of the root: a fetcher imports the
+// SDK, and the SDK brings BigQuery, S3 and MySQL behind it. Hanging it off the
+// engine's go.mod would drag that tree into the module engine-weight.sh exists
+// to keep lean.
+module testfetcher
 
 go 1.23.0
 

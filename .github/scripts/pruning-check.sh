@@ -1,61 +1,73 @@
 #!/usr/bin/env bash
-# Prova que um consumidor só compila o que importa.
+# Proves that a consumer only compiles what it imports.
+#
+# `go list -deps` resolves imports without compiling the body, so a call to a
+# symbol that does not exist used to pass green -- `pycompat.Texto` did, for
+# versions after Texto became Text. `go build` runs first now, so the body has
+# to be real.
 set -euo pipefail
-ARVORE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)"
+TREE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)"
 MODULO="github.com/AreteAcademy/brevis/sdk"
 
-verificar() {
-  local nome="$1" imports="$2" corpo="$3" proibidos="$4"
+check() {
+  local name="$1" imports="$2" body="$3" forbidden="$4"
   local dir; dir="$(mktemp -d)"; trap 'rm -rf "$dir"' RETURN
   cd "$dir"
   cat > go.mod <<EOF
-module poda/$nome
+module pruning/$name
 
 go 1.23
 
 require $MODULO v0.0.0
 
-replace $MODULO => $ARVORE
+replace $MODULO => $TREE
 EOF
   { echo "package main"; echo; echo "import ("; echo "$imports"; echo ")"; echo;
-    echo "func main() { $corpo }"; } > main.go
+    echo "func main() { $body }"; } > main.go
   go mod tidy >/dev/null 2>&1
+  # The build comes FIRST: `go list -deps` below resolves imports without
+  # compiling, so without this a body calling a symbol that no longer exists
+  # would still be counted as a passing case.
+  if ! go build ./... 2>&1; then
+    echo "❌ $name does not compile"
+    return 1
+  fi
   local deps; deps="$(go list -deps ./...)"
   local total; total="$(echo "$deps" | wc -l | tr -d ' ')"
-  local falhou=0
-  for p in $proibidos; do
+  local failed=0
+  for p in $forbidden; do
     local n; n="$(echo "$deps" | grep -c "$p" || true)"
     if [ "$n" != "0" ]; then
-      echo "❌ $nome compila $n pacote(s) de $p, e não deveria"
-      falhou=1
+      echo "❌ $name compiles $n package(s) from $p, and should not"
+      failed=1
     fi
   done
-  [ "$falhou" = "0" ] && echo "✅ $nome: $total pacotes, nenhum driver alheio"
-  return $falhou
+  [ "$failed" = "0" ] && echo "✅ $name: $total packages, no foreign driver"
+  return $failed
 }
 
-verificar "arquivos" \
+check "files" \
   "	\"$MODULO/from\"
 	\"$MODULO/to\"" \
   "_ = from.Files{}; _ = to.Files{}" \
   "jackc/pgx cloud.google.com aws-sdk-go"
 
-verificar "postgres" \
+check "postgres" \
   "	\"$MODULO/from/postgres\"" \
   "_ = postgres.Query{}" \
   "cloud.google.com aws-sdk-go"
 
-verificar "mysql" \
+check "mysql" \
   "	\"$MODULO/from/mysql\"" \
   "_ = mysql.Query{}" \
   "jackc/pgx cloud.google.com aws-sdk-go"
 
-verificar "pycompat" \
+check "pycompat" \
   "	\"$MODULO/pycompat\"" \
-  "_, _ = pycompat.Texto(nil)" \
+  "_, _ = pycompat.Text(nil)" \
   "jackc/pgx cloud.google.com aws-sdk-go net/http"
 
-verificar "bigquery" \
+check "bigquery" \
   "	\"$MODULO/to/bigquery\"" \
   "_ = bigquery.Table{}" \
   "jackc/pgx aws-sdk-go"

@@ -7,7 +7,7 @@ BIN := bin/brevis
 # Tailwind is PINNED. `releases/latest` made two developers generate different
 # CSS from the same source -- and that is what let a stale app.css get past the
 # release gate and stamp an image `-dirty`.
-TAILWIND_VERSAO ?= v4.3.3
+TAILWIND_VERSION ?= v4.3.3
 
 REGISTRY  ?= docker.io
 NAMESPACE ?= daniel3843
@@ -69,12 +69,12 @@ tailwind-install: ## Downloads the standalone Tailwind binary (no Node)
 	@ARCH=$$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/'); \
 	 OS=$$(uname -s | tr 'A-Z' 'a-z' | sed 's/darwin/macos/'); \
 	 curl -sSLf -o bin/tailwindcss \
-	   "https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSAO)/tailwindcss-$$OS-$$ARCH" \
-	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss $(TAILWIND_VERSAO) instalado"
+	   "https://github.com/tailwindlabs/tailwindcss/releases/download/$(TAILWIND_VERSION)/tailwindcss-$$OS-$$ARCH" \
+	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss $(TAILWIND_VERSION) installed"
 
 generate: ## Generates the _templ.go files and the CSS
 	@command -v templ >/dev/null || { echo "instale: go install github.com/a-h/templ/cmd/templ@$$(go list -m -f '{{.Version}}' github.com/a-h/templ)"; exit 1; }
-	@test -x bin/tailwindcss && ./bin/tailwindcss --help 2>&1 | head -1 | grep -q "$(patsubst v%,%,$(TAILWIND_VERSAO))" || $(MAKE) tailwind-install
+	@test -x bin/tailwindcss && ./bin/tailwindcss --help 2>&1 | head -1 | grep -q "$(patsubst v%,%,$(TAILWIND_VERSION))" || $(MAKE) tailwind-install
 	@templ generate
 	@./bin/tailwindcss -i web/assets/app.src.css -o web/assets/app.css --minify
 

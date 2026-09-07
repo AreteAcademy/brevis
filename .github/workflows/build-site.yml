@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build está em dia
+      - name: The build is up to date
         run: |
           cd site
           python3 build.py --check

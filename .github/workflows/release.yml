@@ -1,8 +1,8 @@
 # Publica as imagens no Docker Hub a cada tag `v*`.
 #
-# Tag e nao push na main: uma imagem publicada e um artefato que outra gente vai
-# consumir, e o momento de publicar deve ser uma decisao explicita — nao o efeito
-# colateral de um merge.
+# A tag and not a push to main: a published image is an artifact other people
+# will consume, and the moment of publishing should be an explicit decision — not
+# the side effect of a merge.
 name: release
 
 on:
@@ -32,17 +32,18 @@ jobs:
 
       # O portao antes de publicar. Uma imagem que sai da CI com teste vermelho
       # e pior que nenhuma imagem: alguem vai roda-la achando que passou.
-      - name: Testes
+      - name: Tests
         run: go test ./...
 
-      # O CSS e os _templ.go sao embutidos no binario e vao versionados; se
-      # alguem esquecer de rodar `make generate`, a imagem sai com a UI antiga.
+      # The CSS and the _templ.go files are embedded in the binary and go in
+      # versioned; if somebody forgets to run `make generate`, the image ships
+      # with the old UI.
       #
-      # Este passo rodava so o templ, apesar de o comentario dizer que cobria o
-      # `make generate` -- e foi por essa fresta que um app.css velho chegou a
-      # imagem 0.4.0. O script confere os DOIS geradores, com as duas versoes
-      # pinadas.
-      - name: Conferir artefatos gerados
+      # This step used to run only templ, despite the comment claiming it covered
+      # `make generate` -- and that is the gap a stale app.css came through into
+      # the 0.4.0 image. The script checks BOTH generators, with both versions
+      # pinned.
+      - name: Check the generated artifacts
         run: ./.github/scripts/generated-check.sh
 
       - uses: docker/setup-qemu-action@v3
@@ -53,7 +54,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Definir version
+      - name: Resolve the version
         id: v
         run: |
           if [ -n "${{ inputs.version }}" ]; then
@@ -62,14 +63,14 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
-      # A version do file VERSION e a da tag precisam bater. Sem esta
-      # checagem, `brevis version` dentro da imagem mentiria sobre a tag que a
-      # publicou — e e por ela que se rastreia um incidente.
-      - name: Conferir VERSION
+      # The VERSION file's version and the tag's have to match. Without this
+      # check, `brevis version` inside the image would lie about the tag that
+      # published it — and that is what an incident is traced by.
+      - name: Check VERSION
         run: |
           file=$(cat VERSION)
           if [ "$file" != "${{ steps.v.outputs.version }}" ]; then
-            echo "::error::VERSION=$file difere da tag ${{ steps.v.outputs.version }}"
+            echo "::error::VERSION=$file differs from the tag ${{ steps.v.outputs.version }}"
             exit 1
           fi
 
@@ -87,7 +88,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Worker (com shell)
+      - name: Worker (with a shell)
         uses: docker/build-push-action@v6
         with:
           context: .

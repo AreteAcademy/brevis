@@ -40,7 +40,7 @@ make generate          # regenerates web/ (templ + Tailwind, both pinned)
 ```
 
 Two modules, two `go.mod`. The engine does not import the SDK, and
-`.github/scripts/peso-do-motor.sh` enforces it: the API and the scheduler are one
+`.github/scripts/engine-weight.sh` enforces it: the API and the scheduler are one
 7 MB binary, and the data drivers live in the task pods.
 
 Before opening a pull request:
@@ -48,7 +48,7 @@ Before opening a pull request:
 ```bash
 golangci-lint run ./...                     # in both modules
 ./.github/scripts/generated-check.sh        # web/ artefacts are current
-./.github/scripts/peso-do-motor.sh          # the engine stays lean
+./.github/scripts/engine-weight.sh          # the engine stays lean
 ./.github/scripts/pruning-check.sh          # a consumer only compiles what it imports
 ```
 

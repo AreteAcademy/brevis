@@ -93,7 +93,7 @@ jobs:
         run: ./.github/scripts/generated-check.sh
 
       - name: Engine weight
-        run: ./.github/scripts/peso-do-motor.sh
+        run: ./.github/scripts/engine-weight.sh
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8

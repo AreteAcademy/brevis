@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Compila um consumidor limpo do SDK -- sem replace, sem os testes do repo,
-# do jeito que alguém que faz `go get` o vê.
+# Builds a clean consumer of the SDK -- no replace, none of the repo's tests,
+# the way somebody running `go get` sees it.
 #
-# Um argumento: a versão a exigir. Passe "local" para apontar o replace para a
-# árvore de trabalho (o gate antes da tag); passe uma versão publicada para
-# provar o que o proxy serve (a verificação depois da tag).
+# One argument: the version to require. Pass "local" to point the replace at the
+# working tree (the gate before the tag); pass a published version to prove what
+# the proxy serves (the check after the tag).
 #
 #   .github/scripts/consumer-check.sh local
 #   .github/scripts/consumer-check.sh v0.25.0
 #
-# Existe num arquivo só, e não inline em dois jobs, porque as duas cópias
-# ficaram para trás na API da v0.17.1 e reprovaram nove publicações seguidas.
-# Eu consertei uma delas e a outra seguiu vermelha -- que é o argumento contra
-# duas cópias, escrito por elas mesmas.
+# It lives in one file, and not inline in two jobs, because the two copies fell
+# behind v0.17.1's API and failed nine publishes in a row. One of them was fixed
+# and the other stayed red -- which is the argument against two copies, written
+# by them.
 set -euo pipefail
 
 MODULO="github.com/AreteAcademy/brevis/sdk"
-VERSAO="${1:?uso: consumer-check.sh <versão|local>}"
-ARVORE="${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)}"
+VERSION="${1:?usage: consumer-check.sh <version|local>}"
+TREE="${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)}"
 
 DIR="$(mktemp -d)"
 trap 'rm -rf "$DIR"' EXIT
 cd "$DIR"
 
-if [ "$VERSAO" = "local" ]; then
+if [ "$VERSION" = "local" ]; then
   cat > go.mod <<EOF
-module example.com/consumidor
+module example.com/consumer
 
 go 1.23
 
 require $MODULO v0.0.0
 
-replace $MODULO => $ARVORE
+replace $MODULO => $TREE
 EOF
 else
   cat > go.mod <<EOF
@@ -39,7 +39,7 @@ module example.com/consumidor
 
 go 1.23
 
-require $MODULO $VERSAO
+require $MODULO $VERSION
 EOF
 fi
 
@@ -60,16 +60,16 @@ import (
 
 var _ = from.Refresh{Store: gcs.Credential{Bucket: "b", Object: "o"}}
 
-// Toca a porta da frente e um driver de cada lado, para que um rename que
-// quebre quem chama falhe aqui e não depois da release.
+// It touches the front door and one driver on each side, so a rename that
+// breaks a caller fails here and not after the release.
 func main() {
-	dados, err := sdk.Extract(context.Background(), sdk.Source{
+	data, err := sdk.Extract(context.Background(), sdk.Source{
 		From: from.HTTP{
 			URL:     "http://x",
 			PageKey: "page",
 			DataKey: "results",
-			// Um Applier declarado como func em vez de var nao seria
-			// atribuivel aqui -- e so um consumidor de fora pega isso.
+			// An Applier declared as a func instead of a var would not be
+			// assignable here -- and only an outside consumer catches that.
 			Auth: &from.Credential{
 				Value: from.FromEnv("APP_SESSION"),
 				Apply: from.AsCookie,
@@ -78,12 +78,9 @@ func main() {
 					URL:       "http://x/session",
 					ExpiresAt: from.JSONField("expires"),
 					WarnAfter: 7 * 24 * time.Hour,
-					// FileStore por VALOR, como a doc mostra: se ele
-					// deixasse de satisfazer CredentialStore, so um
-					// consumidor de fora do modulo pegaria.
-					// Os dois stores, por valor: se um deixasse de
-					// satisfazer CredentialStore, so um consumidor de
-					// fora do modulo pegaria.
+					// Both stores, BY VALUE, as the docs show: if either
+					// stopped satisfying CredentialStore, only a consumer
+					// from outside the module would catch it.
 					Store: from.FileStore{Name: "app-session"},
 				},
 			},
@@ -101,24 +98,24 @@ func main() {
 		return
 	}
 
-	dados = sdk.Transform(dados,
+	data = sdk.Transform(data,
 		sdk.Accept("id"),
-		sdk.Rename(map[string]string{"id": "chave"}),
+		sdk.Rename(map[string]string{"id": "key"}),
 		sdk.Compute("provider", func(map[string]any) (any, error) { return "p", nil }),
 		sdk.Compute("entity", func(map[string]any) (any, error) { return "e", nil }),
-		sdk.Compute("source_key", func(r map[string]any) (any, error) { return sdk.Key("chave")(r) }),
-		sdk.IngestionID("provider", "entity", "source_key", "chave"),
+		sdk.Compute("source_key", func(r map[string]any) (any, error) { return sdk.Key("key")(r) }),
+		sdk.IngestionID("provider", "entity", "source_key", "key"),
 		sdk.IngestionLoadedAt(),
 	)
 
-	_, _ = sdk.Load(context.Background(), dados, sdk.Target{
+	_, _ = sdk.Load(context.Background(), data, sdk.Target{
 		To:      bigquery.Table{Dataset: "bronze", Name: "t"},
-		Columns: []string{"ingestion_id", "ingestion_loaded_at", "provider", "entity", "source_key", "chave"},
+		Columns: []string{"ingestion_id", "ingestion_loaded_at", "provider", "entity", "source_key", "key"},
 		Dedup:   sdk.DedupNone,
 	})
 
-	// O outro destino, que não pode arrastar o BigQuery junto.
-	_, _ = sdk.Load(context.Background(), dados, sdk.Target{To: to.Files{Path: "./saida/"}})
+	// The other destination, which must not drag BigQuery along with it.
+	_, _ = sdk.Load(context.Background(), data, sdk.Target{To: to.Files{Path: "./out/"}})
 
 	env := sdk.Envelope{Provider: "p", Entity: "e", SourceKey: "k"}
 	id, err := env.IngestionID()
@@ -128,4 +125,4 @@ EOF
 
 GOFLAGS=-mod=mod go mod tidy
 go build ./...
-echo "✅ consumidor limpo compila contra $VERSAO"
+echo "✅ a clean consumer compiles against $VERSION"
