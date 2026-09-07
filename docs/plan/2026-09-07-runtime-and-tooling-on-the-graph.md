@@ -1,7 +1,8 @@
 # Showing what a step actually runs, on the graph
 
 **Written on** 2026-09-07 · **Base** engine `v0.6.0`, `sdk/v0.53.0`
-**Status** proposed — not started
+**Status** done, 2026-09-07 — steps 1–6 in five commits. §3.3 (the observed
+tier) and §10 stay out, as written.
 
 A step on the DAG says its id, its command, its state and how long it took. It
 does not say **what it runs in**. Two boxes that look identical can be a Go
@@ -298,6 +299,36 @@ surprises them, and it has to answer why without them opening the YAML.
   fields are optional; only a *wrong* value is refused.
 - **No new dependency.** The detector is `strings`; the chips are inline styles.
   The engine's package ceiling is 330 and it sits at 297.
+
+---
+
+## 7.5 What changed while building it
+
+Three corrections the work forced, kept here because the plan was wrong about
+them and the reasons are the useful part.
+
+**The package is `runtimes`, not `runtime`.** `cmd/brevis` imports the standard
+library's `runtime`, and the collision would force an import alias on every file
+that wanted both.
+
+**`action:` contributes nothing.** §3.2 said a step with `action:` is `go` "with
+certainty". It is not: two of this repository's own examples use
+`action: kubernetes.run` and `action: docker.run`, dispatch actions whose
+payload is an arbitrary image, and the first implementation labelled both Go.
+Telling a real in-process task from a dispatch one needs the executor's
+registry, which a pure function does not have — so blank is the honest answer.
+The corpus test in step 5 is what caught it, on its first run, which is the
+argument for the corpus test.
+
+**`shell` had to become the weakest runtime.** First match wins across fragments
+read `cp in.csv /tmp/ && python x.py` as a Shell step and hid the Python — the
+language whose stack trace the operator is about to read. Anything concrete now
+beats `shell`.
+
+**Precedence lives in the domain package, not in `graph.go`.** §5 put it in the
+handler. `runtimes.Resolve` is next to `Detect` instead, so the order is a
+property of the package with a test, rather than a line in an HTTP handler
+nobody exercises.
 
 ---
 

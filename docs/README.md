@@ -54,7 +54,7 @@ what actually shipped — **not** as a description of the current state.
 | [`2026-09-05-contexto-entre-passos.md`](plan/2026-09-05-contexto-entre-passos.md) | **proposal** — what one step tells the next |
 | [`2026-09-06-open-threads.md`](plan/2026-09-06-open-threads.md) | **inventory** — what was left open, checked against the tree, and in what order to close it |
 | [`2026-09-06-english-only.md`](plan/2026-09-06-english-only.md) | threads A–J closed; what is left needs a cluster or credentials |
-| [`2026-09-07-runtime-and-tooling-on-the-graph.md`](plan/2026-09-07-runtime-and-tooling-on-the-graph.md) | **proposed** — the runtime and tool chips on the DAG |
+| [`2026-09-07-runtime-and-tooling-on-the-graph.md`](plan/2026-09-07-runtime-and-tooling-on-the-graph.md) | **done** — the runtime and tool chips on the DAG |
 
 The specs are written in Portuguese where they were written that way, and they
 stay: a spec records a decision made on a date, and rewriting a record is not
