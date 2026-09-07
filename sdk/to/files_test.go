@@ -50,11 +50,11 @@ func TestFilesWritesNDJSON(t *testing.T) {
 		t.Errorf("RowsLoaded = %d", res.RowsLoaded)
 	}
 
-	corpo, err := os.ReadFile(unico(t, dir))
+	body, err := os.ReadFile(unico(t, dir))
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(strings.TrimSpace(string(corpo)), "\n")
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
 	if len(lines) != 3 {
 		t.Fatalf("%d linhas, esperado 3", len(lines))
 	}
@@ -75,16 +75,16 @@ func TestFilesAddsNothingWithoutMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	corpo, _ := os.ReadFile(unico(t, dir))
+	body, _ := os.ReadFile(unico(t, dir))
 	var row map[string]any
-	_ = json.Unmarshal([]byte(strings.TrimSpace(string(corpo))), &row)
+	_ = json.Unmarshal([]byte(strings.TrimSpace(string(body))), &row)
 
 	if len(row) != 2 {
 		t.Errorf("o registro tem %d campos, esperado os 2 do chamador: %v", len(row), row)
 	}
-	for _, proibido := range []string{"ingestion_id", "provider", "entity", "source_key", "payload"} {
-		if _, tem := row[proibido]; tem {
-			t.Errorf("o SDK escreveu %q sem ser pedido", proibido)
+	for _, forbidden := range []string{"ingestion_id", "provider", "entity", "source_key", "payload"} {
+		if _, tem := row[forbidden]; tem {
+			t.Errorf("o SDK escreveu %q sem ser pedido", forbidden)
 		}
 	}
 }
@@ -146,8 +146,8 @@ func TestFilesWritesCSVWithTheUnionOfTheFields(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	corpo, _ := os.ReadFile(unico(t, dir))
-	lines := strings.Split(strings.TrimSpace(string(corpo)), "\n")
+	body, _ := os.ReadFile(unico(t, dir))
+	lines := strings.Split(strings.TrimSpace(string(body)), "\n")
 	if lines[0] != "a,b" {
 		t.Errorf("cabeçalho = %q, esperado a união ordenada", lines[0])
 	}

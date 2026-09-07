@@ -62,7 +62,7 @@ func TestFormatUUIDAgreesWithString(t *testing.T) {
 		for j := range u {
 			u[j] = byte(r.Intn(256))
 		}
-		if got, quero := formatarUUID(u), u.String(); got != quero {
+		if got, quero := formatUUID(u), u.String(); got != quero {
 			t.Fatalf("meu %q, String() %q", got, quero)
 		}
 	}

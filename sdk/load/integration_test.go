@@ -756,7 +756,7 @@ func TestIntegrationColumnsMatchTheDDL(t *testing.T) {
 
 // --- the options that had never touched a real BigQuery -------------------
 
-// TestIntegrationCreateSQLRunsTheCallersDDL: CreateSQL existia desde a v0.9.0
+// TestIntegrationCreateSQLRunsTheCallersDDL: CreateSQL had existed since v0.9.0
 // and had never been executed against BigQuery. It is the path for whoever has
 // a DDL the SDK cannot express.
 func TestIntegrationCreateSQLRunsTheCallersDDL(t *testing.T) {

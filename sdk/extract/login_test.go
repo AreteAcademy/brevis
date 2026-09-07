@@ -29,8 +29,8 @@ func serverWithLogin(t *testing.T, failTimes int32) (*httptest.Server, *atomic.I
 			http.Error(w, "indisponível", http.StatusServiceUnavailable)
 			return
 		}
-		corpo, _ := io.ReadAll(r.Body)
-		if !strings.Contains(string(corpo), "meu-segredo") {
+		body, _ := io.ReadAll(r.Body)
+		if !strings.Contains(string(body), "meu-segredo") {
 			http.Error(w, "sem o segredo no corpo", http.StatusUnauthorized)
 			return
 		}
@@ -52,7 +52,7 @@ func serverWithLogin(t *testing.T, failTimes int32) (*httptest.Server, *atomic.I
 	return srv, &logins
 }
 
-func lerTudo(t *testing.T, s core.Source) error {
+func readAll(t *testing.T, s core.Source) error {
 	t.Helper()
 	seq, err := JSON(context.Background(), s, nil)
 	if err != nil {
@@ -82,7 +82,7 @@ func loginCredential(srv *httptest.Server) *core.Credential {
 func TestLoginTradesSecretsForAToken(t *testing.T) {
 	srv, logins := serverWithLogin(t, 0)
 
-	if err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)}); err != nil {
+	if err := readAll(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)}); err != nil {
 		t.Fatalf("Read: %v", err)
 	}
 	if logins.Load() != 1 {
@@ -96,7 +96,7 @@ func TestLoginTradesSecretsForAToken(t *testing.T) {
 func TestLoginHasRetry(t *testing.T) {
 	srv, logins := serverWithLogin(t, 2)
 
-	err := lerTudo(t, core.Source{
+	err := readAll(t, core.Source{
 		URL:  srv.URL + "/dados",
 		Auth: loginCredential(srv),
 		RetryConfig: &core.RetryConfig{
@@ -125,7 +125,7 @@ func TestLoginCachesWithTTL(t *testing.T) {
 			_ = err
 		}
 	}
-	if err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: cred}); err != nil {
+	if err := readAll(t, core.Source{URL: srv.URL + "/dados", Auth: cred}); err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 3; i++ {
@@ -152,7 +152,7 @@ func TestALoginThatFailsStopsTheRun(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)})
+	err := readAll(t, core.Source{URL: srv.URL + "/dados", Auth: loginCredential(srv)})
 	if err == nil {
 		t.Fatal("o login falhou e a execução seguiu")
 	}
@@ -181,7 +181,7 @@ func TestLoginDoesNotLeakTheSourcesHeader(t *testing.T) {
 		Header: map[string][]string{"X-Segredo-Da-Fonte": {"não deveria ir"}},
 		Auth:   loginCredential(srv),
 	}
-	if err := lerTudo(t, source); err != nil {
+	if err := readAll(t, source); err != nil {
 		t.Fatal(err)
 	}
 	if vistoNoLogin != "" {

@@ -32,7 +32,7 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 	t.Setenv(core.EnvCredentialKey, "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
 
 	var mu sync.Mutex
-	var vistos []string
+	var seenValues []string
 	generation := 0
 
 	mux := http.NewServeMux()
@@ -40,7 +40,7 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 		c, err := r.Cookie("session")
 		mu.Lock()
 		if err == nil {
-			vistos = append(vistos, c.Value)
+			seenValues = append(seenValues, c.Value)
 		}
 		mu.Unlock()
 		if err != nil {
@@ -57,15 +57,15 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	runIt := func(semente string) error {
+	runIt := func(seed string) error {
 		source := core.Source{
 			URL: srv.URL + "/api/proxy/occurrences",
 			Auth: &core.Credential{
 				Value: func(context.Context) (string, error) {
-					if semente == "" {
+					if seed == "" {
 						return "", fmt.Errorf("GABRIEL_SESSION_COOKIE nao esta definida")
 					}
-					return "session=" + semente, nil
+					return "session=" + seed, nil
 				},
 				Apply: core.AsCookie,
 				Refresh: &core.Refresh{
@@ -99,14 +99,14 @@ func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if len(vistos) != 2 {
-		t.Fatalf("a renovacao recebeu credencial %d vezes, esperado 2: %v", len(vistos), vistos)
+	if len(seenValues) != 2 {
+		t.Fatalf("a renovacao recebeu credencial %d vezes, esperado 2: %v", len(seenValues), seenValues)
 	}
-	if vistos[0] != "colado-pelo-humano" {
-		t.Errorf("a primeira execucao usou %q", vistos[0])
+	if seenValues[0] != "colado-pelo-humano" {
+		t.Errorf("a primeira execucao usou %q", seenValues[0])
 	}
-	if vistos[1] != "rotacionado-1" {
-		t.Errorf("a segunda execucao usou %q; esperava o valor que a primeira gravou", vistos[1])
+	if seenValues[1] != "rotacionado-1" {
+		t.Errorf("a segunda execucao usou %q; esperava o valor que a primeira gravou", seenValues[1])
 	}
 }
 
@@ -167,7 +167,7 @@ func (storeQueNaoGrava) Describe() string      { return "store de teste" }
 // where one is not kept.
 func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 	const secret = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..MUlTVFJP"
-	const rotacionado = "ROTACIONADO-eyJhbGciOiJkaXI"
+	const rotated = "ROTACIONADO-eyJhbGciOiJkaXI"
 
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
@@ -178,7 +178,7 @@ func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
-		http.SetCookie(w, &http.Cookie{Name: "session", Value: rotacionado})
+		http.SetCookie(w, &http.Cookie{Name: "session", Value: rotated})
 		_, _ = fmt.Fprintf(w, `{"expires":%q}`, time.Now().Add(time.Hour).Format(time.RFC3339))
 	})
 	mux.HandleFunc("/api/proxy/dados", func(w http.ResponseWriter, _ *http.Request) {
@@ -215,13 +215,13 @@ func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 	}
 
 	log := buf.String()
-	for name, value := range map[string]string{"a semente": secret, "o rotacionado": rotacionado} {
+	for name, value := range map[string]string{"the seed": secret, "the rotated one": rotated} {
 		if strings.Contains(log, value) {
-			t.Errorf("%s vazou para o log:\n%s", name, log)
+			t.Errorf("%s leaked into the log:\n%s", name, log)
 		}
-		// Nem truncada: um prefixo de credencial ainda e credencial parcial.
+		// Not even truncated: a prefix of a credential is still part of one.
 		if strings.Contains(log, value[:16]) {
-			t.Errorf("%s vazou truncada para o log:\n%s", name, log)
+			t.Errorf("%s leaked into the log, truncated:\n%s", name, log)
 		}
 	}
 }

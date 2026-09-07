@@ -238,9 +238,9 @@ func TestWhatDoesNotFitRefusesBeforeExtracting(t *testing.T) {
 			continue
 		}
 		// The message has to name both ways out, because both exist.
-		for _, esperado := range []string{"constant", "SQL", "sdk.Custom"} {
-			if !strings.Contains(err.Error(), esperado) {
-				t.Errorf("%s: a mensagem não diz %q: %v", name, esperado, err)
+		for _, expected := range []string{"constant", "SQL", "sdk.Custom"} {
+			if !strings.Contains(err.Error(), expected) {
+				t.Errorf("%s: a mensagem não diz %q: %v", name, expected, err)
 			}
 		}
 	}

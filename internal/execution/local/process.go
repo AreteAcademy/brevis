@@ -48,7 +48,7 @@ func New(env string) (*ProcessExecutor, error) {
 	return &ProcessExecutor{shell: "/bin/sh", running: map[string]context.CancelFunc{}}, nil
 }
 
-// ambienteDaTask assembles the process's env: the literals, plus the secrets
+// taskEnvironment assembles the process's env: the literals, plus the secrets
 // read out of the engine's own environment.
 //
 // In Kubernetes the coordinate `gabriel-session/cookie` points at a Secret. Here
@@ -59,7 +59,7 @@ func New(env string) (*ProcessExecutor, error) {
 // Absent is an ERROR, and not an empty string. An empty GABRIEL_SESSION_COOKIE
 // becomes an empty cookie header and a 401 further down, blaming the API for a
 // variable nobody exported.
-func ambienteDaTask(t execution.TaskExec) ([]string, error) {
+func taskEnvironment(t execution.TaskExec) ([]string, error) {
 	env := make(map[string]string, len(t.Env)+len(t.Secrets))
 	for k, v := range t.Env {
 		env[k] = v
@@ -122,12 +122,12 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	//
 	// `secrets:` is precisely the named opt-in against that rule -- "this one,
 	// on purpose" -- which is why it resolves AFTERWARDS, and can override.
-	ambiente, err := ambienteDaTask(t)
+	environment, err := taskEnvironment(t)
 	if err != nil {
 		cancel()
 		return nil, err
 	}
-	cmd.Env = ambiente
+	cmd.Env = environment
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

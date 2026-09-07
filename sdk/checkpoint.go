@@ -223,7 +223,7 @@ func materialize(ctx context.Context, dep *checkpoint.Depot,
 		// what already became an object, what stayed in the buffer, and then
 		// carries on straight from the source. It writes no manifest, so nobody
 		// resumes from a crippled depot.
-		degradar := func(causa error, pendente *Envelope) {
+		degradar := func(causa error, pending *Envelope) {
 			est.err = causa.Error()
 			slog.WarnContext(ctx, "checkpoint interrompido; a execucao segue sem ele",
 				"pipeline", name, "checkpoint", est.path, "erro", causa)
@@ -238,7 +238,7 @@ func materialize(ctx context.Context, dep *checkpoint.Depot,
 					return
 				}
 			}
-			if pendente != nil && !yield(*pendente, nil) {
+			if pending != nil && !yield(*pending, nil) {
 				return
 			}
 			for {

@@ -10,14 +10,14 @@
 // there never are.
 (function () {
   "use strict";
-  function criar(tipo, props, key) {
+  function create(tipo, props, key) {
     if (key === undefined) return React.createElement(tipo, props);
     return React.createElement(tipo, Object.assign({}, props, { key: key }));
   }
   window.jsxRuntime = {
-    jsx: criar,
-    jsxs: criar,
-    jsxDEV: criar,
+    jsx: create,
+    jsxs: create,
+    jsxDEV: create,
     Fragment: React.Fragment,
   };
 })();

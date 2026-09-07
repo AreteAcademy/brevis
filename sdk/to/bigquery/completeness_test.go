@@ -67,11 +67,11 @@ func fieldsOf(t *testing.T, path, kind string) []string {
 	if i < 0 {
 		t.Fatalf("%s não achado em %s", kind, path)
 	}
-	corpo := s[i:]
-	corpo = corpo[:strings.Index(corpo, "\n}")]
+	body := s[i:]
+	body = body[:strings.Index(body, "\n}")]
 
 	var out []string
-	for _, m := range fieldRe.FindAllStringSubmatch(corpo, -1) {
+	for _, m := range fieldRe.FindAllStringSubmatch(body, -1) {
 		out = append(out, m[1])
 	}
 	return out

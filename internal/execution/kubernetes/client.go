@@ -38,7 +38,7 @@ const (
 )
 
 // Cliente speaks to the API server.
-type Cliente struct {
+type Client struct {
 	base      string
 	namespace string
 	http      *http.Client
@@ -63,7 +63,7 @@ func (e ErrOutsideCluster) Error() string {
 }
 
 // NoCluster builds the client out of the environment the kubelet injects.
-func NoCluster() (*Cliente, error) {
+func NoCluster() (*Client, error) {
 	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
 	if host == "" || port == "" {
 		return nil, ErrOutsideCluster{Reason: "KUBERNETES_SERVICE_HOST/PORT ausentes"}
@@ -84,7 +84,7 @@ func NoCluster() (*Cliente, error) {
 	transporte := http.DefaultTransport.(*http.Transport).Clone()
 	transporte.TLSClientConfig = tlsConfig{pool}.build()
 
-	return &Cliente{
+	return &Client{
 		base:      fmt.Sprintf("https://%s", net_(host, port)),
 		namespace: strings.TrimSpace(string(ns)),
 		// No timeout on the client: the log GET with follow stays open for the
@@ -96,9 +96,9 @@ func NoCluster() (*Cliente, error) {
 }
 
 // Namespace is where the pods are created.
-func (c *Cliente) Namespace() string { return c.namespace }
+func (c *Client) Namespace() string { return c.namespace }
 
-func (c *Cliente) authorize(r *http.Request) error {
+func (c *Client) authorize(r *http.Request) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.token == "" || time.Since(c.tokenLido) > c.tokenTTL {
@@ -112,10 +112,10 @@ func (c *Cliente) authorize(r *http.Request) error {
 	return nil
 }
 
-func (c *Cliente) request(ctx context.Context, metodo, path string, corpo any) (*http.Response, error) {
+func (c *Client) request(ctx context.Context, metodo, path string, body any) (*http.Response, error) {
 	var leitor io.Reader
-	if corpo != nil {
-		b, err := json.Marshal(corpo)
+	if body != nil {
+		b, err := json.Marshal(body)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +125,7 @@ func (c *Cliente) request(ctx context.Context, metodo, path string, corpo any) (
 	if err != nil {
 		return nil, err
 	}
-	if corpo != nil {
+	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if err := c.authorize(req); err != nil {
@@ -143,16 +143,16 @@ func apiError(res *http.Response) error {
 		Message string `json:"message"`
 		Reason  string `json:"reason"`
 	}
-	corpo, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
-	_ = json.Unmarshal(corpo, &status)
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 8<<10))
+	_ = json.Unmarshal(body, &status)
 	if status.Message != "" {
 		return fmt.Errorf("kubernetes %s: %s", res.Status, status.Message)
 	}
-	return fmt.Errorf("kubernetes %s: %s", res.Status, strings.TrimSpace(string(corpo)))
+	return fmt.Errorf("kubernetes %s: %s", res.Status, strings.TrimSpace(string(body)))
 }
 
 // CreatePod creates the pod and returns the name it was given.
-func (c *Cliente) CreatePod(ctx context.Context, p Pod) (Pod, error) {
+func (c *Client) CreatePod(ctx context.Context, p Pod) (Pod, error) {
 	res, err := c.request(ctx, http.MethodPost,
 		"/api/v1/namespaces/"+c.namespace+"/pods", p)
 	if err != nil {
@@ -171,7 +171,7 @@ func (c *Cliente) CreatePod(ctx context.Context, p Pod) (Pod, error) {
 }
 
 // LerPod devolve o estado atual.
-func (c *Cliente) LerPod(ctx context.Context, name string) (Pod, error) {
+func (c *Client) LerPod(ctx context.Context, name string) (Pod, error) {
 	res, err := c.request(ctx, http.MethodGet,
 		"/api/v1/namespaces/"+c.namespace+"/pods/"+name, nil)
 	if err != nil {
@@ -192,7 +192,7 @@ func (c *Cliente) LerPod(ctx context.Context, name string) (Pod, error) {
 // Logs opens the container's output stream. With `follow`, the response only
 // ends when the container ends — which is why there is no timeout on the
 // http.Client.
-func (c *Cliente) Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error) {
+func (c *Client) Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error) {
 	q := url.Values{}
 	q.Set("container", containerName)
 	if follow1 {
@@ -210,7 +210,7 @@ func (c *Cliente) Logs(ctx context.Context, name string, follow1 bool) (io.ReadC
 }
 
 // DeletePod remove o pod.
-func (c *Cliente) DeletePod(ctx context.Context, name string) error {
+func (c *Client) DeletePod(ctx context.Context, name string) error {
 	res, err := c.request(ctx, http.MethodDelete,
 		"/api/v1/namespaces/"+c.namespace+"/pods/"+name, nil)
 	if err != nil {

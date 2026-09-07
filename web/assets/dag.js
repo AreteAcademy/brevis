@@ -64,10 +64,10 @@
   // A STAGE's state reuses the steps' palette: a stage's `done` has to be the
   // same green as a step's `success`, or the screen teaches two colour grammars
   // for the same idea.
-  var CORES_ETAPA = { done: "success", running: "running", failed: "failed", aborted: "canceled" };
+  var STAGE_STATE_COLOURS = { done: "success", running: "running", failed: "failed", aborted: "canceled" };
 
-  function stageColour(state1) {
-    return colour(CORES_ETAPA[state1] || "pending");
+  function stageColour(state) {
+    return colour(STAGE_STATE_COLOURS[state] || "pending");
   }
 
   // summarise condenses a stage's numbers to fit on one line. The whole detail
@@ -332,7 +332,7 @@
         h(
           "button",
           {
-            onClick: props.fechar,
+            onClick: props.close,
             style: { background: "none", border: "none", color: MUTED, cursor: "pointer", fontSize: 16, lineHeight: 1 },
           },
           "×"
@@ -427,8 +427,8 @@
   }
 
   function Graph(props) {
-    var state1 = React.useState({ nodes: [], edges: [], carregando: true, erro: "" });
-    var payload = state1[0], setDados = state1[1];
+    var graphState = React.useState({ nodes: [], edges: [], loading: true, erro: "" });
+    var payload = graphState[0], setPayload = graphState[1];
     var selState = React.useState(null);
     var selected = selState[0], setSelected = selState[1];
 
@@ -444,7 +444,7 @@
           })
           .then(function (g) {
             if (!alive) return;
-            setDados({ nodes: g.nodes || [], edges: g.edges || [], carregando: false, erro: "" });
+            setPayload({ nodes: g.nodes || [], edges: g.edges || [], loading: false, erro: "" });
             // Live updates by polling, not by WebSocket: the data changes in
             // seconds, not in milliseconds, and a repeated GET needs neither a
             // persistent connection nor reconnection logic.
@@ -459,8 +459,8 @@
           })
           .catch(function (e) {
             if (!alive) return;
-            setDados(function (d) {
-              return { nodes: d.nodes, edges: d.edges, carregando: false, erro: e.message };
+            setPayload(function (d) {
+              return { nodes: d.nodes, edges: d.edges, loading: false, erro: e.message };
             });
             timer = setTimeout(fetchGraph, 5000);
           });
@@ -561,7 +561,7 @@
       h(Inspector, {
         no: currentNode,
         stages: payload.nodes.filter(function (n) { return n.parentId === selected; }),
-        fechar: function () { setSelected(null); },
+        close: function () { setSelected(null); },
       })
     );
   }

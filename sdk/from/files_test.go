@@ -159,8 +159,8 @@ func TestFilesRefusesAStoreForAnotherScheme(t *testing.T) {
 
 func TestFilesCountsTheBytesRead(t *testing.T) {
 	dir := t.TempDir()
-	corpo := "{\"id\":1}\n{\"id\":2}\n"
-	escreve(t, dir, "a.ndjson", corpo)
+	body := "{\"id\":1}\n{\"id\":2}\n"
+	escreve(t, dir, "a.ndjson", body)
 
 	stats := &core.Stats{}
 	seq, err := Files{Path: filepath.Join(dir, "*.ndjson")}.
@@ -171,8 +171,8 @@ func TestFilesCountsTheBytesRead(t *testing.T) {
 	for range seq {
 	}
 
-	if stats.Bytes != int64(len(corpo)) {
-		t.Errorf("Stats.Bytes = %d, esperado %d", stats.Bytes, len(corpo))
+	if stats.Bytes != int64(len(body)) {
+		t.Errorf("Stats.Bytes = %d, esperado %d", stats.Bytes, len(body))
 	}
 	if stats.Pages != 1 {
 		t.Errorf("Stats.Pages = %d; um arquivo é uma página", stats.Pages)

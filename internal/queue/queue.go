@@ -166,7 +166,7 @@ func (q *Queue) Release(ctx context.Context, id int64, atraso time.Duration) err
 // process that crashed would stay stuck forever. That was exactly the failure
 // mode of the zombie runs that jammed pipelines for 33 days in the previous
 // system.
-func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, error) {
+func (q *Queue) Recover(ctx context.Context, limite time.Duration) ([]Item, error) {
 	// It returns the items, not just the count: whoever recovers needs to know
 	// WHICH runs were left dangling in order to fix their state too. With the
 	// count alone, the item went back to the queue but the Run stayed "running"

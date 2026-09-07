@@ -15,13 +15,13 @@ import (
 func TestALocalSecretComesFromTheEnginesEnvironment(t *testing.T) {
 	t.Setenv("GABRIEL_SESSION_COOKIE", "session=abc==")
 
-	env, err := ambienteDaTask(execution.TaskExec{
+	env, err := taskEnvironment(execution.TaskExec{
 		NodeID:  "fetch_occurrences",
 		Env:     map[string]string{"BREVIS_LOG_LEVEL": "info"},
 		Secrets: map[string]string{"GABRIEL_SESSION_COOKIE": "gabriel-session/cookie"},
 	})
 	if err != nil {
-		t.Fatalf("ambienteDaTask: %v", err)
+		t.Fatalf("taskEnvironment: %v", err)
 	}
 	if !contains(env, "GABRIEL_SESSION_COOKIE=session=abc==") {
 		t.Errorf("the secret did not reach the process: %v", env)
@@ -50,7 +50,7 @@ func TestAMissingSecretFailsBeforeRunning(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			preparar(t)
 
-			_, err := ambienteDaTask(execution.TaskExec{
+			_, err := taskEnvironment(execution.TaskExec{
 				NodeID:  "fetch_occurrences",
 				Secrets: map[string]string{"GABRIEL_SESSION_COOKIE": "gabriel-session/cookie"},
 			})
@@ -71,9 +71,9 @@ func TestAMissingSecretFailsBeforeRunning(t *testing.T) {
 func TestATaskDoesNotInheritTheEnginesEnvironmentByAccident(t *testing.T) {
 	t.Setenv("SEGREDO_DO_ORQUESTRADOR", "should not leak")
 
-	env, err := ambienteDaTask(execution.TaskExec{NodeID: "a", Env: map[string]string{"OK": "1"}})
+	env, err := taskEnvironment(execution.TaskExec{NodeID: "a", Env: map[string]string{"OK": "1"}})
 	if err != nil {
-		t.Fatalf("ambienteDaTask: %v", err)
+		t.Fatalf("taskEnvironment: %v", err)
 	}
 	for _, kv := range env {
 		if strings.HasPrefix(kv, "SEGREDO_DO_ORQUESTRADOR=") {
@@ -88,13 +88,13 @@ func TestATaskDoesNotInheritTheEnginesEnvironmentByAccident(t *testing.T) {
 func TestASecretOverridesTheLiteral(t *testing.T) {
 	t.Setenv("TOKEN", "do-ambiente")
 
-	env, err := ambienteDaTask(execution.TaskExec{
+	env, err := taskEnvironment(execution.TaskExec{
 		NodeID:  "a",
 		Env:     map[string]string{"TOKEN": "literal"},
 		Secrets: map[string]string{"TOKEN": "cofre/token"},
 	})
 	if err != nil {
-		t.Fatalf("ambienteDaTask: %v", err)
+		t.Fatalf("taskEnvironment: %v", err)
 	}
 	if !contains(env, "TOKEN=do-ambiente") {
 		t.Errorf("the literal beat the secret: %v", env)

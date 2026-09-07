@@ -208,14 +208,14 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		for i := range stages {
 			indicesDosEstagios[i] = rep.nextIndex()
 		}
-		indiceDoAlvo := rep.nextIndex()
+		targetIndex := rep.nextIndex()
 
 		for i, st := range stages {
 			rep.startedAtIndex(st.kind, indicesDosEstagios[i])
 		}
 		applyStages(data, stages, counts, p.Source.From.Describe())
 
-		data.Records = aoEsgotar(data.Records, func() {
+		data.Records = onExhausted(data.Records, func() {
 			rep.finished(PhaseSource, StateDone, sourceNumbers(data, p))
 			for i, st := range stages {
 				rep.finishedAtIndex(st.kind, indicesDosEstagios[i], StateDone,
@@ -225,11 +225,11 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 			// happens once the stream runs dry. With batches it already
 			// started, and the phase was opened below.
 			if p.Target.FlushEvery == 0 {
-				rep.startedAtIndex(PhaseTarget, indiceDoAlvo)
+				rep.startedAtIndex(PhaseTarget, targetIndex)
 			}
 		})
 		if p.Target.FlushEvery > 0 {
-			rep.startedAtIndex(PhaseTarget, indiceDoAlvo)
+			rep.startedAtIndex(PhaseTarget, targetIndex)
 		}
 	} else {
 		applyStages(data, stages, counts, p.Source.From.Describe())
@@ -304,9 +304,9 @@ func applyStages(data *Data, stages []Stage, counts []StageResult, source string
 	}
 }
 
-// aoEsgotar warns when the source has run out -- which is when the extract
+// onExhausted warns when the source has run out -- which is when the extract
 // really finished, and not when Extract returned the iterator.
-func aoEsgotar(rows iter.Seq2[Envelope, error], end func()) iter.Seq2[Envelope, error] {
+func onExhausted(rows iter.Seq2[Envelope, error], end func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		for env, err := range rows {
 			if !yield(env, err) {

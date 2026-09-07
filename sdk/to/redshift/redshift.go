@@ -148,11 +148,11 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		}()
 	}
 
-	exec, fechar, err := t.executor(ctx)
+	exec, closeIt, err := t.executor(ctx)
 	if err != nil {
 		return fail(err)
 	}
-	defer fechar()
+	defer closeIt()
 
 	commands := []string{CopySQL(t.copyTarget(res.Dedup), uri, t.IAMRole)}
 	if res.Dedup == core.DedupMerge {

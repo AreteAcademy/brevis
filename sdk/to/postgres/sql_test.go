@@ -16,11 +16,11 @@ func TestInsertSQLNamesTheColumns(t *testing.T) {
 	got := InsertSQL("landing.pedidos", "brevis_stage",
 		[]string{"ingestion_id", "provider", "valor"})
 
-	esperado := `INSERT INTO landing.pedidos ("ingestion_id", "provider", "valor") ` +
+	expected := `INSERT INTO landing.pedidos ("ingestion_id", "provider", "valor") ` +
 		`SELECT "ingestion_id", "provider", "valor" FROM brevis_stage ` +
 		`ON CONFLICT ("ingestion_id") DO NOTHING`
-	if got != esperado {
-		t.Errorf("SQL:\n  got  %s\n  want %s", got, esperado)
+	if got != expected {
+		t.Errorf("SQL:\n  got  %s\n  want %s", got, expected)
 	}
 }
 

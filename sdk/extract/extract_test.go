@@ -357,11 +357,11 @@ func TestPostSendsMethodBodyAndHeaders(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	corpo := `{"consulta":"tudo"}`
+	body := `{"consulta":"tudo"}`
 	lines, err := JSON(context.Background(), core.Source{
 		URL:    srv.URL,
 		Method: http.MethodPost,
-		Body:   strings.NewReader(corpo),
+		Body:   strings.NewReader(body),
 		Header: map[string][]string{
 			"X-Api-Client": {"brevis"},
 			"Content-Type": {"application/json"},
@@ -381,8 +381,8 @@ func TestPostSendsMethodBodyAndHeaders(t *testing.T) {
 	if gotMethod != http.MethodPost {
 		t.Errorf("método = %q, esperado POST", gotMethod)
 	}
-	if gotBody != corpo {
-		t.Errorf("corpo = %q, esperado %q", gotBody, corpo)
+	if gotBody != body {
+		t.Errorf("corpo = %q, esperado %q", gotBody, body)
 	}
 	if gotHeader != "brevis" {
 		t.Errorf("o header do fetcher não chegou: %q", gotHeader)

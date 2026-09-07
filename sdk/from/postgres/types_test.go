@@ -17,10 +17,10 @@ import (
 // a concrete cost when it is wrong -- which is why each case says what it is.
 func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
-		name   string
-		input  any
-		want   string // the JSON that comes out
-		porque string
+		name  string
+		input any
+		want  string // the JSON that comes out
+		why   string
 	}{
 		{
 			"NULL vira null", nil, `null`,
@@ -122,8 +122,8 @@ func TestToJSONRowByRow(t *testing.T) {
 			}
 			if string(b) != c.want {
 				msg := "ParaJSON(%v) = %s, want %s"
-				if c.porque != "" {
-					msg += "\n  " + c.porque
+				if c.why != "" {
+					msg += "\n  " + c.why
 				}
 				t.Errorf(msg, c.input, b, c.want)
 			}

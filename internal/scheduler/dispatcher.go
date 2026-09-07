@@ -129,7 +129,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 				d.log.Error("claim cycle", "error", err)
 			}
 		case <-recovery.C:
-			if n, err := d.RecuperarOrfaos(ctx); err != nil {
+			if n, err := d.RecoverOrphans(ctx); err != nil {
 				d.log.Error("recovering orphans", "error", err)
 			} else if n > 0 {
 				d.log.Warn("runs orfas recuperadas", "quantidade", n)
@@ -138,7 +138,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 	}
 }
 
-// RecuperarOrfaos returns to the queue what got stuck in a worker that died.
+// RecoverOrphans returns to the queue what got stuck in a worker that died.
 //
 // It was the failure mode left open since PHASE 2: `Queue.Recuperar` existed
 // and nobody called it. In practice, killing the process mid-run left the item
@@ -149,8 +149,8 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 // requeue, for two reasons: the state machine has no running -> queued edge
 // (§7), and a worker that dies midway did consume a real attempt -- counting it
 // is what stops a poisonous run from taking down workers in a loop.
-func (d *Dispatcher) RecuperarOrfaos(ctx context.Context) (int, error) {
-	items, err := d.queue.Recuperar(ctx, d.cfg.Visibility)
+func (d *Dispatcher) RecoverOrphans(ctx context.Context) (int, error) {
+	items, err := d.queue.Recover(ctx, d.cfg.Visibility)
 	if err != nil {
 		return 0, err
 	}

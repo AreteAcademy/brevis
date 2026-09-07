@@ -91,7 +91,7 @@ func ComputeIngestionIDIn(namespace uuid.UUID, provider, entity, sourceKey, reco
 	key = append(key, '|')
 	key = append(key, recordTS...)
 
-	return formatarUUID(uuidV5(namespace, key)), nil
+	return formatUUID(uuidV5(namespace, key)), nil
 }
 
 // digestos keeps the sha1 states between calls.
@@ -137,12 +137,12 @@ func uuidV5(espaco uuid.UUID, data []byte) uuid.UUID {
 // row is identical work repeated millions of times in a load.
 var DefaultNamespace = uuid.MustParse("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7")
 
-// formatarUUID writes the canonical form straight into a stack array.
+// formatUUID writes the canonical form straight into a stack array.
 //
 // uuid.String() builds a slice on the heap and converts it; here the only
 // allocation is the final string, which has to exist because it goes into the
 // record.
-func formatarUUID(u uuid.UUID) string {
+func formatUUID(u uuid.UUID) string {
 	const hex = "0123456789abcdef"
 	var b [36]byte
 	j := 0

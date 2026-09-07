@@ -135,7 +135,7 @@ type ScheduleRepo struct{ pool *Pool }
 func NewScheduleRepo(p *Pool) *ScheduleRepo { return &ScheduleRepo{pool: p} }
 
 // Ativas lists the schedules the scheduler has to evaluate.
-func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
+func (r *ScheduleRepo) Active(ctx context.Context) ([]sch.Schedule, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT workflow_slug, cron, timezone, catchup, ativo, ultimo_slot
 		FROM schedules WHERE ativo`)
@@ -156,12 +156,12 @@ func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
 	return out, rows.Err()
 }
 
-// AvancarSlot records how far the schedule has been materialized.
+// AdvanceSlot records how far the schedule has been materialized.
 //
 // The condition `ultimo_slot IS NULL OR ultimo_slot < $2` makes the operation
 // idempotent and safe under concurrency: two schedulers evaluating the same
 // schedule never make the marker go backwards.
-// DefinirAtivo pauses or resumes a schedule and returns the resulting state.
+// SetActive pauses or resumes a schedule and returns the resulting state.
 //
 // It returns rather than only writing because the UI toggles without knowing the
 // current value: without the return, the screen would need a second query and
@@ -170,17 +170,17 @@ func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
 // Pausing does NOT cancel what is already queued: materialized runs are accepted
 // work, and discarding them on a pause would surprise somebody who only wanted
 // to stop creating new ones.
-func (r *ScheduleRepo) DefinirAtivo(ctx context.Context, slug string, ativo bool) (bool, error) {
+func (r *ScheduleRepo) SetActive(ctx context.Context, slug string, active1 bool) (bool, error) {
 	var resultado bool
 	err := r.pool.QueryRow(ctx, `
 		UPDATE schedules SET ativo = $2, atualizado_em = now()
 		WHERE workflow_slug = $1
-		RETURNING ativo`, slug, ativo).Scan(&resultado)
+		RETURNING ativo`, slug, active1).Scan(&resultado)
 	return resultado, err
 }
 
 // Alternar flips the current state in a single round trip to the database.
-func (r *ScheduleRepo) Alternar(ctx context.Context, slug string) (bool, error) {
+func (r *ScheduleRepo) Toggle(ctx context.Context, slug string) (bool, error) {
 	var resultado bool
 	err := r.pool.QueryRow(ctx, `
 		UPDATE schedules SET ativo = NOT ativo, atualizado_em = now()
@@ -189,7 +189,7 @@ func (r *ScheduleRepo) Alternar(ctx context.Context, slug string) (bool, error) 
 	return resultado, err
 }
 
-func (r *ScheduleRepo) AvancarSlot(ctx context.Context, slug string, slot time.Time) error {
+func (r *ScheduleRepo) AdvanceSlot(ctx context.Context, slug string, slot time.Time) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE schedules
 		SET ultimo_slot = $2, atualizado_em = now()

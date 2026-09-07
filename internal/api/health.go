@@ -44,11 +44,11 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 		checks[name] = "ok"
 	}
 
-	corpo := healthResponse{Status: "ok", Checks: checks}
+	body := healthResponse{Status: "ok", Checks: checks}
 	if status != http.StatusOK {
-		corpo.Status = "unavailable"
+		body.Status = "unavailable"
 	}
-	writeJSON(w, status, corpo)
+	writeJSON(w, status, body)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

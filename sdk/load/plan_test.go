@@ -88,17 +88,17 @@ func TestI2SchemaBecomesBigQuerysType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	esperado := map[string]string{
+	expected := map[string]string{
 		"texto": "STRING", "inteiro": "INTEGER", "flutuante": "FLOAT",
 		"decimal": "NUMERIC", "booleano": "BOOLEAN", "instante": "TIMESTAMP",
 		"data": "DATE", "documento": "JSON", "bytes": "BYTES",
 	}
-	if len(got) != len(esperado) {
-		t.Fatalf("%d colunas, esperado %d", len(got), len(esperado))
+	if len(got) != len(expected) {
+		t.Fatalf("%d colunas, esperado %d", len(got), len(expected))
 	}
 	for _, f := range got {
-		if string(f.Type) != esperado[f.Name] {
-			t.Errorf("%s = %s, esperado %s", f.Name, f.Type, esperado[f.Name])
+		if string(f.Type) != expected[f.Name] {
+			t.Errorf("%s = %s, esperado %s", f.Name, f.Type, expected[f.Name])
 		}
 	}
 	if !got[0].Required {

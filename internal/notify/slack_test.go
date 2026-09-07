@@ -15,17 +15,17 @@ import (
 
 func capture(t *testing.T, status int, response string) (*notify.Slack, *string) {
 	t.Helper()
-	var recebido string
+	var received string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		recebido = string(b)
+		received = string(b)
 		w.WriteHeader(status)
 		_, _ = w.Write([]byte(response))
 	}))
 	t.Cleanup(srv.Close)
 
 	s := notify.NovoSlack(srv.URL, "prod")
-	return s, &recebido
+	return s, &received
 }
 
 func alert() notify.Alert {
@@ -40,13 +40,13 @@ func alert() notify.Alert {
 }
 
 func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
-	s, recebido := capture(t, 200, "ok")
+	s, received := capture(t, 200, "ok")
 	if err := s.Failed(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 
 	var payload map[string]any
-	if err := json.Unmarshal([]byte(*recebido), &payload); err != nil {
+	if err := json.Unmarshal([]byte(*received), &payload); err != nil {
 		t.Fatalf("the payload is not JSON: %v", err)
 	}
 
@@ -58,8 +58,8 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 		t.Errorf("texto de preview = %q", text)
 	}
 
-	corpo := *recebido
-	for _, esperado := range []string{
+	body := *received
+	for _, expected := range []string{
 		"id_verification",                  // pipeline
 		"`id`",                             // domain, coming from the tags
 		"FAILED",                           // status
@@ -68,8 +68,8 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 		"brevis.example.com/runs/1f2e3d4c", // the direct link
 		expectedLogicalDate(),              // the logical date, in the formatter's zone
 	} {
-		if !strings.Contains(corpo, esperado) {
-			t.Errorf("the message is missing %q:\n%s", esperado, corpo)
+		if !strings.Contains(body, expected) {
+			t.Errorf("the message is missing %q:\n%s", expected, body)
 		}
 	}
 }
@@ -78,17 +78,17 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 // REFUSES the whole message when it overflows -- truncating is what makes sure
 // the alert arrives.
 func TestALongErrorIsTruncated(t *testing.T) {
-	s, recebido := capture(t, 200, "ok")
+	s, received := capture(t, 200, "ok")
 	a := alert()
 	a.Err = strings.Repeat("a very long stack-trace line ", 200)
 
 	if err := s.Failed(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
-	if len(*recebido) > 3000 {
-		t.Errorf("a payload of %d bytes; Slack's block would refuse it", len(*recebido))
+	if len(*received) > 3000 {
+		t.Errorf("a payload of %d bytes; Slack's block would refuse it", len(*received))
 	}
-	if !strings.Contains(*recebido, "truncado") {
+	if !strings.Contains(*received, "truncado") {
 		t.Error("it truncated without saying it truncated")
 	}
 }
@@ -135,7 +135,7 @@ func TestWithNoWebhookItDoesNothing(t *testing.T) {
 
 // Sem tags, o dominio sai do prefixo do slug em vez de ficar anonimo.
 func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
-	s, recebido := capture(t, 200, "ok")
+	s, received := capture(t, 200, "ok")
 	a := alert()
 	a.Tags = nil
 	a.Workflow = "platform_workspace"
@@ -143,8 +143,8 @@ func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
 	if err := s.Failed(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(*recebido, "`platform`") {
-		t.Errorf("the domain was not derived from the slug:\n%s", *recebido)
+	if !strings.Contains(*received, "`platform`") {
+		t.Errorf("the domain was not derived from the slug:\n%s", *received)
 	}
 }
 
@@ -162,13 +162,13 @@ func expectedLogicalDate() string {
 // event is "01:00" to one and "04:00" to the other, and nobody notices they are
 // talking about the same failure.
 func TestTheLogicalDateSaysTheZone(t *testing.T) {
-	s, recebido := capture(t, 200, "ok")
+	s, received := capture(t, 200, "ok")
 	if err := s.Failed(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 
-	fuso := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("MST")
-	if !strings.Contains(*recebido, expectedLogicalDate()+" "+fuso) {
-		t.Errorf("the logical date came out with no zone %q:\n%s", fuso, *recebido)
+	zone := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("MST")
+	if !strings.Contains(*received, expectedLogicalDate()+" "+zone) {
+		t.Errorf("the logical date came out with no zone %q:\n%s", zone, *received)
 	}
 }

@@ -92,8 +92,8 @@ func TestTheNonceDoesNotRepeat(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, corpo, _ := firstLine(bruto)
-		nonce := string(corpo[:12])
+		_, body, _ := firstLine(bruto)
+		nonce := string(body[:12])
 		if vistos[nonce] {
 			t.Fatalf("nonce repetido na escrita %d", i)
 		}

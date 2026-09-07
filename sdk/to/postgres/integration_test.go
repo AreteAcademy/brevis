@@ -308,14 +308,14 @@ func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 		t.Fatal("nenhuma linha")
 	}
 
-	esperado := map[string]any{
+	expected := map[string]any{
 		"numerico":      "123456789012345678.99",
 		"data":          "2026-09-05",
 		"instante":      "2026-09-05T12:30:00Z",
 		"identificador": "178d0b49-dece-5738-b8eb-f5cae2221aea",
 		"vazio":         nil,
 	}
-	for field, quero := range esperado {
+	for field, quero := range expected {
 		if got := line[field]; got != quero {
 			t.Errorf("%s = %#v, esperado %#v", field, got, quero)
 		}

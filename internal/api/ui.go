@@ -61,7 +61,7 @@ type RunsChart interface {
 // the UI must not be able to do anything more to the system than pause a
 // schedule and ask for a run now.
 type Actions interface {
-	Alternar(ctx context.Context, slug string) (bool, error)
+	Toggle(ctx context.Context, slug string) (bool, error)
 	Disparar(ctx context.Context, slug string, now time.Time, params map[string]string) (uuid.UUID, error)
 }
 
@@ -90,7 +90,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 
 	// Effects by POST, not GET: a link that pauses a schedule would be fired by
 	// any browser prefetch or link crawler.
-	mux.HandleFunc("POST /workflows/{slug}/toggle", u.alternar)
+	mux.HandleFunc("POST /workflows/{slug}/toggle", u.toggle)
 	mux.HandleFunc("POST /workflows/{slug}/trigger", u.disparar)
 
 	// The JSON the React island fetches. It sits under /api so the URL makes
@@ -111,7 +111,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	baldes, err := u.leitura.RunsPerHour(ctx, int(overviewWindow.Hours()))
+	buckets, err := u.leitura.RunsPerHour(ctx, int(overviewWindow.Hours()))
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -131,7 +131,7 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 		u.failure(w, r, err)
 		return
 	}
-	agendas, err := u.leitura.Schedules(ctx)
+	schedules, err := u.leitura.Schedules(ctx)
 	if err != nil {
 		u.failure(w, r, err)
 		return
@@ -140,9 +140,9 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	u.render(w, r, pages.Overview(pages.OverviewData{
 		Window:   overviewWindow,
 		Ind:      ind,
-		Baldes:   baldes,
+		Buckets:  buckets,
 		EmCurso:  emCurso,
-		Proximas: nextRuns(agendas, time.Now(), 8, u.log),
+		Proximas: nextRuns(schedules, time.Now(), 8, u.log),
 		Recentes: recentes,
 		Pending:  pending,
 	}))
@@ -155,11 +155,11 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 // (`schedule`), and reimplementing it in SQL would create a second reading of
 // the same field -- one that would one day diverge from the one the scheduler
 // actually uses.
-func nextRuns(agendas []postgres.ScheduleSummary, now time.Time, limite int,
+func nextRuns(schedules []postgres.ScheduleSummary, now time.Time, limite int,
 	log *slog.Logger) []pages.NextRun {
 
 	var out []pages.NextRun
-	for _, a := range agendas {
+	for _, a := range schedules {
 		if !a.Active {
 			continue
 		}
@@ -194,7 +194,7 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 		PerPage:  pages.DefaultPerPage,
 	}
 
-	de, ate := instante(f.De), instante(f.Ate)
+	de, ate := instant(f.De), instant(f.Ate)
 	if de == nil {
 		f.De = ""
 	}
@@ -244,7 +244,7 @@ func page(s string) int {
 
 // instante accepts the RFC3339 the chart's links emit. An invalid value becomes
 // no filter rather than an error: a half-pasted link should not give a 500.
-func instante(s string) *time.Time {
+func instant(s string) *time.Time {
 	if s == "" {
 		return nil
 	}
@@ -442,9 +442,9 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 	return out
 }
 
-func contains(list []string, alvo string) bool {
+func contains(list []string, target string) bool {
 	for _, s := range list {
-		if s == alvo {
+		if s == target {
 			return true
 		}
 	}
@@ -516,14 +516,14 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 	u.render(w, r, pages.Run(run, logs))
 }
 
-func (u *UI) alternar(w http.ResponseWriter, r *http.Request) {
+func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
-	ativo, err := u.actions.Alternar(r.Context(), slug)
+	active1, err := u.actions.Toggle(r.Context(), slug)
 	if err != nil {
 		u.failure(w, r, err)
 		return
 	}
-	u.log.Info("schedule toggled", "workflow", slug, "active", ativo)
+	u.log.Info("schedule toggled", "workflow", slug, "active", active1)
 	u.voltar(w, r)
 }
 

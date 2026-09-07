@@ -61,21 +61,21 @@ type Notificador interface {
 // Slack posts to an Incoming Webhook.
 type Slack struct {
 	Webhook string
-	Cliente *http.Client
+	Client  *http.Client
 
 	// Ambiente appears in the header ("prod", "dev"). Without it, a staging
 	// alert at three in the morning is indistinguishable from a production
 	// one.
-	Ambiente string
+	Environment string
 }
 
-func NovoSlack(webhook, ambiente string) *Slack {
+func NovoSlack(webhook, environment string) *Slack {
 	return &Slack{
-		Webhook:  webhook,
-		Ambiente: ambiente,
+		Webhook:     webhook,
+		Environment: environment,
 		// A short timeout: warning matters, but jamming the dispatcher waiting on
 		// Slack would trade one incident for another.
-		Cliente: &http.Client{Timeout: 5 * time.Second},
+		Client: &http.Client{Timeout: 5 * time.Second},
 	}
 }
 
@@ -84,18 +84,18 @@ func (s *Slack) Failed(ctx context.Context, a Alert) error {
 	if s.Webhook == "" {
 		return nil
 	}
-	corpo, err := json.Marshal(s.message(a))
+	body, err := json.Marshal(s.message(a))
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Webhook, bytes.NewReader(corpo))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.Webhook, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	res, err := s.Cliente.Do(req)
+	res, err := s.Client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (s *Slack) message(a Alert) map[string]any {
 	blocos := []bloco{
 		{"type": "header", "text": bloco{
 			"type": "plain_text", "emoji": true,
-			"text": ":rotating_light: Falha no pipeline" + s.sufixoDeAmbiente(),
+			"text": ":rotating_light: Falha no pipeline" + s.environmentSuffix(),
 		}},
 		{"type": "section", "fields": fields},
 	}
@@ -221,11 +221,11 @@ func (s *Slack) classificar(a Alert) (dominio, pipeline string) {
 	return dominio, pipeline
 }
 
-func (s *Slack) sufixoDeAmbiente() string {
-	if s.Ambiente == "" || s.Ambiente == "prod" {
+func (s *Slack) environmentSuffix() string {
+	if s.Environment == "" || s.Environment == "prod" {
 		return ""
 	}
-	return " (" + s.Ambiente + ")"
+	return " (" + s.Environment + ")"
 }
 
 func field(text string) bloco {

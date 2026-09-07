@@ -10,9 +10,9 @@
   // --- Dialogos ------------------------------------------------------------
   document.addEventListener("click", function (e) {
     if (!e.target || typeof e.target.closest !== "function") return;
-    var gatilho = e.target.closest("[data-dialogo]");
-    if (gatilho) {
-      var d = document.getElementById(gatilho.dataset.dialogo);
+    var trigger = e.target.closest("[data-dialogo]");
+    if (trigger) {
+      var d = document.getElementById(trigger.dataset.dialogo);
       if (d && typeof d.showModal === "function") d.showModal();
       return;
     }
@@ -22,18 +22,20 @@
     if (e.target.tagName === "DIALOG") e.target.close();
   });
 
-  // Opening by link: /runs#erro-<id> arrives with the dialog already open. It
+  // Opening by link: /runs#erro-<id> arrives with the dialog already open (the
+  // anchor keeps its Portuguese name, like data-dica: the template writes it).
+  // It
   // serves for sending somebody the exact failure instead of "open the list and
   // look".
-  function abrirPeloHash() {
+  function openFromHash() {
     if (!location.hash) return;
     var d = document.getElementById(location.hash.slice(1));
     if (d && d.tagName === "DIALOG" && !d.open && typeof d.showModal === "function") {
       d.showModal();
     }
   }
-  abrirPeloHash();
-  window.addEventListener("hashchange", abrirPeloHash);
+  openFromHash();
+  window.addEventListener("hashchange", openFromHash);
 
   // --- The charts' tooltip --------------------------------------------------
   //

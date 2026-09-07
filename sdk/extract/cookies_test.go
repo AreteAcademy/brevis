@@ -19,14 +19,14 @@ const paddedJWT = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
 // Set-Cookie ao header, e a armadilha foi cortar o JWT no segundo "=". Aqui o
 // the cookie has to arrive identical to what the caller passed.
 func TestTheCallersCookieArrivesWhole(t *testing.T) {
-	var recebido string
+	var received string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("session-token")
 		if err != nil {
 			http.Error(w, "sem cookie", http.StatusUnauthorized)
 			return
 		}
-		recebido = c.Value
+		received = c.Value
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	}))
 	defer srv.Close()
@@ -36,8 +36,8 @@ func TestTheCallersCookieArrivesWhole(t *testing.T) {
 		Header: map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
 
-	if recebido != paddedJWT {
-		t.Errorf("o servidor recebeu %q, o caller mandou %q", recebido, paddedJWT)
+	if received != paddedJWT {
+		t.Errorf("o servidor recebeu %q, o caller mandou %q", received, paddedJWT)
 	}
 }
 
@@ -45,17 +45,17 @@ func TestTheCallersCookieArrivesWhole(t *testing.T) {
 // cookie.go did by hand. If the jar disappears, page 2 goes with the old
 // token.
 func TestARenewedCookieSurvivesIntoTheNextPage(t *testing.T) {
-	var vistos []string
+	var seenValues []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("session-token")
 		if err != nil {
 			http.Error(w, "sem cookie", http.StatusUnauthorized)
 			return
 		}
-		vistos = append(vistos, c.Value)
+		seenValues = append(seenValues, c.Value)
 
-		if len(vistos) == 1 {
-			// a api renova a sessao no meio da caminhada
+		if len(seenValues) == 1 {
+			// the API renews the session in the middle of the walk
 			http.SetCookie(w, &http.Cookie{Name: "session-token", Value: "renovado==", Path: "/"})
 			_, _ = fmt.Fprint(w, `{"results":[{"n":1}]}`)
 			return
@@ -71,11 +71,11 @@ func TestARenewedCookieSurvivesIntoTheNextPage(t *testing.T) {
 		Header:  map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
 
-	if len(vistos) != 2 {
-		t.Fatalf("esperava 2 requisicoes, houve %d", len(vistos))
+	if len(seenValues) != 2 {
+		t.Fatalf("esperava 2 requisicoes, houve %d", len(seenValues))
 	}
-	if vistos[1] != "renovado==" {
-		t.Errorf("a pagina 2 foi com %q; o Set-Cookie da pagina 1 nao pegou", vistos[1])
+	if seenValues[1] != "renovado==" {
+		t.Errorf("a pagina 2 foi com %q; o Set-Cookie da pagina 1 nao pegou", seenValues[1])
 	}
 }
 

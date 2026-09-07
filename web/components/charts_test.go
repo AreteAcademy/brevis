@@ -17,23 +17,22 @@ func bucketsWith(totais ...int) []postgres.Bucket {
 }
 
 // The axis has to land on round numbers AND ones divisible by four. The previous
-// version divided the raw maximum and produced labels 0/6/12/18/25 -- each
-// interval
-// diferente do anterior.
+// version divided the raw maximum and produced labels 0/6/12/18/25 -- every
+// interval different from the one before it.
 func TestTheScalesCeilingIsRoundAndDivisibleByFour(t *testing.T) {
-	casos := []struct{ max, esperado int }{
+	casos := []struct{ max, expected int }{
 		{0, 4}, {1, 4}, {3, 4}, {4, 4}, {5, 8}, {27, 40}, {40, 40}, {41, 100}, {600, 1000},
 	}
 	for _, c := range casos {
-		obtido := ceiling(bucketsWith(c.max))
-		if obtido != c.esperado {
-			t.Errorf("teto(%d) = %d, want %d", c.max, obtido, c.esperado)
+		got := ceiling(bucketsWith(c.max))
+		if got != c.expected {
+			t.Errorf("teto(%d) = %d, want %d", c.max, got, c.expected)
 		}
-		if obtido%4 != 0 {
-			t.Errorf("ceiling(%d) = %d is not divisible by 4: the labels would come out broken", c.max, obtido)
+		if got%4 != 0 {
+			t.Errorf("ceiling(%d) = %d is not divisible by 4: the labels would come out broken", c.max, got)
 		}
-		if obtido < c.max {
-			t.Errorf("ceiling(%d) = %d cuts the tallest column off", c.max, obtido)
+		if got < c.max {
+			t.Errorf("ceiling(%d) = %d cuts the tallest column off", c.max, got)
 		}
 	}
 }
@@ -118,12 +117,12 @@ func TestTheDonutsArcsClose(t *testing.T) {
 	}
 }
 
-func arcs2(i postgres.Indicators) []Arco { return arcos(i) }
+func arcs2(i postgres.Indicators) []Arc { return arcos(i) }
 
 func TestTheDurationPicksItsUnit(t *testing.T) {
 	casos := []struct {
 		d        time.Duration
-		esperado string
+		expected string
 	}{
 		{400 * time.Millisecond, "400ms"},
 		{2500 * time.Millisecond, "2.5s"},
@@ -131,8 +130,8 @@ func TestTheDurationPicksItsUnit(t *testing.T) {
 		{3*time.Hour + 4*time.Minute, "3h 04m"},
 	}
 	for _, c := range casos {
-		if obtido := Duration(&c.d); obtido != c.esperado {
-			t.Errorf("Duration(%s) = %s, want %s", c.d, obtido, c.esperado)
+		if got := Duration(&c.d); got != c.expected {
+			t.Errorf("Duration(%s) = %s, want %s", c.d, got, c.expected)
 		}
 	}
 	if Duration(nil) != "—" {

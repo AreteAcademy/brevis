@@ -52,7 +52,7 @@ func TestTheTasksEnvironmentPassesOnWhatWasDeclared(t *testing.T) {
 	t.Setenv("STAGE", "local")
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://brevis:senha@db/brevis")
 
-	env := AmbienteDasTasks([]string{"GOOGLE_PROJECT_ID", "STAGE"})
+	env := TasksEnvironment([]string{"GOOGLE_PROJECT_ID", "STAGE"})
 
 	if env["GOOGLE_PROJECT_ID"] != "acme-dev" || env["STAGE"] != "local" {
 		t.Errorf("it did not pass on what was declared: %v", env)
@@ -70,7 +70,7 @@ func TestTheTasksEnvironmentPassesOnWhatWasDeclared(t *testing.T) {
 // else.
 func TestWithNoDeclarationOnlyPathAndHome(t *testing.T) {
 	t.Setenv("SEGREDO_QUALQUER", "nao-deve-vazar")
-	env := AmbienteDasTasks(nil)
+	env := TasksEnvironment(nil)
 	if len(env) != 2 {
 		t.Errorf("ambiente = %v, want apenas PATH e HOME", env)
 	}
@@ -78,7 +78,7 @@ func TestWithNoDeclarationOnlyPathAndHome(t *testing.T) {
 
 func TestALiteralValueAndAMissingVariable(t *testing.T) {
 	_ = os.Unsetenv("NAO_EXISTE")
-	env := AmbienteDasTasks([]string{"STAGE=prod", "NAO_EXISTE"})
+	env := TasksEnvironment([]string{"STAGE=prod", "NAO_EXISTE"})
 
 	if env["STAGE"] != "prod" {
 		t.Errorf("the literal was not applied: %v", env)
@@ -97,7 +97,7 @@ func TestTheWildcardDoesNotCarryBrevisOwnVariables(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://brevis:senha@db/brevis")
 	t.Setenv("BREVIS_BRAND_FILE", "/etc/brevis/brand.yaml")
 
-	env := AmbienteDasTasks([]string{"*"})
+	env := TasksEnvironment([]string{"*"})
 
 	if env["MINHA_VAR"] != "valor" {
 		t.Error("curinga deveria repassar as variaveis comuns")

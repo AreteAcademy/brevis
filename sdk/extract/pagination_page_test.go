@@ -14,18 +14,18 @@ import (
 
 // numberedPage returns three one-row pages and then an empty one, recording the
 // sequence of numbers it received.
-func numberedPage(t *testing.T, key string, vistos *[]string) *httptest.Server {
+func numberedPage(t *testing.T, key string, seenValues *[]string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bruto := r.URL.Query().Get(key)
-		*vistos = append(*vistos, bruto)
+		*seenValues = append(*seenValues, bruto)
 
 		n, err := strconv.Atoi(bruto)
 		if err != nil {
 			http.Error(w, "sem numero de pagina: "+r.URL.RawQuery, http.StatusBadRequest)
 			return
 		}
-		if len(*vistos) > 6 { // trava contra loop infinito no teste
+		if len(*seenValues) > 6 { // trava contra loop infinito no teste
 			http.Error(w, "paginou demais", http.StatusInternalServerError)
 			return
 		}
@@ -41,8 +41,8 @@ func numberedPage(t *testing.T, key string, vistos *[]string) *httptest.Server {
 // recipe
 // was OffsetKey "page" with PageSize 1, which worked by accident.
 func TestPageKeyAdvancesOneAtATime(t *testing.T) {
-	var vistos []string
-	srv := numberedPage(t, "page", &vistos)
+	var seenValues []string
+	srv := numberedPage(t, "page", &seenValues)
 	defer srv.Close()
 
 	lines := gather(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
@@ -50,7 +50,7 @@ func TestPageKeyAdvancesOneAtATime(t *testing.T) {
 	if lines != 2 {
 		t.Errorf("linhas = %d, esperado 2 (paginas 1 e 2)", lines)
 	}
-	if got := strings.Join(vistos, ","); got != "1,2,3" {
+	if got := strings.Join(seenValues, ","); got != "1,2,3" {
 		t.Errorf("paginas pedidas = %q, esperado \"1,2,3\"", got)
 	}
 }
@@ -72,8 +72,8 @@ func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 	}
 	for _, c := range casos {
 		t.Run(c.name, func(t *testing.T) {
-			var vistos []string
-			srv := numberedPage(t, "page", &vistos)
+			var seenValues []string
+			srv := numberedPage(t, "page", &seenValues)
 			defer srv.Close()
 
 			gather(t, core.Source{
@@ -82,7 +82,7 @@ func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 				FirstPage: c.first1,
 				DataKey:   "results",
 			})
-			if got := strings.Join(vistos, ","); got != c.seq {
+			if got := strings.Join(seenValues, ","); got != c.seq {
 				t.Errorf("paginas pedidas = %q, esperado %q", got, c.seq)
 			}
 		})
@@ -93,12 +93,12 @@ func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 // because zero is the value of somebody who set nothing. The documented way out
 // is putting page zero in the URL. This test exists so the doc stays true.
 func TestAZeroIndexedAPISaysSoInTheURL(t *testing.T) {
-	var vistos []string
-	srv := numberedPage(t, "page", &vistos)
+	var seenValues []string
+	srv := numberedPage(t, "page", &seenValues)
 	defer srv.Close()
 
 	gather(t, core.Source{URL: srv.URL + "?page=0", PageKey: "page", DataKey: "results"})
-	if got := strings.Join(vistos, ","); got != "0,1,2,3" {
+	if got := strings.Join(seenValues, ","); got != "0,1,2,3" {
 		t.Errorf("paginas pedidas = %q, esperado \"0,1,2,3\"", got)
 	}
 }

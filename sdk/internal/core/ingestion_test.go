@@ -8,7 +8,7 @@ import "testing"
 // change together and the test still pass.
 func TestComputeIngestionIDAgainstPython(t *testing.T) {
 	casos := []struct {
-		provider, entity, sourceKey, recordTS, esperado string
+		provider, entity, sourceKey, recordTS, expected string
 	}{
 		// uuid.uuid5(UUID("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7"), "p|e|k|2026-01-01T00:00:00Z")
 		{"p", "e", "k", "2026-01-01T00:00:00Z", "178d0b49-dece-5738-b8eb-f5cae222a1ea"},
@@ -19,9 +19,9 @@ func TestComputeIngestionIDAgainstPython(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ComputeIngestionID: %v", err)
 		}
-		if got != c.esperado {
+		if got != c.expected {
 			t.Errorf("ComputeIngestionID(%q,%q,%q,%q) = %s, congelado em %s",
-				c.provider, c.entity, c.sourceKey, c.recordTS, got, c.esperado)
+				c.provider, c.entity, c.sourceKey, c.recordTS, got, c.expected)
 		}
 	}
 }

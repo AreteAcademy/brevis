@@ -19,7 +19,7 @@ func csvPontoEVirgula() []byte {
 	return []byte("municipio;populacao\nSão Paulo;11451999\nRio;6211423\n")
 }
 
-func lerTudo(t *testing.T, r core.Reader) []map[string]any {
+func readAll(t *testing.T, r core.Reader) []map[string]any {
 	t.Helper()
 	lines, err := r.Read(context.Background(), core.ReadOptions{Stats: &core.Stats{}})
 	if err != nil {
@@ -45,7 +45,7 @@ func TestHTTPWithASemicolonDelimiter(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	lines := lerTudo(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV, Delimiter: ';'})
+	lines := readAll(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV, Delimiter: ';'})
 	if len(lines) != 2 {
 		t.Fatalf("saiu com %d linhas: %v", len(lines), lines)
 	}
@@ -62,7 +62,7 @@ func TestWithoutADelimiterASemicolonCSVBecomesOneColumn(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	lines := lerTudo(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV})
+	lines := readAll(t, from.HTTP{URL: srv.URL, Format: core.FormatCSV})
 	if len(lines[0]) != 1 {
 		t.Errorf("com vírgula o CSV devia virar uma coluna só, veio %v", lines[0])
 	}
@@ -95,7 +95,7 @@ func TestHTTPDecompressesGzip(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			lines := lerTudo(t, from.HTTP{
+			lines := readAll(t, from.HTTP{
 				URL: srv.URL + caso.path, Format: core.FormatCSV, Delimiter: ';',
 			})
 			if len(lines) != 2 || lines[1]["municipio"] != "Rio" {
@@ -132,7 +132,7 @@ func TestFilesWithADelimiter(t *testing.T) {
 	if err := os.WriteFile(path, csvPontoEVirgula(), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	lines := lerTudo(t, from.Files{Path: path, Format: core.FormatCSV, Delimiter: ';'})
+	lines := readAll(t, from.Files{Path: path, Format: core.FormatCSV, Delimiter: ';'})
 	if len(lines) != 2 || lines[0]["municipio"] != "São Paulo" {
 		t.Errorf("linhas: %v", lines)
 	}

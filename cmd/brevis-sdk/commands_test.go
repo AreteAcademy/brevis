@@ -15,7 +15,7 @@ func TestLoadReadsTheNDJSONOnStdin(t *testing.T) {
 {"id":2,"name":"b"}
 {"id":3,"name":"c"}`
 
-	envelopes, err := lerNDJSON(strings.NewReader(input))
+	envelopes, err := readNDJSON(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("reading: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestLoadReadsTheNDJSONOnStdin(t *testing.T) {
 
 // A malformed record among thousands is unfindable without the line number.
 func TestLoadNamesTheLineThatIsBroken(t *testing.T) {
-	_, err := lerNDJSON(strings.NewReader(`{"id":1}
+	_, err := readNDJSON(strings.NewReader(`{"id":1}
 {"id":2}
 {"id":  }`))
 	if err == nil {
@@ -53,7 +53,7 @@ func TestLoadNamesTheLineThatIsBroken(t *testing.T) {
 // Scanner: a Scanner stops reading in silence at its buffer limit.
 func TestLoadReadsARecordLargerThanAScannerLine(t *testing.T) {
 	grande := `{"payload":"` + strings.Repeat("x", 200_000) + `"}`
-	envelopes, err := lerNDJSON(strings.NewReader(grande))
+	envelopes, err := readNDJSON(strings.NewReader(grande))
 	if err != nil {
 		t.Fatalf("a 200 kB record was refused: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestLoadReadsARecordLargerThanAScannerLine(t *testing.T) {
 
 // Empty input is empty, and the caller refuses it rather than loading nothing.
 func TestEmptyStdinReadsNoRecords(t *testing.T) {
-	envelopes, err := lerNDJSON(strings.NewReader(""))
+	envelopes, err := readNDJSON(strings.NewReader(""))
 	if err != nil {
 		t.Fatal(err)
 	}

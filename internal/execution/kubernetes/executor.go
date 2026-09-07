@@ -236,12 +236,12 @@ func (e *Executor) whyNotScheduled(ctx context.Context, name string) string {
 
 // followLogs follows the output while the container lives.
 func (e *Executor) followLogs(ctx context.Context, name string, t execution.TaskExec, events chan<- execution.Event) {
-	corpo, err := e.api.Logs(ctx, name, true)
+	body, err := e.api.Logs(ctx, name, true)
 	if err != nil {
 		return // the log may not be ready; drainLogs still reads it at the end
 	}
-	defer func() { _ = corpo.Close() }()
-	copiar(corpo, t.NodeID, events)
+	defer func() { _ = body.Close() }()
+	copyOut(body, t.NodeID, events)
 }
 
 // drainLogs reads the complete output once the pod has finished.
@@ -251,7 +251,7 @@ func (e *Executor) followLogs(ctx context.Context, name string, t execution.Task
 // are the price of not losing the end -- and losing the end is what stops anyone
 // understanding the failure.
 func (e *Executor) drainLogs(ctx context.Context, name string, t execution.TaskExec, events chan<- execution.Event) {
-	corpo, err := e.api.Logs(ctx, name, false)
+	body, err := e.api.Logs(ctx, name, false)
 	if err != nil {
 		events <- execution.Event{
 			Kind: execution.EventLog, NodeID: t.NodeID, Stream: "stderr",
@@ -259,11 +259,11 @@ func (e *Executor) drainLogs(ctx context.Context, name string, t execution.TaskE
 		}
 		return
 	}
-	defer func() { _ = corpo.Close() }()
-	copiar(corpo, t.NodeID, events)
+	defer func() { _ = body.Close() }()
+	copyOut(body, t.NodeID, events)
 }
 
-func copiar(r io.Reader, nodeID string, events chan<- execution.Event) {
+func copyOut(r io.Reader, nodeID string, events chan<- execution.Event) {
 	s := bufio.NewScanner(r)
 	// A dbt line carrying SQL can exceed 64 KB, the Scanner's default limit --
 	// and a Scanner that overflows stops reading in silence.

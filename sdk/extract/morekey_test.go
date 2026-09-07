@@ -22,18 +22,18 @@ func paginatorWithMeta(t *testing.T, pages int, mente bool) (*httptest.Server, *
 		if v := r.URL.Query().Get("page"); v != "" {
 			_, _ = fmt.Sscanf(v, "%d", &p)
 		}
-		temMais := p < pages
+		hasMore := p < pages
 		if mente {
 			// It lies, always saying there is more; the safety net (an empty
 			// page
 			// vazia) tem de encerrar mesmo assim.
-			temMais = true
+			hasMore = true
 		}
 		lines := `[{"n":1}]`
 		if p > pages {
 			lines = `[]`
 		}
-		_, _ = fmt.Fprintf(w, `{"pageMeta":{"hasNextPage":%t},"results":%s}`, temMais, lines)
+		_, _ = fmt.Fprintf(w, `{"pageMeta":{"hasNextPage":%t},"results":%s}`, hasMore, lines)
 	}))
 	t.Cleanup(srv.Close)
 	return srv, &requested

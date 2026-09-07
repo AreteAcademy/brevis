@@ -195,9 +195,9 @@ func TestTheJSONCarriesNoEmptyFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, proibido := range []string{`"resources"`, `"nodeSelector"`, `"activeDeadlineSeconds"`, `"imagePullSecrets"`, `"status"`} {
-		if strings.Contains(string(b), proibido) {
-			t.Errorf("the JSON carries %s with no value: %s", proibido, b)
+	for _, forbidden := range []string{`"resources"`, `"nodeSelector"`, `"activeDeadlineSeconds"`, `"imagePullSecrets"`, `"status"`} {
+		if strings.Contains(string(b), forbidden) {
+			t.Errorf("the JSON carries %s with no value: %s", forbidden, b)
 		}
 	}
 }

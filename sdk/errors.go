@@ -43,8 +43,8 @@ func (e *SourceError) Error() string {
 }
 
 func (e *SourceError) Unwrap() error { return e.Cause }
-func (e *SourceError) Is(alvo error) bool {
-	return alvo == ErrSource
+func (e *SourceError) Is(target error) bool {
+	return target == ErrSource
 }
 
 // FormatError means the response arrived but could not be understood: a
@@ -69,8 +69,8 @@ func (e *FormatError) Error() string {
 }
 
 func (e *FormatError) Unwrap() error { return e.Cause }
-func (e *FormatError) Is(alvo error) bool {
-	return alvo == ErrFormat
+func (e *FormatError) Is(target error) bool {
+	return target == ErrFormat
 }
 
 // TargetError means BigQuery refused the write. Rows carries the per-row
@@ -90,6 +90,6 @@ func (e *TargetError) Error() string {
 }
 
 func (e *TargetError) Unwrap() error { return e.Cause }
-func (e *TargetError) Is(alvo error) bool {
-	return alvo == ErrTarget
+func (e *TargetError) Is(target error) bool {
+	return target == ErrTarget
 }

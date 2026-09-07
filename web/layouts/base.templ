@@ -122,7 +122,7 @@ type item struct {
 	Key string
 }
 
-templ sidebar(ativo string, brand branding.Brand) {
+templ sidebar(active1 string, brand branding.Brand) {
 	<aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface/60">
 		<div class="px-7 pt-7 pb-8">
 			<a href="/" class="flex items-center gap-3">
@@ -149,7 +149,7 @@ templ sidebar(ativo string, brand branding.Brand) {
 				{"/runs", "Runs", "runs"},
 				{"/projects", "Projects", "projects"},
 			} {
-				if i.Key == ativo {
+				if i.Key == active1 {
 					<a
 						href={ templ.SafeURL(i.Rota) }
 						class="mb-1 flex items-center gap-3 rounded-xl border border-line-soft bg-gold-wash px-4 py-2.5 text-sm font-semibold text-ink"

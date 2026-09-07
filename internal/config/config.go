@@ -31,7 +31,7 @@ type Config struct {
 	BrandFile string
 
 	// TaskEnv lists what the process passes on to local tasks. See
-	// AmbienteDasTasks -- the default does NOT inherit the environment, and
+	// TasksEnvironment -- the default does NOT inherit the environment, and
 	// that is deliberate.
 	TaskEnv []string
 
@@ -165,7 +165,7 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-// AmbienteDasTasks builds the environment each local step receives.
+// TasksEnvironment builds the environment each local step receives.
 //
 // A task does NOT inherit the orchestrator's environment. The reason is
 // concrete: the Brevis process carries BREVIS_DATABASE_URL with the Postgres
@@ -184,7 +184,7 @@ func Load() (Config, error) {
 //
 // A package function and not a method: `brevis run` runs without a database and
 // therefore without a Config -- but needs the same environment.
-func AmbienteDasTasks(names []string) map[string]string {
+func TasksEnvironment(names []string) map[string]string {
 	env := map[string]string{
 		"PATH": os.Getenv("PATH"),
 		"HOME": os.Getenv("HOME"),
@@ -233,9 +233,9 @@ func graces(key string) []Grace {
 	return out
 }
 
-// TaskEnvDoAmbiente reads BREVIS_TASK_ENV for whoever did not load the whole
+// TaskEnvFromEnvironment reads BREVIS_TASK_ENV for whoever did not load the whole
 // Config.
-func TaskEnvDoAmbiente() []string { return list("BREVIS_TASK_ENV") }
+func TaskEnvFromEnvironment() []string { return list("BREVIS_TASK_ENV") }
 
 // lista splits on commas, ignoring empties — "a,,b" is a typo, and an empty
 // secret name would make the server refuse the whole pod.

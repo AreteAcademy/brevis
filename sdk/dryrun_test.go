@@ -53,7 +53,7 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 				IngestionID(),
 			),
 		},
-		Target: Target{To: keepingTarget{recebido: box}},
+		Target: Target{To: keepingTarget{received: box}},
 		Run:    RunContext{ID: "run-dry"},
 	}
 }
@@ -96,11 +96,11 @@ func TestDryRunProducesExactlyWhatTheRunWouldLand(t *testing.T) {
 		t.Fatalf("dry-run printed %d records, the run landed %d:\n%s",
 			len(impressos), len(doRun), output)
 	}
-	for i, esperado := range doRun {
-		querido, _ := json.Marshal(esperado.Payload)
-		obtido, _ := json.Marshal(impressos[i])
-		if string(querido) != string(obtido) {
-			t.Errorf("record %d differs:\n  run:     %s\n  dry-run: %s", i, querido, obtido)
+	for i, expected := range doRun {
+		querido, _ := json.Marshal(expected.Payload)
+		got, _ := json.Marshal(impressos[i])
+		if string(querido) != string(got) {
+			t.Errorf("record %d differs:\n  run:     %s\n  dry-run: %s", i, querido, got)
 		}
 	}
 }
@@ -115,9 +115,9 @@ func TestDryRunPrintsWhatEachStageDid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, esperado := range []string{"aggregate", "groups", "map"} {
-		if !strings.Contains(output, esperado) {
-			t.Errorf("the preview does not say %q:\n%s", esperado, output)
+	for _, expected := range []string{"aggregate", "groups", "map"} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("the preview does not say %q:\n%s", expected, output)
 		}
 	}
 	// 4 rows in, 3 groups out.

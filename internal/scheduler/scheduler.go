@@ -23,7 +23,7 @@ import (
 // practice that means the Scheduler can go down without interrupting a single
 // in-flight run, and the Dispatcher can go down without losing a single slot.
 type Scheduler struct {
-	agendas   *postgres.ScheduleRepo
+	schedules *postgres.ScheduleRepo
 	workflows *postgres.WorkflowRepo
 	runs      *postgres.RunRepo
 	queue     *queue.Queue
@@ -37,14 +37,14 @@ type Scheduler struct {
 	backfillPriority int
 }
 
-// OpcoesScheduler parameterises the loop.
-type OpcoesScheduler struct {
+// SchedulerOptions parameterises the loop.
+type SchedulerOptions struct {
 	Interval    time.Duration
 	MaxPerCycle int
 }
 
 func NewScheduler(a *postgres.ScheduleRepo, w *postgres.WorkflowRepo, r *postgres.RunRepo,
-	f *queue.Queue, log *slog.Logger, o OpcoesScheduler) *Scheduler {
+	f *queue.Queue, log *slog.Logger, o SchedulerOptions) *Scheduler {
 
 	if o.Interval <= 0 {
 		o.Interval = 10 * time.Second
@@ -56,7 +56,7 @@ func NewScheduler(a *postgres.ScheduleRepo, w *postgres.WorkflowRepo, r *postgre
 		o.MaxPerCycle = 100
 	}
 	return &Scheduler{
-		agendas: a, workflows: w, runs: r, queue: f, log: log,
+		schedules: a, workflows: w, runs: r, queue: f, log: log,
 		intervalo: o.Interval, maxPerCycle: o.MaxPerCycle, backfillPriority: -10,
 	}
 }
@@ -83,13 +83,13 @@ func (s *Scheduler) Run(ctx context.Context) error {
 // Ciclo evaluates every schedule once. Exported so it can be tested with a fixed
 // instant, without waiting on a clock.
 func (s *Scheduler) Cycle(ctx context.Context, now time.Time) (int, error) {
-	agendas, err := s.agendas.Ativas(ctx)
+	schedules, err := s.schedules.Active(ctx)
 	if err != nil {
 		return 0, err
 	}
 
 	var created int
-	for _, a := range agendas {
+	for _, a := range schedules {
 		n, err := s.materialize(ctx, a, now)
 		if err != nil {
 			// One schedule with an invalid cron must not stop the others from running.
@@ -117,7 +117,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 	// it went live, and fires at the first time after that. Without running
 	// anything this cycle -- the slot before registration is not ours.
 	if a.LastSlot == nil {
-		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, now); err != nil {
+		if err := s.schedules.AdvanceSlot(ctx, a.WorkflowSlug, now); err != nil {
 			return 0, err
 		}
 		s.log.Info("schedule started", "workflow", a.WorkflowSlug,
@@ -165,7 +165,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 		// The marker advances at EVERY slot, and not at the end of the loop: if
 		// the process dies midway, the slots already materialised are not
 		// recreated.
-		if err := s.agendas.AvancarSlot(ctx, a.WorkflowSlug, slot); err != nil {
+		if err := s.schedules.AdvanceSlot(ctx, a.WorkflowSlug, slot); err != nil {
 			return created, err
 		}
 	}
@@ -180,7 +180,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 // exactly §29's case.
 func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byte,
 	slot time.Time, trigger sch.TriggerType, priority int, params map[string]string,
-	maxAtivos int) error {
+	maxActive int) error {
 
 	key := fmt.Sprintf("%s:%s:%s", slug, trigger, slot.UTC().Format(time.RFC3339))
 
@@ -191,7 +191,7 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 		TriggerType:    string(trigger),
 		LogicalDate:    &slot,
 		Params:         params,
-		MaxActive:      maxAtivos,
+		MaxActive:      maxActive,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
@@ -259,23 +259,23 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 // current work instead of competing with it.
 func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time,
 	params map[string]string) (int, error) {
-	agendas, err := s.agendas.Ativas(ctx)
+	schedules, err := s.schedules.Active(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	var alvo *sch.Schedule
-	for i := range agendas {
-		if agendas[i].WorkflowSlug == slug {
-			alvo = &agendas[i]
+	var target *sch.Schedule
+	for i := range schedules {
+		if schedules[i].WorkflowSlug == slug {
+			target = &schedules[i]
 			break
 		}
 	}
-	if alvo == nil {
+	if target == nil {
 		return 0, fmt.Errorf("workflow %q has no active schedule", slug)
 	}
 
-	cronSched, loc, err := alvo.Parse()
+	cronSched, loc, err := target.Parse()
 	if err != nil {
 		return 0, err
 	}

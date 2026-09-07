@@ -30,7 +30,7 @@ import (
 type OverviewData struct {
 	Window   time.Duration
 	Ind      postgres.Indicators
-	Baldes   []postgres.Bucket
+	Buckets  []postgres.Bucket
 	EmCurso  []postgres.RunSummary
 	Proximas []NextRun
 	Recentes []postgres.RunSummary
@@ -135,7 +135,7 @@ func Overview(d OverviewData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = components.RunsChart(d.Baldes).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = components.RunsChart(d.Buckets).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1635,7 +1635,7 @@ func disparar(slug string) templ.Component {
 	})
 }
 
-func chip(rota, text string, ativo bool, ponto string) templ.Component {
+func chip(rota, text string, active1 bool, ponto string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1656,7 +1656,7 @@ func chip(rota, text string, ativo bool, ponto string) templ.Component {
 			templ_7745c5c3_Var63 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if ativo {
+		if active1 {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<a href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -1894,13 +1894,13 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = filtroAplicado("workflow", f.Workflow, f.With("workflow", "")).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = filterApplied("workflow", f.Workflow, f.With("workflow", "")).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 			if f.Label != "" {
-				templ_7745c5c3_Err = filtroAplicado("period", f.Label, f.With("from", "")+"&to=").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = filterApplied("period", f.Label, f.With("from", "")+"&to=").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1948,10 +1948,10 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 	})
 }
 
-// filtroAplicado shows a slice that came from another screen (a click on the
+// filterApplied shows a slice that came from another screen (a click on the
 // chart, for instance) with the way to remove it beside it — a filter you can
 // only take off by editing the URL is not a filter, it is a trap.
-func filtroAplicado(label, value, remover string) templ.Component {
+func filterApplied(label, value, remover string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2503,7 +2503,7 @@ func Workflow(w wf.Workflow, latest []postgres.RunSummary) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 165, "\" class=\"text-xs text-gold-strong hover:underline\">ver todas</a></div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 165, "\" class=\"text-xs text-gold-strong hover:underline\">see all</a></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

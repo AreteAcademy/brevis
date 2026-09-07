@@ -53,19 +53,19 @@ func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
 		if r.Method == http.MethodPost && strings.Contains(r.URL.Path, "/upload/") {
 			q := r.URL.Query()
 			if v := q.Get("ifGenerationMatch"); v != "" {
-				esperado := v == fmt.Sprint(g.generation)
+				expected := v == fmt.Sprint(g.generation)
 				if v == "0" {
-					esperado = !g.existe
+					expected = !g.existe
 				}
-				if !esperado {
+				if !expected {
 					g.conflitos++
 					http.Error(w, `{"error":{"code":412,"message":"generation mismatch"}}`,
 						http.StatusPreconditionFailed)
 					return
 				}
 			}
-			corpo, _ := io.ReadAll(r.Body)
-			g.conteudo = extrairCorpoMultipart(corpo)
+			body, _ := io.ReadAll(r.Body)
+			g.conteudo = extrairCorpoMultipart(body)
 			g.generation++
 			g.existe = true
 			_ = json.NewEncoder(w).Encode(map[string]any{
@@ -92,11 +92,11 @@ func extrairCorpoMultipart(b []byte) []byte {
 	if len(partes) < 3 {
 		return b
 	}
-	corpo := partes[2]
-	if i := strings.LastIndex(corpo, "\r\n--"); i >= 0 {
-		corpo = corpo[:i]
+	body := partes[2]
+	if i := strings.LastIndex(body, "\r\n--"); i >= 0 {
+		body = body[:i]
 	}
-	return []byte(corpo)
+	return []byte(body)
 }
 
 func credential(t *testing.T, g *fakeGCS) Credential {

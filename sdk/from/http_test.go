@@ -20,7 +20,7 @@ import (
 func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	var (
 		metodo string
-		corpo  string
+		body   string
 		header string
 		path   string
 		calls  int
@@ -30,7 +30,7 @@ func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 		metodo = r.Method
 		b := make([]byte, r.ContentLength)
 		_, _ = r.Body.Read(b)
-		corpo = string(b)
+		body = string(b)
 		header = r.Header.Get("X-Cliente")
 		path = r.URL.Path
 		_, _ = w.Write([]byte(`[{"id":1}]`))
@@ -68,8 +68,8 @@ func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	if metodo != http.MethodPost {
 		t.Errorf("Method não chegou: %q", metodo)
 	}
-	if corpo != `{"q":1}` {
-		t.Errorf("Body não chegou: %q", corpo)
+	if body != `{"q":1}` {
+		t.Errorf("Body não chegou: %q", body)
 	}
 	if header != "brevis" {
 		t.Errorf("Header não chegou: %q", header)
@@ -95,7 +95,7 @@ func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 func TestHTTPForwardsEachFormat(t *testing.T) {
 	casos := []struct {
 		formato core.Format
-		corpo   string
+		body    string
 		field   string
 	}{
 		{core.FormatJSON, `[{"a":"1"}]`, "a"},
@@ -107,7 +107,7 @@ func TestHTTPForwardsEachFormat(t *testing.T) {
 	for _, c := range casos {
 		t.Run(string(c.formato), func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				_, _ = w.Write([]byte(c.corpo))
+				_, _ = w.Write([]byte(c.body))
 			}))
 			defer srv.Close()
 

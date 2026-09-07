@@ -219,9 +219,9 @@ func TestAConsumerLoadsWithNoProvenanceAtAll(t *testing.T) {
 	// this test proves is that the facade's validation lets it through. An error
 	// naming Provider, Entity or Key would be the regression.
 	if err != nil {
-		for _, proibido := range []string{"Provider", "Entity", "Key"} {
-			if strings.Contains(err.Error(), proibido) {
-				t.Errorf("the SDK still demands %s with no Metadata block: %v", proibido, err)
+		for _, forbidden := range []string{"Provider", "Entity", "Key"} {
+			if strings.Contains(err.Error(), forbidden) {
+				t.Errorf("the SDK still demands %s with no Metadata block: %v", forbidden, err)
 			}
 		}
 	}

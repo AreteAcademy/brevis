@@ -43,12 +43,12 @@ func TestReadyIsOkWhenEverythingAnswers(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, wanted 200", rec.Code)
 	}
-	var corpo healthResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &corpo); err != nil {
+	var body healthResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if corpo.Checks["postgres"] != "ok" {
-		t.Errorf("checks[postgres] = %q, wanted ok", corpo.Checks["postgres"])
+	if body.Checks["postgres"] != "ok" {
+		t.Errorf("checks[postgres] = %q, wanted ok", body.Checks["postgres"])
 	}
 }
 
@@ -63,14 +63,14 @@ func TestReadyFailsAndSaysWhichDependency(t *testing.T) {
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, wanted 503", rec.Code)
 	}
-	var corpo healthResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &corpo); err != nil {
+	var body healthResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
 	// Naming the dependency is the point: "unavailable" alone does not say where
 	// to look.
-	if corpo.Checks["postgres"] != "conexao recusada" {
-		t.Errorf("checks[postgres] = %q, wanted the cause", corpo.Checks["postgres"])
+	if body.Checks["postgres"] != "conexao recusada" {
+		t.Errorf("checks[postgres] = %q, wanted the cause", body.Checks["postgres"])
 	}
 }
 

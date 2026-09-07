@@ -89,10 +89,10 @@ func request(t *testing.T, ui *api.UI, path string) (*http.Response, graph) {
 
 	res := rec.Result()
 	var g graph
-	corpo, _ := io.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	if res.StatusCode == http.StatusOK {
-		if err := json.Unmarshal(corpo, &g); err != nil {
-			t.Fatalf("json invalido: %v — %s", err, corpo)
+		if err := json.Unmarshal(body, &g); err != nil {
+			t.Fatalf("json invalido: %v — %s", err, body)
 		}
 	}
 	return res, g
@@ -223,7 +223,7 @@ func TestTheGraphRefusesInvalidInput(t *testing.T) {
 		name     string
 		ui       *api.UI
 		path     string
-		esperado int
+		expected int
 	}{
 		{"workflow inexistente", newUI(defsFake{err: errors.New("no rows")}, execsFake{}),
 			"/api/workflows/fantasma/graph", http.StatusNotFound},
@@ -240,8 +240,8 @@ func TestTheGraphRefusesInvalidInput(t *testing.T) {
 	for _, c := range casos {
 		t.Run(c.name, func(t *testing.T) {
 			res, _ := request(t, c.ui, c.path)
-			if res.StatusCode != c.esperado {
-				t.Errorf("status = %d, want %d", res.StatusCode, c.esperado)
+			if res.StatusCode != c.expected {
+				t.Errorf("status = %d, want %d", res.StatusCode, c.expected)
 			}
 		})
 	}

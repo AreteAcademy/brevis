@@ -44,14 +44,14 @@ func (o countedSource) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, e
 
 // keepingTarget stores what it received, including when it refuses the load.
 type keepingTarget struct {
-	recebido *[]Envelope
+	received *[]Envelope
 	fail     bool
 }
 
 func (keepingTarget) Describe() string { return "destino.teste" }
 
 func (d keepingTarget) Write(_ context.Context, envs []Envelope, _ WriteOptions) (*LoadResult, error) {
-	*d.recebido = append(*d.recebido, envs...)
+	*d.received = append(*d.received, envs...)
 	if d.fail {
 		return &LoadResult{}, fmt.Errorf("o destino recusou a carga")
 	}
@@ -91,7 +91,7 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: src},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: keepingTarget{recebido: &first1, fail: true}},
+		Target:     Target{To: keepingTarget{received: &first1, fail: true}},
 		Run:        RunContext{ID: "run-1", Attempt: 0},
 	})
 	if err == nil {
@@ -103,7 +103,7 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: src},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: keepingTarget{recebido: &segunda}},
+		Target:     Target{To: keepingTarget{received: &segunda}},
 		Run:        RunContext{ID: "run-1", Attempt: 1},
 	})
 	if err != nil {
@@ -132,7 +132,7 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &box}},
+			Target:     Target{To: keepingTarget{received: &box}},
 			Run:        RunContext{ID: "run-2", Attempt: attempt},
 		}
 	}
@@ -166,7 +166,7 @@ func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &box}},
+			Target:     Target{To: keepingTarget{received: &box}},
 			Run:        RunContext{ID: "run-3", Attempt: attempt},
 		}
 	}
@@ -207,7 +207,7 @@ func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &box}},
+			Target:     Target{To: keepingTarget{received: &box}},
 			Run:        RunContext{ID: "run-4", Attempt: attempt},
 		}
 	}
@@ -244,7 +244,7 @@ func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
 			Transform:  []Transformer{IngestionID()},
-			Target:     Target{To: keepingTarget{recebido: box}},
+			Target:     Target{To: keepingTarget{received: box}},
 			Run:        RunContext{ID: "run-5", Attempt: attempt},
 		}
 	}
@@ -289,7 +289,7 @@ func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: src},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: keepingTarget{recebido: &box}},
+			Target:     Target{To: keepingTarget{received: &box}},
 			Run:        RunContext{ID: "run-6", Attempt: attempt},
 		}
 	}
@@ -326,7 +326,7 @@ func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeQueRecusa{}},
-		Target:     Target{To: keepingTarget{recebido: &box}},
+		Target:     Target{To: keepingTarget{received: &box}},
 		Run:        RunContext{ID: "run-7", Attempt: 0},
 	})
 	if err != nil {
@@ -354,7 +354,7 @@ func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T)
 		Name:       "fetcher",
 		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras, soUmaVez: true}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeRefusingParts{}},
-		Target:     Target{To: keepingTarget{recebido: &box}},
+		Target:     Target{To: keepingTarget{received: &box}},
 		Run:        RunContext{ID: "run-8", Attempt: 0},
 	})
 	if err != nil {
@@ -379,7 +379,7 @@ func TestOutsideTheEngineTheCheckpointWarnsInsteadOfIgnoring(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: t.TempDir()},
-		Target:     Target{To: keepingTarget{recebido: &box}},
+		Target:     Target{To: keepingTarget{received: &box}},
 		Run:        RunContext{}, // no id: running by hand
 	})
 	if err != nil {
@@ -399,7 +399,7 @@ func TestACheckpointWithTheWrongStoreIsAnError(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: countedSource{records: twoRecords(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "gs://balde/cp", Store: storeQueRecusa{}}, // store e s3
-		Target:     Target{To: keepingTarget{recebido: &box}},
+		Target:     Target{To: keepingTarget{received: &box}},
 		Run:        RunContext{ID: "run-9"},
 	})
 	if err == nil {

@@ -17,33 +17,33 @@ import (
 // problem is the format. It only showed up against a real server -- the
 // in-memory tests prove the bytes we assembled.
 func TestToColumnRowByRow(t *testing.T) {
-	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
+	instant := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
 	casos := []struct {
-		name   string
-		value  any
-		kind   string
-		quero  any
-		porque string
+		name  string
+		value any
+		kind  string
+		quero any
+		why   string
 	}{
 		{"nil vira NULL em qualquer coluna", nil, "timestamp with time zone", nil, ""},
 		{
 			"string RFC 3339 vira time.Time",
-			"2026-09-05T12:30:00Z", "timestamp with time zone", instante,
+			"2026-09-05T12:30:00Z", "timestamp with time zone", instant,
 			"e a forma que IngestionLoadedAt produz, e a que toda API JSON devolve",
 		},
 		{
 			"RFC 3339 com fracao",
-			"2026-09-05T12:30:00.000Z", "timestamp with time zone", instante, "",
+			"2026-09-05T12:30:00.000Z", "timestamp with time zone", instant, "",
 		},
 		{
 			"outro fuso vira o mesmo instante",
-			"2026-09-05T09:30:00-03:00", "timestamp with time zone", instante, "",
+			"2026-09-05T09:30:00-03:00", "timestamp with time zone", instant, "",
 		},
-		{"time.Time passa direto", instante, "timestamp with time zone", instante, ""},
+		{"time.Time passa direto", instant, "timestamp with time zone", instant, ""},
 		{
 			"epoch em segundos",
-			float64(instante.Unix()), "timestamp with time zone", instante,
+			float64(instant.Unix()), "timestamp with time zone", instant,
 			"um JSON traz epoch como float64, e recusa-lo perderia a linha",
 		},
 		// numeric tem caso proprio, em TestNumericGoesTypedAndNotAsText: ele
@@ -64,12 +64,12 @@ func TestToColumnRowByRow(t *testing.T) {
 			if ts, ok := c.quero.(time.Time); ok {
 				gt, ok := got.(time.Time)
 				if !ok || !gt.Equal(ts) {
-					t.Errorf("= %#v, esperado %v\n  %s", got, ts, c.porque)
+					t.Errorf("= %#v, esperado %v\n  %s", got, ts, c.why)
 				}
 				return
 			}
 			if got != c.quero {
-				t.Errorf("= %#v, esperado %#v\n  %s", got, c.quero, c.porque)
+				t.Errorf("= %#v, esperado %#v\n  %s", got, c.quero, c.why)
 			}
 		})
 	}

@@ -39,7 +39,7 @@ func TestCatchupTruePreencheALacuna(t *testing.T) {
 
 // catchup=false materializes only the most recent one: reprocessing four days
 // would be waste when only the current state matters.
-func TestCatchupFalseSoOMaisRecente(t *testing.T) {
+func TestCatchupFalseKeepsOnlyTheMostRecent(t *testing.T) {
 	s := Schedule{
 		Cron: "0 2 * * *", Timezone: "UTC", Catchup: false, Active: true,
 		LastSlot: ptr(inUTC("2026-01-01T02:00:00Z")),

@@ -31,7 +31,7 @@ func TestIngestionIDProducesTheSameIDAsBefore(t *testing.T) {
 		Provider: "open_meteo", Entity: "hourly_temperature",
 		SourceKey: "-23.55|-46.63|2026-01-01T00:00", RecordTS: "2026-01-01T00:00",
 	}
-	esperado, err := env.IngestionID()
+	expected, err := env.IngestionID()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,9 +41,9 @@ func TestIngestionIDProducesTheSameIDAsBefore(t *testing.T) {
 		"source_key": "-23.55|-46.63|2026-01-01T00:00", "record_ts": "2026-01-01T00:00",
 	})
 
-	if got[ColumnIngestionID] != esperado {
+	if got[ColumnIngestionID] != expected {
 		t.Errorf("o id mudou de fórmula:\n  transformer: %v\n  antes:       %v",
-			got[ColumnIngestionID], esperado)
+			got[ColumnIngestionID], expected)
 	}
 }
 

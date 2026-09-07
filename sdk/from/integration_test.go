@@ -138,8 +138,8 @@ func TestIntegrationS3ReadsInOrder(t *testing.T) {
 
 	// Written out of order on purpose.
 	for _, name := range []string{"c", "a", "b"} {
-		corpo := fmt.Sprintf(`{"n":%q}`+"\n", name)
-		if err := store.Create(ctx, bucket, "p/"+name+".ndjson", bytes.NewReader([]byte(corpo))); err != nil {
+		body := fmt.Sprintf(`{"n":%q}`+"\n", name)
+		if err := store.Create(ctx, bucket, "p/"+name+".ndjson", bytes.NewReader([]byte(body))); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -201,9 +201,9 @@ func TestIntegrationS3PaginatesTheListing(t *testing.T) {
 
 	const n = 1005
 	for i := 0; i < n; i++ {
-		corpo := fmt.Sprintf(`{"i":%d}`+"\n", i)
+		body := fmt.Sprintf(`{"i":%d}`+"\n", i)
 		key := fmt.Sprintf("muitos/%05d.ndjson", i)
-		if err := store.Create(ctx, bucket, key, bytes.NewReader([]byte(corpo))); err != nil {
+		if err := store.Create(ctx, bucket, key, bytes.NewReader([]byte(body))); err != nil {
 			t.Fatalf("objeto %d: %v", i, err)
 		}
 	}

@@ -259,9 +259,9 @@ func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feito := make(chan struct{})
+	done := make(chan struct{})
 	go func() {
-		defer close(feito)
+		defer close(done)
 		n := 0
 		for _, err := range data.Records {
 			if err != nil {
@@ -276,7 +276,7 @@ func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 	}()
 
 	select {
-	case <-feito:
+	case <-done:
 	case <-timeout():
 		t.Fatal("a iteração não terminou depois do break; alguma goroutine ficou presa")
 	}

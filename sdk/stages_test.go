@@ -38,7 +38,7 @@ func TestIdentityIsComputedAfterTheAggregation(t *testing.T) {
 				IngestionID(),
 			),
 		},
-		Target: Target{To: keepingTarget{recebido: &box}},
+		Target: Target{To: keepingTarget{received: &box}},
 		Run:    RunContext{ID: "run-stages"},
 	})
 	if err != nil {
@@ -83,7 +83,7 @@ func TestAggregateRefusesRecordsThatAlreadyHaveIdentity(t *testing.T) {
 			),
 			Aggregate(Reduce{By: GroupBy("area"), Agg: map[string]Aggregator{"n": Count()}}),
 		},
-		Target: Target{To: keepingTarget{recebido: &box}},
+		Target: Target{To: keepingTarget{received: &box}},
 		Run:    RunContext{ID: "run-guard"},
 	})
 	if err == nil {
@@ -138,7 +138,7 @@ func TestResultCountsEachStage(t *testing.T) {
 			Map(SkipWithout("id")),
 			Aggregate(Reduce{By: GroupBy("area"), Agg: map[string]Aggregator{"n": Count()}}),
 		},
-		Target: Target{To: keepingTarget{recebido: &box}},
+		Target: Target{To: keepingTarget{received: &box}},
 		Run:    RunContext{ID: "run-counts"},
 	}
 

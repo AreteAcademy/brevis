@@ -59,7 +59,7 @@ func pipelineDeTeste(src Reader, box *[]Envelope) *Pipeline {
 		Name:      "fetcher",
 		Source:    Source{From: src},
 		Transform: []Transformer{SkipWithout("id")},
-		Target:    Target{To: keepingTarget{recebido: box}},
+		Target:    Target{To: keepingTarget{received: box}},
 		Run:       RunContext{ID: "run-etapas", Attempt: 0},
 	}
 }
@@ -260,7 +260,7 @@ func TestEachStageGetsItsOwnBox(t *testing.T) {
 			Aggregate(Reduce{By: GroupBy("provider"), Agg: map[string]Aggregator{"n": Count()}}),
 			Map(Compute("x", func(map[string]any) (any, error) { return 1, nil })),
 		},
-		Target: Target{To: keepingTarget{recebido: &box}},
+		Target: Target{To: keepingTarget{received: &box}},
 		Run:    RunContext{ID: "run-boxes"},
 	})
 	if err != nil {

@@ -322,8 +322,8 @@ type StepError struct {
 
 func (e *StepError) Error() string {
 	header := fmt.Sprintf("step %q: %s", e.NodeID, e.Message)
-	if dica := dicaDoCodigo(e.ExitCode); dica != "" {
-		header += " (" + dica + ")"
+	if hint := codeHint(e.ExitCode); hint != "" {
+		header += " (" + hint + ")"
 	}
 	if len(e.Output) == 0 {
 		return header
@@ -331,11 +331,11 @@ func (e *StepError) Error() string {
 	return header + "\n" + strings.Join(e.Output, "\n")
 }
 
-// dicaDoCodigo translates the exit codes the shell reserves. They are the most
+// codeHint translates the exit codes the shell reserves. They are the most
 // confusing ones: 127 is not an application error but a missing command -- the
 // difference between looking for a defect in the code and looking in the
 // image.
-func dicaDoCodigo(c int) string {
+func codeHint(c int) string {
 	switch c {
 	case 126:
 		return "the command is not executable"
@@ -417,13 +417,13 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 		if e.Kind == execution.EventLog {
 			if line := strings.TrimSpace(e.Message); line != "" {
 				completa.Write(line)
-				alvo := &stdout
+				target := &stdout
 				if e.Stream == "stderr" {
-					alvo = &stderr
+					target = &stderr
 				}
-				*alvo = append(*alvo, line)
-				if len(*alvo) > contextLines {
-					*alvo = (*alvo)[1:]
+				*target = append(*target, line)
+				if len(*target) > contextLines {
+					*target = (*target)[1:]
 				}
 			}
 		}

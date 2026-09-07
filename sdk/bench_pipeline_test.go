@@ -18,16 +18,16 @@ import (
 // where a
 // fetcher passa o tempo dele.
 func BenchmarkExtractTransform(b *testing.B) {
-	var corpo strings.Builder
-	corpo.WriteString(`{"results":[`)
+	var body strings.Builder
+	body.WriteString(`{"results":[`)
 	for i := 0; i < 5000; i++ {
 		if i > 0 {
-			corpo.WriteString(",")
+			body.WriteString(",")
 		}
-		fmt.Fprintf(&corpo, `{"id":%d,"nome":"registro %d","valor":%d.75,"ts":"2026-09-05T12:00:00Z"}`, i, i, i)
+		fmt.Fprintf(&body, `{"id":%d,"nome":"registro %d","valor":%d.75,"ts":"2026-09-05T12:00:00Z"}`, i, i, i)
 	}
-	corpo.WriteString(`]}`)
-	payload := corpo.String()
+	body.WriteString(`]}`)
+	payload := body.String()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(payload))

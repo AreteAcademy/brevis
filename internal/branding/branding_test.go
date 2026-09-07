@@ -63,7 +63,7 @@ theme:
 		t.Fatal(err)
 	}
 	css := m.CSS()
-	for _, esperado := range []string{
+	for _, expected := range []string{
 		"--color-ink:#101820",
 		"--color-gold:#c02a2a",
 		"--color-state-success:#0f8f4f",
@@ -71,8 +71,8 @@ theme:
 		"--color-line:#101820" + "1a",
 		"--color-gold-wash:#c02a2a" + "14",
 	} {
-		if !strings.Contains(css, esperado) {
-			t.Errorf("the CSS is missing %q:\n%s", esperado, css)
+		if !strings.Contains(css, expected) {
+			t.Errorf("the CSS is missing %q:\n%s", expected, css)
 		}
 	}
 }

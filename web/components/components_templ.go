@@ -388,7 +388,7 @@ func Metric(label, value, nota string, matiz string) templ.Component {
 // Empty communicates the absence of data without looking like an error. An empty
 // table with no explanation sends the operator looking for a defect where there
 // is none.
-func Empty(msg, dica string) templ.Component {
+func Empty(msg, hint string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -426,13 +426,13 @@ func Empty(msg, dica string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if dica != "" {
+		if hint != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"mt-2 font-mono text-xs text-gold-strong\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var21 string
-			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(dica)
+			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(hint)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 122, Col: 60}
 			}
@@ -695,9 +695,9 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var35 string
-				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(b.Dica)
+				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(b.Tooltip)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 179, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 179, Col: 81}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 				if templ_7745c5c3_Err != nil {
@@ -903,9 +903,9 @@ func RunsChart(buckets []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var51 string
-				templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(b.Dica)
+				templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(b.Tooltip)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 184, Col: 21}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 184, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 				if templ_7745c5c3_Err != nil {
@@ -1136,9 +1136,9 @@ func Rosca(i postgres.Indicators) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var63 string
-			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(a.Dica)
+			templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.ResolveAttributeValue(a.Tooltip)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 224, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 224, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var63)
 			if templ_7745c5c3_Err != nil {
@@ -1188,9 +1188,9 @@ func Rosca(i postgres.Indicators) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var67 string
-			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(a.Dica)
+			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(a.Tooltip)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 235, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 235, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 			if templ_7745c5c3_Err != nil {
@@ -1234,7 +1234,7 @@ type Bar struct {
 	YSucceeded, HSucceeded int
 	YFailed, HFailed       int
 	YOutros, HOutros       int
-	Dica                   string
+	Tooltip                string
 	Link                   string
 }
 
@@ -1321,7 +1321,7 @@ func bars(buckets []postgres.Bucket) []Bar {
 		bar := Bar{
 			X: x, Width: width,
 			BandX: bandStart, BandWidth: int(step),
-			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
+			Tooltip: bucketTooltip(b), Link: bucketLink(b),
 		}
 		base -= hs
 		bar.YSucceeded, bar.HSucceeded = base, hs
@@ -1334,16 +1334,16 @@ func bars(buckets []postgres.Bucket) []Bar {
 	return out
 }
 
-// linkDoBalde leads to that exact hour in the run list. It is what turns the
+// bucketLink leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
-func linkDoBalde(b postgres.Bucket) string {
+func bucketLink(b postgres.Bucket) string {
 	de := b.Start.UTC().Format(time.RFC3339)
 	ate := b.Start.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
-func dicaDoBalde(b postgres.Bucket) string {
+func bucketTooltip(b postgres.Bucket) string {
 	partes := []string{b.Start.Local().Format("02/01 15h")}
 	if b.Succeeded > 0 {
 		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
@@ -1431,17 +1431,17 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 	return out
 }
 
-type Arco struct {
-	Cor    string
-	Dash   string
-	Offset int
-	Dica   string
-	Link   string
+type Arc struct {
+	Cor     string
+	Dash    string
+	Offset  int
+	Tooltip string
+	Link    string
 }
 
 // arcos builds the donut with a dasharray over a single circle. The perimeter is
 // 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
-func arcos(i postgres.Indicators) []Arco {
+func arcos(i postgres.Indicators) []Arc {
 	const perimetro = 289
 	if i.Total == 0 {
 		return nil
@@ -1460,18 +1460,18 @@ func arcos(i postgres.Indicators) []Arco {
 		{i.Pending, "var(--color-state-queued)", "queued", "queued"},
 	}
 
-	var out []Arco
+	var out []Arc
 	running := 0
 	for _, f := range fatias {
 		if f.n == 0 {
 			continue
 		}
 		size := f.n * perimetro / i.Total
-		out = append(out, Arco{
+		out = append(out, Arc{
 			Cor:    f.cor,
 			Dash:   fmt.Sprintf("%d %d", size, perimetro-size),
 			Offset: -running,
-			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
+			Tooltip: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
 				f.n, f.name, float64(f.n)*100/float64(i.Total)),
 			Link: "/runs?estado=" + f.state,
 		})

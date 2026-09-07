@@ -19,7 +19,7 @@ func TestToJSONRowByRow(t *testing.T) {
 		value     any
 		declarado string
 		quero     string
-		porque    string
+		why       string
 	}{
 		{"NULL", nil, "VARCHAR", `null`, ""},
 		{
@@ -57,7 +57,7 @@ func TestToJSONRowByRow(t *testing.T) {
 				t.Fatal(err)
 			}
 			if string(b) != c.quero {
-				t.Errorf("= %s, esperado %s\n  %s", b, c.quero, c.porque)
+				t.Errorf("= %s, esperado %s\n  %s", b, c.quero, c.why)
 			}
 		})
 	}
@@ -71,9 +71,9 @@ func TestToJSONRowByRow(t *testing.T) {
 // without parseTime the instant would become base64. It does not; what changes
 // is the cost.
 func TestTheTwoInstantPathsAgree(t *testing.T) {
-	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
+	instant := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
-	comParse := ToJSON(instante, "DATETIME")
+	comParse := ToJSON(instant, "DATETIME")
 	semParse := ToJSON([]byte("2026-09-05 12:30:00"), "DATETIME")
 
 	if comParse != semParse {

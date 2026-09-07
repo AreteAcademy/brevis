@@ -22,7 +22,7 @@ import (
 type OverviewData struct {
 	Window    time.Duration
 	Ind       postgres.Indicators
-	Baldes    []postgres.Bucket
+	Buckets    []postgres.Bucket
 	EmCurso   []postgres.RunSummary
 	Proximas  []NextRun
 	Recentes  []postgres.RunSummary
@@ -54,7 +54,7 @@ templ Overview(d OverviewData) {
 				<p class="-mt-2 mb-5 text-sm text-muted">
 					Count and average duration over the last { fmt.Sprint(int(d.Window.Hours())) } hours.
 				</p>
-				@components.RunsChart(d.Baldes)
+				@components.RunsChart(d.Buckets)
 			}
 			@components.Card("Distribution") {
 				@components.Rosca(d.Ind)
@@ -559,8 +559,8 @@ templ disparar(slug string) {
 	</form>
 }
 
-templ chip(rota, text string, ativo bool, ponto string) {
-	if ativo {
+templ chip(rota, text string, active1 bool, ponto string) {
+	if active1 {
 		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-full border border-ink bg-ink px-3.5 py-1.5 text-xs font-semibold text-parchment-soft">
 			if ponto != "" {
 				<span class={ "h-1.5 w-1.5 rounded-full", ponto }></span>
@@ -648,10 +648,10 @@ templ Runs(runs []postgres.RunSummary, f RunFilter, total int) {
 			@chip(f.With("state", "queued"), "Queued", f.State == "queued", "bg-state-queued")
 			if f.Workflow != "" {
 				<span class="mx-2 h-5 w-px bg-line"></span>
-				@filtroAplicado("workflow", f.Workflow, f.With("workflow", ""))
+				@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
 			}
 			if f.Label != "" {
-				@filtroAplicado("period", f.Label, f.With("from", "")+"&to=")
+				@filterApplied("period", f.Label, f.With("from", "")+"&to=")
 			}
 		</div>
 		<p class="mb-3 font-serif text-xl text-ink">
@@ -666,10 +666,10 @@ templ Runs(runs []postgres.RunSummary, f RunFilter, total int) {
 	}
 }
 
-// filtroAplicado shows a slice that came from another screen (a click on the
+// filterApplied shows a slice that came from another screen (a click on the
 // chart, for instance) with the way to remove it beside it — a filter you can
 // only take off by editing the URL is not a filter, it is a trap.
-templ filtroAplicado(label, value, remover string) {
+templ filterApplied(label, value, remover string) {
 	<span class="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
 		<span class="text-gold-strong">{ label }:</span>
 		<span class="font-medium">{ value }</span>
@@ -807,7 +807,7 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary) {
 				<div class="mb-3 flex items-baseline justify-between">
 					<h2 class="kicker">This workflow's runs</h2>
 					<a href={ templ.SafeURL("/runs?workflow=" + w.Slug) } class="text-xs text-gold-strong hover:underline">
-						ver todas
+						see all
 					</a>
 				</div>
 				@runsTable(latest, Pagination{})

@@ -15,9 +15,9 @@ import (
 // driver is not to import its package.
 func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 	casos := []struct {
-		name     string
-		pacotes  []string
-		proibido bool
+		name      string
+		pacotes   []string
+		forbidden bool
 	}{
 		{"the root alone", []string{"github.com/AreteAcademy/brevis/sdk"}, true},
 		{"raiz + from", []string{
@@ -46,10 +46,10 @@ func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), "cloud.google.com/go/bigquery")
 
-			if c.proibido && carrega {
+			if c.forbidden && carrega {
 				t.Error("BigQuery got into the graph of somebody who did not import it")
 			}
-			if !c.proibido && !carrega {
+			if !c.forbidden && !carrega {
 				t.Error("importing to.BigQuery has to bring BigQuery in; " +
 					"without this the test above proves nothing")
 			}
@@ -65,7 +65,7 @@ func TestReadingALocalFileCompilesNoCloud(t *testing.T) {
 		name     string
 		pacotes  []string
 		procura  string
-		esperado bool
+		expected bool
 	}{
 		{"from on its own does not bring AWS in", []string{
 			"github.com/AreteAcademy/brevis/sdk/from"}, "aws-sdk-go", false},
@@ -84,8 +84,8 @@ func TestReadingALocalFileCompilesNoCloud(t *testing.T) {
 	for _, c := range casos {
 		t.Run(c.name, func(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), c.procura)
-			if carrega != c.esperado {
-				t.Errorf("carries %q = %v, expected %v", c.procura, carrega, c.esperado)
+			if carrega != c.expected {
+				t.Errorf("carries %q = %v, expected %v", c.procura, carrega, c.expected)
 			}
 		})
 	}

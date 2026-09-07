@@ -289,7 +289,7 @@ func TestRecoverReturnsADeadWorkersItem(t *testing.T) {
 	if _, claimed, _ := queue.Size(ctx); claimed != 1 {
 		t.Fatal("esperava 1 item reivindicado")
 	}
-	items, err := queue.Recuperar(ctx, 0) // a zero limit: everything claimed comes back
+	items, err := queue.Recover(ctx, 0) // a zero limit: everything claimed comes back
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +337,7 @@ func TestRecoveringOrphansPutsTheRunBackInTheQueue(t *testing.T) {
 		Worker: "vivo", MaxAttempts: 3, Visibility: time.Nanosecond,
 	}, queue, repo, func(context.Context, uuid.UUID) error { return nil }, noLog())
 
-	n, err := d.RecuperarOrfaos(ctx)
+	n, err := d.RecoverOrphans(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +391,7 @@ func TestAnOrphanStopsComingBackWhenTheAttemptsRunOut(t *testing.T) {
 	if err := repo.Transicionar(ctx, r.ID, dom.StatusRunning); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := d.RecuperarOrfaos(ctx); err != nil {
+	if _, err := d.RecoverOrphans(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -406,21 +406,21 @@ func TestAnOrphanStopsComingBackWhenTheAttemptsRunOut(t *testing.T) {
 
 type alertaFalso struct {
 	mu       sync.Mutex
-	recebido []notify.Alert
+	received []notify.Alert
 	failure  error
 }
 
 func (a *alertaFalso) Failed(_ context.Context, al notify.Alert) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.recebido = append(a.recebido, al)
+	a.received = append(a.received, al)
 	return a.failure
 }
 
 func (a *alertaFalso) total() int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return len(a.recebido)
+	return len(a.received)
 }
 
 // The alert fires ONCE, when the run gives up -- not on every attempt.
@@ -476,7 +476,7 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 		t.Fatalf("%d alerts for a run that failed once; want exactly 1", n)
 	}
 
-	a := avisos.recebido[0]
+	a := avisos.received[0]
 	if a.Workflow != "id_verification" || a.Trigger != "schedule" {
 		t.Errorf("the alert has none of the run's details: %+v", a)
 	}
@@ -533,13 +533,13 @@ func TestAFailureToNotifyDoesNotTakeTheDispatcherDown(t *testing.T) {
 }
 
 func enqueue(t *testing.T, repo *postgres.RunRepo, queue *queue.Queue,
-	slug string, quantos, maxAtivos int) {
+	slug string, quantos, maxActive int) {
 	t.Helper()
 	ctx := context.Background()
 	for i := 0; i < quantos; i++ {
 		r, err := repo.Create(ctx, dom.Run{
 			WorkflowSlug: slug, IdempotencyKey: fmt.Sprintf("%s-%d", slug, i),
-			Definition: []byte(`{}`), MaxActive: maxAtivos,
+			Definition: []byte(`{}`), MaxActive: maxActive,
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -775,10 +775,10 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 
 	avisos.mu.Lock()
 	defer avisos.mu.Unlock()
-	if len(avisos.recebido) == 0 {
+	if len(avisos.received) == 0 {
 		t.Fatal("nenhum alert saiu")
 	}
-	a := avisos.recebido[0]
+	a := avisos.received[0]
 	if a.Step != "fetch_observations" {
 		t.Errorf("Step = %q; expected the node that failed", a.Step)
 	}

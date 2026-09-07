@@ -30,14 +30,14 @@ func slugs(ws []postgres.WorkflowSummary) []string {
 	return out
 }
 
-func equal(t *testing.T, obtido, esperado []string) {
+func equal(t *testing.T, got, expected []string) {
 	t.Helper()
-	if len(obtido) != len(esperado) {
-		t.Fatalf("got %v, want %v", obtido, esperado)
+	if len(got) != len(expected) {
+		t.Fatalf("got %v, want %v", got, expected)
 	}
-	for i := range obtido {
-		if obtido[i] != esperado[i] {
-			t.Fatalf("got %v, want %v", obtido, esperado)
+	for i := range got {
+		if got[i] != expected[i] {
+			t.Fatalf("got %v, want %v", got, expected)
 		}
 	}
 }
@@ -46,7 +46,7 @@ func TestFiltrar(t *testing.T) {
 	casos := []struct {
 		name     string
 		f        pages.Filter
-		esperado []string
+		expected []string
 	}{
 		{"no filter", pages.Filter{}, []string{"id_verification", "platform_workspace", "vendors_inmet", "protect_ad_hoc"}},
 		{"busca parcial", pages.Filter{Search: "verif"}, []string{"id_verification"}},
@@ -63,7 +63,7 @@ func TestFiltrar(t *testing.T) {
 	}
 	for _, c := range casos {
 		t.Run(c.name, func(t *testing.T) {
-			equal(t, slugs(filtrar(list(), c.f)), c.esperado)
+			equal(t, slugs(filtrar(list(), c.f)), c.expected)
 		})
 	}
 }
@@ -85,14 +85,14 @@ func TestTheTagsDoNotShrinkWithTheFilter(t *testing.T) {
 func TestTheWorkflowsNextRun(t *testing.T) {
 	now := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
 
-	ativo := postgres.WorkflowSummary{Slug: "a", Cron: "0 5 * * *", Timezone: "UTC", Active: true}
-	if p := proximaDoWorkflow(ativo, now); p == nil || !p.Equal(time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC)) {
+	active1 := postgres.WorkflowSummary{Slug: "a", Cron: "0 5 * * *", Timezone: "UTC", Active: true}
+	if p := proximaDoWorkflow(active1, now); p == nil || !p.Equal(time.Date(2026, 3, 10, 5, 0, 0, 0, time.UTC)) {
 		t.Errorf("next = %v, want 05:00 do mesmo dia", p)
 	}
 
 	// Paused has no next firing: showing one would mislead whoever paused it.
-	pausado := postgres.WorkflowSummary{Slug: "b", Cron: "0 5 * * *", Active: false}
-	if p := proximaDoWorkflow(pausado, now); p != nil {
+	paused := postgres.WorkflowSummary{Slug: "b", Cron: "0 5 * * *", Active: false}
+	if p := proximaDoWorkflow(paused, now); p != nil {
 		t.Errorf("workflow pausado devolveu next disparo: %v", p)
 	}
 
@@ -101,15 +101,15 @@ func TestTheWorkflowsNextRun(t *testing.T) {
 		t.Errorf("a workflow with no cron returned a next firing: %v", p)
 	}
 
-	invalido := postgres.WorkflowSummary{Slug: "d", Cron: "this is not a cron", Active: true}
-	if p := proximaDoWorkflow(invalido, now); p != nil {
+	invalid := postgres.WorkflowSummary{Slug: "d", Cron: "this is not a cron", Active: true}
+	if p := proximaDoWorkflow(invalid, now); p != nil {
 		t.Errorf("cron invalido devolveu next disparo: %v", p)
 	}
 }
 
 func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
 	now := time.Date(2026, 3, 10, 4, 30, 0, 0, time.UTC)
-	agendas := []postgres.ScheduleSummary{
+	schedules := []postgres.ScheduleSummary{
 		{WorkflowSlug: "tarde", Cron: "0 22 * * *", Timezone: "UTC", Active: true},
 		{WorkflowSlug: "cedo", Cron: "0 5 * * *", Timezone: "UTC", Active: true},
 		{WorkflowSlug: "pausada", Cron: "* * * * *", Timezone: "UTC", Active: false},
@@ -118,7 +118,7 @@ func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
 		{WorkflowSlug: "quebrada", Cron: "@@@", Timezone: "UTC", Active: true},
 	}
 
-	out := nextRuns(agendas, now, 8, slog.New(slog.DiscardHandler))
+	out := nextRuns(schedules, now, 8, slog.New(slog.DiscardHandler))
 	if len(out) != 2 {
 		t.Fatalf("obtive %d entradas, want 2 (a pausada e a quebrada ficam de fora)", len(out))
 	}
@@ -129,13 +129,13 @@ func TestNextRunsSortsAndIgnoresInvalidOnes(t *testing.T) {
 
 func TestNextRunsRespectsTheLimit(t *testing.T) {
 	now := time.Now()
-	var agendas []postgres.ScheduleSummary
+	var schedules []postgres.ScheduleSummary
 	for i := 0; i < 20; i++ {
-		agendas = append(agendas, postgres.ScheduleSummary{
+		schedules = append(schedules, postgres.ScheduleSummary{
 			WorkflowSlug: "w", Cron: "0 * * * *", Timezone: "UTC", Active: true,
 		})
 	}
-	if out := nextRuns(agendas, now, 5, slog.New(slog.DiscardHandler)); len(out) != 5 {
+	if out := nextRuns(schedules, now, 5, slog.New(slog.DiscardHandler)); len(out) != 5 {
 		t.Errorf("obtive %d, want 5", len(out))
 	}
 }
@@ -213,10 +213,10 @@ func TestAValidStateRefusesAnUnknownOne(t *testing.T) {
 }
 
 func TestTheInstantAndThePage(t *testing.T) {
-	if instante("") != nil || instante("ontem") != nil {
+	if instant("") != nil || instant("ontem") != nil {
 		t.Error("an invalid value has to become the absence of a filter, not an error")
 	}
-	if got := instante("2026-09-01T02:00:00Z"); got == nil || got.Hour() != 2 {
+	if got := instant("2026-09-01T02:00:00Z"); got == nil || got.Hour() != 2 {
 		t.Errorf("it did not parse the RFC3339 the chart emits: %v", got)
 	}
 	for _, s := range []string{"", "0", "-3", "abc"} {

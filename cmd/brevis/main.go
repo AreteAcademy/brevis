@@ -158,16 +158,16 @@ func paramsFromFlags(entries []string) (map[string]string, error) {
 // same log, or the difference between two deploys becomes noise.
 func expandir(alvos []string) ([]string, error) {
 	var files []string
-	for _, alvo := range alvos {
-		info, err := os.Stat(alvo)
+	for _, target := range alvos {
+		info, err := os.Stat(target)
 		if err != nil {
 			return nil, err
 		}
 		if !info.IsDir() {
-			files = append(files, alvo)
+			files = append(files, target)
 			continue
 		}
-		found, err := filepath.Glob(filepath.Join(alvo, "*.y*ml"))
+		found, err := filepath.Glob(filepath.Join(target, "*.y*ml"))
 		if err != nil {
 			return nil, err
 		}
@@ -370,7 +370,7 @@ func cmdRun() *cobra.Command {
 				// PATH and HOME always; beyond that, only what BREVIS_TASK_ENV
 				// names. Inheriting the environment would hand the database's
 				// credential to every step of every pipeline.
-				Env:    config.AmbienteDasTasks(config.TaskEnvDoAmbiente()),
+				Env:    config.TasksEnvironment(config.TaskEnvFromEnvironment()),
 				Report: consoleReporter{},
 			}
 			if err := runner.Run(cmd.Context(), w); err != nil {
@@ -513,7 +513,7 @@ func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, er
 		return nil, nil
 	}
 
-	cliente, err := k8s.NoCluster()
+	client, err := k8s.NoCluster()
 	if err != nil {
 		var outside k8s.ErrOutsideCluster
 		if errors.As(err, &outside) && cfg.Pods.Modo == "auto" {
@@ -526,12 +526,12 @@ func executorDePods(cfg config.Config, log *slog.Logger) (execution.Executor, er
 
 	ns := cfg.Pods.Namespace
 	if ns == "" {
-		ns = cliente.Namespace()
+		ns = client.Namespace()
 	}
 	log.Info("running steps as pods", "namespace", ns,
 		"service_account", cfg.Pods.ServiceAccount)
 
-	return k8s.NewExecutor(cliente, k8s.Options{
+	return k8s.NewExecutor(client, k8s.Options{
 		Namespace:         ns,
 		ServiceAccount:    cfg.Pods.ServiceAccount,
 		PullSecrets:       cfg.Pods.PullSecrets,
@@ -583,7 +583,7 @@ func cmdScheduler() *cobra.Command {
 
 			sched := scheduler.NewScheduler(
 				postgres.NewScheduleRepo(pool), postgres.NewWorkflowRepo(pool), runs, q, log,
-				scheduler.OpcoesScheduler{Interval: intervalo})
+				scheduler.SchedulerOptions{Interval: intervalo})
 
 			// The dispatcher has to know how to EXECUTE a run. It reads the
 			// definition stored on the Run itself — section 22's snapshot — and
@@ -634,12 +634,12 @@ func cmdScheduler() *cobra.Command {
 			// mean fifteen pods if the only limit were the run limit.
 			slots := make(chan struct{}, maxPods)
 
-			ambienteDasTasks := config.AmbienteDasTasks(cfg.TaskEnv)
+			tasksEnvironment := config.TasksEnvironment(cfg.TaskEnv)
 			// In pod mode the task's environment comes from the cluster's
 			// Secrets (BREVIS_POD_ENV_FROM_SECRETS), not from here. Warning
 			// anyway sent the operator looking for a problem that does not
 			// exist.
-			if len(ambienteDasTasks) <= 2 && pods == nil {
+			if len(tasksEnvironment) <= 2 && pods == nil {
 				// Only PATH and HOME. A `dbt` here fails with "Env var required
 				// but not provided", which does not point at the cause — saying
 				// this at boot saves the investigation.
@@ -666,7 +666,7 @@ func cmdScheduler() *cobra.Command {
 					Processo: processo,
 					Pods:     pods,
 					Go:       local.NewGoExecutor(execution.NewRegistry()),
-					Env:      ambienteDasTasks,
+					Env:      tasksEnvironment,
 					Report:   consoleReporter{},
 					// Without this the `task_runs` table stays empty and the DAG
 					// on screen has no per-step state — the debt left open in
@@ -758,7 +758,7 @@ func cmdBackfill() *cobra.Command {
 			s := scheduler.NewScheduler(
 				postgres.NewScheduleRepo(pool), postgres.NewWorkflowRepo(pool),
 				postgres.NewRunRepo(pool), queue.New(pool.Pool),
-				observability.NewLogger(cfg.Env, cfg.LogLevel), scheduler.OpcoesScheduler{})
+				observability.NewLogger(cfg.Env, cfg.LogLevel), scheduler.SchedulerOptions{})
 
 			given, err := paramsFromFlags(rawParams)
 			if err != nil {
@@ -793,8 +793,8 @@ type uiActions struct {
 	sched     *scheduler.Scheduler
 }
 
-func (a uiActions) Alternar(ctx context.Context, slug string) (bool, error) {
-	return a.schedules.Alternar(ctx, slug)
+func (a uiActions) Toggle(ctx context.Context, slug string) (bool, error) {
+	return a.schedules.Toggle(ctx, slug)
 }
 
 func (a uiActions) Disparar(ctx context.Context, slug string, now time.Time,
@@ -827,7 +827,7 @@ func serve(ctx context.Context) error {
 	schedules := postgres.NewScheduleRepo(pool)
 	runsRepo := postgres.NewRunRepo(pool)
 	sched := scheduler.NewScheduler(schedules, postgres.NewWorkflowRepo(pool), runsRepo,
-		queue.New(pool.Pool), log, scheduler.OpcoesScheduler{})
+		queue.New(pool.Pool), log, scheduler.SchedulerOptions{})
 
 	// The visual identity is optional: with no file, the installation uses the
 	// default one. An error HERE is about content (an invalid colour, broken

@@ -262,7 +262,7 @@ type item struct {
 	Key  string
 }
 
-func sidebar(ativo string, brand branding.Brand) templ.Component {
+func sidebar(active1 string, brand branding.Brand) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -378,7 +378,7 @@ func sidebar(ativo string, brand branding.Brand) templ.Component {
 			{"/runs", "Runs", "runs"},
 			{"/projects", "Projects", "projects"},
 		} {
-			if i.Key == ativo {
+			if i.Key == active1 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

@@ -52,7 +52,7 @@ func build(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *post
 	runs := postgres.NewRunRepo(pool)
 	queue := queue.New(pool.Pool)
 	s := scheduler.NewScheduler(postgres.NewScheduleRepo(pool), wRepo, runs, queue,
-		noLog(), scheduler.OpcoesScheduler{})
+		noLog(), scheduler.SchedulerOptions{})
 	return s, runs, queue, pool
 }
 
@@ -283,7 +283,7 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
-	agendas := postgres.NewScheduleRepo(pool)
+	schedules := postgres.NewScheduleRepo(pool)
 
 	var projeto uuid.UUID
 	if err := pool.QueryRow(ctx, `
@@ -327,11 +327,11 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 	// The schedule lives in a separate table, linked by slug as text -- the
 	// CASCADE does not reach it, and an orphaned schedule would go on creating
 	// runs.
-	ativas, err := agendas.Ativas(ctx)
+	active, err := schedules.Active(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, a := range ativas {
+	for _, a := range active {
 		if a.WorkflowSlug == sai.Slug {
 			t.Error("the removed workflow's schedule survived and would keep creating runs")
 		}

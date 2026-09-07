@@ -118,7 +118,7 @@ Examples:
 			log.Fatalf("Create loader failed: %v", err)
 		}
 
-		envelopes, err := lerNDJSON(cmd.InOrStdin())
+		envelopes, err := readNDJSON(cmd.InOrStdin())
 		if err != nil {
 			log.Fatalf("Reading stdin: %v", err)
 		}
@@ -279,7 +279,7 @@ func init() {
 // The CLI composes no row at all, so it only declares what the caller asked
 // for; a batch without those columns is refused with the error that names
 // them.
-// lerNDJSON reads one JSON object per line, in order.
+// readNDJSON reads one JSON object per line, in order.
 //
 // A Decoder rather than a Scanner: a Scanner has a line-length limit that stops
 // reading in SILENCE when a record crosses it, and a landing record with a large
@@ -287,7 +287,7 @@ func init() {
 //
 // The line number goes into the error because a malformed record among thousands
 // is unfindable without it.
-func lerNDJSON(r io.Reader) ([]sdk.Envelope, error) {
+func readNDJSON(r io.Reader) ([]sdk.Envelope, error) {
 	dec := json.NewDecoder(r)
 	var out []sdk.Envelope
 	for line := 1; ; line++ {

@@ -14,9 +14,9 @@ import (
 // cost v0.12.0 because it was built inside a method that held a client.
 func TestInsertSQLNamesTheColumns(t *testing.T) {
 	got := InsertSQL("pedidos", []string{"ingestion_id", "valor"}, 2, false)
-	esperado := "INSERT INTO `pedidos` (`ingestion_id`, `valor`) VALUES (?,?), (?,?)"
-	if got != esperado {
-		t.Errorf("SQL:\n  got  %s\n  want %s", got, esperado)
+	expected := "INSERT INTO `pedidos` (`ingestion_id`, `valor`) VALUES (?,?), (?,?)"
+	if got != expected {
+		t.Errorf("SQL:\n  got  %s\n  want %s", got, expected)
 	}
 }
 

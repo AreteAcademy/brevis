@@ -90,14 +90,14 @@ func TestLoadViaGCSUsesStagingError(t *testing.T) {
 	defer gcs.Close()
 
 	ctx := context.Background()
-	cliente, err := storage.NewClient(ctx,
+	client, err := storage.NewClient(ctx,
 		option.WithEndpoint(gcs.URL),
 		option.WithoutAuthentication(),
 	)
 	if err != nil {
 		t.Fatalf("cliente falso: %v", err)
 	}
-	defer func() { _ = cliente.Close() }()
+	defer func() { _ = client.Close() }()
 
 	l := &Loader{
 		cfg: &core.LoadConfig{
@@ -106,7 +106,7 @@ func TestLoadViaGCSUsesStagingError(t *testing.T) {
 			StagingPrefix:   "brevis/",
 			ThresholdForGCS: 5000,
 		},
-		gcs: cliente,
+		gcs: client,
 	}
 
 	_, _, _, err = l.loadViaGCS(ctx, nil, []byte(`{"a":1}`+"\n"), 12000)

@@ -25,11 +25,11 @@ import (
 // I2, the part that can be asserted without a server: a declaration with no type
 // is refused, and the refusal says what to write.
 func TestI2SchemaRequiresAType(t *testing.T) {
-	alvo := sdk.Target{
+	target := sdk.Target{
 		To:     postgres.Table{DSN: "postgres://x/y", Name: "t"},
 		Schema: sdk.Schema{{Name: "a"}},
 	}
-	err := sdk.ValidateTarget(alvo)
+	err := sdk.ValidateTarget(target)
 	if err == nil {
 		t.Fatal("coluna sem Type passou")
 	}

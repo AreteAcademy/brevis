@@ -346,10 +346,10 @@ type page struct {
 	number   int    // page number this page was fetched at, for page paging
 	release  func()
 
-	// temMais is what MoreKey read on this page, and sabeSeTemMais tells "the
+	// hasMore is what MoreKey read on this page, and knowsHasMore tells "the
 	// response said there are no more" from "nobody asked".
-	temMais       bool
-	sabeSeTemMais bool
+	hasMore      bool
+	knowsHasMore bool
 
 	// Set when the Reading answered for this page. The records then come
 	// from the fetcher rather than the decoder, and hasRecords distinguishes
@@ -428,7 +428,7 @@ func nextPageURL(source core.Source, p *page, emitted int) (string, error) {
 	// Stopping on the empty page still exists, as a safety net: an API that lies
 	// in that field, or stops sending it, must not turn into an infinite
 	// loop.
-	if p.sabeSeTemMais && !p.temMais {
+	if p.knowsHasMore && !p.hasMore {
 		return "", nil
 	}
 
@@ -709,14 +709,14 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 		}
 
 		if source.MoreKey != "" {
-			temMais, err := lerTemMais(buffered, source.MoreKey)
+			hasMore, err := readHasMore(buffered, source.MoreKey)
 			if err != nil {
 				p.body = nil
 				p.close()
 				return nil, err
 			}
-			p.temMais = temMais
-			p.sabeSeTemMais = true
+			p.hasMore = hasMore
+			p.knowsHasMore = true
 		}
 
 		if source.CursorKey != "" || source.DataKey != "" {
@@ -736,7 +736,7 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 	return p, nil
 }
 
-// lerTemMais reads the boolean saying whether there is a next page.
+// readHasMore reads the boolean saying whether there is a next page.
 //
 // The path is dot-separated -- "pageMeta.hasNextPage" -- because the common
 // convention puts that field inside a metadata object rather than at the root.
@@ -745,7 +745,7 @@ func fetchPage(ctxTotal context.Context, client *http.Client, source core.Source
 // the path is wrong. Treating missing as the end would make pagination stop at
 // the first page in silence -- which is worse than not having the
 // optimisation.
-func lerTemMais(body []byte, path string) (bool, error) {
+func readHasMore(body []byte, path string) (bool, error) {
 	var current any
 	if err := json.Unmarshal(body, &current); err != nil {
 		return false, fmt.Errorf("MoreKey %q needs a JSON page: %w", path, err)

@@ -231,7 +231,7 @@ func TestTheDispatchersPath(t *testing.T) {
 	}
 
 	// E o contexto do run chega junto.
-	esperado := map[string]string{
+	expected := map[string]string{
 		"BREVIS_RUN_ID":           id.String(),
 		"BREVIS_RUN_FIRST":        "true",
 		"BREVIS_RUN_ATTEMPT":      "0",
@@ -239,7 +239,7 @@ func TestTheDispatchersPath(t *testing.T) {
 		"BREVIS_RUN_LOGICAL_DATE": "2026-09-03T04:00:00Z",
 		"BREVIS_RUN_PARAMS":       `{"load_full":"true"}`,
 	}
-	for k, v := range esperado {
+	for k, v := range expected {
 		if task.Env[k] != v {
 			t.Errorf("%s = %q, expected %q", k, task.Env[k], v)
 		}

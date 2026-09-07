@@ -23,7 +23,7 @@ func TestPaginationCounts(t *testing.T) {
 func TestThePageWindow(t *testing.T) {
 	casos := []struct {
 		page, total int
-		esperado    []int
+		expected    []int
 	}{
 		{1, 250, []int{1, 2, 3, 4, 5}},
 		{7, 250, []int{5, 6, 7, 8, 9}},
@@ -33,12 +33,12 @@ func TestThePageWindow(t *testing.T) {
 	for _, c := range casos {
 		p := Pagination{Page: c.page, PerPage: 25, Total: c.total}
 		j := p.Window()
-		if len(j) != len(c.esperado) {
-			t.Fatalf("pagina %d de %d: %v, want %v", c.page, p.Pages(), j, c.esperado)
+		if len(j) != len(c.expected) {
+			t.Fatalf("pagina %d de %d: %v, want %v", c.page, p.Pages(), j, c.expected)
 		}
 		for i := range j {
-			if j[i] != c.esperado[i] {
-				t.Fatalf("pagina %d: %v, want %v", c.page, j, c.esperado)
+			if j[i] != c.expected[i] {
+				t.Fatalf("pagina %d: %v, want %v", c.page, j, c.expected)
 			}
 		}
 	}

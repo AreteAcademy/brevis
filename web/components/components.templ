@@ -115,11 +115,11 @@ templ Metric(label, value, nota string, matiz string) {
 // Empty communicates the absence of data without looking like an error. An empty
 // table with no explanation sends the operator looking for a defect where there
 // is none.
-templ Empty(msg, dica string) {
+templ Empty(msg, hint string) {
 	<div class="rounded-[20px] border border-dashed border-line px-6 py-12 text-center">
 		<p class="font-serif text-lg text-muted">{ msg }</p>
-		if dica != "" {
-			<p class="mt-2 font-mono text-xs text-gold-strong">{ dica }</p>
+		if hint != "" {
+			<p class="mt-2 font-mono text-xs text-gold-strong">{ hint }</p>
 		}
 	</div>
 }
@@ -176,12 +176,12 @@ templ RunsChart(buckets []postgres.Bucket) {
 					// The whole column is the target, not just the bar: with a
 					// single run the bar is 2px tall, and demanding exact aim
 					// tornaria o grafico decorativo.
-					<a href={ templ.SafeURL(b.Link) } class="grafico-alvo" data-dica={ b.Dica }>
+					<a href={ templ.SafeURL(b.Link) } class="grafico-alvo" data-dica={ b.Tooltip }>
 						<rect class="grafico-faixa" x={ fmt.Sprint(b.BandX) } y="0" width={ fmt.Sprint(b.BandWidth) } height={ fmt.Sprint(chartHeight - bottomMargin) } rx="3"></rect>
 						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YSucceeded) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HSucceeded) } rx="2" fill="var(--color-state-success)"></rect>
 						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YFailed) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HFailed) } rx="2" fill="var(--color-state-failed)"></rect>
 						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YOutros) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HOutros) } rx="2" fill="var(--color-state-running)"></rect>
-						<title>{ b.Dica }</title>
+						<title>{ b.Tooltip }</title>
 					</a>
 				}
 				if d := durationLine(buckets); d != "" {
@@ -221,7 +221,7 @@ templ Rosca(i postgres.Indicators) {
 		<svg viewBox="0 0 120 120" class="h-[190px] w-[190px]" role="img" aria-label="Run distribution">
 			<circle cx="60" cy="60" r="46" fill="none" stroke="var(--color-ink)" stroke-opacity="0.07" stroke-width="16"></circle>
 			for _, a := range arcos(i) {
-				<a href={ templ.SafeURL(a.Link) } class="grafico-alvo" data-dica={ a.Dica }>
+				<a href={ templ.SafeURL(a.Link) } class="grafico-alvo" data-dica={ a.Tooltip }>
 					<circle
 						cx="60"
 						cy="60"
@@ -232,7 +232,7 @@ templ Rosca(i postgres.Indicators) {
 						stroke-dasharray={ a.Dash }
 						stroke-dashoffset={ fmt.Sprint(a.Offset) }
 						transform="rotate(-90 60 60)"
-					><title>{ a.Dica }</title></circle>
+					><title>{ a.Tooltip }</title></circle>
 				</a>
 			}
 			<text x="60" y="58" text-anchor="middle" class="fill-ink font-serif text-[26px] font-semibold">{ fmt.Sprint(i.Total) }</text>
@@ -253,7 +253,7 @@ type Bar struct {
 	YSucceeded, HSucceeded int
 	YFailed, HFailed     int
 	YOutros, HOutros   int
-	Dica               string
+	Tooltip               string
 	Link               string
 }
 
@@ -340,7 +340,7 @@ func bars(buckets []postgres.Bucket) []Bar {
 		bar := Bar{
 			X: x, Width: width,
 			BandX: bandStart, BandWidth: int(step),
-			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
+			Tooltip: bucketTooltip(b), Link: bucketLink(b),
 		}
 		base -= hs
 		bar.YSucceeded, bar.HSucceeded = base, hs
@@ -353,16 +353,16 @@ func bars(buckets []postgres.Bucket) []Bar {
 	return out
 }
 
-// linkDoBalde leads to that exact hour in the run list. It is what turns the
+// bucketLink leads to that exact hour in the run list. It is what turns the
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
-func linkDoBalde(b postgres.Bucket) string {
+func bucketLink(b postgres.Bucket) string {
 	de := b.Start.UTC().Format(time.RFC3339)
 	ate := b.Start.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
-func dicaDoBalde(b postgres.Bucket) string {
+func bucketTooltip(b postgres.Bucket) string {
 	partes := []string{b.Start.Local().Format("02/01 15h")}
 	if b.Succeeded > 0 {
 		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
@@ -450,17 +450,17 @@ func hourTicks(buckets []postgres.Bucket) []Brand {
 	return out
 }
 
-type Arco struct {
+type Arc struct {
 	Cor    string
 	Dash   string
 	Offset int
-	Dica   string
+	Tooltip   string
 	Link   string
 }
 
 // arcos builds the donut with a dasharray over a single circle. The perimeter is
 // 2*pi*46 ≈ 289; each slice takes its piece and offsets the next.
-func arcos(i postgres.Indicators) []Arco {
+func arcos(i postgres.Indicators) []Arc {
 	const perimetro = 289
 	if i.Total == 0 {
 		return nil
@@ -479,18 +479,18 @@ func arcos(i postgres.Indicators) []Arco {
 		{i.Pending, "var(--color-state-queued)", "queued", "queued"},
 	}
 
-	var out []Arco
+	var out []Arc
 	running := 0
 	for _, f := range fatias {
 		if f.n == 0 {
 			continue
 		}
 		size := f.n * perimetro / i.Total
-		out = append(out, Arco{
+		out = append(out, Arc{
 			Cor:    f.cor,
 			Dash:   fmt.Sprintf("%d %d", size, perimetro-size),
 			Offset: -running,
-			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
+			Tooltip: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
 				f.n, f.name, float64(f.n)*100/float64(i.Total)),
 			Link: "/runs?estado=" + f.state,
 		})

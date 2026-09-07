@@ -637,7 +637,7 @@ func TestEveryCoreOptionIsReachable(t *testing.T) {
 func TestEvery2xxReachesRecords(t *testing.T) {
 	casos := []struct {
 		status int
-		corpo  string
+		body   string
 		lines  int
 	}{
 		{200, `[{"a":1},{"a":2}]`, 2},
@@ -650,7 +650,7 @@ func TestEvery2xxReachesRecords(t *testing.T) {
 		t.Run(fmt.Sprint(c.status), func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(c.status)
-				_, _ = fmt.Fprint(w, c.corpo)
+				_, _ = fmt.Fprint(w, c.body)
 			}))
 			defer srv.Close()
 

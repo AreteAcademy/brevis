@@ -22,7 +22,7 @@ func TestAuthAppliesTheSecret(t *testing.T) {
 		applyTo  core.Applier
 		secret   string
 		header   string
-		esperado string
+		expected string
 	}{
 		{"bearer", core.AsBearer, "abc", "Authorization", "Bearer abc"},
 		{"cookie inteiro", core.AsCookie, "session=abc==", "Cookie", "session=abc=="},
@@ -44,8 +44,8 @@ func TestAuthAppliesTheSecret(t *testing.T) {
 				Apply: c.applyTo,
 			}})
 
-			if visto != c.esperado {
-				t.Errorf("%s = %q, esperado %q", c.header, visto, c.esperado)
+			if visto != c.expected {
+				t.Errorf("%s = %q, esperado %q", c.header, visto, c.expected)
 			}
 		})
 	}

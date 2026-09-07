@@ -72,7 +72,7 @@ type stageCollector struct {
 // in that case it must NOT enter the step's log: whoever looks at the screen
 // wants to see phases, not JSON in a console.
 func (c *stageCollector) line(msg string) bool {
-	corpo, ok := strings.CutPrefix(msg, sdkMarker)
+	body, ok := strings.CutPrefix(msg, sdkMarker)
 	if !ok {
 		return false
 	}
@@ -102,7 +102,7 @@ func (c *stageCollector) line(msg string) bool {
 		StateOld   string `json:"estado"`
 		AtOld      string `json:"em"`
 	}
-	if err := json.Unmarshal([]byte(corpo), &ev); err != nil {
+	if err := json.Unmarshal([]byte(body), &ev); err != nil {
 		// An unreadable marker goes back to being a log line: hiding it would
 		// remove from the screen the only clue that something is writing
 		// rubbish in the wrong place.
@@ -139,7 +139,7 @@ func (c *stageCollector) line(msg string) bool {
 		}
 		c.apply(Stage{
 			Index: indice, TaskName: ev.TaskName, State: ev.State, Ms: ev.Ms, At: ev.At,
-			Numbers: numbersOf(corpo),
+			Numbers: numbersOf(body),
 		})
 		return true
 	}
@@ -182,9 +182,9 @@ var reservedFields = map[string]bool{
 	"tipo": true, "nome": true, "estado": true, "em": true, "versao": true,
 }
 
-func numbersOf(corpo string) map[string]any {
+func numbersOf(body string) map[string]any {
 	var tudo map[string]any
-	if err := json.Unmarshal([]byte(corpo), &tudo); err != nil {
+	if err := json.Unmarshal([]byte(body), &tudo); err != nil {
 		return nil
 	}
 	for k := range tudo {
