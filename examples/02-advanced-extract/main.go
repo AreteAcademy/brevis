@@ -35,7 +35,7 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	fonte := from.HTTP{
+	source := from.HTTP{
 		URL:    "https://api.example.com/v1/transactions",
 		Method: "GET",
 		Header: map[string][]string{
@@ -62,7 +62,7 @@ func main() {
 	// before decoding, so this refuses loudly instead of loading garbage --
 	// and Bytes costs nothing, because looking for a marker should not pay
 	// for a full parse of a body already known to be junk.
-	leitura := func(r sdk.Response) ([]any, error) {
+	reading := func(r sdk.Response) ([]any, error) {
 		if bytes.Contains(r.Bytes(), []byte(`"error"`)) {
 			return nil, sdk.Reject("api returned an error document: %s", r.Bytes())
 		}
@@ -70,8 +70,8 @@ func main() {
 		return docs, r.JSON(&docs)
 	}
 
-	fonte.Records = leitura
-	lines, err := fonte.Read(context.Background(), sdk.ReadOptions{})
+	source.Records = reading
+	lines, err := source.Read(context.Background(), sdk.ReadOptions{})
 	if err != nil {
 		log.Fatalf("extract: %v", err)
 	}

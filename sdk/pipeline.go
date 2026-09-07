@@ -306,14 +306,14 @@ func applyStages(data *Data, stages []Stage, counts []StageResult, source string
 
 // aoEsgotar warns when the source has run out -- which is when the extract
 // really finished, and not when Extract returned the iterator.
-func aoEsgotar(rows iter.Seq2[Envelope, error], fim func()) iter.Seq2[Envelope, error] {
+func aoEsgotar(rows iter.Seq2[Envelope, error], end func()) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		for env, err := range rows {
 			if !yield(env, err) {
 				return // the consumer gave up: the source did not run out
 			}
 		}
-		fim()
+		end()
 	}
 }
 

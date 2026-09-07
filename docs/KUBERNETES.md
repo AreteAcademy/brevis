@@ -420,7 +420,7 @@ kubectl -n dados create configmap brevis-brand --from-file=brand.yaml
 kubectl apply -f deployments/kubernetes/api.yaml -f deployments/kubernetes/scheduler.yaml
 ```
 
-`job-exemplo.yaml` shows, written by hand, the pod the scheduler assembles —
+`job-example.yaml` shows, written by hand, the pod the scheduler assembles —
 useful for checking what the cluster is going to receive before anything runs.
 
 ## What does not exist yet

@@ -25,19 +25,19 @@ import (
 )
 
 const (
-	origem  = "exemplo_pedidos"
-	destino = "landing_pedidos"
+	src = "example_orders"
+	dst = "landing_orders"
 )
 
 func main() {
-	var criar bool
+	var create bool
 
 	sdk.Run(sdk.Pipeline{
 		Name:  "exemplo_postgres",
-		Flags: func(fs *flag.FlagSet) { fs.BoolVar(&criar, "create-tables", false, "creates the tables and exits") },
+		Flags: func(fs *flag.FlagSet) { fs.BoolVar(&create, "create-tables", false, "creates the tables and exits") },
 
 		Before: func(ctx context.Context, _ *sdk.Pipeline) error {
-			if !criar {
+			if !create {
 				return nil
 			}
 			if err := createTables(ctx); err != nil {
@@ -53,7 +53,7 @@ func main() {
 				DSN: os.Getenv("PG_DSN"),
 				// Pagination by KEY. OFFSET on a large table is O(n^2), because
 				// the server counts the rows it discards.
-				SQL: "SELECT id, nome, valor, atualizado_em FROM " + origem +
+				SQL: "SELECT id, name, amount, updated_at FROM " + src +
 					" WHERE id > $1 ORDER BY id LIMIT $2",
 				Args: []any{0, 10_000},
 			},
@@ -67,18 +67,18 @@ func main() {
 				return fmt.Sprint(r["id"]), nil
 			}),
 			sdk.Without("id"),
-			sdk.Rename(map[string]string{"atualizado_em": "record_ts"}),
-			sdk.Compute("provider", func(map[string]any) (any, error) { return "exemplo", nil }),
-			sdk.Compute("entity", func(map[string]any) (any, error) { return "pedidos", nil }),
+			sdk.Rename(map[string]string{"updated_at": "record_ts"}),
+			sdk.Compute("provider", func(map[string]any) (any, error) { return "example", nil }),
+			sdk.Compute("entity", func(map[string]any) (any, error) { return "orders", nil }),
 			sdk.IngestionID(),
 			sdk.IngestionLoadedAt(),
 		},
 
 		Target: sdk.Target{
-			To: topg.Table{DSN: os.Getenv("PG_DSN"), Name: destino},
+			To: topg.Table{DSN: os.Getenv("PG_DSN"), Name: dst},
 			Columns: []string{
 				"ingestion_id", "ingestion_loaded_at", "provider", "entity",
-				"source_key", "record_ts", "nome", "valor",
+				"source_key", "record_ts", "name", "amount",
 			},
 			// Requires a unique index on ingestion_id; -create-tables creates it.
 			Dedup: sdk.DedupMerge,
@@ -88,31 +88,31 @@ func main() {
 
 // createTables writes the DDL by hand, on purpose: the driver creates no table
 // and infers no type, so the DDL is the consumer's -- and they are the one who
-// knows `valor` is NUMERIC(18,2) and not a float.
+// knows `amount` is NUMERIC(18,2) and not a float.
 func createTables(ctx context.Context) error {
 	conn, err := pgx.Connect(ctx, os.Getenv("PG_DSN"))
 	if err != nil {
-		return fmt.Errorf("conectando: %w", err)
+		return fmt.Errorf("connecting: %w", err)
 	}
 	defer func() { _ = conn.Close(ctx) }()
 
 	ddl := []string{
-		`CREATE TABLE IF NOT EXISTS ` + origem + ` (
-			id INT PRIMARY KEY, nome TEXT, valor NUMERIC(18,2), atualizado_em TIMESTAMPTZ)`,
-		`INSERT INTO ` + origem + `
-			SELECT g, 'pedido ' || g, (g * 1.5)::numeric, now() FROM generate_series(1, 500) g
+		`CREATE TABLE IF NOT EXISTS ` + src + ` (
+			id INT PRIMARY KEY, name TEXT, amount NUMERIC(18,2), updated_at TIMESTAMPTZ)`,
+		`INSERT INTO ` + src + `
+			SELECT g, 'order ' || g, (g * 1.5)::numeric, now() FROM generate_series(1, 500) g
 			ON CONFLICT (id) DO NOTHING`,
-		`CREATE TABLE IF NOT EXISTS ` + destino + ` (
+		`CREATE TABLE IF NOT EXISTS ` + dst + ` (
 			ingestion_id TEXT NOT NULL,
 			ingestion_loaded_at TIMESTAMPTZ NOT NULL,
 			provider TEXT NOT NULL,
 			entity TEXT NOT NULL,
 			source_key TEXT NOT NULL,
 			record_ts TEXT NOT NULL,
-			nome TEXT,
-			valor NUMERIC(18,2))`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS ` + destino + `_ingestion_id
-			ON ` + destino + ` (ingestion_id)`,
+			name TEXT,
+			amount NUMERIC(18,2))`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS ` + dst + `_ingestion_id
+			ON ` + dst + ` (ingestion_id)`,
 	}
 	for _, sql := range ddl {
 		if _, err := conn.Exec(ctx, sql); err != nil {

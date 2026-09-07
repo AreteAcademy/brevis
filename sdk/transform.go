@@ -123,11 +123,11 @@ func transformAll(upstream iter.Seq2[Envelope, error], fns []Transformer, origin
 // in every new driver.
 func applyAll(fns []Transformer, payload any) (any, bool, error) {
 	if obj, ehObjeto := payload.(map[string]any); ehObjeto && len(fns) > 0 {
-		copia := make(map[string]any, len(obj))
+		copied := make(map[string]any, len(obj))
 		for k, v := range obj {
-			copia[k] = v
+			copied[k] = v
 		}
-		payload = copia
+		payload = copied
 	}
 
 	for n, fn := range fns {

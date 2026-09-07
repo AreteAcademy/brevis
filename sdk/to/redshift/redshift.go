@@ -181,26 +181,26 @@ func (t Table) copyTarget(d core.Dedup) string {
 }
 
 func (t Table) check() error {
-	faltando := []string{}
+	missing := []string{}
 	if t.DSN == "" && t.Executor == nil {
-		faltando = append(faltando, "DSN")
+		missing = append(missing, "DSN")
 	}
 	if t.Name == "" {
-		faltando = append(faltando, "Name")
+		missing = append(missing, "Name")
 	}
 	if t.Staging == "" {
-		faltando = append(faltando, "Staging")
+		missing = append(missing, "Staging")
 	}
 	if t.IAMRole == "" {
-		faltando = append(faltando, "IAMRole")
+		missing = append(missing, "IAMRole")
 	}
 	if t.Store == nil {
-		faltando = append(faltando, "Store")
+		missing = append(missing, "Store")
 	}
-	if len(faltando) > 0 {
+	if len(missing) > 0 {
 		return fmt.Errorf("redshift.Table needs %s. There is no inline path on Redshift: "+
 			"the batch goes to S3 and the cluster COPYs it, which is why Staging and IAMRole "+
-			"are not optional", strings.Join(faltando, ", "))
+			"are not optional", strings.Join(missing, ", "))
 	}
 	if strings.Contains(t.IAMRole, "aws_access_key_id") ||
 		strings.Contains(t.IAMRole, "ACCESS_KEY") {

@@ -24,14 +24,14 @@ func (t Table) executor(ctx context.Context) (SQLExecutor, func(), error) {
 	}
 	conn, err := pgx.ConnectConfig(ctx, cfg)
 	if err != nil {
-		return nil, nil, fmt.Errorf("redshift: connecting: %w", esconderDSN(err, t.DSN))
+		return nil, nil, fmt.Errorf("redshift: connecting: %w", hideDSN(err, t.DSN))
 	}
-	return conexao{conn}, func() { _ = conn.Close(context.WithoutCancel(ctx)) }, nil
+	return pgConn{conn}, func() { _ = conn.Close(context.WithoutCancel(ctx)) }, nil
 }
 
-type conexao struct{ conn *pgx.Conn }
+type pgConn struct{ conn *pgx.Conn }
 
-func (c conexao) Exec(ctx context.Context, sql string) error {
+func (c pgConn) Exec(ctx context.Context, sql string) error {
 	_, err := c.conn.Exec(ctx, sql)
 	return err
 }
@@ -53,7 +53,7 @@ func (t Table) remove(ctx context.Context, bucket, key string) error {
 	return d.Delete(ctx, bucket, key)
 }
 
-func esconderDSN(err error, dsn string) error {
+func hideDSN(err error, dsn string) error {
 	if err == nil || dsn == "" || !strings.Contains(err.Error(), dsn) {
 		return err
 	}

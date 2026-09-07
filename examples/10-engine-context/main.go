@@ -60,9 +60,9 @@ func main() {
 			}
 			// The source is a value, so widening the window means replacing
 			// it -- and the type says which driver you are replacing.
-			origem := p.Source.From.(from.HTTP)
-			origem.URL += "&past_days=7"
-			p.Source.From = origem
+			src := p.Source.From.(from.HTTP)
+			src.URL += "&past_days=7"
+			p.Source.From = src
 
 			slog.InfoContext(ctx, "backfill: widening the window",
 				"logical_date", p.Run.LogicalDate)

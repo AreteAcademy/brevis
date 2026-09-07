@@ -33,24 +33,24 @@ func main() {
 	}
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	entrada := filepath.Join(dir, "entrada")
-	saida := filepath.Join(dir, "saida")
-	if err := os.MkdirAll(entrada, 0o750); err != nil {
+	inDir := filepath.Join(dir, "entrada")
+	outDir := filepath.Join(dir, "saida")
+	if err := os.MkdirAll(inDir, 0o750); err != nil {
 		log.Fatal(err)
 	}
 
 	// Two "extractions" that already existed on disk.
-	semear(entrada, "2026-09-03.ndjson", `{"sku":"W-1","quantidade":3,"lixo":"x"}
+	seed(inDir, "2026-09-03.ndjson", `{"sku":"W-1","quantidade":3,"lixo":"x"}
 {"sku":"W-2","quantidade":9,"lixo":"y"}`)
-	semear(entrada, "2026-09-04.ndjson", `{"sku":"W-3","quantidade":1,"lixo":"z"}`)
+	seed(inDir, "2026-09-04.ndjson", `{"sku":"W-3","quantidade":1,"lixo":"z"}`)
 
 	ctx := context.Background()
 
 	// Where it comes from. The files are always read in order: a positional Key
 	// depends on that, and with no order the ingestion_id would change between
 	// runs.
-	dados, err := sdk.Extract(ctx, sdk.Source{
-		From:    from.Files{Path: filepath.Join(entrada, "*.ndjson")},
+	data, err := sdk.Extract(ctx, sdk.Source{
+		From:    from.Files{Path: filepath.Join(inDir, "*.ndjson")},
 		Preview: 5,
 	})
 	if err != nil {
@@ -58,12 +58,12 @@ func main() {
 	}
 
 	// What row it builds. "lixo" is not declared, so it does not come out.
-	dados = sdk.Transform(dados, sdk.Accept("sku", "quantidade"))
+	data = sdk.Transform(data, sdk.Accept("sku", "quantidade"))
 
 	// Where it goes, and with which columns.
-	res, err := sdk.Load(ctx, dados, sdk.Target{
+	res, err := sdk.Load(ctx, data, sdk.Target{
 		To: to.Files{
-			Path:        saida + "/",
+			Path:        outDir + "/",
 			PartitionBy: "ingestion_loaded_at",
 			Compress:    true,
 		},
@@ -74,17 +74,17 @@ func main() {
 	}
 
 	fmt.Println(res)
-	fmt.Println("\nescrito em", saida)
-	_ = filepath.Walk(saida, func(p string, info os.FileInfo, err error) error {
+	fmt.Println("\nescrito em", outDir)
+	_ = filepath.Walk(outDir, func(p string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() {
-			fmt.Printf("  %s  (%d bytes)\n", p[len(saida)+1:], info.Size())
+			fmt.Printf("  %s  (%d bytes)\n", p[len(outDir)+1:], info.Size())
 		}
 		return nil
 	})
 }
 
-func semear(dir, nome, conteudo string) {
-	if err := os.WriteFile(filepath.Join(dir, nome), []byte(conteudo+"\n"), 0o600); err != nil {
+func seed(dir, name, content string) {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content+"\n"), 0o600); err != nil {
 		log.Fatal(err)
 	}
 }
