@@ -247,16 +247,43 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	}
 
 	err := d.executar(ctx, it.RunID)
+
+	// From here on the bookkeeping runs on a context of its own. See settle.
+	done, cancel := settle()
+	defer cancel()
+
 	if err == nil {
-		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusSuccess); err != nil {
+		if err := d.repo.Transicionar(done, it.RunID, dom.StatusSuccess); err != nil {
 			d.log.Error("marking success", "run", it.RunID, "error", err)
 		}
-		d.measure(ctx, it.RunID, dom.StatusSuccess)
-		_ = d.queue.Done(ctx, it.ID)
+		// The queue item is released BEFORE the run is measured. Measuring is
+		// bookkeeping and it costs a query; leaving an item claimed while it
+		// happens widens the window in which a crash strands the item, for no
+		// gain.
+		_ = d.queue.Done(done, it.ID)
+		d.measure(done, it.RunID, dom.StatusSuccess)
 		return
 	}
 
-	d.fail(ctx, it, err)
+	d.fail(done, it, err)
+}
+
+// settle returns the context for everything that happens AFTER a run finishes.
+//
+// The run's own context is usually already cancelled by the time this matters:
+// a SIGTERM is what ended the run, and every database call made with it then
+// fails silently. Run() waits for in-flight work before returning, which is
+// pointless if the work it waits for cannot write anything down.
+//
+// The symptom is a run marked SUCCESS whose queue item was never deleted. It
+// stays claimed until the visibility sweep returns it fifteen minutes later,
+// and the sweep counts it as a FAILED attempt -- of a run that succeeded.
+//
+// Fifteen seconds, which fits inside a normal terminationGracePeriodSeconds.
+// This is not "ignore the shutdown", it is "finish writing down what already
+// happened".
+func settle() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 15*time.Second)
 }
 
 // falhar decide entre retry e desistencia.

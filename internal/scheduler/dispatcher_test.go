@@ -786,3 +786,69 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		t.Errorf("LogExcerpt does not carry the cause: %q", a.LogExcerpt)
 	}
 }
+
+// A SIGTERM landing as a run finishes must not strand its queue item.
+//
+// `Run` waits for in-flight work before returning, and that promise was empty:
+// everything after `executar` used the RUN's context, which the signal had
+// already cancelled, so `Transicionar` and `Done` failed in silence. The run
+// came out marked SUCCESS with its item still claimed, and the visibility sweep
+// returned it fifteen minutes later and counted it as a FAILED attempt of a run
+// that had succeeded.
+//
+// The cancellation is fired from inside the executor rather than raced from
+// outside, so the window is not "usually" hit -- it is always hit.
+func TestAShutdownWhileARunFinishesDoesNotStrandTheItem(t *testing.T) {
+	pool := testDB(t)
+	base := context.Background()
+
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+
+	r, err := repo.Create(base, dom.Run{
+		WorkflowSlug: "w", IdempotencyKey: "shutdown-mid-finish",
+		TriggerType: "manual", Definition: []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Transicionar(base, r.ID, dom.StatusQueued); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.Enqueue(base, r.ID, 0, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, stop := context.WithCancel(base)
+	defer stop()
+	d := scheduler.New(scheduler.Config{
+		Worker: "t", MaxConcorrente: 1, Interval: 10 * time.Millisecond,
+	}, q, repo, func(context.Context, uuid.UUID) error {
+		stop() // the signal arrives while the run is on its way out
+		return nil
+	}, noLog())
+
+	finished := make(chan error, 1)
+	go func() { finished <- d.Run(ctx) }()
+	select {
+	case <-finished:
+	case <-time.After(20 * time.Second):
+		t.Fatal("Run never returned")
+	}
+
+	current, err := repo.Get(base, r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.Status != dom.StatusSuccess {
+		t.Errorf("the run came out as %s; the shutdown ate the transition", current.Status)
+	}
+	pending, claimed, err := q.Size(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending+claimed != 0 {
+		t.Errorf("the queue holds %d pending and %d claimed: the item was stranded, "+
+			"and only the visibility sweep will free it", pending, claimed)
+	}
+}
