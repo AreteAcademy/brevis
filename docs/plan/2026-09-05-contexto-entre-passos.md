@@ -2,6 +2,13 @@
 
 **Escrito em** 2026-09-05 · **Base** motor `0.3.0`, `sdk/v0.42.1` · **Estado** proposta, não executável ainda
 
+> **2026-09-07.** Continua não implementado: `BREVIS_INPUT` e `BREVIS_OUTPUT`
+> não aparecem na árvore. Este documento segue sendo a autoridade sobre o lado
+> do motor, e
+> [`2026-09-07-python-context-sdk.md`](2026-09-07-python-context-sdk.md) o
+> complementa em inglês com o que faltava: a persistência em `task_runs`, os
+> ids, e o pacote Python que consome o mesmo contrato.
+
 Pedido de quem consome:
 
 > Vamos supor que eu montei um script em Go, e logo depois subi um script em
