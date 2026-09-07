@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 #
-# Binario estatico em imagem distroless. Diferente da imagem de tasks do Leoflow,
-# que precisava de Python e bash para o agente, aqui o processo E o binario — nao
-# ha shell a executar, entao distroless e possivel e desejavel.
+# A static binary in a distroless image. Unlike Leoflow's task image, which
+# needed Python and bash for its agent, here the process IS the binary — there is
+# no shell to execute, so distroless is both possible and desirable.
 
-# BUILDPLATFORM: compila SEMPRE na arquitetura nativa do builder e cruza para a
-# de destino. Sem isso, o build arm64 num runner amd64 roda sob emulacao QEMU e
-# leva minutos em vez de segundos.
+# BUILDPLATFORM: it ALWAYS compiles on the builder's native architecture and
+# cross-compiles to the target. Without it, an arm64 build on an amd64 runner
+# runs under QEMU emulation and takes minutes instead of seconds.
 FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS build
 WORKDIR /src
 
@@ -15,25 +15,28 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
 
-# O CSS e embutido no binario (web/assets/embed.go). Ele vai versionado no repo
-# justamente para que a imagem nao precise do Tailwind; se sumir, o //go:embed
-# falha aqui, no build, e nao em producao com a pagina sem estilo.
-RUN test -f web/assets/app.css || { echo "web/assets/app.css ausente — rode 'make generate'"; exit 1; }
-# As fontes e os bundles UMD sao servidos do binario. Sem eles a UI carrega, mas
-# com a tipografia do sistema e a tela da DAG em branco — falhas silenciosas que
-# so aparecem no navegador. Falhar aqui, com mensagem, e melhor.
-RUN test -f web/assets/fonts/inter-latin.woff2 || { echo "web/assets/fonts ausente"; exit 1; }
-RUN test -f web/assets/vendor/xyflow.js || { echo "web/assets/vendor ausente"; exit 1; }
+# The CSS is embedded in the binary (web/assets/embed.go). It is versioned in the
+# repo precisely so the image does not need Tailwind; if it disappears, the
+# //go:embed fails here, in the build, and not in production with an unstyled
+# page.
+RUN test -f web/assets/app.css || { echo "web/assets/app.css is missing — run 'make generate'"; exit 1; }
+# The fonts and the UMD bundles are served from the binary. Without them the UI
+# loads, but with the system's typography and a blank DAG screen — silent
+# failures that only show up in the browser. Failing here, with a message, is
+# better.
+RUN test -f web/assets/fonts/inter-latin.woff2 || { echo "web/assets/fonts is missing"; exit 1; }
+RUN test -f web/assets/vendor/xyflow.js || { echo "web/assets/vendor is missing"; exit 1; }
 
-# Versao carimbada no binario. `brevis version` dentro do container e a unica
-# forma confiavel de saber o que esta rodando quando a tag da imagem foi movida.
+# The version stamped into the binary. `brevis version` inside the container is
+# the only reliable way to know what is running when the image's tag has been
+# moved.
 ARG VERSION=dev
 ARG COMMIT=""
 ARG BUILD_DATE=""
 
-# TARGETOS/TARGETARCH vem do buildx. Sem eles, um build multi-arch compilaria
-# tudo para a arquitetura do builder e a imagem arm64 traria um binario amd64 —
-# que so falha no primeiro `docker run` do cluster.
+# TARGETOS/TARGETARCH come from buildx. Without them, a multi-arch build would
+# compile everything for the builder's architecture and the arm64 image would
+# carry an amd64 binary — which only fails on the cluster's first `docker run`.
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -44,15 +47,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
       -o /out/brevis ./cmd/brevis
 
-# Duas imagens do MESMO binario, porque os dois papeis tem exigencias opostas.
+# Two images from the SAME binary, because the two roles have opposite
+# requirements.
 #
-# `api` so serve HTTP: nao executa nada, entao distroless (sem shell, superficie
-# minima) e possivel e desejavel.
+# `api` only serves HTTP: it runs nothing, so distroless (no shell, minimal
+# surface) is both possible and desirable.
 FROM gcr.io/distroless/static-debian12:nonroot AS api
 ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis" \
-      org.opencontainers.image.description="Engine de orquestracao e transformacao de dados" \
+      org.opencontainers.image.description="A data orchestration and transformation engine" \
       org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
@@ -63,9 +67,10 @@ EXPOSE 8080
 ENTRYPOINT ["brevis"]
 CMD ["serve"]
 
-# `worker` roda os passos `run:` dos workflows — e isso EXIGE um shell. Rodar o
-# scheduler na imagem distroless deixaria todo run falhando com "no such file or
-# directory", que e o pior tipo de erro: correto e incompreensivel.
+# `worker` runs the workflows' `run:` steps — and that REQUIRES a shell. Running
+# the scheduler on the distroless image would leave every run failing with "no
+# such file or directory", which is the worst kind of error: correct and
+# incomprehensible.
 FROM alpine:3.20 AS worker
 ARG VERSION=dev
 ARG COMMIT=""

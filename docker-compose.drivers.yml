@@ -1,10 +1,10 @@
-# Serviços para os testes de integração dos drivers.
+# The services for the drivers' integration tests.
 #
 #   docker compose -f docker-compose.drivers.yml up -d
 #   BREVIS_IT_S3_ENDPOINT=http://localhost:9000 go test ./sdk/... -run Integration
 #
-# Travados por variável de ambiente, como os do BigQuery: sem a variável, os
-# testes pulam, e a suíte normal segue offline.
+# Gated on an environment variable, like BigQuery's: without the variable the
+# tests skip, and the normal suite stays offline.
 services:
   minio:
     image: minio/minio:latest
@@ -21,7 +21,8 @@ services:
       timeout: 3s
       retries: 10
 
-  # Para as fases 2 e 3. Sobem junto porque um compose só é menos uma coisa
+  # For phases 2 and 3. They come up together because one compose is one less
+  # thing
   # para lembrar.
   postgres:
     image: postgres:17-alpine

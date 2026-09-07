@@ -98,9 +98,9 @@ image-push: generate ## Publishes multi-arch to the registry (needs `docker logi
 image-smoke: ## Checks the local images start and report their version
 	@docker run --rm $(IMAGE):$(VERSION) version
 	@docker run --rm $(IMAGE):$(VERSION)-worker version
-	@# --entrypoint: o worker entra por `tini -- brevis`, entao um `sh` solto
-	@# viraria subcomando do brevis. O shell existe para o WORKFLOW usar.
-	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok no worker"'
+	@# --entrypoint: the worker enters through `tini -- brevis`, so a bare `sh`
+	@# would become a brevis subcommand. The shell exists for the WORKFLOW.
+	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok in the worker"'
 
 up: ## Brings up Postgres + API + scheduler locally
 	@docker compose up --build -d
