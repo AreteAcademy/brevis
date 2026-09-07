@@ -101,6 +101,71 @@ A failed scrape is a **500**, not an empty 200. If the queue depth cannot be
 read because Postgres is unreachable, the target goes down rather than reporting
 a queue that quietly looks calm.
 
+## For a fetcher: `sdk.Meter`
+
+A pipeline's own numbers go somewhere else, and by a different route.
+
+```go
+import (
+    "github.com/AreteAcademy/brevis/sdk"
+    "github.com/AreteAcademy/brevis/sdk/metrics/otelmeter"
+)
+
+m, err := otelmeter.New(ctx, otelmeter.Options{Insecure: true})
+if err != nil {
+    return err
+}
+defer func() { _ = m.Close(context.Background()) }()
+
+sdk.Run(sdk.Pipeline{Meter: m, Source: /* … */})
+```
+
+**Setting a `Meter` requires writing no counters.** Records, rows, pages, HTTP
+attempts, bytes and the extract and load durations are all numbers the SDK
+already tracked; the `Meter` only decides where else they go. Your own calls are
+for what only your pipeline knows:
+
+```go
+m.Counter("vendor_rejected_total", 12, sdk.A("reason", "missing_cnpj"))
+```
+
+### Push here, pull there, and why that is not an inconsistency
+
+The engine's processes are long-lived, so a collector scrapes them. A fetcher is
+a pod that lives ninety seconds: by the time anything discovers it and scrapes
+it, it is gone. Short-lived processes have to push.
+
+Which makes **`Close` the most important call in that example**. The periodic
+reader's interval is tens of seconds and a fetcher that runs for twelve exits
+before the first tick — every number it recorded dies with the process unless
+the flush happens on the way out. Use a fresh context for it: the run's is
+usually already cancelled by then, and passing it aborts the flush at the exact
+moment it matters.
+
+The endpoint comes from `OTEL_EXPORTER_OTLP_ENDPOINT`, the variable every
+OpenTelemetry tool already honours, rather than a `BREVIS_` one invented beside
+it.
+
+### Name a duration `*_seconds`
+
+The convention is the contract. OpenTelemetry's default histogram boundaries are
+`[0, 5, 10, 25 … 10000]`, tuned for milliseconds — a four-minute extract lands in
+the first bucket under them, and the chart looks plausible and says nothing.
+`otelmeter` gives second-scale boundaries to any histogram whose name ends in
+`_seconds`, and leaves everything else alone.
+
+### The interface costs nothing; the implementation is a separate module
+
+`sdk.Meter` is two methods in the root package and no dependencies —
+`pruning-check.sh` builds the same consumer with and without one and fails if
+the dependency sets differ.
+
+`sdk/metrics/otelmeter` has its own `go.mod`, and that is not tidiness. Putting
+the OTLP exporter in `sdk/go.mod` made `go mod tidy` resolve the whole graph
+upward — BigQuery 1.50 → 1.72 — and a consumer of `sdk/to/bigquery` went from
+460 packages to 736 **without importing anything new**. Package-level pruning
+does not protect anybody from a module-level version bump.
+
 ## What is deliberately absent
 
 **Infrastructure — CPU, memory, pod restarts.** The engine does not have these

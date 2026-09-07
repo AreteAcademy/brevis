@@ -1,7 +1,7 @@
 # Observability: OpenTelemetry metrics, and the ceiling they run into
 
 **Written on** 2026-09-08 · **Base** engine `v0.7.0`, `sdk/v0.53.0`
-**Status** proposed — not started · **TASK.md #2**
+**Status** done — engine `v0.7.0`+, `sdk/v0.54.0`, `otelmeter` · **TASK.md #2**
 
 The engine has structured logs and a screen. It has **no metrics** — nothing a
 Grafana, an alert rule or a capacity conversation can read.
@@ -266,7 +266,7 @@ lesson of `3142c16`:
 1. publish the SDK carrying `sdk.Meter` (the interface and the routing);
 2. then add `sdk/metrics/otelmeter` as its own module, requiring that version.
 
-### What `otelmeter` will be
+### What `otelmeter` is
 
 **Push, not pull, and that is not an inconsistency.** The engine's API and
 scheduler are long-lived, so a collector scrapes them. A fetcher is a pod that
@@ -296,6 +296,9 @@ for milliseconds, so a four-minute extract would land in the first bucket.
 | 6 | run and step metrics | |
 | 7 | `sdk.Meter` — the interface in the SDK, and the pruning case that pins its cost | the consumer's half, and it can be done in parallel with 5–6 |
 | 8 | publish the SDK, **then** `sdk/metrics/otelmeter` as its own module | the order is forced; see §5 |
+
+All nine are done. `sdk/v0.54.0` carries `sdk.Meter` and, for the first time,
+`sdk/context`; `sdk/metrics/otelmeter` requires that version.
 | 9 | `docs/OBSERVABILITY.md` and a Grafana dashboard as JSON in `deployments/` | a metric nobody can find is a metric nobody uses |
 
 Step 1 first and alone: it changes a gate, and a gate change buried in a feature

@@ -345,6 +345,29 @@ jobs:
           go test ./... -count=1
           echo "✅ SDK CLI builds and passes"
 
+      - name: Build and test the OTel meter
+        run: |
+          # A module of its own, and that IS the feature: it carries the OTLP
+          # exporter, and putting that in sdk/go.mod resolved the whole graph
+          # upward -- a consumer of sdk/to/bigquery went from 460 packages to
+          # 736 without importing anything new. Package-level pruning does not
+          # protect anybody from a module-level version bump.
+          #
+          # Which means it pins a RELEASED SDK and only breaks on a bump, the
+          # same as the CLI above. Nothing else would catch it.
+          cd sdk/metrics/otelmeter
+          go build ./...
+          go vet ./...
+          go test ./... -count=1
+          echo "✅ the OTel meter builds and passes"
+
+      - name: Lint the OTel meter
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.13.2
+          working-directory: sdk/metrics/otelmeter
+          args: --timeout=5m
+
       # It is a module of its own, and it was never linted: four errcheck
       # findings sat in it, in the same file whose `run` command silently
       # mis-parsed every JSON URL. A module outside the lint's reach is a module

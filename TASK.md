@@ -7,7 +7,7 @@ being attacked and where it stands.
 | # | | plan | status |
 |---|---|---|---|
 | **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | proposed |
-| **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Meter` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **built**, waiting on an SDK tag for `otelmeter` |
+| **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Meter` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **done** |
 | **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | proposed |
 | **4** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
 
