@@ -232,7 +232,7 @@ func stepStages(data []byte, status string) []Stage {
 
 func terminal(status string) bool {
 	switch dom.Status(status) {
-	case dom.StatusSuccess, dom.StatusFailed, dom.StatusCanceled:
+	case dom.StatusSuccess, dom.StatusFailed, dom.StatusCanceled, dom.StatusSkipped:
 		return true
 	}
 	return false

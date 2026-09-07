@@ -55,6 +55,10 @@
     queued: { ring: themeVar("--color-state-queued", "#b3822f"), label: "queued" },
     canceled: { ring: themeVar("--color-state-canceled", "#8a8175"), label: "canceled" },
     pending: { ring: themeVar("--color-state-pending", "#c9bfae"), label: "pending" },
+    // A step whose trigger rule was not satisfied. Its own hue, and a muted
+    // one: "correctly did not run" must not read like a failure, and must not
+    // read like `pending` either, which means "has not run YET".
+    skipped: { ring: themeVar("--color-state-skipped", "#8b7089"), label: "skipped" },
   };
 
   function colour(status) {

@@ -69,6 +69,12 @@ type Theme struct {
 	Retrying  string `yaml:"retrying"`
 	Canceled  string `yaml:"canceled"`
 	Waiting   string `yaml:"pending"`
+
+	// Skipped is a step whose trigger rule was not satisfied. It gets a colour
+	// of its own and a MUTED one: a step that was correctly not run must not
+	// read as something that went wrong, and it must not read as `pending`
+	// either, which means "has not run yet".
+	Skipped string `yaml:"skipped"`
 }
 
 // DefaultLogo is the embedded symbol, served from the binary itself.
@@ -100,6 +106,11 @@ func Default() Brand {
 			Retrying:       "#a35f28",
 			Canceled:       "#8a8175",
 			Waiting:        "#a89b8a",
+			// A dusty plum: distinct in HUE from the two warm greys beside it,
+			// so "did not run" and "has not run yet" are told apart at a
+			// glance, and desaturated enough that a graph full of correctly
+			// skipped steps does not look alarming.
+			Skipped: "#8b7089",
 		},
 	}
 }
@@ -197,7 +208,7 @@ func (t Theme) colours() map[string]string {
 		"accent": t.Accent, "accent_strong": t.AccentStrong,
 		"success": t.Succeeded, "failed": t.Failed, "running": t.Running,
 		"queued": t.Queued, "retrying": t.Retrying, "canceled": t.Canceled,
-		"pending": t.Waiting,
+		"pending": t.Waiting, "skipped": t.Skipped,
 	}
 }
 

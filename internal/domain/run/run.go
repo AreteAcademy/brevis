@@ -79,9 +79,13 @@ func (r *Run) Transition(para Status, now time.Time) error {
 	return nil
 }
 
-// Transition moves the TaskRun, with the same validation.
+// Transition moves the TaskRun.
+//
+// Against the STEP's graph, not the run's. The two shared one until `skipped`
+// arrived -- a state a step has and a run does not -- and a single map could no
+// longer say the truth about both.
 func (t *TaskRun) Transition(para Status, now time.Time) error {
-	if err := Validate(t.Status, para); err != nil {
+	if err := ValidateStep(t.Status, para); err != nil {
 		return err
 	}
 	t.Status = para
@@ -91,7 +95,7 @@ func (t *TaskRun) Transition(para Status, now time.Time) error {
 		if t.StartedAt == nil {
 			t.StartedAt = &now
 		}
-	case StatusSuccess, StatusFailed, StatusCanceled:
+	case StatusSuccess, StatusFailed, StatusCanceled, StatusSkipped:
 		t.FinishedAt = &now
 	}
 	return nil

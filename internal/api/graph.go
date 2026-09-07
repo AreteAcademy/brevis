@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -178,9 +179,12 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 		for i, id := range ids {
 			no := findNode(def.Nodes, id)
 			data := map[string]any{
-				"label":  id,
-				"acao":   actionLabel(no),
-				"status": "pending",
+				"label": id,
+				"acao":  actionLabel(no),
+				// From the domain, not a literal. The UI owned this string for
+				// as long as it existed -- and a state the screen knows and the
+				// engine does not is how the two drift.
+				"status": string(dom.StatusPending),
 			}
 			// What the step runs in. Computed HERE, on the definition already
 			// loaded, and not stored in a column: the inference rules will be

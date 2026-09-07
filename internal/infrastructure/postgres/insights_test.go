@@ -238,3 +238,50 @@ func TestAnEmptyWindowIsNotAHundredPercent(t *testing.T) {
 		t.Errorf("an empty window reported a success rate of %.1f%%", rate)
 	}
 }
+
+// TestASkippedStepHasNotSucceeded.
+//
+// StepHasSucceeded decides whether the current run is a step's FIRST, which the
+// SDK uses to create a destination table. A skipped step has never written
+// anything, so counting it as a success would tell the next run "this has run
+// before" and leave the table uncreated.
+//
+// The query already filters on success, so this asserts a property rather than
+// changing one -- and it is the assertion that would catch somebody widening
+// the filter to "terminal" one day.
+func TestASkippedStepHasNotSucceeded(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	repo := postgres.NewRunRepo(pool)
+
+	past := finished(t, pool, "daily_sales", dom.StatusSuccess, time.Minute)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO task_runs (id, run_id, node_id, status, attempt)
+		VALUES ($1, $2, 'load', $3, 0)`,
+		uuid.New(), past, dom.StatusSkipped); err != nil {
+		t.Fatal(err)
+	}
+
+	current := finished(t, pool, "daily_sales", dom.StatusRunning, 0)
+	ran, err := repo.StepHasSucceeded(ctx, "daily_sales", "load", current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ran {
+		t.Error("a skipped step counted as an earlier success")
+	}
+
+	// And a real success does count, or the test above would pass with a
+	// broken query.
+	if _, err := pool.Exec(ctx, `UPDATE task_runs SET status = $2 WHERE run_id = $1`,
+		past, dom.StatusSuccess); err != nil {
+		t.Fatal(err)
+	}
+	ran, err = repo.StepHasSucceeded(ctx, "daily_sales", "load", current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ran {
+		t.Error("a real earlier success was not seen")
+	}
+}

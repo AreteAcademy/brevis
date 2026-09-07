@@ -38,7 +38,11 @@ Lembrando que esse contexto precisa passar pela estrutura, para que possamos rec
 
 6. Precisamos conseguir criar flow de diversas forma, dependentes, paralelos, condicionais if erro e if sucess, sub fluxos, e os mais diversos tipos de fluxos, preciso que vc avalise isso, trazendo as melhores praticas que e usada pelo Airflow e N8N que realizam isso com maestria
 
-7. pod aguardando: ContainerCreating
+7. Precisamos montar imagens customizadas para diversos Jobs, uma imagem para rodar transformacoes em Pandas ou Polaris, imagem GO ultra leve para rodar o sdk, imagem performatica para rodar somente o DBT, pensei que podemos ter imagens montadas por nosa para que possamos disponibilizar. algo assim brevis/etl-go:1.4, brevis/etl-python-analytics-pandas:1.4, brevis/etl-python-analytics-polaris:1.4, brevis/etl-python:1.4, brevis/etl-node:1.4 cada imagem segue uma receita nossa, e ambas ja trazem o nosso sdk embutido, conforme vamos trazendo mais linguagem para o nosso ecosistema iremos montendo as que temos suporte.
+
+8. Uma das proposta do brevis é ele ser um orquestrador de ETL, e temos oportunidades de orquestrar EKS(Pod), GKE(Pod), CloudRun, AWS Lambda, ECS, EC2, Machine GCP, pensnado dessa forma, preciso que vc monte um plano de acao para atacarmos, monte um plano consistente e maduro, vamos usar o floci.io (https://floci.io), para simular o nosso ambiente inteiro, claro, até onde conseguirmos para validar todo o nosso ecosistema.
+
+9. pod aguardando: ContainerCreating
 time=2026-09-07T16:10:28.337Z level=INFO msg="running under Brevis" pipeline=inmet/observation run_id=44f7fb93-9d2e-45e7-9539-169b3ab4d670 first=false attempt=0 trigger=schedule logical_date=2026-09-07T16:10:00Z params=map[load_full:false]
 time=2026-09-07T16:10:31.045Z level=INFO msg="extract complete" format=json url="http://wis2bra.inmet.gov.br/oapi/collections/urn:wmo:md:br-inmet:synop/items?datetime=2026-09-07T14%3A10%3A28Z%2F..&f=json&limit=1000" pages=7 rows=5156 bytes=2469931 duration=1.432902966s per_page=205ms
 time=2026-09-07T16:10:31.045Z level=INFO msg="resolved configuration" project="zarv-development-94b6 (from GOOGLE_PROJECT_ID)" dataset="bronze (from explicit)" table="vendors_inmet_observations (from explicit)" bucket="zarv-development-94b6-brevis-staging (from default)" create_table="false (from default)"

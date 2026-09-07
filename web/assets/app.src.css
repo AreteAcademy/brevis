@@ -82,6 +82,7 @@
   --color-state-retrying: #a35f28;
   --color-state-canceled: #8a8175;
   --color-state-pending: #a89b8a;
+  --color-state-skipped: #8b7089;
 
   /* What a step runs in. Each is the language's own convention, because the
      colour is what makes the chip readable before anybody reads the label.

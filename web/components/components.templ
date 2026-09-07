@@ -47,6 +47,8 @@ func stateLabel(s string) string {
 		return "canceled"
 	case "pending":
 		return "pending"
+	case "skipped":
+		return "skipped"
 	case "":
 		return "never ran"
 	}
@@ -67,6 +69,8 @@ func stateClass(s string) string {
 		return "border-state-retrying/25 bg-state-retrying/10 text-state-retrying"
 	case "canceled":
 		return "border-state-canceled/25 bg-state-canceled/10 text-state-canceled"
+	case "skipped":
+		return "border-state-skipped/25 bg-state-skipped/10 text-state-skipped"
 	}
 	return "border-line bg-parchment text-muted"
 }
@@ -85,6 +89,8 @@ func stateDot(s string) string {
 		return "bg-state-retrying animate-pulse"
 	case "canceled":
 		return "bg-state-canceled"
+	case "skipped":
+		return "bg-state-skipped"
 	}
 	return "bg-state-pending"
 }

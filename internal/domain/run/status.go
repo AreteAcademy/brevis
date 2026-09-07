@@ -18,10 +18,36 @@ const (
 	StatusFailed   Status = "failed"
 	StatusRetrying Status = "retrying"
 	StatusCanceled Status = "canceled"
+
+	// StatusPending and StatusSkipped are STEP states. A run is never either
+	// one, and the two maps below are what enforce that.
+	//
+	// StatusPending is a step that has not started. It has always existed as
+	// the string "pending" in the graph payload and in the screen's palette,
+	// with no constant behind it -- which is how the UI ended up owning a state
+	// the domain did not know about.
+	StatusPending Status = "pending"
+
+	// StatusSkipped is a step that did not run because its trigger rule was not
+	// satisfied.
+	//
+	// It is a state of its own and not a flavour of success or failure, and
+	// that distinction is the reason this state exists at all. A step whose
+	// upstream failed did not fail -- it was never given the chance -- and
+	// calling it success is a lie that reaches the run's own status and the
+	// screen. It is not `canceled` either: nobody stopped it. And it is not
+	// `pending`, which means "has not run YET" and is the state it would
+	// otherwise be left in forever.
+	StatusSkipped Status = "skipped"
 )
 
-// transicoes declares section 7's graph. Keeping it as data, and not as a chain
-// of ifs, makes the machine inspectable and the exhaustive test trivial.
+// transitions declares section 7's graph, for a RUN. Keeping it as data, and
+// not as a chain of ifs, makes the machine inspectable and the exhaustive test
+// trivial.
+//
+// It does NOT describe a step. The two coincided until `skipped` arrived, which
+// is a state a step has and a run does not -- so a single map could no longer
+// say the truth about both. See stepTransitions.
 var transitions = map[Status][]Status{
 	StatusCreated:  {StatusQueued, StatusCanceled},
 	StatusQueued:   {StatusRunning, StatusCanceled},
@@ -36,17 +62,47 @@ var transitions = map[Status][]Status{
 	StatusCanceled: {},
 }
 
+// stepTransitions is a STEP's life, and the differences from a run's are the
+// point of it existing:
+//
+//   - PENDING is where a step starts, before any row exists for it.
+//   - SKIPPED is reachable from pending and from nowhere else: a step whose
+//     rule was not satisfied never started, so there is nothing to interrupt.
+//   - RETRYING is absent. A step's retries are a loop inside the runner and
+//     each attempt is a row of its own, so the step never occupies a state
+//     meaning "about to try again".
+//
+// A run whose every step was skipped is a SUCCESS. Nothing failed.
+var stepTransitions = map[Status][]Status{
+	StatusPending: {StatusRunning, StatusSkipped, StatusCanceled},
+	StatusRunning: {StatusSuccess, StatusFailed, StatusCanceled},
+
+	StatusSuccess:  {},
+	StatusFailed:   {},
+	StatusCanceled: {},
+	StatusSkipped:  {},
+}
+
 // Terminal says whether the state ends the run's life.
 //
 // FAILED is not terminal: it can go to RETRYING. What decides whether there is
 // an attempt left is the retry policy, not the state machine.
+//
+// SKIPPED is terminal for the step it describes: a step whose rule was not
+// satisfied is done being decided about, and this run will not reconsider it.
+// A new attempt of the run evaluates the rule again, on a row of its own.
 func (s Status) Terminal() bool {
-	return s == StatusSuccess || s == StatusCanceled
+	return s == StatusSuccess || s == StatusCanceled || s == StatusSkipped
 }
 
-// CanGo says whether the transition is allowed.
-func (s Status) CanGo(to Status) bool {
-	for _, d := range transitions[s] {
+// CanGo says whether the transition is allowed for a RUN.
+func (s Status) CanGo(to Status) bool { return allowed(transitions, s, to) }
+
+// CanStepGo says whether the transition is allowed for a STEP.
+func (s Status) CanStepGo(to Status) bool { return allowed(stepTransitions, s, to) }
+
+func allowed(graph map[Status][]Status, from, to Status) bool {
+	for _, d := range graph[from] {
 		if d == to {
 			return true
 		}
@@ -64,12 +120,19 @@ func (e ErrInvalidTransition) Error() string {
 	return fmt.Sprintf("transicao invalida: %s -> %s", e.De, e.Para)
 }
 
-// Validate returns an error when the transition does not exist in the graph.
-func Validate(de, para Status) error {
-	if _, known := transitions[de]; !known {
+// Validate returns an error when a RUN's transition does not exist in the
+// graph.
+func Validate(de, para Status) error { return check(transitions, de, para) }
+
+// ValidateStep is the same for a STEP. A step that has not started is
+// StatusPending, which is where a skipped one comes from.
+func ValidateStep(de, para Status) error { return check(stepTransitions, de, para) }
+
+func check(graph map[Status][]Status, de, para Status) error {
+	if _, known := graph[de]; !known {
 		return fmt.Errorf("unknown state: %q", de)
 	}
-	if !de.CanGo(para) {
+	if !allowed(graph, de, para) {
 		return ErrInvalidTransition{De: de, Para: para}
 	}
 	return nil
