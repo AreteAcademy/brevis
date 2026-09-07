@@ -100,6 +100,15 @@ type Node struct {
 	Runtime string
 	Tools   []string
 
+	// When is the trigger rule: under what state of its dependencies this step
+	// runs at all. Empty is WhenAllSuccess, which is what every workflow
+	// published before this existed means.
+	//
+	//	- id: notify_failure
+	//	  depends_on: [extract]
+	//	  when: any_failed
+	When string
+
 	// OnError declares that this step announces its own failures.
 	//
 	//	on_error:
@@ -229,6 +238,48 @@ func sobrepor(base, up map[string]string) map[string]string {
 func (n Node) UsaShell() bool { return n.Shell == nil || *n.Shell }
 
 // Edge links two nodes: From runs before To.
+// The trigger rules, as a CLOSED vocabulary validated at publish.
+//
+// WhenAllSuccess is the default and it is the ONLY one that is not purely about
+// this step's own dependencies. It means what this engine has always meant:
+// once anything in the run has failed, the graph stops descending. That rule
+// has a story behind it -- carrying on after an error produced a partial result
+// that looked complete, and a pipeline ran 28 days late without anyone seeing
+// it -- and a feature commit is no place to overturn it.
+//
+// So it is worth being explicit that this differs from Airflow, where
+// all_success is local to a task's own upstreams and an unrelated healthy
+// branch keeps going after a sibling fails. Here it does not, and a workflow
+// that wants a step to run regardless says so with all_done.
+const (
+	WhenAllSuccess = "all_success" // the default: nothing has failed, and my dependencies succeeded
+	WhenAnyFailed  = "any_failed"  // at least one of my dependencies failed
+	WhenAllDone    = "all_done"    // all of my dependencies are finished, however they ended
+)
+
+// TriggerRules lists what a `when:` may say.
+func TriggerRules() []string { return []string{WhenAllSuccess, WhenAnyFailed, WhenAllDone} }
+
+// WhenOf is the rule this step actually runs under, with the default applied.
+func (n Node) WhenOf() string {
+	if n.When == "" {
+		return WhenAllSuccess
+	}
+	return n.When
+}
+
+// validateWhen refuses an unknown rule at publish, naming what is valid. A rule
+// nobody recognises would otherwise mean "the default" -- a step declaring
+// `when: on_failure` would run on SUCCESS, which is the opposite of what it
+// says, discovered the night it mattered.
+func validateWhen(slug string, n Node) error {
+	if n.When == "" || slices.Contains(TriggerRules(), n.When) {
+		return nil
+	}
+	return fmt.Errorf("workflow %q: step %q: `when: %s` is not valid (valid: %s)",
+		slug, n.ID, n.When, strings.Join(TriggerRules(), ", "))
+}
+
 // The alert channels a workflow may name, as a CLOSED vocabulary.
 //
 // It lives in the domain because it is what a YAML is allowed to declare, and
@@ -373,6 +424,9 @@ func (w Workflow) Validate() error {
 			return err
 		}
 		if err := validateOnError(w.Slug, n.ID, n.OnError); err != nil {
+			return err
+		}
+		if err := validateWhen(w.Slug, n); err != nil {
 			return err
 		}
 	}

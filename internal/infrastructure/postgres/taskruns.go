@@ -31,6 +31,34 @@ func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID strin
 	return err
 }
 
+// MarkSkipped records a step whose trigger rule was not satisfied.
+//
+// Not IniciarTask followed by TerminarTask, and the difference is the point:
+// `iniciado_em` stays NULL. A skipped step never started, and stamping a start
+// time would make it look like something that ran in zero seconds -- which is
+// also what a step killed instantly looks like.
+//
+// `erro` carries WHY. A skipped step with no explanation sends whoever is
+// looking at the graph to trace edges by hand, and that column is where the
+// screen already shows a step's last word.
+//
+// ON CONFLICT because a run that retries re-evaluates every rule: attempt 0 of
+// the second try overwrites attempt 0 of the first, and a step skipped once may
+// well run the next time.
+func (r *RunRepo) MarkSkipped(ctx context.Context, runID uuid.UUID, nodeID string,
+	attempt int, reason string) error {
+
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO task_runs (id, run_id, node_id, status, attempt, erro, terminado_em)
+		VALUES ($1, $2, $3, $4, $5, $6, now())
+		ON CONFLICT (run_id, node_id, attempt) DO UPDATE
+		SET status = EXCLUDED.status, erro = EXCLUDED.erro,
+		    iniciado_em = NULL, terminado_em = now(),
+		    exit_code = NULL, log = ''`,
+		uuid.New(), runID, nodeID, dom.StatusSkipped, attempt, reason)
+	return err
+}
+
 // RecordStages records the advance of an SDK step's phases.
 //
 // It overwrites the whole array rather than appending: the runner's collector
@@ -230,13 +258,8 @@ func stepStages(data []byte, status string) []Stage {
 	return stages
 }
 
-func terminal(status string) bool {
-	switch dom.Status(status) {
-	case dom.StatusSuccess, dom.StatusFailed, dom.StatusCanceled, dom.StatusSkipped:
-		return true
-	}
-	return false
-}
+// terminal asks the STEP's question: these rows are task_runs.
+func terminal(status string) bool { return dom.Status(status).TerminalStep() }
 
 // StepLog is one attempt's output, for the run's screen.
 type StepLog struct {

@@ -179,3 +179,70 @@ steps:
 		t.Error("a nil on_error fired")
 	}
 }
+
+// TestAnUnknownTriggerRuleIsRefusedAtPublish.
+//
+// A rule nobody recognises would otherwise mean "the default", so a step
+// declaring `when: on_failure` would run on SUCCESS -- the opposite of what it
+// says, discovered the night it mattered.
+func TestAnUnknownTriggerRuleIsRefusedAtPublish(t *testing.T) {
+	_, err := parse(t, `
+name: w
+steps:
+  - id: extract
+    run: echo hi
+  - id: notify
+    run: ./notify.sh
+    depends_on: [extract]
+    when: on_failure
+`)
+	if err == nil {
+		t.Fatal("`when: on_failure` was accepted and would have run on success")
+	}
+	for _, valid := range wf.TriggerRules() {
+		if !strings.Contains(err.Error(), valid) {
+			t.Errorf("the error does not offer %q: %v", valid, err)
+		}
+	}
+}
+
+func TestTheTriggerRulesAreAccepted(t *testing.T) {
+	for _, rule := range wf.TriggerRules() {
+		w, err := parse(t, `
+name: w
+steps:
+  - id: extract
+    run: echo hi
+  - id: after
+    run: echo bye
+    depends_on: [extract]
+    when: `+rule+`
+`)
+		if err != nil {
+			t.Fatalf("when: %s was refused: %v", rule, err)
+		}
+		if got := w.Nodes[1].WhenOf(); got != rule {
+			t.Errorf("when = %q, wanted %q", got, rule)
+		}
+	}
+}
+
+// No `when:` means all_success, which is what every workflow written before
+// trigger rules existed means.
+func TestNoWhenMeansAllSuccess(t *testing.T) {
+	w, err := parse(t, `
+name: w
+steps:
+  - id: extract
+    run: echo hi
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Nodes[0].When != "" {
+		t.Errorf("a step with no `when:` got %q written into it", w.Nodes[0].When)
+	}
+	if got := w.Nodes[0].WhenOf(); got != wf.WhenAllSuccess {
+		t.Errorf("the default is %q", got)
+	}
+}

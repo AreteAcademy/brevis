@@ -114,7 +114,63 @@ steps:
 | `shell` | `true` | `false` executa sem shell — necessário em distroless |
 | `depends_on` | | lista de `id` que precisam terminar antes |
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
+| `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
+
+## Rodando um passo só quando algo falhou
+
+Por padrão um passo roda quando tudo antes dele deu certo. O `when:` muda isso.
+
+```yaml
+steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # roda exatamente quando o extract não conseguiu
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # roda de qualquer jeito
+```
+
+| regra | |
+|---|---|
+| `all_success` | o padrão. Nada na run falhou **e** tudo de que este passo depende deu certo |
+| `any_failed` | pelo menos um passo de que este depende falhou |
+| `all_done` | tudo de que este passo depende terminou, como quer que tenha terminado |
+
+Uma regra desconhecida é recusada no publish, dizendo o que é válido. E tem que
+ser: um `when: on_failure` lido como "o padrão" rodaria no **sucesso** — o
+oposto do que ele diz, descoberto na noite em que importava.
+
+### Um passo que não roda fica `skipped`
+
+É um estado próprio, desenhado na própria cor, e carrega o motivo: *`extract`
+was failed*. Antes disso, um passo abaixo de uma falha não deixava registro
+nenhum e a tela o mostrava pendente para sempre.
+
+`skipped` não é falha e não é sucesso. Um passo cujo anterior quebrou não
+falhou — nunca teve a chance — e dizer que ele deu certo é uma mentira que
+chega ao status da própria run.
+
+Uma regra de gatilho decide quais passos **rodam**. Ela não decide o resultado
+da run: um `notify_failure` que entregou a mensagem não quer dizer que o
+pipeline funcionou, e a run continua falha.
+
+### `all_success` aqui não é o `all_success` do Airflow
+
+No Airflow a regra é local aos anteriores de cada task, então um ramo saudável e
+sem relação continua depois que um irmão falha. **No Brevis não**: assim que
+qualquer coisa na run falha, o grafo para de descer.
+
+É o que este motor sempre fez, e tem uma história atrás — seguir depois de um
+erro produziu um resultado parcial que parecia completo, e um pipeline rodou 28
+dias atrasado sem ninguém ver. Um workflow que quer um passo rodando de todo
+jeito diz isso com `all_done`.
 
 ## Anunciando a falha de um passo
 

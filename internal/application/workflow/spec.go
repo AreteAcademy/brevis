@@ -138,6 +138,10 @@ type StepSpec struct {
 	// argv, breaking any command with a pipe or a variable.
 	Shell *bool `yaml:"shell"`
 
+	// When is the trigger rule. Empty is `all_success`, which is what every
+	// workflow written before this existed means.
+	When string `yaml:"when"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -221,6 +225,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Env:   aparar(st.Env), Secrets: aparar(st.Secrets),
 			Runtime: strings.ToLower(strings.TrimSpace(st.Runtime)),
 			Tools:   normalizeTools(st.Tools),
+			When:    strings.ToLower(strings.TrimSpace(st.When)),
 			OnError: st.OnError.dominio(),
 		})
 	}

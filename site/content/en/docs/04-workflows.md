@@ -114,7 +114,63 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `shell` | `true` | `false` runs without a shell — required on distroless |
 | `depends_on` | | list of `id`s that must finish first |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
+| `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `on_error` | | announces this step's failures — see below |
+
+## Running a step only when something failed
+
+By default a step runs when everything before it worked. `when:` changes that.
+
+```yaml
+steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # runs precisely when extract did not make it
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # runs either way
+```
+
+| rule | |
+|---|---|
+| `all_success` | the default. Nothing in the run has failed, **and** everything this step depends on succeeded |
+| `any_failed` | at least one step this one depends on failed |
+| `all_done` | everything this step depends on has finished, however it ended |
+
+An unknown rule is refused at publish, naming what is valid. It has to be: a
+`when: on_failure` read as "the default" would run on **success** — the opposite
+of what it says, found on the night it mattered.
+
+### A step that does not run is `skipped`
+
+It is a state of its own, drawn in its own colour, and it carries the reason:
+*`extract` was failed*. Before this, a step below a failure had no record at all
+and the screen showed it pending forever.
+
+`skipped` is not a failure and not a success. A step whose upstream broke did not
+fail — it was never given the chance — and calling it success is a lie that
+reaches the run's own status.
+
+A trigger rule decides which steps **run**. It does not decide the run's
+outcome: a `notify_failure` that delivered its message does not mean the pipeline
+worked, and the run is still failed.
+
+### `all_success` here is not `all_success` in Airflow
+
+In Airflow the rule is local to a task's own upstreams, so an unrelated healthy
+branch keeps going after a sibling fails. **In Brevis it does not**: once
+anything in the run has failed, the graph stops descending.
+
+That is what this engine has always done, and it has a story behind it —
+carrying on after an error produced a partial result that looked complete, and a
+pipeline ran 28 days late without anyone noticing. A workflow that wants a step
+to run regardless says so with `all_done`.
 
 ## Announcing a step's failures
 

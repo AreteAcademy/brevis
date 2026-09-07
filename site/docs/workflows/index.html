@@ -215,7 +215,43 @@ resources:
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>É isto que faz um fetcher em Go custar 12 MB e 32Mi ao lado de um <code>dbt build</code> de 1,9 GB, em vez de os dois pagarem o tamanho do maior. Ver <a href="/docs/pod-per-step/">Pod por passo</a>.</p>
 <h2 id="campos-do-passo">Campos do passo<a class="anchor" href="#campos-do-passo" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>obrigatório</strong></td><td>único no workflow; é o nome que aparece no grafo e nos logs</td></tr><tr><td><code>run</code></td><td></td><td>o comando</td></tr><tr><td><code>image</code></td><td></td><td>a imagem do passo; sem ela, herda a do topo</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> executa sem shell — necessário em distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>lista de <code>id</code> que precisam terminar antes</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> e <code>limits</code> daquele passo</td></tr><tr><td><code>on_error</code></td><td></td><td>anuncia as falhas deste passo — veja abaixo</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>obrigatório</strong></td><td>único no workflow; é o nome que aparece no grafo e nos logs</td></tr><tr><td><code>run</code></td><td></td><td>o comando</td></tr><tr><td><code>image</code></td><td></td><td>a imagem do passo; sem ela, herda a do topo</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> executa sem shell — necessário em distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>lista de <code>id</code> que precisam terminar antes</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> e <code>limits</code> daquele passo</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>sob que estado das dependências este passo roda — veja abaixo</td></tr><tr><td><code>on_error</code></td><td></td><td>anuncia as falhas deste passo — veja abaixo</td></tr></tbody></table></div>
+<h2 id="rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou<a class="anchor" href="#rodando-um-passo-so-quando-algo-falhou" aria-label="link">#</a></h2>
+<p>Por padrão um passo roda quando tudo antes dele deu certo. O <code>when:</code> muda isso.</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # roda exatamente quando o extract não conseguiu
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # roda de qualquer jeito"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py
+
+  - <span class="t-k">id</span>: notify_failure
+    <span class="t-k">run</span>: ./notify.sh
+    <span class="t-k">depends_on</span>: [extract]
+    <span class="t-k">when</span>: any_failed          <span class="t-c"># roda exatamente quando o extract não conseguiu</span>
+
+  - <span class="t-k">id</span>: cleanup
+    <span class="t-k">run</span>: ./cleanup.sh
+    <span class="t-k">depends_on</span>: [extract, transform]
+    <span class="t-k">when</span>: all_done            <span class="t-c"># roda de qualquer jeito</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>regra</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>o padrão. Nada na run falhou <strong>e</strong> tudo de que este passo depende deu certo</td></tr><tr><td><code>any_failed</code></td><td>pelo menos um passo de que este depende falhou</td></tr><tr><td><code>all_done</code></td><td>tudo de que este passo depende terminou, como quer que tenha terminado</td></tr></tbody></table></div>
+<p>Uma regra desconhecida é recusada no publish, dizendo o que é válido. E tem que ser: um <code>when: on_failure</code> lido como "o padrão" rodaria no <strong>sucesso</strong> — o oposto do que ele diz, descoberto na noite em que importava.</p>
+<h3 id="um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica <code>skipped</code><a class="anchor" href="#um-passo-que-nao-roda-fica-skipped" aria-label="link">#</a></h3>
+<p>É um estado próprio, desenhado na própria cor, e carrega o motivo: <em><code>extract</code> was failed</em>. Antes disso, um passo abaixo de uma falha não deixava registro nenhum e a tela o mostrava pendente para sempre.</p>
+<p><code>skipped</code> não é falha e não é sucesso. Um passo cujo anterior quebrou não falhou — nunca teve a chance — e dizer que ele deu certo é uma mentira que chega ao status da própria run.</p>
+<p>Uma regra de gatilho decide quais passos <strong>rodam</strong>. Ela não decide o resultado da run: um <code>notify_failure</code> que entregou a mensagem não quer dizer que o pipeline funcionou, e a run continua falha.</p>
+<h3 id="all-success-aqui-nao-e-o-all-success-do-airflow"><code>all_success</code> aqui não é o <code>all_success</code> do Airflow<a class="anchor" href="#all-success-aqui-nao-e-o-all-success-do-airflow" aria-label="link">#</a></h3>
+<p>No Airflow a regra é local aos anteriores de cada task, então um ramo saudável e sem relação continua depois que um irmão falha. <strong>No Brevis não</strong>: assim que qualquer coisa na run falha, o grafo para de descer.</p>
+<p>É o que este motor sempre fez, e tem uma história atrás — seguir depois de um erro produziu um resultado parcial que parecia completo, e um pipeline rodou 28 dias atrasado sem ninguém ver. Um workflow que quer um passo rodando de todo jeito diz isso com <code>all_done</code>.</p>
 <h2 id="anunciando-a-falha-de-um-passo">Anunciando a falha de um passo<a class="anchor" href="#anunciando-a-falha-de-um-passo" aria-label="link">#</a></h2>
 <p>Toda falha já é anunciada: com o webhook configurado, uma run que desiste manda uma mensagem, sem bloco repetido em arquivo nenhum. O <code>on_error</code> é para o passo que precisa do próprio.</p>
 <div class="code-block" data-code="steps:
@@ -263,7 +299,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#estrutura-minima">Estrutura mínima</a></li><li class="toc-2"><a href="#ordem-chain-ou-dag">Ordem: chain ou dag</a></li><li class="toc-2"><a href="#agenda">Agenda</a></li><li class="toc-2"><a href="#imagem-e-recursos">Imagem e recursos</a></li><li class="toc-2"><a href="#campos-do-passo">Campos do passo</a></li><li class="toc-2"><a href="#anunciando-a-falha-de-um-passo">Anunciando a falha de um passo</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validacao">Validação</a></li><li class="toc-2"><a href="#publicando">Publicando</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#estrutura-minima">Estrutura mínima</a></li><li class="toc-2"><a href="#ordem-chain-ou-dag">Ordem: chain ou dag</a></li><li class="toc-2"><a href="#agenda">Agenda</a></li><li class="toc-2"><a href="#imagem-e-recursos">Imagem e recursos</a></li><li class="toc-2"><a href="#campos-do-passo">Campos do passo</a></li><li class="toc-2"><a href="#rodando-um-passo-so-quando-algo-falhou">Rodando um passo só quando algo falhou</a></li><li class="toc-3"><a href="#um-passo-que-nao-roda-fica-skipped">Um passo que não roda fica skipped</a></li><li class="toc-3"><a href="#all-success-aqui-nao-e-o-all-success-do-airflow">all_success aqui não é o all_success do Airflow</a></li><li class="toc-2"><a href="#anunciando-a-falha-de-um-passo">Anunciando a falha de um passo</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validacao">Validação</a></li><li class="toc-2"><a href="#publicando">Publicando</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

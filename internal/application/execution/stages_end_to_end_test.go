@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -33,26 +34,60 @@ func (f sdkSpeaker) Execute(context.Context, execution.TaskExec) (<-chan executi
 }
 
 // spyPersister keeps what the runner asked to be written.
+//
+// The mutex is not decoration. A level runs its steps in PARALLEL, so two of
+// them call into this at the same time -- which the race detector found the
+// moment a test with more than one step per level existed.
 type spyPersister struct {
+	mu      sync.Mutex
 	stages  json.RawMessage
 	version string
 	log     string
 	called  int
+
+	// skipped is node -> reason, for the trigger-rule tests.
+	skipped map[string]string
 }
 
 func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, string, int) error { return nil }
 
 func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ int,
 	_ dom.Status, _ *int, _ string, log string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.log = log
 	return nil
 }
 
 func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ string, _ int,
 	version string, stages json.RawMessage) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	p.called++
 	p.version, p.stages = version, stages
 	return nil
+}
+
+func (p *spyPersister) MarkSkipped(_ context.Context, _ uuid.UUID, node string,
+	_ int, reason string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.skipped == nil {
+		p.skipped = map[string]string{}
+	}
+	p.skipped[node] = reason
+	return nil
+}
+
+// skips is a copy, for a test to read after the run.
+func (p *spyPersister) skips() map[string]string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[string]string, len(p.skipped))
+	for k, v := range p.skipped {
+		out[k] = v
+	}
+	return out
 }
 
 // spyReporter keeps what would reach the CLI's screen.

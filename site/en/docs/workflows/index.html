@@ -215,7 +215,43 @@ resources:
     <span class="t-k">depends_on</span>: [bronze]</code></pre></div>
 <p>This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB <code>dbt build</code>, instead of both paying the size of the larger one. See <a href="/en/docs/pod-per-step/">Pod per step</a>.</p>
 <h2 id="step-fields">Step fields<a class="anchor" href="#step-fields" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>required</strong></td><td>unique in the workflow; the name shown in the graph and logs</td></tr><tr><td><code>run</code></td><td></td><td>the command</td></tr><tr><td><code>image</code></td><td></td><td>the step's image; without it, inherits the top-level one</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> runs without a shell — required on distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>list of <code>id</code>s that must finish first</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> and <code>limits</code> for that step</td></tr><tr><td><code>on_error</code></td><td></td><td>announces this step's failures — see below</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>id</code></td><td><strong>required</strong></td><td>unique in the workflow; the name shown in the graph and logs</td></tr><tr><td><code>run</code></td><td></td><td>the command</td></tr><tr><td><code>image</code></td><td></td><td>the step's image; without it, inherits the top-level one</td></tr><tr><td><code>shell</code></td><td><code>true</code></td><td><code>false</code> runs without a shell — required on distroless</td></tr><tr><td><code>depends_on</code></td><td></td><td>list of <code>id</code>s that must finish first</td></tr><tr><td><code>resources</code></td><td></td><td><code>cpu</code>, <code>memory</code> and <code>limits</code> for that step</td></tr><tr><td><code>when</code></td><td><code>all_success</code></td><td>under what state of its dependencies this step runs — see below</td></tr><tr><td><code>on_error</code></td><td></td><td>announces this step's failures — see below</td></tr></tbody></table></div>
+<h2 id="running-a-step-only-when-something-failed">Running a step only when something failed<a class="anchor" href="#running-a-step-only-when-something-failed" aria-label="link">#</a></h2>
+<p>By default a step runs when everything before it worked. <code>when:</code> changes that.</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # runs precisely when extract did not make it
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # runs either way"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: python fetch.py
+
+  - <span class="t-k">id</span>: notify_failure
+    <span class="t-k">run</span>: ./notify.sh
+    <span class="t-k">depends_on</span>: [extract]
+    <span class="t-k">when</span>: any_failed          <span class="t-c"># runs precisely when extract did not make it</span>
+
+  - <span class="t-k">id</span>: cleanup
+    <span class="t-k">run</span>: ./cleanup.sh
+    <span class="t-k">depends_on</span>: [extract, transform]
+    <span class="t-k">when</span>: all_done            <span class="t-c"># runs either way</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>rule</th><th></th></tr></thead><tbody><tr><td><code>all_success</code></td><td>the default. Nothing in the run has failed, <strong>and</strong> everything this step depends on succeeded</td></tr><tr><td><code>any_failed</code></td><td>at least one step this one depends on failed</td></tr><tr><td><code>all_done</code></td><td>everything this step depends on has finished, however it ended</td></tr></tbody></table></div>
+<p>An unknown rule is refused at publish, naming what is valid. It has to be: a <code>when: on_failure</code> read as "the default" would run on <strong>success</strong> — the opposite of what it says, found on the night it mattered.</p>
+<h3 id="a-step-that-does-not-run-is-skipped">A step that does not run is <code>skipped</code><a class="anchor" href="#a-step-that-does-not-run-is-skipped" aria-label="link">#</a></h3>
+<p>It is a state of its own, drawn in its own colour, and it carries the reason: <em><code>extract</code> was failed</em>. Before this, a step below a failure had no record at all and the screen showed it pending forever.</p>
+<p><code>skipped</code> is not a failure and not a success. A step whose upstream broke did not fail — it was never given the chance — and calling it success is a lie that reaches the run's own status.</p>
+<p>A trigger rule decides which steps <strong>run</strong>. It does not decide the run's outcome: a <code>notify_failure</code> that delivered its message does not mean the pipeline worked, and the run is still failed.</p>
+<h3 id="all-success-here-is-not-all-success-in-airflow"><code>all_success</code> here is not <code>all_success</code> in Airflow<a class="anchor" href="#all-success-here-is-not-all-success-in-airflow" aria-label="link">#</a></h3>
+<p>In Airflow the rule is local to a task's own upstreams, so an unrelated healthy branch keeps going after a sibling fails. <strong>In Brevis it does not</strong>: once anything in the run has failed, the graph stops descending.</p>
+<p>That is what this engine has always done, and it has a story behind it — carrying on after an error produced a partial result that looked complete, and a pipeline ran 28 days late without anyone noticing. A workflow that wants a step to run regardless says so with <code>all_done</code>.</p>
 <h2 id="announcing-a-steps-failures">Announcing a step's failures<a class="anchor" href="#announcing-a-steps-failures" aria-label="link">#</a></h2>
 <p>Every failure is already announced: with a webhook configured, a run that gives up sends one message, with no block repeated in any file. <code>on_error</code> is for the step that needs its own.</p>
 <div class="code-block" data-code="steps:
@@ -263,7 +299,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#minimum-structure">Minimum structure</a></li><li class="toc-2"><a href="#order-chain-or-dag">Order: chain or dag</a></li><li class="toc-2"><a href="#schedule">Schedule</a></li><li class="toc-2"><a href="#image-and-resources">Image and resources</a></li><li class="toc-2"><a href="#step-fields">Step fields</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Announcing a step&#x27;s failures</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publishing</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#minimum-structure">Minimum structure</a></li><li class="toc-2"><a href="#order-chain-or-dag">Order: chain or dag</a></li><li class="toc-2"><a href="#schedule">Schedule</a></li><li class="toc-2"><a href="#image-and-resources">Image and resources</a></li><li class="toc-2"><a href="#step-fields">Step fields</a></li><li class="toc-2"><a href="#running-a-step-only-when-something-failed">Running a step only when something failed</a></li><li class="toc-3"><a href="#a-step-that-does-not-run-is-skipped">A step that does not run is skipped</a></li><li class="toc-3"><a href="#all-success-here-is-not-all-success-in-airflow">all_success here is not all_success in Airflow</a></li><li class="toc-2"><a href="#announcing-a-steps-failures">Announcing a step&#x27;s failures</a></li><li class="toc-2"><a href="#tags">Tags</a></li><li class="toc-2"><a href="#validation">Validation</a></li><li class="toc-2"><a href="#publishing">Publishing</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

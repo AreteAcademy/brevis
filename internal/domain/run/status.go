@@ -83,16 +83,26 @@ var stepTransitions = map[Status][]Status{
 	StatusSkipped:  {},
 }
 
-// Terminal says whether the state ends the run's life.
+// Terminal says whether the state ends a RUN's life.
 //
-// FAILED is not terminal: it can go to RETRYING. What decides whether there is
-// an attempt left is the retry policy, not the state machine.
+// FAILED is not terminal for a run: it can go to RETRYING. What decides whether
+// there is an attempt left is the retry policy, not the state machine.
 //
-// SKIPPED is terminal for the step it describes: a step whose rule was not
-// satisfied is done being decided about, and this run will not reconsider it.
-// A new attempt of the run evaluates the rule again, on a row of its own.
-func (s Status) Terminal() bool {
-	return s == StatusSuccess || s == StatusCanceled || s == StatusSkipped
+// Derived from the map rather than listed again, so the two cannot disagree.
+func (s Status) Terminal() bool { return noWayOut(transitions, s) }
+
+// TerminalStep says whether a STEP is finished, and it differs from Terminal in
+// exactly one place: a step's FAILED is final.
+//
+// A step's retries are a loop inside the runner with a row per attempt, so the
+// row itself never goes anywhere. A run's failure can become a retry, and that
+// is why the two questions have different answers -- which was found by a
+// trigger rule reading `all_done` and deciding a failed step had not finished.
+func (s Status) TerminalStep() bool { return noWayOut(stepTransitions, s) }
+
+func noWayOut(graph map[Status][]Status, s Status) bool {
+	edges, known := graph[s]
+	return known && len(edges) == 0
 }
 
 // CanGo says whether the transition is allowed for a RUN.

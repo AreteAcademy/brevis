@@ -67,8 +67,17 @@ func TestOnlyAStepThatNeverStartedCanBeSkipped(t *testing.T) {
 // reason success is: this run will not reconsider it, and a screen showing it
 // as still pending would be waiting for something that is not coming.
 func TestSkippedIsTerminal(t *testing.T) {
-	if !StatusSkipped.Terminal() {
+	if !StatusSkipped.TerminalStep() {
 		t.Error("skipped is not terminal, so a skipped step reads as still to come")
+	}
+	// And it is not a RUN's terminal state, because it is not a run state at
+	// all. Terminal() and TerminalStep() answer different questions, and the
+	// place they differ is FAILED: final for a step, a retry away for a run.
+	if StatusFailed.Terminal() {
+		t.Error("a failed RUN reads as terminal; it can still retry")
+	}
+	if !StatusFailed.TerminalStep() {
+		t.Error("a failed STEP does not read as finished, so `all_done` waits forever")
 	}
 	for _, to := range []Status{StatusQueued, StatusRunning, StatusSuccess, StatusFailed} {
 		if StatusSkipped.CanStepGo(to) {

@@ -61,6 +61,13 @@ type Persister interface {
 	// what makes the screen advance before the step finishes.
 	RecordStages(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
 		sdkVersion string, stages json.RawMessage) error
+
+	// MarkSkipped records a step whose trigger rule was not satisfied, with the
+	// reason. Required rather than optional: a skipped step that leaves no row
+	// is invisible, and "did not run and nobody can tell why" is the state this
+	// whole feature exists to remove.
+	MarkSkipped(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+		reason string) error
 }
 
 // Runner runs a whole workflow.
@@ -195,16 +202,77 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	for _, n := range w.Nodes {
 		porID[n.ID] = n
 	}
+	// Built once. It is the same map runcontext.Visible wants, and a trigger
+	// rule asks the same question a context lookup does: what does this step
+	// depend on.
+	deps := upstream(w)
+
+	// What each step ended as, so the level below can read its trigger rule
+	// against something real.
+	done := &outcomes{by: map[string]run.Status{}}
+
+	// The FIRST failure, kept and returned at the end. It used to be returned
+	// immediately, which is why nothing below a failure was ever recorded: the
+	// steps that would not run simply had no row, and the screen showed them
+	// pending forever.
+	//
+	// The run's OUTCOME is unchanged -- it still fails, with the same error.
+	// What changed is that the graph now says which steps were skipped and
+	// why.
+	var firstFailure error
 
 	for i, level := range levels {
-		if err := r.runLevel(ctx, w, level, porID); err != nil {
-			return fmt.Errorf("nivel %d: %w", i+1, err)
+		if ctx.Err() != nil {
+			// Cancelled. Marking the rest skipped would record a decision that
+			// was never made: those steps were not ruled out, the run was
+			// stopped.
+			break
+		}
+		if err := r.runLevel(ctx, w, level, porID, deps, done); err != nil && firstFailure == nil {
+			firstFailure = fmt.Errorf("nivel %d: %w", i+1, err)
 		}
 	}
-	return nil
+	return firstFailure
 }
 
-func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string, porID map[string]wf.Node) error {
+// outcomes is what each step ended as. A mutex because a level runs in
+// parallel.
+type outcomes struct {
+	mu sync.Mutex
+	by map[string]run.Status
+}
+
+func (o *outcomes) set(id string, s run.Status) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.by[id] = s
+}
+
+func (o *outcomes) get(id string) run.Status {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if s, ok := o.by[id]; ok {
+		return s
+	}
+	return run.StatusPending
+}
+
+// anyFailed says whether anything in this run has failed yet. It is what makes
+// the DEFAULT rule mean exactly what this engine has always meant.
+func (o *outcomes) anyFailed() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	for _, s := range o.by {
+		if s == run.StatusFailed {
+			return true
+		}
+	}
+	return false
+}
+
+func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
+	porID map[string]wf.Node, deps map[string][]string, done *outcomes,
+) error {
 	var (
 		wg   sync.WaitGroup
 		mu   sync.Mutex
@@ -214,14 +282,28 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string, por
 	for _, id := range level {
 		n := porID[id]
 
+		// The rule is read BEFORE anything in this level starts, so every step
+		// in it sees the same picture. Deciding inside the goroutine would let
+		// two siblings disagree about whether something had failed, depending
+		// on which one the scheduler woke first.
+		if why := r.notEligible(n, deps[n.ID], done); why != "" {
+			r.markSkipped(ctx, n.ID, why)
+			done.set(n.ID, run.StatusSkipped)
+			continue
+		}
+
 		wg.Add(1)
 		go func(n wf.Node) {
 			defer wg.Done()
-			if err := r.runNode(ctx, w, n); err != nil {
+			err := r.runNode(ctx, w, n)
+			if err != nil {
 				mu.Lock()
 				errs = append(errs, err)
 				mu.Unlock()
+				done.set(n.ID, run.StatusFailed)
+				return
 			}
+			done.set(n.ID, run.StatusSuccess)
 		}(n)
 	}
 	wg.Wait()
@@ -230,6 +312,79 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string, por
 		return errs[0]
 	}
 	return nil
+}
+
+// notEligible returns WHY a step does not run, or "" when it does.
+//
+// A reason rather than a bool: it is written into the step's row and shown on
+// the screen, and "skipped" with no explanation sends whoever is looking at the
+// graph to trace edges by hand.
+func (r Runner) notEligible(n wf.Node, upstream []string, done *outcomes) string {
+	switch n.WhenOf() {
+	case wf.WhenAnyFailed:
+		for _, up := range upstream {
+			if done.get(up) == run.StatusFailed {
+				return ""
+			}
+		}
+		if len(upstream) == 0 {
+			// A step with no dependencies can never see one fail. Refusing it
+			// at publish would be the better answer; until then it is skipped
+			// with a message that says so rather than running every time.
+			return "`when: any_failed` on a step with no depends_on: nothing it waits for can fail"
+		}
+		return "no step it depends on failed"
+
+	case wf.WhenAllDone:
+		for _, up := range upstream {
+			// TerminalStep, not Terminal: a run's failure can become a retry,
+			// a step's cannot. Asking the run's question here made `all_done`
+			// wait forever on a step that had already failed.
+			if !done.get(up).TerminalStep() {
+				return "`" + up + "` has not finished"
+			}
+		}
+		return ""
+
+	default: // WhenAllSuccess
+		// This step's OWN dependencies first. Naming the step responsible is
+		// worth more than saying the run failed, which whoever is reading the
+		// graph can already see.
+		for _, up := range upstream {
+			if s := done.get(up); s != run.StatusSuccess {
+				return "`" + up + "` was " + string(s)
+			}
+		}
+		// Nothing it waits on went wrong, but something elsewhere did. This is
+		// the run-wide half, and it is what keeps this engine's behaviour
+		// unchanged: once anything has failed, the graph stops descending. See
+		// wf.WhenAllSuccess for why that is not Airflow's rule, and why a
+		// feature commit is not the place to change it.
+		if done.anyFailed() {
+			return "the run had already failed"
+		}
+		return ""
+	}
+}
+
+// markSkipped records the decision. Same rules as markStart: it needs both a
+// persister and a RunID, and a write failure does not interrupt the run.
+func (r Runner) markSkipped(ctx context.Context, nodeID, reason string) {
+	if r.Report != nil {
+		r.Report.Evento(execution.Event{
+			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Message: "skipped: " + reason,
+		})
+	}
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	if err := r.Persist.MarkSkipped(ctx, r.RunID, nodeID, 0, reason); err != nil && r.Report != nil {
+		r.Report.Evento(execution.Event{
+			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Message: "could not record the skip: " + err.Error(),
+		})
+	}
 }
 
 // runNode runs one node, with retry.
