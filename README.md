@@ -15,6 +15,8 @@ binary, running each step as a pod on Kubernetes.
 
 Architecture and phasing: [`docs/plan.md`](docs/plan.md).
 Command-line reference: [`docs/COMMANDS.md`](docs/COMMANDS.md).
+
+What is being worked on, and in what order: [`TASK.md`](TASK.md).
 Per-phase reports: [`docs/phases/`](docs/phases/).
 
 ## SDK

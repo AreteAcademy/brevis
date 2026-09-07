@@ -1,6 +1,8 @@
 # docs
 
-**Updated on** 2026-09-06
+**Updated on** 2026-09-08
+
+> What is being worked on right now, and in what order: [`TASK.md`](../TASK.md).
 
 ---
 
@@ -61,6 +63,10 @@ what actually shipped — **not** as a description of the current state.
 | [`2026-09-07-proofs-that-need-infrastructure.md`](plan/2026-09-07-proofs-that-need-infrastructure.md) | **proposed** — three paths CI does not exercise, and what each needs |
 | [`2026-09-07-the-website.md`](plan/2026-09-07-the-website.md) | **proposed** — the site's source, its keys, and the Spanish it promises |
 | [`2026-09-07-deferred-by-design.md`](plan/2026-09-07-deferred-by-design.md) | **reference** — what was decided against, and what would change each decision |
+| [`2026-09-08-alerts-and-reports.md`](plan/2026-09-08-alerts-and-reports.md) | **proposed** — `TASK.md` #1: an alert pod, per-step alerting, a scheduled report |
+| [`2026-09-08-observability.md`](plan/2026-09-08-observability.md) | **proposed** — `TASK.md` #2: OpenTelemetry metrics, and the ceiling they run into |
+| [`2026-09-08-flow-shapes.md`](plan/2026-09-08-flow-shapes.md) | **proposed** — `TASK.md` #3: conditionals, trigger rules, sub-flows |
+| [`2026-09-08-node-context-sdk.md`](plan/2026-09-08-node-context-sdk.md) | **proposed** — `TASK.md` #4: the context contract, in npm |
 
 The specs are written in Portuguese where they were written that way, and they
 stay: a spec records a decision made on a date, and rewriting a record is not
