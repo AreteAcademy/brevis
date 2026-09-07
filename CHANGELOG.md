@@ -1,12 +1,15 @@
 # Changelog
 
-Versões do SDK (`github.com/AreteAcademy/brevis/sdk`). O formato segue
-[Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/), e as versões seguem
-[SemVer](https://semver.org/lang/pt-BR/).
+The SDK's versions (`github.com/AreteAcademy/brevis/sdk`). The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow
+[SemVer](https://semver.org/).
 
-A tag de um módulo aninhado leva o prefixo do diretório: `sdk/v0.2.1`.
+A nested module's tag carries the directory's prefix: `sdk/v0.2.1`.
 
-O motor tem o seu próprio: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
+The engine has its own: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
+
+Entries from `0.40.0` on are in English. Older ones were written in Portuguese
+and stay as written: a changelog records what was decided on a date.
 
 ---
 
@@ -45,183 +48,182 @@ produced. Anything else would change every `ingestion_id` already written.
 
 ## [0.51.0] — 2026-09-06
 
-### Mudou: uma fase anunciada por elemento do pipeline, não quatro fixas
+### Changed: one announced phase per pipeline element, not four fixed ones
 
-O SDK anunciava quatro fases de ciclo de vida e **colapsava todos os estágios**
-numa só, chamada `transform`. Um pipeline com `Map → Aggregate → Map` aparecia
-como uma caixa dizendo `stages=3` — e a tela não conseguia distinguir "216
-linhas viraram 9" de "216 viraram 216 e depois 9". A estrutura que você declara
-nunca chegava ao display.
+The SDK announced four lifecycle phases and **collapsed every stage** into a
+single one called `transform`. A pipeline with `Map → Aggregate → Map` showed up
+as one box saying `stages=3` — and the screen could not tell "216 rows became 9"
+from "216 became 216 and then 9". The structure you declare never reached the
+display.
 
-Agora é uma fase por elemento da **forma** do pipeline: a origem, cada estágio
-na ordem em que roda, o destino.
+It is now one phase per element of the pipeline's **shape**: the source, each
+stage in the order it runs, the target.
 
-Cada fase carrega um `index`, e é ele — não o nome — que a identifica. Dois
-`Map` compartilham nome, e chavear por nome fazia o segundo sobrescrever o
-primeiro.
+Every phase carries an `index`, and it is the index — not the name — that
+identifies it. Two `Map`s share a name, and keying by name made the second
+overwrite the first.
 
-E as fases de origem e destino passam a dizer **qual** origem e **qual**
-destino (`detail`). Uma caixa que diz "extract, 743ms" é meia carta.
+And the source and target phases now say **which** source and **which** target
+(`detail`). A box that says "extract, 743ms" is half a card.
 
-**Exige o motor `v0.6.0`.** Um motor anterior ignora as fases `map` e
-`aggregate` — a tela volta a mostrar só `extract` e `load`. Na rede os nomes
-`extract` e `load` foram mantidos de propósito: renomeá-los faria um motor já
-publicado parar de desenhar as fases de um fetcher mais antigo.
+**Requires engine `v0.6.0`.** An earlier engine ignores the `map` and `aggregate`
+phases — the screen goes back to showing only `extract` and `load`. On the wire
+the names `extract` and `load` were kept on purpose: renaming them would make an
+already-published engine stop drawing an older fetcher's phases.
 
-`PhaseExtract` e `PhaseLoad` viraram `PhaseSource` e `PhaseTarget`;
-`PhaseTransform` deu lugar a `PhaseMap` e `PhaseAggregate`.
+`PhaseExtract` and `PhaseLoad` became `PhaseSource` and `PhaseTarget`;
+`PhaseTransform` gave way to `PhaseMap` and `PhaseAggregate`.
 
 ---
 
 ## [0.50.0] — 2026-09-06
 
-Executa `docs/plan/2026-09-06-sdk-stages-are-unverifiable.md`.
+Carries out `docs/plan/2026-09-06-sdk-stages-are-unverifiable.md`.
 
-### Corrigido: o `-dry-run` não aplicava os estágios
+### Fixed: `-dry-run` was not applying the stages
 
-E era pior do que o relatório descreve. Declarar `Stages` junto com `Transform`
-é erro, então num pipeline com `Stages` o `p.Transform` está **vazio** — o
-dry-run não aplicava nada. Ele imprimia as linhas cruas da origem e as chamava
-de registros, sem aviso.
+And it was worse than the report describes. Declaring `Stages` alongside
+`Transform` is an error, so in a pipeline with `Stages` the `p.Transform` is
+**empty** — the dry-run applied nothing. It printed the source's raw rows and
+called them records, with no warning.
 
-O defeito é mais velho que o `Stages`: o `Reduce` saiu na `v0.46.0` e desaçucara
-em estágios, e o `runDryRun` nunca chamou `p.stages()`. **O dry-run de um
-pipeline com `Reduce` vem mostrando linhas não agregadas desde a v0.46.0.**
+The defect is older than `Stages`: `Reduce` shipped in `v0.46.0` and desugars into
+stages, and `runDryRun` never called `p.stages()`. **The dry-run of a pipeline
+with `Reduce` has been showing unaggregated rows since v0.46.0.**
 
-E ele também pulava a validação: um `Median`, um `Custom` incompleto ou
-`Stages` junto com `Transform` passavam no dry-run e só falhavam na execução
-real. A conferência existia e não estava no caminho que as pessoas usam para
-conferir.
+And it also skipped validation: a `Median`, an incomplete `Custom` or `Stages`
+alongside `Transform` all passed the dry-run and only failed on the real run. The
+check existed and was not on the path people use to check.
 
-Os dois caminhos passam a chamar as **mesmas** funções — `montar()` e
-`aplicarEstagios()` — e há um teste que exige que o dry-run e o run produzam os
-mesmos registros. Sem ele, a correção teria prazo de validade: foi um comentário
-afirmando essa propriedade, dentro de um código que já a tinha perdido, que
-deixou o defeito passar.
+Both paths now call the **same** functions — `montar()` and `aplicarEstagios()` —
+and there is a test requiring the dry-run and the run to produce the same records.
+Without it the fix would have a shelf life: it was a comment asserting that very
+property, inside code that had already lost it, which let the defect through.
 
-O `checkDestination` continua fora do dry-run, e isso é deliberado: ele consulta
-o destino, que exige credencial que uma máquina de desenvolvimento pode não ter.
+`checkDestination` stays out of the dry-run, and that is deliberate: it queries the
+destination, which needs a credential a development machine may not have.
 
-### Adicionado: as contagens por estágio no `-dry-run`
+### Added: the per-stage counts in `-dry-run`
 
 ```
   map              216 ->       216
   aggregate        216 ->         9   (9 groups)
 ```
 
-"9 registros" não diz nada sobre onde foram os outros duzentos.
+"9 records" says nothing about where the other two hundred went.
 
-### Corrigido: `Transform` estourava num `Data` construído à mão
+### Fixed: `Transform` blew up on a hand-built `Data`
 
 ```go
-d := &sdk.Data{Records: minhaSequencia}
+d := &sdk.Data{Records: mySequence}
 sdk.Transform(d, ...)   // panic: nil pointer dereference
 ```
 
-Uma struct exportada, com campo exportado, que estourava quando alguém de fora a
-usava. O `Data` sem driver agora se descreve como `"data"` nas mensagens de erro.
+An exported struct, with an exported field, that blew up when somebody outside
+used it. A `Data` with no driver now describes itself as `"data"` in error
+messages.
 
-### Adicionado: `sdk.NewResponse`
+### Added: `sdk.NewResponse`
 
-`Records` é onde mora a lógica de fornecedor, e o `Response` que ela recebe não
-podia ser construído de fora do módulo — então essa lógica só podia ser
-exercitada fazendo uma requisição de verdade.
+`Records` is where the vendor logic lives, and the `Response` it receives could
+not be constructed from outside the module — so that logic could only be
+exercised by making a real request.
 
 ```go
 r := sdk.NewResponse(200, []byte(`{"error":true,"reason":"quota"}`), false)
 ```
 
-O terceiro argumento espelha o `PreserveNumbers` do driver, e não é detalhe: com
-ele desligado, `19` e `19.0` são o mesmo `float64`, e um teste que não pudesse
-defini-lo passaria enquanto a produção compõe outra chave.
+The third argument mirrors the driver's `PreserveNumbers`, and it is not a detail:
+with it off, `19` and `19.0` are the same `float64`, and a test that could not set
+it would pass while production composes a different key.
 
 ---
 
 ## [0.49.1] — 2026-09-06
 
-### Mudou: os números das etapas também estão em inglês
+### Changed: the stages' numbers are in English too
 
-Eles aparecem na TELA, dentro de cada etapa: `paginas` → `pages`,
+They show up on the SCREEN, inside each stage: `paginas` → `pages`,
 `tentativas_http` → `http_attempts`, `linhas` → `rows`, `registros` → `records`,
 `estrategia` → `strategy`, `objetos` → `objects`, `entraram`/`sairam`/`pulados`
 → `in`/`out`/`dropped`, `estagios` → `stages`, `grupos` → `groups`.
 
-Passaram batido na primeira leva porque o motor os copia sem olhar — só
-apareceram ao ver a stack rodando de verdade.
+They slipped through the first round because the engine copies them without
+looking — they only surfaced on seeing the stack actually running.
 
 ---
 
 ## [0.49.0] — 2026-09-06
 
-### MUDANÇA INCOMPATÍVEL: uma origem CSV agora pode ser transformada
+### BREAKING CHANGE: a CSV source can now be transformed
 
-O decoder de CSV entregava `map[string]string`, e o modelo de registro do SDK é
-um objeto JSON — `map[string]any`. Na prática isso significava que **nenhum
-transformer funcionava sobre um CSV**:
+The CSV decoder handed back `map[string]string`, and the SDK's record model is a
+JSON object — `map[string]any`. In practice that meant **no transformer worked
+over a CSV**:
 
 ```
 format error in dados.csv, record 0: transformer 0:
 Compute needs a JSON object, got map[string]string
 ```
 
-A mensagem lê como erro de quem chamou, e não é. Agora todo driver entrega o
-mesmo modelo. Os valores continuam texto — um CSV não tem tipos, e inventá-los
-aqui seria adivinhar; `Sum` e companhia aceitam texto numérico exatamente por
-isso.
+The message reads like the caller's mistake, and it is not. Every driver now
+hands back the same model. The values stay text — a CSV has no types, and
+inventing them here would be guessing; `Sum` and company accept numeric text for
+exactly that reason.
 
-Quem fazia `env.Payload.(map[string]string)` precisa trocar para
-`map[string]any`.
+Anyone doing `env.Payload.(map[string]string)` has to switch to `map[string]any`.
 
-Apareceu ao montar o exemplo de ponta a ponta: um passo lia o CSV que o outro
-tinha escrito, e não havia como transformá-lo.
+It surfaced while assembling the end-to-end example: one step read the CSV another
+had written, and there was no way to transform it.
 
-### Mudou: as chaves do log de resultado estão em inglês
+### Changed: the result log's keys are in English
 
 `paginas` → `pages`, `estrategia` → `strategy`, `duracao` → `duration`,
 `formato` → `format`, `objeto` → `object`, `tabela_criada` → `table_created`,
 `fontes_falharam` → `failed_sources`, `checkpoint=reaproveitado` →
 `checkpoint=reused`, `checkpoint_falhou` → `checkpoint_failed`.
 
-Quem tiver alerta ou dashboard casando nessas chaves precisa ajustar.
+Anyone with an alert or a dashboard matching those keys has to adjust.
 
 ---
 
 ## [0.48.0] — 2026-09-05
 
-### MUDANÇA INCOMPATÍVEL: o protocolo de etapas fala inglês
+### BREAKING CHANGE: the stages protocol speaks English
 
-As linhas que o SDK escreve no stdout para o motor mudaram de chave:
+The lines the SDK writes to stdout for the engine changed their keys:
 
 ```
-antes: @brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"..."}
-agora: @brevis:{"type":"stage","name":"extract","state":"running","at":"..."}
+before: @brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"..."}
+now:    @brevis:{"type":"stage","name":"extract","state":"running","at":"..."}
 ```
 
-**O motor precisa subir antes dos fetchers.** Um motor que só entende o formato
-antigo faz as etapas de um fetcher novo sumirem da tela — sem erro, sem log, só
-a caixa cinza de volta. O motor a partir da próxima versão entende os **dois**,
-e essa ponte sai quando não houver fetcher em produção abaixo desta versão.
+**The engine has to go up before the fetchers.** An engine that only understands
+the old format makes a new fetcher's stages vanish from the screen — no error, no
+log, just the grey box back. The engine from the next version on understands
+**both**, and that bridge goes away when no fetcher below this version is left in
+production.
 
-Apareceu porque um teste quebrou: a tradução dos comentários mexeu nas chaves
-dentro das strings, e o teste da ordem das etapas pegou. Sem ele, o protocolo
-teria mudado calado.
+It surfaced because a test broke: translating the comments touched the keys inside
+the strings, and the stage-order test caught it. Without that test, the protocol
+would have changed in silence.
 
-### Traduzido: comentários e identificadores internos do pacote raiz
+### Translated: the root package's comments and internal identifiers
 
-`reduce.go`, `checkpoint.go`, `telemetry.go` e o que eles tocam. As mensagens de
-erro que o usuário lê também — `"o campo %q vale %v, que não é um número"` virou
+`reduce.go`, `checkpoint.go`, `telemetry.go` and what they touch. The error
+messages the user reads too — `"o campo %q vale %v, que não é um número"` became
 `"field %q holds %v, which is not a number"`.
 
 ---
 
 ## [0.47.0] — 2026-09-05
 
-### MUDANÇA INCOMPATÍVEL: a API exportada agora é toda em inglês
+### BREAKING CHANGE: the exported API is now entirely in English
 
-Executa a §6 de `docs/plan/2026-09-05-sdk-stackable-stages.md`. **Sem aliases**:
-os nomes em português deixam de existir nesta versão.
+Carries out §6 of `docs/plan/2026-09-05-sdk-stackable-stages.md`. **No aliases**:
+the Portuguese names stop existing in this version.
 
-| antes | agora |
+| before | now |
 |---|---|
 | `Agrupar` | `GroupBy` |
 | `Conta` / `ContaDe` | `Count` / `CountOf` |
@@ -242,11 +244,11 @@ os nomes em português deixam de existir nesta versão.
 | `pycompat.Texto` / `TextoOuVazio` / `TextoAceitandoFloat64` | `Text` / `TextOrEmpty` / `TextAcceptingFloat64` |
 | `pycompat.JSONCanonico` | `pycompat.CanonicalJSON` |
 
-`MaxPor` era a evidência mais clara: metade inglês, metade português, num
-identificador só. Para uma biblioteca lida por qualquer time, os nomes
-exportados são a parte que todo mundo lê.
+`MaxPor` was the clearest evidence: half English, half Portuguese, in one
+identifier. For a library read by any team, the exported names are the part
+everybody reads.
 
-### Adicionado: `Stages` — Transform e Reduce em qualquer ordem, quantos forem
+### Added: `Stages` — Transform and Reduce in any order, as many as you like
 
 ```go
 Stages: []sdk.Stage{
@@ -256,55 +258,55 @@ Stages: []sdk.Stage{
 },
 ```
 
-O defeito que motivou: a identidade de uma linha vem do registro que **pousa**,
-e depois de uma agregação esse registro só existe no fim. Com `Reduce` entre
-`Transform` e `Target`, a única saída era construir o id dentro do `Finish` —
-reimplementando o `IngestionID` à mão. **Uma feature que obriga a contornar
-outra não está pronta.**
+The defect that motivated it: a row's identity comes from the record that
+**lands**, and after an aggregation that record only exists at the end. With
+`Reduce` between `Transform` and `Target`, the only way out was to build the id
+inside `Finish` — reimplementing `IngestionID` by hand. **A feature that forces
+you to work around another one is not finished.**
 
-A alternativa mínima era um `TransformAfter`, e ela não respondia "por que duas
-fases e não três". A ordem passa a ser explícita na lista.
+The minimal alternative was a `TransformAfter`, and it did not answer "why two
+phases and not three". The order is now explicit in the list.
 
-`Transform` e `Reduce` continuam como atalho e viram `Stages`. Declarar os dois
-juntos é **erro**: duas descrições da mesma coisa, e uma perderia calada.
+`Transform` and `Reduce` stay as shortcuts and become `Stages`. Declaring both is
+an **error**: two descriptions of the same thing, and one would lose in silence.
 
-### Adicionado: `Result.Stages`
+### Added: `Result.Stages`
 
-Quantos registros entraram e saíram de cada estágio, e quantos grupos uma
-agregação produziu. Sem isso, "5.515 linhas" não diz nada sobre onde foram os
-outros seis milhões, e descobrir é bissecar o pipeline à mão.
+How many records went into and came out of each stage, and how many groups an
+aggregation produced. Without it, "5,515 rows" says nothing about where the other
+six million went, and finding out means bisecting the pipeline by hand.
 
-### Adicionado: um `Aggregate` recusa registros que já têm identidade
+### Added: an `Aggregate` refuses records that already carry an identity
 
-Ele não estouraria sozinho — agregaria o id e produziria uma chave que não
-corresponde a nada, que é pior. A regra "identidade por último" deixa de ser
-convenção e vira invariante conferida.
+It would not blow up on its own — it would aggregate the id and produce a key that
+corresponds to nothing, which is worse. The "identity last" rule stops being a
+convention and becomes a checked invariant.
 
 ---
 
 ## [0.46.1] — 2026-09-05
 
-### Corrigido: o selo mentia num build com `replace`
+### Fixed: the badge lied in a build using `replace`
 
-`VersaoDoSDK` devolvia a versão que o `go.mod` **pediu**, e num módulo
-substituído por `replace` ela é ficção: o código que está rodando veio de um
-diretório. Um fetcher construído com `replace ... => ../sdk` anunciava
-`v0.0.0`, ou pior, uma versão plausível que não era a que estava ali.
+`VersaoDoSDK` returned the version the `go.mod` **asked for**, and in a module
+substituted by `replace` that is fiction: the code actually running came from a
+directory. A fetcher built with `replace ... => ../sdk` announced `v0.0.0`, or
+worse, a plausible version that was not the one there.
 
-Um selo errado é pior que selo nenhum, porque ele é justamente o que se olha
-para descartar hipóteses. Agora devolve `devel`, que é a verdade.
+A wrong badge is worse than no badge, because it is precisely what you look at to
+rule hypotheses out. It now returns `devel`, which is the truth.
 
-Apareceu no primeiro teste que rodou um binário SDK **de verdade** ponta a
-ponta, em vez de um executor falso.
+It surfaced in the first test that ran a **real** SDK binary end to end, rather
+than a fake executor.
 
 ---
 
 ## [0.46.0] — 2026-09-05
 
-### Adicionado: `Reduce` — agregação com teto de memória
+### Added: `Reduce` — aggregation with a memory ceiling
 
-Executa `docs/plan/2026-09-05-sdk-agregadores.md`, a quarta rodada de
-contribuição de consumidor.
+Carries out `docs/plan/2026-09-05-sdk-agregadores.md`, the fourth round of
+consumer contribution.
 
 ```go
 Reduce: &sdk.Reduce{
@@ -316,84 +318,85 @@ Reduce: &sdk.Reduce{
 },
 ```
 
-**Uma regra decide o que existe aqui: todo agregador usa memória constante por
-grupo.** O modelo do SDK é um fluxo, e um agregador que guardasse as linhas
-desfaria isso em silêncio — o sintoma chega como um pod morto por falta de
-memória às cinco da manhã. Com a regra, o custo continua dizível:
-`memória = grupos × estado`, e a entrada não entra nessa conta.
+**One rule decides what exists here: every aggregator uses constant memory per
+group.** The SDK's model is a stream, and an aggregator that kept the rows would
+undo that in silence — the symptom arrives as a pod killed for want of memory at
+five in the morning. With the rule, the cost stays sayable:
+`memory = groups × state`, and the input does not enter that sum.
 
-Quinze agregadores — `Conta`, `ContaDe`, `Soma`, `Media`, `Min`, `Max`,
+Fifteen aggregators — `Conta`, `ContaDe`, `Soma`, `Media`, `Min`, `Max`,
 `Primeiro`, `Ultimo`, `MinPor`, `MaxPor`, `Variancia`, `Desvio`, `Algum`,
-`Todos`, `Amplitude` — e `Personalizado`, que é a porta de baixo. Os quinze são
-construídos com ela, o que garante que a porta funciona.
+`Todos`, `Amplitude` — and `Personalizado`, which is the trapdoor. The fifteen are
+built with it, which is what proves the trapdoor works.
 
-`Fechar` roda uma passada sobre os **grupos** depois do fluxo, para uma redução
-global ou uma projeção final. A saída sai ordenada pela chave do grupo.
+`Fechar` runs one pass over the **groups** after the stream, for a global
+reduction or a final projection. The output comes out ordered by the group's key.
 
-#### A prova, e a prova da prova
+#### The proof, and the proof of the proof
 
-O teste que importa não é "a soma está certa": é que a memória **não cresça com
-a entrada**. Cem grupos fixos, entrada crescendo 100×, teto de heap fixo.
+The test that matters is not "the sum is right": it is that memory **does not grow
+with the input**. A hundred fixed groups, input growing 100×, a fixed heap
+ceiling.
 
-Medido: **3,2 MB com 10 mil, 100 mil e 1 milhão de registros** — plano.
+Measured: **3.2 MB at 10 thousand, 100 thousand and 1 million records** — flat.
 
-E a primeira versão dessa medição **não valia nada**: ela media depois do fold,
-quando o estado dos grupos já estava morto, e um agregador que guardava um
-milhão de linhas passava com 3 MB. Só apareceu porque existe um segundo teste
-que alimenta a mesma medição com um agregador que *guarda* linhas e exige que
-ela reprove. Corrigida, ele vai a 76,6 MB.
+And the first version of that measurement **was worth nothing**: it measured after
+the fold, when the groups' state was already dead, and an aggregator holding a
+million rows passed at 3 MB. It only surfaced because there is a second test that
+feeds the same measurement an aggregator that *does* keep rows and requires it to
+fail. Fixed, it goes to 76.6 MB.
 
-#### O que não existe, e diz isso
+#### What does not exist, and says so
 
-`Mediana`, `Quantil`, `Distintos`, `Moda` e `Coletar` existem como funções que
-**recusam na montagem**, antes da extração — com as duas saídas que existem
-(SQL no destino, ou `Personalizado` assumindo o custo).
+`Mediana`, `Quantil`, `Distintos`, `Moda` and `Coletar` exist as functions that
+**refuse at assembly time**, before the extract — with the two ways out that exist
+(SQL at the destination, or `Personalizado` taking on the cost).
 
-Elas existem em vez de simplesmente faltar porque `undefined: sdk.Mediana` não
-ensina nada, e o passo seguinte de quem recebe isso é escrever à mão guardando
-as linhas — exatamente o que a regra impede.
+They exist rather than simply being absent because `undefined: sdk.Mediana`
+teaches nothing, and the next move for whoever gets it is to write it by hand,
+keeping the rows — exactly what the rule prevents.
 
-#### E um campo com nome errado é recusado
+#### And a field with the wrong name is refused
 
-Um agregador que nomeia um campo que **nenhuma linha** tem produzia uma coluna
-de nulos que ninguém notaria. Agora é erro, nomeando o errado e listando os
-disponíveis. Um campo ausente em *algumas* linhas continua normal, ignorado como
-no SQL.
+An aggregator naming a field **no row** has produced a column of nulls nobody
+would notice. It is now an error, naming the wrong one and listing what is
+available. A field missing from *some* rows stays normal, ignored as in SQL.
 
-### Adicionado: `pycompat.JSONCanonicoAceitandoFloat64`
+### Added: `pycompat.JSONCanonicoAceitandoFloat64`
 
-A saída existia para o escalar (`TextoAceitandoFloat64`) e faltava para o
-composto — que é justamente onde caem os registros construídos por quem agrega.
-Numa média calculada não há ambiguidade: é decimal por definição, e nunca houve
-literal.
+The way out existed for the scalar (`TextoAceitandoFloat64`) and was missing for
+the composite — which is precisely where records built by whoever aggregates land.
+In a computed average there is no ambiguity: it is decimal by definition, and
+there never was a literal.
 
-Sem ela, o contorno era entregar um `json.Number` com ponto no literal: sem o
-ponto, `48` sai como `48` onde a referência escreve `48.0`, e o consumidor
-acabava reimplementando metade da formatação de decimais para alimentar a
-formatação de decimais.
+Without it, the workaround was to hand over a `json.Number` with a dot in the
+literal: without the dot, `48` comes out as `48` where the reference writes
+`48.0`, and the consumer ended up reimplementing half of decimal formatting to
+feed decimal formatting.
 
-### Adicionado: `Delimitador` no CSV, e gzip no `from.HTTP`
+### Added: `Delimitador` on CSV, and gzip in `from.HTTP`
 
 ```go
 from.HTTP{URL: ".../dados.csv.gz", Format: sdk.FormatCSV, Delimitador: ';'}
 ```
 
-`;` é o padrão de fato em boa parte da Europa e nos portais de dados abertos, e
-`.csv.gz` é como eles publicam arquivo grande. A descompressão segue
-`Content-Encoding`, depois `Content-Type`, depois a extensão — o `from.Files` já
-fazia pela extensão, então a regra existia no SDK e só não alcançava o HTTP.
+`;` is the de facto standard across much of Europe and on the open-data portals,
+and `.csv.gz` is how they publish a large file. Decompression follows
+`Content-Encoding`, then `Content-Type`, then the extension — `from.Files` already
+went by the extension, so the rule existed in the SDK and merely did not reach
+HTTP.
 
 ---
 
 ## [0.45.0] — 2026-09-05
 
-### Adicionado: o pipeline conta ao motor em que etapa está
+### Added: the pipeline tells the engine which stage it is in
 
-Um passo do SDK era uma caixa cinza que virava verde. Entre "começou" e
-"acabou" havia quarenta minutos em que a tela não distinguia "baixando a página
-300 de 4.803" de "travado no handshake do Redshift".
+An SDK step was a grey box that turned green. Between "started" and "finished"
+there were forty minutes in which the screen could not tell "downloading page 300
+of 4,803" from "stuck on the Redshift handshake".
 
-Agora ele anuncia, numa linha marcada em stdout:
+It now announces, on a marked line in stdout:
 
 ```
 @brevis:{"tipo":"sdk","versao":"v0.45.0","pipeline":"fetcher"}
@@ -401,80 +404,83 @@ Agora ele anuncia, numa linha marcada em stdout:
 @brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"paginas":300}
 ```
 
-O cano já existia: o executor acompanha o log do pod enquanto o container vive.
-Sem callback, sem porta nova, sem RBAC novo — e como quem reconhece a marca é o
-runner, que não sabe qual executor produziu o evento, o executor local ganhou o
-mesmo de graça.
+The pipe already existed: the executor follows the pod's log while the container
+lives. No callback, no new port, no new RBAC — and since what recognizes the
+marker is the runner, which does not know which executor produced the event, the
+local executor got the same thing for free.
 
-**Só sob o motor.** Rodando à mão as linhas não servem a ninguém e sujariam o
-terminal de quem está depurando um fetcher.
+**Only under the engine.** Run by hand the lines serve nobody and would clutter
+the terminal of whoever is debugging a fetcher.
 
-#### As etapas são medidas onde o trabalho acontece
+#### The stages are measured where the work happens
 
-A cadeia é preguiçosa: `Extract` devolve um iterador e quem o puxa é o `Load`.
-Cronometrar as três chamadas diria **"extract: 3ms" numa extração de quarenta
-minutos** — a tela mentindo justamente sobre a etapa mais longa. Então o
-`extract` termina quando o fluxo se esgota, e não quando `Extract` retorna.
+The chain is lazy: `Extract` returns an iterator and what pulls it is `Load`.
+Timing the three calls would say **"extract: 3ms" on a forty-minute extraction** —
+the screen lying about precisely the longest stage. So `extract` ends when the
+stream is exhausted, not when `Extract` returns.
 
-E o **`transform` não reporta duração nenhuma.** Ele roda por registro,
-entremeado com a leitura: qualquer número que saísse dali seria o tempo de
-outra coisa — na prática o da extração, que dita o ritmo. Um `transform: 40min`
-ao lado de um `extract: 40min` faria alguém procurar o gargalo no lugar errado.
-Ele reporta o que só ele sabe: quantos entraram, quantos saíram, quantos foram
-pulados.
+And **`transform` reports no duration at all.** It runs per record, interleaved
+with the reading: any number coming out of there would be the time of something
+else — in practice the extraction's, which sets the pace. A `transform: 40min`
+next to an `extract: 40min` would send somebody looking for the bottleneck in the
+wrong place. It reports what only it knows: how many went in, how many came out,
+how many were skipped.
 
-### Adicionado: `sdk.VersaoDoSDK()`
+### Added: `sdk.VersaoDoSDK()`
 
-Lida do próprio binário via `runtime/debug`. É o que vira o selo na tela, e é
-por isso que o selo não tem como mentir: ninguém digita e ninguém mantém em
-sincronia. Devolve `"devel"` num checkout ou com `replace`, que é a verdade.
+Read from the binary itself through `runtime/debug`. It is what becomes the badge
+on the screen, and that is why the badge has no way to lie: nobody types it and
+nobody keeps it in sync. It returns `"devel"` in a checkout or with a `replace`,
+which is the truth.
 
 ---
 
 ## [0.44.1] — 2026-09-05
 
-### Corrigido: os exemplos da documentação não compilavam
+### Fixed: the documentation's examples did not compile
 
-O comentário de pacote do `sdk` e o do `Pipeline` documentavam um
-`sdk.Source{URL:, Records:}` e um `sdk.Target{Provider:, Entity:, Key:, When:}`
-— **seis campos que não existem mais**. Quem copiasse o exemplo da porta de
-entrada recebia código que não compila.
+The `sdk` package comment and `Pipeline`'s documented an
+`sdk.Source{URL:, Records:}` and an `sdk.Target{Provider:, Entity:, Key:, When:}`
+— **six fields that no longer exist**. Copying the example from the front door got
+you code that does not compile.
 
-Ao varrer o pacote atrás da mesma podridão, apareceram mais oito:
+Sweeping the package for the same rot turned up eight more:
 
-- `sdk.Compute("source_key", sdk.Key(...))` em dois comentários. Não é questão
-  de campo: `Compute` quer `func(map[string]any) (any, error)` e `Key` devolve
-  um `KeySelector`, que é `func(any) (string, error)`. Nunca compilou.
-- `Key:`, `When:` e `Guard:` — três campos de struct que não existem.
-- `Target{CreateTable: sdk.Bool(false)}` — `CreateTable` é do `bigquery.Table`.
-- `to.BigQuery{Dataset:, Table:}` — o tipo é `bigquery.Table`, e o campo é
-  `Name`. No mesmo exemplo, a linha `Columns:` estava duplicada.
-- `to.BigQuery`, `to.Postgres`, `from.Postgres` na prosa de quatro arquivos: os
-  nomes são `bigquery.Table`, `postgres.Table`, `postgres.Query`.
+- `sdk.Compute("source_key", sdk.Key(...))` in two comments. It is not a question
+  of a field: `Compute` wants `func(map[string]any) (any, error)` and `Key`
+  returns a `KeySelector`, which is `func(any) (string, error)`. It never
+  compiled.
+- `Key:`, `When:` and `Guard:` — three struct fields that do not exist.
+- `Target{CreateTable: sdk.Bool(false)}` — `CreateTable` belongs to
+  `bigquery.Table`.
+- `to.BigQuery{Dataset:, Table:}` — the type is `bigquery.Table`, and the field is
+  `Name`. In the same example, the `Columns:` line was duplicated.
+- `to.BigQuery`, `to.Postgres`, `from.Postgres` in four files' prose: the names are
+  `bigquery.Table`, `postgres.Table`, `postgres.Query`.
 
-### A causa, e o que mudou
+### The cause, and what changed
 
-Nada compilava esses exemplos. Corrigir o texto sozinho deixaria a mesma
-armadilha armada para a próxima mudança de API.
+Nothing compiled those examples. Fixing the text alone would leave the same trap
+armed for the next API change.
 
-Os exemplos agora vivem em `example_test.go`, como funções `Example` de um
-`package sdk_test` externo — compiladas com o resto do pacote, e escritas com os
-mesmos `sdk.` que um consumidor escreve, então só enxergam o que é exportado.
-O godoc os mostra no mesmo lugar de antes. Devolver qualquer um dos exemplos
-antigos quebra o `go vet`.
+The examples now live in `example_test.go`, as `Example` functions of an external
+`package sdk_test` — compiled with the rest of the package, and written with the
+same `sdk.` a consumer writes, so they only see what is exported. Godoc shows them
+in the same place as before. Putting any of the old examples back breaks
+`go vet`.
 
-### Corrigido: `"Key precisa from ao menos um campo"`
+### Fixed: `"Key precisa from ao menos um campo"`
 
-Uma substituição malfeita, em `Key` e `KeyWith`. Agora diz "precisa de".
+A botched substitution, in `Key` and `KeyWith`. It now reads "precisa de".
 
 ---
 
 ## [0.44.0] — 2026-09-05
 
-### Adicionado: `sdk.Checkpoint` — não refazer o extract quando o resto falha
+### Added: `sdk.Checkpoint` — do not redo the extract when the rest fails
 
-Um extract que gastou 4.803 requisições e uma janela de quarenta minutos não
-deveria ser repetido porque uma coluna do destino mudou de tipo.
+An extract that spent 4,803 requests and a forty-minute window should not be
+repeated because a column at the destination changed type.
 
 ```go
 sdk.Run(sdk.Pipeline{
@@ -484,119 +490,122 @@ sdk.Run(sdk.Pipeline{
 })
 ```
 
-A tentativa 0 grava o extract bruto em `{At}/{run_id}/{pipeline}/` e marca
-completo. A tentativa 1 encontra o depósito e **não consulta a origem**.
+Attempt 0 writes the raw extract into `{At}/{run_id}/{pipeline}/` and marks it
+complete. Attempt 1 finds the depot and **does not query the source**.
 
-**Vem desligado, e o README diz quando não usar.** Se o extract e o load já são
-dois nós do DAG, isto não acrescenta nada — o motor já tenta cada nó de novo
-separadamente, e um load que falha não refaz o extract, que é outro nó que teve
-sucesso. O checkpoint é para quem precisa de um pod só, e custa uma escrita e
-uma leitura do volume inteiro em **toda** execução para socorrer a que falha.
+**It ships off, and the README says when not to use it.** If the extract and the
+load are already two nodes of the DAG, this adds nothing — the engine already
+retries each node separately, and a failing load does not redo the extract, which
+is another node that succeeded. The checkpoint is for whoever needs a single pod,
+and it costs one write and one read of the whole volume on **every** run to
+rescue the one that fails.
 
-#### O que garante
+#### What it guarantees
 
-- **Um depósito incompleto nunca é retomado.** O manifesto é escrito por último;
-  sem ele o extract é refeito. Retomar de um extract interrompido carregaria
-  metade dos dados em silêncio.
-- **Um depósito só serve à run que o escreveu**, o que dispensa política de
-  validade e impede dado velho entrar como novo.
-- **Os `ingestion_id` de uma retomada são idênticos** aos da primeira tentativa.
-- **Falhar ao gravar não derruba a execução.** Ela segue e avisa.
+- **An incomplete depot is never resumed.** The manifest is written last; without
+  it the extract is redone. Resuming from an interrupted extract would load half
+  the data in silence.
+- **A depot only serves the run that wrote it**, which does away with a validity
+  policy and keeps stale data from coming in as fresh.
+- **A resumed attempt's `ingestion_id`s are identical** to the first attempt's.
+- **Failing to write does not take the run down.** It carries on and says so.
 
-#### Duas decisões que o teste obrigou a tomar
+#### Two decisions the test forced
 
-**O literal do número vai no manifesto.** Um payload decodificado com
-`PreserveNumbers` carrega `json.Number("19.0")`; relido como `float64` viraria
-`"19"` no `asText`, e a retomada gravaria um `ingestion_id` diferente do da
-primeira tentativa — exatamente a garantia que o checkpoint existe para dar. O
-modo é **observado do próprio fluxo**, não declarado: `PreserveNumbers` é campo
-do driver e o SDK só vê a interface, então um campo a manter em sincronia seria
-um campo que um dia fica errado, e o erro sairia calado dentro de um id.
+**The number's literal goes into the manifest.** A payload decoded with
+`PreserveNumbers` carries `json.Number("19.0")`; read back as a `float64` it would
+become `"19"` in `asText`, and the resumed attempt would write an `ingestion_id`
+different from the first attempt's — exactly the guarantee the checkpoint exists
+to give. The mode is **observed from the stream itself**, not declared:
+`PreserveNumbers` is a driver field and the SDK only sees the interface, so a
+field to keep in sync would be a field that one day goes wrong, and the error
+would come out silently inside an id.
 
-**A escrita é provada antes de a extração começar.** A falha mais comum é
-permissão no bucket, e descobri-la depois da extração significaria ter gasto
-exatamente a quota que o checkpoint existe para poupar. Falhando no meio, o
-fluxo degrada: cede o que já virou objeto, o que ficou no buffer, e segue direto
-da origem — sem uma segunda extração.
+**The write is proved before the extraction starts.** The commonest failure is a
+bucket permission, and finding it out after the extraction would mean having spent
+exactly the quota the checkpoint exists to save. Failing midway, the stream
+degrades: it yields what already became an object, what is left in the buffer, and
+carries on straight from the source — with no second extraction.
 
-E a releitura do próprio depósito no caminho feliz não é desperdício: ela faz o
-caminho da **retomada** rodar em toda execução bem-sucedida. Um caminho de
-recuperação que só roda em emergência é um caminho que ninguém nunca viu
-funcionar.
+And re-reading the depot on the happy path is not waste: it makes the **resume**
+path run on every successful execution. A recovery path that only runs in an
+emergency is a path nobody has ever seen work.
 
-### Adicionado: `Result.CheckpointReused`, `CheckpointPath`, `CheckpointError`
+### Added: `Result.CheckpointReused`, `CheckpointPath`, `CheckpointError`
 
-Uma economia de quota que não aparece em lugar nenhum é indistinguível de não
-ter economizado. O log só menciona o checkpoint quando há o que dizer.
+A quota saving that shows up nowhere is indistinguishable from not having saved
+anything. The log only mentions the checkpoint when there is something to say.
 
 ---
 
 ## [0.43.0] — 2026-09-05
 
-### Corrigido: `to.Files` escrevia no diretório errado, sem dizer
+### Fixed: `to.Files` wrote into the wrong directory, without saying so
 
-**Este é o mais sério dos dois, e apareceu ao escrever o teste do outro.**
+**This is the more serious of the two, and it surfaced while writing the test for
+the other one.**
 
 ```go
-to.Files{Path: "s3://bucket/landing"}   // sem barra no fim
+to.Files{Path: "s3://bucket/landing"}   // no trailing slash
 ```
 
-escrevia em `s3://bucket/parte-...`, **descartando o `landing` inteiro**. O
-`ParseLocation` é escrito para leitura, onde o último segmento sem barra é o
-nome de um objeto — `s3://bucket/dia=1/dados.ndjson`. No `to.Files` o nome do
-arquivo é do driver, então o `Path` é sempre diretório.
+wrote into `s3://bucket/parte-...`, **discarding `landing` entirely**.
+`ParseLocation` is written for reading, where the last segment with no slash is an
+object's name — `s3://bucket/dia=1/dados.ndjson`. In `to.Files` the file's name
+belongs to the driver, so `Path` is always a directory.
 
-Nada dizia. O arquivo aparecia um nível acima, e quem fosse procurá-lo no lugar
-configurado não acharia.
+Nothing said so. The file showed up one level higher, and whoever went looking for
+it in the configured place would not find it.
 
-### Adicionado: `Result.Objects`
+### Added: `Result.Objects`
 
-O `to.Files` escolhe o nome do arquivo — ele carrega um carimbo de tempo, para
-uma segunda carga não sobrescrever a primeira — e **não dizia qual escolheu**.
-Quem escreveu não sabia o que escreveu, e o log dizia `estrategia=file` sem
-dizer qual arquivo.
+`to.Files` chooses the file's name — it carries a timestamp, so a second load
+does not overwrite the first — and it **did not say which one it chose**. Whoever
+wrote did not know what they had written, and the log said `estrategia=file`
+without saying which file.
 
 ```go
 res.Objects[0]   // "s3://bucket/landing/parte-1788639822216855000.ndjson"
 ```
 
-O caminho que sai de uma escrita **volta direto numa leitura**, sem remontar
-esquema e bucket — que é o que um `extract` num pod e um `load` em outro
-precisam. Com `FlushEvery`, uma entrada por leva.
+The path a write hands back **goes straight into a read**, with no reassembling
+of scheme and bucket — which is what an `extract` in one pod and a `load` in
+another need. With `FlushEvery`, one entry per batch.
 
-`Objects` guarda só o que **continua lá**: um destino que estagia e apaga o
-deixa vazio. Um caminho reportado que já não existe é pior que nenhum, porque
-alguém vai tentar lê-lo. Por isso o BigQuery e o Redshift só o preenchem com
-`KeepStagedFile`.
+`Objects` keeps only what **is still there**: a destination that stages and
+deletes leaves it empty. A reported path that no longer exists is worse than none,
+because somebody will try to read it. That is why BigQuery and Redshift only fill
+it in with `KeepStagedFile`.
 
 ---
 
 ## [0.42.1] — 2026-09-05
 
-Sem mudança de código no SDK.
+No code change in the SDK.
 
-### O gate de publicação passou a rodar a poda por driver
+### The publish gate now runs the per-driver pruning check
 
-A `v0.41.0` saiu com uma regressão de dependência — o `pycompat` arrastando o
-`net/http`, de 66 para 68 pacotes com 8 de rede num pacote que só formata texto.
-A `v0.42.0` corrigiu, mas a versão errada **está no proxy para sempre**.
+`v0.41.0` shipped with a dependency regression — `pycompat` dragging `net/http`
+in, from 66 to 68 packages with 8 of them networking, in a package that only
+formats text. `v0.42.0` fixed it, but the wrong version **is on the proxy
+forever**.
 
-O `pruning-check.sh` existia e pegou: o `Integration` do `test.yml` ficou
-vermelho naquele commit. **O publish passou mesmo assim**, porque o gate rodava
-`go test`, `golangci-lint` e o consumidor limpo — e não a poda.
+`pruning-check.sh` existed and caught it: `test.yml`'s `Integration` job went red
+on that commit. **The publish went through anyway**, because the gate ran
+`go test`, `golangci-lint` and the clean consumer — and not the pruning check.
 
-É a mesma lacuna que o lint teve até a `v0.27.2`, pela mesma razão: a
-verificação existia e não estava no caminho que importa. Uma release é imutável;
-o momento de descobrir é antes da tag, e não num workflow que roda em paralelo.
+It is the same gap the lint had until `v0.27.2`, for the same reason: the check
+existed and was not on the path that matters. A release is immutable; the moment
+to find out is before the tag, not in a workflow running in parallel.
 
-Verificado rodando o gate contra a árvore da `v0.41.0`: ele reprova.
+Verified by running the gate against `v0.41.0`'s tree: it fails.
 
 ---
 
 ## [0.42.0] — 2026-09-05
 
-Item 9 da segunda rodada, e o último dela. **A requisição mais sensível do
-fetcher deixa de ser a única sem as garantias das outras.**
+Item 9 of the second round, and the last of it. **The fetcher's most sensitive
+request stops being the only one without the guarantees the others have.**
 
 ### `Credential.Login`
 
@@ -612,31 +621,34 @@ Auth: &from.Credential{
 }
 ```
 
-O `Refresh` só renovava sessão por cookie. Não havia como expressar *"POST com
-corpo, e o token sai de um campo do JSON"*, que é a forma que a maioria das APIs
-usa.
+`Refresh` only renewed a cookie session. There was no way to express *"POST with
+a body, and the token comes out of a JSON field"*, which is the shape most APIs
+use.
 
-Dava para contornar — `Value` é uma func, então o login cabe nela. **O custo não
-era óbvio:** a requisição de login virava a única do fetcher sem retry, sem rate
-limit, sem timeout por tentativa e sem redação de segredo no log. Escrita à mão
-ela costuma sair com `http.DefaultClient`, que não tem timeout nenhum.
+It could be worked around — `Value` is a func, so the login fits inside it. **The
+cost was not obvious:** the login request became the fetcher's only one with no
+retry, no rate limit, no per-attempt timeout and no secret redaction in the log.
+Written by hand it usually comes out on `http.DefaultClient`, which has no timeout
+at all.
 
-Agora ela usa o cliente da caminhada, e há teste medindo: um 503 no login custa
-um retry em vez de derrubar a execução.
+It now uses the walk's client, and there is a test measuring it: a 503 on the
+login costs one retry instead of taking the run down.
 
-O `Header` da fonte **não** vai para o endpoint de login — ele pode ser de outro
-host, e aquele cabeçalho pode carregar segredo. `Value` e `Login` juntos é erro.
+The source's `Header` does **not** go to the login endpoint — it may be on another
+host, and that header may carry a secret. `Value` and `Login` together is an
+error.
 
-`from.CampoJSON`, `from.JSONBody` e `from.FormBody` completam a peça. Um campo
-ausente é **erro nomeando o caminho**: um token vazio viraria um cabeçalho de
-autorização vazio e um 401 adiante, culpando a API.
+`from.CampoJSON`, `from.JSONBody` and `from.FormBody` complete the piece. A
+missing field is an **error naming the path**: an empty token would become an
+empty authorization header and a 401 further down, blaming the API.
 
-### A regra de escape virou pacote folha
+### The escaping rule became a leaf package
 
-O `AppendJSONString` da `v0.41.0` morava em `internal/core`, e o `pycompat`
-passou a arrastar o `net/http` junto — de 66 para 8 pacotes de rede num pacote
-que só formata texto. **A verificação de poda pegou**, e a regra foi para
-`internal/jsontext`, que não importa nada além do `unicode/utf8`.
+`v0.41.0`'s `AppendJSONString` lived in `internal/core`, and `pycompat` started
+dragging `net/http` along with it — from 66 to 68 packages with 8 of them
+networking, in a package that only formats text. **The pruning check caught it**,
+and the rule moved to `internal/jsontext`, which imports nothing beyond
+`unicode/utf8`.
 
 ### `Many.Discover`
 
@@ -644,105 +656,106 @@ que só formata texto. **A verificação de poda pegou**, e a regra foi para
 From: from.Many{Discover: func(ctx) ([]sdk.Reader, error) { ... }}
 ```
 
-A lista de origens às vezes só se conhece na execução. Montada antes do
-`sdk.Run`, ela ficava fora do pipeline: sem retry, sem timeout, sem log, e sem
-aparecer no `Result` quando falhava.
+The list of sources is sometimes only known at run time. Assembled before
+`sdk.Run`, it fell outside the pipeline: no retry, no timeout, no log, and no
+appearance in the `Result` when it failed.
 
-Um `Discover` que devolve **nada** é erro, e não zero linhas: uma execução que não
-leu porque não havia o que ler é diferente de uma que não sabia onde ler.
+A `Discover` that returns **nothing** is an error, not zero rows: a run that read
+nothing because there was nothing to read is a different thing from one that did
+not know where to read.
 
 ---
 
 ## [0.41.0] — 2026-09-05
 
-Item 10 da segunda rodada.
+Item 10 of the second round.
 
 ### `pycompat.JSONCanonico`
 
 ```go
-b, err := pycompat.JSONCanonico(registro)   // a chave, quando a origem não tem id
+b, err := pycompat.JSONCanonico(registro)   // the key, when the source has no id
 ```
 
-É o `json.dumps(v, sort_keys=True, separators=(",",":"), ensure_ascii=False)`,
-que é como boa parte dos fetchers em Python deriva a chave quando a fonte não
-tem id estável. Reproduzi-lo à mão custou ~90 linhas no consumidor, e as **três
-armadilhas** mudam a chave **sem erro**:
+It is `json.dumps(v, sort_keys=True, separators=(",",":"), ensure_ascii=False)`,
+which is how a good many Python fetchers derive the key when the source has no
+stable id. Reproducing it by hand cost ~90 lines in the consumer, and the **three
+traps** change the key **with no error**:
 
-1. o `encoding/json` escapa `<`, `>` e `&`, e o Python não escapa nenhum dos
-   três;
-2. sem `PreserveNumbers`, `1` e `1.0` colapsam no mesmo `float64` — e aqui isso
-   é **erro**, não palpite;
-3. inteiro de precisão arbitrária perde precisão ao passar por `float64`.
+1. `encoding/json` escapes `<`, `>` and `&`, and Python escapes none of the three;
+2. without `PreserveNumbers`, `1` and `1.0` collapse into the same `float64` — and
+   here that is an **error**, not a guess;
+3. an arbitrary-precision integer loses precision going through `float64`.
 
-O teste é diferencial contra o `json.dumps` de um `python3`, em treze formas.
+The test is differential against a `python3`'s `json.dumps`, in thirteen shapes.
 
-### O conhecimento da armadilha 1 estava num lugar só, e não era compartilhado
+### The knowledge of trap 1 lived in one place, and was not shared
 
-O SDK já sabia escapar como o Python — `to/redshift` chama `SetEscapeHTML(false)`
-desde a `v0.32.0` — mas o conhecimento vivia no driver. A segunda vez que ele foi
-necessário custaria noventa linhas escritas de novo, e é essa a observação que o
-item faz.
+The SDK already knew how to escape the way Python does — `to/redshift` has called
+`SetEscapeHTML(false)` since `v0.32.0` — but the knowledge lived in the driver.
+The second time it was needed would have cost ninety lines written again, and that
+is the observation the item makes.
 
-A regra foi para `internal/core.AppendJSONString`, e o driver do Redshift passou
-a usá-la. O teste compara byte a byte com o `encoding/json` sem escape de HTML.
+The rule moved to `internal/core.AppendJSONString`, and the Redshift driver
+started using it. The test compares byte for byte against `encoding/json` with
+HTML escaping off.
 
-### O canônico independente de linguagem fica para depois, e por quê
+### The language-independent canonical form waits, and why
 
-A proposta sugere considerar **também** o RFC 8785 (JCS), para quem começa um ETL
-novo e só quer uma chave estável — e diz, com razão, que **não devem ser a mesma
-função**.
+The proposal suggests considering RFC 8785 (JCS) **as well**, for whoever starts a
+new ETL and just wants a stable key — and says, rightly, that they **should not be
+the same function**.
 
-Não entrou agora porque o JCS canonicaliza número pela regra do
-`Number::toString` do ECMAScript, que não é a do Python nem a do Go. Implementá-lo
-pela metade seria pior que não ter: uma chave que quase segue um padrão não segue
-padrão nenhum, e quem a escolher acreditando no contrário só descobre ao trocar
-de implementação.
+It did not come in now because JCS canonicalizes numbers by ECMAScript's
+`Number::toString` rule, which is neither Python's nor Go's. Implementing it
+halfway would be worse than not having it: a key that almost follows a standard
+follows no standard, and whoever picks it believing otherwise only finds out on
+changing implementation.
 
 ---
 
 ## [0.40.0] — 2026-09-05
 
-Itens 11 e 12 da segunda rodada da contribuição de consumidor.
+Items 11 and 12 of the second round of consumer contribution.
 
-### BREAKING: `pycompat.Texto` recusa um `float64`
+### BREAKING: `pycompat.Texto` refuses a `float64`
 
-Era uma incoerência minha, e o consumidor a encontrou usando: o `default` da
-função recusava dizendo que *"adivinhar numa chave produz duplicata
-silenciosa"*, e o `case float64` logo acima adivinhava em silêncio.
+It was an inconsistency of mine, and the consumer found it by using it: the
+function's `default` refused, saying *"guessing inside a key produces a silent
+duplicate"*, and the `case float64` right above it guessed in silence.
 
-Um `float64` só chega ali quando o literal **já se perdeu** — o `encoding/json`
-decodifica `1` e `1.0` no mesmo valor, e o Python via `int` num caso e `float`
-no outro. Escolher uma das duas acerta metade das vezes, e a metade errada é uma
-linha duplicada.
+A `float64` only reaches there when the literal is **already lost** —
+`encoding/json` decodes `1` and `1.0` into the same value, and Python saw an `int`
+in one case and a `float` in the other. Picking one of the two is right half the
+time, and the wrong half is a duplicated row.
 
-A limitação estava **documentada** na `v0.36.0`. Documentar uma divergência não é
-o mesmo que impedi-la.
+The limitation was **documented** in `v0.36.0`. Documenting a divergence is not the
+same as preventing it.
 
-**O que fazer:** ligue `Source.PreserveNumbers`, e o literal decide sozinho. Se a
-origem era mesmo float e não dá para ligar, diga isso —
-`pycompat.TextoAceitandoFloat64`. O nome é comprido de propósito: ele é a
-afirmação "eu conferi".
+**What to do:** turn `Source.PreserveNumbers` on, and the literal decides by
+itself. If the source really was a float and you cannot turn it on, say so —
+`pycompat.TextoAceitandoFloat64`. The name is long on purpose: it is the assertion
+"I checked".
 
-`float32` continua passando: ele nunca vem de JSON decodificado, então é float
-sem ambiguidade. `inf` e `nan` também — nenhum literal JSON os produz.
+`float32` still passes: it never comes from decoded JSON, so it is a float with no
+ambiguity. `inf` and `nan` too — no JSON literal produces them.
 
-### `MoreKey`: parar de paginar pelo que a resposta diz
+### `MoreKey`: stopping the pagination by what the response says
 
 ```go
 from.HTTP{URL: url, PageKey: "page", DataKey: "results",
           MoreKey: "pageMeta.hasNextPage"}
 ```
 
-Sem ele a parada é sempre a página vazia, o que custa **uma requisição a mais por
-origem** — num fan-out de centenas de origens, centenas de requisições
-desperdiçadas por execução. Há teste medindo as duas: 3 requisições com, 4 sem.
+Without it the stop is always the empty page, which costs **one extra request per
+source** — in a fan-out over hundreds of sources, hundreds of wasted requests per
+run. There is a test measuring both: 3 requests with it, 4 without.
 
-Não é uma estratégia e sim um **critério de parada**: combina com as quatro que
-já existem. A parada por página vazia continua como rede de segurança, e há teste
-com uma API que mente no campo.
+It is not a strategy but a **stopping criterion**: it combines with the four that
+already exist. The empty-page stop stays as a safety net, and there is a test with
+an API that lies in the field.
 
-Um campo **ausente** é erro, e não "não há mais": tratá-lo como fim pararia a
-paginação na primeira página em silêncio.
+A **missing** field is an error, not "there is no more": treating it as the end
+would stop the pagination on the first page in silence.
 
 ---
 

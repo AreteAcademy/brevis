@@ -1,100 +1,100 @@
-# Changelog — o motor
+# Changelog — the engine
 
-Versões do motor, publicado como imagem Docker (`daniel3843/brevis`). O SDK tem
-o seu próprio, em [`CHANGELOG.md`](CHANGELOG.md): são dois artefatos com
-públicos diferentes — um é um módulo Go que alguém importa, o outro é uma
-imagem que alguém opera — e por isso duas listas.
+The engine's versions, published as a Docker image (`daniel3843/brevis`). The SDK
+has its own, in [`CHANGELOG.md`](CHANGELOG.md): they are two artifacts with
+different audiences — one is a Go module somebody imports, the other an image
+somebody operates — and that is why there are two lists.
 
-A tag do motor é `vX.Y.Z`, sem prefixo; a do SDK leva `sdk/`.
+The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
 ## [0.6.0] — 2026-09-06
 
-### Adicionado: uma caixa por elemento do pipeline
+### Added: one box per pipeline element
 
-O SDK `v0.51.0` anuncia uma fase para a origem, uma para cada estágio na ordem
-em que roda, e uma para o destino. Este motor as aceita, chaveadas por
-**posição** — dois `Map` compartilham nome, e chavear por nome fazia o segundo
-sobrescrever o primeiro.
+SDK `v0.51.0` announces one phase for the source, one for each stage in the order
+it runs, and one for the target. This engine accepts them, keyed by **position** —
+two `Map`s share a name, and keying by name made the second overwrite the first.
 
-Cada caixa mostra o que ela é (`from.HTTP …`, `to.Files …`) e o que fez.
+Each box shows what it is (`from.HTTP …`, `to.Files …`) and what it did.
 
-Um fetcher até a `v0.50.0` continua desenhando: sem `index`, a caixa é
-identificada pelo nome, como sempre foi.
+A fetcher up to `v0.50.0` still draws: with no `index`, the box is identified by
+its name, the way it always was.
 
-**Suba este motor antes dos fetchers.** Um motor `0.5.0` com um fetcher
-`0.51.0` ignora as fases `map` e `aggregate`, e a tela volta a mostrar só
-`extract` e `load`.
+**Bring this engine up before the fetchers.** A `0.5.0` engine with a `0.51.0`
+fetcher ignores the `map` and `aggregate` phases, and the screen goes back to
+showing only `extract` and `load`.
 
 ---
 
 ## [0.5.0] — 2026-09-06
 
-### Corrigido: `panic: send on closed channel` no executor Kubernetes
+### Fixed: `panic: send on closed channel` in the Kubernetes executor
 
-`seguirLogs` escrevia no mesmo canal que `Execute` fecha ao terminar, e ninguém
-esperava por ele. Em produção isso derruba **o processo inteiro**, não só a
-execução — e o processo é a API ou o scheduler.
+`seguirLogs` wrote to the same channel `Execute` closes on finishing, and nobody
+waited for it. In production that takes **the whole process** down, not just the
+run — and the process is the API or the scheduler.
 
-Achado pelo `-race` na primeira vez que o módulo raiz foi testado no CI. O que
-nos leva a:
+Found by `-race` the first time the root module was tested in CI. Which brings us
+to:
 
-### O motor não tinha CI nenhum
+### The engine had no CI at all
 
-Todo job do `test.yml` e do `quality.yml` fazia `cd sdk`. O único
-`go test ./...` na raiz vivia no portão do release — e como o release nunca
-tinha rodado, o runner, os executores, a API e o scheduler chegaram à `0.4.0`
-sem um teste ter rodado fora da máquina de quem escreveu.
+Every job in `test.yml` and `quality.yml` did a `cd sdk`. The only
+`go test ./...` at the root lived in the release gate — and since the release had
+never run, the runner, the executors, the API and the scheduler reached `0.4.0`
+without a test having run outside the machine of whoever wrote them.
 
-Agora há um job `Motor`: gofmt, build, vet, `go test -race`, `go mod tidy`,
-artefatos gerados, peso do binário e lint. O módulo estava sujo — onze problemas
-de lint, porque nunca tinha sido lintado.
+There is now an `Engine` job: gofmt, build, vet, `go test -race`, `go mod tidy`,
+generated artifacts, binary weight and lint. The module was dirty — eleven lint
+problems, because it had never been linted.
 
-### Adicionado: o protocolo de etapas aceita os dois formatos
+### Added: the stages protocol accepts both formats
 
-O SDK até a `v0.47.0` falava português (`{"tipo":"etapa","nome","estado"}`); da
-`v0.48.0` em diante fala inglês (`{"type":"stage","name","state"}`). Este motor
-entende **os dois**.
+The SDK up to `v0.47.0` spoke Portuguese (`{"tipo":"etapa","nome","estado"}`);
+from `v0.48.0` on it speaks English (`{"type":"stage","name","state"}`). This
+engine understands **both**.
 
-A ponte sai quando não houver fetcher em produção abaixo da `v0.48.0`. Sem ela,
-subir o SDK novo faria as etapas sumirem da tela — sem erro, sem log, só a caixa
-cinza de volta.
+The bridge goes away when no fetcher below `v0.48.0` is left in production.
+Without it, bringing the new SDK up would make the stages vanish from the screen —
+no error, no log, just the grey box back.
 
-### Adicionado: teste de ponta a ponta com um binário SDK de verdade
+### Added: an end-to-end test with a real SDK binary
 
-Compila um fetcher com o SDK, roda pelo executor de processo e confere as etapas
-no Postgres. Antes disso, tudo no caminho era testado com executor falso: a
-linha `@brevis:` nunca tinha atravessado um pipe do sistema operacional.
+It compiles a fetcher against the SDK, runs it through the process executor and
+checks the stages in Postgres. Before this, everything on that path was tested
+with a fake executor: the `@brevis:` line had never crossed an operating-system
+pipe.
 
-### Corrigido: o alerta do Slack não dizia o fuso da data lógica
+### Fixed: the Slack alert did not say the logical date's timezone
 
-`Local()` é o fuso de quem formata: o mesmo evento virava `01:00` na máquina de
-quem desenvolve e `04:00` no pod. Agora a mensagem diz qual foi.
+`Local()` is the timezone of whoever formats: the same event became `01:00` on the
+developer's machine and `04:00` in the pod. The message now says which one it was.
 
 ---
 
 ## [0.4.0] — 2026-09-05
 
-**A primeira imagem publicada.** Até aqui o motor só existia em código: não
-havia tag `v*`, e portanto nenhuma imagem — pelo motivo do parágrafo seguinte.
+**The first published image.** Until here the engine existed only as code: there
+was no `v*` tag, and therefore no image — for the reason in the next paragraph.
 
-### Corrigido: o build da imagem estava quebrado
+### Fixed: the image build was broken
 
-O `Dockerfile` compilava com `golang:1.25` e o `go.mod` exige `go 1.27.0`. A
-imagem oficial do Go fixa `GOTOOLCHAIN=local`, então ela **não** baixa a
-toolchain que falta: o build morria no `go mod download` com
+The `Dockerfile` compiled with `golang:1.25` and the `go.mod` requires
+`go 1.27.0`. Go's official image pins `GOTOOLCHAIN=local`, so it does **not**
+download the missing toolchain: the build died in `go mod download` with
 
 ```
 go: go.mod requires go >= 1.27.0 (running go 1.25.14; GOTOOLCHAIN=local)
 ```
 
-Era isto que impedia qualquer release. Só aparece quando alguém de fato tenta
-publicar, porque nenhum outro portão da CI usa o Dockerfile.
+This is what was blocking every release. It only shows up when somebody actually
+tries to publish, because no other CI gate uses the Dockerfile.
 
-### Mudou de forma incompatível: `BRAVIS_` virou `BREVIS_`
+### Breaking change: `BRAVIS_` became `BREVIS_`
 
-**Toda** variável de ambiente trocou de prefixo:
+**Every** environment variable changed prefix:
 
 ```
 BRAVIS_DATABASE_URL  ->  BREVIS_DATABASE_URL
@@ -105,52 +105,51 @@ BRAVIS_BRAND_FILE    ->  BREVIS_BRAND_FILE
 BRAVIS_TASK_ENV      ->  BREVIS_TASK_ENV
 ```
 
-Quem sobe a partir de um deploy anterior precisa renomeá-las **antes**: sem
-`BREVIS_DATABASE_URL` o processo não acha o banco.
+Anyone coming up from an earlier deployment has to rename them **first**: with no
+`BREVIS_DATABASE_URL` the process does not find the database.
 
-### Antes de subir: rode as migrations
+### Before bringing it up: run the migrations
 
-A `00007` acrescenta duas colunas a `task_runs` (`etapas`, `sdk_versao`). O
-código novo faz `SELECT` delas, então subir a imagem sem migrar deixa a tela de
-execução com erro.
+`00007` adds two columns to `task_runs` (`etapas`, `sdk_versao`). The new code
+`SELECT`s them, so bringing the image up without migrating leaves the run screen
+in error.
 
-### Adicionado: as etapas do SDK na tela
+### Added: the SDK's stages on the screen
 
-Um passo do SDK era uma caixa cinza que virava verde. Entre "começou" e
-"acabou" havia quarenta minutos em que a tela não distinguia "baixando a página
-300 de 4.803" de "travado no handshake do Redshift".
+An SDK step was a grey box that turned green. Between "started" and "finished"
+there were forty minutes in which the screen could not tell "downloading page 300
+of 4,803" from "stuck on the Redshift handshake".
 
-Agora ele aparece como um grupo, com as etapas dentro — `check`, `extract`,
-`transform`, `load` — cada uma com estado, duração e o número que produziu. E um
-selo `SDK v0.45.0` dizendo com que versão foi construído.
+It now appears as a group, with the stages inside — `check`, `extract`,
+`transform`, `load` — each with a state, a duration and the number it produced.
+Plus an `SDK v0.45.0` badge saying which version it was built with.
 
-O transporte é o log que o motor já acompanha ao vivo: nenhuma porta nova,
-nenhuma permissão nova. Como quem reconhece a marca é o runner, o executor
-**local** mostra o mesmo.
+The transport is the log the engine already follows live: no new port, no new
+permission. Since what recognizes the marker is the runner, the **local** executor
+shows the same.
 
-Um passo que não é do SDK continua exatamente como era.
+A step that is not an SDK one stays exactly as it was.
 
-### Adicionado: `env:` e `secrets:` por passo
+### Added: `env:` and `secrets:` per step
 
-Um passo pode declarar as variáveis de que precisa, e um segredo do cluster é
-montado por nome:
+A step can declare the variables it needs, and a cluster secret is mounted by
+name:
 
 ```yaml
 nodes:
   - id: fetch_occurrences
     run: ./fetch
     env:
-      JANELA_DIAS: "7"
+      WINDOW_DAYS: "7"
     secrets:
       - GABRIEL_SESSION_COOKIE
 ```
 
-**Quem decide o que pode ser montado é a instalação**, não o YAML:
-`BREVIS_POD_ALLOWED_SECRETS` lista os segredos permitidos. Sem ela, nenhum
-segredo é montado — um workflow não deve conseguir alcançar um segredo só por
-citá-lo.
+**What may be mounted is the installation's decision**, not the YAML's:
+`BREVIS_POD_ALLOWED_SECRETS` lists the permitted secrets. Without it, no secret is
+mounted — a workflow should not get to reach a secret just by naming it.
 
-### Adicionado: a credencial rotacionada sobrevive ao pod
+### Added: the rotated credential survives the pod
 
-Volumes por passo, para que uma credencial renovada durante a execução não morra
-com o container que a renovou.
+Per-step volumes, so that a credential renewed during the run does not die with
+the container that renewed it.
