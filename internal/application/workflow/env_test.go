@@ -74,11 +74,11 @@ func TestASecretOnlyGoesToTheStepThatDeclaredIt(t *testing.T) {
 // the real value into the file -- and the file is in git.
 func TestSecretsRefusesWhatIsNotACoordinate(t *testing.T) {
 	casos := map[string]string{
-		"no slash":       "GABRIEL_SESSION_COOKIE: eyJhbGciOiJkaXIi==",
-		"secret vazio":    "GABRIEL_SESSION_COOKIE: /cookie",
-		"empty key":     "GABRIEL_SESSION_COOKIE: gabriel-session/",
-		"barra demais":    "GABRIEL_SESSION_COOKIE: ns/gabriel-session/cookie",
-		"nome invalido":   "GABRIEL-SESSION-COOKIE: gabriel-session/cookie",
+		"no slash":          "GABRIEL_SESSION_COOKIE: eyJhbGciOiJkaXIi==",
+		"secret vazio":      "GABRIEL_SESSION_COOKIE: /cookie",
+		"empty key":         "GABRIEL_SESSION_COOKIE: gabriel-session/",
+		"barra demais":      "GABRIEL_SESSION_COOKIE: ns/gabriel-session/cookie",
+		"nome invalido":     "GABRIEL-SESSION-COOKIE: gabriel-session/cookie",
 		"name with a space": "'GABRIEL COOKIE': gabriel-session/cookie",
 	}
 	for nome, linha := range casos {

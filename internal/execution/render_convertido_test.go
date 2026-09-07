@@ -14,33 +14,33 @@ func TestComandosConvertidosRenderizam(t *testing.T) {
 		nome      string
 		comando   string
 		params    map[string]string
-		contains    string
+		contains  string
 		naoContem string
 	}{
 		{
 			nome:      "lawsuit: dry_run=false NAO passa a flag",
 			comando:   `main.py {{ if .limit }} --limit {{ .limit }}{{ end }} {{ if eq .dry_run "true" }} --dry-run{{ end }} --rpm {{ .rpm }}`,
 			params:    map[string]string{"limit": "1000", "dry_run": "false", "rpm": "60"},
-			contains:    "--limit 1000",
+			contains:  "--limit 1000",
 			naoContem: "--dry-run",
 		},
 		{
-			nome:    "lawsuit: dry_run=true passa a flag",
-			comando: `main.py {{ if eq .dry_run "true" }} --dry-run{{ end }}`,
-			params:  map[string]string{"dry_run": "true"},
-			contains:  "--dry-run",
+			nome:     "lawsuit: dry_run=true passa a flag",
+			comando:  `main.py {{ if eq .dry_run "true" }} --dry-run{{ end }}`,
+			params:   map[string]string{"dry_run": "true"},
+			contains: "--dry-run",
 		},
 		{
-			nome:    "agents: an or over two falses",
-			comando: `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
-			params:  map[string]string{"full_refresh": "false", "load_full": "false"},
-			contains:  `"load_full":"false"`,
+			nome:     "agents: an or over two falses",
+			comando:  `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
+			params:   map[string]string{"full_refresh": "false", "load_full": "false"},
+			contains: `"load_full":"false"`,
 		},
 		{
-			nome:    "agents: an or with one true",
-			comando: `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
-			params:  map[string]string{"full_refresh": "false", "load_full": "true"},
-			contains:  `"load_full":"true"`,
+			nome:     "agents: an or with one true",
+			comando:  `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
+			params:   map[string]string{"full_refresh": "false", "load_full": "true"},
+			contains: `"load_full":"true"`,
 		},
 	}
 

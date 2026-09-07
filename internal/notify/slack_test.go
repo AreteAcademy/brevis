@@ -64,9 +64,9 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 		"`id`",                             // domain, coming from the tags
 		"FAILED",                           // status
 		"schedule",                         // origin
-		"exited with code 2",                // a causa
+		"exited with code 2",               // a causa
 		"brevis.example.com/runs/1f2e3d4c", // link direto
-		expectedLogicalDate(),               // data logica, no fuso de quem formata
+		expectedLogicalDate(),              // data logica, no fuso de quem formata
 	} {
 		if !strings.Contains(corpo, esperado) {
 			t.Errorf("the message is missing %q:\n%s", esperado, corpo)

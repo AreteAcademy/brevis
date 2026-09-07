@@ -17,10 +17,10 @@ import (
 // a concrete cost when it is wrong -- which is why each case says what it is.
 func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
-		nome     string
-		entrada  any
-		want string // the JSON that comes out
-		porque   string
+		nome    string
+		entrada any
+		want    string // the JSON that comes out
+		porque  string
 	}{
 		{
 			"NULL vira null", nil, `null`,

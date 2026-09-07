@@ -47,24 +47,24 @@ var destinations = map[string]struct {
 }{
 	"to.Files": {
 		writer:      to.Files{Path: "/tmp/brevis-cap"},
-		support:       support{dedup: false, createTable: false},
+		support:     support{dedup: false, createTable: false},
 		refusalHint: "Dedup",
 	},
 	"postgres.Table": {
-		writer: postgres.Table{DSN: "postgres://x/y", Name: "t"},
-		support:  support{dedup: true, createTable: false},
+		writer:  postgres.Table{DSN: "postgres://x/y", Name: "t"},
+		support: support{dedup: true, createTable: false},
 	},
 	"mysql.Table": {
-		writer: mysql.Table{DSN: "u@tcp(x)/y", Name: "t"},
-		support:  support{dedup: true, createTable: false},
+		writer:  mysql.Table{DSN: "u@tcp(x)/y", Name: "t"},
+		support: support{dedup: true, createTable: false},
 	},
 	"redshift.Table": {
-		writer: redshift.Table{DSN: "postgres://x/y", Name: "t"},
-		support:  support{dedup: true, createTable: false},
+		writer:  redshift.Table{DSN: "postgres://x/y", Name: "t"},
+		support: support{dedup: true, createTable: false},
 	},
 	"bigquery.Table": {
-		writer: bigquery.Table{Project: "p", Dataset: "d", Name: "t"},
-		support:  support{dedup: true, createTable: true},
+		writer:  bigquery.Table{Project: "p", Dataset: "d", Name: "t"},
+		support: support{dedup: true, createTable: true},
 	},
 }
 

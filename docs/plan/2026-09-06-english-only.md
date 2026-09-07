@@ -1,7 +1,7 @@
 # English only: closing every open thread
 
 **Written on** 2026-09-06 · **Base** `sdk/v0.51.0`, engine `v0.6.0`
-**Status** in progress
+**Status** threads A–I and §4 closed on 2026-09-06; §7 is what is left
 
 Contributors are joining from outside Brazil. The project's language is English
 — code, comments, identifiers, error messages, tests, commit messages and
@@ -29,8 +29,9 @@ function words in comment lines.
 | E | **Engine internals** — `internal/`, `cmd/` | 0 | ✅ done |
 | F | **Web** — `web/`, templates, the visible UI, and the identifiers `internal/` shares with them | 0 | ✅ done |
 | G | **Infra** — `.github/`, `deployments/`, `migrations/`, Makefile, Dockerfile, composes | 0 | ✅ done |
-| H | **Test comments** | 664 | whoever reads a failing test |
-| I | **Test function names** | ~235 | whoever reads a failing test's OUTPUT |
+| H | **Test comments** | 0 | ✅ done |
+| I | **Test function names** | 0 | ✅ done |
+| J | **Portuguese identifiers in code** | 170 | see §7 — found by finishing H |
 
 Deliberately **not** on the list, with the reason written down:
 
@@ -45,7 +46,12 @@ Deliberately **not** on the list, with the reason written down:
   `SDK_LOAD.md`, `SDK_CONSUMIDOR.md`. Each already carries a header saying it is
   not the current state.
 
-There is one exception worth making inside that rule, in §4.
+There is one exception worth making inside that rule, in §4 — **now done**.
+
+**`docs/phases/` stays too**, on the same grounds `docs/README.md` already gives
+for the specs: they record the orchestrator's build phases on the dates they
+happened. The §6 gate command below excludes them explicitly, which it did not
+before.
 
 **A third exception, from G.** The migrations' COLUMN names stay Portuguese —
 `criado_em`, `definicao`, `ultimo_slot` and their neighbours are an applied
@@ -127,6 +133,18 @@ user-facing: the whole Slack failure alert, and the fallback brand identity
 every installation without a `brand.yaml` gets. Both detectors are run from here
 on.
 
+**A thread reported at zero was not always at zero.** Finishing H meant running
+both detectors over the whole repository rather than over one area, and that
+found Portuguese still sitting in three threads that had been closed:
+`internal/graph/order.go`'s package doc and `internal/execution/kubernetes/`
+(thread E), `sdk/from/many.go` and `sdk/internal/checkpoint` (C), and three
+deployment YAMLs plus a compose (G). Plus `examples/` — thirteen runnable
+programs and three workflow YAMLs — which no thread had ever named, so no
+detector had ever been pointed at it.
+
+The lesson is about scope, not about the detectors: each thread ran its detector
+over its own paths, and a path in nobody's thread is in nobody's count.
+
 **Each area lands as its own commit, with the full suite green**: both modules'
 tests, `-race` on the engine, `golangci-lint` on both, and the four gates
 (`generated-check`, `peso-do-motor`, `pruning-check`, `consumer-check`).
@@ -139,9 +157,14 @@ tests, `-race` on the engine, `golangci-lint` on both, and the four gates
 breaks them. A contributor hitting the `v0.47.0` rename or the `v0.49.0` CSV
 change will find Portuguese exactly when they are least able to guess.
 
-**Translate the entries from `v0.40.0` on** — roughly 400 lines, the range
-anyone still upgrades across. Everything older keeps a header saying it predates
-the rule.
+**Done.** `CHANGELOG.md` from `v0.40.0` through `v0.52.0`, and all of
+`CHANGELOG-motor.md` — the engine's whole published history starts at `v0.4.0`,
+so the cut had nothing older to leave behind. A note at the top of each says the
+older entries predate the rule.
+
+Quoted "before" strings stay Portuguese: `"o campo %q vale %v, que não é um
+número"` is what the old code printed, and an entry that translates it stops
+being the record of what broke.
 
 This is the only place where the "records stay as written" rule bends, and it
 bends because that document has a live reader.
@@ -249,9 +272,53 @@ plan; noted so "everything" means everything.
 
 ```bash
 # zero, at the repository root
-rg -n '^\s*(//|--|#)' --glob '!docs/plan/**' --glob '!CHANGELOG*.md' \
+rg -n '^\s*(//|--|#)' \
+  --glob '!docs/plan/**' --glob '!docs/phases/**' --glob '!CHANGELOG*.md' \
+  --glob '!site/**' --glob '!docs/plan.md' --glob '!docs/gaps-yaml-vs-plano.md' \
+  --glob '!docs/SDK.md' --glob '!docs/SDK_V2.md' --glob '!docs/SDK_V9.md' \
+  --glob '!docs/SDK_LOAD.md' --glob '!docs/SDK_CONSUMIDOR.md' \
   | rg -c '\b(que|não|para|uma|por|como|sem|isso)\b'
 ```
 
-Plus: the four gates green, both modules' tests green, and a `CONTRIBUTING.md`
-that states the rule so the count stays at zero without anybody policing it.
+**It is at zero as of 2026-09-06.** Plus: the four gates green, both modules'
+tests green, and a `CONTRIBUTING.md` that states the rule so the count stays at
+zero without anybody policing it.
+
+That command counts **comment lines**, which is what every count in this plan
+measured. §7 is what it does not see.
+
+---
+
+## 7. What finishing H turned up: the identifiers
+
+The comment detectors run over comments. The code itself was never counted, and
+it is not clean:
+
+| | distinct Portuguese identifiers | exported |
+|---|---|---|
+| engine (`internal/`, `cmd/`, `web/`) | 145 | 41 |
+| `sdk/` | 25 | 4 |
+| `examples/` | 7 | 0 |
+
+The four exported SDK names are the deprecated aliases — `CampoJSON`,
+`CriarPorSQL`, `CriarPorSchema`, `ErrorContext` — and they **stay**, by the
+policy in §3 of the drivers plan: a name that shipped in a published version is
+kept as an alias held down by a test, and goes in v1. Nothing else in the SDK's
+public surface is Portuguese.
+
+The engine's 41 are all inside `internal/`, so none of them is anybody's API:
+`ErroDePasso`, `Portao`, `Etapa`, `Vagas`, `SecretsPermitidos`, `TetoDoLog`,
+`MontarPod`, `PassoJaTeveSucesso` and their neighbours. Renaming them is safe and
+mechanical — and it is exactly the shape of edit that mangled prose five times
+during H, so it wants the same method: rename, build, then read the diff for
+half-translated lines.
+
+**Not started here, deliberately.** It is a separate change with a separate
+diff, and putting it in the same commit as the test translations would have made
+both unreviewable.
+
+### The one on-disk name inside that count
+
+`internal/domain/run`'s `EstadoPT` is not a translation candidate: it maps a
+status to the Portuguese word the UI used to show. Whatever happens to the
+identifier, the *values* are a display decision, not code.
