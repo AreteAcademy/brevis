@@ -92,9 +92,11 @@ const (
 	contextRow  = 22 // marginTop 6 + one small line
 	statusRow   = 22 // marginTop 7 + the state and the duration
 
-	// A step's phases, drawn under its own content.
-	stageHeight = 30
-	stagesFoot  = 12 // so the last phase does not touch the card's edge
+	// A step's phases, drawn under its own content and INSIDE its card.
+	stageHeight = 30 // the pitch from one phase to the next
+	stageRow    = 24 // the pill itself; the remainder is the gap between them
+	stageInset  = 10 // left and right, so it does not touch the card's border
+	stagesFoot  = 12 // so the last phase does not touch the card's bottom
 
 	// Between two cards in the same column, and around a group's contents.
 	folgaVertical = 34
@@ -361,7 +363,14 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 					// Under the card's own content, measured rather than
 					// guessed. A fixed offset put the first phase on top of the
 					// status line the moment a card grew a row.
-					Position: position{X: 10, Y: cardHeight(data) + j*stageHeight},
+					Position: position{X: stageInset, Y: cardHeight(data) + j*stageHeight},
+					// Declared here, like the card's. It was 210 hard-coded in
+					// the island, plus 16 of padding and 2 of border -- 228
+					// inside a 230 card placed 10 from the left, so every pill
+					// hung 8px over the right edge.
+					Style: map[string]any{
+						"width": nodeWidth - 2*stageInset, "height": stageRow,
+					},
 					// Clicking a phase selects the STEP: the details panel belongs
 					// to the step, and a selectable phase would open an empty
 					// one.

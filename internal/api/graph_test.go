@@ -954,3 +954,76 @@ func TestTwoCardsInAColumnNeverTouch(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryPhaseFitsInsideItsCard.
+//
+// Two bugs in one geometry, both visible only once something rendered.
+//
+// The pill declared `width: 210` in the island while the card declared 230 in
+// the API -- one measurement in two places -- and 210 plus 16 of padding and 2
+// of border is 228, placed 10 from the left: every phase hung over the card's
+// right edge.
+//
+// And the card sized itself to its own last line while the phases are absolute
+// children positioned below it, so they sat on the page's background outside
+// the white box entirely.
+func TestEveryPhaseFitsInsideItsCard(t *testing.T) {
+	w := wf.Workflow{
+		Slug:  "phases",
+		Nodes: []wf.Node{{ID: "load", Run: "python load.py", Runtime: "python"}},
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := uuid.New()
+	ui := newUI(defsFake{w: w}, execsFake{
+		run: dom.Run{ID: id, WorkflowSlug: w.Slug, Status: dom.StatusRunning, Definition: definition},
+		states: map[string]postgres.NodeState{
+			"load": {NodeID: "load", Status: "running", SdkVersion: "0.54.0",
+				Stages: []postgres.Stage{
+					{Name: "check"}, {Name: "extract"}, {Name: "map"}, {Name: "load"},
+				}},
+		},
+	})
+	_, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
+
+	var card struct{ w, h int }
+	for _, n := range g.Nodes {
+		if n.ID == "load" {
+			card.w = int(n.Style["width"].(float64))
+			card.h = int(n.Style["height"].(float64))
+		}
+	}
+	if card.w == 0 || card.h == 0 {
+		t.Fatal("the card declared no size")
+	}
+
+	seen := 0
+	for _, n := range g.Nodes {
+		if n.ParentID != "load" {
+			continue
+		}
+		seen++
+		pw, ok := n.Style["width"].(float64)
+		if !ok {
+			t.Fatalf("%s declares no width, so the island has to invent one", n.ID)
+		}
+		ph, ok := n.Style["height"].(float64)
+		if !ok {
+			t.Fatalf("%s declares no height", n.ID)
+		}
+		if right := n.Position.X + int(pw); right > card.w {
+			t.Errorf("%s ends at %d, past the card's %d", n.ID, right, card.w)
+		}
+		if n.Position.X <= 0 {
+			t.Errorf("%s starts at %d, on the card's border", n.ID, n.Position.X)
+		}
+		if bottom := n.Position.Y + int(ph); bottom > card.h {
+			t.Errorf("%s ends at %d, past the card's %d", n.ID, bottom, card.h)
+		}
+	}
+	if seen != 4 {
+		t.Fatalf("%d phases were drawn, wanted 4", seen)
+	}
+}

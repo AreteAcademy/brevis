@@ -213,11 +213,13 @@
       "div",
       {
         style: {
-          // The API declares the width, so the card fills it rather than
-          // sizing to its own text: a column of cards that each chose their
-          // own width has ragged edges and the layout reserved one width for
-          // all of them anyway.
+          // The API declares the size, so the card fills it rather than sizing
+          // to its own text. The width keeps a column's edges straight; the
+          // HEIGHT matters when the step has phases, because they are absolute
+          // children and a card that stopped at its own last line left them
+          // sitting on the background outside it.
           width: "100%",
+          height: d.hasStages ? "100%" : undefined,
           boxSizing: "border-box",
           borderRadius: 14,
           border: "1px solid " + (d.status === "pending" ? LINE : "color-mix(in srgb, " + c.ring + " 40%, transparent)"),
@@ -426,7 +428,11 @@
         title: detail || "",
         style: {
           display: "flex", alignItems: "center", gap: 7,
-          width: 210, height: 24, padding: "0 8px",
+          // From the API, like the card's. Hard-coding 210 here and 230 there
+          // was two sources of truth for one measurement, and the padding and
+          // the border pushed the pill 8px past the card's right edge.
+          width: "100%", height: "100%", boxSizing: "border-box",
+          padding: "0 8px",
           borderRadius: 7,
           border: "1px solid " + (d.estado === "pending" ? LINE : "color-mix(in srgb, " + c.ring + " 28%, transparent)"),
           background: "color-mix(in srgb, " + c.ring + " 7%, transparent)",
