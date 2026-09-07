@@ -1,4 +1,4 @@
-// Package graph resolve ordem de execucao a partir do grafo do workflow.
+// Package graph resolves the execution order from the workflow's graph.
 package graph
 
 import (

@@ -79,9 +79,9 @@ func main() {
 				CreateTable: nil,
 			},
 
-			// O Schema é obrigatório justamente porque o engine PODE ligar o
-			// CreateTable: sem ele, a criação seria recusada no primeiro run
-			// dentro do Brevis, que é o único lugar onde ela acontece.
+			// The Schema is required precisely because the engine CAN turn
+			// CreateTable on: without it, the creation would be refused on the
+			// first run inside Brevis, which is the only place it happens.
 			Schema: sdk.Schema{
 				{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
 				{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},

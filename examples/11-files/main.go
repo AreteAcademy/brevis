@@ -1,16 +1,17 @@
-// Command 11-arquivos lê arquivos e escreve arquivos, sem nuvem nenhuma.
+// Command 11-files reads files and writes files, with no cloud at all.
 //
-// Roda de primeira:
+// It runs on the first try:
 //
-//	go run ./11-arquivos
+//	go run ./11-files
 //
-// O mesmo pipeline atende S3 e GCS trocando uma linha -- o esquema do caminho
-// diz o backend, e o Store é passado em vez de escolhido dentro do driver:
+// The same pipeline serves S3 and GCS by changing one line -- the path's scheme
+// says the backend, and the Store is passed in rather than chosen inside the
+// driver:
 //
-//	from.Files{Path: "s3://bucket/dia=1/*.ndjson", Store: s3.New(cliente)}
-//	to.Files{Path: "gs://bucket/landing/", Store: gcs.New(cliente)}
+//	from.Files{Path: "s3://bucket/day=1/*.ndjson", Store: s3.New(client)}
+//	to.Files{Path: "gs://bucket/landing/", Store: gcs.New(client)}
 //
-// É isso que faz este programa não compilar uma linha da AWS nem do Google.
+// That is what makes this program compile not one line of AWS or Google.
 package main
 
 import (
@@ -38,15 +39,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Duas "extrações" que já existiam em disco.
+	// Two "extractions" that already existed on disk.
 	semear(entrada, "2026-09-03.ndjson", `{"sku":"W-1","quantidade":3,"lixo":"x"}
 {"sku":"W-2","quantidade":9,"lixo":"y"}`)
 	semear(entrada, "2026-09-04.ndjson", `{"sku":"W-3","quantidade":1,"lixo":"z"}`)
 
 	ctx := context.Background()
 
-	// De onde vem. Os arquivos são lidos em ordem, sempre: um Key posicional
-	// depende disso, e sem ordem o ingestion_id mudaria entre execuções.
+	// Where it comes from. The files are always read in order: a positional Key
+	// depends on that, and with no order the ingestion_id would change between
+	// runs.
 	dados, err := sdk.Extract(ctx, sdk.Source{
 		From:    from.Files{Path: filepath.Join(entrada, "*.ndjson")},
 		Preview: 5,
@@ -55,10 +57,10 @@ func main() {
 		log.Fatalf("extract: %v", err)
 	}
 
-	// Que linha monta. "lixo" não é declarado, então não sai.
+	// What row it builds. "lixo" is not declared, so it does not come out.
 	dados = sdk.Transform(dados, sdk.Accept("sku", "quantidade"))
 
-	// Para onde vai, e com que colunas.
+	// Where it goes, and with which columns.
 	res, err := sdk.Load(ctx, dados, sdk.Target{
 		To: to.Files{
 			Path:        saida + "/",

@@ -7,40 +7,40 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// Os comandos que o conversor gera precisam RENDERIZAR com os padroes reais.
-// Um template que so falha na execucao custa uma madrugada.
+// The commands the converter generates have to RENDER with the real defaults. A
+// template that only fails at run time costs somebody a night.
 func TestComandosConvertidosRenderizam(t *testing.T) {
 	casos := []struct {
 		nome      string
 		comando   string
 		params    map[string]string
-		contem    string
+		contains    string
 		naoContem string
 	}{
 		{
 			nome:      "lawsuit: dry_run=false NAO passa a flag",
 			comando:   `main.py {{ if .limit }} --limit {{ .limit }}{{ end }} {{ if eq .dry_run "true" }} --dry-run{{ end }} --rpm {{ .rpm }}`,
 			params:    map[string]string{"limit": "1000", "dry_run": "false", "rpm": "60"},
-			contem:    "--limit 1000",
+			contains:    "--limit 1000",
 			naoContem: "--dry-run",
 		},
 		{
 			nome:    "lawsuit: dry_run=true passa a flag",
 			comando: `main.py {{ if eq .dry_run "true" }} --dry-run{{ end }}`,
 			params:  map[string]string{"dry_run": "true"},
-			contem:  "--dry-run",
+			contains:  "--dry-run",
 		},
 		{
-			nome:    "agents: or booleano com os dois falsos",
+			nome:    "agents: an or over two falses",
 			comando: `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
 			params:  map[string]string{"full_refresh": "false", "load_full": "false"},
-			contem:  `"load_full":"false"`,
+			contains:  `"load_full":"false"`,
 		},
 		{
-			nome:    "agents: or booleano com um verdadeiro",
+			nome:    "agents: an or with one true",
 			comando: `--vars '{"load_full":"{{ if or (eq .full_refresh "true") (eq .load_full "true") }}true{{ else }}false{{ end }}"}'`,
 			params:  map[string]string{"full_refresh": "false", "load_full": "true"},
-			contem:  `"load_full":"true"`,
+			contains:  `"load_full":"true"`,
 		},
 	}
 
@@ -48,13 +48,13 @@ func TestComandosConvertidosRenderizam(t *testing.T) {
 		t.Run(c.nome, func(t *testing.T) {
 			got, err := execution.Renderizar(c.comando, c.params)
 			if err != nil {
-				t.Fatalf("nao renderizou: %v", err)
+				t.Fatalf("it did not render: %v", err)
 			}
-			if !strings.Contains(got, c.contem) {
-				t.Errorf("faltou %q em: %s", c.contem, got)
+			if !strings.Contains(got, c.contains) {
+				t.Errorf("%q is missing from: %s", c.contains, got)
 			}
 			if c.naoContem != "" && strings.Contains(got, c.naoContem) {
-				t.Errorf("nao deveria conter %q: %s", c.naoContem, got)
+				t.Errorf("it should not contain %q: %s", c.naoContem, got)
 			}
 		})
 	}

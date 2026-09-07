@@ -25,7 +25,7 @@ func (f sdkSpeaker) Execute(context.Context, execution.TaskExec) (<-chan executi
 	ch := make(chan execution.Event, len(f.linhas)+2)
 	ch <- execution.Event{Kind: execution.EventStarted}
 	for _, l := range f.linhas {
-		ch <- execution.Event{Kind: execution.EventLog, NodeID: "coletar", Stream: "stdout", Message: l}
+		ch <- execution.Event{Kind: execution.EventLog, NodeID: "collectOutput", Stream: "stdout", Message: l}
 	}
 	ch <- execution.Event{Kind: execution.EventSucceeded}
 	close(ch)
@@ -72,7 +72,7 @@ func (r *spyReporter) Evento(e execution.Event) {
 // which does not know which executor produced the event. That is why the LOCAL
 // executor
 // ganha o mesmo de graca.
-func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
+func TestStagesArriveThroughTheStepsLog(t *testing.T) {
 	espiao := &spyPersister{}
 	tela := &spyReporter{}
 	r := app.Runner{
@@ -87,12 +87,12 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 			"pronto",
 		}},
 	}
-	if err := r.Run(context.Background(), workflowDeUmPasso()); err != nil {
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
 		t.Fatalf("run: %v", err)
 	}
 
 	if espiao.versao != "v0.44.1" {
-		t.Errorf("a versao nao chegou ao banco: %q", espiao.versao)
+		t.Errorf("the version never reached the database: %q", espiao.versao)
 	}
 	var etapas []app.EtapaGravada
 	if err := json.Unmarshal(espiao.etapas, &etapas); err != nil {
@@ -106,12 +106,12 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 	// stages, not the JSON that
 	// as transportou.
 	if strings.Contains(espiao.log, "@brevis:") {
-		t.Errorf("a linha marcada foi parar no log do passo:\n%s", espiao.log)
+		t.Errorf("the marked line ended up in the step's log:\n%s", espiao.log)
 	}
 	// Nem na tela do CLI.
 	for _, l := range tela.linhas {
 		if strings.Contains(l, "@brevis:") {
-			t.Errorf("a linha marcada foi para o Report: %q", l)
+			t.Errorf("the marked line went to the Report: %q", l)
 		}
 	}
 	// E a saida de verdade continua inteira.
@@ -124,17 +124,17 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 
 // A step that is not an SDK one records no stage at all -- and does not pay a
 // round trip to the database per log line.
-func TestPassoComumNaoRegistraEtapas(t *testing.T) {
+func TestAPlainStepRecordsNoStages(t *testing.T) {
 	espiao := &spyPersister{}
 	r := app.Runner{
 		RunID:    uuid.New(),
 		Persist:  espiao,
 		Processo: sdkSpeaker{linhas: []string{"compilando", "pronto"}},
 	}
-	if err := r.Run(context.Background(), workflowDeUmPasso()); err != nil {
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
 		t.Fatal(err)
 	}
 	if espiao.chamou != 0 {
-		t.Errorf("gravou etapas %d vezes para um passo que nao e do SDK", espiao.chamou)
+		t.Errorf("it wrote stages %d times for a step that is not an SDK one", espiao.chamou)
 	}
 }

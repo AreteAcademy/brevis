@@ -7,36 +7,36 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-func tarefa(nome string) execution.Task {
+func task(nome string) execution.Task {
 	return execution.FuncTask{Nome: nome, Fn: func(context.Context, execution.Input) error { return nil }}
 }
 
-// Sobrescrever um registro em silencio e um bug que so aparece em producao,
-// quando a task errada roda.
-func TestRegisterRecusaDuplicado(t *testing.T) {
+// Overwriting a registration in silence is a bug that only shows in production,
+// when the wrong task runs.
+func TestRegisterRefusesADuplicate(t *testing.T) {
 	r := execution.NewRegistry()
-	if err := r.Register(tarefa("sync")); err != nil {
+	if err := r.Register(task("sync")); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Register(tarefa("sync")); err == nil {
+	if err := r.Register(task("sync")); err == nil {
 		t.Fatal("esperava recusa de nome duplicado")
 	}
 }
 
-func TestRegisterRecusaNomeVazio(t *testing.T) {
-	if err := execution.NewRegistry().Register(tarefa("")); err == nil {
+func TestRegisterRefusesAnEmptyName(t *testing.T) {
+	if err := execution.NewRegistry().Register(task("")); err == nil {
 		t.Fatal("esperava recusa de nome vazio")
 	}
 }
 
-func TestNomesVemOrdenados(t *testing.T) {
+func TestTheNamesComeSorted(t *testing.T) {
 	r := execution.NewRegistry()
 	for _, n := range []string{"zeta", "alfa", "meio"} {
-		r.MustRegister(tarefa(n))
+		r.MustRegister(task(n))
 	}
 	got := r.Nomes()
 	if len(got) != 3 || got[0] != "alfa" || got[2] != "zeta" {
-		t.Errorf("Nomes() = %v, queria ordenado", got)
+		t.Errorf("Nomes() = %v, wanted sorted", got)
 	}
 }
 
@@ -47,9 +47,9 @@ func TestInputTextoValidaParametro(t *testing.T) {
 		t.Errorf("Texto(image) = %q, %v", v, err)
 	}
 	if _, err := in.Texto("ausente"); err == nil {
-		t.Error("esperava erro de parametro ausente")
+		t.Error("expected a missing-parameter error")
 	}
 	if _, err := in.Texto("porta"); err == nil {
-		t.Error("esperava erro de tipo: porta e int, nao texto")
+		t.Error("expected a type error: porta is an int, not text")
 	}
 }

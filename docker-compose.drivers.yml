@@ -22,8 +22,7 @@ services:
       retries: 10
 
   # For phases 2 and 3. They come up together because one compose is one less
-  # thing
-  # para lembrar.
+  # thing to remember.
   postgres:
     image: postgres:17-alpine
     environment:

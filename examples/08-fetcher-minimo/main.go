@@ -56,7 +56,7 @@ func main() {
 				return sdk.Key("id")(r)
 			}),
 
-			// As duas do SDK, na mesma cadeia que as outras.
+			// The SDK's two, in the same chain as the rest.
 			sdk.IngestionID("provider", "entity", "source_key", "created_at"),
 			sdk.IngestionLoadedAt(),
 		},

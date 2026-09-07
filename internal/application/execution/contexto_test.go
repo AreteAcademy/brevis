@@ -16,7 +16,7 @@ import (
 // capturer keeps the TaskExec the runner assembled, so the environment reaching
 // the step can be checked.
 type capturer struct {
-	tarefa execution.TaskExec
+	task execution.TaskExec
 }
 
 func (c *capturer) Name() string { return "capturer" }
@@ -24,7 +24,7 @@ func (c *capturer) Name() string { return "capturer" }
 func (c *capturer) Cancel(ctx context.Context, execID string) error { return nil }
 
 func (c *capturer) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
-	c.tarefa = t
+	c.task = t
 	ch := make(chan execution.Event, 2)
 	ch <- execution.Event{Kind: execution.EventStarted}
 	ch <- execution.Event{Kind: execution.EventSucceeded}
@@ -46,28 +46,28 @@ func (h *historico) PassoJaTeveSucesso(ctx context.Context, slug, nodeID string,
 	return h.jaTeve, h.err
 }
 
-func workflowDeUmPasso() wf.Workflow {
+func oneStepWorkflow() wf.Workflow {
 	return wf.Workflow{
 		Slug:  "clima",
-		Nodes: []wf.Node{{ID: "coletar", Run: "true"}},
+		Nodes: []wf.Node{{ID: "collectOutput", Run: "true"}},
 	}
 }
 
-func rodar(t *testing.T, r app.Runner) execution.TaskExec {
+func runStep(t *testing.T, r app.Runner) execution.TaskExec {
 	t.Helper()
 	cap := &capturer{}
 	r.Processo = cap
-	if err := r.Run(context.Background(), workflowDeUmPasso()); err != nil {
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	return cap.tarefa
+	return cap.task
 }
 
-func TestAmbienteDoPassoCarregaOContextoDoRun(t *testing.T) {
+func TestTheStepsEnvironmentCarriesTheRunsContext(t *testing.T) {
 	id := uuid.New()
 	quando := time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC)
 
-	tarefa := rodar(t, app.Runner{
+	task := runStep(t, app.Runner{
 		RunID:       id,
 		Params:      map[string]string{"load_full": "true"},
 		Trigger:     "backfill",
@@ -75,134 +75,134 @@ func TestAmbienteDoPassoCarregaOContextoDoRun(t *testing.T) {
 		Historico:   &historico{jaTeve: false},
 	})
 
-	if tarefa.Env["BREVIS_RUN_ID"] != id.String() {
-		t.Errorf("BREVIS_RUN_ID = %q", tarefa.Env["BREVIS_RUN_ID"])
+	if task.Env["BREVIS_RUN_ID"] != id.String() {
+		t.Errorf("BREVIS_RUN_ID = %q", task.Env["BREVIS_RUN_ID"])
 	}
-	if tarefa.Env["BREVIS_RUN_FIRST"] != "true" {
-		t.Errorf("sem sucesso anterior, o passo roda pela primeira vez: %q", tarefa.Env["BREVIS_RUN_FIRST"])
+	if task.Env["BREVIS_RUN_FIRST"] != "true" {
+		t.Errorf("with no previous success the step runs for the first time: %q", task.Env["BREVIS_RUN_FIRST"])
 	}
-	if tarefa.Env["BREVIS_RUN_TRIGGER"] != "backfill" {
-		t.Errorf("BREVIS_RUN_TRIGGER = %q", tarefa.Env["BREVIS_RUN_TRIGGER"])
+	if task.Env["BREVIS_RUN_TRIGGER"] != "backfill" {
+		t.Errorf("BREVIS_RUN_TRIGGER = %q", task.Env["BREVIS_RUN_TRIGGER"])
 	}
-	if tarefa.Env["BREVIS_RUN_LOGICAL_DATE"] != "2026-09-03T00:00:00Z" {
-		t.Errorf("BREVIS_RUN_LOGICAL_DATE = %q", tarefa.Env["BREVIS_RUN_LOGICAL_DATE"])
+	if task.Env["BREVIS_RUN_LOGICAL_DATE"] != "2026-09-03T00:00:00Z" {
+		t.Errorf("BREVIS_RUN_LOGICAL_DATE = %q", task.Env["BREVIS_RUN_LOGICAL_DATE"])
 	}
 
 	var params map[string]string
-	if err := json.Unmarshal([]byte(tarefa.Env["BREVIS_RUN_PARAMS"]), &params); err != nil {
-		t.Fatalf("BREVIS_RUN_PARAMS nao e JSON: %v", err)
+	if err := json.Unmarshal([]byte(task.Env["BREVIS_RUN_PARAMS"]), &params); err != nil {
+		t.Fatalf("BREVIS_RUN_PARAMS is not JSON: %v", err)
 	}
 	if params["load_full"] != "true" {
 		t.Errorf("params = %v", params)
 	}
 }
 
-func TestPrimeiraExecucaoEPorPassoNaoPorWorkflow(t *testing.T) {
+func TestTheFirstRunIsPerStepNotPerWorkflow(t *testing.T) {
 	// A workflow with three fetchers writing into three tables would create only
 	// the first step's if the question were about the whole workflow.
 	h := &historico{jaTeve: false}
 	id := uuid.New()
 
-	rodar(t, app.Runner{RunID: id, Historico: h})
+	runStep(t, app.Runner{RunID: id, Historico: h})
 
-	if h.slug != "clima" || h.nodeID != "coletar" {
-		t.Errorf("a pergunta tem de ser por (workflow, passo): %q / %q", h.slug, h.nodeID)
+	if h.slug != "clima" || h.nodeID != "collectOutput" {
+		t.Errorf("the question has to be per (workflow, step): %q / %q", h.slug, h.nodeID)
 	}
 	// The current run itself must not count as a previous success.
 	if h.exceto != id {
-		t.Errorf("o run corrente tem de ser excluido da consulta: %v", h.exceto)
+		t.Errorf("the current run has to be excluded from the query: %v", h.exceto)
 	}
 }
 
-func TestPassoComSucessoAnteriorNaoEPrimeiro(t *testing.T) {
-	tarefa := rodar(t, app.Runner{RunID: uuid.New(), Historico: &historico{jaTeve: true}})
+func TestAStepWithAPreviousSuccessIsNotTheFirst(t *testing.T) {
+	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{jaTeve: true}})
 
-	if tarefa.Env["BREVIS_RUN_FIRST"] != "false" {
-		t.Errorf("ja houve sucesso, entao nao e a primeira: %q", tarefa.Env["BREVIS_RUN_FIRST"])
+	if task.Env["BREVIS_RUN_FIRST"] != "false" {
+		t.Errorf("there was a success already, so it is not the first: %q", task.Env["BREVIS_RUN_FIRST"])
 	}
 }
 
-func TestSemHistoricoNaoInventaPrimeiraExecucao(t *testing.T) {
+func TestWithNoHistoryItInventsNoFirstRun(t *testing.T) {
 	// Creating a table without being sure is worse than not creating it:
 	// whoever wants one asks
 	// explicitamente no codigo do fetcher.
-	tarefa := rodar(t, app.Runner{RunID: uuid.New()})
+	task := runStep(t, app.Runner{RunID: uuid.New()})
 
-	if tarefa.Env["BREVIS_RUN_FIRST"] != "false" {
-		t.Errorf("sem historico configurado a resposta e nao: %q", tarefa.Env["BREVIS_RUN_FIRST"])
+	if task.Env["BREVIS_RUN_FIRST"] != "false" {
+		t.Errorf("with no history configured the answer is no: %q", task.Env["BREVIS_RUN_FIRST"])
 	}
 }
 
-func TestFalhaNaConsultaNaoViraCriacaoDeTabela(t *testing.T) {
+func TestAQueryFailureDoesNotBecomeATableCreation(t *testing.T) {
 	h := &historico{err: context.DeadlineExceeded}
-	tarefa := rodar(t, app.Runner{RunID: uuid.New(), Historico: h})
+	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: h})
 
-	if tarefa.Env["BREVIS_RUN_FIRST"] != "false" {
-		t.Errorf("banco fora do ar nao pode virar DDL: %q", tarefa.Env["BREVIS_RUN_FIRST"])
+	if task.Env["BREVIS_RUN_FIRST"] != "false" {
+		t.Errorf("a database that is down must not become DDL: %q", task.Env["BREVIS_RUN_FIRST"])
 	}
 }
 
-func TestAmbienteDoRunnerGanhaEmColisao(t *testing.T) {
+func TestTheRunnersEnvironmentWinsACollision(t *testing.T) {
 	// If somebody set the variable in the runner's configuration, they meant to.
-	tarefa := rodar(t, app.Runner{
+	task := runStep(t, app.Runner{
 		RunID:     uuid.New(),
 		Historico: &historico{jaTeve: false},
 		Env:       map[string]string{"BREVIS_RUN_FIRST": "false", "OUTRA": "coisa"},
 	})
 
-	if tarefa.Env["BREVIS_RUN_FIRST"] != "false" {
-		t.Error("configuracao explicita do runner tem de vencer o valor calculado")
+	if task.Env["BREVIS_RUN_FIRST"] != "false" {
+		t.Error("the runner's explicit configuration has to beat the computed value")
 	}
-	if tarefa.Env["OUTRA"] != "coisa" {
-		t.Error("o resto do ambiente do runner tem de sobreviver")
+	if task.Env["OUTRA"] != "coisa" {
+		t.Error("the rest of the runner's environment has to survive")
 	}
-	if tarefa.Env["BREVIS_RUN_ID"] == "" {
-		t.Error("as variaveis sem colisao continuam chegando")
-	}
-}
-
-func TestSemParamsNaoInjetaVariavelVazia(t *testing.T) {
-	tarefa := rodar(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
-
-	if _, existe := tarefa.Env["BREVIS_RUN_PARAMS"]; existe {
-		t.Error("sem params, a variavel nao deve existir em vez de existir vazia")
-	}
-	if _, existe := tarefa.Env["BREVIS_RUN_TRIGGER"]; existe {
-		t.Error("sem trigger, idem")
+	if task.Env["BREVIS_RUN_ID"] == "" {
+		t.Error("the variables with no collision still arrive")
 	}
 }
 
-func TestSemRunIDNaoInventaExecucaoGerenciada(t *testing.T) {
+func TestWithNoParamsItInjectsNoEmptyVariable(t *testing.T) {
+	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
+
+	if _, existe := task.Env["BREVIS_RUN_PARAMS"]; existe {
+		t.Error("with no params the variable should not exist rather than exist empty")
+	}
+	if _, existe := task.Env["BREVIS_RUN_TRIGGER"]; existe {
+		t.Error("same for no trigger")
+	}
+}
+
+func TestWithNoRunIDItInventsNoManagedRun(t *testing.T) {
 	// `brevis run` executes a YAML on the spot and belongs to no history.
 	// The SDK decides it is under the engine by the PRESENCE of the id, so
 	// injecting the zero UUID would make a hand-run fetcher log "running under
 	// Brevis" with
 	// um id inventado.
-	tarefa := rodar(t, app.Runner{
+	task := runStep(t, app.Runner{
 		Params:    map[string]string{"create_table": "true"},
 		Historico: &historico{jaTeve: false},
 	})
 
 	for _, v := range []string{"BREVIS_RUN_ID", "BREVIS_RUN_FIRST", "BREVIS_RUN_ATTEMPT"} {
-		if _, existe := tarefa.Env[v]; existe {
-			t.Errorf("%s nao devia existir sem um run de verdade: %q", v, tarefa.Env[v])
+		if _, existe := task.Env[v]; existe {
+			t.Errorf("%s should not exist without a real run: %q", v, task.Env[v])
 		}
 	}
 
 	// The params still go: `--param` is how input is passed on that path.
-	if tarefa.Env["BREVIS_RUN_PARAMS"] == "" {
-		t.Error("os params tem de chegar ao passo mesmo sem run gerenciado")
+	if task.Env["BREVIS_RUN_PARAMS"] == "" {
+		t.Error("the params have to reach the step even with no managed run")
 	}
 }
 
-func TestTentativaComecaEmZeroComoNoBanco(t *testing.T) {
+func TestTheAttemptStartsAtZeroAsInTheDatabase(t *testing.T) {
 	// The task_runs.attempt column has DEFAULT 0, and the pod's name derives
 	// from it.
 	// Diverging here would make the step report an attempt that does not exist.
-	tarefa := rodar(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
+	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
 
-	if tarefa.Env["BREVIS_RUN_ATTEMPT"] != "0" {
-		t.Errorf("primeira tentativa = %q, esperado \"0\"", tarefa.Env["BREVIS_RUN_ATTEMPT"])
+	if task.Env["BREVIS_RUN_ATTEMPT"] != "0" {
+		t.Errorf("first attempt = %q, expected \"0\"", task.Env["BREVIS_RUN_ATTEMPT"])
 	}
 }
 
@@ -216,7 +216,7 @@ func TestTheDispatchersPath(t *testing.T) {
 	id := uuid.New()
 	quando := time.Date(2026, 9, 3, 4, 0, 0, 0, time.UTC)
 
-	tarefa := rodar(t, app.Runner{
+	task := runStep(t, app.Runner{
 		RunID:          id,
 		TentativaDoRun: 0,
 		Params:         map[string]string{"load_full": "true"},
@@ -227,8 +227,8 @@ func TestTheDispatchersPath(t *testing.T) {
 	})
 
 	// The tasks' environment survives.
-	if tarefa.Env["PATH"] == "" || tarefa.Env["HOME"] == "" {
-		t.Error("o ambiente configurado das tasks tem de continuar chegando")
+	if task.Env["PATH"] == "" || task.Env["HOME"] == "" {
+		t.Error("the tasks' configured environment has to keep arriving")
 	}
 
 	// E o contexto do run chega junto.
@@ -241,8 +241,8 @@ func TestTheDispatchersPath(t *testing.T) {
 		"BREVIS_RUN_PARAMS":       `{"load_full":"true"}`,
 	}
 	for k, v := range esperado {
-		if tarefa.Env[k] != v {
-			t.Errorf("%s = %q, esperado %q", k, tarefa.Env[k], v)
+		if task.Env[k] != v {
+			t.Errorf("%s = %q, expected %q", k, task.Env[k], v)
 		}
 	}
 }

@@ -6,28 +6,28 @@ import (
 	"testing"
 )
 
-// A poda de dependência é o motivo de os drivers viverem em subpacotes, e é
-// medível -- então é afirmada, não prometida.
+// Dependency pruning is why the drivers live in subpackages, and it is
+// measurable -- so it is asserted, not promised.
 //
-// Antes da fase 0 a raiz importava sdk/load, que importa o BigQuery: 458
-// pacotes e 21 MB de binário para quem quisesse fazer Postgres -> Postgres.
-// Go poda por pacote importado, nunca por campo usado, então a única forma de
-// não pagar por um driver é não importar o pacote dele.
-func TestQuemNaoUsaBigQueryNaoCompilaBigQuery(t *testing.T) {
+// Before phase 0 the root imported sdk/load, which imports BigQuery: 458 packages
+// and 21 MB of binary for anyone who wanted to do Postgres -> Postgres. Go prunes
+// by imported package, never by used field, so the only way not to pay for a
+// driver is not to import its package.
+func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 	casos := []struct {
 		nome     string
 		pacotes  []string
 		proibido bool
 	}{
-		{"só a raiz", []string{"github.com/AreteAcademy/brevis/sdk"}, true},
+		{"the root alone", []string{"github.com/AreteAcademy/brevis/sdk"}, true},
 		{"raiz + from", []string{
 			"github.com/AreteAcademy/brevis/sdk",
 			"github.com/AreteAcademy/brevis/sdk/from",
 		}, true},
-		// Um pipeline de arquivos inteiro -- from e to -- ainda não traz o
-		// BigQuery. Este caso faltava na v0.20.0, e sem ele o defeito passou:
-		// to.BigQuery e to.Files viviam no mesmo pacote, então escrever um
-		// arquivo compilava o Google.
+		// A whole files pipeline -- from and to -- still does not pull BigQuery
+		// in. This case was missing in v0.20.0, and without it the defect got
+		// through: to.BigQuery and to.Files lived in the same package, so writing
+		// a file compiled Google.
 		{"raiz + from + to (arquivos)", []string{
 			"github.com/AreteAcademy/brevis/sdk",
 			"github.com/AreteAcademy/brevis/sdk/from",
@@ -35,7 +35,7 @@ func TestQuemNaoUsaBigQueryNaoCompilaBigQuery(t *testing.T) {
 		}, true},
 
 		// E o controle: quem pede o BigQuery recebe o BigQuery. Sem isto, o
-		// teste passaria com um SDK que não carrega nada.
+		// test would pass with an SDK that loads nothing.
 		{"raiz + to/bigquery", []string{
 			"github.com/AreteAcademy/brevis/sdk",
 			"github.com/AreteAcademy/brevis/sdk/to/bigquery",
@@ -47,29 +47,29 @@ func TestQuemNaoUsaBigQueryNaoCompilaBigQuery(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), "cloud.google.com/go/bigquery")
 
 			if c.proibido && carrega {
-				t.Error("o BigQuery entrou no grafo de quem não o importou")
+				t.Error("BigQuery got into the graph of somebody who did not import it")
 			}
 			if !c.proibido && !carrega {
-				t.Error("quem importa to.BigQuery tem de receber o BigQuery; " +
-					"sem isto o teste acima não prova nada")
+				t.Error("importing to.BigQuery has to bring BigQuery in; " +
+					"without this the test above proves nothing")
 			}
 		})
 	}
 }
 
-// O mesmo raciocínio para os backends de object storage. from.Files serve
-// disco, S3 e GCS, mas o backend é um valor -- então ler um CSV local não
-// compila a AWS nem o Google. Com os três num pacote só, compilaria.
-func TestQuemLeArquivoLocalNaoCompilaNuvem(t *testing.T) {
+// The same reasoning for the object-storage backends. from.Files serves disk, S3
+// and GCS, but the backend is a value -- so reading a local CSV compiles neither
+// AWS nor Google. With the three in a single package, it would.
+func TestReadingALocalFileCompilesNoCloud(t *testing.T) {
 	casos := []struct {
 		nome     string
 		pacotes  []string
 		procura  string
 		esperado bool
 	}{
-		{"from sozinho não traz a AWS", []string{
+		{"from on its own does not bring AWS in", []string{
 			"github.com/AreteAcademy/brevis/sdk/from"}, "aws-sdk-go", false},
-		{"from sozinho não traz o Google", []string{
+		{"from on its own does not bring Google in", []string{
 			"github.com/AreteAcademy/brevis/sdk/from"}, "cloud.google.com", false},
 
 		// Os controles: quem pede o backend recebe o backend.
@@ -77,7 +77,7 @@ func TestQuemLeArquivoLocalNaoCompilaNuvem(t *testing.T) {
 			"github.com/AreteAcademy/brevis/sdk/store/s3"}, "aws-sdk-go", true},
 		{"store/gcs traz o Google", []string{
 			"github.com/AreteAcademy/brevis/sdk/store/gcs"}, "cloud.google.com", true},
-		{"store/s3 não traz o Google", []string{
+		{"store/s3 does not bring Google in", []string{
 			"github.com/AreteAcademy/brevis/sdk/store/s3"}, "cloud.google.com", false},
 	}
 
@@ -85,14 +85,14 @@ func TestQuemLeArquivoLocalNaoCompilaNuvem(t *testing.T) {
 		t.Run(c.nome, func(t *testing.T) {
 			carrega := strings.Contains(deps(t, c.pacotes...), c.procura)
 			if carrega != c.esperado {
-				t.Errorf("carrega %q = %v, esperado %v", c.procura, carrega, c.esperado)
+				t.Errorf("carries %q = %v, expected %v", c.procura, carrega, c.esperado)
 			}
 		})
 	}
 }
 
-// deps roda no módulo do sdk, que é quem declara essas dependências. Rodar
-// daqui só resolveria o que o módulo examples já importa.
+// deps runs in the sdk module, which is what declares those dependencies. Running
+// it from here would only resolve what the examples module already imports.
 func deps(t *testing.T, pacotes ...string) string {
 	t.Helper()
 	cmd := exec.Command("go", append([]string{"list", "-deps"}, pacotes...)...)

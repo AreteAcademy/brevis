@@ -160,7 +160,7 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 		wg.Add(2)
 		go func() { defer wg.Done(); repassar(stdout, "stdout", t.NodeID, eventos) }()
 		go func() { defer wg.Done(); repassar(stderr, "stderr", t.NodeID, eventos) }()
-		wg.Wait() // drenar ANTES do Wait: fechar os pipes cedo perderia as ultimas linhas
+		wg.Wait() // drain BEFORE Wait: closing the pipes early would lose the last lines
 
 		err := cmd.Wait()
 		code := cmd.ProcessState.ExitCode()

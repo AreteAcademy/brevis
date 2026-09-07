@@ -13,26 +13,27 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
 )
 
-// Escrito de fora do módulo do SDK de propósito.
+// Written from outside the SDK's module on purpose.
 //
-// A mesma classe de defeito passou três vezes por testes que viviam dentro do
-// pacote e provavam o que o autor enxergava, não o que um consumidor
-// consegue: Data.Stats() que não existia, três With* sem re-export, e o
-// cmd/brevis que o CI não construía.
+// The same class of defect got past tests three times when those tests lived
+// inside the package and proved what the author could see, rather than what a
+// consumer can reach: a Data.Stats() that did not exist, three With* options with
+// no re-export, and the cmd/brevis CI never built.
 //
-// Este pacote está no módulo examples, que tem replace para ../sdk. Ele
-// compila contra a árvore de trabalho e roda no CI, então uma quebra na
-// superfície pública aparece aqui antes de virar release.
+// This package is in the examples module, which has a replace to ../sdk. It
+// compiles against the working tree and runs in CI, so a break in the public
+// surface shows up here before it becomes a release.
 
-func fonte(t *testing.T) *httptest.Server {
+func source(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"id":"a","v":1}`))
 	}))
 }
 
-// executa roda o Pipeline como o binário faria e devolve o que foi logado.
-func executa(t *testing.T, p sdk.Pipeline) string {
+// run executes the Pipeline the way the binary would and returns what was
+// logged.
+func run(t *testing.T, p sdk.Pipeline) string {
 	t.Helper()
 	r, w, _ := os.Pipe()
 	stderr := os.Stderr
@@ -65,44 +66,44 @@ func pipeline(url string) sdk.Pipeline {
 			To: bigquery.Table{
 				Project: "p",
 				Name:    "prova",
-				// nil: quem decide é o engine, ou ninguém.
+				// nil: the engine decides, or nobody does.
 				CreateTable: nil,
 			},
 		},
 	}
 }
 
-func TestSemEngineNadaAcontece(t *testing.T) {
-	srv := fonte(t)
+func TestWithNoEngineNothingHappens(t *testing.T) {
+	srv := source(t)
 	defer srv.Close()
 
-	log := executa(t, pipeline(srv.URL))
+	log := run(t, pipeline(srv.URL))
 
 	if strings.Contains(log, "under Brevis") {
-		t.Error("rodando à mão, o fetcher não deve nem saber que isso existe")
+		t.Error("run by hand, the fetcher should not even know this exists")
 	}
 }
 
-func TestComEngineOFetcherSabeQueERodadoPorEle(t *testing.T) {
-	srv := fonte(t)
+func TestWithTheEngineTheFetcherKnowsItIsRunByIt(t *testing.T) {
+	srv := source(t)
 	defer srv.Close()
 
 	t.Setenv("BREVIS_RUN_ID", "run-1")
 	t.Setenv("BREVIS_RUN_FIRST", "true")
 	t.Setenv("BREVIS_RUN_ATTEMPT", "1")
 
-	log := executa(t, pipeline(srv.URL))
+	log := run(t, pipeline(srv.URL))
 
 	if !strings.Contains(log, "under Brevis") {
-		t.Errorf("o contexto do engine não chegou: %s", log)
+		t.Errorf("the engine's context did not arrive: %s", log)
 	}
 	if !strings.Contains(log, "first=true") {
-		t.Errorf("a primeira execução não foi reportada: %s", log)
+		t.Errorf("the first run was not reported: %s", log)
 	}
 }
 
-func TestBeforeEnxergaOsParams(t *testing.T) {
-	srv := fonte(t)
+func TestBeforeSeesTheParams(t *testing.T) {
+	srv := source(t)
 	defer srv.Close()
 
 	t.Setenv("BREVIS_RUN_ID", "run-1")
@@ -114,36 +115,36 @@ func TestBeforeEnxergaOsParams(t *testing.T) {
 		viu = p.Run.Params["load_full"]
 		return nil
 	}
-	executa(t, p)
+	run(t, p)
 
 	if viu != "true" {
 		t.Errorf(`p.Run.Params["load_full"] = %q, esperado "true"`, viu)
 	}
 }
 
-func TestParamsNuncaENulo(t *testing.T) {
-	srv := fonte(t)
+func TestParamsIsNeverNil(t *testing.T) {
+	srv := source(t)
 	defer srv.Close()
 
-	// Sem engine algum: ler uma chave ausente não pode estourar.
+	// With no engine at all: reading a missing key must not blow up.
 	p := pipeline(srv.URL)
 	p.Before = func(ctx context.Context, p *sdk.Pipeline) error {
 		_ = p.Run.Params["qualquer"]
 		return nil
 	}
-	executa(t, p) // um panic aqui reprova o teste
+	run(t, p) // a panic here fails the test
 }
 
 func TestBoolEstaExportado(t *testing.T) {
-	// sdk.Bool é a única forma de expressar a recusa explícita, e três opções
-	// já ficaram inalcançáveis por não terem sido re-exportadas.
+	// sdk.Bool is the only way to express an explicit refusal, and three options
+	// have already ended up unreachable for not having been re-exported.
 	if v := sdk.Bool(false); v == nil || *v {
-		t.Error("sdk.Bool(false) deveria devolver um ponteiro para false")
+		t.Error("sdk.Bool(false) should return a pointer to false")
 	}
 }
 
-func TestConstantesDoEngineEstaoExportadas(t *testing.T) {
-	// O consumidor precisa delas para escrever um teste como este.
+func TestTheEnginesConstantsAreExported(t *testing.T) {
+	// The consumer needs them to write a test like this one.
 	for nome, v := range map[string]string{
 		"EnvRunID":         sdk.EnvRunID,
 		"EnvRunFirst":      sdk.EnvRunFirst,
@@ -151,15 +152,16 @@ func TestConstantesDoEngineEstaoExportadas(t *testing.T) {
 		"ParamCreateTable": sdk.ParamCreateTable,
 	} {
 		if v == "" {
-			t.Errorf("%s está vazia", nome)
+			t.Errorf("%s is empty", nome)
 		}
 	}
 }
 
-// O preview é feito para o consumidor ver o dado. Se ele não alcança os
-// campos, ou se o writer não é dele, o recurso não existe para quem importa.
-func TestConsumidorLigaOPreviewEEscolheOnde(t *testing.T) {
-	srv := fonte(t)
+// The preview exists so the consumer can see the data. If they cannot reach the
+// fields, or if the writer is not theirs, the feature does not exist for the
+// person who matters.
+func TestAConsumerTurnsThePreviewOnAndPicksWhere(t *testing.T) {
+	srv := source(t)
 
 	var out strings.Builder
 	data, err := sdk.Extract(context.Background(), sdk.Source{
@@ -175,16 +177,16 @@ func TestConsumidorLigaOPreviewEEscolheOnde(t *testing.T) {
 	}
 
 	if out.Len() == 0 {
-		t.Fatal("o consumidor pediu preview e nada foi escrito no writer dele")
+		t.Fatal("the consumer asked for a preview and nothing was written to their writer")
 	}
 	if !strings.Contains(out.String(), "1 row · 2 columns") {
-		t.Errorf("o rodapé não veio junto:\n%s", out.String())
+		t.Errorf("the footer did not come along:\n%s", out.String())
 	}
 }
 
-// Um número que o consumidor não consegue ler é um número que não existe.
-func TestConsumidorLeOTamanhoDoQueFoiExtraido(t *testing.T) {
-	srv := fonte(t)
+// A number the consumer cannot read is a number that does not exist.
+func TestAConsumerReadsTheSizeOfWhatWasExtracted(t *testing.T) {
+	srv := source(t)
 
 	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
@@ -198,35 +200,37 @@ func TestConsumidorLeOTamanhoDoQueFoiExtraido(t *testing.T) {
 	}
 }
 
-// O payload é do cliente. Sem o bloco Metadata o SDK não pede provenance, não lê
-// campo nenhum do registro, e não escreve nada além do que recebeu.
-func TestConsumidorCarregaSemProvenienciaNenhuma(t *testing.T) {
+// The payload is the client's. With no Metadata block the SDK asks for no
+// provenance, reads no field of the record, and writes nothing beyond what it
+// received.
+func TestAConsumerLoadsWithNoProvenanceAtAll(t *testing.T) {
 	t.Setenv("GOOGLE_PROJECT_ID", "um-projeto")
 
-	srv := fonte(t)
+	srv := source(t)
 	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
 
-	// Nem Provider, nem Entity, nem Key. Só onde escrever.
+	// No Provider, no Entity, no Key. Only where to write.
 	_, err = sdk.Load(context.Background(), data, sdk.Target{To: bigquery.Table{Name: "minha_tabela"}})
 
-	// Sem credencial o load não chega ao BigQuery, e isso basta: o que este
-	// teste prova é que a validação da fachada deixa passar. Um erro citando
-	// Provider, Entity ou Key seria a regressão.
+	// With no credential the load never reaches BigQuery, and that is enough: what
+	// this test proves is that the facade's validation lets it through. An error
+	// naming Provider, Entity or Key would be the regression.
 	if err != nil {
 		for _, proibido := range []string{"Provider", "Entity", "Key"} {
 			if strings.Contains(err.Error(), proibido) {
-				t.Errorf("o SDK ainda exige %s sem o bloco Metadata: %v", proibido, err)
+				t.Errorf("the SDK still demands %s with no Metadata block: %v", proibido, err)
 			}
 		}
 	}
 }
 
-// E com a flag ligada ele cobra, porque aí tem o que construir.
-func TestConsumidorComponeAsColunasNoTransform(t *testing.T) {
-	srv := fonte(t)
+// And with the flag on it does demand them, because then there is something to
+// build.
+func TestAConsumerComposesTheColumnsInTransform(t *testing.T) {
+	srv := source(t)
 
 	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
@@ -244,17 +248,17 @@ func TestConsumidorComponeAsColunasNoTransform(t *testing.T) {
 			t.Fatalf("registro %d mudou de forma: %T", n, env.Payload)
 		}
 		if len(obj) != 1 {
-			t.Errorf("registro %d tem %d campos, esperado só o declarado: %v", n, len(obj), obj)
+			t.Errorf("record %d has %d fields, expected only the declared one: %v", n, len(obj), obj)
 		}
 		n++
 	}
 	if n == 0 {
-		t.Fatal("nenhum registro passou")
+		t.Fatal("no record got through")
 	}
 }
 
-func TestConsumidorVeOSchemaFalharQuandoOCampoSome(t *testing.T) {
-	srv := fonte(t)
+func TestAConsumerSeesTheSchemaFailWhenTheFieldGoes(t *testing.T) {
+	srv := source(t)
 
 	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
@@ -264,23 +268,24 @@ func TestConsumidorVeOSchemaFalharQuandoOCampoSome(t *testing.T) {
 
 	for _, err := range data.Records {
 		if err == nil {
-			t.Fatal("um campo declarado e ausente tem de ser erro, não coluna NULL")
+			t.Fatal("a field declared and missing has to be an error, not a NULL column")
 		}
 		if !strings.Contains(err.Error(), "campo_que_a_fonte_parou_de_mandar") {
-			t.Errorf("o erro não nomeia o campo: %v", err)
+			t.Errorf("the error does not name the field: %v", err)
 		}
 		return
 	}
-	t.Fatal("o fluxo terminou sem erro nenhum")
+	t.Fatal("the flow finished with no error at all")
 }
 
-// AutoID é a declaração inteira: nada do registro entra no id, então nada do
-// registro precisa ser descrito.
+// AutoID is the whole declaration: nothing from the record goes into the id, so
+// nothing about the record has to be described.
 
-// Os dois transformers de ingestão são a superfície que substituiu o bloco.
-// Se o consumidor não os alcança, a mudança não aconteceu para quem importa.
-func TestConsumidorEscreveAsDuasColunasNaCadeia(t *testing.T) {
-	srv := fonte(t)
+// The two ingestion transformers are the surface that replaced the block. If the
+// consumer cannot reach them, the change did not happen for the person who
+// matters.
+func TestAConsumerWritesBothColumnsInTheChain(t *testing.T) {
+	srv := source(t)
 
 	data, err := sdk.Extract(context.Background(), sdk.Source{From: from.HTTP{URL: srv.URL}})
 	if err != nil {
@@ -303,12 +308,12 @@ func TestConsumidorEscreveAsDuasColunasNaCadeia(t *testing.T) {
 		linha := env.Payload.(map[string]any)
 		for _, coluna := range []string{sdk.ColumnIngestionID, sdk.ColumnIngestionLoadedAt} {
 			if v, tem := linha[coluna]; !tem || v == "" {
-				t.Errorf("registro %d saiu sem %s: %v", n, coluna, linha)
+				t.Errorf("record %d came out without %s: %v", n, coluna, linha)
 			}
 		}
 		n++
 	}
 	if n == 0 {
-		t.Fatal("nenhum registro passou")
+		t.Fatal("no record got through")
 	}
 }

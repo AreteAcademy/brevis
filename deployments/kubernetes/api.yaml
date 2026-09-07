@@ -13,8 +13,8 @@ spec:
     metadata:
       labels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: api}
     spec:
-      # Explicito: sem isto o pod recebe a `default` do namespace, que costuma
-      # ter mais permissao do que se imagina.
+      # Explicit: without this the pod gets the namespace's `default`, which
+      # usually has more permission than people assume.
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

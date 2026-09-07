@@ -7,7 +7,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-func baldesCom(totais ...int) []postgres.Bucket {
+func bucketsWith(totais ...int) []postgres.Bucket {
 	base := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
 	out := make([]postgres.Bucket, len(totais))
 	for i, n := range totais {
@@ -16,35 +16,36 @@ func baldesCom(totais ...int) []postgres.Bucket {
 	return out
 }
 
-// O eixo precisa cair em numeros redondos E divisiveis por quatro. A versao
-// anterior dividia o maximo cru e produzia rotulos 0/6/12/18/25 — cada intervalo
+// The axis has to land on round numbers AND ones divisible by four. The previous
+// version divided the raw maximum and produced labels 0/6/12/18/25 -- each
+// interval
 // diferente do anterior.
-func TestTetoDaEscalaEhRedondoEDivisivelPorQuatro(t *testing.T) {
+func TestTheScalesCeilingIsRoundAndDivisibleByFour(t *testing.T) {
 	casos := []struct{ max, esperado int }{
 		{0, 4}, {1, 4}, {3, 4}, {4, 4}, {5, 8}, {27, 40}, {40, 40}, {41, 100}, {600, 1000},
 	}
 	for _, c := range casos {
-		obtido := teto(baldesCom(c.max))
+		obtido := teto(bucketsWith(c.max))
 		if obtido != c.esperado {
-			t.Errorf("teto(%d) = %d, quero %d", c.max, obtido, c.esperado)
+			t.Errorf("teto(%d) = %d, want %d", c.max, obtido, c.esperado)
 		}
 		if obtido%4 != 0 {
-			t.Errorf("teto(%d) = %d nao e divisivel por 4: os rotulos sairiam quebrados", c.max, obtido)
+			t.Errorf("ceiling(%d) = %d is not divisible by 4: the labels would come out broken", c.max, obtido)
 		}
 		if obtido < c.max {
-			t.Errorf("teto(%d) = %d corta a coluna mais alta", c.max, obtido)
+			t.Errorf("ceiling(%d) = %d cuts the tallest column off", c.max, obtido)
 		}
 	}
 }
 
-func TestLinhasDeGradeSaoEquidistantes(t *testing.T) {
-	linhas := linhasDeGrade(baldesCom(27))
+func TestTheGridLinesAreEquidistant(t *testing.T) {
+	linhas := linhasDeGrade(bucketsWith(27))
 	if len(linhas) != 5 {
-		t.Fatalf("obtive %d linhas, quero 5", len(linhas))
+		t.Fatalf("obtive %d linhas, want 5", len(linhas))
 	}
-	// Tolerancia de 1px: a divisao e inteira, entao uma area de 214px em quatro
+	// A 1px tolerance: the division is integer, so a 214px area in four
 	// faixas alterna 53 e 54. Exigir igualdade exata testaria o arredondamento,
-	// nao a grade.
+	// not the grid.
 	passo := linhas[0].Y - linhas[1].Y
 	for i := 1; i < len(linhas)-1; i++ {
 		if d := linhas[i].Y - linhas[i+1].Y; d < passo-1 || d > passo+1 {
@@ -52,12 +53,12 @@ func TestLinhasDeGradeSaoEquidistantes(t *testing.T) {
 		}
 	}
 	if linhas[0].Rotulo != "0" || linhas[4].Rotulo != "40" {
-		t.Errorf("rotulos = %s .. %s, quero 0 .. 40", linhas[0].Rotulo, linhas[4].Rotulo)
+		t.Errorf("rotulos = %s .. %s, want 0 .. 40", linhas[0].Rotulo, linhas[4].Rotulo)
 	}
 }
 
-// Uma unica falha entre centenas de sucessos ainda precisa ser vista — e o caso
-// em que o grafico mais importa.
+// A single failure among hundreds of successes still has to be seen -- it is the
+// case in which the chart matters most.
 func TestBarraMinimaSobrevive(t *testing.T) {
 	baldes := []postgres.Bucket{{Sucesso: 400, Falha: 1}}
 	b := barras(baldes)[0]
@@ -70,9 +71,9 @@ func TestBarraMinimaSobrevive(t *testing.T) {
 	}
 }
 
-// A curva de duracao nao pode ligar dois picos por cima de uma hora vazia: isso
-// inventaria duracao onde nao houve execucao nenhuma.
-func TestLinhaDeDuracaoCortaNoVazio(t *testing.T) {
+// The duration curve must not join two peaks across an empty hour: that would
+// invent duration where there was no run at all.
+func TestTheDurationLineBreaksOnAGap(t *testing.T) {
 	base := time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)
 	baldes := []postgres.Bucket{
 		{Inicio: base, Sucesso: 1, DuracaoMedia: time.Second},
@@ -80,16 +81,16 @@ func TestLinhaDeDuracaoCortaNoVazio(t *testing.T) {
 		{Inicio: base.Add(2 * time.Hour), Sucesso: 1, DuracaoMedia: 2 * time.Second},
 	}
 	d := linhaDuracao(baldes)
-	if contarM(d) != 2 {
-		t.Errorf("path %q deveria ter dois inicios (M), um por trecho", d)
+	if countM(d) != 2 {
+		t.Errorf("path %q should have two starts (M), one per segment", d)
 	}
 
-	if linhaDuracao(baldesCom(3)) != "" {
-		t.Error("sem duracao medida nao deve existir curva")
+	if linhaDuracao(bucketsWith(3)) != "" {
+		t.Error("with no measured duration there should be no curve")
 	}
 }
 
-func contarM(s string) int {
+func countM(s string) int {
 	n := 0
 	for _, r := range s {
 		if r == 'M' {
@@ -99,25 +100,25 @@ func contarM(s string) int {
 	return n
 }
 
-func TestArcosDaRoscaFecham(t *testing.T) {
+func TestTheDonutsArcsClose(t *testing.T) {
 	i := postgres.Indicators{Total: 10, Sucesso: 7, Falha: 2, EmExecucao: 1}
 	arcos := arcos(i)
 	if len(arcos) != 3 {
-		t.Fatalf("obtive %d arcos, quero 3 (fatia zerada nao vira arco)", len(arcos))
+		t.Fatalf("got %d arcs, want 3 (a zero slice does not become an arc)", len(arcos))
 	}
-	// Cada arco comeca onde o anterior terminou.
+	// Each arc starts where the previous one ended.
 	if arcos[0].Offset != 0 {
-		t.Errorf("primeiro arco com deslocamento %d", arcos[0].Offset)
+		t.Errorf("the first arc has offset %d", arcos[0].Offset)
 	}
 	if arcos[1].Offset >= 0 || arcos[2].Offset >= arcos[1].Offset {
-		t.Errorf("deslocamentos nao acumulam: %v", []int{arcos[0].Offset, arcos[1].Offset, arcos[2].Offset})
+		t.Errorf("the offsets do not accumulate: %v", []int{arcos[0].Offset, arcos[1].Offset, arcos[2].Offset})
 	}
-	if len(arcos2(postgres.Indicators{})) != 0 {
-		t.Error("sem execucoes a rosca nao desenha fatia nenhuma")
+	if len(arcs2(postgres.Indicators{})) != 0 {
+		t.Error("with no runs the donut draws no slice at all")
 	}
 }
 
-func arcos2(i postgres.Indicators) []Arco { return arcos(i) }
+func arcs2(i postgres.Indicators) []Arco { return arcos(i) }
 
 func TestDuracaoEscolheUnidade(t *testing.T) {
 	casos := []struct {
@@ -131,10 +132,10 @@ func TestDuracaoEscolheUnidade(t *testing.T) {
 	}
 	for _, c := range casos {
 		if obtido := Duration(&c.d); obtido != c.esperado {
-			t.Errorf("Duration(%s) = %s, quero %s", c.d, obtido, c.esperado)
+			t.Errorf("Duration(%s) = %s, want %s", c.d, obtido, c.esperado)
 		}
 	}
 	if Duration(nil) != "—" {
-		t.Error("duracao ausente deve virar travessao, nao zero")
+		t.Error("a missing duration should become a dash, not a zero")
 	}
 }

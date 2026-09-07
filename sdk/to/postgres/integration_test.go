@@ -77,8 +77,8 @@ func loteDeTeste(n int) []sdk.Envelope {
 	return out
 }
 
-// TestIntegrationARowActuallyGoesIn e o §5.1 do plano: os testes em
-// memory prove the bytes we assembled, not what the server accepts.
+// TestIntegrationARowActuallyGoesIn is §5.1 of the plan: the in-memory tests
+// prove the bytes we assembled, not what the server accepts.
 func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, colunasPadrao)

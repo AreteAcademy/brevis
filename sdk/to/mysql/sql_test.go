@@ -20,8 +20,8 @@ func TestInsertSQLNamesTheColumns(t *testing.T) {
 	}
 }
 
-// TestInsertSQLIgnoraNaDedup: INSERT IGNORE e a dedup do MySQL.
-func TestInsertSQLIgnoraNaDedup(t *testing.T) {
+// TestInsertSQLIgnoresOnDedup: INSERT IGNORE is MySQL's dedup.
+func TestInsertSQLIgnoresOnDedup(t *testing.T) {
 	got := InsertSQL("t", []string{"a"}, 1, true)
 	if !strings.HasPrefix(got, "INSERT IGNORE INTO") {
 		t.Errorf("dedup nao virou INSERT IGNORE:\n%s", got)

@@ -293,7 +293,7 @@ func (e *Executor) limpar(nome string, sucesso bool) {
 	_ = e.api.ApagarPod(ctx, nome)
 }
 
-// Cancel apaga o pod da execucao em voo.
+// Cancel deletes the pod of the run in flight.
 func (e *Executor) Cancel(ctx context.Context, execID string) error {
 	e.mu.Lock()
 	nome, ok := e.emVoo[execID]

@@ -101,9 +101,10 @@ func TestTheNonceDoesNotRepeat(t *testing.T) {
 	}
 }
 
-// TestWithoutAKeyItWritesInTheClear: a cifra e opcional. O controle de verdade e o do
-// storage's -- the directory's permissions, the bucket's IAM -- and a key living
-// in the same secret as whoever reads the store protects against nobody.
+// TestWithoutAKeyItWritesInTheClear: the cipher is optional. The real control is
+// the storage's -- the directory's permissions, the bucket's IAM -- and a key
+// living in the same secret as whoever reads the store protects against
+// nobody.
 func TestWithoutAKeyItWritesInTheClear(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {

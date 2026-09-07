@@ -8,7 +8,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-func tarefaSimples() execution.TaskExec {
+func simpleTask() execution.TaskExec {
 	return execution.TaskExec{
 		NodeID:  "fetch_occurrences",
 		Image:   "data-pipeline-go:local",
@@ -16,10 +16,11 @@ func tarefaSimples() execution.TaskExec {
 	}
 }
 
-// TestVolumeDaCredencialMontaEInjetaADiretorio: com o PVC configurado, todo pod
-// de passo ganha o volume e a env que o SDK le. E o passo 5 da spec do volume.
-func TestVolumeDaCredencialMontaEInjetaADiretorio(t *testing.T) {
-	pod, err := MontarPod(tarefaSimples(), Opcoes{
+// TestTheCredentialVolumeMountsAndInjectsTheDirectory: with the PVC configured,
+// every step pod gains the volume and the env var the SDK reads. It is step 5 of
+// the volume's spec.
+func TestTheCredentialVolumeMountsAndInjectsTheDirectory(t *testing.T) {
+	pod, err := MontarPod(simpleTask(), Opcoes{
 		CredencialPVC: "brevis-credentials",
 	}.comPadroes())
 	if err != nil {
@@ -27,7 +28,7 @@ func TestVolumeDaCredencialMontaEInjetaADiretorio(t *testing.T) {
 	}
 
 	if len(pod.Spec.Volumes) != 1 {
-		t.Fatalf("volumes = %d, esperado 1", len(pod.Spec.Volumes))
+		t.Fatalf("volumes = %d, expected 1", len(pod.Spec.Volumes))
 	}
 	v := pod.Spec.Volumes[0]
 	if v.PVC == nil || v.PVC.ClaimName != "brevis-credentials" {
@@ -36,10 +37,10 @@ func TestVolumeDaCredencialMontaEInjetaADiretorio(t *testing.T) {
 
 	c := pod.Spec.Containers[0]
 	if len(c.VolumeMounts) != 1 || c.VolumeMounts[0].Name != v.Name {
-		t.Fatalf("o mount nao aponta para o volume: %+v", c.VolumeMounts)
+		t.Fatalf("the mount does not point at the volume: %+v", c.VolumeMounts)
 	}
 	if got := c.VolumeMounts[0].MountPath; got != "/var/brevis/credentials" {
-		t.Errorf("mountPath = %q, esperado o padrao", got)
+		t.Errorf("mountPath = %q, expected the default", got)
 	}
 
 	var dir string
@@ -49,13 +50,13 @@ func TestVolumeDaCredencialMontaEInjetaADiretorio(t *testing.T) {
 		}
 	}
 	if dir != c.VolumeMounts[0].MountPath {
-		t.Errorf("BREVIS_CREDENTIAL_DIR = %q, e o mount esta em %q", dir, c.VolumeMounts[0].MountPath)
+		t.Errorf("BREVIS_CREDENTIAL_DIR = %q, and the mount is at %q", dir, c.VolumeMounts[0].MountPath)
 	}
 }
 
-// TestCaminhoDoVolumeEConfiguravel.
-func TestCaminhoDoVolumeEConfiguravel(t *testing.T) {
-	pod, err := MontarPod(tarefaSimples(), Opcoes{
+// TestTheVolumesPathIsConfigurable.
+func TestTheVolumesPathIsConfigurable(t *testing.T) {
+	pod, err := MontarPod(simpleTask(), Opcoes{
 		CredencialPVC:  "meu-pvc",
 		CredencialPath: "/mnt/cred",
 	}.comPadroes())
@@ -67,22 +68,23 @@ func TestCaminhoDoVolumeEConfiguravel(t *testing.T) {
 	}
 }
 
-// TestSemPVCNadaMuda: e assim que a feature continua sendo atalho e nao
-// requisito -- uma instalacao que nao a configurou nao pode ver diferenca.
-func TestSemPVCNadaMuda(t *testing.T) {
-	pod, err := MontarPod(tarefaSimples(), Opcoes{}.comPadroes())
+// TestWithNoPVCNothingChanges: this is how the feature stays a shortcut rather
+// than a requirement -- an installation that did not configure it must see no
+// difference.
+func TestWithNoPVCNothingChanges(t *testing.T) {
+	pod, err := MontarPod(simpleTask(), Opcoes{}.comPadroes())
 	if err != nil {
 		t.Fatalf("MontarPod: %v", err)
 	}
 	if len(pod.Spec.Volumes) != 0 {
-		t.Errorf("montou volume sem PVC: %+v", pod.Spec.Volumes)
+		t.Errorf("it mounted a volume with no PVC: %+v", pod.Spec.Volumes)
 	}
 	if len(pod.Spec.Containers[0].VolumeMounts) != 0 {
-		t.Errorf("montou mount sem PVC")
+		t.Errorf("it added a mount with no PVC")
 	}
 	for _, e := range pod.Spec.Containers[0].Env {
 		if e.Name == "BREVIS_CREDENTIAL_DIR" {
-			t.Errorf("injetou a env sem volume nenhum: o SDK tentaria escrever num diretorio que nao existe")
+			t.Errorf("it injected the env var with no volume at all: the SDK would try to write into a directory that does not exist")
 		}
 	}
 	b, _ := json.Marshal(pod)
@@ -91,14 +93,14 @@ func TestSemPVCNadaMuda(t *testing.T) {
 	}
 }
 
-// TestEnvDoPassoVenceODiretorioPadrao: um passo que declara o proprio
-// BREVIS_CREDENTIAL_DIR sabe o que esta fazendo, e a injecao nao pode duplicar
-// a variavel -- dois valores para o mesmo nome e o servidor escolhendo um.
-func TestEnvDoPassoVenceODiretorioPadrao(t *testing.T) {
-	tarefa := tarefaSimples()
-	tarefa.Env = map[string]string{"BREVIS_CREDENTIAL_DIR": "/outro/lugar"}
+// TestTheStepsEnvBeatsTheDefaultDirectory: a step that declares its own
+// BREVIS_CREDENTIAL_DIR knows what it is doing, and the injection must not
+// duplicate the variable -- two values for one name and the server picking one.
+func TestTheStepsEnvBeatsTheDefaultDirectory(t *testing.T) {
+	task := simpleTask()
+	task.Env = map[string]string{"BREVIS_CREDENTIAL_DIR": "/outro/lugar"}
 
-	pod, err := MontarPod(tarefa, Opcoes{CredencialPVC: "pvc"}.comPadroes())
+	pod, err := MontarPod(task, Opcoes{CredencialPVC: "pvc"}.comPadroes())
 	if err != nil {
 		t.Fatalf("MontarPod: %v", err)
 	}
@@ -112,6 +114,6 @@ func TestEnvDoPassoVenceODiretorioPadrao(t *testing.T) {
 		t.Fatalf("BREVIS_CREDENTIAL_DIR aparece %d vezes: %v", len(vistos), vistos)
 	}
 	if vistos[0] != "/outro/lugar" {
-		t.Errorf("a injecao sobrescreveu o que o passo declarou: %q", vistos[0])
+		t.Errorf("the injection overwrote what the step declared: %q", vistos[0])
 	}
 }

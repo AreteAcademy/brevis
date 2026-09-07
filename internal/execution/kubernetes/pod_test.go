@@ -10,7 +10,7 @@ import (
 	k8s "github.com/AreteAcademy/brevis/internal/execution/kubernetes"
 )
 
-func tarefa() execution.TaskExec {
+func task() execution.TaskExec {
 	return execution.TaskExec{
 		ExecutionID: "wf:passo",
 		NodeID:      "bronze_workspace",
@@ -27,21 +27,21 @@ func tarefa() execution.TaskExec {
 	}
 }
 
-func TestPodTrazImagemComandoERecursos(t *testing.T) {
-	p, err := k8s.MontarPod(tarefa(), k8s.Opcoes{Namespace: "dados", ServiceAccount: "brevis"})
+func TestThePodCarriesImageCommandAndResources(t *testing.T) {
+	p, err := k8s.MontarPod(task(), k8s.Opcoes{Namespace: "dados", ServiceAccount: "brevis"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	c := p.Spec.Containers[0]
-	if c.Image != tarefa().Image {
+	if c.Image != task().Image {
 		t.Errorf("imagem = %q", c.Image)
 	}
 	if len(c.Command) != 3 || c.Command[0] != "/bin/sh" || c.Command[1] != "-c" {
-		t.Errorf("comando = %v, quero sh -c", c.Command)
+		t.Errorf("comando = %v, want sh -c", c.Command)
 	}
 	if !strings.HasPrefix(c.Command[2], "dbt build") {
-		t.Errorf("linha de comando = %q", c.Command[2])
+		t.Errorf("command line = %q", c.Command[2])
 	}
 	if c.Resources.Requests["cpu"] != "200m" || c.Resources.Requests["memory"] != "1Gi" {
 		t.Errorf("requests = %v", c.Resources.Requests)
@@ -50,11 +50,11 @@ func TestPodTrazImagemComandoERecursos(t *testing.T) {
 		t.Errorf("limits = %v", c.Resources.Limits)
 	}
 	if _, temCPU := c.Resources.Limits["cpu"]; temCPU {
-		t.Error("limite de CPU nao declarado nao deve ser inventado — throttling silencioso e pior que sem limite")
+		t.Error("an undeclared CPU limit must not be invented -- silent throttling is worse than no limit")
 	}
 
-	// Never: quem conta tentativas e aplica backoff e o dispatcher. Deixar o
-	// kubelet reiniciar criaria uma segunda politica de retry, invisivel.
+	// Never: what counts attempts and applies backoff is the dispatcher. Letting
+	// the kubelet restart would create a second retry policy, an invisible one.
 	if p.Spec.RestartPolicy != "Never" {
 		t.Errorf("restartPolicy = %q", p.Spec.RestartPolicy)
 	}
@@ -62,14 +62,14 @@ func TestPodTrazImagemComandoERecursos(t *testing.T) {
 		t.Errorf("identidade errada: sa=%q ns=%q", p.Spec.ServiceAccountName, p.Metadata.Namespace)
 	}
 	if p.Spec.ActiveDeadlineSeconds == nil || *p.Spec.ActiveDeadlineSeconds != 1800 {
-		t.Errorf("deadline = %v, quero 1800s", p.Spec.ActiveDeadlineSeconds)
+		t.Errorf("deadline = %v, want 1800s", p.Spec.ActiveDeadlineSeconds)
 	}
 }
 
-// Imagem distroless nao tem shell: `sh -c` falharia com "no such file or
-// directory", erro que nao diz nada sobre a causa.
-func TestSemShellUsaArgvDireto(t *testing.T) {
-	tk := tarefa()
+// A distroless image has no shell: `sh -c` would fail with "no such file or
+// directory", an error that says nothing about the cause.
+func TestWithNoShellItUsesArgvDirectly(t *testing.T) {
+	tk := task()
 	tk.Shell = false
 	tk.Command = "/notify --canal dados"
 
@@ -79,12 +79,12 @@ func TestSemShellUsaArgvDireto(t *testing.T) {
 	}
 	c := p.Spec.Containers[0].Command
 	if len(c) != 3 || c[0] != "/notify" || c[2] != "dados" {
-		t.Errorf("comando = %v, quero argv direto", c)
+		t.Errorf("comando = %v, want argv direto", c)
 	}
 }
 
-func TestEnvOrdenadaEEnvFrom(t *testing.T) {
-	p, err := k8s.MontarPod(tarefa(), k8s.Opcoes{
+func TestEnvIsOrderedAndEnvFrom(t *testing.T) {
+	p, err := k8s.MontarPod(task(), k8s.Opcoes{
 		EnvFromSecrets:    []string{"brevis-bigquery"},
 		EnvFromConfigMaps: []string{"brevis-config"},
 	})
@@ -92,20 +92,20 @@ func TestEnvOrdenadaEEnvFrom(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := p.Spec.Containers[0]
-	// Ordem estavel: dois pods com o mesmo conteudo tem de gerar o mesmo JSON,
-	// senao comparar dois deploys vira ruido.
+	// A stable order: two pods with the same contents have to produce the same
+	// JSON, otherwise comparing two deploys becomes noise.
 	if len(c.Env) != 2 || c.Env[0].Name != "GOOGLE_PROJECT_ID" || c.Env[1].Name != "STAGE" {
-		t.Errorf("env = %v, quero ordem alfabetica", c.Env)
+		t.Errorf("env = %v, want ordem alfabetica", c.Env)
 	}
 	if len(c.EnvFrom) != 2 || c.EnvFrom[0].SecretRef.Name != "brevis-bigquery" {
 		t.Errorf("envFrom = %+v", c.EnvFrom)
 	}
 }
 
-// A credencial do BigQuery entra por envFrom, decisao da INSTALACAO. Um YAML de
-// pipeline nao deve poder escolher a service account com que roda.
-func TestOpcoesNaoVemDoWorkflow(t *testing.T) {
-	p, _ := k8s.MontarPod(tarefa(), k8s.Opcoes{
+// The BigQuery credential comes in through envFrom, the INSTALLATION's decision.
+// A pipeline's YAML must not get to choose the service account it runs as.
+func TestTheOptionsDoNotComeFromTheWorkflow(t *testing.T) {
+	p, _ := k8s.MontarPod(task(), k8s.Opcoes{
 		ServiceAccount: "restrita",
 		PullSecrets:    []string{"registry"},
 		NodeSelector:   map[string]string{"pool": "dados"},
@@ -113,42 +113,43 @@ func TestOpcoesNaoVemDoWorkflow(t *testing.T) {
 	if p.Spec.ServiceAccountName != "restrita" ||
 		p.Spec.ImagePullSecrets[0].Name != "registry" ||
 		p.Spec.NodeSelector["pool"] != "dados" {
-		t.Errorf("opcoes da instalacao nao chegaram ao pod: %+v", p.Spec)
+		t.Errorf("the installation's options did not reach the pod: %+v", p.Spec)
 	}
 }
 
-func TestPodSemImagemEhRecusado(t *testing.T) {
-	tk := tarefa()
+func TestAPodWithNoImageIsRefused(t *testing.T) {
+	tk := task()
 	tk.Image = ""
 	if _, err := k8s.MontarPod(tk, k8s.Opcoes{}); err == nil {
-		t.Error("pod sem imagem nao tem o que rodar")
+		t.Error("a pod with no image has nothing to run")
 	}
 }
 
-// O nome precisa ser estavel para a MESMA tentativa: se o processo morrer entre
-// criar o pod e registrar isso, a tentativa seguinte encontra o pod existente em
+// The name has to be stable for the SAME attempt: if the process dies between
+// creating the pod and recording that, the next attempt finds the existing pod
+// instead of
 // vez de subir um segundo rodando o mesmo dbt em paralelo.
-func TestNomeDoPodEhEstavelPorTentativa(t *testing.T) {
-	a := k8s.NomeDoPod(tarefa())
-	if b := k8s.NomeDoPod(tarefa()); a != b {
-		t.Errorf("mesma tentativa gerou %q e %q", a, b)
+func TestThePodsNameIsStablePerAttempt(t *testing.T) {
+	a := k8s.NomeDoPod(task())
+	if b := k8s.NomeDoPod(task()); a != b {
+		t.Errorf("the same attempt produced %q and %q", a, b)
 	}
 
-	outra := tarefa()
+	outra := task()
 	outra.Attempt = 1
 	if c := k8s.NomeDoPod(outra); c == a {
-		t.Error("tentativas diferentes deveriam gerar pods diferentes")
+		t.Error("attempts diferentes deveriam gerar pods diferentes")
 	}
 }
 
-func TestNomeDoPodObedeceOLimiteDoKubernetes(t *testing.T) {
-	tk := tarefa()
+func TestThePodsNameObeysKubernetesLimit(t *testing.T) {
+	tk := task()
 	tk.Workflow = strings.Repeat("workflow-de-nome-absurdamente-longo-", 3)
 	tk.NodeID = strings.Repeat("passo-tambem-enorme-", 3)
 
 	nome := k8s.NomeDoPod(tk)
 	if len(nome) > 63 {
-		t.Errorf("nome com %d caracteres: %q", len(nome), nome)
+		t.Errorf("a name with %d characters: %q", len(nome), nome)
 	}
 	for _, r := range nome {
 		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '-' {
@@ -156,36 +157,36 @@ func TestNomeDoPodObedeceOLimiteDoKubernetes(t *testing.T) {
 		}
 	}
 	if strings.HasPrefix(nome, "-") || strings.HasSuffix(nome, "-") {
-		t.Errorf("nome nao pode comecar nem terminar com hifen: %q", nome)
+		t.Errorf("a name may neither start nor end with a hyphen: %q", nome)
 	}
 
-	// Dois nomes longos com o mesmo prefixo nao podem colidir depois do corte.
+	// Two long names sharing a prefix must not collide after the trim.
 	outro := tk
 	outro.NodeID = strings.Repeat("passo-tambem-enorme-", 3) + "-b"
 	if k8s.NomeDoPod(outro) == nome {
-		t.Error("o corte em 63 caracteres criou colisao entre dois passos")
+		t.Error("the 63-character trim created a collision between two steps")
 	}
 }
 
-func TestRotulosPermitemAcharOsPodsDaRun(t *testing.T) {
-	p, _ := k8s.MontarPod(tarefa(), k8s.Opcoes{})
+func TestTheLabelsMakeTheRunsPodsFindable(t *testing.T) {
+	p, _ := k8s.MontarPod(task(), k8s.Opcoes{})
 	if p.Metadata.Labels["app.kubernetes.io/managed-by"] != "brevis" {
-		t.Error("sem o rotulo de gestao nao da para achar os pods do Brevis")
+		t.Error("without the management label there is no way to find Brevis's pods")
 	}
 	if p.Metadata.Labels["brevis.dev/workflow"] != "platform-workspace" {
 		t.Errorf("rotulo de workflow = %q (sanitizado)", p.Metadata.Labels["brevis.dev/workflow"])
 	}
-	// O valor original vive na anotacao: rotulo tem limite de 63 e alfabeto
-	// restrito, anotacao nao.
+	// The original value lives in the annotation: a label has a 63-character limit
+	// and a restricted alphabet, an annotation does not.
 	if p.Metadata.Annotations["brevis.dev/workflow"] != "platform_workspace" {
-		t.Errorf("anotacao = %q, quero o valor original", p.Metadata.Annotations["brevis.dev/workflow"])
+		t.Errorf("annotation = %q, want the original value", p.Metadata.Annotations["brevis.dev/workflow"])
 	}
 }
 
-// O objeto tem de ser aceito como JSON do Kubernetes: campos vazios omitidos,
-// para nao enviar `resources: {}` nem `nodeSelector: null`.
-func TestJSONNaoCarregaCamposVazios(t *testing.T) {
-	tk := tarefa()
+// The object has to be accepted as Kubernetes JSON: empty fields omitted, so as
+// not to send `resources: {}` or `nodeSelector: null`.
+func TestTheJSONCarriesNoEmptyFields(t *testing.T) {
+	tk := task()
 	tk.CPU, tk.Memoria, tk.CPUMax, tk.MemoriaMax = "", "", "", ""
 	tk.Timeout = 0
 
@@ -196,7 +197,7 @@ func TestJSONNaoCarregaCamposVazios(t *testing.T) {
 	}
 	for _, proibido := range []string{`"resources"`, `"nodeSelector"`, `"activeDeadlineSeconds"`, `"imagePullSecrets"`, `"status"`} {
 		if strings.Contains(string(b), proibido) {
-			t.Errorf("JSON traz %s sem valor: %s", proibido, b)
+			t.Errorf("the JSON carries %s with no value: %s", proibido, b)
 		}
 	}
 }

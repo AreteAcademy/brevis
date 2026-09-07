@@ -8,12 +8,12 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// opcoesComLiberacao e o que uma instalacao que autorizou este Secret passa.
-func opcoesComLiberacao() Opcoes {
+// optionsAllowing is what an installation that authorized this Secret passes.
+func optionsAllowing() Opcoes {
 	return Opcoes{SecretsPermitidos: []string{"gabriel-session", "cofre"}}.comPadroes()
 }
 
-func tarefaComSegredo() execution.TaskExec {
+func taskWithSecret() execution.TaskExec {
 	return execution.TaskExec{
 		NodeID:  "fetch_occurrences",
 		Image:   "data-pipeline-go:local",
@@ -23,10 +23,10 @@ func tarefaComSegredo() execution.TaskExec {
 	}
 }
 
-// TestSegredoViraSecretKeyRef: o pod referencia a chave, o kubelet resolve. O
-// motor nunca ve o valor.
-func TestSegredoViraSecretKeyRef(t *testing.T) {
-	pod, err := MontarPod(tarefaComSegredo(), opcoesComLiberacao())
+// TestASecretBecomesASecretKeyRef: the pod references the key, the kubelet
+// resolves it. The engine never sees the value.
+func TestASecretBecomesASecretKeyRef(t *testing.T) {
+	pod, err := MontarPod(taskWithSecret(), optionsAllowing())
 	if err != nil {
 		t.Fatalf("MontarPod: %v", err)
 	}
@@ -38,13 +38,13 @@ func TestSegredoViraSecretKeyRef(t *testing.T) {
 		}
 	}
 	if achou == nil {
-		t.Fatal("a variavel do segredo nao entrou no container")
+		t.Fatal("the secret's variable did not go into the container")
 	}
 	if achou.Value != "" {
-		t.Errorf("o valor foi materializado no pod: %q", achou.Value)
+		t.Errorf("the value was materialized into the pod: %q", achou.Value)
 	}
 	if achou.ValueFrom == nil || achou.ValueFrom.SecretKeyRef == nil {
-		t.Fatal("sem valueFrom.secretKeyRef")
+		t.Fatal("no valueFrom.secretKeyRef")
 	}
 	if got := achou.ValueFrom.SecretKeyRef; got.Name != "gabriel-session" || got.Key != "cookie" {
 		t.Errorf("coordenada errada: %+v", got)
@@ -52,10 +52,10 @@ func TestSegredoViraSecretKeyRef(t *testing.T) {
 }
 
 // TestJSONDoPodNaoManda value VAZIO junto de valueFrom: o servidor recusa as
-// duas chaves na mesma variavel, e a recusa fala de campo de container, nao de
-// linha de YAML.
-func TestJSONDoPodNaoMandaValueVazioComValueFrom(t *testing.T) {
-	pod, err := MontarPod(tarefaComSegredo(), opcoesComLiberacao())
+// two keys on the same variable, and the refusal talks about a container field,
+// not about a line of YAML.
+func TestThePodsJSONSendsNoEmptyValueAlongsideValueFrom(t *testing.T) {
+	pod, err := MontarPod(taskWithSecret(), optionsAllowing())
 	if err != nil {
 		t.Fatalf("MontarPod: %v", err)
 	}
@@ -68,35 +68,36 @@ func TestJSONDoPodNaoMandaValueVazioComValueFrom(t *testing.T) {
 	}
 }
 
-// TestOSegredoNaoVazaNoJSONDoPod: o manifesto vai para o servidor, aparece em
+// TestTheSecretDoesNotLeakInThePodsJSON: the manifest goes to the server, shows
+// up in
 // `kubectl get pod -o yaml` e costuma acabar em log de deploy.
-func TestOSegredoNaoVazaNoJSONDoPod(t *testing.T) {
-	tarefa := tarefaComSegredo()
-	tarefa.Secrets["GABRIEL_SESSION_COOKIE"] = "gabriel-session/cookie"
+func TestTheSecretDoesNotLeakInThePodsJSON(t *testing.T) {
+	task := taskWithSecret()
+	task.Secrets["GABRIEL_SESSION_COOKIE"] = "gabriel-session/cookie"
 
-	pod, err := MontarPod(tarefa, opcoesComLiberacao())
+	pod, err := MontarPod(task, optionsAllowing())
 	if err != nil {
 		t.Fatalf("MontarPod: %v", err)
 	}
 	b, _ := json.Marshal(pod)
-	// A coordenada pode aparecer; o que nao pode e um valor de segredo, e o
-	// motor nao tem nenhum para vazar -- este teste fixa isso.
+	// The coordinate may appear; what may not is a secret's value, and the engine
+	// has none to leak -- this test pins that down.
 	if strings.Contains(string(b), "gabriel-session/cookie") {
-		t.Errorf("a coordenada crua foi para o manifesto em vez do secretKeyRef:\n%s", b)
+		t.Errorf("the raw coordinate went into the manifest instead of the secretKeyRef:\n%s", b)
 	}
 }
 
-// TestAmbienteDoPodEDeterministico: dois pods iguais tem de gerar o mesmo
-// JSON, senao o diff entre dois deploys vira ruido de ordem de mapa.
-func TestAmbienteDoPodEDeterministico(t *testing.T) {
-	tarefa := tarefaComSegredo()
-	tarefa.Env["A"] = "1"
-	tarefa.Env["Z"] = "2"
-	tarefa.Secrets["OUTRO"] = "cofre/chave"
+// TestThePodsEnvironmentIsDeterministic: two identical pods have to produce the
+// same JSON, otherwise the diff between two deploys becomes map-ordering noise.
+func TestThePodsEnvironmentIsDeterministic(t *testing.T) {
+	task := taskWithSecret()
+	task.Env["A"] = "1"
+	task.Env["Z"] = "2"
+	task.Secrets["OUTRO"] = "cofre/chave"
 
 	var primeiro string
 	for i := 0; i < 20; i++ {
-		pod, err := MontarPod(tarefa, opcoesComLiberacao())
+		pod, err := MontarPod(task, optionsAllowing())
 		if err != nil {
 			t.Fatalf("MontarPod: %v", err)
 		}
@@ -111,45 +112,48 @@ func TestAmbienteDoPodEDeterministico(t *testing.T) {
 	}
 }
 
-// TestYAMLNaoEscolheQualSecretMontar: `secrets:` inverte quem escolhe --
-// EnvFromSecrets vem do ambiente do scheduler, `secrets:` vem do arquivo, e o
-// arquivo e escrito por outra pessoa. Sem a lista, um workflow montaria
-// qualquer Secret do namespace, inclusive o do banco do proprio Brevis, e
-// rodaria um comando arbitrario com ele em maos.
-func TestYAMLNaoEscolheQualSecretMontar(t *testing.T) {
-	tarefa := tarefaComSegredo()
-	tarefa.Secrets["ROUBADO"] = "brevis-database/url"
+// TestTheYAMLDoesNotChooseWhichSecretToMount: `secrets:` inverte quem escolhe --
+// EnvFromSecrets comes from the scheduler's environment, `secrets:` comes from
+// the file, and the file is written by somebody else. Without the list, a
+// workflow could mount
+// qualquer Secret do namespace, inclusive o do testDB do proprio Brevis, e
+// and would run an arbitrary command with it in hand.
+func TestTheYAMLDoesNotChooseWhichSecretToMount(t *testing.T) {
+	task := taskWithSecret()
+	task.Secrets["ROUBADO"] = "brevis-database/url"
 
-	_, err := MontarPod(tarefa, opcoesComLiberacao())
+	_, err := MontarPod(task, optionsAllowing())
 	if err == nil {
-		t.Fatal("o YAML montou um Secret que a instalacao nao liberou")
+		t.Fatal("the YAML mounted a Secret the installation did not allow")
 	}
 	for _, exigido := range []string{"brevis-database", "BREVIS_POD_ALLOWED_SECRETS"} {
 		if !strings.Contains(err.Error(), exigido) {
-			t.Errorf("o erro nao diz %q: %v", exigido, err)
+			t.Errorf("the error does not say %q: %v", exigido, err)
 		}
 	}
 }
 
-// TestSemListaNenhumSecretPassa: negar por padrao custa uma variavel na
-// instalacao; permitir por padrao custa o inverso, e o inverso e irreversivel.
-func TestSemListaNenhumSecretPassa(t *testing.T) {
-	_, err := MontarPod(tarefaComSegredo(), Opcoes{}.comPadroes())
+// TestWithNoListNoSecretGetsThrough: denying by default costs one variable in the
+// installation; allowing by default costs the reverse, and the reverse cannot be
+// undone.
+func TestWithNoListNoSecretGetsThrough(t *testing.T) {
+	_, err := MontarPod(taskWithSecret(), Opcoes{}.comPadroes())
 	if err == nil {
-		t.Fatal("sem lista de liberados, o Secret passou")
+		t.Fatal("with no allow-list, the Secret got through")
 	}
 	if !strings.Contains(err.Error(), "neither is any") {
-		t.Errorf("o erro nao explica que a lista esta vazia: %v", err)
+		t.Errorf("the error does not explain that the list is empty: %v", err)
 	}
 }
 
-// TestSemSecretsNoYAMLNadaMuda: um workflow que nao usa `secrets:` nao pode
+// TestWithNoSecretsInTheYAMLNothingChanges: a workflow that does not use
+// `secrets:` must not
 // passar a exigir configuracao nova.
-func TestSemSecretsNoYAMLNadaMuda(t *testing.T) {
-	tarefa := tarefaComSegredo()
-	tarefa.Secrets = nil
+func TestWithNoSecretsInTheYAMLNothingChanges(t *testing.T) {
+	task := taskWithSecret()
+	task.Secrets = nil
 
-	if _, err := MontarPod(tarefa, Opcoes{}.comPadroes()); err != nil {
-		t.Errorf("workflow sem secrets passou a falhar: %v", err)
+	if _, err := MontarPod(task, Opcoes{}.comPadroes()); err != nil {
+		t.Errorf("a workflow with no secrets started failing: %v", err)
 	}
 }

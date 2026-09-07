@@ -6,14 +6,14 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-// TestPrecedenciaDoAmbiente: do mais fraco ao mais forte -- ambiente global do
+// TestTheEnvironmentsPrecedence: do mais fraco ao mais forte -- ambiente global do
 // engine's, the workflow's `env:`, the step's `env:`.
 //
 // The step beating the global is the part that changed. The other way round, a
 // variable declared in the file would lose quietly to a BREVIS_TASK_ENV somebody
 // configured months ago -- and "loses quietly" is the failure mode this
 // projeto mais persegue.
-func TestPrecedenciaDoAmbiente(t *testing.T) {
+func TestTheEnvironmentsPrecedence(t *testing.T) {
 	w := wf.Workflow{
 		Slug: "x",
 		Env:  map[string]string{"NIVEL": "workflow", "SO_DO_WORKFLOW": "1"},
@@ -29,14 +29,14 @@ func TestPrecedenciaDoAmbiente(t *testing.T) {
 		env := mesclarEnv(r.Env, r.contextoDoRun(n.ID, false, 0), w.EnvDe(n))
 
 		if got := env["NIVEL"]; got != casos[n.ID] {
-			t.Errorf("%s: NIVEL = %q, esperado %q", n.ID, got, casos[n.ID])
+			t.Errorf("%s: NIVEL = %q, expected %q", n.ID, got, casos[n.ID])
 		}
 		// Inheriting must not mean losing the rest.
 		if env["SO_DO_WORKFLOW"] != "1" {
-			t.Errorf("%s: perdeu a variavel que so o workflow declarou", n.ID)
+			t.Errorf("%s: it lost the variable only the workflow declared", n.ID)
 		}
 		if env["SO_DO_GLOBAL"] != "1" {
-			t.Errorf("%s: perdeu a variavel que so o global declarou", n.ID)
+			t.Errorf("%s: it lost the variable only the global declared", n.ID)
 		}
 	}
 }
@@ -54,9 +54,9 @@ func TestSecretsDoNotEnterTheTasksEnv(t *testing.T) {
 
 	env := mesclarEnv(nil, nil, w.EnvDe(n))
 	if _, tem := env["TOKEN"]; tem {
-		t.Error("o segredo entrou no Env da task")
+		t.Error("the secret went into the task's Env")
 	}
 	if w.SecretsDe(n)["TOKEN"] != "cofre/token" {
-		t.Error("o segredo nao chegou como coordenada")
+		t.Error("the secret did not arrive as a coordinate")
 	}
 }

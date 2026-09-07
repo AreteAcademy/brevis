@@ -155,7 +155,7 @@ func (r Resources) ComPadrao(p Resources) Resources {
 	return r
 }
 
-// ImagemDe resolve a imagem efetiva de um passo.
+// ImagemDe resolves a step's effective image.
 func (w Workflow) ImagemDe(n Node) string {
 	if n.Image != "" {
 		return n.Image
@@ -163,7 +163,7 @@ func (w Workflow) ImagemDe(n Node) string {
 	return w.Image
 }
 
-// RecursosDe resolve os recursos efetivos de um passo.
+// RecursosDe resolves a step's effective resources.
 func (w Workflow) RecursosDe(n Node) Resources {
 	return n.Resources.ComPadrao(w.Resources)
 }

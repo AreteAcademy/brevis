@@ -10,7 +10,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/branding"
 )
 
-func escrever(t *testing.T, conteudo string) string {
+func writeFile(t *testing.T, conteudo string) string {
 	t.Helper()
 	caminho := filepath.Join(t.TempDir(), "brand.yaml")
 	if err := os.WriteFile(caminho, []byte(conteudo), 0o600); err != nil {
@@ -19,24 +19,24 @@ func escrever(t *testing.T, conteudo string) string {
 	return caminho
 }
 
-// Arquivo ausente e o caso NORMAL — a instalacao padrao nao tem nenhum. Falhar
-// aqui derrubaria o container por causa de uma customizacao opcional.
-func TestArquivoAusenteUsaOPadrao(t *testing.T) {
+// A missing file is the NORMAL case -- the default installation has none. Failing
+// here would take the container down over an optional customization.
+func TestAMissingFileUsesTheDefault(t *testing.T) {
 	m, err := branding.Load(filepath.Join(t.TempDir(), "nao-existe.yaml"))
 	if err != nil {
-		t.Fatalf("ausencia virou erro: %v", err)
+		t.Fatalf("an absence became an error: %v", err)
 	}
 	if m.Title != "Brevis" {
 		t.Errorf("titulo = %q", m.Title)
 	}
 	if m.CSS() != "" {
-		t.Error("tema padrao nao deveria emitir CSS — a folha compilada ja o tem")
+		t.Error("the default theme should emit no CSS -- the compiled sheet already has it")
 	}
 }
 
-// Campo ausente herda o padrao: um arquivo de duas linhas e um arquivo valido.
-func TestCamposAusentesHerdamOPadrao(t *testing.T) {
-	m, err := branding.Load(escrever(t, "title: Acme Dados\n"))
+// A missing field inherits the default: a two-line file is a valid file.
+func TestMissingFieldsInheritTheDefault(t *testing.T) {
+	m, err := branding.Load(writeFile(t, "title: Acme Dados\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,8 +51,8 @@ func TestCamposAusentesHerdamOPadrao(t *testing.T) {
 	}
 }
 
-func TestTemaCustomizadoViraCSS(t *testing.T) {
-	m, err := branding.Load(escrever(t, `
+func TestACustomThemeBecomesCSS(t *testing.T) {
+	m, err := branding.Load(writeFile(t, `
 title: Acme
 theme:
   ink: "#101820"
@@ -67,20 +67,20 @@ theme:
 		"--color-ink:#101820",
 		"--color-gold:#c02a2a",
 		"--color-state-success:#0f8f4f",
-		// Derivadas seguem a tinta e o destaque escolhidos, com alfa.
+		// The derived ones follow the chosen ink and accent, with alpha.
 		"--color-line:#101820" + "1a",
 		"--color-gold-wash:#c02a2a" + "14",
 	} {
 		if !strings.Contains(css, esperado) {
-			t.Errorf("CSS sem %q:\n%s", esperado, css)
+			t.Errorf("the CSS is missing %q:\n%s", esperado, css)
 		}
 	}
 }
 
-// Os valores vao para dentro de um <style>. String livre ali poderia fechar a
-// declaracao e injetar CSS — num painel de operacao, capaz de esconder um estado
+// The values go inside a <style>. A free string there could close the declaration
+// and inject CSS -- on an operations panel, enough to hide a state
 // de falha atras de um seletor.
-func TestCorInvalidaEhRecusada(t *testing.T) {
+func TestAnInvalidColourIsRefused(t *testing.T) {
 	venenos := []string{
 		`theme: {ink: "red"}`,
 		`theme: {ink: "#12345"}`,
@@ -88,31 +88,32 @@ func TestCorInvalidaEhRecusada(t *testing.T) {
 		`theme: {success: "url(http://exemplo/x)"}`,
 	}
 	for _, v := range venenos {
-		if _, err := branding.Load(escrever(t, v)); err == nil {
+		if _, err := branding.Load(writeFile(t, v)); err == nil {
 			t.Errorf("aceitou cor invalida: %s", v)
 		}
 	}
 }
 
-func TestTituloVazioEhRecusado(t *testing.T) {
-	if _, err := branding.Load(escrever(t, `title: "   "`)); err == nil {
-		t.Error("titulo em branco deixaria a barra lateral sem nome")
+func TestAnEmptyTitleIsRefused(t *testing.T) {
+	if _, err := branding.Load(writeFile(t, `title: "   "`)); err == nil {
+		t.Error("a blank title would leave the sidebar with no name")
 	}
 }
 
-func TestYamlQuebradoVoltaAoPadrao(t *testing.T) {
-	m, err := branding.Load(escrever(t, "title: [isto: nao\n  fecha"))
+func TestABrokenYamlFallsBackToTheDefault(t *testing.T) {
+	m, err := branding.Load(writeFile(t, "title: [this: does\n  not close"))
 	if err == nil {
 		t.Error("yaml invalido deveria ser reportado")
 	}
 	if m.Title != "Brevis" {
-		t.Errorf("erro deveria devolver o padrao utilizavel, veio %q", m.Title)
+		t.Errorf("an error should return the usable default, got %q", m.Title)
 	}
 }
 
-// A quebra de linha e do autor: virar espaco mudaria o ritmo do texto.
-func TestFrasePreservaAsLinhas(t *testing.T) {
-	m, err := branding.Load(escrever(t, "phrase: |\n  Primeira\n  Segunda\n  Terceira\n"))
+// The line break is the author's: turning it into a space would change the text's
+// rhythm.
+func TestThePhrasePreservesTheLines(t *testing.T) {
+	m, err := branding.Load(writeFile(t, "phrase: |\n  Primeira\n  Segunda\n  Terceira\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,39 +121,40 @@ func TestFrasePreservaAsLinhas(t *testing.T) {
 	if len(linhas) != 3 || linhas[0] != "Primeira" || linhas[2] != "Terceira" {
 		t.Errorf("linhas = %q", linhas)
 	}
-	sem, _ := branding.Load(escrever(t, `phrase: ""`))
+	sem, _ := branding.Load(writeFile(t, `phrase: ""`))
 	if len(sem.Lines()) != 0 {
-		t.Error("frase vazia nao deveria render linha nenhuma")
+		t.Error("an empty phrase should render no line at all")
 	}
 }
 
-// Sem marca no contexto — um teste que renderiza direto, um caminho que nao
-// passou pelo render — a tela precisa ter nome mesmo assim.
-func TestContextoSemMarcaDevolveOPadrao(t *testing.T) {
+// With no brand in the context -- a test rendering directly, a path that did not
+// go through render -- the screen still has to have a name.
+func TestAContextWithNoBrandReturnsTheDefault(t *testing.T) {
 	if branding.De(context.Background()).Title != "Brevis" {
-		t.Error("contexto vazio deveria devolver o padrao")
+		t.Error("contexto vazio deveria devolver the default")
 	}
 	ctx := branding.IntoContext(context.Background(), branding.Brand{Title: "Acme"})
 	if branding.De(ctx).Title != "Acme" {
-		t.Error("marca do contexto foi ignorada")
+		t.Error("the brand from the context was ignored")
 	}
 }
 
-// A atribuicao nao e configuravel: nao existe campo de YAML capaz de removê-la.
-func TestAtribuicaoNaoVemDaConfiguracao(t *testing.T) {
+// The attribution is not configurable: there is no YAML field able to remove
+// it.
+func TestTheAttributionDoesNotComeFromConfiguration(t *testing.T) {
 	if branding.Attribution != "Powered by Brevis" {
 		t.Errorf("atribuicao = %q", branding.Attribution)
 	}
-	// Desde que campo desconhecido virou erro, a garantia ficou mais forte: a
-	// tentativa nao e ignorada, e recusada nomeando o campo.
-	if _, err := branding.Load(escrever(t, "title: Acme\natribuicao: Powered by Acme\n")); err == nil {
-		t.Error("um campo inventado no YAML passou calado")
+	// Since an unknown field became an error, the guarantee got stronger: the
+	// attempt is not ignored, it is refused naming the field.
+	if _, err := branding.Load(writeFile(t, "title: Acme\natribuicao: Powered by Acme\n")); err == nil {
+		t.Error("a made-up field in the YAML got through in silence")
 	}
-	m, err := branding.Load(escrever(t, "title: Acme\n"))
+	m, err := branding.Load(writeFile(t, "title: Acme\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if branding.Attribution != "Powered by Brevis" || m.Title != "Acme" {
-		t.Error("um campo no YAML nao pode substituir a atribuicao")
+		t.Error("a field in the YAML must not replace the attribution")
 	}
 }

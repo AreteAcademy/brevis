@@ -24,10 +24,11 @@ steps:
     run: dbt build
 `
 
-// TestEnvHerdaDoWorkflowEOPassoSobrescreve: mesma regra de `image` e
-// `resources`, e nome a nome -- um passo que muda o log level nao perde as
+// TestEnvIsInheritedFromTheWorkflowAndTheStepOverrides: mesma regra de `image` e
+// `resources`, and name by name -- a step that changes the log level does not
+// lose the
 // outras variaveis do workflow.
-func TestEnvHerdaDoWorkflowEOPassoSobrescreve(t *testing.T) {
+func TestEnvIsInheritedFromTheWorkflowAndTheStepOverrides(t *testing.T) {
 	w, err := Parse("gabriel.yaml", []byte(arquivoDoGabriel))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -40,19 +41,19 @@ func TestEnvHerdaDoWorkflowEOPassoSobrescreve(t *testing.T) {
 
 	fetch := w.Nodes[porID["fetch_occurrences"]]
 	if got := w.EnvDe(fetch)["BREVIS_LOG_LEVEL"]; got != "debug" {
-		t.Errorf("o passo declarou debug e ficou %q", got)
+		t.Errorf("the step declared debug and ended up %q", got)
 	}
 
 	dbt := w.Nodes[porID["dbt_build"]]
 	if got := w.EnvDe(dbt)["BREVIS_LOG_LEVEL"]; got != "info" {
-		t.Errorf("o passo sem env deveria herdar info, ficou %q", got)
+		t.Errorf("the step with no env should inherit info, it ended up %q", got)
 	}
 }
 
-// TestSegredoSoVaiParaOPassoQueDeclarou: e a razao de existir a chave por
-// passo. With BREVIS_POD_ENV_FROM_SECRETS o cookie entrava no pod do dbt
-// tambem, que nao precisa dele.
-func TestSegredoSoVaiParaOPassoQueDeclarou(t *testing.T) {
+// TestASecretOnlyGoesToTheStepThatDeclaredIt: it is the reason the per-step key
+// exists. With BREVIS_POD_ENV_FROM_SECRETS the cookie also went into dbt's pod,
+// which does not need it.
+func TestASecretOnlyGoesToTheStepThatDeclaredIt(t *testing.T) {
 	w, err := Parse("gabriel.yaml", []byte(arquivoDoGabriel))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -60,40 +61,40 @@ func TestSegredoSoVaiParaOPassoQueDeclarou(t *testing.T) {
 	for _, n := range w.Nodes {
 		_, tem := w.SecretsDe(n)["GABRIEL_SESSION_COOKIE"]
 		if n.ID == "fetch_occurrences" && !tem {
-			t.Error("o passo que declarou o segredo nao o recebeu")
+			t.Error("the step that declared the secret did not get it")
 		}
 		if n.ID == "dbt_build" && tem {
-			t.Error("o cookie vazou para o passo de dbt, que nao o declarou")
+			t.Error("the cookie leaked into the dbt step, which did not declare it")
 		}
 	}
 }
 
-// TestSecretsRecusaOQueNaoECoordenada: o valor e onde encontrar, nunca o
-// segredo. Um valor que nao e `secret/chave` quase sempre e alguem colando o
-// valor de verdade no arquivo -- e o arquivo esta no git.
-func TestSecretsRecusaOQueNaoECoordenada(t *testing.T) {
+// TestSecretsRefusesWhatIsNotACoordinate: the value is where to find it, never
+// the secret. A value that is not `secret/key` is almost always somebody pasting
+// the real value into the file -- and the file is in git.
+func TestSecretsRefusesWhatIsNotACoordinate(t *testing.T) {
 	casos := map[string]string{
-		"sem barra":       "GABRIEL_SESSION_COOKIE: eyJhbGciOiJkaXIi==",
+		"no slash":       "GABRIEL_SESSION_COOKIE: eyJhbGciOiJkaXIi==",
 		"secret vazio":    "GABRIEL_SESSION_COOKIE: /cookie",
-		"chave vazia":     "GABRIEL_SESSION_COOKIE: gabriel-session/",
+		"empty key":     "GABRIEL_SESSION_COOKIE: gabriel-session/",
 		"barra demais":    "GABRIEL_SESSION_COOKIE: ns/gabriel-session/cookie",
 		"nome invalido":   "GABRIEL-SESSION-COOKIE: gabriel-session/cookie",
-		"nome com espaco": "'GABRIEL COOKIE': gabriel-session/cookie",
+		"name with a space": "'GABRIEL COOKIE': gabriel-session/cookie",
 	}
 	for nome, linha := range casos {
 		t.Run(nome, func(t *testing.T) {
 			yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    secrets:\n      " + linha + "\n"
 			if _, err := Parse("x.yaml", []byte(yaml)); err == nil {
-				t.Fatalf("aceitou %q", linha)
+				t.Fatalf("it accepted %q", linha)
 			}
 		})
 	}
 }
 
-// TestEnvESecretsNaoPodemColidir: a mesma variavel com valor literal e vinda
-// de segredo e ambigua, e qualquer desempate seria uma regra que ninguem
+// TestEnvAndSecretsCannotCollide: the same variable with a literal value and
+// coming from a secret is ambiguous, and any tie-break would be a rule nobody
 // lembra.
-func TestEnvESecretsNaoPodemColidir(t *testing.T) {
+func TestEnvAndSecretsCannotCollide(t *testing.T) {
 	yaml := `
 name: x
 type: chain
@@ -110,40 +111,42 @@ steps:
 		t.Fatal("aceitou a mesma variavel em env e em secrets")
 	}
 	if !strings.Contains(err.Error(), "TOKEN") {
-		t.Errorf("o erro nao nomeia a variavel: %v", err)
+		t.Errorf("the error does not name the variable: %v", err)
 	}
 }
 
-// TestEspacoNoNomeDaVariavelNaoPassa: `TOKEN : x` com espaco antes dos dois
+// TestASpaceInTheVariablesNameDoesNotGetThrough: `TOKEN : x` with a space before
+// the
 // pontos e YAML valido, e o espaco iria junto no nome -- o pod sobe, o binario
-// nao acha a variavel, e nada no caminho diz por que.
-func TestEspacoNoNomeDaVariavelNaoPassa(t *testing.T) {
-	yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    env:\n      ' TOKEN ': valor\n"
+// does not find the variable, and nothing along the way says why.
+func TestASpaceInTheVariablesNameDoesNotGetThrough(t *testing.T) {
+	yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    env:\n      ' TOKEN ': value\n"
 	w, err := Parse("x.yaml", []byte(yaml))
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	if _, ok := w.EnvDe(w.Nodes[0])["TOKEN"]; !ok {
-		t.Errorf("o nome nao foi aparado: %v", w.EnvDe(w.Nodes[0]))
+		t.Errorf("the name was not trimmed: %v", w.EnvDe(w.Nodes[0]))
 	}
 }
 
-// TestErroDeCoordenadaNaoEcoaOSegredo: o caso mais provavel de coordenada
+// TestACoordinateErrorDoesNotEchoTheSecret: o caso mais provavel de coordenada
 // invalida e alguem ter colado o segredo de verdade -- e `brevis validate`
-// roda na CI, cujo log muita gente le. Foi o que a primeira versao fez.
-func TestErroDeCoordenadaNaoEcoaOSegredo(t *testing.T) {
+// runs in CI, whose log plenty of people read. That is what the first version
+// did.
+func TestACoordinateErrorDoesNotEchoTheSecret(t *testing.T) {
 	const colado = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
 
 	yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    secrets:\n      TOKEN: " + colado + "\n"
 	_, err := Parse("x.yaml", []byte(yaml))
 	if err == nil {
-		t.Fatal("aceitou o segredo colado como coordenada")
+		t.Fatal("it accepted a pasted secret as a coordinate")
 	}
 	if strings.Contains(err.Error(), colado) {
-		t.Errorf("o erro imprimiu o segredo:\n%v", err)
+		t.Errorf("the error printed the secret:\n%v", err)
 	}
-	// E continua ensinando o formato, que e o motivo do erro existir.
+	// And it still teaches the format, which is why the error exists.
 	if !strings.Contains(err.Error(), "secret-name/key") {
-		t.Errorf("o erro deixou de ensinar o formato: %v", err)
+		t.Errorf("the error stopped teaching the format: %v", err)
 	}
 }

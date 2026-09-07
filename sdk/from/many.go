@@ -49,7 +49,7 @@ import (
 // the record's fields and not its position; it affects the preview, and anything
 // that depends on order. That is why concurrency is opt-in.
 type Many struct {
-	// Sources são as sources. Obrigatório, ou Discover.
+	// Sources are the sources. Required, or Discover.
 	Sources []core.Reader
 
 	// Discover monta as sources em runtime, dentro do pipeline.

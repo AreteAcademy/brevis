@@ -14,7 +14,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
 
-func emUTC(s string) time.Time {
+func inUTC(s string) time.Time {
 	t, err := time.Parse(time.RFC3339, s)
 	if err != nil {
 		panic(err)
@@ -22,10 +22,10 @@ func emUTC(s string) time.Time {
 	return t
 }
 
-// montar prepara projeto, workflow publicado e o scheduler.
-func montar(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *postgres.RunRepo, *queue.Queue, *postgres.Pool) {
+// build prepares the project, a published workflow and the scheduler.
+func build(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *postgres.RunRepo, *queue.Queue, *postgres.Pool) {
 	t.Helper()
-	pool := banco(t)
+	pool := testDB(t)
 	ctx := context.Background()
 
 	projeto := uuid.New()
@@ -52,11 +52,11 @@ func montar(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *pos
 	runs := postgres.NewRunRepo(pool)
 	fila := queue.New(pool.Pool)
 	s := scheduler.NewScheduler(postgres.NewScheduleRepo(pool), wRepo, runs, fila,
-		semLog(), scheduler.OpcoesScheduler{})
+		noLog(), scheduler.OpcoesScheduler{})
 	return s, runs, fila, pool
 }
 
-func fixarUltimoSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
+func setLastSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
 	t.Helper()
 	if _, err := pool.Exec(context.Background(),
 		`UPDATE schedules SET ultimo_slot = $1 WHERE workflow_slug = 'diario'`, quando); err != nil {
@@ -66,41 +66,41 @@ func fixarUltimoSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
 
 // Publishing writes the graph and the schedule together, and the scheduler
 // materializes the slot.
-func TestSchedulerCriaRunEEnfileira(t *testing.T) {
-	s, runs, fila, pool := montar(t, "0 2 * * *", false)
+func TestTheSchedulerCreatesARunAndEnqueuesIt(t *testing.T) {
+	s, runs, fila, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	fixarUltimoSlot(t, pool, emUTC("2026-01-01T02:00:00Z"))
+	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
 
-	n, err := s.Ciclo(ctx, emUTC("2026-01-02T03:00:00Z"))
+	n, err := s.Ciclo(ctx, inUTC("2026-01-02T03:00:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
-		t.Fatalf("criou %d runs, queria 1", n)
+		t.Fatalf("created %d runs, wanted 1", n)
 	}
 
 	contagem, _ := runs.ContarPorStatus(ctx)
 	if contagem[dom.StatusQueued] != 1 {
-		t.Errorf("queued = %d, queria 1", contagem[dom.StatusQueued])
+		t.Errorf("queued = %d, wanted 1", contagem[dom.StatusQueued])
 	}
 	porTrigger, _ := runs.ContarPorTrigger(ctx)
 	if porTrigger["schedule"] != 1 {
-		t.Errorf("trigger_type = %v, queria schedule", porTrigger)
+		t.Errorf("trigger_type = %v, wanted schedule", porTrigger)
 	}
 	pendentes, _, _ := fila.Tamanho(ctx)
 	if pendentes != 1 {
-		t.Errorf("fila tem %d, queria 1 — o scheduler cria E enfileira", pendentes)
+		t.Errorf("the queue holds %d, wanted 1 -- the scheduler creates AND enqueues", pendentes)
 	}
 }
 
 // The point of the idempotency: re-running the cycle at the same instant must
 // not
 // duplicar. E o caso da secao 29 — o scheduler cai e sobe de novo.
-func TestCicloRepetidoNaoDuplica(t *testing.T) {
-	s, runs, _, pool := montar(t, "0 2 * * *", true)
+func TestARepeatedCycleDoesNotDuplicate(t *testing.T) {
+	s, runs, _, pool := build(t, "0 2 * * *", true)
 	ctx := context.Background()
-	fixarUltimoSlot(t, pool, emUTC("2026-01-01T02:00:00Z"))
-	agora := emUTC("2026-01-04T03:00:00Z")
+	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
+	agora := inUTC("2026-01-04T03:00:00Z")
 
 	primeiro, err := s.Ciclo(ctx, agora)
 	if err != nil {
@@ -112,58 +112,58 @@ func TestCicloRepetidoNaoDuplica(t *testing.T) {
 	}
 
 	if primeiro != 3 { // 02, 03, 04
-		t.Errorf("primeiro ciclo criou %d, queria 3", primeiro)
+		t.Errorf("first cycle created %d, wanted 3", primeiro)
 	}
 	if segundo != 0 {
-		t.Errorf("segundo ciclo criou %d, queria 0", segundo)
+		t.Errorf("second cycle created %d, wanted 0", segundo)
 	}
 	c, _ := runs.ContarPorStatus(ctx)
 	if total := c[dom.StatusQueued]; total != 3 {
-		t.Errorf("total de runs = %d, queria 3", total)
+		t.Errorf("total runs = %d, wanted 3", total)
 	}
 }
 
 // catchup=false materializes only the most recent slot, even with days of gap.
-func TestCatchupFalseNaoRefazOPassado(t *testing.T) {
-	s, runs, _, pool := montar(t, "0 2 * * *", false)
+func TestCatchupFalseDoesNotRedoThePast(t *testing.T) {
+	s, runs, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	fixarUltimoSlot(t, pool, emUTC("2026-01-01T02:00:00Z"))
+	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
 
-	n, err := s.Ciclo(ctx, emUTC("2026-01-10T03:00:00Z"))
+	n, err := s.Ciclo(ctx, inUTC("2026-01-10T03:00:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
-		t.Errorf("criou %d runs, queria 1 — catchup=false ignora a lacuna", n)
+		t.Errorf("created %d runs, wanted 1 — catchup=false ignores the gap", n)
 	}
 	c, _ := runs.ContarPorStatus(ctx)
 	if c[dom.StatusQueued] != 1 {
-		t.Errorf("queued = %d, queria 1", c[dom.StatusQueued])
+		t.Errorf("queued = %d, wanted 1", c[dom.StatusQueued])
 	}
 }
 
 // A backfill enters the queue like any run, with its own trigger and a lower
 // priority -- section 12 requires it to respect concurrency and priority.
-func TestBackfillEntraNaFilaComPrioridadeMenor(t *testing.T) {
-	s, runs, fila, pool := montar(t, "0 2 * * *", false)
+func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
+	s, runs, fila, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	fixarUltimoSlot(t, pool, emUTC("2026-03-01T02:00:00Z"))
+	setLastSlot(t, pool, inUTC("2026-03-01T02:00:00Z"))
 
-	n, err := s.Backfill(ctx, "diario", emUTC("2026-01-01T00:00:00Z"), emUTC("2026-01-05T23:59:00Z"), nil)
+	n, err := s.Backfill(ctx, "diario", inUTC("2026-01-01T00:00:00Z"), inUTC("2026-01-05T23:59:00Z"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 5 {
-		t.Fatalf("backfill criou %d runs, queria 5", n)
+		t.Fatalf("the backfill created %d runs, wanted 5", n)
 	}
 
 	porTrigger, _ := runs.ContarPorTrigger(ctx)
 	if porTrigger["backfill"] != 5 {
-		t.Errorf("trigger = %v, queria 5 backfill", porTrigger)
+		t.Errorf("trigger = %v, wanted 5 backfill", porTrigger)
 	}
 	pendentes, _, _ := fila.Tamanho(ctx)
 	if pendentes != 5 {
-		t.Errorf("fila tem %d, queria 5", pendentes)
+		t.Errorf("the queue holds %d, wanted 5", pendentes)
 	}
 
 	var prio int
@@ -171,19 +171,19 @@ func TestBackfillEntraNaFilaComPrioridadeMenor(t *testing.T) {
 		t.Fatal(err)
 	}
 	if prio >= 0 {
-		t.Errorf("prioridade = %d; backfill deve ceder a vez ao trabalho corrente", prio)
+		t.Errorf("priority = %d; a backfill has to yield to the current work", prio)
 	}
 }
 
 // A backfill fills the past and must NOT advance the marker, or the scheduler
 // would skip future slots that have not happened yet.
-func TestBackfillNaoAvancaOMarcador(t *testing.T) {
-	s, _, _, pool := montar(t, "0 2 * * *", false)
+func TestABackfillDoesNotAdvanceTheMarker(t *testing.T) {
+	s, _, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	marcador := emUTC("2026-03-01T02:00:00Z")
-	fixarUltimoSlot(t, pool, marcador)
+	marcador := inUTC("2026-03-01T02:00:00Z")
+	setLastSlot(t, pool, marcador)
 
-	if _, err := s.Backfill(ctx, "diario", emUTC("2026-01-01T00:00:00Z"), emUTC("2026-01-03T23:59:00Z"), nil); err != nil {
+	if _, err := s.Backfill(ctx, "diario", inUTC("2026-01-01T00:00:00Z"), inUTC("2026-01-03T23:59:00Z"), nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -193,17 +193,17 @@ func TestBackfillNaoAvancaOMarcador(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !depois.Equal(marcador) {
-		t.Errorf("ultimo_slot = %v, devia continuar %v", depois, marcador)
+		t.Errorf("ultimo_slot = %v, should still be %v", depois, marcador)
 	}
 }
 
 // Republishing a workflow must not make the scheduler recreate slots already
 // materializados.
-func TestRepublicarPreservaOMarcador(t *testing.T) {
-	_, _, _, pool := montar(t, "0 2 * * *", false)
+func TestRepublishingPreservesTheMarker(t *testing.T) {
+	_, _, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
-	marcador := emUTC("2026-05-01T02:00:00Z")
-	fixarUltimoSlot(t, pool, marcador)
+	marcador := inUTC("2026-05-01T02:00:00Z")
+	setLastSlot(t, pool, marcador)
 
 	var projeto uuid.UUID
 	if err := pool.QueryRow(ctx, `SELECT id FROM projects LIMIT 1`).Scan(&projeto); err != nil {
@@ -224,17 +224,17 @@ func TestRepublicarPreservaOMarcador(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !depois.Equal(marcador) {
-		t.Errorf("ultimo_slot = %v; republicar nao pode recriar o passado", depois)
+		t.Errorf("ultimo_slot = %v; republishing must not recreate the past", depois)
 	}
 	if cron != "0 3 * * *" {
-		t.Errorf("cron = %q; o novo devia valer", cron)
+		t.Errorf("cron = %q; the new one should win", cron)
 	}
 }
 
 // Taking `schedule` out of the YAML has to unschedule, and not leave the old
 // schedule alive.
-func TestPublicarSemCronRemoveAAgenda(t *testing.T) {
-	_, _, _, pool := montar(t, "0 2 * * *", false)
+func TestPublishingWithNoCronRemovesTheSchedule(t *testing.T) {
+	_, _, _, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
 
 	var projeto uuid.UUID
@@ -253,25 +253,25 @@ func TestPublicarSemCronRemoveAAgenda(t *testing.T) {
 		t.Fatal(err)
 	}
 	if n != 0 {
-		t.Error("a agenda deveria ter sido removida")
+		t.Error("the schedule should have been removed")
 	}
 }
 
 // A one-day backfill with an hourly cron has to give 24 slots, not 23: `Next(t)`
 // returns the next one strictly after `t`, so starting exactly at
 // `de` excluiria o slot da meia-noite.
-func TestBackfillIncluiOSlotDaBorda(t *testing.T) {
-	s, _, _, pool := montar(t, "0 * * * *", false)
+func TestABackfillIncludesTheEdgeSlot(t *testing.T) {
+	s, _, _, pool := build(t, "0 * * * *", false)
 	ctx := context.Background()
-	fixarUltimoSlot(t, pool, emUTC("2026-06-01T00:00:00Z"))
+	setLastSlot(t, pool, inUTC("2026-06-01T00:00:00Z"))
 
 	n, err := s.Backfill(ctx, "diario",
-		emUTC("2026-01-01T00:00:00Z"), emUTC("2026-01-01T23:59:59Z"), nil)
+		inUTC("2026-01-01T00:00:00Z"), inUTC("2026-01-01T23:59:59Z"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 24 {
-		t.Errorf("backfill criou %d slots, queria 24 (00:00 a 23:00)", n)
+		t.Errorf("the backfill created %d slots, wanted 24 (00:00 to 23:00)", n)
 	}
 }
 
@@ -279,8 +279,8 @@ func TestBackfillIncluiOSlotDaBorda(t *testing.T) {
 // file out of it took nothing out of the database, and the scheduler went on
 // materializing runs for a workflow nobody could see any more. With a 15-minute
 // cron, that is invisible work running forever.
-func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
-	pool := banco(t)
+func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
+	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
 	agendas := postgres.NewScheduleRepo(pool)
@@ -314,14 +314,14 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(removidos) != 1 || removidos[0] != sai.Slug {
-		t.Fatalf("removidos = %v, quero apenas %s", removidos, sai.Slug)
+		t.Fatalf("removidos = %v, want apenas %s", removidos, sai.Slug)
 	}
 
 	if _, err := repo.Definition(ctx, sai.Slug); err == nil {
-		t.Error("o workflow removido ainda tem definicao no banco")
+		t.Error("the removed workflow still has a definition in the database")
 	}
 	if _, err := repo.Definition(ctx, fica.Slug); err != nil {
-		t.Errorf("o workflow que ficou sumiu: %v", err)
+		t.Errorf("the workflow that stayed is gone: %v", err)
 	}
 
 	// The schedule lives in a separate table, linked by slug as text -- the
@@ -333,7 +333,7 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 	}
 	for _, a := range ativas {
 		if a.WorkflowSlug == sai.Slug {
-			t.Error("a agenda do workflow removido sobreviveu e continuaria criando runs")
+			t.Error("the removed workflow's schedule survived and would keep creating runs")
 		}
 	}
 
@@ -343,13 +343,13 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 		t.Fatal(err)
 	}
 	if historico != 1 {
-		t.Errorf("historico apagado junto (%d runs); apagar a execucao seria apagar a evidencia", historico)
+		t.Errorf("the history was deleted along with it (%d runs); deleting the run would be deleting the evidence", historico)
 	}
 }
 
 // With nothing to prune, it touches nothing.
-func TestPodarSemDiferencaNaoRemoveNada(t *testing.T) {
-	pool := banco(t)
+func TestPruningWithNoDifferenceRemovesNothing(t *testing.T) {
+	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
 
@@ -369,52 +369,52 @@ func TestPodarSemDiferencaNaoRemoveNada(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(removidos) != 0 {
-		t.Errorf("removeu %v sem motivo", removidos)
+		t.Errorf("it removed %v for no reason", removidos)
 	}
 }
 
 // A newly published schedule (`ultimo_slot` NULL) has to start firing.
 //
 // This is the test that was missing, and the gap had a shape: EVERY case above
-// calls `fixarUltimoSlot` before the cycle, so the null-marker path was never
+// calls `setLastSlot` before the cycle, so the null-marker path was never
 // exercised. In dev, 18 workflows sat registered for hours with not one
 // automatic run -- a `*/30` among them -- because `Slots` started from
 // proprio `agora`, o proximo horario do cron era sempre futuro, e o marcador
 // never left NULL to break the circle.
-func TestAgendaNovaComecaADisparar(t *testing.T) {
-	s, runs, _, _ := montar(t, "*/30 * * * *", false)
+func TestANewScheduleStartsFiring(t *testing.T) {
+	s, runs, _, _ := build(t, "*/30 * * * *", false)
 	ctx := context.Background()
 
-	// Primeiro ciclo: so planta o marco, sem executar o passado.
-	n, err := s.Ciclo(ctx, emUTC("2026-01-01T10:05:00Z"))
+	// First cycle: it only plants the marker, without running the past.
+	n, err := s.Ciclo(ctx, inUTC("2026-01-01T10:05:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
-		t.Errorf("o ciclo de estreia criou %d runs; o slot anterior ao registro nao e nosso", n)
+		t.Errorf("the first cycle created %d runs; the slot before registration is not ours", n)
 	}
 
 	// The second cycle, after the clock passed 10:30: now it fires.
-	n, err = s.Ciclo(ctx, emUTC("2026-01-01T10:31:00Z"))
+	n, err = s.Ciclo(ctx, inUTC("2026-01-01T10:31:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
-		t.Fatalf("criou %d runs apos o horario do cron; queria 1", n)
+		t.Fatalf("created %d runs after the cron's time; wanted 1", n)
 	}
 	porTrigger, _ := runs.ContarPorTrigger(ctx)
 	if porTrigger["schedule"] != 1 {
-		t.Errorf("trigger = %v; queria schedule", porTrigger)
+		t.Errorf("trigger = %v; wanted schedule", porTrigger)
 	}
 }
 
 // The debut marker must not be replanted on every cycle: if it were, `de` would
 // advance along with the clock and the schedule would go back to never firing.
-func TestMarcoDeEstreiaEPlantadoUmaVezSo(t *testing.T) {
-	s, _, _, pool := montar(t, "*/30 * * * *", false)
+func TestTheFirstRunMarkerIsPlantedOnlyOnce(t *testing.T) {
+	s, _, _, pool := build(t, "*/30 * * * *", false)
 	ctx := context.Background()
 
-	if _, err := s.Ciclo(ctx, emUTC("2026-01-01T10:05:00Z")); err != nil {
+	if _, err := s.Ciclo(ctx, inUTC("2026-01-01T10:05:00Z")); err != nil {
 		t.Fatal(err)
 	}
 	var primeiro time.Time
@@ -423,7 +423,7 @@ func TestMarcoDeEstreiaEPlantadoUmaVezSo(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.Ciclo(ctx, emUTC("2026-01-01T10:10:00Z")); err != nil {
+	if _, err := s.Ciclo(ctx, inUTC("2026-01-01T10:10:00Z")); err != nil {
 		t.Fatal(err)
 	}
 	var depois time.Time
@@ -432,6 +432,6 @@ func TestMarcoDeEstreiaEPlantadoUmaVezSo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !depois.Equal(primeiro) {
-		t.Errorf("o marco andou de %s para %s — a agenda nunca alcancaria um horario", primeiro, depois)
+		t.Errorf("the marker moved from %s to %s -- the schedule would never catch up to a time", primeiro, depois)
 	}
 }

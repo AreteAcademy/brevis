@@ -173,7 +173,7 @@ func (e errOrfao) Error() string {
 		"(o processo que a reivindicou provavelmente caiu)", e.limite)
 }
 
-// cicloDeClaim pede a fila APENAS as vagas livres.
+// cicloDeClaim asks the queue for the free slots ONLY.
 //
 // This is where concurrency is enforced, and why it is reliable: there is no
 // path in which more items leave the queue than the limit allows, because

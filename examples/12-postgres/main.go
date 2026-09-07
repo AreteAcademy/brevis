@@ -1,14 +1,14 @@
-// Um fetcher completo de Postgres para Postgres.
+// A complete Postgres-to-Postgres fetcher.
 //
-// Existe porque a fase 5 do plano dos drivers pede um exemplo executável por
-// driver -- e o motivo é concreto: foi um exemplo que não rodava que achou o
-// buraco do 03-basic-load.
+// It exists because phase 5 of the drivers plan asks for one runnable example per
+// driver -- and the reason is concrete: it was an example that did not run which
+// found the hole in 03-basic-load.
 //
 //	docker compose -f docker-compose.drivers.yml up -d postgres
 //	export PG_DSN='postgres://brevis:brevis@localhost:55432/brevis_it'
-//	go run ./12-postgres -criar-tabelas
+//	go run ./12-postgres -create-tables
 //	go run ./12-postgres
-//	go run ./12-postgres          # a segunda execução carrega zero linhas
+//	go run ./12-postgres          # the second run loads zero rows
 package main
 
 import (
@@ -34,16 +34,16 @@ func main() {
 
 	sdk.Run(sdk.Pipeline{
 		Name:  "exemplo_postgres",
-		Flags: func(fs *flag.FlagSet) { fs.BoolVar(&criar, "criar-tabelas", false, "cria as tabelas e sai") },
+		Flags: func(fs *flag.FlagSet) { fs.BoolVar(&criar, "create-tables", false, "creates the tables and exits") },
 
 		Before: func(ctx context.Context, _ *sdk.Pipeline) error {
 			if !criar {
 				return nil
 			}
-			if err := criarTabelas(ctx); err != nil {
+			if err := createTables(ctx); err != nil {
 				return err
 			}
-			fmt.Println("tabelas criadas; rode de novo sem -criar-tabelas")
+			fmt.Println("tables created; run again without -create-tables")
 			os.Exit(0)
 			return nil
 		},
@@ -51,8 +51,8 @@ func main() {
 		Source: sdk.Source{
 			From: frompg.Query{
 				DSN: os.Getenv("PG_DSN"),
-				// Paginação por CHAVE. OFFSET numa tabela grande é O(n²),
-				// porque o servidor conta as linhas que descarta.
+				// Pagination by KEY. OFFSET on a large table is O(n^2), because
+				// the server counts the rows it discards.
 				SQL: "SELECT id, nome, valor, atualizado_em FROM " + origem +
 					" WHERE id > $1 ORDER BY id LIMIT $2",
 				Args: []any{0, 10_000},
@@ -61,7 +61,7 @@ func main() {
 		},
 
 		Transform: []sdk.Transformer{
-			// A chave do ingestion_id é texto: um número e a string dele têm
+			// The ingestion_id's key is text: a number and its string have
 			// de produzir o mesmo id.
 			sdk.Compute("source_key", func(r map[string]any) (any, error) {
 				return fmt.Sprint(r["id"]), nil
@@ -80,16 +80,16 @@ func main() {
 				"ingestion_id", "ingestion_loaded_at", "provider", "entity",
 				"source_key", "record_ts", "nome", "valor",
 			},
-			// Exige índice único em ingestion_id; o -criar-tabelas o cria.
+			// Requires a unique index on ingestion_id; -create-tables creates it.
 			Dedup: sdk.DedupMerge,
 		},
 	})
 }
 
-// criarTabelas escreve o DDL à mão, de propósito: o driver não cria tabela e
-// não infere tipo, então o DDL é do consumidor -- e é ele quem sabe que
-// `valor` é NUMERIC(18,2) e não um float.
-func criarTabelas(ctx context.Context) error {
+// createTables writes the DDL by hand, on purpose: the driver creates no table
+// and infers no type, so the DDL is the consumer's -- and they are the one who
+// knows `valor` is NUMERIC(18,2) and not a float.
+func createTables(ctx context.Context) error {
 	conn, err := pgx.Connect(ctx, os.Getenv("PG_DSN"))
 	if err != nil {
 		return fmt.Errorf("conectando: %w", err)

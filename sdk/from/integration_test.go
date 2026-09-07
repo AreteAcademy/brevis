@@ -192,10 +192,9 @@ func TestIntegrationS3Comprimido(t *testing.T) {
 }
 
 // List's pagination exists because a prefix with more than a thousand objects
-// would be read halfway -- and a partial read reporting success looks like just
-// a
-// dia pequeno.
-func TestIntegrationS3PaginaAListagem(t *testing.T) {
+// would be read halfway -- and a partial read reporting success looks just like a
+// small day.
+func TestIntegrationS3PaginatesTheListing(t *testing.T) {
 	client, bucket := s3Client(t)
 	ctx := context.Background()
 	store := s3.New(client)

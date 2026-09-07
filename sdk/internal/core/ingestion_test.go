@@ -3,10 +3,9 @@ package core
 import "testing"
 
 // The formula is frozen: a row written in Go has to match the one a
-// Python fetcher writes for the same record. Checked against
-// Python's, and not against another implementation of ours -- two
-// implementations
-// nossas podem mudar juntas e o teste passar.
+// Python fetcher writes for the same record. Checked against Python's, and not
+// against another implementation of ours -- two implementations of ours can
+// change together and the test still pass.
 func TestComputeIngestionIDAgainstPython(t *testing.T) {
 	casos := []struct {
 		provider, entity, sourceKey, recordTS, esperado string

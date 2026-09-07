@@ -9,15 +9,15 @@ import (
 	"time"
 )
 
-func TestLoadExigeDatabaseURL(t *testing.T) {
+func TestLoadRequiresDatabaseURL(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("esperava erro quando BREVIS_DATABASE_URL falta; o processo nao pode subir sem banco")
+		t.Fatal("expected an error when BREVIS_DATABASE_URL is missing; the process must not start with no database")
 	}
 }
 
-func TestLoadAplicaPadroes(t *testing.T) {
+func TestLoadAppliesTheDefaults(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
 
 	c, err := Load()
@@ -25,29 +25,29 @@ func TestLoadAplicaPadroes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.Env != "local" {
-		t.Errorf("Env = %q, queria local", c.Env)
+		t.Errorf("Env = %q, wanted local", c.Env)
 	}
 	if c.HTTPAddr != ":8080" {
-		t.Errorf("HTTPAddr = %q, queria :8080", c.HTTPAddr)
+		t.Errorf("HTTPAddr = %q, wanted :8080", c.HTTPAddr)
 	}
 	if c.ShutdownTimeout != 15*time.Second {
-		t.Errorf("ShutdownTimeout = %v, queria 15s", c.ShutdownTimeout)
+		t.Errorf("ShutdownTimeout = %v, wanted 15s", c.ShutdownTimeout)
 	}
 }
 
-func TestLoadRejeitaTimeoutInvalido(t *testing.T) {
+func TestLoadRejectsAnInvalidTimeout(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://u:p@localhost:5432/db")
 	t.Setenv("BREVIS_SHUTDOWN_TIMEOUT_SECONDS", "quinze")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("esperava erro num timeout nao numerico, em vez de cair no padrao em silencio")
+		t.Fatal("expected an error on a non-numeric timeout, rather than falling back to the default in silence")
 	}
 }
 
-// O bug que o usuario viu: o compose tinha GOOGLE_PROJECT_ID no ambiente do
-// scheduler, mas o dbt dentro da task recebia "Env var required but not
-// provided". A task nao herda o ambiente — o que ela precisa e declarado.
-func TestAmbienteDasTasksRepassaOQueFoiDeclarado(t *testing.T) {
+// The bug the user saw: the compose had GOOGLE_PROJECT_ID in the scheduler's
+// environment, but dbt inside the task got "Env var required but not provided".
+// The task does not inherit the environment -- what it needs is declared.
+func TestTheTasksEnvironmentPassesOnWhatWasDeclared(t *testing.T) {
 	t.Setenv("GOOGLE_PROJECT_ID", "acme-dev")
 	t.Setenv("STAGE", "local")
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://brevis:senha@db/brevis")
@@ -55,43 +55,44 @@ func TestAmbienteDasTasksRepassaOQueFoiDeclarado(t *testing.T) {
 	env := AmbienteDasTasks([]string{"GOOGLE_PROJECT_ID", "STAGE"})
 
 	if env["GOOGLE_PROJECT_ID"] != "acme-dev" || env["STAGE"] != "local" {
-		t.Errorf("nao repassou o declarado: %v", env)
+		t.Errorf("it did not pass on what was declared: %v", env)
 	}
 	if _, vazou := env["BREVIS_DATABASE_URL"]; vazou {
-		t.Error("a credencial do banco chegou na task")
+		t.Error("the database credential reached the task")
 	}
 	if env["PATH"] == "" {
-		t.Error("sem PATH nenhum comando resolve")
+		t.Error("with no PATH no command resolves")
 	}
 }
 
-// Herdar por padrao entregaria a credencial do banco a todo passo de todo
-// pipeline — um workflow e um comando arbitrario escrito por outra pessoa.
-func TestSemDeclaracaoSoPathEHome(t *testing.T) {
+// Inheriting by default would hand the database credential to every step of
+// every pipeline -- a workflow is an arbitrary command written by somebody
+// else.
+func TestWithNoDeclarationOnlyPathAndHome(t *testing.T) {
 	t.Setenv("SEGREDO_QUALQUER", "nao-deve-vazar")
 	env := AmbienteDasTasks(nil)
 	if len(env) != 2 {
-		t.Errorf("ambiente = %v, quero apenas PATH e HOME", env)
+		t.Errorf("ambiente = %v, want apenas PATH e HOME", env)
 	}
 }
 
-func TestValorLiteralEVariavelAusente(t *testing.T) {
+func TestALiteralValueAndAMissingVariable(t *testing.T) {
 	_ = os.Unsetenv("NAO_EXISTE")
 	env := AmbienteDasTasks([]string{"STAGE=prod", "NAO_EXISTE"})
 
 	if env["STAGE"] != "prod" {
-		t.Errorf("literal nao aplicado: %v", env)
+		t.Errorf("the literal was not applied: %v", env)
 	}
-	// Ausente nao vira string vazia: `GOOGLE_PROJECT_ID=""` faria o dbt falhar
-	// mais tarde, com mensagem pior que a de variavel ausente.
+	// Absent does not become an empty string: `GOOGLE_PROJECT_ID=""` would make
+	// dbt fail later, with a worse message than the missing-variable one.
 	if _, existe := env["NAO_EXISTE"]; existe {
 		t.Error("variavel ausente virou string vazia")
 	}
 }
 
-// O curinga existe para quem precisa; a excecao existe porque a configuracao do
-// orquestrador nunca e trabalho da task.
-func TestCuringaNaoLevaAsVariaveisDoProprioBrevis(t *testing.T) {
+// The wildcard exists for whoever needs it; the exception exists because the
+// orchestrator's configuration is never the task's business.
+func TestTheWildcardDoesNotCarryBrevisOwnVariables(t *testing.T) {
 	t.Setenv("MINHA_VAR", "valor")
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://brevis:senha@db/brevis")
 	t.Setenv("BREVIS_BRAND_FILE", "/etc/brevis/brand.yaml")
@@ -103,16 +104,16 @@ func TestCuringaNaoLevaAsVariaveisDoProprioBrevis(t *testing.T) {
 	}
 	for k := range env {
 		if strings.HasPrefix(k, "BREVIS_") {
-			t.Errorf("curinga levou %s para a task", k)
+			t.Errorf("the wildcard carried %s into the task", k)
 		}
 	}
 }
 
-// Um campo declarado na struct mas nunca preenchido compila e passa despercebido
-// — foi o que aconteceu com o webhook: a variavel estava no container, o binario
-// era o novo, e o alerta simplesmente nao saia. Este teste amarra ambiente e
-// campo.
-func TestLoadLeOAmbienteDeCadaCampo(t *testing.T) {
+// A field declared in the struct but never filled compiles and goes unnoticed --
+// which is what happened with the webhook: the variable was in the container, the
+// binary was the new one, and the alert simply did not go out. This test ties the
+// environment to the field.
+func TestLoadReadsTheEnvironmentForEveryField(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_SLACK_WEBHOOK", "https://hooks.slack.com/services/abc")
 	t.Setenv("BREVIS_UI_URL", "https://brevis.example.com")
@@ -141,16 +142,17 @@ func TestLoadLeOAmbienteDeCadaCampo(t *testing.T) {
 	}
 }
 
-// Fora do local, subir sem credencial e recusado. A interface dispara pipeline
-// que escreve no data warehouse; aberta na internet ela e um controle remoto do
-// warehouse. Um aviso no log nao bastaria — ninguem le o log de um processo que
+// Outside local, starting with no credential is refused. The interface fires
+// pipelines that write into the data warehouse; open on the internet it is a
+// remote control for the warehouse. A warning in the log would not do -- nobody
+// reads the log of a process that
 // funciona.
-func TestForaDoLocalExigeCredencial(t *testing.T) {
+func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "prod")
 
 	if _, err := Load(); err == nil {
-		t.Fatal("BREVIS_ENV=prod subiu sem credencial")
+		t.Fatal("BREVIS_ENV=prod started with no credential")
 	}
 
 	h, err := auth.GenerateHash("senha-de-teste-longa")
@@ -163,20 +165,21 @@ func TestForaDoLocalExigeCredencial(t *testing.T) {
 
 	c, err := Load()
 	if err != nil {
-		t.Fatalf("com credencial completa deveria subir: %v", err)
+		t.Fatalf("with a complete credential it should start: %v", err)
 	}
 	if !c.Auth.Enabled() {
-		t.Error("a credencial nao chegou na Config")
+		t.Error("the credential did not reach the Config")
 	}
 }
 
-// Em local a interface pode ficar aberta: ali o servidor escuta a maquina de
-// quem desenvolve, e pedir senha a cada `make up` empurraria o time a desligar
+// In local the interface may stay open: there the server listens on the
+// developer's own machine, and asking for a password on every `make up` would
+// push the team into switching
 // a autenticacao de vez.
-func TestLocalSobeSemCredencial(t *testing.T) {
+func TestLocalStartsWithNoCredential(t *testing.T) {
 	t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
 	t.Setenv("BREVIS_ENV", "local")
 	if _, err := Load(); err != nil {
-		t.Fatalf("local deveria subir sem credencial: %v", err)
+		t.Fatalf("local should start with no credential: %v", err)
 	}
 }

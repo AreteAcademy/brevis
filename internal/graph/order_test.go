@@ -16,11 +16,11 @@ func TestNiveisEmCadeia(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(n) != 3 {
-		t.Fatalf("niveis = %d, queria 3 (cadeia nao paraleliza)", len(n))
+		t.Fatalf("levels = %d, wanted 3 (a chain does not parallelize)", len(n))
 	}
 }
 
-// O ponto do agrupamento por nivel: gold_metrics e gold_users sao independentes
+// The point of grouping by level: gold_metrics and gold_users are independent
 // e devem sair juntas. Uma ordenacao topologica linear as serializaria.
 func TestNiveisPreservamParalelismo(t *testing.T) {
 	w := wf.Workflow{
@@ -37,33 +37,33 @@ func TestNiveisPreservamParalelismo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(n) != 3 {
-		t.Fatalf("niveis = %v, queria 3", n)
+		t.Fatalf("levels = %v, wanted 3", n)
 	}
 	if len(n[1]) != 2 {
-		t.Errorf("nivel 1 = %v, queria metrics e users juntos", n[1])
+		t.Errorf("level 1 = %v, wanted metrics and users together", n[1])
 	}
 	if len(n[2]) != 1 || n[2][0] != "publish" {
-		t.Errorf("nivel 2 = %v, queria publish sozinho no fim", n[2])
+		t.Errorf("level 2 = %v, wanted publish alone at the end", n[2])
 	}
 }
 
-func TestNiveisSemArestasRodamTodosJuntos(t *testing.T) {
+func TestLevelsWithNoEdgesAllRunTogether(t *testing.T) {
 	w := wf.Workflow{Nodes: []wf.Node{{ID: "a"}, {ID: "b"}, {ID: "c"}}}
 	n, err := Niveis(w)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(n) != 1 || len(n[0]) != 3 {
-		t.Fatalf("niveis = %v; sem dependencia tudo e um nivel so", n)
+		t.Fatalf("levels = %v; with no dependency it is all one level", n)
 	}
 }
 
-func TestNiveisDetectaCicloMontadoEmCodigo(t *testing.T) {
+func TestLevelsDetectsACycleBuiltInCode(t *testing.T) {
 	w := wf.Workflow{
 		Nodes: []wf.Node{{ID: "a"}, {ID: "b"}},
 		Edges: []wf.Edge{{From: "a", To: "b"}, {From: "b", To: "a"}},
 	}
 	if _, err := Niveis(w); err == nil {
-		t.Fatal("esperava erro de ciclo")
+		t.Fatal("expected a cycle error")
 	}
 }

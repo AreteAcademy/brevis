@@ -18,7 +18,7 @@ func executor(t *testing.T) *ProcessExecutor {
 	return p
 }
 
-func coletar(t *testing.T, ev <-chan execution.Event) []execution.Event {
+func collectOutput(t *testing.T, ev <-chan execution.Event) []execution.Event {
 	t.Helper()
 	var out []execution.Event
 	for e := range ev {
@@ -27,79 +27,80 @@ func coletar(t *testing.T, ev <-chan execution.Event) []execution.Event {
 	return out
 }
 
-// A fronteira do executor e codigo, nao convencao. Se este teste passar a
+// The executor's boundary is code, not convention. If this test starts
 // falhar, a emenda a secao 3 do plano foi violada.
-func TestRecusaConstrucaoForaDoLocal(t *testing.T) {
+func TestItRefusesToBeBuiltOutsideLocal(t *testing.T) {
 	for _, env := range []string{"prod", "staging", "dev", ""} {
 		if _, err := New(env); err == nil {
-			t.Fatalf("New(%q) devia recusar: fora do local, `run:` vai para o Kubernetes", env)
+			t.Fatalf("New(%q) should refuse: outside local, `run:` goes to Kubernetes", env)
 		} else if !errors.As(err, &ErrForaDoLocal{}) {
-			t.Errorf("New(%q) devolveu %T, queria ErrForaDoLocal", env, err)
+			t.Errorf("New(%q) devolveu %T, wanted ErrForaDoLocal", env, err)
 		}
 	}
 }
 
-func TestExecutaEReportaSucesso(t *testing.T) {
+func TestItRunsAndReportsSuccess(t *testing.T) {
 	ev, err := executor(t).Execute(context.Background(), execution.TaskExec{
 		ExecutionID: "1", NodeID: "hello", Command: "echo ola",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := coletar(t, ev)
+	eventos := collectOutput(t, ev)
 
 	if eventos[0].Kind != execution.EventStarted {
-		t.Errorf("primeiro evento = %v, queria started", eventos[0].Kind)
+		t.Errorf("first event = %v, wanted started", eventos[0].Kind)
 	}
 	ultimo := eventos[len(eventos)-1]
 	if ultimo.Kind != execution.EventSucceeded {
-		t.Errorf("ultimo evento = %v, queria succeeded", ultimo.Kind)
+		t.Errorf("last event = %v, wanted succeeded", ultimo.Kind)
 	}
-	if !temLog(eventos, "ola", "stdout") {
-		t.Error("nao capturou a saida do comando")
+	if !hasLog(eventos, "ola", "stdout") {
+		t.Error("it did not capture the command's output")
 	}
 }
 
-// stdout e stderr precisam chegar separados: juntar os dois perde de onde a
-// mensagem veio, que foi o que fez o resumo do dbt aparecer como erro no Leoflow.
-func TestSeparaStdoutDeStderr(t *testing.T) {
+// stdout and stderr have to arrive separately: merging them loses where the
+// message came from, which is what made dbt's summary show up as an error in
+// Leoflow.
+func TestItSeparatesStdoutFromStderr(t *testing.T) {
 	ev, err := executor(t).Execute(context.Background(), execution.TaskExec{
-		ExecutionID: "2", NodeID: "n", Command: "echo saida; echo erro >&2",
+		ExecutionID: "2", NodeID: "n", Command: "echo out; echo err >&2",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := coletar(t, ev)
+	eventos := collectOutput(t, ev)
 
-	if !temLog(eventos, "saida", "stdout") {
-		t.Error("stdout nao classificado")
+	if !hasLog(eventos, "out", "stdout") {
+		t.Error("stdout was not classified")
 	}
-	if !temLog(eventos, "erro", "stderr") {
-		t.Error("stderr nao classificado")
+	if !hasLog(eventos, "err", "stderr") {
+		t.Error("stderr was not classified")
 	}
 }
 
-func TestReportaFalhaComExitCode(t *testing.T) {
+func TestItReportsAFailureWithTheExitCode(t *testing.T) {
 	ev, err := executor(t).Execute(context.Background(), execution.TaskExec{
 		ExecutionID: "3", NodeID: "n", Command: "exit 3",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := coletar(t, ev)
+	eventos := collectOutput(t, ev)
 
 	ultimo := eventos[len(eventos)-1]
 	if ultimo.Kind != execution.EventFailed {
-		t.Fatalf("ultimo evento = %v, queria failed", ultimo.Kind)
+		t.Fatalf("last event = %v, wanted failed", ultimo.Kind)
 	}
 	if ultimo.ExitCode != 3 {
-		t.Errorf("exit = %d, queria 3", ultimo.ExitCode)
+		t.Errorf("exit = %d, wanted 3", ultimo.ExitCode)
 	}
 }
 
-// O ambiente e explicito: o orquestrador carrega credenciais que uma task nao
-// deve enxergar por acidente.
-func TestNaoHerdaAmbienteDoPai(t *testing.T) {
+// The environment is explicit: the orchestrator carries credentials a task must
+// not get to see by accident.
+func TestItDoesNotInheritTheParentsEnvironment(t *testing.T) {
 	t.Setenv("SEGREDO_DO_ORQUESTRADOR", "nao-vazar")
 
 	ev, err := executor(t).Execute(context.Background(), execution.TaskExec{
@@ -110,9 +111,9 @@ func TestNaoHerdaAmbienteDoPai(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, e := range coletar(t, ev) {
+	for _, e := range collectOutput(t, ev) {
 		if strings.Contains(e.Message, "nao-vazar") {
-			t.Fatal("a task enxergou uma variavel do processo pai")
+			t.Fatal("the task could see a variable of the parent process")
 		}
 	}
 }
@@ -128,13 +129,13 @@ func TestCancelInterrompe(t *testing.T) {
 	if err := p.Cancel(context.Background(), "5"); err != nil {
 		t.Fatal(err)
 	}
-	ultimo := coletar(t, ev)
+	ultimo := collectOutput(t, ev)
 	if k := ultimo[len(ultimo)-1].Kind; k != execution.EventFailed {
-		t.Errorf("ultimo evento = %v, queria failed apos cancelamento", k)
+		t.Errorf("last event = %v, wanted failed after the cancellation", k)
 	}
 }
 
-func temLog(eventos []execution.Event, msg, stream string) bool {
+func hasLog(eventos []execution.Event, msg, stream string) bool {
 	for _, e := range eventos {
 		if e.Kind == execution.EventLog && e.Stream == stream && strings.Contains(e.Message, msg) {
 			return true

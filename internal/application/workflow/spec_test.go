@@ -7,7 +7,7 @@ import (
 	dominio "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-// O exemplo que o autor pediu tem de passar exatamente como escrito.
+// The example the author asked for has to pass exactly as written.
 func TestParseExemploDailyReport(t *testing.T) {
 	b, err := os.ReadFile("../../../examples/daily-report.yaml")
 	if err != nil {
@@ -19,20 +19,20 @@ func TestParseExemploDailyReport(t *testing.T) {
 	}
 
 	if w.Slug != "daily-report" {
-		t.Errorf("slug = %q; sem `name`, deve vir do nome do arquivo", w.Slug)
+		t.Errorf("slug = %q; with no `name` it has to come from the file name", w.Slug)
 	}
 	if w.Schedule != "0 2 * * *" {
 		t.Errorf("schedule = %q", w.Schedule)
 	}
 	if len(w.Nodes) != 3 {
-		t.Fatalf("nodes = %d, queria 3", len(w.Nodes))
+		t.Fatalf("nodes = %d, wanted 3", len(w.Nodes))
 	}
 	// chain vira arestas: o motor so ve DAG
 	if len(w.Edges) != 2 {
-		t.Fatalf("edges = %d, queria 2 (chain de 3 passos)", len(w.Edges))
+		t.Fatalf("edges = %d, wanted 2 (a 3-step chain)", len(w.Edges))
 	}
 	if w.Edges[0] != (dominio.Edge{From: "fetch_data", To: "build_report"}) {
-		t.Errorf("primeira aresta = %+v", w.Edges[0])
+		t.Errorf("first aresta = %+v", w.Edges[0])
 	}
 
 	docker := w.Nodes[1]
@@ -44,8 +44,8 @@ func TestParseExemploDailyReport(t *testing.T) {
 	}
 }
 
-// Fan-out e fan-in: o mesmo motor, com dependencias declaradas.
-func TestParseDAGComParalelismo(t *testing.T) {
+// Fan-out and fan-in: the same engine, with declared dependencies.
+func TestParseDAGWithParallelism(t *testing.T) {
 	b, err := os.ReadFile("../../../examples/analytics-dag.yaml")
 	if err != nil {
 		t.Fatal(err)
@@ -55,51 +55,52 @@ func TestParseDAGComParalelismo(t *testing.T) {
 		t.Fatal(err)
 	}
 	if w.Slug != "daily_analytics" {
-		t.Errorf("slug = %q; deve vir do campo `name`", w.Slug)
+		t.Errorf("slug = %q; it has to come from the `name` field", w.Slug)
 	}
 	if len(w.Edges) != 5 {
-		t.Errorf("edges = %d, queria 5", len(w.Edges))
+		t.Errorf("edges = %d, wanted 5", len(w.Edges))
 	}
 }
 
-func TestParseRecusaDependsOnEmChain(t *testing.T) {
+func TestParseRefusesDependsOnInAChain(t *testing.T) {
 	y := []byte("type: chain\nsteps:\n  - id: a\n    run: echo\n  - id: b\n    run: echo\n    depends_on: [a]\n")
 	_, err := Parse("x.yaml", y)
 	if err == nil {
-		t.Fatal("esperava erro: em chain a ordem e a do arquivo")
+		t.Fatal("expected an error: in a chain the order is the file's")
 	}
 }
 
-func TestParseRecusaTypeDesconhecido(t *testing.T) {
+func TestParseRefusesAnUnknownType(t *testing.T) {
 	y := []byte("type: pipeline\nsteps:\n  - id: a\n    run: echo\n")
 	if _, err := Parse("x.yaml", y); err == nil {
-		t.Fatal("esperava erro de type desconhecido")
+		t.Fatal("expected an unknown-type error")
 	}
 }
 
-// Sem `type`, assume DAG: sem depends_on os passos ficam soltos e rodam em
-// paralelo. `chain` impoe ordem e por isso precisa ser pedido.
-func TestParseSemTypeAssumeDAG(t *testing.T) {
+// With no `type`, it assumes DAG: with no depends_on the steps are loose and run
+// in parallel. `chain` imposes an order and for that reason has to be asked
+// for.
+func TestParseWithNoTypeAssumesDAG(t *testing.T) {
 	y := []byte("steps:\n  - id: a\n    run: echo\n  - id: b\n    run: echo\n")
 	w, err := Parse("x.yaml", y)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if w.Kind != dominio.KindDAG {
-		t.Errorf("kind = %q, queria dag", w.Kind)
+		t.Errorf("kind = %q, wanted dag", w.Kind)
 	}
 	if len(w.Edges) != 0 {
-		t.Errorf("edges = %d; sem depends_on os passos sao independentes", len(w.Edges))
+		t.Errorf("edges = %d; with no depends_on the steps are independent", len(w.Edges))
 	}
 }
 
-func TestParseCitaOArquivoNoErro(t *testing.T) {
+func TestParseNamesTheFileInTheError(t *testing.T) {
 	y := []byte("type: chain\nsteps:\n  - id: a\n")
 	_, err := Parse("relatorio.yaml", y)
 	if err == nil {
-		t.Fatal("esperava erro")
+		t.Fatal("expected an error")
 	}
 	if got := err.Error(); len(got) < 15 || got[:14] != "relatorio.yaml" {
-		t.Errorf("erro = %q; deve comecar pelo arquivo", got)
+		t.Errorf("error = %q; it has to start with the file", got)
 	}
 }

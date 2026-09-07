@@ -33,9 +33,9 @@ spec:
       containers:
         - name: publish
           image: daniel3843/brevis:0.2.1-worker
-          # `--prune` torna a pasta a fonte da verdade: workflow que sai do
-          # ConfigMap sai do banco, junto com a agenda. Sem ele, remover um YAML
-          # deixaria a agenda dele criando runs para sempre.
+          # `--prune` makes the folder the source of truth: a workflow that
+          # leaves the ConfigMap leaves the database, schedule and all. Without
+          # it, removing a YAML would leave its schedule creating runs forever.
           args: ["publish", "/workflows", "--project", "acme", "--prune"]
           env:
             - name: BREVIS_DATABASE_URL

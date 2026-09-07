@@ -18,8 +18,8 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// The whole pipe, with real parts: a binary compiled against the SDK, the
-// executor de processo, um pipe do sistema operacional, o runner e o Postgres.
+// The whole pipe, with real parts: a binary compiled against the SDK, the process
+// executor, an operating-system pipe, the runner and Postgres.
 //
 // Everything else on the stages path was tested with a fake executor and a spy
 // persister. The `@brevis:` line had never crossed a real pipe or a
@@ -29,7 +29,7 @@ import (
 // What stays out of reach here: Kubernetes's `Logs(ctx, pod, follow=true)`. It
 // requires a cluster, and this machine's contexts are real clusters, production
 // among them.
-func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
+func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 	dsn := os.Getenv("BREVIS_IT_PG_DSN")
 	if dsn == "" {
 		t.Skip("BREVIS_IT_PG_DSN ausente")
@@ -43,7 +43,7 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 	defer pool.Close()
 
 	dir := t.TempDir()
-	binario := compilarFetcher(t, dir)
+	binario := buildFetcher(t, dir)
 	entrada := filepath.Join(dir, "entrada.ndjson")
 	if err := os.WriteFile(entrada, []byte(
 		`{"id":1,"ts":"2026-09-05T00:00:00Z"}`+"\n"+
@@ -53,18 +53,18 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 
 	runID := uuid.New()
 	repo := postgres.NewRunRepo(pool)
-	if err := criarRun(ctx, pool, runID); err != nil {
+	if err := createRun(ctx, pool, runID); err != nil {
 		t.Fatalf("criando a run: %v", err)
 	}
 
 	r := app.Runner{
 		RunID:    runID,
 		Persist:  repo,
-		Processo: executorLocal(t),
+		Processo: localExecutor(t),
 	}
 	w := wf.Workflow{
 		Slug:  "e2e",
-		Nodes: []wf.Node{{ID: "coletar", Run: binario + " 2>&1"}},
+		Nodes: []wf.Node{{ID: "collectOutput", Run: binario + " 2>&1"}},
 	}
 	// The step's WorkDir is the test's directory, because the fetcher reads
 	// "entrada.ndjson" relative to it. The cwd is RESTORED at the end: leaving it
@@ -86,19 +86,19 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 	if err != nil {
 		t.Fatalf("estado: %v", err)
 	}
-	e, ok := estados["coletar"]
+	e, ok := estados["collectOutput"]
 	if !ok {
-		t.Fatal("o passo não chegou ao banco")
+		t.Fatal("the step never reached the database")
 	}
 
 	// The badge, observed from the binary. "devel" because the testdata uses a
 	// replace --
-	// e é a verdade: o código veio de um diretório, não de uma versão.
+	// and it is the truth: the code came from a directory, not from a version.
 	if e.SdkVersao == "" {
-		t.Error("o passo não se anunciou como SDK")
+		t.Error("the step did not announce itself as an SDK one")
 	}
 	if e.SdkVersao != "devel" {
-		t.Errorf("com replace a versão tem de ser \"devel\", veio %q", e.SdkVersao)
+		t.Errorf("with a replace the version has to be \"devel\", got %q", e.SdkVersao)
 	}
 
 	porNome := map[string]postgres.Etapa{}
@@ -108,11 +108,11 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 	for _, nome := range []string{"check", "extract", "map", "load"} {
 		et, ok := porNome[nome]
 		if !ok {
-			t.Errorf("a etapa %q não chegou ao banco (chegaram: %v)", nome, e.Etapas)
+			t.Errorf("stage %q never reached the database (these did: %v)", nome, e.Etapas)
 			continue
 		}
 		if et.State != "done" {
-			t.Errorf("etapa %q terminou em %q", nome, et.State)
+			t.Errorf("stage %q finished at %q", nome, et.State)
 		}
 	}
 	// What only a Map stage knows.
@@ -124,20 +124,20 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 		t.Errorf("a map stage reported a duration: %v", *porNome["map"].Ms)
 	}
 
-	// A marca NÃO pode ter virado log do passo.
+	// The marker must NOT have become the step's log.
 	logs, err := repo.LogsDaRun(ctx, runID)
 	if err != nil {
 		t.Fatalf("logs: %v", err)
 	}
 	for _, l := range logs {
 		if strings.Contains(l.Log, "@brevis:") {
-			t.Errorf("a marca foi parar no log do passo:\n%s", l.Log)
+			t.Errorf("the marker ended up in the step's log:\n%s", l.Log)
 		}
 	}
 }
 
-// compilarFetcher constrói o binário do testdata, que é um módulo próprio.
-func compilarFetcher(t *testing.T, dir string) string {
+// buildFetcher builds the testdata binary, which is a module of its own.
+func buildFetcher(t *testing.T, dir string) string {
 	t.Helper()
 	saida := filepath.Join(dir, "fetcher")
 	cmd := exec.Command("go", "build", "-o", saida, ".")
@@ -148,7 +148,7 @@ func compilarFetcher(t *testing.T, dir string) string {
 	return saida
 }
 
-func criarRun(ctx context.Context, pool *postgres.Pool, id uuid.UUID) error {
+func createRun(ctx context.Context, pool *postgres.Pool, id uuid.UUID) error {
 	def, _ := json.Marshal(wf.Workflow{Slug: "e2e"})
 	_, err := pool.Exec(ctx, `
 		INSERT INTO runs (id, workflow_slug, idempotency_key, status, definicao, criado_em)
@@ -157,7 +157,7 @@ func criarRun(ctx context.Context, pool *postgres.Pool, id uuid.UUID) error {
 	return err
 }
 
-func executorLocal(t *testing.T) *local.ProcessExecutor {
+func localExecutor(t *testing.T) *local.ProcessExecutor {
 	t.Helper()
 	e, err := local.New("local")
 	if err != nil {

@@ -1,30 +1,30 @@
-# O exemplo que RODA em qualquer lugar.
+# The example that RUNS anywhere.
 #
-# Os outros dois arquivos desta pasta vieram do plano e servem para mostrar o
-# formato — eles chamam `python`, `docker.run` e `./notify.sh`, que nao existem
-# na imagem do worker. Este aqui usa so shell, entao serve para provar a stack
-# ponta a ponta:
+# The other two files in this folder came from the plan and exist to show the
+# FORMAT -- they call `python`, `docker.run` and `./notify.sh`, which do not
+# exist in the worker's image. This one uses shell only, so it serves to prove
+# the stack end to end:
 #
 #   brevis publish examples/hello.yaml
-#   e clicar em ▶ na tela de workflows
+#   then click ▶ on the workflows screen
 name: hello
 type: dag
-tags: [exemplo]
+tags: [example]
 
 steps:
-  - id: preparar
-    run: sh -c 'echo preparando; sleep 1'
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
 
-  # Os dois seguintes dependem do mesmo passo, entao rodam EM PARALELO — da para
-  # ver os dois em azul ao mesmo tempo no grafo.
-  - id: extrair
-    run: sh -c 'sleep 2; echo 42 extraidos'
-    depends_on: [preparar]
+  # The next two depend on the same step, so they run IN PARALLEL -- you can see
+  # both turn blue at the same time on the graph.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
 
-  - id: validar
-    run: sh -c 'sleep 1; echo validado'
-    depends_on: [preparar]
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
 
-  - id: publicar
-    run: echo publicado
-    depends_on: [extrair, validar]
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]

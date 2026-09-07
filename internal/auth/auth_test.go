@@ -9,7 +9,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 )
 
-func credencial(t *testing.T, usuario, senha string) auth.Credential {
+func credential(t *testing.T, usuario, senha string) auth.Credential {
 	t.Helper()
 	h, err := auth.GenerateHash(senha)
 	if err != nil {
@@ -21,54 +21,55 @@ func credencial(t *testing.T, usuario, senha string) auth.Credential {
 	}
 }
 
-func TestHashConfereASenhaCerta(t *testing.T) {
+func TestTheHashAcceptsTheRightPassword(t *testing.T) {
 	h, err := auth.GenerateHash("senha-correta-longa")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !auth.CheckPassword(h, "senha-correta-longa") {
-		t.Error("a senha correta foi recusada")
+		t.Error("the right password was refused")
 	}
 	if auth.CheckPassword(h, "senha-errada-longa!") {
-		t.Error("a senha errada foi aceita")
+		t.Error("the wrong password was accepted")
 	}
 }
 
-// Dois hashes da MESMA senha precisam diferir: sem sal, hashes iguais no banco
+// Two hashes of the SAME password have to differ: with no salt, equal hashes in
+// the database
 // entregam quais operadores escolheram a mesma senha.
-func TestHashUsaSalAleatorio(t *testing.T) {
+func TestTheHashUsesARandomSalt(t *testing.T) {
 	a, _ := auth.GenerateHash("mesma-senha-aqui")
 	b, _ := auth.GenerateHash("mesma-senha-aqui")
 	if a == b {
-		t.Error("dois hashes da mesma senha sairam iguais — nao ha sal")
+		t.Error("two hashes of the same password came out equal -- there is no salt")
 	}
 }
 
-// Hash malformado nunca "passa": o caminho de erro de um verificador de senha e
-// exatamente onde um bug vira porta aberta.
-func TestHashMalformadoNaoAutentica(t *testing.T) {
+// A malformed hash never "passes": the error path of a password checker is
+// exactly where a bug becomes an open door.
+func TestAMalformedHashDoesNotAuthenticate(t *testing.T) {
 	for _, h := range []string{
 		"", "abc", "pbkdf2-sha256$", "pbkdf2-sha256$0$c2Fs$Y2hhdmU",
 		"pbkdf2-sha256$600000$!!!$!!!", "md5$1$x$y",
-		"pbkdf2-sha256$600000$c2Fs$", // chave vazia
+		"pbkdf2-sha256$600000$c2Fs$", // empty key
 	} {
 		if auth.CheckPassword(h, "qualquer-coisa") {
 			t.Errorf("hash malformado %q autenticou", h)
 		}
 		if auth.CheckPassword(h, "") {
-			t.Errorf("hash malformado %q autenticou com senha vazia", h)
+			t.Errorf("malformed hash %q authenticated with an empty password", h)
 		}
 	}
 }
 
-// Este e o teste que representa o incidente: em dev, um POST anonimo em
-// /workflows/<slug>/trigger respondia 303 e disparava um `dbt build` que escreve
-// no data warehouse.
-func TestDisparoAnonimoEBloqueado(t *testing.T) {
+// This is the test that stands for the incident: in dev, an anonymous POST to
+// /workflows/<slug>/trigger answered 303 and fired a `dbt build` that writes into
+// the data warehouse.
+func TestAnAnonymousTriggerIsBlocked(t *testing.T) {
 	portao := &auth.Portao{
-		Cred: credencial(t, "operador", "senha-de-teste-longa"),
+		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			t.Error("a requisicao anonima chegou ao handler protegido")
+			t.Error("the anonymous request reached the protected handler")
 			w.WriteHeader(http.StatusOK)
 		}),
 	}
@@ -83,7 +84,7 @@ func TestDisparoAnonimoEBloqueado(t *testing.T) {
 
 func TestGetAnonimoVaiParaOLogin(t *testing.T) {
 	portao := &auth.Portao{
-		Cred: credencial(t, "operador", "senha-de-teste-longa"),
+		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
 	}
 
@@ -94,16 +95,17 @@ func TestGetAnonimoVaiParaOLogin(t *testing.T) {
 		t.Fatalf("status = %d; esperava 303", rec.Code)
 	}
 	if destino := rec.Header().Get("Location"); !strings.Contains(destino, "/runs") {
-		t.Errorf("Location = %q; deveria trazer o destino original", destino)
+		t.Errorf("Location = %q; it should carry the original destination", destino)
 	}
 }
 
-// As sondas do Kubernetes precisam passar: um /health que pede senha derruba o
+// Kubernetes's probes have to get through: a /health asking for a password takes
+// the
 // pod em ciclo, e o operador procura o problema no lugar errado.
-func TestSondasEAssetsPassamSemSessao(t *testing.T) {
+func TestProbesAndAssetsPassWithNoSession(t *testing.T) {
 	var chegou []string
 	portao := &auth.Portao{
-		Cred: credencial(t, "operador", "senha-de-teste-longa"),
+		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			chegou = append(chegou, r.URL.Path)
 		}),
@@ -112,12 +114,12 @@ func TestSondasEAssetsPassamSemSessao(t *testing.T) {
 		portao.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", caminho, nil))
 	}
 	if len(chegou) != 4 {
-		t.Errorf("passaram %v; esperava as quatro rotas livres", chegou)
+		t.Errorf("%v got through; expected the four free routes", chegou)
 	}
 }
 
-func TestSessaoValidaPassaELevaOUsuario(t *testing.T) {
-	cred := credencial(t, "operador", "senha-de-teste-longa")
+func TestAValidSessionPassesAndCarriesTheUser(t *testing.T) {
+	cred := credential(t, "operador", "senha-de-teste-longa")
 	var visto string
 	portao := &auth.Portao{
 		Cred: cred,
@@ -128,7 +130,7 @@ func TestSessaoValidaPassaELevaOUsuario(t *testing.T) {
 
 	login := httptest.NewRecorder()
 	if !portao.SignIn(login, "operador", "senha-de-teste-longa") {
-		t.Fatal("a credencial correta foi recusada")
+		t.Fatal("the right credential was refused")
 	}
 	cookie := login.Result().Cookies()[0]
 
@@ -141,18 +143,18 @@ func TestSessaoValidaPassaELevaOUsuario(t *testing.T) {
 		t.Errorf("operador no contexto = %q; esperava %q", visto, "operador")
 	}
 	if rec.Code == http.StatusSeeOther {
-		t.Error("a sessao valida foi mandada para o login")
+		t.Error("the valid session was sent to the login")
 	}
 }
 
-// Um cookie forjado nao pode valer. Se a assinatura nao fosse conferida, o
+// A forged cookie must not count. If the signature were not checked, the
 // cliente escreveria o proprio nome de usuario e a propria validade.
-func TestCookieForjadoNaoEntra(t *testing.T) {
-	cred := credencial(t, "operador", "senha-de-teste-longa")
+func TestAForgedCookieDoesNotGetIn(t *testing.T) {
+	cred := credential(t, "operador", "senha-de-teste-longa")
 	portao := &auth.Portao{
 		Cred: cred,
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			t.Error("um cookie forjado passou pelo portao")
+			t.Error("a forged cookie got past the gate")
 			w.WriteHeader(http.StatusOK)
 		}),
 	}
@@ -170,8 +172,8 @@ func TestCookieForjadoNaoEntra(t *testing.T) {
 }
 
 // Trocar o segredo derruba as sessoes — e a alavanca de emergencia.
-func TestTrocarOSegredoInvalidaSessoes(t *testing.T) {
-	cred := credencial(t, "operador", "senha-de-teste-longa")
+func TestChangingTheSecretInvalidatesSessions(t *testing.T) {
+	cred := credential(t, "operador", "senha-de-teste-longa")
 	emissor := &auth.Portao{Cred: cred, Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
 	rec := httptest.NewRecorder()
 	emissor.SignIn(rec, "operador", "senha-de-teste-longa")
@@ -182,7 +184,7 @@ func TestTrocarOSegredoInvalidaSessoes(t *testing.T) {
 	portao := &auth.Portao{
 		Cred: novo,
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			t.Error("a sessao sobreviveu a troca do segredo")
+			t.Error("the session survived the secret being changed")
 		}),
 	}
 	req := httptest.NewRequest("GET", "/runs", nil)
@@ -190,8 +192,8 @@ func TestTrocarOSegredoInvalidaSessoes(t *testing.T) {
 	portao.ServeHTTP(httptest.NewRecorder(), req)
 }
 
-// `/login?de=https://malicioso` nao pode devolver o operador para fora.
-func TestDestinoExternoEDescartado(t *testing.T) {
+// `/login?next=https://malicious` must not send the operator off-site.
+func TestAnExternalDestinationIsDiscarded(t *testing.T) {
 	for bruto, esperado := range map[string]string{
 		"https://malicioso.example": "/",
 		"//malicioso.example":       "/",
@@ -204,15 +206,15 @@ func TestDestinoExternoEDescartado(t *testing.T) {
 	}
 }
 
-func TestCredencialPelaMetadeERecusada(t *testing.T) {
+func TestAHalfCredentialIsRefused(t *testing.T) {
 	if err := (auth.Credential{User: "operador"}).Validate(); err == nil {
-		t.Error("usuario sem hash foi aceito — a porta ficaria aberta achando que fechou")
+		t.Error("a user with no hash was accepted -- the door would stay open believing it had shut")
 	}
 	if err := (auth.Credential{Hash: "pbkdf2-sha256$1$a$b"}).Validate(); err == nil {
-		t.Error("hash sem usuario foi aceito")
+		t.Error("a hash with no user was accepted")
 	}
 	curto := auth.Credential{User: "o", Hash: "pbkdf2-sha256$1$a$b", Secret: []byte("curto")}
 	if err := curto.Validate(); err == nil {
-		t.Error("segredo curto demais foi aceito")
+		t.Error("a secret that is too short was accepted")
 	}
 }

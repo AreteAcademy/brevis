@@ -97,9 +97,9 @@ func main() {
 				{Name: "payload", Type: sdk.TypeJSON, Required: true},
 			},
 
-			// A partição é declarada, e não escolhida pelo SDK. Vazio mantém
-			// o padrão -- diária em ingestion_loaded_at -- e escrevê-la é
-			// como se diz outra coisa.
+			// The partition is declared, not chosen by the SDK. Empty keeps the
+			// default -- daily on ingestion_loaded_at -- and writing it out is how
+			// you say something else.
 			PartitionBy: "ingestion_loaded_at",
 
 			// Re-running the same window is a no-op. Costs one scan of the

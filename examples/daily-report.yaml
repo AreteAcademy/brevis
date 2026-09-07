@@ -1,15 +1,15 @@
-# Exemplo do plano, tal como pedido — ILUSTRATIVO, nao roda como esta.
+# The plan's example, exactly as asked for -- ILLUSTRATIVE, it does not run as
+# written.
 #
-# `python fetch.py`, `docker.run` e `./notify.sh` nao existem na imagem do
-# worker: executa-lo termina em "step \"fetch_data\": saiu com codigo 127
-# (comando nao encontrado)". Para ver a stack funcionando de ponta a ponta, use
-# `examples/hello.yaml`.
+# `python fetch.py`, `docker.run` and `./notify.sh` do not exist in the worker's
+# image: running it ends in "step \"fetch_data\": exited with code 127 (command
+# not found)". To see the stack working end to end, use `examples/hello.yaml`.
 #
-# `type: chain` significa que a ordem e a do arquivo: fetch_data -> build_report
-# -> notify. O parser converte isso em arestas, entao o motor so conhece DAG.
-schedule: "0 2 * * *"   # todo dia as 02:00
+# `type: chain` means the order is the file's: fetch_data -> build_report ->
+# notify. The parser turns that into edges, so the engine only ever knows DAGs.
+schedule: "0 2 * * *"   # every day at 02:00
 type: chain
-tags: [relatorio, diario]
+tags: [report, daily]
 
 steps:
   - id: fetch_data

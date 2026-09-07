@@ -89,7 +89,7 @@ func rodarComStore(t *testing.T, srv *httptest.Server, store core.CredentialStor
 	return nil
 }
 
-// TestARefreshThatDoesNotAuthenticateDoesNotWrite e o §10 do SDK_V9.md.
+// TestARefreshThatDoesNotAuthenticateDoesNotWrite is §10 of SDK_V9.md.
 //
 // NextAuth answers 200 with a null body and a Set-Cookie EMPTYING the values for
 // a session that did not authenticate. Writing that, with the read order being

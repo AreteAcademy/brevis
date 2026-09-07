@@ -30,8 +30,8 @@ func (c *coletor) Evento(e execution.Event) {
 
 // CRITERIO DE ACEITE DA PHASE 3 (secao 37):
 //
-//	Task A -> (Task B + Task C) -> Task D, com paralelismo.
-func TestCriterioDeAceite_DAGGoComParalelismo(t *testing.T) {
+//	Task A -> (Task B + Task C) -> Task D, with parallelism.
+func TestAcceptanceCriterion_GoDAGWithParallelism(t *testing.T) {
 	reg := execution.NewRegistry()
 
 	var (
@@ -97,25 +97,25 @@ func TestCriterioDeAceite_DAGGoComParalelismo(t *testing.T) {
 
 	// b e c rodaram JUNTAS: em serie o total passaria de 300ms
 	if picoBC.Load() < 2 {
-		t.Errorf("pico de concorrencia = %d; b e c deviam rodar em paralelo", picoBC.Load())
+		t.Errorf("concurrency peak = %d; b and c should run in parallel", picoBC.Load())
 	}
 	if duracao > 280*time.Millisecond {
-		t.Errorf("levou %s; em paralelo deveria ficar perto de 170ms, nao de 320ms", duracao)
+		t.Errorf("it took %s; in parallel it should land near 170ms, not 320ms", duracao)
 	}
 
-	// a primeiro, d por ultimo — a ordem topologica foi respeitada
+	// a first, d last -- the topological order was respected
 	if ordem[0] != "task_a" {
-		t.Errorf("primeira = %q, queria task_a", ordem[0])
+		t.Errorf("first = %q, wanted task_a", ordem[0])
 	}
 	if ordem[len(ordem)-1] != "task_d" {
-		t.Errorf("ultima = %q, queria task_d", ordem[len(ordem)-1])
+		t.Errorf("last = %q, wanted task_d", ordem[len(ordem)-1])
 	}
 	t.Logf("ordem: %v | duracao: %s | pico: %d", ordem, duracao.Round(time.Millisecond), picoBC.Load())
 }
 
-// O retry e POR NO: refazer o workflow inteiro porque o ultimo step falhou
-// desperdicaria o trabalho ja concluido.
-func TestRetryPorNo(t *testing.T) {
+// The retry is PER NODE: redoing the whole workflow because the last step failed
+// would throw away the work already finished.
+func TestRetryIsPerNode(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
 
@@ -132,14 +132,14 @@ func TestRetryPorNo(t *testing.T) {
 		MaxTentativas: 3, BackoffBase: time.Millisecond,
 	}
 	if err := r.Run(context.Background(), w); err != nil {
-		t.Fatalf("devia ter sucesso na 3a tentativa: %v", err)
+		t.Fatalf("it should have succeeded on the 3rd attempt: %v", err)
 	}
 	if n := tentativas.Load(); n != 3 {
-		t.Errorf("tentativas = %d, queria 3", n)
+		t.Errorf("attempts = %d, wanted 3", n)
 	}
 }
 
-func TestRetryDesisteAposOLimite(t *testing.T) {
+func TestRetryGivesUpAfterTheLimit(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
 	reg.MustRegister(execution.FuncTask{Nome: "sempre_falha", Fn: func(context.Context, execution.Input) error {
@@ -156,13 +156,13 @@ func TestRetryDesisteAposOLimite(t *testing.T) {
 		t.Fatal("esperava falha")
 	}
 	if n := tentativas.Load(); n != 2 {
-		t.Errorf("tentativas = %d, queria exatamente 2", n)
+		t.Errorf("attempts = %d, wanted exactly 2", n)
 	}
 }
 
-// Cancelar o contexto interrompe a DAG e nao dispara retry — repetir contra um
+// Cancelling the context stops the DAG and fires no retry -- retrying against a
 // cancelamento e desperdicio.
-func TestCancelamentoNaoDisparaRetry(t *testing.T) {
+func TestCancellingFiresNoRetry(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
 	reg.MustRegister(execution.FuncTask{Nome: "lenta", Fn: func(ctx context.Context, _ execution.Input) error {
@@ -182,24 +182,24 @@ func TestCancelamentoNaoDisparaRetry(t *testing.T) {
 	_ = r.Run(ctx, w)
 
 	if n := tentativas.Load(); n != 1 {
-		t.Errorf("tentativas = %d; cancelamento nao deve repetir", n)
+		t.Errorf("attempts = %d; cancelling must not retry", n)
 	}
 }
 
-// Um step sem executor configurado precisa falhar com mensagem clara, e nao
+// A step with no configured executor has to fail with a clear message, and not
 // ser pulado em silencio.
-func TestStepSemExecutorFalhaExplicitamente(t *testing.T) {
+func TestAStepWithNoExecutorFailsExplicitly(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Nodes: []wf.Node{{ID: "n", Action: "qualquer"}}}
 	err := app.Runner{Report: &coletor{}}.Run(context.Background(), w)
 	if err == nil {
-		t.Fatal("esperava erro, nao silencio")
+		t.Fatal("expected an error, not silence")
 	}
 }
 
-// O exit code tem que sobreviver ao caminho todo: evento do executor -> erro
+// The exit code has to survive the whole path: executor event -> error
 // tipado -> persistencia. Sem isto, distinguir 127 (comando inexistente) de 2
-// (erro da aplicacao) so olhando log.
-func TestErroDePassoCarregaExitCode(t *testing.T) {
+// (an application error) just by looking at the log.
+func TestAStepsErrorCarriesTheExitCode(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {
 		t.Fatal(err)
@@ -216,17 +216,17 @@ func TestErroDePassoCarregaExitCode(t *testing.T) {
 
 	var passo *app.ErroDePasso
 	if !errors.As(erro, &passo) {
-		t.Fatalf("erro %T nao carrega o exit code", erro)
+		t.Fatalf("error %T does not carry the exit code", erro)
 	}
 	if passo.ExitCode != 3 || passo.NodeID != "falha" {
-		t.Errorf("node=%q exit=%d, quero falha e 3", passo.NodeID, passo.ExitCode)
+		t.Errorf("node=%q exit=%d, want a failure and 3", passo.NodeID, passo.ExitCode)
 	}
 }
 
-// O erro precisa dizer POR QUE o passo falhou, nao so que falhou. "saiu com
+// The error has to say WHY the step failed, not just that it did. "exited with
 // codigo 127" e tecnicamente correto e inutil: a causa (`sh: xpto: not found`)
-// passava pelos eventos como log e era descartada ali mesmo.
-func TestErroCarregaSaidaDeErroEDicaDoCodigo(t *testing.T) {
+// went past through the events as log and was dropped right there.
+func TestTheErrorCarriesStderrAndTheCodesHint(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {
 		t.Fatal(err)
@@ -245,30 +245,30 @@ func TestErroCarregaSaidaDeErroEDicaDoCodigo(t *testing.T) {
 
 	msg := erro.Error()
 	if !strings.Contains(msg, "127") {
-		t.Errorf("mensagem sem o codigo de saida: %q", msg)
+		t.Errorf("the message has no exit code: %q", msg)
 	}
-	if !strings.Contains(msg, "comando nao encontrado") {
-		t.Errorf("mensagem sem a traducao do codigo: %q", msg)
+	if !strings.Contains(msg, "command not found") {
+		t.Errorf("the message has no translation of the code: %q", msg)
 	}
 	if !strings.Contains(msg, "comando_que_nao_existe_abc") {
-		t.Errorf("mensagem sem a linha de stderr que explica a falha: %q", msg)
+		t.Errorf("the message has no stderr line explaining the failure: %q", msg)
 	}
 
 	var passo *app.ErroDePasso
 	if !errors.As(erro, &passo) || len(passo.Saida) == 0 {
-		t.Fatalf("o erro nao carrega a saida: %+v", passo)
+		t.Fatalf("the error does not carry the output: %+v", passo)
 	}
 }
 
-// Processo verboso nao pode encher a coluna de erro do banco: so as ultimas
-// linhas acompanham a falha, que e onde a causa quase sempre esta.
-func TestSaidaDeErroFicaNasUltimasLinhas(t *testing.T) {
+// A verbose process must not fill the database's error column: only the last
+// lines ride along with the failure, which is where the cause almost always is.
+func TestStderrIsKeptAsTheLastLines(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {
 		t.Fatal(err)
 	}
 	w := wf.Workflow{Slug: "verboso", Nodes: []wf.Node{
-		{ID: "ruido", Run: "sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do echo linha $i >&2; done; exit 9'"},
+		{ID: "ruido", Run: "sh -c 'for i in 1 2 3 4 5 6 7 8 9 10; do echo line $i >&2; done; exit 9'"},
 	}}
 
 	erro := app.Runner{
@@ -278,23 +278,23 @@ func TestSaidaDeErroFicaNasUltimasLinhas(t *testing.T) {
 
 	var passo *app.ErroDePasso
 	if !errors.As(erro, &passo) {
-		t.Fatalf("erro %T", erro)
+		t.Fatalf("error %T", erro)
 	}
 	if len(passo.Saida) != 5 {
-		t.Errorf("guardou %d linhas, quero 5", len(passo.Saida))
+		t.Errorf("it kept %d lines, want 5", len(passo.Saida))
 	}
-	if len(passo.Saida) > 0 && passo.Saida[len(passo.Saida)-1] != "linha 10" {
-		t.Errorf("ultima linha = %q, quero a mais recente", passo.Saida[len(passo.Saida)-1])
+	if len(passo.Saida) > 0 && passo.Saida[len(passo.Saida)-1] != "line 10" {
+		t.Errorf("last line = %q, want the most recent one", passo.Saida[len(passo.Saida)-1])
 	}
-	// Codigo sem significado especial nao ganha traducao inventada.
+	// A code with no special meaning gets no invented translation.
 	if strings.Contains(erro.Error(), "(") {
-		t.Errorf("codigo 9 nao deveria receber dica: %q", erro.Error())
+		t.Errorf("code 9 should get no hint: %q", erro.Error())
 	}
 }
 
-// Sucesso continua sem erro mesmo com o processo escrevendo em stderr — muito
-// comando legitimo usa stderr para progresso.
-func TestStderrEmPassoQueDaCertoNaoViraFalha(t *testing.T) {
+// Success stays error-free even with the process writing to stderr -- plenty of
+// legitimate commands use stderr for progress.
+func TestStderrOnASucceedingStepIsNotAFailure(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {
 		t.Fatal(err)
@@ -306,13 +306,13 @@ func TestStderrEmPassoQueDaCertoNaoViraFalha(t *testing.T) {
 		Processo: exec, Report: &coletor{},
 		Env: map[string]string{"PATH": os.Getenv("PATH")},
 	}).Run(context.Background(), w); erro != nil {
-		t.Errorf("passo com stderr e exit 0 virou falha: %v", erro)
+		t.Errorf("a step with stderr and exit 0 became a failure: %v", erro)
 	}
 }
 
 // O dbt imprime "Parsing Error" em STDOUT. Capturar so stderr deixava a falha
-// como "saiu com codigo 2", sem a causa que estava na tela o tempo todo.
-func TestFalhaSemStderrUsaOStdout(t *testing.T) {
+// as "exited with code 2", without the cause that was on the screen all along.
+func TestAFailureWithNoStderrUsesStdout(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {
 		t.Fatal(err)
@@ -330,17 +330,17 @@ func TestFalhaSemStderrUsaOStdout(t *testing.T) {
 		t.Fatal("esperava falha")
 	}
 	if !strings.Contains(erro.Error(), "Env var required") {
-		t.Errorf("a causa, impressa em stdout, nao chegou a mensagem: %q", erro.Error())
+		t.Errorf("the cause, printed to stdout, did not reach the message: %q", erro.Error())
 	}
 }
 
-// Quando ha stderr, ele manda: e onde o programa quis reportar erro, e a saida
-// normal nao deve encher a mensagem.
-func TestStderrTemPrecedenciaSobreStdout(t *testing.T) {
+// When there is stderr, it wins: it is where the program chose to report the
+// error, and the normal output should not crowd the message out.
+func TestStderrTakesPrecedenceOverStdout(t *testing.T) {
 	exec, _ := local.New("local")
 	w := wf.Workflow{Slug: "misto", Nodes: []wf.Node{{
 		ID:  "run",
-		Run: `sh -c 'echo "linha normal de progresso"; echo "causa real" >&2; exit 1'`,
+		Run: `sh -c 'echo "normal progress line"; echo "the real cause" >&2; exit 1'`,
 	}}}
 
 	erro := (app.Runner{
@@ -349,20 +349,20 @@ func TestStderrTemPrecedenciaSobreStdout(t *testing.T) {
 	}).Run(context.Background(), w)
 
 	msg := erro.Error()
-	if !strings.Contains(msg, "causa real") {
-		t.Errorf("stderr nao chegou: %q", msg)
+	if !strings.Contains(msg, "the real cause") {
+		t.Errorf("stderr did not arrive: %q", msg)
 	}
-	if strings.Contains(msg, "linha normal de progresso") {
-		t.Errorf("stdout entrou junto com stderr: %q", msg)
+	if strings.Contains(msg, "normal progress line") {
+		t.Errorf("stdout came in alongside stderr: %q", msg)
 	}
 }
 
-// O pedido, literal: com dez passos prontos e cinco vagas, cinco correm e os
-// outros entram conforme as vagas se abrem — nunca seis ao mesmo tempo.
+// The request, literally: with ten ready steps and five slots, five run and the
+// others come in as slots open -- never six at once.
 //
-// Antes o limite do dispatcher contava RUNS: cinco runs com tres passos
-// paralelos cada davam quinze pods no cluster, nao cinco.
-func TestVagasLimitamPassosSimultaneos(t *testing.T) {
+// Before, the dispatcher's limit counted RUNS: five runs with three parallel
+// steps each gave fifteen pods in the cluster, not five.
+func TestSlotsLimitSimultaneousSteps(t *testing.T) {
 	const passos, teto = 10, 5
 
 	var emVoo, pico int64
@@ -380,8 +380,8 @@ func TestVagasLimitamPassosSimultaneos(t *testing.T) {
 		return nil
 	}})
 
-	// Todos no MESMO nivel: sem dependencia entre eles, o runner dispara os dez
-	// de uma vez se nada o segurar.
+	// All at the SAME level: with no dependency between them, the runner fires all
+	// ten at once if nothing holds it back.
 	w := wf.Workflow{Slug: "paralelo"}
 	for i := 0; i < passos; i++ {
 		w.Nodes = append(w.Nodes, wf.Node{ID: fmt.Sprintf("p%d", i), Action: "ocupa"})
@@ -399,13 +399,13 @@ func TestVagasLimitamPassosSimultaneos(t *testing.T) {
 	if p := atomic.LoadInt64(&pico); p > teto {
 		t.Errorf("pico de %d passos simultaneos, o teto e %d", p, teto)
 	} else if p < teto {
-		t.Errorf("pico de %d: as vagas nao foram usadas, o limite virou serializacao", p)
+		t.Errorf("a peak of %d: the slots went unused, the limit became serialization", p)
 	}
 }
 
-// O semaforo e do PROCESSO, nao do workflow: dois runs concorrentes dividem o
-// mesmo teto, senao cada run teria cinco pods para si.
-func TestVagasSaoCompartilhadasEntreRuns(t *testing.T) {
+// The semaphore belongs to the PROCESS, not to the workflow: two concurrent runs
+// share the same ceiling, otherwise each run would get five pods of its own.
+func TestSlotsAreSharedBetweenRuns(t *testing.T) {
 	const teto = 3
 
 	var emVoo, pico int64
@@ -446,13 +446,13 @@ func TestVagasSaoCompartilhadasEntreRuns(t *testing.T) {
 	wg.Wait()
 
 	if p := atomic.LoadInt64(&pico); p > teto {
-		t.Errorf("pico de %d com dois runs; o teto do processo e %d", p, teto)
+		t.Errorf("a peak of %d with two runs; the process ceiling is %d", p, teto)
 	}
 }
 
-// Sem vagas configuradas, nada muda — o modo local de `brevis run` nao deve
-// ganhar um limite que ninguem pediu.
-func TestSemVagasNaoHaLimite(t *testing.T) {
+// With no slots configured, nothing changes -- `brevis run`'s local mode must not
+// gain a limit nobody asked for.
+func TestWithNoSlotsThereIsNoLimit(t *testing.T) {
 	reg := execution.NewRegistry()
 	reg.MustRegister(execution.FuncTask{Nome: "nada", Fn: func(context.Context, execution.Input) error { return nil }})
 
@@ -464,14 +464,14 @@ func TestSemVagasNaoHaLimite(t *testing.T) {
 	}
 }
 
-// O nome do pod inclui a tentativa. Sem isso o retry reencontra o pod da
-// tentativa anterior, e como o executor ADOTA pod existente (para nao subir
-// dois iguais quando o processo morre no meio) ele fica preso ao pod quebrado.
-// Aconteceu em dev: um pod Pending por CPU insuficiente foi readotado a cada
-// retry, e a run nunca saiu do lugar.
-func TestTentativaChegaNaTask(t *testing.T) {
+// The pod's name includes the attempt. Without that the retry finds the previous
+// attempt's pod again, and since the executor ADOPTS an existing pod (so as not
+// to bring up two identical ones when the process dies midway) it stays stuck to
+// the broken pod. It happened in dev: a pod Pending for want of CPU was
+// re-adopted on every retry, and the run never moved.
+func TestTheAttemptReachesTheTask(t *testing.T) {
 	var vistas []int
-	espiao := &executorEspiao{aoExecutar: func(tk execution.TaskExec) {
+	espiao := &spyExecutor{aoExecutar: func(tk execution.TaskExec) {
 		vistas = append(vistas, tk.Attempt)
 	}}
 
@@ -482,24 +482,24 @@ func TestTentativaChegaNaTask(t *testing.T) {
 	}.Run(context.Background(), w)
 
 	if len(vistas) != 3 {
-		t.Fatalf("tentativas observadas: %v", vistas)
+		t.Fatalf("attempts observadas: %v", vistas)
 	}
 	for i, n := range vistas {
 		if n != i {
-			t.Errorf("tentativa %d chegou como %d; o nome do pod repetiria", i, n)
+			t.Errorf("attempt %d arrived as %d; the pod name would repeat", i, n)
 		}
 	}
 }
 
-// executorEspiao registra o que recebeu e sempre falha, para exercitar o retry.
-type executorEspiao struct{ aoExecutar func(execution.TaskExec) }
+// spyExecutor records what it received and always fails, to exercise the retry.
+type spyExecutor struct{ aoExecutar func(execution.TaskExec) }
 
-func (e *executorEspiao) Name() string { return "espiao" }
-func (e *executorEspiao) Execute(_ context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
+func (e *spyExecutor) Name() string { return "espiao" }
+func (e *spyExecutor) Execute(_ context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	e.aoExecutar(t)
 	ch := make(chan execution.Event, 1)
 	ch <- execution.Event{Kind: execution.EventFailed, NodeID: t.NodeID, Message: "falhou"}
 	close(ch)
 	return ch, nil
 }
-func (e *executorEspiao) Cancel(context.Context, string) error { return nil }
+func (e *spyExecutor) Cancel(context.Context, string) error { return nil }

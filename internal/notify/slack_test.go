@@ -13,7 +13,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/notify"
 )
 
-func capturar(t *testing.T, status int, resposta string) (*notify.Slack, *string) {
+func capture(t *testing.T, status int, resposta string) (*notify.Slack, *string) {
 	t.Helper()
 	var recebido string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,29 +28,30 @@ func capturar(t *testing.T, status int, resposta string) (*notify.Slack, *string
 	return s, &recebido
 }
 
-func alerta() notify.Alerta {
+func alert() notify.Alerta {
 	quando := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC)
 	return notify.Alerta{
 		Workflow: "id_verification", RunID: "1f2e3d4c-0000-0000-0000-000000000000",
 		Status: "failed", Trigger: "schedule", Tentativas: 3, LogicalDate: &quando,
-		Err:     "nivel 1: step \"run\": saiu com codigo 2\nDatabase Error in model x",
+		Err:     "level 1: step \"run\": exited with code 2\nDatabase Error in model x",
 		Tags:    []string{"acme", "id", "dbt"},
 		URLBase: "https://brevis.example.com",
 	}
 }
 
-func TestMensagemTemOContextoDaFalha(t *testing.T) {
-	s, recebido := capturar(t, 200, "ok")
-	if err := s.Falhou(context.Background(), alerta()); err != nil {
+func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
+	s, recebido := capture(t, 200, "ok")
+	if err := s.Falhou(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 
 	var payload map[string]any
 	if err := json.Unmarshal([]byte(*recebido), &payload); err != nil {
-		t.Fatalf("payload nao e JSON: %v", err)
+		t.Fatalf("the payload is not JSON: %v", err)
 	}
 
-	// `text` fora dos blocos e o que aparece na notificacao do celular; sem ele
+	// `text` outside the blocks is what shows in the phone's notification; without
+	// it
 	// o Slack mostra "This content can't be displayed" no preview.
 	texto, _ := payload["text"].(string)
 	if !strings.Contains(texto, "id_verification") {
@@ -60,79 +61,82 @@ func TestMensagemTemOContextoDaFalha(t *testing.T) {
 	corpo := *recebido
 	for _, esperado := range []string{
 		"id_verification",                  // pipeline
-		"`id`",                             // dominio, vindo das tags
+		"`id`",                             // domain, coming from the tags
 		"FAILED",                           // status
-		"schedule",                         // origem
-		"saiu com codigo 2",                // a causa
+		"schedule",                         // origin
+		"exited with code 2",                // a causa
 		"brevis.example.com/runs/1f2e3d4c", // link direto
-		dataLogicaEsperada(),               // data logica, no fuso de quem formata
+		expectedLogicalDate(),               // data logica, no fuso de quem formata
 	} {
 		if !strings.Contains(corpo, esperado) {
-			t.Errorf("mensagem sem %q:\n%s", esperado, corpo)
+			t.Errorf("the message is missing %q:\n%s", esperado, corpo)
 		}
 	}
 }
 
-// A mensagem de erro carrega stderr; o bloco do Slack tem limite de 3000
-// caracteres e RECUSA a mensagem inteira quando estoura — truncar e o que
-// garante que o alerta chegue.
-func TestErroLongoEhTruncado(t *testing.T) {
-	s, recebido := capturar(t, 200, "ok")
-	a := alerta()
-	a.Err = strings.Repeat("linha muito comprida de stack trace ", 200)
+// The error message carries stderr; Slack's block has a 3000-character limit and
+// REFUSES the whole message when it overflows -- truncating is what makes sure
+// the alert arrives.
+func TestALongErrorIsTruncated(t *testing.T) {
+	s, recebido := capture(t, 200, "ok")
+	a := alert()
+	a.Err = strings.Repeat("a very long stack-trace line ", 200)
 
 	if err := s.Falhou(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
 	if len(*recebido) > 3000 {
-		t.Errorf("payload com %d bytes; o bloco do Slack recusaria", len(*recebido))
+		t.Errorf("a payload of %d bytes; Slack's block would refuse it", len(*recebido))
 	}
 	if !strings.Contains(*recebido, "truncado") {
-		t.Error("truncou sem avisar que truncou")
+		t.Error("it truncated without saying it truncated")
 	}
 }
 
-// Ambiente no cabecalho: um alerta de homologacao as tres da manha nao pode ser
+// The environment in the header: a staging alert at three in the morning must not
+// be
 // indistinguivel de um de producao.
-func TestAmbienteApareceNoCabecalho(t *testing.T) {
+func TestTheEnvironmentShowsInTheHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		if !strings.Contains(string(b), "(dev)") {
-			t.Errorf("cabecalho sem o ambiente: %s", b)
+			t.Errorf("the header has no environment: %s", b)
 		}
 	}))
 	defer srv.Close()
 
 	s := notify.NovoSlack(srv.URL, "dev")
-	if err := s.Falhou(context.Background(), alerta()); err != nil {
+	if err := s.Falhou(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 }
 
-// O Slack responde texto puro em erro ("invalid_payload"), nao JSON. Repassar o
-// corpo distingue webhook revogado de payload malformado sem abrir o navegador.
-func TestErroDoSlackCarregaOMotivo(t *testing.T) {
-	s, _ := capturar(t, 403, "invalid_token")
-	err := s.Falhou(context.Background(), alerta())
+// Slack answers plain text on an error ("invalid_payload"), not JSON. Passing the
+// body along tells a revoked webhook from a malformed payload without opening a
+// browser.
+func TestASlackErrorCarriesTheReason(t *testing.T) {
+	s, _ := capture(t, 403, "invalid_token")
+	err := s.Falhou(context.Background(), alert())
 	if err == nil {
-		t.Fatal("esperava erro")
+		t.Fatal("expected an error")
 	}
 	if !strings.Contains(err.Error(), "invalid_token") {
-		t.Errorf("erro sem o motivo do Slack: %v", err)
+		t.Errorf("the error has no reason from Slack: %v", err)
 	}
 }
 
-// Sem webhook configurado, nao e erro: a instalacao simplesmente nao alerta.
-func TestSemWebhookNaoFazNada(t *testing.T) {
-	if err := (&notify.Slack{}).Falhou(context.Background(), alerta()); err != nil {
-		t.Errorf("instalacao sem webhook virou erro: %v", err)
+// With no webhook configured it is not an error: the installation simply does not
+// alert.
+func TestWithNoWebhookItDoesNothing(t *testing.T) {
+	if err := (&notify.Slack{}).Falhou(context.Background(), alert()); err != nil {
+		t.Errorf("an installation with no webhook became an error: %v", err)
 	}
 }
 
 // Sem tags, o dominio sai do prefixo do slug em vez de ficar anonimo.
-func TestDominioCaiParaOPrefixoDoSlug(t *testing.T) {
-	s, recebido := capturar(t, 200, "ok")
-	a := alerta()
+func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
+	s, recebido := capture(t, 200, "ok")
+	a := alert()
 	a.Tags = nil
 	a.Workflow = "platform_workspace"
 
@@ -140,30 +144,31 @@ func TestDominioCaiParaOPrefixoDoSlug(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.Contains(*recebido, "`platform`") {
-		t.Errorf("dominio nao derivado do slug:\n%s", *recebido)
+		t.Errorf("the domain was not derived from the slug:\n%s", *recebido)
 	}
 }
 
-// dataLogicaEsperada rende a data do alerta no fuso do PROCESSO.
+// expectedLogicalDate rende a data do alert no fuso do PROCESSO.
 //
-// Cravar "01/09/2026 01:00" prendia o teste a UTC-3: ele passava na máquina de
-// quem o escreveu e reprovava no CI, que roda em UTC -- e foi assim que ele
-// derrubou o release da v0.4.0, no único portão que ninguém tinha exercitado.
-func dataLogicaEsperada() string {
+// Pinning "01/09/2026 01:00" tied the test to UTC-3: it passed on the machine of
+// whoever wrote it and failed in CI, which runs in UTC -- and that is how it took
+// the v0.4.0 release down, on the one gate nobody had exercised.
+func expectedLogicalDate() string {
 	return time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("02/01/2006 15:04")
 }
 
-// A hora sozinha é ambígua, e a ambiguidade não é teórica: o pod formata em
-// UTC e quem lê está em UTC-3. Sem o fuso, o mesmo evento é "01:00" para um e
-// "04:00" para o outro, e ninguém percebe que está falando da mesma falha.
-func TestDataLogicaDizOFuso(t *testing.T) {
-	s, recebido := capturar(t, 200, "ok")
-	if err := s.Falhou(context.Background(), alerta()); err != nil {
+// The time alone is ambiguous, and the ambiguity is not theoretical: the pod
+// formats in UTC and whoever reads it is in UTC-3. Without the zone, the same
+// event is "01:00" to one and "04:00" to the other, and nobody notices they are
+// talking about the same failure.
+func TestTheLogicalDateSaysTheZone(t *testing.T) {
+	s, recebido := capture(t, 200, "ok")
+	if err := s.Falhou(context.Background(), alert()); err != nil {
 		t.Fatal(err)
 	}
 
 	fuso := time.Date(2026, 9, 1, 4, 0, 0, 0, time.UTC).Local().Format("MST")
-	if !strings.Contains(*recebido, dataLogicaEsperada()+" "+fuso) {
-		t.Errorf("a data lógica saiu sem o fuso %q:\n%s", fuso, *recebido)
+	if !strings.Contains(*recebido, expectedLogicalDate()+" "+fuso) {
+		t.Errorf("the logical date came out with no zone %q:\n%s", fuso, *recebido)
 	}
 }

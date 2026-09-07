@@ -256,7 +256,7 @@ func (d *Depot) rereadPart(ctx context.Context, part, numbers string, read *int6
 	return true, nil
 }
 
-// Write acumula o extract e o despeja em parts.
+// Write accumulates the extract and spills it into parts.
 type Write struct {
 	d        *Depot
 	buf      bytes.Buffer

@@ -5,10 +5,10 @@ import "testing"
 // The marked line is the SDK talking to the engine, not the program's output: it
 // becomes a stage and DISAPPEARS from the log. Whoever watches the screen wants
 // the stages, not the JSON that carried them.
-func TestLinhaMarcadaEConsumida(t *testing.T) {
+func TestAMarkedLineIsConsumed(t *testing.T) {
 	var c coletorDeEtapas
 	if !c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"agora"}`) {
-		t.Fatal("a marca nao foi reconhecida")
+		t.Fatal("the marker was not recognized")
 	}
 	if len(c.Etapas) != 1 || c.Etapas[0].Nome != "extract" {
 		t.Fatalf("etapas: %+v", c.Etapas)
@@ -23,39 +23,39 @@ func TestLinhaComumContinuaSendoLog(t *testing.T) {
 	for _, linha := range []string{
 		"rodando o extract",
 		"@brevis",
-		"@brevis:isto nao e json",
+		"@brevis:this is not json",
 		`prefixo @brevis:{"tipo":"etapa","nome":"load","estado":"done"}`,
 	} {
 		if c.linha(linha) {
-			t.Errorf("engoliu uma linha que era log: %q", linha)
+			t.Errorf("it swallowed a line that was a log line: %q", linha)
 		}
 	}
 	if len(c.Etapas) != 0 {
-		t.Errorf("registrou etapa de linha que nao era marca: %+v", c.Etapas)
+		t.Errorf("it recorded a stage from a line that was not a marker: %+v", c.Etapas)
 	}
 }
 
 // A stage is ONE entry that changes state, not two lines of history: the screen
 // shows four boxes, not a diary.
-func TestEtapaEUmaEntradaQueMuda(t *testing.T) {
+func TestAStageIsOneEntryThatChanges(t *testing.T) {
 	var c coletorDeEtapas
 	c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running"}`)
 	c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"paginas":300}`)
 
 	if len(c.Etapas) != 1 {
-		t.Fatalf("virou %d entradas, esperado 1: %+v", len(c.Etapas), c.Etapas)
+		t.Fatalf("became %d entries, expected 1: %+v", len(c.Etapas), c.Etapas)
 	}
 	e := c.Etapas[0]
 	if e.State != "done" || e.Ms == nil || *e.Ms != 2400 {
-		t.Errorf("nao atualizou: %+v", e)
+		t.Errorf("it did not update: %+v", e)
 	}
 	if e.Numeros["paginas"] != 300.0 {
-		t.Errorf("os numeros da etapa se perderam: %+v", e.Numeros)
+		t.Errorf("the stage's numbers were lost: %+v", e.Numeros)
 	}
 }
 
 // A ordem de chegada e a ordem da tela: extract antes de load, sempre.
-func TestOrdemDeChegadaEPreservada(t *testing.T) {
+func TestTheArrivalOrderIsPreserved(t *testing.T) {
 	var c coletorDeEtapas
 	c.linha(`@brevis:{"tipo":"etapa","nome":"check","estado":"done"}`)
 	c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running"}`)
@@ -73,10 +73,10 @@ func TestOrdemDeChegadaEPreservada(t *testing.T) {
 // A stage this engine does not know is ignored, rather than becoming a
 // meaningless box on the screen. The SDK may gain stages before the engine knows
 // about them.
-func TestEtapaDesconhecidaEIgnorada(t *testing.T) {
+func TestAnUnknownStageIsIgnored(t *testing.T) {
 	var c coletorDeEtapas
 	if !c.linha(`@brevis:{"tipo":"etapa","nome":"reticulando","estado":"running"}`) {
-		t.Error("a linha e marca e devia ser consumida mesmo desconhecida")
+		t.Error("the line is a marker and should be consumed even when unknown")
 	}
 	if len(c.Etapas) != 0 {
 		t.Errorf("inventou um bloco: %+v", c.Etapas)
@@ -86,13 +86,13 @@ func TestEtapaDesconhecidaEIgnorada(t *testing.T) {
 // The badge is OBSERVED: if it exists, the SDK ran. Nothing in the YAML produces
 // it, so it has no way to lie -- and a wrong badge would be worse than no badge,
 // because it is precisely what you look at to rule hypotheses out.
-func TestSeloVemDoAnuncio(t *testing.T) {
+func TestTheBadgeComesFromTheAnnouncement(t *testing.T) {
 	var c coletorDeEtapas
 	if c.Versao != "" {
-		t.Error("um passo que nao disse nada nao pode ter versao")
+		t.Error("a step that said nothing cannot have a version")
 	}
 	if !c.linha(`@brevis:{"tipo":"sdk","versao":"v0.44.1","pipeline":"fetcher"}`) {
-		t.Fatal("o anuncio nao foi reconhecido")
+		t.Fatal("the announcement was not recognized")
 	}
 	if c.Versao != "v0.44.1" {
 		t.Errorf("versao = %q", c.Versao)
@@ -100,7 +100,7 @@ func TestSeloVemDoAnuncio(t *testing.T) {
 	// And the announcement invents no box on the screen: it only carries the
 	// badge.
 	if len(c.Etapas) != 0 {
-		t.Errorf("o anuncio virou etapa: %+v", c.Etapas)
+		t.Errorf("the announcement became a stage: %+v", c.Etapas)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestTetoProtegeOBanco(t *testing.T) {
 // O SDK ate a v0.47.0 falava em portugues; da v0.48.0 em diante fala ingles. Um
 // an engine that only understood the new one would make an old fetcher's stages
 // vanish from the screen -- with no error, no log, just the grey box back.
-func TestOsDoisFormatosDoProtocolo(t *testing.T) {
+func TestBothFormatsOfTheProtocol(t *testing.T) {
 	casos := map[string]string{
 		"ingles (v0.48+)":         `@brevis:{"type":"stage","name":"extract","state":"done","ms":2400,"at":"agora","paginas":300}`,
 		"portugues (ate a v0.47)": `@brevis:{"tipo":"etapa","nome":"extract","estado":"done","ms":2400,"em":"agora","paginas":300}`,
@@ -132,14 +132,14 @@ func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 		t.Run(nome, func(t *testing.T) {
 			var c coletorDeEtapas
 			if !c.linha(linha) {
-				t.Fatal("a marca nao foi reconhecida")
+				t.Fatal("the marker was not recognized")
 			}
 			if len(c.Etapas) != 1 {
 				t.Fatalf("etapas: %+v", c.Etapas)
 			}
 			e := c.Etapas[0]
 			if e.Nome != "extract" || e.State != "done" || e.Ms == nil || *e.Ms != 2400 {
-				t.Errorf("etapa: %+v", e)
+				t.Errorf("stage: %+v", e)
 			}
 			// And the stage's numbers must not carry the protocol's fields.
 			if e.Numeros["paginas"] != 300.0 {
@@ -147,7 +147,7 @@ func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 			}
 			for _, reservado := range []string{"tipo", "type", "nome", "name", "estado", "state", "em", "at"} {
 				if _, tem := e.Numeros[reservado]; tem {
-					t.Errorf("o campo de protocolo %q vazou para os numeros: %+v", reservado, e.Numeros)
+					t.Errorf("the protocol field %q leaked into the numbers: %+v", reservado, e.Numeros)
 				}
 			}
 		})
@@ -162,7 +162,7 @@ func TestSeloNosDoisFormatos(t *testing.T) {
 	} {
 		var c coletorDeEtapas
 		if !c.linha(linha) || c.Versao == "" {
-			t.Errorf("versao nao chegou de %q: %q", linha, c.Versao)
+			t.Errorf("the version did not arrive from %q: %q", linha, c.Versao)
 		}
 	}
 }
@@ -171,7 +171,7 @@ func TestSeloNosDoisFormatos(t *testing.T) {
 //
 // Keying by name made the second overwrite the first: three declared stages
 // became two boxes on the screen, with no warning.
-func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
+func TestTwoStagesWithTheSameNameAreTwoBoxes(t *testing.T) {
 	var c coletorDeEtapas
 	for _, l := range []string{
 		`@brevis:{"type":"stage","index":0,"name":"map","state":"done","in":100,"out":90}`,
@@ -179,16 +179,16 @@ func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
 		`@brevis:{"type":"stage","index":2,"name":"map","state":"done","in":9,"out":9}`,
 	} {
 		if !c.linha(l) {
-			t.Fatalf("marca nao reconhecida: %s", l)
+			t.Fatalf("marker not recognized: %s", l)
 		}
 	}
 	if len(c.Etapas) != 3 {
-		t.Fatalf("viraram %d caixas, esperado 3: %+v", len(c.Etapas), c.Etapas)
+		t.Fatalf("became %d boxes, expected 3: %+v", len(c.Etapas), c.Etapas)
 	}
 	// And in the pipeline's order, which is what the screen draws.
 	for i, quero := range []string{"map", "aggregate", "map"} {
 		if c.Etapas[i].Nome != quero || c.Etapas[i].Indice != i {
-			t.Errorf("posicao %d: %+v, esperado %q", i, c.Etapas[i], quero)
+			t.Errorf("position %d: %+v, expected %q", i, c.Etapas[i], quero)
 		}
 	}
 	// The first map was not swallowed by the second.
@@ -198,7 +198,7 @@ func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
 }
 
 // The lines may arrive out of order; the screen may not.
-func TestAsCaixasSaemNaOrdemDoPipeline(t *testing.T) {
+func TestTheBoxesComeOutInThePipelinesOrder(t *testing.T) {
 	var c coletorDeEtapas
 	c.linha(`@brevis:{"type":"stage","index":3,"name":"load","state":"running"}`)
 	c.linha(`@brevis:{"type":"stage","index":0,"name":"check","state":"done"}`)
