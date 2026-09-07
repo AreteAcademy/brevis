@@ -13,6 +13,65 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.53.0] — 2026-09-07
+
+### Changed: the last Portuguese names in the exported API, with aliases
+
+`v0.47.0` translated the root package's API and left the drivers behind. These
+are the ones it missed:
+
+| before | now |
+|---|---|
+| `from.CampoJSON` | `from.JSONToken` |
+| `from/postgres.ParaJSON` / `ParaJSONComOID` | `ToJSON` / `ToJSONWithOID` |
+| `from/mysql.ParaJSON` | `ToJSON` |
+| `from/mysql.ComParseTime` | `WithParseTime` |
+| `load.ComoCriar` | `load.HowToCreate` |
+| `load.CriarPorSQL` / `CriarPorSchema` | `CreateFromSQL` / `CreateFromSchema` |
+| `load.PlanoDeCriacao` | `load.CreationPlan` |
+
+**Nothing breaks.** Unlike `v0.47.0`, which deleted the old names, every one of
+these is kept as an alias with a `Deprecated:` note, held down by a test. They
+go in v1. The difference is deliberate: `v0.47.0` was renaming a surface nobody
+outside this repository had built against yet, and that is no longer true.
+
+Checked mechanically rather than promised: the exported surface of all fourteen
+packages, compared against `v0.52.0`, shows **six additions and zero removals**.
+
+### Fixed: `FixedKey`'s doc warned against its own common use
+
+Reported by a consumer, who counted the closure it replaces fourteen times
+across seven fetchers. The doc said:
+
+```
+FixedKey uses a constant source_key. Only correct when the source yields a
+single record per run -- otherwise every row collapses onto one id.
+```
+
+True of a `source_key`, false of a constant LABEL.
+`ComputeText("provider", FixedKey("inmet"))` collapses nothing, because
+`provider` is not an input to the identity in that position — but a reader
+following the doc would avoid the thing they should reach for.
+
+The doc now separates the two uses and keeps the warning where it belongs. It
+stays one function: `FixedKey` and a `FixedLabel` would be two public names for
+one body, and the caller would still have to know which column they are writing
+into, which is what the warning is actually about.
+
+The doc now promises a composition, so a compile-time assertion and a test hold
+it down. It works only because `KeySelector` is an alias of `FieldSelector`
+rather than a distinct type, and separating them would be source-compatible for
+every other caller while breaking exactly this.
+
+### Also
+
+Every comment, test name, identifier and error message in the module is English.
+That is not a behaviour change, but `sdk/README.md` and the godoc read
+differently from `v0.52.0`, and two log samples in the README had been showing
+keys the SDK stopped emitting in `v0.49.0`.
+
+---
+
 ## [0.52.0] — 2026-09-06
 
 ### Added: `ComputeText`, so a selector can be used directly
