@@ -119,6 +119,7 @@ steps:
 | `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
 | `for_each` | | uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo |
 | `group` | | desenha este passo dentro de uma caixa nomeada que colapsa — veja abaixo |
+| `uses` | | outro workflow cujos passos tomam o lugar deste — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
 
 ## Rodando um passo só quando há o que fazer
@@ -274,6 +275,61 @@ grupo pode atravessar níveis, e nada da execução muda.
 
 Clicar no nome do grupo o colapsa: os passos somem e as setas que cruzavam a
 fronteira passam a apontar para a caixa.
+
+## Reaproveitando outro workflow
+
+```yaml
+# nightly.yaml
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  - id: mlops
+    uses: ml_training       # outro workflow no mesmo publish
+    depends_on: [prepare]
+
+  - id: report
+    run: ./report.sh
+    depends_on: [mlops]
+```
+
+No **publish**, os passos do `ml_training` tomam o lugar desse passo, prefixados
+com o id dele, e o nó `uses` desaparece:
+
+```
+prepare → mlops.train → mlops.evaluate → report
+```
+
+Eles chegam como um grupo que colapsa, então o grafo mostra o que o arquivo
+disse.
+
+**Expandido no publish, não executado em runtime.** Um passo que dispara um
+*run* filho e espera é o desenho que travou o Airflow, e este motor tem o mesmo
+ingrediente: o teto de pods é um semáforo por processo, então um pai segurando
+uma vaga enquanto espera um filho que precisa de vagas do mesmo pool trava — e
+só sob carga, ou seja, em produção. Um run, um grafo, um pool.
+
+O que se abre mão é um run filho com id e histórico próprios.
+
+### As regras
+
+| | |
+|---|---|
+| o filho precisa estar no **mesmo publish** | não basta já estar publicado |
+| setas | que entram no passo viram setas para cada **raiz** do filho; as que saem, de cada **folha** |
+| `image`, `env`, `secrets`, `resources` do filho | materializados em cada passo, então ele roda no que o arquivo dele disse |
+| chaves de `unless_empty` / `for_each` do filho | acompanham o prefixo |
+| aninhamento | achatado, em profundidade |
+| um ciclo | recusado no publish, nomeando a cadeia |
+
+**"Mesmo publish", e não "já publicado", é a regra que importa.** Uma expansão
+que lesse o banco faria o `brevis validate` — que não toca banco, de propósito —
+responder outra pergunta que o `brevis publish`, e o arquivo que passou na CI
+seria o que quebrou no deploy.
+
+O filho continua publicável sozinho: a expansão **copia**, não consome. Um passo
+não pode ter `uses:` e também declarar `run:`, `action:` ou `marker:` — isso é um
+arquivo dizendo duas coisas.
 
 ## Dizendo o que uma seta significa
 

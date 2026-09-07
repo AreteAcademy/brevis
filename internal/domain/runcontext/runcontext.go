@@ -172,3 +172,34 @@ func Missing(key, stepID string, visible []string) error {
 	return fmt.Errorf("step %q is not visible to this step: only what it depends on is, "+
 		"which is %s. Add %q to depends_on", stepID, strings.Join(visible, ", "), stepID)
 }
+
+// SplitKey resolves a `step.key` reference against the steps that could have
+// published it.
+//
+// Splitting on the first dot was enough until `uses:` existed. Expansion
+// prefixes a child's step ids, so `mlops.train` is ONE step and
+// `mlops.train.improved` is its key `improved` -- and a first-dot split reads
+// that as the step `mlops`, which does not exist. The longest step name that
+// the value starts with wins, which is unambiguous as long as no step id is a
+// prefix of another followed by a dot. Publish refuses a duplicate id, and a
+// dot in an id only ever comes from expansion, which builds them.
+//
+// `ok` is false when nothing matches. The split is still returned, on the first
+// dot, because the caller's next act is an error message and naming something
+// beats naming nothing.
+func SplitKey(value string, steps []string) (step, key string, ok bool) {
+	best := ""
+	for _, s := range steps {
+		if len(s) < len(best) {
+			continue
+		}
+		if strings.HasPrefix(value, s+".") {
+			best = s
+		}
+	}
+	if best != "" {
+		return best, value[len(best)+1:], true
+	}
+	step, key, _ = strings.Cut(value, ".")
+	return step, key, false
+}

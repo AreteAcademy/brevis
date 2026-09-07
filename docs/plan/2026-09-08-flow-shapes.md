@@ -1,7 +1,7 @@
 # Flow shapes: conditionals, trigger rules and sub-flows
 
 **Written on** 2026-09-08 · **Base** engine `v0.7.0`
-**Status** proposed — not started · **TASK.md #3**
+**Status** done — every step of §7 · **TASK.md #3**
 **Revised 2026-09-08** against a picture of the target (§0). Three things this
 plan had missed and one it had deferred are now in it.
 

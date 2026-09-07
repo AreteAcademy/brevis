@@ -331,7 +331,7 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 		// is about whether the step's turn arrived at all, and this is about
 		// whether there is anything for it to do -- asking the second first
 		// would read a key from a step that never ran.
-		if why, err := r.gate(n); err != nil {
+		if why, err := r.gate(n, deps); err != nil {
 			// A key the publisher never published is a FAILURE, not an empty
 			// value. Treating a typo as "empty" disables the step silently and
 			// forever, and a nightly that stops running with nothing anywhere
@@ -347,7 +347,7 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 		// And now HOW MANY times it runs. An unmapped step is one instance; a
 		// `for_each:` step is one per element of the list, each with a row and
 		// a retry of its own.
-		instances, why, err := r.expand(n)
+		instances, why, err := r.expand(n, deps)
 		if err != nil {
 			r.fail(ctx, run.Step(n.ID), err, &mu, &errs, done)
 			continue
@@ -459,11 +459,11 @@ type instance struct {
 // The DAG's shape does not change here, and that is what makes this cheap: a
 // mapped step is still ONE node with one set of edges, and only the number of
 // rows under it varies. graph.Levels never sees it.
-func (r Runner) expand(n wf.Node) ([]instance, string, error) {
+func (r Runner) expand(n wf.Node, deps map[string][]string) ([]instance, string, error) {
 	if n.ForEach == "" {
 		return []instance{{key: run.Step(n.ID)}}, "", nil
 	}
-	step, key, _ := strings.Cut(n.ForEach, ".")
+	step, key, _ := runcontext.SplitKey(n.ForEach, runcontext.Visible(deps, n.ID))
 
 	raw, published := r.published.snapshot()[step]
 	if !published {
@@ -569,11 +569,14 @@ func (r Runner) notEligible(n wf.Node, upstream []string, done *outcomes) string
 // and that is what a forgiving engine would do -- and a typo in the key name
 // would then disable the step silently, forever, with nothing anywhere saying
 // why. Failing names the key and lists what the step actually published.
-func (r Runner) gate(n wf.Node) (string, error) {
+func (r Runner) gate(n wf.Node, deps map[string][]string) (string, error) {
 	if n.UnlessEmpty == "" {
 		return "", nil
 	}
-	step, key, _ := strings.Cut(n.UnlessEmpty, ".")
+	// Resolved against what this step can SEE, not split on the first dot:
+	// `uses:` prefixes a child's ids, so `mlops.train` is one step and
+	// `mlops.train.improved` is its key.
+	step, key, _ := runcontext.SplitKey(n.UnlessEmpty, runcontext.Visible(deps, n.ID))
 
 	raw, published := r.published.snapshot()[step]
 	if !published {

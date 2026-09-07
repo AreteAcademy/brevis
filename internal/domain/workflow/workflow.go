@@ -119,6 +119,25 @@ type Node struct {
 	// test framework. The engine reads one key and asks whether it is empty.
 	UnlessEmpty string
 
+	// Uses names another workflow whose steps take this one's place.
+	//
+	//	- id: mlops
+	//	  uses: ml_training
+	//	  depends_on: [prepare]
+	//
+	// Expanded at PUBLISH, not at run time: the child's steps become part of
+	// this graph, prefixed with this step's id, and this node disappears.
+	//
+	// The alternative -- a step that triggers a child RUN and waits -- is the
+	// design that deadlocked Airflow, and this engine has the same ingredient:
+	// Runner.Slots is a per-process semaphore, so a parent holding a slot while
+	// waiting for a child that needs slots from the same pool hangs. It appears
+	// only under load, which is to say in production.
+	//
+	// Expansion gives up a child run with its own id and its own history. One
+	// run, one graph, one pool.
+	Uses string
+
 	// Group draws this step inside a named, collapsible box on the graph.
 	//
 	//	- id: extract_orders
@@ -357,8 +376,7 @@ func validateContextKey(w Workflow, n Node, field, value, example string) error 
 	if value == "" {
 		return nil
 	}
-	step, _, ok := strings.Cut(value, ".")
-	if !ok || step == "" {
+	if !strings.Contains(value, ".") {
 		return fmt.Errorf("workflow %q: step %q: `%s: %s` needs the step "+
 			"that publishes it (`%s`, not `%s`)",
 			w.Slug, n.ID, field, value, example, value)
@@ -368,17 +386,22 @@ func validateContextKey(w Workflow, n Node, field, value, example string) error 
 	// same scope the context itself uses. A step reading a key it cannot see
 	// would be skipped forever, and finding that out at publish beats finding
 	// it out when a nightly stops running.
+	//
+	// Resolved AGAINST the visible set rather than split on the first dot:
+	// `uses:` prefixes a child's ids, so `mlops.train` is one step and
+	// `mlops.train.improved` is its key.
 	visible := runcontext.Visible(edgesByTarget(w), n.ID)
-	if !slices.Contains(visible, step) {
-		if len(visible) == 0 {
-			return fmt.Errorf("workflow %q: step %q reads `%s` but declares no "+
-				"`depends_on`, so it can see nothing", w.Slug, n.ID, value)
-		}
-		return fmt.Errorf("workflow %q: step %q reads `%s`, but %q is not one of the "+
-			"steps it depends on (it can see: %s)",
-			w.Slug, n.ID, value, step, strings.Join(visible, ", "))
+	step, _, ok := runcontext.SplitKey(value, visible)
+	if ok {
+		return nil
 	}
-	return nil
+	if len(visible) == 0 {
+		return fmt.Errorf("workflow %q: step %q reads `%s` but declares no "+
+			"`depends_on`, so it can see nothing", w.Slug, n.ID, value)
+	}
+	return fmt.Errorf("workflow %q: step %q reads `%s`, but %q is not one of the "+
+		"steps it depends on (it can see: %s)",
+		w.Slug, n.ID, value, step, strings.Join(visible, ", "))
 }
 
 // edgesByTarget is the dependency map runcontext.Visible wants.
@@ -541,6 +564,15 @@ func (w Workflow) Validate() error {
 
 		temRun, temAction := n.Run != "", n.Action != ""
 		switch {
+		case n.Uses != "" && (temRun || temAction || n.Marker):
+			// A step that names another workflow AND declares work of its own
+			// is a file saying two things, and expansion would have to drop
+			// one of them.
+			return fmt.Errorf("step %q declares `uses` and also `run`, `action` or "+
+				"`marker`; a step that runs another workflow does nothing else", n.ID)
+		case n.Uses != "":
+			// Fine, and it is checked again after expansion -- by then this
+			// node no longer exists.
 		case n.Marker && (temRun || temAction):
 			// A marker that also declares work is a file saying two things. It
 			// is refused rather than silently preferring one, because either

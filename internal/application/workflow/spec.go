@@ -158,6 +158,10 @@ type StepSpec struct {
 	// See dominio.Node.Group.
 	Group string `yaml:"group"`
 
+	// Uses names another workflow whose steps take this one's place, expanded
+	// at publish. See dominio.Node.Uses.
+	Uses string `yaml:"uses"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -283,6 +287,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			UnlessEmpty: strings.TrimSpace(st.UnlessEmpty),
 			ForEach:     strings.TrimSpace(st.ForEach),
 			Group:       strings.TrimSpace(st.Group),
+			Uses:        strings.TrimSpace(st.Uses),
 			OnError:     st.OnError.dominio(),
 		})
 	}

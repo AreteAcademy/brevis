@@ -167,3 +167,43 @@ func TestMissingSaysWhichOfTheTwoCausesItIs(t *testing.T) {
 		}
 	})
 }
+
+// TestAPrefixedStepIsNotSplitOnTheFirstDot.
+//
+// `uses:` prefixes a child's step ids at publish, so `mlops.train` is ONE step
+// and `mlops.train.improved` is its key `improved`. Splitting on the first dot
+// reads that as the step `mlops`, which does not exist -- and the message would
+// have blamed a step nobody wrote.
+func TestAPrefixedStepIsNotSplitOnTheFirstDot(t *testing.T) {
+	visible := []string{"prepare", "mlops.train"}
+
+	step, key, ok := rc.SplitKey("mlops.train.improved", visible)
+	if !ok || step != "mlops.train" || key != "improved" {
+		t.Errorf("split = (%q, %q, %v)", step, key, ok)
+	}
+	// And an unprefixed one still works.
+	if step, key, ok := rc.SplitKey("prepare.rows", visible); !ok || step != "prepare" || key != "rows" {
+		t.Errorf("split = (%q, %q, %v)", step, key, ok)
+	}
+}
+
+// The longest match wins, which is what keeps a prefix from swallowing the step
+// it is a prefix of.
+func TestTheLongestStepNameWins(t *testing.T) {
+	visible := []string{"a", "a.b"}
+	if step, key, ok := rc.SplitKey("a.b.c", visible); !ok || step != "a.b" || key != "c" {
+		t.Errorf("split = (%q, %q, %v)", step, key, ok)
+	}
+}
+
+// Nothing matching still returns a split, because the caller's next act is an
+// error message and naming something beats naming nothing.
+func TestNoMatchStillNamesSomething(t *testing.T) {
+	step, key, ok := rc.SplitKey("ghost.rows", []string{"prepare"})
+	if ok {
+		t.Error("a step nobody declared matched")
+	}
+	if step != "ghost" || key != "rows" {
+		t.Errorf("the fallback split is (%q, %q)", step, key)
+	}
+}

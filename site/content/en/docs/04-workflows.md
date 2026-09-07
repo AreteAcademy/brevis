@@ -119,6 +119,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `unless_empty` | | a context key that decides whether there is anything to do — see below |
 | `for_each` | | a context key holding a list; the step runs once per element — see below |
 | `group` | | draws this step inside a named, collapsible box — see below |
+| `uses` | | another workflow whose steps take this one's place — see below |
 | `on_error` | | announces this step's failures — see below |
 
 ## Running a step only when there is something to do
@@ -273,6 +274,60 @@ may span levels, and nothing about execution changes.
 
 Clicking the group's name collapses it: its steps disappear and the arrows that
 crossed the boundary point at the box instead.
+
+## Reusing another workflow
+
+```yaml
+# nightly.yaml
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  - id: mlops
+    uses: ml_training       # another workflow in the same publish
+    depends_on: [prepare]
+
+  - id: report
+    run: ./report.sh
+    depends_on: [mlops]
+```
+
+At **publish**, `ml_training`'s steps take that step's place, prefixed with its
+id, and the `uses` node disappears:
+
+```
+prepare → mlops.train → mlops.evaluate → report
+```
+
+They arrive as one collapsible group, so the graph shows what the file said.
+
+**Expanded at publish, not run at run time.** A step that triggered a child
+*run* and waited is the design that deadlocked Airflow, and this engine has the
+same ingredient: the pod ceiling is a per-process semaphore, so a parent holding
+a slot while waiting for a child that needs slots from the same pool hangs — and
+only under load, which is to say in production. One run, one graph, one pool.
+
+What it gives up is a child run with its own id and its own history.
+
+### The rules
+
+| | |
+|---|---|
+| the child must be in the **same publish** | not merely already published |
+| arrows | into the step become arrows into each of the child's **roots**; out of it, out of each of its **leaves** |
+| the child's `image`, `env`, `secrets`, `resources` | materialised onto each step, so it runs in what its own file said |
+| the child's `unless_empty` / `for_each` keys | move with the prefix |
+| nesting | flattened, depth first |
+| a circle | refused at publish, naming the chain |
+
+**Same publish, and not "already published", is the important one.** Expansion
+that read the database would make `brevis validate` — which touches no database,
+on purpose — answer a different question from `brevis publish`, and the file
+that passed CI would be the file that failed the deploy.
+
+The child is still publishable on its own: expansion **copies**, it does not
+consume. A step cannot both `uses:` and declare `run:`, `action:` or `marker:` —
+that is a file saying two things.
 
 ## Saying what an arrow means
 

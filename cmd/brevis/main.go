@@ -193,7 +193,11 @@ func cmdValidate() *cobra.Command {
 				return err
 			}
 
+			// Every file is reported, and only then does the set get resolved.
+			// Reporting file by file first is what makes `validate` useful on a
+			// folder: one broken file must not hide the other nineteen.
 			var failures1 int
+			var parsed []wfdom.Workflow
 			for _, a := range files {
 				conteudo, err := os.ReadFile(a)
 				if err != nil {
@@ -207,15 +211,59 @@ func cmdValidate() *cobra.Command {
 					failures1++
 					continue
 				}
+				parsed = append(parsed, w)
 				fmt.Printf("  ok    %-28s %s  %d steps, %d dependencies%s\n",
 					w.Slug, w.Kind, len(w.Nodes), len(w.Edges), schedule(w.Schedule))
 			}
 			if failures1 > 0 {
 				return fmt.Errorf("%d of %d file(s) had errors", failures1, len(files))
 			}
+
+			// And then `uses:`, across the whole set. This is the same call
+			// `publish` makes, on purpose: a folder that validates has to be a
+			// folder that publishes, or CI is answering a different question
+			// from the deploy.
+			resolved, err := spec.Resolve(parsed)
+			if err != nil {
+				fmt.Printf("  ERROR %v\n", err)
+				return fmt.Errorf("`uses` could not be expanded")
+			}
+			for _, w := range resolved {
+				if grown := len(w.Nodes); grown > stepsOf(parsed, w.Slug) {
+					fmt.Printf("  uses  %-28s expands to %d steps\n", w.Slug, grown)
+				}
+			}
 			return nil
 		},
 	}
+}
+
+// readAll parses every file into workflows, as a set.
+func readAll(files []string) ([]wfdom.Workflow, error) {
+	out := make([]wfdom.Workflow, 0, len(files))
+	for _, a := range files {
+		conteudo, err := os.ReadFile(a)
+		if err != nil {
+			return nil, err
+		}
+		w, err := spec.Parse(a, conteudo)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, nil
+}
+
+// stepsOf is what a workflow declared before `uses:` was expanded, so the
+// validate output can say how much a file actually grew.
+func stepsOf(parsed []wfdom.Workflow, slug string) int {
+	for _, w := range parsed {
+		if w.Slug == slug {
+			return len(w.Nodes)
+		}
+	}
+	return 0
 }
 
 // cmdHash generates the password hash that goes into the configuration.
@@ -465,17 +513,21 @@ func cmdPublish() *cobra.Command {
 				return err
 			}
 
+			// Parsed as a SET, because `uses:` names a sibling and expansion
+			// cannot see one file at a time. What reaches the database is the
+			// flat graph, so the runner never learns about nesting.
+			parsed, err := readAll(files)
+			if err != nil {
+				return err
+			}
+			resolved, err := spec.Resolve(parsed)
+			if err != nil {
+				return err
+			}
+
 			repo := postgres.NewWorkflowRepo(pool)
-			published := make([]string, 0, len(files))
-			for _, arq := range files {
-				conteudo, err := os.ReadFile(arq)
-				if err != nil {
-					return err
-				}
-				w, err := spec.Parse(arq, conteudo)
-				if err != nil {
-					return err
-				}
+			published := make([]string, 0, len(resolved))
+			for _, w := range resolved {
 				if err := repo.Publicar(ctx, w, idProjeto); err != nil {
 					return err
 				}
