@@ -18,13 +18,15 @@ func aplica(t *testing.T, fn Transformer, in map[string]any) map[string]any {
 	return got.(map[string]any)
 }
 
-// O critério que segura tudo: o id tem de ser o mesmo que o bloco produzia.
+// The criterion that holds everything: the id has to be the one the block used
+// to produce.
 // Se ele mudar, toda carga anterior de todo consumidor deixa de casar.
 //
-// O valor esperado vem do Envelope.IngestionID, que é a implementação que
+// The expected value comes from Envelope.IngestionID, which is the
+// implementation that
 // existia antes e continua conferida byte a byte contra o uuid.uuid5 do
 // Python.
-func TestIngestionIDProduzOMesmoIDDeAntes(t *testing.T) {
+func TestIngestionIDProducesTheSameIDAsBefore(t *testing.T) {
 	env := core.Envelope{
 		Provider: "open_meteo", Entity: "hourly_temperature",
 		SourceKey: "-23.55|-46.63|2026-01-01T00:00", RecordTS: "2026-01-01T00:00",
@@ -46,13 +48,13 @@ func TestIngestionIDProduzOMesmoIDDeAntes(t *testing.T) {
 }
 
 // E contra o valor congelado, escrito por extenso: um teste que compara duas
-// implementações passa se as duas mudarem juntas.
-func TestIngestionIDContraOValorCongelado(t *testing.T) {
+// implementations passes if both change together.
+func TestIngestionIDAgainstTheFrozenValue(t *testing.T) {
 	got := aplica(t, IngestionID(), map[string]any{
 		"provider": "p", "entity": "e", "source_key": "k", "record_ts": "2026-01-01T00:00:00Z",
 	})
 
-	// Conferido contra o uuid.uuid5 do Python, que é a paridade que importa:
+	// Checked against Python's uuid.uuid5, which is the parity that matters:
 	//   uuid.uuid5(UUID("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7"),
 	//              "p|e|k|2026-01-01T00:00:00Z")
 	const congelado = "178d0b49-dece-5738-b8eb-f5cae222a1ea"
@@ -61,7 +63,7 @@ func TestIngestionIDContraOValorCongelado(t *testing.T) {
 	}
 }
 
-func TestIngestionIDLeOsNomesQueVoceDer(t *testing.T) {
+func TestIngestionIDReadsTheNamesYouGiveIt(t *testing.T) {
 	comCanonicos := aplica(t, IngestionID(), map[string]any{
 		"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t",
 	})
@@ -73,9 +75,9 @@ func TestIngestionIDLeOsNomesQueVoceDer(t *testing.T) {
 	}
 }
 
-// Campo nomeado e ausente é erro nomeando o campo -- geralmente significa que
-// a cadeia está fora de ordem, ou que o Without correu antes.
-func TestIngestionIDRecusaCampoAusente(t *testing.T) {
+// A named-but-absent field is an error naming the field -- it usually means the
+// chain is out of order, or that Without ran first.
+func TestIngestionIDRefusesAMissingField(t *testing.T) {
 	_, err := IngestionID()(map[string]any{"provider": "p", "entity": "e"})
 	if err == nil {
 		t.Fatal("faltando source_key e record_ts, o id seria construído de vazio")
@@ -91,9 +93,9 @@ func TestIngestionIDRecusaCampoAusente(t *testing.T) {
 	}
 }
 
-// source_key vazio é o caso que o Envelope.IngestionID já recusava: sem ele
-// não há identidade estável, e o id mudaria a cada execução.
-func TestIngestionIDRecusaSourceKeyVazio(t *testing.T) {
+// An empty source_key is the case Envelope.IngestionID already refused: without
+// it there is no stable identity, and the id would change on every run.
+func TestIngestionIDRefusesAnEmptySourceKey(t *testing.T) {
 	_, err := IngestionID()(map[string]any{
 		"provider": "p", "entity": "e", "source_key": "", "record_ts": "t",
 	})
@@ -102,7 +104,7 @@ func TestIngestionIDRecusaSourceKeyVazio(t *testing.T) {
 	}
 }
 
-func TestIngestionIDRecusaSobrescrever(t *testing.T) {
+func TestIngestionIDRefusesToOverwrite(t *testing.T) {
 	_, err := IngestionID()(map[string]any{
 		"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t",
 		"ingestion_id": "meu-proprio",
@@ -112,7 +114,7 @@ func TestIngestionIDRecusaSobrescrever(t *testing.T) {
 	}
 }
 
-func TestIngestionIDRecusaNumeroErradoDeCampos(t *testing.T) {
+func TestIngestionIDRefusesTheWrongNumberOfFields(t *testing.T) {
 	_, err := IngestionID("provider", "entity")(map[string]any{"provider": "p", "entity": "e"})
 	if err == nil {
 		t.Fatal("a fórmula tem quatro componentes; dois não dá")
@@ -122,7 +124,7 @@ func TestIngestionIDRecusaNumeroErradoDeCampos(t *testing.T) {
 	}
 }
 
-func TestIngestionLoadedAtEscreveAgoraEmUTC(t *testing.T) {
+func TestIngestionLoadedAtWritesNowInUTC(t *testing.T) {
 	got := aplica(t, IngestionLoadedAt(), map[string]any{"a": 1})
 
 	v, ok := got[ColumnIngestionLoadedAt].(string)
@@ -144,25 +146,27 @@ func TestIngestionLoadedAtEscreveAgoraEmUTC(t *testing.T) {
 	}
 }
 
-func TestIngestionLoadedAtRecusaSobrescrever(t *testing.T) {
+func TestIngestionLoadedAtRefusesToOverwrite(t *testing.T) {
 	_, err := IngestionLoadedAt()(map[string]any{"ingestion_loaded_at": "ontem"})
 	if err == nil {
 		t.Fatal("sobrescrever o instante da carga seria invisível")
 	}
 }
 
-// TestTransformersEscrevemNoLugar fixa o contrato NOVO, e ele é o oposto do
+// TestTransformersWriteInPlace pins the NEW contract, and it is the opposite of
+// the
 // que este teste afirmava antes.
 //
 // Cada transformer devolvia um mapa novo, "porque o chamador ainda pode estar
-// segurando o mapa". Isso é verdade uma vez -- para o mapa que o decodificador
-// entregou --, e as outras seis cópias por registro eram trabalho idêntico
-// repetido. A cópia passou a ser feita uma vez, no `applyAll`.
+// holding the map". That is true once -- for the map the decoder handed over --
+// and the other six copies per record were identical work repeated. The copy is
+// now made once, in `applyAll`.
 //
-// Quem chama um transformer SOZINHO, fora da cadeia, passa a ver a própria
-// linha alterada. Está documentado no tipo Transformer, e é o preço da conta
+// Whoever calls a transformer ALONE, outside the chain, now sees their own row
+// altered. It is documented on the Transformer type, and is the price of the
+// arithmetic
 // que o teste seguinte mede.
-func TestTransformersEscrevemNoLugar(t *testing.T) {
+func TestTransformersWriteInPlace(t *testing.T) {
 	linha := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
 	saida := aplica(t, IngestionID(), linha)
 
@@ -174,14 +178,14 @@ func TestTransformersEscrevemNoLugar(t *testing.T) {
 	}
 }
 
-// TestTransformNaoMutaOQueOExtractEntregou é a garantia que passou a importar,
-// e que antes não existia como teste.
+// TestTransformDoesNotMutateWhatExtractDelivered is the guarantee that came to
+// matter, and that did not exist as a test before.
 //
 // O preview do extract guarda o registro que a FONTE mandou, para mostrar
 // exatamente isso. Se a cadeia escrevesse por cima dele, o preview passaria a
-// mostrar o resultado do Transform dizendo que é a resposta da fonte -- uma
-// mentira que ninguém teria como notar.
-func TestTransformNaoMutaOQueOExtractEntregou(t *testing.T) {
+// show the Transform's result claiming it is the source's response -- a lie
+// nobody would have any way to notice.
+func TestTransformDoesNotMutateWhatExtractDelivered(t *testing.T) {
 	original := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
 
 	saida, pulou, err := applyAll([]Transformer{IngestionID(), IngestionLoadedAt()}, original)
@@ -198,8 +202,8 @@ func TestTransformNaoMutaOQueOExtractEntregou(t *testing.T) {
 	}
 }
 
-// TestCadeiaFazUmaCopiaSo é a conta que justifica a mudança.
-func TestCadeiaFazUmaCopiaSo(t *testing.T) {
+// TestTheChainMakesOneCopyOnly is the arithmetic that justifies the change.
+func TestTheChainMakesOneCopyOnly(t *testing.T) {
 	fns := []Transformer{
 		Accept("provider", "entity", "source_key", "record_ts"),
 		Rename(map[string]string{"record_ts": "ts"}),
@@ -214,9 +218,9 @@ func TestCadeiaFazUmaCopiaSo(t *testing.T) {
 		}
 	})
 
-	// A linha de entrada custa um mapa, a cópia da cadeia custa outro. Quatro
-	// transformers que copiassem custariam quatro a mais -- e é essa diferença
-	// que o teto pega, não um número absoluto de alocações.
+	// The input row costs one map, the chain's copy costs another. Four
+	// transformers that each copied would cost four more -- and it is that
+	// difference the ceiling catches, not an absolute allocation count.
 	const teto float64 = 12
 	if alocacoes > teto {
 		t.Errorf("%.0f alocações para uma linha e quatro transformers (teto %.0f); "+

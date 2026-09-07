@@ -16,7 +16,7 @@ import (
 
 // origemContada conta quantas vezes foi lida e pode recusar a segunda leitura.
 //
-// Recusar e o que torna o teste capaz de falhar: um checkpoint que nao poupasse
+// Refusing is what makes the test able to fail: a checkpoint that did not spare
 // a origem passaria despercebido se a origem simplesmente respondesse de novo.
 type origemContada struct {
 	registros []any
@@ -75,11 +75,11 @@ func registros() []any {
 	}
 }
 
-// FASE 1 -- a segunda tentativa nao pode tocar na origem.
+// PHASE 1 -- the second attempt must not touch the source.
 //
 // E o pedido inteiro: o extract gastou a quota do fornecedor, o destino
-// recusou, e a tentativa seguinte tem de carregar o mesmo dado sem voltar la.
-func TestCheckpointNaSegundaTentativaNaoTocaNaOrigem(t *testing.T) {
+// refused, and the next attempt has to load the same data without going back.
+func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}
@@ -119,8 +119,8 @@ func TestCheckpointNaSegundaTentativaNaoTocaNaOrigem(t *testing.T) {
 	}
 }
 
-// FASE 2 (I1) -- sem manifesto nao ha retomada.
-func TestCheckpointSemManifestoRefazOExtract(t *testing.T) {
+// PHASE 2 (I1) -- with no manifest there is no resume.
+func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{registros: registros(), leituras: &leituras}
@@ -138,7 +138,8 @@ func TestCheckpointSemManifestoRefazOExtract(t *testing.T) {
 		t.Fatalf("primeira tentativa: %v", err)
 	}
 
-	// O manifesto e o que autoriza a retomada. Sem ele o deposito e um extract
+	// The manifest is what authorizes the resume. Without it the depot is an
+	// extract
 	// interrompido, e retomar dali carregaria metade dos dados em silencio.
 	apagar(t, dir, "_completo")
 
@@ -152,7 +153,7 @@ func TestCheckpointSemManifestoRefazOExtract(t *testing.T) {
 }
 
 // FASE 2 (I1) -- manifesto inteiro, parte faltando: recusa antes de carregar.
-func TestCheckpointComParteFaltandoRefazOExtract(t *testing.T) {
+func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{registros: registros(), leituras: &leituras}
@@ -181,7 +182,7 @@ func TestCheckpointComParteFaltandoRefazOExtract(t *testing.T) {
 	if !strings.Contains(log, "checkpoint incomplete") {
 		t.Errorf("descartar um checkpoint calado esconde a causa:\n%s", log)
 	}
-	// E o que foi carregado tem de ser o conjunto inteiro, nao o que sobrou.
+	// And what was loaded has to be the whole set, not what was left over.
 	if len(caixa) != 4 {
 		t.Errorf("carregou %d registros nas duas tentativas, esperado 4", len(caixa))
 	}
@@ -192,7 +193,7 @@ func TestCheckpointComParteFaltandoRefazOExtract(t *testing.T) {
 // Isto so pode acontecer com o objeto adulterado depois de escrito. Seguir
 // calado carregaria menos linhas do que a primeira tentativa carregou, e
 // ninguem saberia.
-func TestCheckpointComContagemErradaFalhaAlto(t *testing.T) {
+func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{registros: registros(), leituras: &leituras}
@@ -225,10 +226,10 @@ func TestCheckpointComContagemErradaFalhaAlto(t *testing.T) {
 	}
 }
 
-// FASE 3 (I3) -- os ingestion_id de uma retomada sao identicos.
+// PHASE 3 (I3) -- a resumed attempt's ingestion_ids are identical.
 //
 // E a garantia que o pedido chama de "carregar o mesmo dado".
-func TestCheckpointPreservaOIngestionID(t *testing.T) {
+func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}
@@ -268,9 +269,9 @@ func TestCheckpointPreservaOIngestionID(t *testing.T) {
 // FASE 3 -- o literal do numero sobrevive a volta pelo NDJSON.
 //
 // Um payload com json.Number carrega `19.0`; relido como float64 ele viraria
-// "19" no asText, e a retomada gravaria um ingestion_id diferente do da
+// "19" in asText, and the resume would write an ingestion_id different from
 // primeira tentativa. O modo fica no manifesto.
-func TestCheckpointPreservaOLiteralDoNumero(t *testing.T) {
+func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
 	origem := origemContada{
@@ -308,11 +309,12 @@ func TestCheckpointPreservaOLiteralDoNumero(t *testing.T) {
 	}
 }
 
-// FASE 4 (I5) -- um deposito que nao grava avisa, e a execucao segue.
+// PHASE 4 (I5) -- a depot that cannot write warns, and the run goes on.
 //
-// O checkpoint e uma apolice, nao o produto. Morrer por causa do seguro seria
+// The checkpoint is an insurance policy, not the product. Dying because of the
+// insurance would be
 // trocar uma falha rara por uma falha em toda execucao.
-func TestCheckpointQueNaoGravaNaoDerrubaAExecucao(t *testing.T) {
+func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
@@ -333,18 +335,20 @@ func TestCheckpointQueNaoGravaNaoDerrubaAExecucao(t *testing.T) {
 	}
 }
 
-// FASE 4 (I5) -- falhar no MEIO tambem nao derruba, e nao repete a origem.
+// PHASE 4 (I5) -- failing MIDWAY does not fail the run either, and does not
+// re-read the source.
 //
-// Aqui o `_inicio` grava e as partes nao. O fluxo degrada: cede o que ja virou
+// Here `_inicio` writes and the parts do not. The stream degrades: it yields
+// what already became
 // objeto, o que ficou no buffer, e segue direto da origem -- sem refazer o
 // extract, que e justamente o que se estava tentando poupar.
-func TestCheckpointQueFalhaNoMeioDegradaSemRepetirAOrigem(t *testing.T) {
+func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
 		Source:     Source{From: origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}},
-		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeQueRecusaPartes{}},
+		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeRefusingParts{}},
 		Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
 		Run:        RunContext{ID: "run-8", Attempt: 0},
 	})
@@ -362,8 +366,8 @@ func TestCheckpointQueFalhaNoMeioDegradaSemRepetirAOrigem(t *testing.T) {
 	}
 }
 
-// Fora do motor nao ha chave estavel, e isso e DITO.
-func TestCheckpointForaDoMotorAvisaEmVezDeIgnorar(t *testing.T) {
+// Outside the engine there is no stable key, and that is SAID.
+func TestOutsideTheEngineTheCheckpointWarnsInsteadOfIgnoring(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
@@ -381,8 +385,9 @@ func TestCheckpointForaDoMotorAvisaEmVezDeIgnorar(t *testing.T) {
 	}
 }
 
-// Um esquema que nao casa com o Store e ERRO, nao aviso: ele nunca vai gravar.
-func TestCheckpointComStoreErradoEErro(t *testing.T) {
+// A scheme that does not match the Store is an ERROR, not a warning: it will
+// never write.
+func TestACheckpointWithTheWrongStoreIsAnError(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	_, err := rodar(t, &Pipeline{
@@ -418,11 +423,12 @@ func (storeQueRecusa) Create(context.Context, string, string, io.Reader) error {
 	return fmt.Errorf("sem permissao de escrita")
 }
 
-// storeQueRecusaPartes deixa reservar e recusa as partes: e a falha que
-// aparece no meio da extracao, depois de a quota ja ter sido gasta.
-type storeQueRecusaPartes struct{ storeQueRecusa }
+// storeRefusingParts allows the reservation and refuses the parts: it is the
+// failure that shows up mid-extraction, after the quota has already been
+// spent.
+type storeRefusingParts struct{ storeQueRecusa }
 
-func (storeQueRecusaPartes) Create(_ context.Context, _, chave string, _ io.Reader) error {
+func (storeRefusingParts) Create(_ context.Context, _, chave string, _ io.Reader) error {
 	if strings.Contains(chave, "parte-") {
 		return fmt.Errorf("balde cheio")
 	}

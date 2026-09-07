@@ -15,16 +15,17 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/from"
 )
 
-// TestSnapshotNaoDependeDaPosicaoNaCadeia é o item 3, e é a razão de ele NÃO
+// TestTheSnapshotDoesNotDependOnThePositionInTheChain is item 3, and is the
+// reason it is NOT
 // ser um transformer.
 //
-// Como transformer, o retrato dependeria da posição: colocá-lo depois de um
+// As a transformer, the snapshot would depend on position: placing it after a
 // Compute produziria um registro "cru" carregando o campo que a cadeia acabou
-// de escrever. Isso não dá erro -- dá um dado errado que ninguém percebe até
-// alguém consultá-lo meses depois.
+// writing it. That produces no error -- it produces wrong data nobody notices
+// until somebody queries it months later.
 //
-// Tirado onde o registro sai da fonte, não há ordem que possa contaminá-lo.
-func TestSnapshotNaoDependeDaPosicaoNaCadeia(t *testing.T) {
+// Taken where the record leaves the source, no ordering can contaminate it.
+func TestTheSnapshotDoesNotDependOnThePositionInTheChain(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"id":"1","temperatura":19.5}`)
 	}))
@@ -65,9 +66,9 @@ func TestSnapshotNaoDependeDaPosicaoNaCadeia(t *testing.T) {
 	}
 }
 
-// TestSnapshotRecusaSobrescreverOQueAFonteMandou: gravar por cima perderia o
-// que veio da fonte, em silêncio.
-func TestSnapshotRecusaSobrescreverOQueAFonteMandou(t *testing.T) {
+// TestTheSnapshotRefusesToOverwriteWhatTheSourceSent: gravar por cima perderia o
+// that came from the source, in silence.
+func TestTheSnapshotRefusesToOverwriteWhatTheSourceSent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"payload":"da fonte"}`)
 	}))
@@ -93,10 +94,11 @@ func TestSnapshotRecusaSobrescreverOQueAFonteMandou(t *testing.T) {
 	}
 }
 
-// TestSkipWithoutDescartaEmVezDeDerrubar: uma linha sem o campo que compõe a chave
-// não tem identidade estável e não pode entrar -- mas também não é motivo para
+// TestSkipWithoutDropsInsteadOfFailing: a row without the field that composes
+// the key has no stable identity and cannot go in -- but it is also no reason
+// to
 // derrubar a janela inteira.
-func TestSkipWithoutDescartaEmVezDeDerrubar(t *testing.T) {
+func TestSkipWithoutDropsInsteadOfFailing(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `[{"id":"1"},{"id":null},{"outro":2},{"id":"4"}]`)
 	}))
@@ -120,9 +122,10 @@ func TestSkipWithoutDescartaEmVezDeDerrubar(t *testing.T) {
 	}
 }
 
-// TestNamespaceMudaOId é o item 1: o namespace é de quem usa, não da
+// TestTheNamespaceChangesTheID is item 1: the namespace belongs to whoever uses
+// it, not to the
 // biblioteca.
-func TestNamespaceMudaOId(t *testing.T) {
+func TestTheNamespaceChangesTheID(t *testing.T) {
 	registro := func() map[string]any {
 		return map[string]any{
 			"provider": "acme", "entity": "pedidos",
@@ -147,10 +150,11 @@ func TestNamespaceMudaOId(t *testing.T) {
 	}
 }
 
-// TestNamespacePadraoNaoMudou é a garantia que impede a feature de quebrar
-// quem já gravou: o id de quem não escolhe namespace tem de ser byte a byte o
+// TestTheDefaultNamespaceHasNotChanged is the guarantee that stops the feature
+// from breaking whoever has already written: the id for somebody who chooses no
+// namespace has to be byte for byte the
 // de antes.
-func TestNamespacePadraoNaoMudou(t *testing.T) {
+func TestTheDefaultNamespaceHasNotChanged(t *testing.T) {
 	saida, err := sdk.IngestionID()(map[string]any{
 		"provider": "open_meteo", "entity": "hourly",
 		"source_key": "123", "record_ts": "2026-09-05T12:00:00Z",
@@ -160,17 +164,18 @@ func TestNamespacePadraoNaoMudou(t *testing.T) {
 	}
 	got := saida.(map[string]any)[sdk.ColumnIngestionID].(string)
 
-	// Este valor é o mesmo desde a v0.1.x, conferido contra o uuid.uuid5 do
-	// Python. Se ele mudar, toda linha já gravada perdeu a identidade.
+	// This value has been the same since v0.1.x, checked against Python's
+	// uuid.uuid5. If it changes, every row already written has lost its
+	// identity.
 	const congelado = "7e18f9f9-37c4-5033-abce-def940db4cba"
 	if got != congelado {
 		t.Errorf("o id padrão mudou: %s, era %s", got, congelado)
 	}
 }
 
-// TestNamespaceEscolhidoEDeterministico: escolher um namespace não pode
-// introduzir variação entre execuções.
-func TestNamespaceEscolhidoEDeterministico(t *testing.T) {
+// TestAChosenNamespaceIsDeterministic: choosing a namespace must not introduce
+// variation between runs.
+func TestAChosenNamespaceIsDeterministic(t *testing.T) {
 	meu := sdk.Namespace(uuid.MustParse("11111111-2222-3333-4444-555555555555"))
 	var anterior string
 	for i := 0; i < 5; i++ {
@@ -208,9 +213,9 @@ func (d *destinoQueConta) Write(_ context.Context, envs []sdk.Envelope, _ sdk.Wr
 	return &sdk.LoadResult{RowsLoaded: int64(len(envs))}, nil
 }
 
-// TestFlushEveryEscreveEmLevas: uma leitura longa não pode ter o lote inteiro
-// vivo em memória, e o destino monta uma segunda cópia dele para serializar.
-func TestFlushEveryEscreveEmLevas(t *testing.T) {
+// TestFlushEveryWritesInBatches: a long read must not have the whole batch alive
+// in memory, and the destination builds a second copy of it to serialize.
+func TestFlushEveryWritesInBatches(t *testing.T) {
 	destino := &destinoQueConta{}
 	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
 		To: destino, FlushEvery: 3,
@@ -226,15 +231,15 @@ func TestFlushEveryEscreveEmLevas(t *testing.T) {
 		t.Errorf("a última leva tem %d, esperado 1", len(destino.levas[3]))
 	}
 
-	// O Result soma as levas. Um Rows que contasse só a última mentiria para
-	// quem lê a linha do pipeline.
+	// The Result sums the batches. A Rows counting only the last one would lie
+	// to whoever reads the pipeline's line.
 	if res.Rows != 10 || res.Records != 10 {
 		t.Errorf("Rows=%d Records=%d, esperado 10 e 10", res.Rows, res.Records)
 	}
 }
 
-// TestFlushEveryZeroAcumulaTudo: o padrão não muda.
-func TestFlushEveryZeroAcumulaTudo(t *testing.T) {
+// TestFlushEveryZeroAccumulatesEverything: the default does not change.
+func TestFlushEveryZeroAccumulatesEverything(t *testing.T) {
 	destino := &destinoQueConta{}
 	if _, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{To: destino}); err != nil {
 		t.Fatal(err)
@@ -244,10 +249,10 @@ func TestFlushEveryZeroAcumulaTudo(t *testing.T) {
 	}
 }
 
-// TestFlushEveryFalhaNoMeioDizOQueJaEntrou: a carga deixa de ser atômica, e
+// TestFlushEveryFailingMidwaySaysWhatWentIn: the load stops being atomic, and
 // esconder que as levas anteriores gravaram seria pior que dizer -- quem
-// reexecuta precisa saber que 6 linhas já estão lá.
-func TestFlushEveryFalhaNoMeioDizOQueJaEntrou(t *testing.T) {
+// re-runs it needs to know that 6 rows are already there.
+func TestFlushEveryFailingMidwaySaysWhatWentIn(t *testing.T) {
 	destino := &destinoQueConta{falharEm: 3}
 	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
 		To: destino, FlushEvery: 3,
