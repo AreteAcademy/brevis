@@ -19,6 +19,22 @@ set -uo pipefail
 # this measures what ships. linux/amd64 is the reference; the image is built for
 # arm64 too, which differs by a handful of packages -- inside the headroom, and
 # not worth a second set of ceilings.
+#
+# A third axis is NOT pinned, deliberately: the Go PATCH release. 1.27.1 adds
+# eighteen packages to these consumers over 1.27.0, so the numbers move on their
+# own when the toolchain does. Pinning GOTOOLCHAIN would make them exact and
+# would also mean this gate stops measuring what people build with.
+#
+# So the ceilings carry about twelve percent of headroom, and it is worth being
+# honest about what that buys and what it does not:
+#
+#   caught  -- a module-level version bump dragging in a tree (the case that
+#              motivated these: bigquery went 460 -> 718, +56%)
+#   caught  -- a forbidden module appearing at all, at any size. This is the
+#              half with teeth, and it does not depend on a number
+#   MISSED  -- a slow creep of a few percent per quarter
+#
+# The numbers below are measured on go1.27.1, linux/amd64, cgo off.
 export GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 
 TREE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)"
@@ -153,19 +169,19 @@ run check "files" \
 	\"$MODULO/to\"" \
   "_ = from.Files{}; _ = to.Files{}" \
   "jackc/pgx cloud.google.com aws-sdk-go" \
-  205
+  240
 
 run check "postgres" \
   "	\"$MODULO/from/postgres\"" \
   "_ = postgres.Query{}" \
   "cloud.google.com aws-sdk-go" \
-  232
+  268
 
 run check "mysql" \
   "	\"$MODULO/from/mysql\"" \
   "_ = mysql.Query{}" \
   "jackc/pgx cloud.google.com aws-sdk-go" \
-  206
+  240
 
 # Context is the package a Python-first team's Go step imports, and it must cost
 # nothing: no driver, no network, no rest of the SDK. If this ever fails, the
@@ -175,13 +191,13 @@ run check "context" \
   "	\"$MODULO/context\"" \
   "_ = context.MaxBytes" \
   "jackc/pgx cloud.google.com aws-sdk-go net/http" \
-  72
+  88
 
 run check "pycompat" \
   "	\"$MODULO/pycompat\"" \
   "_, _ = pycompat.Text(nil)" \
   "jackc/pgx cloud.google.com aws-sdk-go net/http" \
-  73
+  88
 
 # sdk.Meter has to cost NOTHING. It is an interface in the root package, and the
 # implementations live in subpackages, so a fetcher that reads a CSV does not
@@ -206,6 +222,6 @@ run check "bigquery" \
   "	\"$MODULO/to/bigquery\"" \
   "_ = bigquery.Table{}" \
   "jackc/pgx aws-sdk-go" \
-  480
+  540
 
 exit $overall

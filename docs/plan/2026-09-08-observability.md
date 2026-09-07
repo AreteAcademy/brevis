@@ -81,17 +81,35 @@ data driver**, and that is the invariant with teeth: BigQuery, `aws-sdk-go` and
 `jackc/pgx` must never be linked into the API pod through a stray import. The
 package count is a proxy for that, and it is not the invariant itself.
 
-**Raise it to 360, keep the driver check untouched, and add protobuf and
-`client_golang` to the forbidden list.** 360 is the measured 343 for linux/amd64
-plus about five percent — enough that a patch bump upstream does not turn CI
-red, tight enough that the next library still has to argue for itself.
+**Raise it, keep the driver check untouched, and add protobuf and
+`client_golang` to the forbidden list.** The forbidden list is the half that
+does not depend on a number, and it is what actually holds this decision down.
 
-The measurement is now pinned to `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, which
-is what the Dockerfile builds. It was not, and CI disagreed with a laptop by
-twenty packages on the same commit: cgo alone is nineteen of them on linux,
-through the resolver and `os/user`, and GOOS accounts for the rest. A gate whose
-number depends on who runs it is a gate that gets its ceiling raised for the
-wrong reason.
+Setting the number turned out to be the harder half, and it took three attempts
+because the measurement drifts on three axes:
+
+| axis | size | pinned? |
+|---|---|---|
+| `GOOS` — darwin and linux have different stdlib internals | a few | **yes** |
+| cgo — on linux it adds 19 through the resolver and `os/user` | 19 | **yes**, `CGO_ENABLED=0` |
+| the Go **patch** release — 1.27.1 adds 18 over 1.27.0 | 18 | **no**, deliberately |
+
+The first two are pinned to what the Dockerfile builds, so the gate measures the
+artifact rather than the machine that ran it. Before that, CI and a laptop
+disagreed by twenty packages on the same commit.
+
+The third is left alone: pinning `GOTOOLCHAIN` would make the numbers exact and
+would also stop the gate measuring what people actually build with. The ceilings
+carry about twelve percent of headroom instead, and the honest statement of what
+that buys is:
+
+- **caught** — a module-level bump dragging in a tree, which is the case that
+  motivated this: `bigquery` went from 460 to 736 packages;
+- **caught** — a forbidden module appearing at all, at any size;
+- **missed** — a slow creep of a few percent per quarter.
+
+A gate that goes red because Go shipped a patch on a Tuesday is a gate somebody
+turns off.
 
 Adding protobuf to the forbidden list is what makes this decision hold: without
 it, someone reaches for the exporter in six months, the count lands under 360,

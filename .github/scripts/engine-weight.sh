@@ -66,15 +66,25 @@ done
 # The ceiling on the total. It does not exist to be exact -- it exists so that
 # growing takes a conscious decision instead of just happening.
 #
-# It was 330 while the engine was 299 and had no metrics. It moved ONCE, to 360,
-# to buy go.opentelemetry.io/otel/sdk/metric: measured at 343 for linux/amd64,
-# plus about five percent so a patch bump upstream does not turn CI red on its
-# own.
+# It was 330 while the engine was 299 and had no metrics. It moved to buy
+# go.opentelemetry.io/otel/sdk/metric, which measures 343 on linux/amd64 with
+# cgo off.
+#
+# It went to 360 first and then to 380, and the second move is not the ceiling
+# being nudged for convenience -- 360 was chosen before it was known that these
+# counts drift with the Go PATCH release. 1.27.1 adds eighteen packages to a
+# small consumer over 1.27.0, which is more than the five percent 360 allowed.
+# Pinning GOTOOLCHAIN would make the number exact and would also stop this gate
+# measuring what people build with, so the headroom absorbs it instead.
+#
+# What that costs is precision, and the honest version is: this catches a tree
+# arriving, not a slow creep. The forbidden list above is the half with teeth,
+# and it does not depend on a number at all.
 #
 # A number that moves whenever it is inconvenient is not a gate. If it has to
 # move again, the commit that moves it says what was bought -- and the forbidden
 # list above is the half of this check that has teeth either way.
-CEILING="${PACKAGE_CEILING:-360}"
+CEILING="${PACKAGE_CEILING:-380}"
 if [ "$total" -gt "$CEILING" ]; then
   echo "❌ the engine compiles $total packages, above the ceiling of $CEILING."
   echo "   If the growth is deliberate, raise the ceiling in this script and say why."
