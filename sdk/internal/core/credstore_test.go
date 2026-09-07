@@ -24,7 +24,7 @@ func chaveDeTeste(t *testing.T) string {
 func storePronto(t *testing.T) (FileStore, string) {
 	t.Helper()
 	// t.TempDir vem 0755 nesta plataforma, e o store recusa diretorio frouxo
-	// -- que e o comportamento pedido, entao o teste se ajusta a ele.
+	// -- which is the requested behaviour, so the test adjusts to it.
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -34,8 +34,9 @@ func storePronto(t *testing.T) (FileStore, string) {
 	return FileStore{Name: "gabriel-session"}, dir
 }
 
-// TestGuardaEDevolve: o caminho feliz, e o unico que o consumidor vai ver.
-func TestGuardaEDevolve(t *testing.T) {
+// TestItStoresAndReturns: the happy path, and the only one the consumer will
+// ever see.
+func TestItStoresAndReturns(t *testing.T) {
 	s, dir := storePronto(t)
 
 	const valor = "session=eyJhbGciOiJkaXIi..QUJDRA=="
@@ -50,7 +51,7 @@ func TestGuardaEDevolve(t *testing.T) {
 		t.Errorf("Load = %q, esperado %q", got, valor)
 	}
 
-	// E o valor nao esta em claro no arquivo.
+	// And the value is not in the clear in the file.
 	bruto, err := os.ReadFile(filepath.Join(dir, "gabriel-session.cred"))
 	if err != nil {
 		t.Fatal(err)
@@ -63,9 +64,9 @@ func TestGuardaEDevolve(t *testing.T) {
 	}
 }
 
-// TestAusenteNaoEErro: nao ha valor guardado e um estado normal -- a primeira
-// execucao de todas. O chamador cai na semente.
-func TestAusenteNaoEErro(t *testing.T) {
+// TestAbsentIsNotAnError: there being no stored value is a normal state -- the
+// very first run. The caller falls back to the seed.
+func TestAbsentIsNotAnError(t *testing.T) {
 	s, _ := storePronto(t)
 	got, err := s.Load()
 	if err != nil {
@@ -76,9 +77,10 @@ func TestAusenteNaoEErro(t *testing.T) {
 	}
 }
 
-// TestNonceNaoSeRepete: reusar nonce com a mesma chave em GCM quebra a cifra, e
-// e o erro mais comum de quem implementa isso pela primeira vez.
-func TestNonceNaoSeRepete(t *testing.T) {
+// TestTheNonceDoesNotRepeat: reusing a nonce with the same key in GCM breaks the
+// cipher, and it is the most common mistake of whoever implements this for the
+// first time.
+func TestTheNonceDoesNotRepeat(t *testing.T) {
 	s, dir := storePronto(t)
 
 	vistos := map[string]bool{}
@@ -100,8 +102,8 @@ func TestNonceNaoSeRepete(t *testing.T) {
 }
 
 // TestSemChaveGravaEmClaro: a cifra e opcional. O controle de verdade e o do
-// storage -- permissao do diretorio, IAM do bucket -- e uma chave que vive no
-// mesmo secret de quem le o store nao protege de ninguem.
+// storage's -- the directory's permissions, the bucket's IAM -- and a key living
+// in the same secret as whoever reads the store protects against nobody.
 func TestSemChaveGravaEmClaro(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
@@ -133,9 +135,9 @@ func TestSemChaveGravaEmClaro(t *testing.T) {
 	}
 }
 
-// TestClaroAvisaUmaVezSo: um aviso repetido a cada pipeline vira ruido, e
-// ruido e como um aviso deixa de ser lido.
-func TestClaroAvisaUmaVezSo(t *testing.T) {
+// TestPlaintextWarnsOnlyOnce: a warning repeated on every pipeline becomes
+// noise, and noise is how a warning stops being read.
+func TestPlaintextWarnsOnlyOnce(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -180,8 +182,8 @@ func TestComChaveNaoGravaEmClaro(t *testing.T) {
 }
 
 // TestCifradoSemChaveCaiNaSemente: durante um rollout, ou depois de alguem
-// remover a chave, o store tem um valor que este processo nao le. Cair na
-// semente e o certo; devolver lixo seria pior.
+// removing the key, the store holds a value this process cannot read. Falling
+// back to the seed is right; returning garbage would be worse.
 func TestCifradoSemChaveCaiNaSemente(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("segredo"); err != nil {
@@ -199,10 +201,10 @@ func TestCifradoSemChaveCaiNaSemente(t *testing.T) {
 	_ = dir
 }
 
-// TestChaveDeTamanhoErrado: AES-256 quer 32 bytes, e uma chave curta falharia
-// mais tarde com uma mensagem sobre tamanho de bloco. Chave presente e ruim e
-// erro; chave AUSENTE e escolha.
-func TestChaveDeTamanhoErrado(t *testing.T) {
+// TestAKeyOfTheWrongLength: AES-256 wants 32 bytes, and a short key would fail
+// later with a message about block size. A key that is present and bad is an
+// error; an ABSENT key is a choice.
+func TestAKeyOfTheWrongLength(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -219,10 +221,11 @@ func TestChaveDeTamanhoErrado(t *testing.T) {
 	}
 }
 
-// TestSemDiretorioODesligaEmVezDeFalhar: sem Dir e sem a env, o comportamento e
-// exatamente o de antes da feature -- e assim ela continua sendo atalho, nao
+// TestWithNoDirectoryItTurnsOffInsteadOfFailing: with no Dir and no env var, the
+// behaviour is exactly what it was before the feature -- and that is how it stays
+// a shortcut, not a
 // requisito.
-func TestSemDiretorioODesligaEmVezDeFalhar(t *testing.T) {
+func TestWithNoDirectoryItTurnsOffInsteadOfFailing(t *testing.T) {
 	t.Setenv(EnvCredentialDir, "")
 	t.Setenv(EnvCredentialKey, "")
 
@@ -238,9 +241,9 @@ func TestSemDiretorioODesligaEmVezDeFalhar(t *testing.T) {
 	}
 }
 
-// TestDiretorioFrouxoERecusado: um volume compartilhado com 0777 e um diretorio
-// publico, e guardar credencial nele nao e melhor que nao guardar.
-func TestDiretorioFrouxoERecusado(t *testing.T) {
+// TestALooseDirectoryIsRefused: a shared volume at 0777 is a public directory,
+// and keeping a credential in it is no better than not keeping it.
+func TestALooseDirectoryIsRefused(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o777); err != nil {
 		t.Fatal(err)
@@ -257,8 +260,8 @@ func TestDiretorioFrouxoERecusado(t *testing.T) {
 	}
 }
 
-// TestPermissoes: arquivo 0600, diretorio 0700.
-func TestPermissoes(t *testing.T) {
+// TestPermissions: the file at 0600, the directory at 0700.
+func TestPermissions(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "criado-por-mim")
 	t.Setenv(EnvCredentialDir, dir)
 	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
@@ -284,10 +287,11 @@ func TestPermissoes(t *testing.T) {
 	}
 }
 
-// TestArquivoIlegivelCaiNaSemente: versao futura, truncado, ou chave trocada.
-// Nenhum e erro: falhar trocaria uma credencial velha por nenhuma, e uma versao
-// futura num volume compartilhado e cenario normal durante um rollout.
-func TestArquivoIlegivelCaiNaSemente(t *testing.T) {
+// TestAnUnreadableFileFallsBackToTheSeed: a future version, truncated, or a
+// swapped key. None of them is an error: failing would trade a stale credential
+// for none at all, and a future version on a shared volume is a normal scenario
+// during a rollout.
+func TestAnUnreadableFileFallsBackToTheSeed(t *testing.T) {
 	casos := map[string][]byte{
 		"versao futura": []byte("brevis-cred/9\nqualquer coisa aqui dentro"),
 		"sem versao":    []byte("nao tem newline nenhum"),
@@ -312,9 +316,10 @@ func TestArquivoIlegivelCaiNaSemente(t *testing.T) {
 	}
 }
 
-// TestChaveTrocadaNaoDecifra: e o teste que prova que a cifra e a chave, nao
+// TestASwappedKeyDoesNotDecrypt: it is the test proving the cipher is the key,
+// not
 // so um encode.
-func TestChaveTrocadaNaoDecifra(t *testing.T) {
+func TestASwappedKeyDoesNotDecrypt(t *testing.T) {
 	// t.TempDir vem 0755 nesta plataforma, e o store recusa diretorio frouxo
 	// -- que e o comportamento pedido, entao o teste se ajusta a ele.
 	dir := t.TempDir()
@@ -339,7 +344,7 @@ func TestChaveTrocadaNaoDecifra(t *testing.T) {
 }
 
 // TestAdulteracaoEDetectada: GCM autentica. Um byte trocado no texto cifrado
-// tem de invalidar, e nao produzir lixo que vira credencial.
+// has to invalidate, and not produce garbage that becomes a credential.
 func TestAdulteracaoEDetectada(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("segredo"); err != nil {
@@ -360,9 +365,9 @@ func TestAdulteracaoEDetectada(t *testing.T) {
 	}
 }
 
-// TestNomeQueEUmCaminhoERecusado: o nome vem do chamador e nunca da URL, e
-// tambem nao pode escapar do diretorio.
-func TestNomeQueEUmCaminhoERecusado(t *testing.T) {
+// TestANameThatIsAPathIsRefused: the name comes from the caller and never from
+// the URL, and it must not escape the directory either.
+func TestANameThatIsAPathIsRefused(t *testing.T) {
 	t.Setenv(EnvCredentialDir, t.TempDir())
 	t.Setenv(EnvCredentialKey, chaveDeTeste(t))
 
@@ -374,7 +379,7 @@ func TestNomeQueEUmCaminhoERecusado(t *testing.T) {
 }
 
 // TestEscritasConcorrentesNaoCorrompem: ultimo a escrever vence, e e escolha
-// documentada -- mas o arquivo tem de continuar legivel, nunca meio escrito.
+// documented -- but the file has to stay readable, never half-written.
 func TestEscritasConcorrentesNaoCorrompem(t *testing.T) {
 	s, _ := storePronto(t)
 
@@ -394,7 +399,8 @@ func TestEscritasConcorrentesNaoCorrompem(t *testing.T) {
 					t.Errorf("Load: %v", err)
 					return
 				}
-				// Qualquer um dos oito valores serve; o que nao pode e lixo.
+				// Any of the eight values will do; what must not happen is
+				// garbage.
 				if got != "" && strings.Trim(got, "v") != "" {
 					t.Errorf("Load devolveu conteudo corrompido: %q", got)
 					return
@@ -408,10 +414,10 @@ func TestEscritasConcorrentesNaoCorrompem(t *testing.T) {
 	}
 }
 
-// TestOStoreVemAntesDaSemente: e a ordem que faz a feature valer. Um valor
-// guardado e o resultado da ultima rotacao; a semente e o que alguem colou uma
-// vez, e pode ja ter vencido.
-func TestOStoreVemAntesDaSemente(t *testing.T) {
+// TestTheStoreComesBeforeTheSeed: it is the order that makes the feature worth
+// anything. A stored value is the result of the last rotation; the seed is what
+// somebody pasted in once, and it may have expired already.
+func TestTheStoreComesBeforeTheSeed(t *testing.T) {
 	s, _ := storePronto(t)
 	if err := s.Save("do-store"); err != nil {
 		t.Fatal(err)
@@ -436,8 +442,8 @@ func TestOStoreVemAntesDaSemente(t *testing.T) {
 	}
 }
 
-// TestSemValorGuardadoUsaASemente: a primeira execucao de todas.
-func TestSemValorGuardadoUsaASemente(t *testing.T) {
+// TestWithNoStoredValueItUsesTheSeed: the very first run.
+func TestWithNoStoredValueItUsesTheSeed(t *testing.T) {
 	s, _ := storePronto(t)
 
 	c := &Credential{

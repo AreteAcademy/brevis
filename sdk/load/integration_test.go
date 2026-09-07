@@ -99,12 +99,12 @@ func countRows(ctx context.Context, t *testing.T, client *bigquery.Client, env i
 	return row.N
 }
 
-// comIngestao é o que a cadeia de Transform produz: a linha do chamador mais
-// as duas colunas que sdk.IngestionID e sdk.IngestionLoadedAt escrevem.
+// withIngestion is what the Transform chain produces: the caller's row plus the
+// two columns sdk.IngestionID and sdk.IngestionLoadedAt write.
 //
-// As fixtures montam a linha inteira porque é assim que ela chega ao destino
-// agora -- nada é carimbado depois.
-// comIngestaoNaLinha faz o mesmo para uma linha avulsa.
+// The fixtures build the whole row because that is how it reaches the
+// destination now -- nothing is stamped afterwards.
+// withIngestionOnRow does the same for a single row.
 func mustID(provider, entity, sourceKey, recordTS string) string {
 	id, err := core.ComputeIngestionID(provider, entity, sourceKey, recordTS)
 	if err != nil {
@@ -113,7 +113,7 @@ func mustID(provider, entity, sourceKey, recordTS string) string {
 	return id
 }
 
-func comIngestaoNaLinha(row map[string]any) map[string]any {
+func withIngestionOnRow(row map[string]any) map[string]any {
 	id, err := core.ComputeIngestionID("acme", "widgets", "k-1", "2026-01-01T00:00:00Z")
 	if err != nil {
 		panic(err)
@@ -128,7 +128,7 @@ func comIngestaoNaLinha(row map[string]any) map[string]any {
 	return out
 }
 
-func comIngestao(n int) []core.Envelope {
+func withIngestion(n int) []core.Envelope {
 	out := envelopes(n)
 	agora := time.Now().UTC().Format(time.RFC3339)
 	for i := range out {
@@ -268,7 +268,7 @@ func TestIntegrationMergeDoesNotDouble(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	batch := comIngestao(24)
+	batch := withIngestion(24)
 
 	first, err := loader.Load(ctx, batch...)
 	if err != nil {
@@ -321,15 +321,15 @@ func TestIntegrationCreatesTableFromData(t *testing.T) {
 		core.WithTable(name),
 		core.WithCreateTable(true),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
-		// Um campo que os próprios registros têm: o SDK não impõe coluna
-		// nenhuma desde a v0.9.0, então "provider" não existe mais aqui.
+		// A field the records themselves carry: the SDK has imposed no column at
+		// all since v0.9.0, so "provider" no longer exists here.
 		core.WithClusterBy("label"),
 	)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 
-	res, err := loader.Load(ctx, comIngestao(3)...)
+	res, err := loader.Load(ctx, withIngestion(3)...)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestIntegrationMergeIntoADifferentColumnOrder(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	batch := comIngestao(6)
+	batch := withIngestion(6)
 	if _, err := loader.Load(ctx, batch...); err != nil {
 		t.Fatalf("merging into a table whose column order differs: %v", err)
 	}
@@ -504,7 +504,7 @@ func TestIntegrationFirstMergeLoadStillPartitions(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	if _, err := loader.Load(ctx, comIngestao(4)...); err != nil {
+	if _, err := loader.Load(ctx, withIngestion(4)...); err != nil {
 		t.Fatalf("first load: %v", err)
 	}
 
@@ -621,7 +621,7 @@ func TestIntegrationMetadataColumnsAreNotNull(t *testing.T) {
 	batch := []core.Envelope{{
 		Provider: "acme", Entity: "widgets", SourceKey: "k-1",
 		RecordTS: "2026-01-01T00:00:00Z",
-		Payload:  comIngestaoNaLinha(map[string]any{"sku": "W-1", "quantidade": 3}),
+		Payload:  withIngestionOnRow(map[string]any{"sku": "W-1", "quantidade": 3}),
 	}}
 	if _, err := loader.Load(ctx, batch...); err != nil {
 		t.Fatalf("load: %v", err)
@@ -658,7 +658,7 @@ func TestIntegrationMetadataColumnsAreNotNull(t *testing.T) {
 
 	// And a second load still lands, against the fixed schema.
 	if _, err := loader.Load(ctx, core.Envelope{
-		Payload: comIngestaoNaLinha(map[string]any{"sku": "W-2", "quantidade": 9}),
+		Payload: withIngestionOnRow(map[string]any{"sku": "W-2", "quantidade": 9}),
 	}); err != nil {
 		t.Fatalf("second load into the typed table: %v", err)
 	}
@@ -704,7 +704,7 @@ func TestIntegrationColumnsMatchTheDDL(t *testing.T) {
 	batch := []core.Envelope{{
 		Provider: "open_meteo", Entity: "hourly", SourceKey: "2026-01-01T00:00",
 		RecordTS: "2026-01-01T00:00:00Z",
-		Payload: comIngestaoNaLinha(map[string]any{
+		Payload: withIngestionOnRow(map[string]any{
 			"provider":   "open_meteo",
 			"entity":     "hourly",
 			"source_key": "2026-01-01T00:00",
@@ -754,11 +754,11 @@ func TestIntegrationColumnsMatchTheDDL(t *testing.T) {
 	}
 }
 
-// --- as opções que nunca tinham tocado o BigQuery de verdade -------------
+// --- the options that had never touched a real BigQuery -------------------
 
 // TestIntegrationCreateSQLRunsTheCallersDDL: CreateSQL existia desde a v0.9.0
-// e nunca tinha sido executado contra o BigQuery. É o caminho para quem tem
-// uma DDL que o SDK não sabe expressar.
+// and had never been executed against BigQuery. It is the path for whoever has
+// a DDL the SDK cannot express.
 func TestIntegrationCreateSQLRunsTheCallersDDL(t *testing.T) {
 	env := requireIntegration(t)
 	ctx := context.Background()
@@ -804,8 +804,8 @@ func TestIntegrationCreateSQLRunsTheCallersDDL(t *testing.T) {
 	for _, f := range meta.Schema {
 		byName[f.Name] = f
 	}
-	// NUMERIC é o ponto: o autodetect nunca produziria isso a partir de JSON,
-	// e é justamente por isso que CreateSQL existe.
+	// NUMERIC is the point: autodetect would never produce that from JSON, and
+	// that is precisely why CreateSQL exists.
 	if f := byName["preco"]; f == nil || f.Type != bigquery.NumericFieldType {
 		t.Errorf("a DDL do chamador não sobreviveu: preco = %+v", f)
 	}
@@ -817,9 +817,9 @@ func TestIntegrationCreateSQLRunsTheCallersDDL(t *testing.T) {
 	}
 }
 
-// TestIntegrationPartitionOptionsReachTheTable: duas opções que só têm efeito
-// no metadado da tabela, então uma que não chegasse não apareceria em
-// contagem de linha nenhuma.
+// TestIntegrationPartitionOptionsReachTheTable: two options that only take
+// effect in the table's metadata, so one that did not arrive would show up in no
+// row count at all.
 func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 	env := requireIntegration(t)
 	ctx := context.Background()
@@ -848,7 +848,7 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if _, err := loader.Load(ctx, comIngestao(2)...); err != nil {
+	if _, err := loader.Load(ctx, withIngestion(2)...); err != nil {
 		t.Fatalf("load: %v", err)
 	}
 
@@ -867,16 +867,17 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 		t.Error("RequirePartitionFilter não chegou à tabela")
 	}
 
-	// E a prova do que a opção existe para fazer: uma consulta sem filtro de
-	// partição é recusada. Sem isto, só se provou que uma flag foi copiada.
+	// And the proof of what the option exists to do: a query with no partition
+	// filter is refused. Without this, all that was proven is that a flag was
+	// copied.
 	q := client.Query(fmt.Sprintf("SELECT COUNT(*) FROM `%s.%s.%s`", env.project, env.dataset, name))
 	if _, err := q.Read(ctx); err == nil {
 		t.Error("uma consulta sem filtro de partição deveria ser recusada")
 	}
 }
 
-// TestIntegrationKeepStagedFile: o zero value apaga, e é assim porque o
-// contrário já encheu um bucket em silêncio. As duas pontas provadas.
+// TestIntegrationKeepStagedFile: the zero value deletes, and it is that way
+// because the opposite already filled a bucket in silence. Both ends proven.
 func TestIntegrationKeepStagedFile(t *testing.T) {
 	env := requireIntegration(t)
 	if env.bucket == "" {
@@ -905,7 +906,7 @@ func TestIntegrationKeepStagedFile(t *testing.T) {
 				core.WithTable(name),
 				core.WithStagingBucket(env.bucket),
 				core.WithStagingPrefix(prefixo),
-				core.WithThresholdForGCS(1), // força o caminho do GCS
+				core.WithThresholdForGCS(1), // forces the GCS path
 			}
 			if c.manter {
 				opts = append(opts, core.WithKeepStagedFile(true))
@@ -951,8 +952,8 @@ func TestIntegrationKeepStagedFile(t *testing.T) {
 	}
 }
 
-// TestIntegrationInlineLimitPicksTheStrategy: o limite que decide entre
-// escrever direto e passar pelo GCS nunca tinha sido afirmado.
+// TestIntegrationInlineLimitPicksTheStrategy: the limit that decides between
+// writing inline and going through GCS had never been asserted.
 func TestIntegrationInlineLimitPicksTheStrategy(t *testing.T) {
 	env := requireIntegration(t)
 	if env.bucket == "" {
@@ -1000,11 +1001,11 @@ func TestIntegrationInlineLimitPicksTheStrategy(t *testing.T) {
 	}
 }
 
-// TestIntegrationProvenanceLabelsTheTable prova a atribuição de custo.
+// TestIntegrationProvenanceLabelsTheTable proves the cost attribution.
 //
-// Existe por causa de uma regressão: a fase 0 parou de repassar Provider e
-// Entity da fachada para o loader, e toda tabela criada desde então saiu sem
-// os labels. Nada quebrou, nenhuma contagem mudou -- só a conta do BigQuery
+// It exists because of a regression: phase 0 stopped passing Provider and Entity
+// from the facade to the loader, and every table created since then came out
+// with no labels. Nothing broke, no count changed -- only BigQuery's bill
 // deixou de saber quem escreve ali.
 func TestIntegrationProvenanceLabelsTheTable(t *testing.T) {
 	env := requireIntegration(t)
@@ -1030,7 +1031,7 @@ func TestIntegrationProvenanceLabelsTheTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if _, err := loader.Load(ctx, comIngestao(2)...); err != nil {
+	if _, err := loader.Load(ctx, withIngestion(2)...); err != nil {
 		t.Fatalf("load: %v", err)
 	}
 
@@ -1045,7 +1046,7 @@ func TestIntegrationProvenanceLabelsTheTable(t *testing.T) {
 	if meta.Labels["entity"] != "rows" {
 		t.Errorf("label entity = %q, esperado o do lote", meta.Labels["entity"])
 	}
-	// A descrição responde "quem escreve aqui?" seis meses depois.
+	// The description answers "what writes here?" six months later.
 	if !strings.Contains(meta.Description, "integration/rows") {
 		t.Errorf("a descrição não nomeia a proveniência: %q", meta.Description)
 	}
@@ -1143,11 +1144,11 @@ func TestIntegrationMergeIntoAJSONColumn(t *testing.T) {
 	}
 }
 
-// TestIntegrationChainWritesEverything é a prova do §6 da spec: a landing de
-// seis colunas, carregada por um fetcher SEM bloco de metadado, com
+// TestIntegrationChainWritesEverything is the proof of §6 of the spec: the
+// six-column landing table, loaded by a fetcher with NO metadata block, with
 // DedupMerge — e o ingestion_id lido de volta e conferido.
 //
-// Se o id mudasse, toda carga anterior de todo consumidor deixaria de casar.
+// If the id changed, every previous load of every consumer would stop matching.
 func TestIntegrationChainWritesEverything(t *testing.T) {
 	env := requireIntegration(t)
 	ctx := context.Background()
@@ -1178,8 +1179,8 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	// A linha inteira, exatamente como a cadeia a compõe: nada é carimbado
-	// depois. O id é o que sdk.IngestionID escreveria.
+	// The whole row, exactly as the chain composes it: nothing is stamped
+	// afterwards. The id is what sdk.IngestionID would write.
 	id, err := core.ComputeIngestionID("open_meteo", "hourly", "k-1", "2026-01-01T00:00")
 	if err != nil {
 		t.Fatal(err)
@@ -1196,8 +1197,8 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 	if _, err := loader.Load(ctx, core.Envelope{Payload: linha}); err != nil {
 		t.Fatalf("primeira carga: %v", err)
 	}
-	// A segunda não pode reingerir: é o que o merge existe para fazer, e ele
-	// casa exatamente na coluna que a cadeia escreveu.
+	// The second must not re-ingest: it is what the merge exists to do, and it
+	// matches on exactly the column the chain wrote.
 	res, err := loader.Load(ctx, core.Envelope{Payload: linha})
 	if err != nil {
 		t.Fatalf("segunda carga: %v", err)
@@ -1207,7 +1208,8 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 			res.RowsLoaded, res.RowsIgnored)
 	}
 
-	// As duas colunas do SDK saem NOT NULL porque a declaração as nomeia.
+	// The SDK's two columns come out NOT NULL because the declaration names
+	// them.
 	meta, err := table.Metadata(ctx)
 	if err != nil {
 		t.Fatalf("reading metadata: %v", err)
@@ -1225,12 +1227,12 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 	if len(meta.Schema) != len(declared) {
 		t.Errorf("a tabela tem %d colunas, a declaração tem %d", len(meta.Schema), len(declared))
 	}
-	// E os labels, que vêm das colunas provider/entity da própria linha.
+	// And the labels, which come from the row's own provider/entity columns.
 	if meta.Labels["provider"] != "open_meteo" {
 		t.Errorf("label provider = %q", meta.Labels["provider"])
 	}
 
-	// O id lido de volta é o que a fórmula congelada produz.
+	// The id read back is what the frozen formula produces.
 	q := client.Query(fmt.Sprintf(
 		"SELECT ingestion_id FROM `%s.%s.%s`", env.project, env.dataset, name))
 	it, err := q.Read(ctx)
