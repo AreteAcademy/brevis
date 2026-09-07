@@ -19,6 +19,7 @@ import (
 
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/notify"
+	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"github.com/AreteAcademy/brevis/internal/queue"
 )
 
@@ -95,6 +96,11 @@ type Dispatcher struct {
 	// Alerts warns when a run gives up. Nil means nobody is told.
 	Alerts notify.Notificador
 
+	// Metrics is the scrape's source. Nil means nothing is measured, which is
+	// the case for `brevis run` and for every test here -- the package
+	// tolerates it rather than requiring a no-op to be threaded through.
+	Metrics *metrics.Metrics
+
 	// BaseURL of the UI, for the link in the alert.
 	BaseURL string
 
@@ -157,6 +163,9 @@ func (d *Dispatcher) RecoverOrphans(ctx context.Context) (int, error) {
 	for _, it := range items {
 		d.fail(ctx, it, errOrphan{worker: d.cfg.Worker, limite: d.cfg.Visibility})
 	}
+	// Until now a dead worker was a log line and nothing else, so "workers are
+	// dying" was not a thing anybody could alert on.
+	d.Metrics.OrphansRecovered(ctx, len(items))
 	return len(items), nil
 }
 
@@ -194,6 +203,22 @@ func (d *Dispatcher) claimCycle(ctx context.Context) error {
 	}
 
 	for _, it := range items {
+		// Enqueued to claimed, which is the dispatcher's own SLA. It is
+		// measured from disponivel_em and not from the row's creation on
+		// purpose: an item waiting out its retry backoff is not the scheduler
+		// being slow, and counting it would make a healthy backoff look like
+		// saturation.
+		//
+		// Clamped at zero because the two clocks are different. disponivel_em
+		// is the DATABASE's now(); time.Now() here is the process's, and a few
+		// milliseconds of skew would otherwise land negative observations in
+		// the first bucket.
+		if waited := time.Since(it.AvailableAt); waited > 0 {
+			d.Metrics.Claimed(ctx, waited)
+		} else {
+			d.Metrics.Claimed(ctx, 0)
+		}
+
 		d.mu.Lock()
 		d.emVoo++
 		d.mu.Unlock()
@@ -226,6 +251,7 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusSuccess); err != nil {
 			d.log.Error("marking success", "run", it.RunID, "error", err)
 		}
+		d.measure(ctx, it.RunID, dom.StatusSuccess)
 		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
@@ -257,6 +283,7 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		// attempt would turn a successful retry into two alerts and a silence,
 		// and a channel that cries wolf stops being read.
 		d.avisar(ctx, it.RunID, attempt, cause)
+		d.measure(ctx, it.RunID, dom.StatusFailed)
 		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
@@ -280,6 +307,38 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 	if err := d.queue.Release(ctx, it.ID, atraso); err != nil {
 		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
 	}
+}
+
+// measure records a run that reached a TERMINAL state.
+//
+// Only terminal, and that is the whole reason it is a separate function rather
+// than a line in process(): a run that fails and retries passes through
+// process() three times, and counting each pass would report three runs where
+// the operator saw one. The per-attempt number already exists -- it is the step
+// duration, recorded by the runner.
+//
+// The duration runs from the run's CREATION, not from the claim: "how long did
+// my pipeline take" includes the wait, and a number that excludes queue time
+// looks healthy exactly when the queue is the problem.
+//
+// The read is one query per terminal run, and it buys the workflow and trigger
+// labels. Without them the counter answers "how many runs failed" and never
+// "which pipeline" -- which is the only version of the question anybody asks.
+func (d *Dispatcher) measure(ctx context.Context, runID uuid.UUID, status dom.Status) {
+	if d.Metrics == nil {
+		return
+	}
+	r, err := d.repo.Get(ctx, runID)
+	if err != nil {
+		// Labelled rather than dropped. Dropping keeps the labels clean and
+		// makes brevis_run_total quietly wrong; "unknown" keeps the total
+		// honest and announces itself on the chart.
+		d.log.Warn("run measured without its workflow", "run", runID, "error", err)
+		d.Metrics.RunFinished(ctx, "unknown", string(status), "unknown", 0)
+		return
+	}
+	d.Metrics.RunFinished(ctx, r.WorkflowSlug, string(status), r.TriggerType,
+		time.Since(r.CreatedAt))
 }
 
 // avisar sends the definitive-failure alert.

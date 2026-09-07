@@ -12,6 +12,12 @@ spec:
   template:
     metadata:
       labels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: api}
+      # The API reports the queue's depth and nothing else — it executes no
+      # steps. The numbers worth watching are on the scheduler's pod.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       # Explicit: without this the pod gets the namespace's `default`, which
       # usually has more permission than people assume.
@@ -23,7 +29,15 @@ spec:
         - name: api
           image: daniel3843/brevis:0.2.1
           args: ["serve"]
-          ports: [{containerPort: 8080, name: http}]
+          # TWO ports, and only `http` belongs in the Ingress below.
+          #
+          # `metrics` is separate because the http port is behind auth.Gate: a
+          # scrape endpoint there would either need a session — which no scraper
+          # has — or publish every workflow and step name to whoever finds the
+          # path. Routing 9090 through an Ingress undoes that.
+          ports:
+            - {containerPort: 8080, name: http}
+            - {containerPort: 9090, name: metrics}
           env:
             - name: BREVIS_ENV
               value: prod
@@ -60,4 +74,9 @@ metadata:
   namespace: dados
 spec:
   selector: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: api}
+  # `http` only, on purpose. This Service is what the Ingress points at, and
+  # adding the metrics port here is one `ServiceMonitor`-shaped convenience away
+  # from publishing it. The scrape reaches the POD, through the annotations
+  # above; if this installation needs a ServiceMonitor, give it a second
+  # headless Service rather than widening this one.
   ports: [{port: 80, targetPort: http, name: http}]

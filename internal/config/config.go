@@ -30,6 +30,19 @@ type Config struct {
 	// interface uses the default identity.
 	BrandFile string
 
+	// MetricsAddr is where /metrics listens, and it is a SEPARATE address from
+	// HTTPAddr on purpose. The API pod is the one behind an Ingress, and a
+	// scrape endpoint on the same port would either sit behind the login --
+	// where no scraper can reach it -- or publish every workflow and step name
+	// to whoever finds the path.
+	//
+	// It defaults to :9090 rather than to empty, because a metrics endpoint
+	// that has to be turned on is a metrics endpoint nobody has. Setting
+	// BREVIS_METRICS_ADDR to the empty string serves nothing -- which is why it
+	// is read with LookupEnv and not with `get`, where empty and unset are the
+	// same thing.
+	MetricsAddr string
+
 	// TaskEnv lists what the process passes on to local tasks. See
 	// TasksEnvironment -- the default does NOT inherit the environment, and
 	// that is deliberate.
@@ -99,6 +112,7 @@ func Load() (Config, error) {
 		DatabaseURL:  os.Getenv("BREVIS_DATABASE_URL"),
 		LogLevel:     get("BREVIS_LOG_LEVEL", "info"),
 		BrandFile:    get("BREVIS_BRAND_FILE", "brand.yaml"),
+		MetricsAddr:  optional("BREVIS_METRICS_ADDR", ":9090"),
 		TaskEnv:      list("BREVIS_TASK_ENV"),
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),
 		UIURL:        os.Getenv("BREVIS_UI_URL"),
@@ -263,6 +277,17 @@ func pares(key string) map[string]string {
 		return nil
 	}
 	return out
+}
+
+// optional is `get` for a value whose EMPTY setting is meaningful. `get` folds
+// unset and empty together, which is right for a brand file and wrong here:
+// BREVIS_METRICS_ADDR="" is how an installation says "serve no metrics", and
+// with `get` it would silently get the default instead.
+func optional(key, fallback string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	return fallback
 }
 
 func get(key, fallback string) string {

@@ -25,6 +25,7 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/graph"
+	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"time"
 )
 
@@ -140,6 +141,14 @@ type Runner struct {
 	// that declares `image:` -- and the same DAG runs as a pod in the cluster
 	// and as a process on a laptop, with no change to the YAML.
 	Pods execution.Executor
+
+	// Metrics records per-step numbers. Nil means nothing is measured, which is
+	// what `brevis run` on a laptop wants: it has no endpoint to scrape.
+	//
+	// The STEP is measured here and the RUN is measured by the dispatcher,
+	// which is the only place that knows a failure was the last attempt rather
+	// than one of three.
+	Metrics *metrics.Metrics
 }
 
 // Run walks the graph by levels: everything inside a level runs in parallel,
@@ -244,8 +253,16 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 			return err
 		}
 		r.markStart(ctx, n.ID, t-1)
+		// Counted per ATTEMPT and not per step: flapping -- a step that passes
+		// on the third try, every night -- is invisible in a duration and
+		// invisible on the screen, and this is the only number that shows it.
+		r.Metrics.StepStarted(ctx, w.Slug, n.ID)
+
+		started := time.Now()
 		var outgoing string
 		outgoing, last = r.tentar(ctx, w, n, t-1)
+		r.Metrics.StepFinished(ctx, w.Slug, n.ID, stepStatus(last), time.Since(started))
+
 		r.markEnd(ctx, n.ID, t-1, last, outgoing)
 		libera()
 		if last == nil {
@@ -273,6 +290,17 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		}
 	}
 	return last
+}
+
+// stepStatus is the label, and it says "failed" for every failed ATTEMPT --
+// including one that a later attempt makes good. The run-level counter is where
+// a retried-then-succeeded run appears once, as a success; conflating the two
+// here would hide exactly the flapping the attempt counter exists to show.
+func stepStatus(err error) string {
+	if err == nil {
+		return "success"
+	}
+	return "failed"
 }
 
 // ocupar takes a slot and returns the function that frees it.

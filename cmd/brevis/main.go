@@ -38,6 +38,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability"
+	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
@@ -581,6 +582,11 @@ func cmdScheduler() *cobra.Command {
 			runs := postgres.NewRunRepo(pool)
 			q := queue.New(pool.Pool)
 
+			// Declared here because `executar` below closes over it: the RUNNER
+			// records the per-step numbers, and it is built once per run inside
+			// that closure.
+			met := metrics.New()
+
 			sched := scheduler.NewScheduler(
 				postgres.NewScheduleRepo(pool), postgres.NewWorkflowRepo(pool), runs, q, log,
 				scheduler.SchedulerOptions{Interval: intervalo})
@@ -691,6 +697,7 @@ func cmdScheduler() *cobra.Command {
 					History:     runs,
 					Trigger:     r.TriggerType,
 					LogicalDate: r.LogicalDate,
+					Metrics:     met,
 				}.Run(ctx, w)
 			}
 
@@ -706,6 +713,22 @@ func cmdScheduler() *cobra.Command {
 				// tends to be discovered by the customer, not by the team.
 				log.Warn("no BREVIS_SLACK_WEBHOOK: failures will not be announced")
 			}
+
+			// The scheduler is where the interesting numbers live: queue
+			// depth, claim latency, slots in use and orphans recovered are all
+			// properties of the process that RUNS steps, not of the one that
+			// serves the UI. Until now this process had no HTTP server at all,
+			// so none of them could leave it.
+			if err := met.WatchQueue(q.Size); err != nil {
+				log.Warn("queue depth will not be reported", "error", err)
+			}
+			if err := met.WatchSlots(func() (int, int) {
+				return disp.EmVoo(), concurrency
+			}); err != nil {
+				log.Warn("slot usage will not be reported", "error", err)
+			}
+			disp.Metrics = met
+			met.Serve(ctx, cfg.MetricsAddr, log)
 
 			log.Info("scheduler and dispatcher are up",
 				"interval", intervalo.String(), "concurrency", concurrency)
@@ -840,6 +863,20 @@ func serve(ctx context.Context) error {
 	} else if brand.Title != branding.Default().Title {
 		log.Info("visual identity loaded", "file", cfg.BrandFile, "title", brand.Title)
 	}
+
+	// Metrics listen on an address of their own, never on cfg.HTTPAddr: that
+	// port is the one behind the Ingress and behind auth.Gate, and a scrape
+	// endpoint there would either need a session -- which no scraper has -- or
+	// publish every workflow name to the internet.
+	//
+	// The API's own numbers are the queue's: this process does not execute
+	// anything, so what it can honestly report is the state of the TABLE, read
+	// at scrape time.
+	met := metrics.New()
+	if err := met.WatchQueue(queue.New(pool.Pool).Size); err != nil {
+		log.Warn("queue depth will not be reported", "error", err)
+	}
+	met.Serve(ctx, cfg.MetricsAddr, log)
 
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
 		runsRepo, uiActions{schedules: schedules, sched: sched}, brand, log)

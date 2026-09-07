@@ -84,3 +84,23 @@ func TestTheWrongMethodDoesNotMatch(t *testing.T) {
 		t.Fatalf("status = %d, wanted 405 — Go 1.22+'s ServeMux matches by method", rec.Code)
 	}
 }
+
+// TestMetricsAreNotOnTheAPIsPort pins a decision that is easy to undo by
+// accident and expensive to notice.
+//
+// This port is the one behind the Ingress and behind auth.Gate. Mounting
+// /metrics here leaves two options, and both are wrong: inside the gate, no
+// scraper can reach it, because the session is a cookie set by a login form;
+// outside it, every workflow and step name is published to whoever finds the
+// path. The endpoint lives on BREVIS_METRICS_ADDR instead, which is never in
+// the Ingress.
+//
+// If this test starts failing, the fix is not to delete it.
+func TestMetricsAreNotOnTheAPIsPort(t *testing.T) {
+	rec := httptest.NewRecorder()
+	testServer(nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("status = %d: /metrics answered on the API's port, which is the one behind the Ingress", rec.Code)
+	}
+}

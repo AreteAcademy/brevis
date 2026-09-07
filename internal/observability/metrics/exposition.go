@@ -68,7 +68,29 @@ type point struct {
 	lines []string
 }
 
-func write(w io.Writer, rm *metricdata.ResourceMetrics) error {
+// counted wraps the writer and keeps the FIRST error, so a failed write stops
+// producing output instead of finishing the render and reporting success. It is
+// also why the Fprint calls below discard their error: it is the same one, kept
+// here, and checked once per family rather than on every line.
+// Without it, a writer that fails halfway leaves a truncated exposition and a
+// nil error -- and a scraper reading truncated text does not error, it records
+// the series it managed to parse.
+type counted struct {
+	w   io.Writer
+	err error
+}
+
+func (c *counted) Write(p []byte) (int, error) {
+	if c.err != nil {
+		return 0, c.err
+	}
+	n, err := c.w.Write(p)
+	c.err = err
+	return n, err
+}
+
+func write(dst io.Writer, rm *metricdata.ResourceMetrics) error {
+	w := &counted{w: dst}
 	byName := map[string]*family{}
 	var order []string
 
@@ -95,10 +117,10 @@ func write(w io.Writer, rm *metricdata.ResourceMetrics) error {
 			continue
 		}
 		if f.help != "" {
-			fmt.Fprintf(w, "# HELP %s %s\n", f.name, escapeHelp(f.help))
+			_, _ = fmt.Fprintf(w, "# HELP %s %s\n", f.name, escapeHelp(f.help))
 		}
 		if f.kind != "" {
-			fmt.Fprintf(w, "# TYPE %s %s\n", f.name, f.kind)
+			_, _ = fmt.Fprintf(w, "# TYPE %s %s\n", f.name, f.kind)
 		}
 		// Sorted by data point, so the same state produces the same bytes. A
 		// golden test on this output is the reason for owning the format, and
@@ -106,11 +128,14 @@ func write(w io.Writer, rm *metricdata.ResourceMetrics) error {
 		sort.Slice(f.points, func(i, j int) bool { return f.points[i].key < f.points[j].key })
 		for _, p := range f.points {
 			for _, line := range p.lines {
-				fmt.Fprintln(w, line)
+				_, _ = fmt.Fprintln(w, line)
 			}
 		}
+		if w.err != nil {
+			return w.err
+		}
 	}
-	return nil
+	return w.err
 }
 
 func render(f *family, md metricdata.Metrics) {
@@ -210,7 +235,7 @@ func series(name string, attrs attribute.Set, extra *label, value string) string
 	pairs := make([]string, 0, attrs.Len()+1)
 	for it := attrs.Iter(); it.Next(); {
 		kv := it.Attribute()
-		pairs = append(pairs, string(kv.Key)+`="`+escapeValue(kv.Value.Emit())+`"`)
+		pairs = append(pairs, string(kv.Key)+`="`+escapeValue(kv.Value.String())+`"`)
 	}
 	sort.Strings(pairs)
 	if extra != nil {

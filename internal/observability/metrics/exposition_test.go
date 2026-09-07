@@ -252,11 +252,8 @@ func TestNoLabelCarriesARunID(t *testing.T) {
 	}
 }
 
-// looksLikeAUUID matches 8-4-4-4-12 hex without a regexp dependency in the
-// hot path of a test that runs on every commit.
+// looksLikeAUUID matches the 8-4-4-4-12 hex shape anywhere in the line.
 func looksLikeAUUID(s string) bool {
-	const shape = "8-4-4-4-12"
-	_ = shape
 	for i := 0; i+36 <= len(s); i++ {
 		w := s[i : i+36]
 		if w[8] != '-' || w[13] != '-' || w[18] != '-' || w[23] != '-' {
@@ -267,7 +264,8 @@ func looksLikeAUUID(s string) bool {
 			if j == 8 || j == 13 || j == 18 || j == 23 {
 				continue
 			}
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			hex := (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+			if !hex {
 				ok = false
 				break
 			}

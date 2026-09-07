@@ -151,6 +151,7 @@ make build   # binary in bin/
 | `BREVIS_DATABASE_URL` | — | **required** |
 | `BREVIS_ENV` | `local` | `local` logs as text; anything else, JSON |
 | `BREVIS_HTTP_ADDR` | `:8080` | |
+| `BREVIS_METRICS_ADDR` | `:9090` | Prometheus scrape endpoint. A **separate** port from the one above; set to `""` to serve nothing |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | |
 
@@ -160,10 +161,16 @@ make build   # binary in bin/
 |---|---|
 | `GET /health` | liveness — does **not** touch the database |
 | `GET /ready` | readiness — does, and names the dependency that failed |
+| `GET /metrics` | Prometheus exposition — on `BREVIS_METRICS_ADDR`, **not** on the port above |
 
 The separation is deliberate: a liveness probe that depends on an external
 dependency makes Kubernetes kill the pod when the database wobbles, instead of
 merely taking it out of the load balancer.
+
+`/metrics` is on a port of its own for a different reason. The HTTP port is the
+one behind the Ingress and behind the login, and a scrape endpoint there would
+either need a session — which no scraper has — or publish every workflow and
+step name to whoever finds the path. See [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md).
 
 ## Migrations
 

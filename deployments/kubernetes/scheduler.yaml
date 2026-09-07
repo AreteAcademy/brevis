@@ -24,6 +24,14 @@ spec:
   template:
     metadata:
       labels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: scheduler}
+      # This is the pod worth scraping. The API only serves screens; the
+      # scheduler is what claims work and runs steps, so queue depth, claim
+      # latency, slots in use and orphans recovered all live here. A dashboard
+      # built on the API's scrape alone is a dashboard of an idle process.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: brevis-scheduler
       securityContext:
@@ -41,6 +49,8 @@ spec:
           # go in as slots open up. Without --max-pods, five runs with three
           # parallel steps each would mean fifteen pods.
           args: ["scheduler", "--interval", "10s", "--concurrency", "10", "--max-pods", "5"]
+          ports:
+            - {name: metrics, containerPort: 9090}
           env:
             - name: BREVIS_ENV
               value: prod

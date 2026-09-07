@@ -482,6 +482,7 @@ afterwards.
 |---|---|---|
 | `BREVIS_ENV` | `local` | `local` uses text logging and opens the UI without a password; anything else requires a credential and logs JSON |
 | `BREVIS_HTTP_ADDR` | `:8080` | listen address |
+| `BREVIS_METRICS_ADDR` | `:9090` | where `/metrics` listens, on a port of its own. `""` serves nothing — and unlike the others here, an EMPTY value is not the same as an unset one |
 | `BREVIS_LOG_LEVEL` | `info` | |
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | an integer; a non-numeric value is a boot error |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | visual identity; absent = the default |
