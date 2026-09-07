@@ -82,10 +82,16 @@ data driver**, and that is the invariant with teeth: BigQuery, `aws-sdk-go` and
 package count is a proxy for that, and it is not the invariant itself.
 
 **Raise it to 360, keep the driver check untouched, and add protobuf and
-`client_golang` to the forbidden list.** 360 is the measured 341 plus the
-handful of packages this work adds, plus about five percent — enough that a
-patch bump upstream does not turn CI red, tight enough that the next library
-still has to argue for itself.
+`client_golang` to the forbidden list.** 360 is the measured 343 for linux/amd64
+plus about five percent — enough that a patch bump upstream does not turn CI
+red, tight enough that the next library still has to argue for itself.
+
+The measurement is now pinned to `GOOS=linux GOARCH=amd64 CGO_ENABLED=0`, which
+is what the Dockerfile builds. It was not, and CI disagreed with a laptop by
+twenty packages on the same commit: cgo alone is nineteen of them on linux,
+through the resolver and `os/user`, and GOOS accounts for the rest. A gate whose
+number depends on who runs it is a gate that gets its ceiling raised for the
+wrong reason.
 
 Adding protobuf to the forbidden list is what makes this decision hold: without
 it, someone reaches for the exporter in six months, the count lands under 360,

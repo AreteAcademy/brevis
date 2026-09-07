@@ -16,7 +16,16 @@ set -euo pipefail
 
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-deps="$(go list -deps ./cmd/brevis)"
+# Pinned to what SHIPS. The Dockerfile builds with CGO_ENABLED=0, and
+# `go list -deps` otherwise resolves the stdlib for the host: cgo alone is
+# nineteen packages on linux, and darwin's internals differ again. Without this,
+# a laptop and CI measure different things and the ceiling can only be right on
+# one of them.
+#
+# linux/amd64 is the reference. The image is also built for arm64, which differs
+# by a handful of packages -- inside the headroom, and not worth a second
+# ceiling.
+deps="$(GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go list -deps ./cmd/brevis)"
 total="$(echo "$deps" | wc -l | tr -d ' ')"
 failed=0
 
@@ -58,9 +67,9 @@ done
 # growing takes a conscious decision instead of just happening.
 #
 # It was 330 while the engine was 299 and had no metrics. It moved ONCE, to 360,
-# to buy go.opentelemetry.io/otel/sdk/metric: measured at 341 for the union, plus
-# what this repository's own metrics packages add, plus about five percent so a
-# patch bump upstream does not turn CI red on its own.
+# to buy go.opentelemetry.io/otel/sdk/metric: measured at 343 for linux/amd64,
+# plus about five percent so a patch bump upstream does not turn CI red on its
+# own.
 #
 # A number that moves whenever it is inconvenient is not a gate. If it has to
 # move again, the commit that moves it says what was bought -- and the forbidden

@@ -5,13 +5,39 @@
 # symbol that does not exist used to pass green -- `pycompat.Texto` did, for
 # versions after Texto became Text. `go build` runs first now, so the body has
 # to be real.
-set -euo pipefail
+set -uo pipefail
+
+# The target is PINNED to linux/amd64, and the ceilings below are that
+# platform's numbers.
+#
+# `go list -deps` otherwise resolves the stdlib for the HOST, and there are two
+# axes of drift, both found by CI disagreeing with a laptop by twenty packages:
+# GOOS (darwin and linux have different internals) and cgo, which on linux adds
+# nineteen packages on its own through the resolver and os/user.
+#
+# CGO_ENABLED=0 is not a preference, it is what the Dockerfile builds with, so
+# this measures what ships. linux/amd64 is the reference; the image is built for
+# arm64 too, which differs by a handful of packages -- inside the headroom, and
+# not worth a second set of ceilings.
+export GOOS=linux GOARCH=amd64 CGO_ENABLED=0
+
 TREE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../sdk" && pwd)"
 MODULO="github.com/AreteAcademy/brevis/sdk"
 
+# Every case runs, and the exit status is the OR of them.
+#
+# With `set -e` the script stopped at the first failure, and a run that raised
+# six ceilings at once reported one -- which is three more CI rounds to find out
+# what the other five are.
+overall=0
+run() { "$@" || overall=1; }
+
 check() {
   local name="$1" imports="$2" body="$3" forbidden="$4" ceiling="${5:-}"
-  local dir; dir="$(mktemp -d)"; trap 'rm -rf "$dir"' RETURN
+  # Cleaned up explicitly rather than through `trap ... RETURN`: with `set -e`
+  # gone the trap fires after the locals are popped, and "$dir: unbound
+  # variable" is a confusing way to report a passing check.
+  local dir; dir="$(mktemp -d)"
   cd "$dir"
   cat > go.mod <<EOF
 module pruning/$name
@@ -60,6 +86,8 @@ EOF
     failed=1
   fi
   [ "$failed" = "0" ] && echo "✅ $name: $total packages (ceiling $ceiling), no foreign driver"
+  cd - >/dev/null
+  rm -rf "$dir"
   return $failed
 }
 
@@ -120,20 +148,20 @@ deps_of() {
   return $status
 }
 
-check "files" \
+run check "files" \
   "	\"$MODULO/from\"
 	\"$MODULO/to\"" \
   "_ = from.Files{}; _ = to.Files{}" \
   "jackc/pgx cloud.google.com aws-sdk-go" \
   205
 
-check "postgres" \
+run check "postgres" \
   "	\"$MODULO/from/postgres\"" \
   "_ = postgres.Query{}" \
   "cloud.google.com aws-sdk-go" \
   232
 
-check "mysql" \
+run check "mysql" \
   "	\"$MODULO/from/mysql\"" \
   "_ = mysql.Query{}" \
   "jackc/pgx cloud.google.com aws-sdk-go" \
@@ -143,13 +171,13 @@ check "mysql" \
 # nothing: no driver, no network, no rest of the SDK. If this ever fails, the
 # package grew a dependency and a fetcher that only wanted to publish a
 # watermark started paying for it.
-check "context" \
+run check "context" \
   "	\"$MODULO/context\"" \
   "_ = context.MaxBytes" \
   "jackc/pgx cloud.google.com aws-sdk-go net/http" \
   72
 
-check "pycompat" \
+run check "pycompat" \
   "	\"$MODULO/pycompat\"" \
   "_, _ = pycompat.Text(nil)" \
   "jackc/pgx cloud.google.com aws-sdk-go net/http" \
@@ -163,7 +191,7 @@ check "pycompat" \
 # the same consumer is built twice, once declaring a Meter and once not, and the
 # two dependency sets have to match. If somebody moves the interface into a file
 # that imports OpenTelemetry, the counts diverge and this says by how much.
-same "meter costs nothing" \
+run same "meter costs nothing" \
   "	\"$MODULO\"
 	\"$MODULO/from\"
 	\"$MODULO/to\"" \
@@ -174,8 +202,10 @@ func (theMeter) Counter(string, int64, ...sdk.Attr)     {}
 func (theMeter) Histogram(string, float64, ...sdk.Attr) {}" \
   "go.opentelemetry.io prometheus google.golang.org/grpc"
 
-check "bigquery" \
+run check "bigquery" \
   "	\"$MODULO/to/bigquery\"" \
   "_ = bigquery.Table{}" \
   "jackc/pgx aws-sdk-go" \
   480
+
+exit $overall
