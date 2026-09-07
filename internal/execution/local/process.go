@@ -164,6 +164,19 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 
 		err := cmd.Wait()
 		code := cmd.ProcessState.ExitCode()
+
+		// What the step published, read BEFORE the outcome is reported.
+		//
+		// It is read on failure too, on purpose: a step that publishes and then
+		// fails has said something true up to that point, and the engine
+		// decides what to keep with it. Reading only on success would throw
+		// away the one clue a failing step left behind.
+		if out := readPublished(t.OutputPath); out != "" {
+			events <- execution.Event{
+				Kind: execution.EventContext, NodeID: t.NodeID, Message: out,
+			}
+		}
+
 		if err != nil {
 			events <- execution.Event{
 				Kind: execution.EventFailed, NodeID: t.NodeID,
@@ -176,6 +189,23 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	}()
 
 	return events, nil
+}
+
+// readPublished reads what the step wrote to BREVIS_OUTPUT.
+//
+// An absent file is the NORMAL case -- most steps publish nothing -- so it is
+// silent. An unreadable one is silent too, and that is deliberate: the runner
+// is what turns a bad payload into a message, because it is the side that knows
+// whether anything downstream was going to read it.
+func readPublished(path string) string {
+	if path == "" {
+		return ""
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(raw)
 }
 
 // Cancel interrupts a run in flight.

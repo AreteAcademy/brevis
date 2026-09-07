@@ -11,16 +11,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
 
 	"github.com/AreteAcademy/brevis/internal/domain/run"
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/graph"
-	"sync"
 	"time"
 )
 
@@ -82,7 +84,17 @@ type Runner struct {
 	// Persist and RunID are used together: without both, per-step state is not
 	// recorded and the DAG in the UI shows up with no execution state.
 	Persist Persister
-	RunID   uuid.UUID
+
+	// ContextDir is where a step's published context is written locally. Empty
+	// turns the feature off, which is what a Runner assembled before this
+	// existed gets.
+	ContextDir string
+
+	// published is what each step of this run has published so far, keyed by
+	// step id. A mutex because parallel steps write it at the same time, and a
+	// pointer-free map on the Runner would be copied per node.
+	published *publishedContext
+	RunID     uuid.UUID
 
 	// Params are this run's values. They reach the step's command through a
 	// template (see execution.Render) and the step's environment, so a
@@ -131,6 +143,16 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	levels, err := graph.Levels(w)
 	if err != nil {
 		return err
+	}
+
+	// One per Run, seeded from what a resumed run already has.
+	//
+	// It is created here and not on the struct because Runner travels by value:
+	// every node gets a copy, and only a pointer makes what one step published
+	// visible to the next. A nil one turns the feature off, which is what a
+	// Runner assembled before this existed gets.
+	if r.published == nil {
+		r.published = newPublished(r.seedContext(ctx))
 	}
 	porID := make(map[string]wf.Node, len(w.Nodes))
 	for _, n := range w.Nodes {
@@ -402,6 +424,13 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 			}
 		}
 
+		// What the step published. It never reaches the log: it is the step
+		// talking to the steps below it, not to a person.
+		if e.Kind == execution.EventContext {
+			r.collectContext(ctx, n.ID, attempt, e.Message)
+			continue
+		}
+
 		if r.Report != nil {
 			r.Report.Evento(e)
 		}
@@ -459,6 +488,134 @@ const (
 	envRunLogicalDate = "BREVIS_RUN_LOGICAL_DATE"
 	envRunParams      = "BREVIS_RUN_PARAMS"
 )
+
+// seedContext loads what the steps of a RESUMED run already published.
+//
+// This is the case that forced the persistence: the engine skips a step that
+// already succeeded, so the step below it would find nothing where the first
+// attempt left something. Without this, resuming a run is not resuming it.
+func (r Runner) seedContext(ctx context.Context) map[string]json.RawMessage {
+	if r.History == nil || r.RunID == uuid.Nil {
+		return nil
+	}
+	reader, ok := r.History.(ContextReader)
+	if !ok {
+		return nil
+	}
+	out, err := reader.PublishedContext(ctx, r.RunID)
+	if err != nil {
+		// A run that cannot read its own history still runs; the steps below
+		// will report the missing key themselves, which is a better place to
+		// find out than a failure before anything started.
+		return nil
+	}
+	return out
+}
+
+// ContextReader is optional, for the same reason ContextPersister is: a History
+// written before this feature still satisfies the runner.
+type ContextReader interface {
+	PublishedContext(ctx context.Context, runID uuid.UUID) (map[string]json.RawMessage, error)
+}
+
+// collectContext validates what a step published and keeps it.
+//
+// The validation is HERE and not in the executor because this is the side that
+// knows somebody downstream was going to read it. A payload the platform
+// truncated is reported as an error on the step's log, loudly, rather than
+// dropped -- dropping it hands the next step a missing key with nothing
+// anywhere saying why, which is the failure this whole feature is against.
+func (r Runner) collectContext(ctx context.Context, nodeID string, attempt int, raw string) {
+	parsed, err := runcontext.Parse([]byte(raw))
+	if err != nil {
+		if r.Report != nil {
+			r.Report.Evento(execution.Event{
+				Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+				Message: "brevis: the context this step published was not usable: " + err.Error(),
+			})
+		}
+		return
+	}
+	if parsed == nil {
+		return
+	}
+
+	r.published.put(nodeID, parsed)
+
+	// Persisted immediately, and not at the end of the step: a run that resumes
+	// reads this back, and the process that would have written it later is
+	// exactly the one that may not survive.
+	if r.Persist != nil && r.RunID != uuid.Nil {
+		if p, ok := r.Persist.(ContextPersister); ok {
+			_ = p.RecordContext(ctx, r.RunID, nodeID, attempt, parsed)
+		}
+	}
+}
+
+// ContextPersister is optional, so a Persister written before this feature
+// still satisfies the runner.
+//
+// The alternative -- adding the method to Persister -- would break every
+// implementation at once, including the fakes in this package's own tests, for
+// a capability most of them do not need.
+type ContextPersister interface {
+	RecordContext(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+		published json.RawMessage) error
+}
+
+// publishedContext holds what each step published, for the steps below it.
+//
+// It lives on the Runner and not in the database round trip because a run in
+// flight has not written most of it yet: the step that just finished is the one
+// the next step needs, and it is here before it is anywhere else.
+//
+// A resumed run seeds it from the history, which is the case that forced the
+// persistence in the first place -- the skipped step's output still has to
+// reach the step below it.
+type publishedContext struct {
+	mu sync.Mutex
+	by map[string]json.RawMessage
+}
+
+func newPublished(seed map[string]json.RawMessage) *publishedContext {
+	by := map[string]json.RawMessage{}
+	for k, v := range seed {
+		by[k] = v
+	}
+	return &publishedContext{by: by}
+}
+
+func (p *publishedContext) put(nodeID string, raw json.RawMessage) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.by[nodeID] = raw
+}
+
+func (p *publishedContext) snapshot() map[string]json.RawMessage {
+	if p == nil {
+		return nil
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[string]json.RawMessage, len(p.by))
+	for k, v := range p.by {
+		out[k] = v
+	}
+	return out
+}
+
+// upstream is the dependency graph, as runcontext.Visible wants it: for each
+// node, the nodes it depends on.
+func upstream(w wf.Workflow) map[string][]string {
+	up := map[string][]string{}
+	for _, e := range w.Edges {
+		up[e.To] = append(up[e.To], e.From)
+	}
+	return up
+}
 
 // runContext builds what the engine knows about this run and the step does not.
 //
@@ -572,6 +729,21 @@ func (r Runner) build(w wf.Workflow, n wf.Node, attempt int, first bool) (execut
 		Env:     mesclarEnv(r.Env, r.runContext(n.ID, first, attempt), w.EnvDe(n)),
 		Secrets: w.SecretsDe(n),
 		Timeout: r.Timeout,
+	}
+
+	// What the steps above published, scoped to what this one depends on.
+	//
+	// Scoped and not everything: it keeps the variable small on a fifty-step
+	// DAG, and it makes reading a step you do not depend on impossible rather
+	// than a race against the scheduler.
+	visible := runcontext.Visible(upstream(w), n.ID)
+	if in, err := runcontext.Assemble(r.published.snapshot(), visible); err == nil && in != "" {
+		t.Env[runcontext.EnvInput] = in
+	}
+	if r.ContextDir != "" {
+		t.OutputPath = filepath.Join(r.ContextDir,
+			fmt.Sprintf("%s-%d.json", strings.ReplaceAll(n.ID, "/", "_"), attempt))
+		t.Env[runcontext.EnvOutput] = t.OutputPath
 	}
 
 	if n.Action != "" {

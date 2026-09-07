@@ -70,6 +70,16 @@ type TaskExec struct {
 	// assembly log and through any TaskExec dump somebody writes later.
 	Secrets map[string]string
 
+	// OutputPath is where the step writes what it publishes for the steps that
+	// depend on it. It reaches the step as BREVIS_OUTPUT.
+	//
+	// The RUNNER picks it and the EXECUTOR may override it, because only the
+	// executor knows what a path means in its world: a temporary file in the
+	// engine's filesystem is meaningless inside a pod, where the answer is
+	// /dev/termination-log -- which the engine already reads to get the exit
+	// code.
+	OutputPath string
+
 	// A zero Timeout means no limit. Section 37 asks for a timeout in PHASE 3;
 	// leaving the default open is deliberate — imposing an arbitrary limit would
 	// kill legitimately long tasks.
@@ -83,7 +93,15 @@ const (
 	EventStarted   EventKind = "started"
 	EventLog       EventKind = "log"
 	EventSucceeded EventKind = "succeeded"
-	EventFailed    EventKind = "failed"
+
+	// EventContext carries what the step published, in Message.
+	//
+	// It travels as an event for the same reason the phases do: the runner
+	// collects it without knowing whether it came from a file on this disk or
+	// from a pod's termination message, so a third executor costs the runner
+	// nothing.
+	EventContext EventKind = "context"
+	EventFailed  EventKind = "failed"
 )
 
 // Event is one occurrence during the run. `Stream` tells stdout from stderr:
