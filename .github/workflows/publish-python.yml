@@ -1,0 +1,95 @@
+name: Publish Python
+
+# The library is published from a `py/v*` tag, separately from the engine's
+# `v*` and the SDK's `sdk/v*`. Three artifacts, three cadences: a fix to the
+# Python library must not force an engine release.
+on:
+  push:
+    tags:
+      - 'py/v*'
+
+permissions:
+  contents: read
+  # For PyPI's trusted publishing: no token in a secret, and nothing to rotate.
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+    environment: pypi
+    defaults:
+      run:
+        working-directory: lib/python-context
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      # The DECLARED floor, not the newest. A library that only runs on 3.12 is
+      # a library a data team on a managed cluster cannot install, and that is
+      # the audience this exists for.
+      - name: Tests on the declared minimum
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest tests/ -q
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Tests on a current Python
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest tests/ -q
+
+      # It reads an environment variable and writes a file. If that ever needs
+      # a dependency, something has gone wrong that a review would miss.
+      - name: Gate - the library depends on nothing
+        run: |
+          python - <<'PY'
+          import ast, pathlib, sys
+          mods = set()
+          for f in pathlib.Path("src").rglob("*.py"):
+              for node in ast.walk(ast.parse(f.read_text())):
+                  if isinstance(node, ast.Import):
+                      mods.update(a.name.split(".")[0] for a in node.names)
+                  elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                      mods.add(node.module.split(".")[0])
+          # An ALLOWLIST rather than sys.stdlib_module_names, which does not
+          # exist before 3.10 -- so this gate keeps working if the steps above
+          # are ever reordered, and it is stricter: a new stdlib import is a
+          # decision somebody makes here rather than one that slips through.
+          allowed = {"__future__", "atexit", "json", "logging", "os", "tempfile", "typing"}
+          outside = sorted(mods - allowed)
+          if outside:
+              print("::error::the library imports", ", ".join(outside),
+                    "-- add it here deliberately, or do not add it")
+              raise SystemExit(1)
+          print("imports only:", ", ".join(sorted(mods)))
+          PY
+
+      # The tag and the version have to agree, for the reason the engine's
+      # release gate gives: otherwise `pip show` reports a version that is not
+      # the tag that published it, and that is what an incident is traced by.
+      - name: Check the version matches the tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/py/v}"
+          FILE=$(grep -oE '^version = "[^"]+"' pyproject.toml | cut -d'"' -f2)
+          if [ "$TAG" != "$FILE" ]; then
+            echo "::error::pyproject version=$FILE differs from the tag $TAG"
+            exit 1
+          fi
+          echo "✅ $FILE matches the tag"
+
+      - name: Build
+        run: |
+          python -m pip install --quiet build
+          python -m build
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: lib/python-context/dist/

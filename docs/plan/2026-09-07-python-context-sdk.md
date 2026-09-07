@@ -1,8 +1,9 @@
 # A Python SDK for context, and the contract that makes it possible
 
 **Written on** 2026-09-07 · **Base** engine `v0.7.0`, `sdk/v0.53.0`
-**Status** in progress — steps 1, 2, 4 and 8 done on 2026-09-07. What is left:
-`sdk/context` in Go (§6), the context on the graph (§7), and publishing to PyPI.
+**Status** done, 2026-09-07 — all ten steps, in six commits. The library is
+built and gated but **not published**: PyPI needs a trusted-publisher set up on
+the project, which is the repository owner's to do, and then a `py/v0.1.0` tag.
 **Decided 2026-09-07** (§1.1): the reader is always another step of the same
 run, and there is one write path that fails loudly. No context API, and the
 reason is written down rather than assumed.

@@ -89,6 +89,7 @@ at 04:00. It opens at most 5 pull requests at a time and labels them
 | `test.yml` | ✅ | ✅ | — | — |
 | `release.yml` | — | — | — | ✅ (`v*`) |
 | `publish-sdk.yml` | — | — | — | ✅ (`sdk/v*`) |
+| [`publish-python.yml`](workflows/publish-python.yml) | a `py/v*` tag | tests on 3.9 and 3.13, refuses a dependency, checks the version against the tag, publishes to PyPI |
 | `build-site.yml` | ✅ (`site/`) | ✅ (`site/`) | — | — |
 | `release-notes.yml` | — | — | ✅ | — |
 | `quality.yml` | ✅ | ✅ | — | — |

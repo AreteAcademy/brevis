@@ -33,6 +33,7 @@ and [`sdk/README.md`](../sdk/README.md); the version-by-version history is
 | [`KUBERNETES.md`](KUBERNETES.md) | the deployment |
 | [`PARAMS.md`](PARAMS.md) | the engine's run parameters |
 | [`RUNTIME.md`](RUNTIME.md) | what a step runs in, on the graph: `runtime:` and `tools:` |
+| [`CONTEXT.md`](CONTEXT.md) | what one step tells the next, in any language |
 | [`COMMANDS.md`](COMMANDS.md) | the command-line reference |
 
 ## Plans and specs
