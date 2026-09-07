@@ -175,6 +175,12 @@ jobs:
       - name: Dependency pruning per driver
         run: .github/scripts/pruning-check.sh
 
+      # The CLI is documented in two places -- docs/ for contributors, the
+      # website for users -- and they agreed only because both were written
+      # from the same --help. This is what keeps them agreeing.
+      - name: The CLI references name every subcommand
+        run: .github/scripts/cli-docs-check.sh
+
       - name: Integration - Postgres and MySQL
         run: |
           cd sdk
@@ -338,6 +344,17 @@ jobs:
           go vet ./...
           go test ./... -count=1
           echo "✅ SDK CLI builds and passes"
+
+      # It is a module of its own, and it was never linted: four errcheck
+      # findings sat in it, in the same file whose `run` command silently
+      # mis-parsed every JSON URL. A module outside the lint's reach is a module
+      # where that kind of thing accumulates.
+      - name: Lint the SDK CLI
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.13.2
+          working-directory: cmd/brevis-sdk
+          args: --timeout=5m
 
       - name: Build and test examples
         run: |

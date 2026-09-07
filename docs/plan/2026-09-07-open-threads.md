@@ -44,23 +44,24 @@ on by a field, so the shape does not apply — but that is a reading, not a test
 
 ---
 
-## 2. `cmd/brevis-sdk` — two of the six defects survive
+## 2. `cmd/brevis-sdk` — ✅ done
 
-Four were fixed during the English sweep. What is left:
+The format handling was three defects, not the two counted: `run` hardcoded
+CSV, `extract` mapped an unknown `--format` to CSV in silence, and `extract`'s
+help promised auto-detection the SDK does not do. One resolver now decides, and
+refuses what it does not know.
 
-| | where | what |
-|---|---|---|
-| **`run` only reads CSV** | `commands.go` | `Format: sdk.FormatCSV` is hardcoded and there is no `--format` flag. A JSON URL is parsed as CSV and the output is garbage — **no error**, which is the worst shape |
-| **the version is a literal** | `main.go` | `version = "0.1.0"` while `VERSION` reads `0.7.0`. Nothing sets it through `-ldflags`, so `brevis-sdk version` has been wrong since the split |
+The version reads from `runtime/debug` instead of a literal that had been stale
+since the split — the same mechanism `sdk.SDKVersion` uses, so nobody types it
+and it cannot go wrong.
 
-The decision from the previous inventory still stands and is still unmade:
-**finish the CLI, or cut it back to `extract`.** `extract` is the one subcommand
-that works and has no twenty-line Go equivalent. `run` and `load` overlap with
-`sdk.Run`, which the SDK's own README presents as the path.
+**And the module had never been linted.** Four errcheck findings sat in it, in
+the same file whose `run` silently mis-parsed every JSON URL. It is in CI now.
 
-Cutting is smaller and removes a lie. Finishing is more product. The current
-state — a `run` that silently mis-parses — is the one option that is not
-defensible.
+**The decision from the previous inventory is now moot for the wrong reason to
+leave unstated**: `run` and `load` work, so "cut it back to `extract`" no longer
+removes a lie. Whether the CLI should exist alongside `sdk.Run` is a product
+question, not a defect.
 
 ---
 
@@ -81,13 +82,17 @@ only option that does not.
 
 ---
 
-## 4. Smaller, and each one a line or two
+## 4. Smaller — ✅ done
 
-| | where | what |
-|---|---|---|
-| **a CI check that cannot fail** | `.github/workflows/build-site.yml:51` | `if grep … \| head -5; then` — the exit status comes from `head`, which always succeeds. It has been printing "potentially broken links" on zero matches since it was written |
-| **two versions to keep in step** | `lib/python-context` | `pyproject.toml` and `src/brevis/__init__.py` both carry the version. The publish gate compares the tag to `pyproject` only, so a drift makes `pip show` and `brevis.__version__` disagree in silence |
-| **the CLI reference is written twice** | `docs/COMMANDS.md` vs `site/content/{pt,en}/docs/07-cli.md` | they agree because both came from the same `--help`; nothing keeps them agreeing |
+- **The CI check that could not fail** took its exit status from `head`. It now
+  fails the build instead of printing a warning nobody reads.
+- **The version was typed twice** in `lib/python-context`. `__version__` reads
+  the installed package's metadata, and says `devel` from a checkout.
+- **The CLI reference written twice** now has one owner and a gate:
+  `.github/scripts/cli-docs-check.sh` reads the subcommands out of the binaries
+  and fails if either document has stopped naming one. It compares NAMES, not
+  prose — two documents describing a command differently is a judgement call;
+  one silently missing a command that exists is not.
 
 ---
 

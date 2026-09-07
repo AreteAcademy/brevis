@@ -35,4 +35,18 @@ __all__ = [
     "published",
     "set",
 ]
-__version__ = "0.1.1"
+# Read from the installed package's metadata rather than typed here.
+#
+# It was typed in two places -- this line and pyproject.toml -- and the publish
+# gate compares the tag to pyproject only. A drift would have made `pip show`
+# and `brevis.__version__` disagree in silence, which is the kind of difference
+# somebody chases for an hour while debugging something else.
+try:  # pragma: no cover - the fallback needs an uninstalled checkout
+    from importlib.metadata import PackageNotFoundError, version as _version
+
+    __version__ = _version("brevis")
+except (ImportError, PackageNotFoundError):
+    # A checkout on sys.path, with nothing installed. "devel" is the truth, and
+    # telling it apart from a release is what somebody reporting odd behaviour
+    # needs.
+    __version__ = "devel"

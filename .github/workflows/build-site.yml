@@ -44,14 +44,21 @@ jobs:
           fi
           echo "✅ CSS looks good"
 
+      # `if grep … | head -5; then` took its exit status from `head`, which
+      # always succeeds -- so the branch always ran and the warning printed on
+      # zero matches, every build, since it was written. A check that cannot
+      # fail is worse than no check: it buys confidence it has not earned.
+      #
+      # It also fails the build now instead of printing a warning nobody reads.
       - name: Check links in HTML
         run: |
           cd site
-          echo "Checking for broken links..."
-          if grep -o 'href="[^"]*"' index.html | grep -E 'href="[0-9]' | head -5; then
-            echo "⚠️  Found potentially broken links"
+          if bad=$(grep -o 'href="[^"]*"' index.html | grep -E 'href="[0-9]'); then
+            echo "::error::hrefs starting with a digit, which are relative by accident:"
+            echo "$bad"
+            exit 1
           fi
-          echo "✅ Link check passed"
+          echo "✅ no href starts with a digit"
 
       - name: Validate Docker build
         run: |

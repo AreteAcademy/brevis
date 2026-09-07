@@ -1,5 +1,17 @@
 # Commands
 
+> **This file is the contributor's reference.** The user-facing one is the
+> website (`site/content/{pt,en}/docs/07-cli.md`), which is translated.
+>
+> Both documented every subcommand and every flag, and they agreed only because
+> both were written from the same `--help`. Nothing kept them agreeing, so
+> `.github/scripts/cli-docs-check.sh` now does: it reads the subcommands out of
+> the binaries and fails if either document has stopped mentioning one.
+>
+> It checks NAMES, not prose. Two documents describing the same command
+> differently is a judgement call; one document silently missing a command that
+> exists is not.
+
 The command-line reference. The outputs below were captured from the binary
 built at this commit, not written by hand.
 

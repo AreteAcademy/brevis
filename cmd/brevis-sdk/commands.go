@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log"
+	neturl "net/url"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sdk"
@@ -21,7 +24,8 @@ var extractCmd = &cobra.Command{
 	Short: "Extract data from HTTP endpoint",
 	Long: `Extract data from an HTTP endpoint.
 
-Supported formats: CSV, JSON, NDJSON, XML (auto-detected from Content-Type or URL)
+Formats: csv, json, ndjson, xml. With no --format the URL's extension
+decides, and a URL that says nothing is read as json.
 
 Examples:
   brevis-sdk extract https://api.example.com/data.csv
@@ -38,11 +42,9 @@ Examples:
 
 		ctx := context.Background()
 
-		wire := sdk.Format(format)
-		switch format {
-		case "csv", "json", "ndjson", "xml":
-		default:
-			wire = sdk.FormatCSV
+		wire, err := resolveFormat(format, url)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		lines, err := from.HTTP{
@@ -80,7 +82,7 @@ Examples:
 			}
 		}
 
-		fmt.Fprintf(cmd.OutOrStderr(), "\n✓ Extracted %d rows\n", count)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "\n✓ Extracted %d rows\n", count)
 	},
 }
 
@@ -163,6 +165,7 @@ Examples:
 		table, _ := cmd.Flags().GetString("table")
 		addMetadata, _ := cmd.Flags().GetBool("metadata")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		format, _ := cmd.Flags().GetString("format")
 
 		if projectID == "" {
 			log.Fatal("--project is required")
@@ -180,9 +183,14 @@ Examples:
 		start := time.Now()
 
 		// Extract
-		fmt.Fprintf(cmd.OutOrStderr(), "📥 Extracting from %s...\n", url)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "📥 Extracting from %s...\n", url)
 
-		lines, err := from.HTTP{URL: url, Format: sdk.FormatCSV}.
+		wire, err := resolveFormat(format, url)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		lines, err := from.HTTP{URL: url, Format: wire}.
 			Read(ctx, sdk.ReadOptions{})
 		if err != nil {
 			log.Fatalf("Extract failed: %v", err)
@@ -195,7 +203,7 @@ Examples:
 		for line, err := range lines {
 			if err != nil {
 				errorCount++
-				fmt.Fprintf(cmd.OutOrStderr(), "⚠️  Row error: %v\n", err)
+				_, _ = fmt.Fprintf(cmd.OutOrStderr(), "⚠️  Row error: %v\n", err)
 				continue
 			}
 			line.Provider = "cli"
@@ -205,19 +213,19 @@ Examples:
 			successCount++
 		}
 
-		fmt.Fprintf(cmd.OutOrStderr(), "✓ Extracted: %d rows (%d errors)\n\n", successCount, errorCount)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "✓ Extracted: %d rows (%d errors)\n\n", successCount, errorCount)
 
 		if dryRun {
-			fmt.Fprintf(cmd.OutOrStderr(), "🔍 Dry-run mode: skipping load\n")
+			_, _ = fmt.Fprintf(cmd.OutOrStderr(), "🔍 Dry-run mode: skipping load\n")
 			return
 		}
 
 		// Load
-		fmt.Fprintf(cmd.OutOrStderr(), "📤 Loading to BigQuery...\n")
-		fmt.Fprintf(cmd.OutOrStderr(), "  Project:  %s\n", projectID)
-		fmt.Fprintf(cmd.OutOrStderr(), "  Dataset:  %s\n", dataset)
-		fmt.Fprintf(cmd.OutOrStderr(), "  Table:    %s\n", table)
-		fmt.Fprintf(cmd.OutOrStderr(), "  Metadata: %v\n\n", addMetadata)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "📤 Loading to BigQuery...\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Project:  %s\n", projectID)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Dataset:  %s\n", dataset)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Table:    %s\n", table)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Metadata: %v\n\n", addMetadata)
 
 		loader, err := load.New(ctx, &sdk.LoadConfig{
 			ProjectID: projectID,
@@ -235,24 +243,81 @@ Examples:
 		}
 
 		duration := time.Since(start)
-		fmt.Fprintf(cmd.OutOrStderr(), "✓ Pipeline completed in %v\n", duration)
-		fmt.Fprintf(cmd.OutOrStderr(), "  Total rows:  %d\n", result.RowsLoaded)
-		fmt.Fprintf(cmd.OutOrStderr(), "  Strategy:    %s\n", result.Strategy)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "✓ Pipeline completed in %v\n", duration)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Total rows:  %d\n", result.RowsLoaded)
+		_, _ = fmt.Fprintf(cmd.OutOrStderr(), "  Strategy:    %s\n", result.Strategy)
 	},
 }
 
 // Version command
+// resolveFormat decides how to read the response, and refuses what it does not
+// know.
+//
+// Three things were wrong here, and they were one line:
+//
+//   - `run` hardcoded CSV with no flag at all, so a JSON URL was parsed as CSV.
+//     The CSV reader accepts anything -- it returns one column of nonsense --
+//     so the output was garbage with NO error.
+//   - `extract` mapped an unrecognised `--format` to CSV in silence, so
+//     `--format=yaml` produced the same garbage instead of saying the word is
+//     not a format.
+//   - `extract`'s help promised auto-detection, which the SDK does not do. An
+//     empty Format means JSON there.
+//
+// Empty now means: the URL's extension when it is unambiguous, and otherwise
+// the SDK's own default. Not CSV, and the difference matters -- JSON on a CSV
+// body fails loudly on the first line, while CSV on a JSON body succeeds and
+// hands back rubbish. Between two wrong guesses, take the one that stops.
+func resolveFormat(flag, rawURL string) (sdk.Format, error) {
+	known := map[string]sdk.Format{
+		"csv": sdk.FormatCSV, "json": sdk.FormatJSON,
+		"ndjson": sdk.FormatNDJSON, "xml": sdk.FormatXML,
+	}
+
+	if f := strings.ToLower(strings.TrimSpace(flag)); f != "" {
+		wire, ok := known[f]
+		if !ok {
+			return "", fmt.Errorf("--format %q is not one of: csv, json, ndjson, xml", flag)
+		}
+		return wire, nil
+	}
+
+	// The path's extension, and only the path: a `?out=csv` in the query string
+	// is the server's parameter, not a statement about the body.
+	path := rawURL
+	if u, err := neturl.Parse(rawURL); err == nil {
+		path = u.Path
+	}
+	path = strings.TrimSuffix(strings.ToLower(path), ".gz")
+	for ext, wire := range map[string]sdk.Format{
+		".csv": sdk.FormatCSV, ".json": sdk.FormatJSON,
+		".ndjson": sdk.FormatNDJSON, ".jsonl": sdk.FormatNDJSON, ".xml": sdk.FormatXML,
+	} {
+		if strings.HasSuffix(path, ext) {
+			return wire, nil
+		}
+	}
+
+	// Empty: from.HTTP's own default, which is JSON. Saying nothing here beats
+	// guessing, because the guess would be the one that fails silently.
+	return "", nil
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("brevis version %s (commit: %s)\n", version, commit)
+		fmt.Printf("brevis-sdk %s\n", version)
+		if commit != "" {
+			fmt.Printf("  commit  %s\n", commit)
+		}
+		fmt.Printf("  go      %s %s/%s\n", runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	},
 }
 
 func init() {
 	// Extract flags
-	extractCmd.Flags().StringP("format", "f", "", "Format: csv, json, ndjson, xml (auto-detect if empty)")
+	extractCmd.Flags().StringP("format", "f", "", "Format: csv, json, ndjson, xml (from the URL, or json)")
 	extractCmd.Flags().DurationP("timeout", "t", 30*time.Second, "Timeout per attempt")
 	extractCmd.Flags().Duration("total-timeout", 5*time.Minute, "Total timeout across all retries")
 	extractCmd.Flags().IntP("retries", "r", 3, "Max retry attempts")
@@ -265,6 +330,7 @@ func init() {
 	loadCmd.Flags().BoolP("metadata", "m", false, "Add ingestion_id and ingestion_loaded_at to each row")
 
 	// Run flags
+	runCmd.Flags().StringP("format", "f", "", "Format: csv, json, ndjson, xml (from the URL, or json)")
 	runCmd.Flags().StringP("project", "p", "", "GCP project ID (required)")
 	runCmd.Flags().StringP("dataset", "d", "landing", "BigQuery dataset")
 	runCmd.Flags().StringP("table", "t", "raw_data", "BigQuery table")
