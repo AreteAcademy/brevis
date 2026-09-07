@@ -67,7 +67,7 @@ func TestAggregatorsComputeWhatTheyPromise(t *testing.T) {
 	if len(linhas) != 2 {
 		t.Fatalf("saiu com %d grupos, esperado 2", len(linhas))
 	}
-	// Ordem determinística pela chave: "norte" antes de "sul".
+	// Deterministic order by key: "norte" before "sul".
 	if linhas[0]["regiao"] != "norte" || linhas[1]["regiao"] != "sul" {
 		t.Fatalf("ordem não determinística: %v", linhas)
 	}
@@ -87,8 +87,8 @@ func TestAggregatorsComputeWhatTheyPromise(t *testing.T) {
 	}
 }
 
-// Um grupo sem nenhum valor devolve nulo, não zero. Zero é um número que
-// alguém vai somar; nulo diz que não havia o que somar.
+// A group with no values returns null, not zero. Zero is a number somebody will
+// add up; null says there was nothing to add.
 func TestAGroupWithNoValuesReturnsNullNotZero(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("g"),
@@ -103,8 +103,8 @@ func TestAGroupWithNoValuesReturnsNullNotZero(t *testing.T) {
 	}
 }
 
-// Welford: a fórmula ingênua perde todos os dígitos com valores grandes e
-// próximos, e devolve variância NEGATIVA.
+// Welford: the naive formula loses every digit on large, close values, and
+// returns a NEGATIVE variance.
 func TestVarianceSurvivesLargeValues(t *testing.T) {
 	base := 1e9
 	var registros []map[string]any
@@ -128,8 +128,8 @@ func TestVarianceSurvivesLargeValues(t *testing.T) {
 	}
 }
 
-// Um campo com nome errado produziria uma coluna de nulos, e ninguém
-// perceberia. Ele é recusado nomeando o que existe.
+// A field with the wrong name would produce a column of nulls, and nobody would
+// notice. It is refused, naming what does exist.
 func TestAFieldNoRowHasIsRefused(t *testing.T) {
 	d := &Reduce{By: GroupBy("regiao"), Agg: map[string]Aggregator{"total": Sum("vlaor")}}
 	var erro error
@@ -146,8 +146,8 @@ func TestAFieldNoRowHasIsRefused(t *testing.T) {
 	}
 }
 
-// Tipos misturados no mesmo campo são erro: a ordem entre 10 e "9" dependeria
-// da ordem de chegada, e o máximo mudaria entre execuções.
+// Mixed types in the same field are an error: the ordering between 10 and "9"
+// would depend on arrival order, and the maximum would change between runs.
 func TestMixedTypesAreAnError(t *testing.T) {
 	d := &Reduce{By: GroupBy("g"), Agg: map[string]Aggregator{"maior": Max("v")}}
 	var erro error
@@ -167,8 +167,8 @@ func TestMixedTypesAreAnError(t *testing.T) {
 	}
 }
 
-// Um texto que é um número É um número: um CSV entrega tudo como texto, e
-// recusá-lo obrigaria um transformer só para converter.
+// Text that is a number IS a number: a CSV hands everything over as text, and
+// refusing it would force a transformer just to convert.
 func TestNumericTextAddsUp(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("g"),
@@ -195,8 +195,8 @@ func TestGroupByWithNoFieldsGivesTheGrandTotal(t *testing.T) {
 	}
 }
 
-// Finish vê os GRUPOS, não os registros -- é o que permite a fase global sem
-// desfazer a garantia de memória.
+// Finish sees the GROUPS, not the records -- it is what allows the global phase
+// without undoing the memory guarantee.
 func TestFinishSeesTheGroups(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		By:  GroupBy("regiao"),
@@ -220,7 +220,8 @@ func TestFinishSeesTheGroups(t *testing.T) {
 	}
 }
 
-// As recusas falham na MONTAGEM, antes da extração: descobri-las depois
+// The refusals fail at ASSEMBLY time, before the extraction: finding them
+// afterwards
 // custaria a janela do fornecedor.
 func TestWhatDoesNotFitRefusesBeforeExtracting(t *testing.T) {
 	for nome, a := range map[string]Aggregator{
@@ -235,7 +236,7 @@ func TestWhatDoesNotFitRefusesBeforeExtracting(t *testing.T) {
 			t.Errorf("%s passou na validação", nome)
 			continue
 		}
-		// A mensagem tem de dizer as duas saídas, porque elas existem.
+		// The message has to name both ways out, because both exist.
 		for _, esperado := range []string{"constant", "SQL", "sdk.Custom"} {
 			if !strings.Contains(err.Error(), esperado) {
 				t.Errorf("%s: a mensagem não diz %q: %v", nome, esperado, err)
@@ -256,9 +257,9 @@ func TestANameCollidingWithTheGroupIsRefused(t *testing.T) {
 
 // --- A prova que importa --------------------------------------------------
 
-// gerarGrupos produz n registros distribuídos em g grupos, sem materializar
-// nada: a origem tem de caber num fluxo, senão o teste mede a si mesmo.
-func gerarGrupos(n, g int) iter.Seq2[Envelope, error] {
+// generateGroups produces n records spread over g groups, materializing
+// nothing: the source has to fit in a stream, or the test measures itself.
+func generateGroups(n, g int) iter.Seq2[Envelope, error] {
 	return func(yield func(Envelope, error) bool) {
 		for i := 0; i < n; i++ {
 			r := map[string]any{
@@ -275,13 +276,14 @@ func gerarGrupos(n, g int) iter.Seq2[Envelope, error] {
 
 // picoDeHeap mede o maior heap vivo DURANTE o fold.
 //
-// Medir depois não serve, e isto custou uma versão do teste: quando a primeira
-// linha sai, o estado dos grupos já está morto -- o `fechar` produziu a saída e
-// o Go recolhe o resto -- então o `GC` apagava justamente o que se queria medir,
-// e um agregador que guardava um milhão de linhas passava com 3 MB.
+// Measuring afterwards does not work, and that cost one version of this test:
+// by the time the first row comes out, the groups' state is already dead -- the
+// fold produced the output and Go collects the rest -- so the `GC` erased
+// exactly what was to be measured, and an aggregator keeping a million rows
+// passed with 3 MB.
 //
 // A sonda entra como um agregador a mais: o `Add` dela roda uma vez por
-// registro, enquanto TODO o estado dos grupos está vivo.
+// record, while ALL of the groups' state is alive.
 func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 	t.Helper()
 
@@ -304,7 +306,7 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 				return nil
 			}
 			// GC antes de ler: sem ele a medida seria dominada pelo lixo dos
-			// registros já processados, que é ruído, e não retenção.
+			// records already processed, which is noise, not retention.
 			runtime.GC()
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
@@ -318,7 +320,7 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 
 	d := &Reduce{By: GroupBy("grupo"), Agg: comSonda}
 	var linhas int
-	for _, err := range d.apply(gerarGrupos(n, grupos)) {
+	for _, err := range d.apply(generateGroups(n, grupos)) {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -330,12 +332,12 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 	return pico
 }
 
-// A promessa do Reduce não é "a soma está certa": é que a MEMÓRIA não cresce
+// Reduce's promise is not "the sum is right": it is that MEMORY does not grow
 // com a entrada.
 //
 // Cem grupos fixos, a entrada crescendo 100x. Se o teto se mantiver, a promessa
-// está no código e não só na documentação -- e é esta a regressão mais provável
-// desta feature: alguém acrescentar um agregador que guarda linhas.
+// is in the code and not only in the documentation -- and this is the feature's
+// most likely regression: somebody adding an aggregator that keeps rows.
 func TestMemoryDoesNotGrowWithTheInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("mede heap com 1M de registros")
@@ -349,8 +351,9 @@ func TestMemoryDoesNotGrowWithTheInput(t *testing.T) {
 	pequeno := picoDeHeap(t, 10_000, grupos, agg)
 	grande := picoDeHeap(t, 1_000_000, grupos, agg)
 
-	// Folga fixa, não proporcional: se a entrada fosse retida, 1M de registros
-	// pesariam centenas de MB e estourariam qualquer folga razoável.
+	// A fixed allowance, not a proportional one: if the input were retained, 1M
+	// records would weigh hundreds of MB and blow past any reasonable
+	// allowance.
 	const folga = 4 << 20
 	if grande > pequeno+folga {
 		t.Errorf("o heap cresceu com a entrada: %.1f MB com 10 mil registros, "+
@@ -359,9 +362,9 @@ func TestMemoryDoesNotGrowWithTheInput(t *testing.T) {
 	}
 }
 
-// E a medição acima só vale se ela for capaz de PEGAR o defeito. Este
-// agregador guarda as linhas -- exatamente o que a regra proíbe -- e o mesmo
-// teto tem de reprová-lo.
+// And the measurement above is only worth anything if it can CATCH the defect.
+// This aggregator keeps the rows -- exactly what the rule forbids -- and the
+// same ceiling has to fail it.
 func TestTheMeasurementCatchesAnAggregatorThatKeepsRows(t *testing.T) {
 	if testing.Short() {
 		t.Skip("mede heap")

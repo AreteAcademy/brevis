@@ -15,20 +15,21 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/pycompat"
 )
 
-// Estes ficam no pacote sdk porque exercitam o SEAM -- KeyWith e
-// IngestionIDWith --, e não a renderização em si. O pycompat é só a
-// implementação que passa por ele.
+// These live in the sdk package because they exercise the SEAM -- KeyWith and
+// IngestionIDWith -- and not the rendering itself. pycompat is only the
+// implementation that goes through it.
 
-// TestIngestionIDComPycompatCasaComOPython é a prova que interessa a quem
-// porta: o id que o Go compõe é o mesmo que o Python compunha, nos três casos
-// que divergem (nil, bool e float integral).
-func TestIngestionIDComPycompatCasaComOPython(t *testing.T) {
+// TestIngestionIDWithPycompatMatchesPython is the proof that matters to whoever
+// is porting: the id Go composes is the one Python composed, in the three cases
+// that diverge (nil, bool and an integral float).
+func TestIngestionIDWithPycompatMatchesPython(t *testing.T) {
 	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("sem python3")
+		t.Skip("no python3")
 	}
 
-	// source_key entra como json.Number, que e o que PreserveNumbers entrega
-	// -- um float64 cru o Text recusa, porque ali o literal ja se perdeu.
+	// source_key goes in as a json.Number, which is what PreserveNumbers
+	// delivers -- Text refuses a bare float64, because by then the literal is
+	// already lost.
 	registro := func() map[string]any {
 		return map[string]any{
 			"provider": "acme", "entity": nil,
@@ -56,9 +57,9 @@ print(uuid.uuid5(ns, chave))`
 		t.Errorf("IngestionIDWith(pycompat.Text) = %s, e o Python dá %s", got, quero)
 	}
 
-	// E o padrão NÃO casa. É essa a divergência que motivou tudo, e mantê-la é
-	// decisão escrita: trocar o padrão reescreveria o id de toda linha que o
-	// Go já gravou.
+	// And the default does NOT match. That is the divergence that motivated all
+	// of this, and keeping it is a written decision: changing the default would
+	// rewrite the id of every row Go has already written.
 	saidaPadrao, err := sdk.IngestionID()(registro())
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +92,8 @@ func TestKeyWithCasaComOPython(t *testing.T) {
 }
 
 // TestKeyWithRecusaFloat64NomeandoOCampo: a recusa do item 11 chega ao
-// consumidor pela porta que ele usa, e nomeia o campo -- sem o nome, quem lê o
-// erro não sabe qual dos seis é.
+// consumer through the door they use, and names the field -- without the name,
+// whoever reads the error does not know which of the six it is.
 func TestKeyWithRecusaFloat64NomeandoOCampo(t *testing.T) {
 	_, err := sdk.KeyWith(pycompat.Text, "a", "b")(map[string]any{
 		"a": "ok", "b": float64(19),
@@ -108,9 +109,9 @@ func TestKeyWithRecusaFloat64NomeandoOCampo(t *testing.T) {
 	}
 }
 
-// TestKeyWithRecusaNomeandoOCampo: sem o nome, quem lê o erro não sabe qual
-// dos seis campos é.
-func TestKeyWithRecusaNomeandoOCampo(t *testing.T) {
+// TestKeyWithRefusesNamingTheField: without the name, whoever reads the error
+// does not know which of the six fields it is.
+func TestKeyWithRefusesNamingTheField(t *testing.T) {
 	_, err := sdk.KeyWith(pycompat.Text, "a", "b")(map[string]any{"a": "ok", "b": 1e-5})
 	if err == nil {
 		t.Fatal("a faixa exponencial passou")
@@ -120,11 +121,11 @@ func TestKeyWithRecusaNomeandoOCampo(t *testing.T) {
 	}
 }
 
-// TestTextoOuVazioEOIdiomaDoPython: `str(x or "")` é o mais comum na
-// composição de chave, e o zero é o caso que quem escreve à mão erra.
-func TestTextoOuVazioEOIdiomaDoPython(t *testing.T) {
+// TestTextOrEmptyIsPythonsIdiom: `str(x or "")` is the most common form in key
+// composition, and zero is the case whoever writes it by hand gets wrong.
+func TestTextOrEmptyIsPythonsIdiom(t *testing.T) {
 	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("sem python3")
+		t.Skip("no python3")
 	}
 
 	casos := []struct {
@@ -161,13 +162,14 @@ func TestTextoOuVazioEOIdiomaDoPython(t *testing.T) {
 	}
 }
 
-// TestDivergenciaEntreOPadraoEOPython é a documentação da divergência, como
+// TestTheDivergenceBetweenTheDefaultAndPython is the divergence's
+// documentation, as
 // teste.
 //
-// O SDK NÃO usa a renderização do Python por padrão, e esta tabela é o motivo
-// por escrito: trocar o padrão mudaria o ingestion_id de toda linha que o Go
-// já gravou.
-func TestDivergenciaEntreOPadraoEOPython(t *testing.T) {
+// The SDK does NOT use Python's rendering by default, and this table is the
+// reason in writing: changing the default would change the ingestion_id of every
+// row Go has already written.
+func TestTheDivergenceBetweenTheDefaultAndPython(t *testing.T) {
 	casos := []struct {
 		entrada any
 		padrao  string
@@ -178,15 +180,15 @@ func TestDivergenciaEntreOPadraoEOPython(t *testing.T) {
 		{false, "false", "False"},
 		{json.Number("19.0"), "19.0", "19.0"},
 		{json.Number("0.0"), "0.0", "0.0"},
-		// Estes NÃO divergem, e é o que torna a lista acima curta.
+		// These do NOT diverge, and that is what keeps the list above short.
 		{"ola", "ola", "ola"},
 		{json.Number("-20.04"), "-20.04", "-20.04"},
 	}
 
 	for _, c := range casos {
-		// O padrão é exercitado pela porta da frente, com uma chave de um
-		// campo só: asText é privado, e um teste que o alcançasse por dentro
-		// deixaria de provar o que o consumidor vê.
+		// The default is exercised through the front door, with a single-field
+		// key: asText is private, and a test that reached it from inside would
+		// stop proving what the consumer sees.
 		padrao, err := sdk.Key("v")(map[string]any{"v": c.entrada})
 		if err != nil {
 			t.Fatalf("Key(%#v): %v", c.entrada, err)
@@ -205,10 +207,10 @@ func TestDivergenciaEntreOPadraoEOPython(t *testing.T) {
 	}
 }
 
-// TestUserAgentENossoENaoDoGo: alguns provedores públicos limitam ou bloqueiam
-// o UA padrão do Go, e isso aparece como 403 intermitente -- o tipo de falha
-// que custa meia manhã para diagnosticar.
-func TestUserAgentENossoENaoDoGo(t *testing.T) {
+// TestTheUserAgentIsOursAndNotGos: some public providers rate-limit or block
+// Go's default UA, and that shows up as an intermittent 403 -- the kind of
+// failure that costs half a morning to diagnose.
+func TestTheUserAgentIsOursAndNotGos(t *testing.T) {
 	var visto string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		visto = r.Header.Get("User-Agent")
@@ -247,8 +249,8 @@ func TestUserAgentDoChamadorVence(t *testing.T) {
 }
 
 // TestResponsePreserveNumbersChegaAoObject: quem define Records decodifica por
-// conta própria, e esquecer o UseNumber é silencioso -- `1` e `1.0` viram o
-// mesmo float64 e a chave sai diferente da que o Python compunha.
+// on their own, and forgetting UseNumber is silent -- `1` and `1.0` become the
+// same float64 and the key comes out different from the one Python composed.
 func TestResponsePreserveNumbersChegaAoObject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"results":[{"id":19}]}`)

@@ -20,8 +20,8 @@ import (
 
 // --- Key e Field ---------------------------------------------------------
 
-func TestChaveJuntaNaOrdemDada(t *testing.T) {
-	// A ordem e o separador entram no ingestion_id. Este teste exists para
+func TestKeyJoinsInTheGivenOrder(t *testing.T) {
+	// The order and the separator go into the ingestion_id. This test exists to
 	// freeze them: if it breaks, the same reading starts landing twice.
 	key := Key("latitude", "longitude", "time")
 	got, err := key(map[string]any{
@@ -35,7 +35,7 @@ func TestChaveJuntaNaOrdemDada(t *testing.T) {
 	}
 }
 
-func TestChaveNaoAdicionaCasasEmInteiro(t *testing.T) {
+func TestKeyAddsNoDecimalsToAnInteger(t *testing.T) {
 	// JSON delivers every number as float64. An id of 42 becoming "42.0"
 	// would change ingestion_id across the whole base.
 	got, err := Key("id")(map[string]any{"id": float64(42)})
@@ -47,7 +47,7 @@ func TestChaveNaoAdicionaCasasEmInteiro(t *testing.T) {
 	}
 }
 
-func TestChaveErraComCampoAusente(t *testing.T) {
+func TestKeyFailsOnAMissingField(t *testing.T) {
 	_, err := Key("id")(map[string]any{"outro": 1})
 	if err == nil {
 		t.Fatal("a missing field must be an error, not a short key")
@@ -57,7 +57,7 @@ func TestChaveErraComCampoAusente(t *testing.T) {
 	}
 }
 
-func TestCampoLeTimestamp(t *testing.T) {
+func TestFieldReadsATimestamp(t *testing.T) {
 	got, err := Field("time")(map[string]any{"time": "2026-01-01T00:00"})
 	if err != nil {
 		t.Fatal(err)
@@ -69,7 +69,7 @@ func TestCampoLeTimestamp(t *testing.T) {
 
 // --- Expansores ------------------------------------------------------------
 
-func TestArraysParalelos(t *testing.T) {
+func TestParallelArrays(t *testing.T) {
 	doc := map[string]any{
 		"latitude":  -23.55,
 		"longitude": -46.63,
@@ -97,7 +97,7 @@ func TestArraysParalelos(t *testing.T) {
 	}
 }
 
-func TestArraysParalelosRecusaTamanhosDiferentes(t *testing.T) {
+func TestParallelArraysRefuseDifferentLengths(t *testing.T) {
 	// Pairing by index with different lengths would join the wrong readings.
 	_, err := ParallelArrays("h", "a", "b")(map[string]any{
 		"h": map[string]any{"a": []any{1, 2, 3}, "b": []any{1}},
@@ -107,7 +107,7 @@ func TestArraysParalelosRecusaTamanhosDiferentes(t *testing.T) {
 	}
 }
 
-func TestArrayEm(t *testing.T) {
+func TestArrayAt(t *testing.T) {
 	regs, err := ArrayAt("data", "results")(map[string]any{
 		"data": map[string]any{"results": []any{
 			map[string]any{"id": 1.0}, map[string]any{"id": 2.0},
@@ -127,7 +127,7 @@ func resp(status int, body string) Response {
 	return core.NewResponse(status, nil, "http://exemplo", []byte(body), false)
 }
 
-func TestRecusarSe(t *testing.T) {
+func TestRejectIf(t *testing.T) {
 	guarda := RejectIf("error")
 
 	err := guarda(resp(200, `{"error": true, "reason": "invalid parameter"}`))
@@ -146,10 +146,10 @@ func TestRecusarSe(t *testing.T) {
 	}
 }
 
-// Uma página HTML de erro servida com 200 -- portal em manutenção, WAF, proxy
-// -- é exatamente o caso para o qual a guarda existe, e era o único que ela
+// An HTML error page served with a 200 -- a portal under maintenance, a WAF, a
+// proxy -- is exactly the case the guard exists for, and was the only one it
 // deixava passar.
-func TestRecusarSeNaoDeixaPassarCorpoQueNaoEJSON(t *testing.T) {
+func TestRejectIfDoesNotLetANonJSONBodyThrough(t *testing.T) {
 	err := RejectIf("error")(resp(200, `<html><body>Em manutenção</body></html>`))
 	if err == nil {
 		t.Fatal("um corpo que não é JSON tem de ser recusado, não aceito")
@@ -162,7 +162,7 @@ func TestRecusarSeNaoDeixaPassarCorpoQueNaoEJSON(t *testing.T) {
 	}
 }
 
-func TestExigirCampos(t *testing.T) {
+func TestRequireFields(t *testing.T) {
 	guarda := RequireFields("hourly")
 	if err := guarda(resp(200, `{"daily": {}}`)); err == nil {
 		t.Fatal("a payload missing the required field must be rejected")
@@ -174,7 +174,7 @@ func TestExigirCampos(t *testing.T) {
 
 // --- Secret redaction ------------------------------------------------------
 
-func TestRedigirRemoveSegredos(t *testing.T) {
+func TestRedactRemovesSecrets(t *testing.T) {
 	// An API key in the query string is the common case, and leaking one into
 	// pod logs is an incident.
 	cases := map[string]string{
@@ -218,7 +218,7 @@ func openMeteoServer(t *testing.T) *httptest.Server {
 	}))
 }
 
-func TestExtractExpandeEMapeia(t *testing.T) {
+func TestExtractExpandsAndMaps(t *testing.T) {
 	srv := openMeteoServer(t)
 	defer srv.Close()
 
@@ -230,7 +230,7 @@ func TestExtractExpandeEMapeia(t *testing.T) {
 		t.Fatalf("Extract: %v", err)
 	}
 
-	// A linha inteira é composta na cadeia, ingestion_id incluído. Nada é
+	// The whole row is composed in the chain, ingestion_id included. Nothing is
 	// carimbado depois.
 	data = Transform(data,
 		Compute("provider", func(map[string]any) (any, error) { return "open_meteo", nil }),
@@ -263,7 +263,7 @@ func TestExtractExpandeEMapeia(t *testing.T) {
 	}
 }
 
-func TestExtractRecordsRecusaAntesDeDecodificar(t *testing.T) {
+func TestExtractRecordsRefusesBeforeDecoding(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{"error": true, "reason": "latitude fora do intervalo"}`)
 	}))
@@ -284,7 +284,7 @@ func TestExtractRecordsRecusaAntesDeDecodificar(t *testing.T) {
 
 // --- Erros tipados ---------------------------------------------------------
 
-func TestErroDeFonteEmHostInexistente(t *testing.T) {
+func TestSourceErrorOnAMissingHost(t *testing.T) {
 	_, err := Extract(context.Background(), Source{
 		From: from.HTTP{
 			URL:         "http://127.0.0.1:1/nada",
@@ -304,7 +304,7 @@ func TestErroDeFonteEmHostInexistente(t *testing.T) {
 	}
 }
 
-func TestErroDeFonteCarregaStatus(t *testing.T) {
+func TestSourceErrorCarriesTheStatus(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
@@ -320,10 +320,11 @@ func TestErroDeFonteCarregaStatus(t *testing.T) {
 	}
 }
 
-// Um campo que não existe é erro de formato: a ação é consertar o mapeamento,
-// não esperar e tentar de novo. Agora o erro vem da cadeia, que é onde a
+// A field that does not exist is a format error: the action is to fix the
+// mapping, not to wait and try again. The error now comes from the chain, which
+// is where the
 // chave passou a ser computada.
-func TestErroDeFormatoEmChaveAusente(t *testing.T) {
+func TestFormatErrorOnAMissingKey(t *testing.T) {
 	srv := openMeteoServer(t)
 	defer srv.Close()
 
@@ -352,7 +353,7 @@ func TestErroDeFormatoEmChaveAusente(t *testing.T) {
 
 // Provenance is required exactly when the SDK is going to stamp an id, and
 // not otherwise.
-func TestSomenteFiltraCamposVolateis(t *testing.T) {
+func TestAcceptFiltersVolatileFields(t *testing.T) {
 	// generationtime_ms changes on every call: keeping it would make the same
 	// reading write a different payload on every run.
 	doc := map[string]any{
@@ -421,10 +422,10 @@ func TestTargetRefusesNoDriver(t *testing.T) {
 	if err == nil {
 		t.Fatal("a Target with no To has nowhere to write to")
 	}
-	// "to.BigQuery" saiu da mensagem porque esse tipo não existe desde a
-	// v0.19.0, quando o BigQuery virou to/bigquery.Table. Uma sugestão de erro
-	// que aponta para uma API removida manda o consumidor procurar o que não
-	// há -- e este teste estava fixando exatamente isso.
+	// "to.BigQuery" left the message because that type has not existed since
+	// v0.19.0, when BigQuery became to/bigquery.Table. An error's suggestion
+	// pointing at a removed API sends the consumer looking for something that is
+	// not there -- and this test was pinning exactly that.
 	for _, want := range []string{"Target.To", "bigquery.Table"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the error should say what to pass (%q): %v", want, err)
@@ -525,16 +526,17 @@ func TestTransformKeepsTheCounters(t *testing.T) {
 
 // --- Removed surface -------------------------------------------------------
 
-func TestIngestionIDDoNamespacePadraoNaoMuda(t *testing.T) {
+func TestTheDefaultNamespacesIngestionIDDoesNotChange(t *testing.T) {
 	// O nome deste teste era "NamespaceIsNotConfigurable", e virou falso na
 	// v0.38.0: sdk.Namespace escolhe outro. O que ele SEMPRE afirmou continua
-	// valendo e é o que importa -- o valor do padrão, que é o que quem já
+	// still holds and is what matters -- the default's value, which is what
+	// whoever already
 	// gravou tem na tabela.
 	//
 	// WithMetadataNamespace, antes disso, era aceito, validado, defaultado e
-	// então IGNORADO: quem o setava recebia ids idênticos e acreditava no
-	// contrário. Foi removido, e é por isso que a configuração de agora entra
-	// por um caminho que o teste acima prova que é usado.
+	// and then IGNORED: whoever set it got identical ids and believed the
+	// opposite. It was removed, and that is why today's configuration goes in
+	// through a path the test above proves is used.
 	env := Envelope{
 		Provider: "gov", Entity: "tx", SourceKey: "k1", RecordTS: "2026-01-01T00:00:00Z",
 	}
@@ -588,8 +590,8 @@ func TestDataStatsIsReadableWithoutLoad(t *testing.T) {
 
 	// Must not panic on a nil Data or one that never ran.
 	var none *Data
-	// reflect.DeepEqual e nao ==: o Stats ganhou um slice na v0.39.0, e um
-	// struct com slice nao e comparavel.
+	// reflect.DeepEqual and not ==: Stats gained a slice in v0.39.0, and a
+	// struct with a slice is not comparable.
 	if !reflect.DeepEqual(none.Stats(), Stats{}) {
 		t.Error("Stats() on a nil Data should be the zero value")
 	}
@@ -632,7 +634,7 @@ func TestEveryCoreOptionIsReachable(t *testing.T) {
 // it must not read one field out of it. Proved with selectors that fail if
 // they are ever called: a selector that runs is a selector whose failure can
 // sink a load the caller never asked the SDK to inspect.
-func TestTodoDoisXXChegaAoRecords(t *testing.T) {
+func TestEvery2xxReachesRecords(t *testing.T) {
 	casos := []struct {
 		status int
 		corpo  string
@@ -685,8 +687,8 @@ func TestTodoDoisXXChegaAoRecords(t *testing.T) {
 	}
 }
 
-// Não-2xx continua como estava: erro com status e corpo.
-func TestNaoDoisXXContinuaFalhando(t *testing.T) {
+// A non-2xx stays as it was: an error with the status and the body.
+func TestANon2xxStillFails(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(404)
 		_, _ = fmt.Fprint(w, `nao existe`)
@@ -710,9 +712,9 @@ func TestNaoDoisXXContinuaFalhando(t *testing.T) {
 	}
 }
 
-// Uma recusa da fonte e um erro de programação pedem coisas diferentes de
-// quem está de plantão, então têm de ser distinguíveis.
-func TestRecusaSeDistingueDeErroDeProgramacao(t *testing.T) {
+// A refusal from the source and a programming error ask different things of
+// whoever is on call, so they have to be distinguishable.
+func TestARejectionIsDistinctFromAProgrammingError(t *testing.T) {
 	recusa := Reject("open-meteo recusou: %s", "latitude inválida")
 	if !errors.Is(recusa, ErrRejected) {
 		t.Error("Reject tem de casar com errors.Is(err, ErrRejected)")
@@ -731,9 +733,10 @@ func TestRecusaSeDistingueDeErroDeProgramacao(t *testing.T) {
 	}
 }
 
-// E a recusa sobrevive à travessia do extract, que é onde ela precisa
+// And the rejection survives the crossing of the extract, which is where it
+// needs to
 // chegar para virar log e alerta.
-func TestRecusaSobreviveAoExtract(t *testing.T) {
+func TestTheRejectionSurvivesTheExtract(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"error":true,"reason":"latitude fora do intervalo"}`)
 	}))
@@ -755,8 +758,8 @@ func TestRecusaSobreviveAoExtract(t *testing.T) {
 }
 
 // Records e DataKey respondem a mesma pergunta, e com Records o DataKey
-// nunca seria lido -- um campo que não faz nada é pior que um erro.
-func TestRecordsComDataKeyERecusado(t *testing.T) {
+// would never be read -- a field that does nothing is worse than an error.
+func TestRecordsWithDataKeyIsRefused(t *testing.T) {
 	_, err := Extract(context.Background(), Source{From: from.HTTP{
 		URL:     "http://exemplo.invalido",
 		DataKey: "results",
@@ -772,10 +775,10 @@ func TestRecordsComDataKeyERecusado(t *testing.T) {
 	}
 }
 
-// Um corpo que não é o esperado é a fonte mandando algo que não é dado, e
-// isso vale também quando o fetcher chama os decodificadores direto -- que é
-// o que o exemplo da própria spec faz.
-func TestDecodificarCorpoErradoEUmaRecusa(t *testing.T) {
+// A body that is not what was expected is the source sending something that is
+// not data, and that holds when the fetcher calls the decoders directly too --
+// which is what the spec's own example does.
+func TestDecodingTheWrongBodyIsARejection(t *testing.T) {
 	r := resp(200, `<html>Em manutenção</html>`)
 
 	_, err := r.Object()
@@ -794,8 +797,8 @@ func TestDecodificarCorpoErradoEUmaRecusa(t *testing.T) {
 	}
 }
 
-// records adapta um Expander para o campo Records, que é onde a decisão de
-// "o que esta resposta carrega" mora.
+// records adapts an Expander for the Records field, which is where the decision
+// of "what this response carries" lives.
 func records(e Expander) func(Response) ([]any, error) {
 	return func(r Response) ([]any, error) {
 		doc, err := r.Object()
