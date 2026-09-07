@@ -49,16 +49,16 @@ func (e *Envelope) IngestionID() (string, error) {
 //
 // The NAMESPACE is not frozen, and should never have been: the default value
 // came from one consumer's pipeline, and a library going to every team must not
-// carry one team's constant. See ComputeIngestionIDNo and sdk.Namespace.
+// carry one team's constant. See ComputeIngestionIDIn and sdk.Namespace.
 //
 // It lives here, exported, because there has to be exactly ONE place that
 // computes this. An fmt.Sprintf in a fetcher would look identical and produce a
 // different id on the first float formatted another way.
 func ComputeIngestionID(provider, entity, sourceKey, recordTS string) (string, error) {
-	return ComputeIngestionIDNo(NamespacePadrao, provider, entity, sourceKey, recordTS)
+	return ComputeIngestionIDIn(DefaultNamespace, provider, entity, sourceKey, recordTS)
 }
 
-// ComputeIngestionIDNo computes the id in a chosen namespace.
+// ComputeIngestionIDIn computes the id in a chosen namespace.
 //
 // Different namespaces produce different ids for the SAME record, and that is
 // what they are for: two pipelines reading the same source and writing to
@@ -68,20 +68,20 @@ func ComputeIngestionID(provider, entity, sourceKey, recordTS string) (string, e
 // Changing the namespace of a pipeline that has already written rewrites every
 // one of its ids. There is no cheap migration for that: the next run writes
 // everything again with new ids, and the bronze merge duplicates the table.
-func ComputeIngestionIDNo(namespace uuid.UUID, provider, entity, sourceKey, recordTS string) (string, error) {
+func ComputeIngestionIDIn(namespace uuid.UUID, provider, entity, sourceKey, recordTS string) (string, error) {
 	// The key is assembled in a stack buffer rather than with fmt.Sprintf:
 	// Sprintf allocated the varargs slice and the string, and []byte(key)
 	// allocated again, once per record. The RESULT is byte for byte the same --
 	// the formula is frozen, and there is a test with the exact value checked
 	// against Python's uuid.uuid5.
-	tamanho := len(provider) + len(entity) + len(sourceKey) + len(recordTS) + 3
+	size := len(provider) + len(entity) + len(sourceKey) + len(recordTS) + 3
 
-	var pilha [192]byte
+	var stack [192]byte
 	var key []byte
-	if tamanho <= len(pilha) {
-		key = pilha[:0]
+	if size <= len(stack) {
+		key = stack[:0]
 	} else {
-		key = make([]byte, 0, tamanho)
+		key = make([]byte, 0, size)
 	}
 	key = append(key, provider...)
 	key = append(key, '|')
@@ -116,17 +116,17 @@ func uuidV5(espaco uuid.UUID, data []byte) uuid.UUID {
 	_, _ = h.Write(espaco[:])
 	_, _ = h.Write(data)
 
-	var soma [sha1.Size]byte
-	resumo := h.Sum(soma[:0])
+	var sum [sha1.Size]byte
+	digest := h.Sum(sum[:0])
 
 	var u uuid.UUID
-	copy(u[:], resumo)
+	copy(u[:], digest)
 	u[6] = (u[6] & 0x0f) | 0x50 // versao 5
 	u[8] = (u[8] & 0x3f) | 0x80 // variante RFC 4122
 	return u
 }
 
-// NamespacePadrao is the namespace used by anyone who does not choose another.
+// DefaultNamespace is the namespace used by anyone who does not choose another.
 //
 // The value came from one consumer pipeline's VENDOR_NAMESPACE, and it is here
 // as a DEFAULT rather than a constant for a practical reason: whoever has
@@ -135,7 +135,7 @@ func uuidV5(espaco uuid.UUID, data []byte) uuid.UUID {
 //
 // Resolved once, and not per record: the string is constant, and parsing it per
 // row is identical work repeated millions of times in a load.
-var NamespacePadrao = uuid.MustParse("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7")
+var DefaultNamespace = uuid.MustParse("e3a4f8c0-1b9d-4ea0-9c2e-77f6a6c4a4d7")
 
 // formatarUUID writes the canonical form straight into a stack array.
 //

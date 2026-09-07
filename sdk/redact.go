@@ -31,7 +31,7 @@ func redact(raw string) string {
 	}
 
 	if u.User != nil {
-		if _, temSenha := u.User.Password(); temSenha {
+		if _, hasPassword := u.User.Password(); hasPassword {
 			u.User = url.UserPassword(u.User.Username(), marker)
 		}
 	}

@@ -25,7 +25,7 @@ func (localDisk) Scheme() string { return "" }
 // subdirectories: a checkpoint's parts are all siblings, and descending would
 // bring in another checkpoint's files.
 func (localDisk) List(_ context.Context, _, prefix string) ([]string, error) {
-	entradas, err := os.ReadDir(prefix)
+	entries, err := os.ReadDir(prefix)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil // a depot that does not exist yet is not an error
 	}
@@ -33,7 +33,7 @@ func (localDisk) List(_ context.Context, _, prefix string) ([]string, error) {
 		return nil, err
 	}
 	var keys []string
-	for _, e := range entradas {
+	for _, e := range entries {
 		if !e.IsDir() {
 			keys = append(keys, filepath.Join(prefix, e.Name()))
 		}

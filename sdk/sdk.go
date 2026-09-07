@@ -243,21 +243,21 @@ func collect(data *Data, _ Target) ([]Envelope, error) {
 // be worse than saying so.
 func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext, start time.Time) (*Result, error) {
 	res := &Result{Table: target.To.Describe()}
-	opcoes := target.options(run)
+	opts := target.options(run)
 
 	leva := make([]Envelope, 0, target.FlushEvery)
 	var levas int
 
-	escrever := func() error {
+	write := func() error {
 		if len(leva) == 0 {
 			return nil
 		}
 		levas++
 		start := time.Now()
-		lr, err := target.To.Write(ctx, leva, opcoes)
+		lr, err := target.To.Write(ctx, leva, opts)
 		res.LoadTime += time.Since(start)
 		if lr != nil {
-			somar(res, lr)
+			add(res, lr)
 		}
 		leva = leva[:0]
 		return err
@@ -272,7 +272,7 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 		res.Records++
 		leva = append(leva, env)
 		if len(leva) >= target.FlushEvery {
-			if err := escrever(); err != nil {
+			if err := write(); err != nil {
 				res.ExtractTime = time.Since(data.start)
 				res.Duration = time.Since(start)
 				return res, &TargetError{Table: res.Table, Rows: res.RowErrors, Cause: err}
@@ -280,7 +280,7 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 		}
 	}
 
-	erroFinal := escrever()
+	finalErr := write()
 
 	res.ExtractTime = time.Since(data.start)
 	res.Duration = time.Since(start)
@@ -292,8 +292,8 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 		res.CredentialStoreError = data.stats.CredentialStoreError
 		res.FailedSources = data.stats.FailedSources
 	}
-	if erroFinal != nil {
-		return res, &TargetError{Table: res.Table, Rows: res.RowErrors, Cause: erroFinal}
+	if finalErr != nil {
+		return res, &TargetError{Table: res.Table, Rows: res.RowErrors, Cause: finalErr}
 	}
 	return res, nil
 }
@@ -301,7 +301,7 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 // somar accumulates a batch into the result. Unlike apply, which replaces: with
 // batches the total is the sum, and a Rows counting only the last batch would
 // lie to whoever reads the pipeline's log line.
-func somar(res *Result, lr *core.LoadResult) {
+func add(res *Result, lr *core.LoadResult) {
 	res.Rows += lr.RowsLoaded
 	res.Ignored += lr.RowsIgnored
 	res.Bytes += lr.BytesStaged

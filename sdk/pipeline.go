@@ -168,7 +168,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// this first one buys is the vendor's quota -- finding out in the Load that
 	// a column does not match means having spent the whole window on it.
 	rep.started(PhaseCheck)
-	stages, err := p.montar()
+	stages, err := p.build()
 	if err != nil {
 		rep.finished(PhaseCheck, StateFailed, nil)
 		return err
@@ -195,7 +195,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// own -- it runs per record, interleaved -- so it reports no duration at
 	// all: a missing number beats a wrong one. What it reports is what only it
 	// knows, how many records went in and how many came out.
-	contagens := make([]StageResult, len(stages))
+	counts := make([]StageResult, len(stages))
 
 	// One phase per stage, in the order they run, so the screen shows the
 	// pipeline the consumer declared instead of one box called "transform".
@@ -206,20 +206,20 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	if rep.on {
 		indicesDosEstagios := make([]int, len(stages))
 		for i := range stages {
-			indicesDosEstagios[i] = rep.proximoIndice()
+			indicesDosEstagios[i] = rep.nextIndex()
 		}
-		indiceDoAlvo := rep.proximoIndice()
+		indiceDoAlvo := rep.nextIndex()
 
 		for i, st := range stages {
 			rep.startedAtIndex(st.kind, indicesDosEstagios[i])
 		}
-		aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
+		applyStages(data, stages, counts, p.Source.From.Describe())
 
 		data.Records = aoEsgotar(data.Records, func() {
 			rep.finished(PhaseSource, StateDone, sourceNumbers(data, p))
 			for i, st := range stages {
 				rep.finishedAtIndex(st.kind, indicesDosEstagios[i], StateDone,
-					stageNumbers(contagens[i]))
+					stageNumbers(counts[i]))
 			}
 			// Without batches nothing has been written yet: the Write only
 			// happens once the stream runs dry. With batches it already
@@ -232,15 +232,15 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 			rep.startedAtIndex(PhaseTarget, indiceDoAlvo)
 		}
 	} else {
-		aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
+		applyStages(data, stages, counts, p.Source.From.Describe())
 	}
 
 	res, err := loadWith(ctx, data, p.Target, p.Run)
 	if res != nil {
 		// After the load: the depot is written while the stream runs, so only
 		// now is it known whether it made it to the end.
-		cp.aplicar(res)
-		res.Stages = contagens
+		cp.apply(res)
+		res.Stages = counts
 
 		// The result comes back on the failure path too, by design, so that
 		// RowErrors is readable after a refusal. That makes the message the
@@ -259,11 +259,11 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	}
 
-	estado := StateDone
+	state := StateDone
 	if err != nil {
-		estado = StateFailed
+		state = StateFailed
 	}
-	rep.finished(PhaseTarget, estado, loadNumbers(res))
+	rep.finished(PhaseTarget, state, loadNumbers(res))
 	return err
 }
 
@@ -273,7 +273,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 // run calls. An aggregator that does not exist, a name that collides with a
 // group field, or Stages declared next to Transform are assembly errors, and
 // finding them after the extract would cost the vendor's window.
-func (p *Pipeline) montar() ([]Stage, error) {
+func (p *Pipeline) build() ([]Stage, error) {
 	if err := p.Target.validate(); err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (p *Pipeline) montar() ([]Stage, error) {
 	return stages, nil
 }
 
-// aplicarEstagios wires the stages onto the stream, in order, counting what
+// applyStages wires the stages onto the stream, in order, counting what
 // passes through each.
 //
 // The run and the -dry-run call THIS, and not two similar loops. That is the
@@ -298,9 +298,9 @@ func (p *Pipeline) montar() ([]Stage, error) {
 // the source's raw rows and called them records, with no warning. A preview
 // that answers a different question with the same confidence is worse than no
 // preview, because it is what people run INSTEAD of writing.
-func aplicarEstagios(data *Data, stages []Stage, contagens []StageResult, source string) {
+func applyStages(data *Data, stages []Stage, counts []StageResult, source string) {
 	for i, st := range stages {
-		data.Records = st.apply(data.Records, &contagens[i], source)
+		data.Records = st.apply(data.Records, &counts[i], source)
 	}
 }
 
@@ -326,11 +326,11 @@ func checkDestination(ctx context.Context, t Target) error {
 	if err := t.validate(); err != nil {
 		return err
 	}
-	verificador, sabe := t.To.(core.DestinationChecker)
+	checker, sabe := t.To.(core.DestinationChecker)
 	if !sabe {
 		return nil
 	}
-	return verificador.CheckDestination(ctx, t.declaredColumns())
+	return checker.CheckDestination(ctx, t.declaredColumns())
 }
 
 // runDryRun extracts and maps without writing, printing the first n
@@ -350,7 +350,7 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	// destination, which needs credentials a laptop may not have. A -dry-run
 	// that demanded BigQuery access to print five rows would stop being the
 	// cheap check it exists to be.
-	stages, err := p.montar()
+	stages, err := p.build()
 	if err != nil {
 		return err
 	}
@@ -362,8 +362,8 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 
 	// The stages run here too: a dry-run that printed untransformed records
 	// would show a payload -- and an ingestion_id -- that is not what lands.
-	contagens := make([]StageResult, len(stages))
-	aplicarEstagios(data, stages, contagens, p.Source.From.Describe())
+	counts := make([]StageResult, len(stages))
+	applyStages(data, stages, counts, p.Source.From.Describe())
 
 	// Provenance must be stamped the same way Load would, or the printed
 	// ingestion_id would not be the one that lands.
@@ -380,7 +380,7 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	// Per stage, because "5,515 records" says nothing about where the other six
 	// million went. With this, finding out is one line instead of bisecting the
 	// pipeline by hand.
-	for _, c := range contagens {
+	for _, c := range counts {
 		row := fmt.Sprintf("  %-10s %9d -> %9d", c.Kind, c.In, c.Out)
 		if c.Kind == StageAggregate {
 			row += fmt.Sprintf("   (%d groups)", c.Groups)

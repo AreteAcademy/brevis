@@ -60,18 +60,18 @@ func AppendJSONString(dst []byte, s string) []byte {
 			continue
 		}
 
-		r, tamanho := utf8.DecodeRuneInString(s[i:])
-		if r == utf8.RuneError && tamanho == 1 {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if r == utf8.RuneError && size == 1 {
 			// An invalid byte. Go 1.25's encoding/json writes the escaped
 			// sequence and 1.27's writes U+FFFD's bytes; both are the same code
 			// point, and the test compares the VALUE in those cases.
 			dst = append(dst, s[start:i]...)
 			dst = append(dst, "\ufffd"...)
-			i += tamanho
+			i += size
 			start = i
 			continue
 		}
-		i += tamanho
+		i += size
 	}
 	dst = append(dst, s[start:]...)
 	return append(dst, '"')

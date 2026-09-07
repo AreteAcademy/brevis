@@ -130,63 +130,63 @@ func CountOf(field string) Aggregator {
 		},
 		Value: func(acc any) (any, error) { return *acc.(*int64), nil },
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // Sum adds the field up. Null and missing are ignored, as in SQL.
 func Sum(field string) Aggregator {
-	type estado struct {
+	type state struct {
 		total float64
 		viu   bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numberOf(r, field)
 			if err != nil || !ok {
 				return err
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			e.total, e.viu = e.total+n, true
 			return nil
 		},
 		Value: func(acc any) (any, error) {
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
 				return nil, nil // a group with no values at all: null, not zero
 			}
 			return e.total, nil
 		},
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // Mean is the arithmetic mean of the field, ignoring nulls.
 func Mean(field string) Aggregator {
-	type estado struct {
-		soma float64
-		n    int64
+	type state struct {
+		sum float64
+		n   int64
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numberOf(r, field)
 			if err != nil || !ok {
 				return err
 			}
-			e := acc.(*estado)
-			e.soma, e.n = e.soma+n, e.n+1
+			e := acc.(*state)
+			e.sum, e.n = e.sum+n, e.n+1
 			return nil
 		},
 		Value: func(acc any) (any, error) {
-			e := acc.(*estado)
+			e := acc.(*state)
 			if e.n == 0 {
 				return nil, nil
 			}
-			return e.soma / float64(e.n), nil
+			return e.sum / float64(e.n), nil
 		},
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // Min is the smallest value of the field. Max is the largest.
@@ -196,18 +196,18 @@ func Min(field string) Aggregator { return extremo(field, -1) }
 func Max(field string) Aggregator { return extremo(field, +1) }
 
 func extremo(field string, sinal int) Aggregator {
-	type estado struct {
+	type state struct {
 		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			v := r[field]
 			if v == nil {
 				return nil
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
 				e.value, e.viu = v, true
 				return nil
@@ -221,9 +221,9 @@ func extremo(field string, sinal int) Aggregator {
 			}
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
+		Value: func(acc any) (any, error) { return acc.(*state).value, nil },
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // First is the first non-null value seen in the group. Last is the last.
@@ -231,33 +231,33 @@ func extremo(field string, sinal int) Aggregator {
 // "First" means in the order the source delivered: for a source with no
 // defined order it is not deterministic, and that is the source's doing, not
 // this package's.
-func First(field string) Aggregator { return pontaDo(field, true) }
+func First(field string) Aggregator { return endOf(field, true) }
 
 // Last is the last non-null value seen in the group.
-func Last(field string) Aggregator { return pontaDo(field, false) }
+func Last(field string) Aggregator { return endOf(field, false) }
 
-func pontaDo(field string, primeiro bool) Aggregator {
-	type estado struct {
+func endOf(field string, first bool) Aggregator {
+	type state struct {
 		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			v := r[field]
 			if v == nil {
 				return nil
 			}
-			e := acc.(*estado)
-			if primeiro && e.viu {
+			e := acc.(*state)
+			if first && e.viu {
 				return nil
 			}
 			e.value, e.viu = v, true
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
+		Value: func(acc any) (any, error) { return acc.(*state).value, nil },
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // MinBy returns the `value` of the row where `key` is smallest. MaxBy, the
@@ -273,36 +273,36 @@ func MinBy(value, key string) Aggregator { return porExtremo(value, key, -1) }
 // MaxBy returns the `value` of the row where `key` is largest.
 func MaxBy(value, key string) Aggregator { return porExtremo(value, key, +1) }
 
-func porExtremo(campoValor, campoChave string, sinal int) Aggregator {
-	type estado struct {
+func porExtremo(valueField, keyField string, sinal int) Aggregator {
+	type state struct {
 		key   any
 		value any
 		viu   bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
-			k := r[campoChave]
+			k := r[keyField]
 			if k == nil {
 				return nil
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
-				e.key, e.value, e.viu = k, r[campoValor], true
+				e.key, e.value, e.viu = k, r[valueField], true
 				return nil
 			}
-			cmp, err := compare(k, e.key, campoChave)
+			cmp, err := compare(k, e.key, keyField)
 			if err != nil {
 				return err
 			}
 			if cmp*sinal > 0 {
-				e.key, e.value = k, r[campoValor]
+				e.key, e.value = k, r[valueField]
 			}
 			return nil
 		},
-		Value: func(acc any) (any, error) { return acc.(*estado).value, nil },
+		Value: func(acc any) (any, error) { return acc.(*state).value, nil },
 	})
-	return comCampos(a, campoValor, campoChave)
+	return withFields(a, valueField, keyField)
 }
 
 // Variance is the sample variance of the field. StdDev is its square root.
@@ -316,19 +316,19 @@ func Variance(field string) Aggregator { return welford(field, false) }
 func StdDev(field string) Aggregator { return welford(field, true) }
 
 func welford(field string, raiz bool) Aggregator {
-	type estado struct {
+	type state struct {
 		n    float64
 		medi float64
 		m2   float64
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			x, ok, err := numberOf(r, field)
 			if err != nil || !ok {
 				return err
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			e.n++
 			d := x - e.medi
 			e.medi += d / e.n
@@ -336,7 +336,7 @@ func welford(field string, raiz bool) Aggregator {
 			return nil
 		},
 		Value: func(acc any) (any, error) {
-			e := acc.(*estado)
+			e := acc.(*state)
 			if e.n < 2 {
 				return nil, nil // the sample variance of one point does not exist
 			}
@@ -347,22 +347,22 @@ func welford(field string, raiz bool) Aggregator {
 			return v, nil
 		},
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // Any is true when some row has the field true. All, when every row does.
-func Any(field string) Aggregator { return booleano(field, false) }
+func Any(field string) Aggregator { return boolAgg(field, false) }
 
 // All is true when every row has the field true.
-func All(field string) Aggregator { return booleano(field, true) }
+func All(field string) Aggregator { return boolAgg(field, true) }
 
-func booleano(field string, todos bool) Aggregator {
-	type estado struct {
+func boolAgg(field string, all bool) Aggregator {
+	type state struct {
 		v   bool
 		viu bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{v: todos} },
+		Init: func() any { return &state{v: all} },
 		Add: func(acc any, r map[string]any) error {
 			v := r[field]
 			if v == nil {
@@ -373,9 +373,9 @@ func booleano(field string, todos bool) Aggregator {
 				return fmt.Errorf("field %q holds %v (%T), which is not a boolean; "+
 					"Any and All read booleans", field, v, v)
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			e.viu = true
-			if todos {
+			if all {
 				e.v = e.v && b
 			} else {
 				e.v = e.v || b
@@ -383,30 +383,30 @@ func booleano(field string, todos bool) Aggregator {
 			return nil
 		},
 		Value: func(acc any) (any, error) {
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
 				return nil, nil
 			}
 			return e.v, nil
 		},
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
 // Range is the difference between the largest and smallest value.
 func Range(field string) Aggregator {
-	type estado struct {
+	type state struct {
 		min, max float64
 		viu      bool
 	}
 	a := Custom(Accumulator{
-		Init: func() any { return &estado{} },
+		Init: func() any { return &state{} },
 		Add: func(acc any, r map[string]any) error {
 			n, ok, err := numberOf(r, field)
 			if err != nil || !ok {
 				return err
 			}
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
 				e.min, e.max, e.viu = n, n, true
 				return nil
@@ -415,17 +415,17 @@ func Range(field string) Aggregator {
 			return nil
 		},
 		Value: func(acc any) (any, error) {
-			e := acc.(*estado)
+			e := acc.(*state)
 			if !e.viu {
 				return nil, nil
 			}
 			return e.max - e.min, nil
 		},
 	})
-	return comCampos(a, field)
+	return withFields(a, field)
 }
 
-func comCampos(a Aggregator, fields ...string) Aggregator {
+func withFields(a Aggregator, fields ...string) Aggregator {
 	a.fields = fields
 	return a
 }

@@ -69,7 +69,7 @@ type reporter struct {
 	on        bool
 	startedAt map[string]time.Time
 	indices   map[string]int
-	proximo   int
+	next      int
 }
 
 // newReporter returns a reporter that is on only under the engine.
@@ -97,7 +97,7 @@ func (r *reporter) announce(pipeline string) {
 	})
 }
 
-func (r *reporter) started(phase string) { r.startedAtIndex(phase, r.proximoIndice()) }
+func (r *reporter) started(phase string) { r.startedAtIndex(phase, r.nextIndex()) }
 
 // startedAtIndex opens a phase at a KNOWN position.
 //
@@ -107,25 +107,25 @@ func (r *reporter) started(phase string) { r.startedAtIndex(phase, r.proximoIndi
 // on the screen, with no warning.
 func (r *reporter) startedAtIndex(phase string, index int) {
 	r.mu.Lock()
-	r.startedAt[chaveDoRelogio(phase, index)] = time.Now()
+	r.startedAt[clockKey(phase, index)] = time.Now()
 	r.indices[phase] = index
 	r.mu.Unlock()
 	r.emit(map[string]any{"type": "stage", "index": index, "name": phase, "state": StateRunning})
 }
 
-// chaveDoRelogio keys a phase's start by POSITION as well as name: two Map
+// clockKey keys a phase's start by POSITION as well as name: two Map
 // stages share a name, and keying by name alone would give the second one the
 // first one's start time.
-func chaveDoRelogio(phase string, index int) string {
+func clockKey(phase string, index int) string {
 	return phase + "#" + strconv.Itoa(index)
 }
 
-// proximoIndice hands the next free position to a phase announced without one.
-func (r *reporter) proximoIndice() int {
+// nextIndex hands the next free position to a phase announced without one.
+func (r *reporter) nextIndex() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	n := r.proximo
-	r.proximo++
+	n := r.next
+	r.next++
 	return n
 }
 
@@ -154,7 +154,7 @@ func (r *reporter) finished(phase, state string, numbers map[string]any) {
 // finishedAtIndex closes a phase at a known position. See startedAtIndex.
 func (r *reporter) finishedAtIndex(phase string, index int, state string, numbers map[string]any) {
 	r.mu.Lock()
-	since, had := r.startedAt[chaveDoRelogio(phase, index)]
+	since, had := r.startedAt[clockKey(phase, index)]
 	r.mu.Unlock()
 
 	ev := map[string]any{"type": "stage", "index": index, "name": phase, "state": state}

@@ -591,7 +591,7 @@ complete. Attempt 1 finds it and **does not call the source at all**:
 
 ```
 level=INFO msg="checkpoint reused: the source will not be queried" records=48213
-level=INFO msg=loaded checkpoint=reaproveitado checkpoint_em=gs://landing/_checkpoint/...
+level=INFO msg=loaded checkpoint=reused checkpoint_at=gs://landing/_checkpoint/...
 ```
 
 What it costs: the extract stops being a single streaming pass. The whole

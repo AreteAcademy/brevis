@@ -131,12 +131,12 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 	}
 	m.Sources = sources
 
-	trabalhadores := m.Workers
-	if trabalhadores < 1 {
-		trabalhadores = 1
+	workers := m.Workers
+	if workers < 1 {
+		workers = 1
 	}
-	if trabalhadores > len(m.Sources) {
-		trabalhadores = len(m.Sources)
+	if workers > len(m.Sources) {
+		workers = len(m.Sources)
 	}
 
 	start := time.Now()
@@ -159,28 +159,28 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 			source core.Reader
 		}
 
-		fila := make(chan int)
+		queue := make(chan int)
 		out := make(chan resultado)
 
 		var wg sync.WaitGroup
-		for w := 0; w < trabalhadores; w++ {
+		for w := 0; w < workers; w++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				for i := range fila {
+				for i := range queue {
 					src := m.Sources[i]
 
 					// One Stats per source, summed at the end: that way the
 					// result's counters describe the whole read and not the
 					// last source.
-					porOrigem := core.Stats{}
-					opcoes := opt
-					opcoes.Stats = &porOrigem
+					perSource := core.Stats{}
+					opts := opt
+					opts.Stats = &perSource
 					// The preview belongs to the set and is assembled up here;
 					// asking each source for one would print N tables.
-					opcoes.Preview = 0
+					opts.Preview = 0
 
-					rows, err := src.Read(ctx, opcoes)
+					rows, err := src.Read(ctx, opts)
 					if err != nil {
 						select {
 						case out <- resultado{err: err, source: src}:
@@ -201,19 +201,19 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 					}
 
 					mu.Lock()
-					total.Pages += porOrigem.Pages
-					total.Attempts += porOrigem.Attempts
-					total.Bytes += porOrigem.Bytes
+					total.Pages += perSource.Pages
+					total.Attempts += perSource.Attempts
+					total.Bytes += perSource.Bytes
 					mu.Unlock()
 				}
 			}()
 		}
 
 		go func() {
-			defer close(fila)
+			defer close(queue)
 			for i := range m.Sources {
 				select {
-				case fila <- i:
+				case queue <- i:
 				case <-ctx.Done():
 					return
 				}
@@ -223,13 +223,13 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 
 		rows := 0
 		var sample []any
-		abortou := false
+		aborted := false
 
 		for r := range out {
 			if r.err != nil {
 				if m.OnError != core.ContinueOnError {
 					yield(core.Envelope{}, fmt.Errorf("%s: %w", r.source.Describe(), r.err))
-					abortou = true
+					aborted = true
 					cancel()
 					break
 				}
@@ -259,13 +259,13 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		for range out { //nolint:revive // draining is the point
 		}
 
-		if abortou {
+		if aborted {
 			return
 		}
 
 		mu.Lock()
 		total.FailedSources = failures
-		copiaFalhas := append([]core.SourceFailure(nil), failures...)
+		copiedFailures := append([]core.SourceFailure(nil), failures...)
 		mu.Unlock()
 
 		if opt.Stats != nil {
@@ -291,8 +291,8 @@ func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.En
 		// Zero records from N healthy sources is a result. Zero because all N
 		// failed is a broken run, and the two must not look the same to whoever
 		// reads the log.
-		if rows == 0 && len(copiaFalhas) == len(m.Sources) {
-			yield(core.Envelope{}, core.ErrEverySourceFailed(len(m.Sources), copiaFalhas[0]))
+		if rows == 0 && len(copiedFailures) == len(m.Sources) {
+			yield(core.Envelope{}, core.ErrEverySourceFailed(len(m.Sources), copiedFailures[0]))
 		}
 	}, nil
 }

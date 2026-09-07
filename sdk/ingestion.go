@@ -45,7 +45,7 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 // Accept is. It usually means the chain is out of order, or that Without ran
 // first.
 func IngestionID(fields ...string) Transformer {
-	return ingestionIDCom(core.NamespacePadrao,
+	return ingestionIDIn(core.DefaultNamespace,
 		func(v any) (string, error) { return asText(v), nil }, fields...)
 }
 
@@ -61,7 +61,7 @@ func IngestionID(fields ...string) Transformer {
 // the result is the whole table duplicated on the next merge. The choice is per
 // fetcher.
 func IngestionIDWith(render Renderer, fields ...string) Transformer {
-	return ingestionIDCom(core.NamespacePadrao, render, fields...)
+	return ingestionIDIn(core.DefaultNamespace, render, fields...)
 }
 
 // Namespace chooses the UUID namespace the identity is computed in.
@@ -97,10 +97,10 @@ func (i Identity) IngestionID(fields ...string) Transformer {
 
 // IngestionIDWith e sdk.IngestionIDWith no namespace escolhido.
 func (i Identity) IngestionIDWith(render Renderer, fields ...string) Transformer {
-	return ingestionIDCom(i.ns, render, fields...)
+	return ingestionIDIn(i.ns, render, fields...)
 }
 
-func ingestionIDCom(ns uuid.UUID, render Renderer, fields ...string) Transformer {
+func ingestionIDIn(ns uuid.UUID, render Renderer, fields ...string) Transformer {
 	names := defaultIDFields
 	if len(fields) > 0 {
 		names = fields
@@ -131,11 +131,11 @@ func ingestionIDCom(ns uuid.UUID, render Renderer, fields ...string) Transformer
 				missing = append(missing, name)
 				continue
 			}
-			texto, err := render(v)
+			text, err := render(v)
 			if err != nil {
 				return nil, fmt.Errorf("IngestionID, field %q: %w", name, err)
 			}
-			parts[i] = texto
+			parts[i] = text
 		}
 		if len(missing) > 0 {
 			return nil, fmt.Errorf("IngestionID reads %s, which this record does not have. "+
@@ -148,7 +148,7 @@ func ingestionIDCom(ns uuid.UUID, render Renderer, fields ...string) Transformer
 				"stable identity, and the id would change on every run", names[2])
 		}
 
-		id, err := core.ComputeIngestionIDNo(ns, parts[0], parts[1], parts[2], parts[3])
+		id, err := core.ComputeIngestionIDIn(ns, parts[0], parts[1], parts[2], parts[3])
 		if err != nil {
 			return nil, err
 		}

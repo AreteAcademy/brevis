@@ -138,14 +138,14 @@ func (d *Depot) key(name string) string { return d.prefix + name }
 // bucket -- would only surface once the first part filled up, that is, after
 // having already spent part of the quota the checkpoint exists to save.
 func (d *Depot) Reserve(ctx context.Context, pipeline, run string) error {
-	marca, err := json.Marshal(map[string]string{
+	marker, err := json.Marshal(map[string]string{
 		"pipeline": pipeline, "run": run,
 		"iniciado_em": time.Now().UTC().Format(time.RFC3339),
 	})
 	if err != nil {
 		return err
 	}
-	return d.store.Create(ctx, d.bucket, d.key(startFile), bytes.NewReader(marca))
+	return d.store.Create(ctx, d.bucket, d.key(startFile), bytes.NewReader(marker))
 }
 
 // Manifest reads `_completo`. Missing or unreadable returns an error: the
@@ -265,8 +265,8 @@ type Write struct {
 
 	parts []string
 
-	numbers    string
-	sabeNumero bool
+	numbers     string
+	knowsNumber bool
 }
 
 // Writer starts a write into the depot.
@@ -288,9 +288,9 @@ func (e *Write) Add(env core.Envelope) error {
 	// first number that turns up decides the mode for the whole stream. Until
 	// then the search stops at the first number found, and a payload with no
 	// numbers at all costs nothing because there is nothing to preserve.
-	if !e.sabeNumero {
-		if achou, literal := formaDoNumero(env.Payload); achou {
-			e.sabeNumero = true
+	if !e.knowsNumber {
+		if found, literal := numberShape(env.Payload); found {
+			e.knowsNumber = true
 			if literal {
 				e.numbers = NumbersLiteral
 			}
@@ -380,9 +380,9 @@ func (e *Write) Pending() iter.Seq2[core.Envelope, error] {
 	}
 }
 
-// formaDoNumero looks for the payload's first numeric value and says whether it
+// numberShape looks for the payload's first numeric value and says whether it
 // arrived as a literal (json.Number) or as a float64.
-func formaDoNumero(v any) (achou, literal bool) {
+func numberShape(v any) (found, literal bool) {
 	switch t := v.(type) {
 	case json.Number:
 		return true, true
@@ -390,13 +390,13 @@ func formaDoNumero(v any) (achou, literal bool) {
 		return true, false
 	case map[string]any:
 		for _, sub := range t {
-			if achou, literal = formaDoNumero(sub); achou {
+			if found, literal = numberShape(sub); found {
 				return true, literal
 			}
 		}
 	case []any:
 		for _, sub := range t {
-			if achou, literal = formaDoNumero(sub); achou {
+			if found, literal = numberShape(sub); found {
 				return true, literal
 			}
 		}

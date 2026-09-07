@@ -47,7 +47,7 @@ func TestUUIDv5InTheRealNamespace(t *testing.T) {
 		make([]byte, 1000),
 	}
 	for _, dados := range entradas {
-		if got, quero := uuidV5(NamespacePadrao, dados), uuid.NewSHA1(NamespacePadrao, dados); got != quero {
+		if got, quero := uuidV5(DefaultNamespace, dados), uuid.NewSHA1(DefaultNamespace, dados); got != quero {
 			t.Errorf("%d bytes: meu %s, uuid %s", len(dados), got, quero)
 		}
 	}
@@ -80,7 +80,7 @@ func TestAKeyLargerThanTheStackBuffer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	quero := uuid.NewSHA1(NamespacePadrao,
+	quero := uuid.NewSHA1(DefaultNamespace,
 		[]byte(longo+"|entidade|chave|2026-09-05T12:00:00Z")).String()
 	if got != quero {
 		t.Errorf("chave longa divergiu:\n  meu  %s\n  uuid %s", got, quero)

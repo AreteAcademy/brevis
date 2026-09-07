@@ -324,26 +324,26 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	defer closeDB()
 
 	database, table := splitName(t.Name)
-	daTabela, _, err := columnsOf(ctx, db, database, table)
-	if err != nil || len(daTabela) == 0 {
+	inTable, _, err := columnsOf(ctx, db, database, table)
+	if err != nil || len(inTable) == 0 {
 		return err
 	}
 
-	tem := make(map[string]bool, len(daTabela))
-	for _, c := range daTabela {
-		tem[c] = true
+	has := make(map[string]bool, len(inTable))
+	for _, c := range inTable {
+		has[c] = true
 	}
-	var ausentes []string
+	var missing []string
 	for _, c := range columns {
-		if !tem[c] {
-			ausentes = append(ausentes, c)
+		if !has[c] {
+			missing = append(missing, c)
 		}
 	}
-	if len(ausentes) == 0 {
+	if len(missing) == 0 {
 		return nil
 	}
-	sort.Strings(ausentes)
+	sort.Strings(missing)
 	return fmt.Errorf("the declaration lists %s, which %s does not have. The table has: %s. "+
 		"Caught before the extract, so no source quota was spent",
-		strings.Join(ausentes, ", "), t.Name, strings.Join(daTabela, ", "))
+		strings.Join(missing, ", "), t.Name, strings.Join(inTable, ", "))
 }

@@ -261,7 +261,7 @@ func Rename(names map[string]string) Transformer {
 		// -- which was the previous behaviour.
 		type troca struct {
 			para  string
-			valor any
+			value any
 		}
 		var trocas []troca
 		for de, para := range names {
@@ -271,7 +271,7 @@ func Rename(names map[string]string) Transformer {
 			}
 		}
 		for _, t := range trocas {
-			obj[t.para] = t.valor
+			obj[t.para] = t.value
 		}
 		return obj, nil
 	}

@@ -95,7 +95,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return res, err
 	}
 
-	if err := t.checar(); err != nil {
+	if err := t.check(); err != nil {
 		return fail(err)
 	}
 	if len(envelopes) == 0 {
@@ -111,7 +111,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	// batch.
 	columns := opt.Columns
 	if len(columns) == 0 {
-		columns = camposDe(envelopes)
+		columns = fieldsOf(envelopes)
 	}
 
 	payload, err := EncodeNDJSON(envelopes, columns)
@@ -154,14 +154,14 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	}
 	defer fechar()
 
-	comandos := []string{CopySQL(t.destinoDoCopy(res.Dedup), uri, t.IAMRole)}
+	commands := []string{CopySQL(t.copyTarget(res.Dedup), uri, t.IAMRole)}
 	if res.Dedup == core.DedupMerge {
-		comandos = append([]string{StagingTableSQL(t.Name, tempName)},
-			comandos...)
-		comandos = append(comandos, MergeSQL(t.Name, tempName, columns), DropSQL(tempName))
+		commands = append([]string{StagingTableSQL(t.Name, tempName)},
+			commands...)
+		commands = append(commands, MergeSQL(t.Name, tempName, columns), DropSQL(tempName))
 	}
 
-	for _, sql := range comandos {
+	for _, sql := range commands {
 		if err := exec.Exec(ctx, sql); err != nil {
 			return fail(fmt.Errorf("redshift: %w", err))
 		}
@@ -173,14 +173,14 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 
 const tempName = "brevis_stage"
 
-func (t Table) destinoDoCopy(d core.Dedup) string {
+func (t Table) copyTarget(d core.Dedup) string {
 	if d == core.DedupMerge {
 		return tempName
 	}
 	return t.Name
 }
 
-func (t Table) checar() error {
+func (t Table) check() error {
 	faltando := []string{}
 	if t.DSN == "" && t.Executor == nil {
 		faltando = append(faltando, "DSN")
@@ -225,13 +225,13 @@ func EncodeNDJSON(envelopes []core.Envelope, columns []string) ([]byte, error) {
 	// Handing a map[string]any to json.Encoder per record cost five allocations
 	// per row -- the encoder sorts the keys and boxes every value, and none of
 	// that changes between records.
-	chaves := make([][]byte, len(columns))
+	keys := make([][]byte, len(columns))
 	for i, c := range columns {
 		b, err := json.Marshal(c)
 		if err != nil {
 			return nil, fmt.Errorf("redshift: column %q: %w", c, err)
 		}
-		chaves[i] = append(b, ':')
+		keys[i] = append(b, ':')
 	}
 
 	enc := json.NewEncoder(&buf)
@@ -245,7 +245,7 @@ func EncodeNDJSON(envelopes []core.Envelope, columns []string) ([]byte, error) {
 		}
 
 		buf.WriteByte('{')
-		primeiro := true
+		first := true
 		for j, c := range columns {
 			v, tem := obj[c]
 			if !tem {
@@ -254,11 +254,11 @@ func EncodeNDJSON(envelopes []core.Envelope, columns []string) ([]byte, error) {
 				// explicit null would cost bytes without changing anything.
 				continue
 			}
-			if !primeiro {
+			if !first {
 				buf.WriteByte(',')
 			}
-			primeiro = false
-			buf.Write(chaves[j])
+			first = false
+			buf.Write(keys[j])
 			if !writeScalar(&buf, v) {
 				// Composite: the encoder handles it, and pays one allocation.
 				if err := enc.Encode(v); err != nil {
@@ -320,7 +320,7 @@ func DropSQL(temp string) string { return "DROP TABLE IF EXISTS " + temp }
 
 func quote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
 
-func camposDe(envelopes []core.Envelope) []string {
+func fieldsOf(envelopes []core.Envelope) []string {
 	vistos := map[string]bool{}
 	for _, e := range envelopes {
 		obj, err := core.AsObject(e.Payload)

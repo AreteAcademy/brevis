@@ -298,11 +298,11 @@ func plural(n int, one, many string) string {
 // It exists so every new driver does not repeat the choice of destination and
 // the handling of a nil writer -- that is how the preview was born inside
 // extract and had to be moved when the second driver showed up.
-func WritePreview(w io.Writer, sample []any, orcamento int, st PreviewStats) {
+func WritePreview(w io.Writer, sample []any, budget int, st PreviewStats) {
 	if w == nil {
 		w = os.Stderr
 	}
-	_, _ = io.WriteString(w, RenderPreview(sample, orcamento, st))
+	_, _ = io.WriteString(w, RenderPreview(sample, budget, st))
 }
 
 // LogExtract emits the summary line every read driver should emit, with the
