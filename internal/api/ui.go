@@ -620,12 +620,12 @@ func (u *UI) failure(w http.ResponseWriter, r *http.Request, err error) {
 func (u *UI) RegistrarLogin(mux *http.ServeMux, gate *auth.Gate) {
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		u.render(w, r, pages.Login(pages.LoginData{
-			Target: auth.Target(r.URL.Query().Get("next")),
+			Target: auth.Target(r.URL.Query().Get(auth.NextParam)),
 		}))
 	})
 
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
-		target := auth.Target(r.FormValue("next"))
+		target := auth.Target(r.FormValue(auth.NextParam))
 		user := r.FormValue("username")
 
 		if !gate.SignIn(w, user, r.FormValue("password")) {

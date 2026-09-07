@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -90,15 +91,15 @@ func CheckPassword(hash, password string) bool {
 	if err != nil {
 		return false
 	}
-	esperado, err := base64.RawStdEncoding.DecodeString(partes[3])
+	expected, err := base64.RawStdEncoding.DecodeString(partes[3])
 	if err != nil {
 		return false
 	}
-	obtido, err := pbkdf2.Key(sha256.New, password, sal, iter, len(esperado))
+	got, err := pbkdf2.Key(sha256.New, password, sal, iter, len(expected))
 	if err != nil {
 		return false
 	}
-	return subtle.ConstantTimeCompare(obtido, esperado) == 1
+	return subtle.ConstantTimeCompare(got, expected) == 1
 }
 
 // ---------------------------------------------------------------------------
@@ -146,33 +147,33 @@ func (c Credential) Validate() error {
 }
 
 // ---------------------------------------------------------------------------
-// Sessao
+// Session
 // ---------------------------------------------------------------------------
 
-// emitir builds the cookie's signed value: `<user>|<expiry>|<hmac>`.
+// issue builds the cookie's signed value: `<user>|<expiry>|<hmac>`.
 //
 // The signature covers the username AND the expiry. Covering only the username
 // would let the client choose its own validity; covering only the expiry would
 // let it swap users. It is HMAC, and not a hash of the concatenated secret,
 // because the naive construction is vulnerable to length extension.
 func (c Credential) issue(now time.Time) string {
-	corpo := c.User + "|" + strconv.FormatInt(now.Add(SessionLifetime).Unix(), 10)
-	return corpo + "|" + base64.RawURLEncoding.EncodeToString(c.assinar(corpo))
+	body := c.User + "|" + strconv.FormatInt(now.Add(SessionLifetime).Unix(), 10)
+	return body + "|" + base64.RawURLEncoding.EncodeToString(c.assinar(body))
 }
 
-func (c Credential) assinar(corpo string) []byte {
+func (c Credential) assinar(body string) []byte {
 	m := hmac.New(sha256.New, c.Secret)
-	m.Write([]byte(corpo))
+	m.Write([]byte(body))
 	return m.Sum(nil)
 }
 
-// checkSession valida assinatura e prazo do cookie.
+// checkSession validates the cookie's signature and deadline.
 func (c Credential) checkSession(value string, now time.Time) bool {
 	i := strings.LastIndex(value, "|")
 	if i < 0 {
 		return false
 	}
-	corpo, assinatura := value[:i], value[i+1:]
+	body, assinatura := value[:i], value[i+1:]
 
 	bruta, err := base64.RawURLEncoding.DecodeString(assinatura)
 	if err != nil {
@@ -180,16 +181,17 @@ func (c Credential) checkSession(value string, now time.Time) bool {
 	}
 	// The signature is checked BEFORE the deadline, and in constant time:
 	// reading a field of an unsigned cookie is already trusting it.
-	if !hmac.Equal(bruta, c.assinar(corpo)) {
+	if !hmac.Equal(bruta, c.assinar(body)) {
 		return false
 	}
 
-	user, prazo, ok := strings.Cut(corpo, "|")
+	user, deadline, ok := strings.Cut(body, "|")
 	if !ok || user != c.User {
-		// User diferente do configurado: a credencial mudou desde o login.
+		// A different user from the configured one: the credential changed
+		// since the login.
 		return false
 	}
-	expires, err := strconv.ParseInt(prazo, 10, 64)
+	expires, err := strconv.ParseInt(deadline, 10, 64)
 	if err != nil {
 		return false
 	}
@@ -200,7 +202,7 @@ func (c Credential) checkSession(value string, now time.Time) bool {
 // Middleware
 // ---------------------------------------------------------------------------
 
-// Portao envolve um handler exigindo sessao valida.
+// Gate wraps a handler, requiring a valid session.
 //
 // The routes that need no session are few and explicit. Kubernetes probes are
 // on that list out of necessity -- a /health that asks for a password kills the
@@ -241,12 +243,16 @@ func (p *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// browser would lose the body and the operator would resend blindly after
 	// signing in. A 401 tells the truth about what happened.
 	if r.Method != http.MethodGet {
-		http.Error(w, "sessao expirada; entre novamente", http.StatusUnauthorized)
+		http.Error(w, "session expired; sign in again", http.StatusUnauthorized)
 		return
 	}
+	// `next` is the SAME name the login screen reads, and that is the whole
+	// point of the parameter: writing `de` here while ui.go asked for `next`
+	// meant an operator who followed a deep link while logged out signed in and
+	// landed on `/`, with nothing anywhere saying why.
 	target := "/login"
-	if alvo := r.URL.RequestURI(); alvo != "/" {
-		target += "?de=" + escapeTarget(alvo)
+	if uri := r.URL.RequestURI(); uri != "/" {
+		target += "?" + NextParam + "=" + url.QueryEscape(escapeTarget(uri))
 	}
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
@@ -286,27 +292,34 @@ func (p *Gate) SignOut(w http.ResponseWriter) {
 	})
 }
 
+// NextParam is the query parameter carrying where the operator was going.
+//
+// It is a constant because it has two ends -- the redirect that writes it, in
+// this file, and the login screen that reads it, in internal/api -- and they
+// were once different words.
+const NextParam = "next"
+
 // escapeTarget allows only an internal path in `?next=`.
 //
-// Without this, `/login?de=https://malicious` would make our own login screen
+// Without this, `/login?next=https://malicious` would make our own login screen
 // hand the authenticated operator away -- the classic open redirect.
-func escapeTarget(alvo string) string {
-	if !strings.HasPrefix(alvo, "/") || strings.HasPrefix(alvo, "//") {
+func escapeTarget(target string) string {
+	if !strings.HasPrefix(target, "/") || strings.HasPrefix(target, "//") {
 		return "/"
 	}
-	return alvo
+	return target
 }
 
-// Target saneia o `?de=` na hora de redirecionar pos-login.
-func Target(bruto string) string {
-	if bruto == "" {
+// Target sanitizes `?next=` when redirecting after the login.
+func Target(raw string) string {
+	if raw == "" {
 		return "/"
 	}
-	return escapeTarget(bruto)
+	return escapeTarget(raw)
 }
 
 // ---------------------------------------------------------------------------
-// Sessao no contexto
+// The session in the context
 // ---------------------------------------------------------------------------
 
 type key struct{}

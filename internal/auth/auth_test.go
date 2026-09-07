@@ -3,7 +3,7 @@ package auth_test
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/internal/auth"
@@ -78,24 +78,50 @@ func TestAnAnonymousTriggerIsBlocked(t *testing.T) {
 	gate.ServeHTTP(rec, httptest.NewRequest("POST", "/workflows/id_verification/trigger", nil))
 
 	if rec.Code != http.StatusUnauthorized {
-		t.Errorf("status = %d; esperava 401", rec.Code)
+		t.Errorf("status = %d; expected 401", rec.Code)
 	}
 }
 
-func TestGetAnonimoVaiParaOLogin(t *testing.T) {
+// The redirect has to write the parameter the login screen READS, and it has to
+// survive a round trip through the URL.
+//
+// It did not. The redirect wrote `?de=` and internal/api asked for `next`, so an
+// operator who followed a deep link while logged out signed in and landed on
+// `/`, with nothing anywhere saying why. Asserting only that the Location
+// mentions "/runs" was what let it through: both halves have to be checked, and
+// the value has to be checked DECODED -- the original query string carries a
+// `?` and a `=` of its own.
+func TestAnAnonymousGETGoesToTheLoginCarryingWhereItWasGoing(t *testing.T) {
 	gate := &auth.Gate{
 		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
 	}
 
 	rec := httptest.NewRecorder()
-	gate.ServeHTTP(rec, httptest.NewRequest("GET", "/runs?pagina=2", nil))
+	gate.ServeHTTP(rec, httptest.NewRequest("GET", "/runs?page=2&state=failed", nil))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("status = %d; esperava 303", rec.Code)
+		t.Fatalf("status = %d; expected 303", rec.Code)
 	}
-	if target := rec.Header().Get("Location"); !strings.Contains(target, "/runs") {
-		t.Errorf("Location = %q; it should carry the original destination", target)
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("Location is not a URL: %v", err)
+	}
+	if loc.Path != "/login" {
+		t.Errorf("Location path = %q, want /login", loc.Path)
+	}
+
+	// The name is the constant, so this test moves with the code rather than
+	// pinning a word.
+	got := loc.Query().Get(auth.NextParam)
+	if want := "/runs?page=2&state=failed"; got != want {
+		t.Errorf("%s = %q, want %q -- the whole query string has to survive, or "+
+			"signing in drops the filter the operator had", auth.NextParam, got, want)
+	}
+
+	// And what comes back out is what the login screen would use.
+	if target := auth.Target(got); target != "/runs?page=2&state=failed" {
+		t.Errorf("Target(%q) = %q; the two ends do not agree", got, target)
 	}
 }
 
@@ -194,14 +220,14 @@ func TestChangingTheSecretInvalidatesSessions(t *testing.T) {
 
 // `/login?next=https://malicious` must not send the operator off-site.
 func TestAnExternalDestinationIsDiscarded(t *testing.T) {
-	for bruto, esperado := range map[string]string{
+	for bruto, expected := range map[string]string{
 		"https://malicioso.example": "/",
 		"//malicioso.example":       "/",
 		"/runs?pagina=2":            "/runs?pagina=2",
 		"":                          "/",
 	} {
-		if d := auth.Target(bruto); d != esperado {
-			t.Errorf("Target(%q) = %q; esperava %q", bruto, d, esperado)
+		if d := auth.Target(bruto); d != expected {
+			t.Errorf("Target(%q) = %q; esperava %q", bruto, d, expected)
 		}
 	}
 }
