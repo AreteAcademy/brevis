@@ -9,6 +9,110 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.7.0] — 2026-09-07
+
+### Added: the graph says what each step runs in
+
+A step was a grey box with a command on it. Two identical-looking boxes can be a
+Go binary in a 64Mi distroless image and a dbt project in a 1Gi Python one, and
+the screen said nothing about the difference.
+
+Each node now carries a runtime chip (Python, Go, Node.js, Java, Rust, PHP,
+Ruby, .NET, SQL, Shell) and tool chips (dbt, Spark, Airbyte, Soda, SQLMesh,
+Meltano, DuckDB, Airflow, Terraform).
+
+**Nothing to write.** The engine reads `run:` and `image:` and works it out:
+
+| the command | reads as |
+|---|---|
+| `python fetch.py` | Python |
+| `cd /src && dbt build` | dbt |
+| `spark-submit --py-files a.zip job.py` | Python + Spark |
+| `cp in.csv /tmp/ && python x.py` | Python — **not** Shell |
+| `dbt build` | dbt — **not** Python |
+| `/opt/brevis/bin/fetch-weather` | **nothing** |
+
+That last row is the one to read. A step the engine cannot make sense of gets
+**no chip at all** — no empty row, no reserved space, nothing saying "unknown".
+A card that says nothing is honest; a card that says the wrong thing costs
+somebody the hour they spend believing it.
+
+For the cases where the inference is blind — a bare binary, a wrapper script, an
+image whose name says nothing — two optional fields per step:
+
+```yaml
+steps:
+  - id: fetch
+    run: /opt/brevis/bin/fetch-weather
+    runtime: go
+  - id: transform
+    run: python job.py
+    tools: [spark]
+```
+
+An id outside the vocabulary is refused by `brevis publish`, naming what is
+valid. Declared beats inferred, and **the screen shows which one it got**: an
+inferred chip has a dashed border and a title saying so. That distinction is the
+whole point — the `SDK` badge beside it is trustworthy because it is OBSERVED
+and cannot lie, and a chip that hid whether it was a fact or a guess would
+borrow that credibility.
+
+Full documentation in [`docs/RUNTIME.md`](docs/RUNTIME.md).
+
+### Fixed: signing in sent you to `/` instead of where you were going
+
+Following a deep link while logged out bounced you to the login screen, and
+signing in landed you on the dashboard. The filter, the page and the workflow
+you were looking at were gone, with nothing saying why.
+
+The redirect wrote `?de=` and the login screen read `?next=`. The parameter had
+been renamed on the form and on the handler, and the redirect that writes it —
+in another package — was missed. The value is also percent-encoded now, which it
+was not: a destination carrying its own query string lost everything after the
+first `&`.
+
+A bookmarked `/login?de=/runs` no longer carries its destination. Bookmark the
+destination itself.
+
+### BREAKING for anyone matching on log text: every message is English
+
+The whole engine now speaks English — every error, every log line, every string
+on the screen:
+
+```
+before: step "run": saiu com codigo 2
+now:    step "run": exited with code 2
+
+before: morto por SIGKILL — normalmente falta de memoria
+now:    killed by SIGKILL -- usually out of memory
+
+before: execucao orfa: nenhum worker deu sinal em 5m
+now:    orphaned run: no worker reported in for 5m
+```
+
+**If you have an alert, a dashboard or a log filter matching Portuguese text, it
+stops matching.** Nothing else about it changed: same fields, same levels, same
+moments.
+
+### Fixed: `brand.yaml` named a field the file does not contain
+
+An invalid colour was reported as `colour falha`, and the file says `failed:`.
+It now names the YAML key, so whoever is fixing it looks for something that
+exists.
+
+### Fixed: `Validate` ran the same two checks twice
+
+`MaxActive < 0` and the resource-quantity validation, over the workflow and
+every node, appeared twice in one function. The second copy could never report
+anything the first had not.
+
+### No migration
+
+`migrations/` changed only its comments. An upgrade from `0.6.0` is the image
+and nothing else — unlike `0.4.0`, which needed `00007` before it would start.
+
+---
+
 ## [0.6.0] — 2026-09-06
 
 ### Added: one box per pipeline element

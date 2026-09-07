@@ -30,8 +30,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # O portao antes de publicar. Uma imagem que sai da CI com teste vermelho
-      # e pior que nenhuma imagem: alguem vai roda-la achando que passou.
+      # The gate before publishing. An image leaving CI with a red test is
+      # worse than no image: somebody will run it believing it passed.
       - name: Tests
         run: go test ./...
 
