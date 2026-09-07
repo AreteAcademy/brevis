@@ -28,7 +28,7 @@ function words in comment lines.
 | D | **Living docs** — `COMMANDS`, `KUBERNETES`, `IMAGES`, `PUBLISHING`, `PARAMS`, `SDK_ARCHITECTURE`, `SDK_DECISIONS`, `SDK_MATRIX`, `SDK_NEW_DRIVER` | 0 | ✅ done |
 | E | **Engine internals** — `internal/`, `cmd/` | 0 | ✅ done |
 | F | **Web** — `web/`, templates, the visible UI, and the identifiers `internal/` shares with them | 0 | ✅ done |
-| G | **Infra** — `.github/`, `deployments/`, `migrations/` | 115 | whoever operates or fixes CI |
+| G | **Infra** — `.github/`, `deployments/`, `migrations/`, Makefile, Dockerfile, composes | 0 | ✅ done |
 | H | **Test comments** | 664 | whoever reads a failing test |
 | I | **Test function names** | ~235 | whoever reads a failing test's OUTPUT |
 
@@ -46,6 +46,17 @@ Deliberately **not** on the list, with the reason written down:
   not the current state.
 
 There is one exception worth making inside that rule, in §4.
+
+**A third exception, from G.** The migrations' COLUMN names stay Portuguese —
+`criado_em`, `definicao`, `ultimo_slot` and their neighbours are an applied
+schema, and renaming them is a migration against a running deployment rather
+than a translation. Their comments are English.
+
+`brand.yaml`'s keys are the counter-example, and were renamed **with a fix
+attached**: decoding ignored an unrecognized key, so the rename alone would have
+quietly reverted every existing file to the default identity. `KnownFields` now
+makes an unknown key an error that names it, which also closes the older defect
+of a typo doing the same thing.
 
 **A second exception, found while doing C.** The checkpoint's ON-DISK FORMAT
 stays Portuguese while the code around it is English: the file `_completo`, the
