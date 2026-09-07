@@ -39,11 +39,20 @@ type historico struct {
 	slug   string
 	nodeID string
 	exceto uuid.UUID
+
+	// settled is what an earlier attempt of the SAME run already finished, for
+	// the retry tests. Empty is the normal case: a first attempt has settled
+	// nothing.
+	settled map[string]bool
 }
 
 func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, exceto uuid.UUID) (bool, error) {
 	h.slug, h.nodeID, h.exceto = slug, nodeID, exceto
 	return h.jaTeve, h.err
+}
+
+func (h *historico) AlreadySucceeded(context.Context, uuid.UUID) (map[string]bool, error) {
+	return h.settled, h.err
 }
 
 func oneStepWorkflow() wf.Workflow {

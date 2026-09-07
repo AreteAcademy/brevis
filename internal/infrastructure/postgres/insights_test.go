@@ -285,3 +285,83 @@ func TestASkippedStepHasNotSucceeded(t *testing.T) {
 		t.Error("a real earlier success was not seen")
 	}
 }
+
+// TestAlreadySucceededIsPerRunAndNotPerWorkflow.
+//
+// The two "has this succeeded" questions look identical and mean opposite
+// things. StepHasSucceeded asks about EARLIER RUNS, and tells the SDK this is
+// not a step's first time. AlreadySucceeded asks about THIS RUN, and tells the
+// runner not to redo work on a retry.
+//
+// Confusing them makes a step skip itself forever after its first good day,
+// which is the worst bug this pair could produce and the quietest.
+func TestAlreadySucceededIsPerRunAndNotPerWorkflow(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	repo := postgres.NewRunRepo(pool)
+
+	// Yesterday's run of the same workflow, where `load` succeeded.
+	yesterday := finished(t, pool, "daily_sales", dom.StatusSuccess, time.Minute)
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO task_runs (id, run_id, node_id, status, attempt)
+		VALUES ($1, $2, 'load', $3, 0)`, uuid.New(), yesterday, dom.StatusSuccess); err != nil {
+		t.Fatal(err)
+	}
+
+	// Today's run, which has done nothing yet.
+	today := finished(t, pool, "daily_sales", dom.StatusRunning, 0)
+
+	settled, err := repo.AlreadySucceeded(ctx, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settled["load"] {
+		t.Error("yesterday's success made today's run skip the step; the two " +
+			"questions have been confused")
+	}
+	// And the other question still answers yes, because it is about earlier
+	// runs and that is what it is for.
+	ever, err := repo.StepHasSucceeded(ctx, "daily_sales", "load", today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ever {
+		t.Error("StepHasSucceeded stopped seeing an earlier run")
+	}
+}
+
+// What a failed attempt of the same run left behind is not settled: the retry
+// has to redo it, which is the whole point of retrying.
+func TestAFailedStepOfTheSameRunIsNotSettled(t *testing.T) {
+	pool := insightsDB(t)
+	ctx := context.Background()
+	repo := postgres.NewRunRepo(pool)
+
+	id := finished(t, pool, "daily_sales", dom.StatusFailed, time.Minute)
+	for node, status := range map[string]dom.Status{
+		"extract": dom.StatusSuccess,
+		"load":    dom.StatusFailed,
+		"report":  dom.StatusSkipped,
+	} {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO task_runs (id, run_id, node_id, status, attempt)
+			VALUES ($1, $2, $3, $4, 0)`, uuid.New(), id, node, status); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	settled, err := repo.AlreadySucceeded(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settled["extract"] {
+		t.Error("the step that worked is not settled, so the retry redoes it")
+	}
+	if settled["load"] {
+		t.Error("a FAILED step is settled, so the retry would never redo it")
+	}
+	if settled["report"] {
+		t.Error("a SKIPPED step is settled; it never ran, and the retry has to " +
+			"decide about it again")
+	}
+}

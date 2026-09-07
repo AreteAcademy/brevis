@@ -50,6 +50,15 @@ type Reporter interface {
 // answer covered the whole workflow, and the other two would fail in silence.
 type History interface {
 	StepHasSucceeded(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error)
+
+	// AlreadySucceeded returns the steps of THIS run that finished well in an
+	// earlier attempt of it, so a retry re-runs only what failed.
+	//
+	// A different question from StepHasSucceeded, which asks about EARLIER
+	// RUNS. Confusing the two would make a step skip itself forever after its
+	// first good day, so they are separate methods rather than one with a
+	// flag.
+	AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[string]bool, error)
 }
 
 type Persister interface {
@@ -175,9 +184,9 @@ type Runner struct {
 // still goes out. A partial result no longer looks complete because the run
 // says it is not.
 //
-// The cost is real and worth naming: more steps run on a failing run, and a
-// run-level retry re-runs every one of them. A workflow with an expensive
-// independent branch beside a flaky one pays for that branch on every attempt.
+// The cost is real and worth naming: more steps run on a failing run. What it
+// does NOT cost is paying for them twice -- a retry re-runs only what failed;
+// see alreadySucceeded.
 func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	levels, err := graph.Levels(w)
 	if err != nil {
@@ -220,6 +229,13 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	// depend on.
 	deps := upstream(w)
 
+	// What an earlier attempt of THIS run already got right. A retry re-runs
+	// only what failed, the way a cleared DAG run does in Airflow.
+	//
+	// Read once, before anything starts: reading it per step would let two
+	// attempts of the same run disagree with each other halfway through.
+	settled := r.alreadySucceeded(ctx)
+
 	// What each step ended as, so the level below can read its trigger rule
 	// against something real.
 	done := &outcomes{by: map[string]run.Status{}}
@@ -241,7 +257,7 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 			// stopped.
 			break
 		}
-		if err := r.runLevel(ctx, w, level, porID, deps, done); err != nil && firstFailure == nil {
+		if err := r.runLevel(ctx, w, level, porID, deps, done, settled); err != nil && firstFailure == nil {
 			firstFailure = fmt.Errorf("nivel %d: %w", i+1, err)
 		}
 	}
@@ -272,6 +288,7 @@ func (o *outcomes) get(id string) run.Status {
 
 func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 	porID map[string]wf.Node, deps map[string][]string, done *outcomes,
+	settled map[string]bool,
 ) error {
 	var (
 		wg   sync.WaitGroup
@@ -281,6 +298,25 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 
 	for _, id := range level {
 		n := porID[id]
+
+		// Already done, in an earlier attempt of this same run. It is NOT
+		// marked skipped: it is a success, its row says so, and overwriting
+		// that row would erase the only record of the work actually happening.
+		//
+		// Checked before the trigger rule on purpose. A step that already
+		// succeeded is settled, and re-deciding it against the new attempt's
+		// outcomes could rule out something that has already run -- which
+		// would be the engine changing its mind about the past.
+		if settled[n.ID] {
+			if r.Report != nil {
+				r.Report.Evento(execution.Event{
+					Kind: execution.EventLog, NodeID: n.ID, Stream: "stdout",
+					Message: "already succeeded on an earlier attempt of this run; not re-run",
+				})
+			}
+			done.set(n.ID, run.StatusSuccess)
+			continue
+		}
 
 		// The rule is read BEFORE anything in this level starts, so every step
 		// in it sees the same picture. Deciding inside the goroutine would let
@@ -358,6 +394,24 @@ func (r Runner) notEligible(n wf.Node, upstream []string, done *outcomes) string
 		}
 		return ""
 	}
+}
+
+// alreadySucceeded asks the history what this run has already got right.
+//
+// A failure to read it is not a failure of the run: the answer degrades to
+// "nothing succeeded yet", which re-runs the whole graph -- exactly what this
+// engine did before, and a safe place to land.
+func (r Runner) alreadySucceeded(ctx context.Context) map[string]bool {
+	if r.History == nil || r.RunID == uuid.Nil {
+		return nil
+	}
+	settled, err := r.History.AlreadySucceeded(ctx, r.RunID)
+	if err != nil {
+		slog.WarnContext(ctx, "could not read what this run already finished; re-running everything",
+			"run", r.RunID, "error", err)
+		return nil
+	}
+	return settled
 }
 
 // markSkipped records the decision. Same rules as markStart: it needs both a

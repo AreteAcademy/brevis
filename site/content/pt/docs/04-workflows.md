@@ -243,9 +243,31 @@ um pipeline rodou 28 dias atrasado sem ninguém ver.
 Um resultado parcial não parece mais completo, porque a run diz que não está.
 
 **O que se abre mão**, dito na lata: um ramo sem relação agora escreve os dados
-dele numa run que falhou em outro lugar. E como o retry é no nível da run, o
-grafo inteiro roda de novo — um workflow com um ramo independente caro ao lado
-de um instável paga por esse ramo em toda tentativa.
+dele numa run que falhou em outro lugar.
+
+### Um retry roda de novo só o que falhou
+
+O retry de uma run não refaz o grafo inteiro. Um passo que já deu certo numa
+tentativa anterior da **mesma run** mantém o resultado e não roda de novo — como
+se comporta uma DAG run limpa no Airflow.
+
+```
+tentativa 1   extract ✓    load ✕    report (pulado)
+tentativa 2   extract –    load ✓    report ✓          o extract não roda de novo
+```
+
+Ele mantém a linha original: a duração, o log e o que ele publicou são os da
+primeira tentativa, porque foi quando o trabalho aconteceu. **O passo abaixo
+dele continua lendo o que ele publicou** — o contexto da run é guardado, não
+reconstruído.
+
+A distinção que importa: isso é sobre as tentativas anteriores **desta run**. Um
+passo que deu certo na run de *ontem* roda normalmente hoje. (Essa outra
+pergunta também existe, e é o que diz ao SDK se é a primeira vez de um passo —
+veja `BREVIS_RUN_FIRST`.)
+
+Um passo que ficou **skipped** não está resolvido: ele nunca rodou, e o retry
+decide sobre ele de novo com os resultados da nova tentativa.
 
 ## Anunciando a falha de um passo
 

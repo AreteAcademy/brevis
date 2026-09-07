@@ -161,6 +161,39 @@ func (r *RunRepo) StepHasSucceeded(ctx context.Context, workflowSlug, nodeID str
 	return existe, err
 }
 
+// AlreadySucceeded returns the steps of THIS run that have already finished
+// well, in any earlier attempt of it.
+//
+// It is what makes a run's retry re-run only what failed, the way a cleared DAG
+// run does in Airflow. Before it, a retry re-ran the whole graph: a workflow
+// with an expensive step beside a flaky one paid for the expensive one on every
+// attempt, and any step that was not idempotent did its work twice.
+//
+// Per (run, node) and NOT per (workflow, node) -- that is StepHasSucceeded
+// above, which answers a different question: whether this step has ever
+// succeeded in an EARLIER run, which is what tells the SDK it is not the first.
+// Confusing the two would make a step skip itself forever after its first good
+// day.
+func (r *RunRepo) AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[string]bool, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT node_id FROM task_runs
+		WHERE run_id = $1 AND status = $2`, runID, dom.StatusSuccess)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]bool{}
+	for rows.Next() {
+		var node string
+		if err := rows.Scan(&node); err != nil {
+			return nil, err
+		}
+		out[node] = true
+	}
+	return out, rows.Err()
+}
+
 // NodeStates returns each node's state on its LAST attempt.
 //
 // `DISTINCT ON` rather than max(attempt) in a subselect: the most recent

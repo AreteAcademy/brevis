@@ -242,9 +242,30 @@ complete, and a pipeline ran 28 days late without anyone noticing.
 A partial result no longer looks complete, because the run says it is not.
 
 **What is given up**, stated plainly: an unrelated branch now writes its data on
-a run that failed elsewhere. And because a run-level retry re-runs the whole
-graph, a workflow with an expensive independent branch beside a flaky one pays
-for that branch on every attempt.
+a run that failed elsewhere.
+
+### A retry re-runs only what failed
+
+A run's retry does not redo the whole graph. A step that already succeeded on an
+earlier attempt of the **same run** keeps its result and is not run again — the
+way a cleared DAG run behaves in Airflow.
+
+```
+attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run
+```
+
+It keeps its original row: its duration, its log and what it published are the
+first attempt's, because that is when the work happened. **The step below it
+still reads what it published** — the run's context is stored, not rebuilt.
+
+The distinction that matters: this is about **this run's** earlier attempts.
+A step that succeeded in *yesterday's* run runs normally today. (That other
+question exists too, and it is what tells the SDK whether it is a step's first
+time — see `BREVIS_RUN_FIRST`.)
+
+A step that was **skipped** is not settled: it never ran, and the retry decides
+about it again with the new attempt's outcomes.
 
 ## Announcing a step's failures
 
