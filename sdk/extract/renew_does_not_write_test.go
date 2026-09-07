@@ -15,20 +15,20 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// storeEspiao registra o que foi gravado, sem tocar em disco nem em nuvem.
-type storeEspiao struct {
+// spyStore records what was written, touching neither disk nor cloud.
+type spyStore struct {
 	mu        sync.Mutex
 	guardado  string
 	gravacoes int
 }
 
-func (s *storeEspiao) Load() (string, error) {
+func (s *spyStore) Load() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.guardado, nil
 }
 
-func (s *storeEspiao) Save(v string) error {
+func (s *spyStore) Save(v string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.guardado = v
@@ -36,18 +36,18 @@ func (s *storeEspiao) Save(v string) error {
 	return nil
 }
 
-func (s *storeEspiao) Describe() string { return "store espiao" }
+func (s *spyStore) Describe() string { return "store espiao" }
 
-func (s *storeEspiao) estado() (string, int) {
+func (s *spyStore) estado() (string, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.guardado, s.gravacoes
 }
 
-// sessaoDeslogada imita o NextAuth para uma sessao que nao autenticou: HTTP
-// 200, corpo `null`, e Set-Cookie LIMPANDO os valores. Nao ha status de erro
-// nenhum -- o corpo e o unico lugar onde a diferenca aparece.
-func sessaoDeslogada(t *testing.T, cookieDeSaida string) (*httptest.Server, *int) {
+// loggedOutSession imitates NextAuth for a session that did not authenticate:
+// HTTP 200, a `null` body, and a Set-Cookie CLEARING the values. There is no
+// error status at all -- the body is the only place the difference shows.
+func loggedOutSession(t *testing.T, cookieDeSaida string) (*httptest.Server, *int) {
 	t.Helper()
 	var paginas int
 	mux := http.NewServeMux()
@@ -91,14 +91,15 @@ func rodarComStore(t *testing.T, srv *httptest.Server, store core.CredentialStor
 
 // TestRenovacaoQueNaoAutenticaNaoGrava e o §10 do SDK_V9.md.
 //
-// O NextAuth responde 200 com corpo null e Set-Cookie ESVAZIANDO os valores
-// para uma sessao nao autenticada. Gravando isso, e com a ordem de leitura
-// sendo store-antes-da-semente, trocar a env por uma credencial boa deixa de
-// resolver: o valor morto vence sempre, e a unica saida e apagar o objeto a
-// mao. O sintoma para quem opera e 401 sem explicacao.
+// NextAuth answers 200 with a null body and a Set-Cookie EMPTYING the values for
+// a session that did not authenticate. Writing that, with the read order being
+// store-before-seed, means swapping the env var for a good credential stops
+// fixing anything: the dead value always wins, and the only way out is deleting
+// the object by hand. The symptom for whoever operates it is a 401 with no
+// explanation.
 func TestRenovacaoQueNaoAutenticaNaoGrava(t *testing.T) {
-	srv, _ := sessaoDeslogada(t, "")
-	store := &storeEspiao{}
+	srv, _ := loggedOutSession(t, "")
+	store := &spyStore{}
 
 	err := rodarComStore(t, srv, store, core.JSONField("expires"))
 	if err == nil {
@@ -115,9 +116,10 @@ func TestRenovacaoQueNaoAutenticaNaoGrava(t *testing.T) {
 	}
 }
 
-// TestRenovacaoBoaContinuaGravando: o outro lado do critério 2. Sem isto o
-// conserto viraria "nunca grava", que resolve o defeito e apaga a feature.
-func TestRenovacaoBoaContinuaGravando(t *testing.T) {
+// TestAGoodRefreshStillWrites: the other side of criterion 2. Without it the fix
+// would become "it never writes", which resolves the defect and erases the
+// feature.
+func TestAGoodRefreshStillWrites(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "rotacionado"})
@@ -129,7 +131,7 @@ func TestRenovacaoBoaContinuaGravando(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
-	store := &storeEspiao{}
+	store := &spyStore{}
 	if err := rodarComStore(t, srv, store, core.JSONField("expires")); err != nil {
 		t.Fatalf("execucao boa falhou: %v", err)
 	}
@@ -143,12 +145,13 @@ func TestRenovacaoBoaContinuaGravando(t *testing.T) {
 	}
 }
 
-// TestSemExpiresAtGrava: com ExpiresAt nil o SDK nao tem sinal nenhum de que a
-// renovacao autenticou -- o status e 200 nos dois casos. Entao ele grava, e o
-// aviso na montagem e que diz a quem configurou o que isso custa.
-func TestSemExpiresAtGrava(t *testing.T) {
-	srv, _ := sessaoDeslogada(t, "seja-la-o-que-for")
-	store := &storeEspiao{}
+// TestWithoutExpiresAtItWrites: with a nil ExpiresAt the SDK has no signal at
+// all that the refresh authenticated -- the status is 200 either way. So it
+// writes, and the warning at assembly time is what tells whoever configured it
+// what that costs.
+func TestWithoutExpiresAtItWrites(t *testing.T) {
+	srv, _ := loggedOutSession(t, "seja-la-o-que-for")
+	store := &spyStore{}
 
 	if err := rodarComStore(t, srv, store, nil); err != nil {
 		t.Fatalf("sem ExpiresAt a execucao devia seguir: %v", err)
@@ -158,18 +161,19 @@ func TestSemExpiresAtGrava(t *testing.T) {
 	}
 }
 
-// TestARotacaoValeParaAsPaginasMesmoQuandoExpiresAtFalha e o critério 5: o
-// `aplicarRotacao` nao se move. A credencial reemitida tem de valer para esta
-// execucao mesmo que a validade nao venha -- o que muda e so quando ela e
+// TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails is criterion 5:
+// `applyRotation` does not move. The reissued credential has to apply to this
+// run even when the validity does not arrive -- what changes is only when it
+// is
 // PERSISTIDA.
-func TestARotacaoValeParaAsPaginasMesmoQuandoExpiresAtFalha(t *testing.T) {
+func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 	var mu sync.Mutex
 	var cookieNaPagina string
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/auth/session", func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "rotacionado"})
-		_, _ = fmt.Fprint(w, `null`) // sem "expires"
+		_, _ = fmt.Fprint(w, `null`) // no "expires"
 	})
 	mux.HandleFunc("/api/proxy/dados", func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -187,7 +191,8 @@ func TestARotacaoValeParaAsPaginasMesmoQuandoExpiresAtFalha(t *testing.T) {
 			Apply: core.AsCookie,
 			Refresh: &core.Refresh{
 				URL: srv.URL + "/api/auth/session",
-				// Sem ExpiresAt a execucao segue, e e ai que da para observar
+				// Without ExpiresAt the run goes on, and that is where it becomes
+				// observable
 				// se a rotacao chegou as paginas.
 			},
 		},
@@ -209,11 +214,12 @@ func TestARotacaoValeParaAsPaginasMesmoQuandoExpiresAtFalha(t *testing.T) {
 	}
 }
 
-// TestStoreSemExpiresAtAvisaNaMontagem e o critério 4. Nao e recusa: ha fontes
-// cuja renovacao nao devolve validade, e para elas o store ainda vale. Mas o
+// TestAStoreWithoutExpiresAtWarnsAtAssembly is criterion 4. Not a refusal: there
+// are sources whose refresh returns no validity, and for those the store is
+// still worth having. But the
 // limite tem de ser dito a quem configurou -- nessa combinacao o store
-// continua envenenavel, e nada em runtime vai revelar isso.
-func TestStoreSemExpiresAtAvisaNaMontagem(t *testing.T) {
+// stays poisonable, and nothing at runtime will reveal that.
+func TestAStoreWithoutExpiresAtWarnsAtAssembly(t *testing.T) {
 	var buf bytes.Buffer
 	anterior := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
@@ -222,7 +228,7 @@ func TestStoreSemExpiresAtAvisaNaMontagem(t *testing.T) {
 	c := &core.Credential{
 		Value:   func(context.Context) (string, error) { return "x", nil },
 		Apply:   core.AsBearer,
-		Refresh: &core.Refresh{URL: "http://x", Store: &storeEspiao{}},
+		Refresh: &core.Refresh{URL: "http://x", Store: &spyStore{}},
 	}
 	if err := c.Check(); err != nil {
 		t.Fatalf("virou erro em vez de aviso: %v", err)
@@ -236,9 +242,10 @@ func TestStoreSemExpiresAtAvisaNaMontagem(t *testing.T) {
 	}
 }
 
-// TestStoreComExpiresAtNaoAvisa: um aviso que aparece na configuracao certa
+// TestAStoreWithExpiresAtDoesNotWarn: a warning that appears on the right
+// configuration
 // ensina a ignorar avisos.
-func TestStoreComExpiresAtNaoAvisa(t *testing.T) {
+func TestAStoreWithExpiresAtDoesNotWarn(t *testing.T) {
 	var buf bytes.Buffer
 	anterior := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
@@ -248,7 +255,7 @@ func TestStoreComExpiresAtNaoAvisa(t *testing.T) {
 		Value: func(context.Context) (string, error) { return "x", nil },
 		Apply: core.AsBearer,
 		Refresh: &core.Refresh{
-			URL: "http://x", Store: &storeEspiao{}, ExpiresAt: core.JSONField("expires"),
+			URL: "http://x", Store: &spyStore{}, ExpiresAt: core.JSONField("expires"),
 		},
 	}
 	if err := c.Check(); err != nil {

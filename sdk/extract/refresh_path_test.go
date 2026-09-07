@@ -13,18 +13,18 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestRefreshRecebeACredencialEmOutroPrefixo e o §9 do SDK_V9.md.
+// TestTheRefreshGetsTheCredentialUnderAnotherPrefix e o §9 do SDK_V9.md.
 //
-// AsCookie semeia o jar a partir da URL da FONTE, e o cookiejar do Go, quando
-// o cookie nao traz Path, usa o diretorio dessa URL. Com a fonte em
-// /api/proxy/... e a renovacao em /api/auth/session, o jar nao envia nada --
-// o endpoint responde null para nao autenticado, ExpiresAt nao acha "expires",
-// e a execucao morre antes da primeira pagina.
+// AsCookie seeds the jar from the SOURCE's URL, and Go's cookiejar, when the
+// cookie carries no Path, uses that URL's directory. With the source on
+// /api/proxy/... and the refresh on /api/auth/session, the jar sends nothing --
+// the endpoint answers null for unauthenticated, ExpiresAt does not find
+// "expires", and the run dies before the first page.
 //
-// O teste que existia usava srv.URL + "/dados", cujo diretorio e "/", que casa
-// com tudo. Passava porque a fonte estava na raiz, e nenhuma API de verdade
-// esta.
-func TestRefreshRecebeACredencialEmOutroPrefixo(t *testing.T) {
+// The test that existed used srv.URL + "/dados", whose directory is "/", which
+// matches everything. It passed because the source was at the root, and no real
+// API is.
+func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 	casos := []struct {
 		nome    string
 		fonte   string
@@ -48,7 +48,7 @@ func TestRefreshRecebeACredencialEmOutroPrefixo(t *testing.T) {
 				cookieNaRenovacao = r.Header.Get("Cookie")
 				mu.Unlock()
 
-				// Como a API real: sem credencial, responde null.
+				// Like the real API: with no credential, it answers null.
 				if _, err := r.Cookie("session"); err != nil {
 					_, _ = fmt.Fprint(w, `null`)
 					return
@@ -90,13 +90,13 @@ func TestRefreshRecebeACredencialEmOutroPrefixo(t *testing.T) {
 			if cookieNaRenovacao == "" {
 				t.Error("a renovacao foi SEM a credencial")
 			}
-			// E o cookie REEMITIDO tem de valer para as paginas, senao a
-			// renovacao renovou para ninguem: o valor novo ficaria preso ao
-			// diretorio da URL de renovacao e as paginas seguiriam com o
-			// antigo, que e o mesmo defeito na direcao oposta.
+			// And the REISSUED cookie has to apply to the pages, or the refresh
+			// refreshed for nobody: the new value would stay pinned to the
+			// refresh URL's directory and the pages would carry on with the old
+			// one, which is the same defect in the opposite direction.
 			//
 			// O servidor de teste reemite SEM Path, de proposito: e o padrao
-			// do RFC 6265 e o caso que quebra.
+			// of RFC 6265 is the case that breaks.
 			for _, got := range cookieNasPaginas {
 				if got == "" {
 					t.Error("a pagina foi sem credencial nenhuma")

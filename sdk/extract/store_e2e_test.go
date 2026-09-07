@@ -16,13 +16,14 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestSegundaExecucaoUsaOQueVeioDoVolume e a prova do §7.13 da spec: rodar
-// duas vezes com a semente REMOVIDA depois da primeira, e a segunda autenticar
-// com o que veio do store.
+// TestTheSecondRunUsesWhatCameFromTheVolume e a prova do §7.13 da spec: rodar
+// twice with the seed REMOVED after the first, and the second authenticating
+// with what came out of the store.
 //
-// E literalmente o que o consumidor pediu -- parar de recolar o cookie por
+// It is literally what the consumer asked for -- to stop re-pasting the cookie
+// once per
 // janela.
-func TestSegundaExecucaoUsaOQueVeioDoVolume(t *testing.T) {
+func TestTheSecondRunUsesWhatCameFromTheVolume(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -86,12 +87,12 @@ func TestSegundaExecucaoUsaOQueVeioDoVolume(t *testing.T) {
 		return nil
 	}
 
-	// Primeira: a semente existe, e a rotação é gravada.
+	// First: the seed exists, and the rotation is written.
 	if err := rodar("colado-pelo-humano"); err != nil {
 		t.Fatalf("primeira execucao: %v", err)
 	}
 
-	// Segunda: a semente FOI EMBORA. Só o volume tem credencial.
+	// Second: the seed is GONE. Only the volume has a credential.
 	if err := rodar(""); err != nil {
 		t.Fatalf("segunda execucao, sem a semente: %v", err)
 	}
@@ -109,9 +110,9 @@ func TestSegundaExecucaoUsaOQueVeioDoVolume(t *testing.T) {
 	}
 }
 
-// TestFalhaAoGravarNaoDerrubaAExecucao: a carga ja aconteceu; o que se perdeu
-// foi a rotacao. Mas tem de gritar, e em Stats -- nao so no log.
-func TestFalhaAoGravarNaoDerrubaAExecucao(t *testing.T) {
+// TestAFailedWriteDoesNotStopTheRun: the load already happened; what was lost is
+// the rotation. But it has to shout, and in Stats -- not only in the log.
+func TestAFailedWriteDoesNotStopTheRun(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth", func(w http.ResponseWriter, _ *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "session", Value: "novo"})
@@ -160,10 +161,11 @@ func (storeQueNaoGrava) Load() (string, error) { return "", nil }
 func (storeQueNaoGrava) Save(string) error     { return fmt.Errorf("disco cheio") }
 func (storeQueNaoGrava) Describe() string      { return "store de teste" }
 
-// TestACredencialNuncaAparecEmLog e o §7.8 da spec. Um valor que vaza para o
-// log vaza para o agregador de logs, que muita gente le -- e seria repetir,
-// noutro lugar, o erro de guardar credencial onde nao se guarda.
-func TestACredencialNuncaAparecEmLog(t *testing.T) {
+// TestTheCredentialNeverAppearsInALog is §7.8 of the spec. A value that leaks
+// into the log leaks into the log aggregator, which plenty of people read -- and
+// it would be repeating, somewhere else, the mistake of keeping a credential
+// where one is not kept.
+func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 	const segredo = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..MUlTVFJP"
 	const rotacionado = "ROTACIONADO-eyJhbGciOiJkaXI"
 

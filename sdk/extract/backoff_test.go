@@ -7,11 +7,11 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestBackoffSemJitterNaoEntraEmPanico: rand.Int63n entra em panico com
-// argumento nao-positivo, entao um RetryConfig{MaxAttempts: 5} e mais nada --
-// que e uma coisa razoavel de se escrever -- derrubava o processo no primeiro
-// retry. Nao ter jitter e uma escolha, nao um erro.
-func TestBackoffSemJitterNaoEntraEmPanico(t *testing.T) {
+// TestBackoffWithoutJitterDoesNotPanic: rand.Int63n panics on a non-positive
+// argument, so a RetryConfig{MaxAttempts: 5} and nothing else -- which is a
+// reasonable thing to write -- took the process down on the first retry. Having
+// no jitter is a choice, not a mistake.
+func TestBackoffWithoutJitterDoesNotPanic(t *testing.T) {
 	casos := []struct {
 		nome string
 		cfg  core.RetryConfig
@@ -32,10 +32,10 @@ func TestBackoffSemJitterNaoEntraEmPanico(t *testing.T) {
 	}
 }
 
-// TestBackoffSemMaxBackoffNaoTravaEmZero: com MaxBackoff zerado o teto era
-// zero, e todo backoff era truncado para nada -- um retry imediato em loop
-// contra uma API que acabou de devolver 429.
-func TestBackoffSemMaxBackoffNaoTravaEmZero(t *testing.T) {
+// TestBackoffWithoutMaxBackoffDoesNotStickAtZero: with MaxBackoff zeroed the
+// ceiling was zero, and every backoff was truncated to nothing -- an immediate
+// retry in a loop against an API that had just returned a 429.
+func TestBackoffWithoutMaxBackoffDoesNotStickAtZero(t *testing.T) {
 	cfg := core.RetryConfig{MaxAttempts: 3, InitialBackoff: 100 * time.Millisecond}
 	if d := calculateBackoff(1, &cfg); d < 200*time.Millisecond {
 		t.Errorf("backoff = %v, esperado ao menos 200ms (2^1 x 100ms)", d)

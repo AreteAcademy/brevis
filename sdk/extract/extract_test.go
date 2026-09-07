@@ -338,8 +338,8 @@ func TestBodyStreamsFully(t *testing.T) {
 	}
 }
 
-// TestPostSendsMethodBodyAndHeaders cobre três campos que existiam sem
-// nenhum teste: um fetcher de API que exige POST nunca foi exercitado.
+// TestPostSendsMethodBodyAndHeaders covers three fields that existed with no
+// test at all: a fetcher for an API that requires POST was never exercised.
 func TestPostSendsMethodBodyAndHeaders(t *testing.T) {
 	var (
 		gotMethod string
@@ -395,8 +395,8 @@ func TestPostSendsMethodBodyAndHeaders(t *testing.T) {
 	}
 }
 
-// TestTotalTimeoutStopsTheWalk: o TotalTimeout cobre a caminhada inteira, não
-// cada tentativa. Uma API que pagina devagar tem de parar nele.
+// TestTotalTimeoutStopsTheWalk: TotalTimeout covers the whole walk, not each
+// attempt. An API that paginates slowly has to stop on it.
 func TestTotalTimeoutStopsTheWalk(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(40 * time.Millisecond)

@@ -14,8 +14,9 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// servidorComLogin troca um segredo por um token e exige o token nos dados.
-func servidorComLogin(t *testing.T, falharVezes int32) (*httptest.Server, *atomic.Int32) {
+// serverWithLogin trades a secret for a token and requires the token on the
+// data endpoint.
+func serverWithLogin(t *testing.T, falharVezes int32) (*httptest.Server, *atomic.Int32) {
 	t.Helper()
 	var logins atomic.Int32
 	var falhas atomic.Int32
@@ -76,10 +77,10 @@ func credencialDeLogin(srv *httptest.Server) *core.Credential {
 	}
 }
 
-// TestLoginTrocaSegredoPorToken é o item 9: a requisição mais sensível do
-// fetcher deixa de ser a única sem as garantias das outras.
-func TestLoginTrocaSegredoPorToken(t *testing.T) {
-	srv, logins := servidorComLogin(t, 0)
+// TestLoginTradesSecretsForAToken is item 9: the fetcher's most sensitive
+// request stops being the only one without the others' guarantees.
+func TestLoginTradesSecretsForAToken(t *testing.T) {
+	srv, logins := serverWithLogin(t, 0)
 
 	if err := lerTudo(t, core.Source{URL: srv.URL + "/dados", Auth: credencialDeLogin(srv)}); err != nil {
 		t.Fatalf("Read: %v", err)
@@ -89,11 +90,11 @@ func TestLoginTrocaSegredoPorToken(t *testing.T) {
 	}
 }
 
-// TestLoginTemRetry é a garantia que a versão escrita à mão não tem. Um 503 no
-// login derrubava a execução inteira; aqui ele custa um retry, como qualquer
-// outra requisição.
-func TestLoginTemRetry(t *testing.T) {
-	srv, logins := servidorComLogin(t, 2)
+// TestLoginHasRetry is the guarantee the hand-written version does not have. A
+// 503 on the login took the whole run down; here it costs one retry, like any
+// other request.
+func TestLoginHasRetry(t *testing.T) {
+	srv, logins := serverWithLogin(t, 2)
 
 	err := lerTudo(t, core.Source{
 		URL:  srv.URL + "/dados",
@@ -110,17 +111,17 @@ func TestLoginTemRetry(t *testing.T) {
 	}
 }
 
-// TestLoginCacheiaComTTL: algumas APIs limitam a FREQUÊNCIA de autenticação em
-// vez da de requisições.
-func TestLoginCacheiaComTTL(t *testing.T) {
-	srv, logins := servidorComLogin(t, 0)
+// TestLoginCachesWithTTL: some APIs rate-limit the FREQUENCY of authentication
+// rather than that of requests.
+func TestLoginCachesWithTTL(t *testing.T) {
+	srv, logins := serverWithLogin(t, 0)
 	cred := credencialDeLogin(srv)
 	cred.TTL = time.Hour
 
 	for i := 0; i < 3; i++ {
 		if _, err := cred.Get(context.Background()); err != nil {
-			// A primeira chamada precisa do cliente, que só existe dentro do
-			// fetch -- então a leitura vem primeiro.
+			// The first call needs the client, which only exists inside the
+			// fetch -- so the read comes first.
 			_ = err
 		}
 	}
@@ -137,9 +138,10 @@ func TestLoginCacheiaComTTL(t *testing.T) {
 	}
 }
 
-// TestLoginQueFalhaParaAExecucao: seguir mandaria toda página com um
-// Authorization vazio, e o erro voltaria culpando o endpoint de dados.
-func TestLoginQueFalhaParaAExecucao(t *testing.T) {
+// TestALoginThatFailsStopsTheRun: carrying on would send every page with an
+// empty Authorization, and the error would come back blaming the data
+// endpoint.
+func TestALoginThatFailsStopsTheRun(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "credencial recusada", http.StatusUnauthorized)
@@ -159,9 +161,9 @@ func TestLoginQueFalhaParaAExecucao(t *testing.T) {
 	}
 }
 
-// TestLoginNaoVazaOCabecalhoDaFonte: o endpoint de login pode ser de outro
-// host, e o cabeçalho da fonte pode carregar segredo.
-func TestLoginNaoVazaOCabecalhoDaFonte(t *testing.T) {
+// TestLoginDoesNotLeakTheSourcesHeader: the login endpoint may live on another
+// host, and the source's header may carry a secret.
+func TestLoginDoesNotLeakTheSourcesHeader(t *testing.T) {
 	var vistoNoLogin string
 	mux := http.NewServeMux()
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
@@ -187,8 +189,8 @@ func TestLoginNaoVazaOCabecalhoDaFonte(t *testing.T) {
 	}
 }
 
-// TestLoginRecusaConfiguracaoQueNaoFunciona.
-func TestLoginRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
+// TestLoginRefusesConfigurationThatCannotWork.
+func TestLoginRefusesConfigurationThatCannotWork(t *testing.T) {
 	casos := []struct {
 		nome string
 		cred *core.Credential
@@ -219,10 +221,10 @@ func TestLoginRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
 	}
 }
 
-// TestCampoJSONAusenteEErro: um token ausente viraria um cabeçalho vazio e um
-// 401 mais adiante, culpando a API por um caminho que este lado escreveu
+// TestAMissingJSONFieldIsAnError: an absent token would become an empty header
+// and a 401 further down, blaming the API for a path this side wrote
 // errado.
-func TestCampoJSONAusenteEErro(t *testing.T) {
+func TestAMissingJSONFieldIsAnError(t *testing.T) {
 	_, err := core.JSONToken("data.accessToken")([]byte(`{"data":{"outro":"x"}}`))
 	if err == nil {
 		t.Fatal("campo ausente passou")

@@ -5,10 +5,9 @@ import (
 	"testing"
 )
 
-// A URL redigida aparece em toda linha de log do extract e em toda mensagem de
-// erro. Um vazamento aqui é uma credencial viva num agregador de logs que
-// muita gente lê.
-func TestRedactNaoDeixaSegredoPassar(t *testing.T) {
+// The redacted URL appears on every extract log line and in every error message.
+// A leak here is a live credential in a log aggregator plenty of people read.
+func TestRedactLetsNoSecretThrough(t *testing.T) {
 	casos := []string{
 		"https://api.exemplo.com/v1?key=SEGREDO",
 		"https://api.exemplo.com/v1?api_key=SEGREDO",
@@ -28,10 +27,11 @@ func TestRedactNaoDeixaSegredoPassar(t *testing.T) {
 		"https://api.exemplo.com/v1?X-Api-Key=SEGREDO",
 		"https://api.exemplo.com/v1?sessionId=SEGREDO",
 		"https://api.exemplo.com/v1?credentials=SEGREDO",
-		// A pior de todas: a senha no userinfo, que o url.String imprime
+		// The worst of them all: the password in the userinfo, which url.String
+		// prints
 		// inteira.
 		"https://usuario:SEGREDO@api.exemplo.com/v1",
-		// E combinada, para não passar por acidente numa só.
+		// And combined, so it does not pass by accident on a single one.
 		"https://usuario:SEGREDO@api.exemplo.com/v1?token=SEGREDO&latitude=-23.5",
 	}
 
@@ -43,9 +43,9 @@ func TestRedactNaoDeixaSegredoPassar(t *testing.T) {
 	}
 }
 
-// Redigir demais não pode apagar o que serve para depurar: a URL tem de
-// continuar reconhecível.
-func TestRedactPreservaOQueNaoESegredo(t *testing.T) {
+// Redacting too much must not erase what is useful for debugging: the URL has to
+// stay recognizable.
+func TestRedactPreservesWhatIsNotASecret(t *testing.T) {
 	got := redactURL("https://api.open-meteo.com/v1/forecast?latitude=-23.55&longitude=-46.63&api_key=X")
 
 	for _, quer := range []string{"api.open-meteo.com", "/v1/forecast", "latitude=-23.55", "longitude=-46.63"} {
@@ -58,23 +58,24 @@ func TestRedactPreservaOQueNaoESegredo(t *testing.T) {
 	}
 }
 
-// Um usuário sem senha não é segredo, e apagá-lo tiraria informação útil.
-func TestRedactMantemUsuarioSemSenha(t *testing.T) {
+// A user with no password is not a secret, and erasing it would remove useful
+// information.
+func TestRedactKeepsAUserWithNoPassword(t *testing.T) {
 	got := redactURL("https://usuario@api.exemplo.com/v1")
 	if !strings.Contains(got, "usuario") {
 		t.Errorf("o usuário sem senha sumiu: %s", got)
 	}
 }
 
-func TestRedactUrlInvalidaNaoEntraEmPanico(t *testing.T) {
+func TestRedactDoesNotPanicOnAnInvalidURL(t *testing.T) {
 	if got := redactURL("://isto-nao-e-url"); got != "[invalid url]" {
 		t.Errorf("redactURL(inválida) = %q", got)
 	}
 }
 
-// A redação erra para o lado seguro: "monkey" contém "key" e vira ***. É o
-// preço de não depender de adivinhar o nome que o fornecedor escolheu.
-func TestRedactErraParaOLadoSeguro(t *testing.T) {
+// The redaction errs on the safe side: "monkey" contains "key" and becomes ***.
+// It is the price of not depending on guessing the name the vendor chose.
+func TestRedactErrsOnTheSafeSide(t *testing.T) {
 	if got := redactURL("https://x/y?monkey=1"); !strings.Contains(got, "REDACTED") {
 		t.Errorf("esperado sobre-redigir: %s", got)
 	}

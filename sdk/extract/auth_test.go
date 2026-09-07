@@ -14,8 +14,9 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestAuthAplicaOSegredo: as quatro formas de por a credencial na requisicao.
-func TestAuthAplicaOSegredo(t *testing.T) {
+// TestAuthAppliesTheSecret: the four ways of putting the credential on the
+// request.
+func TestAuthAppliesTheSecret(t *testing.T) {
 	casos := []struct {
 		nome      string
 		aplicar   core.Applier
@@ -50,10 +51,10 @@ func TestAuthAplicaOSegredo(t *testing.T) {
 	}
 }
 
-// TestRefreshRenovaOCookieParaAsPaginas: o mecanismo inteiro. A renovacao
-// reemite o cookie, o jar absorve, e as paginas seguintes vao com o novo --
-// sem nada ser gravado em lugar nenhum.
-func TestRefreshRenovaOCookieParaAsPaginas(t *testing.T) {
+// TestRefreshRenewsTheCookieForThePages: o mecanismo inteiro. A renovacao
+// reissues the cookie, the jar absorbs it, and the following pages go with the
+// new one -- with nothing written anywhere.
+func TestRefreshRenewsTheCookieForThePages(t *testing.T) {
 	var mu sync.Mutex
 	var dados []string
 
@@ -100,10 +101,10 @@ func TestRefreshRenovaOCookieParaAsPaginas(t *testing.T) {
 	}
 }
 
-// TestRefreshQueFalhaParaARun: seguir depois de uma renovacao recusada manda
-// todas as paginas com uma credencial que a API acabou de negar, e o erro
+// TestARefreshThatFailsStopsTheRun: carrying on after a refused refresh sends
+// every page with a credential the API just denied, and the error
 // aparece culpando o endpoint de dados.
-func TestRefreshQueFalhaParaARun(t *testing.T) {
+func TestARefreshThatFailsStopsTheRun(t *testing.T) {
 	var pediuDados atomic.Bool
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/session", func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +120,7 @@ func TestRefreshQueFalhaParaARun(t *testing.T) {
 	_, err := JSON(context.Background(), core.Source{
 		URL: srv.URL + "/dados",
 		Auth: &core.Credential{
-			Value:   core.FromEnv("PATH"), // qualquer env que exista
+			Value:   core.FromEnv("PATH"), // any env var that exists
 			Apply:   core.AsBearer,
 			Refresh: &core.Refresh{URL: srv.URL + "/auth/session"},
 		},
@@ -136,9 +137,10 @@ func TestRefreshQueFalhaParaARun(t *testing.T) {
 	}
 }
 
-// TestTTLCacheiaOLogin: a API do ana bloqueia por FREQUENCIA de auth, nao por
-// requisicao. Sem cache, cada pipeline no processo faz um login novo.
-func TestTTLCacheiaOLogin(t *testing.T) {
+// TestTTLCachesTheLogin: the ana API blocks on authentication FREQUENCY, not on
+// requests. Without a cache, every pipeline in the process makes a fresh
+// login.
+func TestTTLCachesTheLogin(t *testing.T) {
 	var logins atomic.Int32
 	cred := &core.Credential{
 		TTL:   time.Hour,
@@ -166,9 +168,9 @@ func TestTTLCacheiaOLogin(t *testing.T) {
 	}
 }
 
-// TestSemTTLNaoCacheia: um TTL zerado precisa continuar chamando Value, ou o
-// campo estaria cacheando sem ninguem pedir.
-func TestSemTTLNaoCacheia(t *testing.T) {
+// TestWithoutTTLItDoesNotCache: a zeroed TTL has to go on calling Value, or the
+// field would be caching without anybody asking.
+func TestWithoutTTLItDoesNotCache(t *testing.T) {
 	var n int
 	cred := &core.Credential{
 		Apply: core.AsBearer,
@@ -182,9 +184,9 @@ func TestSemTTLNaoCacheia(t *testing.T) {
 	}
 }
 
-// TestAuthRecusaConfiguracaoQueNaoFunciona: cada uma destas passaria e viraria
-// 401, ou um campo escrito que nao faz nada.
-func TestAuthRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
+// TestAuthRefusesConfigurationThatCannotWork: each of these would pass and
+// become a 401, or a written field that does nothing.
+func TestAuthRefusesConfigurationThatCannotWork(t *testing.T) {
 	casos := []struct {
 		nome string
 		cred *core.Credential
@@ -214,17 +216,18 @@ func TestAuthRecusaConfiguracaoQueNaoFunciona(t *testing.T) {
 	}
 }
 
-// TestEnvAusenteFalaONome: senao vira header vazio e 401 culpando a API.
-func TestEnvAusenteFalaONome(t *testing.T) {
+// TestAMissingEnvVarSaysItsName: senao vira header vazio e 401 culpando a API.
+func TestAMissingEnvVarSaysItsName(t *testing.T) {
 	_, err := core.FromEnv("BREVIS_ENV_QUE_NAO_EXISTE")(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "BREVIS_ENV_QUE_NAO_EXISTE") {
 		t.Errorf("erro nao nomeia a variavel: %v", err)
 	}
 }
 
-// TestAuthNaoMutaOHeaderDoCaller: o mapa e do consumidor e nao pode voltar
+// TestAuthDoesNotMutateTheCallersHeader: the map belongs to the consumer and
+// must not come back
 // carregando o segredo.
-func TestAuthNaoMutaOHeaderDoCaller(t *testing.T) {
+func TestAuthDoesNotMutateTheCallersHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	}))
@@ -241,10 +244,10 @@ func TestAuthNaoMutaOHeaderDoCaller(t *testing.T) {
 	}
 }
 
-// TestRefreshTentaDeNovo: as páginas têm três tentativas; a renovação tinha
-// uma. Uma queda de rede na renovação matava a execução inteira enquanto a
+// TestRefreshRetries: the pages get three attempts; the refresh had one. A
+// network blip on the refresh killed the whole run while the
 // mesma queda no endpoint de dados custava um retry.
-func TestRefreshTentaDeNovo(t *testing.T) {
+func TestRefreshRetries(t *testing.T) {
 	var tentativas atomic.Int32
 
 	mux := http.NewServeMux()

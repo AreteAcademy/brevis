@@ -11,14 +11,14 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// jwtDePadding imita um token do NextAuth: base64 com "=" de padding, que e o
-// caractere que quebra quem divide nome=valor em todos os "=".
-const jwtDePadding = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
+// paddedJWT imitates a NextAuth token: base64 with "=" padding, which is the
+// character that breaks whoever splits name=value on every "=".
+const paddedJWT = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
 
-// TestCookieDoCallerChegaInteiro: o consumidor escreveu 36 linhas para juntar
+// TestTheCallersCookieArrivesWhole: the consumer wrote 36 lines to assemble
 // Set-Cookie ao header, e a armadilha foi cortar o JWT no segundo "=". Aqui o
-// cookie precisa chegar identico ao que o caller passou.
-func TestCookieDoCallerChegaInteiro(t *testing.T) {
+// the cookie has to arrive identical to what the caller passed.
+func TestTheCallersCookieArrivesWhole(t *testing.T) {
 	var recebido string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("session-token")
@@ -33,17 +33,18 @@ func TestCookieDoCallerChegaInteiro(t *testing.T) {
 
 	drenar(t, core.Source{
 		URL:    srv.URL,
-		Header: map[string][]string{"Cookie": {"session-token=" + jwtDePadding}},
+		Header: map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
 
-	if recebido != jwtDePadding {
-		t.Errorf("o servidor recebeu %q, o caller mandou %q", recebido, jwtDePadding)
+	if recebido != paddedJWT {
+		t.Errorf("o servidor recebeu %q, o caller mandou %q", recebido, paddedJWT)
 	}
 }
 
-// TestCookieRenovadoSobreveveAProximaPagina: era exatamente o que o cookie.go
-// do consumidor fazia a mao. Se o jar sumir, a pagina 2 vai com o token velho.
-func TestCookieRenovadoSobreveveAProximaPagina(t *testing.T) {
+// TestARenewedCookieSurvivesIntoTheNextPage: it is exactly what the consumer's
+// cookie.go did by hand. If the jar disappears, page 2 goes with the old
+// token.
+func TestARenewedCookieSurvivesIntoTheNextPage(t *testing.T) {
 	var vistos []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("session-token")
@@ -67,7 +68,7 @@ func TestCookieRenovadoSobreveveAProximaPagina(t *testing.T) {
 		URL:     srv.URL,
 		PageKey: "page",
 		DataKey: "results",
-		Header:  map[string][]string{"Cookie": {"session-token=" + jwtDePadding}},
+		Header:  map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
 
 	if len(vistos) != 2 {
@@ -78,10 +79,10 @@ func TestCookieRenovadoSobreveveAProximaPagina(t *testing.T) {
 	}
 }
 
-// TestCookieNaoVaiDuplicado: o header do caller e o jar sao a mesma coisa. Se
-// os dois forem juntos, o servidor recebe dois valores para o mesmo nome e
+// TestTheCookieDoesNotGoTwice: the caller's header and the jar are the same
+// thing. If both go, the server receives two values for the same name and
 // escolhe um deles -- silenciosamente o errado.
-func TestCookieNaoVaiDuplicado(t *testing.T) {
+func TestTheCookieDoesNotGoTwice(t *testing.T) {
 	var bruto string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bruto = r.Header.Get("Cookie")
@@ -98,7 +99,7 @@ func TestCookieNaoVaiDuplicado(t *testing.T) {
 		URL:     srv.URL,
 		PageKey: "page",
 		DataKey: "results",
-		Header:  map[string][]string{"Cookie": {"session-token=" + jwtDePadding}},
+		Header:  map[string][]string{"Cookie": {"session-token=" + paddedJWT}},
 	})
 
 	if n := strings.Count(bruto, "session-token="); n != 1 {
@@ -106,9 +107,9 @@ func TestCookieNaoVaiDuplicado(t *testing.T) {
 	}
 }
 
-// TestCookieMalformadoFalhaCedo: um header de cookie invalido tem que reclamar
-// na montagem, nao virar 401 no servidor.
-func TestCookieMalformadoFalhaCedo(t *testing.T) {
+// TestAMalformedCookieFailsEarly: an invalid cookie header has to complain at
+// assembly time, not become a 401 at the server.
+func TestAMalformedCookieFailsEarly(t *testing.T) {
 	_, err := JSON(context.Background(), core.Source{
 		URL:    "http://exemplo.invalido",
 		Header: map[string][]string{"Cookie": {"isso nao e um cookie"}},
@@ -121,18 +122,19 @@ func TestCookieMalformadoFalhaCedo(t *testing.T) {
 	}
 }
 
-// TestHeaderDoCallerNaoEMutado: o header e do consumidor, e ele pode reusar o
+// TestTheCallersHeaderIsNotMutated: the header belongs to the consumer, and they
+// may reuse the
 // mesmo mapa em outra pipeline.
-func TestHeaderDoCallerNaoEMutado(t *testing.T) {
+func TestTheCallersHeaderIsNotMutated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
 	}))
 	defer srv.Close()
 
-	h := map[string][]string{"Cookie": {"session-token=" + jwtDePadding}}
+	h := map[string][]string{"Cookie": {"session-token=" + paddedJWT}}
 	drenar(t, core.Source{URL: srv.URL, Header: h})
 
-	if got := http.Header(h).Get("Cookie"); got != "session-token="+jwtDePadding {
+	if got := http.Header(h).Get("Cookie"); got != "session-token="+paddedJWT {
 		t.Errorf("o SDK mexeu no header do caller: %q", got)
 	}
 }
@@ -150,14 +152,15 @@ func drenar(t *testing.T, s core.Source) {
 	}
 }
 
-// TestCookieSecurePrefixoNaoSomeEmSilencio: o nome real do cookie do NextAuth
-// comeca com __Secure-, que numa spec de navegador so vale sobre https. Se o
+// TestASecurePrefixedCookieDoesNotVanishSilently: o nome real do cookie do NextAuth
+// starts with __Secure-, which in a browser spec only applies over https. If
+// the
 // jar aplicasse essa regra, o cookie sumiria antes de sair -- e o SDK falharia
-// com 401 sem nunca dizer que descartou a credencial.
+// with a 401 without ever saying it discarded the credential.
 //
-// O jar da stdlib nao aplica a regra do prefixo. Este teste existe para o dia
-// em que isso mudar.
-func TestCookieSecurePrefixoNaoSomeEmSilencio(t *testing.T) {
+// The stdlib's jar does not apply the prefix rule. This test exists for the day
+// that changes.
+func TestASecurePrefixedCookieDoesNotVanishSilently(t *testing.T) {
 	var visto string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		visto = r.Header.Get("Cookie")

@@ -12,9 +12,9 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// paginaNumerada devolve tres paginas de uma linha e depois vazio, gravando a
-// sequencia de numeros que recebeu.
-func paginaNumerada(t *testing.T, chave string, vistos *[]string) *httptest.Server {
+// numberedPage returns three one-row pages and then an empty one, recording the
+// sequence of numbers it received.
+func numberedPage(t *testing.T, chave string, vistos *[]string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bruto := r.URL.Query().Get(chave)
@@ -37,11 +37,12 @@ func paginaNumerada(t *testing.T, chave string, vistos *[]string) *httptest.Serv
 	}))
 }
 
-// TestPageKeyAndaDeUmEmUm: o motivo do campo existir. Antes disso a receita
-// era OffsetKey "page" com PageSize 1, que funcionava por acidente.
-func TestPageKeyAndaDeUmEmUm(t *testing.T) {
+// TestPageKeyAdvancesOneAtATime: the reason the field exists. Before it the
+// recipe
+// was OffsetKey "page" with PageSize 1, which worked by accident.
+func TestPageKeyAdvancesOneAtATime(t *testing.T) {
 	var vistos []string
-	srv := paginaNumerada(t, "page", &vistos)
+	srv := numberedPage(t, "page", &vistos)
 	defer srv.Close()
 
 	linhas := colher(t, core.Source{URL: srv.URL, PageKey: "page", DataKey: "results"})
@@ -54,10 +55,10 @@ func TestPageKeyAndaDeUmEmUm(t *testing.T) {
 	}
 }
 
-// TestPageKeyNumeraAPrimeiraRequisicao: sem isso o servidor escolhe o padrao
-// dele e o SDK adivinha o proximo numero -- adivinhar errado pula uma pagina
+// TestPageKeyNumbersTheFirstRequest: without it the server picks its own default
+// and the SDK guesses the next number -- guessing wrong skips a page
 // inteira em silencio.
-func TestPageKeyNumeraAPrimeiraRequisicao(t *testing.T) {
+func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 	casos := []struct {
 		nome      string
 		url       func(string) string
@@ -72,7 +73,7 @@ func TestPageKeyNumeraAPrimeiraRequisicao(t *testing.T) {
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
 			var vistos []string
-			srv := paginaNumerada(t, "page", &vistos)
+			srv := numberedPage(t, "page", &vistos)
 			defer srv.Close()
 
 			colher(t, core.Source{
@@ -88,12 +89,12 @@ func TestPageKeyNumeraAPrimeiraRequisicao(t *testing.T) {
 	}
 }
 
-// TestApiIndexadaEmZeroDizNaURL: FirstPage nao consegue expressar "comece no
-// zero", porque zero e o valor de quem nao setou. A saida documentada e por
-// a pagina zero na URL. Este teste existe para que a doc continue verdadeira.
-func TestApiIndexadaEmZeroDizNaURL(t *testing.T) {
+// TestAZeroIndexedAPISaysSoInTheURL: FirstPage cannot express "start at zero",
+// because zero is the value of somebody who set nothing. The documented way out
+// is putting page zero in the URL. This test exists so the doc stays true.
+func TestAZeroIndexedAPISaysSoInTheURL(t *testing.T) {
 	var vistos []string
-	srv := paginaNumerada(t, "page", &vistos)
+	srv := numberedPage(t, "page", &vistos)
 	defer srv.Close()
 
 	colher(t, core.Source{URL: srv.URL + "?page=0", PageKey: "page", DataKey: "results"})
@@ -102,9 +103,9 @@ func TestApiIndexadaEmZeroDizNaURL(t *testing.T) {
 	}
 }
 
-// TestPaginacaoRecusaDuasEstrategias: com duas setadas, uma seria lida e a
-// outra ignorada em silencio -- que e o defeito que este SDK vive achando.
-func TestPaginacaoRecusaDuasEstrategias(t *testing.T) {
+// TestPaginationRefusesTwoStrategies: with two set, one would be read and the
+// other ignored in silence -- which is the defect this SDK keeps finding.
+func TestPaginationRefusesTwoStrategies(t *testing.T) {
 	casos := []core.Source{
 		{URL: "http://x", PageKey: "page", OffsetKey: "offset"},
 		{URL: "http://x", CursorKey: "c", PageKey: "page"},
@@ -117,9 +118,9 @@ func TestPaginacaoRecusaDuasEstrategias(t *testing.T) {
 	}
 }
 
-// TestPageSizeSozinhoENegado: PageSize e o passo do OffsetKey. Setado sem ele,
-// nao faz nada -- e quem escreveu achou que fazia.
-func TestPageSizeSozinhoENegado(t *testing.T) {
+// TestPageSizeAloneIsRefused: PageSize is OffsetKey's step. Set without it, it
+// does nothing -- and whoever wrote it believed it did.
+func TestPageSizeAloneIsRefused(t *testing.T) {
 	_, err := JSON(context.Background(), core.Source{URL: "http://x", PageSize: 100}, nil)
 	if err == nil {
 		t.Fatal("PageSize sem OffsetKey passou")
