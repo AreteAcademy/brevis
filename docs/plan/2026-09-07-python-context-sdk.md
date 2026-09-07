@@ -1,7 +1,8 @@
 # A Python SDK for context, and the contract that makes it possible
 
 **Written on** 2026-09-07 · **Base** engine `v0.7.0`, `sdk/v0.53.0`
-**Status** proposed — not started
+**Status** in progress — steps 1, 2, 4 and 8 done on 2026-09-07. What is left:
+`sdk/context` in Go (§6), the context on the graph (§7), and publishing to PyPI.
 **Decided 2026-09-07** (§1.1): the reader is always another step of the same
 run, and there is one write path that fails loudly. No context API, and the
 reason is written down rather than assumed.
@@ -482,7 +483,7 @@ Plus, per `CONTRIBUTING.md`, each of these with proof it bites:
 |---|---|---|
 | 1 | The engine's contract: `BREVIS_INPUT`, `BREVIS_OUTPUT`, reading the termination message | everything |
 | 2 | `task_runs.saida` + assembling `BREVIS_INPUT` from it | resumed runs, and the request's "recover on failure" |
-| 3 | `needs:` in the YAML, validated at publish | the input stays small, and the declaration carries weight |
+| ~~3~~ | ~~`needs:` in the YAML~~ — **dropped.** `depends_on` already declares it, and reading a step you do not depend on is a race against the scheduler rather than something to permit. A second field would be one more thing to keep in sync for no capability | |
 | 4 | `sdk-python/`, the package, its tests | the community this is for |
 | 5 | `sdk.Context` in the Go SDK | one contract, two languages |
 | 6 | The cross-language end-to-end test | the proof it is not "works if you use Go" |
