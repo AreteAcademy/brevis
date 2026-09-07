@@ -44,7 +44,7 @@ func State(status string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", classeEstado(status)}
+		var templ_7745c5c3_Var2 = []any{"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", stateClass(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -66,7 +66,7 @@ func State(status string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var4 = []any{"h-1.5 w-1.5 rounded-full", pontoEstado(status)}
+		var templ_7745c5c3_Var4 = []any{"h-1.5 w-1.5 rounded-full", stateDot(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var4...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -89,9 +89,9 @@ func State(status string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(rotuloEstado(status))
+		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(stateLabel(status))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 21, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 21, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -128,7 +128,7 @@ func Dot(status string) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var8 = []any{"inline-block h-2.5 w-2.5 rounded-full", pontoEstado(status)}
+		var templ_7745c5c3_Var8 = []any{"inline-block h-2.5 w-2.5 rounded-full", stateDot(status)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var8...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -151,9 +151,9 @@ func Dot(status string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var10 string
-		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(rotuloEstado(status))
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(stateLabel(status))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 30, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 30, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -167,7 +167,7 @@ func Dot(status string) templ.Component {
 	})
 }
 
-func rotuloEstado(s string) string {
+func stateLabel(s string) string {
 	switch s {
 	case "success":
 		return "success"
@@ -189,7 +189,7 @@ func rotuloEstado(s string) string {
 	return s
 }
 
-func classeEstado(s string) string {
+func stateClass(s string) string {
 	switch s {
 	case "success":
 		return "border-state-success/25 bg-state-success/10 text-state-success"
@@ -207,7 +207,7 @@ func classeEstado(s string) string {
 	return "border-line bg-parchment text-muted"
 }
 
-func pontoEstado(s string) string {
+func stateDot(s string) string {
 	switch s {
 	case "success":
 		return "bg-state-success"
@@ -226,7 +226,7 @@ func pontoEstado(s string) string {
 }
 
 // Card is the base panel: a light surface, a thin border, a warm wide shadow.
-func Card(rotulo string) templ.Component {
+func Card(label string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -251,15 +251,15 @@ func Card(rotulo string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if rotulo != "" {
+		if label != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"kicker mb-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
-			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(rotulo)
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 96, Col: 34}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 96, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -285,7 +285,7 @@ func Card(rotulo string) templ.Component {
 // Metric is one of the four numbers at the top of the Overview. The large
 // serif number is what sets the editorial tone — in sans it would become just
 // another dashboard.
-func Metric(rotulo, valor, nota string, matiz string) templ.Component {
+func Metric(label, value, nota string, matiz string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -311,9 +311,9 @@ func Metric(rotulo, valor, nota string, matiz string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
-		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(rotulo)
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 107, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 107, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -346,7 +346,7 @@ func Metric(rotulo, valor, nota string, matiz string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
-		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(valor)
+		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 108, Col: 71}
 		}
@@ -454,7 +454,7 @@ func Empty(msg, dica string) templ.Component {
 }
 
 // Tag is a tag chip. It becomes a link when `rota` exists, to filter.
-func Tag(texto, rota string) templ.Component {
+func Tag(text, rota string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -494,9 +494,9 @@ func Tag(texto, rota string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var24 string
-			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 133, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 133, Col: 9}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 			if templ_7745c5c3_Err != nil {
@@ -512,9 +512,9 @@ func Tag(texto, rota string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var25 string
-			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 135, Col: 117}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 135, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -539,16 +539,16 @@ func Tag(texto, rota string) templ.Component {
 // ---------------------------------------------------------------------------
 
 const (
-	larguraGrafico = 980
-	alturaGrafico  = 240
-	margemEsq      = 34
-	margemBaixo    = 26
+	chartWidth   = 980
+	chartHeight  = 240
+	margemEsq    = 34
+	bottomMargin = 26
 )
 
 // RunsChart draws one stacked column per hour, with the average-duration line on
 // top — the two readings the Overview screen has to cross: "how many" and
 // "quanto tempo".
-func RunsChart(baldes []postgres.Bucket) templ.Component {
+func RunsChart(buckets []postgres.Bucket) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -569,7 +569,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if len(baldes) == 0 {
+		if len(buckets) == 0 {
 			templ_7745c5c3_Err = Empty("No run in the window.", "brevis scheduler").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -580,9 +580,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var27 string
-			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("0 0 %d %d", larguraGrafico, alturaGrafico))
+			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("0 0 %d %d", chartWidth, chartHeight))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 164, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 164, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var27)
 			if templ_7745c5c3_Err != nil {
@@ -592,7 +592,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			for _, l := range linhasDeGrade(baldes) {
+			for _, l := range linhasDeGrade(buckets) {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<line x1=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -624,9 +624,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var30 string
-				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(larguraGrafico))
+				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(chartWidth))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 172, Col: 94}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 172, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 				if templ_7745c5c3_Err != nil {
@@ -639,7 +639,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(l.Y))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 172, Col: 117}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 172, Col: 113}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 				if templ_7745c5c3_Err != nil {
@@ -663,9 +663,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var33 string
-				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(l.Rotulo)
+				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(l.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 173, Col: 84}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 173, Col: 83}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {
@@ -676,7 +676,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			for _, b := range barras(baldes) {
+			for _, b := range bars(buckets) {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "   <a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -708,9 +708,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var36 string
-				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.XFaixa))
+				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.BandX))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 57}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 				if templ_7745c5c3_Err != nil {
@@ -721,9 +721,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var37 string
-				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.LarguraFaixa))
+				templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.BandWidth))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 				if templ_7745c5c3_Err != nil {
@@ -734,9 +734,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var38 string
-				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(alturaGrafico - margemBaixo))
+				templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(chartHeight - bottomMargin))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 152}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 180, Col: 147}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 				if templ_7745c5c3_Err != nil {
@@ -773,9 +773,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var41 string
-				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Largura))
+				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Width))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 90}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 				if templ_7745c5c3_Err != nil {
@@ -786,7 +786,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var42 string
-				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HSucesso))
+				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HSucceeded))
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 181, Col: 126}
 				}
@@ -825,9 +825,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var45 string
-				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Largura))
+				templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Width))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 90}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var45)
 				if templ_7745c5c3_Err != nil {
@@ -838,9 +838,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var46 string
-				templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HFalha))
+				templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HFailed))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 122}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 182, Col: 121}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 				if templ_7745c5c3_Err != nil {
@@ -877,9 +877,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var49 string
-				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Largura))
+				templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.Width))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 183, Col: 91}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 183, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var49)
 				if templ_7745c5c3_Err != nil {
@@ -892,7 +892,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 				var templ_7745c5c3_Var50 string
 				templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(b.HOutros))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 183, Col: 124}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 183, Col: 122}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var50)
 				if templ_7745c5c3_Err != nil {
@@ -916,7 +916,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if d := linhaDuracao(baldes); d != "" {
+			if d := durationLine(buckets); d != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<path d=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -935,9 +935,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var53 string
-				templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(larguraGrafico))
+				templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(chartWidth))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 192, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 192, Col: 37}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var53)
 				if templ_7745c5c3_Err != nil {
@@ -948,9 +948,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var54 string
-				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("peak average duration: " + Duration(picoDuracao(baldes)))
+				templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs("peak average duration: " + Duration(durationPeak(buckets)))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 193, Col: 65}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 193, Col: 67}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 				if templ_7745c5c3_Err != nil {
@@ -961,7 +961,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			for _, m := range marcasDeHora(baldes) {
+			for _, m := range hourTicks(buckets) {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "<text x=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -980,9 +980,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var56 string
-				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(alturaGrafico - 6))
+				templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprint(chartHeight - 6))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 197, Col: 66}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 197, Col: 64}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var56)
 				if templ_7745c5c3_Err != nil {
@@ -993,9 +993,9 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var57 string
-				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(m.Rotulo)
+				templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(m.Label)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 197, Col: 131}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 197, Col: 128}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 				if templ_7745c5c3_Err != nil {
@@ -1035,7 +1035,7 @@ func RunsChart(baldes []postgres.Bucket) templ.Component {
 	})
 }
 
-func legenda(cor, texto string) templ.Component {
+func legenda(cor, text string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1074,9 +1074,9 @@ func legenda(cor, texto string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var60 string
-		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 213, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 213, Col: 8}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 		if templ_7745c5c3_Err != nil {
@@ -1228,24 +1228,24 @@ func Rosca(i postgres.Indicators) templ.Component {
 // aritmetica no meio do markup e ilegivel e impossivel de testar.
 // ---------------------------------------------------------------------------
 
-type Barra struct {
-	X, Largura           int
-	XFaixa, LarguraFaixa int
-	YSucesso, HSucesso   int
-	YFalha, HFalha       int
+type Bar struct {
+	X, Width             int
+	BandX, BandWidth     int
+	YSucesso, HSucceeded int
+	YFalha, HFailed      int
 	YOutros, HOutros     int
 	Dica                 string
 	Link                 string
 }
 
 type Grade struct {
-	Y      int
-	Rotulo string
+	Y     int
+	Label string
 }
 
 type Brand struct {
-	X      int
-	Rotulo string
+	X     int
+	Label string
 }
 
 // teto rounds the maximum up to a value divisible by 4 in "round" steps, so the
@@ -1254,9 +1254,9 @@ type Brand struct {
 //
 // The previous version divided the raw maximum by four and produced axes like
 // 0/6/12/18/25 — every label a different interval from the one before it.
-func teto(baldes []postgres.Bucket) int {
+func ceiling(buckets []postgres.Bucket) int {
 	max := 0
-	for _, b := range baldes {
+	for _, b := range buckets {
 		if t := b.Total(); t > max {
 			max = t
 		}
@@ -1273,28 +1273,28 @@ func teto(baldes []postgres.Bucket) int {
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(baldes []postgres.Bucket) []Grade {
-	max := teto(baldes)
-	util := alturaGrafico - margemBaixo
+func linhasDeGrade(buckets []postgres.Bucket) []Grade {
+	max := ceiling(buckets)
+	util := chartHeight - bottomMargin
 	var out []Grade
 	for i := 0; i <= 4; i++ {
-		valor := max * i / 4
+		value := max * i / 4
 		out = append(out, Grade{
-			Y:      util - util*i/4,
-			Rotulo: fmt.Sprint(valor),
+			Y:     util - util*i/4,
+			Label: fmt.Sprint(value),
 		})
 	}
 	return out
 }
 
-func barras(baldes []postgres.Bucket) []Barra {
-	max := teto(baldes)
-	util := alturaGrafico - margemBaixo
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
-	largura := int(passo * 0.62)
-	if largura < 2 {
-		largura = 2
+func bars(buckets []postgres.Bucket) []Bar {
+	max := ceiling(buckets)
+	util := chartHeight - bottomMargin
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
+	width := int(passo * 0.62)
+	if width < 2 {
+		width = 2
 	}
 
 	alt := func(n int) int {
@@ -1310,26 +1310,26 @@ func barras(baldes []postgres.Bucket) []Barra {
 		return h
 	}
 
-	var out []Barra
-	for i, b := range baldes {
-		inicioFaixa := margemEsq + int(float64(i)*passo)
-		x := inicioFaixa + (int(passo)-largura)/2
-		hs, hf := alt(b.Sucesso), alt(b.Falha)
-		ho := alt(b.Executando + b.Fila)
+	var out []Bar
+	for i, b := range buckets {
+		bandStart := margemEsq + int(float64(i)*passo)
+		x := bandStart + (int(passo)-width)/2
+		hs, hf := alt(b.Succeeded), alt(b.Failed)
+		ho := alt(b.Running + b.Queued)
 
 		base := util
-		barra := Barra{
-			X: x, Largura: largura,
-			XFaixa: inicioFaixa, LarguraFaixa: int(passo),
+		bar := Bar{
+			X: x, Width: width,
+			BandX: bandStart, BandWidth: int(passo),
 			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
 		}
 		base -= hs
-		barra.YSucesso, barra.HSucesso = base, hs
+		bar.YSucesso, bar.HSucceeded = base, hs
 		base -= hf
-		barra.YFalha, barra.HFalha = base, hf
+		bar.YFalha, bar.HFailed = base, hf
 		base -= ho
-		barra.YOutros, barra.HOutros = base, ho
-		out = append(out, barra)
+		bar.YOutros, bar.HOutros = base, ho
+		out = append(out, bar)
 	}
 	return out
 }
@@ -1338,24 +1338,24 @@ func barras(baldes []postgres.Bucket) []Barra {
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
 func linkDoBalde(b postgres.Bucket) string {
-	de := b.Inicio.UTC().Format(time.RFC3339)
-	ate := b.Inicio.Add(time.Hour).UTC().Format(time.RFC3339)
+	de := b.Start.UTC().Format(time.RFC3339)
+	ate := b.Start.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
 func dicaDoBalde(b postgres.Bucket) string {
-	partes := []string{b.Inicio.Local().Format("02/01 15h")}
-	if b.Sucesso > 0 {
-		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
+	partes := []string{b.Start.Local().Format("02/01 15h")}
+	if b.Succeeded > 0 {
+		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
 	}
-	if b.Falha > 0 {
-		partes = append(partes, fmt.Sprintf("%d failed", b.Falha))
+	if b.Failed > 0 {
+		partes = append(partes, fmt.Sprintf("%d failed", b.Failed))
 	}
-	if n := b.Executando + b.Fila; n > 0 {
+	if n := b.Running + b.Queued; n > 0 {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
-	if b.DuracaoMedia > 0 {
-		partes = append(partes, "avg "+Duration(&b.DuracaoMedia))
+	if b.MeanDuration > 0 {
+		partes = append(partes, "avg "+Duration(&b.MeanDuration))
 	}
 	if len(partes) == 1 {
 		return partes[0] + " · no runs"
@@ -1363,12 +1363,12 @@ func dicaDoBalde(b postgres.Bucket) string {
 	return strings.Join(partes, " · ")
 }
 
-// picoDuracao is the curve's largest value — the secondary scale's reference.
-func picoDuracao(baldes []postgres.Bucket) *time.Duration {
+// durationPeak is the curve's largest value — the secondary scale's reference.
+func durationPeak(buckets []postgres.Bucket) *time.Duration {
 	var maior time.Duration
-	for _, b := range baldes {
-		if b.DuracaoMedia > maior {
-			maior = b.DuracaoMedia
+	for _, b := range buckets {
+		if b.MeanDuration > maior {
+			maior = b.MeanDuration
 		}
 	}
 	if maior == 0 {
@@ -1377,55 +1377,55 @@ func picoDuracao(baldes []postgres.Bucket) *time.Duration {
 	return &maior
 }
 
-// linhaDuracao normalizes the average duration by its OWN scale, not by the
+// durationLine normalizes the average duration by its OWN scale, not by the
 // count's: they are different magnitudes, and what matters here is the curve's
 // shape.
-func linhaDuracao(baldes []postgres.Bucket) string {
+func durationLine(buckets []postgres.Bucket) string {
 	var maior time.Duration
-	for _, b := range baldes {
-		if b.DuracaoMedia > maior {
-			maior = b.DuracaoMedia
+	for _, b := range buckets {
+		if b.MeanDuration > maior {
+			maior = b.MeanDuration
 		}
 	}
 	if maior == 0 {
 		return ""
 	}
 
-	util := alturaGrafico - margemBaixo
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
+	util := chartHeight - bottomMargin
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
 
 	var b strings.Builder
-	comando := "M"
-	for i, bl := range baldes {
-		if bl.DuracaoMedia == 0 {
+	command := "M"
+	for i, bl := range buckets {
+		if bl.MeanDuration == 0 {
 			// It cuts the line rather than joining two peaks over a gap, which
 			// would invent a duration for an hour with no run at all.
-			comando = "M"
+			command = "M"
 			continue
 		}
 		x := margemEsq + int(float64(i)*passo+passo/2)
-		y := util - int(float64(util)*0.86*float64(bl.DuracaoMedia)/float64(maior))
-		fmt.Fprintf(&b, "%s%d %d ", comando, x, y)
-		comando = "L"
+		y := util - int(float64(util)*0.86*float64(bl.MeanDuration)/float64(maior))
+		fmt.Fprintf(&b, "%s%d %d ", command, x, y)
+		command = "L"
 	}
 	return strings.TrimSpace(b.String())
 }
 
-func marcasDeHora(baldes []postgres.Bucket) []Brand {
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
+func hourTicks(buckets []postgres.Bucket) []Brand {
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
-	salto := len(baldes)/8 + 1
+	salto := len(buckets)/8 + 1
 	var out []Brand
-	for i, b := range baldes {
+	for i, b := range buckets {
 		if i%salto != 0 {
 			continue
 		}
 		out = append(out, Brand{
-			X:      margemEsq + int(float64(i)*passo+passo/2),
-			Rotulo: b.Inicio.Local().Format("15h"),
+			X:     margemEsq + int(float64(i)*passo+passo/2),
+			Label: b.Start.Local().Format("15h"),
 		})
 	}
 	return out
@@ -1447,35 +1447,35 @@ func arcos(i postgres.Indicators) []Arco {
 		return nil
 	}
 	fatias := []struct {
-		n      int
-		cor    string
-		nome   string
-		estado string
+		n     int
+		cor   string
+		name  string
+		state string
 	}{
 		// A CSS variable, and not a hex value: the SVG is served inside the page,
 		// so the donut follows the client's theme like any other element.
-		{i.Sucesso, "var(--color-state-success)", "success", "success"},
-		{i.Falha, "var(--color-state-failed)", "failed", "failed"},
-		{i.EmExecucao, "var(--color-state-running)", "running", "running"},
-		{i.Pendentes, "var(--color-state-queued)", "queued", "queued"},
+		{i.Succeeded, "var(--color-state-success)", "success", "success"},
+		{i.Failed, "var(--color-state-failed)", "failed", "failed"},
+		{i.Running, "var(--color-state-running)", "running", "running"},
+		{i.Pending, "var(--color-state-queued)", "queued", "queued"},
 	}
 
 	var out []Arco
-	acumulado := 0
+	running := 0
 	for _, f := range fatias {
 		if f.n == 0 {
 			continue
 		}
-		tamanho := f.n * perimetro / i.Total
+		size := f.n * perimetro / i.Total
 		out = append(out, Arco{
 			Cor:    f.cor,
-			Dash:   fmt.Sprintf("%d %d", tamanho, perimetro-tamanho),
-			Offset: -acumulado,
+			Dash:   fmt.Sprintf("%d %d", size, perimetro-size),
+			Offset: -running,
 			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
-				f.n, f.nome, float64(f.n)*100/float64(i.Total)),
-			Link: "/runs?estado=" + f.estado,
+				f.n, f.name, float64(f.n)*100/float64(i.Total)),
+			Link: "/runs?estado=" + f.state,
 		})
-		acumulado += tamanho
+		running += size
 	}
 	return out
 }
@@ -1547,7 +1547,7 @@ func Timestamp(t *time.Time) string {
 // lives in a native <dialog>: ESC closes it, the backdrop dims and the focus
 // stays trapped inside it without a line of JavaScript of ours.
 // ---------------------------------------------------------------------------
-func BotaoErro(runID string) templ.Component {
+func ErrorButton(runID string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1594,7 +1594,7 @@ func BotaoErro(runID string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" title=\"Ver o erro\" class=\"inline-flex items-center gap-1 rounded-full border border-state-failed/30 bg-state-failed/5 px-2.5 py-1 text-[0.7rem] font-medium text-state-failed transition-colors hover:bg-state-failed/10\"><svg class=\"h-3 w-3\" viewBox=\"0 0 12 12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><circle cx=\"6\" cy=\"6\" r=\"4.6\"></circle> <path d=\"M6 3.4v3M6 8.4v.2\" stroke-linecap=\"round\"></path></svg> erro</a>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "\" title=\"See the error\" class=\"inline-flex items-center gap-1 rounded-full border border-state-failed/30 bg-state-failed/5 px-2.5 py-1 text-[0.7rem] font-medium text-state-failed transition-colors hover:bg-state-failed/10\"><svg class=\"h-3 w-3\" viewBox=\"0 0 12 12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><circle cx=\"6\" cy=\"6\" r=\"4.6\"></circle> <path d=\"M6 3.4v3M6 8.4v.2\" stroke-linecap=\"round\"></path></svg> failure</a>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1602,7 +1602,7 @@ func BotaoErro(runID string) templ.Component {
 	})
 }
 
-func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
+func ErrorDialog(runID, workflow, status, message string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1688,9 +1688,9 @@ func DialogoErro(runID, workflow, status, mensagem string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var77 string
-		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(mensagem)
+		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 616, Col: 198}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 616, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 		if templ_7745c5c3_Err != nil {

@@ -7,7 +7,7 @@ import (
 	"text/template"
 )
 
-// Renderizar substitutes the params into a step's command line.
+// Render substitutes the params into a step's command line.
 //
 // The stdlib's `text/template`, with `missingkey=error`: a param with a typo in
 // the YAML fails HERE, naming what was missing, instead of becoming an empty
@@ -17,23 +17,23 @@ import (
 // So o comando e renderizado. `image:` NAO e templatavel de proposito: quem
 // triggers a run would be choosing the image the pod runs, which is choosing
 // the code that executes.
-func Renderizar(comando string, params map[string]string) (string, error) {
-	if !strings.Contains(comando, "{{") {
-		return comando, nil
+func Render(command string, params map[string]string) (string, error) {
+	if !strings.Contains(command, "{{") {
+		return command, nil
 	}
-	t, err := template.New("passo").Option("missingkey=error").Parse(comando)
+	t, err := template.New("passo").Option("missingkey=error").Parse(command)
 	if err != nil {
 		return "", fmt.Errorf("the command has an invalid template: %w", err)
 	}
 
-	var saida strings.Builder
-	if err := t.Execute(&saida, params); err != nil {
-		return "", fmt.Errorf("%w (params disponiveis: %s)", err, chaves(params))
+	var output strings.Builder
+	if err := t.Execute(&output, params); err != nil {
+		return "", fmt.Errorf("%w (params disponiveis: %s)", err, keys(params))
 	}
-	return saida.String(), nil
+	return output.String(), nil
 }
 
-func chaves(m map[string]string) string {
+func keys(m map[string]string) string {
 	if len(m) == 0 {
 		return "nenhum"
 	}

@@ -46,8 +46,8 @@ func TestMissingFieldsInheritTheDefault(t *testing.T) {
 	if m.Subtitle != branding.Default().Subtitle {
 		t.Errorf("subtitulo perdido: %q", m.Subtitle)
 	}
-	if m.Theme.Sucesso != "#4c7a56" {
-		t.Errorf("cor herdada perdida: %q", m.Theme.Sucesso)
+	if m.Theme.Succeeded != "#4c7a56" {
+		t.Errorf("cor herdada perdida: %q", m.Theme.Succeeded)
 	}
 }
 
@@ -117,9 +117,9 @@ func TestThePhrasePreservesTheLines(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	linhas := m.Lines()
-	if len(linhas) != 3 || linhas[0] != "Primeira" || linhas[2] != "Terceira" {
-		t.Errorf("linhas = %q", linhas)
+	rows := m.Lines()
+	if len(rows) != 3 || rows[0] != "Primeira" || rows[2] != "Terceira" {
+		t.Errorf("linhas = %q", rows)
 	}
 	sem, _ := branding.Load(writeFile(t, `phrase: ""`))
 	if len(sem.Lines()) != 0 {

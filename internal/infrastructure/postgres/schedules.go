@@ -95,27 +95,27 @@ func (r *WorkflowRepo) Definition(ctx context.Context, slug string) (wf.Workflow
 // Deleting the runs along with it would be deleting the evidence of what
 // happened.
 func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []string) ([]string, error) {
-	linhas, err := r.pool.Query(ctx, `
+	rows, err := r.pool.Query(ctx, `
 		DELETE FROM workflows
 		WHERE project_id = $1 AND NOT (slug = ANY($2))
 		RETURNING slug`, projeto, manter)
 	if err != nil {
 		return nil, err
 	}
-	defer linhas.Close()
+	defer rows.Close()
 
-	var removidos []string
-	for linhas.Next() {
+	var removed []string
+	for rows.Next() {
 		var slug string
-		if err := linhas.Scan(&slug); err != nil {
+		if err := rows.Scan(&slug); err != nil {
 			return nil, err
 		}
-		removidos = append(removidos, slug)
+		removed = append(removed, slug)
 	}
-	if err := linhas.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	if len(removidos) == 0 {
+	if len(removed) == 0 {
 		return nil, nil
 	}
 
@@ -123,10 +123,10 @@ func (r *WorkflowRepo) Podar(ctx context.Context, projeto uuid.UUID, manter []st
 	// CASCADE does not reach it, and an orphaned schedule would go on creating
 	// runs.
 	if _, err := r.pool.Exec(ctx,
-		`DELETE FROM schedules WHERE workflow_slug = ANY($1)`, removidos); err != nil {
-		return removidos, err
+		`DELETE FROM schedules WHERE workflow_slug = ANY($1)`, removed); err != nil {
+		return removed, err
 	}
-	return removidos, nil
+	return removed, nil
 }
 
 // ScheduleRepo le e atualiza agendas.
@@ -136,24 +136,24 @@ func NewScheduleRepo(p *Pool) *ScheduleRepo { return &ScheduleRepo{pool: p} }
 
 // Ativas lists the schedules the scheduler has to evaluate.
 func (r *ScheduleRepo) Ativas(ctx context.Context) ([]sch.Schedule, error) {
-	linhas, err := r.pool.Query(ctx, `
+	rows, err := r.pool.Query(ctx, `
 		SELECT workflow_slug, cron, timezone, catchup, ativo, ultimo_slot
 		FROM schedules WHERE ativo`)
 	if err != nil {
 		return nil, err
 	}
-	defer linhas.Close()
+	defer rows.Close()
 
 	var out []sch.Schedule
-	for linhas.Next() {
+	for rows.Next() {
 		var s sch.Schedule
-		if err := linhas.Scan(&s.WorkflowSlug, &s.Cron, &s.Timezone,
+		if err := rows.Scan(&s.WorkflowSlug, &s.Cron, &s.Timezone,
 			&s.Catchup, &s.Active, &s.LastSlot); err != nil {
 			return nil, err
 		}
 		out = append(out, s)
 	}
-	return out, linhas.Err()
+	return out, rows.Err()
 }
 
 // AvancarSlot records how far the schedule has been materialized.

@@ -84,7 +84,7 @@ func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 	if s.Webhook == "" {
 		return nil
 	}
-	corpo, err := json.Marshal(s.mensagem(a))
+	corpo, err := json.Marshal(s.message(a))
 	if err != nil {
 		return err
 	}
@@ -104,28 +104,28 @@ func (s *Slack) Falhou(ctx context.Context, a Alerta) error {
 		// Slack answers with plain text ("invalid_payload", "no_service"), not
 		// JSON. Passing the body through is what lets one tell a revoked webhook
 		// from a malformed payload without opening a browser.
-		motivo, _ := io.ReadAll(io.LimitReader(res.Body, 512))
-		return fmt.Errorf("slack respondeu %s: %s", res.Status, strings.TrimSpace(string(motivo)))
+		reason, _ := io.ReadAll(io.LimitReader(res.Body, 512))
+		return fmt.Errorf("slack respondeu %s: %s", res.Status, strings.TrimSpace(string(reason)))
 	}
 	return nil
 }
 
 type bloco map[string]any
 
-func (s *Slack) mensagem(a Alerta) map[string]any {
+func (s *Slack) message(a Alerta) map[string]any {
 	dominio, pipeline := s.classificar(a)
 
-	campos := []bloco{
-		campo("*Domain:*\n`" + dominio + "`"),
-		campo("*Pipeline:*\n`" + pipeline + "`"),
-		campo("*Status:*\n:x: " + strings.ToUpper(a.Status)),
-		campo("*Trigger:*\n`" + a.Trigger + "`"),
+	fields := []bloco{
+		field("*Domain:*\n`" + dominio + "`"),
+		field("*Pipeline:*\n`" + pipeline + "`"),
+		field("*Status:*\n:x: " + strings.ToUpper(a.Status)),
+		field("*Trigger:*\n`" + a.Trigger + "`"),
 	}
 	if a.Passo != "" {
-		campos = append(campos, campo("*Step:*\n`"+a.Passo+"`"))
+		fields = append(fields, field("*Step:*\n`"+a.Passo+"`"))
 	}
 	if a.Tentativas > 0 {
-		campos = append(campos, campo(fmt.Sprintf("*Attempts:*\n%d", a.Tentativas)))
+		fields = append(fields, field(fmt.Sprintf("*Attempts:*\n%d", a.Tentativas)))
 	}
 	if a.LogicalDate != nil {
 		// The TIMEZONE travels with it, and that is not decoration: the same
@@ -137,7 +137,7 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 		// It stays Local(), and not fixed UTC: whoever operates decides, by
 		// setting TZ on the deployment -- and now the message says which
 		// decision that was.
-		campos = append(campos, campo("*Logical date:*\n"+
+		fields = append(fields, field("*Logical date:*\n"+
 			a.LogicalDate.Local().Format("02/01/2006 15:04 MST")))
 	}
 
@@ -146,7 +146,7 @@ func (s *Slack) mensagem(a Alerta) map[string]any {
 			"type": "plain_text", "emoji": true,
 			"text": ":rotating_light: Falha no pipeline" + s.sufixoDeAmbiente(),
 		}},
-		{"type": "section", "fields": campos},
+		{"type": "section", "fields": fields},
 	}
 
 	if a.Err != "" {
@@ -228,8 +228,8 @@ func (s *Slack) sufixoDeAmbiente() string {
 	return " (" + s.Ambiente + ")"
 }
 
-func campo(texto string) bloco {
-	return bloco{"type": "mrkdwn", "text": texto}
+func field(text string) bloco {
+	return bloco{"type": "mrkdwn", "text": text}
 }
 
 func truncar(s string, max int) string {

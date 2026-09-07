@@ -21,10 +21,10 @@ import (
 // nodes in the same column are the ones that actually run together, rather than
 // a guess by a layout algorithm in the browser.
 
-type noFlow struct {
+type flowNode struct {
 	ID       string         `json:"id"`
 	Type     string         `json:"type"`
-	Position posicao        `json:"position"`
+	Position position       `json:"position"`
 	Data     map[string]any `json:"data"`
 
 	// Nesting: an SDK step becomes a group, and its phases become child nodes
@@ -38,25 +38,25 @@ type noFlow struct {
 	Draggable  *bool          `json:"draggable,omitempty"`
 }
 
-type posicao struct {
+type position struct {
 	X int `json:"x"`
 	Y int `json:"y"`
 }
 
-type arestaFlow struct {
+type flowEdge struct {
 	ID       string `json:"id"`
 	Source   string `json:"source"`
 	Target   string `json:"target"`
 	Animated bool   `json:"animated"`
 }
 
-type respostaGrafo struct {
-	Slug     string       `json:"slug"`
-	RunID    string       `json:"run_id,omitempty"`
-	Status   string       `json:"status,omitempty"`
-	Terminal bool         `json:"terminal"`
-	Nodes    []noFlow     `json:"nodes"`
-	Edges    []arestaFlow `json:"edges"`
+type graphResponse struct {
+	Slug     string     `json:"slug"`
+	RunID    string     `json:"run_id,omitempty"`
+	Status   string     `json:"status,omitempty"`
+	Terminal bool       `json:"terminal"`
+	Nodes    []flowNode `json:"nodes"`
+	Edges    []flowEdge `json:"edges"`
 }
 
 // Layout spacing. Constants and not configuration: the node's size is fixed in
@@ -67,39 +67,39 @@ type respostaGrafo struct {
 // assumed a fixed height: an expanded group ran over its neighbour. The column
 // is now the SUM of its heights.
 const (
-	larguraNivel  = 300
-	larguraNo     = 230
-	alturaCartao  = 84
-	alturaEtapa   = 30
-	topoDasEtapas = 74
+	levelWidth    = 300
+	nodeWidth     = 230
+	cardHeight    = 84
+	stageHeight   = 30
+	stagesTop     = 74
 	rodapeDoGrupo = 10
 	folgaVertical = 26
 )
 
-// alturaDoNo is what this step occupies vertically.
-func alturaDoNo(etapas int) int {
-	if etapas == 0 {
-		return alturaCartao
+// nodeHeight is what this step occupies vertically.
+func nodeHeight(stages int) int {
+	if stages == 0 {
+		return cardHeight
 	}
-	return topoDasEtapas + etapas*alturaEtapa + rodapeDoGrupo
+	return stagesTop + stages*stageHeight + rodapeDoGrupo
 }
 
-// grafoDoWorkflow draws the PUBLISHED definition, with no execution state. It is
+// workflowGraph draws the PUBLISHED definition, with no execution state. It is
 // the "what this workflow looks like" screen, which has to work for a workflow
 // that never ran.
-func (u *UI) grafoDoWorkflow(w http.ResponseWriter, r *http.Request) {
+func (u *UI) workflowGraph(w http.ResponseWriter, r *http.Request) {
 	def, err := u.defs.Definition(r.Context(), r.PathValue("slug"))
 	if err != nil {
 		http.Error(w, "workflow not found", http.StatusNotFound)
 		return
 	}
-	u.responderGrafo(w, def, nil, "", "")
+	u.respondGraph(w, def, nil, "", "")
 }
 
-// grafoDaRun draws the SNAPSHOT stored on the Run, not the current definition:
+// runGraph draws the SNAPSHOT stored on the Run, not the current definition:
 // if the workflow was edited afterwards, a past run's screen has to keep showing
 // the graph that actually ran (§22).
-func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
+func (u *UI) runGraph(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "id invalido", http.StatusBadRequest)
@@ -107,31 +107,31 @@ func (u *UI) grafoDaRun(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	execucao, err := u.execs.Buscar(ctx, id)
+	run, err := u.execs.Get(ctx, id)
 	if err != nil {
 		http.Error(w, "run not found", http.StatusNotFound)
 		return
 	}
 	var def wf.Workflow
-	if err := json.Unmarshal(execucao.Definition, &def); err != nil {
-		u.erro(w, r, err)
+	if err := json.Unmarshal(run.Definition, &def); err != nil {
+		u.failure(w, r, err)
 		return
 	}
 
 	// A missing state is not an error: a freshly queued run has no step started
 	// yet, and the screen should show the whole graph in grey.
-	estados, err := u.execs.EstadoDosNos(ctx, id)
+	states, err := u.execs.NodeStates(ctx, id)
 	if err != nil {
 		u.log.Warn("node state unavailable", "run", id, "error", err)
-		estados = nil
+		states = nil
 	}
-	u.responderGrafo(w, def, estados, id.String(), string(execucao.Status))
+	u.respondGraph(w, def, states, id.String(), string(run.Status))
 }
 
-func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
-	estados map[string]postgres.NodeState, runID, status string) {
+func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
+	states map[string]postgres.NodeState, runID, status string) {
 
-	niveis, err := graph.Niveis(def)
+	levels, err := graph.Levels(def)
 	if err != nil {
 		// Getting here means a cyclic graph stored in the database. Not a 500:
 		// it is invalid data, and the message has to say so on the screen.
@@ -139,96 +139,96 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 		return
 	}
 
-	resp := respostaGrafo{
+	resp := graphResponse{
 		Slug: def.Slug, RunID: runID, Status: status,
 		// `failed` does NOT count: §7's state machine allows failed -> retrying,
 		// so the client still has to poll (more slowly). Marking failed as
 		// terminal would freeze the screen in the middle of a retry.
 		Terminal: status == "success" || status == "canceled",
-		Nodes:    []noFlow{}, Edges: []arestaFlow{},
+		Nodes:    []flowNode{}, Edges: []flowEdge{},
 	}
 
 	off := false
-	for nivel, ids := range niveis {
+	for level, ids := range levels {
 		// The column is measured before it is drawn: the heights vary, so
 		// centring requires knowing the total.
-		alturas := make([]int, len(ids))
+		heights := make([]int, len(ids))
 		total := (len(ids) - 1) * folgaVertical
 		for i, id := range ids {
-			alturas[i] = alturaDoNo(len(estados[id].Etapas))
-			total += alturas[i]
+			heights[i] = nodeHeight(len(states[id].Stages))
+			total += heights[i]
 		}
 
 		y := -total / 2
 		for i, id := range ids {
-			no := acharNo(def.Nodes, id)
-			dados := map[string]any{
+			no := findNode(def.Nodes, id)
+			data := map[string]any{
 				"label":  id,
-				"acao":   rotuloDaAcao(no),
+				"acao":   actionLabel(no),
 				"status": "pending",
 			}
-			e, temEstado := estados[id]
-			if temEstado {
-				dados["status"] = e.Status
-				dados["duracao_ms"] = e.DuracaoMs
-				dados["tentativa"] = e.Attempt
+			e, hasState := states[id]
+			if hasState {
+				data["status"] = e.Status
+				data["duracao_ms"] = e.DurationMs
+				data["tentativa"] = e.Attempt
 				if e.Err != "" {
-					dados["erro"] = e.Err
+					data["erro"] = e.Err
 				}
 				if e.ExitCode != nil {
-					dados["exit_code"] = *e.ExitCode
+					data["exit_code"] = *e.ExitCode
 				}
 				// The badge. It exists because it was OBSERVED: the step announced
 				// itself. Nothing in the YAML produces it, so it has no way to
 				// lie.
-				if e.SdkVersao != "" {
-					dados["sdk"] = e.SdkVersao
+				if e.SdkVersion != "" {
+					data["sdk"] = e.SdkVersion
 				}
 			}
 
-			passo := noFlow{
+			step := flowNode{
 				ID: id, Type: "brevis",
-				Position: posicao{X: nivel * larguraNivel, Y: y},
-				Data:     dados,
+				Position: position{X: level * levelWidth, Y: y},
+				Data:     data,
 			}
-			if len(e.Etapas) > 0 {
+			if len(e.Stages) > 0 {
 				// The group needs a declared size: React Flow positions the
 				// children relative to it, and without a size they spill out.
-				passo.Style = map[string]any{"width": larguraNo, "height": alturas[i]}
+				step.Style = map[string]any{"width": nodeWidth, "height": heights[i]}
 			}
-			resp.Nodes = append(resp.Nodes, passo)
+			resp.Nodes = append(resp.Nodes, step)
 
 			// The children come AFTER the parent in the array: React Flow requires it.
-			for j, et := range e.Etapas {
-				resp.Nodes = append(resp.Nodes, noFlow{
-					ID: id + "::" + et.Nome, Type: "etapa",
+			for j, et := range e.Stages {
+				resp.Nodes = append(resp.Nodes, flowNode{
+					ID: id + "::" + et.Name, Type: "etapa",
 					ParentID: id, Extent: "parent",
-					Position: posicao{X: 10, Y: topoDasEtapas + j*alturaEtapa},
+					Position: position{X: 10, Y: stagesTop + j*stageHeight},
 					// Clicking a phase selects the STEP: the details panel belongs
 					// to the step, and a selectable phase would open an empty
 					// one.
 					Selectable: &off, Draggable: &off,
 					Data: map[string]any{
-						"nome": et.Nome, "estado": et.State,
-						"ms": et.Ms, "numeros": et.Numeros,
+						"nome": et.Name, "estado": et.State,
+						"ms": et.Ms, "numeros": et.Numbers,
 						// The label the screen shows. `extract` and `load` are
 						// the wire's names, kept for compatibility; what a
 						// person reads is what they mean.
-						"rotulo": rotuloDaEtapa(et.Nome),
+						"rotulo": stageLabel(et.Name),
 					},
 				})
 			}
-			y += alturas[i] + folgaVertical
+			y += heights[i] + folgaVertical
 		}
 	}
 
 	for _, e := range def.Edges {
-		resp.Edges = append(resp.Edges, arestaFlow{
+		resp.Edges = append(resp.Edges, flowEdge{
 			ID: e.From + "->" + e.To, Source: e.From, Target: e.To,
 			// Only the edge arriving at what is running now is animated:
 			// animating everything turns into noise and buries the
 			// information.
-			Animated: estados[e.To].Status == "running",
+			Animated: states[e.To].Status == "running",
 		})
 	}
 
@@ -238,12 +238,12 @@ func (u *UI) responderGrafo(w http.ResponseWriter, def wf.Workflow,
 	}
 }
 
-// rotuloDaEtapa is what a person reads on the box.
+// stageLabel is what a person reads on the box.
 //
 // The wire keeps `extract` and `load` because renaming them would make an
 // already-published engine stop drawing an older fetcher's phases. The screen is
 // free to say what they mean.
-func rotuloDaEtapa(nome string) string {
+func stageLabel(nome string) string {
 	switch nome {
 	case "extract":
 		return "source"
@@ -253,7 +253,7 @@ func rotuloDaEtapa(nome string) string {
 	return nome
 }
 
-func acharNo(nodes []wf.Node, id string) wf.Node {
+func findNode(nodes []wf.Node, id string) wf.Node {
 	for _, n := range nodes {
 		if n.ID == id {
 			return n
@@ -262,8 +262,8 @@ func acharNo(nodes []wf.Node, id string) wf.Node {
 	return wf.Node{}
 }
 
-// rotuloDaAcao is the card's second line: what the node does, not what it is called.
-func rotuloDaAcao(n wf.Node) string {
+// actionLabel is the card's second line: what the node does, not what it is called.
+func actionLabel(n wf.Node) string {
 	if n.Action != "" {
 		return n.Action
 	}

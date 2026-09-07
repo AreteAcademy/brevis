@@ -64,27 +64,27 @@ type PodsConfig struct {
 	EnvFromSecrets    []string
 	EnvFromConfigMaps []string
 
-	// SecretsPermitidos limits what a YAML's `secrets:` may name. Empty denies
+	// AllowedSecrets limits what a YAML's `secrets:` may name. Empty denies
 	// everything: the installation decides which secrets exist for workflows,
 	// and the YAML decides which step receives each one.
-	SecretsPermitidos []string
+	AllowedSecrets []string
 
 	// CredencialPVC and CredencialPath mount the volume where the SDK keeps the
 	// credential it rotates. Without the PVC, nothing changes.
-	CredencialPVC  string
-	CredencialPath string
+	CredentialPVC  string
+	CredentialPath string
 	NodeSelector   map[string]string
 	// Tolerations in "key=value:effect" form, comma separated. An arm64 pool
 	// commonly carries a taint, and without a toleration the task's pod stays
 	// Pending forever -- no error, just stopped.
-	Toleracoes    []Toleracao
-	ManterEmFalha bool
+	Tolerations   []Grace
+	KeepOnFailure bool
 }
 
 // Toleracao mirrors the pod's field, without importing Kubernetes' type.
-type Toleracao struct {
-	Chave  string
-	Valor  string
+type Grace struct {
+	Key    string
+	Value  string
 	Efeito string
 }
 
@@ -99,7 +99,7 @@ func Load() (Config, error) {
 		DatabaseURL:  os.Getenv("BREVIS_DATABASE_URL"),
 		LogLevel:     get("BREVIS_LOG_LEVEL", "info"),
 		BrandFile:    get("BREVIS_BRAND_FILE", "brand.yaml"),
-		TaskEnv:      lista("BREVIS_TASK_ENV"),
+		TaskEnv:      list("BREVIS_TASK_ENV"),
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),
 		UIURL:        os.Getenv("BREVIS_UI_URL"),
 		Auth: auth.Credential{
@@ -111,15 +111,15 @@ func Load() (Config, error) {
 			Modo:              get("BREVIS_PODS", "auto"),
 			Namespace:         os.Getenv("BREVIS_POD_NAMESPACE"),
 			ServiceAccount:    os.Getenv("BREVIS_POD_SERVICE_ACCOUNT"),
-			PullSecrets:       lista("BREVIS_POD_PULL_SECRETS"),
-			EnvFromSecrets:    lista("BREVIS_POD_ENV_FROM_SECRETS"),
-			EnvFromConfigMaps: lista("BREVIS_POD_ENV_FROM_CONFIGMAPS"),
-			SecretsPermitidos: lista("BREVIS_POD_ALLOWED_SECRETS"),
-			CredencialPVC:     get("BREVIS_POD_CREDENTIAL_PVC", ""),
-			CredencialPath:    get("BREVIS_POD_CREDENTIAL_PATH", ""),
+			PullSecrets:       list("BREVIS_POD_PULL_SECRETS"),
+			EnvFromSecrets:    list("BREVIS_POD_ENV_FROM_SECRETS"),
+			EnvFromConfigMaps: list("BREVIS_POD_ENV_FROM_CONFIGMAPS"),
+			AllowedSecrets:    list("BREVIS_POD_ALLOWED_SECRETS"),
+			CredentialPVC:     get("BREVIS_POD_CREDENTIAL_PVC", ""),
+			CredentialPath:    get("BREVIS_POD_CREDENTIAL_PATH", ""),
 			NodeSelector:      pares("BREVIS_POD_NODE_SELECTOR"),
-			Toleracoes:        toleracoes("BREVIS_POD_TOLERATIONS"),
-			ManterEmFalha:     os.Getenv("BREVIS_POD_MANTER_EM_FALHA") == "true",
+			Tolerations:       graces("BREVIS_POD_TOLERATIONS"),
+			KeepOnFailure:     os.Getenv("BREVIS_POD_MANTER_EM_FALHA") == "true",
 		},
 		ShutdownTimeout: 15 * time.Second,
 	}
@@ -184,13 +184,13 @@ func Load() (Config, error) {
 //
 // A package function and not a method: `brevis run` runs without a database and
 // therefore without a Config -- but needs the same environment.
-func AmbienteDasTasks(nomes []string) map[string]string {
+func AmbienteDasTasks(names []string) map[string]string {
 	env := map[string]string{
 		"PATH": os.Getenv("PATH"),
 		"HOME": os.Getenv("HOME"),
 	}
-	for _, entrada := range nomes {
-		if entrada == "*" {
+	for _, input := range names {
+		if input == "*" {
 			for _, kv := range os.Environ() {
 				k, v, _ := strings.Cut(kv, "=")
 				if strings.HasPrefix(k, "BREVIS_") {
@@ -200,15 +200,15 @@ func AmbienteDasTasks(nomes []string) map[string]string {
 			}
 			continue
 		}
-		if nome, valor, ok := strings.Cut(entrada, "="); ok {
-			env[nome] = valor
+		if nome, value, ok := strings.Cut(input, "="); ok {
+			env[nome] = value
 			continue
 		}
 		// A name with no value: passed on if it exists. Missing does NOT become
 		// an empty string -- `GOOGLE_PROJECT_ID=""` would make dbt fail later,
 		// with a message worse than the one for a missing variable.
-		if v, existe := os.LookupEnv(entrada); existe {
-			env[entrada] = v
+		if v, existe := os.LookupEnv(input); existe {
+			env[input] = v
 		}
 	}
 	return env
@@ -219,29 +219,29 @@ func AmbienteDasTasks(nomes []string) map[string]string {
 // A malformed entry is IGNORED rather than becoming a boot error: a wrong
 // toleration leaves the pod Pending, which is visible; refusing the scheduler's
 // boot over it would also stop the workflows that do not need that pool.
-func toleracoes(chave string) []Toleracao {
-	var out []Toleracao
-	for _, entrada := range lista(chave) {
-		par, efeito, temEfeito := strings.Cut(entrada, ":")
-		k, v, temValor := strings.Cut(par, "=")
-		if !temValor || !temEfeito {
+func graces(key string) []Grace {
+	var out []Grace
+	for _, input := range list(key) {
+		par, efeito, temEfeito := strings.Cut(input, ":")
+		k, v, hasValue := strings.Cut(par, "=")
+		if !hasValue || !temEfeito {
 			continue
 		}
-		out = append(out, Toleracao{Chave: strings.TrimSpace(k),
-			Valor: strings.TrimSpace(v), Efeito: strings.TrimSpace(efeito)})
+		out = append(out, Grace{Key: strings.TrimSpace(k),
+			Value: strings.TrimSpace(v), Efeito: strings.TrimSpace(efeito)})
 	}
 	return out
 }
 
 // TaskEnvDoAmbiente reads BREVIS_TASK_ENV for whoever did not load the whole
 // Config.
-func TaskEnvDoAmbiente() []string { return lista("BREVIS_TASK_ENV") }
+func TaskEnvDoAmbiente() []string { return list("BREVIS_TASK_ENV") }
 
 // lista splits on commas, ignoring empties — "a,,b" is a typo, and an empty
 // secret name would make the server refuse the whole pod.
-func lista(chave string) []string {
+func list(key string) []string {
 	var out []string
-	for _, p := range strings.Split(os.Getenv(chave), ",") {
+	for _, p := range strings.Split(os.Getenv(key), ",") {
 		if p = strings.TrimSpace(p); p != "" {
 			out = append(out, p)
 		}
@@ -250,9 +250,9 @@ func lista(chave string) []string {
 }
 
 // pares reads "key=value,other=value" — nodeSelector's format.
-func pares(chave string) map[string]string {
+func pares(key string) map[string]string {
 	out := map[string]string{}
-	for _, p := range lista(chave) {
+	for _, p := range list(key) {
 		k, v, ok := strings.Cut(p, "=")
 		if !ok {
 			continue
@@ -265,9 +265,9 @@ func pares(chave string) map[string]string {
 	return out
 }
 
-func get(chave, padrao string) string {
-	if v := os.Getenv(chave); v != "" {
+func get(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
 		return v
 	}
-	return padrao
+	return fallback
 }

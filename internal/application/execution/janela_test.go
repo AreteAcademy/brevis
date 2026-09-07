@@ -6,9 +6,9 @@ import (
 )
 
 func TestTheWindowKeepsEverythingWhenItFits(t *testing.T) {
-	var j janela
+	var j window
 	for _, l := range []string{"first", "segunda", "terceira"} {
-		j.Escrever(l)
+		j.Write(l)
 	}
 	if got := j.String(); got != "first\nsegunda\nterceira\n" {
 		t.Errorf("saida = %q", got)
@@ -18,13 +18,13 @@ func TestTheWindowKeepsEverythingWhenItFits(t *testing.T) {
 // The ceiling is what stops a `while true; do echo` from filling Postgres's
 // disk.
 func TestTheWindowRespectsTheCeiling(t *testing.T) {
-	var j janela
-	linha := strings.Repeat("x", 200)
+	var j window
+	line := strings.Repeat("x", 200)
 	for i := 0; i < 5000; i++ { // ~1 MB
-		j.Escrever(linha)
+		j.Write(line)
 	}
-	if n := len(j.String()); n > TetoDoLog+512 {
-		t.Errorf("guardou %d bytes; o teto e %d", n, TetoDoLog)
+	if n := len(j.String()); n > LogCeiling+512 {
+		t.Errorf("guardou %d bytes; o teto e %d", n, LogCeiling)
 	}
 }
 
@@ -33,13 +33,13 @@ func TestTheWindowRespectsTheCeiling(t *testing.T) {
 // half the
 // diagnostico.
 func TestTheWindowKeepsBothEnds(t *testing.T) {
-	var j janela
-	j.Escrever("COMECO-DA-SAIDA")
+	var j window
+	j.Write("COMECO-DA-SAIDA")
 	enchimento := strings.Repeat("y", 500)
 	for i := 0; i < 3000; i++ {
-		j.Escrever(enchimento)
+		j.Write(enchimento)
 	}
-	j.Escrever("ERRO-NO-FIM")
+	j.Write("ERRO-NO-FIM")
 
 	got := j.String()
 	if !strings.Contains(got, "COMECO-DA-SAIDA") {
@@ -52,9 +52,9 @@ func TestTheWindowKeepsBothEnds(t *testing.T) {
 
 // Truncating in silence makes the reader conclude the program stopped there.
 func TestTheWindowSaysWhatItCut(t *testing.T) {
-	var j janela
+	var j window
 	for i := 0; i < 4000; i++ {
-		j.Escrever(strings.Repeat("z", 300))
+		j.Write(strings.Repeat("z", 300))
 	}
 	if !strings.Contains(j.String(), "omitted by the") {
 		t.Error("it cut without saying so")

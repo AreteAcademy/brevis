@@ -10,6 +10,6 @@ import (
 // assembles both — which today happens nowhere in the code, because the
 // dispatcher -> Runner link does not exist yet.
 var (
-	_ app.Historico   = (*RunRepo)(nil)
-	_ app.Persistidor = (*RunRepo)(nil)
+	_ app.History   = (*RunRepo)(nil)
+	_ app.Persister = (*RunRepo)(nil)
 )

@@ -11,14 +11,14 @@ import (
 
 func list() []postgres.WorkflowSummary {
 	return []postgres.WorkflowSummary{
-		{Slug: "id_verification", Cron: "0 4 * * *", Active: true, TemAgenda: true,
-			UltimoStatus: "success", Tags: []string{"acme", "id"}},
-		{Slug: "platform_workspace", Cron: "0 5 * * *", Active: true, TemAgenda: true,
-			UltimoStatus: "failed", Tags: []string{"acme", "platform"}},
-		{Slug: "vendors_inmet", Cron: "30 6 * * *", Active: false, TemAgenda: true,
-			UltimoStatus: "success", Tags: []string{"vendors"}},
+		{Slug: "id_verification", Cron: "0 4 * * *", Active: true, HasSchedule: true,
+			LastStatus: "success", Tags: []string{"acme", "id"}},
+		{Slug: "platform_workspace", Cron: "0 5 * * *", Active: true, HasSchedule: true,
+			LastStatus: "failed", Tags: []string{"acme", "platform"}},
+		{Slug: "vendors_inmet", Cron: "30 6 * * *", Active: false, HasSchedule: true,
+			LastStatus: "success", Tags: []string{"vendors"}},
 		// No schedule: it never had a cron, and must not show as "paused".
-		{Slug: "protect_ad_hoc", TemAgenda: false, UltimoStatus: ""},
+		{Slug: "protect_ad_hoc", HasSchedule: false, LastStatus: ""},
 	}
 }
 
@@ -49,8 +49,8 @@ func TestFiltrar(t *testing.T) {
 		esperado []string
 	}{
 		{"no filter", pages.Filter{}, []string{"id_verification", "platform_workspace", "vendors_inmet", "protect_ad_hoc"}},
-		{"busca parcial", pages.Filter{Busca: "verif"}, []string{"id_verification"}},
-		{"busca ignora caixa", pages.Filter{Busca: "PLATFORM"}, []string{"platform_workspace"}},
+		{"busca parcial", pages.Filter{Search: "verif"}, []string{"id_verification"}},
+		{"busca ignora caixa", pages.Filter{Search: "PLATFORM"}, []string{"platform_workspace"}},
 		{"ultimo estado", pages.Filter{State: "failed"}, []string{"platform_workspace"}},
 		{"ativos", pages.Filter{Active: "active"}, []string{"id_verification", "platform_workspace"}},
 		// The case that motivated the test: "paused" is a schedule switched off,
@@ -59,7 +59,7 @@ func TestFiltrar(t *testing.T) {
 		{"paused does not include those that never had a schedule", pages.Filter{Active: "paused"}, []string{"vendors_inmet"}},
 		{"tag", pages.Filter{Tag: "acme"}, []string{"id_verification", "platform_workspace"}},
 		{"combinado", pages.Filter{Tag: "acme", State: "success"}, []string{"id_verification"}},
-		{"nada casa", pages.Filter{Busca: "inexistente"}, nil},
+		{"nada casa", pages.Filter{Search: "inexistente"}, nil},
 	}
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestNextRunsRespectsTheLimit(t *testing.T) {
 }
 
 func withTimes(slug string, ultima *time.Time, proxima *time.Time) postgres.WorkflowSummary {
-	return postgres.WorkflowSummary{Slug: slug, UltimaRunEm: ultima, ProximaRun: proxima, TemAgenda: true}
+	return postgres.WorkflowSummary{Slug: slug, LastRunAt: ultima, NextRun: proxima, HasSchedule: true}
 }
 
 func TestSortingByLastRun(t *testing.T) {
@@ -202,12 +202,12 @@ func TestSlicingAPage(t *testing.T) {
 }
 
 func TestAValidStateRefusesAnUnknownOne(t *testing.T) {
-	if estadoValido("success") != "success" {
+	if validState("success") != "success" {
 		t.Error("a legitimate state was refused")
 	}
 	// `?state=xpto` would return an empty list with every chip greyed out, and the
 	// operator would read that as "there are no runs".
-	if estadoValido("xpto") != "" || estadoValido("' OR 1=1") != "" {
+	if validState("xpto") != "" || validState("' OR 1=1") != "" {
 		t.Error("an unknown state should become 'no filter'")
 	}
 }
@@ -220,11 +220,11 @@ func TestTheInstantAndThePage(t *testing.T) {
 		t.Errorf("it did not parse the RFC3339 the chart emits: %v", got)
 	}
 	for _, s := range []string{"", "0", "-3", "abc"} {
-		if pagina(s) != 1 {
-			t.Errorf("pagina(%q) = %d, want 1", s, pagina(s))
+		if page(s) != 1 {
+			t.Errorf("pagina(%q) = %d, want 1", s, page(s))
 		}
 	}
-	if pagina("4") != 4 {
+	if page("4") != 4 {
 		t.Error("a valid page was ignored")
 	}
 }

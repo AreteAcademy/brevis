@@ -21,11 +21,11 @@ type GoExecutor struct {
 	reg *execution.Registry
 
 	mu      sync.Mutex
-	rodando map[string]context.CancelFunc
+	running map[string]context.CancelFunc
 }
 
 func NewGoExecutor(reg *execution.Registry) *GoExecutor {
-	return &GoExecutor{reg: reg, rodando: map[string]context.CancelFunc{}}
+	return &GoExecutor{reg: reg, running: map[string]context.CancelFunc{}}
 }
 
 func (g *GoExecutor) Name() string { return "go" }
@@ -39,7 +39,7 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 		// Listing what exists saves a trip to the documentation, and exposes a
 		// mistake
 		// de digitacao de imediato.
-		disponiveis := g.reg.Nomes()
+		disponiveis := g.reg.Names()
 		if len(disponiveis) == 0 {
 			// An empty registry is the common case today: `docker.run` and
 			// `kubernetes.run` are in the plan but do not exist yet. Saying
@@ -57,21 +57,21 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 	}
 
 	g.mu.Lock()
-	g.rodando[t.ExecutionID] = cancel
+	g.running[t.ExecutionID] = cancel
 	g.mu.Unlock()
 
-	eventos := make(chan execution.Event, 64)
+	events := make(chan execution.Event, 64)
 
 	go func() {
-		defer close(eventos)
+		defer close(events)
 		defer func() {
 			g.mu.Lock()
-			delete(g.rodando, t.ExecutionID)
+			delete(g.running, t.ExecutionID)
 			g.mu.Unlock()
 			cancel()
 		}()
 
-		eventos <- execution.Event{Kind: execution.EventStarted, NodeID: t.NodeID}
+		events <- execution.Event{Kind: execution.EventStarted, NodeID: t.NodeID}
 
 		// A task that panics must not take the orchestrator down with it:
 		// it runs in the SAME process, unlike a pod. The panic becomes a failure
@@ -90,7 +90,7 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 					// it does not block when nobody is reading: a noisy task
 					// must not stall because of its consumer
 					select {
-					case eventos <- execution.Event{
+					case events <- execution.Event{
 						Kind: execution.EventLog, NodeID: t.NodeID,
 						Stream: "stdout", Message: msg,
 					}:
@@ -102,26 +102,26 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 
 		switch {
 		case err == nil:
-			eventos <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID}
+			events <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID}
 		case ctx.Err() == context.DeadlineExceeded:
-			eventos <- execution.Event{
+			events <- execution.Event{
 				Kind: execution.EventFailed, NodeID: t.NodeID, Err: err,
 				Message: fmt.Sprintf("estourou o timeout de %s", t.Timeout),
 			}
 		default:
-			eventos <- execution.Event{
+			events <- execution.Event{
 				Kind: execution.EventFailed, NodeID: t.NodeID, Err: err,
 				Message: err.Error(),
 			}
 		}
 	}()
 
-	return eventos, nil
+	return events, nil
 }
 
 func (g *GoExecutor) Cancel(_ context.Context, execID string) error {
 	g.mu.Lock()
-	cancel, ok := g.rodando[execID]
+	cancel, ok := g.running[execID]
 	g.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("run %q is not running", execID)

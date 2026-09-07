@@ -25,17 +25,17 @@ type LoginData struct {
 // cannot see yet, and offering those links to somebody who has not signed in
 // only produces a trip back to the login itself.
 templ Login(d LoginData) {
-	{{ marca := branding.De(ctx) }}
+	{{ brand := branding.De(ctx) }}
 	<!DOCTYPE html>
 	<html lang="en" class="h-full">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>Sign in · { marca.Title }</title>
+			<title>Sign in · { brand.Title }</title>
 			<link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="preload" href="/assets/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="stylesheet" href="/assets/app.css"/>
-			if css := marca.CSS(); css != "" {
+			if css := brand.CSS(); css != "" {
 				@templ.Raw("<style>" + css + "</style>")
 			}
 		</head>
@@ -48,19 +48,19 @@ templ Login(d LoginData) {
 				<div class="halo-acento pointer-events-none absolute top-1/3 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full"></div>
 				<div class="relative w-full max-w-sm">
 					<div class="mb-6 flex flex-col items-center text-center">
-						if marca.Logo == branding.DefaultLogo {
+						if brand.Logo == branding.DefaultLogo {
 							// Inline so the symbol inherits the theme's colour;
 							// inside an <img> the SVG is an isolated document and
 							// would come out black.
 							<span class="block h-11 w-11 text-gold">
 								@templ.Raw(assets.LogoSVG)
 							</span>
-						} else if marca.Logo != "" {
-							<img src={ marca.Logo } alt={ marca.Title } class="h-11 w-11 rounded-xl object-contain"/>
+						} else if brand.Logo != "" {
+							<img src={ brand.Logo } alt={ brand.Title } class="h-11 w-11 rounded-xl object-contain"/>
 						}
-						<h1 class="display mt-3 text-2xl tracking-tight text-ink">{ marca.Title }</h1>
-						if marca.Subtitle != "" {
-							<p class="mt-1 text-sm text-muted">{ marca.Subtitle }</p>
+						<h1 class="display mt-3 text-2xl tracking-tight text-ink">{ brand.Title }</h1>
+						if brand.Subtitle != "" {
+							<p class="mt-1 text-sm text-muted">{ brand.Subtitle }</p>
 						}
 					</div>
 					<div class="glow-accent w-full rounded-lg border border-line bg-surface">

@@ -43,19 +43,19 @@ type Reporter interface {
 // The question is per (workflow, step), not per workflow: a workflow with three
 // fetchers writing to three tables would create only the first step's if the
 // answer covered the whole workflow, and the other two would fail in silence.
-type Historico interface {
-	PassoJaTeveSucesso(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error)
+type History interface {
+	StepHasSucceeded(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error)
 }
 
-type Persistidor interface {
-	IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int) error
-	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
+type Persister interface {
+	IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int) error
+	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
 		status run.Status, exit *int, erro string, log string) error
 
-	// RegistrarEtapas records the phases of an SDK step while it runs. It is
+	// RecordStages records the phases of an SDK step while it runs. It is
 	// what makes the screen advance before the step finishes.
-	RegistrarEtapas(ctx context.Context, runID uuid.UUID, nodeID string, tentativa int,
-		sdkVersao string, etapas json.RawMessage) error
+	RecordStages(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+		sdkVersion string, etapas json.RawMessage) error
 }
 
 // Runner runs a whole workflow.
@@ -75,17 +75,17 @@ type Runner struct {
 	// Timeout per node. Zero means no limit.
 	Timeout time.Duration
 
-	// MaxTentativas per node. Zero or 1 means a single attempt.
-	MaxTentativas int
-	BackoffBase   time.Duration
+	// MaxAttempts per node. Zero or 1 means a single attempt.
+	MaxAttempts int
+	BackoffBase time.Duration
 
 	// Persist and RunID are used together: without both, per-step state is not
 	// recorded and the DAG in the UI shows up with no execution state.
-	Persist Persistidor
+	Persist Persister
 	RunID   uuid.UUID
 
 	// Params are this run's values. They reach the step's command through a
-	// template (see execution.Renderizar) and the step's environment, so a
+	// template (see execution.Render) and the step's environment, so a
 	// fetcher using the SDK sees them without being handed an argument.
 	Params map[string]string
 
@@ -98,7 +98,7 @@ type Runner struct {
 	// Historico decides whether a step is running for the first time. Nil means
 	// there is no way to know -- and then the step gets first=false, because
 	// creating a table without being sure is worse than not creating it.
-	Historico Historico
+	History History
 
 	// Vagas caps how many STEPS run at once -- in Kubernetes, how many pods
 	// exist simultaneously. Nil means no limit.
@@ -108,11 +108,11 @@ type Runner struct {
 	// not to one workflow. Without it, the dispatcher's concurrency limit
 	// counted RUNS -- five runs with three parallel steps each gave fifteen
 	// pods, not five.
-	Vagas chan struct{}
+	Slots chan struct{}
 
 	// TentativaDoRun is this RUN's attempt, counted by the dispatcher. It goes
 	// into the pod name so a retry does not find the previous attempt's pod.
-	TentativaDoRun int
+	RunAttempt int
 
 	// Pods runs steps as pods in Kubernetes. When present it serves every step
 	// that declares `image:` -- and the same DAG runs as a pod in the cluster
@@ -128,7 +128,7 @@ type Runner struct {
 // is how a pipeline ran 28 days late without anyone seeing it, in the system
 // this one replaces.
 func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
-	niveis, err := graph.Niveis(w)
+	levels, err := graph.Levels(w)
 	if err != nil {
 		return err
 	}
@@ -137,54 +137,54 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 		porID[n.ID] = n
 	}
 
-	for i, nivel := range niveis {
-		if err := r.rodarNivel(ctx, w, nivel, porID); err != nil {
+	for i, level := range levels {
+		if err := r.runLevel(ctx, w, level, porID); err != nil {
 			return fmt.Errorf("nivel %d: %w", i+1, err)
 		}
 	}
 	return nil
 }
 
-func (r Runner) rodarNivel(ctx context.Context, w wf.Workflow, nivel []string, porID map[string]wf.Node) error {
+func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string, porID map[string]wf.Node) error {
 	var (
-		wg    sync.WaitGroup
-		mu    sync.Mutex
-		erros []error
+		wg   sync.WaitGroup
+		mu   sync.Mutex
+		errs []error
 	)
 
-	for _, id := range nivel {
+	for _, id := range level {
 		n := porID[id]
 
 		wg.Add(1)
 		go func(n wf.Node) {
 			defer wg.Done()
-			if err := r.rodarNo(ctx, w, n); err != nil {
+			if err := r.runNode(ctx, w, n); err != nil {
 				mu.Lock()
-				erros = append(erros, err)
+				errs = append(errs, err)
 				mu.Unlock()
 			}
 		}(n)
 	}
 	wg.Wait()
 
-	if len(erros) > 0 {
-		return erros[0]
+	if len(errs) > 0 {
+		return errs[0]
 	}
 	return nil
 }
 
-// rodarNo runs one node, with retry.
+// runNode runs one node, with retry.
 //
 // The retry is PER NODE, and not only per Run as in the dispatcher: redoing the
 // whole workflow because a `notify.sh` failed would throw away the work already
 // finished.
-func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
-	tentativas := r.MaxTentativas
+func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
+	tentativas := r.MaxAttempts
 	if tentativas < 1 {
 		tentativas = 1
 	}
 
-	var ultima error
+	var last error
 	for t := 1; t <= tentativas; t++ {
 		// The slot is taken per ATTEMPT, not for the whole step: holding it
 		// through the backoff would leave a cluster slot idle waiting on a
@@ -193,12 +193,12 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		if err != nil {
 			return err
 		}
-		r.marcarInicio(ctx, n.ID, t-1)
+		r.markStart(ctx, n.ID, t-1)
 		var saida string
-		saida, ultima = r.tentar(ctx, w, n, t-1)
-		r.marcarFim(ctx, n.ID, t-1, ultima, saida)
+		saida, last = r.tentar(ctx, w, n, t-1)
+		r.markEnd(ctx, n.ID, t-1, last, saida)
 		libera()
-		if ultima == nil {
+		if last == nil {
 			return nil
 		}
 		if t == tentativas {
@@ -213,16 +213,16 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		if r.Report != nil {
 			r.Report.Evento(execution.Event{
 				Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
-				Message: fmt.Sprintf("tentativa %d/%d falhou, repetindo em %s", t, tentativas, espera),
+				Message: fmt.Sprintf("attempt %d/%d failed, retrying in %s", t, tentativas, espera),
 			})
 		}
 		select {
 		case <-time.After(espera):
 		case <-ctx.Done():
-			return ultima
+			return last
 		}
 	}
-	return ultima
+	return last
 }
 
 // ocupar takes a slot and returns the function that frees it.
@@ -232,52 +232,52 @@ func (r Runner) rodarNo(ctx context.Context, w wf.Workflow, n wf.Node) error {
 // open. Refusing instead of waiting would turn an excess of work into a
 // failure, when it is only a queue.
 func (r Runner) ocupar(ctx context.Context) (func(), error) {
-	if r.Vagas == nil {
+	if r.Slots == nil {
 		return func() {}, nil
 	}
 	select {
-	case r.Vagas <- struct{}{}:
+	case r.Slots <- struct{}{}:
 		var uma sync.Once
-		return func() { uma.Do(func() { <-r.Vagas }) }, nil
+		return func() { uma.Do(func() { <-r.Slots }) }, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
 }
 
-// marcarInicio and marcarFim only record when there is both a persister AND a
+// markStart and markEnd only record when there is both a persister AND a
 // RunID. A write failure does not interrupt the run: losing a step's record is
 // bad, but aborting the workflow over it is worse.
-func (r Runner) marcarInicio(ctx context.Context, nodeID string, tentativa int) {
+func (r Runner) markStart(ctx context.Context, nodeID string, attempt int) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
-	if err := r.Persist.IniciarTask(ctx, r.RunID, nodeID, tentativa); err != nil && r.Report != nil {
+	if err := r.Persist.IniciarTask(ctx, r.RunID, nodeID, attempt); err != nil && r.Report != nil {
 		r.Report.Evento(execution.Event{
 			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
-			Message: "nao consegui registrar o inicio do passo: " + err.Error(),
+			Message: "could not record the start of the step: " + err.Error(),
 		})
 	}
 }
 
-// marcarEtapas records the phases as they advance. Failing here does NOT bring
+// markStages records the phases as they advance. Failing here does NOT bring
 // the step down: the screen is informative, and the truth about a step remains
 // its exit code. Trading a run for a screen update would be the wrong bargain.
 //
 // It is only called after a marker has been recognised, which is what keeps an
 // ordinary step from paying a database round trip per log line. Checking again
 // here would be a verification that cannot fail.
-func (r Runner) marcarEtapas(ctx context.Context, nodeID string, tentativa int, c *coletorDeEtapas) {
+func (r Runner) markStages(ctx context.Context, nodeID string, attempt int, c *stageCollector) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
-	dados, err := json.Marshal(c.Etapas)
+	data, err := json.Marshal(c.Stages)
 	if err != nil {
 		return
 	}
-	_ = r.Persist.RegistrarEtapas(ctx, r.RunID, nodeID, tentativa, c.Versao, dados)
+	_ = r.Persist.RecordStages(ctx, r.RunID, nodeID, attempt, c.Version, data)
 }
 
-func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, causa error, log string) {
+func (r Runner) markEnd(ctx context.Context, nodeID string, attempt int, causa error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
@@ -285,7 +285,7 @@ func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, cau
 	var exit *int
 	if causa != nil {
 		status, msg = run.StatusFailed, causa.Error()
-		var passo *ErroDePasso
+		var passo *StepError
 		// Exit 0 is not recorded: a Go task that fails has no process, and a
 		// zero in that column would read as "finished fine" next to a failed
 		// status.
@@ -293,15 +293,15 @@ func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, cau
 			exit = &passo.ExitCode
 		}
 	}
-	if err := r.Persist.TerminarTask(ctx, r.RunID, nodeID, tentativa, status, exit, msg, log); err != nil && r.Report != nil {
+	if err := r.Persist.TerminarTask(ctx, r.RunID, nodeID, attempt, status, exit, msg, log); err != nil && r.Report != nil {
 		r.Report.Evento(execution.Event{
 			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
-			Message: "nao consegui registrar o fim do passo: " + err.Error(),
+			Message: "could not record the end of the step: " + err.Error(),
 		})
 	}
 }
 
-// ErroDePasso is a step's failure, with the context needed to understand it
+// StepError is a step's failure, with the context needed to understand it
 // without opening a log: the exit code, what it means, and the last lines the
 // process wrote to stderr.
 //
@@ -309,26 +309,26 @@ func (r Runner) marcarFim(ctx context.Context, nodeID string, tentativa int, cau
 // and useless. The cause (`/bin/sh: python: not found`) went through the events
 // as a log line and was dropped right there, so the screen showed the symptom
 // without the explanation.
-type ErroDePasso struct {
+type StepError struct {
 	NodeID   string
 	ExitCode int
-	Mensagem string
+	Message  string
 
 	// Saida is the last few lines of stderr. Only the last ones, and not all of
 	// them, because a chatty process would fill the database's error column --
 	// and the cause is almost always at the end.
-	Saida []string
+	Output []string
 }
 
-func (e *ErroDePasso) Error() string {
-	cabecalho := fmt.Sprintf("step %q: %s", e.NodeID, e.Mensagem)
+func (e *StepError) Error() string {
+	header := fmt.Sprintf("step %q: %s", e.NodeID, e.Message)
 	if dica := dicaDoCodigo(e.ExitCode); dica != "" {
-		cabecalho += " (" + dica + ")"
+		header += " (" + dica + ")"
 	}
-	if len(e.Saida) == 0 {
-		return cabecalho
+	if len(e.Output) == 0 {
+		return header
 	}
-	return cabecalho + "\n" + strings.Join(e.Saida, "\n")
+	return header + "\n" + strings.Join(e.Output, "\n")
 }
 
 // dicaDoCodigo translates the exit codes the shell reserves. They are the most
@@ -338,37 +338,37 @@ func (e *ErroDePasso) Error() string {
 func dicaDoCodigo(c int) string {
 	switch c {
 	case 126:
-		return "comando sem permissao de execucao"
+		return "the command is not executable"
 	case 127:
-		return "comando nao encontrado — verifique se ele existe na imagem do worker"
+		return "command not found -- check that it exists in the worker's image"
 	case 130:
 		return "interrompido por SIGINT"
 	case 137:
-		return "morto por SIGKILL — normalmente falta de memoria"
+		return "killed by SIGKILL -- usually out of memory"
 	case 143:
 		return "encerrado por SIGTERM"
 	case -1:
-		return "encerrado por sinal, sem codigo de saida"
+		return "ended by a signal, with no exit code"
 	}
 	return ""
 }
 
-// linhasDeContexto is how many lines of stderr travel with a failure. Five
+// contextLines is how many lines of stderr travel with a failure. Five
 // cover a short stack trace or a command's closing message without drowning the
 // screen.
-const linhasDeContexto = 5
+const contextLines = 5
 
 // tentar runs the step once and returns the complete output (capped) along with
 // the outcome. The output comes back on success too: a step that finished fine
 // but produced very little is a signal, and it is only visible in the log.
-func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa int) (string, error) {
+func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt int) (string, error) {
 	// Asked once per attempt, and not inside montar, because building a task
 	// must not do I/O. A retry of the same run does not reopen the first
-	// execution: if attempt 1 wrote a row, PassoJaTeveSucesso already answers
+	// execution: if attempt 1 wrote a row, StepHasSucceeded already answers
 	// yes; if it failed, this is still the first, which is right.
-	primeira := r.primeiraExecucao(ctx, w.Slug, n.ID)
+	first := r.firstRun(ctx, w.Slug, n.ID)
 
-	exec, tarefa, err := r.montar(w, n, tentativa, primeira)
+	exec, tarefa, err := r.build(w, n, attempt, first)
 	if err != nil {
 		return "", err
 	}
@@ -378,17 +378,17 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 		return "", fmt.Errorf("step %q: %w", n.ID, err)
 	}
 
-	var falha *ErroDePasso
+	var failure *StepError
 	var stderr, stdout []string
 
 	// The whole output (capped) goes to the database. The 5-line windows below
 	// still exist for the error MESSAGE, which has to fit in a Slack alert;
 	// this one keeps what the operator will want to read later, when the pod
 	// that produced it is long gone.
-	var completa janela
+	var completa window
 
 	// The phases the step announces, when it is an SDK pipeline.
-	var etapas coletorDeEtapas
+	var etapas stageCollector
 
 	for e := range eventos {
 		// A marked line is the SDK talking to the engine, not the program's
@@ -396,8 +396,8 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 		// or the Report: whoever looks wants to see the phases, not the JSON
 		// that carried them.
 		if e.Kind == execution.EventLog {
-			if linha := strings.TrimSpace(e.Message); linha != "" && etapas.linha(linha) {
-				r.marcarEtapas(ctx, n.ID, tentativa, &etapas)
+			if line := strings.TrimSpace(e.Message); line != "" && etapas.line(line) {
+				r.markStages(ctx, n.ID, attempt, &etapas)
 				continue
 			}
 		}
@@ -415,33 +415,33 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, tentativa 
 		// "exited with code 2", without the cause that was on screen the whole
 		// time.
 		if e.Kind == execution.EventLog {
-			if linha := strings.TrimSpace(e.Message); linha != "" {
-				completa.Escrever(linha)
+			if line := strings.TrimSpace(e.Message); line != "" {
+				completa.Write(line)
 				alvo := &stdout
 				if e.Stream == "stderr" {
 					alvo = &stderr
 				}
-				*alvo = append(*alvo, linha)
-				if len(*alvo) > linhasDeContexto {
+				*alvo = append(*alvo, line)
+				if len(*alvo) > contextLines {
 					*alvo = (*alvo)[1:]
 				}
 			}
 		}
 		if e.Kind == execution.EventFailed {
-			falha = &ErroDePasso{NodeID: n.ID, ExitCode: e.ExitCode, Mensagem: e.Message}
+			failure = &StepError{NodeID: n.ID, ExitCode: e.ExitCode, Message: e.Message}
 		}
 	}
-	if falha == nil {
+	if failure == nil {
 		return completa.String(), nil
 	}
 	// stderr first: when it exists, it is where the program meant to report an
 	// error. stdout only enters in its absence, so the message is not filled
 	// with the ordinary output of a command that merely ended badly.
-	falha.Saida = stderr
-	if len(falha.Saida) == 0 {
-		falha.Saida = stdout
+	failure.Output = stderr
+	if len(failure.Output) == 0 {
+		failure.Output = stdout
 	}
-	return completa.String(), falha
+	return completa.String(), failure
 }
 
 // Prefix of the variables that describe THIS run, kept apart from the
@@ -464,7 +464,7 @@ const (
 //
 // primeira is resolved beforehand, by the caller, because it needs a database
 // round trip and building a task must not do I/O.
-func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[string]string {
+func (r Runner) contextoDoRun(nodeID string, first bool, attempt int) map[string]string {
 	env := map[string]string{}
 
 	// With no RunID there is no managed run: this is the `brevis run` path,
@@ -477,9 +477,9 @@ func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[s
 	// input is passed on this path.
 	if r.RunID != uuid.Nil {
 		env[envRunID] = r.RunID.String()
-		env[envRunFirst] = strconv.FormatBool(primeira)
+		env[envRunFirst] = strconv.FormatBool(first)
 		// Starts at zero, like the task_runs.attempt column.
-		env[envRunAttempt] = strconv.Itoa(tentativa)
+		env[envRunAttempt] = strconv.Itoa(attempt)
 	}
 
 	if r.Trigger != "" {
@@ -507,15 +507,15 @@ func (r Runner) contextoDoRun(nodeID string, primeira bool, tentativa int) map[s
 // mesclarEnv merges the maps in increasing order of precedence, except the
 // first: `base` (the engine's global environment) beats the run context, which
 // is how it has always been, and whatever comes after beats `base`.
-func mesclarEnv(base, execucao map[string]string, acima ...map[string]string) map[string]string {
-	out := make(map[string]string, len(base)+len(execucao))
-	for k, v := range execucao {
+func mesclarEnv(base, run map[string]string, above ...map[string]string) map[string]string {
+	out := make(map[string]string, len(base)+len(run))
+	for k, v := range run {
 		out[k] = v
 	}
 	for k, v := range base {
 		out[k] = v
 	}
-	for _, m := range acima {
+	for _, m := range above {
 		for k, v := range m {
 			out[k] = v
 		}
@@ -523,16 +523,16 @@ func mesclarEnv(base, execucao map[string]string, acima ...map[string]string) ma
 	return out
 }
 
-// primeiraExecucao asks the history whether this step has ever succeeded.
+// firstRun asks the history whether this step has ever succeeded.
 //
 // With no history configured the answer is "not the first": creating a table
 // without being sure is worse than not creating it, and the consumer can always
 // ask explicitly.
-func (r Runner) primeiraExecucao(ctx context.Context, slug, nodeID string) bool {
-	if r.Historico == nil {
+func (r Runner) firstRun(ctx context.Context, slug, nodeID string) bool {
+	if r.History == nil {
 		return false
 	}
-	jaTeve, err := r.Historico.PassoJaTeveSucesso(ctx, slug, nodeID, r.RunID)
+	jaTeve, err := r.History.StepHasSucceeded(ctx, slug, nodeID, r.RunID)
 	if err != nil {
 		// A failed query must not turn into a table created by mistake.
 		return false
@@ -541,9 +541,9 @@ func (r Runner) primeiraExecucao(ctx context.Context, slug, nodeID string) bool 
 }
 
 // montar escolhe o executor e monta a task.
-func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (execution.Executor, execution.TaskExec, error) {
-	imagem := w.ImagemDe(n)
-	recursos := w.RecursosDe(n)
+func (r Runner) build(w wf.Workflow, n wf.Node, attempt int, first bool) (execution.Executor, execution.TaskExec, error) {
+	image := w.ImageFor(n)
+	resources := w.ResourcesFor(n)
 
 	t := execution.TaskExec{
 		ExecutionID: w.Slug + ":" + n.ID,
@@ -556,20 +556,20 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 		// process dies midway), it stays stuck on the broken pod forever. That
 		// is what happened in dev: a pod Pending on insufficient CPU was
 		// re-adopted on every retry.
-		Attempt:    tentativa,
-		Image:      imagem,
+		Attempt:    attempt,
+		Image:      image,
 		Shell:      n.UsaShell(),
-		CPU:        recursos.CPU,
-		Memoria:    recursos.Memory,
-		CPUMax:     recursos.CPULimit,
-		MemoriaMax: recursos.MemoryLimit,
+		CPU:        resources.CPU,
+		Memoria:    resources.Memory,
+		CPUMax:     resources.CPULimit,
+		MemoriaMax: resources.MemoryLimit,
 		WorkDir:    r.WorkDir,
 		// Order, weakest to strongest: run context, the engine's global
 		// environment, the workflow's `env:`, the step's `env:`. The step
 		// beats the global on purpose -- the other way round, a variable
 		// declared in the file would lose in silence to a BREVIS_TASK_ENV
 		// somebody configured months ago.
-		Env:     mesclarEnv(r.Env, r.contextoDoRun(n.ID, primeira, tentativa), w.EnvDe(n)),
+		Env:     mesclarEnv(r.Env, r.contextoDoRun(n.ID, first, attempt), w.EnvDe(n)),
 		Secrets: w.SecretsDe(n),
 		Timeout: r.Timeout,
 	}
@@ -585,23 +585,23 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 	// The command is rendered HERE, when the task is built, and not at publish
 	// time: the same workflow runs with different params on every dispatch, and
 	// a command frozen in the database would lose that.
-	comando, err := execution.Renderizar(n.Run, r.Params)
+	command, err := execution.Render(n.Run, r.Params)
 	if err != nil {
 		return nil, t, fmt.Errorf("step %q: %w", n.ID, err)
 	}
-	t.Command = comando
+	t.Command = command
 
 	// A step with `image:` runs as a POD when a pod executor exists. That is the
 	// difference between local mode and the cluster, and it lives HERE, in one
 	// place -- the YAML is identical in both, and neither executor knows the
 	// other exists.
-	if imagem != "" && r.Pods != nil {
+	if image != "" && r.Pods != nil {
 		return r.Pods, t, nil
 	}
 	if r.Processo == nil {
-		if imagem != "" {
+		if image != "" {
 			return nil, t, fmt.Errorf("step %q declares `image: %s`, but this process has "+
-				"neither a pod executor nor a process executor", n.ID, imagem)
+				"neither a pod executor nor a process executor", n.ID, image)
 		}
 		return nil, t, fmt.Errorf("step %q usa `run:`, mas nenhum executor de processo foi configurado", n.ID)
 	}
@@ -609,10 +609,10 @@ func (r Runner) montar(w wf.Workflow, n wf.Node, tentativa int, primeira bool) (
 	// Staying quiet would make it look as though the step ran in the declared
 	// image, which is the kind of mistake that only surfaces once the result is
 	// already wrong.
-	if imagem != "" && r.Report != nil {
+	if image != "" && r.Report != nil {
 		r.Report.Evento(execution.Event{
 			Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
-			Message: fmt.Sprintf("modo local: rodando na instancia, ignorando `image: %s`", imagem),
+			Message: fmt.Sprintf("modo local: rodando na instancia, ignorando `image: %s`", image),
 		})
 	}
 	return r.Processo, t, nil

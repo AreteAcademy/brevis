@@ -290,14 +290,14 @@ func init() {
 func lerNDJSON(r io.Reader) ([]sdk.Envelope, error) {
 	dec := json.NewDecoder(r)
 	var out []sdk.Envelope
-	for linha := 1; ; linha++ {
+	for line := 1; ; line++ {
 		var payload any
 		err := dec.Decode(&payload)
 		if errors.Is(err, io.EOF) {
 			return out, nil
 		}
 		if err != nil {
-			return nil, fmt.Errorf("line %d: %w", linha, err)
+			return nil, fmt.Errorf("line %d: %w", line, err)
 		}
 		out = append(out, sdk.Envelope{Payload: payload})
 	}

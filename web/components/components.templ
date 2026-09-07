@@ -16,9 +16,9 @@ import (
 // too — the dot is filled for what has finished and ringed for what is still
 // alive — so it does not depend on colour alone.
 templ State(status string) {
-	<span class={ "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", classeEstado(status) }>
-		<span class={ "h-1.5 w-1.5 rounded-full", pontoEstado(status) }></span>
-		{ rotuloEstado(status) }
+	<span class={ "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", stateClass(status) }>
+		<span class={ "h-1.5 w-1.5 rounded-full", stateDot(status) }></span>
+		{ stateLabel(status) }
 	</span>
 }
 
@@ -26,12 +26,12 @@ templ State(status string) {
 // the column.
 templ Dot(status string) {
 	<span
-		class={ "inline-block h-2.5 w-2.5 rounded-full", pontoEstado(status) }
-		title={ rotuloEstado(status) }
+		class={ "inline-block h-2.5 w-2.5 rounded-full", stateDot(status) }
+		title={ stateLabel(status) }
 	></span>
 }
 
-func rotuloEstado(s string) string {
+func stateLabel(s string) string {
 	switch s {
 	case "success":
 		return "success"
@@ -53,7 +53,7 @@ func rotuloEstado(s string) string {
 	return s
 }
 
-func classeEstado(s string) string {
+func stateClass(s string) string {
 	switch s {
 	case "success":
 		return "border-state-success/25 bg-state-success/10 text-state-success"
@@ -71,7 +71,7 @@ func classeEstado(s string) string {
 	return "border-line bg-parchment text-muted"
 }
 
-func pontoEstado(s string) string {
+func stateDot(s string) string {
 	switch s {
 	case "success":
 		return "bg-state-success"
@@ -90,10 +90,10 @@ func pontoEstado(s string) string {
 }
 
 // Card is the base panel: a light surface, a thin border, a warm wide shadow.
-templ Card(rotulo string) {
+templ Card(label string) {
 	<section class="rounded-[20px] border border-line bg-surface p-6 shadow-warm-sm">
-		if rotulo != "" {
-			<p class="kicker mb-4">{ rotulo }</p>
+		if label != "" {
+			<p class="kicker mb-4">{ label }</p>
 		}
 		{ children... }
 	</section>
@@ -102,10 +102,10 @@ templ Card(rotulo string) {
 // Metric is one of the four numbers at the top of the Overview. The large
 // serif number is what sets the editorial tone — in sans it would become just
 // another dashboard.
-templ Metric(rotulo, valor, nota string, matiz string) {
+templ Metric(label, value, nota string, matiz string) {
 	<div class="rounded-[20px] border border-line bg-surface px-6 py-5 shadow-warm-sm">
-		<p class="kicker">{ rotulo }</p>
-		<p class={ "display mt-2 text-[2.6rem] leading-none", matiz }>{ valor }</p>
+		<p class="kicker">{ label }</p>
+		<p class={ "display mt-2 text-[2.6rem] leading-none", matiz }>{ value }</p>
 		if nota != "" {
 			<p class="mt-2 text-xs text-muted">{ nota }</p>
 		}
@@ -125,14 +125,14 @@ templ Empty(msg, dica string) {
 }
 
 // Tag is a tag chip. It becomes a link when `rota` exists, to filter.
-templ Tag(texto, rota string) {
+templ Tag(text, rota string) {
 	if rota != "" {
 		<a
 			href={ templ.SafeURL(rota) }
 			class="inline-flex rounded-full border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted transition-colors hover:border-gold hover:text-gold-strong"
-		>{ texto }</a>
+		>{ text }</a>
 	} else {
-		<span class="inline-flex rounded-full border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted">{ texto }</span>
+		<span class="inline-flex rounded-full border border-line bg-parchment px-2 py-0.5 text-[0.7rem] text-muted">{ text }</span>
 	}
 }
 
@@ -146,55 +146,55 @@ templ Tag(texto, rota string) {
 // ---------------------------------------------------------------------------
 
 const (
-	larguraGrafico = 980
-	alturaGrafico  = 240
+	chartWidth = 980
+	chartHeight  = 240
 	margemEsq      = 34
-	margemBaixo    = 26
+	bottomMargin    = 26
 )
 
 // RunsChart draws one stacked column per hour, with the average-duration line on
 // top — the two readings the Overview screen has to cross: "how many" and
 // "quanto tempo".
-templ RunsChart(baldes []postgres.Bucket) {
-	if len(baldes) == 0 {
+templ RunsChart(buckets []postgres.Bucket) {
+	if len(buckets) == 0 {
 		@Empty("No run in the window.", "brevis scheduler")
 	} else {
 		<div class="overflow-x-auto">
 			<svg
-				viewBox={ fmt.Sprintf("0 0 %d %d", larguraGrafico, alturaGrafico) }
+				viewBox={ fmt.Sprintf("0 0 %d %d", chartWidth, chartHeight) }
 				class="h-[240px] w-full min-w-[560px]"
 				role="img"
 				aria-label="Runs per hour"
 			>
 				// A horizontal grid: four lines are enough to give scale without
 				// virar papel milimetrado.
-				for _, l := range linhasDeGrade(baldes) {
-					<line x1={ fmt.Sprint(margemEsq) } y1={ fmt.Sprint(l.Y) } x2={ fmt.Sprint(larguraGrafico) } y2={ fmt.Sprint(l.Y) } stroke="var(--color-ink)" stroke-opacity="0.08"></line>
-					<text x="0" y={ fmt.Sprint(l.Y + 4) } class="fill-muted text-[11px]">{ l.Rotulo }</text>
+				for _, l := range linhasDeGrade(buckets) {
+					<line x1={ fmt.Sprint(margemEsq) } y1={ fmt.Sprint(l.Y) } x2={ fmt.Sprint(chartWidth) } y2={ fmt.Sprint(l.Y) } stroke="var(--color-ink)" stroke-opacity="0.08"></line>
+					<text x="0" y={ fmt.Sprint(l.Y + 4) } class="fill-muted text-[11px]">{ l.Label }</text>
 				}
-				for _, b := range barras(baldes) {
+				for _, b := range bars(buckets) {
 					// The whole column is the target, not just the bar: with a
 					// single run the bar is 2px tall, and demanding exact aim
 					// tornaria o grafico decorativo.
 					<a href={ templ.SafeURL(b.Link) } class="grafico-alvo" data-dica={ b.Dica }>
-						<rect class="grafico-faixa" x={ fmt.Sprint(b.XFaixa) } y="0" width={ fmt.Sprint(b.LarguraFaixa) } height={ fmt.Sprint(alturaGrafico - margemBaixo) } rx="3"></rect>
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YSucesso) } width={ fmt.Sprint(b.Largura) } height={ fmt.Sprint(b.HSucesso) } rx="2" fill="var(--color-state-success)"></rect>
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YFalha) } width={ fmt.Sprint(b.Largura) } height={ fmt.Sprint(b.HFalha) } rx="2" fill="var(--color-state-failed)"></rect>
-						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YOutros) } width={ fmt.Sprint(b.Largura) } height={ fmt.Sprint(b.HOutros) } rx="2" fill="var(--color-state-running)"></rect>
+						<rect class="grafico-faixa" x={ fmt.Sprint(b.BandX) } y="0" width={ fmt.Sprint(b.BandWidth) } height={ fmt.Sprint(chartHeight - bottomMargin) } rx="3"></rect>
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YSucesso) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HSucceeded) } rx="2" fill="var(--color-state-success)"></rect>
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YFalha) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HFailed) } rx="2" fill="var(--color-state-failed)"></rect>
+						<rect x={ fmt.Sprint(b.X) } y={ fmt.Sprint(b.YOutros) } width={ fmt.Sprint(b.Width) } height={ fmt.Sprint(b.HOutros) } rx="2" fill="var(--color-state-running)"></rect>
 						<title>{ b.Dica }</title>
 					</a>
 				}
-				if d := linhaDuracao(baldes); d != "" {
+				if d := durationLine(buckets); d != "" {
 					<path d={ d } fill="none" stroke="var(--color-gold)" stroke-width="1.5" stroke-linejoin="round" opacity="0.9"></path>
-					// The duration curve has a scale of its own (see linhaDuracao),
+					// The duration curve has a scale of its own (see durationLine),
 					// so without this anchor it would be a line with no unit: the
 					// peak says what the highest point corresponds to.
-					<text x={ fmt.Sprint(larguraGrafico) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
-						{ "peak average duration: " + Duration(picoDuracao(baldes)) }
+					<text x={ fmt.Sprint(chartWidth) } y="12" text-anchor="end" class="fill-gold-strong text-[11px]">
+						{ "peak average duration: " + Duration(durationPeak(buckets)) }
 					</text>
 				}
-				for _, m := range marcasDeHora(baldes) {
-					<text x={ fmt.Sprint(m.X) } y={ fmt.Sprint(alturaGrafico - 6) } text-anchor="middle" class="fill-muted text-[11px]">{ m.Rotulo }</text>
+				for _, m := range hourTicks(buckets) {
+					<text x={ fmt.Sprint(m.X) } y={ fmt.Sprint(chartHeight - 6) } text-anchor="middle" class="fill-muted text-[11px]">{ m.Label }</text>
 				}
 			</svg>
 		</div>
@@ -207,10 +207,10 @@ templ RunsChart(baldes []postgres.Bucket) {
 	}
 }
 
-templ legenda(cor, texto string) {
+templ legenda(cor, text string) {
 	<span class="inline-flex items-center gap-1.5">
 		<span class="h-2 w-2 rounded-full" style={ "background:" + cor }></span>
-		{ texto }
+		{ text }
 	</span>
 }
 
@@ -247,11 +247,11 @@ templ Rosca(i postgres.Indicators) {
 // aritmetica no meio do markup e ilegivel e impossivel de testar.
 // ---------------------------------------------------------------------------
 
-type Barra struct {
-	X, Largura         int
-	XFaixa, LarguraFaixa int
-	YSucesso, HSucesso int
-	YFalha, HFalha     int
+type Bar struct {
+	X, Width         int
+	BandX, BandWidth int
+	YSucesso, HSucceeded int
+	YFalha, HFailed     int
 	YOutros, HOutros   int
 	Dica               string
 	Link               string
@@ -259,12 +259,12 @@ type Barra struct {
 
 type Grade struct {
 	Y      int
-	Rotulo string
+	Label string
 }
 
 type Brand struct {
 	X      int
-	Rotulo string
+	Label string
 }
 
 // teto rounds the maximum up to a value divisible by 4 in "round" steps, so the
@@ -273,9 +273,9 @@ type Brand struct {
 //
 // The previous version divided the raw maximum by four and produced axes like
 // 0/6/12/18/25 — every label a different interval from the one before it.
-func teto(baldes []postgres.Bucket) int {
+func ceiling(buckets []postgres.Bucket) int {
 	max := 0
-	for _, b := range baldes {
+	for _, b := range buckets {
 		if t := b.Total(); t > max {
 			max = t
 		}
@@ -292,28 +292,28 @@ func teto(baldes []postgres.Bucket) int {
 	return ((max + 3999) / 4000) * 4000
 }
 
-func linhasDeGrade(baldes []postgres.Bucket) []Grade {
-	max := teto(baldes)
-	util := alturaGrafico - margemBaixo
+func linhasDeGrade(buckets []postgres.Bucket) []Grade {
+	max := ceiling(buckets)
+	util := chartHeight - bottomMargin
 	var out []Grade
 	for i := 0; i <= 4; i++ {
-		valor := max * i / 4
+		value := max * i / 4
 		out = append(out, Grade{
 			Y:      util - util*i/4,
-			Rotulo: fmt.Sprint(valor),
+			Label: fmt.Sprint(value),
 		})
 	}
 	return out
 }
 
-func barras(baldes []postgres.Bucket) []Barra {
-	max := teto(baldes)
-	util := alturaGrafico - margemBaixo
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
-	largura := int(passo * 0.62)
-	if largura < 2 {
-		largura = 2
+func bars(buckets []postgres.Bucket) []Bar {
+	max := ceiling(buckets)
+	util := chartHeight - bottomMargin
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
+	width := int(passo * 0.62)
+	if width < 2 {
+		width = 2
 	}
 
 	alt := func(n int) int {
@@ -329,26 +329,26 @@ func barras(baldes []postgres.Bucket) []Barra {
 		return h
 	}
 
-	var out []Barra
-	for i, b := range baldes {
-		inicioFaixa := margemEsq + int(float64(i)*passo)
-		x := inicioFaixa + (int(passo)-largura)/2
-		hs, hf := alt(b.Sucesso), alt(b.Falha)
-		ho := alt(b.Executando + b.Fila)
+	var out []Bar
+	for i, b := range buckets {
+		bandStart := margemEsq + int(float64(i)*passo)
+		x := bandStart + (int(passo)-width)/2
+		hs, hf := alt(b.Succeeded), alt(b.Failed)
+		ho := alt(b.Running + b.Queued)
 
 		base := util
-		barra := Barra{
-			X: x, Largura: largura,
-			XFaixa: inicioFaixa, LarguraFaixa: int(passo),
+		bar := Bar{
+			X: x, Width: width,
+			BandX: bandStart, BandWidth: int(passo),
 			Dica: dicaDoBalde(b), Link: linkDoBalde(b),
 		}
 		base -= hs
-		barra.YSucesso, barra.HSucesso = base, hs
+		bar.YSucesso, bar.HSucceeded = base, hs
 		base -= hf
-		barra.YFalha, barra.HFalha = base, hf
+		bar.YFalha, bar.HFailed = base, hf
 		base -= ho
-		barra.YOutros, barra.HOutros = base, ho
-		out = append(out, barra)
+		bar.YOutros, bar.HOutros = base, ho
+		out = append(out, bar)
 	}
 	return out
 }
@@ -357,24 +357,24 @@ func barras(baldes []postgres.Bucket) []Barra {
 // grafico em ponto de partida de investigacao: ver o pico de falhas e clicar
 // nele, em vez de reconstruir o filtro a mao.
 func linkDoBalde(b postgres.Bucket) string {
-	de := b.Inicio.UTC().Format(time.RFC3339)
-	ate := b.Inicio.Add(time.Hour).UTC().Format(time.RFC3339)
+	de := b.Start.UTC().Format(time.RFC3339)
+	ate := b.Start.Add(time.Hour).UTC().Format(time.RFC3339)
 	return "/runs?de=" + url.QueryEscape(de) + "&ate=" + url.QueryEscape(ate)
 }
 
 func dicaDoBalde(b postgres.Bucket) string {
-	partes := []string{b.Inicio.Local().Format("02/01 15h")}
-	if b.Sucesso > 0 {
-		partes = append(partes, fmt.Sprintf("%d success", b.Sucesso))
+	partes := []string{b.Start.Local().Format("02/01 15h")}
+	if b.Succeeded > 0 {
+		partes = append(partes, fmt.Sprintf("%d success", b.Succeeded))
 	}
-	if b.Falha > 0 {
-		partes = append(partes, fmt.Sprintf("%d failed", b.Falha))
+	if b.Failed > 0 {
+		partes = append(partes, fmt.Sprintf("%d failed", b.Failed))
 	}
-	if n := b.Executando + b.Fila; n > 0 {
+	if n := b.Running + b.Queued; n > 0 {
 		partes = append(partes, fmt.Sprintf("%d em curso", n))
 	}
-	if b.DuracaoMedia > 0 {
-		partes = append(partes, "avg "+Duration(&b.DuracaoMedia))
+	if b.MeanDuration > 0 {
+		partes = append(partes, "avg "+Duration(&b.MeanDuration))
 	}
 	if len(partes) == 1 {
 		return partes[0] + " · no runs"
@@ -382,12 +382,12 @@ func dicaDoBalde(b postgres.Bucket) string {
 	return strings.Join(partes, " · ")
 }
 
-// picoDuracao is the curve's largest value — the secondary scale's reference.
-func picoDuracao(baldes []postgres.Bucket) *time.Duration {
+// durationPeak is the curve's largest value — the secondary scale's reference.
+func durationPeak(buckets []postgres.Bucket) *time.Duration {
 	var maior time.Duration
-	for _, b := range baldes {
-		if b.DuracaoMedia > maior {
-			maior = b.DuracaoMedia
+	for _, b := range buckets {
+		if b.MeanDuration > maior {
+			maior = b.MeanDuration
 		}
 	}
 	if maior == 0 {
@@ -396,55 +396,55 @@ func picoDuracao(baldes []postgres.Bucket) *time.Duration {
 	return &maior
 }
 
-// linhaDuracao normalizes the average duration by its OWN scale, not by the
+// durationLine normalizes the average duration by its OWN scale, not by the
 // count's: they are different magnitudes, and what matters here is the curve's
 // shape.
-func linhaDuracao(baldes []postgres.Bucket) string {
+func durationLine(buckets []postgres.Bucket) string {
 	var maior time.Duration
-	for _, b := range baldes {
-		if b.DuracaoMedia > maior {
-			maior = b.DuracaoMedia
+	for _, b := range buckets {
+		if b.MeanDuration > maior {
+			maior = b.MeanDuration
 		}
 	}
 	if maior == 0 {
 		return ""
 	}
 
-	util := alturaGrafico - margemBaixo
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
+	util := chartHeight - bottomMargin
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
 
 	var b strings.Builder
-	comando := "M"
-	for i, bl := range baldes {
-		if bl.DuracaoMedia == 0 {
+	command := "M"
+	for i, bl := range buckets {
+		if bl.MeanDuration == 0 {
 			// It cuts the line rather than joining two peaks over a gap, which
 			// would invent a duration for an hour with no run at all.
-			comando = "M"
+			command = "M"
 			continue
 		}
 		x := margemEsq + int(float64(i)*passo+passo/2)
-		y := util - int(float64(util)*0.86*float64(bl.DuracaoMedia)/float64(maior))
-		fmt.Fprintf(&b, "%s%d %d ", comando, x, y)
-		comando = "L"
+		y := util - int(float64(util)*0.86*float64(bl.MeanDuration)/float64(maior))
+		fmt.Fprintf(&b, "%s%d %d ", command, x, y)
+		command = "L"
 	}
 	return strings.TrimSpace(b.String())
 }
 
-func marcasDeHora(baldes []postgres.Bucket) []Brand {
-	area := larguraGrafico - margemEsq
-	passo := float64(area) / float64(len(baldes))
+func hourTicks(buckets []postgres.Bucket) []Brand {
+	area := chartWidth - margemEsq
+	passo := float64(area) / float64(len(buckets))
 
 	// It shows at most 8 labels: more than that becomes an illegible blur.
-	salto := len(baldes)/8 + 1
+	salto := len(buckets)/8 + 1
 	var out []Brand
-	for i, b := range baldes {
+	for i, b := range buckets {
 		if i%salto != 0 {
 			continue
 		}
 		out = append(out, Brand{
 			X:      margemEsq + int(float64(i)*passo+passo/2),
-			Rotulo: b.Inicio.Local().Format("15h"),
+			Label: b.Start.Local().Format("15h"),
 		})
 	}
 	return out
@@ -468,33 +468,33 @@ func arcos(i postgres.Indicators) []Arco {
 	fatias := []struct {
 		n      int
 		cor    string
-		nome   string
-		estado string
+		name   string
+		state string
 	}{
 		// A CSS variable, and not a hex value: the SVG is served inside the page,
 		// so the donut follows the client's theme like any other element.
-		{i.Sucesso, "var(--color-state-success)", "success", "success"},
-		{i.Falha, "var(--color-state-failed)", "failed", "failed"},
-		{i.EmExecucao, "var(--color-state-running)", "running", "running"},
-		{i.Pendentes, "var(--color-state-queued)", "queued", "queued"},
+		{i.Succeeded, "var(--color-state-success)", "success", "success"},
+		{i.Failed, "var(--color-state-failed)", "failed", "failed"},
+		{i.Running, "var(--color-state-running)", "running", "running"},
+		{i.Pending, "var(--color-state-queued)", "queued", "queued"},
 	}
 
 	var out []Arco
-	acumulado := 0
+	running := 0
 	for _, f := range fatias {
 		if f.n == 0 {
 			continue
 		}
-		tamanho := f.n * perimetro / i.Total
+		size := f.n * perimetro / i.Total
 		out = append(out, Arco{
 			Cor:    f.cor,
-			Dash:   fmt.Sprintf("%d %d", tamanho, perimetro-tamanho),
-			Offset: -acumulado,
+			Dash:   fmt.Sprintf("%d %d", size, perimetro-size),
+			Offset: -running,
 			Dica: fmt.Sprintf("%d %s (%.0f%%) — click to see the list",
-				f.n, f.nome, float64(f.n)*100/float64(i.Total)),
-			Link: "/runs?estado=" + f.estado,
+				f.n, f.name, float64(f.n)*100/float64(i.Total)),
+			Link: "/runs?estado=" + f.state,
 		})
-		acumulado += tamanho
+		running += size
 	}
 	return out
 }
@@ -567,7 +567,7 @@ func Timestamp(t *time.Time) string {
 // stays trapped inside it without a line of JavaScript of ours.
 // ---------------------------------------------------------------------------
 
-templ BotaoErro(runID string) {
+templ ErrorButton(runID string) {
 	// An <a> and not a <button>: with the href, the error has an address of its
 	// own — copying the link takes somebody else straight to it. The script
 	// intercepts the click and opens the dialog; without JavaScript, the link
@@ -575,18 +575,18 @@ templ BotaoErro(runID string) {
 	<a
 		href={ templ.SafeURL("#erro-" + runID) }
 		data-dialogo={ "erro-" + runID }
-		title="Ver o erro"
+		title="See the error"
 		class="inline-flex items-center gap-1 rounded-full border border-state-failed/30 bg-state-failed/5 px-2.5 py-1 text-[0.7rem] font-medium text-state-failed transition-colors hover:bg-state-failed/10"
 	>
 		<svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6">
 			<circle cx="6" cy="6" r="4.6"></circle>
 			<path d="M6 3.4v3M6 8.4v.2" stroke-linecap="round"></path>
 		</svg>
-		erro
+		failure
 	</a>
 }
 
-templ DialogoErro(runID, workflow, status, mensagem string) {
+templ ErrorDialog(runID, workflow, status, message string) {
 	<dialog
 		id={ "erro-" + runID }
 		class="w-[min(680px,92vw)] rounded-[20px] border border-line bg-surface p-0 text-ink shadow-warm backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]"
@@ -613,7 +613,7 @@ templ DialogoErro(runID, workflow, status, mensagem string) {
 				<a href={ templ.SafeURL("/runs/" + runID) } class="text-gold-strong hover:underline">open the run</a>
 				<span class="font-mono text-[0.7rem] text-muted/70">{ runID }</span>
 			</div>
-			<pre class="max-h-[50vh] overflow-auto rounded-[14px] border border-state-failed/20 bg-state-failed/5 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-state-failed">{ mensagem }</pre>
+			<pre class="max-h-[50vh] overflow-auto rounded-[14px] border border-state-failed/20 bg-state-failed/5 px-4 py-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-state-failed">{ message }</pre>
 		</div>
 	</dialog>
 }

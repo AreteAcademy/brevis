@@ -23,7 +23,7 @@ type respostaSaude struct {
 // an external dependency makes Kubernetes KILL the pod when the database wobbles
 // — trading a partial outage for a crashloop.
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
-	escreverJSON(w, http.StatusOK, respostaSaude{Status: "ok"})
+	writeJSON(w, http.StatusOK, respostaSaude{Status: "ok"})
 }
 
 // ready responde readiness: o processo consegue atender de fato.
@@ -48,10 +48,10 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	if status != http.StatusOK {
 		corpo.Status = "unavailable"
 	}
-	escreverJSON(w, status, corpo)
+	writeJSON(w, status, corpo)
 }
 
-func escreverJSON(w http.ResponseWriter, status int, v any) {
+func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)

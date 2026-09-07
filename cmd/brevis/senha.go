@@ -30,28 +30,28 @@ func semEco() (string, error) {
 		defer restaurar()
 	}
 
-	linha, err := bufio.NewReader(os.Stdin).ReadString('\n')
+	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	fmt.Fprintln(os.Stderr)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimRight(linha, "\r\n"), nil
+	return strings.TrimRight(line, "\r\n"), nil
 }
 
 func desligarEco() (func(), error) {
-	anterior, err := stty("-g")
+	previous, err := stty("-g")
 	if err != nil {
 		return nil, err
 	}
 	if _, err := stty("-echo"); err != nil {
 		return nil, err
 	}
-	return func() { _, _ = stty(anterior) }, nil
+	return func() { _, _ = stty(previous) }, nil
 }
 
 func stty(args ...string) (string, error) {
 	c := exec.Command("stty", args...)
 	c.Stdin = os.Stdin
-	saida, err := c.Output()
-	return strings.TrimSpace(string(saida)), err
+	output, err := c.Output()
+	return strings.TrimSpace(string(output)), err
 }

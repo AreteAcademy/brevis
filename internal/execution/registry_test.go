@@ -8,7 +8,7 @@ import (
 )
 
 func task(nome string) execution.Task {
-	return execution.FuncTask{Nome: nome, Fn: func(context.Context, execution.Input) error { return nil }}
+	return execution.FuncTask{TaskName: nome, Fn: func(context.Context, execution.Input) error { return nil }}
 }
 
 // Overwriting a registration in silence is a bug that only shows in production,
@@ -34,7 +34,7 @@ func TestTheNamesComeSorted(t *testing.T) {
 	for _, n := range []string{"zeta", "alfa", "meio"} {
 		r.MustRegister(task(n))
 	}
-	got := r.Nomes()
+	got := r.Names()
 	if len(got) != 3 || got[0] != "alfa" || got[2] != "zeta" {
 		t.Errorf("Nomes() = %v, wanted sorted", got)
 	}
@@ -43,13 +43,13 @@ func TestTheNamesComeSorted(t *testing.T) {
 func TestInputTextoValidaParametro(t *testing.T) {
 	in := execution.Input{With: map[string]any{"image": "acme:1.0", "porta": 8080}}
 
-	if v, err := in.Texto("image"); err != nil || v != "acme:1.0" {
+	if v, err := in.Text("image"); err != nil || v != "acme:1.0" {
 		t.Errorf("Texto(image) = %q, %v", v, err)
 	}
-	if _, err := in.Texto("ausente"); err == nil {
+	if _, err := in.Text("ausente"); err == nil {
 		t.Error("expected a missing-parameter error")
 	}
-	if _, err := in.Texto("porta"); err == nil {
+	if _, err := in.Text("porta"); err == nil {
 		t.Error("expected a type error: porta is an int, not text")
 	}
 }

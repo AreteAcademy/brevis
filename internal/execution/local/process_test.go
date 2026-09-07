@@ -33,8 +33,8 @@ func TestItRefusesToBeBuiltOutsideLocal(t *testing.T) {
 	for _, env := range []string{"prod", "staging", "dev", ""} {
 		if _, err := New(env); err == nil {
 			t.Fatalf("New(%q) should refuse: outside local, `run:` goes to Kubernetes", env)
-		} else if !errors.As(err, &ErrForaDoLocal{}) {
-			t.Errorf("New(%q) devolveu %T, wanted ErrForaDoLocal", env, err)
+		} else if !errors.As(err, &ErrOutsideLocal{}) {
+			t.Errorf("New(%q) devolveu %T, wanted ErrOutsideLocal", env, err)
 		}
 	}
 }
@@ -46,16 +46,16 @@ func TestItRunsAndReportsSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectOutput(t, ev)
+	events := collectOutput(t, ev)
 
-	if eventos[0].Kind != execution.EventStarted {
-		t.Errorf("first event = %v, wanted started", eventos[0].Kind)
+	if events[0].Kind != execution.EventStarted {
+		t.Errorf("first event = %v, wanted started", events[0].Kind)
 	}
-	ultimo := eventos[len(eventos)-1]
+	ultimo := events[len(events)-1]
 	if ultimo.Kind != execution.EventSucceeded {
 		t.Errorf("last event = %v, wanted succeeded", ultimo.Kind)
 	}
-	if !hasLog(eventos, "ola", "stdout") {
+	if !hasLog(events, "ola", "stdout") {
 		t.Error("it did not capture the command's output")
 	}
 }
@@ -70,12 +70,12 @@ func TestItSeparatesStdoutFromStderr(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectOutput(t, ev)
+	events := collectOutput(t, ev)
 
-	if !hasLog(eventos, "out", "stdout") {
+	if !hasLog(events, "out", "stdout") {
 		t.Error("stdout was not classified")
 	}
-	if !hasLog(eventos, "err", "stderr") {
+	if !hasLog(events, "err", "stderr") {
 		t.Error("stderr was not classified")
 	}
 }
@@ -87,9 +87,9 @@ func TestItReportsAFailureWithTheExitCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectOutput(t, ev)
+	events := collectOutput(t, ev)
 
-	ultimo := eventos[len(eventos)-1]
+	ultimo := events[len(events)-1]
 	if ultimo.Kind != execution.EventFailed {
 		t.Fatalf("last event = %v, wanted failed", ultimo.Kind)
 	}
@@ -135,8 +135,8 @@ func TestCancelInterrompe(t *testing.T) {
 	}
 }
 
-func hasLog(eventos []execution.Event, msg, stream string) bool {
-	for _, e := range eventos {
+func hasLog(events []execution.Event, msg, stream string) bool {
+	for _, e := range events {
 		if e.Kind == execution.EventLog && e.Stream == stream && strings.Contains(e.Message, msg) {
 			return true
 		}

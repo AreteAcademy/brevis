@@ -27,7 +27,7 @@ func lastKind(ev []execution.Event) execution.EventKind {
 func TestTheGoExecutorRunsARegisteredTask(t *testing.T) {
 	reg := execution.NewRegistry()
 	var rodou atomic.Bool
-	reg.MustRegister(execution.FuncTask{Nome: "sync", Fn: func(_ context.Context, in execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "sync", Fn: func(_ context.Context, in execution.Input) error {
 		rodou.Store(true)
 		in.Log("sincronizando")
 		return nil
@@ -38,16 +38,16 @@ func TestTheGoExecutorRunsARegisteredTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectEvents(ev)
+	events := collectEvents(ev)
 
 	if !rodou.Load() {
 		t.Error("the task did not run")
 	}
-	if lastKind(eventos) != execution.EventSucceeded {
-		t.Errorf("last event = %v", lastKind(eventos))
+	if lastKind(events) != execution.EventSucceeded {
+		t.Errorf("last event = %v", lastKind(events))
 	}
 	var hasLog bool
-	for _, e := range eventos {
+	for _, e := range events {
 		if e.Kind == execution.EventLog && e.Message == "sincronizando" {
 			hasLog = true
 		}
@@ -61,7 +61,7 @@ func TestTheGoExecutorRunsARegisteredTask(t *testing.T) {
 // gives a typo away at once.
 func TestTheGoExecutorListsTheAvailableTasksForAnUnknownOne(t *testing.T) {
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "daily_sync", Fn: func(context.Context, execution.Input) error { return nil }})
+	reg.MustRegister(execution.FuncTask{TaskName: "daily_sync", Fn: func(context.Context, execution.Input) error { return nil }})
 
 	_, err := local.NewGoExecutor(reg).Execute(context.Background(),
 		execution.TaskExec{ExecutionID: "1", NodeID: "n", Action: "daly_sync"})
@@ -77,7 +77,7 @@ func TestTheGoExecutorListsTheAvailableTasksForAnUnknownOne(t *testing.T) {
 // derrubar o orquestrador junto.
 func TestGoExecutorContemPanico(t *testing.T) {
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "explode", Fn: func(context.Context, execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "explode", Fn: func(context.Context, execution.Input) error {
 		panic("boom")
 	}})
 
@@ -86,19 +86,19 @@ func TestGoExecutorContemPanico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectEvents(ev)
+	events := collectEvents(ev)
 
-	if lastKind(eventos) != execution.EventFailed {
-		t.Fatalf("last event = %v, wanted failed", lastKind(eventos))
+	if lastKind(events) != execution.EventFailed {
+		t.Fatalf("last event = %v, wanted failed", lastKind(events))
 	}
-	if !strings.Contains(eventos[len(eventos)-1].Err.Error(), "panico") {
-		t.Errorf("error = %v; it should name the panic", eventos[len(eventos)-1].Err)
+	if !strings.Contains(events[len(events)-1].Err.Error(), "panico") {
+		t.Errorf("error = %v; it should name the panic", events[len(events)-1].Err)
 	}
 }
 
 func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "lenta", Fn: func(ctx context.Context, _ execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "lenta", Fn: func(ctx context.Context, _ execution.Input) error {
 		select {
 		case <-time.After(5 * time.Second):
 			return nil
@@ -114,12 +114,12 @@ func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eventos := collectEvents(ev)
+	events := collectEvents(ev)
 
 	if d := time.Since(inicio); d > time.Second {
 		t.Errorf("it took %s; the timeout did not interrupt", d)
 	}
-	ultimo := eventos[len(eventos)-1]
+	ultimo := events[len(events)-1]
 	if ultimo.Kind != execution.EventFailed {
 		t.Fatalf("last event = %v, wanted failed", ultimo.Kind)
 	}
@@ -131,15 +131,15 @@ func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 func TestTheGoExecutorPropagatesTheTasksError(t *testing.T) {
 	reg := execution.NewRegistry()
 	falha := errors.New("source unavailable")
-	reg.MustRegister(execution.FuncTask{Nome: "falha", Fn: func(context.Context, execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "falha", Fn: func(context.Context, execution.Input) error {
 		return falha
 	}})
 
 	ev, _ := local.NewGoExecutor(reg).Execute(context.Background(),
 		execution.TaskExec{ExecutionID: "1", NodeID: "n", Action: "falha"})
-	eventos := collectEvents(ev)
+	events := collectEvents(ev)
 
-	if !errors.Is(eventos[len(eventos)-1].Err, falha) {
+	if !errors.Is(events[len(events)-1].Err, falha) {
 		t.Error("the task's error did not reach the event")
 	}
 }

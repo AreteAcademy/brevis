@@ -13,7 +13,7 @@ import (
 // Grouping by level, rather than returning a linear list, is what preserves the
 // declared parallelism. A plain topological sort would serialize gold_metrics
 // and gold_users, which are independent.
-func Niveis(w wf.Workflow) ([][]string, error) {
+func Levels(w wf.Workflow) ([][]string, error) {
 	entrada := make(map[string]int, len(w.Nodes))
 	saida := make(map[string][]string, len(w.Nodes))
 	for _, n := range w.Nodes {
@@ -33,25 +33,25 @@ func Niveis(w wf.Workflow) ([][]string, error) {
 		}
 	}
 
-	var niveis [][]string
+	var levels [][]string
 	vistos := 0
 	for len(atual) > 0 {
-		niveis = append(niveis, atual)
+		levels = append(levels, atual)
 		vistos += len(atual)
 
-		var proximo []string
+		var next []string
 		for _, n := range w.Nodes { // iterate the nodes, not the map: determinism
-			if !contem(atual, n.ID) {
+			if !contains(atual, n.ID) {
 				continue
 			}
 			for _, dest := range saida[n.ID] {
 				entrada[dest]--
 				if entrada[dest] == 0 {
-					proximo = append(proximo, dest)
+					next = append(next, dest)
 				}
 			}
 		}
-		atual = proximo
+		atual = next
 	}
 
 	// Workflow.Validate already refuses cycles; this guard protects against a
@@ -59,10 +59,10 @@ func Niveis(w wf.Workflow) ([][]string, error) {
 	if vistos != len(w.Nodes) {
 		return nil, fmt.Errorf("the graph has a cycle or an unreachable node (%d of %d nodes ordered)", vistos, len(w.Nodes))
 	}
-	return niveis, nil
+	return levels, nil
 }
 
-func contem(s []string, v string) bool {
+func contains(s []string, v string) bool {
 	for _, x := range s {
 		if x == v {
 			return true

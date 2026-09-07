@@ -43,18 +43,18 @@ type defsFake struct {
 func (d defsFake) Definition(context.Context, string) (wf.Workflow, error) { return d.w, d.err }
 
 type execsFake struct {
-	run     dom.Run
-	estados map[string]postgres.NodeState
-	err     error
+	run    dom.Run
+	states map[string]postgres.NodeState
+	err    error
 }
 
-func (e execsFake) Buscar(context.Context, uuid.UUID) (dom.Run, error) { return e.run, e.err }
+func (e execsFake) Get(context.Context, uuid.UUID) (dom.Run, error) { return e.run, e.err }
 func (e execsFake) LogsDaRun(context.Context, uuid.UUID) ([]postgres.StepLog, error) {
 	return nil, nil
 }
 
-func (e execsFake) EstadoDosNos(context.Context, uuid.UUID) (map[string]postgres.NodeState, error) {
-	return e.estados, nil
+func (e execsFake) NodeStates(context.Context, uuid.UUID) (map[string]postgres.NodeState, error) {
+	return e.states, nil
 }
 
 type grafo struct {
@@ -157,13 +157,13 @@ func TestTheWorkflowGraphHasNoState(t *testing.T) {
 func TestTheRunGraphAppliesStatePerNode(t *testing.T) {
 	id := uuid.New()
 	def, _ := json.Marshal(diamond())
-	saida := 2
+	output := 2
 	ui := newUI(defsFake{err: errors.New("it must not query the published definition")}, execsFake{
 		run: dom.Run{ID: id, WorkflowSlug: "diamond", Status: dom.StatusRunning, Definition: def},
-		estados: map[string]postgres.NodeState{
-			"a": {NodeID: "a", Status: "success", DuracaoMs: 1200},
+		states: map[string]postgres.NodeState{
+			"a": {NodeID: "a", Status: "success", DurationMs: 1200},
 			"b": {NodeID: "b", Status: "running"},
-			"c": {NodeID: "c", Status: "failed", Attempt: 2, ExitCode: &saida, Err: "boom"},
+			"c": {NodeID: "c", Status: "failed", Attempt: 2, ExitCode: &output, Err: "boom"},
 		},
 	})
 
@@ -248,23 +248,23 @@ func TestTheGraphRefusesInvalidInput(t *testing.T) {
 }
 
 // the stages of an SDK step, the way the runner's collector writes them.
-func fourStages() []postgres.Etapa {
+func fourStages() []postgres.Stage {
 	ms := int64(2400)
-	return []postgres.Etapa{
-		{Nome: "check", State: "done"},
-		{Nome: "extract", State: "done", Ms: &ms, Numeros: map[string]any{"paginas": 300}},
-		{Nome: "transform", State: "done", Numeros: map[string]any{"pulados": 13}},
-		{Nome: "load", State: "running"},
+	return []postgres.Stage{
+		{Name: "check", State: "done"},
+		{Name: "extract", State: "done", Ms: &ms, Numbers: map[string]any{"paginas": 300}},
+		{Name: "transform", State: "done", Numbers: map[string]any{"pulados": 13}},
+		{Name: "load", State: "running"},
 	}
 }
 
-func graphWithStages(t *testing.T, estados map[string]postgres.NodeState) grafo {
+func graphWithStages(t *testing.T, states map[string]postgres.NodeState) grafo {
 	t.Helper()
 	id := uuid.New()
 	def, _ := json.Marshal(diamond())
 	ui := newUI(defsFake{}, execsFake{
-		run:     dom.Run{ID: id, WorkflowSlug: "diamond", Status: dom.StatusRunning, Definition: def},
-		estados: estados,
+		run:    dom.Run{ID: id, WorkflowSlug: "diamond", Status: dom.StatusRunning, Definition: def},
+		states: states,
 	})
 	res, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
 	if res.StatusCode != http.StatusOK {
@@ -278,7 +278,7 @@ func graphWithStages(t *testing.T, estados map[string]postgres.NodeState) grafo 
 // significa runStep em paralelo" continua verdade.
 func TestAnSDKStepBecomesAGroupWithTheStagesInside(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
-		"b": {NodeID: "b", Status: "running", Etapas: fourStages(), SdkVersao: "v0.44.1"},
+		"b": {NodeID: "b", Status: "running", Stages: fourStages(), SdkVersion: "v0.44.1"},
 	})
 
 	pai := -1
@@ -332,7 +332,7 @@ func TestAnSDKStepBecomesAGroupWithTheStagesInside(t *testing.T) {
 // conferir o layout consigo mesmo: quem errasse as duas juntas passaria.
 func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
-		"b": {NodeID: "b", Status: "running", Etapas: fourStages(), SdkVersao: "v0.44.1"},
+		"b": {NodeID: "b", Status: "running", Stages: fourStages(), SdkVersion: "v0.44.1"},
 		"c": {NodeID: "c", Status: "pending"},
 	})
 
@@ -383,7 +383,7 @@ func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 // The badge says the step was built with the SDK, and with which version.
 func TestTheSDKBadgeComesOutOnTheNode(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
-		"b": {NodeID: "b", Status: "running", Etapas: fourStages(), SdkVersao: "v0.44.1"},
+		"b": {NodeID: "b", Status: "running", Stages: fourStages(), SdkVersion: "v0.44.1"},
 		"c": {NodeID: "c", Status: "success"},
 	})
 	for _, n := range g.Nodes {
@@ -405,7 +405,7 @@ func TestTheSDKBadgeComesOutOnTheNode(t *testing.T) {
 // works.
 func TestAPlainStepGainsNoNewField(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
-		"a": {NodeID: "a", Status: "success", DuracaoMs: 1200},
+		"a": {NodeID: "a", Status: "success", DurationMs: 1200},
 	})
 	for _, n := range g.Nodes {
 		if n.ParentID != "" || n.Extent != "" || n.Style != nil || n.Selectable != nil {

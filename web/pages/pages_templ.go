@@ -28,17 +28,17 @@ import (
 // OverviewData is everything the landing screen shows. A struct rather than
 // seven parameters: the signature was already illegible with four.
 type OverviewData struct {
-	Window    time.Duration
-	Ind       postgres.Indicators
-	Baldes    []postgres.Bucket
-	EmCurso   []postgres.RunSummary
-	Proximas  []ProximaExecucao
-	Recentes  []postgres.RunSummary
-	Pendentes int
+	Window   time.Duration
+	Ind      postgres.Indicators
+	Baldes   []postgres.Bucket
+	EmCurso  []postgres.RunSummary
+	Proximas []NextRun
+	Recentes []postgres.RunSummary
+	Pending  int
 }
 
 // ProximaExecucao is a future trigger, already computed from the cron.
-type ProximaExecucao struct {
+type NextRun struct {
 	Workflow string
 	Cron     string
 	Timezone string
@@ -82,23 +82,23 @@ func Overview(d OverviewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.Metric("Success rate", pct(d.Ind.Ratio(d.Ind.Sucesso)),
-				fmt.Sprintf("%d of %d finished", d.Ind.Sucesso, d.Ind.Sucesso+d.Ind.Falha), "text-state-success").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Metric("Success rate", pct(d.Ind.Ratio(d.Ind.Succeeded)),
+				fmt.Sprintf("%d of %d finished", d.Ind.Succeeded, d.Ind.Succeeded+d.Ind.Failed), "text-state-success").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.Metric("Failure rate", pct(d.Ind.Ratio(d.Ind.Falha)),
-				notaFalha(d.Ind.Falha), matizFalha(d.Ind.Falha)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Metric("Failure rate", pct(d.Ind.Ratio(d.Ind.Failed)),
+				failureNote(d.Ind.Failed), failureHue(d.Ind.Failed)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.Metric("Running", fmt.Sprint(d.Ind.EmExecucao),
-				duracaoMedia(d.Ind.DuracaoMedia), "text-state-running").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Metric("Running", fmt.Sprint(d.Ind.Running),
+				meanDuration(d.Ind.MeanDuration), "text-state-running").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = components.Metric("Queued", fmt.Sprint(d.Ind.Pendentes),
-				fmt.Sprintf("%d items queued", d.Pendentes), "text-state-queued").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.Metric("Queued", fmt.Sprint(d.Ind.Pending),
+				fmt.Sprintf("%d items queued", d.Pending), "text-state-queued").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -165,19 +165,19 @@ func Overview(d OverviewData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = linhaDist("Success", d.Ind.Sucesso, "bg-state-success").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = distLine("Success", d.Ind.Succeeded, "bg-state-success").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = linhaDist("Failure", d.Ind.Falha, "bg-state-failed").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = distLine("Failure", d.Ind.Failed, "bg-state-failed").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = linhaDist("Running", d.Ind.EmExecucao, "bg-state-running").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = distLine("Running", d.Ind.Running, "bg-state-running").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = linhaDist("Queued", d.Ind.Pendentes, "bg-state-queued").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = distLine("Queued", d.Ind.Pending, "bg-state-queued").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -282,9 +282,9 @@ func Overview(d OverviewData) templ.Component {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var10 string
-						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(components.When(inicioOuCriacao(r)))
+						templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(components.When(startOrCreated(r)))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 93, Col: 47}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 93, Col: 46}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 						if templ_7745c5c3_Err != nil {
@@ -438,7 +438,7 @@ func Overview(d OverviewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = tabelaRuns(d.Recentes, Pagination{}).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = runsTable(d.Recentes, Pagination{}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -456,7 +456,7 @@ func Overview(d OverviewData) templ.Component {
 	})
 }
 
-func linhaDist(rotulo string, valor int, matiz string) templ.Component {
+func distLine(label string, value int, matiz string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -504,9 +504,9 @@ func linhaDist(rotulo string, valor int, matiz string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
-		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(rotulo)
+		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 149, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 149, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -517,7 +517,7 @@ func linhaDist(rotulo string, valor int, matiz string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(valor))
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(value))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 150, Col: 67}
 		}
@@ -536,7 +536,7 @@ func linhaDist(rotulo string, valor int, matiz string) templ.Component {
 // th is a column header. The vertical breathing room (py-4) is deliberate:
 // pressed against the title, the header competed with the first row instead of
 // separating from it.
-func th(texto, extra string) templ.Component {
+func th(text, extra string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -580,9 +580,9 @@ func th(texto, extra string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var25 string
-		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 158, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 158, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -596,9 +596,9 @@ func th(texto, extra string) templ.Component {
 	})
 }
 
-// thOrdenavel is the same column, clickable. The arrow appears only on the
+// sortableTh is the same column, clickable. The arrow appears only on the
 // active column — one in every header becomes noise.
-func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
+func sortableTh(text, field string, f Filter, extra string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -619,7 +619,7 @@ func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
 			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var27 = []any{"px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em]", extra, corDaColuna(f, campo)}
+		var templ_7745c5c3_Var27 = []any{"px-3 py-4 text-[0.7rem] font-semibold uppercase tracking-[0.12em]", extra, columnColour(f, field)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var27...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -642,7 +642,7 @@ func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 templ.SafeURL
-		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithSort(campo)))
+		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(f.WithSort(field)))
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 165, Col: 44}
 		}
@@ -655,9 +655,9 @@ func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var30 string
-		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 166, Col: 10}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 166, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -667,7 +667,7 @@ func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if s := f.Arrow(campo); s != "" {
+		if s := f.Arrow(field); s != "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<span class=\"text-gold\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -699,15 +699,15 @@ func thOrdenavel(texto, campo string, f Filter, extra string) templ.Component {
 	})
 }
 
-func corDaColuna(f Filter, campo string) string {
-	if f.Sort == campo {
+func columnColour(f Filter, field string) string {
+	if f.Sort == field {
 		return "text-ink"
 	}
 	return "text-muted"
 }
 
 // paginacao is the lists' footer.
-func paginacao(p Pagination) templ.Component {
+func pagination(p Pagination) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -874,7 +874,7 @@ func paginacao(p Pagination) templ.Component {
 // on the other
 // lado.
 type Filter struct {
-	Busca  string
+	Search string
 	State  string // ultimo estado: failed, queued, running, success
 	Active string // active | paused
 	Tag    string
@@ -894,8 +894,8 @@ type Filter struct {
 //
 // Changing a filter always returns to the first page: staying on page 7 of a
 // result that now has two would be an empty screen with no explanation.
-func (f Filter) With(campo, valor string) string {
-	return f.url(campo, valor, true)
+func (f Filter) With(field, value string) string {
+	return f.url(field, value, true)
 }
 
 // WithPage navigates without touching anything else.
@@ -905,11 +905,11 @@ func (f Filter) WithPage(n int) string {
 
 // WithSort flips the direction when the field is already the sorted one, and
 // starts ascending when it is another — the behaviour any table teaches.
-func (f Filter) WithSort(campo string) string {
-	if f.Sort == campo && !f.Desc {
+func (f Filter) WithSort(field string) string {
+	if f.Sort == field && !f.Desc {
 		return f.url("dir", "desc", true)
 	}
-	if f.Sort == campo && f.Desc {
+	if f.Sort == field && f.Desc {
 		// Terceiro clique remove a ordenacao e volta a ordem natural.
 		g := f
 		g.Sort, g.Desc = "", false
@@ -917,12 +917,12 @@ func (f Filter) WithSort(campo string) string {
 	}
 	g := f
 	g.Desc = false
-	return g.url("sort", campo, true)
+	return g.url("sort", field, true)
 }
 
 // Arrow is the direction indicator in the header.
-func (f Filter) Arrow(campo string) string {
-	if f.Sort != campo {
+func (f Filter) Arrow(field string) string {
+	if f.Sort != field {
 		return ""
 	}
 	if f.Desc {
@@ -931,14 +931,14 @@ func (f Filter) Arrow(campo string) string {
 	return "↑"
 }
 
-func (f Filter) url(campo, valor string, reiniciaPagina bool) string {
+func (f Filter) url(field, value string, resetsPage bool) string {
 	q := url.Values{}
 	poe := func(k, v string) {
 		if v != "" {
 			q.Set(k, v)
 		}
 	}
-	poe("q", f.Busca)
+	poe("q", f.Search)
 	poe("state", f.State)
 	poe("active", f.Active)
 	poe("tag", f.Tag)
@@ -946,16 +946,16 @@ func (f Filter) url(campo, valor string, reiniciaPagina bool) string {
 	if f.Desc {
 		poe("dir", "desc")
 	}
-	if !reiniciaPagina && f.Page > 1 {
+	if !resetsPage && f.Page > 1 {
 		poe("page", fmt.Sprint(f.Page))
 	}
 	if f.PorPagina > 0 && f.PorPagina != DefaultPerPage {
 		poe("per", fmt.Sprint(f.PorPagina))
 	}
-	if valor == "" {
-		q.Del(campo)
+	if value == "" {
+		q.Del(field)
 	} else {
-		q.Set(campo, valor)
+		q.Set(field, value)
 	}
 	if len(q) == 0 {
 		return "/workflows"
@@ -997,11 +997,11 @@ func (p Pagination) First() int {
 }
 
 func (p Pagination) Last() int {
-	fim := p.Page * p.PorPagina
-	if fim > p.Total {
+	end := p.Page * p.PorPagina
+	if end > p.Total {
 		return p.Total
 	}
-	return fim
+	return end
 }
 
 // Window returns the page numbers to show, centred on the current one. Listing
@@ -1027,7 +1027,7 @@ func (p Pagination) Window() []int {
 	return out
 }
 
-func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, filtrados int) templ.Component {
+func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, filtered int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1065,9 +1065,9 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Busca)
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.ResolveAttributeValue(f.Search)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 388, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 388, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var41)
 			if templ_7745c5c3_Err != nil {
@@ -1112,7 +1112,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\"> <button type=\"submit\" class=\"shrink-0 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px\">Buscar</button></div></form><div class=\"mb-6 flex flex-wrap items-center gap-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\"> <button type=\"submit\" class=\"shrink-0 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px\">Get</button></div></form><div class=\"mb-6 flex flex-wrap items-center gap-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1169,9 +1169,9 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var45 string
-			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(contagem(filtrados, "workflow", "workflows"))
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(count(filtered, "workflow", "workflows"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 420, Col: 49}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 420, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -1181,7 +1181,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if filtrados != total {
+			if filtered != total {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "<span class=\"ml-2 text-sm text-muted\">de ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1218,19 +1218,19 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = thOrdenavel("Workflow", "workflow", f, "").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = sortableTh("Workflow", "workflow", f, "").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = thOrdenavel("Schedule", "schedule", f, "").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = sortableTh("Schedule", "schedule", f, "").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = thOrdenavel("Next run", "next", f, "").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = sortableTh("Next run", "next", f, "").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = thOrdenavel("Last run", "last", f, "").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = sortableTh("Last run", "last", f, "").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1286,7 +1286,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var49 string
-					templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(w.Projeto)
+					templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(w.Project)
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 452, Col: 50}
 					}
@@ -1332,15 +1332,15 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if w.ProximaRun != nil {
+					if w.NextRun != nil {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "<span class=\"text-ink\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var51 string
-						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(w.ProximaRun))
+						templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(w.NextRun))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 472, Col: 69}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 472, Col: 66}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 						if templ_7745c5c3_Err != nil {
@@ -1351,9 +1351,9 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var52 string
-						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(components.When(w.ProximaRun))
+						templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(components.When(w.NextRun))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 473, Col: 73}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 473, Col: 70}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 						if templ_7745c5c3_Err != nil {
@@ -1363,7 +1363,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-					} else if w.TemAgenda && !w.Active {
+					} else if w.HasSchedule && !w.Active {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 87, "<span class=\"text-muted\">paused</span>")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
@@ -1378,15 +1378,15 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					if w.UltimaRunID != nil {
+					if w.LastRunID != nil {
 						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 90, "<a href=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var53 templ.SafeURL
-						templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + *w.UltimaRunID))
+						templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + *w.LastRunID))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 482, Col: 60}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 482, Col: 58}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 						if templ_7745c5c3_Err != nil {
@@ -1397,9 +1397,9 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 							return templ_7745c5c3_Err
 						}
 						var templ_7745c5c3_Var54 string
-						templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(w.UltimaRunEm))
+						templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(w.LastRunAt))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 484, Col: 49}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 484, Col: 47}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 						if templ_7745c5c3_Err != nil {
@@ -1409,7 +1409,7 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = components.Dot(w.UltimoStatus).Render(ctx, templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = components.Dot(w.LastStatus).Render(ctx, templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1463,8 +1463,8 @@ func Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, fi
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = paginacao(Pagination{
-					Page: f.Page, PorPagina: f.PorPagina, Total: filtrados,
+				templ_7745c5c3_Err = pagination(Pagination{
+					Page: f.Page, PorPagina: f.PorPagina, Total: filtered,
 					PageLink: f.WithPage,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
@@ -1509,7 +1509,7 @@ func interruptor(w postgres.WorkflowSummary) templ.Component {
 			templ_7745c5c3_Var56 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if w.TemAgenda {
+		if w.HasSchedule {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<form method=\"post\" action=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -1635,7 +1635,7 @@ func disparar(slug string) templ.Component {
 	})
 }
 
-func chip(rota, texto string, ativo bool, ponto string) templ.Component {
+func chip(rota, text string, ativo bool, ponto string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1699,9 +1699,9 @@ func chip(rota, texto string, ativo bool, ponto string) templ.Component {
 				}
 			}
 			var templ_7745c5c3_Var67 string
-			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+			templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 568, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 568, Col: 9}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 			if templ_7745c5c3_Err != nil {
@@ -1754,9 +1754,9 @@ func chip(rota, texto string, ativo bool, ponto string) templ.Component {
 				}
 			}
 			var templ_7745c5c3_Var71 string
-			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(texto)
+			templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 575, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 575, Col: 9}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 			if templ_7745c5c3_Err != nil {
@@ -1773,11 +1773,11 @@ func chip(rota, texto string, ativo bool, ponto string) templ.Component {
 
 // alterna makes the tag chip work as a toggle: clicking an already-active tag
 // removes the filter instead of reapplying the same value.
-func alterna(atual, valor string) string {
-	if atual == valor {
+func alterna(current, value string) string {
+	if current == value {
 		return ""
 	}
-	return valor
+	return value
 }
 
 // ---------------------------------------------------------------------------
@@ -1791,13 +1791,13 @@ type RunFilter struct {
 	Workflow string
 	De       string // YYYY-MM-DDTHH, the same format the chart emits
 	Ate      string
-	Rotulo   string // descricao legivel do periodo, montada no servidor
+	Label    string // descricao legivel do periodo, montada no servidor
 
 	Page      int
 	PorPagina int
 }
 
-func (f RunFilter) url(campo, valor string, reiniciaPagina bool) string {
+func (f RunFilter) url(field, value string, resetsPage bool) string {
 	q := url.Values{}
 	poe := func(k, v string) {
 		if v != "" {
@@ -1808,13 +1808,13 @@ func (f RunFilter) url(campo, valor string, reiniciaPagina bool) string {
 	poe("workflow", f.Workflow)
 	poe("from", f.De)
 	poe("to", f.Ate)
-	if !reiniciaPagina && f.Page > 1 {
+	if !resetsPage && f.Page > 1 {
 		poe("page", fmt.Sprint(f.Page))
 	}
-	if valor == "" {
-		q.Del(campo)
+	if value == "" {
+		q.Del(field)
 	} else {
-		q.Set(campo, valor)
+		q.Set(field, value)
 	}
 	if len(q) == 0 {
 		return "/runs"
@@ -1822,7 +1822,7 @@ func (f RunFilter) url(campo, valor string, reiniciaPagina bool) string {
 	return "/runs?" + q.Encode()
 }
 
-func (f RunFilter) With(campo, valor string) string { return f.url(campo, valor, true) }
+func (f RunFilter) With(field, value string) string { return f.url(field, value, true) }
 func (f RunFilter) WithPage(n int) string           { return f.url("page", fmt.Sprint(n), false) }
 
 // Active says whether there is any slice — without it the screen would show the
@@ -1899,8 +1899,8 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if f.Rotulo != "" {
-				templ_7745c5c3_Err = filtroAplicado("period", f.Rotulo, f.With("from", "")+"&to=").Render(ctx, templ_7745c5c3_Buffer)
+			if f.Label != "" {
+				templ_7745c5c3_Err = filtroAplicado("period", f.Label, f.With("from", "")+"&to=").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1910,9 +1910,9 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var74 string
-			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(contagem(total, "run", "runs"))
+			templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(count(total, "run", "runs"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 658, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 658, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 			if templ_7745c5c3_Err != nil {
@@ -1932,7 +1932,7 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = tabelaRuns(runs, Pagination{
+			templ_7745c5c3_Err = runsTable(runs, Pagination{
 				Page: f.Page, PorPagina: f.PorPagina, Total: total, PageLink: f.WithPage,
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -1951,7 +1951,7 @@ func Runs(runs []postgres.RunSummary, f RunFilter, total int) templ.Component {
 // filtroAplicado shows a slice that came from another screen (a click on the
 // chart, for instance) with the way to remove it beside it — a filter you can
 // only take off by editing the URL is not a filter, it is a trap.
-func filtroAplicado(rotulo, valor, remover string) templ.Component {
+func filtroAplicado(label, value, remover string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1977,9 +1977,9 @@ func filtroAplicado(rotulo, valor, remover string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var76 string
-		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(rotulo)
+		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 674, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 674, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 		if templ_7745c5c3_Err != nil {
@@ -1990,7 +1990,7 @@ func filtroAplicado(rotulo, valor, remover string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var77 string
-		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(valor)
+		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
 			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 675, Col: 35}
 		}
@@ -2081,7 +2081,7 @@ func Projects(ps []postgres.ProjectSummary) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var82 string
-					templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(p.Nome)
+					templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 					if templ_7745c5c3_Err != nil {
 						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 689, Col: 57}
 					}
@@ -2115,14 +2115,14 @@ func Projects(ps []postgres.ProjectSummary) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "</dd></div></dl><p class=\"mt-5 text-xs text-muted\">criado em ")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 137, "</dd></div></dl><p class=\"mt-5 text-xs text-muted\">created em ")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var85 string
 					templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(p.CreatedAt.Local().Format("02/01/2006"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 700, Col: 93}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 700, Col: 94}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 					if templ_7745c5c3_Err != nil {
@@ -2148,7 +2148,7 @@ func Projects(ps []postgres.ProjectSummary) templ.Component {
 	})
 }
 
-func tabelaRuns(runs []postgres.RunSummary, p Pagination) templ.Component {
+func runsTable(runs []postgres.RunSummary, p Pagination) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2322,7 +2322,7 @@ func tabelaRuns(runs []postgres.RunSummary, p Pagination) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if r.Err != "" {
-					templ_7745c5c3_Err = components.BotaoErro(r.ID).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = components.ErrorButton(r.ID).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2336,7 +2336,7 @@ func tabelaRuns(runs []postgres.RunSummary, p Pagination) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = paginacao(p).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = pagination(p).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2346,7 +2346,7 @@ func tabelaRuns(runs []postgres.RunSummary, p Pagination) templ.Component {
 			}
 			for _, r := range runs {
 				if r.Err != "" {
-					templ_7745c5c3_Err = components.DialogoErro(r.ID, r.WorkflowSlug, r.Status, r.Err).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = components.ErrorDialog(r.ID, r.WorkflowSlug, r.Status, r.Err).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2374,7 +2374,7 @@ var dagAssets = layouts.Island{
 // Workflow shows the published definition. With no run state: it is the screen
 // for "what this workflow is", and it has to serve a workflow that never ran
 // too.
-func Workflow(w wf.Workflow, ultimas []postgres.RunSummary) templ.Component {
+func Workflow(w wf.Workflow, latest []postgres.RunSummary) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2420,7 +2420,7 @@ func Workflow(w wf.Workflow, ultimas []postgres.RunSummary) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, " passos</span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 156, " steps</span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2472,7 +2472,7 @@ func Workflow(w wf.Workflow, ultimas []postgres.RunSummary) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(w.Params) > 0 {
-				templ_7745c5c3_Err = formularioDeParams(w).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = paramsForm(w).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2489,7 +2489,7 @@ func Workflow(w wf.Workflow, ultimas []postgres.RunSummary) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(ultimas) > 0 {
+			if len(latest) > 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 164, "<section class=\"mt-6\"><div class=\"mb-3 flex items-baseline justify-between\"><h2 class=\"kicker\">This workflow's runs</h2><a href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -2507,7 +2507,7 @@ func Workflow(w wf.Workflow, ultimas []postgres.RunSummary) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = tabelaRuns(ultimas, Pagination{}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = runsTable(latest, Pagination{}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2609,14 +2609,14 @@ func Run(r run.Run, logs []postgres.StepLog) templ.Component {
 				}
 			}
 			if r.Attempt > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "<span class=\"text-xs text-state-retrying\">tentativa ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 172, "<span class=\"text-xs text-state-retrying\">attempt ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var104 string
 				templ_7745c5c3_Var104, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(r.Attempt + 1))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 833, Col: 81}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 833, Col: 79}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var104))
 				if templ_7745c5c3_Err != nil {
@@ -2688,7 +2688,7 @@ func Run(r run.Run, logs []postgres.StepLog) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = saidaDosPassos(logs).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = stepsOutput(logs).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2707,19 +2707,19 @@ func Run(r run.Run, logs []postgres.StepLog) templ.Component {
 
 // duracaoMs adapts the milliseconds the query returns to the existing formatter,
 // which speaks in time.Duration.
-func duracaoMs(ms int64) string {
+func durationMs(ms int64) string {
 	d := time.Duration(ms) * time.Millisecond
 	return components.Duration(&d)
 }
 
-// saidaDosPassos shows each attempt's log.
+// stepsOutput shows each attempt's log.
 //
 // It exists because the log lived only in the pod, and the pod is deleted when
 // the step ends: a pipeline that failed at 4am left "failed" on the screen and
 // nothing else. Rendered on the server inside a <details>, with no JavaScript
 // and no second call — the graph above is already polled second by second, and
 // attaching the log to that JSON would make every poll more expensive.
-func saidaDosPassos(logs []postgres.StepLog) templ.Component {
+func stepsOutput(logs []postgres.StepLog) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -2809,15 +2809,15 @@ func saidaDosPassos(logs []postgres.StepLog) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				}
-				if p.DuracaoMs > 0 {
+				if p.DurationMs > 0 {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 189, "<span class=\"text-xs text-muted\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var112 string
-					templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(duracaoMs(p.DuracaoMs))
+					templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(durationMs(p.DurationMs))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 877, Col: 65}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 877, Col: 67}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 					if templ_7745c5c3_Err != nil {
@@ -2943,24 +2943,24 @@ func pct(v float64) string { return fmt.Sprintf("%.1f%%", v) }
 
 // contagem agrees the noun with the number. "1 workflows" is the kind of detail
 // that makes a screen look generated rather than written.
-func contagem(n int, singular, plural string) string {
+func count(n int, singular, plural string) string {
 	if n == 1 {
 		return fmt.Sprintf("1 %s", singular)
 	}
 	return fmt.Sprintf("%d %s", n, plural)
 }
 
-// matizFalha leaves the number neutral when there is no failure at all: painting
+// failureHue leaves the number neutral when there is no failure at all: painting
 // a "0.0%" red teaches the eye to ignore the colour on exactly the screen where
 // it has to mean something.
-func matizFalha(n int) string {
+func failureHue(n int) string {
 	if n == 0 {
 		return "text-ink"
 	}
 	return "text-state-failed"
 }
 
-func notaFalha(n int) string {
+func failureNote(n int) string {
 	if n == 0 {
 		return "no failure in the window"
 	}
@@ -2970,16 +2970,16 @@ func notaFalha(n int) string {
 	return fmt.Sprintf("%d runs failed", n)
 }
 
-func duracaoMedia(d time.Duration) string {
+func meanDuration(d time.Duration) string {
 	if d == 0 {
 		return "no duration measured"
 	}
 	return "average duration " + components.Duration(&d)
 }
 
-// inicioOuCriacao shows when the work actually started; for whatever is still in
+// startOrCreated shows when the work actually started; for whatever is still in
 // the queue, what matters is how long it has been waiting.
-func inicioOuCriacao(r postgres.RunSummary) *time.Time {
+func startOrCreated(r postgres.RunSummary) *time.Time {
 	if r.StartedAt != nil {
 		return r.StartedAt
 	}
@@ -2988,14 +2988,14 @@ func inicioOuCriacao(r postgres.RunSummary) *time.Time {
 
 var _ = strings.TrimSpace
 
-// formularioDeParams is the trigger WITH values — the difference between running
+// paramsForm is the trigger WITH values — the difference between running
 // the workflow and reprocessing a window.
 //
 // The fields come from the YAML's declaration, and the `name` carries a `param.`
 // prefix so it does not collide with the form's own future fields. Types become
 // controls: a boolean is a select, an integer is a number, an enum is a select —
 // each refusing in the browser what the server would refuse again afterwards.
-func formularioDeParams(w wf.Workflow) templ.Component {
+func paramsForm(w wf.Workflow) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -3039,7 +3039,7 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var119 string
-			templ_7745c5c3_Var119, templ_7745c5c3_Err = templ.JoinStringErrs(p.Nome)
+			templ_7745c5c3_Var119, templ_7745c5c3_Err = templ.JoinStringErrs(p.Name)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 982, Col: 56}
 			}
@@ -3051,15 +3051,15 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if p.Descricao != "" {
+			if p.Description != "" {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 205, "<span class=\"text-[0.7rem] text-muted\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var120 string
-				templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinStringErrs(p.Descricao)
+				templ_7745c5c3_Var120, templ_7745c5c3_Err = templ.JoinStringErrs(p.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 984, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 984, Col: 60}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var120))
 				if templ_7745c5c3_Err != nil {
@@ -3070,13 +3070,13 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			if p.Tipo == wf.ParamBool {
+			if p.Type == wf.ParamBool {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 207, "<select name=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var121 string
-				templ_7745c5c3_Var121, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Nome)
+				templ_7745c5c3_Var121, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Name)
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 987, Col: 38}
 				}
@@ -3088,11 +3088,11 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = opcao("false", p.Default).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = option("false", p.Default).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = opcao("true", p.Default).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = option("true", p.Default).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -3106,7 +3106,7 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var122 string
-				templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Nome)
+				templ_7745c5c3_Var122, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Name)
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 992, Col: 38}
 				}
@@ -3119,7 +3119,7 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, v := range p.Enum {
-					templ_7745c5c3_Err = opcao(v, p.Default).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = option(v, p.Default).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -3134,9 +3134,9 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var123 string
-				templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.ResolveAttributeValue(tipoDeCampo(p))
+				templ_7745c5c3_Var123, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldType(p))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 999, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 999, Col: 26}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var123)
 				if templ_7745c5c3_Err != nil {
@@ -3147,7 +3147,7 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var124 string
-				templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Nome)
+				templ_7745c5c3_Var124, templ_7745c5c3_Err = templ.ResolveAttributeValue("param." + p.Name)
 				if templ_7745c5c3_Err != nil {
 					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 1000, Col: 31}
 				}
@@ -3199,7 +3199,7 @@ func formularioDeParams(w wf.Workflow) templ.Component {
 	})
 }
 
-func opcao(valor, padrao string) templ.Component {
+func option(value, fallback string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -3220,13 +3220,13 @@ func opcao(valor, padrao string) templ.Component {
 			templ_7745c5c3_Var127 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		if valor == padrao {
+		if value == fallback {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 220, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var128 string
-			templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.ResolveAttributeValue(valor)
+			templ_7745c5c3_Var128, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 1018, Col: 23}
 			}
@@ -3239,7 +3239,7 @@ func opcao(valor, padrao string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var129 string
-			templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(valor)
+			templ_7745c5c3_Var129, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 1018, Col: 42}
 			}
@@ -3257,7 +3257,7 @@ func opcao(valor, padrao string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var130 string
-			templ_7745c5c3_Var130, templ_7745c5c3_Err = templ.ResolveAttributeValue(valor)
+			templ_7745c5c3_Var130, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 1020, Col: 23}
 			}
@@ -3270,7 +3270,7 @@ func opcao(valor, padrao string) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var131 string
-			templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(valor)
+			templ_7745c5c3_Var131, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 			if templ_7745c5c3_Err != nil {
 				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 1020, Col: 33}
 			}
@@ -3287,10 +3287,10 @@ func opcao(valor, padrao string) templ.Component {
 	})
 }
 
-// tipoDeCampo picks the browser's control. `number` for an integer makes a
+// fieldType picks the browser's control. `number` for an integer makes a
 // phone's keyboard open right and blocks a letter before the server has to.
-func tipoDeCampo(p wf.Param) string {
-	if p.Tipo == wf.ParamInteiro {
+func fieldType(p wf.Param) string {
+	if p.Type == wf.ParamInteger {
 		return "number"
 	}
 	return "text"

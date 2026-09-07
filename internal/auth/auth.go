@@ -35,15 +35,15 @@ import (
 // PBKDF2 iterations. The number is high on purpose: the cost is paid once per
 // human login, and it is exactly what makes a dictionary attack against a
 // leaked hash expensive.
-const iteracoes = 600_000
+const iterations = 600_000
 
-// tamanhoChave is SHA-256's -- there is no gain in deriving more bytes than the hash.
-const tamanhoChave = 32
+// keySize is SHA-256's -- there is no gain in deriving more bytes than the hash.
+const keySize = 32
 
-// ValidadeDaSessao is how long a login lasts. A working shift: short enough
+// SessionLifetime is how long a login lasts. A working shift: short enough
 // that a tab forgotten on a laptop does not become permanent access, long
 // enough not to ask for a password in the middle of an investigation.
-const ValidadeDaSessao = 12 * time.Hour
+const SessionLifetime = 12 * time.Hour
 
 // NomeDoCookie is the session cookie's name.
 const NomeDoCookie = "brevis_sessao"
@@ -58,18 +58,18 @@ const NomeDoCookie = "brevis_sessao"
 // The format carries the iteration count with it because that number will
 // change: when we double the cost a few years from now, old hashes have to keep
 // verifying. A format that stores only the digest forces invalidating everyone.
-func GenerateHash(senha string) (string, error) {
+func GenerateHash(password string) (string, error) {
 	sal := make([]byte, 16)
 	if _, err := rand.Read(sal); err != nil {
 		return "", err
 	}
-	chave, err := pbkdf2.Key(sha256.New, senha, sal, iteracoes, tamanhoChave)
+	key, err := pbkdf2.Key(sha256.New, password, sal, iterations, keySize)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("pbkdf2-sha256$%d$%s$%s", iteracoes,
+	return fmt.Sprintf("pbkdf2-sha256$%d$%s$%s", iterations,
 		base64.RawStdEncoding.EncodeToString(sal),
-		base64.RawStdEncoding.EncodeToString(chave)), nil
+		base64.RawStdEncoding.EncodeToString(key)), nil
 }
 
 // CheckPassword compares the password against the hash in constant time.
@@ -77,7 +77,7 @@ func GenerateHash(senha string) (string, error) {
 // Returns false -- and not an error -- for a malformed hash: the caller is on a
 // login path, and the only safe answer there is "did not get in". The
 // configuration error is caught at boot, by Credential.Validate.
-func CheckPassword(hash, senha string) bool {
+func CheckPassword(hash, password string) bool {
 	partes := strings.Split(hash, "$")
 	if len(partes) != 4 || partes[0] != "pbkdf2-sha256" {
 		return false
@@ -94,7 +94,7 @@ func CheckPassword(hash, senha string) bool {
 	if err != nil {
 		return false
 	}
-	obtido, err := pbkdf2.Key(sha256.New, senha, sal, iter, len(esperado))
+	obtido, err := pbkdf2.Key(sha256.New, password, sal, iter, len(esperado))
 	if err != nil {
 		return false
 	}
@@ -156,7 +156,7 @@ func (c Credential) Validate() error {
 // let it swap users. It is HMAC, and not a hash of the concatenated secret,
 // because the naive construction is vulnerable to length extension.
 func (c Credential) emitir(agora time.Time) string {
-	corpo := c.User + "|" + strconv.FormatInt(agora.Add(ValidadeDaSessao).Unix(), 10)
+	corpo := c.User + "|" + strconv.FormatInt(agora.Add(SessionLifetime).Unix(), 10)
 	return corpo + "|" + base64.RawURLEncoding.EncodeToString(c.assinar(corpo))
 }
 
@@ -166,13 +166,13 @@ func (c Credential) assinar(corpo string) []byte {
 	return m.Sum(nil)
 }
 
-// conferirSessao valida assinatura e prazo do cookie.
-func (c Credential) conferirSessao(valor string, agora time.Time) bool {
-	i := strings.LastIndex(valor, "|")
+// checkSession valida assinatura e prazo do cookie.
+func (c Credential) checkSession(value string, agora time.Time) bool {
+	i := strings.LastIndex(value, "|")
 	if i < 0 {
 		return false
 	}
-	corpo, assinatura := valor[:i], valor[i+1:]
+	corpo, assinatura := value[:i], value[i+1:]
 
 	bruta, err := base64.RawURLEncoding.DecodeString(assinatura)
 	if err != nil {
@@ -184,8 +184,8 @@ func (c Credential) conferirSessao(valor string, agora time.Time) bool {
 		return false
 	}
 
-	usuario, prazo, ok := strings.Cut(corpo, "|")
-	if !ok || usuario != c.User {
+	user, prazo, ok := strings.Cut(corpo, "|")
+	if !ok || user != c.User {
 		// User diferente do configurado: a credencial mudou desde o login.
 		return false
 	}
@@ -205,7 +205,7 @@ func (c Credential) conferirSessao(valor string, agora time.Time) bool {
 // The routes that need no session are few and explicit. Kubernetes probes are
 // on that list out of necessity -- a /health that asks for a password kills the
 // pod.
-type Portao struct {
+type Gate struct {
 	Cred     Credential
 	Next     http.Handler
 	Login    http.Handler // renderiza a tela de login
@@ -224,7 +224,7 @@ func livre(caminho string) bool {
 	return strings.HasPrefix(caminho, "/assets/")
 }
 
-func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *Gate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case !p.Cred.Enabled(), livre(r.URL.Path):
 		p.Next.ServeHTTP(w, r)
@@ -232,7 +232,7 @@ func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie, err := r.Cookie(NomeDoCookie)
-	if err == nil && p.Cred.conferirSessao(cookie.Value, time.Now()) {
+	if err == nil && p.Cred.checkSession(cookie.Value, time.Now()) {
 		p.Next.ServeHTTP(w, r.WithContext(IntoContext(r.Context(), p.Cred.User)))
 		return
 	}
@@ -244,21 +244,21 @@ func (p *Portao) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "sessao expirada; entre novamente", http.StatusUnauthorized)
 		return
 	}
-	destino := "/login"
+	target := "/login"
 	if alvo := r.URL.RequestURI(); alvo != "/" {
-		destino += "?de=" + escaparDestino(alvo)
+		target += "?de=" + escapeTarget(alvo)
 	}
-	http.Redirect(w, r, destino, http.StatusSeeOther)
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
 // SignIn checks the credential and writes the cookie. Returns false if it did not match.
-func (p *Portao) SignIn(w http.ResponseWriter, usuario, senha string) bool {
+func (p *Gate) SignIn(w http.ResponseWriter, user, password string) bool {
 	// Both comparisons ALWAYS run, even with the wrong user: returning early
 	// makes an invalid user answer faster than a valid one, and the
 	// diferenca de tempo entrega quais nomes existem.
-	usuarioOK := subtle.ConstantTimeCompare([]byte(usuario), []byte(p.Cred.User)) == 1
-	senhaOK := CheckPassword(p.Cred.Hash, senha)
-	if !usuarioOK || !senhaOK {
+	userOK := subtle.ConstantTimeCompare([]byte(user), []byte(p.Cred.User)) == 1
+	passwordOK := CheckPassword(p.Cred.Hash, password)
+	if !userOK || !passwordOK {
 		return false
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -272,13 +272,13 @@ func (p *Portao) SignIn(w http.ResponseWriter, usuario, senha string) bool {
 		// one.
 		SameSite: http.SameSiteLaxMode,
 		Secure:   !p.Insecure,
-		Expires:  time.Now().Add(ValidadeDaSessao),
+		Expires:  time.Now().Add(SessionLifetime),
 	})
 	return true
 }
 
 // SignOut apaga o cookie.
-func (p *Portao) SignOut(w http.ResponseWriter) {
+func (p *Gate) SignOut(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name: NomeDoCookie, Value: "", Path: "/",
 		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: !p.Insecure,
@@ -286,11 +286,11 @@ func (p *Portao) SignOut(w http.ResponseWriter) {
 	})
 }
 
-// escaparDestino allows only an internal path in `?next=`.
+// escapeTarget allows only an internal path in `?next=`.
 //
 // Without this, `/login?de=https://malicious` would make our own login screen
 // hand the authenticated operator away -- the classic open redirect.
-func escaparDestino(alvo string) string {
+func escapeTarget(alvo string) string {
 	if !strings.HasPrefix(alvo, "/") || strings.HasPrefix(alvo, "//") {
 		return "/"
 	}
@@ -302,24 +302,24 @@ func Target(bruto string) string {
 	if bruto == "" {
 		return "/"
 	}
-	return escaparDestino(bruto)
+	return escapeTarget(bruto)
 }
 
 // ---------------------------------------------------------------------------
 // Sessao no contexto
 // ---------------------------------------------------------------------------
 
-type chave struct{}
+type key struct{}
 
 // IntoContext stores the request's operator. The layout uses it to decide
 // whether to show the sign-out button -- an installation with no credential
 // should not display a button that does nothing.
-func IntoContext(ctx context.Context, usuario string) context.Context {
-	return context.WithValue(ctx, chave{}, usuario)
+func IntoContext(ctx context.Context, user string) context.Context {
+	return context.WithValue(ctx, key{}, user)
 }
 
 // De returns the request's operator, or empty when there is no session.
 func De(ctx context.Context) string {
-	u, _ := ctx.Value(chave{}).(string)
+	u, _ := ctx.Value(key{}).(string)
 	return u
 }

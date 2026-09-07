@@ -22,7 +22,7 @@ type Server struct {
 	// portao wraps the mux when there is a credential. Nil = an open interface,
 	// which
 	// so acontece em desenvolvimento (config.Load recusa o contrario).
-	portao *auth.Portao
+	gate *auth.Gate
 }
 
 // NewServer builds the router. The checkers are named so that /ready says WHICH
@@ -49,9 +49,9 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 		ui.Registrar(s.mux)
 	}
 	if cred.Enabled() {
-		s.portao = &auth.Portao{Cred: cred, Next: s.mux, Insecure: inseguro}
+		s.gate = &auth.Gate{Cred: cred, Next: s.mux, Insecure: inseguro}
 		if ui != nil {
-			ui.RegistrarLogin(s.mux, s.portao)
+			ui.RegistrarLogin(s.mux, s.gate)
 		}
 	}
 	return s
@@ -59,17 +59,17 @@ func NewServerAutenticado(log *slog.Logger, checkers map[string]Checker, ui *UI,
 
 // ServeHTTP makes Server an http.Handler, with an access log.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	inicio := time.Now()
+	start := time.Now()
 	rec := &gravador{ResponseWriter: w, status: http.StatusOK}
-	if s.portao != nil {
-		s.portao.ServeHTTP(rec, r)
+	if s.gate != nil {
+		s.gate.ServeHTTP(rec, r)
 	} else {
 		s.mux.ServeHTTP(rec, r)
 	}
 
 	s.log.Info("http",
 		"method", r.Method, "path", r.URL.Path,
-		"status", rec.status, "duration_ms", time.Since(inicio).Milliseconds())
+		"status", rec.status, "duration_ms", time.Since(start).Milliseconds())
 }
 
 // HTTPServer returns the configured server. The timeouts exist because

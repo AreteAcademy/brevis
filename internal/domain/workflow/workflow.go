@@ -136,10 +136,10 @@ func (r Resources) Empty() bool {
 	return r.CPU == "" && r.Memory == "" && r.CPULimit == "" && r.MemoryLimit == ""
 }
 
-// ComPadrao fills what the step did not declare from the workflow's. Inheriting
+// WithDefaults fills what the step did not declare from the workflow's. Inheriting
 // field by field, rather than the whole block, lets a step ask for more memory
 // alone without losing the default CPU.
-func (r Resources) ComPadrao(p Resources) Resources {
+func (r Resources) WithDefaults(p Resources) Resources {
 	if r.CPU == "" {
 		r.CPU = p.CPU
 	}
@@ -155,17 +155,17 @@ func (r Resources) ComPadrao(p Resources) Resources {
 	return r
 }
 
-// ImagemDe resolves a step's effective image.
-func (w Workflow) ImagemDe(n Node) string {
+// ImageFor resolves a step's effective image.
+func (w Workflow) ImageFor(n Node) string {
 	if n.Image != "" {
 		return n.Image
 	}
 	return w.Image
 }
 
-// RecursosDe resolves a step's effective resources.
-func (w Workflow) RecursosDe(n Node) Resources {
-	return n.Resources.ComPadrao(w.Resources)
+// ResourcesFor resolves a step's effective resources.
+func (w Workflow) ResourcesFor(n Node) Resources {
+	return n.Resources.WithDefaults(w.Resources)
 }
 
 // EnvDe resolves a step's effective literal variables: the workflow's, with
@@ -177,15 +177,15 @@ func (w Workflow) SecretsDe(n Node) map[string]string { return sobrepor(w.Secret
 
 // sobrepor returns base with cima on top, mutating neither: the maps come from
 // the published workflow and are read by every step at the same time.
-func sobrepor(base, cima map[string]string) map[string]string {
-	if len(base) == 0 && len(cima) == 0 {
+func sobrepor(base, up map[string]string) map[string]string {
+	if len(base) == 0 && len(up) == 0 {
 		return nil
 	}
-	out := make(map[string]string, len(base)+len(cima))
+	out := make(map[string]string, len(base)+len(up))
 	for k, v := range base {
 		out[k] = v
 	}
-	for k, v := range cima {
+	for k, v := range up {
 		out[k] = v
 	}
 	return out
@@ -214,17 +214,17 @@ func (w Workflow) Validate() error {
 	vistos := make(map[string]struct{}, len(w.Nodes))
 	for _, n := range w.Nodes {
 		if n.ID == "" {
-			return fmt.Errorf("workflow %q tem step sem id", w.Slug)
+			return fmt.Errorf("workflow %q has a step with no id", w.Slug)
 		}
 		if _, dup := vistos[n.ID]; dup {
-			return fmt.Errorf("workflow %q: id de step duplicado: %q", w.Slug, n.ID)
+			return fmt.Errorf("workflow %q: duplicate step id: %q", w.Slug, n.ID)
 		}
 		vistos[n.ID] = struct{}{}
 
 		temRun, temAction := n.Run != "", n.Action != ""
 		switch {
 		case temRun && temAction:
-			return fmt.Errorf("step %q declara `run` e `action`; use um dos dois", n.ID)
+			return fmt.Errorf("step %q declares both `run` and `action`; use one of the two", n.ID)
 		case !temRun && !temAction:
 			return fmt.Errorf("step %q declares neither `run` nor `action`", n.ID)
 		case temRun && len(n.With) > 0:
@@ -235,82 +235,71 @@ func (w Workflow) Validate() error {
 	if w.MaxActive < 0 {
 		return fmt.Errorf("workflow %q: negative concurrency (%d); use 0 for no limit", w.Slug, w.MaxActive)
 	}
-	if err := validarRecursos(w.Slug, "workflow", w.Resources); err != nil {
+	if err := validateResources(w.Slug, "workflow", w.Resources); err != nil {
 		return err
 	}
 	for _, n := range w.Nodes {
-		if err := validarRecursos(w.Slug, "step "+n.ID, n.Resources); err != nil {
+		if err := validateResources(w.Slug, "step "+n.ID, n.Resources); err != nil {
 			return err
 		}
 	}
 
 	for _, e := range w.Edges {
 		if _, ok := vistos[e.From]; !ok {
-			return fmt.Errorf("workflow %q: dependencia inexistente %q", w.Slug, e.From)
+			return fmt.Errorf("workflow %q: dependency %q does not exist", w.Slug, e.From)
 		}
 		if _, ok := vistos[e.To]; !ok {
-			return fmt.Errorf("workflow %q: dependencia inexistente %q", w.Slug, e.To)
+			return fmt.Errorf("workflow %q: dependency %q does not exist", w.Slug, e.To)
 		}
 		if e.From == e.To {
-			return fmt.Errorf("step %q depende de si mesmo", e.From)
+			return fmt.Errorf("step %q depends on itself", e.From)
 		}
 	}
 
-	if w.MaxActive < 0 {
-		return fmt.Errorf("workflow %q: concurrency negativa (%d); use 0 para sem limite", w.Slug, w.MaxActive)
-	}
-	if err := validarRecursos(w.Slug, "workflow", w.Resources); err != nil {
-		return err
-	}
-	vistosParams := make(map[string]struct{}, len(w.Params))
+	seenParams := make(map[string]struct{}, len(w.Params))
 	for _, p := range w.Params {
 		if err := p.Validate(); err != nil {
 			return fmt.Errorf("workflow %q: %w", w.Slug, err)
 		}
-		if _, ja := vistosParams[p.Nome]; ja {
-			return fmt.Errorf("workflow %q: param duplicado: %q", w.Slug, p.Nome)
+		if _, ja := seenParams[p.Name]; ja {
+			return fmt.Errorf("workflow %q: duplicate param: %q", w.Slug, p.Name)
 		}
-		vistosParams[p.Nome] = struct{}{}
-	}
-	for _, n := range w.Nodes {
-		if err := validarRecursos(w.Slug, "step "+n.ID, n.Resources); err != nil {
-			return err
-		}
+		seenParams[p.Name] = struct{}{}
 	}
 
-	if err := validarAmbiente(w.Slug, "workflow", w.Env, w.Secrets); err != nil {
+	if err := validateEnvironment(w.Slug, "workflow", w.Env, w.Secrets); err != nil {
 		return err
 	}
 	for _, n := range w.Nodes {
 		// Against the effective view, not the declared one: an `env:` on the
 		// workflow and a `secrets:` of the same name on the step collide just
 		// the same, and only the inherited view sees it.
-		if err := validarAmbiente(w.Slug, "step "+n.ID, w.EnvDe(n), w.SecretsDe(n)); err != nil {
+		if err := validateEnvironment(w.Slug, "step "+n.ID, w.EnvDe(n), w.SecretsDe(n)); err != nil {
 			return err
 		}
 	}
 
-	if ciclo := w.encontrarCiclo(); ciclo != "" {
-		return fmt.Errorf("workflow %q tem ciclo: %s", w.Slug, ciclo)
+	if cycle := w.findCycle(); cycle != "" {
+		return fmt.Errorf("workflow %q has a cycle: %s", w.Slug, cycle)
 	}
 	return nil
 }
 
-// validarAmbiente refuses what would silently become the wrong variable.
+// validateEnvironment refuses what would silently become the wrong variable.
 //
 // The name comes first because an invalid environment variable name is accepted
 // by the YAML and refused by the Kubernetes server much later, with a message
 // about a container field rather than a file line.
-func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
+func validateEnvironment(slug, where string, env, secrets map[string]string) error {
 	for nome := range env {
-		if err := validarNomeDeVar(nome); err != nil {
-			return fmt.Errorf("workflow %q, %s: env: %w", slug, onde, err)
+		if err := validateVarName(nome); err != nil {
+			return fmt.Errorf("workflow %q, %s: env: %w", slug, where, err)
 		}
 	}
 
 	for nome, coord := range secrets {
-		if err := validarNomeDeVar(nome); err != nil {
-			return fmt.Errorf("workflow %q, %s: secrets: %w", slug, onde, err)
+		if err := validateVarName(nome); err != nil {
+			return fmt.Errorf("workflow %q, %s: secrets: %w", slug, where, err)
 		}
 
 		// A variable defined in both places is ambiguous, and any tie-break
@@ -318,28 +307,28 @@ func validarAmbiente(slug, onde string, env, secrets map[string]string) error {
 		if _, colide := env[nome]; colide {
 			return fmt.Errorf("workflow %q, %s: %q is in both `env` and `secrets`; "+
 				"the same variable cannot have a literal value and come from a secret",
-				slug, onde, nome)
+				slug, where, nome)
 		}
 
 		// The value does NOT go into the message. The most likely cause of an
 		// invalid coordinate is somebody having pasted the real secret -- and
 		// `brevis validate` runs in CI, whose log plenty of people read. An
 		// error that teaches the format does not need to repeat what it got.
-		segredo, chave, ok := strings.Cut(coord, "/")
-		if !ok || segredo == "" || chave == "" || strings.Contains(chave, "/") {
+		secret, key, ok := strings.Cut(coord, "/")
+		if !ok || secret == "" || key == "" || strings.Contains(key, "/") {
 			return fmt.Errorf("workflow %q, %s: secrets[%q] is not a coordinate "+
 				"(got %d characters). Use `secret-name/key`, as in "+
 				"`gabriel-session/cookie`. If the value pasted there is the secret "+
 				"itself, it is already in git: change the key and rotate the secret",
-				slug, onde, nome, len(coord))
+				slug, where, nome, len(coord))
 		}
 	}
 	return nil
 }
 
-// validarNomeDeVar accepts what a POSIX shell accepts: letters, digits and
+// validateVarName accepts what a POSIX shell accepts: letters, digits and
 // underscore, not starting with a digit.
-func validarNomeDeVar(nome string) error {
+func validateVarName(nome string) error {
 	if nome == "" {
 		return fmt.Errorf("empty variable name")
 	}
@@ -359,11 +348,11 @@ func validarNomeDeVar(nome string) error {
 	return nil
 }
 
-// encontrarCiclo devolve o caminho do ciclo, ou vazio se o grafo for aciclico.
+// findCycle devolve o caminho do ciclo, ou vazio se o grafo for aciclico.
 //
 // It returns the PATH, not just a boolean: whoever wrote the DAG needs to know
 // which steps close the loop in order to fix it.
-func (w Workflow) encontrarCiclo() string {
+func (w Workflow) findCycle() string {
 	saida := make(map[string][]string, len(w.Nodes))
 	for _, e := range w.Edges {
 		saida[e.From] = append(saida[e.From], e.To)
@@ -374,22 +363,22 @@ func (w Workflow) encontrarCiclo() string {
 		emUso
 		pronto
 	)
-	estado := make(map[string]int, len(w.Nodes))
-	var caminho []string
+	state := make(map[string]int, len(w.Nodes))
+	var path []string
 	var achado string
 
 	var visitar func(string) bool
 	visitar = func(id string) bool {
-		estado[id] = emUso
-		caminho = append(caminho, id)
+		state[id] = emUso
+		path = append(path, id)
 
 		for _, prox := range saida[id] {
-			switch estado[prox] {
+			switch state[prox] {
 			case emUso:
 				// closes the loop: it slices the path from where `prox` went in
-				for i, v := range caminho {
+				for i, v := range path {
 					if v == prox {
-						achado = formatarCiclo(append(append([]string{}, caminho[i:]...), prox))
+						achado = formatCycle(append(append([]string{}, path[i:]...), prox))
 						return true
 					}
 				}
@@ -400,20 +389,20 @@ func (w Workflow) encontrarCiclo() string {
 			}
 		}
 
-		caminho = caminho[:len(caminho)-1]
-		estado[id] = pronto
+		path = path[:len(path)-1]
+		state[id] = pronto
 		return false
 	}
 
 	for _, n := range w.Nodes {
-		if estado[n.ID] == novo && visitar(n.ID) {
+		if state[n.ID] == novo && visitar(n.ID) {
 			return achado
 		}
 	}
 	return ""
 }
 
-func formatarCiclo(ids []string) string {
+func formatCycle(ids []string) string {
 	s := ""
 	for i, id := range ids {
 		if i > 0 {
@@ -426,24 +415,24 @@ func formatarCiclo(ids []string) string {
 
 // quantidade is Kubernetes's format: an integer or a decimal with an optional
 // suffix (m for CPU; Ki/Mi/Gi/K/M/G for memory).
-var quantidade = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?(m|[KMGTPE]i?)?$`)
+var quantity = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?(m|[KMGTPE]i?)?$`)
 
-// validarRecursos refuses a malformed quantity at PUBLISH time.
+// validateResources refuses a malformed quantity at PUBLISH time.
 //
 // Without this the error only shows up when the pod is created -- hours later,
 // in the middle of the night, as a 422 from the API server that names neither
 // the file nor the step.
-func validarRecursos(slug, onde string, r Resources) error {
-	for campo, valor := range map[string]string{
+func validateResources(slug, where string, r Resources) error {
+	for field, value := range map[string]string{
 		"cpu": r.CPU, "memory": r.Memory,
 		"cpu_limit": r.CPULimit, "memory_limit": r.MemoryLimit,
 	} {
-		if valor == "" {
+		if value == "" {
 			continue
 		}
-		if !quantidade.MatchString(valor) {
+		if !quantity.MatchString(value) {
 			return fmt.Errorf("workflow %q, %s: %s=%q is not a valid quantity (e.g. 200m, 1, 512Mi, 2Gi)",
-				slug, onde, campo, valor)
+				slug, where, field, value)
 		}
 	}
 	return nil

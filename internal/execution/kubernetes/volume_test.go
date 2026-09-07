@@ -20,11 +20,11 @@ func simpleTask() execution.TaskExec {
 // every step pod gains the volume and the env var the SDK reads. It is step 5 of
 // the volume's spec.
 func TestTheCredentialVolumeMountsAndInjectsTheDirectory(t *testing.T) {
-	pod, err := MontarPod(simpleTask(), Opcoes{
-		CredencialPVC: "brevis-credentials",
+	pod, err := BuildPod(simpleTask(), Options{
+		CredentialPVC: "brevis-credentials",
 	}.comPadroes())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 
 	if len(pod.Spec.Volumes) != 1 {
@@ -56,12 +56,12 @@ func TestTheCredentialVolumeMountsAndInjectsTheDirectory(t *testing.T) {
 
 // TestTheVolumesPathIsConfigurable.
 func TestTheVolumesPathIsConfigurable(t *testing.T) {
-	pod, err := MontarPod(simpleTask(), Opcoes{
-		CredencialPVC:  "meu-pvc",
-		CredencialPath: "/mnt/cred",
+	pod, err := BuildPod(simpleTask(), Options{
+		CredentialPVC:  "meu-pvc",
+		CredentialPath: "/mnt/cred",
 	}.comPadroes())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 	if got := pod.Spec.Containers[0].VolumeMounts[0].MountPath; got != "/mnt/cred" {
 		t.Errorf("mountPath = %q", got)
@@ -72,9 +72,9 @@ func TestTheVolumesPathIsConfigurable(t *testing.T) {
 // than a requirement -- an installation that did not configure it must see no
 // difference.
 func TestWithNoPVCNothingChanges(t *testing.T) {
-	pod, err := MontarPod(simpleTask(), Opcoes{}.comPadroes())
+	pod, err := BuildPod(simpleTask(), Options{}.comPadroes())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 	if len(pod.Spec.Volumes) != 0 {
 		t.Errorf("it mounted a volume with no PVC: %+v", pod.Spec.Volumes)
@@ -100,9 +100,9 @@ func TestTheStepsEnvBeatsTheDefaultDirectory(t *testing.T) {
 	task := simpleTask()
 	task.Env = map[string]string{"BREVIS_CREDENTIAL_DIR": "/outro/lugar"}
 
-	pod, err := MontarPod(task, Opcoes{CredencialPVC: "pvc"}.comPadroes())
+	pod, err := BuildPod(task, Options{CredentialPVC: "pvc"}.comPadroes())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 	var vistos []string
 	for _, e := range pod.Spec.Containers[0].Env {

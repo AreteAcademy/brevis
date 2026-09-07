@@ -41,7 +41,7 @@ type historico struct {
 	exceto uuid.UUID
 }
 
-func (h *historico) PassoJaTeveSucesso(ctx context.Context, slug, nodeID string, exceto uuid.UUID) (bool, error) {
+func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, exceto uuid.UUID) (bool, error) {
 	h.slug, h.nodeID, h.exceto = slug, nodeID, exceto
 	return h.jaTeve, h.err
 }
@@ -72,7 +72,7 @@ func TestTheStepsEnvironmentCarriesTheRunsContext(t *testing.T) {
 		Params:      map[string]string{"load_full": "true"},
 		Trigger:     "backfill",
 		LogicalDate: &quando,
-		Historico:   &historico{jaTeve: false},
+		History:     &historico{jaTeve: false},
 	})
 
 	if task.Env["BREVIS_RUN_ID"] != id.String() {
@@ -103,7 +103,7 @@ func TestTheFirstRunIsPerStepNotPerWorkflow(t *testing.T) {
 	h := &historico{jaTeve: false}
 	id := uuid.New()
 
-	runStep(t, app.Runner{RunID: id, Historico: h})
+	runStep(t, app.Runner{RunID: id, History: h})
 
 	if h.slug != "clima" || h.nodeID != "collectOutput" {
 		t.Errorf("the question has to be per (workflow, step): %q / %q", h.slug, h.nodeID)
@@ -115,7 +115,7 @@ func TestTheFirstRunIsPerStepNotPerWorkflow(t *testing.T) {
 }
 
 func TestAStepWithAPreviousSuccessIsNotTheFirst(t *testing.T) {
-	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{jaTeve: true}})
+	task := runStep(t, app.Runner{RunID: uuid.New(), History: &historico{jaTeve: true}})
 
 	if task.Env["BREVIS_RUN_FIRST"] != "false" {
 		t.Errorf("there was a success already, so it is not the first: %q", task.Env["BREVIS_RUN_FIRST"])
@@ -135,7 +135,7 @@ func TestWithNoHistoryItInventsNoFirstRun(t *testing.T) {
 
 func TestAQueryFailureDoesNotBecomeATableCreation(t *testing.T) {
 	h := &historico{err: context.DeadlineExceeded}
-	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: h})
+	task := runStep(t, app.Runner{RunID: uuid.New(), History: h})
 
 	if task.Env["BREVIS_RUN_FIRST"] != "false" {
 		t.Errorf("a database that is down must not become DDL: %q", task.Env["BREVIS_RUN_FIRST"])
@@ -145,9 +145,9 @@ func TestAQueryFailureDoesNotBecomeATableCreation(t *testing.T) {
 func TestTheRunnersEnvironmentWinsACollision(t *testing.T) {
 	// If somebody set the variable in the runner's configuration, they meant to.
 	task := runStep(t, app.Runner{
-		RunID:     uuid.New(),
-		Historico: &historico{jaTeve: false},
-		Env:       map[string]string{"BREVIS_RUN_FIRST": "false", "OUTRA": "coisa"},
+		RunID:   uuid.New(),
+		History: &historico{jaTeve: false},
+		Env:     map[string]string{"BREVIS_RUN_FIRST": "false", "OUTRA": "coisa"},
 	})
 
 	if task.Env["BREVIS_RUN_FIRST"] != "false" {
@@ -162,7 +162,7 @@ func TestTheRunnersEnvironmentWinsACollision(t *testing.T) {
 }
 
 func TestWithNoParamsItInjectsNoEmptyVariable(t *testing.T) {
-	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
+	task := runStep(t, app.Runner{RunID: uuid.New(), History: &historico{}})
 
 	if _, existe := task.Env["BREVIS_RUN_PARAMS"]; existe {
 		t.Error("with no params the variable should not exist rather than exist empty")
@@ -179,8 +179,8 @@ func TestWithNoRunIDItInventsNoManagedRun(t *testing.T) {
 	// Brevis" with
 	// um id inventado.
 	task := runStep(t, app.Runner{
-		Params:    map[string]string{"create_table": "true"},
-		Historico: &historico{jaTeve: false},
+		Params:  map[string]string{"create_table": "true"},
+		History: &historico{jaTeve: false},
 	})
 
 	for _, v := range []string{"BREVIS_RUN_ID", "BREVIS_RUN_FIRST", "BREVIS_RUN_ATTEMPT"} {
@@ -199,7 +199,7 @@ func TestTheAttemptStartsAtZeroAsInTheDatabase(t *testing.T) {
 	// The task_runs.attempt column has DEFAULT 0, and the pod's name derives
 	// from it.
 	// Diverging here would make the step report an attempt that does not exist.
-	task := runStep(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
+	task := runStep(t, app.Runner{RunID: uuid.New(), History: &historico{}})
 
 	if task.Env["BREVIS_RUN_ATTEMPT"] != "0" {
 		t.Errorf("first attempt = %q, expected \"0\"", task.Env["BREVIS_RUN_ATTEMPT"])
@@ -217,13 +217,13 @@ func TestTheDispatchersPath(t *testing.T) {
 	quando := time.Date(2026, 9, 3, 4, 0, 0, 0, time.UTC)
 
 	task := runStep(t, app.Runner{
-		RunID:          id,
-		TentativaDoRun: 0,
-		Params:         map[string]string{"load_full": "true"},
-		Trigger:        "schedule",
-		LogicalDate:    &quando,
-		Historico:      &historico{jaTeve: false},
-		Env:            map[string]string{"PATH": "/usr/bin", "HOME": "/root"},
+		RunID:       id,
+		RunAttempt:  0,
+		Params:      map[string]string{"load_full": "true"},
+		Trigger:     "schedule",
+		LogicalDate: &quando,
+		History:     &historico{jaTeve: false},
+		Env:         map[string]string{"PATH": "/usr/bin", "HOME": "/root"},
 	})
 
 	// The tasks' environment survives.

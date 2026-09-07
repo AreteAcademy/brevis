@@ -23,15 +23,15 @@ import (
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
-// janelaOverview is the dashboard's horizon. Twenty-four hours cover a full
+// overviewWindow is the dashboard's horizon. Twenty-four hours cover a full
 // daily cycle -- most schedules are daily, and a shorter window would show only
 // part of the day and make the success rate swing because of the cut, not
 // because anything changed.
-const janelaOverview = 24 * time.Hour
+const overviewWindow = 24 * time.Hour
 
 // Leitura is what the UI needs from the database. The interface is declared here, in the consumer.
 type Leitura interface {
-	Indicators(ctx context.Context, janela time.Duration) (postgres.Indicators, error)
+	Indicators(ctx context.Context, window time.Duration) (postgres.Indicators, error)
 	RunsPerHour(ctx context.Context, horas int) ([]postgres.Bucket, error)
 	InFlight(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	LatestRuns(ctx context.Context, limite int) ([]postgres.RunSummary, error)
@@ -52,8 +52,8 @@ type Definicoes interface {
 
 // RunsChart reads a Run and the state of its steps.
 type RunsChart interface {
-	Buscar(ctx context.Context, id uuid.UUID) (run.Run, error)
-	EstadoDosNos(ctx context.Context, id uuid.UUID) (map[string]postgres.NodeState, error)
+	Get(ctx context.Context, id uuid.UUID) (run.Run, error)
+	NodeStates(ctx context.Context, id uuid.UUID) (map[string]postgres.NodeState, error)
 	LogsDaRun(ctx context.Context, id uuid.UUID) ([]postgres.StepLog, error)
 }
 
@@ -70,13 +70,13 @@ type UI struct {
 	leitura Leitura
 	defs    Definicoes
 	execs   RunsChart
-	acoes   Actions
-	marca   branding.Brand
+	actions Actions
+	brand   branding.Brand
 	log     *slog.Logger
 }
 
 func NewUI(l Leitura, d Definicoes, e RunsChart, a Actions, m branding.Brand, log *slog.Logger) *UI {
-	return &UI{leitura: l, defs: d, execs: e, acoes: a, marca: m, log: log}
+	return &UI{leitura: l, defs: d, execs: e, actions: a, brand: m, log: log}
 }
 
 // Registrar wires the routes into the mux.
@@ -95,8 +95,8 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 
 	// The JSON the React island fetches. It sits under /api so the URL makes
 	// clear what is a page and what is data -- the same path serves both.
-	mux.HandleFunc("GET /api/workflows/{slug}/graph", u.grafoDoWorkflow)
-	mux.HandleFunc("GET /api/runs/{id}/graph", u.grafoDaRun)
+	mux.HandleFunc("GET /api/workflows/{slug}/graph", u.workflowGraph)
+	mux.HandleFunc("GET /api/runs/{id}/graph", u.runGraph)
 
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.
@@ -106,45 +106,45 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	ind, err := u.leitura.Indicators(ctx, janelaOverview)
+	ind, err := u.leitura.Indicators(ctx, overviewWindow)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
-	baldes, err := u.leitura.RunsPerHour(ctx, int(janelaOverview.Hours()))
+	baldes, err := u.leitura.RunsPerHour(ctx, int(overviewWindow.Hours()))
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	emCurso, err := u.leitura.InFlight(ctx, 8)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	recentes, err := u.leitura.LatestRuns(ctx, 10)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	pendentes, _, err := u.leitura.QueueDepth(ctx)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	agendas, err := u.leitura.Schedules(ctx)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 
 	u.render(w, r, pages.Overview(pages.OverviewData{
-		Window:    janelaOverview,
-		Ind:       ind,
-		Baldes:    baldes,
-		EmCurso:   emCurso,
-		Proximas:  proximasExecucoes(agendas, time.Now(), 8, u.log),
-		Recentes:  recentes,
-		Pendentes: pendentes,
+		Window:   overviewWindow,
+		Ind:      ind,
+		Baldes:   baldes,
+		EmCurso:  emCurso,
+		Proximas: proximasExecucoes(agendas, time.Now(), 8, u.log),
+		Recentes: recentes,
+		Pending:  pendentes,
 	}))
 }
 
@@ -156,9 +156,9 @@ func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 // the same field -- one that would one day diverge from the one the scheduler
 // actually uses.
 func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limite int,
-	log *slog.Logger) []pages.ProximaExecucao {
+	log *slog.Logger) []pages.NextRun {
 
-	var out []pages.ProximaExecucao
+	var out []pages.NextRun
 	for _, a := range agendas {
 		if !a.Active {
 			continue
@@ -172,7 +172,7 @@ func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limi
 				"workflow", a.WorkflowSlug, "cron", a.Cron, "error", err)
 			continue
 		}
-		out = append(out, pages.ProximaExecucao{
+		out = append(out, pages.NextRun{
 			Workflow: a.WorkflowSlug, Cron: a.Cron, Timezone: a.Timezone, When: prox,
 		})
 	}
@@ -186,11 +186,11 @@ func proximasExecucoes(agendas []postgres.ScheduleSummary, agora time.Time, limi
 func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := pages.RunFilter{
-		State:     estadoValido(q.Get("state")),
+		State:     validState(q.Get("state")),
 		Workflow:  q.Get("workflow"),
 		De:        q.Get("from"),
 		Ate:       q.Get("to"),
-		Page:      pagina(q.Get("page")),
+		Page:      page(q.Get("page")),
 		PorPagina: pages.DefaultPerPage,
 	}
 
@@ -201,32 +201,32 @@ func (u *UI) runs(w http.ResponseWriter, r *http.Request) {
 	if ate == nil {
 		f.Ate = ""
 	}
-	f.Rotulo = rotuloDoPeriodo(de, ate)
+	f.Label = periodLabel(de, ate)
 
-	consulta := postgres.RunFilter{
+	query := postgres.RunFilter{
 		State: f.State, Workflow: f.Workflow, De: de, Ate: ate,
 		Limite: f.PorPagina, Offset: (f.Page - 1) * f.PorPagina,
 	}
-	total, err := u.leitura.CountRuns(r.Context(), consulta)
+	total, err := u.leitura.CountRuns(r.Context(), query)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
-	runs, err := u.leitura.Runs(r.Context(), consulta)
+	runs, err := u.leitura.Runs(r.Context(), query)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	u.render(w, r, pages.Runs(runs, f, total))
 }
 
-// estadoValido refuses any state outside §7's machine.
+// validState refuses any state outside §7's machine.
 //
 // This is not about SQL -- the value already goes parameterised. It is about the
 // screen: `?estado=xpto` would return an empty list with every chip greyed out,
 // and the operator would read that as "there are no runs" rather than "that
 // filter does not exist".
-func estadoValido(s string) string {
+func validState(s string) string {
 	switch s {
 	case "queued", "running", "success", "failed", "retrying", "canceled":
 		return s
@@ -234,7 +234,7 @@ func estadoValido(s string) string {
 	return ""
 }
 
-func pagina(s string) int {
+func page(s string) int {
 	n, err := strconv.Atoi(s)
 	if err != nil || n < 1 {
 		return 1
@@ -255,10 +255,10 @@ func instante(s string) *time.Time {
 	return &t
 }
 
-// rotuloDoPeriodo describes the window in the reader's own timezone. Without it
+// periodLabel describes the window in the reader's own timezone. Without it
 // the filter chip would show "2026-09-01T02:00:00Z", which is not the time the
 // person saw on the chart.
-func rotuloDoPeriodo(de, ate *time.Time) string {
+func periodLabel(de, ate *time.Time) string {
 	switch {
 	case de != nil && ate != nil:
 		l := de.Local()
@@ -277,36 +277,36 @@ func rotuloDoPeriodo(de, ate *time.Time) string {
 func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 	todos, err := u.leitura.Workflows(r.Context())
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 
 	agora := time.Now()
 	for i := range todos {
-		todos[i].ProximaRun = proximaDoWorkflow(todos[i], agora)
+		todos[i].NextRun = proximaDoWorkflow(todos[i], agora)
 	}
 
 	q := r.URL.Query()
 	f := pages.Filter{
-		Busca:     strings.TrimSpace(q.Get("q")),
-		State:     estadoValido(q.Get("state")),
+		Search:    strings.TrimSpace(q.Get("q")),
+		State:     validState(q.Get("state")),
 		Active:    q.Get("active"),
 		Tag:       q.Get("tag"),
-		Sort:      ordemValida(q.Get("sort")),
+		Sort:      validOrder(q.Get("sort")),
 		Desc:      q.Get("dir") == "desc",
-		Page:      pagina(q.Get("page")),
+		Page:      page(q.Get("page")),
 		PorPagina: pages.DefaultPerPage,
 	}
 
-	filtrados := filtrar(todos, f)
-	ordenar(filtrados, f)
-	u.render(w, r, pages.Workflows(recortar(filtrados, f), tagsDe(todos), f,
-		len(todos), len(filtrados)))
+	filtered := filtrar(todos, f)
+	ordenar(filtered, f)
+	u.render(w, r, pages.Workflows(recortar(filtered, f), tagsDe(todos), f,
+		len(todos), len(filtered)))
 }
 
-// ordemValida limits sorting to the columns that exist -- without it, `?ordem=;`
+// validOrder limits sorting to the columns that exist -- without it, `?ordem=;`
 // would only produce a list in an unexplained order.
-func ordemValida(s string) string {
+func validOrder(s string) string {
 	switch s {
 	case "workflow", "schedule", "next", "last":
 		return s
@@ -326,12 +326,12 @@ func ordenar(ws []postgres.WorkflowSummary, f pages.Filter) {
 	}
 	sort.SliceStable(ws, func(i, j int) bool {
 		a, b := ws[i], ws[j]
-		temA, temB := temValor(a, f.Sort), temValor(b, f.Sort)
+		temA, temB := hasValue(a, f.Sort), hasValue(b, f.Sort)
 		if temA != temB {
 			return temA
 		}
 		if temA {
-			if c := comparaCampo(a, b, f.Sort); c != 0 {
+			if c := compareField(a, b, f.Sort); c != 0 {
 				if f.Desc {
 					return c > 0
 				}
@@ -342,26 +342,26 @@ func ordenar(ws []postgres.WorkflowSummary, f pages.Filter) {
 	})
 }
 
-func temValor(w postgres.WorkflowSummary, campo string) bool {
-	switch campo {
+func hasValue(w postgres.WorkflowSummary, field string) bool {
+	switch field {
 	case "schedule":
 		return w.Cron != ""
 	case "next":
-		return w.ProximaRun != nil
+		return w.NextRun != nil
 	case "last":
-		return w.UltimaRunEm != nil
+		return w.LastRunAt != nil
 	}
 	return true
 }
 
-func comparaCampo(a, b postgres.WorkflowSummary, campo string) int {
-	switch campo {
+func compareField(a, b postgres.WorkflowSummary, field string) int {
+	switch field {
 	case "schedule":
 		return strings.Compare(a.Cron, b.Cron)
 	case "next":
-		return comparaTempo(a.ProximaRun, b.ProximaRun)
+		return comparaTempo(a.NextRun, b.NextRun)
 	case "last":
-		return comparaTempo(a.UltimaRunEm, b.UltimaRunEm)
+		return comparaTempo(a.LastRunAt, b.LastRunAt)
 	}
 	return strings.Compare(a.Slug, b.Slug)
 }
@@ -411,14 +411,14 @@ func proximaDoWorkflow(w postgres.WorkflowSummary, agora time.Time) *time.Time {
 // filtering by LAST state would mean repeating the query's LATERAL inside a
 // WHERE. If it ever becomes thousands, this turns into a database predicate.
 func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowSummary {
-	busca := strings.ToLower(f.Busca)
+	search := strings.ToLower(f.Search)
 	out := make([]postgres.WorkflowSummary, 0, len(ws))
 	for _, w := range ws {
-		if busca != "" && !strings.Contains(strings.ToLower(w.Slug), busca) &&
-			!strings.Contains(strings.ToLower(w.Nome), busca) {
+		if search != "" && !strings.Contains(strings.ToLower(w.Slug), search) &&
+			!strings.Contains(strings.ToLower(w.Name), search) {
 			continue
 		}
-		if f.State != "" && w.UltimoStatus != f.State {
+		if f.State != "" && w.LastStatus != f.State {
 			continue
 		}
 		switch f.Active {
@@ -430,11 +430,11 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 			// No schedule is not "paused": it is a workflow that never had a
 			// cron, and mixing the two would hide precisely the schedule that
 			// was turned off.
-			if w.Active || !w.TemAgenda {
+			if w.Active || !w.HasSchedule {
 				continue
 			}
 		}
-		if f.Tag != "" && !contem(w.Tags, f.Tag) {
+		if f.Tag != "" && !contains(w.Tags, f.Tag) {
 			continue
 		}
 		out = append(out, w)
@@ -442,8 +442,8 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 	return out
 }
 
-func contem(lista []string, alvo string) bool {
-	for _, s := range lista {
+func contains(list []string, alvo string) bool {
+	for _, s := range list {
 		if s == alvo {
 			return true
 		}
@@ -454,14 +454,14 @@ func contem(lista []string, alvo string) bool {
 // tagsDe gathers the tags of ALL workflows, not of the filtered rows: the filter
 // bar must not shrink as you filter, or there is no way back.
 func tagsDe(ws []postgres.WorkflowSummary) []string {
-	vistas := map[string]struct{}{}
+	seen := map[string]struct{}{}
 	var out []string
 	for _, w := range ws {
 		for _, t := range w.Tags {
-			if _, ja := vistas[t]; ja {
+			if _, ja := seen[t]; ja {
 				continue
 			}
-			vistas[t] = struct{}{}
+			seen[t] = struct{}{}
 			out = append(out, t)
 		}
 	}
@@ -472,7 +472,7 @@ func tagsDe(ws []postgres.WorkflowSummary) []string {
 func (u *UI) projetos(w http.ResponseWriter, r *http.Request) {
 	ps, err := u.leitura.Projects(r.Context())
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	u.render(w, r, pages.Projects(ps))
@@ -487,11 +487,11 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// A missing history does not block the screen: the definition is the main content.
-	ultimas, err := u.leitura.WorkflowRuns(r.Context(), slug, 10)
+	latest, err := u.leitura.WorkflowRuns(r.Context(), slug, 10)
 	if err != nil {
 		u.log.Warn("the workflow's history is unavailable", "workflow", slug, "error", err)
 	}
-	u.render(w, r, pages.Workflow(def, ultimas))
+	u.render(w, r, pages.Workflow(def, latest))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG
@@ -502,7 +502,7 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	execucao, err := u.execs.Buscar(r.Context(), id)
+	run, err := u.execs.Get(r.Context(), id)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -513,14 +513,14 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
 	}
-	u.render(w, r, pages.Run(execucao, logs))
+	u.render(w, r, pages.Run(run, logs))
 }
 
 func (u *UI) alternar(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
-	ativo, err := u.acoes.Alternar(r.Context(), slug)
+	ativo, err := u.actions.Alternar(r.Context(), slug)
 	if err != nil {
-		u.erro(w, r, err)
+		u.failure(w, r, err)
 		return
 	}
 	u.log.Info("schedule toggled", "workflow", slug, "active", ativo)
@@ -537,13 +537,13 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := map[string]string{}
-	for chave, valores := range r.PostForm {
-		if nome, ok := strings.CutPrefix(chave, "param."); ok && len(valores) > 0 {
-			params[nome] = valores[0]
+	for key, values := range r.PostForm {
+		if nome, ok := strings.CutPrefix(key, "param."); ok && len(values) > 0 {
+			params[nome] = values[0]
 		}
 	}
 
-	id, err := u.acoes.Disparar(r.Context(), slug, time.Now(), params)
+	id, err := u.actions.Disparar(r.Context(), slug, time.Now(), params)
 	if err != nil {
 		// An invalid param is an INPUT error, not the server's: a 500 here would
 		// send the operator looking for a defect in the platform rather than in
@@ -570,17 +570,17 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 // navigation as a GET, which is what prevents the "resend form?" prompt on
 // reload.
 func (u *UI) voltar(w http.ResponseWriter, r *http.Request) {
-	destino := r.Referer()
+	target := r.Referer()
 	// It only accepts a destination on this site: an external Referer would turn
 	// the redirect into an open-redirect vector.
-	if destino == "" || !strings.HasPrefix(destino, "/") {
+	if target == "" || !strings.HasPrefix(target, "/") {
 		if u := parseMesmoHost(r); u != "" {
-			destino = u
+			target = u
 		} else {
-			destino = "/workflows"
+			target = "/workflows"
 		}
 	}
-	http.Redirect(w, r, destino, http.StatusSeeOther)
+	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
 // parseMesmoHost accepts the Referer only when it points at this same host.
@@ -604,20 +604,20 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// The brand travels in the context: every template reaches it without it
 	// having to enter each page's signature.
-	if err := c.Render(branding.IntoContext(r.Context(), u.marca), w); err != nil {
+	if err := c.Render(branding.IntoContext(r.Context(), u.brand), w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
 }
 
-func (u *UI) erro(w http.ResponseWriter, r *http.Request, err error) {
+func (u *UI) failure(w http.ResponseWriter, r *http.Request, err error) {
 	u.log.Error("querying the ui's data", "path", r.URL.Path, "error", err)
-	http.Error(w, "erro interno", http.StatusInternalServerError)
+	http.Error(w, "internal error", http.StatusInternalServerError)
 }
 
 // RegistrarLogin wires the session routes. It is kept apart from Registrar
 // because it only exists when there is a credential: without one, a login screen
 // that always accepts would be worse than none.
-func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
+func (u *UI) RegistrarLogin(mux *http.ServeMux, gate *auth.Gate) {
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		u.render(w, r, pages.Login(pages.LoginData{
 			Target: auth.Target(r.URL.Query().Get("next")),
@@ -625,33 +625,33 @@ func (u *UI) RegistrarLogin(mux *http.ServeMux, portao *auth.Portao) {
 	})
 
 	mux.HandleFunc("POST /login", func(w http.ResponseWriter, r *http.Request) {
-		destino := auth.Target(r.FormValue("next"))
-		usuario := r.FormValue("username")
+		target := auth.Target(r.FormValue("next"))
+		user := r.FormValue("username")
 
-		if !portao.SignIn(w, usuario, r.FormValue("password")) {
+		if !gate.SignIn(w, user, r.FormValue("password")) {
 			// Logged as a warning, with the attempted username and the origin: a
 			// burst of failures is the only sign somebody is guessing, and
 			// without a log it does not exist. The password never enters
 			// here.
-			u.log.Warn("login refused", "user", usuario, "origin", r.RemoteAddr)
+			u.log.Warn("login refused", "user", user, "origin", r.RemoteAddr)
 
 			// 200, and not a redirect: the form comes back filled in with the
 			// destination and the error in the same response.
 			w.WriteHeader(http.StatusUnauthorized)
 			u.render(w, r, pages.Login(pages.LoginData{
-				Target: destino,
+				Target: target,
 				Err:    "Invalid username or password.",
 			}))
 			return
 		}
-		u.log.Info("login", "user", usuario)
-		http.Redirect(w, r, destino, http.StatusSeeOther)
+		u.log.Info("login", "user", user)
+		http.Redirect(w, r, target, http.StatusSeeOther)
 	})
 
 	// POST, not GET: an <img src="/logout"> on any page would drop the session
 	// of whoever opened it.
 	mux.HandleFunc("POST /logout", func(w http.ResponseWriter, r *http.Request) {
-		portao.SignOut(w)
+		gate.SignOut(w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	})
 }

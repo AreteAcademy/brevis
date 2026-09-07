@@ -50,10 +50,10 @@ func build(t *testing.T, cron string, catchup bool) (*scheduler.Scheduler, *post
 	}
 
 	runs := postgres.NewRunRepo(pool)
-	fila := queue.New(pool.Pool)
-	s := scheduler.NewScheduler(postgres.NewScheduleRepo(pool), wRepo, runs, fila,
+	queue := queue.New(pool.Pool)
+	s := scheduler.NewScheduler(postgres.NewScheduleRepo(pool), wRepo, runs, queue,
 		noLog(), scheduler.OpcoesScheduler{})
-	return s, runs, fila, pool
+	return s, runs, queue, pool
 }
 
 func setLastSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
@@ -67,11 +67,11 @@ func setLastSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
 // Publishing writes the graph and the schedule together, and the scheduler
 // materializes the slot.
 func TestTheSchedulerCreatesARunAndEnqueuesIt(t *testing.T) {
-	s, runs, fila, pool := build(t, "0 2 * * *", false)
+	s, runs, queue, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
 	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
 
-	n, err := s.Ciclo(ctx, inUTC("2026-01-02T03:00:00Z"))
+	n, err := s.Cycle(ctx, inUTC("2026-01-02T03:00:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,15 +79,15 @@ func TestTheSchedulerCreatesARunAndEnqueuesIt(t *testing.T) {
 		t.Fatalf("created %d runs, wanted 1", n)
 	}
 
-	contagem, _ := runs.ContarPorStatus(ctx)
-	if contagem[dom.StatusQueued] != 1 {
-		t.Errorf("queued = %d, wanted 1", contagem[dom.StatusQueued])
+	count, _ := runs.CountByStatus(ctx)
+	if count[dom.StatusQueued] != 1 {
+		t.Errorf("queued = %d, wanted 1", count[dom.StatusQueued])
 	}
-	porTrigger, _ := runs.ContarPorTrigger(ctx)
+	porTrigger, _ := runs.CountByTrigger(ctx)
 	if porTrigger["schedule"] != 1 {
 		t.Errorf("trigger_type = %v, wanted schedule", porTrigger)
 	}
-	pendentes, _, _ := fila.Tamanho(ctx)
+	pendentes, _, _ := queue.Tamanho(ctx)
 	if pendentes != 1 {
 		t.Errorf("the queue holds %d, wanted 1 -- the scheduler creates AND enqueues", pendentes)
 	}
@@ -102,11 +102,11 @@ func TestARepeatedCycleDoesNotDuplicate(t *testing.T) {
 	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
 	agora := inUTC("2026-01-04T03:00:00Z")
 
-	primeiro, err := s.Ciclo(ctx, agora)
+	primeiro, err := s.Cycle(ctx, agora)
 	if err != nil {
 		t.Fatal(err)
 	}
-	segundo, err := s.Ciclo(ctx, agora)
+	segundo, err := s.Cycle(ctx, agora)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestARepeatedCycleDoesNotDuplicate(t *testing.T) {
 	if segundo != 0 {
 		t.Errorf("second cycle created %d, wanted 0", segundo)
 	}
-	c, _ := runs.ContarPorStatus(ctx)
+	c, _ := runs.CountByStatus(ctx)
 	if total := c[dom.StatusQueued]; total != 3 {
 		t.Errorf("total runs = %d, wanted 3", total)
 	}
@@ -129,14 +129,14 @@ func TestCatchupFalseDoesNotRedoThePast(t *testing.T) {
 	ctx := context.Background()
 	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
 
-	n, err := s.Ciclo(ctx, inUTC("2026-01-10T03:00:00Z"))
+	n, err := s.Cycle(ctx, inUTC("2026-01-10T03:00:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
 		t.Errorf("created %d runs, wanted 1 — catchup=false ignores the gap", n)
 	}
-	c, _ := runs.ContarPorStatus(ctx)
+	c, _ := runs.CountByStatus(ctx)
 	if c[dom.StatusQueued] != 1 {
 		t.Errorf("queued = %d, wanted 1", c[dom.StatusQueued])
 	}
@@ -145,7 +145,7 @@ func TestCatchupFalseDoesNotRedoThePast(t *testing.T) {
 // A backfill enters the queue like any run, with its own trigger and a lower
 // priority -- section 12 requires it to respect concurrency and priority.
 func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
-	s, runs, fila, pool := build(t, "0 2 * * *", false)
+	s, runs, queue, pool := build(t, "0 2 * * *", false)
 	ctx := context.Background()
 	setLastSlot(t, pool, inUTC("2026-03-01T02:00:00Z"))
 
@@ -157,11 +157,11 @@ func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
 		t.Fatalf("the backfill created %d runs, wanted 5", n)
 	}
 
-	porTrigger, _ := runs.ContarPorTrigger(ctx)
+	porTrigger, _ := runs.CountByTrigger(ctx)
 	if porTrigger["backfill"] != 5 {
 		t.Errorf("trigger = %v, wanted 5 backfill", porTrigger)
 	}
-	pendentes, _, _ := fila.Tamanho(ctx)
+	pendentes, _, _ := queue.Tamanho(ctx)
 	if pendentes != 5 {
 		t.Errorf("the queue holds %d, wanted 5", pendentes)
 	}
@@ -303,7 +303,7 @@ func TestPruningRemovesWhatLeftTheFolder(t *testing.T) {
 	}
 
 	// An old run of what is about to go: the history has to survive.
-	if _, err := postgres.NewRunRepo(pool).Criar(ctx, dom.Run{
+	if _, err := postgres.NewRunRepo(pool).Create(ctx, dom.Run{
 		WorkflowSlug: sai.Slug, IdempotencyKey: "antiga", Definition: []byte(`{}`),
 	}); err != nil {
 		t.Fatal(err)
@@ -386,7 +386,7 @@ func TestANewScheduleStartsFiring(t *testing.T) {
 	ctx := context.Background()
 
 	// First cycle: it only plants the marker, without running the past.
-	n, err := s.Ciclo(ctx, inUTC("2026-01-01T10:05:00Z"))
+	n, err := s.Cycle(ctx, inUTC("2026-01-01T10:05:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,14 +395,14 @@ func TestANewScheduleStartsFiring(t *testing.T) {
 	}
 
 	// The second cycle, after the clock passed 10:30: now it fires.
-	n, err = s.Ciclo(ctx, inUTC("2026-01-01T10:31:00Z"))
+	n, err = s.Cycle(ctx, inUTC("2026-01-01T10:31:00Z"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if n != 1 {
 		t.Fatalf("created %d runs after the cron's time; wanted 1", n)
 	}
-	porTrigger, _ := runs.ContarPorTrigger(ctx)
+	porTrigger, _ := runs.CountByTrigger(ctx)
 	if porTrigger["schedule"] != 1 {
 		t.Errorf("trigger = %v; wanted schedule", porTrigger)
 	}
@@ -414,7 +414,7 @@ func TestTheFirstRunMarkerIsPlantedOnlyOnce(t *testing.T) {
 	s, _, _, pool := build(t, "*/30 * * * *", false)
 	ctx := context.Background()
 
-	if _, err := s.Ciclo(ctx, inUTC("2026-01-01T10:05:00Z")); err != nil {
+	if _, err := s.Cycle(ctx, inUTC("2026-01-01T10:05:00Z")); err != nil {
 		t.Fatal(err)
 	}
 	var primeiro time.Time
@@ -423,7 +423,7 @@ func TestTheFirstRunMarkerIsPlantedOnlyOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := s.Ciclo(ctx, inUTC("2026-01-01T10:10:00Z")); err != nil {
+	if _, err := s.Cycle(ctx, inUTC("2026-01-01T10:10:00Z")); err != nil {
 		t.Fatal(err)
 	}
 	var depois time.Time

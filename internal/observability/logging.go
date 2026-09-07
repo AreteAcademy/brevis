@@ -14,8 +14,8 @@ import (
 // NewLogger returns a structured logger. JSON outside the local environment
 // because that is what the collectors expect; text locally because the output is
 // read by humans.
-func NewLogger(env, nivel string) *slog.Logger {
-	opts := &slog.HandlerOptions{Level: parseNivel(nivel)}
+func NewLogger(env, level string) *slog.Logger {
+	opts := &slog.HandlerOptions{Level: parseLevel(level)}
 
 	var h slog.Handler
 	if env == "local" {
@@ -26,7 +26,7 @@ func NewLogger(env, nivel string) *slog.Logger {
 	return slog.New(h).With("service", "brevis", "env", env)
 }
 
-func parseNivel(n string) slog.Level {
+func parseLevel(n string) slog.Level {
 	switch strings.ToLower(n) {
 	case "debug":
 		return slog.LevelDebug

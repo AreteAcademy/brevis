@@ -53,9 +53,9 @@ func TestTheMessageCarriesTheFailuresContext(t *testing.T) {
 	// `text` outside the blocks is what shows in the phone's notification; without
 	// it
 	// o Slack mostra "This content can't be displayed" no preview.
-	texto, _ := payload["text"].(string)
-	if !strings.Contains(texto, "id_verification") {
-		t.Errorf("texto de preview = %q", texto)
+	text, _ := payload["text"].(string)
+	if !strings.Contains(text, "id_verification") {
+		t.Errorf("texto de preview = %q", text)
 	}
 
 	corpo := *recebido

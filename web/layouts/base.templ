@@ -48,13 +48,13 @@ type Island struct {
 }
 
 templ Base(p Page) {
-	{{ marca := branding.De(ctx) }}
+	{{ brand := branding.De(ctx) }}
 	<!DOCTYPE html>
 	<html lang="en" class="h-full">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ p.Title } · { marca.Title }</title>
+			<title>{ p.Title } · { brand.Title }</title>
 			// Both fonts are served from the binary. The preload avoids the
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
@@ -66,7 +66,7 @@ templ Base(p Page) {
 			// through `var(--color-*)` — overriding them here repaints the whole
 			// interface with no CSS recompile. It comes out empty when the theme
 			// is the default.
-			if css := marca.CSS(); css != "" {
+			if css := brand.CSS(); css != "" {
 				@templ.Raw("<style>" + css + "</style>")
 			}
 			for _, href := range p.Island.CSS {
@@ -75,7 +75,7 @@ templ Base(p Page) {
 		</head>
 		<body class="h-full font-sans text-ink antialiased">
 			<div class="flex h-full">
-				@sidebar(p.Active, marca)
+				@sidebar(p.Active, brand)
 				<main class="flex-1 overflow-y-auto">
 					<header class="sticky top-0 z-10 border-b border-line bg-parchment-soft/85 px-10 py-6 backdrop-blur">
 						<div class="flex items-end justify-between gap-6">
@@ -118,28 +118,28 @@ templ Base(p Page) {
 
 type item struct {
 	Rota  string
-	Nome  string
-	Chave string
+	Name  string
+	Key string
 }
 
-templ sidebar(ativo string, marca branding.Brand) {
+templ sidebar(ativo string, brand branding.Brand) {
 	<aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface/60">
 		<div class="px-7 pt-7 pb-8">
 			<a href="/" class="flex items-center gap-3">
 				// h-9 matches the height of the serif title's box: the logo sits
 				// with the text rather than competing with it.
-				if marca.Logo == branding.DefaultLogo {
+				if brand.Logo == branding.DefaultLogo {
 					// Inline, so the symbol inherits the theme's colour.
 					<span class="block h-9 w-9 shrink-0 text-gold">
 						@templ.Raw(assets.LogoSVG)
 					</span>
-				} else if marca.Logo != "" {
-					<img src={ marca.Logo } alt={ marca.Title } class="h-9 w-9 shrink-0 rounded-lg object-contain"/>
+				} else if brand.Logo != "" {
+					<img src={ brand.Logo } alt={ brand.Title } class="h-9 w-9 shrink-0 rounded-lg object-contain"/>
 				}
-				<span class="display block text-[2rem] leading-none tracking-[0.02em] text-ink">{ marca.Title }</span>
+				<span class="display block text-[2rem] leading-none tracking-[0.02em] text-ink">{ brand.Title }</span>
 			</a>
-			if marca.Subtitle != "" {
-				<p class="kicker mt-2">{ marca.Subtitle }</p>
+			if brand.Subtitle != "" {
+				<p class="kicker mt-2">{ brand.Subtitle }</p>
 			}
 		</div>
 		<nav class="flex-1 px-4">
@@ -149,13 +149,13 @@ templ sidebar(ativo string, marca branding.Brand) {
 				{"/runs", "Runs", "runs"},
 				{"/projects", "Projects", "projects"},
 			} {
-				if i.Chave == ativo {
+				if i.Key == ativo {
 					<a
 						href={ templ.SafeURL(i.Rota) }
 						class="mb-1 flex items-center gap-3 rounded-xl border border-line-soft bg-gold-wash px-4 py-2.5 text-sm font-semibold text-ink"
 					>
 						<span class="h-4 w-[3px] rounded-full bg-gold"></span>
-						{ i.Nome }
+						{ i.Name }
 					</a>
 				} else {
 					<a
@@ -163,7 +163,7 @@ templ sidebar(ativo string, marca branding.Brand) {
 						class="mb-1 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-muted transition-colors hover:bg-gold-wash hover:text-ink"
 					>
 						<span class="h-4 w-[3px] rounded-full bg-transparent"></span>
-						{ i.Nome }
+						{ i.Name }
 					</a>
 				}
 			}
@@ -186,21 +186,21 @@ templ sidebar(ativo string, marca branding.Brand) {
 			</form>
 		}
 		<div class="border-t border-line-soft px-7 py-6">
-			if linhas := marca.Lines(); len(linhas) > 0 {
+			if rows := brand.Lines(); len(rows) > 0 {
 				<p class="font-serif text-[0.95rem] leading-snug text-muted italic">
-					for i, l := range linhas {
+					for i, l := range rows {
 						if i == 0 {
 							{ "“" + l }
 						} else {
 							<br/>
-							if i == len(linhas)-1 {
+							if i == len(rows)-1 {
 								{ l + "”" }
 							} else {
 								{ l }
 							}
 						}
 					}
-					if len(linhas) == 1 {
+					if len(rows) == 1 {
 						{ "”" }
 					}
 				</p>

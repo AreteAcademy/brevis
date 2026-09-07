@@ -42,7 +42,7 @@ func TestAcceptanceCriterion_GoDAGWithParallelism(t *testing.T) {
 	)
 
 	registrar := func(nome string, dura time.Duration) {
-		reg.MustRegister(execution.FuncTask{Nome: nome, Fn: func(ctx context.Context, _ execution.Input) error {
+		reg.MustRegister(execution.FuncTask{TaskName: nome, Fn: func(ctx context.Context, _ execution.Input) error {
 			n := emVoo.Add(1)
 			for {
 				p := picoBC.Load()
@@ -89,11 +89,11 @@ func TestAcceptanceCriterion_GoDAGWithParallelism(t *testing.T) {
 	c := &coletor{}
 	r := app.Runner{Go: local.NewGoExecutor(reg), Report: c}
 
-	inicio := time.Now()
+	start := time.Now()
 	if err := r.Run(context.Background(), w); err != nil {
 		t.Fatal(err)
 	}
-	duracao := time.Since(inicio)
+	duracao := time.Since(start)
 
 	// b e c rodaram JUNTAS: em serie o total passaria de 300ms
 	if picoBC.Load() < 2 {
@@ -119,7 +119,7 @@ func TestRetryIsPerNode(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
 
-	reg.MustRegister(execution.FuncTask{Nome: "instavel", Fn: func(context.Context, execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "instavel", Fn: func(context.Context, execution.Input) error {
 		if tentativas.Add(1) < 3 {
 			return fmt.Errorf("falha transitoria")
 		}
@@ -129,7 +129,7 @@ func TestRetryIsPerNode(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Nodes: []wf.Node{{ID: "n", Action: "instavel"}}}
 	r := app.Runner{
 		Go: local.NewGoExecutor(reg), Report: &coletor{},
-		MaxTentativas: 3, BackoffBase: time.Millisecond,
+		MaxAttempts: 3, BackoffBase: time.Millisecond,
 	}
 	if err := r.Run(context.Background(), w); err != nil {
 		t.Fatalf("it should have succeeded on the 3rd attempt: %v", err)
@@ -142,7 +142,7 @@ func TestRetryIsPerNode(t *testing.T) {
 func TestRetryGivesUpAfterTheLimit(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
-	reg.MustRegister(execution.FuncTask{Nome: "sempre_falha", Fn: func(context.Context, execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "sempre_falha", Fn: func(context.Context, execution.Input) error {
 		tentativas.Add(1)
 		return fmt.Errorf("falha permanente")
 	}})
@@ -150,7 +150,7 @@ func TestRetryGivesUpAfterTheLimit(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Nodes: []wf.Node{{ID: "n", Action: "sempre_falha"}}}
 	r := app.Runner{
 		Go: local.NewGoExecutor(reg), Report: &coletor{},
-		MaxTentativas: 2, BackoffBase: time.Millisecond,
+		MaxAttempts: 2, BackoffBase: time.Millisecond,
 	}
 	if err := r.Run(context.Background(), w); err == nil {
 		t.Fatal("esperava falha")
@@ -165,7 +165,7 @@ func TestRetryGivesUpAfterTheLimit(t *testing.T) {
 func TestCancellingFiresNoRetry(t *testing.T) {
 	reg := execution.NewRegistry()
 	var tentativas atomic.Int32
-	reg.MustRegister(execution.FuncTask{Nome: "lenta", Fn: func(ctx context.Context, _ execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "lenta", Fn: func(ctx context.Context, _ execution.Input) error {
 		tentativas.Add(1)
 		<-ctx.Done()
 		return ctx.Err()
@@ -174,7 +174,7 @@ func TestCancellingFiresNoRetry(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Nodes: []wf.Node{{ID: "n", Action: "lenta"}}}
 	r := app.Runner{
 		Go: local.NewGoExecutor(reg), Report: &coletor{},
-		MaxTentativas: 5, BackoffBase: time.Millisecond,
+		MaxAttempts: 5, BackoffBase: time.Millisecond,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
@@ -214,7 +214,7 @@ func TestAStepsErrorCarriesTheExitCode(t *testing.T) {
 		t.Fatal("esperava falha")
 	}
 
-	var passo *app.ErroDePasso
+	var passo *app.StepError
 	if !errors.As(erro, &passo) {
 		t.Fatalf("error %T does not carry the exit code", erro)
 	}
@@ -254,8 +254,8 @@ func TestTheErrorCarriesStderrAndTheCodesHint(t *testing.T) {
 		t.Errorf("the message has no stderr line explaining the failure: %q", msg)
 	}
 
-	var passo *app.ErroDePasso
-	if !errors.As(erro, &passo) || len(passo.Saida) == 0 {
+	var passo *app.StepError
+	if !errors.As(erro, &passo) || len(passo.Output) == 0 {
 		t.Fatalf("the error does not carry the output: %+v", passo)
 	}
 }
@@ -276,15 +276,15 @@ func TestStderrIsKeptAsTheLastLines(t *testing.T) {
 		Env: map[string]string{"PATH": os.Getenv("PATH")},
 	}.Run(context.Background(), w)
 
-	var passo *app.ErroDePasso
+	var passo *app.StepError
 	if !errors.As(erro, &passo) {
 		t.Fatalf("error %T", erro)
 	}
-	if len(passo.Saida) != 5 {
-		t.Errorf("it kept %d lines, want 5", len(passo.Saida))
+	if len(passo.Output) != 5 {
+		t.Errorf("it kept %d lines, want 5", len(passo.Output))
 	}
-	if len(passo.Saida) > 0 && passo.Saida[len(passo.Saida)-1] != "line 10" {
-		t.Errorf("last line = %q, want the most recent one", passo.Saida[len(passo.Saida)-1])
+	if len(passo.Output) > 0 && passo.Output[len(passo.Output)-1] != "line 10" {
+		t.Errorf("last line = %q, want the most recent one", passo.Output[len(passo.Output)-1])
 	}
 	// A code with no special meaning gets no invented translation.
 	if strings.Contains(erro.Error(), "(") {
@@ -367,7 +367,7 @@ func TestSlotsLimitSimultaneousSteps(t *testing.T) {
 
 	var emVoo, pico int64
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "ocupa", Fn: func(ctx context.Context, in execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "ocupa", Fn: func(ctx context.Context, in execution.Input) error {
 		atual := atomic.AddInt64(&emVoo, 1)
 		for {
 			anterior := atomic.LoadInt64(&pico)
@@ -390,7 +390,7 @@ func TestSlotsLimitSimultaneousSteps(t *testing.T) {
 	r := app.Runner{
 		Go:     local.NewGoExecutor(reg),
 		Report: &coletor{},
-		Vagas:  make(chan struct{}, teto),
+		Slots:  make(chan struct{}, teto),
 	}
 	if err := r.Run(context.Background(), w); err != nil {
 		t.Fatal(err)
@@ -410,7 +410,7 @@ func TestSlotsAreSharedBetweenRuns(t *testing.T) {
 
 	var emVoo, pico int64
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "ocupa", Fn: func(ctx context.Context, in execution.Input) error {
+	reg.MustRegister(execution.FuncTask{TaskName: "ocupa", Fn: func(ctx context.Context, in execution.Input) error {
 		atual := atomic.AddInt64(&emVoo, 1)
 		for {
 			anterior := atomic.LoadInt64(&pico)
@@ -437,7 +437,7 @@ func TestSlotsAreSharedBetweenRuns(t *testing.T) {
 		wg.Add(1)
 		go func(slug string) {
 			defer wg.Done()
-			r := app.Runner{Go: local.NewGoExecutor(reg), Report: &coletor{}, Vagas: vagas}
+			r := app.Runner{Go: local.NewGoExecutor(reg), Report: &coletor{}, Slots: vagas}
 			if err := r.Run(context.Background(), monta(slug)); err != nil {
 				t.Error(err)
 			}
@@ -454,7 +454,7 @@ func TestSlotsAreSharedBetweenRuns(t *testing.T) {
 // gain a limit nobody asked for.
 func TestWithNoSlotsThereIsNoLimit(t *testing.T) {
 	reg := execution.NewRegistry()
-	reg.MustRegister(execution.FuncTask{Nome: "nada", Fn: func(context.Context, execution.Input) error { return nil }})
+	reg.MustRegister(execution.FuncTask{TaskName: "nada", Fn: func(context.Context, execution.Input) error { return nil }})
 
 	w := wf.Workflow{Slug: "livre", Nodes: []wf.Node{
 		{ID: "a", Action: "nada"}, {ID: "b", Action: "nada"},
@@ -478,7 +478,7 @@ func TestTheAttemptReachesTheTask(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Image: "img", Nodes: []wf.Node{{ID: "a", Run: "x"}}}
 	_ = app.Runner{
 		Pods: espiao, Report: &coletor{},
-		MaxTentativas: 3, BackoffBase: time.Millisecond,
+		MaxAttempts: 3, BackoffBase: time.Millisecond,
 	}.Run(context.Background(), w)
 
 	if len(vistas) != 3 {

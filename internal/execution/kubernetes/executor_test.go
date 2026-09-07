@@ -30,7 +30,7 @@ type apiFalsa struct {
 	apagados []string
 }
 
-func (a *apiFalsa) CriarPod(_ context.Context, p k8s.Pod) (k8s.Pod, error) {
+func (a *apiFalsa) CreatePod(_ context.Context, p k8s.Pod) (k8s.Pod, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.erroCriar != nil {
@@ -60,7 +60,7 @@ func (a *apiFalsa) Logs(_ context.Context, _ string, _ bool) (io.ReadCloser, err
 	return io.NopCloser(strings.NewReader(a.log)), nil
 }
 
-func (a *apiFalsa) ApagarPod(_ context.Context, nome string) error {
+func (a *apiFalsa) DeletePod(_ context.Context, nome string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.apagados = append(a.apagados, nome)
@@ -89,8 +89,8 @@ func withOutput(f string, codigo int) k8s.Pod {
 
 func runStep(t *testing.T, api *apiFalsa, tk execution.TaskExec) []execution.Event {
 	t.Helper()
-	e := k8s.NewExecutor(api, k8s.Opcoes{Namespace: "dados"})
-	e.Intervalo = time.Millisecond
+	e := k8s.NewExecutor(api, k8s.Options{Namespace: "dados"})
+	e.Interval = time.Millisecond
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -111,20 +111,20 @@ func TestASuccessfulPodReportsTheLogAndIsDeleted(t *testing.T) {
 		fases: []k8s.Pod{phase("Pending"), phase("Running"), withOutput("Succeeded", 0)},
 		log:   "Running with dbt=1.10.3\nCompleted successfully\n",
 	}
-	eventos := runStep(t, api, task())
+	events := runStep(t, api, task())
 
-	var sucesso bool
+	var succeeded bool
 	var linhas []string
-	for _, e := range eventos {
+	for _, e := range events {
 		switch e.Kind {
 		case execution.EventSucceeded:
-			sucesso = true
+			succeeded = true
 		case execution.EventLog:
 			linhas = append(linhas, e.Message)
 		}
 	}
-	if !sucesso {
-		t.Fatalf("no success event: %+v", eventos)
+	if !succeeded {
+		t.Fatalf("no success event: %+v", events)
 	}
 	if len(linhas) == 0 || !strings.Contains(strings.Join(linhas, "\n"), "Completed successfully") {
 		t.Errorf("the pod's log did not arrive: %v", linhas)
@@ -142,27 +142,27 @@ func TestAFailingPodCarriesTheExitCode(t *testing.T) {
 		fases: []k8s.Pod{phase("Running"), withOutput("Failed", 2)},
 		log:   "Database Error in model x\n",
 	}
-	eventos := runStep(t, api, task())
+	events := runStep(t, api, task())
 
 	var falha *execution.Event
-	for i := range eventos {
-		if eventos[i].Kind == execution.EventFailed {
-			falha = &eventos[i]
+	for i := range events {
+		if events[i].Kind == execution.EventFailed {
+			falha = &events[i]
 		}
 	}
 	if falha == nil {
-		t.Fatalf("no failure event: %+v", eventos)
+		t.Fatalf("no failure event: %+v", events)
 	}
 	if falha.ExitCode != 2 {
 		t.Errorf("exit code = %d, want 2", falha.ExitCode)
 	}
-	if !strings.Contains(falha.Message, "codigo 2") {
-		t.Errorf("mensagem = %q", falha.Message)
+	if !strings.Contains(falha.Message, "code 2") {
+		t.Errorf("message = %q", falha.Message)
 	}
 }
 
-// O motivo do Kubernetes distingue "o codigo falhou" de "o cluster matou o
-// processo" — OOMKilled e DeadlineExceeded exigem acoes opostas.
+// Kubernetes's reason tells "the code failed" from "the cluster killed the
+// process" -- OOMKilled and DeadlineExceeded call for opposite actions.
 func TestTheClustersReasonShowsInTheFailure(t *testing.T) {
 	morto := withOutput("Failed", 137)
 	morto.Status.Reason = "DeadlineExceeded"
@@ -211,20 +211,20 @@ func TestAnAlreadyExistingPodIsAdopted(t *testing.T) {
 		erroCriar: errors.New(`pods "x" already exists`),
 		fases:     []k8s.Pod{withOutput("Succeeded", 0)},
 	}
-	eventos := runStep(t, api, task())
-	for _, e := range eventos {
+	events := runStep(t, api, task())
+	for _, e := range events {
 		if e.Kind == execution.EventSucceeded {
 			return
 		}
 	}
-	t.Fatalf("an existing pod should be followed, not refused: %+v", eventos)
+	t.Fatalf("an existing pod should be followed, not refused: %+v", events)
 }
 
 // A creation failure (RBAC, quota, an invalid image) has to surface as the step's
 // error, rather than become a ghost pod nobody follows.
 func TestACreationErrorReachesTheCaller(t *testing.T) {
 	api := &apiFalsa{erroCriar: errors.New(`pods is forbidden: cannot create resource "pods"`)}
-	e := k8s.NewExecutor(api, k8s.Opcoes{})
+	e := k8s.NewExecutor(api, k8s.Options{})
 	if _, err := e.Execute(context.Background(), task()); err == nil {
 		t.Fatal("expected an error")
 	} else if !strings.Contains(err.Error(), "forbidden") {
@@ -234,8 +234,8 @@ func TestACreationErrorReachesTheCaller(t *testing.T) {
 
 func TestAFailedPodMayBeKeptForInspection(t *testing.T) {
 	api := &apiFalsa{fases: []k8s.Pod{withOutput("Failed", 1)}}
-	e := k8s.NewExecutor(api, k8s.Opcoes{ManterPodEmFalha: true})
-	e.Intervalo = time.Millisecond
+	e := k8s.NewExecutor(api, k8s.Options{KeepFailedPod: true})
+	e.Interval = time.Millisecond
 
 	ch, err := e.Execute(context.Background(), task())
 	if err != nil {
@@ -261,8 +261,8 @@ func TestAPodThatDoesNotStartFailsWithTheSchedulersReason(t *testing.T) {
 	}}
 	api := &apiFalsa{fases: []k8s.Pod{preso}}
 
-	e := k8s.NewExecutor(api, k8s.Opcoes{EsperaParaIniciar: 30 * time.Millisecond})
-	e.Intervalo = time.Millisecond
+	e := k8s.NewExecutor(api, k8s.Options{EsperaParaIniciar: 30 * time.Millisecond})
+	e.Interval = time.Millisecond
 
 	ch, err := e.Execute(context.Background(), task())
 	if err != nil {
@@ -289,7 +289,7 @@ func TestAPodThatDoesNotStartFailsWithTheSchedulersReason(t *testing.T) {
 func TestTheNameChangesWithTheRunsAttempt(t *testing.T) {
 	a := task()
 	b := task()
-	b.TentativaDoRun = 1
+	b.RunAttempt = 1
 	if k8s.NomeDoPod(a) == k8s.NomeDoPod(b) {
 		t.Error("attempts diferentes do run geraram o mesmo pod")
 	}

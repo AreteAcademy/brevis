@@ -60,7 +60,7 @@ func (p *Pool) Check(ctx context.Context) error {
 // subcommand, never in `serve`: starting the application and migrating the
 // schema have a different blast radius, and joining the two turns a casual
 // restart into a DDL.
-func Migrate(ctx context.Context, url, direcao string) error {
+func Migrate(ctx context.Context, url, direction string) error {
 	cfg, err := pgx.ParseConfig(url)
 	if err != nil {
 		return fmt.Errorf("parsing BREVIS_DATABASE_URL: %w", err)
@@ -76,7 +76,7 @@ func Migrate(ctx context.Context, url, direcao string) error {
 
 	// "." because the embed.FS is rooted at the migrations/ directory itself.
 	const dir = "."
-	switch direcao {
+	switch direction {
 	case "up":
 		return goose.UpContext(ctx, db, dir)
 	case "down":
@@ -84,6 +84,6 @@ func Migrate(ctx context.Context, url, direcao string) error {
 	case "status":
 		return goose.StatusContext(ctx, db, dir)
 	default:
-		return fmt.Errorf("direcao desconhecida: %q (use up, down ou status)", direcao)
+		return fmt.Errorf("unknown direction: %q (use up, down or status)", direction)
 	}
 }

@@ -15,9 +15,9 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// nomeContainer is fixed: the pod has a single container, and a stable name
+// containerName is fixed: the pod has a single container, and a stable name
 // makes `kubectl logs` predictable without reading the spec.
-const nomeContainer = "step"
+const containerName = "step"
 
 // Pod is the subset of the object this engine uses. Writing the structs by hand
 // instead of importing client-go's keeps the dependency tree small and makes it
@@ -45,7 +45,7 @@ type PodSpec struct {
 	ServiceAccountName    string            `json:"serviceAccountName,omitempty"`
 	ImagePullSecrets      []RefLocal        `json:"imagePullSecrets,omitempty"`
 	NodeSelector          map[string]string `json:"nodeSelector,omitempty"`
-	Tolerations           []Toleracao       `json:"tolerations,omitempty"`
+	Tolerations           []Grace           `json:"tolerations,omitempty"`
 	ActiveDeadlineSeconds *int64            `json:"activeDeadlineSeconds,omitempty"`
 	Volumes               []Volume          `json:"volumes,omitempty"`
 	Containers            []Container       `json:"containers"`
@@ -57,15 +57,15 @@ type PodSpec struct {
 // mounts a volume for one purpose -- keeping a rotated credential between runs
 // -- and a field that exists for one purpose should not accept ten shapes.
 type Volume struct {
-	Name string    `json:"name"`
-	PVC  *FontePVC `json:"persistentVolumeClaim,omitempty"`
+	Name string     `json:"name"`
+	PVC  *PVCSource `json:"persistentVolumeClaim,omitempty"`
 }
 
-type FontePVC struct {
+type PVCSource struct {
 	ClaimName string `json:"claimName"`
 }
 
-type MontagemDeVolume struct {
+type VolumeMount struct {
 	Name      string `json:"name"`
 	MountPath string `json:"mountPath"`
 }
@@ -74,7 +74,7 @@ type RefLocal struct {
 	Name string `json:"name"`
 }
 
-type Toleracao struct {
+type Grace struct {
 	Key      string `json:"key,omitempty"`
 	Operator string `json:"operator,omitempty"`
 	Value    string `json:"value,omitempty"`
@@ -82,42 +82,42 @@ type Toleracao struct {
 }
 
 type Container struct {
-	Name         string             `json:"name"`
-	Image        string             `json:"image"`
-	Command      []string           `json:"command,omitempty"`
-	Args         []string           `json:"args,omitempty"`
-	Env          []Var              `json:"env,omitempty"`
-	EnvFrom      []FonteEnv         `json:"envFrom,omitempty"`
-	Resources    *Recursos          `json:"resources,omitempty"`
-	WorkingDir   string             `json:"workingDir,omitempty"`
-	VolumeMounts []MontagemDeVolume `json:"volumeMounts,omitempty"`
+	Name         string        `json:"name"`
+	Image        string        `json:"image"`
+	Command      []string      `json:"command,omitempty"`
+	Args         []string      `json:"args,omitempty"`
+	Env          []Var         `json:"env,omitempty"`
+	EnvFrom      []EnvSource   `json:"envFrom,omitempty"`
+	Resources    *Resources    `json:"resources,omitempty"`
+	WorkingDir   string        `json:"workingDir,omitempty"`
+	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 type Var struct {
 	Name string `json:"name"`
 	// Value with omitempty because a Var coming from a secret sends `valueFrom`,
 	// and sending `"value":""` alongside makes the server refuse both.
-	Value     string    `json:"value,omitempty"`
-	ValueFrom *FonteVar `json:"valueFrom,omitempty"`
+	Value     string     `json:"value,omitempty"`
+	ValueFrom *VarSource `json:"valueFrom,omitempty"`
 }
 
 // FonteVar points a variable at a key of a Secret. The value never passes
 // through the engine: the kubelet reads it when starting the container.
-type FonteVar struct {
-	SecretKeyRef *RefChave `json:"secretKeyRef,omitempty"`
+type VarSource struct {
+	SecretKeyRef *KeyRef `json:"secretKeyRef,omitempty"`
 }
 
-type RefChave struct {
+type KeyRef struct {
 	Name string `json:"name"`
 	Key  string `json:"key"`
 }
 
-type FonteEnv struct {
+type EnvSource struct {
 	SecretRef    *RefLocal `json:"secretRef,omitempty"`
 	ConfigMapRef *RefLocal `json:"configMapRef,omitempty"`
 }
 
-type Recursos struct {
+type Resources struct {
 	Requests map[string]string `json:"requests,omitempty"`
 	Limits   map[string]string `json:"limits,omitempty"`
 }
@@ -165,36 +165,36 @@ func (p Pod) Fase() string {
 }
 
 // Terminou says whether the pod reached a final state.
-func (p Pod) Terminou() bool {
+func (p Pod) Finished() bool {
 	f := p.Fase()
 	return f == "Succeeded" || f == "Failed"
 }
 
 // Saida returns the container's exit code and whether it has finished.
-func (p Pod) Saida() (int, bool) {
+func (p Pod) Output() (int, bool) {
 	if p.Status == nil {
 		return 0, false
 	}
 	for _, c := range p.Status.ContainerStatuses {
-		if c.Name == nomeContainer && c.State.Terminated != nil {
+		if c.Name == containerName && c.State.Terminated != nil {
 			return c.State.Terminated.ExitCode, true
 		}
 	}
 	return 0, false
 }
 
-// MotivoDeEspera explains why the container has not run yet.
+// WaitReason explains why the container has not run yet.
 //
 // It is the most useful piece of information when a step "does nothing":
 // ImagePullBackOff and CreateContainerConfigError are configuration problems
 // that, without this, would show up only as a pod sitting still until the
 // timeout.
-func (p Pod) MotivoDeEspera() string {
+func (p Pod) WaitReason() string {
 	if p.Status == nil {
 		return ""
 	}
 	for _, c := range p.Status.ContainerStatuses {
-		if c.Name == nomeContainer && c.State.Waiting != nil {
+		if c.Name == containerName && c.State.Waiting != nil {
 			w := c.State.Waiting
 			if w.Message != "" {
 				return w.Reason + ": " + w.Message
@@ -209,12 +209,12 @@ func (p Pod) MotivoDeEspera() string {
 // decisions -- credentials, node pool, service account -- not the workflow
 // author's: a pipeline YAML must not get to pick the service account it runs
 // as.
-type Opcoes struct {
+type Options struct {
 	Namespace         string
 	ServiceAccount    string
 	PullSecrets       []string
 	NodeSelector      map[string]string
-	Tolerations       []Toleracao
+	Tolerations       []Grace
 	EnvFromSecrets    []string
 	EnvFromConfigMaps []string
 
@@ -228,10 +228,10 @@ type Opcoes struct {
 	// The credential on the volume is encrypted; the key is an ordinary Secret,
 	// arriving through EnvFromSecrets. The engine neither sees it nor needs
 	// it.
-	CredencialPVC  string
-	CredencialPath string
+	CredentialPVC  string
+	CredentialPath string
 
-	// SecretsPermitidos are the Secrets a YAML may name in `secrets:`.
+	// AllowedSecrets are the Secrets a YAML may name in `secrets:`.
 	//
 	// It exists because `secrets:` inverts who chooses. EnvFromSecrets comes
 	// from the scheduler's environment: the INSTALLATION decides. `secrets:` is
@@ -245,9 +245,9 @@ type Opcoes struct {
 	//
 	// The final division is this: the installation says WHICH secrets exist for
 	// workflows, the YAML says WHICH step receives each one.
-	SecretsPermitidos []string
-	Labels            map[string]string
-	Shell             []string
+	AllowedSecrets []string
+	Labels         map[string]string
+	Shell          []string
 	// EsperaParaIniciar is how long a pod may go without starting before the
 	// step gives up. It exists because `Pending` is not an error to Kubernetes:
 	// a pod that fits on no node sits there forever, and without this limit the
@@ -255,19 +255,19 @@ type Opcoes struct {
 	// dev with a CPU request larger than the pool's free capacity.
 	EsperaParaIniciar time.Duration
 
-	// ManterPodEmFalha leaves the pod around for inspection when a step fails.
+	// KeepFailedPod leaves the pod around for inspection when a step fails.
 	// A successful one is always deleted: thousands of Completed pods clutter
 	// the namespace and say nothing Brevis's own history does not say better.
-	ManterPodEmFalha bool
+	KeepFailedPod bool
 }
 
 const (
-	nomeVolumeCredencial = "brevis-credentials"
+	credentialVolumeName = "brevis-credentials"
 
 	// The same variable the SDK reads. Written here rather than imported from
 	// the SDK module on purpose: the engine does not depend on the SDK, and the
 	// coupling between them is this name -- documented on both sides.
-	envDiretorioCredencial = "BREVIS_CREDENTIAL_DIR"
+	credentialDirEnv = "BREVIS_CREDENTIAL_DIR"
 )
 
 // permiteSecret decides whether a YAML may name this Secret.
@@ -276,22 +276,22 @@ const (
 // secretKeyRef to a forbidden Secret is not even forbidden by Kubernetes -- it
 // mounts, and the error one sees is a different one. Here the message names it
 // and says where to allow it.
-func (o Opcoes) permiteSecret(nome string) error {
-	for _, p := range o.SecretsPermitidos {
+func (o Options) permiteSecret(nome string) error {
+	for _, p := range o.AllowedSecrets {
 		if p == nome {
 			return nil
 		}
 	}
-	if len(o.SecretsPermitidos) == 0 {
+	if len(o.AllowedSecrets) == 0 {
 		return fmt.Errorf("secret %q is not allowed for workflows, and neither is any "+
 			"other: the installation decides which exist, in "+
 			"BREVIS_POD_ALLOWED_SECRETS", nome)
 	}
 	return fmt.Errorf("secret %q is not in BREVIS_POD_ALLOWED_SECRETS (allowed: %s)",
-		nome, strings.Join(o.SecretsPermitidos, ", "))
+		nome, strings.Join(o.AllowedSecrets, ", "))
 }
 
-func (o Opcoes) comPadroes() Opcoes {
+func (o Options) comPadroes() Options {
 	if len(o.Shell) == 0 {
 		o.Shell = []string{"/bin/sh", "-c"}
 	}
@@ -301,8 +301,8 @@ func (o Opcoes) comPadroes() Opcoes {
 	// The PVC is what turns the feature on; the path has a default because
 	// choosing it is nobody's decision -- it only has to be a predictable
 	// place.
-	if o.CredencialPVC != "" && o.CredencialPath == "" {
-		o.CredencialPath = "/var/brevis/credentials"
+	if o.CredentialPVC != "" && o.CredentialPath == "" {
+		o.CredentialPath = "/var/brevis/credentials"
 	}
 	if o.EsperaParaIniciar <= 0 {
 		// Ten minutes cover pulling a large image (the dbt one is 620 MB) and an
@@ -312,12 +312,12 @@ func (o Opcoes) comPadroes() Opcoes {
 	return o
 }
 
-// MontarPod translates a task into the object that goes to the API server.
+// BuildPod translates a task into the object that goes to the API server.
 //
 // A pure function: it takes a task and options and returns the object. That is
 // what makes it possible to test the whole spec -- image, command, resources,
 // labels -- with no cluster at all.
-func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
+func BuildPod(t execution.TaskExec, o Options) (Pod, error) {
 	o = o.comPadroes()
 	if t.Image == "" {
 		return Pod{}, fmt.Errorf("step %q has no image: in Kubernetes every step is a "+
@@ -328,7 +328,7 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	}
 
 	c := Container{
-		Name:       nomeContainer,
+		Name:       containerName,
 		Image:      t.Image,
 		WorkingDir: t.WorkDir,
 	}
@@ -343,53 +343,53 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 
 	// A sorted environment: two pods with the same content have to produce the
 	// same JSON, or comparing two deploys turns into noise.
-	chaves := make([]string, 0, len(t.Env))
+	keys := make([]string, 0, len(t.Env))
 	for k := range t.Env {
-		chaves = append(chaves, k)
+		keys = append(keys, k)
 	}
-	sort.Strings(chaves)
-	for _, k := range chaves {
+	sort.Strings(keys)
+	for _, k := range keys {
 		c.Env = append(c.Env, Var{Name: k, Value: t.Env[k]})
 	}
 
 	// The secrets travel in the same list, but by reference: the value is not
 	// here and never was -- the kubelet resolves it when starting the
 	// container. A dump of this JSON shows the coordinate, not the secret.
-	segredos := make([]string, 0, len(t.Secrets))
+	secrets := make([]string, 0, len(t.Secrets))
 	for k := range t.Secrets {
-		segredos = append(segredos, k)
+		secrets = append(secrets, k)
 	}
-	sort.Strings(segredos)
-	for _, k := range segredos {
-		nome, chave, _ := strings.Cut(t.Secrets[k], "/")
+	sort.Strings(secrets)
+	for _, k := range secrets {
+		nome, key, _ := strings.Cut(t.Secrets[k], "/")
 		if err := o.permiteSecret(nome); err != nil {
 			return Pod{}, fmt.Errorf("step %q, secrets[%q]: %w", t.NodeID, k, err)
 		}
 		c.Env = append(c.Env, Var{
 			Name:      k,
-			ValueFrom: &FonteVar{SecretKeyRef: &RefChave{Name: nome, Key: chave}},
+			ValueFrom: &VarSource{SecretKeyRef: &KeyRef{Name: nome, Key: key}},
 		})
 	}
 
 	// The credential volume, when the installation configured one. The env
 	// points at the mount, and it is the same one the SDK reads on somebody's
 	// laptop with BREVIS_CREDENTIAL_DIR=./.brevis -- the same code in both.
-	if o.CredencialPVC != "" {
-		if _, jaTem := t.Env[envDiretorioCredencial]; !jaTem {
-			c.Env = append(c.Env, Var{Name: envDiretorioCredencial, Value: o.CredencialPath})
+	if o.CredentialPVC != "" {
+		if _, jaTem := t.Env[credentialDirEnv]; !jaTem {
+			c.Env = append(c.Env, Var{Name: credentialDirEnv, Value: o.CredentialPath})
 		}
-		c.VolumeMounts = append(c.VolumeMounts, MontagemDeVolume{
-			Name: nomeVolumeCredencial, MountPath: o.CredencialPath,
+		c.VolumeMounts = append(c.VolumeMounts, VolumeMount{
+			Name: credentialVolumeName, MountPath: o.CredentialPath,
 		})
 	}
 
 	for _, s := range o.EnvFromSecrets {
-		c.EnvFrom = append(c.EnvFrom, FonteEnv{SecretRef: &RefLocal{Name: s}})
+		c.EnvFrom = append(c.EnvFrom, EnvSource{SecretRef: &RefLocal{Name: s}})
 	}
 	for _, m := range o.EnvFromConfigMaps {
-		c.EnvFrom = append(c.EnvFrom, FonteEnv{ConfigMapRef: &RefLocal{Name: m}})
+		c.EnvFrom = append(c.EnvFrom, EnvSource{ConfigMapRef: &RefLocal{Name: m}})
 	}
-	if r := recursos(t); r != nil {
+	if r := resources(t); r != nil {
 		c.Resources = r
 	}
 
@@ -403,10 +403,10 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		Tolerations:        o.Tolerations,
 		Containers:         []Container{c},
 	}
-	if o.CredencialPVC != "" {
+	if o.CredentialPVC != "" {
 		spec.Volumes = append(spec.Volumes, Volume{
-			Name: nomeVolumeCredencial,
-			PVC:  &FontePVC{ClaimName: o.CredencialPVC},
+			Name: credentialVolumeName,
+			PVC:  &PVCSource{ClaimName: o.CredentialPVC},
 		})
 	}
 	for _, s := range o.PullSecrets {
@@ -419,18 +419,18 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		spec.ActiveDeadlineSeconds = &segundos
 	}
 
-	rotulos := map[string]string{
+	labels := map[string]string{
 		"app.kubernetes.io/managed-by": "brevis",
-		"brevis.dev/node":              valorDeRotulo(t.NodeID),
+		"brevis.dev/node":              labelValue(t.NodeID),
 	}
 	if t.RunID != "" {
-		rotulos["brevis.dev/run"] = valorDeRotulo(t.RunID)
+		labels["brevis.dev/run"] = labelValue(t.RunID)
 	}
 	if t.Workflow != "" {
-		rotulos["brevis.dev/workflow"] = valorDeRotulo(t.Workflow)
+		labels["brevis.dev/workflow"] = labelValue(t.Workflow)
 	}
 	for k, v := range o.Labels {
-		rotulos[k] = v
+		labels[k] = v
 	}
 
 	return Pod{
@@ -439,7 +439,7 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 		Metadata: Metadata{
 			Name:      NomeDoPod(t),
 			Namespace: o.Namespace,
-			Labels:    rotulos,
+			Labels:    labels,
 			// The annotation keeps the WHOLE value; the label keeps the
 			// sanitised one. That way filtering by label works and the original
 			// value is not lost.
@@ -453,8 +453,8 @@ func MontarPod(t execution.TaskExec, o Opcoes) (Pod, error) {
 	}, nil
 }
 
-func recursos(t execution.TaskExec) *Recursos {
-	r := &Recursos{Requests: map[string]string{}, Limits: map[string]string{}}
+func resources(t execution.TaskExec) *Resources {
+	r := &Resources{Requests: map[string]string{}, Limits: map[string]string{}}
 	if t.CPU != "" {
 		r.Requests["cpu"] = t.CPU
 	}
@@ -479,7 +479,7 @@ func recursos(t execution.TaskExec) *Recursos {
 	return r
 }
 
-var invalidoEmNome = regexp.MustCompile(`[^a-z0-9-]+`)
+var invalidInName = regexp.MustCompile(`[^a-z0-9-]+`)
 
 // NomeDoPod produces a valid and STABLE name for the same attempt.
 //
@@ -490,22 +490,22 @@ var invalidoEmNome = regexp.MustCompile(`[^a-z0-9-]+`)
 // The hash suffix resolves the collision the 63-character cut would create
 // between two long node names with a common prefix.
 func NomeDoPod(t execution.TaskExec) string {
-	base := sanitizar(t.Workflow + "-" + t.NodeID)
-	soma := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
-		t.RunID, t.NodeID, t.TentativaDoRun, t.Attempt)))
-	sufixo := hex.EncodeToString(soma[:4])
+	base := sanitize(t.Workflow + "-" + t.NodeID)
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%s|%d|%d",
+		t.RunID, t.NodeID, t.RunAttempt, t.Attempt)))
+	sufixo := hex.EncodeToString(sum[:4])
 
-	const maxNome = 63
-	if len(base)+1+len(sufixo) > maxNome {
-		base = base[:maxNome-1-len(sufixo)]
+	const maxName = 63
+	if len(base)+1+len(sufixo) > maxName {
+		base = base[:maxName-1-len(sufixo)]
 		base = strings.TrimRight(base, "-")
 	}
 	return base + "-" + sufixo
 }
 
-func sanitizar(s string) string {
+func sanitize(s string) string {
 	s = strings.ToLower(s)
-	s = invalidoEmNome.ReplaceAllString(s, "-")
+	s = invalidInName.ReplaceAllString(s, "-")
 	s = strings.Trim(s, "-")
 	if s == "" {
 		s = "step"
@@ -513,10 +513,10 @@ func sanitizar(s string) string {
 	return s
 }
 
-// valorDeRotulo obeys the labels' 63-character limit; the full value goes in the
+// labelValue obeys the labels' 63-character limit; the full value goes in the
 // annotation, which accepts far more.
-func valorDeRotulo(s string) string {
-	s = sanitizar(s)
+func labelValue(s string) string {
+	s = sanitize(s)
 	if len(s) > 63 {
 		s = strings.TrimRight(s[:63], "-")
 	}
@@ -524,7 +524,7 @@ func valorDeRotulo(s string) string {
 }
 
 // net joins host and port taking care of IPv6, where the host arrives without brackets.
-func net_(host, porta string) string { return net.JoinHostPort(host, porta) }
+func net_(host, port string) string { return net.JoinHostPort(host, port) }
 
 type tlsConfig struct{ pool *x509.CertPool }
 
@@ -534,7 +534,7 @@ func (t tlsConfig) build() *tls.Config {
 
 // Motivo is the status's `reason` (DeadlineExceeded, OOMKilled, Evicted) — the
 // difference between "the code failed" and "the cluster killed the process".
-func (p Pod) Motivo() string {
+func (p Pod) Reason() string {
 	if p.Status == nil {
 		return ""
 	}

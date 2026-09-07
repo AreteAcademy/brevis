@@ -32,14 +32,14 @@ type Input struct {
 // Texto reads a required parameter out of `with`. A convenience with a useful
 // error: a task doing the type assertion by hand repeats the same poor
 // message.
-func (i Input) Texto(chave string) (string, error) {
-	v, ok := i.With[chave]
+func (i Input) Text(key string) (string, error) {
+	v, ok := i.With[key]
 	if !ok {
-		return "", fmt.Errorf("parameter %q is missing from `with`", chave)
+		return "", fmt.Errorf("parameter %q is missing from `with`", key)
 	}
 	s, ok := v.(string)
 	if !ok {
-		return "", fmt.Errorf("parametro %q deve ser texto, veio %T", chave, v)
+		return "", fmt.Errorf("parameter %q has to be text, got %T", key, v)
 	}
 	return s, nil
 }
@@ -95,7 +95,7 @@ func (r *Registry) Get(nome string) (Task, bool) {
 
 // Nomes lists what is registered, sorted. It serves the unknown-task error:
 // saying what does exist saves a trip to the documentation.
-func (r *Registry) Nomes() []string {
+func (r *Registry) Names() []string {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -110,11 +110,11 @@ func (r *Registry) Nomes() []string {
 // FuncTask adapts a function to the Task interface, for the cases where a type
 // of its own would be ceremony with no gain.
 type FuncTask struct {
-	Nome string
-	Fn   func(ctx context.Context, in Input) error
+	TaskName string
+	Fn       func(ctx context.Context, in Input) error
 }
 
-func (f FuncTask) Name() string { return f.Nome }
+func (f FuncTask) Name() string { return f.TaskName }
 func (f FuncTask) Run(ctx context.Context, in Input) error {
 	return f.Fn(ctx, in)
 }

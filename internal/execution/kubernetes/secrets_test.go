@@ -9,8 +9,8 @@ import (
 )
 
 // optionsAllowing is what an installation that authorized this Secret passes.
-func optionsAllowing() Opcoes {
-	return Opcoes{SecretsPermitidos: []string{"gabriel-session", "cofre"}}.comPadroes()
+func optionsAllowing() Options {
+	return Options{AllowedSecrets: []string{"gabriel-session", "cofre"}}.comPadroes()
 }
 
 func taskWithSecret() execution.TaskExec {
@@ -26,9 +26,9 @@ func taskWithSecret() execution.TaskExec {
 // TestASecretBecomesASecretKeyRef: the pod references the key, the kubelet
 // resolves it. The engine never sees the value.
 func TestASecretBecomesASecretKeyRef(t *testing.T) {
-	pod, err := MontarPod(taskWithSecret(), optionsAllowing())
+	pod, err := BuildPod(taskWithSecret(), optionsAllowing())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 
 	var achou *Var
@@ -55,9 +55,9 @@ func TestASecretBecomesASecretKeyRef(t *testing.T) {
 // two keys on the same variable, and the refusal talks about a container field,
 // not about a line of YAML.
 func TestThePodsJSONSendsNoEmptyValueAlongsideValueFrom(t *testing.T) {
-	pod, err := MontarPod(taskWithSecret(), optionsAllowing())
+	pod, err := BuildPod(taskWithSecret(), optionsAllowing())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 	b, err := json.Marshal(pod)
 	if err != nil {
@@ -75,9 +75,9 @@ func TestTheSecretDoesNotLeakInThePodsJSON(t *testing.T) {
 	task := taskWithSecret()
 	task.Secrets["GABRIEL_SESSION_COOKIE"] = "gabriel-session/cookie"
 
-	pod, err := MontarPod(task, optionsAllowing())
+	pod, err := BuildPod(task, optionsAllowing())
 	if err != nil {
-		t.Fatalf("MontarPod: %v", err)
+		t.Fatalf("BuildPod: %v", err)
 	}
 	b, _ := json.Marshal(pod)
 	// The coordinate may appear; what may not is a secret's value, and the engine
@@ -97,9 +97,9 @@ func TestThePodsEnvironmentIsDeterministic(t *testing.T) {
 
 	var primeiro string
 	for i := 0; i < 20; i++ {
-		pod, err := MontarPod(task, optionsAllowing())
+		pod, err := BuildPod(task, optionsAllowing())
 		if err != nil {
-			t.Fatalf("MontarPod: %v", err)
+			t.Fatalf("BuildPod: %v", err)
 		}
 		b, _ := json.Marshal(pod.Spec.Containers[0].Env)
 		if i == 0 {
@@ -122,7 +122,7 @@ func TestTheYAMLDoesNotChooseWhichSecretToMount(t *testing.T) {
 	task := taskWithSecret()
 	task.Secrets["ROUBADO"] = "brevis-database/url"
 
-	_, err := MontarPod(task, optionsAllowing())
+	_, err := BuildPod(task, optionsAllowing())
 	if err == nil {
 		t.Fatal("the YAML mounted a Secret the installation did not allow")
 	}
@@ -137,7 +137,7 @@ func TestTheYAMLDoesNotChooseWhichSecretToMount(t *testing.T) {
 // installation; allowing by default costs the reverse, and the reverse cannot be
 // undone.
 func TestWithNoListNoSecretGetsThrough(t *testing.T) {
-	_, err := MontarPod(taskWithSecret(), Opcoes{}.comPadroes())
+	_, err := BuildPod(taskWithSecret(), Options{}.comPadroes())
 	if err == nil {
 		t.Fatal("with no allow-list, the Secret got through")
 	}
@@ -153,7 +153,7 @@ func TestWithNoSecretsInTheYAMLNothingChanges(t *testing.T) {
 	task := taskWithSecret()
 	task.Secrets = nil
 
-	if _, err := MontarPod(task, Opcoes{}.comPadroes()); err != nil {
+	if _, err := BuildPod(task, Options{}.comPadroes()); err != nil {
 		t.Errorf("a workflow with no secrets started failing: %v", err)
 	}
 }

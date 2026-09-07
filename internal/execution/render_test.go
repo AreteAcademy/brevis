@@ -8,7 +8,7 @@ import (
 )
 
 func TestRenderingSubstitutesTheParams(t *testing.T) {
-	out, err := execution.Renderizar(
+	out, err := execution.Render(
 		`dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze_x+`,
 		map[string]string{"load_full": "true"})
 	if err != nil {
@@ -24,7 +24,7 @@ func TestRenderingSubstitutesTheParams(t *testing.T) {
 // no target, `--date` with no date. Failing here, naming it, is what prevents
 // that.
 func TestAParamMissingFromTheTemplateFails(t *testing.T) {
-	_, err := execution.Renderizar("echo {{ .lod_full }}", map[string]string{"load_full": "true"})
+	_, err := execution.Render("echo {{ .lod_full }}", map[string]string{"load_full": "true"})
 	if err == nil {
 		t.Fatal("a template with the wrong name got through")
 	}
@@ -36,7 +36,7 @@ func TestAParamMissingFromTheTemplateFails(t *testing.T) {
 func TestTheConvertersConditional(t *testing.T) {
 	cmd := `dbt build{{ if eq .full_refresh "true" }} --full-refresh{{ end }} --select x+`
 
-	com, err := execution.Renderizar(cmd, map[string]string{"full_refresh": "true"})
+	com, err := execution.Render(cmd, map[string]string{"full_refresh": "true"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestTheConvertersConditional(t *testing.T) {
 		t.Errorf("the flag did not go in: %s", com)
 	}
 
-	sem, err := execution.Renderizar(cmd, map[string]string{"full_refresh": "false"})
+	sem, err := execution.Render(cmd, map[string]string{"full_refresh": "false"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestTheConvertersConditional(t *testing.T) {
 // them, and skipping the parse saves work on every step of every run.
 func TestACommandWithNoTemplatePassesThrough(t *testing.T) {
 	cmd := `sh -c 'echo {oi} && ls | grep x'`
-	out, err := execution.Renderizar(cmd, nil)
+	out, err := execution.Render(cmd, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestACommandWithNoTemplatePassesThrough(t *testing.T) {
 // primeiro `#` comentar o resto.
 func TestMultiLinhaSobrevive(t *testing.T) {
 	cmd := "set -e\n# comentario\npython3 -m x --date {{ .data }}\necho fim"
-	out, err := execution.Renderizar(cmd, map[string]string{"data": "2026-09-01"})
+	out, err := execution.Render(cmd, map[string]string{"data": "2026-09-01"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,24 +28,24 @@ type ProcessExecutor struct {
 	shell string
 
 	mu      sync.Mutex
-	rodando map[string]context.CancelFunc
+	running map[string]context.CancelFunc
 }
 
-// ErrForaDoLocal is returned when the executor is built outside local mode.
+// ErrOutsideLocal is returned when the executor is built outside local mode.
 // Typed so a test can assert on it.
-type ErrForaDoLocal struct{ Env string }
+type ErrOutsideLocal struct{ Env string }
 
-func (e ErrForaDoLocal) Error() string {
-	return fmt.Sprintf("ProcessExecutor so opera com BREVIS_ENV=local (recebido %q); "+
-		"fora do local, `run:` deve ir para o KubernetesExecutor", e.Env)
+func (e ErrOutsideLocal) Error() string {
+	return fmt.Sprintf("ProcessExecutor only operates with BREVIS_ENV=local (got %q); "+
+		"outside local, `run:` has to go to the KubernetesExecutor", e.Env)
 }
 
 // New returns the executor, or refuses when the environment is not local.
 func New(env string) (*ProcessExecutor, error) {
 	if env != "local" {
-		return nil, ErrForaDoLocal{Env: env}
+		return nil, ErrOutsideLocal{Env: env}
 	}
-	return &ProcessExecutor{shell: "/bin/sh", rodando: map[string]context.CancelFunc{}}, nil
+	return &ProcessExecutor{shell: "/bin/sh", running: map[string]context.CancelFunc{}}, nil
 }
 
 // ambienteDaTask assembles the process's env: the literals, plus the secrets
@@ -65,20 +65,20 @@ func ambienteDaTask(t execution.TaskExec) ([]string, error) {
 		env[k] = v
 	}
 
-	var faltando []string
+	var missing []string
 	for nome, coord := range t.Secrets {
 		v, existe := os.LookupEnv(nome)
 		if !existe || v == "" {
-			faltando = append(faltando, fmt.Sprintf("%s (secrets: %s)", nome, coord))
+			missing = append(missing, fmt.Sprintf("%s (secrets: %s)", nome, coord))
 			continue
 		}
 		env[nome] = v
 	}
-	if len(faltando) > 0 {
-		sort.Strings(faltando)
+	if len(missing) > 0 {
+		sort.Strings(missing)
 		return nil, fmt.Errorf("task %q: no modo local os segredos vem do ambiente do "+
-			"proprio motor, e estes nao estao definidos: %s",
-			t.NodeID, strings.Join(faltando, ", "))
+			"engine itself, and these are not set: %s",
+			t.NodeID, strings.Join(missing, ", "))
 	}
 
 	out := make([]string, 0, len(env))
@@ -109,7 +109,7 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 	}
 
 	p.mu.Lock()
-	p.rodando[t.ExecutionID] = cancel
+	p.running[t.ExecutionID] = cancel
 	p.mu.Unlock()
 
 	// `sh -c` because the YAML declares a shell line ("python fetch.py"), not an
@@ -144,44 +144,44 @@ func (p *ProcessExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-
 		return nil, fmt.Errorf("iniciando %q: %w", t.NodeID, err)
 	}
 
-	eventos := make(chan execution.Event, 64)
+	events := make(chan execution.Event, 64)
 	go func() {
-		defer close(eventos)
+		defer close(events)
 		defer func() {
 			p.mu.Lock()
-			delete(p.rodando, t.ExecutionID)
+			delete(p.running, t.ExecutionID)
 			p.mu.Unlock()
 			cancel()
 		}()
 
-		eventos <- execution.Event{Kind: execution.EventStarted, NodeID: t.NodeID}
+		events <- execution.Event{Kind: execution.EventStarted, NodeID: t.NodeID}
 
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go func() { defer wg.Done(); repassar(stdout, "stdout", t.NodeID, eventos) }()
-		go func() { defer wg.Done(); repassar(stderr, "stderr", t.NodeID, eventos) }()
+		go func() { defer wg.Done(); forward(stdout, "stdout", t.NodeID, events) }()
+		go func() { defer wg.Done(); forward(stderr, "stderr", t.NodeID, events) }()
 		wg.Wait() // drain BEFORE Wait: closing the pipes early would lose the last lines
 
 		err := cmd.Wait()
 		code := cmd.ProcessState.ExitCode()
 		if err != nil {
-			eventos <- execution.Event{
+			events <- execution.Event{
 				Kind: execution.EventFailed, NodeID: t.NodeID,
 				ExitCode: code, Err: err,
-				Message: fmt.Sprintf("saiu com codigo %d", code),
+				Message: fmt.Sprintf("exited with code %d", code),
 			}
 			return
 		}
-		eventos <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID, ExitCode: code}
+		events <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID, ExitCode: code}
 	}()
 
-	return eventos, nil
+	return events, nil
 }
 
 // Cancel interrupts a run in flight.
 func (p *ProcessExecutor) Cancel(_ context.Context, execID string) error {
 	p.mu.Lock()
-	cancel, ok := p.rodando[execID]
+	cancel, ok := p.running[execID]
 	p.mu.Unlock()
 	if !ok {
 		return fmt.Errorf("run %q is not running", execID)
@@ -190,7 +190,7 @@ func (p *ProcessExecutor) Cancel(_ context.Context, execID string) error {
 	return nil
 }
 
-func repassar(r io.Reader, stream, nodeID string, out chan<- execution.Event) {
+func forward(r io.Reader, stream, nodeID string, out chan<- execution.Event) {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024) // long log lines must not truncate the output
 	for sc.Scan() {

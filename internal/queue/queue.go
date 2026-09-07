@@ -22,10 +22,10 @@ import (
 
 // Item is one entry in the queue.
 type Item struct {
-	ID           int64
-	RunID        uuid.UUID
-	Prioridade   int
-	DisponivelEm time.Time
+	ID          int64
+	RunID       uuid.UUID
+	Priority    int
+	AvailableAt time.Time
 }
 
 // Queue operates on queue_items.
@@ -47,16 +47,16 @@ func New(pool *pgxpool.Pool) *Queue { return &Queue{pool: pool} }
 // stays invisible until the database catches up. Nothing is lost -- the next
 // cycle picks it up -- but it is unexplainable latency, and it is what made a
 // concurrency test hand out 4 items where 5 were ready.
-func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, prioridade int, disponivelEm time.Time) error {
-	var quando any = disponivelEm
-	if disponivelEm.IsZero() {
+func (q *Queue) Enqueue(ctx context.Context, runID uuid.UUID, priority int, availableAt time.Time) error {
+	var quando any = availableAt
+	if availableAt.IsZero() {
 		quando = nil // COALESCE resolves to the database's now()
 	}
 	_, err := q.pool.Exec(ctx, `
 		INSERT INTO queue_items (run_id, prioridade, disponivel_em)
 		VALUES ($1, $2, COALESCE($3::timestamptz, now()))
 		ON CONFLICT (run_id) DO NOTHING`,
-		runID, prioridade, quando)
+		runID, priority, quando)
 	if err != nil {
 		return fmt.Errorf("enfileirando run %s: %w", runID, err)
 	}
@@ -88,7 +88,7 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	// because the count does not change mid-query. With the per-workflow
 	// numbering, an item only passes if `em_voo + its position` fits the
 	// limit.
-	linhas, err := q.pool.Query(ctx, `
+	rows, err := q.pool.Query(ctx, `
 		WITH em_voo AS (
 			SELECT r.workflow_slug, count(*) AS n
 			FROM queue_items q
@@ -128,17 +128,17 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	if err != nil {
 		return nil, fmt.Errorf("reivindicando itens: %w", err)
 	}
-	defer linhas.Close()
+	defer rows.Close()
 
-	var itens []Item
-	for linhas.Next() {
+	var items []Item
+	for rows.Next() {
 		var it Item
-		if err := linhas.Scan(&it.ID, &it.RunID, &it.Prioridade, &it.DisponivelEm); err != nil {
+		if err := rows.Scan(&it.ID, &it.RunID, &it.Priority, &it.AvailableAt); err != nil {
 			return nil, err
 		}
-		itens = append(itens, it)
+		items = append(items, it)
 	}
-	return itens, linhas.Err()
+	return items, rows.Err()
 }
 
 // Done removes the item: the work finished and does not come back.
@@ -171,7 +171,7 @@ func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, er
 	// WHICH runs were left dangling in order to fix their state too. With the
 	// count alone, the item went back to the queue but the Run stayed "running"
 	// forever -- the half of the bug this fixes.
-	linhas, err := q.pool.Query(ctx, `
+	rows, err := q.pool.Query(ctx, `
 		UPDATE queue_items
 		SET reivindicado_em = NULL, reivindicado_por = NULL
 		WHERE reivindicado_em IS NOT NULL
@@ -181,17 +181,17 @@ func (q *Queue) Recuperar(ctx context.Context, limite time.Duration) ([]Item, er
 	if err != nil {
 		return nil, err
 	}
-	defer linhas.Close()
+	defer rows.Close()
 
 	var out []Item
-	for linhas.Next() {
+	for rows.Next() {
 		var it Item
-		if err := linhas.Scan(&it.ID, &it.RunID, &it.Prioridade); err != nil {
+		if err := rows.Scan(&it.ID, &it.RunID, &it.Priority); err != nil {
 			return nil, err
 		}
 		out = append(out, it)
 	}
-	return out, linhas.Err()
+	return out, rows.Err()
 }
 
 // Tamanho counts pending and claimed items, for observability.

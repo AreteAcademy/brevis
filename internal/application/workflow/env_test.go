@@ -81,11 +81,11 @@ func TestSecretsRefusesWhatIsNotACoordinate(t *testing.T) {
 		"nome invalido":     "GABRIEL-SESSION-COOKIE: gabriel-session/cookie",
 		"name with a space": "'GABRIEL COOKIE': gabriel-session/cookie",
 	}
-	for nome, linha := range casos {
+	for nome, line := range casos {
 		t.Run(nome, func(t *testing.T) {
-			yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    secrets:\n      " + linha + "\n"
+			yaml := "name: x\ntype: chain\nsteps:\n  - id: a\n    run: echo\n    secrets:\n      " + line + "\n"
 			if _, err := Parse("x.yaml", []byte(yaml)); err == nil {
-				t.Fatalf("it accepted %q", linha)
+				t.Fatalf("it accepted %q", line)
 			}
 		})
 	}

@@ -76,16 +76,16 @@ type ParamSpec struct {
 }
 
 func (p ParamSpec) dominio() dominio.Param {
-	tipo := dominio.TipoParam(strings.TrimSpace(p.Type))
-	if tipo == "" {
+	kind := dominio.ParamType(strings.TrimSpace(p.Type))
+	if kind == "" {
 		// `string` as the default: it is the most common type and the only one
 		// that does not change the value's meaning. Requiring the key on every
 		// param would be noise.
-		tipo = dominio.ParamTexto
+		kind = dominio.ParamString
 	}
 	return dominio.Param{
-		Nome: strings.TrimSpace(p.Name), Tipo: tipo,
-		Default: p.Default, Descricao: p.Description,
+		Name: strings.TrimSpace(p.Name), Type: kind,
+		Default: p.Default, Description: p.Description,
 		Enum: p.Enum, Pattern: p.Pattern,
 	}
 }
@@ -148,7 +148,7 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 		Name:     slug,
 		Kind:     kind,
 		Schedule: strings.TrimSpace(s.Schedule),
-		Tags:     normalizarTags(s.Tags),
+		Tags:     normalizeTags(s.Tags),
 
 		// The workflow's image is the steps' default runtime: in Kubernetes each
 		// step becomes a pod, and it is the image that decides what that pod
@@ -171,7 +171,7 @@ func Parse(caminho string, conteudo []byte) (dominio.Workflow, error) {
 		})
 	}
 
-	w.Edges, err = arestas(kind, s.Steps)
+	w.Edges, err = edges(kind, s.Steps)
 	if err != nil {
 		return dominio.Workflow{}, fmt.Errorf("%s: %w", caminho, err)
 	}
@@ -209,7 +209,7 @@ func aparar(m map[string]string) map[string]string {
 // normalizarTags trims spaces, drops empty ones and deduplicates while keeping
 // the file's order. Without it, `tags: [dbt, dbt , ""]` would become three chips
 // on the screen, two of them identical and one blank.
-func normalizarTags(brutas []string) []string {
+func normalizeTags(brutas []string) []string {
 	if len(brutas) == 0 {
 		return nil
 	}
@@ -234,7 +234,7 @@ func normalizarTags(brutas []string) []string {
 // `chain` is sugar: every step depends on the previous one. Converting here, the
 // execution engine knows only DAGs — one more format in the file, zero extra
 // paths at runtime.
-func arestas(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
+func edges(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
 	var out []dominio.Edge
 
 	switch kind {
@@ -242,7 +242,7 @@ func arestas(kind dominio.Kind, steps []StepSpec) ([]dominio.Edge, error) {
 		for _, st := range steps {
 			if len(st.DependsOn) > 0 {
 				return nil, fmt.Errorf("step %q usa `depends_on` num workflow `chain`; "+
-					"em chain a ordem e a do arquivo — use `type: dag` para declarar dependencias", st.ID)
+					"in a chain the order is the file's -- use `type: dag` to declare dependencies", st.ID)
 			}
 		}
 		for i := 1; i < len(steps); i++ {
@@ -269,6 +269,6 @@ func parseKind(t string) (dominio.Kind, error) {
 	case string(dominio.KindChain):
 		return dominio.KindChain, nil
 	default:
-		return "", fmt.Errorf("type %q desconhecido (use `chain` ou `dag`)", t)
+		return "", fmt.Errorf("unknown type %q (use `chain` or `dag`)", t)
 	}
 }

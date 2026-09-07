@@ -48,7 +48,7 @@ func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ 
 	return nil
 }
 
-func (p *spyPersister) RegistrarEtapas(_ context.Context, _ uuid.UUID, _ string, _ int,
+func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ string, _ int,
 	versao string, etapas json.RawMessage) error {
 	p.chamou++
 	p.versao, p.etapas = versao, etapas
@@ -94,11 +94,11 @@ func TestStagesArriveThroughTheStepsLog(t *testing.T) {
 	if espiao.versao != "v0.44.1" {
 		t.Errorf("the version never reached the database: %q", espiao.versao)
 	}
-	var etapas []app.EtapaGravada
+	var etapas []app.RecordedStage
 	if err := json.Unmarshal(espiao.etapas, &etapas); err != nil {
 		t.Fatalf("etapas ilegiveis: %v — %s", err, espiao.etapas)
 	}
-	if len(etapas) != 1 || etapas[0].Nome != "extract" || etapas[0].State != "done" {
+	if len(etapas) != 1 || etapas[0].TaskName != "extract" || etapas[0].State != "done" {
 		t.Fatalf("etapas: %+v", etapas)
 	}
 

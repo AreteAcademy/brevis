@@ -137,8 +137,8 @@ func TestLoadReadsTheEnvironmentForEveryField(t *testing.T) {
 	if c.Pods.ServiceAccount != "brevis-task" {
 		t.Errorf("ServiceAccount = %q", c.Pods.ServiceAccount)
 	}
-	if len(c.Pods.Toleracoes) != 1 || c.Pods.Toleracoes[0].Efeito != "NoSchedule" {
-		t.Errorf("Toleracoes = %+v", c.Pods.Toleracoes)
+	if len(c.Pods.Tolerations) != 1 || c.Pods.Tolerations[0].Efeito != "NoSchedule" {
+		t.Errorf("Toleracoes = %+v", c.Pods.Tolerations)
 	}
 }
 

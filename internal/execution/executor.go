@@ -40,7 +40,7 @@ type TaskExec struct {
 	// TentativaDoRun is the RUN's, counted by the dispatcher. Both go into the
 	// pod's name: without the second, a dispatcher retry recreates the run from
 	// scratch (the step at attempt 0 again) and runs into the previous pod.
-	TentativaDoRun int
+	RunAttempt int
 
 	Command string // a shell line, for the ProcessExecutor
 	Action  string // the name in the registry, for the GoExecutor

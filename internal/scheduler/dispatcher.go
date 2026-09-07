@@ -32,62 +32,62 @@ type Executar func(ctx context.Context, runID uuid.UUID) error
 // it.
 type Repo interface {
 	Transicionar(ctx context.Context, id uuid.UUID, para dom.Status) error
-	IncrementarTentativa(ctx context.Context, id uuid.UUID) (int, error)
-	RegistrarErro(ctx context.Context, id uuid.UUID, msg string) error
-	Buscar(ctx context.Context, id uuid.UUID) (dom.Run, error)
+	IncrementAttempt(ctx context.Context, id uuid.UUID) (int, error)
+	RecordError(ctx context.Context, id uuid.UUID, msg string) error
+	Get(ctx context.Context, id uuid.UUID) (dom.Run, error)
 
 	// FailedStep returns the node and the output of the last failed
 	// attempt. It feeds the alert: without it the alert says something failed,
 	// and whoever is on call has to open the screen to find out what.
-	FailedStep(ctx context.Context, id uuid.UUID) (passo, log string, err error)
+	FailedStep(ctx context.Context, id uuid.UUID) (step, log string, err error)
 }
 
 // Config parameterises the dispatcher.
 type Config struct {
 	Worker         string
 	MaxConcorrente int
-	Intervalo      time.Duration
-	MaxTentativas  int
+	Interval       time.Duration
+	MaxAttempts    int
 	BackoffBase    time.Duration
 
-	// Visibilidade is how long an item may stay claimed without the worker
+	// Visibility is how long an item may stay claimed without the worker
 	// finishing before it counts as orphaned. It has to be LONGER than the
 	// longest expected run: too short, and the dispatcher steals from itself a
 	// run that is still going.
-	Visibilidade time.Duration
+	Visibility time.Duration
 
-	// IntervaloRecuperacao is how often the orphan sweep runs.
-	IntervaloRecuperacao time.Duration
+	// RecoveryInterval is how often the orphan sweep runs.
+	RecoveryInterval time.Duration
 }
 
-func (c *Config) padroes() {
+func (c *Config) defaults() {
 	if c.Worker == "" {
 		c.Worker = "dispatcher"
 	}
 	if c.MaxConcorrente <= 0 {
 		c.MaxConcorrente = 5
 	}
-	if c.Intervalo <= 0 {
-		c.Intervalo = 200 * time.Millisecond
+	if c.Interval <= 0 {
+		c.Interval = 200 * time.Millisecond
 	}
-	if c.MaxTentativas <= 0 {
-		c.MaxTentativas = 3
+	if c.MaxAttempts <= 0 {
+		c.MaxAttempts = 3
 	}
 	if c.BackoffBase <= 0 {
 		c.BackoffBase = time.Second
 	}
-	if c.Visibilidade <= 0 {
-		c.Visibilidade = 15 * time.Minute
+	if c.Visibility <= 0 {
+		c.Visibility = 15 * time.Minute
 	}
-	if c.IntervaloRecuperacao <= 0 {
-		c.IntervaloRecuperacao = time.Minute
+	if c.RecoveryInterval <= 0 {
+		c.RecoveryInterval = time.Minute
 	}
 }
 
 // Dispatcher drains the queue while respecting the maximum concurrency.
 type Dispatcher struct {
 	cfg      Config
-	fila     *queue.Queue
+	queue    *queue.Queue
 	repo     Repo
 	executar Executar
 	log      *slog.Logger
@@ -104,20 +104,20 @@ type Dispatcher struct {
 }
 
 func New(cfg Config, f *queue.Queue, r Repo, e Executar, log *slog.Logger) *Dispatcher {
-	cfg.padroes()
-	return &Dispatcher{cfg: cfg, fila: f, repo: r, executar: e, log: log}
+	cfg.defaults()
+	return &Dispatcher{cfg: cfg, queue: f, repo: r, executar: e, log: log}
 }
 
 // Run drains the queue until the context is cancelled, then waits for in-flight
 // work to finish before returning.
 func (d *Dispatcher) Run(ctx context.Context) error {
-	tick := time.NewTicker(d.cfg.Intervalo)
+	tick := time.NewTicker(d.cfg.Interval)
 	defer tick.Stop()
 
 	// The orphan sweep runs on a ticker of its own, far slower than the claim
 	// one: it is a safety net, not a hot path.
-	recuperacao := time.NewTicker(d.cfg.IntervaloRecuperacao)
-	defer recuperacao.Stop()
+	recovery := time.NewTicker(d.cfg.RecoveryInterval)
+	defer recovery.Stop()
 
 	for {
 		select {
@@ -125,10 +125,10 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 			d.wg.Wait() // graceful shutdown: it does not abandon a run in flight
 			return nil
 		case <-tick.C:
-			if err := d.cicloDeClaim(ctx); err != nil {
+			if err := d.claimCycle(ctx); err != nil {
 				d.log.Error("claim cycle", "error", err)
 			}
-		case <-recuperacao.C:
+		case <-recovery.C:
 			if n, err := d.RecuperarOrfaos(ctx); err != nil {
 				d.log.Error("recovering orphans", "error", err)
 			} else if n > 0 {
@@ -150,50 +150,50 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 // (§7), and a worker that dies midway did consume a real attempt -- counting it
 // is what stops a poisonous run from taking down workers in a loop.
 func (d *Dispatcher) RecuperarOrfaos(ctx context.Context) (int, error) {
-	itens, err := d.fila.Recuperar(ctx, d.cfg.Visibilidade)
+	items, err := d.queue.Recuperar(ctx, d.cfg.Visibility)
 	if err != nil {
 		return 0, err
 	}
-	for _, it := range itens {
-		d.falhar(ctx, it, errOrfao{worker: d.cfg.Worker, limite: d.cfg.Visibilidade})
+	for _, it := range items {
+		d.fail(ctx, it, errOrphan{worker: d.cfg.Worker, limite: d.cfg.Visibility})
 	}
-	return len(itens), nil
+	return len(items), nil
 }
 
-// errOrfao explains in its own message why the run failed -- it is the text the
+// errOrphan explains in its own message why the run failed -- it is the text the
 // operator reads on screen, and "unknown error" there costs a whole
 // investigation.
-type errOrfao struct {
+type errOrphan struct {
 	worker string
 	limite time.Duration
 }
 
-func (e errOrfao) Error() string {
-	return fmt.Sprintf("execucao orfa: nenhum worker deu sinal em %s "+
-		"(o processo que a reivindicou provavelmente caiu)", e.limite)
+func (e errOrphan) Error() string {
+	return fmt.Sprintf("orphaned run: no worker reported in for %s "+
+		"(the process that claimed it most likely died)", e.limite)
 }
 
-// cicloDeClaim asks the queue for the free slots ONLY.
+// claimCycle asks the queue for the free slots ONLY.
 //
 // This is where concurrency is enforced, and why it is reliable: there is no
 // path in which more items leave the queue than the limit allows, because
 // whoever counts the slots is whoever makes the request. A semaphore after the
 // claim would leave items claimed and idle, invisible to other workers.
-func (d *Dispatcher) cicloDeClaim(ctx context.Context) error {
+func (d *Dispatcher) claimCycle(ctx context.Context) error {
 	d.mu.Lock()
-	vagas := d.cfg.MaxConcorrente - d.emVoo
+	slots := d.cfg.MaxConcorrente - d.emVoo
 	d.mu.Unlock()
 
-	if vagas <= 0 {
+	if slots <= 0 {
 		return nil
 	}
 
-	itens, err := d.fila.Claim(ctx, d.cfg.Worker, vagas)
+	items, err := d.queue.Claim(ctx, d.cfg.Worker, slots)
 	if err != nil {
 		return err
 	}
 
-	for _, it := range itens {
+	for _, it := range items {
 		d.mu.Lock()
 		d.emVoo++
 		d.mu.Unlock()
@@ -206,18 +206,18 @@ func (d *Dispatcher) cicloDeClaim(ctx context.Context) error {
 				d.emVoo--
 				d.mu.Unlock()
 			}()
-			d.processar(ctx, it)
+			d.process(ctx, it)
 		}(it)
 	}
 	return nil
 }
 
-func (d *Dispatcher) processar(ctx context.Context, it queue.Item) {
+func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRunning); err != nil {
 		// An invalid transition here means another dispatcher took the same run,
 		// or that it was cancelled. Not our error: release and move on.
 		d.log.Warn("could not mark running", "run", it.RunID, "error", err)
-		_ = d.fila.Release(ctx, it.ID, 0)
+		_ = d.queue.Release(ctx, it.ID, 0)
 		return
 	}
 
@@ -226,58 +226,58 @@ func (d *Dispatcher) processar(ctx context.Context, it queue.Item) {
 		if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusSuccess); err != nil {
 			d.log.Error("marking success", "run", it.RunID, "error", err)
 		}
-		_ = d.fila.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
-	d.falhar(ctx, it, err)
+	d.fail(ctx, it, err)
 }
 
 // falhar decide entre retry e desistencia.
-func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
-	_ = d.repo.RegistrarErro(ctx, it.RunID, causa.Error())
+func (d *Dispatcher) fail(ctx context.Context, it queue.Item, causa error) {
+	_ = d.repo.RecordError(ctx, it.RunID, causa.Error())
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {
 		d.log.Error("marking failed", "run", it.RunID, "error", err)
-		_ = d.fila.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
-	tentativa, err := d.repo.IncrementarTentativa(ctx, it.RunID)
+	attempt, err := d.repo.IncrementAttempt(ctx, it.RunID)
 	if err != nil {
 		d.log.Error("incrementing the attempt", "run", it.RunID, "error", err)
-		_ = d.fila.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
-	if tentativa >= d.cfg.MaxTentativas {
+	if attempt >= d.cfg.MaxAttempts {
 		// Exhausted: leaves the queue and stays FAILED, which is not terminal in
 		// the state machine but is the end of this run.
-		d.log.Warn("out of attempts", "run", it.RunID, "attempts", tentativa)
+		d.log.Warn("out of attempts", "run", it.RunID, "attempts", attempt)
 		// The alert goes out HERE, and not on every failure: warning on every
 		// attempt would turn a successful retry into two alerts and a silence,
 		// and a channel that cries wolf stops being read.
-		d.avisar(ctx, it.RunID, tentativa, causa)
-		_ = d.fila.Done(ctx, it.ID)
+		d.avisar(ctx, it.RunID, attempt, causa)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusRetrying); err != nil {
 		d.log.Error("marking retrying", "run", it.RunID, "error", err)
-		_ = d.fila.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusQueued); err != nil {
 		d.log.Error("requeuing", "run", it.RunID, "error", err)
-		_ = d.fila.Done(ctx, it.ID)
+		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
 	// Exponential backoff. The item returns to the queue delayed, not at once:
 	// an instant retry against a dependency that is down only burns the
 	// queue.
-	atraso := d.cfg.BackoffBase * time.Duration(1<<uint(tentativa-1))
-	d.log.Info("requeued", "run", it.RunID, "attempt", tentativa, "delay", atraso)
-	if err := d.fila.Release(ctx, it.ID, atraso); err != nil {
+	atraso := d.cfg.BackoffBase * time.Duration(1<<uint(attempt-1))
+	d.log.Info("requeued", "run", it.RunID, "attempt", attempt, "delay", atraso)
+	if err := d.queue.Release(ctx, it.ID, atraso); err != nil {
 		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
 	}
 }
@@ -287,19 +287,19 @@ func (d *Dispatcher) falhar(ctx context.Context, it queue.Item, causa error) {
 // Nothing here may interrupt the dispatcher: a webhook that is down is no
 // reason to stop draining the queue. A failure to warn becomes a log line, and
 // the run's state in the database remains the source of truth.
-func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int, causa error) {
+func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, attempts int, causa error) {
 	if d.Alertas == nil {
 		return
 	}
 
 	a := notify.Alerta{
 		RunID: runID.String(), Status: string(dom.StatusFailed),
-		Tentativas: tentativas, Err: causa.Error(), URLBase: d.URLBase,
+		Tentativas: attempts, Err: causa.Error(), URLBase: d.URLBase,
 	}
 	// Os detalhes vem do banco: o dispatcher so conhece o id. Se a leitura
 	// fails, the alert goes out anyway — half a message beats none when
 	// something is broken.
-	if r, err := d.repo.Buscar(ctx, runID); err == nil {
+	if r, err := d.repo.Get(ctx, runID); err == nil {
 		a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
 		var def struct{ Tags []string }
 		if json.Unmarshal(r.Definition, &def) == nil {
@@ -311,9 +311,9 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 
 	// The step and the log are a bonus: if the query fails, the alert goes out
 	// without them. Half a message arrives; no message does not.
-	if passo, log, err := d.repo.FailedStep(ctx, runID); err == nil {
-		a.Passo = passo
-		a.TrechoDoLog = ultimasLinhas(log, 15)
+	if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
+		a.Passo = step
+		a.TrechoDoLog = lastLines(log, 15)
 	} else {
 		d.log.Warn("alert without the step that failed", "run", runID, "error", err)
 	}
@@ -327,19 +327,19 @@ func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, tentativas int
 	}
 }
 
-// ultimasLinhas returns the END of the log, which is where a program usually
+// lastLines returns the END of the log, which is where a program usually
 // says why it stopped. The start is left out on purpose: the alert has to fit in
 // a notification
 // on a phone, and the whole log is one click away on the run's screen.
-func ultimasLinhas(texto string, n int) string {
-	if texto == "" {
+func lastLines(text string, n int) string {
+	if text == "" {
 		return ""
 	}
-	linhas := strings.Split(strings.TrimRight(texto, "\n"), "\n")
-	if len(linhas) > n {
-		linhas = linhas[len(linhas)-n:]
+	rows := strings.Split(strings.TrimRight(text, "\n"), "\n")
+	if len(rows) > n {
+		rows = rows[len(rows)-n:]
 	}
-	return strings.Join(linhas, "\n")
+	return strings.Join(rows, "\n")
 }
 
 // EmVoo devolve quantas execucoes estao correndo agora.

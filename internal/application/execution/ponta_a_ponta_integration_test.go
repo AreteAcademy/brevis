@@ -82,7 +82,7 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 
-	estados, err := repo.EstadoDosNos(ctx, runID)
+	estados, err := repo.NodeStates(ctx, runID)
 	if err != nil {
 		t.Fatalf("estado: %v", err)
 	}
@@ -94,21 +94,21 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 	// The badge, observed from the binary. "devel" because the testdata uses a
 	// replace --
 	// and it is the truth: the code came from a directory, not from a version.
-	if e.SdkVersao == "" {
+	if e.SdkVersion == "" {
 		t.Error("the step did not announce itself as an SDK one")
 	}
-	if e.SdkVersao != "devel" {
-		t.Errorf("with a replace the version has to be \"devel\", got %q", e.SdkVersao)
+	if e.SdkVersion != "devel" {
+		t.Errorf("with a replace the version has to be \"devel\", got %q", e.SdkVersion)
 	}
 
-	porNome := map[string]postgres.Etapa{}
-	for _, et := range e.Etapas {
-		porNome[et.Nome] = et
+	porNome := map[string]postgres.Stage{}
+	for _, et := range e.Stages {
+		porNome[et.Name] = et
 	}
 	for _, nome := range []string{"check", "extract", "map", "load"} {
 		et, ok := porNome[nome]
 		if !ok {
-			t.Errorf("stage %q never reached the database (these did: %v)", nome, e.Etapas)
+			t.Errorf("stage %q never reached the database (these did: %v)", nome, e.Stages)
 			continue
 		}
 		if et.State != "done" {
@@ -116,8 +116,8 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		}
 	}
 	// What only a Map stage knows.
-	if n := porNome["map"].Numeros; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
-		t.Errorf("the transform did not report its counts: %v", porNome["transform"].Numeros)
+	if n := porNome["map"].Numbers; n == nil || n["in"] != 2.0 || n["out"] != 2.0 {
+		t.Errorf("the transform did not report its counts: %v", porNome["transform"].Numbers)
 	}
 	// And a Map stage still has no clock.
 	if porNome["map"].Ms != nil {

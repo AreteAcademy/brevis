@@ -28,7 +28,7 @@ func task() execution.TaskExec {
 }
 
 func TestThePodCarriesImageCommandAndResources(t *testing.T) {
-	p, err := k8s.MontarPod(task(), k8s.Opcoes{Namespace: "dados", ServiceAccount: "brevis"})
+	p, err := k8s.BuildPod(task(), k8s.Options{Namespace: "dados", ServiceAccount: "brevis"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestWithNoShellItUsesArgvDirectly(t *testing.T) {
 	tk.Shell = false
 	tk.Command = "/notify --canal dados"
 
-	p, err := k8s.MontarPod(tk, k8s.Opcoes{})
+	p, err := k8s.BuildPod(tk, k8s.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestWithNoShellItUsesArgvDirectly(t *testing.T) {
 }
 
 func TestEnvIsOrderedAndEnvFrom(t *testing.T) {
-	p, err := k8s.MontarPod(task(), k8s.Opcoes{
+	p, err := k8s.BuildPod(task(), k8s.Options{
 		EnvFromSecrets:    []string{"brevis-bigquery"},
 		EnvFromConfigMaps: []string{"brevis-config"},
 	})
@@ -105,7 +105,7 @@ func TestEnvIsOrderedAndEnvFrom(t *testing.T) {
 // The BigQuery credential comes in through envFrom, the INSTALLATION's decision.
 // A pipeline's YAML must not get to choose the service account it runs as.
 func TestTheOptionsDoNotComeFromTheWorkflow(t *testing.T) {
-	p, _ := k8s.MontarPod(task(), k8s.Opcoes{
+	p, _ := k8s.BuildPod(task(), k8s.Options{
 		ServiceAccount: "restrita",
 		PullSecrets:    []string{"registry"},
 		NodeSelector:   map[string]string{"pool": "dados"},
@@ -120,7 +120,7 @@ func TestTheOptionsDoNotComeFromTheWorkflow(t *testing.T) {
 func TestAPodWithNoImageIsRefused(t *testing.T) {
 	tk := task()
 	tk.Image = ""
-	if _, err := k8s.MontarPod(tk, k8s.Opcoes{}); err == nil {
+	if _, err := k8s.BuildPod(tk, k8s.Options{}); err == nil {
 		t.Error("a pod with no image has nothing to run")
 	}
 }
@@ -169,7 +169,7 @@ func TestThePodsNameObeysKubernetesLimit(t *testing.T) {
 }
 
 func TestTheLabelsMakeTheRunsPodsFindable(t *testing.T) {
-	p, _ := k8s.MontarPod(task(), k8s.Opcoes{})
+	p, _ := k8s.BuildPod(task(), k8s.Options{})
 	if p.Metadata.Labels["app.kubernetes.io/managed-by"] != "brevis" {
 		t.Error("without the management label there is no way to find Brevis's pods")
 	}
@@ -190,7 +190,7 @@ func TestTheJSONCarriesNoEmptyFields(t *testing.T) {
 	tk.CPU, tk.Memoria, tk.CPUMax, tk.MemoriaMax = "", "", "", ""
 	tk.Timeout = 0
 
-	p, _ := k8s.MontarPod(tk, k8s.Opcoes{})
+	p, _ := k8s.BuildPod(tk, k8s.Options{})
 	b, err := json.Marshal(p)
 	if err != nil {
 		t.Fatal(err)

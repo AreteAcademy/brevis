@@ -9,14 +9,14 @@ import (
 	"github.com/AreteAcademy/brevis/internal/auth"
 )
 
-func credential(t *testing.T, usuario, senha string) auth.Credential {
+func credential(t *testing.T, user, password string) auth.Credential {
 	t.Helper()
-	h, err := auth.GenerateHash(senha)
+	h, err := auth.GenerateHash(password)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return auth.Credential{
-		User: usuario, Hash: h,
+		User: user, Hash: h,
 		Secret: []byte("um-segredo-de-teste-com-mais-de-32-bytes"),
 	}
 }
@@ -66,7 +66,7 @@ func TestAMalformedHashDoesNotAuthenticate(t *testing.T) {
 // /workflows/<slug>/trigger answered 303 and fired a `dbt build` that writes into
 // the data warehouse.
 func TestAnAnonymousTriggerIsBlocked(t *testing.T) {
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("the anonymous request reached the protected handler")
@@ -75,7 +75,7 @@ func TestAnAnonymousTriggerIsBlocked(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	portao.ServeHTTP(rec, httptest.NewRequest("POST", "/workflows/id_verification/trigger", nil))
+	gate.ServeHTTP(rec, httptest.NewRequest("POST", "/workflows/id_verification/trigger", nil))
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("status = %d; esperava 401", rec.Code)
@@ -83,19 +83,19 @@ func TestAnAnonymousTriggerIsBlocked(t *testing.T) {
 }
 
 func TestGetAnonimoVaiParaOLogin(t *testing.T) {
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
 	}
 
 	rec := httptest.NewRecorder()
-	portao.ServeHTTP(rec, httptest.NewRequest("GET", "/runs?pagina=2", nil))
+	gate.ServeHTTP(rec, httptest.NewRequest("GET", "/runs?pagina=2", nil))
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d; esperava 303", rec.Code)
 	}
-	if destino := rec.Header().Get("Location"); !strings.Contains(destino, "/runs") {
-		t.Errorf("Location = %q; it should carry the original destination", destino)
+	if target := rec.Header().Get("Location"); !strings.Contains(target, "/runs") {
+		t.Errorf("Location = %q; it should carry the original destination", target)
 	}
 }
 
@@ -104,14 +104,14 @@ func TestGetAnonimoVaiParaOLogin(t *testing.T) {
 // pod em ciclo, e o operador procura o problema no lugar errado.
 func TestProbesAndAssetsPassWithNoSession(t *testing.T) {
 	var chegou []string
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: credential(t, "operador", "senha-de-teste-longa"),
 		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			chegou = append(chegou, r.URL.Path)
 		}),
 	}
 	for _, caminho := range []string{"/health", "/ready", "/assets/app.css", "/assets/fonts/x.woff2"} {
-		portao.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", caminho, nil))
+		gate.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", caminho, nil))
 	}
 	if len(chegou) != 4 {
 		t.Errorf("%v got through; expected the four free routes", chegou)
@@ -121,7 +121,7 @@ func TestProbesAndAssetsPassWithNoSession(t *testing.T) {
 func TestAValidSessionPassesAndCarriesTheUser(t *testing.T) {
 	cred := credential(t, "operador", "senha-de-teste-longa")
 	var visto string
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: cred,
 		Next: http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 			visto = auth.De(r.Context())
@@ -129,7 +129,7 @@ func TestAValidSessionPassesAndCarriesTheUser(t *testing.T) {
 	}
 
 	login := httptest.NewRecorder()
-	if !portao.SignIn(login, "operador", "senha-de-teste-longa") {
+	if !gate.SignIn(login, "operador", "senha-de-teste-longa") {
 		t.Fatal("the right credential was refused")
 	}
 	cookie := login.Result().Cookies()[0]
@@ -137,7 +137,7 @@ func TestAValidSessionPassesAndCarriesTheUser(t *testing.T) {
 	req := httptest.NewRequest("GET", "/runs", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
-	portao.ServeHTTP(rec, req)
+	gate.ServeHTTP(rec, req)
 
 	if visto != "operador" {
 		t.Errorf("operador no contexto = %q; esperava %q", visto, "operador")
@@ -151,14 +151,14 @@ func TestAValidSessionPassesAndCarriesTheUser(t *testing.T) {
 // cliente escreveria o proprio nome de usuario e a propria validade.
 func TestAForgedCookieDoesNotGetIn(t *testing.T) {
 	cred := credential(t, "operador", "senha-de-teste-longa")
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: cred,
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("a forged cookie got past the gate")
 			w.WriteHeader(http.StatusOK)
 		}),
 	}
-	for _, valor := range []string{
+	for _, value := range []string{
 		"operador|99999999999|qualquer-assinatura",
 		"operador|99999999999|",
 		"operador|99999999999",
@@ -166,22 +166,22 @@ func TestAForgedCookieDoesNotGetIn(t *testing.T) {
 		"",
 	} {
 		req := httptest.NewRequest("GET", "/runs", nil)
-		req.AddCookie(&http.Cookie{Name: auth.NomeDoCookie, Value: valor})
-		portao.ServeHTTP(httptest.NewRecorder(), req)
+		req.AddCookie(&http.Cookie{Name: auth.NomeDoCookie, Value: value})
+		gate.ServeHTTP(httptest.NewRecorder(), req)
 	}
 }
 
 // Trocar o segredo derruba as sessoes — e a alavanca de emergencia.
 func TestChangingTheSecretInvalidatesSessions(t *testing.T) {
 	cred := credential(t, "operador", "senha-de-teste-longa")
-	emissor := &auth.Portao{Cred: cred, Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
+	emissor := &auth.Gate{Cred: cred, Next: http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})}
 	rec := httptest.NewRecorder()
 	emissor.SignIn(rec, "operador", "senha-de-teste-longa")
 	cookie := rec.Result().Cookies()[0]
 
 	novo := cred
 	novo.Secret = []byte("outro-segredo-completamente-diferente-32")
-	portao := &auth.Portao{
+	gate := &auth.Gate{
 		Cred: novo,
 		Next: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			t.Error("the session survived the secret being changed")
@@ -189,7 +189,7 @@ func TestChangingTheSecretInvalidatesSessions(t *testing.T) {
 	}
 	req := httptest.NewRequest("GET", "/runs", nil)
 	req.AddCookie(cookie)
-	portao.ServeHTTP(httptest.NewRecorder(), req)
+	gate.ServeHTTP(httptest.NewRecorder(), req)
 }
 
 // `/login?next=https://malicious` must not send the operator off-site.

@@ -22,8 +22,8 @@ func TestPaginationCounts(t *testing.T) {
 // one, and reaches the edges without shrinking.
 func TestThePageWindow(t *testing.T) {
 	casos := []struct {
-		pagina, total int
-		esperado      []int
+		page, total int
+		esperado    []int
 	}{
 		{1, 250, []int{1, 2, 3, 4, 5}},
 		{7, 250, []int{5, 6, 7, 8, 9}},
@@ -31,14 +31,14 @@ func TestThePageWindow(t *testing.T) {
 		{1, 50, []int{1, 2}},
 	}
 	for _, c := range casos {
-		p := Pagination{Page: c.pagina, PorPagina: 25, Total: c.total}
+		p := Pagination{Page: c.page, PorPagina: 25, Total: c.total}
 		j := p.Window()
 		if len(j) != len(c.esperado) {
-			t.Fatalf("pagina %d de %d: %v, want %v", c.pagina, p.Paginas(), j, c.esperado)
+			t.Fatalf("pagina %d de %d: %v, want %v", c.page, p.Paginas(), j, c.esperado)
 		}
 		for i := range j {
 			if j[i] != c.esperado[i] {
-				t.Fatalf("pagina %d: %v, want %v", c.pagina, j, c.esperado)
+				t.Fatalf("pagina %d: %v, want %v", c.page, j, c.esperado)
 			}
 		}
 	}

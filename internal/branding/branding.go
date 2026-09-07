@@ -32,9 +32,9 @@ type Brand struct {
 	// Subtitle is the small-caps line under the title.
 	Subtitle string `yaml:"subtitle"`
 
-	// Frase is the quotation in the sidebar's footer. Multiple lines are
+	// Phrase is the quotation in the sidebar's footer. Multiple lines are
 	// preserved -- the break is part of the text's rhythm.
-	Frase string `yaml:"phrase"`
+	Phrase string `yaml:"phrase"`
 
 	// Logo is the graphic mark next to the title. It accepts an absolute URL
 	// (the customer's hosted logo) or an internal path starting at `/assets/`.
@@ -54,21 +54,21 @@ type Brand struct {
 // recompiling CSS, because EVERY utility resolves its colour through
 // `var(--color-*)`.
 type Theme struct {
-	Fundo         string `yaml:"background"`
-	FundoSuave    string `yaml:"background_soft"`
-	Superficie    string `yaml:"surface"`
-	Tinta         string `yaml:"ink"`
-	TextoSuave    string `yaml:"muted"`
-	Accent        string `yaml:"accent"`
-	DestaqueForte string `yaml:"accent_strong"`
+	Background     string `yaml:"background"`
+	BackgroundSoft string `yaml:"background_soft"`
+	Surface        string `yaml:"surface"`
+	Ink            string `yaml:"ink"`
+	Muted          string `yaml:"muted"`
+	Accent         string `yaml:"accent"`
+	AccentStrong   string `yaml:"accent_strong"`
 
-	Sucesso    string `yaml:"success"`
-	Falha      string `yaml:"failed"`
-	Executando string `yaml:"running"`
-	Fila       string `yaml:"queued"`
-	Repetindo  string `yaml:"retrying"`
-	Cancelado  string `yaml:"canceled"`
-	Aguardando string `yaml:"pending"`
+	Succeeded string `yaml:"success"`
+	Failed    string `yaml:"failed"`
+	Running   string `yaml:"running"`
+	Queued    string `yaml:"queued"`
+	Retrying  string `yaml:"retrying"`
+	Canceled  string `yaml:"canceled"`
+	Waiting   string `yaml:"pending"`
 }
 
 // DefaultLogo is the embedded symbol, served from the binary itself.
@@ -84,22 +84,22 @@ func Default() Brand {
 		Title:    "Brevis",
 		Subtitle: "Orchestration",
 		Logo:     DefaultLogo,
-		Frase:    "Clarity, structure and virtue\nare also part\nof whoever builds.",
+		Phrase:   "Clarity, structure and virtue\nare also part\nof whoever builds.",
 		Theme: Theme{
-			Fundo:         "#f4efe4",
-			FundoSuave:    "#fbf8f1",
-			Superficie:    "#fffdf8",
-			Tinta:         "#21180f",
-			TextoSuave:    "#6e6254",
-			Accent:        "#aa8450",
-			DestaqueForte: "#8a693d",
-			Sucesso:       "#4c7a56",
-			Falha:         "#b0503c",
-			Executando:    "#3f6d8f",
-			Fila:          "#b3822f",
-			Repetindo:     "#a35f28",
-			Cancelado:     "#8a8175",
-			Aguardando:    "#a89b8a",
+			Background:     "#f4efe4",
+			BackgroundSoft: "#fbf8f1",
+			Surface:        "#fffdf8",
+			Ink:            "#21180f",
+			Muted:          "#6e6254",
+			Accent:         "#aa8450",
+			AccentStrong:   "#8a693d",
+			Succeeded:      "#4c7a56",
+			Failed:         "#b0503c",
+			Running:        "#3f6d8f",
+			Queued:         "#b3822f",
+			Retrying:       "#a35f28",
+			Canceled:       "#8a8175",
+			Waiting:        "#a89b8a",
 		},
 	}
 }
@@ -110,17 +110,17 @@ func Default() Brand {
 //
 // Missing fields inherit the default, so a two-line file -- just the name and
 // the phrase -- is a valid file.
-func Load(caminho string) (Brand, error) {
+func Load(path string) (Brand, error) {
 	m := Default()
-	if caminho == "" {
+	if path == "" {
 		return m, nil
 	}
-	conteudo, err := os.ReadFile(caminho)
+	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return m, nil
 	}
 	if err != nil {
-		return m, fmt.Errorf("reading %s: %w", caminho, err)
+		return m, fmt.Errorf("reading %s: %w", path, err)
 	}
 	// Decodes ONTO the default: yaml.v3 only writes the fields present in the
 	// file, so the rest survives.
@@ -130,14 +130,14 @@ func Load(caminho string) (Brand, error) {
 	// `tema:` -- was ignored in silence, and the installation came up with the
 	// default identity while somebody looked for the reason their colours had
 	// not been applied.
-	dec := yaml.NewDecoder(bytes.NewReader(conteudo))
+	dec := yaml.NewDecoder(bytes.NewReader(content))
 	dec.KnownFields(true)
 	if err := dec.Decode(&m); err != nil && !errors.Is(err, io.EOF) {
 		return Default(), fmt.Errorf("%s: %w (the field names are the ones in "+
-			"brand.example.yaml; they became English in v0.7)", caminho, err)
+			"brand.example.yaml; they became English in v0.7)", path, err)
 	}
 	if err := m.Validate(); err != nil {
-		return Default(), fmt.Errorf("%s: %w", caminho, err)
+		return Default(), fmt.Errorf("%s: %w", path, err)
 	}
 	return m, nil
 }
@@ -154,18 +154,18 @@ func (m Brand) Validate() error {
 	if strings.TrimSpace(m.Title) == "" {
 		return fmt.Errorf("the title cannot be empty")
 	}
-	for nome, cor := range m.Theme.cores() {
-		if !hex.MatchString(cor) {
-			return fmt.Errorf("colour %s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", nome, cor)
+	for name, colour := range m.Theme.colours() {
+		if !hex.MatchString(colour) {
+			return fmt.Errorf("colour %s: %q is not a hex value (#rgb, #rrggbb or #rrggbbaa)", name, colour)
 		}
 	}
-	if err := validarLogo(m.Logo); err != nil {
+	if err := validateLogo(m.Logo); err != nil {
 		return err
 	}
 	return nil
 }
 
-// validarLogo accepts only https://, http:// and an internal path.
+// validateLogo accepts only https://, http:// and an internal path.
 //
 // For the same reason as the colours: the value goes into an <img>'s `src`. A
 // `javascript:` or a `data:text/html,...` there runs script in the session of
@@ -173,7 +173,7 @@ func (m Brand) Validate() error {
 // whoever operates the cluster. The list is an allowlist, not a blocklist:
 // refusing `javascript:` by name lets through the next scheme somebody
 // invents.
-func validarLogo(logo string) error {
+func validateLogo(logo string) error {
 	if logo == "" {
 		return nil
 	}
@@ -187,14 +187,17 @@ func validarLogo(logo string) error {
 		"starting with /", logo)
 }
 
-func (t Theme) cores() map[string]string {
+func (t Theme) colours() map[string]string {
 	return map[string]string{
-		"fundo": t.Fundo, "fundo_suave": t.FundoSuave, "superficie": t.Superficie,
-		"tinta": t.Tinta, "texto_suave": t.TextoSuave,
-		"destaque": t.Accent, "destaque_forte": t.DestaqueForte,
-		"sucesso": t.Sucesso, "falha": t.Falha, "executando": t.Executando,
-		"fila": t.Fila, "repetindo": t.Repetindo, "cancelado": t.Cancelado,
-		"aguardando": t.Aguardando,
+		// Keyed by the YAML NAME, not the Go field: the error this feeds names a
+		// colour, and naming one the file does not contain sends whoever is
+		// fixing it looking for a key that is not there.
+		"background": t.Background, "background_soft": t.BackgroundSoft, "surface": t.Surface,
+		"ink": t.Ink, "muted": t.Muted,
+		"accent": t.Accent, "accent_strong": t.AccentStrong,
+		"success": t.Succeeded, "failed": t.Failed, "running": t.Running,
+		"queued": t.Queued, "retrying": t.Retrying, "canceled": t.Canceled,
+		"pending": t.Waiting,
 	}
 }
 
@@ -203,63 +206,63 @@ func (t Theme) cores() map[string]string {
 // Empty when the theme is the default: the compiled sheet already carries those
 // values, and repeating them would be bytes on every page to change nothing.
 func (m Brand) CSS() string {
-	padrao := Default().Theme
-	if m.Theme == padrao {
+	fallback := Default().Theme
+	if m.Theme == fallback {
 		return ""
 	}
 
 	var b strings.Builder
 	b.WriteString(":root{")
-	escreve := func(variavel, valor string) {
-		if valor != "" {
-			fmt.Fprintf(&b, "%s:%s;", variavel, valor)
+	write := func(variable, value string) {
+		if value != "" {
+			fmt.Fprintf(&b, "%s:%s;", variable, value)
 		}
 	}
-	escreve("--color-parchment", m.Theme.Fundo)
-	escreve("--color-parchment-soft", m.Theme.FundoSuave)
-	escreve("--color-surface", m.Theme.Superficie)
-	escreve("--color-ink", m.Theme.Tinta)
-	escreve("--color-muted", m.Theme.TextoSuave)
-	escreve("--color-gold", m.Theme.Accent)
-	escreve("--color-gold-strong", m.Theme.DestaqueForte)
+	write("--color-parchment", m.Theme.Background)
+	write("--color-parchment-soft", m.Theme.BackgroundSoft)
+	write("--color-surface", m.Theme.Surface)
+	write("--color-ink", m.Theme.Ink)
+	write("--color-muted", m.Theme.Muted)
+	write("--color-gold", m.Theme.Accent)
+	write("--color-gold-strong", m.Theme.AccentStrong)
 
 	// Derived: line and highlight are the same colour with transparency.
 	// Computing them here, rather than asking the customer, keeps them from
 	// configuring a border that clashes with the ink they picked.
-	escreve("--color-line", comAlfa(m.Theme.Tinta, "1a"))
-	escreve("--color-line-soft", comAlfa(m.Theme.Tinta, "0d"))
-	escreve("--color-gold-wash", comAlfa(m.Theme.Accent, "14"))
+	write("--color-line", withAlpha(m.Theme.Ink, "1a"))
+	write("--color-line-soft", withAlpha(m.Theme.Ink, "0d"))
+	write("--color-gold-wash", withAlpha(m.Theme.Accent, "14"))
 
-	escreve("--color-state-success", m.Theme.Sucesso)
-	escreve("--color-state-failed", m.Theme.Falha)
-	escreve("--color-state-running", m.Theme.Executando)
-	escreve("--color-state-queued", m.Theme.Fila)
-	escreve("--color-state-retrying", m.Theme.Repetindo)
-	escreve("--color-state-canceled", m.Theme.Cancelado)
-	escreve("--color-state-pending", m.Theme.Aguardando)
+	write("--color-state-success", m.Theme.Succeeded)
+	write("--color-state-failed", m.Theme.Failed)
+	write("--color-state-running", m.Theme.Running)
+	write("--color-state-queued", m.Theme.Queued)
+	write("--color-state-retrying", m.Theme.Retrying)
+	write("--color-state-canceled", m.Theme.Canceled)
+	write("--color-state-pending", m.Theme.Waiting)
 
 	// The body's background is a hand-written gradient in the source CSS, so it
 	// does not follow the variables on its own.
 	fmt.Fprintf(&b, "}body{background:linear-gradient(180deg,%s 0%%,%s 44%%,%s 100%%);}",
-		m.Theme.FundoSuave, m.Theme.Fundo, m.Theme.FundoSuave)
+		m.Theme.BackgroundSoft, m.Theme.Background, m.Theme.BackgroundSoft)
 	return b.String()
 }
 
-// comAlfa appends the alpha channel to a 6-digit colour. Short formats, or ones
+// withAlpha appends the alpha channel to a 6-digit colour. Short formats, or ones
 // that already carry alpha, are returned untouched — mixing channels would give
 // a wrong colour instead of a visible error.
-func comAlfa(cor, alfa string) string {
-	if len(cor) != 7 {
-		return cor
+func withAlpha(colour, alfa string) string {
+	if len(colour) != 7 {
+		return colour
 	}
-	return cor + alfa
+	return colour + alfa
 }
 
 // Lines splits the sentence for the template. The break is the author's, and
 // turning it into a space would change the text's rhythm in the sidebar.
 func (m Brand) Lines() []string {
 	var out []string
-	for _, l := range strings.Split(m.Frase, "\n") {
+	for _, l := range strings.Split(m.Phrase, "\n") {
 		if l = strings.TrimSpace(l); l != "" {
 			out = append(out, l)
 		}
@@ -267,7 +270,7 @@ func (m Brand) Lines() []string {
 	return out
 }
 
-type chave struct{}
+type key struct{}
 
 // IntoContext injeta a marca no contexto da requisicao.
 //
@@ -275,14 +278,14 @@ type chave struct{}
 // brand, and adding it to ten components' signatures just to reach the base
 // layout would make each new screen a chance to forget.
 func IntoContext(ctx context.Context, m Brand) context.Context {
-	return context.WithValue(ctx, chave{}, m)
+	return context.WithValue(ctx, key{}, m)
 }
 
 // De recovers the brand. With no brand in the context — a test rendering
 // directly, a path that did not pass through the middleware — it returns the
 // default rather than a screen with no name at all.
 func De(ctx context.Context) Brand {
-	if m, ok := ctx.Value(chave{}).(Brand); ok {
+	if m, ok := ctx.Value(key{}).(Brand); ok {
 		return m
 	}
 	return Default()

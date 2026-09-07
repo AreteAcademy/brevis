@@ -22,7 +22,7 @@ const (
 
 // transicoes declares section 7's graph. Keeping it as data, and not as a chain
 // of ifs, makes the machine inspectable and the exhaustive test trivial.
-var transicoes = map[Status][]Status{
+var transitions = map[Status][]Status{
 	StatusCreated:  {StatusQueued, StatusCanceled},
 	StatusQueued:   {StatusRunning, StatusCanceled},
 	StatusRunning:  {StatusSuccess, StatusFailed, StatusCanceled},
@@ -45,9 +45,9 @@ func (s Status) Terminal() bool {
 }
 
 // CanGo says whether the transition is allowed.
-func (s Status) CanGo(destino Status) bool {
-	for _, d := range transicoes[s] {
-		if d == destino {
+func (s Status) CanGo(to Status) bool {
+	for _, d := range transitions[s] {
+		if d == to {
 			return true
 		}
 	}
@@ -66,7 +66,7 @@ func (e ErrInvalidTransition) Error() string {
 
 // Validate returns an error when the transition does not exist in the graph.
 func Validate(de, para Status) error {
-	if _, conhecido := transicoes[de]; !conhecido {
+	if _, known := transitions[de]; !known {
 		return fmt.Errorf("unknown state: %q", de)
 	}
 	if !de.CanGo(para) {

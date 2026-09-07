@@ -31,10 +31,10 @@ import (
 
 // The paths the kubelet mounts in every pod with a service account.
 const (
-	dirSA        = "/var/run/secrets/kubernetes.io/serviceaccount"
-	arquivoToken = dirSA + "/token"
-	arquivoCA    = dirSA + "/ca.crt"
-	arquivoNS    = dirSA + "/namespace"
+	dirSA     = "/var/run/secrets/kubernetes.io/serviceaccount"
+	tokenFile = dirSA + "/token"
+	caFile    = dirSA + "/ca.crt"
+	nsFile    = dirSA + "/namespace"
 )
 
 // Cliente speaks to the API server.
@@ -48,33 +48,33 @@ type Cliente struct {
 	// from boot makes the process start getting 401s after an hour — a failure
 	// that shows up
 	// tarde e parece problema de RBAC.
-	mu         sync.Mutex
-	token      string
-	tokenLido  time.Time
-	tokenTTL   time.Duration
-	lerArquivo func(string) ([]byte, error)
+	mu        sync.Mutex
+	token     string
+	tokenLido time.Time
+	tokenTTL  time.Duration
+	readFile  func(string) ([]byte, error)
 }
 
-// ErrForaDoCluster is returned when there is no service account mounted.
-type ErrForaDoCluster struct{ Motivo string }
+// ErrOutsideCluster is returned when there is no service account mounted.
+type ErrOutsideCluster struct{ Reason string }
 
-func (e ErrForaDoCluster) Error() string {
-	return "fora de um cluster Kubernetes: " + e.Motivo
+func (e ErrOutsideCluster) Error() string {
+	return "fora de um cluster Kubernetes: " + e.Reason
 }
 
 // NoCluster builds the client out of the environment the kubelet injects.
 func NoCluster() (*Cliente, error) {
-	host, porta := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-	if host == "" || porta == "" {
-		return nil, ErrForaDoCluster{Motivo: "KUBERNETES_SERVICE_HOST/PORT ausentes"}
+	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
+	if host == "" || port == "" {
+		return nil, ErrOutsideCluster{Reason: "KUBERNETES_SERVICE_HOST/PORT ausentes"}
 	}
-	ns, err := os.ReadFile(arquivoNS)
+	ns, err := os.ReadFile(nsFile)
 	if err != nil {
-		return nil, ErrForaDoCluster{Motivo: "namespace nao montado: " + err.Error()}
+		return nil, ErrOutsideCluster{Reason: "namespace not mounted: " + err.Error()}
 	}
-	ca, err := os.ReadFile(arquivoCA)
+	ca, err := os.ReadFile(caFile)
 	if err != nil {
-		return nil, ErrForaDoCluster{Motivo: "CA nao montada: " + err.Error()}
+		return nil, ErrOutsideCluster{Reason: "CA not mounted: " + err.Error()}
 	}
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(ca) {
@@ -85,24 +85,24 @@ func NoCluster() (*Cliente, error) {
 	transporte.TLSClientConfig = tlsConfig{pool}.build()
 
 	return &Cliente{
-		base:      fmt.Sprintf("https://%s", net_(host, porta)),
+		base:      fmt.Sprintf("https://%s", net_(host, port)),
 		namespace: strings.TrimSpace(string(ns)),
 		// No timeout on the client: the log GET with follow stays open for the
 		// task's whole duration. The cut comes from each call's context.
-		http:       &http.Client{Transport: transporte},
-		tokenTTL:   time.Minute,
-		lerArquivo: os.ReadFile,
+		http:     &http.Client{Transport: transporte},
+		tokenTTL: time.Minute,
+		readFile: os.ReadFile,
 	}, nil
 }
 
 // Namespace is where the pods are created.
 func (c *Cliente) Namespace() string { return c.namespace }
 
-func (c *Cliente) autorizar(r *http.Request) error {
+func (c *Cliente) authorize(r *http.Request) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.token == "" || time.Since(c.tokenLido) > c.tokenTTL {
-		b, err := c.lerArquivo(arquivoToken)
+		b, err := c.readFile(tokenFile)
 		if err != nil {
 			return fmt.Errorf("lendo token da service account: %w", err)
 		}
@@ -112,7 +112,7 @@ func (c *Cliente) autorizar(r *http.Request) error {
 	return nil
 }
 
-func (c *Cliente) requisicao(ctx context.Context, metodo, caminho string, corpo any) (*http.Response, error) {
+func (c *Cliente) request(ctx context.Context, metodo, path string, corpo any) (*http.Response, error) {
 	var leitor io.Reader
 	if corpo != nil {
 		b, err := json.Marshal(corpo)
@@ -121,23 +121,23 @@ func (c *Cliente) requisicao(ctx context.Context, metodo, caminho string, corpo 
 		}
 		leitor = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, metodo, c.base+caminho, leitor)
+	req, err := http.NewRequestWithContext(ctx, metodo, c.base+path, leitor)
 	if err != nil {
 		return nil, err
 	}
 	if corpo != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if err := c.autorizar(req); err != nil {
+	if err := c.authorize(req); err != nil {
 		return nil, err
 	}
 	return c.http.Do(req)
 }
 
-// erroDaAPI turns Kubernetes's Status into a readable error. The body carries
+// apiError turns Kubernetes's Status into a readable error. The body carries
 // the real reason ("pods is forbidden: ... cannot create resource"), and
 // discarding it would leave only "422", which helps nobody.
-func erroDaAPI(res *http.Response) error {
+func apiError(res *http.Response) error {
 	defer func() { _ = res.Body.Close() }()
 	var status struct {
 		Message string `json:"message"`
@@ -151,34 +151,34 @@ func erroDaAPI(res *http.Response) error {
 	return fmt.Errorf("kubernetes %s: %s", res.Status, strings.TrimSpace(string(corpo)))
 }
 
-// CriarPod cria o pod e devolve o nome atribuido.
-func (c *Cliente) CriarPod(ctx context.Context, p Pod) (Pod, error) {
-	res, err := c.requisicao(ctx, http.MethodPost,
+// CreatePod creates the pod and returns the name it was given.
+func (c *Cliente) CreatePod(ctx context.Context, p Pod) (Pod, error) {
+	res, err := c.request(ctx, http.MethodPost,
 		"/api/v1/namespaces/"+c.namespace+"/pods", p)
 	if err != nil {
 		return Pod{}, err
 	}
 	if res.StatusCode >= 300 {
-		return Pod{}, erroDaAPI(res)
+		return Pod{}, apiError(res)
 	}
 	defer func() { _ = res.Body.Close() }()
 
-	var criado Pod
-	if err := json.NewDecoder(res.Body).Decode(&criado); err != nil {
+	var created Pod
+	if err := json.NewDecoder(res.Body).Decode(&created); err != nil {
 		return Pod{}, fmt.Errorf("lendo pod criado: %w", err)
 	}
-	return criado, nil
+	return created, nil
 }
 
 // LerPod devolve o estado atual.
 func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
-	res, err := c.requisicao(ctx, http.MethodGet,
+	res, err := c.request(ctx, http.MethodGet,
 		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome, nil)
 	if err != nil {
 		return Pod{}, err
 	}
 	if res.StatusCode >= 300 {
-		return Pod{}, erroDaAPI(res)
+		return Pod{}, apiError(res)
 	}
 	defer func() { _ = res.Body.Close() }()
 
@@ -192,33 +192,33 @@ func (c *Cliente) LerPod(ctx context.Context, nome string) (Pod, error) {
 // Logs opens the container's output stream. With `follow`, the response only
 // ends when the container ends — which is why there is no timeout on the
 // http.Client.
-func (c *Cliente) Logs(ctx context.Context, nome string, seguir bool) (io.ReadCloser, error) {
+func (c *Cliente) Logs(ctx context.Context, nome string, follow1 bool) (io.ReadCloser, error) {
 	q := url.Values{}
-	q.Set("container", nomeContainer)
-	if seguir {
+	q.Set("container", containerName)
+	if follow1 {
 		q.Set("follow", "true")
 	}
-	res, err := c.requisicao(ctx, http.MethodGet,
+	res, err := c.request(ctx, http.MethodGet,
 		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome+"/log?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
 	if res.StatusCode >= 300 {
-		return nil, erroDaAPI(res)
+		return nil, apiError(res)
 	}
 	return res.Body, nil
 }
 
-// ApagarPod remove o pod.
-func (c *Cliente) ApagarPod(ctx context.Context, nome string) error {
-	res, err := c.requisicao(ctx, http.MethodDelete,
+// DeletePod remove o pod.
+func (c *Cliente) DeletePod(ctx context.Context, nome string) error {
+	res, err := c.request(ctx, http.MethodDelete,
 		"/api/v1/namespaces/"+c.namespace+"/pods/"+nome, nil)
 	if err != nil {
 		return err
 	}
 	// A 404 is success for a delete: the goal was for the pod to be gone.
 	if res.StatusCode >= 300 && res.StatusCode != http.StatusNotFound {
-		return erroDaAPI(res)
+		return apiError(res)
 	}
 	_ = res.Body.Close()
 	return nil

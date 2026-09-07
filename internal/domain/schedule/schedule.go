@@ -105,18 +105,18 @@ func (s Schedule) Slots(agora time.Time, limite int) (slots []time.Time, truncad
 	// ultimo_slot, which would make the loop walk years of cron every cycle.
 	if !s.Catchup {
 		const maxIter = 500_000
-		var ultimo time.Time
+		var last time.Time
 		for i := 0; i < maxIter; i++ {
 			prox := sched.Next(de)
 			if prox.After(agora) {
 				break
 			}
-			ultimo, de = prox, prox
+			last, de = prox, prox
 		}
-		if ultimo.IsZero() {
+		if last.IsZero() {
 			return nil, false, nil
 		}
-		return []time.Time{ultimo}, false, nil
+		return []time.Time{last}, false, nil
 	}
 
 	for {
