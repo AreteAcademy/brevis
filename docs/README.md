@@ -58,6 +58,9 @@ what actually shipped — **not** as a description of the current state.
 | [`2026-09-07-runtime-and-tooling-on-the-graph.md`](plan/2026-09-07-runtime-and-tooling-on-the-graph.md) | **done** — the runtime and tool chips on the DAG |
 | [`2026-09-07-python-context-sdk.md`](plan/2026-09-07-python-context-sdk.md) | **done** — a Python package for context, and the contract under it |
 | [`2026-09-07-open-threads.md`](plan/2026-09-07-open-threads.md) | **inventory** — what is still open, checked against the tree |
+| [`2026-09-07-proofs-that-need-infrastructure.md`](plan/2026-09-07-proofs-that-need-infrastructure.md) | **proposed** — three paths CI does not exercise, and what each needs |
+| [`2026-09-07-the-website.md`](plan/2026-09-07-the-website.md) | **proposed** — the site's source, its keys, and the Spanish it promises |
+| [`2026-09-07-deferred-by-design.md`](plan/2026-09-07-deferred-by-design.md) | **reference** — what was decided against, and what would change each decision |
 
 The specs are written in Portuguese where they were written that way, and they
 stay: a spec records a decision made on a date, and rewriting a record is not

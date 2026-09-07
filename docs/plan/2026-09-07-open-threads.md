@@ -34,83 +34,31 @@ on by a field, so the shape does not apply — but that is a reading, not a test
 
 ---
 
-## 1. Needs infrastructure that is not ours to add
+## What is left, and where each one lives now
 
-| | what | who |
+Split into three, because they are three kinds of work with three different
+owners. Each is self-contained: pick one up without reading the others.
+
+| | | honest weight |
 |---|---|---|
-| **the Kubernetes log path** | `Logs(pod, follow=true)` is the one piece of the phase pipeline with no proof. `kind` in CI is the cheap route; this machine has only real EKS contexts, production included | deferred by decision — "mais pra frente" |
-| **21 integration tests** | skip on `GCP_CREDENTIALS` and `BREVIS_IT_*`. Only BigQuery and GCS; MinIO, Postgres and MySQL already run | repository owner |
-| **the Python cross-language test** | skips without a `python3` on the runner. CI has one, so it runs — but the skip means a machine without Python reports green having proved nothing | one line in `test.yml` to make it required there |
+| [`2026-09-07-proofs-that-need-infrastructure.md`](2026-09-07-proofs-that-need-infrastructure.md) | the Kubernetes log path, the GCP integration tests, the Python skip | **the one that matters.** `Logs(follow=true)` is the only production path with no proof at all |
+| [`2026-09-07-the-website.md`](2026-09-07-the-website.md) | Portuguese source, Portuguese `i18n.json` keys, the missing Spanish | the Spanish is the only item in the whole audit that makes a document say something untrue |
+| [`2026-09-07-deferred-by-design.md`](2026-09-07-deferred-by-design.md) | the observed runtime tier, versions on the chip, context outside a run, state between runs | **not debt.** Decisions with their reasons and the condition that would change each |
 
----
+### If only one thing gets done
 
-## 2. `cmd/brevis-sdk` — ✅ done
+The `kind` job in CI. Everything else on this list is debt, cosmetics, or
+opportunity; that one is a code path running in production with nothing
+exercising it — and it is the path that would have caught the
+`terminationMessagePath` gap in the commit that introduced it rather than in a
+conversation two days later.
 
-The format handling was three defects, not the two counted: `run` hardcoded
-CSV, `extract` mapped an unknown `--format` to CSV in silence, and `extract`'s
-help promised auto-detection the SDK does not do. One resolver now decides, and
-refuses what it does not know.
+### Already done since this audit was written
 
-The version reads from `runtime/debug` instead of a literal that had been stale
-since the split — the same mechanism `sdk.SDKVersion` uses, so nobody types it
-and it cannot go wrong.
-
-**And the module had never been linted.** Four errcheck findings sat in it, in
-the same file whose `run` silently mis-parsed every JSON URL. It is in CI now.
-
-**The decision from the previous inventory is now moot for the wrong reason to
-leave unstated**: `run` and `load` work, so "cut it back to `extract`" no longer
-removes a lie. Whether the CLI should exist alongside `sdk.Run` is a product
-question, not a defect.
-
----
-
-## 3. The website
-
-| | state |
-|---|---|
-| `site/build.py`, `site/README.md`, `site/css/*`, `site/js/*` | source comments in Portuguese, against the rule `CONTRIBUTING.md` states |
-| `site/i18n.json` | the **keys** are Portuguese, and they are referenced from `templates/*.html` — renaming touches both sides at once |
-| **Spanish** | `IDIOMAS = ["pt", "en"]`, and `CONTRIBUTING.md` promises "Portuguese, English and Spanish" |
-
-`site/content/pt/**` stays Portuguese: that is the translation the rule exists to
-protect.
-
-The Spanish gap is the one that misleads, and it has two honest resolutions:
-ship the translation, or correct the sentence. Leaving both as they are is the
-only option that does not.
-
----
-
-## 4. Smaller — ✅ done
-
-- **The CI check that could not fail** took its exit status from `head`. It now
-  fails the build instead of printing a warning nobody reads.
-- **The version was typed twice** in `lib/python-context`. `__version__` reads
-  the installed package's metadata, and says `devel` from a checkout.
-- **The CLI reference written twice** now has one owner and a gate:
-  `.github/scripts/cli-docs-check.sh` reads the subcommands out of the binaries
-  and fails if either document has stopped naming one. It compares NAMES, not
-  prose — two documents describing a command differently is a judgement call;
-  one silently missing a command that exists is not.
-
----
-
-## 5. Deferred by decision, with the reason recorded
-
-Not oversights. Each is written down where it will be found again.
-
-- **The observed runtime tier** — a step announcing its own language over the
-  `@brevis:` protocol, the way the SDK badge does. Needs a wire-format change
-  and an SDK release; the model already has `Source` and `observed` at the top
-  of the precedence list, so it costs no redesign.
-- **Versions on the runtime chip** — `Python 3.12` beats `Python`, and nothing
-  reliably carries the version. Guessing one is worse than omitting it.
-- **Context read outside a run** — the current design's one real limit. If a
-  notebook or another service ever needs it, that is the day the API earns its
-  keep, and the cost is the token mechanism rather than a redesign.
-- **State between runs** — deliberately not the context feature. Different
-  questions, and blurring them makes an accidental database.
+- `cmd/brevis-sdk`'s format handling (three defects, not the two counted), its
+  version, and the fact that the module had never been linted.
+- The CI check that could not fail, the version typed twice in the Python
+  library, and the CLI reference with no gate keeping its two copies in step.
 
 ---
 
