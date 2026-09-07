@@ -7,8 +7,8 @@ import (
 	"cloud.google.com/go/bigquery"
 )
 
-// Critério 2: coluna declarada que nem o Transform nem o Metadata entregam.
-func TestColumnsRecusaColunaQueATabelaNaoTem(t *testing.T) {
+// Criterion 2: a declared column neither Transform nor Metadata delivers.
+func TestColumnsRefusesAColumnTheTableLacks(t *testing.T) {
 	schema := bigquery.Schema{
 		{Name: "ingestion_id", Type: bigquery.StringFieldType},
 		{Name: "payload", Type: bigquery.JSONFieldType},
@@ -26,9 +26,9 @@ func TestColumnsRecusaColunaQueATabelaNaoTem(t *testing.T) {
 	}
 }
 
-// Assimétrico, como a reconcile: coluna da tabela que a declaração omite fica
-// NULL, e uma landing legitimamente tem dessas.
-func TestColumnsAceitaColunaDaTabelaNaoDeclarada(t *testing.T) {
+// Asymmetric, like reconcile: a table column the declaration omits stays
+// NULL, and a landing table legitimately has those.
+func TestColumnsAcceptsAnUndeclaredTableColumn(t *testing.T) {
 	schema := bigquery.Schema{
 		{Name: "ingestion_id", Type: bigquery.StringFieldType},
 		{Name: "payload", Type: bigquery.JSONFieldType},

@@ -91,10 +91,10 @@ func TestKeyWithMatchesPython(t *testing.T) {
 	}
 }
 
-// TestKeyWithRecusaFloat64NomeandoOCampo: a recusa do item 11 chega ao
+// TestKeyWithRefusesAFloat64NamingTheField: a recusa do item 11 chega ao
 // consumer through the door they use, and names the field -- without the name,
 // whoever reads the error does not know which of the six it is.
-func TestKeyWithRecusaFloat64NomeandoOCampo(t *testing.T) {
+func TestKeyWithRefusesAFloat64NamingTheField(t *testing.T) {
 	_, err := sdk.KeyWith(pycompat.Text, "a", "b")(map[string]any{
 		"a": "ok", "b": float64(19),
 	})

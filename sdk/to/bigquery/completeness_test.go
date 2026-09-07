@@ -8,23 +8,23 @@ import (
 	"testing"
 )
 
-// bigquery.Table é um adaptador: ele traduz os seus campos para a LoadConfig
-// que o pacote load consome. Um campo do LoadConfig que ele nunca escreve é um
-// ajuste que o consumidor da fachada não tem como fazer -- e nada quebra,
+// bigquery.Table is an adapter: it translates its fields into the LoadConfig
+// the load package consumes. A LoadConfig field it never writes is a
+// adjustment the facade's consumer has no way to make -- and nothing breaks,
 // nada avisa.
 //
 // Aconteceu de verdade: a fase 0 parou de repassar Provider e Entity, e toda
-// tabela criada desde então saiu sem os labels de atribuição de custo. Nenhum
-// teste viu, porque contagem de linha nenhuma muda.
+// table created since then came out with no cost-attribution labels. No
+// test saw it, because no row count changes.
 //
-// Este teste lê os dois arquivos e compara. É grosseiro de propósito: ele
-// falha quando alguém acrescenta um campo ao LoadConfig e esquece de ligá-lo
-// aqui, que é exatamente quando se quer ser incomodado.
-func TestTodoCampoDoLoadConfigEAlcancavel(t *testing.T) {
+// This test reads both files and compares. It is crude on purpose: it
+// fails when somebody adds a field to LoadConfig and forgets to wire it up
+// here, which is exactly when you want to be bothered.
+func TestEveryLoadConfigFieldIsReachable(t *testing.T) {
 	campos := camposDe(t, "../../internal/core/types.go", "LoadConfig")
 	escritos := escritosPor(t, "bigquery.go")
 
-	// Estes o adaptador não escreve, e por razões declaradas.
+	// These the adapter does not write, and for stated reasons.
 	naoSeAplica := map[string]string{
 		"Format":   "sempre ndjson: é o único formato que o load escreve",
 		"Provider": "vem do lote, não do Target -- ver Write",

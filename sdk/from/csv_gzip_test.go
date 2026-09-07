@@ -38,7 +38,7 @@ func lerTudo(t *testing.T, r core.Reader) []map[string]any {
 // `;` is the de facto standard across much of Europe and in the open-data
 // portals. Without this option, the way out was decoding the CSV by hand -- that
 // is, reimplementing csv.Reader to change one character.
-func TestHTTPComDelimitadorPontoEVirgula(t *testing.T) {
+func TestHTTPWithASemicolonDelimiter(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
 		_, _ = w.Write(csvPontoEVirgula())
@@ -56,7 +56,7 @@ func TestHTTPComDelimitadorPontoEVirgula(t *testing.T) {
 
 // Without the delimiter, the whole line becomes ONE column whose name is the
 // whole header -- the defect the field exists to prevent.
-func TestSemDelimitadorOCSVComPontoEVirgulaViraUmaColunaSo(t *testing.T) {
+func TestWithoutADelimiterASemicolonCSVBecomesOneColumn(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(csvPontoEVirgula())
 	}))
@@ -71,7 +71,7 @@ func TestSemDelimitadorOCSVComPontoEVirgulaViraUmaColunaSo(t *testing.T) {
 // A `.csv.gz` served as CONTENT is how nearly every open-data portal publishes a
 // large file. from.Files already decompressed by extension; the rule existed in
 // the SDK and simply did not reach HTTP.
-func TestHTTPDescomprimeGzip(t *testing.T) {
+func TestHTTPDecompressesGzip(t *testing.T) {
 	var comprimido bytes.Buffer
 	gz := gzip.NewWriter(&comprimido)
 	_, _ = gz.Write(csvPontoEVirgula())
@@ -107,7 +107,7 @@ func TestHTTPDescomprimeGzip(t *testing.T) {
 
 // A response that announces gzip and is not fails saying so, and not as a
 // decoding error about invalid CSV.
-func TestGzipMentirosoFalhaDizendoOQueE(t *testing.T) {
+func TestALyingGzipFailsSayingWhatItIs(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
 		_, _ = w.Write([]byte("isto nao e gzip"))
@@ -126,7 +126,7 @@ func TestGzipMentirosoFalhaDizendoOQueE(t *testing.T) {
 
 // The same delimiter holds for files, which is where a `;` CSV usually
 // vir depois de baixado.
-func TestFilesComDelimitador(t *testing.T) {
+func TestFilesWithADelimiter(t *testing.T) {
 	dir := t.TempDir()
 	caminho := filepath.Join(dir, "dados.csv")
 	if err := os.WriteFile(caminho, csvPontoEVirgula(), 0o600); err != nil {

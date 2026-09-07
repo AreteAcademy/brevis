@@ -46,9 +46,10 @@ func TestToColumnRowByRow(t *testing.T) {
 			float64(instante.Unix()), "timestamp with time zone", instante,
 			"um JSON traz epoch como float64, e recusa-lo perderia a linha",
 		},
-		// numeric tem caso proprio, em TestNumericVaiTipadoENaoComoTexto: ele
-		// nao sai como string nem como float, e sim como pgtype.Numeric --
-		// que preserva a precisao E evita um erro construido por linha dentro
+		// numeric tem caso proprio, em TestNumericGoesTypedAndNotAsText: ele
+		// comes out neither as a string nor as a float, but as a pgtype.Numeric
+		// --
+		// which preserves the precision AND avoids an error built per row inside
 		// do pgx.
 		{"text passa como veio", "qualquer coisa", "text", "qualquer coisa", ""},
 		{"integer passa como veio", int64(42), "integer", int64(42), ""},
@@ -74,9 +75,9 @@ func TestToColumnRowByRow(t *testing.T) {
 	}
 }
 
-// TestParaColunaJSONSerializa: um mapa numa coluna jsonb tem de virar
-// documento, nao a representacao Go de um mapa.
-func TestParaColunaJSONSerializa(t *testing.T) {
+// TestToColumnSerializesJSON: a map in a jsonb column has to become
+// a document, not Go's representation of a map.
+func TestToColumnSerializesJSON(t *testing.T) {
 	got, err := toColumn(map[string]any{"a": 1}, "jsonb")
 	if err != nil {
 		t.Fatal(err)
@@ -90,9 +91,9 @@ func TestParaColunaJSONSerializa(t *testing.T) {
 	}
 }
 
-// TestParaColunaDataTrunca: uma coluna date nao guarda hora, e mandar uma hora
-// que o registro nao tinha e inventar dado.
-func TestParaColunaDataTrunca(t *testing.T) {
+// TestToColumnTruncatesADate: a date column keeps no time, and sending a time
+// the record did not have is inventing data.
+func TestToColumnTruncatesADate(t *testing.T) {
 	got, err := toColumn("2026-09-05T23:59:59Z", "date")
 	if err != nil {
 		t.Fatal(err)
@@ -103,9 +104,9 @@ func TestParaColunaDataTrunca(t *testing.T) {
 	}
 }
 
-// TestParaColunaErroDizOFormato: "cannot find encode plan" nao diz a ninguem o
-// que fazer. Este erro diz.
-func TestParaColunaErroDizOFormato(t *testing.T) {
+// TestToColumnsErrorSaysTheFormat: "cannot find encode plan" tells nobody
+// what to do. This error does.
+func TestToColumnsErrorSaysTheFormat(t *testing.T) {
 	_, err := toColumn("cinco de setembro", "timestamp with time zone")
 	if err == nil {
 		t.Fatal("texto que nao e data passou")
@@ -117,9 +118,9 @@ func TestParaColunaErroDizOFormato(t *testing.T) {
 	}
 }
 
-// TestParaColunaElideValorLongo: um campo de 4 KB numa mensagem de erro e
-// ruido, e pode levar dado que ninguem quer em log.
-func TestParaColunaElideValorLongo(t *testing.T) {
+// TestToColumnElidesALongValue: a 4 KB field inside an error message is
+// noise, and it can carry data nobody wants in a log.
+func TestToColumnElidesALongValue(t *testing.T) {
 	longo := strings.Repeat("x", 4000)
 	_, err := toColumn(longo, "date")
 	if err == nil {
@@ -130,18 +131,20 @@ func TestParaColunaElideValorLongo(t *testing.T) {
 	}
 }
 
-// TestNumericVaiTipadoENaoComoTexto fixa um ganho medido, para que ele não
-// volte em silêncio.
+// TestNumericGoesTypedAndNotAsText pins a measured gain, so it does not
+// come back in silence.
 //
 // Passando a string crua, o pgx tenta um plano de encode string->numeric, ele
-// falha, e o pgx constrói um erro só para cair no plano seguinte -- uma vez por
-// linha. Numa carga de 10 mil rows isso era ~30% das alocações, todas em
-// newEncodeError e fmt.Errorf: trabalho para produzir um erro que ninguém lê.
+// fails, and pgx builds an error just to fall through to the next plan -- once
+// per
+// row. On a 10-thousand-row load that was ~30% of the allocations, all in
+// newEncodeError and fmt.Errorf: work spent producing an error nobody reads.
 //
-// Medido contra o servidor: 290.529 alocações passaram a 190.506, a memória
-// caiu de 7,1 MB para 4,5 MB, e a vazão subiu de 352 mil para ~434 mil
+// Measured against the server: 290,529 allocations became 190,506, memory
+// fell from 7.1 MB to 4.5 MB, and throughput rose from 352 thousand to ~434
+// thousand
 // rows/s.
-func TestNumericVaiTipadoENaoComoTexto(t *testing.T) {
+func TestNumericGoesTypedAndNotAsText(t *testing.T) {
 	got, err := toColumn("1234567890123456.78", "numeric")
 	if err != nil {
 		t.Fatal(err)
@@ -155,7 +158,8 @@ func TestNumericVaiTipadoENaoComoTexto(t *testing.T) {
 		t.Error("o número não foi lido")
 	}
 
-	// E a precisão continua exata: era esse o ponto de guardar como texto.
+	// And the precision is still exact: that was the point of keeping it as
+	// text.
 	b, err := n.MarshalJSON()
 	if err != nil {
 		t.Fatal(err)
@@ -165,8 +169,9 @@ func TestNumericVaiTipadoENaoComoTexto(t *testing.T) {
 	}
 }
 
-// TestNumericInvalidoDizOQueRecebeu, sem despejar o valor inteiro em log.
-func TestNumericInvalidoDizOQueRecebeu(t *testing.T) {
+// TestAnInvalidNumericSaysWhatItGot, without dumping the whole value into the
+// log.
+func TestAnInvalidNumericSaysWhatItGot(t *testing.T) {
 	if _, err := toColumn("dez reais", "numeric"); err == nil {
 		t.Fatal("texto que não é número passou")
 	}
@@ -177,9 +182,10 @@ func TestNumericInvalidoDizOQueRecebeu(t *testing.T) {
 	}
 }
 
-// TestNumericNaoTextualPassaComoVeio: quem recusa é o servidor, com a mensagem
-// dele, que é melhor que uma nossa adivinhando.
-func TestNumericNaoTextualPassaComoVeio(t *testing.T) {
+// TestANonTextualNumericPassesThrough: the server is what refuses, with a
+// message of
+// its own, which beats one of ours guessing.
+func TestANonTextualNumericPassesThrough(t *testing.T) {
 	got, err := toColumn(float64(10.5), "numeric")
 	if err != nil {
 		t.Fatal(err)

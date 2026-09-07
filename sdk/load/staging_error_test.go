@@ -15,9 +15,10 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestStagingErrorNamesTheBucketAndTheWayOut: o erro que o consumidor viu era
+// TestStagingErrorNamesTheBucketAndTheWayOut: the error the consumer saw was
 // "close gcs writer: googleapi: Error 404: The specified bucket does not
-// exist". Ele nao dizia qual bucket, nem que o padrao mudou na v0.25.0, nem
+// exist". It said neither which bucket, nor that the default changed in
+// v0.25.0, nor
 // as duas saidas. Este teste fixa as quatro coisas.
 func TestStagingErrorNamesTheBucketAndTheWayOut(t *testing.T) {
 	l := &Loader{cfg: &core.LoadConfig{
@@ -38,11 +39,11 @@ func TestStagingErrorNamesTheBucketAndTheWayOut(t *testing.T) {
 
 			for _, exigido := range []string{
 				"projeto-brevis-staging", // qual bucket
-				"12000",                  // por que estagiou
+				"12000",                  // why it staged
 				"InlineLimit",            // saida 1
 				"create the bucket",      // saida 2
-				"v0.25.0",                // por que o nome mudou
-				"StagingBucket",          // como escolher outro
+				"v0.25.0",                // why the name changed
+				"StagingBucket",          // how to choose another
 			} {
 				if !strings.Contains(msg, exigido) {
 					t.Errorf("mensagem nao diz %q:\n%s", exigido, msg)
@@ -52,10 +53,11 @@ func TestStagingErrorNamesTheBucketAndTheWayOut(t *testing.T) {
 	}
 }
 
-// TestStagingErrorNaoInventaDiagnostico: uma falha que nao e bucket ausente
-// -- rede, permissao -- nao pode virar "crie o bucket". Envolver o erro certo
-// importa mais do que ter conselho para dar.
-func TestStagingErrorNaoInventaDiagnostico(t *testing.T) {
+// TestStagingErrorInventsNoDiagnosis: a failure that is not a missing bucket
+// -- network, permissions -- must not become "create the bucket". Wrapping the
+// right error
+// matters more than having advice to give.
+func TestStagingErrorInventsNoDiagnosis(t *testing.T) {
 	l := &Loader{cfg: &core.LoadConfig{StagingBucket: "b", StagingPrefix: "p/"}}
 	causa := errors.New("connection reset by peer")
 
@@ -71,13 +73,16 @@ func TestStagingErrorNaoInventaDiagnostico(t *testing.T) {
 	}
 }
 
-// TestLoadViaGCSUsaStagingError e o teste que importa: os dois acima provam a
-// funcao, este prova o ponto de uso. Sem ele, trocar a chamada de volta por
-// fmt.Errorf("close gcs writer: %w", err) passaria verde -- foi o que
-// aconteceu quando escrevi so os de cima.
+// TestLoadViaGCSUsesStagingError is the test that matters: the two above prove
+// the
+// function, this one proves the point of use. Without it, swapping the call back
+// for a
+// fmt.Errorf("close gcs writer: %w", err) would pass green -- which is what
+// happened when only the ones above were written.
 //
-// O GCS falso responde 404 em tudo, que e o que um bucket ausente parece.
-func TestLoadViaGCSUsaStagingError(t *testing.T) {
+// The fake GCS answers 404 to everything, which is what a missing bucket looks
+// like.
+func TestLoadViaGCSUsesStagingError(t *testing.T) {
 	gcs := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte(`{"error":{"code":404,"message":"The specified bucket does not exist"}}`))

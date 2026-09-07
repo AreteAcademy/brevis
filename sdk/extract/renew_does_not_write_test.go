@@ -89,7 +89,7 @@ func rodarComStore(t *testing.T, srv *httptest.Server, store core.CredentialStor
 	return nil
 }
 
-// TestRenovacaoQueNaoAutenticaNaoGrava e o §10 do SDK_V9.md.
+// TestARefreshThatDoesNotAuthenticateDoesNotWrite e o §10 do SDK_V9.md.
 //
 // NextAuth answers 200 with a null body and a Set-Cookie EMPTYING the values for
 // a session that did not authenticate. Writing that, with the read order being
@@ -97,7 +97,7 @@ func rodarComStore(t *testing.T, srv *httptest.Server, store core.CredentialStor
 // fixing anything: the dead value always wins, and the only way out is deleting
 // the object by hand. The symptom for whoever operates it is a 401 with no
 // explanation.
-func TestRenovacaoQueNaoAutenticaNaoGrava(t *testing.T) {
+func TestARefreshThatDoesNotAuthenticateDoesNotWrite(t *testing.T) {
 	srv, _ := loggedOutSession(t, "")
 	store := &spyStore{}
 

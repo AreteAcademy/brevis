@@ -10,7 +10,7 @@ func linhaCore(campos map[string]any) []Envelope {
 	return []Envelope{{Payload: campos}}
 }
 
-func TestColumnsRecusaColunaQueNinguemEntregou(t *testing.T) {
+func TestColumnsRefusesAColumnNobodyDelivered(t *testing.T) {
 	err := CheckColumns(
 		[]string{"ingestion_id", "provider", "entity", "payload"},
 		linhaCore(map[string]any{"ingestion_id": "x", "provider": "p", "payload": "{}"}),
@@ -21,14 +21,15 @@ func TestColumnsRecusaColunaQueNinguemEntregou(t *testing.T) {
 	if !strings.Contains(err.Error(), "entity") {
 		t.Errorf("o erro não nomeia a coluna: %v", err)
 	}
-	// E diz o que a linha de fato tem, para o conserto sair de uma leitura.
+	// And it says what the row actually has, so the fix comes out of one
+	// reading.
 	if !strings.Contains(err.Error(), "provider") {
 		t.Errorf("o erro não lista o que a linha tem: %v", err)
 	}
 }
 
-// Critério 3: campo na linha que a declaração não lista.
-func TestColumnsRecusaCampoNaoDeclarado(t *testing.T) {
+// Criterion 3: a field in the row the declaration does not list.
+func TestColumnsRefusesAnUndeclaredField(t *testing.T) {
 	err := CheckColumns(
 		[]string{"provider", "payload"},
 		linhaCore(map[string]any{"provider": "p", "payload": "{}", "surpresa": 1}),
@@ -41,9 +42,10 @@ func TestColumnsRecusaCampoNaoDeclarado(t *testing.T) {
 	}
 }
 
-// As duas colunas do Metadata podem ser declaradas, e é o ponto da spec:
-// dentro do Transform elas jamais poderiam, porque ainda não existem lá.
-func TestColumnsAceitaAsColunasDoMetadata(t *testing.T) {
+// The Metadata block's two columns can be declared, and that is the spec's
+// point:
+// inside Transform they never could, because they do not exist there yet.
+func TestColumnsAcceptsTheMetadataColumns(t *testing.T) {
 	err := CheckColumns(
 		[]string{"ingestion_id", "ingestion_loaded_at", "provider", "entity", "source_key", "payload"},
 		linhaCore(map[string]any{
@@ -70,7 +72,7 @@ func TestResolvePrecedencia(t *testing.T) {
 	}
 }
 
-func TestEnvIntCaiNoPadraoEmVezDeQuebrar(t *testing.T) {
+func TestEnvIntFallsBackToTheDefaultInsteadOfBreaking(t *testing.T) {
 	t.Setenv("BREVIS_TESTE_N", "nao-e-numero")
 	if got := EnvInt("BREVIS_TESTE_N", 7); got != 7 {
 		t.Errorf("um valor ilegível não pode derrubar a pipeline: %d", got)
@@ -81,8 +83,9 @@ func TestEnvIntCaiNoPadraoEmVezDeQuebrar(t *testing.T) {
 	}
 }
 
-// Um nível de log inválido derruba a pipeline? Não: ele avisa e segue.
-func TestLogLevelNaoDerrubaComValorInvalido(t *testing.T) {
+// Does an invalid log level take the pipeline down? No: it warns and carries
+// on.
+func TestAnInvalidLogLevelDoesNotBringItDown(t *testing.T) {
 	t.Setenv(EnvLogLevel, "nao-existe")
 	if got := LogLevel(); got != slog.LevelInfo {
 		t.Errorf("LogLevel = %v, esperado info", got)

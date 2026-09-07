@@ -29,7 +29,7 @@ func TestParseLocation(t *testing.T) {
 	}
 }
 
-func TestParseLocationRecusaOQueNaoSabeLer(t *testing.T) {
+func TestParseLocationRefusesWhatItCannotRead(t *testing.T) {
 	for _, in := range []string{"", "azure://b/x", "s3:///x"} {
 		if _, err := ParseLocation(in); err == nil {
 			t.Errorf("%q deveria ser recusado", in)

@@ -72,7 +72,7 @@ func TestFilesLeEmOrdemDeterminística(t *testing.T) {
 	}
 }
 
-func TestFilesLeCSVComCabecalho(t *testing.T) {
+func TestFilesReadsCSVWithAHeader(t *testing.T) {
 	dir := t.TempDir()
 	escreve(t, dir, "p.csv", "nome,idade\nana,30\nbeto,41\n")
 
@@ -91,7 +91,7 @@ func TestFilesLeCSVComCabecalho(t *testing.T) {
 	}
 }
 
-func TestFilesDescomprimeGzipPelaExtensao(t *testing.T) {
+func TestFilesDecompressesGzipByExtension(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "a.ndjson.gz"), gzipado(t, "{\"id\":1}\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -108,7 +108,7 @@ func TestFilesDescomprimeGzipPelaExtensao(t *testing.T) {
 
 // A .gz that is not gzip has to fail naming the file, not as "invalid JSON"
 // further down.
-func TestFilesGzipInvalidoNomeiaOArquivo(t *testing.T) {
+func TestFilesInvalidGzipNamesTheFile(t *testing.T) {
 	dir := t.TempDir()
 	escreve(t, dir, "mentira.ndjson.gz", "isto nao e gzip")
 
@@ -123,7 +123,7 @@ func TestFilesGzipInvalidoNomeiaOArquivo(t *testing.T) {
 
 // An empty directory is a result, not a failure -- for the same reason a 204 is
 // not.
-func TestFilesDiretorioVazioNaoEFalha(t *testing.T) {
+func TestFilesAnEmptyDirectoryIsNotAFailure(t *testing.T) {
 	got, err := le(t, Files{Path: filepath.Join(t.TempDir(), "*.ndjson")})
 	if err != nil {
 		t.Fatalf("um diretório sem arquivos é uma janela vazia: %v", err)
@@ -134,7 +134,7 @@ func TestFilesDiretorioVazioNaoEFalha(t *testing.T) {
 }
 
 // The path and the backend have to match, and the error names both.
-func TestFilesRecusaCaminhoSemStore(t *testing.T) {
+func TestFilesRefusesAPathWithNoStore(t *testing.T) {
 	_, err := Files{Path: "s3://bucket/x/*.ndjson"}.Read(context.Background(), core.ReadOptions{})
 	if err == nil {
 		t.Fatal("um caminho s3:// sem Store não tem como ser lido")
@@ -146,7 +146,7 @@ func TestFilesRecusaCaminhoSemStore(t *testing.T) {
 	}
 }
 
-func TestFilesRecusaStoreDeOutroEsquema(t *testing.T) {
+func TestFilesRefusesAStoreForAnotherScheme(t *testing.T) {
 	_, err := Files{Path: "gs://b/x/*.ndjson", Store: falso{"s3"}}.
 		Read(context.Background(), core.ReadOptions{})
 	if err == nil {
@@ -157,7 +157,7 @@ func TestFilesRecusaStoreDeOutroEsquema(t *testing.T) {
 	}
 }
 
-func TestFilesContaOsBytesLidos(t *testing.T) {
+func TestFilesCountsTheBytesRead(t *testing.T) {
 	dir := t.TempDir()
 	corpo := "{\"id\":1}\n{\"id\":2}\n"
 	escreve(t, dir, "a.ndjson", corpo)

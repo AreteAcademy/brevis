@@ -39,7 +39,7 @@ func unico(t *testing.T, dir string) string {
 	return achados[0]
 }
 
-func TestFilesEscreveNDJSON(t *testing.T) {
+func TestFilesWritesNDJSON(t *testing.T) {
 	dir := t.TempDir()
 
 	res, err := Files{Path: dir + "/"}.Write(context.Background(), lote(3), core.WriteOptions{})
@@ -69,7 +69,7 @@ func TestFilesEscreveNDJSON(t *testing.T) {
 
 // Nothing is added: the record comes out as Transform left it, the same on every
 // destination.
-func TestFilesNaoAcrescentaNadaSemMetadata(t *testing.T) {
+func TestFilesAddsNothingWithoutMetadata(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := (Files{Path: dir + "/"}).Write(context.Background(), lote(1), core.WriteOptions{}); err != nil {
 		t.Fatal(err)
@@ -110,9 +110,9 @@ func TestFilesComprime(t *testing.T) {
 	}
 }
 
-// Um diretório não tem chave para casar, e uma flag ignorada em silêncio é
-// pior que um erro.
-func TestFilesRecusaFormatoQueNaoEscreve(t *testing.T) {
+// A directory has no key to match on, and a flag ignored in silence is
+// worse than an error.
+func TestFilesRefusesAFormatItDoesNotWrite(t *testing.T) {
 	_, err := Files{Path: t.TempDir() + "/", Format: "parquet"}.
 		Write(context.Background(), lote(1), core.WriteOptions{})
 	if err == nil {
@@ -135,7 +135,7 @@ func TestFilesConfereColumns(t *testing.T) {
 	}
 }
 
-func TestFilesEscreveCSVComUniaoDosCampos(t *testing.T) {
+func TestFilesWritesCSVWithTheUnionOfTheFields(t *testing.T) {
 	dir := t.TempDir()
 	registros := []core.Envelope{
 		{Payload: map[string]any{"a": 1, "b": 2}},
@@ -158,7 +158,7 @@ func TestFilesEscreveCSVComUniaoDosCampos(t *testing.T) {
 
 // Two batches do not overwrite each other: a directory has no notion of "the
 // same rows again".
-func TestFilesNaoSobrescreveOLoteAnterior(t *testing.T) {
+func TestFilesDoesNotOverwriteThePreviousBatch(t *testing.T) {
 	dir := t.TempDir()
 	d := Files{Path: dir + "/"}
 	for i := 0; i < 2; i++ {
@@ -175,7 +175,7 @@ func TestFilesNaoSobrescreveOLoteAnterior(t *testing.T) {
 
 // No temporary file is left behind: the write is temp + rename, and the rename
 // is atomic on the same filesystem.
-func TestFilesNaoDeixaTemporario(t *testing.T) {
+func TestFilesLeavesNoTemporaryFile(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := (Files{Path: dir + "/"}).Write(context.Background(), lote(1), core.WriteOptions{}); err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func TestFilesNaoDeixaTemporario(t *testing.T) {
 	}
 }
 
-func TestFilesRecusaCaminhoSemStore(t *testing.T) {
+func TestFilesRefusesAPathWithNoStore(t *testing.T) {
 	_, err := Files{Path: "gs://b/x/"}.Write(context.Background(), lote(1), core.WriteOptions{})
 	if err == nil {
 		t.Fatal("um caminho gs:// sem Store não tem como ser escrito")
@@ -198,9 +198,9 @@ func TestFilesRecusaCaminhoSemStore(t *testing.T) {
 	}
 }
 
-// Um diretório não tem chave para casar, e uma flag ignorada em silêncio é
-// pior que um erro.
-func TestFilesRecusaDedup(t *testing.T) {
+// A directory has no key to match on, and a flag ignored in silence is worse
+// than an error.
+func TestFilesRefusesDedup(t *testing.T) {
 	_, err := Files{Path: t.TempDir() + "/"}.Write(context.Background(), lote(1),
 		core.WriteOptions{Dedup: core.DedupMerge})
 	if err == nil {
@@ -216,7 +216,7 @@ func TestFilesRecusaDedup(t *testing.T) {
 // The partitioning reads the column the chain composed, not one the
 // destination
 // acrescenta.
-func TestFilesParticionaPelaColunaDaLinha(t *testing.T) {
+func TestFilesPartitionsByTheRowsColumn(t *testing.T) {
 	dir := t.TempDir()
 	registros := []core.Envelope{{Payload: map[string]any{
 		"sku": "W-1", "ingestion_loaded_at": "2026-09-04T10:00:00Z",

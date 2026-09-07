@@ -241,7 +241,8 @@ func TestLoadReturnsResultOnFailure(t *testing.T) {
 		ProjectID: "p", Dataset: "d", Table: "t", Format: "ndjson",
 		Columns: []string{"a"}}}
 
-	// Uma linha que não bate com a declaração falha antes de tocar o cliente.
+	// A row that does not match the declaration fails before touching the
+	// client.
 	result, err := l.Load(context.Background(), core.Envelope{
 		Provider: "gov", Entity: "tx", Payload: map[string]any{"b": 1},
 	})
@@ -352,7 +353,7 @@ func TestCreateTableAloneIsEnough(t *testing.T) {
 	}
 }
 
-// As opções de partição particionam em ingestion_loaded_at, então a coluna
+// The partition options partition on ingestion_loaded_at, so the column
 // tem de estar declarada.
 func TestPartitionOptionsNeedTheLoadedAtColumn(t *testing.T) {
 	for _, c := range []core.LoadConfig{
@@ -497,9 +498,10 @@ func TestLayoutDoesNotInferOverCreateSQL(t *testing.T) {
 	}
 }
 
-// Quando a declaração nomeia uma coluna do SDK, é o SDK que cria a tabela --
-// então o job não pode carregar schema próprio, ou o autodetect relaxaria o
-// NOT NULL que a criação acabou de pôr.
+// When the declaration names one of the SDK's columns, the SDK is what creates
+// the table --
+// so the job must not carry a schema of its own, or autodetect would relax the
+// NOT NULL the creation had just put in place.
 func TestLayoutOnTheJobIsOffWhenTheSDKCreatesTheTable(t *testing.T) {
 	loader, file := layoutFor(&core.LoadConfig{
 		Format: "ndjson", CreateTable: true,
@@ -613,9 +615,9 @@ func TestStagedFileIsDeletedByDefault(t *testing.T) {
 	}
 }
 
-// A precondição do merge passou a ser a coluna que ele de fato usa, e ela é
-// conferida contra a declaração do chamador.
-func TestDedupMergeExigeAColunaIngestionID(t *testing.T) {
+// The merge's precondition became the column it actually uses, and it is
+// checked against the caller's declaration.
+func TestDedupMergeRequiresTheIngestionIDColumn(t *testing.T) {
 	_, err := resolveConfig(&core.LoadConfig{
 		ProjectID: "p", Dataset: "d", Table: "t", Format: "ndjson",
 		Dedup: core.DedupMerge, Columns: []string{"sku", "quantidade"},
@@ -637,7 +639,8 @@ func TestDedupMergeExigeAColunaIngestionID(t *testing.T) {
 		t.Errorf("com a coluna declarada deveria passar: %v", err)
 	}
 
-	// E sem declaração nenhuma não há o que conferir aqui -- a linha é
+	// And with no declaration at all there is nothing to check here -- the row
+	// is
 	// conferida na carga.
 	if _, err := resolveConfig(&core.LoadConfig{
 		ProjectID: "p", Dataset: "d", Table: "t", Format: "ndjson",

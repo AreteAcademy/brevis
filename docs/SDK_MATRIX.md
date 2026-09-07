@@ -103,7 +103,7 @@ rather than offering a flag that does nothing.
 
 ## Measured throughput
 
-Numbers from `-bench Carga…`, against the containers in
+Numbers from `-bench Load…`, against the containers in
 `docker-compose.drivers.yml`, 10 thousand rows of 5 columns per run, **on the Go
 1.27 toolchain**. They are for comparing the strategies, not a production
 promise — the machine, the network and the row's width change everything.

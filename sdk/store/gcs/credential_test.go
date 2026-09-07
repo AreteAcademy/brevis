@@ -17,9 +17,10 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// gcsFalso e um GCS de mentira com o que importa aqui: geracao por objeto, e
+// fakeGCS is a pretend GCS with what matters here: a per-object generation,
+// and
 // ifGenerationMatch de verdade.
-type gcsFalso struct {
+type fakeGCS struct {
 	mu        sync.Mutex
 	conteudo  []byte
 	geracao   int64
@@ -27,14 +28,16 @@ type gcsFalso struct {
 	conflitos int
 }
 
-func (g *gcsFalso) servidor(t *testing.T) *storage.Client {
+func (g *fakeGCS) servidor(t *testing.T) *storage.Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		g.mu.Lock()
 		defer g.mu.Unlock()
 
-		// O cliente baixa o objeto por GET no caminho XML (/bucket/objeto),
-		// e nao pela API JSON -- foi assim que a primeira versao deste falso
+		// The client downloads the object with a GET on the XML path
+		// (/bucket/object),
+		// and not through the JSON API -- that is how the first version of this
+		// fake
 		// errou.
 		if r.Method == http.MethodGet {
 			if !g.existe {
@@ -96,16 +99,16 @@ func extrairCorpoMultipart(b []byte) []byte {
 	return []byte(corpo)
 }
 
-func credencial(t *testing.T, g *gcsFalso) Credential {
+func credencial(t *testing.T, g *fakeGCS) Credential {
 	t.Helper()
 	t.Setenv(core.EnvCredentialKey, "")
 	generations.Delete("gs://b/obj")
 	return Credential{Bucket: "b", Object: "obj", Client: g.servidor(t)}
 }
 
-// TestGuardaEDevolve: o caminho feliz.
-func TestGuardaEDevolve(t *testing.T) {
-	g := &gcsFalso{}
+// TestItStoresAndReturns: o caminho feliz.
+func TestItStoresAndReturns(t *testing.T) {
+	g := &fakeGCS{}
 	c := credencial(t, g)
 
 	if v, err := c.Load(); err != nil || v != "" {
@@ -123,11 +126,11 @@ func TestGuardaEDevolve(t *testing.T) {
 	}
 }
 
-// TestEscritaCondicional: quem leu a geracao 1 e tenta gravar depois de outro
+// TestTheConditionalWrite: quem leu a geracao 1 e tenta gravar depois de outro
 // ter gravado a 2 recebe 412 -- e NAO sobrescreve. E a diferenca entre CAS de
-// verdade e ultimo-vence, que era o que um volume permitiria.
-func TestEscritaCondicional(t *testing.T) {
-	g := &gcsFalso{}
+// real one and last-writer-wins, which is what a volume would allow.
+func TestTheConditionalWrite(t *testing.T) {
+	g := &fakeGCS{}
 	c := credencial(t, g)
 
 	if err := c.Save("primeiro"); err != nil {
@@ -137,13 +140,13 @@ func TestEscritaCondicional(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Outro processo grava por fora, avancando a geracao.
+	// Another process writes from outside, advancing the generation.
 	g.mu.Lock()
 	g.geracao++
 	g.conteudo = []byte("brevis-cred/1p\nde-outro-processo")
 	g.mu.Unlock()
 
-	// A gravacao desta execucao estava condicionada a geracao que ela leu.
+	// This run's write was conditional on the generation it read.
 	if err := c.Save("meu-valor"); err != nil {
 		t.Fatalf("o conflito virou erro: %v", err)
 	}
@@ -159,10 +162,10 @@ func TestEscritaCondicional(t *testing.T) {
 	}
 }
 
-// TestPrimeiraGravacaoUsaDoesNotExist: sem isso, duas primeiras execucoes
-// simultaneas gravariam as duas, e a mais velha poderia chegar por ultimo.
-func TestPrimeiraGravacaoUsaDoesNotExist(t *testing.T) {
-	g := &gcsFalso{}
+// TestTheFirstWriteUsesDoesNotExist: without it, two first runs
+// simultaneous ones would both write, and the older could arrive last.
+func TestTheFirstWriteUsesDoesNotExist(t *testing.T) {
+	g := &fakeGCS{}
 	c := credencial(t, g)
 
 	if _, err := c.Load(); err != nil { // objeto ausente, geracao 0
@@ -186,8 +189,8 @@ func TestPrimeiraGravacaoUsaDoesNotExist(t *testing.T) {
 	}
 }
 
-// TestBucketEObjetoSaoObrigatorios.
-func TestBucketEObjetoSaoObrigatorios(t *testing.T) {
+// TestBucketAndObjectAreRequired.
+func TestBucketAndObjectAreRequired(t *testing.T) {
 	for _, c := range []Credential{{Object: "o"}, {Bucket: "b"}, {}} {
 		if err := c.CheckStore(); err == nil {
 			t.Errorf("aceitou %+v", c)
@@ -195,8 +198,8 @@ func TestBucketEObjetoSaoObrigatorios(t *testing.T) {
 	}
 }
 
-// TestDescribeNaoRevelaNada: Describe vai para log.
-func TestDescribeNaoRevelaNada(t *testing.T) {
+// TestDescribeRevealsNothing: Describe reaches the log.
+func TestDescribeRevealsNothing(t *testing.T) {
 	c := Credential{Bucket: "b", Object: "o", Key: "chave-secreta-aqui"}
 	if strings.Contains(c.Describe(), "chave-secreta") {
 		t.Errorf("Describe vaza a chave: %q", c.Describe())

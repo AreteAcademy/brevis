@@ -361,7 +361,7 @@ func TestAcceptPassesScalarsThrough(t *testing.T) {
 
 // The order matters against IngestionID: it reads the row after every
 // Transformer, so a rename before it forces naming the new name.
-func TestIngestionIDLeODepoisDoRename(t *testing.T) {
+func TestIngestionIDReadsItAfterTheRename(t *testing.T) {
 	linha := map[string]any{
 		"provider": "p", "entity": "e", "source_key": "k", "time": "2026-01-01T00:00",
 	}

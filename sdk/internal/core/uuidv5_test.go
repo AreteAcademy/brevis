@@ -7,14 +7,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// TestUUIDv5ConcordaComOPacote é a rede que permite reimplementar a fórmula
+// TestUUIDv5AgreesWithThePackage is the net that allows reimplementing the
+// formula
 // congelada.
 //
-// Uma divergência de um bit aqui mudaria todo ingestion_id já gravado -- uma
-// carga anterior deixaria de casar com uma nova, e ninguém notaria até as
-// duplicatas aparecerem. Então a afirmação não é "o meu está certo": é "o meu
-// é idêntico ao do pacote uuid", sobre entradas que ninguém escolheu a dedo.
-func TestUUIDv5ConcordaComOPacote(t *testing.T) {
+// A one-bit divergence here would change every ingestion_id already written -- a
+// previous load would stop matching a new one, and nobody would notice until the
+// duplicates showed up. So the claim is not "mine is right": it is "mine
+// is identical to the uuid package's", over inputs nobody hand-picked.
+func TestUUIDv5AgreesWithThePackage(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
 
 	for i := 0; i < 5000; i++ {
@@ -36,9 +37,9 @@ func TestUUIDv5ConcordaComOPacote(t *testing.T) {
 	}
 }
 
-// TestUUIDv5NoNamespaceReal cobre o caso que a produção usa, incluindo a
-// chave vazia e uma bem maior que o buffer de pilha.
-func TestUUIDv5NoNamespaceReal(t *testing.T) {
+// TestUUIDv5InTheRealNamespace covers the case production uses, including the
+// an empty key and one much larger than the stack buffer.
+func TestUUIDv5InTheRealNamespace(t *testing.T) {
 	entradas := [][]byte{
 		nil,
 		[]byte(""),
@@ -52,9 +53,9 @@ func TestUUIDv5NoNamespaceReal(t *testing.T) {
 	}
 }
 
-// TestFormatarUUIDConcordaComOString: o formato canônico também é contrato --
-// ele vai para a coluna.
-func TestFormatarUUIDConcordaComOString(t *testing.T) {
+// TestFormatUUIDAgreesWithString: the canonical format is a contract too --
+// it goes into the column.
+func TestFormatUUIDAgreesWithString(t *testing.T) {
 	r := rand.New(rand.NewSource(2))
 	for i := 0; i < 2000; i++ {
 		var u uuid.UUID
@@ -67,9 +68,9 @@ func TestFormatarUUIDConcordaComOString(t *testing.T) {
 	}
 }
 
-// TestChaveMaiorQueOBufferDePilha: a chave de 192 bytes cabe na pilha, e uma
-// maior cai no heap -- as duas têm de produzir o mesmo id.
-func TestChaveMaiorQueOBufferDePilha(t *testing.T) {
+// TestAKeyLargerThanTheStackBuffer: a 192-byte key fits on the stack, and a
+// larger one falls to the heap -- both have to produce the same id.
+func TestAKeyLargerThanTheStackBuffer(t *testing.T) {
 	longo := ""
 	for len(longo) < 300 {
 		longo += "provedor-com-nome-comprido-"

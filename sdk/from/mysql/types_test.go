@@ -6,12 +6,14 @@ import (
 	"time"
 )
 
-// TestParaJSONLinhaALinha cobre a tabela de tipos, um caso por linha.
+// TestToJSONRowByRow covers the type table, one case per line.
 //
-// O database/sql devolve []byte para quase tudo quando se le em `any`, entao a
-// conversao sai do TIPO DECLARADO da coluna. Sem ele todo DECIMAL viraria
-// base64 no JSON, e um INT tambem.
-func TestParaJSONLinhaALinha(t *testing.T) {
+// database/sql returns []byte for nearly everything when read into an `any`, so
+// the
+// conversion comes from the column's DECLARED TYPE. Without it every DECIMAL
+// would become
+// base64 in the JSON, and so would an INT.
+func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
 		nome      string
 		valor     any
@@ -61,13 +63,14 @@ func TestParaJSONLinhaALinha(t *testing.T) {
 	}
 }
 
-// TestOsDoisCaminhosDeInstanteConcordam e a razao de o fallback de texto
-// existir, e a prova de que ele nao e codigo morto: com ou sem parseTime, o
+// TestTheTwoInstantPathsAgree e a razao de o fallback de texto
+// exist, and the proof that it is not dead code: with or without parseTime, the
 // mesmo instante sai igual.
 //
-// Este teste tambem impede o comentario mentiroso que eu tinha escrito -- que
-// sem parseTime o instante viraria base64. Nao vira; o que muda e o custo.
-func TestOsDoisCaminhosDeInstanteConcordam(t *testing.T) {
+// This test also prevents the lying comment that had been written -- that
+// without parseTime the instant would become base64. It does not; what changes
+// is the cost.
+func TestTheTwoInstantPathsAgree(t *testing.T) {
 	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
 	comParse := ToJSON(instante, "DATETIME")
@@ -81,9 +84,9 @@ func TestOsDoisCaminhosDeInstanteConcordam(t *testing.T) {
 	}
 }
 
-// TestDateNaoGanhaHora: 00:00:00 e uma hora que ninguem escreveu, e ela anda um
+// TestADateGainsNoTime: 00:00:00 is a time nobody wrote, and it walks a
 // dia na primeira conversao de fuso.
-func TestDateNaoGanhaHora(t *testing.T) {
+func TestADateGainsNoTime(t *testing.T) {
 	d := time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)
 	if got := ToJSON(d, "DATE"); got != "2026-09-05" {
 		t.Errorf("DATE = %v, esperado sem hora", got)

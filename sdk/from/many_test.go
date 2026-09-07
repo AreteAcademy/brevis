@@ -55,8 +55,8 @@ func drenar(t *testing.T, fonte sdk.Reader, stats *sdk.Stats) ([]map[string]any,
 	return linhas, nil
 }
 
-// TestManyJuntaAsOrigens: o caso base.
-func TestManyJuntaAsOrigens(t *testing.T) {
+// TestManyJoinsTheSources: o caso base.
+func TestManyJoinsTheSources(t *testing.T) {
 	linhas, err := drenar(t, from.Many{Sources: []sdk.Reader{
 		fonteFalsa{nome: "a", linhas: 2},
 		fonteFalsa{nome: "b", linhas: 3},
@@ -282,8 +282,8 @@ func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 	}
 }
 
-// TestManyRecusaConfiguracaoInvalida.
-func TestManyRecusaConfiguracaoInvalida(t *testing.T) {
+// TestManyRefusesInvalidConfiguration.
+func TestManyRefusesInvalidConfiguration(t *testing.T) {
 	if _, err := drenar(t, from.Many{}, nil); err == nil {
 		t.Error("aceitou zero origens")
 	}
@@ -320,9 +320,10 @@ func TestDiscoverBuildsTheSourcesInsideThePipeline(t *testing.T) {
 	}
 }
 
-// TestDiscoverQueFalhaEErroDoExtract: o erro dela é tratado como qualquer
-// outro do extract, e não como um panic num main antes de tudo começar.
-func TestDiscoverQueFalhaEErroDoExtract(t *testing.T) {
+// TestAFailingDiscoverIsAnExtractError: its error is treated like
+// any other extract error, and not as a panic in a main before anything
+// starts.
+func TestAFailingDiscoverIsAnExtractError(t *testing.T) {
 	_, err := drenar(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) {
 			return nil, fmt.Errorf("o endpoint que lista as partições devolveu 503")
@@ -336,9 +337,10 @@ func TestDiscoverQueFalhaEErroDoExtract(t *testing.T) {
 	}
 }
 
-// TestDiscoverVazioNaoEZeroRegistros: uma execução que não leu nada porque não
-// havia o que ler é diferente de uma que não sabia onde ler.
-func TestDiscoverVazioNaoEZeroRegistros(t *testing.T) {
+// TestAnEmptyDiscoverIsNotZeroRecords: a run that read nothing because
+// there was nothing to read is different from one that did not know where to
+// read.
+func TestAnEmptyDiscoverIsNotZeroRecords(t *testing.T) {
 	_, err := drenar(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) { return nil, nil },
 	}, nil)
@@ -350,9 +352,9 @@ func TestDiscoverVazioNaoEZeroRegistros(t *testing.T) {
 	}
 }
 
-// TestDiscoverESourcesJuntosERecusado: duas listas de origens, e a que perde
-// perderia em silêncio.
-func TestDiscoverESourcesJuntosERecusado(t *testing.T) {
+// TestDiscoverAndSourcesTogetherIsRefused: two lists of sources, and the loser
+// would lose in silence.
+func TestDiscoverAndSourcesTogetherIsRefused(t *testing.T) {
 	_, err := drenar(t, from.Many{
 		Sources:  []sdk.Reader{fonteFalsa{nome: "a", linhas: 1}},
 		Discover: func(context.Context) ([]sdk.Reader, error) { return nil, nil },

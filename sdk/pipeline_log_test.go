@@ -58,7 +58,7 @@ func rodaCapturandoLog(t *testing.T, destino Writer) string {
 // readable -- which makes the message the only thing that tells the two cases
 // apart. And a "loaded" at INFO during a failure never reaches whoever watches
 // ERROR.
-func TestLogNaoDizLoadedQuandoNaoCarregou(t *testing.T) {
+func TestTheLogDoesNotSayLoadedWhenItDidNot(t *testing.T) {
 	saida := rodaCapturandoLog(t, fakeTarget{falha: true, rows: []string{"linha 0 recusada"}})
 
 	if strings.Contains(saida, "msg=loaded") {
@@ -79,7 +79,7 @@ func TestLogNaoDizLoadedQuandoNaoCarregou(t *testing.T) {
 	}
 }
 
-func TestLogDizLoadedQuandoCarregou(t *testing.T) {
+func TestTheLogSaysLoadedWhenItLoaded(t *testing.T) {
 	saida := rodaCapturandoLog(t, fakeTarget{})
 
 	if !strings.Contains(saida, "level=INFO msg=loaded") {

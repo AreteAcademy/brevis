@@ -2,11 +2,12 @@ package core
 
 import "testing"
 
-// A fórmula é congelada: uma linha escrita em Go tem de casar com a que um
-// fetcher Python escreve para o mesmo registro. Conferida contra o uuid.uuid5
-// do Python, não contra outra implementação nossa -- duas implementações
+// The formula is frozen: a row written in Go has to match the one a
+// Python fetcher writes for the same record. Checked against
+// Python's, and not against another implementation of ours -- two
+// implementations
 // nossas podem mudar juntas e o teste passar.
-func TestComputeIngestionIDContraOPython(t *testing.T) {
+func TestComputeIngestionIDAgainstPython(t *testing.T) {
 	casos := []struct {
 		provider, entity, sourceKey, recordTS, esperado string
 	}{
@@ -26,8 +27,9 @@ func TestComputeIngestionIDContraOPython(t *testing.T) {
 	}
 }
 
-// O Envelope e o transformer têm de sair no mesmo lugar, porque a mesma linha
-// pode chegar pelos dois caminhos.
+// The Envelope and the transformer have to land in the same place, because the
+// same row
+// can arrive through either path.
 func TestEnvelopeUsaAMesmaFormula(t *testing.T) {
 	env := Envelope{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t"}
 	pelaEnvelope, err := env.IngestionID()

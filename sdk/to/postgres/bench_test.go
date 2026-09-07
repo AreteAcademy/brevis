@@ -10,14 +10,14 @@ import (
 	topg "github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
-// BenchmarkCargaPostgres mede a carga contra o servidor de verdade.
+// BenchmarkPostgresLoad mede a carga contra o servidor de verdade.
 //
 // It exists because §5 of phase 5 asks for a number: without one the
 // documentation promises performance nobody measured, which is how
 // `DeleteAfterLoad` reached the text with a default it did not have.
 //
 //	BREVIS_IT_PG_DSN=... go test -run XXX -bench CargaPostgres ./to/postgres/
-func BenchmarkCargaPostgres(b *testing.B) {
+func BenchmarkPostgresLoad(b *testing.B) {
 	d := ""
 	if d = envOuPular(b); d == "" {
 		return

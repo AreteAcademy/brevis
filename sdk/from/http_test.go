@@ -17,7 +17,7 @@ import (
 // SDK mais achou em si mesmo.
 //
 // This test checks that every field reaches the other side.
-func TestHTTPPassaTodosOsCamposAdiante(t *testing.T) {
+func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	var (
 		metodo   string
 		corpo    string
@@ -92,7 +92,7 @@ func TestHTTPPassaTodosOsCamposAdiante(t *testing.T) {
 
 // Cada formato tem de chegar ao decodificador certo. Um Format ignorado
 // would decode JSON where the fetcher asked for CSV.
-func TestHTTPEncaminhaCadaFormato(t *testing.T) {
+func TestHTTPForwardsEachFormat(t *testing.T) {
 	casos := []struct {
 		formato core.Format
 		corpo   string
@@ -133,7 +133,7 @@ func TestHTTPEncaminhaCadaFormato(t *testing.T) {
 	}
 }
 
-func TestHTTPRecusaFormatoDesconhecido(t *testing.T) {
+func TestHTTPRefusesAnUnknownFormat(t *testing.T) {
 	_, err := HTTP{URL: "http://x", Format: "yaml"}.Read(context.Background(), core.ReadOptions{})
 	if err == nil {
 		t.Fatal("um formato que o SDK não decodifica tem de ser recusado")
@@ -145,7 +145,7 @@ func TestHTTPRecusaFormatoDesconhecido(t *testing.T) {
 
 // Describe is what appears in the log and in the error message, so it must not
 // carry the secret the URL carries.
-func TestHTTPDescribeNaoVazaSegredo(t *testing.T) {
+func TestHTTPDescribeLeaksNoSecret(t *testing.T) {
 	got := HTTP{URL: "https://api.exemplo.com/v1?api_key=SEGREDO&lat=-23.5"}.Describe()
 
 	if strings.Contains(got, "SEGREDO") {

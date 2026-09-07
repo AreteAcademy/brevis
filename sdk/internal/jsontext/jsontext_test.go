@@ -7,13 +7,14 @@ import (
 	"testing"
 )
 
-// TestAppendJSONStringConcordaComOEncoder compara byte a byte com o
-// encoding/json sem escape de HTML.
+// TestAppendJSONStringAgreesWithTheEncoder compares byte for byte against
+// encoding/json with HTML escaping off.
 //
-// A afirmação não é "o meu está certo": é "é idêntico ao do stdlib". Escrever
-// JSON à mão é como se produz um arquivo que o servidor lê de outro jeito, e
-// aqui é pior -- a mesma regra compõe uma CHAVE.
-func TestAppendJSONStringConcordaComOEncoder(t *testing.T) {
+// The claim is not "mine is right": it is "it is identical to the stdlib's".
+// Writing
+// JSON by hand is how you produce a file the server reads differently, and
+// here is worse -- the same rule composes a KEY.
+func TestAppendJSONStringAgreesWithTheEncoder(t *testing.T) {
 	casos := []struct {
 		s           string
 		soSemantico bool
@@ -53,9 +54,9 @@ func TestAppendJSONStringConcordaComOEncoder(t *testing.T) {
 				t.Fatalf("%q:\n  meu      %s\n  Encoder  %s", c.s, got, quero)
 			}
 
-			// UTF-8 inválido: o encoding/json do 1.25 escapa o U+FFFD e o do
-			// 1.27 escreve os bytes. As duas formas são o mesmo code point, e
-			// a igualdade que vale ali é a do valor.
+			// Invalid UTF-8: 1.25's encoding/json escapes the U+FFFD and
+			// 1.27 writes the bytes. Both forms are the same code point, and
+			// the equality that counts there is of the value.
 			var meu, dele string
 			if err := json.Unmarshal([]byte(got), &meu); err != nil {
 				t.Fatalf("a minha saída nem é JSON válido: %s", got)
@@ -70,9 +71,9 @@ func TestAppendJSONStringConcordaComOEncoder(t *testing.T) {
 	}
 }
 
-// TestAppendJSONStringAcrescentaNoDestino: ela recebe o buffer e devolve o
-// buffer, para não alocar um por string numa carga de milhões.
-func TestAppendJSONStringAcrescentaNoDestino(t *testing.T) {
+// TestAppendJSONStringAppendsToTheDestination: ela recebe o buffer e devolve o
+// buffer, so it does not allocate one per string on a load of millions.
+func TestAppendJSONStringAppendsToTheDestination(t *testing.T) {
 	dst := []byte("antes:")
 	got := string(AppendJSONString(dst, "x"))
 	if got != `antes:"x"` {

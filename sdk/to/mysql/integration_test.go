@@ -71,9 +71,9 @@ func lote(n int) []sdk.Envelope {
 	return out
 }
 
-// TestIntegrationUmaLinhaRealmenteEntra: os testes em memória provam os bytes
-// que montamos, não o que o servidor aceita.
-func TestIntegrationUmaLinhaRealmenteEntra(t *testing.T) {
+// TestIntegrationARowActuallyGoesIn: the in-memory tests prove the bytes
+// we assembled, not what the server accepts.
+func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
 
@@ -95,9 +95,9 @@ func TestIntegrationUmaLinhaRealmenteEntra(t *testing.T) {
 	}
 }
 
-// TestIntegrationOrdemDaTabela: cada valor tem de pousar na coluna certa
-// quando a ordem da tabela não é a do registro.
-func TestIntegrationOrdemDaTabela(t *testing.T) {
+// TestIntegrationTheTablesOrder: every value has to land in the right column
+// when the table's order is not the record's.
+func TestIntegrationTheTablesOrder(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, "valor DECIMAL(18,2), provider VARCHAR(64), "+
 		"ingestion_loaded_at DATETIME(6) NOT NULL, ingestion_id VARCHAR(36) NOT NULL")
@@ -123,8 +123,8 @@ func TestIntegrationOrdemDaTabela(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupLoadsTheSameBatchTwice é o critério de pronto da
-// fase 3: o mesmo pipeline da fase 2, com uma linha trocada.
+// TestIntegrationDedupLoadsTheSameBatchTwice is the done criterion of
+// phase 3: the same pipeline as phase 2, with one row swapped.
 func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
@@ -162,8 +162,9 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupWithoutAnIndexRefuses: sem índice único, INSERT IGNORE não tem
-// o que casar e toda execução inseriria duplicatas.
+// TestIntegrationDedupWithoutAnIndexRefuses: with no unique index, INSERT IGNORE
+// has
+// nothing to match and every run would insert duplicates.
 func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
@@ -178,8 +179,9 @@ func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
 	}
 }
 
-// TestIntegrationAFieldTheTableLacksIsRefused: recusar ANTES do servidor, com a
-// saída escrita.
+// TestIntegrationAFieldTheTableLacksIsRefused: refusing BEFORE the server, with
+// the
+// way out written down.
 func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
@@ -204,12 +206,15 @@ func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
 func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, "i INT, texto TEXT")
-	// 20 mil linhas via recursão: o MySQL não tem generate_series, e o limite
-	// padrão de recursão é 1000.
+	// 20 thousand rows through recursion: MySQL has no generate_series, and the
+	// default
+	// recursion limit is 1000.
 	//
-	// A conexão é fixada: SET SESSION num *sql.DB vale para a conexão que o
-	// pool escolheu, e o INSERT seguinte pode sair por outra -- um teste que
-	// passa por sorte é pior que um teste lento.
+	// The connection is pinned: a SET SESSION on a *sql.DB applies to the
+	// connection the
+	// pool happened to pick, and the next INSERT may go out on another -- a test
+	// that
+	// passes by luck is worse than a slow test.
 	conexao, err := db.Conn(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -257,9 +262,10 @@ func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	}
 }
 
-// TestIntegrationTheTypesComeFromTheServer prova a tabela de tipos contra o MySQL de
-// verdade. O database/sql devolve []byte para quase tudo quando se lê em any,
-// então sem o tipo declarado todo DECIMAL viraria base64 no JSON.
+// TestIntegrationTheTypesComeFromTheServer proves the type table against a real
+// MySQL.
+// database/sql returns []byte for nearly everything when read into an any,
+// so without the declared type every DECIMAL would become base64 in the JSON.
 func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, `
@@ -314,9 +320,9 @@ func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 	}
 }
 
-// TestIntegrationMySQLParaMySQL é o critério de pronto da fase 3: o mesmo
-// pipeline da fase 2, com uma linha trocada.
-func TestIntegrationMySQLParaMySQL(t *testing.T) {
+// TestIntegrationMySQLToMySQL is phase 3's done criterion: the same
+// pipeline as phase 2, with one row swapped.
+func TestIntegrationMySQLToMySQL(t *testing.T) {
 	db := abrir(t)
 
 	origem := tabela(t, db, "id INT, nome VARCHAR(64), valor DECIMAL(18,2), atualizado_em DATETIME(6)")

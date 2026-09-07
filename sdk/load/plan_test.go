@@ -7,12 +7,14 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestI2PlanoDeCriacaoNuncaInfere é o invariante I2 como propriedade
-// verificável, sem projeto do BigQuery nenhum.
+// TestI2CreationPlanNeverInfers is invariant I2 as a checkable
+// property, with no BigQuery project at all.
 //
-// Ele era prosa numa seção chamada "onde a discussão continua", e ficou aberto
-// meses. O que fecha um invariante não é decidi-lo: é conseguir exercitá-lo.
-func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
+// It was prose in a section called "where the discussion continues", and stayed
+// open
+// for months. What closes an invariant is not deciding it: it is being able to
+// exercise it.
+func TestI2CreationPlanNeverInfers(t *testing.T) {
 	casos := []struct {
 		nome  string
 		cfg   *core.LoadConfig
@@ -68,8 +70,8 @@ func TestI2PlanoDeCriacaoNuncaInfere(t *testing.T) {
 	}
 }
 
-// TestI2SchemaViraOTipoDoBigQuery: a tabela de tradução, uma linha por tipo.
-func TestI2SchemaViraOTipoDoBigQuery(t *testing.T) {
+// TestI2SchemaBecomesBigQuerysType: the translation table, one row per type.
+func TestI2SchemaBecomesBigQuerysType(t *testing.T) {
 	s := core.Schema{
 		{Name: "texto", Type: core.TypeString, Required: true},
 		{Name: "inteiro", Type: core.TypeInt64},
@@ -104,12 +106,13 @@ func TestI2SchemaViraOTipoDoBigQuery(t *testing.T) {
 	}
 }
 
-// TestI2ColunasDoSDKVencemADeclaracao: ingestion_id e ingestion_loaded_at são
-// do SDK, e um NULLABLE ali deixaria a dedup casar com nulo.
-func TestI2ColunasDoSDKVencemADeclaracao(t *testing.T) {
+// TestI2TheSDKsColumnsBeatTheDeclaration: ingestion_id and ingestion_loaded_at
+// are
+// the SDK's, and a NULLABLE there would let the dedup match on null.
+func TestI2TheSDKsColumnsBeatTheDeclaration(t *testing.T) {
 	got, err := bigquerySchema(core.Schema{
-		{Name: core.MetadataID, Type: core.TypeInt64},        // errado de propósito
-		{Name: core.MetadataLoadedAt, Type: core.TypeString}, // errado de propósito
+		{Name: core.MetadataID, Type: core.TypeInt64},        // wrong on purpose
+		{Name: core.MetadataLoadedAt, Type: core.TypeString}, // wrong on purpose
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -123,8 +126,8 @@ func TestI2ColunasDoSDKVencemADeclaracao(t *testing.T) {
 	}
 }
 
-// TestI4ParticaoSaiDaDeclaracao.
-func TestI4ParticaoSaiDaDeclaracao(t *testing.T) {
+// TestI4ThePartitionComesFromTheDeclaration.
+func TestI4ThePartitionComesFromTheDeclaration(t *testing.T) {
 	if got := partitionOf(&core.LoadConfig{PartitionBy: "minha_coluna"}); got != "minha_coluna" {
 		t.Errorf("= %q, a declaração devia vencer", got)
 	}

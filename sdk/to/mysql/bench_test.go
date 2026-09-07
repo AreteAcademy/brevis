@@ -14,11 +14,11 @@ import (
 	"github.com/AreteAcademy/brevis/sdk"
 )
 
-// BenchmarkCargaMySQL mede a carga contra o servidor de verdade, para que a
-// documentação não prometa desempenho que ninguém mediu.
+// BenchmarkMySQLLoad measures the load against a real server, so the
+// documentation does not promise performance nobody measured.
 //
 //	BREVIS_IT_MYSQL_DSN=... go test -run XXX -bench CargaMySQL ./to/mysql/
-func BenchmarkCargaMySQL(b *testing.B) {
+func BenchmarkMySQLLoad(b *testing.B) {
 	d := os.Getenv("BREVIS_IT_MYSQL_DSN")
 	if d == "" {
 		b.Skip("BREVIS_IT_MYSQL_DSN não definida")

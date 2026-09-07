@@ -10,15 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TestParaJSONLinhaALinha cobre a tabela do §3.1 do plano, um caso por linha.
+// TestToJSONRowByRow covers §3.1's table from the plan, one case per line.
 //
-// Nao e inferencia: e uma tabela escrita e revisavel, e cada escolha aqui tem
-// um custo concreto se estiver errada -- por isso cada caso diz qual.
-func TestParaJSONLinhaALinha(t *testing.T) {
+// It is not inference: it is a written, reviewable table, and every choice here
+// has
+// a concrete cost when it is wrong -- which is why each case says what it is.
+func TestToJSONRowByRow(t *testing.T) {
 	casos := []struct {
 		nome     string
 		entrada  any
-		esperado string // o JSON que sai
+		want string // the JSON that comes out
 		porque   string
 	}{
 		{
@@ -119,31 +120,32 @@ func TestParaJSONLinhaALinha(t *testing.T) {
 			if err != nil {
 				t.Fatalf("serializando: %v", err)
 			}
-			if string(b) != c.esperado {
-				msg := "ParaJSON(%v) = %s, esperado %s"
+			if string(b) != c.want {
+				msg := "ParaJSON(%v) = %s, want %s"
 				if c.porque != "" {
 					msg += "\n  " + c.porque
 				}
-				t.Errorf(msg, c.entrada, b, c.esperado)
+				t.Errorf(msg, c.entrada, b, c.want)
 			}
 		})
 	}
 }
 
-// TestNumericoNaoPerdePrecisao e o caso que motiva a linha mais importante da
-// tabela: um valor que float64 nao representa.
-func TestNumericoNaoPerdePrecisao(t *testing.T) {
-	// 9007199254740993 = 2^53 + 1, o primeiro inteiro que float64 nao guarda.
+// TestNumericLosesNoPrecision is the case that motivates the most important row
+// of the
+// table: a value a float64 cannot represent.
+func TestNumericLosesNoPrecision(t *testing.T) {
+	// 9007199254740993 = 2^53 + 1, the first integer a float64 cannot hold.
 	n := pgtype.Numeric{Int: big.NewInt(9007199254740993), Exp: 0, Valid: true}
 
 	got := ParaJSON(n)
 	if got != "9007199254740993" {
-		t.Errorf("ParaJSON = %v (%T), esperado a string exata", got, got)
+		t.Errorf("ParaJSON = %v (%T), want a string exata", got, got)
 	}
 
-	// E a prova do contrario, medida em tempo de execucao: pelo float64 o
-	// valor muda. Escrita com variavel e nao com constante de proposito --
-	// como constante o Go compara em tempo de compilacao com precisao
+	// And the proof of the opposite, measured at run time: through a float64 the
+	// value changes. Written with a variable and not a constant on purpose --
+	// as a constant Go compares at compile time with arbitrary
 	// arbitraria, e a demonstracao vira sempre verdadeira.
 	exato := int64(9007199254740993)
 	pelaFloat := int64(float64(exato))

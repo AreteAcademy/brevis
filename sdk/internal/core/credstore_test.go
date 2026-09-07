@@ -101,10 +101,10 @@ func TestTheNonceDoesNotRepeat(t *testing.T) {
 	}
 }
 
-// TestSemChaveGravaEmClaro: a cifra e opcional. O controle de verdade e o do
+// TestWithoutAKeyItWritesInTheClear: a cifra e opcional. O controle de verdade e o do
 // storage's -- the directory's permissions, the bucket's IAM -- and a key living
 // in the same secret as whoever reads the store protects against nobody.
-func TestSemChaveGravaEmClaro(t *testing.T) {
+func TestWithoutAKeyItWritesInTheClear(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -162,9 +162,9 @@ func TestPlaintextWarnsOnlyOnce(t *testing.T) {
 	}
 }
 
-// TestComChaveNaoGravaEmClaro: e o outro lado -- a opcao de cifrar tem de
+// TestWithAKeyItDoesNotWriteInTheClear: e o outro lado -- a opcao de cifrar tem de
 // realmente cifrar.
-func TestComChaveNaoGravaEmClaro(t *testing.T) {
+func TestWithAKeyItDoesNotWriteInTheClear(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("session=abc=="); err != nil {
 		t.Fatal(err)
@@ -181,10 +181,10 @@ func TestComChaveNaoGravaEmClaro(t *testing.T) {
 	}
 }
 
-// TestCifradoSemChaveCaiNaSemente: durante um rollout, ou depois de alguem
+// TestEncryptedWithoutAKeyFallsBackToTheSeed: durante um rollout, ou depois de alguem
 // removing the key, the store holds a value this process cannot read. Falling
 // back to the seed is right; returning garbage would be worse.
-func TestCifradoSemChaveCaiNaSemente(t *testing.T) {
+func TestEncryptedWithoutAKeyFallsBackToTheSeed(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("segredo"); err != nil {
 		t.Fatal(err)
@@ -321,7 +321,7 @@ func TestAnUnreadableFileFallsBackToTheSeed(t *testing.T) {
 // so um encode.
 func TestASwappedKeyDoesNotDecrypt(t *testing.T) {
 	// t.TempDir vem 0755 nesta plataforma, e o store recusa diretorio frouxo
-	// -- que e o comportamento pedido, entao o teste se ajusta a ele.
+	// -- which is the requested behaviour, so the test adjusts to it.
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -378,9 +378,9 @@ func TestANameThatIsAPathIsRefused(t *testing.T) {
 	}
 }
 
-// TestEscritasConcorrentesNaoCorrompem: ultimo a escrever vence, e e escolha
+// TestConcurrentWritesDoNotCorrupt: ultimo a escrever vence, e e escolha
 // documented -- but the file has to stay readable, never half-written.
-func TestEscritasConcorrentesNaoCorrompem(t *testing.T) {
+func TestConcurrentWritesDoNotCorrupt(t *testing.T) {
 	s, _ := storePronto(t)
 
 	pronto := make(chan struct{})
