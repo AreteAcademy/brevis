@@ -965,7 +965,8 @@ func serve(ctx context.Context) error {
 	met.Serve(ctx, cfg.MetricsAddr, log)
 
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
-		runsRepo, uiActions{schedules: schedules, sched: sched}, brand, log)
+		runsRepo, uiActions{schedules: schedules, sched: sched},
+		alerts.New(pool.Pool), brand, log)
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.

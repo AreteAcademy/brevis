@@ -13,6 +13,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
@@ -57,6 +58,16 @@ type RunsChart interface {
 	LogsDaRun(ctx context.Context, id uuid.UUID) ([]postgres.StepLog, error)
 }
 
+// AlertsReader lists a run's alerts. It is a CONSTRUCTOR argument and not a
+// settable field, so that forgetting to wire it is a compile error rather than
+// a screen that quietly stops showing alerts. Two features shipped switched off
+// in one week because nothing outside a test ever set the field they needed.
+//
+// nil is still allowed, for a process that renders no pages.
+type AlertsReader interface {
+	ForRun(ctx context.Context, runID uuid.UUID) ([]alerts.Record, error)
+}
+
 // Actions are the two effects the screen triggers. A small interface on purpose:
 // the UI must not be able to do anything more to the system than pause a
 // schedule and ask for a run now.
@@ -71,12 +82,15 @@ type UI struct {
 	defs    Definitions
 	execs   RunsChart
 	actions Actions
+	alerts  AlertsReader
 	brand   branding.Brand
 	log     *slog.Logger
 }
 
-func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, m branding.Brand, log *slog.Logger) *UI {
-	return &UI{leitura: l, defs: d, execs: e, actions: a, brand: m, log: log}
+func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
+	m branding.Brand, log *slog.Logger,
+) *UI {
+	return &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, brand: m, log: log}
 }
 
 // Registrar wires the routes into the mux.
@@ -513,7 +527,17 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
 	}
-	u.render(w, r, pages.Run(run, logs))
+	// The alerts, on the same terms as the logs: unavailable is not a reason to
+	// refuse the page. An alert nobody can see is indistinguishable from an
+	// alert that was never sent, which is what this section exists to fix --
+	// and a blank page would be worse at it than a page missing one block.
+	var raised []alerts.Record
+	if u.alerts != nil {
+		if raised, err = u.alerts.ForRun(r.Context(), id); err != nil {
+			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
+		}
+	}
+	u.render(w, r, pages.Run(run, logs, raised))
 }
 
 func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {

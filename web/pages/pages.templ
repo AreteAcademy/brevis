@@ -8,6 +8,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/layouts"
@@ -818,7 +819,7 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary) {
 
 // Run shows one run. The header comes from the server already rendered; only the
 // DAG with each step's state depends on JavaScript.
-templ Run(r run.Run, logs []postgres.StepLog) {
+templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
 		Island: dagAssets, Wide: true,
@@ -839,8 +840,91 @@ templ Run(r run.Run, logs []postgres.StepLog) {
 			<pre class="mb-5 overflow-auto rounded-[20px] border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 		}
 		@dag("/api/runs/" + r.ID.String() + "/graph")
+		@alertsRaised(raised)
 		@stepsOutput(logs)
 	}
+}
+
+// alertsRaised shows what was announced about this run, and whether it arrived.
+//
+// It is the part that keeps the feature honest: an alert nobody can see is
+// indistinguishable from an alert that was never sent. Before the outbox there
+// was nothing to show -- a failed webhook was a log line in a pod that no
+// longer exists.
+//
+// The row that matters is "undelivered". It is the case where somebody is
+// waiting for a message that is not coming, and it is the only way to find out
+// without reading the alert pod's logs.
+templ alertsRaised(raised []alerts.Record) {
+	if len(raised) > 0 {
+		<section class="mt-8">
+			<h2 class="display mb-4 text-xl text-ink">Alerts</h2>
+			<div class="space-y-2">
+				for _, a := range raised {
+					<div class="rounded-2xl border border-line bg-surface px-5 py-3.5">
+						<div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+							@components.State(alertTone(a.State()))
+							<span class="text-ink">{ alertWording(a) }</span>
+							<span class="font-mono text-xs text-muted">{ a.Channel }</span>
+							if a.Attempts > 0 {
+								<span class="text-xs text-muted">{ attemptWord(a.Attempts) }</span>
+							}
+							if a.DeliveredAt != nil {
+								<span class="text-xs text-muted">{ components.Timestamp(a.DeliveredAt) }</span>
+							} else {
+								<span class="text-xs text-muted">raised { components.Timestamp(&a.CreatedAt) }</span>
+							}
+						</div>
+						if a.Err != "" {
+							// Shown even on a delivered alert's history? No: the
+							// error is cleared on success, so anything here is
+							// live. A row that succeeded on the third try must
+							// not still display the second try's failure.
+							<pre class="mt-2.5 overflow-auto rounded-xl border border-state-failed/20 bg-state-failed/5 px-4 py-2.5 font-mono text-xs text-state-failed">{ a.Err }</pre>
+						}
+					</div>
+				}
+			</div>
+		</section>
+	}
+}
+
+// alertTone borrows the run states' palette rather than inventing colours for a
+// second vocabulary. The words stay the alert's own.
+func alertTone(state string) string {
+	switch state {
+	case "delivered":
+		return "success"
+	case "undelivered":
+		return "failed"
+	}
+	return "running"
+}
+
+// alertWording says what happened in the reader's terms, not the table's.
+//
+// "sending" on its own is ambiguous in the way that matters: it is also what a
+// row looks like when nothing is draining the outbox, so it says which process
+// is supposed to.
+func alertWording(a alerts.Record) string {
+	subject := "run failed"
+	if a.Kind == alerts.KindStep && a.NodeID != "" {
+		subject = "step " + a.NodeID + " failed"
+	}
+	switch a.State() {
+	case "delivered":
+		return subject + " — delivered"
+	case "undelivered":
+		return subject + " — never delivered"
+	}
+	return subject + " — waiting for `brevis alert`"
+}
+
+func attemptWord(n int) string {
+	if n == 1 {
+		return "1 try"
+	}
+	return fmt.Sprint(n) + " tries"
 }
 
 // duracaoMs adapts the milliseconds the query returns to the existing formatter,

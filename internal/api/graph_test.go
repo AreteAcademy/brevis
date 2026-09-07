@@ -99,7 +99,7 @@ func request(t *testing.T, ui *api.UI, path string) (*http.Response, graph) {
 }
 
 func newUI(d api.Definitions, e api.RunsChart) *api.UI {
-	return api.NewUI(nil, d, e, nil, branding.Default(), slog.New(slog.DiscardHandler))
+	return api.NewUI(nil, d, e, nil, nil, branding.Default(), slog.New(slog.DiscardHandler))
 }
 
 func TestTheWorkflowGraphPutsLevelsInColumns(t *testing.T) {
