@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// KeySelector builds the source_key of a record from its payload.
 // FieldSelector pulls a single value out of a record.
 type FieldSelector func(payload any) (string, error)
 
@@ -117,15 +116,35 @@ func KeyWith(render Renderer, fields ...string) KeySelector {
 	}
 }
 
-// FixedKey uses a constant source_key. Only correct when the source yields a
-// single record per run -- otherwise every row collapses onto one id.
+// FixedKey returns the same value for every record.
+//
+//	sdk.ComputeText("provider", sdk.FixedKey("inmet"))
+//	sdk.ComputeText("source_key", sdk.FixedKey("daily"))   // read the warning
+//
+// Which of those two is correct depends ENTIRELY on the column it feeds, and
+// the name only says the second one:
+//
+//   - As a constant LABEL -- `provider`, `entity`, a vendor tag -- it is the
+//     ordinary way to write one. The column is not an input to the identity in
+//     that position, so nothing collapses. This is the common use, and it
+//     replaces a `Compute` closure that ignores its argument.
+//
+//   - As the `source_key` it is named for, it is only correct when the source
+//     yields ONE record per run. Otherwise every row hashes to the same
+//     ingestion_id, the load merges them into a single row, and the rest
+//     disappear -- with no error, because a constant key is a valid key.
+//
+// It is one function and not two because it is one behaviour: return a
+// constant. Splitting it into FixedKey and FixedLabel would be two public names
+// for the same body, and the caller would still have to know which column they
+// are writing into -- which is the thing the second bullet is actually about.
 func FixedKey(value string) KeySelector {
 	return func(any) (string, error) { return value, nil }
 }
 
 // Field reads one payload field as the record timestamp.
 //
-// Ver ExampleField.
+// See ExampleField.
 //
 // A missing field is an error naming it, for the same reason as Key.
 func Field(name string) FieldSelector {

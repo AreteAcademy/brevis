@@ -424,6 +424,59 @@ func TestComputeTextTakesASelectorDirectly(t *testing.T) {
 	}
 }
 
+// The alias is the point: a KeySelector IS a FieldSelector, so every selector
+// constructor feeds ComputeText. Asserted at COMPILE time, because that is when
+// it would break.
+var (
+	_ FieldSelector = FixedKey("")
+	_ FieldSelector = Key("id")
+	_ FieldSelector = Field("time")
+)
+
+// The doc on FixedKey now says it serves as a constant LABEL through
+// ComputeText, and this is what keeps that sentence true.
+//
+// It compiles only because KeySelector is an ALIAS of FieldSelector rather than
+// a distinct type. Making them separate types would be a source-compatible
+// change to every other caller and would break exactly this line -- so the
+// promise in the doc needs something holding it down, not a reader's goodwill.
+//
+// A consumer reported the closure this replaces appearing once in each of their
+// seven fetchers, fourteen times in all:
+//
+//	sdk.Compute("provider", func(map[string]any) (any, error) { return provider, nil })
+func TestFixedKeyServesAsAConstantLabelThroughComputeText(t *testing.T) {
+	out, err := ComputeText("provider", FixedKey("inmet"))(map[string]any{"id": 1})
+	if err != nil {
+		t.Fatalf("ComputeText: %v", err)
+	}
+	if got := out.(map[string]any)["provider"]; got != "inmet" {
+		t.Errorf("provider = %v, want inmet", got)
+	}
+
+	// And it is the same value the closure produced, so adopting it does not
+	// move a single column.
+	old, err := Compute("provider", func(map[string]any) (any, error) {
+		return "inmet", nil
+	})(map[string]any{"id": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.(map[string]any)["provider"] != old.(map[string]any)["provider"] {
+		t.Errorf("the label changed: %v against %v",
+			out.(map[string]any)["provider"], old.(map[string]any)["provider"])
+	}
+
+	// The warning in the doc is about source_key, and it is real: a constant
+	// there gives every record the same identity.
+	a, _ := ComputeText("source_key", FixedKey("daily"))(map[string]any{"id": 1})
+	b, _ := ComputeText("source_key", FixedKey("daily"))(map[string]any{"id": 2})
+	if a.(map[string]any)["source_key"] != b.(map[string]any)["source_key"] {
+		t.Error("two different records got different constant keys; the doc's " +
+			"warning describes a collapse that this asserts actually happens")
+	}
+}
+
 // It has to be the same result the hand-written wrapper produced, or upgrading
 // to it would change every ingestion_id already written.
 func TestComputeTextMatchesTheWrapperItReplaces(t *testing.T) {
