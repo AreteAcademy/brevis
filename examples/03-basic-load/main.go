@@ -2,7 +2,7 @@
 //
 // This is the low-level API: you hand load.New a batch of envelopes you built
 // yourself, provenance included. The two-call API above it (sdk.Extract and
-// sdk.Load) is what a fetcher uses -- see 08-fetcher-minimo.
+// sdk.Load) is what a fetcher uses -- see 08-minimal-fetcher.
 //
 // The SDK has no opinion about your columns: it writes each record as you
 // built it, and adds the two metadata fields only because WithMetadata asks.

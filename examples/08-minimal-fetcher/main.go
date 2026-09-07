@@ -1,4 +1,4 @@
-// Command 08-fetcher-minimo is a whole fetcher, with nothing left out.
+// Command 08-minimal-fetcher is a whole fetcher, with nothing left out.
 //
 // Four questions, four places: where it comes from, what a response means,
 // what row it builds, and where it goes with which columns.

@@ -14,7 +14,7 @@ binary, running each step as a pod on Kubernetes.
 > The project is written in English. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Architecture and phasing: [`docs/plan.md`](docs/plan.md).
-Referência da linha de comando: [`docs/COMMANDS.md`](docs/COMMANDS.md).
+Command-line reference: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 Per-phase reports: [`docs/phases/`](docs/phases/).
 
 ## SDK
@@ -60,8 +60,8 @@ the code.
 brevis validate examples/            # validates with no database; good for CI
 brevis run examples/hello.yaml       # runs now, on this instance
 
-brevis publish examples/hello.yaml   # grava workflow e agenda no banco
-brevis scheduler --concurrency 5     # materializa slots e executa
+brevis publish examples/hello.yaml   # writes the workflow and its schedule to the database
+brevis scheduler --concurrency 5     # materializes slots and runs them
 brevis backfill diario --from 2026-01-01 --to 2026-01-31
 ```
 

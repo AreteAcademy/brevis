@@ -590,7 +590,7 @@ Attempt 0 writes the raw extract under `{At}/{run_id}/{pipeline}/` and marks it
 complete. Attempt 1 finds it and **does not call the source at all**:
 
 ```
-level=INFO msg="checkpoint reaproveitado: a origem nao sera consultada" registros=48213
+level=INFO msg="checkpoint reused: the source will not be queried" records=48213
 level=INFO msg=loaded checkpoint=reaproveitado checkpoint_em=gs://landing/_checkpoint/...
 ```
 
@@ -717,9 +717,10 @@ so they can pick later.
 **refuse at assembly time**, before the extract runs:
 
 ```
-sdk.Median não existe: ela precisa de todas as linhas do grupo, e este
-agregador roda em memória constante. Duas saídas: calcule no destino, com SQL,
-ou use sdk.Custom -- e assuma o custo de memória explicitamente.
+sdk.Median does not exist: it needs every row in the group, and this
+aggregator runs in constant memory. Two ways out: compute it at the
+destination, with SQL, or use sdk.Custom -- and take on the memory cost
+explicitly.
 ```
 
 They exist rather than simply being absent because `undefined: sdk.Median` from
@@ -911,7 +912,7 @@ cluster — simply do not, rather than pretending to.
 If a Python fetcher composed its key with `str(record["id"])`, the Go SDK does
 **not** produce the same text, and the difference lands in the identity:
 
-| valor | Go (o padrão) | Python (`str`) |
+| value | Go (the default) | Python (`str`) |
 |---|---|---|
 | `nil` | `""` | `"None"` |
 | `true` | `"true"` | `"True"` |
@@ -1545,10 +1546,10 @@ quietly one field short. `Columns` asks *"does the row have the table's
 columns?"*. Losing either one to have a single list would trade clarity for a
 detection hole.
 
-### As duas colunas que o SDK conhece
+### The two columns the SDK knows
 
-`sdk.IngestionID()` e `sdk.IngestionLoadedAt()` são transformers, usados como
-qualquer outro:
+`sdk.IngestionID()` and `sdk.IngestionLoadedAt()` are transformers, used like any
+other:
 
 ```go
 Transform: []sdk.Transformer{
@@ -1565,45 +1566,45 @@ Target: sdk.Target{
 },
 ```
 
-Ler a cadeia dá a resposta inteira: **seis helpers, seis colunas.** Nada
-acontece fora dela.
+Reading the chain gives the whole answer: **six helpers, six columns.** Nothing
+happens outside it.
 
-`ingestion_id` é um UUID v5 determinístico sobre
-`provider|entity|source_key|record_ts`, então o mesmo registro sempre recebe o
-mesmo id e uma reexecução é segura. A fórmula, o namespace e o separador são
-**congelados** — uma linha escrita aqui tem de casar com a que um fetcher
-Python escreve para o mesmo registro.
+`ingestion_id` is a deterministic UUID v5 over
+`provider|entity|source_key|record_ts`, so the same record always gets the same
+id and a re-run is safe. The formula, the namespace and the separator are
+**frozen** — a row written here has to match the one a Python fetcher writes for
+the same record.
 
-É por isso que ele é um transformer do SDK e não algo que você escreve: um
-`fmt.Sprintf` no fetcher pareceria idêntico e daria outro id no primeiro float
-formatado diferente, e toda carga anterior deixaria de casar.
+That is why it is an SDK transformer rather than something you write: an
+`fmt.Sprintf` in the fetcher would look identical and would give a different id on
+the first float formatted differently, and every earlier load would stop
+matching.
 
-Sem argumentos lê `provider`, `entity`, `source_key`, `record_ts`. Nomeie os
-campos quando os seus diferirem. Campo nomeado e ausente é erro nomeando-o —
-o que costuma significar que a cadeia está fora de ordem.
+With no arguments it reads `provider`, `entity`, `source_key`, `record_ts`. Name
+the fields when yours differ. A field named and missing is an error naming it —
+which usually means the chain is out of order.
 
-`sdk.IngestionLoadedAt()` escreve o instante da carga em UTC, RFC 3339. Não
-recebe argumentos: um valor de fora transformaria "quando esta linha foi
-escrita" em outra coisa com o mesmo nome.
+`sdk.IngestionLoadedAt()` writes the load's instant in UTC, RFC 3339. It takes no
+arguments: a value from outside would turn "when this row was written" into
+something else under the same name.
 
-### NOT NULL, quando você declara
+### NOT NULL, when you declare it
 
-Quando `Target.Columns` nomeia uma dessas duas, o SDK cria a tabela ele mesmo
-para poder declarar aquela coluna `NOT NULL`:
+When `Target.Columns` names either of those two, the SDK creates the table itself
+so it can declare that column `NOT NULL`:
 
 ```sql
 ingestion_id        STRING    NOT NULL,
 ingestion_loaded_at TIMESTAMP NOT NULL
 ```
 
-O autodetect as infere nullable e o BigQuery não aperta uma coluna depois, então
-a garantia tem de ser posta na criação. **Declare a coluna, tenha a garantia**;
-não declare nada e tudo é inferido nullable. O gatilho é a sua própria lista,
-então nada decide a forma da tabela pelas suas costas.
+Autodetect infers them nullable and BigQuery does not tighten a column
+afterwards, so the guarantee has to go in at creation. **Declare the column, get
+the guarantee**; declare nothing and everything is inferred nullable. The trigger
+is your own list, so nothing decides the table's shape behind your back.
 
-`DedupMerge` precisa de `ingestion_id`, e as opções de partição precisam de
-`ingestion_loaded_at` — as duas conferidas contra `Columns` quando ele é
-declarado.
+`DedupMerge` needs `ingestion_id`, and the partition options need
+`ingestion_loaded_at` — both checked against `Columns` when it is declared.
 
 ### A row shape of your own
 

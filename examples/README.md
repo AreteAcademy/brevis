@@ -1,122 +1,167 @@
-# Brevis SDK — exemplos
+# Brevis SDK — examples
 
-Cada exemplo é um módulo executável próprio. O `go.mod` daqui aponta para
-`../sdk` via `replace`, então eles compilam contra a árvore de trabalho — o CI
-os constrói e testa a cada push, o que faz deles um portão sobre a API, não
-apenas documentação.
+Every example is a runnable module of its own. The `go.mod` here points at
+`../sdk` through a `replace`, so they compile against the working tree — CI
+builds and tests them on every push, which makes them a gate over the API rather
+than documentation alone.
 
 ```bash
 cd examples
-go build ./...   # todos compilam
-go test ./...    # o 05 tem testes de verdade
+go build ./...   # they all compile
+go test ./...    # 05 and consumer have real tests
 ```
 
 ## Extract
 
-### [01-basic-extract](01-basic-extract/) — o caso mínimo
+### [01-basic-extract](01-basic-extract/) — the smallest useful case
 
 ```bash
 go run ./01-basic-extract -url https://example.gov/data.csv
 ```
 
-`extract.CSV` com configuração zero. A primeira linha do CSV vira as chaves;
-`NoHeader: true` trata todas as linhas como dado, com chaves `field_0`,
-`field_1`…
+`from.CSV` with zero configuration. The CSV's first line becomes the keys;
+`NoHeader: true` treats every line as data, with keys `field_0`, `field_1`…
 
-### [02-advanced-extract](02-advanced-extract/) — o que importa contra uma API real
+### [02-advanced-extract](02-advanced-extract/) — what matters against a real API
 
-Headers, os dois timeouts (por tentativa e total), retry com backoff, um
-`Guard` que rejeita 200 com corpo de erro, e rate limiting.
+Headers, both timeouts (per attempt and total), retry with backoff, a `Guard`
+that rejects a 200 carrying an error body, and rate limiting.
 
-O `RateLimiter` aceita qualquer coisa com `Wait(ctx) error` — inclusive
-`*rate.Limiter` de `golang.org/x/time/rate`, sem o SDK carregar a dependência.
+`RateLimiter` accepts anything with `Wait(ctx) error` — `*rate.Limiter` from
+`golang.org/x/time/rate` included, without the SDK carrying the dependency.
 
 ## Load
 
-### [03-basic-load](03-basic-load/) — escrever no BigQuery
+### [03-basic-load](03-basic-load/) — writing to BigQuery
 
 ```bash
-go run ./03-basic-load -project meu-projeto -dataset landing -table raw_data
+go run ./03-basic-load -project my-project -dataset landing -table raw_data
 ```
 
-A tabela precisa existir: o SDK não é dono do seu schema. Mostra as opções
-funcionais e `WithMetadata`, que dobra os campos `_brevis_*` para dentro do
-payload.
+The table has to exist: the SDK does not own your schema. It shows the
+functional options and `WithMetadata`, which folds the `_brevis_*` fields into
+the payload.
 
-### [07-envelope-columns](07-envelope-columns/) — o contrato de 6 colunas
+### [07-own-shape](07-own-shape/) — building the row the warehouse expects
 
-Quando as linhas precisam casar com uma camada bronze que deduplica por
-`ingestion_id`. `WithEnvelopeColumns(true)` embrulha o payload nas colunas
-`ingestion_id`, `ingestion_loaded_at`, `provider`, `entity`, `source_key`,
-`payload`.
+When the rows have to match a bronze layer that deduplicates by `ingestion_id`.
+You build the shape in one Transformer; only `ingestion_id` and
+`ingestion_loaded_at` come from the SDK, and only because a `Metadata` block
+asked for them.
 
-Existe para o `ingestion_id` ter **um** dono: remontar essas colunas em cada
-consumidor faz os ids divergirem, que é a duplicação que o contrato evita.
+That is what gives `ingestion_id` **one** owner: reassembling those columns in
+every consumer makes the ids diverge, which is the duplication the contract
+exists to prevent.
 
 ## Transform
 
-### [09-transform](09-transform/) — o passo entre extract e load
+### [09-transform](09-transform/) — the step between extract and load
 
 ```bash
 go run ./09-transform -dry-run
 ```
 
-`Without` para descartar metadado de requisição, `Rename` para dar aos campos
-o nome que você usa, `Compute` para derivar, e uma função sua para o resto —
-com `sdk.SkipRecord` para filtrar.
+`Without` to drop request metadata, `Rename` to give fields the name you use,
+`Compute` to derive, and a function of your own for the rest — with
+`sdk.SkipRecord` to filter.
 
-`Metadata.Key` e `Metadata.When` leem o registro **depois** de todo Transformer, então
-apontam para o nome novo. Apontar para o antigo é erro listando o que o registro
-tem de fato — e não uma chave curta, que mudaria todo `ingestion_id` em silêncio.
+`Metadata.Key` and `Metadata.When` read the record **after** every Transformer,
+so they point at the new name. Pointing at the old one is an error listing what
+the record actually holds — rather than a short key, which would change every
+`ingestion_id` in silence.
 
 ## Pipeline
 
-### [04-complete-pipeline](04-complete-pipeline/) — extract → load paginado
+### [04-complete-pipeline](04-complete-pipeline/) — paginated extract → load
 
-Percorre uma API paginada por `Link: rel="next"` e carrega em lotes de mil, para
-a memória ficar plana independente do tamanho total.
+Walks an API paginated by `Link: rel="next"` and loads in batches of a thousand,
+so memory stays flat regardless of the total size.
 
-As três estratégias de paginação:
+The three pagination strategies:
 
 ```go
-sdk.Source{URL: url, FollowLinks: true}                              // Link header
-sdk.Source{URL: url, CursorKey: "next_page", DataKey: "results"}     // cursor no corpo
-sdk.Source{URL: url, OffsetKey: "offset", PageSize: 100}             // offset
+from.HTTP{URL: url, FollowLinks: true}                              // Link header
+from.HTTP{URL: url, CursorKey: "next_page", DataKey: "results"}     // cursor in the body
+from.HTTP{URL: url, OffsetKey: "offset", PageSize: 100}             // offset
 ```
 
-Todas param em `MaxPages` (mil por padrão), para um servidor que sempre anuncia
-próxima página não girar para sempre.
+All of them stop at `MaxPages` (a thousand by default), so a server that always
+announces a next page does not spin forever.
 
-## Operação
+### [08-minimal-fetcher](08-minimal-fetcher/) — a whole fetcher, nothing left out
 
-### [05-testing](05-testing/) — como testar código que usa o SDK
+Four questions, four places: where it comes from, what a response means, what row
+it builds, and where it goes with which columns. Flags, `-dry-run`, `-preview`,
+logging, retry, table creation and the exit code all come from `sdk.Run`.
 
-O único com testes rodáveis:
+### [11-files](11-files/) — files in, files out, no cloud at all
+
+```bash
+go run ./11-files
+```
+
+The same pipeline serves S3 and GCS by changing one line: the path's scheme says
+the backend, and the `Store` is passed in rather than chosen inside the driver.
+That is what makes this program compile not one line of AWS or Google.
+
+### [12-postgres](12-postgres/) — Postgres to Postgres, end to end
+
+```bash
+docker compose -f ../docker-compose.drivers.yml up -d postgres
+export PG_DSN='postgres://brevis:brevis@localhost:55432/brevis_it'
+go run ./12-postgres -create-tables
+go run ./12-postgres
+go run ./12-postgres          # the second run loads zero rows
+```
+
+Key-based pagination, `DedupMerge` on `ingestion_id`, and the DDL written by hand
+— because the driver creates no table and infers no type.
+
+## Operation
+
+### [05-testing](05-testing/) — how to test code that uses the SDK
 
 ```bash
 go test ./05-testing -v
 ```
 
-`httptest.Server` no lugar da API real: rápido, offline, determinístico. Cobre
-retry num 503, ausência de retry num 404, e a propagação de erro do seu próprio
-processamento.
+An `httptest.Server` in place of the real API: fast, offline, deterministic. It
+covers a retry on a 503, no retry on a 404, and the error propagating out of your
+own processing.
 
-### [06-config-from-env](06-config-from-env/) — configuração por ambiente
+### [06-config-from-env](06-config-from-env/) — configuration from the environment
 
 ```bash
-export BREVIS_PROJECT=meu-projeto
+export BREVIS_PROJECT=my-project
 export BREVIS_DATASET=landing
 go run ./06-config-from-env
 ```
 
-Como isso normalmente roda no Kubernetes.
+How this usually runs in Kubernetes.
 
-## Autenticação
+### [10-engine-context](10-engine-context/) — a fetcher that knows it is under Brevis
 
-Os exemplos de load precisam de credenciais GCP:
+No flag, no argument, no environment read of its own. The engine injects
+`BREVIS_RUN_*` into the step, the SDK picks it up, and `Target.CreateTable` stays
+nil and lets it decide. Run by hand, none of that exists and nothing is created.
+
+### [consumer](consumer/) — the gate over the public surface
+
+Written from outside the SDK's module on purpose: it compiles against the working
+tree and runs in CI, so a break in the public API shows up here before it becomes
+a release. `pruning_test.go` asserts the dependency pruning by counting packages.
+
+### [quickstart](quickstart/) — the engine and a fetcher, together
+
+A compose, a workflow and a fetcher: the shortest path from nothing to a run on
+the dashboard.
+
+## Authentication
+
+The load examples need GCP credentials:
 
 ```bash
 gcloud auth application-default login
-# ou
-export GOOGLE_APPLICATION_CREDENTIALS=/caminho/para/credenciais.json
+# or
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ```

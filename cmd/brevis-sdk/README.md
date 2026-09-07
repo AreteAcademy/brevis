@@ -1,8 +1,8 @@
 # Brevis SDK CLI
 
-> Este é o CLI do **SDK** — `extract`, `load` e o pipeline entre os dois. O
-> binário do Brevis (o engine: `serve`, `scheduler`, `migrate`, `publish`) é
-> outro, e vive em [`cmd/brevis`](../brevis-sdk/).
+> This is the **SDK's** CLI — `extract`, `load` and the pipeline between them.
+> Brevis's own binary (the engine: `serve`, `scheduler`, `migrate`, `publish`) is
+> a different one, and lives in [`cmd/brevis`](../brevis/).
 
 Command-line interface for Brevis SDK. Extract and load data without writing Go code.
 

@@ -290,7 +290,7 @@ Validates a visual-identity file without starting the server.
 
 ```bash
 $ brevis brand brand.example.yaml
-  ok    Brevis · Orquestração
+  ok    Brevis · Orchestration
         logo      /assets/logo.svg  (built-in symbol)
         accent    #aa8450
         Powered by Brevis
@@ -440,7 +440,7 @@ useless.
 For anything beyond that, the Go SDK is the path — a whole fetcher fits in
 twenty lines, with flags, retry, pagination, provenance and the exit code all
 coming from `sdk.Run`. See
-[`examples/08-fetcher-minimo`](../examples/08-fetcher-minimo/).
+[`examples/08-minimal-fetcher`](../examples/08-minimal-fetcher/).
 
 ---
 
