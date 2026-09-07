@@ -7,9 +7,9 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// BenchmarkEncodeNDJSON fica no repositório porque foi ele que mostrou o
-// tamanho do ganho: 13 alocações para 10 mil linhas, contra ~50 mil quando
-// cada registro passava por um map[string]any no json.Encoder.
+// BenchmarkEncodeNDJSON stays in the repository because it is what showed the
+// size of the gain: 13 allocations for 10 thousand lines, against ~50 thousand
+// when every record went through a map[string]any in the json.Encoder.
 func BenchmarkEncodeNDJSON(b *testing.B) {
 	envelopes := make([]core.Envelope, 10000)
 	for i := range envelopes {

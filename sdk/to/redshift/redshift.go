@@ -259,7 +259,7 @@ func EncodeNDJSON(envelopes []core.Envelope, columns []string) ([]byte, error) {
 			}
 			primeiro = false
 			buf.Write(chaves[j])
-			if !escreverEscalar(&buf, v) {
+			if !writeScalar(&buf, v) {
 				// Composite: the encoder handles it, and pays one allocation.
 				if err := enc.Encode(v); err != nil {
 					return nil, fmt.Errorf("redshift: row %d, column %q: %w", i+1, c, err)

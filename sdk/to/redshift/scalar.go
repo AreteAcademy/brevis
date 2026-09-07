@@ -7,7 +7,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/jsontext"
 )
 
-// escreverEscalar writes the types a JSON record almost always carries, without
+// writeScalar writes the types a JSON record almost always carries, without
 // going through json.Encoder. It returns false when it does not know how.
 //
 // It exists because of a measurement, and the measurement changed sign between
@@ -20,7 +20,7 @@ import (
 // The output is compared byte for byte against json.Marshal in the test, for
 // every case that usually breaks whoever writes this by hand: quotes,
 // backslashes, control characters, unicode and invalid UTF-8.
-func escreverEscalar(buf *bytes.Buffer, v any) bool {
+func writeScalar(buf *bytes.Buffer, v any) bool {
 	switch t := v.(type) {
 	case nil:
 		buf.WriteString("null")

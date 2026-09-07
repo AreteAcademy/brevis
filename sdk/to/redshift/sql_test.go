@@ -12,71 +12,71 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// Este arquivo é o que dá para testar sem cluster, e é deliberadamente o
-// grosso do driver: a geração do SQL como função pura.
+// This file is what can be tested without a cluster, and it is deliberately the
+// bulk of the driver: the SQL generation as a pure function.
 //
-// O motivo está escrito na v0.12.0 -- SQL montado dentro de um método com
-// cliente nunca tinha sido visto por um teste, e saiu com casamento posicional.
+// The reason is written in v0.12.0 -- SQL built inside a method that held a
+// client had never been seen by a test, and shipped with a positional match.
 
-func TestCopySQLUsaRoleENaoChave(t *testing.T) {
+func TestCopySQLUsesTheRoleAndNotAKey(t *testing.T) {
 	got := CopySQL("landing.pedidos", "s3://b/k.ndjson", "arn:aws:iam::1:role/r")
-	for _, exigido := range []string{
+	for _, required := range []string{
 		"COPY landing.pedidos FROM 's3://b/k.ndjson'",
 		"IAM_ROLE 'arn:aws:iam::1:role/r'",
 		"FORMAT AS JSON 'auto'",
 	} {
-		if !strings.Contains(got, exigido) {
-			t.Errorf("falta %q:\n%s", exigido, got)
+		if !strings.Contains(got, required) {
+			t.Errorf("missing %q:\n%s", required, got)
 		}
 	}
 }
 
-// TestMergeSQLNomeiaAsColunas: nomeadas sempre. A alternativa já aconteceu --
-// o INSERT ROW do BigQuery casa por posição, e a v0.12.0 saiu com as colunas
-// trocadas de lugar porque ninguém tinha visto o SQL gerado.
-func TestMergeSQLNomeiaAsColunas(t *testing.T) {
+// TestMergeSQLNamesTheColumns: named, always. The alternative already happened
+// -- BigQuery's INSERT ROW matches by position, and v0.12.0 shipped with the
+// columns swapped because nobody had seen the generated SQL.
+func TestMergeSQLNamesTheColumns(t *testing.T) {
 	got := MergeSQL("destino", "brevis_stage", []string{"ingestion_id", "valor"})
 
-	esperado := `MERGE INTO destino USING brevis_stage ` +
+	want := `MERGE INTO destino USING brevis_stage ` +
 		`ON destino."ingestion_id" = brevis_stage."ingestion_id" ` +
 		`WHEN NOT MATCHED THEN INSERT ("ingestion_id", "valor") ` +
 		`VALUES (brevis_stage."ingestion_id", brevis_stage."valor")`
-	if got != esperado {
-		t.Errorf("SQL:\n  got  %s\n  want %s", got, esperado)
+	if got != want {
+		t.Errorf("SQL:\n  got  %s\n  want %s", got, want)
 	}
 }
 
-// TestMergeSQLCasaPeloIngestionID: trocar a coluna de junção faria a dedup
-// casar pela coisa errada, em silêncio.
-func TestMergeSQLCasaPeloIngestionID(t *testing.T) {
+// TestMergeSQLMatchesOnIngestionID: swapping the join column would make the
+// dedup match on the wrong thing, in silence.
+func TestMergeSQLMatchesOnIngestionID(t *testing.T) {
 	got := MergeSQL("d", "s", []string{"a"})
 	if !strings.Contains(got, `d."`+core.MetadataID+`" = s."`+core.MetadataID+`"`) {
-		t.Errorf("a junção não é por %s:\n%s", core.MetadataID, got)
+		t.Errorf("the join is not on %s:\n%s", core.MetadataID, got)
 	}
 }
 
-// TestMergeSQLCitaPalavraReservada.
-func TestMergeSQLCitaPalavraReservada(t *testing.T) {
+// TestMergeSQLQuotesAReservedWord.
+func TestMergeSQLQuotesAReservedWord(t *testing.T) {
 	got := MergeSQL("d", "s", []string{"order"})
 	if strings.Count(got, `"order"`) < 2 {
-		t.Errorf("a palavra reservada não está citada nos dois lados:\n%s", got)
+		t.Errorf("the reserved word is not quoted on both sides:\n%s", got)
 	}
 }
 
-// TestStagingTableUsaLike: uma lista de colunas escrita à mão é a que faz o
-// MERGE falhar meses depois, quando alguém acrescenta uma coluna ao destino.
-func TestStagingTableUsaLike(t *testing.T) {
+// TestStagingTableUsesLike: a hand-written column list is what makes the MERGE
+// fail months later, when somebody adds a column to the destination.
+func TestStagingTableUsesLike(t *testing.T) {
 	got := StagingTableSQL("landing.pedidos", "brevis_stage")
 	if !strings.Contains(got, "LIKE landing.pedidos") {
-		t.Errorf("a temporária não acompanha o destino:\n%s", got)
+		t.Errorf("the temporary table does not follow the destination:\n%s", got)
 	}
 	if !strings.Contains(got, "TEMP") {
-		t.Errorf("a tabela de staging não é temporária:\n%s", got)
+		t.Errorf("the staging table is not temporary:\n%s", got)
 	}
 }
 
-// TestEncodeNDJSONUmaLinhaPorRegistro.
-func TestEncodeNDJSONUmaLinhaPorRegistro(t *testing.T) {
+// TestEncodeNDJSONOneLinePerRecord.
+func TestEncodeNDJSONOneLinePerRecord(t *testing.T) {
 	envelopes := []core.Envelope{
 		{Payload: map[string]any{"a": 1, "b": "x", "sobra": true}},
 		{Payload: map[string]any{"a": 2}},
@@ -86,89 +86,90 @@ func TestEncodeNDJSONUmaLinhaPorRegistro(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	linhas := strings.Split(strings.TrimSpace(string(b)), "\n")
-	if len(linhas) != 2 {
-		t.Fatalf("%d linhas, esperado 2:\n%s", len(linhas), b)
+	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("%d lines, want 2:\n%s", len(lines), b)
 	}
 
-	var primeira map[string]any
-	if err := json.Unmarshal([]byte(linhas[0]), &primeira); err != nil {
+	var first map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &first); err != nil {
 		t.Fatal(err)
 	}
-	// Só as colunas declaradas entram: um campo a mais faria o COPY com
-	// 'auto' tentar uma coluna que não existe.
-	if _, tem := primeira["sobra"]; tem {
-		t.Errorf("campo fora da declaração foi para o arquivo: %v", primeira)
+	// Only the declared columns go in: one extra field would make the COPY with
+	// 'auto' try a column that does not exist.
+	if _, ok := first["sobra"]; ok {
+		t.Errorf("a field outside the declaration reached the file: %v", first)
 	}
-	if primeira["a"] != float64(1) || primeira["b"] != "x" {
-		t.Errorf("linha 1 = %v", primeira)
+	if first["a"] != float64(1) || first["b"] != "x" {
+		t.Errorf("line 1 = %v", first)
 	}
 
-	// Coluna que o registro não traz simplesmente não aparece; o COPY com
-	// 'auto' deixa a coluna NULL, que é legítimo numa landing.
-	var segunda map[string]any
-	if err := json.Unmarshal([]byte(linhas[1]), &segunda); err != nil {
+	// A column the record does not carry simply does not appear; the COPY with
+	// 'auto' leaves the column NULL, which is legitimate in a landing table.
+	var second map[string]any
+	if err := json.Unmarshal([]byte(lines[1]), &second); err != nil {
 		t.Fatal(err)
 	}
-	if _, tem := segunda["b"]; tem {
-		t.Errorf("linha 2 inventou a coluna b: %v", segunda)
+	if _, ok := second["b"]; ok {
+		t.Errorf("line 2 invented column b: %v", second)
 	}
 }
 
-// TestEncodeNDJSONNaoPagaOCaminhoDoMapa compara os DOIS caminhos no mesmo
-// processo, e essa é a única forma que se sustenta.
+// TestEncodeNDJSONDoesNotPayTheMapPath compares BOTH paths in the same process,
+// and that is the only form that holds up.
 //
-// Este teste já esteve errado duas vezes, e as duas por medir a coisa errada:
+// This test has been wrong twice, both times by measuring the wrong thing:
 //
-//  1. a primeira versão comparava 2000 linhas com 200 e exigia razão abaixo de
-//     10 -- que com qualquer custo linear dá exatamente 10, impossível de
-//     passar de um jeito e de falhar do outro;
-//  2. a segunda fixou um teto absoluto por linha, medido com o toolchain
-//     local. A CI roda outro, e a análise de escape mudou entre eles: 0,005
-//     por linha no 1.25 viraram 2,00 no 1.27, sem nada no código mudar.
+//  1. the first version compared 2000 lines against 200 and demanded a ratio
+//     below 10 -- which with any linear cost is exactly 10, impossible to pass
+//     one way and fail the other;
+//  2. the second pinned an absolute per-line ceiling, measured with the local
+//     toolchain. CI runs another, and escape analysis changed between them:
+//     0.005 per line on 1.25 became 2.00 on 1.27, with nothing in the code
+//     changing.
 //
-// Um número absoluto de alocações não é propriedade do código; é propriedade
-// do código MAIS o compilador. O que é do código é a diferença entre as duas
-// estratégias -- e medindo as duas sob o mesmo compilador, ela se sustenta em
-// qualquer um.
-func TestEncodeNDJSONNaoPagaOCaminhoDoMapa(t *testing.T) {
-	const linhas = 2000
-	envelopes := make([]core.Envelope, linhas)
+// An absolute allocation count is not a property of the code; it is a property
+// of the code PLUS the compiler. What belongs to the code is the difference
+// between the two strategies -- and measuring both under the same compiler, it
+// holds up on any of them.
+func TestEncodeNDJSONDoesNotPayTheMapPath(t *testing.T) {
+	const lines = 2000
+	envelopes := make([]core.Envelope, lines)
 	for i := range envelopes {
 		envelopes[i] = core.Envelope{Payload: map[string]any{"a": i, "b": "texto"}}
 	}
-	colunas := []string{"a", "b"}
+	columns := []string{"a", "b"}
 
-	direto := testing.AllocsPerRun(5, func() {
-		if _, err := EncodeNDJSON(envelopes, colunas); err != nil {
+	direct := testing.AllocsPerRun(5, func() {
+		if _, err := EncodeNDJSON(envelopes, columns); err != nil {
 			t.Fatal(err)
 		}
 	})
-	viaMapa := testing.AllocsPerRun(5, func() {
-		if _, err := encodeViaMapa(envelopes, colunas); err != nil {
+	viaMap := testing.AllocsPerRun(5, func() {
+		if _, err := encodeViaMap(envelopes, columns); err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	// A margem é folgada de propósito: o que se afirma é que o caminho direto
-	// é substancialmente mais barato, não um número exato que o próximo Go
-	// invalidaria.
-	if direto*2 > viaMapa {
-		t.Errorf("o caminho direto custa %.0f alocações e o do mapa %.0f para %d linhas; "+
-			"a vantagem sumiu -- ou o EncodeNDJSON voltou a montar um map por registro",
-			direto, viaMapa, linhas)
+	// The margin is generous on purpose: what is claimed is that the direct path
+	// is substantially cheaper, not an exact number the next Go would
+	// invalidate.
+	if direct*2 > viaMap {
+		t.Errorf("the direct path costs %.0f allocations and the map path %.0f for %d lines; "+
+			"the advantage is gone -- or EncodeNDJSON went back to building a map per record",
+			direct, viaMap, lines)
 	}
-	t.Logf("direto %.0f, via mapa %.0f (%.1fx) para %d linhas",
-		direto, viaMapa, viaMapa/direto, linhas)
+	t.Logf("direct %.0f, via map %.0f (%.1fx) for %d lines",
+		direct, viaMap, viaMap/direct, lines)
 }
 
-// encodeViaMapa é o caminho que EncodeNDJSON tinha antes: um map[string]any
-// por registro, entregue ao json.Encoder.
+// encodeViaMap is the path EncodeNDJSON had before: one map[string]any per
+// record, handed to the json.Encoder.
 //
-// Vive no teste, e não no código de produção, porque é a referência contra a
-// qual o ganho é medido -- e porque uma referência que mora no teste não pode
-// ser usada por engano.
-func encodeViaMapa(envelopes []core.Envelope, colunas []string) ([]byte, error) {
+// It lives in the test, and not in the production code, because it is the
+// reference the gain is measured against -- and because a reference that lives
+// in the test cannot be used by mistake.
+func encodeViaMap(envelopes []core.Envelope, columns []string) ([]byte, error) {
 	var buf bytes.Buffer
 	buf.Grow(len(envelopes) * 128)
 	enc := json.NewEncoder(&buf)
@@ -178,61 +179,61 @@ func encodeViaMapa(envelopes []core.Envelope, colunas []string) ([]byte, error) 
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", i+1, err)
 		}
-		linha := make(map[string]any, len(colunas))
-		for _, c := range colunas {
-			if v, tem := obj[c]; tem {
-				linha[c] = v
+		row := make(map[string]any, len(columns))
+		for _, c := range columns {
+			if v, ok := obj[c]; ok {
+				row[c] = v
 			}
 		}
-		if err := enc.Encode(linha); err != nil {
+		if err := enc.Encode(row); err != nil {
 			return nil, err
 		}
 	}
 	return buf.Bytes(), nil
 }
 
-// executorFalso registra o SQL, e é como o driver inteiro é testável sem
-// cluster -- que é a única forma, porque não existe imagem do Redshift.
-type executorFalso struct{ sqls []string }
+// fakeExecutor records the SQL, and is how the whole driver is testable without
+// a cluster -- which is the only way, because there is no Redshift image.
+type fakeExecutor struct{ sqls []string }
 
-func (e *executorFalso) Exec(_ context.Context, sql string) error {
+func (e *fakeExecutor) Exec(_ context.Context, sql string) error {
 	e.sqls = append(e.sqls, sql)
 	return nil
 }
 
-type storeFalso struct {
-	bucket, chave string
-	apagou        bool
+type fakeStore struct {
+	bucket, key string
+	deleted     bool
 }
 
-func (s *storeFalso) Scheme() string { return "s3" }
-func (s *storeFalso) List(context.Context, string, string) ([]string, error) {
+func (s *fakeStore) Scheme() string { return "s3" }
+func (s *fakeStore) List(context.Context, string, string) ([]string, error) {
 	return nil, nil
 }
-func (s *storeFalso) Open(context.Context, string, string) (io.ReadCloser, error) {
+func (s *fakeStore) Open(context.Context, string, string) (io.ReadCloser, error) {
 	return nil, nil
 }
-func (s *storeFalso) Create(_ context.Context, bucket, chave string, r io.Reader) error {
-	s.bucket, s.chave = bucket, chave
+func (s *fakeStore) Create(_ context.Context, bucket, key string, r io.Reader) error {
+	s.bucket, s.key = bucket, key
 	_, _ = io.ReadAll(r)
 	return nil
 }
-func (s *storeFalso) Delete(context.Context, string, string) error {
-	s.apagou = true
+func (s *fakeStore) Delete(context.Context, string, string) error {
+	s.deleted = true
 	return nil
 }
 
-// TestOrdemDosComandos prova a sequência inteira sem cluster: staging, COPY
-// para a temporária, MERGE, DROP.
-func TestOrdemDosComandos(t *testing.T) {
-	exec := &executorFalso{}
-	store := &storeFalso{}
+// TestTheOrderOfTheCommands proves the whole sequence without a cluster:
+// staging, COPY into the temporary table, MERGE, DROP.
+func TestTheOrderOfTheCommands(t *testing.T) {
+	exec := &fakeExecutor{}
+	store := &fakeStore{}
 
-	tabela := Table{
+	table := Table{
 		Name: "landing.pedidos", Staging: "s3://b/stage/",
 		IAMRole: "arn:aws:iam::1:role/r", Store: store, Executor: exec,
 	}
-	_, err := tabela.Write(context.Background(),
+	_, err := table.Write(context.Background(),
 		[]core.Envelope{{Payload: map[string]any{core.MetadataID: "x", "a": 1}}},
 		core.WriteOptions{Dedup: core.DedupMerge, Columns: []string{core.MetadataID, "a"}})
 	if err != nil {
@@ -240,82 +241,83 @@ func TestOrdemDosComandos(t *testing.T) {
 	}
 
 	if len(exec.sqls) != 4 {
-		t.Fatalf("%d comandos, esperado 4:\n%s", len(exec.sqls), strings.Join(exec.sqls, "\n"))
+		t.Fatalf("%d commands, want 4:\n%s", len(exec.sqls), strings.Join(exec.sqls, "\n"))
 	}
-	prefixos := []string{"CREATE TEMP TABLE", "COPY brevis_stage", "MERGE INTO", "DROP TABLE"}
-	for i, p := range prefixos {
+	prefixes := []string{"CREATE TEMP TABLE", "COPY brevis_stage", "MERGE INTO", "DROP TABLE"}
+	for i, p := range prefixes {
 		if !strings.HasPrefix(exec.sqls[i], p) {
-			t.Errorf("comando %d = %q, esperado começar com %q", i, exec.sqls[i], p)
+			t.Errorf("command %d = %q, want it to start with %q", i, exec.sqls[i], p)
 		}
 	}
-	if !store.apagou {
-		t.Error("o arquivo de staging não foi apagado")
+	if !store.deleted {
+		t.Error("the staging file was not deleted")
 	}
 }
 
-// TestSemDedupCopiaDiretoNoDestino: sem dedup não há temporária nem MERGE, e
-// uma temporária criada à toa é trabalho que ninguém pediu.
-func TestSemDedupCopiaDiretoNoDestino(t *testing.T) {
-	exec := &executorFalso{}
-	tabela := Table{
+// TestWithoutDedupItCopiesStraightIntoTheDestination: with no dedup there is no
+// temporary table and no MERGE, and a temporary table created for nothing is
+// work nobody asked for.
+func TestWithoutDedupItCopiesStraightIntoTheDestination(t *testing.T) {
+	exec := &fakeExecutor{}
+	table := Table{
 		Name: "landing.pedidos", Staging: "s3://b/stage/",
-		IAMRole: "arn:aws:iam::1:role/r", Store: &storeFalso{}, Executor: exec,
+		IAMRole: "arn:aws:iam::1:role/r", Store: &fakeStore{}, Executor: exec,
 	}
-	if _, err := tabela.Write(context.Background(),
+	if _, err := table.Write(context.Background(),
 		[]core.Envelope{{Payload: map[string]any{"a": 1}}},
 		core.WriteOptions{Columns: []string{"a"}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(exec.sqls) != 1 || !strings.HasPrefix(exec.sqls[0], "COPY landing.pedidos") {
-		t.Errorf("comandos = %v", exec.sqls)
+		t.Errorf("commands = %v", exec.sqls)
 	}
 }
 
-// TestKeepStagedFileMantem.
-func TestKeepStagedFileMantem(t *testing.T) {
-	store := &storeFalso{}
-	tabela := Table{
+// TestKeepStagedFileKeepsIt.
+func TestKeepStagedFileKeepsIt(t *testing.T) {
+	store := &fakeStore{}
+	table := Table{
 		Name: "t", Staging: "s3://b/stage/", IAMRole: "arn:aws:iam::1:role/r",
-		Store: store, Executor: &executorFalso{}, KeepStagedFile: true,
+		Store: store, Executor: &fakeExecutor{}, KeepStagedFile: true,
 	}
-	if _, err := tabela.Write(context.Background(),
+	if _, err := table.Write(context.Background(),
 		[]core.Envelope{{Payload: map[string]any{"a": 1}}},
 		core.WriteOptions{Columns: []string{"a"}}); err != nil {
 		t.Fatal(err)
 	}
-	if store.apagou {
-		t.Error("apagou mesmo com KeepStagedFile")
+	if store.deleted {
+		t.Error("it deleted even with KeepStagedFile")
 	}
 }
 
-// TestChaveDeAcessoERecusada: uma chave na string do COPY acaba no log de
-// query do cluster, que muita gente lê.
-func TestChaveDeAcessoERecusada(t *testing.T) {
-	tabela := Table{
-		Name: "t", Staging: "s3://b/s/", Store: &storeFalso{}, Executor: &executorFalso{},
+// TestAnAccessKeyIsRefused: a key in the COPY's string ends up in the cluster's
+// query log, which plenty of people read.
+func TestAnAccessKeyIsRefused(t *testing.T) {
+	table := Table{
+		Name: "t", Staging: "s3://b/s/", Store: &fakeStore{}, Executor: &fakeExecutor{},
 		IAMRole: "aws_access_key_id=AKIA;aws_secret_access_key=xyz",
 	}
-	_, err := tabela.Write(context.Background(),
+	_, err := table.Write(context.Background(),
 		[]core.Envelope{{Payload: map[string]any{"a": 1}}}, core.WriteOptions{})
 	if err == nil {
-		t.Fatal("chave de acesso passou")
+		t.Fatal("an access key got through")
 	}
 	if !strings.Contains(err.Error(), "query log") {
-		t.Errorf("o erro não diz por quê: %v", err)
+		t.Errorf("the error does not say why: %v", err)
 	}
 }
 
-// TestCamposObrigatoriosSaoNomeados: não há caminho inline no Redshift, e o
-// erro tem de dizer isso em vez de listar campos sem contexto.
-func TestCamposObrigatoriosSaoNomeados(t *testing.T) {
+// TestTheRequiredFieldsAreNamed: there is no inline path on Redshift, and the
+// error has to say so rather than listing fields with no context.
+func TestTheRequiredFieldsAreNamed(t *testing.T) {
 	_, err := Table{}.Write(context.Background(),
 		[]core.Envelope{{Payload: map[string]any{"a": 1}}}, core.WriteOptions{})
 	if err == nil {
-		t.Fatal("configuração vazia passou")
+		t.Fatal("an empty configuration got through")
 	}
-	for _, exigido := range []string{"DSN", "Name", "Staging", "IAMRole", "Store", "no inline path"} {
-		if !strings.Contains(err.Error(), exigido) {
-			t.Errorf("o erro não diz %q: %v", exigido, err)
+	for _, required := range []string{"DSN", "Name", "Staging", "IAMRole", "Store", "no inline path"} {
+		if !strings.Contains(err.Error(), required) {
+			t.Errorf("the error does not say %q: %v", required, err)
 		}
 	}
 }

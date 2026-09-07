@@ -10,32 +10,32 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestEscalarConcordaComOEncoder compara byte a byte com o encoding/json,
-// configurado como o EncodeNDJSON o configura.
+// TestScalarAgreesWithTheEncoder compares byte for byte against encoding/json,
+// configured the way EncodeNDJSON configures it.
 //
-// Escrever JSON à mão é como se produz um arquivo que o servidor lê de outro
-// jeito -- e um COPY que aceita um valor errado é pior que um que falha. Então
-// a afirmação não é "o meu está certo": é "o meu é idêntico ao do stdlib".
+// Writing JSON by hand is how you produce a file the server reads differently --
+// and a COPY that accepts a wrong value is worse than one that fails. So the
+// claim is not "mine is right": it is "mine is identical to the stdlib's".
 //
-// A referência é o Encoder com SetEscapeHTML(false), e NÃO o json.Marshal: o
-// Marshal escapa <, > e & por padrão, e o caminho dos compostos neste arquivo
-// não escapa. Comparar com o Marshal faria os dois caminhos do MESMO arquivo
-// divergirem -- que foi o que este teste pegou na primeira execução.
-func TestEscalarConcordaComOEncoder(t *testing.T) {
-	// soSemantico marca os casos em que os PRÓPRIOS toolchains discordam entre
-	// si, e por isso o meu código não pode ser igual aos dois.
+// The reference is the Encoder with SetEscapeHTML(false), and NOT json.Marshal:
+// Marshal escapes <, > and & by default, and the composite path in this file
+// does not escape. Comparing against Marshal would make the two paths of the
+// SAME file diverge -- which is what this test caught on its first run.
+func TestScalarAgreesWithTheEncoder(t *testing.T) {
+	// semanticOnly marks the cases where the toolchains THEMSELVES disagree with
+	// each other, and where my code therefore cannot equal both.
 	//
-	// Aconteceu com UTF-8 inválido: o encoding/json do Go 1.25 escreve
-	// `\ufffd` escapado, e o do 1.27 escreve os bytes de U+FFFD. As duas
-	// formas são JSON válido e o mesmo code point -- o COPY lê a mesma coisa
-	// --, então ali a igualdade que vale é a do VALOR, e não a dos bytes.
+	// It happened with invalid UTF-8: Go 1.25's encoding/json writes an escaped
+	// `\ufffd`, and 1.27's writes U+FFFD's bytes. Both forms are valid JSON and
+	// the same code point -- the COPY reads the same thing -- so there the
+	// equality that counts is of the VALUE, and not of the bytes.
 	//
-	// A exceção é declarada caso a caso, e não um "se der diferente, decodifica
-	// e compara": uma tolerância genérica esconderia um escape errado de
-	// verdade.
-	casos := []struct {
-		valor       any
-		soSemantico bool
+	// The exception is declared case by case, and not as a "if it differs,
+	// decode and compare": a blanket tolerance would hide a genuinely wrong
+	// escape.
+	cases := []struct {
+		value        any
+		semanticOnly bool
 	}{
 		{nil, false}, {true, false}, {false, false},
 		{"", false}, {"simples", false}, {"com espaço", false},
@@ -54,47 +54,48 @@ func TestEscalarConcordaComOEncoder(t *testing.T) {
 		{float64(0.1), false},
 	}
 
-	for _, c := range casos {
-		nome := strings.ReplaceAll(nomeDe(c.valor), " ", "_")
-		t.Run(nome, func(t *testing.T) {
-			quero, err := comoOEncoder(c.valor)
+	for _, c := range cases {
+		name := strings.ReplaceAll(nameOf(c.value), " ", "_")
+		t.Run(name, func(t *testing.T) {
+			want, err := likeTheEncoder(c.value)
 			if err != nil {
-				t.Skipf("o stdlib recusa %v", c.valor)
+				t.Skipf("the stdlib refuses %v", c.value)
 			}
 
 			var buf bytes.Buffer
-			if !escreverEscalar(&buf, c.valor) {
-				t.Fatalf("escreverEscalar recusou %#v, que o encoder aceita", c.valor)
+			if !writeScalar(&buf, c.value) {
+				t.Fatalf("writeScalar refused %#v, which the encoder accepts", c.value)
 			}
 			got := buf.String()
 
-			if got == quero {
+			if got == want {
 				return
 			}
-			if !c.soSemantico {
-				t.Fatalf("%#v:\n  meu      %s\n  Encoder  %s", c.valor, got, quero)
+			if !c.semanticOnly {
+				t.Fatalf("%#v:\n  ours     %s\n  Encoder  %s", c.value, got, want)
 			}
 
-			// Bytes diferentes: os valores ainda têm de ser o mesmo.
-			var meu, dele any
-			if err := json.Unmarshal([]byte(got), &meu); err != nil {
-				t.Fatalf("a minha saída nem é JSON válido: %s", got)
+			// Different bytes: the values still have to be the same.
+			var ours, theirs any
+			if err := json.Unmarshal([]byte(got), &ours); err != nil {
+				t.Fatalf("our output is not even valid JSON: %s", got)
 			}
-			if err := json.Unmarshal([]byte(quero), &dele); err != nil {
-				t.Fatalf("a saída do encoder não decodifica: %s", quero)
+			if err := json.Unmarshal([]byte(want), &theirs); err != nil {
+				t.Fatalf("the encoder's output does not decode: %s", want)
 			}
-			if meu != dele {
-				t.Errorf("%#v decodifica diferente:\n  meu     %#v\n  Encoder %#v",
-					c.valor, meu, dele)
+			if ours != theirs {
+				t.Errorf("%#v decodes differently:\n  ours    %#v\n  Encoder %#v",
+					c.value, ours, theirs)
 			}
 		})
 	}
 }
 
-// TestEscalarRecusaOQueNaoSabe: recusar é o contrato -- o chamador cai no
-// encoder, que resolve. Aceitar e escrever errado seria o defeito.
-func TestEscalarRecusaOQueNaoSabe(t *testing.T) {
-	naoEscalares := []any{
+// TestScalarRefusesWhatItDoesNotKnow: refusing is the contract -- the caller
+// falls back to the encoder, which handles it. Accepting and writing it wrong
+// would be the defect.
+func TestScalarRefusesWhatItDoesNotKnow(t *testing.T) {
+	nonScalars := []any{
 		map[string]any{"a": 1},
 		[]any{1, 2},
 		[]byte{1, 2},
@@ -102,26 +103,27 @@ func TestEscalarRecusaOQueNaoSabe(t *testing.T) {
 		math.Inf(1),
 		struct{ A int }{1},
 	}
-	for _, v := range naoEscalares {
+	for _, v := range nonScalars {
 		var buf bytes.Buffer
-		if escreverEscalar(&buf, v) {
-			t.Errorf("aceitou %#v e escreveu %q", v, buf.String())
+		if writeScalar(&buf, v) {
+			t.Errorf("it accepted %#v and wrote %q", v, buf.String())
 		}
 	}
 }
 
-// TestCompostoAindaSaiIgual: o caminho lento continua produzindo o mesmo
-// documento, e é o teste que impede o fast path de mudar a saída do resto.
-func TestCompostoAindaSaiIgual(t *testing.T) {
-	got, err := EncodeNDJSON(envelopesDeTeste(), []string{"texto", "documento", "lista", "numero"})
+// TestCompositeStillComesOutTheSame: the slow path goes on producing the same
+// document, and it is the test that stops the fast path from changing the rest
+// of the output.
+func TestCompositeStillComesOutTheSame(t *testing.T) {
+	got, err := EncodeNDJSON(testEnvelopes(), []string{"texto", "documento", "lista", "numero"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var doc map[string]any
-	linha := strings.TrimSpace(string(got))
-	if err := json.Unmarshal([]byte(linha), &doc); err != nil {
-		t.Fatalf("saída não é JSON válido: %q\n%v", linha, err)
+	line := strings.TrimSpace(string(got))
+	if err := json.Unmarshal([]byte(line), &doc); err != nil {
+		t.Fatalf("the output is not valid JSON: %q\n%v", line, err)
 	}
 	if doc["texto"] != `com "aspas"` {
 		t.Errorf("texto = %#v", doc["texto"])
@@ -134,8 +136,8 @@ func TestCompostoAindaSaiIgual(t *testing.T) {
 	}
 }
 
-// comoOEncoder serializa como o EncodeNDJSON serializa os compostos.
-func comoOEncoder(v any) (string, error) {
+// likeTheEncoder serializes the way EncodeNDJSON serializes composites.
+func likeTheEncoder(v any) (string, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
 	enc.SetEscapeHTML(false)
@@ -145,31 +147,31 @@ func comoOEncoder(v any) (string, error) {
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-func nomeDe(v any) string {
+func nameOf(v any) string {
 	s := strings.TrimSpace(strings.Map(func(r rune) rune {
 		if r < 0x20 {
 			return '_'
 		}
 		return r
-	}, jsonOuTipo(v)))
+	}, jsonOrType(v)))
 	if len(s) > 30 {
 		s = s[:30]
 	}
 	if s == "" {
-		s = "vazio"
+		s = "empty"
 	}
 	return s
 }
 
-func jsonOuTipo(v any) string {
+func jsonOrType(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return "invalido"
+		return "invalid"
 	}
 	return string(b)
 }
 
-func envelopesDeTeste() []core.Envelope {
+func testEnvelopes() []core.Envelope {
 	return []core.Envelope{{Payload: map[string]any{
 		"texto":     `com "aspas"`,
 		"documento": map[string]any{"a": 1},
