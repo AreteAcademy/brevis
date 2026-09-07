@@ -13,14 +13,15 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// faladorDoSDK e um passo que fala como o SDK fala: uma linha marcada por
+// sdkSpeaker is a step that speaks the way the SDK speaks: one marked line
+// per
 // transicao, no meio da saida normal.
-type faladorDoSDK struct{ linhas []string }
+type sdkSpeaker struct{ linhas []string }
 
-func (faladorDoSDK) Name() string                         { return "falador" }
-func (faladorDoSDK) Cancel(context.Context, string) error { return nil }
+func (sdkSpeaker) Name() string                         { return "falador" }
+func (sdkSpeaker) Cancel(context.Context, string) error { return nil }
 
-func (f faladorDoSDK) Execute(context.Context, execution.TaskExec) (<-chan execution.Event, error) {
+func (f sdkSpeaker) Execute(context.Context, execution.TaskExec) (<-chan execution.Event, error) {
 	ch := make(chan execution.Event, len(f.linhas)+2)
 	ch <- execution.Event{Kind: execution.EventStarted}
 	for _, l := range f.linhas {
@@ -31,53 +32,54 @@ func (f faladorDoSDK) Execute(context.Context, execution.TaskExec) (<-chan execu
 	return ch, nil
 }
 
-// persistidorEspiao guarda o que o runner mandou gravar.
-type persistidorEspiao struct {
+// spyPersister keeps what the runner asked to be written.
+type spyPersister struct {
 	etapas json.RawMessage
 	versao string
 	log    string
 	chamou int
 }
 
-func (p *persistidorEspiao) IniciarTask(context.Context, uuid.UUID, string, int) error { return nil }
+func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, string, int) error { return nil }
 
-func (p *persistidorEspiao) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ int,
+func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ int,
 	_ dom.Status, _ *int, _ string, log string) error {
 	p.log = log
 	return nil
 }
 
-func (p *persistidorEspiao) RegistrarEtapas(_ context.Context, _ uuid.UUID, _ string, _ int,
+func (p *spyPersister) RegistrarEtapas(_ context.Context, _ uuid.UUID, _ string, _ int,
 	versao string, etapas json.RawMessage) error {
 	p.chamou++
 	p.versao, p.etapas = versao, etapas
 	return nil
 }
 
-// relatorEspiao guarda o que chegaria a tela do CLI.
-type relatorEspiao struct{ linhas []string }
+// spyReporter keeps what would reach the CLI's screen.
+type spyReporter struct{ linhas []string }
 
-func (r *relatorEspiao) Evento(e execution.Event) {
+func (r *spyReporter) Evento(e execution.Event) {
 	if e.Kind == execution.EventLog {
 		r.linhas = append(r.linhas, e.Message)
 	}
 }
 
-// O cano inteiro: o passo escreve linhas marcadas no stdout, o executor as
-// entrega como log, e o runner as transforma em etapas -- sem callback, sem
-// porta nova, sem RBAC novo.
+// The whole pipe: the step writes marked lines to stdout, the executor delivers
+// them as log, and the runner turns them into stages -- with no callback, no new
+// port, no new RBAC.
 //
-// E o executor aqui e um fake qualquer: quem reconhece a marca e o runner, que
-// nao sabe qual executor produziu o evento. E por isso que o executor LOCAL
+// And the executor here is any fake: what recognizes the marker is the runner,
+// which does not know which executor produced the event. That is why the LOCAL
+// executor
 // ganha o mesmo de graca.
 func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
-	espiao := &persistidorEspiao{}
-	tela := &relatorEspiao{}
+	espiao := &spyPersister{}
+	tela := &spyReporter{}
 	r := app.Runner{
 		RunID:   uuid.New(),
 		Persist: espiao,
 		Report:  tela,
-		Processo: faladorDoSDK{linhas: []string{
+		Processo: sdkSpeaker{linhas: []string{
 			`@brevis:{"tipo":"sdk","versao":"v0.44.1","pipeline":"clima"}`,
 			"buscando a pagina 1",
 			`@brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"agora"}`,
@@ -100,7 +102,8 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 		t.Fatalf("etapas: %+v", etapas)
 	}
 
-	// A marca NAO pode virar log: quem olha quer ver as etapas, nao o JSON que
+	// The marker must NOT become a log line: whoever is watching wants the
+	// stages, not the JSON that
 	// as transportou.
 	if strings.Contains(espiao.log, "@brevis:") {
 		t.Errorf("a linha marcada foi parar no log do passo:\n%s", espiao.log)
@@ -119,14 +122,14 @@ func TestEtapasChegamPeloLogDoPasso(t *testing.T) {
 	}
 }
 
-// Um passo que nao e do SDK nao registra etapa nenhuma -- e nao paga uma ida
-// ao banco por linha de log.
+// A step that is not an SDK one records no stage at all -- and does not pay a
+// round trip to the database per log line.
 func TestPassoComumNaoRegistraEtapas(t *testing.T) {
-	espiao := &persistidorEspiao{}
+	espiao := &spyPersister{}
 	r := app.Runner{
 		RunID:    uuid.New(),
 		Persist:  espiao,
-		Processo: faladorDoSDK{linhas: []string{"compilando", "pronto"}},
+		Processo: sdkSpeaker{linhas: []string{"compilando", "pronto"}},
 	}
 	if err := r.Run(context.Background(), workflowDeUmPasso()); err != nil {
 		t.Fatal(err)

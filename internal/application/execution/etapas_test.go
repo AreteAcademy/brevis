@@ -2,9 +2,9 @@ package execution
 
 import "testing"
 
-// A linha marcada e conversa do SDK com o motor, nao saida do programa: ela
-// vira etapa e SOME do log. Quem olha a tela quer ver as etapas, nao o JSON
-// que as transportou.
+// The marked line is the SDK talking to the engine, not the program's output: it
+// becomes a stage and DISAPPEARS from the log. Whoever watches the screen wants
+// the stages, not the JSON that carried them.
 func TestLinhaMarcadaEConsumida(t *testing.T) {
 	var c coletorDeEtapas
 	if !c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running","em":"agora"}`) {
@@ -15,8 +15,9 @@ func TestLinhaMarcadaEConsumida(t *testing.T) {
 	}
 }
 
-// E o que NAO e marca continua sendo log. Engolir uma linha parecida faria
-// sumir da tela a saida de um programa que so por acaso escreveu algo igual.
+// And what is NOT a marker stays a log line. Swallowing a similar-looking line
+// would erase from the screen the output of a program that merely happened to
+// write something alike.
 func TestLinhaComumContinuaSendoLog(t *testing.T) {
 	var c coletorDeEtapas
 	for _, linha := range []string{
@@ -34,8 +35,8 @@ func TestLinhaComumContinuaSendoLog(t *testing.T) {
 	}
 }
 
-// Uma etapa e UMA entrada que muda de estado, nao duas linhas de historico: a
-// tela mostra quatro blocos, nao um diario.
+// A stage is ONE entry that changes state, not two lines of history: the screen
+// shows four boxes, not a diary.
 func TestEtapaEUmaEntradaQueMuda(t *testing.T) {
 	var c coletorDeEtapas
 	c.linha(`@brevis:{"tipo":"etapa","nome":"extract","estado":"running"}`)
@@ -69,8 +70,9 @@ func TestOrdemDeChegadaEPreservada(t *testing.T) {
 	}
 }
 
-// Uma etapa que este motor nao conhece e ignorada, em vez de virar um bloco
-// sem sentido na tela. O SDK pode ganhar etapas antes de o motor saber delas.
+// A stage this engine does not know is ignored, rather than becoming a
+// meaningless box on the screen. The SDK may gain stages before the engine knows
+// about them.
 func TestEtapaDesconhecidaEIgnorada(t *testing.T) {
 	var c coletorDeEtapas
 	if !c.linha(`@brevis:{"tipo":"etapa","nome":"reticulando","estado":"running"}`) {
@@ -81,9 +83,9 @@ func TestEtapaDesconhecidaEIgnorada(t *testing.T) {
 	}
 }
 
-// O selo e OBSERVADO: se ele existe, o SDK rodou. Nada no YAML o produz, entao
-// ele nao tem como mentir -- e um selo errado seria pior que selo nenhum,
-// porque ele e justamente o que se olha para descartar hipoteses.
+// The badge is OBSERVED: if it exists, the SDK ran. Nothing in the YAML produces
+// it, so it has no way to lie -- and a wrong badge would be worse than no badge,
+// because it is precisely what you look at to rule hypotheses out.
 func TestSeloVemDoAnuncio(t *testing.T) {
 	var c coletorDeEtapas
 	if c.Versao != "" {
@@ -95,15 +97,17 @@ func TestSeloVemDoAnuncio(t *testing.T) {
 	if c.Versao != "v0.44.1" {
 		t.Errorf("versao = %q", c.Versao)
 	}
-	// E o anuncio nao inventa um bloco na tela: ele so carrega o selo.
+	// And the announcement invents no box on the screen: it only carries the
+	// badge.
 	if len(c.Etapas) != 0 {
 		t.Errorf("o anuncio virou etapa: %+v", c.Etapas)
 	}
 }
 
-// O teto existe porque cada transicao vira escrita em banco. Sem ele, um
-// pipeline em laco derrubaria o Postgres pelo caminho do log -- e o log e o
-// que nao pode parar de funcionar quando algo esta errado.
+// The ceiling exists because every transition becomes a database write. Without
+// it, a pipeline in a loop would take Postgres down through the log's path --
+// and the log is the thing that must not stop working when something is
+// wrong.
 func TestTetoProtegeOBanco(t *testing.T) {
 	var c coletorDeEtapas
 	for i := 0; i < tetoDeEtapas*3; i++ {
@@ -117,8 +121,8 @@ func TestTetoProtegeOBanco(t *testing.T) {
 // O motor tem de entender os DOIS formatos.
 //
 // O SDK ate a v0.47.0 falava em portugues; da v0.48.0 em diante fala ingles. Um
-// motor que so entendesse o novo faria as etapas de um fetcher antigo sumirem
-// da tela -- sem erro, sem log, so a caixa cinza de volta.
+// an engine that only understood the new one would make an old fetcher's stages
+// vanish from the screen -- with no error, no log, just the grey box back.
 func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 	casos := map[string]string{
 		"ingles (v0.48+)":         `@brevis:{"type":"stage","name":"extract","state":"done","ms":2400,"at":"agora","paginas":300}`,
@@ -137,7 +141,7 @@ func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 			if e.Nome != "extract" || e.State != "done" || e.Ms == nil || *e.Ms != 2400 {
 				t.Errorf("etapa: %+v", e)
 			}
-			// E os numeros da etapa nao podem trazer os campos do protocolo.
+			// And the stage's numbers must not carry the protocol's fields.
 			if e.Numeros["paginas"] != 300.0 {
 				t.Errorf("numeros: %+v", e.Numeros)
 			}
@@ -150,7 +154,7 @@ func TestOsDoisFormatosDoProtocolo(t *testing.T) {
 	}
 }
 
-// O selo, nos dois formatos.
+// The badge, in both formats.
 func TestSeloNosDoisFormatos(t *testing.T) {
 	for _, linha := range []string{
 		`@brevis:{"type":"sdk","version":"v0.48.0","pipeline":"f"}`,
@@ -163,10 +167,10 @@ func TestSeloNosDoisFormatos(t *testing.T) {
 	}
 }
 
-// Dois `map` no mesmo pipeline sao DUAS caixas.
+// Two `map`s in the same pipeline are TWO boxes.
 //
-// Chavear por nome fazia o segundo sobrescrever o primeiro: tres estagios
-// declarados viravam duas caixas na tela, sem aviso.
+// Keying by name made the second overwrite the first: three declared stages
+// became two boxes on the screen, with no warning.
 func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
 	var c coletorDeEtapas
 	for _, l := range []string{
@@ -181,19 +185,19 @@ func TestDoisEstagiosDeMesmoNomeSaoDuasCaixas(t *testing.T) {
 	if len(c.Etapas) != 3 {
 		t.Fatalf("viraram %d caixas, esperado 3: %+v", len(c.Etapas), c.Etapas)
 	}
-	// E na ordem do pipeline, que e o que a tela desenha.
+	// And in the pipeline's order, which is what the screen draws.
 	for i, quero := range []string{"map", "aggregate", "map"} {
 		if c.Etapas[i].Nome != quero || c.Etapas[i].Indice != i {
 			t.Errorf("posicao %d: %+v, esperado %q", i, c.Etapas[i], quero)
 		}
 	}
-	// O primeiro map nao foi engolido pelo segundo.
+	// The first map was not swallowed by the second.
 	if c.Etapas[0].Numeros["in"] != 100.0 {
 		t.Errorf("o primeiro map perdeu os numeros: %+v", c.Etapas[0].Numeros)
 	}
 }
 
-// As linhas podem chegar fora de ordem; a tela nao pode.
+// The lines may arrive out of order; the screen may not.
 func TestAsCaixasSaemNaOrdemDoPipeline(t *testing.T) {
 	var c coletorDeEtapas
 	c.linha(`@brevis:{"type":"stage","index":3,"name":"load","state":"running"}`)

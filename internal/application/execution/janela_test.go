@@ -15,7 +15,8 @@ func TestJanelaGuardaTudoQuandoCabe(t *testing.T) {
 	}
 }
 
-// O teto e o que impede um `while true; do echo` de encher o disco do Postgres.
+// The ceiling is what stops a `while true; do echo` from filling Postgres's
+// disk.
 func TestJanelaRespeitaOTeto(t *testing.T) {
 	var j janela
 	linha := strings.Repeat("x", 200)
@@ -28,7 +29,8 @@ func TestJanelaRespeitaOTeto(t *testing.T) {
 }
 
 // As duas pontas precisam sobreviver: o comeco traz o comando e a configuracao,
-// o fim traz o motivo da falha. Guardar so uma delas perde metade do
+// the end carries the reason for the failure. Keeping only one of them loses
+// half the
 // diagnostico.
 func TestJanelaGuardaAsDuasPontas(t *testing.T) {
 	var j janela
@@ -48,7 +50,7 @@ func TestJanelaGuardaAsDuasPontas(t *testing.T) {
 	}
 }
 
-// Truncar em silencio faz o leitor concluir que o programa parou ali.
+// Truncating in silence makes the reader conclude the program stopped there.
 func TestJanelaAvisaOQueCortou(t *testing.T) {
 	var j janela
 	for i := 0; i < 4000; i++ {

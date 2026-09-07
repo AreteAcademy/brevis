@@ -7,11 +7,11 @@ import (
 )
 
 // TestPrecedenciaDoAmbiente: do mais fraco ao mais forte -- ambiente global do
-// motor, `env:` do workflow, `env:` do passo.
+// engine's, the workflow's `env:`, the step's `env:`.
 //
-// O passo vencer o global e a parte que mudou. Na outra ordem, uma variavel
-// declarada no arquivo perderia calada para um BREVIS_TASK_ENV que alguem
-// configurou meses atras -- e "perde calada" e o modo de falhar que este
+// The step beating the global is the part that changed. The other way round, a
+// variable declared in the file would lose quietly to a BREVIS_TASK_ENV somebody
+// configured months ago -- and "loses quietly" is the failure mode this
 // projeto mais persegue.
 func TestPrecedenciaDoAmbiente(t *testing.T) {
 	w := wf.Workflow{
@@ -31,7 +31,7 @@ func TestPrecedenciaDoAmbiente(t *testing.T) {
 		if got := env["NIVEL"]; got != casos[n.ID] {
 			t.Errorf("%s: NIVEL = %q, esperado %q", n.ID, got, casos[n.ID])
 		}
-		// Herdar nao pode significar perder o resto.
+		// Inheriting must not mean losing the rest.
 		if env["SO_DO_WORKFLOW"] != "1" {
 			t.Errorf("%s: perdeu a variavel que so o workflow declarou", n.ID)
 		}
@@ -41,10 +41,10 @@ func TestPrecedenciaDoAmbiente(t *testing.T) {
 	}
 }
 
-// TestSegredosNaoEntramNoEnvDaTask: se entrassem, o valor teria de ser
-// resolvido na montagem -- e passaria pelo dispatcher, pelo log e por qualquer
-// dump de TaskExec que alguem escrever depois.
-func TestSegredosNaoEntramNoEnvDaTask(t *testing.T) {
+// TestSecretsDoNotEnterTheTasksEnv: if they did, the value would have to be
+// resolved at assembly time -- and would pass through the dispatcher, through
+// the log and through any TaskExec dump somebody writes later.
+func TestSecretsDoNotEnterTheTasksEnv(t *testing.T) {
 	w := wf.Workflow{
 		Slug:    "x",
 		Secrets: map[string]string{"TOKEN": "cofre/token"},

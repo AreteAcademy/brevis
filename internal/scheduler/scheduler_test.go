@@ -64,7 +64,8 @@ func fixarUltimoSlot(t *testing.T, pool *postgres.Pool, quando time.Time) {
 	}
 }
 
-// Publicar grava grafo e agenda juntos, e o scheduler materializa o slot.
+// Publishing writes the graph and the schedule together, and the scheduler
+// materializes the slot.
 func TestSchedulerCriaRunEEnfileira(t *testing.T) {
 	s, runs, fila, pool := montar(t, "0 2 * * *", false)
 	ctx := context.Background()
@@ -92,7 +93,8 @@ func TestSchedulerCriaRunEEnfileira(t *testing.T) {
 	}
 }
 
-// O ponto da idempotencia: reexecutar o ciclo no mesmo instante nao pode
+// The point of the idempotency: re-running the cycle at the same instant must
+// not
 // duplicar. E o caso da secao 29 — o scheduler cai e sobe de novo.
 func TestCicloRepetidoNaoDuplica(t *testing.T) {
 	s, runs, _, pool := montar(t, "0 2 * * *", true)
@@ -121,7 +123,7 @@ func TestCicloRepetidoNaoDuplica(t *testing.T) {
 	}
 }
 
-// catchup=false so materializa o slot mais recente, mesmo com dias de lacuna.
+// catchup=false materializes only the most recent slot, even with days of gap.
 func TestCatchupFalseNaoRefazOPassado(t *testing.T) {
 	s, runs, _, pool := montar(t, "0 2 * * *", false)
 	ctx := context.Background()
@@ -140,8 +142,8 @@ func TestCatchupFalseNaoRefazOPassado(t *testing.T) {
 	}
 }
 
-// Backfill entra na fila como qualquer run, com trigger proprio e prioridade
-// menor — a secao 12 exige que ele respeite concorrencia e prioridade.
+// A backfill enters the queue like any run, with its own trigger and a lower
+// priority -- section 12 requires it to respect concurrency and priority.
 func TestBackfillEntraNaFilaComPrioridadeMenor(t *testing.T) {
 	s, runs, fila, pool := montar(t, "0 2 * * *", false)
 	ctx := context.Background()
@@ -173,8 +175,8 @@ func TestBackfillEntraNaFilaComPrioridadeMenor(t *testing.T) {
 	}
 }
 
-// O backfill preenche o passado e NAO pode avancar o marcador, senao o scheduler
-// pularia slots futuros que ainda nao aconteceram.
+// A backfill fills the past and must NOT advance the marker, or the scheduler
+// would skip future slots that have not happened yet.
 func TestBackfillNaoAvancaOMarcador(t *testing.T) {
 	s, _, _, pool := montar(t, "0 2 * * *", false)
 	ctx := context.Background()
@@ -195,7 +197,7 @@ func TestBackfillNaoAvancaOMarcador(t *testing.T) {
 	}
 }
 
-// Republicar um workflow nao pode fazer o scheduler recriar slots ja
+// Republishing a workflow must not make the scheduler recreate slots already
 // materializados.
 func TestRepublicarPreservaOMarcador(t *testing.T) {
 	_, _, _, pool := montar(t, "0 2 * * *", false)
@@ -229,7 +231,8 @@ func TestRepublicarPreservaOMarcador(t *testing.T) {
 	}
 }
 
-// Tirar o `schedule` do YAML deve desagendar, e nao deixar a agenda antiga viva.
+// Taking `schedule` out of the YAML has to unschedule, and not leave the old
+// schedule alive.
 func TestPublicarSemCronRemoveAAgenda(t *testing.T) {
 	_, _, _, pool := montar(t, "0 2 * * *", false)
 	ctx := context.Background()
@@ -254,8 +257,8 @@ func TestPublicarSemCronRemoveAAgenda(t *testing.T) {
 	}
 }
 
-// Um backfill de um dia com cron horario tem de dar 24 slots, nao 23: `Next(t)`
-// devolve o proximo estritamente depois de `t`, entao comecar exatamente em
+// A one-day backfill with an hourly cron has to give 24 slots, not 23: `Next(t)`
+// returns the next one strictly after `t`, so starting exactly at
 // `de` excluiria o slot da meia-noite.
 func TestBackfillIncluiOSlotDaBorda(t *testing.T) {
 	s, _, _, pool := montar(t, "0 * * * *", false)
@@ -272,10 +275,10 @@ func TestBackfillIncluiOSlotDaBorda(t *testing.T) {
 	}
 }
 
-// A pasta e a fonte da verdade — mas publicar so ADICIONAVA. Tirar um arquivo
-// dali nao tirava nada do banco, e o scheduler seguia materializando runs de um
-// workflow que ninguem enxergava mais. Com cron de 15 minutos, isso e trabalho
-// invisivel rodando para sempre.
+// The folder is the source of truth -- but publishing only ever ADDED. Taking a
+// file out of it took nothing out of the database, and the scheduler went on
+// materializing runs for a workflow nobody could see any more. With a 15-minute
+// cron, that is invisible work running forever.
 func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -299,7 +302,7 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 		}
 	}
 
-	// Uma execucao antiga do que vai sair: o historico tem de sobreviver.
+	// An old run of what is about to go: the history has to survive.
 	if _, err := postgres.NewRunRepo(pool).Criar(ctx, dom.Run{
 		WorkflowSlug: sai.Slug, IdempotencyKey: "antiga", Definition: []byte(`{}`),
 	}); err != nil {
@@ -321,8 +324,9 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 		t.Errorf("o workflow que ficou sumiu: %v", err)
 	}
 
-	// A agenda vive numa tabela separada, ligada por slug em texto — o CASCADE
-	// nao a alcanca, e uma agenda orfa continuaria criando runs.
+	// The schedule lives in a separate table, linked by slug as text -- the
+	// CASCADE does not reach it, and an orphaned schedule would go on creating
+	// runs.
 	ativas, err := agendas.Ativas(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -343,7 +347,7 @@ func TestPodarRemoveOQueSaiuDaPasta(t *testing.T) {
 	}
 }
 
-// Sem nada para podar, nao mexe em nada.
+// With nothing to prune, it touches nothing.
 func TestPodarSemDiferencaNaoRemoveNada(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -369,14 +373,14 @@ func TestPodarSemDiferencaNaoRemoveNada(t *testing.T) {
 	}
 }
 
-// Uma agenda recem-publicada (`ultimo_slot` NULL) precisa comecar a disparar.
+// A newly published schedule (`ultimo_slot` NULL) has to start firing.
 //
-// Este e o teste que faltava, e a lacuna tinha forma: TODOS os casos acima
-// chamam `fixarUltimoSlot` antes do ciclo, entao o caminho do marcador nulo
-// nunca era exercitado. Em dev, 18 workflows ficaram registrados por horas sem
-// uma unica execucao automatica — inclusive um `*/30` — porque `Slots` partia do
+// This is the test that was missing, and the gap had a shape: EVERY case above
+// calls `fixarUltimoSlot` before the cycle, so the null-marker path was never
+// exercised. In dev, 18 workflows sat registered for hours with not one
+// automatic run -- a `*/30` among them -- because `Slots` started from
 // proprio `agora`, o proximo horario do cron era sempre futuro, e o marcador
-// nunca saia de NULL para quebrar o circulo.
+// never left NULL to break the circle.
 func TestAgendaNovaComecaADisparar(t *testing.T) {
 	s, runs, _, _ := montar(t, "*/30 * * * *", false)
 	ctx := context.Background()
@@ -390,7 +394,7 @@ func TestAgendaNovaComecaADisparar(t *testing.T) {
 		t.Errorf("o ciclo de estreia criou %d runs; o slot anterior ao registro nao e nosso", n)
 	}
 
-	// Segundo ciclo, depois que o relogio passou das 10:30: agora dispara.
+	// The second cycle, after the clock passed 10:30: now it fires.
 	n, err = s.Ciclo(ctx, emUTC("2026-01-01T10:31:00Z"))
 	if err != nil {
 		t.Fatal(err)
@@ -404,8 +408,8 @@ func TestAgendaNovaComecaADisparar(t *testing.T) {
 	}
 }
 
-// O marco de estreia nao pode ser replantado a cada ciclo: se fosse, `de`
-// avancaria junto com o relogio e a agenda voltaria a nunca disparar.
+// The debut marker must not be replanted on every cycle: if it were, `de` would
+// advance along with the clock and the schedule would go back to never firing.
 func TestMarcoDeEstreiaEPlantadoUmaVezSo(t *testing.T) {
 	s, _, _, pool := montar(t, "*/30 * * * *", false)
 	ctx := context.Background()

@@ -18,17 +18,17 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// O cano inteiro, com peças de verdade: um binário compilado com o SDK, o
+// The whole pipe, with real parts: a binary compiled against the SDK, the
 // executor de processo, um pipe do sistema operacional, o runner e o Postgres.
 //
-// Tudo o mais no caminho das etapas era testado com executor falso e
-// persistidor espião. A linha `@brevis:` nunca tinha atravessado um pipe real
-// nem um bufio.Scanner -- e foi assim que a v0.4.0 do motor foi publicada com
-// a feature nunca exercitada de ponta a ponta.
+// Everything else on the stages path was tested with a fake executor and a spy
+// persister. The `@brevis:` line had never crossed a real pipe or a
+// bufio.Scanner -- and that is how the engine's v0.4.0 was published with the
+// feature never exercised end to end.
 //
-// O que continua fora do alcance daqui: o `Logs(ctx, pod, follow=true)` do
-// Kubernetes. Ele exige um cluster, e os contextos desta máquina são clusters
-// reais, inclusive produção.
+// What stays out of reach here: Kubernetes's `Logs(ctx, pod, follow=true)`. It
+// requires a cluster, and this machine's contexts are real clusters, production
+// among them.
 func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 	dsn := os.Getenv("BREVIS_IT_PG_DSN")
 	if dsn == "" {
@@ -66,10 +66,10 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 		Slug:  "e2e",
 		Nodes: []wf.Node{{ID: "coletar", Run: binario + " 2>&1"}},
 	}
-	// O WorkDir do passo é o diretório do teste, porque o fetcher lê
-	// "entrada.ndjson" relativo a ele. O cwd VOLTA no fim: deixá-lo num
-	// diretório temporário quebraria qualquer teste seguinte deste pacote que
-	// use caminho relativo -- e este mesmo teste usa, para compilar o fetcher.
+	// The step's WorkDir is the test's directory, because the fetcher reads
+	// "entrada.ndjson" relative to it. The cwd is RESTORED at the end: leaving it
+	// in a temporary directory would break any later test in this package that
+	// uses a relative path -- and this very test does, to compile the fetcher.
 	anterior, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -91,7 +91,8 @@ func TestIntegrationEtapasChegamAoBancoPorUmBinarioDeVerdade(t *testing.T) {
 		t.Fatal("o passo não chegou ao banco")
 	}
 
-	// O selo, observado do binário. "devel" porque o testdata usa replace --
+	// The badge, observed from the binary. "devel" because the testdata uses a
+	// replace --
 	// e é a verdade: o código veio de um diretório, não de uma versão.
 	if e.SdkVersao == "" {
 		t.Error("o passo não se anunciou como SDK")

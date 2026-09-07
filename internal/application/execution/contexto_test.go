@@ -13,17 +13,17 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
-// capturador guarda a TaskExec que o runner montou, para conferir o ambiente
-// que chega ao passo.
-type capturador struct {
+// capturer keeps the TaskExec the runner assembled, so the environment reaching
+// the step can be checked.
+type capturer struct {
 	tarefa execution.TaskExec
 }
 
-func (c *capturador) Name() string { return "capturador" }
+func (c *capturer) Name() string { return "capturer" }
 
-func (c *capturador) Cancel(ctx context.Context, execID string) error { return nil }
+func (c *capturer) Cancel(ctx context.Context, execID string) error { return nil }
 
-func (c *capturador) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
+func (c *capturer) Execute(ctx context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
 	c.tarefa = t
 	ch := make(chan execution.Event, 2)
 	ch <- execution.Event{Kind: execution.EventStarted}
@@ -32,7 +32,7 @@ func (c *capturador) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 	return ch, nil
 }
 
-// historico responde o que o teste mandar.
+// history answers whatever the test tells it to.
 type historico struct {
 	jaTeve bool
 	err    error
@@ -55,7 +55,7 @@ func workflowDeUmPasso() wf.Workflow {
 
 func rodar(t *testing.T, r app.Runner) execution.TaskExec {
 	t.Helper()
-	cap := &capturador{}
+	cap := &capturer{}
 	r.Processo = cap
 	if err := r.Run(context.Background(), workflowDeUmPasso()); err != nil {
 		t.Fatalf("Run: %v", err)
@@ -98,8 +98,8 @@ func TestAmbienteDoPassoCarregaOContextoDoRun(t *testing.T) {
 }
 
 func TestPrimeiraExecucaoEPorPassoNaoPorWorkflow(t *testing.T) {
-	// Um workflow com tres fetchers escrevendo em tres tabelas criaria apenas
-	// a do primeiro passo se a pergunta fosse do workflow inteiro.
+	// A workflow with three fetchers writing into three tables would create only
+	// the first step's if the question were about the whole workflow.
 	h := &historico{jaTeve: false}
 	id := uuid.New()
 
@@ -108,7 +108,7 @@ func TestPrimeiraExecucaoEPorPassoNaoPorWorkflow(t *testing.T) {
 	if h.slug != "clima" || h.nodeID != "coletar" {
 		t.Errorf("a pergunta tem de ser por (workflow, passo): %q / %q", h.slug, h.nodeID)
 	}
-	// O proprio run corrente nao pode contar como sucesso anterior.
+	// The current run itself must not count as a previous success.
 	if h.exceto != id {
 		t.Errorf("o run corrente tem de ser excluido da consulta: %v", h.exceto)
 	}
@@ -123,7 +123,8 @@ func TestPassoComSucessoAnteriorNaoEPrimeiro(t *testing.T) {
 }
 
 func TestSemHistoricoNaoInventaPrimeiraExecucao(t *testing.T) {
-	// Criar tabela sem certeza e pior que nao criar: quem quiser pede
+	// Creating a table without being sure is worse than not creating it:
+	// whoever wants one asks
 	// explicitamente no codigo do fetcher.
 	tarefa := rodar(t, app.Runner{RunID: uuid.New()})
 
@@ -142,7 +143,7 @@ func TestFalhaNaConsultaNaoViraCriacaoDeTabela(t *testing.T) {
 }
 
 func TestAmbienteDoRunnerGanhaEmColisao(t *testing.T) {
-	// Se alguem definiu a variavel na configuracao do runner, foi porque quis.
+	// If somebody set the variable in the runner's configuration, they meant to.
 	tarefa := rodar(t, app.Runner{
 		RunID:     uuid.New(),
 		Historico: &historico{jaTeve: false},
@@ -172,9 +173,10 @@ func TestSemParamsNaoInjetaVariavelVazia(t *testing.T) {
 }
 
 func TestSemRunIDNaoInventaExecucaoGerenciada(t *testing.T) {
-	// `brevis run` executa um YAML na hora e nao pertence a historico nenhum.
-	// O SDK decide que esta sob o engine pela PRESENCA do id, entao injetar o
-	// UUID zero faria um fetcher rodado a mao logar "running under Brevis" com
+	// `brevis run` executes a YAML on the spot and belongs to no history.
+	// The SDK decides it is under the engine by the PRESENCE of the id, so
+	// injecting the zero UUID would make a hand-run fetcher log "running under
+	// Brevis" with
 	// um id inventado.
 	tarefa := rodar(t, app.Runner{
 		Params:    map[string]string{"create_table": "true"},
@@ -187,15 +189,16 @@ func TestSemRunIDNaoInventaExecucaoGerenciada(t *testing.T) {
 		}
 	}
 
-	// Os params continuam indo: `--param` e como se passa entrada nesse caminho.
+	// The params still go: `--param` is how input is passed on that path.
 	if tarefa.Env["BREVIS_RUN_PARAMS"] == "" {
 		t.Error("os params tem de chegar ao passo mesmo sem run gerenciado")
 	}
 }
 
 func TestTentativaComecaEmZeroComoNoBanco(t *testing.T) {
-	// A coluna task_runs.attempt tem DEFAULT 0, e o nome do pod deriva dela.
-	// Divergir aqui faria o passo reportar uma tentativa que nao existe.
+	// The task_runs.attempt column has DEFAULT 0, and the pod's name derives
+	// from it.
+	// Diverging here would make the step report an attempt that does not exist.
 	tarefa := rodar(t, app.Runner{RunID: uuid.New(), Historico: &historico{}})
 
 	if tarefa.Env["BREVIS_RUN_ATTEMPT"] != "0" {
@@ -203,12 +206,13 @@ func TestTentativaComecaEmZeroComoNoBanco(t *testing.T) {
 	}
 }
 
-// TestCaminhoDoDispatcher reproduz o que cmd/brevis monta no `executar` do
-// dispatcher: um run de verdade, com id, params, trigger e historico.
+// TestTheDispatchersPath reproduces what cmd/brevis assembles in the
+// dispatcher's `executar`: a real run, with an id, params, a trigger and a
+// history.
 //
-// E o unico teste que cobre a forma como o Runner e realmente construido em
-// producao — o resto do arquivo testa campos isolados.
-func TestCaminhoDoDispatcher(t *testing.T) {
+// It is the only test covering the way the Runner is actually built in
+// production -- the rest of the file tests isolated fields.
+func TestTheDispatchersPath(t *testing.T) {
 	id := uuid.New()
 	quando := time.Date(2026, 9, 3, 4, 0, 0, 0, time.UTC)
 
@@ -222,7 +226,7 @@ func TestCaminhoDoDispatcher(t *testing.T) {
 		Env:            map[string]string{"PATH": "/usr/bin", "HOME": "/root"},
 	})
 
-	// O ambiente das tasks sobrevive.
+	// The tasks' environment survives.
 	if tarefa.Env["PATH"] == "" || tarefa.Env["HOME"] == "" {
 		t.Error("o ambiente configurado das tasks tem de continuar chegando")
 	}

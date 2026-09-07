@@ -22,8 +22,8 @@ import (
 	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
 
-// Estes testes exigem Postgres. Sem BREVIS_TEST_DATABASE_URL eles pulam, para
-// que `go test ./...` continue verde numa maquina sem docker.
+// These tests require Postgres. Without BREVIS_TEST_DATABASE_URL they skip, so
+// `go test ./...` stays green on a machine with no docker.
 func banco(t *testing.T) *postgres.Pool {
 	t.Helper()
 	url := os.Getenv("BREVIS_TEST_DATABASE_URL")
@@ -36,8 +36,9 @@ func banco(t *testing.T) *postgres.Pool {
 	}
 	t.Cleanup(p.Close)
 
-	// Cada teste comeca do zero. `schedules` entra na lista mesmo sem FK para
-	// workflows: ela referencia o slug como texto, entao o CASCADE nao a alcanca.
+	// Every test starts from scratch. `schedules` is on the list even with no FK
+	// to workflows: it references the slug as text, so the CASCADE does not
+	// reach it.
 	if _, err := p.Exec(context.Background(),
 		`TRUNCATE queue_items, task_runs, runs, schedules, workflows, projects CASCADE`); err != nil {
 		t.Fatal(err)
@@ -50,7 +51,7 @@ func semLog() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil
 // CRITERIO DE ACEITE DA PHASE 2 (secao 37):
 //
 //	100 runs enfileiradas, concorrencia maxima 5
-//	-> 5 RUNNING, 95 QUEUED, sem perda.
+//	-> 5 RUNNING, 95 QUEUED, nothing lost.
 func TestCriterioDeAceite_100Runs_Concorrencia5(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -76,7 +77,7 @@ func TestCriterioDeAceite_100Runs_Concorrencia5(t *testing.T) {
 		}
 	}
 
-	// Segura toda execucao ate liberarmos, para poder observar o estado estavel.
+	// It holds every run until we release, so the steady state is observable.
 	segurar := make(chan struct{})
 	var rodando atomic.Int32
 	var pico atomic.Int32
@@ -139,7 +140,7 @@ func TestCriterioDeAceite_100Runs_Concorrencia5(t *testing.T) {
 		t.Errorf("fila tem %d itens, queria %d — houve perda", pendentes+reivindicados, total)
 	}
 
-	// Libera e confirma que as 100 terminam, sem perda.
+	// Release, and confirm all 100 finish with nothing lost.
 	close(segurar)
 	prazo = time.After(30 * time.Second)
 	for {
@@ -168,7 +169,8 @@ func TestCriterioDeAceite_100Runs_Concorrencia5(t *testing.T) {
 	}
 }
 
-// A secao 29 pede que operacao critica tolere repeticao. O caso concreto: o
+// Section 29 asks that a critical operation tolerate repetition. The concrete
+// case: the
 // scheduler cria o Run, morre antes de registrar e tenta de novo ao subir.
 func TestIdempotenciaImpedeRunDuplicado(t *testing.T) {
 	pool := banco(t)
@@ -187,7 +189,7 @@ func TestIdempotenciaImpedeRunDuplicado(t *testing.T) {
 	}
 }
 
-// Enfileirar o mesmo run duas vezes e no-op, nao duplicata.
+// Queuing the same run twice is a no-op, not a duplicate.
 func TestEnqueueEhIdempotente(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -212,7 +214,7 @@ func TestEnqueueEhIdempotente(t *testing.T) {
 	}
 }
 
-// Dois dispatchers competindo nao podem receber o mesmo item — e o que o
+// Two competing dispatchers must not receive the same item -- which is what
 // FOR UPDATE SKIP LOCKED garante.
 func TestClaimNaoEntregaOMesmoItemDuasVezes(t *testing.T) {
 	pool := banco(t)
@@ -265,8 +267,8 @@ func TestClaimNaoEntregaOMesmoItemDuasVezes(t *testing.T) {
 	}
 }
 
-// Item preso a um worker morto tem de voltar. Sem isso, e a execucao zumbi que
-// travou pipelines por 33 dias no sistema anterior.
+// An item stuck to a dead worker has to come back. Without this, it is the
+// zombie run that stalled pipelines for 33 days in the previous system.
 func TestRecuperarDevolveItemDeWorkerMorto(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -287,7 +289,7 @@ func TestRecuperarDevolveItemDeWorkerMorto(t *testing.T) {
 	if _, reivindicados, _ := fila.Tamanho(ctx); reivindicados != 1 {
 		t.Fatal("esperava 1 item reivindicado")
 	}
-	itens, err := fila.Recuperar(ctx, 0) // limite zero: tudo que esta reivindicado volta
+	itens, err := fila.Recuperar(ctx, 0) // a zero limit: everything claimed comes back
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,9 +304,9 @@ func TestRecuperarDevolveItemDeWorkerMorto(t *testing.T) {
 	}
 }
 
-// O bug que o usuario viu na tela: o worker morre no meio, o item volta para a
-// fila mas o RUN fica "running" para sempre. A varredura precisa corrigir os
-// dois lados.
+// The bug the user saw on screen: the worker dies partway, the item goes back to
+// the queue but the RUN stays "running" forever. The sweep has to fix both
+// sides.
 func TestRecuperarOrfaosDevolveORunAFila(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -321,7 +323,8 @@ func TestRecuperarOrfaosDevolveORunAFila(t *testing.T) {
 	if _, err := fila.Claim(ctx, "worker-que-vai-morrer", 1); err != nil {
 		t.Fatal(err)
 	}
-	// O worker chegou a marcar running antes de morrer — o estado exato em que
+	// The worker did get as far as marking running before dying -- the exact
+	// state in which
 	// a run ficava pendurada.
 	if err := repo.Transicionar(ctx, r.ID, dom.StatusQueued); err != nil {
 		t.Fatal(err)
@@ -360,8 +363,8 @@ func TestRecuperarOrfaosDevolveORunAFila(t *testing.T) {
 	}
 }
 
-// Esgotadas as tentativas, o orfao para em failed em vez de circular entre
-// workers para sempre.
+// With the attempts exhausted, the orphan stops at failed instead of circling
+// between workers forever.
 func TestOrfaoParaDeVoltarQuandoEsgotaTentativas(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -420,9 +423,9 @@ func (a *alertaFalso) total() int {
 	return len(a.recebido)
 }
 
-// O alerta sai UMA vez, quando o run desiste — nao a cada tentativa. Avisar em
-// toda falha transformaria um retry bem-sucedido em dois alertas e um silencio,
-// e canal que grita a toa deixa de ser lido.
+// The alert fires ONCE, when the run gives up -- not on every attempt.
+// Announcing every failure would turn a successful retry into two alerts and a
+// silence, and a channel that shouts for nothing stops being read.
 func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 	pool := banco(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -488,8 +491,8 @@ func TestAlertaSaiUmaVezQuandoEsgotamAsTentativas(t *testing.T) {
 	}
 }
 
-// Webhook fora do ar nao pode parar o dispatcher: o run tem de terminar em
-// FAILED e a fila continuar sendo consumida.
+// A webhook that is down must not stop the dispatcher: the run has to end FAILED
+// and the queue has to keep being consumed.
 func TestFalhaAoAvisarNaoDerrubaODispatcher(t *testing.T) {
 	pool := banco(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -550,11 +553,11 @@ func enfileirar(t *testing.T, repo *postgres.RunRepo, fila *queue.Queue,
 	}
 }
 
-// O caso que motivou tudo: um `*/15` que leva 20 minutos se sobrepoe a si
-// mesmo, e dois `dbt build` no MESMO modelo disputam a mesma tabela.
+// The case that motivated all of it: a `*/15` that takes 20 minutes overlaps
+// itself, and two `dbt build`s on the SAME model fight over the same table.
 //
-// Cinco itens do mesmo workflow com limite 1: o claim entrega UM, por mais
-// vagas globais que haja.
+// Five items of the same workflow with a limit of 1: the claim hands out ONE,
+// however many global slots there are.
 func TestLimitePorWorkflowSegurraOsDemais(t *testing.T) {
 	pool := banco(t)
 	ctx := context.Background()
@@ -571,7 +574,7 @@ func TestLimitePorWorkflowSegurraOsDemais(t *testing.T) {
 		t.Fatalf("claim entregou %d itens; o limite do workflow e 1", len(itens))
 	}
 
-	// Enquanto o primeiro nao termina, ninguem mais entra.
+	// Until the first finishes, nobody else goes in.
 	outros, err := fila.Claim(ctx, "w", 10)
 	if err != nil {
 		t.Fatal(err)
@@ -593,7 +596,8 @@ func TestLimitePorWorkflowSegurraOsDemais(t *testing.T) {
 	}
 }
 
-// Limite maior que 1 entrega exatamente o limite — nem menos (seria
+// A limit greater than 1 hands out exactly the limit -- no fewer (which would
+// be
 // serializacao), nem mais.
 func TestLimiteDeTresEntregaTres(t *testing.T) {
 	pool := banco(t)
@@ -611,8 +615,8 @@ func TestLimiteDeTresEntregaTres(t *testing.T) {
 	}
 }
 
-// Um workflow no limite nao pode bloquear os outros: a fila e compartilhada, e
-// travar tudo por causa de um seria pior que nao ter limite.
+// A workflow at its limit must not block the others: the queue is shared, and
+// stalling everything because of one would be worse than having no limit.
 func TestWorkflowNoLimiteNaoBloqueiaOsOutros(t *testing.T) {
 	pool := banco(t)
 	repo := postgres.NewRunRepo(pool)
@@ -626,7 +630,7 @@ func TestWorkflowNoLimiteNaoBloqueiaOsOutros(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 1 do travado + 4 dos livres.
+	// 1 from the blocked one + 4 from the free ones.
 	if len(itens) != 5 {
 		t.Errorf("claim entregou %d; queria 5 (1 limitado + 4 sem limite)", len(itens))
 	}
@@ -650,11 +654,11 @@ func TestSemLimiteEntregaTudoQueCabe(t *testing.T) {
 	}
 }
 
-// Um run que falha e passa na segunda tentativa NAO alerta.
+// A run that fails and passes on the second attempt does NOT alert.
 //
-// E a outra metade da regra: o alerta existe para falha definitiva. Avisar de
-// uma falha que o proprio retry consertou treina o time a ignorar o canal, e ai
-// o alerta que importa passa batido junto.
+// It is the rule's other half: the alert exists for a definitive failure.
+// Announcing a failure the retry itself fixed trains the team to ignore the
+// channel, and then the alert that matters goes past unnoticed with it.
 func TestRetryQueDaCertoNaoAlerta(t *testing.T) {
 	pool := banco(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
@@ -686,7 +690,7 @@ func TestRetryQueDaCertoNaoAlerta(t *testing.T) {
 		if atomic.AddInt32(&chamadas, 1) == 1 {
 			return errors.New(`step "run": saiu com codigo 2`)
 		}
-		return nil // a segunda tentativa passa
+		return nil // the second attempt passes
 	}, semLog())
 	d.Alertas = avisos
 
@@ -710,10 +714,11 @@ func TestRetryQueDaCertoNaoAlerta(t *testing.T) {
 	}
 }
 
-// O alerta precisa nomear o passo e trazer o fim do log daquele passo.
+// The alert has to name the step and carry the end of that step's log.
 //
-// Sem isto ele diz apenas que algo falhou, e quem esta de plantao as 4h abre a
-// tela para descobrir o que — que e exatamente o trabalho que o alerta deveria
+// Without this it only says something failed, and whoever is on call at 4am
+// opens the screen to find out what -- which is exactly the work the alert was
+// supposed to
 // poupar.
 func TestAlertaCarregaOPassoEOLog(t *testing.T) {
 	pool := banco(t)
@@ -742,7 +747,7 @@ func TestAlertaCarregaOPassoEOLog(t *testing.T) {
 		Worker: "t", MaxConcorrente: 1, MaxTentativas: 1,
 		Intervalo: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, fila, repo, func(ctx context.Context, id uuid.UUID) error {
-		// Grava a task como o runner gravaria, com saida.
+		// Writes the task the way the runner would, with output.
 		if err := repo.IniciarTask(ctx, id, "fetch_observations", 0); err != nil {
 			return err
 		}
