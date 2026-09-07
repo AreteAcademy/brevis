@@ -2,6 +2,37 @@
 
 **Written on** 2026-09-08 · **Base** engine `v0.7.0`
 **Status** proposed — not started · **TASK.md #3**
+**Revised 2026-09-08** against a picture of the target (§0). Three things this
+plan had missed and one it had deferred are now in it.
+
+## 0. The picture, read node by node
+
+The target was shown as an Airflow 3 graph, and reading it against this plan's
+first draft is the fastest way to see what was missing. Every element in it:
+
+| in the picture | Brevis today | this plan, first draft |
+|---|---|---|
+| `start` / `end`, **EmptyOperator** | **refused** — `Validate` rejects a step with neither `run` nor `action` | missed |
+| `sales_data_extract` → `transform` → `load`, dependent and parallel | yes | — |
+| `determine_load_type`, **`@task.branch`** | no | §2, §3 |
+| `internal_api_load_full` drawn **skipped** (pink) | no such state | §2, and it is the real work |
+| edges labelled **"changed existing data" / "additional data"** | `Edge` is `{From, To}` — nowhere to put it | **missed** |
+| `sales_data_reporting`, `mlops`, `cre_integration` — **TaskGroups**, collapsible | no | §4(a) |
+| `sales_data_extract [4]`, `prepare_report [6]` — **dynamic mapping** | no | **deferred to "later"** |
+| `model_trained` — a **Dataset** node | no | **missed**, and it is not a graph feature at all |
+| the `Layout: Left → Right` selector | the graph is left-to-right by level | — |
+
+So the honest answer to "did you have this in mind": **branching, skipped and
+grouping yes; edge labels, marker steps and datasets no; and dynamic mapping was
+in the section titled "what this plan does not do".**
+
+That last one does not survive contact with the picture. Four of its fourteen
+nodes carry a `[4]` or a `[6]`. A plan for "the flow shapes we want" that
+excludes the shape appearing four times is a plan for something else, so §6 now
+takes it seriously — and the analysis turned out better than the deferral
+assumed.
+
+---
 
 Today a workflow is a DAG: `depends_on` builds edges, `graph.Levels` groups them,
 and a level runs in parallel. `type: chain` is sugar that turns file order into
@@ -185,22 +216,152 @@ asked for.
 
 ---
 
-## 5. Order of work
+## 5. The three the first draft missed
+
+### 5.1 Edge labels — small, and branching is unreadable without them
+
+The picture labels two edges out of the branch: **"changed existing data"** and
+**"additional data"**. Without them, a reader sees two arrows and has to open the
+code to learn which is which.
+
+`Edge` is `{From, To}` and `flowEdge` carries no label either, so this is a field
+in three places and a render in one — React Flow draws edge labels natively.
+
+```yaml
+  - id: internal_api_load_incremental
+    depends_on:
+      - id: determine_load_type
+        label: additional data
+```
+
+The awkward part is that `depends_on` is a list of strings today, so accepting an
+object means accepting both forms. That is fine and it is the usual price: the
+short form stays for the 95% of edges nobody labels.
+
+**Where the value is:** not decoration. An unlabelled branch is a diagram that
+requires the source to read, and the graph exists so it does not.
+
+### 5.2 Marker steps — `start` and `end`
+
+`Validate` refuses a step declaring neither `run` nor `action`, and the picture
+opens and closes with exactly that: two `EmptyOperator`s doing nothing.
+
+They are not decoration either. They are **join points**: `end` depends on
+everything, so "did the whole thing finish" is one node instead of a reader
+tracing six arrows. Airflow's own examples use them for the same reason.
+
+Cheap to add and worth being explicit about, because "a step that runs nothing"
+must be *declared* rather than achieved by leaving a field out — a step with an
+empty `run:` by accident should still be refused:
+
+```yaml
+  - id: end
+    marker: true            # runs nothing, on purpose
+    depends_on: [publish_report, tear_down_cluster]
+```
+
+The refusal message gains a line pointing at it, which is how somebody
+discovers it.
+
+### 5.3 Datasets — and this one is not a graph feature
+
+`model_trained` in the picture is a **Dataset**, and it is drawn as a node but it
+is not a step. In Airflow a task *produces* a dataset, and another DAG declares
+it *consumes* one and is scheduled when it updates.
+
+That is **a third trigger type**, beside cron and manual. Brevis has
+`schedules`, `trigger_type` on a run, and a scheduler that materialises slots
+from a cron. Data-aware scheduling adds: a table of datasets and their last
+update, a producer declaration on a step, a consumer declaration on a workflow,
+and a scheduler path that fires on an update instead of a clock.
+
+**It gets its own plan**, and this one only names it, for a reason worth
+stating: it changes *when workflows run*, which is the scheduler's core, and
+bolting it onto a document about graph shapes is how a scheduling feature gets
+designed as a drawing.
+
+---
+
+## 6. Dynamic mapping — promoted out of "not doing"
+
+`sales_data_extract [4]`, `internal_api_extract [4]`, `prepare_report [6]`,
+`publish_report [6]`. Four of fourteen nodes. The first draft deferred this, and
+that was wrong.
+
+### Where the list comes from, and why it is already solved
+
+The natural source is the context feature that shipped last week:
+
+```python
+# extract
+context.set(partitions=["2026-09-05", "2026-09-06", "2026-09-07"])
+```
+
+```yaml
+  - id: load
+    depends_on: [extract]
+    for_each: extract.partitions
+    run: python load.py            # BREVIS_MAP_VALUE, BREVIS_MAP_INDEX
+```
+
+A key reference, not an expression — the same decision §3 makes, for the same
+reason.
+
+### What it actually costs, which is less than the deferral assumed
+
+Three things had made this look expensive, and two of them dissolve:
+
+| feared | actually |
+|---|---|
+| "the graph changes during a run" | **the DAG's shape does not.** `for_each` changes how many *instances* a node has, not which nodes or edges exist. `graph.Levels` operates on the definition and is untouched |
+| "the UI has to redraw a growing graph" | the graph is **computed at request time** from the definition plus `task_runs`. A mapped node renders `[4]` by counting rows — the same read that already produces the status |
+| "`task_runs` cannot hold it" | true, and it is the real cost: the row is keyed by `(run_id, node_id, attempt)` and needs a **`map_index`**. Airflow reached the same column, with `-1` for unmapped |
+
+So the work is: a `map_index` column, a `for_each` field validated at publish, the
+runner expanding a node into N tasks against the same slot semaphore, and the
+graph counting instances. It is a real feature and it is not the redesign the
+first draft implied.
+
+### The bound nobody has to invent
+
+**The context ceiling caps the fan-out.** A list has to fit in 4096 bytes, so a
+map is tens or hundreds of items and never a hundred thousand.
+
+That is a limit worth keeping rather than working around. Unbounded fan-out is
+how an orchestrator's scheduler becomes the bottleneck, and every engine that
+allows it has grown a second limit to take it back. Here the platform's ceiling
+does it for free, and the error when somebody exceeds it already names the
+largest keys.
+
+### Where it goes in the order
+
+**After `skipped` and trigger rules, before sub-flows.** It shares the state
+machine work with the first, it has no interaction with the third, and it is the
+shape the picture uses most.
+
+---
+
+## 7. Order of work
 
 | | | risk |
 |---|---|---|
 | 1 | `skipped` in the state machine, everywhere it ripples | **the highest in this plan**, and it carries no feature on its own |
 | 2 | `when:` trigger rules, validated at publish | low, once 1 is done |
-| 3 | grouping on the graph (TaskGroup-shaped) | low, mostly UI |
+| 3 | edge labels, and `marker: true` steps | low — a field in three places, and a refusal that gains a line |
 | 4 | `unless_empty:` — a key, not an expression | low, and it composes with the context feature |
-| 5 | sub-flows by expansion at publish | medium, and only after 1–4 have settled |
+| 5 | `for_each:` — `map_index`, the expansion, the `[4]` on the card | **medium**, and the second-largest thing here |
+| 6 | grouping on the graph (TaskGroup-shaped) | low, mostly UI |
+| 7 | sub-flows by expansion at publish | medium, and only after everything above has settled |
+
+Datasets (§5.3) are not in this list. They are a scheduling feature and they get
+their own plan.
 
 Step 1 first, alone, and with no user-visible change. That ordering is
 deliberate: a state machine change reviewed alongside a feature is a state
 machine change nobody reviews, and this one reaches the run's status, the resumed
 run, the screen and the context.
 
-## 6. How it is proven
+## 8. How it is proven
 
 - **A skipped step does not make its run fail**, and does not make it succeed
   either while something is still running.
@@ -214,12 +375,18 @@ run, the screen and the context.
 - **The default is unchanged**: a workflow with no `when:` behaves exactly as
   today, asserted by the existing corpus of examples.
 - **A cycle through a conditional edge is still refused at publish.**
+- **A mapped step produces N task_runs and one node on the graph**, and the count
+  on the card matches the rows — a `[4]` that says four while three ran is the
+  badge-that-lies failure in a new place.
+- **A mapped step whose list is empty produces zero instances and is `skipped`**,
+  not `success` with nothing done.
+- **A `marker: true` step still refuses an accidental empty `run:`** — the two
+  cases must not collapse into one.
 
-## 7. What this plan does not do
+## 9. What this plan does not do
 
-- **Dynamic task mapping** (Airflow's `.expand()`) — a step fanning out over a
-  list produced at run time. It is a genuinely useful shape and it changes the
-  graph *during* a run, which the UI, the levels and the state machine all assume
-  is fixed. Its own plan, later.
+- **Datasets and data-aware scheduling.** §5.3 — its own plan, because it changes
+  when workflows run rather than how one is drawn.
 - **An expression language.** §3.
+- **Unbounded fan-out.** §6 — and the bound is inherited rather than invented.
 - **Retries as a flow shape.** They already exist per step and belong there.

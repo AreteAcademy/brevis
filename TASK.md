@@ -8,7 +8,7 @@ being attacked and where it stands.
 |---|---|---|---|
 | **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | proposed |
 | **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Metrics` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | proposed |
-| **3** | **Flow shapes** — conditionals, trigger rules, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | proposed |
+| **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | proposed |
 | **4** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
 
 ## What the four have to do with each other
@@ -31,7 +31,8 @@ twice.
 
     ┌──────────────────────────────┐      ┌───────────────────────────┐
     │  3. Flow shapes              │◄─────┤  context between steps    │
-    │     conditionals read a value│      │  (already built)          │
+    │     a conditional reads a key│      │  (already built)          │
+    │     a map reads a list       │      │                           │
     └──────────────────────────────┘      └───────────────────────────┘
 
     ┌──────────────────────────────┐
@@ -44,6 +45,12 @@ numbers that #2 produces — bytes, rows, durations and anything about the
 infrastructure. #1's plan splits along that line so the ALERT half can ship
 first and the INSIGHTS half lands after #2, rather than inventing a second
 metrics pipeline that #2 would then replace.
+
+**Split out of #3, and named so it is not rediscovered as a gap:** datasets and
+data-aware scheduling — a step declaring it produces something, and a workflow
+triggered when that something updates. It appeared in the target picture as the
+`model_trained` node. It is a scheduling feature, not a graph one, and it gets
+its own plan rather than riding along in #3.
 
 #4 depends on nothing. It is last because it is least urgent, not because it is
 blocked — the contract it consumes has shipped and is proven by a
