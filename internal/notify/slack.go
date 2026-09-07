@@ -84,7 +84,14 @@ func (s *Slack) Failed(ctx context.Context, a Alert) error {
 	if s.Webhook == "" {
 		return nil
 	}
-	body, err := json.Marshal(s.message(a))
+	return s.post(ctx, s.message(a))
+}
+
+// post is the one place that talks to the webhook. It was inlined in Failed
+// until the periodic report needed the same thing -- and a second copy of the
+// error handling below is a second place where a 403 stops being readable.
+func (s *Slack) post(ctx context.Context, payload map[string]any) error {
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}

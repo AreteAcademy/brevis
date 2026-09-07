@@ -23,7 +23,7 @@ brevis [comando] [flags]
 | [`backfill`](#backfill) | **sim** | **exigida** | reprocessa um intervalo |
 | [`run`](#run) | não | — | executa agora, na própria instância |
 | [`validate`](#validate) | não | — | valida YAML de workflow |
-| [`marca`](#marca) | não | — | valida YAML de marca |
+| [`brand`](#brand) | não | — | valida YAML de marca |
 | [`hash`](#hash) | não | — | gera o hash da senha |
 | [`version`](#version) | não | — | versão, commit, build |
 
@@ -101,6 +101,42 @@ tentativas, 403 do Slack" é a linha que importa, porque é o caso em que algué
 está esperando uma mensagem que não vem.
 
 `CMD` da imagem `worker`.
+
+---
+
+## report
+
+Manda o resumo periódico do que rodou.
+
+```bash
+brevis report --window 168h              # envia
+brevis report --window 168h --dry-run    # imprime, não envia
+```
+
+| flag | tipo | padrão | |
+|---|---|---|---|
+| `--window` | duration | `168h` | quanto tempo para trás olhar |
+| `--dry-run` | bool | `false` | imprime em vez de enviar |
+
+Um **comando**, não um loop, e é essa a diferença entre um report e um alerta:
+ele roda de um CronJob, então não há loop novo, estado novo nem eleição de
+líder — o cluster já tem um scheduler. O `--dry-run` é como alguém passa a
+confiar numa mensagem semanal, lendo o que ela teria dito.
+
+Ele **não** passa pela caixa de saída de alertas. Os dois compartilham um canal
+de entrega e nada mais: perder um alerta é uma falha que ninguém escuta, e
+perder o resumo de uma semana é o resumo da semana seguinte.
+
+A mensagem leva runs, sucessos, falhas, os pipelines que mais falharam, os que
+demoraram mais, e as linhas e bytes que o SDK reportou. Ela **não** leva CPU nem
+memória, e também não imprime zero para elas — o motor não coleta esses números,
+e a mensagem diz onde eles ficam.
+
+Uma janela vazia diz isso, em vez de reportar 100%. Uma taxa de sucesso sobre
+nada é o número mais tranquilizador que um report pode imprimir e o menos
+verdadeiro: uma semana vazia normalmente quer dizer que o scheduler estava fora.
+
+O `deployments/kubernetes/report.yaml` roda isso toda semana.
 
 ---
 
@@ -200,12 +236,12 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
 
 ---
 
-## marca
+## brand
 
 Valida um arquivo de identidade visual sem subir o servidor.
 
 ```bash
-brevis marca brand.yaml
+brevis brand brand.yaml
 ```
 
 ```

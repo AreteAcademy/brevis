@@ -437,6 +437,32 @@ from Slack" is the most useful row this table produces, because it is the case
 where somebody is waiting for a message that is not coming; deleting it makes
 that indistinguishable from an alert nobody raised.
 
+### The weekly summary is a CronJob, not a loop
+
+`report.yaml` runs `brevis report --window 168h` on Monday mornings, and it does
+**not** go through the outbox above. The two share a delivery channel and
+nothing else: an alert is triggered by an event, is about one run and is wanted
+now; a report is triggered by a schedule, is about a window and is wanted on
+Monday. Losing an alert is an outage nobody hears about; missing one week's
+summary is next week's summary.
+
+A CronJob rather than a loop means no new state and no leader election — the
+cluster already has a scheduler. And `--dry-run` prints what the message would
+have said, which is how somebody comes to trust a weekly summary:
+
+```bash
+kubectl -n dados run brevis-report --rm -it --restart=Never \
+  --image=daniel3843/brevis:0.2.1-worker \
+  --env=BREVIS_DATABASE_URL="$(kubectl -n dados get secret brevis-db -o jsonpath='{.data.url}' | base64 -d)" \
+  -- report --window 168h --dry-run
+```
+
+The message carries runs, failures, the pipelines that failed most, the ones
+that took longest, and the rows and bytes the SDK reported. It carries **no**
+CPU or memory, and prints no zero for them: the engine does not collect those,
+the cluster's own metrics do, and the message says so rather than letting their
+absence read as "nothing to report".
+
 The message carries the domain and the pipeline (from the `tags`, with the
 slug's prefix as a fallback), the trigger, the attempts, the logical date, the
 error's last lines and a direct link to the run. The error is truncated at 900
@@ -453,7 +479,8 @@ kubectl -n dados create secret generic brevis-task-env \
 kubectl -n dados create configmap brevis-brand --from-file=brand.yaml
 kubectl apply -f deployments/kubernetes/api.yaml \
               -f deployments/kubernetes/scheduler.yaml \
-              -f deployments/kubernetes/alert.yaml
+              -f deployments/kubernetes/alert.yaml \
+              -f deployments/kubernetes/report.yaml
 ```
 
 `alert.yaml` requires the `brevis-slack` secret above — unlike the scheduler,

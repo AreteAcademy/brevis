@@ -6,7 +6,7 @@ being attacked and where it stands.
 
 | # | | plan | status |
 |---|---|---|---|
-| **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | proposed |
+| **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | **done** |
 | **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Meter` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **done** |
 | **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | proposed |
 | **4** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
@@ -52,11 +52,16 @@ PUBLISHED SDK version and carries no `replace`. So the SDK carrying `Meter`
 gets tagged first, and the module lands after. §5 of that plan has the
 measurement that made a separate module necessary.
 
-**The one ordering constraint that matters:** the INSIGHTS half of #1 wants
-numbers that #2 produces — bytes, rows, durations and anything about the
-infrastructure. #1's plan splits along that line so the ALERT half can ship
-first and the INSIGHTS half lands after #2, rather than inventing a second
-metrics pipeline that #2 would then replace.
+**#1 is done too.** The alerts outbox and `brevis alert`, `on_error:` in the
+YAML, the alerts on the run's screen, and `brevis report` with its CronJob.
+
+**The ordering constraint turned out to be half right.** The INSIGHTS report
+wanted numbers from #2, and #2 shipped — as a Prometheus endpoint, not as rows
+in Postgres. Rows, bytes and durations were always in the database and needed
+nothing from #2; CPU and memory are in the collector, and for the engine to put
+them in a weekly message it would have to become a metrics-backend client. So
+the report carries the first three and says where the others live, which is the
+final answer rather than a deferral. §6 of that plan records it.
 
 **Split out of #3, and named so it is not rediscovered as a gap:** datasets and
 data-aware scheduling — a step declaring it produces something, and a workflow

@@ -23,7 +23,7 @@ brevis [command] [flags]
 | [`backfill`](#backfill) | **yes** | **required** | reprocesses a range |
 | [`run`](#run) | no | — | runs now, on the instance itself |
 | [`validate`](#validate) | no | — | validates workflow YAML |
-| [`marca`](#marca) | no | — | validates branding YAML |
+| [`brand`](#brand) | no | — | validates branding YAML |
 | [`hash`](#hash) | no | — | generates the password hash |
 | [`version`](#version) | no | — | version, commit, build |
 
@@ -104,6 +104,42 @@ from Slack" is the row that matters, because it is the case where somebody is
 waiting for a message that is not coming.
 
 `CMD` of the `worker` image.
+
+---
+
+## report
+
+Sends the periodic summary of what ran.
+
+```bash
+brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--window` | duration | `168h` | how far back to look |
+| `--dry-run` | bool | `false` | print instead of sending |
+
+A **command**, not a loop, and that is the difference between a report and an
+alert: it runs from a CronJob, so there is no new loop, no new state and no
+leader election — the cluster already has a scheduler. `--dry-run` is how
+somebody comes to trust a weekly message, by reading what it would have said.
+
+It does **not** go through the alerts outbox. The two share a delivery channel
+and nothing else: losing an alert is an outage nobody hears about, and missing
+one week's summary is next week's summary.
+
+The message carries runs, successes, failures, the pipelines that failed most,
+the ones that took longest, and the rows and bytes the SDK reported. It does
+**not** carry CPU or memory, and does not print zero for them either — the
+engine does not collect those, and the message says where they do live.
+
+An empty window says so rather than reporting 100%. A success rate out of
+nothing is the most reassuring number a report can print and the least true one:
+an empty week usually means the scheduler was down.
+
+`deployments/kubernetes/report.yaml` runs it weekly.
 
 ---
 
@@ -206,12 +242,12 @@ date.
 
 ---
 
-## marca
+## brand
 
 Validates a branding file without starting the server.
 
 ```bash
-brevis marca brand.yaml
+brevis brand brand.yaml
 ```
 
 ```

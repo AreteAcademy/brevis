@@ -59,7 +59,7 @@ func raiz() *cobra.Command {
 		SilenceErrors: true,
 	}
 	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(),
-		cmdScheduler(), cmdAlert(), cmdBackfill(), cmdVersion())
+		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdVersion())
 	return c
 }
 
@@ -836,6 +836,99 @@ func cmdAlert() *cobra.Command {
 	c.Flags().IntVar(&attempts, "max-attempts", 6,
 		"tries before an alert is recorded as undelivered")
 	return c
+}
+
+// cmdReport sends the periodic summary.
+//
+// A COMMAND and not a loop, and that is the difference between a report and an
+// alert. It runs from a CronJob -- the cluster already has a scheduler, and
+// using it means no new loop, no new state and no leader election. It also
+// means an operator can run it by hand and read what it would have said, which
+// is how somebody comes to trust a weekly message.
+//
+// It does NOT go through the alerts outbox, and the plan is explicit about why:
+// the two share a delivery channel and nothing else. An alert is triggered by
+// an event, is about one run and is wanted now; a report is triggered by a
+// schedule, is about a window and is wanted on Monday. Losing an alert is an
+// outage nobody hears about; missing one week's summary is next week's summary.
+func cmdReport() *cobra.Command {
+	var window time.Duration
+	var dryRun bool
+	c := &cobra.Command{
+		Use:   "report",
+		Short: "Send the periodic summary of what ran",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx := cmd.Context()
+			pool, cfg, err := open(ctx)
+			if err != nil {
+				return err
+			}
+			defer pool.Close()
+
+			log := observability.NewLogger(cfg.Env, cfg.LogLevel)
+			to := time.Now()
+			from := to.Add(-window)
+
+			// Timed, and the reason is in insights.go: this is a query and not
+			// a rollup table, deliberately, and the number that would justify
+			// the rollup is this one.
+			started := time.Now()
+			rep, err := postgres.NewReadRepo(pool).Insights(ctx, from, to, cfg.Env)
+			if err != nil {
+				return err
+			}
+			log.Info("window aggregated", "runs", rep.Runs, "failed", rep.Failed,
+				"workflows", len(rep.Workflows), "query_ms", time.Since(started).Milliseconds())
+
+			if dryRun {
+				printReport(rep)
+				return nil
+			}
+			if cfg.SlackWebhook == "" {
+				return fmt.Errorf("no channel is configured: set BREVIS_SLACK_WEBHOOK (or use --dry-run)")
+			}
+			// A context of its own: the summary is small and Slack is not the
+			// reason a CronJob should hang.
+			send, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+			if err := notify.NovoSlack(cfg.SlackWebhook, cfg.Env).Report(send, rep); err != nil {
+				return err
+			}
+			log.Info("report sent", "runs", rep.Runs, "window", window.String())
+			return nil
+		},
+	}
+	c.Flags().DurationVar(&window, "window", 7*24*time.Hour, "how far back to look")
+	c.Flags().BoolVar(&dryRun, "dry-run", false,
+		"print the report instead of sending it")
+	return c
+}
+
+// printReport is what --dry-run shows. It is deliberately the same numbers in
+// the same order as the message, so reading one tells you what the other says.
+func printReport(r notify.Report) {
+	fmt.Printf("  %s → %s  (%s)\n",
+		r.From.Local().Format("2006-01-02 15:04"),
+		r.To.Local().Format("2006-01-02 15:04"), r.Environment)
+	if r.Runs == 0 {
+		fmt.Println("  no run in this window — either nothing was scheduled, or nothing ran")
+		return
+	}
+	fmt.Printf("  %d runs · %d succeeded · %d failed  (%.1f%%)\n",
+		r.Runs, r.Succeeded, r.Failed, r.SuccessRate())
+	if worst := r.Worst(5); len(worst) > 0 {
+		fmt.Println("\n  failed most:")
+		for _, w := range worst {
+			fmt.Printf("    %-40s %d of %d\n", w.Slug, w.Failed, w.Runs)
+		}
+	}
+	if slowest := r.Slowest(5); len(slowest) > 0 && slowest[0].Max > 0 {
+		fmt.Println("\n  took longest:")
+		for _, w := range slowest {
+			fmt.Printf("    %-40s max %-8s avg %s\n", w.Slug,
+				w.Max.Round(time.Second), w.Avg.Round(time.Second))
+		}
+	}
 }
 
 func cmdBackfill() *cobra.Command {

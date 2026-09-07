@@ -1,7 +1,7 @@
 # Alerts and reports: an `alert` pod, and what it is allowed to promise
 
 **Written on** 2026-09-08 · **Base** engine `v0.7.0`
-**Status** proposed — not started · **TASK.md #1**
+**Status** done — engine `v0.7.0`+ · **TASK.md #1**
 
 Today one alert exists: the dispatcher calls `Alerts.Failed` when a run gives up
 after its last attempt, and a Slack webhook receives it. It is in the
@@ -182,6 +182,25 @@ that was never sent.
 | 4 | `on_error:` in the YAML, validated at publish | per-step alerting |
 | 5 | the UI: raised, delivered, attempts, last error | the flow appears |
 | 6 | *(after `TASK.md` #2)* the rollup table, the scheduled INSIGHTS report | the weekly report, with numbers that exist |
+
+All six shipped. Two of them differently from what this plan said, and both
+differences are worth recording.
+
+**The rollup table was not built.** §3 argued the JSONB scan was "the wrong
+shape for a weekly rollup", and that was asserted rather than measured. A rollup
+written as each run finishes makes the weekly read cheap and costs a write on
+the hottest path in the system, plus a second source of truth for numbers that
+already exist and can therefore drift from them. The report is a query;
+`brevis report` logs its duration on every run, so the measurement that would
+justify the rollup is the one thing it always produces.
+
+**#2 did not unblock the infrastructure numbers the way this plan assumed.**
+§3 said the INSIGHTS half waits on the metrics pipeline. It shipped — and what
+it produces is a Prometheus endpoint, not rows in Postgres. For the engine to
+put CPU in a weekly message it would have to become a client of a metrics
+backend, which is a different design and a worse one: the collector already has
+those numbers and already draws them. So the report says where they live instead
+of carrying them, and that is the final answer rather than a deferral.
 
 Steps 1–3 are the architecture and they are worth doing in that order: the
 outbox first means step 3 has something real to claim, and the fake in step 3's

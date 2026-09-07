@@ -54,6 +54,7 @@ Available Commands:
   hash        Generate the BREVIS_AUTH_SENHA_HASH hash (reads the password from the terminal)
   migrate     Apply the schema migrations
   publish     Publish workflows and their schedules to the database
+  report      Send the periodic summary of what ran
   run         Run a workflow locally
   scheduler   Materialize schedules into runs and execute them
   serve       Start the HTTP API
@@ -66,6 +67,7 @@ Available Commands:
 | [`serve`](#brevis-serve) | **yes** | **required** | API + UI |
 | [`scheduler`](#brevis-scheduler) | **yes** | **required** | both loops: it creates and it executes |
 | [`alert`](#brevis-alert) | **yes** | **required** | drains the alerts outbox |
+| [`report`](#brevis-report) | **yes** | **required** | the periodic summary, from a CronJob |
 | [`migrate`](#brevis-migrate) | **yes** | **required** | schema |
 | [`publish`](#brevis-publish) | **yes** | **required** | writes the workflow and the schedule |
 | [`backfill`](#brevis-backfill) | **yes** | **required** | reprocesses a range |
@@ -189,6 +191,71 @@ for a message that is not coming, and deleting it would make that
 indistinguishable from an alert nobody ever raised.
 
 It is the `worker` image's `CMD`.
+
+---
+
+## `brevis report`
+
+The periodic summary of what ran.
+
+```bash
+brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--window` | duration | `168h` | how far back to look |
+| `--dry-run` | bool | `false` | print instead of sending |
+
+**A command, not a loop**, and that is the difference between a report and an
+alert. It runs from a CronJob (`deployments/kubernetes/report.yaml`), so there
+is no new loop, no new state and no leader election — the cluster already has a
+scheduler. And `--dry-run` is how somebody comes to trust a weekly message: by
+reading what it would have said.
+
+It does **not** go through the alerts outbox, and the two are kept apart
+deliberately. An alert is triggered by an EVENT, is about one run, and is wanted
+now; a report is triggered by a SCHEDULE, is about a window, and is wanted on
+Monday. One table serving both would make one access pattern serve two and one
+delivery path carry two SLAs — losing an alert is an outage nobody hears about,
+and missing one week's summary is next week's summary.
+
+### What it carries, and what it refuses to
+
+| | |
+|---|---|
+| runs, successes, failures, success rate | from `runs` |
+| min / avg / max duration per workflow | measured from **creation**, so queue time is included |
+| rows and bytes | from the SDK's stage numbers, **successful attempts only** |
+| CPU, memory, pod restarts | **not here** — see below |
+
+The infrastructure numbers are absent rather than zero. The engine does not
+collect them; the honest source is the cluster's own metrics, which a collector
+already scrapes from `/metrics`. The message says so, so their absence does not
+read as "nothing to report".
+
+Rows and bytes come only from successful attempts. Counting a failed attempt's
+rows reports work that was rolled back, and counting every attempt of a retried
+step reports the same rows twice — which is how a volume chart doubles on a bad
+night and looks like growth.
+
+**An empty window says so** rather than reporting 100%. A success rate out of
+nothing is the most reassuring number a report can print and the least true one:
+an empty week usually means the scheduler was down, not that everything went
+well.
+
+### It is a query, not a rollup table
+
+Aggregating the window scans `runs` and digs into `task_runs.etapas` per row.
+The alternative is a rollup written as each run finishes, which would make this
+read cheap and would also add a write to the hottest path in the system plus a
+second source of truth for numbers that already exist — and can therefore drift
+from them.
+
+This runs once a week, off-peak. `brevis report` logs the query's duration on
+every run, so the measurement that would justify the rollup is the one thing it
+always produces.
 
 ---
 
@@ -440,7 +507,7 @@ go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest
 | [`extract`](#brevis-sdk-extract) | extracts from a URL and prints |
 | [`load`](#brevis-sdk-load) | loads NDJSON from standard input into BigQuery |
 | [`run`](#brevis-sdk-run) | extracts and loads in one command |
-| `version` | version and commit |
+| `version` | version and commit — `brevis-sdk version` |
 
 ## `brevis-sdk extract`
 

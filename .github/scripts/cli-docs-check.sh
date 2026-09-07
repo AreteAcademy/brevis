@@ -28,7 +28,12 @@ check() { # <label> <dir> <doc>...
   for cmd in $cmds; do
     for doc in "$@"; do
       [ -f "$doc" ] || continue
-      if ! grep -qF "$cmd" "$doc"; then
+      # The FULL invocation, not the bare name. It searched for "$cmd" alone
+      # until `report` was added, and passed instantly: every one of these
+      # documents already contained the word "report" in a sentence about
+      # something else. A check that cannot fail for a common word is worse
+      # than no check, because it reads as coverage.
+      if ! grep -qF "$label $cmd" "$doc"; then
         echo "❌ $doc never mentions \`$label $cmd\`"
         fail=1
       fi

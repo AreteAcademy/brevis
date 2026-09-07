@@ -79,7 +79,14 @@ brevis-sdk run https://api.example.com/data.csv --project my-project
 
 ### version
 
-Show version information.
+```bash
+brevis-sdk version
+```
+
+Prints the version, the commit and the Go toolchain. The version comes from the
+binary itself (`runtime/debug`), so a `go install` of a tagged version reports
+that tag and a local build reports `(devel)` — neither can be wrong about which
+build it is.
 
 ## Piping Commands
 

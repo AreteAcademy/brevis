@@ -1,0 +1,67 @@
+# The weekly summary. A CronJob and not a loop, and that is the difference
+# between a report and an alert.
+#
+# The cluster already has a scheduler, so using it means no new loop, no new
+# state and no leader election. It also means an operator can run the same
+# command by hand -- `brevis report --window 168h --dry-run` -- and read what it
+# would have said, which is how somebody comes to trust a weekly message.
+#
+# It does NOT go through the alerts outbox. The two share a delivery channel and
+# nothing else: losing an alert is an outage nobody hears about, and missing one
+# week's summary is next week's summary.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: brevis-report
+  namespace: dados
+spec:
+  # Monday at 08:00, in the cluster's timezone. The window below is what
+  # actually decides what is counted, so the two have to agree: a schedule
+  # changed without the window leaves a gap or double-counts a day.
+  schedule: "0 8 * * 1"
+  timeZone: America/Sao_Paulo
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # A summary that did not go out on Monday is not worth sending on Wednesday
+  # with Monday's dates on it. It waits for next week.
+  startingDeadlineSeconds: 3600
+  jobTemplate:
+    spec:
+      # Two tries. The failure this covers is a transient one -- Postgres
+      # failing over, Slack answering 503 -- and a report that retries all day
+      # is a report that eventually sends a duplicate.
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: report
+              image: daniel3843/brevis:0.2.1-worker
+              # The window MATCHES the schedule above. 168h is seven days.
+              args: ["report", "--window", "168h"]
+              env:
+                - name: BREVIS_ENV
+                  value: prod
+                - name: BREVIS_DATABASE_URL
+                  valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
+                - name: BREVIS_SLACK_WEBHOOK
+                  valueFrom:
+                    secretKeyRef: {name: brevis-slack, key: webhook}
+                # Nothing listens: this process exits. Left explicitly empty so
+                # it does not bind a port for the twelve seconds it lives.
+                - name: BREVIS_METRICS_ADDR
+                  value: ""
+              resources:
+                # It runs two aggregate queries and one HTTP request.
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 256Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: ["ALL"]}
