@@ -13,7 +13,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution/local"
 )
 
-// The acceptance criterion: two languages, one run, real processes.
+// The acceptance criterion: THREE languages, one run, real processes.
 //
 // A Python step importing lib/python-context reads what a bash step published
 // with nothing but `printf`, and publishes something a third step reads with
@@ -59,17 +59,33 @@ context.set(rows=48213)
 		t.Fatal(err)
 	}
 
+	// A real Go binary, built against sdk/context, so the Go end of the contract
+	// is exercised as a consumer sees it rather than as this repository's own
+	// package call.
+	goStep := filepath.Join(t.TempDir(), "gostep")
+	build := exec.Command("go", "build", "-o", goStep, ".")
+	build.Dir = filepath.Join(repo, "internal", "application", "execution", "testdata", "gostep")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building the Go step: %v\n%s", err, out)
+	}
+
 	w := wf.Workflow{
 		Slug: "cross-language", Kind: wf.KindDAG,
 		Nodes: []wf.Node{
 			// No SDK at all: the test of the contract.
 			{ID: "extract", Run: `sh -c 'printf "{\"bucket\":\"s3://landing/2026-09-07\"}" > "$BREVIS_OUTPUT"'`},
-			// Python, through the library.
+			// Go, through sdk/context.
+			{ID: "check", Run: goStep},
+			// Python, through lib/python-context.
 			{ID: "transform", Run: python + " " + script},
-			// And a third step reading what Python published.
+			// And a fourth step reading what all three published.
 			{ID: "load", Run: `sh -c 'echo "$BREVIS_INPUT" > ` + dir + `/seen'`},
 		},
-		Edges: []wf.Edge{{From: "extract", To: "transform"}, {From: "transform", To: "load"}},
+		Edges: []wf.Edge{
+			{From: "extract", To: "check"},
+			{From: "check", To: "transform"},
+			{From: "transform", To: "load"},
+		},
 	}
 
 	rep := &coletor{}
@@ -85,16 +101,20 @@ context.set(rows=48213)
 		t.Fatalf("the cross-language pipeline failed: %v", err)
 	}
 
-	// Python read what bash published.
-	var read bool
-	for _, e := range rep.eventos {
-		if strings.Contains(e.Message, "python read: s3://landing/2026-09-07") {
-			read = true
+	// Each language read what the one before it published.
+	for _, want := range []string{
+		"go read: s3://landing/2026-09-07",     // Go read bash
+		"python read: s3://landing/2026-09-07", // Python read bash, through Go
+	} {
+		var read bool
+		for _, e := range rep.eventos {
+			if strings.Contains(e.Message, want) {
+				read = true
+			}
 		}
-	}
-	if !read {
-		t.Errorf("the Python step did not receive the shell step's context. Events: %+v",
-			rep.eventos)
+		if !read {
+			t.Errorf("no step reported %q. Events: %+v", want, rep.eventos)
+		}
 	}
 
 	// And the step after read what Python published -- including both keys of
@@ -107,8 +127,13 @@ context.set(rows=48213)
 	if got["rows"] != float64(48213) {
 		t.Errorf("rows = %v, want 48213", got["rows"])
 	}
-	// The shell step is still visible transitively, through Python.
+	// What Go published survived a Python hop, and what bash published survived
+	// both. Three implementations of one wire format, and the transitive read
+	// crossing every one of them.
+	if seen["check"]["checked_by"] != "go" || seen["check"]["rows"] != float64(7) {
+		t.Errorf("what the Go step published did not survive: %v", seen["check"])
+	}
 	if seen["extract"]["bucket"] != "s3://landing/2026-09-07" {
-		t.Errorf("the transitive context did not survive a Python hop: %v", seen)
+		t.Errorf("the transitive context did not survive a Go and a Python hop: %v", seen)
 	}
 }

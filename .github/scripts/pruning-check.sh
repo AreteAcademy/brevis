@@ -62,6 +62,15 @@ check "mysql" \
   "_ = mysql.Query{}" \
   "jackc/pgx cloud.google.com aws-sdk-go"
 
+# Context is the package a Python-first team's Go step imports, and it must cost
+# nothing: no driver, no network, no rest of the SDK. If this ever fails, the
+# package grew a dependency and a fetcher that only wanted to publish a
+# watermark started paying for it.
+check "context" \
+  "	\"$MODULO/context\"" \
+  "_ = context.MaxBytes" \
+  "jackc/pgx cloud.google.com aws-sdk-go net/http"
+
 check "pycompat" \
   "	\"$MODULO/pycompat\"" \
   "_, _ = pycompat.Text(nil)" \
