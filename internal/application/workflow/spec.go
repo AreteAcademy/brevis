@@ -137,6 +137,40 @@ type StepSpec struct {
 	// images that do have a shell -- most of them -- would start receiving an
 	// argv, breaking any command with a pipe or a variable.
 	Shell *bool `yaml:"shell"`
+
+	// OnError announces this step's failures.
+	//
+	//	on_error:
+	//	  type: SLACK
+	//	  when: attempt     # optional; the default is give_up
+	//
+	// A pointer for the same reason Shell is: absent has to be different from
+	// declared-and-empty, and a zero OnError would look like a step asking to
+	// be announced to nowhere.
+	OnError *OnErrorSpec `yaml:"on_error"`
+}
+
+// OnErrorSpec is a step's alert declaration as written in the file.
+//
+// There is no `webhook`, `url` or `channel` field, and there will not be. The
+// destination is a credential; the installation owns it. This says WHETHER and
+// HOW.
+type OnErrorSpec struct {
+	Type string `yaml:"type"`
+	When string `yaml:"when"`
+}
+
+func (o *OnErrorSpec) dominio() *dominio.OnError {
+	if o == nil {
+		return nil
+	}
+	// The type is upper-cased and the moment lower-cased, matching how each is
+	// written in the vocabulary. `type: slack` in a file is a typo, not a
+	// different channel, and refusing it would be pedantry with a 4am cost.
+	return &dominio.OnError{
+		Type: strings.ToUpper(strings.TrimSpace(o.Type)),
+		When: strings.ToLower(strings.TrimSpace(o.When)),
+	}
 }
 
 // Parse reads the YAML and returns the workflow already validated.
@@ -187,6 +221,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Env:   aparar(st.Env), Secrets: aparar(st.Secrets),
 			Runtime: strings.ToLower(strings.TrimSpace(st.Runtime)),
 			Tools:   normalizeTools(st.Tools),
+			OnError: st.OnError.dominio(),
 		})
 	}
 

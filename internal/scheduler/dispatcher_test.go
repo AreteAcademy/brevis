@@ -2,6 +2,7 @@ package scheduler_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	wfdom "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
@@ -522,12 +524,12 @@ func TestAnAlertThatCannotBeWrittenRollsTheAttemptBack(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err = repo.Attempt(ctx, r.ID, 1, func(int) *alerts.Pending {
-		return &alerts.Pending{
+	_, _, err = repo.Attempt(ctx, r.ID, 1, func(int, bool) []alerts.Pending {
+		return []alerts.Pending{{
 			RunID:   uuid.New(), // no such run: the foreign key refuses it
 			Kind:    alerts.KindRun,
 			Channel: alerts.ChannelSlack,
-		}
+		}}
 	})
 	if err == nil {
 		t.Fatal("writing an alert for a run that does not exist should have failed")
@@ -894,5 +896,210 @@ func TestAShutdownWhileARunFinishesDoesNotStrandTheItem(t *testing.T) {
 	if pending+claimed != 0 {
 		t.Errorf("the queue holds %d pending and %d claimed: the item was stranded, "+
 			"and only the visibility sweep will free it", pending, claimed)
+	}
+}
+
+// definitionWith builds the run's snapshot the way `publish` would.
+func definitionWith(t *testing.T, nodes ...wfdom.Node) []byte {
+	t.Helper()
+	raw, err := json.Marshal(wfdom.Workflow{Slug: "id_verification", Nodes: nodes})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func slackOnGiveUp() *wfdom.OnError {
+	return &wfdom.OnError{Type: wfdom.ChannelSlack}
+}
+
+// A step that declared on_error and failed gets an alert of its own, beside the
+// run's.
+//
+// Two messages and not one: the run-level alert says "id_verification failed",
+// which is what whoever owns the pipeline needs, and the step-level one says
+// "fetch_observations failed", which is what whoever owns that integration
+// needs. Collapsing them would mean the second person reads the first person's
+// alert and has to work out whether it concerns them.
+func TestAStepThatDeclaredOnErrorGetsItsOwnAlert(t *testing.T) {
+	pool := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+
+	r, err := repo.Create(ctx, dom.Run{
+		WorkflowSlug: "id_verification", IdempotencyKey: "step-alert",
+		TriggerType: "schedule",
+		Definition: definitionWith(t,
+			wfdom.Node{ID: "fetch", Run: "python fetch.py", OnError: slackOnGiveUp()},
+			// Declares an alert and never fails: a workflow where one branch
+			// breaks must not wake up whoever owns the other one.
+			wfdom.Node{ID: "report", Run: "python report.py", OnError: slackOnGiveUp()},
+		),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.Transicionar(ctx, r.ID, dom.StatusQueued)
+	_ = q.Enqueue(ctx, r.ID, 0, time.Time{})
+
+	d := scheduler.New(scheduler.Config{
+		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
+		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
+	}, q, repo, func(ctx context.Context, id uuid.UUID) error {
+		if err := repo.IniciarTask(ctx, id, "fetch", 0); err != nil {
+			return err
+		}
+		code := 1
+		if err := repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code,
+			"exited with code 1", "HTTP 503 from the vendor"); err != nil {
+			return err
+		}
+		return errors.New(`step "fetch": exited with code 1`)
+	}, noLog())
+	d.Channel = wfdom.ChannelSlack
+
+	go func() { _ = d.Run(ctx) }()
+	waitFor(t, func() bool { return len(raised(t, pool, r.ID)) >= 2 })
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	rows := raised(t, pool, r.ID)
+	var runLevel, stepLevel []alerts.Record
+	for _, a := range rows {
+		if a.Kind == alerts.KindStep {
+			stepLevel = append(stepLevel, a)
+		} else {
+			runLevel = append(runLevel, a)
+		}
+	}
+	if len(runLevel) != 1 {
+		t.Errorf("%d run-level alerts, wanted 1", len(runLevel))
+	}
+	if len(stepLevel) != 1 {
+		t.Fatalf("%d step-level alerts, wanted 1 (only `fetch` failed)", len(stepLevel))
+	}
+	if stepLevel[0].NodeID != "fetch" {
+		t.Errorf("the step alert names %q", stepLevel[0].NodeID)
+	}
+	if !strings.Contains(stepLevel[0].Payload.LogExcerpt, "503") {
+		t.Errorf("the step alert carries no evidence: %q", stepLevel[0].Payload.LogExcerpt)
+	}
+}
+
+// `when: attempt` announces a failure that is going to be retried; the default
+// does not.
+//
+// The default is the quiet one because of whose night it is: a step that fails
+// twice and passes on the third try would send two messages under the other
+// default, and the second one would arrive after the problem was gone.
+func TestWhenAttemptAnnouncesAFailureThatWillBeRetried(t *testing.T) {
+	pool := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+
+	r, err := repo.Create(ctx, dom.Run{
+		WorkflowSlug: "id_verification", IdempotencyKey: "when-attempt",
+		TriggerType: "schedule",
+		Definition: definitionWith(t, wfdom.Node{
+			ID: "fetch", Run: "python fetch.py",
+			OnError: &wfdom.OnError{Type: wfdom.ChannelSlack, When: wfdom.OnAttempt},
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.Transicionar(ctx, r.ID, dom.StatusQueued)
+	_ = q.Enqueue(ctx, r.ID, 0, time.Time{})
+
+	var calls int32
+	d := scheduler.New(scheduler.Config{
+		Worker: "t", MaxConcorrente: 1, MaxAttempts: 3,
+		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
+	}, q, repo, func(ctx context.Context, id uuid.UUID) error {
+		n := int(atomic.AddInt32(&calls, 1))
+		if n > 1 {
+			return nil // the second attempt passes
+		}
+		_ = repo.IniciarTask(ctx, id, "fetch", 0)
+		code := 1
+		_ = repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code, "boom", "boom")
+		return errors.New(`step "fetch": exited with code 1`)
+	}, noLog())
+	d.Channel = wfdom.ChannelSlack
+
+	go func() { _ = d.Run(ctx) }()
+	waitFor(t, func() bool {
+		current, _ := repo.Get(context.Background(), r.ID)
+		return current.Status == dom.StatusSuccess
+	})
+	cancel()
+	time.Sleep(150 * time.Millisecond)
+
+	rows := raised(t, pool, r.ID)
+	if len(rows) != 1 {
+		t.Fatalf("%d alerts; `when: attempt` should have raised exactly the one failed attempt", len(rows))
+	}
+	if rows[0].Kind != alerts.KindStep || rows[0].NodeID != "fetch" {
+		t.Errorf("the alert is not the step's: %+v", rows[0].Item)
+	}
+	// And no run-level alert: the run recovered, so nobody owns a failure.
+	for _, a := range rows {
+		if a.Kind == alerts.KindRun {
+			t.Error("a run that recovered raised a run-level alert")
+		}
+	}
+}
+
+// A step naming a channel the installation has not configured is DROPPED, not
+// written. The outbox is for alerts that could have arrived; a row that was
+// never deliverable would come out marked undelivered and look exactly like
+// Slack rejecting it.
+func TestAStepNamingAnUnconfiguredChannelIsNotWritten(t *testing.T) {
+	pool := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+
+	r, err := repo.Create(ctx, dom.Run{
+		WorkflowSlug: "w", IdempotencyKey: "wrong-channel", TriggerType: "manual",
+		// A definition from a build that knew a channel this one does not.
+		Definition: definitionWith(t, wfdom.Node{
+			ID: "fetch", Run: "x", OnError: &wfdom.OnError{Type: "TEAMS"},
+		}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = repo.Transicionar(ctx, r.ID, dom.StatusQueued)
+	_ = q.Enqueue(ctx, r.ID, 0, time.Time{})
+
+	d := scheduler.New(scheduler.Config{
+		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
+		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
+	}, q, repo, func(ctx context.Context, id uuid.UUID) error {
+		_ = repo.IniciarTask(ctx, id, "fetch", 0)
+		code := 1
+		_ = repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code, "boom", "boom")
+		return errors.New("boom")
+	}, noLog())
+	d.Channel = wfdom.ChannelSlack
+
+	go func() { _ = d.Run(ctx) }()
+	waitFor(t, func() bool { return len(raised(t, pool, r.ID)) > 0 })
+	cancel()
+	time.Sleep(100 * time.Millisecond)
+
+	for _, a := range raised(t, pool, r.ID) {
+		if a.Kind == alerts.KindStep {
+			t.Errorf("an alert was written for a channel nothing delivers to: %+v", a.Item)
+		}
 	}
 }

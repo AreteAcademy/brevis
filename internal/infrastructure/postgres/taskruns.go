@@ -290,6 +290,38 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, er
 // Absence is not an error: a run that died before any step started (a missing
 // image, a cancelled queue) has no task_run at all, and the alert goes out
 // without this part rather than not going out.
+// FailedSteps returns EVERY step of this run that ended failed, newest first,
+// with the end of its log.
+//
+// FailedStep above answers "which step should the run's alert name", and one is
+// the right answer there: an alert has to fit in a phone notification. This one
+// exists for `on_error`, where each declaring step gets its own message -- and a
+// run with two parallel branches can legitimately have two of them fail.
+//
+// DISTINCT ON keeps the latest attempt per node. Without it a step that failed
+// three times would produce three alerts saying the same thing.
+func (r *RunRepo) FailedSteps(ctx context.Context, runID uuid.UUID) (map[string]string, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (node_id) node_id, log
+		FROM task_runs
+		WHERE run_id = $1 AND status = $2
+		ORDER BY node_id, attempt DESC`, runID, dom.StatusFailed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]string{}
+	for rows.Next() {
+		var node, log string
+		if err := rows.Scan(&node, &log); err != nil {
+			return nil, err
+		}
+		out[node] = log
+	}
+	return out, rows.Err()
+}
+
 func (r *RunRepo) FailedStep(ctx context.Context, runID uuid.UUID) (string, string, error) {
 	var step, log string
 	err := r.pool.QueryRow(ctx, `

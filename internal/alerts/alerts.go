@@ -30,6 +30,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/notify"
 )
 
@@ -43,19 +44,15 @@ const (
 	KindStep = "step"
 )
 
-// The channels, as a CLOSED vocabulary.
+// The channels, taken from the DOMAIN rather than declared again here.
 //
-// A workflow naming an unknown one is refused at publish, saying what is valid.
-// The alternative is discovering it on the night the alert was needed, which is
-// the only night it matters.
-const (
-	ChannelSlack = "SLACK"
-)
+// The vocabulary belongs where a YAML's rules live, and having two copies is
+// how a workflow ends up able to declare a destination this side cannot
+// deliver to. `brevis publish` validates against the same list.
+const ChannelSlack = wf.ChannelSlack
 
-// Channels lists what an installation can deliver to. Adding one here without
-// an implementation in the alert pod is how a workflow gets to declare a
-// destination that silently goes nowhere, so the two move together.
-func Channels() []string { return []string{ChannelSlack} }
+// Channels lists what an installation can deliver to.
+func Channels() []string { return wf.AlertChannels() }
 
 // KnownChannel reports whether the name is one this build can deliver to.
 func KnownChannel(name string) bool {

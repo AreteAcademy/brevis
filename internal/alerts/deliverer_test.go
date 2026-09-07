@@ -80,14 +80,17 @@ func raise(t *testing.T, pool *postgres.Pool, chName string) (uuid.UUID, *alerts
 	// Attempt with a budget of 1 gives up immediately, which is what writes
 	// the row -- through the same path production uses, not a hand-built
 	// INSERT.
-	if _, _, err := repo.Attempt(ctx, r.ID, 1, func(attempt int) *alerts.Pending {
-		return &alerts.Pending{
+	if _, _, err := repo.Attempt(ctx, r.ID, 1, func(attempt int, gaveUp bool) []alerts.Pending {
+		if !gaveUp {
+			return nil
+		}
+		return []alerts.Pending{{
 			RunID: r.ID, Kind: alerts.KindRun, Channel: chName,
 			Payload: notify.Alert{
 				Workflow: "id_verification", RunID: r.ID.String(),
 				Status: "failed", Attempts: attempt, Err: "exited with code 2",
 			},
-		}
+		}}
 	}); err != nil {
 		t.Fatal(err)
 	}

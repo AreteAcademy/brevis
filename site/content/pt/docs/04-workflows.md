@@ -114,6 +114,47 @@ steps:
 | `shell` | `true` | `false` executa sem shell — necessário em distroless |
 | `depends_on` | | lista de `id` que precisam terminar antes |
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
+| `on_error` | | anuncia as falhas deste passo — veja abaixo |
+
+## Anunciando a falha de um passo
+
+Toda falha já é anunciada: com o webhook configurado, uma run que desiste manda
+uma mensagem, sem bloco repetido em arquivo nenhum. O `on_error` é para o passo
+que precisa do próprio.
+
+```yaml
+steps:
+  - id: fetch_observations
+    run: python fetch.py
+    on_error:
+      type: SLACK
+```
+
+| campo | | |
+|---|---|---|
+| `type` | **obrigatório** | `SLACK`. Um valor desconhecido é recusado no publish, dizendo o que é válido |
+| `when` | `give_up` | `attempt` anuncia toda tentativa que falha, não só a última |
+
+Chegam duas mensagens em vez de uma, e é esse o ponto: o alerta da run diz
+*`id_verification` falhou*, que é o que quem cuida do pipeline precisa; o do
+passo diz *`fetch_observations` falhou*, que é o que quem cuida daquela
+integração precisa.
+
+**Não existe campo `webhook` nem `url`, e não vai existir.** O destino é uma
+credencial — quem tem a URL posta no canal como se fosse a plataforma — e um
+arquivo de workflow é escrito por alguém que não necessariamente pode escolher
+para onde vão os alertas da empresa. O arquivo diz **se** e **como**; a
+instalação diz **onde**, pelo `BREVIS_SLACK_WEBHOOK`.
+
+**`when: give_up` é o padrão por causa de quem está de plantão.** Um passo que
+falha duas vezes e passa na terceira mandaria duas mensagens no outro padrão, e
+a segunda chegaria depois que o problema já tinha ido embora.
+
+**Um passo que não falhou nunca é anunciado.** Num workflow onde um ramo quebra,
+quem cuida do outro ramo não é acordado.
+
+A entrega é trabalho do `brevis alert` — o alerta é gravado na mesma transação
+da falha, então uma queda do Slack o atrasa em vez de perdê-lo.
 
 ## Tags
 

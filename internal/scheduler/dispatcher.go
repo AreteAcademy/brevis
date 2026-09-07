@@ -19,6 +19,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	wfdom "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 	"github.com/AreteAcademy/brevis/internal/queue"
@@ -41,12 +42,16 @@ type Repo interface {
 	// the SAME transaction. The two cannot come apart, which is the point --
 	// see the postgres implementation.
 	Attempt(ctx context.Context, id uuid.UUID, budget int,
-		raise func(attempt int) *alerts.Pending) (attempt int, gaveUp bool, err error)
+		raise func(attempt int, gaveUp bool) []alerts.Pending) (attempt int, gaveUp bool, err error)
 
 	// FailedStep returns the node and the output of the last failed
 	// attempt. It feeds the alert: without it the alert says something failed,
 	// and whoever is on call has to open the screen to find out what.
 	FailedStep(ctx context.Context, id uuid.UUID) (step, log string, err error)
+
+	// FailedSteps returns every failed node with its log, for the steps that
+	// declared `on_error`. A run with two parallel branches can have two.
+	FailedSteps(ctx context.Context, id uuid.UUID) (map[string]string, error)
 }
 
 // Config parameterises the dispatcher.
@@ -382,50 +387,124 @@ func (d *Dispatcher) measure(ctx context.Context, runID uuid.UUID, status dom.St
 		time.Since(r.CreatedAt))
 }
 
-// raise returns the builder that turns this failure into an outbox row.
+// raise returns the builder that turns this failure into outbox rows.
 //
-// It BUILDS and does not send, which is the whole change. Nothing here can
-// fail in a way that matters: a Slack outage used to be a log line and a lost
-// alert, and is now a row somebody retries.
+// It BUILDS and does not send, which is the whole change. Nothing here can fail
+// in a way that matters: a Slack outage used to be a log line and a lost alert,
+// and is now a row somebody retries.
 //
 // Nil when no channel is configured. An outbox filling with alerts nothing can
 // deliver would be worse than not writing them -- it would look like a backlog
 // instead of like a setting nobody turned on.
 //
-// The returned closure runs INSIDE the attempt's transaction and only on the
-// give-up path, so its two reads are paid once per abandoned run rather than
-// once per failed attempt.
-func (d *Dispatcher) raise(ctx context.Context, runID uuid.UUID, cause error) func(int) *alerts.Pending {
+// The returned closure runs INSIDE the attempt's transaction, so what it writes
+// commits with the attempt that justified it or not at all. It is called on
+// every attempt, because a step may declare `when: attempt`; `gaveUp` is what
+// the run-level alert waits for.
+func (d *Dispatcher) raise(ctx context.Context, runID uuid.UUID, cause error) func(int, bool) []alerts.Pending {
 	if d.Channel == "" {
 		return nil
 	}
-	return func(attempt int) *alerts.Pending {
-		a := notify.Alert{
-			RunID: runID.String(), Status: string(dom.StatusFailed),
-			Attempts: attempt, Err: cause.Error(), BaseURL: d.BaseURL,
-		}
+	return func(attempt int, gaveUp bool) []alerts.Pending {
 		// The details come from the database: the dispatcher knows only the id.
 		// If the read fails the alert still goes out -- half a message beats
 		// none when something is already broken.
+		base := notify.Alert{
+			RunID: runID.String(), Status: string(dom.StatusFailed),
+			Attempts: attempt, Err: cause.Error(), BaseURL: d.BaseURL,
+		}
+		var w wfdom.Workflow
 		if r, err := d.repo.Get(ctx, runID); err == nil {
-			a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
+			base.Workflow, base.Trigger, base.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
 			var def struct{ Tags []string }
 			if json.Unmarshal(r.Definition, &def) == nil {
-				a.Tags = def.Tags
+				base.Tags = def.Tags
+			}
+			// The run's SNAPSHOT, not the published workflow: a file edited
+			// since the trigger must not change who gets told about a run that
+			// used the previous definition.
+			if err := json.Unmarshal(r.Definition, &w); err != nil {
+				d.log.Warn("cannot read the run's steps for on_error", "run", runID, "error", err)
 			}
 		} else {
 			d.log.Warn("alert without the run's details", "run", runID, "error", err)
 		}
-		if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
-			a.Step = step
-			a.LogExcerpt = lastLines(log, 15)
-		} else {
-			d.log.Warn("alert without the step that failed", "run", runID, "error", err)
+
+		var out []alerts.Pending
+
+		// The run-level alert: only when the run gives up. Warning on every
+		// attempt would turn a run that recovers on its second try into two
+		// alerts and a silence, and a channel that cries wolf stops being read.
+		if gaveUp {
+			a := base
+			if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
+				a.Step = step
+				a.LogExcerpt = lastLines(log, 15)
+			} else {
+				d.log.Warn("alert without the step that failed", "run", runID, "error", err)
+			}
+			out = append(out, alerts.Pending{
+				RunID: runID, Kind: alerts.KindRun, Channel: d.Channel, Payload: a,
+			})
 		}
-		return &alerts.Pending{
-			RunID: runID, Kind: alerts.KindRun, Channel: d.Channel, Payload: a,
+
+		out = append(out, d.stepAlerts(ctx, runID, w, base, gaveUp)...)
+		return out
+	}
+}
+
+// stepAlerts builds one alert per failed step that asked for one.
+//
+// The channel comes from the INSTALLATION and not from the step's declaration:
+// on_error.type names a kind of destination, and where that destination is is a
+// credential the workflow's author does not necessarily get to choose. A step
+// that names a channel the installation has not configured is dropped here with
+// a log line, rather than written and given up on later -- the outbox is for
+// alerts that could have arrived.
+func (d *Dispatcher) stepAlerts(ctx context.Context, runID uuid.UUID,
+	w wfdom.Workflow, base notify.Alert, gaveUp bool,
+) []alerts.Pending {
+	declared := map[string]*wfdom.OnError{}
+	for _, n := range w.Nodes {
+		if n.OnError.Fires(gaveUp) {
+			declared[n.ID] = n.OnError
 		}
 	}
+	if len(declared) == 0 {
+		// The common case, and it costs no query: most steps declare nothing,
+		// and the run-level alert already covers the run.
+		return nil
+	}
+
+	failed, err := d.repo.FailedSteps(ctx, runID)
+	if err != nil {
+		d.log.Warn("cannot read which steps failed for on_error", "run", runID, "error", err)
+		return nil
+	}
+
+	var out []alerts.Pending
+	for node, on := range declared {
+		log, itFailed := failed[node]
+		if !itFailed {
+			// A step that did not fail is not announced, however the run ended.
+			// A workflow where one branch fails must not wake up whoever owns
+			// the other one.
+			continue
+		}
+		if on.Type != d.Channel {
+			d.log.Warn("step declares a channel this installation has not configured",
+				"run", runID, "step", node, "declared", on.Type, "configured", d.Channel)
+			continue
+		}
+		a := base
+		a.Step = node
+		a.LogExcerpt = lastLines(log, 15)
+		out = append(out, alerts.Pending{
+			RunID: runID, Kind: alerts.KindStep, NodeID: node,
+			Channel: d.Channel, Payload: a,
+		})
+	}
+	return out
 }
 
 // lastLines returns the END of the log, which is where a program usually

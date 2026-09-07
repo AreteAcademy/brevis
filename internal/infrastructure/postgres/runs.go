@@ -112,13 +112,14 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 // that anybody should have been. Now either the run is recorded as having spent
 // its last attempt and the alert exists, or neither happened.
 //
-// `raise` is a builder rather than a value because it only runs on the give-up
-// path. Building the message costs two reads -- the run's details and the
-// failing step's log -- and paying that on every failed attempt of every
-// retrying run would be most of them, for nothing. It may return nil, which is
-// what an installation with no channel configured does.
+// `raise` is a builder rather than a value because building the message costs
+// reads -- the run's details, the failing step's log -- and it may return
+// nothing, which is what an installation with no channel configured does. It
+// receives `gaveUp` because a step declaring `on_error.when: attempt` is
+// announced on every failed attempt while the run-level alert waits for the
+// last one.
 func (r *RunRepo) Attempt(ctx context.Context, id uuid.UUID, budget int,
-	raise func(attempt int) *alerts.Pending,
+	raise func(attempt int, gaveUp bool) []alerts.Pending,
 ) (attempt int, gaveUp bool, err error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
@@ -133,9 +134,12 @@ func (r *RunRepo) Attempt(ctx context.Context, id uuid.UUID, budget int,
 	}
 
 	gaveUp = budget > 0 && attempt >= budget
-	if gaveUp && raise != nil {
-		if p := raise(attempt); p != nil {
-			if err := alerts.WriteTx(ctx, tx, *p); err != nil {
+	if raise != nil {
+		// Called on EVERY attempt, not only the last: a step may declare
+		// `on_error.when: attempt`, and the builder is what decides. The
+		// run-level alert waits for gaveUp on its own.
+		for _, p := range raise(attempt, gaveUp) {
+			if err := alerts.WriteTx(ctx, tx, p); err != nil {
 				// The alert failing to write ROLLS THE ATTEMPT BACK, and that
 				// is the correct trade rather than an oversight. The attempt
 				// will be spent again by the retry; an alert dropped here is

@@ -114,6 +114,47 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `shell` | `true` | `false` runs without a shell — required on distroless |
 | `depends_on` | | list of `id`s that must finish first |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
+| `on_error` | | announces this step's failures — see below |
+
+## Announcing a step's failures
+
+Every failure is already announced: with a webhook configured, a run that gives
+up sends one message, with no block repeated in any file. `on_error` is for the
+step that needs its own.
+
+```yaml
+steps:
+  - id: fetch_observations
+    run: python fetch.py
+    on_error:
+      type: SLACK
+```
+
+| field | | |
+|---|---|---|
+| `type` | **required** | `SLACK`. An unknown value is refused at publish, naming what is valid |
+| `when` | `give_up` | `attempt` announces every failed attempt, not only the last |
+
+Two messages arrive rather than one, and that is the point: the run-level alert
+says *`id_verification` failed*, which is what whoever owns the pipeline needs;
+the step-level one says *`fetch_observations` failed*, which is what whoever
+owns that integration needs.
+
+**There is no `webhook` or `url` field, and there will not be.** The destination
+is a credential — whoever holds it posts in the channel as if they were the
+platform — and a workflow file is written by somebody who is not necessarily
+allowed to choose where the company's alerts go. The file says **whether** and
+**how**; the installation says **where**, through `BREVIS_SLACK_WEBHOOK`.
+
+**`when: give_up` is the default because of whose night it is.** A step that
+fails twice and passes on the third try would send two messages under the other
+default, and the second would arrive after the problem was gone.
+
+**A step that did not fail is never announced.** In a workflow where one branch
+breaks, whoever owns the other branch is not woken up.
+
+Delivery is `brevis alert`'s job — the alert is recorded in the same transaction
+as the failure, so a Slack outage delays it instead of losing it.
 
 ## Tags
 

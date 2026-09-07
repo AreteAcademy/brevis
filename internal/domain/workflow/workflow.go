@@ -8,6 +8,7 @@ package workflow
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
@@ -98,6 +99,23 @@ type Node struct {
 	// true.
 	Runtime string
 	Tools   []string
+
+	// OnError declares that this step announces its own failures.
+	//
+	//	on_error:
+	//	  type: SLACK
+	//
+	// The DESTINATION is not here and never will be. A webhook is a credential
+	// -- whoever holds it posts in the channel as if they were the platform --
+	// and a workflow file is written by somebody who is not necessarily allowed
+	// to choose where the company's alerts go. The YAML says WHETHER and HOW;
+	// the installation says WHERE, through the same environment variable it
+	// already uses. It is the argument that made BREVIS_POD_ALLOWED_SECRETS a
+	// list the installation controls rather than something the YAML picks.
+	//
+	// Absent is the normal case: the run-level alert already fires when a run
+	// gives up, with no block repeated in any file.
+	OnError *OnError
 
 	// Shell decides how the command enters the container. Nil means with a
 	// shell, which is what `run:` suggests ("python fetch.py"). False passes the
@@ -211,6 +229,73 @@ func sobrepor(base, up map[string]string) map[string]string {
 func (n Node) UsaShell() bool { return n.Shell == nil || *n.Shell }
 
 // Edge links two nodes: From runs before To.
+// The alert channels a workflow may name, as a CLOSED vocabulary.
+//
+// It lives in the domain because it is what a YAML is allowed to declare, and
+// it is validated at PUBLISH: an unknown channel is refused when the workflow
+// is published, naming what is valid, rather than discovered on the night the
+// alert was needed -- which is the only night it matters.
+//
+// Adding a name here without something that delivers to it is how a workflow
+// gets to declare a destination that silently goes nowhere, so the two move
+// together. internal/alerts asserts that they agree.
+const (
+	ChannelSlack = "SLACK"
+)
+
+// AlertChannels lists every destination a workflow may name.
+func AlertChannels() []string { return []string{ChannelSlack} }
+
+// When an on_error fires.
+//
+// The default is the quiet one, and the reason is whose night it is: a step
+// that fails four times and passes on the fifth would send four messages under
+// the other default, and the cost of that choice falls on whoever is asleep.
+const (
+	OnGiveUp  = "give_up" // the default: only when the run runs out of attempts
+	OnAttempt = "attempt" // every failed attempt
+)
+
+// OnError is a step's declaration that it announces its failures.
+type OnError struct {
+	// Type is the channel. Required: an on_error with no type is a step that
+	// asks to be announced somewhere unspecified.
+	Type string
+
+	// When is OnGiveUp (default) or OnAttempt.
+	When string
+}
+
+// Fires reports whether this declaration wants an alert now.
+func (o *OnError) Fires(gaveUp bool) bool {
+	if o == nil {
+		return false
+	}
+	return gaveUp || o.When == OnAttempt
+}
+
+// validateOnError refuses at publish what would otherwise be found at 4am.
+func validateOnError(slug, step string, o *OnError) error {
+	if o == nil {
+		return nil
+	}
+	if o.Type == "" {
+		return fmt.Errorf("workflow %q: step %q declares `on_error` with no `type` (valid: %s)",
+			slug, step, strings.Join(AlertChannels(), ", "))
+	}
+	if !slices.Contains(AlertChannels(), o.Type) {
+		return fmt.Errorf("workflow %q: step %q: `on_error.type: %s` is not valid (valid: %s)",
+			slug, step, o.Type, strings.Join(AlertChannels(), ", "))
+	}
+	switch o.When {
+	case "", OnGiveUp, OnAttempt:
+	default:
+		return fmt.Errorf("workflow %q: step %q: `on_error.when: %s` is not valid (valid: %s, %s)",
+			slug, step, o.When, OnGiveUp, OnAttempt)
+	}
+	return nil
+}
+
 type Edge struct {
 	From string
 	To   string
@@ -285,6 +370,9 @@ func (w Workflow) Validate() error {
 
 	for _, n := range w.Nodes {
 		if err := validateToolchain(w.Slug, n); err != nil {
+			return err
+		}
+		if err := validateOnError(w.Slug, n.ID, n.OnError); err != nil {
 			return err
 		}
 	}
