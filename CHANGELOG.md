@@ -6,6 +6,11 @@ The SDK's versions (`github.com/AreteAcademy/brevis/sdk`). The format follows
 
 A nested module's tag carries the directory's prefix: `sdk/v0.2.1`.
 
+`sdk/metrics/otelmeter` is a module of its own and versions independently
+(`sdk/metrics/otelmeter/v0.1.0`). It carries the OTLP exporter, and it is
+separate precisely so that weight never reaches anybody who does not ask for it
+— see 0.54.0 below.
+
 The engine has its own: [`CHANGELOG-motor.md`](CHANGELOG-motor.md).
 
 Entries from `0.40.0` on are in English. Older ones were written in Portuguese
