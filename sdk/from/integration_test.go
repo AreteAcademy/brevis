@@ -28,9 +28,9 @@ import (
 //	docker compose -f docker-compose.drivers.yml up -d minio
 //	BREVIS_IT_S3_ENDPOINT=http://localhost:9000 go test ./from/... -run Integration
 //
-// Sem a variável eles pulam, e a suíte normal segue offline. São os únicos que
-// provam que um objeto de verdade entra e sai -- os em memória provam os bytes
-// que montamos, não o que o servidor aceita.
+// Without the variable they skip, and the normal suite stays offline. They are
+// the only ones proving a real object goes in and comes out -- the in-memory ones
+// prove the bytes we assembled, not what the server accepts.
 func s3Client(t *testing.T) (*awss3.Client, string) {
 	t.Helper()
 
@@ -86,8 +86,8 @@ func limpa(c *awss3.Client, bucket string) {
 	_, _ = c.DeleteBucket(ctx, &awss3.DeleteBucketInput{Bucket: aws.String(bucket)})
 }
 
-// TestIntegrationS3RoundTrip é a prova da fase 1: um lote escrito em S3 e lido
-// de volta, com os mesmos registros.
+// TestIntegrationS3RoundTrip is phase 1's proof: a batch written to S3 and read
+// back, with the same records.
 func TestIntegrationS3RoundTrip(t *testing.T) {
 	client, bucket := s3Client(t)
 	ctx := context.Background()
@@ -129,13 +129,14 @@ func TestIntegrationS3RoundTrip(t *testing.T) {
 	}
 }
 
-// A ordem é contrato, e num bucket ela depende da listagem do servidor.
+// The order is a contract, and in a bucket it depends on the server's
+// listing.
 func TestIntegrationS3LeEmOrdem(t *testing.T) {
 	client, bucket := s3Client(t)
 	ctx := context.Background()
 	store := s3.New(client)
 
-	// Escritos fora de ordem de propósito.
+	// Written out of order on purpose.
 	for _, nome := range []string{"c", "a", "b"} {
 		corpo := fmt.Sprintf(`{"n":%q}`+"\n", nome)
 		if err := store.Create(ctx, bucket, "p/"+nome+".ndjson", bytes.NewReader([]byte(corpo))); err != nil {
@@ -162,7 +163,7 @@ func TestIntegrationS3LeEmOrdem(t *testing.T) {
 	}
 }
 
-// O gzip atravessa a nuvem igual: escrito comprimido, lido pela extensão.
+// gzip crosses the cloud the same way: written compressed, read by extension.
 func TestIntegrationS3Comprimido(t *testing.T) {
 	client, bucket := s3Client(t)
 	ctx := context.Background()
@@ -190,8 +191,9 @@ func TestIntegrationS3Comprimido(t *testing.T) {
 	}
 }
 
-// A paginação do List existe porque um prefixo com mais de mil objetos seria
-// lido pela metade -- e uma leitura parcial que reporta sucesso parece só um
+// List's pagination exists because a prefix with more than a thousand objects
+// would be read halfway -- and a partial read reporting success looks like just
+// a
 // dia pequeno.
 func TestIntegrationS3PaginaAListagem(t *testing.T) {
 	client, bucket := s3Client(t)
@@ -216,9 +218,9 @@ func TestIntegrationS3PaginaAListagem(t *testing.T) {
 	}
 }
 
-// TestIntegrationGCSRoundTrip roda contra o bucket real que a suíte do
-// BigQuery já usa, porque não há emulador de GCS bom o bastante para provar
-// o que este teste prova.
+// TestIntegrationGCSRoundTrip runs against the real bucket the BigQuery suite
+// already uses, because there is no GCS emulator good enough to prove what this
+// test proves.
 //
 //	BREVIS_IT_BUCKET=meu-bucket go test ./from/... -run IntegrationGCS
 func TestIntegrationGCSRoundTrip(t *testing.T) {

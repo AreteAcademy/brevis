@@ -35,9 +35,9 @@ func lerTudo(t *testing.T, r core.Reader) []map[string]any {
 	return out
 }
 
-// `;` é o padrão de fato em boa parte da Europa e nos portais de dados
-// abertos. Sem esta opção, a saída era decodificar o CSV à mão -- ou seja,
-// reimplementar o csv.Reader para trocar um caractere.
+// `;` is the de facto standard across much of Europe and in the open-data
+// portals. Without this option, the way out was decoding the CSV by hand -- that
+// is, reimplementing csv.Reader to change one character.
 func TestHTTPComDelimitadorPontoEVirgula(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
@@ -54,8 +54,8 @@ func TestHTTPComDelimitadorPontoEVirgula(t *testing.T) {
 	}
 }
 
-// Sem o delimitador, a linha inteira vira UMA coluna cujo nome é o cabeçalho
-// inteiro -- o defeito que o campo existe para evitar.
+// Without the delimiter, the whole line becomes ONE column whose name is the
+// whole header -- the defect the field exists to prevent.
 func TestSemDelimitadorOCSVComPontoEVirgulaViraUmaColunaSo(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write(csvPontoEVirgula())
@@ -68,9 +68,9 @@ func TestSemDelimitadorOCSVComPontoEVirgulaViraUmaColunaSo(t *testing.T) {
 	}
 }
 
-// Um `.csv.gz` servido como CONTEÚDO é como quase todo portal de dados abertos
-// publica arquivo grande. O from.Files já descomprimia pela extensão; a regra
-// existia no SDK e só não alcançava o HTTP.
+// A `.csv.gz` served as CONTENT is how nearly every open-data portal publishes a
+// large file. from.Files already decompressed by extension; the rule existed in
+// the SDK and simply did not reach HTTP.
 func TestHTTPDescomprimeGzip(t *testing.T) {
 	var comprimido bytes.Buffer
 	gz := gzip.NewWriter(&comprimido)
@@ -105,8 +105,8 @@ func TestHTTPDescomprimeGzip(t *testing.T) {
 	}
 }
 
-// Uma resposta que se anuncia gzip e não é falha nomeando isso, e não como um
-// erro de decodificação sobre CSV inválido.
+// A response that announces gzip and is not fails saying so, and not as a
+// decoding error about invalid CSV.
 func TestGzipMentirosoFalhaDizendoOQueE(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
@@ -124,7 +124,7 @@ func TestGzipMentirosoFalhaDizendoOQueE(t *testing.T) {
 	}
 }
 
-// O mesmo delimitador vale para arquivos, que é de onde o CSV com `;` costuma
+// The same delimiter holds for files, which is where a `;` CSV usually
 // vir depois de baixado.
 func TestFilesComDelimitador(t *testing.T) {
 	dir := t.TempDir()

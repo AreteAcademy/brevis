@@ -15,8 +15,8 @@ import (
 	topg "github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
-// Os testes de integração são travados por variável, como os do BigQuery: sem
-// ela pulam, e a suíte normal segue offline.
+// The integration tests are gated on a variable, like BigQuery's: without it
+// they skip, and the normal suite stays offline.
 //
 //	docker compose -f docker-compose.drivers.yml up -d postgres
 //	BREVIS_IT_PG_DSN=postgres://brevis:brevis@localhost:55432/brevis_it go test ./sdk/to/postgres/
@@ -39,7 +39,7 @@ func conectar(t *testing.T) *pgx.Conn {
 	return conn
 }
 
-// tabela cria uma tabela descartável e devolve o nome.
+// table creates a throwaway table and returns its name.
 func tabela(t *testing.T, conn *pgx.Conn, ddl string) string {
 	t.Helper()
 	nome := fmt.Sprintf("t_%d", time.Now().UnixNano())
@@ -78,7 +78,7 @@ func loteDeTeste(n int) []sdk.Envelope {
 }
 
 // TestIntegrationUmaLinhaRealmenteEntra e o §5.1 do plano: os testes em
-// memória provam os bytes que montamos, não o que o servidor aceita.
+// memory prove the bytes we assembled, not what the server accepts.
 func TestIntegrationUmaLinhaRealmenteEntra(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, colunasPadrao)
@@ -101,11 +101,11 @@ func TestIntegrationUmaLinhaRealmenteEntra(t *testing.T) {
 	}
 }
 
-// TestIntegrationOrdemDaTabelaEQueVale prova, ponta a ponta, que cada valor
-// pousa na coluna certa quando a ordem da tabela não é a ordem do registro.
-func TestIntegrationOrdemDaTabelaEQueVale(t *testing.T) {
+// TestIntegrationTheTablesOrderIsWhatCounts proves, end to end, that every value
+// lands in the right column when the table's order is not the record's.
+func TestIntegrationTheTablesOrderIsWhatCounts(t *testing.T) {
 	conn := conectar(t)
-	// A ordem da tabela é deliberadamente diferente da ordem em que o registro
+	// The table's order is deliberately different from the order the record
 	// costuma ser escrito.
 	nome := tabela(t, conn, `
 		valor NUMERIC(18,2),
@@ -135,9 +135,9 @@ func TestIntegrationOrdemDaTabelaEQueVale(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupCarregaOMesmoLoteDuasVezes é o teste do BigQuery
-// portado, e é o critério de pronto da fase 2.
-func TestIntegrationDedupCarregaOMesmoLoteDuasVezes(t *testing.T) {
+// TestIntegrationDedupLoadsTheSameBatchTwice is BigQuery's test ported, and it
+// is phase 2's done criterion.
+func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, colunasPadrao)
 	if _, err := conn.Exec(context.Background(),
@@ -175,9 +175,9 @@ func TestIntegrationDedupCarregaOMesmoLoteDuasVezes(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupSemIndiceRecusa: sem índice único, ON CONFLICT não tem o
-// que casar e toda execução inseriria duplicatas.
-func TestIntegrationDedupSemIndiceRecusa(t *testing.T) {
+// TestIntegrationDedupWithoutAnIndexRefuses: with no unique index, ON CONFLICT
+// has nothing to match and every run would insert duplicates.
+func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, colunasPadrao)
 
@@ -193,11 +193,11 @@ func TestIntegrationDedupSemIndiceRecusa(t *testing.T) {
 	}
 }
 
-// TestIntegrationCampoQueATabelaNaoTemRecusa: o servidor também recusaria,
-// mas com `column "x" of relation "y" does not exist` no meio de um COPY --
-// depois do extract inteiro, e sem dizer o que fazer. O que o Reconcile compra
-// é recusar ANTES, com a saída escrita.
-func TestIntegrationCampoQueATabelaNaoTemRecusa(t *testing.T) {
+// TestIntegrationAFieldTheTableLacksIsRefused: the server would refuse too, but
+// with `column "x" of relation "y" does not exist` in the middle of a COPY --
+// after the whole extract, and without saying what to do. What Reconcile buys is
+// refusing BEFORE, with the way out written down.
+func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, colunasPadrao)
 
@@ -221,9 +221,10 @@ func TestIntegrationCampoQueATabelaNaoTemRecusa(t *testing.T) {
 	}
 }
 
-// TestIntegrationTabelaAusenteDizComoCriar: o driver não cria e não infere
-// tipo, então o erro tem de dar o que falta para o DDL sair de uma leitura.
-func TestIntegrationTabelaAusenteDizComoCriar(t *testing.T) {
+// TestIntegrationAMissingTableSaysHowToCreateIt: the driver does not create and
+// infers no types, so the error has to give what is missing for the DDL to come
+// out of one reading.
+func TestIntegrationAMissingTableSaysHowToCreateIt(t *testing.T) {
 	_, err := topg.Table{DSN: dsn(t), Name: "nao_existe_mesmo"}.Write(
 		context.Background(), loteDeTeste(1), sdk.WriteOptions{})
 	if err == nil {
@@ -236,12 +237,12 @@ func TestIntegrationTabelaAusenteDizComoCriar(t *testing.T) {
 	}
 }
 
-// TestIntegrationLeituraEmFluxo é o §5.3: um teste que FALHA se o driver
+// TestIntegrationTheReadIsStreamed is §5.3: a test that FAILS if the driver
 // bufferizar em vez de fazer streaming.
 //
-// Consome uma linha e para. Se o driver montasse a lista inteira antes de
+// It consumes one row and stops. If the driver built the whole list before
 // devolver, ele teria lido as 50 mil -- e o tempo denunciaria.
-func TestIntegrationLeituraEmFluxo(t *testing.T) {
+func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	conn := conectar(t)
 	nome := tabela(t, conn, "i INT, texto TEXT")
 	if _, err := conn.Exec(context.Background(), fmt.Sprintf(
@@ -262,23 +263,24 @@ func TestIntegrationLeituraEmFluxo(t *testing.T) {
 			t.Fatal(err)
 		}
 		recebeu = true
-		break // uma linha só, de propósito: é o que denuncia o buffer
+		break // one row only, on purpose: it is what exposes the buffer
 	}
 	if !recebeu {
 		t.Fatal("nenhuma linha")
 	}
 
-	// A primeira linha tem de chegar sem esperar as 50 mil. O limite é folgado
-	// de propósito: o que ele pega é a diferença entre fluxo e buffer, não a
+	// The first row has to arrive without waiting for the 50 thousand. The limit
+	// is generous on purpose: what it catches is the difference between a stream
+	// and a buffer, not the
 	// velocidade do servidor.
 	if d := time.Since(inicio); d > 2*time.Second {
 		t.Errorf("a primeira linha levou %s; o driver parece bufferizar", d)
 	}
 }
 
-// TestIntegrationTiposVemDoServidor prova a tabela do §3.1 contra o Postgres
-// de verdade, e não contra os valores que nós construímos.
-func TestIntegrationTiposVemDoServidor(t *testing.T) {
+// TestIntegrationTheTypesComeFromTheServer proves §3.1's table against a real
+// Postgres, and not against the values we built ourselves.
+func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 	fonte := frompg.Query{DSN: dsn(t), SQL: `
 		SELECT
 			123456789012345678.99::numeric   AS numerico,
@@ -326,9 +328,9 @@ func TestIntegrationTiposVemDoServidor(t *testing.T) {
 	}
 }
 
-// TestIntegrationPostgresParaPostgres é o critério de pronto da fase 2: o
-// pipeline inteiro, com dedup provada carregando o mesmo lote duas vezes.
-func TestIntegrationPostgresParaPostgres(t *testing.T) {
+// TestIntegrationPostgresToPostgres is phase 2's done criterion: the whole
+// pipeline, with dedup proven by loading the same batch twice.
+func TestIntegrationPostgresToPostgres(t *testing.T) {
 	conn := conectar(t)
 
 	origem := tabela(t, conn, "id INT, nome TEXT, valor NUMERIC(18,2), atualizado_em TIMESTAMPTZ")
@@ -364,8 +366,9 @@ func TestIntegrationPostgresParaPostgres(t *testing.T) {
 			t.Fatalf("Extract: %v", err)
 		}
 		dados = sdk.Transform(dados,
-			// O source_key vem do id como TEXTO: a chave do ingestion_id é
-			// composta por concatenação, e um número e a string dele têm de
+			// The source_key comes from the id as TEXT: the ingestion_id's key
+			// is composed by concatenation, and a number and its string have
+			// to
 			// produzir o mesmo id.
 			sdk.Compute("source_key", func(r map[string]any) (any, error) {
 				return fmt.Sprint(r["id"]), nil
@@ -410,8 +413,8 @@ func TestIntegrationPostgresParaPostgres(t *testing.T) {
 		t.Errorf("o destino tem %d rows depois de duas execuções idênticas", n)
 	}
 
-	// E a precisão sobreviveu à travessia inteira: NUMERIC no Postgres, string
-	// no registro, NUMERIC de volta.
+	// And the precision survived the whole crossing: NUMERIC in Postgres, a
+	// string in the record, NUMERIC back again.
 	var valor string
 	if err := conn.QueryRow(context.Background(),
 		"SELECT valor::text FROM "+destino+" WHERE source_key = '2'").Scan(&valor); err != nil {

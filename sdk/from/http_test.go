@@ -11,12 +11,12 @@ import (
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// O from.HTTP é um adaptador: ele copia os seus campos para a core.Source que
-// o extract consome. Um campo esquecido nessa cópia não quebra nada que
-// compile -- ele simplesmente deixa de ter efeito, que é o defeito que este
+// from.HTTP is an adapter: it copies its fields into the core.Source extract
+// consumes. A field forgotten in that copy breaks nothing that compiles -- it
+// simply stops having an effect, which is the defect this
 // SDK mais achou em si mesmo.
 //
-// Este teste confere que cada campo chega ao outro lado.
+// This test checks that every field reaches the other side.
 func TestHTTPPassaTodosOsCamposAdiante(t *testing.T) {
 	var (
 		metodo   string
@@ -78,7 +78,7 @@ func TestHTTPPassaTodosOsCamposAdiante(t *testing.T) {
 		t.Errorf("URL não chegou inteira: %q", caminho)
 	}
 
-	// As opções que atravessam todo driver.
+	// The options that cross every driver.
 	if stats.Bytes == 0 || stats.Pages == 0 {
 		t.Errorf("Stats não foi preenchido: %+v", stats)
 	}
@@ -91,7 +91,7 @@ func TestHTTPPassaTodosOsCamposAdiante(t *testing.T) {
 }
 
 // Cada formato tem de chegar ao decodificador certo. Um Format ignorado
-// decodificaria JSON onde o fetcher pediu CSV.
+// would decode JSON where the fetcher asked for CSV.
 func TestHTTPEncaminhaCadaFormato(t *testing.T) {
 	casos := []struct {
 		formato core.Format
@@ -143,8 +143,8 @@ func TestHTTPRecusaFormatoDesconhecido(t *testing.T) {
 	}
 }
 
-// Describe é o que aparece no log e na mensagem de erro, então não pode
-// carregar o segredo que a URL carrega.
+// Describe is what appears in the log and in the error message, so it must not
+// carry the secret the URL carries.
 func TestHTTPDescribeNaoVazaSegredo(t *testing.T) {
 	got := HTTP{URL: "https://api.exemplo.com/v1?api_key=SEGREDO&lat=-23.5"}.Describe()
 

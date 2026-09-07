@@ -7,10 +7,10 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestInsertSQLNomeiaAsColunas: o SQL afirmado como funcao pura, sem cliente.
+// TestInsertSQLNamesTheColumns: o SQL afirmado como funcao pura, sem cliente.
 // A razao e concreta -- o MERGE do BigQuery saiu com casamento POSICIONAL e
 // custou a v0.12.0 porque era montado dentro de um metodo com cliente.
-func TestInsertSQLNomeiaAsColunas(t *testing.T) {
+func TestInsertSQLNamesTheColumns(t *testing.T) {
 	got := InsertSQL("pedidos", []string{"ingestion_id", "valor"}, 2, false)
 	esperado := "INSERT INTO `pedidos` (`ingestion_id`, `valor`) VALUES (?,?), (?,?)"
 	if got != esperado {
@@ -56,8 +56,8 @@ func TestInsertSQLPalavraReservada(t *testing.T) {
 	}
 }
 
-// TestPartirNome cobre o banco implicito.
-func TestPartirNome(t *testing.T) {
+// TestSplitName cobre o banco implicito.
+func TestSplitName(t *testing.T) {
 	if b, tb := splitName("landing.pedidos"); b != "landing" || tb != "pedidos" {
 		t.Errorf("= (%q, %q)", b, tb)
 	}

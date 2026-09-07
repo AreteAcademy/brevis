@@ -9,14 +9,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TestParaColunaLinhaALinha e o lado da ESCRITA da tabela de types.
+// TestToColumnRowByRow is the WRITE side of the type table.
 //
-// Ele existe por um defeito concreto: o registro do SDK e JSON, entao um
-// timestamp nele e uma STRING RFC 3339. O COPY binario do pgx quer um
-// time.Time e recusa a string com "cannot find encode plan", que nao diz a
-// ninguem que o problema e o formato. So apareceu contra o servidor de
-// verdade -- os testes em memoria provam os bytes que montamos.
-func TestParaColunaLinhaALinha(t *testing.T) {
+// It exists because of a concrete defect: the SDK's record is JSON, so a
+// timestamp in it is an RFC 3339 STRING. pgx's binary COPY wants a time.Time and
+// refuses the string with "cannot find encode plan", which tells nobody the
+// problem is the format. It only showed up against a real server -- the
+// in-memory tests prove the bytes we assembled.
+func TestToColumnRowByRow(t *testing.T) {
 	instante := time.Date(2026, 9, 5, 12, 30, 0, 0, time.UTC)
 
 	casos := []struct {

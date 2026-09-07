@@ -12,9 +12,9 @@ import (
 
 // BenchmarkCargaPostgres mede a carga contra o servidor de verdade.
 //
-// Existe porque a §5 da fase 5 pede número: sem ele a documentação promete
-// desempenho que ninguém mediu, que foi como o `DeleteAfterLoad` chegou ao
-// texto com um default que ele não tinha.
+// It exists because §5 of phase 5 asks for a number: without one the
+// documentation promises performance nobody measured, which is how
+// `DeleteAfterLoad` reached the text with a default it did not have.
 //
 //	BREVIS_IT_PG_DSN=... go test -run XXX -bench CargaPostgres ./to/postgres/
 func BenchmarkCargaPostgres(b *testing.B) {

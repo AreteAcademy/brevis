@@ -49,8 +49,8 @@ func TestFilesLeNDJSONLocal(t *testing.T) {
 	}
 }
 
-// A ordem é contrato: um Key posicional depende dela, e sem ela o
-// ingestion_id do mesmo registro muda entre execuções.
+// The order is a contract: a positional Key depends on it, and without it the
+// same record's ingestion_id changes between runs.
 func TestFilesLeEmOrdemDeterminística(t *testing.T) {
 	dir := t.TempDir()
 	escreve(t, dir, "c.ndjson", `{"n":"c"}`+"\n")
@@ -106,8 +106,8 @@ func TestFilesDescomprimeGzipPelaExtensao(t *testing.T) {
 	}
 }
 
-// Um .gz que não é gzip tem de falhar nomeando o arquivo, não como "JSON
-// inválido" lá na frente.
+// A .gz that is not gzip has to fail naming the file, not as "invalid JSON"
+// further down.
 func TestFilesGzipInvalidoNomeiaOArquivo(t *testing.T) {
 	dir := t.TempDir()
 	escreve(t, dir, "mentira.ndjson.gz", "isto nao e gzip")
@@ -121,7 +121,8 @@ func TestFilesGzipInvalidoNomeiaOArquivo(t *testing.T) {
 	}
 }
 
-// Diretório vazio é resultado, não falha -- pela mesma razão que o 204 não é.
+// An empty directory is a result, not a failure -- for the same reason a 204 is
+// not.
 func TestFilesDiretorioVazioNaoEFalha(t *testing.T) {
 	got, err := le(t, Files{Path: filepath.Join(t.TempDir(), "*.ndjson")})
 	if err != nil {
@@ -132,7 +133,7 @@ func TestFilesDiretorioVazioNaoEFalha(t *testing.T) {
 	}
 }
 
-// O caminho e o backend têm de combinar, e o erro nomeia os dois.
+// The path and the backend have to match, and the error names both.
 func TestFilesRecusaCaminhoSemStore(t *testing.T) {
 	_, err := Files{Path: "s3://bucket/x/*.ndjson"}.Read(context.Background(), core.ReadOptions{})
 	if err == nil {
@@ -178,8 +179,8 @@ func TestFilesContaOsBytesLidos(t *testing.T) {
 	}
 }
 
-// O preview vale para todo driver, não só para o HTTP -- do contrário
-// ReadOptions.Preview seria campo morto aqui.
+// The preview holds for every driver, not only for HTTP -- otherwise
+// ReadOptions.Preview would be a dead field here.
 func TestFilesHonraOPreview(t *testing.T) {
 	dir := t.TempDir()
 	escreve(t, dir, "a.ndjson", "{\"id\":1,\"n\":\"alfa\"}\n{\"id\":2,\"n\":\"beta\"}\n")

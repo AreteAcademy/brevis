@@ -17,7 +17,7 @@ type fonteFalsa struct {
 	nome      string
 	linhas    int
 	erroAbrir error
-	erroApos  int // > 0: falha depois de N linhas
+	errAfter  int // > 0: it fails after N rows
 }
 
 func (f fonteFalsa) Describe() string { return f.nome }
@@ -28,7 +28,7 @@ func (f fonteFalsa) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelo
 	}
 	return func(yield func(sdk.Envelope, error) bool) {
 		for i := 0; i < f.linhas; i++ {
-			if f.erroApos > 0 && i == f.erroApos {
+			if f.errAfter > 0 && i == f.errAfter {
 				yield(sdk.Envelope{}, fmt.Errorf("%s quebrou na linha %d", f.nome, i))
 				return
 			}
@@ -69,10 +69,10 @@ func TestManyJuntaAsOrigens(t *testing.T) {
 	}
 }
 
-// TestManySequencialMantemAOrdem: com Workers 0 ou 1 a sequência é
-// determinística, e é por isso que esse é o padrão. Concorrência é opt-in
-// justamente porque ela abre mão disso.
-func TestManySequencialMantemAOrdem(t *testing.T) {
+// TestManySequentialKeepsTheOrder: with Workers 0 or 1 the sequence is
+// deterministic, and that is why it is the default. Concurrency is opt-in
+// precisely because it gives that up.
+func TestManySequentialKeepsTheOrder(t *testing.T) {
 	fontes := []sdk.Reader{
 		fonteFalsa{nome: "a", linhas: 2},
 		fonteFalsa{nome: "b", linhas: 2},
@@ -99,9 +99,9 @@ func TestManySequencialMantemAOrdem(t *testing.T) {
 	}
 }
 
-// TestManyAbortaPorPadrao: mudar o padrão em silêncio faria uma execução que
-// hoje falha passar a "dar certo" com metade do dado.
-func TestManyAbortaPorPadrao(t *testing.T) {
+// TestManyAbortsByDefault: changing the default in silence would make a run that
+// fails today start "working" with half the data.
+func TestManyAbortsByDefault(t *testing.T) {
 	_, err := drenar(t, from.Many{Sources: []sdk.Reader{
 		fonteFalsa{nome: "boa", linhas: 2},
 		fonteFalsa{nome: "ruim", erroAbrir: fmt.Errorf("504")},
@@ -115,11 +115,12 @@ func TestManyAbortaPorPadrao(t *testing.T) {
 	}
 }
 
-// TestManyContinuaEDizQuaisFalharam é o item 2 inteiro em um teste.
+// TestManyContinuesAndSaysWhichFailed is the whole of item 2 in one test.
 //
-// Num fan-out de milhares de origens, "a execução falhou" não é informação: o
-// que resolve é saber QUAIS falharam, para reprocessar essas e não as outras.
-func TestManyContinuaEDizQuaisFalharam(t *testing.T) {
+// On a fan-out of thousands of sources, "the run failed" is not information:
+// what fixes it is knowing WHICH failed, so those get reprocessed and the others
+// do not.
+func TestManyContinuesAndSaysWhichFailed(t *testing.T) {
 	var stats sdk.Stats
 	linhas, err := drenar(t, from.Many{
 		Sources: []sdk.Reader{
@@ -144,13 +145,13 @@ func TestManyContinuaEDizQuaisFalharam(t *testing.T) {
 	}
 }
 
-// TestManyFalhaNoMeioDaOrigemTambemEContada: uma origem que quebra na linha 3
-// falhou tanto quanto uma que nem abriu.
-func TestManyFalhaNoMeioDaOrigemTambemEContada(t *testing.T) {
+// TestAFailureMidwayThroughASourceCountsToo: a source that breaks on row 3
+// failed just as much as one that never opened.
+func TestAFailureMidwayThroughASourceCountsToo(t *testing.T) {
 	var stats sdk.Stats
 	linhas, err := drenar(t, from.Many{
 		Sources: []sdk.Reader{
-			fonteFalsa{nome: "meia", linhas: 10, erroApos: 3},
+			fonteFalsa{nome: "meia", linhas: 10, errAfter: 3},
 			fonteFalsa{nome: "inteira", linhas: 2},
 		},
 		OnError: sdk.ContinueOnError,
@@ -158,7 +159,7 @@ func TestManyFalhaNoMeioDaOrigemTambemEContada(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// As 3 que a origem entregou antes de quebrar contam: elas foram lidas.
+	// The 3 the source delivered before breaking count: they were read.
 	if len(linhas) != 5 {
 		t.Errorf("%d linhas, esperado 5 (3 da meia + 2 da inteira)", len(linhas))
 	}
@@ -167,10 +168,10 @@ func TestManyFalhaNoMeioDaOrigemTambemEContada(t *testing.T) {
 	}
 }
 
-// TestManyTodasFalharemNaoEZeroLinhas: zero registro de N origens boas é um
-// resultado; zero porque as N falharam é uma execução quebrada, e as duas não
+// TestEveryySourceFailingIsNotZeroRows: zero records from N good sources is a
+// result; zero because all N failed is a broken run, and the two must not
 // podem parecer a mesma coisa.
-func TestManyTodasFalharemNaoEZeroLinhas(t *testing.T) {
+func TestEveryySourceFailingIsNotZeroRows(t *testing.T) {
 	_, err := drenar(t, from.Many{
 		Sources: []sdk.Reader{
 			fonteFalsa{nome: "a", erroAbrir: fmt.Errorf("504")},
@@ -186,8 +187,9 @@ func TestManyTodasFalharemNaoEZeroLinhas(t *testing.T) {
 	}
 }
 
-// TestManyConcorrenteLeTudo: com concorrência a ordem muda, o conjunto não.
-func TestManyConcorrenteLeTudo(t *testing.T) {
+// TestManyConcurrentReadsEverything: with concurrency the order changes, the set
+// does not.
+func TestManyConcurrentReadsEverything(t *testing.T) {
 	var fontes []sdk.Reader
 	for i := 0; i < 50; i++ {
 		fontes = append(fontes, fonteFalsa{nome: fmt.Sprintf("f%02d", i), linhas: 4})
@@ -214,9 +216,9 @@ func TestManyConcorrenteLeTudo(t *testing.T) {
 	}
 }
 
-// TestManySomaOsContadores: os contadores do resultado têm de descrever a
-// leitura inteira, e não a última origem.
-func TestManySomaOsContadores(t *testing.T) {
+// TestManySumsTheCounters: the result's counters have to describe the whole
+// read, and not the last source.
+func TestManySumsTheCounters(t *testing.T) {
 	var stats sdk.Stats
 	if _, err := drenar(t, from.Many{
 		Sources: []sdk.Reader{contadora{2}, contadora{3}, contadora{5}},
@@ -229,7 +231,7 @@ func TestManySomaOsContadores(t *testing.T) {
 	}
 }
 
-// contadora preenche o Stats que recebe, como um driver de verdade.
+// countingSource fills the Stats it receives, like a real driver.
 type contadora struct{ paginas int }
 
 func (c contadora) Describe() string { return fmt.Sprintf("contadora(%d)", c.paginas) }
@@ -242,9 +244,9 @@ func (c contadora) Read(_ context.Context, opt sdk.ReadOptions) (iter.Seq2[sdk.E
 	}, nil
 }
 
-// TestManyParaDeLerQuandoOConsumidorPara: um break no laço do consumidor não
-// pode deixar goroutine presa escrevendo num canal que ninguém lê.
-func TestManyParaDeLerQuandoOConsumidorPara(t *testing.T) {
+// TestManyStopsReadingWhenTheConsumerStops: a break in the consumer's loop must
+// not leave a goroutine stuck writing into a channel nobody reads.
+func TestManyStopsReadingWhenTheConsumerStops(t *testing.T) {
 	var fontes []sdk.Reader
 	for i := 0; i < 20; i++ {
 		fontes = append(fontes, fonteFalsa{nome: fmt.Sprintf("f%d", i), linhas: 1000})
@@ -296,12 +298,12 @@ func timeout() <-chan struct{} {
 	return c
 }
 
-// TestDiscoverMontaAsOrigensDentroDoPipeline é a segunda metade do item 9.
+// TestDiscoverBuildsTheSourcesInsideThePipeline is the second half of item 9.
 //
-// A lista às vezes só se conhece na execução. Montada antes do sdk.Run, ela
-// fica fora do pipeline: sem retry, sem timeout, sem log, e sem aparecer no
-// Result quando falha.
-func TestDiscoverMontaAsOrigensDentroDoPipeline(t *testing.T) {
+// The list is sometimes only known at run time. Built before sdk.Run, it sits
+// outside the pipeline: no retry, no timeout, no log, and no appearance in the
+// Result when it fails.
+func TestDiscoverBuildsTheSourcesInsideThePipeline(t *testing.T) {
 	linhas, err := drenar(t, from.Many{
 		Discover: func(context.Context) ([]sdk.Reader, error) {
 			return []sdk.Reader{

@@ -67,8 +67,8 @@ func TestFilesEscreveNDJSON(t *testing.T) {
 	}
 }
 
-// Nada é acrescentado: o registro sai como o Transform o deixou, igual em
-// todo destino.
+// Nothing is added: the record comes out as Transform left it, the same on every
+// destination.
 func TestFilesNaoAcrescentaNadaSemMetadata(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := (Files{Path: dir + "/"}).Write(context.Background(), lote(1), core.WriteOptions{}); err != nil {
@@ -123,7 +123,7 @@ func TestFilesRecusaFormatoQueNaoEscreve(t *testing.T) {
 	}
 }
 
-// A declaração vale em todo destino, não só no BigQuery.
+// The declaration holds on every destination, not only on BigQuery.
 func TestFilesConfereColumns(t *testing.T) {
 	_, err := Files{Path: t.TempDir() + "/"}.Write(context.Background(), lote(1),
 		core.WriteOptions{Columns: []string{"sku", "quantidade", "faltando"}})
@@ -139,7 +139,7 @@ func TestFilesEscreveCSVComUniaoDosCampos(t *testing.T) {
 	dir := t.TempDir()
 	registros := []core.Envelope{
 		{Payload: map[string]any{"a": 1, "b": 2}},
-		{Payload: map[string]any{"a": 3}}, // sem "b"
+		{Payload: map[string]any{"a": 3}}, // no "b"
 	}
 	if _, err := (Files{Path: dir + "/", Format: core.FormatCSV}).
 		Write(context.Background(), registros, core.WriteOptions{}); err != nil {
@@ -156,8 +156,8 @@ func TestFilesEscreveCSVComUniaoDosCampos(t *testing.T) {
 	}
 }
 
-// Dois lotes não se sobrescrevem: um diretório não tem noção de "as mesmas
-// linhas de novo".
+// Two batches do not overwrite each other: a directory has no notion of "the
+// same rows again".
 func TestFilesNaoSobrescreveOLoteAnterior(t *testing.T) {
 	dir := t.TempDir()
 	d := Files{Path: dir + "/"}
@@ -173,8 +173,8 @@ func TestFilesNaoSobrescreveOLoteAnterior(t *testing.T) {
 	}
 }
 
-// Nenhum arquivo temporário sobra: a escrita é temp + rename, e o rename é
-// atômico no mesmo sistema de arquivos.
+// No temporary file is left behind: the write is temp + rename, and the rename
+// is atomic on the same filesystem.
 func TestFilesNaoDeixaTemporario(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := (Files{Path: dir + "/"}).Write(context.Background(), lote(1), core.WriteOptions{}); err != nil {
@@ -213,7 +213,8 @@ func TestFilesRecusaDedup(t *testing.T) {
 	}
 }
 
-// O particionamento lê a coluna que a cadeia compôs, não uma que o destino
+// The partitioning reads the column the chain composed, not one the
+// destination
 // acrescenta.
 func TestFilesParticionaPelaColunaDaLinha(t *testing.T) {
 	dir := t.TempDir()

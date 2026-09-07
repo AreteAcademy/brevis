@@ -7,12 +7,12 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestInsertSQLNomeiaAsColunas: o §5.4 do plano pede o SQL afirmado como
-// funcao pura, sem cliente -- e a razao e concreta. O MERGE do BigQuery saiu
-// com casamento POSICIONAL e custou a v0.12.0 justamente porque o SQL era
-// montado dentro de um metodo com cliente e nunca tinha sido visto por um
+// TestInsertSQLNamesTheColumns: §5.4 of the plan asks for the SQL asserted as a
+// pure function, with no client -- and the reason is concrete. BigQuery's MERGE
+// shipped with a POSITIONAL match and cost v0.12.0 precisely because the SQL was
+// built inside a method that held a client and had never been seen by a
 // teste.
-func TestInsertSQLNomeiaAsColunas(t *testing.T) {
+func TestInsertSQLNamesTheColumns(t *testing.T) {
 	got := InsertSQL("landing.pedidos", "brevis_stage",
 		[]string{"ingestion_id", "provider", "valor"})
 
@@ -24,10 +24,10 @@ func TestInsertSQLNomeiaAsColunas(t *testing.T) {
 	}
 }
 
-// TestInsertSQLCitaIdentificadores: uma coluna chamada "order" ou "select" e
-// legitima, e sem aspas ela vira erro de sintaxe no meio de uma carga -- num
-// lote que ja rodou o extract inteiro.
-func TestInsertSQLCitaIdentificadores(t *testing.T) {
+// TestInsertSQLQuotesIdentifiers: a column called "order" or "select" is
+// legitimate, and unquoted it becomes a syntax error in the middle of a load --
+// on a batch that has already run the whole extract.
+func TestInsertSQLQuotesIdentifiers(t *testing.T) {
 	got := InsertSQL("t", "s", []string{core.MetadataID, "order", "group"})
 	for _, palavra := range []string{`"order"`, `"group"`} {
 		if !strings.Contains(got, palavra) {
@@ -36,27 +36,28 @@ func TestInsertSQLCitaIdentificadores(t *testing.T) {
 	}
 }
 
-// TestInsertSQLEscapaAspas: uma aspa dentro do nome fecharia o identificador e
-// o resto da coluna viraria SQL.
-func TestInsertSQLEscapaAspas(t *testing.T) {
+// TestInsertSQLEscapesQuotes: a quote inside the name would close the identifier
+// and the rest of the column would become SQL.
+func TestInsertSQLEscapesQuotes(t *testing.T) {
 	got := InsertSQL("t", "s", []string{`a"b`})
 	if !strings.Contains(got, `"a""b"`) {
 		t.Errorf("aspa nao escapada:\n%s", got)
 	}
 }
 
-// TestInsertSQLConflitaNoIngestionID: a dedup do SDK e por ingestion_id, e
-// trocar essa coluna por outra faria a dedup casar pela coisa errada em
+// TestInsertSQLConflictsOnIngestionID: the SDK's dedup is on ingestion_id, and
+// swapping that column for another would make the dedup match on the wrong
+// thing in
 // silencio.
-func TestInsertSQLConflitaNoIngestionID(t *testing.T) {
+func TestInsertSQLConflictsOnIngestionID(t *testing.T) {
 	got := InsertSQL("t", "s", []string{"a"})
 	if !strings.Contains(got, `ON CONFLICT ("`+core.MetadataID+`")`) {
 		t.Errorf("o ON CONFLICT nao e por %s:\n%s", core.MetadataID, got)
 	}
 }
 
-// TestPartirNome cobre o esquema implicito e o nome com partes demais.
-func TestPartirNome(t *testing.T) {
+// TestSplitName covers the implicit schema and a name with too many parts.
+func TestSplitName(t *testing.T) {
 	casos := []struct {
 		nome, esquema, tabela string
 		erro                  bool
@@ -77,13 +78,14 @@ func TestPartirNome(t *testing.T) {
 	}
 }
 
-// TestLinhasSegueAOrdemDaTabela: COPY FROM casa por POSICAO. Se as rows
-// saissem na ordem do registro, cada valor pousaria na coluna errada -- e o
-// banco aceitaria calado sempre que os types coincidissem.
-func TestLinhasSegueAOrdemDaTabela(t *testing.T) {
+// TestRowsFollowTheTablesOrder: COPY FROM matches by POSITION. If the rows came
+// out in the record's order, every value would land in the wrong column -- and
+// the database would accept it quietly whenever the types happened to line
+// up.
+func TestRowsFollowTheTablesOrder(t *testing.T) {
 	envelopes := []core.Envelope{
 		{Payload: map[string]any{"c": 3, "a": 1, "b": 2}},
-		{Payload: map[string]any{"b": 20, "a": 10}}, // sem "c"
+		{Payload: map[string]any{"b": 20, "a": 10}}, // no "c"
 	}
 	l := &rows{columns: []string{"a", "b", "c"}, envelopes: envelopes}
 
@@ -105,7 +107,8 @@ func TestLinhasSegueAOrdemDaTabela(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Coluna que o registro nao traz vira NULL, que e legitimo numa landing.
+	// A column the record does not carry becomes NULL, which is legitimate in a
+	// landing table.
 	if v[0] != 10 || v[1] != 20 || v[2] != nil {
 		t.Errorf("linha 2 = %v, esperado [10 20 <nil>]", v)
 	}
@@ -115,10 +118,10 @@ func TestLinhasSegueAOrdemDaTabela(t *testing.T) {
 	}
 }
 
-// TestLinhasNaoAlocaPorLinha: um lote de 500 mil registros nao pode alocar um
-// slice novo por linha. O pgx consome cada linha antes de pedir a proxima,
-// entao o buffer e reusavel -- e este teste fixa isso.
-func TestLinhasNaoAlocaPorLinha(t *testing.T) {
+// TestRowsDoesNotAllocatePerRow: a batch of 500 thousand records must not
+// allocate a new slice per row. pgx consumes each row before asking for the
+// next, so the buffer is reusable -- and this test pins that.
+func TestRowsDoesNotAllocatePerRow(t *testing.T) {
 	envelopes := make([]core.Envelope, 1000)
 	for i := range envelopes {
 		envelopes[i] = core.Envelope{Payload: map[string]any{"a": i}}
@@ -133,7 +136,8 @@ func TestLinhasNaoAlocaPorLinha(t *testing.T) {
 			}
 		}
 	})
-	// Zero e o alvo: o buffer e alocado uma vez, fora do laco medido.
+	// Zero is the target: the buffer is allocated once, outside the measured
+	// loop.
 	if alocacoes > 0 {
 		t.Errorf("%.0f alocacoes para 1000 rows; o buffer deveria ser reusado", alocacoes)
 	}

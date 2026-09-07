@@ -123,9 +123,9 @@ func TestIntegrationOrdemDaTabela(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupCarregaOMesmoLoteDuasVezes é o critério de pronto da
+// TestIntegrationDedupLoadsTheSameBatchTwice é o critério de pronto da
 // fase 3: o mesmo pipeline da fase 2, com uma linha trocada.
-func TestIntegrationDedupCarregaOMesmoLoteDuasVezes(t *testing.T) {
+func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
 	if _, err := db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX u ON %s (ingestion_id)", nome)); err != nil {
@@ -162,9 +162,9 @@ func TestIntegrationDedupCarregaOMesmoLoteDuasVezes(t *testing.T) {
 	}
 }
 
-// TestIntegrationDedupSemIndiceRecusa: sem índice único, INSERT IGNORE não tem
+// TestIntegrationDedupWithoutAnIndexRefuses: sem índice único, INSERT IGNORE não tem
 // o que casar e toda execução inseriria duplicatas.
-func TestIntegrationDedupSemIndiceRecusa(t *testing.T) {
+func TestIntegrationDedupWithoutAnIndexRefuses(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
 
@@ -178,9 +178,9 @@ func TestIntegrationDedupSemIndiceRecusa(t *testing.T) {
 	}
 }
 
-// TestIntegrationCampoQueATabelaNaoTemRecusa: recusar ANTES do servidor, com a
+// TestIntegrationAFieldTheTableLacksIsRefused: recusar ANTES do servidor, com a
 // saída escrita.
-func TestIntegrationCampoQueATabelaNaoTemRecusa(t *testing.T) {
+func TestIntegrationAFieldTheTableLacksIsRefused(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, colunasPadrao)
 
@@ -200,8 +200,8 @@ func TestIntegrationCampoQueATabelaNaoTemRecusa(t *testing.T) {
 	}
 }
 
-// TestIntegrationLeituraEmFluxo falha se o driver bufferizar.
-func TestIntegrationLeituraEmFluxo(t *testing.T) {
+// TestIntegrationTheReadIsStreamed falha se o driver bufferizar.
+func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, "i INT, texto TEXT")
 	// 20 mil linhas via recursão: o MySQL não tem generate_series, e o limite
@@ -257,10 +257,10 @@ func TestIntegrationLeituraEmFluxo(t *testing.T) {
 	}
 }
 
-// TestIntegrationTiposVemDoServidor prova a tabela de tipos contra o MySQL de
+// TestIntegrationTheTypesComeFromTheServer prova a tabela de tipos contra o MySQL de
 // verdade. O database/sql devolve []byte para quase tudo quando se lê em any,
 // então sem o tipo declarado todo DECIMAL viraria base64 no JSON.
-func TestIntegrationTiposVemDoServidor(t *testing.T) {
+func TestIntegrationTheTypesComeFromTheServer(t *testing.T) {
 	db := abrir(t)
 	nome := tabela(t, db, `
 		numerico DECIMAL(20,2),

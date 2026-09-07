@@ -23,13 +23,14 @@ func lote(n int) []sdk.Envelope {
 	return out
 }
 
-// TestFilesDizOQueEscreveu é o defeito: o driver escolhe o nome do arquivo --
-// ele carrega um carimbo de tempo, para uma segunda carga não sobrescrever a
-// primeira -- e não dizia qual escolheu.
+// TestFilesSaysWhatItWrote is the defect: the driver chooses the file's name --
+// it carries a timestamp, so a second load does not overwrite the first -- and
+// did not say which one it chose.
 //
-// Quem escreveu não sabia o que escreveu, e o log dizia "estrategia=file" sem
-// dizer qual arquivo: a informação que falta às três da manhã.
-func TestFilesDizOQueEscreveu(t *testing.T) {
+// Whoever wrote did not know what they wrote, and the log said "strategy=file"
+// without saying which file: the information that is missing at three in the
+// morning.
+func TestFilesSaysWhatItWrote(t *testing.T) {
 	dir := t.TempDir()
 
 	res, err := to.Files{Path: dir}.Write(context.Background(), lote(3), sdk.WriteOptions{})
@@ -48,10 +49,10 @@ func TestFilesDizOQueEscreveu(t *testing.T) {
 	}
 }
 
-// TestFilesODaVoltaNoFromFiles é a prova que interessa a quem separa extract e
-// load em dois passos: o caminho que sai da escrita tem de poder voltar numa
-// leitura, sem ninguém remontar esquema e bucket.
-func TestFilesODaVoltaNoFromFiles(t *testing.T) {
+// TestFilesPathGoesBackIntoFromFiles is the proof that matters to whoever splits
+// extract and load into two steps: the path the write produces has to be able to
+// go back into a read, with nobody reassembling the scheme and the bucket.
+func TestFilesPathGoesBackIntoFromFiles(t *testing.T) {
 	dir := t.TempDir()
 
 	res, err := to.Files{Path: dir}.Write(context.Background(), lote(4), sdk.WriteOptions{})
@@ -80,18 +81,20 @@ func TestFilesODaVoltaNoFromFiles(t *testing.T) {
 	}
 }
 
-// TestFilesDescribeContinuaSendoODiretorio: são coisas diferentes, e um
-// Describe que mudasse a cada carga deixaria de identificar o destino no log.
-func TestFilesDescribeContinuaSendoODiretorio(t *testing.T) {
+// TestFilesDescribeIsStillTheDirectory: they are different things, and a
+// Describe that changed on every load would stop identifying the destination in
+// the log.
+func TestFilesDescribeIsStillTheDirectory(t *testing.T) {
 	f := to.Files{Path: "s3://bucket/landing/"}
 	if f.Describe() != "s3://bucket/landing/" {
 		t.Errorf("Describe = %q", f.Describe())
 	}
 }
 
-// TestFilesComFlushEveryReportaTodos: com carga em levas são vários arquivos, e
-// reportar só o último faria o passo seguinte ler um pedaço.
-func TestFilesComFlushEveryReportaTodos(t *testing.T) {
+// TestFilesWithFlushEveryReportsAllOfThem: with a batched load there are several
+// files, and reporting only the last would make the next step read a
+// fragment.
+func TestFilesWithFlushEveryReportsAllOfThem(t *testing.T) {
 	dir := t.TempDir()
 
 	dados, err := sdk.Extract(context.Background(), sdk.Source{From: fonteDeN{10}})
@@ -127,16 +130,16 @@ func (f fonteDeN) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope
 	}, nil
 }
 
-// TestFilesEscreveNoDiretorioConfigurado é o defeito que o teste do caminho
-// descobriu, e ele é pior que o que motivou a mudança.
+// TestFilesWritesIntoTheConfiguredDirectory is the defect the path test
+// uncovered, and it is worse than the one that motivated the change.
 //
-// O ParseLocation é escrito para LEITURA, onde o último segmento sem barra é o
-// nome de um objeto. No to.Files o nome do arquivo é do driver, então o Path é
-// sempre diretório -- e sem isso `to.Files{Path: "s3://bucket/landing"}`
-// escrevia em `s3://bucket/parte-...`, descartando o "landing" como se fosse
-// nome de arquivo. Nada dizia; o arquivo aparecia um nível acima, e quem fosse
-// procurá-lo no lugar configurado não acharia.
-func TestFilesEscreveNoDiretorioConfigurado(t *testing.T) {
+// ParseLocation is written for READING, where the last segment with no slash is
+// an object's name. In to.Files the file's name belongs to the driver, so Path
+// is always a directory -- and without this `to.Files{Path: "s3://bucket/landing"}`
+// wrote to `s3://bucket/parte-...`, discarding the "landing" as if it were a
+// file name. Nothing said so; the file turned up one level above, and whoever
+// looked for it in the configured place would not find it.
+func TestFilesWritesIntoTheConfiguredDirectory(t *testing.T) {
 	base := t.TempDir()
 
 	for _, sufixo := range []string{"", "/"} {
@@ -152,9 +155,9 @@ func TestFilesEscreveNoDiretorioConfigurado(t *testing.T) {
 	}
 }
 
-// TestFilesObjetoEmObjectStorage: com esquema, o caminho reportado é o URI
-// completo -- é ele que precisa voltar num from.Files sem remontagem.
-func TestFilesObjetoEmObjectStorage(t *testing.T) {
+// TestFilesObjectInObjectStorage: with a scheme, the reported path is the full
+// URI -- it is what has to go back into a from.Files with no reassembly.
+func TestFilesObjectInObjectStorage(t *testing.T) {
 	var escritos []string
 	f := to.Files{Path: "s3://meu-bucket/landing", Store: storeFalso{&escritos}}
 
@@ -168,7 +171,7 @@ func TestFilesObjetoEmObjectStorage(t *testing.T) {
 	if !strings.HasPrefix(res.Objects[0], "s3://meu-bucket/landing/parte-") {
 		t.Errorf("caminho = %q; esperava o URI completo dentro de landing/", res.Objects[0])
 	}
-	// E é o mesmo que foi entregue ao store, sem esquema nem bucket.
+	// And it is the same one handed to the store, with no scheme and no bucket.
 	if len(escritos) != 1 || !strings.HasPrefix(escritos[0], "landing/parte-") {
 		t.Errorf("a chave entregue ao store foi %v", escritos)
 	}
