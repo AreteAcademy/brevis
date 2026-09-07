@@ -93,3 +93,58 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: lib/python-context/dist/
+
+  # 0.1.0 shipped a wheel and no sdist: the wheel uploaded, the sdist was
+  # refused because a file of that exact name had belonged to a previously
+  # DELETED project, and PyPI's filename ledger outlives the project forever.
+  # The step above failed loudly, which is the only reason anybody noticed.
+  #
+  # Nothing local can see that ledger, so the guard has to be on this side of
+  # the upload: assert what is actually on the index, rather than trusting that
+  # a step which reported success uploaded everything it was given.
+  verify:
+    name: Verify what is on the index
+    runs-on: ubuntu-latest
+    needs: [publish]
+
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Both a wheel AND an sdist, for the version the tag names
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/py/v}"
+          python - "$VERSION" <<'PY'
+          import json, sys, time, urllib.request
+
+          version = sys.argv[1]
+          # The index is not instantaneous after an upload.
+          for attempt in range(20):
+              with urllib.request.urlopen("https://pypi.org/pypi/brevis/json") as r:
+                  data = json.load(r)
+              files = data.get("releases", {}).get(version, [])
+              kinds = {f["packagetype"] for f in files}
+              if {"bdist_wheel", "sdist"} <= kinds:
+                  print(f"brevis {version}: {sorted(kinds)}")
+                  sys.exit(0)
+              print(f"attempt {attempt + 1}: {sorted(kinds) or 'nothing yet'}")
+              time.sleep(15)
+
+          print(f"::error::brevis {version} is on PyPI with {sorted(kinds)} -- "
+                "a release missing one of the two is a partial release")
+          sys.exit(1)
+          PY
+
+      - name: Install it the way a consumer does
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/py/v}"
+          python -m pip install --quiet "brevis==$VERSION"
+          BREVIS_INPUT='{"extract":{"bucket":"s3://landing"}}' \
+          BREVIS_OUTPUT="$RUNNER_TEMP/out.json" \
+            python -c "
+          from brevis import context
+          assert context.get('extract.bucket') == 's3://landing'
+          context.set(rows=1)
+          print('the published package reads and writes')
+          "
