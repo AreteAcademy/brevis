@@ -2,6 +2,9 @@
 
 **Written on** 2026-09-07 · **Base** engine `v0.7.0`, `sdk/v0.53.0`
 **Status** proposed — not started
+**Decided 2026-09-07** (§1.1): the reader is always another step of the same
+run, and there is one write path that fails loudly. No context API, and the
+reason is written down rather than assumed.
 
 Data engineering is a Python community. The Go SDK is an ETL library — drivers,
 pagination, checkpoints, ingestion ids — and porting it would be a year of work
@@ -15,7 +18,7 @@ it. Nothing else. A team writes their pipeline in pandas, Polars, dbt or plain
 ```python
 from brevis import context
 
-bucket = context.get("bucket")
+bucket = context.get("extract.bucket")
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 ```
 
@@ -26,6 +29,53 @@ That is the entire surface.
 ## 1. The question that decides everything: how does it reach the engine?
 
 It does not. **There is no API call, no token, no port and no network.**
+
+### 1.1 The API was seriously considered, and the answer to one question closed it
+
+The first shape asked for was an API the SDK calls, with the context managed
+server-side. It is what Airflow, Prefect and Dagster do, and it was not dismissed
+for being unlike this repository. It was dismissed by an answer:
+
+> **Who reads the context?** Only the steps of the same run.
+
+That single answer removes everything the API was buying. Its advantages over
+injected input are: reading from outside the run, reading context produced
+*after* your step started, reading your own writes back, and no size ceiling.
+With the reader always inside the run, the first is out of scope, the second is
+a race in a DAG (if you depend on the value you wait for it; if you do not, you
+are reading a step that may not have run yet), and the third is a local variable.
+
+What it would have cost is concrete, and two of the three are not obvious:
+
+- **There is no machine authentication in this engine.** Every route is behind a
+  signed session cookie for a browser. A context API means minting a token per
+  run, scoping it to that run and step, expiring it, and injecting it into every
+  pod — a new authentication surface on the one process that is exposed to the
+  network.
+- **`serve` and `scheduler` are different deployments.** The process that runs
+  a step is not the process that would answer its writes. Today `serve` can be
+  down and pipelines keep running; with a context API, a `dbt build` that
+  succeeded after forty minutes fails on the `set()` that follows. That cost was
+  accepted in the abstract — it is worth seeing stated concretely.
+- **`brevis run` has no server**, so local mode would need a loopback API or a
+  second path, and a second path is a second failure mode.
+
+The one honest point against the chosen design is that `BREVIS_INPUT` and
+`BREVIS_OUTPUT` read as strange. **They should never be seen.** They are the
+transport, the way `BREVIS_RUN_ID` is the transport behind `sdk.Run`'s knowing
+it is under the engine. What a consumer writes is `context.get(...)` and
+`context.set(...)`, and that is identical whether the bytes travel over HTTP or
+through a file.
+
+The exception is the step with no SDK at all — the `bash`+`jq` one — which sees
+the variables directly. That is the price of the contract being language-neutral
+rather than a library, and it is the price worth paying.
+
+**If the reader ever moves outside the run**, this decision is the thing to
+revisit, and the cost is the token mechanism above rather than a redesign: the
+storage, the keys and the SDK surface do not change.
+
+### 1.2 The mechanism
 
 That is not a limitation worked around; it is the design, and
 [`2026-09-05-contexto-entre-passos.md`](2026-09-05-contexto-entre-passos.md)
@@ -85,7 +135,7 @@ So the order is not negotiable:
 2. **Persistence** — §4 below, which is the part that plan left open and this
    request pins down.
 3. **The Python package** — §5, the reason for this document.
-4. **The cross-language proof** — §7. Without it the feature is "works if you
+4. **The cross-language proof** — §8. Without it the feature is "works if you
    use Go".
 
 Shipping 3 before 1 gives a package that reads an environment variable nobody
@@ -202,10 +252,9 @@ first real pipeline would have forced anyway.
 from brevis import context
 
 # read
-bucket   = context.get("bucket")                 # searches the declared inputs
-rows     = context.get("ingest.rows")            # explicit, when you want to be
-missing  = context.get("nope", default=0)        # absent is not an error
-ingest   = context.of("ingest")                  # everything one step published
+bucket   = context.get("extract.bucket")         # always qualified by the step
+missing  = context.get("extract.nope", default=0)  # absent is not an error
+extract  = context.of("extract")                 # everything one step published
 
 # write
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
@@ -216,11 +265,29 @@ context.set({"partitions": ["2026-09-06", "2026-09-07"]})
 there could be two of them. There cannot: a process is inside exactly one step
 of one run. A module says that in the import.
 
-**`get("bucket")` searches, and refuses to guess.** The contract is keyed by
-step, so a bare key is ambiguous the moment two steps publish `bucket`. It
-searches the declared inputs and, on a collision, **raises naming both steps and
-the explicit form to use**. Silent precedence is how somebody spends an
-afternoon on a value that came from the wrong step.
+**A read is always qualified by the step that wrote it.** `get("bucket")` with
+no step is refused, naming the steps that published that key.
+
+This was the weakest part of the first draft, which let a bare key search the
+declared inputs and only complained on a collision. That is precedence by
+accident: it works until a second step publishes `bucket`, and then somebody
+spends an afternoon on a value that came from the wrong place. The one-line
+convenience is not worth the class of bug.
+
+**Isolation is by construction, not by policy.** A step writes only into its own
+namespace — `set()` takes no step argument, because the only namespace a process
+can write is its own — and `Validate` already refuses a workflow with two steps
+sharing an id. So `extract` and `transform` cannot overwrite each other's keys,
+and no rule has to be enforced for that to hold.
+
+Writing is isolated; reading is shared and explicit. That asymmetry is the whole
+model:
+
+```python
+context.set(bucket="s3://landing/2026-09-07")   # only into "extract"
+context.get("extract.bucket")                   # any step, named
+context.of("extract")                           # everything one step published
+```
 
 **`set()` merges, and the last write of a key wins.** Called twice with the same
 key, the second wins — but the *first* call's other keys survive. Replacing
@@ -304,7 +371,57 @@ gets it, because it depends on nothing else in the module.
 
 ---
 
-## 7. How this is proven
+## 7. On the screen: the context on the React Flow node
+
+The request asks for the context to be visible in the UI and on the graph, and
+it is the reason the persistence is not optional. Once `task_runs.saida` holds
+it, no new plumbing is needed — the graph endpoint already reads that table.
+
+**On the node**, a count, because the card has room for one line and a JSON blob
+would swallow it:
+
+```
+┌──────────────────────────────────────┐
+│ ● extract              SDK v0.53.0   │
+│   python fetch.py                    │
+│   ⬤ Python                           │
+│   1m02s · 2 published                │  ← new
+└──────────────────────────────────────┘
+```
+
+**In the detail panel**, the object itself, keys sorted, values as written:
+
+```
+context published
+  bucket      s3://landing/2026-09-07
+  rows        48213
+```
+
+**On a node that reads**, the panel also shows where each value came from, which
+is the question somebody actually has when a step behaves oddly:
+
+```
+context read
+  extract.bucket    s3://landing/…   ← extract
+```
+
+Two rules the payload has to follow, both learned from the chips in
+`2026-09-07-runtime-and-tooling-on-the-graph.md`:
+
+- **A step that published nothing shows nothing.** No "0 published", no empty
+  section. Most steps publish nothing and their card must not change.
+- **The value is shown as it was written, never re-serialized for display.** A
+  number that reads `48213` on the screen and `48213.0` in the next step's input
+  is the class of difference this project has already paid for once, in
+  `ingestion_id`.
+
+And the warning belongs here rather than in a footnote: **this panel is why the
+context is not a secret store.** Anyone who can see a run can see every value
+published in it. §9 says it; the screen is where it becomes concrete.
+
+---
+
+## 8. How this is proven
 
 **The cross-language end-to-end test is the acceptance criterion**, and nothing
 below it counts.
@@ -338,11 +455,13 @@ Plus, per `CONTRIBUTING.md`, each of these with proof it bites:
 - a failed attempt's output does not survive its retry;
 - two parallel steps both publishing do not lose one another's keys;
 - a step reading something it did not declare in `needs` gets an error saying to
-  declare it — not `None`.
+  declare it — not `None`;
+- a bare `get("bucket")` with no step is refused, naming the steps that
+  published it.
 
 ---
 
-## 8. What this is not
+## 9. What this is not
 
 - **Not a message queue.** One step publishes, its dependents read. There is no
   fan-out, no subscription, no ordering beyond the DAG's.
@@ -357,7 +476,7 @@ Plus, per `CONTRIBUTING.md`, each of these with proof it bites:
 
 ---
 
-## 9. Order of work
+## 10. Order of work
 
 | | | unblocks |
 |---|---|---|
@@ -367,7 +486,8 @@ Plus, per `CONTRIBUTING.md`, each of these with proof it bites:
 | 4 | `sdk-python/`, the package, its tests | the community this is for |
 | 5 | `sdk.Context` in the Go SDK | one contract, two languages |
 | 6 | The cross-language end-to-end test | the proof it is not "works if you use Go" |
-| 7 | `docs/CONTEXT.md`, and PyPI publishing in CI | somebody other than us can use it |
+| 7 | The context on the node and in the detail panel | the request's "see it in the UI and on the React Flow" |
+| 8 | `docs/CONTEXT.md`, and PyPI publishing in CI | somebody other than us can use it |
 
 Steps 1–3 are the engine and are the majority of the work. Step 4 is perhaps two
 hundred lines, most of them refusals, and it is the one the request is about —
