@@ -505,7 +505,7 @@ func TestTheNodeCarriesWhatTheStepPublished(t *testing.T) {
 		byID[n.ID] = n.Data
 	}
 
-	ctx, ok := byID["extract"]["contexto"].(map[string]any)
+	ctx, ok := byID["extract"]["context"].(map[string]any)
 	if !ok {
 		t.Fatalf("extract carries no context: %v", byID["extract"])
 	}
@@ -519,7 +519,28 @@ func TestTheNodeCarriesWhatTheStepPublished(t *testing.T) {
 		t.Errorf("rows = %#v, want the number as written", ctx["rows"])
 	}
 
-	if _, present := byID["quiet"]["contexto"]; present {
+	if _, present := byID["quiet"]["context"]; present {
 		t.Errorf("a step that published nothing carries a context key: %v", byID["quiet"])
+	}
+
+	// And what the runner HANDED the step below, keyed by who wrote it. That
+	// keying is the provenance the panel shows -- without it the screen would
+	// say a value exists without saying where it came from, which on a wide DAG
+	// is the whole question.
+	avail, ok := byID["quiet"]["available"].(map[string]any)
+	if !ok {
+		t.Fatalf("quiet was handed nothing, though it depends on extract: %v", byID["quiet"])
+	}
+	from, ok := avail["extract"].(map[string]any)
+	if !ok || from["bucket"] != "s3://landing" {
+		t.Errorf("available = %v; want extract's values under extract's name", avail)
+	}
+
+	// The FIRST step was handed nothing, and carries no key at all. A step with
+	// no dependencies has no context available, and an empty object on its card
+	// would say it ran with an empty input rather than with none.
+	if _, present := byID["extract"]["available"]; present {
+		t.Errorf("a step with no dependencies carries an available key: %v",
+			byID["extract"])
 	}
 }

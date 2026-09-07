@@ -144,7 +144,7 @@
   // their card stays exactly what it was before this existed. No "0 published",
   // no reserved space.
   function contextCount(d) {
-    var keys = d.contexto ? Object.keys(d.contexto) : [];
+    var keys = d.context ? Object.keys(d.context) : [];
     if (!keys.length) return null;
     return h(
       "div",
@@ -403,15 +403,47 @@
   // reason the documentation says the context is not a secret store. The panel
   // is where that stops being an abstract warning.
   function contextRows(d) {
-    if (!d.contexto) return [];
-    return Object.keys(d.contexto)
+    if (!d.context) return [];
+    return Object.keys(d.context)
       .sort()
       .map(function (k) {
-        var v = d.contexto[k];
+        var v = d.context[k];
         // JSON.stringify only for what is not already a string: it would put
         // quotes around a path and make it look like it carries them.
         return ["context." + k, typeof v === "string" ? v : JSON.stringify(v)];
       });
+  }
+
+  // availableRows is what the engine handed this step, with the step that wrote
+  // each value.
+  //
+  // The label says AVAILABLE and not "read", and the difference is not
+  // pedantry: the engine does not observe get() calls. It knows what it put in
+  // BREVIS_INPUT, not what the code asked for -- a step can be handed a value it
+  // never touches. "Read" would be a claim the data does not support, and a
+  // panel that overstates what it knows is worth less than one that does not.
+  //
+  // The provenance is the point of the arrow. On a wide DAG, "where did this
+  // value come from" is the question, and without it somebody clicks through
+  // every parent to find out.
+  function availableRows(d) {
+    if (!d.available) return [];
+    var out = [];
+    Object.keys(d.available)
+      .sort()
+      .forEach(function (step) {
+        var values = d.available[step] || {};
+        Object.keys(values)
+          .sort()
+          .forEach(function (k) {
+            var v = values[k];
+            out.push([
+              "available " + step + "." + k,
+              (typeof v === "string" ? v : JSON.stringify(v)) + "  \u2190 " + step,
+            ]);
+          });
+      });
+    return out;
   }
 
   // The inspector: the selected node's side panel. It appears only when there is
@@ -443,6 +475,7 @@
       // once, in ingestion_id -- and the screen is where somebody checks their
       // assumption before touching the code.
       .concat(contextRows(d))
+      .concat(availableRows(d))
       .filter(Boolean);
 
     return h(

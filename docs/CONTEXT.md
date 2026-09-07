@@ -155,8 +155,35 @@ is why the context is stored in `task_runs.saida` and not held in memory.
 
 ## On the screen
 
-A step that published something shows a count on its card, and the values in the
-detail panel, keys sorted, each rendered as it was written.
+Open a run and click a step. The panel answers two different questions.
+
+**What this step published** — the values it handed to the steps below:
+
+```
+context.bucket      s3://landing/2026-09-07
+context.rows        48213
+```
+
+**What was available to it** — what the engine put in its `BREVIS_INPUT`, with
+the step that wrote each value:
+
+```
+available extract.bucket    s3://landing/2026-09-07   ← extract
+available transform.rows    47998                     ← transform
+```
+
+The card itself carries only a count, because it has room for one line.
+
+The second section says **available**, not "read", and the difference is not
+pedantry: the engine does not observe `get()` calls. It knows what it handed the
+step, not what the code asked for — a step can be given a value it never
+touches. Calling it "read" would be a claim the data does not support.
+
+Both sections are absent when there is nothing to say, so a step with no
+dependencies that publishes nothing looks exactly as it did before any of this
+existed.
+
+Values are rendered **as they were written**: a number stays a number.
 
 **That panel is why this is not a secret store.** Everything published is
 visible to anyone who can see the run — it is in the pod's status and in the run

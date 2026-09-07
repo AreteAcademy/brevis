@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/graph"
@@ -140,6 +141,19 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 		return
 	}
 
+	// The two inputs the availability needs, built once for the whole graph
+	// rather than per node.
+	publishedByNode := map[string]json.RawMessage{}
+	for id, st := range states {
+		if len(st.Published) > 0 {
+			publishedByNode[id] = st.Published
+		}
+	}
+	upstream := map[string][]string{}
+	for _, e := range def.Edges {
+		upstream[e.To] = append(upstream[e.To], e.From)
+	}
+
 	resp := graphResponse{
 		Slug: def.Slug, RunID: runID, Status: status,
 		// `failed` does NOT count: §7's state machine allows failed -> retrying,
@@ -216,8 +230,31 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 				// nothing, which is most steps -- so their card is byte for
 				// byte the one they had before this feature.
 				if len(e.Published) > 0 {
-					data["contexto"] = e.Published
+					data["context"] = e.Published
 				}
+			}
+
+			// What the runner handed this step, keyed by the step that wrote
+			// each value.
+			//
+			// Computed with the SAME two functions the runner calls, and that
+			// is the whole reason it is computed here rather than walked from
+			// the edges by the island: two answers to "what did this step
+			// receive" is one answer too many, and the one on the screen would
+			// be the one somebody trusts.
+			//
+			// It is deliberately NOT called "read". The engine does not observe
+			// get() calls -- it knows what was available, not what was used,
+			// and a step can be handed a value it never asks for. Labelling it
+			// read would be a claim the data does not support.
+			//
+			// The cost is duplication: a step deep in a chain carries its
+			// ancestors' context as well as its own. Bounded by 4 KB per step
+			// and small in practice; if it ever shows up on the 2s poll, the
+			// answer is a separate endpoint fetched on selection, not a second
+			// implementation of the visibility rule.
+			if in, err := runcontext.Assemble(publishedByNode, runcontext.Visible(upstream, id)); err == nil && in != "" {
+				data["available"] = json.RawMessage(in)
 			}
 
 			step := flowNode{
