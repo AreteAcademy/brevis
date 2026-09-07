@@ -70,6 +70,91 @@
     return colour(STAGE_STATE_COLOURS[state] || "pending");
   }
 
+  // ---------------------------------------------------------------------------
+  // What the step runs in
+  // ---------------------------------------------------------------------------
+
+  // The runtime palette, read from the CSS like every other colour here, so an
+  // installation with its own theme (internal/branding) can move them. The
+  // fallbacks are each language's own convention, which is what makes the chip
+  // readable before anybody reads the label.
+  function langColour(id) {
+    return themeVar("--color-lang-" + id, LANG_FALLBACK[id] || MUTED);
+  }
+
+  var LANG_FALLBACK = {
+    python: "#3572a5", go: "#00add8", node: "#3c873a", java: "#b07219",
+    rust: "#a04b28", php: "#4f5b93", ruby: "#9b1c22", dotnet: "#5c2d91",
+    sql: "#5a6b7b", shell: "#6e6254",
+  };
+
+  // The names a person reads. The payload carries ids -- stable keys shared with
+  // the YAML and the CSS -- and an id the screen has no label for falls back to
+  // itself rather than rendering blank.
+  var LANG_LABEL = {
+    python: "Python", go: "Go", node: "Node.js", java: "Java", rust: "Rust",
+    php: "PHP", ruby: "Ruby", dotnet: ".NET", sql: "SQL", shell: "Shell",
+    dbt: "dbt", spark: "Spark", airbyte: "Airbyte", soda: "Soda",
+    sqlmesh: "SQLMesh", meltano: "Meltano", duckdb: "DuckDB",
+    pandas: "pandas", polars: "Polars", airflow: "Airflow",
+    terraform: "Terraform",
+  };
+
+  function labelOf(id) { return LANG_LABEL[id] || id; }
+
+  // chip draws one runtime or tool.
+  //
+  // `inferred` is not decoration. A dotted border and a title saying so is the
+  // difference between "this step runs Python" and "this command starts with
+  // python", and the screen has to keep them apart: the SDK badge two lines up
+  // is trustworthy because it is OBSERVED and cannot lie, and anything drawn
+  // beside it borrows that credibility.
+  function chip(id, opts) {
+    var strong = opts.strong;
+    var tint = strong ? langColour(id) : MUTED;
+    return h(
+      "span",
+      {
+        key: id,
+        title: opts.title,
+        style: {
+          display: "inline-flex", alignItems: "center", gap: 4,
+          padding: "1px 7px", borderRadius: 999,
+          border: (opts.inferred ? "1px dashed " : "1px solid ") +
+            "color-mix(in srgb, " + tint + " 45%, transparent)",
+          background: strong
+            ? "color-mix(in srgb, " + tint + " 12%, transparent)"
+            : "transparent",
+          color: tint,
+          fontSize: 10, fontWeight: strong ? 700 : 600,
+          whiteSpace: "nowrap",
+        },
+      },
+      labelOf(id)
+    );
+  }
+
+  // chipRow is the runtime and its tools, or nothing at all.
+  //
+  // Nothing at all is the point: a step the engine cannot read renders exactly
+  // as it did before this feature -- no empty row, no reserved space, no chip
+  // saying "unknown".
+  function chipRow(d) {
+    var tools = d.tools || [];
+    if (!d.runtime && !tools.length) return null;
+
+    var inferred = d.runtime_source === "inferred";
+    var why = inferred ? "inferred from the command" : d.runtime_source;
+    var out = [];
+    if (d.runtime) {
+      out.push(chip(d.runtime, { strong: true, inferred: inferred, title: labelOf(d.runtime) + " — " + why }));
+    }
+    for (var i = 0; i < tools.length; i++) {
+      out.push(chip(tools[i], { strong: false, inferred: inferred, title: labelOf(tools[i]) + " — " + why }));
+    }
+    return h("div", { style: { marginTop: 7, display: "flex", gap: 5, flexWrap: "wrap" } }, out);
+  }
+
   // summarise condenses a stage's numbers to fit on one line. The whole detail
   // stays in the panel; only what is read at a glance fits here.
   function summarise(numbers) {
@@ -143,8 +228,7 @@
                 title: d.collapsed ? "show the stages" : "collapse the stages",
                 onClick: function (ev) {
                   // Without this the click would also select the step, and
-                  // collapsing
-                  // abriria o painel de detalhes junto.
+                  // collapsing would open the details panel along with it.
                   ev.stopPropagation();
                   d.toggle();
                 },
@@ -190,6 +274,7 @@
             d.acao
           )
         : null,
+      chipRow(d),
       h(
         "div",
         { style: { marginTop: 7, display: "flex", gap: 8, fontSize: 11, color: c.ring } },
@@ -303,6 +388,11 @@
       d.duracao_ms ? ["duration", formatDuration(d.duracao_ms)] : null,
       typeof d.tentativa === "number" ? ["attempt", String(d.tentativa + 1)] : null,
       typeof d.exit_code === "number" ? ["exit code", String(d.exit_code)] : null,
+      // The card is cramped and the panel is not, so here the provenance is
+      // spelled out. This is where somebody goes when a chip surprises them,
+      // and it has to answer why without their opening the YAML.
+      d.runtime ? ["runtime", labelOf(d.runtime) + " (" + (d.runtime_source || "?") + ")"] : null,
+      d.tools && d.tools.length ? ["tools", d.tools.map(labelOf).join(", ")] : null,
     ].filter(Boolean);
 
     return h(

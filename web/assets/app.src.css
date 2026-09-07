@@ -83,6 +83,24 @@
   --color-state-canceled: #8a8175;
   --color-state-pending: #a89b8a;
 
+  /* What a step runs in. Each is the language's own convention, because the
+     colour is what makes the chip readable before anybody reads the label.
+
+     They are tokens rather than literals in dag.js for the same reason every
+     other colour here is: an installation can bring its own theme through
+     internal/branding, and a palette hard-coded in one file would make the DAG
+     the one part of the screen that ignores it. */
+  --color-lang-python: #3572a5;
+  --color-lang-go: #00add8;
+  --color-lang-node: #3c873a;
+  --color-lang-java: #b07219;
+  --color-lang-rust: #a04b28;
+  --color-lang-php: #4f5b93;
+  --color-lang-ruby: #9b1c22;
+  --color-lang-dotnet: #5c2d91;
+  --color-lang-sql: #5a6b7b;
+  --color-lang-shell: #6e6254;
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
