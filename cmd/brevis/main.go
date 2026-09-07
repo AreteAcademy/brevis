@@ -25,6 +25,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/api"
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
 	spec "github.com/AreteAcademy/brevis/internal/application/workflow"
@@ -58,7 +59,7 @@ func raiz() *cobra.Command {
 		SilenceErrors: true,
 	}
 	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(),
-		cmdScheduler(), cmdBackfill(), cmdVersion())
+		cmdScheduler(), cmdAlert(), cmdBackfill(), cmdVersion())
 	return c
 }
 
@@ -704,10 +705,25 @@ func cmdScheduler() *cobra.Command {
 			disp := scheduler.New(scheduler.Config{
 				Worker: "local", MaxConcorrente: concurrency,
 			}, q, runs, executar, log)
+			// The dispatcher no longer TALKS to Slack. It writes a row in the
+			// same transaction as the failure, and `brevis alert` delivers it.
+			//
+			// The webhook is still what decides whether alerting is on, and it
+			// is read HERE rather than only in the alert pod on purpose: an
+			// outbox filling with alerts nothing can deliver would look like a
+			// backlog instead of like a setting nobody turned on.
 			if cfg.SlackWebhook != "" {
-				disp.Alerts = notify.NovoSlack(cfg.SlackWebhook, cfg.Env)
+				disp.Channel = alerts.ChannelSlack
 				disp.BaseURL = cfg.UIURL
-				log.Info("failure alerting is on", "destination", "slack")
+				// Said at boot, once, and naming the OTHER process: an
+				// installation that upgrades the scheduler without deploying
+				// `brevis alert` records every alert correctly and delivers
+				// none of them. The outbox looks healthy; the channel is
+				// silent. That is a worse failure than the one this replaced,
+				// and one line here is what makes it findable.
+				log.Info("failure alerting is on", "channel", alerts.ChannelSlack,
+					"delivered_by", "brevis alert",
+					"warning", "alerts are only sent while `brevis alert` is running")
 			} else {
 				// Said at boot, once: an installation that fails in silence
 				// tends to be discovered by the customer, not by the team.
@@ -749,6 +765,76 @@ func cmdScheduler() *cobra.Command {
 	c.Flags().IntVar(&concurrency, "concurrency", 5, "simultaneous runs")
 	c.Flags().IntVar(&maxPods, "max-pods", 5,
 		"simultaneous steps in total (in Kubernetes, the cluster's pod ceiling)")
+	return c
+}
+
+// cmdAlert is the third role of the same binary, beside serve and scheduler.
+//
+// It exists because of where an alert is WRITTEN, not because delivery deserves
+// its own process. The dispatcher records the alert in the same transaction as
+// the failure; something else has to drain that table, and it must be able to
+// retry across a Slack outage and across its own restart. A goroutine inside
+// the scheduler could do neither without becoming this.
+//
+// What it does NOT buy is independent scaling. Alert volume is a function of
+// failures, and if failures are high enough to need a second alert pod, the
+// alerts are not the problem.
+func cmdAlert() *cobra.Command {
+	var interval time.Duration
+	var attempts int
+	c := &cobra.Command{
+		Use:   "alert",
+		Short: "Deliver the alerts the scheduler recorded",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+
+			pool, cfg, err := open(ctx)
+			if err != nil {
+				return err
+			}
+			defer pool.Close()
+
+			log := observability.NewLogger(cfg.Env, cfg.LogLevel)
+			outbox := alerts.New(pool.Pool)
+
+			// The map is what makes an unknown channel a REFUSAL rather than a
+			// silent no-op: a row naming something absent here is marked
+			// undelivered with the valid names in its error, instead of being
+			// retried forever or dropped.
+			channels := map[string]notify.Notificador{}
+			if cfg.SlackWebhook != "" {
+				channels[alerts.ChannelSlack] = notify.NovoSlack(cfg.SlackWebhook, cfg.Env)
+			}
+			if len(channels) == 0 {
+				// Refused at boot rather than warned about. A delivery process
+				// with nothing to deliver to is a process that drains the
+				// outbox into "undelivered" as fast as it fills -- worse than
+				// not running it, because the rows come out looking like
+				// Slack rejected them.
+				return fmt.Errorf("no channel is configured: set BREVIS_SLACK_WEBHOOK")
+			}
+
+			met := metrics.New()
+			if err := met.WatchAlerts(outbox.Pending); err != nil {
+				log.Warn("the outbox depth will not be reported", "error", err)
+			}
+			met.Serve(ctx, cfg.MetricsAddr, log)
+
+			d := alerts.NewDeliverer(alerts.Config{
+				Worker: "alert", Interval: interval, MaxAttempts: attempts,
+			}, outbox, channels, log)
+			d.Metrics = met
+
+			log.Info("alert delivery is up",
+				"interval", interval.String(), "max_attempts", attempts,
+				"channels", alerts.Channels())
+			return d.Run(ctx)
+		},
+	}
+	c.Flags().DurationVar(&interval, "interval", time.Second, "interval between delivery cycles")
+	c.Flags().IntVar(&attempts, "max-attempts", 6,
+		"tries before an alert is recorded as undelivered")
 	return c
 }
 

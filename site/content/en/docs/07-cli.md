@@ -74,6 +74,39 @@ one).
 
 ---
 
+## alert
+
+Delivers the alerts the scheduler recorded. A third process beside `serve` and
+`scheduler`.
+
+```bash
+brevis alert --interval 1s --max-attempts 6
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--interval` | duration | `1s` | interval between delivery cycles |
+| `--max-attempts` | int | `6` | tries before an alert is recorded as undelivered |
+
+**It exists because of where an alert is written, not because delivery deserves
+a process.** The scheduler records the alert in the same transaction as the
+failure that justifies it — either the run is out of attempts and the alert
+exists, or neither happened. Something then has to drain that table, and it has
+to survive both a Slack outage and its own restart. Before this, a failing
+webhook meant a log line and an alert that was simply gone.
+
+It refuses to start with no channel configured (`BREVIS_SLACK_WEBHOOK`). A
+delivery process with nowhere to deliver drains the outbox into "undelivered"
+as fast as it fills, and those rows look exactly like Slack rejecting them.
+
+An alert it gives up on is **kept**: "raised, not delivered, 4 attempts, 403
+from Slack" is the row that matters, because it is the case where somebody is
+waiting for a message that is not coming.
+
+`CMD` of the `worker` image.
+
+---
+
 ## migrate
 
 ```bash

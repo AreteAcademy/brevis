@@ -1,0 +1,77 @@
+# The alert pod: it drains the alerts outbox and delivers.
+#
+# It exists because of where an alert is WRITTEN, not because delivery deserves
+# a process. The scheduler records the alert in the same transaction as the
+# failure that justifies it; something has to drain that table, and it has to
+# survive a Slack outage and its own restart. Before this, a webhook that was
+# down meant a log line and an alert that was simply gone.
+#
+# The `worker` image, and not the distroless one, only for consistency with the
+# scheduler -- this process runs nothing and needs no shell.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-alert
+  namespace: dados
+spec:
+  # ONE replica, and this one is not a placeholder for leader election.
+  #
+  # Slack's rate limit is per WORKSPACE. Two senders competing over it turn a
+  # burst of failures -- exactly when alerts matter most -- into a second
+  # incident, and the claim's SKIP LOCKED would let them. Alert volume is a
+  # function of failures, and if failures are high enough to need a second
+  # sender, the alerts are not the problem.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: alert}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: alert}
+      # brevis_alerts_outbox{state="undelivered"} is the series worth an alert
+      # rule of its own, and the irony is deliberate: it is the one failure the
+      # alerting system cannot tell anybody about itself.
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # It talks to Postgres and to Slack. It creates nothing in the cluster,
+      # so it gets no token at all -- unlike the scheduler, which creates pods.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: alert
+          image: daniel3843/brevis:0.2.1-worker
+          args: ["alert", "--interval", "1s", "--max-attempts", "6"]
+          ports:
+            - {name: metrics, containerPort: 9090}
+          env:
+            - name: BREVIS_ENV
+              value: prod
+            - name: BREVIS_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
+
+            # NOT optional here, unlike on the scheduler. This process refuses
+            # to start without a channel: one with nowhere to deliver drains
+            # the outbox into "undelivered" as fast as it fills, and those rows
+            # look exactly like Slack rejecting them.
+            - name: BREVIS_SLACK_WEBHOOK
+              valueFrom:
+                secretKeyRef: {name: brevis-slack, key: webhook}
+            # Without it the alert says what failed and makes the reader hunt
+            # for the run by hand.
+            - name: BREVIS_UI_URL
+              value: https://brevis.example.com
+          resources:
+            # It claims rows and makes HTTP requests. Nothing here is big.
+            requests: {cpu: 10m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}

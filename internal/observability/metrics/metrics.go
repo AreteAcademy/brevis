@@ -55,6 +55,10 @@ type Metrics struct {
 	claimLatency api.Float64Histogram
 	orphans      api.Int64Counter
 
+	alertsDelivered   api.Int64Counter
+	alertsUndelivered api.Int64Counter
+	alertAttempts     api.Float64Histogram
+
 	// The gauges are observable: their value is read at COLLECT time, from
 	// whoever owns it, rather than pushed on every change. Queue depth lives in
 	// Postgres and slot usage lives in the dispatcher, and neither wants a
@@ -92,6 +96,14 @@ func New() *Metrics {
 		api.WithUnit("s"), api.WithExplicitBucketBoundaries(claimBuckets...))
 	m.orphans, _ = meter.Int64Counter("brevis_orphans_recovered_total",
 		api.WithDescription("Items returned to the queue because the worker that claimed them died."))
+
+	m.alertsDelivered, _ = meter.Int64Counter("brevis_alerts_delivered_total",
+		api.WithDescription("Alerts that reached their destination."))
+	m.alertsUndelivered, _ = meter.Int64Counter("brevis_alerts_undelivered_total",
+		api.WithDescription("Alerts given up on. Somebody is waiting for a message that is not coming."))
+	m.alertAttempts, _ = meter.Float64Histogram("brevis_alert_attempts",
+		api.WithDescription("How many tries an alert took to arrive."),
+		api.WithExplicitBucketBoundaries(1, 2, 3, 4, 5, 6, 10))
 
 	return m
 }
@@ -169,6 +181,64 @@ func (m *Metrics) OrphansRecovered(ctx context.Context, n int) {
 		return
 	}
 	m.orphans.Add(ctx, int64(n))
+}
+
+// AlertDelivered records an alert that arrived, and how many tries it took.
+//
+// The attempt count is a metric of its own rather than a label, because it is a
+// distribution: "alerts usually arrive first try, and last Tuesday the p99 was
+// four" is the sentence an operator wants, and a label would make each count
+// its own series.
+func (m *Metrics) AlertDelivered(ctx context.Context, channel string, attempts int) {
+	if m == nil {
+		return
+	}
+	at := api.WithAttributes(attribute.String("channel", channel))
+	if m.alertsDelivered != nil {
+		m.alertsDelivered.Add(ctx, 1, at)
+	}
+	if m.alertAttempts != nil {
+		m.alertAttempts.Record(ctx, float64(attempts), at)
+	}
+}
+
+// AlertUndelivered records an alert that will never arrive.
+//
+// This is the number worth an alert rule of its own, and the irony is
+// deliberate: it is the one case the alerting system cannot tell anybody about
+// itself.
+func (m *Metrics) AlertUndelivered(ctx context.Context, channel string) {
+	if m == nil || m.alertsUndelivered == nil {
+		return
+	}
+	m.alertsUndelivered.Add(ctx, 1, api.WithAttributes(attribute.String("channel", channel)))
+}
+
+// WatchAlerts registers the outbox's depth, read at collect time.
+//
+// `waiting` is alerts still trying. `undelivered` is alerts given up on, and it
+// is CUMULATIVE across the table's history rather than a rate -- which is what
+// makes it useful as a gauge: a number that stops going up is a problem that
+// stopped, and one that is not zero is a message somebody never got.
+func (m *Metrics) WatchAlerts(read func(context.Context) (waiting, undelivered int, err error)) error {
+	if m == nil || read == nil {
+		return nil
+	}
+	g, err := m.meter.Int64ObservableGauge("brevis_alerts_outbox",
+		api.WithDescription("Alerts in the outbox, by whether they can still arrive."))
+	if err != nil {
+		return err
+	}
+	_, err = m.meter.RegisterCallback(func(ctx context.Context, o api.Observer) error {
+		waiting, undelivered, err := read(ctx)
+		if err != nil {
+			return err
+		}
+		o.ObserveInt64(g, int64(waiting), api.WithAttributes(attribute.String("state", "waiting")))
+		o.ObserveInt64(g, int64(undelivered), api.WithAttributes(attribute.String("state", "undelivered")))
+		return nil
+	}, g)
+	return err
 }
 
 // WatchQueue registers the queue depth, read at collect time.

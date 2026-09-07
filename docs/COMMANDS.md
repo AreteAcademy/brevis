@@ -48,6 +48,7 @@ traceable version, use the **image** or a local `make build`.
 Brevis — a data transformation and orchestration engine
 
 Available Commands:
+  alert       Deliver the alerts the scheduler recorded
   backfill    Materialize a workflow's past slots
   brand       Validate a brand file (needs no database)
   hash        Generate the BREVIS_AUTH_SENHA_HASH hash (reads the password from the terminal)
@@ -64,6 +65,7 @@ Available Commands:
 |---|---|---|---|
 | [`serve`](#brevis-serve) | **yes** | **required** | API + UI |
 | [`scheduler`](#brevis-scheduler) | **yes** | **required** | both loops: it creates and it executes |
+| [`alert`](#brevis-alert) | **yes** | **required** | drains the alerts outbox |
 | [`migrate`](#brevis-migrate) | **yes** | **required** | schema |
 | [`publish`](#brevis-publish) | **yes** | **required** | writes the workflow and the schedule |
 | [`backfill`](#brevis-backfill) | **yes** | **required** | reprocesses a range |
@@ -140,10 +142,53 @@ Where each step runs depends on `BREVIS_PODS` and on whether there is a cluster:
 
 Without `BREVIS_SLACK_WEBHOOK` the process warns at boot that failures will not
 be announced — an installation that fails in silence is discovered by the
-customer, not by the team.
+customer, not by the team. **With** it, this process does not talk to Slack: it
+records the alert and [`brevis alert`](#brevis-alert) delivers it.
 
 It is the `worker` image's `CMD` (alpine with a shell, because the `run:` steps
 need one).
+
+---
+
+## `brevis alert`
+
+Drains the alerts outbox. The third role of the binary, beside `serve` and
+`scheduler`.
+
+```bash
+brevis alert --interval 1s --max-attempts 6
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--interval` | duration | `1s` | interval between delivery cycles |
+| `--max-attempts` | int | `6` | tries before an alert is recorded as undelivered |
+
+**It exists because of where an alert is written**, not because delivery
+deserves a process of its own. `brevis scheduler` records the alert in the same
+transaction as the failure that justifies it, so either the run is out of
+attempts and the alert exists or neither happened. Something then has to drain
+that table, and it has to survive a Slack outage and its own restart — a
+goroutine inside the scheduler could do neither without becoming this.
+
+Before it, a failing webhook was a log line and an alert that was simply gone:
+no retry, no record, and nothing on a screen to say anybody should have been
+told.
+
+It **refuses to start** with no channel configured. A delivery process with
+nowhere to deliver drains the outbox into "undelivered" as fast as it fills,
+and those rows are indistinguishable from Slack rejecting them.
+
+Delivery within a batch is **serial**, and there is one of these processes and
+not one per dispatcher: Slack's rate limit is per workspace, so N senders turn a
+burst of failures into a second incident.
+
+An alert it gives up on is **kept**. "Raised, not delivered, 4 attempts, 403
+from Slack" is the row that matters — it is the case where somebody is waiting
+for a message that is not coming, and deleting it would make that
+indistinguishable from an alert nobody ever raised.
+
+It is the `worker` image's `CMD`.
 
 ---
 

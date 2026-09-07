@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 )
 
@@ -102,12 +103,49 @@ func (r *RunRepo) Transicionar(ctx context.Context, id uuid.UUID, para dom.Statu
 	return tx.Commit(ctx)
 }
 
-// IncrementAttempt bumps the counter when requeuing for a retry.
-func (r *RunRepo) IncrementAttempt(ctx context.Context, id uuid.UUID) (int, error) {
-	var n int
-	err := r.pool.QueryRow(ctx,
-		`UPDATE runs SET attempt = attempt + 1 WHERE id = $1 RETURNING attempt`, id).Scan(&n)
-	return n, err
+// Attempt records the attempt that just finished and, when it was the LAST
+// one, writes the alert it justifies -- in a single transaction.
+//
+// That transaction is the whole design of the alerts feature. Before it, the
+// dispatcher incremented the counter and then called Slack: a process that died
+// between the two left a run out of attempts with nobody told, and no record
+// that anybody should have been. Now either the run is recorded as having spent
+// its last attempt and the alert exists, or neither happened.
+//
+// `raise` is a builder rather than a value because it only runs on the give-up
+// path. Building the message costs two reads -- the run's details and the
+// failing step's log -- and paying that on every failed attempt of every
+// retrying run would be most of them, for nothing. It may return nil, which is
+// what an installation with no channel configured does.
+func (r *RunRepo) Attempt(ctx context.Context, id uuid.UUID, budget int,
+	raise func(attempt int) *alerts.Pending,
+) (attempt int, gaveUp bool, err error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op depois do commit
+
+	if err := tx.QueryRow(ctx,
+		`UPDATE runs SET attempt = attempt + 1 WHERE id = $1 RETURNING attempt`,
+		id).Scan(&attempt); err != nil {
+		return 0, false, err
+	}
+
+	gaveUp = budget > 0 && attempt >= budget
+	if gaveUp && raise != nil {
+		if p := raise(attempt); p != nil {
+			if err := alerts.WriteTx(ctx, tx, *p); err != nil {
+				// The alert failing to write ROLLS THE ATTEMPT BACK, and that
+				// is the correct trade rather than an oversight. The attempt
+				// will be spent again by the retry; an alert dropped here is
+				// gone for good, which is the failure this whole feature
+				// exists to remove.
+				return 0, false, err
+			}
+		}
+	}
+	return attempt, gaveUp, tx.Commit(ctx)
 }
 
 // RecordError stores the cause of the failure.

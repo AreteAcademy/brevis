@@ -71,6 +71,39 @@ brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 
 ---
 
+## alert
+
+Entrega os alertas que o scheduler registrou. Um terceiro processo, ao lado de
+`serve` e `scheduler`.
+
+```bash
+brevis alert --interval 1s --max-attempts 6
+```
+
+| flag | tipo | padrão | |
+|---|---|---|---|
+| `--interval` | duration | `1s` | intervalo entre ciclos de entrega |
+| `--max-attempts` | int | `6` | tentativas antes de o alerta virar "não entregue" |
+
+**Ele existe por causa de onde o alerta é escrito, não porque a entrega mereça
+um processo.** O scheduler grava o alerta na mesma transação da falha que o
+justifica — ou a run está sem tentativas e o alerta existe, ou nenhum dos dois
+aconteceu. Alguém então precisa drenar essa tabela, e precisa sobreviver tanto a
+uma queda do Slack quanto ao próprio restart. Antes disso, um webhook fora do ar
+virava uma linha de log e um alerta que simplesmente sumia.
+
+Ele se recusa a subir sem canal configurado (`BREVIS_SLACK_WEBHOOK`). Um
+processo de entrega sem destino drena a caixa para "não entregue" na mesma
+velocidade em que ela enche, e essas linhas ficam idênticas ao Slack recusando.
+
+Um alerta do qual ele desiste é **mantido**: "levantado, não entregue, 4
+tentativas, 403 do Slack" é a linha que importa, porque é o caso em que alguém
+está esperando uma mensagem que não vem.
+
+`CMD` da imagem `worker`.
+
+---
+
 ## migrate
 
 ```bash

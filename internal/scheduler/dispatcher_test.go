@@ -15,9 +15,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
-	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/queue"
 	"github.com/AreteAcademy/brevis/internal/scheduler"
 )
@@ -404,23 +404,18 @@ func TestAnOrphanStopsComingBackWhenTheAttemptsRunOut(t *testing.T) {
 	}
 }
 
-type alertaFalso struct {
-	mu       sync.Mutex
-	received []notify.Alert
-	failure  error
-}
-
-func (a *alertaFalso) Failed(_ context.Context, al notify.Alert) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.received = append(a.received, al)
-	return a.failure
-}
-
-func (a *alertaFalso) total() int {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return len(a.received)
+// raised reads what the dispatcher wrote into the outbox.
+//
+// The dispatcher no longer TALKS to anything -- there is no fake channel here
+// any more, because there is no call to fake. It writes a row in the same
+// transaction as the failure, and these tests read that row.
+func raised(t *testing.T, pool *postgres.Pool, runID uuid.UUID) []alerts.Record {
+	t.Helper()
+	out, err := alerts.New(pool.Pool).ForRun(context.Background(), runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 // The alert fires ONCE, when the run gives up -- not on every attempt.
@@ -448,14 +443,13 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	avisos := &alertaFalso{}
 	d := scheduler.New(scheduler.Config{
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 3,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, queue, repo, func(context.Context, uuid.UUID) error {
 		return errors.New(`step "run": exited with code 2`)
 	}, noLog())
-	d.Alerts = avisos
+	d.Channel = alerts.ChannelSlack
 	d.BaseURL = "https://brevis.example.com"
 
 	go func() { _ = d.Run(ctx) }()
@@ -472,11 +466,21 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 	cancel()
 	time.Sleep(100 * time.Millisecond)
 
-	if n := avisos.total(); n != 1 {
-		t.Fatalf("%d alerts for a run that failed once; want exactly 1", n)
+	rows := raised(t, pool, r.ID)
+	if len(rows) != 1 {
+		t.Fatalf("%d alerts for a run that failed once; want exactly 1", len(rows))
+	}
+	if rows[0].Kind != alerts.KindRun || rows[0].Channel != alerts.ChannelSlack {
+		t.Errorf("the row does not say what raised it or where it goes: %+v", rows[0])
+	}
+	// It is written, not delivered. Delivery is the alert pod's job, and the
+	// row saying so is what lets the screen tell "nobody was told yet" from
+	// "nobody will be told".
+	if rows[0].State() != "sending" {
+		t.Errorf("a freshly raised alert reads as %q", rows[0].State())
 	}
 
-	a := avisos.received[0]
+	a := rows[0].Payload
 	if a.Workflow != "id_verification" || a.Trigger != "schedule" {
 		t.Errorf("the alert has none of the run's details: %+v", a)
 	}
@@ -491,45 +495,95 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 	}
 }
 
-// A webhook that is down must not stop the dispatcher: the run has to end FAILED
-// and the queue has to keep being consumed.
-func TestAFailureToNotifyDoesNotTakeTheDispatcherDown(t *testing.T) {
+// The attempt and the alert are ONE write, or neither.
+//
+// This is the outbox's whole claim and the reason the alert is not sent from
+// here. Before it, the dispatcher spent the attempt and then called Slack: a
+// process dying between the two left a run out of attempts with nobody told
+// and no record that anybody should have been.
+//
+// The alert is made unwritable by pointing its row at a run that does not
+// exist, which the foreign key refuses. What has to survive that is the
+// ATTEMPT: it must still read what it read before.
+func TestAnAlertThatCannotBeWrittenRollsTheAttemptBack(t *testing.T) {
+	pool := testDB(t)
+	ctx := context.Background()
+	repo := postgres.NewRunRepo(pool)
+
+	r, err := repo.Create(ctx, dom.Run{
+		WorkflowSlug: "w", IdempotencyKey: "atomic", Definition: []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := repo.Get(ctx, r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err = repo.Attempt(ctx, r.ID, 1, func(int) *alerts.Pending {
+		return &alerts.Pending{
+			RunID:   uuid.New(), // no such run: the foreign key refuses it
+			Kind:    alerts.KindRun,
+			Channel: alerts.ChannelSlack,
+		}
+	})
+	if err == nil {
+		t.Fatal("writing an alert for a run that does not exist should have failed")
+	}
+
+	after, err := repo.Get(ctx, r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Attempt != before.Attempt {
+		t.Errorf("the attempt went from %d to %d while the alert was lost: "+
+			"the two are supposed to commit together", before.Attempt, after.Attempt)
+	}
+}
+
+// With no channel configured, nothing is written at all.
+//
+// An outbox filling with alerts nothing can deliver would read as a backlog
+// instead of as a setting nobody turned on, and every one of those rows would
+// end up marked undelivered -- which looks exactly like Slack rejecting them.
+func TestWithNoChannelNoAlertIsWritten(t *testing.T) {
 	pool := testDB(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	repo := postgres.NewRunRepo(pool)
-	queue := queue.New(pool.Pool)
+	q := queue.New(pool.Pool)
 
 	r, _ := repo.Create(ctx, dom.Run{
-		WorkflowSlug: "w", IdempotencyKey: "x", Definition: []byte(`{}`),
+		WorkflowSlug: "w", IdempotencyKey: "silent", Definition: []byte(`{}`),
 	})
 	_ = repo.Transicionar(ctx, r.ID, dom.StatusQueued)
-	_ = queue.Enqueue(ctx, r.ID, 0, time.Time{})
+	_ = q.Enqueue(ctx, r.ID, 0, time.Time{})
 
 	d := scheduler.New(scheduler.Config{
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
-	}, queue, repo, func(context.Context, uuid.UUID) error {
-		return errors.New("falhou")
+	}, q, repo, func(context.Context, uuid.UUID) error {
+		return errors.New("failed")
 	}, noLog())
-	d.Alerts = &alertaFalso{failure: errors.New("slack respondeu 500")}
+	// d.Channel deliberately left empty.
 
 	go func() { _ = d.Run(ctx) }()
+	waitFor(t, func() bool {
+		current, _ := repo.Get(context.Background(), r.ID)
+		return current.Status == dom.StatusFailed && current.Attempt >= 1
+	})
+	cancel()
+	time.Sleep(100 * time.Millisecond)
 
-	prazo := time.Now().Add(10 * time.Second)
-	for time.Now().Before(prazo) {
-		current, _ := repo.Get(ctx, r.ID)
-		if current.Status == dom.StatusFailed {
-			cancel()
-			if pending, claimed, _ := queue.Size(ctx); pending+claimed != 0 {
-				t.Errorf("the item got stuck in the queue after the alert failed")
-			}
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
+	if rows := raised(t, pool, r.ID); len(rows) != 0 {
+		t.Errorf("%d alert(s) written with no channel configured", len(rows))
 	}
-	t.Fatal("the run never finished: the alert's error hung the dispatcher")
+	if pending, claimed, _ := q.Size(context.Background()); pending+claimed != 0 {
+		t.Errorf("the item got stuck in the queue")
+	}
 }
 
 func enqueue(t *testing.T, repo *postgres.RunRepo, queue *queue.Queue,
@@ -681,7 +735,6 @@ func TestASucceedingRetryDoesNotAlert(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	avisos := &alertaFalso{}
 	var calls int32
 	d := scheduler.New(scheduler.Config{
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 3,
@@ -692,7 +745,7 @@ func TestASucceedingRetryDoesNotAlert(t *testing.T) {
 		}
 		return nil // the second attempt passes
 	}, noLog())
-	d.Alerts = avisos
+	d.Channel = alerts.ChannelSlack
 
 	go func() { _ = d.Run(ctx) }()
 
@@ -709,8 +762,8 @@ func TestASucceedingRetryDoesNotAlert(t *testing.T) {
 	if current, _ := repo.Get(context.Background(), r.ID); current.Status != dom.StatusSuccess {
 		t.Fatalf("the run finished as %s; the test needs it to pass on the second try", current.Status)
 	}
-	if n := avisos.total(); n != 0 {
-		t.Errorf("%d alert(s) went out for a run that recovered on its own", n)
+	if rows := raised(t, pool, r.ID); len(rows) != 0 {
+		t.Errorf("%d alert(s) raised for a run that recovered on its own", len(rows))
 	}
 }
 
@@ -742,7 +795,6 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	avisos := &alertaFalso{}
 	d := scheduler.New(scheduler.Config{
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
@@ -759,26 +811,18 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		}
 		return errors.New(`step "fetch_observations": exited with code 1`)
 	}, noLog())
-	d.Alerts = avisos
+	d.Channel = alerts.ChannelSlack
 
 	go func() { _ = d.Run(ctx) }()
-
-	prazo := time.Now().Add(15 * time.Second)
-	for time.Now().Before(prazo) {
-		if avisos.total() > 0 {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+	waitFor(t, func() bool { return len(raised(t, pool, r.ID)) > 0 })
 	cancel()
 	time.Sleep(100 * time.Millisecond)
 
-	avisos.mu.Lock()
-	defer avisos.mu.Unlock()
-	if len(avisos.received) == 0 {
-		t.Fatal("nenhum alert saiu")
+	rows := raised(t, pool, r.ID)
+	if len(rows) == 0 {
+		t.Fatal("no alert was raised")
 	}
-	a := avisos.received[0]
+	a := rows[0].Payload
 	if a.Step != "fetch_observations" {
 		t.Errorf("Step = %q; expected the node that failed", a.Step)
 	}

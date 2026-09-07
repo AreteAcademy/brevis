@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
@@ -33,9 +34,14 @@ type Executar func(ctx context.Context, runID uuid.UUID) error
 // it.
 type Repo interface {
 	Transicionar(ctx context.Context, id uuid.UUID, para dom.Status) error
-	IncrementAttempt(ctx context.Context, id uuid.UUID) (int, error)
 	RecordError(ctx context.Context, id uuid.UUID, msg string) error
 	Get(ctx context.Context, id uuid.UUID) (dom.Run, error)
+
+	// Attempt spends an attempt and, when it was the last, writes the alert in
+	// the SAME transaction. The two cannot come apart, which is the point --
+	// see the postgres implementation.
+	Attempt(ctx context.Context, id uuid.UUID, budget int,
+		raise func(attempt int) *alerts.Pending) (attempt int, gaveUp bool, err error)
 
 	// FailedStep returns the node and the output of the last failed
 	// attempt. It feeds the alert: without it the alert says something failed,
@@ -93,8 +99,15 @@ type Dispatcher struct {
 	executar Executar
 	log      *slog.Logger
 
-	// Alerts warns when a run gives up. Nil means nobody is told.
-	Alerts notify.Notificador
+	// Channel is where a run-level alert goes. Empty means alerting is off and
+	// no row is written at all -- an outbox filling up with alerts nobody can
+	// deliver would be worse than none.
+	//
+	// The dispatcher no longer TALKS to Slack, and that is the change: it
+	// writes a row, and the alert pod delivers it. A webhook that is down is
+	// now something the delivery process retries rather than something this
+	// process logs and forgets.
+	Channel string
 
 	// Metrics is the scrape's source. Nil means nothing is measured, which is
 	// the case for `brevis run` and for every test here -- the package
@@ -295,21 +308,22 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		return
 	}
 
-	attempt, err := d.repo.IncrementAttempt(ctx, it.RunID)
+	// The attempt and the alert are one write. The alert is raised HERE, on the
+	// last attempt only: warning on every attempt would turn a run that
+	// recovers on its second try into two alerts and a silence, and a channel
+	// that cries wolf stops being read.
+	attempt, gaveUp, err := d.repo.Attempt(ctx, it.RunID, d.cfg.MaxAttempts,
+		d.raise(ctx, it.RunID, cause))
 	if err != nil {
-		d.log.Error("incrementing the attempt", "run", it.RunID, "error", err)
+		d.log.Error("spending the attempt", "run", it.RunID, "error", err)
 		_ = d.queue.Done(ctx, it.ID)
 		return
 	}
 
-	if attempt >= d.cfg.MaxAttempts {
+	if gaveUp {
 		// Exhausted: leaves the queue and stays FAILED, which is not terminal in
 		// the state machine but is the end of this run.
 		d.log.Warn("out of attempts", "run", it.RunID, "attempts", attempt)
-		// The alert goes out HERE, and not on every failure: warning on every
-		// attempt would turn a successful retry into two alerts and a silence,
-		// and a channel that cries wolf stops being read.
-		d.avisar(ctx, it.RunID, attempt, cause)
 		d.measure(ctx, it.RunID, dom.StatusFailed)
 		_ = d.queue.Done(ctx, it.ID)
 		return
@@ -368,48 +382,49 @@ func (d *Dispatcher) measure(ctx context.Context, runID uuid.UUID, status dom.St
 		time.Since(r.CreatedAt))
 }
 
-// avisar sends the definitive-failure alert.
+// raise returns the builder that turns this failure into an outbox row.
 //
-// Nothing here may interrupt the dispatcher: a webhook that is down is no
-// reason to stop draining the queue. A failure to warn becomes a log line, and
-// the run's state in the database remains the source of truth.
-func (d *Dispatcher) avisar(ctx context.Context, runID uuid.UUID, attempts int, cause error) {
-	if d.Alerts == nil {
-		return
+// It BUILDS and does not send, which is the whole change. Nothing here can
+// fail in a way that matters: a Slack outage used to be a log line and a lost
+// alert, and is now a row somebody retries.
+//
+// Nil when no channel is configured. An outbox filling with alerts nothing can
+// deliver would be worse than not writing them -- it would look like a backlog
+// instead of like a setting nobody turned on.
+//
+// The returned closure runs INSIDE the attempt's transaction and only on the
+// give-up path, so its two reads are paid once per abandoned run rather than
+// once per failed attempt.
+func (d *Dispatcher) raise(ctx context.Context, runID uuid.UUID, cause error) func(int) *alerts.Pending {
+	if d.Channel == "" {
+		return nil
 	}
-
-	a := notify.Alert{
-		RunID: runID.String(), Status: string(dom.StatusFailed),
-		Attempts: attempts, Err: cause.Error(), BaseURL: d.BaseURL,
-	}
-	// Os detalhes vem do banco: o dispatcher so conhece o id. Se a leitura
-	// fails, the alert goes out anyway — half a message beats none when
-	// something is broken.
-	if r, err := d.repo.Get(ctx, runID); err == nil {
-		a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
-		var def struct{ Tags []string }
-		if json.Unmarshal(r.Definition, &def) == nil {
-			a.Tags = def.Tags
+	return func(attempt int) *alerts.Pending {
+		a := notify.Alert{
+			RunID: runID.String(), Status: string(dom.StatusFailed),
+			Attempts: attempt, Err: cause.Error(), BaseURL: d.BaseURL,
 		}
-	} else {
-		d.log.Warn("alert without the run's details", "run", runID, "error", err)
-	}
-
-	// The step and the log are a bonus: if the query fails, the alert goes out
-	// without them. Half a message arrives; no message does not.
-	if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
-		a.Step = step
-		a.LogExcerpt = lastLines(log, 15)
-	} else {
-		d.log.Warn("alert without the step that failed", "run", runID, "error", err)
-	}
-
-	// A context of its own: the run's may be cancelled (the cancellation is what
-	// brought us here), and the alert is about exactly that.
-	noticeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := d.Alerts.Failed(noticeCtx, a); err != nil {
-		d.log.Error("could not announce the failure", "run", runID, "error", err)
+		// The details come from the database: the dispatcher knows only the id.
+		// If the read fails the alert still goes out -- half a message beats
+		// none when something is already broken.
+		if r, err := d.repo.Get(ctx, runID); err == nil {
+			a.Workflow, a.Trigger, a.LogicalDate = r.WorkflowSlug, r.TriggerType, r.LogicalDate
+			var def struct{ Tags []string }
+			if json.Unmarshal(r.Definition, &def) == nil {
+				a.Tags = def.Tags
+			}
+		} else {
+			d.log.Warn("alert without the run's details", "run", runID, "error", err)
+		}
+		if step, log, err := d.repo.FailedStep(ctx, runID); err == nil {
+			a.Step = step
+			a.LogExcerpt = lastLines(log, 15)
+		} else {
+			d.log.Warn("alert without the step that failed", "run", runID, "error", err)
+		}
+		return &alerts.Pending{
+			RunID: runID, Kind: alerts.KindRun, Channel: d.Channel, Payload: a,
+		}
 	}
 }
 

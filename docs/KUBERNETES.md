@@ -393,7 +393,7 @@ block repeated in any YAML. That was the design difference against Kestra:
 there, all 51 flows each carried the same copied `errors: alert_slack`, twenty
 lines of payload fifty times.
 
-Three decisions:
+Four decisions:
 
 - **The alert fires when the run GIVES UP**, not on every attempt. Announcing
   every failure would turn a successful retry into two alerts and a silence, and
@@ -401,7 +401,41 @@ Three decisions:
 - **The webhook never comes from the YAML.** It is a credential: whoever has the
   URL posts in the channel as if they were the platform.
 - **Failing to announce takes nothing down.** A webhook that is down becomes a
-  log line; the run ends FAILED and the queue goes on being consumed.
+  retry, and the run ends FAILED with the queue still being consumed.
+- **The scheduler does not talk to Slack.** It writes the alert into an outbox,
+  in the same transaction as the failure, and `brevis alert` delivers it.
+
+### The outbox, and why there is a third pod
+
+`deployments/kubernetes/alert.yaml` runs `brevis alert`, which claims from the
+`alertas` table and delivers.
+
+It is there because of where an alert is WRITTEN. Before it, the dispatcher
+called Slack directly and, when the call failed, logged and carried on — the
+right behaviour for a pipeline, and also how the alert was **lost**: no retry,
+no record, and nothing on a screen to say anybody should have been told. A
+separate pod the dispatcher *called over HTTP* would have had exactly the same
+failure with more moving parts.
+
+What removes it is the transaction. Either the run is recorded as out of
+attempts and the alert exists, or neither happened.
+
+| | |
+|---|---|
+| Slack is down | the outbox retries with backoff; before, it was lost |
+| the scheduler restarts | the alert is a row, not a goroutine |
+| the alert pod restarts mid-send | the visibility sweep hands the row back |
+| delivery is visible | attempts and the last error, on the run's screen |
+| rate limits | one sender, delivering serially — not N dispatchers |
+
+**One replica, and not as a placeholder for leader election.** Slack's rate
+limit is per workspace, so two senders competing during a burst of failures —
+exactly when alerts matter most — turn one incident into two.
+
+An alert it gives up on is **kept**. "Raised, not delivered, 4 attempts, 403
+from Slack" is the most useful row this table produces, because it is the case
+where somebody is waiting for a message that is not coming; deleting it makes
+that indistinguishable from an alert nobody raised.
 
 The message carries the domain and the pipeline (from the `tags`, with the
 slug's prefix as a fallback), the trigger, the attempts, the logical date, the
@@ -417,8 +451,15 @@ kubectl -n dados create secret generic brevis-db --from-literal=url='postgres://
 kubectl -n dados create secret generic brevis-task-env \
   --from-literal=STAGE=prod --from-literal=GOOGLE_PROJECT_ID=acme-...
 kubectl -n dados create configmap brevis-brand --from-file=brand.yaml
-kubectl apply -f deployments/kubernetes/api.yaml -f deployments/kubernetes/scheduler.yaml
+kubectl apply -f deployments/kubernetes/api.yaml \
+              -f deployments/kubernetes/scheduler.yaml \
+              -f deployments/kubernetes/alert.yaml
 ```
+
+`alert.yaml` requires the `brevis-slack` secret above — unlike the scheduler,
+where it is optional. That process refuses to start without a channel: one with
+nowhere to deliver drains the outbox into "undelivered" as fast as it fills, and
+those rows look exactly like Slack rejecting them.
 
 `job-example.yaml` shows, written by hand, the pod the scheduler assembles —
 useful for checking what the cluster is going to receive before anything runs.
