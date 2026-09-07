@@ -89,6 +89,16 @@ n8n adds is the *expression*, and expressions are the expensive part — §3.
 
 ## 2. Trigger rules — do this first
 
+> **Decided while building it:** `all_success` is LOCAL, as in Airflow. The
+> engine used to abort the whole graph at the first failure, and the first
+> version of this work preserved that. It was changed on the ask — "vamos seguir
+> o padrão do Airflow, como a comunidade já está acostumada" — and the trade is
+> recorded in `Runner.Run` and in the workflows doc rather than only here: what
+> the abort protected against is now covered by the run failing, the graph
+> naming which step stopped each skipped one, and the alert going out. What is
+> given up is that an unrelated branch writes its data on a run that failed
+> elsewhere, and that a run-level retry re-runs it.
+
 ```yaml
 steps:
   - id: extract

@@ -161,10 +161,23 @@ type Runner struct {
 // Run walks the graph by levels: everything inside a level runs in parallel,
 // and the next level only starts once the previous one closes entirely.
 //
-// It stops at the FIRST failure in a level, without starting the next. Carrying
-// on after an error would produce a partial result that looks complete -- which
-// is how a pipeline ran 28 days late without anyone seeing it, in the system
-// this one replaces.
+// It walks the WHOLE graph, and a failure does not stop it. What a failure
+// stops is the branch below it: every step whose dependencies did not all
+// succeed is marked `skipped`, with the step responsible named. A branch that
+// does not touch the failure keeps going -- Airflow's rule, and what anybody
+// arriving from it expects.
+//
+// It used to abort at the first failure, and the reason was a real one:
+// carrying on after an error produced a partial result that looked complete,
+// and a pipeline ran 28 days late without anyone seeing it. What replaces that
+// protection is not nothing. The run still FAILS, with the same error; the
+// failed step is red and the skipped ones are their own colour; and the alert
+// still goes out. A partial result no longer looks complete because the run
+// says it is not.
+//
+// The cost is real and worth naming: more steps run on a failing run, and a
+// run-level retry re-runs every one of them. A workflow with an expensive
+// independent branch beside a flaky one pays for that branch on every attempt.
 func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	levels, err := graph.Levels(w)
 	if err != nil {
@@ -257,19 +270,6 @@ func (o *outcomes) get(id string) run.Status {
 	return run.StatusPending
 }
 
-// anyFailed says whether anything in this run has failed yet. It is what makes
-// the DEFAULT rule mean exactly what this engine has always meant.
-func (o *outcomes) anyFailed() bool {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	for _, s := range o.by {
-		if s == run.StatusFailed {
-			return true
-		}
-	}
-	return false
-}
-
 func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 	porID map[string]wf.Node, deps map[string][]string, done *outcomes,
 ) error {
@@ -347,21 +347,14 @@ func (r Runner) notEligible(n wf.Node, upstream []string, done *outcomes) string
 		return ""
 
 	default: // WhenAllSuccess
-		// This step's OWN dependencies first. Naming the step responsible is
-		// worth more than saying the run failed, which whoever is reading the
-		// graph can already see.
+		// LOCAL: this step's own dependencies, and nothing else. A failure
+		// somewhere unrelated does not reach here, so a healthy branch keeps
+		// going -- which is what Airflow does and what anybody arriving from it
+		// expects. See wf.WhenAllSuccess for what that gave up.
 		for _, up := range upstream {
 			if s := done.get(up); s != run.StatusSuccess {
 				return "`" + up + "` was " + string(s)
 			}
-		}
-		// Nothing it waits on went wrong, but something elsewhere did. This is
-		// the run-wide half, and it is what keeps this engine's behaviour
-		// unchanged: once anything has failed, the graph stops descending. See
-		// wf.WhenAllSuccess for why that is not Airflow's rule, and why a
-		// feature commit is not the place to change it.
-		if done.anyFailed() {
-			return "the run had already failed"
 		}
 		return ""
 	}

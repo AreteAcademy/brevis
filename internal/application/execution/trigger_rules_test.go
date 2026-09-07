@@ -193,14 +193,16 @@ func TestARunStillFailsWhenAHandlerSucceeds(t *testing.T) {
 	}
 }
 
-// TestTheDefaultIsUnchanged.
+// TestAnUnrelatedBranchKeepsGoing is Airflow's rule, and the reason this engine
+// changed to it: `all_success` asks about a step's OWN dependencies and nothing
+// else.
 //
-// Every workflow published before trigger rules existed means `all_success`,
-// and this engine's `all_success` is run-wide: once anything fails, the graph
-// stops descending. It is not Airflow's rule, where a healthy independent
-// branch keeps going, and changing that is not something a feature commit gets
-// to do quietly.
-func TestTheDefaultIsUnchangedByAnUnrelatedFailure(t *testing.T) {
+// This engine used to abort the whole graph at the first failure. That had a
+// reason -- a partial result that looked complete, a pipeline 28 days late --
+// and what replaces it is that the run still fails, the skipped steps say why,
+// and the alert still goes out. What is given up is asserted here: an unrelated
+// branch now writes its data on a run that failed elsewhere.
+func TestAnUnrelatedBranchKeepsGoing(t *testing.T) {
 	w := wf.Workflow{
 		Slug: "w",
 		Nodes: []wf.Node{
@@ -210,15 +212,47 @@ func TestTheDefaultIsUnchangedByAnUnrelatedFailure(t *testing.T) {
 		Edges: []wf.Edge{{From: "healthy", To: "after_healthy"}},
 	}
 	done, spy, err := flow(t, w, "broken")
+
+	if !done.has("after_healthy") {
+		t.Error("a branch that does not touch the failure was stopped by it")
+	}
+	if _, skipped := spy.skips()["after_healthy"]; skipped {
+		t.Error("a healthy branch was recorded as skipped")
+	}
+
+	// And the run still FAILS. A trigger rule decides which steps run, never
+	// what the run ended as -- a green run with a failed step in it is the
+	// "partial result that looks complete" this engine refuses, and it is what
+	// the abort used to protect against.
+	if err == nil {
+		t.Fatal("the run succeeded with a failed step in it")
+	}
+}
+
+// A branch BELOW the failure still stops, which is the half of the old
+// behaviour that stays. `all_success` being local does not mean it is absent.
+func TestTheBranchBelowAFailureStillStops(t *testing.T) {
+	w := wf.Workflow{
+		Slug:  "w",
+		Nodes: []wf.Node{{ID: "extract"}, {ID: "transform"}, {ID: "report"}},
+		Edges: []wf.Edge{{From: "extract", To: "transform"}, {From: "transform", To: "report"}},
+	}
+	done, spy, err := flow(t, w, "extract")
 	if err == nil {
 		t.Fatal("the run should have failed")
 	}
-	if done.has("after_healthy") {
-		t.Error("an unrelated branch kept going after a failure, which changes " +
-			"what every published workflow does")
+	for _, quiet := range []string{"transform", "report"} {
+		if done.has(quiet) {
+			t.Errorf("%s ran below a failed step", quiet)
+		}
+		if _, recorded := spy.skips()[quiet]; !recorded {
+			t.Errorf("%s was not recorded as skipped", quiet)
+		}
 	}
-	if reason := spy.skips()["after_healthy"]; !strings.Contains(reason, "already failed") {
-		t.Errorf("the reason does not say the run had failed: %q", reason)
+	// The skip propagates for the right reason: transform was stopped by
+	// extract, and report by transform. Not by "the run failed".
+	if reason := spy.skips()["report"]; !strings.Contains(reason, "transform") {
+		t.Errorf("report's reason does not name transform: %q", reason)
 	}
 }
 

@@ -253,17 +253,17 @@ func (n Node) UsaShell() bool { return n.Shell == nil || *n.Shell }
 // Edge links two nodes: From runs before To.
 // The trigger rules, as a CLOSED vocabulary validated at publish.
 //
-// WhenAllSuccess is the default and it is the ONLY one that is not purely about
-// this step's own dependencies. It means what this engine has always meant:
-// once anything in the run has failed, the graph stops descending. That rule
-// has a story behind it -- carrying on after an error produced a partial result
-// that looked complete, and a pipeline ran 28 days late without anyone seeing
-// it -- and a feature commit is no place to overturn it.
+// WhenAllSuccess is the default and it is LOCAL: it asks about this step's own
+// dependencies and nothing else. A failure in an unrelated branch does not stop
+// this one, which is Airflow's rule and what anybody arriving from it expects.
 //
-// So it is worth being explicit that this differs from Airflow, where
-// all_success is local to a task's own upstreams and an unrelated healthy
-// branch keeps going after a sibling fails. Here it does not, and a workflow
-// that wants a step to run regardless says so with all_done.
+// It was not always: this engine used to abort the whole graph at the first
+// failure, and that had a reason -- carrying on after an error produced a
+// partial result that looked complete, and a pipeline ran 28 days late without
+// anyone seeing it. The protection that replaces it is that the run still
+// fails, the graph shows which steps were skipped and why, and the alert still
+// goes out. What is given up is that an unrelated branch now writes its data on
+// a run that failed elsewhere.
 const (
 	WhenAllSuccess = "all_success" // the default: nothing has failed, and my dependencies succeeded
 	WhenAnyFailed  = "any_failed"  // at least one of my dependencies failed

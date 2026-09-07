@@ -194,7 +194,7 @@ steps:
 
 | regra | |
 |---|---|
-| `all_success` | o padrão. Nada na run falhou **e** tudo de que este passo depende deu certo |
+| `all_success` | o padrão. Tudo de que este passo depende deu certo — as dependências **dele**, como no Airflow |
 | `any_failed` | pelo menos um passo de que este depende falhou |
 | `all_done` | tudo de que este passo depende terminou, como quer que tenha terminado |
 
@@ -216,16 +216,36 @@ Uma regra de gatilho decide quais passos **rodam**. Ela não decide o resultado
 da run: um `notify_failure` que entregou a mensagem não quer dizer que o
 pipeline funcionou, e a run continua falha.
 
-### `all_success` aqui não é o `all_success` do Airflow
+### `all_success` é local, como no Airflow
 
-No Airflow a regra é local aos anteriores de cada task, então um ramo saudável e
-sem relação continua depois que um irmão falha. **No Brevis não**: assim que
-qualquer coisa na run falha, o grafo para de descer.
+A regra pergunta sobre as dependências **do próprio passo** e nada mais. Uma
+falha num ramo sem relação não para este:
 
-É o que este motor sempre fez, e tem uma história atrás — seguir depois de um
-erro produziu um resultado parcial que parecia completo, e um pipeline rodou 28
-dias atrasado sem ninguém ver. Um workflow que quer um passo rodando de todo
-jeito diz isso com `all_done`.
+```
+extract_orders ──✕                 (falhou)
+extract_users  ──✓── transform_users ──✓     continua
+```
+
+Um ramo **abaixo** da falha continua parando — `all_success` ser local não quer
+dizer que ele sumiu.
+
+Este motor abortava o grafo inteiro na primeira falha. Isso tinha um motivo:
+seguir depois de um erro produziu um resultado parcial que parecia completo, e
+um pipeline rodou 28 dias atrasado sem ninguém ver.
+
+**O que substitui essa proteção**, e não é nada:
+
+- a run continua **falhando**, com o mesmo erro;
+- o grafo mostra o passo que falhou em vermelho e cada passo pulado na cor
+  dele, dizendo qual passo o parou;
+- o alerta continua saindo quando a run desiste.
+
+Um resultado parcial não parece mais completo, porque a run diz que não está.
+
+**O que se abre mão**, dito na lata: um ramo sem relação agora escreve os dados
+dele numa run que falhou em outro lugar. E como o retry é no nível da run, o
+grafo inteiro roda de novo — um workflow com um ramo independente caro ao lado
+de um instável paga por esse ramo em toda tentativa.
 
 ## Anunciando a falha de um passo
 

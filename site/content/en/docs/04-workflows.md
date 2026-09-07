@@ -193,7 +193,7 @@ steps:
 
 | rule | |
 |---|---|
-| `all_success` | the default. Nothing in the run has failed, **and** everything this step depends on succeeded |
+| `all_success` | the default. Everything this step depends on succeeded — its **own** dependencies, as in Airflow |
 | `any_failed` | at least one step this one depends on failed |
 | `all_done` | everything this step depends on has finished, however it ended |
 
@@ -215,16 +215,36 @@ A trigger rule decides which steps **run**. It does not decide the run's
 outcome: a `notify_failure` that delivered its message does not mean the pipeline
 worked, and the run is still failed.
 
-### `all_success` here is not `all_success` in Airflow
+### `all_success` is local, as in Airflow
 
-In Airflow the rule is local to a task's own upstreams, so an unrelated healthy
-branch keeps going after a sibling fails. **In Brevis it does not**: once
-anything in the run has failed, the graph stops descending.
+The rule asks about a step's **own** dependencies and nothing else. A failure in
+an unrelated branch does not stop this one:
 
-That is what this engine has always done, and it has a story behind it —
-carrying on after an error produced a partial result that looked complete, and a
-pipeline ran 28 days late without anyone noticing. A workflow that wants a step
-to run regardless says so with `all_done`.
+```
+extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going
+```
+
+A branch **below** the failure still stops — `all_success` being local does not
+mean it is absent.
+
+This engine used to abort the whole graph at the first failure. That had a
+reason: carrying on after an error produced a partial result that looked
+complete, and a pipeline ran 28 days late without anyone noticing.
+
+**What replaces that protection**, and it is not nothing:
+
+- the run still **fails**, with the same error;
+- the graph shows the failed step in red and every skipped one in its own
+  colour, each saying which step stopped it;
+- the alert still goes out when the run gives up.
+
+A partial result no longer looks complete, because the run says it is not.
+
+**What is given up**, stated plainly: an unrelated branch now writes its data on
+a run that failed elsewhere. And because a run-level retry re-runs the whole
+graph, a workflow with an expensive independent branch beside a flaky one pays
+for that branch on every attempt.
 
 ## Announcing a step's failures
 
