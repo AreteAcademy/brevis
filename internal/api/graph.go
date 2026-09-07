@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/graph"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
@@ -166,6 +167,29 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 				"label":  id,
 				"acao":   actionLabel(no),
 				"status": "pending",
+			}
+			// What the step runs in. Computed HERE, on the definition already
+			// loaded, and not stored in a column: the inference rules will be
+			// wrong at first, and a stored value freezes a wrong guess into
+			// every workflow published before the fix, needing a backfill.
+			// Computed on read, fixing the rule fixes history.
+			//
+			// Omitted entirely when there is nothing to say, so an unknown
+			// step's payload is byte-identical to the one before this feature.
+			if tc := runtimes.Resolve(no.Runtime, no.Tools,
+				runtimes.Detect(no.Run, def.ImageFor(no), no.Action)); !tc.Empty() {
+				if tc.Runtime != "" {
+					data["runtime"] = tc.Runtime
+				}
+				if len(tc.Tools) > 0 {
+					data["tools"] = tc.Tools
+				}
+				// The source is what lets the screen draw an inferred chip
+				// differently from a declared one. "This step runs Python" and
+				// "this command starts with python" are different claims, and
+				// a chip that hides which one it is borrows the credibility of
+				// the SDK badge beside it -- which cannot lie.
+				data["runtime_source"] = tc.Source
 			}
 			e, hasState := states[id]
 			if hasState {

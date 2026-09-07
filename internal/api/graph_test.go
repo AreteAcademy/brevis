@@ -416,3 +416,58 @@ func TestAPlainStepGainsNoNewField(t *testing.T) {
 		}
 	}
 }
+
+// The chip's data reaches the payload, with its source.
+func TestTheNodeCarriesWhatItRunsIn(t *testing.T) {
+	def := wf.Workflow{
+		Slug: "runs-in", Kind: wf.KindDAG,
+		Nodes: []wf.Node{
+			{ID: "extract", Run: "python fetch.py"},
+			{ID: "transform", Run: "dbt build", Image: "python:3.12"},
+			{ID: "declared", Run: "/opt/wrapper.sh", Runtime: "go"},
+			{ID: "opaque", Run: "/opt/brevis/bin/fetch-weather"},
+		},
+	}
+
+	ui := newUI(defsFake{w: def}, execsFake{})
+	_, g := request(t, ui, "/api/workflows/runs-in/graph")
+
+	byID := map[string]map[string]any{}
+	for _, n := range g.Nodes {
+		byID[n.ID] = n.Data
+	}
+
+	if got := byID["extract"]["runtime"]; got != "python" {
+		t.Errorf("extract runtime = %v, want python", got)
+	}
+	if got := byID["extract"]["runtime_source"]; got != "inferred" {
+		t.Errorf("extract source = %v, want inferred", got)
+	}
+
+	// The command wins over the image: an image named python running dbt is a
+	// dbt step.
+	if got := byID["transform"]["runtime"]; got != "python" {
+		t.Errorf("transform runtime = %v", got)
+	}
+	if tools, _ := byID["transform"]["tools"].([]any); len(tools) != 1 || tools[0] != "dbt" {
+		t.Errorf("transform tools = %v, want [dbt]", byID["transform"]["tools"])
+	}
+
+	// Declared beats the parser, and the source says so -- which is what makes
+	// the two drawable differently.
+	if got := byID["declared"]["runtime"]; got != "go" {
+		t.Errorf("declared runtime = %v, want go", got)
+	}
+	if got := byID["declared"]["runtime_source"]; got != "declared" {
+		t.Errorf("declared source = %v, want declared", got)
+	}
+
+	// A step the engine cannot read carries NOTHING. Not an empty string, not
+	// a source: the keys are absent, so the payload is what it was before this
+	// feature and an older dag.js draws the same card.
+	for _, key := range []string{"runtime", "tools", "runtime_source"} {
+		if _, present := byID["opaque"][key]; present {
+			t.Errorf("an unreadable step carries %q: %v", key, byID["opaque"][key])
+		}
+	}
+}
