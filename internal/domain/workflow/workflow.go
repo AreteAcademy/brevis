@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 )
 
 // Kind distinguishes how the graph was declared. `chain` is syntactic sugar:
@@ -82,6 +84,20 @@ type Node struct {
 	// concrete: a Go fetcher fits in 64Mi while the dbt next to it asks for
 	// 1Gi, and under a single image both would pay the larger of the two.
 	Resources Resources
+
+	// Runtime and Tools say what this step runs in. Both empty is the normal
+	// case: the engine infers from Run and Image, and only what the author
+	// DECLARED lands here.
+	//
+	// They are additive in the stored document. A Workflow is written whole as
+	// JSON into workflows.definicao and runs.definicao with no tags, so the Go
+	// field name is the key -- an older engine ignores what it does not know,
+	// and this one reading an older document gets the zero value, which means
+	// "not declared" and falls through to the inference. Nothing to migrate.
+	// See TestTheParamKeysAreTheOnDiskFormat for the case where that is NOT
+	// true.
+	Runtime string
+	Tools   []string
 
 	// Shell decides how the command enters the container. Nil means with a
 	// shell, which is what `run:` suggests ("python fetch.py"). False passes the
@@ -267,6 +283,12 @@ func (w Workflow) Validate() error {
 		seenParams[p.Name] = struct{}{}
 	}
 
+	for _, n := range w.Nodes {
+		if err := validateToolchain(w.Slug, n); err != nil {
+			return err
+		}
+	}
+
 	if err := validateEnvironment(w.Slug, "workflow", w.Env, w.Secrets); err != nil {
 		return err
 	}
@@ -416,6 +438,32 @@ func formatCycle(ids []string) string {
 // quantidade is Kubernetes's format: an integer or a decimal with an optional
 // suffix (m for CPU; Ki/Mi/Gi/K/M/G for memory).
 var quantity = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?(m|[KMGTPE]i?)?$`)
+
+// validateToolchain refuses a `runtime:` or a `tools:` outside the vocabulary,
+// at PUBLISH time.
+//
+// The error lists what IS valid, because a refusal that does not say what would
+// have been accepted only moves the guessing. And it refuses rather than
+// dropping: an id silently discarded here renders as a missing chip on a screen
+// three days later, with nothing to trace it to.
+func validateToolchain(slug string, n Node) error {
+	if n.Runtime != "" && !runtimes.IsRuntime(n.Runtime) {
+		return fmt.Errorf("workflow %q, step %q: runtime %q is not one of: %s",
+			slug, n.ID, n.Runtime, strings.Join(runtimes.Runtimes, ", "))
+	}
+	seen := map[string]bool{}
+	for _, t := range n.Tools {
+		if !runtimes.IsTool(t) {
+			return fmt.Errorf("workflow %q, step %q: tool %q is not one of: %s",
+				slug, n.ID, t, strings.Join(runtimes.Tools, ", "))
+		}
+		if seen[t] {
+			return fmt.Errorf("workflow %q, step %q: tool %q is listed twice", slug, n.ID, t)
+		}
+		seen[t] = true
+	}
+	return nil
+}
 
 // validateResources refuses a malformed quantity at PUBLISH time.
 //

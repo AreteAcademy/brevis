@@ -115,6 +115,23 @@ type StepSpec struct {
 	//	  GABRIEL_SESSION_COOKIE: gabriel-session/cookie
 	Secrets map[string]string `yaml:"secrets"`
 
+	// Runtime and Tools say what this step runs in, when the engine cannot
+	// work it out from `run:` and `image:`.
+	//
+	//	runtime: python
+	//	tools: [dbt]
+	//
+	// Both optional, and the engine INFERS both when they are absent -- which
+	// is the normal case. Declaring one is for when the inference is wrong or
+	// blind: a wrapper script, a bare binary path, an image whose name says
+	// nothing.
+	//
+	// An id outside the vocabulary is refused at publish, naming what is
+	// valid. The alternative is a chip that renders blank on a screen three
+	// days later, with nothing to trace it to.
+	Runtime string   `yaml:"runtime"`
+	Tools   []string `yaml:"tools"`
+
 	// Shell: a pointer, to tell "did not declare" from "declared false". Without
 	// the pointer, every step without the key would become `shell: false` and
 	// images that do have a shell -- most of them -- would start receiving an
@@ -168,6 +185,8 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Image: strings.TrimSpace(st.Image), Resources: st.Resources.dominio(),
 			Shell: st.Shell,
 			Env:   aparar(st.Env), Secrets: aparar(st.Secrets),
+			Runtime: strings.ToLower(strings.TrimSpace(st.Runtime)),
+			Tools:   normalizeTools(st.Tools),
 		})
 	}
 
@@ -180,6 +199,21 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 		return dominio.Workflow{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return w, nil
+}
+
+// normalizeTools lowercases and trims, and drops the empties.
+//
+// It does NOT validate: an unknown id has to be refused by Validate, with the
+// workflow's slug and the list of what is valid, and not silently dropped here
+// where the message would have neither.
+func normalizeTools(in []string) []string {
+	var out []string
+	for _, t := range in {
+		if t = strings.ToLower(strings.TrimSpace(t)); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // aparar trims the name and the value, and discards an entry with an empty

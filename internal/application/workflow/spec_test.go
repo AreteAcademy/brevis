@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	dominio "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -102,5 +103,87 @@ func TestParseNamesTheFileInTheError(t *testing.T) {
 	}
 	if got := err.Error(); len(got) < 15 || got[:14] != "relatorio.yaml" {
 		t.Errorf("error = %q; it has to start with the file", got)
+	}
+}
+
+// The two declared fields, end to end from the file.
+func TestRuntimeAndToolsComeOffTheFile(t *testing.T) {
+	w, err := Parse("x.yaml", []byte(`
+name: x
+type: dag
+steps:
+  - id: transform
+    run: /opt/run.sh
+    image: ghcr.io/acme/runner:1
+    runtime: PYTHON
+    tools: [" dbt ", Spark]
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := w.Nodes[0]
+	// Normalized: the vocabulary is lowercase, and a file that shouts should
+	// not become a workflow that fails to validate.
+	if n.Runtime != "python" {
+		t.Errorf("runtime = %q, want python", n.Runtime)
+	}
+	if len(n.Tools) != 2 || n.Tools[0] != "dbt" || n.Tools[1] != "spark" {
+		t.Errorf("tools = %v, want [dbt spark]", n.Tools)
+	}
+}
+
+// An id outside the vocabulary is refused at PUBLISH, naming what is valid.
+//
+// Dropping it instead would render as a missing chip on a screen three days
+// later, with nothing to trace it to.
+func TestAnUnknownRuntimeIsRefusedNamingTheValidOnes(t *testing.T) {
+	_, err := Parse("x.yaml", []byte(`
+name: x
+type: dag
+steps:
+  - id: a
+    run: echo hi
+    runtime: cobol
+`))
+	if err == nil {
+		t.Fatal("cobol was accepted")
+	}
+	for _, want := range []string{"cobol", "python", "go"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error does not mention %q: %v", want, err)
+		}
+	}
+}
+
+func TestAnUnknownToolIsRefused(t *testing.T) {
+	_, err := Parse("x.yaml", []byte(`
+name: x
+type: dag
+steps:
+  - id: a
+    run: echo hi
+    tools: [dbt, luigi]
+`))
+	if err == nil || !strings.Contains(err.Error(), "luigi") {
+		t.Fatalf("err = %v; want a refusal naming luigi", err)
+	}
+}
+
+// A step that declares neither is the NORMAL case, and it has to stay
+// indistinguishable from a workflow written before the fields existed.
+func TestDeclaringNeitherLeavesTheStepAsItWas(t *testing.T) {
+	w, err := Parse("x.yaml", []byte(`
+name: x
+type: dag
+steps:
+  - id: a
+    run: python fetch.py
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := w.Nodes[0]; n.Runtime != "" || n.Tools != nil {
+		t.Errorf("got %+v, want both empty -- the engine infers, it does not "+
+			"write the inference back into the definition", n)
 	}
 }

@@ -1,6 +1,9 @@
 package workflow
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func no(id, run string) Node { return Node{ID: id, Run: run} }
 
@@ -87,4 +90,47 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// A definition published BEFORE these fields existed has to keep working.
+//
+// A Workflow is stored whole as JSON in workflows.definicao and runs.definicao
+// with no tags, so the Go field name is the key. Adding fields is additive in
+// both directions, and this is what says so rather than assuming it: a document
+// with no Runtime and no Tools reads back with both empty, which means "not
+// declared" and falls through to the inference.
+//
+// The opposite case -- a field RENAMED under an untagged struct -- is the one
+// that silently loses data, and TestTheParamKeysAreTheOnDiskFormat covers it.
+func TestAnOlderStoredDefinitionStillReads(t *testing.T) {
+	// Exactly what the database holds for a workflow published before this
+	// change: no Runtime, no Tools.
+	stored := `{"Slug":"w","Name":"W","Kind":"dag","Nodes":[
+		{"ID":"a","Run":"python fetch.py","Image":"python:3.12"}],"Edges":[]}`
+
+	var w Workflow
+	if err := json.Unmarshal([]byte(stored), &w); err != nil {
+		t.Fatalf("an older document no longer decodes: %v", err)
+	}
+	if err := w.Validate(); err != nil {
+		t.Fatalf("an older document no longer validates: %v", err)
+	}
+	if n := w.Nodes[0]; n.Runtime != "" || n.Tools != nil {
+		t.Errorf("got %+v, want both empty", n)
+	}
+
+	// And the new fields survive the round trip they will now take.
+	w.Nodes[0].Runtime = "python"
+	w.Nodes[0].Tools = []string{"dbt"}
+	raw, err := json.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back Workflow
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatal(err)
+	}
+	if back.Nodes[0].Runtime != "python" || len(back.Nodes[0].Tools) != 1 {
+		t.Errorf("the round trip lost the declaration: %+v", back.Nodes[0])
+	}
 }
