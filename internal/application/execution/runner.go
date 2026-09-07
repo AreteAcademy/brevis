@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -328,6 +329,28 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 			continue
 		}
 
+		// And then the data. It comes after the trigger rule because the rule
+		// is about whether the step's turn arrived at all, and this is about
+		// whether there is anything for it to do -- asking the second first
+		// would read a key from a step that never ran.
+		if why, err := r.gate(n); err != nil {
+			// A key the publisher never published is a FAILURE, not an empty
+			// value. Treating a typo as "empty" disables the step silently and
+			// forever, and a nightly that stops running with nothing anywhere
+			// saying why is the worst outcome this feature can have.
+			r.markStart(ctx, n.ID, 0)
+			r.markEnd(ctx, n.ID, 0, err, "")
+			mu.Lock()
+			errs = append(errs, err)
+			mu.Unlock()
+			done.set(n.ID, run.StatusFailed)
+			continue
+		} else if why != "" {
+			r.markSkipped(ctx, n.ID, why)
+			done.set(n.ID, run.StatusSkipped)
+			continue
+		}
+
 		wg.Add(1)
 		go func(n wf.Node) {
 			defer wg.Done()
@@ -394,6 +417,62 @@ func (r Runner) notEligible(n wf.Node, upstream []string, done *outcomes) string
 		}
 		return ""
 	}
+}
+
+// gate reads `unless_empty:` and says whether there is anything to do.
+//
+// Three outcomes, and the middle one is the reason it returns two values:
+//
+//   - "", nil     -- run it. Either no gate, or the value is present.
+//   - reason, nil -- skip it: the value is there and it is empty.
+//   - "", err     -- FAIL it: the key is not there at all.
+//
+// The last one is a decision. A missing key could be read as "empty, so skip",
+// and that is what a forgiving engine would do -- and a typo in the key name
+// would then disable the step silently, forever, with nothing anywhere saying
+// why. Failing names the key and lists what the step actually published.
+func (r Runner) gate(n wf.Node) (string, error) {
+	if n.UnlessEmpty == "" {
+		return "", nil
+	}
+	step, key, _ := strings.Cut(n.UnlessEmpty, ".")
+
+	raw, published := r.published.snapshot()[step]
+	if !published {
+		// Publish validates that `step` is visible, so reaching here means it
+		// ran and wrote nothing at all.
+		return "", fmt.Errorf("step %q reads `%s`, and %q published nothing",
+			n.ID, n.UnlessEmpty, step)
+	}
+
+	var values map[string]any
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return "", fmt.Errorf("step %q reads `%s`, and %q published something "+
+			"that is not an object: %w", n.ID, n.UnlessEmpty, step, err)
+	}
+	v, ok := values[key]
+	if !ok {
+		return "", fmt.Errorf("step %q reads `%s`, and %q published %s but not %q",
+			n.ID, n.UnlessEmpty, step, quotedKeys(values), key)
+	}
+	if wf.IsEmpty(v) {
+		return "`" + n.UnlessEmpty + "` is empty", nil
+	}
+	return "", nil
+}
+
+// quotedKeys lists what a step DID publish, so a typo is one line away from
+// being obvious instead of one investigation.
+func quotedKeys(values map[string]any) string {
+	if len(values) == 0 {
+		return "nothing"
+	}
+	out := make([]string, 0, len(values))
+	for k := range values {
+		out = append(out, strconv.Quote(k))
+	}
+	sort.Strings(out)
+	return strings.Join(out, ", ")
 }
 
 // alreadySucceeded asks the history what this run has already got right.

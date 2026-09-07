@@ -157,3 +157,101 @@ steps:
 		t.Fatal("a marker with a `run:` was accepted")
 	}
 }
+
+// TestABareUnlessEmptyKeyIsRefused.
+//
+// The key is always qualified by the step that publishes it, the same rule the
+// context library carries. Steps are isolated -- `extract` and `transform` can
+// both publish `has_rows` and neither loses it -- and a bare key throws that
+// away the moment two of them do.
+func TestABareUnlessEmptyKeyIsRefused(t *testing.T) {
+	_, err := parse(t, `
+name: w
+type: dag
+steps:
+  - id: extract
+    run: ./extract.sh
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: has_rows
+`)
+	if err == nil {
+		t.Fatal("a bare key was accepted")
+	}
+	if !strings.Contains(err.Error(), "extract.has_rows") {
+		t.Errorf("the error does not show the shape it wants: %v", err)
+	}
+}
+
+// TestReadingAStepItDoesNotDependOnIsRefusedAtPublish.
+//
+// A step gated on a key it cannot see would be skipped forever, silently.
+// Finding that at publish beats finding it out when a nightly stops running.
+func TestReadingAStepItDoesNotDependOnIsRefusedAtPublish(t *testing.T) {
+	_, err := parse(t, `
+name: w
+type: dag
+steps:
+  - id: extract
+    run: ./extract.sh
+  - id: sibling
+    run: ./sibling.sh
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: sibling.has_rows
+`)
+	if err == nil {
+		t.Fatal("a step read a key from something it does not depend on")
+	}
+	// It lists what the step CAN see, so the fix is one line away.
+	if !strings.Contains(err.Error(), "extract") {
+		t.Errorf("the error does not list what is visible: %v", err)
+	}
+}
+
+// A key from a TRANSITIVE dependency is fine, and it is the natural pipeline:
+// load depends on transform depends on extract, and load legitimately wants
+// what extract published.
+func TestATransitiveDependencyIsVisible(t *testing.T) {
+	w, err := parse(t, `
+name: w
+type: dag
+steps:
+  - id: extract
+    run: ./extract.sh
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+  - id: load
+    run: ./load.sh
+    depends_on: [transform]
+    unless_empty: extract.has_rows
+`)
+	if err != nil {
+		t.Fatalf("a transitive key was refused: %v", err)
+	}
+	if w.Nodes[2].UnlessEmpty != "extract.has_rows" {
+		t.Errorf("unless_empty did not survive the parse: %q", w.Nodes[2].UnlessEmpty)
+	}
+}
+
+// A step with `unless_empty:` and no dependencies at all can see nothing, and
+// the message says that rather than listing an empty set.
+func TestAGateWithNoDependenciesSaysSo(t *testing.T) {
+	_, err := parse(t, `
+name: w
+type: dag
+steps:
+  - id: lonely
+    run: ./lonely.sh
+    unless_empty: nobody.has_rows
+`)
+	if err == nil {
+		t.Fatal("a step with no depends_on read a key")
+	}
+	if !strings.Contains(err.Error(), "depends_on") {
+		t.Errorf("the error does not point at the missing depends_on: %v", err)
+	}
+}

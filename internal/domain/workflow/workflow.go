@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	"github.com/AreteAcademy/brevis/internal/domain/runtimes"
 )
 
@@ -99,6 +100,24 @@ type Node struct {
 	// true.
 	Runtime string
 	Tools   []string
+
+	// UnlessEmpty names a context key that decides whether this step runs.
+	//
+	//	- id: transform
+	//	  depends_on: [extract]
+	//	  unless_empty: extract.has_rows
+	//
+	// A KEY, not an expression. The tempting design is
+	// `when: "{{ context.extract.rows > 0 }}"`, and a mini expression language
+	// is a large commitment: a parser, a type system to say what `>` means
+	// across a JSON `any`, a security story because the expression comes out of
+	// a YAML somebody else wrote, and error messages that point into a string.
+	// Every orchestrator that has one has a bug tracker full of it.
+	//
+	// Here the STEP decides and publishes a boolean, so the decision lives in
+	// the language its author already writes and is testable with their own
+	// test framework. The engine reads one key and asks whether it is empty.
+	UnlessEmpty string
 
 	// Marker says this step does nothing and exists to be a point in the graph.
 	//
@@ -251,6 +270,75 @@ func sobrepor(base, up map[string]string) map[string]string {
 func (n Node) UsaShell() bool { return n.Shell == nil || *n.Shell }
 
 // Edge links two nodes: From runs before To.
+// IsEmpty decides whether a published value counts as absent, for
+// `unless_empty:`.
+//
+// The list is JavaScript's falsiness minus the surprises, and it is short on
+// purpose: false, zero, an empty string, null, an empty list and an empty
+// object. Everything else is present.
+//
+// What it deliberately does NOT do is parse strings. "false" as a STRING is a
+// non-empty string and therefore present, because a step that published the
+// four characters f-a-l-s-e published something, and guessing that it meant a
+// boolean is how a rule starts having opinions its author cannot see. Publish a
+// real boolean.
+func IsEmpty(v any) bool {
+	switch t := v.(type) {
+	case nil:
+		return true
+	case bool:
+		return !t
+	case float64:
+		return t == 0
+	case string:
+		return t == ""
+	case []any:
+		return len(t) == 0
+	case map[string]any:
+		return len(t) == 0
+	}
+	return false
+}
+
+// validateUnlessEmpty refuses at publish what would otherwise be found at run
+// time, on a step that quietly never runs again.
+func validateUnlessEmpty(w Workflow, n Node) error {
+	if n.UnlessEmpty == "" {
+		return nil
+	}
+	step, _, ok := strings.Cut(n.UnlessEmpty, ".")
+	if !ok || step == "" {
+		return fmt.Errorf("workflow %q: step %q: `unless_empty: %s` needs the step "+
+			"that publishes it (`extract.has_rows`, not `has_rows`)",
+			w.Slug, n.ID, n.UnlessEmpty)
+	}
+
+	// The named step has to be one this one depends on, transitively -- the
+	// same scope the context itself uses. A step reading a key it cannot see
+	// would be skipped forever, and finding that out at publish beats finding
+	// it out when a nightly stops running.
+	visible := runcontext.Visible(edgesByTarget(w), n.ID)
+	if !slices.Contains(visible, step) {
+		if len(visible) == 0 {
+			return fmt.Errorf("workflow %q: step %q reads `%s` but declares no "+
+				"`depends_on`, so it can see nothing", w.Slug, n.ID, n.UnlessEmpty)
+		}
+		return fmt.Errorf("workflow %q: step %q reads `%s`, but %q is not one of the "+
+			"steps it depends on (it can see: %s)",
+			w.Slug, n.ID, n.UnlessEmpty, step, strings.Join(visible, ", "))
+	}
+	return nil
+}
+
+// edgesByTarget is the dependency map runcontext.Visible wants.
+func edgesByTarget(w Workflow) map[string][]string {
+	up := map[string][]string{}
+	for _, e := range w.Edges {
+		up[e.To] = append(up[e.To], e.From)
+	}
+	return up
+}
+
 // The trigger rules, as a CLOSED vocabulary validated at publish.
 //
 // WhenAllSuccess is the default and it is LOCAL: it asks about this step's own
@@ -465,6 +553,9 @@ func (w Workflow) Validate() error {
 			return err
 		}
 		if err := validateWhen(w.Slug, n); err != nil {
+			return err
+		}
+		if err := validateUnlessEmpty(w, n); err != nil {
 			return err
 		}
 	}

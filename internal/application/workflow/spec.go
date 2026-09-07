@@ -146,6 +146,10 @@ type StepSpec struct {
 	// graph -- a `start`, an `end`, a join. See dominio.Node.Marker.
 	Marker bool `yaml:"marker"`
 
+	// UnlessEmpty names a context key that decides whether this step runs.
+	// A key, not an expression. See dominio.Node.UnlessEmpty.
+	UnlessEmpty string `yaml:"unless_empty"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -264,11 +268,12 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Image: strings.TrimSpace(st.Image), Resources: st.Resources.dominio(),
 			Shell: st.Shell,
 			Env:   aparar(st.Env), Secrets: aparar(st.Secrets),
-			Runtime: strings.ToLower(strings.TrimSpace(st.Runtime)),
-			Tools:   normalizeTools(st.Tools),
-			When:    strings.ToLower(strings.TrimSpace(st.When)),
-			Marker:  st.Marker,
-			OnError: st.OnError.dominio(),
+			Runtime:     strings.ToLower(strings.TrimSpace(st.Runtime)),
+			Tools:       normalizeTools(st.Tools),
+			When:        strings.ToLower(strings.TrimSpace(st.When)),
+			Marker:      st.Marker,
+			UnlessEmpty: strings.TrimSpace(st.UnlessEmpty),
+			OnError:     st.OnError.dominio(),
 		})
 	}
 

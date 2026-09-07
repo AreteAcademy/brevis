@@ -116,7 +116,62 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `marker` | `false` | a step with no command, for a `start` or an `end` |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
+| `unless_empty` | | a context key that decides whether there is anything to do — see below |
 | `on_error` | | announces this step's failures — see below |
+
+## Running a step only when there is something to do
+
+```python
+# in extract
+context.set(has_rows=len(rows) > 0)
+```
+
+```yaml
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: extract.has_rows
+```
+
+`unless_empty` names a **key**, not an expression. The step decides and
+publishes the answer; the engine reads one key and asks whether it is empty.
+
+| counts as empty | counts as present |
+|---|---|
+| `false`, `0`, `""`, `null`, `[]`, `{}` | everything else |
+
+`"false"` as a **string** is present. A step that published those five
+characters published something, and guessing that it meant a boolean is how a
+rule starts having opinions its author cannot see. Publish a real boolean.
+
+### Why not an expression
+
+The tempting design is `when: "{{ context.extract.rows > 0 }}"`. A mini
+expression language is a large commitment: a parser, a type system to say what
+`>` means across a JSON `any`, a security story because the expression comes out
+of a YAML somebody else wrote, and error messages that point into a string.
+Every orchestrator that has one has a bug tracker full of it.
+
+Here the decision lives in the language its author already writes, where their
+own test framework can reach it.
+
+### A missing key is a failure, not an empty value
+
+If the key is not there, the step **fails** and the message names it alongside
+what the publisher actually did write:
+
+```
+step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"
+```
+
+The alternative — reading a missing key as "empty, so skip" — turns a typo into
+a step that stops running silently and forever, with nothing anywhere saying
+why. That is the worst outcome this feature can have.
+
+The key is always qualified by the step that publishes it, and that step has to
+be one this one depends on. Both are refused at **publish**: a step gated on a
+key it can never see would be skipped forever, and finding that out when a
+nightly stops running is too late.
 
 ## Saying what an arrow means
 

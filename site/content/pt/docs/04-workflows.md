@@ -116,7 +116,64 @@ steps:
 | `marker` | `false` | um passo sem comando, para um `start` ou um `end` |
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
 | `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
+| `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
+
+## Rodando um passo só quando há o que fazer
+
+```python
+# no extract
+context.set(has_rows=len(rows) > 0)
+```
+
+```yaml
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: extract.has_rows
+```
+
+O `unless_empty` nomeia uma **chave**, não uma expressão. O passo decide e
+publica a resposta; o motor lê uma chave e pergunta se ela está vazia.
+
+| conta como vazio | conta como presente |
+|---|---|
+| `false`, `0`, `""`, `null`, `[]`, `{}` | todo o resto |
+
+`"false"` como **string** está presente. Um passo que publicou esses cinco
+caracteres publicou alguma coisa, e adivinhar que ele queria dizer um booleano é
+como uma regra começa a ter opiniões que o autor dela não enxerga. Publique um
+booleano de verdade.
+
+### Por que não uma expressão
+
+O caminho tentador é `when: "{{ context.extract.rows > 0 }}"`. Uma mini
+linguagem de expressão é um compromisso grande: precisa de parser, de um sistema
+de tipos para dizer o que `>` significa sobre um JSON `any`, de uma história de
+segurança porque a expressão vem de um YAML que outra pessoa escreveu, e de
+mensagens de erro que apontam para dentro de uma string. Todo orquestrador que
+tem uma tem um bug tracker cheio disso.
+
+Aqui a decisão fica na linguagem que o autor já escreve, onde o framework de
+teste dele alcança.
+
+### Uma chave que não existe é falha, não valor vazio
+
+Se a chave não está lá, o passo **falha**, e a mensagem a nomeia junto do que o
+publicador de fato escreveu:
+
+```
+step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"
+```
+
+A alternativa — ler chave ausente como "vazio, então pula" — transforma um erro
+de digitação num passo que para de rodar em silêncio e para sempre, sem nada em
+lugar nenhum dizendo por quê. É o pior resultado que essa feature pode ter.
+
+A chave é sempre qualificada pelo passo que a publica, e esse passo precisa ser
+um de que este depende. Os dois são recusados no **publish**: um passo travado
+numa chave que ele nunca vai ver ficaria pulado para sempre, e descobrir isso
+quando um noturno para de rodar é tarde demais.
 
 ## Dizendo o que uma seta significa
 
