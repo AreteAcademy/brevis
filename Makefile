@@ -55,12 +55,18 @@ test-db: ## Creates and migrates the test database (idempotent)
 	@BREVIS_DATABASE_URL="$(TEST_DB_URL)" go run ./cmd/brevis migrate up >/dev/null
 
 check: ## gofmt + vet + tests (the gate before committing)
-	@test -z "$$(gofmt -l cmd internal migrations)" || { echo "gofmt pendente:"; gofmt -l cmd internal migrations; exit 1; }
+	@test -z "$$(gofmt -l cmd internal migrations)" || { echo "gofmt pending:"; gofmt -l cmd internal migrations; exit 1; }
 	@go vet ./...
 	@go test ./...
+	@# The queue's tests need Postgres and SKIP without it, so this gate is
+	@# quieter than CI. A translated assertion in dispatcher_test.go passed here
+	@# and failed on master for exactly that reason -- so say what was skipped
+	@# rather than let a green `make check` imply more than it checked.
+	@test -n "$$BREVIS_TEST_DATABASE_URL" || \
+	  echo "note: the queue's tests were skipped (no BREVIS_TEST_DATABASE_URL). CI runs them: make test-int"
 
 dev: ## Hot reload: rebuilds and restarts on every change (needs `make up` first)
-	@command -v air >/dev/null || { echo "instale: go install github.com/air-verse/air@latest"; exit 1; }
+	@command -v air >/dev/null || { echo "install it: go install github.com/air-verse/air@latest"; exit 1; }
 	@test -x bin/tailwindcss || $(MAKE) tailwind-install
 	@BREVIS_DATABASE_URL="$(DB_URL)" air
 

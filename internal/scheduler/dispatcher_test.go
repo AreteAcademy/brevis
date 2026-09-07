@@ -483,7 +483,7 @@ func TestTheAlertGoesOutOnceWhenTheAttemptsRunOut(t *testing.T) {
 	if len(a.Tags) != 3 || a.Tags[1] != "id" {
 		t.Errorf("the snapshot's tags did not arrive: %v", a.Tags)
 	}
-	if !strings.Contains(a.Err, "codigo 2") {
+	if !strings.Contains(a.Err, "code 2") {
 		t.Errorf("the alert has no cause: %q", a.Err)
 	}
 	if a.BaseURL == "" || a.RunID != r.ID.String() {
