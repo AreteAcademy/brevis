@@ -130,16 +130,16 @@ func TestTheGoExecutorRespectsTheTimeout(t *testing.T) {
 
 func TestTheGoExecutorPropagatesTheTasksError(t *testing.T) {
 	reg := execution.NewRegistry()
-	failure1 := errors.New("source unavailable")
+	failure := errors.New("source unavailable")
 	reg.MustRegister(execution.FuncTask{TaskName: "falha", Fn: func(context.Context, execution.Input) error {
-		return failure1
+		return failure
 	}})
 
 	ev, _ := local.NewGoExecutor(reg).Execute(context.Background(),
 		execution.TaskExec{ExecutionID: "1", NodeID: "n", Action: "falha"})
 	events := collectEvents(ev)
 
-	if !errors.Is(events[len(events)-1].Err, failure1) {
+	if !errors.Is(events[len(events)-1].Err, failure) {
 		t.Error("the task's error did not reach the event")
 	}
 }

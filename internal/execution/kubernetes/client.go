@@ -192,10 +192,10 @@ func (c *Client) LerPod(ctx context.Context, name string) (Pod, error) {
 // Logs opens the container's output stream. With `follow`, the response only
 // ends when the container ends — which is why there is no timeout on the
 // http.Client.
-func (c *Client) Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error) {
+func (c *Client) Logs(ctx context.Context, name string, follow bool) (io.ReadCloser, error) {
 	q := url.Values{}
 	q.Set("container", containerName)
-	if follow1 {
+	if follow {
 		q.Set("follow", "true")
 	}
 	res, err := c.request(ctx, http.MethodGet,

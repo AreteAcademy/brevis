@@ -74,11 +74,11 @@ func BenchmarkIngestionID(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		copy1 := make(map[string]any, len(r))
+		copied := make(map[string]any, len(r))
 		for k, v := range r {
-			copy1[k] = v
+			copied[k] = v
 		}
-		if _, _, err := applyAll(fns, copy1); err != nil {
+		if _, _, err := applyAll(fns, copied); err != nil {
 			b.Fatal(err)
 		}
 	}

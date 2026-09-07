@@ -136,12 +136,12 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	l := lote(5)
 	opt := sdk.WriteOptions{Dedup: sdk.DedupMerge}
 
-	first1, err := target.Write(context.Background(), l, opt)
+	first, err := target.Write(context.Background(), l, opt)
 	if err != nil {
 		t.Fatalf("primeira: %v", err)
 	}
-	if first1.RowsLoaded != 5 {
-		t.Errorf("primeira: %d carregadas", first1.RowsLoaded)
+	if first.RowsLoaded != 5 {
+		t.Errorf("primeira: %d carregadas", first.RowsLoaded)
 	}
 
 	segunda, err := target.Write(context.Background(), l, opt)
@@ -377,8 +377,8 @@ func TestIntegrationMySQLToMySQL(t *testing.T) {
 		return res
 	}
 
-	if first1 := runIt(); first1.Rows != 100 {
-		t.Errorf("primeira carga: %d linhas, esperado 100", first1.Rows)
+	if first := runIt(); first.Rows != 100 {
+		t.Errorf("primeira carga: %d linhas, esperado 100", first.Rows)
 	}
 	if segunda := runIt(); segunda.Rows != 0 || segunda.Ignored != 100 {
 		t.Errorf("segunda carga: %d carregadas e %d ignoradas", segunda.Rows, segunda.Ignored)

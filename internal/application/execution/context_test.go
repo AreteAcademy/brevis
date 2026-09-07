@@ -88,12 +88,12 @@ func TestTheStepsEnvironmentCarriesTheRunsContext(t *testing.T) {
 		t.Errorf("BREVIS_RUN_LOGICAL_DATE = %q", task.Env["BREVIS_RUN_LOGICAL_DATE"])
 	}
 
-	var prms map[string]string
-	if err := json.Unmarshal([]byte(task.Env["BREVIS_RUN_PARAMS"]), &prms); err != nil {
+	var params map[string]string
+	if err := json.Unmarshal([]byte(task.Env["BREVIS_RUN_PARAMS"]), &params); err != nil {
 		t.Fatalf("BREVIS_RUN_PARAMS is not JSON: %v", err)
 	}
-	if prms["load_full"] != "true" {
-		t.Errorf("params = %v", prms)
+	if params["load_full"] != "true" {
+		t.Errorf("params = %v", params)
 	}
 }
 

@@ -149,12 +149,12 @@ func TestIntegrationDedupLoadsTheSameBatchTwice(t *testing.T) {
 	lote := loteDeTeste(5)
 	opt := sdk.WriteOptions{Dedup: sdk.DedupMerge}
 
-	first1, err := target.Write(context.Background(), lote, opt)
+	first, err := target.Write(context.Background(), lote, opt)
 	if err != nil {
 		t.Fatalf("primeira carga: %v", err)
 	}
-	if first1.RowsLoaded != 5 || first1.RowsIgnored != 0 {
-		t.Errorf("primeira: %d carregadas, %d ignoradas", first1.RowsLoaded, first1.RowsIgnored)
+	if first.RowsLoaded != 5 || first.RowsIgnored != 0 {
+		t.Errorf("primeira: %d carregadas, %d ignoradas", first.RowsLoaded, first.RowsIgnored)
 	}
 
 	segunda, err := target.Write(context.Background(), lote, opt)
@@ -394,9 +394,9 @@ func TestIntegrationPostgresToPostgres(t *testing.T) {
 		return res
 	}
 
-	first1 := runIt()
-	if first1.Rows != 100 {
-		t.Errorf("primeira carga: %d rows, esperado 100", first1.Rows)
+	first := runIt()
+	if first.Rows != 100 {
+		t.Errorf("primeira carga: %d rows, esperado 100", first.Rows)
 	}
 
 	segunda := runIt()

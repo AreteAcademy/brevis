@@ -135,9 +135,9 @@ func TestCancelInterrompe(t *testing.T) {
 	}
 }
 
-func hasLog(events []execution.Event, msg, stream1 string) bool {
+func hasLog(events []execution.Event, msg, stream string) bool {
 	for _, e := range events {
-		if e.Kind == execution.EventLog && e.Stream == stream1 && strings.Contains(e.Message, msg) {
+		if e.Kind == execution.EventLog && e.Stream == stream && strings.Contains(e.Message, msg) {
 			return true
 		}
 	}

@@ -222,3 +222,46 @@ func indexOf(h, n string) int {
 	}
 	return -1
 }
+
+// A Runner built the way cmd/brevis builds it -- with NO ContextDir -- still
+// passes context.
+//
+// This is the test that was missing, and its absence is why the feature shipped
+// switched off: every other test in this file sets ContextDir, so all of them
+// passed while nothing outside a test ever set it. Production got an empty
+// BREVIS_OUTPUT, the pod got no terminationMessagePath, and context.set() wrote
+// to a path nobody read.
+//
+// A capability that has to be switched on by a field nobody knows about is a
+// capability nobody has.
+func TestContextWorksWithoutConfiguringAnything(t *testing.T) {
+	exec, err := local.New("local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+
+	w := wf.Workflow{
+		Slug: "default-on", Kind: wf.KindDAG,
+		Nodes: []wf.Node{
+			{ID: "extract", Run: `sh -c 'printf "{\"bucket\":\"s3://landing\"}" > "$BREVIS_OUTPUT"'`},
+			{ID: "transform", Run: `sh -c 'echo "$BREVIS_INPUT" > ` + dir + `/seen'`},
+		},
+		Edges: []wf.Edge{{From: "extract", To: "transform"}},
+	}
+
+	// No ContextDir. Exactly what cmd/brevis assembles.
+	r := app.Runner{
+		Processo: exec, Report: &coletor{},
+		Env: map[string]string{"PATH": os.Getenv("PATH")},
+	}
+	if err := r.Run(context.Background(), w); err != nil {
+		t.Fatal(err)
+	}
+
+	seen := readJSON(t, filepath.Join(dir, "seen"))
+	if seen["extract"]["bucket"] != "s3://landing" {
+		t.Errorf("context did not travel with a default Runner: %v. The feature "+
+			"is on for whoever sets a field, which is nobody", seen)
+	}
+}

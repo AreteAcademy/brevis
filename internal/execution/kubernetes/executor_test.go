@@ -21,7 +21,7 @@ type apiFalsa struct {
 	mu sync.Mutex
 
 	fases     []k8s.Pod // devolvidas em ordem, a ultima repete
-	read1     int
+	read      int
 	log       string
 	logErr    error
 	createErr error
@@ -43,11 +43,11 @@ func (a *apiFalsa) CreatePod(_ context.Context, p k8s.Pod) (k8s.Pod, error) {
 func (a *apiFalsa) LerPod(_ context.Context, _ string) (k8s.Pod, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	i := a.read1
+	i := a.read
 	if i >= len(a.fases) {
 		i = len(a.fases) - 1
 	}
-	a.read1++
+	a.read++
 	return a.fases[i], nil
 }
 
@@ -144,20 +144,20 @@ func TestAFailingPodCarriesTheExitCode(t *testing.T) {
 	}
 	events := runStep(t, api, task())
 
-	var failure1 *execution.Event
+	var failure *execution.Event
 	for i := range events {
 		if events[i].Kind == execution.EventFailed {
-			failure1 = &events[i]
+			failure = &events[i]
 		}
 	}
-	if failure1 == nil {
+	if failure == nil {
 		t.Fatalf("no failure event: %+v", events)
 	}
-	if failure1.ExitCode != 2 {
-		t.Errorf("exit code = %d, want 2", failure1.ExitCode)
+	if failure.ExitCode != 2 {
+		t.Errorf("exit code = %d, want 2", failure.ExitCode)
 	}
-	if !strings.Contains(failure1.Message, "code 2") {
-		t.Errorf("message = %q", failure1.Message)
+	if !strings.Contains(failure.Message, "code 2") {
+		t.Errorf("message = %q", failure.Message)
 	}
 }
 
@@ -268,18 +268,18 @@ func TestAPodThatDoesNotStartFailsWithTheSchedulersReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var failure1 *execution.Event
+	var failure *execution.Event
 	for ev := range ch {
 		if ev.Kind == execution.EventFailed {
 			e := ev
-			failure1 = &e
+			failure = &e
 		}
 	}
-	if failure1 == nil {
+	if failure == nil {
 		t.Fatal("the step never failed -- it would stay stuck forever")
 	}
-	if !strings.Contains(failure1.Message, "Insufficient cpu") {
-		t.Errorf("the message does not say why it was not scheduled: %q", failure1.Message)
+	if !strings.Contains(failure.Message, "Insufficient cpu") {
+		t.Errorf("the message does not say why it was not scheduled: %q", failure.Message)
 	}
 }
 

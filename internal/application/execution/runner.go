@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -85,9 +87,17 @@ type Runner struct {
 	// recorded and the DAG in the UI shows up with no execution state.
 	Persist Persister
 
-	// ContextDir is where a step's published context is written locally. Empty
-	// turns the feature off, which is what a Runner assembled before this
-	// existed gets.
+	// ContextDir is where a step's published context is written on the ENGINE's
+	// filesystem, for the executors that read a real file.
+	//
+	// Empty is the normal case and does NOT turn the feature off: Run creates a
+	// temporary directory per run and removes it at the end. It was "empty
+	// means off" for one commit, and the consequence was that the whole feature
+	// worked in tests and did nothing for a user, because nothing outside a
+	// test ever set it. A capability that has to be switched on by a field
+	// nobody knows about is a capability nobody has.
+	//
+	// Set it to pin the location -- a test that wants to read the files back.
 	ContextDir string
 
 	// published is what each step of this run has published so far, keyed by
@@ -149,10 +159,28 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	//
 	// It is created here and not on the struct because Runner travels by value:
 	// every node gets a copy, and only a pointer makes what one step published
-	// visible to the next. A nil one turns the feature off, which is what a
-	// Runner assembled before this existed gets.
+	// visible to the next.
 	if r.published == nil {
 		r.published = newPublished(r.seedContext(ctx))
+	}
+
+	// And somewhere for the steps to write. Created here, once, because
+	// building a task must not do I/O -- and defaulted rather than required,
+	// so the feature is on for everybody instead of on for whoever knew to set
+	// the field.
+	if r.ContextDir == "" {
+		dir, err := os.MkdirTemp("", "brevis-context-*")
+		if err != nil {
+			// Not fatal: losing the context between steps is worse than
+			// nothing, but losing the RUN over a temp directory is worse
+			// still. The steps that read will report the missing key
+			// themselves, which names the step and the key.
+			slog.WarnContext(ctx, "context between steps is off for this run",
+				"reason", "could not create a temporary directory", "error", err)
+		} else {
+			r.ContextDir = dir
+			defer func() { _ = os.RemoveAll(dir) }()
+		}
 	}
 	porID := make(map[string]wf.Node, len(w.Nodes))
 	for _, n := range w.Nodes {

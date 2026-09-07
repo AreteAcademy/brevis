@@ -60,10 +60,10 @@ func TestPageKeyAdvancesOneAtATime(t *testing.T) {
 // inteira em silencio.
 func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 	casos := []struct {
-		name   string
-		url    func(string) string
-		first1 int
-		seq    string
+		name  string
+		url   func(string) string
+		first int
+		seq   string
 	}{
 		{"padrao comeca em 1", func(u string) string { return u }, 0, "1,2,3"},
 		{"FirstPage escolhe onde comecar", func(u string) string { return u }, 2, "2,3"},
@@ -79,7 +79,7 @@ func TestPageKeyNumbersTheFirstRequest(t *testing.T) {
 			gather(t, core.Source{
 				URL:       c.url(srv.URL),
 				PageKey:   "page",
-				FirstPage: c.first1,
+				FirstPage: c.first,
 				DataKey:   "results",
 			})
 			if got := strings.Join(seenValues, ","); got != c.seq {

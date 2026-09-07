@@ -113,19 +113,19 @@ func TestIntegrationS3RoundTrip(t *testing.T) {
 		t.Fatalf("Read: %v", err)
 	}
 
-	var read1 []map[string]any
+	var read []map[string]any
 	for env, err := range seq {
 		if err != nil {
 			t.Fatalf("iterando: %v", err)
 		}
-		read1 = append(read1, env.Payload.(map[string]any))
+		read = append(read, env.Payload.(map[string]any))
 	}
 
-	if len(read1) != 2 {
-		t.Fatalf("%d registros de volta, esperado 2", len(read1))
+	if len(read) != 2 {
+		t.Fatalf("%d registros de volta, esperado 2", len(read))
 	}
-	if read1[0]["sku"] != "W-1" || read1[1]["sku"] != "W-2" {
-		t.Errorf("os registros voltaram diferentes: %v", read1)
+	if read[0]["sku"] != "W-1" || read[1]["sku"] != "W-2" {
+		t.Errorf("os registros voltaram diferentes: %v", read)
 	}
 }
 

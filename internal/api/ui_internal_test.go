@@ -140,8 +140,8 @@ func TestNextRunsRespectsTheLimit(t *testing.T) {
 	}
 }
 
-func withTimes(slug string, last1 *time.Time, proxima *time.Time) postgres.WorkflowSummary {
-	return postgres.WorkflowSummary{Slug: slug, LastRunAt: last1, NextRun: proxima, HasSchedule: true}
+func withTimes(slug string, last *time.Time, next *time.Time) postgres.WorkflowSummary {
+	return postgres.WorkflowSummary{Slug: slug, LastRunAt: last, NextRun: next, HasSchedule: true}
 }
 
 func TestSortingByLastRun(t *testing.T) {

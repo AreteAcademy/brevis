@@ -16,15 +16,15 @@ import (
 // what every destination does on a refusal -- the result exists so RowErrors is
 // readable afterwards.
 type fakeTarget struct {
-	failure1 bool
-	rows     []string
+	failure bool
+	rows    []string
 }
 
 func (fakeTarget) Describe() string { return "destino.teste" }
 
 func (d fakeTarget) Write(context.Context, []Envelope, WriteOptions) (*LoadResult, error) {
 	res := &LoadResult{RowsLoaded: 2, ErrorRows: d.rows}
-	if d.failure1 {
+	if d.failure {
 		res.RowsLoaded = 0
 		return res, context.DeadlineExceeded
 	}
@@ -59,7 +59,7 @@ func runCapturingLog(t *testing.T, target Writer) string {
 // apart. And a "loaded" at INFO during a failure never reaches whoever watches
 // ERROR.
 func TestTheLogDoesNotSayLoadedWhenItDidNot(t *testing.T) {
-	output := runCapturingLog(t, fakeTarget{failure1: true, rows: []string{"linha 0 recusada"}})
+	output := runCapturingLog(t, fakeTarget{failure: true, rows: []string{"linha 0 recusada"}})
 
 	if strings.Contains(output, "msg=loaded") {
 		t.Errorf("uma carga que falhou logou \"loaded\":\n%s", output)

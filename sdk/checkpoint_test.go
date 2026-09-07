@@ -86,12 +86,12 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 	var leituras int
 	src := countedSource{records: twoRecords(), leituras: &leituras, soUmaVez: true}
 
-	var first1 []Envelope
+	var first []Envelope
 	_, err := runIt(t, &Pipeline{
 		Name:       "fetcher",
 		Source:     Source{From: src},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: keepingTarget{received: &first1, fail: true}},
+		Target:     Target{To: keepingTarget{received: &first, fail: true}},
 		Run:        RunContext{ID: "run-1", Attempt: 0},
 	})
 	if err == nil {

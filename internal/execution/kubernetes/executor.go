@@ -19,7 +19,7 @@ import (
 type API interface {
 	CreatePod(ctx context.Context, p Pod) (Pod, error)
 	LerPod(ctx context.Context, name string) (Pod, error)
-	Logs(ctx context.Context, name string, follow1 bool) (io.ReadCloser, error)
+	Logs(ctx context.Context, name string, follow bool) (io.ReadCloser, error)
 	DeletePod(ctx context.Context, name string) error
 }
 
