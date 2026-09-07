@@ -13,6 +13,85 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.54.0] — 2026-09-07
+
+### Added: `sdk/context`, the Go half of context between steps
+
+This package has existed in the tree since the context work and **has never
+been published**. The Python library shipped as `brevis` 0.1.1 on PyPI; its Go
+counterpart did not, so anyone following `docs/CONTEXT.md` and running
+`go get github.com/AreteAcademy/brevis/sdk/context` got nothing.
+
+```go
+import "github.com/AreteAcademy/brevis/sdk/context"
+
+bucket, err := context.String("extract.bucket")
+_ = context.Set("rows", 48213)
+```
+
+The key is **always** qualified by the step that wrote it. Steps are isolated —
+`extract` and `transform` can both publish `bucket` and neither loses it — and a
+bare key throws that away the moment two of them do. A bare key that names a
+publisher is refused, saying which steps published it.
+
+There is no step argument on `Set`, and that is what makes the isolation
+structural rather than a rule: a step can only write its own.
+
+`MaxBytes` is 4096, and it is not this library's number — it is the kubelet's
+ceiling on a termination message, which is how the value leaves the pod.
+Inheriting a ceiling is stronger than enforcing a policy.
+
+**Cost: 69 packages**, no driver, no `net/http`, pinned by
+`.github/scripts/pruning-check.sh`. A Python-first team's one Go step pays
+nothing to publish a watermark.
+
+### Added: `sdk.Meter`, and the standard metrics that arrive without asking
+
+```go
+sdk.Run(sdk.Pipeline{
+    Meter:  m,           // any two-method implementation
+    Source: /* … */,
+})
+```
+
+**Setting it requires writing no counters.** The SDK already tracked records,
+rows, pages, HTTP attempts, bytes and the extract and load durations, and
+already printed them in the result line; `Meter` only decides where else they
+go. What a consumer's own calls are for is the numbers only their pipeline
+knows — "rows the vendor rejected", "quota remaining".
+
+Two methods, because a Counter answers "how many" and a Histogram answers "how
+long" or "how big", and everything a data pipeline reports is one of the two.
+Gauges are absent: a process that lives ninety seconds has no current value
+worth sampling.
+
+**It is an interface and nothing else, so it costs zero dependencies** — the
+same shape `to.Files` uses for a `Store`. `pruning-check.sh` builds the same
+consumer twice, with and without a `Meter`, and fails if the dependency sets
+differ.
+
+A counter that would be zero is not sent: it is indistinguishable from one never
+called, and not sending it keeps a fetcher that never paginates from owning a
+`pages` series that is permanently flat. The durations are the deliberate
+exception — a histogram's count is how many runs happened, so dropping the fast
+ones biases every percentile upward.
+
+The OpenTelemetry implementation is **not** in this release, and the reason is
+worth recording: putting an OTLP exporter in `sdk/go.mod` made `go mod tidy`
+resolve the whole graph upward — BigQuery 1.50 → 1.72, storage 1.30 → 1.56 —
+and a consumer of `sdk/to/bigquery` went from 460 packages to 736. Nobody
+imported anything new; the module graph moved underneath them. Package-level
+pruning does not protect a consumer from a **module-level** version bump, so
+`sdk/metrics/otelmeter` needs its own `go.mod` — and a sibling module here
+requires a published SDK version. This release is the one it will require.
+
+### Nothing breaks
+
+The exported surface of every public package, compared against `v0.53.0`:
+**eleven additions, zero removals.**
+
+---
+
 ## [0.53.0] — 2026-09-07
 
 ### Changed: the last Portuguese names in the exported API, with aliases

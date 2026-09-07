@@ -56,7 +56,26 @@ import (
 	"$MODULO/to"
 	"$MODULO/store/gcs"
 	"$MODULO/to/bigquery"
+
+	// The context package is imported under a name of its own: it is called
+	// context, exactly like the standard library's, and a consumer following the
+	// docs hits that collision on the first line. It is written here the way a
+	// real consumer has to write it.
+	//
+	// And no backticks anywhere inside this heredoc. It is unquoted so \$MODULO
+	// expands, which also makes a backtick a command substitution -- a comment
+	// here once tried to run \"context\" as a program, and said so in the middle
+	// of a passing check.
+	brevisctx "$MODULO/context"
 )
+
+// meter is the whole surface an implementation of sdk.Meter has to cover, and
+// it is here so a change to the interface fails BEFORE a release rather than in
+// somebody's fetcher after one.
+type meter struct{}
+
+func (meter) Counter(string, int64, ...sdk.Attr)     {}
+func (meter) Histogram(string, float64, ...sdk.Attr) {}
 
 var _ = from.Refresh{Store: gcs.Credential{Bucket: "b", Object: "o"}}
 
@@ -116,6 +135,19 @@ func main() {
 
 	// The other destination, which must not drag BigQuery along with it.
 	_, _ = sdk.Load(context.Background(), data, sdk.Target{To: to.Files{Path: "./out/"}})
+
+	// Context between steps, from the outside. A key is ALWAYS qualified by the
+	// step that wrote it; Set takes no step, because a step may only write its
+	// own.
+	bucket, _ := brevisctx.String("extract.bucket")
+	rows, _ := brevisctx.Int("extract.rows")
+	_ = brevisctx.Set("done", true)
+	fmt.Println(bucket, rows, brevisctx.MaxBytes)
+
+	// A Meter costs nothing to declare and requires no counters to be written:
+	// everything above is already routed to it.
+	_ = sdk.Pipeline{Meter: meter{}, Source: sdk.Source{From: from.Files{}}}
+	fmt.Println(sdk.A("k", "v"), sdk.MetricRows)
 
 	env := sdk.Envelope{Provider: "p", Entity: "e", SourceKey: "k"}
 	id, err := env.IngestionID()
