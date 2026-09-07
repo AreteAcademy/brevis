@@ -1,0 +1,43 @@
+# A context library, and nothing else.
+#
+# `dependencies` is empty and stays empty. This gets installed into an image
+# that already has pandas, pyarrow and a resolver at its limit; a package that
+# drags a transitive dependency into that is a package teams work around
+# instead of installing.
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "brevis-context"
+version = "0.1.0"
+description = "Pass context between the steps of a Brevis workflow"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = []
+keywords = ["brevis", "orchestration", "data-engineering", "etl"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Distributed Computing",
+]
+
+[project.urls]
+Homepage = "https://github.com/AreteAcademy/brevis"
+Source = "https://github.com/AreteAcademy/brevis/tree/master/lib/python-context"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/brevis"]
+
+[dependency-groups]
+dev = ["pytest>=7"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
