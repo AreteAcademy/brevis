@@ -213,7 +213,12 @@
       "div",
       {
         style: {
-          minWidth: 190,
+          // The API declares the width, so the card fills it rather than
+          // sizing to its own text: a column of cards that each chose their
+          // own width has ragged edges and the layout reserved one width for
+          // all of them anyway.
+          width: "100%",
+          boxSizing: "border-box",
           borderRadius: 14,
           border: "1px solid " + (d.status === "pending" ? LINE : "color-mix(in srgb, " + c.ring + " 40%, transparent)"),
           background: SURFACE,
@@ -316,7 +321,6 @@
                 marginTop: 4, color: MUTED, fontSize: 11,
                 fontFamily: "ui-monospace, SFMono-Regular, monospace",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                maxWidth: 200,
               },
             },
             d.acao

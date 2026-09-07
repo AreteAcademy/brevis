@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -404,16 +405,27 @@ func TestTheSDKBadgeComesOutOnTheNode(t *testing.T) {
 	}
 }
 
-// A step that is not an SDK one stays exactly as it was: no group, no children,
-// no new field. A missing stage must never change the screen of a step that
+// A step that is not an SDK one gains no NESTING: no parent, no children, no
+// declared height. A missing stage must never change the screen of a step that
 // works.
-func TestAPlainStepGainsNoNewField(t *testing.T) {
+//
+// A declared WIDTH is not nesting, and every card has one now: letting a card
+// size itself to its text made a column of ragged edges, and the layout
+// reserved one width for all of them anyway -- so the drawing and the
+// arithmetic disagreed about how wide a step is.
+func TestAPlainStepGainsNoNesting(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
 		"a": {NodeID: "a", Status: "success", DurationMs: 1200},
 	})
 	for _, n := range g.Nodes {
-		if n.ParentID != "" || n.Extent != "" || n.Style != nil || n.Selectable != nil {
+		if n.ParentID != "" || n.Extent != "" || n.Selectable != nil {
 			t.Errorf("a plain node gained a nesting field: %+v", n)
+		}
+		if _, tall := n.Style["height"]; tall {
+			t.Errorf("a step with no phases declared a height: %+v", n.Style)
+		}
+		if w, ok := n.Style["width"].(float64); !ok || int(w) != 230 {
+			t.Errorf("a card without the declared width: %+v", n.Style)
 		}
 		if n.Type != "brevis" {
 			t.Errorf("no comum mudou de tipo: %q", n.Type)
@@ -759,6 +771,186 @@ func TestAWorkflowWithNoGroupsIsUnchanged(t *testing.T) {
 		}
 		if _, has := n.Data["grupo"]; has {
 			t.Errorf("%s carries a grupo key", n.ID)
+		}
+	}
+}
+
+// TestAGroupsBoxNeverContainsAStepThatIsNotInIt.
+//
+// The first design made the box the bounding rectangle of its members, and that
+// LIES. In the example workflow `notify_failure` belongs to no group and sits in
+// the same column as `quality.count_rows`, so it fell inside the QUALITY
+// rectangle and the screen said it was part of a group it has nothing to do
+// with. A box that claims the wrong membership is worse than no box.
+func TestAGroupsBoxNeverContainsAStepThatIsNotInIt(t *testing.T) {
+	// The exact shape from the screenshot, and it has to be exact: the group's
+	// two members are on DIFFERENT rows in adjacent columns, and the stray sits
+	// in the row the second member occupies. A bounding box over the members
+	// then covers both rows in both columns -- and the stray is in it.
+	//
+	//   col 1        col 2
+	//   count (g)    filler
+	//   notify       fresh (g)
+	w := wf.Workflow{
+		Slug: "quality_and_a_stray",
+		Nodes: []wf.Node{
+			{ID: "report", Run: "./report.sh"},
+			{ID: "count", Run: "./count.sh", Group: "quality"},
+			{ID: "notify", Run: "./notify.sh"},
+			{ID: "filler", Run: "./filler.sh"},
+			{ID: "fresh", Run: "./fresh.sh", Group: "quality"},
+		},
+		Edges: []wf.Edge{
+			{From: "report", To: "count"}, {From: "report", To: "notify"},
+			{From: "count", To: "filler"}, {From: "count", To: "fresh"},
+		},
+	}
+	_, g := request(t, newUI(defsFake{w: w}, execsFake{}), "/api/workflows/quality_and_a_stray/graph")
+
+	type box struct{ x, y, w, h int }
+	boxes := map[string]box{}
+	for _, n := range g.Nodes {
+		if n.Type != "grupo" {
+			continue
+		}
+		boxes[n.Data["label"].(string)] = box{
+			n.Position.X, n.Position.Y,
+			int(n.Style["width"].(float64)), int(n.Style["height"].(float64)),
+		}
+	}
+	if len(boxes) == 0 {
+		t.Fatal("no group box was drawn")
+	}
+
+	for _, n := range g.Nodes {
+		if n.Type != "brevis" {
+			continue
+		}
+		mine, _ := n.Data["grupo"].(string)
+		for name, b := range boxes {
+			if name == mine {
+				continue
+			}
+			// The card's top-left corner is enough: a card that starts inside
+			// somebody else's box reads as part of it, whatever its height.
+			inside := n.Position.X >= b.x && n.Position.X < b.x+b.w &&
+				n.Position.Y >= b.y && n.Position.Y < b.y+b.h
+			if inside {
+				t.Errorf("%q (group %q) sits inside the %q box", n.ID, mine, name)
+			}
+		}
+	}
+}
+
+// TestAStepsPhasesStartBelowItsOwnContent.
+//
+// A step's phases are absolute children of its card, so an offset that is too
+// small draws the first one on top of the card's own status line. That is what
+// the screenshot showed: `check` over `success 24ms`.
+//
+// The card grew a chip row and a context count and the offset did not follow,
+// which is why it is MEASURED from the same map the browser gets rather than
+// being a constant.
+func TestAStepsPhasesStartBelowItsOwnContent(t *testing.T) {
+	w := wf.Workflow{
+		Slug:  "phases",
+		Nodes: []wf.Node{{ID: "load", Run: "python load.py", Runtime: "python"}},
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := uuid.New()
+	ui := newUI(defsFake{w: w}, execsFake{
+		run: dom.Run{ID: id, WorkflowSlug: w.Slug, Status: dom.StatusRunning, Definition: definition},
+		states: map[string]postgres.NodeState{
+			"load": {NodeID: "load", Status: "running", SdkVersion: "0.54.0",
+				Published: json.RawMessage(`{"rows":3}`),
+				Stages: []postgres.Stage{
+					{Name: "check", State: "done"}, {Name: "extract", State: "done"},
+					{Name: "load", State: "running"},
+				}},
+		},
+	})
+	_, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
+
+	var card, firstPhase, cardHeight int
+	found := false
+	for _, n := range g.Nodes {
+		switch {
+		case n.ID == "load":
+			cardHeight = int(n.Style["height"].(float64))
+		case n.ParentID == "load":
+			if !found || n.Position.Y < firstPhase {
+				firstPhase = n.Position.Y
+			}
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("the phases were not drawn")
+	}
+	_ = card
+
+	// This card carries a command, a runtime chip and a context count, so its
+	// content is well past the old fixed 74.
+	if firstPhase < 120 {
+		t.Errorf("the first phase starts at %d, which is inside a card carrying "+
+			"a command, a chip row and a context count", firstPhase)
+	}
+	if want := firstPhase + 3*30; cardHeight < want {
+		t.Errorf("the card is %d tall and its three phases end at %d", cardHeight, want)
+	}
+}
+
+// Two cards in a column never touch, whatever they carry. A step with phases is
+// several times the height of one without, and a fixed gap computed from the
+// wrong height is how one card lands on another.
+func TestTwoCardsInAColumnNeverTouch(t *testing.T) {
+	w := wf.Workflow{
+		Slug: "column",
+		Nodes: []wf.Node{
+			{ID: "root", Run: "./root.sh"},
+			{ID: "tall", Run: "python a.py", Runtime: "python"},
+			{ID: "short", Run: "./b.sh"},
+		},
+		Edges: []wf.Edge{{From: "root", To: "tall"}, {From: "root", To: "short"}},
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := uuid.New()
+	ui := newUI(defsFake{w: w}, execsFake{
+		run: dom.Run{ID: id, WorkflowSlug: w.Slug, Status: dom.StatusRunning, Definition: definition},
+		states: map[string]postgres.NodeState{
+			"tall": {NodeID: "tall", Status: "running", Stages: []postgres.Stage{
+				{Name: "check"}, {Name: "extract"}, {Name: "load"}}},
+		},
+	})
+	_, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
+
+	type placed struct{ y, h int }
+	byColumn := map[int][]placed{}
+	for _, n := range g.Nodes {
+		if n.Type != "brevis" {
+			continue
+		}
+		h := 0
+		if raw, ok := n.Style["height"].(float64); ok {
+			h = int(raw)
+		} else {
+			h = 84 // a plain card; the assertion below only needs a floor
+		}
+		byColumn[n.Position.X] = append(byColumn[n.Position.X], placed{n.Position.Y, h})
+	}
+	for x, cards := range byColumn {
+		sort.Slice(cards, func(i, j int) bool { return cards[i].y < cards[j].y })
+		for i := 1; i < len(cards); i++ {
+			gap := cards[i].y - (cards[i-1].y + cards[i-1].h)
+			if gap < 20 {
+				t.Errorf("column %d: two cards are %dpx apart", x, gap)
+			}
 		}
 	}
 }
