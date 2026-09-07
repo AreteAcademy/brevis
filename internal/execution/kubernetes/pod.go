@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
+
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
@@ -91,6 +93,16 @@ type Container struct {
 	Resources    *Resources    `json:"resources,omitempty"`
 	WorkingDir   string        `json:"workingDir,omitempty"`
 	VolumeMounts []VolumeMount `json:"volumeMounts,omitempty"`
+
+	// TerminationMessagePath is where the step publishes its context, and the
+	// kubelet copies that file's contents into the pod's status when the
+	// container ends -- with success or not.
+	//
+	// Declared even though it is the default, because it is half of a contract:
+	// the other half is the BREVIS_OUTPUT the step is handed, and the two
+	// disagreeing means a step writes somewhere nobody reads. Written side by
+	// side, they cannot drift.
+	TerminationMessagePath string `json:"terminationMessagePath,omitempty"`
 }
 
 type Var struct {
@@ -171,6 +183,26 @@ func (p Pod) Finished() bool {
 }
 
 // Saida returns the container's exit code and whether it has finished.
+// PublishedContext is what the step wrote to its termination message.
+//
+// The engine already fetches this status to get the exit code, so the context
+// arrives with it: no extra call, no volume, no port.
+//
+// Read on FAILURE too, and deliberately: a step that published and then failed
+// said something true up to that point, and the runner decides what to do with
+// it. Reading only on success throws away the one clue a failing step left.
+func (p Pod) PublishedContext() string {
+	if p.Status == nil {
+		return ""
+	}
+	for _, c := range p.Status.ContainerStatuses {
+		if c.Name == containerName && c.State.Terminated != nil {
+			return c.State.Terminated.Message
+		}
+	}
+	return ""
+}
+
 func (p Pod) Output() (int, bool) {
 	if p.Status == nil {
 		return 0, false
@@ -341,6 +373,25 @@ func BuildPod(t execution.TaskExec, o Options) (Pod, error) {
 		c.Command = strings.Fields(t.Command)
 	}
 
+	// Where the step publishes its context, if it publishes at all.
+	//
+	// The runner picked a path meaningful on ITS filesystem, and inside a pod
+	// that path is nothing. So it is overridden here, which is the override
+	// TaskExec.OutputPath's doc says the executor may make: only the executor
+	// knows what a path means in its world.
+	//
+	// Both halves are set together -- the file the kubelet reads, and the
+	// variable telling the step where to write -- because a step writing where
+	// nobody reads is a silent failure, and this is the one place that can keep
+	// them in step.
+	if t.OutputPath != "" {
+		c.TerminationMessagePath = terminationMessagePath
+		if t.Env == nil {
+			t.Env = map[string]string{}
+		}
+		t.Env[runcontext.EnvOutput] = terminationMessagePath
+	}
+
 	// A sorted environment: two pods with the same content have to produce the
 	// same JSON, or comparing two deploys turns into noise.
 	keys := make([]string, 0, len(t.Env))
@@ -480,6 +531,18 @@ func resources(t execution.TaskExec) *Resources {
 }
 
 var invalidInName = regexp.MustCompile(`[^a-z0-9-]+`)
+
+// terminationMessagePath is where a step publishes its context inside the pod.
+//
+// It is Kubernetes' own default, and using the default is the point: the
+// kubelet reads this file when the container ends and puts its contents in the
+// pod status, which the engine ALREADY fetches to get the exit code. So the
+// return path costs no volume, no sidecar, no port and no permission -- the
+// step writes a file, and the answer arrives with the status.
+//
+// The kubelet truncates it at 4096 bytes, which is where runcontext.MaxBytes
+// comes from. Inheriting the platform's ceiling is stronger than enforcing one.
+const terminationMessagePath = "/dev/termination-log"
 
 // PodName produces a valid and STABLE name for the same attempt.
 //

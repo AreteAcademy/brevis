@@ -52,6 +52,48 @@ and a library for it is a JSON parse and a file write.
 | Go | [`sdk/context`](../sdk/context/) — part of the SDK module, depends on nothing |
 | anything else | the two variables above |
 
+## How it actually reaches the database
+
+The library does **not** talk to the API. There is no `BREVIS_HOST` to set and
+nothing to resolve. The step's process opens no socket.
+
+What happens instead, with a step running in its own pod:
+
+```
+1. scheduler   builds the pod, and sets on the container:
+                 env  BREVIS_INPUT  = {"extract": {...}}      ← a value
+                 env  BREVIS_OUTPUT = /dev/termination-log    ← a path
+                 terminationMessagePath: /dev/termination-log
+
+2. your pod    context.get(...)  reads an environment variable
+               context.set(...)  writes that file
+               ── no network at all ──
+
+3. kubelet     the container ends, and the kubelet copies that file into
+               the pod's status, as containerStatuses[].state.terminated.message
+
+4. scheduler   was ALREADY reading that status to get the exit code.
+               The context arrives on the same call.
+
+5. scheduler   writes it to Postgres: task_runs.saida
+
+6. API pod     reads it from Postgres when somebody opens the run screen
+```
+
+**Nobody pushes the context anywhere. The engine collects it.**
+
+The two processes that do talk to something are the ones that already did: the
+scheduler to the Kubernetes API, for a status it was fetching anyway, and the
+API pod to Postgres. Your step talks to a file.
+
+That is why the library has no dependencies, why it needs no credential, why
+the task pod's ServiceAccount still has no permission in the cluster, and why
+`brevis run` works on a laptop with no server at all — there the path is a
+temporary file the runner reads instead of a termination message.
+
+The 4096-byte ceiling comes from this path too: the kubelet truncates that
+message at exactly that size.
+
 ## Isolation: no step can overwrite another
 
 Context is keyed by the step that published it, and a step writes only its own

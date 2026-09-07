@@ -112,6 +112,14 @@ func (e *Executor) follow(ctx context.Context, name string, t execution.TaskExec
 	// which are the ones that explain the failure.
 	e.drainLogs(ctx, name, t, events)
 
+	// What the step published, before the outcome is reported -- the runner
+	// keys it by node and the next step needs it either way.
+	if published := pod.PublishedContext(); published != "" {
+		events <- execution.Event{
+			Kind: execution.EventContext, NodeID: t.NodeID, Message: published,
+		}
+	}
+
 	codigo, finished := pod.Output()
 	if pod.Fase() == "Succeeded" {
 		events <- execution.Event{Kind: execution.EventSucceeded, NodeID: t.NodeID, ExitCode: codigo}
