@@ -14,7 +14,8 @@ import (
 )
 
 // BenchmarkExtractTransform mede o caminho quente inteiro: decodificar a
-// resposta, aplicar os transformers e compor o ingestion_id -- que e onde um
+// response, apply the transformers and compose the ingestion_id -- which is
+// where a
 // fetcher passa o tempo dele.
 func BenchmarkExtractTransform(b *testing.B) {
 	var corpo strings.Builder
@@ -33,7 +34,8 @@ func BenchmarkExtractTransform(b *testing.B) {
 	}))
 	defer srv.Close()
 
-	// O proprio SDK loga a cada extract, e o io do log entraria na medicao.
+	// The SDK itself logs on every extract, and the log's io would enter the
+	// measurement.
 	anterior := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	defer slog.SetDefault(anterior)

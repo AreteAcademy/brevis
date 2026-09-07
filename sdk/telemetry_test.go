@@ -10,16 +10,16 @@ import (
 	"time"
 )
 
-// origemLenta entrega registros com pausa entre eles, para que a duracao da
-// extracao seja mensuravel e nao zero.
-type origemLenta struct {
+// slowSource delivers records with a pause between them, so the extraction's
+// duration is measurable rather than zero.
+type slowSource struct {
 	registros []any
 	pausa     time.Duration
 }
 
-func (origemLenta) Describe() string { return "origem.lenta" }
+func (slowSource) Describe() string { return "origem.lenta" }
 
-func (o origemLenta) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, error], error) {
+func (o slowSource) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, error], error) {
 	return func(yield func(Envelope, error) bool) {
 		for _, r := range o.registros {
 			time.Sleep(o.pausa)
@@ -30,8 +30,8 @@ func (o origemLenta) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, err
 	}, nil
 }
 
-// etapasDe roda o pipeline e devolve as linhas marcadas que ele anunciou.
-func etapasDe(t *testing.T, p *Pipeline) ([]map[string]any, error) {
+// stagesOf runs the pipeline and returns the marked lines it announced.
+func stagesOf(t *testing.T, p *Pipeline) ([]map[string]any, error) {
 	t.Helper()
 	var buf bytes.Buffer
 	anterior := phaseOutput
@@ -59,14 +59,14 @@ func pipelineDeTeste(origem Reader, caixa *[]Envelope) *Pipeline {
 		Name:      "fetcher",
 		Source:    Source{From: origem},
 		Transform: []Transformer{SkipWithout("id")},
-		Target:    Target{To: destinoQueGuarda{recebido: caixa}},
+		Target:    Target{To: keepingTarget{recebido: caixa}},
 		Run:       RunContext{ID: "run-etapas", Attempt: 0},
 	}
 }
 
 func TestPhasesFollowThePipelineShape(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
+	eventos, err := stagesOf(t, pipelineDeTeste(countedSource{
 		registros: []any{map[string]any{"id": 1}, map[string]any{"id": 2}},
 		leituras:  new(int),
 	}, &caixa))
@@ -98,12 +98,12 @@ func TestPhasesFollowThePipelineShape(t *testing.T) {
 	}
 }
 
-// O anuncio carrega a versao, porque um selo que so diz "SDK" e verdadeiro e
-// inutil: a versao e o que responde "por que este passo se comporta diferente
-// do vizinho" sem ninguem abrir o Dockerfile.
+// The announcement carries the version, because a badge that only says "SDK" is
+// true and useless: the version is what answers "why does this step behave
+// differently from its neighbour" without anybody opening the Dockerfile.
 func TestTheAnnouncementCarriesTheVersion(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
+	eventos, err := stagesOf(t, pipelineDeTeste(countedSource{
 		registros: []any{map[string]any{"id": 1}}, leituras: new(int),
 	}, &caixa))
 	if err != nil {
@@ -120,19 +120,20 @@ func TestTheAnnouncementCarriesTheVersion(t *testing.T) {
 	}
 }
 
-// A extracao acaba quando o FLUXO se esgota, nao quando Extract devolve o
+// The extraction ends when the STREAM is exhausted, not when Extract returns
+// the
 // iterador.
 //
-// A cadeia e preguicosa: cronometrar as chamadas diria "extract: 3ms" numa
-// extracao de quarenta minutos, e a tela mentiria justamente sobre a etapa
+// The chain is lazy: timing the calls would say "extract: 3ms" on a forty-minute
+// extraction, and the screen would lie about precisely the stage
 // mais longa.
 func TestTheSourceDurationMeasuresTheRealExtraction(t *testing.T) {
 	var caixa []Envelope
-	p := pipelineDeTeste(origemLenta{
+	p := pipelineDeTeste(slowSource{
 		registros: []any{map[string]any{"id": 1}, map[string]any{"id": 2}, map[string]any{"id": 3}},
 		pausa:     20 * time.Millisecond,
 	}, &caixa)
-	eventos, err := etapasDe(t, p)
+	eventos, err := stagesOf(t, p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,11 +145,12 @@ func TestTheSourceDurationMeasuresTheRealExtraction(t *testing.T) {
 	}
 }
 
-// O transform nao reporta duracao. Ele roda por registro, entremeado com a
-// leitura, entao qualquer numero que saisse dali seria o tempo de outra coisa.
+// The transform reports no duration. It runs per record, interleaved with the
+// read, so any number coming out of there would be the time of something
+// else.
 func TestAMapStageInventsNoDuration(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, pipelineDeTeste(origemLenta{
+	eventos, err := stagesOf(t, pipelineDeTeste(slowSource{
 		registros: []any{map[string]any{"id": 1}}, pausa: 20 * time.Millisecond,
 	}, &caixa))
 	if err != nil {
@@ -160,11 +162,12 @@ func TestAMapStageInventsNoDuration(t *testing.T) {
 	}
 }
 
-// O que so o transform sabe: quantos entraram, quantos sairam, quantos foram
+// What only the transform knows: how many went in, how many came out, how many
+// were
 // pulados.
 func TestAMapStageSaysHowManyItDropped(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
+	eventos, err := stagesOf(t, pipelineDeTeste(countedSource{
 		registros: []any{
 			map[string]any{"id": 1},
 			map[string]any{"sem_id": true},
@@ -181,16 +184,16 @@ func TestAMapStageSaysHowManyItDropped(t *testing.T) {
 	}
 }
 
-// Fora do motor nao ha quem leia as etapas, e sujar o terminal de quem depura
-// um fetcher seria custo sem retorno.
+// Outside the engine there is nobody to read the stages, and cluttering the
+// terminal of whoever is debugging a fetcher would be cost with no return.
 func TestOutsideTheEngineNothingIsAnnounced(t *testing.T) {
 	var caixa []Envelope
-	p := pipelineDeTeste(origemContada{
+	p := pipelineDeTeste(countedSource{
 		registros: []any{map[string]any{"id": 1}}, leituras: new(int),
 	}, &caixa)
 	p.Run = RunContext{} // rodando a mao
 
-	eventos, err := etapasDe(t, p)
+	eventos, err := stagesOf(t, p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,8 +206,9 @@ func TestOutsideTheEngineNothingIsAnnounced(t *testing.T) {
 	}
 }
 
-// O teto existe porque o stream de log vira escrita em banco do outro lado: um
-// pipeline em laco derrubaria o Postgres pelo caminho do log.
+// The ceiling exists because the log stream becomes a database write on the
+// other side: a pipeline in a loop would take Postgres down through the log's
+// path.
 func TestThePhaseCap(t *testing.T) {
 	var buf bytes.Buffer
 	anterior := phaseOutput
@@ -248,15 +252,15 @@ func duracaoDaEtapa(t *testing.T, eventos []map[string]any, nome string) float64
 // structure never reached the display.
 func TestEachStageGetsItsOwnBox(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, &Pipeline{
+	eventos, err := stagesOf(t, &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: origemContada{registros: registros(), leituras: new(int)}},
+		Source: Source{From: countedSource{registros: registros(), leituras: new(int)}},
 		Stages: []Stage{
 			Map(SkipWithout("provider")),
 			Aggregate(Reduce{By: GroupBy("provider"), Agg: map[string]Aggregator{"n": Count()}}),
 			Map(Compute("x", func(map[string]any) (any, error) { return 1, nil })),
 		},
-		Target: Target{To: destinoQueGuarda{recebido: &caixa}},
+		Target: Target{To: keepingTarget{recebido: &caixa}},
 		Run:    RunContext{ID: "run-boxes"},
 	})
 	if err != nil {
@@ -301,7 +305,7 @@ func TestEachStageGetsItsOwnBox(t *testing.T) {
 // The card is half a card without saying WHICH source and WHICH destination.
 func TestTheSourceAndTargetSayWhichTheyAre(t *testing.T) {
 	var caixa []Envelope
-	eventos, err := etapasDe(t, pipelineDeTeste(origemContada{
+	eventos, err := stagesOf(t, pipelineDeTeste(countedSource{
 		registros: registros(), leituras: new(int),
 	}, &caixa))
 	if err != nil {

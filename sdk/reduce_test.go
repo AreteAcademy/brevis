@@ -182,7 +182,8 @@ func TestNumericTextAddsUp(t *testing.T) {
 	}
 }
 
-// GroupBy() sem campos reduz o fluxo inteiro a uma linha -- o total geral.
+// GroupBy() with no fields reduces the whole stream to one row -- the grand
+// total.
 func TestGroupByWithNoFieldsGivesTheGrandTotal(t *testing.T) {
 	linhas := reduzir(t, &Reduce{
 		Agg: map[string]Aggregator{"total": Sum("valor"), "n": Count()},
@@ -255,7 +256,7 @@ func TestANameCollidingWithTheGroupIsRefused(t *testing.T) {
 	}
 }
 
-// --- A prova que importa --------------------------------------------------
+// --- The proof that matters ------------------------------------------------
 
 // generateGroups produces n records spread over g groups, materializing
 // nothing: the source has to fit in a stream, or the test measures itself.
@@ -282,7 +283,7 @@ func generateGroups(n, g int) iter.Seq2[Envelope, error] {
 // exactly what was to be measured, and an aggregator keeping a million rows
 // passed with 3 MB.
 //
-// A sonda entra como um agregador a mais: o `Add` dela roda uma vez por
+// The probe goes in as one more aggregator: its `Add` runs once per
 // record, while ALL of the groups' state is alive.
 func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 	t.Helper()
@@ -305,7 +306,8 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 			if i%intervalo != 0 {
 				return nil
 			}
-			// GC antes de ler: sem ele a medida seria dominada pelo lixo dos
+			// A GC before reading: without it the measurement would be
+			// dominated by the garbage of the
 			// records already processed, which is noise, not retention.
 			runtime.GC()
 			var m runtime.MemStats
@@ -333,7 +335,7 @@ func picoDeHeap(t *testing.T, n, grupos int, agg map[string]Aggregator) uint64 {
 }
 
 // Reduce's promise is not "the sum is right": it is that MEMORY does not grow
-// com a entrada.
+// with the input.
 //
 // Cem grupos fixos, a entrada crescendo 100x. Se o teto se mantiver, a promessa
 // is in the code and not only in the documentation -- and this is the feature's

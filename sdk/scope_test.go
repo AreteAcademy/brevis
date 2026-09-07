@@ -20,7 +20,7 @@ import (
 // ser um transformer.
 //
 // As a transformer, the snapshot would depend on position: placing it after a
-// Compute produziria um registro "cru" carregando o campo que a cadeia acabou
+// Compute would produce a "raw" record carrying the field the chain had just
 // writing it. That produces no error -- it produces wrong data nobody notices
 // until somebody queries it months later.
 //
@@ -66,7 +66,8 @@ func TestTheSnapshotDoesNotDependOnThePositionInTheChain(t *testing.T) {
 	}
 }
 
-// TestTheSnapshotRefusesToOverwriteWhatTheSourceSent: gravar por cima perderia o
+// TestTheSnapshotRefusesToOverwriteWhatTheSourceSent: writing over it would
+// lose the
 // that came from the source, in silence.
 func TestTheSnapshotRefusesToOverwriteWhatTheSourceSent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -193,15 +194,15 @@ func TestAChosenNamespaceIsDeterministic(t *testing.T) {
 	}
 }
 
-// destinoQueConta registra cada leva que recebe.
-type destinoQueConta struct {
+// countingTarget records every batch it receives.
+type countingTarget struct {
 	levas    [][]int
 	falharEm int // > 0: a leva N falha
 }
 
-func (d *destinoQueConta) Describe() string { return "destino de teste" }
+func (d *countingTarget) Describe() string { return "destino de teste" }
 
-func (d *destinoQueConta) Write(_ context.Context, envs []sdk.Envelope, _ sdk.WriteOptions) (*sdk.LoadResult, error) {
+func (d *countingTarget) Write(_ context.Context, envs []sdk.Envelope, _ sdk.WriteOptions) (*sdk.LoadResult, error) {
 	var ids []int
 	for _, e := range envs {
 		ids = append(ids, e.Payload.(map[string]any)["i"].(int))
@@ -216,7 +217,7 @@ func (d *destinoQueConta) Write(_ context.Context, envs []sdk.Envelope, _ sdk.Wr
 // TestFlushEveryWritesInBatches: a long read must not have the whole batch alive
 // in memory, and the destination builds a second copy of it to serialize.
 func TestFlushEveryWritesInBatches(t *testing.T) {
-	destino := &destinoQueConta{}
+	destino := &countingTarget{}
 	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
 		To: destino, FlushEvery: 3,
 	})
@@ -240,7 +241,7 @@ func TestFlushEveryWritesInBatches(t *testing.T) {
 
 // TestFlushEveryZeroAccumulatesEverything: the default does not change.
 func TestFlushEveryZeroAccumulatesEverything(t *testing.T) {
-	destino := &destinoQueConta{}
+	destino := &countingTarget{}
 	if _, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{To: destino}); err != nil {
 		t.Fatal(err)
 	}
@@ -250,10 +251,11 @@ func TestFlushEveryZeroAccumulatesEverything(t *testing.T) {
 }
 
 // TestFlushEveryFailingMidwaySaysWhatWentIn: the load stops being atomic, and
-// esconder que as levas anteriores gravaram seria pior que dizer -- quem
+// hiding that the previous batches were written would be worse than saying so
+// -- whoever
 // re-runs it needs to know that 6 rows are already there.
 func TestFlushEveryFailingMidwaySaysWhatWentIn(t *testing.T) {
-	destino := &destinoQueConta{falharEm: 3}
+	destino := &countingTarget{falharEm: 3}
 	res, err := sdk.Load(context.Background(), dadosDe(t, 10), sdk.Target{
 		To: destino, FlushEvery: 3,
 	})

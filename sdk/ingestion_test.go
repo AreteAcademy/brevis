@@ -20,7 +20,7 @@ func aplica(t *testing.T, fn Transformer, in map[string]any) map[string]any {
 
 // The criterion that holds everything: the id has to be the one the block used
 // to produce.
-// Se ele mudar, toda carga anterior de todo consumidor deixa de casar.
+// If it changes, every previous load of every consumer stops matching.
 //
 // The expected value comes from Envelope.IngestionID, which is the
 // implementation that
@@ -47,7 +47,7 @@ func TestIngestionIDProducesTheSameIDAsBefore(t *testing.T) {
 	}
 }
 
-// E contra o valor congelado, escrito por extenso: um teste que compara duas
+// And against the frozen value, written out: a test comparing two
 // implementations passes if both change together.
 func TestIngestionIDAgainstTheFrozenValue(t *testing.T) {
 	got := aplica(t, IngestionID(), map[string]any{
@@ -87,7 +87,7 @@ func TestIngestionIDRefusesAMissingField(t *testing.T) {
 			t.Errorf("o erro não nomeia %q: %v", quer, err)
 		}
 	}
-	// E diz o que a linha tem, para o conserto sair de uma leitura.
+	// And it says what the row does have, so the fix comes out of one reading.
 	if !strings.Contains(err.Error(), "provider") {
 		t.Errorf("o erro não lista o que a linha tem: %v", err)
 	}
@@ -155,9 +155,9 @@ func TestIngestionLoadedAtRefusesToOverwrite(t *testing.T) {
 
 // TestTransformersWriteInPlace pins the NEW contract, and it is the opposite of
 // the
-// que este teste afirmava antes.
+// what this test used to assert.
 //
-// Cada transformer devolvia um mapa novo, "porque o chamador ainda pode estar
+// Each transformer returned a new map, "because the caller may still be
 // holding the map". That is true once -- for the map the decoder handed over --
 // and the other six copies per record were identical work repeated. The copy is
 // now made once, in `applyAll`.
@@ -165,7 +165,7 @@ func TestIngestionLoadedAtRefusesToOverwrite(t *testing.T) {
 // Whoever calls a transformer ALONE, outside the chain, now sees their own row
 // altered. It is documented on the Transformer type, and is the price of the
 // arithmetic
-// que o teste seguinte mede.
+// which the next test measures.
 func TestTransformersWriteInPlace(t *testing.T) {
 	linha := map[string]any{"provider": "p", "entity": "e", "source_key": "k", "record_ts": "t"}
 	saida := aplica(t, IngestionID(), linha)
@@ -181,8 +181,8 @@ func TestTransformersWriteInPlace(t *testing.T) {
 // TestTransformDoesNotMutateWhatExtractDelivered is the guarantee that came to
 // matter, and that did not exist as a test before.
 //
-// O preview do extract guarda o registro que a FONTE mandou, para mostrar
-// exatamente isso. Se a cadeia escrevesse por cima dele, o preview passaria a
+// The extract's preview keeps the record the SOURCE sent, in order to show
+// exactly that. If the chain wrote over it, the preview would start
 // show the Transform's result claiming it is the source's response -- a lie
 // nobody would have any way to notice.
 func TestTransformDoesNotMutateWhatExtractDelivered(t *testing.T) {

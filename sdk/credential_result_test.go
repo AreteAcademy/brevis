@@ -12,11 +12,11 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/from"
 )
 
-// TestResultCarregaAValidadeDaCredencial: o aviso de validade tem que chegar
-// ao Result, e nao so a um slog.Warn. O motivo esta escrito no campo: quem
-// roda o pipeline e quem precisa recolar o cookie, e um aviso que so existe
-// no log e como a morte silenciosa comeca.
-func TestResultCarregaAValidadeDaCredencial(t *testing.T) {
+// TestResultCarriesTheCredentialsExpiry: the expiry warning has to reach the
+// Result, and not only a slog.Warn. The reason is written on the field: whoever
+// runs the pipeline is whoever has to re-paste the cookie, and a warning that
+// exists only in the log is how the silent death starts.
+func TestResultCarriesTheCredentialsExpiry(t *testing.T) {
 	vence := time.Now().Add(10 * 24 * time.Hour).Truncate(time.Second)
 
 	mux := http.NewServeMux()
@@ -48,7 +48,7 @@ func TestResultCarregaAValidadeDaCredencial(t *testing.T) {
 	}
 
 	res, err := loadWith(context.Background(), dados,
-		Target{To: destinoFalso{}, Columns: []string{"id"}}, RunContext{})
+		Target{To: fakeTarget{}, Columns: []string{"id"}}, RunContext{})
 	if err != nil {
 		t.Fatalf("load: %v", err)
 	}
@@ -61,21 +61,23 @@ func TestResultCarregaAValidadeDaCredencial(t *testing.T) {
 	}
 }
 
-// TestArgsOmiteCredencialQuandoNaoHa: uma chave sempre zerada em toda linha
-// ensina quem le a pular ela, e ai ela some justo na linha que importa.
-func TestArgsOmiteCredencialQuandoNaoHa(t *testing.T) {
+// TestArgsOmitsTheCredentialWhenThereIsNone: a key that is always zeroed on
+// every line teaches the reader to skip it, and then it vanishes on exactly the
+// line that matters.
+func TestArgsOmitsTheCredentialWhenThereIsNone(t *testing.T) {
 	if got := fmt.Sprint((&Result{}).Args()...); strings.Contains(got, "credential") {
 		t.Errorf("Args() carrega a chave sem validade nenhuma: %s", got)
 	}
 }
 
-// TestArgsOmiteContadorZerado é o princípio "um número que é sempre zero é
-// pior que número nenhum", aplicado à linha do pipeline.
+// TestArgsOmitsAZeroedCounter is the principle "a number that is always zero is
+// worse than no number", applied to the pipeline's line.
 //
-// Os drivers SQL não contam bytes, então `extract_bytes=0 bytes=0 formato=""`
-// aparecia em toda execução deles -- ensinando quem lê a pular esses campos.
-// E aí, quando um pipeline de HTTP mostrasse zero de verdade, ninguém veria.
-func TestArgsOmiteContadorZerado(t *testing.T) {
+// The SQL drivers do not count bytes, so `extract_bytes=0 bytes=0 format=""`
+// showed up on every one of their runs -- teaching the reader to skip those
+// fields. And then, when an HTTP pipeline showed a genuine zero, nobody would
+// see it.
+func TestArgsOmitsAZeroedCounter(t *testing.T) {
 	vazio := fmt.Sprint((&Result{Rows: 10}).Args()...)
 	for _, chave := range []string{"extract_bytes", "bytes", "format"} {
 		if strings.Contains(vazio, chave) {

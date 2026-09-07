@@ -323,7 +323,7 @@ func TestSourceErrorCarriesTheStatus(t *testing.T) {
 // A field that does not exist is a format error: the action is to fix the
 // mapping, not to wait and try again. The error now comes from the chain, which
 // is where the
-// chave passou a ser computada.
+// key came to be computed.
 func TestFormatErrorOnAMissingKey(t *testing.T) {
 	srv := openMeteoServer(t)
 	defer srv.Close()
@@ -528,10 +528,10 @@ func TestTransformKeepsTheCounters(t *testing.T) {
 
 func TestTheDefaultNamespacesIngestionIDDoesNotChange(t *testing.T) {
 	// O nome deste teste era "NamespaceIsNotConfigurable", e virou falso na
-	// v0.38.0: sdk.Namespace escolhe outro. O que ele SEMPRE afirmou continua
+	// v0.38.0: sdk.Namespace chooses another. What it has ALWAYS asserted still
 	// still holds and is what matters -- the default's value, which is what
 	// whoever already
-	// gravou tem na tabela.
+	// wrote has in the table.
 	//
 	// WithMetadataNamespace, antes disso, era aceito, validado, defaultado e
 	// and then IGNORED: whoever set it got identical ids and believed the
@@ -735,7 +735,7 @@ func TestARejectionIsDistinctFromAProgrammingError(t *testing.T) {
 
 // And the rejection survives the crossing of the extract, which is where it
 // needs to
-// chegar para virar log e alerta.
+// arrive to become a log line and an alert.
 func TestTheRejectionSurvivesTheExtract(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"error":true,"reason":"latitude fora do intervalo"}`)
@@ -757,7 +757,7 @@ func TestTheRejectionSurvivesTheExtract(t *testing.T) {
 	}
 }
 
-// Records e DataKey respondem a mesma pergunta, e com Records o DataKey
+// Records and DataKey answer the same question, and with Records the DataKey
 // would never be read -- a field that does nothing is worse than an error.
 func TestRecordsWithDataKeyIsRefused(t *testing.T) {
 	_, err := Extract(context.Background(), Source{From: from.HTTP{

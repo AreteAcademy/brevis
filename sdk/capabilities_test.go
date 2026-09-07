@@ -16,7 +16,7 @@ import (
 
 // The compatibility matrix, as a TEST and not as a table in a .md file.
 //
-// O §5 do plano dos drivers nomeia o risco: nove drivers com Metadata, Dedup,
+// §5 of the drivers' plan names the risk: nine drivers with Metadata, Dedup,
 // CreateTable and Preview are 36 combinations, and promising all 36 without
 // measuring is how `DeleteAfterLoad` reached the documentation with a default it
 // did not have.
@@ -111,7 +111,7 @@ func TestNoSQLDestinationInventsAType(t *testing.T) {
 			continue
 		}
 		t.Run(name, func(t *testing.T) {
-			if temCampo(d.writer, "CreateTable") {
+			if hasField(d.writer, "CreateTable") {
 				t.Errorf("%s tem campo CreateTable e a matriz diz que não cria tabela; "+
 					"ou o campo faz algo, ou ele não devia existir", name)
 			}
@@ -138,8 +138,8 @@ func TestEveryDestinationDescribesItselfWithoutASecret(t *testing.T) {
 	}
 }
 
-// temCampo diz se o tipo do driver declara o campo.
-func temCampo(w sdk.Writer, name string) bool {
+// hasField says whether the driver's type declares the field.
+func hasField(w sdk.Writer, name string) bool {
 	t := reflect.TypeOf(w)
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()

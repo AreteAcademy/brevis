@@ -39,7 +39,7 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 	}
 	return &Pipeline{
 		Name:   "fetcher",
-		Source: Source{From: origemContada{registros: rows, leituras: new(int)}},
+		Source: Source{From: countedSource{registros: rows, leituras: new(int)}},
 		Stages: []Stage{
 			Aggregate(Reduce{
 				By:  GroupBy("area", "year"),
@@ -53,7 +53,7 @@ func pipelineDeEstagios(box *[]Envelope) *Pipeline {
 				IngestionID(),
 			),
 		},
-		Target: Target{To: destinoQueGuarda{recebido: box}},
+		Target: Target{To: keepingTarget{recebido: box}},
 		Run:    RunContext{ID: "run-dry"},
 	}
 }

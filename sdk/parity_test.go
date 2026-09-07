@@ -70,8 +70,8 @@ print(uuid.uuid5(ns, chave))`
 	}
 }
 
-// TestKeyWithCasaComOPython: o mesmo, para a chave.
-func TestKeyWithCasaComOPython(t *testing.T) {
+// TestKeyWithMatchesPython: the same, for the key.
+func TestKeyWithMatchesPython(t *testing.T) {
 	registro := map[string]any{"a": nil, "b": json.Number("19.0"), "c": true}
 
 	got, err := sdk.KeyWith(pycompat.Text, "a", "b", "c")(registro)
@@ -228,9 +228,9 @@ func TestTheUserAgentIsOursAndNotGos(t *testing.T) {
 	}
 }
 
-// TestUserAgentDoChamadorVence: quem precisa se passar por outra coisa
+// TestTheCallersUserAgentWins: whoever needs to present as something else
 // continua podendo.
-func TestUserAgentDoChamadorVence(t *testing.T) {
+func TestTheCallersUserAgentWins(t *testing.T) {
 	var visto string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		visto = r.Header.Get("User-Agent")
@@ -248,10 +248,10 @@ func TestUserAgentDoChamadorVence(t *testing.T) {
 	}
 }
 
-// TestResponsePreserveNumbersChegaAoObject: quem define Records decodifica por
+// TestResponsePreserveNumbersReachesObject: whoever defines Records decodes
 // on their own, and forgetting UseNumber is silent -- `1` and `1.0` become the
 // same float64 and the key comes out different from the one Python composed.
-func TestResponsePreserveNumbersChegaAoObject(t *testing.T) {
+func TestResponsePreserveNumbersReachesObject(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = fmt.Fprint(w, `{"results":[{"id":19}]}`)
 	}))

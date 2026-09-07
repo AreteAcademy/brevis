@@ -36,8 +36,8 @@ func TestFormatErrorMessage(t *testing.T) {
 			if got != c.quer {
 				t.Errorf("mensagem\n  got:  %q\n  want: %q", got, c.quer)
 			}
-			// Um buraco na mensagem e o defeito que este teste existe para
-			// pegar: dois espacos seguidos, ou uma virgula solta.
+			// A hole in the message is the defect this test exists to catch:
+			// two spaces in a row, or a stray comma.
 			if strings.Contains(got, "  ") {
 				t.Errorf("a mensagem tem espaco duplo, sinal de campo vazio interpolado: %q", got)
 			}

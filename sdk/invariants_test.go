@@ -11,20 +11,20 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
-// Os três invariantes da §14 do SDK_DECISIONS, como testes.
+// The three invariants of §14 of SDK_DECISIONS, as tests.
 //
-// Eles estavam escritos como "decisão de produto, não técnica" -- e ficaram
-// abertos meses. Um invariante que só existe em prosa é uma intenção; escrito
-// como teste, ele é uma propriedade.
+// They were written as "a product decision, not a technical one" -- and stayed
+// open for months. An invariant that exists only in prose is an intention;
+// written as a test, it is a property.
 
-// I2 é exercitado onde ele DECIDE, em load.PlanoDeCriacao -- função pura,
-// testável sem projeto do BigQuery. Um teste aqui que só afirmasse "deu erro"
-// não distinguiria a recusa por falta de Schema de uma falta de credencial, e
-// um teste que não distingue é quase um que não pode falhar.
+// I2 is exercised where it DECIDES, in load.CreationPlan -- a pure function,
+// testable with no BigQuery project. A test here that only asserted "it errored"
+// would not tell a refusal for a missing Schema from a missing credential, and a
+// test that does not distinguish is nearly one that cannot fail.
 
-// I2, a parte que dá para afirmar sem servidor: uma declaração sem tipo é
-// recusada, e a recusa diz o que escrever.
-func TestI2SchemaExigeTipo(t *testing.T) {
+// I2, the part that can be asserted without a server: a declaration with no type
+// is refused, and the refusal says what to write.
+func TestI2SchemaRequiresAType(t *testing.T) {
 	alvo := sdk.Target{
 		To:     postgres.Table{DSN: "postgres://x/y", Name: "t"},
 		Schema: sdk.Schema{{Name: "a"}},
@@ -40,9 +40,9 @@ func TestI2SchemaExigeTipo(t *testing.T) {
 	}
 }
 
-// Columns e Schema juntos são duas fontes de verdade, e a que perde perde em
-// silêncio.
-func TestI2ColumnsESchemaJuntosERecusado(t *testing.T) {
+// Columns and Schema together are two sources of truth, and the one that loses
+// loses in silence.
+func TestI2ColumnsAndSchemaTogetherIsRefused(t *testing.T) {
 	err := sdk.ValidateTarget(sdk.Target{
 		To:      postgres.Table{DSN: "postgres://x/y", Name: "t"},
 		Columns: []string{"a"},
@@ -56,12 +56,12 @@ func TestI2ColumnsESchemaJuntosERecusado(t *testing.T) {
 	}
 }
 
-// I3: a divergência aparece ANTES do extract.
+// I3: the divergence shows up BEFORE the extract.
 //
-// A mesma conferência já rodava no Load. O que mudou é o momento, e num vendor
-// com cota isso é a diferença entre uma consulta de metadados e a janela
-// inteira de quota gasta para descobrir que uma coluna não bate.
-func TestI3ConfereAntesDoExtract(t *testing.T) {
+// The same check already ran in Load. What changed is the timing, and on a
+// vendor with a quota that is the difference between one metadata query and the
+// whole quota window spent to find out that a column does not match.
+func TestI3ChecksBeforeTheExtract(t *testing.T) {
 	var extraiu bool
 	fonte := fonteQueRegistra{&extraiu}
 
@@ -85,8 +85,8 @@ func TestI3ConfereAntesDoExtract(t *testing.T) {
 	}
 }
 
-// I4: a partição é declarada.
-func TestI4ParticaoDeclarada(t *testing.T) {
+// I4: the partition is declared.
+func TestI4ThePartitionIsDeclared(t *testing.T) {
 	err := sdk.ValidateTarget(sdk.Target{
 		To:          postgres.Table{DSN: "postgres://x/y", Name: "t"},
 		Schema:      sdk.Schema{{Name: "a", Type: sdk.TypeString}},

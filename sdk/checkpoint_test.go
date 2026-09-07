@@ -14,19 +14,20 @@ import (
 	"testing"
 )
 
-// origemContada conta quantas vezes foi lida e pode recusar a segunda leitura.
+// countedSource counts how many times it was read and can refuse the second
+// read.
 //
 // Refusing is what makes the test able to fail: a checkpoint that did not spare
-// a origem passaria despercebido se a origem simplesmente respondesse de novo.
-type origemContada struct {
+// the source would go unnoticed if the source simply answered again.
+type countedSource struct {
 	registros []any
 	leituras  *int
 	soUmaVez  bool
 }
 
-func (origemContada) Describe() string { return "origem.teste" }
+func (countedSource) Describe() string { return "origem.teste" }
 
-func (o origemContada) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, error], error) {
+func (o countedSource) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, error], error) {
 	*o.leituras++
 	if o.soUmaVez && *o.leituras > 1 {
 		return nil, fmt.Errorf("a origem foi consultada %d vezes", *o.leituras)
@@ -41,15 +42,15 @@ func (o origemContada) Read(context.Context, ReadOptions) (iter.Seq2[Envelope, e
 	}, nil
 }
 
-// destinoQueGuarda guarda o que recebeu, inclusive quando recusa a carga.
-type destinoQueGuarda struct {
+// keepingTarget stores what it received, including when it refuses the load.
+type keepingTarget struct {
 	recebido *[]Envelope
 	falhar   bool
 }
 
-func (destinoQueGuarda) Describe() string { return "destino.teste" }
+func (keepingTarget) Describe() string { return "destino.teste" }
 
-func (d destinoQueGuarda) Write(_ context.Context, envs []Envelope, _ WriteOptions) (*LoadResult, error) {
+func (d keepingTarget) Write(_ context.Context, envs []Envelope, _ WriteOptions) (*LoadResult, error) {
 	*d.recebido = append(*d.recebido, envs...)
 	if d.falhar {
 		return &LoadResult{}, fmt.Errorf("o destino recusou a carga")
@@ -77,19 +78,20 @@ func registros() []any {
 
 // PHASE 1 -- the second attempt must not touch the source.
 //
-// E o pedido inteiro: o extract gastou a quota do fornecedor, o destino
+// It is the whole request: the extract spent the vendor's quota, the
+// destination
 // refused, and the next attempt has to load the same data without going back.
 func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}
+	origem := countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}
 
 	var primeira []Envelope
 	_, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
 		Source:     Source{From: origem},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: destinoQueGuarda{recebido: &primeira, falhar: true}},
+		Target:     Target{To: keepingTarget{recebido: &primeira, falhar: true}},
 		Run:        RunContext{ID: "run-1", Attempt: 0},
 	})
 	if err == nil {
@@ -101,7 +103,7 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 		Name:       "fetcher",
 		Source:     Source{From: origem},
 		Checkpoint: Checkpoint{At: dir},
-		Target:     Target{To: destinoQueGuarda{recebido: &segunda}},
+		Target:     Target{To: keepingTarget{recebido: &segunda}},
 		Run:        RunContext{ID: "run-1", Attempt: 1},
 	})
 	if err != nil {
@@ -123,14 +125,14 @@ func TestOnTheSecondAttemptTheCheckpointDoesNotTouchTheSource(t *testing.T) {
 func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{registros: registros(), leituras: &leituras}
+	origem := countedSource{registros: registros(), leituras: &leituras}
 
 	var caixa []Envelope
 	p := func(tentativa int) *Pipeline {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: origem},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+			Target:     Target{To: keepingTarget{recebido: &caixa}},
 			Run:        RunContext{ID: "run-2", Attempt: tentativa},
 		}
 	}
@@ -140,7 +142,8 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 
 	// The manifest is what authorizes the resume. Without it the depot is an
 	// extract
-	// interrompido, e retomar dali carregaria metade dos dados em silencio.
+	// interrupted, and resuming from there would load half the data in
+	// silence.
 	apagar(t, dir, "_completo")
 
 	log, err := rodar(t, p(1))
@@ -156,14 +159,14 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{registros: registros(), leituras: &leituras}
+	origem := countedSource{registros: registros(), leituras: &leituras}
 
 	var caixa []Envelope
 	p := func(tentativa int) *Pipeline {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: origem},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+			Target:     Target{To: keepingTarget{recebido: &caixa}},
 			Run:        RunContext{ID: "run-3", Attempt: tentativa},
 		}
 	}
@@ -188,22 +191,23 @@ func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 	}
 }
 
-// FASE 2 -- manifesto que mente na contagem falha ALTO.
+// PHASE 2 -- a manifest that lies about the count fails LOUDLY.
 //
-// Isto so pode acontecer com o objeto adulterado depois de escrito. Seguir
-// calado carregaria menos linhas do que a primeira tentativa carregou, e
+// This can only happen with the object tampered with after it was written.
+// Carrying on quietly would load fewer rows than the first attempt loaded,
+// and
 // ninguem saberia.
 func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{registros: registros(), leituras: &leituras}
+	origem := countedSource{registros: registros(), leituras: &leituras}
 
 	var caixa []Envelope
 	p := func(tentativa int) *Pipeline {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: origem},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+			Target:     Target{To: keepingTarget{recebido: &caixa}},
 			Run:        RunContext{ID: "run-4", Attempt: tentativa},
 		}
 	}
@@ -228,11 +232,11 @@ func TestACheckpointWithAWrongCountFailsLoudly(t *testing.T) {
 
 // PHASE 3 (I3) -- a resumed attempt's ingestion_ids are identical.
 //
-// E a garantia que o pedido chama de "carregar o mesmo dado".
+// It is the guarantee the request calls "loading the same data".
 func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}
+	origem := countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}
 
 	var daOrigem, doCheckpoint []Envelope
 	p := func(tentativa int, caixa *[]Envelope) *Pipeline {
@@ -240,7 +244,7 @@ func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 			Name: "fetcher", Source: Source{From: origem},
 			Checkpoint: Checkpoint{At: dir},
 			Transform:  []Transformer{IngestionID()},
-			Target:     Target{To: destinoQueGuarda{recebido: caixa}},
+			Target:     Target{To: keepingTarget{recebido: caixa}},
 			Run:        RunContext{ID: "run-5", Attempt: tentativa},
 		}
 	}
@@ -266,15 +270,16 @@ func TestTheCheckpointPreservesTheIngestionID(t *testing.T) {
 	}
 }
 
-// FASE 3 -- o literal do numero sobrevive a volta pelo NDJSON.
+// PHASE 3 -- the number's literal survives the round trip through NDJSON.
 //
-// Um payload com json.Number carrega `19.0`; relido como float64 ele viraria
+// A payload with a json.Number carries `19.0`; read back as a float64 it would
+// become
 // "19" in asText, and the resume would write an ingestion_id different from
-// primeira tentativa. O modo fica no manifesto.
+// first attempt. The mode is recorded in the manifest.
 func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int
-	origem := origemContada{
+	origem := countedSource{
 		registros: []any{map[string]any{"id": json.Number("19.0"), "n": json.Number("1e21")}},
 		leituras:  &leituras, soUmaVez: true,
 	}
@@ -284,7 +289,7 @@ func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 		return &Pipeline{
 			Name: "fetcher", Source: Source{From: origem},
 			Checkpoint: Checkpoint{At: dir},
-			Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+			Target:     Target{To: keepingTarget{recebido: &caixa}},
 			Run:        RunContext{ID: "run-6", Attempt: tentativa},
 		}
 	}
@@ -313,15 +318,15 @@ func TestTheCheckpointPreservesTheNumbersLiteral(t *testing.T) {
 //
 // The checkpoint is an insurance policy, not the product. Dying because of the
 // insurance would be
-// trocar uma falha rara por uma falha em toda execucao.
+// trading a rare failure for a failure on every run.
 func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origemContada{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeQueRecusa{}},
-		Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &caixa}},
 		Run:        RunContext{ID: "run-7", Attempt: 0},
 	})
 	if err != nil {
@@ -340,16 +345,16 @@ func TestACheckpointThatCannotWriteDoesNotFailTheRun(t *testing.T) {
 //
 // Here `_inicio` writes and the parts do not. The stream degrades: it yields
 // what already became
-// objeto, o que ficou no buffer, e segue direto da origem -- sem refazer o
-// extract, que e justamente o que se estava tentando poupar.
+// object, what stayed in the buffer, and carries on straight from the source --
+// without redoing the extract, which is precisely what was being spared.
 func TestACheckpointFailingMidwayDegradesWithoutRereadingTheSource(t *testing.T) {
 	var leituras int
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origemContada{registros: registros(), leituras: &leituras, soUmaVez: true}},
+		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras, soUmaVez: true}},
 		Checkpoint: Checkpoint{At: "s3://balde/cp", Store: storeRefusingParts{}},
-		Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &caixa}},
 		Run:        RunContext{ID: "run-8", Attempt: 0},
 	})
 	if err != nil {
@@ -372,10 +377,10 @@ func TestOutsideTheEngineTheCheckpointWarnsInsteadOfIgnoring(t *testing.T) {
 	var caixa []Envelope
 	log, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origemContada{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: t.TempDir()},
-		Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
-		Run:        RunContext{}, // sem id: rodando a mao
+		Target:     Target{To: keepingTarget{recebido: &caixa}},
+		Run:        RunContext{}, // no id: running by hand
 	})
 	if err != nil {
 		t.Fatalf("rodar a mao nao pode falhar: %v", err)
@@ -392,9 +397,9 @@ func TestACheckpointWithTheWrongStoreIsAnError(t *testing.T) {
 	var caixa []Envelope
 	_, err := rodar(t, &Pipeline{
 		Name:       "fetcher",
-		Source:     Source{From: origemContada{registros: registros(), leituras: &leituras}},
+		Source:     Source{From: countedSource{registros: registros(), leituras: &leituras}},
 		Checkpoint: Checkpoint{At: "gs://balde/cp", Store: storeQueRecusa{}}, // store e s3
-		Target:     Target{To: destinoQueGuarda{recebido: &caixa}},
+		Target:     Target{To: keepingTarget{recebido: &caixa}},
 		Run:        RunContext{ID: "run-9"},
 	})
 	if err == nil {
@@ -435,7 +440,7 @@ func (storeRefusingParts) Create(_ context.Context, _, chave string, _ io.Reader
 	return nil
 }
 
-// --- utilitarios de arquivo ---
+// --- file helpers ---
 
 func achar(t *testing.T, raiz, nome string) string {
 	t.Helper()

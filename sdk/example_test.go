@@ -130,7 +130,7 @@ func ExampleBool() {
 	_ = bigquery.Table{
 		Dataset:     "landing",
 		Name:        "temperatura",
-		CreateTable: sdk.Bool(false), // nunca, nem numa primeira execucao
+		CreateTable: sdk.Bool(false), // never, not even on a first run
 	}
 }
 

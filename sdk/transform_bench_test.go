@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// cadeiaTipica é a cadeia que um fetcher real escreve: limpar, renomear,
-// carimbar proveniência e compor o ingestion_id.
-func cadeiaTipica() []Transformer {
+// typicalChain is the chain a real fetcher writes: clean up, rename, stamp
+// provenance and compose the ingestion_id.
+func typicalChain() []Transformer {
 	return []Transformer{
 		Accept("id", "nome", "valor", "ts"),
 		Rename(map[string]string{"id": "source_key", "ts": "record_ts"}),
@@ -27,11 +27,11 @@ func registro(i int) map[string]any {
 	}
 }
 
-// BenchmarkCadeiaDeTransform mede só a cadeia, sem HTTP nem decodificação --
-// o benchmark anterior misturava os três, e o profile precisou de um segundo
-// olhar para separar o que era de quem.
-func BenchmarkCadeiaDeTransform(b *testing.B) {
-	fns := cadeiaTipica()
+// BenchmarkTransformChain measures the chain alone, with no HTTP and no
+// decoding -- the previous benchmark mixed all three, and the profile needed a
+// second look to tell which cost belonged to what.
+func BenchmarkTransformChain(b *testing.B) {
+	fns := typicalChain()
 	b.ReportAllocs()
 	b.ResetTimer()
 
@@ -48,9 +48,10 @@ func BenchmarkCadeiaDeTransform(b *testing.B) {
 	b.ReportMetric(float64(b.N)/b.Elapsed().Seconds(), "registros/s")
 }
 
-// BenchmarkUmTransformerSo isola o custo de UMA cópia de mapa, para que a
-// conta "quantas cópias a cadeia faz" seja verificável e não inferida.
-func BenchmarkUmTransformerSo(b *testing.B) {
+// BenchmarkOneTransformerAlone isolates the cost of ONE map copy, so the
+// arithmetic of "how many copies the chain makes" is checkable rather than
+// inferred.
+func BenchmarkOneTransformerAlone(b *testing.B) {
 	fns := []Transformer{Compute("provider", func(map[string]any) (any, error) { return "x", nil })}
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -61,7 +62,8 @@ func BenchmarkUmTransformerSo(b *testing.B) {
 	}
 }
 
-// BenchmarkIngestionID isola a composição do id, que o profile apontou como o
+// BenchmarkIngestionID isolates the id's composition, which the profile pointed
+// at as the
 // maior bloco sozinho.
 func BenchmarkIngestionID(b *testing.B) {
 	fns := []Transformer{IngestionID()}
