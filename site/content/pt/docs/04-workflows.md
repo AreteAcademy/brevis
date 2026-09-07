@@ -118,6 +118,7 @@ steps:
 | `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
 | `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
 | `for_each` | | uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo |
+| `group` | | desenha este passo dentro de uma caixa nomeada que colapsa — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
 
 ## Rodando um passo só quando há o que fazer
@@ -245,6 +246,34 @@ A saída dele é gravada na linha de cada instância e **não** fica visível pa
 passos abaixo. Quatro instâncias publicando sob o nome de um passo são quatro
 valores para uma chave, e não existe resposta para `context.String("load.bucket")`
 que não seja um chute. O passo diz isso no log dele, em vez de descartar calado.
+
+## Agrupando passos no grafo
+
+```yaml
+steps:
+  - id: extract_orders
+    group: sales_data_reporting
+    run: ./extract.sh
+  - id: load_orders
+    group: sales_data_reporting
+    depends_on: [extract_orders]
+    run: ./load.sh
+```
+
+Os passos são desenhados dentro de uma caixa nomeada que colapsa — o TaskGroup
+do Airflow, para quando um DAG cresce a ponto de deixar de ser legível.
+
+**Só visual.** Os TaskGroups do Airflow também *prefixam* os ids dentro deles,
+então `extract` vira `sales.extract`. Aqui não: prefixar mudaria todo
+`depends_on`, toda chave de contexto e toda linha registrada de um workflow que
+já existe, por uma feature cujo valor inteiro é um grafo grande ficar mais
+legível. Namespacing pode vir depois — é uma adição estrita a isto.
+
+Um grupo é um **rótulo**, não um contêiner. Os passos mantêm os ids globais, um
+grupo pode atravessar níveis, e nada da execução muda.
+
+Clicar no nome do grupo o colapsa: os passos somem e as setas que cruzavam a
+fronteira passam a apontar para a caixa.
 
 ## Dizendo o que uma seta significa
 

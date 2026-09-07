@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/assets"
 )
 
 // A diamond graph: b and c depend on a, d depends on both. The shape matters
@@ -626,4 +628,137 @@ func rawBody(t *testing.T, ui *api.UI, path string) string {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	return rec.Body.String()
+}
+
+// TestTheIslandKnowsEveryNodeTypeTheAPIEmits.
+//
+// React Flow falls back to its DEFAULT node for a `type` it does not
+// recognise, and the default draws a plausible box with the step's name. So a
+// mismatch between the two sides of this contract does not break anything
+// visibly: it silently removes the status ring, the runtime chips, the SDK
+// badge, the instance count and the phases, and leaves a graph that still looks
+// like a graph.
+//
+// That happened. The rename from `bravis` to `brevis` on 2026-09-04 changed
+// internal/api/graph.go and not web/assets/dag.js, and for three days every
+// step rendered as a bare React Flow box with nothing on it. Nothing failed,
+// because nothing was checking.
+//
+// This is the check. It is cross-language and it is crude -- it reads the
+// island's source and looks for the keys -- and crude is the point: the two
+// files cannot share a constant, so the only thing that can hold them together
+// is something that reads both.
+func TestTheIslandKnowsEveryNodeTypeTheAPIEmits(t *testing.T) {
+	island, err := assets.FS.ReadFile("dag.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	registered := island[bytes.Index(island, []byte("var NODE_TYPES")):]
+	registered = registered[:bytes.IndexByte(registered, '\n')]
+
+	// A run that produces every type the API can emit: a step, a step with
+	// phases, and a group. It has to be a RUN graph, because phases only exist
+	// once something has announced them.
+	w := wf.Workflow{
+		Slug: "every_type",
+		Nodes: []wf.Node{
+			{ID: "a", Run: "echo a", Group: "loading"},
+			{ID: "b", Run: "echo b", Group: "loading"},
+		},
+		Edges: []wf.Edge{{From: "a", To: "b"}},
+	}
+	definition, err := json.Marshal(w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := uuid.New()
+	ui := newUI(defsFake{w: w}, execsFake{
+		run: dom.Run{ID: id, WorkflowSlug: w.Slug, Status: dom.StatusRunning, Definition: definition},
+		states: map[string]postgres.NodeState{
+			"a": {NodeID: "a", Status: "success",
+				Stages: []postgres.Stage{{Name: "extract", State: "done"}}},
+		},
+	})
+	_, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
+
+	seen := map[string]bool{}
+	for _, n := range g.Nodes {
+		seen[n.Type] = true
+	}
+	if len(seen) < 3 {
+		t.Fatalf("the fixture did not produce every type; it made %v", seen)
+	}
+	for kind := range seen {
+		if !bytes.Contains(registered, []byte(kind+":")) {
+			t.Errorf("the API emits node type %q and the island registers %s",
+				kind, registered)
+		}
+	}
+}
+
+// TestAGroupIsDrawnBehindItsSteps.
+//
+// The box has to come FIRST in the array: React Flow draws in order, and a
+// group emitted after its members would cover them. It is also why the group is
+// not a `parentId` parent -- that would put every member's position in relative
+// coordinates and collide with the SDK phases, which already use it.
+func TestAGroupIsDrawnBehindItsSteps(t *testing.T) {
+	w := wf.Workflow{
+		Slug: "grouped",
+		Nodes: []wf.Node{
+			{ID: "extract", Run: "echo a", Group: "sales"},
+			{ID: "load", Run: "echo b", Group: "sales"},
+			{ID: "report", Run: "echo c"},
+		},
+		Edges: []wf.Edge{{From: "extract", To: "load"}, {From: "load", To: "report"}},
+	}
+	_, g := request(t, newUI(defsFake{w: w}, execsFake{}), "/api/workflows/grouped/graph")
+
+	if g.Nodes[0].Type != "grupo" {
+		t.Fatalf("the first node is %q; a group drawn after its members covers them", g.Nodes[0].Type)
+	}
+	if g.Nodes[0].ParentID != "" {
+		t.Error("the group is a React Flow parent, which puts its members in relative coordinates")
+	}
+	if g.Nodes[0].Selectable == nil || *g.Nodes[0].Selectable {
+		t.Error("the group box is selectable, so clicking behind a step opens a panel for a box")
+	}
+
+	// The box surrounds its members and nothing else.
+	group := g.Nodes[0]
+	var members, outsiders int
+	for _, n := range g.Nodes[1:] {
+		if n.Type != "brevis" {
+			continue
+		}
+		inside := n.Position.X >= group.Position.X && n.Position.Y >= group.Position.Y
+		if n.Data["grupo"] == "sales" {
+			members++
+			if !inside {
+				t.Errorf("%s is in the group and outside its box", n.ID)
+			}
+		} else {
+			outsiders++
+			if n.Data["grupo"] != nil {
+				t.Errorf("%s carries a group it does not have", n.ID)
+			}
+		}
+	}
+	if members != 2 || outsiders != 1 {
+		t.Errorf("members=%d outsiders=%d", members, outsiders)
+	}
+}
+
+// A workflow with no groups emits no group node and no `grupo` key, so its
+// payload is byte for byte what it was.
+func TestAWorkflowWithNoGroupsIsUnchanged(t *testing.T) {
+	_, g := request(t, newUI(defsFake{w: diamond()}, execsFake{}), "/api/workflows/diamond/graph")
+	for _, n := range g.Nodes {
+		if n.Type == "grupo" {
+			t.Errorf("a group node appeared in an ungrouped workflow")
+		}
+		if _, has := n.Data["grupo"]; has {
+			t.Errorf("%s carries a grupo key", n.ID)
+		}
+	}
 }

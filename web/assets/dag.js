@@ -358,6 +358,58 @@
   // become three illegible badges; in a row there is space for the type, the
   // identity and the number the phase produced -- which is what serves at three
   // in the morning.
+  // GroupNode is the box behind a set of steps -- Airflow's TaskGroup, without
+  // its namespacing.
+  //
+  // It is NOT a React Flow parent. Making the steps its children would put
+  // every position in relative coordinates and collide with the SDK phases,
+  // which already use that mechanism. It is a plain node that the API places
+  // first in the array, so it draws behind everything else.
+  //
+  // Dashed, and in the neutral: it groups steps, it does not have a state, and
+  // borrowing a state colour would make an empty box claim something.
+  function GroupNode(props) {
+    var d = props.data;
+    var collapsed = !!d.collapsed;
+
+    return h(
+      "div",
+      {
+        style: {
+          width: "100%", height: "100%",
+          borderRadius: 20,
+          border: "1px dashed " + LINE,
+          background: "color-mix(in srgb, " + MUTED + " 4%, transparent)",
+          boxSizing: "border-box",
+        },
+      },
+      h(
+        "button",
+        {
+          title: collapsed ? "expand the group" : "collapse the group",
+          onClick: function (ev) {
+            ev.stopPropagation();
+            d.onToggle(d.label);
+          },
+          style: {
+            position: "absolute", top: 8, left: 14,
+            display: "flex", alignItems: "center", gap: 6,
+            border: 0, background: "transparent", padding: 0,
+            cursor: "pointer", color: MUTED,
+            fontSize: 11, fontWeight: 600, letterSpacing: ".04em",
+            textTransform: "uppercase",
+          },
+        },
+        h("span", { style: { fontSize: 9 } }, collapsed ? "▸" : "▾"),
+        d.label,
+        d.membros
+          ? h("span", { style: { opacity: 0.7, textTransform: "none", letterSpacing: 0 } },
+              "· " + d.membros + (d.membros === 1 ? " step" : " steps"))
+          : null
+      )
+    );
+  }
+
   function StageNode(props) {
     var d = props.data;
     var c = stageColour(d.estado);
@@ -420,7 +472,16 @@
     );
   }
 
-  var NODE_TYPES = { bravis: BrevisNode, etapa: StageNode };
+  // The keys are the `type` the API puts on each node, and they have to match
+  // it exactly: React Flow falls back to its DEFAULT node for a type it does
+  // not know, which draws a plausible box with the step's name and none of the
+  // chips, the badge, the ring or the phases.
+  //
+  // It read `bravis` for three days after the module was renamed to brevis --
+  // the rename changed internal/api/graph.go and not this file, and nothing
+  // failed. TestTheIslandKnowsEveryNodeTypeTheAPIEmits exists so the next
+  // rename cannot do it again.
+  var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
 
   // contextRows renders what a step published, keys sorted so two visits to the
   // same run read the same way.
@@ -698,10 +759,46 @@
       if (n.parentId) withStages[n.parentId] = true;
     });
 
+    // Groups collapse under the same state, keyed by "grupo::<name>" -- which
+    // is the group node's own id, so one toggle serves both.
+    var hiddenGroups = {};
+    payload.nodes.forEach(function (n) {
+      if (n.type === "grupo" && collapsed[n.id]) hiddenGroups[n.data.label] = n.id;
+    });
+    var swallowed = {};
+    payload.nodes.forEach(function (n) {
+      if (n.data && n.data.grupo && hiddenGroups[n.data.grupo]) {
+        swallowed[n.id] = hiddenGroups[n.data.grupo];
+      }
+    });
+
     var nodes = [];
     payload.nodes.forEach(function (n) {
       // A collapsed step's child simply does not go in.
       if (n.parentId && collapsed[n.parentId]) return;
+      // Nor does a step inside a collapsed group, nor its phases.
+      if (swallowed[n.id] || (n.parentId && swallowed[n.parentId])) return;
+
+      if (n.type === "grupo") {
+        var members = 0;
+        payload.nodes.forEach(function (o) {
+          if (o.data && o.data.grupo === n.data.label) members++;
+        });
+        nodes.push(Object.assign({}, n, {
+          data: Object.assign({}, n.data, {
+            membros: members,
+            collapsed: !!collapsed[n.id],
+            onToggle: function () { toggle(n.id); },
+          }),
+          // Collapsed, the box shrinks to a card: a full-size empty rectangle
+          // would take the room the collapse was meant to give back.
+          style: collapsed[n.id]
+            ? { width: 230, height: 46 }
+            : n.style,
+        }));
+        return;
+      }
+
       if (!withStages[n.id]) {
         nodes.push(n);
         return;
@@ -739,7 +836,18 @@
         RF.ReactFlow,
         {
           nodes: nodes,
-          edges: payload.edges,
+          // An edge into or out of a collapsed group points at the BOX
+          // instead, and one entirely inside it disappears: without this the
+          // graph keeps drawing arrows to nodes that are no longer there, and
+          // React Flow renders them from the origin.
+          edges: payload.edges
+            .map(function (e) {
+              var source = swallowed[e.source] || e.source;
+              var target = swallowed[e.target] || e.target;
+              if (source === e.source && target === e.target) return e;
+              return Object.assign({}, e, { source: source, target: target });
+            })
+            .filter(function (e) { return e.source !== e.target; }),
           nodeTypes: NODE_TYPES,
           fitView: true,
           fitViewOptions: { padding: 0.2 },

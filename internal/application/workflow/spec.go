@@ -154,6 +154,10 @@ type StepSpec struct {
 	// element. See dominio.Node.ForEach.
 	ForEach string `yaml:"for_each"`
 
+	// Group draws this step inside a named box on the graph. Visual only.
+	// See dominio.Node.Group.
+	Group string `yaml:"group"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -278,6 +282,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Marker:      st.Marker,
 			UnlessEmpty: strings.TrimSpace(st.UnlessEmpty),
 			ForEach:     strings.TrimSpace(st.ForEach),
+			Group:       strings.TrimSpace(st.Group),
 			OnError:     st.OnError.dominio(),
 		})
 	}

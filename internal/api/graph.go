@@ -170,6 +170,7 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 	}
 
 	off := false
+	boxes := newGrouping()
 	for level, ids := range levels {
 		// The column is measured before it is drawn: the heights vary, so
 		// centring requires knowing the total.
@@ -273,6 +274,11 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 				data["available"] = json.RawMessage(in)
 			}
 
+			if no.Group != "" {
+				data["grupo"] = no.Group
+				boxes.add(no.Group, level*levelWidth, y, heights[i])
+			}
+
 			step := flowNode{
 				ID: id, Type: "brevis",
 				Position: position{X: level * levelWidth, Y: y},
@@ -309,6 +315,13 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 		}
 	}
 
+	// The group boxes go FIRST in the array, and that is the whole trick:
+	// React Flow draws in order, so a node placed before the steps renders
+	// behind them. They are not parents -- a `parentId` would make every
+	// member's position relative and collide with the SDK phases, which
+	// already use that mechanism.
+	resp.Nodes = append(boxes.nodes(), resp.Nodes...)
+
 	for _, e := range def.Edges {
 		resp.Edges = append(resp.Edges, flowEdge{
 			ID: e.From + "->" + e.To, Source: e.From, Target: e.To, Label: e.Label,
@@ -323,6 +336,59 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		u.log.Error("serializing the graph", "slug", def.Slug, "error", err)
 	}
+}
+
+// grouping collects the bounding box of each named group as the layout is
+// computed, because the box cannot be drawn before its members are placed.
+type grouping struct {
+	order []string
+	by    map[string]*box
+}
+
+type box struct{ minX, minY, maxX, maxY int }
+
+func newGrouping() *grouping { return &grouping{by: map[string]*box{}} }
+
+func (g *grouping) add(name string, x, y, height int) {
+	b, ok := g.by[name]
+	if !ok {
+		b = &box{minX: x, minY: y, maxX: x + nodeWidth, maxY: y + height}
+		g.by[name] = b
+		g.order = append(g.order, name)
+		return
+	}
+	b.minX = min(b.minX, x)
+	b.minY = min(b.minY, y)
+	b.maxX = max(b.maxX, x+nodeWidth)
+	b.maxY = max(b.maxY, y+height)
+}
+
+// groupPadding is the room between the box and the cards inside it. The top
+// gets more, for the group's name.
+const (
+	groupPadding = 18
+	groupHeader  = 30
+)
+
+func (g *grouping) nodes() []flowNode {
+	off := false
+	out := make([]flowNode, 0, len(g.order))
+	for _, name := range g.order {
+		b := g.by[name]
+		out = append(out, flowNode{
+			ID: "grupo::" + name, Type: "grupo",
+			Position: position{X: b.minX - groupPadding, Y: b.minY - groupPadding - groupHeader},
+			// Not selectable and not draggable: clicking the box behind a step
+			// must not open a details panel for something that is not a step.
+			Selectable: &off, Draggable: &off,
+			Style: map[string]any{
+				"width":  b.maxX - b.minX + 2*groupPadding,
+				"height": b.maxY - b.minY + 2*groupPadding + groupHeader,
+			},
+			Data: map[string]any{"label": name},
+		})
+	}
+	return out
 }
 
 // stageLabel is what a person reads on the box.

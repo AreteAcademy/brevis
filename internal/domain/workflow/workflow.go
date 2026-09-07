@@ -119,6 +119,22 @@ type Node struct {
 	// test framework. The engine reads one key and asks whether it is empty.
 	UnlessEmpty string
 
+	// Group draws this step inside a named, collapsible box on the graph.
+	//
+	//	- id: extract_orders
+	//	  group: sales_data_reporting
+	//
+	// VISUAL only, and that is a decision rather than a shortcut. Airflow's
+	// TaskGroups also PREFIX the ids inside them, so `extract` in a group
+	// becomes `sales.extract` -- which would change every `depends_on`, every
+	// context key and every task_runs row in an existing workflow, for a
+	// feature whose whole value is that a big graph is readable. Namespacing
+	// can be added later; it is a strict addition to this.
+	//
+	// A group is a LABEL, not a container: steps keep their global ids, a group
+	// may span levels, and nothing about execution changes.
+	Group string
+
 	// ForEach maps this step over a list published by a step above it.
 	//
 	//	- id: load

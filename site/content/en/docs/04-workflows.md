@@ -118,6 +118,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `unless_empty` | | a context key that decides whether there is anything to do — see below |
 | `for_each` | | a context key holding a list; the step runs once per element — see below |
+| `group` | | draws this step inside a named, collapsible box — see below |
 | `on_error` | | announces this step's failures — see below |
 
 ## Running a step only when there is something to do
@@ -244,6 +245,34 @@ Its output is recorded on each instance's row and is **not** visible to the
 steps below. Four instances publishing under one step's name is four values for
 one key, and there is no answer to `context.String("load.bucket")` that is not a
 guess. The step says so in its log rather than dropping it quietly.
+
+## Grouping steps on the graph
+
+```yaml
+steps:
+  - id: extract_orders
+    group: sales_data_reporting
+    run: ./extract.sh
+  - id: load_orders
+    group: sales_data_reporting
+    depends_on: [extract_orders]
+    run: ./load.sh
+```
+
+The steps are drawn inside a named box that collapses — Airflow's TaskGroup,
+for the case where a DAG gets big enough to stop being readable.
+
+**Visual only.** Airflow's TaskGroups also *prefix* the ids inside them, so
+`extract` becomes `sales.extract`. This does not: prefixing would change every
+`depends_on`, every context key and every recorded row in an existing workflow,
+for a feature whose whole value is that a big graph reads better. Namespacing
+can be added later — it is a strict addition to this.
+
+A group is a **label**, not a container. Steps keep their global ids, a group
+may span levels, and nothing about execution changes.
+
+Clicking the group's name collapses it: its steps disappear and the arrows that
+crossed the boundary point at the box instead.
 
 ## Saying what an arrow means
 
