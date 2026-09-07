@@ -9,7 +9,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "brevis-context"
+# The distribution name matches the IMPORT name, which is what `pip install
+# brevis` / `from brevis import context` should look like. The directory is
+# still python-context because that is what it holds -- lib/ is one folder per
+# language, and this is the language's context library.
+name = "brevis"
 version = "0.1.0"
 description = "Pass context between the steps of a Brevis workflow"
 readme = "README.md"

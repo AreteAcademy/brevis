@@ -1,9 +1,9 @@
-# brevis-context
+# brevis
 
 Pass context between the steps of a Brevis workflow. That is all it does.
 
 ```bash
-pip install brevis-context
+pip install brevis
 ```
 
 ```python

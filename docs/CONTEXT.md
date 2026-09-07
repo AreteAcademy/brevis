@@ -48,7 +48,7 @@ and a library for it is a JSON parse and a file write.
 
 | language | |
 |---|---|
-| Python | [`lib/python-context`](../lib/python-context/) — `pip install brevis-context` |
+| Python | [`lib/python-context`](../lib/python-context/) — `pip install brevis` |
 | Go | [`sdk/context`](../sdk/context/) — part of the SDK module, depends on nothing |
 | anything else | the two variables above |
 

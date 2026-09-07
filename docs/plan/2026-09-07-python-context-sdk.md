@@ -335,7 +335,7 @@ failure this whole document is about, and the line is what tells the two apart.
 | | |
 |---|---|
 | import | `brevis` |
-| PyPI | `brevis-context` — the noun `brevis` may not be free, and the qualified name says what it does |
+| PyPI | `brevis` — checked on 2026-09-07 and free, so the install name matches the import name. The plan had assumed it was taken |
 | Python | **3.9+**. Data teams run old Pythons on managed clusters, and nothing here needs newer |
 | dependencies | **none**, ever. It reads an env var and writes a file |
 | layout | `sdk-python/` at the repository root, its own module, its own version, its own tag prefix `py/v*` |
@@ -434,7 +434,7 @@ One workflow, three steps, one run:
 steps:
   - id: ingest          # Go, using the Go SDK
     run: ./ingest
-  - id: transform       # Python, using brevis-context
+  - id: transform       # Python, using brevis
     run: python transform.py
     needs: [ingest]
   - id: publish         # neither: bash and jq

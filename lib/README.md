@@ -5,7 +5,11 @@ its own release tag.
 
 | | | |
 |---|---|---|
-| [`python-context/`](python-context/) | `brevis-context` on PyPI | pass context between steps |
+| [`python-context/`](python-context/) | `brevis` on PyPI | pass context between steps |
+
+The directory says `python-context` and the package says `brevis`: the folder
+names what it holds, and the distribution matches the import so that
+`pip install brevis` gives you `from brevis import context`.
 
 ## What goes here, and what does not
 
