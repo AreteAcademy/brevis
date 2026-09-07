@@ -47,6 +47,50 @@ func (r *RunRepo) RecordStages(ctx context.Context, runID uuid.UUID, nodeID stri
 	return err
 }
 
+// RecordContext stores what a step published, for the steps below it.
+//
+// Written the moment the step publishes rather than when it ends: a run that
+// resumes reads this back, and the process that would write it later is exactly
+// the one that may not survive.
+func (r *RunRepo) RecordContext(ctx context.Context, runID uuid.UUID, nodeID string,
+	attempt int, published json.RawMessage) error {
+
+	_, err := r.pool.Exec(ctx, `
+		UPDATE task_runs
+		SET saida = $4
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3`,
+		runID, nodeID, attempt, published)
+	return err
+}
+
+// PublishedContext is what the steps of a run have published so far.
+//
+// DISTINCT ON keeps the latest attempt per step, which is the rule a retry
+// needs: the previous attempt's output described work that did not finish, and
+// the step below must not read it.
+func (r *RunRepo) PublishedContext(ctx context.Context, runID uuid.UUID) (map[string]json.RawMessage, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT ON (node_id) node_id, saida
+		FROM task_runs
+		WHERE run_id = $1 AND saida IS NOT NULL
+		ORDER BY node_id, attempt DESC`, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]json.RawMessage{}
+	for rows.Next() {
+		var nodeID string
+		var raw []byte
+		if err := rows.Scan(&nodeID, &raw); err != nil {
+			return nil, err
+		}
+		out[nodeID] = json.RawMessage(raw)
+	}
+	return out, rows.Err()
+}
+
 // TerminarTask records the outcome.
 func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string,
 	attempt int, status dom.Status, exit *int, failure string, log string) error {
@@ -98,7 +142,7 @@ func (r *RunRepo) NodeStates(ctx context.Context, runID uuid.UUID) (map[string]N
 	rows, err := r.pool.Query(ctx, `
 		SELECT DISTINCT ON (node_id)
 		       node_id, status, attempt, exit_code, erro, iniciado_em, terminado_em,
-		       etapas, sdk_versao
+		       etapas, sdk_versao, saida
 		FROM task_runs
 		WHERE run_id = $1
 		ORDER BY node_id, attempt DESC`, runID)
@@ -111,10 +155,13 @@ func (r *RunRepo) NodeStates(ctx context.Context, runID uuid.UUID) (map[string]N
 	for rows.Next() {
 		var e NodeState
 		var ini, end *time.Time
-		var stages []byte
+		var stages, saida []byte
 		if err := rows.Scan(&e.NodeID, &e.Status, &e.Attempt, &e.ExitCode,
-			&e.Err, &ini, &end, &stages, &e.SdkVersion); err != nil {
+			&e.Err, &ini, &end, &stages, &e.SdkVersion, &saida); err != nil {
 			return nil, err
+		}
+		if len(saida) > 0 {
+			e.Published = json.RawMessage(saida)
 		}
 		e.Stages = stepStages(stages, e.Status)
 		if ini != nil && end != nil {
@@ -141,6 +188,10 @@ type NodeState struct {
 
 	// SdkVersao is the version the step announced, empty when it is not an SDK step.
 	SdkVersion string `json:"sdk_versao,omitempty"`
+
+	// Published is what this step told the steps below it. Absent when it
+	// published nothing, which is most steps.
+	Published json.RawMessage `json:"saida,omitempty"`
 }
 
 // Etapa is one phase of an SDK step, for the screen.

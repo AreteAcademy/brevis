@@ -208,6 +208,16 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 				if e.SdkVersion != "" {
 					data["sdk"] = e.SdkVersion
 				}
+				// What this step told the steps below it.
+				//
+				// The whole object, because the panel shows it: the card only
+				// gets a count, and a count with no way to see what it counts
+				// is a number nobody can act on. Absent when the step published
+				// nothing, which is most steps -- so their card is byte for
+				// byte the one they had before this feature.
+				if len(e.Published) > 0 {
+					data["contexto"] = e.Published
+				}
 			}
 
 			step := flowNode{

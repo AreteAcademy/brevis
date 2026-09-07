@@ -471,3 +471,55 @@ func TestTheNodeCarriesWhatItRunsIn(t *testing.T) {
 		}
 	}
 }
+
+// What a step published reaches the graph, and a step that published nothing
+// changes nothing.
+//
+// The second half is the one that needs asserting: most steps publish nothing,
+// and their card has to be byte for byte what it was before this feature -- no
+// empty key, no "0 published".
+func TestTheNodeCarriesWhatTheStepPublished(t *testing.T) {
+	def := wf.Workflow{
+		Slug: "ctx", Kind: wf.KindDAG,
+		Nodes: []wf.Node{{ID: "extract", Run: "x"}, {ID: "quiet", Run: "y"}},
+		Edges: []wf.Edge{{From: "extract", To: "quiet"}},
+	}
+	states := map[string]postgres.NodeState{
+		"extract": {
+			NodeID: "extract", Status: "success",
+			Published: json.RawMessage(`{"bucket":"s3://landing","rows":48213}`),
+		},
+		"quiet": {NodeID: "quiet", Status: "success"},
+	}
+
+	id := uuid.New()
+	raw, _ := json.Marshal(def)
+	ui := newUI(defsFake{}, execsFake{
+		run:    dom.Run{ID: id, WorkflowSlug: "ctx", Status: dom.StatusSuccess, Definition: raw},
+		states: states,
+	})
+	_, g := request(t, ui, "/api/runs/"+id.String()+"/graph")
+
+	byID := map[string]map[string]any{}
+	for _, n := range g.Nodes {
+		byID[n.ID] = n.Data
+	}
+
+	ctx, ok := byID["extract"]["contexto"].(map[string]any)
+	if !ok {
+		t.Fatalf("extract carries no context: %v", byID["extract"])
+	}
+	if ctx["bucket"] != "s3://landing" {
+		t.Errorf("context = %v", ctx)
+	}
+	// The number stays a number: a step reading 48213 through the SDK and
+	// seeing 48213.0 on the screen is the class of difference this project has
+	// already paid for once.
+	if ctx["rows"] != float64(48213) {
+		t.Errorf("rows = %#v, want the number as written", ctx["rows"])
+	}
+
+	if _, present := byID["quiet"]["contexto"]; present {
+		t.Errorf("a step that published nothing carries a context key: %v", byID["quiet"])
+	}
+}

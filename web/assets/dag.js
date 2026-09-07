@@ -134,6 +134,28 @@
     );
   }
 
+  // contextCount is what a step told the steps below it, on the card.
+  //
+  // A COUNT and not the object: the card has room for one line, and a JSON blob
+  // would swallow it. The values are in the panel, which is where somebody goes
+  // when the count surprises them.
+  //
+  // Nothing at all when the step published nothing, which is most steps -- so
+  // their card stays exactly what it was before this existed. No "0 published",
+  // no reserved space.
+  function contextCount(d) {
+    var keys = d.contexto ? Object.keys(d.contexto) : [];
+    if (!keys.length) return null;
+    return h(
+      "div",
+      {
+        title: "click the step to see what it published",
+        style: { marginTop: 6, fontSize: 10, color: MUTED },
+      },
+      keys.length + (keys.length === 1 ? " value published" : " values published")
+    );
+  }
+
   // chipRow is the runtime and its tools, or nothing at all.
   //
   // Nothing at all is the point: a step the engine cannot read renders exactly
@@ -275,6 +297,7 @@
           )
         : null,
       chipRow(d),
+      contextCount(d),
       h(
         "div",
         { style: { marginTop: 7, display: "flex", gap: 8, fontSize: 11, color: c.ring } },
@@ -373,6 +396,24 @@
 
   var NODE_TYPES = { bravis: BrevisNode, etapa: StageNode };
 
+  // contextRows renders what a step published, keys sorted so two visits to the
+  // same run read the same way.
+  //
+  // Everything here is visible to anyone who can see the run, and that is the
+  // reason the documentation says the context is not a secret store. The panel
+  // is where that stops being an abstract warning.
+  function contextRows(d) {
+    if (!d.contexto) return [];
+    return Object.keys(d.contexto)
+      .sort()
+      .map(function (k) {
+        var v = d.contexto[k];
+        // JSON.stringify only for what is not already a string: it would put
+        // quotes around a path and make it look like it carries them.
+        return ["context." + k, typeof v === "string" ? v : JSON.stringify(v)];
+      });
+  }
+
   // The inspector: the selected node's side panel. It appears only when there is
   // a selection — taking up fixed space with "nothing selected" shrinks the
   // graph's area for nothing.
@@ -393,7 +434,16 @@
       // and it has to answer why without their opening the YAML.
       d.runtime ? ["runtime", labelOf(d.runtime) + " (" + (d.runtime_source || "?") + ")"] : null,
       d.tools && d.tools.length ? ["tools", d.tools.map(labelOf).join(", ")] : null,
-    ].filter(Boolean);
+    ]
+      // What this step published, one row per key.
+      //
+      // The value is rendered AS IT WAS WRITTEN: a number stays a number. A
+      // step reading 48213 through the SDK and seeing 48213.0 on the screen
+      // would be the same class of difference this project has already paid for
+      // once, in ingestion_id -- and the screen is where somebody checks their
+      // assumption before touching the code.
+      .concat(contextRows(d))
+      .filter(Boolean);
 
     return h(
       "aside",
