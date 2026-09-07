@@ -7,7 +7,7 @@ being attacked and where it stands.
 | # | | plan | status |
 |---|---|---|---|
 | **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | proposed |
-| **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Metrics` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **engine done**, SDK half open |
+| **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Meter` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **built**, waiting on an SDK tag for `otelmeter` |
 | **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | proposed |
 | **4** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
 
@@ -42,11 +42,15 @@ twice.
 
 **Where #2 stands.** The engine half has shipped: `/metrics` on its own port
 from both processes, the queue, scheduler, run and step metrics, and
-[`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). What is left is the consumer
-half — `sdk.Meter` as an interface in the SDK plus `sdk/metrics/otel` as the
-implementation, which is steps 7 and 8 of that plan. It is separate work with
-its own gate: `pruning-check.sh` has to prove a fetcher using the interface
-without the implementation stays under 70 packages.
+[`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md). `sdk.Meter` has shipped in the SDK too — the interface, the routing of the
+numbers the SDK already counted, and a `pruning-check.sh` case proving a
+consumer that declares one links a byte-for-byte identical dependency set.
+
+What is left is `sdk/metrics/otelmeter`, and its order is forced rather than
+chosen: it needs its own `go.mod`, and a sibling module here requires a
+PUBLISHED SDK version and carries no `replace`. So the SDK carrying `Meter`
+gets tagged first, and the module lands after. §5 of that plan has the
+measurement that made a separate module necessary.
 
 **The one ordering constraint that matters:** the INSIGHTS half of #1 wants
 numbers that #2 produces — bytes, rows, durations and anything about the

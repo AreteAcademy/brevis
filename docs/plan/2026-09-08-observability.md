@@ -200,26 +200,65 @@ grows a second collector.
 
 ---
 
-## 5. `sdk.Metrics`, for the consumer
+## 5. `sdk.Meter`, for the consumer
 
 ```go
 sdk.Run(sdk.Pipeline{
-    Meter: otelmeter.New(),          // opt-in, from sdk/metrics/otel
+    Meter: m,                        // opt-in
     Source: /* … */,
 })
 ```
 
-The SDK **already counts** what matters — rows in, rows out, pages, attempts,
-duration per stage — and reports them in `Result` and in the `@brevis:` stage
-lines. Metrics do not need new instrumentation; they need those existing numbers
-routed to a `Meter` when one is set.
+The SDK **already counts** what matters — records, rows, pages, HTTP attempts,
+bytes, and the extract and load durations — and reports them in `Result` and in
+the `@brevis:` stage lines. Metrics did not need new instrumentation; they
+needed those existing numbers routed to a `Meter` when one is set.
 
-That is the important design point: **no consumer writes a counter to get the
-standard metrics.** `sdk.Metrics` is for the numbers only their pipeline knows —
-"rows rejected by the vendor", "quota remaining" — and everything the SDK
-already knows arrives without asking.
+That is the design point: **no consumer writes a counter to get the standard
+metrics.** `Meter` is for the numbers only their pipeline knows — "rows the
+vendor rejected", "quota remaining" — and everything the SDK already knows
+arrives without asking.
 
----
+### The finding that changed the packaging
+
+The interface costs nothing, and `pruning-check.sh` proves it: the same consumer
+built with and without a `Meter` links a byte-for-byte identical dependency set.
+
+**The implementation cannot live in the same module**, and finding out why was
+the useful part of this work. Adding the OTLP exporter to `sdk/go.mod` made
+`go mod tidy` resolve the whole graph upward — BigQuery 1.50 → 1.72, storage
+1.30 → 1.56, `google.golang.org/api` 0.114 → 0.264 — and a consumer of
+`sdk/to/bigquery` went from **456 packages to 714**. Nobody imported anything
+new. The module graph moved underneath them.
+
+So: **package-level pruning does not protect a consumer from a module-level
+version bump**, and the whole "you only pay for what you import" claim is false
+at the module boundary. `sdk/metrics/otelmeter` gets its own `go.mod`.
+
+Which imposes an order that cannot be worked around, because a sibling module in
+this repository requires a PUBLISHED SDK version and carries no `replace` — the
+lesson of `3142c16`:
+
+1. publish the SDK carrying `sdk.Meter` (the interface and the routing);
+2. then add `sdk/metrics/otelmeter` as its own module, requiring that version.
+
+### What `otelmeter` will be
+
+**Push, not pull, and that is not an inconsistency.** The engine's API and
+scheduler are long-lived, so a collector scrapes them. A fetcher is a pod that
+lives ninety seconds: by the time anything discovers it and scrapes it, it is
+gone.
+
+Which makes `Close` the most important method in that package. The periodic
+reader's interval is tens of seconds and a fetcher that runs for twelve exits
+before the first tick — every number it recorded dies with the process unless
+`Shutdown` flushes on the way out. A telemetry setup that silently reports
+nothing is the failure this has to be built against.
+
+The rest is small: instruments cached by name, `OTEL_EXPORTER_OTLP_ENDPOINT`
+honoured rather than a `BREVIS_` variable invented beside it, and explicit
+bucket boundaries for anything named `*_seconds` — the SDK's default is tuned
+for milliseconds, so a four-minute extract would land in the first bucket.
 
 ## 6. Order of work
 
@@ -232,7 +271,7 @@ already knows arrives without asking.
 | 5 | the queue and scheduler metrics | the ones with an operator waiting for them |
 | 6 | run and step metrics | |
 | 7 | `sdk.Meter` — the interface in the SDK, and the pruning case that pins its cost | the consumer's half, and it can be done in parallel with 5–6 |
-| 8 | `sdk/metrics/otel` | |
+| 8 | publish the SDK, **then** `sdk/metrics/otelmeter` as its own module | the order is forced; see §5 |
 | 9 | `docs/OBSERVABILITY.md` and a Grafana dashboard as JSON in `deployments/` | a metric nobody can find is a metric nobody uses |
 
 Step 1 first and alone: it changes a gate, and a gate change buried in a feature

@@ -76,6 +76,19 @@ type Pipeline struct {
 	// Before runs after flags are parsed and before the fetch, for a source
 	// whose URL depends on those flags or on Run.
 	Before func(ctx context.Context, p *Pipeline) error
+
+	// Meter receives this pipeline's numbers. Nil is the normal case and costs
+	// nothing.
+	//
+	// Setting it does NOT require writing a single counter: everything the SDK
+	// already tracks -- records, rows, pages, HTTP attempts, bytes, the extract
+	// and load durations -- is routed to it automatically. It is there for the
+	// numbers only this pipeline knows.
+	//
+	//	m := otelmeter.New(ctx)         // from sdk/metrics/otel
+	//	defer m.Close(ctx)
+	//	sdk.Run(sdk.Pipeline{Meter: m, ...})
+	Meter Meter
 }
 
 func (p Pipeline) name() string {
@@ -258,6 +271,11 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 			slog.Error("row rejected", "detail", line)
 		}
 	}
+
+	// After the log line and before the return, so a fetcher that panics on the
+	// way out has still reported. It runs on the FAILURE path too: a run that
+	// broke is the one a failure rate exists to count.
+	report(p.Meter, p.name(), res, err)
 
 	state := StateDone
 	if err != nil {
