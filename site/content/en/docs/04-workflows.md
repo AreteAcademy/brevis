@@ -117,6 +117,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `resources` | | `cpu`, `memory` and `limits` for that step |
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `unless_empty` | | a context key that decides whether there is anything to do — see below |
+| `for_each` | | a context key holding a list; the step runs once per element — see below |
 | `on_error` | | announces this step's failures — see below |
 
 ## Running a step only when there is something to do
@@ -172,6 +173,77 @@ The key is always qualified by the step that publishes it, and that step has to
 be one this one depends on. Both are refused at **publish**: a step gated on a
 key it can never see would be skipped forever, and finding that out when a
 nightly stops running is too late.
+
+## Running a step once per element
+
+```python
+# in extract
+context.set(partitions=["2026-01", "2026-02", "2026-03"])
+```
+
+```yaml
+  - id: load
+    run: ./load.sh "$BREVIS_MAP_VALUE"
+    depends_on: [extract]
+    for_each: extract.partitions
+```
+
+The step runs once per element, each with a row, a retry and an exit code of its
+own. The graph shows **one node with `[3]` on it**, not three nodes.
+
+| variable | |
+|---|---|
+| `BREVIS_MAP_INDEX` | `0`, `1`, `2` … |
+| `BREVIS_MAP_VALUE` | the element |
+
+A JSON string arrives **without its quotes**, so `for_each` over `["2026-01"]`
+hands a shell `2026-01` and not `"2026-01"`. Anything else — a number, an
+object, a list — arrives as its JSON.
+
+Neither variable exists on an unmapped step. One that is always there and always
+empty teaches whoever reads the environment to ignore it.
+
+### The shape of the DAG does not change
+
+A mapped step is still one node with one set of edges. Only the number of rows
+under it varies, so the layout is what it always was and the `[3]` is counted
+from those rows at read time — nothing is stored, so nothing has to be kept in
+sync and a wrong count cannot outlive a fixed query.
+
+While instances are still going the card reads `[2/3]`.
+
+### One failed instance fails the step
+
+Three partitions loading and one not is a step that did not do its job, and the
+steps below it see that. A node that goes green because most of it worked is a
+badge that lies.
+
+**A retry redoes only the instances that failed.** Eighteen partitions that
+worked are not reloaded because two broke.
+
+### An empty list is `skipped`, not success
+
+A step that did nothing because there was nothing to do did not succeed at doing
+it. A green node over zero instances is exactly the kind of thing somebody
+builds a dashboard on.
+
+A value that is **not a list** fails, and so does a key that is not there — the
+same policy `unless_empty:` has, and for the same reason: a typo that silently
+produced zero instances would disable the step forever.
+
+### The fan-out is bounded, and the bound is inherited
+
+The list travels in the context, and the context has a 4096-byte ceiling that
+comes from the kubelet. A workflow cannot ask for ten thousand pods without
+first finding a way to say so in four kilobytes. That is a limit worth keeping
+rather than working around.
+
+### What a mapped step publishes
+
+Its output is recorded on each instance's row and is **not** visible to the
+steps below. Four instances publishing under one step's name is four values for
+one key, and there is no answer to `context.String("load.bucket")` that is not a
+guess. The step says so in its log rather than dropping it quietly.
 
 ## Saying what an arrow means
 

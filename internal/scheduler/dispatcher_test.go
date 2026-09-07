@@ -802,12 +802,12 @@ func TestTheAlertCarriesTheStepAndTheLog(t *testing.T) {
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, queue, repo, func(ctx context.Context, id uuid.UUID) error {
 		// Writes the task the way the runner would, with output.
-		if err := repo.IniciarTask(ctx, id, "fetch_observations", 0); err != nil {
+		if err := repo.IniciarTask(ctx, id, dom.Step("fetch_observations"), 0); err != nil {
 			return err
 		}
 		output := "conectando na api do inmet\nHTTP 503 Service Unavailable\ndesistindo after 3 attempts"
 		codigo := 1
-		if err := repo.TerminarTask(ctx, id, "fetch_observations", 0,
+		if err := repo.TerminarTask(ctx, id, dom.Step("fetch_observations"), 0,
 			dom.StatusFailed, &codigo, "exited with code 1", output); err != nil {
 			return err
 		}
@@ -949,11 +949,11 @@ func TestAStepThatDeclaredOnErrorGetsItsOwnAlert(t *testing.T) {
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, q, repo, func(ctx context.Context, id uuid.UUID) error {
-		if err := repo.IniciarTask(ctx, id, "fetch", 0); err != nil {
+		if err := repo.IniciarTask(ctx, id, dom.Step("fetch"), 0); err != nil {
 			return err
 		}
 		code := 1
-		if err := repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code,
+		if err := repo.TerminarTask(ctx, id, dom.Step("fetch"), 0, dom.StatusFailed, &code,
 			"exited with code 1", "HTTP 503 from the vendor"); err != nil {
 			return err
 		}
@@ -1026,9 +1026,9 @@ func TestWhenAttemptAnnouncesAFailureThatWillBeRetried(t *testing.T) {
 		if n > 1 {
 			return nil // the second attempt passes
 		}
-		_ = repo.IniciarTask(ctx, id, "fetch", 0)
+		_ = repo.IniciarTask(ctx, id, dom.Step("fetch"), 0)
 		code := 1
-		_ = repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code, "boom", "boom")
+		_ = repo.TerminarTask(ctx, id, dom.Step("fetch"), 0, dom.StatusFailed, &code, "boom", "boom")
 		return errors.New(`step "fetch": exited with code 1`)
 	}, noLog())
 	d.Channel = wfdom.ChannelSlack
@@ -1085,9 +1085,9 @@ func TestAStepNamingAnUnconfiguredChannelIsNotWritten(t *testing.T) {
 		Worker: "t", MaxConcorrente: 1, MaxAttempts: 1,
 		Interval: 10 * time.Millisecond, BackoffBase: time.Millisecond,
 	}, q, repo, func(ctx context.Context, id uuid.UUID) error {
-		_ = repo.IniciarTask(ctx, id, "fetch", 0)
+		_ = repo.IniciarTask(ctx, id, dom.Step("fetch"), 0)
 		code := 1
-		_ = repo.TerminarTask(ctx, id, "fetch", 0, dom.StatusFailed, &code, "boom", "boom")
+		_ = repo.TerminarTask(ctx, id, dom.Step("fetch"), 0, dom.StatusFailed, &code, "boom", "boom")
 		return errors.New("boom")
 	}, noLog())
 	d.Channel = wfdom.ChannelSlack

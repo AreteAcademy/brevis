@@ -119,6 +119,23 @@ type Node struct {
 	// test framework. The engine reads one key and asks whether it is empty.
 	UnlessEmpty string
 
+	// ForEach maps this step over a list published by a step above it.
+	//
+	//	- id: load
+	//	  depends_on: [extract]
+	//	  for_each: extract.partitions
+	//
+	// The step runs once per element, each with a row, a retry and an exit code
+	// of its own. The DAG's SHAPE does not change -- it is still one node with
+	// one set of edges, and only the number of rows under it varies -- which is
+	// what makes this cheap: graph.Levels never sees it.
+	//
+	// The fan-out is bounded for free. The list travels in the context, and the
+	// context has a 4096-byte ceiling inherited from the kubelet, so a workflow
+	// cannot ask for ten thousand pods without first finding a way to say so in
+	// four kilobytes. That is a limit worth keeping rather than working around.
+	ForEach string
+
 	// Marker says this step does nothing and exists to be a point in the graph.
 	//
 	//	- id: start
@@ -303,14 +320,32 @@ func IsEmpty(v any) bool {
 // validateUnlessEmpty refuses at publish what would otherwise be found at run
 // time, on a step that quietly never runs again.
 func validateUnlessEmpty(w Workflow, n Node) error {
-	if n.UnlessEmpty == "" {
+	return validateContextKey(w, n, "unless_empty", n.UnlessEmpty, "extract.has_rows")
+}
+
+// validateForEach applies the same rules to the list a step maps over, plus one
+// of its own: a marker cannot be mapped, because running nothing four times is
+// still nothing and the four rows would say otherwise.
+func validateForEach(w Workflow, n Node) error {
+	if n.ForEach != "" && n.Marker {
+		return fmt.Errorf("workflow %q: step %q is a `marker` and also maps over `%s`; "+
+			"a marker does nothing, and doing nothing repeatedly is still nothing",
+			w.Slug, n.ID, n.ForEach)
+	}
+	return validateContextKey(w, n, "for_each", n.ForEach, "extract.partitions")
+}
+
+// validateContextKey is the rule both `unless_empty:` and `for_each:` follow:
+// the key names a step, and that step is one this one can see.
+func validateContextKey(w Workflow, n Node, field, value, example string) error {
+	if value == "" {
 		return nil
 	}
-	step, _, ok := strings.Cut(n.UnlessEmpty, ".")
+	step, _, ok := strings.Cut(value, ".")
 	if !ok || step == "" {
-		return fmt.Errorf("workflow %q: step %q: `unless_empty: %s` needs the step "+
-			"that publishes it (`extract.has_rows`, not `has_rows`)",
-			w.Slug, n.ID, n.UnlessEmpty)
+		return fmt.Errorf("workflow %q: step %q: `%s: %s` needs the step "+
+			"that publishes it (`%s`, not `%s`)",
+			w.Slug, n.ID, field, value, example, value)
 	}
 
 	// The named step has to be one this one depends on, transitively -- the
@@ -321,11 +356,11 @@ func validateUnlessEmpty(w Workflow, n Node) error {
 	if !slices.Contains(visible, step) {
 		if len(visible) == 0 {
 			return fmt.Errorf("workflow %q: step %q reads `%s` but declares no "+
-				"`depends_on`, so it can see nothing", w.Slug, n.ID, n.UnlessEmpty)
+				"`depends_on`, so it can see nothing", w.Slug, n.ID, value)
 		}
 		return fmt.Errorf("workflow %q: step %q reads `%s`, but %q is not one of the "+
 			"steps it depends on (it can see: %s)",
-			w.Slug, n.ID, n.UnlessEmpty, step, strings.Join(visible, ", "))
+			w.Slug, n.ID, value, step, strings.Join(visible, ", "))
 	}
 	return nil
 }
@@ -556,6 +591,9 @@ func (w Workflow) Validate() error {
 			return err
 		}
 		if err := validateUnlessEmpty(w, n); err != nil {
+			return err
+		}
+		if err := validateForEach(w, n); err != nil {
 			return err
 		}
 	}

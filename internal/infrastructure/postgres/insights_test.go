@@ -315,7 +315,7 @@ func TestAlreadySucceededIsPerRunAndNotPerWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settled["load"] {
+	if settled[dom.Step("load")] {
 		t.Error("yesterday's success made today's run skip the step; the two " +
 			"questions have been confused")
 	}
@@ -354,13 +354,13 @@ func TestAFailedStepOfTheSameRunIsNotSettled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !settled["extract"] {
+	if !settled[dom.Step("extract")] {
 		t.Error("the step that worked is not settled, so the retry redoes it")
 	}
-	if settled["load"] {
+	if settled[dom.Step("load")] {
 		t.Error("a FAILED step is settled, so the retry would never redo it")
 	}
-	if settled["report"] {
+	if settled[dom.Step("report")] {
 		t.Error("a SKIPPED step is settled; it never ran, and the retry has to " +
 			"decide about it again")
 	}

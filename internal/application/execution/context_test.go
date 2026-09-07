@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
+	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
@@ -43,7 +44,7 @@ type historico struct {
 	// settled is what an earlier attempt of the SAME run already finished, for
 	// the retry tests. Empty is the normal case: a first attempt has settled
 	// nothing.
-	settled map[string]bool
+	settled map[dom.StepKey]bool
 }
 
 func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, exceto uuid.UUID) (bool, error) {
@@ -51,7 +52,7 @@ func (h *historico) StepHasSucceeded(ctx context.Context, slug, nodeID string, e
 	return h.jaTeve, h.err
 }
 
-func (h *historico) AlreadySucceeded(context.Context, uuid.UUID) (map[string]bool, error) {
+func (h *historico) AlreadySucceeded(context.Context, uuid.UUID) (map[dom.StepKey]bool, error) {
 	return h.settled, h.err
 }
 

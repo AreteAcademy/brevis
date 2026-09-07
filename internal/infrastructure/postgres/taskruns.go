@@ -21,13 +21,13 @@ import (
 // `ON CONFLICT DO UPDATE` on the (run, node, attempt) key: re-running the same
 // step on the same attempt is idempotent, which matters when the dispatcher
 // recovers an item from a dead worker and redoes it.
-func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int) error {
+func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, step dom.StepKey, attempt int) error {
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO task_runs (id, run_id, node_id, status, attempt, iniciado_em)
-		VALUES ($1, $2, $3, $4, $5, now())
-		ON CONFLICT (run_id, node_id, attempt) DO UPDATE
+		INSERT INTO task_runs (id, run_id, node_id, map_index, status, attempt, iniciado_em)
+		VALUES ($1, $2, $3, $4, $5, $6, now())
+		ON CONFLICT (run_id, node_id, attempt, map_index) DO UPDATE
 		SET status = EXCLUDED.status, iniciado_em = now(), terminado_em = NULL, erro = ''`,
-		uuid.New(), runID, nodeID, dom.StatusRunning, attempt)
+		uuid.New(), runID, step.Node, step.MapIndex, dom.StatusRunning, attempt)
 	return err
 }
 
@@ -45,17 +45,17 @@ func (r *RunRepo) IniciarTask(ctx context.Context, runID uuid.UUID, nodeID strin
 // ON CONFLICT because a run that retries re-evaluates every rule: attempt 0 of
 // the second try overwrites attempt 0 of the first, and a step skipped once may
 // well run the next time.
-func (r *RunRepo) MarkSkipped(ctx context.Context, runID uuid.UUID, nodeID string,
+func (r *RunRepo) MarkSkipped(ctx context.Context, runID uuid.UUID, step dom.StepKey,
 	attempt int, reason string) error {
 
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO task_runs (id, run_id, node_id, status, attempt, erro, terminado_em)
-		VALUES ($1, $2, $3, $4, $5, $6, now())
-		ON CONFLICT (run_id, node_id, attempt) DO UPDATE
+		INSERT INTO task_runs (id, run_id, node_id, map_index, status, attempt, erro, terminado_em)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+		ON CONFLICT (run_id, node_id, attempt, map_index) DO UPDATE
 		SET status = EXCLUDED.status, erro = EXCLUDED.erro,
 		    iniciado_em = NULL, terminado_em = now(),
 		    exit_code = NULL, log = ''`,
-		uuid.New(), runID, nodeID, dom.StatusSkipped, attempt, reason)
+		uuid.New(), runID, step.Node, step.MapIndex, dom.StatusSkipped, attempt, reason)
 	return err
 }
 
@@ -64,14 +64,14 @@ func (r *RunRepo) MarkSkipped(ctx context.Context, runID uuid.UUID, nodeID strin
 // It overwrites the whole array rather than appending: the runner's collector
 // already keeps ONE entry per phase, with its current state, and the screen
 // wants four boxes rather than a diary.
-func (r *RunRepo) RecordStages(ctx context.Context, runID uuid.UUID, nodeID string,
+func (r *RunRepo) RecordStages(ctx context.Context, runID uuid.UUID, step dom.StepKey,
 	attempt int, sdkVersion string, stages json.RawMessage) error {
 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE task_runs
-		SET etapas = $4, sdk_versao = COALESCE(NULLIF($5, ''), sdk_versao)
-		WHERE run_id = $1 AND node_id = $2 AND attempt = $3`,
-		runID, nodeID, attempt, stages, sdkVersion)
+		SET etapas = $5, sdk_versao = COALESCE(NULLIF($6, ''), sdk_versao)
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
+		runID, step.Node, attempt, step.MapIndex, stages, sdkVersion)
 	return err
 }
 
@@ -80,14 +80,14 @@ func (r *RunRepo) RecordStages(ctx context.Context, runID uuid.UUID, nodeID stri
 // Written the moment the step publishes rather than when it ends: a run that
 // resumes reads this back, and the process that would write it later is exactly
 // the one that may not survive.
-func (r *RunRepo) RecordContext(ctx context.Context, runID uuid.UUID, nodeID string,
+func (r *RunRepo) RecordContext(ctx context.Context, runID uuid.UUID, step dom.StepKey,
 	attempt int, published json.RawMessage) error {
 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE task_runs
-		SET saida = $4
-		WHERE run_id = $1 AND node_id = $2 AND attempt = $3`,
-		runID, nodeID, attempt, published)
+		SET saida = $5
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
+		runID, step.Node, attempt, step.MapIndex, published)
 	return err
 }
 
@@ -120,14 +120,14 @@ func (r *RunRepo) PublishedContext(ctx context.Context, runID uuid.UUID) (map[st
 }
 
 // TerminarTask records the outcome.
-func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string,
+func (r *RunRepo) TerminarTask(ctx context.Context, runID uuid.UUID, step dom.StepKey,
 	attempt int, status dom.Status, exit *int, failure string, log string) error {
 
 	_, err := r.pool.Exec(ctx, `
 		UPDATE task_runs
-		SET status = $4, exit_code = $5, erro = $6, log = $7, terminado_em = now()
-		WHERE run_id = $1 AND node_id = $2 AND attempt = $3`,
-		runID, nodeID, attempt, status, exit, failure, log)
+		SET status = $5, exit_code = $6, erro = $7, log = $8, terminado_em = now()
+		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
+		runID, step.Node, attempt, step.MapIndex, status, exit, failure, log)
 	return err
 }
 
@@ -174,22 +174,22 @@ func (r *RunRepo) StepHasSucceeded(ctx context.Context, workflowSlug, nodeID str
 // succeeded in an EARLIER run, which is what tells the SDK it is not the first.
 // Confusing the two would make a step skip itself forever after its first good
 // day.
-func (r *RunRepo) AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[string]bool, error) {
+func (r *RunRepo) AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[dom.StepKey]bool, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT DISTINCT node_id FROM task_runs
+		SELECT DISTINCT node_id, map_index FROM task_runs
 		WHERE run_id = $1 AND status = $2`, runID, dom.StatusSuccess)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := map[string]bool{}
+	out := map[dom.StepKey]bool{}
 	for rows.Next() {
-		var node string
-		if err := rows.Scan(&node); err != nil {
+		var k dom.StepKey
+		if err := rows.Scan(&k.Node, &k.MapIndex); err != nil {
 			return nil, err
 		}
-		out[node] = true
+		out[k] = true
 	}
 	return out, rows.Err()
 }
@@ -201,12 +201,40 @@ func (r *RunRepo) AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[st
 // not paint the node red after the retry succeeded.
 func (r *RunRepo) NodeStates(ctx context.Context, runID uuid.UUID) (map[string]NodeState, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT DISTINCT ON (node_id)
-		       node_id, status, attempt, exit_code, erro, iniciado_em, terminado_em,
-		       etapas, sdk_versao, saida
-		FROM task_runs
-		WHERE run_id = $1
-		ORDER BY node_id, attempt DESC`, runID)
+		WITH latest AS (
+			SELECT DISTINCT ON (node_id, map_index)
+			       node_id, map_index, status, attempt, exit_code, erro,
+			       iniciado_em, terminado_em, etapas, sdk_versao, saida
+			FROM task_runs
+			WHERE run_id = $1
+			ORDER BY node_id, map_index, attempt DESC
+		)
+		SELECT
+			node_id,
+			-- The instance the CARD shows. A mapped step has several, and the
+			-- one worth showing is the worst: three partitions green and one
+			-- red is a node that did not do its job, and a green card over it
+			-- is the badge that lies.
+			(array_agg(status ORDER BY
+				CASE status WHEN 'failed' THEN 0 WHEN 'running' THEN 1
+				            WHEN 'skipped' THEN 2 WHEN 'success' THEN 3 ELSE 4 END,
+				map_index))[1],
+			max(attempt), min(exit_code),
+			(array_agg(erro ORDER BY (erro = '') , map_index))[1],
+			min(iniciado_em), max(terminado_em),
+			-- The stages and the output belong to ONE instance, and showing a
+			-- mapped step's phases would mean showing one of four arbitrarily.
+			-- The unmapped case is every step that has ever had them.
+			(array_agg(etapas ORDER BY map_index))[1],
+			(array_agg(sdk_versao ORDER BY map_index))[1],
+			(array_agg(saida ORDER BY map_index))[1],
+			-- How many instances, and how many of them finished well. The [4]
+			-- on the card is counted here rather than stored: nothing has to
+			-- be kept in sync, and a wrong count cannot outlive a fixed query.
+			count(*), count(*) FILTER (WHERE status = 'success'),
+			min(map_index)
+		FROM latest
+		GROUP BY node_id`, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -217,9 +245,16 @@ func (r *RunRepo) NodeStates(ctx context.Context, runID uuid.UUID) (map[string]N
 		var e NodeState
 		var ini, end *time.Time
 		var stages, saida []byte
+		var lowest int
 		if err := rows.Scan(&e.NodeID, &e.Status, &e.Attempt, &e.ExitCode,
-			&e.Err, &ini, &end, &stages, &e.SdkVersion, &saida); err != nil {
+			&e.Err, &ini, &end, &stages, &e.SdkVersion, &saida,
+			&e.Instances, &e.Done, &lowest); err != nil {
 			return nil, err
+		}
+		if lowest == dom.Unmapped {
+			// Not a mapped step. The counts are left at zero so the payload of
+			// every workflow that has ever run is byte for byte what it was.
+			e.Instances, e.Done = 0, 0
 		}
 		if len(saida) > 0 {
 			e.Published = json.RawMessage(saida)
@@ -253,6 +288,12 @@ type NodeState struct {
 	// Published is what this step told the steps below it. Absent when it
 	// published nothing, which is most steps.
 	Published json.RawMessage `json:"saida,omitempty"`
+
+	// Instances and Done are a MAPPED step's counts: how many instances there
+	// are and how many finished well. Both zero for an unmapped step, which is
+	// most of them, and the payload then carries neither field.
+	Instances int `json:"instancias,omitempty"`
+	Done      int `json:"instancias_ok,omitempty"`
 }
 
 // Etapa is one phase of an SDK step, for the screen.

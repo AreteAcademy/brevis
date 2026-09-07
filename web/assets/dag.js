@@ -238,6 +238,28 @@
           },
         }),
         h("span", { style: { color: INK, fontSize: 13, fontWeight: 600 } }, d.label),
+        // A mapped step's instance count: [4], or [2/4] while some are still
+        // going. It sits next to the name because it is part of what the step
+        // IS on this run -- one node that ran four times -- and not a status.
+        //
+        // Neutral, never a state colour: the ring already says how it went,
+        // and painting the count green would have it claim something it does
+        // not know.
+        d.instancias
+          ? h(
+              "span",
+              {
+                title: d.instancias_ok + " of " + d.instancias + " instances finished",
+                style: {
+                  color: MUTED, fontSize: 11, fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums",
+                },
+              },
+              d.instancias_ok === d.instancias
+                ? "[" + d.instancias + "]"
+                : "[" + (d.instancias_ok || 0) + "/" + d.instancias + "]"
+            )
+          : null,
         // The SDK badge. An ACCENT colour, never a state one: the state
         // colours
         // mean "how it went", and a badge painted green would say something it

@@ -46,7 +46,17 @@ test: ## Runs the tests (the integration ones skip without Postgres)
 	@go test ./...
 
 test-int: test-db ## Runs everything, integration included (needs `make up`)
-	@BREVIS_TEST_DATABASE_URL="$(TEST_DB_URL)" go test ./... -count=1
+	@# -p 1 is NOT a performance choice. Three packages -- scheduler, alerts and
+	@# infrastructure/postgres -- each TRUNCATE the shared test database at the
+	@# start of every test, and `go test` runs packages in parallel by default.
+	@# One package's truncate landing inside another's test made this target a
+	@# coin flip: the 100-run acceptance criterion would report "RUNNING = 0,
+	@# wanted 5" about a queue somebody else had just emptied.
+	@#
+	@# CI never hit it because it runs the database tests in two separate
+	@# invocations, each touching one truncating package. This target runs them
+	@# all at once, which is what a developer types.
+	@BREVIS_TEST_DATABASE_URL="$(TEST_DB_URL)" go test -p 1 ./... -count=1
 
 test-db: ## Creates and migrates the test database (idempotent)
 	@docker compose exec -T postgres psql -U brevis -d postgres -tAc \

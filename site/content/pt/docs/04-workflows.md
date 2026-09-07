@@ -117,6 +117,7 @@ steps:
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
 | `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
 | `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
+| `for_each` | | uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo |
 | `on_error` | | anuncia as falhas deste passo — veja abaixo |
 
 ## Rodando um passo só quando há o que fazer
@@ -174,6 +175,76 @@ A chave é sempre qualificada pelo passo que a publica, e esse passo precisa ser
 um de que este depende. Os dois são recusados no **publish**: um passo travado
 numa chave que ele nunca vai ver ficaria pulado para sempre, e descobrir isso
 quando um noturno para de rodar é tarde demais.
+
+## Rodando um passo uma vez por elemento
+
+```python
+# no extract
+context.set(partitions=["2026-01", "2026-02", "2026-03"])
+```
+
+```yaml
+  - id: load
+    run: ./load.sh "$BREVIS_MAP_VALUE"
+    depends_on: [extract]
+    for_each: extract.partitions
+```
+
+O passo roda uma vez por elemento, cada um com linha, retry e código de saída
+próprios. O grafo mostra **um nó com `[3]`**, não três nós.
+
+| variável | |
+|---|---|
+| `BREVIS_MAP_INDEX` | `0`, `1`, `2` … |
+| `BREVIS_MAP_VALUE` | o elemento |
+
+Uma string JSON chega **sem as aspas**, então `for_each` sobre `["2026-01"]`
+entrega ao shell `2026-01` e não `"2026-01"`. Qualquer outra coisa — número,
+objeto, lista — chega como o JSON dela.
+
+Nenhuma das duas existe num passo não mapeado. Uma variável que está sempre lá e
+sempre vazia ensina quem lê o ambiente a ignorá-la.
+
+### A forma do DAG não muda
+
+Um passo mapeado continua sendo um nó com um conjunto de arestas. Só varia
+quantas linhas existem embaixo dele, então o layout é o que sempre foi e o `[3]`
+é contado dessas linhas na leitura — nada é armazenado, então nada precisa ficar
+sincronizado e uma contagem errada não sobrevive ao conserto da consulta.
+
+Enquanto instâncias ainda rodam, o card mostra `[2/3]`.
+
+### Uma instância que falha derruba o passo
+
+Três partições carregando e uma não é um passo que não fez o trabalho dele, e os
+passos abaixo enxergam isso. Um nó que fica verde porque a maior parte deu certo
+é um selo que mente.
+
+**Um retry refaz só as instâncias que falharam.** Dezoito partições que deram
+certo não são recarregadas porque duas quebraram.
+
+### Lista vazia é `skipped`, não sucesso
+
+Um passo que não fez nada porque não havia o que fazer não teve sucesso em
+fazê-lo. Um nó verde sobre zero instâncias é exatamente o tipo de coisa em que
+alguém constrói um dashboard.
+
+Um valor que **não é lista** falha, e uma chave que não existe também — a mesma
+política do `unless_empty:`, e pelo mesmo motivo: um erro de digitação que
+silenciosamente produzisse zero instâncias desligaria o passo para sempre.
+
+### O fan-out é limitado, e o limite é herdado
+
+A lista viaja no contexto, e o contexto tem um teto de 4096 bytes que vem do
+kubelet. Um workflow não consegue pedir dez mil pods sem antes achar um jeito de
+dizer isso em quatro kilobytes. É um limite que vale manter, não contornar.
+
+### O que um passo mapeado publica
+
+A saída dele é gravada na linha de cada instância e **não** fica visível para os
+passos abaixo. Quatro instâncias publicando sob o nome de um passo são quatro
+valores para uma chave, e não existe resposta para `context.String("load.bucket")`
+que não seja um chute. O passo diz isso no log dele, em vez de descartar calado.
 
 ## Dizendo o que uma seta significa
 

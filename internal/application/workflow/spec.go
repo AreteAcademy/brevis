@@ -150,6 +150,10 @@ type StepSpec struct {
 	// A key, not an expression. See dominio.Node.UnlessEmpty.
 	UnlessEmpty string `yaml:"unless_empty"`
 
+	// ForEach names a context key holding a list. The step runs once per
+	// element. See dominio.Node.ForEach.
+	ForEach string `yaml:"for_each"`
+
 	// OnError announces this step's failures.
 	//
 	//	on_error:
@@ -273,6 +277,7 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			When:        strings.ToLower(strings.TrimSpace(st.When)),
 			Marker:      st.Marker,
 			UnlessEmpty: strings.TrimSpace(st.UnlessEmpty),
+			ForEach:     strings.TrimSpace(st.ForEach),
 			OnError:     st.OnError.dominio(),
 		})
 	}

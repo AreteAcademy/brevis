@@ -191,6 +191,13 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 				// engine does not is how the two drift.
 				"status": string(dom.StatusPending),
 			}
+			// A mapped step's [4], from the rows rather than from a column: a
+			// count that is stored has to be kept in sync, and a wrong one
+			// outlives the fix. Omitted entirely when the step is not mapped.
+			if st := states[id]; st.Instances > 0 {
+				data["instancias"] = st.Instances
+				data["instancias_ok"] = st.Done
+			}
 			// What the step runs in. Computed HERE, on the definition already
 			// loaded, and not stored in a column: the inference rules will be
 			// wrong at first, and a stored value freezes a wrong guess into

@@ -47,19 +47,38 @@ type spyPersister struct {
 
 	// skipped is node -> reason, for the trigger-rule tests.
 	skipped map[string]string
+
+	// ended is every instance that reached a terminal state, for the mapping
+	// tests: a mapped step's four rows are four keys here.
+	ended map[dom.StepKey]dom.Status
 }
 
-func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, string, int) error { return nil }
+// instances lists the keys that finished, for a test to count.
+func (p *spyPersister) instances() map[dom.StepKey]dom.Status {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[dom.StepKey]dom.Status, len(p.ended))
+	for k, v := range p.ended {
+		out[k] = v
+	}
+	return out
+}
 
-func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, _ string, _ int,
-	_ dom.Status, _ *int, _ string, log string) error {
+func (p *spyPersister) IniciarTask(context.Context, uuid.UUID, dom.StepKey, int) error { return nil }
+
+func (p *spyPersister) TerminarTask(_ context.Context, _ uuid.UUID, step dom.StepKey, _ int,
+	status dom.Status, _ *int, _ string, log string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.log = log
+	if p.ended == nil {
+		p.ended = map[dom.StepKey]dom.Status{}
+	}
+	p.ended[step] = status
 	return nil
 }
 
-func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ string, _ int,
+func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ dom.StepKey, _ int,
 	version string, stages json.RawMessage) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -68,14 +87,14 @@ func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ string, _ 
 	return nil
 }
 
-func (p *spyPersister) MarkSkipped(_ context.Context, _ uuid.UUID, node string,
+func (p *spyPersister) MarkSkipped(_ context.Context, _ uuid.UUID, step dom.StepKey,
 	_ int, reason string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.skipped == nil {
 		p.skipped = map[string]string{}
 	}
-	p.skipped[node] = reason
+	p.skipped[step.Node] = reason
 	return nil
 }
 

@@ -79,6 +79,27 @@ func (r *Run) Transition(para Status, now time.Time) error {
 	return nil
 }
 
+// Unmapped is the map_index of a step that is not mapped, which is most of
+// them. It is -1 and not NULL because two NULLs are never equal in SQL, and the
+// unique on (run, node, attempt, map_index) would silently stop protecting
+// unmapped steps.
+const Unmapped = -1
+
+// StepKey identifies one INSTANCE of a step within a run.
+//
+// A mapped step runs once per element of a list, and each of those runs has its
+// own row, its own exit code and its own retry. Keying by node alone was enough
+// until `for_each:` existed; it is not any more, and the two places that care
+// are the resume (which of them already succeeded) and the screen (how many
+// there are).
+type StepKey struct {
+	Node     string
+	MapIndex int
+}
+
+// Step is the key of an unmapped step.
+func Step(node string) StepKey { return StepKey{Node: node, MapIndex: Unmapped} }
+
 // Transition moves the TaskRun.
 //
 // Against the STEP's graph, not the run's. The two shared one until `skipped`

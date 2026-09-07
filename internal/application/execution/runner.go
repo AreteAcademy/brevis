@@ -52,31 +52,39 @@ type Reporter interface {
 type History interface {
 	StepHasSucceeded(ctx context.Context, workflowSlug, nodeID string, exceto uuid.UUID) (bool, error)
 
-	// AlreadySucceeded returns the steps of THIS run that finished well in an
-	// earlier attempt of it, so a retry re-runs only what failed.
+	// AlreadySucceeded returns the INSTANCES of THIS run that finished well in
+	// an earlier attempt of it, so a retry re-runs only what failed.
+	//
+	// Keyed by instance and not by node, because a mapped step's twenty
+	// partitions do not fail together: a retry has to redo the two that broke
+	// and leave the other eighteen alone.
 	//
 	// A different question from StepHasSucceeded, which asks about EARLIER
 	// RUNS. Confusing the two would make a step skip itself forever after its
 	// first good day, so they are separate methods rather than one with a
 	// flag.
-	AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[string]bool, error)
+	AlreadySucceeded(ctx context.Context, runID uuid.UUID) (map[run.StepKey]bool, error)
 }
 
+// The step is identified by a run.StepKey and not by a bare node id, because a
+// mapped step (`for_each:`) has one row per instance. It is a struct rather
+// than a fifth positional int next to `attempt`, which is how the wrong one
+// gets passed.
 type Persister interface {
-	IniciarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int) error
-	TerminarTask(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+	IniciarTask(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int) error
+	TerminarTask(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		status run.Status, exit *int, failure string, log string) error
 
 	// RecordStages records the phases of an SDK step while it runs. It is
 	// what makes the screen advance before the step finishes.
-	RecordStages(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+	RecordStages(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		sdkVersion string, stages json.RawMessage) error
 
 	// MarkSkipped records a step whose trigger rule was not satisfied, with the
 	// reason. Required rather than optional: a skipped step that leaves no row
 	// is invisible, and "did not run and nobody can tell why" is the state this
 	// whole feature exists to remove.
-	MarkSkipped(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+	MarkSkipped(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		reason string) error
 }
 
@@ -289,12 +297,13 @@ func (o *outcomes) get(id string) run.Status {
 
 func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 	porID map[string]wf.Node, deps map[string][]string, done *outcomes,
-	settled map[string]bool,
+	settled map[run.StepKey]bool,
 ) error {
 	var (
-		wg   sync.WaitGroup
-		mu   sync.Mutex
-		errs []error
+		wg     sync.WaitGroup
+		mu     sync.Mutex
+		errs   []error
+		record []func()
 	)
 
 	for _, id := range level {
@@ -308,23 +317,12 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 		// succeeded is settled, and re-deciding it against the new attempt's
 		// outcomes could rule out something that has already run -- which
 		// would be the engine changing its mind about the past.
-		if settled[n.ID] {
-			if r.Report != nil {
-				r.Report.Evento(execution.Event{
-					Kind: execution.EventLog, NodeID: n.ID, Stream: "stdout",
-					Message: "already succeeded on an earlier attempt of this run; not re-run",
-				})
-			}
-			done.set(n.ID, run.StatusSuccess)
-			continue
-		}
-
 		// The rule is read BEFORE anything in this level starts, so every step
 		// in it sees the same picture. Deciding inside the goroutine would let
 		// two siblings disagree about whether something had failed, depending
 		// on which one the scheduler woke first.
 		if why := r.notEligible(n, deps[n.ID], done); why != "" {
-			r.markSkipped(ctx, n.ID, why)
+			r.markSkipped(ctx, run.Step(n.ID), why)
 			done.set(n.ID, run.StatusSkipped)
 			continue
 		}
@@ -338,39 +336,179 @@ func (r Runner) runLevel(ctx context.Context, w wf.Workflow, level []string,
 			// value. Treating a typo as "empty" disables the step silently and
 			// forever, and a nightly that stops running with nothing anywhere
 			// saying why is the worst outcome this feature can have.
-			r.markStart(ctx, n.ID, 0)
-			r.markEnd(ctx, n.ID, 0, err, "")
-			mu.Lock()
-			errs = append(errs, err)
-			mu.Unlock()
-			done.set(n.ID, run.StatusFailed)
+			r.fail(ctx, run.Step(n.ID), err, &mu, &errs, done)
 			continue
 		} else if why != "" {
-			r.markSkipped(ctx, n.ID, why)
+			r.markSkipped(ctx, run.Step(n.ID), why)
 			done.set(n.ID, run.StatusSkipped)
 			continue
 		}
 
-		wg.Add(1)
-		go func(n wf.Node) {
-			defer wg.Done()
-			err := r.runNode(ctx, w, n)
-			if err != nil {
-				mu.Lock()
-				errs = append(errs, err)
-				mu.Unlock()
+		// And now HOW MANY times it runs. An unmapped step is one instance; a
+		// `for_each:` step is one per element of the list, each with a row and
+		// a retry of its own.
+		instances, why, err := r.expand(n)
+		if err != nil {
+			r.fail(ctx, run.Step(n.ID), err, &mu, &errs, done)
+			continue
+		}
+		if why != "" {
+			// An empty list is SKIPPED, not success. A step that did nothing
+			// because there was nothing to do did not succeed at doing it, and
+			// a green node over zero instances is the kind of thing somebody
+			// builds a dashboard on.
+			r.markSkipped(ctx, run.Step(n.ID), why)
+			done.set(n.ID, run.StatusSkipped)
+			continue
+		}
+
+		// One outcome for the node, made of its instances. `failed` wins:
+		// three partitions loading and one not is a step that did not do its
+		// job, and the steps below it must see that.
+		var (
+			perNode sync.Mutex
+			broke   bool
+		)
+		for _, inst := range instances {
+			if settled[inst.key] {
+				// Already done on an earlier attempt of this same run. It is
+				// NOT marked skipped: it is a success, its row says so, and
+				// overwriting that row would erase the only record of the work
+				// happening.
+				//
+				// Per INSTANCE, so a retry of a mapped step redoes the two
+				// partitions that failed and leaves the other eighteen alone.
+				if r.Report != nil {
+					r.Report.Evento(execution.Event{
+						Kind: execution.EventLog, NodeID: n.ID, Stream: "stdout",
+						Message: "already succeeded on an earlier attempt of this run; not re-run",
+					})
+				}
+				continue
+			}
+
+			wg.Add(1)
+			go func(n wf.Node, inst instance) {
+				defer wg.Done()
+				if err := r.runNode(ctx, w, n, inst); err != nil {
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+					perNode.Lock()
+					broke = true
+					perNode.Unlock()
+				}
+			}(n, inst)
+		}
+		// The node's own outcome is settled after the level's wait below, so
+		// it is recorded through a closure the wait runs.
+		record = append(record, func() {
+			perNode.Lock()
+			defer perNode.Unlock()
+			if broke {
 				done.set(n.ID, run.StatusFailed)
 				return
 			}
 			done.set(n.ID, run.StatusSuccess)
-		}(n)
+		})
 	}
 	wg.Wait()
+	for _, settle := range record {
+		settle()
+	}
 
 	if len(errs) > 0 {
 		return errs[0]
 	}
 	return nil
+}
+
+// fail records a step that could not even start: a gate that could not be read,
+// a list that is not a list. It goes through markStart and markEnd so it lands
+// on the screen as a step that failed with a message, which is the shape the
+// run's page already knows how to show.
+func (r Runner) fail(ctx context.Context, step run.StepKey, cause error,
+	mu *sync.Mutex, errs *[]error, done *outcomes,
+) {
+	r.markStart(ctx, step, 0)
+	r.markEnd(ctx, step, 0, cause, "")
+	mu.Lock()
+	*errs = append(*errs, cause)
+	mu.Unlock()
+	done.set(step.Node, run.StatusFailed)
+}
+
+// instance is one run of a step: the key that identifies its row, and the
+// element it was mapped over.
+type instance struct {
+	key run.StepKey
+
+	// value is the element, as it was published. Empty when the step is not
+	// mapped, which is most of them.
+	value json.RawMessage
+}
+
+// expand turns a step into the instances that will run it.
+//
+// Three outcomes, the same shape as gate():
+//
+//   - instances, "", nil -- run these.
+//   - nil, reason, nil   -- skip it: the list is empty.
+//   - nil, "", err       -- fail it: the key is missing or is not a list.
+//
+// The DAG's shape does not change here, and that is what makes this cheap: a
+// mapped step is still ONE node with one set of edges, and only the number of
+// rows under it varies. graph.Levels never sees it.
+func (r Runner) expand(n wf.Node) ([]instance, string, error) {
+	if n.ForEach == "" {
+		return []instance{{key: run.Step(n.ID)}}, "", nil
+	}
+	step, key, _ := strings.Cut(n.ForEach, ".")
+
+	raw, published := r.published.snapshot()[step]
+	if !published {
+		return nil, "", fmt.Errorf("step %q maps over `%s`, and %q published nothing",
+			n.ID, n.ForEach, step)
+	}
+	var values map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return nil, "", fmt.Errorf("step %q maps over `%s`, and %q published something "+
+			"that is not an object: %w", n.ID, n.ForEach, step, err)
+	}
+	v, ok := values[key]
+	if !ok {
+		return nil, "", fmt.Errorf("step %q maps over `%s`, and %q published %s but not %q",
+			n.ID, n.ForEach, step, quotedRawKeys(values), key)
+	}
+
+	var list []json.RawMessage
+	if err := json.Unmarshal(v, &list); err != nil {
+		// A scalar is not a list of one. Guessing would make `for_each: x`
+		// behave differently depending on how many elements happened to be
+		// there today, which is the kind of rule nobody can hold in their head.
+		return nil, "", fmt.Errorf("step %q maps over `%s`, which is not a list", n.ID, n.ForEach)
+	}
+	if len(list) == 0 {
+		return nil, "`" + n.ForEach + "` is an empty list", nil
+	}
+
+	out := make([]instance, 0, len(list))
+	for i, item := range list {
+		out = append(out, instance{key: run.StepKey{Node: n.ID, MapIndex: i}, value: item})
+	}
+	return out, "", nil
+}
+
+func quotedRawKeys(values map[string]json.RawMessage) string {
+	if len(values) == 0 {
+		return "nothing"
+	}
+	out := make([]string, 0, len(values))
+	for k := range values {
+		out = append(out, strconv.Quote(k))
+	}
+	sort.Strings(out)
+	return strings.Join(out, ", ")
 }
 
 // notEligible returns WHY a step does not run, or "" when it does.
@@ -480,7 +618,7 @@ func quotedKeys(values map[string]any) string {
 // A failure to read it is not a failure of the run: the answer degrades to
 // "nothing succeeded yet", which re-runs the whole graph -- exactly what this
 // engine did before, and a safe place to land.
-func (r Runner) alreadySucceeded(ctx context.Context) map[string]bool {
+func (r Runner) alreadySucceeded(ctx context.Context) map[run.StepKey]bool {
 	if r.History == nil || r.RunID == uuid.Nil {
 		return nil
 	}
@@ -495,19 +633,19 @@ func (r Runner) alreadySucceeded(ctx context.Context) map[string]bool {
 
 // markSkipped records the decision. Same rules as markStart: it needs both a
 // persister and a RunID, and a write failure does not interrupt the run.
-func (r Runner) markSkipped(ctx context.Context, nodeID, reason string) {
+func (r Runner) markSkipped(ctx context.Context, step run.StepKey, reason string) {
 	if r.Report != nil {
 		r.Report.Evento(execution.Event{
-			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Kind: execution.EventLog, NodeID: step.Node, Stream: "stderr",
 			Message: "skipped: " + reason,
 		})
 	}
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
-	if err := r.Persist.MarkSkipped(ctx, r.RunID, nodeID, 0, reason); err != nil && r.Report != nil {
+	if err := r.Persist.MarkSkipped(ctx, r.RunID, step, 0, reason); err != nil && r.Report != nil {
 		r.Report.Evento(execution.Event{
-			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Kind: execution.EventLog, NodeID: step.Node, Stream: "stderr",
 			Message: "could not record the skip: " + err.Error(),
 		})
 	}
@@ -518,7 +656,7 @@ func (r Runner) markSkipped(ctx context.Context, nodeID, reason string) {
 // The retry is PER NODE, and not only per Run as in the dispatcher: redoing the
 // whole workflow because a `notify.sh` failed would throw away the work already
 // finished.
-func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
+func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node, inst instance) error {
 	attempts := r.MaxAttempts
 	if attempts < 1 {
 		attempts = 1
@@ -533,7 +671,7 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 		if err != nil {
 			return err
 		}
-		r.markStart(ctx, n.ID, t-1)
+		r.markStart(ctx, inst.key, t-1)
 		// Counted per ATTEMPT and not per step: flapping -- a step that passes
 		// on the third try, every night -- is invisible in a duration and
 		// invisible on the screen, and this is the only number that shows it.
@@ -541,10 +679,10 @@ func (r Runner) runNode(ctx context.Context, w wf.Workflow, n wf.Node) error {
 
 		started := time.Now()
 		var outgoing string
-		outgoing, last = r.tentar(ctx, w, n, t-1)
+		outgoing, last = r.tentar(ctx, w, n, inst, t-1)
 		r.Metrics.StepFinished(ctx, w.Slug, n.ID, stepStatus(last), time.Since(started))
 
-		r.markEnd(ctx, n.ID, t-1, last, outgoing)
+		r.markEnd(ctx, inst.key, t-1, last, outgoing)
 		libera()
 		if last == nil {
 			return nil
@@ -606,13 +744,13 @@ func (r Runner) ocupar(ctx context.Context) (func(), error) {
 // markStart and markEnd only record when there is both a persister AND a
 // RunID. A write failure does not interrupt the run: losing a step's record is
 // bad, but aborting the workflow over it is worse.
-func (r Runner) markStart(ctx context.Context, nodeID string, attempt int) {
+func (r Runner) markStart(ctx context.Context, step run.StepKey, attempt int) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
-	if err := r.Persist.IniciarTask(ctx, r.RunID, nodeID, attempt); err != nil && r.Report != nil {
+	if err := r.Persist.IniciarTask(ctx, r.RunID, step, attempt); err != nil && r.Report != nil {
 		r.Report.Evento(execution.Event{
-			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Kind: execution.EventLog, NodeID: step.Node, Stream: "stderr",
 			Message: "could not record the start of the step: " + err.Error(),
 		})
 	}
@@ -625,7 +763,7 @@ func (r Runner) markStart(ctx context.Context, nodeID string, attempt int) {
 // It is only called after a marker has been recognised, which is what keeps an
 // ordinary step from paying a database round trip per log line. Checking again
 // here would be a verification that cannot fail.
-func (r Runner) markStages(ctx context.Context, nodeID string, attempt int, c *stageCollector) {
+func (r Runner) markStages(ctx context.Context, step run.StepKey, attempt int, c *stageCollector) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
@@ -633,10 +771,10 @@ func (r Runner) markStages(ctx context.Context, nodeID string, attempt int, c *s
 	if err != nil {
 		return
 	}
-	_ = r.Persist.RecordStages(ctx, r.RunID, nodeID, attempt, c.Version, data)
+	_ = r.Persist.RecordStages(ctx, r.RunID, step, attempt, c.Version, data)
 }
 
-func (r Runner) markEnd(ctx context.Context, nodeID string, attempt int, cause error, log string) {
+func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
@@ -652,9 +790,9 @@ func (r Runner) markEnd(ctx context.Context, nodeID string, attempt int, cause e
 			exit = &step.ExitCode
 		}
 	}
-	if err := r.Persist.TerminarTask(ctx, r.RunID, nodeID, attempt, status, exit, msg, log); err != nil && r.Report != nil {
+	if err := r.Persist.TerminarTask(ctx, r.RunID, step, attempt, status, exit, msg, log); err != nil && r.Report != nil {
 		r.Report.Evento(execution.Event{
-			Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+			Kind: execution.EventLog, NodeID: step.Node, Stream: "stderr",
 			Message: "could not record the end of the step: " + err.Error(),
 		})
 	}
@@ -720,7 +858,7 @@ const contextLines = 5
 // tentar runs the step once and returns the complete output (capped) along with
 // the outcome. The output comes back on success too: a step that finished fine
 // but produced very little is a signal, and it is only visible in the log.
-func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt int) (string, error) {
+func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst instance, attempt int) (string, error) {
 	// A marker does nothing and succeeds. Short-circuited HERE rather than
 	// given an executor that runs `true`: an empty pod on a cluster costs a
 	// scheduling round trip and an image pull to accomplish nothing, and on a
@@ -740,7 +878,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 	// yes; if it failed, this is still the first, which is right.
 	first := r.firstRun(ctx, w.Slug, n.ID)
 
-	exec, tarefa, err := r.build(w, n, attempt, first)
+	exec, tarefa, err := r.build(w, n, inst, attempt, first)
 	if err != nil {
 		return "", err
 	}
@@ -769,7 +907,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 		// that carried them.
 		if e.Kind == execution.EventLog {
 			if line := strings.TrimSpace(e.Message); line != "" && stages.line(line) {
-				r.markStages(ctx, n.ID, attempt, &stages)
+				r.markStages(ctx, inst.key, attempt, &stages)
 				continue
 			}
 		}
@@ -777,7 +915,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 		// What the step published. It never reaches the log: it is the step
 		// talking to the steps below it, not to a person.
 		if e.Kind == execution.EventContext {
-			r.collectContext(ctx, n.ID, attempt, e.Message)
+			r.collectContext(ctx, n, inst, attempt, e.Message)
 			continue
 		}
 
@@ -831,9 +969,15 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, attempt in
 // environment, and somebody will. What is promised is that it does NOT HAVE TO
 // -- not that it cannot.
 const (
-	envRunID          = "BREVIS_RUN_ID"
-	envRunFirst       = "BREVIS_RUN_FIRST"
-	envRunAttempt     = "BREVIS_RUN_ATTEMPT"
+	envRunID      = "BREVIS_RUN_ID"
+	envRunFirst   = "BREVIS_RUN_FIRST"
+	envRunAttempt = "BREVIS_RUN_ATTEMPT"
+
+	// A mapped step's instance. Absent on every unmapped step, which is most
+	// of them: a variable that is always there and always empty teaches
+	// whoever reads the environment to ignore it.
+	envMapIndex       = "BREVIS_MAP_INDEX"
+	envMapValue       = "BREVIS_MAP_VALUE"
 	envRunTrigger     = "BREVIS_RUN_TRIGGER"
 	envRunLogicalDate = "BREVIS_RUN_LOGICAL_DATE"
 	envRunParams      = "BREVIS_RUN_PARAMS"
@@ -875,12 +1019,12 @@ type ContextReader interface {
 // truncated is reported as an error on the step's log, loudly, rather than
 // dropped -- dropping it hands the next step a missing key with nothing
 // anywhere saying why, which is the failure this whole feature is against.
-func (r Runner) collectContext(ctx context.Context, nodeID string, attempt int, raw string) {
+func (r Runner) collectContext(ctx context.Context, n wf.Node, inst instance, attempt int, raw string) {
 	parsed, err := runcontext.Parse([]byte(raw))
 	if err != nil {
 		if r.Report != nil {
 			r.Report.Evento(execution.Event{
-				Kind: execution.EventLog, NodeID: nodeID, Stream: "stderr",
+				Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
 				Message: "brevis: the context this step published was not usable: " + err.Error(),
 			})
 		}
@@ -890,15 +1034,43 @@ func (r Runner) collectContext(ctx context.Context, nodeID string, attempt int, 
 		return
 	}
 
-	r.published.put(nodeID, parsed)
-
-	// Persisted immediately, and not at the end of the step: a run that resumes
-	// reads this back, and the process that would have written it later is
-	// exactly the one that may not survive.
-	if r.Persist != nil && r.RunID != uuid.Nil {
-		if p, ok := r.Persist.(ContextPersister); ok {
-			_ = p.RecordContext(ctx, r.RunID, nodeID, attempt, parsed)
+	// A MAPPED step's output is recorded on its row but does NOT become
+	// context for the steps below.
+	//
+	// Four instances publishing under one step's name is four values for one
+	// key, and there is no answer to `context.String("load.bucket")` that is
+	// not a guess. Inventing a list shape here would change what that call
+	// means for every step in the system to serve a case nobody has asked for
+	// yet. It is said out loud rather than dropped quietly, because a step
+	// whose publish silently goes nowhere is the worst way to find this out.
+	if n.ForEach != "" {
+		if r.Report != nil {
+			r.Report.Evento(execution.Event{
+				Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
+				Message: "this step is mapped, so what it published is recorded on its " +
+					"row but is not visible to the steps below: one key cannot hold " +
+					"one value per instance",
+			})
 		}
+		r.recordContext(ctx, inst, attempt, parsed)
+		return
+	}
+
+	r.published.put(n.ID, parsed)
+	r.recordContext(ctx, inst, attempt, parsed)
+}
+
+// recordContext writes what a step published onto its own row.
+//
+// Immediately, and not at the end of the step: a run that resumes reads this
+// back, and the process that would write it later is exactly the one that may
+// not survive.
+func (r Runner) recordContext(ctx context.Context, inst instance, attempt int, parsed json.RawMessage) {
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	if p, ok := r.Persist.(ContextPersister); ok {
+		_ = p.RecordContext(ctx, r.RunID, inst.key, attempt, parsed)
 	}
 }
 
@@ -909,7 +1081,7 @@ func (r Runner) collectContext(ctx context.Context, nodeID string, attempt int, 
 // implementation at once, including the fakes in this package's own tests, for
 // a capability most of them do not need.
 type ContextPersister interface {
-	RecordContext(ctx context.Context, runID uuid.UUID, nodeID string, attempt int,
+	RecordContext(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		published json.RawMessage) error
 }
 
@@ -971,8 +1143,21 @@ func upstream(w wf.Workflow) map[string][]string {
 //
 // primeira is resolved beforehand, by the caller, because it needs a database
 // round trip and building a task must not do I/O.
-func (r Runner) runContext(nodeID string, first bool, attempt int) map[string]string {
+func (r Runner) runContext(inst instance, first bool, attempt int) map[string]string {
 	env := map[string]string{}
+
+	// What a mapped step's instance is FOR. Without these two the four
+	// instances are four identical processes, which is four times the work and
+	// none of the point.
+	//
+	// The value is the element exactly as it was published: a JSON string
+	// arrives without its quotes, because `for_each: extract.partitions` over
+	// ["2026-01", "2026-02"] should hand a shell `2026-01` and not `"2026-01"`.
+	// Anything else -- an object, a number, a list -- arrives as its JSON.
+	if inst.key.MapIndex != run.Unmapped {
+		env[envMapIndex] = strconv.Itoa(inst.key.MapIndex)
+		env[envMapValue] = elementValue(inst.value)
+	}
 
 	// With no RunID there is no managed run: this is the `brevis run` path,
 	// which executes a YAML on the spot and belongs to no history.
@@ -1048,12 +1233,37 @@ func (r Runner) firstRun(ctx context.Context, slug, nodeID string) bool {
 }
 
 // montar escolhe o executor e monta a task.
-func (r Runner) build(w wf.Workflow, n wf.Node, attempt int, first bool) (execution.Executor, execution.TaskExec, error) {
+// instanceSuffix is empty for an unmapped step, so every pod name and every
+// execution id in the system is byte for byte what it was.
+func instanceSuffix(k run.StepKey) string {
+	if k.MapIndex == run.Unmapped {
+		return ""
+	}
+	return "-" + strconv.Itoa(k.MapIndex)
+}
+
+// elementValue renders one element of a mapped list for the step's environment.
+func elementValue(raw json.RawMessage) string {
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		// A JSON string, without its quotes: `for_each` over ["2026-01"] hands
+		// a shell 2026-01, which is what the command was written expecting.
+		return text
+	}
+	return string(raw)
+}
+
+func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, first bool) (execution.Executor, execution.TaskExec, error) {
 	image := w.ImageFor(n)
 	resources := w.ResourcesFor(n)
 
 	t := execution.TaskExec{
-		ExecutionID: w.Slug + ":" + n.ID,
+		// The instance is in the execution id, and therefore in the POD's
+		// name. Without it, four instances of a mapped step ask the cluster for
+		// four pods with one name: the executor ADOPTS an existing pod rather
+		// than starting a second, so three of the four would attach to the
+		// first one's logs and report its exit code as their own.
+		ExecutionID: w.Slug + ":" + inst.key.Node + instanceSuffix(inst.key),
 		NodeID:      n.ID,
 		Workflow:    w.Slug,
 		RunID:       r.RunID.String(),
@@ -1076,7 +1286,7 @@ func (r Runner) build(w wf.Workflow, n wf.Node, attempt int, first bool) (execut
 		// beats the global on purpose -- the other way round, a variable
 		// declared in the file would lose in silence to a BREVIS_TASK_ENV
 		// somebody configured months ago.
-		Env:     mesclarEnv(r.Env, r.runContext(n.ID, first, attempt), w.EnvDe(n)),
+		Env:     mesclarEnv(r.Env, r.runContext(inst, first, attempt), w.EnvDe(n)),
 		Secrets: w.SecretsDe(n),
 		Timeout: r.Timeout,
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
+	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
 	"github.com/AreteAcademy/brevis/internal/execution/local"
@@ -46,9 +47,9 @@ func retryOf(t *testing.T, w wf.Workflow, settled []string, failing ...string) (
 		}
 	}
 
-	already := map[string]bool{}
+	already := map[dom.StepKey]bool{}
 	for _, s := range settled {
-		already[s] = true
+		already[dom.Step(s)] = true
 	}
 
 	spy := &spyPersister{}
@@ -237,6 +238,18 @@ func TestIntegrationARetryReRunsOnlyWhatFailed(t *testing.T) {
 	}
 	if expensive != 1 || flaky != 1 {
 		t.Fatalf("first attempt: expensive=%d flaky=%d", expensive, flaky)
+	}
+
+	// The precondition, asserted rather than assumed. Without it, anything that
+	// clears the table between the two attempts fails the test below with
+	// "expensive ran twice", which blames the feature for somebody else's
+	// TRUNCATE.
+	settled, err := repo.AlreadySucceeded(ctx, runID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settled[dom.Step("expensive")] {
+		t.Fatalf("the first attempt's success is not in the table: %v", settled)
 	}
 
 	// Attempt two, same run id, the way the dispatcher retries.

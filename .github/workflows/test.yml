@@ -221,8 +221,12 @@ jobs:
           BREVIS_TEST_DATABASE_URL: postgres://brevis:brevis@localhost:55432/brevis_it
         run: |
           go run ./cmd/brevis migrate up
-          go test -v -timeout 10m -run Integration ./internal/...
-          go test -v -timeout 10m ./internal/scheduler/ ./internal/queue/
+          # -p 1 for the same reason the Makefile has it: several packages
+          # TRUNCATE this database, and packages run in parallel by default.
+          # These two invocations happen not to overlap today, and relying on
+          # that is one new package away from being wrong.
+          go test -v -p 1 -timeout 10m -run Integration ./internal/...
+          go test -v -p 1 -timeout 10m ./internal/scheduler/ ./internal/queue/
 
       - name: Say what did not run
         if: env.GCP_CREDENTIALS == ''
