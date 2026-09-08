@@ -27,7 +27,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
-          image: daniel3843/brevis:0.8.0
+          image: daniel3843/brevis:0.9.0
           args: ["serve"]
           # TWO ports, and only `http` belongs in the Ingress below.
           #

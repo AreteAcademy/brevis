@@ -120,6 +120,29 @@ func report() error {
 		return err
 	}
 
+	// The AUTO PARAMS, and the reason this step reads them instead of calling
+	// time.Now().
+	//
+	// This report is named after the day it covers. With now(), a run the queue
+	// delayed past midnight writes yesterday's data into today's file -- and a
+	// retry at nine the next morning writes it into a third one. With
+	// Auto.Now() the name is the SLOT: it does not move when the run is late
+	// and does not move when the run is retried.
+	//
+	// Nothing sets this up -- no `params:` block, nothing in the YAML. Every
+	// run has them. Run this program by hand and Auto.Now() is simply the wall
+	// clock, which is why there is no branch here for local development.
+	rc := sdk.RunContextFromEnv()
+	day := rc.Auto.Now().Format("2006-01-02")
+	if start, end, ok := rc.Auto.Window(); ok {
+		fmt.Printf("reporting on the window [%s, %s)\n",
+			start.Format(time.RFC3339), end.Format(time.RFC3339))
+	}
+	if rc.Auto.PreviousError {
+		fmt.Println("the previous run of this workflow did not succeed; " +
+			"a real pipeline would widen its window to catch up")
+	}
+
 	// Reduce folds the stream into groups BEFORE it reaches the destination,
 	// and memory stays proportional to the number of groups rather than to the
 	// number of rows. A million orders across two hundred SKUs is two hundred
@@ -135,7 +158,10 @@ func report() error {
 			},
 		},
 		Target: sdk.Target{
-			To:      to.Files{Path: reports + "/"},
+			// The day is a DIRECTORY, not a file name: to.Files names the
+			// object itself, on purpose, so that a second load never
+			// overwrites the first. `reports/2026-09-08/parte-....ndjson`.
+			To:      to.Files{Path: filepath.Join(reports, day) + "/"},
 			Columns: []string{"sku", "orders", "units"},
 		},
 	})
@@ -148,7 +174,7 @@ func report() error {
 // publishes `quality.count_rows.rows`, and the `unless_empty:` in the next step
 // moves with it. The same file works both ways without being written twice.
 func qualityCount() error {
-	found, err := filepath.Glob(filepath.Join(reports, "*.ndjson"))
+	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
 	if err != nil {
 		return err
 	}
@@ -170,7 +196,7 @@ func qualityCount() error {
 // running standalone or inlined: `unless_empty:` in the YAML resolves the
 // prefix, and this code names nothing.
 func qualityFreshness() error {
-	found, err := filepath.Glob(filepath.Join(reports, "*.ndjson"))
+	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
 	if err != nil {
 		return err
 	}
@@ -183,7 +209,8 @@ func qualityFreshness() error {
 			return err
 		}
 		if age := time.Since(info.ModTime()); age > 24*time.Hour {
-			return fmt.Errorf("%s is %s old", filepath.Base(f), age.Round(time.Hour))
+			return fmt.Errorf("the report for %s is %s old",
+				filepath.Base(filepath.Dir(f)), age.Round(time.Hour))
 		}
 	}
 	fmt.Printf("%d report file(s), all fresh\n", len(found))

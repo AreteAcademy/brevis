@@ -28,7 +28,7 @@ start ─▶ discover ─▶ load [3] ─▶ check ─▶ report ─▶ quality.
 | `discover` | publishes the list the next step maps over |
 | `load` | **`for_each:`** — one node, three instances, `[3]` on the card |
 | `check` | exists *because* a mapped step publishes nothing downstream |
-| `report` | **`unless_empty:`** — a key, not an expression |
+| `report` | **`unless_empty:`** — a key, not an expression; and the only step that needs a clock, which it gets from the auto params |
 | `quality.*` | **`uses:`** — another workflow's steps, expanded at publish |
 | `notify_failure` | **`when: any_failed`** |
 | `cleanup` | **`when: all_done`** — impossible without trigger rules |
@@ -91,6 +91,25 @@ bctx.SetAll(map[string]any{"partitions": partitions})
 // load, one instance per element
 partition := os.Getenv("BREVIS_MAP_VALUE")
 ```
+
+## The clock the report reads
+
+`report` names its output after `sdk.RunContextFromEnv().Auto.Now()` and never calls
+`time.Now()` — `data/reports/2026-09-08/`. Nothing in the YAML sets that up:
+every run carries the [auto params](https://brevis.dev/docs/parameters/#auto-params),
+and `Auto.Now()` is the **slot**, so a run the queue delayed past midnight does
+not write yesterday's data into today's folder, and a retry at nine the next
+morning does not write it into a third one.
+
+It also prints the window it covers, which comes from the cron rather than from
+the history:
+
+```
+reporting on the window [2026-09-07T04:00:00Z, 2026-09-08T04:00:00Z)
+```
+
+Run the binary by hand and `Auto.Now()` is simply the wall clock, which is why
+there is no branch in that function for local development.
 
 ## Two traps this example steps around
 

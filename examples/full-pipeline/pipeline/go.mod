@@ -8,6 +8,6 @@ module github.com/AreteAcademy/brevis/examples/full-pipeline/pipeline
 
 go 1.23.0
 
-require github.com/AreteAcademy/brevis/sdk v0.54.0
+require github.com/AreteAcademy/brevis/sdk v0.56.0
 
 require github.com/google/uuid v1.6.0 // indirect
