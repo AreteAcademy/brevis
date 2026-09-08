@@ -87,28 +87,33 @@
      line        1.1  -- a rule, never text and never a control's outline
 --------------------------------------------------------------------------- */
 @theme {
-  --color-canvas: #f2f4ed;
+  /* The VALUES live on the names internal/branding writes, and the readable
+     names alias them. That direction is not cosmetic: brand.yaml overrides
+     `--color-parchment` and `--color-gold`, so if those were the aliases an
+     installation's own background would be written to a variable nothing
+     reads, and its theme would silently stop applying to the page's ground.
+     Checked against branding.go's write list, not assumed.
+
+     The old names survive for the same reason they are the branding surface:
+     sixty call sites use them, and renaming every template in the same commit
+     as a repaint makes both impossible to review. */
+  --color-parchment: #f2f4ed;
+  --color-parchment-soft: #f7f8f4;
   --color-surface: #ffffff;
-  --color-surface-2: #f7f8f4;
   --color-ink: #141711;
   --color-muted: #5c6355;
   --color-line: #e0e4d9;
-  --color-line-strong: #c4cbb6;
-  --color-accent: #5f7038;
-  --color-accent-strong: #43521f;
-  --color-accent-wash: #5f703814;
-
-  /* The names the previous parchment theme used. They stay as ALIASES rather
-     than being swept out of 60 call sites in one commit: a rename touching
-     every template at the same time as a repaint makes both impossible to
-     review, and one of the two always hides a mistake in the other.
-     internal/branding also names them, so they are a published surface. */
-  --color-parchment: var(--color-canvas);
-  --color-parchment-soft: var(--color-surface-2);
-  --color-gold: var(--color-accent);
-  --color-gold-strong: var(--color-accent-strong);
-  --color-gold-wash: var(--color-accent-wash);
   --color-line-soft: #eef0e9;
+  --color-gold: #5f7038;
+  --color-gold-strong: #43521f;
+  --color-gold-wash: #5f703814;
+
+  --color-canvas: var(--color-parchment);
+  --color-surface-2: var(--color-parchment-soft);
+  --color-accent: var(--color-gold);
+  --color-accent-strong: var(--color-gold-strong);
+  --color-accent-wash: var(--color-gold-wash);
+  --color-line-strong: #c4cbb6;
 
   /* States. Each one passes AA as TEXT on both grounds, because they are used
      as text on a pill and not only as a dot. */

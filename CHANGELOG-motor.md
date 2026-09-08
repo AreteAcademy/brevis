@@ -9,6 +9,67 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.11.0] — 2026-09-08
+
+No migration. The change is what the interface LOOKS like, and one message it
+writes.
+
+### Changed: the console carries Brevis's identity
+
+It carried Arete Academy's, and its own CSS said so: warm parchment, Cormorant
+Garamond, gold, corners of 20 to 28 pixels, a golden halo and a background
+grid. That is a brochure's vocabulary on a screen whose job is a table of run
+ids, and it was not even this product's brochure.
+
+It now carries brevis.sh's, on a light operational ground. The site is dark by
+decision and says why — it is a landing page, read for two minutes. This is a
+console, read for hours, in a bright office, beside a browser full of light
+tools. So the hues are the site's and the ground is inverted: `#141711`, the
+site's BACKGROUND, is this one's text.
+
+The thirteen colours are measured against both grounds and the ratios are in
+the CSS. Nothing is below AA, including the state colours, which are used as
+text on a pill and not only as a dot.
+
+**Typography** is IBM Plex Sans and Mono, still served from the binary — a UI
+that depends on Google Fonts changes typeface halfway down the screen in a
+cluster with no route out. It is 92 KB against the 208 KB Inter and Cormorant
+Garamond cost, so the image is smaller.
+
+**The corners are square**, 3px, which is what brevis.sh uses and says why:
+*"cantos quase retos: a superfície é operacional, não um widget"*. Status dots,
+the donut and the switch stay round — squaring a switch makes it stop reading
+as a switch.
+
+**The sign-in screen** is the mark, two fields and a button on a flat ground.
+The grid, the halo and the ring around the card are gone.
+
+**An installation's own theme still wins.** `internal/branding` overrides the
+same tokens it always did, and the old names (`parchment`, `gold`) are kept as
+aliases so a `brand.yaml` written against them keeps working.
+
+### Fixed: the run graph sat in an ocean of empty grid
+
+Eight steps drawn in the middle of a thousand pixels. React Flow fits its view
+ONCE, when it initialises — which happens on the first render, before the
+graph has been fetched — so every workflow inherited the viewport of an empty
+frame. The canvas is now sized to the drawing, and the fit is redone when the
+drawing changes shape.
+
+### Fixed: five Portuguese strings in the interface
+
+"Em andamento", "em curso", "Buscar workflow", and the column headers "Origem"
+and "Criado". The search button said "Get", which is not what it does. The
+engine's own `nivel %d:` in a failure message is now `level %d:`.
+
+`CONTRIBUTING.md` has required English since the language sweep and nothing
+verified it, which is how these arrived one at a time.
+`.github/scripts/ui-language-check.sh` now fails CI on Portuguese in
+user-visible text — including in component arguments, which is where two of the
+five were hiding and where the first version of the check did not look.
+
+---
+
 ## [0.10.1] — 2026-09-08
 
 ### Fixed: the run's screen showed a different clock from the step
