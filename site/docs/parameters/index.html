@@ -218,6 +218,19 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
 <p><code>Auto.Now()</code> é o relógio a ler no lugar de <code>time.Now()</code>. Fora do motor — um fetcher que alguém roda na mão — ele <em>é</em> o relógio de parede, então nada precisa de tratamento especial no desenvolvimento local.</p>
+<p>Em Python, o <code>pip install brevis</code> lê os mesmos valores:</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<p>O <code>window()</code> devolve <code>None</code> quando o workflow não tem agendamento, em vez de um par de tempos zerados — uma consulta desde a época seleciona tudo, e essa falha não pode ser silenciosa. O <code>or</code> acima é a queda inteira.</p>
 <h2 id="o-snapshot">O snapshot<a class="anchor" href="#o-snapshot" aria-label="link">#</a></h2>
 <p>Os parâmetros são gravados <strong>no run</strong>, não lidos do workflow na hora de executar. O run carrega a entrada com que foi disparado, e o log de uma execução de janeiro continua mostrando os valores de janeiro mesmo depois de o padrão mudar.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>

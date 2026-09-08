@@ -20,3 +20,15 @@ go.work.sum
 # sendo recommitado. Artefato de build não é fonte.
 /cmd/brevis-sdk/brevis-sdk
 /brevis
+
+# Python build and test artefacts. `python -m build` leaves a wheel and an
+# sdist in lib/python-context/dist/, `uv run` leaves a .venv and a lock, and
+# pytest leaves its caches. None of it is source, and the lock in particular
+# would pin a dev tool's resolution into a library that declares no
+# dependencies at all.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+/lib/python-context/dist/
+/lib/python-context/.venv/
+/lib/python-context/uv.lock

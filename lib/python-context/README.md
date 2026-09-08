@@ -1,15 +1,17 @@
 # brevis
 
-Pass context between the steps of a Brevis workflow. That is all it does.
+Pass context between the steps of a Brevis workflow, and read the clock the
+engine already worked out for the run. That is all it does.
 
 ```bash
 pip install brevis
 ```
 
 ```python
-from brevis import context
+from brevis import context, run
 
 bucket = context.get("extract.bucket")
+since, until = run.window()          # the window this run covers
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
 ```
@@ -57,6 +59,47 @@ Nothing reaches the disk until the process exits, so a step that dies hard
 publishes nothing. That is correct: a crashed step's output described work that
 did not finish.
 
+## The clock this run should read
+
+Every run also carries **auto params**: values the engine works out on its own.
+Nobody declares them, every run has them, and they answer the question a
+pipeline would otherwise answer with `datetime.now()`.
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+`run.now()` is the **slot** on a scheduled run. That matters more than it
+sounds: a fetcher that reads `datetime.now()` and subtracts two hours is right
+on a run that starts on time and forty minutes wrong on one the queue delayed —
+and those forty minutes belong to *no run at all*, because the next slot reads
+its own `now()` too. Nothing fails, and the gap is found weeks later.
+
+```python
+run.now()                   # the clock: the slot, or when the run started
+run.window()                # (start, end), end excluded — or None
+run.auto().date             # "2026-09-08": the partition, the folder, the WHERE
+run.auto().delay_seconds    # how late this attempt was
+run.auto().previous_error   # the run before this one did not succeed
+run.context()               # id, attempt, trigger, params, and auto
+```
+
+`window()` comes from the **cron**, not from the history: a backfill of a slot
+from March produces the window March had. Asking for `[start, end)` never
+overlaps and never gaps, however late the run is and however often it retries.
+
+It returns `None` rather than a pair of zero times when the workflow has no
+schedule — a query from the epoch selects everything, and that failure should
+not be silent. The `or` above is the whole fallback.
+
+Run the script by hand and `run.now()` **is** the wall clock and `window()` is
+`None`, so there is no branch to write for local development.
+
 ## What it refuses
 
 | | because |
@@ -81,6 +124,14 @@ validation still runs, so a value that works on your laptop works in production.
 
 Everything published is visible to anyone who can see the run — it is in the
 pod's status and in the run history. Publish a path, not a signed URL.
+
+## Versions
+
+[`CHANGELOG.md`](CHANGELOG.md). This package versions on its own, separately
+from the engine and from the Go SDK — a fix here does not force an engine
+release. `brevis.run` needs an engine on `v0.9.0` or newer to have anything to
+read; on an older one every field is empty and `run.now()` is the wall clock,
+which is the same thing it does outside the engine.
 
 ## Testing your step
 

@@ -29,48 +29,23 @@ jobs:
         with:
           python-version: '3.9'
 
-      # The DECLARED floor, not the newest. A library that only runs on 3.12 is
-      # a library a data team on a managed cluster cannot install, and that is
-      # the audience this exists for.
-      - name: Tests on the declared minimum
+      # The same script test.yml runs on every push, on the DECLARED floor.
+      # It used to be inline here, and that is precisely how `importlib` got
+      # into __init__.py after py/v0.1.1 without anybody finding out: these
+      # gates ran only at publish, when the tag is already pushed.
+      - name: Gates on the declared minimum
         run: |
           python -m pip install --quiet pytest
-          python -m pytest tests/ -q
+          ../../.github/scripts/python-check.sh
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: Tests on a current Python
+      - name: The same gates on a current Python
         run: |
           python -m pip install --quiet pytest
-          python -m pytest tests/ -q
-
-      # It reads an environment variable and writes a file. If that ever needs
-      # a dependency, something has gone wrong that a review would miss.
-      - name: Gate - the library depends on nothing
-        run: |
-          python - <<'PY'
-          import ast, pathlib, sys
-          mods = set()
-          for f in pathlib.Path("src").rglob("*.py"):
-              for node in ast.walk(ast.parse(f.read_text())):
-                  if isinstance(node, ast.Import):
-                      mods.update(a.name.split(".")[0] for a in node.names)
-                  elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-                      mods.add(node.module.split(".")[0])
-          # An ALLOWLIST rather than sys.stdlib_module_names, which does not
-          # exist before 3.10 -- so this gate keeps working if the steps above
-          # are ever reordered, and it is stricter: a new stdlib import is a
-          # decision somebody makes here rather than one that slips through.
-          allowed = {"__future__", "atexit", "json", "logging", "os", "tempfile", "typing"}
-          outside = sorted(mods - allowed)
-          if outside:
-              print("::error::the library imports", ", ".join(outside),
-                    "-- add it here deliberately, or do not add it")
-              raise SystemExit(1)
-          print("imports only:", ", ".join(sorted(mods)))
-          PY
+          ../../.github/scripts/python-check.sh
 
       # The tag and the version have to agree, for the reason the engine's
       # release gate gives: otherwise `pip show` reports a version that is not

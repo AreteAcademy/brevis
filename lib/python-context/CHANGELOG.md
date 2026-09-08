@@ -1,0 +1,87 @@
+# Changelog — the Python library
+
+`brevis` on PyPI, published from a `py/v*` tag. Three artifacts, three
+cadences: the engine's versions are in
+[`CHANGELOG-motor.md`](../../CHANGELOG-motor.md) and the Go SDK's in
+[`CHANGELOG.md`](../../CHANGELOG.md). A fix here must not force an engine
+release, which is why this list is its own.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+the versions follow [SemVer](https://semver.org/).
+
+---
+
+## [0.2.0] — 2026-09-08
+
+### Added: `brevis.run`, the clock the engine already knew
+
+The engine `v0.9.0` computes a run's
+[auto params](https://brevis.dev/docs/parameters/#auto-params) and injects
+them. Python now reads them the same way the Go SDK does:
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+`run.now()` is the point: it is the clock to read instead of
+`datetime.now()`, and on a scheduled run it is the slot, so it does not move
+when the run is late and does not move when the run is retried three hours
+later. A fetcher that reads `datetime.now()` and subtracts its window silently
+skips exactly as much data as the queue delayed it by — and the next slot reads
+its own `now()`, so nobody ever fetches the gap.
+
+`run.window()` returns `None` rather than a pair of zero times when the
+workflow has no schedule: a query from the epoch selects everything, and that
+failure should not be silent.
+
+`run.context()` carries the rest — id, first, attempt, trigger, params — and
+`run.param(name, default)` reads one dispatch parameter.
+
+Outside the engine everything is empty, `run.now()` **is** the wall clock and
+`window()` is `None`, so a script somebody runs by hand needs no special case.
+
+Still **no dependencies**, and the gate that says so still says so. `datetime`
+and `dataclasses` joined its allowlist deliberately: the auto params are
+timestamps, and handing a step a string to parse would be handing back the
+arithmetic they exist to remove.
+
+### Fixed: the gates now run before the tag, not only at it
+
+The tests and the no-dependencies check lived only in `publish-python.yml`, so
+a commit that broke the library sat green on master until somebody tagged — and
+by then the tag is pushed and a PyPI filename is burned forever.
+
+It had already happened: `importlib.metadata` entered `__init__.py` after
+`py/v0.1.1`, and the allowlist did not have it. The next `py/v*` tag would have
+failed at the gate, mid-release.
+
+Both paths now run the same `.github/scripts/python-check.sh`, on 3.9 and on
+3.13. One script, because two copies of a check are two checks that drift.
+
+### One detail worth naming
+
+`datetime.fromisoformat` did not accept a `Z` suffix until 3.11, and the engine
+writes RFC 3339, which always uses one. On the declared floor of 3.9 this
+library would have parsed **nothing at all**, in silence, because every field
+is optional and nothing would have raised. The suffix is translated before
+parsing, and the test for it runs on 3.9 in CI.
+
+---
+
+## [0.1.1] — 2026-09-07
+
+`0.1.0` shipped a wheel and no sdist: the wheel uploaded, the sdist was refused
+because a file of that exact name had belonged to a previously deleted project,
+and PyPI's filename ledger outlives the project forever. This version is the
+complete release, and the publish workflow now asserts what is actually on the
+index rather than trusting a step that reported success.
+
+## [0.1.0] — 2026-09-07
+
+`brevis.context`: read what the steps before published, publish something for
+the ones after. No dependencies, one environment variable in and one file out.

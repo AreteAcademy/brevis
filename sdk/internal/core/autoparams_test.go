@@ -11,12 +11,20 @@ import (
 // The JSON tags are the contract between the engine's run.AutoParams and this
 // type, and the two live in different modules -- nothing but a test crossing
 // the boundary would notice them drifting apart.
+//
+// The fixture is written by the ENGINE's own test, and the Python library reads
+// the same bytes. Three implementations, one file: rename a tag on any side and
+// one of the three goes red immediately, instead of every fetcher in the fleet
+// quietly reading a window of zero.
 func TestTheAutoParamsSurviveTheTrip(t *testing.T) {
-	t.Setenv(EnvAutoParams, `{"scheduled_at":"2026-09-08T04:00:00Z",`+
-		`"started_at":"2026-09-08T04:37:00Z","adjusted_at":"2026-09-08T04:00:00Z",`+
-		`"delay_seconds":2220,"interval_start":"2026-09-07T04:00:00Z",`+
-		`"interval_end":"2026-09-08T04:00:00Z","previous_error":true,`+
-		`"previous_success_at":"2026-09-06T04:00:00Z","date":"2026-09-08"}`)
+	// Outside a repository checkout there is no fixture -- somebody running
+	// `go test` on the extracted module. Skipping is honest; failing would
+	// report a missing file as a broken contract.
+	raw, err := os.ReadFile("../../../lib/python-context/tests/engine_auto_params.json")
+	if err != nil {
+		t.Skip("no repository checkout, so no engine fixture to check against")
+	}
+	t.Setenv(EnvAutoParams, string(raw))
 
 	a := AutoParamsFromEnv()
 	if got := a.Now().Format(time.RFC3339); got != "2026-09-08T04:00:00Z" {

@@ -161,6 +161,21 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 fetcher que alguém roda na mão — ele *é* o relógio de parede, então nada precisa
 de tratamento especial no desenvolvimento local.
 
+Em Python, o `pip install brevis` lê os mesmos valores:
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+O `window()` devolve `None` quando o workflow não tem agendamento, em vez de um
+par de tempos zerados — uma consulta desde a época seleciona tudo, e essa falha
+não pode ser silenciosa. O `or` acima é a queda inteira.
+
 ## O snapshot
 
 Os parâmetros são gravados **no run**, não lidos do workflow na hora de

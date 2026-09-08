@@ -218,6 +218,19 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
 <p><code>Auto.Now()</code> is the clock to read instead of <code>time.Now()</code>. Outside the engine — a fetcher someone runs by hand — it <em>is</em> the wall clock, so nothing has to be special-cased for local development.</p>
+<p>In Python, <code>pip install brevis</code> reads the same values:</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<p><code>window()</code> returns <code>None</code> when the workflow has no schedule, rather than a pair of zero times — a query from the epoch selects everything, and that failure should not be silent. The <code>or</code> above is the whole fallback.</p>
 <h2 id="the-snapshot">The snapshot<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>Parameters are stored <strong>in the run</strong>, not read from the workflow at execution time. The run carries the input it was triggered with, and the log of a January execution keeps showing January's values even after the default changes.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>

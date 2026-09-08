@@ -104,6 +104,40 @@ jobs:
           version: v2.13.2
           args: --timeout=5m
 
+  python:
+    name: Python library
+    runs-on: ubuntu-latest
+
+    # It had no CI outside the publish workflow, which is how `importlib`
+    # entered __init__.py after py/v0.1.1 with the dependency gate not knowing
+    # about it: the next `py/v*` tag would have failed at the gate, with the
+    # tag already pushed and a PyPI filename at stake.
+    #
+    # The floor and not the newest: `datetime.fromisoformat` refused a `Z`
+    # until 3.11, and brevis.run parses RFC 3339, which always writes one. A
+    # green 3.13 says nothing about the version a data team on a managed
+    # cluster actually has.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: The library's gates, on the declared minimum
+        run: |
+          python -m pip install --quiet pytest
+          ./.github/scripts/python-check.sh
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: The same gates on a current Python
+        run: |
+          python -m pip install --quiet pytest
+          ./.github/scripts/python-check.sh
+
   integration:
     name: Integration
     runs-on: ubuntu-latest

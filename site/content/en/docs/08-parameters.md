@@ -161,6 +161,21 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 a fetcher someone runs by hand — it *is* the wall clock, so nothing has to be
 special-cased for local development.
 
+In Python, `pip install brevis` reads the same values:
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+`window()` returns `None` when the workflow has no schedule, rather than a pair
+of zero times — a query from the epoch selects everything, and that failure
+should not be silent. The `or` above is the whole fallback.
+
 ## The snapshot
 
 Parameters are stored **in the run**, not read from the workflow at execution

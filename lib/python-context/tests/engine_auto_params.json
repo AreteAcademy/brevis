@@ -1,0 +1,11 @@
+{
+  "scheduled_at": "2026-09-08T04:00:00Z",
+  "started_at": "2026-09-08T04:37:00Z",
+  "adjusted_at": "2026-09-08T04:00:00Z",
+  "delay_seconds": 2220,
+  "interval_start": "2026-09-07T04:00:00Z",
+  "interval_end": "2026-09-08T04:00:00Z",
+  "previous_error": true,
+  "previous_success_at": "2026-09-06T04:00:00Z",
+  "date": "2026-09-08"
+}

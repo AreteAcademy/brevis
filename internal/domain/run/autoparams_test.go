@@ -1,7 +1,9 @@
 package run
 
 import (
+	"bytes"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 )
@@ -177,5 +179,54 @@ func TestTheDateFollowsTheAdjustedClock(t *testing.T) {
 	a := Auto(Run{LogicalDate: &slot}, at("2026-09-08T00:12:00Z"), Previous{}, Interval{})
 	if a.Date != "2026-09-07" {
 		t.Errorf("date = %q; a late run wrote into the next day's partition", a.Date)
+	}
+}
+
+// TestTheEngineAndThePythonLibraryAgreeOnTheContract.
+//
+// The auto params cross a module boundary and then a LANGUAGE boundary: this
+// package writes the JSON, `brevis.run` in lib/python-context parses it, and
+// nothing compiles both. A field renamed here would break every Python step in
+// the fleet with a green build on either side.
+//
+// So the two share a file. This test writes what the engine actually produces;
+// tests/test_run.py reads the same bytes and asserts every field arrives. Rename
+// a JSON tag and one of the two goes red immediately.
+func TestTheEngineAndThePythonLibraryAgreeOnTheContract(t *testing.T) {
+	const fixture = "../../../lib/python-context/tests/engine_auto_params.json"
+
+	slot := time.Date(2026, 9, 8, 4, 0, 0, 0, time.UTC)
+	before := slot.AddDate(0, 0, -1)
+	success := slot.AddDate(0, 0, -2)
+	started := slot.Add(37 * time.Minute)
+
+	// Every field populated, including the optional ones: a fixture that omits
+	// them proves nothing about the names the other side reads.
+	got := Auto(
+		Run{LogicalDate: &slot},
+		started,
+		Previous{Failed: true, SuccessAt: &success},
+		Interval{Start: before, End: slot},
+	).Env()["BREVIS_AUTO_PARAMS"]
+
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, []byte(got), "", "  "); err != nil {
+		t.Fatalf("the engine wrote something that is not JSON: %v", err)
+	}
+	pretty.WriteString("\n")
+
+	want, err := os.ReadFile(fixture)
+	if err != nil || !bytes.Equal(want, pretty.Bytes()) {
+		if os.Getenv("BREVIS_UPDATE_FIXTURES") == "true" {
+			if err := os.WriteFile(fixture, pretty.Bytes(), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Fatalf("%s was rewritten; run the Python tests before committing", fixture)
+		}
+		t.Errorf("the engine no longer writes what the Python library reads.\n"+
+			"got:\n%s\nfile:\n%s\n\n"+
+			"If the change is deliberate, update lib/python-context (brevis/run.py "+
+			"AND tests/test_run.py) and rerun with BREVIS_UPDATE_FIXTURES=true.",
+			pretty.String(), want)
 	}
 }
