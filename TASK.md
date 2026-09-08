@@ -9,9 +9,20 @@ being attacked and where it stands.
 | **1** | **Alerts and reports** — an `alert` pod, per-step alerting, and a scheduled insights report | [`plan/2026-09-08-alerts-and-reports.md`](docs/plan/2026-09-08-alerts-and-reports.md) | **done** |
 | **2** | **Observability** — OpenTelemetry metrics for the engine, and `sdk.Meter` for consumers | [`plan/2026-09-08-observability.md`](docs/plan/2026-09-08-observability.md) | **done** |
 | **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | **done** |
-| **4** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
+| **4** | **Auto params** — the clock, the window and the lateness the engine hands every run | [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) | **done** |
+| **5** | **The scheduler's retry policy** — `--max-attempts` and `--retry-backoff`, and a default that is not inert | [`plan/2026-09-07-sdk-retry-policy-is-not-configurable.md`](docs/plan/2026-09-07-sdk-retry-policy-is-not-configurable.md) | **next** — a consumer is waiting |
+| **6** | **Schema evolution on load** — additive by default, lossy by opt-in, every change recorded | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §10 | proposed |
+| **7** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed |
+| **8** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
+| **9** | **The load trend screen** — the numbers every load already produces, kept and drawn | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §11 | proposed |
+| **10** | **Beyond Kubernetes** — Cloud Run, Lambda, ECS, EC2. Decide the return path first | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §8 | proposed |
 
-## What the four have to do with each other
+The two audits that produced this order:
+[`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) — what
+is open — and [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) —
+`NOTES.md` read against the tree.
+
+## What the first four have to do with each other
 
 They are not independent, and pretending they are is how two of them get built
 twice.
@@ -69,9 +80,16 @@ triggered when that something updates. It appeared in the target picture as the
 `model_trained` node. It is a scheduling feature, not a graph one, and it gets
 its own plan rather than riding along in #3.
 
-#4 depends on nothing. It is last because it is least urgent, not because it is
-blocked — the contract it consumes has shipped and is proven by a
-three-language test.
+The Node.js library depends on nothing: the contract it consumes has shipped
+and is proven by a three-language test. It is not last because it is blocked —
+it is behind #7 because shipping a library with no image to run it in delivers
+half a feature.
+
+**#5 is the one with somebody waiting.** It is not a feature; it is a consumer
+report that has been open since engine `0.7.0`, and the fix is about an hour.
+A run's three attempts land at 0s, 1s and 3s, and neither number is reachable
+from the CLI — for a queue of HTTP fetches against rate-limited vendors, that
+is indistinguishable from no retry at all.
 
 ## Standing rules for all four
 
