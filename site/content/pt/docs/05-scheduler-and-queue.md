@@ -72,6 +72,38 @@ diferença.
 
 ## Retries
 
+Um run que falha é tentado **três vezes**, e o intervalo **dobra**: com os
+padrões, as tentativas caem em **0s, 30s e 1m30s**.
+
+```bash
+brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h
+```
+
+| flag | padrão | |
+|---|---|---|
+| `--max-attempts` | `3` | tentativas por run, contando a primeira |
+| `--retry-backoff` | `30s` | o primeiro intervalo, dobrado a cada tentativa seguinte |
+| `--retry-backoff-max` | `1h` | teto para esse intervalo |
+
+O processo imprime o cronograma no boot, para que ele nunca precise ser
+deduzido de dois números:
+
+```
+scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 30s, 1m30s"
+```
+
+:::tip
+**Um fornecedor com rate limit quer mais tempo.** Esses pipelines falham por um
+motivo acima de todos os outros: um upstream transitório — uma API que responde
+200 com "você atingiu o limite de requisições", uma cota do warehouse que
+oscila. Isso leva cerca de um minuto para passar, e um retry que termina antes
+disso é um retry que não aconteceu. `--retry-backoff 1m` coloca as tentativas
+em 0s, 1m e 3m.
+:::
+
+O retry é por **run**, e ele re-executa apenas os passos que falharam — um
+`dbt_build` que falhou não re-executa o fetch acima dele que deu certo.
+
 A tentativa é persistida, não é estado de processo. Uma reinicialização do
 worker não apaga o que já se sabia sobre aquele run.
 

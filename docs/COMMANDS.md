@@ -127,6 +127,20 @@ brevis scheduler --interval 5s --concurrency 4 --max-pods 10
 | `--interval` | duration | `10s` | interval between the scheduler's cycles |
 | `--concurrency` | int | `5` | simultaneous **runs** |
 | `--max-pods` | int | `5` | simultaneous **steps** in total |
+| `--max-attempts` | int | `3` | attempts per **run**, counting the first |
+| `--retry-backoff` | duration | `30s` | first delay between attempts, doubled on each one after it |
+| `--retry-backoff-max` | duration | `1h` | ceiling for that delay |
+
+With the defaults a failed run is attempted at **0s, 30s and 1m30s**, and the
+process says so at boot rather than leaving it to be composed from two numbers:
+
+```
+scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 30s, 1m30s"
+```
+
+The retry is per **run**, and it re-runs only the steps that failed. A
+rate-limited vendor API usually wants longer: `--retry-backoff 1m` puts the
+attempts at 0s, 1m and 3m.
 
 `--concurrency` and `--max-pods` count different things, and that is deliberate:
 five runs with three parallel steps each would mean fifteen pods if the run
@@ -317,7 +331,7 @@ brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 |---|---|---|---|
 | `--param` | repeatable | — | `key=value` for a parameter declared in the workflow |
 | `--workdir` | string | the file's directory | the steps' working directory |
-| `--retries` | int | `1` | attempts per step (`1` = no retry) |
+| `--retries` | int | `1` | attempts per step (`1` = no retry). `brevis run` only — the scheduler's policy is `--max-attempts` and `--retry-backoff` |
 | `--timeout` | duration | `0` | timeout per step (`0` = no limit) |
 
 `--param` with no `=` is an **error**, not a warning: `--param load_full` would

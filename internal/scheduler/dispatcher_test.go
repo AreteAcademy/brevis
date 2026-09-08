@@ -1103,3 +1103,83 @@ func TestAStepNamingAnUnconfiguredChannelIsNotWritten(t *testing.T) {
 		}
 	}
 }
+
+// TestTheBackoffActuallyDelaysTheNextAttempt.
+//
+// backoff() is unit-tested and the flags are tested where they are bound. What
+// neither covers is the line between them: process() has to hand the delay to
+// queue.Release, and if it handed zero every one of those tests would still
+// pass while every retry fired instantly.
+//
+// That is the shape this repository keeps hitting -- a value computed
+// correctly and passed nowhere -- so it is measured against a real queue: the
+// gap between two attempts of the same run.
+func TestTheBackoffActuallyDelaysTheNextAttempt(t *testing.T) {
+	pool := testDB(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	repo := postgres.NewRunRepo(pool)
+	q := queue.New(pool.Pool)
+
+	r, err := repo.Create(ctx, dom.Run{
+		WorkflowSlug: "backoff", IdempotencyKey: "delayed",
+		TriggerType: "schedule", Definition: []byte(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Transicionar(ctx, r.ID, dom.StatusQueued); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.Enqueue(ctx, r.ID, 0, time.Time{}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Long enough to measure against a 10ms poll, short enough that the test
+	// is not a nap.
+	const base = 400 * time.Millisecond
+
+	var mu sync.Mutex
+	var starts []time.Time
+	d := scheduler.New(scheduler.Config{
+		Worker: "t", MaxConcorrente: 1, MaxAttempts: 2,
+		Interval: 10 * time.Millisecond, BackoffBase: base, BackoffMax: time.Hour,
+	}, q, repo, func(context.Context, uuid.UUID) error {
+		mu.Lock()
+		starts = append(starts, time.Now())
+		mu.Unlock()
+		return errors.New(`step "fetch": exited with code 2`)
+	}, noLog())
+
+	go func() { _ = d.Run(ctx) }()
+
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		enough := len(starts) >= 2
+		mu.Unlock()
+		if enough {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(starts) < 2 {
+		t.Fatalf("the run was attempted %d time(s); it has to be retried", len(starts))
+	}
+	gap := starts[1].Sub(starts[0])
+	if gap < base {
+		t.Errorf("the second attempt started %s after the first, and the backoff "+
+			"is %s -- the delay is computed and not applied", gap, base)
+	}
+	// And not absurdly more, which would mean it is waiting on the poll rather
+	// than on the backoff and the assertion above proves nothing.
+	if gap > base+5*time.Second {
+		t.Errorf("the second attempt started %s after the first, far beyond the "+
+			"%s backoff", gap, base)
+	}
+}

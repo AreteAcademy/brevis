@@ -1,6 +1,8 @@
 # The scheduler's retry policy cannot be changed, and its default is 3 seconds
 
 **Reported by** a consumer (`zarv-data-pipeline`) · **Found on** engine `0.7.0`
+**Answered in** engine `0.10.0` — see the note at the end
+
 
 ## Context
 
@@ -116,3 +118,40 @@ ask should be made, with that case as evidence.
 > `docs/COMMANDS.md` does not say it is `brevis run` only, and the SDK README
 > describes the scheduler's retry as "configured on the scheduler", which it is
 > not.
+
+---
+
+## What shipped, in `0.10.0`
+
+Both asks, and one thing that was not asked for.
+
+**1. The policy is configurable.** `--max-attempts` and `--retry-backoff` on
+`scheduler`, defaulting to today's values in the sense that matters — nobody
+who sets nothing gets a different *shape*. `--retry-backoff 1m` gives the 0s,
+1m, 3m the 34 tasks asked for.
+
+**2. The default moved, from 1s to 30s.** Not to the three minutes those tasks
+declared, because the number is a platform default rather than one
+installation's: 30s is the largest value that keeps a definitive failure's
+alert inside two minutes — the alert is raised on the last attempt only — and
+the smallest where the third attempt lands outside a one-minute rate-limit
+window. The report asked that the default not be the one value that makes the
+feature inert, and it no longer is.
+
+**3. A third flag, `--retry-backoff-max`, defaulting to 1h.** Making the
+attempts configurable made the exponential reachable: `--max-attempts 10
+--retry-backoff 60s` is four hours for the last wait and eight for the window,
+and past that the shift overflows to a NEGATIVE delay and then to zero — an
+instant requeue against whatever was already failing. The backoff now doubles
+in a loop that stops at the cap, which cannot overflow.
+
+**The documentation half was bigger than this report thought.** The `--retries`
+row does sit under `## brevis run`, so it was not wrong in context; what was
+missing is that the scheduler's policy was written down **nowhere**. The site's
+"Retries" section explained persistence and pod names and never said how many
+attempts there were. Both CLI references now carry the flags, the site says
+what the schedule is, and `cli-docs-check.sh` compares flags as well as
+subcommands so the tables cannot quietly drift again.
+
+**Per-step retry is still not built**, and this report's reasoning for not
+asking is recorded above. It stands.

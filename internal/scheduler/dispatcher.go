@@ -66,8 +66,40 @@ type Config struct {
 	Worker         string
 	MaxConcorrente int
 	Interval       time.Duration
-	MaxAttempts    int
-	BackoffBase    time.Duration
+
+	// MaxAttempts is how many times a failed RUN is tried, counting the first.
+	// The default is 3.
+	MaxAttempts int
+
+	// BackoffBase is the first delay, doubled on every attempt after it. With
+	// the default of 30s and three attempts, they land at 0s, 30s and 1m30s.
+	//
+	// It used to be one second, which put the three attempts inside three
+	// seconds -- and for the failure these pipelines actually have, a
+	// rate-limited vendor API, that is indistinguishable from no retry at all:
+	// the limiter sees all three inside its own window and rejects all three.
+	// A consumer migrating 34 tasks that each asked for three attempts THREE
+	// MINUTES apart reported it, which is what moved this number.
+	//
+	// 30 seconds rather than their three minutes, because the number is a
+	// platform default and not one installation's: it is the largest value
+	// that keeps a definitive failure's alert inside two minutes, and the
+	// smallest where the third attempt lands outside a one-minute rate-limit
+	// window. Whoever needs their number sets --retry-backoff.
+	BackoffBase time.Duration
+
+	// BackoffMax caps the delay, and it is also what makes the arithmetic
+	// safe. Without a ceiling the exponential is unbounded, and that became
+	// reachable the moment MaxAttempts got a flag: --max-attempts 10
+	// --retry-backoff 60s makes the last wait four hours and the whole window
+	// eight, which nobody asks for and everybody could type. Past that it
+	// overflows int64 and comes back negative, then zero -- see backoff.
+	//
+	// It never binds at the defaults -- three attempts reach 60s -- so it costs
+	// nothing until somebody raises the attempts, which is exactly when it is
+	// wanted. Airflow calls it max_retry_delay and Temporal maximumInterval;
+	// this is the same knob under the name the other two flags use.
+	BackoffMax time.Duration
 
 	// Visibility is how long an item may stay claimed without the worker
 	// finishing before it counts as orphaned. It has to be LONGER than the
@@ -77,6 +109,19 @@ type Config struct {
 
 	// RecoveryInterval is how often the orphan sweep runs.
 	RecoveryInterval time.Duration
+}
+
+// Defaults is the policy a Config left at zero gets.
+//
+// It is exported so `scheduler --help` can print the same numbers the
+// dispatcher uses, instead of repeating them as literals in cmd/brevis. That
+// duplication is the shape this repository has been bitten by four times -- the
+// node type, the phase offset, the pill width, the image pins -- and the fix
+// that works is removing the second place, not gating it.
+func Defaults() Config {
+	var c Config
+	c.defaults()
+	return c
 }
 
 func (c *Config) defaults() {
@@ -93,7 +138,10 @@ func (c *Config) defaults() {
 		c.MaxAttempts = 3
 	}
 	if c.BackoffBase <= 0 {
-		c.BackoffBase = time.Second
+		c.BackoffBase = 30 * time.Second
+	}
+	if c.BackoffMax <= 0 {
+		c.BackoffMax = time.Hour
 	}
 	if c.Visibility <= 0 {
 		c.Visibility = 15 * time.Minute
@@ -365,14 +413,42 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 		return
 	}
 
-	// Exponential backoff. The item returns to the queue delayed, not at once:
-	// an instant retry against a dependency that is down only burns the
-	// queue.
-	atraso := d.cfg.BackoffBase * time.Duration(1<<uint(attempt-1))
+	// Exponential backoff, capped. The item returns to the queue delayed, not
+	// at once: an instant retry against a dependency that is down only burns
+	// the queue.
+	atraso := d.backoff(attempt)
 	d.log.Info("requeued", "run", it.RunID, "attempt", attempt, "delay", atraso)
 	if err := d.queue.Release(ctx, it.ID, atraso); err != nil {
 		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
 	}
+}
+
+// backoff is how long the run waits before its next attempt.
+//
+// It DOUBLES until it reaches the cap, rather than computing
+// `base << (attempt-1)` and clamping afterwards. That shift is where the
+// arithmetic goes wrong, and it goes wrong quietly: at attempt 35 with a
+// one-second base the product overflows int64 and comes back NEGATIVE, at
+// attempt 63 it comes back ZERO -- and a zero delay is an instant requeue, a
+// hot loop against whatever was already failing. Whether an overflow lands on
+// a plausible-looking small POSITIVE number depends on the base, which is to
+// say on a flag somebody set.
+//
+// A loop that returns the moment it passes the cap cannot overflow at all: the
+// value never grows past BackoffMax + one doubling. The attempt count is a
+// handful, so the cost is nothing.
+func (d *Dispatcher) backoff(attempt int) time.Duration {
+	delay := d.cfg.BackoffBase
+	if delay <= 0 || delay >= d.cfg.BackoffMax {
+		return d.cfg.BackoffMax
+	}
+	for a := 1; a < attempt; a++ {
+		delay *= 2
+		if delay >= d.cfg.BackoffMax {
+			return d.cfg.BackoffMax
+		}
+	}
+	return delay
 }
 
 // window returns the schedule's interval for a slot, or nothing.

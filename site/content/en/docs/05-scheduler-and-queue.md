@@ -73,6 +73,37 @@ of explaining the difference.
 
 ## Retries
 
+A failed run is attempted **three times**, and the delay **doubles**: with the
+defaults they land at **0s, 30s and 1m30s**.
+
+```bash
+brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h
+```
+
+| flag | default | |
+|---|---|---|
+| `--max-attempts` | `3` | attempts per run, counting the first |
+| `--retry-backoff` | `30s` | the first delay, doubled on each attempt after it |
+| `--retry-backoff-max` | `1h` | ceiling for that delay |
+
+The process prints the schedule at boot, so it never has to be worked out from
+two numbers:
+
+```
+scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 30s, 1m30s"
+```
+
+:::tip
+**A rate-limited vendor wants longer.** These pipelines fail for one reason
+above all others: a transient upstream — an API that answers 200 with "you have
+reached your request limit", a warehouse quota blip. Those take about a minute
+to clear, and a retry that finishes before then is a retry that never happened.
+`--retry-backoff 1m` puts the attempts at 0s, 1m and 3m.
+:::
+
+The retry is per **run**, and it re-runs only the steps that failed — a
+`dbt_build` that failed does not re-run the fetch above it that succeeded.
+
 The attempt is persisted, not process state. Restarting the worker does not
 erase what was already known about that run.
 

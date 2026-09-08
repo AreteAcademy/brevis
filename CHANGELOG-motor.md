@@ -9,6 +9,82 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.10.0] — 2026-09-08
+
+### Before upgrading
+
+**A failed run now waits longer between attempts.** The default backoff moved
+from **1 second to 30 seconds**, so the three attempts land at 0s, 30s and
+1m30s instead of 0s, 1s and 3s. Nothing else changes, and
+`--retry-backoff 1s` restores exactly the old behaviour.
+
+Two consequences worth weighing before deploying:
+
+- A run that recovers on a retry now takes up to 90 seconds longer.
+- A run that is going to fail definitively is **announced 90 seconds later**,
+  because the alert is raised on the last attempt only.
+
+No migration.
+
+### Fixed: the retry existed in the code and not in practice
+
+Reported by a consumer migrating 51 workflows. 34 of their tasks declared the
+same policy — three attempts, **three minutes apart** — and Brevis gave them
+three attempts inside **three seconds**.
+
+That is not a weaker retry, it is no retry. These pipelines fail for one reason
+above all others: a transient upstream. A rate-limited vendor API, a provider
+answering 200 with a plain-text "you have reached your request limit", a
+warehouse quota blip. Those take about a minute to clear, and a limiter that
+needs a minute sees all three attempts inside its own window and rejects all
+three.
+
+Neither number was reachable. `scheduler --help` offered `--interval`,
+`--concurrency` and `--max-pods`; `MaxAttempts` and `BackoffBase` came from
+`Config.defaults()` and nothing on that path ever wrote them.
+
+| | |
+|---|---|
+| `--max-attempts` | attempts per run, counting the first. Default `3` |
+| `--retry-backoff` | the first delay, doubled on each attempt after it. Default `30s` |
+| `--retry-backoff-max` | ceiling for that delay. Default `1h` |
+
+**Why 30 seconds and not their three minutes.** The number is a platform
+default, not one installation's. 30s is the largest value that keeps a
+definitive failure's alert inside two minutes, and the smallest where the third
+attempt lands outside a one-minute rate-limit window. Whoever needs another
+sets `--retry-backoff 1m`, which gives 0s, 1m and 3m.
+
+**Why there is a third flag nobody asked for.** Making `--max-attempts`
+configurable made the exponential reachable: `--max-attempts 10
+--retry-backoff 60s` puts the last wait at four hours and the whole window at
+eight. Past that it overflows — `base << (attempt-1)` comes back negative
+around attempt 35 and **zero** from 63, and a zero delay is an instant requeue,
+a hot loop against whatever was already failing. The backoff now doubles in a
+loop that stops at the cap, which cannot overflow at all.
+
+### Fixed: the policy was only ever written in Go
+
+There was no way to find out what the retry did without reading
+`dispatcher.go`. The site's "Retries" section explained persistence and pod
+names and never said how many attempts there were or how far apart, and
+`docs/COMMANDS.md` did not list the flags because there were none.
+
+Now the scheduler says it at boot, with the times themselves rather than the
+two numbers they come from:
+
+```
+scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 30s, 1m30s"
+```
+
+The flag defaults are read from `scheduler.Defaults()` rather than typed in
+`cmd/brevis`, so `--help` cannot describe a policy the dispatcher does not
+have. And `cli-docs-check.sh` now compares **flags** as well as subcommands: a
+flag missing from `docs/COMMANDS.md` fails CI. Documenting the policy and then
+letting the document drift would put it back where it was.
+
+---
+
 ## [0.9.0] — 2026-09-08
 
 ### Before upgrading

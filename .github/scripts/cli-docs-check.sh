@@ -6,13 +6,27 @@
 # output. Nothing kept them agreeing, and the failure is silent: a subcommand
 # added and documented in one place looks complete from either side.
 #
-# It compares NAMES only. Whether two documents describe a command well is a
-# judgement call; whether one has stopped mentioning a command that exists is
-# not, and that is the half worth automating.
+# It compares NAMES only -- of subcommands, and of their FLAGS. Whether two
+# documents describe a command well is a judgement call; whether one has stopped
+# mentioning something that exists is not, and that is the half worth
+# automating.
+#
+# The flags half was added with --max-attempts and --retry-backoff, and the
+# reason is what those two fixed: the scheduler's retry policy existed only in
+# Go source, so the only way to find out that three attempts landed inside three
+# seconds was to read the dispatcher. Documenting a flag and then letting the
+# document drift puts it back where it was.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 fail=0
+
+flags() { # <dir> <subcommand> -> one --name per line
+  ( cd "$1" && go run . "$2" --help 2>/dev/null ) \
+    | awk '/^(Flags|Global Flags):/{f=1;next} /^$/{f=0} f{print}' \
+    | grep -oE '\-\-[a-z0-9-]+' | sort -u \
+    | grep -vE '^--(help|config)$' || true
+}
 
 subcommands() { # <dir> -> one name per line
   ( cd "$1" && go run . --help 2>/dev/null ) \
@@ -35,6 +49,18 @@ check() { # <label> <dir> <doc>...
       # than no check, because it reads as coverage.
       if ! grep -qF "$label $cmd" "$doc"; then
         echo "❌ $doc never mentions \`$label $cmd\`"
+        fail=1
+      fi
+    done
+  done
+
+  # The flags, against the CONTRIBUTOR reference only. The website's CLI page
+  # is a tour and does not carry every flag; COMMANDS.md is the table that
+  # claims to.
+  for cmd in $cmds; do
+    for flag in $(flags "$dir" "$cmd"); do
+      if ! grep -qF -- "$flag" docs/COMMANDS.md; then
+        echo "❌ docs/COMMANDS.md never mentions \`$flag\` of \`$label $cmd\`"
         fail=1
       fi
     done

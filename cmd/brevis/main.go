@@ -614,10 +614,50 @@ func podTolerations(cfg []config.Grace) []k8s.Grace {
 	return out
 }
 
+// schedulerFlags are what `brevis scheduler` takes.
+//
+// A struct rather than six locals so that `bind` and `dispatcher` can be
+// tested: a flag that parses into a variable nobody passes on is a flag that
+// does nothing, and this repository has shipped that twice -- the Kubernetes
+// return path and Runner.ContextDir, both green, both inert.
+type schedulerFlags struct {
+	interval                      time.Duration
+	concurrency, maxPods          int
+	maxAttempts                   int
+	retryBackoff, retryBackoffMax time.Duration
+}
+
+func (f *schedulerFlags) bind(c *cobra.Command) {
+	// The retry defaults come from the dispatcher, not from literals here.
+	// Typing `3` and `30s` in this file would put the policy in two places, and
+	// `scheduler --help` would eventually describe a policy the dispatcher no
+	// longer has.
+	policy := scheduler.Defaults()
+
+	c.Flags().DurationVar(&f.interval, "interval", 10*time.Second, "interval between cycles")
+	c.Flags().IntVar(&f.concurrency, "concurrency", 5, "simultaneous runs")
+	c.Flags().IntVar(&f.maxPods, "max-pods", 5,
+		"simultaneous steps in total (in Kubernetes, the cluster's pod ceiling)")
+	c.Flags().IntVar(&f.maxAttempts, "max-attempts", policy.MaxAttempts,
+		"attempts per run, counting the first")
+	c.Flags().DurationVar(&f.retryBackoff, "retry-backoff", policy.BackoffBase,
+		"first delay between attempts, doubled on each one after it")
+	c.Flags().DurationVar(&f.retryBackoffMax, "retry-backoff-max", policy.BackoffMax,
+		"ceiling for that delay")
+}
+
+// dispatcher is the policy these flags describe.
+func (f schedulerFlags) dispatcher() scheduler.Config {
+	return scheduler.Config{
+		Worker: "local", MaxConcorrente: f.concurrency,
+		MaxAttempts: f.maxAttempts,
+		BackoffBase: f.retryBackoff,
+		BackoffMax:  f.retryBackoffMax,
+	}
+}
+
 func cmdScheduler() *cobra.Command {
-	var intervalo time.Duration
-	var concurrency int
-	var maxPods int
+	var f schedulerFlags
 	c := &cobra.Command{
 		Use:   "scheduler",
 		Short: "Materialize schedules into runs and execute them",
@@ -642,7 +682,7 @@ func cmdScheduler() *cobra.Command {
 
 			sched := scheduler.NewScheduler(
 				postgres.NewScheduleRepo(pool), postgres.NewWorkflowRepo(pool), runs, q, log,
-				scheduler.SchedulerOptions{Interval: intervalo})
+				scheduler.SchedulerOptions{Interval: f.interval})
 
 			// The dispatcher has to know how to EXECUTE a run. It reads the
 			// definition stored on the Run itself — section 22's snapshot — and
@@ -691,7 +731,7 @@ func cmdScheduler() *cobra.Command {
 			// Separate from --concurrency on purpose: that one counts RUNS, this
 			// one counts STEPS. Five runs with three parallel steps each would
 			// mean fifteen pods if the only limit were the run limit.
-			slots := make(chan struct{}, maxPods)
+			slots := make(chan struct{}, f.maxPods)
 
 			tasksEnvironment := config.TasksEnvironment(cfg.TaskEnv)
 			// In pod mode the task's environment comes from the cluster's
@@ -758,9 +798,7 @@ func cmdScheduler() *cobra.Command {
 				}.Run(ctx, w)
 			}
 
-			disp := scheduler.New(scheduler.Config{
-				Worker: "local", MaxConcorrente: concurrency,
-			}, q, runs, executar, log)
+			disp := scheduler.New(f.dispatcher(), q, runs, executar, log)
 			// The dispatcher no longer TALKS to Slack. It writes a row in the
 			// same transaction as the failure, and `brevis alert` delivers it.
 			//
@@ -795,15 +833,22 @@ func cmdScheduler() *cobra.Command {
 				log.Warn("queue depth will not be reported", "error", err)
 			}
 			if err := met.WatchSlots(func() (int, int) {
-				return disp.EmVoo(), concurrency
+				return disp.EmVoo(), f.concurrency
 			}); err != nil {
 				log.Warn("slot usage will not be reported", "error", err)
 			}
 			disp.Metrics = met
 			met.Serve(ctx, cfg.MetricsAddr, log)
 
+			// The retry policy is said at boot, because until now the only
+			// way to find out what it was involved reading Go. An operator
+			// whose vendor rate-limits needs this line to know whether the
+			// number is theirs or ours.
 			log.Info("scheduler and dispatcher are up",
-				"interval", intervalo.String(), "concurrency", concurrency)
+				"interval", f.interval.String(), "concurrency", f.concurrency,
+				"max_attempts", f.maxAttempts,
+				"retry_backoff", f.retryBackoff.String(),
+				"retry_at", retrySchedule(f.maxAttempts, f.retryBackoff, f.retryBackoffMax))
 
 			// The two loops run together, and independently: the scheduler
 			// CREATES, the dispatcher EXECUTES. It is the separation section 37
@@ -817,11 +862,33 @@ func cmdScheduler() *cobra.Command {
 			return <-failures
 		},
 	}
-	c.Flags().DurationVar(&intervalo, "interval", 10*time.Second, "interval between cycles")
-	c.Flags().IntVar(&concurrency, "concurrency", 5, "simultaneous runs")
-	c.Flags().IntVar(&maxPods, "max-pods", 5,
-		"simultaneous steps in total (in Kubernetes, the cluster's pod ceiling)")
+	f.bind(c)
 	return c
+}
+
+// retrySchedule renders the policy as the times the attempts actually land on,
+// for the boot line.
+//
+// "max_attempts=3 retry_backoff=30s" is two numbers an operator then has to
+// compose; "0s, 30s, 1m30s" is the answer they were composing them for. It is
+// the same reasoning as the auto params: the platform doing the arithmetic once
+// beats every reader doing it.
+func retrySchedule(attempts int, base, max time.Duration) string {
+	if attempts <= 1 {
+		return "no retry"
+	}
+	var at []string
+	var total time.Duration
+	at = append(at, "0s")
+	for a := 1; a < attempts; a++ {
+		delay := base * time.Duration(1<<uint(a-1))
+		if a > 32 || delay <= 0 || delay > max {
+			delay = max
+		}
+		total += delay
+		at = append(at, total.String())
+	}
+	return strings.Join(at, ", ")
 }
 
 // cmdAlert is the third role of the same binary, beside serve and scheduler.
