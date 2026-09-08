@@ -10,7 +10,7 @@ import (
 
 func TestRunContextIsEmptyWithoutTheEngine(t *testing.T) {
 	// The normal case: a fetcher run by hand must not notice this exists.
-	rc := runContextFromEnv()
+	rc := RunContextFromEnv()
 
 	if rc.FromEngine() {
 		t.Errorf("nothing was injected, so nothing should be reported: %+v", rc)
@@ -35,7 +35,7 @@ func TestRunContextReadsWhatTheEngineInjected(t *testing.T) {
 	t.Setenv(EnvRunLogicalDate, "2026-09-03T00:00:00Z")
 	t.Setenv(EnvRunParams, `{"load_full":"true","region":"br"}`)
 
-	rc := runContextFromEnv()
+	rc := RunContextFromEnv()
 
 	if !rc.FromEngine() {
 		t.Error("an injected run id means the engine ran this")
@@ -59,7 +59,7 @@ func TestRunContextSurvivesMalformedValues(t *testing.T) {
 	t.Setenv(EnvRunLogicalDate, "yesterday")
 	t.Setenv(EnvRunParams, "{not json")
 
-	rc := runContextFromEnv()
+	rc := RunContextFromEnv()
 
 	if rc.Attempt != 0 || !rc.LogicalDate.IsZero() {
 		t.Errorf("malformed values should be dropped: %+v", rc)

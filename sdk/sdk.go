@@ -87,7 +87,7 @@ func Extract(ctx context.Context, source Source) (*Data, error) {
 	if stats == nil {
 		stats = &core.Stats{}
 	}
-	opt := source.options(runContextFromEnv())
+	opt := source.options(RunContextFromEnv())
 	opt.Stats = stats
 
 	lines, err := source.From.Read(ctx, opt)
@@ -154,7 +154,7 @@ func comRetrato(rows iter.Seq2[Envelope, error], name string) iter.Seq2[Envelope
 // value came from, creates the landing table when absent, and reports what it
 // actually did.
 func Load(ctx context.Context, data *Data, target Target) (*Result, error) {
-	return loadWith(ctx, data, target, runContextFromEnv())
+	return loadWith(ctx, data, target, RunContextFromEnv())
 }
 
 // loadWith is Load with the engine context already read, so a test can supply

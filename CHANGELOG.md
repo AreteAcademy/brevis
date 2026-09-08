@@ -18,6 +18,43 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.56.0] — 2026-09-08
+
+### Added: `Run.Auto`, the clock the engine already knew
+
+The engine `v0.9.0` computes a run's [auto params](https://brevis.dev/docs/parameters/#auto-params)
+and injects them. The SDK reads them:
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) + "&to=" + end.Format(time.RFC3339)}
+	return nil
+},
+```
+
+`Auto.Now()` is the point: it is the clock to read instead of `time.Now()`, and
+on a scheduled run it is the slot, so it does not move when the run is late and
+does not move when the run is retried three hours later. A fetcher that reads
+`time.Now()` and subtracts its window silently skips exactly as much data as the
+queue delayed it by.
+
+Outside the engine — a fetcher somebody runs by hand — `Auto.Now()` *is* the
+wall clock and `Window()` returns `false`, so local development needs no special
+case. The whole set is read from one variable, `BREVIS_AUTO_PARAMS`, and a
+malformed value is logged and dropped rather than failing the load.
+
+The clock, the window and the lateness also reach `Run.Args()`, so "which window
+did this run ask for" is answerable from the log, after the fact.
+
+Weight: nothing. `encoding/json` and `time` were already linked.
+
+---
+
 ## [0.55.0] — 2026-09-07
 
 ### Changed: the staging error looks for the bucket the rename left behind

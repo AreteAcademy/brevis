@@ -160,6 +160,30 @@ costs nothing.
 With no history, the answer to "is this the first run?" is always **no**:
 creating a table without certainty is worse than not creating it.
 
+### The clock
+
+`p.Run.Auto` is what the engine worked out about this run — the
+[auto params](/docs/parameters/#auto-params). `Auto.Now()` is the clock to read
+instead of `time.Now()`: on a scheduled run it is the slot, so it does not move
+when the run is late and does not move when the run is retried three hours
+later.
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&to=" + end.Format(time.RFC3339)}
+	return nil
+},
+```
+
+Run by hand, `Auto.Now()` *is* the wall clock and `Window()` returns `false`, so
+local development needs no special case.
+
 ## Reference
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — the complete API

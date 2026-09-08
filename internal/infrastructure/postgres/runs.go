@@ -163,12 +163,84 @@ func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	var run dom.Run
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, workflow_slug, idempotency_key, status, attempt, definicao,
-		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em
+		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em,
+		       auto_params
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
 			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
-			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt)
+			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto)
 	return run, err
+}
+
+// RecordAuto writes the run's automatic params, and reads back what it needs to
+// compute them in the SAME statement.
+//
+// One round trip, and one transaction, because the parts are not independent:
+// `started_at` is set by the transition that just happened, and
+// `previous_error` is about the run before this one. Reading them separately
+// would let a concurrent retry of that previous run change the answer between
+// the two reads, and the run would carry a `previous_error` nobody can
+// reproduce.
+//
+// The previous run is the one with the closest EARLIER logical_date, falling
+// back to creation order for a workflow with no schedule. A manual run in the
+// middle of a nightly is not "the previous run" of that nightly.
+func (r *RunRepo) RecordAuto(ctx context.Context, id uuid.UUID,
+	window func(slot time.Time) (start, end time.Time),
+) (dom.AutoParams, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return dom.AutoParams{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // no-op depois do commit
+
+	var run dom.Run
+	if err := tx.QueryRow(ctx, `
+		SELECT workflow_slug, trigger_type, logical_date, iniciado_em
+		FROM runs WHERE id = $1`, id).
+		Scan(&run.WorkflowSlug, &run.TriggerType, &run.LogicalDate, &run.StartedAt); err != nil {
+		return dom.AutoParams{}, err
+	}
+
+	var prev dom.Previous
+	// A pointer, because both subqueries return NULL when there is no previous
+	// run -- which is every workflow's first, and scanning that into a bool
+	// fails rather than answering "no".
+	var failed *bool
+	// COALESCE on the ordering key so a workflow with no schedule falls back to
+	// creation order rather than dropping out of the comparison entirely.
+	err = tx.QueryRow(ctx, `
+		SELECT
+			(SELECT status <> 'success' FROM runs p
+			  WHERE p.workflow_slug = $1 AND p.id <> $2
+			    AND COALESCE(p.logical_date, p.criado_em) < COALESCE($3::timestamptz, now())
+			  ORDER BY COALESCE(p.logical_date, p.criado_em) DESC LIMIT 1),
+			(SELECT COALESCE(p.logical_date, p.criado_em) FROM runs p
+			  WHERE p.workflow_slug = $1 AND p.id <> $2 AND p.status = 'success'
+			    AND COALESCE(p.logical_date, p.criado_em) < COALESCE($3::timestamptz, now())
+			  ORDER BY COALESCE(p.logical_date, p.criado_em) DESC LIMIT 1)`,
+		run.WorkflowSlug, id, run.LogicalDate).Scan(&failed, &prev.SuccessAt)
+	if err != nil {
+		return dom.AutoParams{}, err
+	}
+	prev.Failed = failed != nil && *failed
+
+	var interval dom.Interval
+	if run.LogicalDate != nil && window != nil {
+		interval.Start, interval.End = window(*run.LogicalDate)
+	}
+
+	started := time.Time{}
+	if run.StartedAt != nil {
+		started = *run.StartedAt
+	}
+	auto := dom.Auto(run, started, prev, interval)
+
+	if _, err := tx.Exec(ctx,
+		`UPDATE runs SET auto_params = $2 WHERE id = $1`, id, auto); err != nil {
+		return dom.AutoParams{}, err
+	}
+	return auto, tx.Commit(ctx)
 }
 
 // CountByStatus is what PHASE 2's acceptance criterion measures.

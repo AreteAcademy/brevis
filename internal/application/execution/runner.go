@@ -143,6 +143,11 @@ type Runner struct {
 	// LogicalDate is the slot this Run stands for. Nil on a manual trigger.
 	LogicalDate *time.Time
 
+	// Auto are the run's automatic params: the clock to read instead of now(),
+	// the window it covers, how late it was, and whether the run before it
+	// failed. The engine works them out so no pipeline has to.
+	Auto run.AutoParams
+
 	// Historico decides whether a step is running for the first time. Nil means
 	// there is no way to know -- and then the step gets first=false, because
 	// creating a table without being sure is worse than not creating it.
@@ -1182,6 +1187,13 @@ func (r Runner) runContext(inst instance, first bool, attempt int) map[string]st
 	}
 	if r.LogicalDate != nil {
 		env[envRunLogicalDate] = r.LogicalDate.UTC().Format(time.RFC3339)
+	}
+
+	// The automatic params, one variable each. A step reads
+	// $BREVIS_AUTO_ADJUSTED_AT and never calls now(); see run.AutoParams for
+	// the bug that removes.
+	for name, value := range r.Auto.Env() {
+		env[name] = value
 	}
 	if len(r.Params) > 0 {
 		// An impossible error: a map[string]string always serialises. Ignoring

@@ -19,6 +19,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wfdom "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
@@ -43,6 +44,12 @@ type Repo interface {
 	// see the postgres implementation.
 	Attempt(ctx context.Context, id uuid.UUID, budget int,
 		raise func(attempt int, gaveUp bool) []alerts.Pending) (attempt int, gaveUp bool, err error)
+
+	// RecordAuto works out the run's automatic params and stores them. Called
+	// once the run is RUNNING, because `started_at` is one of them, and again
+	// on every retry, because a retry moves it.
+	RecordAuto(ctx context.Context, id uuid.UUID,
+		window func(slot time.Time) (start, end time.Time)) (dom.AutoParams, error)
 
 	// FailedStep returns the node and the output of the last failed
 	// attempt. It feeds the alert: without it the alert says something failed,
@@ -264,6 +271,19 @@ func (d *Dispatcher) process(ctx context.Context, it queue.Item) {
 		return
 	}
 
+	// The automatic params are settled BEFORE the run executes, because the
+	// steps read them. On a retry this runs again: `started_at` moved and the
+	// previous run may have changed, while `adjusted_at` stays pinned to the
+	// slot -- which is what makes a retried run read the same window as the
+	// attempt that failed.
+	if _, err := d.repo.RecordAuto(ctx, it.RunID, d.window(ctx, it.RunID)); err != nil {
+		// Not fatal. A run without them still runs; its steps fall back to
+		// their own clock, which is what every pipeline did before this
+		// existed. Failing the run over a convenience would be the worse
+		// trade.
+		d.log.Warn("automatic params not recorded", "run", it.RunID, "error", err)
+	}
+
 	err := d.executar(ctx, it.RunID)
 
 	// From here on the bookkeeping runs on a context of its own. See settle.
@@ -352,6 +372,30 @@ func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 	d.log.Info("requeued", "run", it.RunID, "attempt", attempt, "delay", atraso)
 	if err := d.queue.Release(ctx, it.ID, atraso); err != nil {
 		d.log.Error("handing back to the queue", "run", it.RunID, "error", err)
+	}
+}
+
+// window returns the schedule's interval for a slot, or nothing.
+//
+// It reads the run's OWN definition -- the snapshot taken at the trigger -- and
+// not the workflow as it is published now. A backfill of a slot from March has
+// to produce the window March had, and a schedule edited since must not rewrite
+// what an old run covers.
+func (d *Dispatcher) window(ctx context.Context, runID uuid.UUID) func(time.Time) (time.Time, time.Time) {
+	r, err := d.repo.Get(ctx, runID)
+	if err != nil {
+		return nil
+	}
+	var def struct{ Schedule, Timezone string }
+	if json.Unmarshal(r.Definition, &def) != nil || def.Schedule == "" {
+		return nil
+	}
+	return func(slot time.Time) (time.Time, time.Time) {
+		start, end, err := sch.Schedule{Cron: def.Schedule, Timezone: def.Timezone}.Window(slot)
+		if err != nil {
+			return time.Time{}, time.Time{}
+		}
+		return start, end
 	}
 }
 

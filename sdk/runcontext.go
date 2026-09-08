@@ -24,4 +24,15 @@ const (
 // created on this run.
 const ParamCreateTable = core.ParamCreateTable
 
-func runContextFromEnv() RunContext { return core.RunContextFromEnv() }
+// RunContextFromEnv reads what the engine injected into this process.
+//
+// Pipeline.Run already carries it, so a fetcher built with sdk.Run never calls
+// this. It is exported for the OTHER kind of step: a Go program that is a
+// workflow step without being a pipeline -- a report writer, a cleanup, a
+// notifier -- which otherwise had to read BREVIS_AUTO_ADJUSTED_AT out of the
+// environment by hand and parse it. That is exactly the arithmetic the auto
+// params exist to remove.
+//
+// Outside the engine everything comes back zeroed, and Auto.Now() is the wall
+// clock.
+func RunContextFromEnv() RunContext { return core.RunContextFromEnv() }

@@ -750,7 +750,11 @@ func cmdScheduler() *cobra.Command {
 					History:     runs,
 					Trigger:     r.TriggerType,
 					LogicalDate: r.LogicalDate,
-					Metrics:     met,
+					// Worked out by the dispatcher before this closure runs,
+					// and read back off the Run: the steps get a clock that
+					// does not move when the run is late.
+					Auto:    r.Auto,
+					Metrics: met,
 				}.Run(ctx, w)
 			}
 

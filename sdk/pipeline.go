@@ -137,7 +137,7 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
 
 	// Read before Before, so a hook can act on it.
-	p.Run = runContextFromEnv()
+	p.Run = RunContextFromEnv()
 	if p.Run.FromEngine() {
 		slog.InfoContext(ctx, "running under Brevis",
 			append([]any{"pipeline", p.name()}, p.Run.Args()...)...)

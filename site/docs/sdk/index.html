@@ -248,6 +248,28 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 },</code></pre></div>
 <p>Rodando à mão, <code>Run</code> vem zerado — ler é opcional, e ignorá-lo não custa nada.</p>
 <p>Sem histórico, a resposta para "é a primeira execução?" é sempre <strong>não</strong>: criar tabela sem certeza é pior do que não criar.</p>
+<h3 id="o-relogio">O relógio<a class="anchor" href="#o-relogio" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> é o que o motor descobriu sobre este run — os <a href="/docs/parameters/#auto-params">auto params</a>. <code>Auto.Now()</code> é o relógio a ler no lugar de <code>time.Now()</code>: num run agendado ele é o slot, então não se move quando o run atrasa nem quando o run é retentado três horas depois.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // sem agendamento: cai para uma janela fixa
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// sem agendamento: cai para uma janela fixa</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>Rodando à mão, <code>Auto.Now()</code> <em>é</em> o relógio de parede e <code>Window()</code> devolve <code>false</code>, então o desenvolvimento local não precisa de caso especial.</p>
 <h2 id="referencia">Referência<a class="anchor" href="#referencia" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — a API completa</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — doze exemplos executáveis</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — histórico versão a versão</li></ul>
 
@@ -263,7 +285,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
+      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
     </aside>
   </main>
 </div>

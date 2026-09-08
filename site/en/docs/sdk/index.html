@@ -248,6 +248,28 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 },</code></pre></div>
 <p>Run by hand, <code>Run</code> comes back zeroed — reading it is optional, and ignoring it costs nothing.</p>
 <p>With no history, the answer to "is this the first run?" is always <strong>no</strong>: creating a table without certainty is worse than not creating it.</p>
+<h3 id="the-clock">The clock<a class="anchor" href="#the-clock" aria-label="link">#</a></h3>
+<p><code>p.Run.Auto</code> is what the engine worked out about this run — the <a href="/en/docs/parameters/#auto-params">auto params</a>. <code>Auto.Now()</code> is the clock to read instead of <code>time.Now()</code>: on a scheduled run it is the slot, so it does not move when the run is late and does not move when the run is retried three hours later.</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		&quot;?from=&quot; + start.Format(time.RFC3339) +
+		&quot;&amp;to=&quot; + end.Format(time.RFC3339)}
+	return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	<span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&amp;to=" + end.Format(time.RFC3339)}
+	<span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p>Run by hand, <code>Auto.Now()</code> <em>is</em> the wall clock and <code>Window()</code> returns <code>false</code>, so local development needs no special case.</p>
 <h2 id="reference">Reference<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — the complete API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — twelve runnable examples</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — version-by-version history</li></ul>
 
@@ -263,7 +285,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
     </aside>
   </main>
 </div>

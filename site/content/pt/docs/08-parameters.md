@@ -89,6 +89,78 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 },
 ```
 
+## Auto params
+
+Todo run carrega também os **auto params**: valores que o motor calcula
+sozinho. Ninguém declara, todo run tem, e eles aparecem na tela do run.
+
+O que importa é o `adjusted_at`, e o bug que ele elimina merece ser nomeado. Um
+fetcher lê `now()`, subtrai a sua janela e pede ao fornecedor as últimas duas
+horas. Num run que começa na hora, está certo. Num run que a fila atrasou em
+quarenta minutos, está quarenta minutos errado — e esses quarenta minutos não
+pertencem a **run nenhum**, porque o próximo slot também lê o seu próprio
+`now()`. Nada falha; o dado simplesmente não existe, e isso se descobre semanas
+depois.
+
+Então o motor entrega um relógio no lugar. Leia `adjusted_at` onde você leria
+`now()`:
+
+| param | | |
+|---|---|---|
+| `adjusted_at` | sempre | o relógio que este run deve ler: o slot quando existe, o início caso contrário |
+| `date` | sempre | o `adjusted_at` como `YYYY-MM-DD`, em UTC — a partição, a pasta, o `WHERE` |
+| `delay_seconds` | sempre | o atraso desta tentativa em relação ao slot; `0` num run manual |
+| `previous_error` | sempre | o run anterior a este não teve sucesso |
+| `scheduled_at` | agendado | o slot que o cron pediu |
+| `started_at` | | quando esta tentativa começou; um retry move |
+| `interval_start` | agendado | o slot **anterior** |
+| `interval_end` | agendado | este slot, **excluído** |
+| `previous_success_at` | | o slot do último run que teve sucesso |
+
+`interval_start` e `interval_end` vêm do **cron**, não do histórico: um backfill
+de um slot de março produz a janela que março teve, não a janela que os runs
+deste workflow por acaso descrevem hoje. Um pipeline que pede `[start, end)`
+nunca sobrepõe e nunca deixa buraco, por mais atrasado que rode e por mais que
+seja retentado.
+
+Eles são um **snapshot**, calculado quando o run começa e gravado nele. O
+`previous_error` é um fato sobre o instante em que este run começou;
+recalculá-lo amanhã — depois de o run anterior ter sido retentado e passado —
+responderia outra pergunta com o mesmo nome.
+
+### Como ler
+
+Num passo de shell, uma variável por valor, para não precisar parsear nada:
+
+```yaml
+steps:
+  - id: extract
+    run: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&until=$BREVIS_AUTO_INTERVAL_END" \
+        > "/data/$BREVIS_AUTO_DATE.json"
+```
+
+O conjunto inteiro também está em `$BREVIS_AUTO_PARAMS` como um único objeto
+JSON, para um passo que prefira parsear uma vez só.
+
+Em Go, o [SDK](/docs/sdk/) lê por você:
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // sem agendamento: cai para uma janela fixa
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&from=" + start.Format(time.RFC3339) +
+        "&to=" + end.Format(time.RFC3339)
+    return nil
+},
+```
+
+`Auto.Now()` é o relógio a ler no lugar de `time.Now()`. Fora do motor — um
+fetcher que alguém roda na mão — ele *é* o relógio de parede, então nada precisa
+de tratamento especial no desenvolvimento local.
+
 ## O snapshot
 
 Os parâmetros são gravados **no run**, não lidos do workflow na hora de

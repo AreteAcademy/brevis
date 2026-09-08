@@ -66,6 +66,11 @@ type RunContext struct {
 	// Params["x"] on a fetcher running by hand is an empty string rather than
 	// a panic.
 	Params map[string]string
+
+	// Auto is what the engine worked out about this run: the clock to read,
+	// the window to ask for, whether the previous run failed. Params are what
+	// a HUMAN passed; Auto is what nobody had to.
+	Auto AutoParams
 }
 
 // runContextFromEnv reads what the engine injected.
@@ -82,6 +87,7 @@ func RunContextFromEnv() RunContext {
 		First:   os.Getenv(EnvRunFirst) == "true",
 		Trigger: os.Getenv(EnvRunTrigger),
 		Params:  map[string]string{},
+		Auto:    AutoParamsFromEnv(),
 	}
 
 	if v := os.Getenv(EnvRunAttempt); v != "" {
@@ -135,5 +141,5 @@ func (r RunContext) Args() []any {
 	if len(r.Params) > 0 {
 		args = append(args, "params", r.Params)
 	}
-	return args
+	return append(args, r.Auto.Args()...)
 }

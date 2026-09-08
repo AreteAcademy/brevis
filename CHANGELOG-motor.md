@@ -9,6 +9,63 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.9.0] — 2026-09-08
+
+### Before upgrading
+
+**Run the migrations.** One new column, `runs.auto_params`.
+
+```bash
+brevis migrate up
+```
+
+Nothing else changes: existing runs keep an empty object, and a workflow that
+ignores the new variables behaves exactly as it did.
+
+### Added: auto params
+
+Every run now carries values the engine works out on its own. Nobody declares
+them, every run has them, they are on the run's screen and in every step's
+environment as `$BREVIS_AUTO_*`.
+
+The one that matters is `adjusted_at`, and the bug it removes is common enough
+to be worth naming. A fetcher reads `now()`, subtracts its window and asks the
+vendor for the last two hours. On a run that starts on time that is right. On a
+run the queue delayed by forty minutes it is forty minutes wrong — and those
+forty minutes belong to **no run at all**, because the next slot reads its own
+`now()` too. Nothing fails, and the gap is found weeks later.
+
+So the engine hands over a clock instead:
+
+| | |
+|---|---|
+| `adjusted_at` | the clock to read instead of `now()`: the slot when there is one, the start otherwise |
+| `date` | `adjusted_at` as `YYYY-MM-DD`, UTC |
+| `delay_seconds` | how late this attempt was against its slot |
+| `previous_error` | the run before this one did not succeed |
+| `scheduled_at`, `started_at` | the slot, and when this attempt began |
+| `interval_start`, `interval_end` | the window this run covers, end excluded |
+| `previous_success_at` | the slot of the last run that did succeed |
+
+The window comes from the **cron**, not from the history: a backfill of a slot
+from March produces the window March had, not the window this workflow's runs
+happen to describe today. A pipeline that asks for `[start, end)` never overlaps
+and never gaps, however late it runs and however often it retries.
+
+They are a **snapshot**, computed when the run starts and stored on it — which
+is what the new column is for. `previous_error` is a fact about the instant this
+run began; recomputing it tomorrow, after the previous run was retried and
+passed, would answer a different question with the same name.
+
+The optional ones are **absent** from the environment rather than empty. A
+variable that is always there and sometimes blank makes every reader write the
+same two-line check; an absent one makes `${X:-default}` work.
+
+`sdk/v0.56.0` reads them as `p.Run.Auto`, so a Go fetcher does not parse
+anything.
+
+---
+
 ## [0.8.0] — 2026-09-07
 
 Four features and one apology. Read **Before upgrading** first: this release

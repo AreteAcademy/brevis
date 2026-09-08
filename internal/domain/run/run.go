@@ -40,6 +40,11 @@ type Run struct {
 	StartedAt   *time.Time
 	FinishedAt  *time.Time
 	Err         string
+
+	// Auto is what the engine worked out for this run so no pipeline has to:
+	// the clock to read instead of now(), the window it covers, how late it
+	// was, and whether the run before it failed. See AutoParams.
+	Auto AutoParams
 }
 
 // TaskRun is the execution of one node inside a Run.

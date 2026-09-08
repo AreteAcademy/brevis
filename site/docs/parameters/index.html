@@ -180,6 +180,44 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     }
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
+<h2 id="auto-params">Auto params<a class="anchor" href="#auto-params" aria-label="link">#</a></h2>
+<p>Todo run carrega também os <strong>auto params</strong>: valores que o motor calcula sozinho. Ninguém declara, todo run tem, e eles aparecem na tela do run.</p>
+<p>O que importa é o <code>adjusted_at</code>, e o bug que ele elimina merece ser nomeado. Um fetcher lê <code>now()</code>, subtrai a sua janela e pede ao fornecedor as últimas duas horas. Num run que começa na hora, está certo. Num run que a fila atrasou em quarenta minutos, está quarenta minutos errado — e esses quarenta minutos não pertencem a <strong>run nenhum</strong>, porque o próximo slot também lê o seu próprio <code>now()</code>. Nada falha; o dado simplesmente não existe, e isso se descobre semanas depois.</p>
+<p>Então o motor entrega um relógio no lugar. Leia <code>adjusted_at</code> onde você leria <code>now()</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>param</th><th></th><th></th></tr></thead><tbody><tr><td><code>adjusted_at</code></td><td>sempre</td><td>o relógio que este run deve ler: o slot quando existe, o início caso contrário</td></tr><tr><td><code>date</code></td><td>sempre</td><td>o <code>adjusted_at</code> como <code>YYYY-MM-DD</code>, em UTC — a partição, a pasta, o <code>WHERE</code></td></tr><tr><td><code>delay_seconds</code></td><td>sempre</td><td>o atraso desta tentativa em relação ao slot; <code>0</code> num run manual</td></tr><tr><td><code>previous_error</code></td><td>sempre</td><td>o run anterior a este não teve sucesso</td></tr><tr><td><code>scheduled_at</code></td><td>agendado</td><td>o slot que o cron pediu</td></tr><tr><td><code>started_at</code></td><td></td><td>quando esta tentativa começou; um retry move</td></tr><tr><td><code>interval_start</code></td><td>agendado</td><td>o slot <strong>anterior</strong></td></tr><tr><td><code>interval_end</code></td><td>agendado</td><td>este slot, <strong>excluído</strong></td></tr><tr><td><code>previous_success_at</code></td><td></td><td>o slot do último run que teve sucesso</td></tr></tbody></table></div>
+<p><code>interval_start</code> e <code>interval_end</code> vêm do <strong>cron</strong>, não do histórico: um backfill de um slot de março produz a janela que março teve, não a janela que os runs deste workflow por acaso descrevem hoje. Um pipeline que pede <code>[start, end)</code> nunca sobrepõe e nunca deixa buraco, por mais atrasado que rode e por mais que seja retentado.</p>
+<p>Eles são um <strong>snapshot</strong>, calculado quando o run começa e gravado nele. O <code>previous_error</code> é um fato sobre o instante em que este run começou; recalculá-lo amanhã — depois de o run anterior ter sido retentado e passado — responderia outra pergunta com o mesmo nome.</p>
+<h3 id="como-ler">Como ler<a class="anchor" href="#como-ler" aria-label="link">#</a></h3>
+<p>Num passo de shell, uma variável por valor, para não precisar parsear nada:</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: |
+      curl &quot;https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END&quot; \
+        &gt; &quot;/data/$BREVIS_AUTO_DATE.json&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END" \
+        &gt; "/data/$BREVIS_AUTO_DATE.json"</code></pre></div>
+<p>O conjunto inteiro também está em <code>$BREVIS_AUTO_PARAMS</code> como um único objeto JSON, para um passo que prefira parsear uma vez só.</p>
+<p>Em Go, o <a href="/docs/sdk/">SDK</a> lê por você:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // sem agendamento: cai para uma janela fixa
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += &quot;&amp;from=&quot; + start.Format(time.RFC3339) +
+        &quot;&amp;to=&quot; + end.Format(time.RFC3339)
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    <span class="t-k">if</span> !ok { <span class="t-c">// sem agendamento: cai para uma janela fixa</span>
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&amp;from=" + start.Format(time.RFC3339) +
+        "&amp;to=" + end.Format(time.RFC3339)
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p><code>Auto.Now()</code> é o relógio a ler no lugar de <code>time.Now()</code>. Fora do motor — um fetcher que alguém roda na mão — ele <em>é</em> o relógio de parede, então nada precisa de tratamento especial no desenvolvimento local.</p>
 <h2 id="o-snapshot">O snapshot<a class="anchor" href="#o-snapshot" aria-label="link">#</a></h2>
 <p>Os parâmetros são gravados <strong>no run</strong>, não lidos do workflow na hora de executar. O run carrega a entrada com que foi disparado, e o log de uma execução de janeiro continua mostrando os valores de janeiro mesmo depois de o padrão mudar.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
@@ -197,7 +235,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#como-ler">Como ler</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

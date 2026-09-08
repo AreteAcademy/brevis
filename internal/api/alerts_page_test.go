@@ -138,3 +138,78 @@ func TestTheRunPageSurvivesTheAlertsBeingUnavailable(t *testing.T) {
 		t.Error("the page rendered without the run on it")
 	}
 }
+
+// TestTheAutoParamsAreOnTheScreen.
+//
+// A value a pipeline reads is a value somebody debugging that pipeline has to
+// be able to see. "Why did this run fetch that window" is answered here rather
+// than by reading the fetcher's source and reconstructing its arithmetic.
+func TestTheAutoParamsAreOnTheScreen(t *testing.T) {
+	slot := time.Date(2026, 9, 8, 4, 0, 0, 0, time.UTC)
+	started := slot.Add(37 * time.Minute)
+	before := slot.AddDate(0, 0, -1)
+
+	id := uuid.New()
+	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
+		ID: id, WorkflowSlug: "nightly", Status: dom.StatusSuccess,
+		Auto: dom.AutoParams{
+			ScheduledAt: &slot, StartedAt: &started, AdjustedAt: slot,
+			DelaySeconds: 37 * 60, Date: "2026-09-08",
+			IntervalStart: &before, IntervalEnd: &slot,
+			PreviousError: true, PreviousSuccessAt: &before,
+		},
+	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/runs/"+id.String(), nil))
+	html := rec.Body.String()
+
+	for _, want := range []string{
+		"Auto params",
+		"adjusted_at", "interval_start", "interval_end",
+		"previous_error", "previous_success_at",
+		"2026-09-08",  // the date
+		"BREVIS_AUTO", // how a step reads them
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the page does not show %q", want)
+		}
+	}
+	// The delay reads as a duration, not as a count of seconds: "2220" is a
+	// number somebody converts, "37m" is an answer.
+	if strings.Contains(html, "2220") {
+		t.Errorf("the delay is shown in raw seconds")
+	}
+	if !strings.Contains(html, "37m") {
+		t.Errorf("the delay does not read as a duration:\n%s", html)
+	}
+}
+
+// A manual run has no slot and no window, and the screen shows no empty rows
+// for them: a field that is always there and sometimes blank is a field
+// everybody learns to skip.
+func TestAManualRunShowsOnlyWhatItHas(t *testing.T) {
+	started := time.Date(2026, 9, 8, 11, 3, 0, 0, time.UTC)
+	id := uuid.New()
+	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
+		ID: id, WorkflowSlug: "on_demand", Status: dom.StatusSuccess, TriggerType: "manual",
+		Auto: dom.AutoParams{StartedAt: &started, AdjustedAt: started, Date: "2026-09-08"},
+	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/runs/"+id.String(), nil))
+	html := rec.Body.String()
+
+	for _, absent := range []string{"scheduled_at", "interval_start", "previous_success_at"} {
+		if strings.Contains(html, absent) {
+			t.Errorf("the page shows %q on a run that has none", absent)
+		}
+	}
+	if !strings.Contains(html, "on time") {
+		t.Errorf("a manual run's delay does not read as `on time`")
+	}
+}

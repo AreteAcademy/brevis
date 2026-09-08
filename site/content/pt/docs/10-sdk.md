@@ -158,6 +158,29 @@ Rodando à mão, `Run` vem zerado — ler é opcional, e ignorá-lo não custa n
 Sem histórico, a resposta para "é a primeira execução?" é sempre **não**: criar
 tabela sem certeza é pior do que não criar.
 
+### O relógio
+
+`p.Run.Auto` é o que o motor descobriu sobre este run — os
+[auto params](/docs/parameters/#auto-params). `Auto.Now()` é o relógio a ler no
+lugar de `time.Now()`: num run agendado ele é o slot, então não se move quando o
+run atrasa nem quando o run é retentado três horas depois.
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // sem agendamento: cai para uma janela fixa
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&to=" + end.Format(time.RFC3339)}
+	return nil
+},
+```
+
+Rodando à mão, `Auto.Now()` *é* o relógio de parede e `Window()` devolve
+`false`, então o desenvolvimento local não precisa de caso especial.
+
 ## Referência
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — a API completa

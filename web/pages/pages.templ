@@ -840,9 +840,71 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 			<pre class="mb-5 overflow-auto rounded-[20px] border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 		}
 		@dag("/api/runs/" + r.ID.String() + "/graph")
+		@autoParams(r)
 		@alertsRaised(raised)
 		@stepsOutput(logs)
 	}
+}
+
+// autoParams shows what the engine worked out for this run.
+//
+// On the screen because a value a pipeline reads is a value somebody debugging
+// that pipeline has to be able to see. "Why did this run fetch that window" is
+// answered here rather than by reading the fetcher's source and reconstructing
+// its arithmetic.
+//
+// The one worth reading first is `adjusted_at`: the clock a step reads instead
+// of now(). Next to `delay` it says, at a glance, that a run was forty minutes
+// late AND that it still read the right window -- which is exactly the pair
+// somebody stares at after finding a gap in a table.
+templ autoParams(r run.Run) {
+	<section class="mt-8">
+		<h2 class="display mb-1 text-xl text-ink">Auto params</h2>
+		<p class="mb-4 text-xs text-muted">
+			The engine works these out for every run. No workflow declares them, and
+			every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
+		</p>
+		<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+			@autoValue("adjusted_at", components.Timestamp(&r.Auto.AdjustedAt),
+				"the clock to read instead of now()")
+			@autoValue("date", r.Auto.Date, "adjusted_at as YYYY-MM-DD, in UTC")
+			@autoValue("delay", lateness(r.Auto.DelaySeconds), "how late this attempt started")
+			if r.Auto.ScheduledAt != nil {
+				@autoValue("scheduled_at", components.Timestamp(r.Auto.ScheduledAt), "the slot this run represents")
+			}
+			if r.Auto.StartedAt != nil {
+				@autoValue("started_at", components.Timestamp(r.Auto.StartedAt), "when this attempt began")
+			}
+			if r.Auto.IntervalStart != nil {
+				@autoValue("interval_start", components.Timestamp(r.Auto.IntervalStart), "the window this run covers, from")
+			}
+			if r.Auto.IntervalEnd != nil {
+				@autoValue("interval_end", components.Timestamp(r.Auto.IntervalEnd), "…up to, excluded")
+			}
+			@autoValue("previous_error", fmt.Sprint(r.Auto.PreviousError), "did the run before this one fail")
+			if r.Auto.PreviousSuccessAt != nil {
+				@autoValue("previous_success_at", components.Timestamp(r.Auto.PreviousSuccessAt), "how far back to catch up from")
+			}
+		</div>
+	</section>
+}
+
+templ autoValue(name, value, why string) {
+	<div class="rounded-2xl border border-line bg-surface px-4 py-3">
+		<div class="font-mono text-[0.7rem] uppercase tracking-wider text-muted">{ name }</div>
+		<div class="mt-0.5 font-mono text-sm text-ink">{ value }</div>
+		<div class="mt-1 text-[0.7rem] leading-snug text-muted/80">{ why }</div>
+	</div>
+}
+
+// lateness reads as a duration rather than as a count of seconds. "2220" is a
+// number somebody converts; "37m" is an answer.
+func lateness(seconds int) string {
+	if seconds <= 0 {
+		return "on time"
+	}
+	d := time.Duration(seconds) * time.Second
+	return components.Duration(&d)
 }
 
 // alertsRaised shows what was announced about this run, and whether it arrived.

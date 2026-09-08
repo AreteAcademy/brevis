@@ -180,6 +180,44 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
     }
     <span class="t-k">return</span> <span class="t-k">nil</span>
 },</code></pre></div>
+<h2 id="auto-params">Auto params<a class="anchor" href="#auto-params" aria-label="link">#</a></h2>
+<p>Every run also carries <strong>auto params</strong>: values the engine works out on its own. Nobody declares them, every run has them, and they are on the run's screen.</p>
+<p>The one that matters is <code>adjusted_at</code>, and the bug it removes is worth naming. A fetcher reads <code>now()</code>, subtracts its window and asks the vendor for the last two hours. On a run that starts on time that is right. On a run the queue delayed by forty minutes it is forty minutes wrong — and those forty minutes belong to <strong>no run at all</strong>, because the next slot reads its own <code>now()</code> too. Nothing fails; the data is simply missing, and it is found weeks later.</p>
+<p>So the engine hands over a clock instead. Read <code>adjusted_at</code> where you would have read <code>now()</code>:</p>
+<div class="table-wrap"><table><thead><tr><th>param</th><th></th><th></th></tr></thead><tbody><tr><td><code>adjusted_at</code></td><td>always</td><td>the clock this run should read: the slot when there is one, the start otherwise</td></tr><tr><td><code>date</code></td><td>always</td><td><code>adjusted_at</code> as <code>YYYY-MM-DD</code>, UTC — the partition, the folder, the <code>WHERE</code></td></tr><tr><td><code>delay_seconds</code></td><td>always</td><td>how late this attempt was against its slot; <code>0</code> on a manual run</td></tr><tr><td><code>previous_error</code></td><td>always</td><td>the run before this one did not succeed</td></tr><tr><td><code>scheduled_at</code></td><td>scheduled</td><td>the slot the cron asked for</td></tr><tr><td><code>started_at</code></td><td></td><td>when this attempt began; a retry moves it</td></tr><tr><td><code>interval_start</code></td><td>scheduled</td><td>the <strong>previous</strong> slot</td></tr><tr><td><code>interval_end</code></td><td>scheduled</td><td>this slot, <strong>excluded</strong></td></tr><tr><td><code>previous_success_at</code></td><td></td><td>the slot of the last run that did succeed</td></tr></tbody></table></div>
+<p><code>interval_start</code> and <code>interval_end</code> come from the <strong>cron</strong>, not from the history: a backfill of a slot from March produces the window March had, not the window this workflow's runs happen to describe today. A pipeline that asks for <code>[start, end)</code> never overlaps and never gaps, however late it runs and however often it retries.</p>
+<p>They are a <strong>snapshot</strong>, computed when the run starts and stored on it. <code>previous_error</code> is a fact about the instant this run began; recomputing it tomorrow — after the previous run was retried and passed — would answer a different question with the same name.</p>
+<h3 id="reading-them">Reading them<a class="anchor" href="#reading-them" aria-label="link">#</a></h3>
+<p>In a shell step, one variable per value, so nothing has to be parsed:</p>
+<div class="code-block" data-code="steps:
+  - id: extract
+    run: |
+      curl &quot;https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END&quot; \
+        &gt; &quot;/data/$BREVIS_AUTO_DATE.json&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">steps</span>:
+  - <span class="t-k">id</span>: extract
+    <span class="t-k">run</span>: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&amp;until=$BREVIS_AUTO_INTERVAL_END" \
+        &gt; "/data/$BREVIS_AUTO_DATE.json"</code></pre></div>
+<p>The whole set is also in <code>$BREVIS_AUTO_PARAMS</code> as one JSON object, for a step that would rather parse once.</p>
+<p>In Go, the <a href="/en/docs/sdk/">SDK</a> reads them for you:</p>
+<div class="code-block" data-code="Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // no schedule: fall back to a fixed window
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += &quot;&amp;from=&quot; + start.Format(time.RFC3339) +
+        &quot;&amp;to=&quot; + end.Format(time.RFC3339)
+    return nil
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Before: <span class="t-k">func</span>(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    <span class="t-k">if</span> !ok { <span class="t-c">// no schedule: fall back to a fixed window</span>
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&amp;from=" + start.Format(time.RFC3339) +
+        "&amp;to=" + end.Format(time.RFC3339)
+    <span class="t-k">return</span> <span class="t-k">nil</span>
+},</code></pre></div>
+<p><code>Auto.Now()</code> is the clock to read instead of <code>time.Now()</code>. Outside the engine — a fetcher someone runs by hand — it <em>is</em> the wall clock, so nothing has to be special-cased for local development.</p>
 <h2 id="the-snapshot">The snapshot<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>Parameters are stored <strong>in the run</strong>, not read from the workflow at execution time. The run carries the input it was triggered with, and the log of a January execution keeps showing January's values even after the default changes.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
@@ -197,7 +235,7 @@ brevis run wf.yaml --param load_full=true --param start_date=2026-01-01"><div cl
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">Reading them</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

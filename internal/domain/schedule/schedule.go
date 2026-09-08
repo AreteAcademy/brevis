@@ -144,3 +144,46 @@ func (s Schedule) Next(now time.Time) (time.Time, error) {
 	}
 	return sched.Next(now.In(loc)), nil
 }
+
+// Window returns the interval a slot covers: from the PREVIOUS slot up to this
+// one, end excluded.
+//
+// A pipeline that asks its source for [start, end) never overlaps and never
+// gaps, however late the run was and however many times it retried. Reading
+// `now()` instead is the bug this exists to remove: a run delayed forty minutes
+// skips forty minutes of data, nothing fails, and it is found weeks later.
+//
+// It walks FORWARD from a lookback, because a cron expression can say when the
+// next slot is and not when the last one was. The lookback doubles rather than
+// starting at a year: a `*/10` schedule finds its answer in the first step,
+// and only a yearly cron pays for the long one.
+//
+// Zero when there is no schedule, and zero when nothing was found inside the
+// longest lookback -- a slot with no predecessor is the workflow's first, and
+// inventing a window for it would hand a pipeline a year of data on its first
+// morning.
+func (s Schedule) Window(slot time.Time) (start, end time.Time, err error) {
+	sched, loc, err := s.Parse()
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	slot = slot.In(loc)
+
+	for _, back := range []time.Duration{
+		2 * time.Hour, 48 * time.Hour, 40 * 24 * time.Hour, 400 * 24 * time.Hour,
+	} {
+		cursor := slot.Add(-back)
+		var previous time.Time
+		for {
+			next := sched.Next(cursor)
+			if !next.Before(slot) {
+				break
+			}
+			previous, cursor = next, next
+		}
+		if !previous.IsZero() {
+			return previous, slot, nil
+		}
+	}
+	return time.Time{}, time.Time{}, nil
+}
