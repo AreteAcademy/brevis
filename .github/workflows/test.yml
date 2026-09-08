@@ -95,6 +95,9 @@ jobs:
       - name: Engine weight
         run: ./.github/scripts/engine-weight.sh
 
+      - name: The manifests pin this version
+        run: ./.github/scripts/image-pins-check.sh
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:

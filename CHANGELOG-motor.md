@@ -9,6 +9,127 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.8.0] — 2026-09-07
+
+Four features and one apology. Read **Before upgrading** first: this release
+changes what an existing workflow does.
+
+### Before upgrading
+
+**Run the migrations.** Three new tables and columns: `task_runs.saida`, the
+`alertas` outbox, and `task_runs.map_index`.
+
+```bash
+brevis migrate up
+```
+
+**Deploy `brevis alert`, or failures stop being announced.** The scheduler no
+longer talks to Slack: it records the alert in the same transaction as the
+failure, and a third process delivers it. Without that process the alerts are
+recorded correctly and delivered never — the outbox looks healthy and the
+channel is silent. `deployments/kubernetes/alert.yaml` is the manifest, and the
+scheduler says so at boot.
+
+**A new port is bound.** `BREVIS_METRICS_ADDR` defaults to `:9090` on both
+processes. Set it to `""` to serve nothing.
+
+**Three behaviour changes to workflows that already exist**, all deliberate and
+all matching Airflow:
+
+| | before | now |
+|---|---|---|
+| a failure | stopped the whole graph | stops the branch below it; an unrelated branch keeps going |
+| a retry | re-ran every step | re-runs only what failed |
+| a step below a failure | had no record at all | is recorded `skipped`, saying which step stopped it |
+
+The first is the one to weigh: an unrelated branch now writes its data on a run
+that failed elsewhere. What the old abort protected against is covered by the
+run still failing, the graph naming which step stopped each skipped one, and the
+alert still going out — but it is a change, and
+[the workflows doc](site/content/en/docs/04-workflows.md) states the trade.
+
+### Fixed: the graph has had no chips, no badges and no phases since 0.7.0
+
+`0.7.0` announced runtime chips, and they never rendered. The module rename from
+`bravis` to `brevis` changed `internal/api/graph.go` and did not change
+`web/assets/dag.js`, so React Flow fell back to its default node for a type it
+did not recognise — which draws a plausible box with the step's name and none of
+the rest.
+
+Nothing failed, because nothing was checking. Every step on every graph has been
+a bare box for three releases' worth of work: the runtime chips, the SDK badge,
+the SDK phases, the context counts. A test now reads the island's source and
+asserts every type the API emits is registered there.
+
+The same class of bug produced two more, both found by looking at a screenshot
+rather than at a test: a step's phases were positioned at a constant offset that
+stopped matching the card once it grew rows, and the phase pills declared their
+width in the island while the card declared it in the API. Every measurement
+comes from the API now, and the island fills it.
+
+### Added: flow shapes
+
+```yaml
+  - id: notify_failure
+    depends_on: [extract]
+    when: any_failed             # runs precisely when extract did not make it
+
+  - id: load
+    for_each: extract.partitions # one node, N instances, [3] on the card
+
+  - id: transform
+    unless_empty: extract.has_rows
+
+  - id: mlops
+    uses: ml_training            # another workflow, expanded at publish
+
+  - id: start
+    marker: true                 # a step with no command
+```
+
+Plus `group:` for a collapsible box on the graph, and labels on `depends_on`
+entries. `skipped` is a state of its own — not a failure, not a success, in a
+colour of its own.
+
+`unless_empty:` is a **key**, not an expression: the step decides and publishes a
+boolean. `uses:` is expanded at publish and not run as a child, which is the
+design that deadlocked Airflow — the pod ceiling is a per-process semaphore, so
+a parent holding a slot while waiting for a child that needs slots from the same
+pool hangs, and only under load.
+
+### Added: alerts that survive a Slack outage
+
+The dispatcher used to call Slack and, on failure, log and carry on. That is
+right for a pipeline and it is also how the alert was **lost**: no retry, no
+record, nothing on a screen to say anybody should have been told.
+
+It is an outbox now, written in the same transaction as the failure, drained by
+`brevis alert` with backoff and a visibility timeout. An alert it gives up on is
+**kept** — "raised, not delivered, 4 attempts, 403 from Slack" is the row that
+matters — and the run's screen shows it.
+
+Per-step alerting with `on_error: {type: SLACK}`. The destination is never in
+the YAML: it is a credential, and the installation owns it.
+
+### Added: metrics, and the weekly report
+
+`/metrics` on a port of its own from both processes, in Prometheus format.
+Queue depth, claim latency, slots, orphans recovered, run and step durations,
+step attempts. No `run_id` label, asserted by a test.
+
+`brevis report --window 168h` sends the periodic summary from a CronJob, with
+`--dry-run` to read what it would have said. It carries no CPU or memory and
+prints no zero for them: the engine does not collect those, and the message says
+where they live.
+
+### Added: context between steps
+
+`BREVIS_INPUT` / `BREVIS_OUTPUT`, with libraries in Go (`sdk/context`) and
+Python (`brevis` on PyPI) and nothing needed in bash beyond `jq`. Visible on the
+run's screen, recorded in the database, and readable by a resumed run.
+
+---
+
 ## [0.7.0] — 2026-09-07
 
 ### Added: the graph says what each step runs in

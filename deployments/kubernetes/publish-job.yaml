@@ -32,7 +32,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: publish
-          image: daniel3843/brevis:0.2.1-worker
+          image: daniel3843/brevis:0.8.0-worker
           # `--prune` makes the folder the source of truth: a workflow that
           # leaves the ConfigMap leaves the database, schedule and all. Without
           # it, removing a YAML would leave its schedule creating runs forever.
