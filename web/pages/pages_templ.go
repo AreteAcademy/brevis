@@ -222,7 +222,7 @@ func Overview(d OverviewData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = th("Origem", "").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = th("Trigger", "").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -2188,7 +2188,7 @@ func runsTable(runs []postgres.RunSummary, p Pagination) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Origem", "").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th("Trigger", "").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2200,7 +2200,7 @@ func runsTable(runs []postgres.RunSummary, p Pagination) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = th("Criado", "text-right").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = th("Created", "text-right").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

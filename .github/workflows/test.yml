@@ -98,6 +98,9 @@ jobs:
       - name: The manifests pin this version
         run: ./.github/scripts/image-pins-check.sh
 
+      - name: The interface is in English
+        run: ./.github/scripts/ui-language-check.sh
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:

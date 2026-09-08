@@ -76,7 +76,7 @@ templ Overview(d OverviewData) {
 						<thead>
 							<tr class="border-b border-line text-left">
 								@th("Workflow", "")
-								@th("Origem", "")
+								@th("Trigger", "")
 								@th("Started", "")
 								@th("State", "text-right")
 							</tr>
@@ -716,10 +716,10 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
 						@th("State", "pl-6")
 						@th("Workflow", "")
-						@th("Origem", "")
+						@th("Trigger", "")
 						@th("Slot", "")
 						@th("Duration", "")
-						@th("Criado", "text-right")
+						@th("Created", "text-right")
 						@th("", "w-16 pr-6")
 					</tr>
 				</thead>
