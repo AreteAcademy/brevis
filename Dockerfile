@@ -24,7 +24,13 @@ RUN test -f web/assets/app.css || { echo "web/assets/app.css is missing — run 
 # loads, but with the system's typography and a blank DAG screen — silent
 # failures that only show up in the browser. Failing here, with a message, is
 # better.
-RUN test -f web/assets/fonts/inter-latin.woff2 || { echo "web/assets/fonts is missing"; exit 1; }
+#
+# The fonts are checked against what app.css ASKS FOR rather than against a
+# filename typed here. A typed one is the same font name in two places, and it
+# broke exactly that way: the typeface changed from Inter to IBM Plex, this
+# line kept naming `inter-latin.woff2`, and the release build failed after the
+# tag was already pushed. Reading the stylesheet cannot go stale.
+RUN set -eu; fonts=$(grep -oE 'url\([^)]*/assets/fonts/[^)]*\)' web/assets/app.css | sed -E 's|.*/assets/||; s|[")]||g' | sort -u); test -n "$fonts" || { echo "app.css asks for no font at all"; exit 1; }; for f in $fonts; do test -f "web/assets/$f" || { echo "app.css asks for web/assets/$f and it is not here"; exit 1; }; done; echo "fonts: $(echo "$fonts" | wc -w) present"
 RUN test -f web/assets/vendor/xyflow.js || { echo "web/assets/vendor is missing"; exit 1; }
 
 # The version stamped into the binary. `brevis version` inside the container is
