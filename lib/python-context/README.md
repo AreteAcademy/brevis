@@ -153,7 +153,10 @@ pod's status and in the run history. Publish a path, not a signed URL.
 
 ## Versions
 
-[`CHANGELOG.md`](CHANGELOG.md). This package versions on its own, separately
+[`CHANGELOG.md`](CHANGELOG.md). **Do not use `0.2.0`** — it is wheel-only on
+PyPI, for the reason its entry there gives; `0.2.1` is the same code, complete.
+
+This package versions on its own, separately
 from the engine and from the Go SDK — a fix here does not force an engine
 release. `brevis.run` needs an engine on `v0.9.0` or newer to have anything to
 read; on an older one every field is empty and `run.now()` is the wall clock,

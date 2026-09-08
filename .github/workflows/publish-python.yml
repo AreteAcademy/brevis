@@ -65,9 +65,39 @@ jobs:
           python -m pip install --quiet build
           python -m build
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      # The sdist and the wheel are uploaded SEPARATELY, sdist first, and that
+      # order is the whole point.
+      #
+      # PyPI's filename ledger outlives a deleted project forever, and a
+      # previously deleted project called `brevis` poisoned some of these
+      # names. It has now happened twice: 0.1.0 and 0.2.0 each had their wheel
+      # accepted with a 200 and their sdist refused with a 400, leaving a
+      # WHEEL-ONLY version on the index that `pip install` happily resolves and
+      # `pip install --no-binary` cannot.
+      #
+      # Uploading everything from one directory made that outcome unavoidable:
+      # the wheel goes first alphabetically, so by the time the sdist is
+      # refused the release is already half published and the version is spent.
+      #
+      # With the sdist first, a burned filename costs nothing -- nothing
+      # reaches the index, the job fails, and the next version is tried with a
+      # clean slate. There is no API that answers "is this filename burned", so
+      # trying is the only way to find out; this makes trying cheap.
+      - name: Split the artefacts
+        run: |
+          mkdir -p dist-sdist dist-wheel
+          mv dist/*.tar.gz dist-sdist/
+          mv dist/*.whl dist-wheel/
+
+      - name: Publish the sdist FIRST
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: lib/python-context/dist/
+          packages-dir: lib/python-context/dist-sdist/
+
+      - name: Then the wheel
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: lib/python-context/dist-wheel/
 
   # 0.1.0 shipped a wheel and no sdist: the wheel uploaded, the sdist was
   # refused because a file of that exact name had belonged to a previously

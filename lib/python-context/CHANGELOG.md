@@ -11,6 +11,25 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.2.1] — 2026-09-08
+
+Same code as `0.2.0`. That version is **wheel-only on PyPI** and should not be
+used: its sdist was refused with a 400 because `brevis-0.2.0.tar.gz` had
+belonged to a previously deleted project called `brevis`, and PyPI's filename
+ledger outlives a project forever.
+
+It is the second time — `0.1.0` failed the same way — so the publish workflow
+now uploads the **sdist first** and the wheel second, in two steps. Everything
+used to be uploaded from one directory, where the wheel goes first
+alphabetically: by the time the sdist was refused, the release was already half
+published and the version spent. With the sdist first, a burned filename costs
+nothing, because nothing reaches the index at all.
+
+There is no API that answers "is this filename burned", so trying is the only
+way to find out. This makes trying cheap.
+
+---
+
 ## [0.2.0] — 2026-09-08
 
 ### Added: `brevis.run`, the clock the engine already knew
