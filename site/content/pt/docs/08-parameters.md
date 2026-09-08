@@ -117,6 +117,13 @@ Então o motor entrega um relógio no lugar. Leia `adjusted_at` onde você leria
 | `interval_end` | agendado | este slot, **excluído** |
 | `previous_success_at` | | o slot do último run que teve sucesso |
 
+**Todo timestamp aqui é UTC**, escrito em RFC 3339 com `Z`, e a tela do run
+também os mostra em UTC — então a página e o `$BREVIS_AUTO_ADJUSTED_AT` nunca
+divergem. O `date` é o **dia em UTC**, que para um workflow cujo slot cruza a
+meia-noite UTC não é o dia local: um `0 22 * * *` em `America/Sao_Paulo` tem
+`date` do dia seguinte. O `ds` do Airflow se comporta igual, pelo mesmo motivo —
+o slot é um instante, e um instante só tem um dia depois de escolhido um fuso.
+
 `interval_start` e `interval_end` vêm do **cron**, não do histórico: um backfill
 de um slot de março produz a janela que março teve, não a janela que os runs
 deste workflow por acaso descrevem hoje. Um pipeline que pede `[start, end)`

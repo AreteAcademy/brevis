@@ -117,6 +117,14 @@ have read `now()`:
 | `interval_end` | scheduled | this slot, **excluded** |
 | `previous_success_at` | | the slot of the last run that did succeed |
 
+**Every timestamp here is UTC**, written as RFC 3339 with a `Z`, and the run's
+screen shows them in UTC too — so the page and `$BREVIS_AUTO_ADJUSTED_AT` never
+disagree. `date` is the **UTC day**, which for a workflow whose slot crosses
+midnight UTC is not the local day: a `0 22 * * *` in `America/Sao_Paulo` has a
+`date` of the following day. Airflow's `ds` behaves the same way, for the same
+reason — the slot is an instant, and an instant has one day only once a
+timezone is chosen.
+
 `interval_start` and `interval_end` come from the **cron**, not from the
 history: a backfill of a slot from March produces the window March had, not the
 window this workflow's runs happen to describe today. A pipeline that asks for

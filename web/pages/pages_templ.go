@@ -2284,9 +2284,9 @@ func runsTable(runs []postgres.RunSummary, p Pagination) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var91 string
-				templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(r.LogicalDate))
+				templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(components.UTCStamp(r.LogicalDate))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 741, Col: 98}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 741, Col: 97}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 				if templ_7745c5c3_Err != nil {
@@ -2596,9 +2596,9 @@ func Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) templ.Compo
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var103 string
-				templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(components.Timestamp(r.LogicalDate))
+				templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(components.UTCStamp(r.LogicalDate))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 831, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/pages.templ`, Line: 831, Col: 88}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 				if templ_7745c5c3_Err != nil {
@@ -2758,12 +2758,12 @@ func autoParams(r run.Run) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = autoValue("adjusted_at", components.Timestamp(&r.Auto.AdjustedAt),
+		templ_7745c5c3_Err = autoValue("adjusted_at", components.UTCStamp(&r.Auto.AdjustedAt),
 			"the clock to read instead of now()").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = autoValue("date", r.Auto.Date, "adjusted_at as YYYY-MM-DD, in UTC").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = autoValue("date", r.Auto.Date, "the UTC day of adjusted_at — the partition").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2772,25 +2772,25 @@ func autoParams(r run.Run) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if r.Auto.ScheduledAt != nil {
-			templ_7745c5c3_Err = autoValue("scheduled_at", components.Timestamp(r.Auto.ScheduledAt), "the slot this run represents").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = autoValue("scheduled_at", components.UTCStamp(r.Auto.ScheduledAt), "the slot this run represents").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if r.Auto.StartedAt != nil {
-			templ_7745c5c3_Err = autoValue("started_at", components.Timestamp(r.Auto.StartedAt), "when this attempt began").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = autoValue("started_at", components.UTCStamp(r.Auto.StartedAt), "when this attempt began").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if r.Auto.IntervalStart != nil {
-			templ_7745c5c3_Err = autoValue("interval_start", components.Timestamp(r.Auto.IntervalStart), "the window this run covers, from").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = autoValue("interval_start", components.UTCStamp(r.Auto.IntervalStart), "the window this run covers, from").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
 		if r.Auto.IntervalEnd != nil {
-			templ_7745c5c3_Err = autoValue("interval_end", components.Timestamp(r.Auto.IntervalEnd), "…up to, excluded").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = autoValue("interval_end", components.UTCStamp(r.Auto.IntervalEnd), "…up to, excluded").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2800,7 +2800,7 @@ func autoParams(r run.Run) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if r.Auto.PreviousSuccessAt != nil {
-			templ_7745c5c3_Err = autoValue("previous_success_at", components.Timestamp(r.Auto.PreviousSuccessAt), "how far back to catch up from").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = autoValue("previous_success_at", components.UTCStamp(r.Auto.PreviousSuccessAt), "how far back to catch up from").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

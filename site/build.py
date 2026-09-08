@@ -261,6 +261,23 @@ def markdown(texto, rotulos):
                     r"^\s*(?:[-*]|\d+\.)\s+", linhas[i]):
                 corpo.append(linhas[i].strip())
                 i += 1
+            # Nada foi consumido: esta linha não é parágrafo nem nenhuma das
+            # formas acima, e continuar sem avançar `i` é um LOOP INFINITO.
+            #
+            # Foi o que aconteceu: um parágrafo escrito no meio de uma tabela
+            # deixou as linhas `|` seguintes órfãs -- não abrem tabela, porque a
+            # linha seguinte não é o separador, e o guarda do parágrafo as
+            # rejeita. O gerador rodou por minutos sem escrever nada e sem dizer
+            # nada, o que em CI é um timeout sem mensagem.
+            #
+            # Um build que trava é pior do que um que falha. Este falha, e diz
+            # qual linha.
+            if not corpo:
+                raise SystemExit(
+                    "build.py: linha %d não é parágrafo, tabela, lista nem código, "
+                    "e nada a consome:\n  %s\n"
+                    "Uma tabela partida ao meio por um parágrafo é a causa mais "
+                    "comum: as linhas `|` depois dele ficam órfãs." % (i + 1, ln))
             saida.append("<p>%s</p>" % inline(" ".join(corpo)))
             continue
 

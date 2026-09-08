@@ -1536,12 +1536,41 @@ func curto(d time.Duration) string {
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
 }
 
-// Timestamp is the full date, for audit columns.
+// Timestamp is the full date, for audit columns, in the timezone of WHOEVER
+// FORMATS -- which is the process's TZ, not the reader's.
+//
+// The marker is not decoration. It used to render "2026-03-10 22:00:00" and
+// stop there, and the same instant reads 22:00 on a machine at UTC-3 and 01:00
+// in a pod at UTC. Two people comparing one failure at three in the morning
+// disagreed about when it happened, with nothing on the screen to reconcile
+// them. notify/slack.go had already learned this and appends MST for the same
+// reason; the screen had not.
+//
+// For a value that IS UTC by contract -- a slot, an auto param -- use UTCStamp:
+// local time there would make the screen disagree with the $BREVIS_AUTO_*
+// variable the step actually reads.
 func Timestamp(t *time.Time) string {
 	if t == nil {
 		return "—"
 	}
-	return t.Local().Format("2006-01-02 15:04:05")
+	return t.Local().Format("2006-01-02 15:04:05 MST")
+}
+
+// UTCStamp is the full date in UTC, for values that are UTC by contract.
+//
+// The slot and the auto params are stored, injected and read in UTC -- a step
+// gets `2026-03-11T01:00:00Z` in $BREVIS_AUTO_ADJUSTED_AT. Rendering those in
+// the server's local time made the screen show `2026-03-10 22:00:00` beside a
+// `date` of `2026-03-11`: one day apart, in the same grid, with nothing saying
+// why, and a third answer for anyone who checked the environment.
+//
+// The screen agreeing with the contract is worth more than the screen agreeing
+// with the clock of whoever ran the deployment.
+func UTCStamp(t *time.Time) string {
+	if t == nil {
+		return "—"
+	}
+	return t.UTC().Format("2006-01-02 15:04:05 UTC")
 }
 
 // ---------------------------------------------------------------------------
@@ -1581,7 +1610,7 @@ func ErrorButton(runID string) templ.Component {
 		var templ_7745c5c3_Var70 templ.SafeURL
 		templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("#erro-" + runID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 582, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 611, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 		if templ_7745c5c3_Err != nil {
@@ -1594,7 +1623,7 @@ func ErrorButton(runID string) templ.Component {
 		var templ_7745c5c3_Var71 string
 		templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.ResolveAttributeValue("erro-" + runID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 583, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 612, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var71)
 		if templ_7745c5c3_Err != nil {
@@ -1636,7 +1665,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		var templ_7745c5c3_Var73 string
 		templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.ResolveAttributeValue("erro-" + runID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 597, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 626, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var73)
 		if templ_7745c5c3_Err != nil {
@@ -1649,7 +1678,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		var templ_7745c5c3_Var74 string
 		templ_7745c5c3_Var74, templ_7745c5c3_Err = templ.JoinStringErrs(workflow)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 603, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 632, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var74))
 		if templ_7745c5c3_Err != nil {
@@ -1670,7 +1699,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		var templ_7745c5c3_Var75 templ.SafeURL
 		templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/runs/" + runID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 619, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 648, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 		if templ_7745c5c3_Err != nil {
@@ -1683,7 +1712,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		var templ_7745c5c3_Var76 string
 		templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(runID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 620, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 649, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 		if templ_7745c5c3_Err != nil {
@@ -1696,7 +1725,7 @@ func ErrorDialog(runID, workflow, status, message string) templ.Component {
 		var templ_7745c5c3_Var77 string
 		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 622, Col: 197}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/components/components.templ`, Line: 651, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 		if templ_7745c5c3_Err != nil {

@@ -9,6 +9,53 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.10.1] — 2026-09-08
+
+### Fixed: the run's screen showed a different clock from the step
+
+The auto params are UTC by contract -- stored UTC, injected as
+`2026-03-11T01:00:00Z`, read as UTC by both SDKs. The screen rendered them with
+`.Local()` and no marker, so a server at UTC-3 showed:
+
+```
+adjusted_at   2026-03-10 22:00:00
+date          2026-03-11
+```
+
+Side by side in the same grid. One day apart, nothing saying why, and a third
+answer for anyone who checked `$BREVIS_AUTO_ADJUSTED_AT`.
+
+The auto params and the slot now render in **UTC, marked**. The screen agreeing
+with the contract is worth more than it agreeing with the clock of whoever ran
+the deployment.
+
+And every other timestamp on the screen now names its clock -- `2026-03-10
+22:00:00 -03` rather than `2026-03-10 22:00:00`. `notify/slack.go` had already
+learned this and appends `MST` for the same reason: `Local()` is the timezone of
+whoever FORMATS, so the same instant reads 22:00 on a laptop and 01:00 in a pod,
+and two people comparing one failure at three in the morning disagree about when
+it happened.
+
+Nothing about the values changed. `date` is still the UTC day, which for a
+`0 22 * * *` in `America/Sao_Paulo` is the following day -- the same as
+Airflow's `ds`, and now said out loud in the documentation instead of left to
+be discovered.
+
+### Fixed: the site generator hung instead of failing
+
+Writing that documentation split a table in half, and `site/build.py` **looped
+forever**. The `|` lines after the paragraph are orphans -- they do not open a
+table, because the line under them is not a separator, and the paragraph branch
+rejects any line starting with `|`. So nothing consumed the line, `i` was never
+advanced, and the generator spun at 100% CPU writing nothing and saying
+nothing.
+
+In CI that is a timeout with no message, which is worse than a failure. It now
+raises, naming the line and the most likely cause. The same hang was reachable
+from a `:::` block with an unknown type and from a stray `---`.
+
+---
+
 ## [0.10.0] — 2026-09-08
 
 ### Before upgrading

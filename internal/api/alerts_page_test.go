@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/branding"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/notify"
+	"github.com/AreteAcademy/brevis/web/components"
 )
 
 type alertsFake struct {
@@ -211,5 +213,88 @@ func TestAManualRunShowsOnlyWhatItHas(t *testing.T) {
 	}
 	if !strings.Contains(html, "on time") {
 		t.Errorf("a manual run's delay does not read as `on time`")
+	}
+}
+
+// TestTheScreenAndTheStepReadTheSameClock.
+//
+// The auto params are UTC by contract: stored UTC, injected as
+// `2026-03-11T01:00:00Z`, read as UTC by both SDKs. The screen used to render
+// them with `.Local()` and no marker, which meant a server at UTC-3 showed
+//
+//	adjusted_at   2026-03-10 22:00:00
+//	date          2026-03-11
+//
+// side by side in the same grid -- one day apart, nothing saying why, and a
+// third answer for anyone who checked $BREVIS_AUTO_ADJUSTED_AT.
+//
+// The test runs in a NON-UTC timezone on purpose. In UTC every rendering agrees
+// by accident, which is exactly how this shipped.
+func TestTheScreenAndTheStepReadTheSameClock(t *testing.T) {
+	saoPaulo, err := time.LoadLocation("America/Sao_Paulo")
+	if err != nil {
+		t.Skip("no timezone database on this machine")
+	}
+	t.Setenv("TZ", "America/Sao_Paulo")
+	time.Local = saoPaulo
+	defer func() { time.Local = time.UTC }()
+
+	// 22:00 in Sao Paulo, which is the next day in UTC. The whole point.
+	slot := time.Date(2026, 3, 11, 1, 0, 0, 0, time.UTC)
+	auto := dom.AutoParams{
+		ScheduledAt: &slot, StartedAt: &slot, AdjustedAt: slot,
+		IntervalStart: &slot, IntervalEnd: &slot,
+		Date: "2026-03-11",
+	}
+
+	id := uuid.New()
+	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
+		ID: id, WorkflowSlug: "nightly", Status: dom.StatusSuccess,
+		LogicalDate: &slot, Auto: auto,
+	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/runs/"+id.String(), nil))
+	html := rec.Body.String()
+
+	// What the STEP reads.
+	if got := auto.Env()["BREVIS_AUTO_ADJUSTED_AT"]; got != "2026-03-11T01:00:00Z" {
+		t.Fatalf("the step reads %s", got)
+	}
+	// What the SCREEN shows has to be the same instant, and has to say so.
+	if !strings.Contains(html, "2026-03-11 01:00:00 UTC") {
+		t.Errorf("the screen does not show the slot in UTC")
+	}
+	// And it must not show the local rendering, which is a different DAY here.
+	if strings.Contains(html, "2026-03-10 22:00:00") {
+		t.Errorf("the screen shows the local clock: `date` says 2026-03-11 and " +
+			"the timestamp beside it says the 10th")
+	}
+}
+
+// Every timestamp on the screen says which clock it is. A bare
+// "2026-03-10 22:00" is 22:00 for whoever formatted it and something else for
+// whoever reads it, and there is nothing on the page to reconcile the two.
+func TestEveryTimestampNamesItsClock(t *testing.T) {
+	at := time.Date(2026, 3, 11, 1, 0, 0, 0, time.UTC)
+
+	// A REGEX anchored on the whole string, and not ContainsAny of the
+	// alphabet plus "+-". That was the first version of this assertion and it
+	// could not fail: "2026-03-11" already carries two hyphens, so it passed on
+	// the very rendering it exists to reject. Found by reverting the marker and
+	// watching this stay green.
+	clocked := regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \S+$`)
+	if got := components.Timestamp(&at); !clocked.MatchString(got) {
+		t.Errorf("Timestamp = %q, with nothing after the seconds saying which clock", got)
+	}
+	if got := components.UTCStamp(&at); got != "2026-03-11 01:00:00 UTC" {
+		t.Errorf("UTCStamp = %q", got)
+	}
+	// Both survive a nil, because an audit column for a run that has not
+	// started is a normal thing and not an error.
+	if components.Timestamp(nil) != "—" || components.UTCStamp(nil) != "—" {
+		t.Error("a nil timestamp does not render as an em dash")
 	}
 }

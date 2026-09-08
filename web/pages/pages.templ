@@ -738,7 +738,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 								</a>
 							</td>
 							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
-							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.Timestamp(r.LogicalDate) }</td>
+							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.UTCStamp(r.LogicalDate) }</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.Duration(r.Duration) }</td>
 							<td class="px-3 py-3 text-right text-xs text-muted">
 								{ components.When(&r.CreatedAt) }
@@ -828,7 +828,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 			@components.State(string(r.Status))
 			<span class="text-muted">{ r.TriggerType }</span>
 			if r.LogicalDate != nil {
-				<span class="font-mono text-xs text-muted">slot { components.Timestamp(r.LogicalDate) }</span>
+				<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
 			}
 			if r.Attempt > 0 {
 				<span class="text-xs text-state-retrying">attempt { fmt.Sprint(r.Attempt+1) }</span>
@@ -865,25 +865,25 @@ templ autoParams(r run.Run) {
 			every step can read them — as <code class="font-mono">$BREVIS_AUTO_*</code>.
 		</p>
 		<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-			@autoValue("adjusted_at", components.Timestamp(&r.Auto.AdjustedAt),
+			@autoValue("adjusted_at", components.UTCStamp(&r.Auto.AdjustedAt),
 				"the clock to read instead of now()")
-			@autoValue("date", r.Auto.Date, "adjusted_at as YYYY-MM-DD, in UTC")
+			@autoValue("date", r.Auto.Date, "the UTC day of adjusted_at — the partition")
 			@autoValue("delay", lateness(r.Auto.DelaySeconds), "how late this attempt started")
 			if r.Auto.ScheduledAt != nil {
-				@autoValue("scheduled_at", components.Timestamp(r.Auto.ScheduledAt), "the slot this run represents")
+				@autoValue("scheduled_at", components.UTCStamp(r.Auto.ScheduledAt), "the slot this run represents")
 			}
 			if r.Auto.StartedAt != nil {
-				@autoValue("started_at", components.Timestamp(r.Auto.StartedAt), "when this attempt began")
+				@autoValue("started_at", components.UTCStamp(r.Auto.StartedAt), "when this attempt began")
 			}
 			if r.Auto.IntervalStart != nil {
-				@autoValue("interval_start", components.Timestamp(r.Auto.IntervalStart), "the window this run covers, from")
+				@autoValue("interval_start", components.UTCStamp(r.Auto.IntervalStart), "the window this run covers, from")
 			}
 			if r.Auto.IntervalEnd != nil {
-				@autoValue("interval_end", components.Timestamp(r.Auto.IntervalEnd), "…up to, excluded")
+				@autoValue("interval_end", components.UTCStamp(r.Auto.IntervalEnd), "…up to, excluded")
 			}
 			@autoValue("previous_error", fmt.Sprint(r.Auto.PreviousError), "did the run before this one fail")
 			if r.Auto.PreviousSuccessAt != nil {
-				@autoValue("previous_success_at", components.Timestamp(r.Auto.PreviousSuccessAt), "how far back to catch up from")
+				@autoValue("previous_success_at", components.UTCStamp(r.Auto.PreviousSuccessAt), "how far back to catch up from")
 			}
 		</div>
 	</section>
