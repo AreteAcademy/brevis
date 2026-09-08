@@ -37,6 +37,8 @@ def clean(monkeypatch):
     """No test inherits another's environment, or the engine's."""
     for name in (
         run.ENV_AUTO_PARAMS,
+        run.ENV_MAP_INDEX,
+        run.ENV_MAP_VALUE,
         run.ENV_RUN_ID,
         run.ENV_RUN_FIRST,
         run.ENV_RUN_ATTEMPT,
@@ -214,3 +216,57 @@ def test_the_engine_writes_exactly_what_this_reads():
     assert auto.previous_success_at == SLOT - timedelta(days=2)
     assert auto.date == "2026-09-08"
     assert auto.from_engine is True
+
+
+# --------------------------------------------------------------------------
+# for_each
+# --------------------------------------------------------------------------
+
+
+def test_a_mapped_step_knows_which_element_it_got(monkeypatch):
+    """`for_each:` is one node on the graph and one process per element.
+
+    Without this, every Python step under `for_each:` reads
+    os.environ["BREVIS_MAP_VALUE"] by hand -- and the ones that forget the
+    engine leaves the variable OUT on an unmapped step read "" and carry on.
+    """
+    monkeypatch.setenv(run.ENV_MAP_INDEX, "2")
+    monkeypatch.setenv(run.ENV_MAP_VALUE, "2026-01")
+    assert run.map_index() == 2
+    # A JSON string arrives WITHOUT its quotes: `for_each` over ["2026-01"]
+    # hands a step 2026-01, which is what the command was written expecting.
+    assert run.map_value() == "2026-01"
+
+    rc = run.context()
+    assert (rc.map_index, rc.map_value) == (2, "2026-01")
+
+
+def test_an_unmapped_step_has_no_index_and_no_element():
+    """`None`, not `-1` and not `""`.
+
+    A sentinel is a number somebody eventually does arithmetic on, and an empty
+    string is indistinguishable from an element that IS the empty string. The
+    engine leaves the variables out, so the two stay distinguishable here.
+    """
+    assert run.map_index() is None
+    assert run.map_value() is None
+    assert run.context().map_index is None
+
+
+def test_a_mapped_step_over_objects_gets_json(monkeypatch):
+    """Anything that is not a JSON string arrives as its JSON.
+
+    That is the engine's rule, and the test is here so the docstring telling
+    people to `json.loads` it cannot quietly become wrong.
+    """
+    monkeypatch.setenv(run.ENV_MAP_INDEX, "0")
+    monkeypatch.setenv(run.ENV_MAP_VALUE, '{"sku": "A1", "rows": 3}')
+    assert json.loads(run.map_value()) == {"sku": "A1", "rows": 3}
+
+
+def test_the_element_can_be_the_empty_string(monkeypatch):
+    """And that is not the same as not being mapped."""
+    monkeypatch.setenv(run.ENV_MAP_INDEX, "1")
+    monkeypatch.setenv(run.ENV_MAP_VALUE, "")
+    assert run.map_value() == ""
+    assert run.map_value() is not None

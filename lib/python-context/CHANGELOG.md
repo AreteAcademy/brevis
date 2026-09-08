@@ -42,6 +42,18 @@ failure should not be silent.
 `run.context()` carries the rest — id, first, attempt, trigger, params — and
 `run.param(name, default)` reads one dispatch parameter.
 
+### Added: `run.map_value()` and `run.map_index()`, for `for_each:`
+
+`for_each:` shipped with the engine and this library never named the two
+variables it sets, so every mapped Python step read `os.environ` by hand — and
+the ones that did not know the engine **leaves them out** on an unmapped step
+read `""` and carried on. Both are `None` when the step is not mapped, which
+keeps "no element" distinguishable from "the element is the empty string".
+
+A test in the engine now asserts that this library names *every* variable the
+runner injects, reading the runner's own source rather than a list typed twice.
+That is how this gap was found, and it is what stops the next one.
+
 Outside the engine everything is empty, `run.now()` **is** the wall clock and
 `window()` is `None`, so a script somebody runs by hand needs no special case.
 

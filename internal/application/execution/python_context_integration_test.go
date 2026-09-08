@@ -2,13 +2,17 @@ package execution_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
+	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution/local"
 )
@@ -135,5 +139,199 @@ context.set(rows=48213)
 	}
 	if seen["extract"]["bucket"] != "s3://landing/2026-09-07" {
 		t.Errorf("the transitive context did not survive a Go and a Python hop: %v", seen)
+	}
+}
+
+// TestThePythonLibraryNamesEveryVariableTheRunnerInjects.
+//
+// The runner injects eleven variables and the Python library is one of the two
+// ways a step reads them. Nothing compiled both, so a variable added here
+// reached the pods and stayed invisible to every Python step until somebody
+// happened to read the runner's source.
+//
+// That is not hypothetical: BREVIS_MAP_VALUE shipped with `for_each:` and the
+// library never named it, so every mapped Python step read os.environ by hand
+// -- and the ones that did not know the engine LEAVES IT OUT on an unmapped
+// step read "" and carried on.
+//
+// So the list is asserted. A variable the library deliberately does not expose
+// goes in `internal` below, with the reason; anything else is a gap.
+func TestThePythonLibraryNamesEveryVariableTheRunnerInjects(t *testing.T) {
+	repo, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read the runner's OWN source rather than a list typed here: a list typed
+	// here is the second place that goes stale, which is the bug this exists
+	// against.
+	runner, err := os.ReadFile(filepath.Join(repo, "internal", "application",
+		"execution", "runner.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lib strings.Builder
+	for _, name := range []string{"run.py", "context.py"} {
+		b, err := os.ReadFile(filepath.Join(repo, "lib", "python-context", "src",
+			"brevis", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lib.Write(b)
+	}
+
+	// Variables the library deliberately does not name, and why.
+	internal := map[string]string{
+		// Set by the SDK's own config, not by the runner's step contract.
+		"BREVIS_SDK_": "SDK configuration, not this execution",
+	}
+
+	injected := regexp.MustCompile(`"(BREVIS_[A-Z_]+)"`).FindAllStringSubmatch(string(runner), -1)
+	seen := map[string]bool{}
+	var missing []string
+	for _, m := range injected {
+		name := m[1]
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		var excused bool
+		for prefix := range internal {
+			if strings.HasPrefix(name, prefix) {
+				excused = true
+			}
+		}
+		if excused || strings.Contains(lib.String(), name) {
+			continue
+		}
+		missing = append(missing, name)
+	}
+	if len(missing) > 0 {
+		t.Errorf("the runner injects %v, and lib/python-context names none of them.\n"+
+			"A Python step can only read those with os.environ and its own parsing, "+
+			"which is what that library exists to remove. Expose them in "+
+			"src/brevis/run.py, or add them to `internal` here with the reason.",
+			missing)
+	}
+	if len(seen) < 8 {
+		t.Errorf("only %d variables were found in runner.go; the regexp stopped "+
+			"matching and this check is no longer checking anything", len(seen))
+	}
+}
+
+// TestIntegrationAPythonStepReadsTheClockAndItsElement.
+//
+// The unit tests on either side set environment variables by hand. This one
+// does not: the RUNNER injects them, a real python3 parses them with the
+// published library, and what it read comes back through the context.
+//
+// It is the only test that would have caught the two things worth catching --
+// the engine writing a field name the library does not read, and the library
+// being right about a shape the engine never actually produces.
+func TestIntegrationAPythonStepReadsTheClockAndItsElement(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("no python3 on this machine")
+	}
+	repo, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	libSrc := filepath.Join(repo, "lib", "python-context", "src")
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "step.py")
+	// It writes a FILE rather than publishing context, because a mapped step
+	// publishes nothing downstream -- four instances cannot share one key, and
+	// that is the engine's rule, not a limitation of this test.
+	if err := os.WriteFile(script, []byte(`
+import json, os
+from brevis import run
+
+# The clock, the window and the element. None of it is computed here, which is
+# the whole point.
+with open(os.environ["READINGS"], "w") as f:
+    json.dump({
+        "clock": run.now().isoformat(),
+        "date": run.auto().date,
+        "late": run.auto().delay_seconds,
+        "window": [d.isoformat() for d in run.window()],
+        "partition": run.map_value(),
+        "index": run.map_index(),
+        "trigger": run.context().trigger,
+    }, f)
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	exe, err := local.New("local")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	slot := time.Date(2026, 9, 8, 4, 0, 0, 0, time.UTC)
+	w := wf.Workflow{
+		Slug: "python-clock", Kind: wf.KindDAG,
+		Nodes: []wf.Node{
+			{ID: "discover", Run: `sh -c 'printf "{\"parts\":[\"2026-01\"]}" > "$BREVIS_OUTPUT"'`},
+			{ID: "load", Run: python + " " + script, ForEach: "discover.parts"},
+		},
+		Edges: []wf.Edge{{From: "discover", To: "load"}},
+	}
+
+	r := app.Runner{
+		Processo: exe, Report: &coletor{}, ContextDir: t.TempDir(),
+		LogicalDate: &slot,
+		// A run that was thirty-seven minutes late, which is the case the
+		// clock exists for: reading now() here would give the wall clock.
+		Auto: run.Auto(
+			run.Run{LogicalDate: &slot},
+			slot.Add(37*time.Minute),
+			run.Previous{},
+			run.Interval{Start: slot.AddDate(0, 0, -1), End: slot},
+		),
+		Trigger: "schedule",
+		Env: map[string]string{
+			"PATH": os.Getenv("PATH"), "PYTHONPATH": libSrc,
+			"READINGS": filepath.Join(dir, "readings.json"),
+		},
+	}
+	if err := r.Run(context.Background(), w); err != nil {
+		t.Fatalf("the run failed: %v", err)
+	}
+
+	// readJSON is for the context file, which is a map of maps; these readings
+	// are one flat object.
+	raw, err := os.ReadFile(filepath.Join(dir, "readings.json"))
+	if err != nil {
+		t.Fatalf("the Python step wrote nothing: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	// The SLOT, and not the wall clock: this run started at 04:37.
+	if got["clock"] != "2026-09-08T04:00:00+00:00" {
+		t.Errorf("clock = %v, wanted the slot -- Python read the wall clock", got["clock"])
+	}
+	if got["date"] != "2026-09-08" {
+		t.Errorf("date = %v", got["date"])
+	}
+	if got["late"] != float64(2220) {
+		t.Errorf("late = %v, wanted 2220 seconds", got["late"])
+	}
+	// The window, from the cron and not from the wall clock.
+	window, _ := got["window"].([]any)
+	if len(window) != 2 || window[0] != "2026-09-07T04:00:00+00:00" ||
+		window[1] != "2026-09-08T04:00:00+00:00" {
+		t.Errorf("window = %v", got["window"])
+	}
+	// And the element, without its quotes, which is the engine's own rule.
+	if got["partition"] != "2026-01" || got["index"] != float64(0) {
+		t.Errorf("the mapped instance read %v / %v", got["partition"], got["index"])
+	}
+	if got["trigger"] != "schedule" {
+		t.Errorf("trigger = %v", got["trigger"])
 	}
 }

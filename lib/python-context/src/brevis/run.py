@@ -50,6 +50,8 @@ __all__ = [
     "RunContext",
     "auto",
     "context",
+    "map_index",
+    "map_value",
     "now",
     "param",
     "params",
@@ -63,6 +65,13 @@ ENV_RUN_ATTEMPT = "BREVIS_RUN_ATTEMPT"
 ENV_RUN_TRIGGER = "BREVIS_RUN_TRIGGER"
 ENV_RUN_LOGICAL_DATE = "BREVIS_RUN_LOGICAL_DATE"
 ENV_RUN_PARAMS = "BREVIS_RUN_PARAMS"
+
+# A mapped step's instance. ABSENT on every unmapped step, which is most of
+# them -- a variable that is always there and always empty teaches whoever
+# reads the environment to ignore it. That is why these read as ``None``
+# rather than as an empty string and a zero.
+ENV_MAP_INDEX = "BREVIS_MAP_INDEX"
+ENV_MAP_VALUE = "BREVIS_MAP_VALUE"
 
 _log = logging.getLogger("brevis")
 
@@ -160,6 +169,11 @@ class RunContext:
     #: What a HUMAN passed for this run. Never ``None``.
     params: Dict[str, str] = field(default_factory=dict)
 
+    #: This instance's position and element under ``for_each:``, or ``None``
+    #: on a step that is not mapped. See :func:`map_value`.
+    map_index: Optional[int] = None
+    map_value: Optional[str] = None
+
     #: What nobody had to pass.
     auto: AutoParams = field(default_factory=AutoParams)
 
@@ -234,6 +248,8 @@ def context() -> RunContext:
         trigger=os.environ.get(ENV_RUN_TRIGGER, ""),
         logical_date=_moment(os.environ.get(ENV_RUN_LOGICAL_DATE)),
         params=params(),
+        map_index=map_index(),
+        map_value=map_value(),
         auto=auto(),
     )
 
@@ -261,6 +277,42 @@ def param(name: str, default: str = "") -> str:
     defaults of its own, and a step that wants one anyway can pass ``default``.
     """
     return params().get(name, default)
+
+
+def map_index() -> Optional[int]:
+    """This instance's position under ``for_each:``, or ``None``.
+
+    ``None`` and not ``-1``: a step that is not mapped has no position, and a
+    sentinel is a number somebody eventually does arithmetic on.
+    """
+    raw = os.environ.get(ENV_MAP_INDEX)
+    if raw is None or raw == "":
+        return None
+    return _whole(raw)
+
+
+def map_value() -> Optional[str]:
+    """The element this instance was given under ``for_each:``, or ``None``.
+
+        partition = run.map_value()
+        if partition is None:
+            raise SystemExit("this step is meant to run under `for_each:`")
+
+    A JSON string arrives WITHOUT its quotes, because ``for_each`` over
+    ``["2026-01"]`` should hand a step ``2026-01`` and not ``"2026-01"``. That
+    is the engine's rule, and it is the useful one: the common case needs no
+    parsing at all.
+
+    Anything else -- an object, a number, a list -- arrives as its JSON, so a
+    step that maps over objects parses it::
+
+        item = json.loads(run.map_value())
+
+    ``None`` means the step is not mapped, which is a different thing from an
+    element that happens to be the empty string. The engine leaves the variable
+    out rather than setting it empty, so the two stay distinguishable.
+    """
+    return os.environ.get(ENV_MAP_VALUE)
 
 
 # --------------------------------------------------------------------------

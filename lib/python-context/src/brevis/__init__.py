@@ -13,7 +13,8 @@ and what the engine already knows about the run, so nothing computes it twice:
 
 ``run.now()`` is the clock this run should read INSTEAD of ``datetime.now()``:
 on a scheduled run it is the slot, so it does not move when the run is late and
-does not move when the run is retried. See brevis.run.
+does not move when the run is retried. ``run.map_value()`` is the element a
+step got under ``for_each:``. See brevis.run.
 
 That is the whole library. It is not a port of the Go SDK -- no drivers, no
 pagination, no ingestion ids. Python already has better tools for those, and

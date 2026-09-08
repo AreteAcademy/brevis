@@ -100,6 +100,32 @@ not be silent. The `or` above is the whole fallback.
 Run the script by hand and `run.now()` **is** the wall clock and `window()` is
 `None`, so there is no branch to write for local development.
 
+## One instance of a mapped step
+
+Under `for_each:`, the engine runs one process per element and tells each one
+which it got:
+
+```python
+partition = run.map_value()
+if partition is None:
+    raise SystemExit("this step is meant to run under `for_each:`")
+
+load(f"/data/{partition}.csv")
+```
+
+A JSON string arrives **without its quotes** — `for_each` over `["2026-01"]`
+hands the step `2026-01`, not `"2026-01"`. Anything else — an object, a number,
+a list — arrives as its JSON, so `json.loads(run.map_value())`.
+
+`run.map_index()` is the position, and both are `None` on a step that is not
+mapped. `None` and not `-1` or `""`: a sentinel is a number somebody eventually
+does arithmetic on, and an empty string is indistinguishable from an element
+that *is* the empty string.
+
+A mapped step publishes **no context** downstream — four instances cannot share
+one key — so a step that needs to hand something on writes a file, or a step
+after it counts what landed.
+
 ## What it refuses
 
 | | because |
