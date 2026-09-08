@@ -123,7 +123,7 @@
         title: opts.title,
         style: {
           display: "inline-flex", alignItems: "center", gap: 4,
-          padding: "1px 7px", borderRadius: 999,
+          padding: "1px 7px", borderRadius: 3,
           border: (opts.inferred ? "1px dashed " : "1px solid ") +
             "color-mix(in srgb, " + tint + " 45%, transparent)",
           background: strong
@@ -221,7 +221,7 @@
           width: "100%",
           height: d.hasStages ? "100%" : undefined,
           boxSizing: "border-box",
-          borderRadius: 14,
+          borderRadius: 3,
           border: "1px solid " + (d.status === "pending" ? LINE : "color-mix(in srgb, " + c.ring + " 40%, transparent)"),
           background: SURFACE,
           padding: "11px 13px",
@@ -303,7 +303,7 @@
                 title: "built with the Brevis SDK " + d.sdk,
                 style: {
                   marginLeft: "auto", flexShrink: 0,
-                  padding: "1px 6px", borderRadius: 999,
+                  padding: "1px 6px", borderRadius: 3,
                   border: "1px solid color-mix(in srgb, " + GOLD + " 45%, transparent)",
                   background: "color-mix(in srgb, " + GOLD + " 10%, transparent)",
                   color: themeVar("--color-gold-strong", "#8a693d"),
@@ -383,7 +383,7 @@
       {
         style: {
           width: "100%", height: "100%",
-          borderRadius: 20,
+          borderRadius: 3,
           border: "1px dashed " + LINE,
           background: "color-mix(in srgb, " + MUTED + " 4%, transparent)",
           boxSizing: "border-box",
@@ -433,7 +433,7 @@
           // the border pushed the pill 8px past the card's right edge.
           width: "100%", height: "100%", boxSizing: "border-box",
           padding: "0 8px",
-          borderRadius: 7,
+          borderRadius: 3,
           border: "1px solid " + (d.estado === "pending" ? LINE : "color-mix(in srgb, " + c.ring + " 28%, transparent)"),
           background: "color-mix(in srgb, " + c.ring + " 7%, transparent)",
           fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
@@ -491,7 +491,61 @@
   // the rename changed internal/api/graph.go and not this file, and nothing
   // failed. TestTheIslandKnowsEveryNodeTypeTheAPIEmits exists so the next
   // rename cannot do it again.
-  var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
+  // The two numbers fitView and the canvas sizing SHARE. Kept together because
+// they are one decision: how much air the drawing gets, and how far in it may
+// be zoomed. React Flow's fitView never zooms past 1 on its own, which left a
+// ten-node workflow drawn at its natural size in the middle of the frame.
+var FIT_PAD = 0.09;
+var MAX_ZOOM = 1.5;
+
+// The width the API reserves per step. It is `nodeWidth` in internal/api/graph.go
+// and it has to agree: this side measures the drawing to size the canvas, and a
+// different number here would size it for a graph nobody is drawing.
+var NODE_W = 230;
+
+// sizeCanvas makes the canvas as tall as this drawing needs.
+//
+// These workflows are WIDE and short -- eight steps in a row, one lane deep --
+// so fitView is bound by width and a fixed height leaves hundreds of pixels of
+// empty grid underneath. The zoom that fits the width, applied to the drawing's
+// height, is the height that has no empty band.
+//
+// Clamped at both ends. The floor is 200 because the zoom controls stack about
+// ninety pixels in the corner and a shorter canvas crowds them; the ceiling is
+// so a graph with forty parallel branches does not push the rest of the page
+// off the screen.
+function sizeCanvas(nodes) {
+  var host = document.getElementById("dag");
+  if (!host || !host.clientWidth || !nodes.length) return;
+  var b = null;
+  nodes.forEach(function (n) {
+    if (n.parentId) return; // children are positioned INSIDE their parent
+    var w = (n.style && n.style.width) || NODE_W;
+    var hgt = (n.style && n.style.height) || 60;
+    var x2 = n.position.x + w, y2 = n.position.y + hgt;
+    if (!b) b = { x1: n.position.x, y1: n.position.y, x2: x2, y2: y2 };
+    else {
+      b.x1 = Math.min(b.x1, n.position.x);
+      b.y1 = Math.min(b.y1, n.position.y);
+      b.x2 = Math.max(b.x2, x2);
+      b.y2 = Math.max(b.y2, y2);
+    }
+  });
+  if (!b) return;
+  var gw = Math.max(1, b.x2 - b.x1), gh = Math.max(1, b.y2 - b.y1);
+  // The zoom fitView will land on. It is bound by WIDTH for every workflow
+  // shaped like these -- eight steps across, one or two lanes deep.
+  var zoom = Math.min(MAX_ZOOM, (host.clientWidth * (1 - 2 * FIT_PAD)) / gw);
+  // The drawing at that zoom, plus the same padding fitView leaves. Dividing by
+  // (1 - 2·pad) rather than adding a fixed margin is what makes the box the one
+  // fitView would have chosen: the first version added a fraction of the WIDTH
+  // to a HEIGHT, which on a 1300px canvas was 118px of margin above a 109px
+  // drawing.
+  host.style.height =
+    Math.max(200, Math.min(660, Math.round((gh * zoom) / (1 - 2 * FIT_PAD)))) + "px";
+}
+
+var NODE_TYPES = { brevis: BrevisNode, etapa: StageNode, grupo: GroupNode };
 
   // contextRows renders what a step published, keys sorted so two visits to the
   // same run read the same way.
@@ -581,7 +635,7 @@
         style: {
           position: "absolute", top: 14, right: 14, width: 310, zIndex: 5,
           background: SURFACE, backdropFilter: "blur(6px)",
-          border: "1px solid " + LINE, borderRadius: 20, padding: 16,
+          border: "1px solid " + LINE, borderRadius: 3, padding: 16,
           boxShadow: "0 20px 60px rgba(33,24,15,.08)",
           fontFamily: '"Inter", ui-sans-serif, system-ui, sans-serif',
         },
@@ -684,7 +738,7 @@
             "pre",
             {
               style: {
-                marginTop: 12, padding: 10, borderRadius: 12,
+                marginTop: 12, padding: 10, borderRadius: 3,
                 background: "#b0503c14", border: "1px solid #b0503c33",
                 color: "#8f4030", fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-word",
                 maxHeight: 160, overflow: "auto",
@@ -714,6 +768,17 @@
           })
           .then(function (g) {
             if (!alive) return;
+            // The canvas is sized BEFORE React Flow mounts into it.
+            //
+            // Resizing it afterwards and asking for a re-fit was the obvious
+            // shape and it does not work: React Flow computes its viewport when
+            // it initialises, onInit fires after this component's effects, and
+            // every attempt left the drawing holding the transform of the box
+            // it was born in -- a graph pinned to the bottom of an empty frame.
+            //
+            // Here there is no timing question at all. The element is already
+            // in the document, server-rendered, and its width is known.
+            sizeCanvas(g.nodes || []);
             setPayload({ nodes: g.nodes || [], edges: g.edges || [], loading: false, erro: "" });
             // Live updates by polling, not by WebSocket: the data changes in
             // seconds, not in milliseconds, and a repeated GET needs neither a
@@ -763,6 +828,12 @@
         return fresh;
       });
     }, []);
+
+    // The graph's SHAPE, which is what decides when the view has to be fitted
+    // again. It is the node count and not the array: polling replaces the array
+    // every two seconds with the same drawing, and re-fitting on each poll
+    // would yank the view out from under anyone who had panned.
+    var shape = payload.nodes.length;
 
     var withStages = {};
     payload.nodes.forEach(function (n) {
@@ -826,6 +897,18 @@
       }));
     });
 
+    // The CANVAS is sized to the drawing, not the other way round.
+    //
+    // A fixed height gets it wrong in both directions, and this graph got it
+    // wrong in one: the workflows here are wide and short -- eight steps in a
+    // row, one lane deep -- so fitView fits to WIDTH and leaves four hundred
+    // pixels of empty grid under a strip of cards. Raising maxZoom does not
+    // help, because width is already the binding constraint.
+    //
+    // So the height is computed from the same bounds fitView is about to use:
+    // the zoom that fits the width, applied to the drawing's height. Clamped,
+    // because a graph with forty parallel branches must not push the page's
+    // next section off the screen.
     return h(
       "div",
       { style: { position: "relative", width: "100%", height: "100%" } },
@@ -835,7 +918,7 @@
             {
               style: {
                 position: "absolute", top: 12, left: 12, zIndex: 6, padding: "6px 10px",
-                borderRadius: 999, background: "#b0503c14", border: "1px solid #b0503c33",
+                borderRadius: 3, background: "#b3382c14", border: "1px solid #b3382c33",
                 color: "#8f4030", fontSize: 12,
               },
             },
@@ -845,6 +928,21 @@
       h(
         RF.ReactFlow,
         {
+          // A KEY on the shape, which remounts React Flow when the drawing
+          // changes -- and a remount is the only thing that reliably re-fits.
+          //
+          // `fitView` applies once, at initialisation, and initialisation
+          // happens on the first render: the fetch has not returned, there are
+          // no nodes, and the viewport that empty frame gets is the one every
+          // later render keeps. Calling `instance.fitView()` afterwards was the
+          // obvious repair and it is a NO-OP: v12 fits against MEASURED nodes,
+          // and at the moment the count changes React has not laid them out
+          // yet. Both were verified from the rendered DOM -- onInit fired, the
+          // call ran, the transform never moved.
+          //
+          // Remounting on the count and not on the array is what keeps this
+          // from firing on every poll.
+          key: "shape-" + shape,
           nodes: nodes,
           // An edge into or out of a collapsed group points at the BOX
           // instead, and one entirely inside it disappears: without this the
@@ -860,7 +958,7 @@
             .filter(function (e) { return e.source !== e.target; }),
           nodeTypes: NODE_TYPES,
           fitView: true,
-          fitViewOptions: { padding: 0.2 },
+          fitViewOptions: { padding: FIT_PAD, maxZoom: MAX_ZOOM },
           minZoom: 0.2,
           proOptions: { hideAttribution: false },
           defaultEdgeOptions: {
@@ -879,6 +977,7 @@
           nodesDraggable: false,
           nodesConnectable: false,
           edgesFocusable: false,
+          onInit: function (instance) { rf.current = instance; },
           onNodeClick: function (_, n) { setSelected(n.id); },
           onPaneClick: function () { setSelected(null); },
         },

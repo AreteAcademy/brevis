@@ -272,7 +272,7 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 			break
 		}
 		if err := r.runLevel(ctx, w, level, porID, deps, done, settled); err != nil && firstFailure == nil {
-			firstFailure = fmt.Errorf("nivel %d: %w", i+1, err)
+			firstFailure = fmt.Errorf("level %d: %w", i+1, err)
 		}
 	}
 	return firstFailure

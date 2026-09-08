@@ -58,8 +58,7 @@ templ Base(p Page) {
 			// Both fonts are served from the binary. The preload avoids the
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
-			<link rel="preload" href="/assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin/>
-			<link rel="preload" href="/assets/fonts/cormorant-latin.woff2" as="font" type="font/woff2" crossorigin/>
+			<link rel="preload" href="/assets/fonts/plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin/>
 			<link rel="stylesheet" href="/assets/app.css"/>
 			// The client's theme AFTER the compiled sheet: they are the same
 			// variables Tailwind emits, and every utility resolves its colour
@@ -77,27 +76,27 @@ templ Base(p Page) {
 			<div class="flex h-full">
 				@sidebar(p.Active, brand)
 				<main class="flex-1 overflow-y-auto">
-					<header class="sticky top-0 z-10 border-b border-line bg-parchment-soft/85 px-10 py-6 backdrop-blur">
-						<div class="flex items-end justify-between gap-6">
+					<header class="sticky top-0 z-10 border-b border-line bg-canvas/90 px-6 py-4 backdrop-blur">
+						<div class="flex items-center justify-between gap-6">
 							<div>
 								if p.Kicker != "" {
-									<p class="kicker mb-1.5">{ p.Kicker }</p>
+									<p class="kicker mb-1">{ p.Kicker }</p>
 								}
-								<h1 class="display text-3xl text-ink">{ p.Title }</h1>
+								<h1 class="display text-xl text-ink">{ p.Title }</h1>
 							</div>
 							if p.Actions != nil {
-								<div class="flex shrink-0 items-center gap-3">
+								<div class="flex shrink-0 items-center gap-2">
 									@p.Actions
 								</div>
 							}
 						</div>
 					</header>
 					if p.Wide {
-						<div class="px-10 py-8">
+						<div class="px-6 py-5">
 							{ children... }
 						</div>
 					} else {
-						<div class="mx-auto max-w-[1400px] px-10 py-8">
+						<div class="mx-auto max-w-[1400px] px-6 py-5">
 							{ children... }
 						</div>
 					}
@@ -123,26 +122,28 @@ type item struct {
 }
 
 templ sidebar(active1 string, brand branding.Brand) {
-	<aside class="flex w-60 shrink-0 flex-col border-r border-line bg-surface/60">
-		<div class="px-7 pt-7 pb-8">
+	<aside class="flex w-56 shrink-0 flex-col border-r border-line bg-surface">
+		<div class="px-4 pt-5 pb-6">
 			<a href="/" class="flex items-center gap-3">
-				// h-9 matches the height of the serif title's box: the logo sits
-				// with the text rather than competing with it.
+				// h-7 sits with the wordmark rather than competing with it. It
+				// was h-9 beside a 2rem serif title; both shrank together, and
+				// a logo that did not would now be the loudest thing on a
+				// screen whose job is a table.
 				if brand.Logo == branding.DefaultLogo {
 					// Inline, so the symbol inherits the theme's colour.
-					<span class="block h-9 w-9 shrink-0 text-gold">
+					<span class="block h-7 w-7 shrink-0 text-accent">
 						@templ.Raw(assets.LogoSVG)
 					</span>
 				} else if brand.Logo != "" {
-					<img src={ brand.Logo } alt={ brand.Title } class="h-9 w-9 shrink-0 rounded-lg object-contain"/>
+					<img src={ brand.Logo } alt={ brand.Title } class="h-7 w-7 shrink-0 rounded-card object-contain"/>
 				}
-				<span class="display block text-[2rem] leading-none tracking-[0.02em] text-ink">{ brand.Title }</span>
+				<span class="display block text-[1.15rem] leading-none text-ink">{ brand.Title }</span>
 			</a>
 			if brand.Subtitle != "" {
-				<p class="kicker mt-2">{ brand.Subtitle }</p>
+				<p class="kicker mt-1.5">{ brand.Subtitle }</p>
 			}
 		</div>
-		<nav class="flex-1 px-4">
+		<nav class="flex-1 px-2">
 			for _, i := range []item{
 				{"/", "Overview", "overview"},
 				{"/workflows", "Workflows", "workflows"},
@@ -152,17 +153,17 @@ templ sidebar(active1 string, brand branding.Brand) {
 				if i.Key == active1 {
 					<a
 						href={ templ.SafeURL(i.Rota) }
-						class="mb-1 flex items-center gap-3 rounded-xl border border-line-soft bg-gold-wash px-4 py-2.5 text-sm font-semibold text-ink"
+						class="mb-0.5 flex items-center gap-2.5 rounded-card bg-accent-wash px-3 py-2 text-[0.82rem] font-medium text-ink"
 					>
-						<span class="h-4 w-[3px] rounded-full bg-gold"></span>
+						<span class="h-4 w-[2px] bg-accent"></span>
 						{ i.Name }
 					</a>
 				} else {
 					<a
 						href={ templ.SafeURL(i.Rota) }
-						class="mb-1 flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-muted transition-colors hover:bg-gold-wash hover:text-ink"
+						class="mb-0.5 flex items-center gap-2.5 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 					>
-						<span class="h-4 w-[3px] rounded-full bg-transparent"></span>
+						<span class="h-4 w-[2px] bg-transparent"></span>
 						{ i.Name }
 					</a>
 				}
@@ -175,19 +176,19 @@ templ sidebar(active1 string, brand branding.Brand) {
 		// It appears only when there is a session: in an installation with no
 		// credential, a sign-out button would have nowhere to sign out of.
 		if operador := auth.De(ctx); operador != "" {
-			<form method="post" action="/logout" class="px-7 pb-5">
+			<form method="post" action="/logout" class="px-4 pb-4">
 				<button
 					type="submit"
-					class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-muted transition-colors hover:bg-gold-wash hover:text-ink"
+					class="flex w-full items-center justify-between rounded-card px-3 py-2 text-left text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 				>
 					<span class="truncate">{ operador }</span>
 					<span class="ml-3 shrink-0 tracking-wide uppercase">Sign out</span>
 				</button>
 			</form>
 		}
-		<div class="border-t border-line-soft px-7 py-6">
+		<div class="border-t border-line px-4 py-4">
 			if rows := brand.Lines(); len(rows) > 0 {
-				<p class="font-serif text-[0.95rem] leading-snug text-muted italic">
+				<p class="text-[0.8rem] leading-snug text-muted">
 					for i, l := range rows {
 						if i == 0 {
 							{ "“" + l }

@@ -68,7 +68,7 @@ templ Overview(d OverviewData) {
 			}
 		</div>
 		<div class="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
-			@components.Card("Em andamento") {
+			@components.Card("In progress") {
 				if len(d.EmCurso) == 0 {
 					@components.Empty("Nothing running right now.", "")
 				} else {
@@ -191,21 +191,21 @@ templ pagination(p Pagination) {
 			if p.Pages() > 1 {
 				<nav class="flex items-center gap-1">
 					if p.Page > 1 {
-						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">previous</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page - 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">previous</a>
 					} else {
-						<span class="rounded-full border border-line-soft px-3 py-1 text-line">previous</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">previous</span>
 					}
 					for _, n := range p.Window() {
 						if n == p.Page {
-							<span class="rounded-full border border-ink bg-ink px-3 py-1 font-semibold text-parchment-soft">{ fmt.Sprint(n) }</span>
+							<span class="rounded-card border border-ink bg-ink px-3 py-1 font-medium text-surface">{ fmt.Sprint(n) }</span>
 						} else {
-							<a href={ templ.SafeURL(p.PageLink(n)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">{ fmt.Sprint(n) }</a>
+							<a href={ templ.SafeURL(p.PageLink(n)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">{ fmt.Sprint(n) }</a>
 						}
 					}
 					if p.Page < p.Pages() {
-						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-full border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">next</a>
+						<a href={ templ.SafeURL(p.PageLink(p.Page + 1)) } class="rounded-card border border-line px-3 py-1 transition-colors hover:border-gold hover:text-ink">next</a>
 					} else {
-						<span class="rounded-full border border-line-soft px-3 py-1 text-line">next</span>
+						<span class="rounded-card border border-line-soft px-3 py-1 text-line">next</span>
 					}
 				</nav>
 			}
@@ -378,7 +378,7 @@ func (p Pagination) Window() []int {
 templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, filtered int) {
 	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows", Wide: true}) {
 		<form method="get" action="/workflows" class="mb-5">
-			<div class="flex items-center gap-3 rounded-full border border-line bg-surface px-5 py-3 shadow-warm-sm">
+			<div class="flex items-center gap-3 rounded-card border border-line bg-surface px-5 py-3 shadow-warm-sm">
 				<svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
 					<circle cx="9" cy="9" r="6"></circle>
 					<path d="M13.5 13.5 17 17" stroke-linecap="round"></path>
@@ -387,7 +387,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 					type="search"
 					name="q"
 					value={ f.Search }
-					placeholder="Buscar workflow"
+					placeholder="Search workflows"
 					class="w-full bg-transparent text-sm text-ink placeholder:text-muted focus:outline-none"
 				/>
 				// The other filters go along as hidden fields: searching must not
@@ -395,8 +395,8 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 				<input type="hidden" name="state" value={ f.State }/>
 				<input type="hidden" name="active" value={ f.Active }/>
 				<input type="hidden" name="tag" value={ f.Tag }/>
-				<button type="submit" class="shrink-0 rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px">
-					Get
+				<button type="submit" class="shrink-0 rounded-card bg-ink px-4 py-1.5 text-xs font-medium text-surface transition-colors hover:bg-accent-strong">
+					Search
 				</button>
 			</div>
 		</form>
@@ -417,7 +417,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 				}
 			}
 		</div>
-		<p class="mb-3 font-serif text-xl text-ink">
+		<p class="display mb-3 text-lg text-ink">
 			{ count(filtered, "workflow", "workflows") }
 			if filtered != total {
 				<span class="ml-2 text-sm text-muted">de { fmt.Sprint(total) }</span>
@@ -427,7 +427,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 		if len(ws) == 0 {
 			@components.Empty("No workflow matches these filters.", "brevis publish file.yaml")
 		} else {
-			<div class="overflow-hidden rounded-[20px] border border-line bg-surface shadow-warm-sm">
+			<div class="overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="border-b border-line bg-parchment-soft/60 text-left">
@@ -553,7 +553,7 @@ templ disparar(slug string) {
 			type="submit"
 			title="Run now"
 			aria-label={ "Run " + slug }
-			class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-gold-strong transition-colors hover:border-gold hover:bg-gold-wash"
+			class="inline-flex h-8 w-8 items-center justify-center rounded-card border border-line text-gold-strong transition-colors hover:border-gold hover:bg-gold-wash"
 		>
 			<svg class="h-3.5 w-3.5" viewBox="0 0 12 12" fill="currentColor"><path d="M2.5 1.6v8.8L10 6z"></path></svg>
 		</button>
@@ -562,14 +562,14 @@ templ disparar(slug string) {
 
 templ chip(rota, text string, active1 bool, ponto string) {
 	if active1 {
-		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-full border border-ink bg-ink px-3.5 py-1.5 text-xs font-semibold text-parchment-soft">
+		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-card border border-ink bg-ink px-3.5 py-1.5 text-xs font-medium text-surface">
 			if ponto != "" {
 				<span class={ "h-1.5 w-1.5 rounded-full", ponto }></span>
 			}
 			{ text }
 		</a>
 	} else {
-		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-ink">
+		<a href={ templ.SafeURL(rota) } class="inline-flex items-center gap-1.5 rounded-card border border-line bg-surface px-3.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-ink">
 			if ponto != "" {
 				<span class={ "h-1.5 w-1.5 rounded-full", ponto }></span>
 			}
@@ -655,7 +655,7 @@ templ Runs(runs []postgres.RunSummary, f RunFilter, total int) {
 				@filterApplied("period", f.Label, f.With("from", "")+"&to=")
 			}
 		</div>
-		<p class="mb-3 font-serif text-xl text-ink">
+		<p class="display mb-3 text-lg text-ink">
 			{ count(total, "run", "runs") }
 			if f.Active() {
 				<a href="/runs" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
@@ -671,7 +671,7 @@ templ Runs(runs []postgres.RunSummary, f RunFilter, total int) {
 // chart, for instance) with the way to remove it beside it — a filter you can
 // only take off by editing the URL is not a filter, it is a trap.
 templ filterApplied(label, value, remover string) {
-	<span class="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
+	<span class="inline-flex items-center gap-2 rounded-card border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
 		<span class="text-gold-strong">{ label }:</span>
 		<span class="font-medium">{ value }</span>
 		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label="remover filtro">×</a>
@@ -685,17 +685,17 @@ templ Projects(ps []postgres.ProjectSummary) {
 		} else {
 			<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 				for _, p := range ps {
-					<div class="rounded-[20px] border border-line bg-surface p-6 shadow-warm-sm">
+					<div class="rounded-card border border-line bg-surface p-6 shadow-warm-sm">
 						<p class="kicker">{ p.Slug }</p>
 						<h3 class="display mt-1 text-2xl text-ink">{ p.Name }</h3>
 						<dl class="mt-5 flex gap-6 text-sm">
 							<div>
 								<dt class="text-xs text-muted">Workflows</dt>
-								<dd class="font-serif text-2xl text-ink">{ fmt.Sprint(p.Workflows) }</dd>
+								<dd class="display text-2xl tabular-nums text-ink">{ fmt.Sprint(p.Workflows) }</dd>
 							</div>
 							<div>
 								<dt class="text-xs text-muted">Runs</dt>
-								<dd class="font-serif text-2xl text-ink">{ fmt.Sprint(p.Runs) }</dd>
+								<dd class="display text-2xl tabular-nums text-ink">{ fmt.Sprint(p.Runs) }</dd>
 							</div>
 						</dl>
 						<p class="mt-5 text-xs text-muted">created em { p.CreatedAt.Local().Format("02/01/2006") }</p>
@@ -710,7 +710,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 	if len(runs) == 0 {
 		@components.Empty("No run yet.", "brevis scheduler")
 	} else {
-		<div class="overflow-hidden rounded-[20px] border border-line bg-surface shadow-warm-sm">
+		<div class="overflow-hidden rounded-card border border-line bg-surface shadow-warm-sm">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="border-b border-line bg-parchment-soft/60 text-left">
@@ -837,7 +837,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 			<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
 		</div>
 		if r.Err != "" {
-			<pre class="mb-5 overflow-auto rounded-[20px] border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
+			<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 		}
 		@dag("/api/runs/" + r.ID.String() + "/graph")
 		@autoParams(r)
@@ -1033,7 +1033,7 @@ templ stepsOutput(logs []postgres.StepLog) {
 							// `overflow-auto` with a maximum height: a dbt output
 							// with hundreds of lines must not push the rest of the
 							// page off the screen.
-							<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-xl bg-parchment-soft px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
+							<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
 						}
 					</details>
 				}
@@ -1045,12 +1045,19 @@ templ stepsOutput(logs []postgres.StepLog) {
 // dag is the island's mount point. The height is fixed on purpose: with `h-full`
 // inside a scrolling container, React Flow's canvas is born at 0px and the
 // grafo some.
+// The height here is a STARTING one. dag.js measures the drawing and sets the
+// real one, because a graph eight steps wide and one lane deep needs a third of
+// what a fixed height gives it.
+//
+// There is deliberately no `min-height`. It would win against the computed
+// value, and it did: the box stayed at 380px while the script asked for 300,
+// and the drawing sat pinned to the bottom of the empty part.
 templ dag(src string) {
 	<div
 		id="dag"
 		data-src={ src }
-		class="rounded-[20px] border border-line bg-surface shadow-warm-sm"
-		style="height: calc(100vh - 320px); min-height: 420px;"
+		class="rounded-card border border-line bg-surface shadow-warm-sm"
+		style="height: 380px;"
 	></div>
 }
 
@@ -1119,7 +1126,7 @@ templ paramsForm(w wf.Workflow) {
 	<form
 		method="post"
 		action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
-		class="mb-5 rounded-[20px] border border-line bg-surface p-6 shadow-warm-sm"
+		class="mb-5 rounded-card border border-line bg-surface p-6 shadow-warm-sm"
 	>
 		<p class="kicker mb-4">Run with parameters</p>
 		<div class="flex flex-wrap items-end gap-4">
@@ -1153,7 +1160,7 @@ templ paramsForm(w wf.Workflow) {
 			}
 			<button
 				type="submit"
-				class="rounded-full bg-ink px-5 py-2.5 text-xs font-semibold text-parchment-soft transition-transform hover:-translate-y-px"
+				class="rounded-card bg-ink px-4 py-2 text-xs font-medium text-surface transition-colors hover:bg-accent-strong"
 			>Run</button>
 		</div>
 	</form>

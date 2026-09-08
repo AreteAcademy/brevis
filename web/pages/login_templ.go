@@ -25,9 +25,17 @@ type LoginData struct {
 	Err string
 }
 
-// Login is the sign-in screen, in the same style as the rest of the interface: a
-// grid background with a halo on the accent, the brand centred above, and a
-// single card with a luminous ring.
+// Login is the sign-in screen: the brand, two fields and a button, on a flat
+// ground. Nothing else.
+//
+// It used to carry a background grid, a halo on the accent and a card with a
+// luminous ring around it. All three were decoration on a screen with one job,
+// and the ring in particular made the form look like a dialog that had opened
+// over something -- over nothing.
+//
+// There is no "forgot password" here, and there never was: this installation's
+// accounts come from its own configuration, so a reset link would lead to a
+// screen that cannot exist.
 //
 // It sits OUTSIDE the Base layout: the sidebar navigates to screens this session
 // cannot see yet, and offering those links to somebody who has not signed in
@@ -61,13 +69,13 @@ func Login(d LoginData) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(brand.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 34, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 42, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><link rel=\"preload\" href=\"/assets/fonts/inter-latin.woff2\" as=\"font\" type=\"font/woff2\" crossorigin><link rel=\"preload\" href=\"/assets/fonts/cormorant-latin.woff2\" as=\"font\" type=\"font/woff2\" crossorigin><link rel=\"stylesheet\" href=\"/assets/app.css\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</title><link rel=\"preload\" href=\"/assets/fonts/plex-sans-latin.woff2\" as=\"font\" type=\"font/woff2\" crossorigin><link rel=\"stylesheet\" href=\"/assets/app.css\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -77,12 +85,12 @@ func Login(d LoginData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</head><body class=\"h-full bg-parchment font-sans text-ink antialiased\"><main class=\"relative flex min-h-full items-center justify-center overflow-hidden p-6\"><div class=\"grade-fundo pointer-events-none absolute inset-0 opacity-[0.35]\"></div><div class=\"halo-acento pointer-events-none absolute top-1/3 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full\"></div><div class=\"relative w-full max-w-sm\"><div class=\"mb-6 flex flex-col items-center text-center\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</head><body class=\"h-full bg-canvas font-sans text-ink antialiased\"><main class=\"flex min-h-full items-center justify-center p-6\"><div class=\"w-full max-w-[19rem]\"><div class=\"mb-8 flex flex-col items-center text-center\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if brand.Logo == branding.DefaultLogo {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "   <span class=\"block h-11 w-11 text-gold\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "   <span class=\"block h-10 w-10 text-accent\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -102,7 +110,7 @@ func Login(d LoginData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(brand.Logo)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 59, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 61, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -115,25 +123,25 @@ func Login(d LoginData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(brand.Title)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 59, Col: 48}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 61, Col: 48}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"h-11 w-11 rounded-xl object-contain\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" class=\"h-10 w-10 rounded-card object-contain\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<h1 class=\"display mt-3 text-2xl tracking-tight text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<h1 class=\"display mt-4 text-xl text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(brand.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 61, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 63, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -151,7 +159,7 @@ func Login(d LoginData) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(brand.Subtitle)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 63, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 65, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -162,19 +170,19 @@ func Login(d LoginData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div><div class=\"glow-accent w-full rounded-lg border border-line bg-surface\"><div class=\"p-6\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if d.Err != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"mb-4 rounded-md border border-state-failed/30 bg-state-failed/5 px-3 py-2.5 text-sm text-state-failed\" role=\"alert\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"mb-4 rounded-card border border-state-failed/30 bg-state-failed/5 px-3 py-2.5 text-sm text-state-failed\" role=\"alert\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.Err)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 73, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 73, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -185,20 +193,20 @@ func Login(d LoginData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<form method=\"post\" action=\"/login\" class=\"flex flex-col gap-4\"><input type=\"hidden\" name=\"next\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<form method=\"post\" action=\"/login\" class=\"flex flex-col gap-3\"><input type=\"hidden\" name=\"next\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.Target)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 77, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/pages/login.templ`, Line: 77, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><div class=\"flex flex-col gap-2\"><label for=\"username\" class=\"inline-block text-sm leading-none font-medium\">Username</label> <input id=\"username\" name=\"username\" type=\"text\" required autofocus autocomplete=\"username\" class=\"flex h-9 w-full min-w-0 rounded-md border border-line bg-transparent px-3 py-1 text-base text-ink shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-gold focus-visible:ring-[3px] focus-visible:ring-gold/30 md:text-sm\"></div><div class=\"flex flex-col gap-2\"><label for=\"password\" class=\"inline-block text-sm leading-none font-medium\">Password</label> <input id=\"password\" name=\"password\" type=\"password\" required autocomplete=\"current-password\" class=\"flex h-9 w-full min-w-0 rounded-md border border-line bg-transparent px-3 py-1 text-base text-ink shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-gold focus-visible:ring-[3px] focus-visible:ring-gold/30 md:text-sm\"></div><button type=\"submit\" class=\"inline-flex h-9 w-full items-center justify-center gap-2 rounded-md bg-gold px-4 py-2 text-sm font-medium whitespace-nowrap text-surface shadow-xs transition-all hover:bg-gold-strong\">Sign in</button></form></div></div><p class=\"mt-6 text-center text-xs tracking-wide text-muted\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><label for=\"username\" class=\"sr-only\">Username</label> <input id=\"username\" name=\"username\" type=\"text\" required autofocus autocomplete=\"username\" placeholder=\"Username\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <label for=\"password\" class=\"sr-only\">Password</label> <input id=\"password\" name=\"password\" type=\"password\" required autocomplete=\"current-password\" placeholder=\"Password\" class=\"h-10 w-full min-w-0 rounded-card border border-line bg-surface px-3 text-sm text-ink transition-colors outline-none placeholder:text-muted/70 focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent/40\"> <button type=\"submit\" class=\"mt-1 inline-flex h-10 w-full items-center justify-center rounded-card bg-ink px-4 text-sm font-medium text-surface transition-colors hover:bg-accent-strong\">Sign in</button></form><p class=\"mt-8 text-center text-xs tracking-wide text-muted\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

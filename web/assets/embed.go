@@ -20,9 +20,9 @@ import "embed"
 // build, no external network dependency at runtime, and the UI keeps working in
 // a cluster with no route to the internet.
 //
-// The fonts (Inter and Cormorant Garamond, ~205 KB) go in for the same reason as
-// the bundles: a UI that depends on Google Fonts changes typeface halfway down
-// the screen when the network does not answer.
+// The fonts (IBM Plex Sans and Mono, ~92 KB) go in for the same reason as the
+// bundles: a UI that depends on Google Fonts changes typeface halfway down the
+// screen when the network does not answer.
 //
 //go:embed app.css ui.js dag.js jsx-shim.js logo.svg vendor fonts
 var FS embed.FS
