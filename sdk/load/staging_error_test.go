@@ -35,7 +35,7 @@ func TestStagingErrorNamesTheBucketAndTheWayOut(t *testing.T) {
 		{"404 da api json", &googleapi.Error{Code: 404, Message: "The specified bucket does not exist"}},
 	} {
 		t.Run(causa.name, func(t *testing.T) {
-			msg := l.stagingError(causa.err, 12000).Error()
+			msg := l.stagingError(context.Background(), causa.err, 12000).Error()
 
 			for _, exigido := range []string{
 				"projeto-brevis-staging", // qual bucket
@@ -61,7 +61,7 @@ func TestStagingErrorInventsNoDiagnosis(t *testing.T) {
 	l := &Loader{cfg: &core.LoadConfig{StagingBucket: "b", StagingPrefix: "p/"}}
 	causa := errors.New("connection reset by peer")
 
-	err := l.stagingError(causa, 12000)
+	err := l.stagingError(context.Background(), causa, 12000)
 	if !errors.Is(err, causa) {
 		t.Fatal("o erro original precisa continuar acessivel por errors.Is")
 	}
@@ -121,5 +121,117 @@ func TestLoadViaGCSUsesStagingError(t *testing.T) {
 		if !strings.Contains(msg, exigido) {
 			t.Errorf("o caminho real nao diz %q:\n%s", exigido, msg)
 		}
+	}
+}
+
+// gcsWhere builds a client against a fake GCS that answers `found` with 200 for
+// the buckets named in it, and 404 for everything else.
+func gcsWhere(t *testing.T, found ...string) *storage.Client {
+	t.Helper()
+	exists := map[string]bool{}
+	for _, b := range found {
+		exists[b] = true
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The client is pointed at the fake with option.WithEndpoint, so the
+		// path arrives WITHOUT the /storage/v1 prefix it carries against the
+		// real API: GET /b/<name>. Trimming the wrong prefix made every probe
+		// answer 404 and the test blame the code.
+		name := strings.TrimPrefix(r.URL.Path, "/b/")
+		if exists[name] {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"name":"` + name + `"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"error":{"code":404,"message":"Not Found"}}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c, err := storage.NewClient(context.Background(),
+		option.WithEndpoint(srv.URL), option.WithoutAuthentication())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
+}
+
+// TestTheErrorSaysTheOldBucketIsStillThere.
+//
+// The message already MENTIONED the v0.25.0 rename, and mentioning is not
+// answering: whoever read it still had to go and check whether the old bucket
+// was there. This is that check.
+//
+// The case is real: a pipeline under the inline limit never touches a bucket at
+// all, so the rename stays invisible until the first day the extract grows past
+// it -- and on that day this sentence is the difference between "something
+// changed three releases ago" and "your data is in the bucket beside this one".
+func TestTheErrorSaysTheOldBucketIsStillThere(t *testing.T) {
+	l := &Loader{
+		cfg: &core.LoadConfig{
+			StagingBucket:   "projeto-brevis-staging",
+			StagingPrefix:   "extracts/",
+			ThresholdForGCS: 5000,
+		},
+		gcs: gcsWhere(t, "projeto-bravis-staging"),
+	}
+
+	msg := l.stagingError(context.Background(), storage.ErrBucketNotExist, 5156).Error()
+	for _, wanted := range []string{
+		"projeto-bravis-staging",    // the one that IS there
+		"DOES exist",                // said plainly
+		"BREVIS_SDK_STAGING_BUCKET", // how to point at it without a rebuild
+	} {
+		if !strings.Contains(msg, wanted) {
+			t.Errorf("the message does not say %q:\n%s", wanted, msg)
+		}
+	}
+}
+
+// TestNoHintWhenTheOldBucketIsGoneToo.
+//
+// "It is not there either" costs a line and says nothing. The message stays
+// what it was.
+func TestNoHintWhenTheOldBucketIsGoneToo(t *testing.T) {
+	l := &Loader{
+		cfg: &core.LoadConfig{StagingBucket: "projeto-brevis-staging", ThresholdForGCS: 5000},
+		gcs: gcsWhere(t), // nothing exists
+	}
+	if msg := l.stagingError(context.Background(), storage.ErrBucketNotExist, 5156).Error(); strings.Contains(msg, "DOES exist") {
+		t.Errorf("it claimed a bucket that is not there:\n%s", msg)
+	}
+}
+
+// TestNoHintForABucketSomebodyNamed.
+//
+// Whoever chose their own bucket name is not living through the rename, and
+// probing a `-bravis-staging` next to it would be a guess dressed as a finding.
+func TestNoHintForABucketSomebodyNamed(t *testing.T) {
+	l := &Loader{
+		cfg: &core.LoadConfig{StagingBucket: "our-data-lake", ThresholdForGCS: 5000},
+		// The fake would answer 200 for anything asked, so a probe here would
+		// show up in the message.
+		gcs: gcsWhere(t, "our-data-lake", "our-data-lake-bravis-staging", "our-data-bravis-staging"),
+	}
+	if msg := l.stagingError(context.Background(), storage.ErrBucketNotExist, 5156).Error(); strings.Contains(msg, "DOES exist") {
+		t.Errorf("it probed a bucket nobody defaulted into:\n%s", msg)
+	}
+}
+
+// The probe never fails the error it is decorating: no client is the case every
+// unit test above has, and a cancelled run still gets the full message.
+func TestTheProbeNeverBreaksTheError(t *testing.T) {
+	l := &Loader{cfg: &core.LoadConfig{StagingBucket: "projeto-brevis-staging", ThresholdForGCS: 5000}}
+	if msg := l.stagingError(context.Background(), storage.ErrBucketNotExist, 5156).Error(); !strings.Contains(msg, "InlineLimit") {
+		t.Errorf("with no gcs client the message lost its advice:\n%s", msg)
+	}
+
+	// A context that is already done. The load has already failed; the message
+	// must not be worse for it.
+	dead, cancel := context.WithCancel(context.Background())
+	cancel()
+	l.gcs = gcsWhere(t, "projeto-bravis-staging")
+	if msg := l.stagingError(dead, storage.ErrBucketNotExist, 5156).Error(); !strings.Contains(msg, "DOES exist") {
+		t.Errorf("a cancelled run lost the hint:\n%s", msg)
 	}
 }

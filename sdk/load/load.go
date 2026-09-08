@@ -319,16 +319,13 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 
 // stagingError says which bucket failed and what to do about it.
 //
-// It exists because the message used to be "close gcs writer: googleapi:
-// Error 404: The specified bucket does not exist" -- which names neither the
-// bucket it tried nor either way out. The rest of this SDK is careful here:
-// CheckColumns says "add them to Columns, or drop them in Transform". This
-// did not.
+// The consumer's error was "close gcs writer: googleapi: Error 404: The
+// specified bucket does not exist", which names nothing they can act on. This
+// one names the bucket, why the load staged at all, and the two ways out.
 //
-// The default bucket name also changed in v0.25.0, when the project was
-// renamed from bravis to brevis, so "does not exist" became something people
-// would hit without knowing what moved.
-func (l *Loader) stagingError(cause error, rows int) error {
+// It also PROBES the pre-v0.25.0 name. See renamedBucketHint: when the old
+// bucket is still there, saying so turns a diagnosis into an answer.
+func (l *Loader) stagingError(ctx context.Context, cause error, rows int) error {
 	where := fmt.Sprintf("gs://%s/%s", l.cfg.StagingBucket, l.cfg.StagingPrefix)
 
 	// GCS reports a missing bucket two ways depending on the call: a typed
@@ -341,8 +338,55 @@ func (l *Loader) stagingError(cause error, rows int) error {
 		"through GCS because it carries %d rows, above the InlineLimit of %d. Two ways "+
 		"out: create the bucket, or raise InlineLimit above %d so the rows load inline. "+
 		"If you did not name this bucket, it is the default: <project>-brevis-staging, "+
-		"renamed from -bravis- in v0.25.0. Set it with bigquery.Table.StagingBucket",
-		where, rows, l.cfg.ThresholdForGCS, rows)
+		"renamed from -bravis- in v0.25.0. Set it with bigquery.Table.StagingBucket%s",
+		where, rows, l.cfg.ThresholdForGCS, rows, l.renamedBucketHint(ctx))
+}
+
+// renamedBucketSuffix and its predecessor. The default staging bucket was
+// {project}-bravis-staging until v0.25.0 renamed the project.
+const (
+	renamedBucketSuffix = "-brevis-staging"
+	previousSuffix      = "-bravis-staging"
+)
+
+// renamedBucketHint looks for the bucket this one used to be called, and
+// returns a sentence when it finds it.
+//
+// The message already MENTIONED the rename, and mentioning it is not the same
+// as answering it: whoever reads the error still has to go and check whether
+// the old bucket is there, and that check is one call this code can make.
+// A pipeline under the inline limit never touches a bucket at all, so the
+// rename stays invisible until the first day the extract grows past it -- and
+// on that day the sentence below is the difference between "something changed
+// three releases ago" and "your data is in the bucket beside this one".
+//
+// Three rules keep it from being noise:
+//
+//   - only for a bucket that LOOKS like the default. Somebody who named their
+//     own bucket is not living through the rename, and a probe there would be
+//     a guess dressed as a finding.
+//   - only when the old one EXISTS. "It is not there either" is a sentence
+//     that costs a line and says nothing.
+//   - never fails the error it is decorating. A probe that errors, times out
+//     or has no client adds nothing and is forgotten.
+func (l *Loader) renamedBucketHint(ctx context.Context) string {
+	if l.gcs == nil || !strings.HasSuffix(l.cfg.StagingBucket, renamedBucketSuffix) {
+		return ""
+	}
+	previous := strings.TrimSuffix(l.cfg.StagingBucket, renamedBucketSuffix) + previousSuffix
+
+	// Detached from the caller's context and bounded: the load has already
+	// failed, so a cancelled run should still get the good message, and a slow
+	// GCS must not hold the failure open.
+	probe, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+	defer cancel()
+
+	if _, err := l.gcs.Bucket(previous).Attrs(probe); err != nil {
+		return ""
+	}
+	return fmt.Sprintf(". The pre-rename bucket gs://%s DOES exist: either point at it "+
+		"with BREVIS_SDK_STAGING_BUCKET=%s, or create the new one and move what is in it",
+		previous, previous)
 }
 
 // encodeRows turns the batch into the bytes that land.
@@ -503,13 +547,13 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	if _, err := wc.Write(data); err != nil {
 		_ = wc.Close()
 		_ = obj.Delete(ctx)
-		return 0, "", nil, l.stagingError(err, rowCount)
+		return 0, "", nil, l.stagingError(ctx, err, rowCount)
 	}
 	// GCS reports a missing bucket on Close, not on Write: the object is only
 	// created when the writer flushes.
 	if err := wc.Close(); err != nil {
 		_ = obj.Delete(ctx)
-		return 0, "", nil, l.stagingError(err, rowCount)
+		return 0, "", nil, l.stagingError(ctx, err, rowCount)
 	}
 
 	gcsRef := bigquery.NewGCSReference(fmt.Sprintf("gs://%s/%s", l.cfg.StagingBucket, objName))

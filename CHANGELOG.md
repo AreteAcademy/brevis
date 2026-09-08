@@ -18,6 +18,46 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.55.0] — 2026-09-07
+
+### Changed: the staging error looks for the bucket the rename left behind
+
+The message already named the bucket, why the load staged, the two ways out and
+that the default was renamed in `v0.25.0`. Mentioning a rename is not the same
+as answering it: whoever read it still had to go and check whether the old
+bucket was there.
+
+Now the SDK checks, and says so:
+
+```
+staging to gs://acme-brevis-staging/extracts/: that bucket does not exist. This load
+staged through GCS because it carries 5156 rows, above the InlineLimit of 5000. …
+The pre-rename bucket gs://acme-bravis-staging DOES exist: either point at it with
+BREVIS_SDK_STAGING_BUCKET=acme-bravis-staging, or create the new one and move what
+is in it.
+```
+
+**The case is why it is worth a call.** A pipeline under the inline limit never
+touches a bucket at all, so the rename stays invisible — for weeks, on a
+pipeline that runs every ten minutes — until the first day the extract grows
+past the limit. On that day the difference between the two messages is
+"something changed three releases ago" and "your data is in the bucket beside
+this one".
+
+Three rules keep the probe from becoming noise, and each has a test:
+
+- **only for a bucket that looks like the default.** Somebody who named their
+  own is not living through the rename, and probing a `-bravis-staging` beside
+  it would be a guess dressed as a finding.
+- **only when the old one exists.** "It is not there either" costs a line and
+  says nothing.
+- **never fails the error it decorates.** No client, a timeout, a cancelled
+  run — the message stays exactly what it was. It runs on a detached context
+  with a three-second budget, because the load has already failed and a slow
+  GCS must not hold the failure open.
+
+---
+
 ## [0.54.0] — 2026-09-07
 
 ### Added: `sdk/context`, the Go half of context between steps
