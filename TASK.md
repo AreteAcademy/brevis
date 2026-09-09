@@ -12,15 +12,21 @@ being attacked and where it stands.
 | **4** | **Auto params** — the clock, the window and the lateness the engine hands every run | [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) | **done** |
 | **5** | **The scheduler's retry policy** — `--max-attempts` and `--retry-backoff`, and a default that is not inert | [`plan/2026-09-07-sdk-retry-policy-is-not-configurable.md`](docs/plan/2026-09-07-sdk-retry-policy-is-not-configurable.md) | **done** in `0.10.0` |
 | **6** | **Schema evolution on load** — `CreateTable` on every SQL destination, then additive evolution | [`plan/2026-09-08-schema-evolution.md`](docs/plan/2026-09-08-schema-evolution.md) | **done**, except Redshift |
-| **7** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed |
-| **8** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
+| **7** | **dlt in the vocabulary** — a constant, a marker, a test. The chip lights up when it is declared and when the command names it | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §2 | **next** — hours |
+| **8** | **The run window as dlt's cursor** — `run.window()` bridged to its incremental loading, so a backfill reads the slot it is for | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §3 | proposed |
 | **9** | **The load trend screen** — the numbers every load already produces, kept and drawn | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §11 | proposed |
-| **10** | **Beyond Kubernetes** — Cloud Run, Lambda, ECS, EC2. Decide the return path first | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §8 | proposed |
+| **10** | **A third executor** — a host the engine does not own. dlt is its first consumer, Cloud Run and Lambda the next | [`…-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §4 + [`backlog`](docs/plan/2026-09-08-backlog.md) §8 | proposed — **decide the return path first** |
+| **11** | **SQLite, and maybe MySQL** — a default that needs no container; the queue's guarantee re-proved per backend | [`plan/2026-09-09-backlog-12-sqlite-mysql.md`](docs/plan/2026-09-09-backlog-12-sqlite-mysql.md) | proposed |
+| **12** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
+| **13** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed — deferred by the owner |
+| — | **Step metrics** — `brevis.metrics` and `sdk.StdoutMeter` on the engine's `/metrics` | [`plan/2026-09-09-step-metrics.md`](docs/plan/2026-09-09-step-metrics.md) | **done**, unpublished |
 
-The two audits that produced this order:
+The audits that produced this order:
 [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) — what
-is open — and [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) —
-`NOTES.md` read against the tree.
+is open; [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) —
+`NOTES.md` read against the tree; and
+[`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md)
+§8 — the first consumer's proposal reviewed against it.
 
 ## What the first four have to do with each other
 
@@ -97,7 +103,35 @@ and evolve them additively; BigQuery already created. Redshift does neither, and
 that is written down rather than hidden: there is no Redshift in CI, and a
 rendered-DDL test would be a checkmark that means less than it looks.
 
-**#7 is next.** The official task images.
+## The dlt proposal, and the entry it merged with
+
+The first consumer's proposal was reviewed against the tree and accepted. It is
+three asks of very different size, and splitting them across #7, #8 and #10 is
+deliberate: the first is hours and the third is architecture, and bundling them
+would hold the cheap one hostage to the expensive one.
+
+**Its third ask and the old "beyond Kubernetes" entry are the same executor**,
+and they were written independently. Both derive the same agenda from the same
+interface: a target the engine does not own has no equivalent of
+`terminationMessagePath`, of `follow=true` logs, or of deleting a pod to cancel.
+Two people reaching that list separately is the strongest evidence it is the
+right list — so they are now one entry, and the first deliverable is still a
+decision rather than code.
+
+The thesis is worth restating because it orders the rest: **Brevis does not
+exclude, it integrates.** dlt has extract and load solved and scheduling
+unsolved; Airbyte brings its own scheduler and would compete. While this SDK is
+still young, a user who needs a connector Brevis does not have should reach for
+dlt *inside* Brevis, not for Airflow outside it.
+
+**#11 is bigger than it reads.** "Add SQLite and MySQL" is not a driver: the
+queue's whole correctness rests on `FOR UPDATE SKIP LOCKED`, which SQLite does
+not have at all and MySQL has with different semantics. A second backend is a
+second PROOF that no run is handed out twice, and the plan splits SQLite (a
+default that needs no container, single writer, honest about it) from MySQL (the
+expensive half, worth building when a customer asks).
+
+**#13 was deferred by the owner**, on 2026-09-09.
 
 ## Standing rules for all four
 
