@@ -24,7 +24,7 @@ being attacked and where it stands.
 The audits that produced this order:
 [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) — what
 is open; [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) —
-`NOTES.md` read against the tree; and
+the owner's raw notes read against the tree; and
 [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md)
 §8 — the first consumer's proposal reviewed against it.
 
