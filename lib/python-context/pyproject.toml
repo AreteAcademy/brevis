@@ -14,7 +14,7 @@ build-backend = "hatchling.build"
 # still python-context because that is what it holds -- lib/ is one folder per
 # language, and this is the language's context library.
 name = "brevis"
-version = "0.3.0"
+version = "0.3.1"
 description = "Context and run params for the steps of a Brevis workflow"
 readme = "README.md"
 requires-python = ">=3.9"
