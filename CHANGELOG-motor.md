@@ -9,6 +9,55 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.11.1] — 2026-09-09
+
+No migration. An account menu, a Projects screen that does something, and three
+Portuguese strings.
+
+### Added: an account menu at the foot of the sidebar
+
+One button, opening upwards — the sidebar's foot is at the bottom of the
+window, and a menu that dropped down would be drawn past it. It holds
+**Documentation** always, and **Sign out** only when there is a session: an
+installation with no credential has nothing to sign out of.
+
+It is a `<details>`, not a script. The browser gives the open state, the
+keyboard, the focus order and the ARIA; `ui.js` adds the two things it does not
+— Escape, and closing when the click lands elsewhere.
+
+### Changed: Projects is a screen you can use
+
+A project is a **namespace** for workflows: `UNIQUE (project_id, slug)`, so two
+projects can each have a `daily_ingest`. It arrives from
+`brevis publish --project`.
+
+And it was used nowhere else. The screen listed four numbers and a date with
+nothing to click, the project under a workflow's name was not a link, and the
+filter had search, state, active and tag but no project. A namespace that
+nothing can be scoped by is a row in a table.
+
+Now every card leads to that project's workflows, the name under a workflow is
+a link, and `?project=` joined the filters that were already there — it survives
+a search, it survives a sort, and it comes off with a chip like the others. The
+screen also says in one sentence what a project *is*.
+
+There is no row of project chips beside the tags, deliberately: a project is a
+namespace, not a category, and most installations have one.
+
+### Fixed: three Portuguese strings, and the hole that let them through
+
+`Fechar`, `remover filtro`, and — on the workflows screen, for as long as it has
+existed — **`de 5`** where it should read `of 5`.
+
+`ui-language-check.sh` caught none of them. Its pattern for text between tags
+excluded `{` and `}`, so a span holding both a word and an interpolation was
+skipped entirely: every string that mixes prose with a value was invisible to
+it. That is the second time this check has been fixed by a leak getting past it.
+
+Also: a workflow that has run once now reads `1 run`.
+
+---
+
 ## [0.11.0] — 2026-09-08
 
 No migration. The change is what the interface LOOKS like, and one message it
