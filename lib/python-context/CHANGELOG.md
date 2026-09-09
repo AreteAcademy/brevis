@@ -11,16 +11,18 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.3.1] — 2026-09-09
+## [0.3.2] — 2026-09-09
 
-`0.3.0` does not exist and never will: `brevis-0.3.0.tar.gz` had belonged to the
-previously deleted project called `brevis`, and PyPI's filename ledger outlives
-a project forever. It is the third time — `0.1.0` and `0.2.0` before it.
+`0.3.0` and `0.3.1` do not exist and never will. Their filenames had belonged to
+the previously deleted project called `brevis`, and PyPI's filename ledger
+outlives a project forever. The ledger so far: `0.1.0`, `0.2.0`, `0.3.0` and
+`0.3.1` are burned; `0.1.1`, `0.2.1` and this one are not. There is no pattern
+and no API to ask — trying is the only way to find out.
 
-**The fix from `0.2.1` did its job.** The sdist is uploaded FIRST now, so the
-400 arrived before anything reached the index: there is no wheel-only `0.3.0`
-sitting there for `pip` to resolve. That is the whole difference between this
-and the two before it.
+**The fix from `0.2.1` is what makes trying cheap.** The sdist is uploaded
+FIRST, so a 400 arrives before anything reaches the index: no wheel-only version
+for `pip` to resolve, and nothing to yank. The two earlier incidents each left
+half a release published; these two left nothing at all.
 
 ### Added: `brevis.metrics`
 
