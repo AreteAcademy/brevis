@@ -1305,3 +1305,73 @@ dd code {
 .erro-404 .lead {
   max-width: 46ch;
 }
+
+/* ---------------------------------------------------------- quem usa ---- */
+
+/* Sem logotipos: não temos os arquivos, e um logo redesenhado de memória é
+   pior que nenhum. A grade é tipográfica, como a faixa de stack, e o domínio
+   embaixo é a prova -- quem duvida clica. */
+.users {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.user {
+  min-width: 0;
+  background: var(--surface);
+  transition: background 0.25s ease;
+}
+
+.user:hover {
+  background: var(--surface-2);
+}
+
+.user a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  padding: clamp(1.5rem, 2.6vw, 2rem);
+}
+
+.user-name {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+  line-height: 1.1;
+  color: var(--text);
+  transition: color 0.2s ease;
+}
+
+.user a:hover .user-name {
+  color: var(--lime);
+}
+
+.user-desc {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+/* Empurrado para a base: os nomes têm uma linha e as descrições duas, e sem
+   isto os domínios ficariam em alturas diferentes. */
+.user-host {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  color: var(--olive);
+}
+
+.users-note {
+  margin-top: 1.75rem;
+  text-align: center;
+}

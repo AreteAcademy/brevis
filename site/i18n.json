@@ -133,7 +133,23 @@
       "final_titulo": "Construa com clareza.<br>Contribua com propósito.",
       "final_lead": "Conheça o brevis.sh, explore o código e participe de uma infraestrutura de dados feita para devolver foco às equipes de engenharia.",
       "final_cta": "Explorar o projeto",
-      "final_cta2": "Ler a documentação"
+      "final_cta2": "Ler a documentação",
+      "users_eyebrow": "quem usa",
+      "users_titulo": "Em produção, hoje.",
+      "users_lead": "Quatro empresas operam seus dados com o brevis.sh. Cada uma com a sua stack, o seu volume e o seu horário de pico.",
+      "u1_nome": "Promaqui",
+      "u1_desc": "Radar de promoções de bairro, com push em tempo real.",
+      "u1_url": "https://promaqui.com.br",
+      "u2_nome": "Agiliza AI Leilões",
+      "u2_desc": "Inteligência preditiva para leilões judiciais de imóveis.",
+      "u2_url": "https://www.agilizaaileiloes.com.br",
+      "u3_nome": "Pulsar Code",
+      "u3_desc": "Consultoria de software escalável e de alta performance.",
+      "u3_url": "https://pulsarcode.com.br",
+      "u4_nome": "Encantos Amazônicos",
+      "u4_desc": "Infraestrutura digital de turismo para municípios.",
+      "u4_url": "https://encantosamazonicos.com.br",
+      "users_nota": "Usa o brevis.sh e quer aparecer aqui? Abra uma discussão no repositório."
     }
   },
   "en": {
@@ -270,7 +286,23 @@
       "final_titulo": "Build with clarity.<br>Contribute with purpose.",
       "final_lead": "Get to know brevis.sh, explore the code and take part in data infrastructure built to give focus back to engineering teams.",
       "final_cta": "Explore the project",
-      "final_cta2": "Read the docs"
+      "final_cta2": "Read the docs",
+      "users_eyebrow": "who uses it",
+      "users_titulo": "In production, today.",
+      "users_lead": "Four companies run their data on brevis.sh. Each with its own stack, its own volume and its own peak hour.",
+      "u1_nome": "Promaqui",
+      "u1_desc": "A neighbourhood deals radar, with real-time push.",
+      "u1_url": "https://promaqui.com.br",
+      "u2_nome": "Agiliza AI Leilões",
+      "u2_desc": "Predictive intelligence for judicial property auctions.",
+      "u2_url": "https://www.agilizaaileiloes.com.br",
+      "u3_nome": "Pulsar Code",
+      "u3_desc": "Consultancy for scalable, high-performance software.",
+      "u3_url": "https://pulsarcode.com.br",
+      "u4_nome": "Encantos Amazônicos",
+      "u4_desc": "Digital tourism infrastructure for municipalities.",
+      "u4_url": "https://encantosamazonicos.com.br",
+      "users_nota": "Running brevis.sh and want to be listed? Open a discussion on the repository."
     }
   }
 }
