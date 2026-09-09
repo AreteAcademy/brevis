@@ -18,8 +18,10 @@ being attacked and where it stands.
 | **10** | **A third executor** — a host the engine does not own. dlt is its first consumer, Cloud Run and Lambda the next | [`…-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §4 + [`backlog`](docs/plan/2026-09-08-backlog.md) §8 | proposed — **decide the return path first** |
 | **11** | **SQLite, and maybe MySQL** — a default that needs no container; the queue's guarantee re-proved per backend | [`plan/2026-09-09-backlog-12-sqlite-mysql.md`](docs/plan/2026-09-09-backlog-12-sqlite-mysql.md) | proposed |
 | **12** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
-| **13** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed — deferred by the owner |
-| — | **Step metrics** — `brevis.metrics` and `sdk.StdoutMeter` on the engine's `/metrics` | [`plan/2026-09-09-step-metrics.md`](docs/plan/2026-09-09-step-metrics.md) | **done**, unpublished |
+| **13** | **AI as a transform** — one OpenAI-compatible client, batched, cached, and refusing output it did not ask for | [`plan/2026-09-09-ai-como-transform.md`](docs/plan/2026-09-09-ai-como-transform.md) | proposed |
+| **14** | **DuckDB and MotherDuck** — `from`/`to` in a module of their own, because the driver needs cgo | [`plan/2026-09-09-duckdb-e-motherduck.md`](docs/plan/2026-09-09-duckdb-e-motherduck.md) | proposed |
+| **15** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed — deferred by the owner |
+| — | **Step metrics** — `brevis.metrics` and `sdk.StdoutMeter` on the engine's `/metrics` | [`plan/2026-09-09-step-metrics.md`](docs/plan/2026-09-09-step-metrics.md) | **done** — `v0.12.0`, `sdk/v0.58.0`, py `0.3.2` |
 
 The audits that produced this order:
 [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) — what
@@ -131,7 +133,48 @@ second PROOF that no run is handed out twice, and the plan splits SQLite (a
 default that needs no container, single writer, honest about it) from MySQL (the
 expensive half, worth building when a customer asks).
 
-**#13 was deferred by the owner**, on 2026-09-09.
+**#15 was deferred by the owner**, on 2026-09-09.
+
+## The three notes added on 2026-09-09
+
+**§13, AI as a transform, is the one with a real strategic argument** — *"sem ele
+teremos um atraso em relação ao mercado"* — and it is also the one with the most
+ways to be wrong quietly.
+
+The seam already exists: `Transformer` is `func(any) (any, error)` and an HTTP
+call to a model fits it today, with no SDK change. So the question is what the
+SDK should OWN, and the answer is what a hand-written call gets wrong: batching,
+a cache keyed by input, a declared set of allowed answers, and 429 as a retry
+rather than a failure.
+
+What the plan insists on is that **an AI call breaks two invariants the rest of
+the SDK rests on**. Every other transform is free and deterministic; this one
+costs money per record and returns something different the second time. A
+retried load of 50,000 records re-calls the model 50,000 times, and a rerun
+produces different data for the same input — which is what `ingestion_id`,
+checkpoints and safe retries all assume does not happen. Neither is a reason not
+to build it; both are reasons to name them in the design instead of in an
+invoice.
+
+And one client, not four. OpenRouter *is* an OpenAI-compatible endpoint fronting
+the others, so the vendor is a URL and a model string. Four clients buy four
+things to keep working.
+
+**§14 and §15 are the same work, and one measurement decides both.** The DuckDB
+driver does not compile with `CGO_ENABLED=0` — measured, not assumed — and
+drags 135 packages. The Dockerfile, `engine-weight.sh` and `pruning-check.sh`
+all build with cgo off *because that is what ships*, so a cgo dependency in
+`sdk/` would make every consumer, including the one that reads a CSV, need a C
+toolchain. It goes in a module of its own, like `otelmeter`, with a pruning case
+proving the main SDK did not grow.
+
+MotherDuck is the same driver with `md:` instead of a file path, so the answer
+to *"temos capacidade de rodar Brevis + MotherDuck"* is **yes, and it costs
+exactly what the DuckDB connector costs** — it is the same code.
+
+Worth saying plainly: **DuckDB already works under Brevis today** as a step,
+`run: duckdb …`, and it already draws its own chip. The ask is the SDK
+connector, which is the expensive half of a thing that partly exists.
 
 ## Standing rules for all four
 
