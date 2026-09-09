@@ -30,9 +30,20 @@ import (
 // because anything changed.
 const overviewWindow = 24 * time.Hour
 
+// workflowWindow is the horizon of ONE workflow's numbers, and it is thirty
+// days rather than the dashboard's twenty-four hours.
+//
+// The two screens answer different questions. The dashboard is "is the
+// installation healthy right now", and a day is the right window for that. A
+// workflow's page is "is this pipeline reliable", and a daily job has one run
+// in twenty-four hours -- a success rate over a single sample is not a rate.
+const workflowWindow = 30 * 24 * time.Hour
+
 // Leitura is what the UI needs from the database. The interface is declared here, in the consumer.
 type Leitura interface {
 	Indicators(ctx context.Context, window time.Duration) (postgres.Indicators, error)
+	IndicatorsFor(ctx context.Context, window time.Duration, workflow string) (postgres.Indicators, error)
+	RunsPerDay(ctx context.Context, workflow string, days int) ([]postgres.Day, error)
 	RunsPerHour(ctx context.Context, horas int) ([]postgres.Bucket, error)
 	InFlight(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	LatestRuns(ctx context.Context, limite int) ([]postgres.RunSummary, error)
@@ -509,7 +520,24 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		u.log.Warn("the workflow's history is unavailable", "workflow", slug, "error", err)
 	}
-	u.render(w, r, pages.Workflow(def, latest))
+
+	// The statistics, and the same rule: each one degrades to nothing rather
+	// than taking the page down. A workflow's definition is readable with no
+	// database behind it, and that is the property worth keeping -- somebody
+	// looking at a broken installation is exactly who needs to read the graph.
+	stats := pages.WorkflowStats{Window: workflowWindow}
+	if ind, err := u.leitura.IndicatorsFor(r.Context(), workflowWindow, slug); err == nil {
+		stats.Ind = ind
+	} else {
+		u.log.Warn("the workflow's indicators are unavailable", "workflow", slug, "error", err)
+	}
+	if days, err := u.leitura.RunsPerDay(r.Context(), slug, 364); err == nil {
+		stats.Days = days
+	} else {
+		u.log.Warn("the workflow's calendar is unavailable", "workflow", slug, "error", err)
+	}
+
+	u.render(w, r, pages.Workflow(def, latest, stats))
 }
 
 // run is a run's page. The header comes from the database on the server; the DAG

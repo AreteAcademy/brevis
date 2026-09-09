@@ -213,6 +213,66 @@ templ RunsChart(buckets []postgres.Bucket) {
 	}
 }
 
+// Heatmap draws a year of days, one square each.
+//
+// Server-rendered SVG like every other chart here: it needs no library, it is
+// in the HTML the first time the page arrives, and it prints. The tooltip is a
+// <title>, which the browser shows on its own -- the same one the bar chart
+// uses.
+templ Heatmap(days []postgres.Day, workflow string) {
+	{{ squares, months, w, h := Calendar(days, workflow, 364) }}
+	<div class="overflow-x-auto">
+		<svg
+			viewBox={ fmt.Sprintf("0 0 %d %d", w, h) }
+			class="h-[132px] w-full min-w-[720px]"
+			role="img"
+			aria-label="Runs per day over the last year"
+		>
+			for _, m := range months {
+				<text x={ fmt.Sprint(m.X) } y="9" class="fill-muted text-[9px]">{ m.Label }</text>
+			}
+			// Mon, Wed and Fri only. Seven labels beside eleven-pixel squares is
+			// more text than grid.
+			for _, d := range weekdayLabels() {
+				<text x="0" y={ fmt.Sprint(d.Y) } class="fill-muted text-[9px]">{ d.Label }</text>
+			}
+			for _, sq := range squares {
+				if sq.Link != "" {
+					<a href={ templ.SafeURL(sq.Link) }>
+						<rect
+							x={ fmt.Sprint(sq.X) }
+							y={ fmt.Sprint(sq.Y) }
+							width="11"
+							height="11"
+							rx="2"
+							fill={ sq.Fill }
+						></rect>
+						<title>{ sq.Tooltip }</title>
+					</a>
+				} else {
+					<rect
+						x={ fmt.Sprint(sq.X) }
+						y={ fmt.Sprint(sq.Y) }
+						width="11"
+						height="11"
+						rx="2"
+						fill={ sq.Fill }
+						fill-opacity={ emptyOpacity(sq.Empty) }
+					>
+						<title>{ sq.Tooltip }</title>
+					</rect>
+				}
+			}
+		</svg>
+	</div>
+	<div class="mt-3 flex flex-wrap gap-4 text-xs text-muted">
+		@legenda("var(--color-state-success)", "all succeeded")
+		@legenda("var(--color-state-failed)", "some failed")
+		@legenda("var(--color-state-queued)", "still open")
+		@legenda("var(--color-line)", "no run")
+	</div>
+}
+
 templ legenda(cor, text string) {
 	<span class="inline-flex items-center gap-1.5">
 		<span class="h-2 w-2 rounded-full" style={ "background:" + cor }></span>

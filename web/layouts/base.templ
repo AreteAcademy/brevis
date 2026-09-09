@@ -116,8 +116,8 @@ templ Base(p Page) {
 }
 
 // accountMenu is the sidebar's bottom button and its dropdown.
-templ accountMenu(operator string) {
-	<details open class="account-menu relative border-t border-line px-2 py-2">
+templ accountMenu(operator string, brand branding.Brand) {
+	<details class="account-menu relative border-t border-line px-2 py-2">
 		<summary
 			class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
@@ -140,7 +140,34 @@ templ accountMenu(operator string) {
 		</summary>
 		// It opens UPWARDS: the button is at the bottom of the sidebar, and a
 		// menu that dropped down would be drawn past the edge of the window.
-		<div class="absolute right-2 bottom-full left-2 mb-1 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-warm">
+		<div class="absolute right-2 bottom-full left-2 mb-1 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
+			// The installation's phrase, INSIDE the menu.
+			//
+			// It used to sit in the sidebar's footer, where it was a paragraph
+			// of prose between the navigation and a button -- read once, then
+			// skipped forever, and taking vertical room from the only two
+			// things down there anybody clicks. In here it is still the
+			// customer's voice and it costs nothing until the menu is open.
+			if rows := brand.Lines(); len(rows) > 0 {
+				<p class="border-b border-line px-3 py-2.5 text-[0.75rem] leading-snug text-muted">
+					for i, l := range rows {
+						if i == 0 {
+							{ "“" + l }
+						} else {
+							<br/>
+							if i == len(rows)-1 {
+								{ l + "”" }
+							} else {
+								{ l }
+							}
+						}
+					}
+					if len(rows) == 1 {
+						{ "”" }
+					}
+				</p>
+			}
+			<div class="py-1">
 			<a
 				href={ templ.SafeURL(branding.DocsURL) }
 				target="_blank"
@@ -170,6 +197,7 @@ templ accountMenu(operator string) {
 					</button>
 				</form>
 			}
+			</div>
 		</div>
 	</details>
 }
@@ -228,36 +256,6 @@ templ sidebar(active1 string, brand branding.Brand) {
 				}
 			}
 		</nav>
-		<div class="border-t border-line px-4 py-4">
-			if rows := brand.Lines(); len(rows) > 0 {
-				<p class="text-[0.8rem] leading-snug text-muted">
-					for i, l := range rows {
-						if i == 0 {
-							{ "“" + l }
-						} else {
-							<br/>
-							if i == len(rows)-1 {
-								{ l + "”" }
-							} else {
-								{ l }
-							}
-						}
-					}
-					if len(rows) == 1 {
-						{ "”" }
-					}
-				</p>
-			}
-			// It does not come from the configuration — it comes from here. No
-			// YAML value removes this line, and that is why it is not a field of
-			// Brand.
-			<a
-				href="https://github.com/AreteAcademy/brevis"
-				target="_blank"
-				rel="noreferrer"
-				class="mt-4 block text-[0.68rem] tracking-[0.1em] text-muted/60 uppercase transition-colors hover:text-gold-strong"
-			>{ branding.Attribution }</a>
-		</div>
 		// The account menu: one button at the bottom of the sidebar, and what
 		// it opens.
 		//
@@ -270,6 +268,6 @@ templ sidebar(active1 string, brand branding.Brand) {
 		// It appears even with no session, because Documentation is always
 		// there; only Sign out depends on there being something to sign out
 		// of.
-		@accountMenu(auth.De(ctx))
+		@accountMenu(auth.De(ctx), brand)
 	</aside>
 }

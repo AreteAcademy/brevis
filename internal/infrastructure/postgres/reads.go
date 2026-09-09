@@ -260,6 +260,17 @@ func (r *ReadRepo) QueueDepth(ctx context.Context) (pending, claimed int, err er
 // One query, with FILTER, rather than four: those would be four scans of the
 // same table over the same time predicate.
 func (r *ReadRepo) Indicators(ctx context.Context, window time.Duration) (Indicators, error) {
+	return r.IndicatorsFor(ctx, window, "")
+}
+
+// IndicatorsFor is Indicators scoped to ONE workflow, and the same query.
+//
+// An empty slug means every workflow, which is what the dashboard asks for.
+// Writing the aggregation twice -- once global, once per workflow -- would be
+// two places for "what counts as finished", and the answer has already moved
+// once: `Ratio` excludes what is still running, and a second copy would not
+// know that.
+func (r *ReadRepo) IndicatorsFor(ctx context.Context, window time.Duration, workflow string) (Indicators, error) {
 	var i Indicators
 	var meanMs *float64
 	err := r.pool.QueryRow(ctx, `
@@ -271,7 +282,8 @@ func (r *ReadRepo) Indicators(ctx context.Context, window time.Duration) (Indica
 		       avg(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000)
 		         FILTER (WHERE terminado_em IS NOT NULL AND iniciado_em IS NOT NULL)
 		FROM runs
-		WHERE criado_em >= now() - $1::interval`, window).
+		WHERE criado_em >= now() - $1::interval
+		  AND ($2 = '' OR workflow_slug = $2)`, window, workflow).
 		Scan(&i.Total, &i.Succeeded, &i.Failed, &i.Running, &i.Pending, &meanMs)
 	if err != nil {
 		return i, err
@@ -280,6 +292,51 @@ func (r *ReadRepo) Indicators(ctx context.Context, window time.Duration) (Indica
 		i.MeanDuration = time.Duration(*meanMs) * time.Millisecond
 	}
 	return i, nil
+}
+
+// Day is one square of the calendar heatmap.
+type Day struct {
+	Date      time.Time
+	Total     int
+	Succeeded int
+	Failed    int
+	Open      int // running, retrying or queued
+}
+
+// RunsPerDay returns one row per DAY that had a run, for one workflow.
+//
+// Unlike RunsPerHour it does NOT fill the gaps with a generate_series, and the
+// difference is the shape of the two charts. A bar chart with a missing hour
+// compresses time and invents continuity; a calendar has a square for every day
+// whether or not anything happened, so the empty ones are drawn by the renderer
+// from the date range and never travel over the wire. Sending 365 mostly-zero
+// rows to draw nothing would be the same picture at ten times the cost.
+func (r *ReadRepo) RunsPerDay(ctx context.Context, workflow string, days int) ([]Day, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT (criado_em AT TIME ZONE 'UTC')::date AS dia,
+		       count(*),
+		       count(*) FILTER (WHERE status = 'success'),
+		       count(*) FILTER (WHERE status = 'failed'),
+		       count(*) FILTER (WHERE status IN ('running', 'retrying', 'queued', 'pending'))
+		FROM runs
+		WHERE workflow_slug = $1
+		  AND criado_em >= (now() AT TIME ZONE 'UTC')::date - ($2::int - 1)
+		GROUP BY 1
+		ORDER BY 1`, workflow, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Day
+	for rows.Next() {
+		var d Day
+		if err := rows.Scan(&d.Date, &d.Total, &d.Succeeded, &d.Failed, &d.Open); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
 }
 
 // RunsPerHour returns one column per hour, the empty ones INCLUDED.

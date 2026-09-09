@@ -831,7 +831,18 @@ var dagAssets = layouts.Island{
 // Workflow shows the published definition. With no run state: it is the screen
 // for "what this workflow is", and it has to serve a workflow that never ran
 // too.
-templ Workflow(w wf.Workflow, latest []postgres.RunSummary) {
+// WorkflowStats is one workflow's numbers, over workflowWindow.
+//
+// Every field degrades to its zero value on purpose: a definition has to stay
+// readable with the database in trouble, and somebody looking at a broken
+// installation is exactly who needs to read the graph.
+type WorkflowStats struct {
+	Window time.Duration
+	Ind    postgres.Indicators
+	Days   []postgres.Day
+}
+
+templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows",
 		Island: dagAssets, Wide: true, Actions: disparar(w.Slug),
@@ -851,7 +862,31 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary) {
 		if len(w.Params) > 0 {
 			@paramsForm(w)
 		}
+		// The same four numbers the dashboard opens with, scoped to this
+		// workflow -- and over thirty days rather than one, because a daily job
+		// has a single run in twenty-four hours and a rate over one sample is
+		// not a rate.
+		<div class="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+			@components.Metric("Success rate", pct(st.Ind.Ratio(st.Ind.Succeeded)),
+				fmt.Sprintf("%d of %d finished", st.Ind.Succeeded, st.Ind.Succeeded+st.Ind.Failed),
+				"text-state-success")
+			@components.Metric("Failure rate", pct(st.Ind.Ratio(st.Ind.Failed)),
+				failureNote(st.Ind.Failed), failureHue(st.Ind.Failed))
+			@components.Metric("Mean duration", meanValue(st.Ind.MeanDuration),
+				fmt.Sprintf("over %d days", int(st.Window.Hours()/24)), "text-ink")
+			@components.Metric("Open", fmt.Sprint(st.Ind.Running+st.Ind.Pending),
+				openNote(st.Ind), "text-state-queued")
+		</div>
 		@dag("/api/workflows/" + w.Slug + "/graph")
+		<section class="mt-6">
+			@components.Card("A year of runs") {
+				<p class="-mt-2 mb-4 text-sm text-muted">
+					One square per day. The colour is the day&#39;s worst outcome, not how
+					much ran &mdash; the question a calendar answers is when this broke.
+				</p>
+				@components.Heatmap(st.Days, w.Slug)
+			}
+		</section>
 		if len(latest) > 0 {
 			<section class="mt-6">
 				<div class="mb-3 flex items-baseline justify-between">
@@ -1230,4 +1265,25 @@ func fieldType(p wf.Param) string {
 		return "number"
 	}
 	return "text"
+}
+
+// meanValue is the mean duration as a headline number. An em dash rather than
+// "0s" when nothing has finished: a zero there reads as "instant", which is the
+// opposite of "unknown".
+func meanValue(d time.Duration) string {
+	if d <= 0 {
+		return "—"
+	}
+	return components.Duration(&d)
+}
+
+// openNote says what the "Open" number is made of. The headline adds running and
+// queued together because both mean "not finished yet", and the note is what
+// keeps that from hiding which of the two it is -- a queue of forty and forty
+// running are the same number and very different mornings.
+func openNote(i postgres.Indicators) string {
+	if i.Running+i.Pending == 0 {
+		return "nothing in flight"
+	}
+	return fmt.Sprintf("%d running, %d queued", i.Running, i.Pending)
 }
