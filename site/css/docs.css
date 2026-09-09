@@ -408,6 +408,12 @@ h3:hover .anchor,
 
 /* --------------------------------------------------------------- código ---- */
 
+/* O realce emite .t-n para número e flag; sem esta regra os dois saíam na cor
+   do texto comum, e um `--select` num comando não se distinguia do resto. */
+.t-n {
+  color: #8fb8d6;
+}
+
 .doc-body .code-block {
   margin: 1.75rem 0;
 }

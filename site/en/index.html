@@ -254,6 +254,94 @@
     </div>
   </section>
 
+  <section class="section section-soft" id="como-executa">
+    <div class="shell">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">how it executes</p>
+        <h2>One pod per step. Each with its own image.</h2>
+        <p class="lead">The core reads the workflow and starts one pod per step. Extract in Go, prepare in Python, transform in dbt — each step with the image, the limits and the runtime it declared. No step inherits its neighbour's weight.</p>
+      </div>
+
+      <figure class="figure figure-diagram" data-reveal>
+        <img src="/assets/execution.svg" width="880" height="420" alt="Diagram: the brevis.sh core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it." loading="lazy">
+      </figure>
+
+      <div class="surface-grid" data-reveal>
+        <article class="surface">
+          <p class="surface-index">01</p>
+          <h3>The work brings the runtime</h3>
+          <p>A step is an image and a command. Bumping dbt is one line in that workflow's YAML, not a rebuild of everything.</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">02</p>
+          <h3>Context between steps</h3>
+          <p>A step publishes a watermark or a path; the next one reads it. Two environment variables, no API and no port.</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">03</p>
+          <h3>Failure with a boundary</h3>
+          <p>A step that leaks memory dies alone. With no generic worker, there is no neighbour to take down.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="console">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">the console</p>
+          <h2>What is running, and what runs next.</h2>
+        </div>
+        <p class="lead">The interface ships in the binary — not a separate service to install and keep alive. Success rate, average duration, the queue, the attempt history and the schedule of what comes next.</p>
+      </div>
+
+      <div class="gallery" data-reveal>
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
+            <span class="frame-url">localhost:8080</span>
+            <div class="frame-tabs" role="tablist" aria-label="Console screens">
+              <button class="tab" type="button" role="tab" id="tab-overview" aria-controls="p-overview" aria-selected="true">Overview</button>
+              <button class="tab" type="button" role="tab" id="tab-workflows" aria-controls="p-workflows" aria-selected="false">Workflows</button>
+              <button class="tab" type="button" role="tab" id="tab-workflow" aria-controls="p-workflow" aria-selected="false">Workflow</button>
+              <button class="tab" type="button" role="tab" id="tab-runs" aria-controls="p-runs" aria-selected="false">Runs</button>
+              <button class="tab" type="button" role="tab" id="tab-run" aria-controls="p-run" aria-selected="false">Run</button>
+              <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="p-projects" aria-selected="false">Projects</button>
+            </div>
+          </div>
+          <div class="shot" role="tabpanel" id="p-overview" aria-labelledby="tab-overview">
+            <img src="/assets/console.svg" width="1000" height="600" alt="The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs.">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflows" aria-labelledby="tab-workflows" hidden>
+            <img src="/assets/console-workflows.svg" width="1000" height="600" alt="The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflow" aria-labelledby="tab-workflow" hidden>
+            <img src="/assets/console-workflow.svg" width="1000" height="600" alt="One workflow's page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step's state; and a calendar of a year where each square is a day, coloured by that day's worst outcome." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-runs" aria-labelledby="tab-runs" hidden>
+            <img src="/assets/console-runs.svg" width="1000" height="600" alt="The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-run" aria-labelledby="tab-run" hidden>
+            <img src="/assets/console-run.svg" width="1000" height="600" alt="A finished run: its state, trigger and slot; the graph with each step's command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step's output." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-projects" aria-labelledby="tab-projects" hidden>
+            <img src="/assets/console-projects.svg" width="1000" height="600" alt="Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding." loading="lazy">
+          </div>
+        </div>
+      </div>
+
+      <ul class="ticks ticks-wide" data-reveal>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>An overview with metrics and charts</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>A workflow list with search, filters, pause and run</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Run history, with each one's attempt</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>A run's DAG live, and the auto params the engine worked out for it</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Projects, so two teams do not collide on one name</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Fonts and bundles served from the binary — works with no internet</span></li>
+      </ul>
+    </div>
+  </section>
+
   <section class="section section-users" id="quem-usa">
     <div class="shell">
       <div class="section-head head-split" data-reveal>

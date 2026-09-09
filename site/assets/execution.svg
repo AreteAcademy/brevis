@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" role="img"
+     aria-labelledby="exec-t exec-d" fill="none">
+  <title id="exec-t">How Brevis executes a workflow</title>
+  <desc id="exec-d">The core reads the workflow and starts one Kubernetes pod
+    per step. Extract runs on Go, Prepare on Python, Load on Go and Transform on
+    dbt — each with its own image. Steps pass context to one another, and the
+    SDK is what reads and writes it.</desc>
+
+  <!-- currentColor is not used here: this diagram carries the palette because
+       it is the same drawing on the dark site and in any embed. -->
+  <style>
+    .box   { fill: #1a1e15; stroke: #38412b; stroke-width: 1; }
+    .core  { fill: #1f2419; stroke: #7d8e50; }
+    .edge  { stroke: #7d8e50; stroke-width: 1.4; opacity: .8; }
+    .ctx   { stroke: #c7d66d; stroke-width: 1.4; stroke-dasharray: 5 4; opacity: .75; }
+    .t     { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .m     { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .name  { font-size: 14px; font-weight: 600; fill: #ecefe4; }
+    .lbl   { font-size: 10.5px; fill: #7d8e50; letter-spacing: .06em; }
+    .rt    { font-size: 11px; fill: #a3ad97; }
+    .lime  { fill: #c7d66d; }
+  </style>
+
+  <!-- core -->
+  <rect class="box core" x="330" y="14" width="220" height="52" rx="3"/>
+  <path d="M404 34c0 5.6 18 5.6 18 0" stroke="#c7d66d" stroke-width="2.4" stroke-linecap="round"/>
+  <text class="m name" x="430" y="46">brevis.sh</text>
+  <text class="m lbl" x="440" y="82" text-anchor="middle">core · scheduler + queue</text>
+
+  <!-- fan-out -->
+  <path class="edge" d="M440 90v14H130v44"/>
+  <path class="edge" d="M440 90v14H340v44"/>
+  <path class="edge" d="M440 90v14H550v44"/>
+  <path class="edge" d="M440 90v14H755v44"/>
+  <g class="m lbl">
+    <text x="130" y="140" text-anchor="middle">pod</text>
+    <text x="340" y="140" text-anchor="middle">pod</text>
+    <text x="550" y="140" text-anchor="middle">pod</text>
+    <text x="755" y="140" text-anchor="middle">pod</text>
+  </g>
+
+  <!-- the four steps -->
+  <g>
+    <rect class="box" x="40" y="152" width="180" height="86" rx="3"/>
+    <text class="t name" x="60" y="182">Extract</text>
+    <text class="m rt" x="60" y="204">go · 5.8 MB</text>
+    <text class="m rt" x="60" y="222">0.18 s cold start</text>
+  </g>
+  <g>
+    <rect class="box" x="250" y="152" width="180" height="86" rx="3"/>
+    <text class="t name" x="270" y="182">Prepare</text>
+    <text class="m rt" x="270" y="204">python · 118 MB</text>
+    <text class="m rt" x="270" y="222">pandas, Polars</text>
+  </g>
+  <g>
+    <rect class="box" x="460" y="152" width="180" height="86" rx="3"/>
+    <text class="t name" x="480" y="182">Load</text>
+    <text class="m rt" x="480" y="204">go · 5.8 MB</text>
+    <text class="m rt" x="480" y="222">BigQuery, Postgres</text>
+  </g>
+  <g>
+    <rect class="box" x="670" y="152" width="170" height="86" rx="3"/>
+    <text class="t name" x="690" y="182">Transform</text>
+    <text class="m rt" x="690" y="204">dbt · 620 MB</text>
+    <text class="m rt" x="690" y="222">parse baked in</text>
+  </g>
+
+  <!-- context between neighbours -->
+  <path class="ctx" d="M220 195h30"/>
+  <path class="ctx" d="M430 195h30"/>
+  <text class="m lime" x="235" y="185" font-size="10" text-anchor="middle">ctx</text>
+  <text class="m lime" x="445" y="185" font-size="10" text-anchor="middle">ctx</text>
+
+  <!-- the sdk underneath -->
+  <path class="edge" d="M130 238v34M340 238v34M550 238v34"/>
+  <path class="edge" d="M130 272h420"/>
+  <path class="edge" d="M440 272v28"/>
+  <rect class="box core" x="330" y="300" width="220" height="52" rx="3"/>
+  <text class="m name" x="440" y="325" text-anchor="middle" font-size="13">sdk</text>
+  <text class="m rt" x="440" y="341" text-anchor="middle" font-size="10">Go · Python</text>
+
+  <text class="m lbl" x="440" y="378" text-anchor="middle">one pod per step · its own image · its own limits</text>
+  <text class="m lbl" x="440" y="398" text-anchor="middle" opacity=".7">a step that leaks memory dies alone</text>
+</svg>

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" role="img" aria-label="brevis.sh">
   <!-- The breve: in Latin scansion this sign marks a SHORT syllable, and the
-       macron marks the long one. brevis is scanned brĕvis -- the first vowel
-       is short -- so the mark is the word itself, written as the sign that
+       macron marks the long one. brevis is scanned brĕvis — the first vowel
+       is short — so the mark is the word itself, written as the sign that
        names it. That is the whole idea, and it is why this is not a graph of
        nodes like the one it replaces: any orchestrator could wear that.
 
@@ -9,7 +9,7 @@
        Mono's own glyph: wide and shallow, 16 wide by 3.6 deep. A semicircle
        reads as a smile; the first draft was one, at 11.6 by 4.0, and it did.
 
-       Round caps, not butt: at 16px -- a browser tab, the sidebar -- butt ends
+       Round caps, not butt: at 16px — a browser tab, the sidebar — butt ends
        look broken. The square corners of the interface are containers, not
        stroke terminals.
 

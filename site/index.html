@@ -254,6 +254,94 @@
     </div>
   </section>
 
+  <section class="section section-soft" id="como-executa">
+    <div class="shell">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">como executa</p>
+        <h2>Um pod por passo. Cada um com a sua imagem.</h2>
+        <p class="lead">O core lê o workflow e sobe um pod por passo. Extrair em Go, preparar em Python, transformar em dbt — cada passo com a imagem, os limites e o runtime que ele declarou. Nenhum passo herda o peso do vizinho.</p>
+      </div>
+
+      <figure class="figure figure-diagram" data-reveal>
+        <img src="/assets/execution.svg" width="880" height="420" alt="Diagrama: o core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto." loading="lazy">
+      </figure>
+
+      <div class="surface-grid" data-reveal>
+        <article class="surface">
+          <p class="surface-index">01</p>
+          <h3>O trabalho traz o runtime</h3>
+          <p>Um passo é uma imagem e um comando. Trocar a versão do dbt é uma linha no YAML daquele workflow, não um rebuild de tudo.</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">02</p>
+          <h3>Contexto entre passos</h3>
+          <p>Um passo publica uma marca d'água ou um caminho; o seguinte lê. Duas variáveis de ambiente, sem API e sem porta.</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">03</p>
+          <h3>Falha com limite</h3>
+          <p>Um passo que vaza memória morre sozinho. Sem worker genérico, não há vizinho para derrubar.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="console">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">o console</p>
+          <h2>O que está rodando, e o que vai rodar.</h2>
+        </div>
+        <p class="lead">A interface vem no binário — não é um serviço à parte para instalar e manter. Taxa de sucesso, duração média, a fila, o histórico de tentativas e a agenda das próximas execuções.</p>
+      </div>
+
+      <div class="gallery" data-reveal>
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
+            <span class="frame-url">localhost:8080</span>
+            <div class="frame-tabs" role="tablist" aria-label="Telas do console">
+              <button class="tab" type="button" role="tab" id="tab-overview" aria-controls="p-overview" aria-selected="true">Overview</button>
+              <button class="tab" type="button" role="tab" id="tab-workflows" aria-controls="p-workflows" aria-selected="false">Workflows</button>
+              <button class="tab" type="button" role="tab" id="tab-workflow" aria-controls="p-workflow" aria-selected="false">Workflow</button>
+              <button class="tab" type="button" role="tab" id="tab-runs" aria-controls="p-runs" aria-selected="false">Runs</button>
+              <button class="tab" type="button" role="tab" id="tab-run" aria-controls="p-run" aria-selected="false">Run</button>
+              <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="p-projects" aria-selected="false">Projects</button>
+            </div>
+          </div>
+          <div class="shot" role="tabpanel" id="p-overview" aria-labelledby="tab-overview">
+            <img src="/assets/console.svg" width="1000" height="600" alt="O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas.">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflows" aria-labelledby="tab-workflows" hidden>
+            <img src="/assets/console-workflows.svg" width="1000" height="600" alt="A lista de workflows: busca, filtros por estado e por tag, e doze workflows com o botão de pausa, a expressão cron, a próxima e a última execução, tags e um botão para disparar cada um." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflow" aria-labelledby="tab-workflow" hidden>
+            <img src="/assets/console-workflow.svg" width="1000" height="600" alt="A página de um workflow: os quatro passos, as três dependências, o cron e as tags; um formulário para executar com parâmetros; 96,1% de sucesso em 176 execuções; o DAG com o estado de cada passo; e um calendário de um ano em que cada quadrado é um dia, com a cor do pior resultado daquele dia." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-runs" aria-labelledby="tab-runs" hidden>
+            <img src="/assets/console-runs.svg" width="1000" height="600" alt="O histórico de execuções: 1.284 runs com o estado, o workflow, o disparo, o slot a que pertencem, a duração e quando foram criados. Alguns mostram em que tentativa tiveram sucesso." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-run" aria-labelledby="tab-run" hidden>
+            <img src="/assets/console-run.svg" width="1000" height="600" alt="Uma execução concluída: o estado, o disparo e o slot; o grafo com o comando, a imagem e a duração de cada passo; os nove auto params que o engine calcula para toda execução — o relógio a ler em vez de now(), a data da partição, o atraso da tentativa e a janela que ela cobre; e a saída de cada passo." loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-projects" aria-labelledby="tab-projects" hidden>
+            <img src="/assets/console-projects.svg" width="1000" height="600" alt="Dois projetos, analytics e platform, cada um dando namespace aos seus workflows — os dois podem ter um daily_ingest sem colidir." loading="lazy">
+          </div>
+        </div>
+      </div>
+
+      <ul class="ticks ticks-wide" data-reveal>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Visão geral com métricas e gráficos</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Lista de workflows com busca, filtros, pausa e disparo</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Histórico de execuções, com a tentativa de cada uma</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>A DAG de um run ao vivo, e os auto params que o engine calculou para ele</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Projetos, para dois times não colidirem no mesmo nome</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>Fontes e bundles servidos do binário — funciona sem internet</span></li>
+      </ul>
+    </div>
+  </section>
+
   <section class="section section-users" id="quem-usa">
     <div class="shell">
       <div class="section-head head-split" data-reveal>

@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img"
+     aria-labelledby="rd-t rd-d">
+  <title id="rd-t">The Brevis console, one run</title>
+  <desc id="rd-d">A finished run: its state, trigger and slot; the graph with each
+    step's command, image and duration; the nine auto params the engine works out
+    for every run — the clock to read instead of now(), the partition date, how
+    late the attempt started and the window it covers; and each step's output.</desc>
+  <style>
+    .bg{fill:#f1f2ec}.card{fill:#fff;stroke:#dfe2d6;stroke-width:1}
+    .side{fill:#e9ebe1}.rule{stroke:#dfe2d6;stroke-width:1;fill:none}
+    .t{font-family:"IBM Plex Sans",system-ui,sans-serif}
+    .m{font-family:"IBM Plex Mono",ui-monospace,monospace}
+    .lbl{font-size:8px;letter-spacing:.1em;fill:#7d8e50}
+    .dim{font-size:8.5px;fill:#8b9280}
+    .nav{font-size:10px;fill:#4a5340}
+    .node{fill:#fff;stroke:#dfe2d6;stroke-width:1}
+    .ok{fill:#4c7a56}
+    .h2{font-size:13px;font-weight:600;fill:#1f2419}
+  </style>
+  <defs>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#c8ccbe"/>
+    </pattern>
+  </defs>
+  <rect class="bg" width="1000" height="600"/>
+  <rect class="side" width="150" height="600"/>
+  <path class="rule" d="M150 0v600M150 44h850"/>
+  <path d="M22 26c0 3.4 11 3.4 11 0" stroke="#5e6b40" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text class="t" x="40" y="30" font-size="13" font-weight="600" fill="#1f2419">Brevis</text>
+  <text class="m lbl" x="14" y="44">ORCHESTRATION</text>
+  <text class="t nav" x="20" y="72">Overview</text>
+  <text class="t nav" x="20" y="96">Workflows</text>
+  <rect x="8" y="108" width="134" height="20" rx="2" fill="#dfe2d6"/>
+  <path d="M9 108v20" stroke="#5e6b40" stroke-width="2"/>
+  <text class="t" x="20" y="122" font-size="10" font-weight="600" fill="#1f2419">Runs</text>
+  <text class="t nav" x="20" y="146">Projects</text>
+
+  <text class="m lbl" x="168" y="18">RUN</text>
+  <text class="m" x="168" y="36" font-size="15" font-weight="600" fill="#1f2419">weather_alerts</text>
+
+  <rect x="168" y="54" width="52" height="15" rx="2" fill="#e7efe8"/>
+  <circle cx="177" cy="61.5" r="2.4" class="ok"/>
+  <text class="t ok" x="185" y="65" font-size="8.5">success</text>
+  <text class="t dim" x="234" y="65" fill="#4a5340">schedule</text>
+  <text class="m dim" x="296" y="65">slot 2026-09-09 22:45:00 UTC</text>
+  <text class="t dim" x="462" y="65" fill="#5e6b40">see definition</text>
+  <text class="m dim" x="548" y="65" font-size="8">a41c7b02-5d18-4e6a-8f31-2b90de77c415</text>
+  <circle cx="171" cy="78" r="2" fill="#c8ccbe"/>
+  <text class="t dim" x="179" y="81" font-size="8">this run is finished</text>
+
+  <rect class="card" x="168" y="90" width="814" height="116" rx="2"/>
+  <rect x="169" y="91" width="812" height="114" fill="url(#dots)" opacity=".7"/>
+  <rect class="card" x="176" y="112" width="16" height="16" rx="2"/>
+  <path class="rule" d="M181 120h6M184 117v6" stroke="#4a5340" stroke-linecap="round"/>
+  <rect class="card" x="176" y="132" width="16" height="16" rx="2"/>
+  <path class="rule" d="M181 140h6" stroke="#4a5340" stroke-linecap="round"/>
+  <rect class="card" x="176" y="152" width="16" height="16" rx="2"/>
+  <path d="M180 163v-3h3M187 160h3v3M190 167v3h-3M183 170h-3v-3"
+        stroke="#4a5340" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+  <text class="t dim" x="972" y="200" font-size="6.5" text-anchor="end" fill="#c8ccbe">React Flow</text>
+  <path class="rule" d="M521 148h108" stroke="#5e6b40" stroke-width="1.4"/>
+  <circle cx="521" cy="148" r="3" fill="#5e6b40"/><circle cx="629" cy="148" r="3" fill="#5e6b40"/>
+  <rect class="node" x="289" y="108" width="232" height="80" rx="3"/>
+  <circle cx="303" cy="125" r="3.6" class="ok"/>
+  <text class="m" x="315" y="129" font-size="11" font-weight="600" fill="#1f2419">fetch_stations</text>
+  <text class="m dim" x="303" y="147" font-size="8.5" fill="#4a5340">python3 -m alerts.stations fetc…</text>
+  <rect x="303" y="155" width="43" height="15" rx="2" fill="#eef2f7" stroke="#b9cbdd" stroke-width=".8"/>
+  <text class="t" x="309" y="166" font-size="8" fill="#3f6d8f">Python</text>
+  <text class="m ok" x="303" y="182" font-size="8.5">success</text>
+  <text class="m dim" x="351" y="182" font-size="8.5">8.4s</text>
+  <rect class="node" x="629" y="108" width="232" height="80" rx="3"/>
+  <circle cx="643" cy="125" r="3.6" class="ok"/>
+  <text class="m" x="655" y="129" font-size="11" font-weight="600" fill="#1f2419">dbt_build</text>
+  <text class="m dim" x="643" y="147" font-size="8.5" fill="#4a5340">dbt build --project-dir /app/…</text>
+  <rect x="643" y="155" width="28" height="15" rx="2" fill="none" stroke="#c8ccbe" stroke-width=".8" stroke-dasharray="2 2"/>
+  <text class="t" x="649" y="166" font-size="8" fill="#4a5340">dbt</text>
+  <text class="m ok" x="643" y="182" font-size="8.5">success</text>
+  <text class="m dim" x="691" y="182" font-size="8.5">50.2s</text>
+  <text class="t h2" x="168" y="230">Auto params</text>
+  <text class="t dim" x="168" y="245">The engine works these out for every run. No workflow declares them, and every step can read them — as $BREVIS_AUTO_*.</text>
+  <rect class="card" x="168" y="256" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="182" y="272" fill="#8b9280">ADJUSTED_AT</text>
+  <text class="m" x="182" y="288" font-size="10.5" fill="#1f2419">2026-09-09 22:45:00 UTC</text>
+  <text class="t dim" x="182" y="301" font-size="7.5">the clock to read instead of now()</text>
+  <rect class="card" x="442" y="256" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="456" y="272" fill="#8b9280">DATE</text>
+  <text class="m" x="456" y="288" font-size="10.5" fill="#1f2419">2026-09-09</text>
+  <text class="t dim" x="456" y="301" font-size="7.5">the UTC day of adjusted_at — the partition</text>
+  <rect class="card" x="716" y="256" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="730" y="272" fill="#8b9280">DELAY</text>
+  <text class="m" x="730" y="288" font-size="10.5" fill="#1f2419">2.0s</text>
+  <text class="t dim" x="730" y="301" font-size="7.5">how late this attempt started</text>
+  <rect class="card" x="168" y="316" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="182" y="332" fill="#8b9280">SCHEDULED_AT</text>
+  <text class="m" x="182" y="348" font-size="10.5" fill="#1f2419">2026-09-09 22:45:00 UTC</text>
+  <text class="t dim" x="182" y="361" font-size="7.5">the slot this run represents</text>
+  <rect class="card" x="442" y="316" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="456" y="332" fill="#8b9280">STARTED_AT</text>
+  <text class="m" x="456" y="348" font-size="10.5" fill="#1f2419">2026-09-09 22:45:02 UTC</text>
+  <text class="t dim" x="456" y="361" font-size="7.5">when this attempt began</text>
+  <rect class="card" x="716" y="316" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="730" y="332" fill="#8b9280">INTERVAL_START</text>
+  <text class="m" x="730" y="348" font-size="10.5" fill="#1f2419">2026-09-09 22:30:00 UTC</text>
+  <text class="t dim" x="730" y="361" font-size="7.5">the window this run covers, from</text>
+  <rect class="card" x="168" y="376" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="182" y="392" fill="#8b9280">INTERVAL_END</text>
+  <text class="m" x="182" y="408" font-size="10.5" fill="#1f2419">2026-09-09 22:45:00 UTC</text>
+  <text class="t dim" x="182" y="421" font-size="7.5">…up to, excluded</text>
+  <rect class="card" x="442" y="376" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="456" y="392" fill="#8b9280">PREVIOUS_ERROR</text>
+  <text class="m" x="456" y="408" font-size="10.5" fill="#1f2419">false</text>
+  <text class="t dim" x="456" y="421" font-size="7.5">did the run before this one fail</text>
+  <rect class="card" x="716" y="376" width="266" height="52" rx="2"/>
+  <text class="m lbl" x="730" y="392" fill="#8b9280">PREVIOUS_SUCCESS_AT</text>
+  <text class="m" x="730" y="408" font-size="10.5" fill="#1f2419">2026-09-09 22:30:00 UTC</text>
+  <text class="t dim" x="730" y="421" font-size="7.5">how far back to catch up from</text>
+  <text class="t h2" x="168" y="458">Step output</text>
+  <rect class="card" x="168" y="470" width="814" height="36" rx="2"/>
+  <rect x="184" y="480" width="52" height="15" rx="2" fill="#e7efe8"/><circle cx="193" cy="487.5" r="2.4" class="ok"/><text class="t ok" x="201" y="491" font-size="8.5">success</text>
+  <text class="m" x="252" y="491" font-size="9.5" fill="#1f2419">fetch_stations</text><text class="m dim" x="350" y="491">8.4s</text>
+  <rect class="card" x="168" y="514" width="814" height="36" rx="2"/>
+  <rect x="184" y="524" width="52" height="15" rx="2" fill="#e7efe8"/><circle cx="193" cy="531.5" r="2.4" class="ok"/><text class="t ok" x="201" y="535" font-size="8.5">success</text>
+  <text class="m" x="252" y="535" font-size="9.5" fill="#1f2419">dbt_build</text><text class="m dim" x="320" y="535">50.2s</text>
+</svg>

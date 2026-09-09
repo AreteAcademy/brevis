@@ -130,6 +130,94 @@
     </div>
   </section>
 
+  <section class="section section-soft" id="como-executa">
+    <div class="shell">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">{{ l.exec_eyebrow }}</p>
+        <h2>{{ l.exec_titulo }}</h2>
+        <p class="lead">{{ l.exec_lead }}</p>
+      </div>
+
+      <figure class="figure figure-diagram" data-reveal>
+        <img src="/assets/execution.svg" width="880" height="420" alt="{{ l.exec_alt }}" loading="lazy">
+      </figure>
+
+      <div class="surface-grid" data-reveal>
+        <article class="surface">
+          <p class="surface-index">01</p>
+          <h3>{{ l.exec_p1_t }}</h3>
+          <p>{{ l.exec_p1_d }}</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">02</p>
+          <h3>{{ l.exec_p2_t }}</h3>
+          <p>{{ l.exec_p2_d }}</p>
+        </article>
+        <article class="surface">
+          <p class="surface-index">03</p>
+          <h3>{{ l.exec_p3_t }}</h3>
+          <p>{{ l.exec_p3_d }}</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="console">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">{{ l.ui_eyebrow }}</p>
+          <h2>{{ l.ui_titulo }}</h2>
+        </div>
+        <p class="lead">{{ l.ui_lead }}</p>
+      </div>
+
+      <div class="gallery" data-reveal>
+        <div class="frame">
+          <div class="frame-bar">
+            <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
+            <span class="frame-url">localhost:8080</span>
+            <div class="frame-tabs" role="tablist" aria-label="{{ l.ui_tabs }}">
+              <button class="tab" type="button" role="tab" id="tab-overview" aria-controls="p-overview" aria-selected="true">Overview</button>
+              <button class="tab" type="button" role="tab" id="tab-workflows" aria-controls="p-workflows" aria-selected="false">Workflows</button>
+              <button class="tab" type="button" role="tab" id="tab-workflow" aria-controls="p-workflow" aria-selected="false">Workflow</button>
+              <button class="tab" type="button" role="tab" id="tab-runs" aria-controls="p-runs" aria-selected="false">Runs</button>
+              <button class="tab" type="button" role="tab" id="tab-run" aria-controls="p-run" aria-selected="false">Run</button>
+              <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="p-projects" aria-selected="false">Projects</button>
+            </div>
+          </div>
+          <div class="shot" role="tabpanel" id="p-overview" aria-labelledby="tab-overview">
+            <img src="/assets/console.svg" width="1000" height="600" alt="{{ l.ui_alt }}">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflows" aria-labelledby="tab-workflows" hidden>
+            <img src="/assets/console-workflows.svg" width="1000" height="600" alt="{{ l.ui_alt_wf }}" loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-workflow" aria-labelledby="tab-workflow" hidden>
+            <img src="/assets/console-workflow.svg" width="1000" height="600" alt="{{ l.ui_alt_detalhe }}" loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-runs" aria-labelledby="tab-runs" hidden>
+            <img src="/assets/console-runs.svg" width="1000" height="600" alt="{{ l.ui_alt_runs }}" loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-run" aria-labelledby="tab-run" hidden>
+            <img src="/assets/console-run.svg" width="1000" height="600" alt="{{ l.ui_alt_run }}" loading="lazy">
+          </div>
+          <div class="shot" role="tabpanel" id="p-projects" aria-labelledby="tab-projects" hidden>
+            <img src="/assets/console-projects.svg" width="1000" height="600" alt="{{ l.ui_alt_proj }}" loading="lazy">
+          </div>
+        </div>
+      </div>
+
+      <ul class="ticks ticks-wide" data-reveal>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i1 }}</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i2 }}</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i3 }}</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i4 }}</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i5 }}</span></li>
+        <li class="tick-plus"><svg aria-hidden="true"><use href="#i-check"></use></svg><span>{{ l.ui_i6 }}</span></li>
+      </ul>
+    </div>
+  </section>
+
   <section class="section section-users" id="quem-usa">
     <div class="shell">
       <div class="section-head head-split" data-reveal>

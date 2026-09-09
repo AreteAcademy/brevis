@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img"
+     aria-labelledby="proj-t proj-d">
+  <title id="proj-t">The Brevis console, Projects</title>
+  <desc id="proj-d">Two projects, analytics and platform, each namespacing its own workflows so both can have a daily_ingest without colliding. A workflow joins one with brevis publish --project.</desc>
+  <style>
+    .bg{fill:#f1f2ec}.card{fill:#fff;stroke:#dfe2d6;stroke-width:1}
+    .side{fill:#e9ebe1}.rule{stroke:#dfe2d6;stroke-width:1}
+    .t{font-family:"IBM Plex Sans",system-ui,sans-serif}
+    .m{font-family:"IBM Plex Mono",ui-monospace,monospace}
+    .lbl{font-size:8px;letter-spacing:.1em;fill:#7d8e50}
+    .h{font-size:15px;font-weight:600;fill:#1f2419}
+    .row{font-size:9.5px;fill:#1f2419}.dim{font-size:8.5px;fill:#8b9280}
+    .chip{fill:#f1f2ec;stroke:#dfe2d6;stroke-width:.8}
+    .ok{fill:#4c7a56}.bad{fill:#b0503c}.run{fill:#3f6d8f}
+    .nav{font-size:10px;fill:#4a5340}.navon{font-size:10px;font-weight:600;fill:#1f2419}
+  </style>
+  <rect class="bg" width="1000" height="600"/>
+  <rect class="side" width="150" height="600"/>
+  <path class="rule" d="M150 0v600M150 44h850"/>
+  <path d="M22 26c0 3.4 11 3.4 11 0" stroke="#5e6b40" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text class="t h" x="40" y="30" font-size="13">Brevis</text>
+  <text class="m lbl" x="14" y="44">ORCHESTRATION</text>
+  <text class="t nav" x="20" y="72">Overview</text>
+  <text class="t nav" x="20" y="98">Workflows</text>
+  <text class="t nav" x="20" y="122">Runs</text>
+  <rect x="8" y="132" width="134" height="20" rx="2" fill="#dfe2d6"/>
+  <path d="M9 132 v20" stroke="#5e6b40" stroke-width="2"/>
+  <text class="t navon" x="20" y="146">Projects</text>
+  <text class="m lbl" x="168" y="20">ORGANIZATION</text>
+  <text class="t h" x="168" y="36" font-size="16">Projects</text>
+  <text class="t" x="168" y="72" font-size="9.5" fill="#4a5340">A project namespaces its workflows: two projects can each have a <tspan class="m" font-size="9">daily_ingest</tspan> without colliding.</text>
+  <text class="t" x="168" y="88" font-size="9.5" fill="#4a5340">A workflow joins one with <tspan class="m" font-size="9">brevis publish --project</tspan>.</text>
+  <rect class="card" x="168" y="110" width="252" height="112" rx="2"/>
+  <text class="t" x="184" y="136" font-size="13" font-weight="600" fill="#1f2419">analytics</text>
+  <text class="m dim" x="404" y="136" text-anchor="end">analytics</text>
+  <text class="m lbl" x="184" y="160">WORKFLOWS</text>
+  <text class="m lbl" x="278" y="160">RUNS</text>
+  <text class="t" x="184" y="186" font-size="20" font-weight="600" fill="#1f2419">12</text>
+  <text class="t" x="278" y="186" font-size="20" font-weight="600" fill="#1f2419">1,284</text>
+  <text class="t dim" x="184" y="208">since 2026-09-01</text>
+  <rect class="card" x="436" y="110" width="252" height="112" rx="2"/>
+  <text class="t" x="452" y="136" font-size="13" font-weight="600" fill="#1f2419">platform</text>
+  <text class="m dim" x="672" y="136" text-anchor="end">platform</text>
+  <text class="m lbl" x="452" y="160">WORKFLOWS</text>
+  <text class="m lbl" x="546" y="160">RUNS</text>
+  <text class="t" x="452" y="186" font-size="20" font-weight="600" fill="#1f2419">7</text>
+  <text class="t" x="546" y="186" font-size="20" font-weight="600" fill="#1f2419">418</text>
+  <text class="t dim" x="452" y="208">since 2026-09-04</text>
+</svg>

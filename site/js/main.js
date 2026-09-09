@@ -36,6 +36,45 @@
     });
   }
 
+  /* --------------------------------------------------------------- abas ---- */
+
+  /* Um grupo por [role=tablist]; os painéis vêm de aria-controls, então a
+     ordem no HTML é a única fonte da relação aba/painel. Sem o script, o
+     primeiro painel fica visível e os outros ficam `hidden` — degrada para
+     uma tela em vez de quatro empilhadas. */
+  function ligarAbas(lista) {
+    var abas = Array.prototype.slice.call(lista.querySelectorAll('[role="tab"]'));
+    if (abas.length < 2) return;
+
+    function selecionar(i, foco) {
+      abas.forEach(function (aba, j) {
+        var ativa = j === i;
+        aba.setAttribute('aria-selected', String(ativa));
+        aba.setAttribute('tabindex', ativa ? '0' : '-1');
+        var painel = document.getElementById(aba.getAttribute('aria-controls'));
+        if (painel) painel.hidden = !ativa;
+      });
+      if (foco) abas[i].focus();
+    }
+
+    abas.forEach(function (aba, i) {
+      aba.setAttribute('tabindex', aba.getAttribute('aria-selected') === 'true' ? '0' : '-1');
+      aba.addEventListener('click', function () { selecionar(i, false); });
+      aba.addEventListener('keydown', function (e) {
+        var alvo = -1;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') alvo = (i + 1) % abas.length;
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') alvo = (i - 1 + abas.length) % abas.length;
+        else if (e.key === 'Home') alvo = 0;
+        else if (e.key === 'End') alvo = abas.length - 1;
+        if (alvo < 0) return;
+        e.preventDefault();
+        selecionar(alvo, true);
+      });
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[role="tablist"]'), ligarAbas);
+
   /* ------------------------------------------------------------ entrada ---- */
 
   /* Entra uma vez e para de observar. O pulso do .flow-rule usa a mesma

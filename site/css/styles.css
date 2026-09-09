@@ -236,6 +236,10 @@ dd code {
   border-top: 1px solid var(--line-soft);
 }
 
+.section-soft {
+  background: var(--surface-2);
+}
+
 .section-head {
   max-width: 62ch;
   margin-bottom: clamp(2.5rem, 5vw, 4rem);
@@ -1374,4 +1378,150 @@ dd code {
 .users-note {
   margin-top: 1.75rem;
   text-align: center;
+}
+
+/* --------------------------------------------------------------- listas ---- */
+
+.ticks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ticks li {
+  display: grid;
+  grid-template-columns: 1.05rem 1fr;
+  gap: 0.7rem;
+  align-items: start;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.ticks li strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ticks svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.22rem;
+  flex: none;
+}
+
+.tick-plus svg {
+  color: var(--lime);
+}
+
+
+/* ------------------------------------------------------------- figuras ---- */
+
+.figure {
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+}
+
+.figure img {
+  width: 100%;
+  height: auto;
+}
+
+/* O diagrama é desenho, não captura: respira num painel discreto em vez de
+   uma moldura de navegador, que sugeriria tela. */
+.figure-diagram {
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+}
+
+/* A moldura existe para dizer "isto é uma tela" sem escrever a frase. */
+.frame {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.frame-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.frame-bar .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  flex: none;
+}
+
+.frame-url {
+  margin-left: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--olive);
+}
+
+/* A lista do console é longa; em duas ou três colunas ela é varrida em vez de
+   lida linha a linha. */
+.ticks-wide {
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 0.85rem 2rem;
+}
+
+
+/* ------------------------------------------------------------- galeria ---- */
+
+/* As abas moram na barra da moldura: é onde um navegador as põe, então não há
+   o que explicar. */
+.frame-tabs {
+  display: flex;
+  gap: 0.15rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.frame-tabs .tab {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.frame-tabs .tab:hover {
+  color: var(--text);
+}
+
+.frame-tabs .tab[aria-selected="true"] {
+  background: var(--lime-wash);
+  border-color: var(--lime-edge);
+  color: var(--lime);
+}
+
+.gallery {
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.shot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  /* A URL cede o lugar: com quatro abas, ela e elas não cabem na mesma linha. */
+  .frame-url {
+    display: none;
+  }
 }

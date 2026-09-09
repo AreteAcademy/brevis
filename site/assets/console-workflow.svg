@@ -1,0 +1,509 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" role="img"
+     aria-labelledby="wfd-t wfd-d">
+  <title id="wfd-t">The Brevis console, a workflow</title>
+  <desc id="wfd-d">One workflow's page: its cron and tags, a form to run it with
+    parameters, a 96.1 per cent success rate over 176 runs, the DAG with each
+    step's state, a calendar of a year of runs where each square is a day
+    coloured by that day's worst outcome, and the workflow's own run history.</desc>
+  <style>
+    .bg{fill:#f1f2ec}.card{fill:#fff;stroke:#dfe2d6;stroke-width:1}
+    .side{fill:#e9ebe1}.rule{stroke:#dfe2d6;stroke-width:1;fill:none}
+    .t{font-family:"IBM Plex Sans",system-ui,sans-serif}
+    .m{font-family:"IBM Plex Mono",ui-monospace,monospace}
+    .lbl{font-size:8px;letter-spacing:.1em;fill:#7d8e50}
+    .row{font-size:9.5px;fill:#1f2419}.dim{font-size:8.5px;fill:#8b9280}
+    .chip{fill:#f1f2ec;stroke:#dfe2d6;stroke-width:.8}
+    .nav{font-size:10px;fill:#4a5340}
+    .node{fill:#fff;stroke:#c8ccbe;stroke-width:1}
+    .arr{stroke:#c8ccbe;stroke-width:1.2;fill:none}
+    .ok{fill:#4c7a56}.bad{fill:#b0503c}.op{fill:#8a7a3d}.non{fill:#e4e6dd}
+  </style>
+  <defs>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1" fill="#c8ccbe"/>
+    </pattern>
+    <rect id="d" width="8" height="8" rx="1.5"/>
+  </defs>
+  <rect class="bg" width="1000" height="600"/>
+  <rect class="side" width="150" height="600"/>
+  <path class="rule" d="M150 0v600M150 44h850"/>
+  <path d="M22 26c0 3.4 11 3.4 11 0" stroke="#5e6b40" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <text class="t" x="40" y="30" font-size="13" font-weight="600" fill="#1f2419">Brevis</text>
+  <text class="m lbl" x="14" y="44">ORCHESTRATION</text>
+  <text class="t nav" x="20" y="72">Overview</text>
+  <rect x="8" y="84" width="134" height="20" rx="2" fill="#dfe2d6"/>
+  <path d="M9 84v20" stroke="#5e6b40" stroke-width="2"/>
+  <text class="t" x="20" y="98" font-size="10" font-weight="600" fill="#1f2419">Workflows</text>
+  <text class="t nav" x="20" y="122">Runs</text>
+  <text class="t nav" x="20" y="146">Projects</text>
+
+  <text class="m lbl" x="168" y="18">WORKFLOW</text>
+  <text class="m" x="168" y="36" font-size="15" font-weight="600" fill="#1f2419">daily_ingest</text>
+  <rect class="chip" x="958" y="14" width="24" height="22" rx="2"/>
+  <path d="M967 20l8 5-8 5z" fill="#4a5340"/>
+
+  <g class="t dim">
+    <text x="168" y="62">4 steps</text><text x="222" y="62">3 dependencies</text>
+    <text class="m" x="322" y="62">0 5 * * *</text>
+  </g>
+  <rect class="chip" x="394" y="52" width="26" height="14" rx="2"/><text class="t" x="401" y="62" font-size="7.5" fill="#4a5340">dbt</text>
+  <rect class="chip" x="426" y="52" width="30" height="14" rx="2"/><text class="t" x="433" y="62" font-size="7.5" fill="#4a5340">gold</text>
+
+  <rect class="card" x="168" y="78" width="814" height="66" rx="2"/>
+  <text class="m lbl" x="182" y="96">RUN WITH PARAMETERS</text>
+  <text class="t" x="182" y="112" font-size="8.5" fill="#4a5340">load_full</text>
+  <rect class="card" x="182" y="118" width="120" height="18" rx="2"/>
+  <text class="t" x="190" y="131" font-size="8.5" fill="#1f2419">false</text>
+  <path class="rule" d="M288 126l3 3 3-3" stroke="#8b9280" stroke-width="1.1"/>
+  <text class="t" x="316" y="112" font-size="8.5" fill="#4a5340">start_date</text>
+  <rect class="card" x="316" y="118" width="120" height="18" rx="2"/>
+  <text class="m" x="324" y="131" font-size="8.5" fill="#1f2419">2026-09-09</text>
+  <rect x="450" y="118" width="46" height="18" rx="2" fill="#1f2419"/>
+  <text class="t" x="473" y="131" font-size="8.5" fill="#fff" text-anchor="middle">Run</text>
+
+  <rect class="card" x="168" y="154" width="196" height="58" rx="2"/>
+  <text class="m lbl" x="180" y="170">SUCCESS RATE</text>
+  <text class="t ok" x="180" y="192" font-size="19" font-weight="600">96.1%</text>
+  <text class="t dim" x="180" y="206">169 of 176 finished</text>
+  <rect class="card" x="374" y="154" width="196" height="58" rx="2"/>
+  <text class="m lbl" x="386" y="170">FAILURE RATE</text>
+  <text class="t bad" x="386" y="192" font-size="19" font-weight="600">3.9%</text>
+  <text class="t dim" x="386" y="206">7 runs failed</text>
+  <rect class="card" x="580" y="154" width="196" height="58" rx="2"/>
+  <text class="m lbl" x="592" y="170">MEAN DURATION</text>
+  <text class="t " x="592" y="192" font-size="19" font-weight="600" fill="#1f2419">1m 49s</text>
+  <text class="t dim" x="592" y="206">over 30 days</text>
+  <rect class="card" x="786" y="154" width="196" height="58" rx="2"/>
+  <text class="m lbl" x="798" y="170">OPEN</text>
+  <text class="t op" x="798" y="192" font-size="19" font-weight="600">0</text>
+  <text class="t dim" x="798" y="206">nothing in flight</text>
+  <rect class="card" x="168" y="222" width="814" height="110" rx="2"/>
+  <rect x="169" y="223" width="812" height="108" fill="url(#dots)" opacity=".7"/>
+  <rect class="node" x="220" y="244" width="152" height="66" rx="3"/>
+  <circle cx="230" cy="260" r="3.4" fill="#4c7a56"/>
+  <text class="m" x="240" y="263" font-size="10" font-weight="600" fill="#1f2419">extract</text>
+  <rect class="chip" x="230" y="272" width="19" height="13" rx="2"/><text class="t" x="234" y="282" font-size="7.5" fill="#4a5340">go</text>
+  <text class="t" x="230" y="300" font-size="8" fill="#4c7a56">success</text>
+  <path class="arr" d="M372 277h34"/><path d="M396 274l4 3-4 3z" fill="#c8ccbe"/>
+  <rect class="node" x="406" y="244" width="152" height="66" rx="3"/>
+  <circle cx="416" cy="260" r="3.4" fill="#4c7a56"/>
+  <text class="m" x="426" y="263" font-size="10" font-weight="600" fill="#1f2419">prepare</text>
+  <rect class="chip" x="416" y="272" width="38" height="13" rx="2"/><text class="t" x="420" y="282" font-size="7.5" fill="#4a5340">python</text>
+  <text class="t" x="416" y="300" font-size="8" fill="#4c7a56">success</text>
+  <path class="arr" d="M558 277h34"/><path d="M582 274l4 3-4 3z" fill="#c8ccbe"/>
+  <rect class="node" x="592" y="244" width="152" height="66" rx="3"/>
+  <circle cx="602" cy="260" r="3.4" fill="#3f6d8f"/>
+  <text class="m" x="612" y="263" font-size="10" font-weight="600" fill="#1f2419">load</text>
+  <rect class="chip" x="602" y="272" width="19" height="13" rx="2"/><text class="t" x="606" y="282" font-size="7.5" fill="#4a5340">go</text>
+  <text class="t" x="602" y="300" font-size="8" fill="#3f6d8f">running</text>
+  <path class="arr" d="M744 277h34"/><path d="M768 274l4 3-4 3z" fill="#c8ccbe"/>
+  <rect class="node" x="778" y="244" width="152" height="66" rx="3"/>
+  <circle cx="788" cy="260" r="3.4" fill="#c8ccbe"/>
+  <text class="m" x="798" y="263" font-size="10" font-weight="600" fill="#1f2419">transform</text>
+  <rect class="chip" x="788" y="272" width="24" height="13" rx="2"/><text class="t" x="792" y="282" font-size="7.5" fill="#4a5340">dbt</text>
+  <text class="t" x="788" y="300" font-size="8" fill="#c8ccbe">pending</text>
+  <rect class="card" x="176" y="312" width="16" height="16" rx="2"/><path class="rule" d="M181 320h6M184 317v6" stroke="#4a5340"/>
+  <rect class="card" x="196" y="312" width="16" height="16" rx="2"/><path class="rule" d="M201 320h6" stroke="#4a5340"/>
+  <text class="t dim" x="972" y="326" font-size="6.5" text-anchor="end" fill="#c8ccbe">React Flow</text>
+  <rect class="card" x="168" y="342" width="814" height="142" rx="2"/>
+  <text class="m lbl" x="182" y="362">A YEAR OF RUNS</text>
+  <text class="t dim" x="290" y="362" font-size="8">One square per day — the colour is the day's worst outcome, not how much ran.</text>
+  <g>
+    <use href="#d" x="250" y="382" class="non"/>
+    <use href="#d" x="250" y="393" class="non"/>
+    <use href="#d" x="250" y="404" class="non"/>
+    <use href="#d" x="250" y="415" class="non"/>
+    <use href="#d" x="250" y="426" class="non"/>
+    <use href="#d" x="250" y="437" class="non"/>
+    <use href="#d" x="250" y="448" class="non"/>
+    <use href="#d" x="261" y="382" class="non"/>
+    <use href="#d" x="261" y="393" class="non"/>
+    <use href="#d" x="261" y="404" class="non"/>
+    <use href="#d" x="261" y="415" class="non"/>
+    <use href="#d" x="261" y="426" class="non"/>
+    <use href="#d" x="261" y="437" class="non"/>
+    <use href="#d" x="261" y="448" class="non"/>
+    <use href="#d" x="272" y="382" class="non"/>
+    <use href="#d" x="272" y="393" class="non"/>
+    <use href="#d" x="272" y="404" class="non"/>
+    <use href="#d" x="272" y="415" class="non"/>
+    <use href="#d" x="272" y="426" class="non"/>
+    <use href="#d" x="272" y="437" class="non"/>
+    <use href="#d" x="272" y="448" class="non"/>
+    <use href="#d" x="283" y="382" class="non"/>
+    <use href="#d" x="283" y="393" class="non"/>
+    <use href="#d" x="283" y="404" class="non"/>
+    <use href="#d" x="283" y="415" class="non"/>
+    <use href="#d" x="283" y="426" class="non"/>
+    <use href="#d" x="283" y="437" class="non"/>
+    <use href="#d" x="283" y="448" class="non"/>
+    <use href="#d" x="294" y="382" class="ok"/>
+    <use href="#d" x="294" y="393" class="ok"/>
+    <use href="#d" x="294" y="404" class="ok"/>
+    <use href="#d" x="294" y="415" class="ok"/>
+    <use href="#d" x="294" y="426" class="ok"/>
+    <use href="#d" x="294" y="437" class="ok"/>
+    <use href="#d" x="294" y="448" class="ok"/>
+    <use href="#d" x="305" y="382" class="ok"/>
+    <use href="#d" x="305" y="393" class="ok"/>
+    <use href="#d" x="305" y="404" class="ok"/>
+    <use href="#d" x="305" y="415" class="ok"/>
+    <use href="#d" x="305" y="426" class="ok"/>
+    <use href="#d" x="305" y="437" class="ok"/>
+    <use href="#d" x="305" y="448" class="ok"/>
+    <use href="#d" x="316" y="382" class="ok"/>
+    <use href="#d" x="316" y="393" class="op"/>
+    <use href="#d" x="316" y="404" class="ok"/>
+    <use href="#d" x="316" y="415" class="ok"/>
+    <use href="#d" x="316" y="426" class="ok"/>
+    <use href="#d" x="316" y="437" class="ok"/>
+    <use href="#d" x="316" y="448" class="ok"/>
+    <use href="#d" x="327" y="382" class="ok"/>
+    <use href="#d" x="327" y="393" class="bad"/>
+    <use href="#d" x="327" y="404" class="ok"/>
+    <use href="#d" x="327" y="415" class="ok"/>
+    <use href="#d" x="327" y="426" class="ok"/>
+    <use href="#d" x="327" y="437" class="ok"/>
+    <use href="#d" x="327" y="448" class="ok"/>
+    <use href="#d" x="338" y="382" class="op"/>
+    <use href="#d" x="338" y="393" class="ok"/>
+    <use href="#d" x="338" y="404" class="ok"/>
+    <use href="#d" x="338" y="415" class="ok"/>
+    <use href="#d" x="338" y="426" class="ok"/>
+    <use href="#d" x="338" y="437" class="ok"/>
+    <use href="#d" x="338" y="448" class="ok"/>
+    <use href="#d" x="349" y="382" class="ok"/>
+    <use href="#d" x="349" y="393" class="ok"/>
+    <use href="#d" x="349" y="404" class="ok"/>
+    <use href="#d" x="349" y="415" class="ok"/>
+    <use href="#d" x="349" y="426" class="bad"/>
+    <use href="#d" x="349" y="437" class="ok"/>
+    <use href="#d" x="349" y="448" class="ok"/>
+    <use href="#d" x="360" y="382" class="ok"/>
+    <use href="#d" x="360" y="393" class="ok"/>
+    <use href="#d" x="360" y="404" class="ok"/>
+    <use href="#d" x="360" y="415" class="ok"/>
+    <use href="#d" x="360" y="426" class="ok"/>
+    <use href="#d" x="360" y="437" class="ok"/>
+    <use href="#d" x="360" y="448" class="ok"/>
+    <use href="#d" x="371" y="382" class="ok"/>
+    <use href="#d" x="371" y="393" class="ok"/>
+    <use href="#d" x="371" y="404" class="ok"/>
+    <use href="#d" x="371" y="415" class="ok"/>
+    <use href="#d" x="371" y="426" class="ok"/>
+    <use href="#d" x="371" y="437" class="ok"/>
+    <use href="#d" x="371" y="448" class="ok"/>
+    <use href="#d" x="382" y="382" class="ok"/>
+    <use href="#d" x="382" y="393" class="ok"/>
+    <use href="#d" x="382" y="404" class="ok"/>
+    <use href="#d" x="382" y="415" class="ok"/>
+    <use href="#d" x="382" y="426" class="ok"/>
+    <use href="#d" x="382" y="437" class="ok"/>
+    <use href="#d" x="382" y="448" class="ok"/>
+    <use href="#d" x="393" y="382" class="ok"/>
+    <use href="#d" x="393" y="393" class="ok"/>
+    <use href="#d" x="393" y="404" class="ok"/>
+    <use href="#d" x="393" y="415" class="ok"/>
+    <use href="#d" x="393" y="426" class="op"/>
+    <use href="#d" x="393" y="437" class="ok"/>
+    <use href="#d" x="393" y="448" class="ok"/>
+    <use href="#d" x="404" y="382" class="ok"/>
+    <use href="#d" x="404" y="393" class="ok"/>
+    <use href="#d" x="404" y="404" class="ok"/>
+    <use href="#d" x="404" y="415" class="ok"/>
+    <use href="#d" x="404" y="426" class="ok"/>
+    <use href="#d" x="404" y="437" class="ok"/>
+    <use href="#d" x="404" y="448" class="ok"/>
+    <use href="#d" x="415" y="382" class="ok"/>
+    <use href="#d" x="415" y="393" class="ok"/>
+    <use href="#d" x="415" y="404" class="ok"/>
+    <use href="#d" x="415" y="415" class="ok"/>
+    <use href="#d" x="415" y="426" class="ok"/>
+    <use href="#d" x="415" y="437" class="ok"/>
+    <use href="#d" x="415" y="448" class="ok"/>
+    <use href="#d" x="426" y="382" class="ok"/>
+    <use href="#d" x="426" y="393" class="ok"/>
+    <use href="#d" x="426" y="404" class="ok"/>
+    <use href="#d" x="426" y="415" class="ok"/>
+    <use href="#d" x="426" y="426" class="ok"/>
+    <use href="#d" x="426" y="437" class="ok"/>
+    <use href="#d" x="426" y="448" class="ok"/>
+    <use href="#d" x="437" y="382" class="ok"/>
+    <use href="#d" x="437" y="393" class="bad"/>
+    <use href="#d" x="437" y="404" class="ok"/>
+    <use href="#d" x="437" y="415" class="ok"/>
+    <use href="#d" x="437" y="426" class="ok"/>
+    <use href="#d" x="437" y="437" class="ok"/>
+    <use href="#d" x="437" y="448" class="ok"/>
+    <use href="#d" x="448" y="382" class="ok"/>
+    <use href="#d" x="448" y="393" class="ok"/>
+    <use href="#d" x="448" y="404" class="ok"/>
+    <use href="#d" x="448" y="415" class="ok"/>
+    <use href="#d" x="448" y="426" class="op"/>
+    <use href="#d" x="448" y="437" class="ok"/>
+    <use href="#d" x="448" y="448" class="ok"/>
+    <use href="#d" x="459" y="382" class="ok"/>
+    <use href="#d" x="459" y="393" class="ok"/>
+    <use href="#d" x="459" y="404" class="ok"/>
+    <use href="#d" x="459" y="415" class="ok"/>
+    <use href="#d" x="459" y="426" class="ok"/>
+    <use href="#d" x="459" y="437" class="bad"/>
+    <use href="#d" x="459" y="448" class="ok"/>
+    <use href="#d" x="470" y="382" class="ok"/>
+    <use href="#d" x="470" y="393" class="op"/>
+    <use href="#d" x="470" y="404" class="ok"/>
+    <use href="#d" x="470" y="415" class="ok"/>
+    <use href="#d" x="470" y="426" class="ok"/>
+    <use href="#d" x="470" y="437" class="ok"/>
+    <use href="#d" x="470" y="448" class="ok"/>
+    <use href="#d" x="481" y="382" class="ok"/>
+    <use href="#d" x="481" y="393" class="ok"/>
+    <use href="#d" x="481" y="404" class="ok"/>
+    <use href="#d" x="481" y="415" class="ok"/>
+    <use href="#d" x="481" y="426" class="ok"/>
+    <use href="#d" x="481" y="437" class="ok"/>
+    <use href="#d" x="481" y="448" class="bad"/>
+    <use href="#d" x="492" y="382" class="bad"/>
+    <use href="#d" x="492" y="393" class="ok"/>
+    <use href="#d" x="492" y="404" class="ok"/>
+    <use href="#d" x="492" y="415" class="ok"/>
+    <use href="#d" x="492" y="426" class="bad"/>
+    <use href="#d" x="492" y="437" class="ok"/>
+    <use href="#d" x="492" y="448" class="ok"/>
+    <use href="#d" x="503" y="382" class="ok"/>
+    <use href="#d" x="503" y="393" class="ok"/>
+    <use href="#d" x="503" y="404" class="ok"/>
+    <use href="#d" x="503" y="415" class="op"/>
+    <use href="#d" x="503" y="426" class="ok"/>
+    <use href="#d" x="503" y="437" class="ok"/>
+    <use href="#d" x="503" y="448" class="ok"/>
+    <use href="#d" x="514" y="382" class="ok"/>
+    <use href="#d" x="514" y="393" class="ok"/>
+    <use href="#d" x="514" y="404" class="ok"/>
+    <use href="#d" x="514" y="415" class="ok"/>
+    <use href="#d" x="514" y="426" class="ok"/>
+    <use href="#d" x="514" y="437" class="ok"/>
+    <use href="#d" x="514" y="448" class="ok"/>
+    <use href="#d" x="525" y="382" class="ok"/>
+    <use href="#d" x="525" y="393" class="ok"/>
+    <use href="#d" x="525" y="404" class="ok"/>
+    <use href="#d" x="525" y="415" class="ok"/>
+    <use href="#d" x="525" y="426" class="ok"/>
+    <use href="#d" x="525" y="437" class="ok"/>
+    <use href="#d" x="525" y="448" class="ok"/>
+    <use href="#d" x="536" y="382" class="ok"/>
+    <use href="#d" x="536" y="393" class="ok"/>
+    <use href="#d" x="536" y="404" class="op"/>
+    <use href="#d" x="536" y="415" class="ok"/>
+    <use href="#d" x="536" y="426" class="ok"/>
+    <use href="#d" x="536" y="437" class="ok"/>
+    <use href="#d" x="536" y="448" class="ok"/>
+    <use href="#d" x="547" y="382" class="ok"/>
+    <use href="#d" x="547" y="393" class="ok"/>
+    <use href="#d" x="547" y="404" class="ok"/>
+    <use href="#d" x="547" y="415" class="ok"/>
+    <use href="#d" x="547" y="426" class="ok"/>
+    <use href="#d" x="547" y="437" class="op"/>
+    <use href="#d" x="547" y="448" class="ok"/>
+    <use href="#d" x="558" y="382" class="bad"/>
+    <use href="#d" x="558" y="393" class="ok"/>
+    <use href="#d" x="558" y="404" class="ok"/>
+    <use href="#d" x="558" y="415" class="ok"/>
+    <use href="#d" x="558" y="426" class="ok"/>
+    <use href="#d" x="558" y="437" class="ok"/>
+    <use href="#d" x="558" y="448" class="ok"/>
+    <use href="#d" x="569" y="382" class="ok"/>
+    <use href="#d" x="569" y="393" class="ok"/>
+    <use href="#d" x="569" y="404" class="bad"/>
+    <use href="#d" x="569" y="415" class="ok"/>
+    <use href="#d" x="569" y="426" class="ok"/>
+    <use href="#d" x="569" y="437" class="ok"/>
+    <use href="#d" x="569" y="448" class="ok"/>
+    <use href="#d" x="580" y="382" class="ok"/>
+    <use href="#d" x="580" y="393" class="ok"/>
+    <use href="#d" x="580" y="404" class="ok"/>
+    <use href="#d" x="580" y="415" class="ok"/>
+    <use href="#d" x="580" y="426" class="ok"/>
+    <use href="#d" x="580" y="437" class="ok"/>
+    <use href="#d" x="580" y="448" class="ok"/>
+    <use href="#d" x="591" y="382" class="ok"/>
+    <use href="#d" x="591" y="393" class="ok"/>
+    <use href="#d" x="591" y="404" class="ok"/>
+    <use href="#d" x="591" y="415" class="ok"/>
+    <use href="#d" x="591" y="426" class="ok"/>
+    <use href="#d" x="591" y="437" class="ok"/>
+    <use href="#d" x="591" y="448" class="ok"/>
+    <use href="#d" x="602" y="382" class="ok"/>
+    <use href="#d" x="602" y="393" class="ok"/>
+    <use href="#d" x="602" y="404" class="ok"/>
+    <use href="#d" x="602" y="415" class="ok"/>
+    <use href="#d" x="602" y="426" class="ok"/>
+    <use href="#d" x="602" y="437" class="ok"/>
+    <use href="#d" x="602" y="448" class="ok"/>
+    <use href="#d" x="613" y="382" class="ok"/>
+    <use href="#d" x="613" y="393" class="ok"/>
+    <use href="#d" x="613" y="404" class="ok"/>
+    <use href="#d" x="613" y="415" class="ok"/>
+    <use href="#d" x="613" y="426" class="ok"/>
+    <use href="#d" x="613" y="437" class="ok"/>
+    <use href="#d" x="613" y="448" class="ok"/>
+    <use href="#d" x="624" y="382" class="ok"/>
+    <use href="#d" x="624" y="393" class="ok"/>
+    <use href="#d" x="624" y="404" class="ok"/>
+    <use href="#d" x="624" y="415" class="ok"/>
+    <use href="#d" x="624" y="426" class="op"/>
+    <use href="#d" x="624" y="437" class="bad"/>
+    <use href="#d" x="624" y="448" class="ok"/>
+    <use href="#d" x="635" y="382" class="bad"/>
+    <use href="#d" x="635" y="393" class="ok"/>
+    <use href="#d" x="635" y="404" class="ok"/>
+    <use href="#d" x="635" y="415" class="ok"/>
+    <use href="#d" x="635" y="426" class="ok"/>
+    <use href="#d" x="635" y="437" class="bad"/>
+    <use href="#d" x="635" y="448" class="ok"/>
+    <use href="#d" x="646" y="382" class="ok"/>
+    <use href="#d" x="646" y="393" class="bad"/>
+    <use href="#d" x="646" y="404" class="ok"/>
+    <use href="#d" x="646" y="415" class="ok"/>
+    <use href="#d" x="646" y="426" class="ok"/>
+    <use href="#d" x="646" y="437" class="bad"/>
+    <use href="#d" x="646" y="448" class="ok"/>
+    <use href="#d" x="657" y="382" class="ok"/>
+    <use href="#d" x="657" y="393" class="ok"/>
+    <use href="#d" x="657" y="404" class="ok"/>
+    <use href="#d" x="657" y="415" class="ok"/>
+    <use href="#d" x="657" y="426" class="ok"/>
+    <use href="#d" x="657" y="437" class="ok"/>
+    <use href="#d" x="657" y="448" class="ok"/>
+    <use href="#d" x="668" y="382" class="ok"/>
+    <use href="#d" x="668" y="393" class="ok"/>
+    <use href="#d" x="668" y="404" class="bad"/>
+    <use href="#d" x="668" y="415" class="ok"/>
+    <use href="#d" x="668" y="426" class="ok"/>
+    <use href="#d" x="668" y="437" class="ok"/>
+    <use href="#d" x="668" y="448" class="ok"/>
+    <use href="#d" x="679" y="382" class="ok"/>
+    <use href="#d" x="679" y="393" class="ok"/>
+    <use href="#d" x="679" y="404" class="ok"/>
+    <use href="#d" x="679" y="415" class="ok"/>
+    <use href="#d" x="679" y="426" class="ok"/>
+    <use href="#d" x="679" y="437" class="ok"/>
+    <use href="#d" x="679" y="448" class="ok"/>
+    <use href="#d" x="690" y="382" class="ok"/>
+    <use href="#d" x="690" y="393" class="ok"/>
+    <use href="#d" x="690" y="404" class="ok"/>
+    <use href="#d" x="690" y="415" class="ok"/>
+    <use href="#d" x="690" y="426" class="ok"/>
+    <use href="#d" x="690" y="437" class="ok"/>
+    <use href="#d" x="690" y="448" class="ok"/>
+    <use href="#d" x="701" y="382" class="ok"/>
+    <use href="#d" x="701" y="393" class="ok"/>
+    <use href="#d" x="701" y="404" class="ok"/>
+    <use href="#d" x="701" y="415" class="ok"/>
+    <use href="#d" x="701" y="426" class="ok"/>
+    <use href="#d" x="701" y="437" class="ok"/>
+    <use href="#d" x="701" y="448" class="ok"/>
+    <use href="#d" x="712" y="382" class="ok"/>
+    <use href="#d" x="712" y="393" class="ok"/>
+    <use href="#d" x="712" y="404" class="ok"/>
+    <use href="#d" x="712" y="415" class="ok"/>
+    <use href="#d" x="712" y="426" class="ok"/>
+    <use href="#d" x="712" y="437" class="ok"/>
+    <use href="#d" x="712" y="448" class="ok"/>
+    <use href="#d" x="723" y="382" class="ok"/>
+    <use href="#d" x="723" y="393" class="ok"/>
+    <use href="#d" x="723" y="404" class="ok"/>
+    <use href="#d" x="723" y="415" class="ok"/>
+    <use href="#d" x="723" y="426" class="ok"/>
+    <use href="#d" x="723" y="437" class="ok"/>
+    <use href="#d" x="723" y="448" class="ok"/>
+    <use href="#d" x="734" y="382" class="ok"/>
+    <use href="#d" x="734" y="393" class="ok"/>
+    <use href="#d" x="734" y="404" class="op"/>
+    <use href="#d" x="734" y="415" class="ok"/>
+    <use href="#d" x="734" y="426" class="ok"/>
+    <use href="#d" x="734" y="437" class="ok"/>
+    <use href="#d" x="734" y="448" class="ok"/>
+    <use href="#d" x="745" y="382" class="bad"/>
+    <use href="#d" x="745" y="393" class="ok"/>
+    <use href="#d" x="745" y="404" class="op"/>
+    <use href="#d" x="745" y="415" class="ok"/>
+    <use href="#d" x="745" y="426" class="ok"/>
+    <use href="#d" x="745" y="437" class="ok"/>
+    <use href="#d" x="745" y="448" class="ok"/>
+    <use href="#d" x="756" y="382" class="ok"/>
+    <use href="#d" x="756" y="393" class="ok"/>
+    <use href="#d" x="756" y="404" class="ok"/>
+    <use href="#d" x="756" y="415" class="ok"/>
+    <use href="#d" x="756" y="426" class="ok"/>
+    <use href="#d" x="756" y="437" class="ok"/>
+    <use href="#d" x="756" y="448" class="ok"/>
+    <use href="#d" x="767" y="382" class="ok"/>
+    <use href="#d" x="767" y="393" class="ok"/>
+    <use href="#d" x="767" y="404" class="ok"/>
+    <use href="#d" x="767" y="415" class="ok"/>
+    <use href="#d" x="767" y="426" class="ok"/>
+    <use href="#d" x="767" y="437" class="ok"/>
+    <use href="#d" x="767" y="448" class="ok"/>
+    <use href="#d" x="778" y="382" class="ok"/>
+    <use href="#d" x="778" y="393" class="ok"/>
+    <use href="#d" x="778" y="404" class="ok"/>
+    <use href="#d" x="778" y="415" class="ok"/>
+    <use href="#d" x="778" y="426" class="ok"/>
+    <use href="#d" x="778" y="437" class="ok"/>
+    <use href="#d" x="778" y="448" class="ok"/>
+    <use href="#d" x="789" y="382" class="ok"/>
+    <use href="#d" x="789" y="393" class="ok"/>
+    <use href="#d" x="789" y="404" class="ok"/>
+    <use href="#d" x="789" y="415" class="ok"/>
+    <use href="#d" x="789" y="426" class="ok"/>
+    <use href="#d" x="789" y="437" class="ok"/>
+    <use href="#d" x="789" y="448" class="ok"/>
+    <use href="#d" x="800" y="382" class="ok"/>
+    <use href="#d" x="800" y="393" class="ok"/>
+    <use href="#d" x="800" y="404" class="ok"/>
+    <use href="#d" x="800" y="415" class="bad"/>
+    <use href="#d" x="800" y="426" class="ok"/>
+    <use href="#d" x="800" y="437" class="ok"/>
+    <use href="#d" x="800" y="448" class="ok"/>
+    <use href="#d" x="811" y="382" class="ok"/>
+    <use href="#d" x="811" y="393" class="ok"/>
+    <use href="#d" x="811" y="404" class="ok"/>
+    <use href="#d" x="811" y="415" class="ok"/>
+    <use href="#d" x="811" y="426" class="op"/>
+    <use href="#d" x="811" y="437" class="ok"/>
+    <use href="#d" x="811" y="448" class="ok"/>
+  </g>
+  <text class="t dim" x="224" y="389" font-size="7">Mon</text>
+  <text class="t dim" x="224" y="411" font-size="7">Wed</text>
+  <text class="t dim" x="224" y="433" font-size="7">Fri</text>
+  <text class="t dim" x="250" y="377" font-size="7">Oct</text>
+  <text class="t dim" x="298" y="377" font-size="7">Nov</text>
+  <text class="t dim" x="345" y="377" font-size="7">Dec</text>
+  <text class="t dim" x="393" y="377" font-size="7">Jan</text>
+  <text class="t dim" x="441" y="377" font-size="7">Feb</text>
+  <text class="t dim" x="488" y="377" font-size="7">Mar</text>
+  <text class="t dim" x="536" y="377" font-size="7">Apr</text>
+  <text class="t dim" x="583" y="377" font-size="7">May</text>
+  <text class="t dim" x="631" y="377" font-size="7">Jun</text>
+  <text class="t dim" x="679" y="377" font-size="7">Jul</text>
+  <text class="t dim" x="726" y="377" font-size="7">Aug</text>
+  <text class="t dim" x="774" y="377" font-size="7">Sep</text>
+  <rect x="182" y="466" width="7" height="7" rx="1.5" class="ok"/><text class="t dim" x="193" y="472" font-size="7.5">all succeeded</text>
+  <rect x="278" y="466" width="7" height="7" rx="1.5" class="bad"/><text class="t dim" x="289" y="472" font-size="7.5">some failed</text>
+  <rect x="374" y="466" width="7" height="7" rx="1.5" class="op"/><text class="t dim" x="385" y="472" font-size="7.5">still open</text>
+  <rect x="470" y="466" width="7" height="7" rx="1.5" class="non" stroke="#dfe2d6" stroke-width=".6"/><text class="t dim" x="481" y="472" font-size="7.5">no run</text>
+  <rect class="card" x="168" y="494" width="814" height="88" rx="2"/>
+  <text class="m lbl" x="182" y="512">THIS WORKFLOW'S RUNS</text>
+  <text class="t dim" x="968" y="512" text-anchor="end" font-size="8">see all</text>
+  <g class="m lbl" fill="#8b9280">
+    <text x="182" y="530">STATE</text><text x="300" y="530">TRIGGER</text>
+    <text x="400" y="530">SLOT</text><text x="620" y="530">DURATION</text><text x="720" y="530">CREATED</text>
+  </g>
+  <path class="rule" d="M182 536h786"/>
+  <rect x="182" y="545" width="48" height="13" rx="2" fill="#e7efe8"/><circle cx="190" cy="551" r="2.2" class="ok"/><text class="t ok" x="197" y="554" font-size="7.5">success</text>
+  <text class="t bad" x="236" y="554" font-size="7.5">attempt 2</text>
+  <text class="t dim" x="300" y="554">schedule</text><text class="m dim" x="400" y="554">2026-09-09 05:00 UTC</text><text class="m dim" x="620" y="554">1m 24s</text><text class="t dim" x="720" y="554">55 min ago</text>
+  <rect x="182" y="565" width="48" height="13" rx="2" fill="#e7efe8"/><circle cx="190" cy="571" r="2.2" class="ok"/><text class="t ok" x="197" y="574" font-size="7.5">success</text>
+  <text class="t dim" x="300" y="574">schedule</text><text class="m dim" x="400" y="574">2026-09-08 05:00 UTC</text><text class="m dim" x="620" y="574">1m 33s</text><text class="t dim" x="720" y="574">1d ago</text>
+</svg>
