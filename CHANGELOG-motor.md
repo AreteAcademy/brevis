@@ -9,6 +9,44 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.11.2] — 2026-09-09
+
+No migration.
+
+### Fixed: the account menu shipped OPEN
+
+`<details open>` reached `v0.11.1`. The attribute was added to photograph the
+menu and never taken out — so every page loaded with the dropdown expanded,
+covering the navigation under it.
+
+### Changed: the sidebar's footer
+
+The installation's phrase moved **inside** the menu, and `Powered by Brevis`
+is gone from the sidebar (it remains on the sign-in screen). The phrase was a
+paragraph of prose sitting between the navigation and the only two things down
+there anybody clicks; inside the menu it is still the customer's voice and
+costs nothing until the menu is open.
+
+### Added: a workflow's own statistics
+
+The four numbers the dashboard opens with, scoped to one workflow, plus a
+calendar heatmap of the year.
+
+The window is **thirty days**, not the dashboard's twenty-four hours. The two
+screens answer different questions: "is the installation healthy right now" is
+a day, and "is this pipeline reliable" is not — a daily job has one run in
+twenty-four hours, and a success rate over a single sample is not a rate.
+
+**The calendar's colour is the day's worst outcome, not its volume.** GitHub
+encodes how much happened because that is its question; the question here is
+when a pipeline broke, and a heatmap where a busy Tuesday and a broken Tuesday
+are both dark answers neither. Volume is what the bar chart already draws.
+
+Each square links to that day's runs. It is server-rendered SVG like every
+other chart here: no library, present in the first response, and it prints.
+
+---
+
 ## [0.11.1] — 2026-09-09
 
 No migration. An account menu, a Projects screen that does something, and three

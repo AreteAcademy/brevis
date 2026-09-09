@@ -42,7 +42,7 @@ spec:
             seccompProfile: {type: RuntimeDefault}
           containers:
             - name: report
-              image: daniel3843/brevis:0.11.1-worker
+              image: daniel3843/brevis:0.11.2-worker
               # The window MATCHES the schedule above. 168h is seven days.
               args: ["report", "--window", "168h"]
               env:
