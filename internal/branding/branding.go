@@ -84,6 +84,14 @@ const DefaultLogo = "/assets/logo.svg"
 // thing on the screen the customer does not choose.
 const Attribution = "Powered by Brevis"
 
+// DocsURL is where the sidebar's Documentation link goes.
+//
+// Fixed for the same reason Attribution is: it is Brevis's documentation, and
+// an installation that pointed it somewhere else would be sending an operator
+// to a page that does not describe the thing they are operating. A customer's
+// own runbook is a different link, and would be a different field.
+const DocsURL = "https://brevis.sh/docs/"
+
 // Default is the default identity, used when there is no brand file.
 func Default() Brand {
 	return Brand{

@@ -26,18 +26,38 @@ nenhum nenhuma nenhuns todos todas buscar salvar excluir apagar voltar proximo p
 anterior passos etapas execucao execução execucoes falhou falha sucesso tentativa
 tentativas agendado agendada andamento curso hoje ontem amanha amanhã nome acao ação
 acoes ações usuario usuário senha entrar sair painel fila filas disparar disparo
-resultado resultados erro erros aviso avisos carregando enviar cancelar confirmar"""
+resultado resultados erro erros aviso avisos carregando enviar cancelar confirmar
+fechar remover filtro filtros limpar abrir editar adicionar
+de"""
+
+# `de` is on that list despite being two letters. In an English interface a bare
+# "de" is Portuguese, and it shipped: the workflows screen read "de 5" for as
+# long as that screen existed, because the pattern that should have caught it
+# skipped any text holding an interpolation. If this ever fires on "de facto",
+# that is the day to reconsider it.
 PT = re.compile(r"\b(" + "|".join(WORDS.split()) + r")\b", re.I)
 
-# Where visible text hides in a .templ file. The third pattern is the one the
-# first version of this check MISSED: `@th("Origem", "")` is a component
-# argument, not text between tags, and two of the five leaks were exactly that.
+# Where visible text hides in a .templ file. Two of these were added AFTER a
+# leak got past the check, and each is a shape the previous version could not
+# see:
+#
+#   `@th("Origem", "")`            a component argument, not text between tags
+#   `>of { fmt.Sprint(total) }<`   text MIXED with interpolation. The first
+#                                  pattern excluded `{` and `}`, so a span
+#                                  holding both a word and a value was skipped
+#                                  entirely -- and "de 5" shipped on the
+#                                  workflows screen.
+#
+# The interpolations are stripped before the words are checked: `fmt.Sprint` is
+# Go, not prose, and matching inside it would flag identifiers forever.
 PATTERNS = [
-    re.compile(r">([^<>{}]+)<"),                                   # between tags
+    re.compile(r">([^<>]+)<"),                                    # between tags
     re.compile(r'(?:placeholder|title|aria-label|alt)="([^"]+)"'), # attributes
     re.compile(r'@\w+\(\s*"([^"]+)"'),                             # component arguments
     re.compile(r'\{\s*"([^"]+)"\s*\}'),                            # templ literals
 ]
+
+INTERPOLATION = re.compile(r"\{[^{}]*\}")
 
 bad = []
 for path in sorted(pathlib.Path("web").rglob("*.templ")):
@@ -46,10 +66,11 @@ for path in sorted(pathlib.Path("web").rglob("*.templ")):
         if stripped.startswith("//"):
             continue  # comments are checked by the reader, not by this
         for pat in PATTERNS:
-            for text in pat.findall(line):
+            for raw in pat.findall(line):
+                text = INTERPOLATION.sub(" ", raw)
                 m = PT.search(text)
                 if m and text.strip():
-                    bad.append((path, n, m.group(0), text.strip()[:60]))
+                    bad.append((path, n, m.group(0), raw.strip()[:60]))
 
 if bad:
     for path, n, word, text in bad:

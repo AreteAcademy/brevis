@@ -115,6 +115,65 @@ templ Base(p Page) {
 	</html>
 }
 
+// accountMenu is the sidebar's bottom button and its dropdown.
+templ accountMenu(operator string) {
+	<details open class="account-menu relative border-t border-line px-2 py-2">
+		<summary
+			class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>
+			<span class="flex min-w-0 items-center gap-2">
+				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+					<circle cx="8" cy="5.5" r="2.75"></circle>
+					<path d="M2.5 14c0-2.6 2.5-4.2 5.5-4.2s5.5 1.6 5.5 4.2"></path>
+				</svg>
+				if operator != "" {
+					<span class="truncate">{ operator }</span>
+				} else {
+					<span class="truncate">Account</span>
+				}
+			</span>
+			// Rotates when the menu opens, which is the only thing that says
+			// the button is a menu before it is clicked.
+			<svg class="account-menu-arrow h-3.5 w-3.5 shrink-0 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+				<path d="M4 10l4-4 4 4"></path>
+			</svg>
+		</summary>
+		// It opens UPWARDS: the button is at the bottom of the sidebar, and a
+		// menu that dropped down would be drawn past the edge of the window.
+		<div class="absolute right-2 bottom-full left-2 mb-1 overflow-hidden rounded-card border border-line bg-surface py-1 shadow-warm">
+			<a
+				href={ templ.SafeURL(branding.DocsURL) }
+				target="_blank"
+				rel="noreferrer"
+				class="flex items-center gap-2.5 px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+			>
+				<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+					<path d="M3 2.5h6.5L13 6v7.5H3z"></path>
+					<path d="M9.5 2.5V6H13"></path>
+				</svg>
+				Documentation
+			</a>
+			if operator != "" {
+				<form method="post" action="/logout">
+					// A POST, and not a link. A GET that signs somebody out is
+					// a URL anybody can put in an <img> on another page.
+					<button
+						type="submit"
+						class="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+					>
+						<svg class="h-4 w-4 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+							<path d="M6.5 13.5H3.5v-11h3"></path>
+							<path d="M9.5 11l2.5-3-2.5-3"></path>
+							<path d="M12 8H6"></path>
+						</svg>
+						Sign out
+					</button>
+				</form>
+			}
+		</div>
+	</details>
+}
+
 type item struct {
 	Rota  string
 	Name  string
@@ -169,23 +228,6 @@ templ sidebar(active1 string, brand branding.Brand) {
 				}
 			}
 		</nav>
-		// The footer: the client's phrase and, below it, the attribution. The
-		// phrase's line break is preserved — it belongs to the author, and
-		// turning it into a space would change the text's rhythm.
-		//
-		// It appears only when there is a session: in an installation with no
-		// credential, a sign-out button would have nowhere to sign out of.
-		if operador := auth.De(ctx); operador != "" {
-			<form method="post" action="/logout" class="px-4 pb-4">
-				<button
-					type="submit"
-					class="flex w-full items-center justify-between rounded-card px-3 py-2 text-left text-xs text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-				>
-					<span class="truncate">{ operador }</span>
-					<span class="ml-3 shrink-0 tracking-wide uppercase">Sign out</span>
-				</button>
-			</form>
-		}
 		<div class="border-t border-line px-4 py-4">
 			if rows := brand.Lines(); len(rows) > 0 {
 				<p class="text-[0.8rem] leading-snug text-muted">
@@ -216,5 +258,18 @@ templ sidebar(active1 string, brand branding.Brand) {
 				class="mt-4 block text-[0.68rem] tracking-[0.1em] text-muted/60 uppercase transition-colors hover:text-gold-strong"
 			>{ branding.Attribution }</a>
 		</div>
+		// The account menu: one button at the bottom of the sidebar, and what
+		// it opens.
+		//
+		// A <details> and not a script. The browser gives the open/closed
+		// state, the keyboard, the focus order and the ARIA for free, and
+		// three lines in ui.js add the two things it does not have -- Escape,
+		// and closing when the click lands somewhere else. That is the same
+		// order the error dialog took: native first, script enriches.
+		//
+		// It appears even with no session, because Documentation is always
+		// there; only Sign out depends on there being something to sign out
+		// of.
+		@accountMenu(auth.De(ctx))
 	</aside>
 }

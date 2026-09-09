@@ -227,6 +227,12 @@ type Filter struct {
 	Active  string // active | paused
 	Tag    string
 
+	// Project scopes the list to one project's workflows. It is what makes a
+	// project more than a row on a screen: the slug is unique WITHIN a project,
+	// so two of them can each have a `daily_ingest`, and until this existed
+	// there was no way to look at one project's half of that.
+	Project string
+
 	// Sort is the sort field; Desc inverts it. They live in the URL for the same
 	// reason the filters do: a sorted screen has to be pasteable to somebody
 	// else.
@@ -290,6 +296,7 @@ func (f Filter) url(field, value string, resetsPage bool) string {
 	put("state", f.State)
 	put("active", f.Active)
 	put("tag", f.Tag)
+	put("project", f.Project)
 	put("sort", f.Sort)
 	if f.Desc {
 		put("dir", "desc")
@@ -395,6 +402,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 				<input type="hidden" name="state" value={ f.State }/>
 				<input type="hidden" name="active" value={ f.Active }/>
 				<input type="hidden" name="tag" value={ f.Tag }/>
+				<input type="hidden" name="project" value={ f.Project }/>
 				<button type="submit" class="shrink-0 rounded-card bg-ink px-4 py-1.5 text-xs font-medium text-surface transition-colors hover:bg-accent-strong">
 					Search
 				</button>
@@ -416,11 +424,25 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 					@chip(f.With("tag", alterna(f.Tag, t)), t, f.Tag == t, "")
 				}
 			}
+			// The project chip appears only when one is selected. There is no
+			// row of every project here on purpose: a project is a namespace,
+			// not a category, and most installations have one -- a permanent
+			// chip for a filter that is almost never on is noise.
+			if f.Project != "" {
+				<span class="mx-2 h-5 w-px bg-line"></span>
+				<a
+					href={ templ.SafeURL(f.With("project", "")) }
+					class="inline-flex items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-3 py-1 text-xs text-ink"
+				>
+					project: <span class="font-mono">{ f.Project }</span>
+					<span class="text-muted">&times;</span>
+				</a>
+			}
 		</div>
 		<p class="display mb-3 text-lg text-ink">
 			{ count(filtered, "workflow", "workflows") }
 			if filtered != total {
-				<span class="ml-2 text-sm text-muted">de { fmt.Sprint(total) }</span>
+				<span class="ml-2 text-sm text-muted">of { fmt.Sprint(total) }</span>
 				<a href="/workflows" class="ml-3 text-xs text-gold-strong hover:underline">clear filters</a>
 			}
 		</p>
@@ -450,7 +472,10 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 									<a href={ templ.SafeURL("/workflows/" + w.Slug) } class="font-medium text-ink hover:text-gold-strong">
 										{ w.Slug }
 									</a>
-									<p class="text-xs text-muted">{ w.Project }</p>
+									<a
+										href={ templ.SafeURL("/workflows?project=" + w.Project) }
+										class="text-xs text-muted hover:text-accent-strong hover:underline"
+									>{ w.Project }</a>
 								</td>
 								<td class="py-3 pr-3">
 									if w.Cron == "" {
@@ -486,7 +511,7 @@ templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, f
 											</span>
 											@components.Dot(w.LastStatus)
 										</a>
-										<p class="text-[0.7rem] text-muted">{ fmt.Sprint(w.TotalRuns) } runs</p>
+										<p class="text-[0.7rem] text-muted">{ count(w.TotalRuns, "run", "runs") }</p>
 									} else {
 										<span class="text-xs text-muted">never ran</span>
 									}
@@ -674,32 +699,56 @@ templ filterApplied(label, value, remover string) {
 	<span class="inline-flex items-center gap-2 rounded-card border border-gold/40 bg-gold-wash px-3 py-1.5 text-xs text-ink">
 		<span class="text-gold-strong">{ label }:</span>
 		<span class="font-medium">{ value }</span>
-		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label="remover filtro">×</a>
+		<a href={ templ.SafeURL(remover) } class="text-muted hover:text-ink" aria-label="Remove this filter">×</a>
 	</span>
 }
 
+// Projects is the list of namespaces.
+//
+// A project is what makes a workflow's slug unique WITHIN it -- two projects can
+// each have a `daily_ingest` -- and it arrives from `brevis publish --project`.
+// This screen used to end there: four numbers and a date, with nothing to click.
+// A page that only tells you a thing exists is a page people stop opening.
+//
+// Each card now leads to that project's workflows, which is the one question
+// the namespace exists to answer.
 templ Projects(ps []postgres.ProjectSummary) {
 	@layouts.Base(layouts.Page{Title: "Projects", Kicker: "Organization", Active: "projects"}) {
 		if len(ps) == 0 {
 			@components.Empty("No project yet.", "brevis publish --project my-project")
 		} else {
-			<div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+			<p class="mb-4 text-sm text-muted">
+				A project namespaces its workflows: two projects can each have a
+				<code class="font-mono text-xs">daily_ingest</code> without colliding.
+				A workflow joins one with <code class="font-mono text-xs">brevis publish --project</code>.
+			</p>
+			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
 				for _, p := range ps {
-					<div class="rounded-card border border-line bg-surface p-6 shadow-warm-sm">
-						<p class="kicker">{ p.Slug }</p>
-						<h3 class="display mt-1 text-2xl text-ink">{ p.Name }</h3>
-						<dl class="mt-5 flex gap-6 text-sm">
+					<a
+						href={ templ.SafeURL("/workflows?project=" + p.Slug) }
+						class="group rounded-card border border-line bg-surface p-5 transition-colors hover:border-accent"
+					>
+						<div class="flex items-baseline justify-between gap-3">
+							<h3 class="display truncate text-base text-ink">{ p.Name }</h3>
+							<span class="shrink-0 font-mono text-[0.7rem] text-muted">{ p.Slug }</span>
+						</div>
+						<dl class="mt-4 flex gap-6 text-sm">
 							<div>
-								<dt class="text-xs text-muted">Workflows</dt>
-								<dd class="display text-2xl tabular-nums text-ink">{ fmt.Sprint(p.Workflows) }</dd>
+								<dt class="text-[0.7rem] tracking-wide text-muted uppercase">Workflows</dt>
+								<dd class="display text-xl tabular-nums text-ink">{ fmt.Sprint(p.Workflows) }</dd>
 							</div>
 							<div>
-								<dt class="text-xs text-muted">Runs</dt>
-								<dd class="display text-2xl tabular-nums text-ink">{ fmt.Sprint(p.Runs) }</dd>
+								<dt class="text-[0.7rem] tracking-wide text-muted uppercase">Runs</dt>
+								<dd class="display text-xl tabular-nums text-ink">{ fmt.Sprint(p.Runs) }</dd>
 							</div>
 						</dl>
-						<p class="mt-5 text-xs text-muted">created em { p.CreatedAt.Local().Format("02/01/2006") }</p>
-					</div>
+						<p class="mt-4 flex items-center justify-between text-xs text-muted">
+							<span>since { p.CreatedAt.Local().Format("2006-01-02") }</span>
+							<span class="text-accent-strong opacity-0 transition-opacity group-hover:opacity-100">
+								see the workflows &rarr;
+							</span>
+						</p>
+					</a>
 				}
 			</div>
 		}

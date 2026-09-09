@@ -85,4 +85,34 @@
   // of the chart.
   window.addEventListener("scroll", hide, { passive: true });
   document.addEventListener("mouseleave", hide);
+
+  // ------------------------------------------------------------------
+  // The account menu
+  //
+  // It is a <details>, so the browser already gives the open state, the
+  // keyboard, the focus order and the ARIA. These are the two things it does
+  // not give: Escape, and closing when the click lands somewhere else.
+  //
+  // Both are delegated, like everything else here -- the sidebar is
+  // re-rendered by the server on every navigation, and a listener bound to
+  // the element would die with it.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("details.account-menu[open]").forEach(function (d) {
+      if (!d.contains(e.target)) d.removeAttribute("open");
+    });
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll("details.account-menu[open]").forEach(function (d) {
+      d.removeAttribute("open");
+      // The focus goes back to the button that opened it, which is what a
+      // keyboard user expects and what the browser does not do on its own.
+      var summary = d.querySelector("summary");
+      if (summary) summary.focus();
+    });
+  });
+
 })();

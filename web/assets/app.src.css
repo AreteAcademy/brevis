@@ -217,6 +217,19 @@ body {
   background: none;
 }
 
+/* The account menu.
+   The marker is removed on both spellings: Safari still wants the -webkit- one,
+   and without it the disclosure triangle sits beside the icon. */
+.account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.account-menu > summary::marker {
+  content: "";
+}
+.account-menu[open] > summary .account-menu-arrow {
+  transform: rotate(180deg);
+}
+
 /* Tabular nums in the numeric columns: without them the digits dance when the
    table refreshes, and a column of durations becomes hard to read. */
 .tabular-nums {

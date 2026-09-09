@@ -306,6 +306,7 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 		State:   validState(q.Get("state")),
 		Active:  q.Get("active"),
 		Tag:     q.Get("tag"),
+		Project: q.Get("project"),
 		Sort:    validOrder(q.Get("sort")),
 		Desc:    q.Get("dir") == "desc",
 		Page:    page(q.Get("page")),
@@ -449,6 +450,9 @@ func filtrar(ws []postgres.WorkflowSummary, f pages.Filter) []postgres.WorkflowS
 			}
 		}
 		if f.Tag != "" && !contains(w.Tags, f.Tag) {
+			continue
+		}
+		if f.Project != "" && w.Project != f.Project {
 			continue
 		}
 		out = append(out, w)
