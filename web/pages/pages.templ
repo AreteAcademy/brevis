@@ -908,26 +908,75 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
 		Island: dagAssets, Wide: true,
 	}) {
-		<div class="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-			@components.State(string(r.Status))
-			<span class="text-muted">{ r.TriggerType }</span>
-			if r.LogicalDate != nil {
-				<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
-			}
-			if r.Attempt > 0 {
-				<span class="text-xs text-state-retrying">attempt { fmt.Sprint(r.Attempt+1) }</span>
-			}
-			<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
-			<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
+		// Two regions the server refreshes, and the graph between them.
+		//
+		// The DAG polled and everything around it did not: the drawing showed a
+		// step turning green while the status pill above it still said `queued`
+		// and the output below was whatever the first response had. The fix is
+		// not a second poller -- it is `/runs/{id}/live`, one request that
+		// returns BOTH of these already rendered, on the cadence the graph
+		// already uses. See RunLive.
+		<div id="run-head" data-live={ "/runs/" + r.ID.String() + "/live" }>
+			@runHead(r)
 		</div>
-		if r.Err != "" {
-			<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
-		}
+		// The indicator sits OUTSIDE the swapped region, because a region that
+		// replaces its own contents would replace this too and lose whatever
+		// the script had written into it.
+		//
+		// It exists because a page that refreshes silently is a page nobody
+		// trusts: an operator who does not know it is live presses F5 anyway,
+		// which is the behaviour this whole change is meant to remove.
+		<p id="live-indicator" class="mb-5 -mt-3 hidden items-center gap-1.5 text-[0.7rem] text-muted">
+			<span class="h-1.5 w-1.5 rounded-full bg-state-running"></span>
+			<span data-live-label>following this run</span>
+		</p>
 		@dag("/api/runs/" + r.ID.String() + "/graph")
-		@autoParams(r)
-		@alertsRaised(raised)
-		@stepsOutput(logs)
+		<div id="run-body">
+			@runBody(r, logs, raised)
+		</div>
 	}
+}
+
+// RunLive is the same two regions, with no layout around them.
+//
+// It is HTML and not JSON on purpose: the alternative is a second rendering of
+// every one of these in JavaScript, and two renderings of a step's state is two
+// places for "what colour is retrying" -- the class of bug this repository has
+// hit five times. The server already knows how to draw them.
+templ RunLive(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
+	// `terminal` is what stops the polling, and it is the RUN's answer rather
+	// than the step's: a failed run is a retry away from running again, and
+	// stopping there would freeze the screen in the middle of one.
+	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
+		@runHead(r)
+	</div>
+	<div data-live-target="run-body">
+		@runBody(r, logs, raised)
+	</div>
+}
+
+templ runHead(r run.Run) {
+	<div class="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+		@components.State(string(r.Status))
+		<span class="text-muted">{ r.TriggerType }</span>
+		if r.LogicalDate != nil {
+			<span class="font-mono text-xs text-muted">slot { components.UTCStamp(r.LogicalDate) }</span>
+		}
+		if r.Attempt > 0 {
+			<span class="text-xs text-state-retrying">attempt { fmt.Sprint(r.Attempt+1) }</span>
+		}
+		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
+		<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
+	</div>
+	if r.Err != "" {
+		<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
+	}
+}
+
+templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
+	@autoParams(r)
+	@alertsRaised(raised)
+	@stepsOutput(logs)
 }
 
 // autoParams shows what the engine worked out for this run.

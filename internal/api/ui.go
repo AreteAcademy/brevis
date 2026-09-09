@@ -110,6 +110,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
+	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
 
@@ -570,6 +571,51 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.Run(run, logs, raised))
+}
+
+// runLive returns the run's two changing regions, already rendered.
+//
+// It is a FRAGMENT and not a JSON payload, and that is the decision worth
+// stating: the alternative is rendering a step's state a second time in
+// JavaScript, and two renderings of "what colour is retrying" is two places to
+// keep in step -- the shape this repository has been bitten by five times. The
+// server already knows how to draw these.
+//
+// It also reads the same data as `run`, deliberately. Sharing a helper between
+// the two would look tidier and would mean a page and its refresh could
+// disagree about what a run is; here they cannot, because they run the same
+// three queries and pass them to the same templates.
+func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	current, err := u.execs.Get(r.Context(), id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	logs, err := u.execs.LogsDaRun(r.Context(), id)
+	if err != nil {
+		u.log.Warn("the run's logs are unavailable", "run", id, "error", err)
+	}
+	var raised []alerts.Record
+	if u.alerts != nil {
+		if raised, err = u.alerts.ForRun(r.Context(), id); err != nil {
+			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
+		}
+	}
+
+	// No caching, at any layer. A refresh that a proxy answered from thirty
+	// seconds ago is a screen that lies about a run in flight, which is worse
+	// than one that does not refresh at all -- the second is visibly stale and
+	// the first is not.
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := pages.RunLive(current, logs, raised).Render(r.Context(), w); err != nil {
+		u.log.Warn("rendering the live fragment", "run", id, "error", err)
+	}
 }
 
 func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {

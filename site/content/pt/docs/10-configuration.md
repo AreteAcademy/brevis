@@ -2,7 +2,7 @@
 title: Configuração
 description: Todas as variáveis de ambiente, com padrão, formato e o que acontece quando faltam.
 group: Referência
-order: 9
+order: 10
 slug: configuration
 ---
 
@@ -26,6 +26,7 @@ processo cujo comportamento ninguém consegue reproduzir.
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | inteiro; valor não numérico é erro de boot |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | identidade visual; ausente = padrão |
 | `BREVIS_UI_URL` | — | base do link da execução no alerta |
+| `BREVIS_METRICS_ADDR` | — | porta das métricas Prometheus; vazio = não expõe. Ver [Observabilidade](/docs/observability/) |
 | `BREVIS_SLACK_WEBHOOK` | — | destino do alerta de falha. Vazio = ninguém é avisado |
 
 ## Autenticação

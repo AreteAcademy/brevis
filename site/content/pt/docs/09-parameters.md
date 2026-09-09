@@ -2,7 +2,7 @@
 title: Parâmetros
 description: O que muda entre dois disparos do mesmo workflow, sem editar o arquivo.
 group: Referência
-order: 8
+order: 9
 slug: parameters
 ---
 
@@ -194,3 +194,4 @@ mudar.
 
 - [Configuração](/docs/configuration/) — variáveis de ambiente do processo
 - [SDK](/docs/sdk/) — como um fetcher lê o contexto do run
+- [Contexto entre passos](/docs/context/) — o que um passo publica para o seguinte

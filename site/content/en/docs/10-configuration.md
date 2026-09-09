@@ -2,7 +2,7 @@
 title: Configuration
 description: Every environment variable, with default, format and what happens when it is missing.
 group: Reference
-order: 9
+order: 10
 slug: configuration
 ---
 
@@ -26,6 +26,7 @@ mid-run is a process whose behaviour nobody can reproduce.
 | `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |
 | `BREVIS_BRAND_FILE` | `brand.yaml` | branding; absent = default |
 | `BREVIS_UI_URL` | — | base of the run link in alerts |
+| `BREVIS_METRICS_ADDR` | — | Prometheus metrics port; empty = not exposed. See [Observability](/docs/observability/) |
 | `BREVIS_SLACK_WEBHOOK` | — | destination for failure alerts. Empty = nobody is told |
 
 ## Authentication

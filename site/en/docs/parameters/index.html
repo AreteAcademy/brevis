@@ -52,11 +52,11 @@
 <a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="i-mark" viewBox="0 0 24 24">
-    <path d="M5 6.5 L19 12 M5 17.5 L19 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
-    <circle cx="5" cy="6.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="5" cy="17.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="19" cy="12" r="3.2" fill="currentColor"/>
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
   </symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
     <path d="M4 7h16M4 12h16M4 17h16"/>
@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="No results" hidden></div>
       <nav class="side-nav" aria-label="Documentation">
-        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/" aria-current="page">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/" aria-current="page">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -235,7 +235,7 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <h2 id="the-snapshot">The snapshot<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>Parameters are stored <strong>in the run</strong>, not read from the workflow at execution time. The run carries the input it was triggered with, and the log of a January execution keeps showing January's values even after the default changes.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
-<ul><li><a href="/en/docs/configuration/">Configuration</a> — process environment variables</li><li><a href="/en/docs/sdk/">SDK</a> — how a fetcher reads the run context</li></ul>
+<ul><li><a href="/en/docs/configuration/">Configuration</a> — process environment variables</li><li><a href="/en/docs/sdk/">SDK</a> — how a fetcher reads the run context</li><li><a href="/en/docs/context/">Context between steps</a> — what a step publishes for the next</li></ul>
 
       <nav class="pagers" aria-label="Pages">
         <a class="pager pager-prev" href="/en/docs/cli/"><span>Previous</span><strong>CLI</strong></a>

@@ -122,3 +122,4 @@ Deixe desligado em produção: pods parados consomem cota do cluster.
 
 - [Kubernetes](/docs/kubernetes/) — o deploy completo
 - [Configuração](/docs/configuration/) — todas as variáveis `BREVIS_POD_*`
+- [Observabilidade](/docs/observability/) — as métricas dos dois processos

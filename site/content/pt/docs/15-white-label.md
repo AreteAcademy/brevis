@@ -2,7 +2,7 @@
 title: Marca branca
 description: Trocar título, frase, logo e paleta da interface por um arquivo YAML.
 group: Operação
-order: 12
+order: 15
 slug: white-label
 ---
 

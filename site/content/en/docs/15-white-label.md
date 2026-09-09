@@ -2,7 +2,7 @@
 title: White label
 description: Changing the interface's title, motto, logo and palette through one YAML file.
 group: Operations
-order: 12
+order: 15
 slug: white-label
 ---
 

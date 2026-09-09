@@ -115,6 +115,7 @@ steps:
 | `depends_on` | | lista de `id` que precisam terminar antes; uma entrada pode ser `{step, label}` |
 | `marker` | `false` | um passo sem comando, para um `start` ou um `end` |
 | `resources` | | `cpu`, `memory` e `limits` daquele passo |
+| `runtime`, `tools` | | a linguagem e as ferramentas do passo — ver [Runtime do passo](/docs/runtime/) |
 | `when` | `all_success` | sob que estado das dependências este passo roda — veja abaixo |
 | `unless_empty` | | uma chave do contexto que decide se há o que fazer — veja abaixo |
 | `for_each` | | uma chave do contexto com uma lista; o passo roda uma vez por elemento — veja abaixo |
@@ -562,3 +563,4 @@ citados na linha de comando.
 
 - [Parâmetros](/docs/parameters/) — o que muda entre dois disparos
 - [Scheduler e fila](/docs/scheduler-and-queue/) — como o workflow vira execução
+- [Contexto entre passos](/docs/context/) — o que um passo diz ao seguinte

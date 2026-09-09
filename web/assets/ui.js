@@ -115,4 +115,120 @@
     });
   });
 
+
+  // ------------------------------------------------------------------
+  // Live regions
+  //
+  // An element with data-live="<url>" is refreshed from that URL. The response
+  // is HTML holding one or more [data-live-target="<id>"] blocks, and each one
+  // replaces the element with that id.
+  //
+  // HTML and not JSON, for the reason the endpoint gives: rendering a step's
+  // state a second time here would be a second place that has to know what
+  // colour `retrying` is.
+  //
+  // The DAG polls on its own and this does not change that. What it fixes is
+  // everything AROUND the drawing: the status pill said `queued` while the
+  // graph showed a step turning green, and the output below never moved until
+  // somebody pressed F5.
+  // ------------------------------------------------------------------
+
+  var LIVE_RUNNING = 2000; // the graph's own cadence, so the page moves together
+  var LIVE_FAILED = 10000; // failed is not terminal -- a retry is coming, slowly
+
+  document.querySelectorAll("[data-live]").forEach(function (host) {
+    var url = host.dataset.live;
+    if (!url) return;
+    var timer = null;
+    var last = "";
+
+    // The indicator. It is only ever SHOWN by the script: with JavaScript off
+    // the page is static and saying "following this run" would be a lie.
+    var indicator = document.getElementById("live-indicator");
+    function say(text, live) {
+      if (!indicator) return;
+      indicator.classList.remove("hidden");
+      indicator.classList.add("flex");
+      var label = indicator.querySelector("[data-live-label]");
+      if (label) label.textContent = text;
+      var dot = indicator.querySelector("span");
+      if (dot) dot.className = "h-1.5 w-1.5 rounded-full " +
+        (live ? "bg-state-running" : "bg-line-strong");
+    }
+
+    function schedule(ms) {
+      if (!ms) return;
+      timer = setTimeout(tick, ms);
+    }
+
+    function tick() {
+      // A hidden tab is a tab nobody is reading. Polling one for an afternoon
+      // is traffic for a screen behind another window; the visibility listener
+      // below catches up the moment it comes back.
+      if (document.hidden) {
+        schedule(LIVE_RUNNING);
+        return;
+      }
+      fetch(url, { headers: { Accept: "text/html" } })
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.text();
+        })
+        .then(function (html) {
+          // Nothing changed: skip the swap entirely. Replacing identical HTML
+          // still resets a text selection and interrupts a screen reader, and
+          // most polls of a running step change nothing.
+          if (html === last) {
+            schedule(LIVE_RUNNING);
+            return;
+          }
+
+          // An OPEN dialog is somebody reading an error. Replacing the markup
+          // under it closes it mid-sentence, so the refresh waits -- the run
+          // has not gone anywhere.
+          if (document.querySelector("dialog[open]")) {
+            schedule(LIVE_RUNNING);
+            return;
+          }
+
+          last = html;
+          var doc = new DOMParser().parseFromString(html, "text/html");
+          var terminal = false;
+          var failed = false;
+
+          doc.querySelectorAll("[data-live-target]").forEach(function (block) {
+            var target = document.getElementById(block.dataset.liveTarget);
+            if (target) target.innerHTML = block.innerHTML;
+            if (block.dataset.terminal === "true") terminal = true;
+            if (block.textContent.indexOf("failed") >= 0) failed = true;
+          });
+
+          // Terminal stops the polling for good. The run is over and nothing
+          // about it will change again -- and the indicator says so rather
+          // than just disappearing, which would look like a failure.
+          if (terminal) {
+            say("this run is finished", false);
+            return;
+          }
+          schedule(failed ? LIVE_FAILED : LIVE_RUNNING);
+        })
+        .catch(function () {
+          // A refresh that fails is not worth a message on the screen: the
+          // page still shows what it showed, and the next tick may well work.
+          // It slows down, so a server that is down is not hammered.
+          schedule(LIVE_FAILED);
+        });
+    }
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && timer) {
+        clearTimeout(timer);
+        tick();
+      }
+    });
+
+    say("following this run", true);
+    schedule(LIVE_RUNNING);
+  });
+
 })();

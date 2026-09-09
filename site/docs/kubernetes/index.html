@@ -52,11 +52,11 @@
 <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="i-mark" viewBox="0 0 24 24">
-    <path d="M5 6.5 L19 12 M5 17.5 L19 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
-    <circle cx="5" cy="6.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="5" cy="17.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="19" cy="12" r="3.2" fill="currentColor"/>
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
   </symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
     <path d="M4 7h16M4 12h16M4 17h16"/>
@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
       <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/" aria-current="page">Kubernetes</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/" aria-current="page">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -127,7 +127,7 @@
       <p class="doc-desc">Como implantar o engine, com que permissões, e o que verificar depois.</p>
       <p>Uma instalação típica tem <strong>dois Deployments</strong> do mesmo binário — a API e o scheduler — e um Postgres.</p>
 <h2 id="os-dois-papeis">Os dois papéis<a class="anchor" href="#os-dois-papeis" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>papel</th><th>comando</th><th>imagem</th><th>réplicas</th></tr></thead><tbody><tr><td>API + interface</td><td><code>serve</code></td><td><code>:0.3.0</code> (distroless)</td><td>quantas quiser</td></tr><tr><td>scheduler + fila</td><td><code>scheduler</code></td><td><code>:0.3.0-worker</code> (alpine)</td><td><strong>uma</strong></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>papel</th><th>comando</th><th>imagem</th><th>réplicas</th></tr></thead><tbody><tr><td>API + interface</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>quantas quiser</td></tr><tr><td>scheduler + fila</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>uma</strong></td></tr></tbody></table></div>
 <p>A API é distroless porque só serve HTTP: não executa nada, então não precisa de shell. O worker é alpine porque os passos <code>run:</code> precisam de um.</p>
 <aside class="admon admon-warning"><p class="admon-t">Uma réplica de scheduler</p><p>Dois processos materializando a mesma agenda criam runs duplicados. Se precisar de disponibilidade, use <code>replicas: 1</code> com <code>strategy: Recreate</code>.</p></aside>
 <h2 id="migrations">Migrations<a class="anchor" href="#migrations" aria-label="link">#</a></h2>
@@ -142,7 +142,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: daniel3843/brevis:0.3.0
+          image: daniel3843/brevis:0.11.2
           args: [&quot;migrate&quot;, &quot;up&quot;]
           envFrom:
             - secretRef: {name: brevis-db}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">apiVersion</span>: batch/v1
@@ -155,7 +155,7 @@ spec:
       <span class="t-k">restartPolicy</span>: Never
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: migrate
-          <span class="t-k">image</span>: daniel3843/brevis:0.3.0
+          <span class="t-k">image</span>: daniel3843/brevis:0.11.2
           <span class="t-k">args</span>: ["migrate", "up"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
@@ -175,7 +175,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: api
-          image: daniel3843/brevis:0.3.0
+          image: daniel3843/brevis:0.11.2
           args: [&quot;serve&quot;]
           ports: [{containerPort: 8080}]
           envFrom:
@@ -205,7 +205,7 @@ spec:
       <span class="t-k">serviceAccountName</span>: brevis
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: api
-          <span class="t-k">image</span>: daniel3843/brevis:0.3.0
+          <span class="t-k">image</span>: daniel3843/brevis:0.11.2
           <span class="t-k">args</span>: ["serve"]
           <span class="t-k">ports</span>: [{containerPort: 8080}]
           <span class="t-k">envFrom</span>:
@@ -239,7 +239,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: scheduler
-          image: daniel3843/brevis:0.3.0-worker
+          image: daniel3843/brevis:0.11.2-worker
           args: [&quot;scheduler&quot;, &quot;--interval&quot;, &quot;10s&quot;, &quot;--concurrency&quot;, &quot;5&quot;, &quot;--max-pods&quot;, &quot;10&quot;]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -270,7 +270,7 @@ spec:
       <span class="t-k">serviceAccountName</span>: brevis
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: scheduler
-          <span class="t-k">image</span>: daniel3843/brevis:0.3.0-worker
+          <span class="t-k">image</span>: daniel3843/brevis:0.11.2-worker
           <span class="t-k">args</span>: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}
@@ -328,11 +328,11 @@ curl -fsS https://brevis.exemplo.com/ready"><div class="code-head"><span class="
 <div class="code-block" data-code="BREVIS_POD_MANTER_EM_FALHA=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_MANTER_EM_FALHA=true</code></pre></div>
 <p>Deixe desligado em produção — pods parados consomem cota.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
-<ul><li><a href="/docs/pod-per-step/">Pod por passo</a> — o modelo de execução</li><li><a href="/docs/configuration/">Configuração</a> — todas as variáveis <code>BREVIS_POD_*</code></li></ul>
+<ul><li><a href="/docs/pod-per-step/">Pod por passo</a> — o modelo de execução</li><li><a href="/docs/configuration/">Configuração</a> — todas as variáveis <code>BREVIS_POD_*</code></li><li><a href="/docs/observability/">Observabilidade</a> — o que raspar, e de qual processo</li></ul>
 
       <nav class="pagers" aria-label="Páginas">
         <a class="pager pager-prev" href="/docs/sdk/"><span>Anterior</span><strong>SDK em Go</strong></a>
-        <a class="pager pager-next" href="/docs/white-label/"><span>Próximo</span><strong>Marca branca</strong></a>
+        <a class="pager pager-next" href="/docs/observability/"><span>Próximo</span><strong>Observabilidade</strong></a>
       </nav>
 
       <p class="doc-edit">

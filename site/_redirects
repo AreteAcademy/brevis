@@ -1,0 +1,14 @@
+# Cloudflare Pages reads this file, in order, first match wins.
+# 302 by design: these are conveniences, not permanent locations, and the repo
+# host could move.
+
+/github        https://github.com/AreteAcademy/brevis            302
+/repo          https://github.com/AreteAcademy/brevis            302
+/issues        https://github.com/AreteAcademy/brevis/issues     302
+/discussions   https://github.com/AreteAcademy/brevis/discussions 302
+/sdk           https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk 302
+/arete         https://areteacademy.com.br/                      302
+
+# The old flat paths, from before /docs existed.
+/documentacao  /docs/       301
+/documentation /en/docs/    301

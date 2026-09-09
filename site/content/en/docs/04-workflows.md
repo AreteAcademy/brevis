@@ -115,6 +115,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
 | `marker` | `false` | a step with no command, for a `start` or an `end` |
 | `resources` | | `cpu`, `memory` and `limits` for that step |
+| `runtime`, `tools` | | the step's language and tools — see [Step runtime](/docs/runtime/) |
 | `when` | `all_success` | under what state of its dependencies this step runs — see below |
 | `unless_empty` | | a context key that decides whether there is anything to do — see below |
 | `for_each` | | a context key holding a list; the step runs once per element — see below |
@@ -559,3 +560,4 @@ were not named on the command line.
 
 - [Parameters](/docs/parameters/) — what changes between two runs
 - [Scheduler and queue](/docs/scheduler-and-queue/) — how a workflow becomes execution
+- [Context between steps](/docs/context/) — what one step tells the next

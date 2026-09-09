@@ -2,7 +2,7 @@
 title: SDK em Go
 description: Escrever um fetcher — extrair de uma origem, transformar e carregar num destino.
 group: SDK
-order: 10
+order: 12
 slug: sdk
 ---
 

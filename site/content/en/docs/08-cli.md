@@ -2,7 +2,7 @@
 title: CLI
 description: The engine's ten subcommands, with flags, arguments and what each one requires.
 group: Reference
-order: 7
+order: 8
 slug: cli
 ---
 
@@ -287,7 +287,7 @@ brevis version
 ```
 
 ```
-brevis 0.3.0
+brevis 0.11.2
   commit  bb832ff
   build   2026-09-05T12:00:00Z
   go      go1.25.7 darwin/arm64

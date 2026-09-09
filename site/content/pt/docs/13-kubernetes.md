@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Como implantar o engine, com que permissões, e o que verificar depois.
 group: Operação
-order: 11
+order: 13
 slug: kubernetes
 ---
 
@@ -13,8 +13,8 @@ scheduler — e um Postgres.
 
 | papel | comando | imagem | réplicas |
 |---|---|---|---|
-| API + interface | `serve` | `:0.3.0` (distroless) | quantas quiser |
-| scheduler + fila | `scheduler` | `:0.3.0-worker` (alpine) | **uma** |
+| API + interface | `serve` | `:0.11.2` (distroless) | quantas quiser |
+| scheduler + fila | `scheduler` | `:0.11.2-worker` (alpine) | **uma** |
 
 A API é distroless porque só serve HTTP: não executa nada, então não precisa de
 shell. O worker é alpine porque os passos `run:` precisam de um.
@@ -39,7 +39,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: daniel3843/brevis:0.3.0
+          image: daniel3843/brevis:0.11.2
           args: ["migrate", "up"]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -63,7 +63,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: api
-          image: daniel3843/brevis:0.3.0
+          image: daniel3843/brevis:0.11.2
           args: ["serve"]
           ports: [{containerPort: 8080}]
           envFrom:
@@ -108,7 +108,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: scheduler
-          image: daniel3843/brevis:0.3.0-worker
+          image: daniel3843/brevis:0.11.2-worker
           args: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -189,3 +189,4 @@ Deixe desligado em produção — pods parados consomem cota.
 
 - [Pod por passo](/docs/pod-per-step/) — o modelo de execução
 - [Configuração](/docs/configuration/) — todas as variáveis `BREVIS_POD_*`
+- [Observabilidade](/docs/observability/) — o que raspar, e de qual processo

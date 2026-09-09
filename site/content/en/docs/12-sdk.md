@@ -2,7 +2,7 @@
 title: Go SDK
 description: Writing a fetcher — extract from a source, transform, and load into a destination.
 group: SDK
-order: 10
+order: 12
 slug: sdk
 ---
 

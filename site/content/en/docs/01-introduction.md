@@ -91,6 +91,8 @@ does:
 | understand the architecture | [Scheduler and queue](/docs/scheduler-and-queue/) |
 | the list of commands and flags | [CLI](/docs/cli/) |
 | write a fetcher in Go | [SDK](/docs/sdk/) |
+| pass a value from one step to the next | [Context between steps](/docs/context/) |
+| build dashboards and alerts | [Observability](/docs/observability/) |
 
 :::note About the name
 *Brevis* is Latin for "short, brief" — the root of *brevity*. It comes from

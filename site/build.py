@@ -589,11 +589,40 @@ def jsonld_doc(lang, s, p):
     }
 
 
+SERVIDO = ("index.html", "404.html", "robots.txt", "sitemap.xml",
+           "search-index.json", "_headers", "_redirects",
+           "docs", "en", "assets", "css", "js")
+
+
+def montar_dist(destino):
+    """Copia para destino apenas o que é servido, e nada das fontes."""
+    if destino.exists():
+        shutil.rmtree(destino)
+    destino.mkdir(parents=True)
+    for nome in SERVIDO:
+        origem = RAIZ / nome
+        if not origem.exists():
+            continue
+        if origem.is_dir():
+            shutil.copytree(origem, destino / nome)
+        else:
+            shutil.copy2(origem, destino / nome)
+    return sum(1 for _ in destino.rglob("*") if _.is_file())
+
+
 def main():
     ap = argparse.ArgumentParser(description="Gera o site do brevis.sh")
     ap.add_argument("--check", action="store_true",
                     help="gera num diretório temporário e falha se o commitado divergir")
+    ap.add_argument("--dist", action="store_true",
+                    help="gera e reúne em dist/ só o que é servido (para o Cloudflare Pages)")
     args = ap.parse_args()
+
+    if args.dist:
+        escritos = gerar(SAIDA)
+        n = montar_dist(RAIZ / "dist")
+        print("%d páginas geradas · dist/ com %d arquivos" % (len(escritos), n))
+        return 0
 
     if args.check:
         tmp = Path(tempfile.mkdtemp())

@@ -52,11 +52,11 @@
 <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="i-mark" viewBox="0 0 24 24">
-    <path d="M5 6.5 L19 12 M5 17.5 L19 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
-    <circle cx="5" cy="6.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="5" cy="17.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="19" cy="12" r="3.2" fill="currentColor"/>
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
   </symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
     <path d="M4 7h16M4 12h16M4 17h16"/>
@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
       <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/" aria-current="page">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/" aria-current="page">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -138,17 +138,17 @@ make build
 cd <span class="t-k">brevis</span>
 <span class="t-k">make</span> build
 ./bin/<span class="t-k">brevis</span> version</code></pre></div>
-<div class="code-block" data-code="brevis 0.3.0
+<div class="code-block" data-code="brevis 0.11.2
   commit  bb832ff
   build   2026-09-05T12:00:00Z
-  go      go1.25.7 darwin/arm64"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis 0.3.0
+  go      go1.25.7 darwin/arm64"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis 0.11.2
   commit  bb832ff
   build   2026-09-05T12:00:00Z
   go      go1.25.7 darwin/arm64</code></pre></div>
 <aside class="admon admon-warning"><p class="admon-t">O engine ainda não tem release taggeada</p><p>Todas as tags do repositório são do SDK (<code>sdk/v*</code>); o módulo raiz não tem nenhuma. Um <code>go install github.com/AreteAcademy/brevis/cmd/brevis@latest</code> resolve para o último commit do branch e produz um binário que se identifica como <code>brevis dev</code>, sem commit nem data — os <code>-ldflags</code> só entram pelo <code>make build</code> e pelo <code>docker build</code>. Para uma versão rastreável, use a imagem ou o <code>make build</code>.</p></aside>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>Duas imagens do mesmo binário, porque os dois papéis têm exigências opostas:</p>
-<div class="table-wrap"><table><thead><tr><th>tag</th><th>base</th><th>por quê</th></tr></thead><tbody><tr><td><code>:0.3.0</code></td><td>distroless</td><td>a API só serve HTTP e não executa nada — sem shell, superfície mínima</td></tr><tr><td><code>:0.3.0-worker</code></td><td>alpine + tini</td><td>os passos <code>run:</code> precisam de shell</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>tag</th><th>base</th><th>por quê</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>a API só serve HTTP e não executa nada — sem shell, superfície mínima</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td>os passos <code>run:</code> precisam de shell</td></tr></tbody></table></div>
 <div class="code-block" data-code="docker run --rm daniel3843/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> daniel3843/<span class="t-k">brevis</span>:latest version</code></pre></div>
 <h2 id="ambiente-local-completo">Ambiente local completo<a class="anchor" href="#ambiente-local-completo" aria-label="link">#</a></h2>
 <p>O repositório traz um <code>docker-compose.yml</code> que sobe Postgres, API e scheduler:</p>

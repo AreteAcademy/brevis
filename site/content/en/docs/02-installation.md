@@ -32,7 +32,7 @@ make build
 ```
 
 ```
-brevis 0.3.0
+brevis 0.11.2
   commit  bb832ff
   build   2026-09-05T12:00:00Z
   go      go1.25.7 darwin/arm64
@@ -53,8 +53,8 @@ Two images of the same binary, because the two roles have opposite needs:
 
 | tag | base | why |
 |---|---|---|
-| `:0.3.0` | distroless | the API only serves HTTP and executes nothing — no shell, minimal surface |
-| `:0.3.0-worker` | alpine + tini | `run:` steps need a shell |
+| `:0.11.2` | distroless | the API only serves HTTP and executes nothing — no shell, minimal surface |
+| `:0.11.2-worker` | alpine + tini | `run:` steps need a shell |
 
 ```bash
 docker run --rm daniel3843/brevis:latest version

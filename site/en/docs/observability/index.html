@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Observability — Documentation</title>
+<meta name="description" content="Prometheus metrics from both processes, what to watch, and what is deliberately absent.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/en/docs/observability/">
+<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/observability/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/observability/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="en">
+<meta property="og:title" content="Observability — Documentation">
+<meta property="og:description" content="Prometheus metrics from both processes, what to watch, and what is deliberately absent.">
+<meta property="og:url" content="https://brevis.sh/en/docs/observability/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Observability — Documentation">
+<meta name="twitter:description" content="Prometheus metrics from both processes, what to watch, and what is deliberately absent.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Observability",
+  "description": "Prometheus metrics from both processes, what to watch, and what is deliberately absent.",
+  "inLanguage": "en",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/en/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/en/#produto">Product</a>
+      <a href="/en/#principios">Principles</a>
+      <a href="/en/docs/">Documentation</a>
+      <a href="/en/#open-source">Open source</a>
+      <div class="lang-switch" role="group" aria-label="Language"><a href="/docs/observability/" hreflang="pt-BR">PT</a><a href="/en/docs/observability/" hreflang="en" aria-current="true">EN</a></div>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explore open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Documentation menu
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/" aria-current="page">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentation</p>
+      <h1>Observability</h1>
+      <p class="doc-desc">Prometheus metrics from both processes, what to watch, and what is deliberately absent.</p>
+      <p>Brevis exposes Prometheus metrics on a port of its own, from <strong>both</strong> processes.</p>
+<div class="code-block" data-code="GET http://&lt;pod&gt;:9090/metrics"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>GET http://&lt;pod&gt;:9090/metrics</code></pre></div>
+<p>The port comes from <code>BREVIS_METRICS_ADDR</code>. It is separate from the HTTP port on purpose: metrics do not go through the interface's authentication, and serving both from one place would force a choice between an authenticated scrape and an open dashboard.</p>
+<h2 id="two-processes-two-endpoints">Two processes, two endpoints<a class="anchor" href="#two-processes-two-endpoints" aria-label="link">#</a></h2>
+<p>This is the part most setups get wrong, by scraping only the API.</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>serves</th><th>reports</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>the UI and the HTTP API</td><td>queue depth</td></tr><tr><td><code>brevis scheduler</code></td><td>nothing over HTTP</td><td>queue depth, claim latency, slots, orphans, runs, steps</td></tr></tbody></table></div>
+<p>The scheduler is what executes, so nearly everything comes from it. A dashboard built only on the API shows the queue growing and <strong>nothing</strong> about what is draining it.</p>
+<h2 id="what-to-watch">What to watch<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>signal</th><th>why</th></tr></thead><tbody><tr><td>queue depth rising without falling</td><td>the scheduler died, or <code>--concurrency</code> is low for the load</td></tr><tr><td>claim latency growing</td><td>contention on the database, or a queue too large for the interval</td></tr><tr><td>orphans &gt; 0</td><td>runs claimed by a process that died before finishing</td></tr><tr><td>slots not materialised</td><td>the scheduler loop stopped, and schedules stop with it</td></tr></tbody></table></div>
+<p>The first two alone do not tell "high load" from "dead process" — which is why slots matter. A queue rising <strong>with</strong> slots being created is load; a queue rising <strong>without</strong> slots is a stopped loop.</p>
+<h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
+<div class="code-block" data-code="env:
+  - name: BREVIS_METRICS_ADDR
+    value: &quot;:9090&quot;
+ports:
+  - name: metrics
+    containerPort: 9090"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">env</span>:
+  - <span class="t-k">name</span>: BREVIS_METRICS_ADDR
+    <span class="t-k">value</span>: ":9090"
+<span class="t-k">ports</span>:
+  - <span class="t-k">name</span>: metrics
+    <span class="t-k">containerPort</span>: 9090</code></pre></div>
+<p>With the Prometheus Operator, one <code>PodMonitor</code> per role — and it does need to be one per role, because the two Deployments carry different labels and report different sets.</p>
+<h2 id="what-is-deliberately-absent">What is deliberately absent<a class="anchor" href="#what-is-deliberately-absent" aria-label="link">#</a></h2>
+<p><strong>Traces.</strong> There is no OpenTelemetry yet. A step runs as its own pod, and what matters about it — start, end, attempt, exit code, log — is already in the database and on the screen. The useful trace would be the one inside the step, and that belongs to the step's code, not to the orchestrator.</p>
+<p>That holds while the step is the unit. The day a step calls another service and the question becomes "where did the 40 seconds go", the trace starts being worth what it costs.</p>
+<h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
+<ul><li><a href="/en/docs/kubernetes/">Kubernetes</a> — deploying both processes</li><li><a href="/en/docs/configuration/">Configuration</a> — <code>BREVIS_METRICS_ADDR</code> and the rest</li></ul>
+
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/en/docs/kubernetes/"><span>Previous</span><strong>Kubernetes</strong></a>
+        <a class="pager pager-next" href="/en/docs/white-label/"><span>Next</span><strong>White label</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/observability.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">Two processes, two endpoints</a></li><li class="toc-2"><a href="#what-to-watch">What to watch</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">What is deliberately absent</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/en/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophy applied to data infrastructure.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>project</h2>
+        <ul>
+          <li><a href="/en/#produto">Product</a></li>
+          <li><a href="/en/#principios">Principles</a></li>
+          <li><a href="/en/#open-source">Open source</a></li>
+          <li><a href="/en/#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>code</h2>
+        <ul>
+          <li><a href="/en/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+</body>
+</html>

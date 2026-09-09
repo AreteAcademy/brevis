@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="brevis.sh">
-  <!-- Fundo solido: um favicon aparece sobre a aba clara ou escura do
-       navegador, e a marca sozinha sumiria numa das duas. -->
+  <!-- Solid ground: a favicon sits on a light or a dark browser tab, and the
+       mark alone would vanish against one of them. Shifted down 0.4 to sit
+       optically centred inside the square. -->
   <rect width="24" height="24" fill="#141711"/>
-  <path d="M5 6.5 L19 12 M5 17.5 L19 12" stroke="#c7d66d" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
-  <circle cx="5" cy="6.5" r="2.4" fill="#c7d66d" opacity="0.75"/>
-  <circle cx="5" cy="17.5" r="2.4" fill="#c7d66d" opacity="0.75"/>
-  <circle cx="19" cy="12" r="3.2" fill="#c7d66d"/>
+  <path d="M4 10.8C4 15.6 20 15.6 20 10.8" fill="none" stroke="#c7d66d"
+        stroke-width="3" stroke-linecap="round"/>
 </svg>

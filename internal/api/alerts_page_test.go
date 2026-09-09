@@ -298,3 +298,65 @@ func TestEveryTimestampNamesItsClock(t *testing.T) {
 		t.Error("a nil timestamp does not render as an em dash")
 	}
 }
+
+// TestTheLiveFragmentCarriesBothRegionsAndTheTerminalFlag.
+//
+// The page refreshes itself from this endpoint, and two things about the
+// response are load-bearing: it has to hold BOTH targets, because one request
+// is what keeps the header and the output from disagreeing, and it has to say
+// whether the run is terminal, because that is what stops the polling.
+//
+// A fragment missing the flag polls a finished run forever; one missing a
+// target silently stops refreshing half the page, which is the bug this
+// endpoint exists to fix.
+func TestTheLiveFragmentCarriesBothRegionsAndTheTerminalFlag(t *testing.T) {
+	for _, c := range []struct {
+		status   dom.Status
+		terminal string
+	}{
+		{dom.StatusRunning, `data-terminal="false"`},
+		{dom.StatusQueued, `data-terminal="false"`},
+		// Failed is NOT terminal: a retry is a state transition away, and
+		// stopping here would freeze the screen in the middle of one.
+		{dom.StatusFailed, `data-terminal="false"`},
+		{dom.StatusSuccess, `data-terminal="true"`},
+	} {
+		t.Run(string(c.status), func(t *testing.T) {
+			id := uuid.New()
+			ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
+				ID: id, WorkflowSlug: "nightly", Status: c.status,
+			}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+
+			mux := http.NewServeMux()
+			ui.Registrar(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/runs/"+id.String()+"/live", nil))
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("HTTP %d", rec.Code)
+			}
+			body := rec.Body.String()
+			for _, want := range []string{
+				`data-live-target="run-head"`,
+				`data-live-target="run-body"`,
+				c.terminal,
+				string(c.status),
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("the fragment does not carry %q", want)
+				}
+			}
+			// It is a FRAGMENT: a whole page here would replace the layout into
+			// a div on every poll, remounting the graph beside it.
+			if strings.Contains(body, "<html") || strings.Contains(body, "<aside") {
+				t.Error("the live endpoint returned a full page")
+			}
+			// And nothing may cache it. A refresh answered from thirty seconds
+			// ago is a screen that lies about a run in flight, which is worse
+			// than one that visibly does not move.
+			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("Cache-Control = %q", got)
+			}
+		})
+	}
+}

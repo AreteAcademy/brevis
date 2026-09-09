@@ -2,7 +2,7 @@
 title: Parameters
 description: What changes between two runs of the same workflow, without editing the file.
 group: Reference
-order: 8
+order: 9
 slug: parameters
 ---
 
@@ -194,3 +194,4 @@ execution keeps showing January's values even after the default changes.
 
 - [Configuration](/docs/configuration/) — process environment variables
 - [SDK](/docs/sdk/) — how a fetcher reads the run context
+- [Context between steps](/docs/context/) — what a step publishes for the next

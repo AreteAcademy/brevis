@@ -91,6 +91,8 @@ que ela faz:
 | entender a arquitetura | [Scheduler e fila](/docs/scheduler-and-queue/) |
 | a lista de comandos e flags | [CLI](/docs/cli/) |
 | escrever um fetcher em Go | [SDK](/docs/sdk/) |
+| passar um valor de um passo ao seguinte | [Contexto entre passos](/docs/context/) |
+| montar painel e alerta | [Observabilidade](/docs/observability/) |
 
 :::note O nome
 *Brevis* é latim para "curto, breve" — a raiz de *brevidade*. Vem de

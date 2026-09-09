@@ -123,3 +123,4 @@ off in production: stopped pods consume cluster quota.
 
 - [Kubernetes](/docs/kubernetes/) — the full deployment
 - [Configuration](/docs/configuration/) — every `BREVIS_POD_*` variable
+- [Observability](/docs/observability/) — metrics from both processes

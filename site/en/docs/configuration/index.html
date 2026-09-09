@@ -52,11 +52,11 @@
 <a class="skip-link" href="#conteudo">Skip to content</a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="i-mark" viewBox="0 0 24 24">
-    <path d="M5 6.5 L19 12 M5 17.5 L19 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5"/>
-    <circle cx="5" cy="6.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="5" cy="17.5" r="2.4" fill="currentColor" opacity="0.75"/>
-    <circle cx="19" cy="12" r="3.2" fill="currentColor"/>
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
   </symbol>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
     <path d="M4 7h16M4 12h16M4 17h16"/>
@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="No results" hidden></div>
       <nav class="side-nav" aria-label="Documentation">
-        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/" aria-current="page">Configuration</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/" aria-current="page">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -129,7 +129,7 @@
 <h2 id="required">Required<a class="anchor" href="#required" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_DATABASE_URL</code></td><td>Postgres. Missing = <strong>boot error</strong> in the five subcommands that use the database</td></tr></tbody></table></div>
 <h2 id="process">Process<a class="anchor" href="#process" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>variable</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> logs in text and leaves the interface open; anything else requires credentials and logs JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>listen address</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>integer; a non-numeric value is a boot error</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>branding; absent = default</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>base of the run link in alerts</td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>destination for failure alerts. Empty = nobody is told</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>variable</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> logs in text and leaves the interface open; anything else requires credentials and logs JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>listen address</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>integer; a non-numeric value is a boot error</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>branding; absent = default</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>base of the run link in alerts</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>Prometheus metrics port; empty = not exposed. See <a href="/en/docs/observability/">Observability</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>destination for failure alerts. Empty = nobody is told</td></tr></tbody></table></div>
 <h2 id="authentication">Authentication<a class="anchor" href="#authentication" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variable</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USUARIO</code></td><td>interface user</td></tr><tr><td><code>BREVIS_AUTH_SENHA_HASH</code></td><td><code>pbkdf2-sha256$…</code> hash, generated by <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SEGREDO</code></td><td>32+ bytes to sign the session (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>All three come together, or none does.</p>
@@ -203,7 +203,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
       <nav class="pagers" aria-label="Pages">
         <a class="pager pager-prev" href="/en/docs/parameters/"><span>Previous</span><strong>Parameters</strong></a>
-        <a class="pager pager-next" href="/en/docs/sdk/"><span>Next</span><strong>Go SDK</strong></a>
+        <a class="pager pager-next" href="/en/docs/runtime/"><span>Next</span><strong>Step runtime</strong></a>
       </nav>
 
       <p class="doc-edit">
