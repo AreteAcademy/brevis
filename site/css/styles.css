@@ -446,6 +446,41 @@ dd code {
   height: 17px;
 }
 
+/* ------------------------------------------------- seletor de idioma ---- */
+
+/* Vive aqui, e nao em docs.css: o seletor esta no header de TODA pagina,
+   e enquanto a regra morava na folha da documentacao os dois links saiam
+   colados na landing — "PTEN". */
+
+.lang-switch {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.lang-switch a {
+  padding: 0.28rem 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lang-switch a + a {
+  border-left: 1px solid var(--line);
+}
+
+.lang-switch a:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.lang-switch a[aria-current="true"] {
+  color: var(--bg);
+  background: var(--lime);
+}
+
 /* --------------------------------------------------------------- hero ---- */
 
 .hero {
