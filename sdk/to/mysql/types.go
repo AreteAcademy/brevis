@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // toColumn converts the record's value into what the driver accepts.
@@ -88,4 +90,52 @@ func elide(s string) string {
 		return s
 	}
 	return s[:37] + "…"
+}
+
+// declaredType maps a MySQL catalogue type back onto the SDK's declared ones,
+// for the schema diff.
+//
+// `data_type` is the bare name -- `varchar`, not `varchar(255)` -- which is
+// what makes this a short list. A type it does not recognise returns false and
+// the diff leaves that column alone: proposing an ALTER on a type nobody
+// modelled is worse than doing nothing.
+func declaredType(my string) (core.ColumnType, bool) {
+	switch my {
+	case "char", "varchar", "text", "tinytext", "mediumtext", "longtext", "enum":
+		return core.TypeString, true
+	case "bigint", "int", "mediumint", "smallint":
+		return core.TypeInt64, true
+	case "double", "float":
+		return core.TypeFloat64, true
+	case "decimal", "numeric":
+		return core.TypeNumeric, true
+	case "tinyint":
+		// TINYINT(1) is what BOOLEAN is an alias for, and `data_type` cannot
+		// tell the two apart -- both come back as `tinyint`. Calling it a bool
+		// is the useful answer: this SDK only ever writes TINYINT(1), and a
+		// genuine one-byte integer column was created by somebody else, who
+		// gets a refusal naming both types rather than a silent ALTER.
+		return core.TypeBool, true
+	case "datetime", "timestamp":
+		return core.TypeTimestamp, true
+	case "date":
+		return core.TypeDate, true
+	case "json":
+		return core.TypeJSON, true
+	case "blob", "tinyblob", "mediumblob", "longblob", "binary", "varbinary":
+		return core.TypeBytes, true
+	default:
+		return "", false
+	}
+}
+
+// declaredTypes turns the catalogue into what Schema.Plan compares against.
+func declaredTypes(types map[string]string) map[string]core.ColumnType {
+	out := make(map[string]core.ColumnType, len(types))
+	for name, my := range types {
+		if t, known := declaredType(my); known {
+			out[name] = t
+		}
+	}
+	return out
 }

@@ -7,6 +7,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -20,11 +21,17 @@ import (
 //
 //	To: postgres.Table{DSN: os.Getenv("PG_DSN"), Name: "landing.orders"}
 //
-// The table has to EXIST. This driver does not create it and infers no types:
-// deducing NUMERIC(18,2) from an encoding/json float64 would be guessing, and
-// guessing a type is the one thing this SDK decided not to do. The error says
-// so, and lists the columns the batch carries, so the DDL comes out of one
-// reading.
+// The table has to exist, and there are three ways to get one:
+//
+//   - create it yourself, which is what this driver required until now
+//   - Target.Schema plus CreateTable, and the driver writes the DDL
+//   - CreateSQL, and the driver runs yours
+//
+// What it will NOT do is infer. Deducing NUMERIC(18,2) from an encoding/json
+// float64 would be guessing, and guessing a type is the one thing this SDK
+// decided not to do -- a field that arrives whole today and fractional tomorrow
+// would change the column with nobody writing anything. CreateTable with no
+// Schema is an error that says which of the two is missing.
 type Table struct {
 	// DSN is the connection string. Required, and never appears in a log.
 	DSN string
@@ -34,6 +41,30 @@ type Table struct {
 
 	// Conn reuses a connection. Nil opens one and closes it at the end.
 	Conn *pgx.Conn
+
+	// CreateTable lets the driver create the table when it is absent, from
+	// Target.Schema or from CreateSQL. Off by default: a loader that creates
+	// tables by accident is a loader that turns a typo in Name into a second
+	// table nobody is reading.
+	CreateTable bool
+
+	// CreateSQL is your DDL, run once when the table is absent and only with
+	// CreateTable on. It exists for what a declaration cannot say: NUMERIC
+	// with a scale, a partitioned parent, an index, a constraint.
+	//
+	// The driver checks the table exists AFTER running it. Running somebody's
+	// statement and trusting it moves the failure to the load, where the error
+	// is about a missing column rather than about the DDL that forgot it.
+	CreateSQL string
+
+	// Evolve says what the load may do to a table that EXISTS and no longer
+	// matches Target.Schema. The zero value refuses any difference, which is
+	// what this driver has always done.
+	//
+	// sdk.EvolveAdditive adds a declared column the table lacks and widens a
+	// type where widening loses nothing. It never drops and never narrows: see
+	// core.Evolution for why there is no third mode.
+	Evolve core.Evolution
 }
 
 // Describe satisfies core.Writer. It names the table, never the DSN.
@@ -63,7 +94,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 
 	// The record is exactly what the Transform chain composed, and the
 	// declaration is checked against the whole of it -- ingestion_id included.
-	if err := core.CheckColumns(opt.Columns, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
 		return fail(err)
 	}
 
@@ -83,10 +114,31 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(err)
 	}
 	if len(tableColumns) == 0 {
-		return fail(fmt.Errorf("table %s does not exist. This driver does not create it and "+
-			"does not infer types -- guessing NUMERIC(18,2) from a JSON number is the one "+
-			"thing this SDK will not do. Create it with the columns the batch carries: %s",
-			t.Name, strings.Join(fieldsOf(envelopes), ", ")))
+		if err := t.create(ctx, conn, opt, envelopes); err != nil {
+			return fail(err)
+		}
+		// Read it back rather than trusting the CREATE. The column list and the
+		// types below drive the COPY, and taking them from the declaration
+		// instead of from the server would mean a CreateSQL that produced
+		// something else fails later, on the load, with an error about a column
+		// rather than about the DDL.
+		tableColumns, types, err = columnsOf(ctx, conn, schema, table)
+		if err != nil {
+			return fail(err)
+		}
+		if len(tableColumns) == 0 {
+			return fail(fmt.Errorf("the table %s still does not exist after creating it", t.Name))
+		}
+		res.TableCreated = true
+	} else if err := t.evolve(ctx, conn, opt, types); err != nil {
+		return fail(err)
+	} else if len(opt.Schema) > 0 {
+		// The catalogue is re-read after an ALTER, for the same reason it is
+		// after a CREATE: the column list and the types below drive the COPY.
+		tableColumns, types, err = columnsOf(ctx, conn, schema, table)
+		if err != nil {
+			return fail(err)
+		}
 	}
 
 	// What Reconcile buys HERE is not the positional match: pgx's CopyFrom
@@ -393,4 +445,99 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	return fmt.Errorf("the declaration lists %s, which %s does not have. The table has: %s. "+
 		"Caught before the extract, so no source quota was spent",
 		strings.Join(missing, ", "), t.Name, strings.Join(ofTable, ", "))
+}
+
+// create makes the table, from the declaration or from the caller's DDL.
+//
+// It runs only when the table is ABSENT -- never to alter one that exists. A
+// loader that can ALTER or DROP is a loader that can erase history, and the
+// evolution of an existing table is a separate decision with a separate flag.
+func (t Table) create(ctx context.Context, conn *pgx.Conn, opt core.WriteOptions, envelopes []core.Envelope) error {
+	if !t.CreateTable {
+		// The message is the same one this driver has always given, because it
+		// is still the right one for the common case: somebody who did not
+		// intend to create a table wants to know which one is missing and what
+		// columns it needs.
+		return fmt.Errorf("table %s does not exist. Set CreateTable and declare "+
+			"Target.Schema (or CreateSQL) to let the driver create it, or create it "+
+			"yourself with the columns the batch carries: %s",
+			t.Name, strings.Join(fieldsOf(envelopes), ", "))
+	}
+
+	if t.CreateSQL != "" {
+		if _, err := conn.Exec(ctx, t.CreateSQL); err != nil {
+			return fmt.Errorf("running CreateSQL for %s: %w", t.Name, err)
+		}
+		return nil
+	}
+
+	if len(opt.Schema) == 0 {
+		return fmt.Errorf("table %s does not exist and CreateTable is on, but nothing "+
+			"says what to create: declare Target.Schema with a type on each column, or "+
+			"give CreateSQL. This driver does not infer types from the batch", t.Name)
+	}
+
+	ddl, err := opt.Schema.CreateTable(core.Postgres, t.Name)
+	if err != nil {
+		return err
+	}
+	if _, err := conn.Exec(ctx, ddl); err != nil {
+		// The statement goes into the error. A CREATE that the server refuses
+		// is a question about the DDL, and hiding the DDL makes it a question
+		// about the SDK.
+		return fmt.Errorf("creating %s: %w\n%s", t.Name, err, ddl)
+	}
+	return nil
+}
+
+// evolve brings an EXISTING table up to the declaration, within what Evolve
+// allows.
+//
+// The plan is computed and refused BEFORE anything is altered. A load that
+// half-evolves and then fails leaves a table that is neither what it was nor
+// what was declared, and the next run's diff starts from a shape nobody chose.
+//
+// Every statement is logged as it runs. "When did this column appear" is the
+// question consumers ask after the fact, and it is the one an ALTER that
+// happened in silence cannot answer.
+func (t Table) evolve(ctx context.Context, conn *pgx.Conn, opt core.WriteOptions, types map[string]string) error {
+	if len(opt.Schema) == 0 {
+		return nil
+	}
+
+	changes, err := opt.Schema.Plan(declaredTypes(types), t.Evolve, t.Name)
+	if err != nil {
+		return err
+	}
+	if len(changes) == 0 {
+		return nil
+	}
+
+	// One change at a time, and the statements for THAT change together.
+	//
+	// Rendering the whole plan and indexing the result by position was the
+	// first version, and it panicked the moment a change produced two
+	// statements -- which is exactly what an added column with a default does.
+	// Asking per change makes the alignment true by construction instead of by
+	// arithmetic.
+	for done, ch := range changes {
+		stmts, err := opt.Schema.AlterTable(core.Postgres, t.Name, []core.Change{ch})
+		if err != nil {
+			return err
+		}
+		for _, sql := range stmts {
+			if _, err := conn.Exec(ctx, sql); err != nil {
+				// How far it got matters: the table is now PARTLY evolved, and
+				// the next run's plan starts from that rather than from what it
+				// was before.
+				return fmt.Errorf("evolving %s (%s): %w\n%d of %d changes had already been applied",
+					t.Name, ch, err, done, len(changes))
+			}
+		}
+		// A change to a table's shape that happens in silence is a change
+		// nobody can date afterwards, and "when did this column appear" is the
+		// question consumers ask months later.
+		slog.InfoContext(ctx, "schema evolved", "table", t.Name, "change", ch.String())
+	}
+	return nil
 }

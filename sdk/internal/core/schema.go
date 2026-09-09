@@ -58,7 +58,44 @@ type Column struct {
 	// landing table legitimately does: a column the source sometimes does not
 	// send.
 	Required bool
+
+	// Default is the column's DEFAULT, and it is a Go value rather than a
+	// string of SQL.
+	//
+	//	{Name: "status",   Type: TypeString,    Default: "pending"}
+	//	{Name: "attempts", Type: TypeInt64,     Default: 0}
+	//	{Name: "seen_at",  Type: TypeTimestamp, Default: CurrentTimestamp}
+	//
+	// A `Default string` holding raw SQL was the other candidate and it is a
+	// DDL injection point in a field that reads like data: whoever fills a
+	// Schema from a config file would be handing the destination a statement.
+	// A Go literal is rendered per dialect and cannot be anything else.
+	//
+	// What a literal cannot express is `now()`, which is common enough that
+	// leaving it out would send everybody to CreateSQL. CurrentTimestamp is
+	// the one exception, and it is a TYPE rather than a magic string so that
+	// `Default: "now()"` stays what it says it is -- the literal text.
+	//
+	// Anything past that -- a sequence, a computed column, NUMERIC(18,2) -- is
+	// CreateSQL, which goes on existing for exactly that.
+	//
+	// nil means no DEFAULT clause. A column that should default to NULL simply
+	// has none: writing DEFAULT NULL is what the database does anyway.
+	Default any
 }
+
+// Expression is a default the database computes rather than stores. The only
+// value is CurrentTimestamp, and the type exists so that a caller writing
+// `Default: "now()"` gets the six-character string they wrote.
+//
+// It is not called Now: the SDK root already has a Now(), a FieldSelector for
+// the transform chain, and a default that shadowed a transformer would be a
+// collision nobody would enjoy debugging.
+type Expression int
+
+// CurrentTimestamp is the destination's CURRENT_TIMESTAMP, in whichever
+// spelling it uses.
+const CurrentTimestamp Expression = iota + 1
 
 // Schema is the destination's declaration, in DDL order.
 //

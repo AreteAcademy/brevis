@@ -32,8 +32,32 @@ const (
 // Transform chain, so checking all of them would cost a full scan to say the
 // same thing.
 func CheckColumns(declared []string, records []Envelope) error {
+	return CheckRow(declared, nil, records)
+}
+
+// CheckRow is CheckColumns with the declaration's TYPES, which is what makes a
+// DEFAULT usable.
+//
+// A column with a DEFAULT is precisely the one a row does not have to carry --
+// that is what declaring a default MEANS -- and the names-only check refused
+// exactly that, so the feature would have been inert the day it shipped. It was
+// found by loading against a real Postgres, not by reading the code.
+//
+// Everything else is unchanged, and the undeclared half especially: a field the
+// destination never heard of still stops the load. A default says a column may
+// be ABSENT, not that anything may be present.
+func CheckRow(declared []string, s Schema, records []Envelope) error {
 	if len(declared) == 0 || len(records) == 0 {
 		return nil
+	}
+
+	optional := make(map[string]bool, len(s))
+	for _, c := range s {
+		// Required and defaulted at once is not a contradiction: the default is
+		// what fills the NOT NULL when the row omits it.
+		if c.Default != nil {
+			optional[c.Name] = true
+		}
 	}
 
 	row, err := AsObject(records[0].Payload)
@@ -46,7 +70,7 @@ func CheckColumns(declared []string, records []Envelope) error {
 	var missing []string
 	for _, c := range declared {
 		want[c] = true
-		if _, present := row[c]; !present {
+		if _, present := row[c]; !present && !optional[c] {
 			missing = append(missing, c)
 		}
 	}

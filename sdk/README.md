@@ -1007,6 +1007,60 @@ decoder just produced, which the extract preview keeps so it can show what the
 **source** sent. The copy now happens once, in one place, and the other five
 were identical work repeated per record.
 
+## Creating the table, and letting it grow
+
+The shape comes from a **declaration**, never from the batch.
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: "bronze.orders", CreateTable: true},
+    Schema: sdk.Schema{
+        {Name: "ingestion_id",        Type: sdk.TypeString,    Required: true},
+        {Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+        {Name: "sku",                 Type: sdk.TypeString,    Required: true},
+        {Name: "quantity",            Type: sdk.TypeInt64},
+        {Name: "price",               Type: sdk.TypeNumeric},
+        {Name: "status",              Type: sdk.TypeString,    Default: "pending"},
+        {Name: "seen_at",             Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
+    },
+}
+```
+
+`Default` takes a Go literal — a string, a number, a bool, a `time.Time` — or
+`sdk.CurrentTimestamp`. It is not raw SQL: a `Default string` would be a DDL
+injection point in a field that reads like data, and a Schema can come from a
+config file. Anything a literal cannot say — `NUMERIC(18,2)`, a sequence, an
+index — is `CreateSQL`, which runs your DDL instead.
+
+**A column with a default may be absent from the row.** That is what declaring
+one means, and the column check honours it.
+
+### Evolution
+
+A vendor adds a field, the declaration grows, and the load carries on:
+
+```go
+postgres.Table{DSN: dsn, Name: "bronze.orders", Evolve: sdk.EvolveAdditive}
+```
+
+| change | what happens |
+|---|---|
+| a column the declaration has and the table does not | **added**, nullable, with its default |
+| a type that widens (`int64` → `float64`, `int64` → `numeric`) | **widened** |
+| a type that narrows, or changes kind | **refused**, naming both types |
+| a column the table has and the declaration does not | **left alone** — dropping loses history |
+
+`EvolveNone` is the zero value and refuses any difference, which is what every
+driver did before this existed.
+
+**An added column is nullable and the rows already there stay NULL**, whatever
+the declaration says about `Required`. `NOT NULL` would have to be true of every
+existing row and no value the SDK could invent is; and a default applied to old
+rows would make a row loaded in March claim a value it never had.
+
+There is no mode that drops a column. A mode that drops is one somebody switches
+on during an incident and discovers a quarter later.
+
 ## What each destination supports
 
 Nine drivers times four options is 36 combinations, and promising 36 without
@@ -1016,16 +1070,17 @@ the code and fails if a driver accepts an option it does not implement.
 
 | destination | `Dedup` | `CreateTable` |
 |---|---|---|
-| `bigquery.Table` | `MERGE` | **yes** — BigQuery infers the types |
-| `postgres.Table` | `ON CONFLICT DO NOTHING` | **no such field** — the table must exist |
-| `mysql.Table` | `INSERT IGNORE` | **no such field** |
-| `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **no such field** |
+| `bigquery.Table` | `MERGE` | **yes** — from `Schema` or `CreateSQL` |
+| `postgres.Table` | `ON CONFLICT DO NOTHING` | **yes** — from `Schema` or `CreateSQL` |
+| `mysql.Table` | `INSERT IGNORE` | **yes** — from `Schema` or `CreateSQL` |
+| `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **no such field** — the table must exist |
 | `to.Files` | **refused**, naming the field | **no such field** |
 
-Only BigQuery creates tables, because only BigQuery has a service that infers
-column types from the data. Guessing `NUMERIC(18,2)` from a JSON number is the
-one thing this SDK will not do, so the other three name the columns the batch
-carries and let you write the DDL.
+The shape always comes from a **declaration**, never from the batch. Guessing
+`NUMERIC(18,2)` from a JSON number is the one thing this SDK will not do — a
+field that arrives whole today and fractional tomorrow would change the column
+with nobody writing anything. `CreateTable` with neither `Schema` nor
+`CreateSQL` is an error that says which of the two is missing.
 
 Measured throughput, 10k rows of 5 columns against the compose containers —
 useful for comparing strategies, not as a production promise:

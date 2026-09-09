@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -18,9 +19,11 @@ import (
 //
 //	To: mysql.Table{DSN: os.Getenv("MYSQL_DSN"), Name: "landing.orders"}
 //
-// The table has to EXIST. This driver does not create it and infers no types:
-// deducing DECIMAL(18,2) from a JSON number is guessing, and guessing a type is
-// the one thing this SDK decided not to do.
+// The table has to exist, and there are three ways to get one: create it
+// yourself, declare Target.Schema with CreateTable on, or give CreateSQL.
+//
+// What it will NOT do is infer. Deducing DECIMAL(18,2) from a JSON number is
+// guessing, and guessing a type is the one thing this SDK decided not to do.
 type Table struct {
 	// DSN is the connection string. Required, and never appears in a log.
 	DSN string
@@ -40,6 +43,21 @@ type Table struct {
 
 	// DB reuses a pool. Nil opens one and closes it at the end.
 	DB *sql.DB
+
+	// CreateTable lets the driver create the table when it is absent, from
+	// Target.Schema or from CreateSQL. Off by default: a loader that creates
+	// tables by accident turns a typo in Name into a second table nobody reads.
+	CreateTable bool
+
+	// CreateSQL is your DDL, run once when the table is absent and only with
+	// CreateTable on. It is for what a declaration cannot say: DECIMAL with a
+	// scale, an engine, a charset, an index.
+	CreateSQL string
+
+	// Evolve says what the load may do to a table that EXISTS and no longer
+	// matches Target.Schema. The zero value refuses any difference, which is
+	// what this driver has always done. See core.Evolution.
+	Evolve core.Evolution
 }
 
 const defaultBatch = 1000
@@ -68,7 +86,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if len(envelopes) == 0 {
 		return fail(nil)
 	}
-	if err := core.CheckColumns(opt.Columns, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
 		return fail(err)
 	}
 
@@ -84,10 +102,28 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(err)
 	}
 	if len(tableColumns) == 0 {
-		return fail(fmt.Errorf("table %s does not exist. This driver does not create it and "+
-			"does not infer types -- guessing DECIMAL(18,2) from a JSON number is the one thing "+
-			"this SDK will not do. Create it with the columns the batch carries: %s",
-			t.Name, strings.Join(fieldsOf(envelopes), ", ")))
+		if err := t.create(ctx, db, opt, envelopes); err != nil {
+			return fail(err)
+		}
+		// Read it back rather than trusting the CREATE: the column list and the
+		// types below drive the INSERT, and a CreateSQL that produced something
+		// else would fail later with an error about a column instead of about
+		// the DDL that forgot it.
+		tableColumns, types, err = columnsOf(ctx, db, database, table)
+		if err != nil {
+			return fail(err)
+		}
+		if len(tableColumns) == 0 {
+			return fail(fmt.Errorf("the table %s still does not exist after creating it", t.Name))
+		}
+		res.TableCreated = true
+	} else if err := t.evolve(ctx, db, opt, types); err != nil {
+		return fail(err)
+	} else if len(opt.Schema) > 0 {
+		tableColumns, types, err = columnsOf(ctx, db, database, table)
+		if err != nil {
+			return fail(err)
+		}
 	}
 
 	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
@@ -346,4 +382,68 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	return fmt.Errorf("the declaration lists %s, which %s does not have. The table has: %s. "+
 		"Caught before the extract, so no source quota was spent",
 		strings.Join(missing, ", "), t.Name, strings.Join(inTable, ", "))
+}
+
+// create makes the table, from the declaration or from the caller's DDL.
+//
+// Only when it is ABSENT -- never to alter one that exists. A loader that can
+// ALTER or DROP is a loader that can erase history.
+func (t Table) create(ctx context.Context, db *sql.DB, opt core.WriteOptions, envelopes []core.Envelope) error {
+	if !t.CreateTable {
+		return fmt.Errorf("table %s does not exist. Set CreateTable and declare "+
+			"Target.Schema (or CreateSQL) to let the driver create it, or create it "+
+			"yourself with the columns the batch carries: %s",
+			t.Name, strings.Join(fieldsOf(envelopes), ", "))
+	}
+
+	if t.CreateSQL != "" {
+		if _, err := db.ExecContext(ctx, t.CreateSQL); err != nil {
+			return fmt.Errorf("running CreateSQL for %s: %w", t.Name, err)
+		}
+		return nil
+	}
+
+	if len(opt.Schema) == 0 {
+		return fmt.Errorf("table %s does not exist and CreateTable is on, but nothing "+
+			"says what to create: declare Target.Schema with a type on each column, or "+
+			"give CreateSQL. This driver does not infer types from the batch", t.Name)
+	}
+
+	ddl, err := opt.Schema.CreateTable(core.MySQL, t.Name)
+	if err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx, ddl); err != nil {
+		return fmt.Errorf("creating %s: %w\n%s", t.Name, err, ddl)
+	}
+	return nil
+}
+
+// evolve brings an EXISTING table up to the declaration, within what Evolve
+// allows. See the Postgres driver's twin for the reasoning; the difference here
+// is only the dialect.
+func (t Table) evolve(ctx context.Context, db *sql.DB, opt core.WriteOptions, types map[string]string) error {
+	if len(opt.Schema) == 0 {
+		return nil
+	}
+
+	changes, err := opt.Schema.Plan(declaredTypes(types), t.Evolve, t.Name)
+	if err != nil {
+		return err
+	}
+
+	for done, ch := range changes {
+		stmts, err := opt.Schema.AlterTable(core.MySQL, t.Name, []core.Change{ch})
+		if err != nil {
+			return err
+		}
+		for _, sql := range stmts {
+			if _, err := db.ExecContext(ctx, sql); err != nil {
+				return fmt.Errorf("evolving %s (%s): %w\n%d of %d changes had already been applied",
+					t.Name, ch, err, done, len(changes))
+			}
+		}
+		slog.InfoContext(ctx, "schema evolved", "table", t.Name, "change", ch.String())
+	}
+	return nil
 }

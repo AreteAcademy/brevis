@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -146,4 +147,47 @@ func elide(s string) string {
 		return s
 	}
 	return s[:37] + "…"
+}
+
+// declaredType maps a Postgres catalogue type back onto the SDK's declared
+// ones, for the schema diff.
+//
+// It answers "what does this column hold", not "what is it called": both
+// `character varying` and `text` are TypeString here, and a column this does
+// not recognise returns false rather than a guess -- the diff then leaves it
+// alone instead of proposing an ALTER on a type nobody modelled.
+func declaredType(pg string) (core.ColumnType, bool) {
+	switch pg {
+	case "text", "character varying", "character", "citext", "uuid":
+		return core.TypeString, true
+	case "bigint", "integer", "smallint":
+		return core.TypeInt64, true
+	case "double precision", "real":
+		return core.TypeFloat64, true
+	case "numeric":
+		return core.TypeNumeric, true
+	case "boolean":
+		return core.TypeBool, true
+	case "timestamp with time zone", "timestamp without time zone":
+		return core.TypeTimestamp, true
+	case "date":
+		return core.TypeDate, true
+	case "json", "jsonb":
+		return core.TypeJSON, true
+	case "bytea":
+		return core.TypeBytes, true
+	default:
+		return "", false
+	}
+}
+
+// declaredTypes turns the catalogue into what Schema.Plan compares against.
+func declaredTypes(types map[string]string) map[string]core.ColumnType {
+	out := make(map[string]core.ColumnType, len(types))
+	for name, pg := range types {
+		if t, known := declaredType(pg); known {
+			out[name] = t
+		}
+	}
+	return out
 }

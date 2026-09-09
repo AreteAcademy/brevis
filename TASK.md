@@ -11,7 +11,7 @@ being attacked and where it stands.
 | **3** | **Flow shapes** — `skipped`, trigger rules, edge labels, dynamic mapping, groups, sub-flows | [`plan/2026-09-08-flow-shapes.md`](docs/plan/2026-09-08-flow-shapes.md) | **done** |
 | **4** | **Auto params** — the clock, the window and the lateness the engine hands every run | [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) | **done** |
 | **5** | **The scheduler's retry policy** — `--max-attempts` and `--retry-backoff`, and a default that is not inert | [`plan/2026-09-07-sdk-retry-policy-is-not-configurable.md`](docs/plan/2026-09-07-sdk-retry-policy-is-not-configurable.md) | **done** in `0.10.0` |
-| **6** | **Schema evolution on load** — additive by default, lossy by opt-in, every change recorded | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §10 | proposed |
+| **6** | **Schema evolution on load** — `CreateTable` on every SQL destination, then additive evolution | [`plan/2026-09-08-schema-evolution.md`](docs/plan/2026-09-08-schema-evolution.md) | **done**, except Redshift |
 | **7** | **Official task images** — `etl-go`, `etl-python`, `etl-node`, with a size gate | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §7 | proposed |
 | **8** | **Node.js context library** — the Python contract, in npm | [`plan/2026-09-08-node-context-sdk.md`](docs/plan/2026-09-08-node-context-sdk.md) | proposed |
 | **9** | **The load trend screen** — the numbers every load already produces, kept and drawn | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §11 | proposed |
@@ -92,8 +92,12 @@ the CLI, which for a queue of HTTP fetches against rate-limited vendors is
 indistinguishable from no retry at all. They now land at 0s, 30s and 1m30s and
 both numbers are flags.
 
-**#6 is next.** Schema evolution: the only item on this list that a running
-consumer hits today, silently, whenever a vendor adds a field.
+**#6 shipped.** Postgres and MySQL create their tables from a declared Schema
+and evolve them additively; BigQuery already created. Redshift does neither, and
+that is written down rather than hidden: there is no Redshift in CI, and a
+rendered-DDL test would be a checkmark that means less than it looks.
+
+**#7 is next.** The official task images.
 
 ## Standing rules for all four
 

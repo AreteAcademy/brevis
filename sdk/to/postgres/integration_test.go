@@ -424,3 +424,296 @@ func TestIntegrationPostgresToPostgres(t *testing.T) {
 		t.Errorf("valor = %q, esperado \"3.00\"", value)
 	}
 }
+
+// TestIntegrationCreateTableFromTheDeclaration.
+//
+// The gate this feature actually needs. Rendering a CREATE correctly and having
+// the server refuse it is exactly the shape that let CreateSQL exist since
+// v0.9.0 without ever being executed against BigQuery -- a unit test on the
+// string proves the string.
+//
+// So: declare, create, LOAD, and read the rows back.
+func TestIntegrationCreateTableFromTheDeclaration(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("public.created_%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name)
+	})
+
+	schema := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+		{Name: "sku", Type: sdk.TypeString, Required: true},
+		{Name: "quantity", Type: sdk.TypeInt64},
+		{Name: "price", Type: sdk.TypeNumeric},
+		{Name: "active", Type: sdk.TypeBool, Default: true},
+		{Name: "status", Type: sdk.TypeString, Default: "pending"},
+		{Name: "attempts", Type: sdk.TypeInt64, Default: 0},
+		{Name: "seen_at", Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
+		{Name: "payload", Type: sdk.TypeJSON},
+	}
+
+	row := env(map[string]any{
+		"ingestion_id": "id-1", "ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
+		"sku": "A1", "quantity": 3, "price": "9.90", "payload": map[string]any{"k": 1},
+	})
+	res, err := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}.Write(
+		ctx, []sdk.Envelope{row}, sdk.WriteOptions{Schema: schema, Columns: schema.Names()})
+	if err != nil {
+		t.Fatalf("the load failed: %v", err)
+	}
+	if !res.TableCreated {
+		t.Error("the load did not report creating the table")
+	}
+	if res.RowsLoaded != 1 {
+		t.Errorf("RowsLoaded = %d", res.RowsLoaded)
+	}
+
+	// The TYPES the server actually created, which is the half a string
+	// assertion cannot reach.
+	rows, err := conn.Query(ctx, `
+		SELECT column_name, data_type, is_nullable, column_default
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = $1
+		ORDER BY ordinal_position`, strings.TrimPrefix(name, "public."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	got := map[string][3]string{}
+	for rows.Next() {
+		var col, typ, nullable string
+		var def *string
+		if err := rows.Scan(&col, &typ, &nullable, &def); err != nil {
+			t.Fatal(err)
+		}
+		d := ""
+		if def != nil {
+			d = *def
+		}
+		got[col] = [3]string{typ, nullable, d}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	for col, want := range map[string][3]string{
+		"sku":      {"text", "NO", ""},
+		"quantity": {"bigint", "YES", ""},
+		"price":    {"numeric", "YES", ""},
+		"active":   {"boolean", "YES", "true"},
+		"status":   {"text", "YES", "'pending'::text"},
+		"attempts": {"bigint", "YES", "0"},
+		"seen_at":  {"timestamp with time zone", "YES", "CURRENT_TIMESTAMP"},
+		"payload":  {"jsonb", "YES", ""},
+	} {
+		g, ok := got[col]
+		if !ok {
+			t.Errorf("the table has no column %q", col)
+			continue
+		}
+		if g[0] != want[0] {
+			t.Errorf("%s is %s, wanted %s", col, g[0], want[0])
+		}
+		if g[1] != want[1] {
+			t.Errorf("%s nullable=%s, wanted %s", col, g[1], want[1])
+		}
+		if g[2] != want[2] {
+			t.Errorf("%s default=%q, wanted %q", col, g[2], want[2])
+		}
+	}
+
+	// And the DEFAULTS are real: a second row that omits them comes back with
+	// the declared values, which is the only thing that proves the clause did
+	// something.
+	if _, err := conn.Exec(ctx,
+		"INSERT INTO "+name+" (ingestion_id, ingestion_loaded_at, sku) VALUES ('x', now(), 'B2')"); err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	var attempts int64
+	var active bool
+	if err := conn.QueryRow(ctx,
+		"SELECT status, attempts, active FROM "+name+" WHERE sku = 'B2'").
+		Scan(&status, &attempts, &active); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" || attempts != 0 || !active {
+		t.Errorf("the defaults did not apply: status=%q attempts=%d active=%v",
+			status, attempts, active)
+	}
+}
+
+// CreateTable with no Schema and no CreateSQL is refused naming BOTH ways out.
+// It used to be impossible to reach; now it is a wrong configuration, and a
+// wrong configuration that says nothing is a support ticket.
+func TestIntegrationCreateTableWithNothingToCreateFrom(t *testing.T) {
+	name := fmt.Sprintf("public.nothing_%d", time.Now().UnixNano())
+	_, err := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}.Write(
+		context.Background(),
+		[]sdk.Envelope{env(map[string]any{"ingestion_id": "x",
+			"ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339), "sku": "A1"})},
+		sdk.WriteOptions{Columns: []string{"ingestion_id", "ingestion_loaded_at", "sku"}})
+	if err == nil {
+		t.Fatal("a table was created with nothing describing it")
+	}
+	for _, want := range []string{"Schema", "CreateSQL", "does not infer"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error does not mention %q: %v", want, err)
+		}
+	}
+}
+
+// TestIntegrationEvolveAddsAColumnAndKeepsTheRows.
+//
+// The whole point of the feature, against a real server: a vendor adds a field,
+// the declaration grows, and the load carries on — without touching the rows
+// that are already there.
+func TestIntegrationEvolveAddsAColumnAndKeepsTheRows(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("public.evolved_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	base := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+		{Name: "sku", Type: sdk.TypeString},
+	}
+	row := func(id, sku string, extra map[string]any) sdk.Envelope {
+		p := map[string]any{
+			"ingestion_id": id, "ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
+			"sku": sku,
+		}
+		for k, v := range extra {
+			p[k] = v
+		}
+		return env(p)
+	}
+
+	// The table as it is today.
+	writer := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := writer.Write(ctx, []sdk.Envelope{row("a", "A1", nil)},
+		sdk.WriteOptions{Schema: base, Columns: base.Names()}); err != nil {
+		t.Fatalf("the first load failed: %v", err)
+	}
+
+	// The vendor adds two fields.
+	grown := append(append(sdk.Schema{}, base...),
+		sdk.Column{Name: "channel", Type: sdk.TypeString, Default: "web"},
+		sdk.Column{Name: "score", Type: sdk.TypeFloat64},
+	)
+
+	// Without Evolve, the load REFUSES and says how to allow it.
+	_, err := topg.Table{DSN: dsn(t), Name: name}.Write(
+		ctx, []sdk.Envelope{row("b", "B2", map[string]any{"score": 1.5})},
+		sdk.WriteOptions{Schema: grown, Columns: grown.Names()})
+	if err == nil {
+		t.Fatal("a table missing two declared columns was written to anyway")
+	}
+	if !strings.Contains(err.Error(), "EvolveAdditive") {
+		t.Errorf("the refusal does not say how to allow it: %v", err)
+	}
+
+	// With it, the columns arrive and the load goes through.
+	res, err := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}.Write(
+		ctx, []sdk.Envelope{row("b", "B2", map[string]any{"score": 1.5})},
+		sdk.WriteOptions{Schema: grown, Columns: grown.Names()})
+	if err != nil {
+		t.Fatalf("the evolving load failed: %v", err)
+	}
+	if res.RowsLoaded != 1 {
+		t.Errorf("RowsLoaded = %d", res.RowsLoaded)
+	}
+
+	// The row that was already there kept its data, and the new column is NULL
+	// on it -- NOT the default.
+	//
+	// This is the assertion that found a real bug. `ADD COLUMN ... DEFAULT x`
+	// backfills every existing row, so the March row came back claiming
+	// channel="web" -- a value it never had. The ADD and the SET DEFAULT are
+	// two statements now, and the unit test could not have caught it: the
+	// statement it asserted was perfectly well formed.
+	var channel *string
+	var sku string
+	if err := conn.QueryRow(ctx,
+		"SELECT sku, channel FROM "+name+" WHERE ingestion_id = 'a'").Scan(&sku, &channel); err != nil {
+		t.Fatal(err)
+	}
+	if sku != "A1" {
+		t.Errorf("the existing row changed: sku=%q", sku)
+	}
+	if channel != nil {
+		t.Errorf("the existing row was backfilled with %q", *channel)
+	}
+
+	// And the added column is NULLABLE with its declared default, whatever the
+	// declaration said about NOT NULL: no value this SDK could invent is true
+	// of rows that already exist.
+	var nullable, def string
+	if err := conn.QueryRow(ctx, `
+		SELECT is_nullable, COALESCE(column_default, '')
+		FROM information_schema.columns
+		WHERE table_schema='public' AND table_name=$1 AND column_name='channel'`,
+		strings.TrimPrefix(name, "public.")).Scan(&nullable, &def); err != nil {
+		t.Fatal(err)
+	}
+	if nullable != "YES" {
+		t.Errorf("the added column is %s nullable", nullable)
+	}
+	if !strings.Contains(def, "web") {
+		t.Errorf("the added column lost its default: %q", def)
+	}
+}
+
+// TestIntegrationEvolveRefusesToNarrow.
+//
+// numeric -> float64 is the one somebody always asks for, and it is the one
+// that silently rounds money. It is refused naming both types.
+func TestIntegrationEvolveRefusesToNarrow(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("public.narrow_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	base := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+		{Name: "amount", Type: sdk.TypeNumeric},
+	}
+	first := env(map[string]any{
+		"ingestion_id": "a", "ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
+		"amount": "10.50",
+	})
+	writer := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := writer.Write(ctx, []sdk.Envelope{first},
+		sdk.WriteOptions{Schema: base, Columns: base.Names()}); err != nil {
+		t.Fatal(err)
+	}
+
+	narrowed := sdk.Schema{base[0], base[1], {Name: "amount", Type: sdk.TypeFloat64}}
+	_, err := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}.Write(
+		ctx, []sdk.Envelope{first}, sdk.WriteOptions{Schema: narrowed, Columns: narrowed.Names()})
+	if err == nil {
+		t.Fatal("a numeric column was narrowed to float")
+	}
+	for _, want := range []string{"amount", "numeric", "float64"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q: %v", want, err)
+		}
+	}
+
+	// And the column is untouched.
+	var typ string
+	if err := conn.QueryRow(ctx, `
+		SELECT data_type FROM information_schema.columns
+		WHERE table_schema='public' AND table_name=$1 AND column_name='amount'`,
+		strings.TrimPrefix(name, "public.")).Scan(&typ); err != nil {
+		t.Fatal(err)
+	}
+	if typ != "numeric" {
+		t.Errorf("the refused change was applied anyway: the column is %s", typ)
+	}
+}

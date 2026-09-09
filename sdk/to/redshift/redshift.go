@@ -101,7 +101,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if len(envelopes) == 0 {
 		return fail(nil)
 	}
-	if err := core.CheckColumns(opt.Columns, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
 		return fail(err)
 	}
 

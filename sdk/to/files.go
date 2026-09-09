@@ -72,7 +72,7 @@ func (f Files) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 		format = core.FormatNDJSON
 	}
 
-	if err := core.CheckColumns(opt.Columns, records); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, records); err != nil {
 		return nil, err
 	}
 

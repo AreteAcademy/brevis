@@ -5,6 +5,15 @@
 #
 # Gated on an environment variable, like BigQuery's: without the variable the
 # tests skip, and the normal suite stays offline.
+#
+# The project name is EXPLICIT, and it is not decoration. Without it Compose
+# derives the name from the directory -- the same name docker-compose.yml gets --
+# and `postgres` in both files becomes the same container: bringing these up
+# REPLACED the engine's development database, moved its port from 5432 to 55432,
+# and the engine's tests started failing with "connection refused" on a machine
+# where nothing was wrong. In CI it never happened, because CI has one of them.
+name: brevis-drivers
+
 services:
   minio:
     image: minio/minio:latest

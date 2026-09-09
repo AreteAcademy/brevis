@@ -151,6 +151,36 @@ const (
 	TypeBytes     = core.TypeBytes
 )
 
+// CurrentTimestamp is a column DEFAULT the database computes: it renders as
+// that destination's CURRENT_TIMESTAMP.
+//
+//	{Name: "seen_at", Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp}
+//
+// Everything else a DEFAULT can hold is a Go literal -- a string, a number, a
+// bool, a time.Time. Anything past that is CreateSQL's.
+const CurrentTimestamp = core.CurrentTimestamp
+
+// Expression is the type of CurrentTimestamp. See Column.Default.
+type Expression = core.Expression
+
+// Evolution says what a load may do to a table that already exists and no
+// longer matches the declared Schema. See the destination's Evolve field.
+type Evolution = core.Evolution
+
+const (
+	// EvolveNone refuses any difference between the table and the declaration.
+	// It is the zero value, and it is what every driver did before evolution
+	// existed: a load that starts altering tables because a field defaulted to
+	// on is not a surprise anybody wants.
+	EvolveNone = core.EvolveNone
+
+	// EvolveAdditive adds a declared column the table lacks, and widens a type
+	// where widening loses nothing. It never drops a column and never narrows
+	// a type -- a column that leaves the source stops being written and stays
+	// in the table, because dropping it loses history.
+	EvolveAdditive = core.EvolveAdditive
+)
+
 // The failure policies of a composite source. See from.Many.
 const (
 	AbortOnError    = core.AbortOnError

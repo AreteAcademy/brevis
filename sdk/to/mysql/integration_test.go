@@ -400,3 +400,198 @@ func TestIntegrationMySQLToMySQL(t *testing.T) {
 		t.Errorf("valor = %q, esperado \"3.00\"", value)
 	}
 }
+
+// TestIntegrationCreateTableFromTheDeclaration.
+//
+// MySQL's half of the same gate. The dialect makes three choices that only a
+// real server can settle: LONGTEXT instead of a guessed VARCHAR length,
+// TINYINT(1) for bool, and DEFAULT before NOT NULL — the other order is a
+// syntax error here and parses fine everywhere else.
+func TestIntegrationCreateTableFromTheDeclaration(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_created_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	schema := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+		{Name: "sku", Type: sdk.TypeString, Required: true},
+		{Name: "quantity", Type: sdk.TypeInt64},
+		{Name: "price", Type: sdk.TypeNumeric},
+		{Name: "active", Type: sdk.TypeBool, Default: true},
+		{Name: "status", Type: sdk.TypeString, Required: true, Default: "pending"},
+		{Name: "attempts", Type: sdk.TypeInt64, Default: 0},
+		{Name: "payload", Type: sdk.TypeJSON},
+	}
+
+	row := sdk.Envelope{Payload: map[string]any{
+		"ingestion_id": "id-1", "ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
+		"sku": "A1", "quantity": 3, "price": "9.90", "payload": map[string]any{"k": 1},
+	}}
+	res, err := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true}.Write(
+		ctx, []sdk.Envelope{row}, sdk.WriteOptions{Schema: schema, Columns: schema.Names()})
+	if err != nil {
+		t.Fatalf("the load failed: %v", err)
+	}
+	if !res.TableCreated {
+		t.Error("the load did not report creating the table")
+	}
+
+	// What the server actually made. A LONGTEXT that came out VARCHAR(255)
+	// would truncate silently on the first long value.
+	rows, err := db.QueryContext(ctx, `
+		SELECT column_name, column_type, is_nullable, IFNULL(column_default, '')
+		FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ?
+		ORDER BY ordinal_position`, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	got := map[string][3]string{}
+	for rows.Next() {
+		var col, typ, nullable, def string
+		if err := rows.Scan(&col, &typ, &nullable, &def); err != nil {
+			t.Fatal(err)
+		}
+		got[col] = [3]string{typ, nullable, def}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	for col, want := range map[string][3]string{
+		"sku":      {"longtext", "NO", ""},
+		"quantity": {"bigint", "YES", ""},
+		"price":    {"decimal(38,9)", "YES", ""},
+		"active":   {"tinyint(1)", "YES", "1"},
+		// An expression default reads back with a charset introducer --
+		// `_utf8mb4'pending'` -- whose prefix depends on the CONNECTION's charset,
+		// not on the DDL. Asserting it exactly would be testing MySQL's
+		// formatting; `~` below means "contains", and the row inserted after this
+		// is what proves the default actually fires.
+		"status":   {"longtext", "NO", "~pending"},
+		"attempts": {"bigint", "YES", "0"},
+		"payload":  {"json", "YES", ""},
+	} {
+		g, ok := got[col]
+		if !ok {
+			t.Errorf("the table has no column %q", col)
+			continue
+		}
+		if g[0] != want[0] {
+			t.Errorf("%s is %s, wanted %s", col, g[0], want[0])
+		}
+		if g[1] != want[1] {
+			t.Errorf("%s nullable=%s, wanted %s", col, g[1], want[1])
+		}
+		// A `~` prefix means "contains", for the one value whose exact text
+		// belongs to the server.
+		if strings.HasPrefix(want[2], "~") {
+			if !strings.Contains(g[2], strings.TrimPrefix(want[2], "~")) {
+				t.Errorf("%s default=%q, wanted something containing %q",
+					col, g[2], strings.TrimPrefix(want[2], "~"))
+			}
+		} else if g[2] != want[2] {
+			t.Errorf("%s default=%q, wanted %q", col, g[2], want[2])
+		}
+	}
+
+	// And `status` proves the clause ORDER: it is NOT NULL with a DEFAULT, and
+	// a row that omits it has to come back with the default rather than being
+	// refused.
+	if _, err := db.ExecContext(ctx,
+		"INSERT INTO "+name+" (ingestion_id, ingestion_loaded_at, sku) VALUES ('x', NOW(6), 'B2')"); err != nil {
+		t.Fatalf("inserting a row that relies on the defaults: %v", err)
+	}
+	var status string
+	var attempts int64
+	if err := db.QueryRowContext(ctx,
+		"SELECT status, attempts FROM "+name+" WHERE sku = 'B2'").Scan(&status, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" || attempts != 0 {
+		t.Errorf("the defaults did not apply: status=%q attempts=%d", status, attempts)
+	}
+}
+
+// TestIntegrationEvolveAddsAColumnWithoutRewritingHistory.
+//
+// MySQL's half. The interesting part is the same one Postgres found: an
+// `ADD COLUMN ... DEFAULT` backfills the rows already there, so the two
+// statements have to stay apart. And MySQL needs the parenthesised form for a
+// TEXT default even in SET DEFAULT, which only this test can settle.
+func TestIntegrationEvolveAddsAColumnWithoutRewritingHistory(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_evolved_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	base := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "ingestion_loaded_at", Type: sdk.TypeTimestamp, Required: true},
+		{Name: "sku", Type: sdk.TypeString},
+	}
+	row := func(id, sku string, extra map[string]any) sdk.Envelope {
+		p := map[string]any{
+			"ingestion_id": id, "ingestion_loaded_at": time.Now().UTC().Format(time.RFC3339),
+			"sku": sku,
+		}
+		for k, v := range extra {
+			p[k] = v
+		}
+		return sdk.Envelope{Payload: p}
+	}
+
+	writer := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := writer.Write(ctx, []sdk.Envelope{row("a", "A1", nil)},
+		sdk.WriteOptions{Schema: base, Columns: base.Names()}); err != nil {
+		t.Fatalf("the first load failed: %v", err)
+	}
+
+	grown := append(append(sdk.Schema{}, base...),
+		sdk.Column{Name: "channel", Type: sdk.TypeString, Default: "web"},
+	)
+
+	// Without Evolve it refuses, naming the way to allow it.
+	refuser := tomy.Table{DSN: dsn(t), Name: name}
+	if _, err := refuser.Write(ctx, []sdk.Envelope{row("b", "B2", nil)},
+		sdk.WriteOptions{Schema: grown, Columns: grown.Names()}); err == nil {
+		t.Fatal("a table missing a declared column was written to anyway")
+	} else if !strings.Contains(err.Error(), "EvolveAdditive") {
+		t.Errorf("the refusal does not say how to allow it: %v", err)
+	}
+
+	evolver := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}
+	if _, err := evolver.Write(ctx, []sdk.Envelope{row("b", "B2", nil)},
+		sdk.WriteOptions{Schema: grown, Columns: grown.Names()}); err != nil {
+		t.Fatalf("the evolving load failed: %v", err)
+	}
+
+	// The row that was already there is NULL in the new column, not "web".
+	var channel *string
+	if err := db.QueryRowContext(ctx,
+		"SELECT channel FROM "+name+" WHERE ingestion_id = 'a'").Scan(&channel); err != nil {
+		t.Fatal(err)
+	}
+	if channel != nil {
+		t.Errorf("the existing row was backfilled with %q", *channel)
+	}
+
+	// And a row written afterwards, omitting it, gets the default -- which is
+	// what proves SET DEFAULT took on a TEXT column.
+	if _, err := db.ExecContext(ctx,
+		"INSERT INTO "+name+" (ingestion_id, ingestion_loaded_at, sku) VALUES ('c', NOW(6), 'C3')"); err != nil {
+		t.Fatal(err)
+	}
+	var after string
+	if err := db.QueryRowContext(ctx,
+		"SELECT channel FROM "+name+" WHERE ingestion_id = 'c'").Scan(&after); err != nil {
+		t.Fatal(err)
+	}
+	if after != "web" {
+		t.Errorf("the default did not apply to a new row: %q", after)
+	}
+}

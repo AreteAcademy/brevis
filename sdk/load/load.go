@@ -208,7 +208,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// The row is exactly what the Transform chain composed, ingestion_id
 	// included -- so the declaration is checked against the whole row and
 	// needs no special case.
-	if err := core.CheckColumns(l.cfg.Columns, envelopes); err != nil {
+	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes); err != nil {
 		return fail(err)
 	}
 

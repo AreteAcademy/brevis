@@ -18,6 +18,79 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.57.0] — 2026-09-08
+
+### Added: every SQL destination can create its table
+
+Only BigQuery could. Postgres and MySQL refused with *"this driver does not
+create it"*, so a landing table was somebody's hand-written DDL kept in step
+with a Go declaration by memory.
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: "bronze.orders", CreateTable: true},
+    Schema: sdk.Schema{
+        {Name: "sku",     Type: sdk.TypeString,    Required: true},
+        {Name: "status",  Type: sdk.TypeString,    Default: "pending"},
+        {Name: "seen_at", Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
+    },
+}
+```
+
+The shape still comes from a **declaration**, never from the batch. `CreateTable`
+with neither `Schema` nor `CreateSQL` is an error saying which of the two is
+missing.
+
+**Redshift is not included**, and that is stated rather than hidden: there is no
+Redshift in CI, and a rendered-DDL test would be a green checkmark that means
+less than it looks.
+
+### Added: `Column.Default`
+
+A Go literal — a string, a number, a bool, a `time.Time` — or
+`sdk.CurrentTimestamp`. Not raw SQL: a `Default string` is a DDL injection point
+in a field that reads like data, and a Schema can be filled from a config file.
+
+**A column with a default may now be absent from the row**, which is what
+declaring one means. The column check refused exactly that, so the feature would
+have been inert the day it shipped.
+
+### Added: additive schema evolution
+
+```go
+postgres.Table{DSN: dsn, Name: "bronze.orders", Evolve: sdk.EvolveAdditive}
+```
+
+A declared column the table lacks is **added**, nullable, with its default. A
+type that widens (`int64` → `float64`, `int64` → `numeric`) is **widened**. A
+narrowing or a change of kind is **refused, naming both types** — `numeric` →
+`float64` is the one somebody always asks for and the one that silently rounds
+money. A column the table has and the declaration does not is **left alone**:
+dropping it loses history.
+
+`EvolveNone` is the zero value and refuses any difference, which is what every
+driver did before this existed. There is no mode that drops.
+
+### Four things only a real server said
+
+Every one of these passed a unit test on the rendered SQL and failed against
+Postgres or MySQL:
+
+1. **MySQL refuses a plain `DEFAULT` on a TEXT column** (`Error 1101`). Since
+   `string` is `LONGTEXT` — a VARCHAR needs a length, and a length is a guess —
+   every string default hit it. The parenthesised expression default that
+   8.0.13 added is what works.
+2. **`ADD COLUMN ... DEFAULT x` backfills the rows already in the table.**
+   Postgres has done that since 11 and MySQL does it too, so a row loaded in
+   March came back claiming a value it never had. The ADD and the SET DEFAULT
+   are two statements now.
+3. **MySQL's `ALTER COLUMN ... SET DEFAULT` takes a literal only**, so on a TEXT
+   column — whose default must be an expression — it is `Error 1101` again.
+   `MODIFY COLUMN` is the one statement that satisfies both constraints.
+4. **The column check made defaults useless**, as above.
+
+---
+
 ## [0.56.0] — 2026-09-08
 
 ### Added: `Run.Auto`, the clock the engine already knew

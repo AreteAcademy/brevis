@@ -52,11 +52,11 @@ var destinations = map[string]struct {
 	},
 	"postgres.Table": {
 		writer:  postgres.Table{DSN: "postgres://x/y", Name: "t"},
-		support: support{dedup: true, createTable: false},
+		support: support{dedup: true, createTable: true},
 	},
 	"mysql.Table": {
 		writer:  mysql.Table{DSN: "u@tcp(x)/y", Name: "t"},
-		support: support{dedup: true, createTable: false},
+		support: support{dedup: true, createTable: true},
 	},
 	"redshift.Table": {
 		writer:  redshift.Table{DSN: "postgres://x/y", Name: "t"},
@@ -99,12 +99,18 @@ func TestDedupEitherWorksOrRefuses(t *testing.T) {
 	}
 }
 
-// TestNoSQLDestinationInventsAType is §4 of the plan: Postgres, MySQL and
-// Redshift have no service that infers types, and guessing NUMERIC(18,2) from a
-// JSON number is the one thing this SDK decided not to do.
+// TestNoSQLDestinationInventsAType: guessing NUMERIC(18,2) from a JSON number
+// is still the one thing this SDK will not do.
 //
-// None of the three has a CreateTable field -- and that is what this test pins.
-// A field that existed and did not create would be exactly the dead flag.
+// What changed is where the shape comes FROM. Postgres and MySQL now create a
+// table -- from a declared Schema or from CreateSQL, never from the batch -- so
+// they carry a CreateTable field and the matrix above says so. Redshift and
+// to.Files do not, and for them this pins the absence: a CreateTable field that
+// created nothing would be exactly the dead flag.
+//
+// This test is why the matrix had to move rather than drift. It failed the
+// moment the two drivers grew the field, which is what a capability matrix is
+// for.
 func TestNoSQLDestinationInventsAType(t *testing.T) {
 	for name, d := range destinations {
 		if d.support.createTable {
