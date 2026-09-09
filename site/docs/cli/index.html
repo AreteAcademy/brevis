@@ -6,20 +6,21 @@
 <meta name="theme-color" content="#141711">
 
 <title>CLI — Documentação</title>
-<meta name="description" content="Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.">
+<meta name="description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/docs/cli/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/cli/index.md">
 <link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/cli/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/cli/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
 <meta property="og:locale" content="pt-BR">
 <meta property="og:title" content="CLI — Documentação">
-<meta property="og:description" content="Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.">
+<meta property="og:description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
 <meta property="og:url" content="https://brevis.sh/docs/cli/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CLI — Documentação">
-<meta name="twitter:description" content="Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.">
+<meta name="twitter:description" content="Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +35,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "CLI",
-  "description": "Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.",
+  "description": "Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.",
   "inLanguage": "pt-BR",
   "isPartOf": {
     "@type": "WebSite",
@@ -124,7 +125,7 @@
     <article class="doc-body">
       <p class="doc-kicker">Documentação</p>
       <h1>CLI</h1>
-      <p class="doc-desc">Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.</p>
+      <p class="doc-desc">Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.</p>
       <p>O engine é um binário com subcomandos, não vários binários: API, scheduler e workers são papéis do mesmo sistema, e um binário só mantém uma versão, uma imagem e um caminho de build.</p>
 <div class="code-block" data-code="brevis [comando] [flags]"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis [comando] [flags]</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>comando</th><th>banco</th><th>credencial fora de <code>local</code></th><th>papel</th></tr></thead><tbody><tr><td><a href="#serve"><code>serve</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>API + interface</td></tr><tr><td><a href="#scheduler"><code>scheduler</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>os dois laços</td></tr><tr><td><a href="#migrate"><code>migrate</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>schema</td></tr><tr><td><a href="#publish"><code>publish</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>grava workflow e agenda</td></tr><tr><td><a href="#backfill"><code>backfill</code></a></td><td><strong>sim</strong></td><td><strong>exigida</strong></td><td>reprocessa um intervalo</td></tr><tr><td><a href="#run"><code>run</code></a></td><td>não</td><td>—</td><td>executa agora, na própria instância</td></tr><tr><td><a href="#validate"><code>validate</code></a></td><td>não</td><td>—</td><td>valida YAML de workflow</td></tr><tr><td><a href="#brand"><code>brand</code></a></td><td>não</td><td>—</td><td>valida YAML de marca</td></tr><tr><td><a href="#hash"><code>hash</code></a></td><td>não</td><td>—</td><td>gera o hash da senha</td></tr><tr><td><a href="#version"><code>version</code></a></td><td>não</td><td>—</td><td>versão, commit, build</td></tr></tbody></table></div>

@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: Os dez subcomandos do engine, com flags, argumentos e o que cada um exige.
+description: Os doze subcomandos do engine, com flags, argumentos e o que cada um exige.
 group: Referência
 order: 8
 slug: cli

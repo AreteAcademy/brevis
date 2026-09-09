@@ -2,3 +2,7 @@ User-agent: *
 Allow: /
 
 Sitemap: https://brevis.sh/sitemap.xml
+# Documentation for language models, per the llms.txt convention:
+# https://brevis.sh/llms.txt      the index
+# https://brevis.sh/llms-full.txt every page in one file
+# Any docs page is also Markdown: append index.md to its URL.

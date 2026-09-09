@@ -6,20 +6,21 @@
 <meta name="theme-color" content="#141711">
 
 <title>CLI — Documentation</title>
-<meta name="description" content="The engine&#x27;s ten subcommands, with flags, arguments and what each one requires.">
+<meta name="description" content="The engine&#x27;s twelve subcommands, with flags, arguments and what each one requires.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/en/docs/cli/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/en/docs/cli/index.md">
 <link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/cli/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/cli/">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="brevis.sh">
 <meta property="og:locale" content="en">
 <meta property="og:title" content="CLI — Documentation">
-<meta property="og:description" content="The engine&#x27;s ten subcommands, with flags, arguments and what each one requires.">
+<meta property="og:description" content="The engine&#x27;s twelve subcommands, with flags, arguments and what each one requires.">
 <meta property="og:url" content="https://brevis.sh/en/docs/cli/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="CLI — Documentation">
-<meta name="twitter:description" content="The engine&#x27;s ten subcommands, with flags, arguments and what each one requires.">
+<meta name="twitter:description" content="The engine&#x27;s twelve subcommands, with flags, arguments and what each one requires.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +35,7 @@
   "@context": "https://schema.org",
   "@type": "TechArticle",
   "headline": "CLI",
-  "description": "The engine's ten subcommands, with flags, arguments and what each one requires.",
+  "description": "The engine's twelve subcommands, with flags, arguments and what each one requires.",
   "inLanguage": "en",
   "isPartOf": {
     "@type": "WebSite",
@@ -124,7 +125,7 @@
     <article class="doc-body">
       <p class="doc-kicker">Documentation</p>
       <h1>CLI</h1>
-      <p class="doc-desc">The engine&#x27;s ten subcommands, with flags, arguments and what each one requires.</p>
+      <p class="doc-desc">The engine&#x27;s twelve subcommands, with flags, arguments and what each one requires.</p>
       <p>The engine is one binary with subcommands, not several binaries: API, scheduler and workers are roles of the same system, and one binary keeps one version, one image and one build path.</p>
 <div class="code-block" data-code="brevis [command] [flags]"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis [command] [flags]</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th>command</th><th>database</th><th>credentials outside <code>local</code></th><th>role</th></tr></thead><tbody><tr><td><a href="#serve"><code>serve</code></a></td><td><strong>yes</strong></td><td><strong>required</strong></td><td>API + interface</td></tr><tr><td><a href="#scheduler"><code>scheduler</code></a></td><td><strong>yes</strong></td><td><strong>required</strong></td><td>both loops</td></tr><tr><td><a href="#migrate"><code>migrate</code></a></td><td><strong>yes</strong></td><td><strong>required</strong></td><td>schema</td></tr><tr><td><a href="#publish"><code>publish</code></a></td><td><strong>yes</strong></td><td><strong>required</strong></td><td>stores workflow and schedule</td></tr><tr><td><a href="#backfill"><code>backfill</code></a></td><td><strong>yes</strong></td><td><strong>required</strong></td><td>reprocesses a range</td></tr><tr><td><a href="#run"><code>run</code></a></td><td>no</td><td>—</td><td>runs now, on the instance itself</td></tr><tr><td><a href="#validate"><code>validate</code></a></td><td>no</td><td>—</td><td>validates workflow YAML</td></tr><tr><td><a href="#brand"><code>brand</code></a></td><td>no</td><td>—</td><td>validates branding YAML</td></tr><tr><td><a href="#hash"><code>hash</code></a></td><td>no</td><td>—</td><td>generates the password hash</td></tr><tr><td><a href="#version"><code>version</code></a></td><td>no</td><td>—</td><td>version, commit, build</td></tr></tbody></table></div>

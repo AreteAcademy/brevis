@@ -30,6 +30,11 @@ BASE_URL = "https://brevis.sh"
 IDIOMAS = ["pt", "en"]
 PADRAO = "pt"
 LOCALE = {"pt": "pt-BR", "en": "en"}
+IDIOMA_NOME = {"pt": "Portuguese", "en": "English"}
+
+# O idioma do llms.txt. Não é o PADRÃO do site: a raiz é pt para quem lê, e o
+# llms.txt é para quem processa.
+LLMS = "en"
 
 REPO = "https://github.com/AreteAcademy/brevis"
 
@@ -383,6 +388,7 @@ def gerar(destino):
     tpl = carregar_templates()
     i18n = json.loads((RAIZ / "i18n.json").read_text(encoding="utf-8"))
     escritos, urls, indice = [], [], []
+    paginas_por_idioma = {}
 
     for lang in IDIOMAS:
         s = i18n[lang]
@@ -422,6 +428,7 @@ def gerar(destino):
             "titulo": html.escape(s["landing"]["meta_title"]),
             "descricao": html.escape(s["landing"]["meta_desc"]),
             "canonical": "%s%s/" % (BASE_URL, pfx),
+            "alternate_md": "",
             "alternativas": alternativas,
             "seletor": seletor(""),
             "classe_body": "page-landing",
@@ -434,9 +441,11 @@ def gerar(destino):
         urls.append(("%s%s/" % (BASE_URL, pfx), 1.0))
 
         # ---- índice de /docs/ ----
+        # (guardado para o llms.txt, gerado uma vez depois do loop)
         # Sem esta página, /docs/ é um diretório sem index e o servidor
         # responde 403 — e é para /docs/ que o menu aponta.
         paginas = carregar_docs(lang)
+        paginas_por_idioma[lang] = paginas
         grupos, ordem_g = {}, []
         for pg in paginas:
             if pg["grupo"] not in grupos:
@@ -459,6 +468,7 @@ def gerar(destino):
             "titulo": html.escape(s_ui["docs_titulo"] + " — brevis.sh"),
             "descricao": html.escape(s_ui["docs_desc"]),
             "canonical": "%s%s/docs/" % (BASE_URL, pfx),
+            "alternate_md": "",
             "alternativas": "".join(
                 '<link rel="alternate" hreflang="%s" href="%s%s/docs/">' % (LOCALE[l], BASE_URL, prefixo(l))
                 for l in IDIOMAS),
@@ -512,6 +522,10 @@ def gerar(destino):
                 "titulo": html.escape("%s — %s" % (p["titulo"], s["ui"]["docs"])),
                 "descricao": html.escape(p["descricao"]),
                 "canonical": "%s%s/%s" % (BASE_URL, pfx, rel),
+                # Como um agente descobre o Markdown a partir do HTML, sem ter
+                # de conhecer a convenção do sufixo.
+                "alternate_md": ('<link rel="alternate" type="text/markdown" '
+                                 'href="%s%s/%sindex.md">' % (BASE_URL, pfx, rel)),
                 "alternativas": alt_pagina,
                 "seletor": seletor(rel),
                 "classe_body": "page-doc",
@@ -522,6 +536,16 @@ def gerar(destino):
             }))
             escritos.append(escrever(destino, "%s/%s" % (pfx.lstrip("/"), rel + "index.html") if pfx
                                      else rel + "index.html", pagina))
+
+            # O mesmo conteúdo em Markdown, no mesmo lugar com outra extensão.
+            # Um agente que leu llms.txt e quer uma página não deveria receber
+            # HTML para extrair texto de volta: o Markdown é a fonte, e ela já
+            # existe. Os links internos apontam para .md pelo mesmo motivo --
+            # seguir um link tem de dar mais Markdown, não uma página.
+            escritos.append(escrever(
+                destino,
+                ("%s/%s" % (pfx.lstrip("/"), rel + "index.md")) if pfx else rel + "index.md",
+                pagina_markdown(p, lang, pfx)))
             urls.append(("%s%s/%s" % (BASE_URL, pfx, rel), 0.8))
             indice.append({
                 "l": lang,
@@ -532,6 +556,15 @@ def gerar(destino):
                 # texto puro, para a busca; sem marcação e sem repetição
                 "c": re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", corpo_html))[:1400],
             })
+
+    # ---- llms.txt ----
+    # Um só, em inglês: é o que um agente espera e o idioma que o repositório
+    # adotou. Aponta para o .md das páginas naquele idioma, e diz onde estão as
+    # traduções.
+    escritos.append(escrever(destino, "llms.txt",
+                             llms_txt(paginas_por_idioma[LLMS], LLMS, prefixo(LLMS))))
+    escritos.append(escrever(destino, "llms-full.txt",
+                             llms_full(paginas_por_idioma[LLMS], LLMS, prefixo(LLMS))))
 
     # ---- artefatos ----
     s = i18n[PADRAO]
@@ -546,6 +579,7 @@ def gerar(destino):
         "titulo": html.escape(s["ui"]["erro_titulo"]),
         "descricao": html.escape(s["ui"]["erro_texto"]),
         "canonical": BASE_URL + "/404.html",
+            "alternate_md": "",
         "alternativas": "", "seletor": "", "classe_body": "page-landing",
         "conteudo": erro, "extra_css": "", "extra_js": "",
         "jsonld": json.dumps({"@context": "https://schema.org", "@type": "WebPage",
@@ -559,8 +593,116 @@ def gerar(destino):
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
              + "".join("  <url><loc>%s</loc><priority>%.1f</priority></url>\n" % (u, p) for u, p in urls)
              + "</urlset>\n")
-    escrever(destino, "robots.txt", "User-agent: *\nAllow: /\n\nSitemap: %s/sitemap.xml\n" % BASE_URL)
+    escrever(destino, "robots.txt",
+             "User-agent: *\nAllow: /\n\n"
+             "Sitemap: %s/sitemap.xml\n"
+             "# Documentation for language models, per the llms.txt convention:\n"
+             "# %s/llms.txt      the index\n"
+             "# %s/llms-full.txt every page in one file\n"
+             "# Any docs page is also Markdown: append index.md to its URL.\n"
+             % (BASE_URL, BASE_URL, BASE_URL))
     return escritos
+
+
+def para_md(texto, pfx):
+    """Reescreve os links internos de página para o .md correspondente."""
+    def troca(m):
+        caminho = m.group(1)
+        if caminho.endswith("/"):
+            caminho += "index.md"
+        return "](%s%s)" % (pfx, caminho)
+
+    return re.sub(r"\]\((/docs/[^)\s]*)\)", troca, texto)
+
+
+def pagina_markdown(pg, lang, pfx):
+    """O Markdown que um agente lê: sem front matter, com H1 e a canônica."""
+    corpo = para_md(pg["corpo"], pfx).strip()
+    return ("# %s\n\n> %s\n\n*%s%s/docs/%s/ · brevis.sh docs (%s)*\n\n---\n\n%s\n"
+            % (pg["titulo"], pg["descricao"], BASE_URL, pfx, pg["slug"],
+               LOCALE[lang], corpo))
+
+
+# O llms.txt não repete a barra lateral: agrupa por PERGUNTA, porque é o que um
+# agente traz. As chaves são os slugs, e um slug ausente aqui vira erro no
+# build em vez de sumir do índice em silêncio.
+LLMS_GRUPOS = [
+    ("Start here", ["introduction", "installation", "quickstart"]),
+    ("Building a workflow", ["workflows", "parameters", "runtime", "context"]),
+    ("How it executes", ["scheduler-and-queue", "pod-per-step"]),
+    ("Command line and configuration", ["cli", "configuration"]),
+    ("Writing a step in code", ["sdk", "libraries", "python"]),
+    ("Running it in production", ["kubernetes", "observability", "white-label"]),
+]
+
+
+def llms_txt(paginas, lang, pfx):
+    """O índice do padrão llms.txt: H1, resumo, e seções de links."""
+    por_slug = {pg["slug"]: pg for pg in paginas}
+    citados = set()
+    secoes = []
+    for titulo, slugs in LLMS_GRUPOS:
+        linhas = []
+        for slug in slugs:
+            pg = por_slug.get(slug)
+            if pg is None:
+                raise KeyError("llms.txt cita o slug %r, que não existe em %s" % (slug, lang))
+            citados.add(slug)
+            linhas.append("- [%s](%s%s/docs/%s/index.md): %s"
+                          % (pg["titulo"], BASE_URL, pfx, slug, pg["descricao"]))
+        secoes.append("## %s\n\n%s" % (titulo, "\n".join(linhas)))
+
+    faltando = [pg["slug"] for pg in paginas if pg["slug"] not in citados]
+    if faltando:
+        raise KeyError("páginas fora do llms.txt: %s" % ", ".join(faltando))
+
+    traducao = "".join(
+        "\nThe same documentation in %s: %s%s/docs/ (append `index.md` likewise).\n"
+        % (IDIOMA_NOME[l], BASE_URL, prefixo(l))
+        for l in IDIOMAS if l != lang)
+
+    return """# brevis.sh
+
+> A data orchestration runtime written in Go. One binary holds declarative
+> transformation, workflow orchestration, a persistent queue, a scheduler and an
+> operational interface. Every workflow step runs as its own Kubernetes pod with
+> its own image. MIT licensed.
+
+Every page below is also served as Markdown: append `index.md` to any docs URL.
+`%s/llms-full.txt` is this entire documentation set in one file.
+
+How the pieces fit: a **workflow** is a YAML file of **steps**; the
+**scheduler** turns schedules into **runs** and a **queue** executes them; each
+step becomes a **pod**. A step is any command in any image — the **Go SDK**
+(`brevis/sdk`) is for extract-and-load work, and the **client libraries**
+(`pip install brevis`) give a step the run's context, clock and metrics through
+two environment variables.
+%s
+%s
+
+## Optional
+
+- [Repository](%s): source, issues and discussions
+- [Go SDK reference](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk): the generated API docs
+- [Aretê Academy](https://areteacademy.com.br/): the group the project belongs to
+""" % (BASE_URL, traducao, "\n\n".join(secoes), REPO)
+
+
+def llms_full(paginas, lang, pfx):
+    """Toda a documentação num arquivo, para quem prefere uma requisição."""
+    partes = ["""# brevis.sh — complete documentation
+
+> A data orchestration runtime written in Go: transformation, orchestration,
+> queue, scheduler and interface in one binary, with each workflow step running
+> as its own Kubernetes pod.
+
+This file is every documentation page concatenated, in reading order, generated
+from the same sources as %s%s/docs/. For the index alone, see %s/llms.txt.
+""" % (BASE_URL, pfx, BASE_URL)]
+    for pg in paginas:
+        partes.append("---\n\n# %s\n\n> %s\n\n%s"
+                      % (pg["titulo"], pg["descricao"], para_md(pg["corpo"], pfx).strip()))
+    return "\n\n".join(partes) + "\n"
 
 
 def jsonld(lang, s):
@@ -596,6 +738,7 @@ def jsonld_doc(lang, s, p):
 
 SERVIDO = ("index.html", "404.html", "robots.txt", "sitemap.xml",
            "search-index.json", "_headers", "_redirects",
+           "llms.txt", "llms-full.txt",
            "docs", "en", "assets", "css", "js")
 
 

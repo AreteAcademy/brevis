@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: The engine's ten subcommands, with flags, arguments and what each one requires.
+description: The engine's twelve subcommands, with flags, arguments and what each one requires.
 group: Reference
 order: 8
 slug: cli

@@ -89,6 +89,31 @@ da página e pontua título acima de corpo. Sem serviço externo, sem chave de A
 
 `/` foca o campo, como em qualquer documentação.
 
+## Para agentes: `llms.txt`
+
+O site serve a documentação em três formas, e as três saem do mesmo Markdown:
+
+| | |
+|---|---|
+| `/llms.txt` | o índice, no padrão [llms.txt](https://llmstxt.org): H1, resumo em blockquote, seções de links e uma `## Optional` |
+| `/llms-full.txt` | as 17 páginas concatenadas em um arquivo (~96 KB) |
+| `/docs/<slug>/index.md` | o Markdown de uma página, com H1, resumo e a URL canônica |
+
+Nos `.md`, os links internos apontam para `.md` — seguir um link tem de dar
+mais Markdown, não uma página para extrair texto de volta. Cada página HTML
+declara o seu par com `<link rel="alternate" type="text/markdown">`, para que
+um agente descubra o arquivo sem conhecer a convenção do sufixo.
+
+**O `llms.txt` é um só, em inglês**, e não um por idioma. A raiz do site é
+português para quem lê; o `llms.txt` é para quem processa, e inglês é o que um
+agente espera e o idioma que o repositório adotou. Ele aponta para `/en/docs/`
+e diz onde está a tradução. Trocar isso é a constante `LLMS` no `build.py`.
+
+As seções agrupam por **pergunta**, não pela barra lateral: "Building a
+workflow", "How it executes", "Writing a step in code". `LLMS_GRUPOS` no
+`build.py` define isso, e uma página fora dos grupos **falha o build** em vez
+de sumir do índice em silêncio.
+
 ## Armadilhas já encontradas
 
 - **Restaure placeholders do último para o primeiro.** Em `inline()`, um link
@@ -101,6 +126,11 @@ da página e pontua título acima de corpo. Sem serviço externo, sem chave de A
 - **Em grid, `minmax(0, 1fr)`, nunca `1fr`.** `1fr` é `minmax(auto, 1fr)`: o
   track não encolhe abaixo do min-content, e um `<pre>` empurra a página inteira
   para a rolagem horizontal no celular.
+- **Um bloco `types` no nginx SUBSTITUI a tabela de mime types.** Acrescentar
+  `text/markdown` dentro de `server` fez o `.md` sair certo e todo o resto —
+  HTML incluído — virar `application/octet-stream`, ou seja, um download. O
+  jeito aditivo é editar o `/etc/nginx/mime.types`, que é o que o `Dockerfile`
+  faz.
 - **`{{ .campo }}` nos exemplos é template do Brevis**, não do gerador. O
   gerador só troca `{{ identificador }}`; um placeholder seu sem valor levanta
   `KeyError` no build, em vez de sobreviver até o HTML.

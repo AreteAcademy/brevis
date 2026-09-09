@@ -1,0 +1,2988 @@
+# brevis.sh — complete documentation
+
+> A data orchestration runtime written in Go: transformation, orchestration,
+> queue, scheduler and interface in one binary, with each workflow step running
+> as its own Kubernetes pod.
+
+This file is every documentation page concatenated, in reading order, generated
+from the same sources as https://brevis.sh/en/docs/. For the index alone, see https://brevis.sh/llms.txt.
+
+
+---
+
+# Introduction
+
+> What brevis.sh is, the problem it solves, and when it is not the right choice.
+
+brevis.sh is a **data orchestration runtime written in Go**. A single binary
+brings together what normally takes four tools: declarative transformation,
+workflow orchestration, a persistent queue, a scheduler, and an interface to
+operate all of it.
+
+It is open source under the MIT licence, and the project is born at
+[Aretê Academy](https://areteacademy.com.br/).
+
+## The problem
+
+A common data stack combines a transformation tool, an orchestrator, a queue and
+an interface. Each piece is good at what it does — and the integration between
+them becomes permanent work: four versioning schemes, four ways to configure,
+four places to look when something fails.
+
+That cost never shows up in an architecture diagram. It shows up in the time a
+team spends maintaining the glue instead of working on the domain only they
+know.
+
+## The proposal
+
+One artefact, with the subcommand the role requires:
+
+```bash
+brevis serve        # API + interface
+brevis scheduler    # materialises schedules and drains the queue
+brevis run wf.yaml  # runs now, no database
+```
+
+A workflow is a versioned YAML file. Reviewing a pipeline becomes reviewing a
+diff, not a clicking session.
+
+```yaml
+name: ingest
+schedule: "0 5 * * *"
+
+steps:
+  - id: bronze
+    image: registry.example/dbt:1.10.3
+    run: dbt build --select bronze+
+
+  - id: notify
+    image: ghcr.io/example/notify:0.3
+    run: /notify --channel data
+    depends_on: [bronze]
+```
+
+## What makes it different
+
+**Every step runs in its own pod, with its own image.** There is no generic
+worker waiting for work: the work brings its own runtime. A `dbt` step comes up
+with the dbt image; a Go fetcher next to it comes up with 5.8 MB and 32Mi of
+memory, instead of inheriting the size of its largest neighbour.
+
+**The scheduler creates runs; the queue executes them.** Two independent loops,
+and that separation is deliberate: one can go down without interrupting the
+other, and reprocessing a past month does not depend on the clock.
+
+**Validation needs no database.** `brevis validate` runs in CI alongside the
+tests, so a YAML error fails in the pull request and not in the cluster.
+
+## When brevis.sh is not the choice
+
+Documenting what a tool does not do saves more time than documenting what it
+does:
+
+- **You already run Airflow or Dagster and you are happy.** Migrating costs more
+  than the saving of operating one fewer binary.
+- **Your workflows are not about data.** brevis.sh assumes DAGs of
+  transformation and load; a general-purpose orchestrator serves you better.
+- **You need a catalogue of ready-made operators.** Here a step is an image and
+  a command. That is simple, and it is limited — there are no hundreds of
+  integrations to drag in.
+- **Your team does not use Kubernetes and does not intend to.** Local mode
+  works, but the design assumes pods.
+
+## Where to go next
+
+| if you want | go to |
+|---|---|
+| install and see it running | [Installation](/en/docs/installation/index.md) and [Quickstart](/en/docs/quickstart/index.md) |
+| understand the workflow format | [Workflows](/en/docs/workflows/index.md) |
+| understand the architecture | [Scheduler and queue](/en/docs/scheduler-and-queue/index.md) |
+| the list of commands and flags | [CLI](/en/docs/cli/index.md) |
+| write a fetcher in Go | [SDK](/en/docs/sdk/index.md) |
+| pass a value from one step to the next | [Context between steps](/en/docs/context/index.md) |
+| write a step in Python | [Client libraries](/en/docs/libraries/index.md) |
+| build dashboards and alerts | [Observability](/en/docs/observability/index.md) |
+
+:::note About the name
+*Brevis* is Latin for "short, brief" — the root of *brevity*. It comes from
+Seneca's **De Brevitate Vitae**: it is not that we have little time, but that we
+lose much of it.
+:::
+
+---
+
+# Installation
+
+> How to get the binary, what it requires, and how to confirm the install is correct.
+
+brevis.sh ships as a **single binary** and as a **Docker image**. There is no
+runtime to install alongside it: migrations, interface assets and fonts all live
+inside the binary.
+
+## Requirements
+
+| | |
+|---|---|
+| **PostgreSQL** | required for `serve`, `scheduler`, `migrate`, `publish` and `backfill` |
+| **Go 1.25+** | only if you build from source |
+| **Kubernetes** | optional — with no cluster, steps run as local processes |
+
+`brevis run`, `validate`, `marca`, `hash` and `version` need **no** database.
+
+## Building from source
+
+This is the path that produces a binary with version and commit stamped in:
+
+```bash
+git clone https://github.com/AreteAcademy/brevis.git
+cd brevis
+make build
+./bin/brevis version
+```
+
+```
+brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64
+```
+
+:::warning The engine has no tagged release yet
+Every tag in the repository belongs to the SDK (`sdk/v*`); the root module has
+none. A `go install github.com/AreteAcademy/brevis/cmd/brevis@latest` resolves
+to the latest commit on the branch and produces a binary that identifies itself
+as `brevis dev`, with no commit and no date — the `-ldflags` only come in
+through `make build` and `docker build`. For a traceable version, use the image
+or `make build`.
+:::
+
+## Docker
+
+Two images of the same binary, because the two roles have opposite needs:
+
+| tag | base | why |
+|---|---|---|
+| `:0.11.2` | distroless | the API only serves HTTP and executes nothing — no shell, minimal surface |
+| `:0.11.2-worker` | alpine + tini | `run:` steps need a shell |
+
+```bash
+docker run --rm daniel3843/brevis:latest version
+```
+
+## A full local environment
+
+The repository ships a `docker-compose.yml` that brings up Postgres, the API and
+the scheduler:
+
+```bash
+make up      # Postgres + API + scheduler
+make smoke   # checks /health and /ready
+make logs
+make down
+```
+
+The interface is at `http://localhost:8080`.
+
+## Minimum configuration
+
+A single variable is required:
+
+```bash
+export BREVIS_DATABASE_URL='postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable'
+```
+
+Without it, the subcommands that use the database fail at boot — on purpose. A
+process that comes up without credentials only discovers the problem on the
+first request, and by then readiness has already lied to the orchestrator.
+
+```
+$ brevis migrate status
+erro: BREVIS_DATABASE_URL e obrigatoria
+```
+
+The full list is in [Configuration](/en/docs/configuration/index.md).
+
+## Applying the schema
+
+Migrations are embedded in the binary and applied by their own subcommand —
+**`serve` never alters the schema**:
+
+```bash
+brevis migrate up
+brevis migrate status
+```
+
+## Confirming
+
+```bash
+brevis version
+brevis validate examples/
+```
+
+```
+  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+```
+
+If both answer, the install is correct. Move on to the
+[Quickstart](/en/docs/quickstart/index.md).
+
+---
+
+# Quickstart
+
+> From nothing to a live DAG in the interface, in four steps.
+
+This guide brings brevis.sh up, publishes a workflow and runs it. At the end you
+see the graph with the live state of every step.
+
+Requirement: a reachable PostgreSQL and the `BREVIS_DATABASE_URL` variable.
+
+## 1. Apply the schema
+
+```bash
+export BREVIS_DATABASE_URL='postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable'
+brevis migrate up
+```
+
+## 2. Write a workflow
+
+Create `hello.yaml`. This example uses only shell, so it runs anywhere:
+
+```yaml
+name: hello
+type: dag
+tags: [example]
+
+steps:
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
+
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
+
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
+
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
+```
+
+Check it before publishing — this does not touch the database:
+
+```bash
+brevis validate hello.yaml
+```
+
+```
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+```
+
+## 3. Run it now, without the queue
+
+The shortest path to seeing the graph work:
+
+```bash
+brevis run hello.yaml
+```
+
+```
+workflow hello (dag, 4 steps) em .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ extract
+  ▶ validate
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello concluido
+```
+
+`extract` and `validate` start together because they depend on the same step.
+The runner walks the graph **by levels**: everything within a level runs in
+parallel, and the next level starts only when the previous one closes entirely.
+
+:::note `run` is local by nature
+`brevis run` only operates with `BREVIS_ENV=local` (empty counts as local) and
+executes steps as processes on the instance itself — even those that declare
+`image:`. Pods are created by the `scheduler`.
+:::
+
+## 4. Publish and operate
+
+So the workflow exists in the database, appears in the interface and follows its
+schedule:
+
+```bash
+brevis publish hello.yaml
+```
+
+```
+  publicado  hello                    (manual)
+```
+
+Bring up the interface and the scheduler in two terminals:
+
+```bash
+brevis serve
+```
+
+```bash
+brevis scheduler --interval 5s --concurrency 4
+```
+
+Open `http://localhost:8080`, find `hello` in the workflow list and click ▶. The
+graph shows every step changing state live.
+
+## What happened
+
+| | |
+|---|---|
+| `migrate up` | created the tables |
+| `validate` | checked the YAML without touching the database |
+| `run` | executed on the instance itself, no queue |
+| `publish` | stored the workflow and its schedule |
+| `serve` | brought up API and interface |
+| `scheduler` | materialised the schedule and drained the queue |
+
+## Next steps
+
+- [Workflows](/en/docs/workflows/index.md) — the full YAML format
+- [Parameters](/en/docs/parameters/index.md) — what changes between two runs
+- [Pod per step](/en/docs/pod-per-step/index.md) — how this becomes Kubernetes
+
+---
+
+# Workflows
+
+> The complete YAML format — steps, dependencies, images, resources and schedule.
+
+A workflow is a YAML file. It declares **what to run**, **in what order** and
+**with what runtime** — and nothing beyond that.
+
+## Minimum structure
+
+```yaml
+name: hello
+steps:
+  - id: only
+    run: echo done
+```
+
+`name` identifies the workflow in the database and in the interface. `steps` is
+the list of steps, each with a unique `id` and a `run`.
+
+## Order: chain or dag
+
+```yaml
+type: chain   # order is the file's order
+type: dag     # order comes from depends_on
+```
+
+`chain` is sugar: the parser turns the sequence into edges, and **the engine
+only knows DAGs**. Use `dag` when the order is not linear:
+
+```yaml
+type: dag
+
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  # Siblings: they depend on the same step, so they run in parallel.
+  - id: extract
+    run: ./extract.sh
+    depends_on: [prepare]
+
+  - id: validate
+    run: ./validate.sh
+    depends_on: [prepare]
+
+  - id: publish
+    run: ./publish.sh
+    depends_on: [extract, validate]
+```
+
+The runner walks the graph **by levels**: everything within a level runs in
+parallel, and the next level starts only when the previous one closes entirely.
+
+:::warning A failure stops the whole level
+The runner stops at the **first** failure in a level, without starting the next
+one. Continuing after an error would produce a partial result that looks
+complete.
+:::
+
+## Schedule
+
+```yaml
+schedule: "0 5 * * *"   # five-field cron
+concurrency: 1
+```
+
+Without `schedule`, the workflow is manual: it runs only by trigger in the
+interface, by `brevis run`, or by `backfill`.
+
+`concurrency: 1` limits simultaneous runs of the same workflow — it is what
+keeps a `*/15` from overlapping itself when one run goes past fifteen minutes.
+
+## Image and resources
+
+```yaml
+image: us-central1-docker.pkg.dev/example/apps/dbt:1.10.3
+resources:
+  cpu: 200m
+  memory: 1Gi
+  limits: {memory: 2Gi}
+```
+
+Declared at the top, they are the **default for every step**. Each step can
+override its own:
+
+```yaml
+steps:
+  - id: bronze
+    run: dbt build --select bronze+          # inherits the top-level image
+
+  - id: notify
+    image: ghcr.io/example/notify:0.3        # another runtime
+    shell: false                             # distroless has no shell
+    run: /notify --channel data
+    resources: {cpu: 25m, memory: 32Mi, limits: {memory: 64Mi}}
+    depends_on: [bronze]
+```
+
+This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
+`dbt build`, instead of both paying the size of the larger one. See
+[Pod per step](/en/docs/pod-per-step/index.md).
+
+## Step fields
+
+| field | | |
+|---|---|---|
+| `id` | **required** | unique in the workflow; the name shown in the graph and logs |
+| `run` | | the command |
+| `image` | | the step's image; without it, inherits the top-level one |
+| `shell` | `true` | `false` runs without a shell — required on distroless |
+| `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
+| `marker` | `false` | a step with no command, for a `start` or an `end` |
+| `resources` | | `cpu`, `memory` and `limits` for that step |
+| `runtime`, `tools` | | the step's language and tools — see [Step runtime](/en/docs/runtime/index.md) |
+| `when` | `all_success` | under what state of its dependencies this step runs — see below |
+| `unless_empty` | | a context key that decides whether there is anything to do — see below |
+| `for_each` | | a context key holding a list; the step runs once per element — see below |
+| `group` | | draws this step inside a named, collapsible box — see below |
+| `uses` | | another workflow whose steps take this one's place — see below |
+| `on_error` | | announces this step's failures — see below |
+
+## Running a step only when there is something to do
+
+```python
+# in extract
+context.set(has_rows=len(rows) > 0)
+```
+
+```yaml
+  - id: transform
+    run: ./transform.sh
+    depends_on: [extract]
+    unless_empty: extract.has_rows
+```
+
+`unless_empty` names a **key**, not an expression. The step decides and
+publishes the answer; the engine reads one key and asks whether it is empty.
+
+| counts as empty | counts as present |
+|---|---|
+| `false`, `0`, `""`, `null`, `[]`, `{}` | everything else |
+
+`"false"` as a **string** is present. A step that published those five
+characters published something, and guessing that it meant a boolean is how a
+rule starts having opinions its author cannot see. Publish a real boolean.
+
+### Why not an expression
+
+The tempting design is `when: "{{ context.extract.rows > 0 }}"`. A mini
+expression language is a large commitment: a parser, a type system to say what
+`>` means across a JSON `any`, a security story because the expression comes out
+of a YAML somebody else wrote, and error messages that point into a string.
+Every orchestrator that has one has a bug tracker full of it.
+
+Here the decision lives in the language its author already writes, where their
+own test framework can reach it.
+
+### A missing key is a failure, not an empty value
+
+If the key is not there, the step **fails** and the message names it alongside
+what the publisher actually did write:
+
+```
+step "transform" reads `extract.has_row`, and "extract" published "has_rows" but not "has_row"
+```
+
+The alternative — reading a missing key as "empty, so skip" — turns a typo into
+a step that stops running silently and forever, with nothing anywhere saying
+why. That is the worst outcome this feature can have.
+
+The key is always qualified by the step that publishes it, and that step has to
+be one this one depends on. Both are refused at **publish**: a step gated on a
+key it can never see would be skipped forever, and finding that out when a
+nightly stops running is too late.
+
+## Running a step once per element
+
+```python
+# in extract
+context.set(partitions=["2026-01", "2026-02", "2026-03"])
+```
+
+```yaml
+  - id: load
+    run: ./load.sh "$BREVIS_MAP_VALUE"
+    depends_on: [extract]
+    for_each: extract.partitions
+```
+
+The step runs once per element, each with a row, a retry and an exit code of its
+own. The graph shows **one node with `[3]` on it**, not three nodes.
+
+| variable | |
+|---|---|
+| `BREVIS_MAP_INDEX` | `0`, `1`, `2` … |
+| `BREVIS_MAP_VALUE` | the element |
+
+A JSON string arrives **without its quotes**, so `for_each` over `["2026-01"]`
+hands a shell `2026-01` and not `"2026-01"`. Anything else — a number, an
+object, a list — arrives as its JSON.
+
+Neither variable exists on an unmapped step. One that is always there and always
+empty teaches whoever reads the environment to ignore it.
+
+### The shape of the DAG does not change
+
+A mapped step is still one node with one set of edges. Only the number of rows
+under it varies, so the layout is what it always was and the `[3]` is counted
+from those rows at read time — nothing is stored, so nothing has to be kept in
+sync and a wrong count cannot outlive a fixed query.
+
+While instances are still going the card reads `[2/3]`.
+
+### One failed instance fails the step
+
+Three partitions loading and one not is a step that did not do its job, and the
+steps below it see that. A node that goes green because most of it worked is a
+badge that lies.
+
+**A retry redoes only the instances that failed.** Eighteen partitions that
+worked are not reloaded because two broke.
+
+### An empty list is `skipped`, not success
+
+A step that did nothing because there was nothing to do did not succeed at doing
+it. A green node over zero instances is exactly the kind of thing somebody
+builds a dashboard on.
+
+A value that is **not a list** fails, and so does a key that is not there — the
+same policy `unless_empty:` has, and for the same reason: a typo that silently
+produced zero instances would disable the step forever.
+
+### The fan-out is bounded, and the bound is inherited
+
+The list travels in the context, and the context has a 4096-byte ceiling that
+comes from the kubelet. A workflow cannot ask for ten thousand pods without
+first finding a way to say so in four kilobytes. That is a limit worth keeping
+rather than working around.
+
+### What a mapped step publishes
+
+Its output is recorded on each instance's row and is **not** visible to the
+steps below. Four instances publishing under one step's name is four values for
+one key, and there is no answer to `context.String("load.bucket")` that is not a
+guess. The step says so in its log rather than dropping it quietly.
+
+## Grouping steps on the graph
+
+```yaml
+steps:
+  - id: extract_orders
+    group: sales_data_reporting
+    run: ./extract.sh
+  - id: load_orders
+    group: sales_data_reporting
+    depends_on: [extract_orders]
+    run: ./load.sh
+```
+
+The steps are drawn inside a named box that collapses — Airflow's TaskGroup,
+for the case where a DAG gets big enough to stop being readable.
+
+**Visual only.** Airflow's TaskGroups also *prefix* the ids inside them, so
+`extract` becomes `sales.extract`. This does not: prefixing would change every
+`depends_on`, every context key and every recorded row in an existing workflow,
+for a feature whose whole value is that a big graph reads better. Namespacing
+can be added later — it is a strict addition to this.
+
+A group is a **label**, not a container. Steps keep their global ids, a group
+may span levels, and nothing about execution changes.
+
+Clicking the group's name collapses it: its steps disappear and the arrows that
+crossed the boundary point at the box instead.
+
+## Reusing another workflow
+
+```yaml
+# nightly.yaml
+steps:
+  - id: prepare
+    run: ./prepare.sh
+
+  - id: mlops
+    uses: ml_training       # another workflow in the same publish
+    depends_on: [prepare]
+
+  - id: report
+    run: ./report.sh
+    depends_on: [mlops]
+```
+
+At **publish**, `ml_training`'s steps take that step's place, prefixed with its
+id, and the `uses` node disappears:
+
+```
+prepare → mlops.train → mlops.evaluate → report
+```
+
+They arrive as one collapsible group, so the graph shows what the file said.
+
+**Expanded at publish, not run at run time.** A step that triggered a child
+*run* and waited is the design that deadlocked Airflow, and this engine has the
+same ingredient: the pod ceiling is a per-process semaphore, so a parent holding
+a slot while waiting for a child that needs slots from the same pool hangs — and
+only under load, which is to say in production. One run, one graph, one pool.
+
+What it gives up is a child run with its own id and its own history.
+
+### The rules
+
+| | |
+|---|---|
+| the child must be in the **same publish** | not merely already published |
+| arrows | into the step become arrows into each of the child's **roots**; out of it, out of each of its **leaves** |
+| the child's `image`, `env`, `secrets`, `resources` | materialised onto each step, so it runs in what its own file said |
+| the child's `unless_empty` / `for_each` keys | move with the prefix |
+| nesting | flattened, depth first |
+| a circle | refused at publish, naming the chain |
+
+**Same publish, and not "already published", is the important one.** Expansion
+that read the database would make `brevis validate` — which touches no database,
+on purpose — answer a different question from `brevis publish`, and the file
+that passed CI would be the file that failed the deploy.
+
+The child is still publishable on its own: expansion **copies**, it does not
+consume. A step cannot both `uses:` and declare `run:`, `action:` or `marker:` —
+that is a file saying two things.
+
+## Saying what an arrow means
+
+A dependency can carry a label, shown on the arrow in the graph.
+
+```yaml
+steps:
+  - id: determine_load_type
+    run: ./decide.sh
+
+  - id: load_full
+    run: ./full.sh
+    depends_on:
+      - {step: determine_load_type, label: additional data}
+
+  - id: load_delta
+    run: ./delta.sh
+    depends_on:
+      - step: determine_load_type
+        label: changed existing data
+```
+
+The bare form — `depends_on: [extract]` — keeps working and stays the normal
+one. Most dependencies have nothing to say, and a label on every arrow is noise.
+
+The labels earn their place on a **branch**: two arrows leaving the same step
+with nothing written on them is a diagram that requires opening the source to
+read, which is the one thing a graph exists to avoid.
+
+## A step that does nothing
+
+```yaml
+steps:
+  - id: start
+    marker: true
+
+  - id: end
+    marker: true
+    depends_on: [load_full, load_delta, report]
+```
+
+`marker: true` is a step with no command. It runs nothing, succeeds instantly,
+and appears on the graph.
+
+It is not decoration. An `end` that depends on every branch turns *did the whole
+thing finish?* into one node instead of six arrows to follow — and it behaves
+like any other step, so an `end` under a failed branch is **skipped**, not
+green.
+
+**A step with no `run:` and no `marker: true` is still refused.** The two cases
+must not collapse into one: an empty command is almost always a mistake, and
+`marker: true` is how somebody says they meant it. A marker that also declares
+`run:` is refused too — that is a file saying two things.
+
+## Running a step only when something failed
+
+By default a step runs when everything before it worked. `when:` changes that.
+
+```yaml
+steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: notify_failure
+    run: ./notify.sh
+    depends_on: [extract]
+    when: any_failed          # runs precisely when extract did not make it
+
+  - id: cleanup
+    run: ./cleanup.sh
+    depends_on: [extract, transform]
+    when: all_done            # runs either way
+```
+
+| rule | |
+|---|---|
+| `all_success` | the default. Everything this step depends on succeeded — its **own** dependencies, as in Airflow |
+| `any_failed` | at least one step this one depends on failed |
+| `all_done` | everything this step depends on has finished, however it ended |
+
+An unknown rule is refused at publish, naming what is valid. It has to be: a
+`when: on_failure` read as "the default" would run on **success** — the opposite
+of what it says, found on the night it mattered.
+
+### A step that does not run is `skipped`
+
+It is a state of its own, drawn in its own colour, and it carries the reason:
+*`extract` was failed*. Before this, a step below a failure had no record at all
+and the screen showed it pending forever.
+
+`skipped` is not a failure and not a success. A step whose upstream broke did not
+fail — it was never given the chance — and calling it success is a lie that
+reaches the run's own status.
+
+A trigger rule decides which steps **run**. It does not decide the run's
+outcome: a `notify_failure` that delivered its message does not mean the pipeline
+worked, and the run is still failed.
+
+### `all_success` is local, as in Airflow
+
+The rule asks about a step's **own** dependencies and nothing else. A failure in
+an unrelated branch does not stop this one:
+
+```
+extract_orders ──✕                 (failed)
+extract_users  ──✓── transform_users ──✓     keeps going
+```
+
+A branch **below** the failure still stops — `all_success` being local does not
+mean it is absent.
+
+This engine used to abort the whole graph at the first failure. That had a
+reason: carrying on after an error produced a partial result that looked
+complete, and a pipeline ran 28 days late without anyone noticing.
+
+**What replaces that protection**, and it is not nothing:
+
+- the run still **fails**, with the same error;
+- the graph shows the failed step in red and every skipped one in its own
+  colour, each saying which step stopped it;
+- the alert still goes out when the run gives up.
+
+A partial result no longer looks complete, because the run says it is not.
+
+**What is given up**, stated plainly: an unrelated branch now writes its data on
+a run that failed elsewhere.
+
+### A retry re-runs only what failed
+
+A run's retry does not redo the whole graph. A step that already succeeded on an
+earlier attempt of the **same run** keeps its result and is not run again — the
+way a cleared DAG run behaves in Airflow.
+
+```
+attempt 1   extract ✓    load ✕    report (skipped)
+attempt 2   extract –    load ✓    report ✓            extract is not re-run
+```
+
+It keeps its original row: its duration, its log and what it published are the
+first attempt's, because that is when the work happened. **The step below it
+still reads what it published** — the run's context is stored, not rebuilt.
+
+The distinction that matters: this is about **this run's** earlier attempts.
+A step that succeeded in *yesterday's* run runs normally today. (That other
+question exists too, and it is what tells the SDK whether it is a step's first
+time — see `BREVIS_RUN_FIRST`.)
+
+A step that was **skipped** is not settled: it never ran, and the retry decides
+about it again with the new attempt's outcomes.
+
+## Announcing a step's failures
+
+Every failure is already announced: with a webhook configured, a run that gives
+up sends one message, with no block repeated in any file. `on_error` is for the
+step that needs its own.
+
+```yaml
+steps:
+  - id: fetch_observations
+    run: python fetch.py
+    on_error:
+      type: SLACK
+```
+
+| field | | |
+|---|---|---|
+| `type` | **required** | `SLACK`. An unknown value is refused at publish, naming what is valid |
+| `when` | `give_up` | `attempt` announces every failed attempt, not only the last |
+
+Two messages arrive rather than one, and that is the point: the run-level alert
+says *`id_verification` failed*, which is what whoever owns the pipeline needs;
+the step-level one says *`fetch_observations` failed*, which is what whoever
+owns that integration needs.
+
+**There is no `webhook` or `url` field, and there will not be.** The destination
+is a credential — whoever holds it posts in the channel as if they were the
+platform — and a workflow file is written by somebody who is not necessarily
+allowed to choose where the company's alerts go. The file says **whether** and
+**how**; the installation says **where**, through `BREVIS_SLACK_WEBHOOK`.
+
+**`when: give_up` is the default because of whose night it is.** A step that
+fails twice and passes on the third try would send two messages under the other
+default, and the second would arrive after the problem was gone.
+
+**A step that did not fail is never announced.** In a workflow where one branch
+breaks, whoever owns the other branch is not woken up.
+
+Delivery is `brevis alert`'s job — the alert is recorded in the same transaction
+as the failure, so a Slack outage delays it instead of losing it.
+
+## Tags
+
+```yaml
+tags: [analytics, dbt, daily]
+```
+
+They filter in the interface. They do not affect execution.
+
+## Validation
+
+Validation needs no database, so it runs in CI alongside the tests:
+
+```bash
+brevis validate workflows/
+```
+
+```
+  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    daily-report                 chain  3 steps, 2 dependencias  cron 0 2 * * *
+```
+
+It takes a file or a directory. In a directory it matches `*.y*ml` and sorts —
+two runs produce the same log, and the difference between two deploys does not
+become noise.
+
+## Publishing
+
+```bash
+brevis publish workflows/
+brevis publish workflows/ --project acme --prune
+```
+
+`--prune` removes from the project the workflows absent from the published list,
+preserving their history. It is **not** the default, for a practical reason:
+`publish one-file.yaml` must not delete the other forty-eight just because they
+were not named on the command line.
+
+## Next steps
+
+- [Parameters](/en/docs/parameters/index.md) — what changes between two runs
+- [Scheduler and queue](/en/docs/scheduler-and-queue/index.md) — how a workflow becomes execution
+- [Context between steps](/en/docs/context/index.md) — what one step tells the next
+
+---
+
+# Scheduler and queue
+
+> Two independent loops — who creates runs, who executes them, and why they are separate.
+
+brevis.sh separates **creating** a run from **executing** it. Two loops run
+together and depend on neither.
+
+```
+scheduler                          queue
+─────────                          ─────
+reads the schedule
+materialises the slot
+creates the Run  ─────────────►  (pending in the database)
+                                   claims it
+                                   walks the graph
+                                   executes each step
+                                   records state and log
+```
+
+## Why separate
+
+A single loop that both schedules and executes has one bad property: when
+execution jams, scheduling stops with it. The next twelve hours of slots simply
+do not exist, and nobody notices until someone looks for data that never
+arrived.
+
+With the two apart:
+
+- the **scheduler** can go down and the queue keeps draining what was created;
+- the **queue** can go down and slots keep being materialised, to be executed
+  when it returns;
+- **reprocessing does not depend on the clock** — `backfill` creates past runs
+  through the same path cron would use.
+
+## The process
+
+Both loops live in the same command:
+
+```bash
+brevis scheduler --interval 5s --concurrency 4 --max-pods 10
+```
+
+| flag | default | |
+|---|---|---|
+| `--interval` | `10s` | interval between scheduler cycles |
+| `--concurrency` | `5` | simultaneous **runs** |
+| `--max-pods` | `5` | simultaneous **steps** in total |
+
+`--concurrency` and `--max-pods` count different things, deliberately: five runs
+with three parallel steps each would be fifteen pods if the only limit were on
+runs.
+
+:::note `serve` does not materialise schedules
+The API process brings up the same scheduler, but **without the loop** — it is
+there only to serve manual triggers from the interface, so the rule "the
+scheduler creates runs" keeps a single owner. For schedules to fire, a
+`brevis scheduler` must run alongside.
+:::
+
+## The definition snapshot
+
+When the scheduler creates a run, it stores **the workflow definition inside the
+run**. Execution reads that snapshot, not the YAML on disk.
+
+The reason is concrete: between trigger and execution, someone may have edited
+the file and deployed. Without the snapshot, a run created at 05:00 with one
+definition would execute at 05:02 with another — and the log would have no way
+of explaining the difference.
+
+## Retries
+
+A failed run is attempted **three times**, and the delay **doubles**: with the
+defaults they land at **0s, 30s and 1m30s**.
+
+```bash
+brevis scheduler --max-attempts 3 --retry-backoff 30s --retry-backoff-max 1h
+```
+
+| flag | default | |
+|---|---|---|
+| `--max-attempts` | `3` | attempts per run, counting the first |
+| `--retry-backoff` | `30s` | the first delay, doubled on each attempt after it |
+| `--retry-backoff-max` | `1h` | ceiling for that delay |
+
+The process prints the schedule at boot, so it never has to be worked out from
+two numbers:
+
+```
+scheduler and dispatcher are up  max_attempts=3 retry_backoff=30s retry_at="0s, 30s, 1m30s"
+```
+
+:::tip
+**A rate-limited vendor wants longer.** These pipelines fail for one reason
+above all others: a transient upstream — an API that answers 200 with "you have
+reached your request limit", a warehouse quota blip. Those take about a minute
+to clear, and a retry that finishes before then is a retry that never happened.
+`--retry-backoff 1m` puts the attempts at 0s, 1m and 3m.
+:::
+
+The retry is per **run**, and it re-runs only the steps that failed — a
+`dbt_build` that failed does not re-run the fetch above it that succeeded.
+
+The attempt is persisted, not process state. Restarting the worker does not
+erase what was already known about that run.
+
+The **run's** attempt number goes into the pod name. Without it, a retry would
+restart the run from zero, meet the previous attempt's pod under the same name
+and hang in `Pending` forever.
+
+## Backfill
+
+Materialises past slots of a workflow already published:
+
+```bash
+brevis backfill daily --from 2026-01-01 --to 2026-01-31
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
+```
+
+```
+  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
+  rode `brevis scheduler` para executa-los
+```
+
+It **enqueues, it does not execute.** Execution is the `scheduler`'s job — the
+same separation again. `--to` includes the whole day.
+
+## Alerts
+
+```bash
+export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
+export BREVIS_UI_URL='https://brevis.example.com'
+```
+
+Without the webhook, the process warns at boot that failures will not be
+reported. An installation that fails silently tends to be discovered by the
+customer, not by the team.
+
+`BREVIS_UI_URL` builds the run link inside the alert — without it, the alert
+says what failed but makes the reader hunt for the run by hand.
+
+## Next steps
+
+- [Pod per step](/en/docs/pod-per-step/index.md) — where each step actually runs
+- [CLI](/en/docs/cli/index.md) — every flag of `scheduler` and `backfill`
+
+---
+
+# Pod per step
+
+> Why each step runs in its own pod, and what that changes in cost and isolation.
+
+On Kubernetes, **each workflow step becomes a pod** with the image declared in
+that step. There is no generic worker waiting for work: the work brings its own
+runtime.
+
+```
+scheduler                          cluster
+─────────                          ───────
+walks the graph
+  for each ready step:
+    builds the Pod  ───────────►  Pod: the step's image, the step's command
+    follows status      ◄───────  Pending → Running → Succeeded/Failed
+    follows the log     ◄───────  container stdout
+    reads the exit code ◄───────  containerStatuses[0].terminated
+    deletes the pod ───────────►  (gone)
+```
+
+## What this changes
+
+A monolithic worker forces the image to contain everything any step might need.
+In practice:
+
+| | single image | pod per step |
+|---|---|---|
+| dbt step | 1.9 GB · 1Gi RAM | 1.9 GB · 1Gi RAM |
+| Go fetcher next to it | **1.9 GB · 1Gi** | **12 MB · 32Mi** |
+| bumping the dbt version | rebuild everything | one line in that workflow's YAML |
+| a step that leaks memory | takes the worker and its neighbours down | dies alone |
+
+The third row is the least obvious and the most expensive day to day: with a
+single image, moving dbt from 1.10 to 1.11 in one pipeline forces the move in
+all of them.
+
+## Images by role
+
+Images are per **role**, not per project. Everything left over in an image is
+pulled by every node that runs that step:
+
+| role | size | cold start |
+|---|---|---|
+| **Go** | **5.8 MB** | 0.18 s |
+| **Python** | **118 MB** | 0.54 s |
+| **dbt** | **620 MB** | 3.3 s |
+
+Before: a single 1.87 GB image for everything.
+
+For dbt, `dbt parse` runs at build time and `target/partial_parse.msgpack`
+travels in the image — **2.68 s less per pod**, on every invocation.
+
+## Where each step runs
+
+The decision is made once, at boot, and depends on `BREVIS_PODS` and on whether
+there is a cluster:
+
+| `BREVIS_PODS` | with cluster | without cluster |
+|---|---|---|
+| `auto` (default) | a step with `image:` becomes a pod | everything as local processes, with a log warning |
+| `on` | a step with `image:` becomes a pod | **boot error** |
+| `off` | everything as local processes | everything as local processes |
+
+`auto` is the default because the same binary runs in both places: on a laptop
+there is no service account mounted and it falls back to local processes; in a
+cluster there is, and it starts creating pods.
+
+`on` exists for the deployment that **must not** silently become local
+execution. There, having no cluster has to be a boot error.
+
+:::warning `brevis run` creates no pods
+The `run` command builds only the process executor. A step with `image:` runs on
+the instance itself — and says so. Staying silent would make it look like the
+step ran on the declared image, which is the kind of mistake that only surfaces
+once the result is already wrong.
+:::
+
+## Identity and credentials
+
+Which identity pods come up with is an **installation** decision, not a workflow
+one — a pipeline must not be able to choose the service account it runs as. So
+it comes from the environment:
+
+```bash
+BREVIS_POD_NAMESPACE=data
+BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
+BREVIS_POD_PULL_SECRETS=registry-cred
+BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred,api-tokens
+```
+
+In pod mode the task environment comes from cluster Secrets — not from
+`BREVIS_TASK_ENV`.
+
+## Node selector and tolerations
+
+```bash
+BREVIS_POD_NODE_SELECTOR='kubernetes.io/arch=arm64'
+BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'
+```
+
+Only the `Equal` operator is accepted in tolerations: `Exists` would tolerate
+**any** taint with that key, too broad for a decision coming from an environment
+variable.
+
+A malformed toleration is **ignored** rather than made a boot error — it leaves
+the pod `Pending`, which is visible, whereas refusing to boot would also stop
+the workflows that do not need that pool.
+
+## Debugging a failure
+
+```bash
+BREVIS_POD_MANTER_EM_FALHA=true
+```
+
+Keeps the failed pod around for `kubectl logs` and `kubectl describe`. Leave it
+off in production: stopped pods consume cluster quota.
+
+## Next steps
+
+- [Kubernetes](/en/docs/kubernetes/index.md) — the full deployment
+- [Configuration](/en/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/en/docs/observability/index.md) — metrics from both processes
+
+---
+
+# Context between steps
+
+> What one step tells the next — two environment variables and a file.
+
+A step publishes values; the steps that depend on it read them. That is all the
+feature does.
+
+```yaml
+steps:
+  - id: extract
+    run: python fetch.py
+
+  - id: transform
+    run: python transform.py
+    depends_on: [extract]
+```
+
+```python
+# extract
+from brevis import context
+context.set(bucket="s3://landing/2026-09-07", rows=48213)
+```
+
+```python
+# transform
+from brevis import context
+bucket = context.get("extract.bucket")
+```
+
+The key is always `<step id>.<name>`. A step reads what **its own dependencies**
+published, and nothing else.
+
+:::note What this is not
+Not a message queue, not state between runs, and not a place to put data. It is
+the note one step leaves for the next — a path, a watermark, a count.
+:::
+
+## Any language, no library required
+
+The contract is **two environment variables and a file**, so a step with no SDK
+at all takes part:
+
+```bash
+window=$(jq -r '.extract.watermark' <<< "$BREVIS_INPUT")
+./publish --until "$window"
+jq -n --arg n "$(date -Is)" '{published_at: $n}' > "$BREVIS_OUTPUT"
+```
+
+| | |
+|---|---|
+| `BREVIS_INPUT` | `{"<step id>": {…}}` — what this step's dependencies published |
+| `BREVIS_OUTPUT` | a path to write **one** JSON object to |
+
+Under Kubernetes that path is `/dev/termination-log`, which the engine already
+reads to get the exit code. So there is **no API call, no token and no port** —
+and a library for it is a JSON parse and a file write.
+
+| language | |
+|---|---|
+| Python | [`pip install brevis`](/en/docs/python/index.md) — it also carries `brevis.run`, with the [auto parameters](/en/docs/parameters/index.md) |
+| Go | `sdk/context`, part of the SDK module, depends on nothing |
+| anything else | the two variables above |
+
+## Isolation
+
+No step can overwrite what another published. Keys are prefixed with the id of
+whoever wrote them, and the engine — not the step — decides that prefix. Two
+steps publishing `bucket` produce `extract.bucket` and `load.bucket`, and
+neither disappears.
+
+## The 4096-byte ceiling
+
+What a step publishes fits in **4096 bytes**. The limit is not arbitrary: under
+Kubernetes the transport is `/dev/termination-log`, and that is what the kubelet
+accepts.
+
+Going over is a **step error**, with the message saying how many bytes were
+written. The alternative would be truncation — and truncated JSON is invalid
+JSON, discovered by the next step, which has no way of knowing the fault is not
+its own.
+
+If a value does not fit, it is not context: write it to a bucket and publish the
+path.
+
+## Retries and resumed runs
+
+On a new attempt the step publishes again and the previous value is replaced. A
+step that already succeeded neither re-runs nor republishes — what it said still
+holds for those that depend on it.
+
+## Running a step by hand
+
+The two variables are the entire contract, so reproducing a run is exporting
+them:
+
+```bash
+export BREVIS_INPUT='{"extract":{"bucket":"s3://landing/2026-09-07"}}'
+export BREVIS_OUTPUT=/tmp/out.json
+python transform.py
+cat /tmp/out.json
+```
+
+## Next steps
+
+- [Parameters](/en/docs/parameters/index.md) — what changes between runs, and the automatic ones
+- [Step runtime](/en/docs/runtime/index.md) — what a step declares about where it runs
+- [Python](/en/docs/python/index.md) — the client library, and the other languages
+
+---
+
+# CLI
+
+> The engine's twelve subcommands, with flags, arguments and what each one requires.
+
+The engine is one binary with subcommands, not several binaries: API, scheduler
+and workers are roles of the same system, and one binary keeps one version, one
+image and one build path.
+
+```
+brevis [command] [flags]
+```
+
+| command | database | credentials outside `local` | role |
+|---|---|---|---|
+| [`serve`](#serve) | **yes** | **required** | API + interface |
+| [`scheduler`](#scheduler) | **yes** | **required** | both loops |
+| [`migrate`](#migrate) | **yes** | **required** | schema |
+| [`publish`](#publish) | **yes** | **required** | stores workflow and schedule |
+| [`backfill`](#backfill) | **yes** | **required** | reprocesses a range |
+| [`run`](#run) | no | — | runs now, on the instance itself |
+| [`validate`](#validate) | no | — | validates workflow YAML |
+| [`brand`](#brand) | no | — | validates branding YAML |
+| [`hash`](#hash) | no | — | generates the password hash |
+| [`version`](#version) | no | — | version, commit, build |
+
+The first five load configuration, which **fails at boot** without
+`BREVIS_DATABASE_URL`. The other five do not — which is why `validate` works in
+CI, where there is no Postgres.
+
+Those same five inherit the credentials rule: with `BREVIS_ENV` other than
+`local`, coming up without the three authentication variables is a **boot
+error**.
+
+---
+
+## serve
+
+Brings up the HTTP API and the interface. No flags — everything comes from the
+environment.
+
+```bash
+brevis serve
+```
+
+Shuts down on `SIGINT`/`SIGTERM` gracefully, so a deploy does not cut requests
+in flight. This process **does not materialise schedules**: that needs a
+`brevis scheduler` alongside.
+
+`CMD` of the `api` image (distroless, no shell).
+
+---
+
+## scheduler
+
+Both loops: the scheduler materialises schedules into runs, the dispatcher pulls
+from the queue and executes.
+
+```bash
+brevis scheduler --interval 5s --concurrency 4 --max-pods 10
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--interval` | duration | `10s` | interval between cycles |
+| `--concurrency` | int | `5` | simultaneous **runs** |
+| `--max-pods` | int | `5` | simultaneous **steps** in total |
+
+`CMD` of the `worker` image (alpine with a shell, because `run:` steps need
+one).
+
+---
+
+## alert
+
+Delivers the alerts the scheduler recorded. A third process beside `serve` and
+`scheduler`.
+
+```bash
+brevis alert --interval 1s --max-attempts 6
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--interval` | duration | `1s` | interval between delivery cycles |
+| `--max-attempts` | int | `6` | tries before an alert is recorded as undelivered |
+
+**It exists because of where an alert is written, not because delivery deserves
+a process.** The scheduler records the alert in the same transaction as the
+failure that justifies it — either the run is out of attempts and the alert
+exists, or neither happened. Something then has to drain that table, and it has
+to survive both a Slack outage and its own restart. Before this, a failing
+webhook meant a log line and an alert that was simply gone.
+
+It refuses to start with no channel configured (`BREVIS_SLACK_WEBHOOK`). A
+delivery process with nowhere to deliver drains the outbox into "undelivered"
+as fast as it fills, and those rows look exactly like Slack rejecting them.
+
+An alert it gives up on is **kept**: "raised, not delivered, 4 attempts, 403
+from Slack" is the row that matters, because it is the case where somebody is
+waiting for a message that is not coming.
+
+`CMD` of the `worker` image.
+
+---
+
+## report
+
+Sends the periodic summary of what ran.
+
+```bash
+brevis report --window 168h              # sends it
+brevis report --window 168h --dry-run    # prints it, sends nothing
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--window` | duration | `168h` | how far back to look |
+| `--dry-run` | bool | `false` | print instead of sending |
+
+A **command**, not a loop, and that is the difference between a report and an
+alert: it runs from a CronJob, so there is no new loop, no new state and no
+leader election — the cluster already has a scheduler. `--dry-run` is how
+somebody comes to trust a weekly message, by reading what it would have said.
+
+It does **not** go through the alerts outbox. The two share a delivery channel
+and nothing else: losing an alert is an outage nobody hears about, and missing
+one week's summary is next week's summary.
+
+The message carries runs, successes, failures, the pipelines that failed most,
+the ones that took longest, and the rows and bytes the SDK reported. It does
+**not** carry CPU or memory, and does not print zero for them either — the
+engine does not collect those, and the message says where they do live.
+
+An empty window says so rather than reporting 100%. A success rate out of
+nothing is the most reassuring number a report can print and the least true one:
+an empty week usually means the scheduler was down.
+
+`deployments/kubernetes/report.yaml` runs it weekly.
+
+---
+
+## migrate
+
+```bash
+brevis migrate up      # applies what is missing
+brevis migrate down    # reverts the last one
+brevis migrate status  # shows the state
+```
+
+Takes exactly one argument. Migrations are embedded in the binary and applied by
+their own subcommand — **`serve` never alters the schema**.
+
+---
+
+## validate
+
+Validates one or more workflow files. Takes a file **or a directory**.
+
+```bash
+brevis validate examples/
+```
+
+```
+  ok    daily_analytics              dag  5 steps, 5 dependencias  (manual)
+  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+```
+
+It touches no database and starts no server, so it runs in the editor and in CI.
+It exits non-zero and counts the failures.
+
+---
+
+## run
+
+Runs a workflow **now, on the instance itself**: no queue, no database, no
+scheduler.
+
+```bash
+brevis run examples/hello.yaml
+brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--param` | repeatable | — | `key=value` for a declared parameter |
+| `--workdir` | string | the file's directory | working directory for steps |
+| `--retries` | int | `1` | attempts per step (`1` = no retry) |
+| `--timeout` | duration | `0` | timeout per step (`0` = no limit) |
+
+`--param` without `=` is an **error**, not a warning: `--param load_full`,
+forgetting the value, would run with the default — and the operator would
+believe the value was applied.
+
+:::warning Three limits
+`run` only operates with `BREVIS_ENV=local`; a step with `image:` runs on the
+instance itself and says so; and there is no Go task registry, so an `action:`
+for an unregistered task fails naming the ones available.
+:::
+
+---
+
+## publish
+
+Stores workflows and their schedules in the database. Takes a file or a
+directory.
+
+```bash
+brevis publish examples/hello.yaml
+brevis publish workflows/ --project acme --prune
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--project` | string | `default` | project slug |
+| `--prune` | bool | `false` | removes from the project the workflows absent from the list |
+
+With `--prune`, the history of removed workflows is preserved.
+
+---
+
+## backfill
+
+Materialises past slots of a workflow already published. It **enqueues, it does
+not execute.**
+
+```bash
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
+```
+
+| flag | | |
+|---|---|---|
+| `--from` | **required** | start date, `YYYY-MM-DD` |
+| `--to` | **required** | end date, `YYYY-MM-DD` |
+| `--param` | | applies to **every** slot in the range |
+
+`--to` includes the whole day: internally the end becomes `23:59:59` of that
+date.
+
+---
+
+## brand
+
+Validates a branding file without starting the server.
+
+```bash
+brevis brand brand.yaml
+```
+
+```
+  ok    Brevis · Orquestração
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis
+```
+
+One behavioural difference from boot: **a missing file is an error**. In
+`serve`, absence means "use the default identity"; someone who asked to validate
+a path expects to be told it does not exist.
+
+---
+
+## hash
+
+Generates the `BREVIS_AUTH_SENHA_HASH` value.
+
+```bash
+brevis hash
+```
+
+The password is read from the terminal **without echo**, never from an argument:
+an argument shows up in any process's `ps` and stays in shell history. It
+refuses passwords shorter than 12 characters.
+
+The hash goes alone to **stdout** and the labels to **stderr**, so
+`brevis hash > hash.txt` stores only what matters.
+
+---
+
+## version
+
+```bash
+brevis version
+```
+
+```
+brevis 0.11.2
+  commit  bb832ff
+  build   2026-09-05T12:00:00Z
+  go      go1.25.7 darwin/arm64
+```
+
+Built directly with `go build`, it prints `brevis dev` with no commit and no
+date — and telling that apart from a release artefact matters when someone
+reports odd behaviour.
+
+---
+
+# Parameters
+
+> What changes between two runs of the same workflow, without editing the file.
+
+A workflow can declare **run parameters**: values that change between two
+triggers without the file changing.
+
+## Declaring
+
+```yaml
+params:
+  - name: load_full
+    type: boolean
+    default: "false"
+
+  - name: start_date
+    type: string
+    pattern: '^\d{4}-\d{2}-\d{2}$'
+
+steps:
+  - id: run
+    run: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+
+```
+
+| field | | |
+|---|---|---|
+| `name` | **required** | the name used in the template and in `--param` |
+| `type` | | `string` or `boolean` |
+| `default` | | used when the trigger provides no value |
+| `pattern` | | regular expression the value must match |
+
+A parameter **without a `default`** is required: a trigger that omits it fails
+before executing any step.
+
+## Using it in the command
+
+The value enters `run` through a template, in double braces with a dot:
+
+```yaml
+run: ./load.sh --since {{ .start_date }}
+```
+
+## Passing it on the command line
+
+```bash
+brevis run wf.yaml --param load_full=true
+brevis run wf.yaml --param load_full=true --param start_date=2026-01-01
+```
+
+`--param` is repeatable. Input without `=` is an **error**:
+
+```
+erro: --param "load_full": use chave=valor
+```
+
+That is deliberate. `--param load_full`, forgetting the value, would run with
+the default — and the operator would believe the backfill happened with the
+parameter they intended.
+
+## In a backfill
+
+The values apply to **every** slot in the range. This is the central use case:
+"reprocess all of January with `load_full=true`".
+
+```bash
+brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true
+```
+
+## In the interface
+
+A workflow with `params` gets a **form** in place of the simple trigger button.
+Fields come from the declaration, and `pattern` is validated before submission.
+
+## In the step environment
+
+Run parameters also enter each step's **environment**, prefixed. This exists so
+that a fetcher written with the [SDK](/en/docs/sdk/index.md) can see them without receiving
+anything as an argument:
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    if p.Run.Params["load_full"] == "true" {
+        p.Source.URL += "&full=1"
+    }
+    return nil
+},
+```
+
+## Auto params
+
+Every run also carries **auto params**: values the engine works out on its own.
+Nobody declares them, every run has them, and they are on the run's screen.
+
+The one that matters is `adjusted_at`, and the bug it removes is worth naming.
+A fetcher reads `now()`, subtracts its window and asks the vendor for the last
+two hours. On a run that starts on time that is right. On a run the queue
+delayed by forty minutes it is forty minutes wrong — and those forty minutes
+belong to **no run at all**, because the next slot reads its own `now()` too.
+Nothing fails; the data is simply missing, and it is found weeks later.
+
+So the engine hands over a clock instead. Read `adjusted_at` where you would
+have read `now()`:
+
+| param | | |
+|---|---|---|
+| `adjusted_at` | always | the clock this run should read: the slot when there is one, the start otherwise |
+| `date` | always | `adjusted_at` as `YYYY-MM-DD`, UTC — the partition, the folder, the `WHERE` |
+| `delay_seconds` | always | how late this attempt was against its slot; `0` on a manual run |
+| `previous_error` | always | the run before this one did not succeed |
+| `scheduled_at` | scheduled | the slot the cron asked for |
+| `started_at` | | when this attempt began; a retry moves it |
+| `interval_start` | scheduled | the **previous** slot |
+| `interval_end` | scheduled | this slot, **excluded** |
+| `previous_success_at` | | the slot of the last run that did succeed |
+
+**Every timestamp here is UTC**, written as RFC 3339 with a `Z`, and the run's
+screen shows them in UTC too — so the page and `$BREVIS_AUTO_ADJUSTED_AT` never
+disagree. `date` is the **UTC day**, which for a workflow whose slot crosses
+midnight UTC is not the local day: a `0 22 * * *` in `America/Sao_Paulo` has a
+`date` of the following day. Airflow's `ds` behaves the same way, for the same
+reason — the slot is an instant, and an instant has one day only once a
+timezone is chosen.
+
+`interval_start` and `interval_end` come from the **cron**, not from the
+history: a backfill of a slot from March produces the window March had, not the
+window this workflow's runs happen to describe today. A pipeline that asks for
+`[start, end)` never overlaps and never gaps, however late it runs and however
+often it retries.
+
+They are a **snapshot**, computed when the run starts and stored on it.
+`previous_error` is a fact about the instant this run began; recomputing it
+tomorrow — after the previous run was retried and passed — would answer a
+different question with the same name.
+
+### Reading them
+
+In a shell step, one variable per value, so nothing has to be parsed:
+
+```yaml
+steps:
+  - id: extract
+    run: |
+      curl "https://api.example.com/events?since=$BREVIS_AUTO_INTERVAL_START&until=$BREVIS_AUTO_INTERVAL_END" \
+        > "/data/$BREVIS_AUTO_DATE.json"
+```
+
+The whole set is also in `$BREVIS_AUTO_PARAMS` as one JSON object, for a step
+that would rather parse once.
+
+In Go, the [SDK](/en/docs/sdk/index.md) reads them for you:
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+    start, end, ok := p.Run.Auto.Window()
+    if !ok { // no schedule: fall back to a fixed window
+        start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+    }
+    p.Source.URL += "&from=" + start.Format(time.RFC3339) +
+        "&to=" + end.Format(time.RFC3339)
+    return nil
+},
+```
+
+`Auto.Now()` is the clock to read instead of `time.Now()`. Outside the engine —
+a fetcher someone runs by hand — it *is* the wall clock, so nothing has to be
+special-cased for local development.
+
+In Python, `pip install brevis` reads the same values:
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+`window()` returns `None` when the workflow has no schedule, rather than a pair
+of zero times — a query from the epoch selects everything, and that failure
+should not be silent. The `or` above is the whole fallback.
+
+## The snapshot
+
+Parameters are stored **in the run**, not read from the workflow at execution
+time. The run carries the input it was triggered with, and the log of a January
+execution keeps showing January's values even after the default changes.
+
+## Next steps
+
+- [Configuration](/en/docs/configuration/index.md) — process environment variables
+- [SDK](/en/docs/sdk/index.md) — how a fetcher reads the run context
+- [Context between steps](/en/docs/context/index.md) — what a step publishes for the next
+
+---
+
+# Configuration
+
+> Every environment variable, with default, format and what happens when it is missing.
+
+All configuration comes from the **environment**, read once at boot. Nothing
+consults the environment afterwards: a process whose configuration changes
+mid-run is a process whose behaviour nobody can reproduce.
+
+## Required
+
+| variable | |
+|---|---|
+| `BREVIS_DATABASE_URL` | Postgres. Missing = **boot error** in the five subcommands that use the database |
+
+## Process
+
+| variable | default | |
+|---|---|---|
+| `BREVIS_ENV` | `local` | `local` logs in text and leaves the interface open; anything else requires credentials and logs JSON |
+| `BREVIS_HTTP_ADDR` | `:8080` | listen address |
+| `BREVIS_LOG_LEVEL` | `info` | |
+| `BREVIS_SHUTDOWN_TIMEOUT_SECONDS` | `15` | integer; a non-numeric value is a boot error |
+| `BREVIS_BRAND_FILE` | `brand.yaml` | branding; absent = default |
+| `BREVIS_UI_URL` | — | base of the run link in alerts |
+| `BREVIS_METRICS_ADDR` | — | Prometheus metrics port; empty = not exposed. See [Observability](/en/docs/observability/index.md) |
+| `BREVIS_SLACK_WEBHOOK` | — | destination for failure alerts. Empty = nobody is told |
+
+## Authentication
+
+| variable | |
+|---|---|
+| `BREVIS_AUTH_USUARIO` | interface user |
+| `BREVIS_AUTH_SENHA_HASH` | `pbkdf2-sha256$…` hash, generated by `brevis hash` |
+| `BREVIS_AUTH_SEGREDO` | 32+ bytes to sign the session (`openssl rand -base64 48`) |
+
+All three come together, or none does.
+
+:::danger Half-configured is a boot error
+Whoever filled in the username believes the door is closed. The interface
+triggers pipelines: a `POST /workflows/<slug>/trigger` runs a `dbt build` that
+writes to the warehouse. Open on the internet, it is a remote control for the
+warehouse — and a log warning does not undo that belief, because nobody reads
+the log of a process that works.
+:::
+
+Outside `BREVIS_ENV=local`, coming up without credentials is refused:
+
+```
+erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USUARIO,
+BREVIS_AUTH_SENHA_HASH (gere com `brevis hash`) e BREVIS_AUTH_SEGREDO
+```
+
+## Task environment
+
+| variable | default | |
+|---|---|---|
+| `BREVIS_TASK_ENV` | empty | what each step receives |
+
+A task does **not** inherit the orchestrator's environment. The reason is
+concrete: the process carries `BREVIS_DATABASE_URL` with the Postgres username
+and password, and a workflow is an arbitrary command written by someone else —
+inheriting would hand the database credentials to every step of every pipeline.
+
+What the task needs is declared:
+
+```bash
+BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE   # forwards these two from the process
+BREVIS_TASK_ENV=STAGE=prod                # sets a literal
+BREVIS_TASK_ENV='*'                       # forwards everything EXCEPT BREVIS_*
+```
+
+`PATH` and `HOME` are always included — without `PATH` no command resolves, and
+the error would be a "not found" that explains nothing.
+
+A missing name does **not** become an empty string: `GOOGLE_PROJECT_ID=""` would
+make dbt fail with a worse message than a missing variable.
+
+## Kubernetes
+
+**Installation** decisions, not workflow ones.
+
+| variable | default | format |
+|---|---|---|
+| `BREVIS_PODS` | `auto` | `auto`, `on` or `off`; anything else is a boot error |
+| `BREVIS_POD_NAMESPACE` | the cluster's | |
+| `BREVIS_POD_SERVICE_ACCOUNT` | — | |
+| `BREVIS_POD_PULL_SECRETS` | — | comma-separated list |
+| `BREVIS_POD_ENV_FROM_SECRETS` | — | comma-separated list |
+| `BREVIS_POD_ENV_FROM_CONFIGMAPS` | — | comma-separated list |
+| `BREVIS_POD_ALLOWED_SECRETS` | — | comma-separated list |
+| `BREVIS_POD_CREDENTIAL_PATH` | — | path mounted in the pod |
+| `BREVIS_POD_CREDENTIAL_PVC` | — | PVC holding the credentials |
+| `BREVIS_POD_NODE_SELECTOR` | — | `key=value,other=value` |
+| `BREVIS_POD_TOLERATIONS` | — | `key=value:effect,…`; only the `Equal` operator |
+| `BREVIS_POD_MANTER_EM_FALHA` | `false` | `true` keeps the pod for inspection |
+
+In lists, empty entries are ignored: `a,,b` is a typo, and an empty secret name
+would make the server reject the whole pod.
+
+## Tests
+
+| variable | |
+|---|---|
+| `BREVIS_TEST_DATABASE_URL` | database for integration tests; without it, they skip |
+
+## Health endpoints
+
+| | |
+|---|---|
+| `GET /health` | liveness — does **not** query the database |
+| `GET /ready` | readiness — queries, and names the dependency that failed |
+
+The separation is deliberate: a liveness probe that depends on an external
+service makes Kubernetes **kill the pod** when the database wobbles, instead of
+merely removing it from the load balancer.
+
+## A complete example
+
+```bash
+# required
+export BREVIS_DATABASE_URL='postgres://brevis:secret@db:5432/brevis?sslmode=require'
+
+# production requires credentials
+export BREVIS_ENV=production
+export BREVIS_AUTH_USUARIO=operator
+export BREVIS_AUTH_SENHA_HASH="$(brevis hash < password.txt)"
+export BREVIS_AUTH_SEGREDO="$(openssl rand -base64 48)"
+
+# what the tasks need, and nothing more
+export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
+
+# pods
+export BREVIS_PODS=on
+export BREVIS_POD_NAMESPACE=data
+export BREVIS_POD_SERVICE_ACCOUNT=brevis-runner
+export BREVIS_POD_ENV_FROM_SECRETS=bigquery-cred
+
+# alerts
+export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
+export BREVIS_UI_URL='https://brevis.example.com'
+```
+
+---
+
+# Step runtime
+
+> What a step declares about the language and tools it drives — and why you rarely need to.
+
+The graph draws a chip on each step saying its language and the tools it drives:
+
+```
+┌──────────────────────────────────────┐
+│ ● transform            SDK v0.57.0   │
+│   dbt build --select gold            │
+│   ⬤ Python  ▢ dbt                    │
+│   2m14s · attempt 1                  │
+└──────────────────────────────────────┘
+```
+
+**Most of the time you write nothing.** The engine reads `run:` and `image:` and
+works it out.
+
+## When to declare it
+
+Two fields, both optional, both per step:
+
+```yaml
+steps:
+  - id: fetch
+    run: /opt/brevis/bin/fetch-weather
+    runtime: go            # a compiled binary; the path says nothing
+
+  - id: transform
+    run: dbt build --select gold+
+    tools: [dbt]           # what it drives, not what it is
+```
+
+| field | |
+|---|---|
+| `runtime` | the step's language: `go`, `python`, `node`, `shell`… |
+| `tools` | the tools the command drives: `dbt`, `dlt`, `spark`… |
+
+The rule of thumb: **declare it when inference gets it wrong.** A `run:` that
+points at a compiled binary has no way of saying it is Go; a wrapper that calls
+`dbt` internally has no way of saying it drives dbt.
+
+## Why a closed vocabulary
+
+An id outside the vocabulary is **refused at publish**, naming what is valid.
+The alternative is a chip that renders blank on a screen three days later, with
+nothing to trace it to.
+
+```
+workflow "daily": step "transform": `runtime: pyton` is not valid
+  (valid: go, python, node, shell, …)
+```
+
+## What the chip is for
+
+It is not decoration. When a run fails at 3 a.m., the first question is "what
+does this step execute?", and the answer usually lives in another repository.
+The chip puts it on the graph itself — alongside the SDK version the step used,
+which is what tells "broke today" apart from "broke since Tuesday's bump".
+
+## Next steps
+
+- [Workflows](/en/docs/workflows/index.md) — every step field
+- [Pod per step](/en/docs/pod-per-step/index.md) — where a step actually runs
+- [Observability](/en/docs/observability/index.md) — the metrics that go with it
+
+---
+
+# Go SDK
+
+> Writing a fetcher — extract from a source, transform, and load into a destination.
+
+When a step's job is to **fetch data and load it somewhere**, the Go SDK gives
+you the whole fetcher in a few lines. It is a separate module, versioned
+independently from the engine.
+
+```bash
+go get github.com/AreteAcademy/brevis/sdk@latest
+```
+
+Requires Go 1.23 or newer — the SDK streams rows as `iter.Seq2`.
+
+:::warning Do not use `v0.1.0`
+It shipped a `go.mod` pinning a revision that does not exist, and the Go module
+proxy is immutable. Start at `v0.1.1`.
+:::
+
+## Three steps
+
+```go
+import (
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+rows, err := sdk.Extract(ctx, sdk.Source{
+	From: from.HTTP{URL: "https://api.example.com/v1/events"},
+})
+
+rows = sdk.Transform(rows, sdk.Accept("id", "created_at", "amount"))
+
+res, err := sdk.Load(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: "bronze", Name: "events"},
+	Columns: []string{"id", "created_at", "amount"},
+})
+```
+
+`Extract` reads, `Transform` reshapes, `Load` writes. Each takes and returns a
+sequence — nothing is materialised in memory all at once.
+
+## The driver is a value, not a setting
+
+`from.HTTP` carries everything an HTTP source needs: URL, headers, retry,
+pagination, and what a response means. `from.Files` carries a path and a format.
+Neither has to make room for the other's fields, so there is no source struct
+collecting forty options of which each driver reads six.
+
+It also decides **what you compile**. Go prunes dependencies by package
+imported, never by field used:
+
+| what you import | packages | AWS | Google |
+|---|---|---|---|
+| `sdk` | 190 | no | no |
+| `sdk` + `from` | 194 | no | no |
+| `sdk` + `from` + `to` (files) | 195 | no | no |
+| `sdk` + `to/bigquery` | 456 | no | **yes** |
+| `sdk` + `from` + `store/s3` | 265 | **yes** | no |
+
+A whole file pipeline — read and write — costs 195 packages and no cloud SDK at
+all. **A driver with a vendor SDK behind it lives in its own package**, which is
+why BigQuery is `to/bigquery` and the object stores are `store/s3` and
+`store/gcs`.
+
+## Sources and destinations
+
+| source | package |
+|---|---|
+| HTTP | `from.HTTP` |
+| files (local, S3, GCS) | `from.Files` |
+| Postgres | `from/postgres` |
+| MySQL | `from/mysql` |
+| several sources | `from.Many` |
+
+| destination | package |
+|---|---|
+| files | `to.Files` |
+| BigQuery | `to/bigquery` |
+| Postgres | `to/postgres` |
+| MySQL | `to/mysql` |
+| Redshift | `to/redshift` |
+
+The path scheme decides the backend, and the `Store` is **passed in** rather
+than chosen inside the driver:
+
+```go
+from.Files{Path: "s3://bucket/day=1/*.ndjson", Store: s3.New(client)}
+to.Files{Path: "gs://bucket/landing/", Store: gcs.New(client)}
+```
+
+That is what keeps a local-files program from compiling a single line of AWS or
+Google code.
+
+## A whole fetcher
+
+`sdk.Run` takes care of flags, `-dry-run`, logging, retry, pagination,
+provenance, table creation and the exit code. What is left in the file is only
+what is specific to that source:
+
+```go
+package main
+
+import (
+	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/from"
+)
+
+func main() {
+	sdk.Run(sdk.Pipeline{
+		Source: sdk.Source{
+			From: from.HTTP{
+				URL:     "https://api.example.com/v1/events",
+				Timeout: 15 * time.Second,
+			},
+			Guard:  sdk.RejectIf("error"),
+			Expand: sdk.ArrayAt("results"),
+		},
+		Target: sdk.Target{
+			Provider: "example",
+			Entity:   "events",
+			Key:      sdk.Key("id"),
+			When:     sdk.Field("created_at"),
+		},
+	})
+}
+```
+
+```bash
+go run ./fetcher -dry-run   # extracts, counts rows and errors, writes nothing
+go run ./fetcher
+```
+
+## The run context
+
+When the fetcher runs **as a workflow step**, the engine injects into the
+environment what it could not otherwise know: whether this is the first run,
+which parameters it was dispatched with, which run it is. The SDK reads that in
+`Pipeline.Run`:
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	if p.Run.Params["load_full"] == "true" {
+		p.Source.From = from.HTTP{URL: base + "?full=1"}
+	}
+	return nil
+},
+```
+
+Run by hand, `Run` comes back zeroed — reading it is optional, and ignoring it
+costs nothing.
+
+With no history, the answer to "is this the first run?" is always **no**:
+creating a table without certainty is worse than not creating it.
+
+### The clock
+
+`p.Run.Auto` is what the engine worked out about this run — the
+[auto params](/en/docs/parameters/#auto-params). `Auto.Now()` is the clock to read
+instead of `time.Now()`: on a scheduled run it is the slot, so it does not move
+when the run is late and does not move when the run is retried three hours
+later.
+
+```go
+Before: func(ctx context.Context, p *sdk.Pipeline) error {
+	start, end, ok := p.Run.Auto.Window()
+	if !ok { // no schedule: fall back to a fixed window
+		start, end = p.Run.Auto.Now().Add(-24*time.Hour), p.Run.Auto.Now()
+	}
+	p.Source.From = from.HTTP{URL: base +
+		"?from=" + start.Format(time.RFC3339) +
+		"&to=" + end.Format(time.RFC3339)}
+	return nil
+},
+```
+
+Run by hand, `Auto.Now()` *is* the wall clock and `Window()` returns `false`, so
+local development needs no special case.
+
+## Not to be confused with the client libraries
+
+This SDK is ETL machinery in Go: drivers, pagination, provenance, table
+creation. The [client libraries](/en/docs/libraries/index.md) are a different thing —
+thin clients that hand a step the run context and clock, in Python today
+and in Node.js and Rust later. A step using pandas or dbt wants the
+second, not this.
+
+## Reference
+
+- [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — the complete API
+- [`examples/`](https://github.com/AreteAcademy/brevis/tree/master/examples) — twelve runnable examples
+- [`CHANGELOG.md`](https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md) — version-by-version history
+
+---
+
+# Client libraries
+
+> How a step in any language reads the context and the run's clock — and which languages already have a library.
+
+A step needs two things from the orchestrator: **what the previous step
+published** and **which clock this run should read**. The client libraries hand
+over those two, and nothing else.
+
+## The contract comes before the libraries
+
+What the engine defines is **two environment variables and a file**:
+
+| | |
+|---|---|
+| `BREVIS_INPUT` | `{"<step id>": {…}}` — what this step's dependencies published |
+| `BREVIS_OUTPUT` | a path to write **one** JSON object to |
+
+Plus the run's variables and the auto parameters, all read-only: `BREVIS_RUN_*`
+and `BREVIS_AUTO_*`. Under Kubernetes `BREVIS_OUTPUT` is
+`/dev/termination-log`, which the engine already reads to get the exit code.
+
+So there is **no API call, no token and no port**. A step in any language takes
+part with a JSON parse and a file write:
+
+```bash
+window=$(jq -r '.extract.watermark' <<< "$BREVIS_INPUT")
+./publish --until "$window"
+jq -n --arg n "$(date -Is)" '{published_at: $n}' > "$BREVIS_OUTPUT"
+```
+
+A library here opens no new capability — it saves you the validation, the
+absent-value handling and the error messages that are worth not rewriting.
+
+## Which ones exist
+
+| language | | |
+|---|---|---|
+| **Python** | `pip install brevis` | [available](/en/docs/python/index.md) — `0.2.1` on PyPI |
+| **Go** | `brevis/sdk/context` | available, inside the SDK module |
+| **Node.js** | — | planned |
+| **Rust** | — | planned |
+| anything else | the variables above | today |
+
+:::note Go does not live in `lib/`
+Go's context support lives in the `sdk/` module the project already publishes,
+as a subpackage that prunes to nothing for anyone not importing it. A
+`lib/go-context` would mean a second Go module for a package that has one.
+
+The rule is **one directory per language that does not already have a published
+artifact**.
+:::
+
+Each library is a separate artifact with its own version and tag: a fix in the
+Python client does not force an engine release.
+
+## What they are, and what they are not
+
+They are **thin clients over the contract**, not ports of the Go SDK.
+
+A port of the SDK's ETL machinery — drivers, pagination, checkpoints, ingestion
+ids — does not belong here and probably nowhere: every language this would
+target already has better tools for that, and Brevis's job is to run them. Which
+is why the Python library exists so that a team can use pandas, Polars or dbt
+and still get the one thing an orchestrator is for.
+
+## Metrics
+
+The library **emits** metrics, and the engine is what exposes them:
+
+```python
+from brevis import metrics
+
+metrics.set("rows_loaded", 48213)      # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")   # a counter: it adds up
+```
+
+They come out of the **engine's** `/metrics`, on the scheduler's port, labelled
+with the workflow and the step — see [Observability](/en/docs/observability/index.md).
+
+**This does not open a port, and it could not.** A step runs in its own pod for
+forty seconds and exits; a port it opened would be scraped never, or once by
+luck. So the line goes to stdout — the same pipe the engine already reads to
+draw a pipeline's phases — and the engine records it. Nothing to install,
+nothing to operate, and the labels are the engine's because a step cannot know
+its own workflow slug.
+
+The API details are in [Python](/en/docs/python/#metrics-only-your-pipeline-knows).
+
+## Writing a client for another language
+
+If you get to Node.js or Rust before we do, here is what a client has to get
+right — and what the Python implementation already learned the hard way:
+
+1. **Keys qualified by step.** `get("bucket")` with no step must be refused. Two
+   steps may publish `bucket`, and picking one by search is precedence by
+   accident.
+2. **Merge the writes.** Two calls with different keys keep both; the same key
+   twice keeps the last.
+3. **Flush only on process exit.** A step that dies hard publishes nothing —
+   which is correct, because a crashed step's output described work that did not
+   finish.
+4. **Refuse above 4096 bytes.** The platform **truncates** rather than refuses,
+   and an object cut in half arrives as invalid JSON for the next step.
+5. **Work outside Brevis.** With no `BREVIS_INPUT`, `get()` returns the default
+   and `set()` accepts and discards, without raising: a script that cannot be
+   run by hand cannot be developed.
+
+## Next steps
+
+- [Python](/en/docs/python/index.md) — the complete API
+- [Context between steps](/en/docs/context/index.md) — the concept and the 4096-byte ceiling
+- [Parameters](/en/docs/parameters/index.md) — the declared ones and the automatic ones
+
+---
+
+# Python
+
+> pip install brevis — context between steps, the run's clock and your pipeline's own metrics, with no dependencies at all.
+
+```bash
+pip install brevis
+```
+
+```python
+from brevis import context, metrics, run
+
+bucket = context.get("extract.bucket")
+since, until = run.window()          # the window this run covers
+
+context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
+metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
+```
+
+**No dependencies, ever.** It reads one environment variable, writes one file
+and prints one line to stdout. Requires Python 3.9+.
+
+It is not a port of the Go SDK: no drivers, no pagination, no ingestion ids. It
+exists so a team can use pandas, Polars or dbt and still get what an
+orchestrator is for.
+
+## Reading context
+
+A key is always qualified by the step that published it:
+
+```python
+context.get("extract.bucket")            # the value
+context.get("extract.nope", default=0)   # absent is not an error
+context.of("extract")                    # everything that step published
+context.published()                      # what THIS step has published so far
+```
+
+`context.get("bucket")` with no step is **refused**, naming the steps that
+published it. Steps are isolated — `extract` and `transform` can both publish
+`bucket` without either losing it — and a bare key throws that away the moment
+two of them do. Searching and picking one is precedence by accident: it works
+until it silently does not.
+
+Reading a step this one does not depend on is an error, and the message points
+at the fix.
+
+## Writing
+
+```python
+context.set(name="Daniel")
+context.set(label="Name")
+# both survive: {"name": "Daniel", "label": "Name"}
+```
+
+Calls **merge**. The same key twice keeps the last write; a different key leaves
+the first alone. **There is no step argument** — the only namespace a process
+can write is its own, which is what makes the isolation structural rather than a
+rule.
+
+Nothing reaches the disk until the process exits, so a step that dies hard
+publishes nothing. That is correct: a crashed step's output described work that
+did not finish.
+
+## The clock this run should read
+
+Every run also carries **auto parameters**: values the engine works out on its
+own. Nobody declares them, every run has them, and they answer the question a
+pipeline would otherwise answer with `datetime.now()`.
+
+```python
+from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")
+```
+
+:::warning Why not `datetime.now()`
+`run.now()` is the **slot** on a scheduled run. A fetcher that reads
+`datetime.now()` and subtracts two hours is right on a run that starts on time
+and forty minutes wrong on one the queue delayed — and those forty minutes
+belong to **no run at all**, because the next slot reads its own `now()` too.
+Nothing fails, and the gap is found weeks later.
+:::
+
+| | |
+|---|---|
+| `run.now()` | the clock: the slot, or when the run started |
+| `run.window()` | `(start, end)`, end excluded — or `None` |
+| `run.auto()` | the auto parameters, below |
+| `run.context()` | id, attempt, trigger, params, and auto |
+| `run.params()` · `run.param(name)` | the parameters declared in the workflow |
+| `run.map_index()` · `run.map_value()` | the instance, under `for_each:` |
+
+`window()` comes from the **cron**, not from history: a backfill of a slot from
+March produces the window March had. Asking for `[start, end)` never overlaps
+and never gaps, however late the run is and however often it retries.
+
+It returns `None` rather than a pair of zero times when the workflow has no
+schedule — a query from the epoch selects everything, and that failure should
+not be silent. The `or` above is the whole fallback.
+
+### The auto parameters
+
+| field | |
+|---|---|
+| `date` | `"2026-09-08"` — the partition, the folder, the `WHERE` |
+| `adjusted_at` | the clock to read instead of `now()` |
+| `scheduled_at` | the slot the cron asked for; `None` on a manual run |
+| `started_at` | when **this attempt** began; a retry moves it |
+| `delay_seconds` | how late this attempt was; never negative |
+| `interval_start` · `interval_end` | the window, end excluded |
+| `previous_error` | the run before this one did not succeed |
+| `previous_success_at` | the slot of the last one that **did** — what makes `previous_error` actionable |
+
+Run the script by hand and `run.now()` **is** the wall clock and `window()` is
+`None`, so there is no branch to write for local development.
+
+## One instance of a mapped step
+
+Under [`for_each:`](/en/docs/workflows/index.md), the engine runs one process per element
+and tells each one which it got:
+
+```python
+partition = run.map_value()
+if partition is None:
+    raise SystemExit("this step is meant to run under `for_each:`")
+
+load(f"/data/{partition}.csv")
+```
+
+A JSON string arrives **without its quotes** — `for_each` over `["2026-01"]`
+hands the step `2026-01`, not `"2026-01"`. Anything else — an object, a number,
+a list — arrives as its JSON, so `json.loads(run.map_value())`.
+
+Both are `None` on a step that is not mapped. `None`, and not `-1` or `""`: a
+sentinel is a number somebody eventually does arithmetic on, and an empty string
+is indistinguishable from an element that *is* the empty string.
+
+A mapped step publishes **no context** downstream — four instances cannot share
+one key. A step that needs to hand something on writes a file, or a step after
+it counts what landed.
+
+## Metrics only your pipeline knows
+
+The engine already measures what it can see: duration, attempts, queue depth.
+What it has no way of knowing is how many rows landed, how many the vendor
+rejected, or how many bytes were discarded. The step knows that, and the library
+carries it.
+
+```python
+from brevis import metrics
+
+metrics.set("rows_loaded", 48213)          # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")       # a counter: it adds up
+metrics.inc("bytes_discarded_total", 4096)
+```
+
+They come out of the **engine's** `/metrics`, on the scheduler's port, labelled
+with the workflow and the step:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5
+```
+
+| | |
+|---|---|
+| `metrics.set(name, value)` | a gauge. After the step exits the value stays until the next run writes another |
+| `metrics.inc(name, by=1)` | a counter. Adds up across steps and across runs |
+
+### Why this does not open a port
+
+Because **a step is not scrapeable**. `:9090` belongs to the scheduler and the
+API — long-lived processes with a stable address, scraped every fifteen to sixty
+seconds. A step starts in its own pod, runs for forty seconds and exits: a port
+it opened would be scraped never, or once by luck.
+
+The three known answers to that are a Pushgateway (a component to operate, and
+series that stay until somebody deletes them), an OTLP collector (a component
+**and** a dependency in this library, which has none and will not get one), or
+letting the **orchestrator** carry them. Brevis already reads every step's
+stdout looking for `@brevis:` lines — that is how the SDK's phases reach the
+graph — and it already has a meter and a Prometheus endpoint.
+
+So the library writes **one line to stdout** and the engine does the rest. The
+metric arrives labelled with the workflow and the step for free, because the
+engine knows what it was running; through a Pushgateway this library would have
+to label itself, and would get it wrong.
+
+The write is `print(flush=True)`, because the engine reads that pipe **live**. A
+buffered line arrives when the process exits — which for a step that runs for an
+hour is an hour late, and for a step that is killed, never.
+
+### What a metric refuses
+
+**An invalid name is refused, loudly.** Prometheus accepts letters, digits and
+underscore, and the first character cannot be a digit. A name it refuses does
+not produce a broken metric — it produces an exposition it **refuses to parse**,
+and the **whole scrape** is lost, every other metric with it. So `rows-loaded`
+raises `MetricError` here, where the mistake was made, rather than arriving
+under a name nobody wrote.
+
+| refused | because |
+|---|---|
+| `rows-loaded`, `rows loaded`, `2rows` | Prometheus will not parse it, and the whole scrape goes |
+| `metrics.set("ok", True)` | `bool` is an `int` in Python, and reporting `1` is a number whose meaning depends on knowing that. Report the count or the duration, not the state |
+| `metrics.inc("x", -1)` | a counter only goes up. Every `rate()` over it assumes so, and the breakage shows up in a graph weeks later |
+
+Run the script by hand and the line still goes to stdout, where it reads as what
+it is. Nothing collects it and nothing fails — the same as `context.set()` on a
+laptop.
+
+## What it refuses
+
+| | because |
+|---|---|
+| more than 4096 bytes | the platform **truncates** rather than refuses, so an oversized object arrives cut in half and reads downstream as "published nothing" |
+| a value that is not JSON | a `datetime` becomes `"..."` or vanishes depending on who serializes it. The error names the key and suggests `.isoformat()` |
+| a non-string key | `{1: "x"}` comes back as `{"1": "x"}` and the lookup misses |
+
+The ceiling is the platform's number, not ours. Every "context between tasks"
+feature fails the same way — somebody puts **data** where only **context**
+fits. Four kilobytes hold a watermark, a count or a list of partitions. Publish
+a reference and leave the rows where they are.
+
+:::danger This is not a secret store
+Everything published is visible to anyone who can see the run — it is in the
+pod's status and in the run history. Publish a path, not a signed URL.
+:::
+
+## Running it by hand
+
+Outside Brevis there is no input and nothing reads the output. `get()` returns
+the default, `set()` accepts and discards, and the library says so once at INFO.
+It **does not raise**: a script that cannot be run by hand cannot be developed.
+The validation still runs, so a value that works on your laptop works in
+production.
+
+## Testing your step
+
+The whole contract is two environment variables, so there is nothing to mock:
+
+```python
+def test_my_step(monkeypatch, tmp_path):
+    monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
+    monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
+    assert context.get("extract.rows") == 42
+```
+
+## Versions
+
+The library versions on its own, separately from the engine and from the Go SDK.
+
+:::warning Do not use `0.2.0`
+It shipped wheel-only on PyPI. `0.2.1` is the same code, complete.
+:::
+
+`brevis.run` needs an engine on **`v0.9.0` or newer** to have anything to read;
+on an older one every field is empty and `run.now()` is the wall clock — the
+same thing it does outside the engine.
+
+## Next steps
+
+- [Client libraries](/en/docs/libraries/index.md) — the contract and the other languages
+- [Context between steps](/en/docs/context/index.md) — the concept
+- [Parameters](/en/docs/parameters/index.md) — the declared ones
+
+---
+
+# Kubernetes
+
+> How to deploy the engine, with what permissions, and what to check afterwards.
+
+A typical installation has **two Deployments** of the same binary — the API and
+the scheduler — plus a Postgres.
+
+## The two roles
+
+| role | command | image | replicas |
+|---|---|---|---|
+| API + interface | `serve` | `:0.11.2` (distroless) | as many as you like |
+| scheduler + queue | `scheduler` | `:0.11.2-worker` (alpine) | **one** |
+
+The API is distroless because it only serves HTTP: it executes nothing, so it
+needs no shell. The worker is alpine because `run:` steps need one.
+
+:::warning One scheduler replica
+Two processes materialising the same schedule create duplicate runs. If you need
+availability, use `replicas: 1` with `strategy: Recreate`.
+:::
+
+## Migrations
+
+Run them as a Job before the deploy, never at `serve` boot:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: brevis-migrate
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: daniel3843/brevis:0.11.2
+          args: ["migrate", "up"]
+          envFrom:
+            - secretRef: {name: brevis-db}
+```
+
+## API Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: brevis-api}
+  template:
+    metadata:
+      labels: {app: brevis-api}
+    spec:
+      serviceAccountName: brevis
+      containers:
+        - name: api
+          image: daniel3843/brevis:0.11.2
+          args: ["serve"]
+          ports: [{containerPort: 8080}]
+          envFrom:
+            - secretRef: {name: brevis-db}
+            - secretRef: {name: brevis-auth}
+          env:
+            - name: BREVIS_ENV
+              value: production
+          livenessProbe:
+            httpGet: {path: /health, port: 8080}
+          readinessProbe:
+            httpGet: {path: /ready, port: 8080}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 256Mi}
+```
+
+:::note Why the two probes differ
+`/health` does **not** query the database; `/ready` does, and names the
+dependency that failed. If liveness depended on Postgres, a database wobble
+would make Kubernetes **kill** the API pods instead of merely removing them from
+the load balancer — and recovery would get slower exactly when the system is
+already under stress.
+:::
+
+## Scheduler Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-scheduler
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: brevis-scheduler}
+  template:
+    metadata:
+      labels: {app: brevis-scheduler}
+    spec:
+      serviceAccountName: brevis
+      containers:
+        - name: scheduler
+          image: daniel3843/brevis:0.11.2-worker
+          args: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
+          envFrom:
+            - secretRef: {name: brevis-db}
+            - secretRef: {name: brevis-auth}
+          env:
+            - name: BREVIS_ENV
+              value: production
+            - name: BREVIS_PODS
+              value: "on"
+            - name: BREVIS_POD_NAMESPACE
+              value: data
+            - name: BREVIS_POD_SERVICE_ACCOUNT
+              value: brevis-runner
+            - name: BREVIS_POD_ENV_FROM_SECRETS
+              value: bigquery-cred
+```
+
+`BREVIS_PODS=on` **requires** a cluster: with no service account mounted, boot
+fails instead of silently falling back to local execution.
+
+## Permissions
+
+The scheduler creates, watches and deletes pods in the execution namespace.
+Nothing beyond that:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: brevis-runner
+  namespace: data
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+```
+
+`pods/log` is what allows following a step's output into the interface. Without
+it, the run works and the log stays empty.
+
+## After the deploy
+
+```bash
+kubectl -n data get pods -l app=brevis-api
+kubectl -n data exec deploy/brevis-api -- brevis version
+curl -fsS https://brevis.example.com/ready
+```
+
+Trigger a simple workflow from the interface and confirm that the step's pod
+appears and disappears:
+
+```bash
+kubectl -n data get pods -w
+```
+
+## When a step stays Pending
+
+It is almost always one of these three:
+
+| cause | how to confirm |
+|---|---|
+| taint without toleration | `kubectl describe pod` shows `node(s) had untolerated taint` |
+| `nodeSelector` with no node | `describe` shows `didn't match Pod's node affinity` |
+| resource unavailable | `describe` shows `Insufficient cpu` or `memory` |
+
+To inspect a failed step's pod rather than watch it disappear:
+
+```bash
+BREVIS_POD_MANTER_EM_FALHA=true
+```
+
+Leave it off in production — stopped pods consume quota.
+
+## Next steps
+
+- [Pod per step](/en/docs/pod-per-step/index.md) — the execution model
+- [Configuration](/en/docs/configuration/index.md) — every `BREVIS_POD_*` variable
+- [Observability](/en/docs/observability/index.md) — what to scrape, and from which process
+
+---
+
+# Observability
+
+> Prometheus metrics from both processes, what to watch, and what is deliberately absent.
+
+Brevis exposes Prometheus metrics on a port of its own, from **both** processes.
+
+```
+GET http://<pod>:9090/metrics
+```
+
+The port comes from `BREVIS_METRICS_ADDR`. It is separate from the HTTP port on
+purpose: metrics do not go through the interface's authentication, and serving
+both from one place would force a choice between an authenticated scrape and an
+open dashboard.
+
+## Two processes, two endpoints
+
+This is the part most setups get wrong, by scraping only the API.
+
+| | serves | reports |
+|---|---|---|
+| `brevis serve` | the UI and the HTTP API | queue depth |
+| `brevis scheduler` | nothing over HTTP | queue depth, claim latency, slots, orphans, runs, steps |
+
+The scheduler is what executes, so nearly everything comes from it. A dashboard
+built only on the API shows the queue growing and **nothing** about what is
+draining it.
+
+## The metrics a step publishes
+
+Beyond what the engine measures, a step can publish its own — how many rows
+landed, how many the vendor rejected:
+
+```python
+from brevis import metrics
+metrics.set("rows_loaded", 48213)
+```
+
+They show up on the **same** scheduler `/metrics`, prefixed and labelled by the
+engine:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+The step opens no port: it writes a line to stdout and the engine records it — a
+pod that lives forty seconds is not scrapeable. See [Python](/en/docs/python/index.md).
+
+## What to watch
+
+| signal | why |
+|---|---|
+| queue depth rising without falling | the scheduler died, or `--concurrency` is low for the load |
+| claim latency growing | contention on the database, or a queue too large for the interval |
+| orphans > 0 | runs claimed by a process that died before finishing |
+| slots not materialised | the scheduler loop stopped, and schedules stop with it |
+
+The first two alone do not tell "high load" from "dead process" — which is why
+slots matter. A queue rising **with** slots being created is load; a queue rising
+**without** slots is a stopped loop.
+
+## Kubernetes
+
+```yaml
+env:
+  - name: BREVIS_METRICS_ADDR
+    value: ":9090"
+ports:
+  - name: metrics
+    containerPort: 9090
+```
+
+With the Prometheus Operator, one `PodMonitor` per role — and it does need to be
+one per role, because the two Deployments carry different labels and report
+different sets.
+
+## What is deliberately absent
+
+**Traces.** There is no OpenTelemetry yet. A step runs as its own pod, and what
+matters about it — start, end, attempt, exit code, log — is already in the
+database and on the screen. The useful trace would be the one inside the step,
+and that belongs to the step's code, not to the orchestrator.
+
+That holds while the step is the unit. The day a step calls another service and
+the question becomes "where did the 40 seconds go", the trace starts being worth
+what it costs.
+
+## Next steps
+
+- [Kubernetes](/en/docs/kubernetes/index.md) — deploying both processes
+- [Configuration](/en/docs/configuration/index.md) — `BREVIS_METRICS_ADDR` and the rest
+
+---
+
+# White label
+
+> Changing the interface's title, motto, logo and palette through one YAML file.
+
+The interface is customisable through a file. Colours override the CSS variables
+**at runtime**, so changing a customer's theme recompiles nothing.
+
+## The file
+
+Copy `brand.example.yaml` to `brand.yaml` at the root, or point
+`BREVIS_BRAND_FILE` at it:
+
+```yaml
+titulo: Acme Data
+subtitulo: Data platform
+
+frase: |
+  Measure before deciding.
+  Decide before scaling.
+
+cores:
+  fundo:    "#f4efe4"
+  tinta:    "#21180f"
+  destaque: "#aa8450"
+```
+
+**Every field is optional.** What you leave out keeps the default, so a file
+with just `titulo:` is already valid.
+
+The line break in `frase` is preserved: it sets the rhythm of the phrase in the
+sidebar.
+
+## Logo
+
+```yaml
+logo: https://example.com/mark.svg
+```
+
+Accepts a URL (`https://` or `http://`) or an internal path starting with `/`.
+Absent, it uses the built-in symbol, which follows the theme colour.
+
+:::warning A logo hosted elsewhere depends on that host
+If it goes down, or if the cluster has no internet egress, the image does not
+load. The rest of the interface keeps working, but weigh that when choosing —
+the rest of the UI, fonts and bundles included, is served from the binary itself
+precisely so as not to depend on the network.
+:::
+
+## Validating
+
+A wrong hex value would only surface when the container came up, and the message
+would arrive through the pod log — far from whoever edited the file. Hence a
+subcommand:
+
+```bash
+brevis marca brand.yaml
+```
+
+```
+  ok    Acme Data · Data platform
+        logo      /assets/logo.svg  (simbolo embutido)
+        destaque  #aa8450
+        Powered by Brevis
+```
+
+Call it in the installation's CI and the error comes back in the pull request.
+
+:::note Absence means different things
+In `serve`, a missing file means "use the default identity" — and the API comes
+up. In `marca`, a missing file is an **error**: someone who asked to validate a
+path expects to be told it does not exist.
+:::
+
+## Behaviour at boot
+
+A content error — an invalid colour, broken YAML — **does not stop the interface
+from coming up**. The process logs a warning and uses the default theme. Taking
+the API down over a colour would be worse than serving it with the default
+theme.
+
+```
+level=WARN msg="identidade visual ignorada" arquivo=brand.yaml erro="cor invalida: #gggggg"
+```
+
+## What cannot be customised
+
+The **"Powered by Brevis"** line in the footer does not come from configuration
+— it comes from the code.
+
+## On Kubernetes
+
+Mount the file from a ConfigMap:
+
+```yaml
+volumes:
+  - name: brand
+    configMap: {name: brevis-brand}
+containers:
+  - name: api
+    volumeMounts:
+      - {name: brand, mountPath: /etc/brevis}
+    env:
+      - name: BREVIS_BRAND_FILE
+        value: /etc/brevis/brand.yaml
+```

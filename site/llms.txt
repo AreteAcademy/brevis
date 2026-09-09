@@ -1,0 +1,59 @@
+# brevis.sh
+
+> A data orchestration runtime written in Go. One binary holds declarative
+> transformation, workflow orchestration, a persistent queue, a scheduler and an
+> operational interface. Every workflow step runs as its own Kubernetes pod with
+> its own image. MIT licensed.
+
+Every page below is also served as Markdown: append `index.md` to any docs URL.
+`https://brevis.sh/llms-full.txt` is this entire documentation set in one file.
+
+How the pieces fit: a **workflow** is a YAML file of **steps**; the
+**scheduler** turns schedules into **runs** and a **queue** executes them; each
+step becomes a **pod**. A step is any command in any image — the **Go SDK**
+(`brevis/sdk`) is for extract-and-load work, and the **client libraries**
+(`pip install brevis`) give a step the run's context, clock and metrics through
+two environment variables.
+
+The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md` likewise).
+
+## Start here
+
+- [Introduction](https://brevis.sh/en/docs/introduction/index.md): What brevis.sh is, the problem it solves, and when it is not the right choice.
+- [Installation](https://brevis.sh/en/docs/installation/index.md): How to get the binary, what it requires, and how to confirm the install is correct.
+- [Quickstart](https://brevis.sh/en/docs/quickstart/index.md): From nothing to a live DAG in the interface, in four steps.
+
+## Building a workflow
+
+- [Workflows](https://brevis.sh/en/docs/workflows/index.md): The complete YAML format — steps, dependencies, images, resources and schedule.
+- [Parameters](https://brevis.sh/en/docs/parameters/index.md): What changes between two runs of the same workflow, without editing the file.
+- [Step runtime](https://brevis.sh/en/docs/runtime/index.md): What a step declares about the language and tools it drives — and why you rarely need to.
+- [Context between steps](https://brevis.sh/en/docs/context/index.md): What one step tells the next — two environment variables and a file.
+
+## How it executes
+
+- [Scheduler and queue](https://brevis.sh/en/docs/scheduler-and-queue/index.md): Two independent loops — who creates runs, who executes them, and why they are separate.
+- [Pod per step](https://brevis.sh/en/docs/pod-per-step/index.md): Why each step runs in its own pod, and what that changes in cost and isolation.
+
+## Command line and configuration
+
+- [CLI](https://brevis.sh/en/docs/cli/index.md): The engine's twelve subcommands, with flags, arguments and what each one requires.
+- [Configuration](https://brevis.sh/en/docs/configuration/index.md): Every environment variable, with default, format and what happens when it is missing.
+
+## Writing a step in code
+
+- [Go SDK](https://brevis.sh/en/docs/sdk/index.md): Writing a fetcher — extract from a source, transform, and load into a destination.
+- [Client libraries](https://brevis.sh/en/docs/libraries/index.md): How a step in any language reads the context and the run's clock — and which languages already have a library.
+- [Python](https://brevis.sh/en/docs/python/index.md): pip install brevis — context between steps, the run's clock and your pipeline's own metrics, with no dependencies at all.
+
+## Running it in production
+
+- [Kubernetes](https://brevis.sh/en/docs/kubernetes/index.md): How to deploy the engine, with what permissions, and what to check afterwards.
+- [Observability](https://brevis.sh/en/docs/observability/index.md): Prometheus metrics from both processes, what to watch, and what is deliberately absent.
+- [White label](https://brevis.sh/en/docs/white-label/index.md): Changing the interface's title, motto, logo and palette through one YAML file.
+
+## Optional
+
+- [Repository](https://github.com/AreteAcademy/brevis): source, issues and discussions
+- [Go SDK reference](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk): the generated API docs
+- [Aretê Academy](https://areteacademy.com.br/): the group the project belongs to
