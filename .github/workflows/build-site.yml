@@ -27,7 +27,13 @@ jobs:
       - name: Validate HTML
         run: |
           cd site
-          sudo apt-get update -qq
+          # A third-party apt repo on the runner image (Chrome) can serve a
+          # Packages.gz whose hash does not match, `update` exits 100, and under
+          # `bash -e` that killed this job -- which only needs `tidy`, from
+          # Ubuntu's own repo. The install below fails on its own if the package
+          # does not arrive, so failing to refresh somebody else's index is not
+          # this job's problem. It happened on e19be96.
+          sudo apt-get update -qq || true
           sudo apt-get install -y -qq tidy
           for f in index.html 404.html docs/*/index.html en/index.html en/docs/*/index.html; do
             tidy -q -e -utf8 "$f" || true
@@ -53,7 +59,8 @@ jobs:
       - name: Check links in HTML
         run: |
           cd site
-          if bad=$(grep -o 'href="[^"]*"' index.html | grep -E 'href="[0-9]'); then
+          if bad=$(grep -o 'href="[^"]*"' index.html 404.html docs/*/index.html \
+                     en/index.html en/docs/*/index.html | grep -E 'href="[0-9]'); then
             echo "::error::hrefs starting with a digit, which are relative by accident:"
             echo "$bad"
             exit 1
