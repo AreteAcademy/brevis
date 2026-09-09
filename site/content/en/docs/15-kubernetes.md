@@ -2,7 +2,7 @@
 title: Kubernetes
 description: How to deploy the engine, with what permissions, and what to check afterwards.
 group: Operations
-order: 13
+order: 15
 slug: kubernetes
 ---
 

@@ -2,7 +2,7 @@
 title: Observability
 description: Prometheus metrics from both processes, what to watch, and what is deliberately absent.
 group: Operations
-order: 14
+order: 16
 slug: observability
 ---
 
@@ -29,6 +29,26 @@ This is the part most setups get wrong, by scraping only the API.
 The scheduler is what executes, so nearly everything comes from it. A dashboard
 built only on the API shows the queue growing and **nothing** about what is
 draining it.
+
+## The metrics a step publishes
+
+Beyond what the engine measures, a step can publish its own — how many rows
+landed, how many the vendor rejected:
+
+```python
+from brevis import metrics
+metrics.set("rows_loaded", 48213)
+```
+
+They show up on the **same** scheduler `/metrics`, prefixed and labelled by the
+engine:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+The step opens no port: it writes a line to stdout and the engine records it — a
+pod that lives forty seconds is not scrapeable. See [Python](/docs/python/).
 
 ## What to watch
 

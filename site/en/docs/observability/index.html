@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="No results" hidden></div>
       <nav class="side-nav" aria-label="Documentation">
-        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/" aria-current="page">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/" aria-current="page">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -132,6 +132,14 @@
 <p>This is the part most setups get wrong, by scraping only the API.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>serves</th><th>reports</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>the UI and the HTTP API</td><td>queue depth</td></tr><tr><td><code>brevis scheduler</code></td><td>nothing over HTTP</td><td>queue depth, claim latency, slots, orphans, runs, steps</td></tr></tbody></table></div>
 <p>The scheduler is what executes, so nearly everything comes from it. A dashboard built only on the API shows the queue growing and <strong>nothing</strong> about what is draining it.</p>
+<h2 id="the-metrics-a-step-publishes">The metrics a step publishes<a class="anchor" href="#the-metrics-a-step-publishes" aria-label="link">#</a></h2>
+<p>Beyond what the engine measures, a step can publish its own — how many rows landed, how many the vendor rejected:</p>
+<div class="code-block" data-code="from brevis import metrics
+metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+metrics.set("rows_loaded", 48213)</code></pre></div>
+<p>They show up on the <strong>same</strong> scheduler <code>/metrics</code>, prefixed and labelled by the engine:</p>
+<div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
+<p>The step opens no port: it writes a line to stdout and the engine records it — a pod that lives forty seconds is not scrapeable. See <a href="/en/docs/python/">Python</a>.</p>
 <h2 id="what-to-watch">What to watch<a class="anchor" href="#what-to-watch" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>signal</th><th>why</th></tr></thead><tbody><tr><td>queue depth rising without falling</td><td>the scheduler died, or <code>--concurrency</code> is low for the load</td></tr><tr><td>claim latency growing</td><td>contention on the database, or a queue too large for the interval</td></tr><tr><td>orphans &gt; 0</td><td>runs claimed by a process that died before finishing</td></tr><tr><td>slots not materialised</td><td>the scheduler loop stopped, and schedules stop with it</td></tr></tbody></table></div>
 <p>The first two alone do not tell "high load" from "dead process" — which is why slots matter. A queue rising <strong>with</strong> slots being created is load; a queue rising <strong>without</strong> slots is a stopped loop.</p>
@@ -166,7 +174,7 @@ ports:
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">Two processes, two endpoints</a></li><li class="toc-2"><a href="#what-to-watch">What to watch</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">What is deliberately absent</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#two-processes-two-endpoints">Two processes, two endpoints</a></li><li class="toc-2"><a href="#the-metrics-a-step-publishes">The metrics a step publishes</a></li><li class="toc-2"><a href="#what-to-watch">What to watch</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#what-is-deliberately-absent">What is deliberately absent</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

@@ -1,7 +1,7 @@
 ---
 title: SDK em Go
 description: Escrever um fetcher — extrair de uma origem, transformar e carregar num destino.
-group: SDK
+group: SDK e bibliotecas
 order: 12
 slug: sdk
 ---
@@ -180,6 +180,14 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 
 Rodando à mão, `Auto.Now()` *é* o relógio de parede e `Window()` devolve
 `false`, então o desenvolvimento local não precisa de caso especial.
+
+## Não confunda com as bibliotecas cliente
+
+Este SDK é maquinaria de ETL em Go: drivers, paginação, procedência,
+criação de tabela. As [bibliotecas cliente](/docs/libraries/) são outra
+coisa — clientes finos que dão a um passo o contexto e o relógio do run,
+em Python hoje e em Node.js e Rust depois. Um passo que usa pandas ou dbt
+quer a segunda, não este.
 
 ## Referência
 

@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
       <nav class="side-nav" aria-label="Documentação">
-        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/" aria-current="page">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/" aria-current="page">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -132,6 +132,14 @@
 <p>É a parte que a maioria das instalações erra, raspando só a API.</p>
 <div class="table-wrap"><table><thead><tr><th></th><th>serve</th><th>reporta</th></tr></thead><tbody><tr><td><code>brevis serve</code></td><td>a interface e a API HTTP</td><td>profundidade da fila</td></tr><tr><td><code>brevis scheduler</code></td><td>nada por HTTP</td><td>profundidade da fila, latência de claim, slots, órfãos, runs, passos</td></tr></tbody></table></div>
 <p>O scheduler é quem executa, então é dele que vem quase tudo. Um painel montado só sobre a API mostra a fila crescendo e <strong>nada</strong> sobre o que a está drenando.</p>
+<h2 id="as-metricas-que-o-passo-publica">As métricas que o passo publica<a class="anchor" href="#as-metricas-que-o-passo-publica" aria-label="link">#</a></h2>
+<p>Além do que o engine mede, um passo pode publicar as suas próprias — quantas linhas entraram, quantas o fornecedor recusou:</p>
+<div class="code-block" data-code="from brevis import metrics
+metrics.set(&quot;rows_loaded&quot;, 48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+metrics.set("rows_loaded", 48213)</code></pre></div>
+<p>Elas aparecem no <strong>mesmo</strong> <code>/metrics</code> do scheduler, prefixadas e rotuladas pelo engine:</p>
+<div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213</code></pre></div>
+<p>O passo não abre porta: escreve uma linha no stdout e o engine registra — um pod que vive quarenta segundos não é raspável. Ver <a href="/docs/python/">Python</a>.</p>
 <h2 id="o-que-vigiar">O que vigiar<a class="anchor" href="#o-que-vigiar" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>sinal</th><th>por que</th></tr></thead><tbody><tr><td>profundidade da fila subindo sem cair</td><td>o scheduler morreu, ou <code>--concurrency</code> é baixo para a carga</td></tr><tr><td>latência de claim crescendo</td><td>contenção no banco, ou fila grande demais para o intervalo</td></tr><tr><td>órfãos &gt; 0</td><td>runs reivindicados por um processo que morreu antes de terminar</td></tr><tr><td>slots não materializados</td><td>o laço do scheduler parou, e as agendas param com ele</td></tr></tbody></table></div>
 <p>Os dois primeiros sozinhos não distinguem "carga alta" de "processo morto" — é por isso que os slots importam. Fila subindo <strong>com</strong> slots sendo criados é carga; fila subindo <strong>sem</strong> slots é o laço parado.</p>
@@ -166,7 +174,7 @@ ports:
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#dois-processos-dois-endpoints">Dois processos, dois endpoints</a></li><li class="toc-2"><a href="#o-que-vigiar">O que vigiar</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#o-que-falta-deliberadamente">O que falta, deliberadamente</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#dois-processos-dois-endpoints">Dois processos, dois endpoints</a></li><li class="toc-2"><a href="#as-metricas-que-o-passo-publica">As métricas que o passo publica</a></li><li class="toc-2"><a href="#o-que-vigiar">O que vigiar</a></li><li class="toc-2"><a href="#kubernetes">Kubernetes</a></li><li class="toc-2"><a href="#o-que-falta-deliberadamente">O que falta, deliberadamente</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

@@ -68,6 +68,11 @@ LINGUAGENS = {
         (r"(&quot;[^&\n]*?&quot;)", "s"),
         (r"\b(true|false|null|\d+)\b", "n"),
     ],
+    "python": [
+        (r"(#[^\n]*)", "c"),
+        (r"(&quot;[^&\n]*?&quot;|&#x27;[^&\n]*?&#x27;)", "s"),
+        (r"\b(from|import|def|class|return|if|elif|else|for|in|while|with|as|raise|assert|try|except|finally|lambda|not|and|or|is|None|True|False|yield|pass|global)\b", "k"),
+    ],
     "sql": [
         (r"(--[^\n]*)", "c"),
         (r"\b(SELECT|FROM|WHERE|INSERT|INTO|VALUES|CREATE|TABLE|AS|JOIN|ON|GROUP|BY|ORDER)\b", "k"),

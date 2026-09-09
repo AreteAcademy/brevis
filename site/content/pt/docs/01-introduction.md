@@ -92,6 +92,7 @@ que ela faz:
 | a lista de comandos e flags | [CLI](/docs/cli/) |
 | escrever um fetcher em Go | [SDK](/docs/sdk/) |
 | passar um valor de um passo ao seguinte | [Contexto entre passos](/docs/context/) |
+| escrever um passo em Python | [Bibliotecas cliente](/docs/libraries/) |
 | montar painel e alerta | [Observabilidade](/docs/observability/) |
 
 :::note O nome

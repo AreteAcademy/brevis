@@ -63,7 +63,7 @@ arquivo.
 
 | linguagem | |
 |---|---|
-| Python | `pip install brevis` — traz também `brevis.run`, com os [parâmetros automáticos](/docs/parameters/) |
+| Python | [`pip install brevis`](/docs/python/) — traz também `brevis.run`, com os [parâmetros automáticos](/docs/parameters/) |
 | Go | `sdk/context`, parte do módulo do SDK, sem dependência |
 | qualquer outra | as duas variáveis acima |
 
@@ -108,3 +108,4 @@ cat /tmp/out.json
 
 - [Parâmetros](/docs/parameters/) — o que muda entre dois disparos, e os automáticos
 - [Runtime do passo](/docs/runtime/) — o que o passo declara sobre onde executa
+- [Python](/docs/python/) — a biblioteca cliente, e as outras linguagens

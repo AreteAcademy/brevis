@@ -115,7 +115,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="No results" hidden></div>
       <nav class="side-nav" aria-label="Documentation">
-        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/" aria-current="page">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/" aria-current="page">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -141,13 +141,13 @@
     <span class="t-k">depends_on</span>: [extract]</code></pre></div>
 <div class="code-block" data-code="# extract
 from brevis import context
-context.set(bucket=&quot;s3://landing/2026-09-07&quot;, rows=48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code># extract
-from brevis import context
+context.set(bucket=&quot;s3://landing/2026-09-07&quot;, rows=48213)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># extract</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
 context.set(bucket="s3://landing/2026-09-07", rows=48213)</code></pre></div>
 <div class="code-block" data-code="# transform
 from brevis import context
-bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code># transform
-from brevis import context
+bucket = context.get(&quot;extract.bucket&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># transform</span>
+<span class="t-k">from</span> brevis <span class="t-k">import</span> context
 bucket = context.get("extract.bucket")</code></pre></div>
 <p>The key is always <code>&lt;step id&gt;.&lt;name&gt;</code>. A step reads what <strong>its own dependencies</strong> published, and nothing else.</p>
 <aside class="admon admon-note"><p class="admon-t">What this is not</p><p>Not a message queue, not state between runs, and not a place to put data. It is the note one step leaves for the next — a path, a watermark, a count.</p></aside>
@@ -160,7 +160,7 @@ jq -n --arg n &quot;$(date -Is)&quot; &#x27;{published_at: $n}&#x27; &gt; &quot;
 jq <span class="t-n">-n</span> <span class="t-n">--arg</span> n "$(date <span class="t-n">-Is</span>)" '{published_at: $n}' &gt; "$BREVIS_OUTPUT"</code></pre></div>
 <div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>BREVIS_INPUT</code></td><td><code>{"&lt;step id&gt;": {…}}</code> — what this step's dependencies published</td></tr><tr><td><code>BREVIS_OUTPUT</code></td><td>a path to write <strong>one</strong> JSON object to</td></tr></tbody></table></div>
 <p>Under Kubernetes that path is <code>/dev/termination-log</code>, which the engine already reads to get the exit code. So there is <strong>no API call, no token and no port</strong> — and a library for it is a JSON parse and a file write.</p>
-<div class="table-wrap"><table><thead><tr><th>language</th><th></th></tr></thead><tbody><tr><td>Python</td><td><code>pip install brevis</code> — it also carries <code>brevis.run</code>, with the <a href="/en/docs/parameters/">auto parameters</a></td></tr><tr><td>Go</td><td><code>sdk/context</code>, part of the SDK module, depends on nothing</td></tr><tr><td>anything else</td><td>the two variables above</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>language</th><th></th></tr></thead><tbody><tr><td>Python</td><td><a href="/en/docs/python/"><code>pip install brevis</code></a> — it also carries <code>brevis.run</code>, with the <a href="/en/docs/parameters/">auto parameters</a></td></tr><tr><td>Go</td><td><code>sdk/context</code>, part of the SDK module, depends on nothing</td></tr><tr><td>anything else</td><td>the two variables above</td></tr></tbody></table></div>
 <h2 id="isolation">Isolation<a class="anchor" href="#isolation" aria-label="link">#</a></h2>
 <p>No step can overwrite what another published. Keys are prefixed with the id of whoever wrote them, and the engine — not the step — decides that prefix. Two steps publishing <code>bucket</code> produce <code>extract.bucket</code> and <code>load.bucket</code>, and neither disappears.</p>
 <h2 id="the-4096-byte-ceiling">The 4096-byte ceiling<a class="anchor" href="#the-4096-byte-ceiling" aria-label="link">#</a></h2>
@@ -179,7 +179,7 @@ export BREVIS_OUTPUT=/tmp/out.json
 python transform.py
 cat /tmp/out.json</code></pre></div>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
-<ul><li><a href="/en/docs/parameters/">Parameters</a> — what changes between runs, and the automatic ones</li><li><a href="/en/docs/runtime/">Step runtime</a> — what a step declares about where it runs</li></ul>
+<ul><li><a href="/en/docs/parameters/">Parameters</a> — what changes between runs, and the automatic ones</li><li><a href="/en/docs/runtime/">Step runtime</a> — what a step declares about where it runs</li><li><a href="/en/docs/python/">Python</a> — the client library, and the other languages</li></ul>
 
       <nav class="pagers" aria-label="Pages">
         <a class="pager pager-prev" href="/en/docs/pod-per-step/"><span>Previous</span><strong>Pod per step</strong></a>

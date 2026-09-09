@@ -61,7 +61,7 @@ and a library for it is a JSON parse and a file write.
 
 | language | |
 |---|---|
-| Python | `pip install brevis` — it also carries `brevis.run`, with the [auto parameters](/docs/parameters/) |
+| Python | [`pip install brevis`](/docs/python/) — it also carries `brevis.run`, with the [auto parameters](/docs/parameters/) |
 | Go | `sdk/context`, part of the SDK module, depends on nothing |
 | anything else | the two variables above |
 
@@ -108,3 +108,4 @@ cat /tmp/out.json
 
 - [Parameters](/docs/parameters/) — what changes between runs, and the automatic ones
 - [Step runtime](/docs/runtime/) — what a step declares about where it runs
+- [Python](/docs/python/) — the client library, and the other languages

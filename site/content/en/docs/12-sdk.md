@@ -1,7 +1,7 @@
 ---
 title: Go SDK
 description: Writing a fetcher — extract from a source, transform, and load into a destination.
-group: SDK
+group: SDK and libraries
 order: 12
 slug: sdk
 ---
@@ -183,6 +183,14 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 
 Run by hand, `Auto.Now()` *is* the wall clock and `Window()` returns `false`, so
 local development needs no special case.
+
+## Not to be confused with the client libraries
+
+This SDK is ETL machinery in Go: drivers, pagination, provenance, table
+creation. The [client libraries](/docs/libraries/) are a different thing —
+thin clients that hand a step the run context and clock, in Python today
+and in Node.js and Rust later. A step using pandas or dbt wants the
+second, not this.
 
 ## Reference
 

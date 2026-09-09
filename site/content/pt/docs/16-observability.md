@@ -2,7 +2,7 @@
 title: Observabilidade
 description: Métricas Prometheus dos dois processos, o que medir e o que ainda não existe.
 group: Operação
-order: 14
+order: 16
 slug: observability
 ---
 
@@ -28,6 +28,26 @@ lugar obrigaria a escolher entre um scrape autenticado ou um painel aberto.
 
 O scheduler é quem executa, então é dele que vem quase tudo. Um painel montado
 só sobre a API mostra a fila crescendo e **nada** sobre o que a está drenando.
+
+## As métricas que o passo publica
+
+Além do que o engine mede, um passo pode publicar as suas próprias — quantas
+linhas entraram, quantas o fornecedor recusou:
+
+```python
+from brevis import metrics
+metrics.set("rows_loaded", 48213)
+```
+
+Elas aparecem no **mesmo** `/metrics` do scheduler, prefixadas e rotuladas pelo
+engine:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+O passo não abre porta: escreve uma linha no stdout e o engine registra — um pod
+que vive quarenta segundos não é raspável. Ver [Python](/docs/python/).
 
 ## O que vigiar
 

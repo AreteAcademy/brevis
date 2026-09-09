@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Python — Documentação</title>
+<meta name="description" content="pip install brevis — contexto entre passos, o relógio do run e métricas do seu pipeline, sem dependência nenhuma.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/docs/python/">
+<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/python/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/python/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="pt-BR">
+<meta property="og:title" content="Python — Documentação">
+<meta property="og:description" content="pip install brevis — contexto entre passos, o relógio do run e métricas do seu pipeline, sem dependência nenhuma.">
+<meta property="og:url" content="https://brevis.sh/docs/python/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Python — Documentação">
+<meta name="twitter:description" content="pip install brevis — contexto entre passos, o relógio do run e métricas do seu pipeline, sem dependência nenhuma.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Python",
+  "description": "pip install brevis — contexto entre passos, o relógio do run e métricas do seu pipeline, sem dependência nenhuma.",
+  "inLanguage": "pt-BR",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navegação principal">
+      <a href="/#produto">Produto</a>
+      <a href="/#principios">Princípios</a>
+      <a href="/docs/">Documentação</a>
+      <a href="/#open-source">Open source</a>
+      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/python/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/python/" hreflang="en">EN</a></div>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorar open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu da documentação
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Buscar na documentação</label>
+        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
+      <nav class="side-nav" aria-label="Documentação">
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/" aria-current="page">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentação</p>
+      <h1>Python</h1>
+      <p class="doc-desc">pip install brevis — contexto entre passos, o relógio do run e métricas do seu pipeline, sem dependência nenhuma.</p>
+      <div class="code-block" data-code="pip install brevis"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>pip install <span class="t-k">brevis</span></code></pre></div>
+<div class="code-block" data-code="from brevis import context, metrics, run
+
+bucket = context.get(&quot;extract.bucket&quot;)
+since, until = run.window()          # a janela que este run cobre
+
+context.set(rows=48213, watermark=&quot;2026-09-07T03:00:00Z&quot;)
+metrics.set(&quot;rows_loaded&quot;, 48213)    # chega ao /metrics do engine"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> context, metrics, run
+
+bucket = context.get("extract.bucket")
+since, until = run.window()          <span class="t-c"># a janela que este run cobre</span>
+
+context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
+metrics.set("rows_loaded", 48213)    <span class="t-c"># chega ao /metrics do engine</span></code></pre></div>
+<p><strong>Sem dependências, nunca.</strong> Lê uma variável de ambiente, escreve um arquivo e imprime uma linha no stdout. Requer Python 3.9+.</p>
+<p>Não é um port do SDK em Go: sem drivers, sem paginação, sem ids de ingestão. Ela existe para que um time use pandas, Polars ou dbt e ainda receba o que um orquestrador tem para dar.</p>
+<h2 id="lendo-o-contexto">Lendo o contexto<a class="anchor" href="#lendo-o-contexto" aria-label="link">#</a></h2>
+<p>Uma chave é sempre qualificada pelo passo que a publicou:</p>
+<div class="code-block" data-code="context.get(&quot;extract.bucket&quot;)            # o valor
+context.get(&quot;extract.nope&quot;, default=0)   # ausente não é erro
+context.of(&quot;extract&quot;)                    # tudo que aquele passo publicou
+context.published()                      # o que ESTE passo já publicou"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>context.get("extract.bucket")            <span class="t-c"># o valor</span>
+context.get("extract.nope", default=0)   <span class="t-c"># ausente não é erro</span>
+context.of("extract")                    <span class="t-c"># tudo que aquele passo publicou</span>
+context.published()                      <span class="t-c"># o que ESTE passo já publicou</span></code></pre></div>
+<p><code>context.get("bucket")</code> sem o passo é <strong>recusado</strong>, nomeando os passos que a publicaram. Os passos são isolados — <code>extract</code> e <code>transform</code> podem publicar <code>bucket</code> sem que nenhum perca o seu — e uma chave sem qualificação joga isso fora no momento em que dois deles publicam a mesma. Procurar e escolher um é precedência por acidente: funciona até deixar de funcionar em silêncio.</p>
+<p>Ler um passo de que este não depende é erro, e a mensagem aponta a correção.</p>
+<h2 id="escrevendo">Escrevendo<a class="anchor" href="#escrevendo" aria-label="link">#</a></h2>
+<div class="code-block" data-code="context.set(name=&quot;Daniel&quot;)
+context.set(label=&quot;Nome&quot;)
+# os dois sobrevivem: {&quot;name&quot;: &quot;Daniel&quot;, &quot;label&quot;: &quot;Nome&quot;}"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>context.set(name="Daniel")
+context.set(label="Nome")
+<span class="t-c"># os dois sobrevivem: {"name": "Daniel", "label": "Nome"}</span></code></pre></div>
+<p>As chamadas <strong>mesclam</strong>. A mesma chave duas vezes mantém a última escrita; uma chave diferente não mexe na primeira. <strong>Não há argumento de passo</strong> — o único namespace em que um processo escreve é o seu, e é isso que faz o isolamento ser estrutural em vez de uma regra.</p>
+<p>Nada chega ao disco antes de o processo terminar, então um passo que morre de forma abrupta publica nada. Isso é correto: a saída de um passo que quebrou descrevia trabalho que não terminou.</p>
+<h2 id="o-relogio-que-este-run-deve-ler">O relógio que este run deve ler<a class="anchor" href="#o-relogio-que-este-run-deve-ler" aria-label="link">#</a></h2>
+<p>Todo run carrega <strong>parâmetros automáticos</strong>: valores que o engine calcula por conta própria. Ninguém os declara, todo run os tem, e eles respondem a pergunta que um pipeline responderia com <code>datetime.now()</code>.</p>
+<div class="code-block" data-code="from datetime import timedelta
+from brevis import run
+
+since, until = run.window() or (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f&quot;/data/{run.auto().date}.parquet&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> datetime <span class="t-k">import</span> timedelta
+<span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(days=1), run.now())
+df = fetch(since, until)
+df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
+<aside class="admon admon-warning"><p class="admon-t">Por que não `datetime.now()`</p><p><code>run.now()</code> é o <strong>slot</strong> num run agendado. Um fetcher que lê <code>datetime.now()</code> e subtrai duas horas está certo num run que começa na hora e quarenta minutos errado num que a fila atrasou — e aqueles quarenta minutos pertencem a <strong>run nenhum</strong>, porque o slot seguinte também lê o seu próprio <code>now()</code>. Nada falha, e o buraco é encontrado semanas depois.</p></aside>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>run.now()</code></td><td>o relógio: o slot, ou quando o run começou</td></tr><tr><td><code>run.window()</code></td><td><code>(início, fim)</code>, fim excluído — ou <code>None</code></td></tr><tr><td><code>run.auto()</code></td><td>os parâmetros automáticos, abaixo</td></tr><tr><td><code>run.context()</code></td><td>id, tentativa, trigger, params e os automáticos</td></tr><tr><td><code>run.params()</code> · <code>run.param(nome)</code></td><td>os parâmetros declarados no workflow</td></tr><tr><td><code>run.map_index()</code> · <code>run.map_value()</code></td><td>a instância, sob <code>for_each:</code></td></tr></tbody></table></div>
+<p><code>window()</code> vem do <strong>cron</strong>, não do histórico: um backfill de um slot de março produz a janela que março teve. Pedir <code>[início, fim)</code> nunca se sobrepõe e nunca deixa buraco, por mais atrasado que o run esteja e por mais que ele repita.</p>
+<p>Ele devolve <code>None</code>, e não um par de datas zero, quando o workflow não tem agenda — uma consulta desde a época seleciona tudo, e essa falha não deveria ser silenciosa. O <code>or</code> do exemplo acima é o fallback inteiro.</p>
+<h3 id="os-parametros-automaticos">Os parâmetros automáticos<a class="anchor" href="#os-parametros-automaticos" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th></tr></thead><tbody><tr><td><code>date</code></td><td><code>"2026-09-08"</code> — a partição, a pasta, o <code>WHERE</code></td></tr><tr><td><code>adjusted_at</code></td><td>o relógio a ler em vez de <code>now()</code></td></tr><tr><td><code>scheduled_at</code></td><td>o slot que o cron pediu; <code>None</code> num disparo manual</td></tr><tr><td><code>started_at</code></td><td>quando <strong>esta tentativa</strong> começou; um retry move</td></tr><tr><td><code>delay_seconds</code></td><td>o quanto esta tentativa atrasou; nunca negativo</td></tr><tr><td><code>interval_start</code> · <code>interval_end</code></td><td>a janela, fim excluído</td></tr><tr><td><code>previous_error</code></td><td>o run anterior não teve sucesso</td></tr><tr><td><code>previous_success_at</code></td><td>o slot do último que <strong>teve</strong> — é o que torna <code>previous_error</code> acionável</td></tr></tbody></table></div>
+<p>Rodando o script à mão, <code>run.now()</code> <strong>é</strong> o relógio de parede e <code>window()</code> é <code>None</code>, então não há ramo a escrever para desenvolvimento local.</p>
+<h2 id="uma-instancia-de-um-passo-mapeado">Uma instância de um passo mapeado<a class="anchor" href="#uma-instancia-de-um-passo-mapeado" aria-label="link">#</a></h2>
+<p>Sob <a href="/docs/workflows/"><code>for_each:</code></a>, o engine roda um processo por elemento e diz a cada um qual recebeu:</p>
+<div class="code-block" data-code="partition = run.map_value()
+if partition is None:
+    raise SystemExit(&quot;este passo é para rodar sob `for_each:`&quot;)
+
+load(f&quot;/data/{partition}.csv&quot;)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>partition = run.map_value()
+<span class="t-k">if</span> partition <span class="t-k">is</span> <span class="t-k">None</span>:
+    <span class="t-k">raise</span> SystemExit("este passo é para rodar sob `for_each:`")
+
+load(f"/data/{partition}.csv")</code></pre></div>
+<p>Uma string JSON chega <strong>sem as aspas</strong> — <code>for_each</code> sobre <code>["2026-01"]</code> entrega <code>2026-01</code>, não <code>"2026-01"</code>. Qualquer outra coisa — objeto, número, lista — chega como o JSON dela, então <code>json.loads(run.map_value())</code>.</p>
+<p>As duas são <code>None</code> num passo não mapeado. <code>None</code>, e não <code>-1</code> ou <code>""</code>: um sentinela é um número sobre o qual alguém eventualmente faz aritmética, e uma string vazia é indistinguível de um elemento que <em>é</em> a string vazia.</p>
+<p>Um passo mapeado <strong>não publica contexto</strong> adiante — quatro instâncias não podem compartilhar uma chave. Um passo que precisa entregar algo escreve um arquivo, ou um passo depois dele conta o que chegou.</p>
+<h2 id="metricas-que-so-o-seu-pipeline-conhece">Métricas que só o seu pipeline conhece<a class="anchor" href="#metricas-que-so-o-seu-pipeline-conhece" aria-label="link">#</a></h2>
+<p>O engine já mede o que ele vê: duração, tentativas, profundidade da fila. O que ele não tem como saber é quantas linhas entraram, quantas o fornecedor recusou ou quantos bytes foram descartados. Isso o passo sabe, e a biblioteca leva.</p>
+<div class="code-block" data-code="from brevis import metrics
+
+metrics.set(&quot;rows_loaded&quot;, 48213)          # gauge: a última escrita vence
+metrics.inc(&quot;vendor_rejected_total&quot;)       # counter: soma
+metrics.inc(&quot;bytes_discarded_total&quot;, 4096)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> metrics
+
+metrics.set("rows_loaded", 48213)          <span class="t-c"># gauge: a última escrita vence</span>
+metrics.inc("vendor_rejected_total")       <span class="t-c"># counter: soma</span>
+metrics.inc("bytes_discarded_total", 4096)</code></pre></div>
+<p>Elas saem no <code>/metrics</code> <strong>do engine</strong>, na porta do scheduler, rotuladas com o workflow e o passo:</p>
+<div class="code-block" data-code="brevis_step_rows_loaded{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 48213
+brevis_step_vendor_rejected_total{workflow=&quot;daily_sales&quot;,step=&quot;load&quot;} 5"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>metrics.set(nome, valor)</code></td><td>um gauge. Depois que o passo sai, o valor fica até o próximo run escrever outro</td></tr><tr><td><code>metrics.inc(nome, by=1)</code></td><td>um counter. Soma entre passos e entre runs</td></tr></tbody></table></div>
+<h3 id="por-que-isto-nao-abre-uma-porta">Por que isto não abre uma porta<a class="anchor" href="#por-que-isto-nao-abre-uma-porta" aria-label="link">#</a></h3>
+<p>Porque <strong>um passo não é raspável</strong>. A <code>:9090</code> pertence ao scheduler e à API — processos de vida longa, com endereço estável, raspados a cada quinze ou sessenta segundos. Um passo começa no próprio pod, roda quarenta segundos e sai: uma porta que ele abrisse seria raspada nunca, ou uma vez por sorte.</p>
+<p>As três respostas conhecidas para isso são um Pushgateway (um componente a operar, e séries que ficam até alguém apagar), um coletor OTLP (um componente <strong>e</strong> uma dependência nesta biblioteca, que não tem nenhuma e não vai ter), ou deixar o <strong>orquestrador</strong> carregá-las. O Brevis já lê o stdout de todo passo procurando linhas <code>@brevis:</code> — é assim que as fases do SDK chegam ao grafo — e já tem um medidor e um endpoint Prometheus.</p>
+<p>Então a biblioteca escreve <strong>uma linha no stdout</strong> e o engine faz o resto. A métrica chega rotulada com o workflow e o passo de graça, porque o engine sabe o que estava executando; por um Pushgateway esta biblioteca teria que se rotular sozinha, e erraria.</p>
+<p>A escrita é <code>print(flush=True)</code>, porque o engine lê esse pipe <strong>ao vivo</strong>. Uma linha em buffer chega quando o processo termina — o que, para um passo que roda uma hora, é uma hora tarde, e para um passo que é morto, nunca.</p>
+<h3 id="o-que-uma-metrica-recusa">O que uma métrica recusa<a class="anchor" href="#o-que-uma-metrica-recusa" aria-label="link">#</a></h3>
+<p><strong>Um nome inválido é recusado, alto.</strong> O Prometheus aceita letras, dígitos e underscore, e o primeiro caractere não pode ser dígito. Um nome que ele recusa não produz uma métrica quebrada — produz uma exposição que ele <strong>se nega a parsear</strong>, e a <strong>scrape inteira</strong> se perde, com todas as outras métricas dentro. Então <code>rows-loaded</code> levanta <code>MetricError</code> aqui, onde o erro foi cometido, em vez de chegar renomeado para algo que ninguém escreveu.</p>
+<div class="table-wrap"><table><thead><tr><th>recusado</th><th>porque</th></tr></thead><tbody><tr><td><code>rows-loaded</code>, <code>rows loaded</code>, <code>2rows</code></td><td>o Prometheus não parseia, e a scrape toda cai</td></tr><tr><td><code>metrics.set("ok", True)</code></td><td><code>bool</code> é <code>int</code> em Python, e reportar <code>1</code> é um número cujo significado depende de saber disso. Reporte a contagem ou a duração, não o estado</td></tr><tr><td><code>metrics.inc("x", -1)</code></td><td>um counter só sobe. Todo <code>rate()</code> sobre ele assume isso, e a quebra aparece num gráfico semanas depois</td></tr></tbody></table></div>
+<p>Rodando o script à mão, a linha ainda vai para o stdout, onde se lê como o que é. Nada coleta e nada falha — o mesmo que <code>context.set()</code> num laptop.</p>
+<h2 id="o-que-ela-recusa">O que ela recusa<a class="anchor" href="#o-que-ela-recusa" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th></th><th>porque</th></tr></thead><tbody><tr><td>mais de 4096 bytes</td><td>a plataforma <strong>trunca</strong> em vez de recusar, então um objeto grande chega cortado ao meio e lê adiante como "não publicou nada"</td></tr><tr><td>um valor que não é JSON</td><td>um <code>datetime</code> vira <code>"..."</code> ou desaparece, dependendo de quem serializa. O erro nomeia a chave e sugere <code>.isoformat()</code></td></tr><tr><td>uma chave que não é string</td><td><code>{1: "x"}</code> volta como <code>{"1": "x"}</code> e a busca não acha</td></tr></tbody></table></div>
+<p>O teto é o número da plataforma, não nosso. Toda feature de "contexto entre tarefas" falha do mesmo jeito — alguém põe <strong>dados</strong> onde só cabe <strong>contexto</strong>. Quatro kilobytes guardam uma marca d'água, uma contagem ou uma lista de partições. Publique uma referência e deixe as linhas onde estão.</p>
+<aside class="admon admon-danger"><p class="admon-t">Não é cofre de segredo</p><p>Tudo que é publicado fica visível para quem pode ver o run — está no status do pod e no histórico. Publique um caminho, não uma URL assinada.</p></aside>
+<h2 id="rodando-a-mao">Rodando à mão<a class="anchor" href="#rodando-a-mao" aria-label="link">#</a></h2>
+<p>Fora do Brevis não há entrada e nada lê a saída. <code>get()</code> devolve o padrão, <code>set()</code> aceita e descarta, e a biblioteca diz isso uma vez em INFO. Ela <strong>não levanta erro</strong>: um script que não roda à mão não pode ser desenvolvido. A validação continua rodando, então um valor que funciona no seu laptop funciona em produção.</p>
+<h2 id="testando-o-seu-passo">Testando o seu passo<a class="anchor" href="#testando-o-seu-passo" aria-label="link">#</a></h2>
+<p>O contrato inteiro são duas variáveis, então não há o que mockar:</p>
+<div class="code-block" data-code="def test_meu_passo(monkeypatch, tmp_path):
+    monkeypatch.setenv(&quot;BREVIS_INPUT&quot;, &#x27;{&quot;extract&quot;: {&quot;rows&quot;: 42}}&#x27;)
+    monkeypatch.setenv(&quot;BREVIS_OUTPUT&quot;, str(tmp_path / &quot;out&quot;))
+    assert context.get(&quot;extract.rows&quot;) == 42"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">def</span> test_meu_passo(monkeypatch, tmp_path):
+    monkeypatch.setenv("BREVIS_INPUT", '{"extract": {"rows": 42}}')
+    monkeypatch.setenv("BREVIS_OUTPUT", str(tmp_path / "out"))
+    <span class="t-k">assert</span> context.get("extract.rows") == 42</code></pre></div>
+<h2 id="versoes">Versões<a class="anchor" href="#versoes" aria-label="link">#</a></h2>
+<p>A biblioteca versiona sozinha, separada do engine e do SDK em Go.</p>
+<aside class="admon admon-warning"><p class="admon-t">Não use a `0.2.0`</p><p>Ela saiu só como wheel no PyPI. A <code>0.2.1</code> é o mesmo código, completa.</p></aside>
+<p><code>brevis.run</code> precisa de um engine na <strong><code>v0.9.0</code> ou mais nova</strong> para ter o que ler; numa mais antiga todo campo vem vazio e <code>run.now()</code> é o relógio de parede — o mesmo que ela faz fora do engine.</p>
+<h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
+<ul><li><a href="/docs/libraries/">Bibliotecas cliente</a> — o contrato e as outras linguagens</li><li><a href="/docs/context/">Contexto entre passos</a> — o conceito</li><li><a href="/docs/parameters/">Parâmetros</a> — os declarados</li></ul>
+
+      <nav class="pagers" aria-label="Páginas">
+        <a class="pager pager-prev" href="/docs/libraries/"><span>Anterior</span><strong>Bibliotecas cliente</strong></a>
+        <a class="pager pager-next" href="/docs/kubernetes/"><span>Próximo</span><strong>Kubernetes</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/python.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Nesta página">
+      <p class="toc-t">Nesta página</p>
+      <ul><li class="toc-2"><a href="#lendo-o-contexto">Lendo o contexto</a></li><li class="toc-2"><a href="#escrevendo">Escrevendo</a></li><li class="toc-2"><a href="#o-relogio-que-este-run-deve-ler">O relógio que este run deve ler</a></li><li class="toc-3"><a href="#os-parametros-automaticos">Os parâmetros automáticos</a></li><li class="toc-2"><a href="#uma-instancia-de-um-passo-mapeado">Uma instância de um passo mapeado</a></li><li class="toc-2"><a href="#metricas-que-so-o-seu-pipeline-conhece">Métricas que só o seu pipeline conhece</a></li><li class="toc-3"><a href="#por-que-isto-nao-abre-uma-porta">Por que isto não abre uma porta</a></li><li class="toc-3"><a href="#o-que-uma-metrica-recusa">O que uma métrica recusa</a></li><li class="toc-2"><a href="#o-que-ela-recusa">O que ela recusa</a></li><li class="toc-2"><a href="#rodando-a-mao">Rodando à mão</a></li><li class="toc-2"><a href="#testando-o-seu-passo">Testando o seu passo</a></li><li class="toc-2"><a href="#versoes">Versões</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofia aplicada à infraestrutura de dados.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>projeto</h2>
+        <ul>
+          <li><a href="/#produto">Produto</a></li>
+          <li><a href="/#principios">Princípios</a></li>
+          <li><a href="/#open-source">Open source</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>código</h2>
+        <ul>
+          <li><a href="/docs/">Documentação</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/discussions" target="_blank" rel="noopener">Discussões</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construído em Go</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+</body>
+</html>

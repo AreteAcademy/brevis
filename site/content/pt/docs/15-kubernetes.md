@@ -2,7 +2,7 @@
 title: Kubernetes
 description: Como implantar o engine, com que permissões, e o que verificar depois.
 group: Operação
-order: 13
+order: 15
 slug: kubernetes
 ---
 

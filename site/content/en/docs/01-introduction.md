@@ -92,6 +92,7 @@ does:
 | the list of commands and flags | [CLI](/docs/cli/) |
 | write a fetcher in Go | [SDK](/docs/sdk/) |
 | pass a value from one step to the next | [Context between steps](/docs/context/) |
+| write a step in Python | [Client libraries](/docs/libraries/) |
 | build dashboards and alerts | [Observability](/docs/observability/) |
 
 :::note About the name
