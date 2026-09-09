@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="brevis.sh">
+  <!-- The README's mark. Separate from site/assets/mark.svg because that one is
+       currentColor, which GitHub does not resolve inside an <img>: it would
+       render black on black in the dark theme and vanish.
+
+       The dark ground is what makes one file work in both GitHub themes. The
+       breve itself is the site's lime; on white it would be 1.6:1 and gone.
+
+       Shallower than the favicon on purpose. The favicon lives at 16-32px,
+       where curvature reads as weight; this one is shown at 96, where the same
+       curve reads as a smile. Calibrated against IBM Plex Mono's own `ĕ` at
+       that size: 66 wide by 8.3 deep. -->
+  <rect width="96" height="96" rx="18" fill="#141711"/>
+  <path d="M15 45C15 56 81 56 81 45" fill="none" stroke="#c7d66d"
+        stroke-width="9" stroke-linecap="round"/>
+</svg>

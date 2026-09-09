@@ -1,23 +1,41 @@
-# Brevis
+<div align="center">
 
-[![Test & Lint](https://github.com/AreteAcademy/brevis/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AreteAcademy/brevis/actions/workflows/test.yml)
-[![Code Quality](https://github.com/AreteAcademy/brevis/actions/workflows/quality.yml/badge.svg?branch=master)](https://github.com/AreteAcademy/brevis/actions/workflows/quality.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/AreteAcademy/brevis/sdk.svg)](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
-[![Go Report Card](https://goreportcard.com/badge/github.com/AreteAcademy/brevis/sdk)](https://goreportcard.com/report/github.com/AreteAcademy/brevis/sdk)
-[![SDK](https://img.shields.io/github/v/tag/AreteAcademy/brevis?filter=sdk/*&label=sdk&color=aa8450)](https://github.com/AreteAcademy/brevis/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-aa8450.svg)](LICENSE)
+<img src=".github/assets/brevis.svg" width="88" height="88" alt="">
 
-A data transformation and orchestration engine, in Go. It replaces the
-Kestra/Leoflow pair (orchestration) and dbt (transformation) with a single
-binary, running each step as a pod on Kubernetes.
+# brevis.sh
+
+**A data orchestration runtime, in Go.**
+
+Declarative transformation, workflow orchestration, a persistent queue, a
+scheduler and an operational interface — in one binary. Every step runs as its
+own Kubernetes pod, with its own image.
+
+[**Website**](https://brevis.sh) · [**Documentation**](https://brevis.sh/docs/) · [Quickstart](https://brevis.sh/docs/quickstart/) · [SDK](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) · [Discussions](https://github.com/AreteAcademy/brevis/discussions)
+
+[![Test & Lint](https://github.com/AreteAcademy/brevis/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/AreteAcademy/brevis/actions/workflows/test.yml) [![Code Quality](https://github.com/AreteAcademy/brevis/actions/workflows/quality.yml/badge.svg?branch=master)](https://github.com/AreteAcademy/brevis/actions/workflows/quality.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/AreteAcademy/brevis/sdk.svg)](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
+
+[![engine](https://img.shields.io/github/v/tag/AreteAcademy/brevis?filter=v*&label=engine&color=c7d66d)](https://github.com/AreteAcademy/brevis/releases) [![sdk](https://img.shields.io/github/v/tag/AreteAcademy/brevis?filter=sdk/*&label=sdk&color=c7d66d)](https://github.com/AreteAcademy/brevis/releases) [![PyPI](https://img.shields.io/pypi/v/brevis?label=pypi&color=c7d66d)](https://pypi.org/project/brevis/) [![License: MIT](https://img.shields.io/badge/license-MIT-c7d66d.svg)](LICENSE)
+
+</div>
+
+---
+
+```bash
+brevis validate examples/            # validates with no database; good for CI
+brevis run examples/hello.yaml       # runs now, on this instance
+brevis serve                         # the API and the UI, on :8080
+brevis scheduler --concurrency 5     # materializes slots and runs them
+```
 
 > The project is written in English. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Architecture and phasing: [`docs/plan.md`](docs/plan.md).
-Command-line reference: [`docs/COMMANDS.md`](docs/COMMANDS.md).
-
-What is being worked on, and in what order: [`TASK.md`](TASK.md).
-Per-phase reports: [`docs/phases/`](docs/phases/).
+| | |
+|---|---|
+| **Start here** | [Quickstart](https://brevis.sh/docs/quickstart/) · [Installation](https://brevis.sh/docs/installation/) |
+| **Reference** | [CLI](https://brevis.sh/docs/cli/) · [Workflow YAML](https://brevis.sh/docs/workflows/) · [Configuration](https://brevis.sh/docs/configuration/) |
+| **Writing a step** | [Go SDK](https://brevis.sh/docs/sdk/) · [Python](https://brevis.sh/docs/python/) |
+| **In this repo** | [Architecture](docs/plan.md) · [What is being worked on](TASK.md) · [Per-phase reports](docs/phases/) |
+| **For agents** | [llms.txt](https://brevis.sh/llms.txt) — the docs as Markdown |
 
 ## SDK
 
@@ -59,9 +77,6 @@ The "Powered by Brevis" footer does not come from configuration — it comes fro
 the code.
 
 ```bash
-brevis validate examples/            # validates with no database; good for CI
-brevis run examples/hello.yaml       # runs now, on this instance
-
 brevis publish examples/hello.yaml   # writes the workflow and its schedule to the database
 brevis scheduler --concurrency 5     # materializes slots and runs them
 brevis backfill diario --from 2026-01-01 --to 2026-01-31
@@ -70,7 +85,7 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31
 The scheduler **creates** runs; the queue **executes** them. The two loops are
 independent: either can go down without affecting the other.
 
-The ten subcommands, with flags, environment variables, endpoints and Makefile
+The twelve subcommands, with flags, environment variables, endpoints and Makefile
 targets: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 
 On Kubernetes, **each step becomes a pod** with the image declared in the YAML --
