@@ -15,6 +15,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution/local"
+	"github.com/AreteAcademy/brevis/internal/observability/metrics"
 )
 
 // The acceptance criterion: THREE languages, one run, real processes.
@@ -333,5 +334,102 @@ with open(os.environ["READINGS"], "w") as f:
 	}
 	if got["trigger"] != "schedule" {
 		t.Errorf("trigger = %v", got["trigger"])
+	}
+}
+
+// TestIntegrationAPythonStepsMetricReachesTheExposition.
+//
+// The whole path, with nothing faked: a real python3 imports the published
+// library, writes a real `@brevis:` line down a real pipe, the runner reads it,
+// and the number comes out of the exposition Prometheus is given.
+//
+// Every piece of this is tested on its own -- the library's line, the
+// collector's parse, the registry's instrument, the exposition's format -- and
+// none of those would catch the two joins that actually break: a marker the
+// engine does not recognise, and a metric recorded against the wrong step.
+func TestIntegrationAPythonStepsMetricReachesTheExposition(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("no python3 on this machine")
+	}
+	repo, err := filepath.Abs("../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	libSrc := filepath.Join(repo, "lib", "python-context", "src")
+
+	dir := t.TempDir()
+	script := filepath.Join(dir, "step.py")
+	if err := os.WriteFile(script, []byte(`
+from brevis import metrics
+
+metrics.set("rows_loaded", 48213)
+metrics.inc("vendor_rejected_total", 3)
+metrics.inc("vendor_rejected_total", 2)
+
+# Refused in the library, so it never reaches the pipe: a name Prometheus
+# cannot parse costs the whole scrape, not one series.
+try:
+    metrics.set("rows-loaded", 1)
+    raise SystemExit("a hyphen was accepted")
+except metrics.MetricError:
+    pass
+
+print("the step's own output, which is not a metric")
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	exe, err := local.New("local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	met := metrics.New()
+
+	w := wf.Workflow{
+		Slug: "metered", Kind: wf.KindDAG,
+		Nodes: []wf.Node{{ID: "load", Run: python + " " + script}},
+	}
+	rep := &coletor{}
+	r := app.Runner{
+		Processo: exe, Report: rep, ContextDir: t.TempDir(), Metrics: met,
+		Env: map[string]string{"PATH": os.Getenv("PATH"), "PYTHONPATH": libSrc},
+	}
+	if err := r.Run(context.Background(), w); err != nil {
+		t.Fatalf("the run failed: %v", err)
+	}
+
+	var b strings.Builder
+	if err := met.WriteTo(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	text := b.String()
+
+	for _, want := range []string{
+		// The engine's labels, which the step never supplied.
+		`brevis_step_rows_loaded{step="load",workflow="metered"} 48213`,
+		// 3 + 2, because a counter adds up.
+		`brevis_step_vendor_rejected_total{step="load",workflow="metered"} 5`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the exposition does not contain\n  %s\ngot:\n%s", want, text)
+		}
+	}
+
+	// The marker line is NOT the step's log. Whoever opens the screen wants the
+	// output, not the JSON that carried a number.
+	for _, e := range rep.eventos {
+		if strings.Contains(e.Message, "@brevis:") {
+			t.Errorf("a marker reached the log: %q", e.Message)
+		}
+	}
+	var sawOutput bool
+	for _, e := range rep.eventos {
+		if strings.Contains(e.Message, "the step's own output") {
+			sawOutput = true
+		}
+	}
+	if !sawOutput {
+		t.Error("the step's ordinary output did not reach the log")
 	}
 }

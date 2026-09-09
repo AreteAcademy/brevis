@@ -66,6 +66,34 @@ type stageCollector struct {
 	Version string
 	Stages  []Stage
 	seen    int
+
+	// Metrics the step reported since the last drain. They accumulate here and
+	// the runner takes them: this type parses the pipe and knows nothing about
+	// where a number goes, which is what keeps it testable without a meter.
+	Metrics []StepMetric
+}
+
+// StepMetric is one value a step reported through the @brevis: protocol.
+//
+// Kind is "gauge" (last value wins) or "counter" (adds up). The engine supplies
+// the labels; there is deliberately no field for the step's own.
+type StepMetric struct {
+	Name  string
+	Kind  string
+	Value float64
+}
+
+// drainMetrics returns what has arrived and empties the buffer.
+//
+// Taking rather than reading is what makes a counter correct: a metric read
+// twice would be ADDED twice, and this loop runs on every marked line.
+func (c *stageCollector) drainMetrics() []StepMetric {
+	if len(c.Metrics) == 0 {
+		return nil
+	}
+	out := c.Metrics
+	c.Metrics = nil
+	return out
 }
 
 // line consumes one log line. It returns true when the line was a marker -- and
@@ -96,6 +124,10 @@ func (c *stageCollector) line(msg string) bool {
 		At       string `json:"at"`
 		Index    *int   `json:"index"`
 
+		// A metric a step reported. See the "metric" case below.
+		Kind  string   `json:"kind"`
+		Value *float64 `json:"value"`
+
 		TypeOld    string `json:"tipo"`
 		VersionOld string `json:"versao"`
 		NameOld    string `json:"nome"`
@@ -122,6 +154,20 @@ func (c *stageCollector) line(msg string) bool {
 	c.seen++
 
 	switch ev.Type {
+	case "metric":
+		// A number only the pipeline knows -- rows rejected by a vendor rule,
+		// a watermark's age -- reported through the pipe that already exists.
+		//
+		// It is COLLECTED here and recorded by the runner, which is what knows
+		// the workflow and the step. A metric labelled by the step itself would
+		// be labelled wrongly, and asking every language's library to know its
+		// own workflow slug is asking for the one thing they cannot see.
+		if ev.TaskName != "" && ev.Value != nil {
+			c.Metrics = append(c.Metrics, StepMetric{
+				Name: ev.TaskName, Kind: ev.Kind, Value: *ev.Value,
+			})
+		}
+		return true
 	case "sdk":
 		c.Version = ev.Version
 		return true

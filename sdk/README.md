@@ -1061,6 +1061,37 @@ rows would make a row loaded in March claim a value it never had.
 There is no mode that drops a column. A mode that drops is one somebody switches
 on during an incident and discovers a quarter later.
 
+## Metrics, with nothing to configure
+
+```go
+sdk.Run(sdk.Pipeline{Name: "orders", Meter: &sdk.StdoutMeter{}, ...})
+```
+
+`Meter` has always been an interface here, and until now the consumer had to
+supply the implementation — so a fetcher that counted something published it
+**nowhere** unless it imported `sdk/metrics/otelmeter` and ran a collector.
+
+`StdoutMeter` writes to the pipe the engine already reads, and the numbers come
+out of the engine's own `/metrics`, labelled with the workflow and the step:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+It costs nothing: no port, no collector, no dependency. A step cannot be scraped
+anyway — it runs for forty seconds in its own pod, and a port it opened would be
+scraped never.
+
+Two things it does not do, and both are deliberate. A `Histogram` is reported as
+a **gauge** — buckets chosen per step by whoever wrote the step is a cardinality
+decision taken in the wrong place, and a real distribution wants
+`sdk/metrics/otelmeter` and a collector. And `Attr` labels are **dropped**: the
+engine supplies `workflow` and `step`, and a step that could add its own would
+add a customer id on the first Tuesday.
+
+An invalid metric name never reaches the pipe. Prometheus refusing a name costs
+the whole scrape, not one series.
+
 ## What each destination supports
 
 Nine drivers times four options is 36 combinations, and promising 36 without

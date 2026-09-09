@@ -916,6 +916,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 		if e.Kind == execution.EventLog {
 			if line := strings.TrimSpace(e.Message); line != "" && stages.line(line) {
 				r.markStages(ctx, inst.key, attempt, &stages)
+				r.recordStepMetrics(ctx, w.Slug, inst.key.Node, &stages)
 				continue
 			}
 		}
@@ -1363,4 +1364,23 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 		})
 	}
 	return r.Processo, t, nil
+}
+
+// recordStepMetrics hands what a step reported to the engine's own registry.
+//
+// The labels come from HERE and not from the step: this is the code that knows
+// which workflow and which step produced the line. A library that had to supply
+// its own workflow slug would be asking every language for the one thing a step
+// cannot see, and would get it wrong the first time somebody renamed a file.
+//
+// It drains rather than reads, because a counter read twice is added twice and
+// this runs on every marked line.
+func (r Runner) recordStepMetrics(ctx context.Context, workflow, step string, c *stageCollector) {
+	if r.Metrics == nil {
+		return
+	}
+	for _, m := range c.drainMetrics() {
+		r.Metrics.StepMetric(ctx, workflow, step, m.Name, m.Kind, m.Value,
+			slog.Default().With("run", r.RunID))
+	}
 }

@@ -9,6 +9,57 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.12.0] — 2026-09-09
+
+No migration.
+
+### Added: a step's own metrics, on the engine's `/metrics`
+
+A pipeline knows things the engine cannot: rows a vendor rule rejected, the age
+of a watermark, how many files a bucket held. Those now reach the scrape.
+
+```python
+from brevis import metrics
+metrics.set("rows_loaded", 48213)
+```
+
+```go
+sdk.Run(sdk.Pipeline{Meter: &sdk.StdoutMeter{}, ...})
+```
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+**Nothing new runs.** The engine already read every step's stdout for `@brevis:`
+lines — that is how a pipeline's phases reach the graph — and already had a
+meter and a Prometheus endpoint. A step cannot be scraped itself: it lives for
+forty seconds in its own pod, so a port it opened would be scraped never. A
+Pushgateway or an OTLP collector would each be a component to operate, and the
+OTLP exporter was already refused on weight (49 packages, 29 of them protobuf).
+
+The **labels are the engine's** — `workflow` and `step` — because a step cannot
+know its own slug, and the run id is absent here as it is everywhere: one
+unbounded label is how a metrics backend falls over.
+
+Two things bound what a step can do to this process:
+
+- **A ceiling of 200 distinct names.** `metrics.set(f"rows_{customer}", n)` in a
+  loop would otherwise grow the registry until the scheduler dies, taking the
+  runs with it. The cap is on names; a name already registered costs nothing to
+  write again.
+- **An invalid name is refused.** A metric name Prometheus cannot parse does not
+  lose one series — it makes the entire scrape fail. Both SDKs refuse it before
+  it reaches the pipe, and the engine refuses it again for anything that arrives
+  by another route.
+
+A step's metric is prefixed `brevis_step_`, so it cannot land on the engine's
+own series: without that a step could declare `brevis_run_total` and have its
+numbers added to the engine's, which is a dashboard that lies rather than one
+that is missing something.
+
+---
+
 ## [0.11.2] — 2026-09-09
 
 No migration.

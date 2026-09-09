@@ -54,9 +54,14 @@ for f in pathlib.Path("src").rglob("*.py"):
 #   datetime    brevis.run: the auto params are timestamps, and handing a step
 #               a string to parse would be handing back the arithmetic they
 #               exist to remove
+#   re          brevis.metrics validates a metric name against Prometheus's own
+#               rule. A name it refuses costs the WHOLE scrape, not one series,
+#               so this is checked before the line is ever written
+#   sys         the marker goes to stdout, which is the pipe the engine reads
+#   time        the marker carries the instant it was produced
 allowed = {
     "__future__", "atexit", "dataclasses", "datetime", "importlib",
-    "json", "logging", "os", "tempfile", "typing",
+    "json", "logging", "os", "re", "sys", "tempfile", "time", "typing",
 }
 outside = sorted(mods - allowed)
 if outside:

@@ -8,12 +8,13 @@ pip install brevis
 ```
 
 ```python
-from brevis import context, run
+from brevis import context, metrics, run
 
 bucket = context.get("extract.bucket")
 since, until = run.window()          # the window this run covers
 
 context.set(rows=48213, watermark="2026-09-07T03:00:00Z")
+metrics.set("rows_loaded", 48213)    # reaches the engine's /metrics
 ```
 
 **No dependencies, ever.** It reads one environment variable and writes one
@@ -125,6 +126,49 @@ that *is* the empty string.
 A mapped step publishes **no context** downstream — four instances cannot share
 one key — so a step that needs to hand something on writes a file, or a step
 after it counts what landed.
+
+## Metrics your pipeline knows and the engine does not
+
+```python
+from brevis import metrics
+
+metrics.set("rows_loaded", 48213)          # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")       # a counter: it adds up
+metrics.inc("bytes_discarded_total", 4096)
+```
+
+They come out of the **engine's** `/metrics`, on the scheduler's port, labelled
+with the workflow and the step:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+brevis_step_vendor_rejected_total{workflow="daily_sales",step="load"} 5
+```
+
+**This does not open a port, and it could not.** A step runs in its own pod for
+forty seconds and exits; a port it opened would be scraped never, or once by
+luck. So the line goes to stdout — the pipe the engine already reads to draw a
+pipeline's phases — and the engine records it. Nothing to run, nothing to
+install, and the labels are the engine's because a step cannot know its own
+workflow slug.
+
+| | |
+|---|---|
+| `set(name, value)` | a gauge. After the step exits the value stays until the next run writes another |
+| `inc(name, by=1)` | a counter. Adds up across steps and across runs |
+
+**An invalid name is refused, loudly.** Prometheus accepts letters, digits and
+underscore, and a name it refuses costs the **whole scrape** — not just that
+metric. `rows-loaded` raises `MetricError` here rather than arriving under a
+name nobody wrote.
+
+A counter cannot go down, a value has to be a number, and `True` is not a
+number: every `rate()` assumes the first, and `metrics.set("ok", True)`
+reporting a `1` is a number whose meaning depends on knowing that `bool` is an
+`int` in Python.
+
+Run the script by hand and the line still goes to stdout, where it reads as what
+it is. Nothing collects it and nothing fails.
 
 ## What it refuses
 

@@ -59,6 +59,10 @@ type Metrics struct {
 	alertsUndelivered api.Int64Counter
 	alertAttempts     api.Float64Histogram
 
+	// What steps reported through their stdout. See custom.go: the names come
+	// from somebody else's code, so they are capped and validated.
+	custom custom
+
 	// The gauges are observable: their value is read at COLLECT time, from
 	// whoever owns it, rather than pushed on every change. Queue depth lives in
 	// Postgres and slot usage lives in the dispatcher, and neither wants a

@@ -11,6 +11,51 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.3.0] — 2026-09-09
+
+### Added: `brevis.metrics`
+
+```python
+from brevis import metrics
+
+metrics.set("rows_loaded", 48213)      # a gauge: the last value wins
+metrics.inc("vendor_rejected_total")   # a counter: it adds up
+```
+
+They come out of the **engine's** `/metrics`, labelled with the workflow and the
+step:
+
+```
+brevis_step_rows_loaded{workflow="daily_sales",step="load"} 48213
+```
+
+**This does not open a port, and it could not.** A step runs in its own pod for
+forty seconds and exits; a port it opened would be scraped never, or once by
+luck. The three known answers to that are a Pushgateway (a component to operate
+and series that stay until deleted), an OTLP collector (a component **and** a
+dependency in this library, which has none), or letting the orchestrator carry
+them — and the orchestrator already reads every step's stdout for `@brevis:`
+lines, and already has a meter and a Prometheus endpoint.
+
+So the line goes to stdout and the engine records it. The labels are the
+engine's because a step cannot know its own workflow slug, and asking a library
+for it would get it wrong the first time somebody renamed a file.
+
+**An invalid name is refused rather than normalised.** Prometheus accepts
+letters, digits and underscore, and a name it refuses costs the **whole
+scrape** — not one series. `rows-loaded` raises `MetricError` where the mistake
+was made, instead of arriving under a name nobody wrote.
+
+A counter cannot go down (every `rate()` assumes so), and a value has to be a
+number — `True` is not one, even though Python says it is an `int`.
+
+Needs the engine on `v0.12.0` or newer to be collected. On an older one the line
+goes to stdout and is ignored, which is what running the script by hand does
+too. Still no dependencies: `re`, `sys` and `time` joined the allowlist in
+`python-check.sh`, each with its reason.
+
+---
+
 ## [0.2.1] — 2026-09-08
 
 Same code as `0.2.0`. That version is **wheel-only on PyPI** and should not be

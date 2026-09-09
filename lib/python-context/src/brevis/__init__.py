@@ -25,7 +25,7 @@ It has no dependencies and never will. It reads one environment variable and
 writes one file.
 """
 
-from . import context, run
+from . import context, metrics, run
 from .context import (
     ContextError,
     NotVisible,
@@ -36,16 +36,19 @@ from .context import (
     set,  # noqa: A004 -- shadowing the builtin is deliberate; see context.set
 )
 
+from .metrics import MetricError
 from .run import AutoParams, RunContext
 
 __all__ = [
     "AutoParams",
+    "MetricError",
     "ContextError",
     "NotVisible",
     "RunContext",
     "TooLarge",
     "context",
     "get",
+    "metrics",
     "of",
     "published",
     "run",

@@ -18,6 +18,37 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.58.0] — 2026-09-09
+
+### Added: `sdk.StdoutMeter` — metrics with nothing to configure
+
+`Meter` has been an interface here since it existed, and the consumer had to
+supply the implementation. So a fetcher that counted something published it
+**nowhere** unless it imported `sdk/metrics/otelmeter` and ran a collector: the
+interface was there and the numbers were not.
+
+```go
+sdk.Run(sdk.Pipeline{Name: "orders", Meter: &sdk.StdoutMeter{}, ...})
+```
+
+It writes to the pipe the engine already reads, and the numbers come out of the
+engine's own `/metrics`, labelled with the workflow and the step. No port, no
+collector, no dependency — and a step could not be scraped anyway: it runs for
+forty seconds in its own pod.
+
+Two deliberate limits. A `Histogram` is reported as a **gauge**, because buckets
+chosen per step by whoever wrote the step is a cardinality decision taken in the
+wrong place; a real distribution still wants `sdk/metrics/otelmeter`. And `Attr`
+labels are **dropped**: the engine supplies `workflow` and `step`, and a step
+that could add its own would add a customer id on the first Tuesday.
+
+An invalid metric name never reaches the pipe — Prometheus refusing one costs
+the whole scrape, not one series.
+
+Needs the engine on `v0.12.0` or newer to be collected.
+
+---
+
 ## [0.57.0] — 2026-09-08
 
 ### Added: every SQL destination can create its table
