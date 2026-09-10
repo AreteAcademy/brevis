@@ -117,27 +117,26 @@ func TestTheBackfillAgreesWithTheRunner(t *testing.T) {
 			// (2) The Go half: the collector, fed the same phases.
 			fromGo := runnerReading(t, c.stages)
 
-			switch {
-			case c.want == nil:
+			if c.want == nil {
 				if fromSQL != nil {
 					t.Errorf("the backfill kept a row it should not have: %+v", fromSQL)
 				}
 				if fromGo != nil {
 					t.Errorf("the runner kept a row it should not have: %+v", fromGo)
 				}
-			default:
-				if fromSQL == nil {
-					t.Fatalf("the backfill dropped a row it should have kept")
-				}
-				if fromGo == nil {
-					t.Fatalf("the runner dropped a row it should have kept")
-				}
-				if *fromSQL != *c.want {
-					t.Errorf("backfill got %+v\n         want %+v", *fromSQL, *c.want)
-				}
-				if *fromGo != *c.want {
-					t.Errorf("runner   got %+v\n         want %+v", *fromGo, *c.want)
-				}
+				return
+			}
+			if fromSQL == nil {
+				t.Fatalf("the backfill dropped a row it should have kept")
+			}
+			if fromGo == nil {
+				t.Fatalf("the runner dropped a row it should have kept")
+			}
+			if *fromSQL != *c.want {
+				t.Errorf("backfill got %+v\n         want %+v", *fromSQL, *c.want)
+			}
+			if *fromGo != *c.want {
+				t.Errorf("runner   got %+v\n         want %+v", *fromGo, *c.want)
 			}
 		})
 	}

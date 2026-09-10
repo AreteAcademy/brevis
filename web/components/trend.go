@@ -124,9 +124,9 @@ func buildTrend(label string, days []postgres.LoadDay, values []float64,
 
 	// The area is the same line closed along the bottom edge, which is what
 	// gives the sparkline weight without a second data pass.
-	area.WriteString(fmt.Sprintf("0,%d ", trendH))
+	fmt.Fprintf(&area, "0,%d ", trendH)
 	area.WriteString(s.Path)
-	area.WriteString(fmt.Sprintf(" %d,%d", trendW, trendH))
+	fmt.Fprintf(&area, " %d,%d", trendW, trendH)
 	s.Area = area.String()
 
 	s.Delta, s.Hue = trendDelta(values, worseWhenUp)
