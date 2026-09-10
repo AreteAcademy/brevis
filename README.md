@@ -20,12 +20,41 @@ own Kubernetes pod, with its own image.
 
 ---
 
+A workflow is one file. Each step declares its own image, and the engine runs
+each one as its own pod:
+
+```yaml
+name: daily_ingest
+schedule: "0 5 * * *"     # five-field cron
+type: dag
+
+steps:
+  - id: extract
+    image: ghcr.io/example/extract:1.4        # 5.8 MB, a Go step
+    run: ./extract --since yesterday
+
+  - id: transform
+    image: ghcr.io/dbt-labs/dbt-postgres:1.9  # 620 MB, dbt
+    run: dbt build --select bronze+
+    depends_on: [extract]
+```
+
 ```bash
 brevis validate examples/            # validates with no database; good for CI
 brevis run examples/hello.yaml       # runs now, on this instance
 brevis serve                         # the API and the UI, on :8080
 brevis scheduler --concurrency 5     # materializes slots and runs them
 ```
+
+The operational interface is in that same binary — there is no second service to
+install and keep alive:
+
+<p align="center">
+  <a href="https://brevis.sh/#console"><img src="site/assets/console.svg" width="49%" alt="The overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs."></a>
+  <a href="https://brevis.sh/#console"><img src="site/assets/console-workflow.svg" width="49%" alt="One workflow: its cron and tags, a form to run it with parameters, its success rate, the DAG with each step's state, and a calendar of a year of runs where each square is a day coloured by that day's worst outcome."></a>
+</p>
+
+<p align="center"><sub>The overview, and one workflow. Four more screens at <a href="https://brevis.sh/#console">brevis.sh</a> — the run list, a single run with its auto params, and projects.</sub></p>
 
 > The project is written in English. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
