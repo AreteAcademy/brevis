@@ -63,7 +63,7 @@ install and keep alive:
 | **Start here** | [Quickstart](https://brevis.sh/docs/quickstart/) · [Installation](https://brevis.sh/docs/installation/) |
 | **Reference** | [CLI](https://brevis.sh/docs/cli/) · [Workflow YAML](https://brevis.sh/docs/workflows/) · [Configuration](https://brevis.sh/docs/configuration/) |
 | **Writing a step** | [Go SDK](https://brevis.sh/docs/sdk/) · [Python](https://brevis.sh/docs/python/) |
-| **In this repo** | [Architecture](docs/plan.md) · [What is being worked on](TASK.md) · [Per-phase reports](docs/phases/) |
+| **In this repo** | [Documentation index](docs/) · [Contributing](CONTRIBUTING.md) · [What is planned](https://github.com/AreteAcademy/brevis/issues) |
 | **For agents** | [llms.txt](https://brevis.sh/llms.txt) — the docs as Markdown |
 
 ## SDK
@@ -90,11 +90,12 @@ SDK CLI: [`cmd/brevis-sdk/`](cmd/brevis-sdk/) — `go install github.com/AreteAc
 The Brevis binary itself (`serve`, `scheduler`, `migrate`, `publish`) is
 [`cmd/brevis/`](cmd/brevis/), built with `make build`.
 
-**Status: PHASE 6 complete.** YAML workflows, a persistent queue, a cron
-scheduler, backfill, a server-rendered UI (an overview with metrics and charts, a
-workflow list with search, filters, pause and run) and a DAG view showing each
+**What works today.** YAML workflows, a persistent queue, a cron scheduler,
+backfill, run parameters, alerts and a scheduled report, Prometheus metrics from
+both processes, and a server-rendered UI: an overview with metrics and charts, a
+workflow list with search, filters, pause and run, and a DAG view showing each
 step's state live — with an SDK step expanding into one box per element of its
-pipeline. See `docs/phases/`.
+pipeline.
 
 Fonts and bundles are served from the binary itself — the UI works with no route
 to the internet.

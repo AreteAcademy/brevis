@@ -2015,7 +2015,7 @@ apontam para os mesmos recursos.
 ## [0.24.0] — 2026-09-04
 
 **BREAKING.** O bloco `Metadata` desaparece: as duas colunas viram transformers.
-Executa [`docs/plan/2026-09-04-sdk-metadado-vira-transformer.md`](docs/plan/2026-09-04-sdk-metadado-vira-transformer.md).
+Executa `docs/plan/2026-09-04-sdk-metadado-vira-transformer.md`.
 
 A regra que a `v0.15.0` estabeleceu e a `v0.18.0` completou era uma só — *as
 colunas são compostas no `Transform`, e o SDK não inventa nenhuma* — e o
@@ -2111,7 +2111,7 @@ e o confere.
 
 ## [0.23.0] — 2026-09-04
 
-Fecha o §6 e o §7 de [`docs/SDK_V9.md`](docs/SDK_V9.md), os dois reportados pelo
+Fecha o §6 e o §7 de `docs/SDK_V9.md`, os dois reportados pelo
 consumidor `zarv-data-pipeline`.
 
 ### Corrigido
@@ -2172,7 +2172,7 @@ consumidor `zarv-data-pipeline`.
 ## [0.23.0] — 2026-09-04
 
 Fecha os onze defeitos que o primeiro consumidor achou. O registro completo
-está em [`docs/SDK_CONSUMIDOR.md`](docs/SDK_CONSUMIDOR.md).
+está em `docs/SDK_CONSUMIDOR.md`.
 
 ### Corrigido
 - **`msg=loaded` numa carga que não carregou.** O resultado volta preenchido no
@@ -2347,7 +2347,7 @@ o caso que faltava.
 
 ## [0.20.0] — 2026-09-04
 
-Fase 1 de [`docs/plan/2026-09-04-sdk-drivers-mvp.md`](docs/plan/2026-09-04-sdk-drivers-mvp.md):
+Fase 1 de `docs/plan/2026-09-04-sdk-drivers-mvp.md`:
 arquivos, nos dois lados. Primeiro driver depois da costura.
 
 ### Adicionado
@@ -2412,7 +2412,7 @@ dia pequeno) e contra o bucket GCS real. Doze de BigQuery seguem passando.
 ## [0.19.0] — 2026-09-04
 
 **BREAKING.** A costura para os drivers: fase 0 de
-[`docs/plan/2026-09-04-sdk-drivers-mvp.md`](docs/plan/2026-09-04-sdk-drivers-mvp.md).
+`docs/plan/2026-09-04-sdk-drivers-mvp.md`.
 Nenhum driver novo — HTTP e BigQuery passam para trás das interfaces, e é isso
 que torna Postgres, MySQL, Redshift e Files possíveis sem transformar `Source`
 e `Target` em structs de união com quarenta campos.
@@ -2482,7 +2482,7 @@ Um driver não implementado deixa de ser erro em tempo de execução e passa a s
 ## [0.18.0] — 2026-09-04
 
 **BREAKING.** Uma declaração de colunas, no formato do DDL. Executa
-[`docs/plan/2026-09-04-sdk-uma-declaracao-de-colunas.md`](docs/plan/2026-09-04-sdk-uma-declaracao-de-colunas.md).
+`docs/plan/2026-09-04-sdk-uma-declaracao-de-colunas.md`.
 
 ### Adicionado
 - **`Target.Columns`** — as colunas do destino, na ordem do DDL, **incluindo as
@@ -2587,7 +2587,7 @@ coluna a mais é recusada nomeando-a.
 ## [0.17.0] — 2026-09-03
 
 **BREAKING.** A validação é do consumidor, e roda por **resposta**. Executa
-[`docs/plan/2026-09-03-sdk-validacao-do-consumidor.md`](docs/plan/2026-09-03-sdk-validacao-do-consumidor.md).
+`docs/plan/2026-09-03-sdk-validacao-do-consumidor.md`.
 
 ### Alterado
 - **`Source.Guard` e `Source.Expand` viram `Source.Records`.** Eram a mesma
@@ -2863,7 +2863,7 @@ exatamente essas mais duas.
 ## [0.12.0] — 2026-09-03
 
 Conserto do MERGE, a partir do relatório em
-[`docs/plan/2026-09-03-sdk-conserto-do-merge.md`](docs/plan/2026-09-03-sdk-conserto-do-merge.md),
+`docs/plan/2026-09-03-sdk-conserto-do-merge.md`,
 escrito por quem consome o SDK.
 
 ### Corrigido
@@ -3060,7 +3060,7 @@ existiam desde a 0.2.1 e rodaram pela primeira vez.
 
 ## [0.2.1] — 2026-09-02
 
-Conserto do `load`, conforme [`docs/SDK_LOAD.md`](docs/SDK_LOAD.md).
+Conserto do `load`, conforme `docs/SDK_LOAD.md`.
 
 ### Adicionado
 - `WriteEnvelopeColumns` / `WithEnvelopeColumns` — modo opt-in que escreve o

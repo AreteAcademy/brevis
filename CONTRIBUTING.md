@@ -16,10 +16,14 @@ migrations' columns, the checkpoint depot's file names, the graph payload
 `dag.js` reads, and `data-dica` / `grafico-*`. They are data, not prose, and
 renaming one is a migration rather than a translation.
 
-Some historical documents predate this rule and are kept as they were written —
-`CHANGELOG.md`, `CHANGELOG-motor.md` and the older files in `docs/plan/`. They
-are a record of decisions made on a date, and rewriting a record is not the same
-as translating a project. New entries are in English.
+The two changelogs predate this rule in part and are kept as they were written:
+they record decisions made on a date, and rewriting a record is not the same as
+translating a project. New entries are in English.
+
+Everything else in the repository describes the **current state**. What was done
+is in the git history, and what is planned is in the issues — a document that
+tracks either one goes stale in a week and then misleads. `docs/` holds no
+dated specs for that reason.
 
 ## What a change has to carry
 
@@ -30,6 +34,13 @@ bug existed — not "added tests", but which behaviour it pins down.
 test that cannot fail is worse than no test: it buys confidence it has not
 earned. Several tests in this repository were found to be unable to fail, and
 each was found this way.
+
+**A test that configures nothing, when the feature has a default.** Two
+features shipped switched off in one week, and both times every test in the
+package set the field under test — so the default was the one path nothing
+exercised. A consumer migrating 34 tasks that each asked for three attempts
+three minutes apart got three attempts inside three seconds, with every test
+green.
 
 **A comment saying why, where the why is not obvious.** The diff shows what
 changed. The comment exists for the person who, two years from now, will look at
@@ -56,6 +67,8 @@ golangci-lint run ./...                     # in both modules
 ./.github/scripts/generated-check.sh        # web/ artefacts are current
 ./.github/scripts/engine-weight.sh          # the engine stays lean
 ./.github/scripts/pruning-check.sh          # a consumer only compiles what it imports
+./.github/scripts/repo-language-check.sh    # comments and messages are English
+./.github/scripts/ui-language-check.sh      # the interface is English
 ```
 
 ## Things this project refuses

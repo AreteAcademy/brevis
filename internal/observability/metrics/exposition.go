@@ -2,7 +2,7 @@ package metrics
 
 // The Prometheus text exposition format, written here rather than imported.
 //
-// The trade is stated in docs/plan/2026-09-08-observability.md section 1:
+// The trade is stated in docs/OBSERVABILITY.md:
 // go.opentelemetry.io/otel/exporters/prometheus costs 49 packages, 29 of them
 // google.golang.org/protobuf, to produce the text below. The format is
 // `name{label="value"} 42` and it has not changed in a decade.

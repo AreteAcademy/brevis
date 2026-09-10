@@ -13,7 +13,8 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestTheRefreshGetsTheCredentialUnderAnotherPrefix is §9 of SDK_V9.md.
+// TestTheRefreshGetsTheCredentialUnderAnotherPrefix pins what the first
+// consumer hit on v0.9.x.
 //
 // AsCookie seeds the jar from the SOURCE's URL, and Go's cookiejar, when the
 // cookie carries no Path, uses that URL's directory. With the source on

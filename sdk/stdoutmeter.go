@@ -60,8 +60,9 @@ func (m *StdoutMeter) Counter(name string, value int64, attrs ...Attr) {
 //
 // It is reported as a GAUGE, and the difference is worth stating rather than
 // hiding. A histogram needs buckets, and buckets chosen per step by whoever
-// wrote the step is a cardinality decision taken in the wrong place -- see
-// docs/plan/2026-09-09-step-metrics.md §4. The last observation is what
+// wrote the step is a cardinality decision taken in the wrong place. It is the
+// same reason the labels are the engine's: a step that could add its own would
+// add customer_id on the first Tuesday. The last observation is what
 // survives, which for a fetcher's duration is the useful number and for a true
 // distribution is not: that one wants sdk/metrics/otelmeter and a collector.
 func (m *StdoutMeter) Histogram(name string, value float64, attrs ...Attr) {

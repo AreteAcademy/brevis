@@ -257,8 +257,14 @@ func translateOldType(pt string) string {
 //
 // Every field here already crossed the `@brevis:` pipe and is already in
 // `task_runs.etapas`. This does not measure anything new; it makes the numbers
-// answerable without reading a year of JSONB. See
-// docs/plan/2026-09-10-load-trend.md for the measurement that decided it.
+// answerable without reading a year of JSONB.
+//
+// A table rather than a query over the JSONB, because it was measured: on a
+// probe seeded with a year of hourly runs -- 350,000 runs across 40 workflows --
+// ninety days of one workflow grouped by day costs 14,913 buffer reads and 22 ms
+// through jsonb_array_elements, against 2,243 reads and 5 ms on this narrow
+// indexed table. Six and a half times the reads and four times the latency, for
+// one panel on one page.
 type LoadNumbers struct {
 	Rows, Records, Ignored, BytesOut int64
 	LoadMs                           int64

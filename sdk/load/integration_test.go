@@ -240,7 +240,7 @@ func TestIntegrationGCSStrategy(t *testing.T) {
 	}
 }
 
-// TestIntegrationMergeNaoDobra is the criterion from SDK_V2 6.9: load the
+// TestIntegrationMergeNaoDobra is the criterion asked for in v0.2: load the
 // same batch twice and the count must not double.
 func TestIntegrationMergeDoesNotDouble(t *testing.T) {
 	env := requireIntegration(t)

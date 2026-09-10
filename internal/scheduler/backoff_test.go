@@ -7,7 +7,7 @@ import (
 
 // TestConfiguringNothingGivesAPolicyThatIsNotInert.
 //
-// The rule from TASK.md: a feature with a default gets a test that configures
+// The rule from CONTRIBUTING.md: a feature with a default gets a test that configures
 // NOTHING. Two features shipped switched off in one week and both times every
 // test set the field under test.
 //

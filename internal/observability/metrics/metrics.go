@@ -4,9 +4,9 @@
 // which is what makes the pull model honest: nothing is aggregated waiting to be
 // shipped, and Collect runs when /metrics is requested. The Prometheus exporter
 // is deliberately not here -- it costs 49 packages, 29 of them protobuf, to
-// render a text format this package writes in exposition.go. See
-// docs/plan/2026-09-08-observability.md section 1, and the forbidden list in
-// .github/scripts/engine-weight.sh that holds the decision down.
+// render a text format this package writes in exposition.go. The measurement
+// behind that, and the forbidden list in .github/scripts/engine-weight.sh that
+// holds the decision down, are in docs/OBSERVABILITY.md.
 //
 // Every method tolerates a nil receiver. That is not defensiveness: `brevis run`
 // executes a workflow with no server and no scrape endpoint, and the alternative

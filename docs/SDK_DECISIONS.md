@@ -314,8 +314,7 @@ APIs block.
 
 ## 14. The three invariants, closed
 
-[`plan/2026-09-03-sdk-schema-declarado.md`](plan/2026-09-03-sdk-schema-declarado.md)
-asked for five invariants. Three stayed open for months, under the heading "where
+The declared-schema spec asked for five invariants. Three stayed open for months, under the heading "where
 the discussion continues" — which is where an invariant goes to die. Closed in
 `sdk/v0.35.0`.
 

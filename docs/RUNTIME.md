@@ -140,9 +140,9 @@ starts with `python`"* are different claims, and the badge beside it —
 announces itself and nothing in the YAML can produce it. Anything drawn next to
 that badge has to be honest about which kind of claim it is making.
 
-An `observed` tier for runtimes, over the same `@brevis:` protocol the SDK badge
-uses, is designed for and not built. See
-[`docs/plan/2026-09-07-runtime-and-tooling-on-the-graph.md`](plan/2026-09-07-runtime-and-tooling-on-the-graph.md).
+An `observed` tier for runtimes — a chip the engine infers from what the step
+actually reported over the same `@brevis:` protocol the SDK badge uses, rather
+than from what the YAML declared — is designed for and not built.
 
 ## What it deliberately does not do
 

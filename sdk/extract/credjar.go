@@ -11,7 +11,8 @@ import (
 // Go's jar matches a cookie by path prefix, and a cookie with no Path inherits
 // the directory of the URL that issued it. With the source on
 // /api/proxy/occurrences the credential was pinned to /api/proxy, and the
-// refresh on /api/auth/session went without it -- §9 of SDK_V9.md. Marking
+// refresh on /api/auth/session went without it, as the first consumer hit it
+// on v0.9.x. Marking
 // Path=/ on the seed fixes half of it: the cookie REISSUED by the refresh gets
 // pinned again, now to /api/auth, and the pages carry on with the old value. A
 // refresh that does not reach the pages refreshed nothing.

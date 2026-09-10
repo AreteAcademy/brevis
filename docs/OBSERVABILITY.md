@@ -174,7 +174,7 @@ already scrapes. Re-collecting them here would be a worse `kube-state-metrics`.
 
 **Metrics on the task pods.** They are short-lived and scraping them is a race.
 Their numbers arrive through the SDK's `@brevis:` stage protocol, which already
-works — see [`docs/SDK.md`](SDK.md).
+works — see [`SDK_ARCHITECTURE.md`](SDK_ARCHITECTURE.md).
 
 **Traces.** They are the more valuable half of OpenTelemetry for debugging a
 distributed run, and a bigger design: context propagation across a pod boundary,
@@ -189,12 +189,29 @@ what a Collector is for.
 ## For contributors
 
 The exposition format is written by hand in
-`internal/observability/metrics/exposition.go` rather than imported. The
-reasoning, with the measurements, is in
-[`docs/plan/2026-09-08-observability.md`](plan/2026-09-08-observability.md) §1:
-the OTel SDK costs 42 packages and its Prometheus exporter 49 more, 29 of them
-`google.golang.org/protobuf`, to render a text format that has not changed in a
-decade. `.github/scripts/engine-weight.sh` holds that decision down.
+`internal/observability/metrics/exposition.go` rather than imported, and the
+measurement is the reason. Counted as unions with the engine's own package set,
+against a ceiling of 330:
+
+| the engine would compile | packages | |
+|---|---|---|
+| today | **299** | under the ceiling |
+| `+ otel/sdk/metric`, manual reader | **341** | over |
+| `+ exporters/prometheus` as well | **388** | far over |
+
+Any metrics library breaks the ceiling, so the OTel SDK's 42 packages are paid
+for deliberately. The exporter's further 49 are not: **29 of them are
+`google.golang.org/protobuf`**, pulled in because `client_golang` registers
+through the generated `client_model`. The engine contains no protobuf otherwise,
+and dragging it in to render forty lines of `name{label="value"} 42` — a format
+unchanged in a decade — is exactly the transitive drag
+`.github/scripts/engine-weight.sh` exists to catch. That script holds the
+decision down.
+
+Owning the exposition buys two things besides the weight: the output is exactly
+what this document describes, with none of the official exporter's
+`otel_scope_name` and `target_info` cardinality; and `/metrics` becomes testable
+as bytes, which is worth more than a test asserting that a scrape succeeded.
 
 Two things in that file are easy to get wrong, and both have a test that fails
 when the code is reverted:

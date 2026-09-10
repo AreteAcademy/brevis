@@ -89,7 +89,8 @@ func runWithStore(t *testing.T, srv *httptest.Server, store core.CredentialStore
 	return nil
 }
 
-// TestARefreshThatDoesNotAuthenticateDoesNotWrite is §10 of SDK_V9.md.
+// TestARefreshThatDoesNotAuthenticateDoesNotWrite pins what the first consumer
+// hit on v0.9.x.
 //
 // NextAuth answers 200 with a null body and a Set-Cookie EMPTYING the values for
 // a session that did not authenticate. Writing that, with the read order being

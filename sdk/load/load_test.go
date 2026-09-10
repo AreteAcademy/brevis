@@ -95,7 +95,7 @@ func TestStrategyFor(t *testing.T) {
 	}
 }
 
-// --- format validation (SDK_LOAD.md 3) ----------------------------------
+// --- format validation (the v0.2.1 load fix) -----------------------------
 
 func TestSourceFormatAcceptsOnlyWhatWeWrite(t *testing.T) {
 	for _, ok := range []string{"", "ndjson"} {
@@ -197,7 +197,7 @@ func TestEncodeRowsStructPayloadUsesJSONTags(t *testing.T) {
 	}
 }
 
-// --- envelope columns (SDK_LOAD.md 5) -----------------------------------
+// --- envelope columns (the v0.2.1 load fix) ------------------------------
 
 // --- metadata -------------------------------------------------------------
 
