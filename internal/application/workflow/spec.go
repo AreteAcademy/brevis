@@ -100,6 +100,7 @@ type StepSpec struct {
 
 	// Image e Resources sobrescrevem os do workflow. Ausentes = herda.
 	Image     string       `yaml:"image"`
+	Host      string       `yaml:"host"`
 	Resources ResourceSpec `yaml:"resources"`
 
 	// Env are variables with a literal value in the file.
@@ -277,9 +278,10 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 	for _, st := range s.Steps {
 		w.Nodes = append(w.Nodes, dominio.Node{
 			ID: st.ID, Run: st.Run, Action: st.Action, With: st.With,
-			Image: strings.TrimSpace(st.Image), Resources: st.Resources.dominio(),
-			Shell: st.Shell,
-			Env:   aparar(st.Env), Secrets: aparar(st.Secrets),
+			Image: strings.TrimSpace(st.Image), Host: strings.TrimSpace(st.Host),
+			Resources: st.Resources.dominio(),
+			Shell:     st.Shell,
+			Env:       aparar(st.Env), Secrets: aparar(st.Secrets),
 			Runtime:     strings.ToLower(strings.TrimSpace(st.Runtime)),
 			Tools:       normalizeTools(st.Tools),
 			When:        strings.ToLower(strings.TrimSpace(st.When)),

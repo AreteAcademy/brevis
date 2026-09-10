@@ -82,6 +82,20 @@ type Node struct {
 	// Image overrides the workflow's. Empty inherits.
 	Image string
 
+	// Host names a machine the engine does not manage, and is an ALTERNATIVE to
+	// Image rather than a companion: `image:` builds a pod, `host:` hands the
+	// command to an agent on a box that already has what it needs.
+	//
+	// It exists for the work that cannot be containerised on demand -- a
+	// licensed tool, a GPU machine, a dlt pipeline on a VM somebody else
+	// administers. The step is the same step: the same `run:`, the same
+	// context in and out, the same phases on the graph.
+	//
+	// Additive in the stored document, like Runtime and Tools: an older engine
+	// ignores it and this one reading an older document gets "", which means
+	// "no host" and falls through to the pod.
+	Host string
+
 	// Resources sizes this step's pod. The gain from separating per step is
 	// concrete: a Go fetcher fits in 64Mi while the dbt next to it asks for
 	// 1Gi, and under a single image both would pay the larger of the two.
@@ -590,6 +604,24 @@ func (w Workflow) Validate() error {
 				"(if it is meant to do nothing, say `marker: true`)", n.ID)
 		case temRun && len(n.With) > 0:
 			return fmt.Errorf("step %q uses `with`, which only applies with `action`", n.ID)
+		}
+
+		// `host:` is an alternative to `image:`, not a companion, and the two
+		// together are refused HERE rather than at execution.
+		//
+		// The difference matters: a step that names both would otherwise
+		// publish fine, sit in the schedule, and fail at three in the morning
+		// on whichever executor happened to win. Refusing at publish means the
+		// person who wrote it is the person who reads the message.
+		if n.Host != "" && n.Image != "" {
+			return fmt.Errorf("step %q declares both `host` and `image`, and they are "+
+				"alternatives: `image` builds a pod, `host` sends the command to a "+
+				"machine that already has what it needs", n.ID)
+		}
+		if n.Host != "" && n.Action != "" {
+			return fmt.Errorf("step %q declares `host` with `action`, and an action "+
+				"resolves in the engine's own Go registry -- it cannot cross a machine. "+
+				"Use `run` with `host`", n.ID)
 		}
 	}
 

@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -132,5 +133,44 @@ func TestAnOlderStoredDefinitionStillReads(t *testing.T) {
 	}
 	if back.Nodes[0].Runtime != "python" || len(back.Nodes[0].Tools) != 1 {
 		t.Errorf("the round trip lost the declaration: %+v", back.Nodes[0])
+	}
+}
+
+// `host:` is an alternative to `image:`, and the pair is refused at PUBLISH.
+//
+// The alternative is a step that publishes fine, sits in the schedule, and
+// fails at three in the morning on whichever executor happened to win. Refusing
+// here means the person who wrote it is the person who reads the message.
+func TestAHostAndAnImageAreAlternatives(t *testing.T) {
+	for name, node := range map[string]Node{
+		"both host and image": {
+			ID: "extract", Run: "python x.py",
+			Host: "dlt-runner-01", Image: "python:3.12",
+		},
+		// An action resolves in the engine's own Go registry and cannot cross a
+		// machine, so `host:` with `action:` is a file asking for something
+		// that does not exist.
+		"host with an action": {
+			ID: "extract", Action: "http.get", Host: "dlt-runner-01",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := Workflow{Slug: "vendas", Nodes: []Node{node}}
+			err := w.Validate()
+			if err == nil {
+				t.Fatalf("%+v was accepted", node)
+			}
+			if !strings.Contains(err.Error(), "host") {
+				t.Errorf("the message does not name the field: %v", err)
+			}
+		})
+	}
+
+	// And a host on its own is fine, which is the whole point.
+	ok := Workflow{Slug: "vendas", Nodes: []Node{
+		{ID: "extract", Run: "python pipelines/orders.py", Host: "dlt-runner-01"},
+	}}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("a plain host step was refused: %v", err)
 	}
 }
