@@ -71,6 +71,24 @@ type stageCollector struct {
 	// the runner takes them: this type parses the pipe and knows nothing about
 	// where a number goes, which is what keeps it testable without a meter.
 	Metrics []StepMetric
+
+	// Published is the context the step announced on stdout, raw and unparsed.
+	//
+	// It exists for the executors that have no return path of their own. A pod
+	// writes to the termination message and the kubelet carries it back; a host
+	// the engine does not own has no equivalent, and the choice was between
+	// narrowing the contract for those targets or building a token-authenticated
+	// API. This is the third road: the pipe that already carries the phases and
+	// the metrics carries this too, so every executor that streams logs gets a
+	// return path for free.
+	//
+	// LAST ONE WINS, which is the file's semantics: a step that calls set()
+	// twice overwrites, and nobody expects otherwise from a file.
+	//
+	// Parsing and the size ceiling are NOT done here. runcontext.Parse owns
+	// both, and having this type enforce a limit as well would be the same rule
+	// in two places -- which is how the two answers drift apart.
+	Published string
 }
 
 // StepMetric is one value a step reported through the @brevis: protocol.
@@ -124,9 +142,20 @@ func (c *stageCollector) line(msg string) bool {
 		At       string `json:"at"`
 		Index    *int   `json:"index"`
 
-		// A metric a step reported. See the "metric" case below.
-		Kind  string   `json:"kind"`
-		Value *float64 `json:"value"`
+		Kind string `json:"kind"`
+
+		// `value` carries a metric's number AND a step's published context, and
+		// `type` is what decides how to read it. One key rather than two
+		// because it is one field fewer for every library that speaks this
+		// protocol to get wrong.
+		//
+		// RawMessage rather than *float64, and that is not a preference: two
+		// struct fields sharing a json tag make encoding/json drop BOTH of
+		// them, silently. The first version of this had `Value *float64` and
+		// `Value2 json.RawMessage` and parsed neither -- found by a probe that
+		// asserted metrics still worked, which is the only reason it is not in
+		// the commit.
+		Value json.RawMessage `json:"value"`
 
 		TypeOld    string `json:"tipo"`
 		VersionOld string `json:"versao"`
@@ -162,10 +191,28 @@ func (c *stageCollector) line(msg string) bool {
 		// the workflow and the step. A metric labelled by the step itself would
 		// be labelled wrongly, and asking every language's library to know its
 		// own workflow slug is asking for the one thing they cannot see.
-		if ev.TaskName != "" && ev.Value != nil {
-			c.Metrics = append(c.Metrics, StepMetric{
-				Name: ev.TaskName, Kind: ev.Kind, Value: *ev.Value,
-			})
+		if ev.TaskName != "" {
+			// A metric's value is a NUMBER. Anything else is a step confusing
+			// the two shapes this key carries, and the pipe stays quiet about
+			// it for the same reason it is quiet about everything else: a
+			// malformed line must not be able to take a step down.
+			var n float64
+			if err := json.Unmarshal(ev.Value, &n); err == nil {
+				c.Metrics = append(c.Metrics, StepMetric{
+					Name: ev.TaskName, Kind: ev.Kind, Value: n,
+				})
+			}
+		}
+		return true
+	case "context":
+		// What the step publishes for the steps below it, on the pipe that
+		// already exists. See the field's comment for why this road exists at
+		// all.
+		//
+		// Empty is not "nothing": a step may legitimately publish {} and
+		// clearing what came before is the honest reading of that.
+		if len(ev.Value) > 0 {
+			c.Published = string(ev.Value)
 		}
 		return true
 	case "sdk":

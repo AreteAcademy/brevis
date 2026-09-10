@@ -56,6 +56,27 @@ type spyPersister struct {
 	// reported no finished load leaves NO entry, which is what the tests that
 	// assert silence look at.
 	loads map[dom.StepKey]app.LoadNumbers
+
+	// ctxOut is the context the step published, by whichever road. Empty when
+	// nothing usable arrived, which is what the tests asserting silence read.
+	ctxOut json.RawMessage
+}
+
+// RecordContext makes this a ContextPersister, which the runner asks for by
+// type assertion.
+func (p *spyPersister) RecordContext(_ context.Context, _ uuid.UUID, _ dom.StepKey,
+	_ int, published json.RawMessage) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.ctxOut = published
+	return nil
+}
+
+// published is a copy, for a test to read after the run.
+func (p *spyPersister) published() json.RawMessage {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.ctxOut
 }
 
 // instances lists the keys that finished, for a test to count.
@@ -289,5 +310,173 @@ func TestAStepWithNoLoadWritesNoTrendRow(t *testing.T) {
 				t.Errorf("the trend got a row it should not have: %+v", got)
 			}
 		})
+	}
+}
+
+// speakerWithReturn is a step that both prints marked lines AND has an executor
+// that carries context back the way a pod's does. It exists to prove the
+// precedence, which needs both roads occupied at once.
+type speakerWithReturn struct {
+	lines    []string
+	fromExec string // what the EXECUTOR delivers, empty for an executor with no road
+}
+
+func (speakerWithReturn) Name() string                         { return "falador" }
+func (speakerWithReturn) Cancel(context.Context, string) error { return nil }
+
+func (f speakerWithReturn) Execute(context.Context, execution.TaskExec) (<-chan execution.Event, error) {
+	ch := make(chan execution.Event, len(f.lines)+3)
+	ch <- execution.Event{Kind: execution.EventStarted}
+	for _, l := range f.lines {
+		ch <- execution.Event{Kind: execution.EventLog, NodeID: "collectOutput", Stream: "stdout", Message: l}
+	}
+	if f.fromExec != "" {
+		ch <- execution.Event{Kind: execution.EventContext, NodeID: "collectOutput", Message: f.fromExec}
+	}
+	ch <- execution.Event{Kind: execution.EventSucceeded}
+	close(ch)
+	return ch, nil
+}
+
+// A step publishes its context on stdout, and the steps below it read it.
+//
+// This is the third road, and the reason it exists: a pod writes to the
+// termination message and the kubelet carries it back, but a host the engine
+// does not own has no equivalent. The choice was between narrowing the contract
+// for those targets or building a token-authenticated API. The pipe that already
+// carries the phases carries this too, and no executor changes.
+func TestAStepPublishesItsContextOnStdout(t *testing.T) {
+	spy := &spyPersister{}
+	r := app.Runner{
+		RunID: uuid.New(), Persist: spy, Report: &spyReporter{},
+		Processo: sdkSpeaker{lines: []string{
+			"loading",
+			`@brevis:{"type":"context","value":{"watermark":"2026-03-11T04:00:00Z","rows":48213}}`,
+			"done",
+		}},
+	}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(spy.published(), &got); err != nil {
+		t.Fatalf("nothing usable was published: %v — %s", err, spy.published())
+	}
+	if got["watermark"] != "2026-03-11T04:00:00Z" || got["rows"] != float64(48213) {
+		t.Errorf("published = %v", got)
+	}
+	// And the marked line does NOT reach the step's log: whoever reads the
+	// screen wants the output, not the protocol.
+	if strings.Contains(spy.log, "@brevis:") {
+		t.Errorf("the context marker ended up in the log:\n%s", spy.log)
+	}
+}
+
+// The precedence, stated in the runner and proved here: when BOTH roads carry
+// something, the executor's wins.
+//
+// Its road is one the platform vouches for; a marked line is a convention with
+// a cooperating step, and anything can print it. In practice the libraries emit
+// the marker only when there is no writable BREVIS_OUTPUT, so both are never
+// occupied at once — this is what makes that a guarantee of the engine rather
+// than a promise from every library that will ever speak the protocol.
+func TestTheExecutorsOwnReturnPathWinsOverTheMarker(t *testing.T) {
+	spy := &spyPersister{}
+	r := app.Runner{
+		RunID: uuid.New(), Persist: spy, Report: &spyReporter{},
+		Processo: speakerWithReturn{
+			lines:    []string{`@brevis:{"type":"context","value":{"who":"the marker"}}`},
+			fromExec: `{"who":"the executor"}`,
+		},
+	}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(spy.published(), &got); err != nil {
+		t.Fatalf("nothing usable was published: %v", err)
+	}
+	if got["who"] != "the executor" {
+		t.Errorf("published = %v; the marker beat the executor's own road", got)
+	}
+}
+
+// Two publishes from one step: the last one wins, which is the file's own
+// semantics. Nobody expects a second write to a file to be refused.
+func TestTheLastContextMarkerWins(t *testing.T) {
+	spy := &spyPersister{}
+	r := app.Runner{
+		RunID: uuid.New(), Persist: spy, Report: &spyReporter{},
+		Processo: sdkSpeaker{lines: []string{
+			`@brevis:{"type":"context","value":{"n":1}}`,
+			`@brevis:{"type":"context","value":{"n":2}}`,
+		}},
+	}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal(spy.published(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["n"] != float64(2) {
+		t.Errorf("published = %v, wanted the second", got)
+	}
+}
+
+// The ceiling and the shape are runcontext.Parse's, not this road's.
+//
+// Asserted because a second enforcement point is how two answers to one
+// question drift: the marker path must refuse exactly what the file path
+// refuses, and it does so by going through the same function.
+func TestTheMarkerRoadInheritsTheSameCeilingAndShape(t *testing.T) {
+	for name, payload := range map[string]string{
+		"over the 4 KB ceiling": `{"big":"` + strings.Repeat("x", 4200) + `"}`,
+		"not an object":         `[1,2,3]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			spy := &spyPersister{}
+			tela := &spyReporter{}
+			r := app.Runner{
+				RunID: uuid.New(), Persist: spy, Report: tela,
+				Processo: sdkSpeaker{lines: []string{
+					`@brevis:{"type":"context","value":` + payload + `}`,
+				}},
+			}
+			if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if len(spy.published()) != 0 {
+				t.Errorf("a refused payload was published anyway: %s", spy.published())
+			}
+			// And it is SAID. A publish that silently goes nowhere is the worst
+			// way to discover this.
+			var told bool
+			for _, l := range tela.lines {
+				if strings.Contains(l, "not usable") {
+					told = true
+				}
+			}
+			if !told {
+				t.Errorf("the step was not told its context was refused: %v", tela.lines)
+			}
+		})
+	}
+}
+
+// A step that publishes nothing publishes nothing. The marker road must not
+// invent an empty object where the step said nothing at all.
+func TestNoMarkerMeansNoContext(t *testing.T) {
+	spy := &spyPersister{}
+	r := app.Runner{
+		RunID: uuid.New(), Persist: spy, Report: &spyReporter{},
+		Processo: sdkSpeaker{lines: []string{"just a log line"}},
+	}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if len(spy.published()) != 0 {
+		t.Errorf("a step that published nothing recorded %s", spy.published())
 	}
 }

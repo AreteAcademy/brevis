@@ -932,6 +932,11 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	// The phases the step announces, when it is an SDK pipeline.
 	var stages stageCollector
 
+	// Whether the EXECUTOR delivered the published context by its own road --
+	// the pod's termination message, the local executor's file. It decides the
+	// precedence below.
+	var fromExecutor bool
+
 	for e := range eventos {
 		// A marked line is the SDK talking to the engine, not the program's
 		// output. It becomes a phase on the screen and does NOT enter the log
@@ -948,6 +953,7 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 		// What the step published. It never reaches the log: it is the step
 		// talking to the steps below it, not to a person.
 		if e.Kind == execution.EventContext {
+			fromExecutor = true
 			r.collectContext(ctx, n, inst, attempt, e.Message)
 			continue
 		}
@@ -981,6 +987,24 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 			failure = &StepError{NodeID: n.ID, ExitCode: e.ExitCode, Message: e.Message}
 		}
 	}
+	// The context the step announced on stdout, and ONLY when the executor had
+	// no road of its own.
+	//
+	// The precedence is stated here rather than discovered: **the executor
+	// wins**. Its road is one the platform vouches for -- the kubelet carries
+	// the termination message back with the exit code -- while a marked line is
+	// a convention with a cooperating step, which anything can print. When both
+	// exist they should agree, and when they do not the stronger provenance is
+	// the one to believe.
+	//
+	// In practice they never both exist: the libraries emit the marker only
+	// when there is no writable BREVIS_OUTPUT. This branch is what makes that a
+	// guarantee of the engine rather than a promise from every library that
+	// will ever speak this protocol.
+	if !fromExecutor && stages.Published != "" {
+		r.collectContext(ctx, n, inst, attempt, stages.Published)
+	}
+
 	// What the load measured, once, now that the phases are final.
 	//
 	// Here and not in markStages: that one runs on every marked line, because

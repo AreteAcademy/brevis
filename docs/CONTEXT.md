@@ -94,6 +94,40 @@ temporary file the runner reads instead of a termination message.
 The 4096-byte ceiling comes from this path too: the kubelet truncates that
 message at exactly that size.
 
+### When there is no file: the second road
+
+That whole diagram rests on the executor providing a **path**. A pod has one; so
+does the local executor, which hands over a temporary file. A host the engine
+does not create — an EC2 box, a machine in somebody else's cluster — has no
+equivalent of a termination message, and there is nothing to hand over.
+
+The step publishes on **stdout** instead, as a marked line:
+
+```
+@brevis:{"type":"context","value":{"watermark":"2026-03-11T04:00:00Z"}}
+```
+
+Which is not a new pipe. The engine already reads every line of every step's
+output looking for that prefix — it is how an SDK pipeline's phases appear on
+the graph while it runs, and how `metrics.set()` reaches `/metrics`. This is a
+third kind of line on a channel that every executor already streams, so an
+executor that can only produce logs still gets a return path.
+
+**You do not choose between them.** Both libraries write the file when
+`BREVIS_OUTPUT` names one and print the marker when it does not, and print
+nothing at all when the step is being run by hand. Nothing in a workflow
+changes; nothing in a fetcher changes.
+
+**If both arrive, the file wins.** The engine states that rather than leaving it
+to chance: a path is a road the platform vouches for, and a marked line is a
+convention with a cooperating step — anything at all can print one. They should
+never both arrive, because the libraries pick one; the rule is what makes that a
+guarantee of the engine rather than a promise from every library that will ever
+speak this protocol.
+
+The ceiling and the shape do not move: 4096 bytes and a JSON object, checked by
+the same code on both roads.
+
 ## Isolation: no step can overwrite another
 
 Context is keyed by the step that published it, and a step writes only its own
