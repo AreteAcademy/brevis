@@ -1,7 +1,9 @@
 package context
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -238,4 +240,118 @@ func TestTheWireFormatIsOneFlatObject(t *testing.T) {
 	if len(got) != 2 || got["bucket"] != "s3://x" {
 		t.Errorf("wrote %q; the engine expects one flat object keyed by name", raw)
 	}
+}
+
+// The second road: a step under an executor with no return path of its own
+// publishes on stdout, as a marked line.
+//
+// This is what makes a host the engine does not create a first-class target for
+// context. The alternative was narrowing the contract for those executors or
+// building a token-authenticated API; the pipe that already carries the phases
+// carries this instead.
+func TestPublishingWithNoOutputPathGoesToStdout(t *testing.T) {
+	reset(t, "{}")
+	t.Setenv(EnvOutput, "")
+	t.Setenv(EnvRunID, "1f0a5b6c-0000-0000-0000-000000000001")
+
+	var out bytes.Buffer
+	swapMarker(t, &out)
+
+	if err := Set("watermark", "2026-03-11T04:00:00Z"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	line := out.String()
+	if !strings.HasPrefix(line, "@brevis:") || !strings.HasSuffix(line, "\n") {
+		t.Fatalf("not one marked line: %q", line)
+	}
+	var ev struct {
+		Type  string         `json:"type"`
+		Value map[string]any `json:"value"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(strings.TrimSpace(line), "@brevis:")), &ev); err != nil {
+		t.Fatalf("the marker is not JSON: %v — %s", err, line)
+	}
+	if ev.Type != "context" {
+		t.Errorf("type = %q", ev.Type)
+	}
+	if ev.Value["watermark"] != "2026-03-11T04:00:00Z" {
+		t.Errorf("value = %v", ev.Value)
+	}
+}
+
+// A file beats stdout. When the executor provided a path, nothing is printed:
+// two roads carrying the same thing is what drifts, and the file is the one the
+// platform vouches for.
+func TestAnOutputPathMeansNothingIsPrinted(t *testing.T) {
+	path := reset(t, "{}")
+	t.Setenv(EnvRunID, "1f0a5b6c-0000-0000-0000-000000000001")
+
+	var out bytes.Buffer
+	swapMarker(t, &out)
+
+	if err := Set("rows", 48213); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("it printed a marker as well as writing the file: %q", out.String())
+	}
+	b, err := os.ReadFile(path)
+	if err != nil || !strings.Contains(string(b), "48213") {
+		t.Errorf("the file did not get it: %v — %s", err, b)
+	}
+}
+
+// Run by hand, nothing is printed at all. A fetcher somebody is debugging must
+// not have protocol appear in its terminal.
+func TestOutsideTheEngineNothingIsPrinted(t *testing.T) {
+	reset(t, "{}")
+	t.Setenv(EnvOutput, "")
+	t.Setenv(EnvRunID, "")
+
+	var out bytes.Buffer
+	swapMarker(t, &out)
+
+	if err := Set("rows", 1); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if out.Len() != 0 {
+		t.Errorf("a step run by hand printed protocol: %q", out.String())
+	}
+}
+
+// One line, one Write. stdout is shared with whatever else the step prints, and
+// a marker split across two writes is a marker the engine will not recognise --
+// the executor's scanner breaks on lines.
+func TestTheMarkerIsASingleWrite(t *testing.T) {
+	reset(t, "{}")
+	t.Setenv(EnvOutput, "")
+	t.Setenv(EnvRunID, "1f0a5b6c-0000-0000-0000-000000000001")
+
+	c := &countingWriter{}
+	swapMarker(t, c)
+
+	if err := Set("a", "b"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if c.writes != 1 {
+		t.Errorf("the marker took %d writes", c.writes)
+	}
+}
+
+type countingWriter struct {
+	writes int
+	buf    bytes.Buffer
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	c.writes++
+	return c.buf.Write(p)
+}
+
+func swapMarker(t *testing.T, w io.Writer) {
+	t.Helper()
+	previous := marker
+	marker = w
+	t.Cleanup(func() { marker = previous })
 }

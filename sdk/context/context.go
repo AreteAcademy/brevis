@@ -28,6 +28,7 @@ package context
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -39,6 +40,11 @@ import (
 const (
 	EnvInput  = "BREVIS_INPUT"
 	EnvOutput = "BREVIS_OUTPUT"
+
+	// EnvRunID says a step is running under the engine even when no output path
+	// was provided -- which is exactly the case an executor with no return path
+	// of its own creates.
+	EnvRunID = "BREVIS_RUN_ID"
 )
 
 // MaxBytes is how much a step may publish, and it is the platform's number
@@ -323,14 +329,27 @@ func tooLarge(size int) error {
 
 // write puts the whole object where the engine will read it.
 //
-// Nothing happens outside Brevis: no output path means nothing is going to read
-// it, and a step has to stay runnable by hand. Unlike the Python library this
-// does not log a line, because a Go fetcher under sdk.Run already reports its
-// own context and a second voice there would be noise.
+// TWO roads, and which one is taken is decided by what the executor provided.
+//
+// A file when there is one: a pod's termination message, a temporary file for
+// the local executor. That is the platform's own return path and the engine
+// trusts it over anything a step prints.
+//
+// A marked line on stdout when there is not. A host the engine does not own has
+// no equivalent of the termination message, and the alternatives were to narrow
+// the contract for those targets or to build a token-authenticated API. The pipe
+// that already carries the phases carries this instead, so an executor that only
+// streams logs still gets a return path -- and the engine treats it as the
+// fallback it is.
+//
+// Nothing happens outside Brevis at all: no path and no run id means nothing is
+// going to read this, and a step has to stay runnable by hand. Unlike the Python
+// library this does not log a line, because a Go fetcher under sdk.Run already
+// reports its own context and a second voice there would be noise.
 func write(encoded []byte) error {
 	path := os.Getenv(EnvOutput)
 	if path == "" {
-		return nil
+		return announce(encoded)
 	}
 	// Written directly, never renamed into place: /dev/termination-log is
 	// provided by the platform, and a rename over it would fail. Atomicity is
@@ -341,6 +360,35 @@ func write(encoded []byte) error {
 	}
 	return nil
 }
+
+// announce publishes on stdout, for an executor with no return path of its own.
+//
+// One Write for the whole line, because stdout is shared with whatever else the
+// step prints and a marker split across two writes is a marker the engine will
+// not recognise. `\n` is part of the same call for the same reason.
+//
+// Silent outside the engine. The marker is for the engine to read, and printing
+// protocol at somebody running a fetcher by hand would be noise -- BREVIS_RUN_ID
+// is the same test sdk.RunContext.FromEngine makes, read directly here because
+// this package deliberately imports nothing but the standard library.
+func announce(encoded []byte) error {
+	if os.Getenv(EnvRunID) == "" {
+		return nil
+	}
+	line := make([]byte, 0, len(encoded)+40)
+	line = append(line, `@brevis:{"type":"context","value":`...)
+	line = append(line, encoded...)
+	line = append(line, "}\n"...)
+	if _, err := marker.Write(line); err != nil {
+		return fmt.Errorf("publishing the context on stdout: %w. The steps depending "+
+			"on this one will not see it", err)
+	}
+	return nil
+}
+
+// marker is stdout, swappable so a test can read what was announced. The same
+// seam the SDK's phase reporter uses.
+var marker io.Writer = os.Stdout
 
 // resetOnce exists for this package's own tests: a real step is one process
 // reading one input, and has no reason to read it twice.
