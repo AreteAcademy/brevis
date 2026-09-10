@@ -30,6 +30,7 @@ import atexit
 import json
 import logging
 import os
+import sys
 import tempfile
 from typing import Any, Mapping
 
@@ -46,6 +47,13 @@ __all__ = [
 ENV_INPUT = "BREVIS_INPUT"
 ENV_OUTPUT = "BREVIS_OUTPUT"
 ENV_RUN_ID = "BREVIS_RUN_ID"
+
+#: The prefix the engine looks for on stdout. The phases use it, the metrics use
+#: it, and the context uses it when there is no file to write.
+#:
+#: Defined HERE and imported by :mod:`brevis.metrics` rather than written twice.
+#: A protocol literal in two files is a protocol that changes in one of them.
+MARKER = "@brevis:"
 
 #: Kubernetes truncates the termination message at this size. See the module
 #: docstring: inheriting the platform's ceiling is the design.
@@ -275,12 +283,19 @@ def _enabled() -> bool:
     global _warned
     if os.environ.get(ENV_OUTPUT):
         return True
+    # No output path but a run id means an executor with no return path of its
+    # own -- a host the engine did not create. What is published then goes out
+    # as a marked line on stdout, which every executor that streams logs has.
+    if os.environ.get(ENV_RUN_ID):
+        return True
     if not _warned:
         _warned = True
         _log.info(
-            "brevis: not running under Brevis (%s is unset), so context.set() is a "
-            "no-op. Under the engine it publishes to the steps that depend on this one",
+            "brevis: not running under Brevis (neither %s nor %s is set), so "
+            "context.set() is a no-op. Under the engine it publishes to the steps "
+            "that depend on this one",
             ENV_OUTPUT,
+            ENV_RUN_ID,
         )
     return False
 
@@ -292,6 +307,13 @@ def _flush() -> None:
         return
     path = os.environ.get(ENV_OUTPUT)
     if not path:
+        # No file: publish on stdout instead. There is deliberately no second
+        # check for the run id here -- ``_enabled()`` is the one gate, and
+        # nothing reaches ``_pending`` outside the engine, so a guard here would
+        # be a branch no test could ever reach. A mutation proved exactly that:
+        # removing it changed nothing anywhere.
+        _written = True
+        _announce(json.dumps(_pending, separators=(",", ":"), sort_keys=True))
         return
 
     _written = True
@@ -313,6 +335,26 @@ def _flush() -> None:
             path,
             exc,
         )
+
+
+def _announce(payload: str) -> None:
+    """Publish on stdout, for an executor with no return path of its own.
+
+    ONE write, flushed.
+
+    One write rather than ``print()``, because ``print()`` does two -- the text,
+    then the newline -- and stdout is shared with everything else the step logs.
+    A second thread writing in between splits the marker across two lines, and
+    the engine's scanner breaks on lines, so what it sees is not a marker at all.
+
+    Flushed because a step killed by a timeout or a cancel after publishing
+    would otherwise lose the line entirely.
+
+    The file is preferred wherever there is one. Two roads carrying the same
+    thing is what drifts, and a file is the road the platform vouches for.
+    """
+    sys.stdout.write(f'{MARKER}{{"type":"context","value":{payload}}}\n')
+    sys.stdout.flush()
 
 
 atexit.register(_flush)

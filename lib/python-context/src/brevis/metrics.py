@@ -40,8 +40,10 @@ from typing import Union
 
 __all__ = ["MetricError", "inc", "set"]
 
-#: The prefix the engine looks for. The same one the phases use.
-MARKER = "@brevis:"
+#: The prefix the engine looks for. The same one the phases and the published
+#: context use -- imported rather than repeated, because a protocol literal in
+#: two files is a protocol that changes in one of them.
+from .context import MARKER  # noqa: E402
 
 # Prometheus's own rule for a metric name.
 #
@@ -86,10 +88,19 @@ def _emit(name: str, value: Number, kind: str) -> None:
         separators=(",", ":"),
         sort_keys=True,
     )
-    # print(flush=True), because the engine reads this pipe LIVE. A buffered
-    # line arrives when the process exits, which for a step that runs for an
-    # hour is an hour late -- and for a step that is killed, never.
-    print(line, file=sys.stdout, flush=True)
+    # ONE write, and flushed.
+    #
+    # Flushed because the engine reads this pipe LIVE: a buffered line arrives
+    # when the process exits, which for a step that runs for an hour is an hour
+    # late and for a step that is killed is never.
+    #
+    # One write rather than print(), because print() does two -- the text, then
+    # the newline -- and stdout is shared with everything else the step logs. A
+    # second thread writing in between splits the marker across two lines, and
+    # the engine's scanner breaks on lines, so what it sees is not a marker at
+    # all. Cheap to avoid, and it makes this identical to the Go SDK's.
+    sys.stdout.write(line + "\n")
+    sys.stdout.flush()
 
 
 def set(name: str, value: Number) -> None:  # noqa: A001 - it is a gauge's verb

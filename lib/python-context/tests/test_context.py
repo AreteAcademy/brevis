@@ -5,7 +5,12 @@ path, so a test sets them. It is the reason the contract is two environment
 variables.
 """
 
+import io
 import json
+import os
+import pathlib
+import subprocess
+import sys
 import logging
 
 import pytest
@@ -31,6 +36,9 @@ def clean(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 # Reading
 # ---------------------------------------------------------------------------
+
+
+SRC = pathlib.Path(__file__).resolve().parent.parent / "src"
 
 
 def test_it_reads_what_a_step_it_depends_on_published():
@@ -257,3 +265,141 @@ def test_what_it_writes_is_what_the_engine_parses(tmp_path):
     raw = out.read_text()
     assert raw == '{"bucket":"s3://x","rows":48213}'
     assert json.loads(raw) == {"bucket": "s3://x", "rows": 48213}
+
+
+# The second road: an executor with no return path of its own.
+#
+# A pod writes to /dev/termination-log and the kubelet carries it back. A host
+# the engine did not create has no equivalent, and the alternatives were to
+# narrow the contract for those targets or to build a token-authenticated API.
+# The pipe that already carries the phases carries this instead.
+def test_with_no_output_path_it_publishes_on_stdout(monkeypatch, capsys):
+    context._reset_for_tests()
+    monkeypatch.delenv(context.ENV_OUTPUT, raising=False)
+    monkeypatch.setenv(context.ENV_RUN_ID, "1f0a5b6c-0000-0000-0000-000000000001")
+
+    context.set(watermark="2026-03-11T04:00:00Z", rows=48213)
+    context._flush()
+
+    out = capsys.readouterr().out.strip()
+    assert out.startswith(context.MARKER), out
+    event = json.loads(out[len(context.MARKER):])
+    assert event["type"] == "context"
+    assert event["value"] == {"rows": 48213, "watermark": "2026-03-11T04:00:00Z"}
+
+
+# One line. The executor's scanner breaks on lines, so a marker split across two
+# writes is a marker the engine never sees.
+def test_the_marker_is_one_line(monkeypatch, capsys):
+    context._reset_for_tests()
+    monkeypatch.delenv(context.ENV_OUTPUT, raising=False)
+    monkeypatch.setenv(context.ENV_RUN_ID, "run-1")
+
+    context.set(a="1", b="2", c="3")
+    context._flush()
+
+    assert len(capsys.readouterr().out.strip().splitlines()) == 1
+
+
+# A file beats stdout. Two roads carrying the same thing is what drifts, and the
+# file is the one the platform vouches for.
+def test_an_output_path_means_nothing_is_printed(monkeypatch, capsys, tmp_path):
+    out = tmp_path / "output"
+    context._reset_for_tests(str(out))
+    monkeypatch.setenv(context.ENV_RUN_ID, "run-1")
+
+    context.set(rows=7)
+    context._flush()
+
+    assert capsys.readouterr().out == ""
+    assert json.loads(out.read_text()) == {"rows": 7}
+
+
+# Run by hand, nothing is printed and nothing is written. A fetcher somebody is
+# debugging must not have protocol appear in its terminal.
+def test_outside_the_engine_nothing_is_printed(monkeypatch, capsys):
+    context._reset_for_tests()
+    monkeypatch.delenv(context.ENV_OUTPUT, raising=False)
+    monkeypatch.delenv(context.ENV_RUN_ID, raising=False)
+
+    context.set(rows=7)
+    context._flush()
+
+    assert capsys.readouterr().out == ""
+    assert context.published() == {}
+
+
+# The marker is FLUSHED, and this is the only way to prove it.
+#
+# capsys sees a write whether or not it was flushed, so the assertion has to be
+# a real process that dies without running its exit handlers: os._exit skips
+# both atexit and the interpreter's final flush. Unflushed, the line is simply
+# lost -- which is the case this matters in, a step killed by a timeout or a
+# cancel after it published.
+def test_the_marker_survives_a_process_that_dies_hard(tmp_path):
+    script = tmp_path / "step.py"
+    script.write_text(
+        "import os, sys\n"
+        f"sys.path.insert(0, {str(SRC)!r})\n"
+        "from brevis import context\n"
+        "context.set(watermark='2026-03-11T04:00:00Z')\n"
+        "context._flush()\n"
+        "os._exit(0)\n"
+    )
+    env = {**os.environ, "BREVIS_RUN_ID": "run-1", "PATH": os.environ.get("PATH", "")}
+    env.pop("BREVIS_OUTPUT", None)
+    done = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, env=env, check=False
+    )
+    assert context.MARKER in done.stdout, (
+        f"the marker did not survive os._exit; stdout={done.stdout!r} "
+        f"stderr={done.stderr!r}"
+    )
+    event = json.loads(done.stdout.strip()[len(context.MARKER):])
+    assert event["value"] == {"watermark": "2026-03-11T04:00:00Z"}
+
+
+class _CountingStdout(io.TextIOBase):
+    """Counts write() calls, so "one write" can be asserted rather than hoped."""
+
+    def __init__(self) -> None:
+        self.writes = 0
+        self.text = ""
+
+    def write(self, s: str) -> int:  # type: ignore[override]
+        self.writes += 1
+        self.text += s
+        return len(s)
+
+
+# ONE write, not one line.
+#
+# The difference is the whole point: print() does two writes -- the text, then
+# the newline -- and stdout is shared with everything else the step logs. A
+# second thread writing between them splits the marker across two lines, and the
+# engine's scanner breaks on lines, so what arrives is not a marker at all.
+#
+# Asserted for BOTH halves of the protocol this library speaks, because they had
+# drifted: the metric used print() and the context did not.
+def test_the_protocol_takes_exactly_one_write(monkeypatch):
+    from brevis import metrics
+
+    context._reset_for_tests()
+    monkeypatch.delenv(context.ENV_OUTPUT, raising=False)
+    monkeypatch.setenv(context.ENV_RUN_ID, "run-1")
+
+    for emit in (
+        lambda: (context.set(a=1), context._flush()),
+        lambda: metrics.set("rows_loaded", 1),
+    ):
+        counter = _CountingStdout()
+        monkeypatch.setattr(sys, "stdout", counter)
+        emit()
+        monkeypatch.undo()
+        monkeypatch.setenv(context.ENV_RUN_ID, "run-1")
+        assert counter.writes == 1, (
+            f"the marker took {counter.writes} writes: {counter.text!r}"
+        )
+        assert counter.text.endswith("\n")
+        context._reset_for_tests()
+        monkeypatch.delenv(context.ENV_OUTPUT, raising=False)
