@@ -231,7 +231,7 @@ func TestExtractExpandsAndMaps(t *testing.T) {
 	}
 
 	// The whole row is composed in the chain, ingestion_id included. Nothing is
-	// carimbado depois.
+	// stamped afterwards.
 	data = Transform(data,
 		Compute("provider", func(map[string]any) (any, error) { return "open_meteo", nil }),
 		Compute("entity", func(map[string]any) (any, error) { return "hourly_temperature", nil }),
@@ -527,13 +527,12 @@ func TestTransformKeepsTheCounters(t *testing.T) {
 // --- Removed surface -------------------------------------------------------
 
 func TestTheDefaultNamespacesIngestionIDDoesNotChange(t *testing.T) {
-	// O nome deste teste era "NamespaceIsNotConfigurable", e virou falso na
-	// v0.38.0: sdk.Namespace chooses another. What it has ALWAYS asserted still
+	// This test used to be called "NamespaceIsNotConfigurable", which went false
+	// in v0.38.0: sdk.Namespace chooses another one. What it has ALWAYS asserted
 	// still holds and is what matters -- the default's value, which is what
-	// whoever already
-	// wrote has in the table.
+	// whoever already wrote has in the table.
 	//
-	// WithMetadataNamespace, antes disso, era aceito, validado, defaultado e
+	// WithMetadataNamespace, before that, was accepted, validated, defaulted --
 	// and then IGNORED: whoever set it got identical ids and believed the
 	// opposite. It was removed, and that is why today's configuration goes in
 	// through a path the test above proves is used.

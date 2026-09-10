@@ -1,7 +1,7 @@
 // Package config loads and validates the process's configuration from the
 // environment.
 //
-// It sits outside the tree §36 of the plan describes, which did not foresee a
+// It sits outside the engine's original package tree, which did not foresee a
 // package for this. The alternative was scattering os.Getenv across cmd/ and
 // infrastructure/; a single point of reading and validation is worth the
 // detour, and rule 7 asks that decisions like this one be explicit rather than

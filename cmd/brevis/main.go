@@ -116,8 +116,8 @@ func cmdMigrate() *cobra.Command {
 	}
 }
 
-// cmdValidate exists to give an answer BEFORE publishing. Section 5 of the plan
-// says to validate the DAG before saving; being able to run that in the editor
+// cmdValidate exists to give an answer BEFORE publishing. The rule is to
+// validate the DAG before saving; being able to run that in the editor
 // or in CI, with no database and no server, is what makes the rule useful rather
 // than bureaucratic.
 // emLinha prints the params in a stable order — two identical runs have to

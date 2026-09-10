@@ -1,6 +1,6 @@
 // Package workflow (application) translates the YAML file into the domain.
 //
-// The separation exists because §22 of the plan is explicit: once published, the
+// The separation exists because the rule is explicit: once published, the
 // database is the source of truth, not the file. The YAML is publishing INPUT --
 // it comes in here, becomes domain, and the domain is what persists. Changing the
 // file format must not touch the graph's invariants.

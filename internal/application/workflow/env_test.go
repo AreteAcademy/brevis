@@ -130,10 +130,9 @@ func TestASpaceInTheVariablesNameDoesNotGetThrough(t *testing.T) {
 	}
 }
 
-// TestACoordinateErrorDoesNotEchoTheSecret: o caso mais provavel de coordenada
-// invalida e alguem ter colado o segredo de verdade -- e `brevis validate`
-// runs in CI, whose log plenty of people read. That is what the first version
-// did.
+// TestACoordinateErrorDoesNotEchoTheSecret: the likeliest invalid coordinate is
+// somebody having pasted the real secret -- and `brevis validate` runs in CI,
+// whose log plenty of people read. That is what the first version did.
 func TestACoordinateErrorDoesNotEchoTheSecret(t *testing.T) {
 	const colado = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
 

@@ -13,8 +13,8 @@ import (
 
 // from.HTTP is an adapter: it copies its fields into the core.Source extract
 // consumes. A field forgotten in that copy breaks nothing that compiles -- it
-// simply stops having an effect, which is the defect this
-// SDK mais achou em si mesmo.
+// simply stops having an effect, which is the defect this SDK has found in
+// itself most often.
 //
 // This test checks that every field reaches the other side.
 func TestHTTPPassesEveryFieldThrough(t *testing.T) {
@@ -90,8 +90,8 @@ func TestHTTPPassesEveryFieldThrough(t *testing.T) {
 	}
 }
 
-// Cada formato tem de chegar ao decodificador certo. Um Format ignorado
-// would decode JSON where the fetcher asked for CSV.
+// Every format has to reach the right decoder. An ignored Format would decode
+// JSON where the fetcher asked for CSV.
 func TestHTTPForwardsEachFormat(t *testing.T) {
 	casos := []struct {
 		formato core.Format

@@ -77,7 +77,7 @@ func loteDeTeste(n int) []sdk.Envelope {
 	return out
 }
 
-// TestIntegrationARowActuallyGoesIn is §5.1 of the plan: the in-memory tests
+// TestIntegrationARowActuallyGoesIn exists because the in-memory tests
 // prove the bytes we assembled, not what the server accepts.
 func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 	conn := connect(t)
@@ -105,8 +105,8 @@ func TestIntegrationARowActuallyGoesIn(t *testing.T) {
 // lands in the right column when the table's order is not the record's.
 func TestIntegrationTheTablesOrderIsWhatCounts(t *testing.T) {
 	conn := connect(t)
-	// The table's order is deliberately different from the order the record
-	// costuma ser escrito.
+	// The table's order is deliberately different from the order the record is
+	// usually written in.
 	name := table(t, conn, `
 		valor NUMERIC(18,2),
 		provider TEXT,
@@ -237,11 +237,12 @@ func TestIntegrationAMissingTableSaysHowToCreateIt(t *testing.T) {
 	}
 }
 
-// TestIntegrationTheReadIsStreamed is §5.3: a test that FAILS if the driver
-// bufferizar em vez de fazer streaming.
+// TestIntegrationTheReadIsStreamed FAILS if the driver buffers instead of
+// streaming.
 //
 // It consumes one row and stops. If the driver built the whole list before
-// devolver, ele teria lido as 50 mil -- e o tempo denunciaria.
+// returning, it would have read all fifty thousand -- and the time would show
+// it.
 func TestIntegrationTheReadIsStreamed(t *testing.T) {
 	conn := connect(t)
 	name := table(t, conn, "i INT, texto TEXT")
@@ -368,8 +369,7 @@ func TestIntegrationPostgresToPostgres(t *testing.T) {
 		data = sdk.Transform(data,
 			// The source_key comes from the id as TEXT: the ingestion_id's key
 			// is composed by concatenation, and a number and its string have
-			// to
-			// produzir o mesmo id.
+			// to produce the same id.
 			sdk.Compute("source_key", func(r map[string]any) (any, error) {
 				return fmt.Sprint(r["id"]), nil
 			}),

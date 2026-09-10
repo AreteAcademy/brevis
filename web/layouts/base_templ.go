@@ -16,7 +16,7 @@ import (
 
 // Base is the skeleton of every page.
 //
-// Section 17 of the plan asks for SSR first, with interactive islands only where
+// The design asks for SSR first, with interactive islands only where
 // the interaction justifies one (React Flow, in PHASE 6). No SPA: the HTML
 // arrives finished.
 //

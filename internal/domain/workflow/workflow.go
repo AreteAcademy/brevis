@@ -25,8 +25,8 @@ const (
 	KindDAG   Kind = "dag"
 )
 
-// Workflow is a flow's definition. Immutable once published: §22 of the plan
-// requires a Run to keep a snapshot of the version that produced it.
+// Workflow is a flow's definition. Immutable once published: a Run keeps a
+// snapshot of the version that produced it.
 type Workflow struct {
 	Slug     string
 	Name     string
@@ -541,7 +541,7 @@ type Edge struct {
 	Label string
 }
 
-// Validate applies the invariants §5 of the plan requires before saving.
+// Validate applies the invariants required before saving.
 // Order matters: duplicate IDs and missing dependencies are checked before the
 // cycle, because a graph with a dangling edge cannot be walked.
 func (w Workflow) Validate() error {

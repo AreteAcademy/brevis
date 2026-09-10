@@ -1,4 +1,4 @@
-// Package scheduler holds the dispatcher from §27 of the plan.
+// Package scheduler holds the queue's dispatcher.
 //
 // The design is §8's: a PERSISTENT queue (Postgres) plus an IN-MEMORY
 // dispatcher. The dispatcher holds no work -- it claims from the queue, runs,

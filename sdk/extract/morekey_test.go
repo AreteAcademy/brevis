@@ -25,8 +25,7 @@ func paginatorWithMeta(t *testing.T, pages int, mente bool) (*httptest.Server, *
 		hasMore := p < pages
 		if mente {
 			// It lies, always saying there is more; the safety net (an empty
-			// page
-			// vazia) tem de encerrar mesmo assim.
+			// page) has to end the run anyway.
 			hasMore = true
 		}
 		lines := `[{"n":1}]`

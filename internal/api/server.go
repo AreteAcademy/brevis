@@ -1,7 +1,7 @@
 // Package api exposes Brevis's HTTP interface.
 //
 // It uses plain net/http. ServeMux's method-and-path routing (Go 1.22+) covers
-// what is needed, and rule 6 of the plan asks to avoid a framework when the
+// what is needed, and the rule is to avoid a framework when the
 // stdlib does the job. This system's hard work is in the queue, in the scheduler
 // and in the state machine — not in the HTTP.
 package api

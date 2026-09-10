@@ -96,8 +96,8 @@ func TestTheRefreshGetsTheCredentialUnderAnotherPrefix(t *testing.T) {
 			// refresh URL's directory and the pages would carry on with the old
 			// one, which is the same defect in the opposite direction.
 			//
-			// O servidor de teste reemite SEM Path, de proposito: e o padrao
-			// of RFC 6265 is the case that breaks.
+			// The test server reissues WITHOUT Path, on purpose: RFC 6265's
+			// default is the case that breaks.
 			for _, got := range cookieOnPages {
 				if got == "" {
 					t.Error("a pagina foi sem credencial nenhuma")

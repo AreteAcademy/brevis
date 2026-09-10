@@ -21,7 +21,8 @@ func TestLevelsInAChain(t *testing.T) {
 }
 
 // The point of grouping by level: gold_metrics and gold_users are independent
-// e devem sair juntas. Uma ordenacao topologica linear as serializaria.
+// and have to come out together. A linear topological sort would serialise
+// them.
 func TestLevelsPreserveParallelism(t *testing.T) {
 	w := wf.Workflow{
 		Nodes: []wf.Node{{ID: "silver"}, {ID: "metrics"}, {ID: "users"}, {ID: "publish"}},

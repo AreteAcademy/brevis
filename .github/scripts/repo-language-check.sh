@@ -22,10 +22,11 @@
 #     are in English.
 #   - site/. The website is translated for users on purpose: pt-BR, English
 #     and Spanish.
-#   - *_test.go. 471 test messages are still Portuguese. Nobody outside the
-#     project reads them, so they were left for a sweep of their own rather
-#     than mixed into a release. Removing this exclusion is the way to start
-#     that sweep.
+#   - The MESSAGES in *_test.go, but not their comments. 471 t.Errorf strings
+#     are still Portuguese; nobody outside the project reads them, so they were
+#     left for a sweep of their own rather than mixed into a release. Test
+#     COMMENTS are checked like any other: excluding the whole file was too
+#     broad, and it hid a Portuguese comment in process_test.go for a day.
 #   - *_templ.go. Generated; fix the .templ and regenerate.
 #   - The on-disk and wire formats listed in CONTRIBUTING.md -- the graph
 #     payload keys dag.js reads, postgres.Stage's tags, the migrations'
@@ -46,7 +47,10 @@ import re, pathlib, sys
 # explaining one of them is correct English prose about a Portuguese name. A
 # detector that flagged those would be turned off within a week, which is the
 # argument ui-language-check.sh already makes.
-WORDS = """que nao não para uma por como sem isso vem foi são pelo mais
+# `são` is absent: it fired on "São Paulo" in a timezone test whose comment is
+# correct English. A gate that flags a city name is a gate somebody switches
+# off, and this project's cron tests will keep naming that city.
+WORDS = """que nao não para uma por como sem isso vem foi pelo mais
 já está sendo ser tem dos das aos nas nos qual onde porque então aqui cada
 mesmo assim muito quando entre sobre depois antes ainda apenas seu sua seus
 suas fazer feito precisa deve pode nenhum nenhuma todos todas invalido
@@ -65,7 +69,7 @@ STRING = re.compile(r'"((?:[^"\\]|\\.){6,})"')
 COMENTARIO = re.compile(r"^\s*(//|#|--)\s*(.+)$")
 
 FORA = ("/vendor/", "/node_modules/", "site/", "/.git/", "/testdata/",
-        "_test.go", "_templ.go", "CHANGELOG.md", "CHANGELOG-motor.md", "NOTES.md")
+        "_templ.go", "CHANGELOG.md", "CHANGELOG-motor.md", "NOTES.md")
 EXTS = {".go", ".md", ".yml", ".yaml", ".sh", ".templ"}
 # Makefile and Dockerfile carry operator-facing echoes and have no extension --
 # three Portuguese ones lived in the Makefile until 2026-09-10 because every
@@ -85,7 +89,7 @@ for p in sorted(pathlib.Path(".").rglob("*")):
             if m:
                 ruins.append((s, n, m.group(0), "comment", c.group(2)[:60]))
             continue
-        if not FALA.search(linha):
+        if s.endswith("_test.go") or not FALA.search(linha):
             continue
         for raw in STRING.findall(linha):
             m = PT.search(CODE.sub(" ", raw))

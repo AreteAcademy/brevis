@@ -264,7 +264,7 @@ func (r *RunRepo) CountByStatus(ctx context.Context) (map[dom.Status]int, error)
 }
 
 // CountByTrigger shows where the runs came from — telling a backfill from a
-// scheduled run is what section 12 asks for while investigating an incident.
+// scheduled run is what investigating an incident needs.
 func (r *RunRepo) CountByTrigger(ctx context.Context) (map[string]int, error) {
 	rows, err := r.pool.Query(ctx, `SELECT trigger_type, count(*) FROM runs GROUP BY trigger_type`)
 	if err != nil {

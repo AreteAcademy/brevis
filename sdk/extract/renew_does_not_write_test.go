@@ -217,9 +217,9 @@ func TestTheRotationAppliesToThePagesEvenWhenExpiresAtFails(t *testing.T) {
 
 // TestAStoreWithoutExpiresAtWarnsAtAssembly is criterion 4. Not a refusal: there
 // are sources whose refresh returns no validity, and for those the store is
-// still worth having. But the
-// limite tem de ser dito a quem configurou -- nessa combinacao o store
-// stays poisonable, and nothing at runtime will reveal that.
+// still worth having. But the limit has to be told to whoever configured it --
+// in that combination the store stays poisonable, and nothing at runtime will
+// reveal that.
 func TestAStoreWithoutExpiresAtWarnsAtAssembly(t *testing.T) {
 	var buf bytes.Buffer
 	previous := slog.Default()

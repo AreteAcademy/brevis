@@ -127,8 +127,7 @@ func TestAPodWithNoImageIsRefused(t *testing.T) {
 
 // The name has to be stable for the SAME attempt: if the process dies between
 // creating the pod and recording that, the next attempt finds the existing pod
-// instead of
-// vez de subir um segundo rodando o mesmo dbt em paralelo.
+// instead of starting a second one running the same dbt in parallel.
 func TestThePodsNameIsStablePerAttempt(t *testing.T) {
 	a := k8s.PodName(task())
 	if b := k8s.PodName(task()); a != b {

@@ -54,7 +54,7 @@ func TestAStageIsOneEntryThatChanges(t *testing.T) {
 	}
 }
 
-// A ordem de chegada e a ordem da tela: extract antes de load, sempre.
+// The arrival order is the screen's order: extract before load, always.
 func TestTheArrivalOrderIsPreserved(t *testing.T) {
 	var c stageCollector
 	c.line(`@brevis:{"tipo":"etapa","nome":"check","estado":"done"}`)
@@ -118,11 +118,11 @@ func TestTheCeilingProtectsTheDatabase(t *testing.T) {
 	}
 }
 
-// O motor tem de entender os DOIS formatos.
+// The engine has to understand BOTH formats.
 //
-// O SDK ate a v0.47.0 falava em portugues; da v0.48.0 em diante fala ingles. Um
-// an engine that only understood the new one would make an old fetcher's stages
-// vanish from the screen -- with no error, no log, just the grey box back.
+// The SDK spoke Portuguese up to v0.47.0 and English from v0.48.0 on. An engine
+// that only understood the new one would make an old fetcher's stages vanish
+// from the screen -- with no error, no log, just the grey box back.
 func TestBothFormatsOfTheProtocol(t *testing.T) {
 	casos := map[string]string{
 		"ingles (v0.48+)":         `@brevis:{"type":"stage","name":"extract","state":"done","ms":2400,"at":"agora","paginas":300}`,

@@ -51,14 +51,14 @@ func TestChangingTheFilterResetsThePage(t *testing.T) {
 	if u := f.With("state", "failed"); containsText(u, "page=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
-	// Navegar entre paginas preserva o resto do filtro.
+	// Moving between pages preserves the rest of the filter.
 	u := f.WithPage(3)
 	if !containsText(u, "tag=acme") || !containsText(u, "page=3") {
 		t.Errorf("URL de pagina = %q", u)
 	}
 }
 
-// Terceiro clique no mesmo cabecalho remove a ordenacao.
+// A third click on the same header removes the sort.
 func TestWithAnOrderItTogglesAndThenClears(t *testing.T) {
 	f := Filter{PerPage: DefaultPerPage}
 	first := f.WithSort("last")

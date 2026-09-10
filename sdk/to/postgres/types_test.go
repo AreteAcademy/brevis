@@ -46,11 +46,10 @@ func TestToColumnRowByRow(t *testing.T) {
 			float64(instant.Unix()), "timestamp with time zone", instant,
 			"um JSON traz epoch como float64, e recusa-lo perderia a linha",
 		},
-		// numeric tem caso proprio, em TestNumericGoesTypedAndNotAsText: ele
+		// numeric has a case of its own, in TestNumericGoesTypedAndNotAsText: it
 		// comes out neither as a string nor as a float, but as a pgtype.Numeric
-		// --
-		// which preserves the precision AND avoids an error built per row inside
-		// do pgx.
+		// -- which preserves the precision AND avoids an error built per row
+		// inside pgx.
 		{"text passa como veio", "qualquer coisa", "text", "qualquer coisa", ""},
 		{"integer passa como veio", int64(42), "integer", int64(42), ""},
 	}

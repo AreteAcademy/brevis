@@ -1,6 +1,6 @@
 // Package run is the domain model of a run and its steps.
 //
-// Section 7 of the plan is explicit: "do not use plain booleans such as
+// The rule is explicit: "do not use plain booleans such as
 // running = true". States are a type, and transitions are validated — a `Run`
 // cannot go from SUCCESS to RUNNING through carelessness or through a race.
 package run

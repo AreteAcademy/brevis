@@ -15,7 +15,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// This file implements the flow from §20 of the plan:
+// This file implements the graph's flow:
 //
 //	definition in the database -> API -> React Flow JSON -> UI
 //

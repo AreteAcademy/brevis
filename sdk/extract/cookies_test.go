@@ -15,9 +15,9 @@ import (
 // character that breaks whoever splits name=value on every "=".
 const paddedJWT = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..QUJDRA=="
 
-// TestTheCallersCookieArrivesWhole: the consumer wrote 36 lines to assemble
-// Set-Cookie ao header, e a armadilha foi cortar o JWT no segundo "=". Aqui o
-// the cookie has to arrive identical to what the caller passed.
+// TestTheCallersCookieArrivesWhole: the consumer wrote 36 lines to move
+// Set-Cookie onto the header, and the trap was cutting the JWT at the second
+// "=". Here the cookie has to arrive identical to what the caller passed.
 func TestTheCallersCookieArrivesWhole(t *testing.T) {
 	var received string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -123,8 +123,7 @@ func TestAMalformedCookieFailsEarly(t *testing.T) {
 }
 
 // TestTheCallersHeaderIsNotMutated: the header belongs to the consumer, and they
-// may reuse the
-// mesmo mapa em outra pipeline.
+// may reuse the same map in another pipeline.
 func TestTheCallersHeaderIsNotMutated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
@@ -152,11 +151,10 @@ func drain(t *testing.T, s core.Source) {
 	}
 }
 
-// TestASecurePrefixedCookieDoesNotVanishSilently: o nome real do cookie do NextAuth
+// TestASecurePrefixedCookieDoesNotVanishSilently: NextAuth's real cookie name
 // starts with __Secure-, which in a browser spec only applies over https. If
-// the
-// jar aplicasse essa regra, o cookie sumiria antes de sair -- e o SDK falharia
-// with a 401 without ever saying it discarded the credential.
+// the jar applied that rule, the cookie would vanish before leaving -- and the
+// SDK would fail with a 401 without ever saying it discarded the credential.
 //
 // The stdlib's jar does not apply the prefix rule. This test exists for the day
 // that changes.

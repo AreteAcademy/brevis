@@ -121,12 +121,10 @@ func TestTheAnnouncementCarriesTheVersion(t *testing.T) {
 }
 
 // The extraction ends when the STREAM is exhausted, not when Extract returns
-// the
-// iterador.
+// the iterator.
 //
 // The chain is lazy: timing the calls would say "extract: 3ms" on a forty-minute
-// extraction, and the screen would lie about precisely the stage
-// mais longa.
+// extraction, and the screen would lie about precisely the longest stage.
 func TestTheSourceDurationMeasuresTheRealExtraction(t *testing.T) {
 	var box []Envelope
 	p := pipelineDeTeste(slowSource{

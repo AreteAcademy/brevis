@@ -108,7 +108,7 @@ func TestTextRefusesAShellCharacter(t *testing.T) {
 }
 
 // Whoever genuinely needs a character outside the set declares `pattern` -- the
-// decisao passa a ser explicita, do autor do workflow.
+// decision becomes explicit, and the workflow's author owns it.
 func TestPatternWidensWhatIsAccepted(t *testing.T) {
 	p := wf.Param{Name: "json", Type: wf.ParamString, Pattern: `^\{"[a-z_]+":"[a-z]+"\}$`}
 	if err := p.Accepts(`{"load_full":"true"}`); err != nil {
@@ -116,7 +116,7 @@ func TestPatternWidensWhatIsAccepted(t *testing.T) {
 	}
 }
 
-// Default invalido so apareceria no primeiro disparo agendado, de madrugada.
+// An invalid default would only surface on the first scheduled run, at 3am.
 func TestAnInvalidPatternFailsAtPublishTime(t *testing.T) {
 	w := withParams(wf.Param{Name: "days", Type: wf.ParamInteger, Default: "muitos"})
 	if err := w.Validate(); err == nil {

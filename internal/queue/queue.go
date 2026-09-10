@@ -1,4 +1,4 @@
-// Package queue is the persistent queue from §8 of the plan.
+// Package queue is the engine's persistent queue.
 //
 // The queue lives in Postgres, not in an in-memory channel: "never depend
 // exclusively on an in-memory channel for critical jobs". A process that dies

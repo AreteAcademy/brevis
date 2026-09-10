@@ -22,10 +22,8 @@ func aplica(t *testing.T, fn Transformer, in map[string]any) map[string]any {
 // to produce.
 // If it changes, every previous load of every consumer stops matching.
 //
-// The expected value comes from Envelope.IngestionID, which is the
-// implementation that
-// existia antes e continua conferida byte a byte contra o uuid.uuid5 do
-// Python.
+// The expected value comes from Envelope.IngestionID, the implementation that
+// came before and is still checked byte for byte against Python's uuid.uuid5.
 func TestIngestionIDProducesTheSameIDAsBefore(t *testing.T) {
 	env := core.Envelope{
 		Provider: "open_meteo", Entity: "hourly_temperature",

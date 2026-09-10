@@ -205,7 +205,8 @@ func TestTheReasonForWaitingIsReported(t *testing.T) {
 }
 
 // A deterministic name: a pod that already exists was created by a run that
-// morreu antes de registrar. Adotar evita subir um segundo rodando o mesmo dbt.
+// died before recording it. Adopting it avoids starting a second one running
+// the same dbt.
 func TestAnAlreadyExistingPodIsAdopted(t *testing.T) {
 	api := &apiFalsa{
 		createErr: errors.New(`pods "x" already exists`),

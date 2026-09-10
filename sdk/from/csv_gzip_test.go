@@ -124,8 +124,8 @@ func TestALyingGzipFailsSayingWhatItIs(t *testing.T) {
 	}
 }
 
-// The same delimiter holds for files, which is where a `;` CSV usually
-// vir depois de baixado.
+// The same delimiter holds for files, which is where a `;` CSV usually turns up
+// once downloaded.
 func TestFilesWithADelimiter(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "dados.csv")

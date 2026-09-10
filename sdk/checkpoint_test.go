@@ -155,7 +155,7 @@ func TestACheckpointWithNoManifestRedoesTheExtract(t *testing.T) {
 	}
 }
 
-// FASE 2 (I1) -- manifesto inteiro, parte faltando: recusa antes de carregar.
+// A whole manifest with a part missing: refuse before loading anything.
 func TestACheckpointWithAMissingPartRedoesTheExtract(t *testing.T) {
 	dir := t.TempDir()
 	var leituras int

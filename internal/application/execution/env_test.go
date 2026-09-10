@@ -7,13 +7,13 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 )
 
-// TestTheEnvironmentsPrecedence: do mais fraco ao mais forte -- ambiente global do
-// engine's, the workflow's `env:`, the step's `env:`.
+// TestTheEnvironmentsPrecedence: weakest to strongest -- the engine's global
+// environment, the workflow's `env:`, the step's `env:`.
 //
 // The step beating the global is the part that changed. The other way round, a
 // variable declared in the file would lose quietly to a BREVIS_TASK_ENV somebody
 // configured months ago -- and "loses quietly" is the failure mode this
-// projeto mais persegue.
+// project chases hardest.
 func TestTheEnvironmentsPrecedence(t *testing.T) {
 	w := wf.Workflow{
 		Slug: "x",

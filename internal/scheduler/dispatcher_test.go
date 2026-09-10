@@ -171,9 +171,9 @@ func TestAcceptanceCriterion_100Runs_Concurrency5(t *testing.T) {
 	}
 }
 
-// Section 29 asks that a critical operation tolerate repetition. The concrete
-// case: the
-// scheduler cria o Run, morre antes de registrar e tenta de novo ao subir.
+// A critical operation has to tolerate repetition. The concrete case: the
+// scheduler creates the Run, dies before recording it, and tries again on the
+// way back up.
 func TestIdempotencyPreventsADuplicateRun(t *testing.T) {
 	pool := testDB(t)
 	ctx := context.Background()
@@ -653,8 +653,7 @@ func TestThePerWorkflowLimitHoldsTheRestBack(t *testing.T) {
 }
 
 // A limit greater than 1 hands out exactly the limit -- no fewer (which would
-// be
-// serializacao), nem mais.
+// be serialisation), and no more.
 func TestALimitOfThreeHandsOutThree(t *testing.T) {
 	pool := testDB(t)
 	repo := postgres.NewRunRepo(pool)
@@ -692,8 +691,8 @@ func TestAWorkflowAtItsLimitDoesNotBlockTheOthers(t *testing.T) {
 	}
 }
 
-// Sem limite declarado (0), nada muda — o comportamento antigo continua sendo o
-// padrao.
+// With no limit declared (0) nothing changes -- the old behaviour stays the
+// default.
 func TestWithNoLimitItHandsOutEverythingThatFits(t *testing.T) {
 	pool := testDB(t)
 	repo := postgres.NewRunRepo(pool)

@@ -63,9 +63,9 @@ func TestToJSONRowByRow(t *testing.T) {
 	}
 }
 
-// TestTheTwoInstantPathsAgree e a razao de o fallback de texto
-// exist, and the proof that it is not dead code: with or without parseTime, the
-// mesmo instante sai igual.
+// TestTheTwoInstantPathsAgree is the reason the text fallback exists, and the
+// proof that it is not dead code: with or without parseTime, the same instant
+// comes out the same.
 //
 // This test also prevents the lying comment that had been written -- that
 // without parseTime the instant would become base64. It does not; what changes

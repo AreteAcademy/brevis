@@ -126,9 +126,10 @@ func TestItStoresAndReturns(t *testing.T) {
 	}
 }
 
-// TestTheConditionalWrite: quem leu a geracao 1 e tenta gravar depois de outro
-// ter gravado a 2 recebe 412 -- e NAO sobrescreve. E a diferenca entre CAS de
-// real one and last-writer-wins, which is what a volume would allow.
+// TestTheConditionalWrite: whoever read generation 1 and tries to write after
+// somebody else wrote 2 gets a 412 -- and does NOT overwrite. That is the
+// difference between a real CAS and last-writer-wins, which is what a volume
+// would allow.
 func TestTheConditionalWrite(t *testing.T) {
 	g := &fakeGCS{}
 	c := credential(t, g)
@@ -171,7 +172,7 @@ func TestTheFirstWriteUsesDoesNotExist(t *testing.T) {
 	if _, err := c.Load(); err != nil { // objeto ausente, geracao 0
 		t.Fatal(err)
 	}
-	// Outro processo cria o objeto antes.
+	// Another process creates the object first.
 	g.mu.Lock()
 	g.existe, g.generation, g.conteudo = true, 7, []byte("brevis-cred/1p\nde-outro")
 	g.mu.Unlock()

@@ -15,9 +15,8 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/from"
 )
 
-// TestTheSnapshotDoesNotDependOnThePositionInTheChain is item 3, and is the
-// reason it is NOT
-// ser um transformer.
+// TestTheSnapshotDoesNotDependOnThePositionInTheChain is the reason the
+// snapshot is NOT a transformer.
 //
 // As a transformer, the snapshot would depend on position: placing it after a
 // Compute would produce a "raw" record carrying the field the chain had just
@@ -37,7 +36,7 @@ func TestTheSnapshotDoesNotDependOnThePositionInTheChain(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A cadeia escreve DEPOIS do retrato, e escreve bastante.
+	// The chain writes AFTER the snapshot, and writes plenty.
 	data = sdk.Transform(data,
 		sdk.Compute("derivado", func(map[string]any) (any, error) { return "novo", nil }),
 		sdk.Rename(map[string]string{"id": "source_key"}),
@@ -153,8 +152,7 @@ func TestTheNamespaceChangesTheID(t *testing.T) {
 
 // TestTheDefaultNamespaceHasNotChanged is the guarantee that stops the feature
 // from breaking whoever has already written: the id for somebody who chooses no
-// namespace has to be byte for byte the
-// de antes.
+// namespace has to be byte for byte the one from before.
 func TestTheDefaultNamespaceHasNotChanged(t *testing.T) {
 	output, err := sdk.IngestionID()(map[string]any{
 		"provider": "open_meteo", "entity": "hourly",

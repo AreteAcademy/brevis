@@ -27,8 +27,9 @@ func collectOutput(t *testing.T, ev <-chan execution.Event) []execution.Event {
 	return out
 }
 
-// The executor's boundary is code, not convention. If this test starts
-// falhar, a emenda a secao 3 do plano foi violada.
+// The executor's boundary is code, not convention. If this test starts failing,
+// something has crossed it: the local executor must not be constructible
+// outside local mode.
 func TestItRefusesToBeBuiltOutsideLocal(t *testing.T) {
 	for _, env := range []string{"prod", "staging", "dev", ""} {
 		if _, err := New(env); err == nil {

@@ -353,8 +353,8 @@ func TestCreateTableAloneIsEnough(t *testing.T) {
 	}
 }
 
-// The partition options partition on ingestion_loaded_at, so the column
-// tem de estar declarada.
+// The partition options partition on ingestion_loaded_at, so the column has to
+// be declared.
 func TestPartitionOptionsNeedTheLoadedAtColumn(t *testing.T) {
 	for _, c := range []core.LoadConfig{
 		{ProjectID: "p", Dataset: "d", Table: "t", Format: "ndjson",

@@ -9,7 +9,7 @@ import (
 // Run is one execution of a workflow.
 //
 // `Definition` holds the snapshot of the graph at the moment the Run came into
-// being. Section 22 of the plan requires it: editing the workflow later must not
+// being. The rule requires it: editing the workflow later must not
 // change the meaning of a past run.
 type Run struct {
 	ID             uuid.UUID

@@ -187,7 +187,7 @@ func TestCancellingFiresNoRetry(t *testing.T) {
 }
 
 // A step with no configured executor has to fail with a clear message, and not
-// ser pulado em silencio.
+// be skipped in silence.
 func TestAStepWithNoExecutorFailsExplicitly(t *testing.T) {
 	w := wf.Workflow{Slug: "w", Nodes: []wf.Node{{ID: "n", Action: "qualquer"}}}
 	err := app.Runner{Report: &coletor{}}.Run(context.Background(), w)
@@ -196,9 +196,9 @@ func TestAStepWithNoExecutorFailsExplicitly(t *testing.T) {
 	}
 }
 
-// The exit code has to survive the whole path: executor event -> error
-// tipado -> persistencia. Sem isto, distinguir 127 (comando inexistente) de 2
-// (an application error) just by looking at the log.
+// The exit code has to survive the whole path: executor event -> typed error
+// -> persistence. Without it, telling 127 (no such command) from 2 (an
+// application error) means reading the log.
 func TestAStepsErrorCarriesTheExitCode(t *testing.T) {
 	exec, err := local.New("local")
 	if err != nil {

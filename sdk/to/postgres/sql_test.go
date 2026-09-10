@@ -7,8 +7,8 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
-// TestInsertSQLNamesTheColumns: §5.4 of the plan asks for the SQL asserted as a
-// pure function, with no client -- and the reason is concrete. BigQuery's MERGE
+// TestInsertSQLNamesTheColumns asserts the SQL as a pure function, with no
+// client -- and the reason is concrete. BigQuery's MERGE
 // shipped with a POSITIONAL match and cost v0.12.0 precisely because the SQL was
 // built inside a method that held a client and had never been seen by a
 // teste.

@@ -34,8 +34,8 @@ func TestNotUsingBigQueryCompilesNoBigQuery(t *testing.T) {
 			"github.com/AreteAcademy/brevis/sdk/to",
 		}, true},
 
-		// E o controle: quem pede o BigQuery recebe o BigQuery. Sem isto, o
-		// test would pass with an SDK that loads nothing.
+		// And the control: whoever asks for BigQuery gets BigQuery. Without it,
+		// the test would pass with an SDK that loads nothing.
 		{"raiz + to/bigquery", []string{
 			"github.com/AreteAcademy/brevis/sdk",
 			"github.com/AreteAcademy/brevis/sdk/to/bigquery",

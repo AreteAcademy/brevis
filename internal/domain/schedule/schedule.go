@@ -1,6 +1,6 @@
 // Package schedule decides WHEN a workflow should run.
 //
-// Section 37 of the plan separates the responsibilities without ambiguity: the
+// The design separates the responsibilities without ambiguity: the
 // scheduler CREATES runs, the queue EXECUTES them. This package knows nothing of
 // the queue, the executor or the database — it answers a pure question: given
 // the cron, the timezone, the last materialized slot and the current instant,

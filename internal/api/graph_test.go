@@ -333,8 +333,8 @@ func TestAnSDKStepBecomesAGroupWithTheStagesInside(t *testing.T) {
 //
 // Each node's height is measured by what it DRAWS -- the last stage inside it --
 // and not by the height it declares. Checking against the declared one would
-// be
-// conferir o layout consigo mesmo: quem errasse as duas juntas passaria.
+// be checking the layout against itself: getting both wrong together would
+// still pass.
 func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 	g := graphWithStages(t, map[string]postgres.NodeState{
 		"b": {NodeID: "b", Status: "running", Stages: fourStages(), SdkVersion: "v0.44.1"},
@@ -373,8 +373,8 @@ func TestAColumnDoesNotOverlapWithAnExpandedNode(t *testing.T) {
 		t.Fatal("b e c precisam estar no grafo")
 	}
 
-	// b e c estao no MESMO nivel do diamond: um tem de acabar antes de o
-	// outro comecar.
+	// b and c are on the SAME level of the diamond: one has to end before the
+	// other begins.
 	top, bottom, topHeight := b, c, height("b")
 	if c < b {
 		top, bottom, topHeight = c, b, height("c")

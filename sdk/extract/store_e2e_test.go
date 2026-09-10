@@ -189,7 +189,7 @@ func TestTheCredentialNeverAppearsInALog(t *testing.T) {
 
 	var buf bytes.Buffer
 	previous := slog.Default()
-	// Debug: se algo vazasse so no nivel mais baixo, o teste tem de ver.
+	// Debug: if something only leaked at the lowest level, the test has to see it.
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	defer slog.SetDefault(previous)
 

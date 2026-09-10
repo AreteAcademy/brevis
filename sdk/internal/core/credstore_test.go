@@ -23,8 +23,8 @@ func testKey(t *testing.T) string {
 
 func storePronto(t *testing.T) (FileStore, string) {
 	t.Helper()
-	// t.TempDir vem 0755 nesta plataforma, e o store recusa diretorio frouxo
-	// -- which is the requested behaviour, so the test adjusts to it.
+	// t.TempDir comes back 0755 on this platform, and the store refuses a loose
+	// directory -- which is the requested behaviour, so the test adjusts to it.
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
@@ -163,8 +163,8 @@ func TestPlaintextWarnsOnlyOnce(t *testing.T) {
 	}
 }
 
-// TestWithAKeyItDoesNotWriteInTheClear: e o outro lado -- a opcao de cifrar tem de
-// realmente cifrar.
+// TestWithAKeyItDoesNotWriteInTheClear: the other side of it -- the option to
+// encrypt has to actually encrypt.
 func TestWithAKeyItDoesNotWriteInTheClear(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("session=abc=="); err != nil {
@@ -182,9 +182,9 @@ func TestWithAKeyItDoesNotWriteInTheClear(t *testing.T) {
 	}
 }
 
-// TestEncryptedWithoutAKeyFallsBackToTheSeed: durante um rollout, ou depois de alguem
-// removing the key, the store holds a value this process cannot read. Falling
-// back to the seed is right; returning garbage would be worse.
+// TestEncryptedWithoutAKeyFallsBackToTheSeed: during a rollout, or after
+// somebody removes the key, the store holds a value this process cannot read.
+// Falling back to the seed is right; returning garbage would be worse.
 func TestEncryptedWithoutAKeyFallsBackToTheSeed(t *testing.T) {
 	s, dir := storePronto(t)
 	if err := s.Save("segredo"); err != nil {
@@ -321,8 +321,8 @@ func TestAnUnreadableFileFallsBackToTheSeed(t *testing.T) {
 // not
 // so um encode.
 func TestASwappedKeyDoesNotDecrypt(t *testing.T) {
-	// t.TempDir vem 0755 nesta plataforma, e o store recusa diretorio frouxo
-	// -- which is the requested behaviour, so the test adjusts to it.
+	// t.TempDir comes back 0755 on this platform, and the store refuses a loose
+	// directory -- which is the requested behaviour, so the test adjusts to it.
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)

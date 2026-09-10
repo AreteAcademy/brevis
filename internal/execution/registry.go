@@ -9,7 +9,7 @@ import (
 
 // Task is a unit of work written in Go, compiled into the binary.
 //
-// Section 14 of the plan is categorical: "Do not execute arbitrary code
+// The rule is categorical: "Do not execute arbitrary code
 // received through the API. Local tasks must be compiled and registered in the
 // runtime". The registry exists to make that structural — the YAML can only
 // name

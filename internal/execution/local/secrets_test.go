@@ -35,7 +35,7 @@ func TestALocalSecretComesFromTheEnginesEnvironment(t *testing.T) {
 // a 401 further down, blaming the API for a variable nobody exported.
 func TestAMissingSecretFailsBeforeRunning(t *testing.T) {
 	casos := map[string]func(*testing.T){
-		// Setenv registra o cleanup; Unsetenv logo depois deixa a variavel
+		// Setenv registers the cleanup; Unsetenv right after leaves the variable
 		// genuinely absent and the original value comes back at the end of the
 		// test.
 		"not set": func(t *testing.T) {

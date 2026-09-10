@@ -1,7 +1,7 @@
 // Package local implements running processes on the host.
 //
-// It exists because of the 2026-08-31 amendment to section 3 of the plan: the
-// original text required Kubernetes for any language that was not Go, which made
+// It exists because of an amendment made on 2026-08-31: the original design
+// required Kubernetes for any language that was not Go, which made
 // developing on the instance itself impossible.
 //
 // The boundary is code, not convention: New refuses to build the executor

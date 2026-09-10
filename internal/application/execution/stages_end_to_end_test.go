@@ -151,8 +151,7 @@ func (r *spyReporter) Evento(e execution.Event) {
 //
 // And the executor here is any fake: what recognizes the marker is the runner,
 // which does not know which executor produced the event. That is why the LOCAL
-// executor
-// ganha o mesmo de graca.
+// executor gets the same for free.
 func TestStagesArriveThroughTheStepsLog(t *testing.T) {
 	spy := &spyPersister{}
 	tela := &spyReporter{}

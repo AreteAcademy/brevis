@@ -80,7 +80,7 @@ type TaskExec struct {
 	// code.
 	OutputPath string
 
-	// A zero Timeout means no limit. Section 37 asks for a timeout in PHASE 3;
+	// A zero Timeout means no limit. A timeout was asked for early on, and
 	// leaving the default open is deliberate — imposing an arbitrary limit would
 	// kill legitimately long tasks.
 	Timeout time.Duration

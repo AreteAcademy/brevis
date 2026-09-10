@@ -133,7 +133,8 @@ func TestWithNoWebhookItDoesNothing(t *testing.T) {
 	}
 }
 
-// Sem tags, o dominio sai do prefixo do slug em vez de ficar anonimo.
+// With no tags, the domain comes from the slug's prefix rather than going
+// anonymous.
 func TestTheDomainFallsBackToTheSlugsPrefix(t *testing.T) {
 	s, received := capture(t, 200, "ok")
 	a := alert()
