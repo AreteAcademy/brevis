@@ -97,6 +97,69 @@ cluster has to be a boot error. With `auto`, a failure to mount the service
 account would make the scheduler run everything inside its own 128Mi pod, in
 silence.
 
+## A third place a step can run: `host:`
+
+Some work cannot be a pod on demand — a licensed tool, a GPU machine, a dlt
+pipeline on a VM somebody else administers. Such a step names a machine instead
+of an image:
+
+```yaml
+steps:
+  - id: extract
+    host: dlt-runner-01
+    run: python pipelines/orders.py
+```
+
+The machines come from the **installation**, never from the file:
+
+```bash
+BREVIS_HOSTS=dlt-runner-01=https://10.0.3.7:9443,gpu-01=https://10.0.3.9:9443
+BREVIS_HOST_TOKEN=...
+```
+
+For the same reason `BREVIS_POD_ALLOWED_SECRETS` exists: the file that names a
+host is written by somebody else, and a workflow free to dispatch to an
+arbitrary address would be dispatching this engine's credentials to it. Empty
+means no step may use `host:` at all, and the refusal says so with the variable's
+name in it.
+
+`host:` and `image:` are **alternatives**, and naming both is refused at
+publish rather than at execution — otherwise the step publishes fine, sits in
+the schedule, and fails at three in the morning on whichever executor won.
+
+### It does not fall back
+
+An `image:` with no cluster degrades to a local process with a warning, because
+a container and a process are the same command in two wrappers. **A host does
+not.** It is where the licence lives, or the GPU, or the data, and quietly
+running the command somewhere else is the worst of the three outcomes. An
+unknown host fails the step, naming what the installation actually offers.
+
+### What the agent does, and what the engine still will not do
+
+The engine does **not** send secret values, and this executor did not become the
+first place it does. `secrets:` crosses as the coordinate `secret-name/key`,
+exactly as it reaches the kubelet in a pod, and the agent resolves it against
+its own store under its own allowlist. The trade-off is stated rather than
+hidden: the policy now lives in two places, one per host, and a machine somebody
+else administers should not inherit this cluster's list.
+
+Three more things the first version does and does not:
+
+- **A dropped connection resumes.** The agent numbers every line and the engine
+  asks to continue from the last one it saw, so a network blip does not fail a
+  forty-minute load. When the agent's buffer can no longer reach back that far
+  the step **fails** rather than continuing with a hole: output missing an
+  unknown number of lines would leave a step's counters wrong by an unknown
+  amount, silently.
+- **An agent that stops reporting loses the step.** It renews a lease on the
+  same stream, and a step that is merely quiet still renews it. When the lease
+  expires the step fails saying so — and saying plainly that the process **may
+  still be running** on a host the engine can no longer see.
+- **One token for every host.** No revoking a single host without changing them
+  all, and no per-host identity in the audit trail. That is a first version, and
+  it is written here rather than discovered.
+
 ## What the scheduler does (and does not do)
 
 It does **not** run dbt or Python. It speaks HTTP to the API server and SQL to

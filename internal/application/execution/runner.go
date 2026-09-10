@@ -181,6 +181,17 @@ type Runner struct {
 	// and as a process on a laptop, with no change to the YAML.
 	Pods execution.Executor
 
+	// Hosts serves the steps that declare `host:`, keyed by the name in the
+	// YAML. Empty is the normal case.
+	//
+	// A MAP and not a single executor, because one installation talks to
+	// several machines and each is a different agent at a different address.
+	// The YAML names one of them, and a name with no entry is refused with the
+	// list of what exists -- an installation-level fact belongs in an
+	// installation-level message, not in a step that silently ran somewhere
+	// else.
+	Hosts map[string]execution.Executor
+
 	// Metrics records per-step numbers. Nil means nothing is measured, which is
 	// what `brevis run` on a laptop wants: it has no endpoint to scrape.
 	//
@@ -1401,6 +1412,24 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 	}
 	t.Command = command
 
+	// A step with `host:` goes to that machine, and it is checked BEFORE the
+	// pod and the process.
+	//
+	// Not a fallback: `host:` names a specific machine, and quietly running the
+	// command somewhere else because that machine is not configured is the
+	// worst of the three outcomes. `image:` degrades to local mode with a
+	// warning because a container and a process are the same command in two
+	// wrappers; a host is not -- it is where the licence lives, or the GPU, or
+	// the data.
+	if n.Host != "" {
+		host, known := r.Hosts[n.Host]
+		if !known {
+			return nil, t, fmt.Errorf("step %q names `host: %s`, which this installation "+
+				"does not know. %s", n.ID, n.Host, knownHosts(r.Hosts))
+		}
+		return host, t, nil
+	}
+
 	// A step with `image:` runs as a POD when a pod executor exists. That is the
 	// difference between local mode and the cluster, and it lives HERE, in one
 	// place -- the YAML is identical in both, and neither executor knows the
@@ -1426,6 +1455,23 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 		})
 	}
 	return r.Processo, t, nil
+}
+
+// knownHosts renders the second half of the refusal above.
+//
+// The list is the actionable part: "unknown host" alone sends somebody reading
+// the YAML looking for a typo that may be in the installation instead.
+func knownHosts(hosts map[string]execution.Executor) string {
+	if len(hosts) == 0 {
+		return "No hosts are configured at all: they come from the installation, " +
+			"in BREVIS_HOSTS"
+	}
+	names := make([]string, 0, len(hosts))
+	for name := range hosts {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return "Configured hosts: " + strings.Join(names, ", ")
 }
 
 // recordStepMetrics hands what a step reported to the engine's own registry.

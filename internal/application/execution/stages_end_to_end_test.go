@@ -11,6 +11,7 @@ import (
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
+	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
@@ -478,5 +479,118 @@ func TestNoMarkerMeansNoContext(t *testing.T) {
 	}
 	if len(spy.published()) != 0 {
 		t.Errorf("a step that published nothing recorded %s", spy.published())
+	}
+}
+
+// namedExecutor records that it was the one chosen, and what it was handed.
+type namedExecutor struct {
+	name string
+	mu   sync.Mutex
+	got  []execution.TaskExec
+}
+
+func (n *namedExecutor) Name() string                         { return n.name }
+func (n *namedExecutor) Cancel(context.Context, string) error { return nil }
+
+func (n *namedExecutor) Execute(_ context.Context, t execution.TaskExec) (<-chan execution.Event, error) {
+	n.mu.Lock()
+	n.got = append(n.got, t)
+	n.mu.Unlock()
+	ch := make(chan execution.Event, 2)
+	ch <- execution.Event{Kind: execution.EventStarted}
+	ch <- execution.Event{Kind: execution.EventSucceeded}
+	close(ch)
+	return ch, nil
+}
+
+func (n *namedExecutor) calls() int {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return len(n.got)
+}
+
+// A step with `host:` goes to that machine, and to no other executor.
+func TestAStepWithAHostGoesToThatHost(t *testing.T) {
+	box := &namedExecutor{name: "remote:dlt-runner-01"}
+	other := &namedExecutor{name: "remote:gpu-01"}
+	process := &namedExecutor{name: "process"}
+	pods := &namedExecutor{name: "kubernetes"}
+
+	r := app.Runner{
+		RunID:    uuid.New(),
+		Persist:  &spyPersister{},
+		Report:   &spyReporter{},
+		Processo: process,
+		Pods:     pods,
+		Hosts:    map[string]execution.Executor{"dlt-runner-01": box, "gpu-01": other},
+	}
+	w := wf.Workflow{Slug: "vendas", Nodes: []wf.Node{
+		{ID: "extract", Run: "python pipelines/orders.py", Host: "dlt-runner-01"},
+	}}
+	if err := r.Run(context.Background(), w); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	if box.calls() != 1 {
+		t.Errorf("the named host ran %d step(s)", box.calls())
+	}
+	for name, e := range map[string]*namedExecutor{
+		"the other host": other, "the process executor": process, "the pod executor": pods,
+	} {
+		if e.calls() != 0 {
+			t.Errorf("%s ran the step as well", name)
+		}
+	}
+}
+
+// An unknown host is REFUSED, and does not fall back to running the command
+// here.
+//
+// `image:` degrades to local mode with a warning, because a container and a
+// process are the same command in two wrappers. A host is not: it is where the
+// licence lives, or the GPU, or the data. Running the command somewhere else is
+// the worst of the three outcomes, and the message has to carry what the
+// installation actually offers -- "unknown host" alone sends somebody hunting a
+// typo that may be in the configuration instead.
+func TestAnUnknownHostIsRefusedAndNotRunLocally(t *testing.T) {
+	process := &namedExecutor{name: "process"}
+	r := app.Runner{
+		RunID: uuid.New(), Persist: &spyPersister{}, Report: &spyReporter{},
+		Processo: process,
+		Hosts:    map[string]execution.Executor{"dlt-runner-01": &namedExecutor{name: "a"}},
+	}
+	w := wf.Workflow{Slug: "vendas", Nodes: []wf.Node{
+		{ID: "extract", Run: "python x.py", Host: "typo-01"},
+	}}
+
+	err := r.Run(context.Background(), w)
+	if err == nil {
+		t.Fatal("an unknown host was accepted")
+	}
+	if process.calls() != 0 {
+		t.Error("the step ran on the engine's own machine instead")
+	}
+	for _, want := range []string{"typo-01", "dlt-runner-01"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the message does not name %q: %v", want, err)
+		}
+	}
+}
+
+// With no hosts configured at all, the message says where they come from.
+func TestWithNoHostsTheMessageSaysWhereTheyComeFrom(t *testing.T) {
+	r := app.Runner{
+		RunID: uuid.New(), Persist: &spyPersister{}, Report: &spyReporter{},
+		Processo: &namedExecutor{name: "process"},
+	}
+	w := wf.Workflow{Slug: "vendas", Nodes: []wf.Node{
+		{ID: "extract", Run: "python x.py", Host: "dlt-runner-01"},
+	}}
+	err := r.Run(context.Background(), w)
+	if err == nil {
+		t.Fatal("a host was accepted with none configured")
+	}
+	if !strings.Contains(err.Error(), "BREVIS_HOSTS") {
+		t.Errorf("the message does not say where hosts come from: %v", err)
 	}
 }

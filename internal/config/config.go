@@ -50,6 +50,27 @@ type Config struct {
 	// that is deliberate.
 	TaskEnv []string
 
+	// Hosts are the machines the engine does not manage but may dispatch to,
+	// as `name=https://agent:9443` pairs. A step's `host:` names one of them.
+	//
+	// `BREVIS_HOSTS=dlt-runner-01=https://10.0.3.7:9443,gpu-01=https://10.0.3.9:9443`
+	//
+	// It is an INSTALLATION-level list for the same reason AllowedSecrets is:
+	// the file that names a host is written by somebody else, and a workflow
+	// that could dispatch to an arbitrary address would be dispatching this
+	// engine's credentials to it. Empty means no step may use `host:`, and the
+	// refusal says so with this variable's name in it.
+	Hosts map[string]string
+
+	// HostToken authenticates the engine to every agent.
+	//
+	// One token for all of them, and the gap is stated rather than discovered:
+	// no revoking one host without changing every host, and no per-host
+	// identity in the audit trail. It is a first version, and the alternative
+	// -- per-host credentials -- is a key-management problem this engine does
+	// not have anywhere else yet.
+	HostToken string
+
 	// SlackWebhook receives the alert for a definitive failure. Empty means
 	// nobody is told. It comes from the environment and never from the YAML:
 	// whoever holds the URL posts in the channel as if they were the
@@ -137,6 +158,8 @@ func Load() (Config, error) {
 			Tolerations:       graces("BREVIS_POD_TOLERATIONS"),
 			KeepOnFailure:     renamed("BREVIS_POD_KEEP_ON_FAILURE", "BREVIS_POD_MANTER_EM_FALHA") == "true",
 		},
+		Hosts:           pares("BREVIS_HOSTS"),
+		HostToken:       os.Getenv("BREVIS_HOST_TOKEN"),
 		ShutdownTimeout: 15 * time.Second,
 	}
 

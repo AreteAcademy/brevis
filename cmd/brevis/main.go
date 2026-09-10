@@ -36,6 +36,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution"
 	k8s "github.com/AreteAcademy/brevis/internal/execution/kubernetes"
 	"github.com/AreteAcademy/brevis/internal/execution/local"
+	"github.com/AreteAcademy/brevis/internal/execution/remote"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability"
@@ -721,6 +722,10 @@ func cmdScheduler() *cobra.Command {
 				return err
 			}
 
+			// The machines this engine does not manage. Empty is the normal
+			// case, and then no step may declare `host:` at all.
+			hosts := remoteHosts(cfg, log)
+
 			// Settled once, at boot: the process's environment does not change,
 			// and re-reading it per run would only multiply system calls.
 			//
@@ -764,6 +769,7 @@ func cmdScheduler() *cobra.Command {
 					Params:   r.Params,
 					Processo: processo,
 					Pods:     pods,
+					Hosts:    hosts,
 					Go:       local.NewGoExecutor(execution.NewRegistry()),
 					Env:      tasksEnvironment,
 					Report:   consoleReporter{},
@@ -1180,6 +1186,34 @@ func cmdPrune() *cobra.Command {
 	c.Flags().BoolVar(&dry, "dry-run", false,
 		"report what would be removed and change nothing")
 	return c
+}
+
+// remoteHosts builds one executor per configured machine.
+//
+// Built at BOOT and not per run: the list does not change while the process
+// lives, and a step that names a host nobody configured should fail on the
+// installation's terms rather than on a lookup that happened to miss.
+//
+// A host with no token is allowed and warned about. Refusing would be defensible
+// and would also make a laptop-to-VM setup impossible to try; the warning is
+// what keeps that from becoming production by accident.
+func remoteHosts(cfg config.Config, log *slog.Logger) map[string]execution.Executor {
+	if len(cfg.Hosts) == 0 {
+		return nil
+	}
+	if cfg.HostToken == "" {
+		log.Warn("hosts are configured with no BREVIS_HOST_TOKEN, so the agents are "+
+			"unauthenticated", "hosts", len(cfg.Hosts))
+	}
+	out := make(map[string]execution.Executor, len(cfg.Hosts))
+	for name, addr := range cfg.Hosts {
+		out[name] = &remote.Executor{
+			Host:  name,
+			Agent: remote.HTTPAgent{BaseURL: strings.TrimRight(addr, "/"), Token: cfg.HostToken},
+		}
+	}
+	log.Info("remote hosts configured", "count", len(out))
+	return out
 }
 
 // uiActions wires the screen's two effects — pause a schedule and run now — to
