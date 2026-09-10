@@ -12,8 +12,8 @@ being attacked and where it stands.
 | **4** | **Auto params** — the clock, the window and the lateness the engine hands every run | [`plan/2026-09-08-open-threads.md`](docs/plan/2026-09-08-open-threads.md) | **done** |
 | **5** | **The scheduler's retry policy** — `--max-attempts` and `--retry-backoff`, and a default that is not inert | [`plan/2026-09-07-sdk-retry-policy-is-not-configurable.md`](docs/plan/2026-09-07-sdk-retry-policy-is-not-configurable.md) | **done** in `0.10.0` |
 | **6** | **Schema evolution on load** — `CreateTable` on every SQL destination, then additive evolution | [`plan/2026-09-08-schema-evolution.md`](docs/plan/2026-09-08-schema-evolution.md) | **done**, except Redshift |
-| **7** | **dlt in the vocabulary** — a constant, a marker, a test. The chip lights up when it is declared and when the command names it | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §2 | **next** — hours |
-| **8** | **The run window as dlt's cursor** — `run.window()` bridged to its incremental loading, so a backfill reads the slot it is for | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §3 | proposed |
+| **7** | **dlt in the vocabulary** — a constant, a marker, a test. The chip lights up when it is declared and when the command names it | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §2 | **done** |
+| **8** | **The run window as dlt's cursor** — `run.window()` bridged to its incremental loading, so a backfill reads the slot it is for | [`plan/2026-09-09-integracao-nativa-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §3 | **next** — read dlt's incremental docs first |
 | **9** | **The load trend screen** — the numbers every load already produces, kept and drawn | [`plan/2026-09-08-backlog.md`](docs/plan/2026-09-08-backlog.md) §11 | proposed |
 | **10** | **A third executor** — a host the engine does not own. dlt is its first consumer, Cloud Run and Lambda the next | [`…-com-dlt.md`](docs/plan/2026-09-09-integracao-nativa-com-dlt.md) §4 + [`backlog`](docs/plan/2026-09-08-backlog.md) §8 | proposed — **decide the return path first** |
 | **11** | **SQLite, and maybe MySQL** — a default that needs no container; the queue's guarantee re-proved per backend | [`plan/2026-09-09-backlog-12-sqlite-mysql.md`](docs/plan/2026-09-09-backlog-12-sqlite-mysql.md) | proposed |
@@ -176,16 +176,30 @@ Worth saying plainly: **DuckDB already works under Brevis today** as a step,
 `run: duckdb …`, and it already draws its own chip. The ask is the SDK
 connector, which is the expensive half of a thing that partly exists.
 
-## Standing rules for all four
+## Standing rules
 
-From `CONTRIBUTING.md`, restated because these four are where they will be
-tested:
+From `CONTRIBUTING.md`, restated because this list is where they get tested:
 
+- **The binary stays light.** Stated by the owner on 2026-09-09 as a premise for
+  every item here, and it is already the constraint that decided three of them:
+  the OTLP exporter was refused (49 packages, 29 protobuf), step metrics went
+  through the pipe that already existed instead of a Pushgateway, and the DuckDB
+  driver goes in a module of its own because it needs cgo.
+
+  It is enforced and not merely intended. `engine-weight.sh` caps what
+  `./cmd/brevis` links and names the modules that may never appear;
+  `pruning-check.sh` caps each SDK consumer separately, so a fetcher that reads
+  a CSV does not pay for BigQuery. **Weight that only one consumer wants goes in
+  a module of its own** — `sdk/metrics/otelmeter` is the pattern — and the
+  pruning gate is what proves the main module did not grow.
+
+  A ceiling that moves is a ceiling that is not one: if a number here has to
+  rise, the commit that raises it says what was bought.
 - **A test that would fail without the change**, and proof it bites — revert the
   change and watch the test go red.
 - **A feature with a default gets a test that configures nothing.** Two features
   shipped switched off in one week, and both times every test set the field
   under test. See [`plan/2026-09-07-open-threads.md`](docs/plan/2026-09-07-open-threads.md).
 - **A number that is always zero is worse than no number**, and a badge that can
-  lie is worse than no badge. This applies hardest to #2.
+  lie is worse than no badge.
 - **English**, everywhere except the site's user-facing content.

@@ -70,6 +70,34 @@ Pick one and say which.
 Cost: a constant and a test. Value: a user scanning the UI sees that Brevis knows
 what they are running.
 
+### Built on 2026-09-09 — and the caveat was answered, not ignored
+
+**Both**, split along what each can honestly claim.
+
+The detector learned `dlt` in two places it can actually read: as a command head
+(`dlt pipeline orders run`, the CLI) and as a marker anywhere in the fragment
+(`python -m dlt …`, where the head is `python`). Those are the same two hooks
+dbt has, for the same reason.
+
+It deliberately did **not** learn to guess from a filename. `python
+pipelines/orders.py` reads as Python and nothing else, and that is the case the
+proposal was right to raise — it is how most dlt steps are written. The answer
+for it is `tools: [dlt]`, which the chip already draws with a solid border
+rather than a dashed one. So the chip does light up for everybody; what changes
+is whether it is claiming *"you told me"* or *"I read it"*, which is a
+distinction the panel already spells out and the SDK badge beside it depends on.
+
+The four rows are in `docs/RUNTIME.md`, and each one is a case in
+`TestDLTIsDetectedWhereItCanBeAndNotWhereItCannot` — including the two that
+expect the detector to stay quiet, which are the ones with teeth.
+
+One thing found on the way: `TestTheIdsAreStableKeys` promised that a new id
+"needs a CSS token and a line in the YAML documentation", and checked that
+against a hard-coded string of ids. It could only ever say *"that id is new"* —
+adding the id to the string was enough to ship one with no label and no
+documentation. It reads `dag.js`, `app.src.css` and `RUNTIME.md` now, in both
+directions, and fails if any of the three moves out from under it.
+
 ---
 
 ## 3. Ask two — bridge the run window to dlt's incremental cursor

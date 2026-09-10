@@ -1,7 +1,9 @@
 package runtimes_test
 
 import (
+	"os"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -302,18 +304,117 @@ func TestTheVocabularyAndTheRulesAgree(t *testing.T) {
 	}
 }
 
-// The ids reach the payload, a CSS token and the YAML. Renaming one breaks all
-// three at once, so they are pinned.
+// The ids reach three places outside this package: the label map the DAG draws
+// from, the colour tokens in the stylesheet, and the vocabulary table people
+// read before writing YAML. Renaming or adding one breaks all three at once.
+//
+// This used to be a hard-coded string listing the ids, which meant it could
+// only ever say "that id is new" -- it never once looked at the files it named,
+// so an id could be added to the string and ship with no label and no
+// documentation and the test would still be green. It reads them now.
 func TestTheIdsAreStableKeys(t *testing.T) {
-	want := "airbyte airflow dbt dotnet duckdb go java meltano node pandas " +
-		"php polars python ruby rust shell soda spark sqlmesh sql terraform"
-	got := append(append([]string{}, rt.Runtimes...), rt.Tools...)
-	for _, id := range got {
-		if !strings.Contains(want, id) {
-			t.Errorf("%q is a new id: it needs a CSS token and a line in the "+
-				"YAML documentation before it ships", id)
+	labels := jsLabelKeys(t)
+	tokens := cssLangTokens(t)
+	documented := documentedVocabulary(t)
+
+	for _, id := range rt.Runtimes {
+		// A runtime carries its own colour. Without the token the chip renders
+		// in the muted grey every tool uses, which is not wrong enough to
+		// notice and not right enough to keep.
+		if !tokens[id] {
+			t.Errorf("runtime %q has no --color-lang-%s in web/assets/app.src.css", id, id)
 		}
 	}
+	// Tools are deliberately NOT in that list: they draw muted, so a token for
+	// one would be the exception nobody could explain. Asserted so that adding
+	// one is a decision rather than a slip.
+	for _, id := range rt.Tools {
+		if tokens[id] {
+			t.Errorf("tool %q has a colour token; tools draw muted on purpose", id)
+		}
+	}
+
+	for _, id := range append(append([]string{}, rt.Runtimes...), rt.Tools...) {
+		if !labels[id] {
+			t.Errorf("%q has no entry in LANG_LABEL in web/assets/dag.js; the chip would render the raw id", id)
+		}
+		if !documented[id] {
+			t.Errorf("%q is not in the vocabulary table in docs/RUNTIME.md, which is what publish refusals point at", id)
+		}
+		delete(documented, id)
+	}
+	// And the other direction: a documented id the engine does not know is a
+	// promise the parser will not keep.
+	for id := range documented {
+		t.Errorf("docs/RUNTIME.md lists %q, which is not in the vocabulary", id)
+	}
+}
+
+// jsLabelKeys reads the ids out of LANG_LABEL.
+func jsLabelKeys(t *testing.T) map[string]bool {
+	return keysIn(t, "web/assets/dag.js", `var LANG_LABEL = {`, "};", `(?m)([a-z0-9]+):\s*"`)
+}
+
+// cssLangTokens reads the --color-lang-* custom properties.
+func cssLangTokens(t *testing.T) map[string]bool {
+	t.Helper()
+	b, err := os.ReadFile("../../../web/assets/app.src.css")
+	if err != nil {
+		t.Fatalf("stylesheet: %v", err)
+	}
+	found := map[string]bool{}
+	for _, m := range regexp.MustCompile(`--color-lang-([a-z0-9]+)\s*:`).FindAllStringSubmatch(string(b), -1) {
+		found[m[1]] = true
+	}
+	if len(found) == 0 {
+		t.Fatal("no --color-lang-* tokens found; the stylesheet moved and this check went blind")
+	}
+	return found
+}
+
+// documentedVocabulary reads the backticked ids out of the vocabulary section,
+// and only that section -- an id mentioned in an example further down is not a
+// promise that publish will accept it.
+func documentedVocabulary(t *testing.T) map[string]bool {
+	found := keysIn(t, "../../../docs/RUNTIME.md", "## The vocabulary", "\n## ", "`"+`([a-z0-9]+)`+"`")
+	// The section names the two FIELDS in backticks as well. They end in a
+	// colon in the source, so they never reach here -- asserted because a
+	// change to that heading would otherwise silently add two phantom ids.
+	for _, field := range []string{"runtime", "tools"} {
+		if found[field] {
+			t.Fatalf("the vocabulary section lists %q as an id; the field headings changed shape", field)
+		}
+	}
+	return found
+}
+
+// keysIn pulls a regex's first group out of one delimited region of a file.
+func keysIn(t *testing.T, path, open, close, pattern string) map[string]bool {
+	t.Helper()
+	if !strings.HasPrefix(path, "..") {
+		path = "../../../" + path
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("%s: %v", path, err)
+	}
+	body := string(b)
+	i := strings.Index(body, open)
+	if i < 0 {
+		t.Fatalf("%s no longer contains %q; this check is reading nothing", path, open)
+	}
+	body = body[i+len(open):]
+	if j := strings.Index(body, close); j >= 0 {
+		body = body[:j]
+	}
+	found := map[string]bool{}
+	for _, m := range regexp.MustCompile(pattern).FindAllStringSubmatch(body, -1) {
+		found[m[1]] = true
+	}
+	if len(found) == 0 {
+		t.Fatalf("%s matched no ids between %q and %q", path, open, close)
+	}
+	return found
 }
 
 func sameTools(got, want []string) bool {
@@ -321,4 +422,68 @@ func sameTools(got, want []string) bool {
 		return true
 	}
 	return reflect.DeepEqual(got, want)
+}
+
+// TestDLTIsDetectedWhereItCanBeAndNotWhereItCannot.
+//
+// The caveat the proposal raised, answered as a test rather than as a promise:
+// a dlt pipeline is USUALLY `python my_pipeline.py`, which names no tool at
+// all. A chip that lit up there would be a guess, and one that never lit up
+// would be a chip nobody trusts.
+//
+// So the detector claims dlt exactly where the command says so and stays quiet
+// otherwise -- and the quiet case is what `tools: [dlt]` in the workflow is
+// for, which the card already draws differently from an inference.
+func TestDLTIsDetectedWhereItCanBeAndNotWhereItCannot(t *testing.T) {
+	for _, c := range []struct {
+		run     string
+		tools   []string
+		runtime string
+	}{
+		// The CLI: `dlt` is the head, so no runtime is claimed -- same rule as
+		// dbt, which is Python underneath and still does not say so.
+		{"dlt pipeline orders run", []string{rt.DLT}, ""},
+		{"dlt init chess duckdb", []string{rt.DLT}, ""},
+		// A module invocation: the head is `python`, so the marker catches it
+		// and BOTH are true.
+		{"python -m dlt pipeline orders", []string{rt.DLT}, rt.Python},
+		// The common case names no tool. Python, and nothing else -- claiming
+		// dlt here would be inventing it from a filename.
+		{"python pipelines/orders.py", nil, rt.Python},
+		{"python -u main.py", nil, rt.Python},
+	} {
+		t.Run(c.run, func(t *testing.T) {
+			d := rt.Detect(c.run, "", "")
+			if !sameTools(d.Tools, c.tools) {
+				t.Errorf("tools = %v, wanted %v", d.Tools, c.tools)
+			}
+			if d.Runtime != c.runtime {
+				t.Errorf("runtime = %q, wanted %q", d.Runtime, c.runtime)
+			}
+		})
+	}
+}
+
+// A declared `tools: [dlt]` has to be accepted by the validator, which is what
+// makes the common case usable at all. Before the constant existed, writing it
+// got a publish-time refusal listing every tool except the one being run.
+func TestDLTMayBeDeclared(t *testing.T) {
+	if !rt.IsTool(rt.DLT) {
+		t.Fatal("dlt is not a tool the validator accepts")
+	}
+	if got := rt.Label(rt.DLT); got != "dlt" {
+		t.Errorf("Label(dlt) = %q; it is lowercase in its own documentation", got)
+	}
+	// And it is in the closed vocabulary, which is what the refusal message
+	// prints -- a tool that validates but is absent from that list would send
+	// the next person guessing.
+	var listed bool
+	for _, id := range rt.Tools {
+		if id == rt.DLT {
+			listed = true
+		}
+	}
+	if !listed {
+		t.Error("dlt validates but is absent from Tools, which is what errors list")
+	}
 }

@@ -68,6 +68,7 @@ const (
 	SQLMesh   = "sqlmesh"
 	Meltano   = "meltano"
 	DuckDB    = "duckdb"
+	DLT       = "dlt"
 	Pandas    = "pandas"
 	Polars    = "polars"
 	Airflow   = "airflow"
@@ -81,7 +82,7 @@ const (
 // WOULD have been accepted just moves the guessing.
 var (
 	Runtimes = []string{Python, Go, Node, Java, Rust, PHP, Ruby, DotNet, SQL, Shell}
-	Tools    = []string{DBT, Spark, Airbyte, Soda, SQLMesh, Meltano, DuckDB, Pandas, Polars, Airflow, Terraform}
+	Tools    = []string{DBT, Spark, Airbyte, Soda, SQLMesh, Meltano, DLT, DuckDB, Pandas, Polars, Airflow, Terraform}
 )
 
 // Label is what a person reads. Empty for an id outside the vocabulary.
@@ -95,7 +96,7 @@ var labels = map[string]string{
 	SQL: "SQL", Shell: "Shell",
 
 	DBT: "dbt", Spark: "Spark", Airbyte: "Airbyte", Soda: "Soda",
-	SQLMesh: "SQLMesh", Meltano: "Meltano", DuckDB: "DuckDB",
+	SQLMesh: "SQLMesh", Meltano: "Meltano", DLT: "dlt", DuckDB: "DuckDB",
 	Pandas: "pandas", Polars: "Polars", Airflow: "Airflow",
 	Terraform: "Terraform",
 }
@@ -261,6 +262,11 @@ var heads = map[string]string{
 var toolHeads = map[string]string{
 	"dbt": DBT, "sqlmesh": SQLMesh, "meltano": Meltano, "soda": Soda,
 	"airbyte": Airbyte, "duckdb": DuckDB, "terraform": Terraform,
+	// `dlt pipeline`, `dlt init`, `dlt deploy` -- the CLI. The COMMON case is
+	// `python my_pipeline.py`, which this cannot see and correctly says only
+	// Python; that one is what `tools: [dlt]` in the workflow is for, and a
+	// declared chip is drawn differently from an inferred one on purpose.
+	"dlt":     DLT,
 	"airflow": Airflow,
 }
 
@@ -275,6 +281,7 @@ var sparkHeads = map[string]string{
 var markers = map[string]string{
 	"dbt": DBT, "dbt.cli": DBT, "pyspark": Spark, "sqlmesh": SQLMesh,
 	"meltano": Meltano, "duckdb": DuckDB, "great_expectations": Soda,
+	"dlt": DLT,
 }
 
 func fromCommand(run string) Detection {

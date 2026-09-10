@@ -99,7 +99,7 @@
     python: "Python", go: "Go", node: "Node.js", java: "Java", rust: "Rust",
     php: "PHP", ruby: "Ruby", dotnet: ".NET", sql: "SQL", shell: "Shell",
     dbt: "dbt", spark: "Spark", airbyte: "Airbyte", soda: "Soda",
-    sqlmesh: "SQLMesh", meltano: "Meltano", duckdb: "DuckDB",
+    sqlmesh: "SQLMesh", meltano: "Meltano", dlt: "dlt", duckdb: "DuckDB",
     pandas: "pandas", polars: "Polars", airflow: "Airflow",
     terraform: "Terraform",
   };

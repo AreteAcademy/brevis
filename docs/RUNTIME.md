@@ -55,7 +55,7 @@ missing chip on a screen three days later, with nothing to trace it to.
 
 | `tools:` | |
 |---|---|
-| `dbt` `spark` `airbyte` `soda` `sqlmesh` `meltano` `duckdb` `pandas` `polars` `airflow` `terraform` | |
+| `dbt` `spark` `airbyte` `soda` `sqlmesh` `meltano` `dlt` `duckdb` `pandas` `polars` `airflow` `terraform` | |
 
 One runtime, any number of tools. They are separate because one step routinely
 has both and ranking them has no right answer: `spark-submit job.py` is Spark
@@ -78,11 +78,14 @@ all land:
 | `spark-submit --py-files a.zip job.py` | Python + Spark |
 | `cp in.csv /tmp/ && python x.py` | Python — **not** Shell |
 | `dbt build` | dbt — **not** Python |
+| `dlt pipeline orders run` | dlt — **not** Python |
+| `python -m dlt pipeline orders` | Python + dlt |
+| `python pipelines/orders.py` | Python — **not** dlt |
 | `./scripts/backfill.py` | Python |
 | `/opt/brevis/bin/fetch-weather` | **nothing** |
 | `{{ .cmd }}` | **nothing** |
 
-Two of those rows are the interesting ones.
+Three of those rows are the interesting ones.
 
 **A shell preamble does not hide the language behind it.** `shell` is the
 weakest reading: anything concrete beats it, because the language whose stack
@@ -90,6 +93,21 @@ trace you are about to read is the useful answer.
 
 **dbt is dbt, not Python.** It IS Python underneath, and nobody wants that on
 the card.
+
+**`python pipelines/orders.py` is not dlt**, even when the file is a dlt
+pipeline from top to bottom. That is how most dlt steps are written, and it is
+the shape the parser cannot read: nothing in the command names the library, and
+a chip lit up from a *filename* would be a guess sitting next to the SDK badge,
+which cannot lie and lends its credibility to whatever is drawn beside it.
+
+Write it down instead — `tools: [dlt]` — and the chip renders solid, which says
+you asserted it rather than the engine guessed:
+
+```yaml
+- name: load-orders
+  run: python pipelines/orders.py
+  tools: [dlt]
+```
 
 ### The image is a second signal
 
