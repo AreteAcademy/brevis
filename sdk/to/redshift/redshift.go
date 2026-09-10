@@ -83,7 +83,7 @@ type SQLExecutor interface {
 // role.
 func (t Table) Describe() string { return "redshift:" + t.Name }
 
-// Write satisfaz core.Writer.
+// Write satisfies core.Writer.
 func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error) {
 	res := &core.LoadResult{Dedup: opt.Dedup, Strategy: "copy", Format: string(core.FormatNDJSON)}
 	if opt.Dedup == "" {

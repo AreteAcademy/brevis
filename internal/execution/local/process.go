@@ -76,8 +76,8 @@ func taskEnvironment(t execution.TaskExec) ([]string, error) {
 	}
 	if len(missing) > 0 {
 		sort.Strings(missing)
-		return nil, fmt.Errorf("task %q: no modo local os segredos vem do ambiente do "+
-			"engine itself, and these are not set: %s",
+		return nil, fmt.Errorf("task %q: in local mode the secrets come from the "+
+			"engine's own environment, and these are not set: %s",
 			t.NodeID, strings.Join(missing, ", "))
 	}
 

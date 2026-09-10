@@ -372,7 +372,7 @@ func settle() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 15*time.Second)
 }
 
-// falhar decide entre retry e desistencia.
+// fail decides between a retry and giving up.
 func (d *Dispatcher) fail(ctx context.Context, it queue.Item, cause error) {
 	_ = d.repo.RecordError(ctx, it.RunID, cause.Error())
 	if err := d.repo.Transicionar(ctx, it.RunID, dom.StatusFailed); err != nil {

@@ -151,7 +151,7 @@ func (s *Slack) message(a Alert) map[string]any {
 	blocos := []bloco{
 		{"type": "header", "text": bloco{
 			"type": "plain_text", "emoji": true,
-			"text": ":rotating_light: Falha no pipeline" + s.environmentSuffix(),
+			"text": ":rotating_light: Pipeline failure" + s.environmentSuffix(),
 		}},
 		{"type": "section", "fields": fields},
 	}

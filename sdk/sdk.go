@@ -129,9 +129,9 @@ func comRetrato(rows iter.Seq2[Envelope, error], name string) iter.Seq2[Envelope
 				continue
 			}
 			if _, ocupado := obj[name]; ocupado {
-				yield(Envelope{}, fmt.Errorf("Source.Snapshot quer gravar o retrato em %q, "+
-					"e a src já manda um field com esse name -- gravar por cima perderia o "+
-					"que veio da src. Escolha outro name", name))
+				yield(Envelope{}, fmt.Errorf("Source.Snapshot wants to write the snapshot to %q, "+
+					"and src already sends a field with that name -- overwriting it would "+
+					"lose what came from src. Pick another name", name))
 				return
 			}
 

@@ -642,7 +642,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 	// The params come from the form, prefixed with `param.` so they do not
 	// collide with future fields of the form itself.
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "formulario invalido", http.StatusBadRequest)
+		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
 	params := map[string]string{}
@@ -669,7 +669,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		u.voltar(w, r)
 		return
 	}
-	u.log.Info("run manual criado", "workflow", slug, "run", id)
+	u.log.Info("manual run created", "workflow", slug, "run", id)
 	http.Redirect(w, r, "/runs/"+id.String(), http.StatusSeeOther)
 }
 

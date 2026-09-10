@@ -73,9 +73,8 @@ jobs:
           go vet ./...
 
       # -race because the runner is concurrent by design: it executes levels of
-      # the
-      # DAG em paralelo e drena eventos de varios executores. Uma corrida aqui
-      # aparece como uma execucao que falha uma vez em cinquenta.
+      # the DAG in parallel and drains events from several executors. A race
+      # here shows up as a run that fails one time in fifty.
       - name: Tests
         run: go test -race ./...
 
@@ -100,6 +99,9 @@ jobs:
 
       - name: The interface is in English
         run: ./.github/scripts/ui-language-check.sh
+
+      - name: Comments and messages are in English
+        run: ./.github/scripts/repo-language-check.sh
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8

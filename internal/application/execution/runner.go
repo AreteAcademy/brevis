@@ -871,11 +871,11 @@ func codeHint(c int) string {
 	case 127:
 		return "command not found -- check that it exists in the worker's image"
 	case 130:
-		return "interrompido por SIGINT"
+		return "interrupted by SIGINT"
 	case 137:
 		return "killed by SIGKILL -- usually out of memory"
 	case 143:
-		return "encerrado por SIGTERM"
+		return "terminated by SIGTERM"
 	case -1:
 		return "ended by a signal, with no exit code"
 	}
@@ -1362,7 +1362,7 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 
 	if n.Action != "" {
 		if r.Go == nil {
-			return nil, t, fmt.Errorf("step %q usa `action: %s`, mas nenhum executor Go foi configurado", n.ID, n.Action)
+			return nil, t, fmt.Errorf("step %q uses `action: %s`, but no Go executor was configured", n.ID, n.Action)
 		}
 		t.Action, t.With = n.Action, n.With
 		return r.Go, t, nil
@@ -1389,7 +1389,7 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 			return nil, t, fmt.Errorf("step %q declares `image: %s`, but this process has "+
 				"neither a pod executor nor a process executor", n.ID, image)
 		}
-		return nil, t, fmt.Errorf("step %q usa `run:`, mas nenhum executor de processo foi configurado", n.ID)
+		return nil, t, fmt.Errorf("step %q uses `run:`, but no process executor was configured", n.ID)
 	}
 	// Local with an `image:` declared: runs on the instance itself and WARNS.
 	// Staying quiet would make it look as though the step ran in the declared
@@ -1398,7 +1398,7 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 	if image != "" && r.Report != nil {
 		r.Report.Evento(execution.Event{
 			Kind: execution.EventLog, NodeID: n.ID, Stream: "stderr",
-			Message: fmt.Sprintf("modo local: rodando na instancia, ignorando `image: %s`", image),
+			Message: fmt.Sprintf("local mode: running on the instance, ignoring `image: %s`", image),
 		})
 	}
 	return r.Processo, t, nil

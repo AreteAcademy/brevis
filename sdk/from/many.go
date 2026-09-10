@@ -87,7 +87,7 @@ type Many struct {
 // the process down at the moment the message mattered most.
 func (m Many) Describe() string {
 	if len(m.Sources) == 0 {
-		return "many: (nenhuma source)"
+		return "many: (no sources)"
 	}
 	if m.Sources[0] == nil {
 		return fmt.Sprintf("many: %d sources", len(m.Sources))
@@ -95,11 +95,11 @@ func (m Many) Describe() string {
 	return fmt.Sprintf("many: %d sources, a primeira %s", len(m.Sources), m.Sources[0].Describe())
 }
 
-// Read satisfaz core.Reader.
+// Read satisfies core.Reader.
 func (m Many) Read(ctx context.Context, opt core.ReadOptions) (iter.Seq2[core.Envelope, error], error) {
 	if len(m.Sources) > 0 && m.Discover != nil {
-		return nil, fmt.Errorf("from.Many declara Sources e Discover, e as duas montam a " +
-			"lista de sources -- a que perde perderia em silêncio")
+		return nil, fmt.Errorf("from.Many declares both Sources and Discover, and each builds " +
+			"the source list -- whichever lost would lose in silence")
 	}
 
 	sources := m.Sources

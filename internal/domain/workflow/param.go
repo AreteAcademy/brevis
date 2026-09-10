@@ -170,7 +170,7 @@ func (w Workflow) Resolver(given map[string]string) (map[string]string, error) {
 
 func namesOf(ps []Param) string {
 	if len(ps) == 0 {
-		return "nenhum"
+		return "none"
 	}
 	names := make([]string, len(ps))
 	for i, p := range ps {

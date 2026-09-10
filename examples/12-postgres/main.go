@@ -62,7 +62,7 @@ func main() {
 
 		Transform: []sdk.Transformer{
 			// The ingestion_id's key is text: a number and its string have
-			// de produzir o mesmo id.
+			// to produce the same id.
 			sdk.Compute("source_key", func(r map[string]any) (any, error) {
 				return fmt.Sprint(r["id"]), nil
 			}),

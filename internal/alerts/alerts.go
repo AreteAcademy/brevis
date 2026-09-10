@@ -282,7 +282,7 @@ func scan(rows pgx.Rows) ([]Item, error) {
 		if err := json.Unmarshal(payload, &it.Payload); err != nil {
 			// A row whose payload cannot be read is not a reason to stop
 			// draining the rest: the others are somebody's outage.
-			return nil, fmt.Errorf("alerta %d tem um payload ilegivel: %w", it.ID, err)
+			return nil, fmt.Errorf("alert %d has an unreadable payload: %w", it.ID, err)
 		}
 		out = append(out, it)
 	}

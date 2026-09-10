@@ -14,9 +14,9 @@ import (
 // string and producing a silently wrong command — `--select ` with no target, or
 // `--date` with no date.
 //
-// So o comando e renderizado. `image:` NAO e templatavel de proposito: quem
-// triggers a run would be choosing the image the pod runs, which is choosing
-// the code that executes.
+// So only the command is rendered. `image:` is deliberately NOT templatable:
+// whoever triggers a run would be choosing the image the pod runs, which is
+// choosing the code that executes.
 func Render(command string, params map[string]string) (string, error) {
 	if !strings.Contains(command, "{{") {
 		return command, nil
@@ -35,7 +35,7 @@ func Render(command string, params map[string]string) (string, error) {
 
 func keys(m map[string]string) string {
 	if len(m) == 0 {
-		return "nenhum"
+		return "none"
 	}
 	out := make([]string, 0, len(m))
 	for k := range m {

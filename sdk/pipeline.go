@@ -174,7 +174,7 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	rep := newReporter(p.Run)
 	rep.announce(p.name())
 
-	// A declaracao e conferida contra o target ANTES da extracao.
+	// The declaration is checked against the target BEFORE the extraction.
 	//
 	// The same check runs again in the Load, and that is not waste: between the
 	// two the table can change, and the Load's is the one that decides. What

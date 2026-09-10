@@ -89,7 +89,7 @@ tailwind-install: ## Downloads the standalone Tailwind binary (no Node)
 	 && chmod +x bin/tailwindcss && echo "bin/tailwindcss $(TAILWIND_VERSION) installed"
 
 generate: ## Generates the _templ.go files and the CSS
-	@command -v templ >/dev/null || { echo "instale: go install github.com/a-h/templ/cmd/templ@$$(go list -m -f '{{.Version}}' github.com/a-h/templ)"; exit 1; }
+	@command -v templ >/dev/null || { echo "install it: go install github.com/a-h/templ/cmd/templ@$$(go list -m -f '{{.Version}}' github.com/a-h/templ)"; exit 1; }
 	@test -x bin/tailwindcss && ./bin/tailwindcss --help 2>&1 | head -1 | grep -q "$(patsubst v%,%,$(TAILWIND_VERSION))" || $(MAKE) tailwind-install
 	@templ generate
 	@./bin/tailwindcss -i web/assets/app.src.css -o web/assets/app.css --minify
@@ -99,7 +99,7 @@ image: generate ## Builds the images for the local architecture (does not publis
 	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) .
 	@docker build --target worker -t $(IMAGE):$(VERSION)-worker -t $(IMAGE):latest-worker \
 	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) .
-	@echo "  $(IMAGE):$(VERSION)  e  $(IMAGE):$(VERSION)-worker"
+	@echo "  $(IMAGE):$(VERSION)  and  $(IMAGE):$(VERSION)-worker"
 
 image-push: generate ## Publishes multi-arch to the registry (needs `docker login`)
 	@docker buildx inspect brevis >/dev/null 2>&1 || docker buildx create --name brevis --use
@@ -109,7 +109,7 @@ image-push: generate ## Publishes multi-arch to the registry (needs `docker logi
 	@docker buildx build --builder brevis --platform $(PLATAFORMAS) --target worker \
 	  --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
 	  -t $(IMAGE):$(VERSION)-worker -t $(IMAGE):latest-worker --push .
-	@echo "publicado: $(IMAGE):$(VERSION) (+ -worker)"
+	@echo "published: $(IMAGE):$(VERSION) (+ -worker)"
 
 image-smoke: ## Checks the local images start and report their version
 	@docker run --rm $(IMAGE):$(VERSION) version
@@ -120,7 +120,7 @@ image-smoke: ## Checks the local images start and report their version
 
 up: ## Brings up Postgres + API + scheduler locally
 	@docker compose up --build -d
-	@echo "api em http://localhost:8080/health"
+	@echo "api at http://localhost:8080/health"
 
 down: ## Tears the local environment down
 	@docker compose down

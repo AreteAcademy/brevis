@@ -1,4 +1,4 @@
-# Publica as imagens no Docker Hub a cada tag `v*`.
+# Publishes the images to Docker Hub on every `v*` tag.
 #
 # A tag and not a push to main: a published image is an artifact other people
 # will consume, and the moment of publishing should be an explicit decision — not

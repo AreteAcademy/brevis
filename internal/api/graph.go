@@ -154,7 +154,7 @@ func (u *UI) workflowGraph(w http.ResponseWriter, r *http.Request) {
 func (u *UI) runGraph(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
-		http.Error(w, "id invalido", http.StatusBadRequest)
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 	ctx := r.Context()
@@ -187,7 +187,7 @@ func (u *UI) respondGraph(w http.ResponseWriter, def wf.Workflow,
 	if err != nil {
 		// Getting here means a cyclic graph stored in the database. Not a 500:
 		// it is invalid data, and the message has to say so on the screen.
-		http.Error(w, "grafo invalido: "+err.Error(), http.StatusUnprocessableEntity)
+		http.Error(w, "invalid graph: "+err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
 

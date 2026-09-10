@@ -7,7 +7,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/load"
 )
 
-// CheckDestination satisfaz core.DestinationChecker.
+// CheckDestination satisfies core.DestinationChecker.
 //
 // It exists so the divergence between what the fetcher declares and the real
 // table shows up BEFORE the extraction. The check itself is the same one Write

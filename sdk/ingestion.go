@@ -22,7 +22,7 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 
 // IngestionID writes the ingestion_id column.
 //
-// As quatro colunas de proveniencia precisam existir antes dele na cadeia.
+// The four provenance columns have to exist before it in the chain.
 // See ExampleIngestionID. Compose the provenance columns with ComputeText,
 // which takes a selector directly.
 //

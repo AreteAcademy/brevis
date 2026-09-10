@@ -225,8 +225,8 @@ func materialize(ctx context.Context, dep *checkpoint.Depot,
 		// resumes from a crippled depot.
 		degradar := func(causa error, pending *Envelope) {
 			est.err = causa.Error()
-			slog.WarnContext(ctx, "checkpoint interrompido; a execucao segue sem ele",
-				"pipeline", name, "checkpoint", est.path, "erro", causa)
+			slog.WarnContext(ctx, "checkpoint interrupted; the run carries on without it",
+				"pipeline", name, "checkpoint", est.path, "error", causa)
 
 			for env, err := range dep.Reread(ctx, esc.Written()) {
 				if !yield(env, err) {

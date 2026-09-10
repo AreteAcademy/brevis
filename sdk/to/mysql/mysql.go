@@ -345,7 +345,7 @@ func comParseTime(dsn string) string {
 	return dsn + "?parseTime=true"
 }
 
-// CheckDestination satisfaz core.DestinationChecker. Mesmo motivo do Postgres:
+// CheckDestination satisfies core.DestinationChecker. Same reason as Postgres:
 // checking early costs one information_schema query; checking in Write costs
 // the vendor's whole quota window.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {

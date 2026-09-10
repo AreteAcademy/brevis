@@ -165,7 +165,7 @@ func (c *Client) CreatePod(ctx context.Context, p Pod) (Pod, error) {
 
 	var created Pod
 	if err := json.NewDecoder(res.Body).Decode(&created); err != nil {
-		return Pod{}, fmt.Errorf("lendo pod criado: %w", err)
+		return Pod{}, fmt.Errorf("reading the created pod: %w", err)
 	}
 	return created, nil
 }
