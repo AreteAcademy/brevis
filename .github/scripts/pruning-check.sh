@@ -224,4 +224,29 @@ run check "bigquery" \
   "jackc/pgx aws-sdk-go" \
   540
 
+# Pub/Sub, and this ceiling has a specific job.
+#
+# It is CHEAPER than BigQuery -- 380 packages against 460 on a laptop -- and it
+# costs about eleven more beside it, because the Google Cloud graph, gRPC and
+# auth are already there.
+#
+# What the number guards is the version. `cloud.google.com/go/pubsub` entered
+# this module through an IMPORT plus `go mod tidy`, and MVS resolved it to
+# v1.30.0 with BigQuery still pinned at v1.50.0 -- one line added, nothing moved.
+# Reaching for a current client instead means `go get`, and that was tried in a
+# copy of the tree: one command took BigQuery to v1.74.0, storage to v1.59.2 and
+# grpc to v1.82.1. Both ceilings catch it, measured rather than hoped:
+#
+#     pubsub    386 -> 483   (ceiling 460)
+#     bigquery  460 -> 707   (ceiling 540)
+#
+# The second is the incident this script was written after, replayed exactly:
+# a consumer that imported nothing new grew 247 packages because the module
+# graph moved underneath it. It is one `go get` away at all times.
+run check "pubsub" \
+  "	\"$MODULO/to/pubsub\"" \
+  "_ = pubsub.Topic{}" \
+  "jackc/pgx aws-sdk-go" \
+  460
+
 exit $overall

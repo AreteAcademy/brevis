@@ -11,6 +11,7 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/bigquery"
 	"github.com/AreteAcademy/brevis/sdk/to/mysql"
 	"github.com/AreteAcademy/brevis/sdk/to/postgres"
+	"github.com/AreteAcademy/brevis/sdk/to/pubsub"
 	"github.com/AreteAcademy/brevis/sdk/to/redshift"
 )
 
@@ -65,6 +66,15 @@ var destinations = map[string]struct {
 	"bigquery.Table": {
 		writer:  bigquery.Table{Project: "p", Dataset: "d", Name: "t"},
 		support: support{dedup: true, createTable: true},
+	},
+	// The first destination that is neither a table nor a directory, and it
+	// refuses MORE than any other here: a Schema (which exists so a destination
+	// can create its table, and a topic exists already) and a PartitionBy on
+	// top of Dedup.
+	"pubsub.Topic": {
+		writer:      pubsub.Topic{Project: "p", Name: "t"},
+		support:     support{dedup: false, createTable: false},
+		refusalHint: "at-least-once",
 	},
 }
 

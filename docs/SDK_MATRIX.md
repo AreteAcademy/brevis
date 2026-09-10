@@ -1,6 +1,6 @@
 # SDK — what each driver supports
 
-**Valid for** `sdk/v0.52.0` · **Updated on** 2026-09-06
+**Valid for** `sdk/v0.58.0` · **Updated on** 2026-09-10
 
 What works with what, and what happens when it does not. A driver that
 **ignores** an option does not appear here: in this SDK it refuses, naming the
@@ -90,6 +90,25 @@ itself.
 | `mysql.Table` | `INSERT IGNORE` | **does not exist** | yes | transformers |
 | `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **does not exist** | yes | transformers |
 | `to.Files` | **refused**, naming `Dedup` | **does not exist** | yes | transformers |
+| `pubsub.Topic` | **refused**, naming `Dedup` | **does not exist** — the topic exists already | yes | **attributes** |
+
+**`pubsub.Topic` refuses three, which is more than any other destination.** It
+is the first one here that is neither a table nor a directory, and half of what
+`WriteOptions` asks has no meaning on a topic:
+
+| | |
+|---|---|
+| `Schema` | refused. A `Schema` exists so a destination can CREATE its table; a topic exists already, and a Schema here would be a declaration nothing reads — worse than an error, because the author believes it is enforced. Declare `Columns` instead: they still check the row the chain composed |
+| `Dedup` | refused. There is no key to match on and no row to replace. Pub/Sub is at-least-once by design, and every message carries `ingestion_id` so the subscriber can be idempotent |
+| `PartitionBy` | refused. A partition is a table's idea; the nearest thing is `OrderingKey`, which groups messages that must ARRIVE in order rather than rows that live together |
+
+**And it is the only destination where a failure is partial.** Every other one
+here is all-or-nothing at the batch level. A publish is not: 48,000 messages
+that fail at 31,000 have *delivered* 31,000, so `RowsLoaded` reports what
+actually went on the error path too, and the error says a re-run is a
+re-delivery. The metadata goes in message **attributes** rather than through the
+transformers, so a subscription filters on it without parsing the body and the
+payload keeps the producer's own schema.
 
 **Why only BigQuery creates a table.** It has a service that infers the types
 from the data, and `v0.16.0` uses exactly that, overriding only the SDK's two

@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	cloud.google.com/go/bigquery v1.50.0
+	cloud.google.com/go/pubsub v1.30.0
 	cloud.google.com/go/storage v1.30.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.6
