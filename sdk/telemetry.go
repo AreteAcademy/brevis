@@ -273,6 +273,24 @@ func loadNumbers(res *Result) map[string]any {
 		return nil
 	}
 	n := map[string]any{"rows": res.Rows, "records": res.Records}
+	// The load's own byte count, which is NOT the extract's.
+	//
+	// "Which pipeline's bytes are growing faster than its rows" cannot be asked
+	// from the extract alone: a load that doubles in size while its row count
+	// holds flat is a schema that grew a column, and that is the diagnosis the
+	// trend screen exists for. Skipped at zero like everything else here -- a
+	// driver that does not know how much it wrote should report nothing rather
+	// than claim nought.
+	if res.Bytes > 0 {
+		n["load_bytes"] = res.Bytes
+	}
+	// Rows deduplication matched as already present. A run whose rows fall to
+	// zero while `ignored` climbs is not a source drying up, it is a pipeline
+	// re-reading what it already has -- and those two look identical without
+	// this number.
+	if res.Ignored > 0 {
+		n["ignored"] = res.Ignored
+	}
 	if res.Table != "" {
 		n["detail"] = res.Table
 	}
