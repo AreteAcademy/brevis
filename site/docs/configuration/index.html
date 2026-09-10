@@ -132,13 +132,16 @@
 <h2 id="processo">Processo<a class="anchor" href="#processo" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variável</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_ENV</code></td><td><code>local</code></td><td><code>local</code> usa log em texto e libera a interface sem senha; o resto exige credencial e loga JSON</td></tr><tr><td><code>BREVIS_HTTP_ADDR</code></td><td><code>:8080</code></td><td>endereço de escuta</td></tr><tr><td><code>BREVIS_LOG_LEVEL</code></td><td><code>info</code></td><td></td></tr><tr><td><code>BREVIS_SHUTDOWN_TIMEOUT_SECONDS</code></td><td><code>15</code></td><td>inteiro; valor não numérico é erro de boot</td></tr><tr><td><code>BREVIS_BRAND_FILE</code></td><td><code>brand.yaml</code></td><td>identidade visual; ausente = padrão</td></tr><tr><td><code>BREVIS_UI_URL</code></td><td>—</td><td>base do link da execução no alerta</td></tr><tr><td><code>BREVIS_METRICS_ADDR</code></td><td>—</td><td>porta das métricas Prometheus; vazio = não expõe. Ver <a href="/docs/observability/">Observabilidade</a></td></tr><tr><td><code>BREVIS_SLACK_WEBHOOK</code></td><td>—</td><td>destino do alerta de falha. Vazio = ninguém é avisado</td></tr></tbody></table></div>
 <h2 id="autenticacao">Autenticação<a class="anchor" href="#autenticacao" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>variável</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USUARIO</code></td><td>usuário da interface</td></tr><tr><td><code>BREVIS_AUTH_SENHA_HASH</code></td><td>hash <code>pbkdf2-sha256$…</code>, gerado por <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SEGREDO</code></td><td>32+ bytes para assinar a sessão (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>variável</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_AUTH_USER</code></td><td>usuário da interface</td></tr><tr><td><code>BREVIS_AUTH_PASSWORD_HASH</code></td><td>hash <code>pbkdf2-sha256$…</code>, gerado por <code>brevis hash</code></td></tr><tr><td><code>BREVIS_AUTH_SECRET</code></td><td>32+ bytes para assinar a sessão (<code>openssl rand -base64 48</code>)</td></tr></tbody></table></div>
 <p>As três vêm juntas ou nenhuma vem.</p>
 <aside class="admon admon-danger"><p class="admon-t">Metade configurada é erro de boot</p><p>Quem preencheu o usuário acredita que fechou a porta. A interface dispara pipeline: um <code>POST /workflows/&lt;slug&gt;/trigger</code> roda um <code>dbt build</code> que escreve no warehouse. Aberta na internet, ela é um controle remoto do warehouse — e um aviso no log não desfaz essa crença, porque ninguém lê o log de um processo que funciona.</p></aside>
 <p>Fora de <code>BREVIS_ENV=local</code>, subir sem credencial é recusado:</p>
-<div class="code-block" data-code="erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USUARIO,
-BREVIS_AUTH_SENHA_HASH (gere com `brevis hash`) e BREVIS_AUTH_SEGREDO"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USUARIO,
-BREVIS_AUTH_SENHA_HASH (gere com `brevis hash`) e BREVIS_AUTH_SEGREDO</code></pre></div>
+<div class="code-block" data-code="erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (gere com `brevis hash`) e BREVIS_AUTH_SECRET"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (gere com `brevis hash`) e BREVIS_AUTH_SECRET</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">Os nomes antigos continuam funcionando</p><p>Quatro variáveis foram renomeadas em 2026-09-10, quando os últimos nomes em português saíram do lado do operador: <code>BREVIS_AUTH_USUARIO</code>, <code>BREVIS_AUTH_SENHA_HASH</code>, <code>BREVIS_AUTH_SEGREDO</code> e <code>BREVIS_POD_MANTER_EM_FALHA</code>. Uma instalação que usa o nome antigo continua funcionando e registra um aviso nomeando o novo.</p>
+<p>Adicione o nome novo, faça o deploy e só então remova o antigo — com os dois definidos, o novo ganha. Os antigos saem numa versão maior.</p>
+<p>No SDK, <code>BREVIS_SDK_LIMITE_INLINE</code> virou <code>BREVIS_SDK_INLINE_LIMIT</code> pela mesma regra.</p></aside>
 <h2 id="ambiente-das-tasks">Ambiente das tasks<a class="anchor" href="#ambiente-das-tasks" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variável</th><th>padrão</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TASK_ENV</code></td><td>vazio</td><td>o que cada passo recebe</td></tr></tbody></table></div>
 <p>A task <strong>não herda</strong> o ambiente do orquestrador. A razão é concreta: o processo carrega <code>BREVIS_DATABASE_URL</code> com usuário e senha do Postgres, e um workflow é um comando arbitrário escrito por outra pessoa — herdar entregaria a credencial do banco a todo passo de todo pipeline.</p>
@@ -152,7 +155,7 @@ BREVIS_TASK_ENV='*'                       <span class="t-c"># repassa tudo MENOS
 <p>Um nome ausente <strong>não</strong> vira string vazia: <code>GOOGLE_PROJECT_ID=""</code> faria o dbt falhar com uma mensagem pior que a de variável ausente.</p>
 <h2 id="kubernetes">Kubernetes<a class="anchor" href="#kubernetes" aria-label="link">#</a></h2>
 <p>Decisões da <strong>instalação</strong>, não do workflow.</p>
-<div class="table-wrap"><table><thead><tr><th>variável</th><th>padrão</th><th>formato</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>, <code>on</code> ou <code>off</code>; inválido é erro de boot</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>o do cluster</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>caminho montado no pod</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>PVC com as credenciais</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>chave=valor,outra=valor</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>chave=valor:efeito,…</code>; só o operador <code>Equal</code></td></tr><tr><td><code>BREVIS_POD_MANTER_EM_FALHA</code></td><td><code>false</code></td><td><code>true</code> mantém o pod para inspeção</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>variável</th><th>padrão</th><th>formato</th></tr></thead><tbody><tr><td><code>BREVIS_PODS</code></td><td><code>auto</code></td><td><code>auto</code>, <code>on</code> ou <code>off</code>; inválido é erro de boot</td></tr><tr><td><code>BREVIS_POD_NAMESPACE</code></td><td>o do cluster</td><td></td></tr><tr><td><code>BREVIS_POD_SERVICE_ACCOUNT</code></td><td>—</td><td></td></tr><tr><td><code>BREVIS_POD_PULL_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ENV_FROM_CONFIGMAPS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_ALLOWED_SECRETS</code></td><td>—</td><td>lista por vírgula</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PATH</code></td><td>—</td><td>caminho montado no pod</td></tr><tr><td><code>BREVIS_POD_CREDENTIAL_PVC</code></td><td>—</td><td>PVC com as credenciais</td></tr><tr><td><code>BREVIS_POD_NODE_SELECTOR</code></td><td>—</td><td><code>chave=valor,outra=valor</code></td></tr><tr><td><code>BREVIS_POD_TOLERATIONS</code></td><td>—</td><td><code>chave=valor:efeito,…</code>; só o operador <code>Equal</code></td></tr><tr><td><code>BREVIS_POD_KEEP_ON_FAILURE</code></td><td><code>false</code></td><td><code>true</code> mantém o pod para inspeção</td></tr></tbody></table></div>
 <p>Em listas, vazios são ignorados: <code>a,,b</code> é erro de digitação, e um nome de secret vazio faria o servidor recusar o pod inteiro.</p>
 <h2 id="testes">Testes<a class="anchor" href="#testes" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>variável</th><th></th></tr></thead><tbody><tr><td><code>BREVIS_TEST_DATABASE_URL</code></td><td>banco dos testes de integração; sem ela, eles pulam</td></tr></tbody></table></div>
@@ -165,9 +168,9 @@ export BREVIS_DATABASE_URL=&#x27;postgres://brevis:senha@db:5432/brevis?sslmode=
 
 # produção exige credencial
 export BREVIS_ENV=production
-export BREVIS_AUTH_USUARIO=operador
-export BREVIS_AUTH_SENHA_HASH=&quot;$(brevis hash &lt; senha.txt)&quot;
-export BREVIS_AUTH_SEGREDO=&quot;$(openssl rand -base64 48)&quot;
+export BREVIS_AUTH_USER=operador
+export BREVIS_AUTH_PASSWORD_HASH=&quot;$(brevis hash &lt; senha.txt)&quot;
+export BREVIS_AUTH_SECRET=&quot;$(openssl rand -base64 48)&quot;
 
 # o que as tasks precisam, e nada além
 export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE
@@ -185,9 +188,9 @@ export BREVIS_DATABASE_URL='postgres://<span class="t-k">brevis</span>:senha@db:
 
 <span class="t-c"># produção exige credencial</span>
 export BREVIS_ENV=production
-export BREVIS_AUTH_USUARIO=operador
-export BREVIS_AUTH_SENHA_HASH="$(<span class="t-k">brevis</span> hash &lt; senha.txt)"
-export BREVIS_AUTH_SEGREDO="$(openssl rand <span class="t-n">-base64</span> 48)"
+export BREVIS_AUTH_USER=operador
+export BREVIS_AUTH_PASSWORD_HASH="$(<span class="t-k">brevis</span> hash &lt; senha.txt)"
+export BREVIS_AUTH_SECRET="$(openssl rand <span class="t-n">-base64</span> 48)"
 
 <span class="t-c"># o que as tasks precisam, e nada além</span>
 export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE

@@ -113,7 +113,7 @@ func (b Table) config(opt core.WriteOptions) (*core.LoadConfig, map[string]core.
 
 	limit := b.InlineLimit
 	if limit == 0 {
-		limit = core.EnvInt("BREVIS_SDK_LIMITE_INLINE", 5000)
+		limit = core.EnvIntRenamed("BREVIS_SDK_INLINE_LIMIT", "BREVIS_SDK_LIMITE_INLINE", 5000)
 	}
 
 	create, createOrigin := b.resolveCreate(opt.Run)

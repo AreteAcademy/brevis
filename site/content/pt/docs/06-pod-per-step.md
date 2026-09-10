@@ -112,7 +112,7 @@ workflows que não precisam daquele pool.
 ## Depurando uma falha
 
 ```bash
-BREVIS_POD_MANTER_EM_FALHA=true
+BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
 Mantém o pod que falhou para inspeção com `kubectl logs` e `kubectl describe`.

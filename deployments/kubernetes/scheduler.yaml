@@ -79,7 +79,7 @@ spec:
               value: "kubernetes.io/arch=arm64:NoSchedule"
             # During an incident, `true` leaves the failed pod up for
             # inspection.
-            - name: BREVIS_POD_MANTER_EM_FALHA
+            - name: BREVIS_POD_KEEP_ON_FAILURE
               value: "false"
 
             # Failure alerting. The webhook is a credential: whoever has the URL

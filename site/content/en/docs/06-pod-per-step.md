@@ -113,7 +113,7 @@ the workflows that do not need that pool.
 ## Debugging a failure
 
 ```bash
-BREVIS_POD_MANTER_EM_FALHA=true
+BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
 Keeps the failed pod around for `kubectl logs` and `kubectl describe`. Leave it

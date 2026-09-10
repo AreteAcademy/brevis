@@ -159,9 +159,9 @@ func TestOutsideLocalACredentialIsRequired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("BREVIS_AUTH_USUARIO", "operador")
-	t.Setenv("BREVIS_AUTH_SENHA_HASH", h)
-	t.Setenv("BREVIS_AUTH_SEGREDO", "um-segredo-de-teste-com-mais-de-32-bytes")
+	t.Setenv("BREVIS_AUTH_USER", "operator")
+	t.Setenv("BREVIS_AUTH_PASSWORD_HASH", h)
+	t.Setenv("BREVIS_AUTH_SECRET", "a-test-secret-with-more-than-32-bytes")
 
 	c, err := Load()
 	if err != nil {
@@ -182,4 +182,71 @@ func TestLocalStartsWithNoCredential(t *testing.T) {
 	if _, err := Load(); err != nil {
 		t.Fatalf("local should start with no credential: %v", err)
 	}
+}
+
+// The four variables renamed on 2026-09-10 accept both names.
+//
+// This is the test that has to exist for the rename to be safe. Outside `local`
+// the engine refuses to boot without a credential, so an installation that had
+// BREVIS_AUTH_USUARIO set and got only the new name read would CrashLoopBackOff
+// on a rollout that changed nothing else -- and the manifest that was correct
+// yesterday is what the error would blame.
+func TestTheRenamedVariablesAcceptTheOldNameToo(t *testing.T) {
+	h, err := auth.GenerateHash("a-long-enough-test-password")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("the old names alone still boot", func(t *testing.T) {
+		t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
+		t.Setenv("BREVIS_ENV", "prod")
+		t.Setenv("BREVIS_AUTH_USUARIO", "operator")
+		t.Setenv("BREVIS_AUTH_SENHA_HASH", h)
+		t.Setenv("BREVIS_AUTH_SEGREDO", "a-test-secret-with-more-than-32-bytes")
+		t.Setenv("BREVIS_POD_MANTER_EM_FALHA", "true")
+
+		c, err := Load()
+		if err != nil {
+			t.Fatalf("an installation on the old names stopped booting: %v", err)
+		}
+		if !c.Auth.Enabled() {
+			t.Error("the credential did not reach the Config through the old names")
+		}
+		if !c.Pods.KeepOnFailure {
+			t.Error("BREVIS_POD_MANTER_EM_FALHA no longer reaches KeepOnFailure")
+		}
+	})
+
+	t.Run("the new name wins when both are set", func(t *testing.T) {
+		t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
+		t.Setenv("BREVIS_ENV", "prod")
+		t.Setenv("BREVIS_AUTH_USUARIO", "old")
+		t.Setenv("BREVIS_AUTH_USER", "new")
+		t.Setenv("BREVIS_AUTH_SENHA_HASH", h)
+		t.Setenv("BREVIS_AUTH_SEGREDO", "a-test-secret-with-more-than-32-bytes")
+
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Which one wins decides what a migration looks like: an operator adds
+		// the new name, deploys, and removes the old one later. If the old name
+		// won, that middle step would silently keep the old value.
+		if c.Auth.User != "new" {
+			t.Errorf("Auth.User = %q, want the new name to win", c.Auth.User)
+		}
+	})
+
+	t.Run("neither set leaves it empty", func(t *testing.T) {
+		t.Setenv("BREVIS_DATABASE_URL", "postgres://x/y")
+		t.Setenv("BREVIS_ENV", "local")
+
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.Auth.User != "" || c.Pods.KeepOnFailure {
+			t.Error("a variable nobody set came back with a value")
+		}
+	})
 }

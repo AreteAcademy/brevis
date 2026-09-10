@@ -326,7 +326,7 @@ curl -fsS https://brevis.exemplo.com/ready"><div class="code-head"><span class="
 <p>Quase sempre é uma destas três:</p>
 <div class="table-wrap"><table><thead><tr><th>causa</th><th>como confirmar</th></tr></thead><tbody><tr><td>taint sem toleração</td><td><code>kubectl describe pod</code> mostra <code>node(s) had untolerated taint</code></td></tr><tr><td><code>nodeSelector</code> sem nó</td><td><code>describe</code> mostra <code>didn't match Pod's node affinity</code></td></tr><tr><td>recurso indisponível</td><td><code>describe</code> mostra <code>Insufficient cpu</code> ou <code>memory</code></td></tr></tbody></table></div>
 <p>Para inspecionar o pod de um passo que falhou, em vez de vê-lo desaparecer:</p>
-<div class="code-block" data-code="BREVIS_POD_MANTER_EM_FALHA=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_MANTER_EM_FALHA=true</code></pre></div>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Deixe desligado em produção — pods parados consomem cota.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
 <ul><li><a href="/docs/pod-per-step/">Pod por passo</a> — o modelo de execução</li><li><a href="/docs/configuration/">Configuração</a> — todas as variáveis <code>BREVIS_POD_*</code></li><li><a href="/docs/observability/">Observabilidade</a> — o que raspar, e de qual processo</li></ul>

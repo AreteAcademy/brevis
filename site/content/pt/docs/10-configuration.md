@@ -33,9 +33,9 @@ processo cujo comportamento ninguém consegue reproduzir.
 
 | variável | |
 |---|---|
-| `BREVIS_AUTH_USUARIO` | usuário da interface |
-| `BREVIS_AUTH_SENHA_HASH` | hash `pbkdf2-sha256$…`, gerado por `brevis hash` |
-| `BREVIS_AUTH_SEGREDO` | 32+ bytes para assinar a sessão (`openssl rand -base64 48`) |
+| `BREVIS_AUTH_USER` | usuário da interface |
+| `BREVIS_AUTH_PASSWORD_HASH` | hash `pbkdf2-sha256$…`, gerado por `brevis hash` |
+| `BREVIS_AUTH_SECRET` | 32+ bytes para assinar a sessão (`openssl rand -base64 48`) |
 
 As três vêm juntas ou nenhuma vem.
 
@@ -50,9 +50,23 @@ funciona.
 Fora de `BREVIS_ENV=local`, subir sem credencial é recusado:
 
 ```
-erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USUARIO,
-BREVIS_AUTH_SENHA_HASH (gere com `brevis hash`) e BREVIS_AUTH_SEGREDO
+erro: BREVIS_ENV=production exige credencial: defina BREVIS_AUTH_USER,
+BREVIS_AUTH_PASSWORD_HASH (gere com `brevis hash`) e BREVIS_AUTH_SECRET
 ```
+
+:::note Os nomes antigos continuam funcionando
+Quatro variáveis foram renomeadas em 2026-09-10, quando os últimos nomes em
+português saíram do lado do operador: `BREVIS_AUTH_USUARIO`,
+`BREVIS_AUTH_SENHA_HASH`, `BREVIS_AUTH_SEGREDO` e
+`BREVIS_POD_MANTER_EM_FALHA`. Uma instalação que usa o nome antigo continua
+funcionando e registra um aviso nomeando o novo.
+
+Adicione o nome novo, faça o deploy e só então remova o antigo — com os dois
+definidos, o novo ganha. Os antigos saem numa versão maior.
+
+No SDK, `BREVIS_SDK_LIMITE_INLINE` virou `BREVIS_SDK_INLINE_LIMIT` pela mesma
+regra.
+:::
 
 ## Ambiente das tasks
 
@@ -96,7 +110,7 @@ Decisões da **instalação**, não do workflow.
 | `BREVIS_POD_CREDENTIAL_PVC` | — | PVC com as credenciais |
 | `BREVIS_POD_NODE_SELECTOR` | — | `chave=valor,outra=valor` |
 | `BREVIS_POD_TOLERATIONS` | — | `chave=valor:efeito,…`; só o operador `Equal` |
-| `BREVIS_POD_MANTER_EM_FALHA` | `false` | `true` mantém o pod para inspeção |
+| `BREVIS_POD_KEEP_ON_FAILURE` | `false` | `true` mantém o pod para inspeção |
 
 Em listas, vazios são ignorados: `a,,b` é erro de digitação, e um nome de secret
 vazio faria o servidor recusar o pod inteiro.
@@ -126,9 +140,9 @@ export BREVIS_DATABASE_URL='postgres://brevis:senha@db:5432/brevis?sslmode=requi
 
 # produção exige credencial
 export BREVIS_ENV=production
-export BREVIS_AUTH_USUARIO=operador
-export BREVIS_AUTH_SENHA_HASH="$(brevis hash < senha.txt)"
-export BREVIS_AUTH_SEGREDO="$(openssl rand -base64 48)"
+export BREVIS_AUTH_USER=operador
+export BREVIS_AUTH_PASSWORD_HASH="$(brevis hash < senha.txt)"
+export BREVIS_AUTH_SECRET="$(openssl rand -base64 48)"
 
 # o que as tasks precisam, e nada além
 export BREVIS_TASK_ENV=GOOGLE_PROJECT_ID,STAGE,DBT_KEYFILE

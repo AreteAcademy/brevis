@@ -180,7 +180,7 @@ Quase sempre é uma destas três:
 Para inspecionar o pod de um passo que falhou, em vez de vê-lo desaparecer:
 
 ```bash
-BREVIS_POD_MANTER_EM_FALHA=true
+BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
 Deixe desligado em produção — pods parados consomem cota.

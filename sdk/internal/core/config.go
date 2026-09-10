@@ -87,3 +87,23 @@ func EnvInt(key string, fallback int) int {
 	}
 	return v
 }
+
+// EnvIntRenamed is EnvInt for a variable that used to have a Portuguese name.
+//
+// BREVIS_SDK_LIMITE_INLINE became BREVIS_SDK_INLINE_LIMIT on 2026-09-10. This
+// one is a CONSUMER's variable, not the engine's: a fetcher tuning BigQuery's
+// inline threshold set it in its own deployment, and dropping the old name
+// would move that consumer's threshold back to the default silently -- the
+// worst shape, because nothing fails and the bill changes.
+func EnvIntRenamed(key, former string, fallback int) int {
+	if _, ok := os.LookupEnv(key); ok {
+		return EnvInt(key, fallback)
+	}
+	if v, ok := os.LookupEnv(former); ok && v != "" {
+		slog.Warn("this environment variable was renamed; the old name still works",
+			"old", former, "new", key,
+			"note", "the old name is accepted for now and will be removed in a major version")
+		return EnvInt(former, fallback)
+	}
+	return fallback
+}

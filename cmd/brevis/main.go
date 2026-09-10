@@ -274,7 +274,7 @@ func stepsOf(parsed []wfdom.Workflow, slug string) int {
 func cmdHash() *cobra.Command {
 	return &cobra.Command{
 		Use:   "hash",
-		Short: "Generate the BREVIS_AUTH_SENHA_HASH hash (reads the password from the terminal)",
+		Short: "Generate the BREVIS_AUTH_PASSWORD_HASH hash (reads the password from the terminal)",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			fmt.Fprint(os.Stderr, "password: ")
@@ -292,10 +292,10 @@ func cmdHash() *cobra.Command {
 			}
 			// The hash goes to stdout on its own, so it can be redirected; the
 			// labels go to stderr.
-			fmt.Fprintln(os.Stderr, "\nBREVIS_AUTH_SENHA_HASH:")
+			fmt.Fprintln(os.Stderr, "\nBREVIS_AUTH_PASSWORD_HASH:")
 			fmt.Println(h)
-			fmt.Fprintln(os.Stderr, "\nStill missing: BREVIS_AUTH_USUARIO and a "+
-				"BREVIS_AUTH_SEGREDO of 32+ bytes (openssl rand -base64 48).")
+			fmt.Fprintln(os.Stderr, "\nStill missing: BREVIS_AUTH_USER and a "+
+				"BREVIS_AUTH_SECRET of 32+ bytes (openssl rand -base64 48).")
 			return nil
 		},
 	}
@@ -1264,7 +1264,7 @@ func serve(ctx context.Context) error {
 		log.Info("interface is protected", "user", cfg.Auth.User)
 	} else {
 		log.Warn("interface is OPEN: anyone can trigger a workflow",
-			"hint", "set BREVIS_AUTH_USUARIO and BREVIS_AUTH_SENHA_HASH")
+			"hint", "set BREVIS_AUTH_USER and BREVIS_AUTH_PASSWORD_HASH")
 	}
 
 	failures := make(chan error, 1)

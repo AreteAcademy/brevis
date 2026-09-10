@@ -217,7 +217,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 <p>Diferença em relação ao boot: <strong>arquivo ausente é erro</strong>. No <code>serve</code>, ausência significa "usa a identidade padrão"; quem pediu para validar um caminho espera saber que ele não existe.</p>
 <hr>
 <h2 id="hash">hash<a class="anchor" href="#hash" aria-label="link">#</a></h2>
-<p>Gera o hash de <code>BREVIS_AUTH_SENHA_HASH</code>.</p>
+<p>Gera o hash de <code>BREVIS_AUTH_PASSWORD_HASH</code>.</p>
 <div class="code-block" data-code="brevis hash"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> hash</code></pre></div>
 <p>A senha é lida do terminal <strong>sem eco</strong>, nunca de argumento: argumento aparece no <code>ps</code> de qualquer processo da máquina e fica no histórico do shell. Recusa senha com menos de 12 caracteres.</p>
 <p>O hash vai sozinho para <strong>stdout</strong> e os rótulos para <strong>stderr</strong>, então <code>brevis hash &gt; hash.txt</code> grava só o que interessa.</p>

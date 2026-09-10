@@ -107,7 +107,7 @@ vendoring React instead of adopting npm.
   channel with lines in the buffer would lose exactly the last ones — the ones
   that explain the failure.
 - **A successful pod is deleted; a failed one can stay**
-  (`BREVIS_POD_MANTER_EM_FALHA`). Thousands of `Completed` pods clutter the
+  (`BREVIS_POD_KEEP_ON_FAILURE`). Thousands of `Completed` pods clutter the
   namespace and say nothing that Brevis's own history does not say better.
 - **The cluster's `reason` goes into the failure message.** `OOMKilled` and
   `DeadlineExceeded` call for the opposite actions from "the code failed".

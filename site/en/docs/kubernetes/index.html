@@ -326,7 +326,7 @@ curl -fsS https://brevis.example.com/ready"><div class="code-head"><span class="
 <p>It is almost always one of these three:</p>
 <div class="table-wrap"><table><thead><tr><th>cause</th><th>how to confirm</th></tr></thead><tbody><tr><td>taint without toleration</td><td><code>kubectl describe pod</code> shows <code>node(s) had untolerated taint</code></td></tr><tr><td><code>nodeSelector</code> with no node</td><td><code>describe</code> shows <code>didn't match Pod's node affinity</code></td></tr><tr><td>resource unavailable</td><td><code>describe</code> shows <code>Insufficient cpu</code> or <code>memory</code></td></tr></tbody></table></div>
 <p>To inspect a failed step's pod rather than watch it disappear:</p>
-<div class="code-block" data-code="BREVIS_POD_MANTER_EM_FALHA=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_MANTER_EM_FALHA=true</code></pre></div>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Leave it off in production — stopped pods consume quota.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/en/docs/pod-per-step/">Pod per step</a> — the execution model</li><li><a href="/en/docs/configuration/">Configuration</a> — every <code>BREVIS_POD_*</code> variable</li><li><a href="/en/docs/observability/">Observability</a> — what to scrape, and from which process</li></ul>

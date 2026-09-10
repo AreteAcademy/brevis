@@ -259,7 +259,7 @@ saber que ele não existe.
 
 ## hash
 
-Gera o hash de `BREVIS_AUTH_SENHA_HASH`.
+Gera o hash de `BREVIS_AUTH_PASSWORD_HASH`.
 
 ```bash
 brevis hash

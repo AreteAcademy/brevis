@@ -180,7 +180,7 @@ It is almost always one of these three:
 To inspect a failed step's pod rather than watch it disappear:
 
 ```bash
-BREVIS_POD_MANTER_EM_FALHA=true
+BREVIS_POD_KEEP_ON_FAILURE=true
 ```
 
 Leave it off in production — stopped pods consume quota.

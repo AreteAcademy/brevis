@@ -176,7 +176,7 @@ BREVIS_POD_TOLERATIONS='dedicated=data:NoSchedule'</code></pre></div>
 <p>Only the <code>Equal</code> operator is accepted in tolerations: <code>Exists</code> would tolerate <strong>any</strong> taint with that key, too broad for a decision coming from an environment variable.</p>
 <p>A malformed toleration is <strong>ignored</strong> rather than made a boot error — it leaves the pod <code>Pending</code>, which is visible, whereas refusing to boot would also stop the workflows that do not need that pool.</p>
 <h2 id="debugging-a-failure">Debugging a failure<a class="anchor" href="#debugging-a-failure" aria-label="link">#</a></h2>
-<div class="code-block" data-code="BREVIS_POD_MANTER_EM_FALHA=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_MANTER_EM_FALHA=true</code></pre></div>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Keeps the failed pod around for <code>kubectl logs</code> and <code>kubectl describe</code>. Leave it off in production: stopped pods consume cluster quota.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
 <ul><li><a href="/en/docs/kubernetes/">Kubernetes</a> — the full deployment</li><li><a href="/en/docs/configuration/">Configuration</a> — every <code>BREVIS_POD_*</code> variable</li><li><a href="/en/docs/observability/">Observability</a> — metrics from both processes</li></ul>

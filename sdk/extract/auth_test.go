@@ -218,8 +218,8 @@ func TestAuthRefusesConfigurationThatCannotWork(t *testing.T) {
 
 // TestAMissingEnvVarSaysItsName: senao vira header vazio e 401 culpando a API.
 func TestAMissingEnvVarSaysItsName(t *testing.T) {
-	_, err := core.FromEnv("BREVIS_ENV_QUE_NAO_EXISTE")(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "BREVIS_ENV_QUE_NAO_EXISTE") {
+	_, err := core.FromEnv("BREVIS_ENV_THAT_DOES_NOT_EXIST")(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "BREVIS_ENV_THAT_DOES_NOT_EXIST") {
 		t.Errorf("erro nao nomeia a variavel: %v", err)
 	}
 }

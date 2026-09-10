@@ -10,11 +10,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/AreteAcademy/brevis/internal/auth"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AreteAcademy/brevis/internal/auth"
 )
 
 // Config is the immutable state derived from the environment. Everything the
@@ -117,9 +119,9 @@ func Load() (Config, error) {
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),
 		UIURL:        os.Getenv("BREVIS_UI_URL"),
 		Auth: auth.Credential{
-			User:   os.Getenv("BREVIS_AUTH_USUARIO"),
-			Hash:   os.Getenv("BREVIS_AUTH_SENHA_HASH"),
-			Secret: []byte(os.Getenv("BREVIS_AUTH_SEGREDO")),
+			User:   renamed("BREVIS_AUTH_USER", "BREVIS_AUTH_USUARIO"),
+			Hash:   renamed("BREVIS_AUTH_PASSWORD_HASH", "BREVIS_AUTH_SENHA_HASH"),
+			Secret: []byte(renamed("BREVIS_AUTH_SECRET", "BREVIS_AUTH_SEGREDO")),
 		},
 		Pods: PodsConfig{
 			Modo:              get("BREVIS_PODS", "auto"),
@@ -133,7 +135,7 @@ func Load() (Config, error) {
 			CredentialPath:    get("BREVIS_POD_CREDENTIAL_PATH", ""),
 			NodeSelector:      pares("BREVIS_POD_NODE_SELECTOR"),
 			Tolerations:       graces("BREVIS_POD_TOLERATIONS"),
-			KeepOnFailure:     os.Getenv("BREVIS_POD_MANTER_EM_FALHA") == "true",
+			KeepOnFailure:     renamed("BREVIS_POD_KEEP_ON_FAILURE", "BREVIS_POD_MANTER_EM_FALHA") == "true",
 		},
 		ShutdownTimeout: 15 * time.Second,
 	}
@@ -172,9 +174,9 @@ func Load() (Config, error) {
 	// team to turn authentication off for good.
 	if c.Env != "local" && !c.Auth.Enabled() {
 		return Config{}, fmt.Errorf(
-			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USUARIO, "+
-				"BREVIS_AUTH_SENHA_HASH (generate one with `brevis hash`) and "+
-				"BREVIS_AUTH_SEGREDO", c.Env)
+			"BREVIS_ENV=%s requires a credential: set BREVIS_AUTH_USER, "+
+				"BREVIS_AUTH_PASSWORD_HASH (generate one with `brevis hash`) and "+
+				"BREVIS_AUTH_SECRET", c.Env)
 	}
 	return c, nil
 }
@@ -295,4 +297,33 @@ func get(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+// renamed reads a variable that used to have a Portuguese name, and accepts
+// both.
+//
+// Four of them were renamed on 2026-09-10: the repository is English, and an
+// operator reading English instructions had to type MANTER_EM_FALHA. The old
+// name keeps working, with a warning naming the new one.
+//
+// The transition is not politeness. Outside `local` the engine REFUSES TO BOOT
+// without a credential, and BREVIS_AUTH_USUARIO / _SENHA_HASH / _SEGREDO are
+// what a running installation authenticates with. A rename with no fallback
+// turns the next rollout into a CrashLoopBackOff on a deploy that changed
+// nothing else -- and the operator's own manifest, which was correct yesterday,
+// is what the error would be about.
+//
+// Removing the fallback is a breaking change and belongs in a major, with the
+// warning having shipped for a version or two first.
+func renamed(name, former string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	v := os.Getenv(former)
+	if v != "" {
+		slog.Warn("this environment variable was renamed; the old name still works",
+			"old", former, "new", name,
+			"note", "the old name is accepted for now and will be removed in a major version")
+	}
+	return v
 }

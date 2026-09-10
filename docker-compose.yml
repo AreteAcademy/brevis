@@ -48,9 +48,9 @@ services:
       #
       # To see the sign-in screen, generate a hash with `brevis hash`, uncomment
       # the three lines and restart:
-      BREVIS_AUTH_USUARIO: operador
-      BREVIS_AUTH_SENHA_HASH: "pbkdf2-sha256$600000$6ewhY/AG9eqZFyl4FOWz9Q$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
-      BREVIS_AUTH_SEGREDO: "segredo-local-de-desenvolvimento-com-32-bytes"
+      BREVIS_AUTH_USER: operador
+      BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$600000$6ewhY/AG9eqZFyl4FOWz9Q$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
+      BREVIS_AUTH_SECRET: "segredo-local-de-desenvolvimento-com-32-bytes"
     ports: ["8080:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying

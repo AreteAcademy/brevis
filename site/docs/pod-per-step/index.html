@@ -176,7 +176,7 @@ BREVIS_POD_TOLERATIONS='dedicated=dados:NoSchedule'</code></pre></div>
 <p>Só o operador <code>Equal</code> é aceito nas tolerações: <code>Exists</code> toleraria <strong>qualquer</strong> taint com aquela chave, amplo demais para uma decisão vinda de variável de ambiente.</p>
 <p>Uma toleração malformada é <strong>ignorada</strong> em vez de virar erro de boot — ela deixa o pod <code>Pending</code>, que é visível, enquanto recusar o boot pararia também os workflows que não precisam daquele pool.</p>
 <h2 id="depurando-uma-falha">Depurando uma falha<a class="anchor" href="#depurando-uma-falha" aria-label="link">#</a></h2>
-<div class="code-block" data-code="BREVIS_POD_MANTER_EM_FALHA=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_MANTER_EM_FALHA=true</code></pre></div>
+<div class="code-block" data-code="BREVIS_POD_KEEP_ON_FAILURE=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_POD_KEEP_ON_FAILURE=true</code></pre></div>
 <p>Mantém o pod que falhou para inspeção com <code>kubectl logs</code> e <code>kubectl describe</code>. Deixe desligado em produção: pods parados consomem cota do cluster.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
 <ul><li><a href="/docs/kubernetes/">Kubernetes</a> — o deploy completo</li><li><a href="/docs/configuration/">Configuração</a> — todas as variáveis <code>BREVIS_POD_*</code></li><li><a href="/docs/observability/">Observabilidade</a> — as métricas dos dois processos</li></ul>

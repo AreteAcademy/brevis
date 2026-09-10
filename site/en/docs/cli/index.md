@@ -265,7 +265,7 @@ a path expects to be told it does not exist.
 
 ## hash
 
-Generates the `BREVIS_AUTH_SENHA_HASH` value.
+Generates the `BREVIS_AUTH_PASSWORD_HASH` value.
 
 ```bash
 brevis hash
