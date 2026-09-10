@@ -1787,6 +1787,55 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")
 of zero times — a query from the epoch selects everything, and that failure
 should not be silent. The `or` above is the whole fallback.
 
+### In dlt, nothing to read at all
+
+[dlt](https://dlthub.com) keeps its own cursor, in state it writes to the
+destination. That state only moves **forward**, which is fine until you re-run
+an old slot: the cursor still says today, so the backfill reads today's window,
+and dlt's own answer for that is to drop the state.
+
+The window Brevis hands over comes from the cron, so the March run produces
+March's window however often it is retried. dlt will take it — the names are
+its own, read before it goes looking for Airflow, and the engine sets them on
+every scheduled run:
+
+```python
+@dlt.resource(primary_key="id")
+def events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # this line is the whole integration
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)
+```
+
+`allow_external_schedulers=True` is all of it. `$DLT_INTERVAL_START` and
+`$DLT_INTERVAL_END` become dlt's `initial_value` and `end_value`, half-open on
+both sides — the row sitting exactly on the start is in, the one sitting exactly
+on the end is not, which is what makes consecutive slots neither gap nor
+overlap.
+
+An incremental with an `end_value` **does not touch the persisted state**. That
+is the part that matters: re-running one slot is idempotent, and a backfill of
+March does not move the cursor that the nightly run depends on.
+
+Two things to know before it works:
+
+- **The cursor must be a datetime, not a string.** dlt will not coerce a `text`
+  cursor for comparison and refuses to join the scheduler at all, with a
+  `JoinSchedulerError` that does not obviously say so. Convert it on the
+  resource — `add_map` — or type the `initial_value` as above.
+- **A workflow with no schedule hands over nothing**, and dlt then raises
+  `ExternalSchedulerNotAvailable` rather than quietly falling back to its
+  cursor. If a pipeline should work both ways, leave
+  `allow_external_schedulers` off and pass the window yourself from
+  `run.window()`.
+
+Declaring `tools: [dlt]` on the step is separate, and only draws the chip on the
+graph — the window is handed over either way.
+
 ## The snapshot
 
 Parameters are stored **in the run**, not read from the workflow at execution

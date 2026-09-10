@@ -233,6 +233,31 @@ since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(d
 df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <p>O <code>window()</code> devolve <code>None</code> quando o workflow não tem agendamento, em vez de um par de tempos zerados — uma consulta desde a época seleciona tudo, e essa falha não pode ser silenciosa. O <code>or</code> acima é a queda inteira.</p>
+<h3 id="no-dlt-nada-a-ler">No dlt, nada a ler<a class="anchor" href="#no-dlt-nada-a-ler" aria-label="link">#</a></h3>
+<p>O <a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> guarda o cursor dele, num estado que grava no destino. Esse estado só anda para <strong>frente</strong>, o que funciona até você reexecutar um slot antigo: o cursor continua dizendo hoje, então o backfill lê a janela de hoje — e a resposta do próprio dlt para isso é descartar o estado.</p>
+<p>A janela que o Brevis entrega vem do cron, então o run de março produz a janela de março por mais vezes que seja repetido. O dlt aceita essa janela — os nomes são dele, lidos antes de procurar pelo Airflow, e o motor os define em todo run agendado:</p>
+<div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
+def events(
+    updated_at=dlt.sources.incremental(
+        &quot;updated_at&quot;,
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # esta linha é a integração inteira
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>@dlt.resource(primary_key="id")
+<span class="t-k">def</span> events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=<span class="t-k">True</span>,   <span class="t-c"># esta linha é a integração inteira</span>
+    )
+):
+    <span class="t-k">yield</span> <span class="t-k">from</span> api.events(since=updated_at.start_value, until=updated_at.end_value)</code></pre></div>
+<p>O <code>allow_external_schedulers=True</code> é tudo. O <code>$DLT_INTERVAL_START</code> e o <code>$DLT_INTERVAL_END</code> viram o <code>initial_value</code> e o <code>end_value</code> do dlt, meio-abertos dos dois lados — a linha que cai exatamente no início entra, a que cai exatamente no fim não, que é o que faz slots consecutivos não deixarem buraco nem contarem duas vezes.</p>
+<p>Um incremental com <code>end_value</code> <strong>não toca no estado gravado</strong>. Essa é a parte que importa: reexecutar um slot é idempotente, e um backfill de março não mexe no cursor de que a execução noturna depende.</p>
+<p>Duas coisas antes de funcionar:</p>
+<ul><li><strong>O cursor precisa ser um datetime, não uma string.</strong> O dlt não converte um cursor <code>text</code> para comparar e recusa entrar no scheduler, com um <code>JoinSchedulerError</code> que não diz isso com todas as letras. Converta no resource — <code>add_map</code> — ou tipe o <code>initial_value</code> como acima.</li><li><strong>Um workflow sem agendamento não entrega nada</strong>, e aí o dlt levanta <code>ExternalSchedulerNotAvailable</code> em vez de voltar em silêncio para o cursor dele. Se o pipeline precisa funcionar dos dois jeitos, deixe o <code>allow_external_schedulers</code> desligado e passe a janela você mesmo, a partir do <code>run.window()</code>.</li></ul>
+<p>Declarar <code>tools: [dlt]</code> no passo é outra coisa, e só desenha o chip no grafo — a janela é entregue de qualquer forma.</p>
 <h2 id="o-snapshot">O snapshot<a class="anchor" href="#o-snapshot" aria-label="link">#</a></h2>
 <p>Os parâmetros são gravados <strong>no run</strong>, não lidos do workflow na hora de executar. O run carrega a entrada com que foi disparado, e o log de uma execução de janeiro continua mostrando os valores de janeiro mesmo depois de o padrão mudar.</p>
 <h2 id="proximos-passos">Próximos passos<a class="anchor" href="#proximos-passos" aria-label="link">#</a></h2>
@@ -250,7 +275,7 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#como-ler">Como ler</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#como-ler">Como ler</a></li><li class="toc-3"><a href="#no-dlt-nada-a-ler">No dlt, nada a ler</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

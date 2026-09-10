@@ -183,6 +183,55 @@ O `window()` devolve `None` quando o workflow não tem agendamento, em vez de um
 par de tempos zerados — uma consulta desde a época seleciona tudo, e essa falha
 não pode ser silenciosa. O `or` acima é a queda inteira.
 
+### No dlt, nada a ler
+
+O [dlt](https://dlthub.com) guarda o cursor dele, num estado que grava no
+destino. Esse estado só anda para **frente**, o que funciona até você reexecutar
+um slot antigo: o cursor continua dizendo hoje, então o backfill lê a janela de
+hoje — e a resposta do próprio dlt para isso é descartar o estado.
+
+A janela que o Brevis entrega vem do cron, então o run de março produz a janela
+de março por mais vezes que seja repetido. O dlt aceita essa janela — os nomes
+são dele, lidos antes de procurar pelo Airflow, e o motor os define em todo run
+agendado:
+
+```python
+@dlt.resource(primary_key="id")
+def events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # esta linha é a integração inteira
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)
+```
+
+O `allow_external_schedulers=True` é tudo. O `$DLT_INTERVAL_START` e o
+`$DLT_INTERVAL_END` viram o `initial_value` e o `end_value` do dlt, meio-abertos
+dos dois lados — a linha que cai exatamente no início entra, a que cai
+exatamente no fim não, que é o que faz slots consecutivos não deixarem buraco
+nem contarem duas vezes.
+
+Um incremental com `end_value` **não toca no estado gravado**. Essa é a parte
+que importa: reexecutar um slot é idempotente, e um backfill de março não mexe
+no cursor de que a execução noturna depende.
+
+Duas coisas antes de funcionar:
+
+- **O cursor precisa ser um datetime, não uma string.** O dlt não converte um
+  cursor `text` para comparar e recusa entrar no scheduler, com um
+  `JoinSchedulerError` que não diz isso com todas as letras. Converta no
+  resource — `add_map` — ou tipe o `initial_value` como acima.
+- **Um workflow sem agendamento não entrega nada**, e aí o dlt levanta
+  `ExternalSchedulerNotAvailable` em vez de voltar em silêncio para o cursor
+  dele. Se o pipeline precisa funcionar dos dois jeitos, deixe o
+  `allow_external_schedulers` desligado e passe a janela você mesmo, a partir do
+  `run.window()`.
+
+Declarar `tools: [dlt]` no passo é outra coisa, e só desenha o chip no grafo — a
+janela é entregue de qualquer forma.
+
 ## O snapshot
 
 Os parâmetros são gravados **no run**, não lidos do workflow na hora de

@@ -233,6 +233,31 @@ since, until = run.window() <span class="t-k">or</span> (run.now() - timedelta(d
 df = fetch(since, until)
 df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 <p><code>window()</code> returns <code>None</code> when the workflow has no schedule, rather than a pair of zero times — a query from the epoch selects everything, and that failure should not be silent. The <code>or</code> above is the whole fallback.</p>
+<h3 id="in-dlt-nothing-to-read-at-all">In dlt, nothing to read at all<a class="anchor" href="#in-dlt-nothing-to-read-at-all" aria-label="link">#</a></h3>
+<p><a href="https://dlthub.com" target="_blank" rel="noopener">dlt</a> keeps its own cursor, in state it writes to the destination. That state only moves <strong>forward</strong>, which is fine until you re-run an old slot: the cursor still says today, so the backfill reads today's window, and dlt's own answer for that is to drop the state.</p>
+<p>The window Brevis hands over comes from the cron, so the March run produces March's window however often it is retried. dlt will take it — the names are its own, read before it goes looking for Airflow, and the engine sets them on every scheduled run:</p>
+<div class="code-block" data-code="@dlt.resource(primary_key=&quot;id&quot;)
+def events(
+    updated_at=dlt.sources.incremental(
+        &quot;updated_at&quot;,
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=True,   # this line is the whole integration
+    )
+):
+    yield from api.events(since=updated_at.start_value, until=updated_at.end_value)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>@dlt.resource(primary_key="id")
+<span class="t-k">def</span> events(
+    updated_at=dlt.sources.incremental(
+        "updated_at",
+        initial_value=datetime(1970, 1, 1, tzinfo=timezone.utc),
+        allow_external_schedulers=<span class="t-k">True</span>,   <span class="t-c"># this line is the whole integration</span>
+    )
+):
+    <span class="t-k">yield</span> <span class="t-k">from</span> api.events(since=updated_at.start_value, until=updated_at.end_value)</code></pre></div>
+<p><code>allow_external_schedulers=True</code> is all of it. <code>$DLT_INTERVAL_START</code> and <code>$DLT_INTERVAL_END</code> become dlt's <code>initial_value</code> and <code>end_value</code>, half-open on both sides — the row sitting exactly on the start is in, the one sitting exactly on the end is not, which is what makes consecutive slots neither gap nor overlap.</p>
+<p>An incremental with an <code>end_value</code> <strong>does not touch the persisted state</strong>. That is the part that matters: re-running one slot is idempotent, and a backfill of March does not move the cursor that the nightly run depends on.</p>
+<p>Two things to know before it works:</p>
+<ul><li><strong>The cursor must be a datetime, not a string.</strong> dlt will not coerce a <code>text</code> cursor for comparison and refuses to join the scheduler at all, with a <code>JoinSchedulerError</code> that does not obviously say so. Convert it on the resource — <code>add_map</code> — or type the <code>initial_value</code> as above.</li><li><strong>A workflow with no schedule hands over nothing</strong>, and dlt then raises <code>ExternalSchedulerNotAvailable</code> rather than quietly falling back to its cursor. If a pipeline should work both ways, leave <code>allow_external_schedulers</code> off and pass the window yourself from <code>run.window()</code>.</li></ul>
+<p>Declaring <code>tools: [dlt]</code> on the step is separate, and only draws the chip on the graph — the window is handed over either way.</p>
 <h2 id="the-snapshot">The snapshot<a class="anchor" href="#the-snapshot" aria-label="link">#</a></h2>
 <p>Parameters are stored <strong>in the run</strong>, not read from the workflow at execution time. The run carries the input it was triggered with, and the log of a January execution keeps showing January's values even after the default changes.</p>
 <h2 id="next-steps">Next steps<a class="anchor" href="#next-steps" aria-label="link">#</a></h2>
@@ -250,7 +275,7 @@ df.to_parquet(f"/data/{run.auto().date}.parquet")</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">Reading them</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">Reading them</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">In dlt, nothing to read at all</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>
