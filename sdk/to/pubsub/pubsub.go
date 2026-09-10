@@ -1,5 +1,21 @@
 // Package pubsub publishes records to a Google Cloud Pub/Sub topic.
 //
+// # The contract is the client's
+//
+// The message is the payload, and nothing else. No attribute is added, no key
+// is put into the body, and there is no Brevis-shaped envelope anywhere in what
+// a subscriber receives.
+//
+// That is the rule this package is built around, and it is not minimalism. A
+// table is created by the pipeline that writes it, so the SDK may decide what
+// its columns are. A topic is not: it exists before this pipeline does, its
+// subscribers were written first and their filters were written first. An
+// attribute Brevis adds on its own is Brevis editing somebody else's contract,
+// and the subscriber finds out at three in the morning.
+//
+// Everything on a message is therefore ASKED FOR, by name, through Attributes
+// and OrderingKey. Both default to nothing.
+//
 // It is the SDK's first destination that is neither a table nor a directory,
 // and the difference is not the transport. Half of what a destination is asked
 // -- create the table, deduplicate, partition by this column -- has no meaning
@@ -46,22 +62,49 @@ type Topic struct {
 	Project string
 	Name    string
 
-	// OrderingKey names the field whose value orders the messages, or is empty
-	// for no ordering.
+	// Attributes decides what goes in each message's attributes. NIL MEANS
+	// NONE, and that is the default.
 	//
-	// Empty is the default because ordering costs throughput and constrains
-	// publishing to one region's worth of ordering guarantees. It is also what
-	// every other destination here gives: a table load has no order either.
+	// The topic exists before this pipeline does and its contract belongs to
+	// whoever owns it: the subscriber was written first and its filters were
+	// written first. An attribute Brevis adds on its own is Brevis editing
+	// somebody else's contract -- the same argument this driver makes about the
+	// payload, for the same reason.
 	//
-	// The value is looked up on the ENVELOPE first -- "source_key", "provider",
-	// "entity" -- and then in the payload, so the common case needs no
-	// knowledge of the record's shape.
-	OrderingKey string
+	// So nothing is added unless it is asked for, by name:
+	//
+	//	Attributes: func(e sdk.Envelope) map[string]string {
+	//		id, err := e.IngestionID()
+	//		if err != nil {
+	//			return nil
+	//		}
+	//		return map[string]string{"eventId": id, "src": e.Provider}
+	//	}
+	//
+	// `sdk.Envelope` is an alias for the type below, so a consumer writes the
+	// public name and never sees an internal package. `IngestionID()` is on it
+	// -- the deterministic UUID v5 over provider|entity|source_key|record_ts --
+	// for a client who wants an idempotency key, under whatever name they call
+	// one.
+	//
+	// A function rather than a map because most of what is worth putting there
+	// is per-record. Returning nil is no attributes for that message.
+	Attributes func(core.Envelope) map[string]string
 
-	// Attributes are extra attributes on every message, fixed at construction.
-	// The ingestion ones are always present; these are for whatever a
-	// particular subscription filters on.
-	Attributes map[string]string
+	// OrderingKey decides the message's ordering key. Nil means no ordering,
+	// and that is the default.
+	//
+	// A function and not a field name, for the reason above and one more: the
+	// field-name version had to invent a lookup -- the envelope first, then the
+	// payload -- and a rule the client did not write is a rule the client has
+	// to learn. This has none:
+	//
+	//	OrderingKey: func(e sdk.Envelope) string { return e.SourceKey }
+	//
+	// Ordering costs throughput and constrains publishing, which is why off is
+	// the default. It is also what every other destination here gives: a table
+	// load has no order either.
+	OrderingKey func(core.Envelope) string
 
 	// Client is the publisher, and it exists to be replaced in a test.
 	//
@@ -96,6 +139,20 @@ type Handle interface {
 	ID(ctx context.Context) (string, error)
 }
 
+// ordered says whether the real publisher must have message ordering switched
+// on.
+//
+// A method rather than the expression inline, because the expression was inline
+// and nothing could reach it: every test here uses the fake, and the real
+// constructor needs credentials. A mutation that hard-coded this to false
+// passed the whole suite -- and in production it would fail every ordered
+// publish, because the Google client REFUSES a message with an ordering key on
+// a publisher that has ordering off. It does not reorder it; it refuses it.
+//
+// The honest proof is still the emulator test that is not built yet. This is
+// the half that can be checked without one.
+func (t Topic) ordered() bool { return t.OrderingKey != nil }
+
 // Describe names the destination for logs and errors.
 func (t Topic) Describe() string {
 	return "pubsub://" + t.Project + "/" + t.Name
@@ -129,7 +186,7 @@ func (t Topic) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 
 	client := t.Client
 	if client == nil {
-		real, err := newTopic(ctx, t.Project, t.Name, t.OrderingKey != "")
+		real, err := newTopic(ctx, t.Project, t.Name, t.ordered())
 		if err != nil {
 			return nil, err
 		}
@@ -186,8 +243,8 @@ func (t Topic) collect(ctx context.Context, handles []Handle, bytes int64, start
 		// delivered, and a re-run is a re-delivery of exactly those.
 		return res, fmt.Errorf("published %d of %d messages to %s and %d failed. "+
 			"THE %d THAT WENT ARE DELIVERED -- Pub/Sub has no rollback, so re-running "+
-			"this step re-delivers them, and the subscriber has to be idempotent on "+
-			"`ingestion_id`. First failures: %s",
+			"this step re-delivers them and the subscriber has to be idempotent. "+
+			"First failures: %s",
 			res.RowsLoaded, len(handles), t.Describe(), failed, res.RowsLoaded,
 			strings.Join(failures, "; "))
 	}
@@ -199,10 +256,10 @@ const maxReportedFailures = 5
 
 // message turns one record into one message.
 //
-// The ingestion metadata goes in ATTRIBUTES and not into the payload, for two
-// reasons. A subscription filters on attributes without parsing the body, which
-// is the whole point of having them. And the payload belongs to the producer's
-// schema -- adding keys to it makes every downstream reader parse a shape Brevis
+// THE MESSAGE IS THE PAYLOAD AND NOTHING ELSE, unless the consumer said
+// otherwise. No attribute is added on its own and no key is put into the body:
+// the topic's contract belongs to whoever owns the topic, and a subscriber
+// written before this pipeline existed should not have to learn a shape Brevis
 // invented.
 func (t Topic) message(e *core.Envelope) (Message, error) {
 	data, err := json.Marshal(e.Payload)
@@ -210,78 +267,36 @@ func (t Topic) message(e *core.Envelope) (Message, error) {
 		return Message{}, fmt.Errorf("the payload is not JSON: %w", err)
 	}
 
-	// The deterministic UUID v5 the SDK already computes from
-	// provider|entity|source_key|record_ts. It costs nothing here because it
-	// exists already, and it is exactly the key a subscriber needs to be
-	// idempotent -- which the error above tells them to be.
-	id, err := e.IngestionID()
-	if err != nil {
-		return Message{}, err
-	}
-
-	attrs := map[string]string{
-		"ingestion_id": id,
-		"provider":     e.Provider,
-		"entity":       e.Entity,
-		"source_key":   e.SourceKey,
-	}
-	if e.RecordTS != "" {
-		attrs["record_ts"] = e.RecordTS
-	}
-	for k, v := range t.Attributes {
-		attrs[k] = v
-	}
-	// Empty attributes are dropped rather than sent blank. A subscription
-	// filtering on `attributes:provider` should not match a message whose
-	// provider nobody set.
-	for k, v := range attrs {
-		if v == "" {
-			delete(attrs, k)
+	msg := Message{Data: data}
+	if t.Attributes != nil {
+		// Copied rather than kept. The consumer's function may hand back a map
+		// it reuses, and the publisher holds this one for the life of the
+		// message -- one buffer reused across records would make every message
+		// carry the last one's attributes.
+		if given := t.Attributes(*e); len(given) > 0 {
+			attrs := make(map[string]string, len(given))
+			for k, v := range given {
+				attrs[k] = v
+			}
+			msg.Attributes = attrs
 		}
 	}
-
-	msg := Message{Data: data, Attributes: attrs}
-	if t.OrderingKey != "" {
-		key, err := orderingKey(t.OrderingKey, e, data)
-		if err != nil {
-			return Message{}, err
+	if t.OrderingKey != nil {
+		key := t.OrderingKey(*e)
+		if key == "" {
+			// Refused rather than sent blank, and this is the one that would be
+			// silent otherwise: an empty key is not "no ordering" to Pub/Sub on
+			// a publisher that has ordering ON. Every message with an empty key
+			// lands in ONE order group, which is a throughput collapse that
+			// reads as a slow day.
+			return Message{}, fmt.Errorf("OrderingKey returned an empty string for "+
+				"source_key %q. On a publisher with ordering enabled that is not "+
+				"'no ordering' -- every such message goes into one order group. "+
+				"Return a key for every record, or leave OrderingKey nil", e.SourceKey)
 		}
 		msg.OrderingKey = key
 	}
 	return msg, nil
-}
-
-// orderingKey resolves the configured field, envelope first.
-//
-// The envelope is checked first because that is where the useful keys are and
-// it needs no knowledge of the record's shape. Falling through to the payload
-// covers the case where the ordering is by something only the producer knows.
-func orderingKey(field string, e *core.Envelope, data []byte) (string, error) {
-	switch field {
-	case "source_key":
-		return e.SourceKey, nil
-	case "provider":
-		return e.Provider, nil
-	case "entity":
-		return e.Entity, nil
-	}
-
-	var payload map[string]any
-	if err := json.Unmarshal(data, &payload); err != nil {
-		return "", fmt.Errorf("OrderingKey %q is not an envelope field and the payload is "+
-			"not an object, so there is nowhere to look it up", field)
-	}
-	v, ok := payload[field]
-	if !ok {
-		return "", fmt.Errorf("OrderingKey %q is neither an envelope field nor a key of the "+
-			"payload. Ordering by a field that is not there would silently put every "+
-			"message in one order group", field)
-	}
-	// An ordering key is a string to Pub/Sub whatever it is here.
-	if s, ok := v.(string); ok {
-		return s, nil
-	}
-	return fmt.Sprint(v), nil
 }
 
 // refuseUnsupported rejects what a topic cannot honour.
@@ -298,9 +313,11 @@ func (t Topic) refuseUnsupported(opt core.WriteOptions) error {
 	}
 	if opt.Dedup == core.DedupMerge {
 		return fmt.Errorf("to/pubsub.Topic cannot deduplicate: there is no key to match " +
-			"on and no row to replace. Pub/Sub is at-least-once by design, and the " +
-			"subscriber is where idempotency lives -- every message carries " +
-			"`ingestion_id` for exactly that")
+			"on and no row to replace. Pub/Sub is at-least-once by design, so the " +
+			"subscriber is where idempotency lives. If it needs a key, put one in the " +
+			"attributes yourself -- sdk.Envelope.IngestionID() is a deterministic UUID " +
+			"over provider|entity|source_key|record_ts, under whatever name your " +
+			"topic's contract uses")
 	}
 	if opt.PartitionBy != "" {
 		return fmt.Errorf("to/pubsub.Topic has no partitions: PartitionBy is a table's "+

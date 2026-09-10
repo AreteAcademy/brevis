@@ -90,7 +90,7 @@ itself.
 | `mysql.Table` | `INSERT IGNORE` | **does not exist** | yes | transformers |
 | `redshift.Table` | `MERGE … WHEN NOT MATCHED` | **does not exist** | yes | transformers |
 | `to.Files` | **refused**, naming `Dedup` | **does not exist** | yes | transformers |
-| `pubsub.Topic` | **refused**, naming `Dedup` | **does not exist** — the topic exists already | yes | **attributes** |
+| `pubsub.Topic` | **refused**, naming `Dedup` | **does not exist** — the topic exists already | yes | **none by default** |
 
 **`pubsub.Topic` refuses three, which is more than any other destination.** It
 is the first one here that is neither a table nor a directory, and half of what
@@ -102,13 +102,36 @@ is the first one here that is neither a table nor a directory, and half of what
 | `Dedup` | refused. There is no key to match on and no row to replace. Pub/Sub is at-least-once by design, and every message carries `ingestion_id` so the subscriber can be idempotent |
 | `PartitionBy` | refused. A partition is a table's idea; the nearest thing is `OrderingKey`, which groups messages that must ARRIVE in order rather than rows that live together |
 
+**And it is the only destination that adds NOTHING to what it writes.** Every
+other one here composes a row: the ingestion transformers put `ingestion_id` and
+`ingestion_loaded_at` into it, and the destination's columns are the pipeline's
+to decide, because the pipeline creates the table.
+
+A topic is not. It exists before the pipeline does, its subscribers were written
+first and their filters were written first — so an attribute Brevis adds on its
+own is Brevis editing somebody else's contract. The message is the payload, and
+attributes arrive only when the consumer names them:
+
+```go
+Attributes: func(e sdk.Envelope) map[string]string {
+    id, err := e.IngestionID()
+    if err != nil {
+        return nil
+    }
+    return map[string]string{"eventId": id, "src": e.Provider}
+},
+OrderingKey: func(e sdk.Envelope) string { return e.SourceKey },
+```
+
+Both are functions and both default to nil. `IngestionID()` is there for a
+client who wants an idempotency key — under whatever name their topic's contract
+already uses.
+
 **And it is the only destination where a failure is partial.** Every other one
 here is all-or-nothing at the batch level. A publish is not: 48,000 messages
 that fail at 31,000 have *delivered* 31,000, so `RowsLoaded` reports what
 actually went on the error path too, and the error says a re-run is a
-re-delivery. The metadata goes in message **attributes** rather than through the
-transformers, so a subscription filters on it without parsing the body and the
-payload keeps the producer's own schema.
+re-delivery.
 
 **Why only BigQuery creates a table.** It has a service that infers the types
 from the data, and `v0.16.0` uses exactly that, overriding only the SDK's two

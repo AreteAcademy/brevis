@@ -91,58 +91,122 @@ func TestOneRecordBecomesOneMessage(t *testing.T) {
 	}
 }
 
-// The ingestion metadata goes in ATTRIBUTES, and the payload is left alone.
+// THE RULE THIS PACKAGE IS BUILT AROUND: by default a message is the payload
+// and NOTHING else.
 //
-// A subscription filters on attributes without parsing the body, which is what
-// they are for. And the payload belongs to the producer's schema -- adding keys
-// to it would make every downstream reader parse a shape Brevis invented.
-func TestTheMetadataGoesInAttributesAndNotInThePayload(t *testing.T) {
+// The topic exists before this pipeline does. Its subscribers were written
+// first and their filters were written first, so an attribute Brevis adds on
+// its own is Brevis editing somebody else's contract -- and the subscriber
+// finds out at three in the morning.
+//
+// This driver got that wrong once: it injected ingestion_id, provider, entity,
+// source_key and record_ts into every message, which is exactly what it already
+// refused to do to the payload.
+func TestByDefaultAMessageCarriesNothingButThePayload(t *testing.T) {
+	f := &fakeTopic{}
+	if _, err := topicWith(f).Write(context.Background(), records(2), core.WriteOptions{}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	for i, m := range f.sent {
+		if len(m.Attributes) != 0 {
+			t.Errorf("message %d arrived with attributes nobody asked for: %v", i, m.Attributes)
+		}
+		if m.OrderingKey != "" {
+			t.Errorf("message %d arrived with ordering key %q", i, m.OrderingKey)
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(m.Data, &payload); err != nil {
+			t.Fatal(err)
+		}
+		// Every key here was in the record; none was added.
+		if len(payload) != 2 || payload["region"] != "sa-east-1" {
+			t.Errorf("message %d payload was edited: %v", i, payload)
+		}
+	}
+}
+
+// And what the client DOES ask for arrives, under the client's own names.
+//
+// The consumer writes `sdk.Envelope` -- an alias for the type below -- so it
+// never names an internal package, and calls IngestionID() only if it decides
+// it wants an idempotency key.
+func TestTheClientNamesEveryAttributeItself(t *testing.T) {
 	f := &fakeTopic{}
 	tp := topicWith(f)
-	tp.Attributes = map[string]string{"pipeline": "orders-nightly"}
+	tp.Attributes = func(e core.Envelope) map[string]string {
+		id, err := e.IngestionID()
+		if err != nil {
+			return nil
+		}
+		// Names that are the CLIENT'S, not this SDK's.
+		return map[string]string{"eventId": id, "src": e.Provider}
+	}
 	if _, err := tp.Write(context.Background(), records(1), core.WriteOptions{}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 
 	got := f.sent[0].Attributes
-	for k, want := range map[string]string{
-		"provider": "acme", "entity": "orders", "source_key": "k0",
-		"record_ts": "2026-03-11T04:00:00Z", "pipeline": "orders-nightly",
-	} {
-		if got[k] != want {
-			t.Errorf("attribute %q = %q, wanted %q", k, got[k], want)
-		}
+	if len(got) != 2 {
+		t.Fatalf("attributes = %v; the driver added to what the client returned", got)
 	}
-	// The deterministic UUID the SDK already computes. It is the key a
-	// subscriber needs to be idempotent, and the partial-failure error tells
-	// them to use it.
-	if len(got["ingestion_id"]) != 36 {
-		t.Errorf("ingestion_id = %q", got["ingestion_id"])
+	if len(got["eventId"]) != 36 || got["src"] != "acme" {
+		t.Errorf("attributes = %v", got)
 	}
-
 	var payload map[string]any
 	if err := json.Unmarshal(f.sent[0].Data, &payload); err != nil {
 		t.Fatal(err)
 	}
-	for _, absent := range []string{"ingestion_id", "provider", "entity", "source_key"} {
-		if _, there := payload[absent]; there {
-			t.Errorf("%q was added to the payload: %v", absent, payload)
+	if _, there := payload["eventId"]; there {
+		t.Errorf("an attribute leaked into the payload: %v", payload)
+	}
+}
+
+// A returned map is COPIED. A consumer reusing one buffer across records would
+// otherwise have every message carry the last record's attributes -- the
+// publisher holds the map for the life of the message.
+func TestTheAttributeMapIsCopiedAndNotHeld(t *testing.T) {
+	f := &fakeTopic{}
+	tp := topicWith(f)
+	shared := map[string]string{}
+	tp.Attributes = func(e core.Envelope) map[string]string {
+		// The mistake a consumer makes: one map, refilled.
+		for k := range shared {
+			delete(shared, k)
+		}
+		shared["key"] = e.SourceKey
+		return shared
+	}
+	if _, err := tp.Write(context.Background(), records(3), core.WriteOptions{}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	for i, m := range f.sent {
+		want := "k" + itoa(i)
+		if m.Attributes["key"] != want {
+			t.Errorf("message %d carries %q, wanted %q -- the map was held, not copied",
+				i, m.Attributes["key"], want)
 		}
 	}
 }
 
-// An empty attribute is dropped rather than sent blank: a subscription
-// filtering on `attributes:provider` must not match a message whose provider
-// nobody set.
-func TestAnEmptyAttributeIsDroppedRatherThanSentBlank(t *testing.T) {
+// Returning nil for one record is no attributes for that record, and not an
+// error: a client may want them on some messages and not others.
+func TestReturningNilIsNoAttributesForThatMessage(t *testing.T) {
 	f := &fakeTopic{}
-	recs := records(1)
-	recs[0].Provider = ""
-	if _, err := topicWith(f).Write(context.Background(), recs, core.WriteOptions{}); err != nil {
+	tp := topicWith(f)
+	tp.Attributes = func(e core.Envelope) map[string]string {
+		if e.SourceKey == "k1" {
+			return nil
+		}
+		return map[string]string{"k": e.SourceKey}
+	}
+	if _, err := tp.Write(context.Background(), records(3), core.WriteOptions{}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if v, there := f.sent[0].Attributes["provider"]; there {
-		t.Errorf("an empty provider was sent as %q", v)
+	if len(f.sent[1].Attributes) != 0 {
+		t.Errorf("a nil return produced %v", f.sent[1].Attributes)
+	}
+	if f.sent[0].Attributes["k"] != "k0" || f.sent[2].Attributes["k"] != "k2" {
+		t.Errorf("the other messages lost theirs: %v %v", f.sent[0].Attributes, f.sent[2].Attributes)
 	}
 }
 
@@ -168,7 +232,7 @@ func TestAPartialFailureReportsWhatActuallyWent(t *testing.T) {
 	if res.RowsLoaded != 8 {
 		t.Errorf("RowsLoaded = %d, wanted the 8 that actually went", res.RowsLoaded)
 	}
-	for _, want := range []string{"8 of 10", "DELIVERED", "re-delivers", "ingestion_id"} {
+	for _, want := range []string{"8 of 10", "DELIVERED", "re-delivers", "idempotent"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("the error does not say %q:\n%s", want, err)
 		}
@@ -231,7 +295,7 @@ func TestWhatATopicCannotDoIsRefusedAndNotIgnored(t *testing.T) {
 		},
 		"deduplication, which has no key to match on": {
 			opt:  core.WriteOptions{Dedup: core.DedupMerge},
-			says: []string{"at-least-once", "subscriber", "ingestion_id"},
+			says: []string{"at-least-once", "subscriber", "yourself"},
 		},
 		"a partition, which is a table's idea": {
 			opt:  core.WriteOptions{PartitionBy: "created_at"},
@@ -285,45 +349,42 @@ func TestTheTopicMustBeNamedInFull(t *testing.T) {
 	}
 }
 
-// The ordering key comes off the envelope without knowing the record's shape,
-// and falls through to the payload when the ordering is by something only the
-// producer knows.
-func TestTheOrderingKeyResolvesFromTheEnvelopeThenThePayload(t *testing.T) {
-	for field, want := range map[string]string{
-		"source_key": "k0",        // the envelope
-		"provider":   "acme",      // the envelope
-		"region":     "sa-east-1", // the payload
-	} {
-		t.Run(field, func(t *testing.T) {
-			f := &fakeTopic{}
-			tp := topicWith(f)
-			tp.OrderingKey = field
-			if _, err := tp.Write(context.Background(), records(1), core.WriteOptions{}); err != nil {
-				t.Fatalf("Write: %v", err)
-			}
-			if f.sent[0].OrderingKey != want {
-				t.Errorf("ordering key = %q, wanted %q", f.sent[0].OrderingKey, want)
-			}
-		})
+// The ordering key is whatever the client returns. There is no lookup rule to
+// learn, because the driver invents none.
+func TestTheOrderingKeyIsWhateverTheClientReturns(t *testing.T) {
+	f := &fakeTopic{}
+	tp := topicWith(f)
+	tp.OrderingKey = func(e core.Envelope) string { return e.Provider + "/" + e.SourceKey }
+	if _, err := tp.Write(context.Background(), records(2), core.WriteOptions{}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if f.sent[0].OrderingKey != "acme/k0" || f.sent[1].OrderingKey != "acme/k1" {
+		t.Errorf("ordering keys = %q, %q", f.sent[0].OrderingKey, f.sent[1].OrderingKey)
 	}
 }
 
-// An ordering key that is nowhere is REFUSED, and this is the one that would be
-// silent otherwise: an empty key puts every message in one order group, which
-// is a throughput collapse that looks like a slow day.
-func TestAnOrderingKeyThatIsNowhereIsRefused(t *testing.T) {
+// An EMPTY key is refused, and this is the one that would be silent otherwise.
+//
+// On a publisher with ordering enabled an empty key is not "no ordering": every
+// message carrying one lands in a single order group, which is a throughput
+// collapse that reads as a slow day.
+func TestAnEmptyOrderingKeyIsRefused(t *testing.T) {
 	f := &fakeTopic{}
 	tp := topicWith(f)
-	tp.OrderingKey = "no_such_field"
-	_, err := tp.Write(context.Background(), records(1), core.WriteOptions{})
+	tp.OrderingKey = func(e core.Envelope) string {
+		if e.SourceKey == "k1" {
+			return ""
+		}
+		return e.SourceKey
+	}
+	_, err := tp.Write(context.Background(), records(3), core.WriteOptions{})
 	if err == nil {
-		t.Fatal("an ordering key that is nowhere was accepted")
+		t.Fatal("an empty ordering key was accepted")
 	}
-	if !strings.Contains(err.Error(), "no_such_field") {
-		t.Errorf("the error does not name the field: %v", err)
-	}
-	if len(f.sent) != 0 {
-		t.Error("a message went out with an empty ordering key")
+	for _, want := range []string{"k1", "one order group"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error does not say %q: %v", want, err)
+		}
 	}
 }
 
@@ -358,5 +419,22 @@ func TestAnEmptyBatchPublishesNothing(t *testing.T) {
 func TestDescribeNamesTheTopic(t *testing.T) {
 	if got := (Topic{Project: "acme-prod", Name: "orders"}).Describe(); got != "pubsub://acme-prod/orders" {
 		t.Errorf("Describe = %q", got)
+	}
+}
+
+// The real publisher must have ordering switched ON whenever a key will be set.
+//
+// Not a tautology: the Google client REFUSES a message carrying an ordering key
+// when the publisher has ordering off -- it does not quietly reorder it -- so
+// getting this wrong fails every publish on an ordered topic, in production
+// only. A mutation hard-coding it to false passed the entire suite, because
+// every test here uses the fake and the real constructor needs credentials.
+func TestTheRealPublisherEnablesOrderingExactlyWhenAKeyWillBeSet(t *testing.T) {
+	if (Topic{}).ordered() {
+		t.Error("ordering is on with no OrderingKey, which costs throughput for nothing")
+	}
+	with := Topic{OrderingKey: func(core.Envelope) string { return "k" }}
+	if !with.ordered() {
+		t.Error("ordering is off with an OrderingKey; the client would refuse every message")
 	}
 }
