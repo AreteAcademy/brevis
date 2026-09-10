@@ -5,7 +5,10 @@
 // cannot go from SUCCESS to RUNNING through carelessness or through a race.
 package run
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Status is a run's state.
 type Status string
@@ -99,6 +102,54 @@ func (s Status) Terminal() bool { return noWayOut(transitions, s) }
 // is why the two questions have different answers -- which was found by a
 // trigger rule reading `all_done` and deciding a failed step had not finished.
 func (s Status) TerminalStep() bool { return noWayOut(stepTransitions, s) }
+
+// InFlight says the system may still act on this run: a dispatcher may claim
+// it, a runner may be inside it, a retry may pick it up.
+//
+// It is NOT the complement of Terminal, and the gap between them is the reason
+// this exists. A run that FAILED is not terminal -- the state machine lets it
+// become `retrying`, which is what makes a retry possible at all -- but nothing
+// is going to retry a run from last March on its own. Retention needs "is
+// anybody still holding this", and asking Terminal would keep every failure
+// ever recorded, forever, which is the opposite of what a failure deserves.
+//
+// Enumerated rather than derived, because the question is about OWNERSHIP and
+// not about the shape of the graph. TestEveryRunStatusIsClassified is what
+// keeps that honest: a new status has to be put on one side or the other before
+// it compiles green.
+func (s Status) InFlight() bool {
+	switch s {
+	case StatusCreated, StatusQueued, StatusRunning, StatusRetrying:
+		return true
+	}
+	return false
+}
+
+// RunStatuses is every state a RUN can be in.
+//
+// It exists so code outside this package can enumerate them -- the retention
+// query builds its status list from here rather than typing three strings into
+// SQL, which is the shape that drifts the day a fourth one arrives.
+func RunStatuses() []Status {
+	out := make([]Status, 0, len(transitions))
+	for s := range transitions {
+		out = append(out, s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
+// Settled is every run state nothing will touch again: the complement of
+// InFlight, and what retention is allowed to delete.
+func Settled() []Status {
+	var out []Status
+	for _, s := range RunStatuses() {
+		if !s.InFlight() {
+			out = append(out, s)
+		}
+	}
+	return out
+}
 
 func noWayOut(graph map[Status][]Status, s Status) bool {
 	edges, known := graph[s]

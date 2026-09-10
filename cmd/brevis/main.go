@@ -59,7 +59,7 @@ func raiz() *cobra.Command {
 		SilenceErrors: true,
 	}
 	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(),
-		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdVersion())
+		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdPrune(), cmdVersion())
 	return c
 }
 
@@ -1107,6 +1107,78 @@ func cmdBackfill() *cobra.Command {
 		"value for a workflow parameter (key=value; repeatable)")
 	_ = c.MarkFlagRequired("from")
 	_ = c.MarkFlagRequired("to")
+	return c
+}
+
+// cmdPrune applies the retention policy.
+//
+// A COMMAND, and not a timer inside the scheduler, because this is the only
+// thing in Brevis that deletes anything. An operator schedules it -- a CronJob,
+// a cron line -- and what gets deleted is then something somebody chose, at a
+// time somebody chose, with `--dry-run` one flag away. A process that
+// orchestrates other people's data quietly deleting rows on a timer is a
+// different promise, and not one this makes.
+//
+// The defaults are the policy: trim at thirty days, purge at a year. They are
+// defaults and not required flags because a command whose every invocation
+// needs four arguments is a command that gets wrapped in a script, and the
+// script is where the wrong number ends up.
+func cmdPrune() *cobra.Command {
+	var trim, purge time.Duration
+	var batch int
+	var dry bool
+	c := &cobra.Command{
+		Use:   "prune",
+		Short: "Apply the retention policy: trim old logs, delete old runs",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			pool, _, err := open(ctx)
+			if err != nil {
+				return err
+			}
+			defer pool.Close()
+
+			policy := postgres.Retention{TrimAfter: trim, PurgeAfter: purge, Batch: batch}
+			if err := policy.Validate(); err != nil {
+				return err
+			}
+
+			// Said BEFORE the work, and in full. Whoever runs this by hand for
+			// the first time should be able to stop it here, and whoever finds
+			// it in a cron log a year from now should be able to see what
+			// policy produced the number underneath.
+			fmt.Printf("  trim after   %s (empties the log, the phases and the published output)\n", trim)
+			if purge > 0 {
+				fmt.Printf("  purge after  %s (deletes the run, its steps and its alerts)\n", purge)
+			} else {
+				fmt.Printf("  purge after  never\n")
+			}
+			fmt.Printf("  the load trend is NOT touched by either\n\n")
+
+			report, err := postgres.NewRunRepo(pool).Prune(ctx, policy, dry)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("  %s\n", report)
+			if dry {
+				fmt.Println("  nothing was changed; drop --dry-run to apply")
+			} else if report.Purged > 0 || report.Trimmed > 0 {
+				// The space is REUSED, not returned, and saying so here saves
+				// somebody an afternoon wondering why the disk did not move.
+				fmt.Println("  the space is reusable; run VACUUM FULL to return it to the filesystem")
+			}
+			return nil
+		},
+	}
+	c.Flags().DurationVar(&trim, "trim-after", 30*24*time.Hour,
+		"empty the log, phases and output of runs older than this")
+	c.Flags().DurationVar(&purge, "purge-after", 365*24*time.Hour,
+		"delete runs older than this entirely (0 to never delete)")
+	c.Flags().IntVar(&batch, "batch", postgres.DefaultBatch,
+		"rows per statement, so no single lock is held long")
+	c.Flags().BoolVar(&dry, "dry-run", false,
+		"report what would be removed and change nothing")
 	return c
 }
 

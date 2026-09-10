@@ -246,9 +246,15 @@ func TestAMappedStepContributesOneRowPerInstance(t *testing.T) {
 	}
 }
 
-// Deleting a run takes its trend rows with it. Without the cascade the table
-// would keep numbers pointing at a run nobody can open.
-func TestTheRowsGoWhenTheRunGoes(t *testing.T) {
+// The trend OUTLIVES the run, and that is the whole reason this table has no
+// foreign key.
+//
+// This test asserted the opposite for a day, because the table shipped with an
+// ON DELETE CASCADE that seemed tidy and was wrong: retention purges old runs,
+// and a cascade would shorten every chart by exactly as much on the morning of
+// the purge. The log of a run from March is read by nobody; how much that
+// pipeline loaded in March is the one thing the trend is for.
+func TestTheTrendOutlivesTheRun(t *testing.T) {
 	pool := loadDB(t)
 	ctx := context.Background()
 	repo := postgres.NewRunRepo(pool)
@@ -266,8 +272,8 @@ func TestTheRowsGoWhenTheRunGoes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(days) != 0 {
-		t.Errorf("the trend outlived the run: %+v", days)
+	if len(days) != 1 || days[0].Rows != 7 {
+		t.Errorf("the trend died with the run it summarised: %+v", days)
 	}
 }
 

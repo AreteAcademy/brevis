@@ -25,8 +25,23 @@
 -- `runs`, and joining to get them is precisely what made the JSONB version
 -- slow: the index that answers this in one scan has to be on the table being
 -- scanned.
+-- NO foreign key to `runs`, and that is the decision this table turns on.
+--
+-- It had one, with ON DELETE CASCADE, until retention was designed against it.
+-- The whole point of a summary is to OUTLIVE the detail: the log of a run from
+-- March is read by nobody, and how much that pipeline loaded in March is the
+-- one thing a trend needs. A cascade makes that impossible -- purge the runs
+-- and the chart shortens by exactly as much on the morning of the purge, which
+-- is the graph lying about a fleet whose history it still had.
+--
+-- 81 MB a year buys that memory. `task_runs` costs four times as much to keep
+-- one twelfth as much meaning.
+--
+-- What is given up: nothing enforces that `run_id` points at a run that still
+-- exists. Nothing reads it that way either -- LoadTrend never joins `runs`, and
+-- the only join is on the way IN, while the run is certainly there.
 CREATE TABLE load_metrics (
-    run_id        UUID        NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    run_id        UUID        NOT NULL,
     node_id       TEXT        NOT NULL,
 
     -- -1 for an unmapped step, matching task_runs.map_index. A mapped step

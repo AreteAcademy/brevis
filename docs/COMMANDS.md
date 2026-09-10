@@ -431,6 +431,68 @@ The central use case is exactly "reprocess the whole of January with
 
 ---
 
+## `brevis prune`
+
+Applies the retention policy. It is the **only** thing in Brevis that deletes
+anything, and it never runs on its own — an operator schedules it.
+
+```bash
+brevis prune --dry-run          # what would go, changing nothing
+brevis prune                    # the defaults below
+brevis prune --purge-after 0    # trim only, never delete a run
+```
+
+| flag | type | default | |
+|---|---|---|---|
+| `--trim-after` | duration | `720h` (30 days) | empties the log, the phases and the published output |
+| `--purge-after` | duration | `8760h` (1 year) | deletes the run entirely; `0` never deletes |
+| `--batch` | int | `5000` | rows per statement, so no single lock is held long |
+| `--dry-run` | bool | `false` | report what would be removed and change nothing |
+
+### Two levels, because the cost and the meaning are not in the same place
+
+Measured on a year of hourly runs across forty workflows — 350,000 runs:
+
+| | | |
+|---|---|---|
+| `task_runs` | 339 MB | log 119, phases 113, output 20, indexes 35 |
+| `runs` | 141 MB | auto params 38, definition 30, indexes 31 |
+| `load_metrics` | 81 MB | the load trend |
+
+Three quarters of the biggest table is **bulk** — the text a step printed and
+the JSON of its phases. Emptying those columns takes `task_runs` from 339 MB to
+92 MB and **deletes nothing**: every run still opens, with its steps, statuses,
+timings, exit codes and errors. What goes is the log of a run from March, which
+nobody reads, and its phase boxes.
+
+That is why the first level trims and the second deletes, and why almost all the
+value is in the gap between them. `--purge-after 0` is a real answer.
+
+### What it never touches
+
+**The load trend.** `load_metrics` has no foreign key to `runs` for exactly this
+reason: a summary that dies with its detail is not a summary. Purge a year of
+runs and the chart still knows what those pipelines loaded — 81 MB a year buys
+that, against `task_runs` costing four times as much to keep a twelfth as much
+meaning.
+
+**A run the system may still act on.** Created, queued, running or retrying is
+never deleted, however old the row looks. A queue item stuck since March is a
+bug worth seeing, and deleting it would hide it along with whatever a dispatcher
+still believes it owns.
+
+### The space is reusable, not returned
+
+Postgres marks the space free for the table to reuse; it does not hand it back
+to the filesystem. For a prune that runs regularly that is the right behaviour —
+the table stops growing. To actually shrink the files, `VACUUM FULL task_runs`,
+which takes an exclusive lock and wants a maintenance window.
+
+Running it twice does the work once: the second prune of the same day reports
+zero.
+
+---
+
 ## `brevis brand`
 
 Validates a visual-identity file without starting the server.
