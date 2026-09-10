@@ -140,6 +140,50 @@ window, persisted state — but the overview page does not carry the parameter
 names, and a spec written from memory of an API loses its reader on the first
 signature.
 
+### Built on 2026-09-09 — and it is not a helper, it is two variables
+
+Reading the docs was the right instruction and it changed the design. dlt
+already publishes a contract for exactly this, and it is not a Python API:
+`dlt/extract/incremental/context.py` reads `DLT_INTERVAL_START` and
+`DLT_INTERVAL_END` — UTC ISO 8601 — **before** it goes looking for Airflow's
+`data_interval_start`. A resource opts in with `allow_external_schedulers=True`
+and they become its `initial_value` and `end_value`.
+
+So the `brevis` PyPI package gained nothing. The engine sets two variables in
+`AutoParams.Env()`, which is four lines, and the integration weighs zero on
+either side. That is the better outcome by the premise the owner set the same
+day, and it was only available by reading the source rather than the overview.
+
+**Verified against a real dlt 1.28.0, not against prose.** Both claims this
+section made were tested rather than argued:
+
+| claim | evidence |
+|---|---|
+| the window arrives | `initial_value` / `end_value` bound to `[2026-03-10T04Z, 2026-03-11T04Z)` |
+| both sides are half-open | the row exactly on the start loaded; the row exactly on the end did not |
+| a backfill reads its own slot | re-run for the earlier slot loaded a row older than the cursor had reached |
+| a retry is idempotent | after that backfill the incremental state came back **empty** — dlt does not persist when `end_value` is set |
+
+Two things the plan did not know:
+
+- **A `text` cursor cannot join an external scheduler at all.** dlt refuses to
+  coerce it for comparison and raises `JoinSchedulerError`, whose message does
+  not obviously name the cause. The cursor has to be a datetime.
+- **A partial window is refused, not half-applied.** Only one of the two
+  variables set resolves to no interval, and dlt then raises
+  `ExternalSchedulerNotAvailable` rather than falling back to its own state.
+  The engine sets both or neither, which `Auto` already guaranteed.
+
+`lib/python-context/tests/test_dlt_bridge.py` holds all four rows above, fed by
+a fixture the engine writes. It **skips without dlt and CI does not install it**
+— said plainly rather than implied: the Go side pins the bytes on every build,
+and the Python side is the one somebody runs when either end moves.
+
+**What §3 proposed and this did not build:** a bridge from
+`previous_success_at`, for recovering a lost run. The window covers the common
+case and the recovery case is a different shape — the slot to re-read is not the
+slot that is running — so it is left out rather than guessed at.
+
 ---
 
 ## 4. Ask three — a third executor, for a host Brevis does not own
