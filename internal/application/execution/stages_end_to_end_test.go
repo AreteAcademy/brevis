@@ -51,6 +51,11 @@ type spyPersister struct {
 	// ended is every instance that reached a terminal state, for the mapping
 	// tests: a mapped step's four rows are four keys here.
 	ended map[dom.StepKey]dom.Status
+
+	// loads is what each instance reported for the trend table. A step that
+	// reported no finished load leaves NO entry, which is what the tests that
+	// assert silence look at.
+	loads map[dom.StepKey]app.LoadNumbers
 }
 
 // instances lists the keys that finished, for a test to count.
@@ -85,6 +90,28 @@ func (p *spyPersister) RecordStages(_ context.Context, _ uuid.UUID, _ dom.StepKe
 	p.called++
 	p.version, p.stages = version, stages
 	return nil
+}
+
+func (p *spyPersister) RecordLoad(_ context.Context, _ uuid.UUID, step dom.StepKey,
+	_ string, n app.LoadNumbers) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.loads == nil {
+		p.loads = map[dom.StepKey]app.LoadNumbers{}
+	}
+	p.loads[step] = n
+	return nil
+}
+
+// loaded lists what reached the trend table, for a test to count.
+func (p *spyPersister) loaded() map[dom.StepKey]app.LoadNumbers {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[dom.StepKey]app.LoadNumbers, len(p.loads))
+	for k, v := range p.loads {
+		out[k] = v
+	}
+	return out
 }
 
 func (p *spyPersister) MarkSkipped(_ context.Context, _ uuid.UUID, step dom.StepKey,
@@ -190,5 +217,78 @@ func TestAPlainStepRecordsNoStages(t *testing.T) {
 	}
 	if spy.called != 0 {
 		t.Errorf("it wrote stages %d times for a step that is not an SDK one", spy.called)
+	}
+}
+
+// The trend row reaches the database through the same pipe as everything else:
+// the step writes marked lines, the executor delivers them as log, the runner
+// flattens the phases into one row.
+//
+// Written ONCE, at the end. markStages runs on every marked line because the
+// screen has to advance while the step is alive, and a trend row rewritten per
+// transition would be a database round trip each time to store a number that is
+// not final yet -- so this asserts the count, not just the content.
+func TestTheLoadRowReachesTheDatabaseOnceThroughTheStepsLog(t *testing.T) {
+	spy := &spyPersister{}
+	r := app.Runner{
+		RunID:   uuid.New(),
+		Persist: spy,
+		Report:  &spyReporter{},
+		Processo: sdkSpeaker{lines: []string{
+			`@brevis:{"type":"sdk","version":"v0.58.0","pipeline":"vendas"}`,
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"running","at":"agora"}`,
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","at":"agora","ms":31000,"pages":12,"bytes":5000000,"http_attempts":13}`,
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"running","at":"agora"}`,
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"done","at":"agora","ms":22000,"rows":48213,"records":48300,"load_bytes":900000}`,
+		}},
+	}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	loaded := spy.loaded()
+	if len(loaded) != 1 {
+		t.Fatalf("the trend got %d rows, wanted exactly 1: %+v", len(loaded), loaded)
+	}
+	for _, n := range loaded {
+		want := app.LoadNumbers{
+			Rows: 48213, Records: 48300, BytesOut: 900000, LoadMs: 22000,
+			BytesIn: 5000000, Pages: 12, HTTPAttempts: 13, ExtractMs: 31000,
+		}
+		if n != want {
+			t.Errorf("got  %+v\nwant %+v", n, want)
+		}
+	}
+}
+
+// And the step that is NOT a pipeline writes nothing.
+//
+// This is the case that matters for the numbers on the screen: most steps are a
+// shell command, and a row of zeros from each of them would drag every average
+// the trend draws toward a floor that never happened.
+func TestAStepWithNoLoadWritesNoTrendRow(t *testing.T) {
+	for name, lines := range map[string][]string{
+		"a plain command": {"copiando arquivos", "pronto"},
+		"an SDK step whose load failed": {
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","at":"x","ms":900}`,
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"failed","at":"x","rows":40000}`,
+		},
+		"an SDK step that died mid-load": {
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"running","at":"x"}`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			spy := &spyPersister{}
+			r := app.Runner{
+				RunID: uuid.New(), Persist: spy, Report: &spyReporter{},
+				Processo: sdkSpeaker{lines: lines},
+			}
+			if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if got := spy.loaded(); len(got) != 0 {
+				t.Errorf("the trend got a row it should not have: %+v", got)
+			}
+		})
 	}
 }

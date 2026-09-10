@@ -21,6 +21,7 @@ import (
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/web/assets"
+	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
@@ -44,6 +45,7 @@ type Leitura interface {
 	Indicators(ctx context.Context, window time.Duration) (postgres.Indicators, error)
 	IndicatorsFor(ctx context.Context, window time.Duration, workflow string) (postgres.Indicators, error)
 	RunsPerDay(ctx context.Context, workflow string, days int) ([]postgres.Day, error)
+	LoadTrend(ctx context.Context, workflow string, days int) ([]postgres.LoadDay, error)
 	RunsPerHour(ctx context.Context, horas int) ([]postgres.Bucket, error)
 	InFlight(ctx context.Context, limite int) ([]postgres.RunSummary, error)
 	LatestRuns(ctx context.Context, limite int) ([]postgres.RunSummary, error)
@@ -536,6 +538,11 @@ func (u *UI) workflow(w http.ResponseWriter, r *http.Request) {
 		stats.Days = days
 	} else {
 		u.log.Warn("the workflow's calendar is unavailable", "workflow", slug, "error", err)
+	}
+	if load, err := u.leitura.LoadTrend(r.Context(), slug, components.TrendDays); err == nil {
+		stats.Load = load
+	} else {
+		u.log.Warn("the workflow's load trend is unavailable", "workflow", slug, "error", err)
 	}
 
 	u.render(w, r, pages.Workflow(def, latest, stats))

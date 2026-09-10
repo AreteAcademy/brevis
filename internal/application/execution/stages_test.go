@@ -210,3 +210,118 @@ func TestTheBoxesComeOutInThePipelinesOrder(t *testing.T) {
 		}
 	}
 }
+
+// The trend table's numbers, flattened out of the phases.
+//
+// Every case here has a twin in migration 00012's backfill, which applies the
+// same rule in SQL over the same JSONB. Two implementations of one rule is the
+// shape that drifts, so the cases are written once and checked on both sides --
+// this test for the write path, TestTheBackfillAgreesWithTheRunner (in the
+// postgres package, needs a database) for the migration.
+func TestTheLoadNumbersComeOutOfThePhases(t *testing.T) {
+	feed := func(c *stageCollector, lines ...string) {
+		t.Helper()
+		for _, l := range lines {
+			if !c.line(l) {
+				t.Fatalf("not recognised: %s", l)
+			}
+		}
+	}
+
+	t.Run("the ordinary pipeline", func(t *testing.T) {
+		var c stageCollector
+		feed(&c,
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","at":"x","ms":31000,"pages":12,"bytes":5000000,"http_attempts":13}`,
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"done","at":"x","ms":22000,"rows":48213,"records":48300,"load_bytes":900000,"ignored":7}`,
+		)
+		n, ok := c.LoadNumbers()
+		if !ok {
+			t.Fatal("a finished load reported nothing")
+		}
+		want := LoadNumbers{
+			Rows: 48213, Records: 48300, Ignored: 7, BytesOut: 900000, LoadMs: 22000,
+			BytesIn: 5000000, Pages: 12, HTTPAttempts: 13, ExtractMs: 31000,
+		}
+		if n != want {
+			t.Errorf("got %+v\nwant %+v", n, want)
+		}
+	})
+
+	// The case a fixed slot would get wrong. Two Map stages push load to index
+	// three, and `etapas[1]` there is a map -- whose numbers would be filed in
+	// a load's column and read as a collapse in rows loaded.
+	t.Run("two map stages push load off position one", func(t *testing.T) {
+		var c stageCollector
+		feed(&c,
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","at":"x","ms":40000,"bytes":9000000}`,
+			`@brevis:{"type":"stage","index":1,"name":"map","state":"done","at":"x"}`,
+			`@brevis:{"type":"stage","index":2,"name":"map","state":"done","at":"x"}`,
+			`@brevis:{"type":"stage","index":3,"name":"load","state":"done","at":"x","ms":50000,"rows":99}`,
+		)
+		n, ok := c.LoadNumbers()
+		if !ok || n.Rows != 99 || n.LoadMs != 50000 {
+			t.Errorf("read the wrong phase: %+v (ok=%v)", n, ok)
+		}
+	})
+
+	// A load that did not finish measured half of something that never
+	// happened. Averaged into a trend it reads as a dataset shrinking.
+	t.Run("a load that failed is not a measurement", func(t *testing.T) {
+		var c stageCollector
+		feed(&c,
+			`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","at":"x","ms":40000}`,
+			`@brevis:{"type":"stage","index":1,"name":"load","state":"failed","at":"x","ms":900,"rows":40000}`,
+		)
+		if n, ok := c.LoadNumbers(); ok {
+			t.Errorf("a failed load was recorded as a measurement: %+v", n)
+		}
+	})
+
+	// Still running when the process died. The screen turns this into
+	// `aborted` on read; the trend must not count it at all.
+	t.Run("a load still running is not a measurement", func(t *testing.T) {
+		var c stageCollector
+		feed(&c, `@brevis:{"type":"stage","index":1,"name":"load","state":"running","at":"x"}`)
+		if _, ok := c.LoadNumbers(); ok {
+			t.Error("an unfinished load was recorded")
+		}
+	})
+
+	// Most steps. A shell command is not a pipeline and has nothing to say
+	// about a load trend; a row of zeros from it would drag every average it
+	// touches toward a floor that never happened.
+	t.Run("a step that is not a pipeline reports nothing", func(t *testing.T) {
+		var c stageCollector
+		if _, ok := c.LoadNumbers(); ok {
+			t.Error("a step with no phases at all was recorded")
+		}
+	})
+
+	// A pipeline whose source is already in memory announces no extract. Its
+	// load is still worth a row -- with the extract's columns at zero, which is
+	// true rather than missing.
+	t.Run("a load with no extract phase", func(t *testing.T) {
+		var c stageCollector
+		feed(&c, `@brevis:{"type":"stage","index":0,"name":"load","state":"done","at":"x","ms":1200,"rows":5}`)
+		n, ok := c.LoadNumbers()
+		if !ok {
+			t.Fatal("a load with no extract reported nothing")
+		}
+		if n.Rows != 5 || n.LoadMs != 1200 || n.BytesIn != 0 || n.ExtractMs != 0 {
+			t.Errorf("got %+v", n)
+		}
+	})
+
+	// The numbers arrive through encoding/json, so everything is a float64 --
+	// and `detail` and `strategy` are strings sitting in the same map. A string
+	// where a number was expected must read as zero rather than take the step's
+	// bookkeeping down.
+	t.Run("a string where a number was expected", func(t *testing.T) {
+		var c stageCollector
+		feed(&c, `@brevis:{"type":"stage","index":0,"name":"load","state":"done","at":"x","rows":"many","records":3}`)
+		n, ok := c.LoadNumbers()
+		if !ok || n.Rows != 0 || n.Records != 3 {
+			t.Errorf("got %+v (ok=%v)", n, ok)
+		}
+	})
+}

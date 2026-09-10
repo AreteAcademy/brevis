@@ -712,3 +712,59 @@ templ ErrorDialog(runID, workflow, status, message string) {
 		</div>
 	</dialog>
 }
+
+// LoadTrend draws what a workflow's pipelines have been loading.
+//
+// Four sparklines, server-rendered like the calendar: a chart that needs a
+// runtime is a chart that does not appear on the page somebody opens during an
+// incident.
+//
+// The panel is DRAWN ONLY when there is history. A workflow whose steps are
+// shell commands has no load to trend, and four empty boxes on its page would
+// be four questions with no answer -- the caller checks, so this never has to
+// render an apology.
+templ LoadTrend(series []TrendSeries, window string) {
+	{{ w, h := TrendGeometry() }}
+	<div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+		for _, s := range series {
+			<div>
+				<div class="flex items-baseline justify-between gap-2">
+					<p class="kicker">{ s.Label }</p>
+					if s.Delta != "" {
+						<span class={ "text-[0.7rem] font-medium " + s.Hue }>{ s.Delta }</span>
+					}
+				</div>
+				<p class="mt-1 font-serif text-2xl text-ink tabular-nums">{ s.Latest }</p>
+				if s.Flat {
+					<p class="mt-1 text-xs text-muted">one day so far &mdash; a trend needs two</p>
+				} else {
+					<svg
+						viewBox={ fmt.Sprintf("0 0 %d %d", w, h) }
+						class="mt-2 h-[56px] w-full"
+						preserveAspectRatio="none"
+						role="img"
+						aria-label={ s.Label + " over " + window }
+					>
+						<polyline points={ s.Area } class="fill-gold-strong/10" stroke="none"></polyline>
+						<polyline
+							points={ s.Path }
+							class="stroke-gold-strong"
+							fill="none"
+							stroke-width="1.5"
+							vector-effect="non-scaling-stroke"
+						></polyline>
+						// The dots carry the tooltip. Invisible until hovered:
+						// ninety of them drawn would be a dotted line, not a
+						// trend.
+						for _, p := range s.Points {
+							<circle cx={ fmt.Sprint(p.X) } cy={ fmt.Sprint(p.Y) } r="4" fill="transparent">
+								<title>{ p.Tooltip }</title>
+							</circle>
+						}
+					</svg>
+				}
+				<p class="mt-1 text-xs text-muted">{ s.Note }</p>
+			</div>
+		}
+	</div>
+}

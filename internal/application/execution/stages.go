@@ -251,3 +251,107 @@ func translateOldType(pt string) string {
 	}
 	return pt // "sdk" is the same in both
 }
+
+// LoadNumbers is what one attempt of an SDK pipeline measured, flattened out of
+// the phases so it can be stored as a row and read as a trend.
+//
+// Every field here already crossed the `@brevis:` pipe and is already in
+// `task_runs.etapas`. This does not measure anything new; it makes the numbers
+// answerable without reading a year of JSONB. See
+// docs/plan/2026-09-10-load-trend.md for the measurement that decided it.
+type LoadNumbers struct {
+	Rows, Records, Ignored, BytesOut int64
+	LoadMs                           int64
+
+	BytesIn             int64
+	Pages, HTTPAttempts int
+	ExtractMs           int64
+}
+
+// LoadNumbers reads them off the collector, or reports false.
+//
+// False for every step that is not an SDK pipeline -- which is most of them --
+// and false for a load that did NOT finish. A half-written load's numbers are
+// half of something that never happened: averaged into a trend they read as a
+// dataset shrinking, and the run's failure is already on the calendar, which is
+// where it belongs.
+//
+// The load phase is found by NAME, never by position. A pipeline with two Map
+// stages announces load at index three, and reading a fixed slot would file a
+// transform's numbers in a load's column. The same rule is written a second
+// time in the backfill of migration 00012, because that one runs where this
+// code cannot; both are tested against the same cases.
+func (c *stageCollector) LoadNumbers() (LoadNumbers, bool) {
+	return LoadNumbersFrom(c.Stages)
+}
+
+// LoadNumbersFrom is the same reading, over the phases as they are STORED.
+//
+// It takes the recorded shape rather than the collector because that is the
+// shape the other implementation of this rule works on: migration 00012
+// backfills the same numbers out of `task_runs.etapas`, in SQL, for history
+// this code never saw. Two implementations of one rule is the shape that
+// drifts, and having the Go one answerable from the stored shape is what lets a
+// test put the same phases through both and compare.
+func LoadNumbersFrom(stages []Stage) (LoadNumbers, bool) {
+	load, ok := firstPhase(stages, "load")
+	if !ok || load.State != "done" {
+		return LoadNumbers{}, false
+	}
+	n := LoadNumbers{
+		Rows:     whole(load.Numbers, "rows"),
+		Records:  whole(load.Numbers, "records"),
+		Ignored:  whole(load.Numbers, "ignored"),
+		BytesOut: whole(load.Numbers, "load_bytes"),
+	}
+	if load.Ms != nil {
+		n.LoadMs = *load.Ms
+	}
+	// The extract is optional and its absence is not an error: a pipeline whose
+	// source is already in memory has no extract phase, and its load is still
+	// worth a row.
+	if extract, ok := firstPhase(stages, "extract"); ok {
+		n.BytesIn = whole(extract.Numbers, "bytes")
+		n.Pages = int(whole(extract.Numbers, "pages"))
+		n.HTTPAttempts = int(whole(extract.Numbers, "http_attempts"))
+		if extract.Ms != nil {
+			n.ExtractMs = *extract.Ms
+		}
+	}
+	return n, true
+}
+
+// firstPhase returns the first phase with this name, by INDEX and not by
+// arrival: events are recorded as they come, and "first" has to mean first in
+// the pipeline.
+func firstPhase(stages []Stage, name string) (Stage, bool) {
+	var found Stage
+	var ok bool
+	for _, s := range stages {
+		if s.TaskName != name {
+			continue
+		}
+		if !ok || s.Index < found.Index {
+			found, ok = s, true
+		}
+	}
+	return found, ok
+}
+
+// whole reads one number out of a phase's numbers.
+//
+// They arrive from `encoding/json` as float64 whatever the SDK sent, so an int64
+// on the wire is a float64 here -- and a value the SDK sent as a string (the
+// `detail` and `strategy` fields are strings, and a future one may be) must read
+// as zero rather than panicking a step's bookkeeping.
+func whole(numbers map[string]any, key string) int64 {
+	switch v := numbers[key].(type) {
+	case float64:
+		return int64(v)
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	}
+	return 0
+}

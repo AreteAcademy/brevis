@@ -505,3 +505,78 @@ func (r *ReadRepo) CountRuns(ctx context.Context, f RunFilter) (int, error) {
 		fmt.Sprintf(`SELECT count(*) FROM runs WHERE %s`, predicado), args...).Scan(&n)
 	return n, err
 }
+
+// LoadDay is one day of what a workflow's pipelines loaded.
+//
+// Sums for the volumes and a MEAN for the durations, because the two answer
+// different questions: "how much did this workflow move that day" is a total,
+// and "is a run getting slower" is per run. A summed duration would climb
+// whenever the schedule got denser and say nothing about the pipeline.
+type LoadDay struct {
+	Date      time.Time
+	Runs      int
+	Rows      int64
+	Records   int64
+	Ignored   int64
+	BytesIn   int64
+	BytesOut  int64
+	ExtractMs int64 // mean over the day
+	LoadMs    int64 // mean over the day
+}
+
+// BytesPerRow is the number the note actually asked for: a load whose size
+// grows while its row count holds flat is a schema that gained a column.
+//
+// Zero rows returns zero rather than dividing: a day with no rows has no answer
+// to this, and an infinity on a chart is worse than a gap.
+func (d LoadDay) BytesPerRow() int64 {
+	if d.Rows == 0 {
+		return 0
+	}
+	return d.BytesOut / d.Rows
+}
+
+// RowsPerSecond over the load phase. Zero when nothing was loaded or when the
+// load was too fast to have measured a millisecond.
+func (d LoadDay) RowsPerSecond() int64 {
+	if d.LoadMs == 0 {
+		return 0
+	}
+	return d.Rows * 1000 / d.LoadMs
+}
+
+// LoadTrend returns one row per day a workflow loaded anything, oldest first.
+//
+// Days with NO load are absent rather than zero, and that is deliberate in a
+// way the calendar heatmap is not. The heatmap answers "did it run", so a blank
+// day is information. This answers "is it getting slower", and a zero would not
+// be a slow day -- it would be a day that is not in the series at all, dragging
+// every average through a floor that never happened. The screen draws the gap.
+func (r *ReadRepo) LoadTrend(ctx context.Context, workflow string, days int) ([]LoadDay, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT (em AT TIME ZONE 'UTC')::date AS dia,
+		       count(*),
+		       sum(linhas), sum(registros), sum(ignorados),
+		       sum(bytes_entrada), sum(bytes_saida),
+		       avg(extract_ms)::bigint, avg(load_ms)::bigint
+		FROM load_metrics
+		WHERE workflow_slug = $1
+		  AND em >= (now() AT TIME ZONE 'UTC')::date - ($2::int - 1)
+		GROUP BY 1
+		ORDER BY 1`, workflow, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []LoadDay
+	for rows.Next() {
+		var d LoadDay
+		if err := rows.Scan(&d.Date, &d.Runs, &d.Rows, &d.Records, &d.Ignored,
+			&d.BytesIn, &d.BytesOut, &d.ExtractMs, &d.LoadMs); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}

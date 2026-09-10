@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	exec "github.com/AreteAcademy/brevis/internal/application/execution"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 )
 
@@ -72,6 +73,42 @@ func (r *RunRepo) RecordStages(ctx context.Context, runID uuid.UUID, step dom.St
 		SET etapas = $5, sdk_versao = COALESCE(NULLIF($6, ''), sdk_versao)
 		WHERE run_id = $1 AND node_id = $2 AND attempt = $3 AND map_index = $4`,
 		runID, step.Node, attempt, step.MapIndex, stages, sdkVersion)
+	return err
+}
+
+// RecordLoad keeps what one attempt of an SDK pipeline measured.
+//
+// UPSERT rather than INSERT, and that is a retry rather than a race: attempt 2
+// of a step overwrites attempt 1's row. The trend asks "how much did this
+// pipeline load that day", and a step that failed after loading 40,000 rows and
+// then succeeded loading 48,000 loaded 48,000 -- counting both would invent
+// 88,000 rows that never existed. The attempt is not in the key for exactly
+// that reason; `task_runs` keeps the per-attempt history for whoever needs it.
+func (r *RunRepo) RecordLoad(ctx context.Context, runID uuid.UUID, step dom.StepKey,
+	workflow string, n exec.LoadNumbers) error {
+
+	// `em` comes from the RUN and not from now(): a step that starts at 23:58
+	// and ends at 00:04 belongs to the day of the run that asked for it, in the
+	// same bucket as every other step of that run. Read from the row rather
+	// than passed in, so the runner cannot hand over a different clock than the
+	// one the calendar heatmap groups by.
+	_, err := r.pool.Exec(ctx, `
+		INSERT INTO load_metrics (
+			run_id, node_id, map_index, workflow_slug, em,
+			linhas, registros, ignorados, bytes_saida, load_ms,
+			bytes_entrada, paginas, tentativas, extract_ms)
+		SELECT $1, $2, $3, $4, r.criado_em,
+		       $5, $6, $7, $8, $9, $10, $11, $12, $13
+		FROM runs r WHERE r.id = $1
+		ON CONFLICT (run_id, node_id, map_index) DO UPDATE SET
+			linhas = EXCLUDED.linhas, registros = EXCLUDED.registros,
+			ignorados = EXCLUDED.ignorados, bytes_saida = EXCLUDED.bytes_saida,
+			load_ms = EXCLUDED.load_ms, bytes_entrada = EXCLUDED.bytes_entrada,
+			paginas = EXCLUDED.paginas, tentativas = EXCLUDED.tentativas,
+			extract_ms = EXCLUDED.extract_ms`,
+		runID, step.Node, step.MapIndex, workflow,
+		n.Rows, n.Records, n.Ignored, n.BytesOut, n.LoadMs,
+		n.BytesIn, n.Pages, n.HTTPAttempts, n.ExtractMs)
 	return err
 }
 

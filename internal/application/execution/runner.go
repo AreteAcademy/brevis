@@ -80,6 +80,15 @@ type Persister interface {
 	RecordStages(ctx context.Context, runID uuid.UUID, step run.StepKey, attempt int,
 		sdkVersion string, stages json.RawMessage) error
 
+	// RecordLoad keeps what one attempt of an SDK pipeline measured, so the
+	// trend can be read without unpacking a year of JSONB.
+	//
+	// Called once, when the step ends, and only for a step that ran a load to
+	// completion -- unlike RecordStages, which runs on every marked line
+	// because the screen has to advance while the step is alive.
+	RecordLoad(ctx context.Context, runID uuid.UUID, step run.StepKey,
+		workflow string, n LoadNumbers) error
+
 	// MarkSkipped records a step whose trigger rule was not satisfied, with the
 	// reason. Required rather than optional: a skipped step that leaves no row
 	// is invisible, and "did not run and nobody can tell why" is the state this
@@ -782,6 +791,21 @@ func (r Runner) markStages(ctx context.Context, step run.StepKey, attempt int, c
 	_ = r.Persist.RecordStages(ctx, r.RunID, step, attempt, c.Version, data)
 }
 
+// markLoad keeps what the pipeline measured. Failing here does not bring the
+// step down, on the same terms as markStages: the truth about a step is its
+// exit code, and trading a run for a row in a trend table would be the wrong
+// bargain.
+func (r Runner) markLoad(ctx context.Context, workflow string, step run.StepKey, c *stageCollector) {
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	n, ok := c.LoadNumbers()
+	if !ok {
+		return
+	}
+	_ = r.Persist.RecordLoad(ctx, r.RunID, step, workflow, n)
+}
+
 func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -957,6 +981,20 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 			failure = &StepError{NodeID: n.ID, ExitCode: e.ExitCode, Message: e.Message}
 		}
 	}
+	// What the load measured, once, now that the phases are final.
+	//
+	// Here and not in markStages: that one runs on every marked line, because
+	// the screen has to advance while the step is alive, and a row rewritten
+	// per transition would be a database round trip per phase to store a
+	// number that is not final yet.
+	//
+	// It runs on the failure path too. Whether the numbers are KEPT is decided
+	// by LoadNumbers, which requires the load phase to have finished -- a step
+	// whose load completed and whose process then died still measured a real
+	// load, and dropping it here would lose it for a reason that has nothing to
+	// do with the load.
+	r.markLoad(ctx, w.Slug, inst.key, &stages)
+
 	if failure == nil {
 		return completa.String(), nil
 	}

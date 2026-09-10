@@ -840,6 +840,11 @@ type WorkflowStats struct {
 	Window time.Duration
 	Ind    postgres.Indicators
 	Days   []postgres.Day
+
+	// Load is what this workflow's SDK pipelines measured, per day. Empty for a
+	// workflow whose steps are shell commands, which is why the panel checks
+	// before drawing: four empty boxes would be four questions with no answer.
+	Load []postgres.LoadDay
 }
 
 templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
@@ -887,6 +892,17 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 				@components.Heatmap(st.Days, w.Slug)
 			}
 		</section>
+		if len(st.Load) > 0 {
+			<section class="mt-6">
+				@components.Card("What it loads") {
+					<p class="-mt-2 mb-5 text-sm text-muted">
+						{ components.TrendWindow(st.Load) }. The calendar above answers whether
+						it ran; this answers whether it is getting worse.
+					</p>
+					@components.LoadTrend(components.Trend(st.Load), components.TrendWindow(st.Load))
+				}
+			</section>
+		}
 		if len(latest) > 0 {
 			<section class="mt-6">
 				<div class="mb-3 flex items-baseline justify-between">
