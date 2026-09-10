@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -228,5 +229,151 @@ func TestTheEngineAndThePythonLibraryAgreeOnTheContract(t *testing.T) {
 			"If the change is deliberate, update lib/python-context (brevis/run.py "+
 			"AND tests/test_run.py) and rerun with BREVIS_UPDATE_FIXTURES=true.",
 			pretty.String(), want)
+	}
+}
+
+// The bridge to dlt is two environment variables, and this is the test that
+// keeps them honest.
+//
+// dlt reads DLT_INTERVAL_START and DLT_INTERVAL_END before it looks for
+// Airflow, and turns them into `initial_value` and `end_value` for a resource
+// that opted in with `allow_external_schedulers=True`. The names, the format
+// and the pairing rule are dlt's, not ours -- renaming one here is a silent
+// break in somebody else's pipeline, which is why they are pinned as literals
+// rather than derived from the BREVIS_ ones.
+func TestTheWindowIsHandedToDLTUnderItsOwnNames(t *testing.T) {
+	slot := at("2026-03-11T04:00:00Z")
+	a := Auto(Run{LogicalDate: &slot}, at("2026-03-11T04:37:00Z"), Previous{}, Interval{
+		Start: at("2026-03-10T04:00:00Z"),
+		End:   at("2026-03-11T04:00:00Z"),
+	})
+	env := a.Env()
+
+	if got := env["DLT_INTERVAL_START"]; got != "2026-03-10T04:00:00Z" {
+		t.Errorf("DLT_INTERVAL_START = %q", got)
+	}
+	if got := env["DLT_INTERVAL_END"]; got != "2026-03-11T04:00:00Z" {
+		t.Errorf("DLT_INTERVAL_END = %q", got)
+	}
+
+	// The same window under both names. Two variables describing one fact is
+	// the shape that breaks silently, so they are compared rather than trusted.
+	if env["DLT_INTERVAL_START"] != env["BREVIS_AUTO_INTERVAL_START"] ||
+		env["DLT_INTERVAL_END"] != env["BREVIS_AUTO_INTERVAL_END"] {
+		t.Errorf("the two vocabularies disagree about the window: dlt=[%s,%s) brevis=[%s,%s)",
+			env["DLT_INTERVAL_START"], env["DLT_INTERVAL_END"],
+			env["BREVIS_AUTO_INTERVAL_START"], env["BREVIS_AUTO_INTERVAL_END"])
+	}
+
+	// UTC, and NOT re-stamped with another zone. dlt applies
+	// DLT_INTERVAL_TIMEZONE after parsing, which would give both datetimes a
+	// different zone's identity than every other timestamp this engine emits.
+	if _, there := env["DLT_INTERVAL_TIMEZONE"]; there {
+		t.Error("DLT_INTERVAL_TIMEZONE is set; the engine is UTC everywhere")
+	}
+	for _, k := range []string{"DLT_INTERVAL_START", "DLT_INTERVAL_END"} {
+		if !strings.HasSuffix(env[k], "Z") {
+			t.Errorf("%s = %q is not UTC", k, env[k])
+		}
+	}
+}
+
+// Both, or neither.
+//
+// dlt resolves a PARTIAL interval to nothing and then raises
+// ExternalSchedulerNotAvailable rather than falling back to its persisted
+// state. So half a window here would not be half a bridge -- it would be a
+// pipeline that fails at bind time with a message about a scheduler.
+//
+// A workflow with no schedule has no window at all, and that case must hand
+// over nothing: dlt's own state is the right authority when Brevis has no
+// better answer.
+func TestAWorkflowWithNoScheduleHandsDLTNothing(t *testing.T) {
+	env := Auto(Run{}, at("2026-09-08T11:00:00Z"), Previous{}, Interval{}).Env()
+	for _, k := range []string{"DLT_INTERVAL_START", "DLT_INTERVAL_END"} {
+		if v, there := env[k]; there {
+			t.Errorf("%s = %q on a run with no window", k, v)
+		}
+	}
+}
+
+// The end is EXCLUDED, on both sides of the bridge.
+//
+// Brevis says so in AutoParams' comment; dlt says so with `range_start`
+// defaulting to "closed" and `range_end` to "open". They agree today, and the
+// whole no-gap-no-overlap property rests on them continuing to: if either side
+// flipped, consecutive runs would either re-read a row or skip one, and neither
+// shows up as a failure.
+//
+// This asserts the Brevis half, which is the half this repository controls: two
+// consecutive slots meet exactly, with no second of daylight between them and
+// no second counted twice.
+func TestConsecutiveWindowsMeetExactlyForDLT(t *testing.T) {
+	first := Auto(Run{}, at("2026-03-10T04:05:00Z"), Previous{}, Interval{
+		Start: at("2026-03-09T04:00:00Z"), End: at("2026-03-10T04:00:00Z"),
+	}).Env()
+	second := Auto(Run{}, at("2026-03-11T04:05:00Z"), Previous{}, Interval{
+		Start: at("2026-03-10T04:00:00Z"), End: at("2026-03-11T04:00:00Z"),
+	}).Env()
+
+	if first["DLT_INTERVAL_END"] != second["DLT_INTERVAL_START"] {
+		t.Errorf("the slots do not meet: one ends %s, the next starts %s",
+			first["DLT_INTERVAL_END"], second["DLT_INTERVAL_START"])
+	}
+}
+
+// The fixture the dlt bridge test reads, written by the engine.
+//
+// Same discipline as TestTheEngineAndThePythonLibraryAgreeOnTheContract and for
+// a harder reason: those two variable names are not ours. They belong to dlt,
+// which reads them in `dlt/extract/incremental/context.py`, and nothing in this
+// repository compiles against that. A rename on either side is a pipeline that
+// silently goes back to reading its own persisted cursor -- which does not fail,
+// it just loads the wrong window, and that is found weeks later in a row count.
+//
+// So the engine writes the environment it would really hand a step, and
+// lib/python-context/tests/test_dlt_bridge.py feeds that file to a real dlt and
+// asserts the window arrived. The bytes are the contract.
+func TestTheEngineWritesTheEnvironmentDLTReads(t *testing.T) {
+	const fixture = "../../../lib/python-context/tests/engine_dlt_env.json"
+
+	slot := time.Date(2026, 3, 11, 4, 0, 0, 0, time.UTC)
+	env := Auto(
+		Run{LogicalDate: &slot},
+		slot.Add(37*time.Minute),
+		Previous{},
+		Interval{Start: slot.AddDate(0, 0, -1), End: slot},
+	).Env()
+
+	// Only dlt's half. The BREVIS_ variables have their own fixture, and mixing
+	// them would make either side's change rewrite the other's evidence.
+	only := map[string]string{}
+	for k, v := range env {
+		if strings.HasPrefix(k, "DLT_") {
+			only[k] = v
+		}
+	}
+	if len(only) != 2 {
+		t.Fatalf("the engine emits %d DLT_ variables, not 2: %v", len(only), only)
+	}
+
+	pretty, err := json.MarshalIndent(only, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pretty = append(pretty, '\n')
+
+	want, err := os.ReadFile(fixture)
+	if err != nil || !bytes.Equal(want, pretty) {
+		if os.Getenv("BREVIS_UPDATE_FIXTURES") == "true" {
+			if err := os.WriteFile(fixture, pretty, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Fatalf("%s was rewritten; run the dlt bridge test before committing", fixture)
+		}
+		t.Errorf("the engine no longer writes the environment dlt reads.\ngot:\n%s\nfile:\n%s\n\n"+
+			"If the change is deliberate, rerun with BREVIS_UPDATE_FIXTURES=true and "+
+			"run lib/python-context/tests/test_dlt_bridge.py against a real dlt.",
+			pretty, want)
 	}
 }

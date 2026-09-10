@@ -161,6 +161,42 @@ func (a AutoParams) Env() map[string]string {
 			out[name] = when.Format(time.RFC3339)
 		}
 	}
+	// dlt's contract for an external scheduler, which is the reason this bridge
+	// is two variables and not a library.
+	//
+	// dlt tracks incrementality in state it persists in the destination, and
+	// that state only moves FORWARD. A backfill of a slot from March therefore
+	// reads whatever the cursor says today, which is the wrong window, and the
+	// blunt instrument dlt offers for it is dropping the state
+	// (`drop_data`, `drop_resources`). The engine already knows the right
+	// answer: IntervalStart and IntervalEnd come from the CRON, so the March
+	// run produces March's window however often it is retried.
+	//
+	// dlt reads these before it tries Airflow, in
+	// `dlt/extract/incremental/context.py` -- `DLT_INTERVAL_START` and
+	// `DLT_INTERVAL_END`, UTC ISO 8601, and a resource opts in with
+	// `allow_external_schedulers=True`. Set, they become `initial_value` and
+	// `end_value`, and an incremental with an `end_value` does not touch the
+	// persisted state at all: the backfill is stateless, which is exactly what
+	// makes re-running one slot idempotent.
+	//
+	// The half-open range matches on both sides -- Brevis is [start, end) with
+	// the end excluded, and so is dlt (`range_start` closed, `range_end` open).
+	// If either side ever changes that, the test in autoparams_test.go says so.
+	//
+	// Both or neither, which is also dlt's rule: it resolves a PARTIAL
+	// interval to nothing and then raises rather than quietly falling back to
+	// its own state. Here they are set together by Auto, so the pairing holds
+	// by construction rather than by care.
+	//
+	// DLT_INTERVAL_TIMEZONE is deliberately NOT set. It would re-stamp both
+	// datetimes with another zone's identity, and every timestamp this engine
+	// produces is UTC.
+	if a.IntervalStart != nil && a.IntervalEnd != nil {
+		out["DLT_INTERVAL_START"] = a.IntervalStart.Format(time.RFC3339)
+		out["DLT_INTERVAL_END"] = a.IntervalEnd.Format(time.RFC3339)
+	}
+
 	// And the whole thing, for a step that would rather parse one value.
 	if raw, err := json.Marshal(a); err == nil {
 		out["BREVIS_AUTO_PARAMS"] = string(raw)
