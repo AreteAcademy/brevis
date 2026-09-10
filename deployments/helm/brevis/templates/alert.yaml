@@ -1,0 +1,50 @@
+{{- if .Values.alerts.enabled }}
+{{/*
+The alert pod: it drains the alerts outbox and delivers.
+
+It exists because of where an alert is WRITTEN, not because delivery deserves a
+process of its own. The scheduler records the alert in the same transaction as
+the failure that justifies it; something has to drain that table, and it has to
+survive both a Slack outage and its own restart. Before this, a webhook that
+was down meant a log line and an alert that was simply gone.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "brevis.fullname" . }}-alert
+  labels:
+    {{- include "brevis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alert
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "brevis.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: alert
+  template:
+    metadata:
+      labels:
+        {{- include "brevis.labels" . | nindent 8 }}
+        app.kubernetes.io/component: alert
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: alert
+          image: {{ include "brevis.workerImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["alert"]
+          env:
+            {{- include "brevis.databaseEnv" . | nindent 12 }}
+            {{- include "brevis.commonEnv" . | nindent 12 }}
+          resources: {{- toYaml .Values.alerts.resources | nindent 12 }}
+          securityContext: {{- include "brevis.securityContext" . | nindent 12 }}
+{{- end }}

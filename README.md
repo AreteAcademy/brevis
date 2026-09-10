@@ -120,8 +120,20 @@ targets: [`docs/COMMANDS.md`](docs/COMMANDS.md).
 
 On Kubernetes, **each step becomes a pod** with the image declared in the YAML --
 there is no generic worker waiting for work; the work brings its own runtime. The
-same file runs locally as a process. See
-[`docs/KUBERNETES.md`](docs/KUBERNETES.md).
+same file runs locally as a process.
+
+```bash
+helm install brevis ./deployments/helm/brevis --namespace data --create-namespace \
+  --set database.url="postgres://brevis:pw@postgres/brevis?sslmode=require" \
+  --set auth.user=admin --set auth.passwordHash="$(brevis hash)" \
+  --set auth.secret="$(openssl rand -base64 48)"
+```
+
+Migrations run first as a hook, and the chart refuses to render a configuration
+that Kubernetes would accept and that would be wrong at runtime — starting with
+a second scheduler replica, which would materialise duplicate runs in silence.
+[`deployments/helm/brevis`](deployments/helm/brevis) ·
+[`docs/KUBERNETES.md`](docs/KUBERNETES.md)
 
 The images are per role, not per project: **5.8 MB** for a Go step, 118 MB for
 Python, 620 MB for dbt (with the parse baked in, 2.7 s less per pod). See

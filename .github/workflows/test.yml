@@ -103,6 +103,9 @@ jobs:
       - name: Comments and messages are in English
         run: ./.github/scripts/repo-language-check.sh
 
+      - name: The Helm chart renders and refuses what it should
+        run: ./.github/scripts/helm-check.sh
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:

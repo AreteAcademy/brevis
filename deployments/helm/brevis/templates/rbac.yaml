@@ -1,0 +1,62 @@
+{{/*
+Two accounts, not one.
+
+  <release>-scheduler  creates and deletes pods. The only identity that needs
+                       that permission.
+  <release>-task       what the task pods run as -- with NO permission in the
+                       cluster at all.
+
+The separation is the point. A task's pod runs commands that came out of a
+YAML; if it inherited the scheduler's account, any workflow could create pods,
+read secrets and scale itself. With an account that has no role, the worst an
+arbitrary command does is use the credentials the installation gave it.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "brevis.fullname" . }}-scheduler
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "brevis.fullname" . }}-task
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+  {{- with .Values.taskServiceAccount.annotations }}
+  # Workload Identity goes here: it is how a task speaks to BigQuery with no key
+  # in a file.
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "brevis.fullname" . }}-scheduler
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+rules:
+  # No `update` and no `patch`: the scheduler creates, watches and deletes. It
+  # never edits a pod in flight, and one more verb here is one more for whoever
+  # compromises the process.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  # `pods/log` is what carries a step's output into the interface. Without it
+  # the run works and the log stays empty -- which reads as a broken UI rather
+  # than as a missing permission.
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "brevis.fullname" . }}-scheduler
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "brevis.fullname" . }}-scheduler
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "brevis.fullname" . }}-scheduler
+    namespace: {{ .Release.Namespace }}

@@ -1,0 +1,136 @@
+# Brevis on Kubernetes.
+#
+# Four values are required and everything else has a working default:
+#
+#   database.url          where Postgres is
+#   auth.user             who logs into the interface
+#   auth.passwordHash     from `brevis hash`
+#   auth.secret           32+ bytes, `openssl rand -base64 48`
+#
+# The shortest correct install:
+#
+#   helm install brevis deployments/helm/brevis \
+#     --namespace data --create-namespace \
+#     --set database.url="postgres://brevis:pw@postgres/brevis?sslmode=require" \
+#     --set auth.user=admin \
+#     --set auth.passwordHash="$(brevis hash)" \
+#     --set auth.secret="$(openssl rand -base64 48)"
+#
+# Anything the chart cannot make safe is refused at render time rather than
+# accepted and broken later — see templates/_validations.tpl for the list and
+# the reason behind each one.
+
+image:
+  repository: daniel3843/brevis
+  # Empty means the chart's appVersion. Both images come from this tag: the API
+  # runs `<tag>` (distroless, no shell, because it executes nothing) and the
+  # scheduler runs `<tag>-worker` (alpine, because `run:` steps need a shell).
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+# Where Postgres is.
+#
+# Use `existingSecret` in production: `url` inline reaches the release's stored
+# manifest, which anybody who can read the Secret in this namespace can read.
+database:
+  url: ""
+  existingSecret: ""
+  existingSecretKey: url
+
+# The interface triggers pipelines, so outside `env: local` the engine REFUSES
+# TO BOOT without a credential. A POST to /workflows/<slug>/trigger runs a `dbt
+# build` that writes to the warehouse: open on the internet, this is a remote
+# control for the warehouse.
+auth:
+  user: ""
+  # From `brevis hash` — a `pbkdf2-sha256$…` string, never the password.
+  passwordHash: ""
+  # Signs the session cookie. 32 bytes minimum, and the chart checks.
+  secret: ""
+  # Or bring all three in a Secret with keys: user, passwordHash, secret.
+  existingSecret: ""
+
+env: prod
+logLevel: info
+
+api:
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {memory: 192Mi}
+  service:
+    # `http` only, deliberately. The metrics port is NOT in this Service: it is
+    # scraped from the pod through the annotations, and adding it here is one
+    # ServiceMonitor-shaped convenience away from publishing every workflow and
+    # step name to whoever finds the path.
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: false
+    className: ""
+    host: ""
+    annotations: {}
+    tls:
+      enabled: false
+      secretName: ""
+
+scheduler:
+  # How many RUNS the dispatcher executes at once.
+  concurrency: 10
+  # How many STEPS exist at once, which is pods in the cluster. Without it, five
+  # runs of three parallel steps each would mean fifteen pods.
+  maxPods: 5
+  interval: 10s
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {memory: 256Mi}
+  # `true` leaves a failed step's pod up for inspection. Off in production:
+  # stopped pods consume quota.
+  keepPodsOnFailure: false
+  # Where the task pods land, and what they tolerate. A tainted node pool with
+  # no toleration leaves the step Pending forever, with no error.
+  taskNodeSelector: ""
+  taskTolerations: ""
+  # Secrets whose keys become environment variables in every task pod. The list
+  # comes from the installation, never from a workflow's YAML.
+  taskEnvFromSecrets: []
+
+# Drains the alerts outbox. The scheduler records an alert in the same
+# transaction as the failure that justifies it; this is what delivers, and what
+# survives a Slack outage and its own restart.
+alerts:
+  enabled: false
+  resources:
+    requests: {cpu: 25m, memory: 64Mi}
+    limits: {memory: 128Mi}
+
+# The weekly summary. A CronJob, not a loop: the cluster already has a
+# scheduler, so this needs no new state and no leader election.
+report:
+  enabled: false
+  schedule: "0 8 * * 1"
+  window: 168h
+
+# Failure alerting and the link inside the message. The webhook is a credential:
+# whoever has the URL posts in the channel as the platform.
+slack:
+  webhook: ""
+  existingSecret: ""
+uiURL: ""
+
+# Title, subtitle, phrase and palette, as brand.yaml. The colours override CSS
+# variables at runtime, so a theme change recompiles nothing.
+brand:
+  enabled: false
+  content: {}
+
+# Applied to the task pods' ServiceAccount — where a Workload Identity
+# annotation goes, so a task speaks to BigQuery with no key in a file.
+taskServiceAccount:
+  annotations: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}

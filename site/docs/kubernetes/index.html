@@ -127,6 +127,44 @@
       <h1>Kubernetes</h1>
       <p class="doc-desc">Como implantar o engine, com que permissões, e o que verificar depois.</p>
       <p>Uma instalação típica tem <strong>dois Deployments</strong> do mesmo binário — a API e o scheduler — e um Postgres.</p>
+<h2 id="instalando-com-helm">Instalando com Helm<a class="anchor" href="#instalando-com-helm" aria-label="link">#</a></h2>
+<p>O chart está no repositório, em <code>deployments/helm/brevis</code>. Quatro valores são obrigatórios e todo o resto tem default que funciona:</p>
+<div class="code-block" data-code="helm install brevis ./deployments/helm/brevis \
+  --namespace data --create-namespace \
+  --set database.url=&quot;postgres://brevis:pw@postgres/brevis?sslmode=require&quot; \
+  --set auth.user=admin \
+  --set auth.passwordHash=&quot;$(brevis hash)&quot; \
+  --set auth.secret=&quot;$(openssl rand -base64 48)&quot;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>helm install <span class="t-k">brevis</span> ./deployments/helm/<span class="t-k">brevis</span> \
+  <span class="t-n">--namespace</span> data <span class="t-n">--create-namespace</span> \
+  <span class="t-n">--set</span> database.url="postgres://<span class="t-k">brevis</span>:pw@postgres/<span class="t-k">brevis</span>?sslmode=require" \
+  <span class="t-n">--set</span> auth.user=admin \
+  <span class="t-n">--set</span> auth.passwordHash="$(<span class="t-k">brevis</span> hash)" \
+  <span class="t-n">--set</span> auth.secret="$(openssl rand <span class="t-n">-base64</span> 48)"</code></pre></div>
+<p>É a instalação inteira: as migrations rodam antes, como hook, os dois Deployments sobem cada um com a sua imagem, e o scheduler recebe uma ServiceAccount que pode criar pods enquanto os pods de task recebem uma que não pode nada.</p>
+<p>Para chegar na interface:</p>
+<div class="code-block" data-code="helm upgrade brevis ./deployments/helm/brevis --reuse-values \
+  --set api.ingress.enabled=true \
+  --set api.ingress.host=brevis.example.com \
+  --set api.ingress.tls.enabled=true \
+  --set api.ingress.tls.secretName=brevis-tls"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>helm upgrade <span class="t-k">brevis</span> ./deployments/helm/<span class="t-k">brevis</span> <span class="t-n">--reuse-values</span> \
+  <span class="t-n">--set</span> api.ingress.enabled=true \
+  <span class="t-n">--set</span> api.ingress.host=<span class="t-k">brevis</span>.example.com \
+  <span class="t-n">--set</span> api.ingress.tls.enabled=true \
+  <span class="t-n">--set</span> api.ingress.tls.secretName=<span class="t-k">brevis</span>-tls</code></pre></div>
+<p>Em produção, mantenha a string de conexão fora do release: coloque num Secret e passe <code>--set database.existingSecret=brevis-db</code>. Passada inline, ela vai para o manifesto guardado do release, que qualquer um com permissão de ler Secrets naquele namespace lê.</p>
+<p><code>helm show values ./deployments/helm/brevis</code> lista cada valor com o motivo ao lado.</p>
+<h3 id="o-que-o-chart-recusa">O que o chart recusa<a class="anchor" href="#o-que-o-chart-recusa" aria-label="link">#</a></h3>
+<p>O que ele não consegue tornar seguro falha na renderização, com uma mensagem dizendo o que quebraria — e não às 3 da manhã, num run que gerou linhas duplicadas:</p>
+<div class="table-wrap"><table><thead><tr><th>recusado</th><th>porque</th></tr></thead><tbody><tr><td><code>scheduler.replicas</code>, em qualquer valor</td><td>dois materializariam os mesmos slots. O <code>FOR UPDATE SKIP LOCKED</code> impede que peguem o mesmo item da fila; nada impede que criem o mesmo run agendado, e um <code>dbt build</code> rodaria duas vezes sobre a mesma janela sem nada falhar</td></tr><tr><td>credencial ausente fora de <code>local</code></td><td>o engine recusa subir sem ela, então o chart estaria te entregando um CrashLoopBackOff</td></tr><tr><td><code>auth.secret</code> com menos de 32 bytes</td><td>ele assina o cookie de sessão, e o engine exige o mesmo mínimo</td></tr><tr><td>Ingress sem <code>host</code></td><td>casaria com toda requisição que chega ao controller — num cluster compartilhado, respondendo pelo hostname de outro</td></tr><tr><td><code>alerts.enabled</code> sem webhook</td><td>o pod drenaria a outbox e entregaria em lugar nenhum, o que é pior que não rodar: a falha passa a parecer anunciada</td></tr><tr><td>um valor que o chart não define</td><td>um typo no <code>--set</code> de outra forma não faz nada, em silêncio</td></tr></tbody></table></div>
+<p>O <code>.github/scripts/helm-check.sh</code> verifica tudo isso na saída renderizada, mais os invariantes acima — um scheduler só, <code>pods/log</code> presente, migrations primeiro, a porta de métricas fora do Service.</p>
+<h2 id="sem-helm">Sem Helm<a class="anchor" href="#sem-helm" aria-label="link">#</a></h2>
+<p>São sete manifests em <code>deployments/kubernetes/</code>, prontos para <code>kubectl apply -f</code> depois de ajustar o namespace e a tag da imagem:</p>
+<div class="code-block" data-code="kubectl apply -f deployments/kubernetes/rbac.yaml
+kubectl apply -f deployments/kubernetes/api.yaml
+kubectl apply -f deployments/kubernetes/scheduler.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/rbac.yaml
+<span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/api.yaml
+<span class="t-k">kubectl</span> apply <span class="t-n">-f</span> deployments/kubernetes/scheduler.yaml</code></pre></div>
+<p>Eles carregam as mesmas decisões do chart, com o raciocínio nos comentários, e ainda <code>alert.yaml</code>, <code>report.yaml</code> e <code>publish-job.yaml</code>. As seções abaixo percorrem o conteúdo de cada um.</p>
 <h2 id="os-dois-papeis">Os dois papéis<a class="anchor" href="#os-dois-papeis" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>papel</th><th>comando</th><th>imagem</th><th>réplicas</th></tr></thead><tbody><tr><td>API + interface</td><td><code>serve</code></td><td><code>:0.11.2</code> (distroless)</td><td>quantas quiser</td></tr><tr><td>scheduler + fila</td><td><code>scheduler</code></td><td><code>:0.11.2-worker</code> (alpine)</td><td><strong>uma</strong></td></tr></tbody></table></div>
 <p>A API é distroless porque só serve HTTP: não executa nada, então não precisa de shell. O worker é alpine porque os passos <code>run:</code> precisam de um.</p>
@@ -343,7 +381,7 @@ curl -fsS https://brevis.exemplo.com/ready"><div class="code-head"><span class="
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#os-dois-papeis">Os dois papéis</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#deployment-da-api">Deployment da API</a></li><li class="toc-2"><a href="#deployment-do-scheduler">Deployment do scheduler</a></li><li class="toc-2"><a href="#permissoes">Permissões</a></li><li class="toc-2"><a href="#depois-do-deploy">Depois do deploy</a></li><li class="toc-2"><a href="#quando-um-passo-fica-pending">Quando um passo fica Pending</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#instalando-com-helm">Instalando com Helm</a></li><li class="toc-3"><a href="#o-que-o-chart-recusa">O que o chart recusa</a></li><li class="toc-2"><a href="#sem-helm">Sem Helm</a></li><li class="toc-2"><a href="#os-dois-papeis">Os dois papéis</a></li><li class="toc-2"><a href="#migrations">Migrations</a></li><li class="toc-2"><a href="#deployment-da-api">Deployment da API</a></li><li class="toc-2"><a href="#deployment-do-scheduler">Deployment do scheduler</a></li><li class="toc-2"><a href="#permissoes">Permissões</a></li><li class="toc-2"><a href="#depois-do-deploy">Depois do deploy</a></li><li class="toc-2"><a href="#quando-um-passo-fica-pending">Quando um passo fica Pending</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

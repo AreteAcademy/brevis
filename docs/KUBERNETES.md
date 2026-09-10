@@ -1,5 +1,23 @@
 # Running on Kubernetes — one pod per step
 
+## Installing it
+
+Use the chart, at [`deployments/helm/brevis`](../deployments/helm/brevis) — its
+[README](../deployments/helm/brevis/README.md) has the four required values and
+the list of what it refuses to render.
+
+`deployments/kubernetes/` holds the same thing as seven plain manifests, with
+the reasoning in comments, for an installation that does not use Helm. The two
+are kept in step by `.github/scripts/helm-check.sh`, which asserts the
+invariants on the chart's rendered output: one scheduler replica with
+`strategy: Recreate`, `pods/log` in the Role and no `update` or `patch`, the
+migration Job as a `pre-install,pre-upgrade` hook, the right image per role, the
+metrics port off the Service, and no token mounted in the API's pod.
+
+The rest of this document is what those manifests contain and why — read it when
+changing them, or when an installation behaves in a way the chart's values do
+not explain.
+
 ## How it moves
 
 ```

@@ -1,0 +1,18 @@
+{{- if .Values.brand.enabled }}
+{{/*
+Title, subtitle, phrase and palette. The colours override CSS variables at
+runtime, so changing the theme recompiles nothing.
+
+An unrecognised key is a boot ERROR that names it -- decoding used to ignore
+one, which meant a typo silently reverted the whole file to the default
+identity.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "brevis.fullname" . }}-brand
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+data:
+  brand.yaml: |
+    {{- toYaml .Values.brand.content | nindent 4 }}
+{{- end }}

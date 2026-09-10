@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "brevis",
+  "description": "Types only. The rules that need more than a type are in templates/_validations.tpl, where the message can explain what breaks.",
+  "type": "object",
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string"},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]},
+        "pullSecrets": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": false
+    },
+    "database": {
+      "type": "object",
+      "properties": {
+        "url": {"type": "string"},
+        "existingSecret": {"type": "string"},
+        "existingSecretKey": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "user": {"type": "string"},
+        "passwordHash": {"type": "string"},
+        "secret": {"type": "string"},
+        "existingSecret": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "env": {"type": "string", "minLength": 1},
+    "logLevel": {"enum": ["debug", "info", "warn", "error"]},
+    "api": {
+      "type": "object",
+      "properties": {
+        "replicas": {"type": "integer", "minimum": 1},
+        "resources": {"type": "object"},
+        "service": {
+          "type": "object",
+          "properties": {
+            "type": {"enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
+            "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+          },
+          "additionalProperties": false
+        },
+        "ingress": {
+          "type": "object",
+          "properties": {
+            "enabled": {"type": "boolean"},
+            "className": {"type": "string"},
+            "host": {"type": "string"},
+            "annotations": {"type": "object"},
+            "tls": {
+              "type": "object",
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "secretName": {"type": "string"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "scheduler": {
+      "type": "object",
+      "description": "`replicas` is accepted by the schema only so the template can explain why it is refused. See templates/_validations.tpl.",
+      "properties": {
+        "replicas": {"type": "integer"},
+        "concurrency": {"type": "integer", "minimum": 1},
+        "maxPods": {"type": "integer", "minimum": 1},
+        "interval": {"type": "string", "pattern": "^[0-9]+(ms|s|m|h)$"},
+        "resources": {"type": "object"},
+        "keepPodsOnFailure": {"type": "boolean"},
+        "taskNodeSelector": {"type": "string"},
+        "taskTolerations": {"type": "string"},
+        "taskEnvFromSecrets": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "alerts": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "resources": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "report": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "schedule": {"type": "string", "minLength": 1},
+        "window": {"type": "string", "pattern": "^[0-9]+(ms|s|m|h)$"}
+      },
+      "additionalProperties": false
+    },
+    "slack": {
+      "type": "object",
+      "properties": {
+        "webhook": {"type": "string"},
+        "existingSecret": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "uiURL": {"type": "string"},
+    "brand": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "content": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "taskServiceAccount": {
+      "type": "object",
+      "properties": {"annotations": {"type": "object"}},
+      "additionalProperties": false
+    },
+    "nodeSelector": {"type": "object"},
+    "tolerations": {"type": "array"},
+    "affinity": {"type": "object"},
+    "podAnnotations": {"type": "object"},
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"}
+  },
+  "additionalProperties": false
+}

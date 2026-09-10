@@ -1,0 +1,56 @@
+{{- if .Values.report.enabled }}
+{{/*
+The weekly summary. A CronJob and not a loop, and that is the difference
+between a report and an alert.
+
+The cluster already has a scheduler, so using it means no new loop, no new
+state and no leader election. It also means an operator can run the same
+command by hand -- `brevis report --window 168h --dry-run` -- and read what it
+would have said, which is how somebody comes to trust a weekly message.
+
+It does NOT go through the alerts outbox. The two share a delivery channel and
+nothing else: losing an alert is an outage nobody hears about, and missing one
+week's summary is next week's summary.
+*/}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "brevis.fullname" . }}-report
+  labels:
+    {{- include "brevis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: report
+spec:
+  schedule: {{ .Values.report.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "brevis.labels" . | nindent 12 }}
+            app.kubernetes.io/component: report
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          {{- with .Values.image.pullSecrets }}
+          imagePullSecrets: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsNonRoot: true
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: report
+              image: {{ include "brevis.workerImage" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              args: ["report", "--window", {{ .Values.report.window | quote }}]
+              env:
+                {{- include "brevis.databaseEnv" . | nindent 16 }}
+                {{- include "brevis.commonEnv" . | nindent 16 }}
+              resources:
+                requests: {cpu: 25m, memory: 64Mi}
+                limits: {memory: 128Mi}
+              securityContext: {{- include "brevis.securityContext" . | nindent 16 }}
+{{- end }}

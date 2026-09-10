@@ -9,6 +9,77 @@ slug: kubernetes
 Uma instalação típica tem **dois Deployments** do mesmo binário — a API e o
 scheduler — e um Postgres.
 
+## Instalando com Helm
+
+O chart está no repositório, em `deployments/helm/brevis`. Quatro valores são
+obrigatórios e todo o resto tem default que funciona:
+
+```bash
+helm install brevis ./deployments/helm/brevis \
+  --namespace data --create-namespace \
+  --set database.url="postgres://brevis:pw@postgres/brevis?sslmode=require" \
+  --set auth.user=admin \
+  --set auth.passwordHash="$(brevis hash)" \
+  --set auth.secret="$(openssl rand -base64 48)"
+```
+
+É a instalação inteira: as migrations rodam antes, como hook, os dois
+Deployments sobem cada um com a sua imagem, e o scheduler recebe uma
+ServiceAccount que pode criar pods enquanto os pods de task recebem uma que não
+pode nada.
+
+Para chegar na interface:
+
+```bash
+helm upgrade brevis ./deployments/helm/brevis --reuse-values \
+  --set api.ingress.enabled=true \
+  --set api.ingress.host=brevis.example.com \
+  --set api.ingress.tls.enabled=true \
+  --set api.ingress.tls.secretName=brevis-tls
+```
+
+Em produção, mantenha a string de conexão fora do release: coloque num Secret e
+passe `--set database.existingSecret=brevis-db`. Passada inline, ela vai para o
+manifesto guardado do release, que qualquer um com permissão de ler Secrets
+naquele namespace lê.
+
+`helm show values ./deployments/helm/brevis` lista cada valor com o motivo ao
+lado.
+
+### O que o chart recusa
+
+O que ele não consegue tornar seguro falha na renderização, com uma mensagem
+dizendo o que quebraria — e não às 3 da manhã, num run que gerou linhas
+duplicadas:
+
+| recusado | porque |
+|---|---|
+| `scheduler.replicas`, em qualquer valor | dois materializariam os mesmos slots. O `FOR UPDATE SKIP LOCKED` impede que peguem o mesmo item da fila; nada impede que criem o mesmo run agendado, e um `dbt build` rodaria duas vezes sobre a mesma janela sem nada falhar |
+| credencial ausente fora de `local` | o engine recusa subir sem ela, então o chart estaria te entregando um CrashLoopBackOff |
+| `auth.secret` com menos de 32 bytes | ele assina o cookie de sessão, e o engine exige o mesmo mínimo |
+| Ingress sem `host` | casaria com toda requisição que chega ao controller — num cluster compartilhado, respondendo pelo hostname de outro |
+| `alerts.enabled` sem webhook | o pod drenaria a outbox e entregaria em lugar nenhum, o que é pior que não rodar: a falha passa a parecer anunciada |
+| um valor que o chart não define | um typo no `--set` de outra forma não faz nada, em silêncio |
+
+O `.github/scripts/helm-check.sh` verifica tudo isso na saída renderizada, mais
+os invariantes acima — um scheduler só, `pods/log` presente, migrations
+primeiro, a porta de métricas fora do Service.
+
+## Sem Helm
+
+São sete manifests em `deployments/kubernetes/`, prontos para `kubectl apply -f`
+depois de ajustar o namespace e a tag da imagem:
+
+```bash
+kubectl apply -f deployments/kubernetes/rbac.yaml
+kubectl apply -f deployments/kubernetes/api.yaml
+kubectl apply -f deployments/kubernetes/scheduler.yaml
+```
+
+Eles carregam as mesmas decisões do chart, com o raciocínio nos comentários, e
+ainda `alert.yaml`, `report.yaml` e `publish-job.yaml`. As seções abaixo
+percorrem o conteúdo de cada um.
+
 ## Os dois papéis
 
 | papel | comando | imagem | réplicas |

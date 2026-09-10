@@ -1,0 +1,113 @@
+{{/*
+The scheduler: it turns schedules into runs and executes them by creating one
+pod per step. It runs neither dbt nor Python -- the pod it creates does that.
+
+THERE IS NO `replicas` VALUE FOR THIS, and that is deliberate rather than an
+omission. The dispatcher claims work with `FOR UPDATE SKIP LOCKED`, so two
+replicas would not hand out the same queue item -- but they WOULD both
+materialise the same slots, and what protects against that is an idempotency
+key, not a lock. Until there is leader election, one replica is what keeps the
+behaviour obvious, so the chart does not offer the value that would break it.
+
+`strategy: Recreate` for the same reason: with RollingUpdate the new pod starts
+materialising schedules before the old one leaves.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "brevis.fullname" . }}-scheduler
+  labels:
+    {{- include "brevis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: scheduler
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "brevis.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: scheduler
+  template:
+    metadata:
+      labels:
+        {{- include "brevis.labels" . | nindent 8 }}
+        app.kubernetes.io/component: scheduler
+      # THIS is the pod worth scraping. The API serves screens; the scheduler
+      # claims work and runs steps, so queue depth, claim latency, slots in use
+      # and orphans recovered all live here. A dashboard built on the API's
+      # scrape alone is a dashboard of an idle process.
+      annotations:
+        {{- include "brevis.scrapeAnnotations" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}{{- toYaml . | nindent 8 }}{{- end }}
+    spec:
+      serviceAccountName: {{ include "brevis.fullname" . }}-scheduler
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: scheduler
+          image: {{ include "brevis.workerImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # TWO ceilings, and the difference matters:
+          #   --concurrency  how many RUNS the dispatcher executes at once
+          #   --max-pods     how many STEPS exist at once = pods in the cluster
+          args:
+            - scheduler
+            - --interval
+            - {{ .Values.scheduler.interval | quote }}
+            - --concurrency
+            - {{ .Values.scheduler.concurrency | quote }}
+            - --max-pods
+            - {{ .Values.scheduler.maxPods | quote }}
+          ports:
+            - {name: metrics, containerPort: 9090}
+          env:
+            {{- include "brevis.databaseEnv" . | nindent 12 }}
+            {{- include "brevis.authEnv" . | nindent 12 }}
+            {{- include "brevis.commonEnv" . | nindent 12 }}
+            # `on` and not `auto`: in a cluster, ending up WITHOUT one has to be
+            # a boot error. With `auto`, a service account that failed to mount
+            # would make the scheduler run every step inside this 256Mi pod, in
+            # silence.
+            - name: BREVIS_PODS
+              value: "on"
+            - name: BREVIS_POD_NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: BREVIS_POD_SERVICE_ACCOUNT
+              value: {{ include "brevis.fullname" . }}-task
+            - name: BREVIS_POD_KEEP_ON_FAILURE
+              value: {{ .Values.scheduler.keepPodsOnFailure | quote }}
+            {{- with .Values.scheduler.taskEnvFromSecrets }}
+            # The task pods' credentials. The list comes from the installation,
+            # never from a workflow's YAML.
+            - name: BREVIS_POD_ENV_FROM_SECRETS
+              value: {{ join "," . | quote }}
+            - name: BREVIS_POD_ALLOWED_SECRETS
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- with .Values.scheduler.taskNodeSelector }}
+            - name: BREVIS_POD_NODE_SELECTOR
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.scheduler.taskTolerations }}
+            # A tainted pool with no toleration leaves the step Pending forever
+            # -- with no error, just stopped.
+            - name: BREVIS_POD_TOLERATIONS
+              value: {{ . | quote }}
+            {{- end }}
+          resources: {{- toYaml .Values.scheduler.resources | nindent 12 }}
+          securityContext: {{- include "brevis.securityContext" . | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

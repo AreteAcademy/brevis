@@ -1,0 +1,47 @@
+{{/*
+Migrations as a hook, before anything else starts.
+
+`serve` never changes the schema -- migrations are their own subcommand -- so
+something has to run them, and the order is not optional: an API pod that comes
+up against an old schema fails queries it should serve.
+
+pre-install AND pre-upgrade, because an upgrade is exactly when a new column
+arrives. The weight -5 puts it ahead of the other hooked resources; the delete
+policy keeps the Job when it FAILS, because the log of the failed migration is
+the only thing that says why.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "brevis.fullname" . }}-migrate
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels: {{- include "brevis.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: migrate
+          image: {{ include "brevis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["migrate", "up"]
+          env:
+            {{- include "brevis.databaseEnv" . | nindent 12 }}
+            {{- include "brevis.commonEnv" . | nindent 12 }}
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext: {{- include "brevis.securityContext" . | nindent 12 }}

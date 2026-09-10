@@ -1,0 +1,135 @@
+{{/*
+The API and the interface. It runs nothing -- hence the distroless image, with
+no shell, and a ServiceAccount token that is not even mounted.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "brevis.fullname" . }}-api
+  labels:
+    {{- include "brevis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "brevis.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "brevis.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        {{- include "brevis.scrapeAnnotations" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}{{- toYaml . | nindent 8 }}{{- end }}
+        {{- if .Values.brand.enabled }}
+        checksum/brand: {{ .Values.brand.content | toYaml | sha256sum }}
+        {{- end }}
+    spec:
+      # Explicit: without this the pod gets the namespace's `default` account,
+      # which usually has more permission than people assume. The API needs
+      # none -- it never talks to the API server.
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: {{ include "brevis.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          # TWO ports, and only `http` belongs in the Service and the Ingress.
+          ports:
+            - {containerPort: 8080, name: http}
+            - {containerPort: 9090, name: metrics}
+          env:
+            {{- include "brevis.databaseEnv" . | nindent 12 }}
+            {{- include "brevis.authEnv" . | nindent 12 }}
+            {{- include "brevis.commonEnv" . | nindent 12 }}
+          # /health does not touch the database and /ready does. A liveness
+          # probe that depended on the database would restart the API during a
+          # Postgres failover, which only makes an outage longer.
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext: {{- include "brevis.securityContext" . | nindent 12 }}
+          {{- if .Values.brand.enabled }}
+          volumeMounts:
+            - {name: brand, mountPath: /etc/brevis, readOnly: true}
+          {{- end }}
+      {{- if .Values.brand.enabled }}
+      volumes:
+        - name: brand
+          configMap: {name: {{ include "brevis.fullname" . }}-brand}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "brevis.fullname" . }}-api
+  labels:
+    {{- include "brevis.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.api.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "brevis.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: api
+  # `http` only, on purpose. This Service is what an Ingress points at, and
+  # putting the metrics port here is one ServiceMonitor-shaped convenience away
+  # from publishing it. The scrape reaches the POD through the annotations
+  # above; an installation that needs a ServiceMonitor gets a second headless
+  # Service rather than widening this one.
+  ports:
+    - port: {{ .Values.api.service.port }}
+      targetPort: http
+      name: http
+{{- if .Values.api.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "brevis.fullname" . }}-api
+  labels: {{- include "brevis.labels" . | nindent 4 }}
+  {{- with .Values.api.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.api.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.api.ingress.tls.enabled }}
+  tls:
+    - hosts: [{{ .Values.api.ingress.host | quote }}]
+      secretName: {{ .Values.api.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.api.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "brevis.fullname" . }}-api
+                port: {name: http}
+{{- end }}

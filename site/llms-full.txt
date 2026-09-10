@@ -2666,6 +2666,75 @@ same thing it does outside the engine.
 A typical installation has **two Deployments** of the same binary — the API and
 the scheduler — plus a Postgres.
 
+## Install it with Helm
+
+The chart is in the repository, at `deployments/helm/brevis`. Four values are
+required and everything else has a working default:
+
+```bash
+helm install brevis ./deployments/helm/brevis \
+  --namespace data --create-namespace \
+  --set database.url="postgres://brevis:pw@postgres/brevis?sslmode=require" \
+  --set auth.user=admin \
+  --set auth.passwordHash="$(brevis hash)" \
+  --set auth.secret="$(openssl rand -base64 48)"
+```
+
+That is the whole install: the migrations run first as a hook, both Deployments
+come up with the right image each, and the scheduler gets a ServiceAccount that
+may create pods while the task pods get one that may do nothing.
+
+To reach the interface:
+
+```bash
+helm upgrade brevis ./deployments/helm/brevis --reuse-values \
+  --set api.ingress.enabled=true \
+  --set api.ingress.host=brevis.example.com \
+  --set api.ingress.tls.enabled=true \
+  --set api.ingress.tls.secretName=brevis-tls
+```
+
+In production, keep the connection string out of the release: put it in a
+Secret and pass `--set database.existingSecret=brevis-db`. Passed inline, it
+lands in the release's stored manifest, which anybody who can read Secrets in
+that namespace can read.
+
+`helm show values ./deployments/helm/brevis` lists every value with the reason
+next to it.
+
+### What the chart refuses
+
+Anything it cannot make safe fails at render time, with a message that says what
+would break — not at 3am, in a run that produced duplicate rows:
+
+| refused | because |
+|---|---|
+| `scheduler.replicas` at all | two would materialise the same slots. `FOR UPDATE SKIP LOCKED` stops them claiming the same queue item; nothing stops them creating the same scheduled run, and a `dbt build` would run twice over one window with nothing failing |
+| a missing credential outside `local` | the engine refuses to boot without one, so the chart would be handing you a CrashLoopBackOff |
+| `auth.secret` under 32 bytes | it signs the session cookie, and the engine enforces the same minimum |
+| an Ingress with no `host` | it would match every request reaching the controller — in a shared cluster, answering for somebody else's hostname |
+| `alerts.enabled` with no webhook | the pod would drain the outbox and deliver nowhere, which is worse than not running: the failure then looks announced |
+| a value the chart does not define | a typo in `--set` otherwise does nothing, silently |
+
+`.github/scripts/helm-check.sh` asserts all of that on the rendered output, plus
+the invariants above — one scheduler, `pods/log` present, migrations first, the
+metrics port off the Service.
+
+## Without Helm
+
+Seven manifests are in `deployments/kubernetes/`, ready for `kubectl apply -f`
+after you edit the namespace and the image tag:
+
+```bash
+kubectl apply -f deployments/kubernetes/rbac.yaml
+kubectl apply -f deployments/kubernetes/api.yaml
+kubectl apply -f deployments/kubernetes/scheduler.yaml
+```
+
+They carry the same decisions as the chart, with the reasoning in comments, and
+`alert.yaml`, `report.yaml` and `publish-job.yaml` besides. The sections below
+walk through what each one contains.
+
 ## The two roles
 
 | role | command | image | replicas |

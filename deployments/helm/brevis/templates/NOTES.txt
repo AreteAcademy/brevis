@@ -1,0 +1,62 @@
+Brevis {{ .Chart.AppVersion }} is installed as {{ .Release.Name }} in {{ .Release.Namespace }}.
+
+The migrations ran as a pre-install hook, so the schema is current: `serve`
+never changes it.
+
+1. Check both processes are up:
+
+   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "brevis.fullname" . }}-api -- brevis version
+
+2. Reach the interface:
+{{- if .Values.api.ingress.enabled }}
+
+   http{{ if .Values.api.ingress.tls.enabled }}s{{ end }}://{{ .Values.api.ingress.host }}
+{{- else }}
+
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "brevis.fullname" . }}-api 8080:{{ .Values.api.service.port }}
+   # then http://localhost:8080
+
+   There is no Ingress. Turn one on with api.ingress.enabled=true and
+   api.ingress.host=<your host>.
+{{- end }}
+{{- if eq .Values.env "local" }}
+
+   env is `local`, so the interface is OPEN -- no login. That is meant for a
+   laptop. In a cluster, set env=prod and a credential.
+{{- end }}
+
+3. Publish a workflow and watch a step become a pod:
+
+   kubectl -n {{ .Release.Namespace }} exec deploy/{{ include "brevis.fullname" . }}-api -- brevis publish /path/to/workflow.yaml
+   kubectl -n {{ .Release.Namespace }} get pods -w
+
+   The step's pod appears, runs and disappears. If it stays Pending, it is
+   almost always a taint with no toleration, a nodeSelector matching no node,
+   or insufficient cpu/memory -- `kubectl describe pod` says which:
+
+     scheduler.taskNodeSelector: "kubernetes.io/arch=arm64"
+     scheduler.taskTolerations:  "kubernetes.io/arch=arm64:NoSchedule"
+
+4. Metrics are on port 9090, scraped from the pods, and NOT on the Service.
+   The scheduler's pod is the one worth scraping -- queue depth, claim latency
+   and slots in use are there; the API only serves screens.
+{{- if not (or .Values.slack.webhook .Values.slack.existingSecret) }}
+
+5. Nothing announces a failure yet. To have failures reach Slack:
+
+     --set slack.webhook="https://hooks.slack.com/services/..." \
+     --set alerts.enabled=true \
+     --set uiURL="https://<your host>"
+
+   Without uiURL the alert says what failed but makes the reader find the run
+   by hand.
+{{- end }}
+{{- if not .Values.database.existingSecret }}
+
+NOTE: database.url was passed inline, so the connection string is in this
+release's stored manifest -- readable by anybody who can read Secrets in this
+namespace. In production, put it in a Secret and use database.existingSecret.
+{{- end }}
+
+Docs: https://brevis.sh/docs/kubernetes/

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: brevis
+description: A data orchestration runtime — the API, the scheduler and one pod per step
+type: application
+
+# The chart versions on its own; appVersion tracks the engine image.
+version: 0.1.0
+appVersion: "0.12.0"
+
+home: https://brevis.sh
+sources:
+  - https://github.com/AreteAcademy/brevis
+keywords: [orchestration, etl, elt, data, scheduler, dbt]
+maintainers:
+  - name: Aretê Academy
+    url: https://github.com/AreteAcademy

@@ -69,6 +69,7 @@ golangci-lint run ./...                     # in both modules
 ./.github/scripts/pruning-check.sh          # a consumer only compiles what it imports
 ./.github/scripts/repo-language-check.sh    # comments and messages are English
 ./.github/scripts/ui-language-check.sh      # the interface is English
+./.github/scripts/helm-check.sh             # the chart renders correctly
 ```
 
 ## Things this project refuses
