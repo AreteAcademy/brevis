@@ -85,6 +85,7 @@ why BigQuery is `to/bigquery` and the object stores are `store/s3` and
 | Postgres | `to/postgres` |
 | MySQL | `to/mysql` |
 | Redshift | `to/redshift` |
+| Pub/Sub | `to/pubsub` |
 
 The path scheme decides the backend, and the `Store` is **passed in** rather
 than chosen inside the driver:
@@ -96,6 +97,59 @@ to.Files{Path: "gs://bucket/landing/", Store: gcs.New(client)}
 
 That is what keeps a local-files program from compiling a single line of AWS or
 Google code.
+
+### Publishing to a topic
+
+`to/pubsub` is the one destination that is not a table, and it behaves
+differently in a way worth knowing before you use it: **it adds nothing to what
+it sends.**
+
+```go
+Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        // Nil is the default, and it means NO attributes at all.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},
+```
+
+A subscriber receives your payload, byte for byte, plus exactly the attributes
+you named. Nothing else — no `ingestion_id`, no `provider`, no envelope of any
+kind.
+
+That is a rule and not a minimalism. A table is created by the pipeline that
+writes it, so the SDK may decide what its columns are. **A topic is not**: it
+exists before your pipeline does, its subscribers were written first and their
+filters were written first. An attribute added on its own would be Brevis
+editing somebody else's contract, and the subscriber would find out at three in
+the morning.
+
+Three things follow from it:
+
+- **It never creates a topic.** A pipeline that can create one can create the
+  wrong one, and unlike a mistyped table nobody notices — the messages go
+  somewhere and the subscriber that should have received them stays quiet.
+- **`Schema`, `Dedup` and `PartitionBy` are refused**, naming the option. They
+  exist for tables: a `Schema` is how a destination creates one, deduplication
+  needs a row to replace, a partition is a table's idea. The nearest thing here
+  is `OrderingKey`, which is a different one — it groups messages that must
+  *arrive* in order.
+- **A failure is partial.** Publishing is not transactional, so 48,000 messages
+  that fail at 31,000 have *delivered* 31,000. The result reports what actually
+  went, and the error says a re-run is a re-delivery — the subscriber has to be
+  idempotent, and Pub/Sub is at-least-once anyway.
+
+Runnable, against the emulator:
+[`examples/13-pubsub`](https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub).
 
 ## A whole fetcher
 

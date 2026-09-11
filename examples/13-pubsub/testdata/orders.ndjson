@@ -1,0 +1,3 @@
+{"order_id":"A-1001","customer":"acme","total":249.90,"region":"sa-east-1"}
+{"order_id":"A-1002","customer":"globex","total":1180.00,"region":"us-east-1"}
+{"order_id":"A-1003","customer":"initech","total":75.25,"region":"sa-east-1"}

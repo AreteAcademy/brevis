@@ -136,6 +136,25 @@ go run ./12-postgres          # the second run loads zero rows
 Key-based pagination, `DedupMerge` on `ingestion_id`, and the DDL written by hand
 — because the driver creates no table and infers no type.
 
+### [13-pubsub](13-pubsub/) — publishing to a topic somebody else owns
+
+```bash
+docker compose -f ../docker-compose.drivers.yml up -d pubsub
+export PUBSUB_EMULATOR_HOST=localhost:8085
+go run ./13-pubsub -create-topic   # the INFRASTRUCTURE, once
+go run ./13-pubsub                 # the pipeline
+go run ./13-pubsub -read           # what a subscriber actually sees
+```
+
+Three programs on purpose, and the split is the lesson. Creating the topic is
+infrastructure and the driver will never do it; reading is somebody else's
+program; the pipeline in between publishes and nothing more.
+
+What the subscriber receives is the payload **exactly as it was in the file**,
+plus the two attributes the pipeline asked for by name. There is no
+Brevis-shaped envelope anywhere in it — the topic's contract belongs to whoever
+owns the topic, so the driver adds nothing on its own.
+
 ## Operation
 
 ### [05-testing](05-testing/) — how to test code that uses the SDK

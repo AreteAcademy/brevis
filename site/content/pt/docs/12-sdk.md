@@ -85,6 +85,7 @@ que é por que BigQuery é `to/bigquery` e os object stores são `store/s3` e
 | Postgres | `to/postgres` |
 | MySQL | `to/mysql` |
 | Redshift | `to/redshift` |
+| Pub/Sub | `to/pubsub` |
 
 O esquema do caminho decide o backend, e o `Store` é **passado** em vez de
 escolhido dentro do driver:
@@ -96,6 +97,58 @@ to.Files{Path: "gs://bucket/landing/", Store: gcs.New(cliente)}
 
 É isso que faz um programa de arquivos locais não compilar uma linha da AWS nem
 do Google.
+
+### Publicar num tópico
+
+O `to/pubsub` é o único destino que não é uma tabela, e ele se comporta de um
+jeito que vale saber antes de usar: **não acrescenta nada ao que envia.**
+
+```go
+Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        // Nulo é o padrão, e significa NENHUM atributo.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},
+```
+
+Quem assina recebe o seu payload, byte por byte, mais exatamente os atributos
+que você nomeou. Nada além disso — sem `ingestion_id`, sem `provider`, sem
+envelope de espécie alguma.
+
+Isso é uma regra, não minimalismo. Uma tabela é criada pelo pipeline que escreve
+nela, então o SDK pode decidir as colunas dela. **Um tópico não**: ele existe
+antes do seu pipeline, os assinantes dele foram escritos antes e os filtros
+deles também. Um atributo acrescentado por conta própria seria o Brevis editando
+o contrato de outra pessoa, e quem assina descobriria às três da manhã.
+
+Daí decorrem três coisas:
+
+- **Ele nunca cria um tópico.** Um pipeline que pode criar um pode criar o
+  errado, e diferente de uma tabela com nome torto ninguém percebe — as
+  mensagens vão para algum lugar, e o assinante que deveria recebê-las fica
+  quieto.
+- **`Schema`, `Dedup` e `PartitionBy` são recusados**, nomeando a opção. Eles
+  existem para tabelas: um `Schema` é como um destino cria a dele, deduplicar
+  precisa de uma linha para substituir, e partição é ideia de tabela. O parente
+  aqui é o `OrderingKey`, que é outra coisa — ele agrupa mensagens que precisam
+  *chegar* em ordem.
+- **A falha é parcial.** Publicar não é transacional: 48 mil mensagens que
+  falham em 31 mil *entregaram* 31 mil. O resultado informa o que de fato foi, e
+  o erro diz que reexecutar é reentregar — quem assina precisa ser idempotente,
+  e o Pub/Sub é at-least-once de qualquer forma.
+
+Executável, contra o emulador:
+[`examples/13-pubsub`](https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub).
 
 ## Um fetcher inteiro
 

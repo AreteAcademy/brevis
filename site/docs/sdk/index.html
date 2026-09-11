@@ -170,12 +170,48 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, dados, sdk.Target{
 <p>Um pipeline inteiro de arquivos — ler e escrever — custa 195 pacotes e nenhum SDK de nuvem. <strong>Um driver com SDK de fornecedor atrás vive no próprio pacote</strong>, que é por que BigQuery é <code>to/bigquery</code> e os object stores são <code>store/s3</code> e <code>store/gcs</code>.</p>
 <h2 id="origens-e-destinos">Origens e destinos<a class="anchor" href="#origens-e-destinos" aria-label="link">#</a></h2>
 <div class="table-wrap"><table><thead><tr><th>origem</th><th>pacote</th></tr></thead><tbody><tr><td>HTTP</td><td><code>from.HTTP</code></td></tr><tr><td>arquivos (local, S3, GCS)</td><td><code>from.Files</code></td></tr><tr><td>Postgres</td><td><code>from/postgres</code></td></tr><tr><td>MySQL</td><td><code>from/mysql</code></td></tr><tr><td>várias origens</td><td><code>from.Many</code></td></tr></tbody></table></div>
-<div class="table-wrap"><table><thead><tr><th>destino</th><th>pacote</th></tr></thead><tbody><tr><td>arquivos</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>destino</th><th>pacote</th></tr></thead><tbody><tr><td>arquivos</td><td><code>to.Files</code></td></tr><tr><td>BigQuery</td><td><code>to/bigquery</code></td></tr><tr><td>Postgres</td><td><code>to/postgres</code></td></tr><tr><td>MySQL</td><td><code>to/mysql</code></td></tr><tr><td>Redshift</td><td><code>to/redshift</code></td></tr><tr><td>Pub/Sub</td><td><code>to/pubsub</code></td></tr></tbody></table></div>
 <p>O esquema do caminho decide o backend, e o <code>Store</code> é <strong>passado</strong> em vez de escolhido dentro do driver:</p>
 <div class="code-block" data-code="from.Files{Path: &quot;s3://bucket/dia=1/*.ndjson&quot;, Store: s3.New(cliente)}
 to.Files{Path: &quot;gs://bucket/landing/&quot;, Store: gcs.New(cliente)}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>from.Files{Path: "s3:<span class="t-c">//bucket/dia=1/*.ndjson", Store: s3.New(cliente)}</span>
 to.Files{Path: "gs:<span class="t-c">//bucket/landing/", Store: gcs.New(cliente)}</span></code></pre></div>
 <p>É isso que faz um programa de arquivos locais não compilar uma linha da AWS nem do Google.</p>
+<h3 id="publicar-num-topico">Publicar num tópico<a class="anchor" href="#publicar-num-topico" aria-label="link">#</a></h3>
+<p>O <code>to/pubsub</code> é o único destino que não é uma tabela, e ele se comporta de um jeito que vale saber antes de usar: <strong>não acrescenta nada ao que envia.</strong></p>
+<div class="code-block" data-code="Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: &quot;acme-prod&quot;,
+        Name:    &quot;orders&quot;,
+
+        // Nulo é o padrão, e significa NENHUM atributo.
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, ok := e.Payload.(map[string]any)
+            if !ok {
+                return nil
+            }
+            return map[string]string{&quot;orderId&quot;: fmt.Sprint(row[&quot;order_id&quot;])}
+        },
+    },
+},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+
+        <span class="t-c">// Nulo é o padrão, e significa NENHUM atributo.</span>
+        Attributes: <span class="t-k">func</span>(e sdk.Envelope) <span class="t-k">map</span>[string]string {
+            row, ok := e.Payload.(<span class="t-k">map</span>[string]any)
+            <span class="t-k">if</span> !ok {
+                <span class="t-k">return</span> <span class="t-k">nil</span>
+            }
+            <span class="t-k">return</span> <span class="t-k">map</span>[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},</code></pre></div>
+<p>Quem assina recebe o seu payload, byte por byte, mais exatamente os atributos que você nomeou. Nada além disso — sem <code>ingestion_id</code>, sem <code>provider</code>, sem envelope de espécie alguma.</p>
+<p>Isso é uma regra, não minimalismo. Uma tabela é criada pelo pipeline que escreve nela, então o SDK pode decidir as colunas dela. <strong>Um tópico não</strong>: ele existe antes do seu pipeline, os assinantes dele foram escritos antes e os filtros deles também. Um atributo acrescentado por conta própria seria o Brevis editando o contrato de outra pessoa, e quem assina descobriria às três da manhã.</p>
+<p>Daí decorrem três coisas:</p>
+<ul><li><strong>Ele nunca cria um tópico.</strong> Um pipeline que pode criar um pode criar o errado, e diferente de uma tabela com nome torto ninguém percebe — as mensagens vão para algum lugar, e o assinante que deveria recebê-las fica quieto.</li><li><strong><code>Schema</code>, <code>Dedup</code> e <code>PartitionBy</code> são recusados</strong>, nomeando a opção. Eles existem para tabelas: um <code>Schema</code> é como um destino cria a dele, deduplicar precisa de uma linha para substituir, e partição é ideia de tabela. O parente aqui é o <code>OrderingKey</code>, que é outra coisa — ele agrupa mensagens que precisam <em>chegar</em> em ordem.</li><li><strong>A falha é parcial.</strong> Publicar não é transacional: 48 mil mensagens que falham em 31 mil <em>entregaram</em> 31 mil. O resultado informa o que de fato foi, e o erro diz que reexecutar é reentregar — quem assina precisa ser idempotente, e o Pub/Sub é at-least-once de qualquer forma.</li></ul>
+<p>Executável, contra o emulador: <a href="https://github.com/AreteAcademy/brevis/tree/master/examples/13-pubsub" target="_blank" rel="noopener"><code>examples/13-pubsub</code></a>.</p>
 <h2 id="um-fetcher-inteiro">Um fetcher inteiro<a class="anchor" href="#um-fetcher-inteiro" aria-label="link">#</a></h2>
 <p><code>sdk.Run</code> toma conta de flags, <code>-dry-run</code>, logging, retry, paginação, procedência, criação de tabela e código de saída. O que sobra no arquivo é só o que é específico daquela fonte:</p>
 <div class="code-block" data-code="package main
@@ -288,7 +324,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
+      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
     </aside>
   </main>
 </div>

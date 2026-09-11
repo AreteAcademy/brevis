@@ -15,6 +15,29 @@
 name: brevis-drivers
 
 services:
+  # Pub/Sub's emulator, for `examples/13-pubsub` and the driver's integration
+  # test.
+  #
+  # It speaks the real API on a plain port with no credentials, and the client
+  # library talks to it when PUBSUB_EMULATOR_HOST is set -- which is the whole
+  # reason a Pub/Sub example can be runnable at all. Against the real service it
+  # would need a project, a billing account and a topic somebody owns.
+  #
+  # `--host-port=0.0.0.0:8085` and not the default localhost: inside the
+  # container, localhost is the container.
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: >
+      gcloud beta emulators pubsub start
+      --project=brevis-example --host-port=0.0.0.0:8085
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085 >/dev/null || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"

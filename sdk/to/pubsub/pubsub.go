@@ -74,18 +74,24 @@ type Topic struct {
 	// So nothing is added unless it is asked for, by name:
 	//
 	//	Attributes: func(e sdk.Envelope) map[string]string {
-	//		id, err := e.IngestionID()
-	//		if err != nil {
-	//			return nil
-	//		}
-	//		return map[string]string{"eventId": id, "src": e.Provider}
+	//		row, _ := e.Payload.(map[string]any)
+	//		return map[string]string{"orderId": fmt.Sprint(row["order_id"])}
 	//	}
 	//
 	// `sdk.Envelope` is an alias for the type below, so a consumer writes the
-	// public name and never sees an internal package. `IngestionID()` is on it
-	// -- the deterministic UUID v5 over provider|entity|source_key|record_ts --
-	// for a client who wants an idempotency key, under whatever name they call
-	// one.
+	// public name and never sees an internal package.
+	//
+	// READ THE PAYLOAD, not the envelope's provenance fields. Provider, Entity,
+	// SourceKey and RecordTS are part of Envelope, and NO source in this SDK
+	// fills them: from.Files, from.HTTP, from/postgres and from/mysql all yield
+	// `{Payload: ...}` and nothing else. They carry values only when a consumer
+	// hand-builds envelopes and calls Loader.Load directly.
+	//
+	// Which means `e.IngestionID()` -- the deterministic UUID v5 over
+	// provider|entity|source_key|record_ts -- returns an error on any pipeline
+	// with a built-in source, because SourceKey is empty. It is available for
+	// the hand-built case, and an example that read it was what found this
+	// paragraph missing.
 	//
 	// A function rather than a map because most of what is worth putting there
 	// is per-record. Returning nil is no attributes for that message.
@@ -99,7 +105,10 @@ type Topic struct {
 	// payload -- and a rule the client did not write is a rule the client has
 	// to learn. This has none:
 	//
-	//	OrderingKey: func(e sdk.Envelope) string { return e.SourceKey }
+	//	OrderingKey: func(e sdk.Envelope) string {
+	//		row, _ := e.Payload.(map[string]any)
+	//		return fmt.Sprint(row["customer"])
+	//	}
 	//
 	// Ordering costs throughput and constrains publishing, which is why off is
 	// the default. It is also what every other destination here gives: a table
@@ -315,9 +324,8 @@ func (t Topic) refuseUnsupported(opt core.WriteOptions) error {
 		return fmt.Errorf("to/pubsub.Topic cannot deduplicate: there is no key to match " +
 			"on and no row to replace. Pub/Sub is at-least-once by design, so the " +
 			"subscriber is where idempotency lives. If it needs a key, put one in the " +
-			"attributes yourself -- sdk.Envelope.IngestionID() is a deterministic UUID " +
-			"over provider|entity|source_key|record_ts, under whatever name your " +
-			"topic's contract uses")
+			"attributes yourself, read off the payload -- under whatever name your " +
+			"topic's contract already uses")
 	}
 	if opt.PartitionBy != "" {
 		return fmt.Errorf("to/pubsub.Topic has no partitions: PartitionBy is a table's "+
