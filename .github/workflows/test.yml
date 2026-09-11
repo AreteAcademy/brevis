@@ -452,6 +452,16 @@ jobs:
           # print a success line, which is how six examples that did not
           # compile at all sat in the repo unnoticed.
           cd examples
+          # -mod=mod, because this module `replace`s the SDK with the tree next
+          # door. Without it ANY change to sdk/go.mod fails here with "updates
+          # to go.mod needed", so a routine dependency bump looks like six
+          # examples that stopped compiling. It cost exactly that on a
+          # dependabot PR touching nothing but golang.org/x/net.
+          #
+          # What this step proves is that the examples COMPILE against the local
+          # SDK. Pinning a module graph is not part of that; pruning-check.sh,
+          # which IS about the graph, does the same thing for the same reason.
+          export GOFLAGS=-mod=mod
           go build ./...
           go vet ./...
           go test ./...

@@ -142,6 +142,11 @@ func buildFetcher(t *testing.T, dir string) string {
 	output := filepath.Join(dir, "fetcher")
 	cmd := exec.Command("go", "build", "-o", output, ".")
 	cmd.Dir = "testdata/fetcher"
+	// -mod=mod: this module `replace`s the SDK with the tree next door and
+	// carries no go.sum, so any change to sdk/go.mod would refuse the build.
+	// See the same line in python_context_integration_test.go -- there are
+	// three places that build against the local SDK and they all need it.
+	cmd.Env = append(os.Environ(), "GOFLAGS=-mod=mod")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("compilando o fetcher: %v\n%s", err, out)
 	}
