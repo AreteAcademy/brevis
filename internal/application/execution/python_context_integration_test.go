@@ -70,6 +70,18 @@ context.set(rows=48213)
 	goStep := filepath.Join(t.TempDir(), "gostep")
 	build := exec.Command("go", "build", "-o", goStep, ".")
 	build.Dir = filepath.Join(repo, "internal", "application", "execution", "testdata", "gostep")
+	// -mod=mod, because this module `replace`s the SDK with the tree next door
+	// and carries no go.sum. Without it, ANY change to sdk/go.mod makes the
+	// build refuse with "updates to go.mod needed" -- so a routine dependency
+	// bump in the SDK fails a test about Python and Go exchanging context,
+	// which sends whoever reads it looking in the wrong place entirely. It cost
+	// exactly that once, on a dependabot PR that only touched golang.org/x/net.
+	//
+	// What this test is for is that a consumer COMPILES against the local SDK
+	// and the two ends of the contract meet. Pinning a module graph is not part
+	// of that, and pruning-check.sh -- which is about the graph -- already does
+	// the same thing for the same reason.
+	build.Env = append(os.Environ(), "GOFLAGS=-mod=mod")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("building the Go step: %v\n%s", err, out)
 	}
