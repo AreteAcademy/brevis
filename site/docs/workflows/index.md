@@ -21,6 +21,27 @@ steps:
 `name` é o identificador do workflow no banco e na interface. `steps` é a lista
 de passos, cada um com um `id` único e um `run`.
 
+### `description` — para que ele serve
+
+Opcional, texto livre, e nada no motor a lê:
+
+```yaml
+name: daily-orders
+description: >
+  Puxa os pedidos de ontem do fornecedor e grava no bronze.
+  Roda às 04:00 porque o fornecedor fecha os livros às 03:30.
+steps:
+  - id: extract
+    run: python fetch.py
+```
+
+Ela aparece no topo da tela do workflow, acima das contagens e do agendamento.
+O grafo já diz o que o fluxo **faz**; essa é a única linha que diz por que ele
+existe, que é do que precisa quem o abre pela primeira vez às três da manhã.
+
+Um workflow sem ela não mostra nada ali — e não um bloco vazio, que parece algo
+que falhou ao carregar.
+
 ## Ordem: chain ou dag
 
 ```yaml

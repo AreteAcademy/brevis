@@ -187,3 +187,45 @@ steps:
 			"write the inference back into the definition", n)
 	}
 }
+
+// A workflow's `description` reaches the domain, trimmed.
+//
+// Trimmed because `description: >` -- how anybody writes more than one sentence
+// in YAML -- leaves a trailing newline, and a blank line at the end of a
+// paragraph is a gap on the screen nobody put there.
+func TestTheDescriptionCrossesFromTheYAML(t *testing.T) {
+	w, err := Parse("vendas.yaml", []byte(`
+description: >
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
+schedule: "0 4 * * *"
+steps:
+  - id: extract
+    run: python fetch.py
+`))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !strings.HasPrefix(w.Description, "Pulls yesterday's orders") {
+		t.Errorf("Description = %q", w.Description)
+	}
+	if !strings.Contains(w.Description, "closes its books at 03:30") {
+		t.Errorf("the second sentence was lost: %q", w.Description)
+	}
+	if strings.HasSuffix(w.Description, "\n") {
+		t.Errorf("Description keeps a trailing newline: %q", w.Description)
+	}
+}
+
+// A workflow with no description gets the empty string, which is what the
+// screen reads as "draw nothing". A heading with no text under it looks like
+// something that failed to load.
+func TestNoDescriptionIsEmptyAndNotAPlaceholder(t *testing.T) {
+	w, err := Parse("vendas.yaml", []byte("steps:\n  - id: extract\n    run: python fetch.py\n"))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if w.Description != "" {
+		t.Errorf("Description = %q on a workflow that declares none", w.Description)
+	}
+}

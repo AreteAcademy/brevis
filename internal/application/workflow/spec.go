@@ -18,13 +18,14 @@ import (
 
 // Spec mirrors the YAML, and nothing more. Loose fields here, invariants in the domain.
 type Spec struct {
-	Name      string       `yaml:"name"`
-	Schedule  string       `yaml:"schedule"`
-	Type      string       `yaml:"type"`
-	Tags      []string     `yaml:"tags"`
-	Image     string       `yaml:"image"`
-	Resources ResourceSpec `yaml:"resources"`
-	Params    []ParamSpec  `yaml:"params"`
+	Name        string       `yaml:"name"`
+	Description string       `yaml:"description"`
+	Schedule    string       `yaml:"schedule"`
+	Type        string       `yaml:"type"`
+	Tags        []string     `yaml:"tags"`
+	Image       string       `yaml:"image"`
+	Resources   ResourceSpec `yaml:"resources"`
+	Params      []ParamSpec  `yaml:"params"`
 
 	// Env and Secrets apply to every step; a step overrides them name by name.
 	Env     map[string]string `yaml:"env"`
@@ -261,7 +262,11 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 		Name:     slug,
 		Kind:     kind,
 		Schedule: strings.TrimSpace(s.Schedule),
-		Tags:     normalizeTags(s.Tags),
+		// Trimmed, so a block scalar's trailing newline does not become a blank
+		// line on the screen -- `description: >` is how most people will write
+		// more than one sentence.
+		Description: strings.TrimSpace(s.Description),
+		Tags:        normalizeTags(s.Tags),
 
 		// The workflow's image is the steps' default runtime: in Kubernetes each
 		// step becomes a pod, and it is the image that decides what that pod

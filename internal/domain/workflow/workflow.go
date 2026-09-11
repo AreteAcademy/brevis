@@ -33,6 +33,19 @@ type Workflow struct {
 	Kind     Kind
 	Schedule string // cron; vazio = so disparo manual
 
+	// Description is what this workflow is FOR, in the author's own words.
+	//
+	// Free-form prose from the YAML, and nothing in the engine reads it: a
+	// workflow with none behaves exactly like a workflow with one. It exists
+	// because a slug and a graph say what a flow DOES and never why it exists,
+	// and the person who needs that most is the one opening it for the first
+	// time at three in the morning.
+	//
+	// Additive in the stored document, like Runtime, Tools and Host: an older
+	// engine ignores it and this one reading an older document gets "", which
+	// is "not declared" and draws nothing. Nothing to migrate.
+	Description string
+
 	// Tags classify the workflow for search and filtering in the UI. They are
 	// free-form labels from the YAML's author, not domain: nothing in the
 	// engine depends on them.

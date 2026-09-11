@@ -21,6 +21,28 @@ steps:
 `name` identifies the workflow in the database and in the interface. `steps` is
 the list of steps, each with a unique `id` and a `run`.
 
+### `description` — what it is for
+
+Optional, free-form, and read by nothing in the engine:
+
+```yaml
+name: daily-orders
+description: >
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
+steps:
+  - id: extract
+    run: python fetch.py
+```
+
+It appears at the top of the workflow's screen, above the counts and the
+schedule. The graph already says what a flow **does**; this is the only place
+that says why it exists, which is what the person opening it for the first time
+at three in the morning actually needs.
+
+A workflow without one shows nothing there — not an empty block, which reads as
+something that failed to load.
+
 ## Order: chain or dag
 
 ```yaml

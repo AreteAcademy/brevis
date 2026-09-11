@@ -244,7 +244,31 @@
             width: 8, height: 8, borderRadius: 9999, background: c.ring, flexShrink: 0,
           },
         }),
-        h("span", { style: { color: INK, fontSize: 13, fontWeight: 600 } }, d.label),
+        // The step's name, and it TRUNCATES.
+        //
+        // `minWidth: 0` is the part that is easy to leave out and the only part
+        // that matters. A flex item's default is `min-width: auto`, which means
+        // a text item refuses to shrink below its own content -- so a long step
+        // name did not ellipsise, it pushed the SDK badge out through the
+        // card's right edge and over the canvas. The overflow rules alone do
+        // nothing without it, because the box never gets smaller than the text
+        // in the first place.
+        //
+        // The `title` is not decoration either: once a name can be cut, the
+        // full one has to be somewhere, and the command line below has had the
+        // same pair since it started truncating.
+        h(
+          "span",
+          {
+            title: d.label,
+            style: {
+              color: INK, fontSize: 13, fontWeight: 600,
+              minWidth: 0, overflow: "hidden",
+              textOverflow: "ellipsis", whiteSpace: "nowrap",
+            },
+          },
+          d.label
+        ),
         // A mapped step's instance count: [4], or [2/4] while some are still
         // going. It sits next to the name because it is part of what the step
         // IS on this run -- one node that ran four times -- and not a status.
@@ -267,15 +291,11 @@
                 : "[" + (d.instancias_ok || 0) + "/" + d.instancias + "]"
             )
           : null,
-        // The SDK badge. An ACCENT colour, never a state one: the state
-        // colours
-        // mean "how it went", and a badge painted green would say something it
-        // does not know.
+        // The collapse toggle sits at the END of this row.
         //
-        // It carries the VERSION. A badge that only said "SDK" would be true
-        // and useless; with the version the screen answers "why does this step
-        // behave differently from its neighbour" without anybody opening the
-        // Dockerfile.
+        // `marginLeft: auto` moved with it when the SDK badge left for the
+        // status line: the badge used to be last and hold the right edge, and
+        // without this the chevron would sit against the name instead.
         d.hasStages
           ? h(
               "button",
@@ -288,30 +308,12 @@
                   d.toggle();
                 },
                 style: {
-                  marginLeft: 2, padding: 0, width: 14, height: 14, flexShrink: 0,
+                  marginLeft: "auto", padding: 0, width: 14, height: 14, flexShrink: 0,
                   border: "none", background: "none", cursor: "pointer",
                   color: MUTED, fontSize: 9, lineHeight: "14px",
                 },
               },
               d.collapsed ? "▸" : "▾"
-            )
-          : null,
-        d.sdk
-          ? h(
-              "span",
-              {
-                title: "built with the Brevis SDK " + d.sdk,
-                style: {
-                  marginLeft: "auto", flexShrink: 0,
-                  padding: "1px 6px", borderRadius: 3,
-                  border: "1px solid color-mix(in srgb, " + GOLD + " 45%, transparent)",
-                  background: "color-mix(in srgb, " + GOLD + " 10%, transparent)",
-                  color: themeVar("--color-gold-strong", "#8a693d"),
-                  fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
-                  textTransform: "uppercase", whiteSpace: "nowrap",
-                },
-              },
-              "SDK " + d.sdk
             )
           : null
       ),
@@ -332,10 +334,50 @@
       contextCount(d),
       h(
         "div",
-        { style: { marginTop: 7, display: "flex", gap: 8, fontSize: 11, color: c.ring } },
+        { style: { marginTop: 7, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: c.ring } },
         h("span", null, c.label),
         d.duracao_ms ? h("span", { style: { color: MUTED } }, formatDuration(d.duracao_ms)) : null,
-        d.tentativa ? h("span", { style: { color: "#a35f28" } }, "retry " + d.tentativa) : null
+        d.tentativa ? h("span", { style: { color: "#a35f28" } }, "retry " + d.tentativa) : null,
+        // The SDK badge, on THIS row rather than beside the name.
+        //
+        // It was in the header and it crowded the one thing a reader needs
+        // most: at 230px, `fetch_observations` came out as `fetch_ob…` and two
+        // steps of one workflow became indistinguishable. A card's primary
+        // identifier must not be truncated to fit its metadata.
+        //
+        // Here it costs nothing. This row is a short label and a duration with
+        // room to spare, and cardHeight -- which the SERVER computes, and which
+        // positions every phase below -- counts the same rows as before. A
+        // badge that made the header wrap would have put the first phase back
+        // on top of the status line, which is the incident cardHeight's own
+        // comment records.
+        //
+        // An ACCENT colour, never a state one. It sits next to the status now
+        // and must not be read as one: the state colours mean "how it went",
+        // and this says what the step was BUILT with.
+        //
+        // It carries the VERSION. A badge that only said "SDK" would be true
+        // and useless; with the version the screen answers "why does this step
+        // behave differently from its neighbour" without anybody opening the
+        // Dockerfile.
+        d.sdk
+          ? h(
+              "span",
+              {
+                title: "built with the Brevis SDK " + d.sdk,
+                style: {
+                  marginLeft: "auto", flexShrink: 0,
+                  padding: "1px 6px", borderRadius: 3,
+                  border: "1px solid color-mix(in srgb, " + GOLD + " 45%, transparent)",
+                  background: "color-mix(in srgb, " + GOLD + " 10%, transparent)",
+                  color: themeVar("--color-gold-strong", "#8a693d"),
+                  fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
+                  textTransform: "uppercase", whiteSpace: "nowrap",
+                },
+              },
+              "SDK " + d.sdk
+            )
+          : null
       ),
       h(RF.Handle, { type: "source", position: RF.Position.Right, style: { background: c.ring } })
     );
