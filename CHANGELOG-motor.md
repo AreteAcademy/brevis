@@ -9,6 +9,135 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.13.0] — 2026-09-11
+
+**One migration** (`00012`), and it backfills: 10.8s for 350,000 task_runs on a
+probe. Worth knowing before a deploy window.
+
+### Added: a step can run on a host the engine does not manage
+
+```yaml
+steps:
+  - id: extract
+    host: dlt-runner-01        # instead of `image:`
+    run: python pipelines/orders.py
+```
+
+The third executor, for the work that cannot be a pod on demand — a licensed
+tool, a GPU machine, a VM somebody else administers. `brevis-agent` is the
+program on the other side and ships from this repository.
+
+The hosts come from the **installation** and never from the file, for the same
+reason `BREVIS_POD_ALLOWED_SECRETS` does: a workflow free to dispatch to an
+arbitrary address would be dispatching this engine's credentials to it.
+
+```bash
+BREVIS_HOSTS=dlt-runner-01=https://10.0.3.7:9443
+BREVIS_HOST_TOKEN=...
+```
+
+**`host:` never falls back.** An `image:` with no cluster degrades to a local
+process with a warning; a host does not, because it is where the licence lives.
+An unknown one fails the step naming what the installation offers.
+
+**The engine still sends no secret value.** `secrets:` crosses as the coordinate
+`secret-name/key`, exactly as it reaches the kubelet in a pod, and the agent
+resolves it against its own store under its own allowlist. The trade-off is that
+the policy now lives in two places, one per host.
+
+What the first version does not give, said here rather than discovered: one
+token for every host, no TLS of the agent's own, and a cancel that refuses to
+signal a pid the OS has recycled rather than risk killing an unrelated process.
+
+### Added: a step publishes its context on stdout when there is no file
+
+A pod writes to `/dev/termination-log` and the kubelet carries it back. A host
+outside the cluster has no equivalent — which was the blocker on the whole
+remote executor.
+
+```
+@brevis:{"type":"context","value":{"watermark":"2026-03-11T04:00:00Z"}}
+```
+
+The pipe that already carries an SDK pipeline's phases carries this too, so
+**every executor that streams logs gets a return path for free**. Nothing in a
+workflow changes and nothing in a fetcher changes: the libraries write the file
+when there is one and print the marker when there is not. When both arrive the
+file wins, and the engine states that rather than leaving it to chance.
+
+### Added: the load trend, on numbers every pipeline already produced
+
+A panel under the calendar on a workflow's screen: rows per run, bytes per row,
+extract seconds, load seconds. Volume is per **run** and not per day — a
+schedule going from daily to six-hourly is not a dataset quadrupling — and the
+delta compares against the start of the window rather than yesterday.
+
+It needed a table. Measured on a year of hourly runs: reading the same question
+out of `task_runs.etapas` costs 14,913 buffers and 22 ms, against 2,243 and 5 ms
+from a narrow one, because `etapas` sits beside `log` and `saida` and reading
+nine numbers touches all of it.
+
+### Added: `brevis prune`
+
+The only thing in Brevis that deletes anything, and it never runs on its own.
+
+```bash
+brevis prune --dry-run          # what would go, changing nothing
+brevis prune                    # trim at 30 days, purge at a year
+brevis prune --purge-after 0    # trim only, never delete a run
+```
+
+Two levels, because three quarters of the biggest table is **bulk**: emptying
+the log, the phases and the published output takes `task_runs` from 339 MB to
+92 MB and deletes nothing. Almost all the value is in the gap between the two
+levels, and `--purge-after 0` is a real answer.
+
+The load trend is untouched by either: it has no foreign key to `runs` on
+purpose, so purging a year of runs does not shorten every chart.
+
+### Added: `description:` in the workflow YAML
+
+```yaml
+description: >
+  Pulls yesterday's orders from the vendor and lands them in bronze.
+  Runs at 04:00 because the vendor closes its books at 03:30.
+```
+
+At the top of the workflow's screen. The graph already says what a flow does;
+this is the only line that says why it exists.
+
+### Added: dlt in the vocabulary, and the run window as its cursor
+
+`tools: [dlt]` validates, and `dlt pipeline …` and `python -m dlt …` light the
+chip on their own. `python my_pipeline.py` deliberately does **not** — a chip lit
+from a filename would be a guess sitting beside a badge that cannot lie.
+
+And the engine now sets `DLT_INTERVAL_START` / `DLT_INTERVAL_END` on every
+scheduled run. A resource with `allow_external_schedulers=True` takes the run's
+window as its `initial_value` and `end_value`, so a backfill of March reads
+March rather than whatever the persisted cursor says today — and, because an
+incremental with an `end_value` does not touch that state, re-running one slot
+is idempotent. Verified against a real dlt 1.28.0.
+
+### Fixed: the SDK badge crossed the card's edge
+
+A long step name pushed it out over the canvas. The badge moved to the status
+row, where there was room, rather than truncating the name to fit it: at 230px
+`fetch_observations` became `fetch_ob…`, and a card's primary identifier must
+not be cut to make space for its metadata.
+
+### Changed: five environment variables are in English
+
+`BREVIS_AUTH_USUARIO`, `BREVIS_AUTH_SENHA_HASH`, `BREVIS_AUTH_SEGREDO`,
+`BREVIS_POD_MANTER_EM_FALHA` and `BREVIS_POD_ALLOWED_SECRETS`' siblings became
+`BREVIS_AUTH_USER`, `BREVIS_AUTH_PASSWORD_HASH`, `BREVIS_AUTH_SECRET` and
+`BREVIS_POD_KEEP_ON_FAILURE`.
+
+**The old names still work**, with a warning naming the new one. They are
+accepted until a major version, so nothing has to change on this release.
+
+---
+
 ## [0.12.0] — 2026-09-09
 
 No migration.

@@ -5,7 +5,7 @@ type: application
 
 # The chart versions on its own; appVersion tracks the engine image.
 version: 0.1.0
-appVersion: "0.12.0"
+appVersion: "0.13.0"
 
 home: https://brevis.sh
 sources:

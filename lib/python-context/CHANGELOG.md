@@ -11,6 +11,38 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.4.0] — 2026-09-11
+
+### Added: `context.set()` publishes on stdout when there is no output path
+
+An executor that runs a step on a host the engine does not manage has no
+equivalent of a pod's termination message. So when `BREVIS_RUN_ID` says this is
+under the engine and `BREVIS_OUTPUT` names no file, what was published goes out
+as a marked line instead:
+
+```
+@brevis:{"type":"context","value":{"watermark":"2026-03-11T04:00:00Z"}}
+```
+
+The file still wins wherever there is one, and a step run by hand still prints
+nothing at all. Nothing in an existing pipeline changes.
+
+### Changed: both halves of the protocol take exactly one write
+
+`print()` does two — the text, then the newline — and stdout is shared with
+everything else a step logs, so a second thread writing between them splits the
+marker across two lines. The engine's scanner breaks on lines, so what arrives
+is not a marker at all. `metrics.set()` and `metrics.inc()` moved to one write
+with the context publisher; the Go SDK already guaranteed this, and now they
+match.
+
+### Changed: `MARKER` lives in `brevis.context`
+
+`brevis.metrics` imports it. A protocol literal in two files is a protocol that
+changes in one of them.
+
+---
+
 ## [0.3.2] — 2026-09-09
 
 `0.3.0` and `0.3.1` do not exist and never will. Their filenames had belonged to

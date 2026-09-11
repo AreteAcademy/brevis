@@ -40,7 +40,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: scheduler
-          image: daniel3843/brevis:0.12.0-worker
+          image: daniel3843/brevis:0.13.0-worker
           # TWO ceilings, and the difference matters:
           #   --concurrency  how many RUNS the dispatcher executes at once
           #   --max-pods     how many STEPS exist at once = pods in the cluster

@@ -18,6 +18,73 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.59.0] — 2026-09-11
+
+### Added: `to/pubsub` — publishing to a topic that already exists
+
+```go
+Target: sdk.Target{
+    To: pubsub.Topic{
+        Project: "acme-prod",
+        Name:    "orders",
+        Attributes: func(e sdk.Envelope) map[string]string {
+            row, _ := e.Payload.(map[string]any)
+            return map[string]string{"orderId": fmt.Sprint(row["order_id"])}
+        },
+    },
+},
+```
+
+The first destination that is neither a table nor a directory, and **it adds
+nothing to what it sends**. A subscriber receives the payload byte for byte plus
+exactly the attributes the consumer named — no `ingestion_id`, no `provider`, no
+envelope of any kind.
+
+That is a rule rather than minimalism. A table is created by the pipeline that
+writes it, so the SDK may decide its columns; a topic exists before the pipeline
+does, its subscribers were written first and their filters were written first.
+
+Three things follow:
+
+- **It never creates a topic.** A pipeline that can create one can create the
+  wrong one, and unlike a mistyped table nobody notices.
+- **`Schema`, `Dedup` and `PartitionBy` are refused**, naming the option. They
+  are a table's ideas; the nearest thing here is `OrderingKey`, which groups
+  messages that must *arrive* in order.
+- **A failure is partial.** Publishing is not transactional: 48,000 messages
+  that fail at 31,000 have *delivered* 31,000, so `RowsLoaded` reports what
+  actually went on the error path too and the error says a re-run is a
+  re-delivery.
+
+Runnable against the emulator: `examples/13-pubsub`.
+
+On weight: 386 packages, cheaper than BigQuery's 460 and about eleven more
+beside it. The dependency entered through an import and `go mod tidy`, which
+left BigQuery pinned where it was — `go get` would have taken it from v1.50.0 to
+v1.74.0 in one command, and `pruning-check.sh` now has a ceiling that catches
+exactly that.
+
+### Added: the load's own bytes and the rows deduplication ignored
+
+`loadNumbers` sent rows and records. `Result.Bytes` — what the load actually
+WROTE, which is not the extract's byte count — and `Result.Ignored` now cross
+the `@brevis:` pipe too. "Which pipeline's bytes are growing faster than its
+rows" cannot be asked without the first, and a run whose rows fall to zero while
+`ignored` climbs is not a source drying up.
+
+### Added: `context.Set` publishes on stdout when there is no output path
+
+For an executor with no return path of its own. It writes the file when
+`BREVIS_OUTPUT` names one — a pod's termination message, the local executor's
+temp file — and prints a marked line when it does not. Nothing at all outside
+the engine, so a fetcher run by hand keeps a clean terminal.
+
+One `Write` for the whole line, newline included: stdout is shared with
+everything else a step logs, and a marker split across two writes is a marker
+the engine never sees.
+
+---
+
 ## [0.58.0] — 2026-09-09
 
 ### Added: `sdk.StdoutMeter` — metrics with nothing to configure
