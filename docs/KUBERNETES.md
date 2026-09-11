@@ -135,6 +135,36 @@ not.** It is where the licence lives, or the GPU, or the data, and quietly
 running the command somewhere else is the worst of the three outcomes. An
 unknown host fails the step, naming what the installation actually offers.
 
+### Running the agent
+
+`brevis-agent` is the program on the other side. It ships from this repository
+and is a binary of its own:
+
+```bash
+brevis-agent \
+  --listen :9443 \
+  --token-file /etc/brevis/agent-token \
+  --secrets-dir /etc/brevis/secrets \
+  --allow-secrets vendor-api,partner-sftp \
+  --state-dir /var/lib/brevis-agent
+```
+
+| flag | |
+|---|---|
+| `--token-file` | the shared token, **from a file** and never a flag: a flag is in `ps` output for anybody on the host to read |
+| `--secrets-dir` | the store, as `<dir>/<name>/<key>` — the shape the kubelet mounts and Docker uses |
+| `--allow-secrets` | which names a step may ask for. **Empty denies every one** |
+| `--state-dir` | where the execution → pid map lives, so cancel survives the agent restarting |
+| `--ring` | lines kept for a reconnect. Beyond this a dropped connection fails the step rather than resuming with a hole |
+
+It is **not an orchestrator**. It knows nothing of workflows, dependencies,
+schedules or retries — an agent that learned any of that would be a second
+orchestrator to keep in agreement with the first.
+
+**It has no TLS of its own.** Put it behind something that terminates TLS, or on
+a network where that is somebody else's job. A token on a plain socket is a
+token anybody on the path can read.
+
 ### What the agent does, and what the engine still will not do
 
 The engine does **not** send secret values, and this executor did not become the
