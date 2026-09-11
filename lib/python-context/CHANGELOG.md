@@ -11,7 +11,22 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.4.0] — 2026-09-11
+## [0.5.0] — 2026-09-11
+
+> **Why 0.4.0 is missing.** It was tagged, refused by PyPI, and skipped. A
+> previously deleted project under this name burned the filename
+> `brevis-0.4.0.tar.gz`, and PyPI remembers filenames per project forever — the
+> same ledger that took 0.2.0, 0.3.0 and 0.3.1 before it. Nothing was published
+> under 0.4.0 and nothing ever can be.
+>
+> The release workflow uploads the **sdist first** for exactly this reason, so a
+> burned name fails before anything reaches the index. That worked: this is a
+> clean skip and not a half-published version.
+>
+> The jump to 0.5.0 rather than 0.4.1 is deliberate — the old project reached at
+> least the 0.4 series, and guessing one number at a time costs a dead tag per
+> guess.
+
 
 ### Added: `context.set()` publishes on stdout when there is no output path
 
