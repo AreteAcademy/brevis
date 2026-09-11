@@ -11,21 +11,27 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.5.0] — 2026-09-11
+## [0.5.2] — 2026-09-11
 
-> **Why 0.4.0 is missing.** It was tagged, refused by PyPI, and skipped. A
-> previously deleted project under this name burned the filename
-> `brevis-0.4.0.tar.gz`, and PyPI remembers filenames per project forever — the
-> same ledger that took 0.2.0, 0.3.0 and 0.3.1 before it. Nothing was published
-> under 0.4.0 and nothing ever can be.
+> **Why 0.4.0 and 0.5.0 are missing.** Both were tagged, both were refused by
+> PyPI, and nothing was published under either. A previously deleted project
+> under this name burned those filenames, and PyPI remembers filenames per
+> project **forever**.
 >
-> The release workflow uploads the **sdist first** for exactly this reason, so a
-> burned name fails before anything reaches the index. That worked: this is a
-> clean skip and not a half-published version.
+> The ledger, as far as it is known: the old project used `0.3.0`, `0.3.1`,
+> `0.4.0` and `0.5.0`. This library has never been able to use those numbers and
+> never will. What has always worked are the patch versions it skipped — `0.2.1`,
+> `0.3.2`, and now this one.
 >
-> The jump to 0.5.0 rather than 0.4.1 is deliberate — the old project reached at
-> least the 0.4 series, and guessing one number at a time costs a dead tag per
-> guess.
+> It cannot be probed. PyPI checks authentication before the filename, so an
+> unauthenticated request returns 403 and says nothing about whether a name is
+> free; the only way to find out is to publish.
+>
+> **The sdist-first upload is what keeps this cheap.** The workflow publishes the
+> source distribution before the wheel, so a burned name fails before anything
+> reaches the index — every one of these was a clean skip, not a half-published
+> version. That change was made after 0.3.1 left a wheel on the index with no
+> sdist beside it.
 
 
 ### Added: `context.set()` publishes on stdout when there is no output path
