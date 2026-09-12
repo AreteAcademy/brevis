@@ -439,12 +439,18 @@ jobs:
           go vet ./...
           echo "✅ the full-pipeline example builds"
 
-      - name: The full-pipeline example's workflows are valid
+      - name: The example workflows are valid
         run: |
-          # It uses every shape the engine has, so this is also the broadest
-          # end-to-end check the parser gets: markers, when, unless_empty,
-          # for_each, group, uses and edge labels in two files.
-          go run ./cmd/brevis validate examples/full-pipeline/workflows
+          # full-pipeline uses every shape the engine has, so this is also the
+          # broadest end-to-end check the parser gets: markers, when,
+          # unless_empty, for_each, group, uses and edge labels in two files.
+          #
+          # 14-polars is here because a YAML nothing parses is a YAML that
+          # rots, and this one is the only example whose steps are in two
+          # languages -- exactly the file somebody copies.
+          go run ./cmd/brevis validate \
+            examples/full-pipeline/workflows \
+            examples/14-polars
 
       - name: Build and test examples
         run: |

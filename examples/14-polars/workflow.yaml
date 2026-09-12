@@ -1,0 +1,42 @@
+# Go, then Polars, then Go -- three steps, two languages, one run.
+#
+# This is the shape that works TODAY, with no feature that does not exist yet:
+# the handoff is a file on disk and a path in the context, and the engine draws
+# it as three boxes with three timings.
+name: shop_revenue
+description: >-
+  Aggregates the shop's orders into revenue per client. Go extracts and lands,
+  Polars does the group-by in the middle -- the part a per-record transformer
+  cannot express.
+type: dag
+tags: [example, polars, python, go]
+
+# The directory all three steps hand work through. Locally this is just a path;
+# on Kubernetes it has to be a volume mounted into all three pods, because three
+# containers do not share a filesystem by accident.
+env:
+  SHOP_WORKDIR: /tmp/brevis-shop
+
+steps:
+  # Reads orders.csv, writes NDJSON, publishes where it put it.
+  - id: extract
+    run: go run ./14-polars/extract
+    runtime: go
+
+  # The dataframe. `runtime: python` is what puts the Python badge on the card;
+  # the image for this step is the one that has Polars installed -- the core
+  # image is distroless and has no Python at all.
+  - id: shape
+    run: python 14-polars/shape.py
+    runtime: python
+    depends_on:
+      - {step: extract, label: staged NDJSON}
+
+  # Takes the aggregate back and lands it, with provenance and a dedup key.
+  - id: load
+    run: go run ./14-polars/load
+    runtime: go
+    env:
+      PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
+    depends_on:
+      - {step: shape, label: one row per client}

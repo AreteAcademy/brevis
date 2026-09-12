@@ -155,6 +155,22 @@ plus the two attributes the pipeline asked for by name. There is no
 Brevis-shaped envelope anywhere in it — the topic's contract belongs to whoever
 owns the topic, so the driver adds nothing on its own.
 
+### [14-polars](14-polars/) — a dataframe in the middle of a Go pipeline
+
+```bash
+docker compose -f ../docker-compose.drivers.yml up -d postgres
+python3 -m venv .venv && . .venv/bin/activate && pip install polars ../lib/python-context
+./14-polars/run-local.sh          # run it twice
+```
+
+Go extracts, Polars aggregates, Go lands. The middle step exists because
+`Transform` is per record and a group-by is not: 2,000 orders become one row per
+client, which no per-record transformer can express.
+
+What crosses between the steps is a **path**, never the records — the context is
+capped at 4 KB. And the snapshot's `ingestion_id` is keyed on the run's date, so
+re-running a slot replaces its rows instead of writing a second truth.
+
 ## Operation
 
 ### [05-testing](05-testing/) — how to test code that uses the SDK
