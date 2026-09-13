@@ -21,7 +21,7 @@
 # the reason behind each one.
 
 image:
-  repository: daniel3843/brevis
+  repository: areteacademy/brevis
   # Empty means the chart's appVersion. Both images come from this tag: the API
   # runs `<tag>` (distroless, no shell, because it executes nothing) and the
   # scheduler runs `<tag>-worker` (alpine, because `run:` steps need a shell).

@@ -16,12 +16,12 @@ failed=0
 
 while IFS= read -r line; do
   file="${line%%:*}"
-  pinned="$(echo "$line" | sed -E 's/.*daniel3843\/brevis:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
   if [ "$pinned" != "$want" ]; then
     echo "❌ $file pins $pinned, and this tree is $want"
     failed=1
   fi
-done < <(grep -rn "daniel3843/brevis:[0-9]" deployments/ examples/ || true)
+done < <(grep -rn "areteacademy/brevis:[0-9]" deployments/ examples/ || true)
 
 if [ "$failed" = "0" ]; then
   echo "✅ every manifest pins $want"

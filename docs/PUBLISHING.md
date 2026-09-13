@@ -4,8 +4,8 @@ Two images come out of the same `Dockerfile`, from the same binary:
 
 | tag | base | role |
 |---|---|---|
-| `daniel3843/brevis:<version>` | distroless | API and UI. It runs nothing, so it has no shell. |
-| `daniel3843/brevis:<version>-worker` | alpine | `scheduler`, `publish`, `backfill`. **It has a shell**, because the workflows' `run:` steps need one. |
+| `areteacademy/brevis:<version>` | distroless | API and UI. It runs nothing, so it has no shell. |
+| `areteacademy/brevis:<version>-worker` | alpine | `scheduler`, `publish`, `backfill`. **It has a shell**, because the workflows' `run:` steps need one. |
 
 The split is not fussiness: the worker runs arbitrary commands out of the
 client's YAML, and the API does not. Giving the API a shell would widen the
@@ -14,7 +14,8 @@ surface of the network-exposed process by the component that needs it least.
 ## By hand
 
 ```bash
-docker login -u daniel3843          # a Docker Hub token, not the password
+docker login -u <your Docker Hub user>   # a token, not the password; the
+                                         # user needs push rights on the org
 make image                          # local architecture, for testing
 make image-smoke                    # checks the version and the shell
 make image-push                     # multi-arch (amd64 + arm64), publishes
@@ -55,6 +56,6 @@ it is seconds, not minutes.
 ## Checking what was published
 
 ```bash
-docker run --rm daniel3843/brevis:0.1.0 version
-docker buildx imagetools inspect daniel3843/brevis:0.1.0   # checks both architectures
+docker run --rm areteacademy/brevis:0.1.0 version
+docker buildx imagetools inspect areteacademy/brevis:0.1.0   # checks both architectures
 ```

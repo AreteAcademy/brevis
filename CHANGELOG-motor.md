@@ -1,9 +1,14 @@
 # Changelog — the engine
 
-The engine's versions, published as a Docker image (`daniel3843/brevis`). The SDK
+The engine's versions, published as a Docker image (`areteacademy/brevis`). The SDK
 has its own, in [`CHANGELOG.md`](CHANGELOG.md): they are two artifacts with
 different audiences — one is a Go module somebody imports, the other an image
 somebody operates — and that is why there are two lists.
+
+**The namespace moved on 2026-09-13.** `0.13.0` is the first version published as
+`areteacademy/brevis`; it also exists under the old name. **Every version up to
+`0.12.0` is only on `daniel3843/brevis`** — the tags below are not a promise that
+the new namespace has them.
 
 The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 

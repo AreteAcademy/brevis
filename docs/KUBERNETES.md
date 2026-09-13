@@ -563,7 +563,7 @@ have said, which is how somebody comes to trust a weekly summary:
 
 ```bash
 kubectl -n dados run brevis-report --rm -it --restart=Never \
-  --image=daniel3843/brevis:0.2.1-worker \
+  --image=areteacademy/brevis:0.2.1-worker \
   --env=BREVIS_DATABASE_URL="$(kubectl -n dados get secret brevis-db -o jsonpath='{.data.url}' | base64 -d)" \
   -- report --window 168h --dry-run
 ```

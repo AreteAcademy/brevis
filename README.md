@@ -178,8 +178,8 @@ in the worker image.
 ## Images
 
 ```bash
-docker login -u daniel3843
-make image-push            # daniel3843/brevis:<VERSION> e :<VERSION>-worker
+docker login -u <your Docker Hub user>
+make image-push            # areteacademy/brevis:<VERSION> e :<VERSION>-worker
 ```
 
 Two images of the same binary: `:<version>` is the API on distroless (it executes

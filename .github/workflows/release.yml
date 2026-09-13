@@ -15,7 +15,7 @@ on:
         required: true
 
 env:
-  IMAGE: docker.io/daniel3843/brevis
+  IMAGE: docker.io/areteacademy/brevis
 
 jobs:
   images:

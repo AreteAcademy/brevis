@@ -57,7 +57,7 @@ Duas imagens do mesmo binário, porque os dois papéis têm exigências opostas:
 | `:0.11.2-worker` | alpine + tini | os passos `run:` precisam de shell |
 
 ```bash
-docker run --rm daniel3843/brevis:latest version
+docker run --rm areteacademy/brevis:latest version
 ```
 
 ## Ambiente local completo

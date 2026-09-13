@@ -150,7 +150,7 @@ cd <span class="t-k">brevis</span>
 <h2 id="docker">Docker<a class="anchor" href="#docker" aria-label="link">#</a></h2>
 <p>Two images of the same binary, because the two roles have opposite needs:</p>
 <div class="table-wrap"><table><thead><tr><th>tag</th><th>base</th><th>why</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>the API only serves HTTP and executes nothing — no shell, minimal surface</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td><code>run:</code> steps need a shell</td></tr></tbody></table></div>
-<div class="code-block" data-code="docker run --rm daniel3843/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> daniel3843/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
 <h2 id="a-full-local-environment">A full local environment<a class="anchor" href="#a-full-local-environment" aria-label="link">#</a></h2>
 <p>The repository ships a <code>docker-compose.yml</code> that brings up Postgres, the API and the scheduler:</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

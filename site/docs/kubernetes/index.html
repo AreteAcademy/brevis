@@ -181,7 +181,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: daniel3843/brevis:0.11.2
+          image: areteacademy/brevis:0.11.2
           args: [&quot;migrate&quot;, &quot;up&quot;]
           envFrom:
             - secretRef: {name: brevis-db}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">apiVersion</span>: batch/v1
@@ -194,7 +194,7 @@ spec:
       <span class="t-k">restartPolicy</span>: Never
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: migrate
-          <span class="t-k">image</span>: daniel3843/brevis:0.11.2
+          <span class="t-k">image</span>: areteacademy/brevis:0.11.2
           <span class="t-k">args</span>: ["migrate", "up"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}</code></pre></div>
@@ -214,7 +214,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: api
-          image: daniel3843/brevis:0.11.2
+          image: areteacademy/brevis:0.11.2
           args: [&quot;serve&quot;]
           ports: [{containerPort: 8080}]
           envFrom:
@@ -244,7 +244,7 @@ spec:
       <span class="t-k">serviceAccountName</span>: brevis
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: api
-          <span class="t-k">image</span>: daniel3843/brevis:0.11.2
+          <span class="t-k">image</span>: areteacademy/brevis:0.11.2
           <span class="t-k">args</span>: ["serve"]
           <span class="t-k">ports</span>: [{containerPort: 8080}]
           <span class="t-k">envFrom</span>:
@@ -278,7 +278,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: scheduler
-          image: daniel3843/brevis:0.11.2-worker
+          image: areteacademy/brevis:0.11.2-worker
           args: [&quot;scheduler&quot;, &quot;--interval&quot;, &quot;10s&quot;, &quot;--concurrency&quot;, &quot;5&quot;, &quot;--max-pods&quot;, &quot;10&quot;]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -309,7 +309,7 @@ spec:
       <span class="t-k">serviceAccountName</span>: brevis
       <span class="t-k">containers</span>:
         - <span class="t-k">name</span>: scheduler
-          <span class="t-k">image</span>: daniel3843/brevis:0.11.2-worker
+          <span class="t-k">image</span>: areteacademy/brevis:0.11.2-worker
           <span class="t-k">args</span>: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
           <span class="t-k">envFrom</span>:
             - <span class="t-k">secretRef</span>: {name: brevis-db}

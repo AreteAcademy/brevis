@@ -108,7 +108,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: migrate
-          image: daniel3843/brevis:0.11.2
+          image: areteacademy/brevis:0.11.2
           args: ["migrate", "up"]
           envFrom:
             - secretRef: {name: brevis-db}
@@ -132,7 +132,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: api
-          image: daniel3843/brevis:0.11.2
+          image: areteacademy/brevis:0.11.2
           args: ["serve"]
           ports: [{containerPort: 8080}]
           envFrom:
@@ -177,7 +177,7 @@ spec:
       serviceAccountName: brevis
       containers:
         - name: scheduler
-          image: daniel3843/brevis:0.11.2-worker
+          image: areteacademy/brevis:0.11.2-worker
           args: ["scheduler", "--interval", "10s", "--concurrency", "5", "--max-pods", "10"]
           envFrom:
             - secretRef: {name: brevis-db}

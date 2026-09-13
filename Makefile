@@ -10,7 +10,7 @@ BIN := bin/brevis
 TAILWIND_VERSION ?= v4.3.3
 
 REGISTRY  ?= docker.io
-NAMESPACE ?= daniel3843
+NAMESPACE ?= areteacademy
 IMAGE    ?= $(REGISTRY)/$(NAMESPACE)/brevis
 VERSION    ?= $(shell cat VERSION)
 # `-dirty` when there is an uncommitted change. Without the suffix, `brevis
