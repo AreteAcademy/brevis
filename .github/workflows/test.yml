@@ -173,12 +173,19 @@ jobs:
       # docker run, and not a service container: MinIO's official image needs
       # "server /data" as its command, and Actions services do not
       # aceitam command.
+      #
+      # quay.io, and PINNED. `minio/minio` on Docker Hub is a 404 as of
+      # 2026-09-13 -- MinIO withdrew the images, and every run since then failed
+      # on `pull access denied` with nothing in this repository having changed.
+      # quay.io publishes no `latest`, only dated RELEASE tags, which is the
+      # better arrangement anyway: an unpinned tag in a repository that checks
+      # its image pins was the odd one out.
       - name: Start MinIO
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=brevis \
             -e MINIO_ROOT_PASSWORD=brevis-secret \
-            minio/minio:latest server /data
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
 
           for i in $(seq 1 40); do
             if curl -fs http://localhost:9000/minio/health/live >/dev/null; then
