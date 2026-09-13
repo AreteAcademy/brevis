@@ -101,3 +101,19 @@ jobs:
             COMMIT=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # The Hub's overview, from a file in this repository rather than typed
+      # into the web UI. A page edited in a browser has nobody to review it and
+      # no reason to stay true: the one thing worse than an empty registry page
+      # is one still teaching last year's install command.
+      #
+      # Last, so a failed build never leaves the page describing an image that
+      # is not there.
+      - name: The Docker Hub overview
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: areteacademy/brevis
+          readme-filepath: ./docs/DOCKERHUB.md
+          short-description: "A data orchestration runtime, in Go. Workflows, a queue, a scheduler and a UI in one binary."

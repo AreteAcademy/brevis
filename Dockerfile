@@ -66,7 +66,7 @@ LABEL org.opencontainers.image.title="Brevis" \
       org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
-      org.opencontainers.image.licenses="Apache-2.0"
+      org.opencontainers.image.licenses="MIT"
 COPY --from=build /out/brevis /usr/local/bin/brevis
 USER nonroot:nonroot
 EXPOSE 8080
@@ -81,10 +81,11 @@ FROM alpine:3.20 AS worker
 ARG VERSION=dev
 ARG COMMIT=""
 LABEL org.opencontainers.image.title="Brevis worker" \
-      org.opencontainers.image.description="Brevis com shell, para executar os passos dos workflows" \
+      org.opencontainers.image.description="Brevis with a shell, for running a workflow's steps" \
       org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.revision="${COMMIT}"
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
 RUN apk add --no-cache ca-certificates tini
 COPY --from=build /out/brevis /usr/local/bin/brevis
 RUN adduser -D -u 65532 brevis

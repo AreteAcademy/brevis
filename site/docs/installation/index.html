@@ -151,6 +151,7 @@ cd <span class="t-k">brevis</span>
 <p>Duas imagens do mesmo binário, porque os dois papéis têm exigências opostas:</p>
 <div class="table-wrap"><table><thead><tr><th>tag</th><th>base</th><th>por quê</th></tr></thead><tbody><tr><td><code>:0.11.2</code></td><td>distroless</td><td>a API só serve HTTP e não executa nada — sem shell, superfície mínima</td></tr><tr><td><code>:0.11.2-worker</code></td><td>alpine + tini</td><td>os passos <code>run:</code> precisam de shell</td></tr></tbody></table></div>
 <div class="code-block" data-code="docker run --rm areteacademy/brevis:latest version"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> areteacademy/<span class="t-k">brevis</span>:latest version</code></pre></div>
+<p>As duas imagens ficam em <a href="https://hub.docker.com/r/areteacademy/brevis" target="_blank" rel="noopener">hub.docker.com/r/areteacademy/brevis</a>, para <code>amd64</code> e <code>arm64</code>.</p>
 <h2 id="ambiente-local-completo">Ambiente local completo<a class="anchor" href="#ambiente-local-completo" aria-label="link">#</a></h2>
 <p>O repositório traz um <code>docker-compose.yml</code> que sobe Postgres, API e scheduler:</p>
 <div class="code-block" data-code="make up      # Postgres + API + scheduler

@@ -63,8 +63,14 @@ PT = re.compile(r"\b(" + "|".join(WORDS.split()) + r")\b", re.I)
 CODE = re.compile(r"`[^`]*`")
 
 # Where prose a person reads lives.
+# org.opencontainers.image.* is here because a Dockerfile LABEL is neither a
+# comment nor a Go error call, so it fell through BOTH branches below -- and it
+# is the most widely read prose this repository publishes: registries print it
+# beside the image. A Portuguese description shipped on the worker image that
+# way and was found by eye, not by this gate.
 FALA = re.compile(r"fmt\.Errorf|errors\.New|http\.Error|panic\(|slog\.\w+|"
-                  r"\.Info\(|\.Warn\(|\.Error\(|\.Debug\(")
+                  r"\.Info\(|\.Warn\(|\.Error\(|\.Debug\(|"
+                  r"org\.opencontainers\.image\.(?:description|title)")
 STRING = re.compile(r'"((?:[^"\\]|\\.){6,})"')
 COMENTARIO = re.compile(r"^\s*(//|#|--)\s*(.+)$")
 

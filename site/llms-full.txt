@@ -169,6 +169,9 @@ Two images of the same binary, because the two roles have opposite needs:
 docker run --rm areteacademy/brevis:latest version
 ```
 
+Both images live at [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+for `amd64` and `arm64`.
+
 ## A full local environment
 
 The repository ships a `docker-compose.yml` that brings up Postgres, the API and

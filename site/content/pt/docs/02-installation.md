@@ -60,6 +60,9 @@ Duas imagens do mesmo binário, porque os dois papéis têm exigências opostas:
 docker run --rm areteacademy/brevis:latest version
 ```
 
+As duas imagens ficam em [hub.docker.com/r/areteacademy/brevis](https://hub.docker.com/r/areteacademy/brevis),
+para `amd64` e `arm64`.
+
 ## Ambiente local completo
 
 O repositório traz um `docker-compose.yml` que sobe Postgres, API e scheduler:

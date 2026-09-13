@@ -106,6 +106,9 @@ jobs:
       - name: The Helm chart renders and refuses what it should
         run: ./.github/scripts/helm-check.sh
 
+      - name: The images declare the licence they are under
+        run: ./.github/scripts/image-labels-check.sh
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
