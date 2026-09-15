@@ -55,6 +55,20 @@ type PreviewStats struct {
 // Pure: no clock, no network, no logger. The string it returns is the whole
 // of what gets printed, which is what makes it assertable in a test.
 func RenderPreview(sample []any, budget int, st PreviewStats) string {
+	return RenderPreviewIn(sample, budget, st, nil)
+}
+
+// RenderPreviewIn is RenderPreview with the column order supplied.
+//
+// columnsOf sorts, and has to: a Go map has no order, so first-seen would
+// reshuffle the table between runs. But a TARGET knows its order -- Columns is
+// the order the destination writes -- and showing those alphabetically would
+// print a table that is not the table.
+//
+// A nil order keeps the sorted behaviour. Names in the order that no row
+// carries are still shown, as empty cells: a declared column the records lack
+// is precisely what somebody is looking for.
+func RenderPreviewIn(sample []any, budget int, st PreviewStats, order []string) string {
 	if len(sample) == 0 {
 		return fmt.Sprintf("[no rows · %d %s · %s in %s]\n",
 			st.Pages, plural(st.Pages, "page", "pages"),
@@ -64,7 +78,10 @@ func RenderPreview(sample []any, budget int, st PreviewStats) string {
 		budget = defaultPreviewBytes
 	}
 
-	cols := columnsOf(sample)
+	cols := order
+	if len(cols) == 0 {
+		cols = columnsOf(sample)
+	}
 	cells := make([][]string, len(sample))
 	for i, row := range sample {
 		cells[i] = make([]string, len(cols))
@@ -148,9 +165,19 @@ func footer(shown, cols, hiddenCols int, st PreviewStats) string {
 		c += fmt.Sprintf(" (%d not shown)", hiddenCols)
 	}
 	parts = append(parts, c)
-	parts = append(parts, humanBytes(st.Bytes))
-	parts = append(parts, fmt.Sprintf("%d %s in %s",
-		st.Pages, plural(st.Pages, "page", "pages"), RoundDuration(st.Duration)))
+
+	// Omitted when absent rather than printed as zero. A read reports bytes and
+	// pages; a load has neither, and "0 B · 0 pages" in a line whose whole job
+	// is to be read at a glance is three facts of which two are false.
+	if st.Bytes > 0 {
+		parts = append(parts, humanBytes(st.Bytes))
+	}
+	if st.Pages > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s in %s",
+			st.Pages, plural(st.Pages, "page", "pages"), RoundDuration(st.Duration)))
+	} else {
+		parts = append(parts, RoundDuration(st.Duration).String())
+	}
 
 	if st.Pages > 1 {
 		parts = append(parts, fmt.Sprintf("%s/page", RoundDuration(st.Duration/time.Duration(st.Pages))))
@@ -299,10 +326,15 @@ func plural(n int, one, many string) string {
 // the handling of a nil writer -- that is how the preview was born inside
 // extract and had to be moved when the second driver showed up.
 func WritePreview(w io.Writer, sample []any, budget int, st PreviewStats) {
+	WritePreviewIn(w, sample, budget, st, nil)
+}
+
+// WritePreviewIn is WritePreview with the column order supplied.
+func WritePreviewIn(w io.Writer, sample []any, budget int, st PreviewStats, order []string) {
 	if w == nil {
 		w = os.Stderr
 	}
-	_, _ = io.WriteString(w, RenderPreview(sample, budget, st))
+	_, _ = io.WriteString(w, RenderPreviewIn(sample, budget, st, order))
 }
 
 // LogExtract emits the summary line every read driver should emit, with the

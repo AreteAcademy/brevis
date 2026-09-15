@@ -128,7 +128,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.
-	mux.Handle("GET /assets/", http.StripPrefix("/assets/", http.FileServerFS(assets.FS)))
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assets.Handler()))
 }
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -74,6 +75,34 @@ type Target struct {
 	// DedupMerge costs, and whether a destination supports it at all, is the
 	// driver's to say.
 	Dedup core.Dedup
+
+	// Preview prints the first N rows AS THEY WILL BE WRITTEN, the way a
+	// dataframe's head() shows the top of a frame. Zero prints nothing.
+	//
+	// Source.Preview answers "what did I pull?"; this answers the question a
+	// pull cannot: "what is about to land, after every transform, in the
+	// columns the table actually has". They are different rows, and the gap
+	// between them is where a load goes wrong -- a run reading 11,536 records
+	// and writing 0 says nothing about WHICH field came out empty.
+	//
+	// Projected through Columns, by the same rule every driver uses: the value
+	// under each declared name, and nothing else. A column the record does not
+	// carry prints as an empty cell, which is the NULL the destination will
+	// receive.
+	//
+	// It prints BEFORE the write, so a load that fails still shows what it was
+	// holding -- which is when somebody most wants to see it.
+	Preview int
+
+	// PreviewBytes caps the printed block. Zero uses 4096. Rows are dropped
+	// from the bottom until it fits, and the footer says how many.
+	PreviewBytes int
+
+	// PreviewWriter is where the table goes. Nil means os.Stderr.
+	//
+	// stderr, and not stdout: stdout carries the @brevis: protocol, and a table
+	// printed there is a parse error rather than a preview.
+	PreviewWriter io.Writer
 
 	// FlushEvery writes every N records read, instead of accumulating the whole
 	// read in memory. Zero accumulates everything, which remains the default.

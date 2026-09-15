@@ -1440,6 +1440,47 @@ recompiling:
 | `PreviewBytes` | `4096` | caps the block; rows are dropped from the bottom and the footer says how many |
 | `PreviewWriter` | `os.Stderr` | where the table goes |
 
+### The rows going into the table
+
+`Target` takes the same three fields, and answers the question the source's
+preview cannot: **what is about to land**, after every transform, in the
+columns the destination actually has.
+
+```go
+sdk.Target{
+	To:      topg.Table{DSN: dsn, Name: "landing_orders"},
+	Columns: []string{"ingestion_id", "order_id", "client_id", "total", "status"},
+	Preview: 5,
+}
+```
+
+```
+   ingestion_id                          order_id  client_id    total  status
+0  b70c5149-8f66-5bbe-aa67-288694a107b6  O00001    C0022      1274.26  cancelled
+1  7bf901d3-703b-50b3-8b84-4614cc207724  O00002    C0029       311.02  shipped
+
+[5 of 2000 rows · 5 columns · 10ms]
+```
+
+Three things it does on purpose:
+
+- **The columns are in `Columns`' order**, not alphabetical. That order is the
+  table's, and a preview in any other order is a table that is not the table.
+- **A declared column no record carries still appears**, empty. That is the
+  NULL the destination is about to receive, and it is usually the answer.
+- **It prints before the write**, so a load that is refused still shows what it
+  was holding — which is when somebody most wants to see it.
+
+From the command line, without a rebuild:
+
+```bash
+./my-fetcher -preview-target 5
+```
+
+Not to be confused with two neighbours: `-preview` samples the **source**, and
+`-dry-run` prints **instead of** writing. This one prints *and* writes, which is
+what an operator watching a real load wants.
+
 The table goes to a writer rather than through `slog` because slog's
 `TextHandler` escapes newlines, so a table logged as an attribute arrives as
 one unreadable line of `\n`. The counters do go through slog, where a

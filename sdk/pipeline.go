@@ -122,6 +122,7 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 		sample  = fs.Int("sample", 5, "how many records -dry-run prints")
 		verbose = fs.Bool("v", false, "log at debug level")
 		preview = fs.Int("preview", 0, "print the first N records as a table once the extract finishes")
+		target  = fs.Int("preview-target", 0, "print the first N rows as a table before they are written")
 	)
 	if p.Flags != nil {
 		p.Flags(fs)
@@ -148,6 +149,18 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 	// what the fetcher configured.
 	if *preview > 0 {
 		p.Source.Preview = *preview
+	}
+
+	// -preview and -preview-target are two flags because they answer two
+	// questions, and the answers differ: one shows what came OUT of the source,
+	// the other what is about to go IN to the table, after every transform and
+	// through the declared Columns. A run that reads 11,536 records and writes
+	// 0 is the case that needs the second, and the first says nothing about it.
+	//
+	// It is not -dry-run either: that one prints INSTEAD of writing. This
+	// prints AND writes, which is what an operator watching a real load wants.
+	if *target > 0 {
+		p.Target.Preview = *target
 	}
 
 	if p.Before != nil {
