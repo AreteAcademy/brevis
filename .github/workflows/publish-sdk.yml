@@ -99,31 +99,42 @@ jobs:
           VERSION="${TAG#refs/tags/sdk/}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Extract changelog
+      # The release notes come from CHANGELOG.md, which is written anyway.
+      #
+      # This step used to write `notes=SDK Release: v0.60.0` into an output that
+      # nothing read, under a comment saying "Extract from CHANGELOG.md or git
+      # log". Every release since then carried the same body -- "See commit
+      # history for details" -- which tells a consumer to go and do the work the
+      # changelog already did.
+      #
+      # Missing section is an ERROR, not an empty body: a release published with
+      # no notes is one nobody goes back to fix.
+      - name: Extract the changelog section
         id: changelog
         run: |
-          # Extract from CHANGELOG.md or git log
-          echo "notes=SDK Release: ${{ steps.tag.outputs.version }}" >> $GITHUB_OUTPUT
+          VERSION="${{ steps.tag.outputs.version }}"
+          NUMBER="${VERSION#v}"
+
+          # From `## [0.60.0]` up to the next `## [`, with the heading and the
+          # trailing `---` separator dropped.
+          awk -v want="## [$NUMBER]" '
+            index($0, want) == 1 { inside = 1; next }
+            inside && /^## \[/   { exit }
+            inside               { print }
+          ' CHANGELOG.md | sed -e 's/^---$//' > notes.md
+
+          if [ ! -s notes.md ]; then
+            echo "::error::CHANGELOG.md has no section for $NUMBER. Add one before tagging."
+            exit 1
+          fi
+          echo "✅ $(wc -l < notes.md) line(s) of notes for $NUMBER"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: SDK ${{ steps.tag.outputs.version }}
-          body: |
-            # Brevis SDK ${{ steps.tag.outputs.version }}
-
-            ## Installation
-            ```bash
-            go get github.com/AreteAcademy/brevis/sdk@${{ steps.tag.outputs.version }}
-            ```
-
-            ## Documentation
-            - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk)
-            - [GitHub](https://github.com/AreteAcademy/brevis/tree/master/sdk)
-
-            ## What's New
-            See commit history for details.
+          body_path: notes.md
           draft: false
           prerelease: false
 
