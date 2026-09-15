@@ -1223,7 +1223,7 @@ func upstream(w wf.Workflow) map[string][]string {
 
 // runContext builds what the engine knows about this run and the step does not.
 //
-// primeira is resolved beforehand, by the caller, because it needs a database
+// first is resolved beforehand, by the caller, because it needs a database
 // round trip and building a task must not do I/O.
 func (r Runner) runContext(inst instance, first bool, attempt int) map[string]string {
 	env := map[string]string{}

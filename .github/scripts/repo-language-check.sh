@@ -54,6 +54,7 @@ WORDS = """que nao não para uma por como sem isso vem foi pelo mais
 já está sendo ser tem dos das aos nas nos qual onde porque então aqui cada
 mesmo assim muito quando entre sobre depois antes ainda apenas seu sua seus
 suas fazer feito precisa deve pode nenhum nenhuma todos todas invalido
+primeira primeiro ultima ultimo
 formulario instancia interrompido encerrado esperava ilegivel proveniencia
 declaracao desistencia templatavel satisfaz publica"""
 PT = re.compile(r"\b(" + "|".join(WORDS.split()) + r")\b", re.I)
@@ -68,9 +69,24 @@ CODE = re.compile(r"`[^`]*`")
 # is the most widely read prose this repository publishes: registries print it
 # beside the image. A Portuguese description shipped on the worker image that
 # way and was found by eye, not by this gate.
+#
+# Describe() is here for the same reason and was found the same way. It is a
+# PUBLIC method on every driver in the SDK, its string reaches consumers through
+# logs and through the run's Result, and `from.Many` answered
+# `many: %d sources, a primeira %s` for as long as it existed.
 FALA = re.compile(r"fmt\.Errorf|errors\.New|http\.Error|panic\(|slog\.\w+|"
                   r"\.Info\(|\.Warn\(|\.Error\(|\.Debug\(|"
                   r"org\.opencontainers\.image\.(?:description|title)")
+
+# Describe() is checked by TRACKING ITS BODY, not by matching a line.
+#
+# It is a public method on every driver, its string reaches consumers through
+# the logs and through the run's Result, and `from.Many` answered
+# `many: %d sources, a primeira %s` for as long as it existed. A line-based rule
+# cannot see it: the signature line holds no string, and the return is two lines
+# down. gofmt puts the closing brace at column 0, which is what makes this
+# reliable enough to gate on.
+DESCRIBE = re.compile(r"^func \([^)]*\) Describe\(\) string \{")
 STRING = re.compile(r'"((?:[^"\\]|\\.){6,})"')
 COMENTARIO = re.compile(r"^\s*(//|#|--)\s*(.+)$")
 
@@ -88,14 +104,28 @@ for p in sorted(pathlib.Path(".").rglob("*")):
     conhecido = p.suffix in EXTS or p.name in SEM_EXTENSAO
     if not p.is_file() or not conhecido or any(x in s for x in FORA):
         continue
+    dentro, escopo = False, False
     for n, linha in enumerate(p.read_text(encoding="utf-8", errors="replace").split("\n"), 1):
+        # `escopo` is THIS line; `dentro` is the lines after it. They differ for
+        # the one-line body, which is both -- and `from.Files` is exactly that
+        # shape. A first version tracked only `dentro`: it either missed the
+        # one-liner entirely or, setting the flag on it, left the flag stuck for
+        # the rest of the FILE.
+        if DESCRIBE.match(linha):
+            escopo = True
+            dentro = not linha.rstrip().endswith("}")
+        elif dentro and linha == "}":
+            escopo, dentro = False, False
+        else:
+            escopo = dentro
+
         c = COMENTARIO.match(linha)
         if c:
             m = PT.search(CODE.sub(" ", c.group(2)))
             if m:
                 ruins.append((s, n, m.group(0), "comment", c.group(2)[:60]))
             continue
-        if s.endswith("_test.go") or not FALA.search(linha):
+        if s.endswith("_test.go") or not (escopo or FALA.search(linha)):
             continue
         for raw in STRING.findall(linha):
             m = PT.search(CODE.sub(" ", raw))

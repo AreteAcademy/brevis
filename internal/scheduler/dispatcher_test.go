@@ -639,7 +639,7 @@ func TestThePerWorkflowLimitHoldsTheRestBack(t *testing.T) {
 		t.Errorf("it handed out %d more with the first still in flight", len(outros))
 	}
 
-	// Terminado o primeiro, o proximo entra.
+	// With the first one finished, the next goes out.
 	if err := queue.Done(ctx, items[0].ID); err != nil {
 		t.Fatal(err)
 	}

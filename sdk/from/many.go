@@ -92,7 +92,7 @@ func (m Many) Describe() string {
 	if m.Sources[0] == nil {
 		return fmt.Sprintf("many: %d sources", len(m.Sources))
 	}
-	return fmt.Sprintf("many: %d sources, a primeira %s", len(m.Sources), m.Sources[0].Describe())
+	return fmt.Sprintf("many: %d sources, the first %s", len(m.Sources), m.Sources[0].Describe())
 }
 
 // Read satisfies core.Reader.

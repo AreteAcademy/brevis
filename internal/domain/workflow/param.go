@@ -86,7 +86,7 @@ func (p Param) Validate() error {
 		}
 	}
 	// The default has to be valid by its own rules: a refused default would only
-	// apareceria no primeiro disparo agendado, de madrugada.
+	// surface on the first scheduled run, in the small hours.
 	if p.Default != "" {
 		if err := p.Accepts(p.Default); err != nil {
 			return fmt.Errorf("param %q: the default value is not valid: %w", p.Name, err)

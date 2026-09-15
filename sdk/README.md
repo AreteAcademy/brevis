@@ -1266,6 +1266,49 @@ A `Discover` that returns **nothing** is an error, not zero rows: a run that rea
 nothing because there was nothing to read is different from one that did not know
 where to read.
 
+### One source per value
+
+An API with no "everything" endpoint is read one federative unit at a time, one
+municipality, one account, one day. `from.Over` turns a list of values into a
+list of sources:
+
+```go
+From: from.Many{
+    Discover: func(ctx context.Context) ([]sdk.Reader, error) {
+        cred, err := credential()
+        if err != nil {
+            return nil, err
+        }
+        return from.Over(brazilUFs, func(uf string) sdk.Reader {
+            return inventorySource(cred, uf)
+        }), nil
+    },
+    Workers: 6,
+    OnError: sdk.ContinueOnError,
+},
+```
+
+It builds the **reader**, not the URL, and that is the whole design:
+
+- **No encoding is ever the SDK's business.** A vendor whose query keys are
+  accented phrases, whose spaces must be `%20` and not the `+` that
+  `url.Values.Encode` writes, works without the SDK knowing — because the SDK
+  never holds the string.
+- **It is not tied to query parameters.** The value can go in a path segment, a
+  header or a body. Of the four fan-outs that asked for this, one varied a path
+  and one had its values discovered at run time; a feature keyed on query
+  parameters would have reached half of them.
+- **It owns no concurrency and no failure policy.** It returns a slice, and
+  `from.Many` owns `Workers`, `OnError` and the laziness. A fan-out carrying its
+  own worker pool would be a second copy of the one that already works.
+
+Inside `Discover`, as above, is where it belongs when building a source can
+fail: a missing credential is then an extract error rather than a panic in a
+`main`.
+
+Nothing is opened until the iteration reaches it, and `Describe()` is whatever
+the built source says — so a failure among 27 names the one that failed.
+
 ### Keeping the rotated credential between runs
 
 Without a store, the renewed value lives for this run only — and somebody
