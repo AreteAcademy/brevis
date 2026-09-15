@@ -18,6 +18,54 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.60.0] — 2026-09-15
+
+### Added: `from.Over` — one source per value
+
+An API with no "everything" endpoint is read one federative unit at a time, one
+municipality, one account, one day. The loop that builds those sources was the
+same four lines in every fetcher that met one.
+
+```go
+From: from.Many{
+    Discover: func(ctx context.Context) ([]sdk.Reader, error) {
+        cred, err := credential()
+        if err != nil {
+            return nil, err
+        }
+        return from.Over(brazilUFs, func(uf string) sdk.Reader {
+            return inventorySource(cred, uf)
+        }), nil
+    },
+    Workers: 6,
+    OnError: sdk.ContinueOnError,
+},
+```
+
+It builds the **reader**, not the URL. That was asked for the other way round —
+name a query key, give it values, let the SDK encode — and the four fan-outs
+that asked argued against it: one varies a **path** segment, one has its values
+discovered at run time, and the one that does vary a query parameter needs a
+dialect (`%20` and not the `+` that `url.Values.Encode` writes). Handing back a
+Reader means the SDK never holds the string, so no vendor's encoding is ever its
+business.
+
+It owns no concurrency and no failure policy: `from.Many` keeps `Workers`,
+`OnError` and the laziness, and `Describe()` is whatever the built source says —
+so a failure among 27 names the one that failed.
+
+### Fixed: `from.Many`'s `Describe()` answered Portuguese
+
+`many: %d sources, a primeira %s`, for as long as it existed, on a public method
+whose string reaches consumers through the logs and through the run's `Result`.
+
+The language gate could not see it: it reads comments, and strings inside
+`fmt.Errorf`, `errors.New` and `slog` calls, and this was a `Sprintf` in a
+`Describe`. It now reads `Describe()` bodies, which found five more
+half-translated comments elsewhere.
+
+---
+
 ## [0.59.0] — 2026-09-11
 
 ### Added: `to/pubsub` — publishing to a topic that already exists
