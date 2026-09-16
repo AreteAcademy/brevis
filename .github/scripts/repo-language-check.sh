@@ -47,6 +47,9 @@ import re, pathlib, sys
 # explaining one of them is correct English prose about a Portuguese name. A
 # detector that flagged those would be turned off within a week, which is the
 # argument ui-language-check.sh already makes.
+# `tipo` is absent for the same reason as the nouns above: it is a WIRE
+# FORMAT key -- the SDK spoke `{"tipo":"etapa"}` up to v0.47.0 -- so the
+# comments explaining it are correct English prose about a Portuguese name.
 # `são` is absent: it fired on "São Paulo" in a timezone test whose comment is
 # correct English. A gate that flags a city name is a gate somebody switches
 # off, and this project's cron tests will keep naming that city.
@@ -55,6 +58,7 @@ já está sendo ser tem dos das aos nas nos qual onde porque então aqui cada
 mesmo assim muito quando entre sobre depois antes ainda apenas seu sua seus
 suas fazer feito precisa deve pode nenhum nenhuma todos todas invalido
 primeira primeiro ultima ultimo
+desconhecido desconhecida parenteses
 formulario instancia interrompido encerrado esperava ilegivel proveniencia
 declaracao desistencia templatavel satisfaz publica"""
 PT = re.compile(r"\b(" + "|".join(WORDS.split()) + r")\b", re.I)

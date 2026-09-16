@@ -62,8 +62,8 @@ const (
 //
 // The set covers what this repository's real params need — dates, dbt selectors,
 // uids, paths, comma-separated lists — and leaves out everything the shell
-// interprets: quotes, `;`, `|`, `&`, `$`, backticks,
-// parenteses e redirecionamentos.
+// interprets: quotes, `;`, `|`, `&`, `$`, backticks, parentheses and
+// redirections.
 var safeCharacters = regexp.MustCompile(`^[A-Za-z0-9_.:/=,+@\- ]*$`)
 
 var paramName = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)
@@ -78,7 +78,7 @@ func (p Param) Validate() error {
 	case "":
 		return fmt.Errorf("param %q has no type (string, boolean or integer)", p.Name)
 	default:
-		return fmt.Errorf("param %q: tipo %q desconhecido", p.Name, p.Type)
+		return fmt.Errorf("param %q: unknown type %q (use string, boolean or integer)", p.Name, p.Type)
 	}
 	if p.Pattern != "" {
 		if _, err := regexp.Compile(p.Pattern); err != nil {
