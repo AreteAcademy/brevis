@@ -84,6 +84,46 @@ does not use lists sees no difference.
 
 ## [0.62.0] — 2026-09-16
 
+### Added: reading a run's parameters — `RunContext.ParamList`, `sdk.Param`, `sdk.ParamList`
+
+A workflow can now declare `list|<type>` — `list|string`, `list|integer`,
+`list|boolean` — and the engine sends it, like every param, as one string with
+the items joined by commas. These read it back:
+
+```go
+for _, table := range run.ParamList("tables") {
+    load(table)
+}
+```
+
+`sdk.Param` and `sdk.ParamList` are the package-level forms, and they exist for
+the case `Pipeline.Flags` cannot serve: a value needed to **build** the
+pipeline, before `sdk.Run` is called and therefore before any flag has been
+parsed.
+
+```go
+func main() {
+    sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+They read the environment first and the command line second. The environment
+wins because under the engine it **is** the value — a `-param` left in a
+manifest must not quietly override what the operator typed in the trigger form
+— and the command line exists for the other half of a fetcher's life, the
+laptop:
+
+```bash
+./fetch-stations -param ufs=SP,RJ -param since=2026-01-01
+```
+
+An absent param is the empty string and an absent list is `nil`, never a panic:
+a fetcher run by hand does not have to know any of this exists, and ranging over
+"nothing to do" does nothing.
+
+The SDK's side of this release is additive. The breaking change the `list|<type>`
+work carries is in the ENGINE's workflow schema, not in this module's Go API.
+
 ### Added: `Pipeline.After` — publishing a value the run discovered
 
 `Before` existed and its mirror did not, so a fetcher that had to publish
