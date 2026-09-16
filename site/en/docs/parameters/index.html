@@ -151,8 +151,58 @@ steps:
 <span class="t-k">steps</span>:
   - <span class="t-k">id</span>: run
     <span class="t-k">run</span>: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+</code></pre></div>
-<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>required</strong></td><td>the name used in the template and in <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code> or <code>boolean</code></td></tr><tr><td><code>default</code></td><td></td><td>used when the trigger provides no value</td></tr><tr><td><code>pattern</code></td><td></td><td>regular expression the value must match</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>required</strong></td><td>the name used in the template and in <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code>, <code>boolean</code>, <code>integer</code>, or `list</td><td>&lt;type&gt;` for many values</td></tr><tr><td><code>default</code></td><td></td><td>used when the trigger provides no value</td></tr><tr><td><code>pattern</code></td><td></td><td>regular expression the value must match</td></tr></tbody></table></div>
 <p>A parameter <strong>without a <code>default</code></strong> is required: a trigger that omits it fails before executing any step.</p>
+<h2 id="a-list-of-values">A list of values<a class="anchor" href="#a-list-of-values" aria-label="link">#</a></h2>
+<p><code>list|&lt;type&gt;</code> declares a parameter that carries many values — the tables to load, the layers to rebuild, the windows to backfill:</p>
+<div class="code-block" data-code="params:
+  - name: tables
+    type: list|string
+    default: &quot;users,orders&quot;
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
+    default: &quot;bronze&quot;
+
+  - name: days
+    type: list|integer
+    default: &quot;1,7,30&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: tables
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">default</span>: "users,orders"
+
+  - <span class="t-k">name</span>: layers
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">enum</span>: [bronze, silver, gold]     <span class="t-c"># an enum restricts each ITEM</span>
+    <span class="t-k">default</span>: "bronze"
+
+  - <span class="t-k">name</span>: days
+    <span class="t-k">type</span>: list|integer
+    <span class="t-k">default</span>: "1,7,30"</code></pre></div>
+<p>The element can be <code>string</code>, <code>integer</code> or <code>boolean</code>. Each item is validated on its own, so <code>list|integer</code> given <code>1,x,30</code> fails naming <strong>item 2</strong> rather than the whole value.</p>
+<p>It is <strong>one comma-separated string</strong> everywhere: in the database, in <code>BREVIS_RUN_PARAMS</code>, and in the command. That is what makes it work in a step with no special case at all —</p>
+<div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
+<p>— and it is why a comma cannot appear inside an item. An empty item and a repeated one are refused too: a repeat silently doubles whatever the step does per item.</p>
+<h3 id="as-an-array-in-a-step">As an array, in a step<a class="anchor" href="#as-an-array-in-a-step" aria-label="link">#</a></h3>
+<div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
+    load(table)
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
+    load(table)
+}</code></pre></div>
+<div class="code-block" data-code="from brevis import run
+
+for table in run.param_list(&quot;tables&quot;):
+    load(table)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+<span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
+    load(table)</code></pre></div>
+<p>Both return <code>[]</code> for a parameter nobody filled in, rather than a list holding one empty string: iterating over "nothing to do" should do nothing. The items come back as strings — <code>list|integer</code> included — because the step knows better than the library what to do with a number.</p>
+<h3 id="in-the-interface">In the interface<a class="anchor" href="#in-the-interface" aria-label="link">#</a></h3>
+<p>A list with an <code>enum</code> renders as checkboxes, which need no JavaScript and which the browser submits one value per box ticked. Without an <code>enum</code> it is a text field whose items become removable chips, and with JavaScript off it stays a field holding <code>users,orders</code> — which is exactly what the server expects.</p>
+<h3 id="on-the-command-line">On the command line<a class="anchor" href="#on-the-command-line" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">An older engine will not read it</p><p>The type is stored with the workflow, and an engine from before this feature refuses <code>list|string</code> at publish time as an unknown type. Upgrade the engine before publishing a workflow that uses one.</p></aside>
 <h2 id="using-it-in-the-command">Using it in the command<a class="anchor" href="#using-it-in-the-command" aria-label="link">#</a></h2>
 <p>The value enters <code>run</code> through a template, in double braces with a dot:</p>
 <div class="code-block" data-code="run: ./load.sh --since {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">run</span>: ./load.sh --since {{ .start_date }}</code></pre></div>
@@ -275,7 +325,7 @@ def events(
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">Reading them</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">In dlt, nothing to read at all</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#declaring">Declaring</a></li><li class="toc-2"><a href="#a-list-of-values">A list of values</a></li><li class="toc-3"><a href="#as-an-array-in-a-step">As an array, in a step</a></li><li class="toc-3"><a href="#in-the-interface">In the interface</a></li><li class="toc-3"><a href="#on-the-command-line">On the command line</a></li><li class="toc-2"><a href="#using-it-in-the-command">Using it in the command</a></li><li class="toc-2"><a href="#passing-it-on-the-command-line">Passing it on the command line</a></li><li class="toc-2"><a href="#in-a-backfill">In a backfill</a></li><li class="toc-2"><a href="#in-the-interface">In the interface</a></li><li class="toc-2"><a href="#in-the-step-environment">In the step environment</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#reading-them">Reading them</a></li><li class="toc-3"><a href="#in-dlt-nothing-to-read-at-all">In dlt, nothing to read at all</a></li><li class="toc-2"><a href="#the-snapshot">The snapshot</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

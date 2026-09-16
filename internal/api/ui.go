@@ -636,6 +636,36 @@ func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {
 	u.voltar(w, r)
 }
 
+// paramsFromForm reads the `param.`-prefixed fields of the trigger form.
+//
+// Values are joined with a comma, because that is how a `list|<type>` param
+// travels everywhere else -- and it is what makes a checkbox group work without
+// a line of JavaScript: the browser sends one `param.layers` per box ticked,
+// and an unticked box sends nothing at all.
+//
+// Each list also carries a hidden empty value, which is what makes "none of
+// them" different from "the operator did not touch this". With every box
+// unticked and no hidden field, the key would be absent from the form and the
+// resolver would fall back to the default -- quietly running with the values
+// the operator had just cleared.
+func paramsFromForm(form url.Values) map[string]string {
+	params := map[string]string{}
+	for key, values := range form {
+		name, ok := strings.CutPrefix(key, "param.")
+		if !ok {
+			continue
+		}
+		nonEmpty := make([]string, 0, len(values))
+		for _, v := range values {
+			if v = strings.TrimSpace(v); v != "" {
+				nonEmpty = append(nonEmpty, v)
+			}
+		}
+		params[name] = strings.Join(nonEmpty, ",")
+	}
+	return params
+}
+
 func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 
@@ -645,12 +675,7 @@ func (u *UI) disparar(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid form", http.StatusBadRequest)
 		return
 	}
-	params := map[string]string{}
-	for key, values := range r.PostForm {
-		if name, ok := strings.CutPrefix(key, "param."); ok && len(values) > 0 {
-			params[name] = values[0]
-		}
-	}
+	params := paramsFromForm(r.PostForm)
 
 	id, err := u.actions.Disparar(r.Context(), slug, time.Now(), params)
 	if err != nil {

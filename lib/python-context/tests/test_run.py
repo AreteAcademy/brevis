@@ -270,3 +270,30 @@ def test_the_element_can_be_the_empty_string(monkeypatch):
     monkeypatch.setenv(run.ENV_MAP_VALUE, "")
     assert run.map_value() == ""
     assert run.map_value() is not None
+
+
+def test_param_list_splits_what_the_engine_joined(monkeypatch):
+    """A `list|<type>` param arrives comma-joined, because every param does."""
+    monkeypatch.setenv(
+        "BREVIS_RUN_PARAMS",
+        '{"tables": "users,orders", "spaced": " users , orders ", '
+        '"one": "x", "empty": "", "numbers": "1,7,30"}',
+    )
+    assert run.param_list("tables") == ["users", "orders"]
+    # The trigger form leaves a space after the comma; the value does not have
+    # one.
+    assert run.param_list("spaced") == ["users", "orders"]
+    assert run.param_list("one") == ["x"]
+    # [] and not [""]: iterating over a param nobody filled in does nothing,
+    # and one empty element would run the body once on nothing.
+    assert run.param_list("empty") == []
+    assert run.param_list("absent") == []
+    # Items are not converted -- the caller knows what to do with a value that
+    # should be a number and is not.
+    assert run.param_list("numbers") == ["1", "7", "30"]
+
+
+def test_param_list_outside_the_engine_is_empty(monkeypatch):
+    """Run by hand there is no env var, and nothing raises."""
+    monkeypatch.delenv("BREVIS_RUN_PARAMS", raising=False)
+    assert run.param_list("tables") == []

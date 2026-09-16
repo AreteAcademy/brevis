@@ -151,8 +151,58 @@ steps:
 <span class="t-k">steps</span>:
   - <span class="t-k">id</span>: run
     <span class="t-k">run</span>: dbt build --vars '{"load_full":"{{ .load_full }}"}' --select bronze+</code></pre></div>
-<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>obrigatório</strong></td><td>o nome usado no template e no <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code> ou <code>boolean</code></td></tr><tr><td><code>default</code></td><td></td><td>usado quando o disparo não informa valor</td></tr><tr><td><code>pattern</code></td><td></td><td>expressão regular que o valor precisa casar</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th></th></tr></thead><tbody><tr><td><code>name</code></td><td><strong>obrigatório</strong></td><td>o nome usado no template e no <code>--param</code></td></tr><tr><td><code>type</code></td><td></td><td><code>string</code>, <code>boolean</code>, <code>integer</code>, ou `list</td><td>&lt;tipo&gt;` para vários valores</td></tr><tr><td><code>default</code></td><td></td><td>usado quando o disparo não informa valor</td></tr><tr><td><code>pattern</code></td><td></td><td>expressão regular que o valor precisa casar</td></tr></tbody></table></div>
 <p>Um parâmetro <strong>sem <code>default</code></strong> é obrigatório: o disparo que não o informar falha antes de executar qualquer passo.</p>
+<h2 id="uma-lista-de-valores">Uma lista de valores<a class="anchor" href="#uma-lista-de-valores" aria-label="link">#</a></h2>
+<p><code>list|&lt;tipo&gt;</code> declara um parâmetro que carrega vários valores — as tabelas a carregar, as camadas a reconstruir, as janelas a reprocessar:</p>
+<div class="code-block" data-code="params:
+  - name: tables
+    type: list|string
+    default: &quot;users,orders&quot;
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # o enum restringe cada ITEM
+    default: &quot;bronze&quot;
+
+  - name: days
+    type: list|integer
+    default: &quot;1,7,30&quot;"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">params</span>:
+  - <span class="t-k">name</span>: tables
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">default</span>: "users,orders"
+
+  - <span class="t-k">name</span>: layers
+    <span class="t-k">type</span>: list|string
+    <span class="t-k">enum</span>: [bronze, silver, gold]     <span class="t-c"># o enum restringe cada ITEM</span>
+    <span class="t-k">default</span>: "bronze"
+
+  - <span class="t-k">name</span>: days
+    <span class="t-k">type</span>: list|integer
+    <span class="t-k">default</span>: "1,7,30"</code></pre></div>
+<p>O elemento pode ser <code>string</code>, <code>integer</code> ou <code>boolean</code>. Cada item é validado por si, então <code>list|integer</code> recebendo <code>1,x,30</code> falha nomeando o <strong>item 2</strong> em vez do valor inteiro.</p>
+<p>É <strong>uma string separada por vírgula</strong> em todo lugar: no banco, no <code>BREVIS_RUN_PARAMS</code> e no comando. É isso que a faz funcionar num passo sem caso especial nenhum —</p>
+<div class="code-block" data-code="run: dbt build --select {{ .tables }}      # dbt build --select users,orders"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">run</span>: dbt build --select {{ .tables }}      <span class="t-c"># dbt build --select users,orders</span></code></pre></div>
+<p>— e é por isso que uma vírgula não pode aparecer dentro de um item. Item vazio e item repetido também são recusados: o repetido dobra em silêncio o que o passo faz por item.</p>
+<h3 id="como-array-dentro-de-um-passo">Como array, dentro de um passo<a class="anchor" href="#como-array-dentro-de-um-passo" aria-label="link">#</a></h3>
+<div class="code-block" data-code="for _, table := range p.Run.ParamList(&quot;tables&quot;) {
+    load(table)
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">for</span> _, table := <span class="t-k">range</span> p.Run.ParamList("tables") {
+    load(table)
+}</code></pre></div>
+<div class="code-block" data-code="from brevis import run
+
+for table in run.param_list(&quot;tables&quot;):
+    load(table)"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">from</span> brevis <span class="t-k">import</span> run
+
+<span class="t-k">for</span> table <span class="t-k">in</span> run.param_list("tables"):
+    load(table)</code></pre></div>
+<p>Os dois devolvem <code>[]</code> para um parâmetro que ninguém preencheu, e não uma lista com uma string vazia: iterar sobre "nada a fazer" tem que não fazer nada. Os itens voltam como string — <code>list|integer</code> inclusive — porque o passo sabe melhor que a biblioteca o que fazer com um número.</p>
+<h3 id="na-interface">Na interface<a class="anchor" href="#na-interface" aria-label="link">#</a></h3>
+<p>Uma lista com <code>enum</code> vira checkboxes, que não precisam de JavaScript e que o navegador envia um valor por caixa marcada. Sem <code>enum</code> é um campo de texto cujos itens viram chips removíveis, e com o JavaScript desligado continua sendo um campo com <code>users,orders</code> — que é exatamente o que o servidor espera.</p>
+<h3 id="na-linha-de-comando">Na linha de comando<a class="anchor" href="#na-linha-de-comando" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis run wf.yaml --param tables=events,sessions --param days=1,30"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span> run wf.yaml <span class="t-n">--param</span> tables=events,sessions <span class="t-n">--param</span> days=1,30</code></pre></div>
+<aside class="admon admon-note"><p class="admon-t">Um engine antigo não lê isso</p><p>O tipo é gravado junto com o workflow, e um engine anterior a esta feature recusa <code>list|string</code> no publish como tipo desconhecido. Atualize o engine antes de publicar um workflow que use uma lista.</p></aside>
 <h2 id="usando-no-comando">Usando no comando<a class="anchor" href="#usando-no-comando" aria-label="link">#</a></h2>
 <p>O valor entra no <code>run</code> por template, entre chaves duplas e com ponto:</p>
 <div class="code-block" data-code="run: ./carregar.sh --desde {{ .start_date }}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">run</span>: ./carregar.sh --desde {{ .start_date }}</code></pre></div>
@@ -275,7 +325,7 @@ def events(
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#como-ler">Como ler</a></li><li class="toc-3"><a href="#no-dlt-nada-a-ler">No dlt, nada a ler</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#declarando">Declarando</a></li><li class="toc-2"><a href="#uma-lista-de-valores">Uma lista de valores</a></li><li class="toc-3"><a href="#como-array-dentro-de-um-passo">Como array, dentro de um passo</a></li><li class="toc-3"><a href="#na-interface">Na interface</a></li><li class="toc-3"><a href="#na-linha-de-comando">Na linha de comando</a></li><li class="toc-2"><a href="#usando-no-comando">Usando no comando</a></li><li class="toc-2"><a href="#passando-na-linha-de-comando">Passando na linha de comando</a></li><li class="toc-2"><a href="#no-backfill">No backfill</a></li><li class="toc-2"><a href="#na-interface">Na interface</a></li><li class="toc-2"><a href="#no-ambiente-do-passo">No ambiente do passo</a></li><li class="toc-2"><a href="#auto-params">Auto params</a></li><li class="toc-3"><a href="#como-ler">Como ler</a></li><li class="toc-3"><a href="#no-dlt-nada-a-ler">No dlt, nada a ler</a></li><li class="toc-2"><a href="#o-snapshot">O snapshot</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

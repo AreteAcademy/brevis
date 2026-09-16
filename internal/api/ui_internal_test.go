@@ -2,6 +2,7 @@ package api
 
 import (
 	"log/slog"
+	"net/url"
 	"testing"
 	"time"
 
@@ -226,5 +227,62 @@ func TestTheInstantAndThePage(t *testing.T) {
 	}
 	if page("4") != 4 {
 		t.Error("a valid page was ignored")
+	}
+}
+
+// A checkbox group arrives as one value per box ticked, and a list param is one
+// comma-joined string everywhere else in the engine -- so the form is where the
+// two meet.
+func TestTheTriggerFormJoinsAListsValues(t *testing.T) {
+	casos := []struct {
+		why  string
+		form url.Values
+		want map[string]string
+	}{
+		{
+			why:  "a checkbox group: one value per box ticked",
+			form: url.Values{"param.layers": {"", "bronze", "gold"}},
+			want: map[string]string{"layers": "bronze,gold"},
+		},
+		{
+			// This is why the hidden field exists. Without it the key would be
+			// absent and the resolver would fall back to the default -- running
+			// with the values the operator had just cleared.
+			why:  "every box unticked is an EXPLICIT empty list",
+			form: url.Values{"param.layers": {""}},
+			want: map[string]string{"layers": ""},
+		},
+		{
+			why:  "a free list is typed with commas already",
+			form: url.Values{"param.tables": {"users,orders"}},
+			want: map[string]string{"tables": "users,orders"},
+		},
+		{
+			why:  "a scalar is untouched",
+			form: url.Values{"param.load_full": {"true"}},
+			want: map[string]string{"load_full": "true"},
+		},
+		{
+			why:  "fields that are not params are ignored",
+			form: url.Values{"csrf": {"x"}, "param.date": {"2026-09-16"}},
+			want: map[string]string{"date": "2026-09-16"},
+		},
+		{
+			why:  "the space a form leaves around a value is not the value's",
+			form: url.Values{"param.layers": {" bronze ", " gold"}},
+			want: map[string]string{"layers": "bronze,gold"},
+		},
+	}
+	for _, c := range casos {
+		got := paramsFromForm(c.form)
+		if len(got) != len(c.want) {
+			t.Errorf("%s: got %d params, want %d (%#v)", c.why, len(got), len(c.want), got)
+			continue
+		}
+		for k, v := range c.want {
+			if got[k] != v {
+				t.Errorf("%s: params[%q] = %q, want %q", c.why, k, got[k], v)
+			}
+		}
 	}
 }

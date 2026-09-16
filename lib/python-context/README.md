@@ -101,6 +101,25 @@ not be silent. The `or` above is the whole fallback.
 Run the script by hand and `run.now()` **is** the wall clock and `window()` is
 `None`, so there is no branch to write for local development.
 
+## A parameter that carries many values
+
+A workflow can declare `list|string`, `list|integer` or `list|boolean`, and the
+step reads it as a list:
+
+```python
+for table in run.param_list("tables"):
+    load(table)
+```
+
+The engine sends every parameter as a string — one map from the trigger form to
+this process — so a list arrives as `"users,orders"` and `param_list` splits it,
+trimming the space a form leaves after a comma.
+
+An absent or empty parameter gives `[]` and not `[""]`: iterating over a list
+nobody filled in should do nothing. The items come back as strings,
+`list|integer` included, because the caller knows better than this library what
+to do with a value that should be a number and is not.
+
 ## One instance of a mapped step
 
 Under `for_each:`, the engine runs one process per element and tells each one

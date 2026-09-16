@@ -231,4 +231,94 @@
     schedule(LIVE_RUNNING);
   });
 
+  // --- list params, as chips --------------------------------------------
+  //
+  // Progressive enhancement, and the plain field underneath is the point: with
+  // no JavaScript `[data-lista]` stays a text input whose value is
+  // "users,orders", which is exactly what the server expects. Everything here
+  // only makes that easier to read and to edit.
+  //
+  // The input keeps holding the real value -- the chips are a view of it -- so
+  // there is one source of truth and the form submits correctly even if this
+  // code throws halfway.
+  document.querySelectorAll("input[data-lista]").forEach(function (input) {
+    var caixa = document.createElement("div");
+    caixa.className = "flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-parchment-soft px-2 py-1.5";
+    var entrada = document.createElement("input");
+    entrada.type = "text";
+    entrada.className = "min-w-[6rem] flex-1 bg-transparent px-1 py-0.5 font-mono text-sm text-ink outline-none placeholder:text-muted/60";
+    entrada.placeholder = input.placeholder || "add and press Enter";
+    entrada.setAttribute("aria-label", "add an item");
+
+    input.type = "hidden";
+    input.parentNode.insertBefore(caixa, input);
+    caixa.appendChild(entrada);
+
+    function itens() {
+      return input.value.split(",").map(function (s) { return s.trim(); })
+        .filter(function (s) { return s !== ""; });
+    }
+
+    function grava(lista) {
+      input.value = lista.join(",");
+      desenha();
+    }
+
+    function desenha() {
+      caixa.querySelectorAll("[data-chip]").forEach(function (el) { el.remove(); });
+      itens().forEach(function (item, i) {
+        var chip = document.createElement("span");
+        chip.setAttribute("data-chip", "");
+        chip.className = "inline-flex items-center gap-1 rounded-lg bg-ink/5 px-2 py-0.5 font-mono text-xs text-ink";
+        chip.textContent = item;
+        var x = document.createElement("button");
+        x.type = "button";  // not submit: this is inside a form
+        x.className = "text-muted hover:text-ink";
+        x.textContent = "×";
+        x.setAttribute("aria-label", "remove " + item);
+        x.addEventListener("click", function () {
+          var lista = itens();
+          lista.splice(i, 1);
+          grava(lista);
+          entrada.focus();
+        });
+        chip.appendChild(x);
+        caixa.insertBefore(chip, entrada);
+      });
+    }
+
+    function acrescenta(texto) {
+      var lista = itens();
+      // A paste of "a,b,c" adds three, which is what somebody pasting a list
+      // means. The engine refuses a repeated item, so this refuses it here
+      // rather than at trigger time.
+      texto.split(",").forEach(function (parte) {
+        parte = parte.trim();
+        if (parte !== "" && lista.indexOf(parte) === -1) lista.push(parte);
+      });
+      grava(lista);
+      entrada.value = "";
+    }
+
+    entrada.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === ",") {
+        // Enter inside a form submits it; an item being added is not a submit.
+        e.preventDefault();
+        acrescenta(entrada.value);
+      } else if (e.key === "Backspace" && entrada.value === "") {
+        var lista = itens();
+        lista.pop();
+        grava(lista);
+      }
+    });
+    // Whatever is typed and not committed still counts on submit: losing it
+    // because nobody pressed Enter is the classic way a chips field lies.
+    entrada.addEventListener("blur", function () { acrescenta(entrada.value); });
+    entrada.form && entrada.form.addEventListener("submit", function () {
+      acrescenta(entrada.value);
+    });
+
+    desenha();
+  });
+
 })();

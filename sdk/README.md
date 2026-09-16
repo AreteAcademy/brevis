@@ -1806,6 +1806,7 @@ what is useful:
 |---|---|
 | `Run.First` | no earlier attempt of this step has succeeded |
 | `Run.Params` | the values this execution was dispatched with; never nil |
+| `Run.ParamList(name)` | one of those, declared `list|<type>`, as a slice |
 | `Run.ID`, `Attempt`, `Trigger`, `LogicalDate` | which run this is |
 
 Reading it is optional:
@@ -1818,6 +1819,21 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	return nil
 },
 ```
+
+A param the workflow declared as `list|string`, `list|integer` or
+`list|boolean` arrives comma-joined, because every param is a string from the
+trigger form to this process. `ParamList` is what turns it back:
+
+```go
+for _, table := range p.Run.ParamList("tables") {
+	load(table)
+}
+```
+
+It returns nil for a param that is absent or empty — an empty list, not a list
+holding one empty string — and the items come back as strings, `list|integer`
+included: a fetcher that wants numbers knows better than this package which
+width and which error handling it wants.
 
 Run by hand, every field is zero and nothing behaves differently.
 

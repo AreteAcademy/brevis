@@ -18,6 +18,34 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.63.0] — 2026-09-16
+
+### Added: `RunContext.ParamList`
+
+```go
+for _, table := range p.Run.ParamList("tables") {
+	load(table)
+}
+```
+
+Reads a param the workflow declared as `list|string`, `list|integer` or
+`list|boolean` (engine `0.15.0`). The engine sends every param as a string —
+one `map[string]string` from the trigger form to this process — so a list
+arrives as `"users,orders"` and this splits it, trimming the space a form leaves
+after a comma.
+
+It returns nil for a param that is absent or empty: an empty list, not a list
+holding one empty string, because ranging over "nothing to do" should do
+nothing. On a scalar param it returns the single value, so reading a `string`
+param with it is harmless rather than surprising.
+
+The items are **not** converted. `list|integer` comes back as strings, because a
+fetcher that wants numbers knows better than this package which width and which
+error handling it wants.
+
+Nothing else changed: `Params` is the same map it always was, and a fetcher that
+does not use lists sees no difference.
+
 ## [0.62.0] — 2026-09-16
 
 ### Added: `Pipeline.After` — publishing a value the run discovered

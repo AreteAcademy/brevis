@@ -1300,6 +1300,10 @@ templ paramsForm(w wf.Workflow) {
 							@option("false", p.Default)
 							@option("true", p.Default)
 						</select>
+					} else if p.Type.IsList() && len(p.Enum) > 0 {
+						@listaComEnum(p)
+					} else if p.Type.IsList() {
+						@listaLivre(p)
 					} else if len(p.Enum) > 0 {
 						<select name={ "param." + p.Name } class="rounded-xl border border-line bg-parchment-soft px-3 py-2 text-sm text-ink">
 							for _, v := range p.Enum {
@@ -1325,12 +1329,62 @@ templ paramsForm(w wf.Workflow) {
 	</form>
 }
 
+// A list with an enum is a multi-select, and checkboxes are what a browser
+// already does well: they need no JavaScript, they are reachable by keyboard,
+// and the browser sends one value per box ticked -- which the handler joins
+// with commas, the same shape the value has everywhere else.
+//
+// The hidden empty value is what makes "none of them" different from "the
+// operator did not touch this": with every box unticked the key would otherwise
+// be absent from the form, and the resolver would fall back to the default.
+templ listaComEnum(p wf.Param) {
+	<input type="hidden" name={ "param." + p.Name } value=""/>
+	<div class="flex flex-wrap gap-x-3 gap-y-1 rounded-xl border border-line bg-parchment-soft px-3 py-2">
+		for _, v := range p.Enum {
+			<label class="flex items-center gap-1.5 text-sm text-ink">
+				if marcado(v, p.Default) {
+					<input type="checkbox" name={ "param." + p.Name } value={ v } checked class="accent-ink"/>
+				} else {
+					<input type="checkbox" name={ "param." + p.Name } value={ v } class="accent-ink"/>
+				}
+				<span class="font-mono text-xs">{ v }</span>
+			</label>
+		}
+	</div>
+}
+
+// A list with no enum is free text, and the separator is the comma the value
+// already uses. `data-lista` is the hook for the chips: with JavaScript the
+// items become removable pills, and without it this stays a text field that
+// works -- which is the rule the rest of this interface follows.
+templ listaLivre(p wf.Param) {
+	<input
+		type="text"
+		name={ "param." + p.Name }
+		value={ p.Default }
+		data-lista={ string(p.Type.ElementType()) }
+		placeholder="one, two, three"
+		class="rounded-xl border border-line bg-parchment-soft px-3 py-2 font-mono text-sm text-ink placeholder:text-muted/60"
+	/>
+}
+
 templ option(value, fallback string) {
 	if value == fallback {
 		<option value={ value } selected>{ value }</option>
 	} else {
 		<option value={ value }>{ value }</option>
 	}
+}
+
+// marcado answers whether this enum value is in the param's default, which for
+// a list is a comma-separated set rather than a single value.
+func marcado(value, deflt string) bool {
+	for _, item := range strings.Split(deflt, ",") {
+		if strings.TrimSpace(item) == value {
+			return true
+		}
+	}
+	return false
 }
 
 // fieldType picks the browser's control. `number` for an integer makes a

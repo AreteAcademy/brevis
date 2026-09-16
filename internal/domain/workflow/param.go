@@ -49,7 +49,56 @@ const (
 	ParamString  ParamType = "string"
 	ParamBool    ParamType = "boolean"
 	ParamInteger ParamType = "integer"
+
+	// A list is `list|<element type>`: list|string, list|integer, list|boolean.
+	//
+	// The value travels as ONE comma-separated string, all the way from the
+	// form to the step's environment, because every param does: they are a
+	// map[string]string in the database column, in BREVIS_RUN_PARAMS and in
+	// Render. Making one of them an array would turn that map into
+	// map[string]any -- and an SDK built before this change unmarshals the env
+	// var into map[string]string, so it would fail and discard EVERY param of
+	// that run, with a warning nobody reads and a pipeline that runs with the
+	// defaults.
+	//
+	// The comma is also what makes `{{ .tables }}` keep working in a command:
+	// `--select users,orders` is what a dbt selector wants, so a list needs no
+	// special case in Render and no new template function. That is paid for by
+	// a comma being forbidden INSIDE an element -- see Accepts.
+	ParamListPrefix = "list|"
 )
+
+// ElementType is the type of each item of a list param, and "" for a param that
+// is not a list.
+func (t ParamType) ElementType() ParamType {
+	if !strings.HasPrefix(string(t), ParamListPrefix) {
+		return ""
+	}
+	return ParamType(strings.TrimPrefix(string(t), ParamListPrefix))
+}
+
+// IsList answers whether this param carries many values.
+func (t ParamType) IsList() bool { return t.ElementType() != "" }
+
+// scalarTypes is what a param, or a list's element, may be.
+var scalarTypes = map[ParamType]bool{ParamString: true, ParamBool: true, ParamInteger: true}
+
+// Items splits a list param's stored value.
+//
+// The empty string is an EMPTY list and not a list holding one empty string:
+// a param nobody filled in has no items, and `for x in $(...)` over one empty
+// element runs the body once on nothing.
+func (p Param) Items(value string) []string {
+	if !p.Type.IsList() || value == "" {
+		return nil
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, item := range parts {
+		out = append(out, strings.TrimSpace(item))
+	}
+	return out
+}
 
 // safeCharacters is what a `string` accepts when the author declares no
 // `pattern`.
@@ -73,12 +122,29 @@ func (p Param) Validate() error {
 	if !paramName.MatchString(p.Name) {
 		return fmt.Errorf("param %q: the name has to be lowercase, start with a letter and hold only letters, digits and _", p.Name)
 	}
-	switch p.Type {
-	case ParamString, ParamBool, ParamInteger:
-	case "":
-		return fmt.Errorf("param %q has no type (string, boolean or integer)", p.Name)
+	switch {
+	case p.Type == "":
+		return fmt.Errorf("param %q has no type (string, boolean, integer, "+
+			"or list|<type> for many values)", p.Name)
+	case scalarTypes[p.Type]:
+	case p.Type.IsList():
+		if !scalarTypes[p.Type.ElementType()] {
+			return fmt.Errorf("param %q: %q is not a valid list element type "+
+				"(use list|string, list|integer or list|boolean)",
+				p.Name, p.Type.ElementType())
+		}
 	default:
-		return fmt.Errorf("param %q: unknown type %q (use string, boolean or integer)", p.Name, p.Type)
+		return fmt.Errorf("param %q: unknown type %q (use string, boolean, integer, "+
+			"or list|<type> for many values)", p.Name, p.Type)
+	}
+	// An enum on a list restricts each ITEM, which is what a multi-select is.
+	if len(p.Enum) > 0 && p.Type.IsList() {
+		for _, allowed := range p.Enum {
+			if strings.Contains(allowed, ",") {
+				return fmt.Errorf("param %q: the enum value %q holds a comma, "+
+					"which is what separates the items of a list", p.Name, allowed)
+			}
+		}
 	}
 	if p.Pattern != "" {
 		if _, err := regexp.Compile(p.Pattern); err != nil {
@@ -96,8 +162,47 @@ func (p Param) Validate() error {
 }
 
 // Accepts validates a VALUE against the declaration.
+//
+// For a list, each item is validated on its own by the element's rules -- so
+// `list|integer` refuses "3,x,5" naming x, and an `enum` restricts every item
+// rather than the whole string.
 func (p Param) Accepts(value string) error {
-	switch p.Type {
+	if p.Type.IsList() {
+		return p.acceptsList(value)
+	}
+	return p.acceptsScalar(value, p.Type)
+}
+
+func (p Param) acceptsList(value string) error {
+	if value == "" {
+		return nil
+	}
+	// A comma is the separator, so an item cannot hold one. The alternative was
+	// JSON in the string, which would have made `{{ .tables }}` render
+	// `["a","b"]` into a shell command -- quotes and brackets that safeCharacters
+	// refuses and that the shell would mangle anyway.
+	elem := p.Type.ElementType()
+	seen := make(map[string]bool)
+	for i, item := range p.Items(value) {
+		if item == "" {
+			return fmt.Errorf("item %d is empty; a list is items separated by "+
+				"commas, with no empty ones", i+1)
+		}
+		if seen[item] {
+			// A repeated item is nearly always a mistake in a form, and it
+			// silently doubles whatever the step does per item.
+			return fmt.Errorf("item %q appears more than once", item)
+		}
+		seen[item] = true
+		if err := p.acceptsScalar(item, elem); err != nil {
+			return fmt.Errorf("item %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+func (p Param) acceptsScalar(value string, kind ParamType) error {
+	switch kind {
 	case ParamBool:
 		if value != "true" && value != "false" {
 			return fmt.Errorf("%q is not a boolean (use true or false)", value)

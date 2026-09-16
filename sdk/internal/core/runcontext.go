@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -65,6 +66,10 @@ type RunContext struct {
 	// Params are the values this execution was dispatched with. Never nil, so
 	// Params["x"] on a fetcher running by hand is an empty string rather than
 	// a panic.
+	//
+	// A param the workflow declared as `list|string` arrives here as its items
+	// joined by commas -- read it with ParamList, which is what turns it back
+	// into a slice.
 	Params map[string]string
 
 	// Auto is what the engine worked out about this run: the clock to read,
@@ -142,4 +147,39 @@ func (r RunContext) Args() []any {
 		args = append(args, "params", r.Params)
 	}
 	return append(args, r.Auto.Args()...)
+}
+
+// ParamList reads a param the workflow declared as `list|<type>`.
+//
+//	for _, table := range run.ParamList("tables") {
+//		load(table)
+//	}
+//
+// The engine sends every param as a string, list or not -- one map[string]string
+// from the trigger form to this process. So a list arrives as "users,orders"
+// and this splits it, trimming the space a form leaves after a comma. The
+// engine already refused an empty item, a repeated one and a comma inside an
+// item at trigger time, so what comes back here is what the author declared.
+//
+// It returns nil for a param that is absent or empty, which is an empty list
+// and not a list holding one empty string: ranging over the result of a param
+// nobody filled in does nothing, which is what "nothing to do" should do.
+//
+// On a scalar param it returns the single value, so reading a `string` param
+// with this is harmless rather than surprising. The items are NOT converted:
+// `list|integer` comes back as strings, because a fetcher that wants numbers
+// knows better than this package which width and which error handling it wants.
+func (rc RunContext) ParamList(name string) []string {
+	raw := strings.TrimSpace(rc.Params[name])
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, item := range parts {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }

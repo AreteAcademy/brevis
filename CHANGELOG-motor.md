@@ -14,6 +14,58 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.15.0] — 2026-09-16
+
+### Added: `list|<type>` — a param that carries many values
+
+```yaml
+params:
+  - name: tables
+    type: list|string
+    default: "users,orders"
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]   # the enum restricts each ITEM
+  - name: days
+    type: list|integer
+```
+
+The element can be `string`, `integer` or `boolean`, and each item is validated
+on its own — `list|integer` given `1,x,30` fails naming **item 2** instead of
+the whole value. An empty item and a repeated one are refused: a repeat silently
+doubles whatever the step does per item.
+
+**The value is one comma-separated string everywhere**, and that is the design
+rather than an implementation detail. Params are a `map[string]string` from the
+trigger form through `runs.params` and `BREVIS_RUN_PARAMS` to the step; making
+one of them an array would turn that map into `map[string]any`, and an SDK built
+before this change unmarshals the env var into `map[string]string` — it would
+fail and discard **every** param of that run, warning into a log nobody reads
+while the pipeline ran on the defaults.
+
+The comma is also what keeps the command working with no special case in
+`Render` and no new template function:
+
+```yaml
+run: dbt build --select {{ .tables }}      # dbt build --select users,orders
+```
+
+The price is that a comma cannot appear inside an item, which is checked at
+publish and at trigger time.
+
+In the interface, a list with an `enum` renders as **checkboxes** — no
+JavaScript, one value per box ticked, joined by the handler — and a list without
+one is a text field whose items become removable chips, degrading to a plain
+comma-separated field when JavaScript is off. Each checkbox group carries a
+hidden empty value so that clearing every box is an explicit empty list rather
+than the key going missing and the resolver falling back to the default.
+
+Steps read the array through `ParamList` in the Go SDK and `run.param_list` in
+the Python library.
+
+**An engine older than this refuses `list|string` at publish as an unknown
+type**, so upgrade before publishing a workflow that uses one.
+
 ## [0.14.0] — 2026-09-16
 
 ### Added: `persist_context:` — a step declares the persisted keys it touches

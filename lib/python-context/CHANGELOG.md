@@ -11,6 +11,29 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.6.0] — 2026-09-16
+
+### Added: `run.param_list()`
+
+```python
+for table in run.param_list("tables"):
+    load(table)
+```
+
+Reads a parameter the workflow declared as `list|string`, `list|integer` or
+`list|boolean` (engine `0.15.0`). The engine sends every parameter as a string,
+so a list arrives as `"users,orders"` and this splits it, trimming the space a
+form leaves after a comma.
+
+An absent or empty parameter gives `[]` and not `[""]`: iterating over a list
+nobody filled in should do nothing, and one empty element would run the body
+once on nothing.
+
+The items are not converted — `list|integer` comes back as strings — because the
+caller knows better than this library what to do with a value that should be a
+number and is not, and because this library raises nothing a laptop run would
+not also raise.
+
 ## [0.5.2] — 2026-09-11
 
 > **Why 0.4.0 and 0.5.0 are missing.** Both were tagged, both were refused by
