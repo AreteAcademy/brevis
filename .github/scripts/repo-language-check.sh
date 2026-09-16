@@ -60,6 +60,7 @@ suas fazer feito precisa deve pode nenhum nenhuma todos todas invalido
 primeira primeiro ultima ultimo
 desconhecido desconhecida parenteses
 formulario instancia interrompido encerrado esperava ilegivel proveniencia
+disponiveis indisponivel
 declaracao desistencia templatavel satisfaz publica"""
 PT = re.compile(r"\b(" + "|".join(WORDS.split()) + r")\b", re.I)
 

@@ -253,7 +253,7 @@ func TestRefreshRetries(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth", func(w http.ResponseWriter, _ *http.Request) {
 		if attempts.Add(1) < 3 {
-			http.Error(w, "indisponivel", http.StatusServiceUnavailable)
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		_, _ = fmt.Fprint(w, `{"ok":1}`)
