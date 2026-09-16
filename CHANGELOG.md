@@ -18,6 +18,59 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.61.0] — 2026-09-16
+
+### Added: `sdk/persist` — context that outlives the run that made it
+
+A second mechanism, beside `sdk/context` and deliberately distinct from it.
+
+```go
+persist.Set(ctx, "ana.station_codes", codes)
+
+codes, ok, err := persist.Strings(ctx, "ana.station_codes")
+```
+
+|  | `context` | `persist` |
+|---|---|---|
+| lives in | the termination message | object storage: a directory, `gs://`, `s3://` |
+| lives for | the run that wrote it | until somebody overwrites it |
+| ceiling | 4096 bytes | 1 MB |
+| needs a store | no | yes |
+| network from the pod | none | to the store, never to the core |
+
+The case: 11,276 station codes are 99 KB — twenty-five times what the
+termination message holds — and the inventory changes over weeks, so the step
+that consumes it should run hourly without the step that produces it.
+
+`ok` is the point of the signature. An absent key is not an error, the same
+contract `context` has, but it has to be told apart from a key holding an empty
+list: a read that answered "empty" for both would build an empty batch query and
+fetch nothing, quietly.
+
+The backend registers once, the way `from.Files` takes a `Store`, so a consumer
+keeping its context on disk compiles neither cloud SDK:
+
+```go
+persist.Use(gcs.New(client))
+```
+
+Last writer wins, whole: a single PUT is atomic and a local write goes through
+temp-then-rename, so a concurrent write replaces the value and never interleaves
+with it.
+
+The 1 MB is inherited rather than chosen, the way 4096 is the kubelet's — the
+executors' stdout line ceiling and the ConfigMap limit agree on it.
+
+### Added: `core.ErrNotExist` on the `Store` contract
+
+The interface had no word for "it is not there". Each backend returned its own —
+`storage.ErrObjectNotExist`, a `NoSuchKey`, `fs.ErrNotExist` — so a caller that
+wanted to tell "nobody wrote this yet" from "the bucket is unreachable" had to
+import both cloud SDKs to ask, which is the one thing that interface exists to
+prevent. Both backends now wrap it, and the message still names the object.
+
+---
+
 ## [0.60.0] — 2026-09-15
 
 ### Added: `from.Over` — one source per value

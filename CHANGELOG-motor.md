@@ -14,6 +14,43 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.14.0] — 2026-09-16
+
+### Added: `persist_context:` — a step declares the persisted keys it touches
+
+```yaml
+steps:
+  - id: fetch_stations
+    run: /usr/local/bin/ana_station
+    persist_context: [ana.station_codes]
+```
+
+The engine then points that step at the installation's store, through
+`BREVIS_PERSIST_URL` and `BREVIS_PERSIST_KEYS`. A step that declares nothing
+receives neither, and `sdk/persist` refuses every call naming the flag — so a
+missing declaration reads as a missing declaration rather than as an empty key.
+
+**A list and not a boolean.** The alternative is a flat namespace where any step
+touches any key, and two workflows that both know a good name for
+`station_codes` overwrite each other and both keep running. It is a declaration
+and not a sandbox: the pod holds the store's credential either way, so this
+catches a typo and puts the dependency between two steps in the workflow file,
+where it otherwise lives only in a fetcher's source.
+
+### Added: `BREVIS_PERSIST_URL`
+
+Where persisted context lives — a directory, or a `gs://` or `s3://` prefix. The
+installation's, set once; a workflow names a key and never a bucket.
+
+Left empty, a workflow that declares `persist_context` is refused **before its
+first step**, naming the missing variable. The alternative is the failure that
+looks like success: every read returns absent, the pipeline builds an empty
+query, and the run finishes green having fetched nothing.
+
+The 4 KB context between steps is untouched and still needs no store at all.
+
+---
+
 ## [0.13.0] — 2026-09-11
 
 **One migration** (`00012`), and it backfills: 10.8s for 350,000 task_runs on a

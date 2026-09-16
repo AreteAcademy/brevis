@@ -42,7 +42,7 @@ spec:
             seccompProfile: {type: RuntimeDefault}
           containers:
             - name: report
-              image: areteacademy/brevis:0.13.0-worker
+              image: areteacademy/brevis:0.14.0-worker
               # The window MATCHES the schedule above. 168h is seven days.
               args: ["report", "--window", "168h"]
               env:
