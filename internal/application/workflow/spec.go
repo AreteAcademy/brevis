@@ -110,6 +110,17 @@ type StepSpec struct {
 	//	  BREVIS_LOG_LEVEL: info
 	Env map[string]string `yaml:"env"`
 
+	// PersistContext lists the keys this step may read and write through
+	// sdk/persist. Declaring it is what makes the engine point the step at the
+	// installation's store; a step that declares nothing gets no access at all.
+	//
+	// It is a LIST and not a boolean because the alternative is a flat global
+	// namespace where any step touches any key: two workflows that both know a
+	// good name for `station_codes` would overwrite each other and both keep
+	// running. Naming them is also what lets the reader of the file see that
+	// this step depends on whatever wrote them.
+	PersistContext []string `yaml:"persist_context"`
+
 	// Secrets are variables whose value is NOT in the file: the key is the
 	// variable's name, the value is where to find it.
 	//
@@ -287,15 +298,16 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 			Resources: st.Resources.dominio(),
 			Shell:     st.Shell,
 			Env:       aparar(st.Env), Secrets: aparar(st.Secrets),
-			Runtime:     strings.ToLower(strings.TrimSpace(st.Runtime)),
-			Tools:       normalizeTools(st.Tools),
-			When:        strings.ToLower(strings.TrimSpace(st.When)),
-			Marker:      st.Marker,
-			UnlessEmpty: strings.TrimSpace(st.UnlessEmpty),
-			ForEach:     strings.TrimSpace(st.ForEach),
-			Group:       strings.TrimSpace(st.Group),
-			Uses:        strings.TrimSpace(st.Uses),
-			OnError:     st.OnError.dominio(),
+			PersistContext: trimList(st.PersistContext),
+			Runtime:        strings.ToLower(strings.TrimSpace(st.Runtime)),
+			Tools:          normalizeTools(st.Tools),
+			When:           strings.ToLower(strings.TrimSpace(st.When)),
+			Marker:         st.Marker,
+			UnlessEmpty:    strings.TrimSpace(st.UnlessEmpty),
+			ForEach:        strings.TrimSpace(st.ForEach),
+			Group:          strings.TrimSpace(st.Group),
+			Uses:           strings.TrimSpace(st.Uses),
+			OnError:        st.OnError.dominio(),
 		})
 	}
 
@@ -332,6 +344,18 @@ func normalizeTools(in []string) []string {
 // colon is valid YAML, and the space would travel inside the variable's name --
 // the pod starts, the binary does not find the variable, and nothing along the
 // way says why.
+// trimList drops blanks and whitespace, so `persist_context: [ " a ", "" ]`
+// declares one key rather than two of which one can never match.
+func trimList(in []string) []string {
+	var out []string
+	for _, v := range in {
+		if v = strings.TrimSpace(v); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
 func aparar(m map[string]string) map[string]string {
 	if len(m) == 0 {
 		return nil

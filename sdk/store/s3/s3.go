@@ -10,12 +10,16 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+
+	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // Store reads and writes objects in S3.
@@ -67,6 +71,15 @@ func (s Store) Open(ctx context.Context, bucket, key string) (io.ReadCloser, err
 		Bucket: aws.String(bucket), Key: aws.String(key),
 	})
 	if err != nil {
+		// Absent is wrapped as core.ErrNotExist so a caller can tell "nobody
+		// wrote this yet" from "the bucket is unreachable" without importing
+		// the AWS SDK to ask -- which is what the Store interface exists to
+		// avoid. NoSuchKey is the typed error; a bucket the credential cannot
+		// see answers 403 and stays an error, which is correct.
+		var missing *types.NoSuchKey
+		if errors.As(err, &missing) {
+			return nil, fmt.Errorf("opening s3://%s/%s: %w", bucket, key, core.ErrNotExist)
+		}
 		return nil, fmt.Errorf("opening s3://%s/%s: %w", bucket, key, err)
 	}
 	return out.Body, nil

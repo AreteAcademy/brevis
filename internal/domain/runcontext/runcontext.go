@@ -37,6 +37,18 @@ import (
 const (
 	EnvInput  = "BREVIS_INPUT"
 	EnvOutput = "BREVIS_OUTPUT"
+
+	// The persisted context's transport. A step that declares no
+	// `persist_context:` receives neither, and sdk/persist then refuses every
+	// call naming the flag -- so a missing declaration reads as a missing
+	// declaration rather than as an empty key.
+	//
+	// EnvPersistKeys is a DECLARATION and not a sandbox: the pod holds the
+	// store's credential either way. It catches a typo and it puts the
+	// dependency between two steps in the workflow file, where today it lives
+	// only in a fetcher's source.
+	EnvPersistURL  = "BREVIS_PERSIST_URL"
+	EnvPersistKeys = "BREVIS_PERSIST_KEYS"
 )
 
 // MaxBytes is how much a step may publish.

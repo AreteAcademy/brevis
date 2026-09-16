@@ -242,3 +242,115 @@ production.
 - **Not a message queue.** One step publishes; its dependents read. No fan-out,
   no subscription, no ordering beyond the DAG's.
 - **Not a way to move data.** See the ceiling.
+
+---
+
+# Persisted context
+
+A second mechanism, and a separate one. It is worth being blunt about which is
+in play, because the YAML says so and a reader of the file should not have to
+guess.
+
+|  | `context` | `persist_context` |
+|---|---|---|
+| lives in | the termination message | object storage: a directory, `gs://`, `s3://` |
+| lives for | the run that wrote it | until somebody overwrites it |
+| key | qualified by the step that wrote it — `extract.bucket` | chosen by whoever saves — `ana.station_codes` |
+| updating it | no; it is that run's result | yes, and the last write wins |
+| ceiling | 4096 bytes | 1 MB |
+| needs a store | no | yes |
+| network from the pod | none | to the store, not to the core |
+
+**The one above stays exactly as it is.** It depends on nothing, it works under
+`brevis run` with no server, and it is the right answer for a watermark, a count
+or a list of partitions. Persisted context is the road for a value that does not
+fit in it, or that has to still be there next week.
+
+## What it is for
+
+One step reads an inventory of 11,276 telemetric stations; another builds a
+batch query from their codes. That list is 99 KB — twenty-five times what the
+termination message holds — and the inventory changes over weeks, so the second
+step should run hourly without the first running beside it.
+
+Any list discovered by one step and consumed by another has that shape:
+municipalities served, a customer's accounts, a load's partitions.
+
+## Using it
+
+```yaml
+steps:
+  - id: fetch_stations
+    run: /usr/local/bin/ana_station
+    persist_context: [ana.station_codes]     # what this step may read and write
+```
+
+```go
+persist.Set(ctx, "ana.station_codes", codes)
+
+codes, ok, err := persist.Strings(ctx, "ana.station_codes")
+```
+
+`ok` is the point of the signature. A key nobody wrote is **not** an error — the
+same contract `context` has — but it must be told apart from a key holding an
+empty list, because a read that answered "empty" for both would build an empty
+batch query and fetch nothing, quietly.
+
+The backend is registered once, the way `from.Files` takes a `Store`, so a
+consumer that keeps its context on disk compiles neither cloud SDK:
+
+```go
+persist.Use(gcs.New(client))     // only when the store is gs://
+```
+
+## A list, not a boolean
+
+`persist_context:` names the keys because the alternative is a flat namespace
+where any step touches any key. Two workflows that both know a good name for
+`station_codes` would overwrite each other and both keep running — which is what
+the SDK argues against for its own keys, and it is truer here, where the value
+outlives the run.
+
+It is a **declaration, not a sandbox.** The pod holds the store's credential
+either way; this catches a typo and puts the dependency between two steps in the
+workflow file, where today it lives only in a fetcher's source. The security
+boundary is the bucket's own permissions, and they are the installation's to
+set.
+
+## Where the installation puts it
+
+```
+BREVIS_PERSIST_URL=gs://acme-brevis/context/
+```
+
+One setting, the operator's. A workflow names a key and never a bucket. Left
+empty, a workflow that declares `persist_context` is refused **before its first
+step**, naming the missing variable — because the alternative is every read
+returning absent, an empty query, and a run that finishes green having fetched
+nothing.
+
+## The ceiling, and where it comes from
+
+1 MB, and inherited rather than chosen, the way 4096 is the kubelet's. Two
+independent numbers in this system agree on it: every executor reads a step's
+stdout with a 1 MB line limit, and a Kubernetes ConfigMap stops at 1 MB. Above
+it the refusal names the alternative — a value that size is data, and data goes
+where data goes, with `to.Files`, leaving the path in the context.
+
+## Retention
+
+None. A persisted value stays until something overwrites it, which is what the
+inventory case depends on. `brevis prune` trims runs and deliberately does not
+touch this.
+
+## Concurrency
+
+Last writer wins, whole. A single PUT is atomic in object storage and a local
+write goes through a temporary file and a rename, so a concurrent write replaces
+the value and never interleaves with it: a reader sees the old one or the new
+one, never half of each.
+
+That is a choice, and the other was available — the credential store next door
+uses a generation precondition and refuses a lost update. It is wrong here: this
+value is re-derived by the step that owns it, so a refused write would fail a run
+to protect a number the next run recomputes anyway.

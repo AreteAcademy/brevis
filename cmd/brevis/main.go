@@ -409,6 +409,10 @@ func cmdRun() *cobra.Command {
 			runner := app.Runner{
 				Params:   values,
 				Processo: exec,
+				// `brevis run` has no server and no store unless the operator
+				// points at one. A workflow that declares persist_context is
+				// then refused by name, before the first step.
+				PersistURL: os.Getenv("BREVIS_PERSIST_URL"),
 				// An empty Registry in `run`: Go tasks are registered by
 				// whoever compiles the binary, and the generic CLI knows none.
 				// An `action:` for an unregistered task fails naming the ones
@@ -766,13 +770,14 @@ func cmdScheduler() *cobra.Command {
 					// through the template and into the step's environment, so
 					// a fetcher using the SDK sees them without being passed
 					// anything as an argument.
-					Params:   r.Params,
-					Processo: processo,
-					Pods:     pods,
-					Hosts:    hosts,
-					Go:       local.NewGoExecutor(execution.NewRegistry()),
-					Env:      tasksEnvironment,
-					Report:   consoleReporter{},
+					Params:     r.Params,
+					Processo:   processo,
+					PersistURL: cfg.PersistURL,
+					Pods:       pods,
+					Hosts:      hosts,
+					Go:         local.NewGoExecutor(execution.NewRegistry()),
+					Env:        tasksEnvironment,
+					Report:     consoleReporter{},
 					// Without this the `task_runs` table stays empty and the DAG
 					// on screen has no per-step state — the debt left open in
 					// PHASE 2.

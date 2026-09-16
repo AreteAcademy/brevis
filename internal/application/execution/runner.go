@@ -122,6 +122,16 @@ type Runner struct {
 	// recorded and the DAG in the UI shows up with no execution state.
 	Persist Persister
 
+	// PersistURL is where persisted context lives -- a directory, or a gs:// or
+	// s3:// prefix. It is the INSTALLATION's, set once, and a workflow cannot
+	// choose it: the point of `persist_context:` is naming a key, not naming a
+	// bucket the operator never agreed to.
+	//
+	// Empty means the feature is unavailable, and a workflow that declares
+	// persist_context is then refused by name rather than running with reads
+	// that quietly return nothing.
+	PersistURL string
+
 	// ContextDir is where a step's published context is written on the ENGINE's
 	// filesystem, for the executors that read a real file.
 	//
@@ -225,6 +235,24 @@ func (r Runner) Run(ctx context.Context, w wf.Workflow) error {
 	levels, err := graph.Levels(w)
 	if err != nil {
 		return err
+	}
+
+	// Refused BEFORE the first step, not when a read comes back empty.
+	//
+	// `brevis run` on a laptop has no store, and the failure it would otherwise
+	// produce is the worst kind: every persist read returns "absent", the
+	// pipeline builds an empty batch query, and the run succeeds having fetched
+	// nothing. Naming the missing configuration up front costs one check.
+	if r.PersistURL == "" {
+		for _, n := range w.Nodes {
+			if len(n.PersistContext) > 0 {
+				return fmt.Errorf("step %q declares persist_context %v, and this "+
+					"installation has nowhere to keep it: set BREVIS_PERSIST_URL to a "+
+					"directory or to a gs:// or s3:// prefix. Persisted context needs a "+
+					"store; the 4 KB context between steps does not and still works",
+					n.ID, n.PersistContext)
+			}
+		}
 	}
 
 	// One per Run, seeded from what a resumed run already has.
@@ -1393,6 +1421,14 @@ func (r Runner) build(w wf.Workflow, n wf.Node, inst instance, attempt int, firs
 		t.OutputPath = filepath.Join(r.ContextDir,
 			fmt.Sprintf("%s-%d.json", strings.ReplaceAll(n.ID, "/", "_"), attempt))
 		t.Env[runcontext.EnvOutput] = t.OutputPath
+	}
+
+	// Persisted context, and ONLY for a step that named the keys. A step that
+	// declared nothing receives neither variable, so sdk/persist refuses every
+	// call naming the flag instead of reading an empty key.
+	if len(n.PersistContext) > 0 {
+		t.Env[runcontext.EnvPersistURL] = r.PersistURL
+		t.Env[runcontext.EnvPersistKeys] = strings.Join(n.PersistContext, ",")
 	}
 
 	if n.Action != "" {

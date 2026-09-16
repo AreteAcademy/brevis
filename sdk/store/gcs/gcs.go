@@ -7,12 +7,15 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/iterator"
+
+	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // Store reads and writes objects in GCS.
@@ -58,6 +61,12 @@ func (s Store) List(ctx context.Context, bucket, prefix string) ([]string, error
 func (s Store) Open(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
 	r, err := s.client.Bucket(bucket).Object(key).NewReader(ctx)
 	if err != nil {
+		// Absent is wrapped as core.ErrNotExist so a caller can tell "nobody
+		// wrote this yet" from "the bucket is unreachable" without importing
+		// this SDK to ask -- which is what the Store interface exists to avoid.
+		if errors.Is(err, storage.ErrObjectNotExist) {
+			return nil, fmt.Errorf("opening gs://%s/%s: %w", bucket, key, core.ErrNotExist)
+		}
 		return nil, fmt.Errorf("opening gs://%s/%s: %w", bucket, key, err)
 	}
 	return r, nil
