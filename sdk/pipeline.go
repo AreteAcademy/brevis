@@ -77,6 +77,34 @@ type Pipeline struct {
 	// whose URL depends on those flags or on Run.
 	Before func(ctx context.Context, p *Pipeline) error
 
+	// After runs when the load has finished and NOTHING failed. It is where a
+	// value derived from the run is published -- a list the run discovered, a
+	// watermark it advanced -- and it exists because doing that around Execute
+	// cannot be done correctly.
+	//
+	//	After: func(ctx context.Context, _ *sdk.Pipeline, res *sdk.Result) error {
+	//	    if len(res.FailedSources) > 0 {
+	//	        return fmt.Errorf("%d source(s) failed; not publishing a partial list",
+	//	            len(res.FailedSources))
+	//	    }
+	//	    return persist.Set(ctx, "ana.station_codes", codes.sorted())
+	//	},
+	//
+	// The Result is the point. With OnError: ContinueOnError a run SUCCEEDS
+	// having skipped sources, so a list assembled from it is short -- and
+	// `Execute` returns an error and not a Result, so a caller publishing from
+	// main cannot even see it. The check above is the caller's to make, and it
+	// is only makeable here.
+	//
+	// Its error fails the step. A value that did not reach the next run is a
+	// reason to retry, not a warning: the run after it reads a stale key and
+	// nothing says the publish was skipped.
+	//
+	// It does NOT run when the load failed. That is not symmetry with Before --
+	// it is that a value derived from a run that broke describes a run that did
+	// not happen.
+	After func(ctx context.Context, p *Pipeline, res *Result) error
+
 	// Meter receives this pipeline's numbers. Nil is the normal case and costs
 	// nothing.
 	//
@@ -289,6 +317,21 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	// way out has still reported. It runs on the FAILURE path too: a run that
 	// broke is the one a failure rate exists to count.
 	report(p.Meter, p.name(), res, err)
+
+	// After the load and only when it worked: a value derived from a run that
+	// failed describes a run that did not happen.
+	//
+	// It takes the Result, and that is the whole reason it exists rather than
+	// living in the caller's main. With ContinueOnError a run SUCCEEDS having
+	// skipped sources, and a hook that published a list assembled from it would
+	// publish a shorter list, for ever, with nothing saying so. From main that
+	// is not even checkable: Execute returns an error and not a Result.
+	if err == nil && p.After != nil {
+		if hookErr := p.After(ctx, p, res); hookErr != nil {
+			err = fmt.Errorf("after the load: %w", hookErr)
+			slog.Error("the After hook failed", "pipeline", p.name(), "error", hookErr)
+		}
+	}
 
 	state := StateDone
 	if err != nil {

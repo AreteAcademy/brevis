@@ -18,6 +18,35 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.62.0] — 2026-09-16
+
+### Added: `Pipeline.After` — publishing a value the run discovered
+
+`Before` existed and its mirror did not, so a fetcher that had to publish
+something derived from its own run did it around `Execute`, in `main`. That
+cannot be done correctly, and the reason is specific:
+
+```go
+After: func(ctx context.Context, _ *sdk.Pipeline, res *sdk.Result) error {
+    if n := len(res.FailedSources); n > 0 {
+        return fmt.Errorf("%d source(s) failed; not replacing the key with a shorter list", n)
+    }
+    return persist.Set(ctx, "ana.station_codes", codes.sorted())
+},
+```
+
+**With `OnError: ContinueOnError` a run succeeds having skipped sources.** A
+list assembled from it is then short — and `Execute` returns an `error`, not a
+`Result`, so a caller publishing from `main` cannot see that it happened. The
+check belongs where the number is, and until now there was nowhere.
+
+It runs only when the load worked, because a value derived from a run that broke
+describes a run that did not happen. Its error fails the step: a value that never
+reached the next run is a reason to retry, since the run after it reads a stale
+key and nothing says the publish was skipped.
+
+---
+
 ## [0.61.0] — 2026-09-16
 
 ### Added: `sdk/persist` — context that outlives the run that made it
