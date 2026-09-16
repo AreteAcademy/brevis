@@ -1820,6 +1820,37 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 },
 ```
 
+### Before the pipeline exists
+
+`p.Run` is readable inside the pipeline, which is too late for a value that
+decides what the pipeline **is** — one source per state, one table per tenant.
+`Pipeline.Flags` is too late for the same reason: it is parsed inside `Run`.
+
+So the two reads are also package functions:
+
+```go
+func main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+```bash
+./fetch-stations -param ufs=SP,RJ      # by hand
+```
+
+`sdk.Param` and `sdk.ParamList` read the engine's environment first and
+`-param name=value` second. The environment wins: under the engine it IS the
+value, and a flag left in a manifest must not quietly override what the operator
+typed in the trigger form. With no engine the flag is what there is, which
+beats composing `BREVIS_RUN_PARAMS` as JSON by hand on every run — what people
+actually do then is hardcode the value "just for now".
+
+`-param` is a real flag too, so `-h` lists it, `Run` does not refuse it as
+unknown, and what it collects reaches `p.Run.Params` — the value reads the same
+inside the pipeline as outside it.
+
+### A list, as a slice
+
 A param the workflow declared as `list|string`, `list|integer` or
 `list|boolean` arrives comma-joined, because every param is a string from the
 trigger form to this process. `ParamList` is what turns it back:

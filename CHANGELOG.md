@@ -18,6 +18,42 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.64.0] — 2026-09-16
+
+### Added: `sdk.Param` and `sdk.ParamList`, readable before the pipeline exists
+
+```go
+func main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+`p.Run` is only readable inside the pipeline, and `Pipeline.Flags` is parsed
+inside `Run` — both too late for a value that decides what the pipeline IS: one
+source per state, one table per tenant. A consumer was carrying this instead:
+
+```go
+raw, rest := takeFlag(os.Args[1:], "ufs")
+os.Args = append(os.Args[:1:1], rest...)   // so Run does not refuse the flag
+sdk.Run(pipeline(strings.Split(raw, ",")))
+```
+
+Thirteen lines of argument surgery, including rewriting `os.Args`, because the
+flag had to be hidden from the FlagSet that `Execute` builds.
+
+The package functions read the engine's environment first and `-param
+name=value` second:
+
+```bash
+./fetch-stations -param ufs=SP,RJ
+```
+
+The environment wins, because under the engine it IS the value and a flag left
+in a manifest must not override what the operator typed in the trigger form.
+`-param` is registered in the FlagSet as well, so `-h` lists it and `Run` does
+not refuse it — and what it collects reaches `p.Run.Params`, so the value reads
+the same inside the pipeline as outside it.
+
 ## [0.63.0] — 2026-09-16
 
 ### Added: `RunContext.ParamList`

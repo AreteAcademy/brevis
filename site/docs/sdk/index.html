@@ -309,6 +309,16 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p>Rodando à mão, <code>Auto.Now()</code> <em>é</em> o relógio de parede e <code>Window()</code> devolve <code>false</code>, então o desenvolvimento local não precisa de caso especial.</p>
 <h2 id="nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente<a class="anchor" href="#nao-confunda-com-as-bibliotecas-cliente" aria-label="link">#</a></h2>
 <p>Este SDK é maquinaria de ETL em Go: drivers, paginação, procedência, criação de tabela. As <a href="/docs/libraries/">bibliotecas cliente</a> são outra coisa — clientes finos que dão a um passo o contexto e o relógio do run, em Python hoje e em Node.js e Rust depois. Um passo que usa pandas ou dbt quer a segunda, não este.</p>
+<h2 id="parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline<a class="anchor" href="#parametros-que-montam-a-pipeline" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code> é legível dentro da pipeline, o que é tarde demais para um valor que decide o que a pipeline <strong>é</strong> — uma source por estado, uma tabela por cliente. <code>Pipeline.Flags</code> é parseado dentro do <code>Run</code>, então é tarde pelo mesmo motivo.</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code> e <code>sdk.ParamList</code> leem primeiro o ambiente do engine e depois <code>-param nome=valor</code>:</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>O ambiente ganha — sob o engine ele é o valor, e uma flag esquecida num manifesto não pode sobrepor o que o operador digitou. Sem engine, a flag é o que existe, o que é melhor do que escrever <code>BREVIS_RUN_PARAMS</code> como JSON a cada execução.</p>
 <h2 id="referencia">Referência<a class="anchor" href="#referencia" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — a API completa</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — doze exemplos executáveis</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — histórico versão a versão</li></ul>
 
@@ -324,7 +334,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
+      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
     </aside>
   </main>
 </div>

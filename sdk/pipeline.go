@@ -8,6 +8,7 @@ import (
 	"iter"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -151,7 +152,12 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 		verbose = fs.Bool("v", false, "log at debug level")
 		preview = fs.Int("preview", 0, "print the first N records as a table once the extract finishes")
 		target  = fs.Int("preview-target", 0, "print the first N rows as a table before they are written")
+		params  = paramFlags{}
 	)
+	// Registered here so it shows in -h and is not refused as unknown. The
+	// VALUE is read by sdk.Param, which runs earlier -- while main is still
+	// building the pipeline -- and therefore scans os.Args itself.
+	fs.Var(&params, "param", "a run parameter, as name=value; repeatable")
 	if p.Flags != nil {
 		p.Flags(fs)
 	}
@@ -167,6 +173,20 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 
 	// Read before Before, so a hook can act on it.
 	p.Run = RunContextFromEnv()
+	// A `-param` given on the command line fills in what the engine did not, so
+	// p.Run.Params reads the same inside the pipeline as sdk.Param does outside
+	// it. The environment wins: under the engine it IS the value, and a flag
+	// left in a manifest must not override what the operator typed.
+	if len(params) > 0 {
+		if p.Run.Params == nil {
+			p.Run.Params = map[string]string{}
+		}
+		for name, value := range params {
+			if _, set := p.Run.Params[name]; !set {
+				p.Run.Params[name] = value
+			}
+		}
+	}
 	if p.Run.FromEngine() {
 		slog.InfoContext(ctx, "running under Brevis",
 			append([]any{"pipeline", p.name()}, p.Run.Args()...)...)
@@ -482,5 +502,23 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	if len(envelopes) == 0 {
 		_, _ = fmt.Fprintln(os.Stdout, "no records -- the source answered, but with no data")
 	}
+	return nil
+}
+
+// paramFlags collects a repeated `-param name=value`.
+//
+// A value with no `=` is an error rather than a parameter named after the whole
+// token: `-param ufs` is somebody forgetting the value, and accepting it would
+// hand the pipeline an empty string under a name nobody declared.
+type paramFlags map[string]string
+
+func (p paramFlags) String() string { return "" }
+
+func (p paramFlags) Set(v string) error {
+	name, value, ok := strings.Cut(v, "=")
+	if !ok || name == "" {
+		return fmt.Errorf("-param takes name=value, got %q", v)
+	}
+	p[name] = value
 	return nil
 }

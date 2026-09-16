@@ -2421,6 +2421,30 @@ thin clients that hand a step the run context and clock, in Python today
 and in Node.js and Rust later. A step using pandas or dbt wants the
 second, not this.
 
+## Parameters that build the pipeline
+
+`p.Run.Params` is readable inside the pipeline, which is too late for a value
+that decides what the pipeline **is** — one source per state, one table per
+tenant. `Pipeline.Flags` is parsed inside `Run`, so it is too late for the same
+reason.
+
+```go
+func main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+`sdk.Param` and `sdk.ParamList` read the engine's environment first and
+`-param name=value` second:
+
+```bash
+./fetch-stations -param ufs=SP,RJ
+```
+
+The environment wins — under the engine it is the value, and a flag left in a
+manifest must not override what the operator typed. With no engine the flag is
+what there is, which beats writing `BREVIS_RUN_PARAMS` as JSON on every run.
+
 ## Reference
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — the complete API
