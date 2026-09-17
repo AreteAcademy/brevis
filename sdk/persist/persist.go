@@ -143,6 +143,29 @@ func Value(ctx context.Context, key string) (any, bool, error) {
 	return v, true, nil
 }
 
+// String reads a single text value: a watermark, a cursor, an ETag.
+//
+// It refuses a stored list rather than rendering one, because the two shapes
+// mean different things and a list silently flattened into "a,b,c" is a
+// difference somebody finds later. For a list, use Strings and join at the
+// point of use -- the place that knows which separator its query wants.
+func String(ctx context.Context, key string) (string, bool, error) {
+	raw, ok, err := Raw(ctx, key)
+	if err != nil || !ok {
+		return "", false, err
+	}
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return "", false, fmt.Errorf("persist %q: the stored value is not JSON: %w", key, err)
+	}
+	s, isText := v.(string)
+	if !isText {
+		return "", false, fmt.Errorf("persist %q: holds a %T, not text. A list reads "+
+			"with Strings", key, v)
+	}
+	return s, true, nil
+}
+
 // Strings reads a list of text values, which is what a list of codes, of
 // partitions or of accounts is.
 //

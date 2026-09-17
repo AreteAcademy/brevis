@@ -274,3 +274,41 @@ func files(t *testing.T, dir string) []os.DirEntry {
 	}
 	return entries
 }
+
+// A single text value is a shape of its own -- a watermark, a cursor -- and it
+// must not be confused with a list. Flattening one into the other is the kind
+// of difference somebody finds three weeks later.
+func TestStringRefusesAListAndViceVersa(t *testing.T) {
+	ctx, _ := local(t)
+
+	if err := persist.Set(ctx, "cursor", "2026-09-16T00:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	got, ok, err := persist.String(ctx, "cursor")
+	if err != nil || !ok {
+		t.Fatalf("ok=%v err=%v", ok, err)
+	}
+	if got != "2026-09-16T00:00:00Z" {
+		t.Errorf("read %q", got)
+	}
+
+	// A list read as a string is an error naming the shape, not "a,b".
+	if err := persist.Set(ctx, "codes", []any{"57998000", "2140002"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := persist.String(ctx, "codes"); err == nil {
+		t.Error("a stored list came back as text")
+	} else if !strings.Contains(err.Error(), "Strings") {
+		t.Errorf("the error does not name the accessor to use: %v", err)
+	}
+
+	// And the other way, which already held: a string read as a list.
+	if _, _, err := persist.Strings(ctx, "cursor"); err == nil {
+		t.Error("a stored string came back as a list")
+	}
+
+	// Absent is ok=false and no error, like everything else here.
+	if _, ok, err := persist.String(ctx, "never.written"); ok || err != nil {
+		t.Errorf("absent: ok=%v err=%v", ok, err)
+	}
+}

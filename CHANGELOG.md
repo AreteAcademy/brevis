@@ -84,6 +84,17 @@ does not use lists sees no difference.
 
 ## [0.62.0] — 2026-09-16
 
+### Added: `persist.String`
+
+A single text value — a watermark, a cursor, an ETag — had no accessor: `Value`
+returned `any` and the caller type-asserted. It refuses a stored **list** rather
+than flattening one into `"a,b,c"`, and says which accessor to use instead. The
+two shapes mean different things, and one silently rendered as the other is a
+difference somebody finds three weeks later.
+
+Join at the point of use, not in storage: the place building a query is the one
+that knows which separator it wants.
+
 ### Added: reading a run's parameters — `RunContext.ParamList`, `sdk.Param`, `sdk.ParamList`
 
 A workflow can now declare `list|<type>` — `list|string`, `list|integer`,
