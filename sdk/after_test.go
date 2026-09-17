@@ -153,3 +153,48 @@ func (brokenSource) Describe() string { return "a source that will not open" }
 func (brokenSource) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
 	return nil, fmt.Errorf("this one is down")
 }
+
+// A hook that fails did not make the TARGET fail: the rows landed. Painting the
+// target red would be a lie on the one screen somebody reads to find out what
+// happened -- and the metric has to agree with the exit code, which means it is
+// counted after the hook rather than before it.
+func TestAFailingAfterBlamesNeitherTheTargetNorTheMetric(t *testing.T) {
+	var got *sdk.Result
+	m := &recordingMeter{}
+	p := afterPipeline(&got, fmt.Errorf("the bucket said no"))
+	p.Meter = m
+
+	err := sdk.Execute(context.Background(), &p, nil)
+	if err == nil {
+		t.Fatal("a failing After left the run green")
+	}
+
+	// The metric must say failed. It ran BEFORE the hook for one commit, and
+	// then reported success on a step that exited non-zero.
+	if m.status != "failed" {
+		t.Errorf("the run counted as %q while the step failed", m.status)
+	}
+	if m.runs != 1 {
+		t.Errorf("the run was counted %d time(s)", m.runs)
+	}
+}
+
+// recordingMeter keeps the last run's status.
+type recordingMeter struct {
+	runs   int
+	status string
+}
+
+func (r *recordingMeter) Counter(name string, _ int64, attrs ...sdk.Attr) {
+	if name != sdk.MetricRuns {
+		return
+	}
+	r.runs++
+	for _, a := range attrs {
+		if a.Key == "status" {
+			r.status = a.Value
+		}
+	}
+}
+func (r *recordingMeter) Histogram(string, float64, ...sdk.Attr) {}
+func (r *recordingMeter) Gauge(string, int64, ...sdk.Attr)       {}

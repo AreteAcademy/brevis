@@ -333,10 +333,18 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	}
 
-	// After the log line and before the return, so a fetcher that panics on the
-	// way out has still reported. It runs on the FAILURE path too: a run that
-	// broke is the one a failure rate exists to count.
-	report(p.Meter, p.name(), res, err)
+	// The target's box reports the LOAD, and only the load.
+	//
+	// It is closed here, before the After hook runs, and that is deliberate: a
+	// hook that fails after eleven thousand rows landed did not make the target
+	// fail. Painting it red would be a lie told on the one screen somebody
+	// reads to find out what happened -- and the truthful picture, every phase
+	// green with the step failed, says exactly where to look.
+	state := StateDone
+	if err != nil {
+		state = StateFailed
+	}
+	rep.finished(PhaseTarget, state, loadNumbers(res))
 
 	// After the load and only when it worked: a value derived from a run that
 	// failed describes a run that did not happen.
@@ -353,11 +361,14 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	}
 
-	state := StateDone
-	if err != nil {
-		state = StateFailed
-	}
-	rep.finished(PhaseTarget, state, loadNumbers(res))
+	// LAST, so the hook's failure is counted. It ran before the hook for one
+	// commit, and the consequence was a failure rate that called a run
+	// successful while the step exited non-zero -- the metric disagreeing with
+	// the exit code is worse than either being wrong alone.
+	//
+	// It runs on the FAILURE path too: a run that broke is the one a failure
+	// rate exists to count.
+	report(p.Meter, p.name(), res, err)
 	return err
 }
 
