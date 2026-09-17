@@ -13,6 +13,10 @@ the versions follow [SemVer](https://semver.org/).
 
 ## [0.6.0] — 2026-09-16
 
+It carries what `0.5.2` was going to: PyPI refused that filename and the section
+below it was left reading like a release. This is the first version on the index
+since `0.3.2`.
+
 ### Added: `run.param_list()`
 
 ```python
@@ -34,7 +38,14 @@ caller knows better than this library what to do with a value that should be a
 number and is not, and because this library raises nothing a laptop run would
 not also raise.
 
-## [0.5.2] — 2026-09-11
+## [0.5.2] — never published
+
+> **This one was refused too, and the section stayed as if it had shipped.**
+> PyPI holds `0.1.0`, `0.1.1`, `0.2.0`, `0.2.1` and `0.3.2` and nothing else;
+> everything below reached the index for the first time in **0.6.0**.
+>
+> A changelog that lists a version nobody can install is worse than a gap: the
+> gap makes somebody ask, and the entry makes them believe.
 
 > **Why 0.4.0 and 0.5.0 are missing.** Both were tagged, both were refused by
 > PyPI, and nothing was published under either. A previously deleted project
@@ -42,9 +53,9 @@ not also raise.
 > project **forever**.
 >
 > The ledger, as far as it is known: the old project used `0.3.0`, `0.3.1`,
-> `0.4.0` and `0.5.0`. This library has never been able to use those numbers and
-> never will. What has always worked are the patch versions it skipped — `0.2.1`,
-> `0.3.2`, and now this one.
+> `0.4.0`, `0.5.0` and `0.5.2`. This library has never been able to use those
+> numbers and never will. What has always worked are the versions it skipped —
+> `0.2.1`, `0.3.2`, and `0.6.0`.
 >
 > It cannot be probed. PyPI checks authentication before the filename, so an
 > unauthenticated request returns 403 and says nothing about whether a name is
