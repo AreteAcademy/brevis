@@ -11,11 +11,27 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.6.0] — 2026-09-16
+## [0.7.0] — 2026-09-17
 
-It carries what `0.5.2` was going to: PyPI refused that filename and the section
-below it was left reading like a release. This is the first version on the index
-since `0.3.2`.
+It carries what `0.5.2` and `0.6.0` were going to. Both were refused, and both
+were left with sections reading like releases. This is the first version on the
+index since `0.3.2`.
+
+> **The burned ledger, recovered rather than guessed.** Four numbers had been
+> published as unusable and `0.6.0` was tagged anyway, because nobody knew how
+> far the damage went. libraries.io keeps what PyPI deletes, and it holds the
+> whole list for this name:
+>
+> ```
+> 0.1.0  0.1.1  0.2.0  0.2.1  0.3.0  0.3.1  0.3.2  0.4.0  0.5.0  0.5.1  0.5.2  0.6.0
+> ```
+>
+> PyPI serves five of those — `0.1.0`, `0.1.1`, `0.2.0`, `0.2.1`, `0.3.2`. The
+> other seven were uploaded at some point and deleted, and PyPI remembers a
+> filename per project **forever**. `0.7.0` appears in no record anywhere, which
+> is why it is this number and not the next one after the last failure.
+>
+> Guessing the next version cost four tags. Reading the ledger cost one request.
 
 ### Added: `run.param_list()`
 
@@ -38,7 +54,7 @@ caller knows better than this library what to do with a value that should be a
 number and is not, and because this library raises nothing a laptop run would
 not also raise.
 
-## [0.5.2] — never published
+## [0.6.0] and [0.5.2] — never published
 
 > **This one was refused too, and the section stayed as if it had shipped.**
 > PyPI holds `0.1.0`, `0.1.1`, `0.2.0`, `0.2.1` and `0.3.2` and nothing else;
@@ -52,10 +68,8 @@ not also raise.
 > under this name burned those filenames, and PyPI remembers filenames per
 > project **forever**.
 >
-> The ledger, as far as it is known: the old project used `0.3.0`, `0.3.1`,
-> `0.4.0`, `0.5.0` and `0.5.2`. This library has never been able to use those
-> numbers and never will. What has always worked are the versions it skipped —
-> `0.2.1`, `0.3.2`, and `0.6.0`.
+> The full ledger is in the `0.7.0` entry above, recovered from libraries.io
+> rather than discovered one refused tag at a time.
 >
 > It cannot be probed. PyPI checks authentication before the filename, so an
 > unauthenticated request returns 403 and says nothing about whether a name is
