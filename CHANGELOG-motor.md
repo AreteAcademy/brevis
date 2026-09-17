@@ -66,6 +66,69 @@ the Python library.
 **An engine older than this refuses `list|string` at publish as an unknown
 type**, so upgrade before publishing a workflow that uses one.
 
+## [0.15.0] — 2026-09-16
+
+### Added: `list|<type>` — a param that carries several values
+
+```yaml
+params:
+  - name: tables
+    type: list|string
+    default: "users,orders"
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]   # the enum restricts each ITEM
+  - name: days
+    type: list|integer
+```
+
+The element is `string`, `integer` or `boolean`. Each item is validated on its
+own and the error names **which** one failed — `1,x,30` in a `list|integer`
+gives `item 2: "x" is not an integer` rather than sending the author to check
+three values by hand. An empty item and a repeated one are refused; a repeat
+silently doubles whatever the step does per item.
+
+**The value is a comma-separated string everywhere, and that is the design.**
+Params travel as a `map[string]string` from the trigger form to the step,
+through `runs.params` and `BREVIS_RUN_PARAMS`. Making one of them an array would
+turn that map into `map[string]any` — and an SDK older than this unmarshals the
+variable into `map[string]string`, so it would fail and **discard every param of
+that run**, warning in a log nobody reads while the pipeline runs on defaults.
+
+The comma is also what keeps the command working with no special case:
+
+```yaml
+run: dbt build --select {{ .tables }}      # dbt build --select users,orders
+```
+
+The price is that a comma cannot appear inside an item, which is checked at
+publish and at trigger.
+
+### Added: a list with an `enum` is a multi-select in the console
+
+Checkboxes, and no JavaScript: one value per ticked box, joined by the handler.
+Each group carries a hidden empty value, and that is what makes "I unticked them
+all" different from "I did not touch this" — without it the key would leave the
+form and the resolver would fall back to the default, running quietly with the
+values the operator had just cleared.
+
+A list with no enum is a text field whose items become removable chips, and with
+JavaScript off it stays a field holding `users,orders` — which is what the
+server expects either way.
+
+### ⚠️ Upgrade before publishing a workflow that uses a list
+
+An engine older than this refuses `list|string` at publish, as an unknown type.
+Nothing that validated before validates differently now: the change is
+forward-only, and every workflow in this repository still passes.
+
+### Fixed: the unknown-param-type error was in Portuguese
+
+`param "ufs": tipo "list" desconhecido` is the first thing a consumer reads
+about a feature they are trying to use. It now names the types that exist.
+
+---
+
 ## [0.14.0] — 2026-09-16
 
 ### Added: `persist_context:` — a step declares the persisted keys it touches

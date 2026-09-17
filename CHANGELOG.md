@@ -82,6 +82,40 @@ error handling it wants.
 Nothing else changed: `Params` is the same map it always was, and a fetcher that
 does not use lists sees no difference.
 
+## [0.63.0] — 2026-09-16
+
+### Added: `persist.String`
+
+A single text value — a watermark, a cursor, an ETag — had no accessor: `Value`
+returned `any` and every caller type-asserted. It refuses a stored **list**
+rather than rendering one as `"a,b,c"`, and the error names `Strings` so the
+reader is not left guessing. The two shapes mean different things, and one
+silently flattened into the other is a difference somebody finds three weeks
+later.
+
+Join at the point of use rather than in storage: the place building a query is
+the one that knows which separator it wants.
+
+### Fixed: a failing `After` blamed the target, and the metric disagreed with the exit code
+
+Two mistakes in where the hook sat, both found while answering "at what moment
+can I persist a value?".
+
+**The target's phase closed after the hook**, so a hook that failed painted the
+target red — on a load that had just written eleven thousand rows. That is a lie
+told on the one screen somebody opens to find out what happened. The box now
+closes on the load's own outcome, and the truthful picture is every phase green
+with the step failed, which says exactly where to look.
+
+**`report(p.Meter, …)` ran before the hook**, so the failure rate called a run
+successful while the step exited non-zero. A metric disagreeing with the exit
+code is worse than either being wrong alone. It runs last now.
+
+Neither changed whether the value is published, so 0.62.0 publishes correctly.
+What it gets wrong is where it says the failure was.
+
+---
+
 ## [0.62.0] — 2026-09-16
 
 ### Added: `persist.String`
