@@ -9,12 +9,12 @@
 //
 // The two also differ in every property that decides a design:
 //
-//	                 engine                 gateway
-//	  shape          batch, scheduled       online, per request
-//	  unit           a run                  an event
-//	  the SLO        did the run finish     p99 of POST, nothing lost on a 200
-//	  failure        retry the run          the client is already gone
-//	  scaling        one scheduler          N stateless replicas
+//	               engine                 gateway
+//	shape          batch, scheduled       online, per request
+//	unit           a run                  an event
+//	the SLO        did the run finish     p99 of POST, nothing lost on a 200
+//	failure        retry the run          the client is already gone
+//	scaling        one scheduler          N stateless replicas
 //
 // # What it reuses, and it is most of the work
 //

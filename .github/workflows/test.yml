@@ -425,6 +425,32 @@ jobs:
           go test ./... -count=1
           echo "✅ the OTel meter builds and passes"
 
+      - name: The gateway builds and passes
+        run: |
+          # A module of its own, and it `replace`s the SDK with the tree next
+          # door -- so -mod=mod, for the reason the examples step gives: without
+          # it ANY change to sdk/go.mod fails here with "updates to go.mod
+          # needed", and a routine dependency bump looks like the gateway
+          # breaking.
+          #
+          # Nothing else compiles it. Without this step it rots, which is what
+          # happened to six examples that did not build at all.
+          cd gateway
+          export GOFLAGS=-mod=mod
+          go build ./...
+          go vet ./...
+          # The integration tests reach a Pub/Sub emulator and SKIP without it,
+          # which is why the unit ones are what this step asserts.
+          go test ./... -count=1
+          echo "✅ the gateway builds and passes"
+
+      - name: Lint the gateway
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          working-directory: gateway
+          args: --timeout=5m
+
       - name: Lint the OTel meter
         uses: golangci/golangci-lint-action@v9
         with:
