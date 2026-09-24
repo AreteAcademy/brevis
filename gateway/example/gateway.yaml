@@ -36,3 +36,25 @@ streams:
       # Fields of the EVENT that travel as message attributes. The topic's
       # contract belongs to whoever owns the topic, so nothing is invented here.
       attributes: [tenant, region]
+
+    # How hard the sink is tried before a batch is given up on. Four attempts
+    # over roughly seven seconds: enough to ride out a restart on the other
+    # side, short enough that a sink which is down is known to be down.
+    retry:
+      attempts: 4
+      backoff: 500ms
+      max_backoff: 10s
+
+    # Where a batch the sink will not take goes. Required, not defaulted: a
+    # stream without one loses a refused batch to a log line, and an operator
+    # who never chose that does not know it is happening.
+    #
+    # `files` reads a directory, gs:// and s3://, so this is a folder on a
+    # laptop and a bucket in production with no change to the gateway.
+    #
+    # Each record carries _dead_letter_reason, _dead_letter_sink and
+    # _dead_letter_at: whoever finds this file has the events and not the log,
+    # and "why is this here" is their first question.
+    dead_letter:
+      type: files
+      path: ./dead-letter/clicks/

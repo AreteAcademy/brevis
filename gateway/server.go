@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"strings"
 	"sync"
@@ -16,6 +17,12 @@ import (
 	"github.com/AreteAcademy/brevis/sdk"
 )
 
+// sendTimeout bounds one delivery, retries included. Past it the batch goes to
+// the dead letter: a send that has been trying for a minute is a sink that is
+// down, and holding the events in memory while it is down is how memory becomes
+// the outage.
+const sendTimeout = 60 * time.Second
+
 // Server is the gateway listening.
 type Server struct {
 	cfg   *Config
@@ -23,12 +30,40 @@ type Server struct {
 	pipes []*pipe
 }
 
+// Option adjusts a Server at construction.
+type Option func(*options)
+
+type options struct{ sinks map[string]Sinker }
+
+// WithSink replaces one stream's destination.
+//
+// It exists for the reason the SDK's drivers carry a Client field: "a publish
+// that fails halfway is the case this driver is built around, and it cannot be
+// produced on demand against a real topic". A sink that refuses, refuses twice
+// then works, or is simply unreachable is exactly what the retry and the dead
+// letter are for, and none of it can be arranged against a real one.
+//
+// It is also the seam for a destination this does not ship: Sinker is exported,
+// and a consumer with one of their own needs no fork.
+func WithSink(stream string, s Sinker) Option {
+	return func(o *options) {
+		if o.sinks == nil {
+			o.sinks = map[string]Sinker{}
+		}
+		o.sinks[stream] = s
+	}
+}
+
 // New wires a config to the hooks this binary carries.
 //
 // Everything that can fail does so HERE and not on a request: an unknown hook,
 // an unknown sink, a bad path. A gateway that starts on a file it half
 // understood drops events for a reason nobody can see.
-func New(cfg *Config, hooks *Hooks) (*Server, error) {
+func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
+	var o options
+	for _, fn := range opts {
+		fn(&o)
+	}
 	if hooks == nil {
 		hooks = NewHooks()
 	}
@@ -46,12 +81,19 @@ func New(cfg *Config, hooks *Hooks) (*Server, error) {
 			hook = fn
 		}
 
-		sink, err := build(st.Sink)
+		sink, ok := o.sinks[st.Name]
+		if !ok {
+			var err error
+			if sink, err = build(st.Sink); err != nil {
+				return nil, fmt.Errorf("stream %q: %w", st.Name, err)
+			}
+		}
+		dead, err := build(st.DeadLetter)
 		if err != nil {
-			return nil, fmt.Errorf("stream %q: %w", st.Name, err)
+			return nil, fmt.Errorf("stream %q: dead_letter: %w", st.Name, err)
 		}
 
-		p := newPipe(st, hook, sink, int64(cfg.Listen.MaxBody))
+		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody))
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
 	}
@@ -83,6 +125,7 @@ type pipe struct {
 	stream  Stream
 	hook    Hook
 	sink    Sinker
+	dead    Sinker
 	maxBody int64
 
 	mu      sync.Mutex
@@ -91,8 +134,8 @@ type pipe struct {
 	closing bool
 }
 
-func newPipe(st Stream, hook Hook, sink Sinker, maxBody int64) *pipe {
-	return &pipe{stream: st, hook: hook, sink: sink, maxBody: maxBody}
+func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64) *pipe {
+	return &pipe{stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody}
 }
 
 // ServeHTTP accepts. It does the least work that is still honest and leaves
@@ -241,23 +284,100 @@ func (p *pipe) flush() {
 	}
 }
 
-// send hands the batch to the driver.
+// send delivers a batch, retrying, and gives up into the dead letter.
 //
 // context.Background and not the request's: the client is gone by now, and a
 // batch cancelled because one caller disconnected would lose the events of
 // every other caller in it.
 func (p *pipe) send(_ context.Context, batch []sdk.Envelope) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), sendTimeout)
 	defer cancel()
 
-	n, err := p.sink.Write(ctx, batch)
-	if err != nil {
-		slog.Error("the sink refused a batch",
+	r := p.stream.Retry
+	var err error
+	for attempt := 1; attempt <= r.Attempts; attempt++ {
+		var n int64
+		n, err = p.sink.Write(ctx, batch)
+		if err == nil {
+			slog.Info("delivered", "stream", p.stream.Name,
+				"sink", p.sink.Describe(), "events", n, "attempt", attempt)
+			return
+		}
+		if attempt == r.Attempts {
+			break
+		}
+		wait := backoff(r, attempt)
+		slog.Warn("the sink refused a batch; retrying",
 			"stream", p.stream.Name, "sink", p.sink.Describe(),
-			"delivered", n, "of", len(batch), "error", err)
+			"attempt", attempt, "of", r.Attempts, "in", wait, "error", err)
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			err = fmt.Errorf("%w (and the send window closed)", err)
+			goto giveUp
+		}
+	}
+
+giveUp:
+	p.bury(ctx, batch, err)
+}
+
+// bury writes what the sink would not take, with the reason attached.
+//
+// The reason travels ON the record and not only in a log, because whoever finds
+// this file later has the events and not the log -- and "why is this here" is
+// the first thing they will ask.
+//
+// A failure HERE is the end of the line, and it says so at ERROR with the count:
+// there is nowhere further to put them, and a silent loss at the last step would
+// be the exact failure the dead letter exists to prevent.
+func (p *pipe) bury(ctx context.Context, batch []sdk.Envelope, cause error) {
+	reason := cause.Error()
+	buried := make([]sdk.Envelope, 0, len(batch))
+	for _, e := range batch {
+		row, ok := e.Payload.(map[string]any)
+		if !ok {
+			buried = append(buried, e)
+			continue
+		}
+		// A copy: the batch may still be referenced, and stamping the original
+		// would put the failure of one sink into a record another one holds.
+		out := make(map[string]any, len(row)+3)
+		for k, v := range row {
+			out[k] = v
+		}
+		out["_dead_letter_reason"] = reason
+		out["_dead_letter_sink"] = p.sink.Describe()
+		out["_dead_letter_at"] = time.Now().UTC().Format(time.RFC3339)
+		e.Payload = out
+		buried = append(buried, e)
+	}
+
+	n, err := p.dead.Write(ctx, buried)
+	if err != nil {
+		slog.Error("the dead letter refused them too, and they are lost",
+			"stream", p.stream.Name, "events", len(batch),
+			"sink", p.sink.Describe(), "dead_letter", p.dead.Describe(),
+			"cause", reason, "error", err)
 		return
 	}
-	slog.Info("delivered", "stream", p.stream.Name, "sink", p.sink.Describe(), "events", n)
+	slog.Error("a batch went to the dead letter",
+		"stream", p.stream.Name, "events", n,
+		"sink", p.sink.Describe(), "dead_letter", p.dead.Describe(), "cause", reason)
+}
+
+// backoff doubles from Retry.Backoff, capped, with jitter.
+//
+// Jitter because N replicas losing the same sink retry on the same schedule
+// otherwise, and a sink coming back up meets every one of them at once -- which
+// is how a recovery becomes a second outage.
+func backoff(r Retry, attempt int) time.Duration {
+	wait := r.Backoff << (attempt - 1)
+	if wait > r.MaxBackoff || wait <= 0 {
+		wait = r.MaxBackoff
+	}
+	//nolint:gosec // jitter, not a secret
+	return wait/2 + time.Duration(rand.Int64N(int64(wait/2)+1))
 }
 
 func (p *pipe) close(ctx context.Context) error {

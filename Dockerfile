@@ -67,7 +67,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       go build -trimpath \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
-      -o /out/brevis-gateway ./example
+      -o /out/brevis-gateway ./example \
+    && mkdir -p /out/dead-letter
 
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
@@ -125,6 +126,16 @@ LABEL org.opencontainers.image.title="Brevis gateway" \
       org.opencontainers.image.revision="${COMMIT}" \
       org.opencontainers.image.licenses="MIT"
 COPY --from=build /out/brevis-gateway /usr/local/bin/brevis-gateway
+
+# The dead letter's directory, owned by the user that writes it.
+#
+# A named volume inherits the ownership of the image path it is first mounted
+# over. Without this the volume arrives owned by root, the process is nonroot,
+# and the dead letter fails with `mkdir: permission denied` -- at the exact
+# moment it is needed, which is after a sink has already refused. Found by
+# pointing a gateway at a topic that does not exist and reading the log.
+COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
+
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["brevis-gateway"]

@@ -15,6 +15,7 @@ streams:
     path: /v1/clicks
     identity: {provider: web, entity: click, source_key: event_id, record_ts: occurred_at}
     sink: {type: pubsub, project: p, topic: t}
+    dead_letter: {type: files, path: ./dead/}
 `
 
 // Every refusal this file makes, and why each one is worth a test: a gateway
@@ -37,7 +38,7 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 		{
 			name: "a sink nobody implemented",
 			yaml: strings.Replace(valid, "type: pubsub", "type: kafka", 1),
-			says: "only \"pubsub\" is implemented",
+			says: "only pubsub and files are implemented",
 		},
 		{
 			// The formula is frozen over exactly four fields, so three of them
@@ -54,6 +55,7 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
     path: /v1/clicks
     identity: {provider: w, entity: e, source_key: k, record_ts: t}
     sink: {type: pubsub, project: p, topic: t}
+    dead_letter: {type: files, path: ./dead/}
 `,
 			says: "both listen on",
 		},

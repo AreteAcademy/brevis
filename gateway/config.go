@@ -51,6 +51,29 @@ type Stream struct {
 
 	Buffer Buffer `yaml:"buffer"`
 	Sink   Sink   `yaml:"sink"`
+
+	// Retry is how hard the sink is tried before a batch is given up on.
+	Retry Retry `yaml:"retry"`
+
+	// DeadLetter is where a batch goes when the sink will not take it.
+	//
+	// Without one, a sink that refuses is a log line and nothing else -- which
+	// is losing data quietly, and the one failure an ingestion service exists
+	// to not have. A stream that declares none is REFUSED rather than defaulted
+	// to silence: where the unacceptable goes is the operator's decision, and
+	// having to make it is the point.
+	DeadLetter Sink `yaml:"dead_letter"`
+}
+
+// Retry is the sink's second, third and fourth chance.
+type Retry struct {
+	// Attempts counts the FIRST try. 1 means no retry at all.
+	Attempts int `yaml:"attempts"`
+
+	// Backoff is the wait before the second attempt; it doubles from there,
+	// with jitter. Bounded by MaxBackoff.
+	Backoff    time.Duration `yaml:"backoff"`
+	MaxBackoff time.Duration `yaml:"max_backoff"`
 }
 
 // Identity is what becomes the ingestion_id, which is what makes a retried POST
@@ -103,6 +126,9 @@ type Sink struct {
 	// belongs to whoever owns the topic, and nothing is invented here.
 	Attributes []string `yaml:"attributes"`
 
+	// Path is where `files` writes: a directory, gs:// or s3://.
+	Path string `yaml:"path"`
+
 	// OrderingKey names the field whose value orders the messages. Empty is no
 	// ordering, which is the default and what every other destination gives.
 	OrderingKey string `yaml:"ordering_key"`
@@ -140,6 +166,7 @@ const (
 	DurabilityMemory = "memory"
 
 	SinkPubSub = "pubsub"
+	SinkFiles  = "files"
 )
 
 // Defaults, and each one is a number with a reason.
@@ -153,6 +180,13 @@ const (
 	// 500 messages is Pub/Sub's own publish-batch ceiling; sending more in one
 	// call buys nothing because the client splits it again.
 	defaultFlushRecords = 500
+
+	// Four attempts over roughly seven seconds. Enough to ride out a restart
+	// or a leader election on the other side, and short enough that a sink
+	// which is actually down is known to be down rather than waited on.
+	defaultAttempts   = 4
+	defaultBackoff    = 500 * time.Millisecond
+	defaultMaxBackoff = 10 * time.Second
 )
 
 func (c *Config) check() error {
@@ -235,7 +269,40 @@ func (s *Stream) check() error {
 		return fmt.Errorf("`buffer.flush.records` is %d", s.Buffer.Flush.Records)
 	}
 
-	return s.Sink.check()
+	if s.Retry.Attempts == 0 {
+		s.Retry.Attempts = defaultAttempts
+	}
+	if s.Retry.Attempts < 1 {
+		return fmt.Errorf("`retry.attempts` is %d; 1 means try once and give up",
+			s.Retry.Attempts)
+	}
+	if s.Retry.Backoff == 0 {
+		s.Retry.Backoff = defaultBackoff
+	}
+	if s.Retry.MaxBackoff == 0 {
+		s.Retry.MaxBackoff = defaultMaxBackoff
+	}
+	if s.Retry.MaxBackoff < s.Retry.Backoff {
+		return fmt.Errorf("`retry.max_backoff` (%s) is below `retry.backoff` (%s)",
+			s.Retry.MaxBackoff, s.Retry.Backoff)
+	}
+
+	if err := s.Sink.check(); err != nil {
+		return err
+	}
+
+	// Refused rather than defaulted. A stream with no dead letter loses a
+	// refused batch to a log line, and an operator who never chose that is an
+	// operator who does not know it is happening.
+	if s.DeadLetter.Type == "" {
+		return fmt.Errorf("no `dead_letter`: a batch the sink refuses has nowhere " +
+			"to go but a log line, which is losing data quietly. Declare one -- " +
+			"`{type: files, path: ./dead-letter/}` is enough to start")
+	}
+	if err := s.DeadLetter.check(); err != nil {
+		return fmt.Errorf("`dead_letter`: %w", err)
+	}
+	return nil
 }
 
 func (i *Identity) check() error {
@@ -264,17 +331,24 @@ func (i *Identity) check() error {
 func (s *Sink) check() error {
 	switch s.Type {
 	case "":
-		return fmt.Errorf("`sink.type` is empty (use %s)", SinkPubSub)
+		return fmt.Errorf("`type` is empty (use %s or %s)", SinkPubSub, SinkFiles)
 	case SinkPubSub:
+		if strings.TrimSpace(s.Project) == "" {
+			return fmt.Errorf("`project` is empty")
+		}
+		if strings.TrimSpace(s.Topic) == "" {
+			return fmt.Errorf("`topic` is empty")
+		}
+	case SinkFiles:
+		// A local directory, gs:// or s3://: to.Files reads all three, so the
+		// dead letter can be a folder on a laptop and a bucket in production
+		// without the gateway learning a second idea of what a path is.
+		if strings.TrimSpace(s.Path) == "" {
+			return fmt.Errorf("`path` is empty (a directory, gs:// or s3://)")
+		}
 	default:
-		return fmt.Errorf("`sink.type` is %q, and only %q is implemented",
-			s.Type, SinkPubSub)
-	}
-	if strings.TrimSpace(s.Project) == "" {
-		return fmt.Errorf("`sink.project` is empty")
-	}
-	if strings.TrimSpace(s.Topic) == "" {
-		return fmt.Errorf("`sink.topic` is empty")
+		return fmt.Errorf("`type` is %q, and only %s and %s are implemented",
+			s.Type, SinkPubSub, SinkFiles)
 	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {

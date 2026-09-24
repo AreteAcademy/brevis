@@ -140,10 +140,22 @@ services:
     entrypoint: ["sh", "-ec"]
     command:
       - |
-        curl -fs -X PUT http://pubsub:8085/v1/projects/brevis-local/topics/clicks
-        curl -fs -X PUT http://pubsub:8085/v1/projects/brevis-local/subscriptions/clicks-sub \
-          -H 'Content-Type: application/json' \
-          -d '{"topic":"projects/brevis-local/topics/clicks"}'
+        # Idempotent, because `docker compose up` runs twice. The emulator
+        # answers 409 for a topic that already exists, and `curl -f` turns that
+        # into a failure -- so a second `up` broke on a state that was fine.
+        # Reading the status code instead of asking curl to judge it.
+        B=http://pubsub:8085/v1/projects/brevis-local
+
+        T=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$$B/topics/clicks")
+        echo "topic: $$T"
+        [ "$$T" = 200 ] || [ "$$T" = 409 ] || exit 1
+
+        S=$$(curl -s -o /dev/null -w '%{http_code}' -X PUT "$$B/subscriptions/clicks-sub" \
+             -H 'Content-Type: application/json' \
+             -d '{"topic":"projects/brevis-local/topics/clicks"}')
+        echo "subscription: $$S"
+        [ "$$S" = 200 ] || [ "$$S" = 409 ] || exit 1
+
         echo "topic and subscription ready"
     depends_on:
       pubsub: {condition: service_healthy}
@@ -158,9 +170,13 @@ services:
     ports: ["${BREVIS_GATEWAY_PORT:-8090}:8080"]
     volumes:
       - ./gateway/example/gateway.local.yaml:/etc/brevis/gateway.yaml:ro
+      # The dead letter, on a volume. Inside the image it would die with the
+      # container, which is a slower way of losing the events it exists to keep.
+      - deadletter:/var/dead-letter
     depends_on:
       topic: {condition: service_completed_successfully}
     restart: unless-stopped
 
 volumes:
   pgdata:
+  deadletter:

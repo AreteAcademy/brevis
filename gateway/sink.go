@@ -5,8 +5,13 @@ import (
 	"fmt"
 
 	"github.com/AreteAcademy/brevis/sdk"
+	"github.com/AreteAcademy/brevis/sdk/to"
 	"github.com/AreteAcademy/brevis/sdk/to/pubsub"
 )
+
+// Envelope is what a sink receives, re-exported so an implementation of Sinker
+// does not have to import the SDK to name the type it is handed.
+type Envelope = sdk.Envelope
 
 // Sinker is one destination, and it is the SDK's own Writer narrowed to what
 // this needs.
@@ -87,12 +92,41 @@ func (p *pubsubSink) Write(ctx context.Context, batch []sdk.Envelope) (int64, er
 	return res.RowsLoaded, err
 }
 
-// build resolves a stream's sink. It is the only place a type name becomes an
+// filesSink writes NDJSON objects to a directory, a bucket or a prefix.
+//
+// It is `to.Files`, which already speaks local paths, gs:// and s3://. So a
+// dead letter is a folder on a laptop and a bucket in production without this
+// package learning a second idea of what a path is.
+type filesSink struct {
+	files to.Files
+	name  string
+}
+
+func newFilesSink(s Sink) *filesSink {
+	return &filesSink{
+		files: to.Files{Path: s.Path},
+		name:  "files:" + s.Path,
+	}
+}
+
+func (f *filesSink) Describe() string { return f.name }
+
+func (f *filesSink) Write(ctx context.Context, batch []sdk.Envelope) (int64, error) {
+	res, err := f.files.Write(ctx, batch, sdk.WriteOptions{})
+	if res == nil {
+		return 0, err
+	}
+	return res.RowsLoaded, err
+}
+
+// build resolves a sink. It is the only place a type name becomes an
 // implementation, so an unknown one cannot reach the request path.
 func build(s Sink) (Sinker, error) {
 	switch s.Type {
 	case SinkPubSub:
 		return newPubSubSink(s), nil
+	case SinkFiles:
+		return newFilesSink(s), nil
 	default:
 		return nil, fmt.Errorf("sink type %q", s.Type)
 	}

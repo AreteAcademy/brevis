@@ -83,6 +83,38 @@ to the dashboard that updates.
 Neither is built. Both are listed in the plan's build order, and neither is in
 the way of using the gateway.
 
+## When the sink refuses
+
+It is retried — four attempts over roughly seven seconds by default, doubling
+with jitter — and then the batch goes to the **dead letter**, with the reason
+attached to every record:
+
+```json
+{
+  "event_id": "dl-9",
+  "host": "x.y",
+  "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
+  "_dead_letter_reason": "… rpc error: code = NotFound desc = Topic not found",
+  "_dead_letter_sink": "pubsub:brevis-local/nao-existe",
+  "_dead_letter_at": "2026-09-24T22:02:32Z"
+}
+```
+
+The reason travels **on the record** and not only in a log, because whoever
+finds this file later has the events and not the log, and *why is this here* is
+their first question. The `ingestion_id` travels too, so a replay lands where
+the original would have.
+
+**A stream with no `dead_letter` is refused at load.** Defaulting it to silence
+would put the decision where nobody makes it — and a refused batch that is only
+a log line is losing data quietly, which is the one failure this exists not to
+have.
+
+`files` reads a directory, `gs://` and `s3://`, so the dead letter is a folder
+on a laptop and a bucket in production with no change to the gateway. In compose
+it is a **volume**: written inside the image it would die with the container,
+which is a slower way of losing the events it exists to keep.
+
 ## Configuration
 
 See [`gateway/example/gateway.yaml`](../gateway/example/gateway.yaml). Every
