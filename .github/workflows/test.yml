@@ -173,32 +173,37 @@ jobs:
           go-version: '1.27'
           cache: true
 
-      # docker run, and not a service container: MinIO's official image needs
-      # "server /data" as its command, and Actions services do not
-      # aceitam command.
+      # What these tests need is an S3 API, not MinIO, and MinIO has now twice
+      # taken its community image away underneath this job:
       #
-      # quay.io, and PINNED. `minio/minio` on Docker Hub is a 404 as of
-      # 2026-09-13 -- MinIO withdrew the images, and every run since then failed
-      # on `pull access denied` with nothing in this repository having changed.
-      # quay.io publishes no `latest`, only dated RELEASE tags, which is the
-      # better arrangement anyway: an unpinned tag in a repository that checks
-      # its image pins was the odd one out.
-      - name: Start MinIO
+      #   2026-09-13  `minio/minio` on Docker Hub became a 404 -- `pull access
+      #               denied`, with nothing in this repository having changed.
+      #               Moved to quay.io, pinned to a dated RELEASE tag.
+      #   2026-09-24  quay.io/minio/minio began answering 401, `access to the
+      #               requested resource is not authorized`. Same job, same
+      #               pin, gated again.
+      #
+      # So this runs adobe/s3mock: built to be an S3 endpoint for tests, on
+      # Docker Hub, no command to pass and no credentials to configure -- it
+      # accepts whatever the caller signs with, which is what the tests already
+      # send. Verified against the real suite before the switch: the four
+      # TestIntegrationS3* cases pass, pagination included.
+      #
+      # The endpoint stays on 9000 so nothing downstream moves; s3mock serves
+      # HTTP on 9090 inside the container.
+      - name: Start an S3 endpoint
         run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=brevis \
-            -e MINIO_ROOT_PASSWORD=brevis-secret \
-            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          docker run -d --name s3 -p 9000:9090 adobe/s3mock:5.2.3
 
           for i in $(seq 1 40); do
-            if curl -fs http://localhost:9000/minio/health/live >/dev/null; then
-              echo "MinIO no ar"
+            if curl -fs -o /dev/null http://localhost:9000/; then
+              echo "S3 endpoint up"
               exit 0
             fi
             sleep 2
           done
-          echo "::error::MinIO did not start; the S3 tests would not have run"
-          docker logs minio
+          echo "::error::the S3 endpoint did not start; the S3 tests would not have run"
+          docker logs s3
           exit 1
 
       # Postgres comes up through the same compose that runs on a developer's
