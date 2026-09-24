@@ -847,20 +847,25 @@ type WorkflowStats struct {
 	Load []postgres.LoadDay
 }
 
+// about is the question mark beside the name, or nothing.
+func about(w wf.Workflow) templ.Component {
+	if w.Description == "" {
+		return nil
+	}
+	return components.AboutButton(w.Slug)
+}
+
 templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows",
 		Island: dagAssets, Wide: true, Actions: disparar(w.Slug),
+		// The question mark only exists when there is something behind it: a
+		// control that opens an empty dialog is a promise the page does not
+		// keep.
+		Aside: about(w),
 	}) {
-		// What the workflow is FOR, in the author's own words.
-		//
-		// ABOVE the counts and the schedule, because it is the only line on
-		// this page that answers "why does this exist" -- the graph below
-		// already says what it does. A workflow without one shows nothing at
-		// all rather than an empty block: a heading with no text under it reads
-		// as something that failed to load.
 		if w.Description != "" {
-			<p class="mb-4 max-w-prose text-sm leading-relaxed text-ink">{ w.Description }</p>
+			@components.AboutDialog(w.Slug, w.Description)
 		}
 		<div class="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
 			<span>{ fmt.Sprint(len(w.Nodes)) } steps</span>

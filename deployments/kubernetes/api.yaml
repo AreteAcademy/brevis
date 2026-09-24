@@ -27,7 +27,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
-          image: areteacademy/brevis:0.15.1
+          image: areteacademy/brevis:0.15.2
           args: ["serve"]
           # TWO ports, and only `http` belongs in the Ingress below.
           #

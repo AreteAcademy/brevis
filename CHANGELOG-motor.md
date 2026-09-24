@@ -14,6 +14,35 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.15.2] — 2026-09-24
+
+### Fixed: a workflow's description took the page over
+
+It shipped as a paragraph above the counts, and a real description is not a
+line. `id_profile_economics` writes fifteen — why the cube exists, why it moved
+from 05:40 to :40, which upstream refreshes every fifteen minutes, and the
+measured cost of both halves. All of it worth having, and all of it pushing the
+parameters, the rates and the graph below the fold: the page **about** a
+workflow opened on an essay about it.
+
+It now sits behind a question mark beside the name, in the same native
+`<dialog>` the run failures already use — ESC closes it, the backdrop dims, and
+`#about-<slug>` opens it for whoever receives the link.
+
+The author's line breaks survive. A YAML block scalar is written with breaks
+that mean something, the reason in one line and the measurement in the next, and
+collapsing them would be the same wall in a smaller box.
+
+A workflow with no description gets no question mark: a control that opens an
+empty dialog is a promise the page does not keep.
+
+`layouts.Page` gained `Aside`, which sits beside the title. Separate from
+`Actions` because that corner is where a page's verbs go — run, retry — and a
+reader scanning for "what can I do here" should not have to tell a verb from a
+footnote.
+
+---
+
 ## [0.15.1] — 2026-09-24
 
 ### Fixed: migration 00012 aborted on any database with history

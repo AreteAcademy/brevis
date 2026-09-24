@@ -767,3 +767,62 @@ templ LoadTrend(series []TrendSeries, window string) {
 		}
 	</div>
 }
+
+// AboutButton and AboutDialog: a workflow's description, behind a question mark
+// ---------------------------------------------------------------------------
+//
+// The description used to sit as a paragraph above the counts, and a real one
+// is not a line. `id_profile_economics` writes fifteen: why the cube exists,
+// why it moved from 05:40 to :40, which upstream refreshes every fifteen
+// minutes, and the measured cost of both halves. All of it worth having, and
+// all of it pushing the parameters, the rates and the graph below the fold --
+// so the page about a workflow opened on an essay about it.
+//
+// A question mark beside the NAME keeps both: the answer is one click from the
+// thing it explains, and the page goes back to being the page.
+
+templ AboutButton(slug string) {
+	// An <a> and not a <button>, like ErrorButton and for the same reason: with
+	// the href the description has an address, so `/workflows/x#about-x` opens
+	// it for whoever receives the link. The script intercepts the click; with
+	// no JavaScript the anchor still jumps to the text, which is on the page.
+	<a
+		href={ templ.SafeURL("#about-" + slug) }
+		data-dialogo={ "about-" + slug }
+		title="What this workflow is for"
+		aria-label="What this workflow is for"
+		class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-line text-[0.7rem] font-semibold text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
+	>?</a>
+}
+
+templ AboutDialog(slug, description string) {
+	<dialog
+		id={ "about-" + slug }
+		class="w-[min(680px,92vw)] rounded-card border border-line bg-surface p-0 text-ink shadow-warm backdrop:bg-ink/40 backdrop:backdrop-blur-[2px]"
+	>
+		<div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
+			<div class="min-w-0">
+				<p class="kicker">What this is for</p>
+				<p class="display mt-1 truncate text-2xl">{ slug }</p>
+			</div>
+			<form method="dialog">
+				<button
+					autofocus
+					class="rounded-card border border-line px-3 py-1 text-xs text-muted transition-colors hover:border-gold hover:text-ink focus-visible:border-gold focus-visible:text-ink"
+					aria-label="Close"
+				>close</button>
+			</form>
+		</div>
+		// `whitespace-pre-wrap` keeps the author's paragraphs. A YAML block
+		// scalar is written with line breaks that mean something -- the reason
+		// in one, the measurement in the next -- and collapsing them turns
+		// fifteen considered lines into one wall.
+		//
+		// max-h with overflow: the longest description in production is a
+		// screenful, and a dialog taller than the window has a close button
+		// nobody can reach.
+		<div class="max-h-[60vh] overflow-auto px-6 py-5">
+			<p class="max-w-prose text-sm leading-relaxed whitespace-pre-wrap text-ink">{ description }</p>
+		</div>
+	</dialog>
+}
