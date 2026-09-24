@@ -54,20 +54,30 @@ services:
       BREVIS_HTTP_ADDR: ":8080"
       BREVIS_DATABASE_URL: postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
       BREVIS_LOG_LEVEL: debug
-      # The local interface is OPEN. Outside BREVIS_ENV=local the process refuses
-      # to start without a credential, but here it listens on your own machine,
-      # and asking for a password on every `make up` would only teach the team to
-      # turn authentication off.
+      # The local interface is OPEN, and these three lines are commented for
+      # that reason. Outside BREVIS_ENV=local the process refuses to start
+      # without a credential; here it listens on your own machine, and asking
+      # for a password on every `make up` would only teach the team to turn
+      # authentication off.
       #
-      # To see the sign-in screen, generate a hash with `brevis hash`, uncomment
-      # the three lines and restart:
-      BREVIS_AUTH_USER: operador
-# `$$` is compose's escape for a literal `$`. Without it compose reads
-      # `$600000` and `$pGUK…` as variables, substitutes blanks, and the hash
-      # that reaches the process is not the one written here -- so the sign-in
-      # the comment above describes could never have worked.
-      BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$6ewhY/AG9eqZFyl4FOWz9Q$$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
-      BREVIS_AUTH_SECRET: "segredo-local-de-desenvolvimento-com-32-bytes"
+      # They were NOT commented, so the file did the opposite of what this
+      # paragraph says: `make up` gave a sign-in screen whose password nobody
+      # had. The hash is pbkdf2 at 600,000 iterations and the plaintext was
+      # never written down anywhere, so it was not a password anybody could
+      # look up -- it was a locked door with no key.
+      #
+      # To get the sign-in screen back, make a hash of your own and uncomment:
+      #
+      #     go run ./cmd/brevis hash
+      #
+      # `$$` is compose's escape for a literal `$`. Without it compose reads
+      # `$600000` and what follows as variables and substitutes blanks, so the
+      # hash reaching the process is not the one written here -- which is the
+      # second reason that sign-in could never have worked.
+      #
+      # BREVIS_AUTH_USER: operador
+      # BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$...$$..."
+      # BREVIS_AUTH_SECRET: "a local development secret of 32 bytes"
     ports: ["${BREVIS_API_PORT:-8080}:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying
