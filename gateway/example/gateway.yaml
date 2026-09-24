@@ -1,0 +1,38 @@
+# What a gateway is, in one file.
+name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json            # json | array | ndjson -- declared, never sniffed
+
+    # What becomes the ingestion_id. All four, because the formula is frozen
+    # over exactly these: leaving one out produces a DIFFERENT id, not a
+    # weaker one. provider and entity are the stream's; source_key and
+    # record_ts name fields of the event.
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    # A name in this binary's registry, not a path. Hooks are Go, compiled in.
+    hook: enrich_clicks
+
+    buffer:
+      durability: memory    # the only tier implemented; `disk` is refused by name
+      flush:
+        every: 1s
+        records: 500
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+      # Fields of the EVENT that travel as message attributes. The topic's
+      # contract belongs to whoever owns the topic, so nothing is invented here.
+      attributes: [tenant, region]
