@@ -167,6 +167,11 @@ services:
     environment:
       PUBSUB_EMULATOR_HOST: pubsub:8085
       PUBSUB_PROJECT_ID: brevis-local
+      # Local, so the endpoint is open -- the same rule the api follows above,
+      # and for the same reason: asking for a token on every `make up` only
+      # teaches a team to turn authentication off. Outside local the gateway
+      # refuses to start without `listen.auth`.
+      BREVIS_ENV: local
     ports: ["${BREVIS_GATEWAY_PORT:-8090}:8080"]
     volumes:
       - ./gateway/example/gateway.local.yaml:/etc/brevis/gateway.yaml:ro

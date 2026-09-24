@@ -20,6 +20,9 @@ type Config struct {
 type Listen struct {
 	Addr string `yaml:"addr"`
 
+	// Auth is who may write. Outside BREVIS_ENV=local it is required.
+	Auth Auth `yaml:"auth"`
+
 	// MaxBody caps one request. Zero takes the default; a body past it is
 	// refused with 413 before a byte is parsed, because the alternative is a
 	// client deciding this process's memory.
@@ -199,6 +202,17 @@ func (c *Config) check() error {
 	if c.Listen.MaxBody == 0 {
 		c.Listen.MaxBody = defaultMaxBody
 	}
+	// The environment decides whether an open endpoint is allowed, and it is
+	// read here rather than taken as a field: a config file that could declare
+	// itself local would be a file that turns off authentication.
+	env := os.Getenv("BREVIS_ENV")
+	if env == "" {
+		env = EnvLocal
+	}
+	if err := c.Listen.Auth.check(env); err != nil {
+		return err
+	}
+
 	if len(c.Streams) == 0 {
 		return fmt.Errorf("no `streams`: a gateway with no endpoint listens for nothing")
 	}

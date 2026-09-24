@@ -9,6 +9,11 @@ listen:
   addr: :8080
   max_body: 1MiB
 
+  # No auth, and that is only allowed because BREVIS_ENV is local here.
+  # Outside local the gateway REFUSES TO START without it -- an ingestion
+  # endpoint is a write endpoint on somebody's topic, and an unauthenticated
+  # one on a routable address is an open relay.
+
 streams:
   - name: clicks
     path: /v1/clicks

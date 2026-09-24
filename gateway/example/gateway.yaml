@@ -5,6 +5,19 @@ listen:
   addr: :8080
   max_body: 1MiB
 
+  # Who may write. Required outside BREVIS_ENV=local, where the gateway
+  # refuses to start without it.
+  #
+  # `keys_from` names the ENVIRONMENT VARIABLE holding the accepted keys,
+  # comma separated. The keys are never in this file -- the same split
+  # `secrets:` makes in a workflow, and for the same reason: the file is in git.
+  #
+  # Every key in the list works, which is what makes rotation possible: add the
+  # new one, move the callers, remove the old.
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS
+
 streams:
   - name: clicks
     path: /v1/clicks

@@ -28,6 +28,7 @@ type Server struct {
 	cfg   *Config
 	mux   *http.ServeMux
 	pipes []*pipe
+	keys  []string
 }
 
 // Option adjusts a Server at construction.
@@ -98,14 +99,39 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		s.mux.Handle("POST "+st.Path, p)
 	}
 
+	// /health is outside the guard: a readiness probe has no credential, and
+	// one that needed a token would report the gateway down whenever the token
+	// was wrong -- which is a different outage from the one it exists to see.
 	s.mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = io.WriteString(w, "ok\n")
 	})
+
+	keys, err := cfg.Listen.Auth.keys()
+	if err != nil {
+		return nil, err
+	}
+	s.keys = keys
 	return s, nil
 }
 
-func (s *Server) Handler() http.Handler { return s.mux }
+// Handler is the gateway's routes, behind the guard.
+//
+// The guard wraps the MUX and not each stream: a path that is not a stream must
+// answer 401 as well, or an unauthenticated caller learns which paths exist by
+// reading the status codes.
+func (s *Server) Handler() http.Handler {
+	if len(s.keys) == 0 {
+		return s.mux
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" {
+			s.mux.ServeHTTP(w, r)
+			return
+		}
+		guard(s.keys, s.mux).ServeHTTP(w, r)
+	})
+}
 
 // Close drains every stream. What is in a buffer at shutdown is delivered, not
 // dropped: `memory` already loses on a crash, and losing on a clean stop as

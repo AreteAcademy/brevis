@@ -83,6 +83,41 @@ to the dashboard that updates.
 Neither is built. Both are listed in the plan's build order, and neither is in
 the way of using the gateway.
 
+## Who may write
+
+Required outside `BREVIS_ENV=local`, where the gateway **refuses to start**
+without it — the same rule the engine follows, spelled with the same word.
+
+```yaml
+listen:
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS     # the variable, never the keys
+```
+
+```bash
+curl -X POST http://gateway/v1/clicks \
+  -H 'Authorization: Bearer <key>' -d '{...}'
+```
+
+An ingestion endpoint is a **write** endpoint on somebody's topic or table. An
+unauthenticated one on a routable address is not a gateway with a gap, it is an
+open relay — which is why the refusal is at boot and not a warning.
+
+Locally it stays open, because asking for a token on every
+`docker compose up` only teaches a team to turn authentication off.
+
+`keys_from` names the environment variable, never the keys: the same split
+`secrets:` makes in a workflow, and for the same reason — the file is in git.
+Every key in the list is accepted, which is what makes rotation possible: add
+the new one, move the callers, remove the old.
+
+`/health` is outside the guard. A readiness probe carries no credential, and one
+that needed a token would report the gateway down whenever the token was wrong,
+which is a different outage from the one it exists to see. Everything else
+answers `401`, including paths that are not streams — otherwise an
+unauthenticated caller learns which paths exist by reading the status codes.
+
 ## When the sink refuses
 
 It is retried — four attempts over roughly seven seconds by default, doubling
