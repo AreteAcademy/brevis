@@ -9,7 +9,20 @@ services:
       POSTGRES_USER: brevis
       POSTGRES_PASSWORD: brevis
       POSTGRES_DB: brevis
-    ports: ["5432:5432"]
+    # The published port is overridable, and the default is unchanged.
+    #
+    # A developer machine very often already has something on 5432 -- another
+    # project's Postgres, or one that is merely PAUSED, which still holds the
+    # binding. `make up` then fails on a conflict that has nothing to do with
+    # this repository, and the message names a container the reader has never
+    # heard of.
+    #
+    #     BREVIS_PG_PORT=55433 make up
+    #
+    # docker-compose.drivers.yml solved the same problem by moving to 55432 and
+    # writing down why; this keeps 5432 for everybody whose tooling points at
+    # it, and gives a way out to everybody else.
+    ports: ["${BREVIS_PG_PORT:-5432}:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       # The API only starts once the database accepts a connection — without
@@ -55,7 +68,7 @@ services:
       # the comment above describes could never have worked.
       BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$6ewhY/AG9eqZFyl4FOWz9Q$$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
       BREVIS_AUTH_SECRET: "segredo-local-de-desenvolvimento-com-32-bytes"
-    ports: ["8080:8080"]
+    ports: ["${BREVIS_API_PORT:-8080}:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying
     # `brand.example.yaml` to `brand.yaml`. Read-only: the API never writes to
@@ -102,7 +115,7 @@ services:
     command: >-
       gcloud beta emulators pubsub start
       --project=brevis-local --host-port=0.0.0.0:8085
-    ports: ["8085:8085"]
+    ports: ["${BREVIS_PUBSUB_PORT:-8085}:8085"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8085/v1/projects/brevis-local/topics || exit 1"]
       interval: 2s
@@ -132,7 +145,7 @@ services:
     environment:
       PUBSUB_EMULATOR_HOST: pubsub:8085
       PUBSUB_PROJECT_ID: brevis-local
-    ports: ["8090:8080"]
+    ports: ["${BREVIS_GATEWAY_PORT:-8090}:8080"]
     volumes:
       - ./gateway/example/gateway.local.yaml:/etc/brevis/gateway.yaml:ro
     depends_on:

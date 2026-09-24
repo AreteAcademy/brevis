@@ -118,9 +118,15 @@ image-smoke: ## Checks the local images start and report their version
 	@# would become a brevis subcommand. The shell exists for the WORKFLOW.
 	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok in the worker"'
 
-up: ## Brings up Postgres + API + scheduler locally
+up: ## Brings up Postgres + API + scheduler + the gateway locally
 	@docker compose up --build -d
-	@echo "api at http://localhost:8080/health"
+	@echo "api     at http://localhost:$${BREVIS_API_PORT:-8080}/health"
+	@echo "gateway at http://localhost:$${BREVIS_GATEWAY_PORT:-8090}/health"
+	@echo ""
+	@echo "A port already taken -- very often 5432, by another project's"
+	@echo "Postgres or one that is merely PAUSED -- fails this with a message"
+	@echo "naming a container you have never heard of. Move it instead:"
+	@echo "  BREVIS_PG_PORT=55433 make up"
 
 down: ## Tears the local environment down
 	@docker compose down
