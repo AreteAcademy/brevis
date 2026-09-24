@@ -49,7 +49,11 @@ services:
       # To see the sign-in screen, generate a hash with `brevis hash`, uncomment
       # the three lines and restart:
       BREVIS_AUTH_USER: operador
-      BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$600000$6ewhY/AG9eqZFyl4FOWz9Q$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
+# `$$` is compose's escape for a literal `$`. Without it compose reads
+      # `$600000` and `$pGUK…` as variables, substitutes blanks, and the hash
+      # that reaches the process is not the one written here -- so the sign-in
+      # the comment above describes could never have worked.
+      BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$6ewhY/AG9eqZFyl4FOWz9Q$$pGUKCVCWTALSTafMdeS2f8UXS9hNyZRsK9/tlWpzbgU"
       BREVIS_AUTH_SECRET: "segredo-local-de-desenvolvimento-com-32-bytes"
     ports: ["8080:8080"]
     # The customer's visual identity. Commented out because the default
@@ -82,6 +86,57 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       migrate: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  # The ingestion gateway, and the Pub/Sub emulator it lands into.
+  #
+  # It shares NOTHING with the services above: no database, no queue, no
+  # migration. That is the design rather than an omission -- the engine
+  # orchestrates and never touches customer data, and this does nothing else. It
+  # is here so `docker compose up` gives the whole product on one machine, not
+  # because the two are coupled.
+  #
+  # Which also means it has nothing in the console. See docs/GATEWAY.md.
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    command: >-
+      gcloud beta emulators pubsub start
+      --project=brevis-local --host-port=0.0.0.0:8085
+    ports: ["8085:8085"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8085/v1/projects/brevis-local/topics || exit 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # Creates the topic the gateway publishes to. The driver never creates one --
+  # a topic is infrastructure and belongs to whoever owns it -- so somebody has
+  # to, and locally that is this.
+  topic:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        curl -fs -X PUT http://pubsub:8085/v1/projects/brevis-local/topics/clicks
+        curl -fs -X PUT http://pubsub:8085/v1/projects/brevis-local/subscriptions/clicks-sub \
+          -H 'Content-Type: application/json' \
+          -d '{"topic":"projects/brevis-local/topics/clicks"}'
+        echo "topic and subscription ready"
+    depends_on:
+      pubsub: {condition: service_healthy}
+
+  gateway:
+    build:
+      context: .
+      target: gateway
+    environment:
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+      PUBSUB_PROJECT_ID: brevis-local
+    ports: ["8090:8080"]
+    volumes:
+      - ./gateway/example/gateway.local.yaml:/etc/brevis/gateway.yaml:ro
+    depends_on:
+      topic: {condition: service_completed_successfully}
     restart: unless-stopped
 
 volumes:

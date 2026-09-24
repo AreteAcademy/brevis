@@ -53,6 +53,22 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
       -o /out/brevis ./cmd/brevis
 
+# The gateway, which is a DIFFERENT binary from a different module.
+#
+# It is separate for the reason engine-weight.sh states: the engine orchestrates
+# and never touches customer data, and the gateway does nothing else. Building
+# it here rather than in a Dockerfile of its own is only so the two share this
+# one's build cache and its ldflags; the artifacts stay apart.
+#
+# `-mod=mod`, because the module `replace`s the SDK with the tree next door and
+# does not pin its graph -- the same reason the examples need it.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-gateway ./example
+
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
 #
@@ -92,3 +108,24 @@ RUN adduser -D -u 65532 brevis
 USER brevis
 ENTRYPOINT ["/sbin/tini", "--", "brevis"]
 CMD ["scheduler"]
+
+# `gateway` is its own image: it holds the gateway binary and nothing else.
+#
+# Distroless, like the api and for the same reason: it serves HTTP and executes
+# nothing, so it needs no shell. The config is a file the operator mounts --
+# never baked in, because a gateway that has to be rebuilt to change a flush
+# interval is a gateway nobody tunes.
+FROM gcr.io/distroless/static-debian12:nonroot AS gateway
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis gateway" \
+      org.opencontainers.image.description="An HTTP endpoint that lands data" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-gateway /usr/local/bin/brevis-gateway
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-gateway"]
+CMD ["/etc/brevis/gateway.yaml"]
