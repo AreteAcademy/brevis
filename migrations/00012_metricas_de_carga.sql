@@ -111,13 +111,29 @@ SELECT t.run_id, t.node_id, t.map_index, r.workflow_slug, r.criado_em,
        COALESCE((extracao->>'ms')::bigint, 0)
 FROM task_runs t
 JOIN runs r ON r.id = t.run_id
+-- The CASE is not defensive dressing. `etapas` is jsonb, and jsonb accepts a
+-- SCALAR: one row holding 'null'::jsonb makes jsonb_array_elements abort the
+-- whole migration with `cannot extract elements from a scalar`, leaving the
+-- table created and the backfill undone.
+--
+-- Every test passed because they migrate an EMPTY database, where the backfill
+-- reads nothing and the column's shape never comes up. A production database of
+-- any age has such a row: a task_run from before the stages existed, or one
+-- whose step died before writing any.
+--
+-- At the SOURCE and not in a WHERE. `WHERE jsonb_typeof(t.etapas) = 'array'`
+-- also passes today, and it relies on the planner evaluating that predicate
+-- before the set-returning function on the same row -- which nothing obliges it
+-- to do. This is the same answer whatever the planner picks.
 LEFT JOIN LATERAL (
-    SELECT e FROM jsonb_array_elements(t.etapas) e
+    SELECT e FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(t.etapas) = 'array' THEN t.etapas ELSE '[]'::jsonb END) e
     WHERE e->>'nome' = 'load' AND e->>'estado' = 'done'
     ORDER BY (e->>'indice')::int LIMIT 1
 ) l(carga) ON true
 LEFT JOIN LATERAL (
-    SELECT e FROM jsonb_array_elements(t.etapas) e
+    SELECT e FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(t.etapas) = 'array' THEN t.etapas ELSE '[]'::jsonb END) e
     WHERE e->>'nome' = 'extract' ORDER BY (e->>'indice')::int LIMIT 1
 ) x(extracao) ON true
 -- Only a load that FINISHED, and this is the same rule the runner applies on

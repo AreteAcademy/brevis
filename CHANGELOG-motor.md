@@ -14,6 +14,55 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.15.1] — 2026-09-24
+
+### Fixed: migration 00012 aborted on any database with history
+
+```
+ERROR 00012_metricas_de_carga.sql: failed to run SQL migration:
+ERROR: cannot extract elements from a scalar (SQLSTATE 22023)
+```
+
+`task_runs.etapas` is `jsonb`, and `jsonb` accepts a **scalar**. The backfill
+reads it with `jsonb_array_elements`, which does not: one row holding
+`'null'::jsonb` takes the whole migration down. Every database of any age has
+such a row — a task_run from before the stages existed, or one whose step died
+before writing any.
+
+An empty database passes, which is why it shipped: the backfill reads nothing
+and the column's shape never comes up.
+
+**Nothing to clean up first.** Goose runs each migration in a transaction, and
+this one rolled back whole: a database that hit the error sits at version 11
+with no `load_metrics` table and its data untouched — verified by reproducing
+the failure through goose and then applying the fix to the same database.
+Upgrading is the entire fix; `UPDATE task_runs SET etapas = '[]'` is not needed
+and would erase history.
+
+The guard is at the source rather than in a `WHERE`:
+
+```sql
+jsonb_array_elements(
+    CASE WHEN jsonb_typeof(t.etapas) = 'array' THEN t.etapas ELSE '[]'::jsonb END)
+```
+
+`WHERE jsonb_typeof(t.etapas) = 'array'` also passes today, and it relies on the
+planner evaluating that predicate before the set-returning function on the same
+row — which nothing obliges it to do.
+
+### Fixed: the test that should have caught it held a copy of the SQL
+
+`load_metrics_test.go` pasted the backfill instead of reading it, so it tested a
+copy of the migration rather than the migration. It now reads the statement out
+of the embedded file, which means a green test is a statement about what runs.
+
+The case it was missing is there too: a scalar among real rows must not take the
+rows beside it down. Both halves are mutation-proved — removing the guard
+reproduces the production error inside the test, and a guard that returns `'[]'`
+for everything fails on the row it should have kept.
+
+---
+
 ## [0.15.0] — 2026-09-16
 
 ### Added: `list|<type>` — a param that carries many values
