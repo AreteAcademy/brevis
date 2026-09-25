@@ -477,6 +477,9 @@ jobs:
       - name: A consumer can build the gateway
         run: .github/scripts/gateway-consumer-check.sh
 
+      - name: The Docker Hub overview fits
+        run: .github/scripts/hub-overview-check.sh
+
       - name: Lint the gateway
         uses: golangci/golangci-lint-action@v9
         with:

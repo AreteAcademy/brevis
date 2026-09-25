@@ -110,9 +110,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # The Hub's overview, from a file in this repository rather than typed
-      # into the web UI. Last, so a failed build never leaves the page
-      # describing an image that is not there.
       # The slim image, from the SAME build context and the same tag.
       #
       # Same commit, always: two images built from two checkouts is how a
@@ -135,11 +132,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The Hub's overview, from a file in this repository rather than typed
+      # into the web UI. Last, so a failed build never leaves the page
+      # describing an image that is not there.
+      #
+      # Its OWN file, and not docs/GATEWAY.md. Docker Hub truncates past 25,000
+      # bytes and the action below reports that as a WARNING, not an error --
+      # so the reference doc crossed the limit at v0.3.2 and the page had been
+      # cut mid-sentence ever since, in a job that stayed green. A Hub page and
+      # a repository reference are different documents for different readers.
+      - name: The overview fits
+        run: .github/scripts/hub-overview-check.sh
+
       - name: The Docker Hub overview
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: areteacademy/brevis-gateway
-          readme-filepath: ./docs/GATEWAY.md
+          readme-filepath: ./docs/GATEWAY-hub.md
           short-description: "An HTTP endpoint that lands data: validate, shape, batch, deliver."
