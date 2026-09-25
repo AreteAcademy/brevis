@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/store/s3"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -46,7 +47,7 @@ func TestIntegrationADeadLetterInABucketActuallyKeepsTheEvents(t *testing.T) {
 	// The gateway builds its own client from the environment, which is the
 	// path a pod takes. AWS's own variable name, so a deployment that already
 	// sets it for other tools needs nothing new.
-	t.Setenv(gateway.EnvS3Endpoint, endpoint)
+	t.Setenv(s3.EnvEndpoint, endpoint)
 	t.Setenv("AWS_REGION", "us-east-1")
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
@@ -95,7 +96,7 @@ func TestIntegrationAFilesSinkWritesToABucket(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Setenv(gateway.EnvS3Endpoint, endpoint)
+	t.Setenv(s3.EnvEndpoint, endpoint)
 	t.Setenv("AWS_REGION", "us-east-1")
 	t.Setenv("AWS_ACCESS_KEY_ID", "test")
 	t.Setenv("AWS_SECRET_ACCESS_KEY", "test")
@@ -148,7 +149,7 @@ streams:
 	if err != nil {
 		t.Fatalf("loading: %v", err)
 	}
-	srv, err := gateway.New(cfg, nil)
+	srv, err := gateway.New(cfg, nil, everything()...)
 	if err != nil {
 		t.Fatalf("starting: %v", err)
 	}

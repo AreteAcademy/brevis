@@ -299,7 +299,7 @@ streams:
 	if err != nil {
 		t.Fatalf("loading: %v", err)
 	}
-	srv, err := gateway.New(cfg, nil, gateway.WithSink("clicks", sink))
+	srv, err := gateway.New(cfg, nil, with(gateway.WithSink("clicks", sink))...)
 	if err != nil {
 		t.Fatal(err)
 	}

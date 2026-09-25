@@ -242,24 +242,6 @@ const (
 	SinkRedshift = "redshift"
 )
 
-// sinkTypes is the list every refusal names, in one place. A message that
-// listed them by hand went stale the first time one was added, and a refusal
-// that names the wrong set is worse than one that names none.
-var sinkTypes = []string{
-	SinkPubSub, SinkPostgres, SinkBigQuery, SinkMySQL, SinkRedshift, SinkFiles,
-}
-
-// writesRows says whether this sink lands rows in a table, which is what makes
-// `write` mean something. A topic and a folder take every delivery by nature --
-// there is nothing there to merge onto.
-func writesRows(t string) bool {
-	switch t {
-	case SinkPostgres, SinkBigQuery, SinkMySQL, SinkRedshift:
-		return true
-	}
-	return false
-}
-
 // How a row is written. The words are the ones a data engineer already uses,
 // and each maps to what the driver actually does rather than to an intention.
 const (
@@ -509,78 +491,20 @@ func (i *Identity) check() error {
 		"than a weaker one", strings.Join(missing, ", "))
 }
 
+// check is what is true of EVERY sink, and nothing more.
+//
+// The per-driver rules -- BigQuery needs a dataset, Redshift needs an s3://
+// staging prefix and a role, a table sink needs `write` -- moved into the
+// drivers when they moved into packages. That is not tidying: config.go cannot
+// name them any more, because which drivers exist is a property of the BINARY
+// now, and a slim build genuinely does not implement bigquery.
+//
+// So an unknown type is refused by the registry at New rather than here, with
+// a message naming what THIS binary carries. Both still run before the
+// listener opens, so nothing reaches a request that a config half understood.
 func (s *Sink) check() error {
-	if writesRows(s.Type) {
-		if err := s.checkWrite(); err != nil {
-			return err
-		}
-		if strings.TrimSpace(s.Table) == "" {
-			return fmt.Errorf("`table` is empty (schema-qualified: landing.clicks)")
-		}
-	}
-
-	switch s.Type {
-	case "":
-		return fmt.Errorf("`type` is empty (use %s)", strings.Join(sinkTypes, ", "))
-	case SinkPubSub:
-		if strings.TrimSpace(s.Project) == "" {
-			return fmt.Errorf("`project` is empty")
-		}
-		if strings.TrimSpace(s.Topic) == "" {
-			return fmt.Errorf("`topic` is empty")
-		}
-	case SinkPostgres, SinkMySQL:
-		if strings.TrimSpace(s.DSNFrom) == "" {
-			return fmt.Errorf("`dsn_from` is empty: name the environment variable " +
-				"holding the connection string, never the string")
-		}
-	case SinkBigQuery:
-		// No dsn_from: BigQuery authenticates with the pod's own credentials,
-		// which is what a workload identity is for. A connection string here
-		// would be a second way to do what the platform already does.
-		if strings.TrimSpace(s.Project) == "" {
-			return fmt.Errorf("`project` is empty (the GCP project holding the dataset)")
-		}
-		if strings.TrimSpace(s.Dataset) == "" {
-			return fmt.Errorf("`dataset` is empty")
-		}
-		if strings.Contains(s.Table, ".") {
-			// BigQuery's name is three parts and they are three FIELDS here.
-			// Accepting "landing.clicks" would make a table literally called
-			// "landing.clicks" inside the declared dataset.
-			return fmt.Errorf("`table` is %q: for BigQuery the name has no dots -- "+
-				"the project and the dataset are their own fields", s.Table)
-		}
-	case SinkRedshift:
-		if strings.TrimSpace(s.DSNFrom) == "" {
-			return fmt.Errorf("`dsn_from` is empty: name the environment variable " +
-				"holding the connection string, never the string")
-		}
-		if strings.TrimSpace(s.Staging) == "" {
-			return fmt.Errorf("`staging` is empty, and Redshift has no inline path: " +
-				"a batch is written to S3 and COPYed from there, so this needs an " +
-				"s3:// prefix the cluster can read")
-		}
-		if !strings.HasPrefix(s.Staging, "s3://") {
-			return fmt.Errorf("`staging` is %q: Redshift COPYs from S3, so it has "+
-				"to be an s3:// prefix", s.Staging)
-		}
-		if strings.TrimSpace(s.IAMRole) == "" {
-			return fmt.Errorf("`iam_role` is empty: the cluster assumes a role to " +
-				"read the staging prefix. A role and not a key, because a key in a " +
-				"COPY's URL ends up in the cluster's query log")
-		}
-
-	case SinkFiles:
-		// A local directory, gs:// or s3://: to.Files reads all three, so the
-		// dead letter can be a folder on a laptop and a bucket in production
-		// without the gateway learning a second idea of what a path is.
-		if strings.TrimSpace(s.Path) == "" {
-			return fmt.Errorf("`path` is empty (a directory, gs:// or s3://)")
-		}
-	default:
-		return fmt.Errorf("`type` is %q, and only %s are implemented",
-			s.Type, strings.Join(sinkTypes, ", "))
+	if strings.TrimSpace(s.Type) == "" {
+		return fmt.Errorf("`type` is empty")
 	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {
@@ -588,38 +512,4 @@ func (s *Sink) check() error {
 		}
 	}
 	return nil
-}
-
-// checkWrite settles how rows land. One function for every table-shaped sink,
-// because the question is the same everywhere and the answer has to be too: a
-// `merge` that meant something different in MySQL than in Postgres would be one
-// word with two meanings in the same file.
-//
-// In all four it is the idempotent insert, and the FIRST delivery wins:
-//
-//	postgres  INSERT … ON CONFLICT (ingestion_id) DO NOTHING
-//	mysql     INSERT IGNORE
-//	bigquery  MERGE … WHEN NOT MATCHED THEN INSERT
-//	redshift  MERGE … WHEN NOT MATCHED THEN INSERT
-func (s *Sink) checkWrite() error {
-	switch s.Write {
-	case WriteAppend, WriteMerge:
-		return nil
-	case WriteUpsert:
-		return fmt.Errorf("`write: %s` is not implemented yet. %s ignores a "+
-			"redelivery (the first delivery wins); %s would apply it (the last "+
-			"delivery wins). They differ on whether a correction overwrites, so "+
-			"this refuses rather than giving you one under the other's name",
-			WriteUpsert, WriteMerge, WriteUpsert)
-	case "":
-		// Not defaulted. Appending a redelivery into a table somebody counts,
-		// and merging into a log that wanted every arrival, are both wrong --
-		// and which is which is a property of the table, not of this gateway.
-		return fmt.Errorf("`write` is empty (use %s or %s): appending a "+
-			"redelivery into a table somebody counts and merging into a log "+
-			"that wanted every arrival are both wrong, and only the table's "+
-			"owner knows which it is", WriteAppend, WriteMerge)
-	default:
-		return fmt.Errorf("`write` is %q (use %s or %s)", s.Write, WriteAppend, WriteMerge)
-	}
 }

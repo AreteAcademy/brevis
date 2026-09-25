@@ -151,7 +151,7 @@ func TestAuthWithNoKeysIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := gateway.New(cfg, nil); err == nil {
+	if _, err := gateway.New(cfg, nil, everything()...); err == nil {
 		t.Error("it started with a key list that accepts nothing")
 	}
 }
@@ -170,7 +170,7 @@ func servingAuthed(t *testing.T, dir string) *httptest.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv, err := gateway.New(cfg, nil)
+	srv, err := gateway.New(cfg, nil, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -110,7 +110,7 @@ streams:
 	if err != nil {
 		t.Fatalf("loading: %v", err)
 	}
-	srv, err := gateway.New(cfg, nil)
+	srv, err := gateway.New(cfg, nil, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}

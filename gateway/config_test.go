@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/sink/files"
+	"github.com/AreteAcademy/brevis/gateway/sink/postgres"
 )
 
 const valid = `
@@ -36,9 +38,75 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 			says: "only \"memory\" is implemented",
 		},
 		{
+			// The formula is frozen over exactly four fields, so three of them
+			// is a DIFFERENT id, not a weaker one.
+			name: "an identity missing one of the four",
+			yaml: strings.Replace(valid, ", record_ts: occurred_at", "", 1),
+			says: "record_ts",
+		},
+		{
+			// Two streams on one path is a silent winner, decided by the order
+			// of a map somewhere.
+			name: "two streams on one path",
+			yaml: valid + `  - name: other
+    path: /v1/clicks
+    identity: {provider: w, entity: e, source_key: k, record_ts: t}
+    sink: {type: pubsub, project: p, topic: t}
+    dead_letter: {type: files, path: ./dead/}
+`,
+			says: "both listen on",
+		},
+		{
+			name: "a format that would have to be guessed",
+			yaml: strings.Replace(valid, "    sink:", "    format: csv\n    sink:", 1),
+			says: "use json, array or ndjson",
+		},
+		{
+			// A typo in a key is a setting that silently does nothing, and in
+			// this file that means a durability or a flush the operator
+			// believes is in force.
+			name: "a key that is a typo",
+			yaml: strings.Replace(valid, "    sink:", "    hokk: enrich\n    sink:", 1),
+			says: "hokk",
+		},
+		{
+			name: "a path that is not one",
+			yaml: strings.Replace(valid, "path: /v1/clicks", "path: v1/clicks", 1),
+			says: "has to start with /",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := load(t, c.yaml)
+			if err == nil {
+				t.Fatal("it was accepted")
+			}
+			if !strings.Contains(err.Error(), c.says) {
+				t.Errorf("the refusal does not say %q: %v", c.says, err)
+			}
+		})
+	}
+}
+
+// The sinks refuse what would fail silently, and they do it at New rather
+// than at Load.
+//
+// The move is the registry's doing and it is worth stating: config.go cannot
+// name the per-driver rules any more, because which drivers exist is a
+// property of the BINARY. A slim build genuinely does not implement bigquery,
+// and a fixed list in the parser would tell its operator otherwise.
+//
+// Both still run before the listener opens. Nothing reaches a request that a
+// config half understood.
+func TestTheSinksRefuseWhatWouldFailSilently(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		yaml string
+		says string
+	}{
+		{
 			name: "a sink nobody implemented",
 			yaml: strings.Replace(valid, "type: pubsub", "type: kafka", 1),
-			says: "only pubsub, postgres, bigquery, mysql, redshift, files are implemented",
+			says: "not one this binary carries",
 		},
 		{
 			// The one refusal in this file that is about somebody else's data.
@@ -142,53 +210,72 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 			yaml: withSink("{type: mysql, dsn_from: MY_DSN, table: landing.clicks, write: upsert}"),
 			says: "first delivery wins",
 		},
-		{
-			// The formula is frozen over exactly four fields, so three of them
-			// is a DIFFERENT id, not a weaker one.
-			name: "an identity missing one of the four",
-			yaml: strings.Replace(valid, ", record_ts: occurred_at", "", 1),
-			says: "record_ts",
-		},
-		{
-			// Two streams on one path is a silent winner, decided by the order
-			// of a map somewhere.
-			name: "two streams on one path",
-			yaml: valid + `  - name: other
-    path: /v1/clicks
-    identity: {provider: w, entity: e, source_key: k, record_ts: t}
-    sink: {type: pubsub, project: p, topic: t}
-    dead_letter: {type: files, path: ./dead/}
-`,
-			says: "both listen on",
-		},
-		{
-			name: "a format that would have to be guessed",
-			yaml: strings.Replace(valid, "    sink:", "    format: csv\n    sink:", 1),
-			says: "use json, array or ndjson",
-		},
-		{
-			// A typo in a key is a setting that silently does nothing, and in
-			// this file that means a durability or a flush the operator
-			// believes is in force.
-			name: "a key that is a typo",
-			yaml: strings.Replace(valid, "    sink:", "    hokk: enrich\n    sink:", 1),
-			says: "hokk",
-		},
-		{
-			name: "a path that is not one",
-			yaml: strings.Replace(valid, "path: /v1/clicks", "path: v1/clicks", 1),
-			says: "has to start with /",
-		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := load(t, c.yaml)
-			if err == nil {
-				t.Fatal("it was accepted")
+			cfg, err := load(t, c.yaml)
+			if err != nil {
+				t.Fatalf("the config did not even parse: %v", err)
+			}
+			if _, err = gateway.New(cfg, nil, everything()...); err == nil {
+				t.Fatal("it started")
 			}
 			if !strings.Contains(err.Error(), c.says) {
 				t.Errorf("the refusal does not say %q: %v", c.says, err)
 			}
 		})
+	}
+}
+
+// A sink this binary did not compile in is refused BY NAME, and the message
+// says it is a build that left it out.
+//
+// The distinction is the whole point of the registry: "bigquery is not
+// implemented" would send an operator looking for a config mistake they did
+// not make, when what happened is that somebody built a smaller image.
+func TestASinkThisBinaryDoesNotCarryIsRefusedByName(t *testing.T) {
+	sinks := gateway.NewSinks()
+	sinks.MustRegister(postgres.Sink, postgres.New)
+	sinks.MustRegister(files.Sink, files.New)
+
+	cfg, err := load(t, withSink("{type: bigquery, project: p, dataset: d, table: t, write: append}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = gateway.New(cfg, nil, gateway.WithSinks(sinks))
+	if err == nil {
+		t.Fatal("a slim binary accepted a sink it cannot build")
+	}
+	if !strings.Contains(err.Error(), "not one this binary carries") {
+		t.Errorf("the refusal does not say it is a build: %v", err)
+	}
+	// And it names what IS carried, so the operator can see the shape of the
+	// build they are holding.
+	if !strings.Contains(err.Error(), "files, postgres") {
+		t.Errorf("the refusal does not name what this binary has: %v", err)
+	}
+}
+
+// A bucket path in a binary with no object store is refused at startup.
+//
+// The slim image has no AWS SDK, so `s3://` cannot work in it. Failing here is
+// the difference between a pod that will not go ready and a pod that goes
+// ready and loses the first batch it has to bury.
+func TestABucketPathWithNoStoreIsRefusedAtStartup(t *testing.T) {
+	sinks := gateway.NewSinks()
+	sinks.MustRegister(files.Sink, files.New)
+
+	yaml := strings.Replace(withSink("{type: files, path: ./out/}"),
+		"dead_letter: {type: files, path: ./dead/}",
+		"dead_letter: {type: files, path: \"s3://bucket/dead/\"}", 1)
+	cfg, err := load(t, yaml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = gateway.New(cfg, nil, gateway.WithSinks(sinks)); err == nil {
+		t.Fatal("it started with a dead letter it cannot write to")
+	}
+	if !strings.Contains(err.Error(), "carries no object store") {
+		t.Errorf("the refusal does not explain what is missing: %v", err)
 	}
 }
 
@@ -246,7 +333,7 @@ func TestAnUnknownHookIsRefusedAtLoadAndNamesWhatExists(t *testing.T) {
 	hooks := gateway.NewHooks()
 	hooks.MustRegister("enrich", func(e map[string]any) (map[string]any, error) { return e, nil })
 
-	_, err = gateway.New(cfg, hooks)
+	_, err = gateway.New(cfg, hooks, everything()...)
 	if err == nil {
 		t.Fatal("the gateway started with a hook it cannot run")
 	}
@@ -256,7 +343,7 @@ func TestAnUnknownHookIsRefusedAtLoadAndNamesWhatExists(t *testing.T) {
 
 	// And with none registered at all, the message says how hooks get there --
 	// because "no hook called x" with an empty list is a dead end.
-	_, err = gateway.New(cfg, gateway.NewHooks())
+	_, err = gateway.New(cfg, gateway.NewHooks(), everything()...)
 	if err == nil || !strings.Contains(err.Error(), "compiled into the binary") {
 		t.Errorf("with no hooks at all the error is: %v", err)
 	}

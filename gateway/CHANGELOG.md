@@ -13,6 +13,76 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.2.0] — 2026-09-24
+
+### The sinks are injectable, and there is a slim image
+
+A gateway that only ever writes to Postgres carried the AWS SDK, the Google
+client stack and Arrow: **48.9 MB against 10.0** for the same gateway with only
+what it uses. Nothing was wrong with the linker — it prunes what nothing
+references — the problem was one `switch` that named every constructor, so
+every driver was referenced in every build.
+
+Each sink is now its own package and the binary registers what it carries:
+
+```go
+func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}
+```
+
+**The import list is the selection.** That is how `database/sql` has always
+worked, and it was already the rule one level down: `sdk/store/s3` says
+*"importing it costs you the AWS SDK"* precisely so a fetcher reading GCS does
+not pay for it. Anyone with a hook is compiling their own binary already, so for
+them this costs nothing at all.
+
+Object stores are a second registry, because a scheme is not a destination:
+`files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
+build that only ever writes locally should not carry the AWS SDK to do it.
+
+### Two images
+
+| | sinks | size |
+|---|---|---|
+| `areteacademy/brevis-gateway:0.2.0` | all six, both stores | 48.6 MB |
+| `areteacademy/brevis-gateway:0.2.0-slim` | postgres, local `files` | **12.4 MB** |
+
+Built from one tree in one job, because two images from two checkouts is how a
+`-slim` tag ends up a commit behind the one it claims to match. No
+`latest-slim`: `latest` is already a tag nobody should deploy, and a second
+floating one would be a second way to be surprised.
+
+### Refusals now report per binary
+
+```
+sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.
+```
+
+A fixed list would have sent that operator looking for a config mistake they did
+not make. Same for an object store: a `s3://` dead letter in a binary with no S3
+backend is refused **at startup**, naming the scheme — rather than on the first
+batch it has to bury, which is the failure the whole split prevents.
+
+The per-driver checks moved into the drivers with them, so `config.go` no longer
+claims to know which sinks exist. Both still run before the listener opens.
+
+### A test that watches the weight
+
+`go list -deps` on both mains, asserting the slim build reaches neither the AWS
+SDK nor the Google stack nor Arrow. It is the one claim here no ordinary test
+can see: everything compiles and every test passes whether or not the linker
+pruned anything, and the cost shows up only as a number in a `docker pull`. An
+import added to the root package that drags one of them back in fails this and
+nothing else.
+
+---
+
 ## [0.1.0] — 2026-09-24
 
 The first one. An HTTP endpoint that lands data.

@@ -142,7 +142,7 @@ func (c *countingSink) Write(_ context.Context, batch []gateway.Envelope) (int64
 func serving(t *testing.T, dead, sink string) (*gateway.Server, *httptest.Server) {
 	t.Helper()
 	cfg := gatewayConfig(t, dead, sink, 4, time.Millisecond)
-	srv, err := gateway.New(cfg, nil)
+	srv, err := gateway.New(cfg, nil, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ streams:
 func servingWith(t *testing.T, dead string, sink gateway.Sinker, attempts int, backoff time.Duration) (*gateway.Server, *httptest.Server) {
 	t.Helper()
 	cfg := gatewayConfig(t, dead, `{type: files, path: /dev/null/unused/}`, attempts, backoff)
-	srv, err := gateway.New(cfg, nil, gateway.WithSink("clicks", sink))
+	srv, err := gateway.New(cfg, nil, with(gateway.WithSink("clicks", sink))...)
 	if err != nil {
 		t.Fatal(err)
 	}

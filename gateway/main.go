@@ -15,7 +15,20 @@ import (
 // It exists so a consumer's main is the registration and nothing else: the
 // listener, the signals and the drain are the same every time, and a binary
 // that has to re-derive them is a binary where one of them is forgotten.
-func Main(hooks *Hooks) {
+//
+// The options are where the registration goes:
+//
+//	func main() {
+//	    sinks := gateway.NewSinks()
+//	    sinks.MustRegister(postgres.Sink, postgres.New)
+//	    sinks.MustRegister(files.Sink, files.New)
+//	    gateway.Main(nil, gateway.WithSinks(sinks))
+//	}
+//
+// That binary carries pgx and nothing else -- 10 MB against the 49 of one that
+// registers all six. The import list is the selection, which is how
+// database/sql has always worked.
+func Main(hooks *Hooks, opts ...Option) {
 	if len(os.Args) < 2 {
 		log.Fatal("usage: gateway <config.yaml>")
 	}
@@ -23,7 +36,7 @@ func Main(hooks *Hooks) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv, err := New(cfg, hooks)
+	srv, err := New(cfg, hooks, opts...)
 	if err != nil {
 		log.Fatal(err)
 	}

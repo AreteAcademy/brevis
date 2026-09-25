@@ -41,26 +41,52 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 
 			// Every hook the file names has to be one the example binary
 			// registers, or the file documents a gateway that will not start.
-			registered := exampleHooks(t)
+			hooks := registered(t, `MustRegister("`)
 			for _, s := range cfg.Streams {
 				if s.Hook == "" {
 					continue
 				}
-				if !registered[s.Hook] {
+				if !hooks[s.Hook] {
 					t.Errorf("stream %q names hook %q, which example/main.go "+
 						"does not register", s.Name, s.Hook)
+				}
+			}
+
+			// And every sink, which is the same rule and a newer way to get it
+			// wrong: sinks are compiled in now, so a stream naming one the
+			// example binary did not import is a file documenting a gateway
+			// that refuses to start. The refusal is good; shipping the file
+			// that triggers it is not.
+			sinks := registered(t, `MustRegister(`)
+			for _, s := range cfg.Streams {
+				for _, use := range []struct{ what, typ string }{
+					{"sink", s.Sink.Type},
+					{"dead_letter", s.DeadLetter.Type},
+				} {
+					if use.typ == "" || sinks[use.typ] {
+						continue
+					}
+					t.Errorf("stream %q's %s is %q, which example/main.go does "+
+						"not register", s.Name, use.what, use.typ)
 				}
 			}
 		})
 	}
 }
 
-// exampleHooks reads the names out of the example binary's source.
+// registered reads what the example binary registers out of its own source.
 //
-// Reading the source rather than listing them here on purpose: a list in the
-// test is a second place the names live, and two places for one fact is how
+// Reading the source rather than listing the names here on purpose: a list in
+// the test is a second place the names live, and two places for one fact is how
 // they start to disagree.
-func exampleHooks(t *testing.T) map[string]bool {
+//
+// Two forms, because the two registries are written differently. A hook is a
+// string literal -- MustRegister("enrich_clicks", …) -- and a sink is the
+// driver package's own constant -- MustRegister(pubsub.Sink, …) -- which is
+// itself the right call: a YAML type name spelled twice is a typo waiting to
+// happen. So a sink is read as `pubsub.Sink` and the package name IS the type
+// name, which holds because every driver here names its constant `Sink`.
+func registered(t *testing.T, marker string) map[string]bool {
 	t.Helper()
 	src, err := os.ReadFile("example/main.go")
 	if err != nil {
@@ -68,17 +94,24 @@ func exampleHooks(t *testing.T) map[string]bool {
 	}
 	out := map[string]bool{}
 	for _, line := range strings.Split(string(src), "\n") {
-		_, rest, found := strings.Cut(line, `MustRegister("`)
+		_, rest, found := strings.Cut(line, marker)
 		if !found {
 			continue
 		}
-		name, _, ok := strings.Cut(rest, `"`)
-		if ok {
-			out[name] = true
+		if marker == `MustRegister("` {
+			if name, _, ok := strings.Cut(rest, `"`); ok {
+				out[name] = true
+			}
+			continue
+		}
+		// `pubsub.Sink, pubsub.New)` -> pubsub
+		if pkg, after, ok := strings.Cut(rest, "."); ok && strings.HasPrefix(after, "Sink,") {
+			out[pkg] = true
 		}
 	}
 	if len(out) == 0 {
-		t.Fatal("example/main.go registers no hook, so this test proves nothing")
+		t.Fatalf("example/main.go registers nothing matching %q, so this test "+
+			"proves nothing", marker)
 	}
 	return out
 }

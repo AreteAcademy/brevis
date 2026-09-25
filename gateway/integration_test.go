@@ -50,7 +50,7 @@ func TestIntegrationAnEventReachesTheTopicAsItWasSent(t *testing.T) {
 		return e, nil
 	})
 
-	srv, err := gateway.New(cfg, hooks)
+	srv, err := gateway.New(cfg, hooks, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestIntegrationARetryCarriesTheSameIngestionID(t *testing.T) {
       type: pubsub
       project: `+project+`
       topic: `+topic)
-	srv, err := gateway.New(cfg, nil)
+	srv, err := gateway.New(cfg, nil, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}

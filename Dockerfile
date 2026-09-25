@@ -70,6 +70,23 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -o /out/brevis-gateway ./cmd/gateway \
     && mkdir -p /out/dead-letter
 
+# And the slim gateway, which is the SAME package with a different main.
+#
+# Two sinks -- postgres and a local `files` dead letter -- instead of six, and
+# no object stores. That is 10 MB against 49, and the difference is entirely
+# drivers a deployment with those two will never call: the AWS SDK, the Google
+# client stack, Arrow.
+#
+# Built here rather than in an image of its own so both share this cache, and
+# because they must be built from ONE tree: two images from two checkouts is
+# how a `-slim` tag ends up one commit behind the tag it claims to match.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-gateway-slim ./cmd/gateway-slim
+
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
 #
@@ -134,6 +151,42 @@ COPY --from=build /out/brevis-gateway /usr/local/bin/brevis-gateway
 # and the dead letter fails with `mkdir: permission denied` -- at the exact
 # moment it is needed, which is after a sink has already refused. Found by
 # pointing a gateway at a topic that does not exist and reading the log.
+COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
+
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-gateway"]
+CMD ["/etc/brevis/gateway.yaml"]
+
+# `gateway-slim` is the gateway with two sinks instead of six.
+#
+# Postgres and a local `files` dead letter, which is the shape most deployments
+# actually have: events arrive over HTTP and land in a table, and what the table
+# will not take goes to a mounted volume.
+#
+# 10 MB against the full image's 49. A config naming `bigquery` here is refused
+# AT STARTUP, naming what this binary carries -- "not one this binary carries
+# (it has: files, postgres)" -- which is the honest message, because it is a
+# build that left it out rather than a destination that does not exist.
+#
+# Want a different pair? cmd/gateway-slim is fifteen lines and the import list
+# is the whole configuration. Anybody with a hook is compiling their own binary
+# already.
+FROM gcr.io/distroless/static-debian12:nonroot AS gateway-slim
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis gateway (slim)" \
+      org.opencontainers.image.description="An HTTP endpoint that lands data: Postgres and a local dead letter" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-gateway-slim /usr/local/bin/brevis-gateway
+
+# The same volume ownership the full image needs, and for the same reason: a
+# named volume inherits the ownership of the path it is first mounted over, and
+# without this the dead letter fails with `mkdir: permission denied` at the one
+# moment it matters.
 COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
 
 USER nonroot:nonroot

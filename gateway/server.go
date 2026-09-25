@@ -38,7 +38,26 @@ type Server struct {
 // Option adjusts a Server at construction.
 type Option func(*options)
 
-type options struct{ sinks map[string]Sinker }
+type options struct {
+	sinks   map[string]Sinker
+	catalog *Sinks
+	stores  *Stores
+}
+
+// WithSinks says which destinations this binary carries.
+//
+// Without it a gateway registers none and refuses every stream by name, which
+// is the honest default for a library: the sinks are Go, compiled in, and only
+// the main that built the binary knows which ones it linked. cmd/gateway
+// registers all six; cmd/gateway-slim registers two.
+func WithSinks(c *Sinks) Option { return func(o *options) { o.catalog = c } }
+
+// WithStores says which object-store backends this binary carries, by scheme.
+//
+// Separate from WithSinks because a scheme is not a destination: `files` is one
+// sink that writes to a directory, to gs:// and to s3://, and a build that
+// only ever writes locally should not carry the AWS SDK to do it.
+func WithStores(s *Stores) Option { return func(o *options) { o.stores = s } }
 
 // WithSink replaces one stream's destination.
 //
@@ -96,11 +115,11 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		sink, ok := o.sinks[st.Name]
 		if !ok {
 			var err error
-			if sink, err = build(ctx, st.Sink); err != nil {
+			if sink, err = o.build(ctx, st.Sink); err != nil {
 				return nil, fmt.Errorf("stream %q: %w", st.Name, err)
 			}
 		}
-		dead, err := build(ctx, st.DeadLetter)
+		dead, err := o.build(ctx, st.DeadLetter)
 		if err != nil {
 			return nil, fmt.Errorf("stream %q: dead_letter: %w", st.Name, err)
 		}
@@ -124,6 +143,23 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 	}
 	s.keys = keys
 	return s, nil
+}
+
+// build resolves one sink through the registry. It is the only place a type
+// name becomes an implementation, so an unknown one cannot reach the request
+// path -- and everything that can fail fails HERE: a missing connection
+// string, absent cloud credentials, a staging prefix nobody can write. A
+// gateway that goes ready and discovers this on the first batch is a gateway
+// that loses it.
+func (o *options) build(ctx context.Context, s Sink) (Sinker, error) {
+	if o.catalog == nil {
+		o.catalog = NewSinks()
+	}
+	fn, err := o.catalog.get(s.Type)
+	if err != nil {
+		return nil, err
+	}
+	return fn(Build{Ctx: ctx, Sink: s, Stores: o.stores})
 }
 
 // Handler is the gateway's routes, behind the guard.
@@ -304,12 +340,12 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
 func (p *pipe) identify(e map[string]any) (sdk.Envelope, error) {
 	id := p.stream.Identity
 
-	key := text(e[id.SourceKey])
+	key := Text(e[id.SourceKey])
 	if key == "" {
 		return sdk.Envelope{}, fmt.Errorf("field %q is missing or empty, and it is "+
 			"this stream's source_key", id.SourceKey)
 	}
-	ts := text(e[id.RecordTS])
+	ts := Text(e[id.RecordTS])
 	if ts == "" {
 		return sdk.Envelope{}, fmt.Errorf("field %q is missing or empty, and it is "+
 			"this stream's record_ts", id.RecordTS)

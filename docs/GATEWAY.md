@@ -166,7 +166,7 @@ somebody choosing this.
 | `redshift` | **runs** | the batch to S3, then `COPY`, then `MERGE` | **config only — no emulator exists** |
 | `sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka`, `rabbitmq` | planned | nothing written | — |
 
-An unknown `type:` is **refused at load**, naming the six that are implemented.
+An unknown `type:` is **refused at startup**, naming what *this binary* carries.
 A gateway that starts on a sink it does not have is one that drops events for a
 reason nobody can see.
 
@@ -285,6 +285,73 @@ intersected with what the batch carries, **before** touching the server — so a
 unknown field is refused with the message that fixes it instead of failing
 mid-`COPY`, and a field one event omits is written as `NULL`.
 
+## Which sinks a binary carries, and what that weighs
+
+The sinks are **compiled in**, like the hooks, and the binary registers what it
+has:
+
+```go
+func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}
+```
+
+**The import list is the selection.** The Go linker prunes what nothing
+references, so a binary that never imports the BigQuery driver does not carry
+BigQuery — or Arrow, or the Storage Write API. That is how `database/sql` has
+always worked, and it is the rule one level down too: `sdk/store/s3` says
+*importing it costs you the AWS SDK*, precisely so a fetcher reading GCS does
+not pay for it.
+
+It is worth what it sounds like:
+
+| build | packages | binary |
+|---|---|---|
+| all six sinks, both object stores | 864 | 48.9 MB |
+| postgres + local `files` | 232 | **10.0 MB** |
+
+Object stores are a **second** registry, because a scheme is not a destination:
+`files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
+build that only ever writes locally should not carry the AWS SDK to do it.
+
+```go
+stores := gateway.NewStores()
+stores.MustRegister(s3.Scheme, s3.Open)      // only if a path needs it
+gateway.Main(hooks, gateway.WithSinks(sinks), gateway.WithStores(stores))
+```
+
+### Two published images
+
+| image | carries | size |
+|---|---|---|
+| `areteacademy/brevis-gateway:X` | all six sinks, S3 and GCS | 48.6 MB |
+| `areteacademy/brevis-gateway:X-slim` | `postgres`, local `files` | **12.4 MB** |
+
+Both from one build of one tree, so the two tags are always the same commit.
+There is no `latest-slim` — `latest` is already a tag nobody should deploy.
+
+**Want a different pair?** `gateway/cmd/gateway-slim` is fifteen lines and the
+import block is the whole of its configuration. Copy it, change the imports,
+build. Anybody who wants a hook is compiling their own binary already, so
+choosing the sinks costs them nothing more.
+
+### The refusal says which build you are holding
+
+```
+sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.
+```
+
+A fixed list — *"only pubsub, postgres, bigquery, mysql, redshift, files are
+implemented"* — would send that operator looking for a config mistake they did
+not make. The same holds for an object store: an `s3://` dead letter in a binary
+with no S3 backend is refused **at startup**, naming the scheme, rather than on
+the first batch it has to bury.
+
 ## The request never waits for the sink
 
 A request decodes the body, runs the hook, computes the identity, appends to a
@@ -338,6 +405,10 @@ out produces a *different* id rather than a weaker one.
 
 **Every table-shaped sink requires `write`**, and refuses `upsert` by name. See
 [Writing to Postgres](#writing-to-postgres).
+
+These, and every other per-driver rule, are checked by the **driver** and not by
+the parser — because which drivers exist is a property of the binary now. Both
+run before the listener opens.
 
 ## The hook is Go, compiled in
 

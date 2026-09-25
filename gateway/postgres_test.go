@@ -197,7 +197,7 @@ func TestIntegrationPostgresAnUnknownColumnIsRefusedWithItsName(t *testing.T) {
 // it out on the first request is a pod that went ready and drops events.
 func TestAPostgresSinkWithNoConnectionStringIsRefusedAtStartup(t *testing.T) {
 	t.Setenv("PG_DSN", "")
-	_, err := gateway.New(postgresConfig(t, "landing.clicks", "append", t.TempDir()), nil)
+	_, err := gateway.New(postgresConfig(t, "landing.clicks", "append", t.TempDir()), nil, everything()...)
 	if err == nil {
 		t.Fatal("it started")
 	}
@@ -225,7 +225,7 @@ func postgresGateway(t *testing.T, table, mode string, dead ...string) *gateway.
 	if len(dead) > 0 {
 		path = dead[0]
 	}
-	srv, err := gateway.New(postgresConfig(t, table, mode, path), nil)
+	srv, err := gateway.New(postgresConfig(t, table, mode, path), nil, everything()...)
 	if err != nil {
 		t.Fatal(err)
 	}

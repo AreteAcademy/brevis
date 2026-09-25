@@ -44,6 +44,23 @@ jobs:
           cd gateway
           GOFLAGS=-mod=mod go test ./... -count=1
 
+      # Both mains have to compile, and the weight tests assert the slim one
+      # does not link what it does not register. Without this the slim image
+      # could be published carrying everything -- 49 MB under a name that
+      # promises 10 -- and the only symptom would be the pull.
+      - name: Both binaries, and the slim one is actually slim
+        run: |
+          cd gateway
+          export GOFLAGS=-mod=mod
+          go build ./cmd/gateway ./cmd/gateway-slim
+          full=$(go list -deps ./cmd/gateway | wc -l)
+          slim=$(go list -deps ./cmd/gateway-slim | wc -l)
+          echo "full: $full packages, slim: $slim"
+          if [ "$slim" -ge "$full" ]; then
+            echo "::error::the slim build is not smaller than the full one"
+            exit 1
+          fi
+
       - name: Resolve the version
         id: v
         run: |
@@ -90,6 +107,28 @@ jobs:
       # The Hub's overview, from a file in this repository rather than typed
       # into the web UI. Last, so a failed build never leaves the page
       # describing an image that is not there.
+      # The slim image, from the SAME build context and the same tag.
+      #
+      # Same commit, always: two images built from two checkouts is how a
+      # `-slim` tag ends up one commit behind the one it claims to match, and
+      # an operator comparing them has no way to see it.
+      #
+      # No `latest-slim`. `latest` is already a tag nobody should deploy; a
+      # second floating one would be a second way to be surprised.
+      - name: Gateway (slim)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: gateway-slim
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}-slim
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: The Docker Hub overview
         uses: peter-evans/dockerhub-description@v5
         with:
