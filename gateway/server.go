@@ -23,6 +23,10 @@ import (
 // the outage.
 const sendTimeout = 60 * time.Second
 
+// startupTimeout bounds building the sinks. Thirty seconds is long for a
+// credential fetch and short against any readiness probe worth having.
+const startupTimeout = 30 * time.Second
+
 // Server is the gateway listening.
 type Server struct {
 	cfg   *Config
@@ -70,6 +74,13 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, mux: http.NewServeMux()}
 
+	// Bounded, because building a cloud client resolves credentials and that
+	// can hang: an unreachable metadata server leaves storage.NewClient
+	// waiting, and a pod hung in New is one that never reports why. Past this
+	// the startup fails and says which sink it was on.
+	ctx, cancel := context.WithTimeout(context.Background(), startupTimeout)
+	defer cancel()
+
 	for i := range cfg.Streams {
 		st := cfg.Streams[i]
 
@@ -85,11 +96,11 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		sink, ok := o.sinks[st.Name]
 		if !ok {
 			var err error
-			if sink, err = build(st.Sink); err != nil {
+			if sink, err = build(ctx, st.Sink); err != nil {
 				return nil, fmt.Errorf("stream %q: %w", st.Name, err)
 			}
 		}
-		dead, err := build(st.DeadLetter)
+		dead, err := build(ctx, st.DeadLetter)
 		if err != nil {
 			return nil, fmt.Errorf("stream %q: dead_letter: %w", st.Name, err)
 		}

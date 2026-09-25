@@ -156,22 +156,78 @@ Three shapes of destination, and the list is deliberately explicit — a
 connector that is *planned* and a connector that *runs* are different things to
 somebody choosing this.
 
-| Sink | State | What a write is |
-|---|---|---|
-| `pubsub` | **runs** | one publish per batch, attributes and ordering key from the event's own fields |
-| `postgres` | **runs** | `COPY FROM STDIN`, or a staged `INSERT … ON CONFLICT` in one transaction |
-| `files` | **runs** | NDJSON to a directory, `gs://` or `s3://` — also what the dead letter uses |
-| `bigquery` | next | the SDK driver exists; the sink wrapper does not |
-| `mysql`, `redshift` | after that | the SDK drivers exist |
-| `sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka`, `rabbitmq` | planned | nothing written |
+| Sink | State | What a write is | Proven against |
+|---|---|---|---|
+| `pubsub` | **runs** | one publish per batch, attributes and ordering key from the event's own fields | the emulator |
+| `postgres` | **runs** | `COPY FROM STDIN`, or a staged `INSERT … ON CONFLICT` in one transaction | a real Postgres |
+| `mysql` | **runs** | multi-row `INSERT` in a transaction, or `INSERT IGNORE` | a real MySQL |
+| `files` | **runs** | NDJSON to a directory, `gs://` or `s3://` — also what the dead letter uses | the filesystem, and S3 |
+| `bigquery` | **runs** | rows loaded, or staged and `MERGE`d on `ingestion_id` | **config only — no emulator exists** |
+| `redshift` | **runs** | the batch to S3, then `COPY`, then `MERGE` | **config only — no emulator exists** |
+| `sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka`, `rabbitmq` | planned | nothing written | — |
 
-An unknown `type:` is **refused at load**, naming the three that are
-implemented. A gateway that starts on a sink it does not have is one that drops
-events for a reason nobody can see.
+An unknown `type:` is **refused at load**, naming the six that are implemented.
+A gateway that starts on a sink it does not have is one that drops events for a
+reason nobody can see.
+
+**Two of the six are unproven end to end**, and the table says so rather than
+letting the word "runs" carry a claim nobody checked. BigQuery and Redshift have
+no local emulator, so what is tested is the config, the refusals and the driver
+underneath — which is already covered by the SDK's own suite. The first
+production use of either is the real proof, and it should be a low-stakes stream.
 
 `gs://` and `s3://` are not separate connectors: `files` reads all three path
 shapes, so the dead letter is a folder on a laptop and a bucket in production
-with no change here.
+with no change here. That needs credentials, and the gateway resolves them the
+ordinary way — the pod's own identity, or `AWS_*` / `GOOGLE_APPLICATION_CREDENTIALS`.
+Set `AWS_ENDPOINT_URL_S3` to point S3 at MinIO, Ceph or R2; the gateway switches
+to path-style addressing whenever that variable is set, because virtual-host
+addressing puts the bucket in the hostname and those servers do not answer to it.
+
+**Credentials are resolved at startup, not on the first write.** A gateway whose
+S3 role is wrong fails to go ready instead of going ready and losing the first
+batch it tries to bury.
+
+### Writing to MySQL, BigQuery and Redshift
+
+The same two words, and they mean the same two things everywhere — `merge` is
+the idempotent insert and the **first delivery wins**, in all four:
+
+| | `append` | `merge` |
+|---|---|---|
+| **postgres** | `COPY FROM STDIN` | `INSERT … ON CONFLICT (ingestion_id) DO NOTHING` |
+| **mysql** | multi-row `INSERT` per block | `INSERT IGNORE` |
+| **bigquery** | rows loaded (staged through GCS above the driver's inline limit) | `MERGE … WHEN NOT MATCHED THEN INSERT` |
+| **redshift** | `COPY` from S3 | `COPY` to a staging table, then `MERGE` |
+
+Postgres and MySQL both **require a `UNIQUE` index on `ingestion_id`** for
+`merge` and refuse without one, rather than silently appending.
+
+```yaml
+# MySQL: no COPY, so throughput is an order below Postgres on the same
+# hardware. Flush wider here.
+sink: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# BigQuery: no dsn_from. It authenticates with the pod's own credentials,
+# which is what a workload identity is for. The name has no dots — the
+# project and the dataset are their own fields.
+sink: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+# Redshift: two hops, not one. It is columnar, a row-by-row INSERT pays the
+# cost of a block, so every batch becomes an object in `staging` and then a
+# COPY. A stream flushing every second writes 86,400 objects a day — flush
+# much wider here than anywhere else.
+sink:
+  type: redshift
+  dsn_from: BREVIS_RS_DSN
+  table: landing.clicks
+  staging: s3://acme-staging/gateway/
+  iam_role: arn:aws:iam::123456789012:role/redshift-copy   # a role, never a key
+  write: merge
+```
+
+`iam_role` is a role and the driver will not accept a key at all: a key in a
+`COPY`'s URL ends up in the cluster's query log, which plenty of people read.
 
 ### Writing to Postgres
 
@@ -280,7 +336,7 @@ one failure that field exists to prevent.
 `provider|entity|source_key|record_ts` and the formula is frozen, so leaving one
 out produces a *different* id rather than a weaker one.
 
-**A Postgres sink requires `write`**, and refuses `upsert` by name. See
+**Every table-shaped sink requires `write`**, and refuses `upsert` by name. See
 [Writing to Postgres](#writing-to-postgres).
 
 ## The hook is Go, compiled in

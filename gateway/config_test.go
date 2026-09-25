@@ -38,7 +38,7 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 		{
 			name: "a sink nobody implemented",
 			yaml: strings.Replace(valid, "type: pubsub", "type: kafka", 1),
-			says: "only pubsub, postgres and files are implemented",
+			says: "only pubsub, postgres, bigquery, mysql, redshift, files are implemented",
 		},
 		{
 			// The one refusal in this file that is about somebody else's data.
@@ -85,6 +85,62 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 				"sink: {type: pubsub, project: p, topic: t}",
 				"sink: {type: postgres, dsn_from: PG_DSN, write: append}", 1),
 			says: "`table` is empty",
+		},
+		{
+			// BigQuery's name is three parts and they are three FIELDS here.
+			// Accepting the dotted form would create a table literally called
+			// "landing.clicks" inside the declared dataset.
+			name: "a bigquery table written the way every other one is",
+			yaml: withSink("{type: bigquery, project: p, dataset: landing, table: landing.clicks, write: append}"),
+			says: "the project and the dataset are their own fields",
+		},
+		{
+			name: "a bigquery sink with no dataset",
+			yaml: withSink("{type: bigquery, project: p, table: clicks, write: append}"),
+			says: "`dataset` is empty",
+		},
+		{
+			// Redshift is columnar: a row-by-row INSERT pays the cost of a
+			// block, so the only workable load is COPY from S3. No staging
+			// prefix means no load at all.
+			name: "redshift with nowhere to stage",
+			yaml: withSink("{type: redshift, dsn_from: RS_DSN, table: landing.clicks, iam_role: arn:x, write: append}"),
+			says: "Redshift has no inline path",
+		},
+		{
+			name: "redshift staging that is not S3",
+			yaml: withSink("{type: redshift, dsn_from: RS_DSN, table: landing.clicks, iam_role: arn:x, staging: gs://b/p/, write: append}"),
+			says: "Redshift COPYs from S3",
+		},
+		{
+			// A key in a COPY's URL ends up in the cluster's query log, which
+			// plenty of people read. The driver will not take one at all.
+			name: "redshift with no role",
+			yaml: withSink("{type: redshift, dsn_from: RS_DSN, table: landing.clicks, staging: s3://b/p/, write: append}"),
+			says: "`iam_role` is empty",
+		},
+		{
+			// The `write` refusals are one function now, so every table-shaped
+			// sink has to reach it -- a sink added without wiring it would
+			// default silently to appending.
+			name: "mysql with no write mode",
+			yaml: withSink("{type: mysql, dsn_from: MY_DSN, table: landing.clicks}"),
+			says: "`write` is empty",
+		},
+		{
+			name: "bigquery with no write mode",
+			yaml: withSink("{type: bigquery, project: p, dataset: landing, table: clicks}"),
+			says: "`write` is empty",
+		},
+		{
+			name: "redshift with no write mode",
+			yaml: withSink("{type: redshift, dsn_from: RS_DSN, table: landing.clicks, staging: s3://b/p/, iam_role: arn:x}"),
+			says: "`write` is empty",
+		},
+		{
+			name: "upsert on mysql, refused the same way as everywhere",
+			yaml: withSink("{type: mysql, dsn_from: MY_DSN, table: landing.clicks, write: upsert}"),
+			says: "first delivery wins",
 		},
 		{
 			// The formula is frozen over exactly four fields, so three of them
@@ -134,6 +190,12 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 			}
 		})
 	}
+}
+
+// withSink swaps the valid config's destination for the one under test.
+func withSink(sink string) string {
+	return strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
+		"sink: "+sink, 1)
 }
 
 // The defaults exist so a minimal file works, and each one is a number with a

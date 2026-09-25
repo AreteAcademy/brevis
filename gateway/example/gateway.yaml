@@ -140,3 +140,38 @@ streams:
     dead_letter:
       type: files
       path: ./dead-letter/orders/
+
+  # BigQuery. No dsn_from: it authenticates with the pod's own credentials,
+  # which is what a workload identity is for. A connection string here would be
+  # a second way to do what the platform already does.
+  - name: telemetry
+    path: /v1/telemetry
+    format: array           # a JSON array of objects in one request
+
+    identity:
+      provider: device
+      entity: reading
+      source_key: reading_id
+      record_ts: measured_at
+
+    buffer:
+      flush:
+        every: 5s
+        records: 2000
+
+    sink:
+      type: bigquery
+      project: acme-prod
+      dataset: landing
+      # No dots: for BigQuery the project and the dataset are their own fields,
+      # so "landing.telemetry" here would make a table with that literal name.
+      table: telemetry
+      write: merge
+
+    dead_letter:
+      # The dead letter in a bucket, which is what it should be in production:
+      # written inside the image it would die with the container. Needs the
+      # pod's GCP credentials, resolved at startup rather than on the first
+      # batch it has to bury.
+      type: files
+      path: gs://acme-dead-letter/telemetry/

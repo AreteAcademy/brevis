@@ -246,6 +246,29 @@ jobs:
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
 
+      # The gateway against the same three. Its integration tests skipped in CI
+      # from the day they were written -- the unit step next door runs `go
+      # test` with none of these variables set, so every case that reaches a
+      # real destination was a case that ran on a laptop and nowhere else.
+      # Which is the lesson at the top of this job, learned again.
+      #
+      # localhost and not 127.0.0.1 for the S3 endpoint, deliberately: the AWS
+      # SDK switches to path-style addressing on its own when the endpoint is a
+      # bare IP, so against an IP the path-style test passes without exercising
+      # anything. The test refuses an IP rather than passing quietly.
+      - name: Integration - the gateway
+        env:
+          BREVIS_GATEWAY_TEST_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
+          BREVIS_GATEWAY_TEST_MYSQL_DSN: root:brevis@tcp(localhost:53306)/brevis_it
+          BREVIS_GATEWAY_TEST_S3_ENDPOINT: http://localhost:9000
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: brevis
+          AWS_SECRET_ACCESS_KEY: brevis-secret
+        run: |
+          cd gateway
+          export GOFLAGS=-mod=mod
+          go test -v -race -timeout 10m ./...
+
       # secrets cannot be used in a step's if:, so it becomes a job-level
       # environment variable and the check is against that.
       - name: Authenticate to Google Cloud
@@ -439,8 +462,10 @@ jobs:
           export GOFLAGS=-mod=mod
           go build ./...
           go vet ./...
-          # The integration tests reach a Pub/Sub emulator and SKIP without it,
-          # which is why the unit ones are what this step asserts.
+          # The integration tests reach a Pub/Sub emulator, a Postgres, a
+          # MySQL and an S3 endpoint, and SKIP without them -- they run in the
+          # `integration` job, which has all three up. This step is the unit
+          # ones.
           go test ./... -count=1
           echo "✅ the gateway builds and passes"
 

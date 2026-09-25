@@ -30,13 +30,32 @@ dead letter, and every field refused when it cannot be honoured — a gateway
 that starts on a config it half understood drops events for a reason nobody can
 see.
 
-**Three sinks**: `pubsub`, `postgres` and `files`, the last reading a
-directory, `gs://` and `s3://`. All three are the SDK's own drivers, driven
-directly: `core.Writer` takes a batch, which is exactly what a micro-batching
-sink wants, so they arrive already tested and already refusing what they cannot
-do. An unknown `type:` is refused at load, naming the three that exist.
+**Six sinks**: `pubsub`, `postgres`, `mysql`, `bigquery`, `redshift` and
+`files`, the last reading a directory, `gs://` and `s3://`. All six are the
+SDK's own drivers, driven directly: `core.Writer` takes a batch, which is
+exactly what a micro-batching sink wants, so they arrive already tested and
+already refusing what they cannot do. An unknown `type:` is refused at load,
+naming the six that exist.
 
-**Postgres writes are `append` or `merge`, and `write` is required.** `append`
+Four are proven end to end against the real thing — Pub/Sub on its emulator,
+Postgres and MySQL on real servers, `files` on the filesystem and on S3.
+**BigQuery and Redshift are not**: neither has a local emulator, so what is
+tested here is the config and the refusals, and the docs say so rather than
+letting "runs" carry a claim nobody checked.
+
+**A `files` sink pointed at `gs://` or `s3://` now works.** It did not: the
+driver takes the object-store backend as a field and the gateway passed none,
+so a bucket path failed at write time, after the pod had gone ready. For the
+DEAD LETTER that meant "the dead letter refused them too, and they are lost" --
+the one outcome it exists to prevent. Credentials are now resolved at startup,
+and `AWS_ENDPOINT_URL_S3` points S3 at MinIO, Ceph or R2.
+
+**Every table sink takes `append` or `merge`, and `write` is required.** One
+word, one meaning, in all four: `merge` is the idempotent insert and the FIRST
+delivery wins -- `ON CONFLICT DO NOTHING` in Postgres, `INSERT IGNORE` in
+MySQL, `MERGE … WHEN NOT MATCHED` in BigQuery and Redshift.
+
+**Postgres in particular.** `append`
 is `COPY FROM STDIN`, Postgres's fast path, and every delivery lands. `merge`
 stages the batch in a `TEMP TABLE … ON COMMIT DROP` and runs
 `INSERT … ON CONFLICT (ingestion_id) DO NOTHING` in **one transaction**, so the

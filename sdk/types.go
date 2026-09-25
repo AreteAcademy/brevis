@@ -28,6 +28,16 @@ type (
 	// Writer is a destination: bigquery.Table, to.Files, postgres.Table.
 	Writer = core.Writer
 
+	// Store is an object-store backend: store/s3, store/gcs.
+	//
+	// It is passed to to.Files, from.Files and redshift.Table rather than
+	// chosen inside them, which is what keeps the AWS SDK out of a fetcher
+	// that reads GCS. Named here because those fields are exported and the
+	// interface was not: a caller could pass s3.New(client) but could not
+	// write a function that RETURNS one, which is what anything choosing a
+	// backend from a path has to do.
+	Store = core.Store
+
 	// ReadOptions and WriteOptions are what every driver honours, whatever it
 	// reads from or writes to. A fetcher does not build these -- Source and
 	// Target do.
