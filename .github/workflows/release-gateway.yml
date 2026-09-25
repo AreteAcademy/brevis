@@ -91,7 +91,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Gateway
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: gateway
@@ -116,7 +116,7 @@ jobs:
       # No `latest-slim`. `latest` is already a tag nobody should deploy; a
       # second floating one would be a second way to be surprised.
       - name: Gateway (slim)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: gateway-slim
