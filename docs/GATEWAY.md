@@ -352,6 +352,117 @@ not make. The same holds for an object store: an `s3://` dead letter in a binary
 with no S3 backend is refused **at startup**, naming the scheme, rather than on
 the first batch it has to bury.
 
+## One route, N tables, nothing declared
+
+```yaml
+sink:
+  type: auto_table
+  table_from: table_name
+  naming: {pattern: '^[a-z][a-z0-9_]{2,48}$', allow: [app_, svc_], max_new_per_hour: 20}
+  into: {type: bigquery, project: acme-prod, dataset: landing, write: merge}
+```
+
+A producer POSTs `{"table_name": "app_orders", ...}` and the table is created
+if it is absent. `auto_table` **routes and does not write**: `into` names the
+destination that does, and it carries no `table` — the table comes from each
+event.
+
+### Four columns, always
+
+| column | | |
+|---|---|---|
+| `ingestion_id` | `STRING` | the identity, and the merge key |
+| `ingested_at` | `TIMESTAMP` | arrival, **our** clock — the partition column |
+| `occurred_at` | `TIMESTAMP` | the producer's, when sent; `NULL` when not |
+| `data` | `JSON` | the event whole |
+
+**One JSON column, not a column per field**, and this is the decision the rest
+of it rests on. A new field is a new key: no DDL, no schema-change quota, no
+write-stream reopen, no race between replicas — and it is queryable the day it
+arrives. A column per field buys types nobody declared and pays for them with
+all four.
+
+It is also what the market converged on: Fivetran, Airbyte and Snowpipe land
+into a raw layer that cannot fail and model it downstream. And it is what keeps
+`table_from` cheap — every table is the same shape, so creating one is a
+template rather than a decision.
+
+One declaration serves every destination, because the SDK's DDL generator turns
+`TypeJSON` into `JSON` on BigQuery, `JSONB` on Postgres, `JSON` on MySQL and
+`SUPER` on Redshift.
+
+**`ingested_at` and not `occurred_at` as the partition column**: a producer's
+clock can be wrong or absent, and a partition column a client controls is a
+client that can write into 2035. An unpartitioned landing table is a query bill
+that grows forever, so it is not optional.
+
+### The identity, with nothing declared
+
+```
+ingestion_id = uuid5(auto_table | <table> | <idempotency_key>  | <occurred_at>)
+             = uuid5(auto_table | <table> | sha256(canonical)  | <occurred_at>)
+```
+
+A declared stream names four fields its owner knows. A producer posting
+`{table_name, data}` names none, so the key is theirs when they send one and a
+fingerprint of the document when they do not.
+
+**Send `idempotency_key`.** It means *these two requests are the same business
+fact*, which only the producer knows. The fingerprint means *these two requests
+have identical bytes* — a good approximation and a worse promise, because two
+genuinely distinct events with byte-identical data collapse into one. Both beat
+a random id, under which a retried POST is a second row forever.
+
+The fingerprint is over the document in **canonical** form — keys sorted at
+every level, arrays left in order, everything quoted. Go randomises map
+iteration, so a naive hash would differ between two deliveries of the same
+event, which is the one thing it exists to prevent.
+
+### The name is the attack surface
+
+`auto_table` turns a string in a payload into DDL, so every field under
+`naming` is a refusal:
+
+- **`pattern`** defaults to `^[a-z][a-z0-9_]{2,48}$` — the intersection of what
+  Postgres, MySQL, BigQuery and Redshift accept unquoted. A name that passes
+  needs no quoting anywhere and cannot carry an injection.
+- **`allow`** narrows further, by prefix.
+- **`max_new_per_hour`** (default 20) bounds **creations** in a rolling hour,
+  never writes: a table that already exists is never rate limited. A runaway
+  producer stops there rather than at the provider's per-project quota, which
+  is shared with everything else in the project.
+
+A name outside the rules is refused **per event**, in the response, and every
+well-formed event in the same request still lands:
+
+```json
+{"accepted": 1, "rejected": ["event 1: the table name \"x\";DROP TABLE y;--\" does not match ^[a-z][a-z0-9_]{2,48}$"]}
+```
+
+Per event and not per batch, deliberately. Refusing it at write time would fail
+the whole batch — one malformed event from one producer burying the events of
+every other producer in the same flush window, none of them told.
+
+**`auto_table` is refused on an endpoint with no `listen.auth`.** A producer
+that can name a table can create one, so it needs authentication even where an
+ordinary stream would not. A NetworkPolicy does not cover it: that limits who
+reaches the port, not which table name they ask for.
+
+### BigQuery has a flush floor
+
+**BigQuery allows 1,500 load jobs per table per day.** The default one-second
+window is 86,400 — 57× the quota, gone in about twenty-five minutes. It is not
+a problem for Pub/Sub, and the number would arrive here *from* a Pub/Sub config.
+
+So a stream that writes to BigQuery, directly or through a router, is **refused
+at load** with a window under 60s. The real answer is the Storage Write API,
+which is not written yet; until it is, the config refuses a window it cannot
+honour rather than letting the first deploy find out through
+`Exceeded rate limits`.
+
+`auto_table` cannot route into **Redshift**: that driver creates no tables, so
+every new name would fail on the load. Refused by name.
+
 ## The request never waits for the sink
 
 A request decodes the body, runs the hook, computes the identity, appends to a

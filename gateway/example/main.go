@@ -6,7 +6,7 @@
 //
 // The sinks are a LIST and not a default on purpose: this file is what somebody
 // copies, and the import block is where they delete what they do not use. The
-// four below are what gateway.yaml next door names; dropping bigquery and
+// five below are what gateway.yaml next door names; dropping bigquery and
 // redshift from both takes this binary from 49 MB to 21.
 //
 //	PUBSUB_EMULATOR_HOST=localhost:8085 go run . gateway.yaml
@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
 	"github.com/AreteAcademy/brevis/gateway/sink/bigquery"
 	"github.com/AreteAcademy/brevis/gateway/sink/files"
 	"github.com/AreteAcademy/brevis/gateway/sink/postgres"
@@ -33,6 +34,7 @@ func main() {
 	sinks.MustRegister(postgres.Sink, postgres.New)
 	sinks.MustRegister(bigquery.Sink, bigquery.New)
 	sinks.MustRegister(files.Sink, files.New)
+	sinks.MustRegister(autotable.Sink, autotable.New)
 
 	// gateway.yaml's telemetry stream buries into gs://, so this binary needs
 	// the GCS backend. It does NOT need S3, and not registering it is the

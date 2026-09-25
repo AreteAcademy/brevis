@@ -197,7 +197,7 @@ streams:
 
     buffer:
       flush:
-        every: 5s
+        every: 60s
         records: 2000
 
     sink:
@@ -216,3 +216,75 @@ streams:
       # batch it has to bury.
       type: files
       path: gs://acme-dead-letter/telemetry/
+
+  # One route, N tables, nothing declared.
+  #
+  # A producer POSTs {table_name, ...} and the table is created if it is
+  # absent. Every table auto_table creates has the SAME FOUR COLUMNS, so
+  # creating one is a template rather than a decision:
+  #
+  #   ingestion_id  the identity, and the merge key
+  #   ingested_at   arrival, OUR clock -- the partition column
+  #   occurred_at   the producer's, when sent; NULL when not
+  #   data          the event whole, as JSON
+  #
+  # One JSON column and not a column per field, which is the decision this is
+  # built on. A new field is a new key: no DDL, no schema-change quota, no
+  # write-stream reopen, no race between replicas -- and it is queryable the
+  # day it arrives. It is also what the market converged on: Fivetran, Airbyte
+  # and Snowpipe all land into a raw layer that cannot fail.
+  - name: tables
+    path: /v1/tables
+    format: json
+
+    # The identity here names the fields auto_table itself composes. The
+    # producer sends no provider or entity: it sends a table name and a
+    # document, and the id is a frozen UUID v5 over
+    # auto_table|<table>|<idempotency_key or sha256(data)>|<occurred_at>.
+    identity:
+      provider: zarv
+      entity: table
+      source_key: table_name
+      record_ts: occurred_at
+
+    buffer:
+      flush:
+        # Sixty seconds, not one. BigQuery allows 1,500 load jobs per table
+        # per DAY; a one-second window is 86,400, which is 57x the quota and
+        # gone in about twenty-five minutes. The config refuses a window it
+        # cannot honour rather than letting the first deploy find out.
+        every: 60s
+        records: 2000
+
+    sink:
+      type: auto_table
+
+      # The FIELD of the event that says which table it belongs in. It names a
+      # TABLE and never a dataset: a producer that can choose the dataset can
+      # write into `gold`.
+      table_from: table_name
+
+      # The boundary a producer writes inside. Every field here is a refusal,
+      # and that is the point: auto_table turns a string in a payload into
+      # DDL, so the string is the whole of the attack surface.
+      naming:
+        # The default is the intersection of what Postgres, MySQL, BigQuery
+        # and Redshift all accept unquoted, so a name that passes needs no
+        # quoting anywhere and cannot carry an injection.
+        pattern: '^[a-z][a-z0-9_]{2,48}$'
+        allow: [app_, svc_]
+        # A runaway producer stops at 20 rather than at BigQuery's
+        # per-project quota, which is shared with everything else there.
+        max_new_per_hour: 20
+
+      # auto_table routes and does not write. `into` is what writes, and it
+      # carries no `table`: the table comes from each event.
+      into:
+        type: bigquery
+        project: acme-prod
+        dataset: landing
+        write: merge
+
+    dead_letter:
+      type: files
+      path: ./dead-letter/tables/

@@ -54,6 +54,15 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 			"read the staging prefix. A role and not a key, because a key in a " +
 			"COPY's URL ends up in the cluster's query log")
 	}
+	if b.Target != nil && b.Target.Create {
+		// The SDK's Redshift driver has no CreateTable, so a router asking for
+		// one would get a load that fails on a table nobody made. Refused by
+		// name rather than accepted and behaving differently.
+		return nil, fmt.Errorf("auto_table cannot route into redshift: this driver " +
+			"does not create tables, so every new name would fail on the load. " +
+			"Create them yourself and use a fixed `table`, or route into postgres, " +
+			"mysql or bigquery")
+	}
 	dsn, err := gateway.DSNFrom(s)
 	if err != nil {
 		return nil, err

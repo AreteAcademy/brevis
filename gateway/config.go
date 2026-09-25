@@ -278,6 +278,48 @@ type Sink struct {
 	// OrderingKey names the field whose value orders the messages. Empty is no
 	// ordering, which is the default and what every other destination gives.
 	OrderingKey string `yaml:"ordering_key"`
+
+	// TableFrom names the FIELD of the event that says which table it belongs
+	// in. It is what makes `auto_table` a router rather than a destination.
+	//
+	// The field names a TABLE and never a dataset or a schema: a producer that
+	// can choose the dataset can write into `gold`.
+	TableFrom string `yaml:"table_from"`
+
+	// Naming bounds what a producer may ask for. Without it, a table name is a
+	// namespace nobody reviewed and a typo is a new table rather than an error.
+	Naming Naming `yaml:"naming"`
+
+	// Into is the real destination, one per table. A nested sink, because
+	// `auto_table` routes and does not write: the four columns it lands are
+	// the same in Postgres (JSONB), MySQL (JSON), BigQuery (JSON) and Redshift
+	// (SUPER), so which of them receives the rows is a separate choice from
+	// the routing.
+	Into *Sink `yaml:"into"`
+}
+
+// Naming is the boundary a producer writes inside.
+//
+// Every field here is a refusal, and that is the point: `auto_table` turns a
+// string in a payload into DDL, so the string is the whole of the attack
+// surface. A gateway that creates whatever it is asked to create is a
+// production dataset anybody in the cluster can fill.
+type Naming struct {
+	// Pattern is the regular expression a name must match WHOLE. Empty takes
+	// defaultTableName, which is deliberately narrow.
+	Pattern string `yaml:"pattern"`
+
+	// Allow is an optional list of prefixes. Empty allows any name the pattern
+	// accepts; non-empty means a name must also start with one of these.
+	Allow []string `yaml:"allow"`
+
+	// MaxNewPerHour caps how many tables this stream may CREATE in an hour.
+	// A runaway producer stops at this number rather than at BigQuery's
+	// per-project quota, which is shared with everything else in the project.
+	//
+	// Zero takes the default. It bounds creations, never writes: a table that
+	// already exists is never rate limited.
+	MaxNewPerHour int `yaml:"max_new_per_hour"`
 }
 
 // Load reads and checks a config. Every refusal names the field and what is
@@ -310,6 +352,11 @@ const (
 	FormatNDJSON = "ndjson"
 
 	DurabilityMemory = "memory"
+
+	// SinkAutoTable routes each event to the table its own payload names,
+	// creating the table when it is absent. It writes nothing itself: `into`
+	// names the destination that does.
+	SinkAutoTable = "auto_table"
 
 	SinkPubSub   = "pubsub"
 	SinkFiles    = "files"
@@ -384,6 +431,19 @@ const (
 	// this is not a CPU number; it is how many outstanding calls a sink is
 	// asked to carry, and four keeps a small pod from looking like a burst to
 	// whatever is on the other side.
+	// BigQueryFlushFloor is the shortest flush window a BigQuery sink may use.
+	//
+	// BigQuery allows 1,500 load jobs per table per DAY. The default window is
+	// one second, which is 86,400 -- 57x the quota, exhausted in about
+	// twenty-five minutes. It is not a problem for Pub/Sub, and the number came
+	// from a Pub/Sub config, which is exactly how it would arrive here.
+	//
+	// Sixty seconds is 1,440 a day: inside the quota with room for a retry, and
+	// it is Google's own framing of the limit. The real answer is the Storage
+	// Write API, which is not written yet; until it is, the config refuses a
+	// window it cannot honour rather than letting the first deploy find out.
+	BigQueryFlushFloor = 60 * time.Second
+
 	defaultWorkers = 4
 	// Sixty-four batches waiting. At the default batch size that is 32,000
 	// events of shock absorption -- roughly a sink pausing for a minute at
@@ -431,6 +491,20 @@ func (c *Config) check() error {
 	}
 	if err := c.Listen.Auth.check(env); err != nil {
 		return err
+	}
+
+	for i := range c.Streams {
+		// `auto_table` turns a string in a payload into DDL. On an
+		// unauthenticated endpoint that is any caller creating tables in a
+		// production dataset, without limit, and a typo becoming a table
+		// rather than an error. A NetworkPolicy does not cover it: that limits
+		// who reaches the port, not which table name they ask for.
+		if c.Streams[i].Sink.Type == SinkAutoTable && c.Listen.Auth.Type == "" {
+			return fmt.Errorf("stream %q uses `auto_table` and `listen.auth` is "+
+				"empty. A producer that can name a table can create one, so this "+
+				"needs authentication even where an ordinary stream would not",
+				c.Streams[i].Name)
+		}
 	}
 
 	if len(c.Streams) == 0 {
@@ -550,6 +624,19 @@ func (s *Stream) check() error {
 		return err
 	}
 
+	// A window that cannot hold the quota is refused rather than accepted, for
+	// the reason `durability: disk` is: somebody who wrote `1s` believes their
+	// rows land in a second, and letting them find out through
+	// `Exceeded rate limits` an hour later is the failure this prevents.
+	if s.Sink.usesBigQuery() && s.Buffer.Flush.Every < BigQueryFlushFloor {
+		return fmt.Errorf("`buffer.flush.every` is %s and this stream writes to "+
+			"BigQuery, which allows 1,500 load jobs per table per day. That window "+
+			"is %.0f a day, and the quota is gone in about %.0f minutes. Use %s or "+
+			"more",
+			s.Buffer.Flush.Every, (24*time.Hour).Seconds()/s.Buffer.Flush.Every.Seconds(),
+			(1500 * s.Buffer.Flush.Every).Minutes(), BigQueryFlushFloor)
+	}
+
 	if o := s.Oversize; o != nil {
 		if o.LargerThan == 0 {
 			return fmt.Errorf("`oversize.larger_than` is empty: name the size " +
@@ -595,6 +682,15 @@ func (i *Identity) check() error {
 		"ingestion_id is a UUID v5 over provider|entity|source_key|record_ts and "+
 		"the formula is frozen, so leaving one out produces a DIFFERENT id rather "+
 		"than a weaker one", strings.Join(missing, ", "))
+}
+
+// usesBigQuery reports whether this sink lands in BigQuery, directly or
+// through a router.
+func (s Sink) usesBigQuery() bool {
+	if s.Type == SinkBigQuery {
+		return true
+	}
+	return s.Into != nil && s.Into.usesBigQuery()
 }
 
 // check is what is true of EVERY sink, and nothing more.

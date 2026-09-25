@@ -13,6 +13,71 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.4.0] — 2026-09-25
+
+### `auto_table`: one route, N tables, nothing declared
+
+A producer POSTs `{"table_name": "app_orders", ...}` and the table is created
+if it is absent. `auto_table` routes; `into` writes.
+
+**Four columns, always** — `ingestion_id`, `ingested_at`, `occurred_at` and
+`data` as JSON. One JSON column and not a column per field, which is the
+decision the rest rests on: a new field is a new key, so there is no DDL, no
+schema-change quota, no write-stream reopen and no race between replicas, and
+it is queryable the day it arrives. One declaration serves every destination,
+because the SDK's DDL generator already turns TypeJSON into JSON on BigQuery,
+JSONB on Postgres, JSON on MySQL and SUPER on Redshift.
+
+Partitioned on `ingested_at` and never on `occurred_at`: a partition column a
+client controls is a client that can write into 2035.
+
+**The identity survives having nothing declared.** A frozen UUID v5 over
+`auto_table|<table>|<idempotency_key or sha256(canonical)>|<occurred_at>`. The
+fingerprint is over the document in canonical form, pinned by a test that hashes
+the same document 200 times — Go randomises map iteration, so a naive hash would
+differ between two deliveries of the same event, which is the one thing it
+exists to prevent. A second test proves two DIFFERENT documents cannot collide,
+and it is the one that matters: `fmt`'s `%v` sorts map keys and looks stable
+enough to use, but `{"a":"b:1"}` and `{"a:b":"1"}` both render `map[a:b:1]`.
+
+**The name is the attack surface**, so `naming` is three refusals: a pattern
+defaulting to the intersection of what all four databases accept unquoted, an
+optional prefix allowlist, and a cap on CREATIONS per rolling hour — never on
+writes, so a settled producer is never slowed by an unsettled one.
+
+**`auto_table` is refused on an endpoint with no auth.** A producer that can
+name a table can create one.
+
+### Admitter: the poison batch, cured where it starts
+
+A sink may now refuse ONE event before it is buffered. Optional, satisfied by
+structural typing, and it is what keeps a bad table name from burying a flush
+window: the producer gets the reason in the response and everybody else's events
+land.
+
+The first version of `auto_table` refused at write time and did bury the batch.
+The integration test caught it — the good table was never created.
+
+### BigQuery has a flush floor
+
+1,500 load jobs per table per day against a default one-second window is 86,400
+— 57x, gone in about twenty-five minutes. A BigQuery stream with a window under
+60s is refused at load, directly or through a router. It caught the example
+shipped in 0.3.x, which used `every: 5s`.
+
+The real answer is the Storage Write API, and it is not written yet.
+
+### Also
+
+- `Build` carries the registry and a `Target`, so a routing driver can build
+  what it routes into — through the same registry, which is what makes a binary
+  that did not compile in BigQuery unable to route into it.
+- The `into` of a router is resolved at STARTUP, not on the first event.
+- The example test grew two more holes it did not have: the sink a router routes
+  into, and a driver whose package name and YAML type differ.
+
+---
+
 ## [0.3.2] — 2026-09-25
 
 ### Fixed: the module did not compile for anybody outside this repository

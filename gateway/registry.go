@@ -30,6 +30,59 @@ type Build struct {
 	// scheme. Nil when none were registered, which is the ordinary case for a
 	// gateway that writes to local paths.
 	Stores *Stores
+
+	// Sinks is the registry this sink came from, so a driver that ROUTES can
+	// build the one it routes into -- through the same registry, which is what
+	// makes a binary that did not compile in BigQuery unable to route into it.
+	Sinks *Sinks
+
+	// Target is the table a routing driver wants created, when it wants one.
+	// Nil is the ordinary case: a sink named in the YAML writes to a table
+	// somebody already made.
+	Target *Target
+}
+
+// Target is the shape a driver should create, when the caller knows it and the
+// YAML does not.
+//
+// It exists for `auto_table`, which turns a string in a payload into a table
+// and therefore has to say what that table looks like. Everything here is the
+// ROUTER's decision and never the producer's: a producer that could choose the
+// schema could choose a partition column it controls.
+type Target struct {
+	// Schema is the columns, with types. It is also what a later `evolve`
+	// compares against.
+	Schema sdk.Schema
+
+	// PartitionBy names the column a created table is partitioned on, by day.
+	// Empty creates an unpartitioned table, which for a landing table is a
+	// query bill that grows forever.
+	PartitionBy string
+
+	// ClusterBy names the columns a created table is clustered on.
+	ClusterBy []string
+
+	// Create lets the driver create the table when it is absent. Off by
+	// default everywhere else, because a loader that creates tables by
+	// accident turns a typo into a second table nobody is reading.
+	Create bool
+}
+
+// BuildSink resolves one sink through a registry.
+//
+// Exported because a routing driver lives in its own package and has to build
+// the destination it routes into. It is the same path New takes, so a nested
+// sink is refused the same way and at the same moment as a named one.
+func BuildSink(b Build) (Sinker, error) {
+	if b.Sinks == nil {
+		return nil, fmt.Errorf("no sink registry: a routing driver needs one to " +
+			"build what it routes into")
+	}
+	fn, err := b.Sinks.get(b.Sink.Type)
+	if err != nil {
+		return nil, err
+	}
+	return fn(b)
 }
 
 // SinkFunc builds one destination.

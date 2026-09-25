@@ -20,3 +20,21 @@ type Sinker interface {
 	Write(ctx context.Context, batch []sdk.Envelope) (int64, error)
 	Describe() string
 }
+
+// Admitter is a sink that can refuse ONE event before it is buffered.
+//
+// Optional, and satisfied by structural typing: a sink that does not implement
+// it admits everything, which is what every sink did before this existed.
+//
+// It is the cure for the poison batch. A destination that can refuse an
+// individual event -- `auto_table` refuses a table name outside its rules --
+// would otherwise refuse it at WRITE time, which fails the whole batch: one
+// malformed event from one client buries the events of every other client in
+// the same flush window, and none of them is told.
+//
+// Here the refusal lands where per-event refusals already land: the event is
+// rejected with its reason in the response, counted under its own label, and
+// every well-formed event in the same request still lands.
+type Admitter interface {
+	Admit(event map[string]any) error
+}

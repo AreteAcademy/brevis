@@ -50,17 +50,23 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	if err != nil {
 		return nil, err
 	}
+	t := topg.Table{DSN: dsn, Name: s.Table}
+	if b.Target != nil {
+		t.CreateTable = b.Target.Create
+	}
 	return &sink{
-		table: topg.Table{DSN: dsn, Name: s.Table},
-		dedup: gateway.DedupFor(s.Write),
-		name:  "postgres:" + s.Table + " (" + s.Write + ")",
+		table:  t,
+		dedup:  gateway.DedupFor(s.Write),
+		target: b.Target,
+		name:   "postgres:" + s.Table + " (" + s.Write + ")",
 	}, nil
 }
 
 type sink struct {
-	table topg.Table
-	dedup sdk.Dedup
-	name  string
+	table  topg.Table
+	dedup  sdk.Dedup
+	target *gateway.Target
+	name   string
 }
 
 func (p *sink) Describe() string { return p.name }
@@ -74,7 +80,14 @@ func (p *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	// with what the batch carries, BEFORE touching the server -- so a field the
 	// table does not have is refused with the message that fixes it instead of
 	// failing mid-COPY, and a field one event omits is written as NULL.
-	res, err := p.table.Write(ctx, batch, sdk.WriteOptions{Dedup: p.dedup})
+	opt := sdk.WriteOptions{Dedup: p.dedup}
+	if p.target != nil {
+		// The router knows the shape; the YAML does not. Passing the schema is
+		// what lets the driver create the table, and it is the same
+		// declaration a later `evolve` would compare against.
+		opt.Schema = p.target.Schema
+	}
+	res, err := p.table.Write(ctx, batch, opt)
 	if res == nil {
 		return 0, err
 	}

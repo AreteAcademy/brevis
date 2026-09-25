@@ -52,29 +52,42 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		return nil, fmt.Errorf("`table` is %q: for BigQuery the name has no dots -- "+
 			"the project and the dataset are their own fields", s.Table)
 	}
+	t := tobq.Table{
+		Project:       s.Project,
+		Dataset:       s.Dataset,
+		Name:          s.Table,
+		StagingBucket: s.StagingBucket,
+	}
+	if b.Target != nil {
+		create := b.Target.Create
+		t.CreateTable = &create
+		t.ClusterBy = b.Target.ClusterBy
+	}
 	return &sink{
-		table: tobq.Table{
-			Project:       s.Project,
-			Dataset:       s.Dataset,
-			Name:          s.Table,
-			StagingBucket: s.StagingBucket,
-		},
-		dedup: gateway.DedupFor(s.Write),
+		table:  t,
+		target: b.Target,
+		dedup:  gateway.DedupFor(s.Write),
 		name: fmt.Sprintf("bigquery:%s.%s.%s (%s)",
 			s.Project, s.Dataset, s.Table, s.Write),
 	}, nil
 }
 
 type sink struct {
-	table tobq.Table
-	dedup sdk.Dedup
-	name  string
+	table  tobq.Table
+	dedup  sdk.Dedup
+	target *gateway.Target
+	name   string
 }
 
 func (b *sink) Describe() string { return b.name }
 
 func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
-	res, err := b.table.Write(ctx, batch, sdk.WriteOptions{Dedup: b.dedup})
+	opt := sdk.WriteOptions{Dedup: b.dedup}
+	if b.target != nil {
+		opt.Schema = b.target.Schema
+		opt.PartitionBy = b.target.PartitionBy
+	}
+	res, err := b.table.Write(ctx, batch, opt)
 	if res == nil {
 		return 0, err
 	}

@@ -42,6 +42,7 @@ const (
 	ReasonRecordTS  = "no_record_ts"
 	ReasonIdentity  = "identity"
 	ReasonOversize  = "oversize"
+	ReasonAdmit     = "sink_refused"
 )
 
 // Outcomes of one batch's delivery.

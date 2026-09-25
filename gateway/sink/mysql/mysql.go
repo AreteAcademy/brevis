@@ -39,23 +39,33 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	if err != nil {
 		return nil, err
 	}
+	t := tomysql.Table{DSN: dsn, Name: s.Table}
+	if b.Target != nil {
+		t.CreateTable = b.Target.Create
+	}
 	return &sink{
-		table: tomysql.Table{DSN: dsn, Name: s.Table},
-		dedup: gateway.DedupFor(s.Write),
-		name:  "mysql:" + s.Table + " (" + s.Write + ")",
+		table:  t,
+		dedup:  gateway.DedupFor(s.Write),
+		target: b.Target,
+		name:   "mysql:" + s.Table + " (" + s.Write + ")",
 	}, nil
 }
 
 type sink struct {
-	table tomysql.Table
-	dedup sdk.Dedup
-	name  string
+	table  tomysql.Table
+	dedup  sdk.Dedup
+	target *gateway.Target
+	name   string
 }
 
 func (m *sink) Describe() string { return m.name }
 
 func (m *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
-	res, err := m.table.Write(ctx, batch, sdk.WriteOptions{Dedup: m.dedup})
+	opt := sdk.WriteOptions{Dedup: m.dedup}
+	if m.target != nil {
+		opt.Schema = m.target.Schema
+	}
+	res, err := m.table.Write(ctx, batch, opt)
 	if res == nil {
 		return 0, err
 	}

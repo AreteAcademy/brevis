@@ -152,6 +152,10 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		}
 
 		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics)
+		// Resolved once, at startup: a type assertion per event to discover
+		// something that cannot change is work done 500 times a second for an
+		// answer fixed at build time.
+		p.admit, _ = sink.(Admitter)
 		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
@@ -201,11 +205,7 @@ func (o *options) build(ctx context.Context, s Sink) (Sinker, error) {
 	if o.catalog == nil {
 		o.catalog = NewSinks()
 	}
-	fn, err := o.catalog.get(s.Type)
-	if err != nil {
-		return nil, err
-	}
-	return fn(Build{Ctx: ctx, Sink: s, Stores: o.stores})
+	return BuildSink(Build{Ctx: ctx, Sink: s, Stores: o.stores, Sinks: o.catalog})
 }
 
 // Handler is the gateway's routes, behind the guard.
@@ -278,6 +278,7 @@ type pipe struct {
 	wg      sync.WaitGroup
 	metrics *Metrics
 	big     *oversize
+	admit   Admitter
 
 	mu      sync.Mutex
 	batch   []sdk.Envelope
@@ -408,6 +409,14 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string, int) 
 				continue
 			}
 			e = kept
+		}
+
+		if p.admit != nil {
+			if err := p.admit.Admit(e); err != nil {
+				rejected = append(rejected, fmt.Sprintf("event %d: %v", i, err))
+				p.metrics.count(p.metrics.rejected, 1, p.stream.Name, ReasonAdmit)
+				continue
+			}
 		}
 
 		env, reason, err := p.identify(e)

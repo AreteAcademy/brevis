@@ -206,12 +206,41 @@ func TestTheSinksRefuseWhatWouldFailSilently(t *testing.T) {
 			says: "`write` is empty",
 		},
 		{
+			// auto_table routes and does not write; `into` is what writes.
+			name: "auto_table with nowhere to route",
+			yaml: withSink("{type: auto_table, table_from: table_name}"),
+			says: "`into` is empty",
+		},
+		{
+			name: "auto_table with no field naming the table",
+			yaml: withSink("{type: auto_table, into: {type: postgres, dsn_from: D, write: append}}"),
+			says: "`table_from` is empty",
+		},
+		{
+			// A fixed table under a router would silently win: every event
+			// would land in it and `table_from` would do nothing.
+			name: "auto_table into a fixed table",
+			yaml: withSink("{type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, table: landing.x, write: append}}"),
+			says: "Remove it",
+		},
+		{
+			// The Redshift driver has no CreateTable, so every new name would
+			// fail on the load. Refused by name rather than behaving that way.
+			name: "auto_table into redshift, which cannot create a table",
+			yaml: withSink("{type: auto_table, table_from: t, into: {type: redshift, dsn_from: D, staging: 's3://b/p/', iam_role: arn:x, write: append}}"),
+			says: "cannot route into redshift",
+		},
+		{
 			name: "upsert on mysql, refused the same way as everywhere",
 			yaml: withSink("{type: mysql, dsn_from: MY_DSN, table: landing.clicks, write: upsert}"),
 			says: "first delivery wins",
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			// withSink declares auth, and New resolves the keys. Without a
+			// value here the auth check refuses first and every case below
+			// would pass on the wrong refusal.
+			t.Setenv("K", "a-key")
 			cfg, err := load(t, c.yaml)
 			if err != nil {
 				t.Fatalf("the config did not even parse: %v", err)
@@ -281,8 +310,16 @@ func TestABucketPathWithNoStoreIsRefusedAtStartup(t *testing.T) {
 
 // withSink swaps the valid config's destination for the one under test.
 func withSink(sink string) string {
-	return strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
+	out := strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
 		"sink: "+sink, 1)
+	// Auth and a flush window BigQuery can hold, because two gates refuse at
+	// LOAD and these cases are about what the SINK refuses at New. Without
+	// them the table would pass for the wrong reason: every case refused by
+	// the flush floor, and none reaching the driver it is testing.
+	out = strings.Replace(out, "streams:",
+		"listen: {auth: {type: bearer, keys_from: K}}\nstreams:", 1)
+	return strings.Replace(out, "    identity:",
+		"    buffer: {flush: {every: 60s}}\n    identity:", 1)
 }
 
 // The defaults exist so a minimal file works, and each one is a number with a
@@ -370,4 +407,59 @@ func load(t *testing.T, yaml string) (*gateway.Config, error) {
 		t.Fatal(err)
 	}
 	return gateway.Load(path)
+}
+
+// A one-second flush into BigQuery is 86,400 load jobs a day against a quota of
+// 1,500 per table -- 57x, gone in about twenty-five minutes.
+//
+// It is not a problem for Pub/Sub, and the number would arrive here FROM a
+// Pub/Sub config. That is exactly how the first deploy would find out: through
+// `Exceeded rate limits`, an hour in.
+func TestAFlushWindowBigQueryCannotHoldIsRefused(t *testing.T) {
+	for _, c := range []struct{ name, sink string }{
+		{"straight into bigquery",
+			"{type: bigquery, project: p, dataset: d, table: t, write: append}"},
+		// Through a router too: the sink that writes is what matters, not the
+		// one the YAML names first.
+		{"through a router",
+			"{type: auto_table, table_from: t, into: {type: bigquery, project: p, dataset: d, write: append}}"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			yaml := strings.Replace(withSink(c.sink), "every: 60s", "every: 1s", 1)
+			_, err := load(t, yaml)
+			if err == nil {
+				t.Fatal("it was accepted")
+			}
+			if !strings.Contains(err.Error(), "1,500 load jobs") {
+				t.Errorf("the refusal does not explain the quota: %v", err)
+			}
+		})
+	}
+
+	// And a window that holds is accepted, or this test would pass on a gate
+	// that refuses everything.
+	if _, err := load(t, withSink(
+		"{type: bigquery, project: p, dataset: d, table: t, write: append}")); err != nil {
+		t.Errorf("a 60s window was refused: %v", err)
+	}
+}
+
+// `auto_table` turns a string in a payload into DDL.
+//
+// On an unauthenticated endpoint that is any caller creating tables in a
+// production dataset, without limit, and a typo becoming a table rather than an
+// error. A NetworkPolicy does not cover it: that limits who reaches the port,
+// not which table name they ask for.
+func TestAutoTableIsRefusedOnAnEndpointWithNoAuth(t *testing.T) {
+	// The base config with NO auth -- withSink adds it, and this is the one
+	// case that must not have it.
+	yaml := strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
+		"sink: {type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, write: append}}", 1)
+	_, err := load(t, yaml)
+	if err == nil {
+		t.Fatal("auto_table loaded on an open endpoint")
+	}
+	if !strings.Contains(err.Error(), "listen.auth") {
+		t.Errorf("the refusal does not name what is missing: %v", err)
+	}
 }

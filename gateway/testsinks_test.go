@@ -2,6 +2,7 @@ package gateway_test
 
 import (
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
 	"github.com/AreteAcademy/brevis/gateway/sink/bigquery"
 	"github.com/AreteAcademy/brevis/gateway/sink/files"
 	"github.com/AreteAcademy/brevis/gateway/sink/mysql"
@@ -25,6 +26,7 @@ func everything() []gateway.Option {
 	sinks.MustRegister(bigquery.Sink, bigquery.New)
 	sinks.MustRegister(redshift.Sink, redshift.New)
 	sinks.MustRegister(files.Sink, files.New)
+	sinks.MustRegister(autotable.Sink, autotable.New)
 
 	stores := gateway.NewStores()
 	stores.MustRegister(s3.Scheme, s3.Open)

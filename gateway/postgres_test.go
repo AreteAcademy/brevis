@@ -336,3 +336,11 @@ func query(t *testing.T, dsn, sql string) []string {
 	}
 	return out
 }
+
+// uniqueTable names a table this test may create, and drops it afterwards.
+func uniqueTable(t *testing.T, dsn string) string {
+	t.Helper()
+	name := fmt.Sprintf("gwauto_%d", time.Now().UnixNano())
+	t.Cleanup(func() { exec(t, dsn, `DROP TABLE IF EXISTS `+name) })
+	return name
+}

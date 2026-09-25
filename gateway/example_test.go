@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
 	"github.com/AreteAcademy/brevis/gateway/store/gcs"
 	"github.com/AreteAcademy/brevis/gateway/store/s3"
 )
@@ -108,6 +109,14 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 					uses = append(uses, struct{ what, typ string }{
 						"oversize.archive", s.Oversize.Archive.Type})
 				}
+				if s.Sink.Into != nil {
+					// And the one a ROUTER routes into, which is a third place
+					// a sink type hides -- `auto_table` names its destination
+					// in a nested block, and a binary that did not compile it
+					// in refuses at startup.
+					uses = append(uses, struct{ what, typ string }{
+						"sink.into", s.Sink.Into.Type})
+				}
 				for _, use := range uses {
 					if use.typ == "" || sinks[use.typ] {
 						continue
@@ -118,6 +127,13 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 			}
 		})
 	}
+}
+
+// sinkTypes maps a driver package to the YAML type its own Sink constant
+// holds. Only the packages whose two names differ need an entry; the constant
+// stays the single source of truth and this records which package it lives in.
+var sinkTypes = map[string]string{
+	"autotable": autotable.Sink,
 }
 
 // storeFor says which package a path needs, keyed by the schemes the store
@@ -175,8 +191,18 @@ func registered(t *testing.T, marker string) map[string]bool {
 			}
 			continue
 		}
-		// `pubsub.Sink, pubsub.New)` -> pubsub
+		// `pubsub.Sink, pubsub.New)` -> the type that package's constant holds.
+		//
+		// Through the constant and not the package name: they agree for five
+		// of the six drivers and NOT for autotable, whose type is
+		// `auto_table`. Deriving it from the package read `autotable`, found
+		// no stream using that, and reported the example unregistered when it
+		// was registered -- a false alarm is how a gate stops being read.
 		if pkg, after, ok := strings.Cut(rest, "."); ok && strings.HasPrefix(after, "Sink,") {
+			if typ, known := sinkTypes[pkg]; known {
+				out[typ] = true
+				continue
+			}
 			out[pkg] = true
 		}
 	}
