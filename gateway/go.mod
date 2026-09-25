@@ -7,7 +7,7 @@ replace github.com/AreteAcademy/brevis/sdk => ../sdk
 require (
 	cloud.google.com/go/pubsub v1.51.1
 	cloud.google.com/go/storage v1.59.2
-	github.com/AreteAcademy/brevis/sdk v0.63.0
+	github.com/AreteAcademy/brevis/sdk v0.64.0
 	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.6
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.79.0

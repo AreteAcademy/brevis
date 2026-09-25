@@ -469,6 +469,14 @@ jobs:
           go test ./... -count=1
           echo "✅ the gateway builds and passes"
 
+      # The gateway is a Go MODULE somebody imports, not only an image they
+      # pull -- a hook means a binary of their own. Nothing built it the way
+      # they get it, and gateway/v0.3.1 published unbuildable: its go.mod
+      # required sdk v0.63.0 while its code used sdk.Store, from v0.64.0, and
+      # the local replace hid it from every gate here.
+      - name: A consumer can build the gateway
+        run: .github/scripts/gateway-consumer-check.sh
+
       - name: Lint the gateway
         uses: golangci/golangci-lint-action@v9
         with:

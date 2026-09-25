@@ -61,6 +61,12 @@ jobs:
             exit 1
           fi
 
+      # A release is immutable, so this runs BEFORE the tag is turned into an
+      # image. gateway/v0.3.1 shipped an image that worked and a module that
+      # did not compile, and the two cannot be told apart from the outside.
+      - name: A consumer can build this module
+        run: .github/scripts/gateway-consumer-check.sh
+
       - name: Resolve the version
         id: v
         run: |

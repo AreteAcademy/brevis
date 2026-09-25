@@ -13,6 +13,36 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.3.2] — 2026-09-25
+
+### Fixed: the module did not compile for anybody outside this repository
+
+`gateway/v0.3.1` published an image that worked and a module that did not
+build. Its `go.mod` required `sdk v0.63.0` while its code used `sdk.Store`,
+which landed in `v0.64.0`:
+
+```
+$ go get github.com/AreteAcademy/brevis/gateway@v0.3.1
+registry.go:126:43: undefined: sdk.Store
+```
+
+A `replace` directive in a dependency's go.mod is **ignored** by the main
+module, so what a consumer compiles against is whatever `require` names. The
+local `replace … => ../sdk` hid it completely, and every gate in this
+repository was green: nothing built the module the way the outside world gets
+it.
+
+The gateway is a module somebody imports and not only an image they pull — a
+hook means a binary of their own — so `gateway-consumer-check.sh` now copies
+the module, drops the replace, and builds. It runs in CI and again in the
+release workflow before the tag becomes an image, because a release is
+immutable and an image that works while its module does not cannot be told
+apart from the outside.
+
+Found while writing a consumer's own binary, not by reading the code.
+
+---
+
 ## [0.3.1] — 2026-09-24
 
 ### Fixed: the response did not say an event had been archived
