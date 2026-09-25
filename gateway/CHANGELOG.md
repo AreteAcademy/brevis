@@ -13,6 +13,27 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.4.1] — 2026-09-25
+
+### Fixed: the slim image could not run `auto_table`
+
+`cmd/gateway-slim` registered `postgres` and `files` and not the router, so the
+slim image refused the feature 0.4.0 shipped:
+
+```
+sink type "auto_table" is not one this binary carries (it has: files, postgres)
+```
+
+The refusal was right and the build was wrong. `auto_table` is pure Go with no
+client of its own — it routes into the Postgres sink already there — and it
+costs **0.04 MB and one package**. Leaving it out put the cheapest way to land
+arbitrary events behind the 49 MB image.
+
+Found by running the published image, not by reading the code: every test
+passed, because the tests build their own registry.
+
+---
+
 ## [0.4.0] — 2026-09-25
 
 ### `auto_table`: one route, N tables, nothing declared

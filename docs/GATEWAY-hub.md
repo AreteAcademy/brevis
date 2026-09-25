@@ -12,15 +12,15 @@ POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.4.0-slim
+  areteacademy/brevis-gateway:0.4.1-slim
 ```
 
 ## Tags
 
 | tag | carries | pull |
 |---|---|---|
-| `0.4.0` | six sinks, S3 and GCS | 16 MB |
-| `0.4.0-slim` | `postgres`, local `files` | **4.8 MB** |
+| `0.4.1` | six sinks, S3 and GCS | 16 MB |
+| `0.4.1-slim` | `postgres`, `auto_table`, local `files` | **4.8 MB** |
 
 The sinks are compiled in, so the import list is the selection: a binary that
 never imports the BigQuery driver does not carry BigQuery, or Arrow, or the

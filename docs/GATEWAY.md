@@ -328,7 +328,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks), gateway.WithStores(stores))
 | image | carries | size |
 |---|---|---|
 | `areteacademy/brevis-gateway:X` | all six sinks, S3 and GCS | 48.6 MB |
-| `areteacademy/brevis-gateway:X-slim` | `postgres`, local `files` | **12.4 MB** |
+| `areteacademy/brevis-gateway:X-slim` | `postgres`, `auto_table`, local `files` | **12.4 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.
