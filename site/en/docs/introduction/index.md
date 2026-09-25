@@ -67,6 +67,23 @@ other, and reprocessing a past month does not depend on the clock.
 **Validation needs no database.** `brevis validate` runs in CI alongside the
 tests, so a YAML error fails in the pull request and not in the cluster.
 
+## Three pieces, separate on purpose
+
+| piece | what it is | version |
+|---|---|---|
+| **engine** | `brevis`, the binary this page is about: orchestrates, schedules, executes and operates | `0.15` |
+| **SDK** | a Go module for writing the step that extracts and loads | `0.64` |
+| **gateway** | an HTTP endpoint that lands data which *arrives*, instead of going to fetch it | `0.3` |
+
+The versions are independent because the maturities are. Numbering the gateway
+`0.15.3` because the engine is there would claim a maturity it does not have,
+and a version cannot be un-published.
+
+What stitches the three together is a number: the `ingestion_id`, a frozen UUID
+v5 over `provider|entity|source_key|record_ts`. A row the
+[gateway](/en/docs/ingestion/index.md) lands and a row an [SDK](/en/docs/sdk/index.md) fetcher
+lands for the same record are *one row*, with no reconciliation between them.
+
 ## When brevis.sh is not the choice
 
 Documenting what a tool does not do saves more time than documenting what it
@@ -93,6 +110,7 @@ does:
 | write a fetcher in Go | [SDK](/en/docs/sdk/index.md) |
 | pass a value from one step to the next | [Context between steps](/en/docs/context/index.md) |
 | write a step in Python | [Client libraries](/en/docs/libraries/index.md) |
+| receive data over HTTP instead of fetching it | [Ingestion](/en/docs/ingestion/index.md) |
 | build dashboards and alerts | [Observability](/en/docs/observability/index.md) |
 
 :::note About the name

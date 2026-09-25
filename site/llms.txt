@@ -15,6 +15,14 @@ step becomes a **pod**. A step is any command in any image — the **Go SDK**
 (`pip install brevis`) give a step the run's context, clock and metrics through
 two environment variables.
 
+There is a third piece with a version of its own: the **ingestion gateway**
+(`areteacademy/brevis-gateway`), an HTTP endpoint that lands data which arrives
+instead of going to fetch it — configured entirely by YAML, delivering to
+Pub/Sub, Postgres, MySQL, BigQuery, Redshift or object storage. What joins all
+three is the `ingestion_id`, a frozen UUID v5 over
+`provider|entity|source_key|record_ts`: a row the gateway lands and a row an SDK
+fetcher lands for the same record are the same row.
+
 The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md` likewise).
 
 ## Start here
@@ -45,6 +53,11 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 - [Go SDK](https://brevis.sh/en/docs/sdk/index.md): Writing a fetcher — extract from a source, transform, and load into a destination.
 - [Client libraries](https://brevis.sh/en/docs/libraries/index.md): How a step in any language reads the context and the run's clock — and which languages already have a library.
 - [Python](https://brevis.sh/en/docs/python/index.md): pip install brevis — context between steps, the run's clock and your pipeline's own metrics, with no dependencies at all.
+
+## Receiving data over HTTP
+
+- [Ingestion](https://brevis.sh/en/docs/ingestion/index.md): An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
+- [Ingestion sinks](https://brevis.sh/en/docs/ingestion-sinks/index.md): The six destinations, how each database writes a record, and why the image carries only what you use.
 
 ## Running it in production
 

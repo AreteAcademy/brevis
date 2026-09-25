@@ -67,6 +67,23 @@ reprocessar um mês passado não depende do relógio.
 **A validação não precisa de banco.** `brevis validate` roda na CI junto com os
 testes, então um erro de YAML falha no pull request e não no cluster.
 
+## Três peças, e elas são separadas de propósito
+
+| peça | o que é | versão |
+|---|---|---|
+| **motor** | `brevis`, o binário deste texto: orquestra, agenda, executa e opera | `0.15` |
+| **SDK** | um módulo Go para escrever o passo que extrai e carrega | `0.64` |
+| **gateway** | um endpoint HTTP que pousa dado que *chega*, em vez de ir buscá-lo | `0.3` |
+
+As versões são independentes porque as maturidades são. Numerar o gateway como
+`0.15.3` porque o motor está lá alegaria uma maturidade que ele não tem, e
+versão não se despublica.
+
+O que costura as três é um número: o `ingestion_id`, um UUID v5 congelado sobre
+`provider|entity|source_key|record_ts`. Uma linha que o [gateway](/docs/ingestion/)
+grava e uma linha que um fetcher do [SDK](/docs/sdk/) grava para o mesmo registro
+são *a mesma linha*, sem nenhuma reconciliação entre as duas.
+
 ## Quando o brevis.sh não é a escolha
 
 Documentar o que uma ferramenta não faz poupa mais tempo do que documentar o
@@ -93,6 +110,7 @@ que ela faz:
 | escrever um fetcher em Go | [SDK](/docs/sdk/) |
 | passar um valor de um passo ao seguinte | [Contexto entre passos](/docs/context/) |
 | escrever um passo em Python | [Bibliotecas cliente](/docs/libraries/) |
+| receber dado por HTTP em vez de ir buscar | [Ingestão](/docs/ingestion/) |
 | montar painel e alerta | [Observabilidade](/docs/observability/) |
 
 :::note O nome

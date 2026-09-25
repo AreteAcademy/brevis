@@ -75,6 +75,23 @@ other, and reprocessing a past month does not depend on the clock.
 **Validation needs no database.** `brevis validate` runs in CI alongside the
 tests, so a YAML error fails in the pull request and not in the cluster.
 
+## Three pieces, separate on purpose
+
+| piece | what it is | version |
+|---|---|---|
+| **engine** | `brevis`, the binary this page is about: orchestrates, schedules, executes and operates | `0.15` |
+| **SDK** | a Go module for writing the step that extracts and loads | `0.64` |
+| **gateway** | an HTTP endpoint that lands data which *arrives*, instead of going to fetch it | `0.3` |
+
+The versions are independent because the maturities are. Numbering the gateway
+`0.15.3` because the engine is there would claim a maturity it does not have,
+and a version cannot be un-published.
+
+What stitches the three together is a number: the `ingestion_id`, a frozen UUID
+v5 over `provider|entity|source_key|record_ts`. A row the
+[gateway](/en/docs/ingestion/index.md) lands and a row an [SDK](/en/docs/sdk/index.md) fetcher
+lands for the same record are *one row*, with no reconciliation between them.
+
 ## When brevis.sh is not the choice
 
 Documenting what a tool does not do saves more time than documenting what it
@@ -101,6 +118,7 @@ does:
 | write a fetcher in Go | [SDK](/en/docs/sdk/index.md) |
 | pass a value from one step to the next | [Context between steps](/en/docs/context/index.md) |
 | write a step in Python | [Client libraries](/en/docs/libraries/index.md) |
+| receive data over HTTP instead of fetching it | [Ingestion](/en/docs/ingestion/index.md) |
 | build dashboards and alerts | [Observability](/en/docs/observability/index.md) |
 
 :::note About the name
@@ -3297,3 +3315,448 @@ containers:
       - name: BREVIS_BRAND_FILE
         value: /etc/brevis/brand.yaml
 ```
+
+---
+
+# Ingestion
+
+> An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
+
+The ingestion gateway is an **HTTP endpoint that lands data**. A client `POST`s,
+gets a `202`, and what arrived becomes a record on a topic, in a table, or in a
+bucket.
+
+```
+POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
+                                                          ↓
+                                            workers  →  Pub/Sub | Postgres | …
+```
+
+It is **a different binary, a different Go module, a different version and a
+different image**. The engine orchestrates and never touches customer data; the
+gateway does nothing else. The numbering is independent on purpose: the engine
+is at 0.15 and the gateway at 0.3, which is the true statement.
+
+```bash
+docker run -p 8080:8080 \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
+  areteacademy/brevis-gateway:0.3.2-slim
+```
+
+## The file is the contract
+
+There is no code to write except the hooks. Streams, paths, formats, identity,
+retry, destination and dead letter — all in the YAML, and every field refused
+when it cannot be honoured.
+
+```yaml
+name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
+
+metrics:
+  addr: :9090                        # its own port, never the ingest one
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json                     # json | array | ndjson — declared, never sniffed
+
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    buffer:
+      flush: {every: 1s, records: 500}
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+
+    dead_letter:
+      type: files
+      path: /var/dead-letter/
+```
+
+`format` is declared and never guessed: guessing is how a batch of a thousand
+becomes one row holding an array.
+
+## The `ingestion_id`, which is the point
+
+Every record leaves with an `ingestion_id`: a **frozen UUID v5** over
+`provider|entity|source_key|record_ts`.
+
+It is the **same id** a batch fetcher computes for the same record. A row the
+gateway lands and a row an [SDK](/en/docs/sdk/index.md) pipeline lands are *one row*,
+with no reconciliation between them.
+
+Two practical consequences:
+
+- **A retried `POST` is the same record.** A client can send again without fear;
+  a destination with `merge` absorbs the retry instead of writing a second row.
+- **The formula is frozen.** All four fields are required, and leaving one out
+  produces a *different* id rather than a weaker one. The file refuses the
+  incomplete configuration instead of accepting it.
+
+Ingestion tools move bytes very well and have no opinion about what a record
+*is*. That opinion is what the gateway adds.
+
+## The request never waits for the sink
+
+It decodes, runs the hook, computes the identity, appends to a buffer and
+returns. **That is all.** A full batch goes to a worker pool, and the publish,
+the `COPY`, the retries and the dead letter all happen there.
+
+This is not cosmetic. Before it existed, the request that happened to fill a
+batch ran the delivery inline — so one caller in every `flush.records` paid the
+full round trip, and when the sink was down, the full retry window. A p99 shaped
+by which caller was unlucky is not a p99 anybody can act on.
+
+```yaml
+buffer:
+  flush: {every: 1s, records: 500}
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+```
+
+**It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
+outage into unbounded memory. When the queue and the buffer are both full, the
+answer is **`503` with `Retry-After`** rather than a `202` for an event with
+nowhere to go. An accepted event that is never delivered is the one outcome this
+service exists to not have.
+
+And that `503` is **safe to retry**, in a way almost no service can claim: the
+`ingestion_id` is a frozen function of the event itself, so the same body sent
+again is the *same record*.
+
+## When the sink refuses
+
+The batch is retried — four attempts over roughly seven seconds by default,
+doubling with jitter — and then it goes to the **dead letter**, with the reason
+on every record:
+
+```json
+{
+  "event_id": "dl-9",
+  "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
+  "_dead_letter_reason": "rpc error: code = NotFound desc = Topic not found",
+  "_dead_letter_sink": "pubsub:acme-prod/clicks",
+  "_dead_letter_at": "2026-09-25T02:02:32Z"
+}
+```
+
+The reason travels **on the record** and not only in a log, because whoever
+finds that file later has the events and not the log — and *why is this here* is
+their first question.
+
+**A stream with no `dead_letter` is refused at load.** Defaulting it to silence
+would put the decision where nobody makes it, and a refused batch that is only a
+log line is losing data quietly.
+
+## The hook is Go, compiled in
+
+```go
+hooks := gateway.NewHooks()
+hooks.MustRegister("enrich_clicks", enrichClicks)
+gateway.Main(hooks, gateway.WithSinks(sinks))
+
+func enrichClicks(e map[string]any) (map[string]any, error) {
+    host, _ := e["host"].(string)
+    e["tenant"] = strings.Split(host, ".")[0]
+    return e, nil     // returning nil DROPS the event, on purpose
+}
+```
+
+The YAML names a hook; it does not carry one. Measured before choosing: a Go
+function costs **93 ns/op** against Starlark's 959 and yaegi's 1,281, for
+nothing added to the binary — and `plugin.Open` is not an option at all, because
+under `CGO_ENABLED=0`, which is how every artefact here is built, it returns
+`plugin: not implemented`.
+
+What it costs, said where somebody will read it: **adding a hook is a rebuild
+and a deploy, not a config change.** That is the right trade while the hooks are
+written by the people who ship the binary, and the wrong one the day a customer
+has to change one without a release.
+
+An error in a hook sends *that* event down the dead-letter path and never fails
+the batch beside it. So does a panic: it is recovered per event, because one
+malformed record must not take down a process serving every other stream.
+
+## When an event is too big
+
+```yaml
+oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks
+```
+
+The event is written to `archive` **whole**, and a reduced version continues into
+the stream carrying a pointer back:
+
+```json
+{
+  "event_id": "big-1",
+  "ingestion_id": "bd8ac083-9796-50f5-bab6-77a4e2e57ad0",
+  "_oversize": true,
+  "_oversize_archive": "files:gs://acme-oversize/clicks/",
+  "_oversize_bytes": 2149
+}
+```
+
+This is the **Claim Check** pattern, and it beats a flat `413` because a `413`
+loses the event — and an oversized payload is usually the most interesting one
+somebody has: it is the request with the whole document attached, which is the
+case worth debugging.
+
+`larger_than` measures one **event**, after the hook. `listen.max_body` is a
+different thing: it caps a whole **request** and refuses with `413` before a
+byte is parsed.
+
+## What it counts
+
+Eleven Prometheus series, on **its own port** — never the ingest one, and that
+rule matters more here than it does in the engine: the ingest port is public by
+construction, it is where clients `POST`, so a `/metrics` on it would publish
+every stream name, path and destination to whoever found the path. Naming the
+same address for both is refused at load.
+
+```
+brevis_gateway_events_received_total{stream,format}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter
+brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_saturated_total{stream}                  counter  the 503s
+brevis_gateway_delivery_seconds{stream,sink}            histogram
+brevis_gateway_buffer_records{stream}                   gauge
+brevis_gateway_queue_batches{stream}                    gauge
+```
+
+The last three are the ones nobody asks for until after the first incident.
+`saturated_total` is the only number that says a client was told to back off;
+`buffer_records` against `buffer.max_records` is the only one that **predicts**
+it.
+
+`reason` is a closed set and never the error text: an error string carries a
+table name, a column, sometimes a row, and one malformed client would mint a new
+series per request. The text stays in the dead letter, on the record.
+
+## `202`, not `200`
+
+The gateway has **accepted** the events. With `durability: memory` — the only
+tier implemented — that is the whole of what it can honestly claim. The tier
+that earns a `200` is the one that has already written them down, and it does
+not exist.
+
+`disk` is refused **by name**, not accepted and treated as memory: somebody
+writing `disk` believes their events survive a crash, and agreeing without
+delivering is exactly the failure that field exists to prevent.
+
+What is in a buffer at shutdown is delivered, not dropped — through the same
+path a full batch takes, retried and buried.
+
+## What it does not do
+
+- **It does not appear in the console.** It shares no database with the engine's
+  interface. There is no `/ingestion` page, and none is planned.
+- **It does not evolve schema.** A field the table does not have is refused.
+  There is a plan; there is no feature.
+- **It creates no table and no index.** A service that creates tables turns a
+  typo into a second table nobody is reading.
+- **The published image has no hooks**, which is the honest artefact for a
+  compiled-hook design: it serves streams that declare no `hook:`.
+
+## Where to go next
+
+| if you want | go to |
+|---|---|
+| the destinations and how each one writes | [Ingestion sinks](/en/docs/ingestion-sinks/index.md) |
+| the `ingestion_id` from the other side | [Go SDK](/en/docs/sdk/index.md) |
+| dashboards and alerts | [Observability](/en/docs/observability/index.md) |
+
+---
+
+# Ingestion sinks
+
+> The six destinations, how each database writes a record, and why the image carries only what you use.
+
+Six destinations, and the list is deliberately explicit — a connector that is
+*planned* and a connector that *runs* are different things to somebody choosing
+this.
+
+| sink | state | what a write is | proven against |
+|---|---|---|---|
+| `pubsub` | **runs** | one publish per batch, attributes and ordering key from the event's own fields | the emulator |
+| `postgres` | **runs** | `COPY FROM STDIN`, or a staged `INSERT` in one transaction | a real Postgres |
+| `mysql` | **runs** | multi-row `INSERT` in a transaction, or `INSERT IGNORE` | a real MySQL |
+| `files` | **runs** | NDJSON objects in a directory, `gs://` or `s3://` | the filesystem, and S3 |
+| `bigquery` | **runs** | rows loaded, or staged and `MERGE`d on `ingestion_id` | **config only — no emulator exists** |
+| `redshift` | **runs** | the batch to S3, then `COPY`, then `MERGE` | **config only — no emulator exists** |
+
+**Two of the six are unproven end to end**, and the table says so rather than
+letting the word "runs" carry a claim nobody checked. BigQuery and Redshift have
+no local emulator, so what is tested is the config, the refusals and the driver
+underneath — which the SDK's own suite already covers. The first production use
+of either is the real proof, and it should be a low-stakes stream.
+
+An unknown `type:` is **refused at startup**, naming what *this binary* carries.
+A gateway that starts on a sink it does not have is one that drops events for a
+reason nobody can see.
+
+`gs://` and `s3://` are not separate connectors: `files` reads all three path
+shapes, so the dead letter is a folder on a laptop and a bucket in production
+with no change here.
+
+## How each one writes
+
+`write` is **required and never defaulted** on the four destinations that write
+to a table, because the two modes are genuinely different and only the table's
+owner knows which it is:
+
+| | `append` | `merge` |
+|---|---|---|
+| **postgres** | `COPY FROM STDIN` | `INSERT … ON CONFLICT (ingestion_id) DO NOTHING` |
+| **mysql** | multi-row `INSERT` per block | `INSERT IGNORE` |
+| **bigquery** | rows loaded (through GCS above the inline limit) | `MERGE … WHEN NOT MATCHED THEN INSERT` |
+| **redshift** | `COPY` from S3 | `COPY` to a staging table, then `MERGE` |
+
+`merge` means **the same thing in all four**: the idempotent insert, and the
+**first delivery wins**. A redelivery is ignored, not applied — which is right
+for an event, which happened once and does not change, and wrong for a row
+carrying a mutable state.
+
+Postgres and MySQL **require a `UNIQUE` index on `ingestion_id`** for `merge`,
+and refuse without one rather than silently appending:
+
+```sql
+CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);
+```
+
+Without the index `ON CONFLICT` has nothing to match, and every redelivery would
+duplicate into a table whose owner asked for the opposite. The refusal is not a
+lost batch: it is retried, then buried in the dead letter with the reason and
+the `CREATE INDEX` on the record — nobody loses events while somebody creates
+the index.
+
+**`upsert` is refused by name.** `ON CONFLICT DO UPDATE`, where the *last*
+delivery wins, is a real mode that is **not implemented**. Accepting the word
+while behaving like `merge` is exactly the failure that field exists to prevent,
+so the config says so instead.
+
+## Each one with what is true only of it
+
+```yaml
+# Postgres: schema-qualified name, and the table has to exist.
+sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# MySQL: no COPY, so throughput is an order below Postgres on the same
+# hardware. Flush wider here.
+sink: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# BigQuery: no dsn_from. It authenticates with the pod's own credentials, which
+# is what a workload identity is for. The name has no dots — the project and
+# the dataset are their own fields.
+sink: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+# Redshift: two hops, not one. It is columnar, a row-by-row INSERT pays the cost
+# of a block, and the only workable load is COPY from S3. So every batch becomes
+# an object in the staging prefix and then a COPY — a stream flushing every
+# second writes 86,400 objects a day. Flush much wider here.
+sink:
+  type: redshift
+  dsn_from: BREVIS_RS_DSN
+  table: landing.clicks
+  staging: s3://acme-staging/gateway/
+  iam_role: arn:aws:iam::123456789012:role/redshift-copy
+  write: merge
+```
+
+`dsn_from` names the **environment variable** holding the connection string,
+never the string: a DSN carries a password and that file is in git. It is the
+same split `secrets:` makes in a workflow.
+
+`iam_role` is a role and the driver **will not accept a key**: a key in a
+`COPY`'s URL ends up in the cluster's query log, which plenty of people read.
+
+## No column declaration
+
+The gateway sends no column list. A pipeline declares its own because its rows
+have one shape it controls; a gateway's batch is whatever *N* clients posted in
+one flush window, and the shapes are allowed to differ.
+
+The driver resolves the list from the **table itself**, intersected with what
+the batch carries, **before** touching the server. A field the table does not
+have is refused with the message that fixes it, instead of failing mid-`COPY`
+with `column "x" of relation "y" does not exist`; a field one event omits is
+written as `NULL`.
+
+## The import list is the selection
+
+The sinks are **compiled in**, like the hooks, and the binary registers what it
+has:
+
+```go
+func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}
+```
+
+The Go linker prunes what nothing references, so a binary that never imports the
+BigQuery driver does not carry BigQuery — or Arrow, or the Storage Write API.
+That is how `database/sql` has always worked.
+
+It is worth what it sounds like:
+
+| build | packages | binary |
+|---|---|---|
+| all six sinks, both object stores | 864 | 48.9 MB |
+| `postgres` + local `files` | 232 | **10.0 MB** |
+
+Object stores are a **second** registry, because a scheme is not a destination:
+`files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
+build that only writes locally should not carry the AWS SDK to do it.
+
+### Two published images
+
+| image | carries | pull |
+|---|---|---|
+| `areteacademy/brevis-gateway:0.3.2` | six sinks, S3 and GCS | 16.1 MB |
+| `areteacademy/brevis-gateway:0.3.2-slim` | `postgres`, local `files` | **4.8 MB** |
+
+Both from one build of one tree, so the two tags are always the same commit.
+There is no `latest-slim` — `latest` is already a tag nobody should deploy.
+
+**Want a different pair?** `cmd/gateway-slim` is fifteen lines and the import
+block is the whole of its configuration. Copy it, change the imports, build.
+Anybody who wants a hook is compiling their own binary already, so choosing the
+sinks costs them nothing more.
+
+### The refusal says which build you are holding
+
+```
+sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.
+```
+
+A fixed list would send that person looking for a config mistake they did not
+make. The same holds for an object store: an `s3://` dead letter in a binary
+with no S3 backend is refused **at startup**, naming the scheme, rather than on
+the first batch it would have to bury.
+
+## What does not exist yet
+
+`sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka` and `rabbitmq`
+are planned and nothing has been written. The table at the top of this page says
+the state of each, and it is updated when the state changes — not before.

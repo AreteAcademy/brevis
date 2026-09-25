@@ -632,6 +632,7 @@ LLMS_GRUPOS = [
     ("How it executes", ["scheduler-and-queue", "pod-per-step"]),
     ("Command line and configuration", ["cli", "configuration"]),
     ("Writing a step in code", ["sdk", "libraries", "python"]),
+    ("Receiving data over HTTP", ["ingestion", "ingestion-sinks"]),
     ("Running it in production", ["kubernetes", "observability", "white-label"]),
 ]
 
@@ -677,6 +678,14 @@ step becomes a **pod**. A step is any command in any image — the **Go SDK**
 (`brevis/sdk`) is for extract-and-load work, and the **client libraries**
 (`pip install brevis`) give a step the run's context, clock and metrics through
 two environment variables.
+
+There is a third piece with a version of its own: the **ingestion gateway**
+(`areteacademy/brevis-gateway`), an HTTP endpoint that lands data which arrives
+instead of going to fetch it — configured entirely by YAML, delivering to
+Pub/Sub, Postgres, MySQL, BigQuery, Redshift or object storage. What joins all
+three is the `ingestion_id`, a frozen UUID v5 over
+`provider|entity|source_key|record_ts`: a row the gateway lands and a row an SDK
+fetcher lands for the same record are the same row.
 %s
 %s
 
