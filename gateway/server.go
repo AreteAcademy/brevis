@@ -326,7 +326,7 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accepted, rejected := p.prepare(events)
+	accepted, rejected, archived := p.prepare(events)
 	if len(accepted) > 0 {
 		if err := p.enqueue(accepted); err != nil {
 			p.metrics.count(p.metrics.saturated, 1, p.stream.Name)
@@ -354,17 +354,28 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// The tier that earns a 200 is the one that has written them down.
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"accepted": len(accepted),
-		"rejected": rejected,
-	})
+	answer := map[string]any{"accepted": len(accepted), "rejected": rejected}
+	if archived > 0 {
+		// Said out loud, because the alternative is what this looked like when
+		// it was first run against a real payload: {"accepted":0,"rejected":null}
+		// for an event that HAD been kept, whole, somewhere the caller was
+		// never told about. A caller cannot tell that from "nothing happened",
+		// and the difference is the whole point of the claim check.
+		answer["archived"] = archived
+	}
+	_ = json.NewEncoder(w).Encode(answer)
 }
 
 // prepare runs the hook and builds the identity. A record that fails either is
 // counted and skipped; the rest of the request still lands.
-func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
+//
+// The third return is how many were archived whole and dropped from the
+// stream. Separate from `rejected` because it is not a refusal -- the event was
+// kept -- and separate from `accepted` because it did not go into the stream.
+func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string, int) {
 	out := make([]sdk.Envelope, 0, len(events))
 	var rejected []string
+	var archived int
 
 	for i, e := range events {
 		if p.hook != nil {
@@ -393,6 +404,7 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
 				// Archived whole and dropped from the stream, on purpose: no
 				// reduction hook was registered. Counted, because an event
 				// that silently stops arriving is the worst outcome here.
+				archived++
 				continue
 			}
 			e = kept
@@ -406,7 +418,7 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
 		}
 		out = append(out, env)
 	}
-	return out, rejected
+	return out, rejected, archived
 }
 
 // archiveIfLarge writes an oversized event somewhere whole and returns what

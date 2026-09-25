@@ -105,6 +105,61 @@ func TestWithNoReductionHookAnOversizedEventIsArchivedAndDropped(t *testing.T) {
 	}
 }
 
+// And the caller is told, in the response.
+//
+// Found by running the published image against a real oversized payload: the
+// answer was {"accepted":0,"rejected":null} for an event that HAD been kept,
+// whole, somewhere the caller was never told about. A caller cannot tell that
+// from "nothing happened", and the difference is the whole point of the claim
+// check.
+func TestTheCallerIsToldTheEventWasArchived(t *testing.T) {
+	srv := oversizeGateway(t, nil, t.TempDir(), "512", "")
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	defer func() { _ = srv.Close(context.Background()) }()
+
+	body := fmt.Sprintf(
+		`{"event_id":"big-3","occurred_at":"2026-09-24T10:00:00Z","attachment":%q}`,
+		strings.Repeat("x", 2000))
+	resp, err := http.Post(ts.URL+"/v1/clicks", "application/json", strings.NewReader(body)) //nolint:gosec,noctx
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var answer map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&answer); err != nil {
+		t.Fatal(err)
+	}
+	if answer["archived"] != float64(1) {
+		t.Errorf("the response does not say the event was archived: %v", answer)
+	}
+}
+
+// An ordinary request does not carry the field at all, so `archived` appearing
+// means something happened rather than being a zero everybody scrolls past.
+func TestAnOrdinaryResponseDoesNotMentionArchiving(t *testing.T) {
+	srv := oversizeGateway(t, nil, t.TempDir(), "4KiB", "")
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	defer func() { _ = srv.Close(context.Background()) }()
+
+	resp, err := http.Post(ts.URL+"/v1/clicks", "application/json", //nolint:gosec,noctx
+		strings.NewReader(event("small-2", "a.b")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var answer map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&answer); err != nil {
+		t.Fatal(err)
+	}
+	if _, mentioned := answer["archived"]; mentioned {
+		t.Errorf("an ordinary response mentions archiving: %v", answer)
+	}
+}
+
 // An event under the limit is untouched: no archive write, no claim check, no
 // marshal cost that shows up in the payload.
 func TestAnOrdinaryEventIsNotTouchedByTheOversizePath(t *testing.T) {
@@ -249,5 +304,3 @@ func renderMetrics(t *testing.T, srv *gateway.Server) string {
 	}
 	return b.String()
 }
-
-var _ = json.Marshal

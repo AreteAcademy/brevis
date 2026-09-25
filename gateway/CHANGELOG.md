@@ -13,6 +13,25 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.3.1] — 2026-09-24
+
+### Fixed: the response did not say an event had been archived
+
+An oversized event with no reduction hook is archived whole and dropped from
+the stream, which is right. The answer was `{"accepted":0,"rejected":null}`,
+which is not: a caller cannot tell that from "nothing happened", and the
+difference is the whole point of the claim check.
+
+It now carries `"archived": 1` — and only when there is one, so the field
+appearing means something happened rather than being a zero everybody scrolls
+past.
+
+Found by running the published image against a real oversized payload rather
+than by reading the code. The tests all passed the whole time; none of them
+looked at the response body.
+
+---
+
 ## [0.3.0] — 2026-09-24
 
 Everything a service already in production needs before it can be replaced by

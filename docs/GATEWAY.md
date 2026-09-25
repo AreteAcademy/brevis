@@ -469,6 +469,15 @@ changes the prefix, and then nothing says where to look.
 different thing: it caps a whole **request** and refuses with `413` before a
 byte is parsed.
 
+The caller is told, in the response:
+
+```json
+{"accepted": 0, "rejected": null, "archived": 1}
+```
+
+Only when there is one, so the field appearing means something happened rather
+than being a zero everybody scrolls past.
+
 **`hook` is required for the event to continue.** Which fields are heavy is
 domain knowledge — a screenshot, a base64 attachment, a vendor's raw response —
 and a YAML file cannot hold it. Without one the event is archived and **dropped
