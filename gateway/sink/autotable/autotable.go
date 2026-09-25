@@ -74,23 +74,16 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		stream: b.Stream, gateway: b.Gateway,
 		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
 		made: map[string]gateway.Sinker{}, now: time.Now}
-	if _, err := r.sinkFor(b.Ctx, probeTable, nil); err != nil {
+	if _, err := r.open(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
-	r.forget(b.Ctx, probeTable, nil)
 	return r, nil
 }
 
-// probeTable is the name the startup check builds against. It is never written
-// to: the sink built for it is discarded before the first request.
+// probeTable is the name the startup check builds against. It is never
+// written to, never claimed and never counted: it is a validation, and the
+// sink built for it is thrown away.
 const probeTable = "brevis_probe"
-
-func (r *router) forget(ctx context.Context, table string, record sdk.Schema) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	delete(r.made, table+"\x00"+fingerprintOf(record))
-	r.meta.forget(ctx, table)
-}
 
 // router groups a batch by the table each event names, and writes each group
 // through a sink of its own.
@@ -170,6 +163,11 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		n, err := sink.Write(ctx, groups[table])
 		wrote += n
 		if err != nil {
+			// The destination disagreed with what we believed, so what we
+			// believed goes. The cache is an optimisation and never the
+			// authority: the next batch re-reads the catalogue rather than
+			// trusting an entry the server just contradicted.
+			r.invalidate(ctx, table)
 			return wrote, fmt.Errorf("table %s: %w", table, err)
 		}
 		r.meta.learn(ctx, table, true)
@@ -293,10 +291,42 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 		return nil, ErrClaimed
 	}
 
+	s, err := r.open(ctx, table, record)
+	if err != nil {
+		return nil, err
+	}
+	r.made[key] = s
+	r.meta.learn(ctx, table, true)
+	return s, nil
+}
+
+// invalidate drops this table from both caches, so the next batch starts over.
+func (r *router) invalidate(ctx context.Context, table string) {
+	r.mu.Lock()
+	for key := range r.made {
+		if strings.HasPrefix(key, table+"\x00") {
+			delete(r.made, key)
+		}
+	}
+	r.mu.Unlock()
+	r.meta.forget(ctx, table)
+}
+
+// open builds the destination for one table, and coordinates nothing.
+//
+// Separate from sinkFor because the STARTUP PROBE needs it. Going through
+// sinkFor meant the probe took a claim, and the second replica to start lost
+// it and REFUSED TO START -- "another replica is altering this table for this
+// shape". Losing a debounce is a batch to retry; it can never be a reason a
+// gateway does not come up.
+//
+// It also kept the probe out of the creation counter, which it had no business
+// spending.
+func (r *router) open(ctx context.Context, table string, record sdk.Schema) (gateway.Sinker, error) {
 	into := *r.build.Sink.Into
 	into.Table = table
 
-	// The four columns, the partition and the cluster travel with the
+	// The fixed columns, the partition and the cluster travel with the
 	// destination rather than being written into the YAML: every table this
 	// creates has the same shape, so creating one is a template and not a
 	// decision.
@@ -315,16 +345,9 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 			// column; nothing is ever dropped or narrowed.
 			//
 			// A batch that loses the race to ALTER fails, and the pipe's
-			// ordinary retry is what resolves it: four attempts over roughly
-			// seven seconds, and by the second the winner's column is in the
-			// catalogue. That is the buffer -- there is no second one, because
-			// a batch waiting for DDL and a batch waiting for a worker are the
-			// same thing.
-			//
-			// What is NOT solved here is the metadata quota with many
-			// replicas: ten detecting one new field is ten ALTERs, and
-			// BigQuery allows five per table per ten seconds. That needs a
-			// shared debounce, which needs a shared metastore.
+			// ordinary retry resolves it -- a batch waiting for DDL and a
+			// batch waiting for a worker are the same thing, so there is no
+			// second buffer.
 			Evolve:      sdk.EvolveAdditive,
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,
@@ -334,8 +357,6 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 	if err != nil {
 		return nil, fmt.Errorf("table %s: %w", table, err)
 	}
-	r.made[key] = s
-	r.meta.learn(ctx, table, true)
 	return s, nil
 }
 

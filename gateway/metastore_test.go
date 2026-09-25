@@ -3,6 +3,8 @@ package gateway_test
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -85,23 +87,25 @@ func TestTheCounterWindowRolls(t *testing.T) {
 			// outlasting both, which the first version of this did and so
 			// passed against the bug.
 			//
-			//	    t=0.0  Incr -> 1.  Correct: expires at 2.0.
-			//	    t=1.4  Incr -> 2.  Buggy: expiry pushed to 3.4.
-			//	    t=2.8  Incr -> correct 1 (expired at 2.0)
-			//	                   buggy   3 (alive until 3.4)
+			//	    t=0.0  Incr -> 1.  Correct: expires by 4.0.
+			//	    t=2.5  Incr -> 2.  Buggy: expiry pushed to 6.5.
+			//	    t=5.0  Incr -> correct 1 (expired)
+			//	                   buggy   3 (alive until 6.5)
 			//
-			// Six hundred milliseconds of margin on each side, which is enough
-			// for a loaded runner and not enough to hide the difference.
-			const ttl = 2 * time.Second
+			// Four seconds and not two, because memcached's expiry has
+			// SECOND granularity: an item stored for 2s can be gone at 1.x,
+			// and a 1.4s check against it failed here about one run in three.
+			// The margins are now a second on each side.
+			const ttl = 4 * time.Second
 			if n, err := m.Incr(ctx, key, ttl); err != nil || n != 1 {
 				t.Fatalf("the first Incr gave %d, %v", n, err)
 			}
-			time.Sleep(1400 * time.Millisecond)
+			time.Sleep(2500 * time.Millisecond)
 			if n, err := m.Incr(ctx, key, ttl); err != nil || n != 2 {
 				t.Fatalf("the second Incr gave %d, %v — it should still be inside "+
 					"the window", n, err)
 			}
-			time.Sleep(1400 * time.Millisecond)
+			time.Sleep(2500 * time.Millisecond)
 
 			n, err := m.Incr(ctx, key, ttl)
 			if err != nil {
@@ -291,5 +295,68 @@ func TestIntegrationReplicasSharingARedisRunOneDDL(t *testing.T) {
 	if local != replicas {
 		t.Errorf("with memory %d of %d claimed; the point is that ALL of them do",
 			local, replicas)
+	}
+}
+
+// Two gateways sharing a Redis, meeting the same new field at the same moment:
+// BOTH events land.
+//
+// The first version buried one of them. The claim window was three seconds and
+// the pipe's four retries are spent in roughly two, so the loser never got
+// back in — it exhausted its attempts inside the window and went to the dead
+// letter. A debounce that can bury a batch is not a debounce, and no unit test
+// could have shown it: it needs two processes, one Redis and a real ALTER.
+func TestIntegrationTwoReplicasBothLand(t *testing.T) {
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_PG_DSN")
+	addr := os.Getenv("BREVIS_GATEWAY_TEST_REDIS")
+	if dsn == "" || addr == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_PG_DSN and BREVIS_GATEWAY_TEST_REDIS are needed")
+	}
+	t.Setenv("PG_DSN", dsn)
+	t.Setenv("REDIS_ADDR", addr)
+	table := uniqueTable(t, dsn)
+
+	// Two servers, each its own router and its own in-process cache, sharing
+	// one metastore — which is what two pods are.
+	var servers []*gateway.Server
+	var urls []string
+	for i := 0; i < 2; i++ {
+		srv := autoTableGateway(t, dsn, "", "merge", "columns", "1", "redis")
+		ts := httptest.NewServer(srv.Handler())
+		defer ts.Close()
+		servers = append(servers, srv)
+		urls = append(urls, ts.URL)
+	}
+
+	// Both meet the new field at the same instant.
+	var wg sync.WaitGroup
+	for i, u := range urls {
+		wg.Add(1)
+		go func(i int, u string) {
+			defer wg.Done()
+			postKeyed(t, u+"/v1/tables", fmt.Sprintf(
+				`[{"table_name":%q,"data":{"id":"R-%d","total":10,"novo_campo":"v%d"}}]`,
+				table, i, i), http.StatusAccepted)
+		}(i, u)
+	}
+	wg.Wait()
+	for _, srv := range servers {
+		if err := srv.Close(context.Background()); err != nil {
+			t.Fatalf("draining: %v", err)
+		}
+	}
+
+	rows := query(t, dsn, `SELECT brevis_record_key FROM `+table+` ORDER BY brevis_record_key`)
+	if len(rows) != 2 {
+		t.Errorf("%d of 2 events landed: %v — the loser of the claim was buried "+
+			"instead of retrying through", len(rows), rows)
+	}
+
+	// And the column exists exactly once, whichever replica made it.
+	cols := query(t, dsn, fmt.Sprintf(
+		`SELECT count(*)::text FROM information_schema.columns
+		 WHERE table_name='%s' AND column_name='novo_campo'`, table))
+	if cols[0] != "1" {
+		t.Errorf("novo_campo exists %s times", cols[0])
 	}
 }

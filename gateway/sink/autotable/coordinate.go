@@ -11,21 +11,21 @@ import (
 
 // How long a claim on one table's shape lasts.
 //
-// Three seconds, and the number is bounded from both sides:
+// One second, and the number is bounded from both sides:
 //
-//	long enough   to collapse a burst. Ten replicas meeting a new field within
-//	              milliseconds of each other produce ONE attempt, not ten --
-//	              which is what keeps BigQuery's five metadata operations per
-//	              table per ten seconds from going in a second.
-//	short enough  that a loser gets through on its own retries. The pipe backs
-//	              off 500ms, 1s, 2s, so the third attempt is past this window
-//	              even if the winner never comes back.
+//	long enough   to cover ONE ALTER. That is all it has to cover: once the
+//	              winner's column is in the catalogue, a loser proceeding finds
+//	              nothing to plan and issues no DDL at all. The window protects
+//	              the in-flight moment, not the whole quota period.
+//	short enough  that a loser gets through on its own retries. The pipe makes
+//	              four attempts with a jittered backoff -- roughly 1.7 to 3.5
+//	              seconds in total -- so a window it cannot outlast is a batch
+//	              in the dead letter.
 //
-// That second half is why this is a DEBOUNCE and not a lock. Nothing is
-// released and no lease is renewed: a replica that dies holding one costs
-// three seconds to the batches behind it, and they are batches being retried
-// rather than workers blocked.
-const ClaimWindow = 3 * time.Second
+// That second half was three seconds first, and two replicas meeting one new
+// field put the loser's batch in the dead letter: its four attempts were spent
+// inside the window. A debounce that can bury a batch is not a debounce.
+const ClaimWindow = time.Second
 
 // ErrClaimed is a batch that met a shape somebody else is already altering
 // for.
@@ -74,6 +74,12 @@ func (c *coordinator) learn(ctx context.Context, table string, exists bool) {
 }
 
 // forget drops what is known, for when the destination disagrees.
+//
+// This is the rule that keeps the cache safe, and it is a rule with teeth only
+// if something calls it: if the cache says the table is there and the write
+// fails, THE WRITE IS RIGHT. Without this a table dropped or recreated outside
+// the gateway leaves every replica believing a shape that is gone, until the
+// TTL runs out on each of them separately.
 func (c *coordinator) forget(ctx context.Context, table string) {
 	_ = c.store.Put(ctx, c.key("exists", table), "0", time.Second)
 }

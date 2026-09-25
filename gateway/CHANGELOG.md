@@ -13,6 +13,50 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.7.1] — 2026-09-25
+
+Three things two replicas found that no unit test could.
+
+### Fixed: the second replica refused to start
+
+```
+stream "tables": another replica is altering this table for this shape; retrying
+```
+
+The startup probe went through the same path a batch does, so it took a claim —
+and the second gateway to start lost it and **would not come up**. Losing a
+debounce is a batch to retry; it can never be a reason a gateway does not
+start. The probe builds the destination directly now, and takes no claim and no
+slot in the creation counter, which it had no business spending either.
+
+### Fixed: the loser of a claim was buried instead of retrying through
+
+The claim window was three seconds and the pipe spends its four attempts in
+roughly two, so a loser never got back in — its batch went to the dead letter.
+**A debounce that can bury a batch is not a debounce.**
+
+One second now, and the number is bounded from both sides: long enough to cover
+one `ALTER` — which is all it has to cover, since a loser proceeding after the
+winner finishes plans no change at all — and short enough that the pipe's
+jittered backoff outlasts it.
+
+### Fixed: the cache was never invalidated
+
+`forget` was written, documented as the rule that keeps the cache safe, and
+called by nothing — the linter said so after a refactor removed its only
+caller. A failed write now drops what was believed about that table, in both
+the local map and the shared store: **if the cache says the column is there and
+the write fails, the write is right.**
+
+### And a flaky test of my own
+
+`TestTheCounterWindowRolls` used a two-second TTL checked at 1.4s, and
+memcached's expiry has **second granularity** — an item stored for 2s can be
+gone at 1.x. It failed about one run in three. Four seconds now, with a second
+of margin on each side, and it still fails against the mutation.
+
+---
+
 ## [0.7.0] — 2026-09-25
 
 ### The metastore has backends: `redis` and `memcached`

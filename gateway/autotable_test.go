@@ -260,7 +260,7 @@ func autoTableGateway(t *testing.T, dsn, dead string, write ...string) *gateway.
 	if dead == "" {
 		dead = t.TempDir()
 	}
-	mode, shape, records := "append", "document", "500"
+	mode, shape, records, meta := "append", "document", "500", "{type: memory}"
 	if len(write) > 0 {
 		mode = write[0]
 	}
@@ -269,6 +269,9 @@ func autoTableGateway(t *testing.T, dsn, dead string, write ...string) *gateway.
 	}
 	if len(write) > 2 {
 		records = write[2]
+	}
+	if len(write) > 3 {
+		meta = "{type: " + write[3] + ", addr_from: REDIS_ADDR}"
 	}
 	t.Setenv("GW_KEYS", "k")
 	yaml := fmt.Sprintf(`
@@ -281,14 +284,15 @@ streams:
     format: array
     identity: {provider: p, entity: e, source_key: table_name, record_ts: table_name}
     buffer: {flush: {records: %s, every: 1h}}
-    retry: {attempts: 1}
+    retry: {attempts: 4, backoff: 500ms, max_backoff: 2s}
     sink:
       type: auto_table
       naming: {pattern: '^gwauto_[a-z0-9_]+$'}
+      metastore: %s
       shape: %s
       into: {type: postgres, dsn_from: PG_DSN, write: %s}
     dead_letter: {type: files, path: %s/}
-`, records, shape, mode, dead)
+`, records, meta, shape, mode, dead)
 
 	file := t.TempDir() + "/g.yaml"
 	if err := os.WriteFile(file, []byte(yaml), 0o600); err != nil {
