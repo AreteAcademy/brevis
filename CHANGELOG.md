@@ -18,7 +18,41 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
-## [0.64.0] — 2026-09-16
+## [0.64.0] — 2026-09-24
+
+### Added: `sdk.Store`
+
+The object-store backend interface, named at last.
+
+`to.Files.Store`, `from.Files.Store` and `redshift.Table.Store` are exported
+fields typed with an interface that was not — so a caller could **pass**
+`s3.New(client)` and could not write a function that **returns** one. Anything
+that picks a backend from a path has to do exactly that, and the gateway, as the
+first consumer outside this repository, hit it immediately.
+
+```go
+func storeFor(ctx context.Context, path string) (sdk.Store, error) {
+    switch {
+    case strings.HasPrefix(path, "s3://"):  // ...
+    case strings.HasPrefix(path, "gs://"):  // ...
+    }
+    return nil, nil                          // a local path needs none
+}
+```
+
+An alias, so nothing moves and nothing breaks: the same interface `store/s3` and
+`store/gcs` already satisfy. It stays passed in rather than chosen inside, which
+is what keeps the AWS SDK out of a fetcher that reads GCS.
+
+---
+
+## [0.63.0] — 2026-09-16
+
+Three additions, and they went out together. They were written here as `0.64.0`,
+`0.63.0` and `0.63.0` — two numbers for one release and one number twice — and
+only `sdk/v0.63.0` was ever tagged, which holds all three. Corrected on
+2026-09-24 rather than left: a reader following the first heading would have run
+`go get sdk/v0.64.0` and got a 404.
 
 ### Added: `sdk.Param` and `sdk.ParamList`, readable before the pipeline exists
 
@@ -54,8 +88,6 @@ in a manifest must not override what the operator typed in the trigger form.
 not refuse it — and what it collects reaches `p.Run.Params`, so the value reads
 the same inside the pipeline as outside it.
 
-## [0.63.0] — 2026-09-16
-
 ### Added: `RunContext.ParamList`
 
 ```go
@@ -81,8 +113,6 @@ error handling it wants.
 
 Nothing else changed: `Params` is the same map it always was, and a fetcher that
 does not use lists sees no difference.
-
-## [0.63.0] — 2026-09-16
 
 ### Added: `persist.String`
 
