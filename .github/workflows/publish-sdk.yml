@@ -178,31 +178,51 @@ jobs:
         with:
           go-version: '1.27'
 
-      - name: Wait for the proxy to serve the version
+      - name: Wait for the proxy AND the checksum database
         env:
           VERSION: ${{ needs.create-release.outputs.version }}
         run: |
-          # The proxy fetches on demand and takes its time: v0.6.0 needed
-          # 5m05, against a budget of exactly 5 minutes. Twenty minutes is not
-          # generosity, it is the observed latency plus room.
+          # Both, and as HTTP probes, and the reason is a release that went
+          # red while this step went green.
           #
-          # GOSUMDB=off on the probe only. Without it a version the checksum
-          # database has not seen yet sends go list off to git, where the
-          # runner has no credentials, and the real answer -- "the proxy does
-          # not have it yet" -- is buried under an auth error. The consumer
-          # build below runs with verification fully on.
-          MODULE="github.com/AreteAcademy/brevis/sdk"
-          for i in $(seq 1 40); do
-            echo "Attempt $i..."
-            if GOPROXY=https://proxy.golang.org GOSUMDB=off GOFLAGS=-mod=mod \
-                 go list -m "$MODULE@$VERSION" 2>&1; then
-              echo "✅ Proxy is serving $MODULE@$VERSION"
-              exit 0
+          # It used to run `go list` with GOSUMDB=off. The comment explained
+          # why -- without it, a version the checksum database has not seen
+          # sends go list off to git and buries the real answer under an auth
+          # error. What it did NOT say is the other half: with the sum
+          # database off, `go list` ALSO falls back to direct git when the
+          # proxy 404s. So on v0.64.0 it printed "✅ Proxy is serving" on
+          # attempt 1 while proxy.golang.org had never heard of the version,
+          # and the consumer build failed twenty seconds later on the
+          # checksum database. The probe proved the tag existed in git, which
+          # was never in doubt.
+          #
+          # curl cannot fall back to anything. And the consumer build needs
+          # BOTH services, which warm at different times, so both are waited
+          # on rather than one being taken as evidence of the other.
+          #
+          # Twenty minutes each: the proxy fetches on demand and takes its
+          # time -- v0.6.0 needed 5m05 against a budget of exactly 5 minutes.
+          # That is observed latency plus room, not generosity.
+          MODULE="github.com/!arete!academy/brevis/sdk"
+          for probe in \
+              "https://proxy.golang.org/$MODULE/@v/$VERSION.info" \
+              "https://sum.golang.org/lookup/$MODULE@$VERSION"; do
+            served=""
+            for i in $(seq 1 40); do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' "$probe" || echo 000)
+              if [ "$code" = "200" ]; then
+                echo "✅ $probe"
+                served=1
+                break
+              fi
+              echo "  attempt $i: $code — $probe"
+              sleep 30
+            done
+            if [ -z "$served" ]; then
+              echo "::error::$probe never answered 200 after 20 minutes"
+              exit 1
             fi
-            sleep 30
           done
-          echo "❌ Proxy never served $MODULE@$VERSION after 20 minutes"
-          exit 1
 
       - name: Build a real consumer against the published module
         # The proof that the proxy serves what we said it serves: a clean
