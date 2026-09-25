@@ -18,6 +18,35 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.66.0] — 2026-09-25
+
+### Added: `WriteOptions.DedupKey`
+
+The column `DedupMerge` matches on. Empty means `ingestion_id`, which is what
+every pipeline writes and what this has always been — nothing changes for a
+caller who does not set it.
+
+It exists because a caller may own a table's whole shape and name its identity
+column something else. The gateway's `auto_table` does: it prefixes the columns
+it invents, so its identity is `brevis_ingestion_id`. Every driver looked for
+`ingestion_id` **by name**, found nothing, and refused every merge into a table
+it had just created — the table existed with the right columns and zero rows
+landed.
+
+```go
+sdk.WriteOptions{Dedup: sdk.DedupMerge, DedupKey: "brevis_ingestion_id"}
+```
+
+Honoured by all four: `ON CONFLICT` in Postgres, the unique-index check in
+Postgres and MySQL, and the `MERGE … ON` in BigQuery and Redshift.
+
+It is a **column name that reaches SQL**, so it is validated rather than quoted
+and hoped: quoting makes `"; DROP TABLE x; --` a legal identifier, which is not
+the failure anybody wants to find out about. `DedupKeyOf` refuses anything that
+is not `[A-Za-z_][A-Za-z0-9_]*`.
+
+---
+
 ## [0.65.0] — 2026-09-25
 
 ### Added: `Column.Unique`

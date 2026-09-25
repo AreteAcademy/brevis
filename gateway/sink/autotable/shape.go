@@ -1,10 +1,10 @@
-// Package autotable routes each event to the table its own payload names, and
+// Package autotable routes each event to the table its own envelope names, and
 // creates that table when it is absent.
 //
 // It writes nothing. `into` names the destination that does, and every table it
-// creates has the SAME FOUR COLUMNS -- so creating one is a template rather
-// than a decision, and the same package serves Postgres, MySQL, BigQuery and
-// Redshift without knowing which it is talking to.
+// creates has the same fixed columns plus whatever the record carries -- so
+// creating one is a template rather than a decision, and the same package
+// serves Postgres, MySQL, BigQuery and Redshift without knowing which.
 package autotable
 
 import (
@@ -23,140 +23,237 @@ import (
 // Sink is what the YAML calls this driver.
 const Sink = gateway.SinkAutoTable
 
-// The four columns every auto-created table has, and nothing else.
+// The envelope. Control fields at the top, the record inside `data`.
 //
-// One JSON column instead of a column per field, which is the decision this
-// package is built on. A column per field buys types nobody declared and pays
-// for them with schema-change quota, a write-stream reopen per new field, and
-// a metadata race between replicas. A JSON column pays none of that:
-//
-//   - a new field is a new key, so there is no DDL, no quota and no race
-//   - the poison batch cannot happen: there is no union of fields to reconcile
-//   - it is queryable the day it arrives -- JSON_VALUE(data, '$.surprise')
-//
-// It is also what the market converged on: Fivetran, Airbyte and Snowpipe all
-// land into a raw layer that cannot fail and model it downstream.
+// The split is the whole point: `table_name` sitting beside `total` and
+// `customer` was always wrong -- it is a field of the TRANSPORT and not of the
+// record -- and separating them is how every CDC format is shaped.
 const (
-	ColumnID         = sdk.ColumnIngestionID
-	ColumnIngestedAt = "ingested_at"
-	ColumnOccurredAt = "occurred_at"
-	ColumnData       = "data"
+	FieldTable       = "table_name"
+	FieldData        = "data"
+	FieldUniqueKey   = "unique_key"
+	FieldOperation   = "operation"
+	FieldDescription = "description"
 )
 
-// schemaFor is the table every route creates. One declaration serves every
-// destination: the SDK's DDL generator turns TypeJSON into JSON on BigQuery,
-// JSONB on Postgres, JSON on MySQL and SUPER on Redshift.
+// DefaultUniqueKey is the field inside `data` that identifies the record when
+// the envelope names no other.
+const DefaultUniqueKey = "id"
+
+// The operations a landing table records.
 //
-// `unique` is the half that has to match the write mode, and getting it wrong
-// breaks the table in one direction or the other:
+// RECORDS, and does not apply. A landing table is history: an UPDATE applied in
+// place loses the previous version, and the day you want it is the day
+// something broke. Resolving "the current version of each record" is the
+// downstream model's job:
 //
-//	merge   NEEDS the constraint. Postgres and MySQL refuse DedupMerge without
-//	        a unique index on ingestion_id, so a table created without it could
-//	        never be merged into -- the create succeeds and every load refuses.
-//	append  must NOT have it. Every delivery is meant to land, and a unique
-//	        constraint would reject the second one as a duplicate, which is the
-//	        opposite of what `append` promises.
+//	qualify row_number() over (partition by brevis_record_key
+//	                           order by brevis_received_at desc) = 1
+//	   and brevis_operation <> 'DELETE'
 //
-// BigQuery has no unique constraints and its MERGE needs none, so the flag is
-// left off there: declaring it would be refused by the dialect, correctly.
-func schemaFor(unique bool) sdk.Schema {
-	return sdk.Schema{
-		{Name: ColumnID, Type: sdk.TypeString, Required: true, Unique: unique},
-		{Name: ColumnIngestedAt, Type: sdk.TypeTimestamp, Required: true},
-		{Name: ColumnOccurredAt, Type: sdk.TypeTimestamp},
-		{Name: ColumnData, Type: sdk.TypeJSON},
-	}
-}
+// Which is what Debezium, Fivetran and Airbyte all do -- and it means
+// `operation` costs nothing in the write path: no upsert mode, no lock, no
+// delete.
+const (
+	OpInsert = "INSERT"
+	OpUpdate = "UPDATE"
+	OpDelete = "DELETE"
+)
+
+// Prefix is reserved. A `data` carrying any key with it is refused, because
+// otherwise a producer forges a control field -- and a forged
+// brevis_received_at is worse than none, since it looks real.
+const Prefix = "brevis_"
+
+// The columns every table carries, whatever the record holds.
+//
+// ColumnID is the one WITHOUT the prefix, and that is not an oversight.
+// `ingestion_id` is the PRODUCT's column, not this package's: the SDK writes it
+// from a pipeline, every driver's dedup is `ON CONFLICT (ingestion_id)`, and
+// docs/GATEWAY.md's central claim rests on it --
+//
+//	a row this gateway lands and a row a pipeline lands are ONE ROW,
+//	with no reconciliation between them
+//
+// Prefixing it would break that sentence and, more immediately, break `merge`
+// outright: the drivers look for a unique index on `ingestion_id` by name and
+// found none. The integration test caught it -- zero rows landed.
+//
+// Everything else here IS this gateway's own, and carries the prefix.
+const (
+	ColumnID         = sdk.ColumnIngestionID
+	ColumnRecordKey  = Prefix + "record_key"
+	ColumnOperation  = Prefix + "operation"
+	ColumnReceivedAt = Prefix + "received_at"
+	ColumnLoadedAt   = Prefix + "loaded_at"
+	ColumnStream     = Prefix + "stream"
+	ColumnGateway    = Prefix + "gateway"
+)
 
 // PartitionBy is the column a created table is partitioned on, by day.
 //
-// `ingested_at` and NOT `occurred_at`: a producer's clock can be wrong or
-// absent, and a partition column a client controls is a client that can write
-// into 2035. An unpartitioned landing table is a query bill that grows forever,
-// so this is not optional.
-const PartitionBy = ColumnIngestedAt
+// OUR clock, never a client's. A producer's can be wrong or absent, and a
+// partition column a client controls is a client that can write into 2035. An
+// unpartitioned landing table is a query bill that grows forever, so this is
+// not optional.
+const PartitionBy = ColumnReceivedAt
 
-// ClusterBy is the column a created table is clustered on: the merge key, which
-// is what a lookup by identity uses.
-var ClusterBy = []string{ColumnID}
+// ClusterBy is how a table is clustered: by the record, because looking up one
+// record's history is what anybody does with a landing table.
+var ClusterBy = []string{ColumnRecordKey}
 
-// shape turns a producer's event into the four columns.
+// fixed is the part of the schema that never varies.
 //
-// Everything the producer sent goes into `data`, untouched, INCLUDING the field
-// that named the table: a consumer reading the row should see what was posted,
-// not what the gateway thought was interesting.
-func shape(e map[string]any, now time.Time) (map[string]any, error) {
-	body, err := json.Marshal(e)
-	if err != nil {
-		return nil, fmt.Errorf("the event is not JSON: %w", err)
+// `brevis_loaded_at` is a database DEFAULT and not a value we send, and that is
+// deliberate: the gateway knows the DISPATCH time, the destination knows the
+// WRITE time. The difference between the two columns is then the real
+// end-to-end latency, per row, with no instrumentation at all.
+func fixed(unique bool) sdk.Schema {
+	return sdk.Schema{
+		{Name: ColumnID, Type: sdk.TypeString, Required: true, Unique: unique},
+		{Name: ColumnRecordKey, Type: sdk.TypeString, Required: true},
+		{Name: ColumnOperation, Type: sdk.TypeString, Required: true},
+		{Name: ColumnReceivedAt, Type: sdk.TypeTimestamp, Required: true},
+		{Name: ColumnLoadedAt, Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
+		{Name: ColumnStream, Type: sdk.TypeString},
+		{Name: ColumnGateway, Type: sdk.TypeString},
 	}
-	row := map[string]any{
-		ColumnIngestedAt: now.UTC().Format(time.RFC3339),
-		ColumnData:       string(body),
-	}
-	// occurred_at travels only when the producer sent one. Absent is NULL and
-	// not now(): a made-up event time is worse than a missing one, because
-	// nothing downstream can tell it apart from a real one.
-	if at := gateway.Text(e[ColumnOccurredAt]); at != "" {
-		row[ColumnOccurredAt] = at
-	}
-	return row, nil
 }
 
-// identify computes the row's ingestion_id.
+// envelope is one request, taken apart.
+type envelope struct {
+	table  string
+	key    string
+	op     string
+	desc   string
+	record map[string]any
+}
+
+// open reads the envelope and refuses what it cannot honour.
 //
-// The gateway's best sentence is that a 503 is safe to retry, because the
-// ingestion_id is a frozen function of the event. That holds here too, but the
-// inputs are different: a declared stream names four fields its owner knows,
-// and a producer posting {table_name, data} names none.
-//
-//	uuid5(ns, table | idempotency_key)      when the producer sent one
-//	uuid5(ns, table | sha256(canonical))    otherwise
-//
-// The producer's key is always better: it means "these two requests are the
-// same business fact", which only they know. The fingerprint means "these two
-// requests have identical bytes" -- a good approximation and a WORSE PROMISE,
-// because two genuinely distinct events with byte-identical data collapse into
-// one. Say that to producers rather than letting them find it.
-func identify(table string, e map[string]any) (string, error) {
-	key := gateway.Text(e[KeyField])
-	if key == "" {
-		sum, err := fingerprint(e)
-		if err != nil {
-			return "", err
+// Every refusal here is per EVENT: the producer gets it in the response, at the
+// moment they can still fix it, and every well-formed event in the same request
+// still lands.
+func open(e map[string]any) (envelope, error) {
+	var env envelope
+
+	env.table = gateway.Text(e[FieldTable])
+	if env.table == "" {
+		return env, fmt.Errorf("no %q, and that field is what says which table this "+
+			"belongs in", FieldTable)
+	}
+
+	record, ok := e[FieldData].(map[string]any)
+	if !ok {
+		if _, present := e[FieldData]; !present {
+			return env, fmt.Errorf("no %q: the record goes inside it, and the fields "+
+				"beside it are the envelope", FieldData)
 		}
-		key = "sha256:" + sum
+		return env, fmt.Errorf("%q is not a JSON object", FieldData)
 	}
-	env := sdk.Envelope{
-		Provider:  Provider,
-		Entity:    table,
-		SourceKey: key,
-		RecordTS:  gateway.Text(e[ColumnOccurredAt]),
+	if len(record) == 0 {
+		return env, fmt.Errorf("%q is empty", FieldData)
 	}
-	return env.IngestionID()
+	env.record = record
+
+	// The reserved prefix, checked before anything reads the record: a forged
+	// brevis_received_at is worse than a missing one, because it looks real.
+	for k := range record {
+		if strings.HasPrefix(k, Prefix) {
+			return env, fmt.Errorf("%q.%q uses the reserved %q prefix, which names "+
+				"the gateway's own columns", FieldData, k, Prefix)
+		}
+	}
+
+	name := gateway.Text(e[FieldUniqueKey])
+	if name == "" {
+		name = DefaultUniqueKey
+	}
+	env.key = gateway.Text(record[name])
+	if env.key == "" {
+		return env, fmt.Errorf("%q.%q is missing or empty, and %q names it as this "+
+			"record's identity", FieldData, name, FieldUniqueKey)
+	}
+
+	env.op = strings.ToUpper(gateway.Text(e[FieldOperation]))
+	switch env.op {
+	case "":
+		env.op = OpInsert
+	case OpInsert, OpUpdate, OpDelete:
+	default:
+		return env, fmt.Errorf("%q is %q (use %s, %s or %s)",
+			FieldOperation, env.op, OpInsert, OpUpdate, OpDelete)
+	}
+
+	env.desc = gateway.Text(e[FieldDescription])
+	return env, nil
 }
 
-// KeyField is the field a producer uses to say "this is the same fact as
-// before". Optional, and naming it is the difference between a promise and an
-// approximation.
-const KeyField = "idempotency_key"
+// row builds the columns the gateway owns. What the record contributes is the
+// shape's job -- see shape.go's document and columns modes.
+func (env envelope) row(now time.Time, stream, name string) (map[string]any, error) {
+	id, err := env.identify()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		ColumnID:         id,
+		ColumnRecordKey:  env.key,
+		ColumnOperation:  env.op,
+		ColumnReceivedAt: now.UTC().Format(time.RFC3339),
+		ColumnStream:     stream,
+		ColumnGateway:    name,
+		// ColumnLoadedAt is absent on purpose: the destination's DEFAULT
+		// stamps it, which is the only clock that knows when the write
+		// actually happened.
+	}, nil
+}
 
-// Provider is the constant this package stamps into every id, so an id minted
-// here can never collide with one a declared stream minted for the same table
-// name and key.
+// identify computes the event's id.
+//
+//	uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))
+//
+// No clock. `occurred_at` used to be a client's field and part of this formula;
+// making arrival OUR responsibility would have put time.Now() in here, and
+// time.Now() differs on every delivery -- so every retry would have been a new
+// event and `merge` would have stopped absorbing anything.
+//
+// The fingerprint replaces it and is better for CDC:
+//
+//	same record, same content, twice   → same id, merge absorbs
+//	same record, content changed       → different id, both versions land
+//
+// The caveat is the documented one: two genuinely distinct events with
+// byte-identical `data` collapse. For CDC that is CORRECT -- two identical
+// updates to one record with the same values are the same fact.
+func (env envelope) identify() (string, error) {
+	sum, err := fingerprint(env.record)
+	if err != nil {
+		return "", err
+	}
+	e := sdk.Envelope{
+		Provider:  Provider,
+		Entity:    env.table,
+		SourceKey: env.key,
+		RecordTS:  "sha256:" + sum,
+	}
+	return e.IngestionID()
+}
+
+// Provider is the constant stamped into every id, so an id minted here can
+// never collide with one a declared stream minted for the same table and key.
 const Provider = "auto_table"
 
-// fingerprint is a sha256 over the event in CANONICAL form: keys sorted at
-// every level, no insignificant whitespace.
+// fingerprint is a sha256 over the record in CANONICAL form: keys sorted at
+// every level, arrays left in order, everything quoted.
 //
 // Canonical because Go's map iteration is randomised, so a plain json.Marshal
 // of a map produces a different byte string on every call -- and an id built on
 // that would differ between two deliveries of the same event, which is the one
-// thing it exists to prevent. encoding/json happens to sort a map's keys today;
-// this does not rely on that, because "happens to" is how a frozen id thaws.
-func fingerprint(e map[string]any) (string, error) {
+// thing it exists to prevent.
+func fingerprint(record map[string]any) (string, error) {
 	var b strings.Builder
-	if err := canonical(&b, e); err != nil {
+	if err := canonical(&b, record); err != nil {
 		return "", err
 	}
 	sum := sha256.Sum256([]byte(b.String()))

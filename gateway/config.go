@@ -290,6 +290,15 @@ type Sink struct {
 	// namespace nobody reviewed and a typo is a new table rather than an error.
 	Naming Naming `yaml:"naming"`
 
+	// Shape decides what the RECORD contributes to the row: `document` puts it
+	// whole in one JSON column, `columns` gives each field a column of its
+	// own.
+	//
+	// One contract for the producer either way -- the envelope never changes.
+	// What changes is what the operator's table looks like, which is their
+	// decision and not the producer's.
+	Shape string `yaml:"shape"`
+
 	// Metastore caches what is known about a table, so a per-event write does
 	// not become a per-event lookup.
 	Metastore Metastore `yaml:"metastore"`

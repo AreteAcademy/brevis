@@ -97,7 +97,11 @@ func (l *Loader) loadWithMerge(ctx context.Context, table *bigquery.Table, data 
 		return 0, 0, nil, fmt.Errorf("the rows do not fit %s: %w", nameOf(table), err)
 	}
 
-	sql := mergeSQL(table, temp, cols, core.MetadataID)
+	key, err := core.DedupKeyOf(core.WriteOptions{DedupKey: l.cfg.DedupKey})
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	sql := mergeSQL(table, temp, cols, key)
 
 	job, err := l.bq.Query(sql).Run(ctx)
 	if err != nil {

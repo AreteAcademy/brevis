@@ -130,6 +130,7 @@ func (b Table) config(opt core.WriteOptions) (*core.LoadConfig, map[string]core.
 		Schema:                 opt.Schema,
 		PartitionBy:            opt.PartitionBy,
 		Dedup:                  opt.Dedup,
+		DedupKey:               opt.DedupKey,
 		ClusterBy:              b.ClusterBy,
 		CreateTable:            create,
 		CreateSQL:              b.CreateSQL,

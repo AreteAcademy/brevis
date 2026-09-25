@@ -115,10 +115,17 @@ func resolveConfig(cfg *core.LoadConfig, opts ...core.LoadOption) (*core.LoadCon
 	//
 	// Only checkable when Columns is declared. Without a declaration the row
 	// itself is checked at load time -- see Load.
-	if c.Dedup == core.DedupMerge && declared(c.Columns) && !declares(c.Columns, core.MetadataID) {
-		return nil, fmt.Errorf("DedupMerge needs the %s column, and Columns does not declare "+
-			"it: the merge matches rows on it. Add sdk.IngestionID() to Transform and the "+
-			"column to Columns", core.MetadataID)
+	if c.Dedup == core.DedupMerge && declared(c.Columns) {
+		key, err := core.DedupKeyOf(core.WriteOptions{DedupKey: c.DedupKey})
+		if err != nil {
+			return nil, err
+		}
+		if !declares(c.Columns, key) {
+			return nil, fmt.Errorf("DedupMerge matches rows on %s and Columns does not "+
+				"declare it. Add sdk.IngestionID() to Transform and the column to "+
+				"Columns -- or set DedupKey, if this table's identity column has "+
+				"another name", key)
+		}
 	}
 
 	if (c.PartitionExpiration > 0 || c.RequirePartitionFilter) && declared(c.Columns) &&

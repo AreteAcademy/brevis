@@ -83,6 +83,21 @@ type WriteOptions struct {
 	// match on, and saying so is better than ignoring the option.
 	Dedup Dedup
 
+	// DedupKey is the column DedupMerge matches on. Empty means MetadataID --
+	// `ingestion_id` -- which is what every pipeline writes and what this has
+	// always been.
+	//
+	// It exists because a caller may own a table's whole shape and name its
+	// identity column something else. The gateway's `auto_table` does: it
+	// prefixes the columns it invents, so its identity is
+	// `brevis_ingestion_id` -- and the drivers looked for `ingestion_id` by
+	// NAME, found nothing, and every merge into a table they had just created
+	// refused. The table was created and zero rows landed.
+	//
+	// It is a COLUMN NAME that reaches SQL, so it is validated rather than
+	// quoted and hoped: see DedupKeyOf.
+	DedupKey string
+
 	// Run is what the engine knows about this execution. A destination that
 	// creates its table on the first run reads that from here.
 	Run RunContext

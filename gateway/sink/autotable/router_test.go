@@ -25,7 +25,6 @@ import (
 func TestTheConfiguredTTLReachesTheCache(t *testing.T) {
 	r := build(t, gateway.Sink{
 		Type:      gateway.SinkAutoTable,
-		TableFrom: "table_name",
 		Metastore: gateway.Metastore{Type: gateway.MetastoreMemory, TTL: 5 * time.Minute},
 		Into:      &gateway.Sink{Type: "probe"},
 	})
@@ -44,13 +43,12 @@ func TestTheConfiguredTTLReachesTheCache(t *testing.T) {
 // the only answer this design has to "what writes here?", six months later.
 func TestTheEnvelopeCarriesWhatDescribesTheTable(t *testing.T) {
 	r := build(t, gateway.Sink{
-		Type:      gateway.SinkAutoTable,
-		TableFrom: "table_name",
-		Into:      &gateway.Sink{Type: "probe"},
+		Type: gateway.SinkAutoTable,
+		Into: &gateway.Sink{Type: "probe"},
 	})
 
-	groups, err := r.group([]gateway.Envelope{{Payload: map[string]any{
-		"table_name": "app_orders", "occurred_at": "2026-09-25T10:00:00Z",
+	groups, _, err := r.group([]gateway.Envelope{{Payload: map[string]any{
+		"table_name": "app_orders", "data": map[string]any{"id": "A-3"},
 	}}})
 	if err != nil {
 		t.Fatal(err)

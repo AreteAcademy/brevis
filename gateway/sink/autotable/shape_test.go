@@ -1,294 +1,250 @@
 package autotable
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
 )
 
-// The fingerprint has to be the SAME for the same document, whatever order the
-// keys arrived in.
+// The envelope, taken apart — and what it refuses.
 //
-// Go randomises map iteration, so a plain json.Marshal of a map is a different
-// byte string on every call -- and an id built on that would differ between two
-// deliveries of the same event, which is the one thing it exists to prevent.
-// encoding/json happens to sort a map's keys today; this test is what keeps
-// that from being load-bearing, because "happens to" is how a frozen id thaws.
-func TestTheFingerprintDoesNotDependOnKeyOrder(t *testing.T) {
-	a := map[string]any{
-		"z": 1, "a": "x", "m": map[string]any{"q": true, "b": []any{1, 2, 3}},
-	}
-	b := map[string]any{
-		"m": map[string]any{"b": []any{1, 2, 3}, "q": true}, "a": "x", "z": 1,
-	}
-
-	first, err := fingerprint(a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Many times, because one pass could agree by luck.
-	for i := 0; i < 200; i++ {
-		got, err := fingerprint(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != first {
-			t.Fatalf("the same document fingerprinted two ways on pass %d:\n  %s\n  %s",
-				i, first, got)
-		}
-	}
-}
-
-// Two DIFFERENT documents must not fingerprint the same, and the obvious
-// shortcut does exactly that.
-//
-// fmt's %v on a map sorts its keys, so it looks stable enough to use -- the
-// key-order test above passes with it. It is also ambiguous, because nothing
-// is quoted: {"a":"b:1"} and {"a:b":"1"} both render as map[a:b:1]. Two
-// unrelated events would share an id, and a `merge` would keep one of them.
-//
-// This is the test that makes the canonicalisation load-bearing rather than
-// decorative.
-func TestTwoDifferentDocumentsDoNotCollide(t *testing.T) {
+// Every refusal here reaches the producer in the response, at the moment they
+// can still fix it, and every well-formed event in the same request lands.
+func TestTheEnvelopeRefusesWhatItCannotHonour(t *testing.T) {
 	for _, c := range []struct {
 		name string
-		a, b map[string]any
+		in   map[string]any
+		says string
 	}{
-		{"a colon that fmt cannot tell apart",
-			map[string]any{"a": "b:1"}, map[string]any{"a:b": "1"}},
-		{"a number and the string of it",
-			map[string]any{"v": 1}, map[string]any{"v": "1"}},
-		{"a nested object and its rendering",
-			map[string]any{"v": map[string]any{"x": 1}}, map[string]any{"v": "map[x:1]"}},
-		{"an empty string and a missing key",
-			map[string]any{"a": "", "b": 1}, map[string]any{"b": 1}},
+		{"no table", map[string]any{"data": map[string]any{"id": "A"}}, "table_name"},
+		{"no data", map[string]any{"table_name": "app_orders"}, `no "data"`},
+		{"data is not an object", map[string]any{"table_name": "t", "data": "x"}, "not a JSON object"},
+		{"data is empty", map[string]any{"table_name": "t", "data": map[string]any{}}, "is empty"},
+		{
+			// Without this a producer forges a control field, and a forged
+			// brevis_received_at is worse than none because it looks real.
+			name: "a record using the reserved prefix",
+			in: map[string]any{"table_name": "t", "data": map[string]any{
+				"id": "A", "brevis_received_at": "2020-01-01T00:00:00Z"}},
+			says: "reserved",
+		},
+		{
+			name: "no unique key in the record",
+			in:   map[string]any{"table_name": "t", "data": map[string]any{"total": 1}},
+			says: "this record's identity",
+		},
+		{
+			name: "a unique key the record does not carry",
+			in: map[string]any{"table_name": "t", "unique_key": "order_id",
+				"data": map[string]any{"id": "A"}},
+			says: `"order_id"`,
+		},
+		{
+			name: "an operation that is not one",
+			in: map[string]any{"table_name": "t", "operation": "MERGE",
+				"data": map[string]any{"id": "A"}},
+			says: "use INSERT, UPDATE or DELETE",
+		},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			one, err := fingerprint(c.a)
-			if err != nil {
-				t.Fatal(err)
+			_, err := open(c.in)
+			if err == nil {
+				t.Fatal("it was accepted")
 			}
-			two, err := fingerprint(c.b)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if one == two {
-				t.Errorf("%v and %v fingerprinted the same", c.a, c.b)
+			if !strings.Contains(err.Error(), c.says) {
+				t.Errorf("the refusal does not say %q: %v", c.says, err)
 			}
 		})
 	}
 }
 
-// An array's ORDER is significant and must not be sorted: [1,2] and [2,1] are
-// different documents, and collapsing them would merge two events that are not
-// the same one.
-func TestArrayOrderChangesTheFingerprint(t *testing.T) {
-	one, _ := fingerprint(map[string]any{"v": []any{1, 2}})
-	two, _ := fingerprint(map[string]any{"v": []any{2, 1}})
-	if one == two {
-		t.Error("[1,2] and [2,1] fingerprinted the same, so the array was sorted")
-	}
-}
-
-// The same event twice is the same id; a different event is a different one.
-func TestTheIdentityIsFrozenOverTheEvent(t *testing.T) {
-	e := map[string]any{"table_name": "app_orders", "amount": 10, "occurred_at": "2026-09-25T10:00:00Z"}
-
-	first, err := identify("app_orders", e)
+// The defaults: `id` for the key, INSERT for the operation.
+func TestTheEnvelopeDefaults(t *testing.T) {
+	env, err := open(map[string]any{
+		"table_name": "app_orders",
+		"data":       map[string]any{"id": "A-3", "total": 150},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, _ := identify("app_orders", map[string]any{
-		"amount": 10, "occurred_at": "2026-09-25T10:00:00Z", "table_name": "app_orders",
-	})
-	if first != again {
-		t.Errorf("the same event produced two ids:\n  %s\n  %s", first, again)
+	if env.key != "A-3" {
+		t.Errorf("the key is %q, and `id` is the default unique_key", env.key)
 	}
-	if len(first) != 36 {
-		t.Errorf("the id is %q, which is not a UUID", first)
+	if env.op != OpInsert {
+		t.Errorf("the operation is %q, want %s", env.op, OpInsert)
+	}
+	// And a named key wins.
+	env, err = open(map[string]any{
+		"table_name": "app_orders", "unique_key": "order_id",
+		"data": map[string]any{"id": "ignored", "order_id": "A-9"},
+	})
+	if err != nil || env.key != "A-9" {
+		t.Errorf("unique_key did not name the field: %q %v", env.key, err)
+	}
+}
+
+// The identity has NO clock in it, and that is the whole point.
+//
+// `occurred_at` used to be the client's and part of the formula. Making arrival
+// our responsibility would have put time.Now() here — different on every
+// delivery — so every retry would have been a new event and `merge` would have
+// stopped absorbing anything.
+func TestTheIdentityHasNoClockAndAbsorbsARetry(t *testing.T) {
+	body := func() map[string]any {
+		return map[string]any{
+			"table_name": "app_orders",
+			"data": map[string]any{
+				"id": "A-3", "total": 150,
+				"customer": map[string]any{"id": float64(7), "uf": "SP"},
+			},
+		}
+	}
+	first, err := mustOpen(t, body()).identify()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// The same content in a DIFFERENT table is a different row. Without the
-	// table in the key, two producers writing the same document would collide.
-	other, _ := identify("app_events", e)
-	if other == first {
+	// The same body again, at a different moment: the same id.
+	again, _ := mustOpen(t, body()).identify()
+	if first != again {
+		t.Errorf("the same record produced two ids:\n  %s\n  %s", first, again)
+	}
+	if len(first) != 36 {
+		t.Errorf("the id is %q", first)
+	}
+
+	// The same record with CHANGED content: a different id, so both versions
+	// land. That is what makes an UPDATE a second row rather than a no-op.
+	changed := body()
+	changed["data"].(map[string]any)["total"] = 999
+	updated, _ := mustOpen(t, changed).identify()
+	if updated == first {
+		t.Error("a changed record kept the id, so an UPDATE would be swallowed")
+	}
+
+	// And the same content in another TABLE is another row.
+	other := body()
+	other["table_name"] = "app_events"
+	elsewhere, _ := mustOpen(t, other).identify()
+	if elsewhere == first {
 		t.Error("the same content in two tables produced one id")
 	}
 }
 
-// A producer's own key beats the fingerprint, and changing the payload around
-// it does not change the id -- which is the whole point of sending one.
-func TestAnIdempotencyKeyOverridesTheFingerprint(t *testing.T) {
-	a, _ := identify("app_orders", map[string]any{
-		KeyField: "ord-1", "status": "pending", "occurred_at": "2026-09-25T10:00:00Z",
+// The columns the gateway owns, and the one it deliberately leaves out.
+func TestTheRowCarriesTheFixedColumns(t *testing.T) {
+	now := time.Date(2026, 9, 25, 14, 0, 0, 0, time.UTC)
+	env := mustOpen(t, map[string]any{
+		"table_name": "app_orders", "operation": "update",
+		"data": map[string]any{"id": "A-3"},
 	})
-	b, _ := identify("app_orders", map[string]any{
-		KeyField: "ord-1", "status": "paid", "occurred_at": "2026-09-25T10:00:00Z",
-	})
-	if a != b {
-		t.Error("the same idempotency_key produced two ids, so the key was ignored")
-	}
-
-	// And without a key, the same change DOES move the id.
-	c, _ := identify("app_orders", map[string]any{"status": "pending"})
-	d, _ := identify("app_orders", map[string]any{"status": "paid"})
-	if c == d {
-		t.Error("two different documents fingerprinted the same")
-	}
-}
-
-// The producer's whole event lands in `data`, including the field that named
-// the table: a consumer reading the row should see what was posted.
-func TestTheWholeEventLandsInData(t *testing.T) {
-	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
-	row, err := shape(map[string]any{
-		"table_name": "app_orders", "amount": 10, "occurred_at": "2026-09-25T09:00:00Z",
-	}, now)
+	row, err := env.row(now, "tables", "ingestao")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if row[ColumnIngestedAt] != "2026-09-25T10:00:00Z" {
-		t.Errorf("ingested_at is %v", row[ColumnIngestedAt])
-	}
-	// The producer's time, kept apart from ours.
-	if row[ColumnOccurredAt] != "2026-09-25T09:00:00Z" {
-		t.Errorf("occurred_at is %v", row[ColumnOccurredAt])
-	}
-
-	var data map[string]any
-	if err := json.Unmarshal([]byte(row[ColumnData].(string)), &data); err != nil {
-		t.Fatalf("data is not JSON: %v", err)
-	}
-	if data["table_name"] != "app_orders" || data["amount"] != float64(10) {
-		t.Errorf("the event did not survive whole into data: %v", data)
-	}
-
-	// Four columns and no more. A fifth would be a column somebody has to
-	// create, which is the cost this shape exists to avoid.
-	if len(row) != 3 { // ingestion_id is added by the router, not by shape
-		t.Errorf("shape produced %d columns: %v", len(row), row)
-	}
-}
-
-// A missing occurred_at is NULL and not now(): a made-up event time is worse
-// than a missing one, because nothing downstream can tell it apart from a real
-// one.
-func TestAMissingOccurredAtStaysMissing(t *testing.T) {
-	row, _ := shape(map[string]any{"table_name": "app_orders"}, time.Now())
-	if _, present := row[ColumnOccurredAt]; present {
-		t.Errorf("occurred_at was invented: %v", row[ColumnOccurredAt])
-	}
-}
-
-// The default pattern is the intersection of what all four databases accept
-// unquoted, so a name that passes needs no quoting anywhere and cannot carry
-// an injection.
-func TestTheNameRulesRefuseWhatWouldBecomeDDL(t *testing.T) {
-	n, err := newNames("", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, bad := range []string{
-		"", "a", "ab", "App_Orders", "1orders", "app-orders", "app orders",
-		"app.orders", `app";DROP TABLE x;--`, "orders;", strings.Repeat("a", 50),
+	for k, want := range map[string]any{
+		ColumnRecordKey:  "A-3",
+		ColumnOperation:  OpUpdate, // lowercase in, upper out
+		ColumnReceivedAt: "2026-09-25T14:00:00Z",
+		ColumnStream:     "tables",
+		ColumnGateway:    "ingestao",
 	} {
-		if err := n.check(bad); err == nil {
-			t.Errorf("the name %q was accepted", bad)
+		if row[k] != want {
+			t.Errorf("%s is %v, want %v", k, row[k], want)
 		}
 	}
-	for _, good := range []string{"app_orders", "svc_x1", "abc"} {
-		if err := n.check(good); err != nil {
-			t.Errorf("the name %q was refused: %v", good, err)
+	if id, _ := row[ColumnID].(string); len(id) != 36 {
+		t.Errorf("%s is %q", ColumnID, row[ColumnID])
+	}
+
+	// brevis_loaded_at is ABSENT on purpose: the destination's DEFAULT stamps
+	// it, because the gateway knows the dispatch time and only the destination
+	// knows the write time. Sending a value would make the two columns say the
+	// same thing and the latency between them zero.
+	if _, present := row[ColumnLoadedAt]; present {
+		t.Errorf("%s was sent, and it must be the destination's DEFAULT", ColumnLoadedAt)
+	}
+}
+
+// Scalar → STRING, object and array → JSON. No inference, ever.
+func TestTheColumnsShapeTypesNothing(t *testing.T) {
+	record := map[string]any{
+		"id":       "A-3",
+		"total":    float64(150),
+		"paid":     true,
+		"cancel":   nil,
+		"customer": map[string]any{"id": float64(7)},
+		"items":    []any{map[string]any{"sku": "X"}},
+	}
+	got, err := columns{}.schema(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]sdk.ColumnType{
+		"id": sdk.TypeString, "total": sdk.TypeString, "paid": sdk.TypeString,
+		"cancel": sdk.TypeString, "customer": sdk.TypeJSON, "items": sdk.TypeJSON,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("declared %d columns, want %d", len(got), len(want))
+	}
+	for _, c := range got {
+		if want[c.Name] != c.Type {
+			t.Errorf("%s is %s, want %s", c.Name, c.Type, want[c.Name])
+		}
+	}
+
+	// And the declaration is SORTED, so identical records never produce two
+	// different CREATE TABLEs.
+	for i := 1; i < len(got); i++ {
+		if got[i-1].Name > got[i].Name {
+			t.Errorf("the declaration is not sorted: %v after %v", got[i].Name, got[i-1].Name)
 		}
 	}
 }
 
-func TestAnAllowlistNarrowsFurther(t *testing.T) {
-	n, _ := newNames("", []string{"app_", "svc_"}, 0)
-	if err := n.check("app_orders"); err != nil {
-		t.Errorf("app_orders was refused: %v", err)
-	}
-	if err := n.check("other_orders"); err == nil {
-		t.Error("other_orders passed an allowlist that does not include it")
-	}
-}
-
-// The rate limit bounds CREATIONS in a rolling hour, and it says what to do.
-func TestCreationsAreBoundedPerHour(t *testing.T) {
-	n, _ := newNames("", nil, 2)
-	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
-
-	if err := n.admit("a", now); err != nil {
-		t.Fatal(err)
-	}
-	if err := n.admit("b", now); err != nil {
-		t.Fatal(err)
-	}
-	err := n.admit("c", now)
-	if err == nil {
-		t.Fatal("a third creation was admitted with a limit of two")
-	}
-	if !strings.Contains(err.Error(), "max_new_per_hour") {
-		t.Errorf("the refusal does not name the setting: %v", err)
-	}
-
-	// An hour later the budget is back, because it is a ROLLING hour and not a
-	// process-lifetime total.
-	if err := n.admit("c", now.Add(61*time.Minute)); err != nil {
-		t.Errorf("the budget did not recover after an hour: %v", err)
-	}
-}
-
-// The metastore caches BOTH answers, and forgets them.
+// A field name that Postgres would accept quoted and BigQuery would not.
 //
-// Negative entries are the half people leave out: "this table does not exist"
-// is the answer that saves a round trip on the hot path of a new producer
-// retrying.
-func TestTheMetastoreCachesBothAnswersAndExpires(t *testing.T) {
-	m := newMetastore(time.Minute)
-	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
-
-	if _, known := m.get("app_orders", now); known {
-		t.Error("an empty cache claimed to know something")
+// That is the trap: the table is created on Postgres, the same producer works
+// for months, and it breaks the day somebody points a stream at BigQuery. So
+// the narrowest of the four rules is the one applied everywhere.
+func TestAFieldNameBigQueryRefusesIsRefusedEverywhere(t *testing.T) {
+	for _, bad := range []string{"novo-campo", "cliente.uf", "1abc", "com espaço", `as"pas`, ""} {
+		if _, err := (columns{}).schema(map[string]any{bad: "x"}); err == nil {
+			t.Errorf("the field name %q was accepted", bad)
+		}
 	}
-
-	m.put("app_orders", true, now)
-	if exists, known := m.get("app_orders", now); !known || !exists {
-		t.Error("a positive entry did not come back")
-	}
-	m.put("app_missing", false, now)
-	if exists, known := m.get("app_missing", now); !known || exists {
-		t.Error("a negative entry did not come back")
-	}
-
-	// A table dropped by hand outside the gateway makes every entry a lie.
-	// Sixty seconds of wrongness is recoverable; an hour is an incident.
-	if _, known := m.get("app_orders", now.Add(2*time.Minute)); known {
-		t.Error("the entry outlived its TTL")
+	for _, good := range []string{"id", "_private", "novo_campo", "Total2"} {
+		if _, err := (columns{}).schema(map[string]any{good: "x"}); err != nil {
+			t.Errorf("the field name %q was refused: %v", good, err)
+		}
 	}
 }
 
-// The TTL comes from the config, and zero means the default rather than "never
-// cache" -- a cache with a zero TTL is a cache that does nothing, which is a
-// setting nobody means to write.
-func TestTheMetastoreTTLIsConfigured(t *testing.T) {
-	m := newMetastore(5 * time.Minute)
-	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
-	m.put("app_orders", true, now)
+// The document shape declares one column whatever the record holds, which is
+// what makes a table created there a template rather than a decision.
+func TestTheDocumentShapeIsAlwaysOneColumn(t *testing.T) {
+	for _, record := range []map[string]any{
+		{"id": "A"},
+		{"id": "A", "novo_campo": "x", "outro": map[string]any{"a": 1}},
+	} {
+		got, err := document{}.schema(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 1 || got[0].Name != ColumnData || got[0].Type != sdk.TypeJSON {
+			t.Errorf("the document shape declared %v", got)
+		}
+	}
+}
 
-	if _, known := m.get("app_orders", now.Add(4*time.Minute)); !known {
-		t.Error("the entry expired before its configured TTL")
+func mustOpen(t *testing.T, in map[string]any) envelope {
+	t.Helper()
+	env, err := open(in)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, known := m.get("app_orders", now.Add(6*time.Minute)); known {
-		t.Error("the entry outlived its configured TTL")
-	}
-
-	// And zero takes the default rather than expiring instantly.
-	d := newMetastore(0)
-	d.put("app_orders", true, now)
-	if _, known := d.get("app_orders", now.Add(30*time.Second)); !known {
-		t.Error("a zero TTL expired immediately instead of taking the default")
-	}
+	return env
 }

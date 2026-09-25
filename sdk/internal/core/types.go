@@ -230,6 +230,10 @@ type LoadConfig struct {
 	// Zero value is DedupNone.
 	Dedup Dedup
 
+	// DedupKey is the column DedupMerge matches on. Empty means MetadataID.
+	// It is WriteOptions.DedupKey, carried down to the loader.
+	DedupKey string
+
 	// CreateTable lets the loader create the destination table when it does
 	// not exist. Off by default: nothing runs DDL against your warehouse
 	// without being asked.

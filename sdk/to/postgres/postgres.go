@@ -157,10 +157,14 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	}
 
 	if res.Dedup == core.DedupMerge {
-		if err := checkUniqueIndex(ctx, conn, schema, table); err != nil {
+		key, err := core.DedupKeyOf(opt)
+		if err != nil {
 			return fail(err)
 		}
-		rows, ignored, err := t.loadWithDedup(ctx, conn, columns, types, envelopes)
+		if err := checkUniqueIndex(ctx, conn, schema, table, key); err != nil {
+			return fail(err)
+		}
+		rows, ignored, err := t.loadWithDedup(ctx, conn, columns, types, envelopes, key)
 		res.RowsLoaded, res.RowsIgnored = rows, ignored
 		return fail(err)
 	}
@@ -234,7 +238,7 @@ func (l *rows) Err() error { return l.err }
 //
 // The temporary table belongs to the SESSION and disappears on its own; there
 // is no cleanup to forget.
-func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []string, types map[string]string, envelopes []core.Envelope) (int64, int64, error) {
+func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []string, types map[string]string, envelopes []core.Envelope, key string) (int64, int64, error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("postgres: begin: %w", err)
@@ -255,7 +259,7 @@ func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []stri
 		return 0, 0, fmt.Errorf("postgres: COPY into staging: %w", err)
 	}
 
-	tag, err := tx.Exec(ctx, InsertSQL(t.Name, tmp, columns))
+	tag, err := tx.Exec(ctx, InsertSQL(t.Name, tmp, columns, key))
 	if err != nil {
 		return 0, 0, fmt.Errorf("postgres: insert into %s: %w", t.Name, err)
 	}
@@ -272,7 +276,7 @@ func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []stri
 // Exported and pure because SQL built inside a method that holds a client was
 // never seen by a test -- that is how BigQuery's MERGE shipped with a
 // positional match and cost v0.12.0. The columns are NAMED, always.
-func InsertSQL(target, source string, columns []string) string {
+func InsertSQL(target, source string, columns []string, key string) string {
 	names := make([]string, len(columns))
 	for i, c := range columns {
 		names[i] = quote(c)
@@ -280,7 +284,7 @@ func InsertSQL(target, source string, columns []string) string {
 	list := strings.Join(names, ", ")
 	return fmt.Sprintf(
 		"INSERT INTO %s (%s) SELECT %s FROM %s ON CONFLICT (%s) DO NOTHING",
-		target, list, list, source, quote(core.MetadataID))
+		target, list, list, source, quote(key))
 }
 
 // quote wraps the identifier in quotes. A column called "order" or "select" is
@@ -332,7 +336,7 @@ func columnsOf(ctx context.Context, conn *pgx.Conn, schema, table string) ([]str
 // A loader that can create an index can lock a production table in the middle
 // of the working day. The refusal names the missing index and shows the
 // command.
-func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string) error {
+func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table, key string) error {
 	var exists bool
 	err := conn.QueryRow(ctx,
 		`SELECT EXISTS (
@@ -342,7 +346,7 @@ func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string)
 		   JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
 		   WHERE n.nspname = $1 AND c.relname = $2
 		     AND i.indisunique AND i.indnatts = 1 AND a.attname = $3)`,
-		schema, table, core.MetadataID).Scan(&exists)
+		schema, table, key).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("postgres: checking the unique index: %w", err)
 	}
@@ -351,7 +355,7 @@ func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string)
 			"without it ON CONFLICT has nothing to match and every run would insert duplicates. "+
 			"This driver does not create indexes, because a loader that can create one can lock "+
 			"a production table: CREATE UNIQUE INDEX CONCURRENTLY ON %s.%s (%s)",
-			core.MetadataID, schema, table, schema, table, core.MetadataID)
+			key, schema, table, schema, table, key)
 	}
 	return nil
 }

@@ -19,9 +19,10 @@ import (
 // and says so by name, at startup, rather than on the first table.
 func New(b gateway.Build) (gateway.Sinker, error) {
 	s := b.Sink
-	if strings.TrimSpace(s.TableFrom) == "" {
-		return nil, fmt.Errorf("`table_from` is empty: name the field of the event " +
-			"that says which table it belongs in")
+	if strings.TrimSpace(s.TableFrom) != "" {
+		// v1 named the field; v2 does not, because the envelope is fixed.
+		return nil, fmt.Errorf("`table_from` is no longer a setting: the envelope "+
+			"names the table in %q, always. Remove it", FieldTable)
 	}
 	if s.Into == nil {
 		return nil, fmt.Errorf("`into` is empty: auto_table routes and does not " +
@@ -35,7 +36,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		// A fixed table under a router is a contradiction that would silently
 		// win: every event would land in it, and `table_from` would do nothing.
 		return nil, fmt.Errorf("`into.table` is %q, and auto_table takes the table "+
-			"from each event's %q instead. Remove it", s.Into.Table, s.TableFrom)
+			"from each event's %q instead. Remove it", s.Into.Table, FieldTable)
 	}
 
 	n, err := newNames(s.Naming.Pattern, s.Naming.Allow, s.Naming.MaxNewPerHour)
@@ -56,9 +57,15 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	// write mode AND the destination, and neither alone is enough.
 	unique := s.Into.Write == gateway.WriteMerge && s.Into.Type != gateway.SinkBigQuery
 
-	r := &router{build: b, field: s.TableFrom, names: n, unique: unique,
+	sh, err := shaperFor(s.Shape)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &router{build: b, names: n, unique: unique, shape: sh,
+		stream: b.Stream, gateway: b.Gateway,
 		meta: newMetastore(s.Metastore.TTL), made: map[string]gateway.Sinker{}, now: time.Now}
-	if _, err := r.sinkFor(b.Ctx, probeTable); err != nil {
+	if _, err := r.sinkFor(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
 	r.forget(probeTable)
@@ -84,13 +91,20 @@ func (r *router) forget(table string) {
 // letter, the drain and the metrics all still see one destination per stream.
 type router struct {
 	build gateway.Build
-	field string
 	names *names
 	meta  *metastore
 
 	// unique says whether the created table carries a UNIQUE constraint on
 	// ingestion_id: required by `merge` and wrong for `append`.
 	unique bool
+
+	// shape decides what the record contributes to the row: one JSON column,
+	// or a column per field.
+	shape shaper
+
+	// stream and gateway are stamped onto every row, so a table fed by several
+	// routes still says which one wrote each line.
+	stream, gateway string
 
 	// now is a field so a test can control the hour the rate limit counts in.
 	now func() time.Time
@@ -100,7 +114,7 @@ type router struct {
 }
 
 func (r *router) Describe() string {
-	return fmt.Sprintf("auto_table:%s→%s", r.field, r.build.Sink.Into.Type)
+	return fmt.Sprintf("auto_table[%s]→%s", r.shape.name(), r.build.Sink.Into.Type)
 }
 
 // Admit refuses one event before it is buffered, which is what keeps a bad
@@ -111,12 +125,11 @@ func (r *router) Describe() string {
 // flush window, and none of them would be told. Here the producer gets the
 // reason in the response and everybody else's events land.
 func (r *router) Admit(e map[string]any) error {
-	table := gateway.Text(e[r.field])
-	if table == "" {
-		return fmt.Errorf("no %q, and that field is what says which table this "+
-			"belongs in", r.field)
+	env, err := open(e)
+	if err != nil {
+		return err
 	}
-	return r.names.check(table)
+	return r.names.check(env.table)
 }
 
 // Write groups the batch and writes each table's rows.
@@ -126,7 +139,7 @@ func (r *router) Admit(e map[string]any) error {
 // table refused would lose those rows with nothing said. The dead letter
 // carries the reason, and the reason names the table.
 func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
-	groups, err := r.group(batch)
+	groups, schemas, err := r.group(batch)
 	if err != nil {
 		return 0, err
 	}
@@ -141,7 +154,7 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 
 	var wrote int64
 	for _, table := range tables {
-		sink, err := r.sinkFor(ctx, table)
+		sink, err := r.sinkFor(ctx, table, schemas[table])
 		if err != nil {
 			return wrote, err
 		}
@@ -155,54 +168,77 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 	return wrote, nil
 }
 
-// group shapes every event into the four columns and files it under its table.
-func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope, error) {
+// group opens each envelope and files the row under its table.
+//
+// Every refusal here is per EVENT and reaches the producer in the response --
+// the batch is not failed for one malformed member, which is the poison batch
+// this package had once and does not have again.
+func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope, map[string]sdk.Schema, error) {
 	now := r.now()
-	out := map[string][]gateway.Envelope{}
+	rows := map[string][]gateway.Envelope{}
+	schemas := map[string]sdk.Schema{}
 
-	for i, env := range batch {
-		e, ok := env.Payload.(map[string]any)
+	for i, e := range batch {
+		payload, ok := e.Payload.(map[string]any)
 		if !ok {
-			return nil, fmt.Errorf("event %d is not a JSON object", i)
+			return nil, nil, fmt.Errorf("event %d is not a JSON object", i)
 		}
-		table := gateway.Text(e[r.field])
-		if table == "" {
-			return nil, fmt.Errorf("event %d has no %q, and that field is what says "+
-				"where it goes", i, r.field)
+		env, err := open(payload)
+		if err != nil {
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
-		if err := r.names.check(table); err != nil {
-			return nil, fmt.Errorf("event %d: %w", i, err)
+		if err := r.names.check(env.table); err != nil {
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
 
-		row, err := shape(e, now)
+		row, err := env.row(now, r.stream, r.gateway)
 		if err != nil {
-			return nil, fmt.Errorf("event %d: %w", i, err)
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
-		id, err := identify(table, e)
+		shaped, err := r.shape.columns(env.record)
 		if err != nil {
-			return nil, fmt.Errorf("event %d: %w", i, err)
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
-		row[ColumnID] = id
+		for k, v := range shaped {
+			row[k] = v
+		}
 
-		// Provider and Entity travel on the envelope, not because anything
-		// here reads them back -- the id is already computed -- but because
-		// the BigQuery driver writes them into the TABLE's description when it
-		// creates one: "Written by auto_table/app_orders via the Brevis SDK
-		// since 2026-09-25."
-		//
-		// That is the plan's §4.2 answered a different way. A `description`
-		// taken from the PAYLOAD cannot work here: the table is created inside
-		// a batch that holds N events for it, so "only on creation" means
-		// "whichever event happened to be first", which is worse than the
-		// last-write-wins the plan rejected. This one is a function of the
-		// table's name, so it is the same on every run.
-		out[table] = append(out[table], sdk.Envelope{
+		declared, err := r.shape.schema(env.record)
+		if err != nil {
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
+		}
+		schemas[env.table] = merge(schemas[env.table], declared)
+
+		// Provider and Entity travel so the BigQuery driver can write them
+		// into the TABLE's description when it creates one. Nothing here reads
+		// them back; it is the only answer this design has to "what writes
+		// here?", six months later.
+		rows[env.table] = append(rows[env.table], sdk.Envelope{
 			Provider: Provider,
-			Entity:   table,
+			Entity:   env.table,
 			Payload:  row,
 		})
 	}
-	return out, nil
+	return rows, schemas, nil
+}
+
+// merge is the union of two declarations, by name.
+//
+// A batch holds N records for one table and they need not carry the same
+// fields. The union is what the table has to have; a record missing one of them
+// writes NULL there, which is what a landing table legitimately does.
+func merge(into, add sdk.Schema) sdk.Schema {
+	seen := make(map[string]bool, len(into))
+	for _, c := range into {
+		seen[c.Name] = true
+	}
+	for _, c := range add {
+		if !seen[c.Name] {
+			into = append(into, c)
+			seen[c.Name] = true
+		}
+	}
+	return into
 }
 
 // sinkFor returns the destination for one table, building it once.
@@ -210,7 +246,7 @@ func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope,
 // The rate limit is charged HERE and only when the table is new to this
 // process, which is what makes it bound creations rather than writes: a table
 // that already exists is never slowed by one that does not.
-func (r *router) sinkFor(ctx context.Context, table string) (gateway.Sinker, error) {
+func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (gateway.Sinker, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if s, ok := r.made[table]; ok {
@@ -232,12 +268,14 @@ func (r *router) sinkFor(ctx context.Context, table string) (gateway.Sinker, err
 	// creates has the same shape, so creating one is a template and not a
 	// decision.
 	s, err := gateway.BuildSink(gateway.Build{
-		Ctx:    ctx,
-		Sink:   into,
-		Stores: r.build.Stores,
-		Sinks:  r.build.Sinks,
+		Ctx:     ctx,
+		Sink:    into,
+		Stores:  r.build.Stores,
+		Sinks:   r.build.Sinks,
+		Stream:  r.stream,
+		Gateway: r.gateway,
 		Target: &gateway.Target{
-			Schema:      schemaFor(r.unique),
+			Schema:      append(fixed(r.unique), record...),
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,
 			Create:      true,

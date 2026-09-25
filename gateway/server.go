@@ -126,18 +126,18 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		sink, ok := o.sinks[st.Name]
 		if !ok {
 			var err error
-			if sink, err = o.build(ctx, st.Sink); err != nil {
+			if sink, err = o.build(ctx, st.Sink, st.Name, cfg.Name); err != nil {
 				return nil, fmt.Errorf("stream %q: %w", st.Name, err)
 			}
 		}
-		dead, err := o.build(ctx, st.DeadLetter)
+		dead, err := o.build(ctx, st.DeadLetter, st.Name, cfg.Name)
 		if err != nil {
 			return nil, fmt.Errorf("stream %q: dead_letter: %w", st.Name, err)
 		}
 
 		var big *oversize
 		if ov := st.Oversize; ov != nil {
-			archive, err := o.build(ctx, ov.Archive)
+			archive, err := o.build(ctx, ov.Archive, st.Name, cfg.Name)
 			if err != nil {
 				return nil, fmt.Errorf("stream %q: oversize.archive: %w", st.Name, err)
 			}
@@ -201,11 +201,12 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 // string, absent cloud credentials, a staging prefix nobody can write. A
 // gateway that goes ready and discovers this on the first batch is a gateway
 // that loses it.
-func (o *options) build(ctx context.Context, s Sink) (Sinker, error) {
+func (o *options) build(ctx context.Context, s Sink, stream, gateway string) (Sinker, error) {
 	if o.catalog == nil {
 		o.catalog = NewSinks()
 	}
-	return BuildSink(Build{Ctx: ctx, Sink: s, Stores: o.stores, Sinks: o.catalog})
+	return BuildSink(Build{Ctx: ctx, Sink: s, Stores: o.stores, Sinks: o.catalog,
+		Stream: stream, Gateway: gateway})
 }
 
 // Handler is the gateway's routes, behind the guard.

@@ -132,7 +132,11 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	}
 
 	if res.Dedup == core.DedupMerge {
-		if err := checkUniqueIndex(ctx, db, database, table); err != nil {
+		key, err := core.DedupKeyOf(opt)
+		if err != nil {
+			return fail(err)
+		}
+		if err := checkUniqueIndex(ctx, db, database, table, key); err != nil {
 			return fail(err)
 		}
 	}
@@ -280,7 +284,7 @@ func columnsOf(ctx context.Context, db *sql.DB, database, table string) ([]strin
 }
 
 // checkUniqueIndex requires the index, and does not create it.
-func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table string) error {
+func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table, key string) error {
 	var n int
 	err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM information_schema.statistics s
@@ -290,7 +294,7 @@ func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table string) e
 		   AND (SELECT COUNT(*) FROM information_schema.statistics x
 		        WHERE x.table_schema = s.table_schema AND x.table_name = s.table_name
 		          AND x.index_name = s.index_name) = 1`,
-		database, table, core.MetadataID).Scan(&n)
+		database, table, key).Scan(&n)
 	if err != nil {
 		return fmt.Errorf("mysql: checking the unique index: %w", err)
 	}
@@ -300,7 +304,7 @@ func checkUniqueIndex(ctx context.Context, db *sql.DB, database, table string) e
 			"duplicates. This driver does not create indexes, because a loader that can "+
 			"create one can lock a production table: "+
 			"CREATE UNIQUE INDEX idx_%s ON %s (%s)",
-			core.MetadataID, table, core.MetadataID, table, core.MetadataID)
+			key, table, key, table, key)
 	}
 	return nil
 }

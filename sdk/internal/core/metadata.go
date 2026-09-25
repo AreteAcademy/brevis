@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -130,4 +131,26 @@ func truncate(b []byte, max int) string {
 		return string(b)
 	}
 	return string(b[:max]) + "..."
+}
+
+// dedupKeyName is what a column name has to look like to reach a statement.
+//
+// The value comes from a config file and ends up inside `ON CONFLICT (…)` and
+// a catalogue query, so it is validated rather than quoted-and-hoped: quoting
+// makes `"; DROP TABLE x; --` a legal identifier, which is not the failure
+// anybody wants to find out about.
+var dedupKeyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+
+// DedupKeyOf returns the column DedupMerge should match on, defaulting to
+// MetadataID, and refuses one that could not be a column.
+func DedupKeyOf(opt WriteOptions) (string, error) {
+	key := strings.TrimSpace(opt.DedupKey)
+	if key == "" {
+		return MetadataID, nil
+	}
+	if !dedupKeyName.MatchString(key) {
+		return "", fmt.Errorf("DedupKey %q is not a column name: it has to match %s",
+			key, dedupKeyName)
+	}
+	return key, nil
 }

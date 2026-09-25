@@ -36,6 +36,12 @@ type Build struct {
 	// makes a binary that did not compile in BigQuery unable to route into it.
 	Sinks *Sinks
 
+	// Stream and Gateway name where this sink sits, so a driver can stamp them
+	// onto what it writes. A table fed by several routes still says which one
+	// wrote each line.
+	Stream  string
+	Gateway string
+
 	// Target is the table a routing driver wants created, when it wants one.
 	// Nil is the ordinary case: a sink named in the YAML writes to a table
 	// somebody already made.

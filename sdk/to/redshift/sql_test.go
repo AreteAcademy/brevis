@@ -35,7 +35,7 @@ func TestCopySQLUsesTheRoleAndNotAKey(t *testing.T) {
 // -- BigQuery's INSERT ROW matches by position, and v0.12.0 shipped with the
 // columns swapped because nobody had seen the generated SQL.
 func TestMergeSQLNamesTheColumns(t *testing.T) {
-	got := MergeSQL("destino", "brevis_stage", []string{"ingestion_id", "valor"})
+	got := MergeSQL("destino", "brevis_stage", []string{"ingestion_id", "valor"}, core.MetadataID)
 
 	want := `MERGE INTO destino USING brevis_stage ` +
 		`ON destino."ingestion_id" = brevis_stage."ingestion_id" ` +
@@ -49,7 +49,7 @@ func TestMergeSQLNamesTheColumns(t *testing.T) {
 // TestMergeSQLMatchesOnIngestionID: swapping the join column would make the
 // dedup match on the wrong thing, in silence.
 func TestMergeSQLMatchesOnIngestionID(t *testing.T) {
-	got := MergeSQL("d", "s", []string{"a"})
+	got := MergeSQL("d", "s", []string{"a"}, core.MetadataID)
 	if !strings.Contains(got, `d."`+core.MetadataID+`" = s."`+core.MetadataID+`"`) {
 		t.Errorf("the join is not on %s:\n%s", core.MetadataID, got)
 	}
@@ -57,7 +57,7 @@ func TestMergeSQLMatchesOnIngestionID(t *testing.T) {
 
 // TestMergeSQLQuotesAReservedWord.
 func TestMergeSQLQuotesAReservedWord(t *testing.T) {
-	got := MergeSQL("d", "s", []string{"order"})
+	got := MergeSQL("d", "s", []string{"order"}, core.MetadataID)
 	if strings.Count(got, `"order"`) < 2 {
 		t.Errorf("the reserved word is not quoted on both sides:\n%s", got)
 	}

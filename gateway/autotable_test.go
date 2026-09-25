@@ -34,10 +34,10 @@ func TestIntegrationAutoTableCreatesAndRoutes(t *testing.T) {
 
 	// Two producers, two tables, one route, and neither table exists.
 	postKeyed(t, ts.URL+"/v1/tables", fmt.Sprintf(
-		`[{"table_name":%q,"occurred_at":"2026-09-25T10:00:00Z","amount":10,"who":"ana"}]`, a),
+		`[{"table_name":%q,"data":{"id":"A-1","amount":10,"who":"ana"}}]`, a),
 		http.StatusAccepted)
 	postKeyed(t, ts.URL+"/v1/tables", fmt.Sprintf(
-		`[{"table_name":%q,"occurred_at":"2026-09-25T10:00:00Z","level":"warn"}]`, b),
+		`[{"table_name":%q,"data":{"id":"L-1","level":"warn"}}]`, b),
 		http.StatusAccepted)
 	if err := srv.Close(context.Background()); err != nil {
 		t.Fatalf("draining: %v", err)
@@ -48,8 +48,9 @@ func TestIntegrationAutoTableCreatesAndRoutes(t *testing.T) {
 		cols := query(t, dsn, fmt.Sprintf(
 			`SELECT column_name || ' ' || data_type FROM information_schema.columns
 			 WHERE table_name = '%s' ORDER BY column_name`, table))
-		want := "data jsonb,ingested_at timestamp with time zone," +
-			"ingestion_id text,occurred_at timestamp with time zone"
+		want := "brevis_gateway text,brevis_loaded_at timestamp with time zone," +
+			"brevis_operation text,brevis_received_at timestamp with time zone," +
+			"brevis_record_key text,brevis_stream text,data jsonb,ingestion_id text"
 		if got := strings.Join(cols, ","); got != want {
 			t.Errorf("%s has columns %q, want %q", table, got, want)
 		}
@@ -65,7 +66,7 @@ func TestIntegrationAutoTableCreatesAndRoutes(t *testing.T) {
 	if err := json.Unmarshal([]byte(rows[0]), &data); err != nil {
 		t.Fatal(err)
 	}
-	if data["amount"] != float64(10) || data["who"] != "ana" || data["table_name"] != a {
+	if data["amount"] != float64(10) || data["who"] != "ana" || data["id"] != "A-1" {
 		t.Errorf("the event did not survive whole: %v", data)
 	}
 
@@ -91,8 +92,7 @@ func TestIntegrationAutoTableAbsorbsARetry(t *testing.T) {
 	defer ts.Close()
 
 	body := fmt.Sprintf(
-		`[{"table_name":%q,"idempotency_key":"ord-1","occurred_at":"2026-09-25T10:00:00Z","status":"paid"}]`,
-		table)
+		`[{"table_name":%q,"data":{"id":"ord-1","status":"paid"}}]`, table)
 	postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
 	postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
 	if err := srv.Close(context.Background()); err != nil {
@@ -132,9 +132,8 @@ func TestIntegrationAutoTableRefusesANameOutsideTheRules(t *testing.T) {
 	// One request carrying both: a good event and a name that would become DDL
 	// if anything here quoted badly.
 	answer := postBody(t, ts.URL+"/v1/tables", fmt.Sprintf(
-		`[{"table_name":%q,"occurred_at":"2026-09-25T10:00:00Z"},`+
-			`{"table_name":"x\";DROP TABLE y;--","occurred_at":"2026-09-25T10:00:00Z"}]`,
-		good))
+		`[{"table_name":%q,"data":{"id":"ok-1"}},`+
+			`{"table_name":"x\";DROP TABLE y;--","data":{"id":"bad-1"}}]`, good))
 	_ = srv.Close(context.Background())
 
 	// The producer is told, in the response, at the moment they can fix it.
@@ -227,8 +226,7 @@ func TestIntegrationAutoTableMergeAbsorbsARedelivery(t *testing.T) {
 			defer ts.Close()
 
 			body := fmt.Sprintf(
-				`[{"table_name":%q,"idempotency_key":"o-1","occurred_at":"2026-09-25T10:00:00Z","amount":10}]`,
-				table)
+				`[{"table_name":%q,"data":{"id":"o-1","amount":10}}]`, table)
 			postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
 			postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
 			if err := srv.Close(context.Background()); err != nil {
@@ -260,9 +258,12 @@ func autoTableGateway(t *testing.T, dsn, dead string, write ...string) *gateway.
 	if dead == "" {
 		dead = t.TempDir()
 	}
-	mode := "append"
+	mode, shape := "append", "document"
 	if len(write) > 0 {
 		mode = write[0]
+	}
+	if len(write) > 1 {
+		shape = write[1]
 	}
 	t.Setenv("GW_KEYS", "k")
 	yaml := fmt.Sprintf(`
@@ -273,16 +274,16 @@ streams:
   - name: tables
     path: /v1/tables
     format: array
-    identity: {provider: p, entity: e, source_key: table_name, record_ts: occurred_at}
+    identity: {provider: p, entity: e, source_key: table_name, record_ts: table_name}
     buffer: {flush: {records: 500, every: 1h}}
     retry: {attempts: 1}
     sink:
       type: auto_table
-      table_from: table_name
       naming: {pattern: '^gwauto_[a-z0-9_]+$'}
+      shape: %s
       into: {type: postgres, dsn_from: PG_DSN, write: %s}
     dead_letter: {type: files, path: %s/}
-`, mode, dead)
+`, shape, mode, dead)
 
 	file := t.TempDir() + "/g.yaml"
 	if err := os.WriteFile(file, []byte(yaml), 0o600); err != nil {
@@ -297,4 +298,65 @@ streams:
 		t.Fatal(err)
 	}
 	return srv
+}
+
+// `shape: columns` — each field of the record gets a column, scalars STRING and
+// objects JSON, with no inference anywhere.
+//
+// This is the shape the contract was designed around, and it is the expensive
+// one: with no overflow column, a field the table does not have cannot land.
+// What it buys is a flat table nobody has to unpack.
+func TestIntegrationAutoTableColumnsShape(t *testing.T) {
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_PG_DSN")
+	if dsn == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_PG_DSN is not set")
+	}
+	t.Setenv("PG_DSN", dsn)
+	table := uniqueTable(t, dsn)
+
+	srv := autoTableGateway(t, dsn, "", "merge", "columns")
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	postKeyed(t, ts.URL+"/v1/tables", fmt.Sprintf(`[{
+		"table_name": %q,
+		"unique_key": "id",
+		"operation":  "INSERT",
+		"data": {
+			"id": "A-3",
+			"total": 150,
+			"customer": {"id": 7, "uf": "SP"},
+			"items": [{"sku": "X", "qty": 2}]
+		}}]`, table), http.StatusAccepted)
+	if err := srv.Close(context.Background()); err != nil {
+		t.Fatalf("draining: %v", err)
+	}
+
+	// The table the contract describes: the fixed columns plus the record's
+	// own, scalars TEXT and objects JSONB.
+	cols := query(t, dsn, fmt.Sprintf(
+		`SELECT column_name||' '||data_type FROM information_schema.columns
+		 WHERE table_name='%s' ORDER BY column_name`, table))
+	want := "brevis_gateway text,brevis_loaded_at timestamp with time zone," +
+		"brevis_operation text,brevis_received_at timestamp with time zone," +
+		"brevis_record_key text,brevis_stream text,customer jsonb," +
+		"id text,ingestion_id text,items jsonb,total text"
+	if got := strings.Join(cols, ","); got != want {
+		t.Errorf("columns are\n  %q\nwant\n  %q", got, want)
+	}
+
+	// The values, including the number that stayed a string because nothing
+	// here infers a type.
+	row := query(t, dsn, `SELECT id||'|'||total||'|'||(customer->>'uf')||'|'||
+		(items->0->>'sku')||'|'||brevis_record_key||'|'||brevis_operation FROM `+table)
+	if len(row) != 1 || row[0] != "A-3|150|SP|X|A-3|INSERT" {
+		t.Errorf("the row is %v", row)
+	}
+
+	// brevis_loaded_at was stamped by the DESTINATION, not sent by us — which
+	// is what makes the gap between it and brevis_received_at the real
+	// end-to-end latency.
+	if got := query(t, dsn, `SELECT (brevis_loaded_at IS NOT NULL)::text FROM `+table); got[0] != "true" {
+		t.Error("brevis_loaded_at is null, so the DEFAULT did not fire")
+	}
 }

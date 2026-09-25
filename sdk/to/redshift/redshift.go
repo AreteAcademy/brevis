@@ -158,7 +158,11 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if res.Dedup == core.DedupMerge {
 		commands = append([]string{StagingTableSQL(t.Name, tempName)},
 			commands...)
-		commands = append(commands, MergeSQL(t.Name, tempName, columns), DropSQL(tempName))
+		key, err := core.DedupKeyOf(opt)
+		if err != nil {
+			return fail(err)
+		}
+		commands = append(commands, MergeSQL(t.Name, tempName, columns, key), DropSQL(tempName))
 	}
 
 	for _, sql := range commands {
@@ -300,7 +304,7 @@ func StagingTableSQL(target, temp string) string {
 // Always named, and the comment exists because the alternative already
 // happened: BigQuery's `INSERT ROW` matches by POSITION, and v0.12.0 shipped
 // with the columns swapped because nobody had seen the generated SQL.
-func MergeSQL(target, source string, columns []string) string {
+func MergeSQL(target, source string, columns []string, key string) string {
 	names := make([]string, len(columns))
 	values := make([]string, len(columns))
 	for i, c := range columns {
@@ -311,7 +315,7 @@ func MergeSQL(target, source string, columns []string) string {
 		"MERGE INTO %s USING %s ON %s.%s = %s.%s "+
 			"WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)",
 		target, source,
-		target, quote(core.MetadataID), source, quote(core.MetadataID),
+		target, quote(key), source, quote(key),
 		strings.Join(names, ", "), strings.Join(values, ", "))
 }
 
