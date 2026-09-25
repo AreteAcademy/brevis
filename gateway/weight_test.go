@@ -28,6 +28,8 @@ func TestTheSlimBuildDoesNotCarryWhatItDoesNotRegister(t *testing.T) {
 		"cloud.google.com/go/bigquery",   // the BigQuery sink
 		"github.com/apache/arrow",        // which BigQuery drags in, ~6 MB with it
 		"github.com/go-sql-driver/mysql", // the MySQL sink
+		"github.com/redis/go-redis",      // the Redis metastore
+		"github.com/bradfitz/gomemcache", // the memcached metastore
 	} {
 		for _, d := range deps {
 			if strings.HasPrefix(d, forbidden) {
@@ -58,6 +60,8 @@ func TestTheFullBuildCarriesEverything(t *testing.T) {
 		"cloud.google.com/go/bigquery",
 		"cloud.google.com/go/storage",
 		"github.com/aws/aws-sdk-go-v2/service/s3",
+		"github.com/redis/go-redis/v9",
+		"github.com/bradfitz/gomemcache/memcache",
 	} {
 		if !contains(deps, required) {
 			t.Errorf("the published image does not link %s, so a config naming "+

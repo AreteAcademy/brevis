@@ -42,6 +42,13 @@ type Build struct {
 	Stream  string
 	Gateway string
 
+	// Meta is the shared state a routing driver keeps about tables: a cache
+	// of what exists, the debounce that keeps N replicas from all running the
+	// same DDL, and the counter behind max_new_per_hour.
+	//
+	// Never nil -- `memory` is the default and always available.
+	Meta Metastore
+
 	// Target is the table a routing driver wants created, when it wants one.
 	// Nil is the ordinary case: a sink named in the YAML writes to a table
 	// somebody already made.

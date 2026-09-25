@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
 	"github.com/AreteAcademy/brevis/gateway/sink/files"
 	"github.com/AreteAcademy/brevis/gateway/sink/postgres"
 )
@@ -467,18 +468,24 @@ func TestAutoTableIsRefusedOnAnEndpointWithNoAuth(t *testing.T) {
 	}
 }
 
-// The metastore is a cache, and only `memory` exists.
+// The metastore names a backend, and what the config can check is the SHAPE:
+// a type that is not one of the three, an address the deployment forgot to
+// name, a negative TTL.
 //
-// Somebody writing `redis` believes their replicas share one. Accepting the
-// word and caching per process would make `naming.max_new_per_hour` N times
-// what they set -- which is exactly the number they wrote down to bound. So it
-// is refused by name, and the refusal says what memory actually means for that
-// limit.
-func TestOnlyTheMetastoreBackendThatExistsIsAccepted(t *testing.T) {
+// Whether THIS binary carries redis or memcached is the registry's answer, at
+// New, by name -- the same split the sinks have, and for the same reason: a
+// gateway that writes to a local table should not carry a Redis client.
+func TestTheMetastoreConfigRefusesWhatItCanSee(t *testing.T) {
 	for _, c := range []struct{ name, block, says string }{
-		{"redis, which is the optimisation nobody built", "{type: redis}", "is not implemented"},
-		{"memcached, the same", "{type: memcached}", "is not implemented"},
-		{"a backend that is not a thing", "{type: sqlite}", "only memory is implemented"},
+		{"a backend that is not a thing", "{type: sqlite}", "use memory, redis or memcached"},
+		{
+			// The address carries a password often enough, and this file is
+			// in git -- the same split `dsn_from` makes everywhere else.
+			name:  "redis with no address",
+			block: "{type: redis}",
+			says:  "never the address",
+		},
+		{"memcached with no address", "{type: memcached}", "never the address"},
 		{"a negative ttl", "{ttl: -1s}", "`metastore.ttl`"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -504,5 +511,38 @@ func TestOnlyTheMetastoreBackendThatExistsIsAccepted(t *testing.T) {
 	m := cfg.Streams[0].Sink.Metastore
 	if m.Type != gateway.MetastoreMemory || m.TTL != gateway.DefaultMetastoreTTL {
 		t.Errorf("the defaults are %q and %s", m.Type, m.TTL)
+	}
+}
+
+// A backend this binary did not compile in is refused BY NAME, at startup.
+//
+// The same honest message the sinks give: it is a build that left it out, not
+// a backend that does not exist, and sending somebody to look for a config
+// mistake they did not make is how a gate stops being trusted.
+func TestAMetastoreThisBinaryDoesNotCarryIsRefusedByName(t *testing.T) {
+	t.Setenv("K", "a-key")
+	t.Setenv("R", "127.0.0.1:6379")
+	cfg, err := load(t, withSink(
+		"{type: auto_table, metastore: {type: redis, addr_from: R}, "+
+			"into: {type: postgres, dsn_from: D, write: append}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A registry with the sinks but no metastore backends.
+	sinks := gateway.NewSinks()
+	sinks.MustRegister(postgres.Sink, postgres.New)
+	sinks.MustRegister(files.Sink, files.New)
+	sinks.MustRegister("auto_table", autotable.New)
+
+	_, err = gateway.New(cfg, nil, gateway.WithSinks(sinks))
+	if err == nil {
+		t.Fatal("a binary with no Redis client accepted a redis metastore")
+	}
+	if !strings.Contains(err.Error(), "not one this binary carries") {
+		t.Errorf("the refusal does not say it is a build: %v", err)
+	}
+	if !strings.Contains(err.Error(), "memory") {
+		t.Errorf("the refusal does not name what IS carried: %v", err)
 	}
 }

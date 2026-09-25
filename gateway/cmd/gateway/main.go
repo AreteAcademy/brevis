@@ -26,6 +26,8 @@ package main
 
 import (
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/metastore/memcached"
+	"github.com/AreteAcademy/brevis/gateway/metastore/redis"
 	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
 	"github.com/AreteAcademy/brevis/gateway/sink/bigquery"
 	"github.com/AreteAcademy/brevis/gateway/sink/files"
@@ -47,9 +49,14 @@ func main() {
 	sinks.MustRegister(files.Sink, files.New)
 	sinks.MustRegister(autotable.Sink, autotable.New)
 
+	metastores := gateway.NewMetastores()
+	metastores.MustRegister(redis.Name, redis.Open)
+	metastores.MustRegister(memcached.Name, memcached.Open)
+
 	stores := gateway.NewStores()
 	stores.MustRegister(s3.Scheme, s3.Open)
 	stores.MustRegister(gcs.Scheme, gcs.Open)
 
-	gateway.Main(nil, gateway.WithSinks(sinks), gateway.WithStores(stores))
+	gateway.Main(nil, gateway.WithSinks(sinks), gateway.WithStores(stores),
+		gateway.WithMetastores(metastores))
 }

@@ -13,6 +13,63 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.7.0] — 2026-09-25
+
+### The metastore has backends: `redis` and `memcached`
+
+```yaml
+metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+```
+
+`memory` stays the default and needs nothing. It is also **right with one
+replica and wrong with several**, which is the whole reason the other two
+exist: with `memory` each replica has its own, so the debounce debounces
+nothing and `naming.max_new_per_hour` bounds a *process*. Ten replicas meeting
+one new field would issue ten `ALTER`s against BigQuery's five metadata
+operations per table per ten seconds.
+
+Four primitives — `Get`, `Put`, `Claim`, `Incr` — and the set is the
+intersection of what all three do **atomically**. Anything richer would work on
+one and be emulated badly on the others.
+
+### `Claim` is a debounce, not a lock
+
+Nothing is released and no lease is renewed: a replica that dies holding one
+costs three seconds to the batches behind it, and they are batches being
+retried rather than workers blocked. Losing it returns an error and the pipe
+retries; waiting would hold a worker, and there are four.
+
+Three seconds is bounded from both sides — long enough to collapse a burst into
+one attempt, short enough that a loser gets through on its own retries, since
+the pipe backs off 500ms, 1s, 2s.
+
+It is what the market does: Delta Lake and Iceberg commit optimistically and
+retry, Kafka Connect gets serialisation free from partition ordering, Fivetran
+has one writer per table. Nobody takes a lock.
+
+### A metastore that is down cannot fail a write
+
+A `Get` that errors is a miss, a `Claim` that errors behaves as won, an `Incr`
+that errors relaxes the rate limit. A cache that can stop ingestion is worse
+than no cache — and the destination is the source of truth anyway.
+
+### Tested against the real thing, and the three behave the same
+
+One table of behaviour run against `memory`, Redis and memcached, plus a
+20-goroutine race proving exactly one `Claim` wins. Four mutations fail,
+including the quiet one: extending the counter's TTL on every increment makes a
+busy key immortal, so `max_new_per_hour` stops being a rate and becomes a
+lifetime total. The first version of that test **passed** against the bug — its
+sleeps outlasted both behaviours instead of separating them.
+
+### What it costs
+
+The full image goes to 55 MB. The slim one stays at **10.2 MB**: the backends
+are packages, like the sinks, so a binary that never imports one does not carry
+it — and the weight test now watches for them.
+
+---
+
 ## [0.6.0] — 2026-09-25
 
 **Breaking**: `auto_table`'s body is an envelope now. The old flat shape is

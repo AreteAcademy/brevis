@@ -25,7 +25,7 @@ import (
 func TestTheConfiguredTTLReachesTheCache(t *testing.T) {
 	r := build(t, gateway.Sink{
 		Type:      gateway.SinkAutoTable,
-		Metastore: gateway.Metastore{Type: gateway.MetastoreMemory, TTL: 5 * time.Minute},
+		Metastore: gateway.MetastoreConfig{Type: gateway.MetastoreMemory, TTL: 5 * time.Minute},
 		Into:      &gateway.Sink{Type: "probe"},
 	})
 	if r.meta.ttl != 5*time.Minute {
@@ -79,6 +79,7 @@ func build(t *testing.T, s gateway.Sink) *router {
 
 	built, err := gateway.BuildSink(gateway.Build{
 		Ctx: context.Background(), Sink: s, Sinks: sinks,
+		Meta: gateway.NewMemoryMetastore(),
 	})
 	if err != nil {
 		t.Fatal(err)

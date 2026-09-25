@@ -296,9 +296,21 @@ streams:
         # not a quota.
         max_new_per_hour: 20
 
+      # The shared state this stream keeps ABOUT tables: a cache of what
+      # exists, the debounce that keeps N replicas from all running the same
+      # DDL, and the counter behind max_new_per_hour.
+      #
+      # `memory` is the default and needs nothing. With ONE replica it is the
+      # right answer. With several it gives each its own, so the debounce
+      # debounces nothing and max_new_per_hour bounds a process -- which is
+      # what redis and memcached are for, and the only reason they exist here.
+      #
+      # `addr_from` is the NAME of the environment variable holding the
+      # address, never the address: it carries a password often enough.
       metastore:
-        type: memory   # the only one; `redis` is refused by name
-        ttl: 60s
+        type: redis
+        addr_from: BREVIS_METASTORE_ADDR
+        ttl: 60s       # how long the cache may be WRONG
 
       into:
         type: bigquery

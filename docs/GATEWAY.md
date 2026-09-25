@@ -327,7 +327,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks), gateway.WithStores(stores))
 
 | image | carries | size |
 |---|---|---|
-| `areteacademy/brevis-gateway:X` | all six sinks, S3 and GCS | 48.6 MB |
+| `areteacademy/brevis-gateway:X` | six sinks, S3 and GCS, Redis and memcached | 55 MB |
 | `areteacademy/brevis-gateway:X-slim` | `postgres`, `auto_table`, local `files` | **12.4 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
@@ -545,22 +545,74 @@ producer in the same flush window.
 that can name a table can create one. A NetworkPolicy does not cover it: that
 limits who reaches the port, not which table name they ask for.
 
-### The metastore is a cache
+### The metastore: a cache, and a coordinator
 
 ```yaml
-metastore: {type: memory, ttl: 60s}
+metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
 ```
 
-It caches **both** answers — "this table does not exist" is what saves a round
-trip on the hot path of a new producer retrying — and it is a cache and **not**
-a source of truth. The destination settles whether a table exists, and *N*
-replicas racing to create one is the normal case: `AlreadyExists` is success.
+Three backends: **`memory`** (the default, needs nothing), **`redis`** and
+**`memcached`**. Four primitives, and the set is the intersection of what all
+three can do atomically — anything richer would work on one and be emulated
+badly on the others.
 
-`memory` is the only backend, and that is the design: a gateway that cannot
-start without Redis is a gateway with a new hard dependency for a cache. `redis`
-and `memcached` are refused **by name**, because somebody writing `redis`
-believes their replicas share a cache — and accepting the word while caching per
-process would make `max_new_per_hour` *N* times what they set.
+| | |
+|---|---|
+| `Get` / `Put` | what is known about a table. **May be wrong.** |
+| `Claim` | set-if-absent with an expiry: the **debounce** |
+| `Incr` | the rolling-window counter behind `max_new_per_hour` |
+
+**`memory` is right with one replica and wrong with several**, and the
+difference is the whole reason the other two exist. With `memory` each replica
+has its own: the debounce debounces nothing and `max_new_per_hour` bounds a
+*process*. Ten replicas meeting one new field would issue ten `ALTER`s against
+BigQuery's five metadata operations per table per ten seconds, and the quota
+would be gone in a second.
+
+`addr_from` names the **environment variable** holding the address, never the
+address — it carries a password often enough, and this file is in git.
+
+#### Claim is a debounce, not a lock
+
+Nothing is released and no lease is renewed. A replica that dies holding one
+costs three seconds to the batches behind it, and they are batches being
+*retried* rather than workers blocked.
+
+The window is three seconds, bounded from both sides: long enough to collapse a
+burst into one attempt, short enough that a loser gets through on its own
+retries — the pipe backs off 500ms, 1s, 2s, so the third attempt is past the
+window even if the winner never comes back.
+
+Losing it returns an error and the pipe retries the batch. Waiting would hold
+a worker for the window, and there are four of them.
+
+This is what the market does: Delta Lake and Iceberg commit optimistically and
+retry on conflict, Kafka Connect gets serialisation free from partition
+ordering, Fivetran has one writer per table. Nobody takes a lock.
+
+#### The cache is never the authority
+
+The destination settles whether a table exists, and *N* replicas racing to
+create one is the normal case — `AlreadyExists` is success. If the cache says
+the column is there and the write fails, **the write is right**: the entry is
+dropped and the next batch re-reads. Without that, a table recreated outside
+the gateway leaves every replica lying until the TTL.
+
+And a metastore that is **down** must not be able to fail a write. A `Get` that
+errors is a miss; a `Claim` that errors behaves as if it were won; an `Incr`
+that errors relaxes the rate limit. A cache that can stop ingestion is worse
+than no cache.
+
+#### What it costs
+
+| build | |
+|---|---|
+| `areteacademy/brevis-gateway` | carries both — 55 MB |
+| `-slim` | carries neither — **10.2 MB** |
+
+The backends are packages, like the sinks and the object stores, so a binary
+that never imports one does not carry it. A build that names `redis` in its
+YAML and did not compile the client is refused **at startup**, by name.
 
 ### BigQuery has a flush floor
 

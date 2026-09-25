@@ -301,7 +301,7 @@ type Sink struct {
 
 	// Metastore caches what is known about a table, so a per-event write does
 	// not become a per-event lookup.
-	Metastore Metastore `yaml:"metastore"`
+	Metastore MetastoreConfig `yaml:"metastore"`
 
 	// Into is the real destination, one per table. A nested sink, because
 	// `auto_table` routes and does not write: the four columns it lands are
@@ -316,7 +316,7 @@ type Sink struct {
 // A CACHE and not a source of truth: the destination settles whether a table
 // exists, and N replicas racing to create one is the normal case rather than
 // the edge -- `AlreadyExists` is success. This only reduces the race.
-type Metastore struct {
+type MetastoreConfig struct {
 	// Type is the backend. Only `memory` is implemented, and that is the
 	// design rather than a limitation: a gateway that cannot start without
 	// Redis is a gateway with a new hard dependency for a cache. Redis is the
@@ -348,24 +348,21 @@ const (
 // other. See Metastore.TTL for why it is a minute.
 const DefaultMetastoreTTL = 60 * time.Second
 
-func (m *Metastore) check() error {
+func (m *MetastoreConfig) check() error {
 	switch m.Type {
 	case "", MetastoreMemory:
 		m.Type = MetastoreMemory
 	case MetastoreRedis, MetastoreMemcached:
-		// Named and refused rather than left out of the list. Somebody writing
-		// `redis` believes their replicas share a cache; accepting the word
-		// and caching per process would mean the creation limit is N times
-		// what they set -- which is exactly the number they wrote it down to
-		// bound.
-		return fmt.Errorf("`metastore.type: %s` is not implemented -- only %s is. "+
-			"A shared cache is the multi-replica optimisation and it is not built "+
-			"yet; with %s each replica caches its own, so `naming.max_new_per_hour` "+
-			"bounds each replica and not the deployment",
-			m.Type, MetastoreMemory, MetastoreMemory)
+		// No longer refused: they are backends now. Whether THIS binary
+		// carries one is the registry's answer, at New, by name.
+		if strings.TrimSpace(m.AddrFrom) == "" {
+			return fmt.Errorf("`metastore.type` is %s and `addr_from` is empty: "+
+				"name the environment variable holding its address, never the "+
+				"address -- it carries a password often enough", m.Type)
+		}
 	default:
-		return fmt.Errorf("`metastore.type` is %q (only %s is implemented)",
-			m.Type, MetastoreMemory)
+		return fmt.Errorf("`metastore.type` is %q (use %s, %s or %s)",
+			m.Type, MetastoreMemory, MetastoreRedis, MetastoreMemcached)
 	}
 	if m.TTL < 0 {
 		return fmt.Errorf("`metastore.ttl` is %s", m.TTL)

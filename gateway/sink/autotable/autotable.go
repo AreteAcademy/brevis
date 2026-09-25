@@ -61,14 +61,23 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	if err != nil {
 		return nil, err
 	}
+	if b.Meta == nil {
+		return nil, fmt.Errorf("auto_table has no metastore, and it needs one even " +
+			"to talk to itself: `memory` is the default and always available")
+	}
+	ttl := s.Metastore.TTL
+	if ttl <= 0 {
+		ttl = gateway.DefaultMetastoreTTL
+	}
 
 	r := &router{build: b, names: n, unique: unique, shape: sh,
 		stream: b.Stream, gateway: b.Gateway,
-		meta: newMetastore(s.Metastore.TTL), made: map[string]gateway.Sinker{}, now: time.Now}
+		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
+		made: map[string]gateway.Sinker{}, now: time.Now}
 	if _, err := r.sinkFor(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
-	r.forget(probeTable, nil)
+	r.forget(b.Ctx, probeTable, nil)
 	return r, nil
 }
 
@@ -76,11 +85,11 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 // to: the sink built for it is discarded before the first request.
 const probeTable = "brevis_probe"
 
-func (r *router) forget(table string, record sdk.Schema) {
+func (r *router) forget(ctx context.Context, table string, record sdk.Schema) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.made, table+"\x00"+fingerprintOf(record))
-	r.names.refund()
+	r.meta.forget(ctx, table)
 }
 
 // router groups a batch by the table each event names, and writes each group
@@ -92,7 +101,7 @@ func (r *router) forget(table string, record sdk.Schema) {
 type router struct {
 	build gateway.Build
 	names *names
-	meta  *metastore
+	meta  *coordinator
 
 	// unique says whether the created table carries a UNIQUE constraint on
 	// ingestion_id: required by `merge` and wrong for `append`.
@@ -163,7 +172,7 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		if err != nil {
 			return wrote, fmt.Errorf("table %s: %w", table, err)
 		}
-		r.meta.put(table, true, r.now())
+		r.meta.learn(ctx, table, true)
 	}
 	return wrote, nil
 }
@@ -263,10 +272,25 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 	}
 
 	now := r.now()
-	if exists, known := r.meta.get(table, now); !known || !exists {
-		if err := r.names.admit(table, now); err != nil {
+
+	// The rate limit is charged only when the table is new to US, which is
+	// what makes it bound creations rather than writes: a table that already
+	// exists is never slowed by one that does not.
+	if exists, known := r.meta.knows(ctx, table); !known || !exists {
+		if err := r.meta.admit(ctx, r.names.max, now); err != nil {
 			return nil, err
 		}
+	}
+
+	// A shape this process has not built is a shape that MIGHT need DDL: the
+	// table may be absent, or present without one of these columns. Only the
+	// replica that takes the claim finds out -- the others come back later,
+	// by which time the column is there and nothing is altered.
+	//
+	// With `memory` every replica takes its own claim and this debounces
+	// nothing, which is exactly what redis and memcached are for.
+	if !r.meta.claimDDL(ctx, table, fingerprintOf(record)) {
+		return nil, ErrClaimed
 	}
 
 	into := *r.build.Sink.Into
@@ -283,6 +307,7 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 		Sinks:   r.build.Sinks,
 		Stream:  r.stream,
 		Gateway: r.gateway,
+		Meta:    r.build.Meta,
 		Target: &gateway.Target{
 			Schema:   append(fixed(r.unique), record...),
 			DedupKey: ColumnID,
@@ -310,6 +335,7 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 		return nil, fmt.Errorf("table %s: %w", table, err)
 	}
 	r.made[key] = s
+	r.meta.learn(ctx, table, true)
 	return s, nil
 }
 

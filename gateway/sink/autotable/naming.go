@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 )
 
 // DefaultPattern is what a table name must match when the config names no
@@ -38,9 +36,6 @@ type names struct {
 	pattern *regexp.Regexp
 	allow   []string
 	max     int
-
-	mu      sync.Mutex
-	created []time.Time
 }
 
 func newNames(pattern string, allow []string, max int) (*names, error) {
@@ -55,16 +50,6 @@ func newNames(pattern string, allow []string, max int) (*names, error) {
 		max = DefaultMaxNewPerHour
 	}
 	return &names{pattern: re, allow: allow, max: max}, nil
-}
-
-// refund gives back one creation from the budget, for the startup probe: a
-// table that was never created must not spend a producer's hourly allowance.
-func (n *names) refund() {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	if len(n.created) > 0 {
-		n.created = n.created[:len(n.created)-1]
-	}
 }
 
 // check refuses a name a producer may not use. It says which rule refused it,
@@ -87,32 +72,4 @@ func (n *names) check(table string) error {
 	}
 	return fmt.Errorf("the table name %q starts with none of the allowed prefixes (%s)",
 		table, strings.Join(n.allow, ", "))
-}
-
-// admit records one creation and refuses past the hour's budget.
-//
-// It bounds CREATIONS and never writes: a table that already exists is never
-// rate limited, so a producer that has settled down is never slowed by a
-// producer that has not.
-func (n *names) admit(table string, now time.Time) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	cutoff := now.Add(-time.Hour)
-	kept := n.created[:0]
-	for _, t := range n.created {
-		if t.After(cutoff) {
-			kept = append(kept, t)
-		}
-	}
-	n.created = kept
-
-	if len(n.created) >= n.max {
-		return fmt.Errorf("this stream has already created %d tables in the last "+
-			"hour, which is its `naming.max_new_per_hour`. %q was not created. "+
-			"A limit reached here is a producer to look at, not a number to raise",
-			n.max, table)
-	}
-	n.created = append(n.created, now)
-	return nil
 }

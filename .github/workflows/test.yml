@@ -256,11 +256,27 @@ jobs:
       # SDK switches to path-style addressing on its own when the endpoint is a
       # bare IP, so against an IP the path-style test passes without exercising
       # anything. The test refuses an IP rather than passing quietly.
+      # Redis and memcached, for the metastore. They are what make several
+      # replicas behave like one, and the claim's exclusivity is a property no
+      # unit test can show: `memory` gives every caller a yes, which is the
+      # failure the shared backends exist to prevent.
+      - name: Start Redis and memcached
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+          docker run -d --name memcached -p 11211:11211 memcached:1.6-alpine
+          for i in $(seq 1 30); do
+            if docker exec redis redis-cli ping >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          echo "Redis and memcached are up"
+
       - name: Integration - the gateway
         env:
           BREVIS_GATEWAY_TEST_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
           BREVIS_GATEWAY_TEST_MYSQL_DSN: root:brevis@tcp(localhost:53306)/brevis_it
           BREVIS_GATEWAY_TEST_S3_ENDPOINT: http://localhost:9000
+          BREVIS_GATEWAY_TEST_REDIS: 127.0.0.1:6379
+          BREVIS_GATEWAY_TEST_MEMCACHED: 127.0.0.1:11211
           AWS_REGION: us-east-1
           AWS_ACCESS_KEY_ID: brevis
           AWS_SECRET_ACCESS_KEY: brevis-secret

@@ -50,9 +50,11 @@ func (s *Server) Metrics() *Metrics { return s.metrics }
 type Option func(*options)
 
 type options struct {
-	sinks   map[string]Sinker
-	catalog *Sinks
-	stores  *Stores
+	sinks      map[string]Sinker
+	catalog    *Sinks
+	stores     *Stores
+	metastores *Metastores
+	meta       map[string]Metastore
 }
 
 // WithSinks says which destinations this binary carries.
@@ -62,6 +64,14 @@ type options struct {
 // the main that built the binary knows which ones it linked. cmd/gateway
 // registers all six; cmd/gateway-slim registers two.
 func WithSinks(c *Sinks) Option { return func(o *options) { o.catalog = c } }
+
+// WithMetastores says which metastore backends this binary carries.
+//
+// `memory` is always available and needs no registration: a gateway that
+// cannot start without Redis is a gateway with a new hard dependency for a
+// cache. Registering redis or memcached is what makes several replicas behave
+// like one -- see gateway.Metastore.
+func WithMetastores(m *Metastores) Option { return func(o *options) { o.metastores = m } }
 
 // WithStores says which object-store backends this binary carries, by scheme.
 //
@@ -205,8 +215,32 @@ func (o *options) build(ctx context.Context, s Sink, stream, gateway string) (Si
 	if o.catalog == nil {
 		o.catalog = NewSinks()
 	}
+	meta, err := o.metastoreFor(ctx, stream, s)
+	if err != nil {
+		return nil, err
+	}
 	return BuildSink(Build{Ctx: ctx, Sink: s, Stores: o.stores, Sinks: o.catalog,
-		Stream: stream, Gateway: gateway})
+		Stream: stream, Gateway: gateway, Meta: meta})
+}
+
+// metastoreFor opens one backend per stream, once.
+//
+// Per stream and not per sink: a stream's router and the sink it routes into
+// share the state, and opening two connections to say the same thing is two
+// things to watch.
+func (o *options) metastoreFor(ctx context.Context, stream string, s Sink) (Metastore, error) {
+	if o.meta == nil {
+		o.meta = map[string]Metastore{}
+	}
+	if m, ok := o.meta[stream]; ok {
+		return m, nil
+	}
+	m, err := o.metastores.Open(ctx, s.Metastore)
+	if err != nil {
+		return nil, err
+	}
+	o.meta[stream] = m
+	return m, nil
 }
 
 // Handler is the gateway's routes, behind the guard.
