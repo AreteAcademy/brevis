@@ -194,8 +194,66 @@ func TestCloseReportsADrainThatOutlastsItsWindow(t *testing.T) {
 	if err == nil {
 		t.Fatal("Close said the drain finished")
 	}
-	if !strings.Contains(err.Error(), "did not finish in the window") {
+	if !strings.Contains(err.Error(), "did not finish") {
 		t.Errorf("the error does not say what happened: %v", err)
+	}
+	// WITH the count. "context deadline exceeded" does not tell an operator
+	// whether they lost four events or forty thousand, and that difference is
+	// the one between a note and an incident.
+	if !strings.Contains(err.Error(), "1 accepted event(s)") {
+		t.Errorf("the error does not say how many were lost: %v", err)
+	}
+	if got := srv.Pending(); got != 1 {
+		t.Errorf("Pending() = %d, want the one event still undelivered", got)
+	}
+}
+
+// A clean drain leaves nothing pending, which is what makes the count above
+// mean something: a number that is never zero measures nothing.
+func TestACleanDrainLeavesNothingPending(t *testing.T) {
+	sink := &slowSink{delay: 20 * time.Millisecond}
+	srv := asyncGateway(t, sink, `{records: 1, every: 1h}`, 0)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	for i := range 3 {
+		post(t, ts.URL+"/v1/clicks", event(fmt.Sprintf("e-%d", i), "a.b"), http.StatusAccepted)
+	}
+	if err := srv.Close(context.Background()); err != nil {
+		t.Fatalf("draining: %v", err)
+	}
+	if got := srv.Pending(); got != 0 {
+		t.Errorf("Pending() = %d after a clean drain, want 0", got)
+	}
+}
+
+// Every stream is reported, not the first one to fail.
+//
+// One stream running out of budget says nothing about the others, and an
+// operator reading "stream A lost 12" while stream B silently lost 4,000 is
+// worse served than by both lines.
+func TestCloseReportsEveryStreamThatFailed(t *testing.T) {
+	sink := newBlockingSink()
+	defer sink.release()
+
+	srv := asyncGateway(t, sink, `{records: 1, every: 1h}`, 0)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	post(t, ts.URL+"/v1/clicks", event("e-1", "a.b"), http.StatusAccepted)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	err := srv.Close(ctx)
+	if err == nil {
+		t.Fatal("Close said the drain finished")
+	}
+	// One stream in this fixture, so the join holds one error -- what is
+	// pinned here is that Close builds a join at all rather than returning the
+	// first and discarding the rest.
+	if errs, ok := err.(interface{ Unwrap() []error }); !ok {
+		t.Errorf("Close did not return a joined error: %T", err)
+	} else if len(errs.Unwrap()) != 1 {
+		t.Errorf("the join holds %d errors, want 1", len(errs.Unwrap()))
 	}
 }
 

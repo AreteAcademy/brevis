@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/gateway"
 	"github.com/AreteAcademy/brevis/gateway/sink/autotable"
@@ -544,5 +545,74 @@ func TestAMetastoreThisBinaryDoesNotCarryIsRefusedByName(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "memory") {
 		t.Errorf("the refusal does not name what IS carried: %v", err)
+	}
+}
+
+// The drain budget follows the flush windows, because they are the same
+// quantity from opposite ends: a 300-second window can be holding 300 seconds
+// of accepted events when SIGTERM arrives.
+func TestTheDrainBudgetFollowsTheLongestFlushWindow(t *testing.T) {
+	budget := func(windows ...time.Duration) time.Duration {
+		c := &gateway.Config{}
+		for _, w := range windows {
+			s := gateway.Stream{}
+			s.Buffer.Flush.Every = w
+			c.Streams = append(c.Streams, s)
+		}
+		return c.DrainBudget()
+	}
+
+	casos := []struct {
+		why     string
+		windows []time.Duration
+		want    time.Duration
+	}{
+		// Thirty is the floor: a one-second stream still has a queue behind it,
+		// and each delivery is a round trip that can retry.
+		{"a fast stream gets the floor", []time.Duration{time.Second}, 30 * time.Second},
+		{"no streams at all", nil, 30 * time.Second},
+		// Twice the window, once twice the window beats the floor.
+		{"the BigQuery floor", []time.Duration{60 * time.Second}, 60 * time.Second},
+		{"the recommended window", []time.Duration{300 * time.Second}, 300 * time.Second},
+		// The LONGEST, not the first or the sum: the drain runs them together
+		// and finishes when the slowest does.
+		{"the longest of several", []time.Duration{time.Second, 300 * time.Second, 5 * time.Second}, 300 * time.Second},
+	}
+	for _, c := range casos {
+		if got := budget(c.windows...); got != c.want {
+			t.Errorf("%s: DrainBudget() = %s, want %s", c.why, got, c.want)
+		}
+	}
+}
+
+// A declared budget wins over the derived one: twice-the-window is a guess, and
+// somebody who measured their own beats it.
+func TestADeclaredDrainBudgetWins(t *testing.T) {
+	c := &gateway.Config{}
+	s := gateway.Stream{}
+	s.Buffer.Flush.Every = 300 * time.Second
+	c.Streams = append(c.Streams, s)
+	c.Shutdown.Drain = 45 * time.Second
+
+	if got := c.DrainBudget(); got != 45*time.Second {
+		t.Errorf("DrainBudget() = %s, want the declared 45s", got)
+	}
+}
+
+// The grace period the gateway asks for has to exceed its own drain budget --
+// that is the whole point of printing it. Kubernetes defaults to 30s, which
+// equalled the old fixed budget exactly, so a SIGKILL could arrive while the
+// drain was still inside its own deadline.
+func TestTheGracePeriodExceedsTheDrainBudget(t *testing.T) {
+	for _, window := range []time.Duration{time.Second, 60 * time.Second, 300 * time.Second} {
+		c := &gateway.Config{}
+		s := gateway.Stream{}
+		s.Buffer.Flush.Every = window
+		c.Streams = append(c.Streams, s)
+
+		if c.GracePeriod() <= c.DrainBudget() {
+			t.Errorf("window %s: grace %s does not exceed drain %s",
+				window, c.GracePeriod(), c.DrainBudget())
+		}
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sdk"
@@ -265,13 +266,28 @@ func (s *Server) Handler() http.Handler {
 // dropped: `memory` already loses on a crash, and losing on a clean stop as
 // well would make the tier useless rather than merely limited.
 func (s *Server) Close(ctx context.Context) error {
-	var first error
+	// Every stream, and every failure -- not the first.
+	//
+	// One stream running out of budget says nothing about the others, and an
+	// operator reading "stream A lost 12" while stream B silently lost 4,000
+	// is worse served than by both lines.
+	var failures []error
 	for _, p := range s.pipes {
-		if err := p.close(ctx); err != nil && first == nil {
-			first = err
+		if err := p.close(ctx); err != nil {
+			failures = append(failures, err)
 		}
 	}
-	return first
+	return errors.Join(failures...)
+}
+
+// Pending is how many accepted events have not been delivered, across every
+// stream. Zero after a clean drain.
+func (s *Server) Pending() int64 {
+	var n int64
+	for _, p := range s.pipes {
+		n += p.pending.Load()
+	}
+	return n
 }
 
 // oversize is the claim-check path, resolved.
@@ -309,8 +325,15 @@ type pipe struct {
 	dead    Sinker
 	maxBody int64
 
-	queue   chan []sdk.Envelope
-	wg      sync.WaitGroup
+	queue chan []sdk.Envelope
+	wg    sync.WaitGroup
+	// pending is how many accepted events have not been delivered yet.
+	//
+	// It exists for the drain's error message. "context deadline exceeded"
+	// does not tell an operator whether they lost four events or forty
+	// thousand, and that number is the difference between a note and an
+	// incident.
+	pending atomic.Int64
 	metrics *Metrics
 	big     *oversize
 	admit   Admitter
@@ -336,6 +359,9 @@ func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics)
 			// client in the same batch. send bounds itself with sendTimeout.
 			for batch := range p.queue {
 				_ = p.send(context.Background(), batch)
+				// After send, not before: send buries what the sink refuses,
+				// so a batch is accounted for either way once it returns.
+				p.pending.Add(-int64(len(batch)))
 			}
 		}()
 	}
@@ -612,6 +638,7 @@ func (p *pipe) handoff() {
 	ready := p.take()
 	select {
 	case p.queue <- ready:
+		p.pending.Add(int64(len(ready)))
 	default:
 		p.batch = append(ready, p.batch...)
 		p.arm()
@@ -788,6 +815,7 @@ func (p *pipe) close(ctx context.Context) error {
 	if len(ready) > 0 {
 		select {
 		case p.queue <- ready:
+			p.pending.Add(int64(len(ready)))
 		case <-ctx.Done():
 			// No room before the window closed. Delivered here rather than
 			// dropped: send buries what the sink refuses, and the alternative
@@ -803,11 +831,17 @@ func (p *pipe) close(ctx context.Context) error {
 	case <-done:
 		return nil
 	case <-ctx.Done():
-		// The workers are still delivering. Reported rather than waited on:
-		// one batch can hold the full retry window, and a drain that outlasts
-		// its deadline is something the operator has to see.
-		return fmt.Errorf("stream %q: the drain did not finish in the window: %w",
-			p.stream.Name, ctx.Err())
+		// The workers are still delivering, and the process is about to
+		// return: what is still pending is what this stop loses.
+		//
+		// Reported rather than waited on -- one batch can hold the full retry
+		// window -- and reported WITH THE COUNT, because the deadline alone
+		// does not say whether four events were lost or forty thousand. The
+		// caller turns this into a non-zero exit, which is the only thing a
+		// supervisor can see.
+		return fmt.Errorf("stream %q: the drain did not finish and %d accepted "+
+			"event(s) were not delivered: %w",
+			p.stream.Name, p.pending.Load(), ctx.Err())
 	}
 }
 

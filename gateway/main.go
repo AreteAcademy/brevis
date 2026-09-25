@@ -53,6 +53,18 @@ func Main(hooks *Hooks, opts ...Option) {
 		}
 	}()
 
+	// The number this process needs from its orchestrator, said once, at the
+	// moment somebody is watching.
+	//
+	// It cannot read its own manifest, and Kubernetes defaults
+	// terminationGracePeriodSeconds to thirty -- which was exactly the old
+	// fixed drain budget, so there was no margin and a SIGKILL could arrive
+	// while the drain was still inside its own deadline. Printing the
+	// requirement is the cheapest thing that stops the two drifting apart
+	// silently, in two repositories, with nothing connecting them.
+	log.Printf("drain budget %s; set terminationGracePeriodSeconds >= %.0f",
+		cfg.DrainBudget(), cfg.GracePeriod().Seconds())
+
 	metrics := serveMetrics(cfg, srv)
 
 	// What is in a buffer at shutdown is delivered, not dropped: `memory`
@@ -62,16 +74,37 @@ func Main(hooks *Hooks, opts ...Option) {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	_ = http.Shutdown(ctx)
-	if err := srv.Close(ctx); err != nil {
-		log.Printf("draining: %v", err)
-	}
+	// THREE budgets, not one shared between three calls in sequence.
+	//
+	// They used to share a single thirty-second context, and http.Shutdown
+	// went first: one slow reader -- a large ndjson body, a client on a bad
+	// connection -- spent the drain's budget before the drain started, and in
+	// the worst case Close received an already-expired context. The last batch
+	// still went out through close's own fallback; everything already queued
+	// was abandoned when this function returned.
+	stopping, cancelHTTP := context.WithTimeout(context.Background(), httpShutdownBudget)
+	_ = http.Shutdown(stopping)
+	cancelHTTP()
+
+	draining, cancelDrain := context.WithTimeout(context.Background(), cfg.DrainBudget())
+	defer cancelDrain()
+	err = srv.Close(draining)
+
 	if metrics != nil {
-		// Last, and after the drain: the final scrape should be able to see
-		// what the drain did, including a batch it had to bury.
-		_ = metrics.Shutdown(ctx)
+		// After the drain, so a scrape that does arrive sees what it did --
+		// though on a terminating pod there usually is no further scrape, and
+		// the log below is what actually survives.
+		last, cancelMetrics := context.WithTimeout(context.Background(), httpShutdownBudget)
+		_ = metrics.Shutdown(last)
+		cancelMetrics()
+	}
+
+	if err != nil {
+		// Non-zero, because a stop that lost accepted events must not look
+		// like a clean one to Kubernetes, to a supervisor or to CI. The error
+		// carries the count; this is the only channel that outlives the pod.
+		log.Printf("drain incomplete: %v", err)
+		os.Exit(1)
 	}
 }
 

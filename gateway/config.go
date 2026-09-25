@@ -12,10 +12,27 @@ import (
 
 // Config is the whole gateway, and the file is the contract.
 type Config struct {
-	Name    string   `yaml:"name"`
-	Listen  Listen   `yaml:"listen"`
-	Metrics Metering `yaml:"metrics"`
-	Streams []Stream `yaml:"streams"`
+	Name     string   `yaml:"name"`
+	Listen   Listen   `yaml:"listen"`
+	Metrics  Metering `yaml:"metrics"`
+	Shutdown Shutdown `yaml:"shutdown"`
+	Streams  []Stream `yaml:"streams"`
+}
+
+// Shutdown is how long a clean stop may take.
+//
+// It matters more than it looks, because the gateway answers 202 before
+// anything is written: what is in a buffer at SIGTERM is delivered by the
+// drain, and a drain that runs out of time loses events a producer was told
+// had been accepted.
+type Shutdown struct {
+	// Drain is the budget for emptying every stream's buffer.
+	//
+	// Zero derives it from the flush windows -- see DrainBudget -- because the
+	// two are the same quantity seen from opposite ends: a 300-second window
+	// can be holding 300 seconds of events when the signal arrives, and a
+	// fixed thirty was a number chosen when every window was one second.
+	Drain time.Duration `yaml:"drain"`
 }
 
 // Metering is where the Prometheus exposition is served.
@@ -519,6 +536,23 @@ const (
 	// window it cannot honour rather than letting the first deploy find out.
 	BigQueryFlushFloor = 60 * time.Second
 
+	// drainFloor is the shortest drain budget, whatever the windows say.
+	//
+	// A stream flushing every second still has a queue of up to `queue`
+	// batches behind it, and each delivery is a round trip that can retry.
+	// Thirty seconds was the fixed value before this was derived, and it stays
+	// as the floor.
+	drainFloor = 30 * time.Second
+
+	// httpShutdownBudget is how long the listener gets to stop accepting.
+	//
+	// Small, and separate from the drain's, which is the whole point: these
+	// used to share one context, in this order, so a single slow reader -- a
+	// large ndjson body, a client on a bad connection -- spent the drain's
+	// budget before the drain began. In the worst case Close received an
+	// already-expired context and the queue was abandoned.
+	httpShutdownBudget = 5 * time.Second
+
 	defaultWorkers = 4
 	// Sixty-four batches waiting. At the default batch size that is 32,000
 	// events of shock absorption -- roughly a sink pausing for a minute at
@@ -794,4 +828,51 @@ func (s *Sink) check() error {
 		}
 	}
 	return nil
+}
+
+// DrainBudget is how long the drain may take.
+//
+// Declared wins. Otherwise it is the longest flush window, floored at thirty
+// seconds.
+//
+// The window is the right quantity because it bounds what the buffer can be
+// HOLDING when the signal arrives -- a 300-second stream can have 300 seconds
+// of accepted events in memory, and the old fixed thirty was chosen when every
+// window was one second.
+//
+// One window and not two: the drain does not wait for anything. It takes the
+// pending batch immediately and the workers deliver in parallel, so draining is
+// strictly faster than the accumulating was. Giving it as long as the fill took
+// is already generous, and doubling it only lengthens how long a pod that is
+// genuinely stuck takes to die -- which is a rollout everybody waits on.
+//
+// It is still a heuristic. What actually bounds the drain is the queue depth
+// and the cost of one delivery, and neither is knowable here: a load job takes
+// seconds, a file takes none. An installation that has measured its own should
+// declare `shutdown.drain` and stop relying on this.
+func (c *Config) DrainBudget() time.Duration {
+	if c.Shutdown.Drain > 0 {
+		return c.Shutdown.Drain
+	}
+	longest := time.Duration(0)
+	for i := range c.Streams {
+		if w := c.Streams[i].Buffer.Flush.Every; w > longest {
+			longest = w
+		}
+	}
+	if longest > drainFloor {
+		return longest
+	}
+	return drainFloor
+}
+
+// GracePeriod is what terminationGracePeriodSeconds has to be at least.
+//
+// The gateway cannot read its own manifest, and Kubernetes' default is thirty
+// seconds -- which equals the old fixed drain budget exactly, so there was no
+// margin at all and a SIGKILL arrived while the drain was still inside its own
+// deadline. It can at least state the number it needs, at boot, in the log
+// whoever deploys it is already reading.
+func (c *Config) GracePeriod() time.Duration {
+	return c.DrainBudget() + httpShutdownBudget + 5*time.Second
 }
