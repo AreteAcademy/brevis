@@ -197,10 +197,72 @@ func postKeyed(t *testing.T, url, body string, want int) {
 	}
 }
 
-func autoTableGateway(t *testing.T, dsn, dead string) *gateway.Server {
+// `merge` works on a table auto_table created, which it could not before.
+//
+// DedupMerge needs a unique index on ingestion_id and Postgres refuses without
+// one. A table created by the router had no constraint, so the create
+// succeeded and every load refused -- found by running the published image:
+// two tables with the right four columns and zero rows in them.
+//
+// The constraint has to follow the write mode in BOTH directions, so this
+// checks both: `merge` absorbs the redelivery, and `append` keeps it.
+func TestIntegrationAutoTableMergeAbsorbsARedelivery(t *testing.T) {
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_PG_DSN")
+	if dsn == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_PG_DSN is not set")
+	}
+	for _, c := range []struct {
+		write string
+		want  string
+	}{
+		{"merge", "1"},  // the redelivery is ignored
+		{"append", "2"}, // every delivery lands, which is what append promises
+	} {
+		t.Run(c.write, func(t *testing.T) {
+			t.Setenv("PG_DSN", dsn)
+			table := uniqueTable(t, dsn)
+
+			srv := autoTableGateway(t, dsn, "", c.write)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+
+			body := fmt.Sprintf(
+				`[{"table_name":%q,"idempotency_key":"o-1","occurred_at":"2026-09-25T10:00:00Z","amount":10}]`,
+				table)
+			postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
+			postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
+			if err := srv.Close(context.Background()); err != nil {
+				t.Fatalf("draining: %v", err)
+			}
+
+			if got := query(t, dsn, `SELECT count(*)::text FROM `+table); got[0] != c.want {
+				t.Errorf("%s left %s rows, want %s", c.write, got[0], c.want)
+			}
+
+			// And the constraint is there for merge and absent for append: a
+			// unique index on an append table would reject the second delivery,
+			// which is the opposite of what it promises.
+			idx := query(t, dsn, fmt.Sprintf(
+				`SELECT count(*)::text FROM pg_indexes WHERE tablename = '%s'`, table))
+			wantIdx := "0"
+			if c.write == "merge" {
+				wantIdx = "1"
+			}
+			if idx[0] != wantIdx {
+				t.Errorf("%s created %s indexes, want %s", c.write, idx[0], wantIdx)
+			}
+		})
+	}
+}
+
+func autoTableGateway(t *testing.T, dsn, dead string, write ...string) *gateway.Server {
 	t.Helper()
 	if dead == "" {
 		dead = t.TempDir()
+	}
+	mode := "append"
+	if len(write) > 0 {
+		mode = write[0]
 	}
 	t.Setenv("GW_KEYS", "k")
 	yaml := fmt.Sprintf(`
@@ -218,9 +280,9 @@ streams:
       type: auto_table
       table_from: table_name
       naming: {pattern: '^gwauto_[a-z0-9_]+$'}
-      into: {type: postgres, dsn_from: PG_DSN, write: append}
+      into: {type: postgres, dsn_from: PG_DSN, write: %s}
     dead_letter: {type: files, path: %s/}
-`, dead)
+`, mode, dead)
 
 	file := t.TempDir() + "/g.yaml"
 	if err := os.WriteFile(file, []byte(yaml), 0o600); err != nil {

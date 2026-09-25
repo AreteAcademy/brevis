@@ -43,14 +43,29 @@ const (
 	ColumnData       = "data"
 )
 
-// schema is the table every route creates. The SDK's DDL generator turns
-// TypeJSON into JSON on BigQuery, JSONB on Postgres, JSON on MySQL and SUPER on
-// Redshift, so this one declaration serves all four.
-var schema = sdk.Schema{
-	{Name: ColumnID, Type: sdk.TypeString, Required: true},
-	{Name: ColumnIngestedAt, Type: sdk.TypeTimestamp, Required: true},
-	{Name: ColumnOccurredAt, Type: sdk.TypeTimestamp},
-	{Name: ColumnData, Type: sdk.TypeJSON},
+// schemaFor is the table every route creates. One declaration serves every
+// destination: the SDK's DDL generator turns TypeJSON into JSON on BigQuery,
+// JSONB on Postgres, JSON on MySQL and SUPER on Redshift.
+//
+// `unique` is the half that has to match the write mode, and getting it wrong
+// breaks the table in one direction or the other:
+//
+//	merge   NEEDS the constraint. Postgres and MySQL refuse DedupMerge without
+//	        a unique index on ingestion_id, so a table created without it could
+//	        never be merged into -- the create succeeds and every load refuses.
+//	append  must NOT have it. Every delivery is meant to land, and a unique
+//	        constraint would reject the second one as a duplicate, which is the
+//	        opposite of what `append` promises.
+//
+// BigQuery has no unique constraints and its MERGE needs none, so the flag is
+// left off there: declaring it would be refused by the dialect, correctly.
+func schemaFor(unique bool) sdk.Schema {
+	return sdk.Schema{
+		{Name: ColumnID, Type: sdk.TypeString, Required: true, Unique: unique},
+		{Name: ColumnIngestedAt, Type: sdk.TypeTimestamp, Required: true},
+		{Name: ColumnOccurredAt, Type: sdk.TypeTimestamp},
+		{Name: ColumnData, Type: sdk.TypeJSON},
+	}
 }
 
 // PartitionBy is the column a created table is partitioned on, by day.

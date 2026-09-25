@@ -51,7 +51,12 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	// package's whole job is turning a payload into DDL, which is the last
 	// place to find out late. The probe name never reaches a database: nothing
 	// connects until a Write.
-	r := &router{build: b, field: s.TableFrom, names: n,
+	// BigQuery has no unique constraints and its MERGE needs none; Postgres
+	// and MySQL refuse DedupMerge without one. So the constraint follows the
+	// write mode AND the destination, and neither alone is enough.
+	unique := s.Into.Write == gateway.WriteMerge && s.Into.Type != gateway.SinkBigQuery
+
+	r := &router{build: b, field: s.TableFrom, names: n, unique: unique,
 		meta: newMetastore(0), made: map[string]gateway.Sinker{}, now: time.Now}
 	if _, err := r.sinkFor(b.Ctx, probeTable); err != nil {
 		return nil, err
@@ -82,6 +87,10 @@ type router struct {
 	field string
 	names *names
 	meta  *metastore
+
+	// unique says whether the created table carries a UNIQUE constraint on
+	// ingestion_id: required by `merge` and wrong for `append`.
+	unique bool
 
 	// now is a field so a test can control the hour the rate limit counts in.
 	now func() time.Time
@@ -212,7 +221,7 @@ func (r *router) sinkFor(ctx context.Context, table string) (gateway.Sinker, err
 		Stores: r.build.Stores,
 		Sinks:  r.build.Sinks,
 		Target: &gateway.Target{
-			Schema:      schema,
+			Schema:      schemaFor(r.unique),
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,
 			Create:      true,

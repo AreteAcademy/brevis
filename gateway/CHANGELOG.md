@@ -13,6 +13,37 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.4.2] — 2026-09-25
+
+### Fixed: a table `auto_table` created could not be merged into
+
+0.4.0 shipped `write: merge` as the natural default for an event stream, and it
+could not work. `DedupMerge` needs a unique index on `ingestion_id` and
+Postgres and MySQL refuse without one — so the router created a table with the
+right four columns and every load into it refused. Two tables, zero rows, and
+the reason in the dead letter.
+
+The table now carries the constraint, and it follows the write mode in BOTH
+directions, because getting it wrong breaks the table one way or the other:
+
+| | |
+|---|---|
+| `merge` | **needs** it, or every load refuses |
+| `append` | must **not** have it, or the second delivery is rejected as a duplicate |
+
+BigQuery is left out of both: it has no unique constraints and its `MERGE`
+needs none.
+
+Needs `sdk/v0.65.0`, which added `Column.Unique`. That is not a contradiction
+of the drivers' refusal to create indexes — the objection is about an index
+added to a table people are already using, and this is a constraint on a table
+that is empty and that nobody has yet.
+
+Found by running the published image, and the end-to-end test that now covers
+it checks the row count AND the index count, in both modes.
+
+---
+
 ## [0.4.1] — 2026-09-25
 
 ### Fixed: the slim image could not run `auto_table`
