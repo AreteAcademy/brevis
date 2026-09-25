@@ -13,6 +13,57 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.3.0] — 2026-09-24
+
+Everything a service already in production needs before it can be replaced by
+this one.
+
+### Metrics
+
+Prometheus exposition on **its own address**, never on the ingest mux — that
+port is public by design, and a `/metrics` on it would publish every stream
+name, path and destination. Naming one address for both is refused at load.
+
+Eleven instruments. Three of them matter more than the rest and nobody asks for
+them until after the first incident: `saturated_total` is the only number that
+says a client was told to back off, and `buffer_records` against
+`buffer.max_records` is the only one that predicts it.
+
+`reason` is a closed enum and never the error text: an error string carries a
+table name, a column, sometimes a row, and one malformed client would mint a new
+series per request. The text stays in the dead letter, on the record.
+
+Hand-written, zero dependencies — the OTel SDK costs 40 packages here and
+`prometheus/client_golang` 43, for eleven instruments whose format has not
+changed in a decade. The slim build went from 10.0 MB to 10.1. Both mistakes the
+engine's own exposition names have a test: buckets are running totals, and a
+quote inside a label ends the series early and corrupts every line after it.
+
+### The claim check, for events too big
+
+```yaml
+oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks
+```
+
+The event is archived **whole** and a reduced version continues, carrying
+`_oversize_archive` and `_oversize_bytes` back to it. A flat `413` loses the
+event, and an oversized payload is usually the most interesting one somebody
+has.
+
+Stamped rather than implicit: agreeing out of band that the id is also the
+object's name works until somebody changes the prefix. Without a reduction hook
+the event is archived and dropped — not lost, and counted.
+
+### `stamp_loaded_at`
+
+Writes `ingestion_loaded_at` with the SDK's column name and the SDK's format, so
+a row this gateway lands and a row a pipeline lands are the same shape. Opt-in.
+
+---
+
 ## [0.2.0] — 2026-09-24
 
 ### The sinks are injectable, and there is a slim image

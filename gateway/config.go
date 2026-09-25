@@ -14,8 +14,30 @@ import (
 type Config struct {
 	Name    string   `yaml:"name"`
 	Listen  Listen   `yaml:"listen"`
+	Metrics Metering `yaml:"metrics"`
 	Streams []Stream `yaml:"streams"`
 }
+
+// Metering is where the Prometheus exposition is served.
+type Metering struct {
+	// Addr is its OWN address, and that is the whole design of this field.
+	//
+	// The ingest port is public by construction -- it is where clients POST --
+	// so `/metrics` on it would publish every stream name, path and
+	// destination to whoever finds the path. On a second address it is never
+	// in the Ingress at all.
+	//
+	// A POINTER, because the three states are three: absent takes the default,
+	// `addr: ""` serves nothing, and a value is the value. A plain string
+	// would collapse the first two, and "I turned metrics off" and "I did not
+	// mention metrics" must not be the same sentence.
+	Addr *string `yaml:"addr"`
+
+	addr string // resolved by check
+}
+
+// Address is where to serve, resolved. Empty means serve nothing.
+func (m Metering) Address() string { return m.addr }
 
 type Listen struct {
 	Addr string `yaml:"addr"`
@@ -52,6 +74,18 @@ type Stream struct {
 	// costs. Empty means the event goes through untouched.
 	Hook string `yaml:"hook"`
 
+	// StampLoadedAt writes ingestion_loaded_at onto the payload: when the
+	// gateway received it, UTC, RFC3339.
+	//
+	// Opt-in, because it adds a field to every record and a topic's
+	// subscribers and a table's columns both notice. The same column name and
+	// the same format the SDK writes, so a row this gateway lands and a row a
+	// pipeline lands stay the same shape.
+	StampLoadedAt bool `yaml:"stamp_loaded_at"`
+
+	// Oversize is what happens to an event too big for the destination.
+	Oversize *Oversize `yaml:"oversize"`
+
 	Buffer Buffer `yaml:"buffer"`
 	Sink   Sink   `yaml:"sink"`
 
@@ -67,6 +101,49 @@ type Stream struct {
 	// having to make it is the point.
 	DeadLetter Sink `yaml:"dead_letter"`
 }
+
+// Oversize is the claim-check path: an event too large is written somewhere
+// whole, and what continues into the stream is a reduced version that points
+// back at it.
+//
+// It is a named pattern -- Enterprise Integration Patterns calls it Claim
+// Check -- and the reason it beats a flat refusal is that a 413 loses the
+// event. An oversized payload is usually the most interesting one somebody
+// has: it is the request with the whole document attached, and refusing it
+// throws away the case worth debugging.
+type Oversize struct {
+	// LargerThan is the per-EVENT ceiling, measured on the encoded payload
+	// after the hook has run. Distinct from listen.max_body, which caps a
+	// whole REQUEST and refuses with 413 before anything is parsed.
+	LargerThan Size `yaml:"larger_than"`
+
+	// Archive is where the whole event goes. It is an ordinary sink, so this
+	// is a directory on a laptop and a bucket in production with no second
+	// idea of what a path is.
+	Archive Sink `yaml:"archive"`
+
+	// Hook names a second hook, which receives the oversized event and
+	// returns the reduced one. It is Go, compiled in, like every other hook:
+	// which fields are heavy is domain knowledge and a YAML file cannot hold
+	// it.
+	//
+	// Without one the event is ARCHIVED AND DROPPED from the stream -- not
+	// lost, because the archive has it whole, and counted, because an event
+	// that silently stops arriving is the worst outcome here.
+	Hook string `yaml:"hook"`
+}
+
+// The fields an archived event carries into the stream, so the reduced record
+// can be traced back to the whole one.
+//
+// Stamped rather than left implicit. The alternative -- agreeing out of band
+// that the id is also the object's name -- works until somebody changes the
+// prefix, and then nothing says where to look.
+const (
+	ColumnOversize        = "_oversize"
+	ColumnOversizeArchive = "_oversize_archive"
+	ColumnOversizeBytes   = "_oversize_bytes"
+)
 
 // Retry is the sink's second, third and fourth chance.
 type Retry struct {
@@ -284,6 +361,9 @@ const (
 // Defaults, and each one is a number with a reason.
 const (
 	defaultAddr = ":8080"
+	// 9090 is what the engine serves its own on, so an operator running both
+	// has one number to remember rather than two.
+	defaultMetricsAddr = ":9090"
 	// 1 MiB: one event, not a file. A body larger than this is a batch that
 	// wants ndjson and a flush, or it is a mistake.
 	defaultMaxBody Size = 1 << 20
@@ -325,6 +405,22 @@ func (c *Config) check() error {
 	}
 	if c.Listen.MaxBody == 0 {
 		c.Listen.MaxBody = defaultMaxBody
+	}
+	// A file that did not mention metrics gets them, because an ingestion
+	// service nobody can see is the failure mode this field exists against.
+	// A file that said `addr: ""` meant it.
+	c.Metrics.addr = defaultMetricsAddr
+	if c.Metrics.Addr != nil {
+		c.Metrics.addr = strings.TrimSpace(*c.Metrics.Addr)
+	}
+	if c.Metrics.addr != "" && c.Metrics.addr == c.Listen.Addr {
+		// The same port would put the exposition behind the ingest mux, which
+		// is the one place it must not be: that port is public by design, and
+		// a scrape endpoint there publishes every stream name and destination.
+		return fmt.Errorf("`metrics.addr` and `listen.addr` are both %q: the "+
+			"exposition has to be on its own address, because the ingest port "+
+			"is public and a /metrics on it would publish every stream name, "+
+			"path and destination", c.Metrics.addr)
 	}
 	// The environment decides whether an open endpoint is allowed, and it is
 	// read here rather than taken as a field: a config file that could declare
@@ -452,6 +548,16 @@ func (s *Stream) check() error {
 
 	if err := s.Sink.check(); err != nil {
 		return err
+	}
+
+	if o := s.Oversize; o != nil {
+		if o.LargerThan == 0 {
+			return fmt.Errorf("`oversize.larger_than` is empty: name the size " +
+				"past which an event is archived instead of delivered")
+		}
+		if err := o.Archive.check(); err != nil {
+			return fmt.Errorf("`oversize.archive`: %w", err)
+		}
 	}
 
 	// Refused rather than defaulted. A stream with no dead letter loses a

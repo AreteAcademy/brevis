@@ -250,6 +250,7 @@ func (b *blockingSink) release() { b.once.Do(func() { close(b.gate) }) }
 type recordingSink struct {
 	mu   sync.Mutex
 	seen []string
+	rows []map[string]any
 }
 
 func (r *recordingSink) Describe() string { return "a recording sink" }
@@ -260,9 +261,18 @@ func (r *recordingSink) Write(_ context.Context, batch []gateway.Envelope) (int6
 		row, _ := e.Payload.(map[string]any)
 		id, _ := row["ingestion_id"].(string)
 		r.seen = append(r.seen, id)
+		r.rows = append(r.rows, row)
 	}
 	return int64(len(batch)), nil
 }
+
+// payloads is what the sink was handed, whole.
+func (r *recordingSink) payloads() []map[string]any {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]map[string]any(nil), r.rows...)
+}
+
 func (r *recordingSink) ids() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()

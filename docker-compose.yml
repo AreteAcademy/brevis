@@ -172,7 +172,12 @@ services:
       # teaches a team to turn authentication off. Outside local the gateway
       # refuses to start without `listen.auth`.
       BREVIS_ENV: local
-    ports: ["${BREVIS_GATEWAY_PORT:-8090}:8080"]
+    ports:
+      - "${BREVIS_GATEWAY_PORT:-8090}:8080"
+      # The exposition, on its own port because it is on its own listener: the
+      # ingest port is public by design and a /metrics on it would publish
+      # every stream name and destination.
+      - "${BREVIS_GATEWAY_METRICS_PORT:-9091}:9090"
     volumes:
       - ./gateway/example/gateway.local.yaml:/etc/brevis/gateway.yaml:ro
       # The dead letter, on a volume. Inside the image it would die with the

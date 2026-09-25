@@ -389,6 +389,111 @@ Shutdown waits for what is in flight, and a drain that outlasts its window is
 and a shutdown that blocks past its deadline is a pod the orchestrator kills —
 which loses the events anyway and says nothing about why.
 
+## What it counts
+
+Prometheus exposition, on **its own address**, and that rule matters more here
+than it does in the engine: the gateway's port is public by design — it is where
+clients POST — so a `/metrics` on it would publish every stream name, path and
+destination to whoever finds the path. Naming the same address for both is
+refused at load.
+
+```yaml
+metrics:
+  addr: :9090     # leaving it out serves them anyway; addr: "" turns them off
+```
+
+Leaving it out still serves them, because an ingestion service nobody can see is
+the failure this field exists against. `addr: ""` is how you turn them off, and
+that is a decision somebody made rather than one they forgot.
+
+```
+brevis_gateway_events_received_total{stream,format}       counter
+brevis_gateway_events_rejected_total{stream,reason}       counter
+brevis_gateway_events_dropped_total{stream}               counter   a hook returned nil
+brevis_gateway_oversized_total{stream}                    counter
+brevis_gateway_batches_total{stream,sink,outcome}         counter   delivered|retried|buried
+brevis_gateway_dead_letter_records_total{stream,sink}     counter
+brevis_gateway_saturated_total{stream}                    counter   the 503s
+brevis_gateway_delivery_seconds{stream,sink}              histogram retries included
+brevis_gateway_batch_records{stream}                      histogram
+brevis_gateway_buffer_records{stream}                     gauge
+brevis_gateway_queue_batches{stream}                      gauge
+```
+
+The last three are the ones nobody asks for until after the first incident.
+`saturated_total` is the only number that says a client was told to back off;
+`buffer_records` against `buffer.max_records` is the only one that **predicts**
+it.
+
+**`reason` is a closed enum and never the error text** — `hook_error`,
+`no_source_key`, `no_record_ts`, `identity`, `oversize`. An error string carries
+a table name, a column, sometimes a row, and one malformed client would mint a
+new series per request. The text belongs in the dead letter, on the record,
+where whoever has the events can read it.
+
+Written by hand, with no dependency: the OpenTelemetry SDK costs 40 packages
+here and `prometheus/client_golang` 43, to report eleven instruments whose
+format is `name{label="value"} 42` and has not changed in a decade. The slim
+build exists to not pay for what it does not use.
+
+## When an event is too big
+
+```yaml
+oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks
+```
+
+The event is written to `archive` **whole**, and a reduced version continues
+into the stream carrying a pointer back:
+
+```json
+{
+  "event_id": "big-1",
+  "ingestion_id": "bd8ac083-9796-50f5-bab6-77a4e2e57ad0",
+  "_oversize": true,
+  "_oversize_archive": "files:gs://acme-oversize/clicks/",
+  "_oversize_bytes": 2149
+}
+```
+
+This is the **Claim Check** pattern, and it beats a flat `413` because a `413`
+loses the event — and an oversized payload is usually the most interesting one
+somebody has: the request with the whole document attached, which is the case
+worth debugging. The claim check is *stamped* rather than left implicit;
+agreeing out of band that the id is also the object's name works until somebody
+changes the prefix, and then nothing says where to look.
+
+`larger_than` measures one **event**, after the hook. `listen.max_body` is a
+different thing: it caps a whole **request** and refuses with `413` before a
+byte is parsed.
+
+**`hook` is required for the event to continue.** Which fields are heavy is
+domain knowledge — a screenshot, a base64 attachment, a vendor's raw response —
+and a YAML file cannot hold it. Without one the event is archived and **dropped
+from the stream**: not lost, because the archive has it whole, and counted,
+because an event that silently stops arriving is the worst outcome here.
+
+The archive write is the one piece of I/O on a request goroutine, and that is a
+deliberate exception. The reduction has to happen *after* the archive — reducing
+first means a failed archive leaves a record pointing at an object that does not
+exist — and the path is exceptional by construction. If it is hot, the limit is
+wrong.
+
+## When the row should say when it arrived
+
+```yaml
+stamp_loaded_at: true
+```
+
+Writes `ingestion_loaded_at`: when the gateway received it, UTC, RFC3339. The
+SDK's column and the SDK's format, so a row this gateway lands and a row a
+pipeline lands are the same shape.
+
+Opt-in, because it adds a field to every record and both a topic's subscribers
+and a table's columns notice.
+
 ## Configuration
 
 See [`gateway/example/gateway.yaml`](../gateway/example/gateway.yaml). Every

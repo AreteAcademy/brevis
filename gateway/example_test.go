@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/gateway/store/gcs"
+	"github.com/AreteAcademy/brevis/gateway/store/s3"
 )
 
 // The shipped examples have to load.
@@ -52,6 +54,43 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 				}
 			}
 
+			// And every hook an oversize block names, which is a second
+			// registry entry the same file has to carry.
+			for _, st := range cfg.Streams {
+				if st.Oversize == nil || st.Oversize.Hook == "" {
+					continue
+				}
+				if !hooks[st.Oversize.Hook] {
+					t.Errorf("stream %q's oversize.hook is %q, which "+
+						"example/main.go does not register", st.Name, st.Oversize.Hook)
+				}
+			}
+
+			// And every object store a path implies. This is the half that
+			// sink types do not cover: `gs://` and `s3://` are both the
+			// `files` sink, and which BACKEND the binary carries is a
+			// different registration. An example naming s3:// while its main
+			// registers only GCS is a file documenting a gateway that refuses
+			// to start.
+			for _, st := range cfg.Streams {
+				paths := []struct{ what, path string }{
+					{"sink", st.Sink.Path},
+					{"dead_letter", st.DeadLetter.Path},
+				}
+				if st.Oversize != nil {
+					paths = append(paths, struct{ what, path string }{
+						"oversize.archive", st.Oversize.Archive.Path})
+				}
+				for _, p := range paths {
+					pkg, needed := storeFor(p.path)
+					if !needed || strings.Contains(source(t), pkg) {
+						continue
+					}
+					t.Errorf("stream %q's %s is %q, and example/main.go does "+
+						"not import %s", st.Name, p.what, p.path, pkg)
+				}
+			}
+
 			// And every sink, which is the same rule and a newer way to get it
 			// wrong: sinks are compiled in now, so a stream naming one the
 			// example binary did not import is a file documenting a gateway
@@ -59,10 +98,17 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 			// that triggers it is not.
 			sinks := registered(t, `MustRegister(`)
 			for _, s := range cfg.Streams {
-				for _, use := range []struct{ what, typ string }{
+				uses := []struct{ what, typ string }{
 					{"sink", s.Sink.Type},
 					{"dead_letter", s.DeadLetter.Type},
-				} {
+				}
+				if s.Oversize != nil {
+					// The archive is a sink like any other, and it was the one
+					// this test did not look at until a stream grew one.
+					uses = append(uses, struct{ what, typ string }{
+						"oversize.archive", s.Oversize.Archive.Type})
+				}
+				for _, use := range uses {
 					if use.typ == "" || sinks[use.typ] {
 						continue
 					}
@@ -72,6 +118,31 @@ func TestTheShippedExamplesLoad(t *testing.T) {
 			}
 		})
 	}
+}
+
+// storeFor says which package a path needs, keyed by the schemes the store
+// packages themselves declare. The constant stays in one place; only the
+// import path is written here, and it is written right beside the one it
+// checks for.
+func storeFor(path string) (pkg string, needed bool) {
+	switch {
+	case strings.HasPrefix(path, s3.Scheme+"://"):
+		return "gateway/store/s3", true
+	case strings.HasPrefix(path, gcs.Scheme+"://"):
+		return "gateway/store/gcs", true
+	}
+	return "", false
+}
+
+// source is example/main.go, read once per call. Small enough that caching it
+// would be the more complicated thing.
+func source(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("example/main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 // registered reads what the example binary registers out of its own source.

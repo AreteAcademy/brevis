@@ -14,6 +14,11 @@ listen:
   # endpoint is a write endpoint on somebody's topic, and an unauthenticated
   # one on a routable address is an open relay.
 
+# The exposition, on its own address. `curl localhost:9091/metrics` with the
+# compose file next door.
+metrics:
+  addr: :9090
+
 streams:
   - name: clicks
     path: /v1/clicks

@@ -26,6 +26,7 @@ import (
 func main() {
 	hooks := gateway.NewHooks()
 	hooks.MustRegister("enrich_clicks", enrichClicks)
+	hooks.MustRegister("strip_heavy_clicks", stripHeavyClicks)
 
 	sinks := gateway.NewSinks()
 	sinks.MustRegister(pubsub.Sink, pubsub.New)
@@ -52,5 +53,22 @@ func enrichClicks(e map[string]any) (map[string]any, error) {
 		return e, nil
 	}
 	e["tenant"] = strings.Split(host, ".")[0]
+	return e, nil
+}
+
+// stripHeavyClicks is the other kind of hook: the one an oversize block names.
+//
+// It receives an event too large for the stream, AFTER the whole of it has
+// already been written to the archive, and returns what should continue. Which
+// fields are heavy is domain knowledge -- a screenshot, a base64 attachment, a
+// vendor's raw response -- and that is exactly why this is Go and not a YAML
+// list: the answer is usually "these fields, for this service, above this
+// size", and a file cannot say it.
+//
+// Returning nil drops the event, which is still not losing it: the archive has
+// it whole, and the claim check on the record says where.
+func stripHeavyClicks(e map[string]any) (map[string]any, error) {
+	delete(e, "screenshot")
+	delete(e, "raw_response")
 	return e, nil
 }

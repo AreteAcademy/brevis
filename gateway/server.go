@@ -27,13 +27,24 @@ const sendTimeout = 60 * time.Second
 // credential fetch and short against any readiness probe worth having.
 const startupTimeout = 30 * time.Second
 
+// archiveTimeout bounds the one piece of I/O that happens on a request
+// goroutine. Ten seconds is long for a single object write and short enough
+// that a broken archive does not become the caller's outage.
+const archiveTimeout = 10 * time.Second
+
 // Server is the gateway listening.
 type Server struct {
-	cfg   *Config
-	mux   *http.ServeMux
-	pipes []*pipe
-	keys  []string
+	cfg     *Config
+	mux     *http.ServeMux
+	pipes   []*pipe
+	keys    []string
+	metrics *Metrics
 }
+
+// Metrics is what this gateway has counted, for a caller that wants to serve
+// it. Main does; a consumer embedding the gateway in something larger may
+// want it on a mux of their own.
+func (s *Server) Metrics() *Metrics { return s.metrics }
 
 // Option adjusts a Server at construction.
 type Option func(*options)
@@ -91,7 +102,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 	if hooks == nil {
 		hooks = NewHooks()
 	}
-	s := &Server{cfg: cfg, mux: http.NewServeMux()}
+	s := &Server{cfg: cfg, mux: http.NewServeMux(), metrics: NewMetrics()}
 
 	// Bounded, because building a cloud client resolves credentials and that
 	// can hang: an unreachable metadata server leaves storage.NewClient
@@ -124,7 +135,24 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 			return nil, fmt.Errorf("stream %q: dead_letter: %w", st.Name, err)
 		}
 
-		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody))
+		var big *oversize
+		if ov := st.Oversize; ov != nil {
+			archive, err := o.build(ctx, ov.Archive)
+			if err != nil {
+				return nil, fmt.Errorf("stream %q: oversize.archive: %w", st.Name, err)
+			}
+			big = &oversize{limit: int(ov.LargerThan), archive: archive}
+			if ov.Hook != "" {
+				fn, err := hooks.get(ov.Hook)
+				if err != nil {
+					return nil, fmt.Errorf("stream %q: oversize.hook: %w", st.Name, err)
+				}
+				big.reduce = fn
+			}
+		}
+
+		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics)
+		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
 	}
@@ -142,6 +170,24 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		return nil, err
 	}
 	s.keys = keys
+
+	// The gauges are read off the pipes at scrape time rather than recorded
+	// per event: a buffer depth written on every request is a write per event
+	// to report a number nobody reads between scrapes.
+	pipes := s.pipes
+	s.metrics.depth = func() []gauge {
+		out := make([]gauge, 0, len(pipes)*2)
+		for _, p := range pipes {
+			p.mu.Lock()
+			buffered := len(p.batch)
+			p.mu.Unlock()
+			out = append(out,
+				gauge{name: MetricBuffer, labels: []string{p.stream.Name}, value: int64(buffered)},
+				gauge{name: MetricQueue, labels: []string{p.stream.Name}, value: int64(len(p.queue))},
+			)
+		}
+		return out
+	}
 	return s, nil
 }
 
@@ -193,6 +239,13 @@ func (s *Server) Close(ctx context.Context) error {
 	return first
 }
 
+// oversize is the claim-check path, resolved.
+type oversize struct {
+	limit   int
+	archive Sinker
+	reduce  Hook
+}
+
 // errSaturated is the buffer at its ceiling: the sink is behind and this
 // stream is holding all it agreed to hold.
 //
@@ -221,8 +274,10 @@ type pipe struct {
 	dead    Sinker
 	maxBody int64
 
-	queue chan []sdk.Envelope
-	wg    sync.WaitGroup
+	queue   chan []sdk.Envelope
+	wg      sync.WaitGroup
+	metrics *Metrics
+	big     *oversize
 
 	mu      sync.Mutex
 	batch   []sdk.Envelope
@@ -230,10 +285,10 @@ type pipe struct {
 	closing bool
 }
 
-func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64) *pipe {
+func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics) *pipe {
 	p := &pipe{
 		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
-		queue: make(chan []sdk.Envelope, st.Buffer.Queue),
+		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m,
 	}
 	p.wg.Add(st.Buffer.Workers)
 	for range st.Buffer.Workers {
@@ -274,6 +329,7 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	accepted, rejected := p.prepare(events)
 	if len(accepted) > 0 {
 		if err := p.enqueue(accepted); err != nil {
+			p.metrics.count(p.metrics.saturated, 1, p.stream.Name)
 			// 503 and not 202. The buffer is at its ceiling, so accepting
 			// these would mean holding events with nowhere to put them --
 			// and a 202 that ends in a silent drop is worse than a refusal.
@@ -290,6 +346,8 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	p.metrics.count(p.metrics.received, int64(len(accepted)), p.stream.Name, p.stream.Format)
 
 	// 202 and not 200: the gateway has ACCEPTED them, and with
 	// `durability: memory` that is the whole of what it can honestly claim.
@@ -313,18 +371,37 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
 			shaped, err := run(p.hook, e)
 			if err != nil {
 				rejected = append(rejected, fmt.Sprintf("event %d: %v", i, err))
+				p.metrics.count(p.metrics.rejected, 1, p.stream.Name, ReasonHook)
 				continue
 			}
 			if shaped == nil {
 				// Dropped on purpose. Not a rejection: the hook decided.
+				p.metrics.count(p.metrics.dropped, 1, p.stream.Name)
 				continue
 			}
 			e = shaped
 		}
 
-		env, err := p.identify(e)
+		if p.big != nil {
+			kept, err := p.archiveIfLarge(e)
+			if err != nil {
+				rejected = append(rejected, fmt.Sprintf("event %d: %v", i, err))
+				p.metrics.count(p.metrics.rejected, 1, p.stream.Name, ReasonOversize)
+				continue
+			}
+			if kept == nil {
+				// Archived whole and dropped from the stream, on purpose: no
+				// reduction hook was registered. Counted, because an event
+				// that silently stops arriving is the worst outcome here.
+				continue
+			}
+			e = kept
+		}
+
+		env, reason, err := p.identify(e)
 		if err != nil {
 			rejected = append(rejected, fmt.Sprintf("event %d: %v", i, err))
+			p.metrics.count(p.metrics.rejected, 1, p.stream.Name, reason)
 			continue
 		}
 		out = append(out, env)
@@ -332,23 +409,77 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string) {
 	return out, rejected
 }
 
+// archiveIfLarge writes an oversized event somewhere whole and returns what
+// should continue into the stream, or nil when nothing should.
+//
+// INLINE, on the request goroutine, and that is a deliberate exception to this
+// package's own rule that a caller never waits for I/O. The reduction has to
+// happen after the archive -- reducing first and archiving later means a
+// failed archive leaves a reduced event pointing at an object that does not
+// exist -- and the path is exceptional by construction: if it is hot, the
+// limit is wrong.
+func (p *pipe) archiveIfLarge(e map[string]any) (map[string]any, error) {
+	encoded, err := json.Marshal(e)
+	if err != nil {
+		return nil, fmt.Errorf("measuring the event: %w", err)
+	}
+	if len(encoded) <= p.big.limit {
+		return e, nil
+	}
+	p.metrics.count(p.metrics.oversized, 1, p.stream.Name)
+
+	// The whole event, before anything is taken out of it. An oversized
+	// payload is usually the most interesting one somebody has.
+	env := sdk.Envelope{Payload: e}
+	ctx, cancel := context.WithTimeout(context.Background(), archiveTimeout)
+	defer cancel()
+	if _, err := p.big.archive.Write(ctx, []sdk.Envelope{env}); err != nil {
+		return nil, fmt.Errorf("the event is %d bytes and the archive refused it: %w",
+			len(encoded), err)
+	}
+
+	if p.big.reduce == nil {
+		return nil, nil
+	}
+	reduced, err := run(p.big.reduce, e)
+	if err != nil {
+		return nil, fmt.Errorf("the event is %d bytes and the reduction hook "+
+			"refused it: %w", len(encoded), err)
+	}
+	if reduced == nil {
+		return nil, nil
+	}
+
+	// The claim check, stamped rather than left implicit: agreeing out of band
+	// that the id is also the object's name works until somebody changes the
+	// prefix, and then nothing says where to look.
+	reduced[ColumnOversize] = true
+	reduced[ColumnOversizeArchive] = p.big.archive.Describe()
+	reduced[ColumnOversizeBytes] = len(encoded)
+	return reduced, nil
+}
+
 // identify computes the ingestion_id and puts it on the payload.
 //
 // On the PAYLOAD and not only on the envelope, because what a subscriber
 // receives is the payload: an id a consumer cannot see is an id that cannot
 // deduplicate anything downstream.
-func (p *pipe) identify(e map[string]any) (sdk.Envelope, error) {
+//
+// The second return is the metric's reason, and it is RETURNED rather than
+// derived from the error text: a label matched against a message is a label
+// that changes the day somebody improves the wording.
+func (p *pipe) identify(e map[string]any) (sdk.Envelope, string, error) {
 	id := p.stream.Identity
 
 	key := Text(e[id.SourceKey])
 	if key == "" {
-		return sdk.Envelope{}, fmt.Errorf("field %q is missing or empty, and it is "+
-			"this stream's source_key", id.SourceKey)
+		return sdk.Envelope{}, ReasonSourceKey, fmt.Errorf("field %q is missing or "+
+			"empty, and it is this stream's source_key", id.SourceKey)
 	}
 	ts := Text(e[id.RecordTS])
 	if ts == "" {
-		return sdk.Envelope{}, fmt.Errorf("field %q is missing or empty, and it is "+
-			"this stream's record_ts", id.RecordTS)
+		return sdk.Envelope{}, ReasonRecordTS, fmt.Errorf("field %q is missing or "+
+			"empty, and it is this stream's record_ts", id.RecordTS)
 	}
 
 	env := sdk.Envelope{
@@ -362,13 +493,18 @@ func (p *pipe) identify(e map[string]any) (sdk.Envelope, error) {
 	// how two implementations of one rule start to disagree.
 	ingestionID, err := env.IngestionID()
 	if err != nil {
-		return sdk.Envelope{}, err
+		return sdk.Envelope{}, ReasonIdentity, err
 	}
 
 	// On the PAYLOAD too, because what a subscriber receives is the payload: an
 	// id a consumer cannot see deduplicates nothing downstream.
 	e[sdk.ColumnIngestionID] = ingestionID
-	return env, nil
+	if p.stream.StampLoadedAt {
+		// The SDK's column and the SDK's format, so a row this gateway lands
+		// and a row a pipeline lands are the same shape.
+		e[sdk.ColumnIngestionLoadedAt] = time.Now().UTC().Format(time.RFC3339)
+	}
+	return env, "", nil
 }
 
 // enqueue buffers, and hands a full batch to the pool. It returns errSaturated
@@ -469,15 +605,25 @@ func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
 	defer cancel()
 
 	r := p.stream.Retry
+	name, sink := p.stream.Name, p.sink.Describe()
+	p.metrics.observe(p.metrics.batchSize, float64(len(batch)), name)
+	start := time.Now()
+
 	var err error
 	for attempt := 1; attempt <= r.Attempts; attempt++ {
 		var n int64
 		n, err = p.sink.Write(ctx, batch)
 		if err == nil {
-			slog.Info("delivered", "stream", p.stream.Name,
-				"sink", p.sink.Describe(), "events", n, "attempt", attempt)
+			// The duration covers the retries, because that is what the batch
+			// actually cost: a p99 that reported only the successful attempt
+			// would look healthy through an outage.
+			p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
+			p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeDelivered)
+			slog.Info("delivered", "stream", name,
+				"sink", sink, "events", n, "attempt", attempt)
 			return nil
 		}
+		p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeRetried)
 		if attempt == r.Attempts {
 			break
 		}
@@ -494,6 +640,8 @@ func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
 	}
 
 giveUp:
+	p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
+	p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeBuried)
 	p.bury(ctx, batch, err)
 	return err
 }
@@ -530,6 +678,9 @@ func (p *pipe) bury(ctx context.Context, batch []sdk.Envelope, cause error) {
 	}
 
 	n, err := p.dead.Write(ctx, buried)
+	if err == nil {
+		p.metrics.count(p.metrics.buried, n, p.stream.Name, p.sink.Describe())
+	}
 	if err != nil {
 		slog.Error("the dead letter refused them too, and they are lost",
 			"stream", p.stream.Name, "events", len(batch),

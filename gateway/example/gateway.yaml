@@ -18,6 +18,18 @@ listen:
     type: bearer
     keys_from: BREVIS_INGEST_KEYS
 
+# The Prometheus exposition, on its OWN address and never on the one above.
+#
+# That port is public by construction -- it is where clients POST -- so a
+# /metrics on it would publish every stream name, path and destination to
+# whoever finds the path. Naming the same address for both is refused at load.
+#
+# Leaving this out serves them on :9090 anyway: an ingestion service nobody can
+# see is the failure this field exists against. `addr: ""` turns them off, and
+# that is a decision somebody made rather than one they forgot.
+metrics:
+  addr: :9090
+
 streams:
   - name: clicks
     path: /v1/clicks
@@ -35,6 +47,35 @@ streams:
 
     # A name in this binary's registry, not a path. Hooks are Go, compiled in.
     hook: enrich_clicks
+
+    # Writes ingestion_loaded_at: when the gateway received it, UTC, RFC3339.
+    # The SDK's column and the SDK's format, so a row this gateway lands and a
+    # row a pipeline lands are the same shape. Opt-in, because it adds a field
+    # and both a topic's subscribers and a table's columns notice.
+    stamp_loaded_at: true
+
+    # The claim check: an event too big is written somewhere WHOLE, and a
+    # reduced version continues carrying a pointer back to it.
+    #
+    # A flat 413 loses the event, and an oversized payload is usually the most
+    # interesting one somebody has -- the request with the whole document
+    # attached, which is the case worth debugging.
+    #
+    # `larger_than` measures one EVENT, after the hook. listen.max_body is a
+    # different thing: it caps a whole REQUEST and refuses with 413 before a
+    # byte is parsed.
+    #
+    # `hook` names a second hook that returns the reduced event. Which fields
+    # are heavy is domain knowledge and a YAML file cannot hold it. WITHOUT
+    # one, the event is archived and dropped from the stream -- not lost,
+    # because the archive has it whole, and counted, because an event that
+    # silently stops arriving is the worst outcome here.
+    oversize:
+      larger_than: 256KiB
+      archive:
+        type: files
+        path: gs://acme-oversize/clicks/
+      hook: strip_heavy_clicks
 
     buffer:
       durability: memory    # the only tier implemented; `disk` is refused by name
