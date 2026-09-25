@@ -257,6 +257,14 @@ caminho que um lote cheio toma, com retry e descarte.
 - **A imagem publicada não tem hooks**, que é o artefato honesto para um desenho
   de hook compilado: ela serve streams que não declaram `hook:`.
 
+## Uma rota, N tabelas
+
+O `auto_table` roteia cada evento para a tabela que o próprio payload nomeia, e
+a cria se não existir — quatro colunas fixas com o documento numa coluna `JSON`.
+Uma rota, N tabelas, nada declarado.
+
+Está em [Destinos da ingestão](/docs/ingestion-sinks/#uma-rota-n-tabelas-nada-declarado).
+
 ## Por onde seguir
 
 | se você quer | vá para |

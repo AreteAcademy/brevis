@@ -275,7 +275,28 @@ streams:
         allow: [app_, svc_]
         # A runaway producer stops at 20 rather than at BigQuery's
         # per-project quota, which is shared with everything else there.
+        # PER REPLICA. The budget lives in the process, so four replicas
+        # admit four times this. Sharing it needs a shared metastore, which
+        # is not built -- `metastore.type` refuses `redis` by name rather
+        # than letting anybody believe otherwise. Treat this as a circuit
+        # breaker, not a quota.
         max_new_per_hour: 20
+
+      # The cache of what is known about each table, so a per-event write is
+      # not a per-event lookup. A CACHE and not a source of truth: the
+      # destination settles whether a table exists, and N replicas racing to
+      # create one is the normal case -- AlreadyExists is success.
+      #
+      # `memory` is the only backend, and that is the design: a gateway that
+      # cannot start without Redis is a gateway with a new hard dependency
+      # for a cache.
+      #
+      # The TTL is how long it may be WRONG. A table dropped by hand outside
+      # the gateway makes every entry a lie: a minute of that is
+      # recoverable, an hour is an incident.
+      metastore:
+        type: memory
+        ttl: 60s
 
       # auto_table routes and does not write. `into` is what writes, and it
       # carries no `table`: the table comes from each event.

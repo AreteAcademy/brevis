@@ -269,3 +269,26 @@ func TestTheMetastoreCachesBothAnswersAndExpires(t *testing.T) {
 		t.Error("the entry outlived its TTL")
 	}
 }
+
+// The TTL comes from the config, and zero means the default rather than "never
+// cache" -- a cache with a zero TTL is a cache that does nothing, which is a
+// setting nobody means to write.
+func TestTheMetastoreTTLIsConfigured(t *testing.T) {
+	m := newMetastore(5 * time.Minute)
+	now := time.Date(2026, 9, 25, 10, 0, 0, 0, time.UTC)
+	m.put("app_orders", true, now)
+
+	if _, known := m.get("app_orders", now.Add(4*time.Minute)); !known {
+		t.Error("the entry expired before its configured TTL")
+	}
+	if _, known := m.get("app_orders", now.Add(6*time.Minute)); known {
+		t.Error("the entry outlived its configured TTL")
+	}
+
+	// And zero takes the default rather than expiring instantly.
+	d := newMetastore(0)
+	d.put("app_orders", true, now)
+	if _, known := d.get("app_orders", now.Add(30*time.Second)); !known {
+		t.Error("a zero TTL expired immediately instead of taking the default")
+	}
+}

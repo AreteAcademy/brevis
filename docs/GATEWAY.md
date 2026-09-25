@@ -432,6 +432,54 @@ event, which is the one thing it exists to prevent.
   producer stops there rather than at the provider's per-project quota, which
   is shared with everything else in the project.
 
+  **Per replica.** The budget lives in the process, so a deployment of four
+  admits four times this number. Sharing it needs a shared metastore and that
+  is not built — set this to the deployment's budget divided by the replica
+  count, or treat it as the circuit breaker it is rather than a quota.
+
+### The metastore is a cache
+
+```yaml
+metastore: {type: memory, ttl: 60s}
+```
+
+It exists so a per-event write is not a per-event lookup, and it caches **both**
+answers — "this table does not exist" is what saves a round trip on the hot path
+of a new producer retrying.
+
+It is a cache and **not** a source of truth. The destination settles whether a
+table exists, and *N* replicas racing to create one is the normal case rather
+than the edge: `AlreadyExists` is success, and this only reduces the race.
+
+The TTL is how long it may be **wrong**. A table dropped by hand outside the
+gateway makes every entry a lie; a minute of that is recoverable and an hour is
+an incident.
+
+**`memory` is the only backend, and that is the design.** A gateway that cannot
+start without Redis is a gateway with a new hard dependency for a cache.
+`redis` and `memcached` are refused **by name** rather than left out of the
+list, because somebody writing `redis` believes their replicas share a cache —
+and accepting the word while caching per process would make
+`max_new_per_hour` *N* times what they set, which is exactly the number they
+wrote down to bound.
+
+### What describes the table
+
+A table this creates carries a description naming where its rows came from:
+
+```
+Written by auto_table/app_orders via the Brevis SDK since 2026-09-25.
+```
+
+BigQuery only — Postgres and MySQL take a `COMMENT`, which the SDK's DDL
+generator does not write yet.
+
+A `description` **in the payload** would not work, and the reason is the one
+that killed a producer-supplied `schema`: the table is created inside a batch
+holding *N* events for it, so "only on creation" means "whichever event happened
+to be first". That is worse than last-write-wins, not better. This description
+is a function of the table's name, so it is the same on every run.
+
 A name outside the rules is refused **per event**, in the response, and every
 well-formed event in the same request still lands:
 

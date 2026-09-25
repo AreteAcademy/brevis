@@ -290,12 +290,81 @@ type Sink struct {
 	// namespace nobody reviewed and a typo is a new table rather than an error.
 	Naming Naming `yaml:"naming"`
 
+	// Metastore caches what is known about a table, so a per-event write does
+	// not become a per-event lookup.
+	Metastore Metastore `yaml:"metastore"`
+
 	// Into is the real destination, one per table. A nested sink, because
 	// `auto_table` routes and does not write: the four columns it lands are
 	// the same in Postgres (JSONB), MySQL (JSON), BigQuery (JSON) and Redshift
 	// (SUPER), so which of them receives the rows is a separate choice from
 	// the routing.
 	Into *Sink `yaml:"into"`
+}
+
+// Metastore is the cache of what is known about each table.
+//
+// A CACHE and not a source of truth: the destination settles whether a table
+// exists, and N replicas racing to create one is the normal case rather than
+// the edge -- `AlreadyExists` is success. This only reduces the race.
+type Metastore struct {
+	// Type is the backend. Only `memory` is implemented, and that is the
+	// design rather than a limitation: a gateway that cannot start without
+	// Redis is a gateway with a new hard dependency for a cache. Redis is the
+	// multi-replica optimisation, and it is refused by name until it exists.
+	Type string `yaml:"type"`
+
+	// TTL is how long the cache may be wrong.
+	//
+	// A table dropped by hand outside the gateway makes every entry a lie.
+	// Sixty seconds of wrongness is recoverable -- the next write recreates
+	// it -- and an hour is an incident.
+	TTL time.Duration `yaml:"ttl"`
+
+	// AddrFrom names the ENVIRONMENT VARIABLE holding a shared backend's
+	// address, never the address. Unused by `memory`, and declared here so the
+	// field exists where it will be needed rather than appearing later in a
+	// different shape.
+	AddrFrom string `yaml:"addr_from"`
+}
+
+// The metastore backends. Only the first exists.
+const (
+	MetastoreMemory    = "memory"
+	MetastoreRedis     = "redis"
+	MetastoreMemcached = "memcached"
+)
+
+// DefaultMetastoreTTL is how long a cache entry lives when the file names no
+// other. See Metastore.TTL for why it is a minute.
+const DefaultMetastoreTTL = 60 * time.Second
+
+func (m *Metastore) check() error {
+	switch m.Type {
+	case "", MetastoreMemory:
+		m.Type = MetastoreMemory
+	case MetastoreRedis, MetastoreMemcached:
+		// Named and refused rather than left out of the list. Somebody writing
+		// `redis` believes their replicas share a cache; accepting the word
+		// and caching per process would mean the creation limit is N times
+		// what they set -- which is exactly the number they wrote it down to
+		// bound.
+		return fmt.Errorf("`metastore.type: %s` is not implemented -- only %s is. "+
+			"A shared cache is the multi-replica optimisation and it is not built "+
+			"yet; with %s each replica caches its own, so `naming.max_new_per_hour` "+
+			"bounds each replica and not the deployment",
+			m.Type, MetastoreMemory, MetastoreMemory)
+	default:
+		return fmt.Errorf("`metastore.type` is %q (only %s is implemented)",
+			m.Type, MetastoreMemory)
+	}
+	if m.TTL < 0 {
+		return fmt.Errorf("`metastore.ttl` is %s", m.TTL)
+	}
+	if m.TTL == 0 {
+		m.TTL = DefaultMetastoreTTL
+	}
+	return nil
 }
 
 // Naming is the boundary a producer writes inside.
@@ -707,6 +776,11 @@ func (s Sink) usesBigQuery() bool {
 func (s *Sink) check() error {
 	if strings.TrimSpace(s.Type) == "" {
 		return fmt.Errorf("`type` is empty")
+	}
+	if s.Type == SinkAutoTable {
+		if err := s.Metastore.check(); err != nil {
+			return err
+		}
 	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {

@@ -463,3 +463,43 @@ func TestAutoTableIsRefusedOnAnEndpointWithNoAuth(t *testing.T) {
 		t.Errorf("the refusal does not name what is missing: %v", err)
 	}
 }
+
+// The metastore is a cache, and only `memory` exists.
+//
+// Somebody writing `redis` believes their replicas share one. Accepting the
+// word and caching per process would make `naming.max_new_per_hour` N times
+// what they set -- which is exactly the number they wrote down to bound. So it
+// is refused by name, and the refusal says what memory actually means for that
+// limit.
+func TestOnlyTheMetastoreBackendThatExistsIsAccepted(t *testing.T) {
+	for _, c := range []struct{ name, block, says string }{
+		{"redis, which is the optimisation nobody built", "{type: redis}", "is not implemented"},
+		{"memcached, the same", "{type: memcached}", "is not implemented"},
+		{"a backend that is not a thing", "{type: sqlite}", "only memory is implemented"},
+		{"a negative ttl", "{ttl: -1s}", "`metastore.ttl`"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := load(t, withSink(
+				"{type: auto_table, table_from: t, metastore: "+c.block+
+					", into: {type: postgres, dsn_from: D, write: append}}"))
+			if err == nil {
+				t.Fatal("it was accepted")
+			}
+			if !strings.Contains(err.Error(), c.says) {
+				t.Errorf("the refusal does not say %q: %v", c.says, err)
+			}
+		})
+	}
+
+	// And the defaults land: a file that says nothing gets memory and a
+	// minute, which is the design rather than a placeholder.
+	cfg, err := load(t, withSink(
+		"{type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, write: append}}"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := cfg.Streams[0].Sink.Metastore
+	if m.Type != gateway.MetastoreMemory || m.TTL != gateway.DefaultMetastoreTTL {
+		t.Errorf("the defaults are %q and %s", m.Type, m.TTL)
+	}
+}

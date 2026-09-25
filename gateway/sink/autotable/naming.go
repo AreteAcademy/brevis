@@ -23,6 +23,13 @@ const DefaultPattern = `^[a-z][a-z0-9_]{2,48}$`
 // Twenty is enough for a team onboarding a service and far under any provider's
 // quota, which matters because that quota is shared with everything else in the
 // project: a runaway producer here would take the rest of the platform with it.
+//
+// PER REPLICA, and that has to be said out loud. The budget lives in this
+// process, so a deployment of four replicas admits four times this number.
+// Sharing it needs a shared metastore, which is not built -- `metastore.type`
+// refuses `redis` by name rather than letting somebody believe otherwise. Set
+// this to the deployment's budget divided by the replica count, or treat it as
+// the circuit breaker it is rather than a quota.
 const DefaultMaxNewPerHour = 20
 
 // names decides whether a producer may write to a name, and whether a new

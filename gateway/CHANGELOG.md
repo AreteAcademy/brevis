@@ -13,6 +13,59 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.5.0] — 2026-09-25
+
+Closes `auto_table` against its plan.
+
+### The metastore is configurable, and only `memory` exists
+
+```yaml
+metastore: {type: memory, ttl: 60s}
+```
+
+The TTL was fixed at a minute; a file can name its own now. `redis` and
+`memcached` are refused **by name** rather than left out of the list, because
+somebody writing `redis` believes their replicas share a cache — and accepting
+the word while caching per process would make `naming.max_new_per_hour` *N*
+times what they set, which is exactly the number they wrote it down to bound.
+
+That memory is the design and not a limitation is the plan's own reasoning: a
+gateway that cannot start without Redis is a gateway with a new hard dependency
+for a cache.
+
+### `max_new_per_hour` is per replica, and the docs now say so
+
+The budget lives in the process. Four replicas admit four times the number.
+Nothing was wrong with it; nothing said it either, and a limit somebody sets to
+bound a deployment while it bounds a process is a surprise worth preventing in
+prose rather than in an incident.
+
+### A table `auto_table` creates says where its rows came from
+
+```
+Written by auto_table/app_orders via the Brevis SDK since 2026-09-25.
+```
+
+Free: the BigQuery driver already writes a description from the envelope's
+provider and entity, and the router now sets them. BigQuery only — Postgres and
+MySQL take a `COMMENT`, which the SDK's DDL generator does not write yet.
+
+**A `description` in the payload does not survive**, and the reason is the one
+that killed a producer-supplied `schema`: the table is created inside a batch
+holding *N* events for it, so "only on creation" means "whichever event happened
+to be first". That is worse than last-write-wins, not better. The plan asked for
+the payload version; this is the same intent with the non-determinism removed.
+
+### Two wires that compiled whether or not they were connected
+
+The config's TTL reaching the cache, and the provider and entity reaching the
+envelope. Both were right, and cutting either left every test passing — the
+package tests exercise the pieces directly, and the integration test reads rows
+out of Postgres, which has no table description to check. Both have a test now,
+and all three mutations fail.
+
+---
+
 ## [0.4.2] — 2026-09-25
 
 ### Fixed: a table `auto_table` created could not be merged into

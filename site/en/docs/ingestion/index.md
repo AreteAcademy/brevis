@@ -258,6 +258,14 @@ path a full batch takes, retried and buried.
 - **The published image has no hooks**, which is the honest artefact for a
   compiled-hook design: it serves streams that declare no `hook:`.
 
+## One route, N tables
+
+`auto_table` routes each event to the table its own payload names, creating it
+if absent — four fixed columns with the document in a `JSON` column. One route,
+N tables, nothing declared.
+
+It is in [Ingestion sinks](/en/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
+
 ## Where to go next
 
 | if you want | go to |

@@ -57,7 +57,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	unique := s.Into.Write == gateway.WriteMerge && s.Into.Type != gateway.SinkBigQuery
 
 	r := &router{build: b, field: s.TableFrom, names: n, unique: unique,
-		meta: newMetastore(0), made: map[string]gateway.Sinker{}, now: time.Now}
+		meta: newMetastore(s.Metastore.TTL), made: map[string]gateway.Sinker{}, now: time.Now}
 	if _, err := r.sinkFor(b.Ctx, probeTable); err != nil {
 		return nil, err
 	}
@@ -184,7 +184,23 @@ func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope,
 		}
 		row[ColumnID] = id
 
-		out[table] = append(out[table], sdk.Envelope{Payload: row})
+		// Provider and Entity travel on the envelope, not because anything
+		// here reads them back -- the id is already computed -- but because
+		// the BigQuery driver writes them into the TABLE's description when it
+		// creates one: "Written by auto_table/app_orders via the Brevis SDK
+		// since 2026-09-25."
+		//
+		// That is the plan's §4.2 answered a different way. A `description`
+		// taken from the PAYLOAD cannot work here: the table is created inside
+		// a batch that holds N events for it, so "only on creation" means
+		// "whichever event happened to be first", which is worse than the
+		// last-write-wins the plan rejected. This one is a function of the
+		// table's name, so it is the same on every run.
+		out[table] = append(out[table], sdk.Envelope{
+			Provider: Provider,
+			Entity:   table,
+			Payload:  row,
+		})
 	}
 	return out, nil
 }
