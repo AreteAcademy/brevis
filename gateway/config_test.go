@@ -38,7 +38,53 @@ func TestTheConfigRefusesWhatWouldFailSilently(t *testing.T) {
 		{
 			name: "a sink nobody implemented",
 			yaml: strings.Replace(valid, "type: pubsub", "type: kafka", 1),
-			says: "only pubsub and files are implemented",
+			says: "only pubsub, postgres and files are implemented",
+		},
+		{
+			// The one refusal in this file that is about somebody else's data.
+			// Appending a redelivery into a table somebody counts and merging
+			// into a log that wanted every arrival are both wrong, and the
+			// gateway cannot tell which table it was handed.
+			name: "a table with no write mode",
+			yaml: strings.Replace(valid,
+				"sink: {type: pubsub, project: p, topic: t}",
+				"sink: {type: postgres, dsn_from: PG_DSN, table: landing.clicks}", 1),
+			says: "`write` is empty",
+		},
+		{
+			name: "a write mode that does not exist",
+			yaml: strings.Replace(valid,
+				"sink: {type: pubsub, project: p, topic: t}",
+				"sink: {type: postgres, dsn_from: PG_DSN, table: landing.clicks, write: replace}", 1),
+			says: "use append or merge",
+		},
+		{
+			// upsert has a refusal of its own, and a longer one, because it is
+			// the word somebody reaches for MEANING merge. Falling through to
+			// "use append or merge" would leave them believing merge is upsert,
+			// and the two differ on whether a correction overwrites.
+			name: "upsert, which is a real mode nobody implemented",
+			yaml: strings.Replace(valid,
+				"sink: {type: pubsub, project: p, topic: t}",
+				"sink: {type: postgres, dsn_from: PG_DSN, table: landing.clicks, write: upsert}", 1),
+			says: "first delivery wins",
+		},
+		{
+			// A DSN carries a password and this file is in git, so the field
+			// takes the NAME of an environment variable. Leaving it out is the
+			// mistake; writing the string into it is the one the name prevents.
+			name: "a table with nowhere to get the connection string",
+			yaml: strings.Replace(valid,
+				"sink: {type: pubsub, project: p, topic: t}",
+				"sink: {type: postgres, table: landing.clicks, write: append}", 1),
+			says: "name the environment variable",
+		},
+		{
+			name: "a postgres sink with no table",
+			yaml: strings.Replace(valid,
+				"sink: {type: pubsub, project: p, topic: t}",
+				"sink: {type: postgres, dsn_from: PG_DSN, write: append}", 1),
+			says: "`table` is empty",
 		},
 		{
 			// The formula is frozen over exactly four fields, so three of them

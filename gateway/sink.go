@@ -3,9 +3,12 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/AreteAcademy/brevis/sdk"
 	"github.com/AreteAcademy/brevis/sdk/to"
+	topg "github.com/AreteAcademy/brevis/sdk/to/postgres"
 	"github.com/AreteAcademy/brevis/sdk/to/pubsub"
 )
 
@@ -119,12 +122,84 @@ func (f *filesSink) Write(ctx context.Context, batch []sdk.Envelope) (int64, err
 	return res.RowsLoaded, err
 }
 
+// postgresSink writes rows into a table.
+//
+// The two write modes are the driver's two paths, not a layer of this
+// package's own:
+//
+//	append  COPY FROM STDIN -- Postgres's fast path. No per-row round trip and
+//	        no index lookup per row, which is why it is the one to reach for
+//	        when the table is a log.
+//	merge   the batch staged into a TEMP table and inserted onto the target
+//	        with ON CONFLICT (ingestion_id) DO NOTHING, in ONE transaction:
+//	        BEGIN, CREATE TEMP … ON COMMIT DROP, COPY, INSERT, COMMIT. A crash
+//	        between any two of those leaves the table as it was, which is the
+//	        ACID part of this and the reason the staging table exists.
+//
+// `merge` needs a UNIQUE index on ingestion_id and the driver refuses without
+// one rather than silently appending -- which is the failure the mode exists to
+// prevent. The refusal travels the normal way: the batch is retried, then
+// buried in the dead letter with the reason, so the events are not lost while
+// somebody creates the index.
+//
+// What makes merge mean anything is that ingestion_id is the SAME id a batch
+// fetcher computes for the same record: the frozen UUID v5 over
+// provider|entity|source_key|record_ts. So a row this gateway lands and a row a
+// pipeline lands are one row, with no reconciliation between them.
+type postgresSink struct {
+	table topg.Table
+	dedup sdk.Dedup
+	name  string
+}
+
+func newPostgresSink(s Sink) (*postgresSink, error) {
+	dsn, set := os.LookupEnv(s.DSNFrom)
+	if !set || strings.TrimSpace(dsn) == "" {
+		return nil, fmt.Errorf("%s is empty, and it is where the connection string "+
+			"for %s was meant to be", s.DSNFrom, s.Table)
+	}
+
+	dedup := sdk.DedupNone
+	if s.Write == WriteMerge {
+		dedup = sdk.DedupMerge
+	}
+	return &postgresSink{
+		table: topg.Table{DSN: dsn, Name: s.Table},
+		dedup: dedup,
+		name:  "postgres:" + s.Table + " (" + s.Write + ")",
+	}, nil
+}
+
+func (p *postgresSink) Describe() string { return p.name }
+
+func (p *postgresSink) Write(ctx context.Context, batch []sdk.Envelope) (int64, error) {
+	// No Columns. A pipeline declares them because its rows have one shape it
+	// controls; a gateway's batch is whatever N clients posted in the last
+	// flush window, and the two shapes are allowed to differ.
+	//
+	// The driver resolves the column list from the table itself, intersected
+	// with what the batch carries, BEFORE touching the server -- so a field the
+	// table does not have is refused with the message that fixes it instead of
+	// failing mid-COPY with `column "x" of relation "y" does not exist`, and a
+	// field one event omits is written as NULL.
+	res, err := p.table.Write(ctx, batch, sdk.WriteOptions{Dedup: p.dedup})
+	if res == nil {
+		return 0, err
+	}
+	// RowsLoaded on the error path too, for the reason the Pub/Sub sink does
+	// it: reporting zero for a partial write has the operator re-send what
+	// already landed.
+	return res.RowsLoaded, err
+}
+
 // build resolves a sink. It is the only place a type name becomes an
 // implementation, so an unknown one cannot reach the request path.
 func build(s Sink) (Sinker, error) {
 	switch s.Type {
 	case SinkPubSub:
 		return newPubSubSink(s), nil
+	case SinkPostgres:
+		return newPostgresSink(s)
 	case SinkFiles:
 		return newFilesSink(s), nil
 	default:

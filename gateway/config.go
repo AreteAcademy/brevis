@@ -100,6 +100,38 @@ type Buffer struct {
 	Durability string `yaml:"durability"`
 
 	Flush Flush `yaml:"flush"`
+
+	// Workers is how many batches this stream delivers at once.
+	//
+	// It exists because a delivery is I/O: one worker means a stream is as fast
+	// as one round trip to Pub/Sub or one COPY, no matter how many cores the
+	// pod has. It is bounded because the opposite -- a goroutine per batch --
+	// is a sink outage turning into unbounded memory and a thundering herd on
+	// the way back up.
+	//
+	// Zero takes the default, like every other number in this file. There is
+	// no way to ask for none, because a stream with no worker accepts events
+	// and delivers nothing.
+	Workers int `yaml:"workers"`
+
+	// Queue is how many full batches may wait for a worker.
+	//
+	// This is the shock absorber: a sink that pauses for a second does not
+	// reach the caller at all, it fills queue slots. When they are gone, the
+	// gateway says so -- see MaxRecords.
+	//
+	// Zero takes the default. A queue of none is expressible only as 1, which
+	// is near enough: with one worker busy, the second batch waits either way.
+	Queue int `yaml:"queue"`
+
+	// MaxRecords is the ceiling on events held in memory for this stream.
+	// Past it the gateway answers 503 instead of accepting.
+	//
+	// A 503 is the honest answer and an accepted event that is never delivered
+	// is not. It is also SAFE to retry here in a way it is not for most
+	// services: the ingestion_id is a frozen function of the event, so the same
+	// POST sent again is the same record, and a `merge` sink absorbs it.
+	MaxRecords int `yaml:"max_records"`
 }
 
 type Flush struct {
@@ -131,6 +163,18 @@ type Sink struct {
 
 	// Path is where `files` writes: a directory, gs:// or s3://.
 	Path string `yaml:"path"`
+
+	// DSNFrom names the ENVIRONMENT VARIABLE holding the connection string,
+	// never the string. A DSN carries a password and this file is in git --
+	// the same split `secrets:` makes in a workflow.
+	DSNFrom string `yaml:"dsn_from"`
+
+	// Table is schema-qualified: `landing.clicks`.
+	Table string `yaml:"table"`
+
+	// Write is `append` or `merge`. Required for a table, because the right
+	// answer depends on what the table is FOR and only its owner knows.
+	Write string `yaml:"write"`
 
 	// OrderingKey names the field whose value orders the messages. Empty is no
 	// ordering, which is the default and what every other destination gives.
@@ -168,8 +212,48 @@ const (
 
 	DurabilityMemory = "memory"
 
-	SinkPubSub = "pubsub"
-	SinkFiles  = "files"
+	SinkPubSub   = "pubsub"
+	SinkFiles    = "files"
+	SinkPostgres = "postgres"
+)
+
+// How a row is written. The words are the ones a data engineer already uses,
+// and each maps to what the driver actually does rather than to an intention.
+const (
+	// WriteAppend adds rows and never looks at what is there. In Postgres that
+	// is COPY FROM STDIN, which is its fast path: no per-row round trip, no
+	// index lookup per row.
+	//
+	// Two deliveries of the same event land twice. That is correct for a log
+	// and wrong for a table anybody counts, which is why it is named rather
+	// than defaulted.
+	WriteAppend = "append"
+
+	// WriteMerge stages the batch into a temporary table and inserts it onto
+	// the target with ON CONFLICT (ingestion_id) DO NOTHING, all inside one
+	// transaction: BEGIN, CREATE TEMP … ON COMMIT DROP, COPY, INSERT, COMMIT.
+	// A crash between any two of those leaves the table as it was.
+	//
+	// The FIRST delivery of an event wins. A redelivery is ignored, not
+	// applied -- so a correction that arrives under the same ingestion_id does
+	// not overwrite what is there. That is the right behaviour for an event,
+	// which happened once and does not change, and the wrong one for a row
+	// that carries a mutable state.
+	//
+	// It needs a UNIQUE index on ingestion_id, and the driver refuses without
+	// one rather than silently appending -- which is the failure this mode
+	// exists to prevent.
+	WriteMerge = "merge"
+
+	// WriteUpsert would be the other half: ON CONFLICT (ingestion_id) DO
+	// UPDATE, where the LAST delivery wins. It is named here so the config can
+	// refuse the word instead of accepting it and behaving like merge.
+	//
+	// Not implemented: it is a Dedup mode the SDK does not have, and adding
+	// one means every writer -- BigQuery, MySQL, Redshift, Files, Pub/Sub --
+	// answers for it explicitly, or it becomes a silent append in whichever
+	// one was missed.
+	WriteUpsert = "upsert"
 )
 
 // Defaults, and each one is a number with a reason.
@@ -190,6 +274,21 @@ const (
 	defaultAttempts   = 4
 	defaultBackoff    = 500 * time.Millisecond
 	defaultMaxBackoff = 10 * time.Second
+
+	// Four deliveries at once. A batch is one round trip and mostly waiting, so
+	// this is not a CPU number; it is how many outstanding calls a sink is
+	// asked to carry, and four keeps a small pod from looking like a burst to
+	// whatever is on the other side.
+	defaultWorkers = 4
+	// Sixty-four batches waiting. At the default batch size that is 32,000
+	// events of shock absorption -- roughly a sink pausing for a minute at
+	// 500 events a second -- before any caller is told to slow down.
+	defaultQueue = 64
+	// The buffer's ceiling as a multiple of one batch. Twenty batches of room
+	// above the flush size: enough that a brief handoff failure is invisible,
+	// small enough that the number of events a crash can lose stays a number
+	// the operator can state.
+	defaultMaxRecordsFactor = 20
 )
 
 func (c *Config) check() error {
@@ -279,6 +378,31 @@ func (s *Stream) check() error {
 	if s.Buffer.Flush.Records == 0 {
 		s.Buffer.Flush.Records = defaultFlushRecords
 	}
+	if s.Buffer.Workers == 0 {
+		s.Buffer.Workers = defaultWorkers
+	}
+	if s.Buffer.Workers < 0 {
+		return fmt.Errorf("`buffer.workers` is %d: a stream with no worker "+
+			"accepts events and delivers none", s.Buffer.Workers)
+	}
+	if s.Buffer.Queue == 0 {
+		s.Buffer.Queue = defaultQueue
+	}
+	if s.Buffer.Queue < 0 {
+		return fmt.Errorf("`buffer.queue` is %d", s.Buffer.Queue)
+	}
+	if s.Buffer.MaxRecords == 0 {
+		s.Buffer.MaxRecords = s.Buffer.Flush.Records * defaultMaxRecordsFactor
+	}
+	if s.Buffer.MaxRecords < s.Buffer.Flush.Records {
+		// Below the flush size the buffer could never reach a full batch, so
+		// every request past the ceiling would be refused while the events
+		// already held wait for the timer. The config says what it means
+		// instead of behaving that way.
+		return fmt.Errorf("`buffer.max_records` is %d and `buffer.flush.records` "+
+			"is %d: the ceiling is below one batch, so a batch could never fill",
+			s.Buffer.MaxRecords, s.Buffer.Flush.Records)
+	}
 	if s.Buffer.Flush.Records < 1 {
 		return fmt.Errorf("`buffer.flush.records` is %d", s.Buffer.Flush.Records)
 	}
@@ -345,7 +469,8 @@ func (i *Identity) check() error {
 func (s *Sink) check() error {
 	switch s.Type {
 	case "":
-		return fmt.Errorf("`type` is empty (use %s or %s)", SinkPubSub, SinkFiles)
+		return fmt.Errorf("`type` is empty (use %s, %s or %s)",
+			SinkPubSub, SinkPostgres, SinkFiles)
 	case SinkPubSub:
 		if strings.TrimSpace(s.Project) == "" {
 			return fmt.Errorf("`project` is empty")
@@ -353,6 +478,35 @@ func (s *Sink) check() error {
 		if strings.TrimSpace(s.Topic) == "" {
 			return fmt.Errorf("`topic` is empty")
 		}
+	case SinkPostgres:
+		if strings.TrimSpace(s.DSNFrom) == "" {
+			return fmt.Errorf("`dsn_from` is empty: name the environment variable " +
+				"holding the connection string, never the string")
+		}
+		if strings.TrimSpace(s.Table) == "" {
+			return fmt.Errorf("`table` is empty (schema-qualified: landing.clicks)")
+		}
+		switch s.Write {
+		case WriteAppend, WriteMerge:
+		case WriteUpsert:
+			return fmt.Errorf("`write: %s` is not implemented yet. %s ignores a "+
+				"redelivery (ON CONFLICT DO NOTHING, first delivery wins); %s would "+
+				"apply it (DO UPDATE, last delivery wins). They differ on whether a "+
+				"correction overwrites, so this refuses rather than giving you one "+
+				"under the other's name", WriteUpsert, WriteMerge, WriteUpsert)
+		case "":
+			// Not defaulted. Appending a redelivery into a table somebody
+			// counts, and merging into a log that wanted every arrival, are
+			// both wrong -- and which is which is a property of the table, not
+			// of this gateway.
+			return fmt.Errorf("`write` is empty (use %s or %s): appending a "+
+				"redelivery into a table somebody counts and merging into a log "+
+				"that wanted every arrival are both wrong, and only the table's "+
+				"owner knows which it is", WriteAppend, WriteMerge)
+		default:
+			return fmt.Errorf("`write` is %q (use %s or %s)", s.Write, WriteAppend, WriteMerge)
+		}
+
 	case SinkFiles:
 		// A local directory, gs:// or s3://: to.Files reads all three, so the
 		// dead letter can be a folder on a laptop and a bucket in production
@@ -361,8 +515,8 @@ func (s *Sink) check() error {
 			return fmt.Errorf("`path` is empty (a directory, gs:// or s3://)")
 		}
 	default:
-		return fmt.Errorf("`type` is %q, and only %s and %s are implemented",
-			s.Type, SinkPubSub, SinkFiles)
+		return fmt.Errorf("`type` is %q, and only %s, %s and %s are implemented",
+			s.Type, SinkPubSub, SinkPostgres, SinkFiles)
 	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {

@@ -1,11 +1,13 @@
 package gateway_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/gateway"
 )
@@ -172,6 +174,14 @@ func servingAuthed(t *testing.T, dir string) *httptest.Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = srv.Close(t.Context()) })
+	// Not t.Context(): it is cancelled just BEFORE cleanups run, so Close
+	// would see a dead deadline and return without waiting for the deliveries
+	// -- which then race the TempDir being removed. A shutdown window is a
+	// window, and a test that gives none is testing a different thing.
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = srv.Close(ctx)
+	})
 	return httptest.NewServer(srv.Handler())
 }

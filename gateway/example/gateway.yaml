@@ -42,6 +42,21 @@ streams:
         every: 1s
         records: 500
 
+      # Delivery is asynchronous and bounded. A request appends to the buffer
+      # and returns; a full batch is handed to one of these workers, so no
+      # caller ever waits for a publish, a COPY, or a sink that is down.
+      #
+      # workers     how many batches are delivered at once
+      # queue       how many full batches may wait for a worker
+      # max_records the ceiling on events held in memory for this stream.
+      #             Past it the gateway answers 503 rather than accepting an
+      #             event it has nowhere to put -- and the 503 is safe to act
+      #             on: send the same body again, the ingestion_id is a frozen
+      #             function of the event, so a retry is the same record.
+      workers: 4
+      queue: 64
+      max_records: 10000
+
     sink:
       type: pubsub
       project: acme-prod
@@ -71,3 +86,57 @@ streams:
     dead_letter:
       type: files
       path: ./dead-letter/clicks/
+
+  # The same events into a table, which is the other half of what a gateway is
+  # for: one stream feeds whoever subscribes, another lands what somebody will
+  # query.
+  - name: orders
+    path: /v1/orders
+    format: ndjson          # one object per line: a batch in one request
+
+    identity:
+      provider: shop
+      entity: order
+      source_key: order_id
+      record_ts: placed_at
+
+    buffer:
+      flush:
+        every: 2s
+        records: 1000
+
+    sink:
+      type: postgres
+
+      # The NAME of the environment variable holding the connection string,
+      # never the string: a DSN carries a password and this file is in git.
+      dsn_from: BREVIS_ORDERS_DSN
+
+      # Schema-qualified. The table must exist -- this does not create one,
+      # because a service that creates tables turns a typo here into a second
+      # table nobody is reading.
+      table: landing.orders
+
+      # Required, never defaulted. The two are genuinely different and only
+      # the table's owner knows which it is:
+      #
+      #   append  COPY FROM STDIN, Postgres's fast path. Every delivery lands,
+      #           including a redelivery. Right for a log, wrong for a table
+      #           somebody counts.
+      #   merge   the batch staged in a TEMP table and inserted with
+      #           ON CONFLICT (ingestion_id) DO NOTHING, all in ONE
+      #           transaction. The FIRST delivery wins and a redelivery is
+      #           ignored. Needs a UNIQUE index on ingestion_id, and the
+      #           driver refuses without one rather than silently appending:
+      #
+      #             CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id)
+      #
+      # `upsert` -- ON CONFLICT DO UPDATE, where the LAST delivery wins -- is
+      # refused by name. It is a real mode nobody has implemented yet, and
+      # accepting the word while behaving like `merge` is the failure this
+      # field exists to prevent.
+      write: merge
+
+    dead_letter:
+      type: files
+      path: ./dead-letter/orders/

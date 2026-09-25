@@ -150,6 +150,122 @@ on a laptop and a bucket in production with no change to the gateway. In compose
 it is a **volume**: written inside the image it would die with the container,
 which is a slower way of losing the events it exists to keep.
 
+## Where it writes
+
+Three shapes of destination, and the list is deliberately explicit — a
+connector that is *planned* and a connector that *runs* are different things to
+somebody choosing this.
+
+| Sink | State | What a write is |
+|---|---|---|
+| `pubsub` | **runs** | one publish per batch, attributes and ordering key from the event's own fields |
+| `postgres` | **runs** | `COPY FROM STDIN`, or a staged `INSERT … ON CONFLICT` in one transaction |
+| `files` | **runs** | NDJSON to a directory, `gs://` or `s3://` — also what the dead letter uses |
+| `bigquery` | next | the SDK driver exists; the sink wrapper does not |
+| `mysql`, `redshift` | after that | the SDK drivers exist |
+| `sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka`, `rabbitmq` | planned | nothing written |
+
+An unknown `type:` is **refused at load**, naming the three that are
+implemented. A gateway that starts on a sink it does not have is one that drops
+events for a reason nobody can see.
+
+`gs://` and `s3://` are not separate connectors: `files` reads all three path
+shapes, so the dead letter is a folder on a laptop and a bucket in production
+with no change here.
+
+### Writing to Postgres
+
+```yaml
+sink:
+  type: postgres
+  dsn_from: BREVIS_ORDERS_DSN     # the NAME of the variable, never the string
+  table: landing.orders           # schema-qualified; it must already exist
+  write: merge                    # required
+```
+
+`write` is **required and never defaulted**, because the two modes are
+genuinely different and only the table's owner knows which one it is:
+
+**`append`** is `COPY FROM STDIN` — Postgres's fast path, no per-row round trip
+and no index lookup per row. Every delivery lands, a redelivery included. Right
+for a log, wrong for a table somebody counts.
+
+**`merge`** stages the batch in a `TEMP TABLE … ON COMMIT DROP`, `COPY`s into
+it, and runs `INSERT … SELECT … ON CONFLICT (ingestion_id) DO NOTHING` — all
+inside **one transaction**. A crash between any two of those steps leaves the
+table exactly as it was. The **first** delivery of an event wins and a
+redelivery is ignored, which is right for an event (it happened once) and wrong
+for a row carrying a mutable state.
+
+It needs a `UNIQUE` index on `ingestion_id`, and the driver **refuses without
+one** rather than silently appending — without the index `ON CONFLICT` has
+nothing to match, and every redelivery would duplicate into a table whose owner
+asked for the opposite:
+
+```sql
+CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);
+```
+
+The refusal is not a dropped batch: it is retried, then buried in the dead
+letter with the reason and the `CREATE INDEX` on the record, so nobody loses
+events while somebody creates the index.
+
+**`upsert` is refused by name.** `ON CONFLICT DO UPDATE`, where the *last*
+delivery wins, is a real mode that is **not implemented** — it is a dedup mode
+the SDK does not have, and adding one means every writer answers for it
+explicitly or it becomes a silent append in whichever was missed. Accepting the
+word while behaving like `merge` is the exact failure this field exists to
+prevent, so the config says so instead.
+
+What makes `merge` mean anything across products: the `ingestion_id` is the
+**same id a batch fetcher computes** for the same record — the frozen UUID v5
+over `provider|entity|source_key|record_ts`. A row this gateway lands and a row
+a pipeline lands are one row, with no reconciliation between them.
+
+No `Columns` declaration is sent. A pipeline declares them because its rows have
+one shape it controls; a gateway's batch is whatever *N* clients posted in one
+flush window. The driver resolves the column list from the table itself,
+intersected with what the batch carries, **before** touching the server — so an
+unknown field is refused with the message that fixes it instead of failing
+mid-`COPY`, and a field one event omits is written as `NULL`.
+
+## The request never waits for the sink
+
+A request decodes the body, runs the hook, computes the identity, appends to a
+buffer and returns. **That is all it does.** A full batch is handed to a worker
+pool, and the publish, the `COPY`, the retries and the dead letter all happen
+there.
+
+This is not cosmetic. Before it, the request that happened to fill a batch ran
+the delivery inline — so one caller in every `flush.records` paid the full round
+trip, and when the sink was down, the full retry window. A p99 shaped by which
+caller was unlucky is not a p99 anybody can act on.
+
+```yaml
+buffer:
+  flush: {every: 1s, records: 500}
+  workers: 4          # batches delivered at once
+  queue: 64           # full batches that may wait for a worker
+  max_records: 10000  # events held in memory before the gateway says no
+```
+
+**It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
+outage into unbounded memory and a thundering herd on the way back up. So the
+queue has a size, and when it and the buffer are both full the gateway answers
+**`503` with `Retry-After`** rather than accepting an event it has nowhere to
+put. An accepted event that is never delivered is the one outcome this service
+exists to not have.
+
+The `503` is **safe to act on** in a way it is not for most services: the
+`ingestion_id` is a frozen function of the event's own fields, so sending the
+same body again produces the *same record*, not a second one — and a `merge`
+sink absorbs it. Retrying a `503` here cannot create a duplicate.
+
+Shutdown waits for what is in flight, and a drain that outlasts its window is
+**reported** rather than waited on: one batch can hold the full retry window,
+and a shutdown that blocks past its deadline is a pod the orchestrator kills —
+which loses the events anyway and says nothing about why.
+
 ## Configuration
 
 See [`gateway/example/gateway.yaml`](../gateway/example/gateway.yaml). Every
@@ -163,6 +279,9 @@ one failure that field exists to prevent.
 **`identity` requires all four fields.** The `ingestion_id` is a UUID v5 over
 `provider|entity|source_key|record_ts` and the formula is frozen, so leaving one
 out produces a *different* id rather than a weaker one.
+
+**A Postgres sink requires `write`**, and refuses `upsert` by name. See
+[Writing to Postgres](#writing-to-postgres).
 
 ## The hook is Go, compiled in
 

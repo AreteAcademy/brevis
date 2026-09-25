@@ -146,13 +146,36 @@ func (s *Server) Close(ctx context.Context) error {
 	return first
 }
 
-// pipe is one stream: the handler, its buffer and its sink.
+// errSaturated is the buffer at its ceiling: the sink is behind and this
+// stream is holding all it agreed to hold.
+//
+// A distinct error and not a generic one because it is the only failure here
+// that is about CAPACITY rather than about the request, and the caller is meant
+// to do something different about it -- wait and send the same body again.
+var errSaturated = errors.New("saturated")
+
+// pipe is one stream: the handler, its buffer, and the pool that delivers.
+//
+// The request goroutine never delivers. It decodes, runs the hook, computes the
+// identity and appends to a slice; a full batch is handed to `queue` and picked
+// up by a worker. That is the whole of the asynchrony, and it is what keeps a
+// sink's latency out of the caller's: a Pub/Sub publish that takes 40 ms, a
+// COPY that takes 200, a sink that is down and burns the full retry window --
+// none of it is time a client spends waiting.
+//
+// What it is NOT is fire-and-forget. The queue is bounded, and when it and the
+// buffer are both full the gateway answers 503 rather than accepting an event
+// it has nowhere to put. An accepted event that is never delivered is the one
+// outcome this service exists to not have.
 type pipe struct {
 	stream  Stream
 	hook    Hook
 	sink    Sinker
 	dead    Sinker
 	maxBody int64
+
+	queue chan []sdk.Envelope
+	wg    sync.WaitGroup
 
 	mu      sync.Mutex
 	batch   []sdk.Envelope
@@ -161,7 +184,24 @@ type pipe struct {
 }
 
 func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64) *pipe {
-	return &pipe{stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody}
+	p := &pipe{
+		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
+		queue: make(chan []sdk.Envelope, st.Buffer.Queue),
+	}
+	p.wg.Add(st.Buffer.Workers)
+	for range st.Buffer.Workers {
+		go func() {
+			defer p.wg.Done()
+			// context.Background and not a request's: by the time a worker has
+			// this batch the caller is gone, and a delivery cancelled because
+			// one client disconnected would lose the events of every other
+			// client in the same batch. send bounds itself with sendTimeout.
+			for batch := range p.queue {
+				_ = p.send(context.Background(), batch)
+			}
+		}()
+	}
+	return p
 }
 
 // ServeHTTP accepts. It does the least work that is still honest and leaves
@@ -186,7 +226,22 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	accepted, rejected := p.prepare(events)
 	if len(accepted) > 0 {
-		p.enqueue(r.Context(), accepted)
+		if err := p.enqueue(accepted); err != nil {
+			// 503 and not 202. The buffer is at its ceiling, so accepting
+			// these would mean holding events with nowhere to put them --
+			// and a 202 that ends in a silent drop is worse than a refusal.
+			//
+			// Safe to retry, in a way it is not for most services: the
+			// ingestion_id is a frozen function of the event itself, so
+			// sending this exact body again produces the same record rather
+			// than a second one.
+			w.Header().Set("Retry-After", "1")
+			http.Error(w, "this stream's buffer is full and the sink is behind; "+
+				"send the same body again -- it carries the same ingestion_id, "+
+				"so a retry is the same record and not a duplicate",
+				http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	// 202 and not 200: the gateway has ACCEPTED them, and with
@@ -269,25 +324,67 @@ func (p *pipe) identify(e map[string]any) (sdk.Envelope, error) {
 	return env, nil
 }
 
-// enqueue adds to the batch and sends when it is full, or arms the timer that
-// sends it when it is old.
-func (p *pipe) enqueue(ctx context.Context, envs []sdk.Envelope) {
+// enqueue buffers, and hands a full batch to the pool. It returns errSaturated
+// when the buffer is at its ceiling, and takes nothing in that case: the 503
+// that follows has to be the truth about these events, not a note attached to
+// events that were kept anyway.
+//
+// It never delivers. Handing a batch to the pool is a channel send, and when
+// the pool is busy that send FAILS rather than waiting -- the batch stays
+// buffered and leaves with the next request or the timer. The request goroutine
+// leaves here in constant time either way.
+func (p *pipe) enqueue(envs []sdk.Envelope) error {
 	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.closing {
+		// Shutting down. Refusing is the honest answer: the listener is on its
+		// way out and an event accepted now has no drain left to leave by.
+		return errSaturated
+	}
+	if len(p.batch)+len(envs) > p.stream.Buffer.MaxRecords {
+		return errSaturated
+	}
 	p.batch = append(p.batch, envs...)
 
 	if len(p.batch) >= p.stream.Buffer.Flush.Records {
-		ready := p.take()
-		p.mu.Unlock()
-		p.send(ctx, ready)
-		return
+		p.handoff()
+		return nil
 	}
-
 	// A partial batch goes anyway when it gets old, so a stream at one event a
 	// minute is not a stream that never lands.
+	p.arm()
+	return nil
+}
+
+// handoff gives a full batch to a worker, or leaves it buffered. The caller
+// holds the lock, and that is what makes it safe: the check against `closing`
+// and the send on the queue are one step, so a timer firing while the gateway
+// shuts down cannot send on a channel close has already closed.
+//
+// The send never waits. A full queue means every worker is busy, and the batch
+// stays at the FRONT of the buffer -- the order events arrived in is the order
+// they leave in, and a batch that lost a race should not also lose its place.
+// The next request or the timer tries it again.
+func (p *pipe) handoff() {
+	if p.closing {
+		return
+	}
+	ready := p.take()
+	select {
+	case p.queue <- ready:
+	default:
+		p.batch = append(ready, p.batch...)
+		p.arm()
+	}
+}
+
+// arm starts the flush timer if it is not already running. The caller holds
+// the lock.
+func (p *pipe) arm() {
 	if p.timer == nil && !p.closing {
 		p.timer = time.AfterFunc(p.stream.Buffer.Flush.Every, p.flush)
 	}
-	p.mu.Unlock()
 }
 
 // take empties the batch. The caller holds the lock.
@@ -301,22 +398,27 @@ func (p *pipe) take() []sdk.Envelope {
 	return ready
 }
 
+// flush is the timer firing: a partial batch that has waited long enough. It
+// goes out the same way a full one does.
 func (p *pipe) flush() {
 	p.mu.Lock()
-	ready := p.take()
-	p.mu.Unlock()
-	if len(ready) > 0 {
-		p.send(context.Background(), ready)
+	defer p.mu.Unlock()
+	p.timer = nil
+	if len(p.batch) > 0 {
+		p.handoff()
 	}
 }
 
-// send delivers a batch, retrying, and gives up into the dead letter.
+// send delivers a batch, retrying, and gives up into the dead letter. It
+// returns what the sink last said, which is nil when the batch landed and the
+// cause when it was buried.
 //
-// context.Background and not the request's: the client is gone by now, and a
-// batch cancelled because one caller disconnected would lose the events of
-// every other caller in it.
-func (p *pipe) send(_ context.Context, batch []sdk.Envelope) {
-	ctx, cancel := context.WithTimeout(context.Background(), sendTimeout)
+// The ctx is never a request's. The caller that filled a batch is gone by the
+// time it is delivered, and a batch cancelled because one client disconnected
+// would lose the events of every OTHER client in it. On shutdown it is the
+// drain's deadline, which is a window the operator set.
+func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
+	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
 	defer cancel()
 
 	r := p.stream.Retry
@@ -327,7 +429,7 @@ func (p *pipe) send(_ context.Context, batch []sdk.Envelope) {
 		if err == nil {
 			slog.Info("delivered", "stream", p.stream.Name,
 				"sink", p.sink.Describe(), "events", n, "attempt", attempt)
-			return
+			return nil
 		}
 		if attempt == r.Attempts {
 			break
@@ -346,6 +448,7 @@ func (p *pipe) send(_ context.Context, batch []sdk.Envelope) {
 
 giveUp:
 	p.bury(ctx, batch, err)
+	return err
 }
 
 // bury writes what the sink would not take, with the reason attached.
@@ -406,16 +509,52 @@ func backoff(r Retry, attempt int) time.Duration {
 	return wait/2 + time.Duration(rand.Int64N(int64(wait/2)+1))
 }
 
+// close drains what is buffered THROUGH the same path a full batch takes:
+// retried, and buried with the reason when the sink will not have it.
+//
+// Writing straight to the sink here was a hole. A batch the sink refused at
+// shutdown was lost -- no retry, no dead letter -- which is the one outcome the
+// dead letter exists to prevent, and it happened on the ordinary path of every
+// deploy.
+//
+// The order is: stop accepting, put what is left on the queue, close the queue,
+// wait for the workers. Closing the queue is what ends them, and waiting is
+// what makes a clean stop mean the events left.
 func (p *pipe) close(ctx context.Context) error {
 	p.mu.Lock()
 	p.closing = true
+	// take stops the timer, so no flush is armed past this point -- and one
+	// already running is blocked on this lock and will find closing set.
 	ready := p.take()
 	p.mu.Unlock()
-	if len(ready) == 0 {
-		return nil
+
+	// Nothing else can send on the queue now: closing is set, and every send
+	// happens under the same lock behind that check. So this is the last
+	// batch on, and closing the channel after it is what ends the workers.
+	if len(ready) > 0 {
+		select {
+		case p.queue <- ready:
+		case <-ctx.Done():
+			// No room before the window closed. Delivered here rather than
+			// dropped: send buries what the sink refuses, and the alternative
+			// is losing a batch on the way out.
+			_ = p.send(context.Background(), ready)
+		}
 	}
-	_, err := p.sink.Write(ctx, ready)
-	return err
+	close(p.queue)
+
+	done := make(chan struct{})
+	go func() { p.wg.Wait(); close(done) }()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		// The workers are still delivering. Reported rather than waited on:
+		// one batch can hold the full retry window, and a drain that outlasts
+		// its deadline is something the operator has to see.
+		return fmt.Errorf("stream %q: the drain did not finish in the window: %w",
+			p.stream.Name, ctx.Err())
+	}
 }
 
 // decode reads a body in the format the stream declared. Never sniffed:
