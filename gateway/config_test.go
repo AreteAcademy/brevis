@@ -149,7 +149,7 @@ func TestAnUnknownHookIsRefusedAtLoadAndNamesWhatExists(t *testing.T) {
 	// And with none registered at all, the message says how hooks get there --
 	// because "no hook called x" with an empty list is a dead end.
 	_, err = gateway.New(cfg, gateway.NewHooks())
-	if err == nil || !strings.Contains(err.Error(), "compiled into this binary") {
+	if err == nil || !strings.Contains(err.Error(), "compiled into the binary") {
 		t.Errorf("with no hooks at all the error is: %v", err)
 	}
 }

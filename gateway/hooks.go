@@ -80,8 +80,9 @@ func (h *Hooks) get(name string) (Hook, error) {
 	}
 	if len(h.by) == 0 {
 		return nil, fmt.Errorf("no hook called %q is registered, and neither is any "+
-			"other: hooks are Go, compiled into this binary and added with "+
-			"Hooks.Register before Run", name)
+			"other. Hooks are Go, compiled into the binary: register them and pass "+
+			"them to gateway.Main. The published image has none, so a stream with a "+
+			"`hook:` needs a binary of its own -- see gateway/example", name)
 	}
 	names := make([]string, 0, len(h.by))
 	for n := range h.by {

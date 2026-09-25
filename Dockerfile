@@ -67,7 +67,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
       go build -trimpath \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
-      -o /out/brevis-gateway ./example \
+      -o /out/brevis-gateway ./cmd/gateway \
     && mkdir -p /out/dead-letter
 
 # Two images from the SAME binary, because the two roles have opposite

@@ -169,7 +169,7 @@ out produces a *different* id rather than a weaker one.
 ```go
 hooks := gateway.NewHooks()
 hooks.MustRegister("enrich_clicks", enrichClicks)
-gateway.Run(hooks)
+gateway.Main(hooks)
 
 func enrichClicks(e map[string]any) (map[string]any, error) {
     host, _ := e["host"].(string)
@@ -183,6 +183,16 @@ function is 93 ns/op against Starlark's 959 and yaegi's 1,281, for nothing added
 to the binary — and `plugin.Open` is not an option at all, because under
 `CGO_ENABLED=0`, which is the build every artifact here ships with, it returns
 `plugin: not implemented`.
+
+### The published image has no hooks
+
+`areteacademy/brevis-gateway` is a gateway with none registered, which is the
+honest artifact for a compiled-hook design: it serves streams that declare no
+`hook:`, and refuses to start on one that does, naming how hooks get there.
+
+A hook of your own means a binary of your own, and it is ten lines around
+`gateway.Main` — the same arrangement the SDK asks for, so both products have
+one idiom rather than two. `gateway/example` is a working one.
 
 What it costs, where somebody will read it: **adding a hook is a rebuild and a
 deploy, not a config change.** That is the right trade while the hooks are

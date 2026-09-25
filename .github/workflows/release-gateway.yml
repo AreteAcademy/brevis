@@ -1,0 +1,100 @@
+# Publishes the gateway's image on every `gateway/v*` tag.
+#
+# Its OWN repository and its own tag, which is what the market does for a
+# distinct component -- Grafana and Loki, Temporal's server and ui, every
+# Kubernetes component -- and not the `-worker` suffix this repository already
+# uses. That suffix is for the SAME binary on a different base; the gateway is a
+# different binary from a different Go module.
+#
+# Its own version, too, and that is the part worth defending: the gateway is
+# young. Calling it 0.15.3 because the engine is there would claim a maturity it
+# does not have, and versions cannot be un-published. Aligning two cadences
+# later is easy; splitting one is not.
+name: release gateway
+
+on:
+  push:
+    tags: ["gateway/v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0)"
+        required: true
+
+env:
+  IMAGE: docker.io/areteacademy/brevis-gateway
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache: true
+
+      # The gate before publishing. An image leaving CI with a red test is
+      # worse than no image: somebody will run it believing it passed.
+      - name: Tests
+        run: |
+          cd gateway
+          GOFLAGS=-mod=mod go test ./... -count=1
+
+      - name: Resolve the version
+        id: v
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            tag="${GITHUB_REF_NAME#gateway/v}"
+            echo "version=$tag" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The tag and the file have to agree, for the reason the engine's release
+      # gate gives: otherwise the image reports a version that is not the tag
+      # that published it -- and that is what an incident is traced by.
+      - name: Check VERSION
+        run: |
+          file=$(cat gateway/VERSION)
+          if [ "$file" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::gateway/VERSION=$file differs from the tag ${{ steps.v.outputs.version }}"
+            exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Gateway
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: gateway
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }},${{ env.IMAGE }}:latest
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # The Hub's overview, from a file in this repository rather than typed
+      # into the web UI. Last, so a failed build never leaves the page
+      # describing an image that is not there.
+      - name: The Docker Hub overview
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: areteacademy/brevis-gateway
+          readme-filepath: ./docs/GATEWAY.md
+          short-description: "An HTTP endpoint that lands data: validate, shape, batch, deliver."
