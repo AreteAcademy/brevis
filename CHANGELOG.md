@@ -18,6 +18,38 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.65.0] — 2026-09-25
+
+### Added: `Column.Unique`
+
+A declared column can now carry `UNIQUE`, and it exists for one column:
+`ingestion_id`, on a table that `DedupMerge` will load.
+
+That mode needs a unique index and every driver REFUSES without one, on
+purpose — *"a loader that can create an index can lock a production table in
+the middle of the working day."* This does not contradict it. The objection is
+about an index added to a table people are already using; a constraint inside a
+`CREATE TABLE` is on a table that is empty and that nobody has yet.
+
+Without it, a table created by a loader could never be merged into: the create
+succeeded, the load refused, and the two were one call apart.
+
+```go
+sdk.Schema{
+    {Name: "ingestion_id", Type: sdk.TypeString, Required: true, Unique: true},
+    {Name: "data", Type: sdk.TypeJSON},
+}
+```
+
+Postgres, MySQL and Redshift render it. **BigQuery has no unique constraints at
+all and the dialect says so** — a schema declaring one for it is refused by
+name rather than having the constraint quietly dropped. A table that was
+supposed to enforce uniqueness and silently does not is the worst of the three
+outcomes: the constraint is gone, nothing said so, and the first duplicate is
+found by whoever counts rows.
+
+---
+
 ## [0.64.0] — 2026-09-24
 
 ### Added: `sdk.Store`

@@ -216,3 +216,50 @@ func TestAnEmptySchemaIsRefused(t *testing.T) {
 		t.Fatal("an empty Schema produced a CREATE")
 	}
 }
+
+// A column declared UNIQUE becomes a constraint in the CREATE TABLE.
+//
+// It exists for one column -- ingestion_id on a table that DedupMerge will
+// load -- and it does not contradict the drivers' refusal to create indexes.
+// That refusal is about an index added to a table people are already using;
+// this is a constraint on a table that is empty and that nobody has yet.
+func TestAUniqueColumnBecomesAConstraint(t *testing.T) {
+	s := Schema{
+		{Name: "ingestion_id", Type: TypeString, Required: true, Unique: true},
+		{Name: "data", Type: TypeJSON},
+	}
+	for _, d := range []Dialect{Postgres, MySQL, Redshift} {
+		got, err := s.CreateTable(d, "landing.events")
+		if err != nil {
+			t.Fatalf("%s: %v", d.Name, err)
+		}
+		if !strings.Contains(got, "NOT NULL UNIQUE") {
+			t.Errorf("%s did not declare it, or declared it in the wrong order:\n%s",
+				d.Name, got)
+		}
+		// And only on the column that asked for it.
+		if strings.Count(got, "UNIQUE") != 1 {
+			t.Errorf("%s declared UNIQUE %d times:\n%s", d.Name, strings.Count(got, "UNIQUE"), got)
+		}
+	}
+}
+
+// A dialect with no unique constraints refuses by name rather than dropping it.
+//
+// A table that was supposed to enforce uniqueness and silently does not is the
+// worst of the three outcomes: the constraint is gone, nothing said so, and the
+// first duplicate is found by whoever counts rows.
+func TestADialectWithoutUniqueRefusesByName(t *testing.T) {
+	noUnique := Dialect{
+		Name:  "bigquery",
+		Types: map[ColumnType]string{TypeString: "STRING"},
+	}
+	_, err := Schema{{Name: "ingestion_id", Type: TypeString, Unique: true}}.
+		CreateTable(noUnique, "landing.events")
+	if err == nil {
+		t.Fatal("it was accepted")
+	}
+	if !strings.Contains(err.Error(), "no unique constraints") {
+		t.Errorf("the refusal does not explain: %v", err)
+	}
+}

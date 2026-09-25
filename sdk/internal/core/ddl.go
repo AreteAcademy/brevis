@@ -54,6 +54,13 @@ type Dialect struct {
 	// On a server older than 8.0.13 this fails -- and so does every other way
 	// of defaulting a TEXT column there, so nothing is lost.
 	ParenDefault map[ColumnType]bool
+
+	// Unique says whether this dialect has unique constraints at all. BigQuery
+	// does not, and a schema that declares one for it is refused by name
+	// rather than having the constraint quietly dropped -- a table that was
+	// supposed to enforce uniqueness and does not is the worst of the three
+	// outcomes.
+	Unique bool
 }
 
 // The four dialects. Written out rather than derived, because three of the
@@ -75,6 +82,7 @@ var (
 			TypeDate: "DATE", TypeJSON: "JSONB", TypeBytes: "BYTEA",
 		},
 		IfNotExists: true,
+		Unique:      true,
 	}
 
 	MySQL = Dialect{
@@ -87,6 +95,7 @@ var (
 		Quote:       func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" },
 		NowExpr:     "CURRENT_TIMESTAMP(6)",
 		IfNotExists: true,
+		Unique:      true,
 		ParenDefault: map[ColumnType]bool{
 			TypeString: true, TypeJSON: true, TypeBytes: true,
 		},
@@ -100,6 +109,7 @@ var (
 			TypeDate: "DATE", TypeJSON: "SUPER", TypeBytes: "VARBYTE(1024000)",
 		},
 		IfNotExists: true,
+		Unique:      true,
 	}
 )
 
@@ -151,6 +161,16 @@ func (s Schema) CreateTable(d Dialect, table string) (string, error) {
 		// MySQL, and it is the kind that only shows up against a real server.
 		if c.Required {
 			line += " NOT NULL"
+		}
+		// UNIQUE last, which all three dialects parse and which reads the way
+		// the column is described: type, default, nullability, constraint.
+		if c.Unique {
+			if !d.Unique {
+				return "", fmt.Errorf("column %q is declared UNIQUE and %s has no "+
+					"unique constraints. Drop it, or write the DDL in CreateSQL",
+					c.Name, d.Name)
+			}
+			line += " UNIQUE"
 		}
 		cols = append(cols, "  "+line)
 	}

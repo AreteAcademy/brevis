@@ -59,6 +59,21 @@ type Column struct {
 	// send.
 	Required bool
 
+	// Unique marks UNIQUE, and it exists for one column: ingestion_id, on a
+	// table that will be loaded with DedupMerge.
+	//
+	// That mode needs a unique index and the drivers REFUSE without one, on
+	// purpose -- "a loader that can create an index can lock a production
+	// table in the middle of the working day". This does not contradict that:
+	// the objection is about an index added to a table people are already
+	// using, and a constraint in a CREATE TABLE is on a table that is empty
+	// and that nobody has yet.
+	//
+	// BigQuery has no unique constraints at all and ignores this; its MERGE
+	// needs no index. The dialect that cannot express it says so rather than
+	// dropping it silently.
+	Unique bool
+
 	// Default is the column's DEFAULT, and it is a Go value rather than a
 	// string of SQL.
 	//
