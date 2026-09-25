@@ -219,87 +219,87 @@ streams:
 
   # One route, N tables, nothing declared.
   #
-  # A producer POSTs {table_name, ...} and the table is created if it is
-  # absent. Every table auto_table creates has the SAME FOUR COLUMNS, so
-  # creating one is a template rather than a decision:
+  # The producer POSTs an ENVELOPE: control fields at the top, the record
+  # inside `data`.
   #
-  #   ingestion_id  the identity, and the merge key
-  #   ingested_at   arrival, OUR clock -- the partition column
-  #   occurred_at   the producer's, when sent; NULL when not
-  #   data          the event whole, as JSON
+  #   {
+  #     "table_name": "app_orders",     <- required
+  #     "unique_key": "id",             <- optional, default "id"
+  #     "operation":  "INSERT",         <- optional: INSERT | UPDATE | DELETE
+  #     "description": "Pedidos",       <- optional, goes to the control plane
+  #     "data": {                       <- required: the record, and only it
+  #       "id": "A-3",
+  #       "total": 150,
+  #       "customer": {"id": 7, "uf": "SP"}
+  #     }
+  #   }
   #
-  # One JSON column and not a column per field, which is the decision this is
-  # built on. A new field is a new key: no DDL, no schema-change quota, no
-  # write-stream reopen, no race between replicas -- and it is queryable the
-  # day it arrives. It is also what the market converged on: Fivetran, Airbyte
-  # and Snowpipe all land into a raw layer that cannot fail.
+  # Every table carries the same seven columns whatever the record holds:
+  #
+  #   brevis_ingestion_id   the identity; the merge key
+  #   brevis_record_key     data[unique_key] -- which ROW this is about
+  #   brevis_operation      INSERT | UPDATE | DELETE
+  #   brevis_received_at    OUR clock, at the 202 -- the partition column
+  #   brevis_loaded_at      DEFAULT CURRENT_TIMESTAMP -- the destination stamps it
+  #   brevis_stream         which route wrote it
+  #   brevis_gateway        which deployment
+  #
+  # `brevis_` is RESERVED: a `data` carrying any key with it is refused per
+  # event, because otherwise a producer forges a control field -- and a forged
+  # brevis_received_at is worse than none, since it looks real.
+  #
+  # UPDATE and DELETE are RECORDED, never applied. A landing table is history,
+  # and resolving "the current version of each record" is the downstream
+  # model's job:
+  #
+  #   qualify row_number() over (partition by brevis_record_key
+  #                              order by brevis_received_at desc) = 1
+  #      and brevis_operation <> 'DELETE'
   - name: tables
     path: /v1/tables
     format: json
 
-    # The identity here names the fields auto_table itself composes. The
-    # producer sends no provider or entity: it sends a table name and a
-    # document, and the id is a frozen UUID v5 over
-    # auto_table|<table>|<idempotency_key or sha256(data)>|<occurred_at>.
     identity:
       provider: zarv
       entity: table
       source_key: table_name
-      record_ts: occurred_at
+      record_ts: table_name
 
     buffer:
       flush:
-        # Sixty seconds, not one. BigQuery allows 1,500 load jobs per table
-        # per DAY; a one-second window is 86,400, which is 57x the quota and
-        # gone in about twenty-five minutes. The config refuses a window it
-        # cannot honour rather than letting the first deploy find out.
+        # 60s, not 1s: BigQuery allows 1,500 load jobs per table per DAY, and
+        # a one-second window is 86,400. The config refuses anything shorter.
         every: 60s
         records: 2000
 
     sink:
       type: auto_table
 
-      # The FIELD of the event that says which table it belongs in. It names a
-      # TABLE and never a dataset: a producer that can choose the dataset can
-      # write into `gold`.
-      table_from: table_name
+      # What the RECORD contributes to the row.
+      #
+      #   document  data goes whole into one JSON column. No DDL, ever, after
+      #             the create: a new field is a new key.
+      #   columns   each field gets a column -- scalars STRING, objects and
+      #             arrays JSON. The shape people picture, and the one that
+      #             pays for itself with DDL, quota and a write-stream reopen.
+      #
+      # No type inference either way. A field that arrives whole today and
+      # fractional tomorrow would change a column with nobody writing
+      # anything; typing one is the PROMOTION path, written in this file and
+      # reviewed in a diff.
+      shape: columns
 
-      # The boundary a producer writes inside. Every field here is a refusal,
-      # and that is the point: auto_table turns a string in a payload into
-      # DDL, so the string is the whole of the attack surface.
       naming:
-        # The default is the intersection of what Postgres, MySQL, BigQuery
-        # and Redshift all accept unquoted, so a name that passes needs no
-        # quoting anywhere and cannot carry an injection.
-        pattern: '^[a-z][a-z0-9_]{2,48}$'
+        pattern: '^(app|svc)_[a-z0-9_]{2,40}$'
         allow: [app_, svc_]
-        # A runaway producer stops at 20 rather than at BigQuery's
-        # per-project quota, which is shared with everything else there.
-        # PER REPLICA. The budget lives in the process, so four replicas
-        # admit four times this. Sharing it needs a shared metastore, which
-        # is not built -- `metastore.type` refuses `redis` by name rather
-        # than letting anybody believe otherwise. Treat this as a circuit
-        # breaker, not a quota.
+        # PER REPLICA. Four replicas admit four times this. A circuit breaker,
+        # not a quota.
         max_new_per_hour: 20
 
-      # The cache of what is known about each table, so a per-event write is
-      # not a per-event lookup. A CACHE and not a source of truth: the
-      # destination settles whether a table exists, and N replicas racing to
-      # create one is the normal case -- AlreadyExists is success.
-      #
-      # `memory` is the only backend, and that is the design: a gateway that
-      # cannot start without Redis is a gateway with a new hard dependency
-      # for a cache.
-      #
-      # The TTL is how long it may be WRONG. A table dropped by hand outside
-      # the gateway makes every entry a lie: a minute of that is
-      # recoverable, an hour is an incident.
       metastore:
-        type: memory
+        type: memory   # the only one; `redis` is refused by name
         ttl: 60s
 
-      # auto_table routes and does not write. `into` is what writes, and it
-      # carries no `table`: the table comes from each event.
       into:
         type: bigquery
         project: acme-prod

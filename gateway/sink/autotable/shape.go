@@ -67,21 +67,17 @@ const Prefix = "brevis_"
 
 // The columns every table carries, whatever the record holds.
 //
-// ColumnID is the one WITHOUT the prefix, and that is not an oversight.
-// `ingestion_id` is the PRODUCT's column, not this package's: the SDK writes it
-// from a pipeline, every driver's dedup is `ON CONFLICT (ingestion_id)`, and
-// docs/GATEWAY.md's central claim rests on it --
+// ALL of them prefixed, `brevis_ingestion_id` included. The identity column is
+// this gateway's own here: a producer posting an envelope never writes an
+// `ingestion_id` and never needs one, and a field of theirs called that is
+// theirs to keep.
 //
-//	a row this gateway lands and a row a pipeline lands are ONE ROW,
-//	with no reconciliation between them
-//
-// Prefixing it would break that sentence and, more immediately, break `merge`
-// outright: the drivers look for a unique index on `ingestion_id` by name and
-// found none. The integration test caught it -- zero rows landed.
-//
-// Everything else here IS this gateway's own, and carries the prefix.
+// It costs `WriteOptions.DedupKey` in the SDK, added for exactly this: every
+// driver used to match on `ingestion_id` BY NAME, so the first version of this
+// created tables with the right columns into which every merge refused. The
+// integration test caught it -- zero rows.
 const (
-	ColumnID         = sdk.ColumnIngestionID
+	ColumnID         = Prefix + "ingestion_id"
 	ColumnRecordKey  = Prefix + "record_key"
 	ColumnOperation  = Prefix + "operation"
 	ColumnReceivedAt = Prefix + "received_at"

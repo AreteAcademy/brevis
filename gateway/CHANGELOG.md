@@ -13,6 +13,93 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.6.0] — 2026-09-25
+
+**Breaking**: `auto_table`'s body is an envelope now. The old flat shape is
+refused by name, with what to change in the message.
+
+### The envelope
+
+```json
+{
+  "table_name": "app_orders",
+  "unique_key": "id",
+  "operation":  "INSERT",
+  "data": { "id": "A-3", "total": 150, "customer": {"id": 7, "uf": "SP"} }
+}
+```
+
+Control fields at the top, the record inside `data`. `table_name` sitting beside
+`total` and `customer` was a field of the TRANSPORT pretending to be a field of
+the RECORD, and separating them is how every CDC format is shaped.
+
+`table_from` is gone: the envelope names the table in `table_name`, always.
+
+### Seven `brevis_*` columns
+
+`brevis_ingestion_id`, `brevis_record_key`, `brevis_operation`,
+`brevis_received_at`, `brevis_loaded_at`, `brevis_stream`, `brevis_gateway` —
+plus whatever the record carries.
+
+`brevis_loaded_at` is a database `DEFAULT` and not a value the gateway sends:
+the gateway knows the **dispatch** time and the destination knows the **write**
+time, so the gap between the two columns is the real end-to-end latency, per
+row, with nothing instrumented.
+
+`brevis_received_at` is the partition column and never a client's clock — a
+partition column the client controls is a client that can write into 2035.
+
+**`brevis_` is reserved.** A `data` carrying any key with it is refused per
+event: otherwise a producer forges a control field, and a forged
+`brevis_received_at` is worse than none because it looks real.
+
+Naming the identity column `brevis_ingestion_id` needed `sdk/v0.66.0`
+(`WriteOptions.DedupKey`): every driver matched on `ingestion_id` BY NAME, so
+the first version created tables with the right columns into which every merge
+refused. Zero rows, and the integration test caught it.
+
+### The identity has no clock in it
+
+```
+brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))
+```
+
+`occurred_at` stopped being the client's responsibility, and that removed the
+only clock the old formula could have used — ours is `time.Now()`, different on
+every delivery, so every retry would have been a new event.
+
+Same record, same content, twice → same id. Same record, changed → a different
+id, so an UPDATE is a second row rather than a no-op.
+
+### UPDATE and DELETE are recorded, not applied
+
+`brevis_operation` is a column. A landing table is history; resolving the
+current version is the downstream model's job. Which is what Debezium, Fivetran
+and Airbyte do — and it means CDC costs **nothing** in the write path: no upsert
+mode, no lock, no delete.
+
+### Two shapes, one contract
+
+`shape: document` puts the record whole in one JSON column — no DDL, ever.
+`shape: columns` gives each field a column: **scalar → STRING, object or array
+→ JSON, no inference anywhere**.
+
+A field name must match BigQuery's rule, the narrowest of the four. Postgres
+would accept almost anything quoted, and that is the trap: the table is created
+there and it breaks the day somebody points a stream at BigQuery.
+
+### The table grows a column on its own
+
+Additive, and only additive. A batch that loses the race to `ALTER` fails and
+the pipe's **ordinary retry** resolves it — a batch waiting for DDL and a batch
+waiting for a worker are the same thing, so there is no second buffer.
+
+Not solved yet: the metadata quota with many replicas. Ten detecting one field
+is ten `ALTER`s against BigQuery's five per table per ten seconds. That needs a
+shared debounce, which needs a shared metastore.
+
+---
+
 ## [0.5.0] — 2026-09-25
 
 Closes `auto_table` against its plan.

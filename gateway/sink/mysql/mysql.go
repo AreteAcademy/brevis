@@ -42,6 +42,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	t := tomysql.Table{DSN: dsn, Name: s.Table}
 	if b.Target != nil {
 		t.CreateTable = b.Target.Create
+		t.Evolve = b.Target.Evolve
 	}
 	return &sink{
 		table:  t,
@@ -64,6 +65,7 @@ func (m *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	opt := sdk.WriteOptions{Dedup: m.dedup}
 	if m.target != nil {
 		opt.Schema = m.target.Schema
+		opt.DedupKey = m.target.DedupKey
 	}
 	res, err := m.table.Write(ctx, batch, opt)
 	if res == nil {

@@ -68,7 +68,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	if _, err := r.sinkFor(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
-	r.forget(probeTable)
+	r.forget(probeTable, nil)
 	return r, nil
 }
 
@@ -76,10 +76,10 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 // to: the sink built for it is discarded before the first request.
 const probeTable = "brevis_probe"
 
-func (r *router) forget(table string) {
+func (r *router) forget(table string, record sdk.Schema) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.made, table)
+	delete(r.made, table+"\x00"+fingerprintOf(record))
 	r.names.refund()
 }
 
@@ -249,7 +249,16 @@ func merge(into, add sdk.Schema) sdk.Schema {
 func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (gateway.Sinker, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if s, ok := r.made[table]; ok {
+
+	// Keyed by the table AND the columns, not by the table alone.
+	//
+	// A sink holds the declaration it was built with. Caching by table would
+	// freeze the FIRST batch's shape: the batch that later carries a new field
+	// would hand the driver the old declaration, no change would be planned,
+	// and Reconcile would refuse the extra field. The table would be stuck at
+	// whatever arrived first.
+	key := table + "\x00" + fingerprintOf(record)
+	if s, ok := r.made[key]; ok {
 		return s, nil
 	}
 
@@ -275,7 +284,23 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 		Stream:  r.stream,
 		Gateway: r.gateway,
 		Target: &gateway.Target{
-			Schema:      append(fixed(r.unique), record...),
+			Schema:   append(fixed(r.unique), record...),
+			DedupKey: ColumnID,
+			// Additive, and only additive. A field the record grew becomes a
+			// column; nothing is ever dropped or narrowed.
+			//
+			// A batch that loses the race to ALTER fails, and the pipe's
+			// ordinary retry is what resolves it: four attempts over roughly
+			// seven seconds, and by the second the winner's column is in the
+			// catalogue. That is the buffer -- there is no second one, because
+			// a batch waiting for DDL and a batch waiting for a worker are the
+			// same thing.
+			//
+			// What is NOT solved here is the metadata quota with many
+			// replicas: ten detecting one new field is ten ALTERs, and
+			// BigQuery allows five per table per ten seconds. That needs a
+			// shared debounce, which needs a shared metastore.
+			Evolve:      sdk.EvolveAdditive,
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,
 			Create:      true,
@@ -284,6 +309,20 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 	if err != nil {
 		return nil, fmt.Errorf("table %s: %w", table, err)
 	}
-	r.made[table] = s
+	r.made[key] = s
 	return s, nil
+}
+
+// fingerprintOf names a column set, so a sink is reused while the shape holds
+// and rebuilt when it moves. The declaration is already sorted, so this is
+// stable without sorting again.
+func fingerprintOf(record sdk.Schema) string {
+	var b strings.Builder
+	for _, c := range record {
+		b.WriteString(c.Name)
+		b.WriteByte(' ')
+		b.WriteString(string(c.Type))
+		b.WriteByte(',')
+	}
+	return b.String()
 }

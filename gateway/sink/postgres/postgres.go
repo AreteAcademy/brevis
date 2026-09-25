@@ -53,6 +53,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	t := topg.Table{DSN: dsn, Name: s.Table}
 	if b.Target != nil {
 		t.CreateTable = b.Target.Create
+		t.Evolve = b.Target.Evolve
 	}
 	return &sink{
 		table:  t,
@@ -86,6 +87,7 @@ func (p *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 		// what lets the driver create the table, and it is the same
 		// declaration a later `evolve` would compare against.
 		opt.Schema = p.target.Schema
+		opt.DedupKey = p.target.DedupKey
 	}
 	res, err := p.table.Write(ctx, batch, opt)
 	if res == nil {

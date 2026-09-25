@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/gateway"
 )
@@ -48,9 +49,10 @@ func TestIntegrationAutoTableCreatesAndRoutes(t *testing.T) {
 		cols := query(t, dsn, fmt.Sprintf(
 			`SELECT column_name || ' ' || data_type FROM information_schema.columns
 			 WHERE table_name = '%s' ORDER BY column_name`, table))
-		want := "brevis_gateway text,brevis_loaded_at timestamp with time zone," +
-			"brevis_operation text,brevis_received_at timestamp with time zone," +
-			"brevis_record_key text,brevis_stream text,data jsonb,ingestion_id text"
+		want := "brevis_gateway text,brevis_ingestion_id text," +
+			"brevis_loaded_at timestamp with time zone,brevis_operation text," +
+			"brevis_received_at timestamp with time zone,brevis_record_key text," +
+			"brevis_stream text,data jsonb"
 		if got := strings.Join(cols, ","); got != want {
 			t.Errorf("%s has columns %q, want %q", table, got, want)
 		}
@@ -102,7 +104,7 @@ func TestIntegrationAutoTableAbsorbsARetry(t *testing.T) {
 	// The table is created without a unique index, so `merge` would refuse.
 	// `append` is what this stream uses, and the proof is that both rows carry
 	// the SAME id — which is what lets anything downstream deduplicate.
-	ids := query(t, dsn, `SELECT DISTINCT ingestion_id FROM `+table)
+	ids := query(t, dsn, `SELECT DISTINCT brevis_ingestion_id FROM `+table)
 	if len(ids) != 1 {
 		t.Errorf("a retried POST produced %d distinct ids: %v", len(ids), ids)
 	}
@@ -258,12 +260,15 @@ func autoTableGateway(t *testing.T, dsn, dead string, write ...string) *gateway.
 	if dead == "" {
 		dead = t.TempDir()
 	}
-	mode, shape := "append", "document"
+	mode, shape, records := "append", "document", "500"
 	if len(write) > 0 {
 		mode = write[0]
 	}
 	if len(write) > 1 {
 		shape = write[1]
+	}
+	if len(write) > 2 {
+		records = write[2]
 	}
 	t.Setenv("GW_KEYS", "k")
 	yaml := fmt.Sprintf(`
@@ -275,7 +280,7 @@ streams:
     path: /v1/tables
     format: array
     identity: {provider: p, entity: e, source_key: table_name, record_ts: table_name}
-    buffer: {flush: {records: 500, every: 1h}}
+    buffer: {flush: {records: %s, every: 1h}}
     retry: {attempts: 1}
     sink:
       type: auto_table
@@ -283,7 +288,7 @@ streams:
       shape: %s
       into: {type: postgres, dsn_from: PG_DSN, write: %s}
     dead_letter: {type: files, path: %s/}
-`, shape, mode, dead)
+`, records, shape, mode, dead)
 
 	file := t.TempDir() + "/g.yaml"
 	if err := os.WriteFile(file, []byte(yaml), 0o600); err != nil {
@@ -337,10 +342,10 @@ func TestIntegrationAutoTableColumnsShape(t *testing.T) {
 	cols := query(t, dsn, fmt.Sprintf(
 		`SELECT column_name||' '||data_type FROM information_schema.columns
 		 WHERE table_name='%s' ORDER BY column_name`, table))
-	want := "brevis_gateway text,brevis_loaded_at timestamp with time zone," +
-		"brevis_operation text,brevis_received_at timestamp with time zone," +
-		"brevis_record_key text,brevis_stream text,customer jsonb," +
-		"id text,ingestion_id text,items jsonb,total text"
+	want := "brevis_gateway text,brevis_ingestion_id text," +
+		"brevis_loaded_at timestamp with time zone,brevis_operation text," +
+		"brevis_received_at timestamp with time zone,brevis_record_key text," +
+		"brevis_stream text,customer jsonb,id text,items jsonb,total text"
 	if got := strings.Join(cols, ","); got != want {
 		t.Errorf("columns are\n  %q\nwant\n  %q", got, want)
 	}
@@ -358,5 +363,71 @@ func TestIntegrationAutoTableColumnsShape(t *testing.T) {
 	// end-to-end latency.
 	if got := query(t, dsn, `SELECT (brevis_loaded_at IS NOT NULL)::text FROM `+table); got[0] != "true" {
 		t.Error("brevis_loaded_at is null, so the DEFAULT did not fire")
+	}
+}
+
+// The scenario, end to end: a field appears and the table grows a column.
+//
+// Three events, each with its own key. The second and third carry a field the
+// first did not, so the table has to evolve between the first batch and the
+// second — and the third must NOT evolve it again, because by then the column
+// is there.
+func TestIntegrationAutoTableEvolvesWhenAFieldAppears(t *testing.T) {
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_PG_DSN")
+	if dsn == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_PG_DSN is not set")
+	}
+	t.Setenv("PG_DSN", dsn)
+	table := uniqueTable(t, dsn)
+
+	srv := autoTableGateway(t, dsn, "", "merge", "columns", "1")
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// One event per batch (flush.records is 1 for this stream), and each is
+	// waited for: the second has to meet a table that was created WITHOUT the
+	// column. One batch holding all three would declare the union and there
+	// would be nothing to evolve.
+	columnsNow := func() string {
+		return strings.Join(query(t, dsn, fmt.Sprintf(
+			`SELECT column_name FROM information_schema.columns
+			 WHERE table_name='%s' AND column_name NOT LIKE 'brevis_%%' ORDER BY column_name`,
+			table)), ",")
+	}
+	post := func(body, want string) {
+		t.Helper()
+		postKeyed(t, ts.URL+"/v1/tables", body, http.StatusAccepted)
+		for i := 0; i < 100; i++ {
+			if columnsNow() == want {
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+		t.Fatalf("after %s the columns are %q, want %q", body, columnsNow(), want)
+	}
+
+	post(fmt.Sprintf(`[{"table_name":%q,"data":{"id":"A-1","total":150}}]`, table), "id,total")
+
+	// The field appears, and the table grows a column.
+	post(fmt.Sprintf(`[{"table_name":%q,"data":{"id":"A-2","total":150,"novo_campo":"Novo valor 1"}}]`, table),
+		"id,novo_campo,total")
+
+	// And again, with a different value: nothing left to evolve, and it lands.
+	post(fmt.Sprintf(`[{"table_name":%q,"data":{"id":"A-3","total":150,"novo_campo":"Novo valor 2"}}]`, table),
+		"id,novo_campo,total")
+	if err := srv.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	rows := query(t, dsn, `SELECT id||'|'||coalesce(novo_campo,'(null)') FROM `+table+` ORDER BY id`)
+	want := "A-1|(null),A-2|Novo valor 1,A-3|Novo valor 2"
+	if got := strings.Join(rows, ","); got != want {
+		t.Errorf("the rows are %q, want %q", got, want)
+	}
+
+	// The first event's row keeps NULL there, which is what an added column
+	// does and why only additive is allowed: nothing already written moves.
+	if got := query(t, dsn, `SELECT count(*)::text FROM `+table+` WHERE novo_campo IS NULL`); got[0] != "1" {
+		t.Errorf("%s rows are null, want 1", got[0])
 	}
 }

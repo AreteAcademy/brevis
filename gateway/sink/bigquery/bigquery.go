@@ -85,6 +85,7 @@ func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	opt := sdk.WriteOptions{Dedup: b.dedup}
 	if b.target != nil {
 		opt.Schema = b.target.Schema
+		opt.DedupKey = b.target.DedupKey
 		opt.PartitionBy = b.target.PartitionBy
 	}
 	res, err := b.table.Write(ctx, batch, opt)

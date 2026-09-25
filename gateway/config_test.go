@@ -208,26 +208,29 @@ func TestTheSinksRefuseWhatWouldFailSilently(t *testing.T) {
 		{
 			// auto_table routes and does not write; `into` is what writes.
 			name: "auto_table with nowhere to route",
-			yaml: withSink("{type: auto_table, table_from: table_name}"),
+			yaml: withSink("{type: auto_table}"),
 			says: "`into` is empty",
 		},
 		{
-			name: "auto_table with no field naming the table",
-			yaml: withSink("{type: auto_table, into: {type: postgres, dsn_from: D, write: append}}"),
-			says: "`table_from` is empty",
+			// v1 named the field; v2 does not, because the envelope is fixed.
+			// Refused by name rather than ignored, so a config carried over
+			// from v1 says what to remove instead of quietly doing nothing.
+			name: "table_from, which v2 does not have",
+			yaml: withSink("{type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, write: append}}"),
+			says: "no longer a setting",
 		},
 		{
 			// A fixed table under a router would silently win: every event
 			// would land in it and `table_from` would do nothing.
 			name: "auto_table into a fixed table",
-			yaml: withSink("{type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, table: landing.x, write: append}}"),
+			yaml: withSink("{type: auto_table, into: {type: postgres, dsn_from: D, table: landing.x, write: append}}"),
 			says: "Remove it",
 		},
 		{
 			// The Redshift driver has no CreateTable, so every new name would
 			// fail on the load. Refused by name rather than behaving that way.
 			name: "auto_table into redshift, which cannot create a table",
-			yaml: withSink("{type: auto_table, table_from: t, into: {type: redshift, dsn_from: D, staging: 's3://b/p/', iam_role: arn:x, write: append}}"),
+			yaml: withSink("{type: auto_table, into: {type: redshift, dsn_from: D, staging: 's3://b/p/', iam_role: arn:x, write: append}}"),
 			says: "cannot route into redshift",
 		},
 		{
@@ -422,7 +425,7 @@ func TestAFlushWindowBigQueryCannotHoldIsRefused(t *testing.T) {
 		// Through a router too: the sink that writes is what matters, not the
 		// one the YAML names first.
 		{"through a router",
-			"{type: auto_table, table_from: t, into: {type: bigquery, project: p, dataset: d, write: append}}"},
+			"{type: auto_table, into: {type: bigquery, project: p, dataset: d, write: append}}"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			yaml := strings.Replace(withSink(c.sink), "every: 60s", "every: 1s", 1)
@@ -454,7 +457,7 @@ func TestAutoTableIsRefusedOnAnEndpointWithNoAuth(t *testing.T) {
 	// The base config with NO auth -- withSink adds it, and this is the one
 	// case that must not have it.
 	yaml := strings.Replace(valid, "sink: {type: pubsub, project: p, topic: t}",
-		"sink: {type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, write: append}}", 1)
+		"sink: {type: auto_table, into: {type: postgres, dsn_from: D, write: append}}", 1)
 	_, err := load(t, yaml)
 	if err == nil {
 		t.Fatal("auto_table loaded on an open endpoint")
@@ -480,7 +483,7 @@ func TestOnlyTheMetastoreBackendThatExistsIsAccepted(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			_, err := load(t, withSink(
-				"{type: auto_table, table_from: t, metastore: "+c.block+
+				"{type: auto_table, metastore: "+c.block+
 					", into: {type: postgres, dsn_from: D, write: append}}"))
 			if err == nil {
 				t.Fatal("it was accepted")
@@ -494,7 +497,7 @@ func TestOnlyTheMetastoreBackendThatExistsIsAccepted(t *testing.T) {
 	// And the defaults land: a file that says nothing gets memory and a
 	// minute, which is the design rather than a placeholder.
 	cfg, err := load(t, withSink(
-		"{type: auto_table, table_from: t, into: {type: postgres, dsn_from: D, write: append}}"))
+		"{type: auto_table, into: {type: postgres, dsn_from: D, write: append}}"))
 	if err != nil {
 		t.Fatal(err)
 	}

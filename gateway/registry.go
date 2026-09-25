@@ -68,6 +68,20 @@ type Target struct {
 	// ClusterBy names the columns a created table is clustered on.
 	ClusterBy []string
 
+	// DedupKey is the column a `merge` matches on. Empty means the SDK's
+	// `ingestion_id`, which is what a declared stream writes; a router that
+	// names its own identity column says so here.
+	DedupKey string
+
+	// Evolve says what a load may do to a table that EXISTS and no longer
+	// matches Schema. The zero value refuses any difference, which is what
+	// every driver has always done.
+	//
+	// sdk.EvolveAdditive adds a declared column the table lacks. It never
+	// drops and never narrows -- see core.Evolution for why there is no third
+	// mode.
+	Evolve sdk.Evolution
+
 	// Create lets the driver create the table when it is absent. Off by
 	// default everywhere else, because a loader that creates tables by
 	// accident turns a typo into a second table nobody is reading.
