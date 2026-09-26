@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ContentType is what a scraper expects. Version 0.0.4 is the text format
@@ -23,6 +24,14 @@ const ContentType = "text/plain; version=0.0.4; charset=utf-8"
 // A nil receiver writes nothing and reports no error: the endpoint answers 200
 // with an empty body, which is a valid scrape of a process that has no metrics.
 // A 404 or a panic would make "not configured" look like "broken".
+// processStart is when this process began, captured at package load.
+//
+// A package variable rather than a field on Metrics, because the question is
+// about the PROCESS and not about an instrument: a Metrics built later -- or
+// rebuilt, as tests do -- must report the same instant, or the collector would
+// see the series restart and drop what came before.
+var processStart = time.Now()
+
 func (m *Metrics) Render(w io.Writer) error {
 	if m == nil {
 		return nil
@@ -40,6 +49,38 @@ func (m *Metrics) Render(w io.Writer) error {
 			return err
 		}
 	}
+	// The process's start, and it is NOT a brevis_ series on purpose.
+	//
+	// `process_start_time_seconds` is a well-known name and collectors look
+	// for exactly it. Prefixing it would leave it correct and useless.
+	//
+	// It is here because leaving it out made every counter read LOW. A
+	// collector that does start-time adjustment -- the OpenTelemetry
+	// Prometheus receiver, which Google Managed Prometheus is built on --
+	// anchors a cumulative series at the moment it believes the series began.
+	// Given this gauge it uses the process's start and attributes the first
+	// scrape's whole value. Without it, it has to infer the start from the
+	// first scrape it saw, and that scrape's value becomes the baseline:
+	// everything counted before it is spent.
+	//
+	// A consumer measured 5,000 events reported as 650, and two flush
+	// counters that existed and read zero -- which a counter does not do. The
+	// deltas were exact and the totals were not, which is the signature.
+	// Issue #33.
+	//
+	// It costs no dependency, which is the property the hand-written
+	// exposition exists to protect: client_golang emits this too, and it
+	// emits it alongside forty-two other packages.
+	if _, err := fmt.Fprint(w,
+		"# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.\n"+
+			"# TYPE process_start_time_seconds gauge\n"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(w, "process_start_time_seconds %s\n",
+		strconv.FormatFloat(float64(processStart.UnixNano())/1e9, 'g', -1, 64)); err != nil {
+		return err
+	}
+
 	if m.depth == nil {
 		return nil
 	}

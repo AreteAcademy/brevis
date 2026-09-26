@@ -253,11 +253,20 @@ brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retri
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
+
+`process_start_time_seconds` is **not** prefixed with `brevis_`, and that is
+deliberate: collectors look for exactly that name. It says when the process
+started, and without it a collector that does start-time adjustment — the
+OpenTelemetry Prometheus receiver, which Google Managed Prometheus is built on
+— anchors every cumulative series at its **first scrape** and spends that
+scrape's value as the baseline. The result is every counter reading low, with
+the deltas right and the totals wrong.
 
 The last three are the ones nobody asks for until after the first incident.
 `saturated_total` is the only number that says a client was told to back off;

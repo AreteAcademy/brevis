@@ -13,6 +13,58 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.13.1] — 2026-09-26
+
+### Fixed: no `process_start_time_seconds`, so every counter read low
+
+One gauge, and without it the exposition was quietly lying about every
+cumulative series it published.
+
+A collector that does start-time adjustment — the OpenTelemetry Prometheus
+receiver, which **Google Managed Prometheus** is built on — anchors a
+cumulative series at the moment it believes the series began. Given this gauge
+it uses the process's start and attributes the first scrape's whole value.
+Without it, it has to infer the start from the first scrape it saw, and that
+scrape's value becomes the baseline: everything counted before it is spent.
+
+A consumer measured it on GKE ([issue #33]):
+
+| series | reported | actual |
+|---|---|---|
+| `brevis_gateway_events_received_total` | **650** | 5,000 |
+| `brevis_gateway_flushes_total{trigger="records"}` | **0** | 2 |
+| `brevis_gateway_flushes_total{trigger="time"}` | **0** | 1 |
+
+The flush rows are the tell: the series **exist** and read zero, which a
+counter does not do. Their model — deltas exact, totals wrong — accounted for
+four series across two runs and two pods, and it was right.
+
+It matters past a dashboard, and `0.10.0`'s own entry said why:
+
+> **The one worth an alert is `trigger="size"` on a BigQuery stream.** […]
+> Nothing refuses it at load, because the arrival rate is not knowable there;
+> this makes it visible instead.
+
+That alert is exactly what does not survive a moving baseline. A counter that
+silently starts from one is worse than no counter, because it looks like one.
+
+The name is **not** prefixed with `brevis_`, deliberately: collectors look for
+exactly `process_start_time_seconds`, and a prefixed one would be correct and
+useless. It costs no dependency, which is the property the hand-written
+exposition exists to protect — `client_golang` emits this too, alongside
+forty-two other packages.
+
+Captured at package load rather than per scrape. A value that moved would tell
+the collector the series had restarted, which is the same failure arriving
+through the fix.
+
+Verified on a running gateway: the gauge is on the **first** scrape, before any
+event, and reads the second the process logged `listening`.
+
+[issue #33]: https://github.com/AreteAcademy/brevis/issues/33
+
+---
+
 ## [0.13.0] — 2026-09-26
 
 The two halves of [issue #34]. `0.11.0` broke every BigQuery table an older

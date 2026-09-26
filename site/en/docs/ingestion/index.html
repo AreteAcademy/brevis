@@ -313,6 +313,7 @@ brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retri
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
@@ -322,10 +323,12 @@ brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retri
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
+<p><code>process_start_time_seconds</code> is <strong>not</strong> prefixed with <code>brevis_</code>, and that is deliberate: collectors look for exactly that name. It says when the process started, and without it a collector that does start-time adjustment — the OpenTelemetry Prometheus receiver, which Google Managed Prometheus is built on — anchors every cumulative series at its <strong>first scrape</strong> and spends that scrape's value as the baseline. The result is every counter reading low, with the deltas right and the totals wrong.</p>
 <p>The last three are the ones nobody asks for until after the first incident. <code>saturated_total</code> is the only number that says a client was told to back off; <code>buffer_records</code> against <code>buffer.max_records</code> is the only one that <strong>predicts</strong> it.</p>
 <p><code>reason</code> is a closed set and never the error text: an error string carries a table name, a column, sometimes a row, and one malformed client would mint a new series per request. The text stays in the dead letter, on the record.</p>
 <h2 id="202-not-200"><code>202</code>, not <code>200</code><a class="anchor" href="#202-not-200" aria-label="link">#</a></h2>

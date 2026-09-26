@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -254,5 +255,95 @@ func TestZeroTTLDoesNotExpireInMemory(t *testing.T) {
 	time.Sleep(20 * time.Millisecond)
 	if _, ok, _ := m.Get(ctx, "brief"); ok {
 		t.Error("a 1ms entry was still there after 20ms")
+	}
+}
+
+// --- process_start_time_seconds (issue #33) --------------------------------
+
+// The start time is on EVERY scrape, including the first one and including a
+// scrape of a process that has counted nothing.
+//
+// The first scrape is the whole point. A collector that does start-time
+// adjustment -- the OpenTelemetry Prometheus receiver, which Google Managed
+// Prometheus is built on -- anchors a cumulative series at the moment it
+// believes it began. Given this gauge it uses the process's start and
+// attributes the first scrape's whole value; without it, it infers the start
+// from the first scrape and spends that scrape's value as the baseline.
+//
+// A consumer measured 5,000 events reported as 650, and two flush counters
+// that existed and read ZERO -- which a counter does not do. Deltas exact,
+// totals wrong.
+func TestTheExpositionAlwaysCarriesTheProcessStart(t *testing.T) {
+	render := func(m *Metrics) string {
+		t.Helper()
+		var b strings.Builder
+		if err := m.Render(&b); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+
+	// A process that has counted nothing still has to say when it started.
+	empty := render(NewMetrics())
+	if !strings.Contains(empty, "process_start_time_seconds") {
+		t.Fatalf("an empty scrape has no start time, so the collector's first "+
+			"reading of every series would set its own baseline:\n%s", empty)
+	}
+	if !strings.Contains(empty, "# TYPE process_start_time_seconds gauge") {
+		t.Error("the start time is not declared a gauge")
+	}
+	// NOT prefixed. Collectors look for exactly this name; `brevis_` in front
+	// of it would be correct and useless.
+	if strings.Contains(empty, "brevis_gateway_process_start") {
+		t.Error("the start time was published under a brevis_ name, which no " +
+			"collector looks for")
+	}
+
+	// And on a scrape that does carry counters.
+	m := NewMetrics()
+	m.count(m.received, 7, "s", "json")
+	if !strings.Contains(render(m), "process_start_time_seconds") {
+		t.Error("the start time is missing once there are counters")
+	}
+}
+
+// It is the same instant every time, and across a rebuilt Metrics.
+//
+// A value that moved would tell the collector the series restarted, and it
+// would drop everything counted before -- which is the failure this gauge
+// exists to fix, arriving through the fix itself.
+func TestTheProcessStartDoesNotMove(t *testing.T) {
+	read := func() string {
+		var b strings.Builder
+		if err := NewMetrics().Render(&b); err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(b.String(), "\n") {
+			if rest, ok := strings.CutPrefix(line, "process_start_time_seconds "); ok {
+				return rest
+			}
+		}
+		t.Fatal("no start time in the scrape")
+		return ""
+	}
+
+	first := read()
+	time.Sleep(20 * time.Millisecond)
+	if second := read(); second != first {
+		t.Errorf("the start time moved between scrapes: %s then %s. A collector "+
+			"reads that as the series restarting and drops what came before",
+			first, second)
+	}
+
+	// And it is a plausible instant: this process started, so it is in the
+	// past, and it is not 1970.
+	secs, err := strconv.ParseFloat(first, 64)
+	if err != nil {
+		t.Fatalf("the value is not a float: %q", first)
+	}
+	now := float64(time.Now().UnixNano()) / 1e9
+	if secs > now || now-secs > 3600 {
+		t.Errorf("start time %f against now %f: it has to be in the past and "+
+			"within this process's lifetime", secs, now)
 	}
 }

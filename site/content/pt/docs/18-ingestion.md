@@ -254,11 +254,20 @@ brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retr
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
+process_start_time_seconds                              gauge     sem prefixo, de propósito
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
+
+`process_start_time_seconds` **não** leva o prefixo `brevis_`, e isso é
+proposital: coletores procuram exatamente esse nome. Ele diz quando o processo
+começou, e sem ele um coletor que faz ajuste de hora de início — o receptor
+Prometheus do OpenTelemetry, sobre o qual o Google Managed Prometheus é
+construído — ancora cada série cumulativa no **primeiro scrape** e gasta o valor
+dele como linha de base. O resultado é todo contador lendo baixo, com os deltas
+certos e os totais errados.
 
 As três últimas são as que ninguém pede antes do primeiro incidente.
 `saturated_total` é o único número que diz que um cliente foi mandado esperar;
