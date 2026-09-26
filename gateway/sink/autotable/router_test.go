@@ -97,3 +97,85 @@ func (nowhere) Describe() string { return "nowhere" }
 func (nowhere) Write(context.Context, []sdk.Envelope) (int64, error) {
 	return 0, nil
 }
+
+// A field name that cannot be a column has to be refused by Admit, not by
+// Write.
+//
+// This was a real poison batch and it is worth writing down how it looked. Four
+// events in one request, one of them carrying `meu-campo`:
+//
+//	{"accepted":4,"rejected":null}   ← all four told 202
+//
+// then, two seconds later, the whole batch in the dead letter with a reason
+// naming event 2. The three well-formed events belonged to other producers,
+// none of whom did anything wrong and none of whom were told. At the batch
+// sizes the load test produced -- roughly 8,700 events -- one bad field name
+// buries eight thousand.
+//
+// `open` and `names.check` were already behind Admit. The FIELD names were not,
+// because they are the shape's business and the shape only ran at write time.
+func TestAdmitRefusesAFieldThatCannotBeAColumn(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:  gateway.SinkAutoTable,
+		Shape: ShapeColumns,
+		Into:  &gateway.Sink{Type: "probe"},
+	})
+
+	err := r.Admit(map[string]any{
+		FieldTable: "app_orders",
+		FieldData:  map[string]any{"id": "A-1", "meu-campo": "x"},
+	})
+	if err == nil {
+		t.Fatal("Admit took a record whose field cannot be a column; at write " +
+			"time that fails the whole batch, and every event in it was already " +
+			"answered 202")
+	}
+
+	// And the same record is fine under `document`, where the record becomes
+	// one JSON column and a key is just a key. Refusing it there would be a
+	// rule borrowed from the other shape.
+	d := build(t, gateway.Sink{
+		Type:  gateway.SinkAutoTable,
+		Shape: ShapeDocument,
+		Into:  &gateway.Sink{Type: "probe"},
+	})
+	if err := d.Admit(map[string]any{
+		FieldTable: "app_orders",
+		FieldData:  map[string]any{"id": "A-1", "meu-campo": "x"},
+	}); err != nil {
+		t.Errorf("document refused %q, and under that shape it is a key in a "+
+			"JSON document and never a column name: %v", "meu-campo", err)
+	}
+}
+
+// Everything Write can refuse about a record, Admit has to refuse first.
+//
+// The property, rather than one example: if `group` would fail on a record,
+// the producer must learn it in the response instead of the batch learning it
+// in the dead letter.
+func TestAdmitCatchesWhatWriteWouldHaveRefused(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:  gateway.SinkAutoTable,
+		Shape: ShapeColumns,
+		Into:  &gateway.Sink{Type: "probe"},
+	})
+
+	for _, record := range []map[string]any{
+		{"id": "A-1", "meu-campo": "x"}, // a hyphen
+		{"id": "A-1", "2fast": "x"},     // starts with a digit
+		{"id": "A-1", "com espaço": 1},  // a space
+		{"id": "A-1", "": 1},            // empty
+	} {
+		e := map[string]any{FieldTable: "app_orders", FieldData: record}
+
+		admitted := r.Admit(e) == nil
+		_, _, err := r.group([]gateway.Envelope{{Payload: e}})
+		written := err == nil
+
+		if admitted != written {
+			t.Errorf("record %v: Admit said %v and the write path said %v. A "+
+				"record the write path refuses has to be refused per event, or "+
+				"it takes the batch with it", record, admitted, written)
+		}
+	}
+}

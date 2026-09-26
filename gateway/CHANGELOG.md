@@ -13,6 +13,46 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.8.1] — 2026-09-25
+
+One field name nobody validated buried the batch around it.
+
+### Fixed: `auto_table` admitted a record whose field cannot be a column
+
+Four events in one request, one of them carrying `meu-campo`:
+
+```
+{"accepted":4,"rejected":null}
+```
+
+Two seconds later the whole batch was in the dead letter, the table was never
+created, and the reason named event 2. The other three were well formed, came
+from other producers, and had all been answered `202`.
+
+`Admit` existed for exactly this and covered only half of it: the envelope and
+the table name went behind it, the FIELD names did not, because they are the
+shape's business and the shape only ran at write time. Under `shape: columns` a
+name that fails BigQuery's rule — a hyphen, a leading digit, a space — reached
+`Write` and failed the group.
+
+The shape now validates per event, before anything is buffered:
+
+```
+{"accepted":3,"rejected":["event 2: the field \"meu-campo\" cannot be a column
+name: it has to match ^[A-Za-z_][A-Za-z0-9_]{0,127}$ …"]}
+```
+
+Three rows land, nothing is buried, and the producer learns it in the response
+at the moment they can still fix it. `shape: document` refuses nothing here, and
+that is not an oversight: the record becomes one JSON column, so a key is a key.
+
+**It scales with the batch.** The load test ran batches of roughly 8,700
+events; one bad field name would have buried eight thousand from every producer
+in the same flush window.
+
+Two tests pin it, and the second is the general form: everything the write path
+refuses about a record, `Admit` has to refuse first.
+
 ## [0.8.0] — 2026-09-25
 
 The drain had one budget and three owners, and the first could eat it all.

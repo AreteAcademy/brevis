@@ -33,6 +33,19 @@ const ColumnData = "data"
 
 // shaper turns a record into the columns it contributes, and declares them.
 type shaper interface {
+	// validate refuses a record this shape cannot turn into columns, and it
+	// exists to be called PER EVENT, before anything is buffered.
+	//
+	// Without it, `columns` and `schema` are the first things to see a record
+	// -- and both run at WRITE time, on a whole batch. One field called
+	// `my-field` was accepted with 202 and then failed the batch around it:
+	// three well-formed events from three other producers went to the dead
+	// letter for a fourth producer's mistake, and all four had been told 202.
+	//
+	// That is the poison batch the Admitter was built against. Only the table
+	// name had been moved behind it; the field names had not.
+	validate(record map[string]any) error
+
 	// columns is what this record adds to the row.
 	columns(record map[string]any) (map[string]any, error)
 
@@ -58,6 +71,14 @@ func shaperFor(shape string) (shaper, error) {
 type document struct{}
 
 func (document) name() string { return ShapeDocument }
+
+// validate accepts every record, because this shape has no field names to
+// refuse: the whole record becomes ONE column whatever it holds. A key that
+// could never be a column name here is just a key in a JSON document.
+//
+// The marshal in `columns` is the only other thing that could fail, and it
+// cannot: the record came out of encoding/json, so it goes back in.
+func (document) validate(map[string]any) error { return nil }
 
 func (document) columns(record map[string]any) (map[string]any, error) {
 	body, err := json.Marshal(record)

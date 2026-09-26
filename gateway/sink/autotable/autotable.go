@@ -131,7 +131,15 @@ func (r *router) Admit(e map[string]any) error {
 	if err != nil {
 		return err
 	}
-	return r.names.check(env.table)
+	if err := r.names.check(env.table); err != nil {
+		return err
+	}
+	// The record has to be shapeable too, and this line is the one that was
+	// missing. `open` and `names` cover the envelope and the table name; the
+	// FIELD names were only ever seen at write time, on a whole batch, so one
+	// `my-field` buried every other producer's events in the same flush window
+	// -- with every one of them already answered 202.
+	return r.shape.validate(env.record)
 }
 
 // Write groups the batch and writes each table's rows.

@@ -43,14 +43,26 @@ func (columns) name() string { return ShapeColumns }
 // stream at BigQuery.
 var FieldName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 
-func (c columns) columns(record map[string]any) (map[string]any, error) {
-	out := make(map[string]any, len(record))
+// validate is the field-name rule, applied per event before anything is
+// buffered. See the shaper interface for the batch this did not exist to
+// protect.
+func (c columns) validate(record map[string]any) error {
 	for _, k := range sorted(record) {
 		if !FieldName.MatchString(k) {
-			return nil, fmt.Errorf("the field %q cannot be a column name: it has to "+
+			return fmt.Errorf("the field %q cannot be a column name: it has to "+
 				"match %s. That is BigQuery's rule and it is the narrowest of the "+
 				"four, so a name that passes works everywhere", k, FieldName)
 		}
+	}
+	return nil
+}
+
+func (c columns) columns(record map[string]any) (map[string]any, error) {
+	if err := c.validate(record); err != nil {
+		return nil, err
+	}
+	out := make(map[string]any, len(record))
+	for _, k := range sorted(record) {
 		v, err := value(record[k])
 		if err != nil {
 			return nil, fmt.Errorf("field %q: %w", k, err)
@@ -64,12 +76,11 @@ func (c columns) schema(record map[string]any) (sdk.Schema, error) {
 	// Sorted, so the same record always declares the same DDL. Unsorted, two
 	// runs over identical data would produce columns in different orders, and
 	// a CREATE TABLE is easier to reason about when it does not move.
+	if err := c.validate(record); err != nil {
+		return nil, err
+	}
 	out := make(sdk.Schema, 0, len(record))
 	for _, k := range sorted(record) {
-		if !FieldName.MatchString(k) {
-			return nil, fmt.Errorf("the field %q cannot be a column name: it has to "+
-				"match %s", k, FieldName)
-		}
 		out = append(out, sdk.Column{Name: k, Type: typeOf(record[k])})
 	}
 	return out, nil
