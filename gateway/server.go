@@ -167,6 +167,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		// something that cannot change is work done 500 times a second for an
 		// answer fixed at build time.
 		p.admit, _ = sink.(Admitter)
+		p.measure, _ = sink.(Measurer)
 		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
@@ -337,6 +338,7 @@ type pipe struct {
 	metrics *Metrics
 	big     *oversize
 	admit   Admitter
+	measure Measurer
 
 	mu    sync.Mutex
 	batch []sdk.Envelope
@@ -480,6 +482,14 @@ func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int
 				continue
 			}
 			e = kept
+		}
+
+		// The event is final here -- the hook has run and the oversize path
+		// has reduced it -- so this is where the arrival size is stamped. It
+		// overwrites: a producer who sends this field must not be able to
+		// report their own volume.
+		if p.measure != nil {
+			p.metrics.ingested(p.stream.Name, p.measure.Measure(e, a.bytes), a.bytes)
 		}
 
 		if p.admit != nil {

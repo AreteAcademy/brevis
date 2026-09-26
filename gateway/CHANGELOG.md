@@ -13,6 +13,83 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.11.0] — 2026-09-26
+
+Volume, without infrastructure to measure volume.
+
+### Added: an eighth fixed column, `brevis_received_bytes`
+
+How large the event arrived, envelope included, on every row of every table.
+
+**It is free.** The gateway has counted these bytes at decode since `0.10.0` to
+drive `buffer.flush.size`, and the number died there. Measuring the record
+alone would cost a `json.Marshal` per event — measured at 2.0µs against the
+3.1µs the parse already spends, a **67% increase on the hot path**, or about
+40% of one core at the rates the buffer sustains — to refine a number whose job
+is trend and attribution.
+
+**It answers what the metrics structurally cannot.** Every `brevis_gateway_*`
+series is per STREAM and carries no `table` label, deliberately: with
+`auto_table` one route becomes N tables and that label is the producer's to
+choose. So "which table is growing, and since when" had no answer anywhere:
+
+```sql
+select date(brevis_received_at) day, count(*), sum(brevis_received_bytes)/1e9 gb
+from app_orders group by 1 order by 1 desc
+```
+
+Without it, the same question means scanning the whole JSON column — roughly
+fifty times the bytes, every time somebody asks. The column pays for itself on
+the first query.
+
+**It is INGRESS and not storage.** The destination keeps the row typed and
+compressed, so 400 bytes of JSON may be 80 on disk. Summing this gives what
+arrived, never what is billed for keeping it.
+
+**A producer cannot write it.** The value is stamped after the hook, through a
+new `Measurer` seam, and it OVERWRITES whatever the envelope carried — the same
+rule the `brevis_` prefix enforces inside `data`, applied to the one control
+field the pipe writes from outside. A forged `brevis_received_bytes: 1` lands
+as the number the gateway measured.
+
+Nullable, and absent rather than `0` when nothing measured it: a zero SUMS, and
+a column whose zeros mean "nobody looked" lies in aggregate — which is the only
+way this one is ever read.
+
+### Added: per-table volume series, behind `BREVIS_INGESTION_METRICS`
+
+```
+brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}
+```
+
+**Off unless `BREVIS_INGESTION_METRICS` is true**, and the default is the
+point. Everything else in this gateway is labelled by what an OPERATOR wrote in
+a YAML file, so the series count is known before the process starts. `table` is
+chosen by the PRODUCER, and `naming` bounds that rather than making it small.
+Nobody should find a metrics bill because they upgraded.
+
+A value nobody can parse reads as off, never as a failure to start: this is
+observability, and a typo must not be the reason an ingestion endpoint does not
+come up.
+
+The two answer different questions and both are the same number. The metric
+buys *now*; the column buys *since when* and *by whom*.
+
+### The `Measurer` seam
+
+Optional and structural, like `Admitter`, and for the same reason: most sinks
+must NOT get this. A stream landing in a topic or in a table somebody declared
+would find a field in its payload nothing asked for — a new key for every
+subscriber, or a column the table does not have and the load refuses. Only a
+sink that owns its table's shape can carry it.
+
+It returns the table the volume is attributed to, so the pipe can own the
+metrics while the sink owns the routing. A name `naming` refuses is attributed
+to nothing rather than becoming a series named by a string a producer chose.
+
+---
+
 ## [0.10.0] — 2026-09-26
 
 Every ceiling in the buffer was a count, and a count cannot see bytes.

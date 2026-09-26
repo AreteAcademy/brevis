@@ -114,3 +114,76 @@ func TestARefusedHandoffIsNotCountedAsAFlush(t *testing.T) {
 		t.Errorf("a handoff the pool refused was counted as a flush:\n%s", b.String())
 	}
 }
+
+// --- the arrival size -------------------------------------------------------
+
+// The volume series are OFF unless the environment says otherwise, and a
+// value nobody can parse is off rather than fatal.
+//
+// Every other instrument here is labelled by what an OPERATOR wrote in a YAML
+// file, so the series count is known before the process starts. `table` is
+// chosen by the PRODUCER, and nobody should discover a metrics bill because
+// they upgraded.
+func TestTheVolumeSeriesAreOffUnlessAskedFor(t *testing.T) {
+	for _, c := range []struct {
+		value string
+		on    bool
+	}{
+		{"", false},
+		{"false", false},
+		{"0", false},
+		{"sim", false}, // unparseable is off, never a failure to start
+		{"true", true},
+		{"1", true},
+		{"TRUE", true},
+	} {
+		t.Run("["+c.value+"]", func(t *testing.T) {
+			t.Setenv(EnvIngestionMetrics, c.value)
+			if got := IngestionMetricsEnabled(); got != c.on {
+				t.Fatalf("%q read as %v, want %v", c.value, got, c.on)
+			}
+
+			m := NewMetrics()
+			m.ingested("s", "app_orders", 512)
+
+			var b strings.Builder
+			if err := m.Render(&b); err != nil {
+				t.Fatal(err)
+			}
+			has := strings.Contains(b.String(), MetricIngestedBytes)
+			if has != c.on {
+				t.Errorf("%s present = %v with %s=%q", MetricIngestedBytes, has, EnvIngestionMetrics, c.value)
+			}
+		})
+	}
+}
+
+// With the switch on, the two series carry the table and the bytes.
+func TestTheVolumeSeriesCarryTheTable(t *testing.T) {
+	t.Setenv(EnvIngestionMetrics, "true")
+	m := NewMetrics()
+	m.ingested("tables", "app_orders", 400)
+	m.ingested("tables", "app_orders", 600)
+	m.ingested("tables", "app_logs", 100)
+	// An event nothing could attribute is not counted anywhere, rather than
+	// counted under an empty label -- which would be a series named "".
+	m.ingested("tables", "", 999)
+
+	var b strings.Builder
+	if err := m.Render(&b); err != nil {
+		t.Fatal(err)
+	}
+	text := b.String()
+	for _, want := range []string{
+		`brevis_gateway_ingested_bytes_total{stream="tables",table="app_orders"} 1000`,
+		`brevis_gateway_ingested_events_total{stream="tables",table="app_orders"} 2`,
+		`brevis_gateway_ingested_bytes_total{stream="tables",table="app_logs"} 100`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("missing:\n  %s\ngot:\n%s", want, text)
+		}
+	}
+	if strings.Contains(text, `table=""`) {
+		t.Error("an unattributable event was counted under an empty table label")
+	}
+}

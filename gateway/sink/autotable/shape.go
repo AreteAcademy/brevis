@@ -101,6 +101,27 @@ const (
 	ColumnLoadedAt   = Prefix + "loaded_at"
 	ColumnStream     = Prefix + "stream"
 	ColumnGateway    = Prefix + "gateway"
+
+	// ColumnReceivedBytes is how large this event was when it ARRIVED, the
+	// envelope included.
+	//
+	// It is free: the gateway already counts these bytes at decode to drive
+	// `buffer.flush.size`, and until now the number died there. Measuring the
+	// record alone would cost a json.Marshal per event -- 2.0us against the
+	// 3.1us the decode already spends, a 67% increase on the hot path -- to
+	// refine a number whose job is trend and attribution.
+	//
+	// It answers what the metrics structurally cannot. `brevis_gateway_*` is
+	// per STREAM and carries no `table` label, deliberately: with auto_table
+	// one route becomes N tables and that label is producer-controlled. So
+	// "which table is growing, and since when" had no answer anywhere, and
+	// the alternative was scanning the JSON column to add it up -- roughly
+	// fifty times the bytes scanned, every time somebody asks.
+	//
+	// It is INGRESS and not storage. The destination keeps the row typed and
+	// compressed, so 400 bytes of JSON may be 80 on disk: summing this gives
+	// what arrived, never what is billed for keeping it.
+	ColumnReceivedBytes = Prefix + "received_bytes"
 )
 
 // PartitionBy is the column a created table is partitioned on, by day.
@@ -115,15 +136,14 @@ const PartitionBy = ColumnReceivedAt
 // record's history is what anybody does with a landing table.
 var ClusterBy = []string{ColumnRecordKey}
 
-// fixed is the part of the schema that never varies.
+// fixed is the part of the schema that never varies, except where the write
+// mode makes it vary -- and both places it does are the same decision seen
+// twice.
 //
 // `brevis_loaded_at` is a database DEFAULT and not a value we send, and that is
 // deliberate: the gateway knows the DISPATCH time, the destination knows the
 // WRITE time. The difference between the two columns is then the real
 // end-to-end latency, per row, with no instrumentation at all.
-// fixed is the part of the schema that never varies, except where the write
-// mode makes it vary -- and both places it does are the same decision seen
-// twice.
 //
 // `unique` is the UNIQUE constraint on the id: required by `merge` on Postgres
 // and MySQL, refused by BigQuery, wrong for `append`.
@@ -142,6 +162,9 @@ func fixed(unique, keyed bool) sdk.Schema {
 		{Name: ColumnLoadedAt, Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
 		{Name: ColumnStream, Type: sdk.TypeString},
 		{Name: ColumnGateway, Type: sdk.TypeString},
+		// Nullable: a row written before this column existed has no answer,
+		// and zero would be a lie that sums.
+		{Name: ColumnReceivedBytes, Type: sdk.TypeInt64},
 	}
 }
 
@@ -150,6 +173,11 @@ type envelope struct {
 	table string
 	key   string
 	op    string
+
+	// bytes is what this event arrived as, stamped by the pipe through the
+	// Measurer seam rather than read off the producer's envelope -- a
+	// producer must not be able to report their own volume.
+	bytes int64
 
 	// desc is READ AND NOT USED, and that is worth saying rather than leaving
 	// for somebody to discover: the envelope carries `description` for the
@@ -229,6 +257,17 @@ func open(e map[string]any) (envelope, error) {
 	}
 
 	env.desc = gateway.Text(e[FieldDescription])
+
+	// Stamped by the pipe through the Measurer seam, never read off what the
+	// producer sent: Measure overwrites, so a client who puts this field on
+	// their envelope reports nothing but their own arrival size anyway.
+	//
+	// Absent is legitimate -- a unit test building an envelope by hand, a
+	// path that never went through a pipe -- and leaves the column NULL,
+	// which is the honest answer to "how big was it" when nobody measured.
+	if n, ok := e[ColumnReceivedBytes].(int64); ok {
+		env.bytes = n
+	}
 	return env, nil
 }
 
@@ -248,6 +287,12 @@ func (env envelope) row(now time.Time, stream, name string) (map[string]any, err
 		// ColumnLoadedAt is absent on purpose: the destination's DEFAULT
 		// stamps it, which is the only clock that knows when the write
 		// actually happened.
+	}
+	if env.bytes > 0 {
+		// Absent rather than 0 when nothing measured it: a zero sums, and a
+		// column whose zeros are "we did not look" is a column that lies in
+		// aggregate -- which is the only way anybody reads this one.
+		row[ColumnReceivedBytes] = env.bytes
 	}
 	if env.key != "" {
 		// Absent rather than "", which is the difference between NULL and a

@@ -252,6 +252,8 @@ brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
+brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
+brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge

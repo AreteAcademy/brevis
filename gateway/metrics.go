@@ -1,7 +1,9 @@
 package gateway
 
 import (
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -25,6 +27,21 @@ const (
 	MetricBuffer    = "brevis_gateway_buffer_records"
 	MetricQueue     = "brevis_gateway_queue_batches"
 	MetricFlushes   = "brevis_gateway_flushes_total"
+
+	// The two volume series, and they are the ones behind the switch.
+	//
+	// They carry `table`, which is a label the PRODUCER chooses: with
+	// auto_table one route becomes N tables, and every other metric in this
+	// file is per stream precisely so nothing here grows with what a client
+	// sends. `naming.pattern` and `max_new_per_hour` bound it, but bounded is
+	// not the same as small, and a metrics bill is not something to opt
+	// somebody into.
+	//
+	// So they are OFF unless BREVIS_INGESTION_METRICS says otherwise. The same
+	// number is on every row in `brevis_received_bytes`, where it costs
+	// storage instead of cardinality and answers history rather than now.
+	MetricIngestedBytes  = "brevis_gateway_ingested_bytes_total"
+	MetricIngestedEvents = "brevis_gateway_ingested_events_total"
 )
 
 // Why a reason is a CLOSED enum and never the error text.
@@ -97,6 +114,12 @@ type Metrics struct {
 	oversized *counters
 	flushes   *counters
 
+	// The volume pair, nil unless BREVIS_INGESTION_METRICS turned them on.
+	// Nil rather than a bool, so the check is the same nil-guard every other
+	// instrument already has and there is no second way to be off.
+	ingestedBytes  *counters
+	ingestedEvents *counters
+
 	delivery  *histograms
 	batchSize *histograms
 
@@ -119,7 +142,7 @@ type gauge struct {
 // an empty scrape, which is what "metrics are off" has to look like: a valid
 // scrape of a process with no metrics, not a 404 that reads as broken.
 func NewMetrics() *Metrics {
-	return &Metrics{
+	m := &Metrics{
 		received:  newCounters(MetricReceived, "events accepted into a stream's buffer", "stream", "format"),
 		rejected:  newCounters(MetricRejected, "events refused before they were buffered", "stream", "reason"),
 		dropped:   newCounters(MetricDropped, "events a hook dropped on purpose", "stream"),
@@ -138,6 +161,51 @@ func NewMetrics() *Metrics {
 		batchSize: newHistograms(MetricBatchSize, "how many records were in a batch",
 			[]float64{1, 5, 10, 50, 100, 500, 1000, 5000}, "stream"),
 	}
+	if IngestionMetricsEnabled() {
+		m.ingestedBytes = newCounters(MetricIngestedBytes,
+			"bytes received, by the table they were routed to", "stream", "table")
+		m.ingestedEvents = newCounters(MetricIngestedEvents,
+			"events received, by the table they were routed to", "stream", "table")
+	}
+	return m
+}
+
+// EnvIngestionMetrics turns the per-table volume series on.
+//
+// OFF by default, and that default is the point. Every other instrument in
+// this file is labelled by things the OPERATOR wrote in a YAML file -- stream,
+// sink, format, reason -- so the series count is known before the process
+// starts. `table` is chosen by the PRODUCER: with auto_table one route becomes
+// as many tables as they name, and `naming` bounds that rather than making it
+// small.
+//
+// Nobody should discover a metrics bill because they upgraded. The same number
+// is on every row as `brevis_received_bytes` whether or not this is set, so
+// the volume question is answerable either way -- this buys `now`, the column
+// buys `since when` and `by whom`.
+const EnvIngestionMetrics = "BREVIS_INGESTION_METRICS"
+
+// IngestionMetricsEnabled reads the switch. Anything strconv.ParseBool calls
+// true is true -- `1`, `t`, `TRUE` -- and everything else, including an unset
+// variable and a value nobody can parse, is false.
+//
+// A bad value reads as OFF rather than failing the process: this is
+// observability, and a typo here must not be the reason an ingestion endpoint
+// does not start.
+func IngestionMetricsEnabled() bool {
+	on, err := strconv.ParseBool(os.Getenv(EnvIngestionMetrics))
+	return err == nil && on
+}
+
+// ingested records one event's arrival against the table it was routed to.
+// A no-op when the switch is off, which is what keeps the caller free of the
+// question.
+func (m *Metrics) ingested(stream, table string, bytes int) {
+	if m == nil || m.ingestedBytes == nil || table == "" {
+		return
+	}
+	m.ingestedBytes.add(int64(bytes), stream, table)
+	m.ingestedEvents.add(1, stream, table)
 }
 
 func (m *Metrics) count(c *counters, n int64, labels ...string) {

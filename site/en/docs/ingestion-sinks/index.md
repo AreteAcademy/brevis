@@ -262,6 +262,7 @@ field accepted in silence is a field somebody believes is being stored.
 | `brevis_loaded_at` | `TIMESTAMP` | the write, stamped by the **destination** |
 | `brevis_stream` | `STRING` | which route wrote it |
 | `brevis_gateway` | `STRING` | which deployment |
+| `brevis_received_bytes` | `INT64` | how large the event **arrived**, envelope included |
 
 **`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
 **per event** — otherwise a producer forges a control field, and a forged
@@ -281,6 +282,63 @@ record's history is what anybody does with a table like this.
 One declaration serves every destination, because the SDK's DDL generator
 translates each type: `STRING` becomes `TEXT` on Postgres, `LONGTEXT` on MySQL
 and `STRING` on BigQuery; `JSON` becomes `JSONB`, `JSON` and `JSON`.
+
+### Volume without infrastructure to measure volume
+
+`brevis_received_bytes` is **free**: the gateway already counts these bytes at
+decode to drive `buffer.flush.size`, and until now the number died there.
+Measuring the record alone would cost a `json.Marshal` per event — 2.0 µs
+against the 3.1 µs the parse already spends, **67% more on the hot path** — to
+refine a number whose job is trend and attribution.
+
+It answers what the metrics **structurally cannot**. Every `brevis_gateway_*`
+series is per *stream* and carries no `table` label, deliberately: with
+`auto_table` one route becomes N tables and that label is the producer's to
+choose. So "which table is growing, and since when" had no answer anywhere.
+
+```sql
+select date(brevis_received_at) day,
+       count(*) events,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc
+```
+
+Without the column the same question means scanning the whole JSON column —
+`sum(length(to_json_string(data)))` — roughly **fifty times the bytes scanned**,
+every time somebody asks. The column pays for itself on the first query.
+
+**It is ingress, not storage.** The destination keeps the row typed and
+compressed: 400 bytes of JSON may be 80 on disk. Summing this gives what
+*arrived*, never what is billed for keeping it.
+
+And **the producer cannot write it**. The gateway stamps the value after the
+hook and overwrites whatever the envelope carried — a client who sent the field
+would be reporting their own volume, and summing it would stop meaning
+anything.
+
+### The volume series are opt-in
+
+```bash
+BREVIS_INGESTION_METRICS=true
+```
+
+```
+brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}
+```
+
+**Off by default**, and the default is the point: `table` is a label the
+*producer* chooses. Everything else in this file is labelled by what an operator
+wrote in the YAML, so the series count is known before the process starts.
+Nobody should find a metrics bill because they upgraded.
+
+A value nobody can parse reads as **off**, never as a failure: this is
+observability, and a typo here must not be the reason an ingestion endpoint does
+not start.
+
+The column is there either way. The metric buys *now*; the column buys *since
+when* and *by whom*.
 
 ### Two shapes, one contract
 

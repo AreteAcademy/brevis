@@ -263,6 +263,7 @@ gravando.
 | `brevis_loaded_at` | `TIMESTAMP` | a escrita, carimbada pelo **destino** |
 | `brevis_stream` | `STRING` | qual rota escreveu |
 | `brevis_gateway` | `STRING` | qual implantação |
+| `brevis_received_bytes` | `INT64` | o tamanho com que o evento **chegou**, envelope incluído |
 
 **`brevis_` é reservado.** Um `data` carregando qualquer chave com esse prefixo é
 recusado **por evento** — senão um produtor forja um campo de controle, e um
@@ -283,6 +284,63 @@ uma tabela dessas.
 Uma declaração serve a todos os destinos, porque o gerador de DDL do SDK traduz
 cada tipo: `STRING` vira `TEXT` no Postgres, `LONGTEXT` no MySQL e `STRING` no
 BigQuery; `JSON` vira `JSONB`, `JSON` e `JSON`.
+
+### Volume sem infra para medir volume
+
+`brevis_received_bytes` é **grátis**: o gateway já conta esses bytes no decode
+para alimentar o `buffer.flush.size`, e até então o número morria ali. Medir só
+o `data` custaria um `json.Marshal` por evento — 2,0 µs contra os 3,1 µs que o
+parse já gasta, **67% a mais no caminho quente** — para refinar um número cujo
+trabalho é tendência e atribuição.
+
+Ele responde o que as métricas **estruturalmente não alcançam**. Toda série
+`brevis_gateway_*` é por *stream* e não carrega label `table`, de propósito: com
+`auto_table` uma rota vira N tabelas e esse label é escolhido pelo produtor. Então
+"qual tabela está crescendo, e desde quando" não tinha resposta em lugar nenhum.
+
+```sql
+select date(brevis_received_at) dia,
+       count(*) eventos,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc
+```
+
+Sem a coluna, a mesma pergunta significa varrer a coluna JSON inteira —
+`sum(length(to_json_string(data)))` — o que escaneia cerca de **cinquenta vezes
+mais bytes**, toda vez que alguém perguntar. A coluna se paga na primeira
+consulta.
+
+**É entrada, não armazenamento.** O destino guarda a linha tipada e comprimida:
+400 bytes de JSON podem virar 80 no disco. Somar essa coluna dá o que *chegou*,
+nunca o que é cobrado para manter.
+
+E **o produtor não consegue escrevê-la**. O gateway carimba o valor depois do
+hook e sobrescreve o que vier no envelope — um cliente que mandasse o campo
+reportaria o próprio volume, e somar deixaria de significar alguma coisa.
+
+### As séries de volume são opt-in
+
+```bash
+BREVIS_INGESTION_METRICS=true
+```
+
+```
+brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}
+```
+
+**Desligadas por padrão**, e o padrão é o ponto: `table` é um label que o
+*produtor* escolhe. Todo o resto deste arquivo é rotulado pelo que um operador
+escreveu no YAML, então a contagem de séries é conhecida antes do processo
+subir. Ninguém deveria descobrir uma conta de métricas porque atualizou.
+
+Um valor que ninguém consegue interpretar lê como **desligado**, nunca como
+falha: isso é observabilidade, e um erro de digitação aqui não pode ser o motivo
+de um endpoint de ingestão não subir.
+
+A coluna existe dos dois jeitos. A métrica compra o *agora*; a coluna compra o
+*desde quando* e o *de quem*.
 
 ### Duas formas, um contrato
 

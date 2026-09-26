@@ -30,6 +30,21 @@ listen:
 metrics:
   addr: :9090
 
+# Per-table VOLUME series are off unless the environment turns them on:
+#
+#   BREVIS_INGESTION_METRICS=true
+#
+#   brevis_gateway_ingested_bytes_total{stream,table}
+#   brevis_gateway_ingested_events_total{stream,table}
+#
+# Off by default because `table` is a label the PRODUCER chooses -- with
+# auto_table one route becomes as many tables as they name, and every other
+# series here is labelled by what an operator wrote in this file. Nobody should
+# find a metrics bill because they upgraded.
+#
+# The same number is on every row as `brevis_received_bytes` either way. This
+# buys `now`; the column buys `since when` and `by whom`.
+
 streams:
   - name: clicks
     path: /v1/clicks
@@ -271,6 +286,14 @@ streams:
   #   brevis_loaded_at      DEFAULT CURRENT_TIMESTAMP -- the destination stamps it
   #   brevis_stream         which route wrote it
   #   brevis_gateway        which deployment
+  #   brevis_received_bytes how large the event arrived, envelope included --
+  #                         free, because buffer.flush.size already counts it.
+  #                         INGRESS and not storage: the destination keeps the
+  #                         row typed and compressed, so 400 bytes of JSON may
+  #                         be 80 on disk. Summing it answers "which table is
+  #                         growing, since when, from whom" -- which the
+  #                         metrics cannot, because they carry no `table`
+  #                         label and that label is the producer's to choose.
   #
   # `brevis_` is RESERVED: a `data` carrying any key with it is refused per
   # event, because otherwise a producer forges a control field -- and a forged

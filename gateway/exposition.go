@@ -29,7 +29,7 @@ func (m *Metrics) Render(w io.Writer) error {
 	}
 	for _, c := range []*counters{
 		m.received, m.rejected, m.dropped, m.batches, m.buried, m.saturated, m.oversized,
-		m.flushes,
+		m.flushes, m.ingestedBytes, m.ingestedEvents,
 	} {
 		if err := c.render(w); err != nil {
 			return err
@@ -69,6 +69,13 @@ func (m *Metrics) Render(w io.Writer) error {
 }
 
 func (c *counters) render(w io.Writer) error {
+	// Nil is an instrument that was never built, which is how the volume pair
+	// is off when BREVIS_INGESTION_METRICS is unset. It renders nothing, for
+	// the same reason a nil *Metrics does: "not configured" must not look like
+	// "broken".
+	if c == nil {
+		return nil
+	}
 	c.mu.RLock()
 	keys := make([]string, 0, len(c.by))
 	values := make(map[string]int64, len(c.by))

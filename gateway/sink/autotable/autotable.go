@@ -157,6 +157,29 @@ func (r *router) Admit(e map[string]any) error {
 	return r.shape.validate(env.record)
 }
 
+// Measure stamps how large this event arrived and says which table its volume
+// belongs to.
+//
+// It OVERWRITES rather than filling a gap: the field name is the gateway's own,
+// and a producer who sends it must not be able to report their own volume. It
+// is the same rule the `brevis_` prefix enforces inside `data`, applied to the
+// one control field the pipe writes from outside.
+//
+// The returned table is what the volume metrics are labelled by -- see
+// gateway.Measurer for why the name travels back instead of the metrics
+// travelling in. An envelope this cannot read returns empty, and that event is
+// simply not attributed: refusing here would be a refusal at the wrong seam,
+// and Admit is about to give the producer the real reason.
+func (r *router) Measure(e map[string]any, bytes int) string {
+	e[ColumnReceivedBytes] = int64(bytes)
+
+	table := gateway.Text(e[FieldTable])
+	if r.names.check(table) != nil {
+		return ""
+	}
+	return table
+}
+
 // needsKey is the write mode's half of the unique-key rule.
 //
 // It lives on the router and not in `open` because `open` parses an envelope

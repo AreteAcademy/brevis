@@ -315,3 +315,111 @@ func TestAKeylessRowLeavesTheColumnOut(t *testing.T) {
 			ColumnRecordKey, v)
 	}
 }
+
+// The arrival size reaches the row, and a producer cannot write it.
+//
+// Measure OVERWRITES rather than filling a gap. The field name is the
+// gateway's own, and the whole value of the column is that summing it is
+// trustworthy -- a producer who can set their own number can report whatever
+// volume they like, which is exactly the rule the `brevis_` prefix enforces
+// inside `data`.
+func TestTheArrivalSizeIsOursAndNotTheProducersToSet(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type: gateway.SinkAutoTable,
+		Into: &gateway.Sink{Type: "probe", Write: gateway.WriteAppend},
+	})
+
+	e := map[string]any{
+		FieldTable: "app_orders",
+		FieldData:  map[string]any{"id": "A-1"},
+		// A forged value, sat exactly where the gateway writes its own.
+		ColumnReceivedBytes: int64(1),
+	}
+
+	if table := r.Measure(e, 742); table != "app_orders" {
+		t.Errorf("Measure attributed the volume to %q", table)
+	}
+
+	env, err := open(e)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := env.row(time.Now(), "s", "g")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row[ColumnReceivedBytes] != int64(742) {
+		t.Errorf("%s = %v, and the gateway measured 742: a producer's own number "+
+			"survived, so summing this column reports what they claim rather than "+
+			"what arrived", ColumnReceivedBytes, row[ColumnReceivedBytes])
+	}
+}
+
+// A table name the rules refuse is attributed to nothing.
+//
+// The volume label would otherwise be a series named by a string the producer
+// chose and `naming` rejected -- unbounded cardinality through the one door
+// that bounds it. Admit refuses the event a moment later with the real reason;
+// this seam is not the place for it.
+func TestAnUnroutableEventIsNotAttributed(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:   gateway.SinkAutoTable,
+		Naming: gateway.Naming{Pattern: `^app_[a-z0-9_]{1,40}$`},
+		Into:   &gateway.Sink{Type: "probe", Write: gateway.WriteAppend},
+	})
+	e := map[string]any{FieldTable: "DROP TABLE x", FieldData: map[string]any{"id": "A"}}
+	if table := r.Measure(e, 100); table != "" {
+		t.Errorf("volume attributed to %q, which `naming` refuses", table)
+	}
+}
+
+// A row nothing measured leaves the column out, rather than writing zero.
+//
+// Zero SUMS. A column whose zeros mean "nobody looked" is a column that lies
+// in aggregate, and aggregate is the only way this one is ever read.
+func TestAnUnmeasuredRowLeavesTheColumnOut(t *testing.T) {
+	env, err := open(map[string]any{
+		FieldTable: "app_orders",
+		FieldData:  map[string]any{"id": "A-1"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := env.row(time.Now(), "s", "g")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, present := row[ColumnReceivedBytes]; present {
+		t.Errorf("%s is in the row as %#v; unmeasured has to be NULL, because a "+
+			"zero here is counted by every sum", ColumnReceivedBytes, v)
+	}
+}
+
+// The column is on every table, whatever the shape or the write mode.
+func TestTheArrivalSizeColumnIsAlwaysThere(t *testing.T) {
+	for _, write := range []string{gateway.WriteAppend, gateway.WriteMerge} {
+		for _, shape := range []string{ShapeDocument, ShapeColumns} {
+			r := build(t, gateway.Sink{
+				Type:  gateway.SinkAutoTable,
+				Shape: shape,
+				Into:  &gateway.Sink{Type: "probe", Write: write},
+			})
+			var found bool
+			for _, c := range fixed(r.unique, r.merging) {
+				if c.Name == ColumnReceivedBytes {
+					found = true
+					if c.Type != sdk.TypeInt64 {
+						t.Errorf("%s/%s: %s is %s", write, shape, c.Name, c.Type)
+					}
+					if c.Required {
+						t.Errorf("%s/%s: %s is NOT NULL, so a row nobody measured "+
+							"would be refused by the database", write, shape, c.Name)
+					}
+				}
+			}
+			if !found {
+				t.Errorf("%s/%s has no %s", write, shape, ColumnReceivedBytes)
+			}
+		}
+	}
+}
