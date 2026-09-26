@@ -649,3 +649,87 @@ func TestDedupMergeRequiresTheIngestionIDColumn(t *testing.T) {
 		t.Errorf("sem Columns não há o que conferir na configuração: %v", err)
 	}
 }
+
+// A typed declaration means the SDK created the table, so the JOB must say
+// nothing about layout.
+//
+// This is the bug a consumer hit on BigQuery, and it cost them every row.
+// `CreationPlan` takes the typed path whenever `Schema` is declared;
+// `applyLayout` asked a different question -- `typesAnything(Columns)`, which
+// is "does the caller's list name one of the SDK's own metadata columns". That
+// held only while the SDK owned those names. The gateway's auto_table v2
+// renamed them to `brevis_*`, so a fully typed declaration answered false, the
+// job went down the autodetect branch, and it sent clustering with no
+// partitioning beside it:
+//
+//	Expects  interval(type:day,field:brevis_received_at) clustering(brevis_record_key)
+//	but input                                            clustering(brevis_record_key)
+//
+// BigQuery compares the pair. The table was created exactly right and every
+// load failed with a 400.
+func TestLayoutIsSilentWhenTheSchemaIsDeclared(t *testing.T) {
+	loader, file := layoutFor(&core.LoadConfig{
+		Format: "ndjson", CreateTable: true,
+		// The gateway's own names, which is the whole point: none of them is
+		// one the SDK knows.
+		Columns:     []string{"brevis_ingestion_id", "brevis_record_key", "id"},
+		Schema:      core.Schema{{Name: "brevis_ingestion_id", Type: core.TypeString}},
+		PartitionBy: "brevis_received_at",
+		ClusterBy:   []string{"brevis_record_key"},
+	})
+
+	if loader.CreateDisposition != bigquery.CreateNever {
+		t.Errorf("the SDK created this table; the job must not: %v", loader.CreateDisposition)
+	}
+	if file.AutoDetect {
+		t.Error("autodetect over a declared schema relaxes the NOT NULL the " +
+			"creation just put in place")
+	}
+	if loader.Clustering != nil || loader.TimePartitioning != nil {
+		t.Errorf("the job described a layout for a table it did not create: "+
+			"clustering=%+v partitioning=%+v", loader.Clustering, loader.TimePartitioning)
+	}
+}
+
+// On the autodetect path the two travel TOGETHER or not at all.
+//
+// The second half of the same defect: `PartitionBy` was read by the creation
+// path and dropped by the job, so a caller who set it with no Schema got a
+// clustered table that was never partitioned -- and nothing said so.
+func TestLayoutCarriesPartitioningBesideClustering(t *testing.T) {
+	loader, _ := layoutFor(&core.LoadConfig{
+		Format: "ndjson", CreateTable: true,
+		PartitionBy: "occurred_at",
+		ClusterBy:   []string{"tenant"},
+	})
+
+	if loader.TimePartitioning == nil {
+		t.Fatal("PartitionBy was declared and the job dropped it: the table is " +
+			"created unpartitioned, which is a query bill that only grows")
+	}
+	if loader.TimePartitioning.Field != "occurred_at" {
+		t.Errorf("partitioned on %q", loader.TimePartitioning.Field)
+	}
+	if loader.TimePartitioning.Type != bigquery.DayPartitioningType {
+		t.Errorf("partition type %v", loader.TimePartitioning.Type)
+	}
+	if loader.Clustering == nil || loader.Clustering.Fields[0] != "tenant" {
+		t.Errorf("clustering = %+v", loader.Clustering)
+	}
+}
+
+// And with no explicit PartitionBy, nothing is partitioned on this path.
+//
+// partitionOf defaults to the SDK's own timestamp column, which is right when
+// the SDK writes the DDL and wrong here: the schema comes from the data, so
+// that column may simply not exist, and partitioning on an absent one fails
+// the job rather than the row.
+func TestLayoutDoesNotInventAPartitionColumn(t *testing.T) {
+	loader, _ := layoutFor(&core.LoadConfig{
+		Format: "ndjson", CreateTable: true,
+		ClusterBy: []string{"tenant"},
+	})
+	if loader.TimePartitioning != nil {
+		t.Errorf("partitioned on a column nobody declared: %+v", loader.TimePartitioning)
+	}
+}

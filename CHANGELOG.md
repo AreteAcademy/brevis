@@ -18,6 +18,54 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.67.0] — 2026-09-26
+
+### Fixed: a declared schema plus BigQuery meant the table was created and no row went in
+
+Found by a consumer, diagnosed by them down to the line. Every `auto_table`
+stream pointing at BigQuery created its table correctly and then failed every
+load with a 400:
+
+```
+Expects   interval(type:day,field:brevis_received_at) clustering(brevis_record_key)
+but input                                             clustering(brevis_record_key)
+```
+
+Note the empty space. The load job declared clustering and said nothing about
+partitioning, and BigQuery compares the **pair**.
+
+`applyLayout` leaves the job alone when somebody else creates the table, and it
+asked the wrong question to find out. `CreationPlan` takes the typed path
+whenever `Schema` is declared; `applyLayout` asked
+`typesAnything(Columns)` — "does the caller's column list name one of the SDK's
+own metadata columns". That is a **proxy**, and it held only while the SDK owned
+those names. The gateway's `auto_table` v2 renamed them to
+`brevis_ingestion_id` and `brevis_loaded_at`, the proxy started answering false
+for a fully typed declaration, and the job fell into the autodetect branch it
+was written to avoid.
+
+The guard is now `CreateSQL != "" || len(Schema) > 0 || typesAnything(Columns)`
+— the middle one is the condition `CreationPlan` itself uses, and the two have
+to agree. The old condition is kept, so a caller declaring column names without
+types loses nothing.
+
+### Fixed: `PartitionBy` was read when creating and dropped by the load job
+
+The other half, and it was silent rather than loud. On the autodetect path the
+job set `Clustering` and never `TimePartitioning`, so a caller who set
+`PartitionBy` with no `Schema` got a clustered table that was never partitioned
+and nothing said so — an unpartitioned landing table is a query bill that only
+grows.
+
+Both travel together now. Only an **explicit** `PartitionBy`, never
+`partitionOf`'s default: on that path the schema comes from the data, so the
+SDK's own timestamp column may not be there, and partitioning on an absent
+column fails the job.
+
+Three tests, each pure and each failing on its own half of the fix.
+
+---
+
 ## [0.66.0] — 2026-09-25
 
 ### Added: `WriteOptions.DedupKey`

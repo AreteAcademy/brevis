@@ -213,7 +213,25 @@ func (l *Loader) applyLayout(loader *bigquery.Loader, file *bigquery.FileConfig)
 	// at a table that already has a schema is how a REQUIRED column gets
 	// relaxed back to NULLABLE -- BigQuery refuses outright, which is the
 	// good outcome, but it refuses the whole load.
-	if l.cfg.CreateSQL != "" || typesAnything(l.cfg.Columns) {
+	//
+	// `len(Schema) > 0` is the condition CreationPlan itself uses, and the two
+	// have to agree: whatever CreationPlan would create typed, this must leave
+	// alone. It was missing, and `typesAnything(Columns)` stood in for it --
+	// "does the caller's list mention one of the SDK's own metadata columns",
+	// which is a PROXY that held only while the SDK owned those names.
+	//
+	// The gateway's auto_table v2 renamed them to brevis_ingestion_id and
+	// brevis_loaded_at. The proxy started answering false for a fully typed
+	// declaration, so every auto_table load went down the autodetect branch
+	// and sent Clustering with no TimePartitioning beside it:
+	//
+	//	Expects  interval(type:day,field:brevis_received_at) clustering(brevis_record_key)
+	//	but input                                            clustering(brevis_record_key)
+	//
+	// BigQuery compares the PAIR, so it refused with 400 -- the table created
+	// correctly and not one row in it. Both conditions are kept: a caller who
+	// declares column names without types still gets the old protection.
+	if l.cfg.CreateSQL != "" || len(l.cfg.Schema) > 0 || typesAnything(l.cfg.Columns) {
 		loader.CreateDisposition = bigquery.CreateNever
 		return
 	}
@@ -221,6 +239,20 @@ func (l *Loader) applyLayout(loader *bigquery.Loader, file *bigquery.FileConfig)
 	loader.CreateDisposition = bigquery.CreateIfNeeded
 	file.AutoDetect = true
 
+	// Both or neither, for the reason above: a job that names one of the two
+	// describes a layout that does not exist, and BigQuery compares the pair.
+	//
+	// Only an EXPLICIT PartitionBy, never partitionOf's default: on this path
+	// the schema comes from the data, so the SDK's own metadata column may
+	// simply not be there, and partitioning on an absent column fails the job.
+	if l.cfg.PartitionBy != "" {
+		loader.TimePartitioning = &bigquery.TimePartitioning{
+			Type:                   bigquery.DayPartitioningType,
+			Field:                  l.cfg.PartitionBy,
+			Expiration:             l.cfg.PartitionExpiration,
+			RequirePartitionFilter: l.cfg.RequirePartitionFilter,
+		}
+	}
 	if len(l.cfg.ClusterBy) > 0 {
 		loader.Clustering = &bigquery.Clustering{Fields: l.cfg.ClusterBy}
 	}
