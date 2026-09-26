@@ -73,10 +73,11 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		return nil, fmt.Errorf("auto_table has no metastore, and it needs one even " +
 			"to talk to itself: `memory` is the default and always available")
 	}
-	ttl := s.Metastore.TTL
-	if ttl <= 0 {
-		ttl = gateway.DefaultMetastoreTTL
-	}
+	// Resolved by the config's own check, so the default lives in one place
+	// and a declared `ttl: 0` survives the trip. It used to be re-defaulted
+	// here with `<= 0`, which made "never expire" unreachable no matter what
+	// the file said.
+	ttl := s.Metastore.CacheTTL()
 
 	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh,
 		stream: b.Stream, gateway: b.Gateway,

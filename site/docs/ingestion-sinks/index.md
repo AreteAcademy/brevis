@@ -508,6 +508,20 @@ existirem.
 miss, um claim que erra se comporta como ganho, um contador que erra relaxa o
 limite. Um cache capaz de parar a ingestão é pior que nenhum cache.
 
+**`ttl: 0` significa nunca**, e dizer nada continua pegando o padrão de um
+minuto — três estados, não dois.
+
+O relógio **não** é o que recupera de uma entrada errada. Uma escrita que o
+destino recusa chama `invalidate`, que derruba a entrada na hora e deixa o
+retry da própria esteira voltar contra um cache frio: uma tabela dropada na mão
+custa **uma tentativa falha**, não um minuto.
+
+Expirar tem preço. O `sinkFor` cobra o `naming.max_new_per_hour` quando **não
+sabe** de uma tabela — então um miss cobra por uma tabela que existe há semanas,
+e um pod que reinicia um minuto depois do último evento de uma tabela não
+aproveita nada do backend compartilhado que está pagando. Com tabelas de vida
+longa, `ttl: 0` é a resposta.
+
 `addr_from` nomeia a **variável de ambiente** que guarda o endereço, nunca o
 endereço: ele carrega senha com frequência suficiente.
 

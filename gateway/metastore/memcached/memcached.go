@@ -126,7 +126,30 @@ func escape(key string) string {
 // seconds is memcached's expiry. Anything over thirty days is read as an
 // absolute unix time by the protocol, which is a trap nothing here goes near --
 // the TTLs are seconds and minutes.
+// memcachedRelativeMax is where memcached stops reading an expiry as a number
+// of SECONDS and starts reading it as an absolute Unix timestamp.
+//
+// Thirty days. It is in the protocol and it is the kind of rule that bites
+// once: a TTL of 31 days sent as 2,678,400 is read as a moment in January
+// 1970, so the item expires the instant it is stored -- and the symptom is a
+// cache that silently never hits.
+const memcachedRelativeMax = 30 * 24 * time.Hour
+
+// seconds renders a TTL the way this protocol reads one.
+//
+//	0            never expires. `ttl: 0` asks for exactly this, and the zero
+//	             has to survive: flooring it to 1 would turn "keep this" into
+//	             "forget it in a second", which is the opposite.
+//	under 1s     one second, the smallest this protocol can express. Expiry
+//	             here is second-granular, which a test learned the hard way.
+//	over 30 days an absolute Unix timestamp, per the rule above.
 func seconds(ttl time.Duration) int32 {
+	if ttl <= 0 {
+		return 0
+	}
+	if ttl > memcachedRelativeMax {
+		return int32(time.Now().Add(ttl).Unix())
+	}
 	s := int32(ttl.Seconds())
 	if s < 1 {
 		return 1

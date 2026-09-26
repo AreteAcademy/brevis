@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -185,5 +186,73 @@ func TestTheVolumeSeriesCarryTheTable(t *testing.T) {
 	}
 	if strings.Contains(text, `table=""`) {
 		t.Error("an unattributable event was counted under an empty table label")
+	}
+}
+
+// --- ttl: 0 means never (issue #35) ----------------------------------------
+
+// The three states of the TTL are three, and a pointer is what keeps them
+// apart.
+//
+// This is the trap the change had to avoid: `ttl:` omitted and `ttl: 0` are
+// the same zero in a plain Duration, so making zero mean "never" would have
+// flipped every existing config to never-expire in silence. The same reason
+// `metrics.addr` is a pointer.
+func TestTheTTLTellsSilenceFromZero(t *testing.T) {
+	zero := time.Duration(0)
+	five := 5 * time.Minute
+
+	for _, c := range []struct {
+		name string
+		in   *time.Duration
+		want time.Duration
+	}{
+		{"said nothing", nil, DefaultMetastoreTTL},
+		{"said zero", &zero, 0},
+		{"said a value", &five, five},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := MetastoreConfig{Type: MetastoreMemory, TTL: c.in}
+			if err := m.check(); err != nil {
+				t.Fatal(err)
+			}
+			if got := m.CacheTTL(); got != c.want {
+				t.Errorf("CacheTTL() = %s, want %s", got, c.want)
+			}
+		})
+	}
+
+	// Negative is still refused: it is neither a duration nor an intention.
+	bad := -time.Second
+	if err := (&MetastoreConfig{Type: MetastoreMemory, TTL: &bad}).check(); err == nil {
+		t.Error("a negative ttl was accepted")
+	}
+}
+
+// The memory backend has to MEAN never, and this is where it did not.
+//
+// `now.Add(0)` is a moment in the past by the time Get reads it, so a zero TTL
+// made every entry expire instantly -- the exact opposite of what `ttl: 0`
+// asks for, while Redis read the same zero as "keep forever". Three backends,
+// two meanings, and the one nobody had to configure was the broken one.
+func TestZeroTTLDoesNotExpireInMemory(t *testing.T) {
+	ctx := context.Background()
+	m := NewMemoryMetastore()
+
+	if err := m.Put(ctx, "forever", "1", 0); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok, err := m.Get(ctx, "forever"); err != nil || !ok || v != "1" {
+		t.Fatalf("a zero-TTL entry read back as (%q, %v, %v); it must not expire",
+			v, ok, err)
+	}
+
+	// And a positive TTL still expires, or "never" would be the only mode.
+	if err := m.Put(ctx, "brief", "1", time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	if _, ok, _ := m.Get(ctx, "brief"); ok {
+		t.Error("a 1ms entry was still there after 20ms")
 	}
 }

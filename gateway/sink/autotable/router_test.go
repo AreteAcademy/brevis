@@ -26,7 +26,7 @@ import (
 func TestTheConfiguredTTLReachesTheCache(t *testing.T) {
 	r := build(t, gateway.Sink{
 		Type:      gateway.SinkAutoTable,
-		Metastore: gateway.MetastoreConfig{Type: gateway.MetastoreMemory, TTL: 5 * time.Minute},
+		Metastore: gateway.MetastoreConfig{Type: gateway.MetastoreMemory, TTL: minutes(5)},
 		Into:      &gateway.Sink{Type: "probe"},
 	})
 	if r.meta.ttl != 5*time.Minute {
@@ -422,4 +422,11 @@ func TestTheArrivalSizeColumnIsAlwaysThere(t *testing.T) {
 			}
 		}
 	}
+}
+
+// minutes is a pointer to a duration, because MetastoreConfig.TTL is one: the
+// three states are absent, zero (never) and a value.
+func minutes(n int) *time.Duration {
+	d := time.Duration(n) * time.Minute
+	return &d
 }

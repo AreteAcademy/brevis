@@ -13,6 +13,85 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.12.0] — 2026-09-26
+
+`metastore.ttl: 0` means never. From [issue #35], and the argument was ours.
+
+### Changed: the TTL is a pointer, because the three states are three
+
+**Breaking in shape, not in behaviour.** `MetastoreConfig.TTL` is
+`*time.Duration` now. A file that says nothing still gets sixty seconds; `ttl:
+0` means the entry does not expire.
+
+The pointer is the whole of it. In a plain `Duration`, `ttl:` omitted and `ttl:
+0` are the same zero — so making zero mean "never" would have flipped every
+existing config to never-expire in silence. `metrics.addr` is a pointer for
+exactly this reason and the comment there says so.
+
+### Why the timer was never the safety net it read as
+
+The field's own doc said a table dropped by hand outside the gateway makes
+every entry a lie, and that sixty seconds of wrongness is recoverable. True —
+but the CLOCK is not what recovers. `router.Write` does:
+
+```go
+if err != nil {
+    r.invalidate(ctx, table)
+    return wrote, fmt.Errorf("table %s: %w", table, err)
+}
+```
+
+`invalidate` drops the entry from the process cache **and** the metastore
+immediately, and the pipe's ordinary retry brings the batch back against a cold
+one. A dropped table costs **one failed attempt**, not a minute, and usually
+not even a dead letter — attempt 2 of 4 already re-reads.
+
+### And expiry costs something
+
+`sinkFor` charges `naming.max_new_per_hour` when it does not KNOW a table:
+
+```go
+if exists, known := r.meta.knows(ctx, table); !known || !exists {
+    if err := r.meta.admit(ctx, r.names.max, now); err != nil {
+```
+
+It charges on **belief**, not on creation. So a miss — a restart, or a key
+ageing out — spends the creation budget on a table that has existed for weeks,
+and a pod restarting a minute after a table's last event gets nothing at all
+from the shared backend it is paying for. Which is the case the shared backend
+exists for.
+
+`ttl: 0` mitigates that and does not fix it. Charging on creation would need
+the sink to report whether it created, which it does not today.
+
+### Fixed: two of the three backends did not mean "never"
+
+The change is one line of config and three of behaviour, and the interesting
+part is that the backends disagreed about zero:
+
+| | with `ttl: 0`, before |
+|---|---|
+| `redis` | no expiry — already right |
+| `memory` | `now.Add(0)` is already past, so **every Get missed** |
+| `memcached` | floored to **1 second** — the opposite of never |
+
+`memory` reads a zero `until` as never. `memcached` passes 0 through, which is
+how that protocol spells never.
+
+### Fixed: memcached and the thirty-day rule
+
+While in there: memcached reads an expiry above **30 days** as an absolute Unix
+timestamp, not as a number of seconds. A `ttl: 744h` was sent as 2,678,400 and
+read as a moment in January 1970, so the item expired on arrival — a cache that
+silently never hits. Over thirty days it now sends the timestamp.
+
+Verified against a real Redis and a real memcached: a zero-TTL entry is still
+there after 2.5 seconds, and a one-second entry is gone.
+
+[issue #35]: https://github.com/AreteAcademy/brevis/issues/35
+
+---
+
 ## [0.11.0] — 2026-09-26
 
 Volume, without infrastructure to measure volume.

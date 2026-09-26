@@ -510,8 +510,12 @@ func TestTheMetastoreConfigRefusesWhatItCanSee(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := cfg.Streams[0].Sink.Metastore
-	if m.Type != gateway.MetastoreMemory || m.TTL != gateway.DefaultMetastoreTTL {
-		t.Errorf("the defaults are %q and %s", m.Type, m.TTL)
+	if m.Type != gateway.MetastoreMemory || m.CacheTTL() != gateway.DefaultMetastoreTTL {
+		t.Errorf("the defaults are %q and %s", m.Type, m.CacheTTL())
+	}
+	if m.TTL != nil {
+		t.Error("a file that said nothing about ttl produced a declared one, so " +
+			"`ttl: 0` could not mean anything different from silence")
 	}
 }
 

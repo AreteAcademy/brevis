@@ -4147,6 +4147,20 @@ other two exist.
 errors is a miss, a claim that errors behaves as won, a counter that errors
 relaxes the limit. A cache that can stop the ingestion is worse than no cache.
 
+**`ttl: 0` means never**, and saying nothing still takes the one-minute default
+— three states, not two.
+
+The clock is **not** what recovers from a wrong entry. A write the destination
+refuses calls `invalidate`, which drops the entry at once and lets the pipe's
+own retry come back against a cold cache: a table dropped by hand costs **one
+failed attempt**, not a minute.
+
+Expiry has a price. `sinkFor` charges `naming.max_new_per_hour` when it does
+not **know** a table — so a miss charges for a table that has existed for
+weeks, and a pod restarting a minute after a table's last event gets nothing
+from the shared backend it is paying for. With long-lived tables, `ttl: 0` is
+the answer.
+
 `addr_from` names the **environment variable** holding the address, never the
 address: it carries a password often enough.
 

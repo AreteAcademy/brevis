@@ -394,12 +394,33 @@ type MetastoreConfig struct {
 	// registry at startup, by name -- a slim build genuinely links neither.
 	Type string `yaml:"type"`
 
-	// TTL is how long the cache may be wrong.
+	// TTL is how long the cache may be wrong, and `0` means never.
 	//
-	// A table dropped by hand outside the gateway makes every entry a lie.
-	// Sixty seconds of wrongness is recoverable -- the next write recreates
-	// it -- and an hour is an incident.
-	TTL time.Duration `yaml:"ttl"`
+	// A POINTER, because the three states are three -- the same reason
+	// `metrics.addr` is one. Absent takes the default; `ttl: 0` means the
+	// entry does not expire; a value is the value. A plain Duration collapses
+	// the first two, and "I did not mention ttl" and "I want this kept
+	// forever" must not be the same sentence.
+	//
+	// What the timer was defending against: a table dropped by hand outside
+	// the gateway makes every entry a lie. But the CLOCK is not what recovers
+	// from that -- `router.Write` is. A write that the destination refuses
+	// calls `invalidate`, which drops the entry immediately and lets the
+	// pipe's own retry come back against a cold cache. A dropped table costs
+	// one failed attempt, not a minute.
+	//
+	// So expiry is not the safety net it reads as, and it has a price: a miss
+	// charges `naming.max_new_per_hour` for a table that has existed for
+	// weeks, because `sinkFor` charges on BELIEF and not on creation. With a
+	// shared backend and a short TTL, a pod restarting a minute after a
+	// table's last event gets no benefit from the shared store at all -- which
+	// is the case the shared store exists for.
+	//
+	// Keeping the default at a minute anyway: an installation that has not
+	// thought about this should get the conservative behaviour, and the
+	// installation that has can say so in one field. Issue #35 is the
+	// argument, made by a consumer with 52 tables and a limit of 20.
+	TTL *time.Duration `yaml:"ttl"`
 
 	// AddrFrom names the ENVIRONMENT VARIABLE holding a shared backend's
 	// address, never the address: it carries a password often enough, and this
@@ -417,7 +438,8 @@ const (
 )
 
 // DefaultMetastoreTTL is how long a cache entry lives when the file names no
-// other. See Metastore.TTL for why it is a minute.
+// other. See MetastoreConfig.TTL for why it is a minute, and why `ttl: 0` --
+// which is a different thing from saying nothing -- means never.
 const DefaultMetastoreTTL = 60 * time.Second
 
 func (m *MetastoreConfig) check() error {
@@ -436,13 +458,24 @@ func (m *MetastoreConfig) check() error {
 		return fmt.Errorf("`metastore.type` is %q (use %s, %s or %s)",
 			m.Type, MetastoreMemory, MetastoreRedis, MetastoreMemcached)
 	}
-	if m.TTL < 0 {
-		return fmt.Errorf("`metastore.ttl` is %s", m.TTL)
-	}
-	if m.TTL == 0 {
-		m.TTL = DefaultMetastoreTTL
+	if m.TTL != nil && *m.TTL < 0 {
+		return fmt.Errorf("`metastore.ttl` is %s", *m.TTL)
 	}
 	return nil
+}
+
+// CacheTTL is how long an entry lives. Zero means it does not expire.
+//
+// Derived from the pointer and not from a field that `check` fills in, so a
+// Config built in code -- a test, a consumer embedding the gateway -- gets the
+// same answer as one that came through Load. A resolved field would have made
+// "check did not run" and "the operator asked for never" the same zero, which
+// is the exact confusion the pointer exists to prevent.
+func (m MetastoreConfig) CacheTTL() time.Duration {
+	if m.TTL == nil {
+		return DefaultMetastoreTTL
+	}
+	return *m.TTL
 }
 
 // Naming is the boundary a producer writes inside.

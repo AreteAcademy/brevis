@@ -63,6 +63,9 @@ func (s *store) Get(ctx context.Context, key string) (string, bool, error) {
 	return v, true, nil
 }
 
+// Put stores a value. A ttl of zero is passed through, and go-redis reads that
+// as SET with no expiry -- which is what `ttl: 0` asks for. Of the three
+// backends this was the only one that already meant it.
 func (s *store) Put(ctx context.Context, key, value string, ttl time.Duration) error {
 	return s.client.Set(ctx, key, value, ttl).Err()
 }
