@@ -128,7 +128,7 @@ jobs:
 
       - name: Build and push
         if: env.DOCKER_USERNAME != ''
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./site
           push: true
