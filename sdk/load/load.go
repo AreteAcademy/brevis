@@ -314,6 +314,16 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		return fail(err)
 	}
 
+	// What the declaration has and the table does not, added before anything
+	// is checked against it -- so the check below sees the table as this load
+	// is about to leave it, and the load job does not meet a column that is
+	// one API call away from existing.
+	if existed {
+		if err := l.evolveTable(ctx, table); err != nil {
+			return fail(err)
+		}
+	}
+
 	// And the declaration against the table that is actually there. Only when
 	// it already existed: one the SDK just created was created from these very
 	// rows, so checking it would be checking our own arithmetic.

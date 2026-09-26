@@ -140,6 +140,7 @@ var (
 	WithThresholdBytesForGCS   = core.WithThresholdBytesForGCS
 	WithColumns                = core.WithColumns
 	WithSchema                 = core.WithSchema
+	WithEvolve                 = core.WithEvolve
 	WithPartitionBy            = core.WithPartitionBy
 	WithClusterBy              = core.WithClusterBy
 	WithCreateTable            = core.WithCreateTable

@@ -295,6 +295,20 @@ type LoadConfig struct {
 	// table takes its types from -- and not from any autodetect.
 	Schema Schema
 
+	// Evolve says what a load may do to a table that EXISTS and no longer
+	// matches the declared Schema.
+	//
+	// EvolveNone -- the zero value -- refuses any difference, which is what
+	// this path did before, silently. The Postgres and MySQL destinations have
+	// honoured this field for a while; BigQuery ignored it, and `auto_table`
+	// declared EvolveAdditive on every destination regardless.
+	//
+	// The result: adding a fixed column to the gateway broke every BigQuery
+	// table an older version had created, and a producer growing a field broke
+	// the load into an existing one -- which is the single thing auto_table
+	// exists to make safe. Issue #34.
+	Evolve Evolution
+
 	// PartitionBy names the partitioning column of a created table. Empty uses
 	// the default: daily on ingestion_loaded_at.
 	PartitionBy string
@@ -619,6 +633,12 @@ func WithSchema(s Schema) LoadOption {
 		cfg.Schema = s
 		cfg.Columns = s.Names()
 	}
+}
+
+// WithEvolve says what a load may do to a table that no longer matches the
+// declared Schema. See LoadConfig.Evolve.
+func WithEvolve(mode Evolution) LoadOption {
+	return func(cfg *LoadConfig) { cfg.Evolve = mode }
 }
 
 // WithPartitionBy names the partitioning column of the created table.

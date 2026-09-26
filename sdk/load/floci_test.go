@@ -201,25 +201,23 @@ func TestIntegrationBigQueryStillRefusesLoadJobs(t *testing.T) {
 	t.Logf("the emulator refused the load, as expected: %v", err)
 }
 
-// Additive evolution is NOT implemented for BigQuery, and this pins it.
+// Additive evolution on BigQuery: the declaration grows a column and the
+// table follows.
 //
-// `auto_table` declares Target.Evolve = EvolveAdditive on every destination.
-// The gateway's postgres and mysql sinks read it; the bigquery sink never
-// does, and nothing in sdk/load patches a table's schema -- the one
-// table.Update there sets a description and labels.
+// This test was written the other way round a day ago, pinning the GAP -- and
+// the gap was not theoretical. A consumer upgrading 0.10.0 to 0.11.0 sent
+// 20,250 events into tables an older gateway had created and landed zero rows,
+// because the eighth fixed column was in the declaration and not in the table:
 //
-// So "the table grows a column on its own" is true of Postgres and MySQL and
-// FALSE of BigQuery, which is the destination the design is aimed at. The docs
-// said otherwise and have been corrected.
+//	JSON parsing error in row starting at position 0:
+//	No such field: brevis_received_bytes
 //
-// This test asserts the gap so it cannot be forgotten, and it FAILS the day
-// somebody implements evolution -- which is when the docs go back.
-func TestIntegrationBigQueryDoesNotEvolveASchemaYet(t *testing.T) {
+// `auto_table` had been declaring EvolveAdditive on every destination while
+// this one ignored the field. Issue #34.
+func TestIntegrationBigQueryEvolvesAdditively(t *testing.T) {
 	cfg := &core.LoadConfig{
 		ProjectID: "floci-local", CreateTable: true,
-		// Named, because partitionOf defaults to the SDK's own timestamp
-		// column and creating a table partitioned on a column the schema does
-		// not declare is refused -- by the emulator and by BigQuery alike.
+		Evolve:      core.EvolveAdditive,
 		PartitionBy: "ts",
 		Schema: core.Schema{
 			{Name: "ts", Type: core.TypeTimestamp, Required: true},
@@ -236,37 +234,141 @@ func TestIntegrationBigQueryDoesNotEvolveASchemaYet(t *testing.T) {
 	}
 
 	// The same table, now declared with one more column -- exactly what
-	// auto_table hands the driver when a record grows a field.
+	// auto_table hands the driver when a record grows a field, and exactly
+	// what 0.11.0 did to every table in the wild.
 	l.cfg.Schema = core.Schema{
 		{Name: "ts", Type: core.TypeTimestamp, Required: true},
 		{Name: "id", Type: core.TypeString},
-		{Name: "cupom", Type: core.TypeString},
+		{Name: "brevis_received_bytes", Type: core.TypeInt64},
+		// REQUIRED in the declaration, and it must land NULLABLE: BigQuery
+		// refuses a required column added to a table that already has rows,
+		// and the rows already there have no value for it.
+		{Name: "cupom", Type: core.TypeString, Required: true},
 	}
-	existed, err := l.prepareTable(ctx, table, nil, provenance{})
-	if err != nil {
-		t.Fatalf("preparing: %v", err)
-	}
-	if !existed {
-		t.Fatal("the table was reported absent right after being created")
+	if err := l.evolveTable(ctx, table); err != nil {
+		t.Fatalf("evolving: %v", err)
 	}
 
 	md, err := table.Metadata(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := map[string]*bigquery.FieldSchema{}
 	for _, f := range md.Schema {
-		if f.Name == "cupom" {
-			t.Fatal("BigQuery grew a column, so additive evolution now works " +
-				"there. Delete this test, put the claim back in the docs, and " +
-				"move the gateway's bigquery sink onto Target.Evolve")
+		got[f.Name] = f
+	}
+	for _, name := range []string{"ts", "id", "brevis_received_bytes", "cupom"} {
+		if got[name] == nil {
+			t.Fatalf("%s is missing after the evolution; the load would fail at "+
+				"the row with `No such field: %s`", name, name)
 		}
 	}
-	// The emulator PATCHes fine -- proven by hand against its REST API -- so
-	// this is the SDK not asking, and not the emulator refusing.
-	if _, err := table.Update(ctx, bigquery.TableMetadataToUpdate{
-		Schema: append(md.Schema, &bigquery.FieldSchema{Name: "cupom", Type: bigquery.StringFieldType}),
-	}, md.ETag); err != nil {
-		t.Errorf("the emulator refused a schema PATCH, so this test cannot tell "+
-			"'the SDK does not ask' from 'the emulator cannot': %v", err)
+	if got["cupom"].Required {
+		t.Error("cupom was added REQUIRED; BigQuery refuses that on a table with " +
+			"rows, and the rows already there have no value for it")
 	}
+	if got["ts"] == nil || !got["ts"].Required {
+		t.Error("the evolution relaxed a column that was already REQUIRED")
+	}
+
+	// Idempotent: a second pass finds nothing to do, which is what every
+	// batch after the first one does.
+	if err := l.evolveTable(ctx, table); err != nil {
+		t.Errorf("a second evolution of an already-evolved table failed: %v", err)
+	}
+	after, err := table.Metadata(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after.Schema) != len(md.Schema) {
+		t.Errorf("the second pass changed the table: %d columns, was %d",
+			len(after.Schema), len(md.Schema))
+	}
+}
+
+// And it stays OFF unless asked. EvolveNone is the zero value, so a caller who
+// never heard of this keeps the old behaviour: the table is left alone and the
+// declaration is checked against it.
+func TestIntegrationBigQueryDoesNotEvolveUnlessAsked(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+		},
+	}
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "frozen")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+	l.cfg.Schema = append(l.cfg.Schema, core.Column{Name: "novo", Type: core.TypeString})
+	if err := l.evolveTable(ctx, table); err != nil {
+		t.Fatal(err)
+	}
+	md, err := table.Metadata(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range md.Schema {
+		if f.Name == "novo" {
+			t.Error("a load with EvolveNone altered the table")
+		}
+	}
+}
+
+// The wire: Load itself evolves, not just evolveTable called by hand.
+//
+// The test above exercises the function and says nothing about whether
+// anything calls it -- cutting the call out of Load leaves it green, which is
+// the defect this project keeps finding. This one goes through Load.
+//
+// The load job still fails, because floci implements none, and that is fine:
+// the evolution happens BEFORE the job is submitted, so the column has to be
+// there whatever the job then does. Asserting through a failure is the honest
+// shape here rather than a reason to skip the test.
+func TestIntegrationBigQueryLoadEvolvesBeforeItWrites(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditive,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "wired")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	l.cfg.Schema = append(l.cfg.Schema,
+		core.Column{Name: "brevis_received_bytes", Type: core.TypeInt64})
+
+	// Fails on the load job. What matters is what happened before it.
+	_, _ = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1", "brevis_received_bytes": 100,
+		},
+	})
+
+	md, err := table.Metadata(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range md.Schema {
+		if f.Name == "brevis_received_bytes" {
+			return
+		}
+	}
+	t.Error("Load did not evolve the table before submitting the job, so the " +
+		"column is still missing and every row would fail with `No such field`")
 }

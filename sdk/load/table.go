@@ -440,3 +440,83 @@ func partitionOf(cfg *core.LoadConfig) string {
 	}
 	return core.MetadataLoadedAt
 }
+
+// evolveTable adds the columns the declaration has and the table does not.
+//
+// It is the half of `Evolve` that BigQuery never had. The field reached the
+// Postgres and MySQL destinations and not this one, while `auto_table`
+// declared EvolveAdditive on all three -- so the gateway promised that a table
+// grows a column and, here, every load into a table missing one failed at the
+// row:
+//
+//	JSON parsing error in row starting at position 0:
+//	No such field: brevis_received_bytes
+//
+// Which made adding a fixed column to the gateway a breaking change for every
+// BigQuery table an older version had created, and made a producer growing a
+// field break the load into an existing table. Issue #34.
+//
+// ADDS ONLY, by NAME. It does not widen a type, and that narrowness is
+// deliberate rather than unfinished: a widening on BigQuery is a different
+// operation with its own rules per type pair, and a column that is present
+// under a different type is what checkDeclaredAgainstTable already refuses,
+// naming both sides. Adding a nullable column cannot break a reader; every
+// other change can.
+//
+// The added columns are NULLABLE whatever the declaration says. BigQuery
+// refuses a REQUIRED column added to a table that already has rows, and it is
+// right to: the rows already there have no value for it. The gateway's own
+// fixed columns say the same thing in their comment -- "a row written before
+// this column existed has no answer, and zero would be a lie that sums".
+func (l *Loader) evolveTable(ctx context.Context, table *bigquery.Table) error {
+	if l.cfg.Evolve != core.EvolveAdditive || len(l.cfg.Schema) == 0 {
+		return nil
+	}
+
+	md, err := table.Metadata(ctx)
+	if err != nil {
+		return fmt.Errorf("reading %s to evolve it: %w", nameOf(table), err)
+	}
+
+	have := make(map[string]bool, len(md.Schema))
+	for _, f := range md.Schema {
+		have[f.Name] = true
+	}
+
+	declared, err := bigquerySchema(l.cfg.Schema)
+	if err != nil {
+		return err
+	}
+	var missing bigquery.Schema
+	for _, f := range declared {
+		if have[f.Name] {
+			continue
+		}
+		add := *f
+		add.Required = false
+		missing = append(missing, &add)
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+
+	// The ETag makes this optimistic, which is what N replicas need: two that
+	// meet the same new field both read the same metadata and both try, one
+	// gets a 412, and its batch is retried by the pipe -- by which time the
+	// column is there and this function finds nothing to do. A lock would be
+	// the other way to write it, and the gateway refuses locks by name.
+	update := bigquery.TableMetadataToUpdate{Schema: append(md.Schema, missing...)}
+	if _, err := table.Update(ctx, update, md.ETag); err != nil {
+		return fmt.Errorf("adding %s to %s: %w", names(missing), nameOf(table), err)
+	}
+	return nil
+}
+
+// names renders a schema's column names for an error message.
+func names(s bigquery.Schema) string {
+	out := make([]string, 0, len(s))
+	for _, f := range s {
+		out = append(out, f.Name)
+	}
+	return strings.Join(out, ", ")
+}

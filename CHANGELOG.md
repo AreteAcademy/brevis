@@ -18,6 +18,49 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.69.0] — 2026-09-26
+
+### Added: `Evolve` reaches BigQuery, which had been ignoring it
+
+`LoadConfig.Evolve` existed for Postgres and MySQL. This destination never read
+it, and `auto_table` declared `EvolveAdditive` on all three — so the gateway
+promised a table grows a column and BigQuery failed the load at the row:
+
+```
+JSON parsing error in row starting at position 0:
+No such field: brevis_received_bytes
+```
+
+Found by a consumer upgrading `gateway 0.10.0 → 0.11.0`: 20,250 events
+accepted, **zero rows**, 27 MiB in the dead letter. The eighth fixed column the
+gateway added was in the declaration and not in their tables. [Issue #34].
+
+`EvolveAdditive` now adds the columns the declaration has and the table does
+not, before the load job is submitted. Two things about how:
+
+**Adds only, by name.** It does not widen a type. A widening on BigQuery is a
+different operation with rules per type pair, and a column present under
+another type is what `checkDeclaredAgainstTable` already refuses, naming both
+sides.
+
+**Added columns land NULLABLE whatever the declaration says.** BigQuery refuses
+a REQUIRED column added to a table that has rows, and it is right to — the rows
+already there have no value for it.
+
+The update carries the table's ETag, so N replicas meeting the same new field
+resolve the way everything else in this design does: one wins, the others get a
+412 and are retried by the pipe, by which time there is nothing to do.
+
+`EvolveNone` is still the zero value, so a caller who never set this keeps the
+old behaviour exactly.
+
+Tested against floci, which is what the emulator was added for last week — and
+it earned it on the first real bug.
+
+[Issue #34]: https://github.com/AreteAcademy/brevis/issues/34
+
+---
+
 ## [0.68.0] — 2026-09-26
 
 ### Added: `ThresholdBytesForGCS`, because the inline/GCS decision was a row count
