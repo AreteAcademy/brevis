@@ -48,16 +48,31 @@ jobs:
       #
       # A check that cannot fail is worse than no check, and this one had been
       # passing without running since the integration tests were written.
+      # THE COMPOSE FILE'S postgres, not a second one written here. One
+      # definition of "the test database" -- same port, same credentials, same
+      # name -- so this gate and `Test & Lint` cannot drift apart.
+      #
+      # And it waits on the HEALTHCHECK rather than polling pg_isready, which
+      # is what the first version of this did and why it failed: the alpine
+      # image runs a temporary server for initdb and then restarts, so
+      # pg_isready answers yes against the temporary one and the next command
+      # lands in the restart window. `rejecting connections`, on a database
+      # that was seconds from being up.
       - name: A database for the tests that need one
         run: |
-          docker run -d --name pg -p 55432:5432 \
-            -e POSTGRES_PASSWORD=brevis -e POSTGRES_USER=brevis \
-            -e POSTGRES_DB=brevis_it postgres:16-alpine
-          for i in $(seq 1 30); do
-            if docker exec pg pg_isready -U brevis >/dev/null 2>&1; then break; fi
-            sleep 1
+          docker compose -f docker-compose.drivers.yml up -d postgres
+          ready=""
+          for i in $(seq 1 60); do
+            state=$(docker compose -f docker-compose.drivers.yml ps postgres --format '{{.Health}}')
+            if [ "$state" = "healthy" ]; then ready=1; break; fi
+            sleep 2
           done
-          docker exec pg pg_isready -U brevis
+          if [ -z "$ready" ]; then
+            echo "::error::postgres did not start; the integration tests would have skipped"
+            docker compose -f docker-compose.drivers.yml logs postgres
+            exit 1
+          fi
+          echo "postgres is up"
 
       # The gate before publishing. An image leaving CI with a red test is
       # worse than no image: somebody will run it believing it passed.
