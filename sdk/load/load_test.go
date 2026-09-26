@@ -784,18 +784,18 @@ func TestLayoutDoesNotInventAPartitionColumn(t *testing.T) {
 // warehouse's data into a container -- silently, because those writes succeed.
 func TestTheEmulatorEndpointIsEnvironmentOnly(t *testing.T) {
 	t.Setenv(EnvEmulator, "")
-	if got := emulator(); got != nil {
+	if got := emulator(bigQueryPath); got != nil {
 		t.Errorf("unset produced %d options; the default has to be no override", len(got))
 	}
 
 	t.Setenv(EnvEmulator, "   ")
-	if got := emulator(); got != nil {
+	if got := emulator(bigQueryPath); got != nil {
 		t.Error("whitespace is not an endpoint, and treating it as one would " +
 			"point the client at nothing with authentication already off")
 	}
 
 	t.Setenv(EnvEmulator, "http://localhost:4588")
-	got := emulator()
+	got := emulator(bigQueryPath)
 	if len(got) != 2 {
 		t.Fatalf("set produced %d options, want the endpoint AND "+
 			"WithoutAuthentication -- an endpoint that still authenticates "+

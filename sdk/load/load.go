@@ -44,12 +44,16 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		return nil, err
 	}
 
-	bq, err := bigquery.NewClient(ctx, cfg.ProjectID, emulator()...)
+	bq, err := bigquery.NewClient(ctx, cfg.ProjectID, emulator(bigQueryPath)...)
 	if err != nil {
 		return nil, fmt.Errorf("create bigquery client: %w", err)
 	}
 
-	gcs, err := storage.NewClient(ctx)
+	// The storage client gets the override too, and that is not tidiness: it
+	// is built here whether or not a load ever stages, so without it New
+	// cannot be constructed at all without Google credentials -- which is the
+	// wall this variable exists to remove.
+	gcs, err := storage.NewClient(ctx, emulator(storagePath)...)
 	if err != nil {
 		return nil, fmt.Errorf("create storage client: %w", err)
 	}
@@ -60,6 +64,20 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		gcs: gcs,
 	}, nil
 }
+
+// The API paths the two clients need under an emulator's base URL.
+//
+// They exist because option.WithEndpoint replaces the WHOLE base URL, path
+// included -- give it a bare host and the client asks for `/projects/...`,
+// which an emulator has no route for. The 405 that comes back looks exactly
+// like floci's refusal of load jobs, which is a confusing hour.
+//
+// So EnvEmulator takes the BASE and the SDK appends these. One value, two
+// clients, and the caller does not have to know either path.
+const (
+	bigQueryPath = "/bigquery/v2/"
+	storagePath  = "/storage/v1/"
+)
 
 // EnvEmulator points the BigQuery client at something that is not BigQuery.
 //
@@ -73,6 +91,14 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 // warehouse's data into a container -- silently, because those writes succeed.
 // A variable has to be set on the process by whoever starts it, it cannot
 // travel in a config repository, and it shows up in `env`.
+// The value is the emulator's BASE URL and not an API endpoint:
+//
+//	BREVIS_BIGQUERY_EMULATOR=http://localhost:4588
+//
+// Both the BigQuery and the GCS client are pointed at it, under their own
+// paths. The GCS one matters even for a load that never stages: it is
+// constructed eagerly, so without the override New needs Google credentials
+// to build at all -- which is the wall this removes.
 const EnvEmulator = "BREVIS_BIGQUERY_EMULATOR"
 
 // emulator returns the client options for EnvEmulator, or none at all.
@@ -85,13 +111,13 @@ const EnvEmulator = "BREVIS_BIGQUERY_EMULATOR"
 // Returned as a pair so a later edit cannot separate them. An endpoint that
 // still authenticates is a confusing failure; authentication turned off
 // without an endpoint is a dangerous one.
-func emulator() []option.ClientOption {
-	e := strings.TrimSpace(os.Getenv(EnvEmulator))
-	if e == "" {
+func emulator(path string) []option.ClientOption {
+	base := strings.TrimSpace(os.Getenv(EnvEmulator))
+	if base == "" {
 		return nil
 	}
 	return []option.ClientOption{
-		option.WithEndpoint(e),
+		option.WithEndpoint(strings.TrimSuffix(base, "/") + path),
 		option.WithoutAuthentication(),
 	}
 }

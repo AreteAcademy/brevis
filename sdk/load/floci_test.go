@@ -37,7 +37,7 @@ func flociLoader(t *testing.T, cfg *core.LoadConfig) *Loader {
 	if os.Getenv(EnvEmulator) == "" {
 		t.Skipf("%s is not set; bring up the gcp profile:\n"+
 			"  docker compose -f docker-compose.drivers.yml --profile gcp up -d\n"+
-			"  export %s=http://localhost:4588/bigquery/v2/",
+			"  export %s=http://localhost:4588",
 			EnvEmulator, EnvEmulator)
 	}
 	// New refuses a config with no dataset or table, rightly. The real names

@@ -264,13 +264,13 @@ jobs:
           curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"
           echo "floci is up"
 
-      # The emulated BigQuery layer. `WithEndpoint` replaces the WHOLE base
-      # URL, path included, so this value carries /bigquery/v2/ -- without it
-      # the client asks for /projects/... , floci has no route, and the 405
-      # looks exactly like its load-job refusal.
+      # The emulated BigQuery layer. The value is the emulator's BASE URL:
+      # the SDK appends /bigquery/v2/ and /storage/v1/ itself, and it points
+      # BOTH clients there -- the GCS one is built eagerly, so without it this
+      # step would need Google credentials it does not have.
       - name: Integration - BigQuery against floci
         env:
-          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588/bigquery/v2/
+          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588
         run: |
           cd sdk
           go test -v -timeout 5m -run TestIntegrationBigQuery ./load/
