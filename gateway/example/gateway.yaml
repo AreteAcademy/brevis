@@ -79,9 +79,20 @@ streams:
 
     buffer:
       durability: memory    # the only tier implemented; `disk` is refused by name
+
+      # Three triggers, and whichever is crossed FIRST sends the batch.
+      #
+      # `size` is the newest and the reason is memory rather than throughput:
+      # the other two are counts, and a count cannot tell 500 events of 2 KB
+      # from 500 of 2 MB. Every flush is counted by what triggered it --
+      # brevis_gateway_flushes_total{trigger="time|records|size"} -- because
+      # on a BigQuery stream a size flush firing routinely means the
+      # 60-second floor is being walked past and the daily load-job quota
+      # with it.
       flush:
         every: 1s
         records: 500
+        size: 8MiB
 
       # Delivery is asynchronous and bounded. A request appends to the buffer
       # and returns; a full batch is handed to one of these workers, so no
@@ -97,6 +108,16 @@ streams:
       workers: 4
       queue: 64
       max_records: 10000
+
+      # And the same ceiling in BYTES, which is the one that stops an OOM.
+      #
+      # A count cannot see it: 10,000 records is 20 MB of 2 KB events and
+      # 20 GB of 2 MB ones, and until this field existed the file had no way
+      # to say which this stream holds. Measured on what ARRIVED -- a
+      # map[string]any weighs several times its JSON, and a hook that inflates
+      # an event is not counted. It has to be at least listen.max_body, or one
+      # request could never be admitted.
+      max_bytes: 256MiB
 
     sink:
       type: pubsub
@@ -278,6 +299,14 @@ streams:
         # a one-second window is 86,400. The config refuses anything shorter.
         every: 60s
         records: 2000
+        # A CEILING here and not a target, and nothing refuses a smaller one
+        # because the arrival rate is not knowable at load. The floor above
+        # governs the TIMER; a size that fires every few seconds walks right
+        # past it and spends the same daily quota. Watch
+        # brevis_gateway_flushes_total{trigger="size"} on this stream: above
+        # zero, it is telling you the window is not what is batching.
+        size: 256MiB
+      max_bytes: 1GiB
 
     sink:
       type: auto_table

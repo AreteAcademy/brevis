@@ -3422,11 +3422,43 @@ by which caller was unlucky is not a p99 anybody can act on.
 
 ```yaml
 buffer:
-  flush: {every: 1s, records: 500}
+  flush:
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
   max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes
 ```
+
+### Why there is a size trigger
+
+The other two are **counts**, and a count cannot tell 500 events of 2 KB from
+500 of 2 MB — 1 MB against 1 GB, the same number in the file. `max_records:
+10000` has the same blind spot: 20 MB or 20 GB, and nothing in the YAML could
+say which.
+
+A producer who starts sending the whole document instead of its id takes the pod
+down, and until this existed **no field could have expressed the limit**.
+
+Size is measured on what **arrived** — not on what the event weighs in memory (a
+`map[string]any` is several times its JSON) and not after a hook that inflates
+it. An approximation, and the right one: it is free at decode, it moves with the
+payload, and the thing it guards against is a record that grew tenfold.
+
+**On BigQuery `size` is a ceiling, not a target.** That destination allows 1,500
+load jobs per table per day, which is why `every` has a 60-second floor. But the
+floor governs the **timer**: a size that fires every few seconds walks straight
+past it and spends the same quota. Nothing refuses that at load, because the
+arrival rate is not knowable there. What exists instead is visibility:
+
+```
+brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
+```
+
+`trigger="size"` climbing on a BigQuery stream is telling you the window is not
+what is batching.
 
 **It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
 outage into unbounded memory. When the queue and the buffer are both full, the
@@ -3534,6 +3566,7 @@ same address for both is refused at load.
 brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge

@@ -218,14 +218,29 @@ streams:
 <p>Ela decodifica, roda o hook, calcula a identidade, empilha no buffer e volta. <strong>Só isso.</strong> Um lote cheio vai para uma pool de workers, e a publicação, o <code>COPY</code>, os retries e a fila de descarte acontecem lá.</p>
 <p>Isso não é cosmético. Antes de existir, a requisição que por acaso fechava o lote rodava a entrega inline — então um chamador a cada <code>flush.records</code> pagava a ida e volta inteira, e com o destino fora, a janela inteira de retry. Um p99 moldado por quem teve azar não é um p99 sobre o qual alguém age.</p>
 <div class="code-block" data-code="buffer:
-  flush: {every: 1s, records: 500}
+  flush:
+    every: 1s         # idade
+    records: 500      # contagem
+    size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
   workers: 4          # lotes entregues ao mesmo tempo
   queue: 64           # lotes cheios esperando um worker
-  max_records: 10000  # eventos em memória antes de o gateway dizer não"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">buffer</span>:
-  <span class="t-k">flush</span>: {every: 1s, records: 500}
+  max_records: 10000  # eventos em memória antes de o gateway dizer não
+  max_bytes: 256MiB   # o mesmo teto em bytes"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 1s         <span class="t-c"># idade</span>
+    <span class="t-k">records</span>: 500      <span class="t-c"># contagem</span>
+    <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — o que for atingido PRIMEIRO manda o lote</span>
   <span class="t-k">workers</span>: 4          <span class="t-c"># lotes entregues ao mesmo tempo</span>
   <span class="t-k">queue</span>: 64           <span class="t-c"># lotes cheios esperando um worker</span>
-  <span class="t-k">max_records</span>: 10000  <span class="t-c"># eventos em memória antes de o gateway dizer não</span></code></pre></div>
+  <span class="t-k">max_records</span>: 10000  <span class="t-c"># eventos em memória antes de o gateway dizer não</span>
+  <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># o mesmo teto em bytes</span></code></pre></div>
+<h3 id="por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho<a class="anchor" href="#por-que-existe-um-gatilho-de-tamanho" aria-label="link">#</a></h3>
+<p>Os outros dois são <strong>contagens</strong>, e uma contagem não distingue 500 eventos de 2 KB de 500 eventos de 2 MB — 1 MB contra 1 GB, o mesmo número no arquivo. O <code>max_records: 10000</code> tem o mesmo ponto cego: são 20 MB ou 20 GB, e nada no YAML conseguia dizer qual.</p>
+<p>Um produtor que passa a mandar o documento inteiro em vez do id derruba o pod, e antes disso <strong>não existia campo que expressasse o limite</strong>.</p>
+<p>O tamanho é medido no que <strong>chegou</strong> — não no que o evento pesa em memória (um <code>map[string]any</code> é várias vezes o JSON dele) e não depois de um hook que o infle. É uma aproximação, e é a certa: sai de graça no decode, anda junto com o payload, e a coisa contra a qual ela protege é um registro que cresceu dez vezes.</p>
+<p><strong>No BigQuery <code>size</code> é teto, não alvo.</strong> Aquele destino permite 1.500 load jobs por tabela por dia — é por isso que <code>every</code> tem piso de 60s. Mas o piso governa o <strong>timer</strong>: um <code>size</code> que dispara a cada poucos segundos passa direto por ele e gasta a mesma cota. Nada recusa isso no carregamento, porque a taxa de chegada não é conhecível ali. O que existe é visibilidade:</p>
+<div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
+<p><code>trigger="size"</code> subindo num stream de BigQuery está te dizendo que não é a janela que está fazendo o lote.</p>
 <p><strong>É limitado, não é "atira e esquece".</strong> Uma goroutine por lote transformaria a queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios, a resposta é <strong><code>503</code> com <code>Retry-After</code></strong> em vez de um <code>202</code> para um evento sem lugar. Um evento aceito e nunca entregue é o único desfecho que este serviço existe para não ter.</p>
 <p>E esse <code>503</code> é <strong>seguro de repetir</strong>, de um jeito que quase nenhum serviço consegue afirmar: o <code>ingestion_id</code> é função congelada do próprio evento, então o mesmo corpo reenviado é o <em>mesmo registro</em>.</p>
 <h2 id="quando-o-destino-recusa">Quando o destino recusa<a class="anchor" href="#quando-o-destino-recusa" aria-label="link">#</a></h2>
@@ -295,12 +310,14 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge
@@ -335,7 +352,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
+      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
     </aside>
   </main>
 </div>

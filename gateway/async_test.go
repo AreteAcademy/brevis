@@ -373,3 +373,85 @@ streams:
 	}
 	return srv
 }
+
+// --- the third trigger: size -----------------------------------------------
+
+// A batch leaves on bytes, and the metric says bytes is what made it leave.
+//
+// The reason this exists is not throughput: every ceiling in this file was a
+// COUNT. `records: 2000` is 4 MB of 2 KB events and 4 GB of 2 MB ones, and
+// until this existed nothing in the config could tell them apart -- so a
+// producer who started sending the whole document instead of its id could take
+// the pod down, and the file could not have said otherwise.
+func TestABatchLeavesWhenItGetsHeavy(t *testing.T) {
+	sink := &recordingSink{}
+	// Records and time both out of reach, so only bytes can fire.
+	srv := asyncGateway(t, sink, `{records: 1000000, every: 1h, size: 400}`, 0)
+	defer func() { _ = srv.Close(context.Background()) }()
+
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	for i := 0; i < 8; i++ {
+		postCode(t, ts.URL+"/v1/clicks",
+			fmt.Sprintf(`{"event_id":"e-%d","occurred_at":"2026-01-01T00:00:00Z","pad":"aaaaaaaaaaaaaaaaaaaa"}`, i))
+	}
+
+	waitUntil(t, func() bool { return len(sink.payloads()) > 0 })
+
+	text := render(t, srv.Metrics())
+	want := `brevis_gateway_flushes_total{stream="clicks",trigger="size"}`
+	if !strings.Contains(text, want) {
+		t.Errorf("no flush was attributed to size:\n%s", text)
+	}
+	if strings.Contains(text, `trigger="records"`) {
+		t.Error("the record ceiling was a million and something says it fired")
+	}
+}
+
+// The buffer's byte ceiling answers 503, exactly as the record one does.
+//
+// This is the ceiling that actually prevents an OOM. `flush.size` shapes what
+// LEAVES; this bounds what is HELD, and with `queue: 64` those are very
+// different numbers.
+func TestTheBufferRefusesOnBytes(t *testing.T) {
+	// Records and time out of reach, so nothing ever leaves the buffer and
+	// the only thing that can answer is the byte ceiling. No blocking sink
+	// needed: with no flush there is no delivery to block.
+	sink := &recordingSink{}
+	srv := asyncGateway(t, sink, `{records: 1000000, every: 1h}`, 0, "max_bytes: 2MiB")
+	defer func() { _ = srv.Close(context.Background()) }()
+
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// ~10 KiB each, so the 2 MiB ceiling is reached in a couple of hundred.
+	body := fmt.Sprintf(`{"event_id":"e","occurred_at":"2026-01-01T00:00:00Z","pad":%q}`,
+		strings.Repeat("a", 10<<10))
+	var last int
+	for i := 0; i < 400; i++ {
+		last = postCode(t, ts.URL+"/v1/clicks", body)
+		if last == http.StatusServiceUnavailable {
+			break
+		}
+	}
+	if last != http.StatusServiceUnavailable {
+		t.Fatalf("four hundred requests of 10 KiB against a 2 MiB ceiling and the "+
+			"last answered %d; a ceiling nothing can reach is not a ceiling", last)
+	}
+	if !strings.Contains(render(t, srv.Metrics()), "brevis_gateway_saturated_total") {
+		t.Error("the refusal was not counted")
+	}
+}
+
+func waitUntil(t *testing.T, ok func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if ok() {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("it never happened")
+}

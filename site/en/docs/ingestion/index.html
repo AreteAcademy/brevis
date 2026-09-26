@@ -218,14 +218,29 @@ streams:
 <p>It decodes, runs the hook, computes the identity, appends to a buffer and returns. <strong>That is all.</strong> A full batch goes to a worker pool, and the publish, the <code>COPY</code>, the retries and the dead letter all happen there.</p>
 <p>This is not cosmetic. Before it existed, the request that happened to fill a batch ran the delivery inline — so one caller in every <code>flush.records</code> paid the full round trip, and when the sink was down, the full retry window. A p99 shaped by which caller was unlucky is not a p99 anybody can act on.</p>
 <div class="code-block" data-code="buffer:
-  flush: {every: 1s, records: 500}
+  flush:
+    every: 1s         # age
+    records: 500      # count
+    size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
-  max_records: 10000  # events held in memory before the gateway says no"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">buffer</span>:
-  <span class="t-k">flush</span>: {every: 1s, records: 500}
+  max_records: 10000  # events held in memory before the gateway says no
+  max_bytes: 256MiB   # the same ceiling in bytes"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 1s         <span class="t-c"># age</span>
+    <span class="t-k">records</span>: 500      <span class="t-c"># count</span>
+    <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — whichever is crossed FIRST sends the batch</span>
   <span class="t-k">workers</span>: 4          <span class="t-c"># batches delivered at once</span>
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
-  <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span></code></pre></div>
+  <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
+  <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
+<h3 id="why-there-is-a-size-trigger">Why there is a size trigger<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
+<p>The other two are <strong>counts</strong>, and a count cannot tell 500 events of 2 KB from 500 of 2 MB — 1 MB against 1 GB, the same number in the file. <code>max_records: 10000</code> has the same blind spot: 20 MB or 20 GB, and nothing in the YAML could say which.</p>
+<p>A producer who starts sending the whole document instead of its id takes the pod down, and until this existed <strong>no field could have expressed the limit</strong>.</p>
+<p>Size is measured on what <strong>arrived</strong> — not on what the event weighs in memory (a <code>map[string]any</code> is several times its JSON) and not after a hook that inflates it. An approximation, and the right one: it is free at decode, it moves with the payload, and the thing it guards against is a record that grew tenfold.</p>
+<p><strong>On BigQuery <code>size</code> is a ceiling, not a target.</strong> That destination allows 1,500 load jobs per table per day, which is why <code>every</code> has a 60-second floor. But the floor governs the <strong>timer</strong>: a size that fires every few seconds walks straight past it and spends the same quota. Nothing refuses that at load, because the arrival rate is not knowable there. What exists instead is visibility:</p>
+<div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
+<p><code>trigger="size"</code> climbing on a BigQuery stream is telling you the window is not what is batching.</p>
 <p><strong>It is bounded, not fire-and-forget.</strong> A goroutine per batch would turn a sink outage into unbounded memory. When the queue and the buffer are both full, the answer is <strong><code>503</code> with <code>Retry-After</code></strong> rather than a <code>202</code> for an event with nowhere to go. An accepted event that is never delivered is the one outcome this service exists to not have.</p>
 <p>And that <code>503</code> is <strong>safe to retry</strong>, in a way almost no service can claim: the <code>ingestion_id</code> is a frozen function of the event itself, so the same body sent again is the <em>same record</em>.</p>
 <h2 id="when-the-sink-refuses">When the sink refuses<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
@@ -295,12 +310,14 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
@@ -335,7 +352,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Why there is a size trigger</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
     </aside>
   </main>
 </div>

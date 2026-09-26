@@ -57,6 +57,18 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		Dataset:       s.Dataset,
 		Name:          s.Table,
 		StagingBucket: s.StagingBucket,
+
+		// The SDK's inline/GCS decision is a row count -- 5,000 by default --
+		// and a row count cannot see 5,000 records of 2 MB, which the inline
+		// path would marshal into memory whole. The gateway always has a
+		// staging bucket (the driver defaults it to <project>-brevis-staging),
+		// so it can set the byte ceiling the SDK leaves off for callers who
+		// may not.
+		//
+		// Not configurable, deliberately: it is not a tuning knob, it is the
+		// point past which holding a batch in memory stops being reasonable.
+		// `buffer.flush.size` is where an operator shapes the batch.
+		InlineLimitBytes: inlineLimitBytes,
 	}
 	if b.Target != nil {
 		create := b.Target.Create
@@ -71,6 +83,13 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 			s.Project, s.Dataset, s.Table, s.Write),
 	}, nil
 }
+
+// inlineLimitBytes is where a batch stops going inline and stages through GCS.
+//
+// 64 MiB: comfortably above a well-shaped batch and far below what a pod can
+// hold. Above it the staged path keeps memory flat, which is the whole reason
+// the staged path exists.
+const inlineLimitBytes = 64 << 20
 
 type sink struct {
 	table  tobq.Table

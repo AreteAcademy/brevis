@@ -24,6 +24,7 @@ const (
 	MetricBatchSize = "brevis_gateway_batch_records"
 	MetricBuffer    = "brevis_gateway_buffer_records"
 	MetricQueue     = "brevis_gateway_queue_batches"
+	MetricFlushes   = "brevis_gateway_flushes_total"
 )
 
 // Why a reason is a CLOSED enum and never the error text.
@@ -43,6 +44,23 @@ const (
 	ReasonIdentity  = "identity"
 	ReasonOversize  = "oversize"
 	ReasonAdmit     = "sink_refused"
+)
+
+// What made a batch leave the buffer.
+//
+// Its OWN counter rather than a label on MetricBatches, which already carries
+// `sink` and `outcome`: a third dimension there would multiply the series for
+// a question that belongs to the buffer and not to the delivery.
+//
+// The one worth an alert is `size` on a stream that writes to BigQuery. That
+// destination allows 1,500 load jobs per table per day, which is why the flush
+// window has a 60-second floor -- and a size trigger walks past that floor,
+// because the floor governs the timer alone. Nothing refuses it at load, since
+// the arrival rate is not knowable there; this makes it visible instead.
+const (
+	TriggerTime    = "time"
+	TriggerRecords = "records"
+	TriggerSize    = "size"
 )
 
 // Outcomes of one batch's delivery.
@@ -77,6 +95,7 @@ type Metrics struct {
 	buried    *counters
 	saturated *counters
 	oversized *counters
+	flushes   *counters
 
 	delivery  *histograms
 	batchSize *histograms
@@ -108,6 +127,7 @@ func NewMetrics() *Metrics {
 		buried:    newCounters(MetricBuried, "records written to a dead letter", "stream", "sink"),
 		saturated: newCounters(MetricSaturated, "requests refused because the buffer was full", "stream"),
 		oversized: newCounters(MetricOversized, "events archived whole because they were too large", "stream"),
+		flushes:   newCounters(MetricFlushes, "batches handed to the pool by what triggered them", "stream", "trigger"),
 
 		// Prometheus' own default spread, which covers a Pub/Sub publish
 		// (milliseconds) and a COPY that is having a bad day (seconds).

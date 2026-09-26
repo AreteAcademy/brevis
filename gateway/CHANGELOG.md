@@ -13,6 +13,84 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.10.0] — 2026-09-26
+
+Every ceiling in the buffer was a count, and a count cannot see bytes.
+
+### Added: `buffer.flush.size`, a third trigger
+
+```yaml
+buffer:
+  flush:
+    every: 1s
+    records: 500
+    size: 8MiB     # whichever is crossed FIRST
+```
+
+`records: 500` is 1 MB of 2 KB events and 1 GB of 2 MB ones — the same number
+in the file. A producer who starts sending the whole document instead of its id
+changes what the gateway holds by three orders of magnitude, and nothing in the
+config could have said otherwise.
+
+Measured on what **arrived**: not what the event weighs in memory — a
+`map[string]any` is several times its JSON — and not after a hook that inflates
+it. An approximation, and the right one. It is free at decode (ndjson knows each
+line's length; the array format goes through `json.RawMessage` so every
+element's extent is known without a second pass), it travels with the payload,
+and the thing it guards against is a record that grew tenfold. Exact would mean
+a `json.Marshal` per event, which today happens only when `oversize` is
+configured.
+
+### Added: `buffer.max_bytes`, the ceiling that stops an OOM
+
+`flush.size` shapes what **leaves**; this bounds what is **held**, and with
+`queue: 64` those are very different numbers. Past it the answer is the same
+`503` the record ceiling gives, and it is safe to retry for the same reason.
+
+It is refused below `listen.max_body` — a buffer that cannot admit one request
+would answer 503 to everything, forever — and below `flush.size`, where a batch
+could never fill.
+
+### Added: `brevis_gateway_flushes_total{stream,trigger}`
+
+`time`, `records` or `size`. Its own counter rather than a label on
+`batches_total`, which already carries `sink` and `outcome`: a third dimension
+there would multiply the series for a question that belongs to the buffer and
+not to the delivery.
+
+**The one worth an alert is `trigger="size"` on a BigQuery stream.** That
+destination allows 1,500 load jobs per table per day, which is why
+`flush.every` has a 60-second floor — and the floor governs the TIMER. A size
+that fires every few seconds walks straight past it and spends the same daily
+quota. Nothing refuses it at load, because the arrival rate is not knowable
+there; this makes it visible instead.
+
+A handoff the pool refuses is not counted: nothing flushed, and counting there
+would report one per attempt on a stream whose sink is behind — turning the
+metric into noise exactly when it matters.
+
+### And what this is not
+
+It is not the answer to BigQuery throughput. With load jobs the ceiling is the
+quota — one per 57 seconds per table — so the best available strategy is to
+FILL each of the 1,500, which argues for bigger batches and longer windows. The
+thing that removes the ceiling is the Storage Write API, which is still
+unwritten. This is memory safety and per-job hygiene.
+
+### Changed: the BigQuery sink stages past 64 MiB, whatever the row count says
+
+Carries `sdk v0.68.0`, where the same blind spot was one layer down:
+`ThresholdForGCS` is a row count, so 5,000 records of 2 MB went down the inline
+path and 10 GB was marshalled into memory. `InlineLimitBytes` is its sibling,
+and the gateway sets it — it always has a staging bucket, which is exactly the
+reason the SDK leaves it off by default for callers who may not.
+
+Not a config field, deliberately. It is not a tuning knob; it is the point past
+which holding a batch in memory stops being reasonable. `buffer.flush.size` is
+where an operator shapes the batch.
+
+---
+
 ## [0.9.1] — 2026-09-26
 
 `auto_table` into BigQuery created the table and loaded nothing. The bug was in

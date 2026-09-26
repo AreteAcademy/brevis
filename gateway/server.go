@@ -338,8 +338,16 @@ type pipe struct {
 	big     *oversize
 	admit   Admitter
 
-	mu      sync.Mutex
-	batch   []sdk.Envelope
+	mu    sync.Mutex
+	batch []sdk.Envelope
+	// sizes is the received byte count of each event in `batch`, parallel to
+	// it, and `bytes` is their sum kept as they arrive.
+	//
+	// Two fields rather than a sum recomputed per request: the ceiling is
+	// checked on every enqueue, and walking the buffer each time would make an
+	// O(1) admission O(n) in what is already held.
+	sizes   []int64
+	bytes   int64
 	timer   *time.Timer
 	closing bool
 }
@@ -388,9 +396,9 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accepted, rejected, archived := p.prepare(events)
+	accepted, sizes, rejected, archived := p.prepare(events)
 	if len(accepted) > 0 {
-		if err := p.enqueue(accepted); err != nil {
+		if err := p.enqueue(accepted, sizes); err != nil {
 			p.metrics.count(p.metrics.saturated, 1, p.stream.Name)
 			// 503 and not 202. The buffer is at its ceiling, so accepting
 			// these would mean holding events with nowhere to put them --
@@ -434,12 +442,14 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // The third return is how many were archived whole and dropped from the
 // stream. Separate from `rejected` because it is not a refusal -- the event was
 // kept -- and separate from `accepted` because it did not go into the stream.
-func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string, int) {
+func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int) {
 	out := make([]sdk.Envelope, 0, len(events))
+	sizes := make([]int64, 0, len(events))
 	var rejected []string
 	var archived int
 
-	for i, e := range events {
+	for i, a := range events {
+		e := a.event
 		if p.hook != nil {
 			shaped, err := run(p.hook, e)
 			if err != nil {
@@ -487,8 +497,9 @@ func (p *pipe) prepare(events []map[string]any) ([]sdk.Envelope, []string, int) 
 			continue
 		}
 		out = append(out, env)
+		sizes = append(sizes, int64(a.bytes))
 	}
-	return out, rejected, archived
+	return out, sizes, rejected, archived
 }
 
 // archiveIfLarge writes an oversized event somewhere whole and returns what
@@ -598,7 +609,12 @@ func (p *pipe) identify(e map[string]any) (sdk.Envelope, string, error) {
 // the pool is busy that send FAILS rather than waiting -- the batch stays
 // buffered and leaves with the next request or the timer. The request goroutine
 // leaves here in constant time either way.
-func (p *pipe) enqueue(envs []sdk.Envelope) error {
+func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
+	var bytes int64
+	for _, n := range sizes {
+		bytes += n
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -610,10 +626,25 @@ func (p *pipe) enqueue(envs []sdk.Envelope) error {
 	if len(p.batch)+len(envs) > p.stream.Buffer.MaxRecords {
 		return errSaturated
 	}
+	// The other ceiling, and the one that actually stops an OOM. A count
+	// cannot see bytes: 40,000 records is 80 MB of 2 KB events and 80 GB of
+	// 2 MB ones, and the config had no way to say which this stream holds.
+	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
+		return errSaturated
+	}
 	p.batch = append(p.batch, envs...)
+	p.sizes = append(p.sizes, sizes...)
+	p.bytes += bytes
 
+	// Whichever ceiling is crossed first. Records before size only because one
+	// of them has to be asked first; they are equals, and `trigger` on the
+	// metric says which one fired so an operator can see it rather than guess.
 	if len(p.batch) >= p.stream.Buffer.Flush.Records {
-		p.handoff()
+		p.handoff(TriggerRecords)
+		return nil
+	}
+	if size := int64(p.stream.Buffer.Flush.Size); size > 0 && p.bytes >= size {
+		p.handoff(TriggerSize)
 		return nil
 	}
 	// A partial batch goes anyway when it gets old, so a stream at one event a
@@ -631,16 +662,33 @@ func (p *pipe) enqueue(envs []sdk.Envelope) error {
 // stays at the FRONT of the buffer -- the order events arrived in is the order
 // they leave in, and a batch that lost a race should not also lose its place.
 // The next request or the timer tries it again.
-func (p *pipe) handoff() {
+// handoff hands a full batch to the pool, and says what made it full.
+//
+// `why` is counted rather than logged, because the question it answers is
+// operational and continuous: on a BigQuery stream a size flush firing
+// routinely means the 60-second floor is being bypassed and the daily load-job
+// quota is going with it. That is a number on a dashboard, not a line in a
+// log.
+func (p *pipe) handoff(why string) {
 	if p.closing {
 		return
 	}
-	ready := p.take()
+	ready, sizes := p.take()
 	select {
 	case p.queue <- ready:
 		p.pending.Add(int64(len(ready)))
+		p.metrics.count(p.metrics.flushes, 1, p.stream.Name, why)
 	default:
+		// The pool is busy and the batch goes back, at the FRONT: the order
+		// events arrived in is the order they leave in. Not counted as a
+		// flush -- nothing flushed, and counting here would report one per
+		// attempt on a stream whose sink is behind.
 		p.batch = append(ready, p.batch...)
+		p.sizes = append(sizes, p.sizes...)
+		p.bytes = 0
+		for _, n := range p.sizes {
+			p.bytes += n
+		}
 		p.arm()
 	}
 }
@@ -654,14 +702,19 @@ func (p *pipe) arm() {
 }
 
 // take empties the batch. The caller holds the lock.
-func (p *pipe) take() []sdk.Envelope {
-	ready := p.batch
-	p.batch = nil
+// take empties the buffer, returning the batch and the sizes beside it.
+//
+// The sizes travel so handoff can put BOTH back when the pool is busy. Without
+// them the byte ceiling would silently forget what it is already holding,
+// which is the one ceiling whose job is to stop an OOM.
+func (p *pipe) take() ([]sdk.Envelope, []int64) {
+	ready, sizes := p.batch, p.sizes
+	p.batch, p.sizes, p.bytes = nil, nil, 0
 	if p.timer != nil {
 		p.timer.Stop()
 		p.timer = nil
 	}
-	return ready
+	return ready, sizes
 }
 
 // flush is the timer firing: a partial batch that has waited long enough. It
@@ -671,7 +724,7 @@ func (p *pipe) flush() {
 	defer p.mu.Unlock()
 	p.timer = nil
 	if len(p.batch) > 0 {
-		p.handoff()
+		p.handoff(TriggerTime)
 	}
 }
 
@@ -806,7 +859,10 @@ func (p *pipe) close(ctx context.Context) error {
 	p.closing = true
 	// take stops the timer, so no flush is armed past this point -- and one
 	// already running is blocked on this lock and will find closing set.
-	ready := p.take()
+	//
+	// The sizes go nowhere: the buffer is finished, and nothing will be
+	// admitted against the ceiling again.
+	ready, _ := p.take()
 	p.mu.Unlock()
 
 	// Nothing else can send on the queue now: closing is set, and every send
@@ -845,26 +901,62 @@ func (p *pipe) close(ctx context.Context) error {
 	}
 }
 
+// arrival is one decoded event and the number of bytes it arrived as.
+//
+// The size is the RECEIVED encoding, measured here where it is free, and that
+// is the honest name for it. It is not what the event weighs in memory -- a
+// map[string]any is several times its JSON -- and it is not what a hook may
+// turn it into. It is a proxy, and it is the right one: it costs nothing, it
+// moves with the payload, and the thing it protects against is a producer
+// whose records got ten times larger.
+//
+// Exact would mean a json.Marshal per event, which today only happens when
+// `oversize` is configured. At the rates this buffer sustains that is real
+// CPU spent to refine a number that is already an approximation of memory.
+type arrival struct {
+	event map[string]any
+	bytes int
+}
+
 // decode reads a body in the format the stream declared. Never sniffed:
 // guessing is how a batch of a thousand becomes one row holding an array.
-func decode(format string, r io.Reader) ([]map[string]any, error) {
+func decode(format string, r io.Reader) ([]arrival, error) {
 	switch format {
 	case FormatJSON:
+		// Read whole rather than streamed, because one body is one event and
+		// its length is the measurement. It is already bounded: the handler
+		// wraps the body in a MaxBytesReader at `listen.max_body`.
+		body, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
 		var one map[string]any
-		if err := json.NewDecoder(r).Decode(&one); err != nil {
+		if err := json.Unmarshal(body, &one); err != nil {
 			return nil, fmt.Errorf("the body is not one JSON object: %w", err)
 		}
-		return []map[string]any{one}, nil
+		return []arrival{{event: one, bytes: len(body)}}, nil
 
 	case FormatArray:
-		var many []map[string]any
-		if err := json.NewDecoder(r).Decode(&many); err != nil {
+		// Through RawMessage, so each element's bytes are known without a
+		// second pass. Unmarshalling straight into []map[string]any would
+		// lose every element's extent, and re-encoding to recover it would
+		// cost a marshal per event to learn what the decoder already had.
+		var raw []json.RawMessage
+		if err := json.NewDecoder(r).Decode(&raw); err != nil {
 			return nil, fmt.Errorf("the body is not a JSON array of objects: %w", err)
 		}
-		return many, nil
+		out := make([]arrival, 0, len(raw))
+		for i, m := range raw {
+			var one map[string]any
+			if err := json.Unmarshal(m, &one); err != nil {
+				return nil, fmt.Errorf("element %d is not a JSON object: %w", i, err)
+			}
+			out = append(out, arrival{event: one, bytes: len(m)})
+		}
+		return out, nil
 
 	case FormatNDJSON:
-		var out []map[string]any
+		var out []arrival
 		sc := bufio.NewScanner(r)
 		// The same ceiling the engine's executors use, and for the same reason:
 		// a Scanner that overflows stops reading in SILENCE, which here would
@@ -879,7 +971,7 @@ func decode(format string, r io.Reader) ([]map[string]any, error) {
 			if err := json.Unmarshal([]byte(line), &one); err != nil {
 				return nil, fmt.Errorf("line %d is not a JSON object: %w", n, err)
 			}
-			out = append(out, one)
+			out = append(out, arrival{event: one, bytes: len(line)})
 		}
 		if err := sc.Err(); err != nil {
 			return nil, err

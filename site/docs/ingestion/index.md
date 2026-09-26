@@ -107,11 +107,44 @@ moldado por quem teve azar não é um p99 sobre o qual alguém age.
 
 ```yaml
 buffer:
-  flush: {every: 1s, records: 500}
+  flush:
+    every: 1s         # idade
+    records: 500      # contagem
+    size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
   workers: 4          # lotes entregues ao mesmo tempo
   queue: 64           # lotes cheios esperando um worker
   max_records: 10000  # eventos em memória antes de o gateway dizer não
+  max_bytes: 256MiB   # o mesmo teto em bytes
 ```
+
+### Por que existe um gatilho de tamanho
+
+Os outros dois são **contagens**, e uma contagem não distingue 500 eventos de
+2 KB de 500 eventos de 2 MB — 1 MB contra 1 GB, o mesmo número no arquivo. O
+`max_records: 10000` tem o mesmo ponto cego: são 20 MB ou 20 GB, e nada no YAML
+conseguia dizer qual.
+
+Um produtor que passa a mandar o documento inteiro em vez do id derruba o pod, e
+antes disso **não existia campo que expressasse o limite**.
+
+O tamanho é medido no que **chegou** — não no que o evento pesa em memória (um
+`map[string]any` é várias vezes o JSON dele) e não depois de um hook que o
+infle. É uma aproximação, e é a certa: sai de graça no decode, anda junto com o
+payload, e a coisa contra a qual ela protege é um registro que cresceu dez
+vezes.
+
+**No BigQuery `size` é teto, não alvo.** Aquele destino permite 1.500 load jobs
+por tabela por dia — é por isso que `every` tem piso de 60s. Mas o piso governa
+o **timer**: um `size` que dispara a cada poucos segundos passa direto por ele e
+gasta a mesma cota. Nada recusa isso no carregamento, porque a taxa de chegada
+não é conhecível ali. O que existe é visibilidade:
+
+```
+brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
+```
+
+`trigger="size"` subindo num stream de BigQuery está te dizendo que não é a
+janela que está fazendo o lote.
 
 **É limitado, não é "atira e esquece".** Uma goroutine por lote transformaria a
 queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios,
@@ -218,6 +251,7 @@ mesmo endereço nos dois é recusado no carregamento.
 brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
+brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge

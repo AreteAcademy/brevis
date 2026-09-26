@@ -106,6 +106,10 @@ type Stream struct {
 	Buffer Buffer `yaml:"buffer"`
 	Sink   Sink   `yaml:"sink"`
 
+	// maxBodyFloor is listen.max_body, copied in by the config's own check so
+	// the stream can refuse a byte ceiling that could never admit one request.
+	maxBodyFloor Size
+
 	// Retry is how hard the sink is tried before a batch is given up on.
 	Retry Retry `yaml:"retry"`
 
@@ -226,6 +230,22 @@ type Buffer struct {
 	// services: the ingestion_id is a frozen function of the event, so the same
 	// POST sent again is the same record, and a `merge` sink absorbs it.
 	MaxRecords int `yaml:"max_records"`
+
+	// MaxBytes is the same ceiling in BYTES, and it is the one that actually
+	// stops an OOM.
+	//
+	// A count cannot see this. `max_records: 40000` is 80 MB of 2 KB events
+	// and 80 GB of 2 MB ones, and until this field existed the config had no
+	// way to say which this stream holds -- so a producer who started sending
+	// the whole document instead of its id could take the pod down, and
+	// nothing in the file could have expressed the limit.
+	//
+	// It bounds the BUFFER and not one batch: `flush.size` shapes what leaves,
+	// this bounds what is held. They are different numbers -- with `queue: 64`
+	// there can be many batches in flight beyond what this counts.
+	//
+	// Zero leaves it off, which is what every existing config gets.
+	MaxBytes Size `yaml:"max_bytes"`
 }
 
 type Flush struct {
@@ -233,8 +253,26 @@ type Flush struct {
 	// is not a stream that never lands.
 	Every time.Duration `yaml:"every"`
 
-	// Records is the size that sends one immediately.
+	// Records is the count that sends one immediately.
 	Records int `yaml:"records"`
+
+	// Size is the BYTE count that sends one immediately. Whichever of the
+	// three is crossed first wins; zero leaves this one off.
+	//
+	// It is measured on what arrived, not on what the batch weighs in memory
+	// -- a map[string]any is several times its JSON -- and a hook that
+	// inflates an event is not counted. An approximation, and the right one:
+	// it costs nothing to take, it moves with the payload, and the thing it
+	// guards against is a producer whose records grew tenfold.
+	//
+	// On BigQuery this is a CEILING and not a target. That destination allows
+	// 1,500 load jobs per table per day, which is why `every` has a 60-second
+	// floor -- and a size that fires every few seconds walks straight past
+	// that floor, because the floor only governs the timer. Nothing refuses it
+	// here, because the arrival rate is not knowable at load; instead every
+	// flush is counted by what triggered it, so `trigger="size"` climbing on a
+	// BigQuery stream is visible on a dashboard.
+	Size Size `yaml:"size"`
 }
 
 // Sink is the destination.
@@ -641,6 +679,7 @@ func (c *Config) check() error {
 	names := map[string]bool{}
 	for i := range c.Streams {
 		s := &c.Streams[i]
+		s.maxBodyFloor = c.Listen.MaxBody
 		if err := s.check(); err != nil {
 			return fmt.Errorf("stream %q: %w", s.Name, err)
 		}
@@ -726,6 +765,31 @@ func (s *Stream) check() error {
 	}
 	if s.Buffer.Flush.Records < 1 {
 		return fmt.Errorf("`buffer.flush.records` is %d", s.Buffer.Flush.Records)
+	}
+	if s.Buffer.Flush.Size < 0 {
+		return fmt.Errorf("`buffer.flush.size` is %s", s.Buffer.Flush.Size)
+	}
+	if s.Buffer.MaxBytes < 0 {
+		return fmt.Errorf("`buffer.max_bytes` is %s", s.Buffer.MaxBytes)
+	}
+	if s.Buffer.MaxBytes > 0 && s.Buffer.Flush.Size > s.Buffer.MaxBytes {
+		// The buffer could never reach one batch's worth, so every request
+		// past the ceiling would be refused while what is held waits for the
+		// timer. The same shape as the records check above, and the same
+		// answer: say it rather than behave that way.
+		return fmt.Errorf("`buffer.max_bytes` is %s and `buffer.flush.size` is %s: "+
+			"the ceiling is below one batch, so a batch could never fill by size",
+			s.Buffer.MaxBytes, s.Buffer.Flush.Size)
+	}
+	if s.Buffer.MaxBytes > 0 && s.Buffer.MaxBytes < s.maxBodyFloor {
+		// One request has to fit. listen.max_body caps a body at 1 MiB by
+		// default, so a buffer ceiling under that refuses a request the
+		// listener already accepted -- a 503 nothing can clear, on every
+		// attempt, forever.
+		return fmt.Errorf("`buffer.max_bytes` is %s and `listen.max_body` is %s: "+
+			"one request could never be admitted, so this stream would answer 503 "+
+			"to everything",
+			s.Buffer.MaxBytes, s.maxBodyFloor)
 	}
 
 	if s.Retry.Attempts == 0 {
