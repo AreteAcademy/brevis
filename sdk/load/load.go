@@ -177,8 +177,20 @@ func sourceFormat(format string) (bigquery.DataFormat, error) {
 
 // strategyFor picks how a batch of n rows reaches BigQuery. Small batches go
 // inline in one request; large ones stage through GCS so memory stays flat.
-func strategyFor(n, threshold int) string {
-	if n > threshold {
+// strategyFor picks inline or GCS, on whichever ceiling is crossed first.
+//
+// `bytes` is zero before the rows are encoded, which is why this is called
+// twice: once to fill the result for a load that fails before encoding, and
+// again once the size is known. Zero never crosses a positive ceiling, so the
+// first answer is the row count's alone.
+func strategyFor(rows, bytes int, cfg *core.LoadConfig) string {
+	if rows > cfg.ThresholdForGCS {
+		return "gcs"
+	}
+	// The half the row count cannot see. Off by default -- see
+	// LoadConfig.ThresholdBytesForGCS for why a default here would break
+	// loads that work.
+	if cfg.ThresholdBytesForGCS > 0 && int64(bytes) > cfg.ThresholdBytesForGCS {
 		return "gcs"
 	}
 	return "inline"
@@ -200,7 +212,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 
 	result := &core.LoadResult{
 		Format:   l.cfg.Format,
-		Strategy: strategyFor(len(envelopes), l.cfg.ThresholdForGCS),
+		Strategy: strategyFor(len(envelopes), 0, l.cfg),
 		Dedup:    dedup,
 	}
 	fail := func(err error) (*core.LoadResult, error) {
@@ -228,6 +240,11 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	if err != nil {
 		return fail(err)
 	}
+
+	// Settled again, now that the size is known. Deciding on the row count
+	// alone sent a batch of large records down the inline path, which holds
+	// the whole encoding in memory and sends it in one request.
+	result.Strategy = strategyFor(len(envelopes), len(data), l.cfg)
 
 	existed, err := l.prepareTable(ctx, table, data, provenanceOf(envelopes))
 	if err != nil {

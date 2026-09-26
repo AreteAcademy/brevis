@@ -137,6 +137,7 @@ var (
 	WithKeepStagedFile         = core.WithKeepStagedFile
 	WithFormat                 = core.WithFormat
 	WithThresholdForGCS        = core.WithThresholdForGCS
+	WithThresholdBytesForGCS   = core.WithThresholdBytesForGCS
 	WithColumns                = core.WithColumns
 	WithSchema                 = core.WithSchema
 	WithPartitionBy            = core.WithPartitionBy

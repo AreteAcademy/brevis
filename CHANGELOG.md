@@ -18,6 +18,32 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.68.0] — 2026-09-26
+
+### Added: `ThresholdBytesForGCS`, because the inline/GCS decision was a row count
+
+`ThresholdForGCS` is 5,000 **rows**, and a row count cannot see what it is
+deciding about. Five thousand rows of 2 KB is 10 MB and belongs inline; five
+thousand rows of 2 MB is 10 GB, and the inline path marshals all of it into
+memory before it sends anything. The default was chosen against rows of a few
+kilobytes and quietly means something else for anybody whose records are
+documents.
+
+Whichever ceiling is crossed first now stages through GCS. On
+`bigquery.Table` the field is `InlineLimitBytes`, beside `InlineLimit`.
+
+**Zero is off, and that is deliberate rather than shy.** Staging needs a
+bucket, so turning this on by default would turn a memory problem into a hard
+failure — "that bucket does not exist" — for every caller who has none, on a
+load that works today. A fix that breaks loads is not a fix. Set it where you
+have a bucket; the gateway does.
+
+The strategy is also settled again once the rows are encoded, since the byte
+count does not exist before that. It was computed once, from the row count
+alone, before `encodeRows` had run.
+
+---
+
 ## [0.67.0] — 2026-09-26
 
 ### Fixed: a declared schema plus BigQuery meant the table was created and no row went in

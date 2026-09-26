@@ -215,7 +215,23 @@ type LoadConfig struct {
 	StagingBucket   string // GCS bucket for staging; default: "{projectID}-brevis-staging"
 	StagingPrefix   string // prefix for staged files; default: "extracts/"
 	ThresholdForGCS int    // row count above which to use GCS; default: 5000
-	Format          string // "ndjson", "csv", or "parquet"; default: "ndjson"
+
+	// ThresholdBytesForGCS is the ENCODED SIZE above which to stage through
+	// GCS, whichever ceiling is crossed first.
+	//
+	// A row count cannot see this. Five thousand rows of 2 KB is 10 MB and
+	// belongs inline; five thousand rows of 2 MB is 10 GB, and the inline path
+	// marshals all of it into memory before it sends anything. The row default
+	// was chosen against rows of a few kilobytes and silently means something
+	// else for anybody whose records are documents.
+	//
+	// Zero is OFF, and that is deliberate rather than shy. Staging needs a
+	// bucket, so switching this on by default would turn a memory problem into
+	// a hard failure for every caller who has none -- "that bucket does not
+	// exist", on a load that works today. A fix that breaks loads is not a
+	// fix. Set it where you have a bucket; the gateway does.
+	ThresholdBytesForGCS int64
+	Format               string // "ndjson", "csv", or "parquet"; default: "ndjson"
 	// KeepStagedFile leaves the staged object in the bucket after a
 	// successful load. The default is to delete it: a bucket filling up with
 	// files nobody looks at is a bill nobody reviews.
@@ -534,6 +550,14 @@ func WithFormat(format string) LoadOption {
 func WithThresholdForGCS(threshold int) LoadOption {
 	return func(cfg *LoadConfig) {
 		cfg.ThresholdForGCS = threshold
+	}
+}
+
+// WithThresholdBytesForGCS sets the encoded size above which to use GCS
+// staging. Zero leaves it off; see LoadConfig.ThresholdBytesForGCS.
+func WithThresholdBytesForGCS(bytes int64) LoadOption {
+	return func(cfg *LoadConfig) {
+		cfg.ThresholdBytesForGCS = bytes
 	}
 }
 

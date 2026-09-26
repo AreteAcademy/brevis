@@ -42,6 +42,15 @@ type Table struct {
 	// Zero uses the SDK default of 5000.
 	InlineLimit int
 
+	// InlineLimitBytes is the ENCODED SIZE above which the load stages
+	// through GCS, whichever ceiling is crossed first. Zero leaves it off.
+	//
+	// A row count cannot see this: 5000 rows of 2 KB is 10 MB and belongs
+	// inline, 5000 rows of 2 MB is 10 GB and the inline path holds all of it
+	// in memory. Off by default because staging needs a bucket, and turning
+	// it on for everybody would fail loads that work today.
+	InlineLimitBytes int64
+
 	// CreateTable lets the SDK create the table when it is absent. It never
 	// alters one that already exists.
 	//
@@ -125,6 +134,7 @@ func (b Table) config(opt core.WriteOptions) (*core.LoadConfig, map[string]core.
 		StagingBucket:          bucket.Value,
 		StagingPrefix:          b.StagingPrefix,
 		ThresholdForGCS:        limit,
+		ThresholdBytesForGCS:   b.InlineLimitBytes,
 		Format:                 "ndjson",
 		Columns:                opt.Columns,
 		Schema:                 opt.Schema,

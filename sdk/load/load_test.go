@@ -89,9 +89,49 @@ func TestStrategyFor(t *testing.T) {
 		{1, 0, "gcs"},          // a zero threshold sends everything to GCS
 	}
 	for _, c := range cases {
-		if got := strategyFor(c.rows, c.threshold); got != c.want {
+		cfg := &core.LoadConfig{ThresholdForGCS: c.threshold}
+		if got := strategyFor(c.rows, 0, cfg); got != c.want {
 			t.Errorf("strategyFor(%d, %d) = %q, want %q", c.rows, c.threshold, got, c.want)
 		}
+	}
+}
+
+// The byte ceiling is the half the row count cannot see.
+//
+// Five thousand rows of 2 KB is 10 MB and belongs inline; five thousand rows
+// of 2 MB is 10 GB, and the inline path marshals all of it into memory before
+// it sends anything. The row default was chosen against rows of a few
+// kilobytes and quietly means something else for anybody whose records are
+// documents.
+func TestStrategyForCountsBytesToo(t *testing.T) {
+	cases := []struct {
+		name        string
+		rows, bytes int
+		threshold   int
+		thresholdB  int64
+		want        string
+	}{
+		{"few rows, small", 10, 1 << 10, 5000, 32 << 20, "inline"},
+		{"few rows, huge", 10, 64 << 20, 5000, 32 << 20, "gcs"},
+		{"at the byte ceiling", 10, 32 << 20, 5000, 32 << 20, "inline"},
+		{"one byte past", 10, (32 << 20) + 1, 5000, 32 << 20, "gcs"},
+		// Off is off: without a byte ceiling the row count decides alone, and
+		// that is the behaviour every caller has today.
+		{"ceiling off", 10, 1 << 30, 5000, 0, "inline"},
+		// Either ceiling is enough on its own.
+		{"rows past, bytes fine", 5001, 1 << 10, 5000, 32 << 20, "gcs"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			cfg := &core.LoadConfig{
+				ThresholdForGCS:      c.threshold,
+				ThresholdBytesForGCS: c.thresholdB,
+			}
+			if got := strategyFor(c.rows, c.bytes, cfg); got != c.want {
+				t.Errorf("rows=%d bytes=%d ceilings=(%d rows, %d bytes) = %q, want %q",
+					c.rows, c.bytes, c.threshold, c.thresholdB, got, c.want)
+			}
+		})
 	}
 }
 
