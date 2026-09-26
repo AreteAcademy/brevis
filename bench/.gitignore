@@ -1,0 +1,6 @@
+# The working files of a run. The REPORT.md next door is the artefact, and it
+# is committed: a benchmark nobody can read after the fact is a benchmark that
+# was run once.
+.gw
+.gwpid
+results/gateway.log

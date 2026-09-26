@@ -1,0 +1,6 @@
+{
+  "image": "areteacademy/brevis-gateway:0.11.0",
+  "host": "Darwin arm64, 11 cpu",
+  "sink": "auto_table[columns] -> postgres:17 (container), write: append",
+  "rows_in_postgres": 4593000
+}

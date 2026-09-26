@@ -632,7 +632,7 @@ LLMS_GRUPOS = [
     ("How it executes", ["scheduler-and-queue", "pod-per-step"]),
     ("Command line and configuration", ["cli", "configuration"]),
     ("Writing a step in code", ["sdk", "libraries", "python"]),
-    ("Receiving data over HTTP", ["ingestion", "ingestion-sinks"]),
+    ("Receiving data over HTTP", ["ingestion", "ingestion-sinks", "benchmarks"]),
     ("Running it in production", ["kubernetes", "observability", "white-label"]),
 ]
 

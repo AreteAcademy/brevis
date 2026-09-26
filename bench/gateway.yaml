@@ -1,0 +1,62 @@
+# The gateway under benchmark.
+#
+# Shaped so the BUFFER is what is being measured and not a database: the flush
+# is generous, the workers are the default, and the destination is a Postgres
+# in a container on the same kernel. A benchmark whose number is really
+# somebody's disk is a benchmark that moves when nothing changed.
+name: bench
+
+listen:
+  addr: ":8080"
+  max_body: "8MiB"
+  auth:
+    type: bearer
+    keys_from: BREVIS_BENCH_KEYS
+
+metrics:
+  addr: ":9090"
+
+streams:
+  - name: bench
+    path: /v1/ingestion
+    format: ndjson
+
+    identity:
+      provider: bench
+      entity: table
+      source_key: table_name
+      record_ts: table_name
+
+    buffer:
+      durability: memory
+      flush:
+        every: 2s
+        records: 5000
+        size: 16MiB
+      workers: 8
+      queue: 256
+      max_records: 200000
+      max_bytes: 512MiB
+
+    retry:
+      attempts: 2
+      backoff: 200ms
+      max_backoff: 1s
+
+    sink:
+      type: auto_table
+      shape: columns
+      naming:
+        pattern: '^app_bench_[0-9]{1,4}$'
+        max_new_per_hour: 200
+      metastore:
+        type: memory
+        ttl: 60s
+      into:
+        type: postgres
+        dsn_from: BREVIS_BENCH_DSN
+        write: append
+
+    dead_letter:
+      type: files
+      path: ./dead-letter/

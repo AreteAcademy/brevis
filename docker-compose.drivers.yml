@@ -1,7 +1,25 @@
-# The services for the drivers' integration tests.
+# The services for the drivers' integration tests, and for the benchmarks.
 #
-#   docker compose -f docker-compose.drivers.yml up -d
+#   docker compose -f docker-compose.drivers.yml --profile sql up -d
+#   docker compose -f docker-compose.drivers.yml --profile all up -d
 #   BREVIS_IT_S3_ENDPOINT=http://localhost:9000 go test ./sdk/... -run Integration
+#
+# PROFILES, and not a file per cloud. A second compose file is a second project
+# name, and the paragraph below is what that cost once already. The profiles:
+#
+#   sql        postgres, mysql          the two real databases
+#   aws        minio                    S3, real API and real signatures
+#   gcp        floci                    BigQuery and the rest, one emulator
+#   gcp-native pubsub                   Google's own emulator, kept on purpose
+#   metastore  redis, memcached         what makes N replicas behave like one
+#   queue      kafka, rabbitmq          NO DRIVER YET -- see their comments
+#   docstore   mongo                    NO DRIVER YET -- see its comment
+#   bench      postgres                 the benchmark's destination
+#   all        everything
+#
+# A service with no profile starts on every `up`, which is why every service
+# here has one: bringing up the whole file to run one Postgres test is how a
+# laptop ends up with nine containers nobody asked for.
 #
 # Gated on an environment variable, like BigQuery's: without the variable the
 # tests skip, and the normal suite stays offline.
@@ -26,6 +44,7 @@ services:
   # `--host-port=0.0.0.0:8085` and not the default localhost: inside the
   # container, localhost is the container.
   pubsub:
+    profiles: [gcp-native, all]
     image: gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators
     command: >
       gcloud beta emulators pubsub start
@@ -39,6 +58,7 @@ services:
       retries: 20
 
   minio:
+    profiles: [aws, all]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
@@ -56,6 +76,7 @@ services:
   # For phases 2 and 3. They come up together because one compose is one less
   # thing to remember.
   postgres:
+    profiles: [sql, bench, all]
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: brevis
@@ -70,6 +91,7 @@ services:
       retries: 10
 
   mysql:
+    profiles: [sql, all]
     image: mysql:8
     environment:
       MYSQL_ROOT_PASSWORD: brevis
@@ -80,4 +102,148 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-pbrevis"]
       interval: 5s
       timeout: 3s
+      retries: 15
+
+  # --- GCP, one emulator ----------------------------------------------------
+
+  # floci: 24 GCP services on one port, offline, no project, no credentials.
+  #
+  # PINNED TO A DATED NIGHTLY, because there is no stable release yet and
+  # `nightly` floats. A gate that compares against a tool which changes on its
+  # own is not reproducible -- the same reason generated-check.sh pins Tailwind.
+  # Moving this is a commit somebody can see.
+  #
+  # The docker socket is MOUNTED, and it is not optional: queries are executed
+  # by a sibling container (floci/floci-duck) that floci starts on demand.
+  # Without the socket every query fails with a 500 and the table-creation half
+  # still works, which is the confusing failure -- half the emulator answering.
+  #
+  # That sibling is NOT part of this project, so `compose down` leaves it
+  # running. Compose only removes what it created, and floci created this one:
+  #
+  #     docker rm -f floci-gcp-bigquery-duck
+  #
+  # It is also `:latest`, chosen by floci and not by us, which is a second
+  # reason the emulated layer must never be the only thing a claim rests on.
+  #
+  # WHAT IT DOES NOT DO, and this belongs here rather than in a wiki: floci
+  # refuses load jobs.
+  #
+  #     {"error":{"code":400,"message":"Only QUERY jobs are supported
+  #               by the floci BigQuery emulator"}}
+  #
+  # The SDK's BigQuery driver writes ONLY through load jobs -- inline, or
+  # staged through GCS above the threshold. So this emulator cannot exercise a
+  # single Brevis write to BigQuery. What it does cover is the other half, and
+  # it is the half with no local test at all today: creating a table with a
+  # partition and a clustering, and PATCHing a column onto it, which is what
+  # auto_table turns a payload into.
+  floci:
+    profiles: [gcp, all]
+    image: floci/floci-gcp:nightly-09252026
+    ports:
+      - "4588:4588"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # bash's /dev/tcp, because the image is a Quarkus native build and carries
+    # no curl, no wget and no nc. It proves the port answers, which is all a
+    # healthcheck should claim -- the API is what the tests are for.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/4588' || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # --- the metastore --------------------------------------------------------
+
+  # The two shared backends, which have no integration test today.
+  #
+  # `memory` is correct with one replica and wrong with several: each gets its
+  # own, so the DDL debounce debounces nothing and max_new_per_hour bounds a
+  # process. These exist for exactly that, and the claim's exclusivity is a
+  # property no unit test can show -- `memory` says yes to every caller.
+  redis:
+    profiles: [metastore, all]
+    image: redis:7-alpine
+    ports:
+      - "56379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  memcached:
+    profiles: [metastore, all]
+    image: memcached:1.6-alpine
+    ports:
+      - "51211:11211"
+    # `nc`, because this image has no bash for the /dev/tcp trick. `version`
+    # is the cheapest command the protocol has and it answers before the cache
+    # holds anything.
+    healthcheck:
+      test: ["CMD-SHELL", "echo version | timeout 1 nc -w 1 127.0.0.1 11211 | grep -q VERSION"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # --- infrastructure ahead of its drivers ----------------------------------
+  #
+  # Kafka, RabbitMQ and Mongo are here so the driver that needs one can be
+  # written against something, and the honest label matters more than the
+  # container: BREVIS HAS NO DRIVER FOR ANY OF THEM. The site's "what does not
+  # exist yet" list says so, and a compose service is not a feature.
+  #
+  # They are on their own profiles and nothing starts them by accident. When a
+  # driver lands, its integration test gets a variable like every other one and
+  # this comment gets deleted.
+
+  kafka:
+    profiles: [queue, all]
+    image: apache/kafka:3.9.0
+    ports:
+      - "59092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:59092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    profiles: [queue, all]
+    image: rabbitmq:4-alpine
+    ports:
+      - "55672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: brevis
+      RABBITMQ_DEFAULT_PASS: brevis
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  mongo:
+    profiles: [docstore, all]
+    image: mongo:7
+    ports:
+      - "57017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: brevis
+      MONGO_INITDB_ROOT_PASSWORD: brevis
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
       retries: 15

@@ -58,6 +58,7 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 
 - [Ingestion](https://brevis.sh/en/docs/ingestion/index.md): An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.
 - [Ingestion sinks](https://brevis.sh/en/docs/ingestion-sinks/index.md): The six destinations, how each database writes a record, and why the image carries only what you use.
+- [Benchmarks](https://brevis.sh/en/docs/benchmarks/index.md): How we measure the gateway, what the numbers say, and the three witnesses that have to agree.
 
 ## Running it in production
 
