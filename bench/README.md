@@ -84,7 +84,7 @@ docker compose -f docker-compose.drivers.yml --profile all up -d
 | `PATCH` a column onto a table | ✅ — `auto_table`'s evolution |
 | `insertAll` | ✅ |
 | queries | ✅, but only with `/var/run/docker.sock` mounted |
-| **load jobs** | ❌ `Only QUERY jobs are supported by the floci BigQuery emulator` |
+| **load jobs** | ❌ — `/jobs` answers `Only QUERY jobs are supported`, and the upload route the Go client actually uses answers `405` |
 
 The SDK writes to BigQuery **only** through load jobs. So floci can exercise
 every line of `auto_table` that turns a payload into DDL, and **not one Brevis

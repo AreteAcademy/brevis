@@ -129,8 +129,14 @@ services:
   # WHAT IT DOES NOT DO, and this belongs here rather than in a wiki: floci
   # refuses load jobs.
   #
-  #     {"error":{"code":400,"message":"Only QUERY jobs are supported
-  #               by the floci BigQuery emulator"}}
+  #     POST /bigquery/v2/projects/{p}/jobs
+  #       400 {"message":"Only QUERY jobs are supported ..."}
+  #
+  #     POST /upload/bigquery/v2/projects/{p}/jobs?uploadType=multipart
+  #       405, empty body -- no route at all
+  #
+  # The Go client takes the SECOND for an inline load, so what the driver
+  # actually meets is a bare 405.
   #
   # The SDK's BigQuery driver writes ONLY through load jobs -- inline, or
   # staged through GCS above the threshold. So this emulator cannot exercise a

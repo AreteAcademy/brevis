@@ -773,3 +773,44 @@ func TestLayoutDoesNotInventAPartitionColumn(t *testing.T) {
 		t.Errorf("partitioned on a column nobody declared: %+v", loader.TimePartitioning)
 	}
 }
+
+// --- the emulator endpoint -------------------------------------------------
+
+// The override comes from the ENVIRONMENT and from nowhere else.
+//
+// This is the security of the whole thing, and the alternative is worth
+// naming: a `bigquery_endpoint:` in a YAML file is a line somebody copies
+// between environments, and what it buys is a production pipeline writing a
+// warehouse's data into a container -- silently, because those writes succeed.
+func TestTheEmulatorEndpointIsEnvironmentOnly(t *testing.T) {
+	t.Setenv(EnvEmulator, "")
+	if got := emulator(); got != nil {
+		t.Errorf("unset produced %d options; the default has to be no override", len(got))
+	}
+
+	t.Setenv(EnvEmulator, "   ")
+	if got := emulator(); got != nil {
+		t.Error("whitespace is not an endpoint, and treating it as one would " +
+			"point the client at nothing with authentication already off")
+	}
+
+	t.Setenv(EnvEmulator, "http://localhost:4588")
+	got := emulator()
+	if len(got) != 2 {
+		t.Fatalf("set produced %d options, want the endpoint AND "+
+			"WithoutAuthentication -- an endpoint that still authenticates "+
+			"hangs on a metadata server that is not there", len(got))
+	}
+
+	// And no field of LoadConfig can express it. A test that only checked the
+	// getter would pass on the day somebody adds one.
+	cfg, err := resolveConfig(&core.LoadConfig{
+		ProjectID: "p", Dataset: "d", Table: "t",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(fmt.Sprintf("%+v", *cfg), "localhost:4588") {
+		t.Error("the endpoint reached LoadConfig, so a YAML could carry it")
+	}
+}

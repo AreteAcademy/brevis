@@ -413,6 +413,15 @@ func (r *router) open(ctx context.Context, table string, record sdk.Schema) (gat
 			// ordinary retry resolves it -- a batch waiting for DDL and a
 			// batch waiting for a worker are the same thing, so there is no
 			// second buffer.
+			//
+			// READ BY POSTGRES AND MYSQL ONLY. The BigQuery sink never looks
+			// at this field, and nothing in sdk/load patches an existing
+			// table's schema -- the single table.Update there sets a
+			// description and labels. So with `into: bigquery` a new field
+			// makes the LOAD fail, the batch is retried and then buried.
+			//
+			// TestIntegrationBigQueryDoesNotEvolveASchemaYet pins that, and
+			// fails the day it stops being true.
 			Evolve:      sdk.EvolveAdditive,
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,

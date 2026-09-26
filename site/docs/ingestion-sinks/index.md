@@ -425,10 +425,20 @@ em todo nível, arrays na ordem, tudo entre aspas. O Go randomiza a iteração d
 map, então um hash ingênuo diferiria entre duas entregas do mesmo evento, que é
 exatamente o que ele existe para impedir.
 
-### A tabela cresce uma coluna sozinha
+### A tabela cresce uma coluna sozinha — no Postgres e no MySQL
 
 Um `data` com um campo que a tabela não tem faz a coluna nascer. **Aditivo, e só
 aditivo**: nada é removido, nada é estreitado.
+
+> **No BigQuery isso ainda não acontece.** O `auto_table` declara
+> `Evolve: additive` em todo destino, e só os drivers de Postgres e MySQL leem
+> essa declaração — nada no caminho do BigQuery altera o schema de uma tabela
+> existente. Lá, um campo novo faz a carga **falhar**, o lote é retentado e vai
+> para a fila de descarte com o motivo.
+>
+> Um teste fixa essa lacuna e vai **falhar** no dia em que ela for fechada, que
+> é quando este aviso sai. Até lá, com `into: bigquery`, use `shape: document`
+> — nele um campo novo é uma chave nova e não existe DDL depois do create.
 
 Um lote que perde a corrida pelo `ALTER` falha, e o retry comum da esteira
 resolve — um lote esperando DDL e um lote esperando worker são a mesma coisa,

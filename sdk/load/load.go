@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
+	"google.golang.org/api/option"
 )
 
 // Loader writes Envelopes to BigQuery as generic JSON.
@@ -42,7 +44,7 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		return nil, err
 	}
 
-	bq, err := bigquery.NewClient(ctx, cfg.ProjectID)
+	bq, err := bigquery.NewClient(ctx, cfg.ProjectID, emulator()...)
 	if err != nil {
 		return nil, fmt.Errorf("create bigquery client: %w", err)
 	}
@@ -57,6 +59,41 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		bq:  bq,
 		gcs: gcs,
 	}, nil
+}
+
+// EnvEmulator points the BigQuery client at something that is not BigQuery.
+//
+// It exists for one reason: an emulator, so the drivers can be exercised
+// without a project and a billing account. Set it and every load in the
+// process goes there instead.
+//
+// THE ENVIRONMENT, AND NEVER A CONFIG FIELD, and that is the whole safety of
+// it. A `bigquery_endpoint:` in a YAML file is a line somebody copies between
+// environments, and what it buys is a production pipeline writing a
+// warehouse's data into a container -- silently, because those writes succeed.
+// A variable has to be set on the process by whoever starts it, it cannot
+// travel in a config repository, and it shows up in `env`.
+const EnvEmulator = "BREVIS_BIGQUERY_EMULATOR"
+
+// emulator returns the client options for EnvEmulator, or none at all.
+//
+// WithoutAuthentication travels WITH the endpoint and is not a separate
+// decision: an emulator has no credentials, and the client would otherwise
+// spend its first call looking for a token that does not exist -- against a
+// metadata server which, on a laptop, hangs rather than refusing.
+//
+// Returned as a pair so a later edit cannot separate them. An endpoint that
+// still authenticates is a confusing failure; authentication turned off
+// without an endpoint is a dangerous one.
+func emulator() []option.ClientOption {
+	e := strings.TrimSpace(os.Getenv(EnvEmulator))
+	if e == "" {
+		return nil
+	}
+	return []option.ClientOption{
+		option.WithEndpoint(e),
+		option.WithoutAuthentication(),
+	}
 }
 
 // resolveConfig merges cfg with opts and fills in defaults. It is separate

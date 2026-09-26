@@ -246,6 +246,17 @@ jobs:
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
 
+      # The emulated BigQuery layer. `WithEndpoint` replaces the WHOLE base
+      # URL, path included, so this value carries /bigquery/v2/ -- without it
+      # the client asks for /projects/... , floci has no route, and the 405
+      # looks exactly like its load-job refusal.
+      - name: Integration - BigQuery against floci
+        env:
+          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588/bigquery/v2/
+        run: |
+          cd sdk
+          go test -v -timeout 5m -run TestIntegrationBigQuery ./load/
+
       # The gateway against the same three. Its integration tests skipped in CI
       # from the day they were written -- the unit step next door runs `go
       # test` with none of these variables set, so every case that reaches a
@@ -260,6 +271,24 @@ jobs:
       # replicas behave like one, and the claim's exclusivity is a property no
       # unit test can show: `memory` gives every caller a yes, which is the
       # failure the shared backends exist to prevent.
+      # floci, for the emulated BigQuery layer. The socket is mounted because
+      # queries run in a sibling container it starts itself, and the tag is a
+      # DATED nightly: floci ships no stable release, and `nightly` floating
+      # means a suite that turns red on a morning nobody changed anything.
+      - name: Start floci
+        run: |
+          docker run -d --name floci -p 4588:4588 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            floci/floci-gcp:nightly-09252026
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"
+          echo "floci is up"
+
       - name: Start Redis and memcached
         run: |
           docker run -d --name redis -p 6379:6379 redis:7-alpine

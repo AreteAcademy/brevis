@@ -4063,10 +4063,20 @@ every level, arrays left in order, everything quoted. Go randomises map
 iteration, so a naive hash would differ between two deliveries of the same
 event, which is the one thing it exists to prevent.
 
-### The table grows a column on its own
+### The table grows a column on its own — on Postgres and MySQL
 
 A `data` carrying a field the table does not have makes the column appear.
 **Additive, and only additive**: nothing is dropped, nothing is narrowed.
+
+> **On BigQuery this does not happen yet.** `auto_table` declares
+> `Evolve: additive` on every destination, and only the Postgres and MySQL
+> drivers read that declaration — nothing in the BigQuery path alters an
+> existing table's schema. There, a new field makes the load **fail**, the
+> batch is retried and then buried with the reason.
+>
+> A test pins the gap and will **fail** the day it is closed, which is when
+> this note goes. Until then, with `into: bigquery`, use `shape: document` —
+> there a new field is a new key and there is no DDL after the create.
 
 A batch that loses the race to `ALTER` fails, and the pipe's ordinary retry
 resolves it — a batch waiting for DDL and a batch waiting for a worker are the
