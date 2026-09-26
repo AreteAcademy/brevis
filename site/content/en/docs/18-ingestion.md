@@ -19,12 +19,12 @@ POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
 It is **a different binary, a different Go module, a different version and a
 different image**. The engine orchestrates and never touches customer data; the
 gateway does nothing else. The numbering is independent on purpose: the engine
-is at 0.15 and the gateway at 0.3, which is the true statement.
+is at 0.15 and the gateway at 0.8, which is the true statement.
 
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.3.2-slim
+  areteacademy/brevis-gateway:0.8.0-slim
 ```
 
 ## The file is the contract
@@ -250,19 +250,33 @@ path a full batch takes, retried and buried.
 ## What it does not do
 
 - **It does not appear in the console.** It shares no database with the engine's
-  interface. There is no `/ingestion` page, and none is planned.
-- **It does not evolve schema.** A field the table does not have is refused.
-  There is a plan; there is no feature.
-- **It creates no table and no index.** A service that creates tables turns a
-  typo into a second table nobody is reading.
+  interface, so there is no `/ingestion` page — and the schema evolution
+  `auto_table` performs does not show up there either. That is the next step and
+  it has not been written.
+- **A stream with a `table` does not evolve schema.** When you name the table,
+  the contract is the table's: a field it does not have is refused with the
+  message that fixes it, rather than altering a table somebody reviewed. Growing
+  a column on its own is what `auto_table` does, and it is the difference
+  between the two.
+- **A stream with a `table` creates no table and no index.** A service that
+  creates tables turns a typo into a second table nobody is reading — which is
+  why creation happens only under `auto_table`, where `naming` bounds which
+  names may exist and `listen.auth` is mandatory.
 - **The published image has no hooks**, which is the honest artefact for a
   compiled-hook design: it serves streams that declare no `hook:`.
 
 ## One route, N tables
 
-`auto_table` routes each event to the table its own payload names, creating it
-if absent — four fixed columns with the document in a `JSON` column. One route,
-N tables, nothing declared.
+`auto_table` routes each event to the table the **envelope** names, creates that
+table if it is absent, and grows a column when a new field turns up:
+
+```json
+{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
+ "data": {"id": "A-1", "total": 150, "customer": {"id": 7, "uf": "SP"}}}
+```
+
+Control fields at the top, the record inside `data`, and seven `brevis_*`
+tracking columns on every table. One route, N tables, nothing declared.
 
 It is in [Ingestion sinks](/docs/ingestion-sinks/#one-route-n-tables-nothing-declared).
 

@@ -138,8 +138,8 @@ Vale o que parece:
 
 | build | pacotes | binário |
 |---|---|---|
-| os seis destinos, os dois object stores | 864 | 48,9 MB |
-| `postgres` + `files` local | 232 | **10,0 MB** |
+| os seis destinos, os dois object stores, os dois metastores | 884 | 55,0 MB |
+| `postgres` + `files` local | 233 | **10,2 MB** |
 
 Os object stores são um **segundo** registro, porque um scheme não é um destino:
 `files` é um destino só que escreve em diretório, em `gs://` e em `s3://`, e um
@@ -147,10 +147,10 @@ build que só escreve local não deveria carregar o SDK da AWS para isso.
 
 ### Duas imagens publicadas
 
-| imagem | carrega | pull |
+| imagem | carrega | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.3.2` | os seis destinos, S3 e GCS | 16,1 MB |
-| `areteacademy/brevis-gateway:0.3.2-slim` | `postgres`, `files` local | **4,8 MB** |
+| `areteacademy/brevis-gateway:0.8.0` | os seis destinos, S3, GCS, Redis, memcached | 17,9 MB |
+| `areteacademy/brevis-gateway:0.8.0-slim` | `postgres`, `files` local, `auto_table` | **4,9 MB** |
 
 As duas saem de um build da mesma árvore, então as duas tags são sempre o mesmo
 commit. Não existe `latest-slim` — `latest` já é uma tag que ninguém deveria
@@ -179,67 +179,187 @@ em vez de no primeiro lote que ela precisaria enterrar.
 ```yaml
 sink:
   type: auto_table
-  table_from: table_name
-  naming: {pattern: '^[a-z][a-z0-9_]{2,48}$', allow: [app_, svc_], max_new_per_hour: 20}
-  metastore: {type: memory, ttl: 60s}
+  shape: columns
+  naming: {pattern: '^(app|svc)_[a-z0-9_]{2,40}$', allow: [app_, svc_], max_new_per_hour: 20}
+  metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
   into: {type: bigquery, project: acme-prod, dataset: landing, write: merge}
 ```
 
-Um produtor faz `POST {"table_name": "app_orders", ...}` e a tabela nasce se não
-existir. O `auto_table` **roteia e não escreve**: `into` é quem escreve, e não
-carrega `table` — a tabela vem de cada evento.
+O `auto_table` **roteia e não escreve**: `into` é quem escreve, e não carrega
+`table` — a tabela vem de cada evento. Um `into` com `table` é recusado na
+inicialização, porque uma tabela fixa sob um roteador venceria em silêncio e
+todo evento pousaria nela.
 
-### Quatro colunas, sempre
+### O envelope
+
+O corpo é um **envelope**: campos de controle em cima, o registro dentro de
+`data`.
+
+```json
+{
+  "table_name": "app_orders",
+  "description": "Pedidos do app",
+  "operation": "INSERT",
+  "unique_key": "id",
+  "data": {
+    "id": "A-1",
+    "total": 150,
+    "customer": {"id": 7, "uf": "SP"},
+    "items": [{"sku": "X", "qtd": 2}]
+  }
+}
+```
+
+| campo | | o que é |
+|---|---|---|
+| `table_name` | **obrigatório** | onde isso pousa |
+| `data` | **obrigatório** | o registro, e só ele |
+| `unique_key` | padrão `id` | qual campo de `data` identifica o registro |
+| `operation` | padrão `INSERT` | `INSERT`, `UPDATE` ou `DELETE` |
+| `description` | opcional | **aceito e ainda não usado** — veja abaixo |
+
+`table_name` ao lado de `total` e `customer` era um campo do **transporte** se
+passando por campo do **registro**. Separar os dois é a forma de todo formato de
+CDC — e é o que torna possível reservar um prefixo, porque agora existe um lugar
+onde só o produtor escreve.
+
+**`description` é lido e hoje não vai a lugar nenhum.** Ele existe no contrato
+para a página de ingestão do console, que ainda não foi escrita. Está dito aqui
+porque um campo aceito em silêncio é um campo que alguém acredita estar
+gravando.
+
+### Sete colunas fixas, mais o que o registro traz
 
 | coluna | | |
 |---|---|---|
-| `ingestion_id` | `STRING` | a identidade, e a chave do merge |
-| `ingested_at` | `TIMESTAMP` | a chegada, no **nosso** relógio — a coluna de partição |
-| `occurred_at` | `TIMESTAMP` | o do produtor, quando ele manda; `NULL` quando não |
-| `data` | `JSON` | o evento inteiro |
+| `brevis_ingestion_id` | `STRING` | a identidade, e a chave do merge |
+| `brevis_record_key` | `STRING` | `data[unique_key]` — de qual **registro** isto fala |
+| `brevis_operation` | `STRING` | `INSERT`, `UPDATE` ou `DELETE` |
+| `brevis_received_at` | `TIMESTAMP` | a chegada, no **nosso** relógio — a coluna de partição |
+| `brevis_loaded_at` | `TIMESTAMP` | a escrita, carimbada pelo **destino** |
+| `brevis_stream` | `STRING` | qual rota escreveu |
+| `brevis_gateway` | `STRING` | qual implantação |
 
-**Uma coluna JSON, não uma coluna por campo**, e é nessa decisão que o resto se
-apoia. Um campo novo é uma chave nova: não há DDL, não há cota de alteração de
-schema, não há reabertura de stream de escrita, não há corrida entre réplicas —
-e ele é consultável no dia em que chega. Uma coluna por campo compra tipos que
-ninguém declarou e paga com as quatro coisas.
+**`brevis_` é reservado.** Um `data` carregando qualquer chave com esse prefixo é
+recusado **por evento** — senão um produtor forja um campo de controle, e um
+`brevis_received_at` forjado é pior que nenhum, porque parece real.
 
-É também onde o mercado chegou: Fivetran, Airbyte e Snowpipe pousam numa camada
-raw que não pode falhar e modelam depois. E é o que mantém o `table_from`
-barato — toda tabela tem a mesma forma, então criar uma é um template e não uma
-decisão.
+**`brevis_loaded_at` é um `DEFAULT` do banco**, não um valor que o gateway manda.
+O gateway sabe a hora do **despacho**, o destino sabe a da **escrita**, e a
+diferença entre as duas colunas é a latência ponta a ponta de verdade, por
+linha, sem instrumentar nada.
 
-Uma declaração serve a todos os destinos, porque o gerador de DDL do SDK
-transforma `TypeJSON` em `JSON` no BigQuery, `JSONB` no Postgres, `JSON` no
-MySQL e `SUPER` no Redshift.
+**`brevis_received_at` é a coluna de partição, nunca o relógio do cliente**: um
+relógio de produtor pode estar errado ou ausente, e uma coluna de partição que o
+cliente controla é um cliente que pode escrever em 2035. Uma tabela de pouso sem
+partição é uma conta de consulta que só cresce. O agrupamento é por
+`brevis_record_key`, porque ler o histórico de um registro é o que se faz com
+uma tabela dessas.
 
-**`ingested_at` e não `occurred_at` como coluna de partição**: o relógio de um
-produtor pode estar errado ou ausente, e uma coluna de partição que o cliente
-controla é um cliente que pode escrever em 2035. Uma tabela de pouso sem
-partição é uma conta de consulta que só cresce.
+Uma declaração serve a todos os destinos, porque o gerador de DDL do SDK traduz
+cada tipo: `STRING` vira `TEXT` no Postgres, `LONGTEXT` no MySQL e `STRING` no
+BigQuery; `JSON` vira `JSONB`, `JSON` e `JSON`.
 
-### A identidade, sem nada declarado
+### Duas formas, um contrato
+
+`shape` decide o que o **registro** contribui para a linha. O contrato do
+produtor é o mesmo dos dois jeitos — o envelope nunca muda. O que muda é a cara
+da tabela, que é decisão de quem opera e não de quem produz.
+
+```yaml
+shape: document   # padrão
+shape: columns
+```
+
+Com **`document`**, `data` inteiro vai para uma coluna `JSON`:
 
 ```
-ingestion_id = uuid5(auto_table | <tabela> | <idempotency_key>   | <occurred_at>)
-             = uuid5(auto_table | <tabela> | sha256(canônico)    | <occurred_at>)
+ brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {"id": "A-1", "total": 150, "customer": {…}}
 ```
 
-Um stream declarado nomeia quatro campos que o dono dele conhece. Um produtor
-que envia `{table_name, data}` não nomeia nenhum, então a chave é a dele quando
-ele manda uma, e uma impressão digital do documento quando não manda.
+Nunca há DDL depois do create. Um campo novo é uma chave nova: sem cota de
+alteração de schema, sem reabertura de stream de escrita, sem corrida entre
+réplicas — e consultável no dia em que chega. É onde o mercado pousou: Fivetran,
+Airbyte e Snowpipe entregam numa camada raw que não pode falhar e modelam
+depois.
 
-**Mande `idempotency_key`.** Ela significa *estas duas requisições são o mesmo
-fato de negócio*, que só o produtor sabe. A impressão digital significa *estas
-duas requisições têm bytes idênticos* — uma boa aproximação e uma promessa pior,
-porque dois eventos genuinamente distintos com dados byte a byte iguais viram
-um. Os dois ganham de um id aleatório, sob o qual um POST repetido é uma
-segunda linha para sempre.
+Com **`columns`**, cada campo do registro ganha uma coluna:
+
+```
+ id   | total | customer              | items
+ A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qtd": 2, "sku": "X"}]
+```
+
+**Escalar vira `STRING`, objeto e array viram `JSON`, e não há inferência em
+lugar nenhum.** `150` chegou como número e virou a string `150`. Isso é uma
+escolha e não uma limitação: um campo que chega inteiro hoje e fracionado amanhã
+mudaria o tipo de uma coluna sem ninguém escrever nada, e a linha que não couber
+vai para a fila de descarte. Tipar é a **promoção** — escrita no YAML e revisada
+num diff.
+
+Um nome de campo precisa casar com a regra do BigQuery, a mais estreita das
+quatro. O Postgres aceitaria quase tudo entre aspas, e essa é a armadilha: a
+tabela nasce lá e quebra no dia em que alguém aponta um stream para o BigQuery.
+
+### `UPDATE` e `DELETE` são registrados, não aplicados
+
+`brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`
+aplicado no lugar perde a versão anterior, e o dia em que você quer essa versão é
+o dia em que algo quebrou. Resolver "a versão atual de cada registro" é trabalho
+do modelo lá embaixo:
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation <> 'DELETE'
+```
+
+É o que Debezium, Fivetran e Airbyte fazem — e significa que CDC custa **nada** no
+caminho de escrita: nenhum modo upsert, nenhum lock, nenhum delete.
+
+### A identidade não tem relógio
+
+```
+brevis_ingestion_id = uuid5(auto_table | tabela | data[unique_key] | sha256(canônico(data)))
+```
+
+Não há `occurred_at` na fórmula, e isso é deliberado: a chegada virou
+responsabilidade **nossa**, e o nosso relógio é `time.Now()` — diferente em cada
+entrega. Uma identidade com ele dentro faria de cada reentrega um evento novo, e
+o `merge` pararia de absorver qualquer coisa.
+
+```
+mesmo registro, mesmo conteúdo, duas vezes  →  mesmo id, o merge absorve
+mesmo registro, conteúdo mudou              →  id diferente, as duas versões pousam
+```
+
+A ressalva é a documentada: dois eventos genuinamente distintos com `data`
+idêntico byte a byte viram um. Para CDC isso está **certo** — dois updates
+iguais no mesmo registro com os mesmos valores são o mesmo fato.
 
 A impressão digital é sobre o documento em forma **canônica** — chaves ordenadas
 em todo nível, arrays na ordem, tudo entre aspas. O Go randomiza a iteração de
 map, então um hash ingênuo diferiria entre duas entregas do mesmo evento, que é
 exatamente o que ele existe para impedir.
+
+### A tabela cresce uma coluna sozinha
+
+Um `data` com um campo que a tabela não tem faz a coluna nascer. **Aditivo, e só
+aditivo**: nada é removido, nada é estreitado.
+
+Um lote que perde a corrida pelo `ALTER` falha, e o retry comum da esteira
+resolve — um lote esperando DDL e um lote esperando worker são a mesma coisa,
+então não existe um segundo buffer. Entre réplicas, o metastore segura um
+*debounce* de um segundo por tabela e por forma, para que dez réplicas vendo o
+mesmo campo novo não virem dez `ALTER` contra a cota do BigQuery de cinco
+operações de metadados por tabela a cada dez segundos.
+
+**Debounce e não lock**: nada é liberado e nenhum lease é renovado. Quem perde
+está sendo *retentado*, não bloqueado, e uma réplica que morre segurando custa um
+segundo às outras. É o que o mercado faz — Delta Lake e Iceberg commitam otimista
+e retentam, o Kafka Connect ganha serialização da ordem da partição, o Fivetran
+tem um escritor por tabela.
 
 ### O nome é a superfície de ataque
 
@@ -251,41 +371,53 @@ O `auto_table` transforma uma string de um payload em DDL, então todo campo de
   precisa de aspas em lugar nenhum e não consegue carregar uma injeção.
 - **`allow`** estreita mais, por prefixo.
 - **`max_new_per_hour`** (padrão 20) limita **criações** numa hora móvel, nunca
-  escritas: uma tabela que já existe nunca é limitada. **Por réplica** — o
-  orçamento vive no processo, então quatro réplicas admitem quatro vezes isso.
+  escritas: uma tabela que já existe nunca é limitada. Com `metastore: memory` o
+  orçamento vive no processo e quatro réplicas admitem quatro vezes isso; com
+  `redis` ou `memcached` elas dividem um contador só.
 
 Um nome fora das regras é recusado **por evento**, na resposta, e todo evento
 bem formado da mesma requisição pousa assim mesmo:
 
 ```json
-{"accepted": 1, "rejected": ["event 1: the table name \"x\";DROP TABLE y;--\" does not match ^[a-z][a-z0-9_]{2,48}$"]}
+{"accepted": 0, "rejected": ["event 0: the table name \"pedidos\" does not match ^(app|svc)_[a-z0-9_]{2,40}$"]}
 ```
 
-Por evento e não por lote, de propósito. Recusar na hora da escrita derrubaria
-o lote inteiro — um evento malformado de um produtor enterrando os eventos de
-todos os outros da mesma janela, e nenhum deles avisado.
+Por evento e não por lote, de propósito. Recusar na hora da escrita derrubaria o
+lote inteiro — um evento malformado de um produtor enterrando os eventos de todos
+os outros da mesma janela, e nenhum deles avisado.
 
-**O `auto_table` é recusado num endpoint sem `listen.auth`.** Um produtor que
-pode nomear uma tabela pode criar uma, então ele exige autenticação mesmo onde
-um stream comum não exigiria. Uma NetworkPolicy não cobre isso: ela limita quem
-alcança a porta, não que nome de tabela a pessoa pede.
+**O `auto_table` é recusado num endpoint sem `listen.auth`**, inclusive em
+`BREVIS_ENV=local`. Um produtor que pode nomear uma tabela pode criar uma, então
+ele exige autenticação mesmo onde um stream comum não exigiria. Uma
+NetworkPolicy não cobre isso: ela limita quem alcança a porta, não que nome de
+tabela a pessoa pede.
 
 ### O metastore é um cache
 
 Ele existe para que uma escrita por evento não vire uma consulta por evento, e
-guarda **as duas** respostas — "esta tabela não existe" é o que economiza uma
-ida e volta no caminho quente de um produtor novo tentando de novo.
+guarda três coisas: quais tabelas existem, o *debounce* do DDL e o contador do
+`max_new_per_hour`.
 
-É um cache e **não** uma fonte de verdade. O destino decide se a tabela existe,
-e *N* réplicas correndo para criar uma é o caso normal: `AlreadyExists` é
-sucesso, e isto só reduz a corrida. O TTL é quanto tempo ele pode estar
-**errado**.
+É um cache e **não** uma fonte de verdade. O destino decide se a tabela existe, e
+*N* réplicas correndo para criar uma é o caso normal: `AlreadyExists` é sucesso, e
+isto só reduz a corrida. O TTL é quanto tempo ele pode estar **errado**.
 
-**`memory` é o único backend, e isso é o desenho.** Um gateway que não sobe sem
-Redis é um gateway com uma dependência dura nova por causa de um cache. `redis`
-e `memcached` são recusados **pelo nome**, porque quem escreve `redis` acredita
-que suas réplicas dividem um cache — e aceitar a palavra enquanto se guarda por
-processo faria o `max_new_per_hour` valer *N* vezes o que a pessoa escreveu.
+| backend | quando |
+|---|---|
+| `memory` | o padrão, não precisa de nada. Com **uma** réplica é a resposta certa |
+| `redis` | `addr_from` obrigatório. Um `SETNX` é o claim, um `INCR` é o contador |
+| `memcached` | `addr_from` obrigatório. Um `Add` é o claim, e a expiração tem granularidade de **segundo** |
+
+Com várias réplicas, `memory` dá a cada uma a sua: o debounce não debounce nada
+e o `max_new_per_hour` limita um *processo*. É a única razão de os outros dois
+existirem.
+
+**Um metastore fora do ar não pode derrubar uma escrita.** Um `Get` que erra é
+miss, um claim que erra se comporta como ganho, um contador que erra relaxa o
+limite. Um cache capaz de parar a ingestão é pior que nenhum cache.
+
+`addr_from` nomeia a **variável de ambiente** que guarda o endereço, nunca o
+endereço: ele carrega senha com frequência suficiente.
 
 ### O BigQuery tem um piso de flush
 
@@ -300,10 +432,11 @@ Write API, que ainda não foi escrita; até lá, a config recusa uma janela que 
 consegue honrar em vez de deixar o primeiro deploy descobrir.
 
 O `auto_table` não roteia para **Redshift**: aquele driver não cria tabelas,
-então todo nome novo falharia na carga. Recusado pelo nome.
+então todo nome novo falharia na carga. Recusado pelo nome, na inicialização.
 
 ## O que ainda não existe
 
-`sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka` e `rabbitmq`
-estão planejados e nada foi escrito. A tabela no topo desta página diz o estado
+`sqlite`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka` e `rabbitmq` estão
+planejados e nada foi escrito. (`redis` e `memcached` existem como **metastore**,
+que é outra coisa: um cache do que se sabe sobre as tabelas, nunca um destino.) A tabela no topo desta página diz o estado
 de cada um, e ela é atualizada quando o estado muda — não antes.

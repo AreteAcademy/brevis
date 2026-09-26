@@ -118,10 +118,18 @@ func fixed(unique bool) sdk.Schema {
 
 // envelope is one request, taken apart.
 type envelope struct {
-	table  string
-	key    string
-	op     string
-	desc   string
+	table string
+	key   string
+	op    string
+
+	// desc is READ AND NOT USED, and that is worth saying rather than leaving
+	// for somebody to discover: the envelope carries `description` for the
+	// console's ingestion page, which does not exist. It is validated here so
+	// the field means the same thing on the day something reads it, and the
+	// docs say plainly that it goes nowhere today -- a field accepted in
+	// silence is a field somebody believes is being stored.
+	desc string
+
 	record map[string]any
 }
 

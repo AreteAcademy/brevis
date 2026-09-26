@@ -138,8 +138,8 @@ It is worth what it sounds like:
 
 | build | packages | binary |
 |---|---|---|
-| all six sinks, both object stores | 864 | 48.9 MB |
-| `postgres` + local `files` | 232 | **10.0 MB** |
+| all six sinks, both object stores, both metastores | 884 | 55.0 MB |
+| `postgres` + local `files` | 233 | **10.2 MB** |
 
 Object stores are a **second** registry, because a scheme is not a destination:
 `files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
@@ -147,10 +147,10 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 ### Two published images
 
-| image | carries | pull |
+| image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.3.2` | six sinks, S3 and GCS | 16.1 MB |
-| `areteacademy/brevis-gateway:0.3.2-slim` | `postgres`, local `files` | **4.8 MB** |
+| `areteacademy/brevis-gateway:0.8.0` | six sinks, S3, GCS, Redis, memcached | 17.9 MB |
+| `areteacademy/brevis-gateway:0.8.0-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.
@@ -178,66 +178,186 @@ the first batch it would have to bury.
 ```yaml
 sink:
   type: auto_table
-  table_from: table_name
-  naming: {pattern: '^[a-z][a-z0-9_]{2,48}$', allow: [app_, svc_], max_new_per_hour: 20}
-  metastore: {type: memory, ttl: 60s}
+  shape: columns
+  naming: {pattern: '^(app|svc)_[a-z0-9_]{2,40}$', allow: [app_, svc_], max_new_per_hour: 20}
+  metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
   into: {type: bigquery, project: acme-prod, dataset: landing, write: merge}
 ```
 
-A producer `POST`s `{"table_name": "app_orders", ...}` and the table is created
-if it is absent. `auto_table` **routes and does not write**: `into` is what
-writes, and it carries no `table` — the table comes from each event.
+`auto_table` **routes and does not write**: `into` is what writes, and it
+carries no `table` — the table comes from each event. An `into` with a `table`
+is refused at startup, because a fixed table under a router would win silently
+and every event would land in it.
 
-### Four columns, always
+### The envelope
+
+The body is an **envelope**: control fields at the top, the record inside
+`data`.
+
+```json
+{
+  "table_name": "app_orders",
+  "description": "App orders",
+  "operation": "INSERT",
+  "unique_key": "id",
+  "data": {
+    "id": "A-1",
+    "total": 150,
+    "customer": {"id": 7, "uf": "SP"},
+    "items": [{"sku": "X", "qty": 2}]
+  }
+}
+```
+
+| field | | what it is |
+|---|---|---|
+| `table_name` | **required** | where this lands |
+| `data` | **required** | the record, and only it |
+| `unique_key` | defaults to `id` | which field of `data` identifies the record |
+| `operation` | defaults to `INSERT` | `INSERT`, `UPDATE` or `DELETE` |
+| `description` | optional | **accepted and not yet used** — see below |
+
+`table_name` sitting beside `total` and `customer` was a field of the
+**transport** pretending to be a field of the **record**. Separating them is how
+every CDC format is shaped — and it is what makes reserving a prefix possible,
+because now there is one place only the producer writes.
+
+**`description` is read and today goes nowhere.** It is in the contract for the
+console's ingestion page, which has not been written. It is said here because a
+field accepted in silence is a field somebody believes is being stored.
+
+### Seven fixed columns, plus whatever the record carries
 
 | column | | |
 |---|---|---|
-| `ingestion_id` | `STRING` | the identity, and the merge key |
-| `ingested_at` | `TIMESTAMP` | arrival, on **our** clock — the partition column |
-| `occurred_at` | `TIMESTAMP` | the producer's, when they send it; `NULL` when not |
-| `data` | `JSON` | the event whole |
+| `brevis_ingestion_id` | `STRING` | the identity, and the merge key |
+| `brevis_record_key` | `STRING` | `data[unique_key]` — which **record** this is about |
+| `brevis_operation` | `STRING` | `INSERT`, `UPDATE` or `DELETE` |
+| `brevis_received_at` | `TIMESTAMP` | arrival, on **our** clock — the partition column |
+| `brevis_loaded_at` | `TIMESTAMP` | the write, stamped by the **destination** |
+| `brevis_stream` | `STRING` | which route wrote it |
+| `brevis_gateway` | `STRING` | which deployment |
 
-**One JSON column, not a column per field**, and this is the decision the rest
-rests on. A new field is a new key: no DDL, no schema-change quota, no
-write-stream reopen, no race between replicas — and it is queryable the day it
-arrives. A column per field buys types nobody declared and pays for them with
-all four.
+**`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
+**per event** — otherwise a producer forges a control field, and a forged
+`brevis_received_at` is worse than none because it looks real.
 
-It is also where the market landed: Fivetran, Airbyte and Snowpipe all land
-into a raw layer that cannot fail and model it downstream. And it is what keeps
-`table_from` cheap — every table is the same shape, so creating one is a
-template rather than a decision.
+**`brevis_loaded_at` is a database `DEFAULT`**, not a value the gateway sends.
+The gateway knows the **dispatch** time, the destination knows the **write**
+time, and the gap between the two columns is the real end-to-end latency, per
+row, with nothing instrumented.
 
-One declaration serves every destination, because the SDK's DDL generator turns
-`TypeJSON` into `JSON` on BigQuery, `JSONB` on Postgres, `JSON` on MySQL and
-`SUPER` on Redshift.
+**`brevis_received_at` is the partition column, never a client's clock**: a
+producer's can be wrong or absent, and a partition column the client controls is
+a client that can write into 2035. An unpartitioned landing table is a query
+bill that only grows. Clustering is by `brevis_record_key`, because reading one
+record's history is what anybody does with a table like this.
 
-**`ingested_at` and not `occurred_at` as the partition column**: a producer's
-clock can be wrong or absent, and a partition column the client controls is a
-client that can write into 2035. An unpartitioned landing table is a query bill
-that only grows.
+One declaration serves every destination, because the SDK's DDL generator
+translates each type: `STRING` becomes `TEXT` on Postgres, `LONGTEXT` on MySQL
+and `STRING` on BigQuery; `JSON` becomes `JSONB`, `JSON` and `JSON`.
 
-### The identity, with nothing declared
+### Two shapes, one contract
+
+`shape` decides what the **record** contributes to the row. The producer's
+contract is the same either way — the envelope never changes. What changes is
+what the table looks like, which is the operator's decision and not the
+producer's.
+
+```yaml
+shape: document   # the default
+shape: columns
+```
+
+With **`document`**, `data` goes whole into one `JSON` column:
 
 ```
-ingestion_id = uuid5(auto_table | <table> | <idempotency_key>  | <occurred_at>)
-             = uuid5(auto_table | <table> | sha256(canonical)  | <occurred_at>)
+ brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {"id": "A-1", "total": 150, "customer": {…}}
 ```
 
-A declared stream names four fields its owner knows. A producer sending
-`{table_name, data}` names none, so the key is theirs when they send one and a
-fingerprint of the document when they do not.
+There is never any DDL after the create. A new field is a new key: no
+schema-change quota, no write-stream reopen, no race between replicas — and it
+is queryable the day it arrives. It is where the market landed: Fivetran,
+Airbyte and Snowpipe all land into a raw layer that cannot fail and model it
+downstream.
 
-**Send `idempotency_key`.** It means *these two requests are the same business
-fact*, which only the producer knows. The fingerprint means *these two requests
-have identical bytes* — a good approximation and a worse promise, because two
-genuinely distinct events with byte-identical data collapse into one. Both beat
-a random id, under which a retried `POST` is a second row forever.
+With **`columns`**, each field of the record gets a column of its own:
+
+```
+ id   | total | customer              | items
+ A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qty": 2, "sku": "X"}]
+```
+
+**Scalars become `STRING`, objects and arrays become `JSON`, and there is no
+inference anywhere.** `150` arrived as a number and became the string `150`.
+That is a choice rather than a limitation: a field that arrives whole today and
+fractional tomorrow would change a column's type with nobody writing anything,
+and the row that no longer fits goes to the dead letter. Typing one is the
+**promotion** path — written in the YAML and reviewed in a diff.
+
+A field name has to match BigQuery's rule, the narrowest of the four. Postgres
+would accept almost anything quoted, and that is the trap: the table is created
+there and it breaks the day somebody points a stream at BigQuery.
+
+### `UPDATE` and `DELETE` are recorded, not applied
+
+`brevis_operation` is a column. A landing table is **history**: an `UPDATE`
+applied in place loses the previous version, and the day you want that version
+is the day something broke. Resolving "the current version of each record" is
+the downstream model's job:
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation <> 'DELETE'
+```
+
+Which is what Debezium, Fivetran and Airbyte do — and it means CDC costs
+**nothing** in the write path: no upsert mode, no lock, no delete.
+
+### The identity has no clock in it
+
+```
+brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))
+```
+
+There is no `occurred_at` in the formula, and that is deliberate: arrival became
+**our** responsibility, and our clock is `time.Now()` — different on every
+delivery. An identity with it inside would make every redelivery a new event,
+and `merge` would stop absorbing anything.
+
+```
+same record, same content, twice  →  same id, merge absorbs
+same record, content changed      →  a different id, both versions land
+```
+
+The caveat is the documented one: two genuinely distinct events with
+byte-identical `data` collapse into one. For CDC that is **correct** — two
+identical updates to one record with the same values are the same fact.
 
 The fingerprint is over the document in **canonical** form — keys sorted at
 every level, arrays left in order, everything quoted. Go randomises map
 iteration, so a naive hash would differ between two deliveries of the same
 event, which is the one thing it exists to prevent.
+
+### The table grows a column on its own
+
+A `data` carrying a field the table does not have makes the column appear.
+**Additive, and only additive**: nothing is dropped, nothing is narrowed.
+
+A batch that loses the race to `ALTER` fails, and the pipe's ordinary retry
+resolves it — a batch waiting for DDL and a batch waiting for a worker are the
+same thing, so there is no second buffer. Across replicas the metastore holds a
+one-second *debounce* per table and per shape, so that ten replicas seeing the
+same new field do not become ten `ALTER`s against BigQuery's quota of five
+metadata operations per table per ten seconds.
+
+**A debounce and not a lock**: nothing is released and no lease is renewed.
+Whoever loses is being *retried*, not blocked, and a replica that dies holding
+one costs the others a second. It is what the market does — Delta Lake and
+Iceberg commit optimistically and retry, Kafka Connect gets serialisation from
+partition ordering, Fivetran keeps one writer per table.
 
 ### The name is the attack surface
 
@@ -249,42 +369,54 @@ event, which is the one thing it exists to prevent.
   needs no quoting anywhere and cannot carry an injection.
 - **`allow`** narrows further, by prefix.
 - **`max_new_per_hour`** (default 20) bounds **creations** in a rolling hour,
-  never writes: a table that already exists is never rate limited. **Per
-  replica** — the budget lives in the process, so four replicas admit four
-  times this.
+  never writes: a table that already exists is never rate limited. Under
+  `metastore: memory` the budget lives in the process and four replicas admit
+  four times this; under `redis` or `memcached` they share one counter.
 
 A name outside the rules is refused **per event**, in the response, and every
 well-formed event in the same request still lands:
 
 ```json
-{"accepted": 1, "rejected": ["event 1: the table name \"x\";DROP TABLE y;--\" does not match ^[a-z][a-z0-9_]{2,48}$"]}
+{"accepted": 0, "rejected": ["event 0: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{2,40}$"]}
 ```
 
 Per event and not per batch, deliberately. Refusing it at write time would fail
 the whole batch — one malformed event from one producer burying the events of
 every other producer in the same flush window, none of them told.
 
-**`auto_table` is refused on an endpoint with no `listen.auth`.** A producer
-that can name a table can create one, so it needs authentication even where an
-ordinary stream would not. A NetworkPolicy does not cover it: that limits who
-reaches the port, not which table name they ask for.
+**`auto_table` is refused on an endpoint with no `listen.auth`**, including
+under `BREVIS_ENV=local`. A producer that can name a table can create one, so it
+needs authentication even where an ordinary stream would not. A NetworkPolicy
+does not cover it: that limits who reaches the port, not which table name they
+ask for.
 
 ### The metastore is a cache
 
-It exists so a per-event write is not a per-event lookup, and it caches **both**
-answers — "this table does not exist" is what saves a round trip on the hot path
-of a new producer retrying.
+It exists so a per-event write is not a per-event lookup, and it holds three
+things: which tables exist, the DDL *debounce*, and the counter behind
+`max_new_per_hour`.
 
 It is a cache and **not** a source of truth. The destination settles whether a
 table exists, and *N* replicas racing to create one is the normal case:
 `AlreadyExists` is success, and this only reduces the race. The TTL is how long
 it may be **wrong**.
 
-**`memory` is the only backend, and that is the design.** A gateway that cannot
-start without Redis is a gateway with a new hard dependency for a cache. `redis`
-and `memcached` are refused **by name**, because somebody writing `redis`
-believes their replicas share a cache — and accepting the word while caching per
-process would make `max_new_per_hour` *N* times what they set.
+| backend | when |
+|---|---|
+| `memory` | the default, needs nothing. With **one** replica it is the right answer |
+| `redis` | `addr_from` required. A `SETNX` is the claim, an `INCR` is the counter |
+| `memcached` | `addr_from` required. An `Add` is the claim, and expiry is **second**-granular |
+
+With several replicas, `memory` gives each its own: the debounce debounces
+nothing and `max_new_per_hour` bounds a process. That is the only reason the
+other two exist.
+
+**A metastore that is down must not take a write down with it.** A `Get` that
+errors is a miss, a claim that errors behaves as won, a counter that errors
+relaxes the limit. A cache that can stop the ingestion is worse than no cache.
+
+`addr_from` names the **environment variable** holding the address, never the
+address: it carries a password often enough.
 
 ### BigQuery has a flush floor
 
@@ -298,10 +430,12 @@ which has not been written; until it is, the config refuses a window it cannot
 honour rather than letting the first deploy find out.
 
 `auto_table` cannot route into **Redshift**: that driver creates no tables, so
-every new name would fail on the load. Refused by name.
+every new name would fail on the load. Refused by name, at startup.
 
 ## What does not exist yet
 
-`sqlite`, `redis`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka` and `rabbitmq`
-are planned and nothing has been written. The table at the top of this page says
+`sqlite`, `dynamodb`, `kinesis`, `sqs`, `sns`, `kafka` and `rabbitmq` are
+planned and nothing has been written. (`redis` and `memcached` exist as a
+**metastore**, which is a different thing: a cache of what is known about the
+tables, never a destination.) The table at the top of this page says
 the state of each, and it is updated when the state changes — not before.

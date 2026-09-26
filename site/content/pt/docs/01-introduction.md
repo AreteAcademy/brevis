@@ -72,8 +72,8 @@ testes, então um erro de YAML falha no pull request e não no cluster.
 | peça | o que é | versão |
 |---|---|---|
 | **motor** | `brevis`, o binário deste texto: orquestra, agenda, executa e opera | `0.15` |
-| **SDK** | um módulo Go para escrever o passo que extrai e carrega | `0.64` |
-| **gateway** | um endpoint HTTP que pousa dado que *chega*, em vez de ir buscá-lo | `0.3` |
+| **SDK** | um módulo Go para escrever o passo que extrai e carrega | `0.66` |
+| **gateway** | um endpoint HTTP que pousa dado que *chega*, em vez de ir buscá-lo | `0.8` |
 
 As versões são independentes porque as maturidades são. Numerar o gateway como
 `0.15.3` porque o motor está lá alegaria uma maturidade que ele não tem, e

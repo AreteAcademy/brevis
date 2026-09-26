@@ -72,8 +72,8 @@ tests, so a YAML error fails in the pull request and not in the cluster.
 | piece | what it is | version |
 |---|---|---|
 | **engine** | `brevis`, the binary this page is about: orchestrates, schedules, executes and operates | `0.15` |
-| **SDK** | a Go module for writing the step that extracts and loads | `0.64` |
-| **gateway** | an HTTP endpoint that lands data which *arrives*, instead of going to fetch it | `0.3` |
+| **SDK** | a Go module for writing the step that extracts and loads | `0.66` |
+| **gateway** | an HTTP endpoint that lands data which *arrives*, instead of going to fetch it | `0.8` |
 
 The versions are independent because the maturities are. Numbering the gateway
 `0.15.3` because the engine is there would claim a maturity it does not have,

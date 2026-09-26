@@ -18,13 +18,13 @@ POST /v1/clicks  →  decodifica  →  hook  →  ingestion_id  →  lote  →  
 
 Ele é **outro binário, outro módulo Go, outra versão e outra imagem**. O motor
 orquestra e nunca toca no dado do cliente; o gateway não faz outra coisa. A
-numeração é independente de propósito: o motor está em 0.15 e o gateway em 0.3,
+numeração é independente de propósito: o motor está em 0.15 e o gateway em 0.8,
 que é a afirmação verdadeira.
 
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.3.2-slim
+  areteacademy/brevis-gateway:0.8.0-slim
 ```
 
 ## O arquivo é o contrato
@@ -249,19 +249,31 @@ caminho que um lote cheio toma, com retry e descarte.
 ## O que ele não faz
 
 - **Não aparece no console.** Ele não compartilha banco nenhum com a interface
-  do motor. Não há página `/ingestion`, e não há uma planejada.
-- **Não evolui schema.** Um campo que a tabela não tem é recusado. Há um plano;
-  não há a funcionalidade.
-- **Não cria tabela nem índice.** Um serviço que cria tabelas transforma um erro
-  de digitação numa segunda tabela que ninguém está lendo.
+  do motor, então não existe página `/ingestion` — nem a evolução de schema que
+  o `auto_table` faz aparece lá. É o próximo passo e ainda não foi escrito.
+- **Um stream com `table` não evolui schema.** Quando você nomeia a tabela, o
+  contrato é dela: um campo que ela não tem é recusado com a mensagem que
+  resolve, em vez de alterar uma tabela que alguém revisou. Crescer uma coluna
+  sozinho é o que o `auto_table` faz, e é a diferença entre os dois.
+- **Um stream com `table` não cria tabela nem índice.** Um serviço que cria
+  tabelas transforma um erro de digitação numa segunda tabela que ninguém está
+  lendo — por isso criar só acontece sob `auto_table`, onde `naming` limita que
+  nome pode existir e `listen.auth` é obrigatório.
 - **A imagem publicada não tem hooks**, que é o artefato honesto para um desenho
   de hook compilado: ela serve streams que não declaram `hook:`.
 
 ## Uma rota, N tabelas
 
-O `auto_table` roteia cada evento para a tabela que o próprio payload nomeia, e
-a cria se não existir — quatro colunas fixas com o documento numa coluna `JSON`.
-Uma rota, N tabelas, nada declarado.
+O `auto_table` roteia cada evento para a tabela que o **envelope** nomeia, cria
+a tabela se ela não existir e cresce uma coluna quando um campo novo aparece:
+
+```json
+{"table_name": "app_orders", "operation": "INSERT", "unique_key": "id",
+ "data": {"id": "A-1", "total": 150, "customer": {"id": 7, "uf": "SP"}}}
+```
+
+Campos de controle em cima, o registro dentro de `data`, e sete colunas
+`brevis_*` de rastreio em toda tabela. Uma rota, N tabelas, nada declarado.
 
 Está em [Destinos da ingestão](/docs/ingestion-sinks/#uma-rota-n-tabelas-nada-declarado).
 
