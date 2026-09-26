@@ -38,6 +38,23 @@ const (
 
 // DefaultUniqueKey is the field inside `data` that identifies the record when
 // the envelope names no other.
+//
+// Whether it has to be THERE depends on the write mode, and that is the whole
+// of the rule:
+//
+//	merge   required. The mode exists to hold one row per record, and
+//	        `brevis_record_key` is what "per record" means -- the qualify
+//	        that resolves the current version partitions by it. A merge
+//	        table full of rows that name no record is a table nobody can
+//	        resolve.
+//	append  optional. An append table is a log, and a log entry does not
+//	        have to be about a record: an audit line, a webhook, a metric
+//	        sample. Demanding an `id` there would make producers invent one,
+//	        which is worse than NULL because it looks real.
+//
+// Naming a field that is not in `data` is an error in BOTH modes. "You did not
+// say" and "you said something that is not there" are different mistakes, and
+// only the first one is allowed to pass.
 const DefaultUniqueKey = "id"
 
 // The operations a landing table records.
@@ -104,10 +121,22 @@ var ClusterBy = []string{ColumnRecordKey}
 // deliberate: the gateway knows the DISPATCH time, the destination knows the
 // WRITE time. The difference between the two columns is then the real
 // end-to-end latency, per row, with no instrumentation at all.
-func fixed(unique bool) sdk.Schema {
+// fixed is the part of the schema that never varies, except where the write
+// mode makes it vary -- and both places it does are the same decision seen
+// twice.
+//
+// `unique` is the UNIQUE constraint on the id: required by `merge` on Postgres
+// and MySQL, refused by BigQuery, wrong for `append`.
+//
+// `keyed` is whether `brevis_record_key` is NOT NULL. Under `merge` the key is
+// required of every event, so the column can be. Under `append` a record may
+// name none, and a NOT NULL column would then refuse the row at the database
+// -- at write time, failing the batch, which is the failure this whole file
+// spent a version learning to avoid.
+func fixed(unique, keyed bool) sdk.Schema {
 	return sdk.Schema{
 		{Name: ColumnID, Type: sdk.TypeString, Required: true, Unique: unique},
-		{Name: ColumnRecordKey, Type: sdk.TypeString, Required: true},
+		{Name: ColumnRecordKey, Type: sdk.TypeString, Required: keyed},
 		{Name: ColumnOperation, Type: sdk.TypeString, Required: true},
 		{Name: ColumnReceivedAt, Type: sdk.TypeTimestamp, Required: true},
 		{Name: ColumnLoadedAt, Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
@@ -169,14 +198,24 @@ func open(e map[string]any) (envelope, error) {
 		}
 	}
 
+	// The key, and the two ways it can be absent are not the same thing.
+	//
+	// A field the envelope NAMED and `data` does not carry is a mistake in
+	// either write mode: the producer said `pedido_id` and there is no
+	// `pedido_id`, so accepting it would land a row whose record key is not
+	// the one they asked for. The default `id` simply not being there is the
+	// other case -- nobody said anything, and whether that is allowed is the
+	// write mode's answer, given by the router.
 	name := gateway.Text(e[FieldUniqueKey])
-	if name == "" {
+	named := name != ""
+	if !named {
 		name = DefaultUniqueKey
 	}
 	env.key = gateway.Text(record[name])
-	if env.key == "" {
-		return env, fmt.Errorf("%q.%q is missing or empty, and %q names it as this "+
-			"record's identity", FieldData, name, FieldUniqueKey)
+	if env.key == "" && named {
+		return env, fmt.Errorf("%q names %q as this record's identity and %q.%q is "+
+			"missing or empty. Drop %q to fall back to %q, or send the field",
+			FieldUniqueKey, name, FieldData, name, FieldUniqueKey, DefaultUniqueKey)
 	}
 
 	env.op = strings.ToUpper(gateway.Text(e[FieldOperation]))
@@ -200,9 +239,8 @@ func (env envelope) row(now time.Time, stream, name string) (map[string]any, err
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{
+	row := map[string]any{
 		ColumnID:         id,
-		ColumnRecordKey:  env.key,
 		ColumnOperation:  env.op,
 		ColumnReceivedAt: now.UTC().Format(time.RFC3339),
 		ColumnStream:     stream,
@@ -210,7 +248,15 @@ func (env envelope) row(now time.Time, stream, name string) (map[string]any, err
 		// ColumnLoadedAt is absent on purpose: the destination's DEFAULT
 		// stamps it, which is the only clock that knows when the write
 		// actually happened.
-	}, nil
+	}
+	if env.key != "" {
+		// Absent rather than "", which is the difference between NULL and a
+		// record whose key is the empty string. Under `append` a record may
+		// legitimately name none, and the column is nullable there; under
+		// `merge` the router has already refused the event.
+		row[ColumnRecordKey] = env.key
+	}
+	return row, nil
 }
 
 // identify computes the event's id.
@@ -235,10 +281,23 @@ func (env envelope) identify() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// With no record key -- which only `append` allows -- the content IS the
+	// key. The slot cannot be left empty: `Envelope.IngestionID` refuses that,
+	// and rightly, because an id computed over a blank identity is an id every
+	// keyless record in the table would share.
+	//
+	// It cannot collide with a keyed record either. A keyed one puts the
+	// producer's value in this slot and the fingerprint in the next; for the
+	// two to meet, a record key would have to be literally "sha256:<64 hex>"
+	// AND the record's own fingerprint.
+	key := env.key
+	if key == "" {
+		key = "sha256:" + sum
+	}
 	e := sdk.Envelope{
 		Provider:  Provider,
 		Entity:    env.table,
-		SourceKey: env.key,
+		SourceKey: key,
 		RecordTS:  "sha256:" + sum,
 	}
 	return e.IngestionID()

@@ -31,11 +31,13 @@ func TestTheEnvelopeRefusesWhatItCannotHonour(t *testing.T) {
 			says: "reserved",
 		},
 		{
-			name: "no unique key in the record",
-			in:   map[string]any{"table_name": "t", "data": map[string]any{"total": 1}},
-			says: "this record's identity",
-		},
-		{
+			// NAMED and absent, which is a mistake in either write mode: the
+			// producer said `order_id` and there is no `order_id`, so a row
+			// landed here would carry a record key they did not ask for.
+			//
+			// The default `id` simply not being there is the OTHER case, and
+			// `open` does not answer it -- the write mode does. See
+			// TestTheKeyIsRequiredOnlyByMerge.
 			name: "a unique key the record does not carry",
 			in: map[string]any{"table_name": "t", "unique_key": "order_id",
 				"data": map[string]any{"id": "A"}},

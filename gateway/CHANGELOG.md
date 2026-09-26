@@ -53,6 +53,28 @@ in the same flush window.
 Two tests pin it, and the second is the general form: everything the write path
 refuses about a record, `Admit` has to refuse first.
 
+### Changed: `unique_key` is required by `merge` and optional under `append`
+
+It used to be required of every event, in both modes, and the two modes do not
+want the same thing:
+
+| | |
+|---|---|
+| `merge` | **required.** The mode keeps one row per record, and the `qualify` that resolves the current version partitions by `brevis_record_key`. A merge table full of rows naming no record is a table nobody can resolve. |
+| `append` | **optional.** A log entry need not be *about* a record: an audit line, a webhook, a metric sample. Demanding an `id` there makes producers invent one, which is worse than NULL because it looks real. |
+
+`brevis_record_key` is created nullable under `append` — a NOT NULL column
+would have had the database refuse the row at write time, which is the same
+poison batch through another door. A keyless row carries NULL and not `""`,
+because the resolving query would gather every `""` into one partition.
+
+The id survives without a key: `Envelope.IngestionID` refuses an empty
+SourceKey, so the fingerprint fills the slot. Same document twice, same id.
+
+**Naming a field `data` does not carry is still an error in both modes.** "You
+did not say" and "you said something that is not there" are different mistakes,
+and only the first one passes.
+
 ## [0.8.0] — 2026-09-25
 
 The drain had one budget and three owners, and the first could eat it all.

@@ -213,7 +213,7 @@ The body is an **envelope**: control fields at the top, the record inside
 |---|---|---|
 | `table_name` | **required** | where this lands |
 | `data` | **required** | the record, and only it |
-| `unique_key` | defaults to `id` | which field of `data` identifies the record |
+| `unique_key` | defaults to `id` | which field of `data` identifies the record — **required under `merge`** |
 | `operation` | defaults to `INSERT` | `INSERT`, `UPDATE` or `DELETE` |
 | `description` | optional | **accepted and not yet used** — see below |
 
@@ -221,6 +221,31 @@ The body is an **envelope**: control fields at the top, the record inside
 **transport** pretending to be a field of the **record**. Separating them is how
 every CDC format is shaped — and it is what makes reserving a prefix possible,
 because now there is one place only the producer writes.
+
+### The key belongs to `merge`, not to the envelope
+
+`unique_key` is optional, and whether it is **required** depends on the write
+mode — because the two modes want different things:
+
+| | |
+|---|---|
+| `write: merge` | **required.** The mode exists to keep one row per record, and `brevis_record_key` is what "per record" means: the `qualify` that resolves the current version partitions by it. A merge table full of rows naming no record is a table nobody can resolve. |
+| `write: append` | **optional.** An append table is a log, and a log entry need not be *about* a record: an audit line, a webhook, a metric sample. Demanding an `id` there would make producers invent one, which is worse than `NULL` because it looks real. |
+
+Under `append` the column is created nullable and a keyless row carries `NULL`
+— not `""`, which is a different fact. And `brevis_ingestion_id` still exists:
+with no key, **the content is the key**, so the same document twice is the same
+id.
+
+**Naming a field that is not in `data` is an error in both modes.** "You did not
+say" and "you said something that is not there" are different mistakes, and only
+the first one passes:
+
+```json
+{"accepted":0,"rejected":["event 0: \"unique_key\" names \"pedido_id\" as this
+ record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
+ \"unique_key\" to fall back to \"id\", or send the field"]}
+```
 
 **`description` is read and today goes nowhere.** It is in the contract for the
 console's ingestion page, which has not been written. It is said here because a
@@ -231,7 +256,7 @@ field accepted in silence is a field somebody believes is being stored.
 | column | | |
 |---|---|---|
 | `brevis_ingestion_id` | `STRING` | the identity, and the merge key |
-| `brevis_record_key` | `STRING` | `data[unique_key]` — which **record** this is about |
+| `brevis_record_key` | `STRING` | `data[unique_key]` — which **record** this is about; `NULL` under `append` |
 | `brevis_operation` | `STRING` | `INSERT`, `UPDATE` or `DELETE` |
 | `brevis_received_at` | `TIMESTAMP` | arrival, on **our** clock — the partition column |
 | `brevis_loaded_at` | `TIMESTAMP` | the write, stamped by the **destination** |

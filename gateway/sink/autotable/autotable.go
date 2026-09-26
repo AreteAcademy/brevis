@@ -52,10 +52,18 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	// package's whole job is turning a payload into DDL, which is the last
 	// place to find out late. The probe name never reaches a database: nothing
 	// connects until a Write.
-	// BigQuery has no unique constraints and its MERGE needs none; Postgres
-	// and MySQL refuse DedupMerge without one. So the constraint follows the
-	// write mode AND the destination, and neither alone is enough.
-	unique := s.Into.Write == gateway.WriteMerge && s.Into.Type != gateway.SinkBigQuery
+
+	// Two things follow the write mode, and they are not the same thing.
+	//
+	// `merging` is the mode itself, and it decides whether an event must name
+	// a record: `merge` holds one row per record, so a row that names none is
+	// a row the resolving query cannot partition by.
+	//
+	// `unique` is the UNIQUE constraint on the id, and it needs the
+	// DESTINATION too: BigQuery has no unique constraints and its MERGE needs
+	// none, while Postgres and MySQL refuse DedupMerge without one.
+	merging := s.Into.Write == gateway.WriteMerge
+	unique := merging && s.Into.Type != gateway.SinkBigQuery
 
 	sh, err := shaperFor(s.Shape)
 	if err != nil {
@@ -70,7 +78,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		ttl = gateway.DefaultMetastoreTTL
 	}
 
-	r := &router{build: b, names: n, unique: unique, shape: sh,
+	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh,
 		stream: b.Stream, gateway: b.Gateway,
 		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
 		made: map[string]gateway.Sinker{}, now: time.Now}
@@ -99,6 +107,10 @@ type router struct {
 	// unique says whether the created table carries a UNIQUE constraint on
 	// ingestion_id: required by `merge` and wrong for `append`.
 	unique bool
+
+	// merging is `write: merge`, and it is what makes `unique_key` mandatory.
+	// See DefaultUniqueKey for why the two modes answer differently.
+	merging bool
 
 	// shape decides what the record contributes to the row: one JSON column,
 	// or a column per field.
@@ -134,12 +146,31 @@ func (r *router) Admit(e map[string]any) error {
 	if err := r.names.check(env.table); err != nil {
 		return err
 	}
+	if err := r.needsKey(env); err != nil {
+		return err
+	}
 	// The record has to be shapeable too, and this line is the one that was
 	// missing. `open` and `names` cover the envelope and the table name; the
 	// FIELD names were only ever seen at write time, on a whole batch, so one
 	// `my-field` buried every other producer's events in the same flush window
 	// -- with every one of them already answered 202.
 	return r.shape.validate(env.record)
+}
+
+// needsKey is the write mode's half of the unique-key rule.
+//
+// It lives on the router and not in `open` because `open` parses an envelope
+// and knows nothing about where it is going -- and the answer is entirely
+// about where it is going. See DefaultUniqueKey for both halves.
+func (r *router) needsKey(env envelope) error {
+	if env.key != "" || !r.merging {
+		return nil
+	}
+	return fmt.Errorf("%q.%q is missing or empty, and this stream writes with "+
+		"`merge`, which keeps one row per record -- so every event has to say "+
+		"which record it is about. Send %q, name another field in %q, or use "+
+		"`write: append`, where a row need not be about a record at all",
+		FieldData, DefaultUniqueKey, DefaultUniqueKey, FieldUniqueKey)
 }
 
 // Write groups the batch and writes each table's rows.
@@ -203,6 +234,9 @@ func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope,
 			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
 		if err := r.names.check(env.table); err != nil {
+			return nil, nil, fmt.Errorf("event %d: %w", i, err)
+		}
+		if err := r.needsKey(env); err != nil {
 			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
 
@@ -347,7 +381,7 @@ func (r *router) open(ctx context.Context, table string, record sdk.Schema) (gat
 		Gateway: r.gateway,
 		Meta:    r.build.Meta,
 		Target: &gateway.Target{
-			Schema:   append(fixed(r.unique), record...),
+			Schema:   append(fixed(r.unique, r.merging), record...),
 			DedupKey: ColumnID,
 			// Additive, and only additive. A field the record grew becomes a
 			// column; nothing is ever dropped or narrowed.

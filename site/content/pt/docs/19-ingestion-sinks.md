@@ -214,7 +214,7 @@ O corpo é um **envelope**: campos de controle em cima, o registro dentro de
 |---|---|---|
 | `table_name` | **obrigatório** | onde isso pousa |
 | `data` | **obrigatório** | o registro, e só ele |
-| `unique_key` | padrão `id` | qual campo de `data` identifica o registro |
+| `unique_key` | padrão `id` | qual campo de `data` identifica o registro — **obrigatório sob `merge`** |
 | `operation` | padrão `INSERT` | `INSERT`, `UPDATE` ou `DELETE` |
 | `description` | opcional | **aceito e ainda não usado** — veja abaixo |
 
@@ -222,6 +222,30 @@ O corpo é um **envelope**: campos de controle em cima, o registro dentro de
 passando por campo do **registro**. Separar os dois é a forma de todo formato de
 CDC — e é o que torna possível reservar um prefixo, porque agora existe um lugar
 onde só o produtor escreve.
+
+### A chave é do `merge`, não do envelope
+
+`unique_key` é opcional, e se ele é **exigido** depende do modo de escrita —
+porque os dois modos querem coisas diferentes:
+
+| | |
+|---|---|
+| `write: merge` | **obrigatório.** O modo existe para guardar uma linha por registro, e `brevis_record_key` é o que "por registro" significa: o `qualify` que resolve a versão atual particiona por ele. Uma tabela de merge cheia de linhas que não nomeiam registro é uma tabela que ninguém resolve. |
+| `write: append` | **opcional.** Uma tabela de append é um log, e uma linha de log não precisa ser *sobre* um registro: uma linha de auditoria, um webhook, uma amostra de métrica. Exigir um `id` ali faria o produtor inventar um, o que é pior que `NULL` porque parece real. |
+
+Sob `append` a coluna nasce anulável e a linha sem chave fica com `NULL` — não
+com `""`, que é outro fato. E o `brevis_ingestion_id` continua existindo: sem
+chave, **o conteúdo é a chave**, e o mesmo documento duas vezes é o mesmo id.
+
+**Nomear um campo que não está em `data` é erro nos dois modos.** "Você não
+disse" e "você disse algo que não está lá" são enganos diferentes, e só o
+primeiro passa:
+
+```json
+{"accepted":0,"rejected":["event 0: \"unique_key\" names \"pedido_id\" as this
+ record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
+ \"unique_key\" to fall back to \"id\", or send the field"]}
+```
 
 **`description` é lido e hoje não vai a lugar nenhum.** Ele existe no contrato
 para a página de ingestão do console, que ainda não foi escrita. Está dito aqui
@@ -233,7 +257,7 @@ gravando.
 | coluna | | |
 |---|---|---|
 | `brevis_ingestion_id` | `STRING` | a identidade, e a chave do merge |
-| `brevis_record_key` | `STRING` | `data[unique_key]` — de qual **registro** isto fala |
+| `brevis_record_key` | `STRING` | `data[unique_key]` — de qual **registro** isto fala; `NULL` sob `append` |
 | `brevis_operation` | `STRING` | `INSERT`, `UPDATE` ou `DELETE` |
 | `brevis_received_at` | `TIMESTAMP` | a chegada, no **nosso** relógio — a coluna de partição |
 | `brevis_loaded_at` | `TIMESTAMP` | a escrita, carimbada pelo **destino** |

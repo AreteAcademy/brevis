@@ -224,9 +224,13 @@ streams:
   #
   #   {
   #     "table_name": "app_orders",     <- required
-  #     "unique_key": "id",             <- optional, default "id"
+  #     "unique_key": "id",             <- optional, default "id"; the FIELD
+  #                                        it names must be in `data`, and
+  #                                        `write: merge` requires one at all
   #     "operation":  "INSERT",         <- optional: INSERT | UPDATE | DELETE
-  #     "description": "Pedidos",       <- optional, goes to the control plane
+  #     "description": "Pedidos",       <- optional, and READ BY NOTHING today:
+  #                                        it is in the contract for the
+  #                                        console page that does not exist
   #     "data": {                       <- required: the record, and only it
   #       "id": "A-3",
   #       "total": 150,
@@ -237,7 +241,10 @@ streams:
   # Every table carries the same seven columns whatever the record holds:
   #
   #   brevis_ingestion_id   the identity; the merge key
-  #   brevis_record_key     data[unique_key] -- which ROW this is about
+  #   brevis_record_key     data[unique_key] -- which ROW this is about.
+  #                         NULL under `append`, where a log line need not be
+  #                         about a record at all; required by `merge`, which
+  #                         keeps one row per record
   #   brevis_operation      INSERT | UPDATE | DELETE
   #   brevis_received_at    OUR clock, at the 202 -- the partition column
   #   brevis_loaded_at      DEFAULT CURRENT_TIMESTAMP -- the destination stamps it
