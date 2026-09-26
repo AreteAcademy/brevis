@@ -1,29 +1,29 @@
 # HELP brevis_gateway_events_received_total events accepted into a stream's buffer
 # TYPE brevis_gateway_events_received_total counter
-brevis_gateway_events_received_total{stream="bench",format="ndjson"} 4593000
+brevis_gateway_events_received_total{stream="bench",format="ndjson"} 5431000
 # HELP brevis_gateway_batches_total batches by what became of them
 # TYPE brevis_gateway_batches_total counter
-brevis_gateway_batches_total{stream="bench",sink="auto_table[columns]→postgres",outcome="delivered"} 919
+brevis_gateway_batches_total{stream="bench",sink="auto_table[columns]→postgres",outcome="delivered"} 1087
 # HELP brevis_gateway_flushes_total batches handed to the pool by what triggered them
 # TYPE brevis_gateway_flushes_total counter
-brevis_gateway_flushes_total{stream="bench",trigger="records"} 918
+brevis_gateway_flushes_total{stream="bench",trigger="records"} 1086
 brevis_gateway_flushes_total{stream="bench",trigger="time"} 1
 # HELP brevis_gateway_delivery_seconds how long one batch took to deliver, retries included
 # TYPE brevis_gateway_delivery_seconds histogram
 brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.005"} 0
 brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.01"} 0
 brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.025"} 0
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.05"} 0
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.1"} 18
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.25"} 766
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.5"} 909
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="1"} 919
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="2.5"} 919
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="5"} 919
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="10"} 919
-brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="+Inf"} 919
-brevis_gateway_delivery_seconds_sum{stream="bench",sink="auto_table[columns]→postgres"} 181.53620376099985
-brevis_gateway_delivery_seconds_count{stream="bench",sink="auto_table[columns]→postgres"} 919
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.05"} 1
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.1"} 170
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.25"} 1071
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="0.5"} 1080
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="1"} 1087
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="2.5"} 1087
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="5"} 1087
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="10"} 1087
+brevis_gateway_delivery_seconds_bucket{stream="bench",sink="auto_table[columns]→postgres",le="+Inf"} 1087
+brevis_gateway_delivery_seconds_sum{stream="bench",sink="auto_table[columns]→postgres"} 149.58063272599995
+brevis_gateway_delivery_seconds_count{stream="bench",sink="auto_table[columns]→postgres"} 1087
 # HELP brevis_gateway_batch_records how many records were in a batch
 # TYPE brevis_gateway_batch_records histogram
 brevis_gateway_batch_records_bucket{stream="bench",le="1"} 0
@@ -32,11 +32,11 @@ brevis_gateway_batch_records_bucket{stream="bench",le="10"} 0
 brevis_gateway_batch_records_bucket{stream="bench",le="50"} 0
 brevis_gateway_batch_records_bucket{stream="bench",le="100"} 0
 brevis_gateway_batch_records_bucket{stream="bench",le="500"} 0
-brevis_gateway_batch_records_bucket{stream="bench",le="1000"} 0
-brevis_gateway_batch_records_bucket{stream="bench",le="5000"} 919
-brevis_gateway_batch_records_bucket{stream="bench",le="+Inf"} 919
-brevis_gateway_batch_records_sum{stream="bench"} 4.593e+06
-brevis_gateway_batch_records_count{stream="bench"} 919
+brevis_gateway_batch_records_bucket{stream="bench",le="1000"} 1
+brevis_gateway_batch_records_bucket{stream="bench",le="5000"} 1087
+brevis_gateway_batch_records_bucket{stream="bench",le="+Inf"} 1087
+brevis_gateway_batch_records_sum{stream="bench"} 5.431e+06
+brevis_gateway_batch_records_count{stream="bench"} 1087
 # TYPE brevis_gateway_buffer_records gauge
 brevis_gateway_buffer_records{stream="bench"} 0
 # TYPE brevis_gateway_queue_batches gauge

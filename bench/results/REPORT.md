@@ -5,29 +5,29 @@ saw, and the gateway's own `/metrics` for what it did with it.
 
 | | |
 |---|---|
-| run | 2026-09-26 17:36 UTC |
+| run | 2026-09-26 17:48 UTC |
 | image | `areteacademy/brevis-gateway:0.11.0` |
 | host | Darwin arm64, 11 cpu |
 | destination | auto_table[columns] -> postgres:17 (container), write: append |
-| duration | 45s |
+| duration | 40s |
 
 ## What the producer saw
 
 | | |
 |---|---:|
-| requests | 22965 (510/s) |
-| events accepted | **4593000** (102064/s) |
+| requests | 27155 (679/s) |
+| events accepted | **5431000** (135768/s) |
 | events refused (503) | 0 |
 | events rejected, per event | 0 |
-| body sent | 978.3 MiB |
+| body sent | 1156.7 MiB |
 
 | latency | ms |
 |---|---:|
-| p50 | 9.2 |
-| p90 | 22.7 |
-| p95 | 29.0 |
-| p99 | 46.9 |
-| max | 289.6 |
+| p50 | 5.9 |
+| p90 | 13.3 |
+| p95 | 16.0 |
+| p99 | 22.7 |
+| max | 112.8 |
 
 A `503` is not a failure here. It is the gateway refusing an event it
 has nowhere to put, which is the honest answer and safe to retry: the
@@ -38,28 +38,28 @@ again is the same record.
 
 | | |
 |---|---:|
-| events received | 4593000 |
-| batches delivered | 919 |
+| events received | 5431000 |
+| batches delivered | 1087 |
 | batches retried | 0 |
 | batches buried | 0 |
 | records in the dead letter | **0** |
 | requests refused, buffer full | 0 |
-| mean delivery | 198 ms |
+| mean delivery | 138 ms |
 
 Flushes by what triggered them:
 
 | trigger | batches |
 |---|---:|
-| `records` | 918 |
+| `records` | 1086 |
 | `time` | 1 |
 
 ## The three have to agree
 
 | witness | events |
 |---|---:|
-| k6 was told `accepted` | 4593000 |
-| the gateway counted received | 4593000 |
-| rows in Postgres | 4593000 |
+| k6 was told `accepted` | 5431000 |
+| the gateway counted received | 5431000 |
+| rows in Postgres | 5431000 |
 | records in the dead letter | 0 |
 
 **They agree.** Every event that was answered `202` is a row, and

@@ -54,17 +54,31 @@ def by_label(series, name, label):
     return out
 
 
+def require(path):
+    """Refuse to build a report out of a file that is not there.
+
+    run.sh deletes these before the run, so a missing one means the step that
+    writes it failed. Falling back to whatever was committed produced a green
+    CI job carrying a laptop's numbers from the day before -- the summary write
+    was denied and nothing said so.
+    """
+    if not os.path.exists(path):
+        sys.stderr.write(
+            "%s is missing. The step that writes it did not run or could not "
+            "write; a report built without it would carry the previous run's "
+            "numbers.\n" % path)
+        sys.exit(2)
+    return path
+
+
 def main():
     results = sys.argv[1] if len(sys.argv) > 1 else "results"
-    with io.open(os.path.join(results, "k6.json"), encoding="utf-8") as f:
+    with io.open(require(os.path.join(results, "k6.json")), encoding="utf-8") as f:
         k6 = json.load(f)
-    with io.open(os.path.join(results, "metrics.txt"), encoding="utf-8") as f:
+    with io.open(require(os.path.join(results, "metrics.txt")), encoding="utf-8") as f:
         gw = scrape(f.read())
-    meta = {}
-    meta_path = os.path.join(results, "run.json")
-    if os.path.exists(meta_path):
-        with io.open(meta_path, encoding="utf-8") as f:
-            meta = json.load(f)
+    with io.open(require(os.path.join(results, "run.json")), encoding="utf-8") as f:
+        meta = json.load(f)
 
     accepted = k6_value(k6, "brevis_events_accepted", "count")
     refused = k6_value(k6, "brevis_events_refused_503", "count")

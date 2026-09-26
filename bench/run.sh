@@ -15,6 +15,15 @@ root="$(cd "$here/.." && pwd)"
 results="$here/results"
 mkdir -p "$results"
 
+# The inputs of the report go FIRST, before anything can fail to write one.
+#
+# They are committed, so without this a run whose k6 could not write its
+# summary produces a report from the PREVIOUS run and exits 0. That happened:
+# k6 runs as a non-root user, the mounted directory was the runner's, the write
+# was denied, and CI published a green benchmark carrying a laptop's numbers
+# from the day before. A stale number that looks fresh is worse than no number.
+rm -f "$results/k6.json" "$results/metrics.txt" "$results/run.json"
+
 NET=brevis-bench
 PG=brevis-bench-pg
 GW=brevis-bench-gw
@@ -70,6 +79,7 @@ done
 
 echo "==> k6: $VUS VUs, $PER events per request, hold $HOLD"
 docker run --rm -i \
+  --user "$(id -u):$(id -g)" \
   --add-host=host.docker.internal:host-gateway \
   -v "$here:/scripts:ro" -v "$results:/results" \
   -e BREVIS_BENCH_KEY="$KEY" \
