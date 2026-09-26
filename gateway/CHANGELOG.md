@@ -13,6 +13,82 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.8.0] — 2026-09-25
+
+The drain had one budget and three owners, and the first could eat it all.
+
+The gateway answers `202` before anything is written: what is in a buffer at
+`SIGTERM` is delivered by the drain, and a drain that runs out of time loses
+events a producer was told had been accepted. With Pub/Sub the flush window is
+a second; with BigQuery the floor is sixty and the recommended window is three
+hundred — so the same drain went from protecting one second of accepted events
+to protecting five minutes of them.
+
+### Fixed: a slow request could spend the drain's entire budget
+
+`http.Shutdown`, `Server.Close` and the metrics shutdown shared one
+thirty-second context, in that order. A single slow reader — a large `ndjson`
+body, a client on a bad connection — spent the drain's budget before the drain
+began, and in the worst case `Close` received an already-expired context: the
+last batch still went out through `close`'s own fallback, and **everything
+already queued was abandoned**.
+
+Three budgets now: five seconds to stop accepting, the whole drain budget for
+the drain, five seconds for the metrics.
+
+### Changed: the drain budget follows the flush windows
+
+It was thirty seconds, fixed, chosen when every window was one second. It is now
+the longest flush window, floored at thirty seconds, and `shutdown.drain`
+overrides it:
+
+```yaml
+shutdown:
+  drain: 90s
+```
+
+One window and not two: the drain waits for nothing — it takes the pending batch
+immediately and the workers deliver in parallel, so draining is strictly faster
+than the filling was. Doubling it would only lengthen how long a genuinely stuck
+pod takes to die, which is a rollout everybody waits on.
+
+It is a heuristic and says so in the code. What actually bounds a drain is the
+queue depth and the cost of one delivery, and neither is knowable there: a load
+job takes seconds, a file takes none. An installation that has measured its own
+should declare `shutdown.drain`.
+
+### Changed: a failed drain exits non-zero, and says how many
+
+**This is the breaking one.** A drain that lost events used to log and return 0,
+which to Kubernetes, to a supervisor and to CI is indistinguishable from a clean
+stop. It exits `1` now, and the message carries the count:
+
+```
+drain incomplete: stream "tables": the drain did not finish and 412 accepted
+event(s) were not delivered: context deadline exceeded
+```
+
+`Server.Close` also joins every stream's failure instead of returning the first:
+reading "stream A lost 12" while stream B silently lost 4,000 is worse than
+reading both. `Server.Pending()` reports the same number programmatically.
+
+### Added: the gateway states the grace period it needs
+
+```
+drain budget 5m0s; set terminationGracePeriodSeconds >= 310
+listening on :8080
+```
+
+It cannot read its own manifest, and Kubernetes defaults
+`terminationGracePeriodSeconds` to thirty — which equalled the old fixed budget
+exactly, so there was no margin and a `SIGKILL` could arrive while the drain was
+still inside its own deadline. Printing the requirement is the cheapest thing
+that stops the two drifting apart in two repositories with nothing connecting
+them.
+
+**Check your manifest against this line.** A gateway whose streams flush at 60s
+asks for 70; at 300s it asks for 310.
+
 ## [0.7.1] — 2026-09-25
 
 Three things two replicas found that no unit test could.
