@@ -2,7 +2,9 @@ package autotable
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -72,6 +74,11 @@ func TestTheEnvelopeCarriesWhatDescribesTheTable(t *testing.T) {
 // with no database at all.
 func build(t *testing.T, s gateway.Sink) *router {
 	t.Helper()
+	return buildWith(t, s, gateway.NewMemoryMetastore())
+}
+
+func buildWith(t *testing.T, s gateway.Sink, meta gateway.Metastore) *router {
+	t.Helper()
 	sinks := gateway.NewSinks()
 	sinks.MustRegister(Sink, New)
 	sinks.MustRegister("probe", func(gateway.Build) (gateway.Sinker, error) {
@@ -80,7 +87,7 @@ func build(t *testing.T, s gateway.Sink) *router {
 
 	built, err := gateway.BuildSink(gateway.Build{
 		Ctx: context.Background(), Sink: s, Sinks: sinks,
-		Meta: gateway.NewMemoryMetastore(),
+		Meta: meta,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -429,4 +436,117 @@ func TestTheArrivalSizeColumnIsAlwaysThere(t *testing.T) {
 func minutes(n int) *time.Duration {
 	d := time.Duration(n) * time.Minute
 	return &d
+}
+
+// A table that keeps failing charges the creation budget ONCE, not once per
+// retry.
+//
+// The measured shape of issue #34: a build that fails is never cached, so
+// every retry went back through admit, which increments before it checks. Four
+// table names reached a count of 31 -- and the budget one table's row error
+// had spent then refused three genuinely new tables that had done nothing
+// wrong.
+//
+// Counted at the metastore rather than inferred from a refusal, because the
+// DDL debounce answers first on a fast retry: ErrClaimed comes back before
+// open() is reached, and the charge had already happened by then. Counting the
+// Incr is the property itself.
+func TestAFailingTableChargesTheBudgetOnce(t *testing.T) {
+	counter := &countingMetastore{Metastore: gateway.NewMemoryMetastore()}
+	r := buildWith(t, gateway.Sink{
+		Type:   gateway.SinkAutoTable,
+		Naming: gateway.Naming{Pattern: `^app_[a-z0-9_]{1,40}$`, MaxNewPerHour: 50},
+		Into:   &gateway.Sink{Type: "probe", Write: gateway.WriteAppend},
+	}, counter)
+	ctx := context.Background()
+
+	// Ten attempts at ONE table, each invalidated as a failing write would --
+	// which is what the pipe does, four times per batch, until the dead
+	// letter.
+	for i := 0; i < 10; i++ {
+		_, _ = r.sinkFor(ctx, "app_orders", nil)
+		r.invalidate(ctx, "app_orders")
+	}
+
+	if got := counter.incrs(); got != 1 {
+		t.Errorf("ten attempts at one table spent %d of the creation budget; "+
+			"the limit bounds the arrival of NAMES, and one name retrying is "+
+			"not that", got)
+	}
+}
+
+// countingMetastore counts what was charged. Everything else is the real one.
+type countingMetastore struct {
+	gateway.Metastore
+	mu sync.Mutex
+	n  int
+}
+
+func (c *countingMetastore) Incr(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	c.mu.Lock()
+	c.n++
+	c.mu.Unlock()
+	return c.Metastore.Incr(ctx, key, ttl)
+}
+
+func (c *countingMetastore) incrs() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.n
+}
+
+// And the limit still bites when a producer really does invent names.
+//
+// The companion to the test above: `charged` must not turn the circuit breaker
+// off. Six distinct names against a limit of five is what the field is for.
+func TestTheBudgetStillRefusesManyNames(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:   gateway.SinkAutoTable,
+		Naming: gateway.Naming{Pattern: `^app_[a-z0-9_]{1,40}$`, MaxNewPerHour: 5},
+		Into:   &gateway.Sink{Type: "probe", Write: gateway.WriteAppend},
+	})
+	ctx := context.Background()
+
+	var refused int
+	for i := 0; i < 8; i++ {
+		if _, err := r.sinkFor(ctx, fmt.Sprintf("app_t%d", i), nil); err != nil {
+			refused++
+		}
+	}
+	if refused == 0 {
+		t.Error("eight distinct names against a limit of five and nothing was " +
+			"refused: the circuit breaker is off")
+	}
+}
+
+// A name the budget refused stays refused when it comes back.
+//
+// The companion to `charged`, and the mutation that found it: marking a table
+// as charged on a REFUSAL would let the next attempt skip admit entirely and
+// walk straight past the limit. The circuit breaker would hold for exactly one
+// attempt per name, which is the same as not holding.
+func TestARefusedNameIsStillRefusedOnRetry(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:   gateway.SinkAutoTable,
+		Naming: gateway.Naming{Pattern: `^app_[a-z0-9_]{1,40}$`, MaxNewPerHour: 2},
+		Into:   &gateway.Sink{Type: "probe", Write: gateway.WriteAppend},
+	})
+	ctx := context.Background()
+
+	// Spend the budget on two names that are allowed.
+	for _, name := range []string{"app_a", "app_b"} {
+		if _, err := r.sinkFor(ctx, name, nil); err != nil {
+			t.Fatalf("%s should have fitted: %v", name, err)
+		}
+	}
+
+	// The third is refused, and it has to STAY refused however many times the
+	// pipe brings it back.
+	for i := 0; i < 4; i++ {
+		if _, err := r.sinkFor(ctx, "app_c", nil); err == nil {
+			t.Fatalf("attempt %d at app_c was allowed after the budget refused "+
+				"it; a limit that holds for one attempt per name is not a limit", i+1)
+		}
+		r.invalidate(ctx, "app_c")
+	}
 }

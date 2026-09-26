@@ -82,7 +82,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh,
 		stream: b.Stream, gateway: b.Gateway,
 		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
-		made: map[string]gateway.Sinker{}, now: time.Now}
+		made: map[string]gateway.Sinker{}, charged: map[string]bool{}, now: time.Now}
 	if _, err := r.open(b.Ctx, probeTable, nil); err != nil {
 		return nil, err
 	}
@@ -126,6 +126,20 @@ type router struct {
 
 	mu   sync.Mutex
 	made map[string]gateway.Sinker
+
+	// charged is the tables this process has already spent creation budget
+	// on, and it is NOT cleared by invalidate.
+	//
+	// `admit` increments before it checks, and a build that fails is never
+	// cached -- so a table whose writes keep failing used to charge
+	// `max_new_per_hour` once per retry. A consumer measured four table names
+	// reaching a count of 31, and the budget a row error had spent then
+	// refused three genuinely new tables that had done nothing wrong. Issue
+	// #34.
+	//
+	// The limit is a circuit breaker against a producer inventing NAMES. One
+	// name retrying is not that, however many times it retries.
+	charged map[string]bool
 }
 
 func (r *router) Describe() string {
@@ -337,12 +351,23 @@ func (r *router) sinkFor(ctx context.Context, table string, record sdk.Schema) (
 
 	now := r.now()
 
-	// The rate limit is charged only when the table is new to US, which is
-	// what makes it bound creations rather than writes: a table that already
-	// exists is never slowed by one that does not.
-	if exists, known := r.meta.knows(ctx, table); !known || !exists {
-		if err := r.meta.admit(ctx, r.names.max, now); err != nil {
-			return nil, err
+	// The rate limit is charged once per table per process, and only when the
+	// table is new to us -- which is what makes it bound the arrival of NAMES
+	// rather than the number of attempts.
+	//
+	// The `charged` half is the fix for issue #34: a build that fails is never
+	// cached, so without it a table whose writes keep failing charged again on
+	// every retry, and the budget one table's row error had spent refused
+	// other tables that had done nothing wrong.
+	if !r.charged[table] {
+		if exists, known := r.meta.knows(ctx, table); !known || !exists {
+			if err := r.meta.admit(ctx, r.names.max, now); err != nil {
+				return nil, err
+			}
+			// Marked only when admit ALLOWED it. Marking on a refusal would
+			// let the next retry skip the check and walk straight past the
+			// limit, which is the one thing this must not do.
+			r.charged[table] = true
 		}
 	}
 
@@ -374,6 +399,10 @@ func (r *router) invalidate(ctx context.Context, table string) {
 			delete(r.made, key)
 		}
 	}
+	// `charged` is deliberately NOT cleared. What invalidate drops is a belief
+	// about the table's SHAPE; what charged records is that this process has
+	// already spent budget on the NAME. Clearing it here is exactly how a
+	// failing table charged once per retry.
 	r.mu.Unlock()
 	r.meta.forget(ctx, table)
 }
@@ -415,14 +444,12 @@ func (r *router) open(ctx context.Context, table string, record sdk.Schema) (gat
 			// batch waiting for a worker are the same thing, so there is no
 			// second buffer.
 			//
-			// READ BY POSTGRES AND MYSQL ONLY. The BigQuery sink never looks
-			// at this field, and nothing in sdk/load patches an existing
-			// table's schema -- the single table.Update there sets a
-			// description and labels. So with `into: bigquery` a new field
-			// makes the LOAD fail, the batch is retried and then buried.
-			//
-			// TestIntegrationBigQueryDoesNotEvolveASchemaYet pins that, and
-			// fails the day it stops being true.
+			// Read by all three destinations since gateway 0.13.0 and sdk
+			// v0.69.0. Before those, BigQuery ignored this field while this
+			// line declared it -- so the shape was frozen at creation there,
+			// a producer growing a field broke the load, and adding a fixed
+			// column to the gateway broke every table an older version had
+			// created. Issue #34.
 			Evolve:      sdk.EvolveAdditive,
 			PartitionBy: PartitionBy,
 			ClusterBy:   ClusterBy,

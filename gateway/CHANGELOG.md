@@ -13,6 +13,76 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.13.0] — 2026-09-26
+
+The two halves of [issue #34]. `0.11.0` broke every BigQuery table an older
+gateway had created, and then a row error spent the budget of tables that had
+done nothing wrong.
+
+### Fixed: `auto_table` promised additive evolution and BigQuery ignored it
+
+`sinkFor` has always declared it:
+
+```go
+// Additive, and only additive. A field the record grew becomes a
+// column; nothing is ever dropped or narrowed.
+Evolve: sdk.EvolveAdditive,
+```
+
+The `postgres` and `mysql` sinks read that field. The `bigquery` one never
+looked at it, and `LoadConfig` had no `Evolve` at all — so on the destination
+this design is aimed at, the shape was frozen at creation and nothing said so.
+
+Two consequences, and the second is the one that matters beyond an upgrade:
+
+- adding `brevis_received_bytes` in `0.11.0` broke every table an older
+  gateway had created;
+- **a producer growing a field broke the load into an existing table**, which
+  is the one thing `auto_table` exists to make safe. It went unnoticed because
+  the gateway had never added a field of its own.
+
+Carries `sdk v0.69.0`, where `EvolveAdditive` now adds the missing columns
+before the job is submitted — as NULLABLE, with the table's ETag, so N replicas
+meeting the same field resolve by retry rather than by a lock.
+
+### Fixed: a failing table spent the creation budget once per retry
+
+`admit` increments before it checks, and a build that fails is never cached —
+so every retry went back through it. A consumer measured **four table names
+reaching a count of 31**, and the budget one table's row error had spent then
+refused three genuinely new tables:
+
+```
+17:29:25  attempt=1 ... "already created 20 tables this hour"
+17:29:26  attempt=2 ... "already created 21 tables this hour"
+17:29:28  ERROR a batch went to the dead letter ... "already created 23 tables"
+```
+
+The limit is a circuit breaker against a producer inventing **names**. One name
+retrying is not that, however many times it retries. The router now charges
+once per table per process, and `invalidate` deliberately does not clear it:
+what invalidate drops is a belief about the table's SHAPE, and what this
+records is that the NAME was already paid for.
+
+A name the budget refused stays refused on retry — marking it as charged there
+would have let the next attempt skip the check entirely, and a limit that holds
+for one attempt per name is not a limit. That one was found by a mutation, not
+by a test.
+
+### What a consumer on 0.11.0 or 0.12.0 should do
+
+Upgrade, and for tables created before `0.11.0` run the migration once:
+
+```sql
+ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+```
+
+From `0.13.0` on, the gateway does it.
+
+[issue #34]: https://github.com/AreteAcademy/brevis/issues/34
+
+---
+
 ## [0.12.0] — 2026-09-26
 
 `metastore.ttl: 0` means never. From [issue #35], and the argument was ours.
@@ -97,6 +167,21 @@ there after 2.5 seconds, and a one-second entry is gone.
 Volume, without infrastructure to measure volume.
 
 ### Added: an eighth fixed column, `brevis_received_bytes`
+
+> **This was BREAKING on BigQuery and this entry did not say so.** The column
+> went into the declaration, the table did not have it, and every load failed
+> at the row: `No such field: brevis_received_bytes`. A consumer upgrading
+> from `0.10.0` lost 20,250 events to the dead letter before they found it
+> ([issue #34]). `0.13.0` fixes the cause — the BigQuery path was ignoring the
+> additive evolution `auto_table` declares. On `0.11.0` or `0.12.0` the
+> migration is one statement per existing table:
+>
+> ```sql
+> ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+> ```
+>
+> Postgres and MySQL were never affected: their drivers had been reading
+> `Evolve` all along.
 
 How large the event arrived, envelope included, on every row of every table.
 

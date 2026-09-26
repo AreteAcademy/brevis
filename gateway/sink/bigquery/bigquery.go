@@ -74,6 +74,13 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		create := b.Target.Create
 		t.CreateTable = &create
 		t.ClusterBy = b.Target.ClusterBy
+
+		// The field auto_table has been declaring on every destination while
+		// this one ignored it. Without this line the gateway promises that a
+		// table grows a column and BigQuery fails the load at the row --
+		// which made adding a fixed column here a breaking change for every
+		// table an older gateway created. Issue #34.
+		t.Evolve = b.Target.Evolve
 	}
 	return &sink{
 		table:  t,
