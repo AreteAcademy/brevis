@@ -4175,6 +4175,10 @@ weeks, and a pod restarting a minute after a table's last event gets nothing
 from the shared backend it is paying for. With long-lived tables, `ttl: 0` is
 the answer.
 
+> On `0.12.0` and `0.13.1` that spelling **does not parse** — YAML reads a bare
+> zero as an int, and `0.13.2` is the first that takes both. On those versions,
+> write `ttl: 0s`.
+
 `addr_from` names the **environment variable** holding the address, never the
 address: it carries a password often enough.
 

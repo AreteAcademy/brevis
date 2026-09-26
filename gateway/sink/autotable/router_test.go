@@ -433,8 +433,8 @@ func TestTheArrivalSizeColumnIsAlwaysThere(t *testing.T) {
 
 // minutes is a pointer to a duration, because MetastoreConfig.TTL is one: the
 // three states are absent, zero (never) and a value.
-func minutes(n int) *time.Duration {
-	d := time.Duration(n) * time.Minute
+func minutes(n int) *gateway.Duration {
+	d := gateway.Duration(time.Duration(n) * time.Minute)
 	return &d
 }
 

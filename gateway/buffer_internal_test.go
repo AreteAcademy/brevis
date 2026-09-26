@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AreteAcademy/brevis/sdk"
+	"gopkg.in/yaml.v3"
 )
 
 // Every format reports the bytes it read, because a zero here turns the size
@@ -200,17 +201,17 @@ func TestTheVolumeSeriesCarryTheTable(t *testing.T) {
 // flipped every existing config to never-expire in silence. The same reason
 // `metrics.addr` is a pointer.
 func TestTheTTLTellsSilenceFromZero(t *testing.T) {
-	zero := time.Duration(0)
-	five := 5 * time.Minute
+	zero := Duration(0)
+	five := Duration(5 * time.Minute)
 
 	for _, c := range []struct {
 		name string
-		in   *time.Duration
+		in   *Duration
 		want time.Duration
 	}{
 		{"said nothing", nil, DefaultMetastoreTTL},
 		{"said zero", &zero, 0},
-		{"said a value", &five, five},
+		{"said a value", &five, 5 * time.Minute},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			m := MetastoreConfig{Type: MetastoreMemory, TTL: c.in}
@@ -224,7 +225,7 @@ func TestTheTTLTellsSilenceFromZero(t *testing.T) {
 	}
 
 	// Negative is still refused: it is neither a duration nor an intention.
-	bad := -time.Second
+	bad := Duration(-time.Second)
 	if err := (&MetastoreConfig{Type: MetastoreMemory, TTL: &bad}).check(); err == nil {
 		t.Error("a negative ttl was accepted")
 	}
@@ -345,5 +346,56 @@ func TestTheProcessStartDoesNotMove(t *testing.T) {
 	if secs > now || now-secs > 3600 {
 		t.Errorf("start time %f against now %f: it has to be in the past and "+
 			"within this process's lifetime", secs, now)
+	}
+}
+
+// The value the docs name has to be the value the parser takes.
+//
+// `ttl: 0` was refused with `cannot unmarshal !!int 0 into time.Duration` --
+// a Go type name in front of somebody who wrote a config file, about the one
+// value this field's own documentation told them to write. A consumer found it
+// by copying it out of the changelog.
+//
+// Both spellings work now, and a bare number that is NOT zero is refused with
+// the unit spelled out: `ttl: 60` would be sixty NANOSECONDS under Go's own
+// conversion, which nobody has ever meant.
+func TestTheTTLTakesTheSpellingTheDocsUse(t *testing.T) {
+	for _, c := range []struct {
+		yaml string
+		want time.Duration
+		bad  string
+	}{
+		{yaml: "0", want: 0},
+		{yaml: "0s", want: 0},
+		{yaml: `"0"`, want: 0},
+		{yaml: "60s", want: time.Minute},
+		{yaml: "500ms", want: 500 * time.Millisecond},
+		{yaml: "2h", want: 2 * time.Hour},
+		{yaml: "60", bad: "NANOSECONDS"},
+		{yaml: "-1", bad: "NANOSECONDS"},
+		{yaml: "tarde", bad: "not a duration"},
+		{yaml: "true", bad: "a duration is text"},
+	} {
+		t.Run(c.yaml, func(t *testing.T) {
+			var d Duration
+			err := yaml.Unmarshal([]byte("ttl: "+c.yaml), &struct {
+				TTL *Duration `yaml:"ttl"`
+			}{TTL: &d})
+			if c.bad != "" {
+				if err == nil {
+					t.Fatalf("%s was accepted as %s", c.yaml, d)
+				}
+				if !strings.Contains(err.Error(), c.bad) {
+					t.Errorf("the refusal does not say %q: %v", c.bad, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("%s was refused: %v", c.yaml, err)
+			}
+			if time.Duration(d) != c.want {
+				t.Errorf("%s = %s, want %s", c.yaml, d, c.want)
+			}
+		})
 	}
 }

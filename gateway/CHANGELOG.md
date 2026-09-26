@@ -13,6 +13,48 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.13.2] — 2026-09-26
+
+### Fixed: `ttl: 0` — the value the docs named — did not parse
+
+`0.12.0` made `metastore.ttl: 0` mean never, and wrote `ttl: 0` in its own
+changelog, on the site in two languages, and in the example. YAML reads a bare
+zero as an int and `time.Duration` wants a string, so the value a reader copied
+out was refused:
+
+```
+yaml: unmarshal errors:
+  line 140: cannot unmarshal !!int `0` into time.Duration
+```
+
+A Go type name in front of somebody who wrote a config file, about the one
+value the field's own documentation told them to write. Found by the consumer
+who asked for the feature, upgrading to use it ([issue #35]).
+
+`ttl` is a `Duration` now — the sibling of `Size`, which has had its own
+unmarshaller in this package for a while. It takes `0`, `0s` and `"0"`, and it
+refuses every other bare number **with the unit spelled out**:
+
+```
+60 has no unit. A bare number here would be 60 NANOSECONDS, which is never
+what anybody means -- write 60s, or 60m. Only 0 may go without one, because
+zero seconds and zero hours are the same instant.
+```
+
+That refusal is the other half. Under Go's own conversion `time.Duration(60)`
+is sixty nanoseconds, so accepting a bare number would have been worse than
+refusing it — a value that parses and means something nobody intended.
+
+**Only this field has the type**, and the asymmetry follows from the
+semantics rather than from effort: `ttl` is the only duration in the file whose
+documented value is a bare number. `60s`, `500ms` and `2h` all carry their unit
+naturally, and there a bare number is a mistake worth refusing rather than a
+spelling worth accepting. Say so if the other four should move too.
+
+[issue #35]: https://github.com/AreteAcademy/brevis/issues/35
+
+---
+
 ## [0.13.1] — 2026-09-26
 
 ### Fixed: no `process_start_time_seconds`, so every counter read low
@@ -138,6 +180,11 @@ From `0.13.0` on, the gateway does it.
 ## [0.12.0] — 2026-09-26
 
 `metastore.ttl: 0` means never. From [issue #35], and the argument was ours.
+
+> **On `0.12.0` and `0.13.1`, `ttl: 0` does not parse.** YAML reads a bare zero
+> as an int and `time.Duration` wants a string, so the value this entry names
+> is refused: `cannot unmarshal !!int 0 into time.Duration`. Write `ttl: 0s`
+> on those versions. `0.13.2` takes both.
 
 ### Changed: the TTL is a pointer, because the three states are three
 

@@ -420,7 +420,16 @@ type MetastoreConfig struct {
 	// thought about this should get the conservative behaviour, and the
 	// installation that has can say so in one field. Issue #35 is the
 	// argument, made by a consumer with 52 tables and a limit of 20.
-	TTL *time.Duration `yaml:"ttl"`
+	// The type is `Duration` and not `time.Duration`, and that is the other
+	// half of the three states. `ttl: 0` is the value this comment names, and
+	// a plain time.Duration REFUSES it -- YAML reads a bare zero as an int --
+	// so the documented answer did not start the gateway. See Duration.
+	//
+	// It is the only duration in this file with that type, because it is the
+	// only one whose documented value is a bare number: `60s`, `500ms` and
+	// `2h` all carry their unit naturally, and there a bare number is a
+	// mistake worth refusing rather than a spelling worth accepting.
+	TTL *Duration `yaml:"ttl"`
 
 	// AddrFrom names the ENVIRONMENT VARIABLE holding a shared backend's
 	// address, never the address: it carries a password often enough, and this
@@ -475,7 +484,7 @@ func (m MetastoreConfig) CacheTTL() time.Duration {
 	if m.TTL == nil {
 		return DefaultMetastoreTTL
 	}
-	return *m.TTL
+	return time.Duration(*m.TTL)
 }
 
 // Naming is the boundary a producer writes inside.

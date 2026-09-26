@@ -527,6 +527,10 @@ e um pod que reinicia um minuto depois do último evento de uma tabela não
 aproveita nada do backend compartilhado que está pagando. Com tabelas de vida
 longa, `ttl: 0` é a resposta.
 
+> Em `0.12.0` e `0.13.1` essa grafia **não parseia** — o YAML lê um zero puro
+> como inteiro e a `0.13.2` é a primeira que aceita as duas. Nessas versões,
+> escreva `ttl: 0s`.
+
 `addr_from` nomeia a **variável de ambiente** que guarda o endereço, nunca o
 endereço: ele carrega senha com frequência suficiente.
 
