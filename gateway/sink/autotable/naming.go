@@ -22,12 +22,14 @@ const DefaultPattern = `^[a-z][a-z0-9_]{2,48}$`
 // quota, which matters because that quota is shared with everything else in the
 // project: a runaway producer here would take the rest of the platform with it.
 //
-// PER REPLICA, and that has to be said out loud. The budget lives in this
-// process, so a deployment of four replicas admits four times this number.
-// Sharing it needs a shared metastore, which is not built -- `metastore.type`
-// refuses `redis` by name rather than letting somebody believe otherwise. Set
-// this to the deployment's budget divided by the replica count, or treat it as
-// the circuit breaker it is rather than a quota.
+// PER REPLICA under `metastore.type: memory`, and that has to be said out
+// loud: the budget lives in this process, so four replicas admit four times
+// this number. `redis` and `memcached` share one counter across them, which is
+// the difference between a limit and four limits.
+//
+// Either way it is a CIRCUIT BREAKER and not a quota. It bounds creations,
+// never writes: a table that already exists is never slowed by one that does
+// not.
 const DefaultMaxNewPerHour = 20
 
 // names decides whether a producer may write to a name, and whether a new
@@ -56,8 +58,8 @@ func newNames(pattern string, allow []string, max int) (*names, error) {
 // because "invalid table name" sends somebody to read the gateway's source.
 func (n *names) check(table string) error {
 	if table == "" {
-		return fmt.Errorf("no table name: the event has no %q, and that field is "+
-			"what says where it goes", "")
+		return fmt.Errorf("no table name: the envelope has no %q, and that field "+
+			"is what says where it goes", FieldTable)
 	}
 	if !n.pattern.MatchString(table) {
 		return fmt.Errorf("the table name %q does not match %s", table, n.pattern)

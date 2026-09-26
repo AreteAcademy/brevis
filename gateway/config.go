@@ -296,11 +296,16 @@ type Sink struct {
 	// ordering, which is the default and what every other destination gives.
 	OrderingKey string `yaml:"ordering_key"`
 
-	// TableFrom names the FIELD of the event that says which table it belongs
-	// in. It is what makes `auto_table` a router rather than a destination.
+	// TableFrom exists only so the word can be REFUSED by name.
 	//
-	// The field names a TABLE and never a dataset or a schema: a producer that
-	// can choose the dataset can write into `gold`.
+	// v1 let the stream choose which field named the table. v2 does not: the
+	// envelope names it in `table_name`, always, and a setting that could point
+	// somewhere else would make the one fixed contract negotiable per stream.
+	//
+	// Keeping the field means a file carrying it gets a sentence saying what
+	// replaced it. Deleting it would make `table_from` an unknown key, and
+	// KnownFields would refuse the file with "field table_from not found" --
+	// true, and no help at all to somebody upgrading.
 	TableFrom string `yaml:"table_from"`
 
 	// Naming bounds what a producer may ask for. Without it, a table name is a
@@ -334,10 +339,21 @@ type Sink struct {
 // exists, and N replicas racing to create one is the normal case rather than
 // the edge -- `AlreadyExists` is success. This only reduces the race.
 type MetastoreConfig struct {
-	// Type is the backend. Only `memory` is implemented, and that is the
-	// design rather than a limitation: a gateway that cannot start without
-	// Redis is a gateway with a new hard dependency for a cache. Redis is the
-	// multi-replica optimisation, and it is refused by name until it exists.
+	// Type is the backend: `memory`, `redis` or `memcached`.
+	//
+	// `memory` is the default and needs nothing, which is the design rather
+	// than a limitation: a gateway that cannot start without Redis is a
+	// gateway with a new hard dependency for a cache. With ONE replica it is
+	// also the right answer.
+	//
+	// With several it gives each its own, so the debounce debounces nothing
+	// and `max_new_per_hour` bounds a process. That is the only reason the
+	// other two exist, and it is worth saying plainly: a shared backend does
+	// not make the gateway correct, it makes N replicas cheaper. The
+	// destination settles whether a table exists either way.
+	//
+	// Whether THIS binary carries one is a separate question, answered by the
+	// registry at startup, by name -- a slim build genuinely links neither.
 	Type string `yaml:"type"`
 
 	// TTL is how long the cache may be wrong.
@@ -348,13 +364,14 @@ type MetastoreConfig struct {
 	TTL time.Duration `yaml:"ttl"`
 
 	// AddrFrom names the ENVIRONMENT VARIABLE holding a shared backend's
-	// address, never the address. Unused by `memory`, and declared here so the
-	// field exists where it will be needed rather than appearing later in a
-	// different shape.
+	// address, never the address: it carries a password often enough, and this
+	// file is in git. Unused by `memory`, and REQUIRED by the other two --
+	// a shared backend with no address is a config that would quietly fall
+	// back to being alone.
 	AddrFrom string `yaml:"addr_from"`
 }
 
-// The metastore backends. Only the first exists.
+// The metastore backends.
 const (
 	MetastoreMemory    = "memory"
 	MetastoreRedis     = "redis"

@@ -292,8 +292,10 @@ streams:
       naming:
         pattern: '^(app|svc)_[a-z0-9_]{2,40}$'
         allow: [app_, svc_]
-        # PER REPLICA. Four replicas admit four times this. A circuit breaker,
-        # not a quota.
+        # Shared across replicas here, because the metastore below is redis.
+        # Under `memory` it is PER REPLICA and four of them admit four times
+        # this. A circuit breaker either way, not a quota: it bounds
+        # creations, never writes.
         max_new_per_hour: 20
 
       # The shared state this stream keeps ABOUT tables: a cache of what
