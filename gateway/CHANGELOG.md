@@ -13,6 +13,37 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.9.1] — 2026-09-26
+
+`auto_table` into BigQuery created the table and loaded nothing. The bug was in
+the SDK; this is the version that carries the fix.
+
+A consumer found it and diagnosed it to the line. Every table came out right --
+`PARTITION BY DATE(brevis_received_at)`, `CLUSTER BY brevis_record_key`, every
+column, `brevis_record_key` nullable as `0.9.0` promises for `append` -- and
+every load job was refused with a 400:
+
+```
+Expects   interval(type:day,field:brevis_received_at) clustering(brevis_record_key)
+but input                                             clustering(brevis_record_key)
+```
+
+The job declared clustering and said nothing about partitioning, and BigQuery
+compares the pair. The SDK's `applyLayout` decided "somebody else creates this
+table" by asking whether the caller's columns include one of the SDK's OWN
+metadata names -- and `auto_table` v2 renamed those to `brevis_*` in `0.6.0`.
+So the rename broke a proxy three modules away, and the symptom was a table
+that existed and stayed empty.
+
+There was no config to work around it: neither the YAML nor `Sink` exposes
+partitioning or clustering, which is deliberate -- every `auto_table` table has
+the same layout, so it is a template and not a decision.
+
+**Nothing in the gateway changed.** `sdk v0.67.0` is the fix; this bumps the
+dependency and republishes the image so the tag carries it.
+
+---
+
 ## [0.9.0] — 2026-09-25
 
 Two poison batches, and the second one was a rule that did not fit `append`.
