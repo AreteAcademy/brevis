@@ -44,14 +44,15 @@ func TestIntegrationAutoTableCreatesAndRoutes(t *testing.T) {
 		t.Fatalf("draining: %v", err)
 	}
 
-	// Both tables exist, with the four columns and nothing else.
+	// Both tables exist, with the fixed columns and nothing else.
 	for _, table := range []string{a, b} {
 		cols := query(t, dsn, fmt.Sprintf(
 			`SELECT column_name || ' ' || data_type FROM information_schema.columns
 			 WHERE table_name = '%s' ORDER BY column_name`, table))
 		want := "brevis_gateway text,brevis_ingestion_id text," +
 			"brevis_loaded_at timestamp with time zone,brevis_operation text," +
-			"brevis_received_at timestamp with time zone,brevis_record_key text," +
+			"brevis_received_at timestamp with time zone," +
+			"brevis_received_bytes bigint,brevis_record_key text," +
 			"brevis_stream text,data jsonb"
 		if got := strings.Join(cols, ","); got != want {
 			t.Errorf("%s has columns %q, want %q", table, got, want)
@@ -348,7 +349,8 @@ func TestIntegrationAutoTableColumnsShape(t *testing.T) {
 		 WHERE table_name='%s' ORDER BY column_name`, table))
 	want := "brevis_gateway text,brevis_ingestion_id text," +
 		"brevis_loaded_at timestamp with time zone,brevis_operation text," +
-		"brevis_received_at timestamp with time zone,brevis_record_key text," +
+		"brevis_received_at timestamp with time zone," +
+		"brevis_received_bytes bigint,brevis_record_key text," +
 		"brevis_stream text,customer jsonb,id text,items jsonb,total text"
 	if got := strings.Join(cols, ","); got != want {
 		t.Errorf("columns are\n  %q\nwant\n  %q", got, want)

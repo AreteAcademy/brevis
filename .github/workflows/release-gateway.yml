@@ -37,9 +37,33 @@ jobs:
           go-version-file: gateway/go.mod
           cache: true
 
+      # A Postgres for the gate below, and it is the point of this step.
+      #
+      # `go test ./...` on its own SKIPS every integration test -- they look
+      # for BREVIS_GATEWAY_TEST_PG_DSN and quietly stand down when it is
+      # missing -- so this gate reported green over a suite that never touched
+      # a database. gateway/v0.11.0 published while master was red for exactly
+      # that: an eighth fixed column was added and the tests asserting the
+      # column list were only ever run in `Test & Lint`, next door.
+      #
+      # A check that cannot fail is worse than no check, and this one had been
+      # passing without running since the integration tests were written.
+      - name: A database for the tests that need one
+        run: |
+          docker run -d --name pg -p 55432:5432 \
+            -e POSTGRES_PASSWORD=brevis -e POSTGRES_USER=brevis \
+            -e POSTGRES_DB=brevis_it postgres:16-alpine
+          for i in $(seq 1 30); do
+            if docker exec pg pg_isready -U brevis >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec pg pg_isready -U brevis
+
       # The gate before publishing. An image leaving CI with a red test is
       # worse than no image: somebody will run it believing it passed.
       - name: Tests
+        env:
+          BREVIS_GATEWAY_TEST_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
         run: |
           cd gateway
           GOFLAGS=-mod=mod go test ./... -count=1
