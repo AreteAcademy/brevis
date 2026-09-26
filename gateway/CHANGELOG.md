@@ -13,9 +13,14 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.8.1] — 2026-09-25
+## [0.9.0] — 2026-09-25
 
-One field name nobody validated buried the batch around it.
+Two poison batches, and the second one was a rule that did not fit `append`.
+
+**Breaking**: `unique_key` is no longer required under `write: append`, and the
+refusal a `merge` stream gives for a missing one is a different message in a
+different place. Minor and not patch, which is what 0.x does with a break --
+`0.8.0` and `0.6.0` were the same call.
 
 ### Fixed: `auto_table` admitted a record whose field cannot be a column
 
