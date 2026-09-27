@@ -379,7 +379,15 @@ type Sink struct {
 	Shape string `yaml:"shape"`
 
 	// Metastore caches what is known about a table, so a per-event write does
-	// not become a per-event lookup.
+	// not become a per-event lookup -- and, from issue #36, coordinates the
+	// flush clock across replicas.
+	//
+	// It belongs to the STREAM even though it is written here, and it is
+	// opened for every stream whatever the sink. It used to be VALIDATED only
+	// under `auto_table`, so a direct `bigquery` stream naming redis with no
+	// `addr_from` started happily and coordinated with nobody. `Stream.check`
+	// validates it now, once, for the stream's own sink -- a dead letter and
+	// an oversize archive are Sinks too and neither has one.
 	Metastore MetastoreConfig `yaml:"metastore"`
 
 	// Into is the real destination, one per table. A nested sink, because
@@ -887,6 +895,20 @@ func (s *Stream) check() error {
 		return err
 	}
 
+	// The metastore belongs to the STREAM, and this is the one place that says
+	// so. `metastoreFor` opens one per stream from the stream's sink, whatever
+	// that sink is -- and this check used to live inside `Sink.check()` behind
+	// `if s.Type == SinkAutoTable`, so a direct `bigquery` stream naming redis
+	// with no `addr_from` started happily and coordinated with nobody.
+	//
+	// Here and not in `Sink.check()` because a Sink is also a dead letter and
+	// an oversize archive, and neither of those has a metastore: nothing opens
+	// one for them, so validating one would be validating a field that does
+	// nothing. Issue #36 made this load-bearing for every stream.
+	if err := s.Sink.Metastore.check(); err != nil {
+		return err
+	}
+
 	// A window that cannot hold the quota is refused rather than accepted, for
 	// the reason `durability: disk` is: somebody who wrote `1s` believes their
 	// rows land in a second, and letting them find out through
@@ -970,11 +992,6 @@ func (s Sink) usesBigQuery() bool {
 func (s *Sink) check() error {
 	if strings.TrimSpace(s.Type) == "" {
 		return fmt.Errorf("`type` is empty")
-	}
-	if s.Type == SinkAutoTable {
-		if err := s.Metastore.check(); err != nil {
-			return err
-		}
 	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {

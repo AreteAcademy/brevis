@@ -603,3 +603,182 @@ func TestArmUsesTheDeadline(t *testing.T) {
 			"deadline, so max_age can never fire")
 	}
 }
+
+// --- the metastore is a stream-level promise (issue #36, slice 2) ----------
+
+// `metastore:` is honoured for EVERY stream and was validated for only one
+// kind.
+//
+// `metastoreFor` opens one per stream from `s.Metastore`, whatever the sink —
+// and `Sink.check()` validated it behind `if s.Type == SinkAutoTable`. So a
+// stream with a direct `bigquery` sink naming redis with no `addr_from` started
+// happily and then failed at the first batch, or silently fell back to memory
+// and coordinated with nobody. The flush claim makes that field load-bearing
+// for exactly those streams.
+func TestTheMetastoreIsCheckedForEverySink(t *testing.T) {
+	stream := func(sinkType string, m MetastoreConfig) *Stream {
+		sink := Sink{Type: sinkType, Path: "./o/", Write: WriteAppend,
+			DSNFrom: "D", Project: "p", Dataset: "d", Table: "t", Metastore: m}
+		if sinkType == SinkAutoTable {
+			sink.Into = &Sink{Type: "postgres", DSNFrom: "D", Write: WriteAppend}
+		}
+		return &Stream{
+			Name: "s", Path: "/x",
+			Identity:   Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+			Buffer:     Buffer{Flush: Flush{Every: time.Minute, Records: 1}},
+			Sink:       sink,
+			DeadLetter: Sink{Type: "files", Path: "./d/"},
+		}
+	}
+
+	// The bug: redis with no addr_from, on a sink that is not auto_table.
+	for _, kind := range []string{"bigquery", "postgres", "files", SinkAutoTable} {
+		t.Run(kind+"/redis without addr_from", func(t *testing.T) {
+			err := stream(kind, MetastoreConfig{Type: MetastoreRedis}).check()
+			if err == nil {
+				t.Fatalf("a %s stream naming redis with no addr_from was accepted; "+
+					"the flush claim would coordinate with nothing and nobody "+
+					"would know why", kind)
+			}
+			if !strings.Contains(err.Error(), "addr_from") {
+				t.Errorf("the refusal does not name the field: %v", err)
+			}
+		})
+	}
+
+	// And a stream that names no metastore still gets memory, unchanged.
+	for _, kind := range []string{"bigquery", "postgres", "files"} {
+		t.Run(kind+"/silence is memory", func(t *testing.T) {
+			s := stream(kind, MetastoreConfig{})
+			if err := s.check(); err != nil {
+				t.Fatalf("a stream with no metastore was refused: %v", err)
+			}
+			if s.Sink.Metastore.Type != MetastoreMemory {
+				t.Errorf("type = %q, want %q", s.Sink.Metastore.Type, MetastoreMemory)
+			}
+		})
+	}
+
+	// A dead letter is a Sink too, and it has no metastore of its own. The
+	// check belongs to the STREAM's sink, so a dead letter naming one must not
+	// be silently honoured -- there is no code that would open it.
+	t.Run("the dead letter's own metastore is not a thing", func(t *testing.T) {
+		s := stream("files", MetastoreConfig{})
+		s.DeadLetter.Metastore = MetastoreConfig{Type: MetastoreRedis}
+		if err := s.check(); err != nil {
+			t.Fatalf("refused: %v", err)
+		}
+		// Nothing opens it, so nothing validates it. What matters is that it
+		// does not become the stream's.
+		if s.Sink.Metastore.Type != MetastoreMemory {
+			t.Errorf("a dead letter's metastore leaked into the stream's: %q",
+				s.Sink.Metastore.Type)
+		}
+	})
+}
+
+// The pipe can reach its stream's metastore, because the flush claim is taken
+// on the timer path and the timer lives here.
+func TestThePipeHoldsItsMetastore(t *testing.T) {
+	m := NewMemoryMetastore()
+	p := newPipe(Stream{Name: "s", Buffer: Buffer{Queue: 1, Workers: 0}},
+		nil, nil, nil, 1<<20, NewMetrics(), m)
+	if p.meta != m {
+		t.Error("the pipe does not hold the metastore it was given; the flush " +
+			"claim is taken on the timer path and cannot reach it")
+	}
+
+	// A pipe built without one is still usable -- nothing coordinates, which
+	// is what `memory` does anyway.
+	q := newPipe(Stream{Name: "s", Buffer: Buffer{Queue: 1, Workers: 0}},
+		nil, nil, nil, 1<<20, NewMetrics(), nil)
+	if q.meta != nil {
+		t.Error("a pipe given no metastore invented one")
+	}
+}
+
+// The wire: New() hands the stream's metastore to the pipe.
+//
+// The test above builds a pipe directly and says nothing about whether
+// anything passes one — replacing the lookup with a nil left it green. Third
+// time in this file that exercising the function missed the wiring, so this
+// one goes through New and reads the pipe it built.
+func TestNewGivesThePipeTheStreamsMetastore(t *testing.T) {
+	cfg := &Config{
+		Name:   "g",
+		Listen: Listen{Addr: ":0"},
+		Streams: []Stream{{
+			Name: "s", Path: "/v1/x",
+			Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+			Buffer:   Buffer{Flush: Flush{Every: time.Minute, Records: 1}},
+			Sink: Sink{Type: "fake",
+				Metastore: MetastoreConfig{Type: MetastoreMemory}},
+			DeadLetter: Sink{Type: "fake"},
+		}},
+	}
+	if err := cfg.check(); err != nil {
+		t.Fatal(err)
+	}
+
+	// A registered fake, because this is an INTERNAL test: importing
+	// gateway/sink/files here would be an import cycle, since that package
+	// imports this one. The dead letter goes through the registry too, so
+	// WithSink alone would not be enough.
+	sinks := NewSinks()
+	sinks.MustRegister("fake", func(Build) (Sinker, error) { return nowhereSink{}, nil })
+
+	srv, err := New(cfg, nil, WithSinks(sinks))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = srv.Close(context.Background()) }()
+
+	if len(srv.pipes) != 1 {
+		t.Fatalf("%d pipes", len(srv.pipes))
+	}
+	if srv.pipes[0].meta == nil {
+		t.Fatal("the pipe has no metastore, so the flush claim on the timer " +
+			"path would have nothing to ask -- and a stream configured with a " +
+			"shared backend would coordinate with nobody")
+	}
+}
+
+// One metastore per stream, shared by the router and the pipe.
+//
+// `metastoreFor` caches by stream name, and its comment says why: "opening two
+// connections to say the same thing is two things to watch". Asserted here
+// rather than through a Server, because reaching the sink's copy from outside
+// would need a field on Stream that exists for a test and nothing else.
+func TestOneMetastorePerStream(t *testing.T) {
+	o := &options{metastores: NewMetastores()}
+	cfg := MetastoreConfig{Type: MetastoreMemory}
+
+	first, err := o.metastoreFor(context.Background(), "s", Sink{Metastore: cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := o.metastoreFor(context.Background(), "s", Sink{Metastore: cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != again {
+		t.Error("two calls for one stream opened two metastores; the router and " +
+			"the pipe would hold different ones")
+	}
+
+	other, err := o.metastoreFor(context.Background(), "t", Sink{Metastore: cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other == first {
+		t.Error("two streams share one metastore, so their keys would collide")
+	}
+}
+
+// nowhereSink accepts everything and keeps nothing.
+type nowhereSink struct{}
+
+func (nowhereSink) Describe() string { return "nowhere" }
+func (nowhereSink) Write(context.Context, []sdk.Envelope) (int64, error) {
+	return 0, nil
+}

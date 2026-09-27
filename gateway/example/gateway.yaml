@@ -379,9 +379,15 @@ streams:
         # creations, never writes.
         max_new_per_hour: 20
 
-      # The shared state this stream keeps ABOUT tables: a cache of what
-      # exists, the debounce that keeps N replicas from all running the same
-      # DDL, and the counter behind max_new_per_hour.
+      # The shared state this stream keeps: a cache of what tables exist, the
+      # debounce that keeps N replicas from all running the same DDL, the
+      # counter behind max_new_per_hour -- and, from issue #36, the claim that
+      # makes the flush clock belong to the deployment rather than to each
+      # process.
+      #
+      # It is a STREAM's, not a sink's, even though it is written under one.
+      # Every stream gets it, whatever the sink -- so a `bigquery` stream
+      # without `auto_table` can name one too, and is validated the same way.
       #
       # `memory` is the default and needs nothing. With ONE replica it is the
       # right answer. With several it gives each its own, so the debounce

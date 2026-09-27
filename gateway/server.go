@@ -162,7 +162,13 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 			}
 		}
 
-		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics)
+		// The stream's metastore, resolved by the same cache the sink used, so
+		// the router and the pipe share one connection rather than opening two
+		// to say the same thing. Nil only if opening it failed, which build
+		// already refused above.
+		meta := o.meta[st.Name]
+
+		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics, meta)
 		// Resolved once, at startup: a type assertion per event to discover
 		// something that cannot change is work done 500 times a second for an
 		// answer fixed at build time.
@@ -336,6 +342,13 @@ type pipe struct {
 	// incident.
 	pending atomic.Int64
 	metrics *Metrics
+
+	// meta is the stream's metastore, and the pipe holds it because the flush
+	// claim is taken on the TIMER path -- issue #36. Nil means nothing
+	// coordinates, which is also what `memory` does: every replica wins its
+	// own claim.
+	meta Metastore
+
 	big     *oversize
 	admit   Admitter
 	measure Measurer
@@ -401,10 +414,12 @@ func (p *pipe) clock() time.Time {
 	return time.Now()
 }
 
-func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics) *pipe {
+func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
+	meta Metastore,
+) *pipe {
 	p := &pipe{
 		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
-		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m,
+		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m, meta: meta,
 	}
 	p.wg.Add(st.Buffer.Workers)
 	for range st.Buffer.Workers {
