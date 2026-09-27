@@ -256,6 +256,25 @@ type Flush struct {
 	// Records is the count that sends one immediately.
 	Records int `yaml:"records"`
 
+	// MaxAge is the age at which a partial batch goes REGARDLESS, and it is
+	// the promise `every` is not.
+	//
+	// `every` is a target: it is the age at which the gateway TRIES to flush.
+	// From the flush claim on (issue #36) a replica can lose that window to
+	// another and keep filling, so the target can be deferred. `max_age`
+	// cannot: no event waits longer than this, whatever the contention,
+	// whatever the backend, even with the metastore unreachable.
+	//
+	// The gap between the two is how much contention the deployment tolerates.
+	// `every` buys job economy -- on BigQuery the budget is 1,500 load jobs per
+	// table per day and a per-process clock spends `replicas ×` that -- and
+	// `max_age` bounds what that economy costs in latency.
+	//
+	// Zero leaves it off, which is what every existing config has. It must be
+	// at least `every`: a ceiling under the target would mean the target never
+	// applies, and the config says so rather than behaving that way.
+	MaxAge Duration `yaml:"max_age"`
+
 	// Size is the BYTE count that sends one immediately. Whichever of the
 	// three is crossed first wins; zero leaves this one off.
 	//
@@ -811,6 +830,18 @@ func (s *Stream) check() error {
 	if s.Buffer.Flush.Size < 0 {
 		return fmt.Errorf("`buffer.flush.size` is %s", s.Buffer.Flush.Size)
 	}
+	if s.Buffer.Flush.MaxAge < 0 {
+		return fmt.Errorf("`buffer.flush.max_age` is %s", s.Buffer.Flush.MaxAge)
+	}
+	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
+		// A ceiling below the target means the target never applies, and the
+		// operator meant one of the two numbers rather than this.
+		return fmt.Errorf("`buffer.flush.max_age` is %s and `buffer.flush.every` "+
+			"is %s: the ceiling is below the target, so the target would never "+
+			"apply. `every` is the age this TRIES to flush at and `max_age` the "+
+			"age it flushes at regardless, so max_age has to be the larger",
+			s.Buffer.Flush.MaxAge, s.Buffer.Flush.Every)
+	}
 	if s.Buffer.MaxBytes < 0 {
 		return fmt.Errorf("`buffer.max_bytes` is %s", s.Buffer.MaxBytes)
 	}
@@ -977,9 +1008,21 @@ func (c *Config) DrainBudget() time.Duration {
 	if c.Shutdown.Drain > 0 {
 		return c.Shutdown.Drain
 	}
+	// The CEILING where one is declared, and not the target.
+	//
+	// This is the quantity the comment above is about: what a buffer can be
+	// HOLDING when the signal arrives. `every` bounds that only while every
+	// flush happens on time -- and from the flush claim on, a replica that
+	// loses a window keeps filling, so it can hold up to `max_age` of events.
+	// Reading `every` there would derive a grace period too small and print it
+	// on the boot line as if it were right.
 	longest := time.Duration(0)
 	for i := range c.Streams {
-		if w := c.Streams[i].Buffer.Flush.Every; w > longest {
+		w := c.Streams[i].Buffer.Flush.Every
+		if a := time.Duration(c.Streams[i].Buffer.Flush.MaxAge); a > w {
+			w = a
+		}
+		if w > longest {
 			longest = w
 		}
 	}

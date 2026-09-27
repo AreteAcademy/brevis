@@ -222,6 +222,7 @@ streams:
     every: 1s         # idade
     records: 500      # contagem
     size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
+    max_age: 30s      # e este manda DE QUALQUER JEITO
   workers: 4          # lotes entregues ao mesmo tempo
   queue: 64           # lotes cheios esperando um worker
   max_records: 10000  # eventos em memória antes de o gateway dizer não
@@ -230,10 +231,17 @@ streams:
     <span class="t-k">every</span>: 1s         <span class="t-c"># idade</span>
     <span class="t-k">records</span>: 500      <span class="t-c"># contagem</span>
     <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — o que for atingido PRIMEIRO manda o lote</span>
+    <span class="t-k">max_age</span>: 30s      <span class="t-c"># e este manda DE QUALQUER JEITO</span>
   <span class="t-k">workers</span>: 4          <span class="t-c"># lotes entregues ao mesmo tempo</span>
   <span class="t-k">queue</span>: 64           <span class="t-c"># lotes cheios esperando um worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># eventos em memória antes de o gateway dizer não</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># o mesmo teto em bytes</span></code></pre></div>
+<h3 id="every-e-um-alvo-max-age-e-uma-promessa"><code>every</code> é um alvo; <code>max_age</code> é uma promessa<a class="anchor" href="#every-e-um-alvo-max-age-e-uma-promessa" aria-label="link">#</a></h3>
+<p>Os três gatilhos acima decidem quando um lote <strong>tenta</strong> sair. O <code>max_age</code> decide quando ele sai <strong>de qualquer jeito</strong>.</p>
+<p>Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o relógio do flush deixar de ser por processo: <code>buffer.flush.every</code> é um <code>time.AfterFunc</code> em cada réplica, então o número de load jobs que uma tabela recebe é função da <strong>contagem de réplicas</strong>, não do tráfego — <code>réplicas × 86400 / every</code>. No BigQuery, com 1.500 por tabela por dia, <strong>duas réplicas a 60s já são 192% da cota</strong>.</p>
+<p>Quando uma réplica puder ceder a janela para outra, ela continua enchendo — e é o <code>max_age</code> que garante que ninguém segura dado indefinidamente esperando a vez.</p>
+<p>Ele também resolve o dreno: o que um buffer pode estar <strong>segurando</strong> no <code>SIGTERM</code> passa a ser limitado por ele, e é dele que sai o <code>terminationGracePeriodSeconds</code> que o gateway imprime no boot.</p>
+<p>Um teto <strong>abaixo</strong> do alvo é recusado no carregamento — significaria que o alvo nunca se aplica.</p>
 <h3 id="por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho<a class="anchor" href="#por-que-existe-um-gatilho-de-tamanho" aria-label="link">#</a></h3>
 <p>Os outros dois são <strong>contagens</strong>, e uma contagem não distingue 500 eventos de 2 KB de 500 eventos de 2 MB — 1 MB contra 1 GB, o mesmo número no arquivo. O <code>max_records: 10000</code> tem o mesmo ponto cego: são 20 MB ou 20 GB, e nada no YAML conseguia dizer qual.</p>
 <p>Um produtor que passa a mandar o documento inteiro em vez do id derruba o pod, e antes disso <strong>não existia campo que expressasse o limite</strong>.</p>
@@ -359,7 +367,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
+      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#every-e-um-alvo-max-age-e-uma-promessa">every é um alvo; max_age é uma promessa</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
     </aside>
   </main>
 </div>

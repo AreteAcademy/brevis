@@ -110,11 +110,34 @@ buffer:
     every: 1s         # age
     records: 500      # count
     size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
   max_records: 10000  # events held in memory before the gateway says no
   max_bytes: 256MiB   # the same ceiling in bytes
 ```
+
+### `every` is a target; `max_age` is a promise
+
+The three triggers above decide when a batch **tries** to leave. `max_age`
+decides when it leaves **regardless**.
+
+Today the difference is inert, because nothing defers the target. It starts to
+matter once the flush clock stops being per-process: `buffer.flush.every` is a
+`time.AfterFunc` in each replica, so the number of load jobs a table receives is
+a function of **replica count**, not of traffic — `replicas × 86400 / every`. On
+BigQuery, against 1,500 per table per day, **two replicas at 60s is already 192%
+of the quota**.
+
+Once a replica can yield a window to another it keeps filling, and `max_age` is
+what stops anyone holding data indefinitely waiting for a turn.
+
+It also settles the drain: what a buffer can be **holding** at `SIGTERM` becomes
+bounded by it, and the `terminationGracePeriodSeconds` the gateway prints at
+boot is derived from it.
+
+A ceiling **below** the target is refused at load — it would mean the target
+never applies.
 
 ### Why there is a size trigger
 

@@ -222,6 +222,7 @@ streams:
     every: 1s         # age
     records: 500      # count
     size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
   max_records: 10000  # events held in memory before the gateway says no
@@ -230,10 +231,17 @@ streams:
     <span class="t-k">every</span>: 1s         <span class="t-c"># age</span>
     <span class="t-k">records</span>: 500      <span class="t-c"># count</span>
     <span class="t-k">size</span>: 8MiB        <span class="t-c"># bytes — whichever is crossed FIRST sends the batch</span>
+    <span class="t-k">max_age</span>: 30s      <span class="t-c"># and this one sends it REGARDLESS</span>
   <span class="t-k">workers</span>: 4          <span class="t-c"># batches delivered at once</span>
   <span class="t-k">queue</span>: 64           <span class="t-c"># full batches that may wait for a worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># events held in memory before the gateway says no</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># the same ceiling in bytes</span></code></pre></div>
+<h3 id="every-is-a-target-max-age-is-a-promise"><code>every</code> is a target; <code>max_age</code> is a promise<a class="anchor" href="#every-is-a-target-max-age-is-a-promise" aria-label="link">#</a></h3>
+<p>The three triggers above decide when a batch <strong>tries</strong> to leave. <code>max_age</code> decides when it leaves <strong>regardless</strong>.</p>
+<p>Today the difference is inert, because nothing defers the target. It starts to matter once the flush clock stops being per-process: <code>buffer.flush.every</code> is a <code>time.AfterFunc</code> in each replica, so the number of load jobs a table receives is a function of <strong>replica count</strong>, not of traffic — <code>replicas × 86400 / every</code>. On BigQuery, against 1,500 per table per day, <strong>two replicas at 60s is already 192% of the quota</strong>.</p>
+<p>Once a replica can yield a window to another it keeps filling, and <code>max_age</code> is what stops anyone holding data indefinitely waiting for a turn.</p>
+<p>It also settles the drain: what a buffer can be <strong>holding</strong> at <code>SIGTERM</code> becomes bounded by it, and the <code>terminationGracePeriodSeconds</code> the gateway prints at boot is derived from it.</p>
+<p>A ceiling <strong>below</strong> the target is refused at load — it would mean the target never applies.</p>
 <h3 id="why-there-is-a-size-trigger">Why there is a size trigger<a class="anchor" href="#why-there-is-a-size-trigger" aria-label="link">#</a></h3>
 <p>The other two are <strong>counts</strong>, and a count cannot tell 500 events of 2 KB from 500 of 2 MB — 1 MB against 1 GB, the same number in the file. <code>max_records: 10000</code> has the same blind spot: 20 MB or 20 GB, and nothing in the YAML could say which.</p>
 <p>A producer who starts sending the whole document instead of its id takes the pod down, and until this existed <strong>no field could have expressed the limit</strong>.</p>
@@ -359,7 +367,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Why there is a size trigger</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every is a target; max_age is a promise</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Why there is a size trigger</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
     </aside>
   </main>
 </div>

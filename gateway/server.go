@@ -348,10 +348,57 @@ type pipe struct {
 	// Two fields rather than a sum recomputed per request: the ceiling is
 	// checked on every enqueue, and walking the buffer each time would make an
 	// O(1) admission O(n) in what is already held.
-	sizes   []int64
-	bytes   int64
+	sizes []int64
+	bytes int64
+
+	// oldest is when the FIRST event of the current batch arrived, and it is
+	// what `flush.max_age` is measured from.
+	//
+	// The first and not the newest: the ceiling belongs to the event that has
+	// waited longest. Zero means the buffer is empty and there is nothing
+	// aging.
+	oldest time.Time
+
+	// now is a field so a test can move the clock. The router has one for the
+	// same reason.
+	now func() time.Time
+
 	timer   *time.Timer
 	closing bool
+}
+
+// deadline is how long the timer should wait: the earlier of the target and
+// what the ceiling has left.
+//
+// With no `max_age`, or with nothing held, it is `every` -- today's behaviour
+// exactly. With a ceiling and an aging batch it shrinks, and once the ceiling
+// has passed it is zero, which fires immediately.
+//
+// Until the flush claim lands (issue #36) nothing defers the target, so `every`
+// always wins and this is arithmetic nobody reaches. It is pinned now because
+// slice 3 consults it and a deadline computed wrong there holds data.
+func (p *pipe) deadline() time.Duration {
+	every := p.stream.Buffer.Flush.Every
+	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
+	if ceiling <= 0 || p.oldest.IsZero() {
+		return every
+	}
+	left := p.oldest.Add(ceiling).Sub(p.clock())
+	if left < 0 {
+		return 0
+	}
+	if left < every {
+		return left
+	}
+	return every
+}
+
+// clock is time.Now unless a test said otherwise.
+func (p *pipe) clock() time.Time {
+	if p.now != nil {
+		return p.now()
+	}
+	return time.Now()
 }
 
 func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics) *pipe {
@@ -642,6 +689,11 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
 		return errSaturated
 	}
+	if len(p.batch) == 0 {
+		// The batch goes from empty to held, so this is the moment the
+		// ceiling starts counting from.
+		p.oldest = p.clock()
+	}
 	p.batch = append(p.batch, envs...)
 	p.sizes = append(p.sizes, sizes...)
 	p.bytes += bytes
@@ -683,6 +735,7 @@ func (p *pipe) handoff(why string) {
 	if p.closing {
 		return
 	}
+	oldest := p.oldest
 	ready, sizes := p.take()
 	select {
 	case p.queue <- ready:
@@ -695,6 +748,12 @@ func (p *pipe) handoff(why string) {
 		// attempt on a stream whose sink is behind.
 		p.batch = append(ready, p.batch...)
 		p.sizes = append(sizes, p.sizes...)
+		// The returned batch is older than anything that arrived meanwhile,
+		// so the ceiling counts from when IT started waiting. Losing this is
+		// how a batch the pool keeps refusing resets its own clock forever.
+		if p.oldest.IsZero() || oldest.Before(p.oldest) {
+			p.oldest = oldest
+		}
 		p.bytes = 0
 		for _, n := range p.sizes {
 			p.bytes += n
@@ -707,7 +766,7 @@ func (p *pipe) handoff(why string) {
 // the lock.
 func (p *pipe) arm() {
 	if p.timer == nil && !p.closing {
-		p.timer = time.AfterFunc(p.stream.Buffer.Flush.Every, p.flush)
+		p.timer = time.AfterFunc(p.deadline(), p.flush)
 	}
 }
 
@@ -720,6 +779,9 @@ func (p *pipe) arm() {
 func (p *pipe) take() ([]sdk.Envelope, []int64) {
 	ready, sizes := p.batch, p.sizes
 	p.batch, p.sizes, p.bytes = nil, nil, 0
+	// Nothing is held, so nothing is aging. A batch handed back by a busy
+	// pool sets it again below.
+	p.oldest = time.Time{}
 	if p.timer != nil {
 		p.timer.Stop()
 		p.timer = nil

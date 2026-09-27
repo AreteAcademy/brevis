@@ -111,11 +111,34 @@ buffer:
     every: 1s         # idade
     records: 500      # contagem
     size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
+    max_age: 30s      # e este manda DE QUALQUER JEITO
   workers: 4          # lotes entregues ao mesmo tempo
   queue: 64           # lotes cheios esperando um worker
   max_records: 10000  # eventos em memória antes de o gateway dizer não
   max_bytes: 256MiB   # o mesmo teto em bytes
 ```
+
+### `every` é um alvo; `max_age` é uma promessa
+
+Os três gatilhos acima decidem quando um lote **tenta** sair. O `max_age` decide
+quando ele sai **de qualquer jeito**.
+
+Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o
+relógio do flush deixar de ser por processo: `buffer.flush.every` é um
+`time.AfterFunc` em cada réplica, então o número de load jobs que uma tabela
+recebe é função da **contagem de réplicas**, não do tráfego —
+`réplicas × 86400 / every`. No BigQuery, com 1.500 por tabela por dia, **duas
+réplicas a 60s já são 192% da cota**.
+
+Quando uma réplica puder ceder a janela para outra, ela continua enchendo — e é
+o `max_age` que garante que ninguém segura dado indefinidamente esperando a vez.
+
+Ele também resolve o dreno: o que um buffer pode estar **segurando** no
+`SIGTERM` passa a ser limitado por ele, e é dele que sai o
+`terminationGracePeriodSeconds` que o gateway imprime no boot.
+
+Um teto **abaixo** do alvo é recusado no carregamento — significaria que o alvo
+nunca se aplica.
 
 ### Por que existe um gatilho de tamanho
 

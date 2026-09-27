@@ -109,6 +109,23 @@ streams:
         records: 500
         size: 8MiB
 
+        # The age at which a partial batch goes REGARDLESS.
+        #
+        # `every` is a TARGET and this is a PROMISE, and the difference will
+        # matter once the flush claim lands (issue #36): a replica that loses
+        # a window to another keeps filling, so the target can be deferred.
+        # This cannot be -- no event waits longer, whatever the contention,
+        # even with the metastore unreachable.
+        #
+        # The gap between the two is how much contention this deployment
+        # tolerates. It has to be at least `every`; a ceiling under the target
+        # would mean the target never applies, and the config refuses it.
+        #
+        # It also settles the drain: what a buffer can be HOLDING at SIGTERM
+        # is bounded by this, not by `every`, so the grace period the gateway
+        # prints at boot is derived from it.
+        max_age: 30s
+
       # Delivery is asynchronous and bounded. A request appends to the buffer
       # and returns; a full batch is handed to one of these workers, so no
       # caller ever waits for a publish, a COPY, or a sink that is down.
@@ -329,6 +346,11 @@ streams:
         # brevis_gateway_flushes_total{trigger="size"} on this stream: above
         # zero, it is telling you the window is not what is batching.
         size: 256MiB
+        # Five minutes of latency bought for job economy, and bounded. On
+        # BigQuery the budget is 1,500 load jobs per table per DAY, and a
+        # per-process clock spends `replicas ×` that -- two replicas at 60s is
+        # already 192% of it. See issue #36.
+        max_age: 300s
       max_bytes: 1GiB
 
     sink:

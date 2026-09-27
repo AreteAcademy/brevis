@@ -399,3 +399,207 @@ func TestTheTTLTakesTheSpellingTheDocsUse(t *testing.T) {
 		})
 	}
 }
+
+// --- flush.max_age (issue #36, slice 1) ------------------------------------
+
+// The deadline a partial batch waits on.
+//
+// `every` is the TARGET: flush at this age. `max_age` is the PROMISE: no event
+// waits longer than this, whatever defers the target. Until the flush claim
+// lands there is nothing to defer, so `every` always wins and this is
+// scaffolding -- but the arithmetic is what slice 3 consults, and it is worth
+// pinning before anything depends on it.
+func TestTheDeadlineIsTheEarlierOfTheTwo(t *testing.T) {
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	for _, c := range []struct {
+		name          string
+		every, maxAge time.Duration
+		age           time.Duration // how old the batch already is
+		want          time.Duration
+	}{
+		{"no max_age: every, always", time.Minute, 0, 10 * time.Minute, time.Minute},
+		{"fresh batch: every wins", time.Minute, 5 * time.Minute, 0, time.Minute},
+		{"aging batch, still room", time.Minute, 5 * time.Minute, 3 * time.Minute, time.Minute},
+		// 280s old against a 300s ceiling: 20s left, which is less than the
+		// 60s target, so the ceiling decides.
+		{"the ceiling closes in", time.Minute, 5 * time.Minute, 280 * time.Second, 20 * time.Second},
+		{"ceiling already passed: now", time.Minute, 5 * time.Minute, 10 * time.Minute, 0},
+		// An empty buffer has no oldest event, so there is nothing to age.
+		{"nothing held: every", time.Minute, 5 * time.Minute, -1, time.Minute},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := &pipe{
+				stream: Stream{Buffer: Buffer{Flush: Flush{
+					Every: c.every, MaxAge: Duration(c.maxAge),
+				}}},
+				now: func() time.Time { return base },
+			}
+			if c.age >= 0 {
+				p.oldest = base.Add(-c.age)
+			}
+			if got := p.deadline(); got != c.want {
+				t.Errorf("deadline = %s, want %s", got, c.want)
+			}
+		})
+	}
+}
+
+// The oldest event in the buffer is what the ceiling is measured from, and it
+// does not move while the batch fills.
+func TestTheBatchRemembersItsOldestEvent(t *testing.T) {
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	clock := base
+	p := &pipe{
+		stream: Stream{Buffer: Buffer{
+			Flush:      Flush{Records: 1_000_000, Every: time.Hour},
+			MaxRecords: 1_000_000,
+		}},
+		queue: make(chan []sdk.Envelope, 1),
+		now:   func() time.Time { return clock },
+	}
+
+	if !p.oldest.IsZero() {
+		t.Fatal("an empty buffer has an oldest event")
+	}
+	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		t.Fatal(err)
+	}
+	if !p.oldest.Equal(base) {
+		t.Fatalf("oldest = %s, want the moment the first event arrived (%s)", p.oldest, base)
+	}
+
+	// More events later must not reset the clock: the ceiling belongs to the
+	// event that has waited longest, not to the newest one.
+	clock = base.Add(30 * time.Second)
+	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		t.Fatal(err)
+	}
+	if !p.oldest.Equal(base) {
+		t.Errorf("oldest moved to %s when a later event arrived", p.oldest)
+	}
+
+	// And taking the batch clears it, because what is left is nothing.
+	p.mu.Lock()
+	_, _ = p.take()
+	p.mu.Unlock()
+	if !p.oldest.IsZero() {
+		t.Errorf("oldest survived take() as %s", p.oldest)
+	}
+}
+
+// A ceiling below the target means the target never applies, so the config
+// says so instead of behaving that way.
+func TestAMaxAgeUnderTheTargetIsRefused(t *testing.T) {
+	for _, c := range []struct {
+		name          string
+		every, maxAge time.Duration
+		bad           bool
+	}{
+		{"no ceiling", time.Minute, 0, false},
+		{"equal is fine", time.Minute, time.Minute, false},
+		{"above is the point", time.Minute, 5 * time.Minute, false},
+		{"below never applies", time.Minute, 30 * time.Second, true},
+		{"negative", time.Minute, -time.Second, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			s := &Stream{
+				Name: "s", Path: "/x",
+				Identity:   Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+				Buffer:     Buffer{Flush: Flush{Every: c.every, Records: 1, MaxAge: Duration(c.maxAge)}},
+				Sink:       Sink{Type: "files", Path: "./o/"},
+				DeadLetter: Sink{Type: "files", Path: "./d/"},
+			}
+			err := s.check()
+			if c.bad && err == nil {
+				t.Fatalf("max_age %s under every %s was accepted", c.maxAge, c.every)
+			}
+			if !c.bad && err != nil {
+				t.Fatalf("refused a valid pair: %v", err)
+			}
+			if c.bad && c.maxAge > 0 && !strings.Contains(err.Error(), "max_age") {
+				t.Errorf("the refusal does not name the field: %v", err)
+			}
+		})
+	}
+}
+
+// The drain budget is about what a buffer can be HOLDING, so it reads the
+// ceiling where one is declared.
+//
+// `every` bounds that only while every flush happens on time. From the flush
+// claim on, a replica that loses a window keeps filling -- so deriving the
+// grace period from the target would print a number too small on the boot
+// line, as if it were right.
+func TestTheDrainBudgetReadsTheCeiling(t *testing.T) {
+	budget := func(every, maxAge time.Duration) time.Duration {
+		c := &Config{Streams: []Stream{{
+			Buffer: Buffer{Flush: Flush{Every: every, MaxAge: Duration(maxAge)}},
+		}}}
+		return c.DrainBudget()
+	}
+
+	// No ceiling: the target, as before, floored at thirty seconds.
+	if got := budget(90*time.Second, 0); got != 90*time.Second {
+		t.Errorf("no ceiling: %s, want 90s", got)
+	}
+	if got := budget(time.Second, 0); got != drainFloor {
+		t.Errorf("below the floor: %s, want %s", got, drainFloor)
+	}
+	// A ceiling above the target is what the buffer can hold.
+	if got := budget(60*time.Second, 300*time.Second); got != 300*time.Second {
+		t.Errorf("with a ceiling: %s, want 300s -- a replica that loses windows "+
+			"holds up to max_age, and the grace period has to cover it", got)
+	}
+	// Declared drain still wins over both.
+	c := &Config{
+		Shutdown: Shutdown{Drain: 42 * time.Second},
+		Streams:  []Stream{{Buffer: Buffer{Flush: Flush{Every: time.Minute, MaxAge: Duration(time.Hour)}}}},
+	}
+	if got := c.DrainBudget(); got != 42*time.Second {
+		t.Errorf("a declared shutdown.drain was overridden: %s", got)
+	}
+}
+
+// The wire: arm() uses the deadline, not `every` directly.
+//
+// The test above exercises the arithmetic and says nothing about whether
+// anything consults it — cutting `deadline()` out of `arm()` leaves it green,
+// which is the defect this repository keeps finding. This one goes through
+// arm() and watches the clock.
+//
+// It also pins WHEN the deadline is computed: at arm time, not continuously.
+// That is why it does not fire today — `arm()` runs when a batch starts, and a
+// batch that just started is not old. From the flush claim on, a lost window
+// re-arms with an aged batch, and this is the path that closes the ceiling in.
+func TestArmUsesTheDeadline(t *testing.T) {
+	p := &pipe{
+		stream: Stream{Buffer: Buffer{Flush: Flush{
+			// An hour away, so only the ceiling can make this fire.
+			Every:  time.Hour,
+			MaxAge: Duration(60 * time.Millisecond),
+		}}},
+		queue: make(chan []sdk.Envelope, 1),
+		// A pipe production builds always has these, and handoff reaches
+		// through the pointer to name the counter before count() can guard
+		// it. An incomplete pipe panics rather than skipping the metric.
+		metrics: NewMetrics(),
+	}
+	p.batch = []sdk.Envelope{{}}
+	p.sizes = []int64{1}
+	// Already 50ms old: about 10ms of ceiling left.
+	p.oldest = time.Now().Add(-50 * time.Millisecond)
+
+	p.mu.Lock()
+	p.arm()
+	p.mu.Unlock()
+
+	select {
+	case <-p.queue:
+		// Flushed on the ceiling, an hour before the target.
+	case <-time.After(2 * time.Second):
+		t.Fatal("the batch did not flush within two seconds, with a 60ms ceiling " +
+			"and an hour-away target: arm() is reading `every` rather than the " +
+			"deadline, so max_age can never fire")
+	}
+}
