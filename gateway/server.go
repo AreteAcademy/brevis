@@ -169,6 +169,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		meta := o.meta[st.Name]
 
 		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics, meta)
+		p.gateway = cfg.Name
 		// Resolved once, at startup: a type assertion per event to discover
 		// something that cannot change is work done 500 times a second for an
 		// answer fixed at build time.
@@ -349,6 +350,14 @@ type pipe struct {
 	// own claim.
 	meta Metastore
 
+	// gateway is cfg.Name, and it is in the claim's key.
+	//
+	// Without it two DIFFERENT deployments with a stream both called `tables`,
+	// sharing one Redis, would coordinate with each other -- each halving the
+	// other's flushes for no reason, or for the wrong one. Replicas of one
+	// deployment share it because they share the file it came from.
+	gateway string
+
 	big     *oversize
 	admit   Admitter
 	measure Measurer
@@ -392,18 +401,35 @@ type pipe struct {
 // slice 3 consults it and a deadline computed wrong there holds data.
 func (p *pipe) deadline() time.Duration {
 	every := p.stream.Buffer.Flush.Every
+	wait := every
+
+	// With a claim, wake on the WINDOW BOUNDARY rather than `every` after
+	// arming. The claim's key is wall-clock; without this the alarm is not,
+	// so each replica counts `every` from its own arm and they contest
+	// different windows.
+	//
+	// Measured on two replicas before this existed: 8 load jobs became 6, not
+	// the 4 the window count says -- r1 fired at :40 :45 :50 :00 and r2 at
+	// :45 :55, sharing one window out of four. Aligned, every replica wakes at
+	// the same instant and asks for the same key, which is the only way
+	// exactly one wins.
+	if p.stream.Buffer.Flush.Claim && every > 0 {
+		now := p.clock()
+		wait = now.Truncate(every).Add(every).Sub(now)
+	}
+
 	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
 	if ceiling <= 0 || p.oldest.IsZero() {
-		return every
+		return wait
 	}
 	left := p.oldest.Add(ceiling).Sub(p.clock())
 	if left < 0 {
 		return 0
 	}
-	if left < every {
+	if left < wait {
 		return left
 	}
-	return every
+	return wait
 }
 
 // clock is time.Now unless a test said otherwise.
@@ -810,10 +836,67 @@ func (p *pipe) flush() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.timer = nil
-	if len(p.batch) > 0 {
-		p.handoff(TriggerTime)
+	if len(p.batch) == 0 {
+		return
 	}
+	if !p.winsTheWindow() {
+		// Somebody else is flushing this window. Keep filling and come back:
+		// arm() recomputes the deadline against the ceiling, so a batch that
+		// keeps losing gets a shorter wait each time until max_age takes it.
+		p.arm()
+		return
+	}
+	p.handoff(TriggerTime)
 }
+
+// winsTheWindow decides whether THIS replica flushes the current window.
+//
+// The window is `now` truncated to `every`, so every replica computes the same
+// one without a shared clock -- a wall-clock boundary rather than "one minute
+// since I started". The claim's TTL is `every` for the same reason: exactly one
+// flush per window, and a winner that dies before delivering costs that window
+// and no more.
+//
+// Three ways to win without asking:
+//
+//   - the claim is off, which is the default and today's behaviour;
+//   - there is no metastore, so there is nobody to ask;
+//   - the CEILING has closed. `max_age` is a promise and a promise that can be
+//     deferred is not one. deadline() returning zero means the oldest event has
+//     waited its full ceiling, and at that point this batch leaves whatever
+//     anybody else is doing.
+//
+// And one way to win by failing: an unreachable metastore behaves as if the
+// claim were ours, which is the direction claimDDL already chose. Losing
+// coordination costs load jobs; refusing to flush holds data, and the buffer
+// exists to not do that.
+func (p *pipe) winsTheWindow() bool {
+	if !p.stream.Buffer.Flush.Claim || p.meta == nil {
+		return true
+	}
+	if p.deadline() <= 0 {
+		return true
+	}
+
+	every := p.stream.Buffer.Flush.Every
+	window := p.clock().UTC().Truncate(every).Format(time.RFC3339)
+	key := "brevis:gw:" + p.gateway + ":" + p.stream.Name + ":flush:" + window
+
+	ctx, cancel := context.WithTimeout(context.Background(), claimTimeout)
+	defer cancel()
+	got, err := p.meta.Claim(ctx, key, every)
+	if err != nil {
+		return true
+	}
+	return got
+}
+
+// claimTimeout bounds the one call the timer path makes to the metastore.
+//
+// Short, because this runs while the pipe's lock is held: a backend that hangs
+// would stop every request for this stream, which is a far worse outcome than
+// the duplicate load job the claim exists to avoid.
+const claimTimeout = 500 * time.Millisecond
 
 // send delivers a batch, retrying, and gives up into the dead letter. It
 // returns what the sink last said, which is nil when the batch landed and the

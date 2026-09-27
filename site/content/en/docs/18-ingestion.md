@@ -117,6 +117,47 @@ buffer:
   max_bytes: 256MiB   # the same ceiling in bytes
 ```
 
+### The flush clock belongs to the deployment
+
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**. So the load
+jobs a table receives are a function of replica count, not of traffic:
+
+```
+jobs / day / table  =  replicas × 86400 / every
+```
+
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is already
+192% of a quota that cannot be raised** — before an HPA does anything. And the
+direction is backwards from intuition: the gateway scales out for HTTP
+concurrency while the sink wants concentration.
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+With `claim`, a replica takes a set-if-absent for the stream and the window
+before flushing on the timer — and the timer wakes on the **window boundary**,
+so every replica asks for the same key. One flush per window, whatever the
+replica count. And it self-adjusts: a replica only waits when another is
+actually competing, so scaling in restores the lower latency with nobody
+editing a config.
+
+Measured with two replicas and one Redis, 5s windows: **8 load jobs became 6,
+one per window, alternating 3/3** — no window with two.
+
+**It needs a shared backend.** With `memory` every replica wins its own claim
+and nothing coordinates. And it **requires `max_age`**, which the config
+refuses without: the claim turns `every` into a target, and a target with no
+ceiling is latency with nothing bounding it.
+
+**An unreachable metastore flushes anyway.** Losing coordination costs load
+jobs; refusing to flush holds data. Verified by killing Redis mid-run: 40 of 40
+events landed, nothing held.
+
 ### `every` is a target; `max_age` is a promise
 
 The three triggers above decide when a batch **tries** to leave. `max_age`

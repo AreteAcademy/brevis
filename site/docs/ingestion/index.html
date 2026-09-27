@@ -236,6 +236,23 @@ streams:
   <span class="t-k">queue</span>: 64           <span class="t-c"># lotes cheios esperando um worker</span>
   <span class="t-k">max_records</span>: 10000  <span class="t-c"># eventos em memória antes de o gateway dizer não</span>
   <span class="t-k">max_bytes</span>: 256MiB   <span class="t-c"># o mesmo teto em bytes</span></code></pre></div>
+<h3 id="o-relogio-do-flush-pertence-ao-deployment">O relógio do flush pertence ao deployment<a class="anchor" href="#o-relogio-do-flush-pertence-ao-deployment" aria-label="link">#</a></h3>
+<p><code>buffer.flush.every</code> é um <code>time.AfterFunc</code> em <strong>cada réplica</strong>. Então os load jobs que uma tabela recebe são função da contagem de réplicas, não do tráfego:</p>
+<div class="code-block" data-code="jobs / dia / tabela  =  réplicas × 86400 / every"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>jobs / dia / tabela  =  réplicas × 86400 / every</code></pre></div>
+<p>No BigQuery, contra 1.500 por tabela por dia, <strong>duas réplicas a 60s já são 192% de uma cota que não sobe</strong> — antes de um HPA fazer qualquer coisa. E a direção é contraintuitiva: o gateway escala para concorrência HTTP enquanto o destino quer concentração.</p>
+<div class="code-block" data-code="buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">buffer</span>:
+  <span class="t-k">flush</span>:
+    <span class="t-k">every</span>: 60s
+    <span class="t-k">max_age</span>: 300s
+    <span class="t-k">claim</span>: <span class="t-n">true</span></code></pre></div>
+<p>Com <code>claim</code>, a réplica pega um <em>set-if-absent</em> para o stream e a janela antes de descarregar no timer — e o timer acorda na <strong>fronteira da janela</strong>, para todas pedirem a mesma chave. Um flush por janela, qualquer que seja a contagem de réplicas. E ele se auto-ajusta: uma réplica só espera quando outra está de fato competindo, então escalar para baixo devolve a latência menor sem ninguém editar config.</p>
+<p>Medido com duas réplicas e um Redis, janelas de 5s: <strong>8 load jobs viraram 6, uma por janela, alternando 3/3</strong> — nenhuma janela com duas.</p>
+<p><strong>Precisa de backend compartilhado.</strong> Com <code>memory</code> cada réplica ganha o próprio claim e nada coordena. E <strong>exige <code>max_age</code></strong>, que o config recusa sem: o claim transforma <code>every</code> em alvo, e alvo sem teto é latência sem limite.</p>
+<p><strong>Metastore fora do ar descarrega assim mesmo.</strong> Perder coordenação custa load jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma corrida: 40 de 40 eventos pousaram, zero segurados.</p>
 <h3 id="every-e-um-alvo-max-age-e-uma-promessa"><code>every</code> é um alvo; <code>max_age</code> é uma promessa<a class="anchor" href="#every-e-um-alvo-max-age-e-uma-promessa" aria-label="link">#</a></h3>
 <p>Os três gatilhos acima decidem quando um lote <strong>tenta</strong> sair. O <code>max_age</code> decide quando ele sai <strong>de qualquer jeito</strong>.</p>
 <p>Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o relógio do flush deixar de ser por processo: <code>buffer.flush.every</code> é um <code>time.AfterFunc</code> em cada réplica, então o número de load jobs que uma tabela recebe é função da <strong>contagem de réplicas</strong>, não do tráfego — <code>réplicas × 86400 / every</code>. No BigQuery, com 1.500 por tabela por dia, <strong>duas réplicas a 60s já são 192% da cota</strong>.</p>
@@ -367,7 +384,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#every-e-um-alvo-max-age-e-uma-promessa">every é um alvo; max_age é uma promessa</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
+      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#o-relogio-do-flush-pertence-ao-deployment">O relógio do flush pertence ao deployment</a></li><li class="toc-3"><a href="#every-e-um-alvo-max-age-e-uma-promessa">every é um alvo; max_age é uma promessa</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
     </aside>
   </main>
 </div>

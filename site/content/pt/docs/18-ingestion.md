@@ -118,6 +118,46 @@ buffer:
   max_bytes: 256MiB   # o mesmo teto em bytes
 ```
 
+### O relógio do flush pertence ao deployment
+
+`buffer.flush.every` é um `time.AfterFunc` em **cada réplica**. Então os load
+jobs que uma tabela recebe são função da contagem de réplicas, não do tráfego:
+
+```
+jobs / dia / tabela  =  réplicas × 86400 / every
+```
+
+No BigQuery, contra 1.500 por tabela por dia, **duas réplicas a 60s já são 192%
+de uma cota que não sobe** — antes de um HPA fazer qualquer coisa. E a direção é
+contraintuitiva: o gateway escala para concorrência HTTP enquanto o destino quer
+concentração.
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+Com `claim`, a réplica pega um *set-if-absent* para o stream e a janela antes de
+descarregar no timer — e o timer acorda na **fronteira da janela**, para todas
+pedirem a mesma chave. Um flush por janela, qualquer que seja a contagem de
+réplicas. E ele se auto-ajusta: uma réplica só espera quando outra está de fato
+competindo, então escalar para baixo devolve a latência menor sem ninguém editar
+config.
+
+Medido com duas réplicas e um Redis, janelas de 5s: **8 load jobs viraram 6, uma
+por janela, alternando 3/3** — nenhuma janela com duas.
+
+**Precisa de backend compartilhado.** Com `memory` cada réplica ganha o próprio
+claim e nada coordena. E **exige `max_age`**, que o config recusa sem: o claim
+transforma `every` em alvo, e alvo sem teto é latência sem limite.
+
+**Metastore fora do ar descarrega assim mesmo.** Perder coordenação custa load
+jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma
+corrida: 40 de 40 eventos pousaram, zero segurados.
+
 ### `every` é um alvo; `max_age` é uma promessa
 
 Os três gatilhos acima decidem quando um lote **tenta** sair. O `max_age` decide

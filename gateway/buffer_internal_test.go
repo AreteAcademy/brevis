@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -781,4 +782,281 @@ type nowhereSink struct{}
 func (nowhereSink) Describe() string { return "nowhere" }
 func (nowhereSink) Write(context.Context, []sdk.Envelope) (int64, error) {
 	return 0, nil
+}
+
+// --- the flush claim (issue #36, slice 3) ----------------------------------
+
+// A claim with no ceiling is unbounded latency, so the config refuses it.
+//
+// `every` stops being a promise the moment another replica can take the
+// window: a loser keeps filling and comes back next window, and with no
+// `max_age` there is nothing that says how many times that may happen.
+func TestAClaimWithoutACeilingIsRefused(t *testing.T) {
+	stream := func(claim bool, maxAge time.Duration) *Stream {
+		return &Stream{
+			Name: "s", Path: "/x",
+			Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+			Buffer: Buffer{Flush: Flush{
+				Every: time.Minute, Records: 1,
+				Claim: claim, MaxAge: Duration(maxAge),
+			}},
+			Sink:       Sink{Type: "files", Path: "./o/"},
+			DeadLetter: Sink{Type: "files", Path: "./d/"},
+		}
+	}
+
+	if err := stream(true, 0).check(); err == nil {
+		t.Error("`claim: true` with no max_age was accepted; a replica that keeps " +
+			"losing would hold data with nothing saying for how long")
+	} else if !strings.Contains(err.Error(), "max_age") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+
+	if err := stream(true, 5*time.Minute).check(); err != nil {
+		t.Errorf("a claim with a ceiling was refused: %v", err)
+	}
+	if err := stream(false, 0).check(); err != nil {
+		t.Errorf("no claim, no ceiling -- today's config -- was refused: %v", err)
+	}
+}
+
+// Two replicas, one backend, one window: exactly one flushes.
+//
+// This is the whole point. `flush()` is a per-process AfterFunc, so load jobs
+// per table are `replicas × 86400 / every` -- on BigQuery, against 1,500 per
+// table per day, two replicas at 60s is 192% of the quota before an HPA does
+// anything.
+func TestOneWindowIsOneFlushHoweverManyReplicas(t *testing.T) {
+	shared := NewMemoryMetastore()
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	replica := func() *pipe {
+		p := newPipe(Stream{
+			Name: "s",
+			Buffer: Buffer{Queue: 1, Workers: 0, MaxRecords: 100, Flush: Flush{
+				Every: time.Minute, Records: 1_000_000,
+				Claim: true, MaxAge: Duration(time.Hour),
+			}},
+		}, nil, nil, nil, 1<<20, NewMetrics(), shared)
+		p.gateway = "g"
+		p.now = func() time.Time { return base }
+		return p
+	}
+
+	var flushed int
+	for i, p := range []*pipe{replica(), replica(), replica(), replica()} {
+		if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+			t.Fatalf("replica %d: %v", i, err)
+		}
+		// flush() takes the lock itself; holding it here deadlocks.
+		p.flush()
+		p.mu.Lock()
+		held := len(p.batch)
+		p.mu.Unlock()
+		if held == 0 {
+			flushed++
+		}
+	}
+
+	if flushed != 1 {
+		t.Errorf("%d of 4 replicas flushed the same window; the budget still "+
+			"belongs to the process rather than to the deployment", flushed)
+	}
+}
+
+// Without a shared backend nothing coordinates, which is exactly what `memory`
+// does everywhere else in this design: every replica wins its own claim.
+func TestWithoutASharedBackendEveryReplicaFlushes(t *testing.T) {
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	var flushed int
+	for range 4 {
+		// A metastore EACH, which is what `memory` gives four pods.
+		p := newPipe(Stream{
+			Name: "s",
+			Buffer: Buffer{Queue: 1, Workers: 0, MaxRecords: 100, Flush: Flush{
+				Every: time.Minute, Records: 1_000_000,
+				Claim: true, MaxAge: Duration(time.Hour),
+			}},
+		}, nil, nil, nil, 1<<20, NewMetrics(), NewMemoryMetastore())
+		p.gateway = "g"
+		p.now = func() time.Time { return base }
+		if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+			t.Fatal(err)
+		}
+		p.flush()
+		p.mu.Lock()
+		held := len(p.batch)
+		p.mu.Unlock()
+		if held == 0 {
+			flushed++
+		}
+	}
+	if flushed != 4 {
+		t.Errorf("%d of 4 flushed with a metastore each; `memory` coordinates "+
+			"nothing and must keep behaving exactly as it did", flushed)
+	}
+}
+
+// A metastore that is down must not hold data.
+//
+// The direction claimDDL already chose, and its comment is the argument:
+// "refusing here would stop every write on a cache being down, which is the
+// one thing a cache must never do". Losing coordination costs load jobs;
+// refusing to flush costs the thing the buffer exists to protect.
+func TestAnUnreachableBackendFlushesAnyway(t *testing.T) {
+	p := newPipe(Stream{
+		Name: "s",
+		Buffer: Buffer{Queue: 1, Workers: 0, MaxRecords: 100, Flush: Flush{
+			Every: time.Minute, Records: 1_000_000,
+			Claim: true, MaxAge: Duration(time.Hour),
+		}},
+	}, nil, nil, nil, 1<<20, NewMetrics(), brokenMetastore{})
+	p.gateway = "g"
+
+	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		t.Fatal(err)
+	}
+	p.flush()
+
+	p.mu.Lock()
+	held := len(p.batch)
+	p.mu.Unlock()
+	if held != 0 {
+		t.Error("the batch was held because the metastore could not be asked; " +
+			"a cache being down must never stop a write")
+	}
+}
+
+// The ceiling is a promise, and a promise the claim can defer is not one.
+//
+// A replica that has lost every window still leaves at max_age -- it does not
+// even ask, because the answer could not change what it must do.
+func TestTheCeilingIsNeverClaimed(t *testing.T) {
+	// A backend that says no to everything, which is the worst case: some
+	// other replica holds every window forever.
+	p := newPipe(Stream{
+		Name: "s",
+		Buffer: Buffer{Queue: 1, Workers: 0, MaxRecords: 100, Flush: Flush{
+			Every: time.Minute, Records: 1_000_000,
+			Claim: true, MaxAge: Duration(90 * time.Second),
+		}},
+	}, nil, nil, nil, 1<<20, NewMetrics(), refusingMetastore{})
+	p.gateway = "g"
+
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	clock := base
+	p.now = func() time.Time { return clock }
+
+	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Inside the ceiling: it asks, it loses, it keeps filling.
+	clock = base.Add(time.Minute)
+	p.flush()
+	p.mu.Lock()
+	held := len(p.batch)
+	p.mu.Unlock()
+	if held == 0 {
+		t.Fatal("it flushed while the ceiling still had room and the claim was refused")
+	}
+
+	// Past the ceiling: it leaves, whatever anybody else holds.
+	clock = base.Add(91 * time.Second)
+	p.flush()
+	p.mu.Lock()
+	held = len(p.batch)
+	p.mu.Unlock()
+	if held != 0 {
+		t.Error("the batch was still held 91s into a 90s ceiling: max_age is a " +
+			"promise, and a claim that can defer it makes it a suggestion")
+	}
+}
+
+// brokenMetastore fails every call.
+type brokenMetastore struct{}
+
+func (brokenMetastore) Describe() string { return "broken" }
+func (brokenMetastore) Get(context.Context, string) (string, bool, error) {
+	return "", false, errBroken
+}
+func (brokenMetastore) Put(context.Context, string, string, time.Duration) error { return errBroken }
+func (brokenMetastore) Claim(context.Context, string, time.Duration) (bool, error) {
+	return false, errBroken
+}
+func (brokenMetastore) Incr(context.Context, string, time.Duration) (int64, error) {
+	return 0, errBroken
+}
+
+var errBroken = errors.New("the metastore is down")
+
+// refusingMetastore answers every claim with "somebody else has it".
+type refusingMetastore struct{ brokenMetastore }
+
+func (refusingMetastore) Claim(context.Context, string, time.Duration) (bool, error) {
+	return false, nil
+}
+
+// With a claim, the timer wakes on the WINDOW BOUNDARY, not `every` after it
+// armed.
+//
+// Measured against two real replicas before this existed: 8 load jobs became
+// 6, not the 4 the window count says. The key was wall-clock and the alarm was
+// not, so each replica counted `every` from its own arm and they contested
+// different windows — r1 flushed at :40 :45 :50 :00 and r2 at :45 :55, with
+// only one window genuinely shared.
+//
+// Aligned, every replica wakes at the same instant and asks for the same key,
+// which is the only way exactly one wins per window.
+func TestWithAClaimTheTimerWakesOnTheBoundary(t *testing.T) {
+	at := func(s string) time.Time {
+		v, err := time.Parse(time.RFC3339Nano, s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+
+	for _, c := range []struct {
+		name  string
+		claim bool
+		now   string
+		want  time.Duration
+	}{
+		// 5s windows: 12:00:02 is 3s from the boundary at 12:00:05.
+		{"claimed, mid-window", true, "2026-09-27T12:00:02Z", 3 * time.Second},
+		{"claimed, just after a boundary", true, "2026-09-27T12:00:05.100Z", 4900 * time.Millisecond},
+		{"claimed, on a boundary", true, "2026-09-27T12:00:05Z", 5 * time.Second},
+		// Without a claim nothing contests, so the old behaviour stands: a
+		// full `every` from whenever this armed.
+		{"unclaimed keeps every", false, "2026-09-27T12:00:02Z", 5 * time.Second},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			p := &pipe{
+				stream: Stream{Buffer: Buffer{Flush: Flush{
+					Every: 5 * time.Second, Claim: c.claim,
+					MaxAge: Duration(time.Hour),
+				}}},
+				now: func() time.Time { return at(c.now) },
+			}
+			p.oldest = at(c.now)
+			if got := p.deadline(); got != c.want {
+				t.Errorf("deadline = %s, want %s", got, c.want)
+			}
+		})
+	}
+
+	// And the ceiling still wins when it is closer than the boundary.
+	p := &pipe{
+		stream: Stream{Buffer: Buffer{Flush: Flush{
+			Every: 5 * time.Second, Claim: true, MaxAge: Duration(10 * time.Second),
+		}}},
+		now: func() time.Time { return at("2026-09-27T12:00:02Z") },
+	}
+	// Nine seconds old against a ten-second ceiling: one second left, which
+	// beats the three to the boundary.
+	p.oldest = at("2026-09-27T12:00:02Z").Add(-9 * time.Second)
+	if got := p.deadline(); got != time.Second {
+		t.Errorf("the boundary beat the ceiling: %s, want 1s", got)
+	}
 }

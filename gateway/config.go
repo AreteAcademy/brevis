@@ -256,6 +256,37 @@ type Flush struct {
 	// Records is the count that sends one immediately.
 	Records int `yaml:"records"`
 
+	// Claim makes the flush clock belong to the DEPLOYMENT rather than to each
+	// process.
+	//
+	// `flush.every` is a `time.AfterFunc` in every replica, so the load jobs a
+	// table receives are a function of replica count and not of traffic:
+	//
+	//	jobs / day / table  =  replicas × 86400 / every
+	//
+	// On BigQuery, against 1,500 per table per day, two replicas at 60s is
+	// 192% of a quota that cannot be raised -- before an HPA does anything.
+	// The gateway scales out for HTTP concurrency while the sink wants
+	// concentration, which is backwards from intuition and is why no static
+	// `every` fixes it: a value sized for maxReplicas makes a deployment at
+	// minReplicas pay the worst case's latency all day.
+	//
+	// With this on, a replica takes a set-if-absent claim for the stream and
+	// the window before flushing on the timer. One flush per window, whatever
+	// the replica count -- and it self-adjusts, because a replica only waits
+	// when another is actually competing.
+	//
+	// OFF by default, deliberately. It turns `every` from a promise into a
+	// target, and doing that silently to every deployment that happens to have
+	// a shared metastore is how `0.11.0` shipped a breaking change described
+	// as a free addition. It also requires `max_age`: a claim with no ceiling
+	// is latency with nothing bounding it.
+	//
+	// With `metastore: memory` it coordinates nothing, because every replica
+	// wins its own claim -- the same thing the DDL debounce does there. Issue
+	// #36.
+	Claim bool `yaml:"claim"`
+
 	// MaxAge is the age at which a partial batch goes REGARDLESS, and it is
 	// the promise `every` is not.
 	//
@@ -840,6 +871,15 @@ func (s *Stream) check() error {
 	}
 	if s.Buffer.Flush.MaxAge < 0 {
 		return fmt.Errorf("`buffer.flush.max_age` is %s", s.Buffer.Flush.MaxAge)
+	}
+	if s.Buffer.Flush.Claim && s.Buffer.Flush.MaxAge <= 0 {
+		// A claim with no ceiling is unbounded latency: `every` stops being a
+		// promise the moment another replica can take the window, and nothing
+		// would say how many windows a loser may lose.
+		return fmt.Errorf("`buffer.flush.claim` is on and `buffer.flush.max_age` " +
+			"is not set. The claim lets another replica take a window, so " +
+			"`every` becomes a target and a replica that keeps losing holds " +
+			"data with nothing bounding it. Declare the ceiling")
 	}
 	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
 		// A ceiling below the target means the target never applies, and the

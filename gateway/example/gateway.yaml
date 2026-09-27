@@ -346,11 +346,31 @@ streams:
         # brevis_gateway_flushes_total{trigger="size"} on this stream: above
         # zero, it is telling you the window is not what is batching.
         size: 256MiB
-        # Five minutes of latency bought for job economy, and bounded. On
-        # BigQuery the budget is 1,500 load jobs per table per DAY, and a
-        # per-process clock spends `replicas ×` that -- two replicas at 60s is
-        # already 192% of it. See issue #36.
+        # Five minutes of latency bought for job economy, and bounded.
         max_age: 300s
+
+        # The flush clock belongs to the DEPLOYMENT, not to each process.
+        #
+        # Without this, `every` is a time.AfterFunc in every replica, so the
+        # load jobs a table receives are `replicas × 86400 / every` -- on
+        # BigQuery, against 1,500 per table per DAY, two replicas at 60s is
+        # already 192% of a quota that cannot be raised. The gateway scales out
+        # for HTTP concurrency while the sink wants concentration.
+        #
+        # With it, a replica takes a set-if-absent claim for the stream and the
+        # window before flushing on the timer, and the timer wakes on the
+        # window BOUNDARY so every replica asks for the same key. One flush per
+        # window, whatever the replica count -- and it self-adjusts, because a
+        # replica only waits when another is actually competing.
+        #
+        # Needs a SHARED metastore. With `memory` every replica wins its own
+        # claim and nothing coordinates. And it needs `max_age`, which the
+        # config refuses without: the claim turns `every` into a target, and a
+        # target with no ceiling is latency with nothing bounding it.
+        #
+        # A metastore that is unreachable flushes anyway. Losing coordination
+        # costs load jobs; refusing to flush holds data. Issue #36.
+        claim: true
       max_bytes: 1GiB
 
     sink:
