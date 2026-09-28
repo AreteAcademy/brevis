@@ -886,6 +886,22 @@ func (s *Stream) check() error {
 			"`every` becomes a target and a replica that keeps losing holds " +
 			"data with nothing bounding it. Declare the ceiling")
 	}
+	if s.Buffer.Flush.Claim && s.Sink.Type == SinkAutoTable {
+		// The trigger is per ROUTING KEY and the claim's key is per STREAM:
+		// `...:<stream>:flush:<window>`. The first bucket to reach the
+		// boundary takes that window and every other table yields, which is
+		// worse than the shared cadence it replaced -- that at least flushed
+		// them together.
+		//
+		// Refused by name, for the reason `disk` is: accepting it and
+		// behaving differently is how somebody finds out from a row count six
+		// weeks later. It lifts when the claim is per key.
+		return fmt.Errorf("`buffer.flush.claim` is on and this stream's sink is " +
+			"`auto_table`. The flush trigger is per table and the claim is per " +
+			"stream, so one table would take each window and the rest would " +
+			"yield. Turn the claim off, or give this stream a sink with one " +
+			"destination")
+	}
 	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
 		// A ceiling below the target means the target never applies, and the
 		// operator meant one of the two numbers rather than this.

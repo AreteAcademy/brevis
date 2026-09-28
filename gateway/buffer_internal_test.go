@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,10 +71,13 @@ func TestBytesSurviveABatchComingBack(t *testing.T) {
 		}},
 		// Unbuffered, and nobody reading: every handoff fails and gives the
 		// batch back, which is the path under test.
-		queue: make(chan []sdk.Envelope),
+		queue:   make(chan []sdk.Envelope),
+		buckets: map[string]*bucket{},
 	}
 
-	if err := p.enqueue([]sdk.Envelope{{}, {}}, []int64{10, 20}); err != nil {
+	if err := p.enqueue(prepared{
+		events: []sdk.Envelope{{}, {}}, sizes: []int64{10, 20}, keys: []string{"", ""},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if p.bytes != 30 {
@@ -79,16 +85,24 @@ func TestBytesSurviveABatchComingBack(t *testing.T) {
 	}
 
 	p.mu.Lock()
-	p.handoff(TriggerSize)
+	p.handoff("", TriggerSize)
 	p.mu.Unlock()
 
 	if p.bytes != 30 {
 		t.Errorf("bytes = %d after the batch came back: the ceiling forgot %d "+
 			"bytes it is still holding", p.bytes, 30-p.bytes)
 	}
-	if len(p.sizes) != len(p.batch) {
+	b := p.buckets[""]
+	if b == nil {
+		t.Fatal("the bucket did not come back at all")
+	}
+	if len(b.sizes) != len(b.batch) {
 		t.Errorf("%d sizes for %d events: the two have to stay parallel or the "+
-			"next handoff hands back the wrong total", len(p.sizes), len(p.batch))
+			"next handoff hands back the wrong total", len(b.sizes), len(b.batch))
+	}
+	if p.held != len(b.batch) {
+		t.Errorf("held = %d for %d events: the global count and the buckets "+
+			"disagree, and the ceiling reads the global one", p.held, len(b.batch))
 	}
 }
 
@@ -104,12 +118,15 @@ func TestARefusedHandoffIsNotCountedAsAFlush(t *testing.T) {
 		stream:  Stream{Name: "s", Buffer: Buffer{Flush: Flush{Records: 1_000_000, Every: time.Hour}, MaxRecords: 10}},
 		queue:   make(chan []sdk.Envelope),
 		metrics: m,
+		buckets: map[string]*bucket{},
 	}
-	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+	if err := p.enqueue(prepared{
+		events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""},
+	}); err != nil {
 		t.Fatal(err)
 	}
 	p.mu.Lock()
-	p.handoff(TriggerSize)
+	p.handoff("", TriggerSize)
 	p.mu.Unlock()
 
 	var b strings.Builder
@@ -417,31 +434,43 @@ func TestTheDeadlineIsTheEarlierOfTheTwo(t *testing.T) {
 
 	for _, c := range []struct {
 		name          string
+		claim         bool
 		every, maxAge time.Duration
-		age           time.Duration // how old the batch already is
+		age           time.Duration // how old this bucket already is
 		want          time.Duration
 	}{
-		{"no max_age: every, always", time.Minute, 0, 10 * time.Minute, time.Minute},
-		{"fresh batch: every wins", time.Minute, 5 * time.Minute, 0, time.Minute},
-		{"aging batch, still room", time.Minute, 5 * time.Minute, 3 * time.Minute, time.Minute},
-		// 280s old against a 300s ceiling: 20s left, which is less than the
-		// 60s target, so the ceiling decides.
-		{"the ceiling closes in", time.Minute, 5 * time.Minute, 280 * time.Second, 20 * time.Second},
-		{"ceiling already passed: now", time.Minute, 5 * time.Minute, 10 * time.Minute, 0},
-		// An empty buffer has no oldest event, so there is nothing to age.
-		{"nothing held: every", time.Minute, 5 * time.Minute, -1, time.Minute},
+		// Without a claim the target is measured from the bucket's own oldest
+		// event, which is what the single batch's timer always meant -- armed
+		// once, when the batch went from empty to held.
+		{"fresh bucket: the whole target", false, time.Minute, 0, 0, time.Minute},
+		{"part way through", false, time.Minute, 0, 20 * time.Second, 40 * time.Second},
+		{"target already passed: now", false, time.Minute, 0, 90 * time.Second, 0},
+		// Nothing held, so nothing is aging and there is only the target.
+		{"nothing held: the target", false, time.Minute, 5 * time.Minute, -1, time.Minute},
+
+		// With a claim the wake is the WINDOW BOUNDARY, the same instant for
+		// every replica and every bucket, so a bucket older than the target
+		// is NOT due -- it lost a window and waits for the next one. That is
+		// the regime `max_age` exists to bound.
+		{"claim: the boundary", true, time.Minute, 0, 90 * time.Second, time.Minute},
+		// 280s old against a 300s ceiling: 20s left, less than the 60s to the
+		// boundary, so the ceiling decides.
+		{"claim: the ceiling closes in", true, time.Minute, 5 * time.Minute, 280 * time.Second, 20 * time.Second},
+		{"claim: ceiling already passed", true, time.Minute, 5 * time.Minute, 10 * time.Minute, 0},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			p := &pipe{
 				stream: Stream{Buffer: Buffer{Flush: Flush{
-					Every: c.every, MaxAge: Duration(c.maxAge),
+					Every: c.every, MaxAge: Duration(c.maxAge), Claim: c.claim,
 				}}},
-				now: func() time.Time { return base },
+				now:     func() time.Time { return base },
+				buckets: map[string]*bucket{},
 			}
+			var b *bucket
 			if c.age >= 0 {
-				p.oldest = base.Add(-c.age)
+				b = &bucket{oldest: base.Add(-c.age)}
 			}
-			if got := p.deadline(); got != c.want {
+			if got := p.deadline(b); got != c.want {
 				t.Errorf("deadline = %s, want %s", got, c.want)
 			}
 		})
@@ -458,36 +487,53 @@ func TestTheBatchRemembersItsOldestEvent(t *testing.T) {
 			Flush:      Flush{Records: 1_000_000, Every: time.Hour},
 			MaxRecords: 1_000_000,
 		}},
-		queue: make(chan []sdk.Envelope, 1),
-		now:   func() time.Time { return clock },
+		queue:   make(chan []sdk.Envelope, 1),
+		now:     func() time.Time { return clock },
+		buckets: map[string]*bucket{},
 	}
 
-	if !p.oldest.IsZero() {
-		t.Fatal("an empty buffer has an oldest event")
+	if len(p.buckets) != 0 {
+		t.Fatal("an empty buffer has a bucket")
 	}
-	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+	one := prepared{events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{"a"}}
+	if err := p.enqueue(one); err != nil {
 		t.Fatal(err)
 	}
-	if !p.oldest.Equal(base) {
-		t.Fatalf("oldest = %s, want the moment the first event arrived (%s)", p.oldest, base)
+	if got := p.buckets["a"].oldest; !got.Equal(base) {
+		t.Fatalf("oldest = %s, want the moment the first event arrived (%s)", got, base)
 	}
 
-	// More events later must not reset the clock: the ceiling belongs to the
+	// More events later must not reset the clock: the wait belongs to the
 	// event that has waited longest, not to the newest one.
 	clock = base.Add(30 * time.Second)
-	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+	if err := p.enqueue(one); err != nil {
 		t.Fatal(err)
 	}
-	if !p.oldest.Equal(base) {
-		t.Errorf("oldest moved to %s when a later event arrived", p.oldest)
+	if got := p.buckets["a"].oldest; !got.Equal(base) {
+		t.Errorf("oldest moved to %s when a later event arrived", got)
 	}
 
-	// And taking the batch clears it, because what is left is nothing.
+	// A DIFFERENT key starts its own clock, which is the whole point: a table
+	// that arrives late does not inherit the wait of one that arrived early.
+	if err := p.enqueue(prepared{
+		events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{"b"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.buckets["b"].oldest; !got.Equal(clock) {
+		t.Errorf("the second key's oldest = %s, want %s -- it inherited the "+
+			"first key's wait", got, clock)
+	}
+
+	// And taking a bucket removes it, because what is left of it is nothing.
 	p.mu.Lock()
-	_, _ = p.take()
+	_ = p.take("a")
 	p.mu.Unlock()
-	if !p.oldest.IsZero() {
-		t.Errorf("oldest survived take() as %s", p.oldest)
+	if _, still := p.buckets["a"]; still {
+		t.Error("the bucket survived take()")
+	}
+	if _, gone := p.buckets["b"]; !gone {
+		t.Error("taking one bucket took the other")
 	}
 }
 
@@ -587,11 +633,14 @@ func TestArmUsesTheDeadline(t *testing.T) {
 		// through the pointer to name the counter before count() can guard
 		// it. An incomplete pipe panics rather than skipping the metric.
 		metrics: NewMetrics(),
+		buckets: map[string]*bucket{},
 	}
-	p.batch = []sdk.Envelope{{}}
-	p.sizes = []int64{1}
-	// Already 50ms old: about 10ms of ceiling left.
-	p.oldest = time.Now().Add(-50 * time.Millisecond)
+	p.buckets[""] = &bucket{
+		batch: []sdk.Envelope{{}}, sizes: []int64{1}, bytes: 1,
+		// Already 50ms old: about 10ms of ceiling left.
+		oldest: time.Now().Add(-50 * time.Millisecond),
+	}
+	p.held, p.bytes = 1, 1
 
 	p.mu.Lock()
 	p.arm()
@@ -847,13 +896,13 @@ func TestOneWindowIsOneFlushHoweverManyReplicas(t *testing.T) {
 
 	var flushed int
 	for i, p := range []*pipe{replica(), replica(), replica(), replica()} {
-		if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		if err := p.enqueue(prepared{events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""}}); err != nil {
 			t.Fatalf("replica %d: %v", i, err)
 		}
 		// flush() takes the lock itself; holding it here deadlocks.
 		p.flush()
 		p.mu.Lock()
-		held := len(p.batch)
+		held := p.held
 		p.mu.Unlock()
 		if held == 0 {
 			flushed++
@@ -882,12 +931,12 @@ func TestWithoutASharedBackendEveryReplicaFlushes(t *testing.T) {
 		}, nil, nil, nil, 1<<20, NewMetrics(), NewMemoryMetastore())
 		p.gateway = "g"
 		p.now = func() time.Time { return base }
-		if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+		if err := p.enqueue(prepared{events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""}}); err != nil {
 			t.Fatal(err)
 		}
 		p.flush()
 		p.mu.Lock()
-		held := len(p.batch)
+		held := p.held
 		p.mu.Unlock()
 		if held == 0 {
 			flushed++
@@ -915,13 +964,13 @@ func TestAnUnreachableBackendFlushesAnyway(t *testing.T) {
 	}, nil, nil, nil, 1<<20, NewMetrics(), brokenMetastore{})
 	p.gateway = "g"
 
-	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+	if err := p.enqueue(prepared{events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""}}); err != nil {
 		t.Fatal(err)
 	}
 	p.flush()
 
 	p.mu.Lock()
-	held := len(p.batch)
+	held := p.held
 	p.mu.Unlock()
 	if held != 0 {
 		t.Error("the batch was held because the metastore could not be asked; " +
@@ -949,7 +998,7 @@ func TestTheCeilingIsNeverClaimed(t *testing.T) {
 	clock := base
 	p.now = func() time.Time { return clock }
 
-	if err := p.enqueue([]sdk.Envelope{{}}, []int64{1}); err != nil {
+	if err := p.enqueue(prepared{events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""}}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -957,7 +1006,7 @@ func TestTheCeilingIsNeverClaimed(t *testing.T) {
 	clock = base.Add(time.Minute)
 	p.flush()
 	p.mu.Lock()
-	held := len(p.batch)
+	held := p.held
 	p.mu.Unlock()
 	if held == 0 {
 		t.Fatal("it flushed while the ceiling still had room and the claim was refused")
@@ -967,7 +1016,7 @@ func TestTheCeilingIsNeverClaimed(t *testing.T) {
 	clock = base.Add(91 * time.Second)
 	p.flush()
 	p.mu.Lock()
-	held = len(p.batch)
+	held = p.held
 	p.mu.Unlock()
 	if held != 0 {
 		t.Error("the batch was still held 91s into a 90s ceiling: max_age is a " +
@@ -1039,10 +1088,10 @@ func TestWithAClaimTheTimerWakesOnTheBoundary(t *testing.T) {
 					Every: 5 * time.Second, Claim: c.claim,
 					MaxAge: Duration(time.Hour),
 				}}},
-				now: func() time.Time { return at(c.now) },
+				now:     func() time.Time { return at(c.now) },
+				buckets: map[string]*bucket{},
 			}
-			p.oldest = at(c.now)
-			if got := p.deadline(); got != c.want {
+			if got := p.deadline(&bucket{oldest: at(c.now)}); got != c.want {
 				t.Errorf("deadline = %s, want %s", got, c.want)
 			}
 		})
@@ -1053,12 +1102,13 @@ func TestWithAClaimTheTimerWakesOnTheBoundary(t *testing.T) {
 		stream: Stream{Buffer: Buffer{Flush: Flush{
 			Every: 5 * time.Second, Claim: true, MaxAge: Duration(10 * time.Second),
 		}}},
-		now: func() time.Time { return at("2026-09-27T12:00:02Z") },
+		now:     func() time.Time { return at("2026-09-27T12:00:02Z") },
+		buckets: map[string]*bucket{},
 	}
 	// Nine seconds old against a ten-second ceiling: one second left, which
 	// beats the three to the boundary.
-	p.oldest = at("2026-09-27T12:00:02Z").Add(-9 * time.Second)
-	if got := p.deadline(); got != time.Second {
+	old := &bucket{oldest: at("2026-09-27T12:00:02Z").Add(-9 * time.Second)}
+	if got := p.deadline(old); got != time.Second {
 		t.Errorf("the boundary beat the ceiling: %s, want 1s", got)
 	}
 }
@@ -1140,7 +1190,7 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 	// Ceiling: won without asking because max_age closed. Not coordinated,
 	// and correct.
 	ceiling := build(refusingMetastore{}, 10*time.Second)
-	ceiling.oldest = base.Add(-time.Minute)
+	ceiling.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base.Add(-time.Minute)}
 	if !ceiling.winsTheWindow() {
 		t.Fatal("the ceiling was deferred by a claim")
 	}
@@ -1235,7 +1285,7 @@ func TestTheLoadJobBudgetIsSaidAtBoot(t *testing.T) {
 	boot := func(every time.Duration, into Sink) string {
 		var b strings.Builder
 		cfg := &Config{
-			Name: "g",
+			Name:   "g",
 			Listen: Listen{Addr: ":0", Auth: Auth{Type: AuthBearer, KeysFrom: "KEYS"}},
 			Streams: []Stream{{
 				Name: "s", Path: "/s",
@@ -1305,5 +1355,264 @@ func TestTheLoadJobBudgetIsSaidAtBoot(t *testing.T) {
 	pg := Sink{Type: SinkPostgres, DSNFrom: "DSN", Write: "append"}
 	if got := boot(2*time.Minute, pg); strings.Contains(got, "load job") {
 		t.Errorf("a Postgres destination was given a BigQuery budget:\n%s", got)
+	}
+}
+
+// keyedSink is a sink with a routing key, which is what `auto_table` is: it
+// tells the pipe how it would group a batch, and records what it was handed.
+type keyedSink struct {
+	mu      sync.Mutex
+	batches [][]string
+}
+
+func (s *keyedSink) Describe() string                       { return "keyed" }
+func (s *keyedSink) Measure(e map[string]any, _ int) string { return Text(e["t"]) }
+func (s *keyedSink) Write(_ context.Context, b []sdk.Envelope) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var tables []string
+	for _, e := range b {
+		m, _ := e.Payload.(map[string]any)
+		tables = append(tables, Text(m["t"]))
+	}
+	s.batches = append(s.batches, tables)
+	return int64(len(b)), nil
+}
+
+func (s *keyedSink) carrying(table string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for _, b := range s.batches {
+		for _, t := range b {
+			if t == table {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// post sends one event through the real handler.
+func post(t *testing.T, p *pipe, table string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"t":%q,"k":"1","r":"2026-01-01T00:00:00Z"}`, table)
+	w := httptest.NewRecorder()
+	p.ServeHTTP(w, httptest.NewRequest("POST", "/s", strings.NewReader(body)))
+	if w.Code != http.StatusAccepted && w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("POST %s: %d %s", table, w.Code, w.Body.String())
+	}
+}
+
+func keyedPipe(sink Sinker, b Buffer) *pipe {
+	// Attempts is what `check` would have defaulted; newPipe is below that
+	// and a zero here makes `send` give up with a nil cause.
+	return newPipe(Stream{
+		Name: "s", Path: "/s", Format: FormatJSON,
+		Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+		Buffer:   b, Retry: Retry{Attempts: 1},
+	}, nil, sink, nowhereSink{}, 1<<20, NewMetrics(), nil)
+}
+
+// A quiet table must not inherit a busy neighbour's cadence.
+//
+// This is issue #38 reduced to its smallest reproduction: the buffer is per
+// stream and the sink routes per table, so a producer that fills the buffer
+// sets the flush frequency and every quiet table in that stream gets a load
+// job each time -- carrying whatever handful of rows it happened to have.
+//
+// Measured by the reporter at 34x the jobs for the same data. Here: three
+// events for `quiet` should leave in ONE delivery, not in three.
+func TestAQuietTableDoesNotInheritTheBusyOnesCadence(t *testing.T) {
+	sink := &keyedSink{}
+	p := keyedPipe(sink, Buffer{
+		Queue: 64, Workers: 1, MaxRecords: 100000,
+		Flush: Flush{Every: time.Hour, Records: 10},
+	})
+
+	// `quiet` arrives inside three different windows of the busy table.
+	for i := range 100 {
+		post(t, p, "busy")
+		if i == 10 || i == 40 || i == 70 {
+			post(t, p, "quiet")
+		}
+	}
+	if err := p.close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	if n := sink.carrying("quiet"); n != 1 {
+		t.Errorf("`quiet` left in %d deliveries, want 1 -- it has 3 events and "+
+			"`flush.records` is 10, so the only thing that can flush it is its "+
+			"own clock, not the neighbour's", n)
+	}
+	// And the busy table still flushes on its own trigger, ten at a time.
+	if n := sink.carrying("busy"); n < 10 {
+		t.Errorf("`busy` left in %d deliveries, want at least 10 -- 100 events "+
+			"at `flush.records: 10`", n)
+	}
+}
+
+// The ceiling counts the PROCESS, not the bucket.
+//
+// `max_bytes: 64MiB` x 94 tables is 6 GB. Splitting the trigger must not split
+// the ceiling: the operator configures one number for what this process may
+// hold, and a hundred quiet tables must not be able to multiply it.
+func TestTheCeilingIsGlobalAcrossBuckets(t *testing.T) {
+	sink := &keyedSink{}
+	p := keyedPipe(sink, Buffer{
+		Queue: 1, Workers: 0, MaxRecords: 50,
+		// High enough that nothing flushes: the ceiling is what we are testing.
+		Flush: Flush{Every: time.Hour, Records: 100000},
+	})
+
+	accepted := 0
+	for i := range 80 {
+		body := fmt.Sprintf(`{"t":"t%d","k":"1","r":"2026-01-01T00:00:00Z"}`, i%10)
+		w := httptest.NewRecorder()
+		p.ServeHTTP(w, httptest.NewRequest("POST", "/s", strings.NewReader(body)))
+		if w.Code == http.StatusAccepted {
+			accepted++
+		}
+	}
+	if accepted != 50 {
+		t.Errorf("accepted %d events against `max_records: 50` spread over ten "+
+			"tables, want 50 -- a per-bucket ceiling would have taken 500", accepted)
+	}
+}
+
+// A sink with no routing key behaves exactly as it did.
+//
+// Most streams have one destination and must not pay for a feature they do
+// not use: no Measurer means one bucket, and one bucket is today.
+func TestASinkWithNoKeyIsOneBucket(t *testing.T) {
+	sink := &countingSink{}
+	p := keyedPipe(sink, Buffer{
+		Queue: 64, Workers: 1, MaxRecords: 100000,
+		Flush: Flush{Every: time.Hour, Records: 10},
+	})
+	for range 25 {
+		post(t, p, "whatever")
+	}
+	if err := p.close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// 25 events, ten at a time: two full batches and the drain takes five.
+	if got := sink.sizes(); len(got) != 3 || got[0] != 10 || got[1] != 10 || got[2] != 5 {
+		t.Errorf("batches %v, want [10 10 5] -- a sink with no key must batch "+
+			"exactly as it did before buckets existed", got)
+	}
+}
+
+// countingSink has no Measurer, so the pipe has no key for it.
+type countingSink struct {
+	mu sync.Mutex
+	n  []int
+}
+
+func (s *countingSink) Describe() string { return "counting" }
+func (s *countingSink) Write(_ context.Context, b []sdk.Envelope) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.n = append(s.n, len(b))
+	return int64(len(b)), nil
+}
+func (s *countingSink) sizes() []int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]int(nil), s.n...)
+}
+
+// The claim and a routing key do not yet agree, and the config says so.
+//
+// The claim's key is per STREAM: `...:<stream>:flush:<window>`. With triggers
+// per routing key the first bucket to reach the boundary takes that window and
+// the other ninety-three yield -- strictly worse than one shared cadence,
+// which at least flushed them together.
+//
+// Refused by name rather than accepted and quietly behaving differently. The
+// claim returns with a per-key claim; until then the two are named as the pair
+// that does not work.
+func TestTheClaimAndARoutingKeyAreRefusedTogether(t *testing.T) {
+	stream := func(sink string) Stream {
+		return Stream{
+			Name: "s", Path: "/s", Format: FormatJSON,
+			Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+			Buffer: Buffer{Flush: Flush{
+				Every: time.Minute, Records: 10,
+				Claim: true, MaxAge: Duration(time.Hour),
+			}},
+			Sink: Sink{
+				Type: sink, Shape: "columns", Naming: Naming{Allow: []string{"*"}},
+				Into:    &Sink{Type: SinkPostgres, DSNFrom: "DSN", Write: "append"},
+				DSNFrom: "DSN", Table: "landing.t", Write: "append",
+			},
+			DeadLetter: Sink{Type: SinkPostgres, DSNFrom: "DSN", Table: "landing.d", Write: "append"},
+		}
+	}
+
+	auto := stream(SinkAutoTable)
+	err := auto.check()
+	if err == nil {
+		t.Fatal("`flush.claim` with `auto_table` was accepted: the claim is per " +
+			"stream and the trigger is now per table, so one bucket takes the " +
+			"window and the rest yield")
+	}
+	for _, want := range []string{"claim", "auto_table"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q, so nobody can act on it: %v", want, err)
+		}
+	}
+
+	// And a stream with no routing key keeps the claim exactly as it was.
+	plain := stream(SinkPostgres)
+	if err := plain.check(); err != nil {
+		t.Errorf("`flush.claim` was refused for a sink with no routing key, "+
+			"which is the case it was built for: %v", err)
+	}
+}
+
+// The timer takes the bucket whose clock rang, not every bucket there is.
+//
+// There is one timer, armed for the EARLIEST bucket, because a bucket created
+// later can only be due later. When it rings, the buckets that have not
+// waited their target go on filling -- otherwise the alarm one table set
+// would flush all ninety-four, which is the neighbour's cadence again by a
+// different road.
+//
+// A mutation that makes `due` always true passes every other test in this
+// file: they reach the trigger through `flush.records`, and this is the only
+// one that reaches it through the clock.
+func TestTheTimerTakesOnlyWhatIsDue(t *testing.T) {
+	const every = 300 * time.Millisecond
+	sink := &keyedSink{}
+	p := keyedPipe(sink, Buffer{
+		Queue: 64, Workers: 1, MaxRecords: 1000,
+		Flush: Flush{Every: every, Records: 1000},
+	})
+
+	post(t, p, "early")
+	time.Sleep(200 * time.Millisecond)
+	post(t, p, "late") // due at 500ms, not at 300ms
+
+	// 400ms: `early` has flushed on its own clock; `late` has 100ms to go.
+	time.Sleep(200 * time.Millisecond)
+	if n := sink.carrying("early"); n != 1 {
+		t.Errorf("`early` left in %d deliveries at 400ms, want 1", n)
+	}
+	if n := sink.carrying("late"); n != 0 {
+		t.Errorf("`late` left in %d deliveries at 400ms, want 0 -- it was 200ms "+
+			"old when the neighbour's timer rang, and its own target is 300ms", n)
+	}
+
+	// 650ms: past 200+300, so `late` goes on its own clock.
+	time.Sleep(250 * time.Millisecond)
+	if n := sink.carrying("late"); n != 1 {
+		t.Errorf("`late` left in %d deliveries at 650ms, want 1 -- a bucket the "+
+			"timer skipped still has to leave when its own target passes", n)
+	}
+	if err := p.close(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -383,7 +383,14 @@ streams:
         # The claim gives EXCLUSIVITY, not fairness: whoever asks first wins,
         # and a real two-replica run measured 4/1 rather than an even split.
         # `max_age` is what stops the unlucky one starving. Issue #36.
-        claim: true
+        #
+        # OFF on this stream, and REFUSED if you turn it on, because the sink
+        # is `auto_table`: the flush trigger is now per table (issue #38) and
+        # the claim's key is still per stream, so the first table to reach the
+        # boundary would take that window and every other table would yield.
+        # It returns when the claim is per key. A stream with one destination
+        # can turn it on today.
+        claim: false
       max_bytes: 1GiB
 
     sink:

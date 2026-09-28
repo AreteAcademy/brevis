@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -210,11 +212,6 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 				"load_jobs_per_table_per_day", int(24*time.Hour/every),
 				"bigquery_allows", BigQueryDailyLoadJobs)
 		}
-		// Resolved once, at startup: a type assertion per event to discover
-		// something that cannot change is work done 500 times a second for an
-		// answer fixed at build time.
-		p.admit, _ = sink.(Admitter)
-		p.measure, _ = sink.(Measurer)
 		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
@@ -242,7 +239,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		out := make([]gauge, 0, len(pipes)*2)
 		for _, p := range pipes {
 			p.mu.Lock()
-			buffered := len(p.batch)
+			buffered := p.held
 			p.mu.Unlock()
 			out = append(out,
 				gauge{name: MetricBuffer, labels: []string{p.stream.Name}, value: int64(buffered)},
@@ -402,24 +399,32 @@ type pipe struct {
 	admit   Admitter
 	measure Measurer
 
-	mu    sync.Mutex
-	batch []sdk.Envelope
-	// sizes is the received byte count of each event in `batch`, parallel to
-	// it, and `bytes` is their sum kept as they arrive.
-	//
-	// Two fields rather than a sum recomputed per request: the ceiling is
-	// checked on every enqueue, and walking the buffer each time would make an
-	// O(1) admission O(n) in what is already held.
-	sizes []int64
-	bytes int64
+	mu sync.Mutex
 
-	// oldest is when the FIRST event of the current batch arrived, and it is
-	// what `flush.max_age` is measured from.
+	// buckets is the buffer, split by the sink's ROUTING KEY -- the table, for
+	// auto_table -- and keyed by "" when the sink has none.
 	//
-	// The first and not the newest: the ceiling belongs to the event that has
-	// waited longest. Zero means the buffer is empty and there is nothing
-	// aging.
-	oldest time.Time
+	// The trigger has to measure what the destination carries. A buffer per
+	// stream with a sink that routes per table means a producer filling the
+	// buffer sets the flush frequency, and every quiet table in that stream
+	// gets a load job each time, carrying whatever handful of rows it had:
+	// 34x the load jobs for the same data, measured by the consumer who
+	// reported issue #38. `flush.size: 8MiB` then means 8 MiB of the STREAM,
+	// which is a quantity no destination ever receives.
+	//
+	// The key arrives free. Measurer already returns it once per event, at
+	// admission, and the pipe used to spend it on a metric and drop it.
+	buckets map[string]*bucket
+
+	// held and bytes are the totals ACROSS buckets, because the ceiling is
+	// the process's and not the key's. `max_bytes: 64MiB` times 94 tables is
+	// 6 GB: split the trigger, never the ceiling.
+	//
+	// Kept as they arrive rather than summed per request: the ceiling is
+	// checked on every enqueue, and walking the buckets each time would make
+	// an O(1) admission O(n) in what is already held.
+	held  int
+	bytes int64
 
 	// now is a field so a test can move the clock. The router has one for the
 	// same reason.
@@ -427,6 +432,18 @@ type pipe struct {
 
 	timer   *time.Timer
 	closing bool
+}
+
+// bucket is one routing key's share of the buffer.
+//
+// `oldest` is when the FIRST event of THIS bucket arrived, and it is what
+// both the target and `flush.max_age` are measured from -- the first and not
+// the newest, because the wait belongs to the event that has waited longest.
+type bucket struct {
+	batch  []sdk.Envelope
+	sizes  []int64
+	bytes  int64
+	oldest time.Time
 }
 
 // deadline is how long the timer should wait: the earlier of the target and
@@ -439,9 +456,18 @@ type pipe struct {
 // Until the flush claim lands (issue #36) nothing defers the target, so `every`
 // always wins and this is arithmetic nobody reaches. It is pinned now because
 // slice 3 consults it and a deadline computed wrong there holds data.
-func (p *pipe) deadline() time.Duration {
+func (p *pipe) deadline(b *bucket) time.Duration {
 	every := p.stream.Buffer.Flush.Every
+	now := p.clock()
+
+	// The target is measured from THIS bucket's oldest event, which is what
+	// the single batch's timer used to mean when there was one batch. A
+	// bucket that started later waits later, which is the whole point: a
+	// quiet table must not leave because a busy one filled up.
 	wait := every
+	if b != nil && !b.oldest.IsZero() {
+		wait = b.oldest.Add(every).Sub(now)
+	}
 
 	// With a claim, wake on the WINDOW BOUNDARY rather than `every` after
 	// arming. The claim's key is wall-clock; without this the alarm is not,
@@ -454,22 +480,72 @@ func (p *pipe) deadline() time.Duration {
 	// the same instant and asks for the same key, which is the only way
 	// exactly one wins.
 	if p.stream.Buffer.Flush.Claim && every > 0 {
-		now := p.clock()
 		wait = now.Truncate(every).Add(every).Sub(now)
 	}
 
 	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
-	if ceiling <= 0 || p.oldest.IsZero() {
+	if ceiling <= 0 || b == nil || b.oldest.IsZero() {
+		if wait < 0 {
+			return 0
+		}
 		return wait
 	}
-	left := p.oldest.Add(ceiling).Sub(p.clock())
-	if left < 0 {
+	left := b.oldest.Add(ceiling).Sub(now)
+	if left < wait {
+		wait = left
+	}
+	if wait < 0 {
 		return 0
 	}
-	if left < wait {
-		return left
-	}
 	return wait
+}
+
+// next is the earliest deadline across the buckets: ONE timer, not one per
+// key. A bucket created now can only be later than one already waiting --
+// the target is measured from each bucket's oldest event, and a new bucket's
+// is the newest -- so the alarm the earliest bucket set is still the right
+// one, and arm() can keep being a no-op while a timer runs.
+func (p *pipe) next() time.Duration {
+	d := time.Duration(-1)
+	for _, b := range p.buckets {
+		if w := p.deadline(b); d < 0 || w < d {
+			d = w
+		}
+	}
+	if d < 0 {
+		return p.deadline(nil)
+	}
+	return d
+}
+
+// due says this bucket has waited what it was promised.
+//
+// Not `deadline(b) <= 0`: the two answer different questions. deadline says
+// WHEN TO WAKE, and with a claim that is the window boundary -- at which
+// instant it reads as a whole period away, so a dueness built on it would
+// wake every window and flush nothing.
+//
+// With a claim the WINDOW is the unit. The claim buys one flush per window
+// for the stream, and everything held goes in it, which is what it did
+// before buckets existed. Without one, a bucket is due when it has waited
+// `every` since its own oldest event -- the same thing the single batch's
+// timer meant when it was armed once, on going from empty to held.
+func (p *pipe) due(b *bucket) bool {
+	if p.stream.Buffer.Flush.Claim {
+		return true
+	}
+	if b == nil || b.oldest.IsZero() {
+		return true
+	}
+	now := p.clock()
+	every := p.stream.Buffer.Flush.Every
+	if every <= 0 || !b.oldest.Add(every).After(now) {
+		return true
+	}
+	// And the ceiling, which `deadline` also honours: a wake it brought
+	// forward has to find something due, or the timer rings for nothing.
+	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
+	return ceiling > 0 && !b.oldest.Add(ceiling).After(now)
 }
 
 // clock is time.Now unless a test said otherwise.
@@ -486,7 +562,17 @@ func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
 	p := &pipe{
 		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
 		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m, meta: meta,
+		buckets: map[string]*bucket{},
 	}
+	// Resolved once, here, where the sink arrives: a type assertion per event
+	// to discover something that cannot change is work done 500 times a
+	// second for an answer fixed at build time.
+	//
+	// In the constructor and not after it, because a pipe missing these is a
+	// pipe whose buffer has no routing key -- one bucket where there should
+	// be ninety-four -- and nothing about it looks wrong.
+	p.admit, _ = sink.(Admitter)
+	p.measure, _ = sink.(Measurer)
 	p.wg.Add(st.Buffer.Workers)
 	for range st.Buffer.Workers {
 		go func() {
@@ -526,9 +612,10 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accepted, sizes, rejected, archived := p.prepare(events)
+	got := p.prepare(events)
+	accepted, rejected, archived := got.events, got.rejected, got.archived
 	if len(accepted) > 0 {
-		if err := p.enqueue(accepted, sizes); err != nil {
+		if err := p.enqueue(got); err != nil {
 			p.metrics.count(p.metrics.saturated, 1, p.stream.Name)
 			// 503 and not 202. The buffer is at its ceiling, so accepting
 			// these would mean holding events with nowhere to put them --
@@ -572,9 +659,22 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // The third return is how many were archived whole and dropped from the
 // stream. Separate from `rejected` because it is not a refusal -- the event was
 // kept -- and separate from `accepted` because it did not go into the stream.
-func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int) {
+// prepared is what survived, and where each survivor belongs.
+//
+// A struct and not five returns: `keys` and `rejected` are both []string and
+// adjacent, which is the shape that gets swapped one day and compiles.
+type prepared struct {
+	events   []sdk.Envelope
+	sizes    []int64
+	keys     []string
+	rejected []string
+	archived int
+}
+
+func (p *pipe) prepare(events []arrival) prepared {
 	out := make([]sdk.Envelope, 0, len(events))
 	sizes := make([]int64, 0, len(events))
+	keys := make([]string, 0, len(events))
 	var rejected []string
 	var archived int
 
@@ -616,8 +716,13 @@ func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int
 		// has reduced it -- so this is where the arrival size is stamped. It
 		// overwrites: a producer who sends this field must not be able to
 		// report their own volume.
+		// The key the volume is attributed to is also the key the buffer
+		// groups by: the sink owns the routing either way, and asking twice
+		// would be two answers to one question.
+		key := ""
 		if p.measure != nil {
-			p.metrics.ingested(p.stream.Name, p.measure.Measure(e, a.bytes), a.bytes)
+			key = p.measure.Measure(e, a.bytes)
+			p.metrics.ingested(p.stream.Name, key, a.bytes)
 		}
 
 		if p.admit != nil {
@@ -636,8 +741,9 @@ func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int
 		}
 		out = append(out, env)
 		sizes = append(sizes, int64(a.bytes))
+		keys = append(keys, key)
 	}
-	return out, sizes, rejected, archived
+	return prepared{events: out, sizes: sizes, keys: keys, rejected: rejected, archived: archived}
 }
 
 // archiveIfLarge writes an oversized event somewhere whole and returns what
@@ -747,7 +853,8 @@ func (p *pipe) identify(e map[string]any) (sdk.Envelope, string, error) {
 // the pool is busy that send FAILS rather than waiting -- the batch stays
 // buffered and leaves with the next request or the timer. The request goroutine
 // leaves here in constant time either way.
-func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
+func (p *pipe) enqueue(in prepared) error {
+	envs, sizes, keys := in.events, in.sizes, in.keys
 	var bytes int64
 	for _, n := range sizes {
 		bytes += n
@@ -761,7 +868,7 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 		// way out and an event accepted now has no drain left to leave by.
 		return errSaturated
 	}
-	if len(p.batch)+len(envs) > p.stream.Buffer.MaxRecords {
+	if p.held+len(envs) > p.stream.Buffer.MaxRecords {
 		return errSaturated
 	}
 	// The other ceiling, and the one that actually stops an OOM. A count
@@ -770,28 +877,46 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
 		return errSaturated
 	}
-	if len(p.batch) == 0 {
-		// The batch goes from empty to held, so this is the moment the
-		// ceiling starts counting from.
-		p.oldest = p.clock()
+	touched := make([]string, 0, 4)
+	for i, env := range envs {
+		key := keys[i]
+		b := p.buckets[key]
+		if b == nil {
+			b = &bucket{}
+			p.buckets[key] = b
+			// The bucket goes from absent to held, so this is the moment its
+			// wait starts counting from.
+			b.oldest = p.clock()
+			touched = append(touched, key)
+		} else if !slices.Contains(touched, key) {
+			touched = append(touched, key)
+		}
+		b.batch = append(b.batch, env)
+		b.sizes = append(b.sizes, sizes[i])
+		b.bytes += sizes[i]
 	}
-	p.batch = append(p.batch, envs...)
-	p.sizes = append(p.sizes, sizes...)
+	p.held += len(envs)
 	p.bytes += bytes
 
-	// Whichever ceiling is crossed first. Records before size only because one
-	// of them has to be asked first; they are equals, and `trigger` on the
-	// metric says which one fired so an operator can see it rather than guess.
-	if len(p.batch) >= p.stream.Buffer.Flush.Records {
-		p.handoff(TriggerRecords)
-		return nil
+	// Sorted, so a request that fills two buckets hands them off in the same
+	// order every time. Two runs that differ only in map order are two runs
+	// nobody can compare.
+	sort.Strings(touched)
+	for _, key := range touched {
+		b := p.buckets[key]
+		// Whichever trigger is crossed first. Records before size only because
+		// one of them has to be asked first; they are equals, and `trigger` on
+		// the metric says which one fired so an operator can see it rather
+		// than guess.
+		switch {
+		case len(b.batch) >= p.stream.Buffer.Flush.Records:
+			p.handoff(key, TriggerRecords)
+		case int64(p.stream.Buffer.Flush.Size) > 0 && b.bytes >= int64(p.stream.Buffer.Flush.Size):
+			p.handoff(key, TriggerSize)
+		}
 	}
-	if size := int64(p.stream.Buffer.Flush.Size); size > 0 && p.bytes >= size {
-		p.handoff(TriggerSize)
-		return nil
-	}
-	// A partial batch goes anyway when it gets old, so a stream at one event a
-	// minute is not a stream that never lands.
+	// Whatever is still held goes anyway when it gets old, so a table at one
+	// event a minute is not a table that never lands.
 	p.arm()
 	return nil
 }
@@ -812,33 +937,38 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 // routinely means the 60-second floor is being bypassed and the daily load-job
 // quota is going with it. That is a number on a dashboard, not a line in a
 // log.
-func (p *pipe) handoff(why string) {
+func (p *pipe) handoff(key, why string) {
 	if p.closing {
 		return
 	}
-	oldest := p.oldest
-	ready, sizes := p.take()
+	b := p.take(key)
+	if b == nil || len(b.batch) == 0 {
+		return
+	}
 	select {
-	case p.queue <- ready:
-		p.pending.Add(int64(len(ready)))
+	case p.queue <- b.batch:
+		p.pending.Add(int64(len(b.batch)))
 		p.metrics.count(p.metrics.flushes, 1, p.stream.Name, why)
 	default:
-		// The pool is busy and the batch goes back, at the FRONT: the order
-		// events arrived in is the order they leave in. Not counted as a
-		// flush -- nothing flushed, and counting here would report one per
-		// attempt on a stream whose sink is behind.
-		p.batch = append(ready, p.batch...)
-		p.sizes = append(sizes, p.sizes...)
-		// The returned batch is older than anything that arrived meanwhile,
-		// so the ceiling counts from when IT started waiting. Losing this is
-		// how a batch the pool keeps refusing resets its own clock forever.
-		if p.oldest.IsZero() || oldest.Before(p.oldest) {
-			p.oldest = oldest
+		// The pool is busy and the batch goes back, at the FRONT of ITS OWN
+		// bucket: the order events arrived in is the order they leave in, per
+		// key. Not counted as a flush -- nothing flushed, and counting here
+		// would report one per attempt on a stream whose sink is behind.
+		if cur := p.buckets[key]; cur != nil {
+			cur.batch = append(b.batch, cur.batch...)
+			cur.sizes = append(b.sizes, cur.sizes...)
+			cur.bytes += b.bytes
+			// What came back is older than anything that arrived meanwhile,
+			// so the wait counts from when IT started. Losing this is how a
+			// batch the pool keeps refusing resets its own clock forever.
+			if cur.oldest.IsZero() || b.oldest.Before(cur.oldest) {
+				cur.oldest = b.oldest
+			}
+		} else {
+			p.buckets[key] = b
 		}
-		p.bytes = 0
-		for _, n := range p.sizes {
-			p.bytes += n
-		}
+		p.held += len(b.batch)
+		p.bytes += b.bytes
 		p.arm()
 	}
 }
@@ -846,9 +976,16 @@ func (p *pipe) handoff(why string) {
 // arm starts the flush timer if it is not already running. The caller holds
 // the lock.
 func (p *pipe) arm() {
-	if p.timer == nil && !p.closing {
-		p.timer = time.AfterFunc(p.deadline(), p.flush)
+	if p.timer != nil || p.closing || len(p.buckets) == 0 {
+		return
 	}
+	d := p.next()
+	// A floor, so a deadline that has already passed by a hair cannot become
+	// a timer that re-arms at zero and spins.
+	if d < time.Millisecond {
+		d = time.Millisecond
+	}
+	p.timer = time.AfterFunc(d, p.flush)
 }
 
 // take empties the batch. The caller holds the lock.
@@ -857,17 +994,18 @@ func (p *pipe) arm() {
 // The sizes travel so handoff can put BOTH back when the pool is busy. Without
 // them the byte ceiling would silently forget what it is already holding,
 // which is the one ceiling whose job is to stop an OOM.
-func (p *pipe) take() ([]sdk.Envelope, []int64) {
-	ready, sizes := p.batch, p.sizes
-	p.batch, p.sizes, p.bytes = nil, nil, 0
-	// Nothing is held, so nothing is aging. A batch handed back by a busy
-	// pool sets it again below.
-	p.oldest = time.Time{}
-	if p.timer != nil {
-		p.timer.Stop()
-		p.timer = nil
+func (p *pipe) take(key string) *bucket {
+	b := p.buckets[key]
+	if b == nil {
+		return nil
 	}
-	return ready, sizes
+	delete(p.buckets, key)
+	p.held -= len(b.batch)
+	p.bytes -= b.bytes
+	// The timer is NOT stopped here. Other buckets are still waiting on it,
+	// and the one that set it is the earliest -- taking a later one changes
+	// nothing about when the alarm should ring.
+	return b
 }
 
 // flush is the timer firing: a partial batch that has waited long enough. It
@@ -876,17 +1014,35 @@ func (p *pipe) flush() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.timer = nil
-	if len(p.batch) == 0 {
+	if len(p.buckets) == 0 {
 		return
 	}
 	if !p.winsTheWindow() {
 		// Somebody else is flushing this window. Keep filling and come back:
-		// arm() recomputes the deadline against the ceiling, so a batch that
+		// arm() recomputes the deadline against the ceiling, so a bucket that
 		// keeps losing gets a shorter wait each time until max_age takes it.
 		p.arm()
 		return
 	}
-	p.handoff(TriggerTime)
+
+	// Only the buckets that have actually waited. The alarm was set by the
+	// earliest one; the others are still inside their own target and go on
+	// filling, which is the difference between a table's cadence and its
+	// neighbour's.
+	//
+	// Sorted, so a window that takes several produces the same sequence every
+	// time.
+	due := make([]string, 0, len(p.buckets))
+	for key, b := range p.buckets {
+		if p.due(b) {
+			due = append(due, key)
+		}
+	}
+	sort.Strings(due)
+	for _, key := range due {
+		p.handoff(key, TriggerTime)
+	}
+	p.arm()
 }
 
 // winsTheWindow decides whether THIS replica flushes the current window.
@@ -914,7 +1070,7 @@ func (p *pipe) winsTheWindow() bool {
 	if !p.stream.Buffer.Flush.Claim || p.meta == nil {
 		return true
 	}
-	if p.deadline() <= 0 {
+	if p.next() <= 0 {
 		p.metrics.count(p.metrics.windows, 1, p.stream.Name, CeilingWindow)
 		return true
 	}
@@ -1076,12 +1232,30 @@ func backoff(r Retry, attempt int) time.Duration {
 func (p *pipe) close(ctx context.Context) error {
 	p.mu.Lock()
 	p.closing = true
-	// take stops the timer, so no flush is armed past this point -- and one
-	// already running is blocked on this lock and will find closing set.
+	// The timer is stopped below, so no flush is armed past this point -- and
+	// one already running is blocked on this lock and will find closing set.
 	//
 	// The sizes go nowhere: the buffer is finished, and nothing will be
 	// admitted against the ceiling again.
-	ready, _ := p.take()
+	// One batch of everything, sorted by key so a drain is reproducible. The
+	// sink re-groups it -- `router.Write` does exactly that -- and shutdown
+	// is about not losing events, not about cadence: splitting it here would
+	// buy nothing and cost a load job per bucket on the way out.
+	keys := make([]string, 0, len(p.buckets))
+	for key := range p.buckets {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var ready []sdk.Envelope
+	for _, key := range keys {
+		if b := p.take(key); b != nil {
+			ready = append(ready, b.batch...)
+		}
+	}
+	if p.timer != nil {
+		p.timer.Stop()
+		p.timer = nil
+	}
 	p.mu.Unlock()
 
 	// Nothing else can send on the queue now: closing is set, and every send
