@@ -158,6 +158,19 @@ ceiling is latency with nothing bounding it.
 jobs; refusing to flush holds data. Verified by killing Redis mid-run: 40 of 40
 events landed, nothing held.
 
+**`outcome="unreachable"` is the one worth an alert.** The backend could not be
+asked, so the claim failed open: coordination is off and the load jobs are
+multiplying by replica count again — silently, because every flush still looks
+like a flush.
+
+And the claim gives **exclusivity, not fairness**: whoever asks first wins. A
+real two-replica run measured 4/1, not an even split. `max_age` is what stops
+the unlucky one starving.
+
+With `claim: true` and `metastore: memory` the gateway warns **once at boot**:
+every replica wins its own claim, so everything looks right and nothing
+coordinates.
+
 ### `every` is a target; `max_age` is a promise
 
 The three triggers above decide when a batch **tries** to leave. `max_age`
@@ -315,6 +328,7 @@ brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
 process_start_time_seconds                              gauge    unprefixed, on purpose

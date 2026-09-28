@@ -28,6 +28,16 @@ const (
 	MetricQueue     = "brevis_gateway_queue_batches"
 	MetricFlushes   = "brevis_gateway_flushes_total"
 
+	// MetricWindows is what became of each flush WINDOW when the claim is on.
+	//
+	// Its own series and not a label on MetricFlushes, because a yield is not
+	// a flush: that counter's sum means "batches handed to the pool", and
+	// folding a non-delivery into it would end that.
+	//
+	// Published only by a stream with `flush.claim`, so it is not noise on
+	// every deployment that never turned this on.
+	MetricWindows = "brevis_gateway_flush_windows_total"
+
 	// The two volume series, and they are the ones behind the switch.
 	//
 	// They carry `table`, which is a label the PRODUCER chooses: with
@@ -61,6 +71,28 @@ const (
 	ReasonIdentity  = "identity"
 	ReasonOversize  = "oversize"
 	ReasonAdmit     = "sink_refused"
+)
+
+// What became of a flush window, when the claim is on.
+//
+// WonWindow and YieldedWindow are the feature working: one replica flushes,
+// the others keep filling. The other two are wins WITHOUT coordination, and
+// they are why this series exists:
+//
+//	CeilingWindow  max_age closed, so the batch left whatever anybody held.
+//	               Correct, and it says the ceiling is doing the work rather
+//	               than the target.
+//	UnreachableWindow  the backend could not be asked, so the claim failed
+//	               open. Coordination is OFF and the load jobs are multiplying
+//	               by replica count again -- silently, because every flush
+//	               still looks exactly like a flush. This is the one worth an
+//	               alert, and a feature whose failure mode is silent shipped
+//	               without a way to see it is the shape of issue #33.
+const (
+	WonWindow         = "won"
+	YieldedWindow     = "yielded"
+	CeilingWindow     = "ceiling"
+	UnreachableWindow = "unreachable"
 )
 
 // What made a batch leave the buffer.
@@ -113,6 +145,7 @@ type Metrics struct {
 	saturated *counters
 	oversized *counters
 	flushes   *counters
+	windows   *counters
 
 	// The volume pair, nil unless BREVIS_INGESTION_METRICS turned them on.
 	// Nil rather than a bool, so the check is the same nil-guard every other
@@ -151,6 +184,7 @@ func NewMetrics() *Metrics {
 		saturated: newCounters(MetricSaturated, "requests refused because the buffer was full", "stream"),
 		oversized: newCounters(MetricOversized, "events archived whole because they were too large", "stream"),
 		flushes:   newCounters(MetricFlushes, "batches handed to the pool by what triggered them", "stream", "trigger"),
+		windows:   newCounters(MetricWindows, "flush windows by what became of them, when the claim is on", "stream", "outcome"),
 
 		// Prometheus' own default spread, which covers a Pub/Sub publish
 		// (milliseconds) and a COPY that is having a bad day (seconds).

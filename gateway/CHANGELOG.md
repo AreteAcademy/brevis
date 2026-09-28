@@ -13,6 +13,106 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.14.0] — 2026-09-27
+
+The flush clock can belong to the deployment instead of to each process. From
+[issue #36], with fourteen days of production data behind it.
+
+### The problem, in one line of arithmetic
+
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**, so the load
+jobs a table receives are a function of replica count and not of traffic:
+
+```
+jobs / day / table  =  replicas × 86400 / every
+```
+
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is 192% of
+a quota that cannot be raised** — before an HPA does anything. The direction is
+backwards from intuition: the gateway scales out for HTTP concurrency while the
+sink wants concentration, so more replicas means smaller batches means more
+jobs, each with its own fixed cost.
+
+Raising `every` works and is what the reporter is running, but a static value
+has to be sized for `maxReplicas` — so a deployment at `minReplicas` pays the
+worst case's latency all day for contention that is not happening.
+
+### Added: `buffer.flush.claim`
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+A replica takes a set-if-absent claim for the stream and the window before
+flushing on the timer — the same primitive `claimDDL` uses, with no data moved.
+One flush per window, whatever the replica count, and it **self-adjusts**:
+a replica only waits when another is actually competing, so scaling in restores
+the lower latency with nobody editing a config.
+
+**Off by default.** It turns `every` from a promise into a target, and doing
+that silently to every deployment that happens to have a shared metastore is
+how `0.11.0` shipped a breaking change described as a free addition.
+
+**It requires `max_age`**, refused at load without it.
+
+### Added: `buffer.flush.max_age`
+
+`every` is the target; this is the promise. No event waits longer than this,
+whatever the contention, whatever the backend, even with the metastore
+unreachable. A ceiling below the target is refused: it would mean the target
+never applies.
+
+It also corrects the drain. `DrainBudget()` read `flush.every` as the bound on
+what a buffer holds at `SIGTERM` — and a replica that loses windows holds up to
+`max_age`. It reads the ceiling now, so the
+`terminationGracePeriodSeconds` on the boot line is right again.
+
+### Added: `brevis_gateway_flush_windows_total{stream,outcome}`
+
+`won`, `yielded`, `ceiling`, `unreachable`. Its own series and not a label on
+`flushes_total`, because a yield is not a flush and that counter's sum means
+"batches handed to the pool".
+
+**`unreachable` is the one worth an alert.** The backend could not be asked, so
+the claim failed open: coordination is off and the jobs are multiplying by
+replica count again — silently, because every flush still looks like a flush.
+
+And a claim on `metastore: memory` warns **once at boot**: every replica wins
+its own, so everything looks right and nothing coordinates.
+
+### Fixed: the metastore was validated for one sink and opened for all
+
+`metastoreFor` opens one per stream whatever the sink; the validation lived
+behind `if s.Type == SinkAutoTable`. A direct `bigquery` stream naming redis
+with no `addr_from` started happily and coordinated with nobody. It never bit,
+because the metastore only ever served `auto_table` — the claim is what makes
+it load-bearing for every stream.
+
+### What measuring found that the proposal did not say
+
+The claim's key is wall-clock and the **timer was not**. Each replica counted
+`every` from its own arm, so they contested different windows: 8 load jobs
+became 6 with the split 4/2 — coordination happening, but not one per window.
+
+With the timer aligned to the boundary, every replica wakes at the same instant
+and asks for the same key: **one delivery per window across six windows, no
+window with two.** Verified against two real gateways and one Redis.
+
+And the claim gives **exclusivity, not fairness** — a real run measured 4 wins
+to 1. `max_age` is what stops the unlucky replica starving.
+
+Fail-open verified by killing Redis mid-run: 40 of 40 events landed, nothing
+held, deliveries returning to the uncoordinated rate. The coordination is lost;
+the data is not.
+
+[issue #36]: https://github.com/AreteAcademy/brevis/issues/36
+
+---
+
 ## [0.13.2] — 2026-09-26
 
 ### Fixed: `ttl: 0` — the value the docs named — did not parse

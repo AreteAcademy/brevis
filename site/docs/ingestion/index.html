@@ -253,6 +253,9 @@ streams:
 <p>Medido com duas réplicas e um Redis, janelas de 5s: <strong>8 load jobs viraram 6, uma por janela, alternando 3/3</strong> — nenhuma janela com duas.</p>
 <p><strong>Precisa de backend compartilhado.</strong> Com <code>memory</code> cada réplica ganha o próprio claim e nada coordena. E <strong>exige <code>max_age</code></strong>, que o config recusa sem: o claim transforma <code>every</code> em alvo, e alvo sem teto é latência sem limite.</p>
 <p><strong>Metastore fora do ar descarrega assim mesmo.</strong> Perder coordenação custa load jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma corrida: 40 de 40 eventos pousaram, zero segurados.</p>
+<p><strong><code>outcome="unreachable"</code> é o que merece alerta.</strong> O backend não pôde ser consultado, então o claim falhou aberto: a coordenação está desligada e os load jobs voltaram a multiplicar por contagem de réplica — em silêncio, porque todo flush continua parecendo um flush.</p>
+<p>E o claim dá <strong>exclusividade, não justiça</strong>: quem pede primeiro vence. Uma corrida real com duas réplicas mediu 4/1, não uma divisão par. É o <code>max_age</code> que impede a azarada de passar fome.</p>
+<p>Com <code>claim: true</code> e <code>metastore: memory</code>, o gateway avisa <strong>uma vez no boot</strong>: cada réplica vence o próprio claim, então tudo parece certo e nada coordena.</p>
 <h3 id="every-e-um-alvo-max-age-e-uma-promessa"><code>every</code> é um alvo; <code>max_age</code> é uma promessa<a class="anchor" href="#every-e-um-alvo-max-age-e-uma-promessa" aria-label="link">#</a></h3>
 <p>Os três gatilhos acima decidem quando um lote <strong>tenta</strong> sair. O <code>max_age</code> decide quando ele sai <strong>de qualquer jeito</strong>.</p>
 <p>Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o relógio do flush deixar de ser por processo: <code>buffer.flush.every</code> é um <code>time.AfterFunc</code> em cada réplica, então o número de load jobs que uma tabela recebe é função da <strong>contagem de réplicas</strong>, não do tráfego — <code>réplicas × 86400 / every</code>. No BigQuery, com 1.500 por tabela por dia, <strong>duas réplicas a 60s já são 192% da cota</strong>.</p>
@@ -336,6 +339,7 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito
@@ -346,6 +350,7 @@ brevis_gateway_queue_batches{stream}                    gauge"><div class="code-
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito

@@ -158,6 +158,18 @@ transforma `every` em alvo, e alvo sem teto é latência sem limite.
 jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma
 corrida: 40 de 40 eventos pousaram, zero segurados.
 
+**`outcome="unreachable"` é o que merece alerta.** O backend não pôde ser
+consultado, então o claim falhou aberto: a coordenação está desligada e os load
+jobs voltaram a multiplicar por contagem de réplica — em silêncio, porque todo
+flush continua parecendo um flush.
+
+E o claim dá **exclusividade, não justiça**: quem pede primeiro vence. Uma
+corrida real com duas réplicas mediu 4/1, não uma divisão par. É o `max_age` que
+impede a azarada de passar fome.
+
+Com `claim: true` e `metastore: memory`, o gateway avisa **uma vez no boot**:
+cada réplica vence o próprio claim, então tudo parece certo e nada coordena.
+
 ### `every` é um alvo; `max_age` é uma promessa
 
 Os três gatilhos acima decidem quando um lote **tenta** sair. O `max_age` decide
@@ -315,6 +327,7 @@ brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito

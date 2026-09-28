@@ -3,6 +3,8 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"testing"
@@ -1058,5 +1060,159 @@ func TestWithAClaimTheTimerWakesOnTheBoundary(t *testing.T) {
 	p.oldest = at("2026-09-27T12:00:02Z").Add(-9 * time.Second)
 	if got := p.deadline(); got != time.Second {
 		t.Errorf("the boundary beat the ceiling: %s, want 1s", got)
+	}
+}
+
+// --- seeing the claim work, and seeing it not (issue #36, slice 5) ---------
+
+// Four outcomes, and each is a different operational fact.
+//
+// A yield is NOT a flush, so it does not go in `flushes_total` -- that
+// counter's sum means "batches handed to the pool" and folding a
+// non-delivery into it would end that. Its own series, with the reason.
+//
+// The one worth an alert is `unreachable`: the claim failed open, so
+// coordination is silently not happening and the load jobs are multiplying by
+// replica count again. A feature whose failure mode is silent, shipped without
+// the way to see it is silent, is the shape of issue #33.
+func TestEveryWindowOutcomeIsCounted(t *testing.T) {
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	build := func(meta Metastore, maxAge time.Duration) *pipe {
+		p := newPipe(Stream{
+			Name: "s",
+			Buffer: Buffer{Queue: 1, Workers: 0, MaxRecords: 100, Flush: Flush{
+				Every: time.Minute, Records: 1_000_000,
+				Claim: true, MaxAge: Duration(maxAge),
+			}},
+		}, nil, nil, nil, 1<<20, NewMetrics(), meta)
+		p.gateway = "g"
+		p.now = func() time.Time { return base }
+		return p
+	}
+
+	read := func(p *pipe, outcome string) int64 {
+		var b strings.Builder
+		if err := p.metrics.Render(&b); err != nil {
+			t.Fatal(err)
+		}
+		for _, line := range strings.Split(b.String(), "\n") {
+			if strings.Contains(line, MetricWindows) && strings.Contains(line, `outcome="`+outcome+`"`) {
+				f := strings.Fields(line)
+				var n int64
+				_, _ = fmt.Sscan(f[len(f)-1], &n)
+				return n
+			}
+		}
+		return 0
+	}
+
+	// Won: took the claim.
+	shared := NewMemoryMetastore()
+	won := build(shared, time.Hour)
+	if !won.winsTheWindow() {
+		t.Fatal("the first asker lost an empty backend")
+	}
+	if n := read(won, "won"); n != 1 {
+		t.Errorf(`outcome="won" = %d, want 1`, n)
+	}
+
+	// Yielded: somebody else has this window.
+	lost := build(shared, time.Hour)
+	if lost.winsTheWindow() {
+		t.Fatal("the second asker won a claimed window")
+	}
+	if n := read(lost, "yielded"); n != 1 {
+		t.Errorf(`outcome="yielded" = %d, want 1`, n)
+	}
+
+	// Unreachable: won by failing open. Coordination is OFF and this is the
+	// only thing that says so.
+	down := build(brokenMetastore{}, time.Hour)
+	if !down.winsTheWindow() {
+		t.Fatal("a broken backend held the batch")
+	}
+	if n := read(down, "unreachable"); n != 1 {
+		t.Errorf(`outcome="unreachable" = %d, want 1 -- without it, a metastore `+
+			`that is down looks exactly like one that is working`, n)
+	}
+
+	// Ceiling: won without asking because max_age closed. Not coordinated,
+	// and correct.
+	ceiling := build(refusingMetastore{}, 10*time.Second)
+	ceiling.oldest = base.Add(-time.Minute)
+	if !ceiling.winsTheWindow() {
+		t.Fatal("the ceiling was deferred by a claim")
+	}
+	if n := read(ceiling, "ceiling"); n != 1 {
+		t.Errorf(`outcome="ceiling" = %d, want 1`, n)
+	}
+
+	// And a stream with no claim counts nothing here at all: the series would
+	// be noise on every deployment that never turned this on.
+	off := newPipe(Stream{Name: "s", Buffer: Buffer{Queue: 1, Flush: Flush{Every: time.Minute}}},
+		nil, nil, nil, 1<<20, NewMetrics(), shared)
+	_ = off.winsTheWindow()
+	var b strings.Builder
+	if err := off.metrics.Render(&b); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(b.String(), MetricWindows) {
+		t.Error("a stream with no claim published window outcomes")
+	}
+}
+
+// A claim on `memory` coordinates nothing, and the gateway says so at boot.
+//
+// It is the quietest possible misconfiguration: every flush succeeds, every
+// number looks right, and the load jobs multiply by replica count exactly as
+// they did before — because each replica wins its own claim. The window
+// counter would show `won` every time and never `yielded`, which reads as "no
+// contention" rather than "no coordination".
+//
+// Once per stream at startup, not per flush: a line per window would be a log
+// nobody reads and a cost per batch.
+func TestAClaimOnMemorySaysSoAtBoot(t *testing.T) {
+	line := func(claim bool, kind string) string {
+		var b strings.Builder
+		cfg := &Config{
+			Name: "g", Listen: Listen{Addr: ":0"},
+			Streams: []Stream{{
+				Name: "s", Path: "/v1/x",
+				Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+				Buffer: Buffer{Flush: Flush{
+					Every: time.Minute, Records: 1,
+					Claim: claim, MaxAge: Duration(time.Hour),
+				}},
+				Sink:       Sink{Type: "fake", Metastore: MetastoreConfig{Type: kind}},
+				DeadLetter: Sink{Type: "fake"},
+			}},
+		}
+		if err := cfg.check(); err != nil {
+			t.Fatal(err)
+		}
+		sinks := NewSinks()
+		sinks.MustRegister("fake", func(Build) (Sinker, error) { return nowhereSink{}, nil })
+
+		// The gateway logs through slog's default, so the test swaps it
+		// rather than the gateway growing a WithLogger that exists for this
+		// assertion and nothing else.
+		prev := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&b, &slog.HandlerOptions{Level: slog.LevelWarn})))
+		defer slog.SetDefault(prev)
+
+		srv, err := New(cfg, nil, WithSinks(sinks))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = srv.Close(context.Background())
+		return b.String()
+	}
+
+	if got := line(true, MetastoreMemory); !strings.Contains(got, "coordinates nothing") {
+		t.Errorf("a claim on memory said nothing at boot:\n%s", got)
+	}
+	if got := line(false, MetastoreMemory); strings.Contains(got, "coordinates nothing") {
+		t.Errorf("a stream with no claim was warned about memory:\n%s", got)
 	}
 }

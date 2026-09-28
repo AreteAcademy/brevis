@@ -170,6 +170,25 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 
 		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics, meta)
 		p.gateway = cfg.Name
+
+		// The quietest possible misconfiguration, said once, where somebody
+		// is watching.
+		//
+		// A claim on `memory` succeeds every time -- each replica wins its own
+		// -- so every flush looks right and the load jobs multiply by replica
+		// count exactly as they did before. The window counter would read
+		// `won` forever and never `yielded`, which looks like no contention
+		// rather than no coordination.
+		//
+		// Once per stream at boot and not per flush: a line per window is a
+		// log nobody reads and a cost per batch.
+		if st.Buffer.Flush.Claim && st.Sink.Metastore.Type == MetastoreMemory {
+			slog.Warn("the flush claim is on and this stream's metastore is "+
+				"`memory`, which coordinates nothing: every replica wins its own "+
+				"claim, so the load jobs still multiply by replica count. Point "+
+				"it at redis or memcached",
+				"stream", st.Name, "metastore", MetastoreMemory)
+		}
 		// Resolved once, at startup: a type assertion per event to discover
 		// something that cannot change is work done 500 times a second for an
 		// answer fixed at build time.
@@ -875,6 +894,7 @@ func (p *pipe) winsTheWindow() bool {
 		return true
 	}
 	if p.deadline() <= 0 {
+		p.metrics.count(p.metrics.windows, 1, p.stream.Name, CeilingWindow)
 		return true
 	}
 
@@ -886,8 +906,16 @@ func (p *pipe) winsTheWindow() bool {
 	defer cancel()
 	got, err := p.meta.Claim(ctx, key, every)
 	if err != nil {
+		// Coordination is off and every flush still looks like a flush, so
+		// this counter is the only thing that says so.
+		p.metrics.count(p.metrics.windows, 1, p.stream.Name, UnreachableWindow)
 		return true
 	}
+	outcome := YieldedWindow
+	if got {
+		outcome = WonWindow
+	}
+	p.metrics.count(p.metrics.windows, 1, p.stream.Name, outcome)
 	return got
 }
 

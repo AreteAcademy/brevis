@@ -369,7 +369,20 @@ streams:
         # target with no ceiling is latency with nothing bounding it.
         #
         # A metastore that is unreachable flushes anyway. Losing coordination
-        # costs load jobs; refusing to flush holds data. Issue #36.
+        # costs load jobs; refusing to flush holds data.
+        #
+        # Watch brevis_gateway_flush_windows_total{outcome}:
+        #
+        #   won | yielded     the feature working -- one flushes, the rest fill
+        #   ceiling           max_age did it, not the target
+        #   unreachable       ALERT. The backend could not be asked, so the
+        #                     claim failed open and the jobs are multiplying by
+        #                     replica count again -- silently, because every
+        #                     flush still looks like a flush
+        #
+        # The claim gives EXCLUSIVITY, not fairness: whoever asks first wins,
+        # and a real two-replica run measured 4/1 rather than an even split.
+        # `max_age` is what stops the unlucky one starving. Issue #36.
         claim: true
       max_bytes: 1GiB
 
