@@ -36,3 +36,8 @@ __pycache__/
 /lib/python-context/dist/
 /lib/python-context/.venv/
 /lib/python-context/uv.lock
+
+# bench/run.sh with a local build writes the stream's dead letter here.
+# Nothing should ever land in it: if something does, that IS the benchmark's
+# finding, and the report says so from the gateway's own counter.
+/dead-letter/

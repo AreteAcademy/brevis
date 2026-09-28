@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -426,6 +425,9 @@ type pipe struct {
 	held  int
 	bytes int64
 
+	// gen numbers the enqueues, and pairs with bucket.mark.
+	gen uint64
+
 	// now is a field so a test can move the clock. The router has one for the
 	// same reason.
 	now func() time.Time
@@ -444,6 +446,17 @@ type bucket struct {
 	sizes  []int64
 	bytes  int64
 	oldest time.Time
+
+	// mark is the enqueue that last touched this bucket, so collecting the
+	// keys one request filled costs a comparison per event rather than a
+	// scan of the ones already collected.
+	//
+	// By construction rather than by measurement: the scan was O(tables in
+	// this body), which grows with exactly the thing this feature exists to
+	// support, and the machine this was written on could not resolve the
+	// difference -- its run-to-run spread on the same binary is wider than
+	// the effect.
+	mark uint64
 }
 
 // deadline is how long the timer should wait: the earlier of the target and
@@ -674,7 +687,16 @@ type prepared struct {
 func (p *pipe) prepare(events []arrival) prepared {
 	out := make([]sdk.Envelope, 0, len(events))
 	sizes := make([]int64, 0, len(events))
-	keys := make([]string, 0, len(events))
+
+	// Only where there IS a key. A sink without a Measurer routes everywhere
+	// the same, so a slice of empty strings would be an allocation and a
+	// write per event to say nothing -- and most streams have one
+	// destination. An empty `keys` means one bucket, which is what those
+	// streams had before buckets existed.
+	var keys []string
+	if p.measure != nil {
+		keys = make([]string, 0, len(events))
+	}
 	var rejected []string
 	var archived int
 
@@ -741,7 +763,9 @@ func (p *pipe) prepare(events []arrival) prepared {
 		}
 		out = append(out, env)
 		sizes = append(sizes, int64(a.bytes))
-		keys = append(keys, key)
+		if keys != nil {
+			keys = append(keys, key)
+		}
 	}
 	return prepared{events: out, sizes: sizes, keys: keys, rejected: rejected, archived: archived}
 }
@@ -877,18 +901,36 @@ func (p *pipe) enqueue(in prepared) error {
 	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
 		return errSaturated
 	}
+	p.gen++
 	touched := make([]string, 0, 4)
+
+	// last is the bucket the previous event went to. A request carries rows
+	// for one table far more often than not -- and a sink with no routing key
+	// carries "" for all of them -- so the common body costs ONE map lookup
+	// rather than one per event.
+	var last *bucket
+	lastKey := ""
+	haveLast := false
+
 	for i, env := range envs {
-		key := keys[i]
-		b := p.buckets[key]
-		if b == nil {
-			b = &bucket{}
-			p.buckets[key] = b
-			// The bucket goes from absent to held, so this is the moment its
-			// wait starts counting from.
-			b.oldest = p.clock()
-			touched = append(touched, key)
-		} else if !slices.Contains(touched, key) {
+		key := ""
+		if keys != nil {
+			key = keys[i]
+		}
+		b := last
+		if !haveLast || key != lastKey {
+			b = p.buckets[key]
+			if b == nil {
+				b = &bucket{}
+				p.buckets[key] = b
+				// The bucket goes from absent to held, so this is the moment
+				// its wait starts counting from.
+				b.oldest = p.clock()
+			}
+			last, lastKey, haveLast = b, key, true
+		}
+		if b.mark != p.gen {
+			b.mark = p.gen
 			touched = append(touched, key)
 		}
 		b.batch = append(b.batch, env)
