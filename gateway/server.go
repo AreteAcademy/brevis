@@ -1017,21 +1017,13 @@ func (p *pipe) flush() {
 	if len(p.buckets) == 0 {
 		return
 	}
-	if !p.winsTheWindow() {
-		// Somebody else is flushing this window. Keep filling and come back:
-		// arm() recomputes the deadline against the ceiling, so a bucket that
-		// keeps losing gets a shorter wait each time until max_age takes it.
-		p.arm()
-		return
-	}
-
 	// Only the buckets that have actually waited. The alarm was set by the
 	// earliest one; the others are still inside their own target and go on
 	// filling, which is the difference between a table's cadence and its
 	// neighbour's.
 	//
 	// Sorted, so a window that takes several produces the same sequence every
-	// time.
+	// time -- and so the claim asks for them in one order across replicas.
 	due := make([]string, 0, len(p.buckets))
 	for key, b := range p.buckets {
 		if p.due(b) {
@@ -1039,7 +1031,11 @@ func (p *pipe) flush() {
 		}
 	}
 	sort.Strings(due)
-	for _, key := range due {
+
+	// Whoever lost keeps filling and comes back: arm() recomputes the
+	// deadline against the ceiling, so a bucket that keeps losing gets a
+	// shorter wait each time until max_age takes it.
+	for _, key := range p.winners(due) {
 		p.handoff(key, TriggerTime)
 	}
 	p.arm()
@@ -1066,34 +1062,117 @@ func (p *pipe) flush() {
 // claim were ours, which is the direction claimDDL already chose. Losing
 // coordination costs load jobs; refusing to flush holds data, and the buffer
 // exists to not do that.
-func (p *pipe) winsTheWindow() bool {
-	if !p.stream.Buffer.Flush.Claim || p.meta == nil {
-		return true
-	}
-	if p.next() <= 0 {
-		p.metrics.count(p.metrics.windows, 1, p.stream.Name, CeilingWindow)
-		return true
+func (p *pipe) winners(due []string) []string {
+	if !p.stream.Buffer.Flush.Claim || p.meta == nil || len(due) == 0 {
+		return due
 	}
 
 	every := p.stream.Buffer.Flush.Every
 	window := p.clock().UTC().Truncate(every).Format(time.RFC3339)
-	key := "brevis:gw:" + p.gateway + ":" + p.stream.Name + ":flush:" + window
 
+	won := make([]string, 0, len(due))
+	ask := make([]string, 0, len(due))
+	keys := make([]string, 0, len(due))
+	for _, key := range due {
+		// The ceiling has closed for this bucket, so it leaves whatever
+		// anybody else is doing. `max_age` is a promise, and a promise that
+		// can be deferred is not one.
+		if p.deadline(p.buckets[key]) <= 0 {
+			p.metrics.count(p.metrics.windows, 1, p.stream.Name, CeilingWindow)
+			won = append(won, key)
+			continue
+		}
+		ask = append(ask, key)
+		keys = append(keys, p.claimKey(key, window))
+	}
+	if len(ask) == 0 {
+		return won
+	}
+
+	// ONE call for all of them where the backend can. Slice 0 measured 94
+	// sequential claims at 2.589s of held mutex against a Redis at 25ms RTT,
+	// and admission's p99 tracked that 1:1 -- `enqueue` takes `p.mu`
+	// unconditionally, so every request arriving in the window pays the whole
+	// of it. Pipelined the same 94 cost 29.8ms, which is what ONE claim costs
+	// today.
 	ctx, cancel := context.WithTimeout(context.Background(), claimTimeout)
 	defer cancel()
-	got, err := p.meta.Claim(ctx, key, every)
+	got, err := claimAll(ctx, p.meta, keys, every)
 	if err != nil {
 		// Coordination is off and every flush still looks like a flush, so
-		// this counter is the only thing that says so.
-		p.metrics.count(p.metrics.windows, 1, p.stream.Name, UnreachableWindow)
-		return true
+		// this counter is the only thing that says so. Failing OPEN, per key,
+		// for the reason it always did: losing coordination costs load jobs,
+		// and refusing to flush holds events already answered 202.
+		for range ask {
+			p.metrics.count(p.metrics.windows, 1, p.stream.Name, UnreachableWindow)
+		}
+		return append(won, ask...)
 	}
-	outcome := YieldedWindow
-	if got {
-		outcome = WonWindow
+	for i, key := range ask {
+		outcome := YieldedWindow
+		if got[i] {
+			outcome = WonWindow
+			won = append(won, key)
+		}
+		p.metrics.count(p.metrics.windows, 1, p.stream.Name, outcome)
 	}
-	p.metrics.count(p.metrics.windows, 1, p.stream.Name, outcome)
-	return got
+	return won
+}
+
+// claimKey names the window ONE bucket is contesting.
+//
+// The routing key is in it, because without it two tables on one stream
+// contest the same window: whichever reaches the boundary first takes it and
+// the other waits, so one table's cadence is another's -- which is issue #38
+// again, one level below where it was found. Two replicas behind a load
+// balancer do not hold the same tables, and with N replicas a table can wait
+// N windows for a claim it never wanted.
+//
+// A stream with no routing key keeps the key it had, exactly: a deployment
+// upgrading into this must not find its replicas contesting a window that
+// moved.
+func (p *pipe) claimKey(key, window string) string {
+	base := "brevis:gw:" + p.gateway + ":" + p.stream.Name
+	if key != "" {
+		base += ":" + key
+	}
+	return base + ":flush:" + window
+}
+
+// BulkClaimer is a metastore that can claim several keys in ONE round trip.
+//
+// Optional, like Admitter and Measurer, and satisfied by structural typing: a
+// store without it is asked one key at a time, which is what every store did
+// before the trigger had keys.
+//
+// It is not a convenience. The claim runs under `p.mu`, so its duration is
+// admission's tail for every request that arrives during it -- and the loop
+// below is the difference between 29.8ms and 2.589s on a Redis at 25ms RTT.
+type BulkClaimer interface {
+	ClaimMany(ctx context.Context, keys []string, ttl time.Duration) ([]bool, error)
+}
+
+func claimAll(ctx context.Context, m Metastore, keys []string, ttl time.Duration) ([]bool, error) {
+	if bulk, ok := m.(BulkClaimer); ok {
+		got, err := bulk.ClaimMany(ctx, keys, ttl)
+		if err != nil {
+			return nil, err
+		}
+		if len(got) != len(keys) {
+			return nil, fmt.Errorf("the metastore answered %d claims for %d keys",
+				len(got), len(keys))
+		}
+		return got, nil
+	}
+	out := make([]bool, len(keys))
+	for i, key := range keys {
+		got, err := m.Claim(ctx, key, ttl)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = got
+	}
+	return out, nil
 }
 
 // claimTimeout bounds the one call the timer path makes to the metastore.

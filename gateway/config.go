@@ -886,21 +886,21 @@ func (s *Stream) check() error {
 			"`every` becomes a target and a replica that keeps losing holds " +
 			"data with nothing bounding it. Declare the ceiling")
 	}
-	if s.Buffer.Flush.Claim && s.Sink.Type == SinkAutoTable {
-		// The trigger is per ROUTING KEY and the claim's key is per STREAM:
-		// `...:<stream>:flush:<window>`. The first bucket to reach the
-		// boundary takes that window and every other table yields, which is
-		// worse than the shared cadence it replaced -- that at least flushed
-		// them together.
+	if s.Buffer.Flush.Claim && s.Sink.Type == SinkAutoTable &&
+		s.Sink.Metastore.Type == MetastoreMemcached {
+		// The trigger is per table, so the claim is too -- and memcached has
+		// no pipelined add, so every table is a round trip. They all run
+		// under the buffer's mutex, where admission pays for each one:
+		// measured at 2.589s of held mutex for 94 keys against a backend at
+		// 25ms RTT, with the request p99 tracking it exactly.
 		//
-		// Refused by name, for the reason `disk` is: accepting it and
-		// behaving differently is how somebody finds out from a row count six
-		// weeks later. It lifts when the claim is per key.
-		return fmt.Errorf("`buffer.flush.claim` is on and this stream's sink is " +
-			"`auto_table`. The flush trigger is per table and the claim is per " +
-			"stream, so one table would take each window and the rest would " +
-			"yield. Turn the claim off, or give this stream a sink with one " +
-			"destination")
+		// Refused rather than failed open. Failing open multiplies the load
+		// jobs by replica count and every flush still looks like a flush,
+		// which is the failure the claim exists to prevent.
+		return fmt.Errorf("`buffer.flush.claim` is on, this stream's sink is " +
+			"`auto_table` and its metastore is `memcached`, which claims one " +
+			"key per round trip. The trigger is per table, so that is one trip " +
+			"per table with the buffer held. Use redis, or turn the claim off")
 	}
 	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
 		// A ceiling below the target means the target never applies, and the

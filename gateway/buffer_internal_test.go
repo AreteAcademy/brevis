@@ -1160,7 +1160,8 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 	// Won: took the claim.
 	shared := NewMemoryMetastore()
 	won := build(shared, time.Hour)
-	if !won.winsTheWindow() {
+	won.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base}
+	if len(won.winners([]string{""})) != 1 {
 		t.Fatal("the first asker lost an empty backend")
 	}
 	if n := read(won, "won"); n != 1 {
@@ -1169,7 +1170,8 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 
 	// Yielded: somebody else has this window.
 	lost := build(shared, time.Hour)
-	if lost.winsTheWindow() {
+	lost.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base}
+	if len(lost.winners([]string{""})) != 0 {
 		t.Fatal("the second asker won a claimed window")
 	}
 	if n := read(lost, "yielded"); n != 1 {
@@ -1179,7 +1181,8 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 	// Unreachable: won by failing open. Coordination is OFF and this is the
 	// only thing that says so.
 	down := build(brokenMetastore{}, time.Hour)
-	if !down.winsTheWindow() {
+	down.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base}
+	if len(down.winners([]string{""})) != 1 {
 		t.Fatal("a broken backend held the batch")
 	}
 	if n := read(down, "unreachable"); n != 1 {
@@ -1191,7 +1194,7 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 	// and correct.
 	ceiling := build(refusingMetastore{}, 10*time.Second)
 	ceiling.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base.Add(-time.Minute)}
-	if !ceiling.winsTheWindow() {
+	if len(ceiling.winners([]string{""})) != 1 {
 		t.Fatal("the ceiling was deferred by a claim")
 	}
 	if n := read(ceiling, "ceiling"); n != 1 {
@@ -1202,7 +1205,8 @@ func TestEveryWindowOutcomeIsCounted(t *testing.T) {
 	// be noise on every deployment that never turned this on.
 	off := newPipe(Stream{Name: "s", Buffer: Buffer{Queue: 1, Flush: Flush{Every: time.Minute}}},
 		nil, nil, nil, 1<<20, NewMetrics(), shared)
-	_ = off.winsTheWindow()
+	off.buckets[""] = &bucket{batch: []sdk.Envelope{{}}, oldest: base}
+	_ = off.winners([]string{""})
 	var b strings.Builder
 	if err := off.metrics.Render(&b); err != nil {
 		t.Fatal(err)
@@ -1524,18 +1528,20 @@ func (s *countingSink) sizes() []int {
 	return append([]int(nil), s.n...)
 }
 
-// The claim and a routing key do not yet agree, and the config says so.
+// The claim and a routing key now agree, except on memcached.
 //
-// The claim's key is per STREAM: `...:<stream>:flush:<window>`. With triggers
-// per routing key the first bucket to reach the boundary takes that window and
-// the other ninety-three yield -- strictly worse than one shared cadence,
-// which at least flushed them together.
+// Slice 1 refused the pair outright: the claim was keyed on the stream, so
+// one table would take each window and the rest would yield. The claim is
+// per key now and the refusal goes with it.
 //
-// Refused by name rather than accepted and quietly behaving differently. The
-// claim returns with a per-key claim; until then the two are named as the pair
-// that does not work.
-func TestTheClaimAndARoutingKeyAreRefusedTogether(t *testing.T) {
-	stream := func(sink string) Stream {
+// Memcached is the exception, and it is a measurement rather than a taste:
+// it has no pipelined add, so N tables cost N round trips -- all of them
+// under the buffer's mutex, where admission pays for every millisecond. The
+// alternative is failing open on the 500ms budget and multiplying the load
+// jobs by replica count silently, which is the quietest possible
+// misconfiguration and exactly what the claim exists to prevent.
+func TestTheClaimNeedsABulkMetastoreForARoutingKey(t *testing.T) {
+	stream := func(sink, store string) Stream {
 		return Stream{
 			Name: "s", Path: "/s", Format: FormatJSON,
 			Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
@@ -1547,29 +1553,38 @@ func TestTheClaimAndARoutingKeyAreRefusedTogether(t *testing.T) {
 				Type: sink, Shape: "columns", Naming: Naming{Allow: []string{"*"}},
 				Into:    &Sink{Type: SinkPostgres, DSNFrom: "DSN", Write: "append"},
 				DSNFrom: "DSN", Table: "landing.t", Write: "append",
+				Metastore: MetastoreConfig{Type: store, AddrFrom: "ADDR"},
 			},
 			DeadLetter: Sink{Type: SinkPostgres, DSNFrom: "DSN", Table: "landing.d", Write: "append"},
 		}
 	}
 
-	auto := stream(SinkAutoTable)
-	err := auto.check()
-	if err == nil {
-		t.Fatal("`flush.claim` with `auto_table` was accepted: the claim is per " +
-			"stream and the trigger is now per table, so one bucket takes the " +
-			"window and the rest yield")
+	// The pair slice 1 refused, now allowed.
+	auto := stream(SinkAutoTable, MetastoreRedis)
+	if err := auto.check(); err != nil {
+		t.Errorf("`flush.claim` with `auto_table` on redis was refused, and the "+
+			"per-key claim is what makes it work: %v", err)
 	}
-	for _, want := range []string{"claim", "auto_table"} {
+
+	// Memcached cannot do it in one trip, and says so.
+	mc := stream(SinkAutoTable, MetastoreMemcached)
+	err := mc.check()
+	if err == nil {
+		t.Fatal("`flush.claim` with `auto_table` on memcached was accepted: " +
+			"every table is a round trip and they all hold the buffer's mutex")
+	}
+	for _, want := range []string{"claim", "memcached"} {
 		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %q, so nobody can act on it: %v", want, err)
+			t.Errorf("the refusal does not name %q: %v", want, err)
 		}
 	}
 
-	// And a stream with no routing key keeps the claim exactly as it was.
-	plain := stream(SinkPostgres)
+	// And a stream with no routing key is fine on memcached: one key, one
+	// trip, which is what it always was.
+	plain := stream(SinkPostgres, MetastoreMemcached)
 	if err := plain.check(); err != nil {
-		t.Errorf("`flush.claim` was refused for a sink with no routing key, "+
-			"which is the case it was built for: %v", err)
+		t.Errorf("a keyless stream was refused memcached, which is the case it "+
+			"has always served: %v", err)
 	}
 }
 
@@ -1614,5 +1629,217 @@ func TestTheTimerTakesOnlyWhatIsDue(t *testing.T) {
 	}
 	if err := p.close(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The claim follows the key, because a per-stream claim couples the tables
+// again -- one level further down than issue #38 found them.
+//
+// Two replicas behind a load balancer do not hold the same tables: whichever
+// producer hit which pod decides. Replica A holds `clicks`, replica B holds
+// `orders`. With ONE claim for the stream, A wins the window and B yields --
+// so `orders` waits a whole window for a claim `clicks` took, and with N
+// replicas it can wait N of them. `max_age` bounds that, which is not the
+// same as it not happening.
+//
+// Per key they claim different things and both leave. Slice 1 refused the
+// pair for this; this is the reason going away.
+func TestTheClaimIsPerKeyNotPerStream(t *testing.T) {
+	shared := NewMemoryMetastore()
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	replica := func() *pipe {
+		p := newPipe(Stream{
+			Name: "s",
+			Buffer: Buffer{Queue: 8, Workers: 0, MaxRecords: 100, Flush: Flush{
+				Every: time.Minute, Records: 1_000_000,
+				Claim: true, MaxAge: Duration(time.Hour),
+			}},
+		}, nil, nil, nil, 1<<20, NewMetrics(), shared)
+		p.gateway = "g"
+		p.now = func() time.Time { return base }
+		return p
+	}
+
+	a, b := replica(), replica()
+	for _, c := range []struct {
+		p     *pipe
+		table string
+	}{{a, "clicks"}, {b, "orders"}} {
+		if err := c.p.enqueue(prepared{
+			events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{c.table},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	a.flush()
+	b.flush()
+
+	for _, c := range []struct {
+		p     *pipe
+		table string
+	}{{a, "clicks"}, {b, "orders"}} {
+		c.p.mu.Lock()
+		_, held := c.p.buckets[c.table]
+		c.p.mu.Unlock()
+		if held {
+			t.Errorf("%s was still held: the replica that has it lost the "+
+				"window to a replica holding a different table, so one table's "+
+				"cadence is still another's", c.table)
+		}
+	}
+}
+
+// And the same stream with no routing key still gets exactly one flush per
+// window however many replicas hold it -- issue #36, unchanged.
+func TestTheKeylessClaimIsUnchanged(t *testing.T) {
+	shared := NewMemoryMetastore()
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	replica := func() *pipe {
+		p := newPipe(Stream{
+			Name: "s",
+			Buffer: Buffer{Queue: 4, Workers: 0, MaxRecords: 100, Flush: Flush{
+				Every: time.Minute, Records: 1_000_000,
+				Claim: true, MaxAge: Duration(time.Hour),
+			}},
+		}, nil, nil, nil, 1<<20, NewMetrics(), shared)
+		p.gateway = "g"
+		p.now = func() time.Time { return base }
+		return p
+	}
+
+	flushed := 0
+	for _, p := range []*pipe{replica(), replica(), replica()} {
+		if err := p.enqueue(prepared{
+			events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{""},
+		}); err != nil {
+			t.Fatal(err)
+		}
+		p.flush()
+		p.mu.Lock()
+		if len(p.buckets) == 0 {
+			flushed++
+		}
+		p.mu.Unlock()
+	}
+	if flushed != 1 {
+		t.Errorf("%d of 3 keyless replicas flushed one window, want 1", flushed)
+	}
+}
+
+// bulkStore counts round trips, so "one call for ninety-four keys" is a fact
+// and not a hope. Slice 0 measured 94 sequential claims at 2.589s of held
+// mutex against a Redis at 25ms RTT, and 29.8ms pipelined -- the same as ONE
+// claim costs today.
+type bulkStore struct {
+	Metastore
+	mu    sync.Mutex
+	trips int
+	seen  []string
+}
+
+func (s *bulkStore) ClaimMany(ctx context.Context, keys []string, ttl time.Duration) ([]bool, error) {
+	s.mu.Lock()
+	s.trips++
+	s.seen = append(s.seen, keys...)
+	s.mu.Unlock()
+	out := make([]bool, len(keys))
+	for i, k := range keys {
+		got, err := s.Claim(ctx, k, ttl)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = got
+	}
+	return out, nil
+}
+
+// A metastore that can claim in bulk is asked ONCE, however many tables are
+// due.
+//
+// This is the whole finding of slice 0: the objection to a per-key claim was
+// 94 round trips holding `p.mu`, and a pipeline makes it one. Sequential, the
+// admission p99 tracked the hold time 1:1 -- 2.589s at 25ms RTT.
+func TestABulkMetastoreIsAskedOnce(t *testing.T) {
+	store := &bulkStore{Metastore: NewMemoryMetastore()}
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+
+	p := newPipe(Stream{
+		Name: "s",
+		Buffer: Buffer{Queue: 32, Workers: 0, MaxRecords: 1000, Flush: Flush{
+			Every: time.Minute, Records: 1_000_000,
+			Claim: true, MaxAge: Duration(time.Hour),
+		}},
+	}, nil, nil, nil, 1<<20, NewMetrics(), store)
+	p.gateway = "g"
+	p.now = func() time.Time { return base }
+
+	for i := range 20 {
+		if err := p.enqueue(prepared{
+			events: []sdk.Envelope{{}}, sizes: []int64{1},
+			keys: []string{fmt.Sprintf("t%02d", i)},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p.flush()
+
+	store.mu.Lock()
+	trips, seen := store.trips, len(store.seen)
+	store.mu.Unlock()
+	if trips != 1 {
+		t.Errorf("%d round trips for 20 tables, want 1 -- sequential claims hold "+
+			"`p.mu` for their whole duration, and admission pays every "+
+			"millisecond of it", trips)
+	}
+	if seen != 20 {
+		t.Errorf("the one call carried %d keys, want 20", seen)
+	}
+}
+
+// An unreachable metastore fails OPEN, per key.
+//
+// Losing coordination costs load jobs; refusing to flush holds data that was
+// already answered 202. The direction was chosen when the claim landed and it
+// does not change because the key did.
+func TestAnUnreachableMetastoreLetsEveryKeyThrough(t *testing.T) {
+	base := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	p := newPipe(Stream{
+		Name: "s",
+		Buffer: Buffer{Queue: 8, Workers: 0, MaxRecords: 100, Flush: Flush{
+			Every: time.Minute, Records: 1_000_000,
+			Claim: true, MaxAge: Duration(time.Hour),
+		}},
+	}, nil, nil, nil, 1<<20, NewMetrics(), brokenMetastore{})
+	p.gateway = "g"
+	p.now = func() time.Time { return base }
+
+	for _, table := range []string{"a", "b", "c"} {
+		if err := p.enqueue(prepared{
+			events: []sdk.Envelope{{}}, sizes: []int64{1}, keys: []string{table},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p.flush()
+
+	p.mu.Lock()
+	held := len(p.buckets)
+	p.mu.Unlock()
+	if held != 0 {
+		t.Errorf("%d buckets held after an unreachable metastore, want 0 -- "+
+			"refusing to flush holds events somebody was already told were "+
+			"accepted", held)
+	}
+
+	var b strings.Builder
+	if err := p.metrics.Render(&b); err != nil {
+		t.Fatal(err)
+	}
+	if n := strings.Count(b.String(), UnreachableWindow); n == 0 {
+		t.Error("an unreachable metastore was not counted, so a claim that " +
+			"coordinates nothing looks exactly like one that works")
 	}
 }

@@ -384,13 +384,12 @@ streams:
         # and a real two-replica run measured 4/1 rather than an even split.
         # `max_age` is what stops the unlucky one starving. Issue #36.
         #
-        # OFF on this stream, and REFUSED if you turn it on, because the sink
-        # is `auto_table`: the flush trigger is now per table (issue #38) and
-        # the claim's key is still per stream, so the first table to reach the
-        # boundary would take that window and every other table would yield.
-        # It returns when the claim is per key. A stream with one destination
-        # can turn it on today.
-        claim: false
+        # The claim's key carries the TABLE, because the flush trigger does
+        # (issue #38): two replicas behind a load balancer do not hold the
+        # same tables, and one claim for the stream would make one table's
+        # cadence another's. On `memcached` this combination is refused --
+        # it claims one key per round trip, and the trigger is per table.
+        claim: true
       max_bytes: 1GiB
 
     sink:

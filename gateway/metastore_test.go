@@ -360,3 +360,76 @@ func TestIntegrationTwoReplicasBothLand(t *testing.T) {
 		t.Errorf("novo_campo exists %s times", cols[0])
 	}
 }
+
+// A bulk claim answers per key, in order, against the real backend.
+//
+// The unit tests use a double, so the pipeline itself -- writing N commands
+// and reading N results back -- is only exercised here. The failure it guards
+// is the quiet one: results read in the wrong order would hand a table a
+// window another table won, and every flush would still look like a flush.
+func TestABulkClaimAnswersPerKeyInOrder(t *testing.T) {
+	for _, b := range backends(t) {
+		t.Run(b.name, func(t *testing.T) {
+			m := b.open(t)
+			bulk, ok := m.(gateway.BulkClaimer)
+			if !ok {
+				if b.name == redis.Name {
+					t.Fatal("the redis metastore does not implement BulkClaimer, " +
+						"so a per-key claim falls back to one round trip per " +
+						"table with the buffer's mutex held")
+				}
+				t.Skipf("%s claims one key at a time, which is the fallback", b.name)
+			}
+
+			ctx := context.Background()
+			stamp := time.Now().UnixNano()
+			key := func(i int) string {
+				return fmt.Sprintf("brevis:test:bulk:%d:%d", stamp, i)
+			}
+
+			// Take the EVEN keys first, one at a time.
+			for i := 0; i < 8; i += 2 {
+				got, err := m.Claim(ctx, key(i), time.Minute)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !got {
+					t.Fatalf("key %d was already claimed", i)
+				}
+			}
+
+			// Now ask for all eight at once: the odd ones are free, the even
+			// ones are not, and the answers have to line up with the keys.
+			keys := make([]string, 8)
+			for i := range keys {
+				keys[i] = key(i)
+			}
+			got, err := bulk.ClaimMany(ctx, keys, time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != len(keys) {
+				t.Fatalf("%d answers for %d keys", len(got), len(keys))
+			}
+			for i, won := range got {
+				want := i%2 == 1
+				if won != want {
+					t.Errorf("key %d: won=%v, want %v -- the answers do not line "+
+						"up with the keys, so a table can be handed a window "+
+						"another table took", i, won, want)
+				}
+			}
+
+			// And nothing is left to win.
+			again, err := bulk.ClaimMany(ctx, keys, time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, won := range again {
+				if won {
+					t.Errorf("key %d was won twice in the same window", i)
+				}
+			}
+		})
+	}
+}
