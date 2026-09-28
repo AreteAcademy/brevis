@@ -189,6 +189,27 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 				"it at redis or memcached",
 				"stream", st.Name, "metastore", MetastoreMemory)
 		}
+
+		// The load-job budget, said once where somebody is watching.
+		//
+		// `check` already refuses a window too small to hold the quota -- see
+		// BigQueryFlushFloor -- and this is the SAME arithmetic said when the
+		// config passes. They are not the same fact: the smallest window the
+		// gateway permits already spends 1,440 of the 1,500 allowed, so
+		// "it started" is a long way from "it fits".
+		//
+		// Only where a limit is known. A cadence printed for Postgres is a
+		// number with nothing to compare it against, and a boot log full of
+		// those is one nobody reads.
+		//
+		// Once per stream at boot and not per flush, for the reason above it.
+		if every := st.Buffer.Flush.Every; every > 0 && st.Sink.usesBigQuery() {
+			slog.Info("a table with traffic in every window costs one load job per "+
+				"window, and `flush.records` or `flush.size` firing only adds to it",
+				"stream", st.Name, "every", every,
+				"load_jobs_per_table_per_day", int(24*time.Hour/every),
+				"bigquery_allows", BigQueryDailyLoadJobs)
+		}
 		// Resolved once, at startup: a type assertion per event to discover
 		// something that cannot change is work done 500 times a second for an
 		// answer fixed at build time.

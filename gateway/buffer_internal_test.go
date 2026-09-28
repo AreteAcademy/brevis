@@ -1216,3 +1216,94 @@ func TestAClaimOnMemorySaysSoAtBoot(t *testing.T) {
 		t.Errorf("a stream with no claim was warned about memory:\n%s", got)
 	}
 }
+
+// The load-job budget is arithmetic the operator should not have to redo.
+//
+// `flush.every` and BigQuery's 1,500 load jobs per table per day decide
+// whether a cadence fits, and today that conversion happens in somebody's
+// head — or does not happen until a busy day pushes a table over. One line at
+// boot turns a standing maintenance question into a fact read once.
+//
+// Only where a limit is KNOWN. A cadence printed for Postgres is a number with
+// nothing to compare it against, and a boot log that prints those is one
+// nobody reads.
+func TestTheLoadJobBudgetIsSaidAtBoot(t *testing.T) {
+	// `auto_table` requires authentication -- a producer that can name a table
+	// can create one -- so the key has to exist for the config to pass at all.
+	t.Setenv("KEYS", "k")
+
+	boot := func(every time.Duration, into Sink) string {
+		var b strings.Builder
+		cfg := &Config{
+			Name: "g",
+			Listen: Listen{Addr: ":0", Auth: Auth{Type: AuthBearer, KeysFrom: "KEYS"}},
+			Streams: []Stream{{
+				Name: "s", Path: "/s",
+				Identity: Identity{Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "r"},
+				Buffer:   Buffer{Flush: Flush{Every: every, Records: 1}},
+				Sink: Sink{
+					Type:   SinkAutoTable,
+					Shape:  "columns",
+					Naming: Naming{Allow: []string{"*"}},
+					Into:   &into,
+				},
+				DeadLetter: Sink{Type: "fake"},
+			}},
+		}
+		if err := cfg.check(); err != nil {
+			t.Fatal(err)
+		}
+		sinks := NewSinks()
+		sinks.MustRegister("fake", func(Build) (Sinker, error) { return nowhereSink{}, nil })
+
+		prev := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(&b, &slog.HandlerOptions{Level: slog.LevelInfo})))
+		defer slog.SetDefault(prev)
+
+		srv, err := New(cfg, nil, WithSinks(sinks), WithSink("s", nowhereSink{}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = srv.Close(context.Background())
+		return b.String()
+	}
+
+	big := Sink{Type: SinkBigQuery, Project: "p", Dataset: "d", Write: "append"}
+
+	// 86400/120 = 720 windows, and the limit it counts against.
+	got := boot(2*time.Minute, big)
+	for _, want := range []string{"720", "1500"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the boot line is missing %q -- the whole point is that "+
+				"nobody has to do this division:\n%s", want, got)
+		}
+	}
+
+	// The arithmetic, not a constant somebody pasted.
+	if got := boot(time.Minute, big); !strings.Contains(got, "1440") {
+		t.Errorf("every=1m did not say 1440:\n%s", got)
+	}
+	if got := boot(5*time.Minute, big); !strings.Contains(got, "288") {
+		t.Errorf("every=5m did not say 288:\n%s", got)
+	}
+
+	// The floor `check` permits is not a comfortable place to be: 1m is 1,440
+	// of the 1,500 allowed. "It started" and "it fits" are different facts,
+	// and this line is what separates them.
+	if got := boot(BigQueryFlushFloor, big); !strings.Contains(got, "1440") {
+		t.Errorf("the smallest permitted window did not say how close to the "+
+			"quota it lands:\n%s", got)
+	}
+
+	// Named, because an operator with ten streams needs to know which one.
+	if got := boot(2*time.Minute, big); !strings.Contains(got, `stream=s`) {
+		t.Errorf("the budget did not say which stream it belongs to:\n%s", got)
+	}
+
+	// Postgres has no such quota. A number with nothing to compare it against
+	// is noise, and boot logs die of noise.
+	pg := Sink{Type: SinkPostgres, DSNFrom: "DSN", Write: "append"}
+	if got := boot(2*time.Minute, pg); strings.Contains(got, "load job") {
+		t.Errorf("a Postgres destination was given a BigQuery budget:\n%s", got)
+	}
+}

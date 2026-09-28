@@ -691,6 +691,11 @@ const (
 	// window it cannot honour rather than letting the first deploy find out.
 	BigQueryFlushFloor = 60 * time.Second
 
+	// BigQueryDailyLoadJobs is the quota BigQueryFlushFloor exists to protect:
+	// load jobs per TABLE per day. Named rather than repeated, now that the
+	// refusal and the boot budget both count against it.
+	BigQueryDailyLoadJobs = 1500
+
 	// drainFloor is the shortest drain budget, whatever the windows say.
 	//
 	// A stream flushing every second still has a queue of up to `queue`
@@ -959,7 +964,7 @@ func (s *Stream) check() error {
 			"is %.0f a day, and the quota is gone in about %.0f minutes. Use %s or "+
 			"more",
 			s.Buffer.Flush.Every, (24*time.Hour).Seconds()/s.Buffer.Flush.Every.Seconds(),
-			(1500 * s.Buffer.Flush.Every).Minutes(), BigQueryFlushFloor)
+			(BigQueryDailyLoadJobs * s.Buffer.Flush.Every).Minutes(), BigQueryFlushFloor)
 	}
 
 	if o := s.Oversize; o != nil {
