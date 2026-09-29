@@ -341,6 +341,34 @@ sdk.Run(sdk.Pipeline{
     },
 })</code></pre></div>
 <p><code>sdk.LandingSchema</code> são nove colunas: as oito do layout e a do produtor. <code>sdk.Landing</code> preenche essas colunas e põe o registro inteiro em <code>data</code>. Acrescente colunas suas ao esquema se quiser, ou pegue <code>sdk.LandingControlColumns</code> e dê colunas próprias aos campos do registro.</p>
+<h3 id="duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo">Duas formas: o registro inteiro, ou uma coluna por campo<a class="anchor" href="#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo" aria-label="link">#</a></h3>
+<p>O que está acima é a forma <strong>document</strong> — o registro vai para <code>data</code> como JSON, e a tabela é a mesma qualquer que seja o registro. Acrescente <code>sdk.LandingColumns()</code> e cada campo do registro ganha uma coluna própria:</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>A tabela passa a ser <code>sdk.LandingControlColumns</code> mais as suas colunas — <strong>não</strong> <code>sdk.LandingSchema</code>, que carrega o <code>data</code>:</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>As colunas são você que declara.</strong> O SDK nunca infere um esquema, e esta opção não muda isso: ela decide como a <em>linha</em> é montada, nunca o que a tabela é. Um gateway infere porque o produtor dele é um estranho que posta o que tem; aqui quem escreve a pipeline conhece o formato e o escreve, num diff que alguém revisa.</p>
+<p>É a mesma forma que um gateway aterrissa como <a href="/docs/ingestion-sinks/#duas-formas-um-contrato"><code>shape: columns</code></a>, pelo mesmo código — mesmas colunas, mesmos valores, mesmo <code>brevis_ingestion_id</code>.</p>
+<p><strong>O nome do campo precisa poder ser nome de coluna</strong>: letra ou sublinhado, e depois letras, dígitos e sublinhados. É a regra do BigQuery, a mais estreita dos quatro destinos, então um nome que passa aqui funciona em qualquer um. Um registro com <code>meu-campo</code> é recusado pelo nome, antes de qualquer escrita. A forma <code>document</code> não tem essa regra — um hífen é uma chave JSON perfeitamente válida.</p>
+<p><strong>Não achata.</strong> Um objeto aninhado vira UMA coluna <code>JSON</code> sob a chave que o continha: <code>customer</code> guarda <code>{"id": 7, "uf": "SP"}</code>, e não <code>customer_id</code> e <code>customer_uf</code>. Um array também é <code>JSON</code>. Um registro que quer uma linha <em>por elemento do array</em> quer o <code>sdk.ArrayAt</code> no <code>Expand</code> da fonte — ele roda antes do <code>Landing</code>, e é outra operação com outro nome:</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> continua <code>NULL</code></strong>, nunca <code>""</code>. Um campo enviado como null e um campo enviado vazio são fatos diferentes, e depois a coluna não sabe distinguir.</p>
+<p><strong>O <code>data</code> passa a ser seu.</strong> Nesta forma o layout não tem coluna com esse nome, então um produtor com um campo chamado <code>data</code> — que é exatamente o que a série do Bacen manda — ganha uma coluna própria com o valor dele. No <code>document</code>, o dele é uma chave dentro do JSON do layout.</p>
 <p><strong>Não é um modo.</strong> <code>Target.Schema</code> continua sendo você declarando o que a tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo. Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que declara o esquema dela não é afetada.</p>
 <p><strong>Escreva o nome da tabela uma vez.</strong> Ele vai para o <code>Landing</code>, porque é o segundo campo do id, e para o destino, porque é onde as linhas vão. <strong>Nada verifica que os dois concordam</strong>: o <code>Writer</code> conhece a própria tabela mas só a expõe pelo <code>Describe</code>, que é o nome para logs e erros, e um id construído sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.</p>
 <p><strong>Três colunas ficam <code>NULL</code>, e é a resposta honesta.</strong> <code>brevis_stream</code> e <code>brevis_gateway</code> nomeiam coisas que uma pipeline não tem — <code>brevis_gateway IS NULL</code> é como se distingue a linha de uma pipeline da de um gateway. <code>brevis_received_bytes</code> também fica <code>NULL</code>: o número do gateway conta o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor. Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos errar por quanto veio de onde. <code>length(data)</code> responde a versão da pipeline exatamente.</p>
@@ -378,7 +406,7 @@ specification without a key length</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline</a></li><li class="toc-2"><a href="#o-layout-de-aterrissagem">O layout de aterrissagem</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
+      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline</a></li><li class="toc-2"><a href="#o-layout-de-aterrissagem">O layout de aterrissagem</a></li><li class="toc-3"><a href="#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo">Duas formas: o registro inteiro, ou uma coluna por campo</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
     </aside>
   </main>
 </div>

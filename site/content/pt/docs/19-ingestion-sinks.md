@@ -389,6 +389,13 @@ Um nome de campo precisa casar com a regra do BigQuery, a mais estreita das
 quatro. O Postgres aceitaria quase tudo entre aspas, e essa é a armadilha: a
 tabela nasce lá e quebra no dia em que alguém aponta um stream para o BigQuery.
 
+As duas formas têm equivalente no SDK, e é o mesmo código, não um código
+parecido: `sdk.Landing(table, sdk.LandingKey("id"))` aterrissa `document`, e
+acrescentar [`sdk.LandingColumns()`](/docs/sdk/#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo)
+aterrissa `columns`. Mesmas colunas, mesmos valores, mesmo
+`brevis_ingestion_id` — então um stream muda de gateway para pipeline sem
+migração, e os dois podem ser lidos como uma tabela só.
+
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
 `brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`

@@ -296,6 +296,65 @@ the producer does. `sdk.Landing` fills them and puts the record, whole, in
 `sdk.LandingControlColumns` and give the record's fields columns of their
 own.
 
+### Two shapes: the record whole, or one column per field
+
+What is above is the **document** shape — the record goes into `data` as JSON,
+and the table is the same one whatever the record holds. Add
+`sdk.LandingColumns()` and each field of the record gets a column of its own:
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+The table is then `sdk.LandingControlColumns` plus your columns — **not**
+`sdk.LandingSchema`, which carries `data`:
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}
+```
+
+**You declare those columns.** The SDK never infers a schema, and this option
+does not change that: it decides how the *row* is built, never what the table
+is. A gateway infers because its producer is a stranger who posts whatever
+they have; here the pipeline's author knows the shape and writes it down, in
+a diff somebody reviews.
+
+It is the same shape a gateway lands as
+[`shape: columns`](/docs/ingestion-sinks/#two-shapes-one-contract), through the
+same code — same columns, same values, same `brevis_ingestion_id`.
+
+**A field name has to be able to be a column name**: a letter or underscore,
+then letters, digits and underscores. That is BigQuery's rule, the narrowest
+of the four destinations, so a name that passes here works everywhere. A
+record carrying `my-field` is refused by name, before anything is written. The
+document shape has no such rule — a hyphen is a perfectly good JSON key.
+
+**It does not flatten.** A nested object becomes ONE `JSON` column under the
+key that held it: `customer` holds `{"id": 7, "uf": "SP"}`, not `customer_id`
+and `customer_uf`. An array is `JSON` too. A record that wants one row *per
+array element* wants `sdk.ArrayAt` in the source's `Expand` — it runs before
+`Landing`, and it is a different operation with a different name:
+
+```go
+Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
+```
+
+**`null` stays `NULL`**, never `""`. A field sent as null and a field sent
+empty are different facts, and a column cannot tell them apart afterwards.
+
+**`data` becomes yours.** In this shape the layout has no column by that name,
+so a producer with a field called `data` — which is exactly what the Bacen
+series sends — gets a column of their own with their own value in it. Under
+`document` theirs is one key inside the layout's JSON.
+
 **It is not a mode.** `Target.Schema` is still you declaring what the table
 is — this hands you a layout that already exists instead of making you type
 it. Nothing in the SDK behaves differently because you used it, and a

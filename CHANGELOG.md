@@ -18,6 +18,79 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.72.0] — 2026-09-29
+
+### Added: `sdk.LandingColumns()` — one column per field
+
+The landing layout had one shape: the record whole, as JSON, in `data`. The
+gateway has had two since it shipped, and a consumer landing the Bacen series
+through the SDK got a single `data` column holding everything while the same
+record through a gateway got a column each.
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+An option on `Landing` rather than a second transformer: one concept, and
+`LandingKey` and `LandingOperationFrom` compose with it instead of being
+duplicated. The table is `LandingControlColumns` plus your columns — **not**
+`LandingSchema`, which carries `data`.
+
+**The SDK still never infers a schema.** This decides how the ROW is built,
+never what the table is; the fields are declared by the caller and reviewed in
+a diff. That is the difference from the gateway, whose producer is a stranger.
+
+Scalars become text, objects and arrays become `JSON` under the key that held
+them, `null` stays `NULL`. It does not flatten — a record wanting one row per
+array element wants `ArrayAt`, before `Landing`. Field names have to match
+BigQuery's rule, the narrowest of the four, and a record carrying `my-field`
+is refused by name.
+
+One thing worth knowing before choosing it: in this shape `data` is not the
+layout's column any more, so a producer with a field called `data` — exactly
+what the Bacen series sends — gets a column of their own.
+
+### Changed: the columns rendering moved from the gateway into the SDK
+
+`LandingSpread` and `LandingFieldNames` are now the SDK's, and the gateway's
+`autotable` calls them. The two shapes are not a matching pair of
+implementations any more; they are one, and a test lands the same record
+through both paths and compares the row column by column.
+
+The gateway's own `Text` was NOT collapsed into the SDK's renderer, and the
+plan that asked for it was wrong. `gateway/text.go` documents the duplication
+as deliberate: the SDK's `asText` is frozen because ids are computed over its
+output, and `Text` is free to get stricter. What the attempt did settle is
+sharper: column values go into tables, so they are as unchangeable as ids —
+`LandingSpread` renders through the frozen one, and the gateway's columns now
+come from it.
+
+No gateway test was edited. Its suite was the oracle.
+
+### Fixed: `EvolveAdditive` could not reach the driver (#41)
+
+`CheckDestination` runs before the extract and refused every declared column
+the table lacks. The driver's evolve runs inside `Write` and would have added
+it. So the flag was unreachable in the only case it exists for: a declaration
+that adds a column is the only way to ask for one.
+
+A column the table lacks is now skipped when `Evolve` is `EvolveAdditive`, on
+Postgres, MySQL and BigQuery. **Per column, not by returning early** — today
+the two are behaviourally identical, but the per-column shape means a future
+check for a narrowed type still runs before the extract.
+
+BigQuery took a longer road, and it is where the fix could have gone wrong.
+Its `CheckDestination` delegates to `load.Loader.CheckDestination`, which
+calls `checkDeclaredAgainstTable` — and that function has a SECOND caller,
+inside `Load`, which runs AFTER `evolveTable` and is the only thing verifying
+that evolving did what it said. Only the early call is relaxed; the shared
+function and the `Load` call site are untouched.
+
+Tested against real backends rather than mocks: Postgres and MySQL 8 from the
+compose profile, BigQuery through the floci emulator.
+
+---
+
 ## [0.71.0] — 2026-09-29
 
 ### Added: `Target.DedupKey`

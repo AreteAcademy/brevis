@@ -292,6 +292,66 @@ sdk.Run(sdk.Pipeline{
 Acrescente colunas suas ao esquema se quiser, ou pegue
 `sdk.LandingControlColumns` e dê colunas próprias aos campos do registro.
 
+### Duas formas: o registro inteiro, ou uma coluna por campo
+
+O que está acima é a forma **document** — o registro vai para `data` como
+JSON, e a tabela é a mesma qualquer que seja o registro. Acrescente
+`sdk.LandingColumns()` e cada campo do registro ganha uma coluna própria:
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+A tabela passa a ser `sdk.LandingControlColumns` mais as suas colunas — **não**
+`sdk.LandingSchema`, que carrega o `data`:
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}
+```
+
+**As colunas são você que declara.** O SDK nunca infere um esquema, e esta
+opção não muda isso: ela decide como a *linha* é montada, nunca o que a tabela
+é. Um gateway infere porque o produtor dele é um estranho que posta o que tem;
+aqui quem escreve a pipeline conhece o formato e o escreve, num diff que
+alguém revisa.
+
+É a mesma forma que um gateway aterrissa como
+[`shape: columns`](/docs/ingestion-sinks/#duas-formas-um-contrato), pelo mesmo
+código — mesmas colunas, mesmos valores, mesmo `brevis_ingestion_id`.
+
+**O nome do campo precisa poder ser nome de coluna**: letra ou sublinhado, e
+depois letras, dígitos e sublinhados. É a regra do BigQuery, a mais estreita
+dos quatro destinos, então um nome que passa aqui funciona em qualquer um. Um
+registro com `meu-campo` é recusado pelo nome, antes de qualquer escrita. A
+forma `document` não tem essa regra — um hífen é uma chave JSON perfeitamente
+válida.
+
+**Não achata.** Um objeto aninhado vira UMA coluna `JSON` sob a chave que o
+continha: `customer` guarda `{"id": 7, "uf": "SP"}`, e não `customer_id` e
+`customer_uf`. Um array também é `JSON`. Um registro que quer uma linha *por
+elemento do array* quer o `sdk.ArrayAt` no `Expand` da fonte — ele roda antes
+do `Landing`, e é outra operação com outro nome:
+
+```go
+Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
+```
+
+**`null` continua `NULL`**, nunca `""`. Um campo enviado como null e um campo
+enviado vazio são fatos diferentes, e depois a coluna não sabe distinguir.
+
+**O `data` passa a ser seu.** Nesta forma o layout não tem coluna com esse
+nome, então um produtor com um campo chamado `data` — que é exatamente o que a
+série do Bacen manda — ganha uma coluna própria com o valor dele. No
+`document`, o dele é uma chave dentro do JSON do layout.
+
 **Não é um modo.** `Target.Schema` continua sendo você declarando o que a
 tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo.
 Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que

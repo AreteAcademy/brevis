@@ -388,6 +388,13 @@ A field name has to match BigQuery's rule, the narrowest of the four. Postgres
 would accept almost anything quoted, and that is the trap: the table is created
 there and it breaks the day somebody points a stream at BigQuery.
 
+Both shapes have an SDK equivalent, and it is the same code rather than a
+matching one: `sdk.Landing(table, sdk.LandingKey("id"))` lands `document`, and
+adding [`sdk.LandingColumns()`](/en/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
+lands `columns`. Same columns, same values, same `brevis_ingestion_id` — so a
+stream can move between a gateway and a pipeline without a migration, and the
+two can be read as one table.
+
 ### `UPDATE` and `DELETE` are recorded, not applied
 
 `brevis_operation` is a column. A landing table is **history**: an `UPDATE`

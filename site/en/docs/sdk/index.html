@@ -341,6 +341,34 @@ sdk.Run(sdk.Pipeline{
     },
 })</code></pre></div>
 <p><code>sdk.LandingSchema</code> is nine columns: the eight the layout owns and the one the producer does. <code>sdk.Landing</code> fills them and puts the record, whole, in <code>data</code>. Append your own columns to the schema if you want them, or take <code>sdk.LandingControlColumns</code> and give the record's fields columns of their own.</p>
+<h3 id="two-shapes-the-record-whole-or-one-column-per-field">Two shapes: the record whole, or one column per field<a class="anchor" href="#two-shapes-the-record-whole-or-one-column-per-field" aria-label="link">#</a></h3>
+<p>What is above is the <strong>document</strong> shape — the record goes into <code>data</code> as JSON, and the table is the same one whatever the record holds. Add <code>sdk.LandingColumns()</code> and each field of the record gets a column of its own:</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>The table is then <code>sdk.LandingControlColumns</code> plus your columns — <strong>not</strong> <code>sdk.LandingSchema</code>, which carries <code>data</code>:</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>You declare those columns.</strong> The SDK never infers a schema, and this option does not change that: it decides how the <em>row</em> is built, never what the table is. A gateway infers because its producer is a stranger who posts whatever they have; here the pipeline's author knows the shape and writes it down, in a diff somebody reviews.</p>
+<p>It is the same shape a gateway lands as <a href="/en/docs/ingestion-sinks/#two-shapes-one-contract"><code>shape: columns</code></a>, through the same code — same columns, same values, same <code>brevis_ingestion_id</code>.</p>
+<p><strong>A field name has to be able to be a column name</strong>: a letter or underscore, then letters, digits and underscores. That is BigQuery's rule, the narrowest of the four destinations, so a name that passes here works everywhere. A record carrying <code>my-field</code> is refused by name, before anything is written. The document shape has no such rule — a hyphen is a perfectly good JSON key.</p>
+<p><strong>It does not flatten.</strong> A nested object becomes ONE <code>JSON</code> column under the key that held it: <code>customer</code> holds <code>{"id": 7, "uf": "SP"}</code>, not <code>customer_id</code> and <code>customer_uf</code>. An array is <code>JSON</code> too. A record that wants one row <em>per array element</em> wants <code>sdk.ArrayAt</code> in the source's <code>Expand</code> — it runs before <code>Landing</code>, and it is a different operation with a different name:</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> stays <code>NULL</code></strong>, never <code>""</code>. A field sent as null and a field sent empty are different facts, and a column cannot tell them apart afterwards.</p>
+<p><strong><code>data</code> becomes yours.</strong> In this shape the layout has no column by that name, so a producer with a field called <code>data</code> — which is exactly what the Bacen series sends — gets a column of their own with their own value in it. Under <code>document</code> theirs is one key inside the layout's JSON.</p>
 <p><strong>It is not a mode.</strong> <code>Target.Schema</code> is still you declaring what the table is — this hands you a layout that already exists instead of making you type it. Nothing in the SDK behaves differently because you used it, and a pipeline that declares its own schema is unaffected.</p>
 <p><strong>Write the table name once.</strong> It goes to <code>Landing</code>, because it is the second slot of the id, and to the destination, because that is where the rows go. <strong>Nothing checks that the two agree</strong>: the <code>Writer</code> knows its own table but exposes it only through <code>Describe</code>, which is the name for logs and errors, and an id built on that would tie every id already written to a log string. Get them out of step and the rows land correctly with ids minted for a table nobody wrote to. They will look fine. They will not match the gateway's.</p>
 <p><strong>Three columns are <code>NULL</code>, and that is the honest answer.</strong> <code>brevis_stream</code> and <code>brevis_gateway</code> name things a pipeline does not have — <code>brevis_gateway IS NULL</code> is how you tell a pipeline's row from a gateway's. <code>brevis_received_bytes</code> is <code>NULL</code> too: the gateway's counts what arrived on the wire, envelope included, and the record's own JSON is around 30% smaller. One column with two meanings would make a sum across rows from both paths wrong by whatever share came from which. <code>length(data)</code> answers the pipeline's version exactly.</p>
@@ -378,7 +406,7 @@ specification without a key length</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameters that build the pipeline</a></li><li class="toc-2"><a href="#the-landing-layout">The landing layout</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameters that build the pipeline</a></li><li class="toc-2"><a href="#the-landing-layout">The landing layout</a></li><li class="toc-3"><a href="#two-shapes-the-record-whole-or-one-column-per-field">Two shapes: the record whole, or one column per field</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
     </aside>
   </main>
 </div>
