@@ -252,7 +252,7 @@ para a página de ingestão do console, que ainda não foi escrita. Está dito a
 porque um campo aceito em silêncio é um campo que alguém acredita estar
 gravando.
 
-### Sete colunas fixas, mais o que o registro traz
+### Oito colunas fixas, mais o que o registro traz
 
 | coluna | | |
 |---|---|---|
@@ -264,6 +264,11 @@ gravando.
 | `brevis_stream` | `STRING` | qual rota escreveu |
 | `brevis_gateway` | `STRING` | qual implantação |
 | `brevis_received_bytes` | `INT64` | o tamanho com que o evento **chegou**, envelope incluído |
+
+Estas oito são **do SDK**, não deste sink: `sdk.LandingSchema` as declara e
+`sdk.LandingID` cunha a identidade, então uma pipeline pode aterrissar a mesma
+tabela com os mesmos ids. Uma definição só, porque duas derivam. Veja
+[o layout de aterrissagem do SDK](/docs/sdk/#o-layout-de-aterrissagem).
 
 **`brevis_` é reservado.** Um `data` carregando qualquer chave com esse prefixo é
 recusado **por evento** — senão um produtor forja um campo de controle, e um

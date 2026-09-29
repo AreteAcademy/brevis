@@ -319,6 +319,32 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p><code>sdk.Param</code> e <code>sdk.ParamList</code> leem primeiro o ambiente do engine e depois <code>-param nome=valor</code>:</p>
 <div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
 <p>O ambiente ganha — sob o engine ele é o valor, e uma flag esquecida num manifesto não pode sobrepor o que o operador digitou. Sem engine, a flag é o que existe, o que é melhor do que escrever <code>BREVIS_RUN_PARAMS</code> como JSON a cada execução.</p>
+<h2 id="o-layout-de-aterrissagem">O layout de aterrissagem<a class="anchor" href="#o-layout-de-aterrissagem" aria-label="link">#</a></h2>
+<p>Uma pipeline pode aterrissar <strong>a mesma tabela que um gateway aterrissa</strong> — as mesmas colunas e o mesmo <code>brevis_ingestion_id</code> — de modo que escolher entre os dois vira decisão de implantação e não de esquema. Dá para ler os dois juntos, e para migrar de um ao outro sem migração de dados.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> são nove colunas: as oito do layout e a do produtor. <code>sdk.Landing</code> preenche essas colunas e põe o registro inteiro em <code>data</code>. Acrescente colunas suas ao esquema se quiser, ou pegue <code>sdk.LandingControlColumns</code> e dê colunas próprias aos campos do registro.</p>
+<p><strong>Não é um modo.</strong> <code>Target.Schema</code> continua sendo você declarando o que a tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo. Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que declara o esquema dela não é afetada.</p>
+<p><strong>Escreva o nome da tabela uma vez.</strong> Ele vai para o <code>Landing</code>, porque é o segundo campo do id, e para o destino, porque é onde as linhas vão. <strong>Nada verifica que os dois concordam</strong>: o <code>Writer</code> conhece a própria tabela mas só a expõe pelo <code>Describe</code>, que é o nome para logs e erros, e um id construído sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.</p>
+<p><strong>Três colunas ficam <code>NULL</code>, e é a resposta honesta.</strong> <code>brevis_stream</code> e <code>brevis_gateway</code> nomeiam coisas que uma pipeline não tem — <code>brevis_gateway IS NULL</code> é como se distingue a linha de uma pipeline da de um gateway. <code>brevis_received_bytes</code> também fica <code>NULL</code>: o número do gateway conta o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor. Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos errar por quanto veio de onde. <code>length(data)</code> responde a versão da pipeline exatamente.</p>
+<p><strong>O id é endereçado por conteúdo.</strong> O mesmo registro produz o mesmo id nos dois caminhos, e um registro alterado produz um novo — que é o que faz uma reexecução ser um no-op em vez de duplicata.</p>
 <h2 id="referencia">Referência<a class="anchor" href="#referencia" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — a API completa</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — doze exemplos executáveis</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — histórico versão a versão</li></ul>
 
@@ -334,7 +360,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
+      <ul><li class="toc-2"><a href="#tres-passos">Três passos</a></li><li class="toc-2"><a href="#o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração</a></li><li class="toc-2"><a href="#origens-e-destinos">Origens e destinos</a></li><li class="toc-3"><a href="#publicar-num-topico">Publicar num tópico</a></li><li class="toc-2"><a href="#um-fetcher-inteiro">Um fetcher inteiro</a></li><li class="toc-2"><a href="#o-contexto-do-run">O contexto do run</a></li><li class="toc-3"><a href="#o-relogio">O relógio</a></li><li class="toc-2"><a href="#nao-confunda-com-as-bibliotecas-cliente">Não confunda com as bibliotecas cliente</a></li><li class="toc-2"><a href="#parametros-que-montam-a-pipeline">Parâmetros que montam a pipeline</a></li><li class="toc-2"><a href="#o-layout-de-aterrissagem">O layout de aterrissagem</a></li><li class="toc-2"><a href="#referencia">Referência</a></li></ul>
     </aside>
   </main>
 </div>

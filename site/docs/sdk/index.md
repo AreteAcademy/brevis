@@ -267,6 +267,57 @@ manifesto não pode sobrepor o que o operador digitou. Sem engine, a flag é o q
 existe, o que é melhor do que escrever `BREVIS_RUN_PARAMS` como JSON a cada
 execução.
 
+## O layout de aterrissagem
+
+Uma pipeline pode aterrissar **a mesma tabela que um gateway aterrissa** — as
+mesmas colunas e o mesmo `brevis_ingestion_id` — de modo que escolher entre os
+dois vira decisão de implantação e não de esquema. Dá para ler os dois juntos,
+e para migrar de um ao outro sem migração de dados.
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`sdk.LandingSchema` são nove colunas: as oito do layout e a do produtor.
+`sdk.Landing` preenche essas colunas e põe o registro inteiro em `data`.
+Acrescente colunas suas ao esquema se quiser, ou pegue
+`sdk.LandingControlColumns` e dê colunas próprias aos campos do registro.
+
+**Não é um modo.** `Target.Schema` continua sendo você declarando o que a
+tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo.
+Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que
+declara o esquema dela não é afetada.
+
+**Escreva o nome da tabela uma vez.** Ele vai para o `Landing`, porque é o
+segundo campo do id, e para o destino, porque é onde as linhas vão. **Nada
+verifica que os dois concordam**: o `Writer` conhece a própria tabela mas só a
+expõe pelo `Describe`, que é o nome para logs e erros, e um id construído
+sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois
+divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em
+que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.
+
+**Três colunas ficam `NULL`, e é a resposta honesta.** `brevis_stream` e
+`brevis_gateway` nomeiam coisas que uma pipeline não tem —
+`brevis_gateway IS NULL` é como se distingue a linha de uma pipeline da de um
+gateway. `brevis_received_bytes` também fica `NULL`: o número do gateway conta
+o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor.
+Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos
+errar por quanto veio de onde. `length(data)` responde a versão da pipeline
+exatamente.
+
+**O id é endereçado por conteúdo.** O mesmo registro produz o mesmo id nos dois
+caminhos, e um registro alterado produz um novo — que é o que faz uma
+reexecução ser um no-op em vez de duplicata.
+
 ## Referência
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — a API completa

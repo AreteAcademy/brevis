@@ -2463,6 +2463,58 @@ The environment wins — under the engine it is the value, and a flag left in a
 manifest must not override what the operator typed. With no engine the flag is
 what there is, which beats writing `BREVIS_RUN_PARAMS` as JSON on every run.
 
+## The landing layout
+
+A pipeline can land the **same table a gateway lands** — the same columns and
+the same `brevis_ingestion_id` — so choosing between the two is a deployment
+decision and not a schema decision. A team can read both together, and move
+from one to the other without a migration.
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`sdk.LandingSchema` is nine columns: the eight the layout owns and the one
+the producer does. `sdk.Landing` fills them and puts the record, whole, in
+`data`. Append your own columns to the schema if you want them, or take
+`sdk.LandingControlColumns` and give the record's fields columns of their
+own.
+
+**It is not a mode.** `Target.Schema` is still you declaring what the table
+is — this hands you a layout that already exists instead of making you type
+it. Nothing in the SDK behaves differently because you used it, and a
+pipeline that declares its own schema is unaffected.
+
+**Write the table name once.** It goes to `Landing`, because it is the second
+slot of the id, and to the destination, because that is where the rows go.
+**Nothing checks that the two agree**: the `Writer` knows its own table but
+exposes it only through `Describe`, which is the name for logs and errors,
+and an id built on that would tie every id already written to a log string.
+Get them out of step and the rows land correctly with ids minted for a table
+nobody wrote to. They will look fine. They will not match the gateway's.
+
+**Three columns are `NULL`, and that is the honest answer.** `brevis_stream`
+and `brevis_gateway` name things a pipeline does not have —
+`brevis_gateway IS NULL` is how you tell a pipeline's row from a gateway's.
+`brevis_received_bytes` is `NULL` too: the gateway's counts what arrived on
+the wire, envelope included, and the record's own JSON is around 30% smaller.
+One column with two meanings would make a sum across rows from both paths
+wrong by whatever share came from which. `length(data)` answers the
+pipeline's version exactly.
+
+**The id is content-addressed.** The same record produces the same id from
+either path, and a changed record produces a new one — which is what lets a
+re-run be a no-op instead of a duplicate.
+
 ## Reference
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — the complete API
@@ -3991,7 +4043,7 @@ the first one passes:
 console's ingestion page, which has not been written. It is said here because a
 field accepted in silence is a field somebody believes is being stored.
 
-### Seven fixed columns, plus whatever the record carries
+### Eight fixed columns, plus whatever the record carries
 
 | column | | |
 |---|---|---|
@@ -4003,6 +4055,11 @@ field accepted in silence is a field somebody believes is being stored.
 | `brevis_stream` | `STRING` | which route wrote it |
 | `brevis_gateway` | `STRING` | which deployment |
 | `brevis_received_bytes` | `INT64` | how large the event **arrived**, envelope included |
+
+These eight are **the SDK's**, not this sink's: `sdk.LandingSchema` declares
+them and `sdk.LandingID` mints the identity, so a pipeline can land the same
+table with the same ids. One definition, because two would drift. See
+[the SDK's landing layout](/en/docs/sdk/#the-landing-layout).
 
 **`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
 **per event** — otherwise a producer forges a control field, and a forged

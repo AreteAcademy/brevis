@@ -319,6 +319,32 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p><code>sdk.Param</code> and <code>sdk.ParamList</code> read the engine's environment first and <code>-param name=value</code> second:</p>
 <div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
 <p>The environment wins — under the engine it is the value, and a flag left in a manifest must not override what the operator typed. With no engine the flag is what there is, which beats writing <code>BREVIS_RUN_PARAMS</code> as JSON on every run.</p>
+<h2 id="the-landing-layout">The landing layout<a class="anchor" href="#the-landing-layout" aria-label="link">#</a></h2>
+<p>A pipeline can land the <strong>same table a gateway lands</strong> — the same columns and the same <code>brevis_ingestion_id</code> — so choosing between the two is a deployment decision and not a schema decision. A team can read both together, and move from one to the other without a migration.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> is nine columns: the eight the layout owns and the one the producer does. <code>sdk.Landing</code> fills them and puts the record, whole, in <code>data</code>. Append your own columns to the schema if you want them, or take <code>sdk.LandingControlColumns</code> and give the record's fields columns of their own.</p>
+<p><strong>It is not a mode.</strong> <code>Target.Schema</code> is still you declaring what the table is — this hands you a layout that already exists instead of making you type it. Nothing in the SDK behaves differently because you used it, and a pipeline that declares its own schema is unaffected.</p>
+<p><strong>Write the table name once.</strong> It goes to <code>Landing</code>, because it is the second slot of the id, and to the destination, because that is where the rows go. <strong>Nothing checks that the two agree</strong>: the <code>Writer</code> knows its own table but exposes it only through <code>Describe</code>, which is the name for logs and errors, and an id built on that would tie every id already written to a log string. Get them out of step and the rows land correctly with ids minted for a table nobody wrote to. They will look fine. They will not match the gateway's.</p>
+<p><strong>Three columns are <code>NULL</code>, and that is the honest answer.</strong> <code>brevis_stream</code> and <code>brevis_gateway</code> name things a pipeline does not have — <code>brevis_gateway IS NULL</code> is how you tell a pipeline's row from a gateway's. <code>brevis_received_bytes</code> is <code>NULL</code> too: the gateway's counts what arrived on the wire, envelope included, and the record's own JSON is around 30% smaller. One column with two meanings would make a sum across rows from both paths wrong by whatever share came from which. <code>length(data)</code> answers the pipeline's version exactly.</p>
+<p><strong>The id is content-addressed.</strong> The same record produces the same id from either path, and a changed record produces a new one — which is what lets a re-run be a no-op instead of a duplicate.</p>
 <h2 id="reference">Reference<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — the complete API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — twelve runnable examples</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — version-by-version history</li></ul>
 
@@ -334,7 +360,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameters that build the pipeline</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameters that build the pipeline</a></li><li class="toc-2"><a href="#the-landing-layout">The landing layout</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
     </aside>
   </main>
 </div>
