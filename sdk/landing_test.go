@@ -244,13 +244,29 @@ func TestLandingFillsWhatLandingSchemaDeclares(t *testing.T) {
 	row := landingRow(t, map[string]any{"id": "A-1", "total": 10},
 		"landing.orders", LandingKey("id"))
 
+	// Every declared column, EXCEPT the one the destination fills.
+	//
+	// brevis_loaded_at is declared so the table gets created with it and a
+	// DEFAULT; sending it -- even as NULL -- overrides that default and
+	// costs the one measurement the pair exists for. It is the only
+	// exception, and naming it here is what keeps it from growing.
+	const destinationFills = LandingColumnLoadedAt
+
 	declared := LandingSchema(LandingOptions{})
-	if len(row) != len(declared) {
-		t.Fatalf("the row has %d columns and the schema declares %d:\nrow: %v",
-			len(row), len(declared), row)
+	if len(row) != len(declared)-1 {
+		t.Fatalf("the row has %d columns and the schema declares %d, of which "+
+			"exactly one is the destination's:\nrow: %v", len(row), len(declared), row)
 	}
 	for _, c := range declared {
-		if _, ok := row[c.Name]; !ok {
+		_, carried := row[c.Name]
+		if c.Name == destinationFills {
+			if carried {
+				t.Errorf("%q is in the row: it is a database DEFAULT, and "+
+					"sending anything overrides it", c.Name)
+			}
+			continue
+		}
+		if !carried {
 			t.Errorf("the schema declares %q and the row does not carry it", c.Name)
 		}
 	}
@@ -377,13 +393,12 @@ func TestLandingStampsItsOwnClock(t *testing.T) {
 	if time.Since(when) > time.Minute || when.After(time.Now().Add(time.Minute)) {
 		t.Errorf("received_at is %s, which is not now", at)
 	}
-	// loaded_at is the DATABASE's default and must not be sent.
-	if _, sent := row[LandingColumnLoadedAt]; !sent {
-		t.Error("loaded_at is missing from the row, and the schema declares it")
-	} else if row[LandingColumnLoadedAt] != nil {
-		t.Errorf("loaded_at was sent as %v: it is a database DEFAULT, and the "+
-			"difference between the two columns is the end-to-end latency "+
-			"only if one of them is the destination's",
-			row[LandingColumnLoadedAt])
+	// loaded_at must be ABSENT, not nil. An explicit NULL overrides the
+	// column's DEFAULT -- the first version of this asserted "present and
+	// nil", which is exactly the bug, and only the integration test caught
+	// it because this one looks at the map instead of the table.
+	if v, sent := row[LandingColumnLoadedAt]; sent {
+		t.Errorf("loaded_at is in the row as %v: it is a database DEFAULT, "+
+			"and sending anything -- NULL included -- overrides it", v)
 	}
 }

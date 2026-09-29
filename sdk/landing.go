@@ -381,6 +381,14 @@ func Landing(table string, opts ...LandingArg) Transformer {
 			return nil, fmt.Errorf("the record is not JSON: %w", err)
 		}
 
+		// LandingColumnLoadedAt is ABSENT, not nil. An explicit NULL
+		// OVERRIDES the column's DEFAULT, and the difference between
+		// received_at and loaded_at is the end-to-end latency only if the
+		// destination sets the second one. The gateway omits it for exactly
+		// this reason; sending nil here made the pipeline's rows land with
+		// a null where the gateway's have a timestamp, and only the
+		// integration test saw it -- the unit test asserted on the map this
+		// function builds, which is not what reaches the table.
 		row := map[string]any{
 			LandingColumnID:        id,
 			LandingColumnOperation: op,
@@ -389,9 +397,6 @@ func Landing(table string, opts ...LandingArg) Transformer {
 			// something else with the same name, and the partitioning
 			// assumes the first meaning. IngestionLoadedAt says the same.
 			LandingColumnReceivedAt: time.Now().UTC().Format(time.RFC3339),
-			// The DESTINATION's default. Sending it would collapse the one
-			// measurement the pair exists for: dispatch against write.
-			LandingColumnLoadedAt: nil,
 			// The gateway's two. NULL is the honest answer and the readable
 			// signal: a row with brevis_gateway IS NULL did not come through
 			// one.
