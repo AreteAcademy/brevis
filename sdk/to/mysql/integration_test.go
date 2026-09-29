@@ -1011,3 +1011,65 @@ func TestTheModeWithNothingToCompleteIsRefusedBeforeTheExtract(t *testing.T) {
 		t.Errorf("EvolveAdditive with no declaration was refused: %v", err)
 	}
 }
+
+// A landing pipeline declares the same columns a gateway would.
+//
+// The end of the seam this whole marker exists for. The pipeline renders in
+// its TRANSFORMER, so the driver never sees the object — and without the
+// marker it declared `meta LONGTEXT` where a gateway declares `meta JSON`.
+// Measured, before the fix:
+//
+//	colunas criadas: map[... meta:longtext tags:longtext ...]
+//
+// On a shared table that is a wall, not a cosmetic difference: the second
+// writer is refused with "meta is json in the table and string in the
+// declaration".
+func TestALandingPipelineDeclaresWhatAGatewayWould(t *testing.T) {
+	db := open(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
+
+	record := map[string]any{
+		"source_key": "21129|01/12/2025",
+		"valor":      "8.89",
+		"meta":       map[string]any{"uf": "SP"},
+		"tags":       []any{"a", "b"},
+	}
+	out, err := sdk.Landing(name, sdk.LandingKey("source_key"), sdk.LandingColumns())(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: out}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("landing through the transformer: %v", err)
+	}
+
+	types := columnTypes(t, db, name)
+	for _, c := range []struct{ name, want string }{
+		{"meta", "json"}, {"tags", "json"},
+		{"valor", "longtext"}, {"source_key", "longtext"},
+	} {
+		if types[c.name] != c.want {
+			t.Errorf("%s is %q, want %q -- a gateway declares it %q for the "+
+				"same record, and a shared table refuses the second writer",
+				c.name, types[c.name], c.want, c.want)
+		}
+	}
+
+	// And the JSON actually arrived as JSON, not as a quoted string inside a
+	// JSON column. MySQL would take `"{\"uf\":\"SP\"}"` happily and every
+	// JSON_EXTRACT afterwards would return nothing.
+	var uf *string
+	if err := db.QueryRow("SELECT JSON_UNQUOTE(JSON_EXTRACT(meta, '$.uf')) FROM " + name).
+		Scan(&uf); err != nil {
+		t.Fatal(err)
+	}
+	if uf == nil || *uf != "SP" {
+		t.Errorf("JSON_EXTRACT(meta,'$.uf') = %v, want SP -- the column holds "+
+			"JSON, but not the JSON somebody can query", uf)
+	}
+}

@@ -425,14 +425,29 @@ func TestLandingSpread(t *testing.T) {
 	if got["qty"] != "3" {
 		t.Errorf("qty = %v, want \"3\"", got["qty"])
 	}
-	if got["customer"] != `{"id":7,"uf":"SP"}` {
-		t.Errorf("customer = %v -- a nested object is ONE JSON column under "+
-			"the key that held it. It is not flattened into customer_id and "+
-			"customer_uf, and neither is it in the gateway", got["customer"])
+	// JSONText and not a plain string, and that is the point rather than a
+	// detail: the transformer is the last place that can see this value was
+	// an object. A destination asked to declare a column for it later cannot,
+	// so a pipeline would declare STRING where a gateway declares JSON.
+	if got["customer"] != JSONText(`{"id":7,"uf":"SP"}`) {
+		t.Errorf("customer = %#v -- a nested object is ONE JSON column under "+
+			"the key that held it, MARKED as JSON. It is not flattened into "+
+			"customer_id and customer_uf, and neither is it in the gateway",
+			got["customer"])
 	}
-	if got["tags"] != `["x","y"]` {
-		t.Errorf("tags = %v -- an array stays JSON; a record that wants one "+
+	if got["tags"] != JSONText(`["x","y"]`) {
+		t.Errorf("tags = %#v -- an array stays JSON; a record that wants one "+
 			"row per element wants ArrayAt", got["tags"])
+	}
+	// And a producer's ordinary string stays an ordinary string: the marker
+	// says "somebody decided this was JSON", never "this looks like JSON".
+	looks, err := LandingSpread(map[string]any{"texto": `[1,2]`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, marked := looks["texto"].(JSONText); marked {
+		t.Error("a producer's literal text `[1,2]` was marked as JSON: the " +
+			"marker is a decision carried forward, not a guess about content")
 	}
 	// NULL and not "": a field sent as null and one sent empty are different
 	// facts, and a column cannot tell them apart afterwards.
@@ -590,12 +605,13 @@ func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
 		t.Errorf("external_id = %v, want \"26130000\" -- a float64 rendered "+
 			"with %%v is 2.613e+07 and matches nothing", row["external_id"])
 	}
-	if row["customer"] != `{"id":7,"uf":"SP"}` {
-		t.Errorf("customer = %v -- a nested object is ONE JSON column, not "+
-			"flattened", row["customer"])
+	if row["customer"] != JSONText(`{"id":7,"uf":"SP"}`) {
+		t.Errorf("customer = %#v -- a nested object is ONE JSON column, not "+
+			"flattened, and marked so the destination can declare it JSON",
+			row["customer"])
 	}
-	if row["tags"] != `["x","y"]` {
-		t.Errorf("tags = %v -- an array stays JSON", row["tags"])
+	if row["tags"] != JSONText(`["x","y"]`) {
+		t.Errorf("tags = %#v -- an array stays JSON", row["tags"])
 	}
 	if v, present := row["note"]; !present || v != nil {
 		t.Errorf("note = %v (present=%v), want a present nil: null and \"\" "+

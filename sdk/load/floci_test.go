@@ -649,3 +649,69 @@ func TestIntegrationBigQueryTheModeCompletesTheDeclaration(t *testing.T) {
 			"the thing this mode exists to stop: %v", err)
 	}
 }
+
+// A landing pipeline declares the same columns a gateway would, on BigQuery.
+//
+// The third encoding: this destination does not convert per column, it
+// marshals the whole row into NDJSON. So the marker has to survive
+// encoding/json, which is what JSONText.MarshalJSON is for — without it the
+// line carries "{\"uf\":\"SP\"}" and the JSON column receives a string.
+func TestIntegrationBigQueryALandingPipelineDeclaresWhatAGatewayWould(t *testing.T) {
+	// The landing layout's control columns, written out: this package cannot
+	// reach sdk.LandingControlColumns without an import that exists only for
+	// a test, and the point here is the two PRODUCER columns anyway.
+	control := core.Schema{
+		{Name: "brevis_ingestion_id", Type: core.TypeString, Required: true},
+		{Name: "brevis_record_key", Type: core.TypeString},
+		{Name: "brevis_operation", Type: core.TypeString, Required: true},
+		{Name: "brevis_received_at", Type: core.TypeTimestamp, Required: true},
+	}
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "brevis_received_at",
+		Schema:      control,
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "landed")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	row := map[string]any{
+		"brevis_ingestion_id": "id-1",
+		"brevis_operation":    "INSERT",
+		"brevis_received_at":  "2026-09-29T10:00:00Z",
+		"brevis_record_key":   "k-1",
+		"valor":               "8.89",
+		"meta":                core.JSONText(`{"uf":"SP"}`),
+		"tags":                core.JSONText(`["a","b"]`),
+	}
+	_, _ = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t", Payload: row,
+	})
+
+	fields := fieldsOfTable(t, table)
+	for _, c := range []struct {
+		name string
+		want bigquery.FieldType
+	}{
+		{"meta", bigquery.JSONFieldType},
+		{"tags", bigquery.JSONFieldType},
+		{"valor", bigquery.StringFieldType},
+	} {
+		f, ok := fields[c.name]
+		if !ok {
+			t.Errorf("the table has no %q column", c.name)
+			continue
+		}
+		if f.Type != c.want {
+			t.Errorf("%s is %v, want %v -- a gateway declares it %v for the "+
+				"same record", c.name, f.Type, c.want, c.want)
+		}
+	}
+}

@@ -1054,3 +1054,58 @@ func TestTheModeCompletesTheDeclarationRatherThanSilencingIt(t *testing.T) {
 			"the thing this mode exists to stop: %v", err)
 	}
 }
+
+// A landing pipeline declares the same columns a gateway would.
+//
+// The pipeline renders in its TRANSFORMER, so the driver never sees the
+// object. Without the marker it declared `meta TEXT` where a gateway declares
+// `meta JSON`, and on a shared table the second writer was refused outright.
+func TestALandingPipelineDeclaresWhatAGatewayWould(t *testing.T) {
+	conn := connect(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+name)
+	})
+
+	record := map[string]any{
+		"source_key": "21129|01/12/2025",
+		"valor":      "8.89",
+		"meta":       map[string]any{"uf": "SP"},
+		"tags":       []any{"a", "b"},
+	}
+	out, err := sdk.Landing(name, sdk.LandingKey("source_key"), sdk.LandingColumns())(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: out}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("landing through the transformer: %v", err)
+	}
+
+	types := columnTypes(t, conn, name)
+	for _, c := range []struct{ name, want string }{
+		{"meta", "jsonb"}, {"tags", "jsonb"},
+		{"valor", "text"}, {"source_key", "text"},
+	} {
+		if types[c.name] != c.want {
+			t.Errorf("%s is %q, want %q -- a gateway declares it %q for the "+
+				"same record", c.name, types[c.name], c.want, c.want)
+		}
+	}
+
+	// And the JSON is the JSON somebody can query, not a quoted string
+	// sitting inside a jsonb column.
+	var uf *string
+	if err := conn.QueryRow(context.Background(),
+		"SELECT meta->>'uf' FROM "+name).Scan(&uf); err != nil {
+		t.Fatal(err)
+	}
+	if uf == nil || *uf != "SP" {
+		t.Errorf("meta->>'uf' = %v, want SP -- the column holds JSON, but not "+
+			"the JSON somebody can query", uf)
+	}
+}

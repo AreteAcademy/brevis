@@ -568,7 +568,10 @@ func landingValue(v any) (any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("not JSON: %w", err)
 		}
-		return string(body), nil
+		// MARKED, not plain text. This is the last place that can still see
+		// the value was an object, and a destination asked to declare a
+		// column for it later cannot. See core.JSONText.
+		return core.JSONText(body), nil
 	case nil:
 		// NULL and not "": a field the producer sent as null and a field
 		// they sent as an empty string are different facts.

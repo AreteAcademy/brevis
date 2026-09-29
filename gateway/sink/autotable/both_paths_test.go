@@ -2,6 +2,7 @@ package autotable
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
@@ -240,5 +241,74 @@ func TestAnExplicitNullOnlyGoesWhereThereIsNoDefault(t *testing.T) {
 				"the one end-to-end latency measurement the pair exists for",
 				row.name, ColumnLoadedAt, v)
 		}
+	}
+}
+
+// The two paths must declare the same TYPES, not only carry the same values.
+//
+// This is the half TestBothPathsLandTheSameRow cannot see. It compares the
+// ROW, and the row is right: both sides put `{"uf":"SP"}` in `meta`. What it
+// never asks is what COLUMN that value goes into — and there the two used to
+// disagree completely.
+//
+// The gateway types from the RAW record and renders separately. A pipeline
+// renders first, in the transformer, and the driver only ever sees the
+// rendered row: by then an object has become text and the shape is gone. So
+// the gateway declared `meta JSON` and a pipeline declared `meta STRING`.
+//
+// On a SHARED table that is not a cosmetic difference, it is a wall: the
+// gateway creates the column JSON, the pipeline rediscovers it as string, and
+// the plan refuses — "meta is json in the table and string in the
+// declaration". A pipeline could not write into a gateway's `shape: columns`
+// table, which is the one interoperability this layout exists for.
+func TestBothPathsDeclareTheSameTypes(t *testing.T) {
+	record := bacen()
+
+	fromGateway, err := columns{}.schema(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// What a pipeline declares: over the row its transformer produced, which
+	// is the only thing its driver ever sees.
+	out, err := sdk.Landing(bothTable,
+		sdk.LandingKey("source_key"), sdk.LandingColumns())(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := out.(map[string]any)
+	// The layout's own columns are declared, not discovered; drop them.
+	producer := map[string]any{}
+	for k, v := range row {
+		if !strings.HasPrefix(k, sdk.LandingPrefix) {
+			producer[k] = v
+		}
+	}
+	fromPipeline, err := sdk.LandingSchemaOf(producer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byName := map[string]sdk.ColumnType{}
+	for _, c := range fromPipeline {
+		byName[c.Name] = c.Type
+	}
+	for _, c := range fromGateway {
+		got, present := byName[c.Name]
+		if !present {
+			t.Errorf("the gateway declares %q and a pipeline does not", c.Name)
+			continue
+		}
+		if got != c.Type {
+			t.Errorf("%s: the gateway declares %s and a pipeline declares %s\n\n"+
+				"Same record, same layout, two tables. On a shared one the "+
+				"second writer is refused outright: `%s is %s in the table and "+
+				"%s in the declaration`.",
+				c.Name, c.Type, got, c.Name, c.Type, got)
+		}
+	}
+	if len(fromGateway) != len(byName) {
+		t.Errorf("%d columns from the gateway, %d from the pipeline",
+			len(fromGateway), len(byName))
 	}
 }

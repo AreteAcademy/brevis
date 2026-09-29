@@ -172,6 +172,17 @@ const (
 // bool, a time.Time. Anything past that is CreateSQL's.
 const CurrentTimestamp = core.CurrentTimestamp
 
+// JSONText is text that is already JSON, and says so.
+//
+// Landing with LandingColumns puts one of these in every column that held an
+// object or an array. It is what lets a destination declare that column JSON
+// rather than text: the transformer renders the value, so by the time the
+// driver sees it the shape would otherwise be gone -- and a pipeline would
+// declare STRING where a gateway declares JSON for the same record.
+//
+// Read it as a string when you need to: `string(v)` is the JSON text.
+type JSONText = core.JSONText
+
 // Expression is the type of CurrentTimestamp. See Column.Default.
 type Expression = core.Expression
 

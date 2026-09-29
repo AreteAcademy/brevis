@@ -25,10 +25,56 @@ func CheckColumnName(name string) error {
 		"that passes works everywhere", name, ColumnName)
 }
 
+// JSONText is text that is already JSON, and says so.
+//
+// It exists because the shape of a value has to survive being rendered. A
+// pipeline renders in its TRANSFORMER -- an object becomes `{"uf":"SP"}`
+// before the row reaches any destination -- so by the time the driver looks
+// at it there is nothing left to tell it apart from a producer's ordinary
+// string. The gateway does not have that problem: it types from the RAW
+// record and renders separately.
+//
+// The consequence was not cosmetic. The gateway declared `meta JSON` and a
+// pipeline declared `meta STRING` for the same record, so on a SHARED table
+// the second writer was refused outright -- "meta is json in the table and
+// string in the declaration" -- and a pipeline could not write into a
+// gateway's `shape: columns` table, which is the one interoperability the
+// landing layout exists for.
+//
+// A MARKER and not inference. The alternative considered was reading the
+// string back: does it parse as an object or an array? That is the invariant
+// I2 line -- a producer sending the literal text `[1,2]` would get a JSON
+// column nobody asked for. This carries forward a decision already made,
+// where it was made, on the record whose shape was still visible.
+//
+// It renders as its own text everywhere: its underlying kind is string, which
+// is what database/sql's default converter and pgx both read, and what
+// encoding/json quotes.
+type JSONText string
+
+// MarshalJSON writes the text as JSON rather than as a string of it.
+//
+// Without this the marker is worse than nothing. A driver encoding a row puts
+// a plain string in quotes and escapes it, so a JSON column receives
+//
+//	"{\"uf\":\"SP\"}"
+//
+// which is a valid JSON STRING, stored without complaint, and every
+// JSON_EXTRACT against it afterwards returns NULL. Measured on MySQL: with a
+// map the column holds {"uf": "SP"} and JSON_EXTRACT finds SP; with the text
+// it holds the escaped form and finds nothing. The column is the right type
+// and the data in it is unreachable, which is the worst of the three
+// outcomes because it looks correct.
+//
+// encoding/json compacts and validates whatever a Marshaler returns, so text
+// that is not JSON fails here by name rather than corrupting the document.
+func (j JSONText) MarshalJSON() ([]byte, error) { return []byte(j), nil }
+
 // TypeFromShape is the whole of the type rule.
 //
-//	scalar, and null   → TypeString
-//	object, array      → TypeJSON
+//	scalar, and null       → TypeString
+//	object, array          → TypeJSON
+//	JSONText               → TypeJSON, because it was one
 //
 // THE SHAPE DECIDES, NEVER THE VALUE, and that is what keeps this on the right
 // side of invariant I2. Reading the value looks reasonable -- 21129 IS an
@@ -44,6 +90,9 @@ func CheckColumnName(name string) error {
 func TypeFromShape(v any) ColumnType {
 	switch v.(type) {
 	case map[string]any, []any:
+		return TypeJSON
+	case JSONText:
+		// Already rendered, by whoever could still see it was an object.
 		return TypeJSON
 	}
 	return TypeString
