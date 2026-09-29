@@ -4,8 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 // The landing table's layout: the columns every such table carries, the id
@@ -271,4 +273,146 @@ func canonicalJSON(b *strings.Builder, v any) error {
 	}
 	b.Write(enc)
 	return nil
+}
+
+// LandingArg configures Landing.
+type LandingArg func(*landing)
+
+type landing struct {
+	table string
+	key   string // the field naming the record's key; empty is keyless
+	op    string // the field naming the operation; empty is always INSERT
+}
+
+// LandingKey names the field that identifies the record.
+//
+// It becomes brevis_record_key and the third slot of the id, so two
+// deliveries of the same record meet. Without it the record is keyless and
+// its CONTENT is its key -- which is what `append` allows and `merge` does
+// not, because a merge with nothing to match on matches nothing.
+func LandingKey(field string) LandingArg { return func(l *landing) { l.key = field } }
+
+// LandingOperationFrom names the field carrying INSERT, UPDATE or DELETE.
+//
+// For a source that computes them -- a CDC feed, a soft-delete column. The
+// verb is RECORDED and never applied: a landing table is history, and
+// resolving the current version is the downstream model's job.
+//
+// Without it every row is INSERT, which is what a source that only ever adds
+// is honestly saying.
+func LandingOperationFrom(field string) LandingArg { return func(l *landing) { l.op = field } }
+
+// Landing turns a record into a landing row: the layout's control columns,
+// plus the record itself in the `data` column.
+//
+//	sdk.Run(sdk.Pipeline{
+//		Source:    /* ... */,
+//		Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+//		Target: sdk.Target{
+//			To:     to.Postgres(dsn, table),
+//			Schema: sdk.LandingSchema(sdk.LandingOptions{Keyed: true}),
+//		},
+//	})
+//
+// The row it composes is exactly what LandingSchema declares, and what a
+// gateway lands for the same record — the same columns and the same
+// brevis_ingestion_id, so the two can be read together and a team can move
+// between them without a migration.
+//
+// `table` is the id's second slot, so it must be the table this pipeline
+// actually writes to. NOTHING CHECKS THAT. The Writer knows its own table but
+// exposes it only through Describe, which is documented as the name "for logs
+// and errors" — building the id on that would tie every id already written to
+// a log string. So the name is passed here and declared again in `To`, and
+// the way to keep them honest is to write it once:
+//
+//	const table = "landing.orders"
+//
+// Get it wrong and the rows land correctly and the ids are minted for a table
+// nobody wrote to. They will look fine. They will not match the gateway's.
+func Landing(table string, opts ...LandingArg) Transformer {
+	l := &landing{table: table}
+	for _, o := range opts {
+		o(l)
+	}
+	return func(payload any) (any, error) {
+		record, ok := payload.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("Landing needs a JSON object, got %T", payload)
+		}
+		// The prefix is reserved, and this REFUSES rather than overwrites.
+		// The gateway overwrites because its producer is a stranger who must
+		// not be able to forge a control field; here the producer is the
+		// pipeline's own author, and replacing what they wrote would hide
+		// their mistake instead of naming it.
+		for k := range record {
+			if strings.HasPrefix(k, LandingPrefix) {
+				return nil, fmt.Errorf("the record carries %q, and %q is reserved "+
+					"for the landing layout's own columns", k, LandingPrefix)
+			}
+		}
+
+		var key string
+		if l.key != "" {
+			key = asText(record[l.key])
+		}
+		op := LandingInsert
+		if l.op != "" {
+			op = asText(record[l.op])
+			switch op {
+			case LandingInsert, LandingUpdate, LandingDelete:
+			default:
+				return nil, fmt.Errorf("field %q says the operation is %q, and the "+
+					"landing layout knows %s, %s and %s: a history is only readable "+
+					"if the verb set is closed",
+					l.op, op, LandingInsert, LandingUpdate, LandingDelete)
+			}
+		}
+
+		// Over the PRODUCER's record, before a control column is added: the
+		// gateway fingerprints `data`, and an id over anything else would
+		// not meet it.
+		id, err := LandingID(l.table, key, record)
+		if err != nil {
+			return nil, err
+		}
+		body, err := json.Marshal(record)
+		if err != nil {
+			return nil, fmt.Errorf("the record is not JSON: %w", err)
+		}
+
+		row := map[string]any{
+			LandingColumnID:        id,
+			LandingColumnOperation: op,
+			// The SDK's own clock, per record, and not the caller's: a value
+			// from outside would turn "when this was taken in" into
+			// something else with the same name, and the partitioning
+			// assumes the first meaning. IngestionLoadedAt says the same.
+			LandingColumnReceivedAt: time.Now().UTC().Format(time.RFC3339),
+			// The DESTINATION's default. Sending it would collapse the one
+			// measurement the pair exists for: dispatch against write.
+			LandingColumnLoadedAt: nil,
+			// The gateway's two. NULL is the honest answer and the readable
+			// signal: a row with brevis_gateway IS NULL did not come through
+			// one.
+			LandingColumnStream:  nil,
+			LandingColumnGateway: nil,
+			// NULL, and it is the same decision as the two above rather than
+			// an oversight. The gateway's number is what arrived ON THE
+			// WIRE, envelope included; the record's own JSON here is about
+			// 30% smaller for a typical event. Filling it would give a
+			// column whose job is volume trend two meanings with one name,
+			// and summing across rows from both paths would be wrong by
+			// whatever share came from which. `length(data)` answers the
+			// pipeline's version exactly, without pretending.
+			LandingColumnReceivedBytes: nil,
+			LandingColumnData:          string(body),
+		}
+		if key != "" {
+			row[LandingColumnRecordKey] = key
+		} else {
+			row[LandingColumnRecordKey] = nil
+		}
+		return row, nil
+	}
 }

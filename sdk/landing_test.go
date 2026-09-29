@@ -1,6 +1,11 @@
 package sdk
 
-import "testing"
+import (
+	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+)
 
 // The landing id is FROZEN, and this is the only thing that says so.
 //
@@ -120,7 +125,14 @@ func TestLandingSchemaIsTheWholeTable(t *testing.T) {
 
 	// The two the gateway fills and a pipeline cannot must be nullable, or a
 	// pipeline could not write the row at all.
-	for _, name := range []string{LandingColumnStream, LandingColumnGateway} {
+	for _, name := range []string{
+		LandingColumnStream, LandingColumnGateway,
+		// The gateway's number counts the WIRE, envelope included. The
+		// record's own JSON is about 30% smaller, so filling this would give
+		// one column two meanings and make a sum across both paths wrong by
+		// whatever share came from which.
+		LandingColumnReceivedBytes,
+	} {
 		for _, c := range got {
 			if c.Name == name && c.Required {
 				t.Errorf("%s is NOT NULL: a pipeline has no gateway and no "+
@@ -207,5 +219,171 @@ func TestALandingSchemaComposes(t *testing.T) {
 	}
 	if got := b[len(b)-1].Name; got != "tenant_b" {
 		t.Errorf("the second caller's last column is %q", got)
+	}
+}
+
+func landingRow(t *testing.T, in map[string]any, table string, opts ...LandingArg) map[string]any {
+	t.Helper()
+	out, err := Landing(table, opts...)(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("Landing returned %T", out)
+	}
+	return row
+}
+
+// The transformer composes exactly the columns LandingSchema declares.
+//
+// A declared column the chain does not deliver is an error at load naming the
+// column; a field the row carries that nothing declared is an error naming
+// the field. The two have to agree or neither is worth having.
+func TestLandingFillsWhatLandingSchemaDeclares(t *testing.T) {
+	row := landingRow(t, map[string]any{"id": "A-1", "total": 10},
+		"landing.orders", LandingKey("id"))
+
+	declared := LandingSchema(LandingOptions{})
+	if len(row) != len(declared) {
+		t.Fatalf("the row has %d columns and the schema declares %d:\nrow: %v",
+			len(row), len(declared), row)
+	}
+	for _, c := range declared {
+		if _, ok := row[c.Name]; !ok {
+			t.Errorf("the schema declares %q and the row does not carry it", c.Name)
+		}
+	}
+}
+
+// The id comes from the one function that mints it. A second implementation
+// here is how two paths stop agreeing.
+func TestLandingMintsTheSameIDAsTheFunction(t *testing.T) {
+	record := map[string]any{"id": "A-1", "total": 10}
+	// The record the fingerprint is over is the PRODUCER's, before any
+	// control column is added -- the gateway hashes `data`, not the row.
+	want, err := LandingID("landing.orders", "A-1", map[string]any{"id": "A-1", "total": 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := landingRow(t, record, "landing.orders", LandingKey("id"))
+	if got := row[LandingColumnID]; got != want {
+		t.Errorf("the transformer minted %v, LandingID gives %s -- they are "+
+			"two implementations of one formula, which is the thing this "+
+			"whole layout exists to avoid", got, want)
+	}
+}
+
+// The gateway's two columns are NULL, and that is the signal.
+func TestLandingLeavesTheGatewaysColumnsEmpty(t *testing.T) {
+	row := landingRow(t, map[string]any{"id": "A"}, "t", LandingKey("id"))
+	for _, name := range []string{LandingColumnStream, LandingColumnGateway} {
+		v, present := row[name]
+		if !present {
+			t.Errorf("%s is missing from the row; the schema declares it and "+
+				"the load would refuse the batch", name)
+		}
+		if v != nil {
+			t.Errorf("%s is %v, want nil -- a pipeline has no gateway and no "+
+				"stream, and a plausible-looking value there is a lie in a "+
+				"column somebody aggregates", name, v)
+		}
+	}
+}
+
+// INSERT unless the record says otherwise.
+func TestLandingsOperation(t *testing.T) {
+	row := landingRow(t, map[string]any{"id": "A"}, "t", LandingKey("id"))
+	if got := row[LandingColumnOperation]; got != LandingInsert {
+		t.Errorf("operation = %v, want %s", got, LandingInsert)
+	}
+
+	cdc := landingRow(t, map[string]any{"id": "A", "op": "DELETE"}, "t",
+		LandingKey("id"), LandingOperationFrom("op"))
+	if got := row[LandingColumnOperation]; got != LandingInsert {
+		t.Errorf("the default moved: %v", got)
+	}
+	if got := cdc[LandingColumnOperation]; got != LandingDelete {
+		t.Errorf("operation = %v, want %s -- a source that computes deletes "+
+			"has to be able to say so", got, LandingDelete)
+	}
+
+	if _, err := Landing("t", LandingOperationFrom("op"))(
+		map[string]any{"id": "A", "op": "UPSERT"}); err == nil {
+		t.Error("an operation outside the vocabulary was accepted: a landing " +
+			"table's history is only readable if the verb set is closed")
+	}
+}
+
+// With no key the content is the key, exactly as `append` does in the gateway.
+func TestLandingWithoutAKey(t *testing.T) {
+	record := map[string]any{"a": 1}
+	want, _ := LandingID("t", "", map[string]any{"a": 1})
+	row := landingRow(t, record, "t")
+	if got := row[LandingColumnID]; got != want {
+		t.Errorf("keyless id = %v, want %s", got, want)
+	}
+	if got := row[LandingColumnRecordKey]; got != nil {
+		t.Errorf("record_key = %v, want nil: the record named none, and "+
+			"inventing one would make it look like the producer's", got)
+	}
+}
+
+// The prefix is reserved, and the SDK refuses rather than overwrites.
+//
+// The gateway overwrites, deliberately, because its producer is a stranger
+// who must not be able to forge a control field. Here the producer is the
+// pipeline's own author: silently replacing what they wrote would hide their
+// mistake instead of naming it, which is what IngestionLoadedAt already does.
+func TestLandingRefusesAReservedKey(t *testing.T) {
+	_, err := Landing("t", LandingKey("id"))(map[string]any{
+		"id": "A", LandingColumnReceivedAt: "2020-01-01T00:00:00Z",
+	})
+	if err == nil {
+		t.Fatal("a record carrying a brevis_ field was accepted")
+	}
+	if !strings.Contains(err.Error(), LandingColumnReceivedAt) {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+}
+
+// The record lands whole, and comes back.
+func TestLandingKeepsTheRecord(t *testing.T) {
+	row := landingRow(t, map[string]any{"id": "A", "nested": map[string]any{"x": 1}},
+		"t", LandingKey("id"))
+	var back map[string]any
+	if err := json.Unmarshal([]byte(row[LandingColumnData].(string)), &back); err != nil {
+		t.Fatalf("the data column is not JSON: %v", err)
+	}
+	if back["id"] != "A" {
+		t.Errorf("the record did not survive: %v", back)
+	}
+	if _, leaked := back[LandingColumnID]; leaked {
+		t.Error("a control column leaked into the producer's data")
+	}
+}
+
+// received_at is the SDK's clock, in the format the sibling column uses.
+func TestLandingStampsItsOwnClock(t *testing.T) {
+	row := landingRow(t, map[string]any{"id": "A"}, "t", LandingKey("id"))
+	at, ok := row[LandingColumnReceivedAt].(string)
+	if !ok {
+		t.Fatalf("received_at is %T", row[LandingColumnReceivedAt])
+	}
+	when, err := time.Parse(time.RFC3339, at)
+	if err != nil {
+		t.Fatalf("received_at is not RFC 3339: %q", at)
+	}
+	if time.Since(when) > time.Minute || when.After(time.Now().Add(time.Minute)) {
+		t.Errorf("received_at is %s, which is not now", at)
+	}
+	// loaded_at is the DATABASE's default and must not be sent.
+	if _, sent := row[LandingColumnLoadedAt]; !sent {
+		t.Error("loaded_at is missing from the row, and the schema declares it")
+	} else if row[LandingColumnLoadedAt] != nil {
+		t.Errorf("loaded_at was sent as %v: it is a database DEFAULT, and the "+
+			"difference between the two columns is the end-to-end latency "+
+			"only if one of them is the destination's",
+			row[LandingColumnLoadedAt])
 	}
 }
