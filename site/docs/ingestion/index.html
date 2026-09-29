@@ -269,6 +269,9 @@ streams:
 <p><strong>No BigQuery <code>size</code> é teto, não alvo.</strong> Aquele destino permite 1.500 load jobs por tabela por dia — é por isso que <code>every</code> tem piso de 60s. Mas o piso governa o <strong>timer</strong>: um <code>size</code> que dispara a cada poucos segundos passa direto por ele e gasta a mesma cota. Nada recusa isso no carregamento, porque a taxa de chegada não é conhecível ali. O que existe é visibilidade:</p>
 <div class="code-block" data-code="brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size</code></pre></div>
 <p><code>trigger="size"</code> subindo num stream de BigQuery está te dizendo que não é a janela que está fazendo o lote.</p>
+<p>Esse contador é por stream, e a cota é por <strong>tabela</strong>: com <code>auto_table</code> uma rota vira muitas tabelas, e 94 delas reportando um número só não diz nada sobre nenhuma. Atrás de <code>BREVIS_INGESTION_METRICS</code> existe um que nomeia a tabela:</p>
+<div class="code-block" data-code="brevis_gateway_table_flushes_total{stream,table,trigger}"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_gateway_table_flushes_total{stream,table,trigger}</code></pre></div>
+<p>Um flush de uma tabela é um load job dela, então esta é a série para alertar em 1.200 dos 1.500 que o BigQuery permite. A metade incondicional é uma linha no boot, que diz quanto <code>flush.every</code> custa por tabela por dia antes de qualquer evento chegar.</p>
 <p><strong>É limitado, não é "atira e esquece".</strong> Uma goroutine por lote transformaria a queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios, a resposta é <strong><code>503</code> com <code>Retry-After</code></strong> em vez de um <code>202</code> para um evento sem lugar. Um evento aceito e nunca entregue é o único desfecho que este serviço existe para não ter.</p>
 <p>E esse <code>503</code> é <strong>seguro de repetir</strong>, de um jeito que quase nenhum serviço consegue afirmar: o <code>ingestion_id</code> é função congelada do próprio evento, então o mesmo corpo reenviado é o <em>mesmo registro</em>.</p>
 <h2 id="quando-o-destino-recusa">Quando o destino recusa<a class="anchor" href="#quando-o-destino-recusa" aria-label="link">#</a></h2>
@@ -342,6 +345,7 @@ brevis_gateway_flushes_total{stream,trigger}            contador  time|records|s
 brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
@@ -353,6 +357,7 @@ brevis_gateway_flushes_total{stream,trigger}            contador  time|records|s
 brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma

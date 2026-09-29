@@ -13,6 +13,149 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.15.0] — 2026-09-29
+
+`0.14.0` moved the flush clock from the process to the deployment. This is the
+same correction one level down: from the stream to the **routing key**. From
+[issue #38].
+
+### The problem, measured by the reporter
+
+The buffer was per stream and the sink routes per table, so a producer that
+filled the buffer set the flush frequency, and every quiet table in that
+stream got a load job each time — carrying whatever handful of rows it had.
+Same workload, two arrangements:
+
+| | rows | load jobs | rows per job |
+|---|---|---|---|
+| sharing a stream with a busy producer | 3,387 | **271** | 12 |
+| alone | 4,500 | **8** | 562 |
+
+**34× the jobs for the same data**, against 1,500 per table per day.
+
+It is a unit error rather than a missing feature: `flush.size: 8MiB` meant
+8 MiB *of the stream*, a quantity no destination ever receives. Every mature
+batching producer partitions its batching — Kafka's `linger.ms` is per
+topic-partition — and a per-stream trigger with per-table routing was the
+unusual choice.
+
+### Changed: `flush.records` and `flush.size` count per routing key
+
+The buffer is a bucket per key now. A table fills its own batch and leaves on
+its own clock; nobody inherits a neighbour's cadence.
+
+**A sink with no routing key is unchanged, byte for byte.** One bucket is what
+those streams always had, and they allocate nothing new for it.
+
+**The ceilings stay global.** `max_records` and `max_bytes` count the process,
+because `64MiB × 94 tables` is 6 GB. Split the trigger, never the ceiling — and
+a full buffer still answers `503`, as it always did.
+
+The shutdown drain still leaves as one batch: the sink re-groups it, and
+shutdown is about not losing events rather than about cadence.
+
+### Changed: the claim's key carries the table
+
+Two replicas behind a load balancer do not hold the same tables — whichever
+producer hit which pod decides. With one claim for the stream, a replica
+holding `clicks` takes the window and a replica holding `orders` waits one it
+never wanted; with N replicas it can wait N of them.
+
+A stream with no routing key keeps exactly the key it had, so an upgrade does
+not find its replicas contesting a window that moved.
+
+### Added: the load-job budget, said at boot
+
+```
+INFO a table with traffic in every window costs one load job per window ...
+     stream=tables every=2m0s load_jobs_per_table_per_day=720
+     bigquery_allows=1500
+```
+
+`check` already refused a window too small to hold the quota and did the
+division in the error. It said nothing when the config passed, and those are
+not the same fact: **the smallest window it permits, 60s, already spends 1,440
+of the 1,500.** Only where a limit is known — a cadence printed for Postgres is
+a number with nothing to compare it against.
+
+### Added: `brevis_gateway_table_flushes_total{stream,table,trigger}`
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200. `flushes_total` is per stream, which on a 94-table route says nothing
+about any of them.
+
+Behind `BREVIS_INGESTION_METRICS`, beside the volume pair and for the same
+reason: `table` is a label the producer chooses. The stream counter keeps its
+own shape, so a deployment that never turns the switch on sees the cardinality
+it had.
+
+### Added: `BulkClaimer`, and a fallback that does not queue
+
+A window now asks for one claim per table. Sequential, that is the whole
+objection to the idea: **94 claims cost 2.589s of held mutex** against a Redis
+degraded to 25ms RTT, and admission's p99 tracked it 1:1 — `enqueue` takes that
+mutex unconditionally.
+
+Redis answers them in one pipelined round trip. Every other backend answers
+them in parallel, bounded at 32, in `claimAll` where all of them reach it. 94
+keys at 25ms RTT:
+
+| backend | one at a time | as it ships |
+|---|---|---|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+One key takes no goroutine at all, and the in-process store claims in bulk
+under one lock so it never enters the fan-out.
+
+`Metastore` now states that implementations must be safe for concurrent use of
+the same method. It always required safety across methods; this is the rest of
+that sentence.
+
+### Fixed: the claim's 500ms budget never reached memcached
+
+`claimTimeout` is short because the claim runs while the buffer's lock is held.
+Redis obeys it — `SetNX` takes the context. **`gomemcache.Add` takes none**, so
+every method of that store discarded the one it was handed, and the only bound
+was the client's own 5s default. Measured against a backend delayed by 2s, with
+a 500ms context:
+
+```
+Claim returned : 2s (err=<nil>)
+```
+
+Two seconds of held mutex, reported as success, in **`0.14.0` with a single
+claim per window**.
+
+> **Behaviour change.** The memcached client's socket timeout drops from 5s to
+> 500ms, on every method — a cache lookup that hangs for five seconds is the
+> same failure on a colder path. A deployment whose memcached is slow but
+> working will now see errors where it saw slow answers. The metastore fails
+> open, so those are load jobs and not lost events.
+
+`claimTimeout` is exported as `ClaimTimeout`, because the number lives in two
+places by necessity and must not drift.
+
+### What measuring found that the plan did not say
+
+**A refusal I wrote was wrong.** `0.15.0`'s branch refused `flush.claim` with
+`auto_table` on memcached, because it has no pipelined add. True about
+pipelining, wrong about cost: nothing forced those claims to be sequential —
+the fallback simply was a loop. A backend was refused for a limitation of the
+code in front of it. The refusal never shipped.
+
+**`due` is not `deadline() <= 0`.** They answer different questions: deadline
+says when to WAKE, and with a claim that is the window boundary, which at the
+boundary reads as a whole period away. A dueness built on it wakes every window
+and flushes nothing.
+
+**The throughput comparison is not in this entry**, because the machine it was
+built on returned 108k to 166k events/s for the same binary and config. What is
+deterministic: the keyless admission path allocates nothing new, and a keyed
+request costs one or two allocations and 13–24 bytes per event.
+
+[issue #38]: https://github.com/AreteAcademy/brevis/issues/38
+
 ## [0.14.0] — 2026-09-27
 
 The flush clock can belong to the deployment instead of to each process. From

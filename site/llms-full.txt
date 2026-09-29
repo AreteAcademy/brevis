@@ -3537,6 +3537,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 `trigger="size"` climbing on a BigQuery stream is telling you the window is not
 what is batching.
 
+That counter is per stream, and the quota is per **table**: with `auto_table`
+one route becomes many tables, and 94 of them reporting one number says nothing
+about any of them. Behind `BREVIS_INGESTION_METRICS` there is one that names it:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at
+boot, which says what `flush.every` costs per table per day before an event
+arrives.
+
 **It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
 outage into unbounded memory. When the queue and the buffer are both full, the
 answer is **`503` with `Retry-After`** rather than a `202` for an event with
@@ -3647,6 +3660,7 @@ brevis_gateway_flushes_total{stream,trigger}            counter  time|records|si
 brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
 process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
@@ -4231,6 +4245,20 @@ it may be **wrong**.
 | `redis` | `addr_from` required. A `SETNX` is the claim, an `INCR` is the counter |
 | `memcached` | `addr_from` required. An `Add` is the claim, and expiry is **second**-granular |
 
+**Redis is the faster one for a stream with a routing key**, and the
+difference is worth a number rather than an adjective. With the trigger per
+table, a window asks for one claim per table: Redis answers 94 of them in one
+pipelined round trip, and every other backend answers them in parallel,
+bounded at 32. Measured against a backend 25 ms away — 94 claims:
+
+| backend | one at a time | as it ships |
+|---|---:|---:|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+Three waves against one round trip. Both are inside the 500 ms a claim is
+given, so memcached is the slower choice and not a refused one.
+
 With several replicas, `memory` gives each its own: the debounce debounces
 nothing and `max_new_per_hour` bounds a process. That is the only reason the
 other two exist.
@@ -4238,6 +4266,13 @@ other two exist.
 **A metastore that is down must not take a write down with it.** A `Get` that
 errors is a miss, a claim that errors behaves as won, a counter that errors
 relaxes the limit. A cache that can stop the ingestion is worse than no cache.
+
+**And "down" includes "slow".** The claim runs while the buffer's lock is held,
+so a backend that takes two seconds to answer is two seconds in which that
+stream accepts nothing. Every call is bounded at **500 ms** and fails open past
+it. Redis obeys that as the caller's context; `gomemcache` takes no context at
+all, so memcached obeys it as a socket deadline — the same bound reached two
+ways, because one of the two clients cannot be told to stop.
 
 **`ttl: 0` means never**, and saying nothing still takes the one-minute default
 — three states, not two.
