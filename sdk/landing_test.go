@@ -93,3 +93,119 @@ func TestTheLandingIDFollowsTheRecord(t *testing.T) {
 			"arrays, and they are different documents")
 	}
 }
+
+// The layout a pipeline composes into Target.Schema.
+//
+// Nine columns: the eight the layout owns and the one the producer does. A
+// caller who wants their own columns instead of the JSON one takes
+// LandingControlColumns and appends theirs.
+func TestLandingSchemaIsTheWholeTable(t *testing.T) {
+	got := LandingSchema(LandingOptions{})
+
+	want := []string{
+		LandingColumnID, LandingColumnRecordKey, LandingColumnOperation,
+		LandingColumnReceivedAt, LandingColumnLoadedAt, LandingColumnStream,
+		LandingColumnGateway, LandingColumnReceivedBytes, LandingColumnData,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("%d columns, want %d: %v", len(got), len(want), got.Names())
+	}
+	for i, name := range want {
+		if got[i].Name != name {
+			t.Errorf("column %d is %q, want %q -- the ORDER is the DDL's, and "+
+				"a table created here has to match one the gateway created",
+				i, got[i].Name, name)
+		}
+	}
+
+	// The two the gateway fills and a pipeline cannot must be nullable, or a
+	// pipeline could not write the row at all.
+	for _, name := range []string{LandingColumnStream, LandingColumnGateway} {
+		for _, c := range got {
+			if c.Name == name && c.Required {
+				t.Errorf("%s is NOT NULL: a pipeline has no gateway and no "+
+					"stream, and a required column it cannot fill is a table "+
+					"it cannot write to", name)
+			}
+		}
+	}
+
+	// The control columns are the same eight, without the producer's one.
+	control := LandingControlColumns(LandingOptions{})
+	if len(control) != len(got)-1 {
+		t.Fatalf("%d control columns against %d in the table", len(control), len(got))
+	}
+	for i := range control {
+		if control[i].Name != got[i].Name {
+			t.Errorf("control column %d is %q, the table's is %q",
+				i, control[i].Name, got[i].Name)
+		}
+	}
+	if control.Has(LandingColumnData) {
+		t.Error("the control columns include the producer's column")
+	}
+}
+
+// The options are what the write mode makes vary, and both are the same
+// decision seen twice.
+func TestLandingOptionsReachTheColumns(t *testing.T) {
+	plain := LandingSchema(LandingOptions{})
+	for _, c := range plain {
+		if c.Name == LandingColumnID && c.Unique {
+			t.Error("the id is UNIQUE by default: BigQuery refuses the " +
+				"constraint and `append` does not want it")
+		}
+		if c.Name == LandingColumnRecordKey && c.Required {
+			t.Error("the record key is NOT NULL by default: under `append` a " +
+				"record may name none, and the database would refuse the row")
+		}
+	}
+
+	both := LandingSchema(LandingOptions{UniqueID: true, Keyed: true})
+	var sawUnique, sawKeyed bool
+	for _, c := range both {
+		if c.Name == LandingColumnID && c.Unique {
+			sawUnique = true
+		}
+		if c.Name == LandingColumnRecordKey && c.Required {
+			sawKeyed = true
+		}
+	}
+	if !sawUnique {
+		t.Error("UniqueID did not reach brevis_ingestion_id")
+	}
+	if !sawKeyed {
+		t.Error("Keyed did not reach brevis_record_key")
+	}
+}
+
+// Composing is the point: the default is the caller declaring the table, and
+// this only saves them typing the part that already exists.
+func TestALandingSchemaComposes(t *testing.T) {
+	mine := append(LandingSchema(LandingOptions{}),
+		Column{Name: "tenant", Type: TypeString, Required: true})
+
+	if !mine.Has("tenant") {
+		t.Fatal("an appended column did not survive")
+	}
+	if !mine.Has(LandingColumnID) || !mine.Has(LandingColumnData) {
+		t.Fatal("appending lost the layout")
+	}
+	// Two callers appending must not write into one array.
+	//
+	// The first version of this check asked whether a later call could SEE
+	// an earlier caller's column, and a shared backing slice passed it: the
+	// appended column sits past the returned length, so nobody sees it until
+	// somebody else appends over it. The failure is a clobber, not a
+	// sighting, and it takes two writers to show.
+	a := append(LandingSchema(LandingOptions{}), Column{Name: "tenant_a", Type: TypeString})
+	b := append(LandingSchema(LandingOptions{}), Column{Name: "tenant_b", Type: TypeString})
+	if got := a[len(a)-1].Name; got != "tenant_a" {
+		t.Errorf("after a second caller appended, the first caller's last "+
+			"column is %q: the two schemas share a backing array, and one "+
+			"pipeline's column lands in another's table", got)
+	}
+	if got := b[len(b)-1].Name; got != "tenant_b" {
+		t.Errorf("the second caller's last column is %q", got)
+	}
+}

@@ -101,8 +101,14 @@ const PartitionBy = sdk.LandingPartitionBy
 var ClusterBy = sdk.LandingClusterBy()
 
 // fixed is the part of the schema that never varies, except where the write
-// mode makes it vary. See sdk.LandingSchema for what the two flags mean.
-func fixed(unique, keyed bool) sdk.Schema { return sdk.LandingSchema(unique, keyed) }
+// mode makes it vary. See sdk.LandingOptions for what the two flags mean.
+//
+// The CONTROL columns: this package appends the shape's own, which for
+// `document` is the same one column the SDK would have added and for
+// `columns` is one per field.
+func fixed(unique, keyed bool) sdk.Schema {
+	return sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: unique, Keyed: keyed})
+}
 
 // envelope is one request, taken apart.
 type envelope struct {

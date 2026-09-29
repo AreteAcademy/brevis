@@ -93,30 +93,58 @@ const LandingPartitionBy = LandingColumnReceivedAt
 // created.
 func LandingClusterBy() []string { return []string{LandingColumnRecordKey} }
 
-// LandingSchema is the part of the layout that never varies, except where the
-// write mode makes it vary -- and both places it does are the same decision
-// seen twice.
+// LandingOptions is what the write mode makes vary, and both fields are the
+// same decision seen twice.
+type LandingOptions struct {
+	// UniqueID puts a UNIQUE constraint on brevis_ingestion_id.
+	//
+	// Required by `merge` on Postgres and MySQL, refused by BigQuery, and
+	// wrong for `append` -- where the same record legitimately lands twice
+	// and the history is the point.
+	UniqueID bool
+
+	// Keyed makes brevis_record_key NOT NULL.
+	//
+	// Under `merge` the key is required of every record, so the column can
+	// be. Under `append` a record may name none, and a NOT NULL column would
+	// then refuse the row at the database -- at write time, failing the batch
+	// around it.
+	Keyed bool
+}
+
+// LandingSchema is the landing table, ready to compose:
+//
+//	Target{
+//		To:     to.Postgres(dsn, "landing.orders"),
+//		Schema: sdk.LandingSchema(sdk.LandingOptions{Keyed: true}),
+//	}
+//
+// Nine columns: the eight the layout owns and the one the producer does. The
+// caller may append their own, and the ORDER is the DDL's -- a table created
+// from this has to match one a gateway created, column for column.
+//
+// It is not a mode. Target.Schema is still the caller declaring what the
+// table is; this only saves them typing a layout that already exists, and
+// CreationPlan never learns that anything special happened.
+func LandingSchema(o LandingOptions) Schema {
+	return append(LandingControlColumns(o), LandingDataColumn())
+}
+
+// LandingControlColumns is the eight columns the layout owns, without the
+// producer's.
+//
+// For a caller giving the record's fields columns of their own instead of
+// landing it whole as JSON. They append theirs; these stay first, in this
+// order.
 //
 // brevis_loaded_at is a database DEFAULT and not a value anybody sends, and
 // that is deliberate: the sender knows the DISPATCH time, the destination
 // knows the WRITE time. The difference between the two columns is then the
 // real end-to-end latency, per row, with no instrumentation at all.
-//
-// `unique` is the UNIQUE constraint on the id: required by `merge` on
-// Postgres and MySQL, refused by BigQuery, wrong for `append`.
-//
-// `keyed` is whether brevis_record_key is NOT NULL. Under `merge` the key is
-// required of every record, so the column can be. Under `append` a record may
-// name none, and a NOT NULL column would then refuse the row at the database
-// -- at write time, failing the batch.
-//
-// It does NOT include LandingColumnData. A caller composing a document-shaped
-// table appends LandingDataColumn(); one composing their own columns appends
-// those instead.
-func LandingSchema(unique, keyed bool) Schema {
+func LandingControlColumns(o LandingOptions) Schema {
 	return Schema{
-		{Name: LandingColumnID, Type: TypeString, Required: true, Unique: unique},
-		{Name: LandingColumnRecordKey, Type: TypeString, Required: keyed},
+		{Name: LandingColumnID, Type: TypeString, Required: true, Unique: o.UniqueID},
+		{Name: LandingColumnRecordKey, Type: TypeString, Required: o.Keyed},
 		{Name: LandingColumnOperation, Type: TypeString, Required: true},
 		{Name: LandingColumnReceivedAt, Type: TypeTimestamp, Required: true},
 		{Name: LandingColumnLoadedAt, Type: TypeTimestamp, Default: CurrentTimestamp},
