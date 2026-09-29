@@ -34,6 +34,13 @@ import (
 // long stalls every replica behind one dead process. Losing a Claim costs a
 // retry and nothing else, which is what Delta Lake and Iceberg do with
 // optimistic commits and what Kafka Connect gets free from partition ordering.
+//
+// An implementation must be safe for CONCURRENT use, including several calls
+// to the same method. It always had to be safe across methods -- the router
+// reads the cache from a worker while the timer claims a window -- and the
+// per-key claim adds the rest: with no bulk primitive the fallback claims up
+// to `claimFanout` keys at once, because doing it one at a time holds the
+// buffer's lock for the sum of them.
 type Metastore interface {
 	// Get returns what was stored, and whether anything was.
 	Get(ctx context.Context, key string) (string, bool, error)

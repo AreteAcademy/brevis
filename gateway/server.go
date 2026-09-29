@@ -1210,16 +1210,65 @@ func claimAll(ctx context.Context, m Metastore, keys []string, ttl time.Duration
 		}
 		return got, nil
 	}
-	out := make([]bool, len(keys))
-	for i, key := range keys {
-		got, err := m.Claim(ctx, key, ttl)
+	// One key is the common case -- a stream with one destination, every
+	// window -- and it must not pay for machinery it cannot use.
+	if len(keys) == 1 {
+		got, err := m.Claim(ctx, keys[0], ttl)
 		if err != nil {
 			return nil, err
 		}
-		out[i] = got
+		return []bool{got}, nil
+	}
+
+	// In parallel, because sequential was the whole objection to a per-key
+	// claim: 94 claims one at a time cost 2.589s of held mutex against a
+	// Redis degraded to 25ms RTT, and admission's p99 tracked that exactly.
+	// A backend with no bulk primitive cannot make it one round trip, but it
+	// can stop making it ninety-four.
+	//
+	// Bounded, because a stream at 10,000 tables must not open 10,000
+	// connections to find out who won.
+	out := make([]bool, len(keys))
+	errs := make([]error, len(keys))
+	sem := make(chan struct{}, claimFanout)
+	var wg sync.WaitGroup
+	for i, key := range keys {
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(i int, key string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			// Distinct indices, so the slices need no lock and the answers
+			// stay in the order the keys came in -- which is the property
+			// that keeps a table from being handed a window another table
+			// won.
+			out[i], errs[i] = m.Claim(ctx, key, ttl)
+		}(i, key)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }
+
+// claimFanout bounds how many claims run at once in the fallback.
+//
+// Thirty-two, measured against a real memcached behind a latency proxy, for
+// the 94 tables the case in issue #38 has:
+//
+//	added RTT   94 sequential   94 at this bound
+//	0            16 ms            5.3 ms
+//	5 ms        634 ms           29.4 ms
+//	25 ms         2.577 s        89.4 ms
+//
+// Three waves, which at 25ms leaves the 500ms budget four fifths unspent and
+// still fits at 100ms. Sixteen would be six waves and would not. It stays
+// under the memcached store's idle-connection ceiling of 64, so the
+// connections one window opens are the ones the next window finds.
+const claimFanout = 32
 
 // ClaimTimeout bounds the call the timer path makes to the metastore.
 //

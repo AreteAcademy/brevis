@@ -1912,3 +1912,133 @@ func TestFlushesAreCountedPerTableWhenAsked(t *testing.T) {
 		}
 	})
 }
+
+// concurrentStore records how many claims were in flight at once, and can be
+// told which keys win.
+type concurrentStore struct {
+	Metastore
+	mu       sync.Mutex
+	inflight int
+	peak     int
+	seen     []string
+	delay    time.Duration
+	fail     string // the key that errors, if any
+}
+
+func (s *concurrentStore) Claim(_ context.Context, key string, _ time.Duration) (bool, error) {
+	s.mu.Lock()
+	s.inflight++
+	if s.inflight > s.peak {
+		s.peak = s.inflight
+	}
+	s.seen = append(s.seen, key)
+	s.mu.Unlock()
+
+	time.Sleep(s.delay)
+
+	s.mu.Lock()
+	s.inflight--
+	s.mu.Unlock()
+
+	if key == s.fail {
+		return false, errBroken
+	}
+	// Odd keys win, so a caller that shuffles the answers is caught by the
+	// pattern rather than by a count.
+	n, _ := strconv.Atoi(strings.TrimPrefix(key, "k"))
+	return n%2 == 1, nil
+}
+
+// The fallback answers per key, IN ORDER, however it ran them.
+//
+// The Redis pipeline has this test because results read out of order hand a
+// table a window another table won -- silently, with every flush still
+// looking like a flush. A fan-out can make the same mistake more easily: the
+// goroutines finish in whatever order they finish.
+func TestTheClaimFallbackAnswersInOrder(t *testing.T) {
+	store := &concurrentStore{Metastore: NewMemoryMetastore(), delay: time.Millisecond}
+	keys := make([]string, 40)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("k%d", i)
+	}
+
+	got, err := claimAll(context.Background(), store, keys, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != len(keys) {
+		t.Fatalf("%d answers for %d keys", len(got), len(keys))
+	}
+	for i, won := range got {
+		if want := i%2 == 1; won != want {
+			t.Errorf("key %d: won=%v, want %v -- the answers do not line up "+
+				"with the keys, so a table can be handed a window another "+
+				"table took", i, won, want)
+		}
+	}
+}
+
+// And it runs them in parallel, bounded.
+//
+// Sequential was the whole objection to a per-key claim: 94 claims one at a
+// time cost 2.589s of held mutex against a Redis at 25ms RTT, and admission's
+// p99 tracked it exactly. Bounded, because a stream at 10,000 tables must not
+// open 10,000 connections to find out who won.
+func TestTheClaimFallbackRunsInParallelWithinABound(t *testing.T) {
+	store := &concurrentStore{Metastore: NewMemoryMetastore(), delay: 5 * time.Millisecond}
+	keys := make([]string, 200)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("k%d", i)
+	}
+
+	start := time.Now()
+	if _, err := claimAll(context.Background(), store, keys, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	took := time.Since(start)
+
+	store.mu.Lock()
+	peak := store.peak
+	store.mu.Unlock()
+
+	if peak <= 1 {
+		t.Errorf("peak concurrency %d: the fallback is still a loop, and every "+
+			"backend without a bulk primitive pays a round trip per table with "+
+			"the buffer held", peak)
+	}
+	if peak > claimFanout {
+		t.Errorf("peak concurrency %d exceeds the bound of %d", peak, claimFanout)
+	}
+	// 200 keys at 5ms, in waves of claimFanout. Sequential would be a second.
+	if want := time.Duration(len(keys)/claimFanout+2) * 5 * time.Millisecond; took > 4*want {
+		t.Errorf("200 claims took %s, want around %s", took.Round(time.Millisecond), want)
+	}
+}
+
+// One key takes no goroutine at all: the timer path on a stream with one
+// destination is the common case and must not pay for machinery it cannot use.
+func TestASingleClaimDoesNotFanOut(t *testing.T) {
+	store := &concurrentStore{Metastore: NewMemoryMetastore()}
+	if _, err := claimAll(context.Background(), store, []string{"k1"}, time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	store.mu.Lock()
+	peak := store.peak
+	store.mu.Unlock()
+	if peak != 1 {
+		t.Errorf("peak concurrency %d for one key", peak)
+	}
+}
+
+// An error from any key fails the whole call, and the caller fails open for
+// all of them -- the direction chosen when the claim landed.
+func TestTheClaimFallbackReportsAnError(t *testing.T) {
+	store := &concurrentStore{Metastore: NewMemoryMetastore(), fail: "k7"}
+	keys := make([]string, 20)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("k%d", i)
+	}
+	if _, err := claimAll(context.Background(), store, keys, time.Minute); err == nil {
+		t.Error("a backend that errored on one key reported success for all of them")
+	}
+}
