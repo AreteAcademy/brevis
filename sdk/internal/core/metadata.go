@@ -33,7 +33,7 @@ const (
 // Transform chain, so checking all of them would cost a full scan to say the
 // same thing.
 func CheckColumns(declared []string, records []Envelope) error {
-	return CheckRow(declared, nil, records)
+	return CheckRow(declared, nil, records, nil)
 }
 
 // CheckRow is CheckColumns with the declaration's TYPES, which is what makes a
@@ -47,18 +47,27 @@ func CheckColumns(declared []string, records []Envelope) error {
 // Everything else is unchanged, and the undeclared half especially: a field the
 // destination never heard of still stops the load. A default says a column may
 // be ABSENT, not that anything may be present.
-func CheckRow(declared []string, s Schema, records []Envelope) error {
+func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []string) error {
 	if len(declared) == 0 || len(records) == 0 {
 		return nil
 	}
 
-	optional := make(map[string]bool, len(s))
+	optional := make(map[string]bool, len(s)+len(mayBeAbsent))
 	for _, c := range s {
 		// Required and defaulted at once is not a contradiction: the default is
 		// what fills the NOT NULL when the row omits it.
 		if c.Default != nil {
 			optional[c.Name] = true
 		}
+	}
+	// A column the BATCH contributed, not the consumer. Absent from one record
+	// is not a mistake there: a batch holds N records for one table and they
+	// need not carry the same fields, so the union is what the table has to
+	// have and a record missing one of them writes NULL. The other half of
+	// this check is untouched -- a field nothing declared still stops the
+	// load, which is the half that matters most.
+	for _, c := range mayBeAbsent {
+		optional[c] = true
 	}
 
 	row, err := AsObject(records[0].Payload)

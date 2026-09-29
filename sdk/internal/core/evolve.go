@@ -25,6 +25,20 @@ const (
 	// and the narrowness is the point: adding a nullable column cannot break a
 	// reader, and every other change can.
 	EvolveAdditive
+
+	// EvolveAdditiveFromPayload is EvolveAdditive plus the columns the BATCH
+	// carries and the declaration does not.
+	//
+	// The type comes from TypeFromShape and never from the value, so this is
+	// not the SDK inferring a schema: `STRING` unless the field is an object
+	// or an array is a RULE, the same one the gateway lands `shape: columns`
+	// with. What it decides is how the ROW's declaration is completed, never
+	// what a column means.
+	//
+	// It still only ADDS. Plan emits `add` and `widen` and nothing else, so a
+	// field that disappears from the source stops being written and its column
+	// stays -- which is not a gap, it is what a landing table is for.
+	EvolveAdditiveFromPayload
 )
 
 // MayAdd reports whether this mode adds a column the table lacks.
@@ -45,6 +59,14 @@ const (
 // sit before it, which is a decision somebody makes on purpose -- and the
 // zero value is still EvolveNone, so the default is still "refuse".
 func (e Evolution) MayAdd() bool { return e >= EvolveAdditive }
+
+// FromPayload reports whether the BATCH may contribute columns the
+// declaration does not have.
+//
+// Named rather than compared, for the reason MayAdd is: a mode added later
+// that also reads the payload must not have to remember to update a list of
+// equalities spread across four packages.
+func (e Evolution) FromPayload() bool { return e == EvolveAdditiveFromPayload }
 
 // There is deliberately no EvolveAll.
 //

@@ -74,6 +74,17 @@ type WriteOptions struct {
 	// table has to refuse rather than infer.
 	Schema Schema
 
+	// Discovered names the columns the BATCH contributed rather than the
+	// consumer, under EvolveAdditiveFromPayload.
+	//
+	// It exists so the row check can tell the two apart. "You declared X and
+	// your chain does not produce it" is a bug worth stopping for; "the batch
+	// carried X in record 50 and not in record 0" is what a landing table IS,
+	// and the record missing it writes NULL there.
+	//
+	// Always a subset of Columns, and set only by WithDiscovered.
+	Discovered []string
+
 	// PartitionBy names the partitioning column of a created table.
 	// Empty lets the destination use its own default.
 	PartitionBy string

@@ -5,10 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // The landing table's layout: the columns every such table carries, the id
@@ -481,7 +482,7 @@ func Landing(table string, opts ...LandingArg) Transformer {
 // almost anything quoted -- which is exactly the trap, because the table
 // would be created there and the same fetcher would break the day somebody
 // points it at BigQuery.
-var LandingFieldName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+var LandingFieldName = core.ColumnName
 
 // LandingFieldNames refuses a record this layout cannot turn into columns.
 //
@@ -491,10 +492,8 @@ var LandingFieldName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
 // it and send three other producers' events to the dead letter.
 func LandingFieldNames(record map[string]any) error {
 	for _, k := range landingKeys(record) {
-		if !LandingFieldName.MatchString(k) {
-			return fmt.Errorf("the field %q cannot be a column name: it has to "+
-				"match %s. That is BigQuery's rule and it is the narrowest of "+
-				"the four, so a name that passes works everywhere", k, LandingFieldName)
+		if err := core.CheckColumnName(k); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -557,18 +556,9 @@ func LandingSchemaOf(record map[string]any) (Schema, error) {
 	}
 	out := make(Schema, 0, len(record))
 	for _, k := range landingKeys(record) {
-		out = append(out, Column{Name: k, Type: landingType(record[k])})
+		out = append(out, Column{Name: k, Type: core.TypeFromShape(record[k])})
 	}
 	return out, nil
-}
-
-// landingType is the whole of the type rule.
-func landingType(v any) ColumnType {
-	switch v.(type) {
-	case map[string]any, []any:
-		return TypeJSON
-	}
-	return TypeString
 }
 
 func landingValue(v any) (any, error) {

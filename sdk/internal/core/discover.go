@@ -1,0 +1,148 @@
+package core
+
+import (
+	"fmt"
+	"regexp"
+	"sort"
+)
+
+// ColumnName is what a field has to match to become a column of its own.
+//
+// BigQuery's rule, which is the narrowest of the four destinations: a letter
+// or underscore, then letters, digits and underscores. Postgres would accept
+// almost anything quoted -- which is exactly the trap, because the table
+// would be created there and the same fetcher would break the day somebody
+// points it at BigQuery.
+var ColumnName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+
+// CheckColumnName refuses a field this layout cannot turn into a column.
+func CheckColumnName(name string) error {
+	if ColumnName.MatchString(name) {
+		return nil
+	}
+	return fmt.Errorf("the field %q cannot be a column name: it has to match %s. "+
+		"That is BigQuery's rule and it is the narrowest of the four, so a name "+
+		"that passes works everywhere", name, ColumnName)
+}
+
+// TypeFromShape is the whole of the type rule.
+//
+//	scalar, and null   → TypeString
+//	object, array      → TypeJSON
+//
+// THE SHAPE DECIDES, NEVER THE VALUE, and that is what keeps this on the right
+// side of invariant I2. Reading the value looks reasonable -- 21129 IS an
+// integer -- and it is the exact failure the SDK refuses everywhere else: a
+// field that arrives whole today and fractional tomorrow would change the
+// column's type with nobody writing anything, and the row that no longer fits
+// goes to the dead letter. `true` is the case that most invites an exception
+// and does not get one.
+//
+// What it costs, said where somebody will read it: no partition pruning on a
+// date inside the record, no numeric aggregation without a cast. Typing a
+// column is the PROMOTION path -- a human writing it down, reviewed in a diff.
+func TypeFromShape(v any) ColumnType {
+	switch v.(type) {
+	case map[string]any, []any:
+		return TypeJSON
+	}
+	return TypeString
+}
+
+// Discovered is what the batch carries and the declaration does not.
+//
+// Over the UNION of the batch, never the first record. CheckRow looks at
+// records[0] and that is enough for what it does -- every record comes out of
+// one Transform chain, so the SHAPE of the chain is the same for all of them.
+// This is a different question: a batch holds N records for one table and they
+// need not carry the same FIELDS, and a field that appears only in the last
+// one is still a column the table needs. Miss it and Reconcile refuses the
+// batch at the destination, naming a field nobody declared.
+//
+// Sorted, so the same batch always declares the same DDL.
+func Discovered(declared []string, records []Envelope) (Schema, error) {
+	if len(records) == 0 {
+		return nil, nil
+	}
+	have := make(map[string]bool, len(declared))
+	for _, c := range declared {
+		have[c] = true
+	}
+
+	found := map[string]any{}
+	for _, e := range records {
+		row, err := AsObject(e.Payload)
+		if err != nil {
+			// Not an object is not this function's error to report: CheckRow
+			// says it, with the message it has always said it with.
+			continue
+		}
+		for k, v := range row {
+			if have[k] {
+				continue
+			}
+			// The first record that carries the field decides its type, and
+			// with a rule that reads the SHAPE that is not a race: two records
+			// carrying the same field under different shapes is the drift
+			// case, and the column it lands in was decided by whichever
+			// arrived first anyway.
+			if _, seen := found[k]; !seen {
+				found[k] = v
+			}
+		}
+	}
+
+	names := make([]string, 0, len(found))
+	for k := range found {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+
+	out := make(Schema, 0, len(names))
+	for _, k := range names {
+		// Checked HERE and not only in the landing transformer: nothing makes
+		// this mode landing-only, and on a raw pipeline `meu-campo` would
+		// reach the DDL. Postgres quotes it and creates it, and the same
+		// fetcher breaks the day somebody points it at BigQuery.
+		//
+		// A name the declaration ALREADY has is not judged: it is the
+		// consumer's own column, in their own table, and this rule is about
+		// what the SDK is willing to CREATE.
+		if err := CheckColumnName(k); err != nil {
+			return nil, err
+		}
+		out = append(out, Column{Name: k, Type: TypeFromShape(found[k])})
+	}
+	return out, nil
+}
+
+// WithDiscovered returns opt with the discovered columns added.
+//
+// It COPIES both slices, and that is the whole of why it is a function rather
+// than two appends at the call site. WriteOptions travels by value, so
+// extending `opt` is already per-call -- but Schema and Columns are slices,
+// and append writes into the caller's backing array whenever there is room.
+// Two Targets built from one LandingControlColumns would then clobber each
+// other, which is the failure TestALandingSchemaComposes exists for.
+func WithDiscovered(opt WriteOptions, found Schema) WriteOptions {
+	if len(found) == 0 {
+		return opt
+	}
+
+	schema := make(Schema, 0, len(opt.Schema)+len(found))
+	schema = append(schema, opt.Schema...)
+	schema = append(schema, found...)
+
+	columns := make([]string, 0, len(opt.Columns)+len(found))
+	columns = append(columns, opt.Columns...)
+	names := make([]string, 0, len(found))
+	for _, c := range found {
+		columns = append(columns, c.Name)
+		names = append(names, c.Name)
+	}
+
+	opt.Schema = schema
+	opt.Columns = columns
+	opt.Discovered = names
+	return opt
+}

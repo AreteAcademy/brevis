@@ -92,9 +92,30 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(nil)
 	}
 
+	// Under EvolveAdditiveFromPayload the batch completes the declaration
+	// before anything is checked against it.
+	//
+	// BEFORE CheckRow and not instead of it: the check has two halves, and
+	// only one of them is what this mode is for. "A field nothing declared"
+	// stops being an error because the field is now declared; "a declared
+	// column your chain does not produce" still is. Skipping the call would
+	// lose the second, and a check that cannot fail is worse than no check.
+	//
+	// `opt` is a value and WithDiscovered copies both slices, so the
+	// extension lives exactly as long as this batch. It must: the NEXT batch
+	// need not carry the same fields, and a declaration that outlived one
+	// would refuse the batch after the one it helped.
+	if t.Evolve.FromPayload() {
+		found, err := core.Discovered(opt.Columns, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		opt = core.WithDiscovered(opt, found)
+	}
+
 	// The record is exactly what the Transform chain composed, and the
 	// declaration is checked against the whole of it -- ingestion_id included.
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}
 

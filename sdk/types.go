@@ -191,6 +191,15 @@ const (
 	// a type -- a column that leaves the source stops being written and stays
 	// in the table, because dropping it loses history.
 	EvolveAdditive = core.EvolveAdditive
+
+	// EvolveAdditiveFromPayload is EvolveAdditive plus the columns the BATCH
+	// carries and the declaration does not, typed by shape: STRING unless the
+	// field is an object or an array, and then JSON.
+	//
+	// It is the pipeline's half of what a gateway does with `shape: columns`,
+	// and it is the same code. The declaration is still yours -- this
+	// completes it from the batch, it does not replace it.
+	EvolveAdditiveFromPayload = core.EvolveAdditiveFromPayload
 )
 
 // The failure policies of a composite source. See from.Many.

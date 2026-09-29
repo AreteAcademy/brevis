@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -827,5 +828,229 @@ func TestIntegrationWithoutEvolveTheEarlyRefusalStands(t *testing.T) {
 	if n != 2 {
 		t.Errorf("the table has %d columns, want 2: something altered it "+
 			"without being asked", n)
+	}
+}
+
+// EvolveAdditiveFromPayload: the batch teaches the table a column.
+//
+// The record is the consumer's own from issue #40. Run one lands what the
+// table already has; run two carries a field nobody declared, and the column
+// has to be there afterwards with the value in it.
+func TestTheBatchTeachesTheTableAColumn(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+
+	name := table(t, conn, `
+		brevis_ingestion_id TEXT NOT NULL,
+		source_key TEXT,
+		valor TEXT`)
+
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "source_key", Type: sdk.TypeString},
+		{Name: "valor", Type: sdk.TypeString},
+	}
+	to := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	// Run one: nothing new. The table must not grow a column.
+	if _, err := to.Write(ctx, []sdk.Envelope{env(map[string]any{
+		"brevis_ingestion_id": "id-1", "source_key": "21129|01/12/2025", "valor": "8.89",
+	})}, opt); err != nil {
+		t.Fatalf("run one: %v", err)
+	}
+	if got := columnNames(t, conn, name); len(got) != 3 {
+		t.Fatalf("the table grew without being taught anything: %v", got)
+	}
+
+	// Run two: two fields nobody declared, one of them an object.
+	if _, err := to.Write(ctx, []sdk.Envelope{env(map[string]any{
+		"brevis_ingestion_id": "id-2", "source_key": "21129|02/12/2025", "valor": "8.90",
+		"series": "21129",
+		"meta":   map[string]any{"uf": "SP", "fonte": "bacen"},
+	})}, opt); err != nil {
+		t.Fatalf("run two: %v", err)
+	}
+
+	types := columnTypes(t, conn, name)
+	if types["series"] != "text" {
+		t.Errorf("series is %q, want text -- a scalar is STRING", types["series"])
+	}
+	if types["meta"] != "jsonb" {
+		t.Errorf("meta is %q, want jsonb -- an object is JSON", types["meta"])
+	}
+
+	// The VALUE followed the column. A column added and left empty is the
+	// failure that looks like success.
+	var series, meta *string
+	if err := conn.QueryRow(ctx,
+		"SELECT series, meta::text FROM "+name+" WHERE brevis_ingestion_id = 'id-2'",
+	).Scan(&series, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if series == nil || *series != "21129" {
+		t.Errorf("series = %v, want 21129", series)
+	}
+	if meta == nil || !strings.Contains(*meta, `"uf": "SP"`) {
+		t.Errorf("meta = %v", meta)
+	}
+
+	// And the row from run one is still there, with NULL in the new columns.
+	// ADD COLUMN only: nothing was rewritten and nothing was dropped.
+	var old *string
+	if err := conn.QueryRow(ctx,
+		"SELECT series FROM "+name+" WHERE brevis_ingestion_id = 'id-1'").Scan(&old); err != nil {
+		t.Fatal(err)
+	}
+	if old != nil {
+		t.Errorf("the row written before the column existed has %v in it: "+
+			"ADD COLUMN backfilled, which invents history", *old)
+	}
+}
+
+// A field that only the LAST record of a batch carries is still a column.
+//
+// CheckRow looks at records[0], and a discovery that did the same would miss
+// this — the row would then be refused by Reconcile at the destination,
+// naming a field nobody declared.
+func TestTheBatchIsReadWhole(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := table(t, conn, `brevis_ingestion_id TEXT NOT NULL, source_key TEXT`)
+
+	to := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "source_key", Type: sdk.TypeString},
+	}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	batch := make([]sdk.Envelope, 50)
+	for i := range batch {
+		batch[i] = env(map[string]any{
+			"brevis_ingestion_id": fmt.Sprintf("id-%d", i),
+			"source_key":          fmt.Sprintf("k-%d", i),
+		})
+	}
+	batch[49] = env(map[string]any{
+		"brevis_ingestion_id": "id-49", "source_key": "k-49", "late": "arrived last",
+	})
+
+	if _, err := to.Write(ctx, batch, opt); err != nil {
+		t.Fatalf("a field carried only by the last record: %v", err)
+	}
+	if _, ok := columnTypes(t, conn, name)["late"]; !ok {
+		t.Error("the table has no `late` column: the discovery read records[0] " +
+			"instead of the batch")
+	}
+
+	// The 49 records that do not carry it are not an error, and they land.
+	var n int
+	if err := conn.QueryRow(ctx, "SELECT count(*) FROM "+name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 50 {
+		t.Errorf("%d rows, want 50 -- a record missing a discovered column "+
+			"writes NULL there, which is what a landing table does", n)
+	}
+}
+
+// EvolveAdditive is unchanged: it adds what the DECLARATION has, never what
+// the batch carries.
+func TestTheBatchTeachesNothingWithoutTheMode(t *testing.T) {
+	conn := connect(t)
+	name := table(t, conn, `brevis_ingestion_id TEXT NOT NULL`)
+
+	to := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	_, err := to.Write(context.Background(), []sdk.Envelope{env(map[string]any{
+		"brevis_ingestion_id": "id-1", "nao_declarada": "x",
+	})}, opt)
+	if err == nil {
+		t.Fatal("EvolveAdditive accepted a field nothing declared: the mode " +
+			"that reads the payload is a different one, and it is opt-in")
+	}
+	if !strings.Contains(err.Error(), "nao_declarada") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+}
+
+// columnTypes is what the server actually created, by column.
+func columnTypes(t *testing.T, conn *pgx.Conn, name string) map[string]string {
+	t.Helper()
+	rows, err := conn.Query(context.Background(), `
+		SELECT column_name, data_type
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = $1
+		ORDER BY ordinal_position`, strings.TrimPrefix(name, "public."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	out := map[string]string{}
+	for rows.Next() {
+		var col, typ string
+		if err := rows.Scan(&col, &typ); err != nil {
+			t.Fatal(err)
+		}
+		out[col] = typ
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+func columnNames(t *testing.T, conn *pgx.Conn, name string) []string {
+	t.Helper()
+	types := columnTypes(t, conn, name)
+	out := make([]string, 0, len(types))
+	for k := range types {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// The mode completes the declaration; it does not switch the check off.
+//
+// A mutation that replaced the extension with `if !FromPayload() { CheckRow }`
+// passed every other test here, because once the batch's fields are declared
+// there is nothing left for the undeclared half to catch. The half it loses
+// is the other one: a column the CONSUMER declared and the chain does not
+// produce. That is still a bug, and this mode has nothing to say about it.
+func TestTheModeCompletesTheDeclarationRatherThanSilencingIt(t *testing.T) {
+	conn := connect(t)
+	name := table(t, conn, `brevis_ingestion_id TEXT NOT NULL, prometida TEXT`)
+
+	to := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		// Declared by the consumer and never produced by the chain.
+		{Name: "prometida", Type: sdk.TypeString},
+	}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	_, err := to.Write(context.Background(), []sdk.Envelope{env(map[string]any{
+		"brevis_ingestion_id": "id-1", "achada": "x",
+	})}, opt)
+	if err == nil {
+		t.Fatal("a declared column the chain does not produce was accepted: " +
+			"the row check was skipped instead of extended, and the half this " +
+			"mode has nothing to do with went with it")
+	}
+	if !strings.Contains(err.Error(), "prometida") {
+		t.Errorf("the refusal does not name the declared column: %v", err)
+	}
+	// And the OTHER half is not what fired. The message lists the row's
+	// fields as context, `achada` among them, which is not the same as
+	// blaming it: "which Columns does not declare" is the undeclared half's
+	// own wording, and that half has nothing left to say here.
+	if strings.Contains(err.Error(), "which Columns does not declare") {
+		t.Errorf("the batch's own column was refused as undeclared, which is "+
+			"the thing this mode exists to stop: %v", err)
 	}
 }
