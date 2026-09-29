@@ -27,6 +27,25 @@ const (
 	EvolveAdditive
 )
 
+// MayAdd reports whether this mode adds a column the table lacks.
+//
+// A PREDICATE and not a comparison, and the difference is the only reason it
+// exists. `mode == EvolveAdditive` answers "no" for every value added to this
+// enum after it -- silently, so the new mode is not refused, it simply does
+// nothing. Four of the places that asked it that way would have made a third
+// mode LESS capable than EvolveAdditive, and one of them returns early from
+// evolveTable, which would have shipped it inert on BigQuery.
+//
+// That is not hypothetical. metadata.go records this SDK paying for it once:
+// "the feature would have been inert the day it shipped. It was found by
+// loading against a real Postgres, not by reading the code."
+//
+// Ordered rather than enumerated: a mode that adds is at least EvolveAdditive,
+// and anything past it adds too. A new value that does NOT add would have to
+// sit before it, which is a decision somebody makes on purpose -- and the
+// zero value is still EvolveNone, so the default is still "refuse".
+func (e Evolution) MayAdd() bool { return e >= EvolveAdditive }
+
 // There is deliberately no EvolveAll.
 //
 // A mode that drops columns is a mode somebody switches on during an incident
@@ -89,7 +108,7 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 	for _, c := range s {
 		have, present := actual[c.Name]
 		if !present {
-			if mode == EvolveNone {
+			if !mode.MayAdd() {
 				refused = append(refused, fmt.Sprintf(
 					"%s is declared and the table does not have it", c.Name))
 				continue
@@ -100,7 +119,7 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 		if have == c.Type {
 			continue
 		}
-		if mode == EvolveAdditive && widenings[c.Type][have] {
+		if mode.MayAdd() && widenings[c.Type][have] {
 			changes = append(changes, Change{
 				Column: c.Name, Kind: "widen", From: string(have), To: c.Type,
 			})
@@ -120,7 +139,7 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 		sort.Strings(refused)
 		verb := "does not match"
 		how := "Set Evolve to sdk.EvolveAdditive to add the missing columns"
-		if mode == EvolveAdditive {
+		if mode.MayAdd() {
 			how = "A narrowing or a change of kind is refused: rename the column, " +
 				"or migrate it yourself"
 		}

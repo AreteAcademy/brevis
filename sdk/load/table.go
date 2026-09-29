@@ -469,7 +469,7 @@ func partitionOf(cfg *core.LoadConfig) string {
 // fixed columns say the same thing in their comment -- "a row written before
 // this column existed has no answer, and zero would be a lie that sums".
 func (l *Loader) evolveTable(ctx context.Context, table *bigquery.Table) error {
-	if l.cfg.Evolve != core.EvolveAdditive || len(l.cfg.Schema) == 0 {
+	if !l.cfg.Evolve.MayAdd() || len(l.cfg.Schema) == 0 {
 		return nil
 	}
 

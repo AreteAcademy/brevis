@@ -8,7 +8,6 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // checkDeclaredAgainstTable confirms the declaration describes the table that
@@ -80,7 +79,7 @@ func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 	// evolveTable, against fresh metadata, which makes it the verification
 	// that evolving did what it said.
 	declared := columns
-	if l.cfg.Evolve == core.EvolveAdditive {
+	if l.cfg.Evolve.MayAdd() {
 		has := make(map[string]bool, len(meta.Schema))
 		for _, f := range meta.Schema {
 			has[f.Name] = true

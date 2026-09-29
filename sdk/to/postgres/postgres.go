@@ -451,7 +451,7 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 		// requires -- still runs before the extract when one is added here.
 		// That is the whole reason this method is early: one
 		// information_schema query against a source quota spent to find out.
-		if t.Evolve == core.EvolveAdditive {
+		if t.Evolve.MayAdd() {
 			continue
 		}
 		missing = append(missing, c)

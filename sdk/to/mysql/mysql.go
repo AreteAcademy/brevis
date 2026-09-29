@@ -385,7 +385,7 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 		// Skipped per column rather than by returning early, so a check that
 		// evolving CANNOT repair still runs before the extract when one is
 		// added here.
-		if t.Evolve == core.EvolveAdditive {
+		if t.Evolve.MayAdd() {
 			continue
 		}
 		missing = append(missing, c)
