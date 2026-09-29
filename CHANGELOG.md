@@ -18,6 +18,89 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.73.0] — 2026-09-29
+
+### Added: `sdk.EvolveAdditiveFromPayload` — the batch completes the declaration
+
+A producer adds a field and the load stops, naming it. Right by default; on a
+landing table it is the one change that cannot break a reader.
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+A field the batch carries and the declaration does not becomes a column —
+`STRING` unless it is an object or an array, and then `JSON`. The same rule
+and the same code a gateway lands `shape: columns` with. Postgres, MySQL and
+BigQuery.
+
+**The SDK still does not infer.** The type comes from the field's SHAPE, never
+from its value, so `21129` and `8.89` both declare `STRING` and the day the
+series publishes a whole number nothing changes.
+
+**Only ever `ADD COLUMN`, and not because anything enforces it.** `Plan` emits
+`add` and `widen` and nothing else, so the guarantee is inherited rather than
+re-argued. A column that disappears from the source stops being written and
+stays.
+
+**It completes a declaration; it does not replace one.** With nothing declared
+it is refused before the extract, naming the table. On the landing layout the
+harm would have been concrete: `brevis_received_at` created as text instead of
+a timestamp, and `brevis_loaded_at` — which never travels in the row, because
+it is a database DEFAULT — not created at all, so the end-to-end latency
+measurement would simply be missing from a table that looks right.
+
+**Every column a batch created says so, in the table**: a comment on Postgres
+and MySQL, a field description on BigQuery, carrying the date. Six months
+later it is the only thing left that answers "when did this column appear, and
+who decided it".
+
+### Fixed: a pipeline declared `STRING` where a gateway declares `JSON`
+
+Same record, both paths, measured:
+
+```
+gateway declares meta json      pipeline sent meta string
+gateway declares tags json      pipeline sent tags string
+```
+
+A gateway types from the RAW record and renders separately. A pipeline renders
+in its TRANSFORMER, so by the time the driver sees the row an object has
+become text and the shape is gone. A landing pipeline created
+`meta:longtext tags:longtext`.
+
+On a SHARED table that was a wall rather than a cosmetic difference: the
+gateway creates the column `JSON`, a pipeline rediscovers it as string, and the
+plan refuses — "meta is json in the table and string in the declaration". A
+pipeline could not write into a gateway's `shape: columns` table, which is the
+one interoperability the landing layout exists for.
+
+### Changed: `LandingSpread` marks the values it rendered as JSON
+
+`sdk.JSONText`, a string that says it is already JSON. `LandingSpread` — and
+so `Landing` with `LandingColumns` — now puts one of these in every column
+that held an object or an array, where it used to put a plain `string`.
+
+It is a MARKER and not inference. The alternative was reading the string back
+to see whether it parses as an object, and a producer sending the literal text
+`[1,2]` would then get a JSON column nobody asked for.
+
+**This is a type change in a published function.** If you type-assert a landing
+row's values to `string`, assert to `sdk.JSONText` for the fields that held an
+object or an array, or read it as `string(v)`. Nothing that passes the row
+straight to a destination is affected.
+
+### Changed: `Evolution` is asked, not compared
+
+`Evolution.MayAdd()` replaces seven equality comparisons. Behaviour is
+identical with the values that existed; what it buys is that a value added
+later is not excluded in silence. Four of the seven would have made this
+release's new mode LESS capable than `EvolveAdditive`, and one returns early
+from BigQuery's evolve — the feature would have shipped inert there. A test
+refuses a new `==` on an `Evolution` outside `evolve.go`.
+
+---
+
 ## [0.72.0] — 2026-09-29
 
 ### Added: `sdk.LandingColumns()` — one column per field

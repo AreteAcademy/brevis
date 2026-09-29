@@ -395,6 +395,12 @@ lands `columns`. Same columns, same values, same `brevis_ingestion_id` — so a
 stream can move between a gateway and a pipeline without a migration, and the
 two can be read as one table.
 
+The pipeline can grow the same column the same way: set
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/en/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
+on the destination and a field the batch carries becomes a column, by this
+rule, through this code.
+
+
 ### `UPDATE` and `DELETE` are recorded, not applied
 
 `brevis_operation` is a column. A landing table is **history**: an `UPDATE`

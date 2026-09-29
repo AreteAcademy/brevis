@@ -355,6 +355,65 @@ so a producer with a field called `data` — which is exactly what the Bacen
 series sends — gets a column of their own with their own value in it. Under
 `document` theirs is one key inside the layout's JSON.
 
+### When a field the table does not have shows up
+
+A producer adds a field and the load stops, naming it: the row carries a
+column nothing declared, and writing it to a destination that never mentioned
+it would drop it in silence. That refusal is right by default — but on a
+landing table it is the one change that cannot break a reader, and the
+destination can make it:
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+The batch then **completes** your declaration: a field it carries and the
+declaration does not becomes a column, `STRING` unless the field is an object
+or an array, and then `JSON`. It is the same rule and the same code a gateway
+lands `shape: columns` with, so both produce the same table.
+
+Two other values, and the difference between them is where the column comes
+from:
+
+| `Evolve` | adds |
+|---|---|
+| `sdk.EvolveNone` (default) | nothing. Any difference is refused, naming both sides |
+| `sdk.EvolveAdditive` | a column your **declaration** has and the table does not |
+| `sdk.EvolveAdditiveFromPayload` | that, plus a column the **batch** carries |
+
+**Only ever `ADD COLUMN`.** A column that disappears from the source stops
+being written and stays in the table; nothing renames, nothing drops, and no
+type is ever narrowed. That is not a gap — a landing table is history, and the
+one alteration that cannot break somebody reading it is a new nullable column.
+
+**It completes a declaration; it does not replace one.** With nothing declared
+it is refused before the extract, naming the table: creating a whole table
+from a payload is a different decision, and the SDK does not make it. On the
+landing layout the harm would be concrete — `brevis_received_at` would come
+out as text instead of a timestamp, and `brevis_loaded_at` never travels in
+the row at all, so the end-to-end latency measurement would simply be missing.
+
+**The SDK still does not infer.** The type comes from the field's SHAPE, never
+from its value: `21129` and `8.89` both declare `STRING`, so the day the
+series publishes a whole number nothing changes. A type read off the first
+batch is the failure this rule exists to prevent.
+
+**A field that changes shape is refused, not absorbed.** If `valor` arrived as
+a scalar and made a text column, an object arriving later is a change of kind
+and the batch stops — with the column's own comment in the message, so you can
+see nobody declared it. Rename the column, or migrate it yourself.
+
+**Every column a batch created says so, in the table.** A comment on Postgres
+and MySQL, a field description on BigQuery, carrying the date:
+
+```
+brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision
+```
+
+Six months later that is the only thing left that answers "when did this
+column appear, and who decided it". A log line has rotated by then.
+
 **It is not a mode.** `Target.Schema` is still you declaring what the table
 is — this hands you a layout that already exists instead of making you type
 it. Nothing in the SDK behaves differently because you used it, and a

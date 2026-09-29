@@ -396,6 +396,12 @@ aterrissa `columns`. Mesmas colunas, mesmos valores, mesmo
 `brevis_ingestion_id` — então um stream muda de gateway para pipeline sem
 migração, e os dois podem ser lidos como uma tabela só.
 
+A pipeline cresce a mesma coluna do mesmo jeito: ponha
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#quando-aparece-um-campo-que-a-tabela-nao-tem)
+no destino e um campo que o lote traz vira coluna, por esta regra, por este
+código.
+
+
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
 `brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`

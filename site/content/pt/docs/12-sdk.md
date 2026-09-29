@@ -352,6 +352,64 @@ nome, então um produtor com um campo chamado `data` — que é exatamente o que
 série do Bacen manda — ganha uma coluna própria com o valor dele. No
 `document`, o dele é uma chave dentro do JSON do layout.
 
+### Quando aparece um campo que a tabela não tem
+
+O produtor acrescenta um campo e a carga para, nomeando-o: a linha traz uma
+coluna que ninguém declarou, e escrevê-la num destino que nunca ouviu falar
+dela seria descartá-la em silêncio. Essa recusa é o certo por padrão — mas
+numa tabela de landing ela é a única mudança que não quebra quem lê, e o
+destino pode fazê-la:
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+O lote passa a **completar** a sua declaração: um campo que ele traz e a
+declaração não tem vira coluna, `STRING` a menos que o campo seja objeto ou
+array, e aí `JSON`. É a mesma regra e o mesmo código com que um gateway
+aterrissa o `shape: columns`, então os dois produzem a mesma tabela.
+
+Os outros dois valores, e a diferença entre eles é de onde a coluna vem:
+
+| `Evolve` | acrescenta |
+|---|---|
+| `sdk.EvolveNone` (padrão) | nada. Qualquer diferença é recusada, nomeando os dois lados |
+| `sdk.EvolveAdditive` | uma coluna que a sua **declaração** tem e a tabela não |
+| `sdk.EvolveAdditiveFromPayload` | isso, mais uma coluna que o **lote** traz |
+
+**Sempre e só `ADD COLUMN`.** Uma coluna que some da origem para de ser
+escrita e continua na tabela; nada é renomeado, nada é removido, e nenhum tipo
+é estreitado. Isso não é uma falta — uma tabela de landing é histórico, e a
+única alteração que não quebra quem a lê é uma coluna nova anulável.
+
+**Ele completa uma declaração; não substitui uma.** Sem nada declarado, é
+recusado antes do extract, nomeando a tabela: criar uma tabela inteira a
+partir de um payload é outra decisão, e o SDK não a toma. No layout de landing
+o dano seria concreto — o `brevis_received_at` sairia como texto em vez de
+timestamp, e o `brevis_loaded_at` nunca viaja na linha, então a medição de
+latência ponta a ponta simplesmente não existiria.
+
+**O SDK continua sem inferir.** O tipo vem da FORMA do campo, nunca do valor:
+`21129` e `8.89` declaram os dois `STRING`, então no dia em que a série
+publicar um número inteiro nada muda. Tipo lido do primeiro lote é justamente
+a falha que essa regra existe para evitar.
+
+**Um campo que muda de forma é recusado, não absorvido.** Se `valor` chegou
+escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
+tipo e o lote para — com o comentário da própria coluna na mensagem, para você
+ver que ninguém a declarou. Renomeie a coluna, ou migre você mesmo.
+
+**Toda coluna que um lote criou diz isso, na tabela.** Um comentário no
+Postgres e no MySQL, uma descrição de campo no BigQuery, com a data:
+
+```
+brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision
+```
+
+Seis meses depois é a única coisa que ainda responde "quando essa coluna
+apareceu, e quem decidiu". Uma linha de log já rotacionou.
+
 **Não é um modo.** `Target.Schema` continua sendo você declarando o que a
 tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo.
 Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que
