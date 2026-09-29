@@ -505,6 +505,20 @@ it may be **wrong**.
 | `redis` | `addr_from` required. A `SETNX` is the claim, an `INCR` is the counter |
 | `memcached` | `addr_from` required. An `Add` is the claim, and expiry is **second**-granular |
 
+**Redis is the faster one for a stream with a routing key**, and the
+difference is worth a number rather than an adjective. With the trigger per
+table, a window asks for one claim per table: Redis answers 94 of them in one
+pipelined round trip, and every other backend answers them in parallel,
+bounded at 32. Measured against a backend 25 ms away — 94 claims:
+
+| backend | one at a time | as it ships |
+|---|---:|---:|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+Three waves against one round trip. Both are inside the 500 ms a claim is
+given, so memcached is the slower choice and not a refused one.
+
 With several replicas, `memory` gives each its own: the debounce debounces
 nothing and `max_new_per_hour` bounds a process. That is the only reason the
 other two exist.

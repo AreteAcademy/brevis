@@ -886,22 +886,6 @@ func (s *Stream) check() error {
 			"`every` becomes a target and a replica that keeps losing holds " +
 			"data with nothing bounding it. Declare the ceiling")
 	}
-	if s.Buffer.Flush.Claim && s.Sink.Type == SinkAutoTable &&
-		s.Sink.Metastore.Type == MetastoreMemcached {
-		// The trigger is per table, so the claim is too -- and memcached has
-		// no pipelined add, so every table is a round trip. They all run
-		// under the buffer's mutex, where admission pays for each one:
-		// measured at 2.589s of held mutex for 94 keys against a backend at
-		// 25ms RTT, with the request p99 tracking it exactly.
-		//
-		// Refused rather than failed open. Failing open multiplies the load
-		// jobs by replica count and every flush still looks like a flush,
-		// which is the failure the claim exists to prevent.
-		return fmt.Errorf("`buffer.flush.claim` is on, this stream's sink is " +
-			"`auto_table` and its metastore is `memcached`, which claims one " +
-			"key per round trip. The trigger is per table, so that is one trip " +
-			"per table with the buffer held. Use redis, or turn the claim off")
-	}
 	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
 		// A ceiling below the target means the target never applies, and the
 		// operator meant one of the two numbers rather than this.

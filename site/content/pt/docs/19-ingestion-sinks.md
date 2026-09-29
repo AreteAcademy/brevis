@@ -505,6 +505,20 @@ isto só reduz a corrida. O TTL é quanto tempo ele pode estar **errado**.
 | `redis` | `addr_from` obrigatório. Um `SETNX` é o claim, um `INCR` é o contador |
 | `memcached` | `addr_from` obrigatório. Um `Add` é o claim, e a expiração tem granularidade de **segundo** |
 
+**O Redis é o mais rápido num stream com chave de roteamento**, e a diferença
+merece um número em vez de um adjetivo. Com o gatilho por tabela, uma janela
+pede um claim por tabela: o Redis responde 94 deles numa ida-e-volta em
+pipeline, e os demais backends respondem em paralelo, limitados em 32. Medido
+contra um backend a 25 ms — 94 claims:
+
+| backend | um de cada vez | como sai hoje |
+|---|---:|---:|
+| `redis` | 2,589 s | **29,8 ms** |
+| `memcached` | 2,577 s | **89,4 ms** |
+
+Três ondas contra uma ida-e-volta. Os dois cabem nos 500 ms que um claim tem,
+então o memcached é a escolha mais lenta e não uma recusada.
+
 Com várias réplicas, `memory` dá a cada uma a sua: o debounce não debounce nada
 e o `max_new_per_hour` limita um *processo*. É a única razão de os outros dois
 existirem.

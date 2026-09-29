@@ -1528,19 +1528,22 @@ func (s *countingSink) sizes() []int {
 	return append([]int(nil), s.n...)
 }
 
-// The claim and a routing key now agree, except on memcached.
+// The claim and a routing key agree on every backend.
 //
-// Slice 1 refused the pair outright: the claim was keyed on the stream, so
-// one table would take each window and the rest would yield. The claim is
-// per key now and the refusal goes with it.
+// Slice 1 refused the pair outright, because the claim was keyed on the
+// stream. Slice 3 made the claim per key and narrowed the refusal to
+// memcached, on the grounds that it has no pipelined add and so costs a
+// round trip per table.
 //
-// Memcached is the exception, and it is a measurement rather than a taste:
-// it has no pipelined add, so N tables cost N round trips -- all of them
-// under the buffer's mutex, where admission pays for every millisecond. The
-// alternative is failing open on the 500ms budget and multiplying the load
-// jobs by replica count silently, which is the quietest possible
-// misconfiguration and exactly what the claim exists to prevent.
-func TestTheClaimNeedsABulkMetastoreForARoutingKey(t *testing.T) {
+// That was true about pipelining and wrong about cost. Measured against a
+// real memcached behind a latency proxy, 94 keys at 25ms RTT: 2.577s one at
+// a time, 89.4ms through the bounded fan-out. The claims were never forced
+// to be sequential -- the fallback simply was one, and now is not.
+//
+// memcached is still the slower choice and the docs say the number rather
+// than implying parity. Slower is not a reason to refuse a configuration
+// that works.
+func TestTheClaimWorksOnEveryMetastore(t *testing.T) {
 	stream := func(sink, store string) Stream {
 		return Stream{
 			Name: "s", Path: "/s", Format: FormatJSON,
@@ -1559,32 +1562,17 @@ func TestTheClaimNeedsABulkMetastoreForARoutingKey(t *testing.T) {
 		}
 	}
 
-	// The pair slice 1 refused, now allowed.
-	auto := stream(SinkAutoTable, MetastoreRedis)
-	if err := auto.check(); err != nil {
-		t.Errorf("`flush.claim` with `auto_table` on redis was refused, and the "+
-			"per-key claim is what makes it work: %v", err)
-	}
-
-	// Memcached cannot do it in one trip, and says so.
-	mc := stream(SinkAutoTable, MetastoreMemcached)
-	err := mc.check()
-	if err == nil {
-		t.Fatal("`flush.claim` with `auto_table` on memcached was accepted: " +
-			"every table is a round trip and they all hold the buffer's mutex")
-	}
-	for _, want := range []string{"claim", "memcached"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %q: %v", want, err)
-		}
-	}
-
-	// And a stream with no routing key is fine on memcached: one key, one
-	// trip, which is what it always was.
-	plain := stream(SinkPostgres, MetastoreMemcached)
-	if err := plain.check(); err != nil {
-		t.Errorf("a keyless stream was refused memcached, which is the case it "+
-			"has always served: %v", err)
+	for _, store := range []string{MetastoreRedis, MetastoreMemcached} {
+		t.Run(store, func(t *testing.T) {
+			auto := stream(SinkAutoTable, store)
+			if err := auto.check(); err != nil {
+				t.Errorf("`flush.claim` with `auto_table` on %s was refused: %v", store, err)
+			}
+			plain := stream(SinkPostgres, store)
+			if err := plain.check(); err != nil {
+				t.Errorf("a keyless stream was refused %s: %v", store, err)
+			}
+		})
 	}
 }
 
