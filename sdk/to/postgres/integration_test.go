@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"fmt"
+	"iter"
 	"os"
 	"strings"
 	"testing"
@@ -715,5 +716,87 @@ func TestIntegrationEvolveRefusesToNarrow(t *testing.T) {
 	}
 	if typ != "numeric" {
 		t.Errorf("the refused change was applied anyway: the column is %s", typ)
+	}
+}
+
+// oneRow is a source of exactly one record, so a pipeline can be run without
+// a vendor behind it.
+type oneRow struct{ payload map[string]any }
+
+func (oneRow) Describe() string { return "one row" }
+func (o oneRow) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+	return func(yield func(sdk.Envelope, error) bool) {
+		yield(sdk.Envelope{Provider: "p", Entity: "e", SourceKey: "k",
+			RecordTS: "2026-09-29T00:00:00Z", Payload: o.payload}, nil)
+	}, nil
+}
+
+// EvolveAdditive cannot run through a pipeline, and this pins it — issue #41.
+//
+// THIS TEST ASSERTS A DEFECT. It is green because the defect is there, and
+// the day the first half stops failing is the day #41 is fixed: invert that
+// assertion, keep the second half, and close the issue.
+//
+// The defect is ORDERING, not evolution, which is why both halves are here.
+// `checkDestination` runs in the pipeline before the extract
+// (sdk/pipeline.go) and refuses every declared column the table lacks. The
+// driver's `evolve` runs inside Write and would have added it. So the flag
+// is unreachable in the only case it exists for: a declaration that adds a
+// column is the only way to ask for a column.
+//
+// `mysql` and `bigquery` share this path — both implement CheckDestination
+// and both have an Evolve field — so both have the bug. Only Postgres is
+// exercised here, because only Postgres has a harness in this package.
+func TestIntegrationEvolveAdditiveIsUnreachableThroughThePipeline(t *testing.T) {
+	conn := connect(t)
+	name := table(t, conn, `ingestion_id TEXT NOT NULL, a TEXT`)
+
+	declared := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "a", Type: sdk.TypeString},
+		{Name: "b", Type: sdk.TypeString}, // the table does not have it
+	}
+	record := map[string]any{"ingestion_id": "id-1", "a": "x", "b": "new"}
+
+	// --- half one: the pipeline refuses, and should not ------------------
+	err := sdk.Execute(context.Background(), &sdk.Pipeline{
+		Source: sdk.Source{From: oneRow{record}},
+		Target: sdk.Target{
+			To:     topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive},
+			Schema: declared,
+		},
+	}, nil)
+	if err == nil {
+		t.Fatal("the pipeline accepted a declaration with a column the table " +
+			"lacks, under EvolveAdditive.\n\n" +
+			"THAT IS THE FIX. Issue #41 is resolved: invert this assertion to " +
+			"require success, check the column landed, and close it.")
+	}
+	if !strings.Contains(err.Error(), "does not have") {
+		t.Fatalf("the pipeline failed for some other reason, so this test is no "+
+			"longer pinning #41: %v", err)
+	}
+
+	// --- half two: the same evolution, straight to the driver, works -----
+	//
+	// This is what makes the finding "ordering" rather than "evolve does not
+	// work". Without it, the first half reads as a missing feature.
+	if _, err := (topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}).Write(
+		context.Background(), []sdk.Envelope{env(record)},
+		sdk.WriteOptions{Columns: declared.Names(), Schema: declared},
+	); err != nil {
+		t.Fatalf("the driver could not evolve the table either, which would make "+
+			"#41 a different bug than the one it describes: %v", err)
+	}
+
+	var has bool
+	if err := conn.QueryRow(context.Background(),
+		`SELECT EXISTS (SELECT 1 FROM information_schema.columns
+		                WHERE table_name = $1 AND column_name = 'b')`,
+		name).Scan(&has); err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Error("the driver reported success and the column is not there")
 	}
 }
