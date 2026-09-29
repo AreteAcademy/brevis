@@ -36,6 +36,22 @@ func TestDiscovered(t *testing.T) {
 	if found[1].Name != "valor" || found[1].Type != TypeString {
 		t.Errorf("second is %v", found[1])
 	}
+
+	// NEVER Required, and the ALTER path is not where that matters.
+	//
+	// AlterTable forces an added column nullable whatever the declaration
+	// says, so `Required: true` here is invisible on a table that already
+	// exists -- a mutation setting it passed the whole MySQL suite. The
+	// CREATE path is where it bites: a table created from the extended
+	// declaration would get NOT NULL on a column the NEXT batch need not
+	// carry, and the batch after the one it helped would be refused by the
+	// database.
+	for _, c := range found {
+		if c.Required {
+			t.Errorf("%s is declared NOT NULL: a column the batch contributed "+
+				"is one another record may legitimately lack", c.Name)
+		}
+	}
 }
 
 // The UNION of the batch, never the first record.

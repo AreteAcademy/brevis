@@ -86,6 +86,20 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if len(envelopes) == 0 {
 		return fail(nil)
 	}
+	// Under EvolveAdditiveFromPayload the batch completes the declaration
+	// before anything is checked against it. See postgres.Table.Write: the
+	// reasoning is the same and it is written once, there.
+	//
+	// BEFORE CheckRow and not instead of it. The check has two halves and
+	// only one of them is what this mode is for.
+	if t.Evolve.FromPayload() {
+		found, err := core.Discovered(opt.Columns, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		opt = core.WithDiscovered(opt, found)
+	}
+
 	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}

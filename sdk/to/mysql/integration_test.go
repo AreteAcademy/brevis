@@ -669,3 +669,286 @@ func TestIntegrationWithoutEvolveTheEarlyRefusalStands(t *testing.T) {
 		t.Errorf("the refusal no longer names the column: %v", err)
 	}
 }
+
+// columnTypes is what the server actually created, by column.
+func columnTypes(t *testing.T, db *sql.DB, name string) map[string]string {
+	t.Helper()
+	rows, err := db.Query(`
+		SELECT column_name, data_type
+		FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ?
+		ORDER BY ordinal_position`, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := map[string]string{}
+	for rows.Next() {
+		var col, typ string
+		if err := rows.Scan(&col, &typ); err != nil {
+			t.Fatal(err)
+		}
+		out[col] = typ
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// EvolveAdditiveFromPayload on MySQL: the batch teaches the table a column.
+//
+// The same claims as the Postgres slice, against the destination whose
+// `string` is LONGTEXT. That matters for what this does NOT do — see
+// TestADiscoveredColumnIsNeverKeyed below.
+func TestTheBatchTeachesTheTableAColumn(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL,"+
+		"source_key VARCHAR(64), valor LONGTEXT")
+
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "source_key", Type: sdk.TypeString},
+		{Name: "valor", Type: sdk.TypeString},
+	}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	// Run one: nothing new. The table must not grow a column.
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "source_key": "21129|01/12/2025", "valor": "8.89",
+	}}}, opt); err != nil {
+		t.Fatalf("run one: %v", err)
+	}
+	if got := columnTypes(t, db, name); len(got) != 3 {
+		t.Fatalf("the table grew without being taught anything: %v", got)
+	}
+
+	// Run two: two fields nobody declared, one of them an object.
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-2", "source_key": "21129|02/12/2025", "valor": "8.90",
+		"series": "21129",
+		"meta":   map[string]any{"uf": "SP", "fonte": "bacen"},
+	}}}, opt); err != nil {
+		t.Fatalf("run two: %v", err)
+	}
+
+	types := columnTypes(t, db, name)
+	if types["series"] != "longtext" {
+		t.Errorf("series is %q, want longtext -- MySQL's `string` is LONGTEXT, "+
+			"and a scalar is STRING", types["series"])
+	}
+	if types["meta"] != "json" {
+		t.Errorf("meta is %q, want json -- an object is JSON, and MySQL has a "+
+			"native type for it", types["meta"])
+	}
+
+	// The VALUE followed the column. A column added and left empty is the
+	// failure that looks like success.
+	var series, meta *string
+	if err := db.QueryRowContext(ctx,
+		"SELECT series, meta FROM "+name+" WHERE brevis_ingestion_id = 'id-2'",
+	).Scan(&series, &meta); err != nil {
+		t.Fatal(err)
+	}
+	if series == nil || *series != "21129" {
+		t.Errorf("series = %v, want 21129", series)
+	}
+	if meta == nil || !strings.Contains(*meta, `"uf"`) {
+		t.Errorf("meta = %v", meta)
+	}
+
+	// The row from run one is still there, with NULL in the new columns.
+	var old *string
+	if err := db.QueryRowContext(ctx,
+		"SELECT series FROM "+name+" WHERE brevis_ingestion_id = 'id-1'").Scan(&old); err != nil {
+		t.Fatal(err)
+	}
+	if old != nil {
+		t.Errorf("the row written before the column existed has %v in it: "+
+			"ADD COLUMN backfilled, which invents history", *old)
+	}
+}
+
+// A field only the LAST record of a batch carries is still a column.
+func TestTheBatchIsReadWhole(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL, source_key VARCHAR(64)")
+
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "source_key", Type: sdk.TypeString},
+	}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	batch := make([]sdk.Envelope, 50)
+	for i := range batch {
+		batch[i] = sdk.Envelope{Payload: map[string]any{
+			"brevis_ingestion_id": fmt.Sprintf("id-%d", i),
+			"source_key":          fmt.Sprintf("k-%d", i),
+		}}
+	}
+	batch[49] = sdk.Envelope{Payload: map[string]any{
+		"brevis_ingestion_id": "id-49", "source_key": "k-49", "late": "arrived last",
+	}}
+
+	if _, err := to.Write(context.Background(), batch, opt); err != nil {
+		t.Fatalf("a field carried only by the last record: %v", err)
+	}
+	if _, ok := columnTypes(t, db, name)["late"]; !ok {
+		t.Error("the table has no `late` column: the discovery read records[0] " +
+			"instead of the batch")
+	}
+
+	var n int
+	if err := db.QueryRow("SELECT count(*) FROM " + name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 50 {
+		t.Errorf("%d rows, want 50 -- a record missing a discovered column "+
+			"writes NULL there", n)
+	}
+}
+
+// The mode completes the declaration; it does not switch the check off.
+func TestTheModeCompletesTheDeclarationRatherThanSilencingIt(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL, prometida LONGTEXT")
+
+	declared := sdk.Schema{
+		{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "prometida", Type: sdk.TypeString},
+	}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	_, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "achada": "x",
+	}}}, opt)
+	if err == nil {
+		t.Fatal("a declared column the chain does not produce was accepted: " +
+			"the row check was skipped instead of extended")
+	}
+	if !strings.Contains(err.Error(), "prometida") {
+		t.Errorf("the refusal does not name the declared column: %v", err)
+	}
+	if strings.Contains(err.Error(), "which Columns does not declare") {
+		t.Errorf("the batch's own column was refused as undeclared: %v", err)
+	}
+}
+
+// EvolveAdditive is unchanged: it adds what the DECLARATION has, never what
+// the batch carries.
+func TestTheBatchTeachesNothingWithoutTheMode(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL")
+
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive}
+
+	_, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "nao_declarada": "x",
+	}}}, sdk.WriteOptions{Schema: declared, Columns: declared.Names()})
+	if err == nil {
+		t.Fatal("EvolveAdditive accepted a field nothing declared")
+	}
+	if !strings.Contains(err.Error(), "nao_declarada") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+}
+
+// A discovered column is never keyed, and on MySQL that is the difference
+// between working and not existing.
+//
+// MySQL's `string` is LONGTEXT, and MySQL will not key a LONGTEXT without a
+// length:
+//
+//	Error 1170 (42000): BLOB/TEXT column used in key specification without a
+//	key length
+//
+// Which is why `LandingOptions{UniqueID: true}` cannot be created there at
+// all. Discovery never asks for a key — it only ever emits `add` — so it does
+// not meet that wall and does not need to. This test is here so that stays
+// true by assertion rather than by nobody having tried: a discovered column
+// arrives NULLABLE and unindexed, whatever the batch looked like.
+func TestADiscoveredColumnIsNeverKeyed(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL")
+
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "achada": "x",
+	}}}, sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("a discovered LONGTEXT column: %v", err)
+	}
+
+	var nullable, key string
+	if err := db.QueryRow(`
+		SELECT is_nullable, column_key FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'achada'`,
+		name).Scan(&nullable, &key); err != nil {
+		t.Fatal(err)
+	}
+	if nullable != "YES" {
+		t.Errorf("the discovered column is NOT NULL: the rows already in the "+
+			"table have no value for it, and no value the SDK could invent is "+
+			"true of them (is_nullable=%s)", nullable)
+	}
+	if key != "" {
+		t.Errorf("the discovered column is indexed (column_key=%q): MySQL will "+
+			"not key a LONGTEXT without a length, and a discovery that asked "+
+			"for one would fail with error 1170 on a column nobody declared", key)
+	}
+}
+
+// The mode also reaches the CREATE path, and the column it creates there is
+// nullable.
+//
+// This is where `Required` on a discovered column would bite, and nowhere
+// else: AlterTable forces an added column nullable whatever the declaration
+// says, so a table that already exists hides the mistake entirely. A table
+// created from the extended declaration does not.
+func TestATableCreatedFromTheBatchTakesNullableColumns(t *testing.T) {
+	db := open(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
+
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	to := tomy.Table{
+		DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload,
+	}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "achada": "x",
+	}}}, opt); err != nil {
+		t.Fatalf("creating from the batch: %v", err)
+	}
+
+	var nullable string
+	if err := db.QueryRow(`
+		SELECT is_nullable FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'achada'`,
+		name).Scan(&nullable); err != nil {
+		t.Fatal(err)
+	}
+	if nullable != "YES" {
+		t.Errorf("the created column is NOT NULL (is_nullable=%s): the NEXT "+
+			"batch need not carry the field, and the database would refuse it",
+			nullable)
+	}
+
+	// And the next batch, without it, lands.
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-2",
+	}}}, opt); err != nil {
+		t.Fatalf("the batch after the one that taught the table: %v", err)
+	}
+}
