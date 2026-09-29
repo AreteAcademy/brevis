@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -420,4 +421,83 @@ func Landing(table string, opts ...LandingArg) Transformer {
 		}
 		return row, nil
 	}
+}
+
+// LandingFieldName is what a record's field has to match to become a column
+// of its own.
+//
+// BigQuery's rule, which is the narrowest of the four destinations: a letter
+// or underscore, then letters, digits and underscores. Postgres would accept
+// almost anything quoted -- which is exactly the trap, because the table
+// would be created there and the same fetcher would break the day somebody
+// points it at BigQuery.
+var LandingFieldName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+
+// LandingFieldNames refuses a record this layout cannot turn into columns.
+//
+// Separate from LandingSpread so a caller holding one record can ask before
+// a whole batch is shaped: the gateway checks per event, before anything is
+// buffered, because one bad field name would otherwise fail the batch around
+// it and send three other producers' events to the dead letter.
+func LandingFieldNames(record map[string]any) error {
+	for _, k := range landingKeys(record) {
+		if !LandingFieldName.MatchString(k) {
+			return fmt.Errorf("the field %q cannot be a column name: it has to "+
+				"match %s. That is BigQuery's rule and it is the narrowest of "+
+				"the four, so a name that passes works everywhere", k, LandingFieldName)
+		}
+	}
+	return nil
+}
+
+// LandingSpread turns a record into the columns it contributes: each field
+// its own column, objects and arrays as JSON, null as NULL.
+//
+// It does NOT flatten. A nested object becomes one JSON column under the
+// key that held it, which is what the gateway's `shape: columns` does too --
+// a record that needs one row per element wants ArrayAt, which is a
+// different operation with a different name.
+//
+// The rendering is the SDK's own, and deliberately not the gateway's `Text`.
+// That one is documented as free to get stricter; these values are WRITTEN
+// INTO TABLES, so they are as unchangeable as the ids are. A renderer that
+// may change cannot be the one producing stored column values.
+func LandingSpread(record map[string]any) (map[string]any, error) {
+	if err := LandingFieldNames(record); err != nil {
+		return nil, err
+	}
+	out := make(map[string]any, len(record))
+	for _, k := range landingKeys(record) {
+		v, err := landingValue(record[k])
+		if err != nil {
+			return nil, fmt.Errorf("field %q: %w", k, err)
+		}
+		out[k] = v
+	}
+	return out, nil
+}
+
+func landingValue(v any) (any, error) {
+	switch t := v.(type) {
+	case map[string]any, []any:
+		body, err := json.Marshal(t)
+		if err != nil {
+			return nil, fmt.Errorf("not JSON: %w", err)
+		}
+		return string(body), nil
+	case nil:
+		// NULL and not "": a field the producer sent as null and a field
+		// they sent as an empty string are different facts.
+		return nil, nil
+	}
+	return asText(v), nil
+}
+
+func landingKeys(record map[string]any) []string {
+	out := make([]string, 0, len(record))
+	for k := range record {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

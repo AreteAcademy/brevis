@@ -1,12 +1,8 @@
 package autotable
 
 import (
-	"encoding/json"
-	"fmt"
-	"regexp"
 	"sort"
 
-	"github.com/AreteAcademy/brevis/gateway"
 	"github.com/AreteAcademy/brevis/sdk"
 )
 
@@ -36,40 +32,24 @@ func (columns) name() string { return ShapeColumns }
 
 // FieldName is what a record's field has to match to become a column.
 //
-// It is BigQuery's rule, which is the narrowest of the four: a letter or
-// underscore, then letters, digits and underscores. Postgres would accept
-// almost anything quoted -- which is exactly the trap, because the table would
-// be created there and the same producer would break the day somebody points a
-// stream at BigQuery.
-var FieldName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+// The SDK's, so a pipeline landing this shape refuses the same names with
+// the same message.
+var FieldName = sdk.LandingFieldName
 
 // validate is the field-name rule, applied per event before anything is
 // buffered. See the shaper interface for the batch this did not exist to
 // protect.
 func (c columns) validate(record map[string]any) error {
-	for _, k := range sorted(record) {
-		if !FieldName.MatchString(k) {
-			return fmt.Errorf("the field %q cannot be a column name: it has to "+
-				"match %s. That is BigQuery's rule and it is the narrowest of the "+
-				"four, so a name that passes works everywhere", k, FieldName)
-		}
-	}
-	return nil
+	return sdk.LandingFieldNames(record)
 }
 
+// columns renders the record's fields, each into a column of its own.
+//
+// The SDK's, so a pipeline landing this shape writes the same values. The
+// rendering there is deliberately not this package's `Text`: these values go
+// into tables, and the one in text.go is documented as free to get stricter.
 func (c columns) columns(record map[string]any) (map[string]any, error) {
-	if err := c.validate(record); err != nil {
-		return nil, err
-	}
-	out := make(map[string]any, len(record))
-	for _, k := range sorted(record) {
-		v, err := value(record[k])
-		if err != nil {
-			return nil, fmt.Errorf("field %q: %w", k, err)
-		}
-		out[k] = v
-	}
-	return out, nil
+	return sdk.LandingSpread(record)
 }
 
 func (c columns) schema(record map[string]any) (sdk.Schema, error) {
@@ -93,23 +73,6 @@ func typeOf(v any) sdk.ColumnType {
 		return sdk.TypeJSON
 	}
 	return sdk.TypeString
-}
-
-// value renders one field for its column.
-func value(v any) (any, error) {
-	switch t := v.(type) {
-	case map[string]any, []any:
-		body, err := json.Marshal(t)
-		if err != nil {
-			return nil, fmt.Errorf("not JSON: %w", err)
-		}
-		return string(body), nil
-	case nil:
-		// NULL and not "": a field the producer sent as null and a field they
-		// sent as an empty string are different facts.
-		return nil, nil
-	}
-	return gateway.Text(v), nil
 }
 
 func sorted(record map[string]any) []string {

@@ -402,3 +402,84 @@ func TestLandingStampsItsOwnClock(t *testing.T) {
 			"and sending anything -- NULL included -- overrides it", v)
 	}
 }
+
+// The spread gives each field its own column, and does not flatten.
+func TestLandingSpread(t *testing.T) {
+	got, err := LandingSpread(map[string]any{
+		"id":       "A-1",
+		"qty":      float64(3),
+		"customer": map[string]any{"uf": "SP", "id": float64(7)},
+		"tags":     []any{"x", "y"},
+		"note":     nil,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got["id"] != "A-1" {
+		t.Errorf("id = %v", got["id"])
+	}
+	// JSON has one number type, so an integer arrives as float64. Rendering
+	// it with %v would give 3 here and 2.613e+07 for a large id -- which is
+	// the case the renderer exists for.
+	if got["qty"] != "3" {
+		t.Errorf("qty = %v, want \"3\"", got["qty"])
+	}
+	if got["customer"] != `{"id":7,"uf":"SP"}` {
+		t.Errorf("customer = %v -- a nested object is ONE JSON column under "+
+			"the key that held it. It is not flattened into customer_id and "+
+			"customer_uf, and neither is it in the gateway", got["customer"])
+	}
+	if got["tags"] != `["x","y"]` {
+		t.Errorf("tags = %v -- an array stays JSON; a record that wants one "+
+			"row per element wants ArrayAt", got["tags"])
+	}
+	// NULL and not "": a field sent as null and one sent empty are different
+	// facts, and a column cannot tell them apart afterwards.
+	if v, present := got["note"]; !present || v != nil {
+		t.Errorf("note = %v (present=%v), want a present nil", v, present)
+	}
+	if len(got) != 5 {
+		t.Errorf("%d columns for 5 fields: %v", len(got), got)
+	}
+}
+
+// A large integer must not become scientific notation.
+//
+// This is the case the rendering exists for: JSON has one number type, so an
+// id arrives as float64 and fmt.Sprint renders 26130000 as 2.613e+07. A
+// column carrying that matches nothing.
+func TestLandingSpreadDoesNotUseScientificNotation(t *testing.T) {
+	got, err := LandingSpread(map[string]any{"external_id": float64(26130000)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["external_id"] != "26130000" {
+		t.Errorf("external_id = %v, want \"26130000\"", got["external_id"])
+	}
+}
+
+// A field that cannot be a column name is refused, with the name and the rule.
+func TestLandingSpreadRefusesAFieldThatCannotBeAColumn(t *testing.T) {
+	for _, name := range []string{"my-field", "2fast", "with space", ""} {
+		t.Run(name, func(t *testing.T) {
+			_, err := LandingSpread(map[string]any{name: "x"})
+			if err == nil {
+				t.Fatalf("%q was accepted as a column name", name)
+			}
+			if !strings.Contains(err.Error(), name) {
+				t.Errorf("the refusal does not name the field: %v", err)
+			}
+		})
+	}
+
+	// And the check is callable on its own, because the gateway asks per
+	// event before anything is buffered -- one bad name must not fail the
+	// batch around it.
+	if err := LandingFieldNames(map[string]any{"ok": 1, "not-ok": 2}); err == nil {
+		t.Error("LandingFieldNames accepted a name LandingSpread refuses")
+	}
+	if err := LandingFieldNames(map[string]any{"ok": 1, "_also_ok": 2}); err != nil {
+		t.Errorf("a legal name was refused: %v", err)
+	}
+}
