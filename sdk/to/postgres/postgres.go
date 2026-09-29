@@ -438,9 +438,23 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	}
 	var missing []string
 	for _, c := range columns {
-		if !has[c] {
-			missing = append(missing, c)
+		if has[c] {
+			continue
 		}
+		// A column the table lacks is the one difference EvolveAdditive was
+		// asked to repair, so refusing it here would make the flag
+		// unreachable in its only case: a declaration that adds a column is
+		// the only way to ask for one. Issue #41.
+		//
+		// Skipped per column rather than by returning early, so a check that
+		// evolving CANNOT repair -- a narrowed type, a column the table
+		// requires -- still runs before the extract when one is added here.
+		// That is the whole reason this method is early: one
+		// information_schema query against a source quota spent to find out.
+		if t.Evolve == core.EvolveAdditive {
+			continue
+		}
+		missing = append(missing, c)
 	}
 	if len(missing) == 0 {
 		return nil
