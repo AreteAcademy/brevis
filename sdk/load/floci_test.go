@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -371,4 +372,58 @@ func TestIntegrationBigQueryLoadEvolvesBeforeItWrites(t *testing.T) {
 	}
 	t.Error("Load did not evolve the table before submitting the job, so the " +
 		"column is still missing and every row would fail with `No such field`")
+}
+
+// The early check lets through what EvolveAdditive was asked to add — #41.
+//
+// BigQuery reaches this by a longer road than the SQL drivers: `Table.
+// CheckDestination` builds a Loader and delegates here. The defect and the
+// fix are the same — the check ran before the extract and refused the one
+// difference the load had been told to repair, so the flag was unreachable
+// in its only case.
+//
+// The check inside `Load` is untouched and must stay that way: it runs AFTER
+// evolveTable, against fresh metadata, so it is the verification that
+// evolving actually did what it said. Relaxing that one would lose the only
+// thing watching evolve.
+func TestIntegrationBigQueryTheEarlyCheckDefersToEvolve(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "earlycheck")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	// A declaration with one column the table does not have.
+	declared := []string{"ts", "id", "cupom"}
+
+	// With nothing asked for, the early refusal stands. This is the property
+	// the fix had to keep: one metadata query against a whole source quota
+	// spent to learn a column does not match.
+	l.cfg.Evolve = core.EvolveNone
+	err := l.CheckDestination(ctx, declared)
+	if err == nil {
+		t.Fatal("the early check accepted a column the table lacks with no " +
+			"evolution asked for: it stopped checking")
+	}
+	if !strings.Contains(err.Error(), "cupom") {
+		t.Errorf("the refusal does not name the column: %v", err)
+	}
+
+	// Told to add it, the early check defers and lets the load get there.
+	l.cfg.Evolve = core.EvolveAdditive
+	if err := l.CheckDestination(ctx, declared); err != nil {
+		t.Fatalf("the early check refused a column EvolveAdditive was asked "+
+			"to add, so the flag never reaches evolveTable: %v", err)
+	}
 }

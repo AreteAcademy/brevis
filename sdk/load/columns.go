@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/bigquery"
+
+	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // checkDeclaredAgainstTable confirms the declaration describes the table that
@@ -64,7 +66,34 @@ func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 		return fmt.Errorf("checking %s before the extract: %w", nameOf(table), err)
 	}
 
-	if err := checkDeclaredAgainstTable(columns, meta.Schema, nameOf(table)); err != nil {
+	// A column the table lacks is the one difference EvolveAdditive was asked
+	// to repair, so refusing it here would make the flag unreachable in its
+	// only case: a declaration that adds a column is the only way to ask for
+	// one. Issue #41.
+	//
+	// The columns that ARE there still go through the check, rather than the
+	// whole thing being skipped, so anything it learns to refuse about them
+	// keeps running before the extract. That is what this method is for: one
+	// metadata query against a whole source quota spent to find out.
+	//
+	// The same check inside Load is deliberately NOT relaxed. It runs after
+	// evolveTable, against fresh metadata, which makes it the verification
+	// that evolving did what it said.
+	declared := columns
+	if l.cfg.Evolve == core.EvolveAdditive {
+		has := make(map[string]bool, len(meta.Schema))
+		for _, f := range meta.Schema {
+			has[f.Name] = true
+		}
+		declared = make([]string, 0, len(columns))
+		for _, c := range columns {
+			if has[c] {
+				declared = append(declared, c)
+			}
+		}
+	}
+
+	if err := checkDeclaredAgainstTable(declared, meta.Schema, nameOf(table)); err != nil {
 		return fmt.Errorf("%w. Caught before the extract, so no source quota was spent", err)
 	}
 	return nil

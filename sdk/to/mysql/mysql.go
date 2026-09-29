@@ -375,9 +375,20 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	}
 	var missing []string
 	for _, c := range columns {
-		if !has[c] {
-			missing = append(missing, c)
+		if has[c] {
+			continue
 		}
+		// A column the table lacks is the one difference EvolveAdditive was
+		// asked to repair, so refusing it here would make the flag
+		// unreachable in its only case. Issue #41.
+		//
+		// Skipped per column rather than by returning early, so a check that
+		// evolving CANNOT repair still runs before the extract when one is
+		// added here.
+		if t.Evolve == core.EvolveAdditive {
+			continue
+		}
+		missing = append(missing, c)
 	}
 	if len(missing) == 0 {
 		return nil

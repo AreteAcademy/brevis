@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"iter"
 	"os"
 	"strings"
 	"testing"
@@ -593,5 +594,78 @@ func TestIntegrationEvolveAddsAColumnWithoutRewritingHistory(t *testing.T) {
 	}
 	if after != "web" {
 		t.Errorf("the default did not apply to a new row: %q", after)
+	}
+}
+
+// oneRow is a source of exactly one record, so a pipeline can run without a
+// vendor behind it.
+type oneRow struct{ payload map[string]any }
+
+func (oneRow) Describe() string { return "one row" }
+func (o oneRow) Read(context.Context, sdk.ReadOptions) (iter.Seq2[sdk.Envelope, error], error) {
+	return func(yield func(sdk.Envelope, error) bool) {
+		yield(sdk.Envelope{Provider: "p", Entity: "e", SourceKey: "k",
+			RecordTS: "2026-09-29T00:00:00Z", Payload: o.payload}, nil)
+	}, nil
+}
+
+// EvolveAdditive reaches the driver through a pipeline — issue #41.
+//
+// MySQL has its own CheckDestination and its own Evolve field, so it had the
+// same defect Postgres did and needed the same fix: the early check refused
+// the one difference the load had been told to repair, and the driver's
+// evolve, which runs inside Write, never saw it.
+func TestIntegrationEvolveAdditiveReachesTheDriver(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "ingestion_id VARCHAR(36) NOT NULL, a TEXT")
+
+	declared := sdk.Schema{
+		{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+		{Name: "a", Type: sdk.TypeString},
+		{Name: "b", Type: sdk.TypeString}, // the table does not have it
+	}
+	record := map[string]any{"ingestion_id": "id-1", "a": "x", "b": "new"}
+
+	if err := sdk.Execute(context.Background(), &sdk.Pipeline{
+		Source: sdk.Source{From: oneRow{record}},
+		Target: sdk.Target{
+			To:     tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditive},
+			Schema: declared,
+		},
+	}, nil); err != nil {
+		t.Fatalf("the pipeline refused a column EvolveAdditive was asked to add: %v", err)
+	}
+
+	var got string
+	if err := db.QueryRow("SELECT b FROM " + name).Scan(&got); err != nil {
+		t.Fatalf("reading the column that should have been added: %v", err)
+	}
+	if got != "new" {
+		t.Errorf("the new column holds %q, want %q", got, "new")
+	}
+}
+
+// And with no evolution asked for, the early refusal is exactly what it was.
+func TestIntegrationWithoutEvolveTheEarlyRefusalStands(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "ingestion_id VARCHAR(36) NOT NULL, a TEXT")
+
+	err := sdk.Execute(context.Background(), &sdk.Pipeline{
+		Source: sdk.Source{From: oneRow{map[string]any{"ingestion_id": "id-1", "a": "x", "b": "new"}}},
+		Target: sdk.Target{
+			To: tomy.Table{DSN: dsn(t), Name: name},
+			Schema: sdk.Schema{
+				{Name: "ingestion_id", Type: sdk.TypeString, Required: true},
+				{Name: "a", Type: sdk.TypeString},
+				{Name: "b", Type: sdk.TypeString},
+			},
+		},
+	}, nil)
+	if err == nil {
+		t.Fatal("a declaration naming a column the table lacks was accepted " +
+			"with no evolution asked for: the early check stopped checking")
+	}
+	if !strings.Contains(err.Error(), "b") || !strings.Contains(err.Error(), "does not have") {
+		t.Errorf("the refusal no longer names the column: %v", err)
 	}
 }
