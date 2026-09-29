@@ -287,10 +287,49 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		return fail(nil)
 	}
 
+	// Under EvolveAdditiveFromPayload the batch completes the declaration,
+	// ON A COPY OF THE CONFIG.
+	//
+	// The copy is the whole of the difficulty here, and it is a difficulty
+	// this destination has alone. The SQL drivers receive WriteOptions by
+	// VALUE, so their extension is per-batch by construction; `l.cfg` is a
+	// pointer that belongs to the LOADER and outlives every batch. Extend it
+	// in place and the first batch's field becomes permanent, so the SECOND
+	// batch -- which need not carry it -- is refused for "a declared column
+	// the row does not have". The feature would break the batch after the one
+	// it helped.
+	//
+	// The receiver is rebound rather than a second config threaded through:
+	// prepareTable, evolveTable, encodeRows and the job's schema all read
+	// l.cfg, and passing it to five call sites is how one of them gets
+	// forgotten.
+	var discovered []string
+	if l.cfg.Evolve.FromPayload() {
+		found, err := core.Discovered(l.cfg.Columns, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		if len(found) > 0 {
+			opt := core.WithDiscovered(
+				core.WriteOptions{Columns: l.cfg.Columns, Schema: l.cfg.Schema}, found)
+			cfg := *l.cfg
+			cfg.Columns, cfg.Schema = opt.Columns, opt.Schema
+			discovered = opt.Discovered
+
+			batch := *l
+			batch.cfg = &cfg
+			l = &batch
+		}
+	}
+
 	// The row is exactly what the Transform chain composed, ingestion_id
 	// included -- so the declaration is checked against the whole row and
 	// needs no special case.
-	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes, nil); err != nil {
+	//
+	// AFTER the extension and not instead of it: the check has two halves and
+	// only the undeclared one is what this mode is for. A column the CONSUMER
+	// declared and the chain does not produce is still a bug.
+	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes, discovered); err != nil {
 		return fail(err)
 	}
 

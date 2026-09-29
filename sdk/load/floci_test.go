@@ -427,3 +427,225 @@ func TestIntegrationBigQueryTheEarlyCheckDefersToEvolve(t *testing.T) {
 			"to add, so the flag never reaches evolveTable: %v", err)
 	}
 }
+
+// fieldsOfTable is the table's schema, by name.
+func fieldsOfTable(t *testing.T, table *bigquery.Table) map[string]*bigquery.FieldSchema {
+	t.Helper()
+	md, err := table.Metadata(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := map[string]*bigquery.FieldSchema{}
+	for _, f := range md.Schema {
+		out[f.Name] = f
+	}
+	return out
+}
+
+// EvolveAdditiveFromPayload on BigQuery: the batch teaches the table.
+//
+// This destination reaches evolve by the longest road — `evolveTable` is
+// gated on the mode, and before the predicate landed that gate read
+// `!= EvolveAdditive`, which would have returned early for this mode and
+// shipped the whole feature inert here while Postgres and MySQL worked.
+func TestIntegrationBigQueryTheBatchTeachesTheTable(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "taught")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	// A field nobody declared, and an object beside it. The load job itself
+	// may fail on the emulator; what matters is what happened before it.
+	_, _ = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1",
+			"series": "21129",
+			"meta":   map[string]any{"uf": "SP"},
+		},
+	})
+
+	fields := fieldsOfTable(t, table)
+	series, ok := fields["series"]
+	if !ok {
+		t.Fatal("the table has no `series` column: the batch did not reach " +
+			"evolveTable, and every row would fail with `No such field`")
+	}
+	if series.Type != bigquery.StringFieldType {
+		t.Errorf("series is %v, want STRING -- a scalar is text", series.Type)
+	}
+	if meta, ok := fields["meta"]; !ok {
+		t.Error("the table has no `meta` column")
+	} else if meta.Type != bigquery.JSONFieldType {
+		t.Errorf("meta is %v, want JSON -- an object is JSON", meta.Type)
+	}
+
+	// NULLABLE, whatever the declaration says. BigQuery refuses a REQUIRED
+	// column added to a table that already has rows, and it is right to: the
+	// rows already there have no value for it.
+	if series.Required {
+		t.Error("the discovered column is REQUIRED: the rows already in the " +
+			"table have no value for it")
+	}
+}
+
+// The Loader's config is the LOADER's, and the batch must not keep it.
+//
+// This is the destination where extending in place is the natural thing to
+// write: the SQL drivers receive WriteOptions by VALUE, so their extension is
+// per-batch by construction, and here `l.cfg` is a pointer that outlives
+// every batch. Extend it in place and the first batch's field becomes
+// permanent — so the SECOND batch, which need not carry it, is refused for
+// "a declared column the row does not have". The feature would break the
+// batch after the one it helped.
+func TestIntegrationBigQueryTheBatchDoesNotKeepTheConfig(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "notkept")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	before := len(l.cfg.Columns)
+
+	_, _ = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1", "efemera": "x",
+		},
+	})
+
+	if len(l.cfg.Columns) != before {
+		t.Errorf("the Loader's declaration grew from %d to %d columns: the "+
+			"extension outlived the batch, and the next one is about to be "+
+			"refused for a column it never carried", before, len(l.cfg.Columns))
+	}
+	if l.cfg.Schema.Has("efemera") {
+		t.Error("the Loader's Schema kept `efemera`")
+	}
+
+	// And the proof that it matters: a second batch WITHOUT the field.
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k2", RecordTS: "t2",
+		Payload: map[string]any{"ts": "2026-09-26T11:00:00Z", "id": "A-2"},
+	})
+	if err != nil && strings.Contains(err.Error(), "efemera") {
+		t.Errorf("the batch after the one that taught the table was refused "+
+			"for its column: %v", err)
+	}
+}
+
+// EvolveAdditive is unchanged: it adds what the DECLARATION has, never what
+// the batch carries.
+func TestIntegrationBigQueryTheBatchTeachesNothingWithoutTheMode(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditive,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "unasked")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1", "nao_declarada": "x",
+		},
+	})
+	if err == nil {
+		t.Fatal("EvolveAdditive accepted a field nothing declared")
+	}
+	if !strings.Contains(err.Error(), "nao_declarada") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+	if _, ok := fieldsOfTable(t, table)["nao_declarada"]; ok {
+		t.Error("the table grew a column under EvolveAdditive")
+	}
+}
+
+// The mode completes the declaration; it does not switch the check off.
+//
+// The same mutation survived here that survived on Postgres: replacing the
+// extension with `if !FromPayload() { CheckRow }` passes everything else,
+// because once the batch's fields are declared the undeclared half has
+// nothing left to catch. The half it silently loses is a column the CONSUMER
+// declared and the chain does not produce — which this mode has nothing to
+// do with, and which is still a bug.
+func TestIntegrationBigQueryTheModeCompletesTheDeclaration(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+			// Declared by the consumer and never produced by the chain.
+			{Name: "prometida", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "promised")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1", "achada": "x",
+		},
+	})
+	if err == nil {
+		t.Fatal("a declared column the chain does not produce was accepted: " +
+			"the row check was skipped instead of extended, and the half this " +
+			"mode has nothing to do with went with it")
+	}
+	if !strings.Contains(err.Error(), "prometida") {
+		t.Errorf("the refusal does not name the declared column: %v", err)
+	}
+	if strings.Contains(err.Error(), "which Columns does not declare") {
+		t.Errorf("the batch's own column was refused as undeclared, which is "+
+			"the thing this mode exists to stop: %v", err)
+	}
+}
