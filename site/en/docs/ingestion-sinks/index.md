@@ -513,6 +513,13 @@ other two exist.
 errors is a miss, a claim that errors behaves as won, a counter that errors
 relaxes the limit. A cache that can stop the ingestion is worse than no cache.
 
+**And "down" includes "slow".** The claim runs while the buffer's lock is held,
+so a backend that takes two seconds to answer is two seconds in which that
+stream accepts nothing. Every call is bounded at **500 ms** and fails open past
+it. Redis obeys that as the caller's context; `gomemcache` takes no context at
+all, so memcached obeys it as a socket deadline — the same bound reached two
+ways, because one of the two clients cannot be told to stop.
+
 **`ttl: 0` means never**, and saying nothing still takes the one-minute default
 — three states, not two.
 

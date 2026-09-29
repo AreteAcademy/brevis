@@ -1141,7 +1141,7 @@ func (p *pipe) winners(due []string) []string {
 	// unconditionally, so every request arriving in the window pays the whole
 	// of it. Pipelined the same 94 cost 29.8ms, which is what ONE claim costs
 	// today.
-	ctx, cancel := context.WithTimeout(context.Background(), claimTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), ClaimTimeout)
 	defer cancel()
 	got, err := claimAll(ctx, p.meta, keys, every)
 	if err != nil {
@@ -1221,12 +1221,20 @@ func claimAll(ctx context.Context, m Metastore, keys []string, ttl time.Duration
 	return out, nil
 }
 
-// claimTimeout bounds the one call the timer path makes to the metastore.
+// ClaimTimeout bounds the call the timer path makes to the metastore.
 //
 // Short, because this runs while the pipe's lock is held: a backend that hangs
 // would stop every request for this stream, which is a far worse outcome than
 // the duplicate load job the claim exists to avoid.
-const claimTimeout = 500 * time.Millisecond
+//
+// Exported because a backend whose client takes no context cannot honour it
+// as a context and has to honour it as a socket deadline instead. Memcached
+// is that backend: `gomemcache.Add` has no ctx parameter, so before this
+// number reached the driver the 500ms was decoration -- measured at a 2s
+// backend, a Claim with a 500ms context returned in 2s, with the pipe's mutex
+// held for all of it. One number, in one place, whichever way a driver has to
+// obey it.
+const ClaimTimeout = 500 * time.Millisecond
 
 // send delivers a batch, retrying, and gives up into the dead letter. It
 // returns what the sink last said, which is nil when the batch landed and the

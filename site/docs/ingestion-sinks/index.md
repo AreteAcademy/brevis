@@ -513,6 +513,14 @@ existirem.
 miss, um claim que erra se comporta como ganho, um contador que erra relaxa o
 limite. Um cache capaz de parar a ingestão é pior que nenhum cache.
 
+**E "fora do ar" inclui "lento".** O claim roda com o lock do buffer na mão,
+então um backend que leva dois segundos para responder são dois segundos em que
+aquele stream não aceita nada. Toda chamada é limitada em **500 ms** e falha
+aberto depois disso. O Redis obedece isso como contexto do chamador; o
+`gomemcache` não aceita contexto nenhum, então o memcached obedece como prazo
+de socket — o mesmo limite por dois caminhos, porque um dos dois clientes não
+tem como ser mandado parar.
+
 **`ttl: 0` significa nunca**, e dizer nada continua pegando o padrão de um
 minuto — três estados, não dois.
 
