@@ -1073,3 +1073,32 @@ func TestALandingPipelineDeclaresWhatAGatewayWould(t *testing.T) {
 			"JSON, but not the JSON somebody can query", uf)
 	}
 }
+
+// A column a batch created says so in the table itself.
+//
+// MySQL has no COMMENT ON COLUMN: the comment rides inside the ADD, which is
+// what InlineComment is for.
+func TestADiscoveredColumnCarriesItsOrigin(t *testing.T) {
+	db := open(t)
+	name := table(t, db, "brevis_ingestion_id VARCHAR(36) NOT NULL")
+
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	to := tomy.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"brevis_ingestion_id": "id-1", "series": "21129",
+	}}}, sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatal(err)
+	}
+
+	var note string
+	if err := db.QueryRow(`
+		SELECT column_comment FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'series'`,
+		name).Scan(&note); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(note, "batch") {
+		t.Errorf("the column comment is %q: nothing in the table says nobody "+
+			"declared it", note)
+	}
+}

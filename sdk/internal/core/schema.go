@@ -97,6 +97,18 @@ type Column struct {
 	// nil means no DEFAULT clause. A column that should default to NULL simply
 	// has none: writing DEFAULT NULL is what the database does anyway.
 	Default any
+
+	// Note is a sentence the column carries into the table.
+	//
+	// It exists for the column nobody declared. postgres.go has said why for
+	// a while -- "a change to a table's shape that happens in silence is a
+	// change nobody can date afterwards, and 'when did this column appear' is
+	// the question consumers ask months later" -- and the answer used to be a
+	// log line, which rotates. A comment on the column does not.
+	//
+	// Empty for a column the consumer wrote down: they know when they wrote
+	// it, and it is in a diff.
+	Note string
 }
 
 // Expression is a default the database computes rather than stores. The only

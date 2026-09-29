@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"time"
 )
 
 // ColumnName is what a field has to match to become a column of its own.
@@ -197,7 +198,16 @@ func Discovered(declared []string, records []Envelope) (Schema, error) {
 		if err := CheckColumnName(k); err != nil {
 			return nil, err
 		}
-		out = append(out, Column{Name: k, Type: TypeFromShape(found[k])})
+		out = append(out, Column{
+			Name: k, Type: TypeFromShape(found[k]),
+			// Dated here, where the column is decided on. It answers the one
+			// question a reader has six months later, and it separates "a
+			// batch brought this" from "somebody declared this", which
+			// changes what they should do about it.
+			Note: fmt.Sprintf("brevis: added from a batch on %s; the type is "+
+				"the landing rule (scalar text, object and array json), not a decision",
+				time.Now().UTC().Format("2006-01-02")),
+		})
 	}
 	return out, nil
 }

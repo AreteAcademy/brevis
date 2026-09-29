@@ -494,6 +494,13 @@ func (l *Loader) evolveTable(ctx context.Context, table *bigquery.Table) error {
 		}
 		add := *f
 		add.Required = false
+		// The note, where BigQuery keeps one: a field description rather than
+		// a comment statement. Same reason as the SQL dialects -- a column
+		// nobody declared should say so in the table, not only in a log that
+		// rotates.
+		if note := noteFor(l.cfg.Schema, f.Name); note != "" {
+			add.Description = note
+		}
 		missing = append(missing, &add)
 	}
 	if len(missing) == 0 {
@@ -519,4 +526,14 @@ func names(s bigquery.Schema) string {
 		out = append(out, f.Name)
 	}
 	return strings.Join(out, ", ")
+}
+
+// noteFor is the declared column's Note, if it has one.
+func noteFor(s core.Schema, name string) string {
+	for _, c := range s {
+		if c.Name == name {
+			return c.Note
+		}
+	}
+	return ""
 }

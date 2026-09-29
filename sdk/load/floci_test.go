@@ -715,3 +715,50 @@ func TestIntegrationBigQueryALandingPipelineDeclaresWhatAGatewayWould(t *testing
 		}
 	}
 }
+
+// A column a batch created says so in the table.
+//
+// BigQuery keeps it as a field description rather than a comment statement,
+// so this path does not go through AlterTable at all — it is the Go API, and
+// the note has to be put on the FieldSchema by hand.
+func TestIntegrationBigQueryADiscoveredColumnCarriesItsOrigin(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "origin")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	_, _ = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-26T10:00:00Z", "id": "A-1", "series": "21129",
+		},
+	})
+
+	f, ok := fieldsOfTable(t, table)["series"]
+	if !ok {
+		t.Fatal("the table has no `series` column")
+	}
+	if !strings.Contains(f.Description, "batch") {
+		t.Errorf("the column's description is %q: six months from now nothing "+
+			"in the table says nobody declared it", f.Description)
+	}
+	// The declared columns keep their own descriptions, which is to say none
+	// from here: the consumer knows when they wrote them.
+	if d := fieldsOfTable(t, table)["id"].Description; strings.Contains(d, "batch") {
+		t.Errorf("a declared column was described as coming from a batch: %q", d)
+	}
+}

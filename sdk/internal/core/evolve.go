@@ -147,8 +147,16 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 			})
 			continue
 		}
-		refused = append(refused, fmt.Sprintf(
-			"%s is %s in the table and %s in the declaration", c.Name, have, c.Type))
+		// A column a BATCH created is refused in the same words plus one:
+		// without it the message reads as though somebody declared this and
+		// got it wrong, and nobody did. What the reader should do differs --
+		// there is no declaration of theirs to fix.
+		why := fmt.Sprintf("%s is %s in the table and %s in the declaration",
+			c.Name, have, c.Type)
+		if c.Note != "" {
+			why += fmt.Sprintf(" (%s)", c.Note)
+		}
+		refused = append(refused, why)
 	}
 
 	// A column the table has and the declaration does not is NOT a change. It
@@ -203,8 +211,25 @@ func (s Schema) AlterTable(d Dialect, table string, changes []Change) ([]string,
 			// the declaration says. NOT NULL would have to be true of every row
 			// that already exists, and no value this SDK could invent is. The
 			// declaration keeps describing what a NEW table gets.
-			out = append(out, "ALTER TABLE "+qualified(d, table)+
-				" ADD COLUMN "+d.quote(col.Name)+" "+sqlType)
+			add := "ALTER TABLE " + qualified(d, table) +
+				" ADD COLUMN " + d.quote(col.Name) + " " + sqlType
+			// The note travels WITH the ADD, in the same statement group, so
+			// a column cannot come into being without the sentence saying
+			// where it came from. MySQL carries it inside the definition and
+			// has no COMMENT ON COLUMN at all; the others take their own
+			// statement.
+			if col.Note != "" && !d.NoComment {
+				if d.InlineComment {
+					add += " COMMENT " + sqlQuote(col.Note)
+					out = append(out, add)
+				} else {
+					out = append(out, add,
+						"COMMENT ON COLUMN "+qualified(d, table)+"."+d.quote(col.Name)+
+							" IS "+sqlQuote(col.Note))
+				}
+			} else {
+				out = append(out, add)
+			}
 
 			// The DEFAULT is set in a SECOND statement, and that is not
 			// tidiness. `ADD COLUMN ... DEFAULT x` BACKFILLS the rows already
@@ -264,4 +289,14 @@ func (d Dialect) alterType(table, column, sqlType string) string {
 	}
 	return "ALTER TABLE " + qualified(d, table) + " ALTER COLUMN " +
 		d.quote(column) + " TYPE " + sqlType
+}
+
+// sqlQuote renders a string literal.
+//
+// Doubling the quote is the whole of it, and it is here rather than left to
+// a driver's parameters because DDL takes no parameters: an ALTER is text or
+// it is nothing. A note carrying an apostrophe -- "it's from a batch" -- would
+// otherwise end the literal, and everything after it would be SQL.
+func sqlQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

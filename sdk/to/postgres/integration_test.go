@@ -1109,3 +1109,45 @@ func TestALandingPipelineDeclaresWhatAGatewayWould(t *testing.T) {
 			"the JSON somebody can query", uf)
 	}
 }
+
+// A column a batch created says so in the table itself.
+func TestADiscoveredColumnCarriesItsOrigin(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := table(t, conn, `brevis_ingestion_id TEXT NOT NULL`)
+
+	declared := sdk.Schema{{Name: "brevis_ingestion_id", Type: sdk.TypeString, Required: true}}
+	to := topg.Table{DSN: dsn(t), Name: name, Evolve: sdk.EvolveAdditiveFromPayload}
+	if _, err := to.Write(ctx, []sdk.Envelope{env(map[string]any{
+		"brevis_ingestion_id": "id-1", "series": "21129",
+	})}, sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatal(err)
+	}
+
+	note := columnComment(t, conn, name, "series")
+	if note == nil || !strings.Contains(*note, "batch") {
+		t.Errorf("the column has no comment saying a batch brought it (%v): "+
+			"six months from now the table is the only thing left, and a log "+
+			"line has rotated", note)
+	}
+
+	// The declared column carries none: the consumer knows when they wrote it.
+	declaredNote := columnComment(t, conn, name, "brevis_ingestion_id")
+	if declaredNote != nil {
+		t.Errorf("a declared column was commented: %v", *declaredNote)
+	}
+}
+
+// columnComment is what the server records about a column.
+func columnComment(t *testing.T, conn *pgx.Conn, table, column string) *string {
+	t.Helper()
+	var note *string
+	if err := conn.QueryRow(context.Background(), `
+		SELECT col_description(c.oid, a.attnum)
+		FROM pg_class c
+		JOIN pg_attribute a ON a.attrelid = c.oid
+		WHERE c.relname = $1 AND a.attname = $2`, table, column).Scan(&note); err != nil {
+		t.Fatal(err)
+	}
+	return note
+}
