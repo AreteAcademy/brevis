@@ -3,6 +3,8 @@ package sdk
 import (
 	"fmt"
 	"io"
+	"slices"
+	"strings"
 	"time"
 
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -75,6 +77,30 @@ type Target struct {
 	// DedupMerge costs, and whether a destination supports it at all, is the
 	// driver's to say.
 	Dedup core.Dedup
+
+	// DedupKey is the column DedupMerge matches on. Empty means
+	// `ingestion_id`, which is what every driver looked for before this
+	// existed.
+	//
+	// The landing layout needs it, and needs it to merge AT ALL: its identity
+	// column is `brevis_ingestion_id`, and a merge left to the default would
+	// look for a column the table does not have.
+	//
+	//	Target{
+	//		Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+	//		Dedup:    sdk.DedupMerge,
+	//		DedupKey: sdk.LandingColumnID,
+	//	}
+	//
+	// Checked against the declaration: a key that Columns or Schema does not
+	// carry is an error naming both. `core.DedupKeyOf` validates that the
+	// name is a legal identifier, not that anything has it, so a typo would
+	// otherwise merge on a column that is not there -- and a merge matching
+	// nothing looks exactly like a merge matching everything it should.
+	//
+	// Nil declaration declares nothing and checks nothing, the way Columns
+	// does.
+	DedupKey string
 
 	// Preview prints the first N rows AS THEY WILL BE WRITTEN, the way a
 	// dataframe's head() shows the top of a frame. Zero prints nothing.
@@ -153,6 +179,15 @@ func (d Target) validate() error {
 				"A table cannot be partitioned on a column it does not have", d.PartitionBy)
 		}
 	}
+	if declared := d.declaredColumns(); d.DedupKey != "" && len(declared) > 0 {
+		if !slices.Contains(declared, d.DedupKey) {
+			return fmt.Errorf("Target.DedupKey names %q, which the declaration does "+
+				"not carry (it has: %s). A merge on a column the table does not have "+
+				"matches nothing, and a merge matching nothing looks exactly like one "+
+				"matching everything it should",
+				d.DedupKey, strings.Join(declared, ", "))
+		}
+	}
 	return nil
 }
 
@@ -172,6 +207,7 @@ func (d Target) options(run RunContext) core.WriteOptions {
 		Schema:      d.Schema,
 		PartitionBy: d.PartitionBy,
 		Dedup:       d.Dedup,
+		DedupKey:    d.DedupKey,
 		Run:         run,
 	}
 }
