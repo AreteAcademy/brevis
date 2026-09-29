@@ -18,6 +18,107 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.70.0] — 2026-09-29
+
+A pipeline can land the table a gateway lands — the same columns and the same
+`brevis_ingestion_id` — so choosing between them is a deployment decision and
+not a schema decision.
+
+### Added: the landing layout
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`LandingSchema` is nine columns: the eight the layout owns and the one the
+producer does. `Landing` fills them and puts the record, whole, in `data`.
+`LandingControlColumns` gives the eight alone, for a caller shaping the
+record's fields into columns of their own.
+
+**It is not a mode.** `Target.Schema` is still the caller declaring what the
+table is; this hands them a layout that already exists instead of making them
+type it. `CreationPlan` never learns anything special happened, and
+`TestI2CreationPlanNeverInfers` passes untouched — the proof that this added a
+constant and not a guess. Nothing infers: the `document` layout's schema is
+the same nine columns whatever the record holds.
+
+The code came out of the gateway, where it was first needed, for the reason
+`ComputeIngestionID` lives here: there has to be exactly ONE place that
+decides what a landing row looks like. The gateway imports it now and keeps
+every name as an alias; not one of its tests changed, which is how the move
+was checked.
+
+### The id is the whole point, and it is pinned
+
+```
+uuid5(ns, "auto_table | table | key | sha256(canonical(record))")
+```
+
+Content-addressed through the last slot: the same record gets the same id
+from either path, and a changed record gets a new one. An integration test
+lands one record through a gateway and through a pipeline into one Postgres
+and asserts `count(DISTINCT brevis_ingestion_id) = 1` across the two rows.
+
+`LandingProvider` is `"auto_table"` and **must not be "corrected"** to match
+whatever calls it: it is a format namespace, not a feature name, and every id
+already written is built from that string. A mutation renaming it passed the
+gateway's entire suite, because those tests compare the constant against
+itself. `TestTheLandingIDIsFrozen` pins two literal UUIDs against exactly
+that.
+
+### Three columns are `NULL` from a pipeline, and that is the honest answer
+
+`brevis_stream` and `brevis_gateway` name things a pipeline does not have, so
+`brevis_gateway IS NULL` is how a pipeline's row is told from a gateway's.
+
+`brevis_received_bytes` is `NULL` too, and that one was nearly a lie. It was
+filled with the record's JSON length until it became clear the gateway's
+counts what arrived **on the wire, envelope included** — around 30% larger for
+a typical event. One column with two meanings makes a sum across rows from
+both paths wrong by whatever share came from which. `length(data)` answers the
+pipeline's version exactly.
+
+`brevis_loaded_at` is **absent from the row**, not `NULL` in it: an explicit
+NULL overrides the column's `DEFAULT`, and the difference between
+`received_at` and `loaded_at` is the end-to-end latency only if the
+destination sets the second one. The first version sent `nil` and only the
+integration test caught it — the unit test asserted on the map the
+transformer builds, and a map is not a table.
+
+### The table name is written twice, and nothing checks it
+
+`Landing` takes the table because it is the id's second slot; the destination
+takes it because that is where the rows go. The `Writer` knows its own table
+but exposes it only through `Describe`, which is documented as the name for
+logs and errors — an id built on that would tie every id already written to a
+log string. Write the name once, in a constant, and pass it to both. Get them
+out of step and the rows land correctly with ids minted for a table nobody
+wrote to: they look fine, and they do not match the gateway's.
+
+### Also
+
+- The reserved `brevis_` prefix is **refused** rather than overwritten, which
+  is the opposite of the gateway and for a stated reason: there the producer
+  is a stranger who must not forge a control field, here it is the pipeline's
+  own author, and replacing what they wrote would hide their mistake instead
+  of naming it.
+- `Metastore` now states that implementations must be safe for concurrent use
+  of the same method. It always required safety across methods; this is the
+  rest of that sentence.
+- Weight is unchanged: 222 packages for `postgres`, 197 for `mysql`, 462 for
+  `bigquery`. The code that travelled is standard library only.
+
+---
+
 ## [0.69.0] — 2026-09-26
 
 ### Added: `Evolve` reaches BigQuery, which had been ignoring it
