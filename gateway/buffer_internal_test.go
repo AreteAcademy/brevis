@@ -2042,3 +2042,96 @@ func TestTheClaimFallbackReportsAnError(t *testing.T) {
 		t.Error("a backend that errored on one key reported success for all of them")
 	}
 }
+
+// The in-process store claims in bulk without goroutines.
+//
+// `memory` is guarded by one mutex, so the fan-out would start 32 goroutines
+// to take the same lock 32 times and wait for each other -- machinery whose
+// whole purpose is overlapping I/O, on a path that has none. Implementing
+// BulkClaimer routes it around that, and lets the whole window take the lock
+// ONCE instead of once per table.
+func TestTheMemoryStoreClaimsInBulk(t *testing.T) {
+	m := NewMemoryMetastore()
+	if _, ok := m.(BulkClaimer); !ok {
+		t.Fatal("the memory metastore does not implement BulkClaimer, so an " +
+			"in-process claim goes through the fan-out and pays for " +
+			"concurrency it cannot use")
+	}
+
+	ctx := context.Background()
+	// Take the even keys one at a time, the way the claim always did.
+	for i := 0; i < 6; i += 2 {
+		got, err := m.Claim(ctx, fmt.Sprintf("k%d", i), time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !got {
+			t.Fatalf("k%d was already claimed", i)
+		}
+	}
+
+	keys := make([]string, 6)
+	for i := range keys {
+		keys[i] = fmt.Sprintf("k%d", i)
+	}
+
+	// Through claimAll, so this is the path the timer actually takes.
+	got, err := claimAll(ctx, m, keys, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != len(keys) {
+		t.Fatalf("%d answers for %d keys", len(got), len(keys))
+	}
+	for i, won := range got {
+		if want := i%2 == 1; won != want {
+			t.Errorf("key %d: won=%v, want %v -- a bulk claim has to answer "+
+				"exactly what six separate Claims would have", i, won, want)
+		}
+	}
+
+	// And nothing is left: a window is claimed once.
+	again, err := claimAll(ctx, m, keys, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, won := range again {
+		if won {
+			t.Errorf("key %d was won twice in the same window", i)
+		}
+	}
+}
+
+// An expired claim is free again, in bulk as it is one at a time.
+//
+// The bulk path reads the clock once for the whole batch rather than once per
+// key, which is the right call -- a window is an instant -- and it is also
+// exactly where an expiry check gets dropped.
+func TestABulkClaimRespectsExpiry(t *testing.T) {
+	m := NewMemoryMetastore()
+	ctx := context.Background()
+	keys := []string{"a", "b"}
+
+	got, err := claimAll(ctx, m, keys, 40*time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, won := range got {
+		if !won {
+			t.Fatalf("key %d lost an empty store", i)
+		}
+	}
+
+	time.Sleep(80 * time.Millisecond)
+
+	after, err := claimAll(ctx, m, keys, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, won := range after {
+		if !won {
+			t.Errorf("key %d was still held after its window passed: a claim "+
+				"that does not expire is a lock, which this design refuses", i)
+		}
+	}
+}

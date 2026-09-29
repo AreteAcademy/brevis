@@ -217,6 +217,33 @@ func (m *memoryMetastore) Claim(_ context.Context, key string, ttl time.Duration
 	return true, nil
 }
 
+// ClaimMany takes the lock ONCE for the whole window.
+//
+// It satisfies BulkClaimer, and the reason is the opposite of Redis'. There
+// the point is one round trip instead of ninety-four; here there is no trip
+// at all, and the point is to stay OUT of the fallback's fan-out: thirty-two
+// goroutines contending for one mutex is machinery for overlapping I/O on a
+// path that has none.
+//
+// The clock is read once, so every key in a window is judged against the
+// same instant. A window IS an instant, and reading it per key would let the
+// first table and the last disagree about which one they are in.
+func (m *memoryMetastore) ClaimMany(_ context.Context, keys []string, ttl time.Duration) ([]bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+	out := make([]bool, len(keys))
+	for i, key := range keys {
+		if e, ok := m.by[key]; ok && now.Before(e.until) {
+			continue
+		}
+		m.by[key] = memoryEntry{value: "1", until: now.Add(ttl)}
+		out[i] = true
+	}
+	return out, nil
+}
+
 func (m *memoryMetastore) Incr(_ context.Context, key string, ttl time.Duration) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
