@@ -9,8 +9,10 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AreteAcademy/brevis/sdk"
+	tomysql "github.com/AreteAcademy/brevis/sdk/to/mysql"
 	topg "github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
@@ -149,5 +151,145 @@ func TestIntegrationTheSDKAndTheGatewayLandTheSameRow(t *testing.T) {
 				"received_at and loaded_at stopped being the latency", loaded)
 			break
 		}
+	}
+}
+
+// The landing layout MERGES, and a re-run is a no-op.
+//
+// Until Target.DedupKey there was no merge at all: every driver matches on
+// `ingestion_id` unless told otherwise, and this layout's identity column is
+// `brevis_ingestion_id`. This is that path running.
+//
+// The table is created by the SDK from LandingSchema, so the UNIQUE index
+// Postgres's checkUniqueIndex demands is one the SDK emitted — which is the
+// half of this that had never run.
+func TestIntegrationTheLandingLayoutMerges(t *testing.T) {
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_PG_DSN")
+	if dsn == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_PG_DSN is not set")
+	}
+	t.Setenv("PG_DSN", dsn)
+	table := fmt.Sprintf("gwmerge_%d", time.Now().UnixNano())
+	t.Cleanup(func() { exec(t, dsn, `DROP TABLE IF EXISTS `+table) })
+
+	record := map[string]any{"id": "A-1", "amount": float64(10)}
+
+	run := func() error {
+		return sdk.Execute(context.Background(), &sdk.Pipeline{
+			Source:    sdk.Source{From: oneRecord{record}},
+			Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+			Target: sdk.Target{
+				To:     topg.Table{DSN: dsn, Name: table, CreateTable: true},
+				Schema: sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+				// The two that had never met.
+				Dedup:    sdk.DedupMerge,
+				DedupKey: sdk.LandingColumnID,
+			},
+		}, nil)
+	}
+
+	// The first run creates the table and lands the row.
+	if err := run(); err != nil {
+		t.Fatalf("the first run failed: %v\n\n"+
+			"If this says the unique index is missing, the finding is that "+
+			"LandingOptions{UniqueID: true} does not produce what "+
+			"checkUniqueIndex looks for — a Schema.CreateTable matter, not a "+
+			"DedupKey one.", err)
+	}
+	// The second is a re-run of the same record: a no-op, not a duplicate.
+	if err := run(); err != nil {
+		t.Fatalf("the second run failed: %v", err)
+	}
+
+	if got := query(t, dsn, `SELECT count(*)::text FROM `+table); got[0] != "1" {
+		t.Errorf("%s holds %s rows after the same record twice, want 1 -- the "+
+			"merge matched nothing, which looks exactly like a merge matching "+
+			"everything it should", table, got[0])
+	}
+
+	// And the gateway, merging into the table the SDK made, is the same row
+	// again — same id, so nothing new lands.
+	srv := autoTableGateway(t, dsn, "", "merge")
+	ts := httptest.NewServer(srv.Handler())
+	body, err := json.Marshal([]map[string]any{{
+		"table_name": table, "operation": "INSERT",
+		"unique_key": "id", "data": record,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	postKeyed(t, ts.URL+"/v1/tables", string(body), 202)
+	if err := srv.Close(context.Background()); err != nil {
+		t.Fatalf("draining: %v", err)
+	}
+	ts.Close()
+
+	if got := query(t, dsn, `SELECT count(*)::text FROM `+table); got[0] != "1" {
+		t.Errorf("%s holds %s rows after the gateway merged the same record, "+
+			"want 1 -- the two paths minted different ids, or the merge did "+
+			"not match", table, got[0])
+	}
+	if got := query(t, dsn, `SELECT count(DISTINCT brevis_ingestion_id)::text FROM `+table); got[0] != "1" {
+		t.Errorf("%s distinct ids, want 1", got[0])
+	}
+}
+
+// The same, on MySQL — and it DOES NOT WORK, which is this slice's finding.
+//
+// MySQL's `string` is LONGTEXT (sdk/internal/core/ddl.go, and the choice has
+// its own comment: a VARCHAR needs a length). MySQL will not put a UNIQUE key
+// on a LONGTEXT without one:
+//
+//	CREATE TABLE ... (`brevis_ingestion_id` LONGTEXT NOT NULL UNIQUE, ...)
+//	Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+//	specification without a key length
+//
+// So `LandingOptions{UniqueID: true}` cannot create a merging landing table
+// on MySQL at all. Postgres works because its `string` is TEXT and Postgres
+// accepts a UNIQUE on one.
+//
+// It is NOT a DedupKey problem and not a landing one: any Schema with
+// `Unique: true` on a `TypeString` column fails the same way on MySQL. The
+// gateway has the same hole — `auto_table` with `into: mysql` and
+// `write: merge` calls the same `fixed(unique: true, ...)` — and no test
+// covers it, because the MySQL suite creates its tables by hand with
+// VARCHAR(36).
+//
+// Skipped rather than failed, and skipped rather than deleted: the fix
+// belongs to the DDL generator, and this is the report.
+func TestIntegrationTheLandingLayoutMergesOnMySQL(t *testing.T) {
+	t.Skip("MySQL cannot UNIQUE a LONGTEXT: Schema.CreateTable emits one for " +
+		"any TypeString column with Unique set, so a merging landing table " +
+		"cannot be created there. See this test's comment.")
+
+	dsn := os.Getenv("BREVIS_GATEWAY_TEST_MYSQL_DSN")
+	if dsn == "" {
+		t.Skip("BREVIS_GATEWAY_TEST_MYSQL_DSN is not set")
+	}
+	table := fmt.Sprintf("mymerge_%d", time.Now().UnixNano())
+	t.Cleanup(func() { execMySQL(t, dsn, `DROP TABLE IF EXISTS `+table) })
+
+	record := map[string]any{"id": "A-1", "amount": float64(10)}
+	run := func() error {
+		return sdk.Execute(context.Background(), &sdk.Pipeline{
+			Source:    sdk.Source{From: oneRecord{record}},
+			Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+			Target: sdk.Target{
+				To:       tomysql.Table{DSN: dsn, Name: table, CreateTable: true},
+				Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+				Dedup:    sdk.DedupMerge,
+				DedupKey: sdk.LandingColumnID,
+			},
+		}, nil)
+	}
+
+	if err := run(); err != nil {
+		t.Fatalf("the first run failed: %v", err)
+	}
+	if err := run(); err != nil {
+		t.Fatalf("the second run failed: %v", err)
+	}
+	if got := queryMySQL(t, dsn, `SELECT count(*) FROM `+table); got[0] != "1" {
+		t.Errorf("%s holds %s rows after the same record twice, want 1", table, got[0])
 	}
 }
