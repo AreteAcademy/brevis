@@ -434,6 +434,13 @@ func hideDSN(err error, dsn string) error {
 // where the message also lists the batch's columns, so the DDL comes out of one
 // reading.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {
+	// EvolveAdditiveFromPayload with nothing to complete, refused BEFORE the
+	// extract: it costs no query to know, and a source quota spent to learn
+	// it is a quota wasted. Discovered refuses it again on the write path,
+	// for the caller that never comes through here.
+	if err := core.CheckDiscoveryHasADeclaration(t.Evolve, columns, t.Name); err != nil {
+		return err
+	}
 	if len(columns) == 0 || (t.DSN == "" && t.Conn == nil) || t.Name == "" {
 		return nil
 	}

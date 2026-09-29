@@ -952,3 +952,62 @@ func TestATableCreatedFromTheBatchTakesNullableColumns(t *testing.T) {
 		t.Fatalf("the batch after the one that taught the table: %v", err)
 	}
 }
+
+// The mode with nothing to complete is refused, and the table is not created.
+//
+// This is the hole S3 found by probing: with no Schema and no Columns the
+// table came out `a longtext, b json` and nothing was said. On the landing
+// layout that would have made brevis_received_at text instead of a timestamp
+// and left brevis_loaded_at out entirely — it is a database DEFAULT and never
+// travels in the row — so the end-to-end latency measurement would be gone,
+// in a table that looks right.
+func TestTheModeWithNothingToCompleteIsRefused(t *testing.T) {
+	db := open(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
+
+	to := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+
+	// Nothing declared at all.
+	_, err := to.Write(context.Background(), []sdk.Envelope{{Payload: map[string]any{
+		"a": "x", "b": map[string]any{"c": 1},
+	}}}, sdk.WriteOptions{})
+	if err == nil {
+		t.Fatal("the whole table was created from the payload, with nothing " +
+			"declared and nothing said")
+	}
+	if !strings.Contains(err.Error(), "COMPLETES a declaration") {
+		t.Errorf("the refusal does not say what the mode is for: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(`SELECT count(*) FROM information_schema.tables
+		WHERE table_schema = DATABASE() AND table_name = ?`, name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Error("the table was created anyway")
+	}
+}
+
+// And it is refused BEFORE the extract, where it costs no source quota.
+func TestTheModeWithNothingToCompleteIsRefusedBeforeTheExtract(t *testing.T) {
+	// No DSN and no table: this must not need a destination to answer. A
+	// refusal that depends on connecting is a refusal that arrives late.
+	err := tomy.Table{Name: "bronze.bacen", Evolve: sdk.EvolveAdditiveFromPayload}.
+		CheckDestination(context.Background(), nil)
+	if err == nil {
+		t.Fatal("CheckDestination accepted the mode with nothing declared")
+	}
+	if !strings.Contains(err.Error(), "bronze.bacen") {
+		t.Errorf("the refusal does not name the table: %v", err)
+	}
+
+	// EvolveAdditive is untouched: declaring nothing declares nothing and
+	// checks nothing, which is the rule the rest of Target follows.
+	if err := (tomy.Table{Name: "t", Evolve: sdk.EvolveAdditive}).
+		CheckDestination(context.Background(), nil); err != nil {
+		t.Errorf("EvolveAdditive with no declaration was refused: %v", err)
+	}
+}

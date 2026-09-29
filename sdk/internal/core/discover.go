@@ -49,6 +49,35 @@ func TypeFromShape(v any) ColumnType {
 	return TypeString
 }
 
+// CheckDiscoveryHasADeclaration refuses EvolveAdditiveFromPayload with
+// nothing to complete.
+//
+// The mode COMPLETES a declaration from the batch. With no declaration it
+// becomes "create the whole table from the payload", which is a different
+// decision with a different name -- and the one CreationPlan refuses in a
+// message this would walk straight past.
+//
+// The harm is concrete, and it is the landing layout. The row carries
+// brevis_received_at, so the table would take it as text instead of a
+// timestamp; and brevis_loaded_at is ABSENT from the row, because it is a
+// database DEFAULT, so it would not be created at all. The end-to-end latency
+// measurement would be gone, in a table that looks right.
+//
+// How MUCH is declared is the consumer's business. That there IS a
+// declaration is the SDK's.
+func CheckDiscoveryHasADeclaration(mode Evolution, declared []string, table string) error {
+	if !mode.FromPayload() || len(declared) > 0 {
+		return nil
+	}
+	return fmt.Errorf("%s is set to evolve from the payload and nothing is "+
+		"declared. That mode COMPLETES a declaration with the columns a batch "+
+		"carries; with nothing to complete it would create the whole table "+
+		"from the payload, which this SDK does not do. Declare Target.Schema "+
+		"-- sdk.LandingControlColumns(...) is the landing layout's half of it "+
+		"-- or use sdk.EvolveAdditive, which adds only what you declared",
+		table)
+}
+
 // Discovered is what the batch carries and the declaration does not.
 //
 // Over the UNION of the batch, never the first record. CheckRow looks at
@@ -63,6 +92,14 @@ func TypeFromShape(v any) ColumnType {
 func Discovered(declared []string, records []Envelope) (Schema, error) {
 	if len(records) == 0 {
 		return nil, nil
+	}
+	// Checked here as well as before the extract, because not every caller
+	// goes through CheckDestination: the drivers are exported, and the
+	// gateway calls Write directly. The one before the extract exists to
+	// spend no source quota; this one exists so the rule cannot be walked
+	// around.
+	if err := CheckDiscoveryHasADeclaration(EvolveAdditiveFromPayload, declared, "this destination"); err != nil {
+		return nil, err
 	}
 	have := make(map[string]bool, len(declared))
 	for _, c := range declared {

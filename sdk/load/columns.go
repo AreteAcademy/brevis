@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // checkDeclaredAgainstTable confirms the declaration describes the table that
@@ -52,6 +53,14 @@ func checkDeclaredAgainstTable(declared []string, schema bigquery.Schema, table 
 // A table that does not exist yet is not an error: creating a table is Load's
 // decision, and refusing here would take CreateTable out of the path.
 func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
+	// EvolveAdditiveFromPayload with nothing to complete, refused BEFORE the
+	// extract: it costs no query to know. Discovered refuses it again on the
+	// write path, for the caller that never comes through here.
+	if err := core.CheckDiscoveryHasADeclaration(
+		l.cfg.Evolve, columns, nameOf(l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)),
+	); err != nil {
+		return err
+	}
 	if len(columns) == 0 {
 		return nil
 	}
