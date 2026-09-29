@@ -344,6 +344,24 @@ sdk.Run(sdk.Pipeline{
 <p><strong>Não é um modo.</strong> <code>Target.Schema</code> continua sendo você declarando o que a tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo. Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que declara o esquema dela não é afetada.</p>
 <p><strong>Escreva o nome da tabela uma vez.</strong> Ele vai para o <code>Landing</code>, porque é o segundo campo do id, e para o destino, porque é onde as linhas vão. <strong>Nada verifica que os dois concordam</strong>: o <code>Writer</code> conhece a própria tabela mas só a expõe pelo <code>Describe</code>, que é o nome para logs e erros, e um id construído sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.</p>
 <p><strong>Três colunas ficam <code>NULL</code>, e é a resposta honesta.</strong> <code>brevis_stream</code> e <code>brevis_gateway</code> nomeiam coisas que uma pipeline não tem — <code>brevis_gateway IS NULL</code> é como se distingue a linha de uma pipeline da de um gateway. <code>brevis_received_bytes</code> também fica <code>NULL</code>: o número do gateway conta o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor. Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos errar por quanto veio de onde. <code>length(data)</code> responde a versão da pipeline exatamente.</p>
+<p><strong>Merge precisa de <code>DedupKey</code>, e sem ele não há merge nenhum.</strong> Todo driver casa por <code>ingestion_id</code> salvo instrução contrária, e a coluna de identidade deste layout é <code>brevis_ingestion_id</code>:</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> é o que põe a constraint UNIQUE no id, e Postgres e MySQL recusam fazer merge sem uma — o <code>ON CONFLICT</code> não teria com o que casar. Um <code>DedupKey</code> que seu <code>Schema</code> não declara é recusado antes de qualquer coisa rodar: um merge numa coluna que a tabela não tem não casa nada, e um merge que não casa nada parece exatamente um que casa tudo que deveria.</p>
+<p><strong>Depende do destino, e hoje o MySQL não consegue.</strong> O BigQuery não tem constraints UNIQUE e recusa a declaração. No MySQL, <code>string</code> é <code>LONGTEXT</code>, e o MySQL não indexa um <code>LONGTEXT</code> sem comprimento — então uma tabela de aterrissagem com merge não pode nem ser <em>criada</em> lá:</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>O Postgres funciona porque lá <code>string</code> é <code>TEXT</code>. No MySQL, aterrisse com <code>DedupNone</code> e resolva a versão corrente adiante, ou crie a tabela você mesmo com <code>CreateSQL</code> e um id dimensionado.</p>
 <p><strong>O id é endereçado por conteúdo.</strong> O mesmo registro produz o mesmo id nos dois caminhos, e um registro alterado produz um novo — que é o que faz uma reexecução ser um no-op em vez de duplicata.</p>
 <h2 id="referencia">Referência<a class="anchor" href="#referencia" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — a API completa</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — doze exemplos executáveis</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — histórico versão a versão</li></ul>

@@ -2511,6 +2511,39 @@ One column with two meanings would make a sum across rows from both paths
 wrong by whatever share came from which. `length(data)` answers the
 pipeline's version exactly.
 
+**Merging needs `DedupKey`, and without it there is no merge at all.** Every
+driver matches on `ingestion_id` unless told otherwise, and this layout's
+identity column is `brevis_ingestion_id`:
+
+```go
+Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+`UniqueID` is what puts the UNIQUE constraint on the id, and Postgres and
+MySQL both refuse to merge without one — `ON CONFLICT` has nothing to match.
+A `DedupKey` your `Schema` does not declare is refused before anything runs,
+because a merge on a column the table lacks matches nothing, and a merge
+matching nothing looks exactly like one matching everything it should.
+
+**Per destination, and today MySQL cannot.** BigQuery has no unique
+constraints and refuses the declaration outright. MySQL's `string` is
+`LONGTEXT`, and MySQL will not key a `LONGTEXT` without a length — so a
+merging landing table cannot be *created* there at all:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+Postgres works, because its `string` is `TEXT`. On MySQL, land with
+`DedupNone` and resolve the current version downstream, or create the table
+yourself with `CreateSQL` and a sized id column.
+
 **The id is content-addressed.** The same record produces the same id from
 either path, and a changed record produces a new one — which is what lets a
 re-run be a no-op instead of a duplicate.

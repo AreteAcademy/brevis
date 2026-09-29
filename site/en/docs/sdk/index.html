@@ -344,6 +344,24 @@ sdk.Run(sdk.Pipeline{
 <p><strong>It is not a mode.</strong> <code>Target.Schema</code> is still you declaring what the table is — this hands you a layout that already exists instead of making you type it. Nothing in the SDK behaves differently because you used it, and a pipeline that declares its own schema is unaffected.</p>
 <p><strong>Write the table name once.</strong> It goes to <code>Landing</code>, because it is the second slot of the id, and to the destination, because that is where the rows go. <strong>Nothing checks that the two agree</strong>: the <code>Writer</code> knows its own table but exposes it only through <code>Describe</code>, which is the name for logs and errors, and an id built on that would tie every id already written to a log string. Get them out of step and the rows land correctly with ids minted for a table nobody wrote to. They will look fine. They will not match the gateway's.</p>
 <p><strong>Three columns are <code>NULL</code>, and that is the honest answer.</strong> <code>brevis_stream</code> and <code>brevis_gateway</code> name things a pipeline does not have — <code>brevis_gateway IS NULL</code> is how you tell a pipeline's row from a gateway's. <code>brevis_received_bytes</code> is <code>NULL</code> too: the gateway's counts what arrived on the wire, envelope included, and the record's own JSON is around 30% smaller. One column with two meanings would make a sum across rows from both paths wrong by whatever share came from which. <code>length(data)</code> answers the pipeline's version exactly.</p>
+<p><strong>Merging needs <code>DedupKey</code>, and without it there is no merge at all.</strong> Every driver matches on <code>ingestion_id</code> unless told otherwise, and this layout's identity column is <code>brevis_ingestion_id</code>:</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> is what puts the UNIQUE constraint on the id, and Postgres and MySQL both refuse to merge without one — <code>ON CONFLICT</code> has nothing to match. A <code>DedupKey</code> your <code>Schema</code> does not declare is refused before anything runs, because a merge on a column the table lacks matches nothing, and a merge matching nothing looks exactly like one matching everything it should.</p>
+<p><strong>Per destination, and today MySQL cannot.</strong> BigQuery has no unique constraints and refuses the declaration outright. MySQL's <code>string</code> is <code>LONGTEXT</code>, and MySQL will not key a <code>LONGTEXT</code> without a length — so a merging landing table cannot be <em>created</em> there at all:</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>Postgres works, because its <code>string</code> is <code>TEXT</code>. On MySQL, land with <code>DedupNone</code> and resolve the current version downstream, or create the table yourself with <code>CreateSQL</code> and a sized id column.</p>
 <p><strong>The id is content-addressed.</strong> The same record produces the same id from either path, and a changed record produces a new one — which is what lets a re-run be a no-op instead of a duplicate.</p>
 <h2 id="reference">Reference<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — the complete API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — twelve runnable examples</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — version-by-version history</li></ul>

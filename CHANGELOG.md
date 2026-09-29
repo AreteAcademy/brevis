@@ -18,6 +18,74 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.71.0] — 2026-09-29
+
+### Added: `Target.DedupKey`
+
+Merging the landing layout was not a slower path — it was no path.
+
+```go
+Target{
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+Every driver matches on `ingestion_id` unless told otherwise, and the
+layout's identity column is `brevis_ingestion_id`, so a merge left to the
+default looked for a column the table does not have. A consumer reported
+"bronze without merge" as a limitation, and it was one.
+
+Everything below `Target` already carried it: `postgres`, `mysql` and
+`redshift` call `core.DedupKeyOf(opt)`, and `bigquery` threads
+`opt.DedupKey` into its `LoadConfig`. `Target.options()` folds seven fields
+into `WriteOptions` and dropped this one — the field existed at both ends of
+a wire with nothing in the middle.
+
+### Fixed: a `DedupKey` nothing declares is refused
+
+`core.DedupKeyOf` validates that the name is a legal identifier, **not** that
+anything has it, so `DedupKey: "brevis_ingestionid"` would have merged on a
+column that is not there. A merge matching nothing looks exactly like a merge
+matching everything it should.
+
+`Target` refuses it now, against `Columns` or `Schema`, naming both sides —
+the shape `PartitionBy` already used one field up. A Target declaring neither
+declares nothing and checks nothing, which is the rule the rest of the struct
+follows. This was true before the landing layout existed and applies to any
+`DedupKey`.
+
+### Known: MySQL cannot create a merging landing table
+
+MySQL's `string` is `LONGTEXT`, which MySQL will not key without a length:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+So `LandingOptions{UniqueID: true}` cannot be created there. It is neither a
+`DedupKey` problem nor a landing one — any `Schema` with `Unique: true` on a
+`TypeString` column fails the same way, and it has been true since the
+dialect was written. Postgres works because its `string` is `TEXT`.
+
+**The gateway has the same hole**: `auto_table` with `into: mysql` and
+`write: merge` builds the same schema. Nothing covered it, because the
+MySQL suite creates its tables by hand with `VARCHAR(36)`.
+
+Not fixed here, deliberately. Sizing the column is the thing `ddl.go` says
+twice that this SDK refuses to do — "a length is a guess about data the SDK
+has not seen" — and the fix belongs to the DDL generator rather than to this
+field. On MySQL today: land with `DedupNone`, or create the table with
+`CreateSQL` and a sized id.
+
+Proven on Postgres end to end: the same record twice through a merging
+pipeline is one row, and a gateway merging the same record into the table the
+SDK created is still one row with the same id.
+
+---
+
 ## [0.70.0] — 2026-09-29
 
 A pipeline can land the table a gateway lands — the same columns and the same

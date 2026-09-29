@@ -314,6 +314,39 @@ Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos
 errar por quanto veio de onde. `length(data)` responde a versão da pipeline
 exatamente.
 
+**Merge precisa de `DedupKey`, e sem ele não há merge nenhum.** Todo driver
+casa por `ingestion_id` salvo instrução contrária, e a coluna de identidade
+deste layout é `brevis_ingestion_id`:
+
+```go
+Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+`UniqueID` é o que põe a constraint UNIQUE no id, e Postgres e MySQL recusam
+fazer merge sem uma — o `ON CONFLICT` não teria com o que casar. Um `DedupKey`
+que seu `Schema` não declara é recusado antes de qualquer coisa rodar: um merge
+numa coluna que a tabela não tem não casa nada, e um merge que não casa nada
+parece exatamente um que casa tudo que deveria.
+
+**Depende do destino, e hoje o MySQL não consegue.** O BigQuery não tem
+constraints UNIQUE e recusa a declaração. No MySQL, `string` é `LONGTEXT`, e o
+MySQL não indexa um `LONGTEXT` sem comprimento — então uma tabela de
+aterrissagem com merge não pode nem ser *criada* lá:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+O Postgres funciona porque lá `string` é `TEXT`. No MySQL, aterrisse com
+`DedupNone` e resolva a versão corrente adiante, ou crie a tabela você mesmo
+com `CreateSQL` e um id dimensionado.
+
 **O id é endereçado por conteúdo.** O mesmo registro produz o mesmo id nos dois
 caminhos, e um registro alterado produz um novo — que é o que faz uma
 reexecução ser um no-op em vez de duplicata.
