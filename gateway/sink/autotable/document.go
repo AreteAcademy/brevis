@@ -28,8 +28,9 @@ const (
 // DefaultShape is the cheap one.
 const DefaultShape = ShapeDocument
 
-// ColumnData is where the record goes under ShapeDocument.
-const ColumnData = "data"
+// ColumnData is where the record goes under ShapeDocument. From the SDK's
+// landing layout, so a pipeline landing this shape names it the same.
+const ColumnData = sdk.LandingColumnData
 
 // shaper turns a record into the columns it contributes, and declares them.
 type shaper interface {
@@ -91,5 +92,5 @@ func (document) columns(record map[string]any) (map[string]any, error) {
 func (document) schema(map[string]any) (sdk.Schema, error) {
 	// The same one column whatever the record holds, which is what makes a
 	// table created here a template rather than a decision.
-	return sdk.Schema{{Name: ColumnData, Type: sdk.TypeJSON}}, nil
+	return sdk.Schema{sdk.LandingDataColumn()}, nil
 }
