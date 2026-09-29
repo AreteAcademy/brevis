@@ -654,3 +654,144 @@ func TestLandingColumnsStillRefusesTheReservedPrefix(t *testing.T) {
 		t.Errorf("the refusal does not name the prefix: %v", err)
 	}
 }
+
+// The columns a record declares, and their types.
+//
+// Six lines of rule and no inference anywhere: the SHAPE decides, never the
+// value. That is the whole of what keeps this on the right side of I2 — a
+// type read off `21129` would be INT64 today and STRING the day the series
+// publishes "21129 (revisado)", and the column would change with nobody
+// writing anything.
+func TestLandingSchemaOf(t *testing.T) {
+	got, err := LandingSchemaOf(map[string]any{
+		"valor":    8.89,
+		"series":   float64(21129),
+		"ok":       true,
+		"note":     nil,
+		"customer": map[string]any{"uf": "SP"},
+		"tags":     []any{"x"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []struct {
+		name string
+		typ  ColumnType
+	}{
+		// Sorted, so the same record always declares the same DDL. Unsorted,
+		// two runs over identical data give columns in different orders.
+		{"customer", TypeJSON},
+		{"note", TypeString},
+		{"ok", TypeString},
+		{"series", TypeString},
+		{"tags", TypeJSON},
+		{"valor", TypeString},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("%d columns, want %d: %v", len(got), len(want), got.Names())
+	}
+	for i, w := range want {
+		if got[i].Name != w.name {
+			t.Errorf("column %d is %q, want %q -- the order is the DDL's",
+				i, got[i].Name, w.name)
+		}
+		if got[i].Type != w.typ {
+			t.Errorf("%s is %s, want %s", got[i].Name, got[i].Type, w.typ)
+		}
+	}
+}
+
+// The type comes from the SHAPE and never from the value.
+//
+// This is the I2 line, and it is worth a test of its own rather than a
+// clause in the one above. A rule that reads the value looks reasonable --
+// 21129 IS an integer -- and it is the exact failure the SDK refuses
+// everywhere else: "a field that arrived whole today and fractional tomorrow
+// changed the column's type with nobody writing anything".
+func TestLandingSchemaOfNeverReadsTheValue(t *testing.T) {
+	whole, err := LandingSchemaOf(map[string]any{"n": float64(21129)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fractional, err := LandingSchemaOf(map[string]any{"n": 8.89})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if whole[0].Type != fractional[0].Type {
+		t.Errorf("21129 declares %s and 8.89 declares %s: the type is being "+
+			"read off the VALUE. The day this series publishes a whole number "+
+			"the column changes, and nobody wrote that",
+			whole[0].Type, fractional[0].Type)
+	}
+	if whole[0].Type != TypeString {
+		t.Errorf("a number declares %s, want %s -- everything scalar is text, "+
+			"and typing a column is the promotion path: written down and "+
+			"reviewed in a diff", whole[0].Type, TypeString)
+	}
+
+	// Empty string and nil are both STRING, and true is too. `true` is the
+	// one that most invites an exception and does not get one.
+	for _, c := range []struct {
+		name string
+		v    any
+	}{{"empty", ""}, {"null", nil}, {"bool", true}, {"int", 42}} {
+		s, err := LandingSchemaOf(map[string]any{"f": c.v})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if s[0].Type != TypeString {
+			t.Errorf("%s declares %s, want %s", c.name, s[0].Type, TypeString)
+		}
+	}
+}
+
+// The schema and the row cannot disagree about what a record contributes.
+//
+// They are two functions over the same record, and a table declared with one
+// set of names and filled with another is a load that fails at the
+// destination. Nothing but this test ties them together.
+func TestLandingSchemaOfAgreesWithLandingSpread(t *testing.T) {
+	record := map[string]any{
+		"data": "01/12/2025", "series": float64(21129),
+		"source_key": "21129|01/12/2025", "valor": 8.89,
+		"meta": map[string]any{"uf": "SP"}, "tags": []any{"a"}, "note": nil,
+	}
+
+	schema, err := LandingSchemaOf(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := LandingSpread(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(schema) != len(row) {
+		t.Fatalf("the schema declares %d columns and the row carries %d",
+			len(schema), len(row))
+	}
+	for _, c := range schema {
+		if _, present := row[c.Name]; !present {
+			t.Errorf("the schema declares %q and the row does not carry it: "+
+				"the table would be created with a column nothing fills", c.Name)
+		}
+	}
+	for k := range row {
+		if !schema.Has(k) {
+			t.Errorf("the row carries %q and the schema does not declare it: "+
+				"the load refuses the batch, naming the field", k)
+		}
+	}
+}
+
+// A field that cannot be a column name is refused here too, by name.
+func TestLandingSchemaOfRefusesAFieldThatCannotBeAColumn(t *testing.T) {
+	_, err := LandingSchemaOf(map[string]any{"ok": 1, "my-field": 2})
+	if err == nil {
+		t.Fatal("\"my-field\" was accepted as a column name")
+	}
+	if !strings.Contains(err.Error(), "my-field") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+}

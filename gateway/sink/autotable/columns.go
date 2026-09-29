@@ -1,10 +1,6 @@
 package autotable
 
-import (
-	"sort"
-
-	"github.com/AreteAcademy/brevis/sdk"
-)
+import "github.com/AreteAcademy/brevis/sdk"
 
 // columns gives each of the record's fields a column of its own.
 //
@@ -52,34 +48,12 @@ func (c columns) columns(record map[string]any) (map[string]any, error) {
 	return sdk.LandingSpread(record)
 }
 
+// schema declares the columns this record contributes.
+//
+// The SDK's, so a pipeline landing this shape creates the same table. It is
+// the companion to columns() above: one declares, one fills, and being two
+// functions over one record in one package is what keeps them from
+// disagreeing about what the record contributes.
 func (c columns) schema(record map[string]any) (sdk.Schema, error) {
-	// Sorted, so the same record always declares the same DDL. Unsorted, two
-	// runs over identical data would produce columns in different orders, and
-	// a CREATE TABLE is easier to reason about when it does not move.
-	if err := c.validate(record); err != nil {
-		return nil, err
-	}
-	out := make(sdk.Schema, 0, len(record))
-	for _, k := range sorted(record) {
-		out = append(out, sdk.Column{Name: k, Type: typeOf(record[k])})
-	}
-	return out, nil
-}
-
-// typeOf is the whole of the type rule.
-func typeOf(v any) sdk.ColumnType {
-	switch v.(type) {
-	case map[string]any, []any:
-		return sdk.TypeJSON
-	}
-	return sdk.TypeString
-}
-
-func sorted(record map[string]any) []string {
-	out := make([]string, 0, len(record))
-	for k := range record {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
+	return sdk.LandingSchemaOf(record)
 }

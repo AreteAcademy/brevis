@@ -527,6 +527,50 @@ func LandingSpread(record map[string]any) (map[string]any, error) {
 	return out, nil
 }
 
+// LandingSchemaOf is the columns a record declares, and their types.
+//
+// The companion to LandingSpread: that one renders the row, this one declares
+// the table, and the two are over the same record so they cannot disagree
+// about what it contributes.
+//
+//	scalar, and null   → TypeString
+//	object, array      → TypeJSON
+//
+// Sorted, so the same record always declares the same DDL. Unsorted, two runs
+// over identical data would produce columns in different orders, and a CREATE
+// TABLE is easier to reason about when it does not move.
+//
+// THE SHAPE DECIDES, NEVER THE VALUE, and that is what keeps this on the
+// right side of invariant I2. Reading the value looks reasonable -- 21129 IS
+// an integer -- and it is the exact failure the SDK refuses everywhere else:
+// a field that arrives whole today and fractional tomorrow would change the
+// column's type with nobody writing anything, and the row that no longer fits
+// goes to the dead letter. `true` is the case that most invites an exception
+// and does not get one.
+//
+// What it costs, said where somebody will read it: no partition pruning on a
+// date inside the record, no numeric aggregation without a cast. Typing a
+// column is the PROMOTION path -- a human writing it down, reviewed in a diff.
+func LandingSchemaOf(record map[string]any) (Schema, error) {
+	if err := LandingFieldNames(record); err != nil {
+		return nil, err
+	}
+	out := make(Schema, 0, len(record))
+	for _, k := range landingKeys(record) {
+		out = append(out, Column{Name: k, Type: landingType(record[k])})
+	}
+	return out, nil
+}
+
+// landingType is the whole of the type rule.
+func landingType(v any) ColumnType {
+	switch v.(type) {
+	case map[string]any, []any:
+		return TypeJSON
+	}
+	return TypeString
+}
+
 func landingValue(v any) (any, error) {
 	switch t := v.(type) {
 	case map[string]any, []any:
