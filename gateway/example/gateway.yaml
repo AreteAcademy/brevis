@@ -30,12 +30,17 @@ listen:
 metrics:
   addr: :9090
 
-# Per-table VOLUME series are off unless the environment turns them on:
+# The per-table series are off unless the environment turns them on:
 #
 #   BREVIS_INGESTION_METRICS=true
 #
 #   brevis_gateway_ingested_bytes_total{stream,table}
 #   brevis_gateway_ingested_events_total{stream,table}
+#   brevis_gateway_table_flushes_total{stream,table,trigger}
+#
+# The last one is the quota's own number: one flush of a table is one load job
+# for it, and BigQuery allows 1,500 per table per day. `flushes_total` is per
+# stream, which on a 94-table route says nothing about any of them.
 #
 # Off by default because `table` is a label the PRODUCER chooses -- with
 # auto_table one route becomes as many tables as they name, and every other

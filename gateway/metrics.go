@@ -38,7 +38,21 @@ const (
 	// every deployment that never turned this on.
 	MetricWindows = "brevis_gateway_flush_windows_total"
 
-	// The two volume series, and they are the ones behind the switch.
+	// MetricTableFlushes is flushes per TABLE, and it is the number the
+	// BigQuery quota is actually about: 1,500 load jobs per table per day.
+	//
+	// MetricFlushes counts batches handed to the pool, and with a routing key
+	// one batch is one table -- but it cannot say which, so a stream at 94
+	// tables reports one number against a limit that is per table. An
+	// operator alerting before the quota bites needs the table.
+	//
+	// Behind the switch with the volume pair, and for the same reason: the
+	// label is the producer's. The unconditional half of this question is the
+	// boot line, which says what `flush.every` costs per table per day before
+	// an event arrives -- one line and no cardinality.
+	MetricTableFlushes = "brevis_gateway_table_flushes_total"
+
+	// The three series behind the switch.
 	//
 	// They carry `table`, which is a label the PRODUCER chooses: with
 	// auto_table one route becomes N tables, and every other metric in this
@@ -152,6 +166,7 @@ type Metrics struct {
 	// instrument already has and there is no second way to be off.
 	ingestedBytes  *counters
 	ingestedEvents *counters
+	tableFlushes   *counters
 
 	delivery  *histograms
 	batchSize *histograms
@@ -200,6 +215,9 @@ func NewMetrics() *Metrics {
 			"bytes received, by the table they were routed to", "stream", "table")
 		m.ingestedEvents = newCounters(MetricIngestedEvents,
 			"events received, by the table they were routed to", "stream", "table")
+		m.tableFlushes = newCounters(MetricTableFlushes,
+			"batches handed to the pool, by the table they carry and what triggered them",
+			"stream", "table", "trigger")
 	}
 	return m
 }
@@ -240,6 +258,18 @@ func (m *Metrics) ingested(stream, table string, bytes int) {
 	}
 	m.ingestedBytes.add(int64(bytes), stream, table)
 	m.ingestedEvents.add(1, stream, table)
+}
+
+// flushed records one bucket leaving, against the table it carries.
+//
+// A no-op when the switch is off or the sink has no routing key, which is
+// what keeps the caller free of the question. An empty table would make the
+// series a worse copy of MetricFlushes.
+func (m *Metrics) flushed(stream, table, trigger string) {
+	if m == nil || m.tableFlushes == nil || table == "" {
+		return
+	}
+	m.tableFlushes.add(1, stream, table, trigger)
 }
 
 func (m *Metrics) count(c *counters, n int64, labels ...string) {

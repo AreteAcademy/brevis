@@ -38,7 +38,7 @@ func (m *Metrics) Render(w io.Writer) error {
 	}
 	for _, c := range []*counters{
 		m.received, m.rejected, m.dropped, m.batches, m.buried, m.saturated, m.oversized,
-		m.flushes, m.windows, m.ingestedBytes, m.ingestedEvents,
+		m.flushes, m.windows, m.ingestedBytes, m.ingestedEvents, m.tableFlushes,
 	} {
 		if err := c.render(w); err != nil {
 			return err

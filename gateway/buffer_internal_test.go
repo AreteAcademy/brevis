@@ -1843,3 +1843,72 @@ func TestAnUnreachableMetastoreLetsEveryKeyThrough(t *testing.T) {
 			"coordinates nothing looks exactly like one that works")
 	}
 }
+
+// Flushes per TABLE, which is the number the quota is actually about.
+//
+// `brevis_gateway_flushes_total{stream,trigger}` counts batches handed to the
+// pool, and with a routing key one batch is one table -- but the counter
+// cannot say WHICH, so a stream at 94 tables reports one number against a
+// limit that is per table. BigQuery allows 1,500 load jobs per table per day;
+// an operator alerting at 1,200 needs the table.
+//
+// Behind BREVIS_INGESTION_METRICS, beside the volume pair, and for the same
+// reason: `table` is a label the PRODUCER chooses. The boot line is the
+// unconditional half of this -- one line, no cardinality, saying what the
+// cadence costs before an event arrives.
+func TestFlushesAreCountedPerTableWhenAsked(t *testing.T) {
+	flush := func() string {
+		sink := &keyedSink{}
+		p := keyedPipe(sink, Buffer{
+			Queue: 64, Workers: 1, MaxRecords: 100000,
+			Flush: Flush{Every: time.Hour, Records: 2},
+		})
+		for range 2 {
+			post(t, p, "clicks")
+		}
+		for range 2 {
+			post(t, p, "orders")
+		}
+		if err := p.close(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		var b strings.Builder
+		if err := p.metrics.Render(&b); err != nil {
+			t.Fatal(err)
+		}
+		return b.String()
+	}
+
+	t.Run("off by default", func(t *testing.T) {
+		t.Setenv(EnvIngestionMetrics, "")
+		got := flush()
+		if strings.Contains(got, MetricTableFlushes) {
+			t.Errorf("the per-table series appeared with the switch off:\n%s", got)
+		}
+		// And the stream-level counter is still there, unchanged.
+		if !strings.Contains(got, MetricFlushes) {
+			t.Errorf("the stream's flush counter went missing:\n%s", got)
+		}
+	})
+
+	t.Run("on when asked", func(t *testing.T) {
+		t.Setenv(EnvIngestionMetrics, "true")
+		got := flush()
+		for _, want := range []string{
+			MetricTableFlushes + `{stream="s",table="clicks",trigger="records"}`,
+			MetricTableFlushes + `{stream="s",table="orders",trigger="records"}`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %s\n%s", want, got)
+			}
+		}
+		// The stream-level counter keeps its own shape: no `table` label, so
+		// a deployment that never turns this on sees the cardinality it
+		// always had.
+		for _, line := range strings.Split(got, "\n") {
+			if strings.HasPrefix(line, MetricFlushes+"{") && strings.Contains(line, "table=") {
+				t.Errorf("the stream counter grew a `table` label: %s", line)
+			}
+		}
+	})
+}

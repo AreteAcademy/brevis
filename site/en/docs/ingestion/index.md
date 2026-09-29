@@ -221,6 +221,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 `trigger="size"` climbing on a BigQuery stream is telling you the window is not
 what is batching.
 
+That counter is per stream, and the quota is per **table**: with `auto_table`
+one route becomes many tables, and 94 of them reporting one number says nothing
+about any of them. Behind `BREVIS_INGESTION_METRICS` there is one that names it:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at
+boot, which says what `flush.every` costs per table per day before an event
+arrives.
+
 **It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
 outage into unbounded memory. When the queue and the buffer are both full, the
 answer is **`503` with `Retry-After`** rather than a `202` for an event with
@@ -331,6 +344,7 @@ brevis_gateway_flushes_total{stream,trigger}            counter  time|records|si
 brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
 process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram

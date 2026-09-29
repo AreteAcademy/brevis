@@ -991,6 +991,10 @@ func (p *pipe) handoff(key, why string) {
 	case p.queue <- b.batch:
 		p.pending.Add(int64(len(b.batch)))
 		p.metrics.count(p.metrics.flushes, 1, p.stream.Name, why)
+		// And again against the table, where the quota lives. Here and not
+		// beside the stream counter's declaration, because only the handoff
+		// knows the key actually left.
+		p.metrics.flushed(p.stream.Name, key, why)
 	default:
 		// The pool is busy and the batch goes back, at the FRONT of ITS OWN
 		// bucket: the order events arrived in is the order they leave in, per

@@ -221,6 +221,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 `trigger="size"` subindo num stream de BigQuery está te dizendo que não é a
 janela que está fazendo o lote.
 
+Esse contador é por stream, e a cota é por **tabela**: com `auto_table` uma
+rota vira muitas tabelas, e 94 delas reportando um número só não diz nada sobre
+nenhuma. Atrás de `BREVIS_INGESTION_METRICS` existe um que nomeia a tabela:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+Um flush de uma tabela é um load job dela, então esta é a série para alertar em
+1.200 dos 1.500 que o BigQuery permite. A metade incondicional é uma linha no
+boot, que diz quanto `flush.every` custa por tabela por dia antes de qualquer
+evento chegar.
+
 **É limitado, não é "atira e esquece".** Uma goroutine por lote transformaria a
 queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios,
 a resposta é **`503` com `Retry-After`** em vez de um `202` para um evento sem
@@ -330,6 +343,7 @@ brevis_gateway_flushes_total{stream,trigger}            contador  time|records|s
 brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
 process_start_time_seconds                              gauge     sem prefixo, de propósito
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
