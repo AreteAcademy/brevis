@@ -483,3 +483,174 @@ func TestLandingSpreadRefusesAFieldThatCannotBeAColumn(t *testing.T) {
 		t.Errorf("a legal name was refused: %v", err)
 	}
 }
+
+// LandingColumns gives each field a column instead of the record whole.
+//
+// The record is the consumer's own from issue #40, and it is the one that
+// matters: their field is literally called `data`. In the document shape
+// `data` is the LAYOUT's column and theirs would be buried inside it; here
+// there is no layout column by that name, so the producer's `data` is the
+// producer's.
+func TestLandingColumnsGivesEachFieldAColumn(t *testing.T) {
+	row := landingRow(t, map[string]any{
+		"data":       "01/12/2025",
+		"series":     "21129",
+		"source_key": "21129|01/12/2025",
+		"valor":      "8.89",
+	}, "bronze.bacen", LandingKey("source_key"), LandingColumns())
+
+	for k, want := range map[string]any{
+		"data":       "01/12/2025",
+		"series":     "21129",
+		"source_key": "21129|01/12/2025",
+		"valor":      "8.89",
+	} {
+		if row[k] != want {
+			t.Errorf("%s = %v, want %v", k, row[k], want)
+		}
+	}
+	// The whole record must NOT also be sitting in a JSON column. It would
+	// double every byte and give the table two answers to the same question.
+	if row["data"] == `{"data":"01/12/2025","series":"21129","source_key":"21129|01/12/2025","valor":"8.89"}` {
+		t.Error("the record landed whole in `data`: LandingColumns did not " +
+			"reach the row and this is the bug the consumer reported")
+	}
+
+	// The control columns are still all there, and still exactly one of them
+	// is the destination's.
+	for _, c := range LandingControlColumns(LandingOptions{}) {
+		if c.Name == LandingColumnLoadedAt {
+			if v, sent := row[c.Name]; sent {
+				t.Errorf("loaded_at is in the row as %v: it is a DEFAULT", v)
+			}
+			continue
+		}
+		if _, ok := row[c.Name]; !ok {
+			t.Errorf("the row has no %s: the columns shape drops a control "+
+				"column and the load refuses the batch", c.Name)
+		}
+	}
+	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+4 {
+		t.Errorf("%d columns: %v", len(row), row)
+	}
+}
+
+// The id is the SAME in both shapes, and that is the whole point.
+//
+// It is minted over the PRODUCER's record, before a control column and before
+// the spread. Mint it over the spread instead -- where 8.89 is a string and
+// an object has become JSON text -- and the same record delivered by a
+// pipeline and by a gateway gets two ids, which duplicates the table on the
+// next merge.
+func TestLandingColumnsDoesNotMoveTheID(t *testing.T) {
+	record := map[string]any{
+		"source_key": "21129|01/12/2025",
+		"valor":      8.89,
+		"nested":     map[string]any{"b": 2, "a": 1},
+	}
+	clone := func() map[string]any {
+		out := map[string]any{}
+		for k, v := range record {
+			out[k] = v
+		}
+		return out
+	}
+
+	document := landingRow(t, clone(), "bronze.bacen", LandingKey("source_key"))
+	columns := landingRow(t, clone(), "bronze.bacen", LandingKey("source_key"), LandingColumns())
+
+	if document[LandingColumnID] != columns[LandingColumnID] {
+		t.Errorf("the two shapes mint different ids:\n  document %v\n  columns  %v\n\n"+
+			"The id is content-addressed over the producer's record, so the "+
+			"shape it is STORED in cannot change it. If it can, a table "+
+			"switched from one shape to the other duplicates every row.",
+			document[LandingColumnID], columns[LandingColumnID])
+	}
+	// And it is the frozen one, not merely a matching pair.
+	want, err := LandingID("bronze.bacen", "21129|01/12/2025", record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if columns[LandingColumnID] != want {
+		t.Errorf("id = %v, want %v", columns[LandingColumnID], want)
+	}
+}
+
+// The values reach the row through the spread, not through some second
+// rendering that only this path has.
+func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
+	row := landingRow(t, map[string]any{
+		"external_id": float64(26130000),
+		"customer":    map[string]any{"uf": "SP", "id": float64(7)},
+		"tags":        []any{"x", "y"},
+		"note":        nil,
+	}, "t", LandingColumns())
+
+	if row["external_id"] != "26130000" {
+		t.Errorf("external_id = %v, want \"26130000\" -- a float64 rendered "+
+			"with %%v is 2.613e+07 and matches nothing", row["external_id"])
+	}
+	if row["customer"] != `{"id":7,"uf":"SP"}` {
+		t.Errorf("customer = %v -- a nested object is ONE JSON column, not "+
+			"flattened", row["customer"])
+	}
+	if row["tags"] != `["x","y"]` {
+		t.Errorf("tags = %v -- an array stays JSON", row["tags"])
+	}
+	if v, present := row["note"]; !present || v != nil {
+		t.Errorf("note = %v (present=%v), want a present nil: null and \"\" "+
+			"are different facts", v, present)
+	}
+
+	// And NO `data` column.
+	//
+	// It takes this record to show it. The consumer's own has a field called
+	// `data`, so a row that writes the layout's JSON column and then spreads
+	// over it looks perfect there -- same count, and the producer's value on
+	// top. A mutation doing exactly that survived every other test here. In
+	// production it lands a column nothing declared, and the load refuses the
+	// batch by name.
+	if v, present := row[LandingColumnData]; present {
+		t.Errorf("the row carries a `data` column (%v): in this shape the "+
+			"record IS the columns, and LandingControlColumns -- what the "+
+			"table is composed from here -- declares no such column", v)
+	}
+	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+4 {
+		t.Errorf("%d columns: %v", len(row), row)
+	}
+}
+
+// A field that cannot be a column name is refused BY NAME, and the record
+// does not land half-spread.
+func TestLandingColumnsRefusesAFieldThatCannotBeAColumn(t *testing.T) {
+	_, err := Landing("t", LandingColumns())(map[string]any{"ok": 1, "my-field": 2})
+	if err == nil {
+		t.Fatal("\"my-field\" was accepted as a column name")
+	}
+	if !strings.Contains(err.Error(), "my-field") {
+		t.Errorf("the refusal does not name the field: %v", err)
+	}
+
+	// The document shape has no such rule: the record goes into one JSON
+	// column and a hyphen is a perfectly good JSON key. Refusing it there
+	// would break pipelines that have nothing to do with this option.
+	if _, err := Landing("t")(map[string]any{"my-field": 2}); err != nil {
+		t.Errorf("the document shape refused a JSON key it stores whole: %v", err)
+	}
+}
+
+// The reserved prefix is still refused, and it has to be refused BEFORE the
+// spread -- otherwise a producer's brevis_gateway would be written into the
+// row as a column and forge a control field.
+func TestLandingColumnsStillRefusesTheReservedPrefix(t *testing.T) {
+	_, err := Landing("t", LandingColumns())(map[string]any{
+		"id": "A", LandingColumnGateway: "not-a-real-gateway",
+	})
+	if err == nil {
+		t.Fatal("a record carrying brevis_gateway was spread into the row: " +
+			"the producer just forged a control column")
+	}
+	if !strings.Contains(err.Error(), LandingPrefix) {
+		t.Errorf("the refusal does not name the prefix: %v", err)
+	}
+}

@@ -280,9 +280,10 @@ func canonicalJSON(b *strings.Builder, v any) error {
 type LandingArg func(*landing)
 
 type landing struct {
-	table string
-	key   string // the field naming the record's key; empty is keyless
-	op    string // the field naming the operation; empty is always INSERT
+	table   string
+	key     string // the field naming the record's key; empty is keyless
+	op      string // the field naming the operation; empty is always INSERT
+	columns bool   // one column per field, instead of the record whole in `data`
 }
 
 // LandingKey names the field that identifies the record.
@@ -302,6 +303,33 @@ func LandingKey(field string) LandingArg { return func(l *landing) { l.key = fie
 // Without it every row is INSERT, which is what a source that only ever adds
 // is honestly saying.
 func LandingOperationFrom(field string) LandingArg { return func(l *landing) { l.op = field } }
+
+// LandingColumns gives each of the record's fields a column of its own,
+// instead of the record whole in `data`.
+//
+//	sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+//
+// It is the shape a gateway lands as `shape: columns`, and it is now literally
+// the same code: the same record spread by a pipeline and by a gateway gives
+// the same columns with the same values, so the two can be read together.
+//
+// The table is then LandingControlColumns plus the caller's own columns, NOT
+// LandingSchema -- that one carries `data`. The SDK still never infers a
+// schema: this option decides how the ROW is built and never what the table
+// is. The fields are declared by the caller, in the YAML or in Go, reviewed in
+// a diff.
+//
+// Scalars become text, objects and arrays become JSON under the key that held
+// them, and null stays NULL. It does not flatten: a record that wants one row
+// per array element wants ArrayAt, which is a different operation with a
+// different name.
+//
+// One thing worth knowing before choosing it: in this shape `data` is not the
+// layout's column any more, so a producer with a field called `data` -- which
+// is exactly what the Bacen series sends -- gets a column of their own with
+// their own value in it. In the document shape theirs would be one key inside
+// the layout's JSON.
+func LandingColumns() LandingArg { return func(l *landing) { l.columns = true } }
 
 // Landing turns a record into a landing row: the layout's control columns,
 // plus the record itself in the `data` column.
@@ -377,10 +405,6 @@ func Landing(table string, opts ...LandingArg) Transformer {
 		if err != nil {
 			return nil, err
 		}
-		body, err := json.Marshal(record)
-		if err != nil {
-			return nil, fmt.Errorf("the record is not JSON: %w", err)
-		}
 
 		// LandingColumnLoadedAt is ABSENT, not nil. An explicit NULL
 		// OVERRIDES the column's DEFAULT, and the difference between
@@ -412,12 +436,38 @@ func Landing(table string, opts ...LandingArg) Transformer {
 			// whatever share came from which. `length(data)` answers the
 			// pipeline's version exactly, without pretending.
 			LandingColumnReceivedBytes: nil,
-			LandingColumnData:          string(body),
 		}
 		if key != "" {
 			row[LandingColumnRecordKey] = key
 		} else {
 			row[LandingColumnRecordKey] = nil
+		}
+
+		if !l.columns {
+			body, err := json.Marshal(record)
+			if err != nil {
+				return nil, fmt.Errorf("the record is not JSON: %w", err)
+			}
+			row[LandingColumnData] = string(body)
+			return row, nil
+		}
+
+		// One column per field, and it cannot collide with a control column:
+		// every one of those carries the reserved prefix, and a record
+		// carrying it was refused above. So this writes only into names
+		// nothing else in the row owns.
+		//
+		// AFTER the id, never before. The id is content-addressed over the
+		// PRODUCER's record -- where 8.89 is a number and a nested object is
+		// an object. Fingerprinting the spread instead, where both have
+		// become text, would give the same record two ids depending on the
+		// shape it is stored in, and the next merge duplicates the table.
+		spread, err := LandingSpread(record)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range spread {
+			row[k] = v
 		}
 		return row, nil
 	}
