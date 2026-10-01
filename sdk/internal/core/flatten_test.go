@@ -37,10 +37,11 @@ func TestFlattenOneLevelOnTheBriefsExample(t *testing.T) {
 
 	union := map[string]bool{}
 	for i, r := range records {
-		got, err := FlattenOneLevel(r)
+		flat, err := FlattenOneLevel(r)
 		if err != nil {
 			t.Fatalf("record %d: %v", i, err)
 		}
+		got := flat.Values
 		for k := range got {
 			union[k] = true
 		}
@@ -57,11 +58,13 @@ func TestFlattenOneLevelOnTheBriefsExample(t *testing.T) {
 	}
 
 	// And the values went with the names.
-	first, _ := FlattenOneLevel(records[0])
+	firstFlat, _ := FlattenOneLevel(records[0])
+	first := firstFlat.Values
 	if first["name_first"] != "Coleen" || first["name_last"] != "Volk" {
 		t.Errorf("record 0 = %v", first)
 	}
-	third, _ := FlattenOneLevel(records[2])
+	thirdFlat, _ := FlattenOneLevel(records[2])
+	third := thirdFlat.Values
 	if third["name"] != "Faye Raker" {
 		t.Errorf("record 2 kept name as %v", third["name"])
 	}
@@ -69,14 +72,15 @@ func TestFlattenOneLevelOnTheBriefsExample(t *testing.T) {
 
 // ONE level. A deeper object is a value, not a longer path.
 func TestFlattenOneLevelStopsAtOne(t *testing.T) {
-	got, err := FlattenOneLevel(map[string]any{"a": map[string]any{"b": map[string]any{"c": 1}}})
+	flat, err := FlattenOneLevel(map[string]any{"a": map[string]any{"b": map[string]any{"c": 1}}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := flat.Values
 	if n := names(got); len(n) != 1 || n[0] != "a_b" {
 		t.Fatalf("columns %v, want [a_b] -- a_b_c would be two levels", n)
 	}
-	inner, ok := got["a_b"].(map[string]any)
+	inner, ok := flat.Values["a_b"].(map[string]any)
 	if !ok || inner["c"] != 1 {
 		t.Errorf("a_b = %#v, want the object itself: one level means the "+
 			"second one stays a value, and a value that is an object becomes "+
@@ -88,10 +92,11 @@ func TestFlattenOneLevelStopsAtOne(t *testing.T) {
 // a_0 and a_1 -- a record that wants one row per element wants ArrayAt, which
 // is a different operation with a different name.
 func TestFlattenOneLevelLeavesArraysAlone(t *testing.T) {
-	got, err := FlattenOneLevel(map[string]any{"a": []any{1, 2}})
+	flat, err := FlattenOneLevel(map[string]any{"a": []any{1, 2}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := flat.Values
 	if n := names(got); len(n) != 1 || n[0] != "a" {
 		t.Errorf("columns %v, want [a]", n)
 	}
@@ -99,7 +104,7 @@ func TestFlattenOneLevelLeavesArraysAlone(t *testing.T) {
 
 // Lower-cased, and that is every field and not only the nested ones.
 func TestFlattenOneLevelLowerCases(t *testing.T) {
-	got, err := FlattenOneLevel(map[string]any{
+	flat, err := FlattenOneLevel(map[string]any{
 		"userName": map[string]any{"firstName": "x"},
 		"ID":       1,
 	})
@@ -107,6 +112,7 @@ func TestFlattenOneLevelLowerCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"id", "username_firstname"}
+	got := flat.Values
 	if n := names(got); strings.Join(n, " ") != strings.Join(want, " ") {
 		t.Errorf("columns %v, want %v -- joined and lower-cased, not split on "+
 			"camelCase: `user_name_first_name` is the other reading and it was "+
@@ -116,10 +122,11 @@ func TestFlattenOneLevelLowerCases(t *testing.T) {
 
 // A field the producer sent does not vanish.
 func TestFlattenOneLevelKeepsAnEmptyObject(t *testing.T) {
-	got, err := FlattenOneLevel(map[string]any{"a": map[string]any{}, "b": 1})
+	flat, err := FlattenOneLevel(map[string]any{"a": map[string]any{}, "b": 1})
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := flat.Values
 	if n := names(got); len(n) != 2 {
 		t.Fatalf("columns %v: an empty object has nothing to flatten, and "+
 			"dropping it would make a field the producer SENT disappear from "+
@@ -132,10 +139,11 @@ func TestFlattenOneLevelKeepsAnEmptyObject(t *testing.T) {
 
 // null inside a nested object is a column holding NULL, not a missing one.
 func TestFlattenOneLevelKeepsNull(t *testing.T) {
-	got, err := FlattenOneLevel(map[string]any{"a": map[string]any{"b": nil}})
+	flat, err := FlattenOneLevel(map[string]any{"a": map[string]any{"b": nil}})
 	if err != nil {
 		t.Fatal(err)
 	}
+	got := flat.Values
 	v, present := got["a_b"]
 	if !present || v != nil {
 		t.Errorf("a_b = %v (present=%v): null and absent are different facts, "+

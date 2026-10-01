@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -182,4 +183,48 @@ func CheckLandingPrefixMatches(declared, inTable []string, table string) error {
 			table, prefix, mine, prefix, prefix, EnvLandingPrefix)
 	}
 	return nil
+}
+
+// EnvNormalizeData flattens a nested object one level, giving its fields
+// columns of their own.
+//
+//	BREVIS_NORMALIZE_DATA=true
+//
+// A variable on the process, beside EnvLandingPrefix and for the reason that
+// one is: two sinks in one gateway cannot disagree, and neither can the
+// schema that declares a table and the transformer that fills it.
+//
+// It applies to the `columns` shape only. Under `document` the record goes
+// whole into one JSON column and there is nothing to flatten into.
+//
+// PICK IT BEFORE THE FIRST TABLE. It does not only ADD columns, it RENAMES
+// them: `userName` becomes `username` whether or not anything is nested. On a
+// live table nothing drops, so the old name stays, the new one is added, and
+// every row after that has NULLs in one of each pair.
+const EnvNormalizeData = "BREVIS_NORMALIZE_DATA"
+
+var normalizeData = resolveNormalizeData()
+
+// NormalizeData reports whether this process flattens a nested object one
+// level.
+func NormalizeData() bool { return normalizeData }
+
+// resolveNormalizeData reads the environment, and PANICS when the variable is
+// set to something that is not a bool.
+//
+// `yes` reading as false would flatten nothing while the operator believes it
+// is flattening, and they would find out from a table that never grew the
+// columns. A function of its own so this package's own tests can exercise
+// both outcomes.
+func resolveNormalizeData() bool {
+	raw := strings.TrimSpace(os.Getenv(EnvNormalizeData))
+	if raw == "" {
+		return false
+	}
+	on, err := strconv.ParseBool(raw)
+	if err != nil {
+		panic(fmt.Sprintf("%s=%q: not a true/false value (try true, false, 1 or 0)",
+			EnvNormalizeData, raw))
+	}
+	return on
 }

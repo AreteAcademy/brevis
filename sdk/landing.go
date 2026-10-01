@@ -509,12 +509,56 @@ var LandingFieldName = core.ColumnName
 // buffered, because one bad field name would otherwise fail the batch around
 // it and send three other producers' events to the dead letter.
 func LandingFieldNames(record map[string]any) error {
-	for _, k := range landingKeys(record) {
-		if err := core.CheckColumnName(k); err != nil {
-			return err
+	_, err := landingColumns(record)
+	return err
+}
+
+// landingColumns is what this record contributes, keyed by column name.
+//
+// ONE function for the row and the schema, so they cannot disagree about what
+// a record contributes -- and one place where the rules that depend on the
+// COLUMN's name rather than the field's live: the reserved prefix, the name
+// rule, and the collisions flattening can create.
+//
+// THE RESERVED CHECK HAS TO BE HERE and not on the record's own keys. With
+// BREVIS_NORMALIZE_DATA on, a producer sending
+//
+//	{"brevis": {"stream": "x"}}
+//
+// passes a check written on the keys -- `brevis` does not start with
+// `brevis_` -- and flattening joins them into `brevis_stream`. A forged
+// control column is worse than a missing one, because it looks real.
+func landingColumns(record map[string]any) (map[string]any, error) {
+	out := record
+	var from map[string]string
+	if core.NormalizeData() {
+		flat, err := core.FlattenOneLevel(record)
+		if err != nil {
+			return nil, err
 		}
+		out, from = flat.Values, flat.From
 	}
-	return nil
+
+	for _, k := range landingKeys(out) {
+		if err := core.CheckColumnName(k); err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(k, LandingPrefix) {
+			continue
+		}
+		// Named with the FIELD and not only the column. Under flattening the
+		// producer never wrote `brevis_stream` -- they wrote `brevis.stream`
+		// -- and a refusal naming the column leaves them hunting for a field
+		// that is not in their payload.
+		source := k
+		if f, ok := from[k]; ok {
+			source = f
+		}
+		return nil, fmt.Errorf("the field %q would make the column %q, and %q "+
+			"is reserved for the landing layout's own columns",
+			source, k, LandingPrefix)
+	}
+	return out, nil
 }
 
 // LandingSpread turns a record into the columns it contributes: each field
@@ -530,12 +574,13 @@ func LandingFieldNames(record map[string]any) error {
 // INTO TABLES, so they are as unchangeable as the ids are. A renderer that
 // may change cannot be the one producing stored column values.
 func LandingSpread(record map[string]any) (map[string]any, error) {
-	if err := LandingFieldNames(record); err != nil {
+	columns, err := landingColumns(record)
+	if err != nil {
 		return nil, err
 	}
-	out := make(map[string]any, len(record))
-	for _, k := range landingKeys(record) {
-		v, err := landingValue(record[k])
+	out := make(map[string]any, len(columns))
+	for _, k := range landingKeys(columns) {
+		v, err := landingValue(columns[k])
 		if err != nil {
 			return nil, fmt.Errorf("field %q: %w", k, err)
 		}
@@ -569,12 +614,13 @@ func LandingSpread(record map[string]any) (map[string]any, error) {
 // date inside the record, no numeric aggregation without a cast. Typing a
 // column is the PROMOTION path -- a human writing it down, reviewed in a diff.
 func LandingSchemaOf(record map[string]any) (Schema, error) {
-	if err := LandingFieldNames(record); err != nil {
+	columns, err := landingColumns(record)
+	if err != nil {
 		return nil, err
 	}
-	out := make(Schema, 0, len(record))
-	for _, k := range landingKeys(record) {
-		out = append(out, Column{Name: k, Type: core.TypeFromShape(record[k])})
+	out := make(Schema, 0, len(columns))
+	for _, k := range landingKeys(columns) {
+		out = append(out, Column{Name: k, Type: core.TypeFromShape(columns[k])})
 	}
 	return out, nil
 }

@@ -415,3 +415,97 @@ func TestTheReservedRuleFollowsThePrefix(t *testing.T) {
 		t.Fatalf("with BREVIS_LANDING_PREFIX=acme:\n%s", out)
 	}
 }
+
+// Flattening cannot forge a control column, and it is refused PER EVENT.
+//
+// `open` checks the record's own keys, and `brevis` does not start with
+// `brevis_` — so with BREVIS_NORMALIZE_DATA on, `{"brevis": {"stream": "x"}}`
+// walks past it and becomes `brevis_stream`. A forged control column is worse
+// than a missing one, because it looks real.
+//
+// Admit is where it has to be caught. The alternative is a whole batch in the
+// dead letter for one producer's field, which is the poison batch this
+// package had once: four events answered 202 and all four buried, three of
+// them belonging to producers who did nothing wrong.
+func TestFlatteningCannotForgeAControlColumn(t *testing.T) {
+	const marker = "BREVIS_TEST_GW_FORGE_CHILD"
+
+	if os.Getenv(marker) == "1" {
+		r := build(t, gateway.Sink{
+			Type:  gateway.SinkAutoTable,
+			Shape: ShapeColumns,
+			Into:  &gateway.Sink{Type: "probe"},
+		})
+
+		err := r.Admit(map[string]any{
+			FieldTable: "t_forge",
+			FieldData: map[string]any{
+				"id": "A", "brevis": map[string]any{"stream": "not-a-real-gateway"},
+			},
+		})
+		if err == nil {
+			t.Fatal("Admit accepted it: the event is buffered, and at write " +
+				"time the producer has forged a control column — or buried " +
+				"the batch around it")
+		}
+		if !strings.Contains(err.Error(), "brevis_stream") ||
+			!strings.Contains(err.Error(), "brevis.stream") {
+			t.Errorf("the refusal does not name both the column and the field "+
+				"it came from: %v", err)
+		}
+
+		// And an ordinary nested field still gets through.
+		if err := r.Admit(map[string]any{
+			FieldTable: "t_forge",
+			FieldData:  map[string]any{"id": "A", "name": map[string]any{"first": "x"}},
+		}); err != nil {
+			t.Errorf("an ordinary nested field was refused: %v", err)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestFlatteningCannotForgeAControlColumn", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"=1", "BREVIS_NORMALIZE_DATA=true")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_NORMALIZE_DATA=true:\n%s", out)
+	}
+}
+
+// And the two paths still declare the same columns with flattening on.
+func TestBothPathsFlattenTheSameWay(t *testing.T) {
+	const marker = "BREVIS_TEST_GW_FLAT_CHILD"
+
+	if os.Getenv(marker) == "1" {
+		record := map[string]any{
+			"source_key": "k-1",
+			"name":       map[string]any{"first": "Coleen", "last": "Volk"},
+		}
+
+		fromGateway, err := columns{}.schema(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := sdk.Landing("t", sdk.LandingKey("source_key"), sdk.LandingColumns())(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		row := out.(map[string]any)
+
+		for _, c := range fromGateway {
+			if _, present := row[c.Name]; !present {
+				t.Errorf("the gateway declares %q and a pipeline does not "+
+					"produce it: %v", c.Name, row)
+			}
+		}
+		if _, ok := row["name_first"]; !ok {
+			t.Errorf("the pipeline did not flatten: %v", row)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestBothPathsFlattenTheSameWay", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"=1", "BREVIS_NORMALIZE_DATA=true")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_NORMALIZE_DATA=true:\n%s", out)
+	}
+}

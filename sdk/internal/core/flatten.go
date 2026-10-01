@@ -6,6 +6,17 @@ import (
 	"strings"
 )
 
+// Flattened is what a record contributes, and where each column came from.
+type Flattened struct {
+	// Values is the column name to its value.
+	Values map[string]any
+
+	// From is the column name to the FIELD that produced it -- `name.first`
+	// for a flattened one, `id` for a literal. A refusal that names only the
+	// column leaves the producer hunting for a field they never wrote.
+	From map[string]string
+}
+
 // FlattenOneLevel gives a nested object's fields columns of their own, one
 // level deep, the way pandas' json_normalize does.
 //
@@ -31,10 +42,11 @@ import (
 // A field that is an object in one record and a scalar in another produces
 // BOTH -- `name_first` from the one and `name` from the other. That is the
 // example's own answer and it is pandas' too.
-func FlattenOneLevel(record map[string]any) (map[string]any, error) {
+func FlattenOneLevel(record map[string]any) (Flattened, error) {
 	out := make(map[string]any, len(record))
-	// What produced each column, so a collision can name both sides rather
-	// than say that one happened.
+	// What produced each column. A collision names both sides with it, and a
+	// caller refusing a column -- the reserved prefix -- names the FIELD the
+	// producer has to rename rather than only the column they never wrote.
 	from := make(map[string]string, len(record))
 
 	// Sorted, so the FIRST source of a collision is the same one on every
@@ -71,7 +83,7 @@ func FlattenOneLevel(record map[string]any) (map[string]any, error) {
 			// A scalar, an array, a null -- and an EMPTY object, which has
 			// nothing to flatten and keeps its own column.
 			if err := put(strings.ToLower(k), k, record[k]); err != nil {
-				return nil, err
+				return Flattened{}, err
 			}
 			continue
 		}
@@ -84,9 +96,9 @@ func FlattenOneLevel(record map[string]any) (map[string]any, error) {
 		for _, sk := range subs {
 			source := k + "." + sk
 			if err := put(strings.ToLower(k+"_"+sk), source, nested[sk]); err != nil {
-				return nil, err
+				return Flattened{}, err
 			}
 		}
 	}
-	return out, nil
+	return Flattened{Values: out, From: from}, nil
 }
