@@ -74,6 +74,13 @@ WHERE data_type = 'JSON';
 **Run it per table.** DML on a partitioned table rewrites partitions and is
 billed; one script across a dataset is a bill nobody estimated.
 
+**What was verified, and what was not.** The emulator answers `CREATE`,
+`INSERT` and `JSON_TYPE`, and those were run. It has no `PARSE_JSON` at all —
+`Scalar Function with name parse_json does not exist` — so the `UPDATE` above
+is **REVIEWED AND NOT EXECUTED**, and so is the `INFORMATION_SCHEMA` query,
+which the emulator refuses as a cross-project read. Run both against one table
+first. Saying this is better than implying a test that does not exist.
+
 ### Why no test caught it
 
 The gateway has no BigQuery integration test, and could not have one for this:

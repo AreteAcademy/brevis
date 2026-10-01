@@ -384,6 +384,22 @@ fractional tomorrow would change a column's type with nobody writing anything,
 and the row that no longer fits goes to the dead letter. Typing one is the
 **promotion** path — written in the YAML and reviewed in a diff.
 
+**And a `JSON` column receives a JSON VALUE, never a string of one.** It
+sounds like a detail and it is the difference between a queryable table and a
+table that looks right:
+
+```sql
+SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, '$.uf') ...;           -- SP
+```
+
+If `JSON_TYPE` answers `string` and `JSON_VALUE` answers NULL, the object was
+encoded twice — the column holds the TEXT of the object rather than the
+object. Gateway versions up to and including **0.15.0** did that on BigQuery,
+in **both** shapes; see the [gateway changelog](https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md)
+for the one-line check and the repair. Postgres and MySQL were never affected:
+their server parses the text.
+
 A field name has to match BigQuery's rule, the narrowest of the four. Postgres
 would accept almost anything quoted, and that is the trap: the table is created
 there and it breaks the day somebody points a stream at BigQuery.

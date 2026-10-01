@@ -352,6 +352,37 @@ nome, então um produtor com um campo chamado `data` — que é exatamente o que
 série do Bacen manda — ganha uma coluna própria com o valor dele. No
 `document`, o dele é uma chave dentro do JSON do layout.
 
+### Texto que já é JSON
+
+Uma coluna declarada `sdk.TypeJSON` recebe um **valor** JSON — um objeto, um
+array, um número. No BigQuery a linha é codificada inteira, então uma `string`
+Go ali vira um literal de string JSON e a coluna acaba guardando o TEXTO do
+seu objeto em vez do objeto:
+
+```sql
+SELECT JSON_TYPE(payload) ...;            -- "string", e não "object"
+SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
+```
+
+A coluna é do tipo certo e o dado dentro dela é inalcançável — o pior dos três
+desfechos, porque nada falha. **O destino BigQuery recusa isso** desde a
+`v0.74.0`, nomeando a coluna.
+
+Passe o objeto quando você tem um. Quando o que você tem já é texto JSON — uma
+coluna lida de outro banco, um corpo de resposta que você não quer reparsear —
+diga isso:
+
+```go
+row["payload"] = sdk.JSONText(body)
+```
+
+O `json.RawMessage` da própria `encoding/json` também serve, e pelo mesmo
+motivo: os dois escrevem o JSON que carregam em vez de uma string com aspas
+dele.
+
+**Postgres e MySQL não são afetados e não são recusados.** O servidor deles
+parseia uma string numa coluna JSON, e sempre parseou.
+
 ### Quando aparece um campo que a tabela não tem
 
 O produtor acrescenta um campo e a carga para, nomeando-o: a linha traz uma

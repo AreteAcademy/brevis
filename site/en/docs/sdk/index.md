@@ -355,6 +355,36 @@ so a producer with a field called `data` — which is exactly what the Bacen
 series sends — gets a column of their own with their own value in it. Under
 `document` theirs is one key inside the layout's JSON.
 
+### Text that is already JSON
+
+A column declared `sdk.TypeJSON` receives a JSON **value** — an object, an
+array, a number. On BigQuery the row is encoded whole, so a Go `string` there
+becomes a JSON string literal and the column ends up holding the TEXT of your
+object rather than the object:
+
+```sql
+SELECT JSON_TYPE(payload) ...;            -- "string", not "object"
+SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
+```
+
+The column is the right type and the data in it is unreachable, which is the
+worst of the three outcomes because nothing fails. **The BigQuery destination
+refuses it** from `v0.74.0`, naming the column.
+
+Pass the object itself where you have one. Where what you hold is already
+JSON text — a column read out of another database, a response body you do not
+want to re-parse — say so:
+
+```go
+row["payload"] = sdk.JSONText(body)
+```
+
+`encoding/json`'s own `json.RawMessage` works too, and for the same reason:
+both write the JSON they hold instead of a quoted string of it.
+
+**Postgres and MySQL are not affected and are not refused.** Their server
+parses a string into a JSON column, and always has.
+
 ### When a field the table does not have shows up
 
 A producer adds a field and the load stops, naming it: the row carries a
