@@ -18,6 +18,79 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.74.0] — 2026-09-30
+
+Reported by a consumer against gateway `v0.15.0`, holding a production
+rollout. They were right, their diagnosis named the exact line, and the half
+they did not report was larger than the half they did.
+
+### Fixed: a column declared JSON received a string of JSON
+
+```sql
+SELECT JSON_TYPE(person) FROM bronze.id_verification;   -- "string", expected "object"
+SELECT JSON_VALUE(event_metadata, '$.provider') ...;    -- NULL, expected "bigdatacorp"
+```
+
+On BigQuery the row is marshalled whole, so a Go `string` becomes a JSON
+string literal and the column holds a JSON value of TYPE `string`. The column
+is the right type and the data in it is unreachable — which is the worst of
+the three outcomes, because it looks correct. 23 columns across 9 tables in
+their dev, found in production rather than by any test.
+
+`shape: columns` was already fixed in 0.73.0, by `JSONText`. **What was left
+is the `document` shape, in BOTH the SDK and the gateway, and that is the
+DEFAULT** — `sdk.Landing` without `LandingColumns()` put a Go string into
+`data`, which `LandingDataColumn` declares `TypeJSON`. Nobody reported it
+because the reporter does not use that shape; it was found by probing for it.
+
+Postgres and MySQL were never affected: their server parses a string into a
+JSON column and always has. A test pins that, because generalising the fix is
+the tempting move and it would break loads that are correct today.
+
+### Added: BigQuery refuses a string of JSON where a JSON value belongs
+
+The silent half. The fix above stops the SDK and the gateway producing it;
+this stops anybody else, including a fetcher nobody has written yet:
+
+```
+column "payload" is declared JSON and the row carries a string. BigQuery would
+store that as a JSON value of TYPE string: JSON_TYPE returns "string" and every
+JSON_VALUE against it returns NULL, without an error. Pass the object or the
+array itself, or sdk.JSONText(s) when the text already IS JSON.
+```
+
+Refused before the load job, over the whole batch rather than the first
+record, and on **BigQuery alone**.
+
+It tests EXACT TYPES and not `reflect.Kind`, which is load-bearing:
+`json.RawMessage` is the standard library's own answer to this problem and
+`sdk.JSONText` is ours, and neither matches `case string` or `case []byte`. A
+check written on `Kind` would refuse both correct answers.
+
+**If you pass JSON text into a `TypeJSON` column today, this is a breaking
+change — and the behaviour it breaks was already wrong.** Wrap it:
+`sdk.JSONText(s)`.
+
+### Added: `load.EncodeRows`
+
+The bytes that land, as a pure exported function. It was a method on a
+`*Loader` it never used — zero references to the receiver — so nothing could
+assert what goes on the wire without a BigQuery client. These bytes are what
+BigQuery reads, and now a test reads them too.
+
+That matters more than it sounds: **floci refuses load jobs with a 405**, so
+"write a row and read `JSON_TYPE` back" cannot run against the emulator at
+all. The wire is where this is decidable without a warehouse.
+
+### Changed: `sdk.Landing` puts `sdk.JSONText` in `data`
+
+The document shape's `data` was a `string` and is now a `JSONText`. If you
+type-assert a landing row's `data` to `string`, assert to `sdk.JSONText`, or
+read it as `string(v)`. Nothing that passes the row straight to a destination
+is affected.
+
+---
+
 ## [0.73.0] — 2026-09-29
 
 ### Added: `sdk.EvolveAdditiveFromPayload` — the batch completes the declaration

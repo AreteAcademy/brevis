@@ -13,6 +13,80 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.16.0] — 2026-09-30
+
+Objects and arrays landed in BigQuery as JSON **strings**, in both shapes.
+Reported against `0.15.0` by a consumer who was holding a production rollout.
+
+### What was happening
+
+```sql
+SELECT JSON_TYPE(person) FROM bronze.id_verification;   -- "string", expected "object"
+SELECT JSON_VALUE(event_metadata, '$.provider') ...;    -- NULL, expected "bigdatacorp"
+```
+
+The column was created `JSON`, as documented. The value in it was a JSON
+string holding the serialized object: encoded twice. Every `JSON_VALUE`
+against it returned NULL, without an error anywhere.
+
+BigQuery marshals the row whole, so a Go `string` becomes a JSON string
+literal. Postgres and MySQL parse a string into their JSON column, so this
+never showed there — which is why it reached production.
+
+### Which versions, and which shapes
+
+| | affected |
+|---|---|
+| `shape: columns` | up to and including **0.15.0** |
+| `shape: document` — the **DEFAULT** | up to and including **0.15.0** |
+| BigQuery | yes |
+| Postgres, MySQL, Redshift | no, ever |
+
+**Check both.** The report covered `columns`; `document` had the same defect
+in the same way, and more streams use it because it is the default. The
+symptom is identical on the `data` column:
+
+```sql
+SELECT JSON_TYPE(data) FROM <table> LIMIT 1;   -- "string" means affected
+```
+
+### Repairing what already landed
+
+Nothing is lost — the object is inside the string. Per table, and per column:
+
+```sql
+UPDATE <table> SET <col> = PARSE_JSON(JSON_VALUE(<col>))
+WHERE JSON_TYPE(<col>) = 'string';
+```
+
+It repairs arrays too, which also land with `JSON_TYPE = 'string'`, and it is
+idempotent: after the repair `JSON_TYPE` is `object` or `array`, so the `WHERE`
+excludes the row.
+
+To find the columns rather than guess them:
+
+```sql
+SELECT table_name, column_name
+FROM <dataset>.INFORMATION_SCHEMA.COLUMNS
+WHERE data_type = 'JSON';
+```
+
+**Run it per table.** DML on a partitioned table rewrites partitions and is
+billed; one script across a dataset is a bill nobody estimated.
+
+### Why no test caught it
+
+The gateway has no BigQuery integration test, and could not have one for this:
+**floci refuses load jobs with a 405**, so "write a row and read `JSON_TYPE`
+back" does not run against the emulator. The test that catches it now asserts
+the BYTES the SDK puts on the wire, which needs no warehouse — and the SDK
+refuses a string for a JSON column outright from `sdk v0.74.0`, so this cannot
+return through any path.
+
+Requires `sdk v0.74.0`.
+
+---
+
 ## [0.15.0] — 2026-09-29
 
 `0.14.0` moved the flush clock from the process to the deployment. This is the
