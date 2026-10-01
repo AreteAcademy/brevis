@@ -1639,3 +1639,69 @@ func TestAnUndeclaredNullThroughoutIsNotAnExtra(t *testing.T) {
 		t.Errorf("%d rows, want 2", n)
 	}
 }
+
+// A declared column that arrives null is WRITTEN null, not left out.
+//
+// The difference is invisible on an ordinary INSERT -- a column nobody wrote is
+// NULL anyway -- so the table is created here with a DEFAULT, which is what
+// separates the two: a column left out of the statement gets the default, and
+// one written as NULL gets NULL. [#42]
+//
+// It is not a curiosity. A column omitted because its value was nil is a
+// producer's "this field is now empty" being discarded, and the DEFAULT here
+// stands in for every destination-side rule that fills a gap -- a default, a
+// generated column, a trigger.
+//
+// A mutation that dropped a nil-throughout field even when the table HAS the
+// column survived every other test in this file, because every other test was
+// looking at a column that would have been NULL either way.
+func TestADeclaredNullIsWrittenAndNotOmitted(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := append(
+		sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+		sdk.Column{Name: "source_key", Type: sdk.TypeString},
+		sdk.Column{Name: "Area_Drenagem", Type: sdk.TypeString},
+	)
+	// Ours, not the driver's, because the DEFAULT is the measurement.
+	if _, err := conn.Exec(ctx, `CREATE TABLE `+name+` (
+		brevis_ingestion_id text PRIMARY KEY,
+		brevis_record_key text,
+		brevis_operation text,
+		brevis_received_at timestamptz,
+		brevis_loaded_at timestamptz DEFAULT now(),
+		brevis_stream text,
+		brevis_gateway text,
+		brevis_received_bytes bigint,
+		source_key text,
+		"Area_Drenagem" text DEFAULT 'the default, not the null'
+	)`); err != nil {
+		t.Fatal(err)
+	}
+
+	to := topg.Table{DSN: dsn(t), Name: name}
+	land := sdk.Landing(name, sdk.LandingKey("source_key"), sdk.LandingColumns())
+	row, err := land(map[string]any{"source_key": "k-1", "Area_Drenagem": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: row}}, sdk.WriteOptions{
+		Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatal(err)
+	}
+
+	var area *string
+	if err := conn.QueryRow(ctx,
+		`SELECT "Area_Drenagem" FROM `+name).Scan(&area); err != nil {
+		t.Fatal(err)
+	}
+	if area != nil {
+		t.Errorf("Area_Drenagem is %q: the column was left out of the "+
+			"statement and the DEFAULT filled it, so the producer's null was "+
+			"discarded. A declared column that arrives empty has to be "+
+			"WRITTEN empty", *area)
+	}
+}

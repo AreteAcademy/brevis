@@ -1133,3 +1133,94 @@ func TestTheDocumentColumnIsQueryableJSON(t *testing.T) {
 		t.Errorf("JSON_EXTRACT(data,'$.nested.uf') = %v, want SP", uf)
 	}
 }
+
+// A declared column that arrives null is WRITTEN null, not left out. [#42]
+//
+// The same property as the Postgres test of the same name, and it is here
+// because the fix is in `core.RowFields` and the two drivers call it
+// separately -- a test in one proves the fix for one.
+//
+// The DEFAULT is the measurement: a column left out of the statement gets it,
+// and one written as NULL gets NULL.
+func TestADeclaredNullIsWrittenAndNotOmitted(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := append(
+		sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+		sdk.Column{Name: "source_key", Type: sdk.TypeString},
+		sdk.Column{Name: "Area_Drenagem", Type: sdk.TypeString},
+	)
+	if _, err := db.ExecContext(ctx, "CREATE TABLE "+name+" ("+
+		"brevis_ingestion_id VARCHAR(64) PRIMARY KEY,"+
+		"brevis_record_key LONGTEXT,"+
+		"brevis_operation LONGTEXT,"+
+		"brevis_received_at DATETIME(6),"+
+		"brevis_loaded_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),"+
+		"brevis_stream LONGTEXT,"+
+		"brevis_gateway LONGTEXT,"+
+		"brevis_received_bytes BIGINT,"+
+		"source_key LONGTEXT,"+
+		"Area_Drenagem VARCHAR(64) DEFAULT 'the default, not the null'"+
+		")"); err != nil {
+		t.Fatal(err)
+	}
+
+	land := sdk.Landing(name, sdk.LandingKey("source_key"), sdk.LandingColumns())
+	row, err := land(map[string]any{"source_key": "k-1", "Area_Drenagem": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (tomy.Table{DSN: dsn(t), Name: name}).Write(ctx,
+		[]sdk.Envelope{{Payload: row}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatal(err)
+	}
+
+	var area *string
+	if err := db.QueryRowContext(ctx,
+		"SELECT Area_Drenagem FROM "+name).Scan(&area); err != nil {
+		t.Fatal(err)
+	}
+	if area != nil {
+		t.Errorf("Area_Drenagem is %q: the column was left out of the "+
+			"statement and the DEFAULT filled it, so the producer's null was "+
+			"discarded", *area)
+	}
+}
+
+// And an UNDECLARED field null throughout is not an extra: nothing declares
+// it, nothing creates it, and the load is not refused for carrying it.
+func TestAnUndeclaredNullThroughoutIsNotAnExtra(t *testing.T) {
+	db := open(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.ExecContext(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+	row, err := land(map[string]any{"id": "A-1", "vehicle_fuel": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: row}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("a field null in every record refused the load: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.columns "+
+		"WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'vehicle_fuel'",
+		name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Error("a null created vehicle_fuel: the first array after it would " +
+			"fail the batch, with no migration back")
+	}
+}
