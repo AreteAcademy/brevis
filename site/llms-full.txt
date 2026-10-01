@@ -2742,15 +2742,25 @@ from its value: `21129` and `8.89` both declare `STRING`, so the day the
 series publishes a whole number nothing changes. A type read off the first
 batch is the failure this rule exists to prevent.
 
-**And a `null` decides nothing.** A null has no shape, so the rule has nothing
-to read. A field that arrives `null` contributes neither a column nor a value,
-and the column appears from the first record that carries a VALUE — with the
-shape that value has. Nothing is lost: a dropped `null` and an absent field
-land the same `NULL`.
+**And a `null` decides nothing — but it stays in the row.** Those are two
+different questions, and answering them with one answer cost v0.77.0.
 
-The other way round, a null would become `STRING` for want of an answer, and
-the first array after it would have the destination refuse the whole batch —
-with no `STRING` to `JSON` migration to undo it.
+A null has no shape, so the **schema** has nothing to read: a field that
+arrives `null` declares no column, and the column appears from the first record
+that carries a VALUE, with the shape that value has. The other way round, a
+null would become `STRING` for want of an answer, and the first array after it
+would have the destination refuse the whole batch — with no `STRING` to `JSON`
+migration to undo it.
+
+The **row** carries what the producer sent, null included. It has to: a column
+you DECLARED in `Target.Schema` that arrived empty must be in the row, or the
+check that compares the declaration against it reads a chain that has stopped
+producing it — and refuses the load. That is what v0.77.0 did, and what 0.78.0
+undid.
+
+The destination settles the rest: a field null in EVERY record of the batch,
+with no column in the table, is written nowhere and refuses nothing. A null and
+an absent field land the same `NULL`, so nothing is lost.
 
 **A field that changes shape is refused, not absorbed.** If `valor` arrived as
 a scalar and made a text column, an object arriving later is a change of kind
@@ -4491,7 +4501,9 @@ and the row that no longer fits goes to the dead letter. Typing one is the
 **A `null` becomes no column at all.** It has no shape, so there is nothing to
 read: the field appears in the table from the first event that carries a
 VALUE, with that value's shape. The event that sent `null` lands `NULL` just
-the same, which is what it meant.
+the same, which is what it meant — and where the column already exists, because
+you declared it or another event created it, the `null` is written into it
+rather than left out.
 
 **And a `JSON` column receives a JSON VALUE, never a string of one.** It
 sounds like a detail and it is the difference between a queryable table and a

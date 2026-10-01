@@ -388,7 +388,8 @@ num diff.
 **Um `null` não vira coluna nenhuma.** Ele não tem forma, então não há o que
 ler: o campo aparece na tabela no primeiro evento que traz um VALOR, com a
 forma desse valor. O evento que mandou `null` grava `NULL` do mesmo jeito, que
-é o que ele queria dizer.
+é o que ele queria dizer — e se a coluna já existe, por tê-la você declarado ou
+por outro evento tê-la criado, o `null` é gravado nela e não omitido.
 
 **E uma coluna `JSON` recebe um VALOR JSON, nunca uma string de um.** Parece
 detalhe e é a diferença entre uma tabela consultável e uma tabela que parece

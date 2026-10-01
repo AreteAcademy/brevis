@@ -18,6 +18,72 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.78.0] — 2026-10-01
+
+### Fixed: a declared column that arrives `null` no longer refuses the load
+
+**A regression in 0.77.0.** Reported on
+[#42](https://github.com/AreteAcademy/brevis/issues/42#issuecomment-5934850593)
+and reproduced against the published artifact before a line was changed.
+
+A pipeline that lands with a declared schema:
+
+```go
+Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())},
+Target:    sdk.Target{Schema: append(sdk.LandingControlColumns(...), fields...), ...}
+```
+
+got this as soon as a declared field arrived `null` in the first record of a
+batch:
+
+```
+the Columns declaration lists Area_Drenagem, which the row does not have
+```
+
+It hit 5 of one consumer's 23 fetchers. Declaring a vendor field that is often
+null is the documented pattern, so anyone doing that was affected.
+
+**The cause was not the check.** 0.77.0 fixed #42's null-types-a-column bug by
+dropping a null from the LANDING ROW as well as from the schema — which made
+the row's SHAPE depend on the record's VALUES. Every check downstream is built
+on the premise that it does not; it is what lets `CheckRow` read the first
+record and call itself a check. A declared column that had arrived empty then
+looked exactly like a chain that had stopped producing it.
+
+Two questions, answered separately now:
+
+- the **schema** takes no type from a null, because a null has no shape.
+  `LandingSchemaOf` and the batch discovery declare nothing for it, so #42's
+  original bug stays fixed;
+- the **row** carries what the producer sent. A null is in it, as a null.
+
+What a destination does with a nil for a column that does not exist is the
+destination's, and the answer is given in one place so that three checks in
+three packages cannot disagree about one batch: the declaration check lets it
+through, the SQL drivers do not count it as an extra, and the BigQuery
+encoder leaves the key out of the NDJSON — BigQuery does not set
+`IgnoreUnknownValues`, so sending it would fail the job with `no such field`.
+
+Only a null, and only when nothing declares it. A field with a VALUE that
+nothing declares still stops the load, by name: discarding one quietly is the
+single outcome worse than the refusal.
+
+A **declared** column that arrives null is WRITTEN null, not left out. The
+difference is invisible on an empty table and is the whole thing where the
+destination fills a gap — a `DEFAULT`, a generated column, a trigger would
+otherwise overwrite the producer's "this field is now empty".
+
+### Changed: `load.EncodeRows` takes the declaration
+
+```go
+EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error)
+```
+
+It needs it to know which keys the table has. Passing `nil` keeps every key,
+which is what autodetect wants — there the table is created from these rows.
+This is a breaking change to an exported function; nothing outside this
+repository calls it.
+
 ## [0.77.0] — 2026-10-01
 
 ### Fixed: a `null` no longer decides a column's type

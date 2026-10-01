@@ -544,15 +544,25 @@ latência ponta a ponta simplesmente não existiria.
 publicar um número inteiro nada muda. Tipo lido do primeiro lote é justamente
 a falha que essa regra existe para evitar.
 
-**E um `null` não decide nada.** Um nulo não tem forma, então a regra não tem
-o que ler. Um campo que chega `null` não contribui com coluna nem com valor, e
-a coluna aparece no primeiro registro que traz um VALOR — com a forma que esse
-valor tem. Nada se perde: um `null` descartado e um campo ausente gravam o
-mesmo `NULL`.
+**E um `null` não decide nada — mas continua na linha.** São duas perguntas
+diferentes, e confundi-las custou a v0.77.0.
 
-Se fosse o contrário, o nulo viraria `STRING` por falta de opção e o primeiro
-array depois dele faria o destino recusar o lote inteiro — e não existe
-migração de `STRING` para `JSON` para desfazer.
+Um nulo não tem forma, então o **schema** não tem o que ler: um campo que chega
+`null` não declara coluna nenhuma, e a coluna aparece no primeiro registro que
+traz um VALOR, com a forma que esse valor tem. Se fosse o contrário, o nulo
+viraria `STRING` por falta de opção e o primeiro array depois dele faria o
+destino recusar o lote inteiro — e não existe migração de `STRING` para `JSON`
+para desfazer.
+
+A **linha** carrega o que o produtor mandou, nulo incluído. Ela tem de carregar:
+uma coluna que você DECLAROU em `Target.Schema` e que chegou vazia precisa estar
+lá, ou a checagem que compara a declaração com a linha a lê como uma cadeia que
+parou de produzi-la — e recusa a carga. Foi o que a v0.77.0 fez, e a v0.78.0
+desfez.
+
+O destino resolve o resto: um campo nulo em TODOS os registros do lote e sem
+coluna na tabela não é escrito em lugar nenhum e não recusa nada. Um nulo e um
+campo ausente gravam o mesmo `NULL`, então nada se perde.
 
 **Um campo que muda de forma é recusado, não absorvido.** Se `valor` chegou
 escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
