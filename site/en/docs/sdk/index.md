@@ -549,6 +549,16 @@ from its value: `21129` and `8.89` both declare `STRING`, so the day the
 series publishes a whole number nothing changes. A type read off the first
 batch is the failure this rule exists to prevent.
 
+**And a `null` decides nothing.** A null has no shape, so the rule has nothing
+to read. A field that arrives `null` contributes neither a column nor a value,
+and the column appears from the first record that carries a VALUE — with the
+shape that value has. Nothing is lost: a dropped `null` and an absent field
+land the same `NULL`.
+
+The other way round, a null would become `STRING` for want of an answer, and
+the first array after it would have the destination refuse the whole batch —
+with no `STRING` to `JSON` migration to undo it.
+
 **A field that changes shape is refused, not absorbed.** If `valor` arrived as
 a scalar and made a text column, an object arriving later is a change of kind
 and the batch stops — with the column's own comment in the message, so you can

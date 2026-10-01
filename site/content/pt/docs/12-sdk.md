@@ -544,6 +544,16 @@ latência ponta a ponta simplesmente não existiria.
 publicar um número inteiro nada muda. Tipo lido do primeiro lote é justamente
 a falha que essa regra existe para evitar.
 
+**E um `null` não decide nada.** Um nulo não tem forma, então a regra não tem
+o que ler. Um campo que chega `null` não contribui com coluna nem com valor, e
+a coluna aparece no primeiro registro que traz um VALOR — com a forma que esse
+valor tem. Nada se perde: um `null` descartado e um campo ausente gravam o
+mesmo `NULL`.
+
+Se fosse o contrário, o nulo viraria `STRING` por falta de opção e o primeiro
+array depois dele faria o destino recusar o lote inteiro — e não existe
+migração de `STRING` para `JSON` para desfazer.
+
 **Um campo que muda de forma é recusado, não absorvido.** Se `valor` chegou
 escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
 tipo e o lote para — com o comentário da própria coluna na mensagem, para você

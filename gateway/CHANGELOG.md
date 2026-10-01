@@ -13,6 +13,64 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.19.0] — 2026-10-01
+
+Requires sdk v0.77.0. All three findings of
+[#42](https://github.com/AreteAcademy/brevis/issues/42).
+
+### Fixed: the dead letter no longer inherits the deadline that just expired
+
+`send` narrowed its context to `sendTimeout` and handed **that** context to the
+dead-letter write. So a batch that failed *because the 60 s ran out* reached
+the dead letter with nothing left and was refused instantly. 41 events were
+neither loaded nor parked, and the dead letter is the last place an event can
+survive.
+
+The reporter's diagnosis was exact, including the part that looked wrong: they
+measured "gave up after exactly 60 s" against a 380 s grace period, and it was
+never the pod's budget — it was `sendTimeout`.
+
+The dead-letter write now has its own deadline, 30 s, derived from the caller's
+context rather than from the send that just failed. Bounded rather than
+unlimited, because a dead letter that hangs must not hold the drain open past
+the pod's grace period. The log line that says *"they are lost"* is now reached
+only when the dead letter itself refused.
+
+### Fixed: each table gets its own share of the write window
+
+The second half of the same finding, one level up. The router writes N tables
+inside one `Write`, under one deadline: in the window they measured, `id_bdc`
+took 12 s and `id_engine_verification` 16 s out of the same sixty. A table that
+takes all of it leaves the ones behind it nothing, and they are dead-lettered
+for a slowness that was not theirs.
+
+Each table's write is now bounded by what is **left** divided by the tables
+still to go — remaining over remaining, so a fast table's leftover goes to the
+tables behind it rather than being wasted. In the worst case, every table using
+all of its share, that is identical to equal shares, so it is never the
+stricter rule.
+
+**What it buys is not more time, it is whose time.** Under one shared deadline
+the table that runs LAST fails however well behaved it is, and the log blames
+it. Now the table that overran its own share is the one that fails.
+
+And a starved table no longer abandons the ones behind it: the run continues
+and the error names every table that overran and none that did not. A batch is
+still parked whole, so a table that landed is parked as well as written — every
+row carries `brevis_ingestion_id` and every table is created with it as the
+dedup key, so replaying the dead letter writes each row once.
+
+### A `null` becomes no column at all
+
+From sdk v0.77.0, and it changes what `shape: columns` creates. A field that
+arrives `null` contributes neither a column nor a value; the column appears
+from the first event carrying a VALUE, with that value's shape. The event that
+sent `null` lands `NULL` just the same.
+
+Before this, a null became `STRING` and the first array after it had the
+destination refuse the whole batch. Events already dead-lettered for that
+reason can be replayed once this version is running.
+
 ## [0.18.0] — 2026-10-01
 
 ### A nested object's fields can get columns of their own

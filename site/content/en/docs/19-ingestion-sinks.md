@@ -384,6 +384,11 @@ fractional tomorrow would change a column's type with nobody writing anything,
 and the row that no longer fits goes to the dead letter. Typing one is the
 **promotion** path — written in the YAML and reviewed in a diff.
 
+**A `null` becomes no column at all.** It has no shape, so there is nothing to
+read: the field appears in the table from the first event that carries a
+VALUE, with that value's shape. The event that sent `null` lands `NULL` just
+the same, which is what it meant.
+
 **And a `JSON` column receives a JSON VALUE, never a string of one.** It
 sounds like a detail and it is the difference between a queryable table and a
 table that looks right:

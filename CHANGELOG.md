@@ -18,6 +18,59 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.77.0] — 2026-10-01
+
+### Fixed: a `null` no longer decides a column's type
+
+Reported in [#42](https://github.com/AreteAcademy/brevis/issues/42), with the
+measurement that makes it undeniable: over ninety days one field arrived
+`null` 786 times and as an array 62 times.
+
+The table was created from a record where it was `null`. The rule mapped
+"scalar, and null → `STRING`", so the column came out `STRING` — and the next
+batch carried an array:
+
+```
+load job failed: JSON parsing error in row starting at position 1275:
+  Array specified for non-repeated field: vehicle_fuel.
+```
+
+The load refused the whole batch, every batch holding one such record went to
+the dead letter with its neighbours, and the table sat at 0 rows. There is no
+`STRING` → `JSON` migration to undo it with.
+
+**A null has no shape**, so the type was a guess, and the reporter was right
+that "the shape decides, never the value" does not answer this. It does now:
+
+- a field that arrives `null` contributes **neither a column nor a value**;
+- the column appears from the first record carrying a VALUE, with that
+  value's shape, wherever it is in the batch;
+- a dropped null and an absent field land the same `NULL`, so nothing is lost.
+
+The drop happens in the one function behind both the row and the schema, so
+they cannot disagree — no check was loosened to make room for it. `Reconcile`
+still refuses a column the table does not have, and `CheckRow` still refuses a
+declared column the chain does not produce.
+
+On a raw pipeline, which has no landing transformer, the same rule reaches the
+discovery: a null is held rather than kept, and the first record with a value
+decides. A field `null` in every record of such a batch keeps its column as
+text — there the record IS the row, and a schema without the column and a row
+with the nil is what `Reconcile` exists to refuse.
+
+### Fixed: `ClusterBy` is checked against what makes the table
+
+Also [#42](https://github.com/AreteAcademy/brevis/issues/42). With a declared
+`Schema` the table is created by `createFromSchema`, from the Schema — and the
+check read the ROWS, so a first load whose rows omitted the clustering column
+failed twice and logged a misleading warning before succeeding.
+
+The check now asks the SCHEMA when there is one and the rows when there is
+not, and the message says which: *"a clustering column has to be one of the
+columns it is created with, and the declaration has: …"*. With no `Schema` the
+behaviour is unchanged — that path IS autodetect, and the rows are the right
+question there.
+
 ## [0.76.0] — 2026-10-01
 
 ### Added: `BREVIS_NORMALIZE_DATA`

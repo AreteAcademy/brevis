@@ -385,6 +385,11 @@ mudaria o tipo de uma coluna sem ninguém escrever nada, e a linha que não coub
 vai para a fila de descarte. Tipar é a **promoção** — escrita no YAML e revisada
 num diff.
 
+**Um `null` não vira coluna nenhuma.** Ele não tem forma, então não há o que
+ler: o campo aparece na tabela no primeiro evento que traz um VALOR, com a
+forma desse valor. O evento que mandou `null` grava `NULL` do mesmo jeito, que
+é o que ele queria dizer.
+
 **E uma coluna `JSON` recebe um VALOR JSON, nunca uma string de um.** Parece
 detalhe e é a diferença entre uma tabela consultável e uma tabela que parece
 certa:
