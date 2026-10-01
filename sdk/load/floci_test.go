@@ -847,8 +847,8 @@ func TestIntegrationBigQueryClustersOnADeclaredColumnTheRowsLack(t *testing.T) {
 	_, err := l.Load(ctx, core.Envelope{
 		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
 		Payload: map[string]any{
-			"ingestion_id": "i-1",
-			"received_at":  "2026-10-01T13:00:00Z",
+			"ingestion_id":  "i-1",
+			"received_at":   "2026-10-01T13:00:00Z",
 			"ComputedPrice": "10",
 		},
 	})

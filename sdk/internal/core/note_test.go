@@ -110,9 +110,18 @@ func TestTheNoteReachesTheAlter(t *testing.T) {
 // TWO WRONG TESTS CAME BEFORE THIS ONE, and both are worth recording because
 // they failed in opposite directions.
 //
-// The first looked for the substring `'; DROP` and FAILED ON CORRECT OUTPUT:
-// doubling turns `'; DROP` into `''; DROP`, which still contains it.
+// The first looked for a substring of the attack and FAILED ON CORRECT
+// OUTPUT, because doubling the quote leaves that substring in place:
+//
+//	what was sent     '; DROP
+//	what was written  ''; DROP   <- correct, and it still contains the above
+//
 // Pattern-matching the attack was the wrong question.
+//
+// (Written as an indented block on purpose: gofmt reads a doc comment as
+// text and turns a bare pair of apostrophes into a closing curly quote,
+// which is the one transformation this particular comment cannot survive.
+// An indented block is code to it, and is left alone.)
 //
 // The second stripped the outer quotes and undoubled, expecting the original
 // back -- and PASSED WITH THE ESCAPING REMOVED, because undoubling a string

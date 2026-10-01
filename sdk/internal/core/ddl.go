@@ -106,7 +106,7 @@ var (
 			TypeNumeric: "DECIMAL(38,9)", TypeBool: "TINYINT(1)", TypeTimestamp: "DATETIME(6)",
 			TypeDate: "DATE", TypeJSON: "JSON", TypeBytes: "LONGBLOB",
 		},
-		Quote:       func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" },
+		Quote:         func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" },
 		NowExpr:       "CURRENT_TIMESTAMP(6)",
 		IfNotExists:   true,
 		Unique:        true,
