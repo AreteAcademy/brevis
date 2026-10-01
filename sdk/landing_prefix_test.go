@@ -192,3 +192,22 @@ func TestTheControlColumnsAreThePrefixPlusTheSuffixes(t *testing.T) {
 		}
 	}
 }
+
+// envOn and runChild are the two halves every test in this file writes by
+// hand, named once so a new one does not have to.
+//
+// The shape is not incidental. A package variable resolved at load cannot be
+// exercised by setting the variable inside the test, so the test re-runs ITS
+// OWN binary with the variable set and asserts in the child. envOn says which
+// side of the fork we are on; runChild is the parent half.
+func envOn(marker string) bool { return os.Getenv(marker) == "1" }
+
+func runChild(t *testing.T, test, marker string, env ...string) {
+	t.Helper()
+	cmd := exec.Command(os.Args[0], "-test.run=^"+test+"$", "-test.v")
+	cmd.Env = append(append(os.Environ(), marker+"=1"), env...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("with %s:\n%s", strings.Join(env, " "), out)
+	}
+}

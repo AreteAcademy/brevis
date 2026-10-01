@@ -173,7 +173,23 @@ func Discovered(declared []string, records []Envelope) (Schema, error) {
 			// carrying the same field under different shapes is the drift
 			// case, and the column it lands in was decided by whichever
 			// arrived first anyway.
-			if _, seen := found[k]; !seen {
+			//
+			// EXCEPT A NULL, WHICH IS NOT AN ANSWER. [#42] A nil has no shape,
+			// so the rule has nothing to read and TypeFromShape falls through
+			// to text -- and the batch could not correct it, because the first
+			// record had already decided. That is how `vehicle_fuel` became
+			// STRING from 786 nulls and refused the 62 arrays. So a nil is
+			// held, not kept: the first record with a VALUE decides, wherever
+			// it is in the batch, and among the records that do carry one the
+			// first still wins.
+			//
+			// Nil THROUGHOUT keeps the column, as text. Dropping it here would
+			// be a different bug: on this path the record IS the row, so a
+			// schema without the column and a row with the nil is exactly what
+			// Reconcile exists to refuse. The landing path never reaches this
+			// with a nil -- landingColumns drops the value and the column
+			// together, which is what lets it drop both.
+			if cur, seen := found[k]; !seen || cur == nil {
 				found[k] = v
 			}
 		}

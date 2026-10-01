@@ -866,3 +866,64 @@ func TestIntegrationBigQueryClustersOnADeclaredColumnTheRowsLack(t *testing.T) {
 		t.Errorf("clustering = %+v, want record_key", md.Clustering)
 	}
 }
+
+// A null does not create the column BigQuery would then refuse the array for.
+//
+// The reporter's incident, at the destination where it happened. [#42]
+// `asset_asset` was created by a batch whose first record had
+// `"vehicle_fuel": null`; the column came out STRING, and every later batch
+// carrying an array was refused by the load job:
+//
+//	Array specified for non-repeated field: vehicle_fuel.
+//
+// There is no STRING -> JSON migration, so the table stayed at 0 rows for 90
+// days. What has to be true is here, before any row is written: the column
+// BigQuery CREATES is the one the arrays fit.
+//
+// The load job itself may fail on the emulator; the schema is what this
+// proves, and the schema is what decided the incident.
+func TestIntegrationBigQueryANullDoesNotTypeTheColumn(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "asset_asset")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	// The batch as it arrived: the nulls first and far more numerous -- 786
+	// against 62 over ninety days -- and the array somewhere behind them.
+	env := func(id string, fuel any) core.Envelope {
+		return core.Envelope{
+			Provider: "p", Entity: "e", SourceKey: id, RecordTS: "t",
+			Payload: map[string]any{
+				"ts": "2026-10-01T10:00:00Z", "id": id, "vehicle_fuel": fuel,
+			},
+		}
+	}
+	_, _ = l.Load(ctx,
+		env("A-1", nil), env("A-2", nil),
+		env("A-3", []any{"gasolina", "etanol"}), env("A-4", nil))
+
+	fuel, ok := fieldsOfTable(t, table)["vehicle_fuel"]
+	if !ok {
+		t.Fatal("the table has no `vehicle_fuel` column: a record in the " +
+			"batch carries an array for it, so the column has to exist")
+	}
+	if fuel.Type != bigquery.JSONFieldType {
+		t.Errorf("vehicle_fuel is %v, want JSON. Three records said null and "+
+			"one said array: STRING here is what refused every batch with an "+
+			"array in it, and nothing migrates it afterwards", fuel.Type)
+	}
+}

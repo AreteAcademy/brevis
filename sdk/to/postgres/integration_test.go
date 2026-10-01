@@ -6,6 +6,7 @@ import (
 	"iter"
 	"os"
 	"os/exec"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -1397,5 +1398,149 @@ func TestEvolutionAddsFlattenedColumns(t *testing.T) {
 	}
 	if n != 2 {
 		t.Errorf("%d rows, want 2", n)
+	}
+}
+
+// The reporter's sequence from issue #42, end to end: a null first, an array
+// later, and the array lands.
+//
+// `asset_asset` was created from a record with `"vehicle_fuel": null`. The
+// column became STRING and the next batch carried an array, so the load job
+// refused it and every batch holding one went to the dead letter with its
+// neighbours. The table had 0 rows. Over 90 days the field was null 786 times
+// and an array 62 times.
+func TestANullDoesNotTypeAColumnTheArrayCannotFit(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+	land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+	// The creating batch, with the field null -- as it was 786 times.
+	row, err := land(map[string]any{"id": "A-1", "vehicle_fuel": nil, "price": "10"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: row}}, opt); err != nil {
+		t.Fatalf("the creating batch: %v", err)
+	}
+	if _, typed := columnTypes(t, conn, name)["vehicle_fuel"]; typed {
+		t.Fatalf("a null created the column: it would be text, and the first "+
+			"array after it would fail the batch. Columns: %v",
+			columnNames(t, conn, name))
+	}
+
+	// And the batch that used to be refused -- as it was 62 times.
+	row, err = land(map[string]any{
+		"id": "A-2", "vehicle_fuel": []any{"gasolina", "etanol"}, "price": "11",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: row}}, opt); err != nil {
+		t.Fatalf("the batch with the array -- this is the one that went to the "+
+			"dead letter with its neighbours: %v", err)
+	}
+
+	if got := columnTypes(t, conn, name)["vehicle_fuel"]; got != "jsonb" {
+		t.Errorf("vehicle_fuel is %q, want jsonb: the record that HAS a value "+
+			"is the one with a shape", got)
+	}
+
+	// Both rows landed, and the first has NULL where it said null.
+	var n int
+	if err := conn.QueryRow(ctx, "SELECT count(*) FROM "+name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("%d rows, want 2", n)
+	}
+	var fuel *string
+	if err := conn.QueryRow(ctx,
+		"SELECT vehicle_fuel::text FROM "+name+" WHERE id = 'A-1'").Scan(&fuel); err != nil {
+		t.Fatal(err)
+	}
+	if fuel != nil {
+		t.Errorf("the record that said null has %v: dropping a null must write "+
+			"the same NULL it meant", *fuel)
+	}
+}
+
+// The same thing inside ONE batch: the record with the null and the record
+// with the array arrive together. [#42]
+//
+// The dropping happens per FIELD, in landingColumns, and the batch-level
+// answer falls out of it: the table is the union of the records, so the array
+// still creates the column and the null records simply have no key for it.
+// This is the test that the DRIVER agrees -- a row missing a column the batch
+// declares has to land NULL, not be refused and not shift the other values
+// along.
+func TestANullAndAValueForTheSameFieldInOneBatch(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+	var batch []sdk.Envelope
+	for _, record := range []map[string]any{
+		{"id": "A-1", "vehicle_fuel": nil, "price": "10"},
+		{"id": "A-2", "vehicle_fuel": []any{"gasolina"}, "price": "11"},
+		{"id": "A-3", "vehicle_fuel": nil, "price": "12"},
+	} {
+		row, err := land(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		batch = append(batch, sdk.Envelope{Payload: row})
+	}
+	if _, err := to.Write(ctx, batch, sdk.WriteOptions{
+		Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("one batch, one null and one array: %v", err)
+	}
+
+	if got := columnTypes(t, conn, name)["vehicle_fuel"]; got != "jsonb" {
+		t.Errorf("vehicle_fuel is %q, want jsonb", got)
+	}
+	rows, err := conn.Query(ctx,
+		"SELECT id, vehicle_fuel::text, price FROM "+name+" ORDER BY id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	got := map[string][2]any{}
+	for rows.Next() {
+		var id, price string
+		var fuel *string
+		if err := rows.Scan(&id, &fuel, &price); err != nil {
+			t.Fatal(err)
+		}
+		if fuel == nil {
+			got[id] = [2]any{nil, price}
+			continue
+		}
+		got[id] = [2]any{*fuel, price}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string][2]any{
+		"A-1": {nil, "10"},
+		"A-2": {`["gasolina"]`, "11"},
+		"A-3": {nil, "12"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("the table holds %v, want %v.\n\nA record with no key for a "+
+			"column the batch declares lands NULL there -- and its OTHER "+
+			"values stay where they belong", got, want)
 	}
 }

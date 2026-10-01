@@ -461,13 +461,19 @@ func TestLandingSpread(t *testing.T) {
 		t.Error("a producer's literal text `[1,2]` was marked as JSON: the " +
 			"marker is a decision carried forward, not a guess about content")
 	}
-	// NULL and not "": a field sent as null and one sent empty are different
-	// facts, and a column cannot tell them apart afterwards.
-	if v, present := got["note"]; !present || v != nil {
-		t.Errorf("note = %v (present=%v), want a present nil", v, present)
+	// NO `note` column, because `note` is null. [#42] It used to be a present
+	// nil, on the reasoning that null and "" are different facts -- which is
+	// true and is not what this decides. The column it would create has no
+	// shape to take a type from, and the type it got was the one that refused
+	// every array the field later carried. The field appears the day a record
+	// gives it a value; until then the rows land the same NULL either way.
+	if v, present := got["note"]; present {
+		t.Errorf("note = %v, want no column at all: a null has no shape, so "+
+			"the type would be a guess and the first real value could not "+
+			"correct it", v)
 	}
-	if len(got) != 5 {
-		t.Errorf("%d columns for 5 fields: %v", len(got), got)
+	if len(got) != 4 {
+		t.Errorf("%d columns for 5 fields, one of them null: %v", len(got), got)
 	}
 }
 
@@ -557,6 +563,8 @@ func TestLandingColumnsGivesEachFieldAColumn(t *testing.T) {
 				"column and the load refuses the batch", c.Name)
 		}
 	}
+	// The eight control columns less `data`, plus this record's four producer
+	// fields. None of them is null, so #42's rule takes nothing away here.
 	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+4 {
 		t.Errorf("%d columns: %v", len(row), row)
 	}
@@ -625,9 +633,10 @@ func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
 	if row["tags"] != JSONText(`["x","y"]`) {
 		t.Errorf("tags = %#v -- an array stays JSON", row["tags"])
 	}
-	if v, present := row["note"]; !present || v != nil {
-		t.Errorf("note = %v (present=%v), want a present nil: null and \"\" "+
-			"are different facts", v, present)
+	// And no `note`: it is null, and a null contributes no column. [#42]
+	if v, present := row["note"]; present {
+		t.Errorf("note = %v, want no column: the spread and the schema drop a "+
+			"null in the SAME place, which is what keeps them in agreement", v)
 	}
 
 	// And NO `data` column.
@@ -643,7 +652,11 @@ func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
 			"record IS the columns, and LandingControlColumns -- what the "+
 			"table is composed from here -- declares no such column", v)
 	}
-	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+4 {
+	// The eight control columns less `data`, plus the THREE producer fields
+	// that are not null -- `note` is, and contributes none. The layout's own
+	// columns are not subject to that rule: they are DECLARED, so a nil in
+	// one of them is a value for a column that exists either way.
+	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+3 {
 		t.Errorf("%d columns: %v", len(row), row)
 	}
 }
@@ -710,7 +723,7 @@ func TestLandingSchemaOf(t *testing.T) {
 		// Sorted, so the same record always declares the same DDL. Unsorted,
 		// two runs over identical data give columns in different orders.
 		{"customer", TypeJSON},
-		{"note", TypeString},
+		// No `note`: the record sends it null, and a null declares nothing. [#42]
 		{"ok", TypeString},
 		{"series", TypeString},
 		{"tags", TypeJSON},
@@ -763,7 +776,10 @@ func TestLandingSchemaOfNeverReadsTheValue(t *testing.T) {
 	for _, c := range []struct {
 		name string
 		v    any
-	}{{"empty", ""}, {"null", nil}, {"bool", true}, {"int", 42}} {
+		// `nil` is NOT in this table, and that is the point of #42: every
+		// other value here has a shape to read, and a null does not. It
+		// declares no column at all -- TestANullContributesNoColumn.
+	}{{"empty", ""}, {"bool", true}, {"int", 42}} {
 		s, err := LandingSchemaOf(map[string]any{"f": c.v})
 		if err != nil {
 			t.Fatal(err)

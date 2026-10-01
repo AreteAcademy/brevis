@@ -509,3 +509,88 @@ func TestBothPathsFlattenTheSameWay(t *testing.T) {
 		t.Fatalf("with BREVIS_NORMALIZE_DATA=true:\n%s", out)
 	}
 }
+
+// The reporter's batch, through the gateway's own grouping: a record whose
+// field is null, and a later one where it is an array. [#42]
+//
+// `merge` keeps the FIRST declaration of a column, which is right -- two
+// records disagreeing about a shape is drift and somebody has to win. What
+// made it wrong was that a null COUNTED as a declaration: record 0 said
+// STRING with no shape to say it from, and record 5's array could never
+// correct it. The fix is upstream of merge, in landingColumns, so the record
+// with the null declares nothing at all and the array is the first answer.
+func TestANullInAnEarlierRecordDoesNotTypeTheColumn(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:  gateway.SinkAutoTable,
+		Shape: "columns",
+		Into:  &gateway.Sink{Type: "probe"},
+	})
+	event := func(id string, fuel any) gateway.Envelope {
+		return gateway.Envelope{Payload: map[string]any{
+			FieldTable:     "asset_asset",
+			FieldUniqueKey: "id",
+			FieldData:      map[string]any{"id": id, "vehicle_fuel": fuel},
+		}}
+	}
+
+	_, schemas, err := r.group([]gateway.Envelope{
+		event("A-1", nil),
+		event("A-2", nil),
+		event("A-3", []any{"gasolina", "etanol"}),
+		event("A-4", nil),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	byName := map[string]sdk.ColumnType{}
+	for _, c := range schemas["asset_asset"] {
+		byName[c.Name] = c.Type
+	}
+	if got := byName["vehicle_fuel"]; got != sdk.TypeJSON {
+		t.Errorf("vehicle_fuel is %q, want json. Three records said null and "+
+			"one said array: the one with a shape is the only one that can "+
+			"decide, wherever it is in the batch", got)
+	}
+}
+
+// And a field null in EVERY record of the batch declares nothing.
+//
+// Not a column of some guessed type: no column. The next batch that carries a
+// value creates it with the shape that value has, which is the whole point --
+// `asset_asset` was created in exactly this position and got STRING.
+func TestAFieldNullThroughoutTheBatchDeclaresNothing(t *testing.T) {
+	r := build(t, gateway.Sink{
+		Type:  gateway.SinkAutoTable,
+		Shape: "columns",
+		Into:  &gateway.Sink{Type: "probe"},
+	})
+	event := func(id string) gateway.Envelope {
+		return gateway.Envelope{Payload: map[string]any{
+			FieldTable:     "asset_asset",
+			FieldUniqueKey: "id",
+			FieldData:      map[string]any{"id": id, "vehicle_fuel": nil},
+		}}
+	}
+
+	rows, schemas, err := r.group([]gateway.Envelope{event("A-1"), event("A-2")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range schemas["asset_asset"] {
+		if c.Name == "vehicle_fuel" {
+			t.Fatalf("the batch declares vehicle_fuel as %s from nothing but "+
+				"nulls: the type would be a guess, and the first real value "+
+				"after it could not change it", c.Type)
+		}
+	}
+	// And the ROW drops it too, because a schema without the column and a row
+	// with the key is what Reconcile exists to refuse. They are dropped in one
+	// place, which is what keeps them in agreement.
+	for _, env := range rows["asset_asset"] {
+		if _, present := env.Payload.(map[string]any)["vehicle_fuel"]; present {
+			t.Error("the row carries vehicle_fuel and the schema does not: " +
+				"Reconcile refuses that batch, which is a worse bug than the one fixed")
+		}
+	}
+}

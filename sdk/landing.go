@@ -539,6 +539,34 @@ func landingColumns(record map[string]any) (map[string]any, error) {
 		out, from = flat.Values, flat.From
 	}
 
+	// A NULL CONTRIBUTES NOTHING -- no column, and no value. [#42]
+	//
+	// A null has no shape, so "the shape decides, never the value" has nothing
+	// to read and the type would be a guess. It was: `vehicle_fuel` arrived
+	// null 786 times and as an array 62 times over ninety days, the first
+	// record created the column STRING, and every batch carrying an array was
+	// refused by the load job with no STRING -> JSON migration to undo it.
+	// The column now appears from the first record that HAS a value, with the
+	// shape that value has.
+	//
+	// DROPPED HERE, where the row and the schema are both built, so they stay
+	// in agreement. That is what makes the rest need no change: nothing extra
+	// for Reconcile to refuse, nothing undeclared for CheckRow to refuse, and
+	// no key in the NDJSON for BigQuery to reject. And it loses nothing: a
+	// dropped null and an absent field land the same NULL.
+	//
+	// Per FIELD, not per record, and the batch-level answer falls out of it --
+	// the table is the union of the records, so one record's value creates the
+	// column and the records that said null simply have no key for it.
+	kept := make(map[string]any, len(out))
+	for k, v := range out {
+		if v == nil {
+			continue
+		}
+		kept[k] = v
+	}
+	out = kept
+
 	for _, k := range landingKeys(out) {
 		if err := core.CheckColumnName(k); err != nil {
 			return nil, err
