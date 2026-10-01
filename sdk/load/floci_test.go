@@ -762,3 +762,54 @@ func TestIntegrationBigQueryADiscoveredColumnCarriesItsOrigin(t *testing.T) {
 		t.Errorf("a declared column was described as coming from a batch: %q", d)
 	}
 }
+
+// The refusal reaches Load, and arrives before the job.
+//
+// Without the wiring the error would be the load job's — a 405 from the
+// emulator, or in production a job that SUCCEEDS and leaves a column full of
+// JSON strings. The assertion is that the message names the column, which
+// only the check can do.
+func TestIntegrationBigQueryRefusesAStringOfJSON(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "payload", Type: core.TypeJSON},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "strjson")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ts": "2026-09-30T10:00:00Z", "payload": `{"a":1}`,
+		},
+	})
+	if err == nil {
+		t.Fatal("a string of JSON was accepted into a JSON column")
+	}
+	if !strings.Contains(err.Error(), "payload") {
+		t.Errorf("the failure is not the check — it did not name the column: %v", err)
+	}
+
+	// And the marked form goes through the check. The job itself may still
+	// fail on the emulator; what matters is that it got past here.
+	_, err = l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k2", RecordTS: "t2",
+		Payload: map[string]any{
+			"ts": "2026-09-30T11:00:00Z", "payload": core.JSONText(`{"a":1}`),
+		},
+	})
+	if err != nil && strings.Contains(err.Error(), "declared JSON") {
+		t.Errorf("sdk.JSONText was refused by the check it exists to satisfy: %v", err)
+	}
+}

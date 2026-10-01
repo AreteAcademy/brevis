@@ -333,6 +333,16 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		return fail(err)
 	}
 
+	// A string of JSON where a JSON value belongs, refused BEFORE the job.
+	//
+	// This destination alone: the row is marshalled whole here, so a Go
+	// string becomes a JSON string literal and the column holds a JSON value
+	// of TYPE string. Postgres and MySQL parse the text and have always been
+	// right, so they do not get this and must not.
+	if err := core.CheckJSONColumns(l.cfg.Schema, envelopes); err != nil {
+		return fail(err)
+	}
+
 	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
 
 	// Encoded before the table is prepared: creating a table with the

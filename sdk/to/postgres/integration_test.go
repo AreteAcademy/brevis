@@ -1190,3 +1190,39 @@ func TestTheDocumentColumnIsQueryableJSON(t *testing.T) {
 			"JSON, but not the JSON somebody can query", uf)
 	}
 }
+
+// A plain string into a jsonb column still lands, and is still queryable.
+//
+// BigQuery refuses one, because there the row is marshalled whole and the
+// string becomes a JSON string literal. Postgres parses it, and has always
+// done so. This pins that difference: a refusal generalised to every
+// destination would break loads that are correct today, and the generalising
+// is the tempting move.
+func TestAStringIntoAJSONColumnIsFineHere(t *testing.T) {
+	conn := connect(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+name)
+	})
+
+	declared := sdk.Schema{
+		{Name: "id", Type: sdk.TypeString, Required: true},
+		{Name: "payload", Type: sdk.TypeJSON},
+	}
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{env(map[string]any{
+		"id": "1", "payload": `{"uf":"SP"}`,
+	})}, sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("a string into jsonb: %v", err)
+	}
+
+	var uf *string
+	if err := conn.QueryRow(context.Background(),
+		"SELECT payload->>'uf' FROM "+name).Scan(&uf); err != nil {
+		t.Fatal(err)
+	}
+	if uf == nil || *uf != "SP" {
+		t.Errorf("payload->>'uf' = %v, want SP -- the server parses the text, "+
+			"and the BigQuery refusal must not travel here", uf)
+	}
+}
