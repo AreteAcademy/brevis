@@ -1,6 +1,8 @@
 package autotable
 
 import (
+	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"testing"
@@ -359,5 +361,57 @@ func TestNeitherShapeHandsAStringToAJSONColumn(t *testing.T) {
 					"what it claims to", sh.name())
 			}
 		})
+	}
+}
+
+// The reserved rule follows BREVIS_LANDING_PREFIX here too.
+//
+// A producer who can forge a control column forges a real-looking one, and
+// `open` refuses the prefix before anything reads the record. Configure the
+// prefix and that rule has to move with it: under `acme_`, `acme_region` is
+// reserved and `brevis_region` is an ordinary field.
+//
+// In a child process, because the prefix is resolved when the package loads —
+// and because with the variable unset "the literal brevis_" and "the
+// configured prefix" are the same string, so a refusal hard-coded to the
+// literal passes everything written in-process.
+func TestTheReservedRuleFollowsThePrefix(t *testing.T) {
+	const marker = "BREVIS_TEST_GW_RESERVED_CHILD"
+
+	if os.Getenv(marker) == "1" {
+		if Prefix != "acme_" {
+			t.Fatalf("Prefix = %q, want acme_", Prefix)
+		}
+
+		_, err := open(map[string]any{
+			FieldTable: "t",
+			FieldData:  map[string]any{"id": "A", "acme_region": "SP"},
+		})
+		if err == nil {
+			t.Fatal("a record carrying acme_region was accepted: the producer " +
+				"just forged a control column")
+		}
+		if !strings.Contains(err.Error(), "acme_region") ||
+			!strings.Contains(err.Error(), "acme_") {
+			t.Errorf("the refusal does not name the field and the prefix: %v", err)
+		}
+
+		env, err := open(map[string]any{
+			FieldTable: "t",
+			FieldData:  map[string]any{"id": "A", "brevis_region": "SP"},
+		})
+		if err != nil {
+			t.Fatalf("brevis_region was refused under a different prefix: %v", err)
+		}
+		if env.record["brevis_region"] != "SP" {
+			t.Errorf("brevis_region did not survive as an ordinary field: %v", env.record)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestTheReservedRuleFollowsThePrefix", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"=1", "BREVIS_LANDING_PREFIX=acme")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_LANDING_PREFIX=acme:\n%s", out)
 	}
 }

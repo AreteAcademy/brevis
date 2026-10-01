@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"strings"
@@ -112,5 +113,60 @@ func TestAnUnusablePrefixStopsTheProcess(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "9x") {
 		t.Errorf("the failure does not show the value:\n%s", out)
+	}
+}
+
+// The reserved rule follows the prefix, in both paths.
+//
+// It is the half of configuring a prefix that changes what a PRODUCER may
+// send. Under `acme_` a producer's `acme_region` is refused — otherwise they
+// could forge a control column, and a forged received_at is worse than a
+// missing one because it looks real. And `brevis_region` becomes an ordinary
+// field, because nothing reserves it any more.
+//
+// In a child process for the reason the test above is: with the variable
+// unset, "the literal brevis_" and "the configured prefix" are the same
+// string, so a refusal hard-coded to the literal passes everything that can
+// be written in-process.
+func TestTheReservedRuleFollowsThePrefix(t *testing.T) {
+	const marker = "BREVIS_TEST_RESERVED_CHILD"
+
+	if os.Getenv(marker) == "1" {
+		land := Landing("t", LandingKey("id"))
+
+		// The configured prefix is reserved.
+		_, err := land(map[string]any{"id": "A", "acme_region": "SP"})
+		if err == nil {
+			t.Fatal("a record carrying acme_region was accepted: the producer " +
+				"just forged a control column")
+		}
+		if !strings.Contains(err.Error(), "acme_region") {
+			t.Errorf("the refusal does not name the field: %v", err)
+		}
+		if !strings.Contains(err.Error(), "acme_") {
+			t.Errorf("the refusal does not name the prefix: %v", err)
+		}
+
+		// And the OLD one is not. Nothing reserves `brevis_` here any more,
+		// so it is a field like any other.
+		out, err := land(map[string]any{"id": "A", "brevis_region": "SP"})
+		if err != nil {
+			t.Fatalf("brevis_region was refused under a different prefix: %v", err)
+		}
+		row := out.(map[string]any)
+		var back map[string]any
+		if err := json.Unmarshal([]byte(row[LandingColumnData].(JSONText)), &back); err != nil {
+			t.Fatal(err)
+		}
+		if back["brevis_region"] != "SP" {
+			t.Errorf("brevis_region did not survive as an ordinary field: %v", back)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestTheReservedRuleFollowsThePrefix", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"=1", "BREVIS_LANDING_PREFIX=acme")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_LANDING_PREFIX=acme:\n%s", out)
 	}
 }
