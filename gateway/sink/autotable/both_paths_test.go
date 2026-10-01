@@ -584,13 +584,19 @@ func TestAFieldNullThroughoutTheBatchDeclaresNothing(t *testing.T) {
 				"after it could not change it", c.Type)
 		}
 	}
-	// And the ROW drops it too, because a schema without the column and a row
-	// with the key is what Reconcile exists to refuse. They are dropped in one
-	// place, which is what keeps them in agreement.
+	// And the ROW keeps it, which is NOT a disagreement. [#42]
+	//
+	// v0.77.0 dropped it from the row as well, and that made a row's shape
+	// depend on its values -- so a DECLARED column that arrived null read as a
+	// chain that had stopped producing it, and CheckRow refused the load. The
+	// destination is what resolves the mismatch: core.RowFields leaves a
+	// nil-throughout field out when the table has no column for it, so nothing
+	// is written and nothing refuses the batch.
 	for _, env := range rows["asset_asset"] {
-		if _, present := env.Payload.(map[string]any)["vehicle_fuel"]; present {
-			t.Error("the row carries vehicle_fuel and the schema does not: " +
-				"Reconcile refuses that batch, which is a worse bug than the one fixed")
+		v, present := env.Payload.(map[string]any)["vehicle_fuel"]
+		if !present || v != nil {
+			t.Errorf("the row has vehicle_fuel = %v (present=%v), want a "+
+				"present nil: the row carries what the producer sent", v, present)
 		}
 	}
 }

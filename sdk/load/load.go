@@ -348,7 +348,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// Encoded before the table is prepared: creating a table with the
 	// metadata columns typed needs the rows, because BigQuery infers the
 	// caller's own columns from them.
-	data, err := EncodeRows(envelopes)
+	data, err := EncodeRows(envelopes, l.cfg.Columns)
 	if err != nil {
 		return fail(err)
 	}
@@ -549,8 +549,29 @@ func (l *Loader) renamedBucketHint(ctx context.Context) string {
 // in it is unreachable, which is the worst of the three outcomes because it
 // looks correct. Reported by a consumer against gateway v0.15.0; see
 // core.JSONText.
-func EncodeRows(envelopes []core.Envelope) ([]byte, error) {
+func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
 	var buf bytes.Buffer
+
+	// `declared` is the whole declaration by the time this runs -- the
+	// consumer's columns plus whatever the batch contributed. A key it does
+	// not name has no column in the table, and BigQuery does not set
+	// IgnoreUnknownValues, so sending one fails the load job with `no such
+	// field` and takes the batch with it.
+	//
+	// Only a NULL is dropped, and only then. [#42] A field with a value that
+	// nothing declares is refused by CheckRow, by name, before this -- and if
+	// it ever reached here, discarding it would be silent data loss, which is
+	// the one outcome worse than the refusal. A null is different: nothing
+	// was going to be written for it either way, and under the landing layout
+	// the row CARRIES nulls on purpose, so that a declared column which
+	// arrived empty is still in it.
+	//
+	// Empty `declared` is autodetect, where the table is created FROM these
+	// rows and there is nothing to judge a key against.
+	named := make(map[string]bool, len(declared))
+	for _, c := range declared {
+		named[c] = true
+	}
 
 	for i, env := range envelopes {
 		data, err := json.Marshal(env.Payload)
@@ -561,6 +582,25 @@ func EncodeRows(envelopes []core.Envelope) ([]byte, error) {
 		var probe map[string]json.RawMessage
 		if err := json.Unmarshal(data, &probe); err != nil {
 			return nil, fmt.Errorf("row %d must encode to a JSON object, got %s", i, truncate(data, 80))
+		}
+
+		if len(named) > 0 {
+			dropped := false
+			for k, v := range probe {
+				if named[k] || string(v) != "null" {
+					continue
+				}
+				delete(probe, k)
+				dropped = true
+			}
+			if dropped {
+				// Re-marshalled from the probe, which the row already had to
+				// decode into. Key order changes -- encoding/json sorts a
+				// map's -- and NDJSON does not care.
+				if data, err = json.Marshal(probe); err != nil {
+					return nil, fmt.Errorf("marshal row %d: %w", i, err)
+				}
+			}
 		}
 
 		buf.Write(data)

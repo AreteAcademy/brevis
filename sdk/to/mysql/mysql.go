@@ -140,7 +140,12 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		}
 	}
 
-	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
+	// RowFields and not the bare union of the keys: a field that is nil in
+	// EVERY record and that the table does not have contributes nothing --
+	// no column was created for it, and a null and an absent field land the
+	// same NULL. Counting it as a column would have Reconcile refuse the
+	// batch over a value that was never going to be written. [#42]
+	columns, err := core.Reconcile(tableColumns, core.RowFields(envelopes, tableColumns), t.Name)
 	if err != nil {
 		return fail(err)
 	}

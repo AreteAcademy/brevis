@@ -927,3 +927,91 @@ func TestIntegrationBigQueryANullDoesNotTypeTheColumn(t *testing.T) {
 			"array in it, and nothing migrates it afterwards", fuel.Type)
 	}
 }
+
+// Both halves of #42 on BigQuery, over one batch.
+//
+// CheckRow runs in five drivers and this is one of them -- `load.go` calls it
+// with `l.cfg.Columns`, which `Target.declaredColumns()` filled from the
+// Schema -- so a test in one driver would prove the fix for one driver.
+//
+// AN EARLIER VERSION OF THIS TEST COULD NOT FAIL. It built the row by hand
+// with the null key present, which is what the fix PRODUCES, so it asserted
+// the fix against itself. What a row looks like after the landing transformer
+// belongs where the transformer is; what belongs here is what this
+// destination decides on its own:
+//
+//   - a DECLARED column that arrived null does not refuse the load, and keeps
+//     the type the declaration gave it;
+//   - an UNDECLARED field that is null throughout creates no column, so the
+//     first record carrying a value is the one with a shape.
+//
+// The load job itself may fail on the emulator; both of those are settled
+// before it, and both are what decided the incident.
+func TestIntegrationBigQueryADeclaredNullDoesNotRefuseTheLoad(t *testing.T) {
+	// The landing layout's control columns, written out: this package cannot
+	// reach sdk.LandingControlColumns without an import that exists only for
+	// a test.
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		Evolve:      core.EvolveAdditiveFromPayload,
+		PartitionBy: "brevis_received_at",
+		Schema: core.Schema{
+			{Name: "brevis_ingestion_id", Type: core.TypeString, Required: true},
+			{Name: "brevis_operation", Type: core.TypeString, Required: true},
+			{Name: "brevis_received_at", Type: core.TypeTimestamp, Required: true},
+			{Name: "source_key", Type: core.TypeString},
+			{Name: "Area_Drenagem", Type: core.TypeString},
+		},
+	}
+	cfg.Columns = cfg.Schema.Names()
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "ana_station")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k-1", RecordTS: "t",
+		Payload: map[string]any{
+			"brevis_ingestion_id": "id-1",
+			"brevis_operation":    "INSERT",
+			"brevis_received_at":  "2026-10-01T10:00:00Z",
+			"source_key":          "k-1",
+			"Area_Drenagem":       nil,
+			// Nothing declares this one, and no record gives it a value.
+			"vehicle_fuel": nil,
+		},
+	})
+	if err != nil {
+		for _, refusal := range []string{
+			"which the row does not have",
+			"which Columns does not declare",
+		} {
+			if strings.Contains(err.Error(), refusal) {
+				t.Fatalf("the batch was refused by a check rather than by the "+
+					"emulator: %v", err)
+			}
+		}
+	}
+
+	fields := fieldsOfTable(t, table)
+
+	// The DECLARED column keeps the type the declaration gave it. A declared
+	// column's type never came from the value, so a null there was never a
+	// typing problem -- which is why the row was the wrong thing to drop.
+	if f, ok := fields["Area_Drenagem"]; !ok {
+		t.Error("the declared column is not in the table")
+	} else if f.Type != bigquery.StringFieldType {
+		t.Errorf("Area_Drenagem is %v, want STRING", f.Type)
+	}
+
+	// The UNDECLARED one creates nothing. That is #42: a null has no shape,
+	// and the STRING it used to get is what refused every array after it.
+	if f, ok := fields["vehicle_fuel"]; ok {
+		t.Errorf("a null created vehicle_fuel as %v: the first array after it "+
+			"would fail the load, with no migration back", f.Type)
+	}
+}

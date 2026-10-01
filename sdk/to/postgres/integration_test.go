@@ -1544,3 +1544,98 @@ func TestANullAndAValueForTheSameFieldInOneBatch(t *testing.T) {
 			"values stay where they belong", got, want)
 	}
 }
+
+// The reporter's fetcher shape, end to end: a declared vendor field that
+// arrives null. [#42, the v0.77.0 regression]
+//
+// 5 of their 23 fetchers declare a field that is often null. On v0.77.0 the
+// landing transformer dropped it from the row and `CheckRow` refused the load
+// by name, because a declared column absent from records[0] is a broken chain
+// as far as that check knows.
+func TestADeclaredColumnThatArrivesNullStillLoads(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := append(
+		sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+		sdk.Column{Name: "source_key", Type: sdk.TypeString},
+		sdk.Column{Name: "Area_Drenagem", Type: sdk.TypeString},
+	)
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	land := sdk.Landing(name, sdk.LandingKey("source_key"), sdk.LandingColumns())
+
+	row, err := land(map[string]any{"source_key": "k-1", "Area_Drenagem": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := to.Write(ctx, []sdk.Envelope{{Payload: row}}, sdk.WriteOptions{
+		Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("a declared field that arrived null refused the load: %v", err)
+	}
+
+	// And it landed as NULL, which is what the producer said.
+	var area *string
+	if err := conn.QueryRow(ctx,
+		`SELECT "Area_Drenagem" FROM `+name+" WHERE source_key = 'k-1'").Scan(&area); err != nil {
+		t.Fatal(err)
+	}
+	if area != nil {
+		t.Errorf("Area_Drenagem is %q, want NULL", *area)
+	}
+	if got := columnTypes(t, conn, name)["Area_Drenagem"]; got != "text" {
+		t.Errorf("Area_Drenagem is %q, want text: a DECLARED column takes its "+
+			"type from the declaration, and a null there was never a typing "+
+			"problem", got)
+	}
+}
+
+// An UNDECLARED field that is null throughout contributes no column, and the
+// load is not refused for carrying it. [#42]
+//
+// The other half of the same batch, and the one that cannot be dropped from
+// the row without breaking the half above: nothing declares it, so nothing
+// creates it, and the nil in the row has to be tolerated rather than refused.
+func TestAnUndeclaredNullThroughoutIsNotAnExtra(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+	var batch []sdk.Envelope
+	for _, record := range []map[string]any{
+		{"id": "A-1", "vehicle_fuel": nil, "price": "10"},
+		{"id": "A-2", "vehicle_fuel": nil, "price": "11"},
+	} {
+		row, err := land(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		batch = append(batch, sdk.Envelope{Payload: row})
+	}
+	if _, err := to.Write(ctx, batch, sdk.WriteOptions{
+		Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("a field null in every record refused the load: it declares "+
+			"no column, so it is not an extra -- a dropped null and an absent "+
+			"field land the same NULL: %v", err)
+	}
+
+	if _, typed := columnTypes(t, conn, name)["vehicle_fuel"]; typed {
+		t.Errorf("a null created the column: that is #42, and the first array "+
+			"after it would fail the batch. Columns: %v", columnNames(t, conn, name))
+	}
+	var n int
+	if err := conn.QueryRow(ctx, "SELECT count(*) FROM "+name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("%d rows, want 2", n)
+	}
+}

@@ -33,14 +33,6 @@ func TestANilDoesNotDecideTheType(t *testing.T) {
 			map[string]any{"fuel": nil},
 			map[string]any{"fuel": "gasolina"},
 		}, TypeString},
-		// The all-nil batch keeps its column. Dropping it HERE would be a
-		// different bug: on the raw path the record IS the row, so a schema
-		// without the column and a row with the nil is what Reconcile exists
-		// to refuse. The landing path drops both, together, in landingColumns.
-		{"nil throughout keeps the column, as text", []any{
-			map[string]any{"fuel": nil},
-			map[string]any{"fuel": nil},
-		}, TypeString},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var batch []Envelope
@@ -77,5 +69,31 @@ func TestTheFirstValueStillDecidesAmongValues(t *testing.T) {
 	if got[0].Type != TypeString {
 		t.Errorf("a is %s, want string: skipping nils must not turn into "+
 			"last-write-wins among the records that do carry a value", got[0].Type)
+	}
+}
+
+// A field no record gave a value declares nothing at all.
+//
+// The rows keep their key -- that is the row's business, and a DECLARED column
+// that arrived null has to stay in it or CheckRow refuses the load. What is
+// settled here is the SCHEMA: no record carried a shape, so there is no type
+// to give, and guessing one is what made a column STRING that then refused
+// every array. [#42]
+//
+// The destination resolves the mismatch: RowFields leaves the field out when
+// the table has no column for it, so nothing is written and nothing refuses
+// the batch.
+func TestAFieldNilThroughoutDeclaresNothing(t *testing.T) {
+	got, err := Discovered([]string{"id"}, []Envelope{
+		{Payload: map[string]any{"id": "A", "fuel": nil}},
+		{Payload: map[string]any{"id": "B", "fuel": nil}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Errorf("declared %v from nothing but nulls: the type would be a "+
+			"guess, and the first real value after it could not change it",
+			got.Names())
 	}
 }

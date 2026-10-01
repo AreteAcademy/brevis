@@ -85,9 +85,21 @@ func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []str
 		}
 	}
 
+	// A field no record of the batch gave a value is not an undeclared column.
+	// [#42] Nothing declared it because it has no shape to take a type from,
+	// nothing created it, and nothing writes it -- a null and an absent field
+	// land the same NULL. Refusing the batch over it would be refusing a value
+	// that was never going to be written.
+	//
+	// NARROW on purpose: a field with a VALUE that nothing declares still
+	// stops the load, which is the half that matters. The rule is per BATCH,
+	// so one record carrying a value is enough to make it a real column again
+	// -- and then Discovered has already declared it.
+	empty := NilThroughout(records)
+
 	var undeclared []string
 	for f := range row {
-		if !want[f] {
+		if !want[f] && !empty[f] {
 			undeclared = append(undeclared, f)
 		}
 	}

@@ -461,19 +461,18 @@ func TestLandingSpread(t *testing.T) {
 		t.Error("a producer's literal text `[1,2]` was marked as JSON: the " +
 			"marker is a decision carried forward, not a guess about content")
 	}
-	// NO `note` column, because `note` is null. [#42] It used to be a present
-	// nil, on the reasoning that null and "" are different facts -- which is
-	// true and is not what this decides. The column it would create has no
-	// shape to take a type from, and the type it got was the one that refused
-	// every array the field later carried. The field appears the day a record
-	// gives it a value; until then the rows land the same NULL either way.
-	if v, present := got["note"]; present {
-		t.Errorf("note = %v, want no column at all: a null has no shape, so "+
-			"the type would be a guess and the first real value could not "+
-			"correct it", v)
+	// NULL and not "": a field sent as null and one sent empty are different
+	// facts, and a column cannot tell them apart afterwards.
+	//
+	// The ROW keeps it. The SCHEMA is what must not read a null -- #42 -- and
+	// v0.77.0 briefly dropped it from both, which made the row's shape depend
+	// on its values and had CheckRow refuse a declared column that arrived
+	// empty. See TestANullContributesNoColumn.
+	if v, present := got["note"]; !present || v != nil {
+		t.Errorf("note = %v (present=%v), want a present nil", v, present)
 	}
-	if len(got) != 4 {
-		t.Errorf("%d columns for 5 fields, one of them null: %v", len(got), got)
+	if len(got) != 5 {
+		t.Errorf("%d columns for 5 fields: %v", len(got), got)
 	}
 }
 
@@ -633,10 +632,9 @@ func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
 	if row["tags"] != JSONText(`["x","y"]`) {
 		t.Errorf("tags = %#v -- an array stays JSON", row["tags"])
 	}
-	// And no `note`: it is null, and a null contributes no column. [#42]
-	if v, present := row["note"]; present {
-		t.Errorf("note = %v, want no column: the spread and the schema drop a "+
-			"null in the SAME place, which is what keeps them in agreement", v)
+	if v, present := row["note"]; !present || v != nil {
+		t.Errorf("note = %v (present=%v), want a present nil: null and \"\" "+
+			"are different facts", v, present)
 	}
 
 	// And NO `data` column.
@@ -652,11 +650,9 @@ func TestLandingColumnsRendersLikeTheSpread(t *testing.T) {
 			"record IS the columns, and LandingControlColumns -- what the "+
 			"table is composed from here -- declares no such column", v)
 	}
-	// The eight control columns less `data`, plus the THREE producer fields
-	// that are not null -- `note` is, and contributes none. The layout's own
-	// columns are not subject to that rule: they are DECLARED, so a nil in
-	// one of them is a value for a column that exists either way.
-	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+3 {
+	// The eight control columns less `data`, plus this record's four producer
+	// fields -- `note` among them, as a present nil.
+	if len(row) != len(LandingControlColumns(LandingOptions{}))-1+4 {
 		t.Errorf("%d columns: %v", len(row), row)
 	}
 }
@@ -811,21 +807,45 @@ func TestLandingSchemaOfAgreesWithLandingSpread(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if len(schema) != len(row) {
-		t.Fatalf("the schema declares %d columns and the row carries %d",
-			len(schema), len(row))
-	}
+	// THE AGREEMENT IS ONE-WAY, and the direction matters. [#42]
+	//
+	// Every column the schema declares must be in the row: a table created
+	// with a column nothing fills is a column that is NULL for ever, and
+	// nobody asked for it.
 	for _, c := range schema {
 		if _, present := row[c.Name]; !present {
 			t.Errorf("the schema declares %q and the row does not carry it: "+
 				"the table would be created with a column nothing fills", c.Name)
 		}
 	}
-	for k := range row {
-		if !schema.Has(k) {
-			t.Errorf("the row carries %q and the schema does not declare it: "+
-				"the load refuses the batch, naming the field", k)
+
+	// The other direction does NOT hold, and it is deliberate. The row carries
+	// `note`, which is null, and the schema declares nothing for it -- a null
+	// has no shape, so a type there would be a guess. The destination is what
+	// resolves that: core.RowFields leaves a nil-throughout field out when the
+	// table has no column for it, so nothing is written and nothing refuses
+	// the batch.
+	//
+	// This test used to require both directions, and v0.77.0 satisfied it by
+	// dropping the null from the ROW as well. That made a row's shape depend
+	// on its values, and CheckRow -- which every driver runs against
+	// records[0] -- then read a DECLARED column that had arrived empty as a
+	// chain that had stopped producing it. It cost a consumer 5 of 23
+	// fetchers.
+	for k, v := range row {
+		if schema.Has(k) {
+			continue
 		}
+		if v != nil {
+			t.Errorf("the row carries %q = %#v and the schema does not declare "+
+				"it: a field with a VALUE has a shape, so there is no reason "+
+				"not to declare it, and the load would refuse the batch", k, v)
+		}
+	}
+	if len(row) != len(schema)+1 {
+		t.Errorf("the row carries %d and the schema declares %d: this record "+
+			"has exactly one null, so the row has exactly one more",
+			len(row), len(schema))
 	}
 }
 

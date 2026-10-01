@@ -183,12 +183,13 @@ func Discovered(declared []string, records []Envelope) (Schema, error) {
 			// it is in the batch, and among the records that do carry one the
 			// first still wins.
 			//
-			// Nil THROUGHOUT keeps the column, as text. Dropping it here would
-			// be a different bug: on this path the record IS the row, so a
-			// schema without the column and a row with the nil is exactly what
-			// Reconcile exists to refuse. The landing path never reaches this
-			// with a nil -- landingColumns drops the value and the column
-			// together, which is what lets it drop both.
+			// Nil THROUGHOUT declares nothing at all, and the rows keep their
+			// key: RowFields leaves it out at the destination, because a null
+			// and an absent field land the same NULL and neither is written
+			// anywhere. An earlier version kept the column as text, on the
+			// reasoning that dropping it would leave a row carrying a column
+			// the table lacks -- which is true, and is the destination's
+			// question, not this one's.
 			if cur, seen := found[k]; !seen || cur == nil {
 				found[k] = v
 			}
@@ -196,7 +197,12 @@ func Discovered(declared []string, records []Envelope) (Schema, error) {
 	}
 
 	names := make([]string, 0, len(found))
-	for k := range found {
+	for k, v := range found {
+		// No record gave it a value, so there is no shape to read and the
+		// type would be a guess. [#42]
+		if v == nil {
+			continue
+		}
 		names = append(names, k)
 	}
 	sort.Strings(names)

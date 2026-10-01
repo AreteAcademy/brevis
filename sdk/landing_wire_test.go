@@ -73,7 +73,7 @@ func TestAJSONColumnReceivesJSONAndNotAStringOfIt(t *testing.T) {
 			}
 			row := out.(map[string]any)
 
-			line, err := load.EncodeRows([]Envelope{{Payload: row}})
+			line, err := load.EncodeRows([]Envelope{{Payload: row}}, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

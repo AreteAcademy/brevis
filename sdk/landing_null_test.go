@@ -26,37 +26,46 @@ import (
 // created later, by EvolveAdditiveFromPayload, from the first record where
 // the field has a value and therefore a shape.
 func TestANullContributesNoColumn(t *testing.T) {
-	row, err := LandingSpread(map[string]any{
-		"id": "A-1", "vehicle_fuel": nil, "price": "10",
-	})
+	record := map[string]any{"id": "A-1", "vehicle_fuel": nil, "price": "10"}
+
+	row, err := LandingSpread(record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, present := row["vehicle_fuel"]; present {
-		t.Errorf("the row carries vehicle_fuel: a null types the column STRING "+
-			"and the first array after it fails the whole batch. Row: %v", row)
+	// THE ROW CARRIES IT. v0.77.0 dropped it here too, and that was the
+	// regression: a DECLARED column absent from the row is refused by
+	// CheckRow in five drivers, which cost a consumer 5 of 23 fetchers.
+	if v, present := row["vehicle_fuel"]; !present || v != nil {
+		t.Errorf("the row has vehicle_fuel = %v (present=%v), want a present "+
+			"nil: the row carries what the producer sent, and a declared "+
+			"column that arrived null has to arrive here too", v, present)
 	}
 	if row["id"] != "A-1" || row["price"] != "10" {
 		t.Errorf("the other fields did not survive: %v", row)
 	}
 
-	schema, err := LandingSchemaOf(map[string]any{
-		"id": "A-1", "vehicle_fuel": nil, "price": "10",
-	})
+	schema, err := LandingSchemaOf(record)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// AND THE SCHEMA DOES NOT. A null has no shape, so the type would be a
+	// guess -- and the guess was STRING, which refused every array that came
+	// after it with no migration back.
 	if schema.Has("vehicle_fuel") {
 		t.Errorf("the schema declares vehicle_fuel from a null: %v", schema.Names())
 	}
 
-	// THE ROW AND THE SCHEMA STILL AGREE, which is what keeps every check
-	// downstream working: no extra for Reconcile to refuse, nothing
-	// undeclared for CheckRow to refuse, no key in the NDJSON for BigQuery to
-	// reject. The drop happening HERE is what makes the rest need no change.
-	if len(schema) != len(row) {
-		t.Fatalf("the schema declares %d and the row carries %d: %v vs %v",
-			len(schema), len(row), schema.Names(), row)
+	// THE TWO DELIBERATELY DIFFER HERE, and that is the design. An earlier
+	// version of this test asserted they agree, with the reasoning that the
+	// agreement is what let every check downstream stay untouched. It did let
+	// Reconcile and CheckRow's undeclared half stay untouched. It also made
+	// the row's SHAPE depend on its VALUES, which is the premise those checks
+	// are built on -- and the one declared column that arrived null then
+	// looked like a chain that had stopped producing it.
+	if len(row) != len(schema)+1 {
+		t.Errorf("the row carries %d and the schema declares %d: the row has "+
+			"exactly one more, the null. %v vs %v",
+			len(row), len(schema), row, schema.Names())
 	}
 	for _, c := range schema {
 		if _, present := row[c.Name]; !present {
@@ -108,14 +117,31 @@ func TestANullInOneRecordDoesNotDecideForTheBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, present := withNull["fuel"]; present {
-		t.Error("the null record carries fuel")
+	// Both rows carry the key; only the one with a VALUE declares a column.
+	if v, present := withNull["fuel"]; !present || v != nil {
+		t.Errorf("the null record has fuel = %v (present=%v), want a present nil",
+			v, present)
 	}
 	if _, present := withValue["fuel"]; !present {
 		t.Error("the record with a value does not carry fuel")
 	}
-	// And the one without it writes NULL in the table, which is the same
-	// thing the null said.
+
+	nullSchema, err := LandingSchemaOf(map[string]any{"id": "A", "fuel": nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nullSchema.Has("fuel") {
+		t.Error("the null record declared a column for fuel")
+	}
+	valueSchema, err := LandingSchemaOf(map[string]any{"id": "B", "fuel": []any{"x"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !valueSchema.Has("fuel") {
+		t.Error("the record with a value declared no column for fuel")
+	}
+	// The null row then writes NULL in that column, which is the same thing
+	// the null said.
 }
 
 // A null nested inside an object is the same rule, one level down.
@@ -128,11 +154,23 @@ func TestANullInsideANestedObjectContributesNoColumn(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, present := row["name_last"]; present {
-			t.Errorf("name_last came from a null: %v", row)
+		if v, present := row["name_last"]; !present || v != nil {
+			t.Errorf("name_last = %v (present=%v), want a present nil", v, present)
 		}
 		if row["name_first"] != "Coleen" {
 			t.Errorf("name_first did not survive: %v", row)
+		}
+		schema, err := LandingSchemaOf(map[string]any{
+			"name": map[string]any{"first": "Coleen", "last": nil},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if schema.Has("name_last") {
+			t.Errorf("name_last was declared from a null: %v", schema.Names())
+		}
+		if !schema.Has("name_first") {
+			t.Errorf("name_first was not declared: %v", schema.Names())
 		}
 		return
 	}
@@ -143,13 +181,23 @@ func TestANullInsideANestedObjectContributesNoColumn(t *testing.T) {
 // A record that is nothing but nulls contributes nothing, and that is not an
 // error: the layout's own control columns are still there, and the producer's
 // fields appear the day they carry a value.
-func TestARecordOfOnlyNullsSpreadsToNothing(t *testing.T) {
-	row, err := LandingSpread(map[string]any{"a": nil, "b": nil})
+func TestARecordOfOnlyNullsDeclaresNothing(t *testing.T) {
+	record := map[string]any{"a": nil, "b": nil}
+
+	row, err := LandingSpread(record)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(row) != 0 {
-		t.Errorf("row = %v, want nothing", row)
+	if len(row) != 2 {
+		t.Errorf("row = %v, want both keys with nil values", row)
+	}
+
+	schema, err := LandingSchemaOf(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(schema) != 0 {
+		t.Errorf("schema = %v, want nothing: no field has a shape", schema.Names())
 	}
 	if err := LandingFieldNames(map[string]any{"a": nil}); err != nil {
 		t.Errorf("a record of nulls was refused: %v", err)

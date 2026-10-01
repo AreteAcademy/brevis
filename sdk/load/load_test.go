@@ -192,7 +192,7 @@ func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
 	data, err := EncodeRows([]core.Envelope{
 		{Payload: map[string]any{"amount": 1}},
 		{Payload: map[string]any{"amount": 2}},
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestEncodeRowsRejectsNonObject(t *testing.T) {
 	// BigQuery maps an NDJSON object's keys onto columns. A scalar or array
 	// has nothing to map, and must fail here rather than inside a load job.
 	for _, payload := range []any{42, "text", []int{1, 2}} {
-		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}); err == nil {
+		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}, nil); err == nil {
 			t.Errorf("Expected %v (%T) to be rejected", payload, payload)
 		}
 	}
@@ -223,7 +223,7 @@ func TestEncodeRowsStructPayloadUsesJSONTags(t *testing.T) {
 		Amount int    `json:"amount"`
 	}
 
-	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}})
+	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}}, nil)
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestDefaultWritesThePayloadUntouched(t *testing.T) {
 		Provider: "open_meteo", Entity: "hourly", SourceKey: "k1",
 		RecordTS: "2026-01-01T00:00:00Z",
 		Payload:  map[string]any{"temperature_c": 20, "observed_at": "2026-01-01T00:00"},
-	}})
+	}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -872,5 +872,79 @@ func TestClusterByStillChecksTheRowsUnderAutodetect(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "amount") {
 		t.Errorf("the refusal does not list what the rows have: %v", err)
+	}
+}
+
+// A nil for a column nothing declares does not reach the wire. [#42]
+//
+// BigQuery does not set IgnoreUnknownValues, so a key the table has no column
+// for fails the load job by name -- `no such field`. Under the landing layout
+// the ROW keeps a null, because a DECLARED column that arrived empty has to
+// stay in it or CheckRow refuses the load in five drivers. Nothing declares
+// the field, nothing creates a column for it, and nothing should write it.
+//
+// AT THE WIRE and not at a function: the bytes are what BigQuery reads, and
+// the same measurement is what made the JSON-string bug decidable. floci
+// refuses load jobs, so this is the half that can be asserted at all.
+func TestEncodeRowsDropsANullNothingDeclares(t *testing.T) {
+	declared := []string{"id", "declared_empty"}
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id":              "A-1",
+		"declared_empty":  nil,
+		"undeclared_null": nil,
+	}}}, declared)
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	line := string(data)
+
+	if strings.Contains(line, "undeclared_null") {
+		t.Errorf("the wire carries undeclared_null: BigQuery has no column "+
+			"for it and the load job fails with `no such field`, taking the "+
+			"whole batch with it.\n%s", line)
+	}
+	// The DECLARED one stays. The column exists, and NULL is a value for it --
+	// dropping it here would write nothing where the producer said null, and
+	// on a MERGE that is the difference between clearing a field and leaving
+	// yesterday's value in place.
+	if !strings.Contains(line, `"declared_empty":null`) {
+		t.Errorf("the wire dropped declared_empty, which the table HAS:\n%s", line)
+	}
+	if !strings.Contains(line, `"id":"A-1"`) {
+		t.Errorf("the wire lost id:\n%s", line)
+	}
+}
+
+// And a VALUE nothing declares is never silently dropped.
+//
+// That would be data loss, quietly, which is the one outcome worse than the
+// refusal. CheckRow stops it before this is reached; this pins that the wire
+// does not take over the job and start discarding fields on its own.
+func TestEncodeRowsNeverDropsAValue(t *testing.T) {
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id": "A-1", "undeclared_value": "kept",
+	}}}, []string{"id"})
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	if !strings.Contains(string(data), "undeclared_value") {
+		t.Errorf("the wire dropped a field that HAS a value: a field nothing "+
+			"declares is refused by CheckRow, by name, and never discarded "+
+			"here.\n%s", data)
+	}
+}
+
+// With no declaration there is nothing to compare against, and nothing is
+// dropped. Autodetect creates the table FROM these rows.
+func TestEncodeRowsWithNoDeclarationKeepsEverything(t *testing.T) {
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id": "A-1", "empty": nil,
+	}}}, nil)
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	if !strings.Contains(string(data), "empty") {
+		t.Errorf("a null was dropped with no declaration to judge it by: "+
+			"under autodetect the table is created from these rows.\n%s", data)
 	}
 }

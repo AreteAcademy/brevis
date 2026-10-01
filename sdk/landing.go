@@ -539,33 +539,22 @@ func landingColumns(record map[string]any) (map[string]any, error) {
 		out, from = flat.Values, flat.From
 	}
 
-	// A NULL CONTRIBUTES NOTHING -- no column, and no value. [#42]
+	// A NULL STAYS IN THE ROW, and contributes no column. [#42]
 	//
-	// A null has no shape, so "the shape decides, never the value" has nothing
-	// to read and the type would be a guess. It was: `vehicle_fuel` arrived
-	// null 786 times and as an array 62 times over ninety days, the first
-	// record created the column STRING, and every batch carrying an array was
-	// refused by the load job with no STRING -> JSON migration to undo it.
-	// The column now appears from the first record that HAS a value, with the
-	// shape that value has.
+	// Those are two different questions and v0.77.0 answered them with one
+	// answer, which is the regression it shipped. A null has no shape, so the
+	// SCHEMA cannot take a type from it -- that is LandingSchemaOf's half, and
+	// core.Discovered's. The ROW is not a typing question at all: it carries
+	// what the producer sent, and a declared column that arrived null has to
+	// arrive here too or every driver's CheckRow refuses the load by name.
 	//
-	// DROPPED HERE, where the row and the schema are both built, so they stay
-	// in agreement. That is what makes the rest need no change: nothing extra
-	// for Reconcile to refuse, nothing undeclared for CheckRow to refuse, and
-	// no key in the NDJSON for BigQuery to reject. And it loses nothing: a
-	// dropped null and an absent field land the same NULL.
+	// Dropping it here made the row's SHAPE depend on its VALUES, and every
+	// check downstream is built on the premise that it does not -- Discovered
+	// says so in its own comment. It cost a consumer 5 of 23 fetchers.
 	//
-	// Per FIELD, not per record, and the batch-level answer falls out of it --
-	// the table is the union of the records, so one record's value creates the
-	// column and the records that said null simply have no key for it.
-	kept := make(map[string]any, len(out))
-	for k, v := range out {
-		if v == nil {
-			continue
-		}
-		kept[k] = v
-	}
-	out = kept
+	// What the destination does with a nil for a column that does not exist is
+	// the destination's: core.RowFields leaves it out, because a null and an
+	// absent field land the same NULL and neither is written anywhere.
 
 	for _, k := range landingKeys(out) {
 		if err := core.CheckColumnName(k); err != nil {
@@ -648,6 +637,20 @@ func LandingSchemaOf(record map[string]any) (Schema, error) {
 	}
 	out := make(Schema, 0, len(columns))
 	for _, k := range landingKeys(columns) {
+		// A NULL DECLARES NOTHING. [#42] It has no shape, so the rule has
+		// nothing to read and the type would be a guess -- and it was: a field
+		// that arrived null 786 times and as an array 62 times made the column
+		// STRING, and every batch with an array in it was refused by the load
+		// job with no STRING -> JSON migration back.
+		//
+		// The ROW keeps it, and this is the one place the two deliberately
+		// differ. They used to share one answer, which is how v0.77.0 fixed
+		// the schema by breaking the row. The column appears from the first
+		// record carrying a VALUE, with that value's shape; until then the
+		// rows land NULL, which is what they meant.
+		if columns[k] == nil {
+			continue
+		}
 		out = append(out, Column{Name: k, Type: core.TypeFromShape(columns[k])})
 	}
 	return out, nil
