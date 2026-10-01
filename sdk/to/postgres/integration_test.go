@@ -1705,3 +1705,58 @@ func TestADeclaredNullIsWrittenAndNotOmitted(t *testing.T) {
 			"WRITTEN empty", *area)
 	}
 }
+
+// The gateway's config shape, end to end through a real driver: a Schema, NO
+// Columns, and a field null in every record. [#42]
+//
+// This is the shape no test in this repository had, and three releases in a
+// row shipped a bug in it. The SDK's own tests all declare Columns, because
+// the facade fills it from the Schema -- only a driver used directly, which is
+// what the gateway does, arrives with Columns empty.
+//
+// It was caught the first two times by a consumer and the third time by
+// running the PUBLISHED artifact. Running the published artifact is worth
+// keeping; it should not be the only place this shape is exercised.
+func TestTheGatewaysShapeLoadsEndToEnd(t *testing.T) {
+	conn := connect(t)
+	ctx := context.Background()
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+name) })
+
+	declared := sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: true, Keyed: true})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+		Evolve: sdk.EvolveAdditiveFromPayload}
+	land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+	var batch []sdk.Envelope
+	for _, id := range []string{"A-1", "A-2"} {
+		row, err := land(map[string]any{"id": id, "inactive_at": nil})
+		if err != nil {
+			t.Fatal(err)
+		}
+		batch = append(batch, sdk.Envelope{Payload: row})
+	}
+
+	// Schema and NO Columns -- exactly what the gateway's sink builds.
+	if _, err := to.Write(ctx, batch, sdk.WriteOptions{Schema: declared}); err != nil {
+		t.Fatalf("the gateway's own shape was refused:\n\n%v", err)
+	}
+
+	// The column the batch brought exists; the one that was null in every
+	// record does not.
+	types := columnTypes(t, conn, name)
+	if _, ok := types["id"]; !ok {
+		t.Errorf("the batch's own column was not created: %v", columnNames(t, conn, name))
+	}
+	if _, ok := types["inactive_at"]; ok {
+		t.Error("a null created inactive_at: the first value after it would " +
+			"have to fit a type nobody chose")
+	}
+	var n int
+	if err := conn.QueryRow(ctx, "SELECT count(*) FROM "+name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("%d rows, want 2", n)
+	}
+}

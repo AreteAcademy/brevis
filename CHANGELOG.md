@@ -18,6 +18,33 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.80.0] — 2026-10-01
+
+### Fixed: 0.79.0's fix was incomplete on the path it was for
+
+`WithDiscovered` extends the declaration with the columns a batch brought, and
+it extended `Columns` rather than the declaration. With a `Schema` and no
+`Columns` — the gateway's shape, and the one 0.79.0 was about — the result was
+a `Columns` list naming ONLY what the batch brought, and `CheckRow` then
+refused the row for carrying every column the caller had declared:
+
+```
+the row carries brevis_ingestion_id, brevis_operation, brevis_received_at,
+brevis_record_key, which Columns does not declare
+```
+
+**Caught by running the published 0.79.0 against the gateway's config shape**,
+which is the only thing that could have caught it: every test in this
+repository declares `Columns`, because the `sdk.Target` facade fills it from
+the Schema. Only a driver used directly — which is what the gateway does —
+arrives with `Columns` empty.
+
+That shape is now an integration test, end to end through a real driver,
+rather than something a release runs once.
+
+A caller that declares `Columns` is unaffected; for them the two were always
+the same list.
+
 ## [0.79.0] — 2026-10-01
 
 ### Fixed: `No such field` on every new table the gateway creates

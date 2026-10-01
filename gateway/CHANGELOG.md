@@ -15,7 +15,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ## [0.21.0] — 2026-10-01
 
-Requires sdk v0.79.0. **Fixes a regression in 0.20.0 that dead-lettered whole
+Requires sdk v0.80.0. **Fixes a regression in 0.20.0 that dead-lettered whole
 batches on every new table.**
 
 ### `No such field` on a new table with an empty optional field

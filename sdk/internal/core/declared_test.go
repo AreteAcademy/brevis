@@ -87,3 +87,52 @@ func TestBothCarriersAnswerTheSameWay(t *testing.T) {
 		})
 	}
 }
+
+// WithDiscovered extends the DECLARATION, not the Columns slice.
+//
+// Caught by running the PUBLISHED v0.79.0 against the gateway's config shape,
+// which is the only reason it was caught at all: the SDK's own tests declare
+// Columns, so `opt.Columns` is never the empty slice there.
+//
+// With a Schema and no Columns, extending `opt.Columns` produces a Columns
+// list holding ONLY the discovered names -- and CheckRow, which reads Columns,
+// then refuses the row for carrying every column the Schema declared:
+//
+//	the row carries brevis_ingestion_id, brevis_operation, …, which Columns
+//	does not declare
+//
+// The declaration is what grows. Columns was never meant to end up smaller
+// than what the caller declared.
+func TestWithDiscoveredExtendsTheWholeDeclaration(t *testing.T) {
+	schema := Schema{
+		{Name: "brevis_ingestion_id", Type: TypeString},
+		{Name: "id", Type: TypeString},
+	}
+	found := Schema{{Name: "novo", Type: TypeString}}
+
+	got := WithDiscovered(WriteOptions{Schema: schema}, found)
+
+	want := "brevis_ingestion_id,id,novo"
+	if g := strings.Join(got.Columns, ","); g != want {
+		t.Errorf("Columns = %q, want %q.\n\nA Schema-only caller ends up with "+
+			"a Columns list that names only what the BATCH brought, and "+
+			"CheckRow then refuses the row for carrying what the caller "+
+			"declared.", g, want)
+	}
+	if g := strings.Join(got.Schema.Names(), ","); g != want {
+		t.Errorf("Schema = %q, want %q", g, want)
+	}
+	if g := strings.Join(got.Discovered, ","); g != "novo" {
+		t.Errorf("Discovered = %q, want just the batch's own", g)
+	}
+}
+
+// A Columns-only caller is unchanged.
+func TestWithDiscoveredLeavesAColumnsCallerAlone(t *testing.T) {
+	got := WithDiscovered(
+		WriteOptions{Columns: []string{"id"}},
+		Schema{{Name: "novo", Type: TypeString}})
+	if g := strings.Join(got.Columns, ","); g != "id,novo" {
+		t.Errorf("Columns = %q, want id,novo", g)
+	}
+}

@@ -257,8 +257,15 @@ func WithDiscovered(opt WriteOptions, found Schema) WriteOptions {
 	schema = append(schema, opt.Schema...)
 	schema = append(schema, found...)
 
-	columns := make([]string, 0, len(opt.Columns)+len(found))
-	columns = append(columns, opt.Columns...)
+	// The DECLARATION grows, not the Columns slice. [#42] With a Schema and no
+	// Columns, extending `opt.Columns` leaves a Columns list holding only what
+	// the BATCH brought -- and CheckRow, which reads Columns, then refuses the
+	// row for carrying every column the caller declared. Caught by running the
+	// published artifact against the gateway's config shape; it cannot be
+	// caught here, because every test in this package declares Columns.
+	declared := opt.DeclaredColumns()
+	columns := make([]string, 0, len(declared)+len(found))
+	columns = append(columns, declared...)
 	names := make([]string, 0, len(found))
 	for _, c := range found {
 		columns = append(columns, c.Name)
