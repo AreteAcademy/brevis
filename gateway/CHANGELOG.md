@@ -13,6 +13,38 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.21.0] — 2026-10-01
+
+Requires sdk v0.79.0. **Fixes a regression in 0.20.0 that dead-lettered whole
+batches on every new table.**
+
+### `No such field` on a new table with an empty optional field
+
+Reported on [#42](https://github.com/AreteAcademy/brevis/issues/42): a 15
+minute load test, 4,500 events, 8 batches, all parked, the table at 0 rows.
+
+A field that is `null` in every event of a batch creates no column — right —
+and since 0.20.0 the row still carries the key — also right. BigQuery refuses a
+key it has no column for, and the SDK's encoder was meant to leave it out. It
+did not on this path, because this sink declares with a `Schema` and never with
+`Columns`, and the encoder was reading `Columns`.
+
+**It hit every table as it was created**, for every optional field that was
+still empty in the first batches. A table whose fields all had values at least
+once kept loading, which is why only some tables showed it.
+
+Nothing was lost: the events are in the dead letter and can be replayed on
+this version.
+
+### The sink's declaration is now asserted
+
+`sink.options` is its own method with a test on it, because the fact that this
+sink declares with `Schema` and not `Columns` is what three bugs have depended
+on and nothing asserted it. Setting `Columns` here is the tidy-looking change
+that is not: it would reach `CheckRow`, which enforces the declaration against
+the FIRST record, while this Schema is the union of a batch whose records need
+not agree.
+
 ## [0.20.0] — 2026-10-01
 
 Requires sdk v0.78.0. **The gateway was not affected by the v0.77.0 regression

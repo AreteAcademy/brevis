@@ -18,6 +18,74 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.79.0] — 2026-10-01
+
+### Fixed: `No such field` on every new table the gateway creates
+
+**A regression in 0.78.0.** Reported on
+[#42](https://github.com/AreteAcademy/brevis/issues/42) after a load test:
+4,500 events, 8 batches, every one dead-lettered, the table at 0 rows.
+
+```
+JSON parsing error in row starting at position 0: No such field: inactive_at.
+```
+
+Every record carried `"inactive_at": null`. The table was created without that
+column — right, a null has no shape. The row carried the key — right since
+0.78.0, because a DECLARED column that arrived empty has to be in the row.
+BigQuery does not set `IgnoreUnknownValues`, so it refused the row, and the
+encoder was supposed to have left the key out.
+
+It did not, because it was asked the wrong question. The gateway declares with
+a `Schema` and never with `Columns`, so `EncodeRows` read an empty `Columns`
+as "nothing was declared" — the autodetect branch — on a path that creates the
+table FROM a declaration.
+
+**It happens whenever a field is null in every record of a batch and the table
+has no column for it yet**: on the first batches of a new table, for every
+optional field that is still empty, which is how tables are born.
+
+The two fields answer two questions, and that is now written down where the
+answer is given:
+
+```
+Columns  -- "the consumer promised every row has exactly these"
+Schema   -- "this is what the table is made of"
+```
+
+`LoadConfig.DeclaredColumns` answers the second, with the rule `sdk.Target`
+already uses: Columns when it has any, the Schema's names otherwise, since
+`Target` refuses both at once. The encoder asks it. `CheckRow` must not, and
+the doc says so with the measurement — on a gateway batch the Schema is the
+UNION of records that need not agree, and deriving Columns from it refuses an
+ordinary batch.
+
+### Fixed: a `Schema` is a declaration everywhere it is one
+
+An audit of every reader of `Columns`, because this was the third release in a
+row where the gateway path broke while this SDK's suite stayed green — the
+gateway declares with a `Schema` and never with `Columns`, and every test here
+declares `Columns`.
+
+- **The batch discovery refused a Schema-only caller** for "nothing is
+  declared", naming the one thing they had done. It takes the whole
+  declaration now rather than a list of names, so the three call sites cannot
+  each get it wrong. It also stops rediscovering columns the Schema already
+  declares, which would have added them twice and dated them as a batch's.
+- **Redshift** fell through to the batch's own keys for a Schema-only caller,
+  so the `COPY` named a column the table does not have.
+- **The `DedupMerge` key and the partition options** are pre-flight refusals
+  that exist to stop before the extract, and a Schema-only caller skipped
+  both. They apply now, so a configuration error that used to surface as a
+  destination error after the whole extract is refused at startup instead.
+  Nothing that was correct becomes incorrect; a caller already relying on one
+  of these being silent will see the refusal they should have had.
+- **The table description** omitted how to deduplicate although the table
+  carried the column.
+
+Left deliberately on `Columns`, with the reason written where it is read: the
+declared-against-table check, and `CheckRow` in five drivers.
+
 ## [0.78.0] — 2026-10-01
 
 ### Fixed: a declared column that arrives `null` no longer refuses the load
