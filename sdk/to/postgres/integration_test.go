@@ -1151,3 +1151,42 @@ func columnComment(t *testing.T, conn *pgx.Conn, table, column string) *string {
 	}
 	return note
 }
+
+// The `document` shape's `data` column is readable as JSON, not as a string
+// of JSON.
+//
+// `data` is declared TypeJSON and carried a Go string until a consumer found
+// what that means on BigQuery. Postgres parses a string into jsonb and always
+// did, so this is the test that the fix for BigQuery did not break the
+// destination that was already right.
+func TestTheDocumentColumnIsQueryableJSON(t *testing.T) {
+	conn := connect(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+name)
+	})
+
+	out, err := sdk.Landing(name, sdk.LandingKey("id"))(map[string]any{
+		"id": "A-1", "nested": map[string]any{"uf": "SP"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := sdk.LandingSchema(sdk.LandingOptions{})
+	to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: out}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("landing the document shape: %v", err)
+	}
+
+	var uf *string
+	if err := conn.QueryRow(context.Background(),
+		"SELECT data->'nested'->>'uf' FROM "+name).Scan(&uf); err != nil {
+		t.Fatal(err)
+	}
+	if uf == nil || *uf != "SP" {
+		t.Errorf("data->'nested'->>'uf' = %v, want SP -- the column holds "+
+			"JSON, but not the JSON somebody can query", uf)
+	}
+}

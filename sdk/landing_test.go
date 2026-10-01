@@ -367,8 +367,16 @@ func TestLandingRefusesAReservedKey(t *testing.T) {
 func TestLandingKeepsTheRecord(t *testing.T) {
 	row := landingRow(t, map[string]any{"id": "A", "nested": map[string]any{"x": 1}},
 		"t", LandingKey("id"))
+	// JSONText and not a plain string: `data` is declared TypeJSON, and a
+	// string lands in BigQuery as a JSON value of TYPE string.
+	body, marked := row[LandingColumnData].(JSONText)
+	if !marked {
+		t.Fatalf("the data column is a %T, not a JSONText: on the wire it "+
+			"becomes a JSON string and every JSON_VALUE against it is NULL",
+			row[LandingColumnData])
+	}
 	var back map[string]any
-	if err := json.Unmarshal([]byte(row[LandingColumnData].(string)), &back); err != nil {
+	if err := json.Unmarshal([]byte(body), &back); err != nil {
 		t.Fatalf("the data column is not JSON: %v", err)
 	}
 	if back["id"] != "A" {

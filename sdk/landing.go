@@ -449,7 +449,13 @@ func Landing(table string, opts ...LandingArg) Transformer {
 			if err != nil {
 				return nil, fmt.Errorf("the record is not JSON: %w", err)
 			}
-			row[LandingColumnData] = string(body)
+			// MARKED, like every other value that goes into a column
+			// declared JSON. A plain string here lands in BigQuery as a JSON
+			// value of TYPE string: JSON_TYPE returns "string" and every
+			// JSON_VALUE(data, '$.x') returns NULL, on the DEFAULT shape.
+			// Reported against the gateway's `columns`; `document` had it too
+			// and nobody had looked.
+			row[LandingColumnData] = core.JSONText(body)
 			return row, nil
 		}
 

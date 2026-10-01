@@ -169,7 +169,7 @@ func TestResolveConfigRejectsUnwrittenFormat(t *testing.T) {
 	}
 }
 
-// --- encodeRows ----------------------------------------------------------
+// --- EncodeRows ----------------------------------------------------------
 
 func decodeNDJSON(t *testing.T, data []byte) []map[string]any {
 	t.Helper()
@@ -188,14 +188,13 @@ func decodeNDJSON(t *testing.T, data []byte) []map[string]any {
 }
 
 func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
-	data, err := l.encodeRows([]core.Envelope{
+	data, err := EncodeRows([]core.Envelope{
 		{Payload: map[string]any{"amount": 1}},
 		{Payload: map[string]any{"amount": 2}},
 	})
 	if err != nil {
-		t.Fatalf("encodeRows: %v", err)
+		t.Fatalf("EncodeRows: %v", err)
 	}
 
 	rows := decodeNDJSON(t, data)
@@ -208,27 +207,25 @@ func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
 }
 
 func TestEncodeRowsRejectsNonObject(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
 	// BigQuery maps an NDJSON object's keys onto columns. A scalar or array
 	// has nothing to map, and must fail here rather than inside a load job.
 	for _, payload := range []any{42, "text", []int{1, 2}} {
-		if _, err := l.encodeRows([]core.Envelope{{Payload: payload}}); err == nil {
+		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}); err == nil {
 			t.Errorf("Expected %v (%T) to be rejected", payload, payload)
 		}
 	}
 }
 
 func TestEncodeRowsStructPayloadUsesJSONTags(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 	type tx struct {
 		ID     string `json:"id"`
 		Amount int    `json:"amount"`
 	}
 
-	data, err := l.encodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}})
+	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}})
 	if err != nil {
-		t.Fatalf("encodeRows: %v", err)
+		t.Fatalf("EncodeRows: %v", err)
 	}
 
 	rows := decodeNDJSON(t, data)
@@ -423,9 +420,8 @@ func TestPartitionOptionsNeedTheLoadedAtColumn(t *testing.T) {
 func TestDefaultWritesThePayloadUntouched(t *testing.T) {
 	// The whole point: what a row looks like is the caller's decision, made
 	// in Transform. With Metadata off the SDK adds nothing at all.
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
-	data, err := l.encodeRows([]core.Envelope{{
+	data, err := EncodeRows([]core.Envelope{{
 		Provider: "open_meteo", Entity: "hourly", SourceKey: "k1",
 		RecordTS: "2026-01-01T00:00:00Z",
 		Payload:  map[string]any{"temperature_c": 20, "observed_at": "2026-01-01T00:00"},

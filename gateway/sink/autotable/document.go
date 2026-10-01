@@ -86,7 +86,9 @@ func (document) columns(record map[string]any) (map[string]any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the record is not JSON: %w", err)
 	}
-	return map[string]any{ColumnData: string(body)}, nil
+	// MARKED: ColumnData is declared JSON, and a plain string lands there as
+	// a JSON value of TYPE string. See sdk.JSONText.
+	return map[string]any{ColumnData: sdk.JSONText(body)}, nil
 }
 
 func (document) schema(map[string]any) (sdk.Schema, error) {

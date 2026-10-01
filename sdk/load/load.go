@@ -338,7 +338,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// Encoded before the table is prepared: creating a table with the
 	// metadata columns typed needs the rows, because BigQuery infers the
 	// caller's own columns from them.
-	data, err := l.encodeRows(envelopes)
+	data, err := EncodeRows(envelopes)
 	if err != nil {
 		return fail(err)
 	}
@@ -525,8 +525,21 @@ func (l *Loader) renamedBucketHint(ctx context.Context) string {
 		previous, previous)
 }
 
-// encodeRows turns the batch into the bytes that land.
-func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
+// EncodeRows turns the batch into the bytes that land.
+//
+// A PURE function, and exported, for the reason CreationPlan is: a decision
+// made inside a method that holds a client is never seen by a test. These
+// bytes ARE what BigQuery reads -- a column's type is declared in the job and
+// its VALUE is decided here -- and nothing could assert them while this took a
+// *Loader it never used.
+//
+// What it was hiding: a Go string destined for a JSON column encodes as a
+// JSON string literal, so BigQuery stores a JSON value of type `string` and
+// every JSON_VALUE against it returns NULL. The column is right and the data
+// in it is unreachable, which is the worst of the three outcomes because it
+// looks correct. Reported by a consumer against gateway v0.15.0; see
+// core.JSONText.
+func EncodeRows(envelopes []core.Envelope) ([]byte, error) {
 	var buf bytes.Buffer
 
 	for i, env := range envelopes {
@@ -556,7 +569,7 @@ func checkClusterFields(fields []string, envelopes []core.Envelope) error {
 
 	first, ok := envelopes[0].Payload.(map[string]any)
 	if !ok {
-		return nil // encodeRows already refused anything that is not an object
+		return nil // EncodeRows already refused anything that is not an object
 	}
 
 	var missing []string

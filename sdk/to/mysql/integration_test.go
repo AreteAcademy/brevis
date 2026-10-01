@@ -1102,3 +1102,34 @@ func TestADiscoveredColumnCarriesItsOrigin(t *testing.T) {
 			"declared it", note)
 	}
 }
+
+// The `document` shape's `data` column is readable as JSON, not as a string
+// of JSON. The destination that was already right must stay right.
+func TestTheDocumentColumnIsQueryableJSON(t *testing.T) {
+	db := open(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _, _ = db.Exec("DROP TABLE IF EXISTS " + name) })
+
+	out, err := sdk.Landing(name, sdk.LandingKey("id"))(map[string]any{
+		"id": "A-1", "nested": map[string]any{"uf": "SP"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := sdk.LandingSchema(sdk.LandingOptions{})
+	to := tomy.Table{DSN: dsn(t), Name: name, CreateTable: true}
+	if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: out}},
+		sdk.WriteOptions{Schema: declared, Columns: declared.Names()}); err != nil {
+		t.Fatalf("landing the document shape: %v", err)
+	}
+
+	var uf *string
+	if err := db.QueryRow("SELECT JSON_UNQUOTE(JSON_EXTRACT(data, '$.nested.uf')) FROM " + name).
+		Scan(&uf); err != nil {
+		t.Fatal(err)
+	}
+	if uf == nil || *uf != "SP" {
+		t.Errorf("JSON_EXTRACT(data,'$.nested.uf') = %v, want SP", uf)
+	}
+}
