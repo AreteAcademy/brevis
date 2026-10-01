@@ -20,9 +20,9 @@ type shares struct {
 	budget map[string]time.Duration
 	landed map[string]bool
 	block  map[string]bool
-	// closeWindow, when set, is called by a blocked table before it waits --
-	// so the test can make the CALLER's window close rather than the table's.
-	closeWindow func()
+	// hold, when set, is how long a blocked table keeps going AFTER its own
+	// share has closed -- long enough to outlast the caller's window too.
+	hold time.Duration
 }
 
 func newShares(block ...string) *shares {
@@ -60,10 +60,8 @@ func (w watcher) Write(ctx context.Context, _ []sdk.Envelope) (int64, error) {
 	w.log.mu.Unlock()
 
 	if blocked {
-		if w.log.closeWindow != nil {
-			w.log.closeWindow()
-		}
 		<-ctx.Done()
+		time.Sleep(w.log.hold)
 		return 0, ctx.Err()
 	}
 	w.log.mu.Lock()
@@ -254,28 +252,39 @@ func (r refuser) Write(context.Context, []sdk.Envelope) (int64, error) {
 // The CALLER's window closing is a different thing from a table's share
 // closing, and the run stops.
 //
-// They look alike at the call site -- both come back as a context error from
-// the same line -- and treating them alike either way is wrong. Carry on past
-// a closed drain window and every remaining table is attempted with nothing
-// left, fails, and is named in an error as though it had overrun something.
+// THE FIRST VERSION OF THIS TEST PROVED NOTHING, and it is worth the lines.
+// It closed the caller's window with `cancel()`, which comes back as
+// `context.Canceled` -- a different branch, the one every non-deadline error
+// takes, which stops the run anyway. So the guard could be deleted and the
+// test still passed. The window has to close by its own DEADLINE, which is
+// how a drain window actually ends, and then the error is
+// `DeadlineExceeded` and indistinguishable from a table overrunning its share
+// unless something asks whose deadline it was.
+//
+// Without the guard, every table behind the first is attempted with nothing
+// left, fails instantly, and is named in an error as though it had overrun
+// something of its own.
 func TestTheCallersWindowClosingStopsTheRun(t *testing.T) {
-	log := newShares("a_blocks")
+	log := newShares("a_holds")
+	// Past its own share AND past what is left of the caller's window.
+	log.hold = 300 * time.Millisecond
 	r := routerWatching(t, log)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 	defer cancel()
-	log.closeWindow = cancel
 
-	_, err := r.Write(ctx, batchFor("a_blocks", "m_after", "z_after"))
+	_, err := r.Write(ctx, batchFor("a_holds", "m_after", "z_after"))
 	if err == nil {
 		t.Fatal("a closed window was not reported")
 	}
-	if !strings.Contains(err.Error(), "a_blocks") {
+	if !strings.Contains(err.Error(), "a_holds") {
 		t.Errorf("the error is %q and does not name where it stopped", err)
 	}
-	if strings.Contains(err.Error(), "ran out of their share") {
-		t.Errorf("a closed drain window was reported as a table overrunning "+
-			"its share: %v", err)
+	for _, blameless := range []string{"m_after", "z_after"} {
+		if strings.Contains(err.Error(), blameless) {
+			t.Errorf("the error blames %s, which was never given a window to "+
+				"overrun: %v", blameless, err)
+		}
 	}
 
 	log.mu.Lock()
