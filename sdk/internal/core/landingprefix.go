@@ -107,3 +107,79 @@ func resolveLandingPrefix() string {
 	}
 	return prefix
 }
+
+// LandingSuffixes is what the landing layout calls its own eight columns,
+// after the prefix.
+//
+// Here and not in `sdk` because the check below needs them, and two lists of
+// the same eight is a list that drifts: the day one gains a column, a
+// prefix change stops being detected and nobody notices until a dashboard
+// goes flat. A test in `sdk` pins its column names against these.
+var LandingSuffixes = []string{
+	"ingestion_id", "record_key", "operation", "received_at",
+	"loaded_at", "stream", "gateway", "received_bytes",
+}
+
+// CheckLandingPrefixMatches refuses a table whose control columns were
+// created under a different prefix.
+//
+// Nothing ever DROPS a column: Plan emits `add` and `widen` and nothing else,
+// deliberately. So switching BREVIS_LANDING_PREFIX on a live table does not
+// rename eight columns -- it adds eight and abandons eight. Every row after
+// that has NULLs in the old set, and the query a landing table exists for
+//
+//	qualify row_number() over (partition by brevis_record_key
+//	                           order by brevis_received_at desc) = 1
+//
+// partitions on a column nothing writes any more. Rows arrive, the dashboard
+// goes flat, and nothing logs anything.
+//
+// REFUSED AND NOT WARNED, because that failure has no symptom. A warning is
+// the right shape when the wrong outcome announces itself; this one looks
+// like success for as long as nobody runs the query.
+//
+// NARROW ON BOTH SIDES. It fires only when the DECLARATION is this layout --
+// a consumer with their own schema is not making this mistake -- and only
+// when the table carries the FULL EIGHT under one other prefix. A warehouse
+// where somebody named a column `brevis_stream` by hand must not start
+// failing.
+func CheckLandingPrefixMatches(declared, inTable []string, table string) error {
+	mine := LandingPrefix()
+
+	declaring := false
+	for _, c := range declared {
+		if c == mine+LandingSuffixes[0] {
+			declaring = true
+			break
+		}
+	}
+	if !declaring || len(inTable) == 0 {
+		return nil
+	}
+
+	// Group the table's columns by the prefix they would have, if they were
+	// ours. Eight hits on one prefix is a landing table; fewer is a
+	// coincidence.
+	seen := map[string]int{}
+	for _, c := range inTable {
+		for _, suffix := range LandingSuffixes {
+			if p, ok := strings.CutSuffix(c, suffix); ok && p != "" && p != mine {
+				seen[p]++
+			}
+		}
+	}
+	for prefix, n := range seen {
+		if n < len(LandingSuffixes) {
+			continue
+		}
+		return fmt.Errorf("%s already carries the landing layout under %q and "+
+			"this load declares %q. Nothing drops a column, so the eight under "+
+			"%q would stay and eight more would be added -- every row after "+
+			"that with NULLs in the old set, and `partition by %srecord_key` "+
+			"reading a column nothing writes any more. Point %s at a new "+
+			"table, or rename the eight columns yourself and then change the "+
+			"prefix",
+			table, prefix, mine, prefix, prefix, EnvLandingPrefix)
+	}
+	return nil
+}

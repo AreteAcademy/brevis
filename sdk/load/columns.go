@@ -74,6 +74,16 @@ func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 		return fmt.Errorf("checking %s before the extract: %w", nameOf(table), err)
 	}
 
+	// A table created under a DIFFERENT prefix, refused before the extract.
+	// See core.CheckLandingPrefixMatches for why it refuses rather than warns.
+	inTable := make([]string, 0, len(meta.Schema))
+	for _, f := range meta.Schema {
+		inTable = append(inTable, f.Name)
+	}
+	if err := core.CheckLandingPrefixMatches(columns, inTable, nameOf(table)); err != nil {
+		return err
+	}
+
 	// A column the table lacks is the one difference EvolveAdditive was asked
 	// to repair, so refusing it here would make the flag unreachable in its
 	// only case: a declaration that adds a column is the only way to ask for

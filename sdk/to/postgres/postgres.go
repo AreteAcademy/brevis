@@ -460,6 +460,14 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 		return err
 	}
 
+	// A table created under a DIFFERENT prefix, refused before the extract.
+	// Nothing drops a column, so this would add eight and abandon eight --
+	// see core.CheckLandingPrefixMatches for why it refuses rather than
+	// warns.
+	if err := core.CheckLandingPrefixMatches(columns, ofTable, t.Name); err != nil {
+		return err
+	}
+
 	has := make(map[string]bool, len(ofTable))
 	for _, c := range ofTable {
 		has[c] = true

@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
 // The layout's own columns follow BREVIS_LANDING_PREFIX.
@@ -168,5 +170,25 @@ func TestTheReservedRuleFollowsThePrefix(t *testing.T) {
 	cmd.Env = append(os.Environ(), marker+"=1", "BREVIS_LANDING_PREFIX=acme")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("with BREVIS_LANDING_PREFIX=acme:\n%s", out)
+	}
+}
+
+// The layout's column names are the prefix plus core's eight suffixes, in
+// that order.
+//
+// Two lists of the same eight is a list that drifts, and the one that drifts
+// silently is core's: a suffix missing there makes
+// CheckLandingPrefixMatches stop detecting a prefix change, and that failure
+// has no symptom at all. This is what keeps them one list in two places.
+func TestTheControlColumnsAreThePrefixPlusTheSuffixes(t *testing.T) {
+	got := LandingControlColumns(LandingOptions{})
+	if len(got) != len(core.LandingSuffixes) {
+		t.Fatalf("%d control columns against %d suffixes: %v",
+			len(got), len(core.LandingSuffixes), got.Names())
+	}
+	for i, suffix := range core.LandingSuffixes {
+		if want := LandingPrefix + suffix; got[i].Name != want {
+			t.Errorf("control column %d is %q, want %q", i, got[i].Name, want)
+		}
 	}
 }

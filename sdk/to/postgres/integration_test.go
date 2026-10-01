@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"testing"
@@ -1224,5 +1225,63 @@ func TestAStringIntoAJSONColumnIsFineHere(t *testing.T) {
 	if uf == nil || *uf != "SP" {
 		t.Errorf("payload->>'uf' = %v, want SP -- the server parses the text, "+
 			"and the BigQuery refusal must not travel here", uf)
+	}
+}
+
+// A table created under one prefix refuses a load declaring another.
+//
+// In a child process, because the prefix is resolved when the package loads.
+// The parent creates the table with `brevis_` columns; the child runs with
+// BREVIS_LANDING_PREFIX=acme and must be refused BEFORE the extract rather
+// than quietly adding eight columns beside the eight already there.
+func TestADifferentPrefixOnALiveTableIsRefused(t *testing.T) {
+	const marker = "BREVIS_TEST_PGPREFIX_CHILD"
+
+	if name := os.Getenv(marker); name != "" {
+		declared := sdk.LandingSchema(sdk.LandingOptions{})
+		err := topg.Table{DSN: dsn(t), Name: name}.
+			CheckDestination(context.Background(), declared.Names())
+		if err == nil {
+			t.Fatal("accepted: eight columns would be added beside the eight " +
+				"already there, and `partition by brevis_record_key` would " +
+				"read a column nothing writes")
+		}
+		// Matched on what ONLY this refusal says. Without the check,
+		// CheckDestination still fails -- the declared `acme_*` columns are
+		// missing from a table full of `brevis_*` ones -- and that error
+		// names both prefixes and the table too. A mutation removing the
+		// check survived until this assertion existed.
+		if !strings.Contains(err.Error(), "already carries the landing layout") {
+			t.Fatalf("this is the missing-columns refusal, not the prefix "+
+				"one: %v", err)
+		}
+		for _, want := range []string{"brevis_", "acme_", name, "rename"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("the refusal does not name %q: %v", want, err)
+			}
+		}
+		return
+	}
+
+	conn := connect(t)
+	// Created with the DEFAULT prefix, which is what this process resolved.
+	declared := sdk.LandingSchema(sdk.LandingOptions{})
+	ddl := make([]string, 0, len(declared))
+	for _, c := range declared {
+		ddl = append(ddl, c.Name+" TEXT")
+	}
+	name := table(t, conn, strings.Join(ddl, ","))
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestADifferentPrefixOnALiveTableIsRefused", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"="+name,
+		"BREVIS_LANDING_PREFIX=acme", "BREVIS_IT_PG_DSN="+dsn(t))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_LANDING_PREFIX=acme:\n%s", out)
+	}
+
+	// And the table was not touched.
+	if got := len(columnTypes(t, conn, name)); got != len(declared) {
+		t.Errorf("the table has %d columns, want %d: the check ran too late",
+			got, len(declared))
 	}
 }
