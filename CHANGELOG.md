@@ -18,6 +18,90 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.76.0] — 2026-10-01
+
+### Added: `BREVIS_NORMALIZE_DATA`
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+and a nested object's fields get columns of their own, one level, the way
+pandas' `json_normalize` does:
+
+```
+{"id": 1, "name": {"first": "Coleen", "last": "Volk"}}
+→ id, name_first, name_last
+```
+
+**`name` can appear both flattened and whole.** A field that is an object in
+one record and a scalar in another produces both — `name_first`, `name_last`
+AND `name`. That is pandas' answer and it is the one the brief asked for.
+
+**One level, and arrays are values.** `{"a": {"b": {"c": 1}}}` is `a_b`
+holding the object, which becomes a JSON column — not `a_b_c`. A record that
+wants one row per array element still wants `ArrayAt`.
+
+**Joined and lower-cased, not split on camelCase.** `userName` becomes
+`username` and not `user_name`: the other reading has no agreed answer for
+acronyms — `HTTPStatus`, `userID` — and every library disagrees. Decided once,
+because changing it later renames every camelCase column in every table.
+
+**A collision is refused, never resolved.** `{"name_first": 1, "name":
+{"first": 2}}` makes one column from two fields, and Go's map iteration is
+randomised: letting one win would give the same batch a different table on a
+different run. Both sides are named, and the fields are walked in sorted order
+so the pair named is the same every time.
+
+**A field the producer sent never vanishes.** An empty object keeps its own
+column holding `{}`; a null inside a nested one is a column holding NULL.
+
+**Per process, and the `columns` shape only.** Under `document` the record
+goes whole into one JSON column and there is nothing to flatten into.
+
+**`LandingID` does not move.** It is computed over the producer's record,
+before any rendering, so the same record gets the same id with the flag on and
+off. If it moved, a merge would duplicate every row.
+
+### Fixed: flattening could forge a control column
+
+The reserved-prefix check ran on the record's own KEYS, and `brevis` does not
+start with `brevis_`. So with flattening on, a producer sending
+
+```json
+{"brevis": {"stream": "not-a-real-gateway"}}
+```
+
+walked past it and produced `brevis_stream`. A forged control column is worse
+than a missing one, because it looks real.
+
+The check runs on the names a record would PRODUCE, and names the FIELD as
+well as the column: the producer never wrote `brevis_stream`, they wrote
+`brevis.stream`, and a refusal naming only the column leaves them hunting for
+a field that is not in their payload. In the gateway it is refused per event,
+from `Admit`, rather than failing the batch around it at write time.
+
+### Added: a table whose columns flattening would abandon is refused
+
+Turning the flag on does not only ADD columns. Nothing drops one, so a column
+the new naming no longer writes stays where it is, full of the rows that
+landed before, and every row after has a NULL in it — while the query somebody
+wrote against it keeps running and stops seeing new rows.
+
+Two kinds, refused before the extract on all three destinations:
+
+```
+userName → username          a rename by case, nested or not
+name     → name_first, ...   a JSON column whose fields now have their own
+```
+
+Narrow on both. The second needs the column to be JSON, undeclared, and the
+batch to declare `<it>_something` — so the example above, where `name` is
+declared both ways, is **not** refused. Refusing that would break the case the
+feature exists for.
+
+---
+
 ## [0.75.0] — 2026-09-30
 
 ### Added: `BREVIS_LANDING_PREFIX`

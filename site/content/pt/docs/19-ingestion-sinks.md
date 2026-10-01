@@ -430,6 +430,13 @@ o layout sob um prefixo recusa uma carga declarando outro. A
 [página do SDK](/docs/sdk/#o-prefixo-brevis-e-seu-para-trocar) tem a
 normalização e a saída.
 
+**Os campos de um objeto aninhado podem ganhar colunas próprias.**
+`BREVIS_NORMALIZE_DATA=true` no processo do gateway achata um nível —
+`{"name": {"first": "x"}}` aterrissa como `name_first` — e todo stream
+compartilha, então dois sinks não conseguem divergir sobre uma tabela em que
+os dois podem escrever. A [página do SDK](/docs/sdk/#uma-coluna-por-campo-aninhado)
+diz o que isso renomeia, que é a metade para ler antes de ligar.
+
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
 `brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`

@@ -13,6 +13,40 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.18.0] — 2026-10-01
+
+### A nested object's fields can get columns of their own
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+on the gateway's process, and `shape: columns` flattens one level:
+
+```
+{"table_name": "t", "data": {"id": 1, "name": {"first": "Coleen"}}}
+→ id, name_first
+```
+
+One decision for the whole gateway, beside `BREVIS_LANDING_PREFIX` and for
+the same reason: two sinks cannot disagree about a table they might both
+write to.
+
+**Tell producers before you set it.** A record whose `data` carries
+`{"brevis": {"stream": "x"}}` is now refused — flattening would make
+`brevis_stream`, which is the gateway's own column — and it is refused PER
+EVENT, so one producer's field does not bury the batch around it.
+
+**Pick it before the first table.** It renames columns as well as adding
+them, and nothing drops one: `userName` becomes `username`, and a JSON column
+that held objects is replaced by its fields. A table already carrying either
+shape refuses a load with the flag on, before the extract, naming both
+columns.
+
+Requires `sdk v0.76.0`.
+
+---
+
 ## [0.17.0] — 2026-09-30
 
 ### The `brevis_` prefix is configurable

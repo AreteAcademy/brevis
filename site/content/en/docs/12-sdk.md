@@ -337,11 +337,13 @@ of the four destinations, so a name that passes here works everywhere. A
 record carrying `my-field` is refused by name, before anything is written. The
 document shape has no such rule — a hyphen is a perfectly good JSON key.
 
-**It does not flatten.** A nested object becomes ONE `JSON` column under the
+**It does not flatten, by default.** A nested object becomes ONE `JSON` column under the
 key that held it: `customer` holds `{"id": 7, "uf": "SP"}`, not `customer_id`
 and `customer_uf`. An array is `JSON` too. A record that wants one row *per
 array element* wants `sdk.ArrayAt` in the source's `Expand` — it runs before
-`Landing`, and it is a different operation with a different name:
+`Landing`, and it is a different operation with a different name.
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) changes the first half
+of that for a whole deployment; an array stays `JSON` either way:
 
 ```go
 Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
@@ -408,6 +410,71 @@ forges a real-looking one. And `brevis_region` becomes an ordinary field.
 
 `data` never carries the prefix. It is the producer's column, not the
 layout's.
+
+### One column per nested field
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+and a nested object's fields get columns of their own, the way pandas'
+`json_normalize` does — one level:
+
+```python
+data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]
+```
+
+```
+id  name_first  name_last  name_given  name_family  name
+```
+
+**Pick it before the first table, because it does not only ADD columns.** It
+renames them, and nothing in this SDK ever drops one — so the old name stays
+with the rows already in it while everything after lands in the new one, and
+the query somebody wrote against it keeps running and stops seeing new rows.
+Two renames happen:
+
+- `userName` becomes `username`, whether or not anything is nested
+- `name`, which held objects, is replaced by `name_first` and `name_last`
+
+A table already carrying either shape **refuses** a load with this on, before
+the extract, naming both columns. Point it at a new table, or rename the
+columns yourself first.
+
+**`name` can appear both flattened and whole**, and the example above shows
+it: the third record carries `name` as a string, so the table has
+`name_first`, `name_last` AND `name`. A field that is an object in one record
+and a scalar in another produces both.
+
+**One level, and arrays are values.** `{"a": {"b": {"c": 1}}}` is `a_b`
+holding `{"c": 1}` — a `JSON` column, not `a_b_c`. `{"a": [1, 2]}` is `a`,
+also `JSON`. A record that wants one row per array element still wants
+`sdk.ArrayAt`.
+
+**Joined and lower-cased, not split on camelCase.** `userName` becomes
+`username` and not `user_name`, because the other reading has no agreed
+answer for acronyms — `HTTPStatus`, `userID` — and every library disagrees
+about them.
+
+**A collision is refused, never resolved.** `{"name_first": 1, "name":
+{"first": 2}}` would make one column from two fields, and Go's map iteration
+is randomised: letting one win would give the same batch a different table on
+a different run. The refusal names both.
+
+**The reserved prefix is checked on the column, not the field.** A producer
+sending `{"brevis": {"stream": "x"}}` would otherwise make `brevis_stream`
+through a door the field check does not watch. It is refused, naming
+`brevis.stream` so they can find the field.
+
+**It is per PROCESS**, like the prefix, and for the same reason: every stream
+in one gateway shares it, so two sinks cannot disagree about a table they
+might both write to. It applies to the `columns` shape only — under
+`document` the record goes whole into one `JSON` column and there is nothing
+to flatten into.
 
 ### Text that is already JSON
 

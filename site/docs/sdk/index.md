@@ -334,11 +334,14 @@ registro com `meu-campo` é recusado pelo nome, antes de qualquer escrita. A
 forma `document` não tem essa regra — um hífen é uma chave JSON perfeitamente
 válida.
 
-**Não achata.** Um objeto aninhado vira UMA coluna `JSON` sob a chave que o
+**Não achata, por padrão.** Um objeto aninhado vira UMA coluna `JSON` sob a chave que o
 continha: `customer` guarda `{"id": 7, "uf": "SP"}`, e não `customer_id` e
 `customer_uf`. Um array também é `JSON`. Um registro que quer uma linha *por
 elemento do array* quer o `sdk.ArrayAt` no `Expand` da fonte — ele roda antes
-do `Landing`, e é outra operação com outro nome:
+do `Landing`, e é outra operação com outro nome. O
+[`BREVIS_NORMALIZE_DATA`](#uma-coluna-por-campo-aninhado) muda a primeira
+metade disso para um deployment inteiro; array continua `JSON` dos dois
+jeitos:
 
 ```go
 Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
@@ -404,6 +407,69 @@ que declara a tabela e o transformer que a preenche.
 uma que parece real. E `brevis_region` vira campo comum.
 
 O `data` nunca leva o prefixo. É a coluna do produtor, não do layout.
+
+### Uma coluna por campo aninhado
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+e os campos de um objeto aninhado ganham colunas próprias, como o
+`json_normalize` do pandas faz — um nível:
+
+```python
+data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]
+```
+
+```
+id  name_first  name_last  name_given  name_family  name
+```
+
+**Escolha antes da primeira tabela, porque isso não só ACRESCENTA coluna.**
+Ele renomeia, e nada neste SDK remove uma — então o nome antigo fica com as
+linhas que já estavam nele enquanto tudo depois cai no novo, e a consulta que
+alguém escreveu continua rodando e para de ver linha nova. São duas
+renomeações:
+
+- `userName` vira `username`, tendo aninhamento ou não
+- `name`, que guardava objetos, é substituído por `name_first` e `name_last`
+
+Uma tabela que já carrega qualquer uma das formas **recusa** uma carga com
+isso ligado, antes do extract, nomeando as duas colunas. Aponte para uma
+tabela nova, ou renomeie as colunas você mesmo antes.
+
+**O `name` pode aparecer achatado E inteiro**, e o exemplo acima mostra: o
+terceiro registro traz `name` como string, então a tabela tem `name_first`,
+`name_last` **e** `name`. Um campo que é objeto num registro e escalar noutro
+produz os dois.
+
+**Um nível, e array é valor.** `{"a": {"b": {"c": 1}}}` vira `a_b` guardando
+`{"c": 1}` — uma coluna `JSON`, não `a_b_c`. `{"a": [1, 2]}` vira `a`, também
+`JSON`. Um registro que quer uma linha por elemento do array continua querendo
+o `sdk.ArrayAt`.
+
+**Juntado e minúsculo, sem quebrar camelCase.** `userName` vira `username` e
+não `user_name`, porque a outra leitura não tem resposta acordada para
+acrônimos — `HTTPStatus`, `userID` — e toda biblioteca discorda.
+
+**Colisão é recusada, nunca resolvida.** `{"name_first": 1, "name": {"first":
+2}}` faria uma coluna de dois campos, e a iteração de map em Go é aleatória:
+deixar um vencer daria a mesma remessa com tabela diferente em dias
+diferentes. A recusa nomeia os dois.
+
+**O prefixo reservado é checado na coluna, não no campo.** Um produtor
+mandando `{"brevis": {"stream": "x"}}` faria `brevis_stream` por uma porta que
+a checagem de campo não vigia. É recusado, nomeando `brevis.stream` para ele
+achar o campo.
+
+**É por PROCESSO**, como o prefixo e pelo mesmo motivo: todo stream de um
+gateway compartilha, então dois sinks não conseguem divergir sobre uma tabela
+em que os dois podem escrever. Vale só para a forma `columns` — no `document`
+o registro vai inteiro para uma coluna `JSON` e não há o que achatar.
 
 ### Texto que já é JSON
 

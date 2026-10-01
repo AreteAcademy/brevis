@@ -430,6 +430,13 @@ carrying the layout under one prefix refuses a load declaring another. See
 [the SDK page](/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
 normalisation and the way out.
 
+**A nested object's fields can get columns of their own.**
+`BREVIS_NORMALIZE_DATA=true` on the gateway's process flattens one level —
+`{"name": {"first": "x"}}` lands as `name_first` — and every stream shares it,
+so two sinks cannot disagree about a table they might both write to. See
+[the SDK page](/docs/sdk/#one-column-per-nested-field) for what it renames,
+which is the half to read before turning it on.
+
 ### `UPDATE` and `DELETE` are recorded, not applied
 
 `brevis_operation` is a column. A landing table is **history**: an `UPDATE`
