@@ -813,3 +813,56 @@ func TestIntegrationBigQueryRefusesAStringOfJSON(t *testing.T) {
 		t.Errorf("sdk.JSONText was refused by the check it exists to satisfy: %v", err)
 	}
 }
+
+// The first load of a table whose rows carry no record key succeeds.
+//
+// Issue #42, finding 3, end to end. The reporter saw this on five tables:
+// every producer that sends no `id` had its table's first attempt refused,
+// recovering on attempt 2 or 3 — two wasted retries and a WARN pointing at
+// the rows, which are not what the table is made of.
+func TestIntegrationBigQueryClustersOnADeclaredColumnTheRowsLack(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		PartitionBy: "received_at",
+		ClusterBy:   []string{"record_key"},
+		Schema: core.Schema{
+			{Name: "ingestion_id", Type: core.TypeString, Required: true},
+			// Declared like every other control column, and ABSENT from the
+			// rows below: the gateway leaves it out when the key is empty
+			// rather than writing an empty string.
+			{Name: "record_key", Type: core.TypeString},
+			{Name: "received_at", Type: core.TypeTimestamp, Required: true},
+			{Name: "ComputedPrice", Type: core.TypeString},
+		},
+	}
+	// No Columns, which is what the gateway passes: WriteOptions{Dedup: …}
+	// and nothing else. Setting it here would make CheckRow refuse the row
+	// for the very column this test is about, which is a different rule.
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "keyless")
+
+	// The load job itself may fail on the emulator; what matters is that it
+	// got PAST the clustering check, which used to refuse before any job.
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{
+			"ingestion_id": "i-1",
+			"received_at":  "2026-10-01T13:00:00Z",
+			"ComputedPrice": "10",
+		},
+	})
+	if err != nil && strings.Contains(err.Error(), "ClusterBy") {
+		t.Fatalf("the first attempt was refused for clustering: %v", err)
+	}
+
+	// And the table was created, clustered on the declared column.
+	md, err := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table).Metadata(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if md.Clustering == nil || len(md.Clustering.Fields) == 0 ||
+		md.Clustering.Fields[0] != "record_key" {
+		t.Errorf("clustering = %+v, want record_key", md.Clustering)
+	}
+}

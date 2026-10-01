@@ -604,10 +604,10 @@ func TestTypedTableDeclaresTheMetadataColumnsNotNull(t *testing.T) {
 }
 
 func TestClusterByMustBeInTheRows(t *testing.T) {
-	// The table is created from these rows, so a clustering column has to be
-	// one of them. BigQuery says so too, but only after the job is submitted
-	// and without saying what the rows do have.
-	err := checkClusterFields([]string{"provider", "label"}, []core.Envelope{{
+	// No Schema: this is the AUTODETECT path, where the rows really are the
+	// table. BigQuery says so too, but only after the job is submitted and
+	// without saying what the rows do have.
+	err := checkClusterFields([]string{"provider", "label"}, nil, []core.Envelope{{
 		Payload: map[string]any{"amount": 1, "label": "x"},
 	}})
 	if err == nil {
@@ -626,12 +626,12 @@ func TestClusterByMustBeInTheRows(t *testing.T) {
 		}
 	}
 
-	if err := checkClusterFields([]string{"label"}, []core.Envelope{{
+	if err := checkClusterFields([]string{"label"}, nil, []core.Envelope{{
 		Payload: map[string]any{"label": "x"},
 	}}); err != nil {
 		t.Errorf("a present column must pass: %v", err)
 	}
-	if err := checkClusterFields(nil, nil); err != nil {
+	if err := checkClusterFields(nil, nil, nil); err != nil {
 		t.Errorf("nothing to check must not be an error: %v", err)
 	}
 }
@@ -808,5 +808,69 @@ func TestTheEmulatorEndpointIsEnvironmentOnly(t *testing.T) {
 	}
 	if strings.Contains(fmt.Sprintf("%+v", *cfg), "localhost:4588") {
 		t.Error("the endpoint reached LoadConfig, so a YAML could carry it")
+	}
+}
+
+// With a declared Schema, the clustering column has to be in the SCHEMA — the
+// rows are the wrong question.
+//
+// Issue #42, finding 3. Every table created from a producer that sends no
+// `id` failed its first attempt:
+//
+//	ClusterBy names zarv_metadata_record_key, which the rows do not have.
+//	The table is created from these rows, so a clustering column has to be
+//	one of them: ComputedPrice, ElapsedMilliseconds, …
+//
+// That sentence is only true under AUTODETECT. With a declared Schema the
+// table is built by createFromSchema, from the Schema, and `record_key` is in
+// it — the gateway omits it from a ROW when the key is empty, which is
+// correct and is what makes this fire. Five tables, two wasted retries each
+// and a misleading WARN, recovering on attempt 2 or 3.
+func TestClusterByIsCheckedAgainstTheDeclarationWhenThereIsOne(t *testing.T) {
+	// The landing layout, as the gateway declares it.
+	schema := core.Schema{
+		{Name: "zarv_metadata_ingestion_id", Type: core.TypeString, Required: true},
+		{Name: "zarv_metadata_record_key", Type: core.TypeString},
+		{Name: "zarv_metadata_received_at", Type: core.TypeTimestamp, Required: true},
+		{Name: "ComputedPrice", Type: core.TypeString},
+	}
+	// A row from a producer that sends no `id`: the gateway leaves
+	// record_key out rather than writing an empty string.
+	rows := []core.Envelope{{Payload: map[string]any{
+		"zarv_metadata_ingestion_id": "i-1",
+		"zarv_metadata_received_at":  "2026-10-01T13:00:00Z",
+		"ComputedPrice":              "10",
+	}}}
+
+	if err := checkClusterFields([]string{"zarv_metadata_record_key"}, schema, rows); err != nil {
+		t.Errorf("refused: %v\n\nThe table is created from the SCHEMA, which "+
+			"declares that column. Refusing here costs two retries and a WARN "+
+			"that points at the rows, which are not what the table is made of", err)
+	}
+
+	// And a clustering column that is in NEITHER is still refused, with the
+	// declaration listed rather than the rows.
+	err := checkClusterFields([]string{"nowhere"}, schema, rows)
+	if err == nil {
+		t.Fatal("clustering on a column nothing declares was accepted")
+	}
+	if !strings.Contains(err.Error(), "nowhere") {
+		t.Errorf("the refusal does not name the column: %v", err)
+	}
+	if !strings.Contains(err.Error(), "ComputedPrice") {
+		t.Errorf("the refusal does not list the declaration: %v", err)
+	}
+}
+
+// With no Schema the rows ARE the table, and the check stays exactly as it
+// was: that path is autodetect, and the old message is true there.
+func TestClusterByStillChecksTheRowsUnderAutodetect(t *testing.T) {
+	rows := []core.Envelope{{Payload: map[string]any{"amount": 1}}}
+	err := checkClusterFields([]string{"provider"}, nil, rows)
+	if err == nil {
+		t.Fatal("clustering on an absent column must be refused under autodetect")
+	}
+	if !strings.Contains(err.Error(), "amount") {
+		t.Errorf("the refusal does not list what the rows have: %v", err)
 	}
 }

@@ -392,7 +392,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// says which field is missing and what the rows actually have. BigQuery's
 	// own error arrives after the job and names only the field.
 	if !existed && l.cfg.CreateTable {
-		if err := checkClusterFields(l.cfg.ClusterBy, envelopes); err != nil {
+		if err := checkClusterFields(l.cfg.ClusterBy, l.cfg.Schema, envelopes); err != nil {
 			return fail(err)
 		}
 	}
@@ -570,21 +570,55 @@ func EncodeRows(envelopes []core.Envelope) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// checkClusterFields confirms every clustering column is present in the rows
-// about to create the table.
-func checkClusterFields(fields []string, envelopes []core.Envelope) error {
-	if len(fields) == 0 || len(envelopes) == 0 {
+// checkClusterFields confirms every clustering column will exist on the table
+// about to be created.
+//
+// WHAT IT CHECKS AGAINST DEPENDS ON WHAT MAKES THE TABLE, and that is the
+// whole of issue #42's third finding. With a declared Schema the table is
+// built by createFromSchema, FROM the Schema -- so the Schema is the right
+// question, and the rows are not. The old check read the rows either way, and
+// its own message said "the table is created from these rows", which is only
+// true under autodetect.
+//
+// It cost the reporter two retries and a misleading WARN on the first load of
+// every table whose producer sends no `id`: the gateway leaves `record_key`
+// out of a ROW when the key is empty, which is correct, while the Schema
+// declares it like every other control column.
+//
+// Checked here rather than left to BigQuery because BigQuery's own error
+// arrives after the job and names only the field, never what was available.
+func checkClusterFields(fields []string, declared core.Schema, envelopes []core.Envelope) error {
+	if len(fields) == 0 {
 		return nil
 	}
 
-	first, ok := envelopes[0].Payload.(map[string]any)
-	if !ok {
-		return nil // EncodeRows already refused anything that is not an object
+	var have map[string]bool
+	var from string
+	if len(declared) > 0 {
+		have = make(map[string]bool, len(declared))
+		for _, c := range declared {
+			have[c.Name] = true
+		}
+		from = "the declaration has"
+	} else {
+		// Autodetect: the rows ARE the table, so they are the right question.
+		if len(envelopes) == 0 {
+			return nil
+		}
+		first, ok := envelopes[0].Payload.(map[string]any)
+		if !ok {
+			return nil // EncodeRows already refused anything that is not an object
+		}
+		have = make(map[string]bool, len(first))
+		for k := range first {
+			have[k] = true
+		}
+		from = "the rows have"
 	}
 
 	var missing []string
 	for _, f := range fields {
-		if _, present := first[f]; !present {
+		if !have[f] {
 			missing = append(missing, f)
 		}
 	}
@@ -592,16 +626,16 @@ func checkClusterFields(fields []string, envelopes []core.Envelope) error {
 		return nil
 	}
 
-	available := make([]string, 0, len(first))
-	for k := range first {
+	available := make([]string, 0, len(have))
+	for k := range have {
 		available = append(available, k)
 	}
 	sort.Strings(available)
 	sort.Strings(missing)
 
-	return fmt.Errorf("ClusterBy names %s, which the rows do not have. The table is created "+
-		"from these rows, so a clustering column has to be one of them: %s",
-		strings.Join(missing, ", "), strings.Join(available, ", "))
+	return fmt.Errorf("ClusterBy names %s, which the table will not have. A "+
+		"clustering column has to be one of the columns it is created with, and %s: %s",
+		strings.Join(missing, ", "), from, strings.Join(available, ", "))
 }
 
 func truncate(b []byte, n int) string {
