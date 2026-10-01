@@ -1015,3 +1015,56 @@ func TestIntegrationBigQueryADeclaredNullDoesNotRefuseTheLoad(t *testing.T) {
 			"would fail the load, with no migration back", f.Type)
 	}
 }
+
+// checkDeclaredAgainstTable reads Columns, and this pins that it is a
+// DECISION rather than an oversight.
+//
+// The audit after #42's third round first justified it with a claim that was
+// WRONG -- that asking the Schema here would refuse, with a worse message, the
+// batch evolveTable was about to fix. evolveTable runs twenty lines earlier,
+// so it would not. A mutation switching the reader killed no test, which is
+// how the claim was caught, and the first replacement test asserted its own
+// fixture and could not fail either.
+//
+// What is true: for a Schema caller with evolve ON this check is redundant,
+// and with evolve OFF it would be a NEW refusal -- possibly an improvement,
+// since the alternative is BigQuery answering `no such field` after the whole
+// extract, and definitely a behaviour change that deserves its own slice.
+//
+// So: an existing table, a Schema that declares a column it does not have,
+// evolve OFF. Today the check does not run. The day somebody switches the
+// reader, this fails and they have to mean it.
+func TestIntegrationBigQueryTheDeclaredCheckStaysOnColumns(t *testing.T) {
+	cfg := &core.LoadConfig{
+		ProjectID: "floci-local", CreateTable: true, Format: "ndjson",
+		PartitionBy: "ts",
+		Schema: core.Schema{
+			{Name: "ts", Type: core.TypeTimestamp, Required: true},
+			{Name: "id", Type: core.TypeString},
+		},
+	}
+	l := flociLoader(t, cfg)
+	ctx := context.Background()
+	flociDataset(t, l, "declared_check")
+
+	table := l.bq.Dataset(l.cfg.Dataset).Table(l.cfg.Table)
+	if err := l.createFromSchema(ctx, table, provenance{}); err != nil {
+		t.Fatalf("creating: %v", err)
+	}
+
+	// Now a batch whose Schema declares a column the table does not have, and
+	// no evolve to add it. Columns stays empty, which is the gateway's shape.
+	l.cfg.Schema = append(l.cfg.Schema,
+		core.Column{Name: "nao_esta_na_tabela", Type: core.TypeString})
+
+	_, err := l.Load(ctx, core.Envelope{
+		Provider: "p", Entity: "e", SourceKey: "k", RecordTS: "t",
+		Payload: map[string]any{"ts": "2026-10-01T10:00:00Z", "id": "A-1"},
+	})
+	if err != nil && strings.Contains(err.Error(), "which "+nameOf(table)+" does not have") {
+		t.Fatalf("checkDeclaredAgainstTable now runs for a Schema-only "+
+			"caller. That is a NEW REFUSAL and not a tidy-up: decide it in a "+
+			"slice of its own, with a test for what it refuses and what it "+
+			"does not.\n\n%v", err)
+	}
+}

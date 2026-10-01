@@ -29,6 +29,21 @@ func TestColumnsForAsksTheWholeDeclaration(t *testing.T) {
 			want: "id",
 		},
 		{
+			// THE CASE THAT DISTINGUISHES THE TWO, and without it a mutation
+			// reading opt.Columns survived: with the Schema ignored, the
+			// fallback drops `inactive_at` for being nil throughout and gives
+			// the same answer by accident. Here the Schema DECLARES it, so the
+			// column exists and the COPY has to name it -- otherwise it keeps
+			// whatever the table's default puts there instead of the NULL the
+			// producer meant.
+			name: "a Schema that declares the empty column",
+			opt: core.WriteOptions{Schema: core.Schema{
+				{Name: "id", Type: core.TypeString},
+				{Name: "inactive_at", Type: core.TypeString},
+			}},
+			want: "id,inactive_at",
+		},
+		{
 			name: "Columns, unchanged",
 			opt:  core.WriteOptions{Columns: []string{"id", "inactive_at"}},
 			want: "id,inactive_at",

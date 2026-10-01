@@ -380,11 +380,21 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// And the declaration against the table that is actually there. Only when
 	// it already existed: one the SDK just created was created from these very
 	// rows, so checking it would be checking our own arithmetic.
-	// Columns and NOT DeclaredColumns, which the audit checked. [#42] This is
-	// the check for a declaration WITHOUT types; a Schema is checked against
-	// the table by evolveTable, which plans adds and widenings and refuses a
-	// change of kind. Asking it here as well would refuse first, with a worse
-	// message, the batch that evolve was about to fix.
+	// Columns and NOT DeclaredColumns, and the audit's first reason for that
+	// was WRONG. [#42]
+	//
+	// It said asking the Schema here would refuse, with a worse message, the
+	// batch that evolve was about to fix. It would not: evolveTable runs
+	// twenty lines up, so by the time this reads the catalogue the columns it
+	// would have missed are already there. A mutation switching this to
+	// DeclaredColumns killed no test, which is how the claim was caught.
+	//
+	// The real reason is narrower and it is about SCOPE. For a Schema caller
+	// with evolve ON the check is redundant; with evolve OFF it would be a NEW
+	// refusal -- useful, probably, since the alternative is BigQuery answering
+	// `no such field` after the extract -- and a new refusal is a behaviour
+	// change that belongs in a slice of its own, with its own test, not
+	// smuggled into an audit of readers.
 	if existed && len(l.cfg.Columns) > 0 {
 		meta, err := table.Metadata(ctx)
 		if err != nil {
