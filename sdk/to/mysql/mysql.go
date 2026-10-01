@@ -93,7 +93,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	// BEFORE CheckRow and not instead of it. The check has two halves and
 	// only one of them is what this mode is for.
 	if t.Evolve.FromPayload() {
-		found, err := core.Discovered(opt.Columns, envelopes)
+		found, err := core.Discovered(opt, envelopes)
 		if err != nil {
 			return fail(err)
 		}

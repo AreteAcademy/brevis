@@ -3,6 +3,7 @@ package load
 import (
 	"strings"
 	"testing"
+	"time"
 
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
 )
@@ -125,5 +126,88 @@ func TestAutodetectStillDropsNothing(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "empty") {
 		t.Errorf("a null was dropped with nothing to judge it by:\n%s", data)
+	}
+}
+
+// The audit after #42's third round: every check keyed on `Columns` is off for
+// a caller who declares with a `Schema`, and the gateway is always that
+// caller. These are the ones that turned out to matter.
+
+// A Schema declares the dedup key, and the pre-flight used to miss it.
+//
+// `DedupMerge` matches rows on a column, and the config check refuses a
+// declaration that does not name it -- before a byte is extracted, which is
+// the whole value of checking at all. It read `Columns`, so a Schema-only
+// caller got no check and found out from BigQuery after the extract.
+func TestTheDedupKeyIsCheckedAgainstASchemaToo(t *testing.T) {
+	_, err := resolveConfig(&core.LoadConfig{
+		ProjectID: "p", Dataset: "d", Table: "t",
+		Dedup:    core.DedupMerge,
+		DedupKey: "zarv_metadata_ingestion_id",
+		Schema: core.Schema{
+			{Name: "id", Type: core.TypeString},
+		},
+	})
+	if err == nil {
+		t.Fatal("a merge on a column the Schema does not declare was accepted: " +
+			"the whole extract runs and BigQuery refuses the MERGE at the end")
+	}
+	if !strings.Contains(err.Error(), "zarv_metadata_ingestion_id") {
+		t.Errorf("the refusal is %q and does not name the key", err)
+	}
+}
+
+// And a Schema that DOES declare it is accepted, so the check is narrow.
+func TestASchemaThatDeclaresTheDedupKeyPasses(t *testing.T) {
+	if _, err := resolveConfig(&core.LoadConfig{
+		ProjectID: "p", Dataset: "d", Table: "t",
+		Dedup:    core.DedupMerge,
+		DedupKey: "zarv_metadata_ingestion_id",
+		Schema: core.Schema{
+			{Name: "zarv_metadata_ingestion_id", Type: core.TypeString},
+			{Name: "id", Type: core.TypeString},
+		},
+	}); err != nil {
+		t.Errorf("a Schema that declares the key was refused: %v", err)
+	}
+}
+
+// The partition options need `ingestion_loaded_at`, and a Schema declares it
+// or it does not -- same check, same carrier blindness.
+func TestThePartitionOptionsAreCheckedAgainstASchemaToo(t *testing.T) {
+	_, err := resolveConfig(&core.LoadConfig{
+		ProjectID: "p", Dataset: "d", Table: "t",
+		PartitionExpiration: 24 * time.Hour,
+		Schema: core.Schema{
+			{Name: "id", Type: core.TypeString},
+		},
+	})
+	if err == nil {
+		t.Fatal("partition options were accepted against a Schema with no " +
+			"loaded_at column: the table is partitioned on a column it lacks")
+	}
+	if !strings.Contains(err.Error(), core.MetadataLoadedAt) {
+		t.Errorf("the refusal is %q", err)
+	}
+}
+
+// A table a Schema-only caller created says how to deduplicate it.
+//
+// Cosmetic, and it is the table's own answer to "how do I query this" six
+// months later, which is the only answer that survives a log rotation.
+func TestTheDescriptionReadsASchemaToo(t *testing.T) {
+	with := tableDescription(&core.LoadConfig{
+		Schema: core.Schema{{Name: core.MetadataID, Type: core.TypeString}},
+	}, provenance{})
+	if !strings.Contains(with, "deduplicate") {
+		t.Errorf("a table whose Schema declares %s does not say how to "+
+			"deduplicate it:\n%s", core.MetadataID, with)
+	}
+
+	without := tableDescription(&core.LoadConfig{
+		Schema: core.Schema{{Name: "id", Type: core.TypeString}},
+	}, provenance{})
+	if strings.Contains(without, "deduplicate") {
+		t.Errorf("a table with no ingestion id claims one:\n%s", without)
 	}
 }

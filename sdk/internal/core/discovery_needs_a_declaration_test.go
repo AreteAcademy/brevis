@@ -51,7 +51,7 @@ func TestDiscoveryNeedsADeclaration(t *testing.T) {
 // CheckDestination: the drivers are exported and the gateway calls Write
 // directly.
 func TestDiscoveredRefusesAnEmptyDeclaration(t *testing.T) {
-	_, err := Discovered(nil, batch(map[string]any{"a": "x"}))
+	_, err := Discovered(WriteOptions{}, batch(map[string]any{"a": "x"}))
 	if err == nil {
 		t.Fatal("Discovered accepted an empty declaration, so a caller that " +
 			"skips CheckDestination still creates a table from the payload")

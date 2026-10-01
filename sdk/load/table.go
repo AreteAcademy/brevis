@@ -231,6 +231,10 @@ func (l *Loader) applyLayout(loader *bigquery.Loader, file *bigquery.FileConfig)
 	// BigQuery compares the PAIR, so it refused with 400 -- the table created
 	// correctly and not one row in it. Both conditions are kept: a caller who
 	// declares column names without types still gets the old protection.
+	// Reads BOTH on purpose, and it is the precedent the rest of the audit
+	// followed: a Schema is a declaration, and so is a Columns list that names
+	// a metadata column. Neither alone answers "did the caller describe this
+	// table".
 	if l.cfg.CreateSQL != "" || len(l.cfg.Schema) > 0 || typesAnything(l.cfg.Columns) {
 		loader.CreateDisposition = bigquery.CreateNever
 		return
@@ -318,7 +322,11 @@ func tableDescription(cfg *core.LoadConfig, prov provenance) string {
 	if prov.Provider != "" && prov.Entity != "" {
 		who = fmt.Sprintf("%s/%s via the Brevis SDK", prov.Provider, prov.Entity)
 	}
-	if declares(cfg.Columns, core.MetadataID) {
+	// DeclaredColumns and not Columns. [#42, the audit] A Schema-only caller
+	// got the shorter description although their table carries the column --
+	// cosmetic, and it is the table's own answer to "how do I deduplicate
+	// this", six months later.
+	if declares(cfg.DeclaredColumns(), core.MetadataID) {
 		return fmt.Sprintf("Written by %s since %s. Rows carry ingestion_id; deduplicate "+
 			"on it downstream. The SDK never alters this table.",
 			who, time.Now().UTC().Format("2006-01-02"))

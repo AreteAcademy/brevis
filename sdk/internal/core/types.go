@@ -685,8 +685,20 @@ func WithClusterBy(fields ...string) LoadOption {
 // own discovery and handed us the result as a Schema. CheckRow reads Columns
 // directly, on purpose.
 func (c *LoadConfig) DeclaredColumns() []string {
-	if len(c.Columns) > 0 {
-		return c.Columns
+	return declaredColumnsOf(c.Columns, c.Schema)
+}
+
+// DeclaredColumns is the same question on the other carrier. See
+// LoadConfig.DeclaredColumns for which question it is and who must not ask it.
+func (o WriteOptions) DeclaredColumns() []string {
+	return declaredColumnsOf(o.Columns, o.Schema)
+}
+
+// declaredColumnsOf is the rule, written once. Two carriers ask it and the
+// answer cannot be allowed to depend on which one.
+func declaredColumnsOf(columns []string, s Schema) []string {
+	if len(columns) > 0 {
+		return columns
 	}
-	return c.Schema.Names()
+	return s.Names()
 }

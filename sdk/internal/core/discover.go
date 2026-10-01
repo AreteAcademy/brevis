@@ -139,10 +139,16 @@ func CheckDiscoveryHasADeclaration(mode Evolution, declared []string, table stri
 // batch at the destination, naming a field nobody declared.
 //
 // Sorted, so the same batch always declares the same DDL.
-func Discovered(declared []string, records []Envelope) (Schema, error) {
+// It takes the WHOLE declaration rather than a list of names, and that is not
+// a convenience. [#42] Three call sites used to pass `opt.Columns`, which is
+// empty whenever a caller declares with a Schema -- so the mode refused them
+// for "nothing is declared", naming the one thing they had done. Taking the
+// options removes the opportunity rather than fixing three instances of it.
+func Discovered(opt WriteOptions, records []Envelope) (Schema, error) {
 	if len(records) == 0 {
 		return nil, nil
 	}
+	declared := opt.DeclaredColumns()
 	// Checked here as well as before the extract, because not every caller
 	// goes through CheckDestination: the drivers are exported, and the
 	// gateway calls Write directly. The one before the extract exists to

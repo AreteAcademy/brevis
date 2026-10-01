@@ -106,7 +106,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	// need not carry the same fields, and a declaration that outlived one
 	// would refuse the batch after the one it helped.
 	if t.Evolve.FromPayload() {
-		found, err := core.Discovered(opt.Columns, envelopes)
+		found, err := core.Discovered(opt, envelopes)
 		if err != nil {
 			return fail(err)
 		}

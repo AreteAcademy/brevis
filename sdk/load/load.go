@@ -178,12 +178,16 @@ func resolveConfig(cfg *core.LoadConfig, opts ...core.LoadOption) (*core.LoadCon
 	//
 	// Only checkable when Columns is declared. Without a declaration the row
 	// itself is checked at load time -- see Load.
-	if c.Dedup == core.DedupMerge && declared(c.Columns) {
+	// DeclaredColumns and not Columns. [#42, the audit] A Schema is a
+	// declaration, and reading Columns meant every Schema-only caller -- which
+	// is every gateway table -- skipped this and found out from the
+	// destination after the whole extract had run.
+	if c.Dedup == core.DedupMerge && declared(c.DeclaredColumns()) {
 		key, err := core.DedupKeyOf(core.WriteOptions{DedupKey: c.DedupKey})
 		if err != nil {
 			return nil, err
 		}
-		if !declares(c.Columns, key) {
+		if !declares(c.DeclaredColumns(), key) {
 			return nil, fmt.Errorf("DedupMerge matches rows on %s and Columns does not "+
 				"declare it. Add sdk.IngestionID() to Transform and the column to "+
 				"Columns -- or set DedupKey, if this table's identity column has "+
@@ -191,8 +195,8 @@ func resolveConfig(cfg *core.LoadConfig, opts ...core.LoadOption) (*core.LoadCon
 		}
 	}
 
-	if (c.PartitionExpiration > 0 || c.RequirePartitionFilter) && declared(c.Columns) &&
-		!declares(c.Columns, core.MetadataLoadedAt) {
+	if (c.PartitionExpiration > 0 || c.RequirePartitionFilter) && declared(c.DeclaredColumns()) &&
+		!declares(c.DeclaredColumns(), core.MetadataLoadedAt) {
 		return nil, fmt.Errorf("the partition options need the %s column, and Columns does "+
 			"not declare it: the table is partitioned on it. Add sdk.IngestionLoadedAt() to "+
 			"Transform and the column to Columns", core.MetadataLoadedAt)
@@ -305,13 +309,13 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// forgotten.
 	var discovered []string
 	if l.cfg.Evolve.FromPayload() {
-		found, err := core.Discovered(l.cfg.Columns, envelopes)
+		declaration := core.WriteOptions{Columns: l.cfg.Columns, Schema: l.cfg.Schema}
+		found, err := core.Discovered(declaration, envelopes)
 		if err != nil {
 			return fail(err)
 		}
 		if len(found) > 0 {
-			opt := core.WithDiscovered(
-				core.WriteOptions{Columns: l.cfg.Columns, Schema: l.cfg.Schema}, found)
+			opt := core.WithDiscovered(declaration, found)
 			cfg := *l.cfg
 			cfg.Columns, cfg.Schema = opt.Columns, opt.Schema
 			discovered = opt.Discovered
@@ -376,6 +380,11 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// And the declaration against the table that is actually there. Only when
 	// it already existed: one the SDK just created was created from these very
 	// rows, so checking it would be checking our own arithmetic.
+	// Columns and NOT DeclaredColumns, which the audit checked. [#42] This is
+	// the check for a declaration WITHOUT types; a Schema is checked against
+	// the table by evolveTable, which plans adds and widenings and refuses a
+	// change of kind. Asking it here as well would refuse first, with a worse
+	// message, the batch that evolve was about to fix.
 	if existed && len(l.cfg.Columns) > 0 {
 		meta, err := table.Metadata(ctx)
 		if err != nil {

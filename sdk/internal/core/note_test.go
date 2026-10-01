@@ -14,7 +14,7 @@ import (
 // consumers ask months later". Until now the answer was a log line, which
 // rotates.
 func TestADiscoveredColumnCarriesItsOrigin(t *testing.T) {
-	found, err := Discovered([]string{"id"}, batch(map[string]any{"id": "A", "series": "21129"}))
+	found, err := Discovered(WriteOptions{Columns: []string{"id"}}, batch(map[string]any{"id": "A", "series": "21129"}))
 	if err != nil {
 		t.Fatal(err)
 	}

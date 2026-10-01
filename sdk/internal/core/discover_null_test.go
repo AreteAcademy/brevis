@@ -39,7 +39,7 @@ func TestANilDoesNotDecideTheType(t *testing.T) {
 			for _, r := range tc.records {
 				batch = append(batch, Envelope{Payload: r})
 			}
-			got, err := Discovered([]string{"id"}, batch)
+			got, err := Discovered(WriteOptions{Columns: []string{"id"}}, batch)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +58,7 @@ func TestANilDoesNotDecideTheType(t *testing.T) {
 // two records disagreeing about the shape is drift, and the first one still
 // wins. Only the nils are skipped.
 func TestTheFirstValueStillDecidesAmongValues(t *testing.T) {
-	got, err := Discovered([]string{"id"}, []Envelope{
+	got, err := Discovered(WriteOptions{Columns: []string{"id"}}, []Envelope{
 		{Payload: map[string]any{"a": nil}},
 		{Payload: map[string]any{"a": "text"}},
 		{Payload: map[string]any{"a": []any{1}}},
@@ -84,7 +84,7 @@ func TestTheFirstValueStillDecidesAmongValues(t *testing.T) {
 // the table has no column for it, so nothing is written and nothing refuses
 // the batch.
 func TestAFieldNilThroughoutDeclaresNothing(t *testing.T) {
-	got, err := Discovered([]string{"id"}, []Envelope{
+	got, err := Discovered(WriteOptions{Columns: []string{"id"}}, []Envelope{
 		{Payload: map[string]any{"id": "A", "fuel": nil}},
 		{Payload: map[string]any{"id": "B", "fuel": nil}},
 	})

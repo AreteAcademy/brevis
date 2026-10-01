@@ -255,7 +255,7 @@ func TestTheDeclarationAndTheDiscoveryAgreeAboutNulls(t *testing.T) {
 		}
 		rows = append(rows, core.Envelope{Payload: row})
 	}
-	found, err := core.Discovered(control, rows)
+	found, err := core.Discovered(core.WriteOptions{Columns: control}, rows)
 	if err != nil {
 		t.Fatal(err)
 	}

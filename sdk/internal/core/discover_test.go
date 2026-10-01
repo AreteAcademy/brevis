@@ -16,7 +16,7 @@ func batch(records ...map[string]any) []Envelope {
 // What the batch carries and the declaration does not.
 func TestDiscovered(t *testing.T) {
 	declared := []string{"brevis_ingestion_id", "source_key"}
-	found, err := Discovered(declared, batch(map[string]any{
+	found, err := Discovered(WriteOptions{Columns: declared}, batch(map[string]any{
 		"brevis_ingestion_id": "x",
 		"source_key":          "k",
 		"valor":               8.89,
@@ -69,7 +69,7 @@ func TestDiscoveredIsTheUnionOfTheBatch(t *testing.T) {
 	}
 	records[49]["late"] = "arrived last"
 
-	found, err := Discovered([]string{"id"}, batch(records...))
+	found, err := Discovered(WriteOptions{Columns: []string{"id"}}, batch(records...))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestDiscoveredIsTheUnionOfTheBatch(t *testing.T) {
 // Postgres would quote it and create it, and the same fetcher would break the
 // day somebody points it at BigQuery.
 func TestDiscoveredRefusesAFieldThatCannotBeAColumn(t *testing.T) {
-	_, err := Discovered([]string{"id"}, batch(map[string]any{"id": "A", "meu-campo": 1}))
+	_, err := Discovered(WriteOptions{Columns: []string{"id"}}, batch(map[string]any{"id": "A", "meu-campo": 1}))
 	if err == nil {
 		t.Fatal("\"meu-campo\" was accepted as a column name")
 	}
@@ -95,7 +95,7 @@ func TestDiscoveredRefusesAFieldThatCannotBeAColumn(t *testing.T) {
 	}
 	// A field the declaration ALREADY has is not checked again: it is the
 	// consumer's own name, already in their table.
-	if _, err := Discovered([]string{"ok-name"}, batch(map[string]any{"ok-name": 1})); err != nil {
+	if _, err := Discovered(WriteOptions{Columns: []string{"ok-name"}}, batch(map[string]any{"ok-name": 1})); err != nil {
 		t.Errorf("a declared column was re-judged by the discovery rule: %v", err)
 	}
 }
