@@ -348,7 +348,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// Encoded before the table is prepared: creating a table with the
 	// metadata columns typed needs the rows, because BigQuery infers the
 	// caller's own columns from them.
-	data, err := EncodeRows(envelopes, l.cfg.Columns)
+	data, err := l.encodeRows(envelopes)
 	if err != nil {
 		return fail(err)
 	}
@@ -549,6 +549,23 @@ func (l *Loader) renamedBucketHint(ctx context.Context) string {
 // in it is unreachable, which is the worst of the three outcomes because it
 // looks correct. Reported by a consumer against gateway v0.15.0; see
 // core.JSONText.
+// encodeRows is the load's own encoding step, and it exists so that WHICH
+// question the encoder is asked of the config is testable.
+//
+// EncodeRows takes a list of names; the choice of which list is the config's,
+// and getting that choice wrong is what shipped `No such field` to a consumer
+// whose every batch was dead-lettered. A test that called EncodeRows directly
+// would have had to repeat that choice, and would have proved it against
+// itself.
+func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
+	// DeclaredColumns and not Columns. [#42] The gateway declares with a
+	// Schema and never with Columns, so reading Columns here took the
+	// autodetect branch -- "nothing was declared" -- on a path that creates
+	// the table FROM a declaration, and every key the table had no column for
+	// went to the wire. 4,500 events, 8 batches, all dead-lettered.
+	return EncodeRows(envelopes, l.cfg.DeclaredColumns())
+}
+
 func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
 	var buf bytes.Buffer
 

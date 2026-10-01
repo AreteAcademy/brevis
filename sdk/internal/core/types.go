@@ -658,3 +658,35 @@ func WithClusterBy(fields ...string) LoadOption {
 		cfg.ClusterBy = fields
 	}
 }
+
+// DeclaredColumns names what the TABLE will be made of.
+//
+// It is a different question from the one Columns alone answers, and confusing
+// the two cost a consumer every batch of every new table:
+//
+//	Columns  -- "the consumer promised every row has exactly these"
+//	Schema   -- "this is what the table is made of"
+//
+// A caller may declare either; sdk.Target REFUSES both at once, because they
+// are two lists of the same thing and the one that lost would lose silently.
+// So "Columns when it has any, the Schema's names otherwise" is the whole
+// rule, and it is the same one sdk.Target.declaredColumns uses -- one question
+// should not have two answers depending on which side of the facade you ask.
+//
+// WHO SHOULD NOT CALL THIS: CheckRow. It asks whether the ROW carries what the
+// consumer promised, and on the gateway path the Schema is the UNION of a
+// batch whose records need not agree -- measured, and it refuses an ordinary
+// batch:
+//
+//	the Columns declaration lists only_in_record_two, which the row does not have
+//
+// On the SDK's own path that union is covered by `discovered`, which CheckRow
+// treats as may-be-absent. The gateway has no `discovered` because it did its
+// own discovery and handed us the result as a Schema. CheckRow reads Columns
+// directly, on purpose.
+func (c *LoadConfig) DeclaredColumns() []string {
+	if len(c.Columns) > 0 {
+		return c.Columns
+	}
+	return c.Schema.Names()
+}
