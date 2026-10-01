@@ -2,6 +2,7 @@ package autotable
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -232,24 +233,112 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 	sort.Strings(tables)
 
 	var wrote int64
-	for _, table := range tables {
+	var starved []string
+	var ranOut error
+	for i, table := range tables {
+		// On the CALLER's context, not the share. What sinkFor does is build a
+		// sink and then CACHE it -- `r.made[key] = s` -- and a built sink
+		// keeps what it was constructed with, down to the object-store client
+		// `Stores.Open` hands it. A context cancelled at the end of this batch
+		// must never reach something that outlives the batch.
+		//
+		// It is also not the cost that was measured: construction is charged
+		// once per table per process, and the lever that bounds how many
+		// tables may do it is the rate limit from issue #34, not this.
 		sink, err := r.sinkFor(ctx, table, schemas[table])
 		if err != nil {
 			return wrote, err
 		}
-		n, err := sink.Write(ctx, groups[table])
+
+		tctx, cancel := shareOf(ctx, len(tables)-i)
+		n, err := sink.Write(tctx, groups[table])
+		cancel()
 		wrote += n
-		if err != nil {
-			// The destination disagreed with what we believed, so what we
-			// believed goes. The cache is an optimisation and never the
-			// authority: the next batch re-reads the catalogue rather than
-			// trusting an entry the server just contradicted.
-			r.invalidate(ctx, table)
+		if err == nil {
+			r.meta.learn(ctx, table, true)
+			continue
+		}
+
+		// The CALLER's window closed, which is the drain ending. There is
+		// nothing left to write the remaining tables with, and no belief to
+		// drop: we learned nothing about this table.
+		if ctx.Err() != nil {
 			return wrote, fmt.Errorf("table %s: %w", table, err)
 		}
-		r.meta.learn(ctx, table, true)
+
+		// A table that ran out of ITS OWN share does not abandon the ones
+		// behind it. [#42]
+		//
+		// This package has had the same bug once already, in another currency:
+		// issue #34, where the budget one table's error spent refused other
+		// tables that had done nothing wrong. Time is the same resource and
+		// deserved the same answer.
+		//
+		// NOT invalidated either: a timeout is not the destination disagreeing
+		// with us, it is us not waiting long enough. Throwing the belief away
+		// buys a catalogue read and no correctness.
+		if errors.Is(err, context.DeadlineExceeded) {
+			starved = append(starved, table)
+			if ranOut == nil {
+				ranOut = err
+			}
+			continue
+		}
+
+		// The destination disagreed with what we believed, so what we
+		// believed goes. The cache is an optimisation and never the
+		// authority: the next batch re-reads the catalogue rather than
+		// trusting an entry the server just contradicted.
+		//
+		// And it STOPS. A disagreement is about us, not about this table, so
+		// asking the next table is asking a destination that has just said we
+		// are wrong, once more per table.
+		r.invalidate(ctx, table)
+		return wrote, fmt.Errorf("table %s: %w", table, err)
+	}
+
+	if len(starved) > 0 {
+		// Reported, because the events of a table that did not land have to
+		// reach the dead letter. What the caller then does with the batch is
+		// the caller's: `pipe.send` buries it WHOLE, so the tables that did
+		// land are parked as well as written. That is survivable and it is
+		// written here rather than discovered -- every row carries
+		// `brevis_ingestion_id` and every table is created with it as the
+		// dedup key, so replaying the dead letter writes each row once.
+		//
+		// The alternative was the old behaviour: none of them landed at all.
+		return wrote, fmt.Errorf("table(s) %s ran out of their share of the "+
+			"write window; the other tables in this batch were written: %w",
+			strings.Join(starved, ", "), ranOut)
 	}
 	return wrote, nil
+}
+
+// shareOf bounds one table's write to its slice of what is left.
+//
+// REMAINING OVER REMAINING, and not equal shares computed once. Both bound a
+// table to a fraction, and only this one gives a fast table's leftover to the
+// tables behind it: with five tables and four finishing in a second, equal
+// shares would still cap the fifth at a fifth of the window while eighty per
+// cent of it went unspent and nobody was allowed to use it.
+//
+// In the worst case -- every table using all of its share -- the two are the
+// same, so this is never the stricter rule.
+//
+// What it buys is not more time, it is WHOSE time. Under one shared deadline
+// the table that runs last is the one that fails, however well behaved it is,
+// and the log blames it; here the table that overran its own share is the one
+// that fails, and that is the table somebody has to go and look at.
+//
+// A caller with no deadline gets no share: the router is an ordinary Sinker
+// and a caller that set no deadline asked for none. Inventing one here would
+// be a timeout nobody configured.
+func shareOf(ctx context.Context, left int) (context.Context, context.CancelFunc) {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, time.Until(deadline)/time.Duration(left))
 }
 
 // group opens each envelope and files the row under its table.
