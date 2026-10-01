@@ -23,7 +23,30 @@ import (
 // the dead letter: a send that has been trying for a minute is a sink that is
 // down, and holding the events in memory while it is down is how memory becomes
 // the outage.
-const sendTimeout = 60 * time.Second
+//
+// A var and not a const for one reason: the test that proves the dead letter
+// does NOT inherit this deadline would otherwise have to wait a minute to run.
+// Nothing changes it outside a test.
+var sendTimeout = 60 * time.Second
+
+// deadLetterTimeout bounds the write that parks what a sink refused.
+//
+// ITS OWN, AND NEVER THE SEND'S. Issue #42: `send` narrowed its context to
+// sendTimeout and handed that context to `bury`, so a batch that failed
+// BECAUSE the 60 s ran out reached the dead letter with nothing left and was
+// refused instantly. 41 events were neither loaded nor parked, and the dead
+// letter is the last place an event can survive.
+//
+// Bounded rather than unlimited, and that is the other half: a dead letter
+// that hangs holds the drain open past the pod's grace period, and then
+// SIGKILL takes the write anyway -- the same loss by another road. Thirty
+// seconds is long for an object write and short against any grace period
+// worth setting.
+//
+// A var for the reason sendTimeout is: the test that proves the bound exists
+// would otherwise sit here for thirty seconds. Nothing changes it outside a
+// test.
+var deadLetterTimeout = 30 * time.Second
 
 // startupTimeout bounds building the sinks. Thirty seconds is long for a
 // credential fetch and short against any readiness probe worth having.
@@ -1293,8 +1316,11 @@ const ClaimTimeout = 500 * time.Millisecond
 // time it is delivered, and a batch cancelled because one client disconnected
 // would lose the events of every OTHER client in it. On shutdown it is the
 // drain's deadline, which is a window the operator set.
-func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
-	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
+func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
+	// `parent` is kept, and that is the whole of issue #42's first finding:
+	// `bury` below runs on it rather than on the narrowed one, which is
+	// exhausted exactly when the dead letter is needed.
+	ctx, cancel := context.WithTimeout(parent, sendTimeout)
 	defer cancel()
 
 	r := p.stream.Retry
@@ -1335,7 +1361,7 @@ func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
 giveUp:
 	p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 	p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeBuried)
-	p.bury(ctx, batch, err)
+	p.bury(parent, batch, err)
 	return err
 }
 
@@ -1348,7 +1374,12 @@ giveUp:
 // A failure HERE is the end of the line, and it says so at ERROR with the count:
 // there is nowhere further to put them, and a silent loss at the last step would
 // be the exact failure the dead letter exists to prevent.
-func (p *pipe) bury(ctx context.Context, batch []sdk.Envelope, cause error) {
+func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
+	// Its own deadline, derived from the caller's rather than from the send
+	// that just failed. See deadLetterTimeout.
+	ctx, cancel := context.WithTimeout(parent, deadLetterTimeout)
+	defer cancel()
+
 	reason := cause.Error()
 	buried := make([]sdk.Envelope, 0, len(batch))
 	for _, e := range batch {
