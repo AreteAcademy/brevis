@@ -18,6 +18,88 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.75.0] — 2026-09-30
+
+### Added: `BREVIS_LANDING_PREFIX`
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+and the landing layout's eight columns become `acme_ingestion_id`,
+`acme_record_key` and the rest. Unset, every one of them is the string it has
+always been — which is the only promise every table already created depends
+on.
+
+Whatever is typed is normalised, so there is one spelling to get wrong
+instead of four:
+
+| set | resolved |
+|---|---|
+| nothing, or blank | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Blank is not a request for no prefix: `BREVIS_LANDING_PREFIX=` is a line
+people write in a compose file meaning "not configured".
+
+**An environment variable and not a config field, for the safety rather than
+the convenience.** Two sinks in one gateway cannot disagree, and neither can
+the schema that declares a table and the transformer that fills it — with two
+doors to one decision, a row carrying `acme_ingestion_id` lands in a table
+declaring `brevis_ingestion_id`.
+
+**A process with an unusable value does not start.** That is deliberately not
+this repo's habit — `autoparams.go` and `runcontext.go` both log "ignoring
+malformed…" and carry on, and they are right to, because a bad param or a bad
+date degrades gracefully. Ignoring this one creates tables named after the
+prefix the operator was replacing, and they find out from the column names
+months later. Two values are refused: underscores and nothing else, which
+would leave `ingestion_id` — exactly the column `sdk.IngestionID()` writes for
+every ordinary pipeline — and anything that cannot begin a column name.
+
+**The reserved rule moves with it.** Under `acme_`, a producer sending
+`acme_region` is refused, because somebody who can forge a control column
+forges a real-looking one. And `brevis_region` becomes an ordinary field.
+
+**`LandingColumnData` stays `"data"`, and stays a `const` while the eight
+become `var`.** The difference is the statement: the eight follow the prefix
+and this one cannot. It is the producer's column, not the layout's to rename.
+
+**`LandingID` does not move.** It identifies the RECORD, not the table's
+column naming; if it followed the prefix, the same record under two prefixes
+would get two ids and the next merge would duplicate the table.
+
+### Added: a table created under another prefix is refused
+
+Changing the prefix on a live table is not a rename. Nothing drops a column —
+`Plan` emits `add` and `widen` and nothing else — so it adds eight and
+abandons eight. Every row after that has NULLs in the old set, and
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+partitions on a column nothing writes any more. Rows arrive, the dashboard
+goes flat, nothing logs anything.
+
+Refused before the extract on Postgres, MySQL and BigQuery, naming both
+prefixes and the way out. **Narrow on both sides**: only when the declaration
+is this layout, and only when the table carries the full eight under one
+other prefix — a warehouse where somebody named a column `brevis_stream` by
+hand does not start failing.
+
+### Changed: the column names are variables
+
+`LandingPrefix` and the eight are resolved when the package loads, so they are
+`var` where they were `const`. `DedupKey: sdk.LandingColumnID` and every other
+published use keeps compiling; a `const` declared FROM one of them does not,
+and there was exactly one, in this repo's own tests.
+
+---
+
 ## [0.74.0] — 2026-09-30
 
 Reported by a consumer against gateway `v0.15.0`, holding a production

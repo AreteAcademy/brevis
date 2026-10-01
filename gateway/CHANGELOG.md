@@ -13,6 +13,37 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.17.0] — 2026-09-30
+
+### The `brevis_` prefix is configurable
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+on the gateway's process, and every table it creates carries
+`acme_ingestion_id` and the rest. Unset, nothing changes.
+
+**One decision for the whole gateway, and that is the point.** It is an
+environment variable rather than a field on the sink precisely so two sinks
+cannot disagree about a table they might both write to — and so a pipeline
+landing the same layout, with the same variable, produces the same columns.
+
+**The reserved rule moves with it.** Under `acme_`, an event whose `data`
+carries `acme_region` is refused per event, as `brevis_region` was before;
+and `brevis_region` becomes an ordinary field. Worth saying to producers
+before the variable is set, because it changes what they may send.
+
+**Pick it before the first table is created.** Changing it later is not a
+rename: nothing drops a column, so the eight under the old prefix stay and
+eight more are added, and `partition by <old>_record_key` reads a column
+nothing writes any more. A table already carrying the layout under one prefix
+now refuses a load declaring another, before the extract.
+
+Requires `sdk v0.75.0`.
+
+---
+
 ## [0.16.0] — 2026-09-30
 
 Objects and arrays landed in BigQuery as JSON **strings**, in both shapes.

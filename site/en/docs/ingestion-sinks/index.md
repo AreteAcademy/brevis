@@ -417,6 +417,19 @@ on the destination and a field the batch carries becomes a column, by this
 rule, through this code.
 
 
+**The prefix is configurable, and it is one decision for the whole process.**
+`BREVIS_LANDING_PREFIX=acme` makes them `acme_ingestion_id` and the rest —
+every stream in this gateway, so two sinks cannot disagree about a table they
+might both write to. The reserved rule above moves with it: under `acme_`, a
+producer sending `acme_region` is refused and `brevis_region` is an ordinary
+field.
+
+**Pick it before the first table is created.** Changing it later adds eight
+columns and abandons eight — nothing drops a column — so a table already
+carrying the layout under one prefix refuses a load declaring another. See
+[the SDK page](/en/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
+normalisation and the way out.
+
 ### `UPDATE` and `DELETE` are recorded, not applied
 
 `brevis_operation` is a column. A landing table is **history**: an `UPDATE`

@@ -418,6 +418,18 @@ no destino e um campo que o lote traz vira coluna, por esta regra, por este
 código.
 
 
+**O prefixo é configurável, e é uma decisão para o processo inteiro.**
+`BREVIS_LANDING_PREFIX=acme` faz delas `acme_ingestion_id` e as demais — todo
+stream deste gateway, então dois sinks não conseguem divergir sobre uma tabela
+em que os dois podem escrever. A regra reservada acima vai junto: sob `acme_`,
+um produtor mandando `acme_region` é recusado e `brevis_region` é campo comum.
+
+**Escolha antes de a primeira tabela nascer.** Trocar depois acrescenta oito
+colunas e abandona oito — nada remove coluna — então uma tabela que já carrega
+o layout sob um prefixo recusa uma carga declarando outro. A
+[página do SDK](/docs/sdk/#o-prefixo-brevis-e-seu-para-trocar) tem a
+normalização e a saída.
+
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
 `brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`

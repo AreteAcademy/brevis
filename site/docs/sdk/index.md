@@ -352,6 +352,59 @@ nome, então um produtor com um campo chamado `data` — que é exatamente o que
 série do Bacen manda — ganha uma coluna própria com o valor dele. No
 `document`, o dele é uma chave dentro do JSON do layout.
 
+### O prefixo `brevis_` é seu para trocar
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+e as oito colunas do layout viram `acme_ingestion_id`, `acme_record_key` e as
+demais. Sem a variável, elas são o que sempre foram.
+
+**Escolha na criação da tabela, porque trocar depois não é renomear.** Nada
+neste SDK remove coluna, então um stream que troca de prefixo não renomeia
+oito — ele acrescenta oito e abandona oito. Toda linha dali em diante fica com
+NULL no conjunto antigo, e
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+particiona numa coluna que ninguém mais escreve. As linhas chegam, o painel
+fica plano, e nada vai para o log.
+
+Por isso uma tabela que já carrega o layout sob um prefixo **recusa** uma carga
+declarando outro, antes do extract, nomeando os dois. Aponte para uma tabela
+nova, ou renomeie as oito colunas você mesmo antes.
+
+**O que você digitar é normalizado**, então há uma grafia para errar em vez de
+quatro:
+
+| você põe | você recebe |
+|---|---|
+| nada, ou vazio | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Tira `_` das duas pontas, minúsculo, acrescenta exatamente um. Dois valores são
+recusados em vez de adivinhados: só underscores, porque sobraria
+`ingestion_id` — exatamente a coluna que o `sdk.IngestionID()` escreve em toda
+pipeline comum — e qualquer coisa que não possa começar um nome de coluna. **Um
+processo com valor inutilizável não sobe**, que é o único desfecho honesto: a
+alternativa é tabela batizada com o prefixo que você estava substituindo.
+
+**É por PROCESSO, e isso é o objetivo e não uma limitação.** Todo stream de um
+gateway compartilha, então dois sinks não conseguem divergir — nem o esquema
+que declara a tabela e o transformer que a preenche.
+
+**A regra reservada vai junto.** Sob `acme_`, um produtor mandando
+`acme_region` é recusado, porque quem consegue forjar coluna de controle forja
+uma que parece real. E `brevis_region` vira campo comum.
+
+O `data` nunca leva o prefixo. É a coluna do produtor, não do layout.
+
 ### Texto que já é JSON
 
 Uma coluna declarada `sdk.TypeJSON` recebe um **valor** JSON — um objeto, um

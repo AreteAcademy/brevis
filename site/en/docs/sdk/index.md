@@ -355,6 +355,60 @@ so a producer with a field called `data` — which is exactly what the Bacen
 series sends — gets a column of their own with their own value in it. Under
 `document` theirs is one key inside the layout's JSON.
 
+### The `brevis_` prefix is yours to change
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+and the layout's eight columns become `acme_ingestion_id`, `acme_record_key`
+and the rest. Unset, they are what they have always been.
+
+**Choose it when the table is created, because changing it later is not a
+rename.** Nothing in this SDK ever drops a column, so a stream that switches
+prefix does not rename eight — it adds eight and abandons eight. Every row
+after that has NULLs in the old set, and
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+partitions on a column nothing writes any more. Rows arrive, the dashboard
+goes flat, and nothing logs anything.
+
+So a table that already carries the layout under one prefix **refuses** a load
+declaring another, before the extract, naming both. Point it at a new table,
+or rename the eight columns yourself first.
+
+**Whatever you type is normalised**, so there is one spelling to get wrong
+instead of four:
+
+| you set | you get |
+|---|---|
+| nothing, or blank | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Trim `_` from both ends, lower-case, add exactly one. Two values are refused
+rather than guessed at: underscores and nothing else, because it would leave
+`ingestion_id` — exactly the column `sdk.IngestionID()` writes for every
+ordinary pipeline — and anything that cannot begin a column name. **A process
+with an unusable value does not start**, which is the only honest outcome: the
+alternative is tables named after the prefix you were replacing.
+
+**It is per PROCESS, and that is the point rather than a limitation.** Every
+stream in one gateway shares it, so two sinks cannot disagree — and neither
+can the schema that declares a table and the transformer that fills it.
+
+**The reserved rule moves with it.** Under `acme_`, a producer sending
+`acme_region` is refused, because somebody who can forge a control column
+forges a real-looking one. And `brevis_region` becomes an ordinary field.
+
+`data` never carries the prefix. It is the producer's column, not the
+layout's.
+
 ### Text that is already JSON
 
 A column declared `sdk.TypeJSON` receives a JSON **value** — an object, an
