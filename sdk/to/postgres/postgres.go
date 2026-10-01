@@ -455,8 +455,16 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	if err != nil {
 		return err
 	}
-	ofTable, _, err := columnsOf(ctx, conn, schema, table)
+	ofTable, ofTypes, err := columnsOf(ctx, conn, schema, table)
 	if err != nil || len(ofTable) == 0 {
+		return err
+	}
+
+	// Columns BREVIS_NORMALIZE_DATA would abandon, refused before the
+	// extract. Nothing drops a column, so the old name stays full of the old
+	// rows while everything after lands in the new one -- see
+	// core.CheckNormalizeRenames for why it refuses rather than warns.
+	if err := core.CheckNormalizeRenames(columns, declaredTypes(ofTypes), t.Name); err != nil {
 		return err
 	}
 

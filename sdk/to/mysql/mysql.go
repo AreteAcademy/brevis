@@ -385,8 +385,14 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	defer closeDB()
 
 	database, table := splitName(t.Name)
-	inTable, _, err := columnsOf(ctx, db, database, table)
+	inTable, inTypes, err := columnsOf(ctx, db, database, table)
 	if err != nil || len(inTable) == 0 {
+		return err
+	}
+
+	// Columns BREVIS_NORMALIZE_DATA would abandon, refused before the
+	// extract. See core.CheckNormalizeRenames.
+	if err := core.CheckNormalizeRenames(columns, declaredTypes(inTypes), t.Name); err != nil {
 		return err
 	}
 

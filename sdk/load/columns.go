@@ -84,6 +84,23 @@ func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 		return err
 	}
 
+	// Columns BREVIS_NORMALIZE_DATA would abandon. See
+	// core.CheckNormalizeRenames.
+	// Only JSON matters to the check, and only one direction of it: a
+	// column that held objects. Translating the rest would be work nothing
+	// reads.
+	inTypes := make(map[string]core.ColumnType, len(meta.Schema))
+	for _, f := range meta.Schema {
+		if f.Type == bigquery.JSONFieldType {
+			inTypes[f.Name] = core.TypeJSON
+		} else {
+			inTypes[f.Name] = core.TypeString
+		}
+	}
+	if err := core.CheckNormalizeRenames(columns, inTypes, nameOf(table)); err != nil {
+		return err
+	}
+
 	// A column the table lacks is the one difference EvolveAdditive was asked
 	// to repair, so refusing it here would make the flag unreachable in its
 	// only case: a declaration that adds a column is the only way to ask for

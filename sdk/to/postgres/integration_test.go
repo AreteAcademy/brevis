@@ -1285,3 +1285,117 @@ func TestADifferentPrefixOnALiveTableIsRefused(t *testing.T) {
 			got, len(declared))
 	}
 }
+
+// A table whose columns flattening would abandon refuses the load.
+//
+// The parent creates the table the way a stream landed it BEFORE the flag:
+// `name` is a JSON column full of objects. The child runs with
+// BREVIS_NORMALIZE_DATA=true, declares `name_first`/`name_last`, and must be
+// refused — not quietly land in two new columns while `name` keeps the
+// history.
+func TestAFlattenedAwayColumnIsRefused(t *testing.T) {
+	const marker = "BREVIS_TEST_FLATRENAME_CHILD"
+
+	if name := os.Getenv(marker); name != "" {
+		declared := append(sdk.LandingControlColumns(sdk.LandingOptions{}),
+			sdk.Column{Name: "name_first", Type: sdk.TypeString},
+			sdk.Column{Name: "name_last", Type: sdk.TypeString})
+		err := topg.Table{DSN: dsn(t), Name: name}.
+			CheckDestination(context.Background(), declared.Names())
+		if err == nil {
+			t.Fatal("accepted: `name` would keep the objects already landed " +
+				"and nothing would write it again")
+		}
+		if !strings.Contains(err.Error(), "JSON column") {
+			t.Fatalf("this is some other refusal, not the rename one: %v", err)
+		}
+		for _, want := range []string{"name", "name_first", name} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("the refusal does not name %q: %v", want, err)
+			}
+		}
+		return
+	}
+
+	conn := connect(t)
+	ddl := make([]string, 0, 10)
+	for _, c := range sdk.LandingControlColumns(sdk.LandingOptions{}) {
+		ddl = append(ddl, c.Name+" TEXT")
+	}
+	ddl = append(ddl, "name JSONB")
+	name := table(t, conn, strings.Join(ddl, ","))
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestAFlattenedAwayColumnIsRefused", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"="+name,
+		"BREVIS_NORMALIZE_DATA=true", "BREVIS_IT_PG_DSN="+dsn(t))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_NORMALIZE_DATA=true:\n%s", out)
+	}
+
+	// And the table was not touched.
+	if _, grew := columnTypes(t, conn, name)["name_first"]; grew {
+		t.Error("the table grew `name_first`: the check ran too late")
+	}
+}
+
+// Evolution still works with flattening on: a second batch carrying a new
+// nested field adds its flattened columns.
+//
+// Carried over from S3, where it was covered in principle — the schema
+// flattens, so Discovered sees flattened names — and not exercised. "In
+// principle" is not a verification.
+func TestEvolutionAddsFlattenedColumns(t *testing.T) {
+	const marker = "BREVIS_TEST_FLATEVOLVE_CHILD"
+
+	if name := os.Getenv(marker); name != "" {
+		declared := sdk.LandingControlColumns(sdk.LandingOptions{})
+		to := topg.Table{DSN: dsn(t), Name: name, CreateTable: true,
+			Evolve: sdk.EvolveAdditiveFromPayload}
+		opt := sdk.WriteOptions{Schema: declared, Columns: declared.Names()}
+		land := sdk.Landing(name, sdk.LandingKey("id"), sdk.LandingColumns())
+
+		for i, record := range []map[string]any{
+			{"id": "A-1", "name": map[string]any{"first": "Coleen"}},
+			{"id": "A-2", "name": map[string]any{"first": "Mark", "last": "Regner"}},
+		} {
+			row, err := land(record)
+			if err != nil {
+				t.Fatalf("batch %d: %v", i, err)
+			}
+			if _, err := to.Write(context.Background(), []sdk.Envelope{{Payload: row}}, opt); err != nil {
+				t.Fatalf("batch %d: %v", i, err)
+			}
+		}
+		return
+	}
+
+	// The child CREATES it, from the declaration, so the control columns get
+	// their real types instead of a row of TEXT written by hand here.
+	conn := connect(t)
+	name := fmt.Sprintf("t_%d", time.Now().UnixNano())
+	t.Cleanup(func() {
+		_, _ = conn.Exec(context.Background(), "DROP TABLE IF EXISTS "+name)
+	})
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestEvolutionAddsFlattenedColumns", "-test.v")
+	cmd.Env = append(os.Environ(), marker+"="+name,
+		"BREVIS_NORMALIZE_DATA=true", "BREVIS_IT_PG_DSN="+dsn(t))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("with BREVIS_NORMALIZE_DATA=true:\n%s", out)
+	}
+
+	types := columnTypes(t, conn, name)
+	for _, want := range []string{"name_first", "name_last"} {
+		if _, ok := types[want]; !ok {
+			t.Errorf("the table has no %q column: evolution did not see the "+
+				"flattened names (%v)", want, columnNames(t, conn, name))
+		}
+	}
+	var n int
+	if err := conn.QueryRow(context.Background(), "SELECT count(*) FROM "+name).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("%d rows, want 2", n)
+	}
+}
