@@ -312,3 +312,52 @@ func TestBothPathsDeclareTheSameTypes(t *testing.T) {
 			len(fromGateway), len(byName))
 	}
 }
+
+// Neither shape hands a plain string to a column it declared JSON.
+//
+// From sdk v0.74.0 the BigQuery driver REFUSES that, so a shape that did it
+// would fail its own writes. Before that version it did something worse: the
+// write succeeded and the column held a JSON value of TYPE string, where
+// every JSON_VALUE returns NULL. A consumer found it across 23 columns in 9
+// tables, in production.
+//
+// It asserts the Go type rather than the wire, because the wire is the SDK's
+// to encode and the SDK tests it there. What belongs here is that this
+// package never hands over the one thing that cannot work.
+func TestNeitherShapeHandsAStringToAJSONColumn(t *testing.T) {
+	record := bacen()
+
+	for _, sh := range []shaper{document{}, columns{}} {
+		t.Run(sh.name(), func(t *testing.T) {
+			declared, err := sh.schema(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			values, err := sh.columns(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			var sawJSON bool
+			for _, c := range declared {
+				if c.Type != sdk.TypeJSON {
+					continue
+				}
+				sawJSON = true
+				switch v := values[c.Name].(type) {
+				case string, []byte:
+					t.Errorf("%s is declared JSON and the shape hands over a "+
+						"%T: %v\n\nFrom sdk v0.74.0 the BigQuery driver "+
+						"refuses this outright. Before it, the write succeeded "+
+						"and JSON_VALUE against the column returned NULL.",
+						c.Name, v, v)
+				}
+			}
+			if !sawJSON {
+				t.Fatalf("%s declared no JSON column for a record with an "+
+					"object and an array in it: this test is not looking at "+
+					"what it claims to", sh.name())
+			}
+		})
+	}
+}
