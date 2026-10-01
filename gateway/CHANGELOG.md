@@ -13,6 +13,28 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.20.0] — 2026-10-01
+
+Requires sdk v0.78.0. **The gateway was not affected by the v0.77.0 regression
+this fixes** — it declares a `Schema` and never `Columns`, so the check that
+refused a declared column absent from the row never ran here. It is released so
+that the two do not drift, and because the landing row it produces changes:
+
+### A `null` stays in the row
+
+A field that arrives `null` now keeps its key in the row, with a null value,
+and still declares no column. Those are two questions and 0.19.0's SDK answered
+them with one answer, which is what refused loads on the pipeline side.
+
+For a `shape: columns` table it means a `null` is WRITTEN into a column that
+already exists rather than left out of the statement. On an empty table the two
+look identical; against a `DEFAULT`, a generated column or a trigger they are
+not — one of them discards the producer's "this field is now empty".
+
+A field null in every event of a batch, with no column in the table, is still
+written nowhere and still creates nothing. #42's original bug — a null typing a
+column `STRING`, so the first array after it refused the batch — stays fixed.
+
 ## [0.19.0] — 2026-10-01
 
 Requires sdk v0.77.0. All three findings of
