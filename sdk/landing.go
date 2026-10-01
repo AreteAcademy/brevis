@@ -30,7 +30,11 @@ import (
 // LandingPrefix is reserved. A record carrying any key with it is refused by
 // whoever is shaping it, because otherwise a producer forges a control field
 // -- and a forged brevis_received_at is worse than none, since it looks real.
-const LandingPrefix = "brevis_"
+// It is configurable: BREVIS_LANDING_PREFIX replaces it for the whole
+// process. See core.EnvLandingPrefix for the normalisation and for why it is
+// a variable on the process rather than a field in a config -- and for the
+// one-way door, which is that changing it on a live table is not a rename.
+var LandingPrefix = core.LandingPrefix()
 
 // The columns every landing table carries, whatever the record holds.
 //
@@ -42,7 +46,7 @@ const LandingPrefix = "brevis_"
 // to match on `ingestion_id` BY NAME, so the first version of this created
 // tables with the right columns into which every merge refused. The
 // integration test caught it -- zero rows.
-const (
+var (
 	LandingColumnID         = LandingPrefix + "ingestion_id"
 	LandingColumnRecordKey  = LandingPrefix + "record_key"
 	LandingColumnOperation  = LandingPrefix + "operation"
@@ -63,13 +67,17 @@ const (
 	// compressed, so 400 bytes of JSON may be 80 on disk: summing this gives
 	// what arrived, never what is billed for keeping it.
 	LandingColumnReceivedBytes = LandingPrefix + "received_bytes"
-
-	// LandingColumnData holds the record whole, as JSON.
-	//
-	// Unprefixed, because it is the only column here that is the PRODUCER's:
-	// the eight above are the layout's, and this one is what they are about.
-	LandingColumnData = "data"
 )
+
+// LandingColumnData holds the record whole, as JSON.
+//
+// Unprefixed, because it is the only column here that is the PRODUCER's: the
+// eight above are the layout's, and this one is what they are about.
+//
+// A CONST while they are vars, and the difference is the statement: the eight
+// follow BREVIS_LANDING_PREFIX and this one cannot. It is not the layout's to
+// rename.
+const LandingColumnData = "data"
 
 // The values LandingColumnOperation takes.
 //
@@ -87,7 +95,11 @@ const (
 // absent, and a partition column a producer controls is a producer that can
 // write into 2035. An unpartitioned landing table is a query bill that grows
 // forever, so this is not optional.
-const LandingPartitionBy = LandingColumnReceivedAt
+// DERIVED, never written again: a const built from a const became a var
+// built from a var, and the point is that it cannot drift from the column it
+// names. A table partitioned on a column it does not have is refused by the
+// server, after the extract.
+var LandingPartitionBy = LandingColumnReceivedAt
 
 // LandingClusterBy is how a landing table is clustered: by the record,
 // because looking up one record's history is what anybody does with one.

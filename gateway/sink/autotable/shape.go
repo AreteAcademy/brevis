@@ -81,7 +81,7 @@ const (
 // have to follow an import to learn what a table gets. They are aliases, not
 // copies: there is one definition, in `sdk`, and a pipeline that lands this
 // layout produces the same table and the same ids as this does.
-const (
+var (
 	Prefix = sdk.LandingPrefix
 
 	ColumnID            = sdk.LandingColumnID
@@ -95,7 +95,7 @@ const (
 )
 
 // PartitionBy is the column a created table is partitioned on, by day.
-const PartitionBy = sdk.LandingPartitionBy
+var PartitionBy = sdk.LandingPartitionBy
 
 // ClusterBy is how a table is clustered: by the record.
 var ClusterBy = sdk.LandingClusterBy()

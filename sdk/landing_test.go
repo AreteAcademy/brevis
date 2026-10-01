@@ -250,7 +250,11 @@ func TestLandingFillsWhatLandingSchemaDeclares(t *testing.T) {
 	// DEFAULT; sending it -- even as NULL -- overrides that default and
 	// costs the one measurement the pair exists for. It is the only
 	// exception, and naming it here is what keeps it from growing.
-	const destinationFills = LandingColumnLoadedAt
+	// A var and not a const: the column names follow BREVIS_LANDING_PREFIX
+	// now, so they are resolved when the package loads rather than compiled
+	// in. The name is still the only exception, which is what this line is
+	// for.
+	destinationFills := LandingColumnLoadedAt
 
 	declared := LandingSchema(LandingOptions{})
 	if len(row) != len(declared)-1 {
