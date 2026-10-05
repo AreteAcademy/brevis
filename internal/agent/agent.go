@@ -26,6 +26,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -37,6 +38,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
@@ -201,8 +203,19 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}
 	a.mu.Unlock()
 
-	env, err := a.environment(req)
+	// The file this step publishes through, on THIS host. Created before the
+	// process so the variable can point at it, removed when the execution ends.
+	output, err := os.CreateTemp("", "brevis-output-*.json")
 	if err != nil {
+		return nil, fmt.Errorf("this host could not make a file for the step's "+
+			"published context: %w", err)
+	}
+	outputPath := output.Name()
+	_ = output.Close()
+
+	env, err := a.environment(req, outputPath)
+	if err != nil {
+		_ = os.Remove(outputPath)
 		// Refused before spawning. The engine turns this into a failed step
 		// naming the coordinate, which is the point: a command that starts with
 		// VENDOR_TOKEN unset produces a 401 three layers down and blames the
@@ -274,12 +287,74 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		a.mu.Unlock()
 		a.forget(req.ExecutionID)
 
+		// BEFORE the exit line, because the engine stops reading at it: the
+		// protocol says everything after KindExit is ignored, and published
+		// context arriving there would be dropped without a word.
+		a.publish(e, outputPath)
+		_ = os.Remove(outputPath)
+
 		e.emit(remote.Line{Kind: remote.KindExit, Code: exitCode(err)})
 		e.close()
 	}()
 
 	return e.reader(0), nil
 }
+
+// publish turns what the step wrote into the marker the runner already reads.
+//
+// A MARKER AND NOT A NEW LINE KIND, which is the whole reason this is three
+// lines. The `@brevis:` protocol on stdout is how a step publishes to the
+// engine on every executor -- the runner recognises it, and recognising it
+// there rather than in an executor is what the stages collector's own comment
+// says gives the local executor the same for free. An agent that invented a
+// `context` line would be a second road to the same place, for both programs
+// to keep in agreement.
+//
+// Silent when there is nothing, because most steps publish nothing and an
+// absent file is the normal case -- the same reading readPublished makes on
+// the local executor.
+func (a *Agent) publish(e *execution, path string) {
+	raw, err := os.ReadFile(path)
+	if err != nil || len(raw) == 0 {
+		return
+	}
+	// Bounded, because this becomes a line in the log stream and a ring entry.
+	// A step that writes a gigabyte there must not turn into a gigabyte on the
+	// wire; it is told, rather than truncated into something that parses as
+	// different data.
+	if len(raw) > maxPublished {
+		e.emit(remote.Line{Kind: remote.KindLog, Stream: "stderr", Message: fmt.Sprintf(
+			"brevis: this step published %d bytes to BREVIS_OUTPUT and the limit is %d; "+
+				"nothing was published. Publish what the steps below need, not the payload",
+			len(raw), maxPublished)})
+		return
+	}
+	// Validated here rather than sent on: a file that is not JSON cannot be
+	// the `value` of a marker without making the whole line unparseable, and a
+	// malformed line is the engine's problem for no reason.
+	if !json.Valid(raw) {
+		e.emit(remote.Line{Kind: remote.KindLog, Stream: "stderr", Message: fmt.Sprintf(
+			"brevis: this step wrote %d bytes to BREVIS_OUTPUT that are not JSON; "+
+				"nothing was published", len(raw))})
+		return
+	}
+	line, err := json.Marshal(struct {
+		Type  string          `json:"type"`
+		Value json.RawMessage `json:"value"`
+	}{Type: "context", Value: json.RawMessage(raw)})
+	if err != nil {
+		return
+	}
+	e.emit(remote.Line{Kind: remote.KindLog, Stream: "stdout", Message: "@brevis:" + string(line)})
+}
+
+// maxPublished bounds what a step may hand back through the file.
+//
+// One mebibyte, which is the same order as the request limit this agent's own
+// handler imposes. Context is what the steps below need to do their work --
+// a path, a count, a watermark -- and a payload that size is a file in a
+// bucket, not a variable.
+const maxPublished = 1 << 20
 
 // Resume serves the same execution from `after`.
 //
@@ -333,7 +408,7 @@ func (a *Agent) Cancel(execID string) error {
 // first, then the secrets, so a `secrets:` entry can deliberately override an
 // ordinary variable of the same name. That is what "this one, on purpose"
 // means.
-func (a *Agent) environment(req remote.StartRequest) ([]string, error) {
+func (a *Agent) environment(req remote.StartRequest, output string) ([]string, error) {
 	env := map[string]string{}
 	for k, v := range req.Env {
 		env[k] = v
@@ -352,6 +427,23 @@ func (a *Agent) environment(req remote.StartRequest) ([]string, error) {
 		sort.Strings(missing)
 		return nil, fmt.Errorf("this host could not resolve %d secret(s) and the step was "+
 			"NOT started: %s", len(missing), strings.Join(missing, "; "))
+	}
+
+	// BREVIS_OUTPUT IS THIS HOST'S, overriding whatever arrived.
+	//
+	// The runner picks a path meaningful on the ENGINE's filesystem and sends
+	// it with the rest of the environment. On a host the engine does not
+	// manage that path is somebody else's, and a step that honours it writes a
+	// file nobody reads -- silently, which is the failure mode the pod
+	// executor's own override exists to prevent. It makes the same override
+	// there, to the kubelet's termination message; this is that one, for a
+	// filesystem the engine cannot see at all.
+	//
+	// Both halves together, as the pod does: the path the step writes to and
+	// the path this agent reads back. Setting one without the other is the
+	// silent failure spelled out.
+	if output != "" {
+		env[runcontext.EnvOutput] = output
 	}
 
 	out := make([]string, 0, len(env))
