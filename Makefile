@@ -131,6 +131,32 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally
 down: ## Tears the local environment down
 	@docker compose down
 
+# --- the local cluster -------------------------------------------------------
+#
+# A Kubernetes cluster with Argo CD on it, and NOTHING deployed. Brevis arrives
+# the way a client's would: deployed from Git by Argo CD, not by this Makefile.
+# See docker-compose.cluster.yml.
+CLUSTER := docker compose -f docker-compose.cluster.yml
+
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell
+cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
+	@$(CLUSTER) up -d --wait k3s
+	@$(CLUSTER) run --rm bootstrap
+	@$(MAKE) --no-print-directory cluster-ui
+
+cluster-ui: ## The Argo CD URL and the admin password
+	@echo "argocd at http://localhost:$${BREVIS_ARGOCD_PORT:-30080}"
+	@echo "user      admin"
+	@printf 'password  '
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "(gone: it is deleted once you change the password)"
+	@echo
+
+cluster-shell: ## A kubectl against the local cluster: make cluster-shell ARGS="get pods -A"
+	@$(CLUSTER) exec -T k3s kubectl $(ARGS)
+
+cluster-down: ## Tears the cluster down, volumes included
+	@$(CLUSTER) down -v
+
 logs: ## Follows the API's logs
 	@docker compose logs -f api
 
