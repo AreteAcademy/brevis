@@ -23,7 +23,23 @@ func (a *Agent) Handler(log *slog.Logger) http.Handler {
 	mux.HandleFunc("POST /v1/exec", a.handleStart(log))
 	mux.HandleFunc("POST /v1/exec/{id}/resume", a.handleResume(log))
 	mux.HandleFunc("POST /v1/exec/{id}/cancel", a.handleCancel(log))
-	return a.authenticated(mux, log)
+	return a.advertised(a.authenticated(mux, log))
+}
+
+// advertised stamps every response with where to come back to.
+//
+// EVERY response, outside the authentication and outside the routing, for the
+// reason this wrapper exists at all: a refusal carries it too -- an agent that
+// refused a start is still the one holding whatever it already began -- and a
+// route added later cannot forget it. Setting it per handler is how one of
+// three gets missed.
+func (a *Agent) advertised(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if addr := a.advertising(); addr != "" {
+			w.Header().Set(remote.HeaderInstance, addr)
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // authenticated checks the shared token.

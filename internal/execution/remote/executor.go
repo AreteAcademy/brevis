@@ -23,16 +23,29 @@ import (
 // accident, and the specification would then be whatever that program happened
 // to do.
 type Agent interface {
-	// Start hands over the work and returns the stream of NDJSON lines.
-	Start(ctx context.Context, req StartRequest) (io.ReadCloser, error)
+	// Start hands over the work and returns the stream, with the instance that
+	// took it when the agent advertises one.
+	Start(ctx context.Context, req StartRequest) (Session, error)
 
-	// Resume picks the same execution's stream back up after `after`.
-	// It returns a GapError when its buffer no longer reaches that far.
-	Resume(ctx context.Context, execID string, r Resume) (io.ReadCloser, error)
+	// Resume picks the same execution's stream back up after `after`, AT THE
+	// INSTANCE THAT TOOK IT. It returns a GapError when its buffer no longer
+	// reaches that far.
+	Resume(ctx context.Context, instance, execID string, r Resume) (io.ReadCloser, error)
 
-	// Cancel asks the host to stop the process. See Executor.Cancel for what
-	// its error means, which is the part that matters.
-	Cancel(ctx context.Context, execID string) error
+	// Cancel asks the host to stop the process, at that same instance. See
+	// Executor.Cancel for what its error means, which is the part that matters.
+	Cancel(ctx context.Context, instance, execID string) error
+}
+
+// Session is what Start answers: the stream, and where to come back to.
+//
+// `Instance` is empty for an agent that advertises nothing, which is one agent
+// at one address and every deployment that exists today. The engine then keeps
+// using the address it was configured with, and nothing about this type
+// changes what happens. See HeaderInstance.
+type Session struct {
+	Instance string
+	Stream   io.ReadCloser
 }
 
 // Executor runs steps on one host.
@@ -54,7 +67,7 @@ type Executor struct {
 	Retries int
 
 	mu      sync.Mutex
-	running map[string]context.CancelFunc
+	running map[string]*step
 }
 
 const defaultRetries = 5
@@ -101,7 +114,7 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 		TimeoutSeconds: int(t.Timeout.Seconds()),
 	}
 
-	stream, err := e.Agent.Start(ctx, req)
+	session, err := e.Agent.Start(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("the agent on %s refused the step: %w", e.Host, err)
 	}
@@ -109,19 +122,31 @@ func (e *Executor) Execute(ctx context.Context, t execution.TaskExec) (<-chan ex
 	ctx, cancel := context.WithCancel(ctx)
 	e.mu.Lock()
 	if e.running == nil {
-		e.running = map[string]context.CancelFunc{}
+		e.running = map[string]*step{}
 	}
-	e.running[t.ExecutionID] = cancel
+	// The instance is recorded WITH the cancel function, in one place, because
+	// the two are needed together and by different callers: pump resumes and
+	// Cancel stops, and a step whose instance lived somewhere else would be one
+	// refactor away from being cancelled at the wrong replica.
+	e.running[t.ExecutionID] = &step{cancel: cancel, instance: session.Instance}
 	e.mu.Unlock()
 
 	events := make(chan execution.Event, 64)
-	go e.pump(ctx, cancel, t, stream, events)
+	go e.pump(ctx, cancel, t, session, events)
 	return events, nil
+}
+
+// step is what the executor keeps while one execution is in flight.
+type step struct {
+	cancel   context.CancelFunc
+	instance string
 }
 
 // pump reads the stream, resumes it when it breaks, and closes `events` once.
 func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
-	t execution.TaskExec, stream io.ReadCloser, events chan<- execution.Event) {
+	t execution.TaskExec, session Session, events chan<- execution.Event) {
+
+	stream := session.Stream
 
 	defer func() {
 		cancel()
@@ -164,7 +189,7 @@ func (e *Executor) pump(ctx context.Context, cancel context.CancelFunc,
 			return
 		}
 
-		next, rerr := e.Agent.Resume(ctx, t.ExecutionID, Resume{
+		next, rerr := e.Agent.Resume(ctx, session.Instance, t.ExecutionID, Resume{
 			Protocol: Protocol, After: seen, Reason: reasonOf(err),
 		})
 		if rerr != nil {
@@ -358,13 +383,15 @@ func reasonOf(err error) string {
 //     and worth naming rather than showing as a spinner that never resolves.
 func (e *Executor) Cancel(ctx context.Context, execID string) error {
 	e.mu.Lock()
-	stop := e.running[execID]
+	s := e.running[execID]
 	e.mu.Unlock()
-	if stop != nil {
-		stop()
+	var instance string
+	if s != nil {
+		s.cancel()
+		instance = s.instance
 	}
 
-	if err := e.Agent.Cancel(ctx, execID); err != nil {
+	if err := e.Agent.Cancel(ctx, instance, execID); err != nil {
 		return fmt.Errorf("the engine stopped following this step, but the agent on %s "+
 			"could not be reached to stop it: %w. The process may still be running there",
 			e.Host, err)
@@ -392,16 +419,21 @@ func (a HTTPAgent) client() *http.Client {
 	return &http.Client{}
 }
 
-func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (io.ReadCloser, error) {
-	return a.post(ctx, "/v1/exec", r)
+func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (Session, error) {
+	stream, instance, err := a.send(ctx, a.BaseURL, "/v1/exec", r)
+	if err != nil {
+		return Session{}, err
+	}
+	return Session{Instance: instance, Stream: stream}, nil
 }
 
-func (a HTTPAgent) Resume(ctx context.Context, execID string, r Resume) (io.ReadCloser, error) {
-	return a.post(ctx, "/v1/exec/"+execID+"/resume", r)
+func (a HTTPAgent) Resume(ctx context.Context, instance, execID string, r Resume) (io.ReadCloser, error) {
+	stream, _, err := a.send(ctx, a.at(instance), "/v1/exec/"+execID+"/resume", r)
+	return stream, err
 }
 
-func (a HTTPAgent) Cancel(ctx context.Context, execID string) error {
-	body, err := a.post(ctx, "/v1/exec/"+execID+"/cancel", struct {
+func (a HTTPAgent) Cancel(ctx context.Context, instance, execID string) error {
+	body, _, err := a.send(ctx, a.at(instance), "/v1/exec/"+execID+"/cancel", struct {
 		Protocol int `json:"protocol"`
 	}{Protocol})
 	if err != nil {
@@ -410,14 +442,31 @@ func (a HTTPAgent) Cancel(ctx context.Context, execID string) error {
 	return body.Close()
 }
 
+// at is the address to use for an execution already under way.
+//
+// The instance when there is one, the configured address otherwise. Empty is
+// not a degraded case: it is one agent at one address, which is every
+// deployment that does not put a pool behind a Service.
+func (a HTTPAgent) at(instance string) string {
+	if instance != "" {
+		return instance
+	}
+	return a.BaseURL
+}
+
 func (a HTTPAgent) post(ctx context.Context, path string, payload any) (io.ReadCloser, error) {
+	body, _, err := a.send(ctx, a.BaseURL, path, payload)
+	return body, err
+}
+
+func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io.ReadCloser, string, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, a.BaseURL+path, strings.NewReader(string(raw)))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+path, strings.NewReader(string(raw)))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if a.Token != "" {
@@ -429,19 +478,22 @@ func (a HTTPAgent) post(ctx context.Context, path string, payload any) (io.ReadC
 
 	resp, err := a.client().Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+	// Read BEFORE the status checks: a refusal carries it too, and an agent
+	// that refused is still the one holding whatever it already started.
+	instance := resp.Header.Get(HeaderInstance)
 	if resp.StatusCode == http.StatusGone {
 		// The agent's ring has moved past what was asked for.
 		var gap GapError
 		_ = json.NewDecoder(resp.Body).Decode(&gap)
 		_ = resp.Body.Close()
-		return nil, gap
+		return nil, instance, gap
 	}
 	if resp.StatusCode != http.StatusOK {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		_ = resp.Body.Close()
-		return nil, fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
+		return nil, instance, fmt.Errorf("the agent answered %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
 	}
-	return resp.Body, nil
+	return resp.Body, instance, nil
 }

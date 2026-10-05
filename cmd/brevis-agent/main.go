@@ -11,6 +11,23 @@
 //	  --allow-secrets vendor-api,partner-sftp \
 //	  --state-dir /var/lib/brevis-agent
 //
+// # Behind a shared address
+//
+// One agent at one address needs nothing more. A POOL of agents behind one
+// address -- a Deployment with an HPA, a load balancer -- needs each instance
+// to say where to come back to, because an agent is stateful per execution: the
+// ring and the process handle are in THIS process's memory, so a resume or a
+// cancel that reaches a different replica is answered with "not running here"
+// while the step runs on undisturbed.
+//
+//	--advertise https://$(POD_NAME).dbt-runner.data.svc:9443
+//
+// Told, not discovered: this process can read its hostname and cannot know
+// which of its names the engine routes to. Left empty, the engine keeps using
+// the address it was configured with, which is correct for one agent and wrong
+// for a pool -- and the pool's symptom is a step failed on the first network
+// blip, with a process still running.
+//
 // # What it will not do
 //
 // It is not an orchestrator. It knows nothing of workflows, dependencies,
@@ -62,6 +79,7 @@ func main() {
 		workDir    = flag.String("work-dir", "", "where a step runs when it names no directory")
 		stateDir   = flag.String("state-dir", "", "where the execution -> pid map is kept, so cancel survives a restart")
 		ring       = flag.Int("ring", 10000, "lines kept for a resumed connection; beyond this a reconnect fails the step")
+		advertise  = flag.String("advertise", "", "the address the engine should come back to for this instance's executions; required behind a shared address, meaningless without one")
 		logLevel   = flag.String("log-level", "info", "debug, info, warn or error")
 	)
 	flag.Parse()
@@ -97,6 +115,7 @@ func main() {
 		WorkDir:        *workDir,
 		StateDir:       *stateDir,
 		RingSize:       *ring,
+		Advertise:      *advertise,
 	})
 
 	srv := &http.Server{

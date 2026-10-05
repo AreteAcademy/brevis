@@ -66,6 +66,23 @@ type Options struct {
 	// not hand over its store because an engine asked nicely.
 	AllowedSecrets []string
 
+	// Advertise is the address the engine should come back to for this
+	// agent's own executions: `https://dbt-runner-2.dbt.svc:9443`.
+	//
+	// It matters only behind a SHARED address. An agent is stateful per
+	// execution -- a ring and a process handle in this process's memory -- so
+	// a resume or a cancel that reaches a different replica is answered with
+	// "not running here", and the engine fails a step that is still running
+	// over here. See remote.HeaderInstance.
+	//
+	// TOLD, not discovered. This process can read its hostname; it cannot know
+	// which of its names the engine can route to, and a guess that resolves
+	// nowhere is worse than no answer -- the engine would address an instance
+	// that does not exist instead of falling back to the address it has.
+	//
+	// Empty is the ordinary case and changes nothing: one agent at one address.
+	Advertise string
+
 	// WorkDir is where a step runs when it names no directory of its own.
 	WorkDir string
 
@@ -102,6 +119,27 @@ type Agent struct {
 }
 
 // New builds an agent.
+// Advertise sets where the engine should come back to for this agent's
+// executions, after construction.
+//
+// After, because an address is not always known at construction: a test starts
+// the server to learn its address, and a pod may be told by an init step. It
+// is a plain setter under the same lock the runs map uses, so a handler
+// serving a request while this is called reads one value or the other and
+// never a torn one.
+func (a *Agent) Advertise(addr string) {
+	a.mu.Lock()
+	a.opt.Advertise = addr
+	a.mu.Unlock()
+}
+
+// advertising reads it back.
+func (a *Agent) advertising() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.opt.Advertise
+}
+
 func New(opt Options) *Agent {
 	if opt.RingSize <= 0 {
 		opt.RingSize = defaultRingSize
