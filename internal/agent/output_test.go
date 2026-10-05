@@ -1,8 +1,10 @@
 package agent_test
 
 import (
+	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -204,4 +206,38 @@ func TestThePublishedFileIsCleanedUp(t *testing.T) {
 		t.Errorf("%s outlived the execution: one file per step per attempt, on "+
 			"somebody else's host, is a disk that fills quietly", path)
 	}
+}
+
+// A step this host REFUSES leaves no file behind either.
+//
+// Found by a mutation that removed the wrong line and lived: there are two
+// cleanups, and only one was covered. A refusal is not rare — an unresolvable
+// secret is retried by the pipe — so one leaked file per attempt is a disk
+// filling on somebody else's host, quietly, for a step that never ran.
+func TestARefusedStepLeavesNoFileBehind(t *testing.T) {
+	dir := t.TempDir()
+	e := pair(t, agent.Options{SecretsDir: dir, AllowedSecrets: []string{"nothing"}})
+
+	before := countTemps(t)
+
+	tk := task("out-8", `echo hi`)
+	tk.Secrets = map[string]string{"TOKEN": "forbidden/key"}
+	if _, err := e.Execute(context.Background(), tk); err == nil {
+		t.Fatal("a secret outside the allowlist was accepted")
+	}
+
+	if after := countTemps(t); after > before {
+		t.Errorf("%d output file(s) survived a step that was never started: a "+
+			"refusal leaves no process behind and must leave no file either",
+			after-before)
+	}
+}
+
+func countTemps(t *testing.T) int {
+	t.Helper()
+	found, err := filepath.Glob(filepath.Join(os.TempDir(), "brevis-output-*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(found)
 }
