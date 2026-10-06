@@ -88,6 +88,22 @@ spec:
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
           ports: [{name: http, containerPort: 9443}]
+          # READINESS AND NOT LIVENESS, and the asymmetry is the point.
+          #
+          # The engine reaches a pool through a headless Service, whose DNS
+          # already filters on Ready -- there was simply nothing deciding it.
+          # Without this, a replica is Ready the instant the container runs,
+          # before the listener binds, and the engine dispatches a step into a
+          # connection refused.
+          #
+          # A liveness probe would restart a wedged listener and would also
+          # SIGTERM a pod holding hours of a step's work. This process is built
+          # the other way round: its shutdown lets running steps finish their
+          # streams, so taking it out of the Service is the strong action and
+          # killing it is not ours to take.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
           volumeMounts:
             - {name: token, mountPath: /etc/brevis, readOnly: true}
             - {name: state, mountPath: /var/lib/brevis-agent}

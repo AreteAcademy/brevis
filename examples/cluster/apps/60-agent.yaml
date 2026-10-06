@@ -94,6 +94,12 @@ spec:
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
           ports: [{name: http, containerPort: 9443}]
+          # Readiness, not liveness: the headless Service's DNS filters on
+          # Ready, and a liveness failure would SIGTERM a pod holding a running
+          # step. See deployments/kubernetes/agent.yaml for the whole argument.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
           volumeMounts:
             - {name: token, mountPath: /etc/brevis, readOnly: true}
             - {name: state, mountPath: /var/lib/brevis-agent}
