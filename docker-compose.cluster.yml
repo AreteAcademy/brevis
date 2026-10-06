@@ -54,6 +54,8 @@ services:
       # Argo CD's UI, through a NodePort. A published port is the only way in
       # from the host without a port-forward somebody has to keep running.
       - "${BREVIS_ARGOCD_PORT:-30080}:30080"
+      # Brevis's own UI, through a NodePort the demo tree declares.
+      - "${BREVIS_UI_PORT:-30081}:30081"
     healthcheck:
       # The API answering is the gate, not a sleep: k3s takes as long as the
       # machine takes, and a fixed wait is either too short on a cold start or
@@ -74,11 +76,21 @@ services:
     volumes:
       - kubeconfig:/kube
       - ./deployments/cluster:/bootstrap:ro
+      # The demo tree, at its own path: /bootstrap is a read-only mount and a
+      # file cannot be mounted inside one.
+      - ./examples/cluster:/demo:ro
     environment:
       # Pinned, and that is the whole reason it is a variable: `stable` moves,
       # and a demo that breaks when upstream releases is a demo nobody trusts
       # the next time it breaks for a real reason.
       ARGOCD_VERSION: ${ARGOCD_VERSION:-v2.13.3}
+      # Which revision of THIS repository Argo CD deploys the demo from.
+      #
+      # The demo tree, not the chart: `examples/cluster/apps/30-brevis.yaml`
+      # pins the chart at master on purpose, because the chart is the release
+      # and the demo is the demo. Point this at your branch to try a change to
+      # the stack without editing a tracked file.
+      BREVIS_GIT_REVISION: ${BREVIS_GIT_REVISION:-master}
     entrypoint: ["/bin/sh", "/bootstrap/install.sh"]
 
 volumes:

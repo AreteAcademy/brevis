@@ -1,0 +1,55 @@
+# Brevis, from the chart a client installs.
+#
+# THE CHART AND NOT A COPY. `deployments/helm/brevis` is the artefact somebody
+# applies in their own cluster; a demo that deploys an edited version of it
+# demonstrates something nobody has.
+#
+# A SECOND Application, applied by the bootstrap beside the root, rather than a
+# child inside `apps/`. The reason is the revision: a child in Git carries
+# whatever `targetRevision` is written in it, so testing a chart change would
+# mean editing a tracked file. Two Applications, both templated by the
+# bootstrap, means one knob -- BREVIS_GIT_REVISION -- moves the demo tree and
+# the chart together, and pointing them apart is a flag away rather than a
+# commit away.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: brevis
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AreteAcademy/brevis.git
+    targetRevision: BREVIS_GIT_REVISION
+    path: deployments/helm/brevis
+    helm:
+      values: |
+        # `local` so the chart does not require a credential. The UI is open,
+        # which is correct for a throwaway cluster on a developer's machine and
+        # is the first thing to change if this is ever reachable from anywhere.
+        env: local
+
+        database:
+          # The Secret 10-postgres.yaml creates, in the same namespace.
+          existingSecret: brevis-db
+
+        api:
+          replicas: 1
+
+        scheduler:
+          # Small, because a laptop is the cluster. Raising it is how you make
+          # more step pods exist at once, which is the thing to watch.
+          maxPods: 3
+          # A failed step's pod STAYS, which is the opposite of the production
+          # default and the right choice here: the reason to run this is to
+          # look at what happened.
+          keepPodsOnFailure: true
+
+        alerts:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dados
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    syncOptions: [CreateNamespace=true]

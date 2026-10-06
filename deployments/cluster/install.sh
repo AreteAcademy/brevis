@@ -44,8 +44,15 @@ echo "==> waiting for Argo CD to be ready"
 kubectl -n argocd rollout status deployment/argocd-server --timeout=300s
 kubectl -n argocd rollout status deployment/argocd-repo-server --timeout=300s
 
+echo "==> pointing Argo CD at ${BREVIS_GIT_REVISION}"
+for app in root brevis; do
+  sed "s#BREVIS_GIT_REVISION#${BREVIS_GIT_REVISION}#" "/demo/${app}.yaml" | kubectl apply -f -
+done
+
 echo
-echo "Argo CD is up, with NOTHING deployed. That is the starting point:"
+echo "Argo CD is deploying Brevis from Git. Nothing else will be applied by"
+echo "hand: from here every change is a commit."
 echo "the cluster exists and nobody has applied anything to it."
 echo
-echo "  make cluster-ui    the URL and the password"
+echo "  make cluster-ui      the URL and the password"
+echo "  make cluster-status  what Argo CD has synced"

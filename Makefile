@@ -138,7 +138,7 @@ down: ## Tears the local environment down
 # See docker-compose.cluster.yml.
 CLUSTER := docker compose -f docker-compose.cluster.yml
 
-.PHONY: cluster-up cluster-down cluster-ui cluster-shell
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status
 cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
 	@$(CLUSTER) up -d --wait k3s
 	@$(CLUSTER) run --rm bootstrap
@@ -150,6 +150,11 @@ cluster-ui: ## The Argo CD URL and the admin password
 	@printf 'password  '
 	@$(CLUSTER) exec -T k3s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "(gone: it is deleted once you change the password)"
 	@echo
+
+cluster-status: ## What Argo CD has synced, and what is running
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get applications
+	@echo
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods
 
 cluster-shell: ## A kubectl against the local cluster: make cluster-shell ARGS="get pods -A"
 	@$(CLUSTER) exec -T k3s kubectl $(ARGS)
