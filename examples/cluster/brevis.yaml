@@ -45,6 +45,17 @@ spec:
           # look at what happened.
           keepPodsOnFailure: true
 
+        # The runtime the demo keeps, declared to the engine. A step saying
+        # `host: tools` goes here instead of becoming a pod.
+        #
+        # The pod ITSELF is in apps/60-agent.yaml, not in this chart: the agent
+        # is deliberately not part of the engine's lifecycle, and the demo
+        # deploys it the way a client would -- beside the engine, not inside
+        # its release.
+        hosts:
+          - name: tools
+            url: http://brevis-agent-0.brevis-agent.dados.svc:9443
+
         alerts:
           enabled: false
   destination:

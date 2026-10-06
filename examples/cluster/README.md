@@ -100,6 +100,39 @@ A failed step's pod STAYS, because this demo sets `keepPodsOnFailure: true` —
 the opposite of the production default, and the right choice when the reason to
 run this is to look at what happened.
 
+## The same work, with no pod at all
+
+`one-pod.yaml` is `pod-per-step.yaml` with `image:` replaced by `host: tools`.
+Everything else is the same. With `make cluster-watch` open:
+
+```bash
+make cluster-run WORKFLOW=pod_per_step    # four pods appear and die
+make cluster-run WORKFLOW=one_pod         # nothing happens
+```
+
+The second run succeeds and creates **no pod**. The work went to
+`brevis-agent-0`, which was already up, and its own log shows the four steps
+arriving. Two of them start six milliseconds apart — the parallel pair, in the
+same container, which is the concurrency nobody is bounding.
+
+**The agent image is built from this tree**, because `…:0.15.2-agent` ships for
+the first time in the next release:
+
+```bash
+make cluster-dev-image      # builds it and imports it into the cluster
+```
+
+`imagePullPolicy: Never` is what stops the kubelet looking for a tag nobody
+published.
+
+### What it gives up, in the same frame
+
+`one-pod.yaml` has no `resources:`, and that is not an omission. On a host it
+means nothing: the step gets whatever the agent's pod has. A pod asks for its
+own share; a guest does not. Scaling the StatefulSet to 3 makes it architecture
+D — the engine still reaches the instance that took each step, because
+`--advertise` is built from the pod's own name.
+
 ### What is NOT in Argo CD's tree
 
 ```bash
@@ -131,6 +164,10 @@ during it, `pod-per-step-large` on `python:3.12-slim` with 100m/128Mi and
 moment; after it, none — and `runs` in the database says `success`, which is
 what `keepPodsOnFailure: true` makes an absent pod mean. `make cluster-tree`
 listed seven objects and not one of them was a step pod.
+
+`one_pod` was then run: the same four steps, `success`, and **zero step pods
+created** — `task_runs` has all four, and `brevis-agent-0`'s own log shows them
+arriving, with the parallel pair six milliseconds apart.
 
 Then a workflow was edited in Git — one tag added — pushed, and synced: the
 ConfigMap's hash changed, the hook ran a second time, and the engine's database

@@ -294,6 +294,30 @@
           "type": "object"
         }
       }
+    },
+    "hosts": {
+      "type": "array",
+      "description": "Machines this installation may dispatch a `host:` step to.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "url"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "hostTokenSecret": {
+      "type": "string",
+      "description": "Secret with key `token`, sent to every agent."
     }
   },
   "additionalProperties": false

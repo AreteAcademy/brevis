@@ -138,7 +138,7 @@ down: ## Tears the local environment down
 # See docker-compose.cluster.yml.
 CLUSTER := docker compose -f docker-compose.cluster.yml
 
-.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree cluster-dev-image
 cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
 	@$(CLUSTER) up -d --wait k3s
 	@$(CLUSTER) run --rm bootstrap
@@ -155,6 +155,12 @@ cluster-status: ## What Argo CD has synced, and what is running
 	@$(CLUSTER) exec -T k3s kubectl -n argocd get applications
 	@echo
 	@$(CLUSTER) exec -T k3s kubectl -n dados get pods
+
+cluster-dev-image: ## Builds the agent from THIS tree into the cluster (it is not published yet)
+	@docker build -q --target agent -t brevis-agent:dev --build-arg VERSION=dev . >/dev/null
+	@docker save brevis-agent:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@echo "brevis-agent:dev is in the cluster's image store"
+	@echo "The demo pins it with imagePullPolicy: Never, so nothing goes looking for it on a registry."
 
 cluster-run: ## Triggers a workflow in the cluster: make cluster-run WORKFLOW=pod_per_step
 	@curl -fsS -o /dev/null -X POST \

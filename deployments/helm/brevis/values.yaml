@@ -96,6 +96,23 @@ scheduler:
   # comes from the installation, never from a workflow's YAML.
   taskEnvFromSecrets: []
 
+# Machines this installation may dispatch a `host:` step to, as name/url pairs:
+#
+#   hosts:
+#     - name: tools
+#       url: http://brevis-agent-0.brevis-agent.dados.svc:9443
+#
+# A step says `host: tools` and the command goes there instead of becoming a
+# pod. Empty means no step may use `host:`, and the refusal names this value.
+#
+# Installation-level on purpose: a workflow that could name an arbitrary
+# address would be dispatching this engine's credentials to it.
+hosts: []
+
+# A Secret with key `token`, holding the one the engine sends to every agent.
+# Empty sends none, which the engine warns about at boot.
+hostTokenSecret: ""
+
 # The agent: a runtime you keep, for steps that use `host:`.
 #
 # OFF, and that is the honest default. This is the engine's chart and the agent

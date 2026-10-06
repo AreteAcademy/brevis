@@ -1,0 +1,91 @@
+# The runtime you keep: architecture C, and D when you scale it.
+#
+# A StatefulSet and a headless Service, the same shape
+# `deployments/kubernetes/agent.yaml` has, with two things changed for the demo
+# and both of them said out loud:
+#
+#  1. THE IMAGE IS BUILT FROM THIS TREE. `areteacademy/brevis:…-agent` does not
+#     exist on a registry yet -- the agent ships for the first time in the next
+#     release -- so `make cluster-dev-image` builds it and imports it into the
+#     cluster's own image store. `imagePullPolicy: Never` is what stops the
+#     kubelet going to look for a tag nobody published.
+#
+#  2. NO TOKEN. The agent accepts any caller, which is wrong everywhere except
+#     a throwaway cluster on a laptop. On a real one this is a Secret and
+#     --token-file points at it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-agent
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  # Headless, for the per-pod DNS names --advertise is built from. A ClusterIP
+  # Service does not create them, and the pool breaks in a way that only shows
+  # up on a dropped connection.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: brevis
+    app.kubernetes.io/component: agent
+  ports:
+    - {name: http, port: 9443, targetPort: 9443}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: brevis-agent
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceName: brevis-agent
+  # ONE, which is architecture C. Change it to 3, push, sync, and it is D --
+  # the engine still reaches the instance that took each step, because
+  # --advertise below is built from the pod's own name.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: brevis
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: brevis
+        app.kubernetes.io/component: agent
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agent
+          image: brevis-agent:dev
+          imagePullPolicy: Never
+          args:
+            - --listen=:9443
+            - --advertise=http://$(POD_NAME).brevis-agent.$(POD_NAMESPACE).svc:9443
+            - --state-dir=/var/lib/brevis-agent
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+          ports: [{name: http, containerPort: 9443}]
+          volumeMounts:
+            - {name: state, mountPath: /var/lib/brevis-agent}
+            - {name: work, mountPath: /tmp}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            # The one Brevis pod where this cannot be true: a step runs here.
+            readOnlyRootFilesystem: false
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: state
+          emptyDir: {}
+        - name: work
+          emptyDir: {}

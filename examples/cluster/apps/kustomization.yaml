@@ -16,9 +16,11 @@ resources:
   - 10-postgres.yaml
   - 40-ui-nodeport.yaml
   - 50-publish.yaml
+  - 60-agent.yaml
 
 configMapGenerator:
   - name: brevis-workflows
     namespace: dados
     files:
       - workflows/pod-per-step.yaml
+      - workflows/one-pod.yaml
