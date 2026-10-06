@@ -4,8 +4,14 @@ description: A data orchestration runtime — the API, the scheduler and one pod
 type: application
 
 # The chart versions on its own; appVersion tracks the engine image.
-version: 0.1.0
-appVersion: "0.13.0"
+#
+# NOTHING CHECKS THAT THIS MATCHES `VERSION`, and it drifted: the chart said
+# 0.13.0 while VERSION and deployments/kubernetes/ said 0.15.2, so installing
+# the chart deployed an engine two releases behind the manifests beside it.
+# Found by installing it into a cluster, not by reading it. A gate for the
+# drift is its own piece of work; this is the number being right today.
+version: 0.1.1
+appVersion: "0.15.2"
 
 home: https://brevis.sh
 sources:
