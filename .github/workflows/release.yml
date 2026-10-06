@@ -102,13 +102,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # The Hub's overview, from a file in this repository rather than typed
-      # into the web UI. A page edited in a browser has nobody to review it and
-      # no reason to stay true: the one thing worse than an empty registry page
-      # is one still teaching last year's install command.
-      #
-      # Last, so a failed build never leaves the page describing an image that
-      # is not there.
+      # A THIRD image, because a host runs the agent and nothing else. It is
+      # alpine rather than distroless: the agent's whole job is running the
+      # commands a step names, and a runtime with no shell cannot.
       - name: Agent (the other half of `host:`)
         uses: docker/build-push-action@v6
         with:
@@ -123,6 +119,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The Hub's overview, from a file in this repository rather than typed
+      # into the web UI. A page edited in a browser has nobody to review it and
+      # no reason to stay true: the one thing worse than an empty registry page
+      # is one still teaching last year's install command.
+      #
+      # Last, so a failed build never leaves the page describing an image that
+      # is not there.
       - name: The Docker Hub overview
         uses: peter-evans/dockerhub-description@v5
         with:

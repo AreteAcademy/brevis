@@ -147,15 +147,18 @@ The second run succeeds and creates **no pod**. The work went to
 arriving. Two of them start six milliseconds apart — the parallel pair, in the
 same container, which is the concurrency nobody is bounding.
 
-**The agent image is built from this tree**, because `…:0.15.2-agent` ships for
-the first time in the next release:
+**The agent image is built from this tree**, not pulled. `areteacademy/brevis:
+0.16.0-agent` exists from this release on, and the demo still builds its own:
+the point of running this is to try the agent in the working tree, and a demo
+that pulled a published tag would be testing last release's.
 
 ```bash
 make cluster-dev-image      # builds it and imports it into the cluster
 ```
 
-`imagePullPolicy: Never` is what stops the kubelet looking for a tag nobody
-published.
+`imagePullPolicy: Never` is what stops the kubelet going to look for a tag
+built locally — and what makes a failed build fail here, loudly, instead of
+silently running something older.
 
 ## A pool, and why it is pointed at the Service
 
