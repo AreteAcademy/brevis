@@ -54,6 +54,18 @@ func TestAnAdvertisementIsBoundedByTheConfiguredAddress(t *testing.T) {
 			why:       "the case scheme-and-port alone would have allowed",
 		},
 		{
+			// THE CASE THE CODE'S OWN COMMENT NAMES, and which no test covered
+			// until a mutation lived. `notbrevis-agent.dados.svc` ENDS WITH
+			// `brevis-agent.dados.svc`, so a strings.HasSuffix passes it --
+			// and it is a different Service that anything able to create one
+			// in this namespace could stand up. Labels are compared, not
+			// characters.
+			name:      "a domain that merely ends with the right characters",
+			advertise: "http://pod.notbrevis-agent.dados.svc:9443",
+			want:      configured,
+			why:       "a suffix on the string accepts a different Service",
+		},
+		{
 			name:      "a stranger one label deeper",
 			advertise: "http://x.brevis-agent.dados.svc.attacker.com:9443",
 			want:      configured,
