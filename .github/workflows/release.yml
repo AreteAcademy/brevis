@@ -109,6 +109,20 @@ jobs:
       #
       # Last, so a failed build never leaves the page describing an image that
       # is not there.
+      - name: Agent (the other half of `host:`)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: agent
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }}-agent,${{ env.IMAGE }}:latest-agent
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: The Docker Hub overview
         uses: peter-evans/dockerhub-description@v5
         with:
