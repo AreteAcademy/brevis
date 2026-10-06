@@ -24,3 +24,4 @@ configMapGenerator:
     files:
       - workflows/pod-per-step.yaml
       - workflows/one-pod.yaml
+      - workflows/tools.yaml

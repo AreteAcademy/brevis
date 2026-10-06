@@ -4,7 +4,10 @@
 # `deployments/kubernetes/agent.yaml` has, with two things changed for the demo
 # and both of them said out loud:
 #
-#  1. THE IMAGE IS BUILT FROM THIS TREE. `areteacademy/brevis:…-agent` does not
+#  1. THE IMAGE IS ONE YOU BUILT. `runtime/Dockerfile` is three lines on top of
+#     the shipped agent -- python and jq here, dbt in a real one -- because the
+#     agent alone runs nothing a step needs. `make cluster-dev-image` builds
+#     both and imports them. `areteacademy/brevis:…-agent` does not
 #     exist on a registry yet -- the agent ships for the first time in the next
 #     release -- so `make cluster-dev-image` builds it and imports it into the
 #     cluster's own image store. `imagePullPolicy: Never` is what stops the
@@ -61,7 +64,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: agent
-          image: brevis-agent:dev
+          image: brevis-tools:dev
           imagePullPolicy: Never
           args:
             - --listen=:9443

@@ -159,7 +159,10 @@ cluster-status: ## What Argo CD has synced, and what is running
 cluster-dev-image: ## Builds the agent from THIS tree into the cluster (it is not published yet)
 	@docker build -q --target agent -t brevis-agent:dev --build-arg VERSION=dev . >/dev/null
 	@docker save brevis-agent:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
-	@echo "brevis-agent:dev is in the cluster's image store"
+	@docker build -q -t brevis-tools:dev examples/cluster/runtime >/dev/null
+	@docker save brevis-tools:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@echo "brevis-agent:dev and brevis-tools:dev are in the cluster's image store"
+	@echo "tools is the one the demo runs: the agent, plus python and jq, built by you."
 	@echo "The demo pins it with imagePullPolicy: Never, so nothing goes looking for it on a registry."
 
 cluster-run: ## Triggers a workflow in the cluster: make cluster-run WORKFLOW=pod_per_step
