@@ -52,9 +52,13 @@ spec:
         # is deliberately not part of the engine's lifecycle, and the demo
         # deploys it the way a client would -- beside the engine, not inside
         # its release.
+        # THE SERVICE, not a pod. A pod address sends every start to that one
+        # replica and the others never see work; the headless Service resolves
+        # to all of them. Each replica then advertises its own pod name, and
+        # the engine comes back THERE for a resume or a cancel.
         hosts:
           - name: tools
-            url: http://brevis-agent-0.brevis-agent.dados.svc:9443
+            url: http://brevis-agent.dados.svc:9443
         # The same token the agent's Secret holds. One for every host, which is
         # a gap the engine's own config states rather than hides.
         hostTokenSecret: brevis-agent-token

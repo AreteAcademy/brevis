@@ -59,10 +59,11 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   serviceName: brevis-agent
-  # ONE, which is architecture C. Change it to 3, push, sync, and it is D --
-  # the engine still reaches the instance that took each step, because
-  # --advertise below is built from the pod's own name.
-  replicas: 1
+  # THREE, which is architecture D. One is architecture C and the only change
+  # between them is this number: the engine still reaches the instance that
+  # took each step, because --advertise below is built from the pod's own name
+  # and BREVIS_HOSTS points at the Service rather than at a pod.
+  replicas: 3
   selector:
     matchLabels:
       app.kubernetes.io/name: brevis

@@ -508,29 +508,22 @@ func sameInstallation(configured, advertised string) bool {
 		return false
 	}
 
-	// The domain is everything after the first label. Compared as LABELS and
-	// not as a string suffix: `x.brevis-agent.dados.svc.attacker.com` ends with
-	// nothing useful, but a naive strings.HasSuffix on the domain would be one
-	// typo away from accepting `evil-brevis-agent.dados.svc`.
+	// THE ADVERTISED HOST IS THE CONFIGURED ONE, OR A NAME INSIDE IT.
+	//
+	// A pool is configured with its SERVICE -- `brevis-agent.dados.svc` -- and
+	// each replica advertises its POD -- `brevis-agent-2.brevis-agent.dados.svc`.
+	// The pod's name is the Service's with a label in FRONT, which is what
+	// Kubernetes gives a StatefulSet with a governing headless Service, and it
+	// is the only shape in which a pool works at all: configuring one pod
+	// instead sends every start to that pod and the others never see work.
+	//
+	// So the rule is containment and not similarity. `evil.example.com` is
+	// neither; `redis.dados.svc` is a sibling of the Service and is NOT a name
+	// inside it; `pod.notbrevis-agent.dados.svc` ends with the right characters
+	// and not with the right LABEL, which is why the dot is part of the
+	// comparison.
 	baseHost, advHost := base.Hostname(), adv.Hostname()
-	if baseHost == advHost {
-		return true
-	}
-	baseDomain := domainOf(baseHost)
-	if baseDomain == "" {
-		// Nothing to share: a bare host or an IP allows only itself, and the
-		// equality above already answered that.
-		return false
-	}
-	return domainOf(advHost) == baseDomain
-}
-
-// domainOf drops the first DNS label. Empty when there is none to drop.
-func domainOf(host string) string {
-	if i := strings.Index(host, "."); i >= 0 {
-		return host[i+1:]
-	}
-	return ""
+	return advHost == baseHost || strings.HasSuffix(advHost, "."+baseHost)
 }
 
 func (a HTTPAgent) post(ctx context.Context, path string, payload any) (io.ReadCloser, error) {

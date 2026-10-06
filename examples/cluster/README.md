@@ -125,6 +125,32 @@ make cluster-dev-image      # builds it and imports it into the cluster
 `imagePullPolicy: Never` is what stops the kubelet looking for a tag nobody
 published.
 
+## A pool, and why it is pointed at the Service
+
+`60-agent.yaml` has `replicas: 3`. Change it to 1, push, sync, and it is
+architecture C again; the number is the only difference between them.
+
+What makes a pool spread is **the address in `BREVIS_HOSTS`**:
+
+```yaml
+hosts:
+  - name: tools
+    url: http://brevis-agent.dados.svc:9443     # the SERVICE, not a pod
+```
+
+A pod address sends every start to that one replica and the others never see
+work. The headless Service resolves to all of them. Each replica then
+advertises its OWN pod name, and the engine comes back there for a resume or a
+cancel — because the agent keeps a ring and a process handle in its own memory,
+and a resume that reaches a different replica is answered "not running here"
+while the step runs on undisturbed.
+
+```bash
+make cluster-shell ARGS="-n dados logs brevis-agent-0" | grep -c 'step started'
+```
+
+across the three pods shows the work split.
+
 ### What it gives up, in the same frame
 
 `one-pod.yaml` has no `resources:`, and that is not an omission. On a host it
@@ -164,6 +190,18 @@ during it, `pod-per-step-large` on `python:3.12-slim` with 100m/128Mi and
 moment; after it, none — and `runs` in the database says `success`, which is
 what `keepPodsOnFailure: true` makes an absent pod mean. `make cluster-tree`
 listed seven objects and not one of them was a step pod.
+
+**The pool was then run in the cluster, which is what the in-process tests
+could not prove.** Three replicas, `BREVIS_HOSTS` pointed at the Service, seven
+runs of `one_pod`: all `success`, zero step pods, the work split across two of
+the three replicas (DNS round-robin with connection reuse is not even), and
+**not one "not running here"** in any agent's log — which is what says every
+resume and cancel reached the instance that had the work.
+
+That run is also what caught the bound's third correction. The rule compared
+DOMAINS, and a pod's name has one label MORE than its Service's, so it refused
+the only topology in which a pool works. Every unit test passed; the cluster
+would not have.
 
 `one_pod` was then run: the same four steps, `success`, and **zero step pods
 created** — `task_runs` has all four, and `brevis-agent-0`'s own log shows them

@@ -20,18 +20,26 @@ import (
 // allowed every host on earth. It would have looked like a bound and been one
 // comparison away from nothing.
 //
-// What actually separates a replica from a stranger is the DOMAIN. A pool
-// differs in the first DNS label -- `brevis-agent-2` instead of
-// `brevis-agent-0` -- and shares everything after it. So the rule is: same
-// scheme, same domain. It needs no second configuration, because the bound is
-// derived from the address an operator already wrote into BREVIS_HOSTS.
+// What separates a replica from a stranger is CONTAINMENT. A pool is
+// configured with its SERVICE -- `brevis-agent.dados.svc` -- and each replica
+// advertises its POD -- `brevis-agent-2.brevis-agent.dados.svc`, the Service's
+// name with a label in FRONT. So the advertised host has to be the configured
+// one or a name inside it.
 //
-// THE PORT IS DELIBERATELY NOT PART OF IT, which was the second correction.
+// THE THIRD CORRECTION, and the one that mattered most: the rule before this
+// compared the DOMAIN -- everything after the first label -- which assumed the
+// two names differ in their first label. They do not. A pod has one label MORE
+// than its Service, so the rule REFUSED the only topology in which a pool
+// works. It passed every test here and would have failed in a cluster, which
+// is what a question about running the real thing is worth.
+//
+// It is also tighter. Comparing domains let `redis.dados.svc` through when the
+// Service was configured -- a sibling, not a name inside it.
+//
+// The PORT is deliberately not part of it, which was the second correction.
 // `Service port 80 -> targetPort 9443` is an ordinary topology: the configured
 // address carries the Service's port and the advertisement carries the pod's,
-// so a port equality refuses a pool that is correctly deployed. What it would
-// have bought is stopping a redirect to another PORT inside the same domain --
-// real, much smaller, and not worth refusing a legitimate deployment for.
+// so a port equality refuses a pool that is correctly deployed.
 func TestAnAdvertisementIsBoundedByTheConfiguredAddress(t *testing.T) {
 	const configured = "http://brevis-agent-0.brevis-agent.dados.svc:9443"
 
@@ -42,10 +50,12 @@ func TestAnAdvertisementIsBoundedByTheConfiguredAddress(t *testing.T) {
 		why       string
 	}{
 		{
-			name:      "another replica of the same pool",
+			// Configured with a POD, which is one agent and not a pool: a
+			// sibling pod is a different machine and is not inside this name.
+			name:      "a sibling pod when a pod was configured",
 			advertise: "http://brevis-agent-2.brevis-agent.dados.svc:9443",
-			want:      "http://brevis-agent-2.brevis-agent.dados.svc:9443",
-			why:       "a pool differs in the first label and nothing else",
+			want:      configured,
+			why:       "configuring one pod points at one agent, not at a pool",
 		},
 		{
 			name:      "a stranger on the same port",
@@ -72,13 +82,13 @@ func TestAnAdvertisementIsBoundedByTheConfiguredAddress(t *testing.T) {
 			why:       "a suffix match on the string would have allowed this",
 		},
 		{
-			// ALLOWED, and deliberately: see the port paragraph above. A
-			// Service on 80 in front of pods on 9443 is the ordinary case this
-			// protects.
-			name:      "a different port in the same domain",
+			// Refused because it is a SIBLING, not because of the port. With a
+			// pod configured there is no pool to allow. The port's own case
+			// lives in TestThePoolTopologyIsAllowed, where it matters.
+			name:      "a sibling pod on another port",
 			advertise: "http://brevis-agent-2.brevis-agent.dados.svc:9999",
-			want:      "http://brevis-agent-2.brevis-agent.dados.svc:9999",
-			why:       "a Service port and a pod port legitimately differ",
+			want:      configured,
+			why:       "a sibling is refused whatever port it names",
 		},
 		{
 			name:      "a different scheme",
@@ -119,6 +129,47 @@ func TestAnAddressWithNoDomainAllowsOnlyItself(t *testing.T) {
 		}
 		if got := a.At(configured); got != configured {
 			t.Errorf("with %s configured, At refused the same address: %q", configured, got)
+		}
+	}
+}
+
+// THE TOPOLOGY A POOL ACTUALLY HAS, and the one an earlier rule refused.
+//
+// `BREVIS_HOSTS` carries the SERVICE, because that is what spreads the starts
+// across replicas -- configuring one pod sends every start to that pod and the
+// others never see work. Each replica then advertises its own POD, whose name
+// is the Service's with a label in front.
+//
+// The rule before this compared domains and refused exactly this. Every test
+// passed; a cluster would not have.
+func TestThePoolTopologyIsAllowed(t *testing.T) {
+	a := remote.HTTPAgent{BaseURL: "http://brevis-agent.dados.svc:9443"}
+
+	for _, pod := range []string{
+		"http://brevis-agent-0.brevis-agent.dados.svc:9443",
+		"http://brevis-agent-2.brevis-agent.dados.svc:9443",
+	} {
+		if got := a.At(pod); got != pod {
+			t.Errorf("At(%q) = %q: the engine cannot come back to the replica "+
+				"that took the work, which is what the advertisement is for", pod, got)
+		}
+	}
+
+	// A pod on a DIFFERENT port is still a name inside the Service, which is
+	// the `Service port 80 -> targetPort 9443` case the port was left out of
+	// the rule for.
+	if pod := "http://brevis-agent-1.brevis-agent.dados.svc:9443"; a.At(pod) != pod {
+		t.Error("a pod of this Service was refused over its port")
+	}
+
+	// And a sibling of the SERVICE is not a name inside it.
+	for _, stranger := range []string{
+		"http://redis.dados.svc:9443",
+		"http://pod.notbrevis-agent.dados.svc:9443",
+		"http://brevis-agent.dados.svc.attacker.com:9443",
+	} {
+		if got := a.At(stranger); got == stranger {
+			t.Errorf("At(%q) followed it", stranger)
 		}
 	}
 }
