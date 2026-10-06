@@ -70,17 +70,52 @@ change not taking.
 leaves the database, schedule and all — without it, deleting a YAML would
 leave its schedule creating runs for ever.
 
-## What to watch
+## Watching a pod per step
+
+Two terminals. In one:
 
 ```bash
-make cluster-status                        # what Argo CD has, and what runs
-make cluster-shell ARGS="-n dados get pods -w"
+make cluster-watch
 ```
 
-The thing worth seeing is **what is NOT in Argo CD's tree**. It owns Postgres,
-the engine and the scheduler. A step's pod is not there — it appears
-underneath, created by Brevis, in the one namespace its Role names, and it is
-gone when the step ends.
+In the other:
+
+```bash
+make cluster-run            # WORKFLOW=... for another one
+```
+
+What you see is the model:
+
+```
+pod-per-step-large-a3c60fa3   Pending   python:3.12-slim   100m   128Mi
+pod-per-step-small-d8145013   Pending   alpine:3.20         50m    32Mi
+```
+
+**Two pods at once, two different images, two different sizes** — each step
+brought its own runtime and asked for its own share. Nothing waited for a
+worker to be free, because there is no worker. And when the run ends both are
+gone.
+
+A failed step's pod STAYS, because this demo sets `keepPodsOnFailure: true` —
+the opposite of the production default, and the right choice when the reason to
+run this is to look at what happened.
+
+### What is NOT in Argo CD's tree
+
+```bash
+make cluster-tree
+```
+
+```
+ConfigMap/brevis-workflows-…   Namespace/dados   Secret/brevis-db
+Service/brevis-ui   Service/postgres   Deployment/postgres   Job/brevis-publish
+```
+
+Argo CD owns the stack. **It does not own the step pods** — they appear
+underneath it, created by Brevis, in the one namespace its Role names, and they
+are gone when the step ends. That picture is the answer to "what does Brevis
+need permission to do in my cluster", and it is a better answer than a
+paragraph.
 
 ## Verified by hand
 
@@ -89,6 +124,13 @@ Docker for Mac. Both Applications Synced/Healthy, `brevis-api` and
 `brevis-scheduler` Running, `/health` answering `{"status":"ok"}` on :30081,
 Argo CD on :30080, and the scheduler logging `running steps as pods`. Nothing
 was applied by hand after the bootstrap.
+
+A run was then triggered through `make cluster-run`: before it, no step pods;
+during it, `pod-per-step-large` on `python:3.12-slim` with 100m/128Mi and
+`pod-per-step-small` on `alpine:3.20` with 50m/32Mi, both Pending at the same
+moment; after it, none — and `runs` in the database says `success`, which is
+what `keepPodsOnFailure: true` makes an absent pod mean. `make cluster-tree`
+listed seven objects and not one of them was a step pod.
 
 Then a workflow was edited in Git — one tag added — pushed, and synced: the
 ConfigMap's hash changed, the hook ran a second time, and the engine's database

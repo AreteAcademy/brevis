@@ -138,7 +138,7 @@ down: ## Tears the local environment down
 # See docker-compose.cluster.yml.
 CLUSTER := docker compose -f docker-compose.cluster.yml
 
-.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree
 cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
 	@$(CLUSTER) up -d --wait k3s
 	@$(CLUSTER) run --rm bootstrap
@@ -155,6 +155,20 @@ cluster-status: ## What Argo CD has synced, and what is running
 	@$(CLUSTER) exec -T k3s kubectl -n argocd get applications
 	@echo
 	@$(CLUSTER) exec -T k3s kubectl -n dados get pods
+
+cluster-run: ## Triggers a workflow in the cluster: make cluster-run WORKFLOW=pod_per_step
+	@curl -fsS -o /dev/null -X POST \
+	  http://localhost:$${BREVIS_UI_PORT:-30081}/workflows/$(or $(WORKFLOW),pod_per_step)/trigger
+	@echo "queued $(or $(WORKFLOW),pod_per_step) -- watch it with: make cluster-watch"
+
+cluster-watch: ## Watches the step pods appear and die
+	@echo "Two pods at once is the point. Ctrl-C to stop."
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods -w \
+	  -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,IMAGE:.spec.containers[0].image,CPU:.spec.containers[0].resources.requests.cpu,MEM:.spec.containers[0].resources.requests.memory'
+
+cluster-tree: ## What Argo CD OWNS -- the step pods are deliberately not in it
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get app brevis-demo \
+	  -o jsonpath='{range .status.resources[*]}{.kind}/{.name}{"\n"}{end}'
 
 cluster-shell: ## A kubectl against the local cluster: make cluster-shell ARGS="get pods -A"
 	@$(CLUSTER) exec -T k3s kubectl $(ARGS)
