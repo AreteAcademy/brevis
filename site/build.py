@@ -666,15 +666,16 @@ def llms_txt(paginas, lang, pfx):
 
 > A data orchestration runtime written in Go. One binary holds declarative
 > transformation, workflow orchestration, a persistent queue, a scheduler and an
-> operational interface. Every workflow step runs as its own Kubernetes pod with
-> its own image. MIT licensed.
+> operational interface. A step runs as its own Kubernetes pod with its own
+> image, or on a machine you already run. MIT licensed.
 
 Every page below is also served as Markdown: append `index.md` to any docs URL.
 `%s/llms-full.txt` is this entire documentation set in one file.
 
 How the pieces fit: a **workflow** is a YAML file of **steps**; the
 **scheduler** turns schedules into **runs** and a **queue** executes them; each
-step becomes a **pod**. A step is any command in any image — the **Go SDK**
+step becomes a **pod**, or is sent to a **host** you keep running. A step is any
+command in any image — the **Go SDK**
 (`brevis/sdk`) is for extract-and-load work, and the **client libraries**
 (`pip install brevis`) give a step the run's context, clock and metrics through
 two environment variables.

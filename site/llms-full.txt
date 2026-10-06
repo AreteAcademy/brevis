@@ -516,6 +516,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `id` | **required** | unique in the workflow; the name shown in the graph and logs |
 | `run` | | the command |
 | `image` | | the step's image; without it, inherits the top-level one |
+| `host` | | send the command to a machine the engine does **not** manage — an alternative to `image`, never a companion. See [`host:` in the Kubernetes guide](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
 | `shell` | `true` | `false` runs without a shell — required on distroless |
 | `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
 | `marker` | `false` | a step with no command, for a `start` or an `end` |
@@ -1179,6 +1180,13 @@ there is a cluster:
 | `on` | a step with `image:` becomes a pod | **boot error** |
 | `off` | everything as local processes | everything as local processes |
 
+**A step with `host:` passes through none of this.** It is checked before the
+pod and before the process, and goes to a machine that is already running —
+`BREVIS_PODS` does not apply to it, and it never falls back to a local process.
+That is deliberate: `image:` degrades to local execution with a warning because
+a container and a process are the same command in two wrappers, and a host is
+not. It is where the licence lives, or the GPU, or the data.
+
 `auto` is the default because the same binary runs in both places: on a laptop
 there is no service account mounted and it falls back to local processes; in a
 cluster there is, and it starts creating pods.
@@ -1544,10 +1552,12 @@ brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 forgetting the value, would run with the default — and the operator would
 believe the value was applied.
 
-:::warning Three limits
+:::warning Four limits
 `run` only operates with `BREVIS_ENV=local`; a step with `image:` runs on the
-instance itself and says so; and there is no Go task registry, so an `action:`
-for an unregistered task fails naming the ones available.
+instance itself and says so; there is no Go task registry, so an `action:` for
+an unregistered task fails naming the ones available; and `run` does not read
+`BREVIS_HOSTS`, so a step with `host:` cannot run here at all — it fails naming
+the host, even with the variable set.
 :::
 
 ---
