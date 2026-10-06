@@ -59,6 +59,11 @@ spec:
         hosts:
           - name: tools
             url: http://brevis-agent.dados.svc:9443
+          # The pod with YOUR binary in it, declared exactly like the one
+          # above. Two hosts and one engine: a step picks which runtime it
+          # needs by name, and neither of them is built or updated by Brevis.
+          - name: goapp
+            url: http://brevis-goapp.dados.svc:9443
         # The same token the agent's Secret holds. One for every host, which is
         # a gap the engine's own config states rather than hides.
         hostTokenSecret: brevis-agent-token

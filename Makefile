@@ -161,9 +161,48 @@ cluster-dev-image: ## Builds the agent from THIS tree into the cluster (it is no
 	@docker save brevis-agent:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
 	@docker build -q -t brevis-tools:dev examples/cluster/runtime >/dev/null
 	@docker save brevis-tools:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
-	@echo "brevis-agent:dev and brevis-tools:dev are in the cluster's image store"
+	@docker build -q -t brevis-goapp:dev examples/cluster/goapp >/dev/null
+	@docker save brevis-goapp:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@echo "brevis-agent:dev, brevis-tools:dev and brevis-goapp:dev are in the cluster's image store"
 	@echo "tools is the one the demo runs: the agent, plus python and jq, built by you."
 	@echo "The demo pins it with imagePullPolicy: Never, so nothing goes looking for it on a registry."
+
+cluster-goapp: ## The visual test: a Go pod you own, with Brevis running commands in it
+	@echo "1. YOUR IMAGE -- a Go binary you wrote, on top of the agent"
+	@$(MAKE) --no-print-directory cluster-dev-image >/dev/null
+	@echo "   brevis-goapp:dev, built from examples/cluster/goapp"
+	@echo
+	@echo "2. ARGO CD OWNS IT, because it is declared in Git"
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get app brevis-demo \
+	  -o jsonpath='{range .status.resources[*]}{.kind}/{.name}{"\n"}{end}' | sed -n 's/^/   /p' | grep goapp
+	@echo
+	@echo "3. THE POD, started before the run rather than for it"
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods -l app.kubernetes.io/component=goapp \
+	  -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,IMAGE:.spec.containers[0].image,STARTED:.status.startTime'
+	@before=$$($(CLUSTER) exec -T k3s kubectl -n dados get pods --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+	 echo "   pods in the namespace before the run: $$before"; \
+	 echo; \
+	 echo "4. BREVIS SENDS THE COMMANDS"; \
+	 url=$$(curl -fsS -o /dev/null -w '%{redirect_url}' -X POST \
+	   http://localhost:$${BREVIS_UI_PORT:-30081}/workflows/goapp_demo/trigger); \
+	 echo "   the run, with every line the binary printed: $$url"; \
+	 printf "   waiting for the last step"; \
+	 for i in $$(seq 1 90); do \
+	   if $(CLUSTER) exec -T k3s kubectl -n dados logs brevis-goapp-0 --tail=400 2>/dev/null \
+	     | grep -q '"node":"history"'; then break; fi; \
+	   printf "."; sleep 2; \
+	 done; \
+	 echo; echo; \
+	 echo "5. WHAT THE POD WAS ASKED TO DO -- one line per command, all on one container"; \
+	 $(CLUSTER) exec -T k3s kubectl -n dados logs brevis-goapp-0 --tail=400 \
+	   | grep '"msg":"step started"' \
+	   | sed -E 's/.*"workflow":"([^"]*)".*"node":"([^"]*)".*/   \1 -> \2/' | tail -4; \
+	 echo; \
+	 after=$$($(CLUSTER) exec -T k3s kubectl -n dados get pods --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+	 echo "6. PODS AFTER THE RUN: $$after, and there were $$before. Brevis created none."; \
+	 echo; \
+	 echo "   Open $$url for the output of each command,"; \
+	 echo "   and http://localhost:$${ARGO_PORT:-30080} for the pod in Argo CD's tree."
 
 cluster-run: ## Triggers a workflow in the cluster: make cluster-run WORKFLOW=pod_per_step
 	@curl -fsS -o /dev/null -X POST \

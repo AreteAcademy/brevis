@@ -17,6 +17,7 @@ resources:
   - 40-ui-nodeport.yaml
   - 50-publish.yaml
   - 60-agent.yaml
+  - 70-goapp.yaml
 
 configMapGenerator:
   - name: brevis-workflows
@@ -25,3 +26,4 @@ configMapGenerator:
       - workflows/pod-per-step.yaml
       - workflows/one-pod.yaml
       - workflows/tools.yaml
+      - workflows/goapp.yaml
