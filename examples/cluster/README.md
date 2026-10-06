@@ -160,6 +160,13 @@ make cluster-dev-image      # builds it and imports it into the cluster
 built locally — and what makes a failed build fail here, loudly, instead of
 silently running something older.
 
+**Build before you push, not after.** Argo CD syncs a manifest change within
+seconds, and if the image is still building the StatefulSet rolls a pod on the
+*previous* image. With the readiness probe in place that pod never goes Ready
+and nothing says why — the kubelet logs no failure for a probe that simply
+answers 401, because the old agent has no `/health`. `make cluster-dev-image`
+first, then push, or delete the pod afterwards.
+
 ## A pool, and why it is pointed at the Service
 
 `60-agent.yaml` has `replicas: 3`. Change it to 1, push, sync, and it is
