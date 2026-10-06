@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -428,12 +429,12 @@ func (a HTTPAgent) Start(ctx context.Context, r StartRequest) (Session, error) {
 }
 
 func (a HTTPAgent) Resume(ctx context.Context, instance, execID string, r Resume) (io.ReadCloser, error) {
-	stream, _, err := a.send(ctx, a.at(instance), "/v1/exec/"+execID+"/resume", r)
+	stream, _, err := a.send(ctx, a.At(instance), "/v1/exec/"+execID+"/resume", r)
 	return stream, err
 }
 
 func (a HTTPAgent) Cancel(ctx context.Context, instance, execID string) error {
-	body, _, err := a.send(ctx, a.at(instance), "/v1/exec/"+execID+"/cancel", struct {
+	body, _, err := a.send(ctx, a.At(instance), "/v1/exec/"+execID+"/cancel", struct {
 		Protocol int `json:"protocol"`
 	}{Protocol})
 	if err != nil {
@@ -442,16 +443,94 @@ func (a HTTPAgent) Cancel(ctx context.Context, instance, execID string) error {
 	return body.Close()
 }
 
-// at is the address to use for an execution already under way.
+// At is the address to use for an execution already under way.
 //
-// The instance when there is one, the configured address otherwise. Empty is
-// not a degraded case: it is one agent at one address, which is every
-// deployment that does not put a pool behind a Service.
-func (a HTTPAgent) at(instance string) string {
-	if instance != "" {
-		return instance
+// The instance when it is one the installation already trusts, and the
+// configured address otherwise. Empty is not a degraded case: it is one agent
+// at one address, which is every deployment that does not put a pool behind a
+// Service.
+//
+// BOUNDED, because the advertisement makes this engine POST to an address the
+// AGENT chose. The token is not the new exposure -- every agent already
+// receives it on every request -- but an arbitrary outbound POST from the
+// engine is a capability that did not exist before the mechanism.
+//
+// SCHEME AND PORT ARE NOT A BOUND, and a test is what said so:
+// `http://attacker.example.com:9443` shares both with the configured address,
+// so a rule checking only those allows every host on earth. It looks like a
+// bound and is one comparison away from nothing.
+//
+// What separates a replica from a stranger is the DOMAIN. A pool differs in
+// the first DNS label -- `brevis-agent-2` for `brevis-agent-0` -- and shares
+// everything after it. So: same scheme, same port, same domain. No second
+// configuration, because the bound is derived from the address an operator
+// already wrote into BREVIS_HOSTS.
+//
+// An address with no domain to share -- a bare host, an IP -- allows only
+// itself. There is no first label to vary, so there is no pool to allow.
+//
+// Exported for the test that pins all of it. A refused advertisement is
+// IGNORED rather than fatal: the engine falls back to the address it has, and
+// on a pool that surfaces as the agent's own "not running here" rather than as
+// a silence.
+func (a HTTPAgent) At(instance string) string {
+	if instance == "" || !sameInstallation(a.BaseURL, instance) {
+		return a.BaseURL
 	}
-	return a.BaseURL
+	return instance
+}
+
+// sameInstallation reports whether an advertised address is one the configured
+// address already vouches for.
+func sameInstallation(configured, advertised string) bool {
+	base, err := url.Parse(configured)
+	if err != nil {
+		return false
+	}
+	adv, err := url.Parse(advertised)
+	if err != nil || adv.Host == "" {
+		return false
+	}
+	// THE PORT IS NOT CHECKED, and leaving it out is the second correction
+	// this rule needed. `Service port 80 -> targetPort 9443` is an ordinary
+	// topology: the configured address is the Service's port and the
+	// advertisement is the pod's, so a port equality would refuse a pool that
+	// is correctly deployed. It would also have broken the in-process pool
+	// test, where a balancer and two agents cannot share one port.
+	//
+	// What it would have bought: stopping a compromised agent pointing the
+	// engine at another PORT on a host inside the same domain. That is a real
+	// but much smaller step -- everything in that domain is something this
+	// operator's cluster already runs, and the POST carries a token the other
+	// service will reject. Refusing a legitimate deployment to narrow that is
+	// the wrong trade.
+	if base.Scheme != adv.Scheme {
+		return false
+	}
+
+	// The domain is everything after the first label. Compared as LABELS and
+	// not as a string suffix: `x.brevis-agent.dados.svc.attacker.com` ends with
+	// nothing useful, but a naive strings.HasSuffix on the domain would be one
+	// typo away from accepting `evil-brevis-agent.dados.svc`.
+	baseHost, advHost := base.Hostname(), adv.Hostname()
+	if baseHost == advHost {
+		return true
+	}
+	baseDomain := domainOf(baseHost)
+	if baseDomain == "" {
+		// Nothing to share: a bare host or an IP allows only itself, and the
+		// equality above already answered that.
+		return false
+	}
+	return domainOf(advHost) == baseDomain
+}
+
+// domainOf drops the first DNS label. Empty when there is none to drop.
+func domainOf(host string) string {
+	if i := strings.Index(host, "."); i >= 0 {
+		return host[i+1:]
+	}
+	return ""
 }
 
 func (a HTTPAgent) post(ctx context.Context, path string, payload any) (io.ReadCloser, error) {

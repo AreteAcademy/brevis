@@ -55,6 +55,9 @@ spec:
         hosts:
           - name: tools
             url: http://brevis-agent-0.brevis-agent.dados.svc:9443
+        # The same token the agent's Secret holds. One for every host, which is
+        # a gap the engine's own config states rather than hides.
+        hostTokenSecret: brevis-agent-token
 
         alerts:
           enabled: false

@@ -66,6 +66,9 @@ spec:
           image: areteacademy/brevis:0.15.2-agent
           args:
             - --listen=:9443
+            # REQUIRED. An agent without one runs any command for anything
+            # that reaches its port, so the open mode has to be asked for by
+            # name: --insecure-no-token.
             - --token-file=/etc/brevis/token
             # Where to come back to, built from THIS pod's name. Without it a
             # second replica is a step failed at the first network blip, with

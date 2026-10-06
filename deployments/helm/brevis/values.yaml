@@ -130,9 +130,14 @@ agent:
   # built FROM that with dbt, a Python, a licensed binary. The shipped one is
   # a shell and the agent, which runs nothing a real step needs.
   image: ""
-  # The shared token the engine authenticates with. Empty accepts any caller,
-  # which is only ever right on a network where that is somebody else's job.
+  # The shared token the engine authenticates with, as a Secret with key
+  # `token`. REQUIRED: an agent without one refuses to start, because it would
+  # run any command for anything that reaches its port. The open mode exists
+  # and has to be asked for by name -- see the agent's --insecure-no-token.
   tokenSecret: ""
+  # Run with NO authentication. Refused unless you say it here, because an
+  # agent without a token runs any command for anything that reaches its port.
+  insecureNoToken: false
   # A Secret mounted as the agent's own store, and the names a step may ask
   # for. Empty denies every one, so a step asking fails naming the coordinate
   # rather than running with it unset.

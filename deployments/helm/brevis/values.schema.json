@@ -292,6 +292,10 @@
         },
         "resources": {
           "type": "object"
+        },
+        "insecureNoToken": {
+          "type": "boolean",
+          "description": "Run with NO authentication. The agent refuses to start without a token unless this says otherwise."
         }
       }
     },

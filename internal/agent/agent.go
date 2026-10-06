@@ -44,15 +44,27 @@ import (
 
 // Options configure one agent.
 type Options struct {
-	// Token authenticates the engine. Empty accepts anyone, which is a
-	// development convenience and is warned about at startup rather than
-	// silently allowed.
+	// Token authenticates the engine. Empty is REFUSED unless InsecureNoToken
+	// says so, because an agent with no token runs any command for any caller.
 	//
 	// One token for every engine, and the gap is stated rather than
 	// discovered: no revoking one without changing them all, and no per-engine
 	// identity in the audit trail. See the package's README for what a second
 	// version would need.
 	Token string
+
+	// InsecureNoToken allows an agent with no token at all.
+	//
+	// It exists so the dangerous choice is a DECLARATION and not an omission.
+	// Without a token this process runs any command anybody who reaches the
+	// port sends it, as whatever user it is -- not a weak password, no
+	// password. That used to be allowed with a warning at startup, which is
+	// the shape of a hole nobody sees: the warning scrolls past and the
+	// manifest that caused it says nothing at all.
+	//
+	// Now it has to be written down. It shows up in `ps`, in the manifest, and
+	// in a review, which is the whole of what this field buys.
+	InsecureNoToken bool
 
 	// SecretsDir is the root of the secret store: `<dir>/<name>/<key>` holds
 	// one value, which is how the kubelet mounts a Secret and how Docker mounts
@@ -121,6 +133,29 @@ type Agent struct {
 }
 
 // New builds an agent.
+// Check refuses a configuration that should not start.
+//
+// Here rather than in main so a test can reach it: a rule that only exists
+// inside a `func main` is a rule nothing exercises.
+func (o Options) Check() error {
+	if o.Token != "" && o.InsecureNoToken {
+		return fmt.Errorf("this agent was given both a token and " +
+			"--insecure-no-token, and they are opposites. One of the two is a " +
+			"lie and nothing here can say which: drop the flag to use the " +
+			"token, or drop the token to mean it")
+	}
+	if o.Token == "" && !o.InsecureNoToken {
+		return fmt.Errorf("this agent has no token, so anything that can reach " +
+			"its port would run any command it sends -- as this user, on this " +
+			"host. Point --token-file at a file holding one, shared with the " +
+			"engine's BREVIS_HOST_TOKEN.\n\nIf an open agent is what you mean " +
+			"-- a laptop, a throwaway cluster -- say so with " +
+			"--insecure-no-token, so the choice is in the command line and in " +
+			"the manifest rather than in the absence of a flag")
+	}
+	return nil
+}
+
 // Advertise sets where the engine should come back to for this agent's
 // executions, after construction.
 //

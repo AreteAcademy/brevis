@@ -13,9 +13,25 @@
 #     cluster's own image store. `imagePullPolicy: Never` is what stops the
 #     kubelet going to look for a tag nobody published.
 #
-#  2. NO TOKEN. The agent accepts any caller, which is wrong everywhere except
-#     a throwaway cluster on a laptop. On a real one this is a Secret and
-#     --token-file points at it.
+#  2. THE TOKEN IS IN THIS FILE, in plain text, in a public repository. That is
+#     correct here and nowhere else: it authenticates one throwaway cluster on
+#     one laptop, and it is worth exactly what that cluster is worth.
+#
+#     It is a token and not `--insecure-no-token` on purpose. The demo should
+#     teach the shape a client copies, and an agent with no token runs any
+#     command for anything that reaches its port.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: brevis-agent-token
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+stringData:
+  # A demo's token, in public, for a cluster that lives on a laptop. On a real
+  # one this comes from a secret manager and never from a repository.
+  token: demo-only-not-a-secret
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -68,6 +84,7 @@ spec:
           imagePullPolicy: Never
           args:
             - --listen=:9443
+            - --token-file=/etc/brevis/token
             - --advertise=http://$(POD_NAME).brevis-agent.$(POD_NAMESPACE).svc:9443
             - --state-dir=/var/lib/brevis-agent
           env:
@@ -77,6 +94,7 @@ spec:
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
           ports: [{name: http, containerPort: 9443}]
           volumeMounts:
+            - {name: token, mountPath: /etc/brevis, readOnly: true}
             - {name: state, mountPath: /var/lib/brevis-agent}
             - {name: work, mountPath: /tmp}
           resources:
@@ -88,6 +106,10 @@ spec:
             readOnlyRootFilesystem: false
             capabilities: {drop: ["ALL"]}
       volumes:
+        - name: token
+          secret:
+            secretName: brevis-agent-token
+            items: [{key: token, path: token}]
         - name: state
           emptyDir: {}
         - name: work
