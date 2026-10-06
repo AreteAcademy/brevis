@@ -32,6 +32,22 @@ spec:
       {{- end }}
       securityContext:
         runAsNonRoot: true
+        # THE UID, not only "not root", and it is not belt-and-braces.
+        #
+        # Both images name their user rather than numbering it -- `USER
+        # nonroot` on the distroless one, `USER brevis` on the worker -- and
+        # the kubelet cannot verify a name against runAsNonRoot. It refuses:
+        #
+        #   container has runAsNonRoot and image has non-numeric user
+        #   (nonroot), cannot verify user is non-root
+        #
+        # which arrives as CreateContainerConfigError and reads like a
+        # permissions problem it is not. 65532 is what both images are.
+        #
+        # Five manifests in this repository already carried this line and five
+        # did not, which is what a fix applied file by file as each one failed
+        # looks like. They all carry it now.
+        runAsUser: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: migrate
