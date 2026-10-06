@@ -526,11 +526,6 @@ func sameInstallation(configured, advertised string) bool {
 	return advHost == baseHost || strings.HasSuffix(advHost, "."+baseHost)
 }
 
-func (a HTTPAgent) post(ctx context.Context, path string, payload any) (io.ReadCloser, error) {
-	body, _, err := a.send(ctx, a.BaseURL, path, payload)
-	return body, err
-}
-
 func (a HTTPAgent) send(ctx context.Context, base, path string, payload any) (io.ReadCloser, string, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
