@@ -193,6 +193,10 @@ cluster-dev-image: ## Builds the agent from THIS tree into the cluster (it is no
 	@echo "tools is the one the demo runs: the agent, plus python and jq, built by you."
 	@echo "The demo pins it with imagePullPolicy: Never, so nothing goes looking for it on a registry."
 
+# It waits on THE RUN and not on the agent's log. Waiting on the log matched
+# the previous run's line, broke out instantly, and printed four steps of which
+# two belonged to the run before -- a test that reported a result it had not
+# waited for, which is the only kind of test worth less than none.
 cluster-goapp: ## The visual test: a Go pod you own, with Brevis running commands in it
 	@echo "1. YOUR IMAGE -- a Go binary you wrote, on top of the agent"
 	@$(MAKE) --no-print-directory cluster-dev-image >/dev/null
@@ -212,13 +216,15 @@ cluster-goapp: ## The visual test: a Go pod you own, with Brevis running command
 	 url=$$(curl -fsS -o /dev/null -w '%{redirect_url}' -X POST \
 	   http://localhost:$${BREVIS_UI_PORT:-30081}/workflows/goapp_demo/trigger); \
 	 echo "   the run, with every line the binary printed: $$url"; \
-	 printf "   waiting for the last step"; \
+	 printf "   waiting for it to finish"; \
+	 state=""; \
 	 for i in $$(seq 1 90); do \
-	   if $(CLUSTER) exec -T k3s kubectl -n dados logs brevis-goapp-0 --tail=400 2>/dev/null \
-	     | grep -q '"node":"history"'; then break; fi; \
+	   state=$$(curl -fsS "http://localhost:$${BREVIS_UI_PORT:-30081}/api/runs/$${url##*/}/graph" \
+	     | sed -E 's/.*"status":"([a-z]+)".*"terminal":(true|false).*/\1 \2/'); \
+	   case "$$state" in *" true") break;; esac; \
 	   printf "."; sleep 2; \
 	 done; \
-	 echo; echo; \
+	 echo; echo "   the run ended: $${state%% *}"; echo; \
 	 echo "5. WHAT THE POD WAS ASKED TO DO -- one line per command, all on one container"; \
 	 $(CLUSTER) exec -T k3s kubectl -n dados logs brevis-goapp-0 --tail=400 \
 	   | grep '"msg":"step started"' \
