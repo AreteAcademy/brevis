@@ -43,6 +43,33 @@ schema refuses `api.service.nodePort`, and it is right to: a NodePort is a
 decision about one cluster's network, and a chart should not grow a field so a
 demo can reach a page.
 
+## Editing a workflow IS deploying it
+
+The workflows live in `apps/workflows/`. kustomize builds a ConfigMap from
+those files, and the publish Job is a **PostSync hook** — Argo CD deletes the
+previous one and runs it again after every sync.
+
+```bash
+# change a workflow, then
+git commit -am "a different schedule" && git push
+# and sync, from the UI or:
+make cluster-shell ARGS="-n argocd annotate app brevis-demo argocd.argoproj.io/refresh=hard --overwrite"
+```
+
+`deployments/kubernetes/publish-job.yaml` spells out the three commands this
+replaces: create the ConfigMap `--from-file`, delete the Job, apply it again.
+
+Two details that are not decoration. The generated ConfigMap carries a content
+HASH, so editing a workflow makes it a new object and kustomize rewrites the
+Job's reference to match. And the hook's delete policy is
+`BeforeHookCreation` rather than `HookSucceeded`: a Job with a fixed name and
+no hook is created once and never runs again, which looks exactly like the
+change not taking.
+
+`--prune` makes the folder the source of truth. A workflow that leaves Git
+leaves the database, schedule and all — without it, deleting a YAML would
+leave its schedule creating runs for ever.
+
 ## What to watch
 
 ```bash
@@ -63,8 +90,13 @@ Docker for Mac. Both Applications Synced/Healthy, `brevis-api` and
 Argo CD on :30080, and the scheduler logging `running steps as pods`. Nothing
 was applied by hand after the bootstrap.
 
-Two product bugs were found by running it rather than reading it, and both are
-fixed in this branch: five manifests lacked the `runAsUser` the other five had,
-so the chart's migration hook could not start; and the chart's `appVersion` is
-`0.13.0` while `VERSION` is `0.15.2`, so this deploys an engine two releases
-behind. **The second is not fixed** — see the plan.
+Then a workflow was edited in Git — one tag added — pushed, and synced: the
+ConfigMap's hash changed, the hook ran a second time, and the engine's database
+held `"Tags": ["demo", "edited-in-git"]`. That is the claim this directory
+makes, checked end to end rather than described.
+
+Two product bugs were found by running this rather than reading it, and both
+are fixed: five manifests lacked the `runAsUser` the other five had, so the
+chart's migration hook could not start; and the chart's `appVersion` said
+`0.13.0` while `VERSION` said `0.15.2`, so it deployed an engine two releases
+behind. **Nothing checks that those two agree** — a gate for it is still open.
