@@ -96,6 +96,35 @@ scheduler:
   # comes from the installation, never from a workflow's YAML.
   taskEnvFromSecrets: []
 
+# The agent: a runtime you keep, for steps that use `host:`.
+#
+# OFF, and that is the honest default. This is the engine's chart and the agent
+# is deliberately not part of the engine's lifecycle -- it is the pod YOU keep,
+# very often in another namespace, owned by another team, built FROM our image
+# with your own runtime on top. When it becomes more than a first one to try,
+# it belongs in a release of its own.
+agent:
+  enabled: false
+  # More than one needs nothing else: the StatefulSet gives each pod a stable
+  # name and --advertise is built from it, which is what lets the engine resume
+  # and cancel at the instance that took the work.
+  replicas: 1
+  # Empty takes `<image.repository>:<tag>-agent`. Set it to YOUR image -- one
+  # built FROM that with dbt, a Python, a licensed binary. The shipped one is
+  # a shell and the agent, which runs nothing a real step needs.
+  image: ""
+  # The shared token the engine authenticates with. Empty accepts any caller,
+  # which is only ever right on a network where that is somebody else's job.
+  tokenSecret: ""
+  # A Secret mounted as the agent's own store, and the names a step may ask
+  # for. Empty denies every one, so a step asking fails naming the coordinate
+  # rather than running with it unset.
+  secretsSecret: ""
+  allowSecrets: []
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {memory: 512Mi}
+
 # Drains the alerts outbox. The scheduler records an alert in the same
 # transaction as the failure that justifies it; this is what delivers, and what
 # survives a Slack outage and its own restart.

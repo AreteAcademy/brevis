@@ -7,59 +7,127 @@
     "image": {
       "type": "object",
       "properties": {
-        "repository": {"type": "string", "minLength": 1},
-        "tag": {"type": "string"},
-        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]},
-        "pullSecrets": {"type": "array", "items": {"type": "object"}}
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        },
+        "pullSecrets": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
       },
       "additionalProperties": false
     },
     "database": {
       "type": "object",
       "properties": {
-        "url": {"type": "string"},
-        "existingSecret": {"type": "string"},
-        "existingSecretKey": {"type": "string", "minLength": 1}
+        "url": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "existingSecretKey": {
+          "type": "string",
+          "minLength": 1
+        }
       },
       "additionalProperties": false
     },
     "auth": {
       "type": "object",
       "properties": {
-        "user": {"type": "string"},
-        "passwordHash": {"type": "string"},
-        "secret": {"type": "string"},
-        "existingSecret": {"type": "string"}
+        "user": {
+          "type": "string"
+        },
+        "passwordHash": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
-    "env": {"type": "string", "minLength": 1},
-    "logLevel": {"enum": ["debug", "info", "warn", "error"]},
+    "env": {
+      "type": "string",
+      "minLength": 1
+    },
+    "logLevel": {
+      "enum": [
+        "debug",
+        "info",
+        "warn",
+        "error"
+      ]
+    },
     "api": {
       "type": "object",
       "properties": {
-        "replicas": {"type": "integer", "minimum": 1},
-        "resources": {"type": "object"},
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object"
+        },
         "service": {
           "type": "object",
           "properties": {
-            "type": {"enum": ["ClusterIP", "NodePort", "LoadBalancer"]},
-            "port": {"type": "integer", "minimum": 1, "maximum": 65535}
+            "type": {
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
           },
           "additionalProperties": false
         },
         "ingress": {
           "type": "object",
           "properties": {
-            "enabled": {"type": "boolean"},
-            "className": {"type": "string"},
-            "host": {"type": "string"},
-            "annotations": {"type": "object"},
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string"
+            },
+            "host": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object"
+            },
             "tls": {
               "type": "object",
               "properties": {
-                "enabled": {"type": "boolean"},
-                "secretName": {"type": "string"}
+                "enabled": {
+                  "type": "boolean"
+                },
+                "secretName": {
+                  "type": "string"
+                }
               },
               "additionalProperties": false
             }
@@ -73,63 +141,160 @@
       "type": "object",
       "description": "`replicas` is accepted by the schema only so the template can explain why it is refused. See templates/_validations.tpl.",
       "properties": {
-        "replicas": {"type": "integer"},
-        "concurrency": {"type": "integer", "minimum": 1},
-        "maxPods": {"type": "integer", "minimum": 1},
-        "interval": {"type": "string", "pattern": "^[0-9]+(ms|s|m|h)$"},
-        "resources": {"type": "object"},
-        "keepPodsOnFailure": {"type": "boolean"},
-        "taskNodeSelector": {"type": "string"},
-        "taskTolerations": {"type": "string"},
-        "taskEnvFromSecrets": {"type": "array", "items": {"type": "string"}}
+        "replicas": {
+          "type": "integer"
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxPods": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m|h)$"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "keepPodsOnFailure": {
+          "type": "boolean"
+        },
+        "taskNodeSelector": {
+          "type": "string"
+        },
+        "taskTolerations": {
+          "type": "string"
+        },
+        "taskEnvFromSecrets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       },
       "additionalProperties": false
     },
     "alerts": {
       "type": "object",
       "properties": {
-        "enabled": {"type": "boolean"},
-        "resources": {"type": "object"}
+        "enabled": {
+          "type": "boolean"
+        },
+        "resources": {
+          "type": "object"
+        }
       },
       "additionalProperties": false
     },
     "report": {
       "type": "object",
       "properties": {
-        "enabled": {"type": "boolean"},
-        "schedule": {"type": "string", "minLength": 1},
-        "window": {"type": "string", "pattern": "^[0-9]+(ms|s|m|h)$"}
+        "enabled": {
+          "type": "boolean"
+        },
+        "schedule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "window": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m|h)$"
+        }
       },
       "additionalProperties": false
     },
     "slack": {
       "type": "object",
       "properties": {
-        "webhook": {"type": "string"},
-        "existingSecret": {"type": "string"}
+        "webhook": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        }
       },
       "additionalProperties": false
     },
-    "uiURL": {"type": "string"},
+    "uiURL": {
+      "type": "string"
+    },
     "brand": {
       "type": "object",
       "properties": {
-        "enabled": {"type": "boolean"},
-        "content": {"type": "object"}
+        "enabled": {
+          "type": "boolean"
+        },
+        "content": {
+          "type": "object"
+        }
       },
       "additionalProperties": false
     },
     "taskServiceAccount": {
       "type": "object",
-      "properties": {"annotations": {"type": "object"}},
+      "properties": {
+        "annotations": {
+          "type": "object"
+        }
+      },
       "additionalProperties": false
     },
-    "nodeSelector": {"type": "object"},
-    "tolerations": {"type": "array"},
-    "affinity": {"type": "object"},
-    "podAnnotations": {"type": "object"},
-    "nameOverride": {"type": "string"},
-    "fullnameOverride": {"type": "string"}
+    "nodeSelector": {
+      "type": "object"
+    },
+    "tolerations": {
+      "type": "array"
+    },
+    "affinity": {
+      "type": "object"
+    },
+    "podAnnotations": {
+      "type": "object"
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "object",
+      "description": "A runtime you keep, for steps that use `host:` instead of `image:`. Off by default: the agent is deliberately not part of the engine's lifecycle.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "image": {
+          "type": "string",
+          "description": "Empty takes <image.repository>:<tag>-agent. Set it to your own, built FROM that one."
+        },
+        "tokenSecret": {
+          "type": "string",
+          "description": "Secret holding the shared token the engine authenticates with. Empty accepts any caller."
+        },
+        "secretsSecret": {
+          "type": "string",
+          "description": "Secret mounted as this host's own store."
+        },
+        "allowSecrets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    }
   },
   "additionalProperties": false
 }
