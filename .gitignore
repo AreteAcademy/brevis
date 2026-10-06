@@ -41,3 +41,8 @@ __pycache__/
 # Nothing should ever land in it: if something does, that IS the benchmark's
 # finding, and the report says so from the gateway's own counter.
 /dead-letter/
+
+# `go build ./...` in a main package writes the binary beside the source, and
+# examples/cluster/goapp is one. The image builds it in a container; the file
+# here is a by-product of checking that it compiles.
+/examples/cluster/goapp/goapp

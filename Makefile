@@ -138,11 +138,37 @@ down: ## Tears the local environment down
 # See docker-compose.cluster.yml.
 CLUSTER := docker compose -f docker-compose.cluster.yml
 
-.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree cluster-dev-image
+# THE REVISION ARGO CD DEPLOYS, and it is this branch rather than master.
+#
+# It defaulted to master, and the failure that caused is the one worth
+# remembering: re-running the bootstrap from a feature branch re-pointed both
+# Applications at master, both went Synced/Healthy, and the thing being
+# demonstrated was simply not in the tree. Green, correct, and about the wrong
+# commit.
+#
+# Argo CD reads GITHUB, not this directory, so the branch has to be pushed --
+# which cluster-up refuses to proceed without rather than leaving Argo to say
+# it in a ComparisonError nobody reads.
+export BREVIS_GIT_REVISION ?= $(shell git rev-parse --abbrev-ref HEAD)
+
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree cluster-dev-image cluster-goapp cluster-revision
 cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
+	@$(MAKE) --no-print-directory cluster-revision
 	@$(CLUSTER) up -d --wait k3s
 	@$(CLUSTER) run --rm bootstrap
 	@$(MAKE) --no-print-directory cluster-ui
+
+cluster-revision: ## Refuses a revision GitHub does not have -- Argo CD deploys from there, not from here
+	@git ls-remote --exit-code --heads --tags origin "$(BREVIS_GIT_REVISION)" >/dev/null 2>&1 || { \
+	  echo "origin has no $(BREVIS_GIT_REVISION), and that is where Argo CD reads from."; \
+	  echo "push it first:  git push origin $(BREVIS_GIT_REVISION)"; \
+	  exit 1; }
+	@here=$$(git rev-parse --short HEAD); there=$$(git rev-parse --short "origin/$(BREVIS_GIT_REVISION)" 2>/dev/null || echo ""); \
+	 if [ -n "$$there" ] && [ "$$here" != "$$there" ]; then \
+	   echo "note: this tree is at $$here and origin/$(BREVIS_GIT_REVISION) at $$there."; \
+	   echo "      Argo CD deploys origin's. Push if you meant this one."; \
+	 fi
+	@echo "Argo CD will deploy $(BREVIS_GIT_REVISION)"
 
 cluster-ui: ## The Argo CD URL and the admin password
 	@echo "argocd at http://localhost:$${BREVIS_ARGOCD_PORT:-30080}"

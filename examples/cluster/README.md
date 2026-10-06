@@ -11,16 +11,32 @@ apps/
   00-namespace.yaml   where Brevis and its step pods live
   10-postgres.yaml    the demo's database, in Git like everything else
   40-ui-nodeport.yaml the UI, reachable from the host
+  50-publish.yaml     the PostSync hook that loads the workflows
+  60-agent.yaml       a pool of three agents: the runtime you keep
+  70-goapp.yaml       one pod running a Go binary you wrote
+  workflows/          one file per workflow; editing one IS deploying it
+goapp/                that Go binary, and the image it goes into
+runtime/              the pool's image: the agent, plus python and jq
 ```
 
 ## Two Applications, one knob
 
 `BREVIS_GIT_REVISION` moves both — the demo tree and the chart — and defaults
-to `master`:
+to **the branch you are on**:
 
 ```bash
-BREVIS_GIT_REVISION=my-branch make cluster-up
+make cluster-up                              # this branch
+BREVIS_GIT_REVISION=master make cluster-up   # somebody else's
 ```
+
+It defaulted to `master`, and the failure that caused is worth keeping: a
+bootstrap re-run from a feature branch re-pointed both Applications at master,
+both went Synced/Healthy, and the thing being demonstrated was not in the tree.
+Green, correct, and about the wrong commit.
+
+Argo CD reads **GitHub**, not this directory, so the branch has to be pushed.
+`cluster-up` refuses a revision origin does not have rather than leaving Argo CD
+to say it in a `ComparisonError` nobody reads.
 
 They are two rather than one because of exactly that. An Application nested
 inside `apps/` carries whatever revision is written in the file, so testing a
@@ -37,6 +53,22 @@ Its values are the demo's: `env: local` so no credential is required, one API
 replica, `maxPods: 3` because a laptop is the cluster, and
 `keepPodsOnFailure: true` — the opposite of the production default, and the
 right choice here, since the reason to run this is to look at what happened.
+
+### The one thing that is not a commit
+
+The chart's VALUES — `hosts`, `maxPods`, `env` — are in `brevis.yaml`, which the
+bootstrap applies. Argo CD watches the chart's PATH in Git; it does not watch
+this file. Editing it and pushing changes nothing in the cluster:
+
+```bash
+# after editing brevis.yaml
+BREVIS_GIT_REVISION=$(git rev-parse --abbrev-ref HEAD) \
+  docker compose -f docker-compose.cluster.yml run --rm bootstrap
+```
+
+Adding a host this way is how `goapp` below reached the engine, and finding
+that out is how this paragraph came to exist: the Application synced, the chart
+was Healthy, and `BREVIS_HOSTS` still listed one host.
 
 **The UI is a Service of the demo's**, not a value in the chart. The chart's
 schema refuses `api.service.nodePort`, and it is right to: a NodePort is a
@@ -176,6 +208,54 @@ are gone when the step ends. That picture is the answer to "what does Brevis
 need permission to do in my cluster", and it is a better answer than a
 paragraph.
 
+## A binary you wrote, in a pod you own
+
+`tools` is the agent with `apk add python3 jq` on top, which answers *can a step
+call a tool the engine does not have*. `goapp` answers the question somebody
+actually asks: **can it run my program**.
+
+```
+goapp/main.go      a Go binary that imports nothing of Brevis
+goapp/Dockerfile   FROM brevis-agent:dev, plus that binary
+apps/70-goapp.yaml a StatefulSet and a headless Service, in Git
+```
+
+The agent is the **floor** the image is built on, not a sidecar attached to it:
+one container, one process tree, your tools on the PATH. That is why a step says
+`vendor info` with no path, no shared volume and no init container.
+
+```bash
+make cluster-goapp
+```
+
+builds it, shows it in Argo CD's tree, counts the pods, runs the workflow and
+counts them again. What the four steps prove, in order:
+
+| step | what it settles |
+|---|---|
+| `where` | the hostname, and how long that container has been up — read from `/proc/1`, not asserted |
+| `fetch` | its result goes out through `$BREVIS_OUTPUT`, the same contract a step has in a pod |
+| `report` | a **different process** reads it back through `$BREVIS_INPUT` |
+| `history` | the pod's own disk outlived the run |
+
+The last one is the one a pod per step cannot do. Trigger the workflow twice:
+
+```
+this pod has served 1 runs
+this pod has served 2 runs
+```
+
+### What "Brevis administers it" means here
+
+Brevis **drives the work inside** that pod: it starts a command, follows its
+output line by line, resumes a dropped stream and cancels a step. It does not
+create, scale, restart or delete the pod — Argo CD does, from `70-goapp.yaml`.
+
+That division is the mode, not a limitation of it. Your dbt version, your
+licensed extractor and your base image stop being coupled to the engine's
+release, and the engine stops needing permission to create workloads in a
+namespace that is not its own.
+
 ## Verified by hand
 
 **2026-10-06** — `BREVIS_GIT_REVISION=engine/agent-instance make cluster-up` on
@@ -217,3 +297,29 @@ are fixed: five manifests lacked the `runAsUser` the other five had, so the
 chart's migration hook could not start; and the chart's `appVersion` said
 `0.13.0` while `VERSION` said `0.15.2`, so it deployed an engine two releases
 behind. **Nothing checks that those two agree** — a gate for it is still open.
+
+**2026-10-06, the pod with your own binary in it.** `make cluster-goapp` on the
+same stack: `brevis-goapp-0` Running on an image built from `goapp/`, both
+Applications Synced/Healthy, and `StatefulSet/brevis-goapp` in `make
+cluster-tree` — Argo CD owns it, because it is in Git.
+
+Eight pods in the namespace before the run and eight after. All four steps
+`success`, every one of them on `brevis-goapp-0`:
+
+```
+where     this container has been up for 2m40s, so it was not created for this step
+fetch     fetched 320/320 rows from partner-api
+report    step "fetch" fetched 320 rows from partner-api on brevis-goapp-0
+history   this pod has served 1 runs
+```
+
+`fetch` published `{"host": "brevis-goapp-0", "rows": 320, "source":
+"partner-api"}` and `report`, a different process, read it back — the context
+contract works over the wire exactly as it does in a pod. A second run said
+`served 2 runs` and `up for 3m26s`: the same container, with its disk intact.
+
+Two sharp edges of this demo were found doing it, and both are fixed above:
+`BREVIS_GIT_REVISION` defaulted to `master`, so a bootstrap re-run silently
+pointed a branch demo at a tree without the branch in it; and the chart's
+values live in `brevis.yaml`, which Git does not carry into the cluster, so
+adding a host needs the bootstrap again.

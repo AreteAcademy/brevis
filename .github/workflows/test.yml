@@ -561,6 +561,17 @@ jobs:
           go vet ./...
           echo "✅ the full-pipeline example builds"
 
+      - name: Build the cluster demo's Go pod
+        run: |
+          # A module of its own with NO requirements, which is what lets its
+          # Docker build run with the wifi off -- and what takes it out of the
+          # `examples` module's own build below. Nothing else compiles it, so
+          # without this step it rots exactly the way six examples once did.
+          cd examples/cluster/goapp
+          go build ./...
+          go vet ./...
+          echo "✅ the cluster demo's Go pod builds"
+
       - name: The example workflows are valid
         run: |
           # full-pipeline uses every shape the engine has, so this is also the
