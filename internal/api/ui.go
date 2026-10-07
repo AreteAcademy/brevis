@@ -81,6 +81,14 @@ type AlertsReader interface {
 	ForRun(ctx context.Context, runID uuid.UUID) ([]alerts.Record, error)
 }
 
+// CatalogReader lists the destinations the ecosystem writes, for /data. A
+// constructor argument for AlertsReader's reason: forgetting to wire it is a
+// compile error, not a catalog that quietly shows nothing. nil is allowed for a
+// process that renders no pages.
+type CatalogReader interface {
+	Catalog(ctx context.Context) ([]postgres.CatalogEntry, error)
+}
+
 // Actions are the two effects the screen triggers. A small interface on purpose:
 // the UI must not be able to do anything more to the system than pause a
 // schedule and ask for a run now.
@@ -96,14 +104,15 @@ type UI struct {
 	execs   RunsChart
 	actions Actions
 	alerts  AlertsReader
+	catalog CatalogReader
 	brand   branding.Brand
 	log     *slog.Logger
 }
 
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
-	m branding.Brand, log *slog.Logger,
+	c CatalogReader, m branding.Brand, log *slog.Logger,
 ) *UI {
-	return &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, brand: m, log: log}
+	return &UI{leitura: l, defs: d, execs: e, actions: a, alerts: al, catalog: c, brand: m, log: log}
 }
 
 // Registrar wires the routes into the mux.
@@ -112,6 +121,7 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /runs", u.runs)
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
+	mux.HandleFunc("GET /data", u.data)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -129,6 +139,19 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/", assets.Handler()))
+}
+
+// data lists every destination the ecosystem writes.
+func (u *UI) data(w http.ResponseWriter, r *http.Request) {
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil {
+		var err error
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	u.render(w, r, pages.Data(entries))
 }
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
