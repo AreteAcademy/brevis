@@ -70,8 +70,8 @@ func checkTarget(s string, allowPattern bool) error {
 	if !ok {
 		return refuse("no scheme: a target starts with one, as in bigquery://project/dataset/table")
 	}
-	_, table := tableSegments[scheme]
-	if !table && !objectSchemes[scheme] {
+	_, isTable := tableSegments[scheme]
+	if !isTable && !objectSchemes[scheme] {
 		lower := strings.ToLower(scheme)
 		if _, known := tableSegments[lower]; known || objectSchemes[lower] {
 			return refuse("the scheme must be lower-case")
@@ -91,7 +91,7 @@ func checkTarget(s string, allowPattern bool) error {
 		}
 	}
 
-	if table {
+	if isTable {
 		return checkTableTarget(scheme, rest, allowPattern, refuse)
 	}
 	return checkObjectTarget(scheme, rest, refuse)
@@ -109,7 +109,7 @@ func checkTableTarget(scheme, rest string, allowPattern bool, refuse func(string
 		}
 		// A colon after the scheme is a port in every scheme but one: a
 		// domain-scoped BigQuery project is spelled `example.com:project`.
-		if strings.Contains(seg, ":") && !(scheme == "bigquery" && i == 0) {
+		if strings.Contains(seg, ":") && (scheme != "bigquery" || i != 0) {
 			return refuse("contains ':' -- a port is an address, not a name")
 		}
 		if strings.Contains(seg, "*") {

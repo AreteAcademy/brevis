@@ -22,7 +22,7 @@ func readTargetCases(t *testing.T) []targetCase {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var out []targetCase
 	sc := bufio.NewScanner(f)
