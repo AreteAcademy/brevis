@@ -1,0 +1,23 @@
+{
+  "kind": "gateway-manifest",
+  "version": 1,
+  "gateway": "events_gateway",
+  "generated_at": "2026-10-07T18:02:11Z",
+  "streams": [
+    {
+      "path": "/v1/clicks",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "pubsub",
+          "target": "pubsub://brevis-local/clicks"
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": "file:///var/dead-letter/clicks/"
+        }
+      ]
+    }
+  ]
+}
