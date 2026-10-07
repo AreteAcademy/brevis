@@ -111,6 +111,22 @@ func (b Table) Describe() string {
 	return fmt.Sprintf("%s.%s", dataset, b.Name)
 }
 
+var _ core.Locator = Table{}
+
+// Locate satisfies sdk.Locator: bigquery://project/dataset/table.
+//
+// It reads the names through config() itself rather than resolving them a
+// second time: the precedence -- set, then the environment, then the default --
+// has one implementation, so the catalog cannot name a different table from
+// the one the load writes to. config() makes no call; neither does this.
+func (b Table) Locate() string {
+	cfg, _, err := b.config(core.WriteOptions{})
+	if err != nil {
+		return ""
+	}
+	return core.BigQueryTarget(cfg.ProjectID, cfg.Dataset, cfg.Table)
+}
+
 // config applies the documented precedence -- what you set, then the engine,
 // then the environment, then the default, then an error -- and reports where
 // each value came from, because "why did it write there?" is a question
