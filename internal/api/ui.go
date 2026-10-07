@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -87,6 +88,7 @@ type AlertsReader interface {
 // process that renders no pages.
 type CatalogReader interface {
 	Catalog(ctx context.Context) ([]postgres.CatalogEntry, error)
+	CatalogTarget(ctx context.Context, target string) (*postgres.TargetDetail, error)
 }
 
 // Actions are the two effects the screen triggers. A small interface on purpose:
@@ -122,6 +124,9 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
 	mux.HandleFunc("GET /data", u.data)
+	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
+	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
+	mux.HandleFunc("GET /data/target", u.dataTarget)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -152,6 +157,34 @@ func (u *UI) data(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now()).Apply(pages.ParseDataFilter(r.URL.Query()))))
+}
+
+// targetCeiling matches the engine's own bound on a target. A legacy label
+// is looked up as stored, so `u` is not shape-checked beyond this: an unknown
+// value is a 404, not a 400.
+const targetCeiling = 512
+
+// dataTarget is one destination's page.
+func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
+	target := r.URL.Query().Get("u")
+	if target == "" || len(target) > targetCeiling || strings.ContainsFunc(target, unicode.IsControl) {
+		http.Error(w, "name a destination: /data/target?u=<target>", http.StatusBadRequest)
+		return
+	}
+	if u.catalog == nil {
+		http.NotFound(w, r)
+		return
+	}
+	d, err := u.catalog.CatalogTarget(r.Context(), target)
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	if d == nil {
+		http.Error(w, "nothing has landed on "+target, http.StatusNotFound)
+		return
+	}
+	u.render(w, r, pages.Target(pages.BuildTarget(*d, time.Now())))
 }
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {

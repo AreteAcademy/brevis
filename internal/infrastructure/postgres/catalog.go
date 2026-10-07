@@ -67,11 +67,21 @@ type CatalogWriter struct {
 // Status is NOT computed here. This knows rows and times; what "late" means is
 // the domain's (catalog.Freshness), and the page applies it.
 func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
+	entries, index, err := r.catalogWriters(ctx, nil)
+	if err != nil || len(entries) == 0 {
+		return nil, err
+	}
+	return entries, r.recentLoads(ctx, entries, index)
+}
+
+// catalogWriters is the first round trip: every writer, or one target's.
+func (r *ReadRepo) catalogWriters(ctx context.Context, target *string) ([]CatalogEntry, map[string]int, error) {
 	rows, err := r.pool.Query(ctx, `
 		WITH latest AS (
 			SELECT DISTINCT ON (workflow_slug, node_id, target)
 			       workflow_slug, node_id, target, loaded_at, rows_written, legacy
 			FROM landings
+			WHERE $1::text IS NULL OR target = $1
 			ORDER BY workflow_slug, node_id, target, loaded_at DESC
 		)
 		SELECT l.target, l.legacy, l.workflow_slug, l.node_id, l.loaded_at, l.rows_written,
@@ -98,9 +108,9 @@ func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 			ORDER BY criado_em DESC
 			LIMIT 1
 		) inflight ON true
-		ORDER BY l.target, l.workflow_slug, l.node_id`)
+		ORDER BY l.target, l.workflow_slug, l.node_id`, target)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -115,7 +125,7 @@ func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 		)
 		if err := rows.Scan(&target, &legacy, &w.Workflow, &w.Node, &w.LastLoaded, &w.LastRows,
 			&w.HasSchedule, &w.Cron, &w.Timezone, &w.Active, &lagSec, &w.RunInFlight); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		w.Lag = time.Duration(lagSec * float64(time.Second)).Round(time.Second)
 		i, ok := index[target]
@@ -126,13 +136,11 @@ func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 		}
 		entries[i].Writers = append(entries[i].Writers, w)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	if len(entries) == 0 {
-		return nil, nil
-	}
+	return entries, index, rows.Err()
+}
 
+// recentLoads is the second round trip: the rows of each target's last loads.
+func (r *ReadRepo) recentLoads(ctx context.Context, entries []CatalogEntry, index map[string]int) error {
 	targets := make([]string, len(entries))
 	for i, e := range entries {
 		targets[i] = e.Target
@@ -148,20 +156,67 @@ func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 		) x
 		ORDER BY t.target, x.loaded_at`, targets)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer recent.Close()
 	for recent.Next() {
 		var target string
 		var rows *int64
 		if err := recent.Scan(&target, &rows); err != nil {
-			return nil, err
+			return err
 		}
 		if i, ok := index[target]; ok {
 			entries[i].Recent = append(entries[i].Recent, rows)
 		}
 	}
-	return entries, recent.Err()
+	return recent.Err()
+}
+
+// TargetDetail is one destination for its own page: the entry as the list
+// shows it, and its last loads one by one.
+type TargetDetail struct {
+	CatalogEntry
+	Loads []TargetLoad
+}
+
+// TargetLoad is one landing on the destination, newest first.
+type TargetLoad struct {
+	RunID          string
+	Workflow, Node string
+	LoadedAt       time.Time
+	Rows, Bytes    *int64
+}
+
+// CatalogTarget reads one destination, or nil when nothing ever landed there.
+// A legacy label is looked up as stored, so its page opens like any other.
+func (r *ReadRepo) CatalogTarget(ctx context.Context, target string) (*TargetDetail, error) {
+	entries, index, err := r.catalogWriters(ctx, &target)
+	if err != nil || len(entries) == 0 {
+		return nil, err
+	}
+	if err := r.recentLoads(ctx, entries, index); err != nil {
+		return nil, err
+	}
+	d := &TargetDetail{CatalogEntry: entries[0]}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT run_id::text, workflow_slug, node_id, loaded_at, rows_written, bytes_written
+		FROM landings
+		WHERE target = $1
+		ORDER BY loaded_at DESC
+		LIMIT 30`, target)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var l TargetLoad
+		if err := rows.Scan(&l.RunID, &l.Workflow, &l.Node, &l.LoadedAt, &l.Rows, &l.Bytes); err != nil {
+			return nil, err
+		}
+		d.Loads = append(d.Loads, l)
+	}
+	return d, rows.Err()
 }
 
 // kindOf is a target's scheme, or "" for a legacy label, which has none.
