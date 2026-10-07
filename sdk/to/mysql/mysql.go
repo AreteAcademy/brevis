@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" // registers the "mysql" driver
+	gomysql "github.com/go-sql-driver/mysql" // also registers the "mysql" driver
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
@@ -64,6 +64,29 @@ const defaultBatch = 1000
 
 // Describe satisfies core.Writer. It names the table, never the DSN.
 func (t Table) Describe() string { return "mysql:" + t.Name }
+
+var _ core.Locator = Table{}
+
+// Locate satisfies sdk.Locator: mysql://database/table.
+//
+// The database is the one Name qualifies, else the DSN's, parsed and never
+// dialled; user, host and port are read past and dropped. A pool handed in as
+// DB names its database only if the server is asked, and Locate asks nothing:
+// with DB, qualify Name.
+func (t Table) Locate() string {
+	database, table, qualified := core.SplitQualified(t.Name, '`')
+	if !qualified {
+		if t.DSN == "" {
+			return ""
+		}
+		cfg, err := gomysql.ParseDSN(t.DSN)
+		if err != nil {
+			return ""
+		}
+		database = cfg.DBName
+	}
+	return core.MySQLTarget(database, table)
+}
 
 // Write satisfies core.Writer.
 func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error) {

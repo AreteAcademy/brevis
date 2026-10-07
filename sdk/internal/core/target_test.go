@@ -146,3 +146,24 @@ func TestEveryBuiltTargetPassesTheCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestSplitQualifiedRespectsTheDialectsQuote(t *testing.T) {
+	cases := []struct {
+		name             string
+		quote            byte
+		qualifier, table string
+		qualified        bool
+	}{
+		{"landing.orders", '"', "landing", "orders", true},
+		{`"a.b".c`, '"', `"a.b"`, "c", true},
+		{"orders", '"', "", "orders", false},
+		{"`a.b`", '`', "", "`a.b`", false},
+		{"`shop`.`Customers`", '`', "`shop`", "`Customers`", true},
+	}
+	for _, c := range cases {
+		q, tb, ok := SplitQualified(c.name, c.quote)
+		if q != c.qualifier || tb != c.table || ok != c.qualified {
+			t.Errorf("SplitQualified(%q) = %q, %q, %v", c.name, q, tb, ok)
+		}
+	}
+}
