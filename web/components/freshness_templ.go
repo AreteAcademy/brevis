@@ -104,12 +104,17 @@ func FreshnessLabel(s string) string {
 		return "stale"
 	case "paused":
 		return "paused"
+	case "continuous":
+		return "continuous"
+	case "unidentified":
+		return "unidentified"
 	}
 	return "no schedule"
 }
 
 // The run states' palette, so the console has one meaning per colour: green
-// is fine, amber is waiting on something, red needs a person, grey is a choice.
+// is fine, amber is waiting on something, red needs a person, grey is a choice,
+// blue is live -- a gateway writing as events arrive, like a run executing.
 func freshnessClass(s string) string {
 	switch s {
 	case "on_time":
@@ -120,6 +125,8 @@ func freshnessClass(s string) string {
 		return "border-state-failed/25 bg-state-failed/10 text-state-failed"
 	case "paused":
 		return "border-state-canceled/25 bg-state-canceled/10 text-state-canceled"
+	case "continuous":
+		return "border-state-running/25 bg-state-running/10 text-state-running"
 	}
 	return "border-line bg-parchment-soft text-muted"
 }
@@ -134,6 +141,8 @@ func freshnessDot(s string) string {
 		return "bg-state-failed"
 	case "paused":
 		return "bg-state-canceled"
+	case "continuous":
+		return "bg-state-running"
 	}
 	return "bg-line-strong"
 }

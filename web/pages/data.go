@@ -20,6 +20,10 @@ func lastLoad(e postgres.CatalogEntry) (*time.Time, *int64) {
 	var rows *int64
 	for i := range e.Writers {
 		w := e.Writers[i]
+		// A gateway measures nothing here; its traffic is on its /metrics.
+		if w.Gateway != nil {
+			continue
+		}
 		if when == nil || w.LastLoaded.After(*when) {
 			when, rows = &e.Writers[i].LastLoaded, w.LastRows
 		}
@@ -69,7 +73,8 @@ type WriterView struct {
 // worstFirst is the order the page lists destinations in: what needs looking
 // at, then what is fine, then what has no verdict.
 var worstFirst = map[catalog.Status]int{
-	catalog.Stale: 0, catalog.Late: 1, catalog.OnTime: 2, catalog.Paused: 3, catalog.Unscheduled: 4,
+	catalog.Stale: 0, catalog.Late: 1, catalog.OnTime: 2, catalog.Continuous: 3,
+	catalog.Paused: 4, catalog.Unscheduled: 5, catalog.Unidentified: 6,
 }
 
 // BuildData judges every writer against its own schedule and every destination
@@ -84,7 +89,7 @@ func BuildData(entries []postgres.CatalogEntry, now time.Time) DataView {
 		row.LastWhen, row.LastRows = lastLoad(e)
 		var statuses []catalog.Status
 		for _, w := range e.Writers {
-			verdict := catalog.Freshness(writerOf(w), now)
+			verdict := verdictOf(e, w, now)
 			row.Writers = append(row.Writers, WriterView{CatalogWriter: w, Verdict: verdict})
 			statuses = append(statuses, verdict.Status)
 		}
@@ -110,6 +115,19 @@ func BuildData(entries []postgres.CatalogEntry, now time.Time) DataView {
 	return v
 }
 
+// verdictOf judges one writer. A gateway stream is not judged against a
+// schedule -- it writes as events arrive -- so it is continuous, or
+// unidentified when its manifest could not name the destination.
+func verdictOf(e postgres.CatalogEntry, w postgres.CatalogWriter, now time.Time) catalog.Verdict {
+	if w.Gateway != nil {
+		if e.Target == "" {
+			return catalog.Verdict{Status: catalog.Unidentified}
+		}
+		return catalog.Verdict{Status: catalog.Continuous}
+	}
+	return catalog.Freshness(writerOf(w), now)
+}
+
 // writerOf is what freshness needs from a catalog row.
 func writerOf(w postgres.CatalogWriter) catalog.Writer {
 	out := catalog.Writer{Last: w.LastLoaded, Lag: w.Lag}
@@ -122,7 +140,8 @@ func writerOf(w postgres.CatalogWriter) catalog.Writer {
 }
 
 // statusOrder is the order the summary lists statuses in.
-var statusOrder = []catalog.Status{catalog.Stale, catalog.Late, catalog.OnTime, catalog.Paused, catalog.Unscheduled}
+var statusOrder = []catalog.Status{catalog.Stale, catalog.Late, catalog.OnTime, catalog.Continuous,
+	catalog.Paused, catalog.Unscheduled, catalog.Unidentified}
 
 // plural writes "1 destination" and "3 destinations".
 func plural(n int, word string) string {
@@ -146,7 +165,7 @@ type DataFilter struct {
 // into an empty page, the rule the workflows list applies to its own.
 var (
 	filterStatuses = map[string]bool{"attention": true, "on_time": true, "late": true,
-		"stale": true, "paused": true, "unscheduled": true}
+		"stale": true, "paused": true, "unscheduled": true, "continuous": true, "unidentified": true}
 	filterKinds = map[string]bool{"bigquery": true, "postgres": true, "redshift": true,
 		"mysql": true, "s3": true, "gs": true, "file": true, "pubsub": true}
 )

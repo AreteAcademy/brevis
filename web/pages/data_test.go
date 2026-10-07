@@ -152,3 +152,42 @@ func TestTheFilterBarOffersOnlyKindsThatExist(t *testing.T) {
 		t.Errorf("kinds = %v, legacy = %v", v.Kinds, v.HasLegacy)
 	}
 }
+
+func gatewayWriter(stream, role string) postgres.CatalogWriter {
+	return postgres.CatalogWriter{Gateway: &postgres.GatewayWriter{
+		Name: "edge", Stream: stream, Role: role, Kind: "pubsub",
+		PublishedAt: time.Date(2026, 10, 7, 18, 0, 0, 0, time.UTC)}}
+}
+
+// A gateway writes as events arrive: continuous, never late, and healthier
+// than a late step -- so a table both feed is continuous when the step lags.
+func TestGatewayWritersAreContinuousAndAnUnnamedOneUnidentified(t *testing.T) {
+	both := entry("bigquery://acme/landing/clicks",
+		hourly("backfill", now.Add(-85*time.Minute)), gatewayWriter("/v1/clicks", "sink"))
+	only := entry("pubsub://acme/clicks", gatewayWriter("/v1/clicks", "sink"))
+	only.Kind = "pubsub"
+	unnamed := postgres.CatalogEntry{Writers: []postgres.CatalogWriter{gatewayWriter("/v1/clicks", "dead_letter")}}
+
+	d := BuildData([]postgres.CatalogEntry{both, only, unnamed}, now)
+	got := map[string]catalog.Status{}
+	for _, r := range d.Rows {
+		got[r.Target] = r.Status
+	}
+	if got["bigquery://acme/landing/clicks"] != catalog.Continuous ||
+		got["pubsub://acme/clicks"] != catalog.Continuous || got[""] != catalog.Unidentified {
+		t.Fatalf("statuses = %v", got)
+	}
+	// A gateway measures nothing on this page: the last load is the step's.
+	for _, r := range d.Rows {
+		if r.Target == "bigquery://acme/landing/clicks" && (r.LastWhen == nil || !r.LastWhen.Equal(now.Add(-85*time.Minute))) {
+			t.Errorf("last loaded = %v, want the step's", r.LastWhen)
+		}
+		if r.Target == "pubsub://acme/clicks" && r.LastWhen != nil {
+			t.Errorf("a gateway-only destination claims a last load: %v", r.LastWhen)
+		}
+	}
+	// Unidentified sorts last, after everything that has a verdict.
+	if d.Rows[len(d.Rows)-1].Target != "" {
+		t.Errorf("the unnamed destination is not last: %v", targets(d.Rows))
+	}
+}

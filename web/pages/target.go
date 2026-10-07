@@ -51,6 +51,14 @@ func BuildTarget(d postgres.TargetDetail, now time.Time) TargetView {
 // Reason is one sentence on why a writer stands where it does, in its own
 // schedule's timezone.
 func (w WriterView) Reason() string {
+	if g := w.Gateway; g != nil {
+		why := fmt.Sprintf("Published from gateway %s, stream %s (%s), on %s. It writes as events arrive; its traffic is on the gateway's /metrics.",
+			g.Name, g.Stream, g.Role, g.PublishedAt.UTC().Format("Jan 2 15:04 UTC"))
+		if g.Note != "" {
+			why += " Unnamed: " + g.Note + "."
+		}
+		return why
+	}
 	loc, err := time.LoadLocation(w.Timezone)
 	if err != nil || w.Timezone == "" {
 		loc = time.UTC

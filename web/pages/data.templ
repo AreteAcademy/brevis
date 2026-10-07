@@ -12,8 +12,8 @@ import (
 templ Data(v DataView) {
 	@layouts.Base(layouts.Page{Title: "Data", Kicker: "Catalog", Active: "data"}) {
 		<p class="mb-4 max-w-3xl text-sm text-muted">
-			Destinations written by Brevis: SDK pipelines, and any step that prints a
-			<code class="font-mono text-xs">landed</code> line. Writes from outside Brevis do not appear here.
+			Destinations written by Brevis: SDK pipelines, any step that prints a
+			<code class="font-mono text-xs">landed</code> line, and published gateways. Writes from outside Brevis do not appear here.
 		</p>
 		if v.Total == 0 {
 			@components.Empty("No destination yet.",
@@ -100,9 +100,15 @@ templ dataRow(r DataRow) {
 			@components.Freshness(string(r.Status))
 		</td>
 		<td class="px-3 py-3">
-			<a href={ templ.SafeURL("/data/target?u=" + url.QueryEscape(r.Target)) } class="font-mono text-[0.8rem] break-all text-ink hover:text-gold-strong">{ r.Target }</a>
+			if r.Target == "" {
+				<span class="text-[0.8rem] text-muted italic">unnamed destination</span>
+			} else {
+				<a href={ templ.SafeURL("/data/target?u=" + url.QueryEscape(r.Target)) } class="font-mono text-[0.8rem] break-all text-ink hover:text-gold-strong">{ r.Target }</a>
+			}
 			<span class="mt-1 block text-[0.7rem] text-muted">
-				if r.Legacy {
+				if r.Target == "" && len(r.Writers) > 0 && r.Writers[0].Gateway != nil {
+					{ r.Writers[0].Gateway.Kind } · { r.Writers[0].Gateway.Note }
+				} else if r.Legacy {
 					<span
 						class="rounded-card border border-line px-1.5 py-px font-medium"
 						title="A label recovered from before steps named their target; it is never turned into one."
@@ -116,8 +122,15 @@ templ dataRow(r DataRow) {
 		<td class="px-3 py-3">
 			for _, w := range r.Writers {
 				<div class="whitespace-nowrap">
-					<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
-					<span class="text-muted">· { w.Node }</span>
+					if g := w.Gateway; g != nil {
+						<span class="mr-1 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted">gateway</span>
+						<span class="font-medium text-ink">{ g.Name }</span>
+						<span class="font-mono text-xs text-muted">{ g.Stream }</span>
+						<span class="text-[0.7rem] text-muted">({ g.Role })</span>
+					} else {
+						<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
+						<span class="text-muted">· { w.Node }</span>
+					}
 					if len(r.Writers) > 1 || w.Verdict.Status != r.Status {
 						<span class="ml-1 text-[0.7rem] text-muted">({ components.FreshnessLabel(string(w.Verdict.Status)) })</span>
 					}
@@ -130,7 +143,11 @@ templ dataRow(r DataRow) {
 		<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">{ components.When(r.LastWhen) }</td>
 		<td class="px-3 py-3 text-right text-xs tabular-nums text-ink">{ rowsText(r.LastRows) }</td>
 		<td class="px-3 py-3 pr-6">
-			@components.Spark(r.Recent)
+			if len(r.Recent) == 0 && r.LastWhen == nil {
+				<span class="text-xs text-muted">the gateway's /metrics</span>
+			} else {
+				@components.Spark(r.Recent)
+			}
 		</td>
 	</tr>
 }
