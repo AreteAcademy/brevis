@@ -11,6 +11,31 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.8.0] — 2026-10-07
+
+### Added: `landed()` says which table a step wrote
+
+```python
+from brevis import landed
+
+landed("bigquery://acme-prod/silver/orders", rows=len(df))
+landed("s3://acme-landing/vendors/")          # rows unknown: leave them out
+```
+
+The same `landed` line the Go SDK emits after a load, so a Python step's tables
+appear on the console's `/data` with the step as their writer and their
+freshness read from the workflow's schedule.
+
+The target's shape is checked before anything is written: one with a user, a
+port or a query string — the shape of a DSN pasted in the wrong place — raises
+`LandingError` naming what a target looks like. The rules are the SDK's and the
+engine's, and the tests read a copy of the SDK's own fixture. Absent counts are
+left out of the line, zero is kept, and a `bool` is refused as a count.
+
+No dependency was added, and none will be.
+
+---
+
 ## [0.7.0] — 2026-09-17
 
 It carries what `0.5.2` and `0.6.0` were going to. Both were refused, and both

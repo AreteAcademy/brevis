@@ -18,6 +18,44 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.81.0] — 2026-10-07
+
+### Added: a successful load says which table it wrote
+
+Every writer in `sdk/to` now implements `sdk.Locator`, whose `Locate()` names
+its destination as a **target** — an identity, never an address:
+
+```
+bigquery://{project}/{dataset}/{table}    postgres://{database}/{schema}/{table}
+redshift://{database}/{schema}/{table}    mysql://{database}/{table}
+s3://{bucket}/{prefix}/  gs://…  file:///{dir}/    pubsub://{project}/{topic}
+```
+
+No host, port, user or password, and computing it opens no connection: the
+database comes from the DSN, parsed and never dialled. Each writer resolves
+names the way its load does — BigQuery reads them through the same `config()`
+— so the target is what was actually written. An unquoted Postgres or Redshift
+identifier is folded as the database folds it; a BigQuery partition decorator
+is dropped; `to.Files` names the prefix, never the timestamped object.
+
+After the `load` phase closes on a successful load, a pipeline under the
+engine emits one more marked line:
+
+```
+@brevis:{"type":"landed","target":"postgres://analytics/public/orders","rows":48213}
+```
+
+`rows` goes out at zero — a load of nothing new still delivered — and `bytes`
+only when the driver counted them. A failed load lands nothing, and so does a
+writer of your own that does not implement `Locator`: it keeps working
+unchanged. Outside the engine nothing is printed, the rule phases follow.
+
+The engine records these in its catalog -- `/data` in the console -- from its
+next release on. An engine that predates them consumes the line without logging
+it, so either side can be upgraded first. See `docs/LANDINGS.md`.
+
+---
+
 ## [0.80.0] — 2026-10-01
 
 ### Fixed: 0.79.0's fix was incomplete on the path it was for
