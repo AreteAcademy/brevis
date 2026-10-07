@@ -2,7 +2,10 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
+	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
@@ -38,6 +41,13 @@ type DataView struct {
 	Rows   []DataRow
 	Counts map[catalog.Status]int
 	Total  int
+
+	// Kinds present, sorted, and whether any legacy row exists: the filter bar
+	// offers only what would match something.
+	Kinds     []string
+	HasLegacy bool
+
+	Filter DataFilter
 }
 
 // DataRow is one destination. Writers shadows the entry's own list with each
@@ -79,9 +89,14 @@ func BuildData(entries []postgres.CatalogEntry, now time.Time) DataView {
 			statuses = append(statuses, verdict.Status)
 		}
 		row.Status = catalog.Best(statuses...)
+		if e.Kind != "" && !slices.Contains(v.Kinds, e.Kind) {
+			v.Kinds = append(v.Kinds, e.Kind)
+		}
+		v.HasLegacy = v.HasLegacy || e.Legacy
 		v.Counts[row.Status]++
 		v.Rows = append(v.Rows, row)
 	}
+	sort.Strings(v.Kinds)
 	sort.SliceStable(v.Rows, func(i, j int) bool {
 		a, b := v.Rows[i], v.Rows[j]
 		if worstFirst[a.Status] != worstFirst[b.Status] {
@@ -115,4 +130,93 @@ func plural(n int, word string) string {
 		return "1 " + word
 	}
 	return fmt.Sprintf("%d %ss", n, word)
+}
+
+// DataFilter narrows /data. It lives in the query string so a filtered page is
+// a link somebody can send.
+type DataFilter struct {
+	// Status is "attention" (late or stale) or one status; "" is all.
+	Status string
+	// Kind is a target scheme; "" is all.
+	Kind   string
+	Legacy bool
+}
+
+// The values a filter may take. Anything else is ignored rather than turned
+// into an empty page, the rule the workflows list applies to its own.
+var (
+	filterStatuses = map[string]bool{"attention": true, "on_time": true, "late": true,
+		"stale": true, "paused": true, "unscheduled": true}
+	filterKinds = map[string]bool{"bigquery": true, "postgres": true, "redshift": true,
+		"mysql": true, "s3": true, "gs": true, "file": true, "pubsub": true}
+)
+
+// ParseDataFilter reads the filter from a query string.
+func ParseDataFilter(q url.Values) DataFilter {
+	f := DataFilter{Legacy: q.Get("legacy") == "1"}
+	if s := q.Get("status"); filterStatuses[s] {
+		f.Status = s
+	}
+	if k := q.Get("kind"); filterKinds[k] {
+		f.Kind = k
+	}
+	return f
+}
+
+// With is the link to this filter with one field changed. The fields are
+// always written in the same order, so one filter has exactly one URL.
+func (f DataFilter) With(field, value string) string {
+	switch field {
+	case "status":
+		f.Status = value
+	case "kind":
+		f.Kind = value
+	case "legacy":
+		f.Legacy = value == "1"
+	}
+	var parts []string
+	if f.Status != "" {
+		parts = append(parts, "status="+url.QueryEscape(f.Status))
+	}
+	if f.Kind != "" {
+		parts = append(parts, "kind="+url.QueryEscape(f.Kind))
+	}
+	if f.Legacy {
+		parts = append(parts, "legacy=1")
+	}
+	if len(parts) == 0 {
+		return "/data"
+	}
+	return "/data?" + strings.Join(parts, "&")
+}
+
+// Active reports whether any field is set.
+func (f DataFilter) Active() bool { return f.Status != "" || f.Kind != "" || f.Legacy }
+
+func (f DataFilter) keeps(r DataRow) bool {
+	switch {
+	case f.Status == "attention" && r.Status != catalog.Late && r.Status != catalog.Stale:
+		return false
+	case f.Status != "" && f.Status != "attention" && string(r.Status) != f.Status:
+		return false
+	case f.Kind != "" && r.Kind != f.Kind:
+		return false
+	case f.Legacy && !r.Legacy:
+		return false
+	}
+	return true
+}
+
+// Apply narrows the rows to the filter. Total and Counts still describe every
+// destination: the summary answers "how is the fleet", whatever is shown.
+func (v DataView) Apply(f DataFilter) DataView {
+	v.Filter = f
+	rows := make([]DataRow, 0, len(v.Rows))
+	for _, r := range v.Rows {
+		if f.keeps(r) {
+			rows = append(rows, r)
+		}
+	}
+	v.Rows = rows
+	return v
 }
