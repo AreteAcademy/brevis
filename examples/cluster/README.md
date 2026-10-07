@@ -147,10 +147,11 @@ The second run succeeds and creates **no pod**. The work went to
 arriving. Two of them start six milliseconds apart — the parallel pair, in the
 same container, which is the concurrency nobody is bounding.
 
-**The agent image is built from this tree**, not pulled. `areteacademy/brevis:
-0.16.0-agent` exists from this release on, and the demo still builds its own:
-the point of running this is to try the agent in the working tree, and a demo
-that pulled a published tag would be testing last release's.
+**The agent image is built from this tree**, not pulled. The published one —
+`areteacademy/brevis:<version>-agent`, since 0.16.0 — is what a client deploys,
+and the demo still builds its own: the point of running this is to try the agent
+in the WORKING TREE, and a demo that pulled a tag would be testing the last
+release instead of the change in front of you.
 
 ```bash
 make cluster-dev-image      # builds it and imports it into the cluster

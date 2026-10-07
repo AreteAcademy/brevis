@@ -14,6 +14,85 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.16.1] — 2026-10-06
+
+Three things that cannot change the behaviour of a workflow you already have.
+
+### Added: the agent answers `GET /health`, and its Pod has a readiness probe
+
+The engine reaches a pool of agents through a **headless Service**, whose DNS
+already filters on Ready — and nothing was deciding Ready. A replica was Ready
+the instant its container ran, before the listener bound, so a start during a
+rolling restart could land on a connection refused.
+
+```yaml
+readinessProbe:
+  httpGet: {path: /health, port: http}
+  periodSeconds: 5
+```
+
+It is in `deployments/kubernetes/agent.yaml` and in the chart's agent template,
+and it needs nothing from you.
+
+The route **checks nothing**, deliberately. The agent has no dependency to be
+ready for, so a probe that could fail for a second reason would take a pod out
+of its Service for something other than "not serving". It is also the only
+route that answers without the token — a kubelet sends no `Authorization`
+header — and the exemption is one exact path, so `/healthz` is still refused
+rather than answered with a 404 that tells an unauthenticated caller which
+paths exist.
+
+**Readiness and not liveness.** A liveness failure sends SIGTERM to a pod that
+may be holding hours of a step's work, and the agent is built the other way
+round: its own shutdown lets running steps finish their streams. Taking a
+replica out of the Service is the strong action here; killing it is not the
+probe's to take.
+
+### Added: a field the decoder does not know is said out loud
+
+```
+$ brevis validate workflows/
+  warn  workflows/etl.yaml: line 5: `hosts` is not a field of a step, and was ignored
+  warn  workflows/etl.yaml: line 9: `depends-on` is not a field of a step, and was ignored
+  ok    etl                          dag  2 steps, 0 dependencies  (manual)
+```
+
+The workflow decoder has never been strict, so a key it does not recognise is
+dropped and nothing is printed. `hosts:` for `host:`, `depends-on` for
+`depends_on` — the file publishes, the line does nothing, and the first symptom
+is a graph with fewer edges than the author wrote. Look at the `ok` line above:
+**0 dependencies**, because `depends_on` was the other typo.
+
+It is the near half of the gap `0.16.0`'s own upgrade note names: an engine that
+does not know a field DROPS it, so a step meant for the machine with the licence
+on it runs in the engine's own container. Nothing here fixes that for an engine
+older than this one — nothing can — and it is why the silence was worth
+breaking.
+
+**A warning and not a refusal.** Every workflow anybody has may carry a stray
+key today; refusing would fail files that have worked for a year in order to
+catch a typo in one of them. `validate`, `publish` and `run` all say it, on
+stderr, and the engine behaves exactly as it did.
+
+One limit, said rather than discovered: a `depends_on` entry decodes through its
+own unmarshaller, which is where the strict pass stops looking, so a stray key
+*inside* one is still dropped in silence.
+
+### Fixed: the site said every step becomes a pod
+
+`llms.txt` — the page written to be quoted — opened with "Every workflow step
+runs as its own Kubernetes pod with its own image". True on 2026-10-05. The
+step-fields table listed fifteen fields and not `host`, and the CLI page's
+"three limits" of `brevis run` were four.
+
+The fourth was measured rather than assumed: **`brevis run` does not read
+`BREVIS_HOSTS`**, so a step with `host:` cannot run there even with the variable
+set. The engine's refusal still says "they come from the installation, in
+BREVIS_HOSTS", which is true of the scheduler and not of `run`. That message is
+a known gap; the page says the truth either way.
+
+---
+
 ## [0.16.0] — 2026-10-06
 
 ### Added: `host:` — a step runs on a machine the engine does not manage

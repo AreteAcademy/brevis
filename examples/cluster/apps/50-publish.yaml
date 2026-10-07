@@ -42,7 +42,7 @@ spec:
           # talks to the DATABASE and not to the API, so a job from one release
           # against a schema migrated by another is a skew with no error to
           # read. The chart's appVersion is where that number comes from.
-          image: areteacademy/brevis:0.16.0-worker
+          image: areteacademy/brevis:0.16.1-worker
           # `--prune` makes the folder the source of truth: a workflow that
           # leaves Git leaves the database, schedule and all. Without it,
           # deleting a YAML would leave its schedule creating runs for ever.

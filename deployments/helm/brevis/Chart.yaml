@@ -10,8 +10,8 @@ type: application
 # the chart deployed an engine two releases behind the manifests beside it.
 # Found by installing it into a cluster, not by reading it. A gate for the
 # drift is its own piece of work; this is the number being right today.
-version: 0.2.0
-appVersion: "0.16.0"
+version: 0.2.1
+appVersion: "0.16.1"
 
 home: https://brevis.sh
 sources:
