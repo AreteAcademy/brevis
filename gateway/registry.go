@@ -131,8 +131,9 @@ type SinkFunc func(Build) (Sinker, error)
 // needs -- and anybody with a hook is compiling one already, so for them this
 // costs nothing.
 type Sinks struct {
-	mu sync.RWMutex
-	by map[string]SinkFunc
+	mu       sync.RWMutex
+	by       map[string]SinkFunc
+	locators map[string]LocateFunc
 }
 
 func NewSinks() *Sinks { return &Sinks{by: map[string]SinkFunc{}} }

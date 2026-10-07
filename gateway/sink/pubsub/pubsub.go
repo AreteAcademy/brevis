@@ -92,3 +92,9 @@ func (p *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	// landed.
 	return res.RowsLoaded, err
 }
+
+// Locate names the topic this sink publishes to, from its configuration alone.
+// No client is created: that is New's job, and it needs credentials.
+func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	return gateway.Located(topubsub.Topic{Project: s.Project, Name: s.Topic}.Locate(), "pubsub:"+s.Topic)
+}

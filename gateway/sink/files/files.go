@@ -61,3 +61,10 @@ func (f *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	}
 	return res.RowsLoaded, err
 }
+
+// Locate names the prefix this sink writes under, from its configuration
+// alone. The store is NOT opened -- New opens it, and that may need
+// credentials a deploy pipeline does not have.
+func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	return gateway.Located(to.Files{Path: s.Path}.Locate(), "files:"+s.Path)
+}

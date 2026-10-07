@@ -143,3 +143,20 @@ func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	}
 	return res.RowsLoaded, err
 }
+
+// Locate names the table this sink writes, from its configuration alone: the
+// project, dataset and table New hands tobq.Table.
+//
+// It refuses what New refuses. The SDK's own Locate would fall back to the
+// environment for an empty project or dataset; the gateway does not, and a
+// description must not name a destination the gateway would refuse to serve.
+func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	if err := gateway.CheckTable(s); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(s.Project) == "" || strings.TrimSpace(s.Dataset) == "" {
+		return "", fmt.Errorf("bigquery:%s needs `project` and `dataset`", s.Table)
+	}
+	return gateway.Located(tobq.Table{Project: s.Project, Dataset: s.Dataset, Name: s.Table}.Locate(),
+		"bigquery:"+s.Table)
+}

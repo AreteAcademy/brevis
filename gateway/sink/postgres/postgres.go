@@ -97,3 +97,17 @@ func (p *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	// the operator re-send what already landed.
 	return res.RowsLoaded, err
 }
+
+// Locate names the table this sink writes, from its configuration alone: the
+// same topg.Table New builds, asked for its target. The DSN is read from the
+// variable `dsn_from` names, parsed and never dialled.
+func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	if err := gateway.CheckTable(s); err != nil {
+		return "", err
+	}
+	dsn, err := gateway.DSNFrom(s)
+	if err != nil {
+		return "", err
+	}
+	return gateway.Located(topg.Table{DSN: dsn, Name: s.Table}.Locate(), "postgres:"+s.Table)
+}

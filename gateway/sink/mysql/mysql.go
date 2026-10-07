@@ -73,3 +73,15 @@ func (m *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 	}
 	return res.RowsLoaded, err
 }
+
+// Locate names the table this sink writes, from its configuration alone.
+func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	if err := gateway.CheckTable(s); err != nil {
+		return "", err
+	}
+	dsn, err := gateway.DSNFrom(s)
+	if err != nil {
+		return "", err
+	}
+	return gateway.Located(tomysql.Table{DSN: dsn, Name: s.Table}.Locate(), "mysql:"+s.Table)
+}
