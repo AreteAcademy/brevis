@@ -14,8 +14,8 @@ type: application
 # so appVersion cannot drift from VERSION in silence again. `version` above is
 # the CHART's own and is deliberately checked against nothing: it moves when
 # the templates move, which is not when the engine ships.
-version: 0.2.1
-appVersion: "0.16.1"
+version: 0.3.0
+appVersion: "0.17.0"
 
 home: https://brevis.sh
 sources:
