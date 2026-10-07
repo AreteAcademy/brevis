@@ -246,31 +246,6 @@ jobs:
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
 
-      # The emulated BigQuery layer. `WithEndpoint` replaces the WHOLE base
-      # URL, path included, so this value carries /bigquery/v2/ -- without it
-      # the client asks for /projects/... , floci has no route, and the 405
-      # looks exactly like its load-job refusal.
-      - name: Integration - BigQuery against floci
-        env:
-          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588/bigquery/v2/
-        run: |
-          cd sdk
-          go test -v -timeout 5m -run TestIntegrationBigQuery ./load/
-
-      # The gateway against the same three. Its integration tests skipped in CI
-      # from the day they were written -- the unit step next door runs `go
-      # test` with none of these variables set, so every case that reaches a
-      # real destination was a case that ran on a laptop and nowhere else.
-      # Which is the lesson at the top of this job, learned again.
-      #
-      # localhost and not 127.0.0.1 for the S3 endpoint, deliberately: the AWS
-      # SDK switches to path-style addressing on its own when the endpoint is a
-      # bare IP, so against an IP the path-style test passes without exercising
-      # anything. The test refuses an IP rather than passing quietly.
-      # Redis and memcached, for the metastore. They are what make several
-      # replicas behave like one, and the claim's exclusivity is a property no
-      # unit test can show: `memory` gives every caller a yes, which is the
-      # failure the shared backends exist to prevent.
       # floci, for the emulated BigQuery layer. The socket is mounted because
       # queries run in a sibling container it starts itself, and the tag is a
       # DATED nightly: floci ships no stable release, and `nightly` floating
@@ -289,6 +264,31 @@ jobs:
           curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"
           echo "floci is up"
 
+      # The emulated BigQuery layer. The value is the emulator's BASE URL:
+      # the SDK appends /bigquery/v2/ and /storage/v1/ itself, and it points
+      # BOTH clients there -- the GCS one is built eagerly, so without it this
+      # step would need Google credentials it does not have.
+      - name: Integration - BigQuery against floci
+        env:
+          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588
+        run: |
+          cd sdk
+          go test -v -timeout 5m -run TestIntegrationBigQuery ./load/
+
+      # The gateway against the same three. Its integration tests skipped in CI
+      # from the day they were written -- the unit step next door runs `go
+      # test` with none of these variables set, so every case that reaches a
+      # real destination was a case that ran on a laptop and nowhere else.
+      # Which is the lesson at the top of this job, learned again.
+      #
+      # localhost and not 127.0.0.1 for the S3 endpoint, deliberately: the AWS
+      # SDK switches to path-style addressing on its own when the endpoint is a
+      # bare IP, so against an IP the path-style test passes without exercising
+      # anything. The test refuses an IP rather than passing quietly.
+      # Redis and memcached, for the metastore. They are what make several
+      # replicas behave like one, and the claim's exclusivity is a property no
+      # unit test can show: `memory` gives every caller a yes, which is the
+      # failure the shared backends exist to prevent.
       - name: Start Redis and memcached
         run: |
           docker run -d --name redis -p 6379:6379 redis:7-alpine
@@ -560,6 +560,17 @@ jobs:
           go build ./...
           go vet ./...
           echo "✅ the full-pipeline example builds"
+
+      - name: Build the cluster demo's Go pod
+        run: |
+          # A module of its own with NO requirements, which is what lets its
+          # Docker build run with the wifi off -- and what takes it out of the
+          # `examples` module's own build below. Nothing else compiles it, so
+          # without this step it rots exactly the way six examples once did.
+          cd examples/cluster/goapp
+          go build ./...
+          go vet ./...
+          echo "✅ the cluster demo's Go pod builds"
 
       - name: The example workflows are valid
         run: |

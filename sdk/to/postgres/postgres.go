@@ -92,9 +92,30 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(nil)
 	}
 
+	// Under EvolveAdditiveFromPayload the batch completes the declaration
+	// before anything is checked against it.
+	//
+	// BEFORE CheckRow and not instead of it: the check has two halves, and
+	// only one of them is what this mode is for. "A field nothing declared"
+	// stops being an error because the field is now declared; "a declared
+	// column your chain does not produce" still is. Skipping the call would
+	// lose the second, and a check that cannot fail is worse than no check.
+	//
+	// `opt` is a value and WithDiscovered copies both slices, so the
+	// extension lives exactly as long as this batch. It must: the NEXT batch
+	// need not carry the same fields, and a declaration that outlived one
+	// would refuse the batch after the one it helped.
+	if t.Evolve.FromPayload() {
+		found, err := core.Discovered(opt, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		opt = core.WithDiscovered(opt, found)
+	}
+
 	// The record is exactly what the Transform chain composed, and the
 	// declaration is checked against the whole of it -- ingestion_id included.
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}
 
@@ -151,7 +172,12 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	// after the whole extract, and without saying what to do. And the table's
 	// order keeps the column list stable across runs, instead of depending on
 	// the order some map happened to be walked in.
-	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
+	// RowFields and not the bare union of the keys: a field that is nil in
+	// EVERY record and that the table does not have contributes nothing --
+	// no column was created for it, and a null and an absent field land the
+	// same NULL. Counting it as a column would have Reconcile refuse the
+	// batch over a value that was never going to be written. [#42]
+	columns, err := core.Reconcile(tableColumns, core.RowFields(envelopes, tableColumns), t.Name)
 	if err != nil {
 		return fail(err)
 	}
@@ -413,6 +439,13 @@ func hideDSN(err error, dsn string) error {
 // where the message also lists the batch's columns, so the DDL comes out of one
 // reading.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {
+	// EvolveAdditiveFromPayload with nothing to complete, refused BEFORE the
+	// extract: it costs no query to know, and a source quota spent to learn
+	// it is a quota wasted. Discovered refuses it again on the write path,
+	// for the caller that never comes through here.
+	if err := core.CheckDiscoveryHasADeclaration(t.Evolve, columns, t.Name); err != nil {
+		return err
+	}
 	if len(columns) == 0 || (t.DSN == "" && t.Conn == nil) || t.Name == "" {
 		return nil
 	}
@@ -427,8 +460,24 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	if err != nil {
 		return err
 	}
-	ofTable, _, err := columnsOf(ctx, conn, schema, table)
+	ofTable, ofTypes, err := columnsOf(ctx, conn, schema, table)
 	if err != nil || len(ofTable) == 0 {
+		return err
+	}
+
+	// Columns BREVIS_NORMALIZE_DATA would abandon, refused before the
+	// extract. Nothing drops a column, so the old name stays full of the old
+	// rows while everything after lands in the new one -- see
+	// core.CheckNormalizeRenames for why it refuses rather than warns.
+	if err := core.CheckNormalizeRenames(columns, declaredTypes(ofTypes), t.Name); err != nil {
+		return err
+	}
+
+	// A table created under a DIFFERENT prefix, refused before the extract.
+	// Nothing drops a column, so this would add eight and abandon eight --
+	// see core.CheckLandingPrefixMatches for why it refuses rather than
+	// warns.
+	if err := core.CheckLandingPrefixMatches(columns, ofTable, t.Name); err != nil {
 		return err
 	}
 
@@ -438,9 +487,23 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	}
 	var missing []string
 	for _, c := range columns {
-		if !has[c] {
-			missing = append(missing, c)
+		if has[c] {
+			continue
 		}
+		// A column the table lacks is the one difference EvolveAdditive was
+		// asked to repair, so refusing it here would make the flag
+		// unreachable in its only case: a declaration that adds a column is
+		// the only way to ask for one. Issue #41.
+		//
+		// Skipped per column rather than by returning early, so a check that
+		// evolving CANNOT repair -- a narrowed type, a column the table
+		// requires -- still runs before the extract when one is added here.
+		// That is the whole reason this method is early: one
+		// information_schema query against a source quota spent to find out.
+		if t.Evolve.MayAdd() {
+			continue
+		}
+		missing = append(missing, c)
 	}
 	if len(missing) == 0 {
 		return nil

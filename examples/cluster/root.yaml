@@ -1,0 +1,27 @@
+# The ONE thing the bootstrap applies. Everything else is a commit.
+#
+# It points Argo CD at a path in this repository and goes away. What appears in
+# the cluster after that is whatever `examples/cluster/apps` says -- so the way
+# to change this stack is to edit a file and push, which is the whole
+# demonstration.
+#
+# BREVIS_GIT_REVISION is substituted by the bootstrap. The default is the
+# branch a reader is most likely to have, and the variable exists so somebody
+# testing a change can point the whole stack at their own branch without
+# editing a tracked file.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: brevis-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/AreteAcademy/brevis.git
+    targetRevision: BREVIS_GIT_REVISION
+    path: examples/cluster/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}

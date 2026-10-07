@@ -99,6 +99,24 @@ Compose only removes what it created:
 docker rm -f floci-gcp-bigquery-duck
 ```
 
+The SDK talks to it through `BREVIS_BIGQUERY_EMULATOR`, which takes the
+emulator's **base** URL:
+
+```bash
+export BREVIS_BIGQUERY_EMULATOR=http://localhost:4588
+go test ./sdk/load/ -run TestIntegrationBigQuery
+```
+
+The SDK appends `/bigquery/v2/` and `/storage/v1/` itself and points **both**
+clients there. The storage one matters even for a load that never stages: it is
+built eagerly, so without the override the tests need Google credentials — and
+removing that wall for a contributor outside the company is half the point.
+
+The variable is read from the environment and from nowhere else. A
+`bigquery_endpoint:` in a YAML file is a line somebody copies between
+environments, and what it buys is a production pipeline writing a warehouse's
+data into a container, silently, because those writes succeed.
+
 Kafka, RabbitMQ and Mongo are in the compose on their own profiles, and there
 is **no Brevis driver for any of them**. They are there so the driver that
 needs one can be written against something. A compose service is not a feature.

@@ -30,11 +30,34 @@ GW=brevis-bench-gw
 KEY=bench
 DSN_IN="postgres://brevis:brevis@$PG:5432/brevis?sslmode=disable"
 
+PORT=${BREVIS_BENCH_PORT:-8080}
+MPORT=${BREVIS_BENCH_METRICS_PORT:-9090}
+
+# A port already listening is somebody else's gateway, and k6 will happily
+# load it and report a number. That has happened: a gateway left running from
+# an earlier session answered on :8080 and :9090, the run under test failed to
+# bind, and the report came back with 73,093 requests, 0 events accepted and a
+# stream name from a config nobody in this run had written.
+#
+# Refused rather than worked around. A benchmark that measures the wrong
+# process is worse than one that does not run.
+for port in "$PORT" "$MPORT"; do
+  if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "port $port is already listening, and this run would measure whatever" >&2
+    echo "is on it. Stop it, or set BREVIS_BENCH_PORT / BREVIS_BENCH_METRICS_PORT:" >&2
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2
+    exit 2
+  fi
+done
+
 VUS=${BREVIS_BENCH_VUS:-16}
 PER=${BREVIS_BENCH_PER_REQUEST:-200}
 HOLD=${BREVIS_BENCH_HOLD:-30s}
 TABLES=${BREVIS_BENCH_TABLES:-1}
 IMAGE=${BREVIS_BENCH_IMAGE:-}
+# A gateway binary built elsewhere. The point is comparing two commits without
+# also comparing two harnesses: build both, run both through this one.
+BIN=${BREVIS_BENCH_BIN:-}
 
 cleanup() {
   [ -f "$here/.gwpid" ] && kill "$(cat "$here/.gwpid")" 2>/dev/null || true
@@ -58,24 +81,41 @@ until docker exec "$PG" pg_isready -U brevis >/dev/null 2>&1; do sleep 1; done
 echo "==> the gateway"
 if [ -n "$IMAGE" ]; then
   docker pull -q "$IMAGE" >/dev/null
-  docker run -d --name "$GW" --network "$NET" -p 8080:8080 -p 9090:9090 \
+  docker run -d --name "$GW" --network "$NET" -p "$PORT":8080 -p "$MPORT":9090 \
     -e BREVIS_ENV=prod -e BREVIS_BENCH_KEYS="$KEY" -e BREVIS_BENCH_DSN="$DSN_IN" \
     -v "$here/gateway.yaml:/etc/brevis/gateway.yaml:ro" \
     "$IMAGE" >/dev/null
   label="$IMAGE"
 else
-  ( cd "$root/gateway" && go build -o "$here/.gw" ./cmd/gateway )
+  if [ -n "$BIN" ]; then
+    gw="$BIN"
+    label="(prebuilt: $(basename "$BIN"))"
+  else
+    ( cd "$root/gateway" && go build -o "$here/.gw" ./cmd/gateway )
+    gw="$here/.gw"
+    label="(local build)"
+  fi
+  # The config it actually ran with, written beside the report: the ports
+  # move when the defaults are taken, and a report should not leave anybody
+  # guessing which file produced it.
+  sed -e "s|\"\:8080\"|\":$PORT\"|" -e "s|\"\:9090\"|\":$MPORT\"|" \
+    "$here/gateway.yaml" > "$results/gateway.used.yaml"
   BREVIS_ENV=prod BREVIS_BENCH_KEYS="$KEY" \
     BREVIS_BENCH_DSN="postgres://brevis:brevis@localhost:55433/brevis?sslmode=disable" \
-    "$here/.gw" "$here/gateway.yaml" >"$results/gateway.log" 2>&1 &
+    "$gw" "$results/gateway.used.yaml" >"$results/gateway.log" 2>&1 &
   echo $! > "$here/.gwpid"
-  label="(local build)"
 fi
 
+ready=0
 for i in $(seq 1 40); do
-  curl -sf -o /dev/null "http://localhost:9090/metrics" && break
+  curl -sf -o /dev/null "http://localhost:$MPORT/metrics" && { ready=1; break; }
   sleep 1
 done
+if [ "$ready" != 1 ]; then
+  echo "the gateway never served /metrics on :$MPORT" >&2
+  tail -20 "$results/gateway.log" >&2 2>/dev/null || true
+  exit 2
+fi
 
 echo "==> k6: $VUS VUs, $PER events per request, hold $HOLD"
 docker run --rm -i \
@@ -83,6 +123,7 @@ docker run --rm -i \
   --add-host=host.docker.internal:host-gateway \
   -v "$here:/scripts:ro" -v "$results:/results" \
   -e BREVIS_BENCH_KEY="$KEY" \
+  -e BREVIS_BENCH_URL="http://host.docker.internal:$PORT/v1/ingestion" \
   -e BREVIS_BENCH_VUS="$VUS" \
   -e BREVIS_BENCH_PER_REQUEST="$PER" \
   -e BREVIS_BENCH_HOLD="$HOLD" \
@@ -95,15 +136,25 @@ echo "==> letting the buffer drain"
 # stops reports a delivery that has not happened. Wait for the buffer AND the
 # queue, because they are two numbers and only one of them is the buffer.
 for i in $(seq 1 120); do
-  b=$(curl -s localhost:9090/metrics | awk '/^brevis_gateway_buffer_records/{s+=$2} /^brevis_gateway_queue_batches/{s+=$2} END{print s+0}')
+  b=$(curl -s localhost:$MPORT/metrics | awk '/^brevis_gateway_buffer_records/{s+=$2} /^brevis_gateway_queue_batches/{s+=$2} END{print s+0}')
   [ "${b:-1}" = "0" ] && break
   sleep 1
 done
 
 echo "==> scraping the gateway"
-curl -s localhost:9090/metrics > "$results/metrics.txt"
+curl -s localhost:$MPORT/metrics > "$results/metrics.txt"
+# COUNT(*), not n_live_tup. The third witness is the only one that did not
+# take the gateway's word for it, and `n_live_tup` is an ESTIMATE maintained
+# by the stats collector -- with one table it happened to be exact, and with
+# 94 it reported 6,447,774 of 6,449,600, which reads as 1,826 lost events and
+# was not. A witness that is approximately right is not a witness.
 rows=$(docker exec "$PG" psql -U brevis -d brevis -t -A -c \
-  "select coalesce(sum(n_live_tup),0) from pg_stat_user_tables where relname like 'app_bench%'" 2>/dev/null || echo 0)
+  "select coalesce(sum(n),0) from (
+     select (xpath('/row/c/text()',
+       query_to_xml(format('select count(*) as c from %I.%I', schemaname, relname),
+       false, true, '')))[1]::text::bigint as n
+     from pg_stat_user_tables where relname like 'app_bench%'
+   ) t" 2>/dev/null || echo 0)
 
 cat > "$results/run.json" <<JSON
 {

@@ -24,10 +24,11 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
-          image: areteacademy/brevis:0.15.2
+          image: areteacademy/brevis:0.16.1
           args: ["serve"]
           # TWO ports, and only `http` belongs in the Ingress below.
           #

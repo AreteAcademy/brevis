@@ -28,7 +28,31 @@ const (
 	MetricQueue     = "brevis_gateway_queue_batches"
 	MetricFlushes   = "brevis_gateway_flushes_total"
 
-	// The two volume series, and they are the ones behind the switch.
+	// MetricWindows is what became of each flush WINDOW when the claim is on.
+	//
+	// Its own series and not a label on MetricFlushes, because a yield is not
+	// a flush: that counter's sum means "batches handed to the pool", and
+	// folding a non-delivery into it would end that.
+	//
+	// Published only by a stream with `flush.claim`, so it is not noise on
+	// every deployment that never turned this on.
+	MetricWindows = "brevis_gateway_flush_windows_total"
+
+	// MetricTableFlushes is flushes per TABLE, and it is the number the
+	// BigQuery quota is actually about: 1,500 load jobs per table per day.
+	//
+	// MetricFlushes counts batches handed to the pool, and with a routing key
+	// one batch is one table -- but it cannot say which, so a stream at 94
+	// tables reports one number against a limit that is per table. An
+	// operator alerting before the quota bites needs the table.
+	//
+	// Behind the switch with the volume pair, and for the same reason: the
+	// label is the producer's. The unconditional half of this question is the
+	// boot line, which says what `flush.every` costs per table per day before
+	// an event arrives -- one line and no cardinality.
+	MetricTableFlushes = "brevis_gateway_table_flushes_total"
+
+	// The three series behind the switch.
 	//
 	// They carry `table`, which is a label the PRODUCER chooses: with
 	// auto_table one route becomes N tables, and every other metric in this
@@ -61,6 +85,28 @@ const (
 	ReasonIdentity  = "identity"
 	ReasonOversize  = "oversize"
 	ReasonAdmit     = "sink_refused"
+)
+
+// What became of a flush window, when the claim is on.
+//
+// WonWindow and YieldedWindow are the feature working: one replica flushes,
+// the others keep filling. The other two are wins WITHOUT coordination, and
+// they are why this series exists:
+//
+//	CeilingWindow  max_age closed, so the batch left whatever anybody held.
+//	               Correct, and it says the ceiling is doing the work rather
+//	               than the target.
+//	UnreachableWindow  the backend could not be asked, so the claim failed
+//	               open. Coordination is OFF and the load jobs are multiplying
+//	               by replica count again -- silently, because every flush
+//	               still looks exactly like a flush. This is the one worth an
+//	               alert, and a feature whose failure mode is silent shipped
+//	               without a way to see it is the shape of issue #33.
+const (
+	WonWindow         = "won"
+	YieldedWindow     = "yielded"
+	CeilingWindow     = "ceiling"
+	UnreachableWindow = "unreachable"
 )
 
 // What made a batch leave the buffer.
@@ -113,12 +159,14 @@ type Metrics struct {
 	saturated *counters
 	oversized *counters
 	flushes   *counters
+	windows   *counters
 
 	// The volume pair, nil unless BREVIS_INGESTION_METRICS turned them on.
 	// Nil rather than a bool, so the check is the same nil-guard every other
 	// instrument already has and there is no second way to be off.
 	ingestedBytes  *counters
 	ingestedEvents *counters
+	tableFlushes   *counters
 
 	delivery  *histograms
 	batchSize *histograms
@@ -151,6 +199,7 @@ func NewMetrics() *Metrics {
 		saturated: newCounters(MetricSaturated, "requests refused because the buffer was full", "stream"),
 		oversized: newCounters(MetricOversized, "events archived whole because they were too large", "stream"),
 		flushes:   newCounters(MetricFlushes, "batches handed to the pool by what triggered them", "stream", "trigger"),
+		windows:   newCounters(MetricWindows, "flush windows by what became of them, when the claim is on", "stream", "outcome"),
 
 		// Prometheus' own default spread, which covers a Pub/Sub publish
 		// (milliseconds) and a COPY that is having a bad day (seconds).
@@ -166,6 +215,9 @@ func NewMetrics() *Metrics {
 			"bytes received, by the table they were routed to", "stream", "table")
 		m.ingestedEvents = newCounters(MetricIngestedEvents,
 			"events received, by the table they were routed to", "stream", "table")
+		m.tableFlushes = newCounters(MetricTableFlushes,
+			"batches handed to the pool, by the table they carry and what triggered them",
+			"stream", "table", "trigger")
 	}
 	return m
 }
@@ -206,6 +258,18 @@ func (m *Metrics) ingested(stream, table string, bytes int) {
 	}
 	m.ingestedBytes.add(int64(bytes), stream, table)
 	m.ingestedEvents.add(1, stream, table)
+}
+
+// flushed records one bucket leaving, against the table it carries.
+//
+// A no-op when the switch is off or the sink has no routing key, which is
+// what keeps the caller free of the question. An empty table would make the
+// series a worse copy of MetricFlushes.
+func (m *Metrics) flushed(stream, table, trigger string) {
+	if m == nil || m.tableFlushes == nil || table == "" {
+		return
+	}
+	m.tableFlushes.add(1, stream, table, trigger)
 }
 
 func (m *Metrics) count(c *counters, n int64, labels ...string) {

@@ -131,6 +131,131 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally
 down: ## Tears the local environment down
 	@docker compose down
 
+# --- the local cluster -------------------------------------------------------
+#
+# A Kubernetes cluster with Argo CD on it, and NOTHING deployed. Brevis arrives
+# the way a client's would: deployed from Git by Argo CD, not by this Makefile.
+# See docker-compose.cluster.yml.
+CLUSTER := docker compose -f docker-compose.cluster.yml
+
+# THE REVISION ARGO CD DEPLOYS, and it is this branch rather than master.
+#
+# It defaulted to master, and the failure that caused is the one worth
+# remembering: re-running the bootstrap from a feature branch re-pointed both
+# Applications at master, both went Synced/Healthy, and the thing being
+# demonstrated was simply not in the tree. Green, correct, and about the wrong
+# commit.
+#
+# Argo CD reads GITHUB, not this directory, so the branch has to be pushed --
+# which cluster-up refuses to proceed without rather than leaving Argo to say
+# it in a ComparisonError nobody reads.
+export BREVIS_GIT_REVISION ?= $(shell git rev-parse --abbrev-ref HEAD)
+
+.PHONY: cluster-up cluster-down cluster-ui cluster-shell cluster-status cluster-run cluster-watch cluster-tree cluster-dev-image cluster-goapp cluster-revision
+cluster-up: ## Brings up k3s + Argo CD, with nothing deployed on them
+	@$(MAKE) --no-print-directory cluster-revision
+	@$(CLUSTER) up -d --wait k3s
+	@$(CLUSTER) run --rm bootstrap
+	@$(MAKE) --no-print-directory cluster-ui
+
+cluster-revision: ## Refuses a revision GitHub does not have -- Argo CD deploys from there, not from here
+	@git ls-remote --exit-code --heads --tags origin "$(BREVIS_GIT_REVISION)" >/dev/null 2>&1 || { \
+	  echo "origin has no $(BREVIS_GIT_REVISION), and that is where Argo CD reads from."; \
+	  echo "push it first:  git push origin $(BREVIS_GIT_REVISION)"; \
+	  exit 1; }
+	@here=$$(git rev-parse --short HEAD); there=$$(git rev-parse --short "origin/$(BREVIS_GIT_REVISION)" 2>/dev/null || echo ""); \
+	 if [ -n "$$there" ] && [ "$$here" != "$$there" ]; then \
+	   echo "note: this tree is at $$here and origin/$(BREVIS_GIT_REVISION) at $$there."; \
+	   echo "      Argo CD deploys origin's. Push if you meant this one."; \
+	 fi
+	@echo "Argo CD will deploy $(BREVIS_GIT_REVISION)"
+
+cluster-ui: ## The Argo CD URL and the admin password
+	@echo "argocd at http://localhost:$${BREVIS_ARGOCD_PORT:-30080}"
+	@echo "user      admin"
+	@printf 'password  '
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || echo "(gone: it is deleted once you change the password)"
+	@echo
+
+cluster-status: ## What Argo CD has synced, and what is running
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get applications
+	@echo
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods
+
+cluster-dev-image: ## Builds the agent from THIS tree into the cluster (it is not published yet)
+	@docker build -q --target agent -t brevis-agent:dev --build-arg VERSION=dev . >/dev/null
+	@docker save brevis-agent:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@docker build -q -t brevis-tools:dev examples/cluster/runtime >/dev/null
+	@docker save brevis-tools:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@docker build -q -t brevis-goapp:dev examples/cluster/goapp >/dev/null
+	@docker save brevis-goapp:dev | docker exec -i brevis-cluster-k3s-1 ctr -n k8s.io images import - >/dev/null
+	@echo "brevis-agent:dev, brevis-tools:dev and brevis-goapp:dev are in the cluster's image store"
+	@echo "tools is the one the demo runs: the agent, plus python and jq, built by you."
+	@echo "The demo pins it with imagePullPolicy: Never, so nothing goes looking for it on a registry."
+
+# It waits on THE RUN and not on the agent's log. Waiting on the log matched
+# the previous run's line, broke out instantly, and printed four steps of which
+# two belonged to the run before -- a test that reported a result it had not
+# waited for, which is the only kind of test worth less than none.
+cluster-goapp: ## The visual test: a Go pod you own, with Brevis running commands in it
+	@echo "1. YOUR IMAGE -- a Go binary you wrote, on top of the agent"
+	@$(MAKE) --no-print-directory cluster-dev-image >/dev/null
+	@echo "   brevis-goapp:dev, built from examples/cluster/goapp"
+	@echo
+	@echo "2. ARGO CD OWNS IT, because it is declared in Git"
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get app brevis-demo \
+	  -o jsonpath='{range .status.resources[*]}{.kind}/{.name}{"\n"}{end}' | sed -n 's/^/   /p' | grep goapp
+	@echo
+	@echo "3. THE POD, started before the run rather than for it"
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods -l app.kubernetes.io/component=goapp \
+	  -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,IMAGE:.spec.containers[0].image,STARTED:.status.startTime'
+	@before=$$($(CLUSTER) exec -T k3s kubectl -n dados get pods --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+	 echo "   pods in the namespace before the run: $$before"; \
+	 echo; \
+	 echo "4. BREVIS SENDS THE COMMANDS"; \
+	 url=$$(curl -fsS -o /dev/null -w '%{redirect_url}' -X POST \
+	   http://localhost:$${BREVIS_UI_PORT:-30081}/workflows/goapp_demo/trigger); \
+	 echo "   the run, with every line the binary printed: $$url"; \
+	 printf "   waiting for it to finish"; \
+	 state=""; \
+	 for i in $$(seq 1 90); do \
+	   state=$$(curl -fsS "http://localhost:$${BREVIS_UI_PORT:-30081}/api/runs/$${url##*/}/graph" \
+	     | sed -E 's/.*"status":"([a-z]+)".*"terminal":(true|false).*/\1 \2/'); \
+	   case "$$state" in *" true") break;; esac; \
+	   printf "."; sleep 2; \
+	 done; \
+	 echo; echo "   the run ended: $${state%% *}"; echo; \
+	 echo "5. WHAT THE POD WAS ASKED TO DO -- one line per command, all on one container"; \
+	 $(CLUSTER) exec -T k3s kubectl -n dados logs brevis-goapp-0 --tail=400 \
+	   | grep '"msg":"step started"' \
+	   | sed -E 's/.*"workflow":"([^"]*)".*"node":"([^"]*)".*/   \1 -> \2/' | tail -4; \
+	 echo; \
+	 after=$$($(CLUSTER) exec -T k3s kubectl -n dados get pods --no-headers 2>/dev/null | wc -l | tr -d ' '); \
+	 echo "6. PODS AFTER THE RUN: $$after, and there were $$before. Brevis created none."; \
+	 echo; \
+	 echo "   Open $$url for the output of each command,"; \
+	 echo "   and http://localhost:$${ARGO_PORT:-30080} for the pod in Argo CD's tree."
+
+cluster-run: ## Triggers a workflow in the cluster: make cluster-run WORKFLOW=pod_per_step
+	@curl -fsS -o /dev/null -X POST \
+	  http://localhost:$${BREVIS_UI_PORT:-30081}/workflows/$(or $(WORKFLOW),pod_per_step)/trigger
+	@echo "queued $(or $(WORKFLOW),pod_per_step) -- watch it with: make cluster-watch"
+
+cluster-watch: ## Watches the step pods appear and die
+	@echo "Two pods at once is the point. Ctrl-C to stop."
+	@$(CLUSTER) exec -T k3s kubectl -n dados get pods -w \
+	  -o 'custom-columns=NAME:.metadata.name,PHASE:.status.phase,IMAGE:.spec.containers[0].image,CPU:.spec.containers[0].resources.requests.cpu,MEM:.spec.containers[0].resources.requests.memory'
+
+cluster-tree: ## What Argo CD OWNS -- the step pods are deliberately not in it
+	@$(CLUSTER) exec -T k3s kubectl -n argocd get app brevis-demo \
+	  -o jsonpath='{range .status.resources[*]}{.kind}/{.name}{"\n"}{end}'
+
+cluster-shell: ## A kubectl against the local cluster: make cluster-shell ARGS="get pods -A"
+	@$(CLUSTER) exec -T k3s kubectl $(ARGS)
+
+cluster-down: ## Tears the cluster down, volumes included
+	@$(CLUSTER) down -v
+
 logs: ## Follows the API's logs
 	@docker compose logs -f api
 

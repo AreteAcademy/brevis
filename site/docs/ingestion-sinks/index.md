@@ -252,7 +252,7 @@ para a página de ingestão do console, que ainda não foi escrita. Está dito a
 porque um campo aceito em silêncio é um campo que alguém acredita estar
 gravando.
 
-### Sete colunas fixas, mais o que o registro traz
+### Oito colunas fixas, mais o que o registro traz
 
 | coluna | | |
 |---|---|---|
@@ -264,6 +264,11 @@ gravando.
 | `brevis_stream` | `STRING` | qual rota escreveu |
 | `brevis_gateway` | `STRING` | qual implantação |
 | `brevis_received_bytes` | `INT64` | o tamanho com que o evento **chegou**, envelope incluído |
+
+Estas oito são **do SDK**, não deste sink: `sdk.LandingSchema` as declara e
+`sdk.LandingID` cunha a identidade, então uma pipeline pode aterrissar a mesma
+tabela com os mesmos ids. Uma definição só, porque duas derivam. Veja
+[o layout de aterrissagem do SDK](/docs/sdk/#o-layout-de-aterrissagem).
 
 **`brevis_` é reservado.** Um `data` carregando qualquer chave com esse prefixo é
 recusado **por evento** — senão um produtor forja um campo de controle, e um
@@ -380,9 +385,63 @@ mudaria o tipo de uma coluna sem ninguém escrever nada, e a linha que não coub
 vai para a fila de descarte. Tipar é a **promoção** — escrita no YAML e revisada
 num diff.
 
+**Um `null` não vira coluna nenhuma.** Ele não tem forma, então não há o que
+ler: o campo aparece na tabela no primeiro evento que traz um VALOR, com a
+forma desse valor. O evento que mandou `null` grava `NULL` do mesmo jeito, que
+é o que ele queria dizer — e se a coluna já existe, por tê-la você declarado ou
+por outro evento tê-la criado, o `null` é gravado nela e não omitido.
+
+**E uma coluna `JSON` recebe um VALOR JSON, nunca uma string de um.** Parece
+detalhe e é a diferença entre uma tabela consultável e uma tabela que parece
+certa:
+
+```sql
+SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, '$.uf') ...;           -- SP
+```
+
+Se o `JSON_TYPE` responde `string` e o `JSON_VALUE` responde NULL, o objeto foi
+codificado duas vezes — a coluna guarda o TEXTO do objeto em vez do objeto. As
+versões do gateway até a **0.15.0** inclusive faziam isso no BigQuery, nas
+**duas** formas; o [changelog do gateway](https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md)
+traz a checagem de uma linha e o reparo. Postgres e MySQL nunca foram
+afetados: o servidor deles parseia o texto.
+
 Um nome de campo precisa casar com a regra do BigQuery, a mais estreita das
 quatro. O Postgres aceitaria quase tudo entre aspas, e essa é a armadilha: a
 tabela nasce lá e quebra no dia em que alguém aponta um stream para o BigQuery.
+
+As duas formas têm equivalente no SDK, e é o mesmo código, não um código
+parecido: `sdk.Landing(table, sdk.LandingKey("id"))` aterrissa `document`, e
+acrescentar [`sdk.LandingColumns()`](/docs/sdk/#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo)
+aterrissa `columns`. Mesmas colunas, mesmos valores, mesmo
+`brevis_ingestion_id` — então um stream muda de gateway para pipeline sem
+migração, e os dois podem ser lidos como uma tabela só.
+
+A pipeline cresce a mesma coluna do mesmo jeito: ponha
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#quando-aparece-um-campo-que-a-tabela-nao-tem)
+no destino e um campo que o lote traz vira coluna, por esta regra, por este
+código.
+
+
+**O prefixo é configurável, e é uma decisão para o processo inteiro.**
+`BREVIS_LANDING_PREFIX=acme` faz delas `acme_ingestion_id` e as demais — todo
+stream deste gateway, então dois sinks não conseguem divergir sobre uma tabela
+em que os dois podem escrever. A regra reservada acima vai junto: sob `acme_`,
+um produtor mandando `acme_region` é recusado e `brevis_region` é campo comum.
+
+**Escolha antes de a primeira tabela nascer.** Trocar depois acrescenta oito
+colunas e abandona oito — nada remove coluna — então uma tabela que já carrega
+o layout sob um prefixo recusa uma carga declarando outro. A
+[página do SDK](/docs/sdk/#o-prefixo-brevis-e-seu-para-trocar) tem a
+normalização e a saída.
+
+**Os campos de um objeto aninhado podem ganhar colunas próprias.**
+`BREVIS_NORMALIZE_DATA=true` no processo do gateway achata um nível —
+`{"name": {"first": "x"}}` aterrissa como `name_first` — e todo stream
+compartilha, então dois sinks não conseguem divergir sobre uma tabela em que
+os dois podem escrever. A [página do SDK](/docs/sdk/#uma-coluna-por-campo-aninhado)
+diz o que isso renomeia, que é a metade para ler antes de ligar.
 
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
@@ -425,20 +484,25 @@ em todo nível, arrays na ordem, tudo entre aspas. O Go randomiza a iteração d
 map, então um hash ingênuo diferiria entre duas entregas do mesmo evento, que é
 exatamente o que ele existe para impedir.
 
-### A tabela cresce uma coluna sozinha — no Postgres e no MySQL
+### A tabela cresce uma coluna sozinha
 
 Um `data` com um campo que a tabela não tem faz a coluna nascer. **Aditivo, e só
 aditivo**: nada é removido, nada é estreitado.
 
-> **No BigQuery isso ainda não acontece.** O `auto_table` declara
-> `Evolve: additive` em todo destino, e só os drivers de Postgres e MySQL leem
-> essa declaração — nada no caminho do BigQuery altera o schema de uma tabela
-> existente. Lá, um campo novo faz a carga **falhar**, o lote é retentado e vai
-> para a fila de descarte com o motivo.
+No BigQuery isso passou a valer só na **0.13.0**. Antes dela o
+`auto_table` declarava `Evolve: additive` em todo destino e só os drivers de
+Postgres e MySQL liam a declaração — então lá o formato ficava congelado na
+criação e nada dizia isso.
+
+> **Vindo de 0.11.0 ou 0.12.0**, as tabelas criadas antes da `0.11.0` precisam
+> de uma migração única, porque a oitava coluna fixa entrou na declaração e não
+> na tabela:
 >
-> Um teste fixa essa lacuna e vai **falhar** no dia em que ela for fechada, que
-> é quando este aviso sai. Até lá, com `into: bigquery`, use `shape: document`
-> — nele um campo novo é uma chave nova e não existe DDL depois do create.
+> ```sql
+> ALTER TABLE `<dataset>.<tabela>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+> ```
+>
+> Postgres e MySQL nunca foram afetados.
 
 Um lote que perde a corrida pelo `ALTER` falha, e o retry comum da esteira
 resolve — um lote esperando DDL e um lote esperando worker são a mesma coisa,
@@ -500,6 +564,20 @@ isto só reduz a corrida. O TTL é quanto tempo ele pode estar **errado**.
 | `redis` | `addr_from` obrigatório. Um `SETNX` é o claim, um `INCR` é o contador |
 | `memcached` | `addr_from` obrigatório. Um `Add` é o claim, e a expiração tem granularidade de **segundo** |
 
+**O Redis é o mais rápido num stream com chave de roteamento**, e a diferença
+merece um número em vez de um adjetivo. Com o gatilho por tabela, uma janela
+pede um claim por tabela: o Redis responde 94 deles numa ida-e-volta em
+pipeline, e os demais backends respondem em paralelo, limitados em 32. Medido
+contra um backend a 25 ms — 94 claims:
+
+| backend | um de cada vez | como sai hoje |
+|---|---:|---:|
+| `redis` | 2,589 s | **29,8 ms** |
+| `memcached` | 2,577 s | **89,4 ms** |
+
+Três ondas contra uma ida-e-volta. Os dois cabem nos 500 ms que um claim tem,
+então o memcached é a escolha mais lenta e não uma recusada.
+
 Com várias réplicas, `memory` dá a cada uma a sua: o debounce não debounce nada
 e o `max_new_per_hour` limita um *processo*. É a única razão de os outros dois
 existirem.
@@ -507,6 +585,32 @@ existirem.
 **Um metastore fora do ar não pode derrubar uma escrita.** Um `Get` que erra é
 miss, um claim que erra se comporta como ganho, um contador que erra relaxa o
 limite. Um cache capaz de parar a ingestão é pior que nenhum cache.
+
+**E "fora do ar" inclui "lento".** O claim roda com o lock do buffer na mão,
+então um backend que leva dois segundos para responder são dois segundos em que
+aquele stream não aceita nada. Toda chamada é limitada em **500 ms** e falha
+aberto depois disso. O Redis obedece isso como contexto do chamador; o
+`gomemcache` não aceita contexto nenhum, então o memcached obedece como prazo
+de socket — o mesmo limite por dois caminhos, porque um dos dois clientes não
+tem como ser mandado parar.
+
+**`ttl: 0` significa nunca**, e dizer nada continua pegando o padrão de um
+minuto — três estados, não dois.
+
+O relógio **não** é o que recupera de uma entrada errada. Uma escrita que o
+destino recusa chama `invalidate`, que derruba a entrada na hora e deixa o
+retry da própria esteira voltar contra um cache frio: uma tabela dropada na mão
+custa **uma tentativa falha**, não um minuto.
+
+Expirar tem preço. O `sinkFor` cobra o `naming.max_new_per_hour` quando **não
+sabe** de uma tabela — então um miss cobra por uma tabela que existe há semanas,
+e um pod que reinicia um minuto depois do último evento de uma tabela não
+aproveita nada do backend compartilhado que está pagando. Com tabelas de vida
+longa, `ttl: 0` é a resposta.
+
+> Em `0.12.0` e `0.13.1` essa grafia **não parseia** — o YAML lê um zero puro
+> como inteiro e a `0.13.2` é a primeira que aceita as duas. Nessas versões,
+> escreva `ttl: 0s`.
 
 `addr_from` nomeia a **variável de ambiente** que guarda o endereço, nunca o
 endereço: ele carrega senha com frequência suficiente.

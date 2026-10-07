@@ -185,14 +185,22 @@ func TestTheColumnsShapeTypesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// `cancel` is null and is NOT here: a null has no shape, so there is
+	// nothing for the rule to read and the type would be a guess. [#42]
 	want := map[string]sdk.ColumnType{
 		"id": sdk.TypeString, "total": sdk.TypeString, "paid": sdk.TypeString,
-		"cancel": sdk.TypeString, "customer": sdk.TypeJSON, "items": sdk.TypeJSON,
+		"customer": sdk.TypeJSON, "items": sdk.TypeJSON,
 	}
 	if len(got) != len(want) {
 		t.Fatalf("declared %d columns, want %d", len(got), len(want))
 	}
 	for _, c := range got {
+		if c.Name == "cancel" {
+			t.Errorf("cancel is declared %s from a null: that is how "+
+				"`vehicle_fuel` became STRING and refused every array after "+
+				"it, with no migration back", c.Type)
+			continue
+		}
 		if want[c.Name] != c.Type {
 			t.Errorf("%s is %s, want %s", c.Name, c.Type, want[c.Name])
 		}

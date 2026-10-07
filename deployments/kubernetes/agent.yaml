@@ -1,0 +1,131 @@
+# The agent: a runtime you keep, for steps that use `host:` instead of `image:`.
+#
+# The other side of the engine's third executor. A step with `host: tools` is
+# dispatched here instead of becoming a pod, so this pod stays up and the work
+# comes to it -- which is what you want when the runtime is expensive to build,
+# when a licence lives on it, when an egress IP is allowlisted, or when your
+# platform team will not grant pod-creation RBAC.
+#
+# WHAT TO CHANGE FIRST: the image. This one is the FLOOR -- a shell and the
+# agent. Build your own FROM it with dbt, a Python, whatever the steps need:
+#
+#   FROM areteacademy/brevis:0.16.1-agent
+#   USER root
+#   RUN apk add --no-cache python3 py3-pip && pip install dbt-bigquery
+#   USER brevis
+#
+# A StatefulSet AND NOT A DEPLOYMENT, and it is not ceremony. With more than
+# one replica the engine has to come back to the instance that took the work --
+# the agent keeps a ring and a process handle in its own memory, so a resume or
+# a cancel that reaches a different replica is answered "not running here"
+# while the step runs on undisturbed. That needs per-pod DNS, and per-pod DNS
+# is what a StatefulSet with a governing headless Service gives you. A
+# Deployment's pods have no stable name to come back to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-agent
+  namespace: dados
+spec:
+  # Headless: this exists for the per-pod DNS names, not for load balancing.
+  # `brevis-agent-0.brevis-agent.dados.svc` is what --advertise points at, and
+  # a ClusterIP Service does not create those names.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: brevis
+    app.kubernetes.io/component: agent
+  ports:
+    - {name: http, port: 9443, targetPort: 9443}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: brevis-agent
+  namespace: dados
+spec:
+  serviceName: brevis-agent
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: brevis
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: brevis
+        app.kubernetes.io/component: agent
+    spec:
+      # It talks to nothing in the cluster's API, and it should not be able to.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agent
+          image: areteacademy/brevis:0.16.1-agent
+          args:
+            - --listen=:9443
+            # REQUIRED. An agent without one runs any command for anything
+            # that reaches its port, so the open mode has to be asked for by
+            # name: --insecure-no-token.
+            - --token-file=/etc/brevis/token
+            # Where to come back to, built from THIS pod's name. Without it a
+            # second replica is a step failed at the first network blip, with
+            # the process still running on the replica that has it.
+            - --advertise=http://$(POD_NAME).brevis-agent.$(POD_NAMESPACE).svc:9443
+            # An allowlist that belongs to THIS host, not to the engine. Empty
+            # denies every secret, so a step asking for one fails naming the
+            # coordinate rather than running with it unset.
+            - --secrets-dir=/etc/brevis/secrets
+            - --allow-secrets=
+            # So a cancel survives a restart of this pod: without it the agent
+            # cannot signal a process it no longer has in memory.
+            - --state-dir=/var/lib/brevis-agent
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+          ports: [{name: http, containerPort: 9443}]
+          # READINESS AND NOT LIVENESS, and the asymmetry is the point.
+          #
+          # The engine reaches a pool through a headless Service, whose DNS
+          # already filters on Ready -- there was simply nothing deciding it.
+          # Without this, a replica is Ready the instant the container runs,
+          # before the listener binds, and the engine dispatches a step into a
+          # connection refused.
+          #
+          # A liveness probe would restart a wedged listener and would also
+          # SIGTERM a pod holding hours of a step's work. This process is built
+          # the other way round: its shutdown lets running steps finish their
+          # streams, so taking it out of the Service is the strong action and
+          # killing it is not ours to take.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: token, mountPath: /etc/brevis, readOnly: true}
+            - {name: state, mountPath: /var/lib/brevis-agent}
+            # A step runs here and writes here. Without a writable place the
+            # first `mkdir` fails and reads as a broken step.
+            - {name: work, mountPath: /tmp}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            # NOT read-only, and this is the one place it cannot be: a step
+            # runs here. Every other Brevis pod sets it true because every
+            # other one executes nothing.
+            readOnlyRootFilesystem: false
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: token
+          secret:
+            secretName: brevis-agent-token
+            items: [{key: token, path: token}]
+        - name: state
+          emptyDir: {}
+        - name: work
+          emptyDir: {}

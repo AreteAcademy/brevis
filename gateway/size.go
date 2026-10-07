@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Size is a byte count written the way an operator writes one: 1MiB, 512KiB,
@@ -74,3 +75,50 @@ func (s Size) String() string {
 	}
 	return fmt.Sprintf("%dB", int64(s))
 }
+
+// Duration is a time.Duration that also accepts a bare `0`.
+//
+// YAML reads an unquoted number as an int and `time.Duration` wants a string,
+// so `ttl: 0` -- the value the docs name for "never" -- was refused:
+//
+//	yaml: unmarshal errors:
+//	  line 140: cannot unmarshal !!int `0` into time.Duration
+//
+// Which is a Go type name in front of somebody who wrote a config file, about
+// the one value this field's documentation told them to write. Found by a
+// consumer copying it out of the changelog.
+//
+// Zero is the ONE number where the unit adds nothing: zero seconds and zero
+// hours are the same instant. Every other bare number is refused, and that is
+// the other half of this type -- `ttl: 60` would be sixty NANOSECONDS under
+// Go's own conversion, which nobody has ever meant. It says so rather than
+// doing it.
+type Duration time.Duration
+
+func (d *Duration) UnmarshalYAML(unmarshal func(any) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	switch v := raw.(type) {
+	case string:
+		parsed, err := time.ParseDuration(strings.TrimSpace(v))
+		if err != nil {
+			return fmt.Errorf("%q is not a duration (try 60s, 500ms, 2h)", v)
+		}
+		*d = Duration(parsed)
+		return nil
+	case int:
+		if v == 0 {
+			*d = 0
+			return nil
+		}
+		return fmt.Errorf("%d has no unit. A bare number here would be %d "+
+			"NANOSECONDS, which is never what anybody means -- write %ds, or "+
+			"%dm. Only 0 may go without one, because zero seconds and zero "+
+			"hours are the same instant", v, v, v, v)
+	}
+	return fmt.Errorf("a duration is text like 60s, or 0; got %T", raw)
+}
+
+func (d Duration) String() string { return time.Duration(d).String() }

@@ -22,7 +22,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -101,18 +100,11 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if len(envelopes) == 0 {
 		return fail(nil)
 	}
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}
 
-	// The columns come from the declaration and not from the batch: on Redshift
-	// the SDK does not read the schema before loading, so the declaration IS the
-	// contract -- and CheckColumns has already checked it against the whole
-	// batch.
-	columns := opt.Columns
-	if len(columns) == 0 {
-		columns = fieldsOf(envelopes)
-	}
+	columns := columnsFor(opt, envelopes)
 
 	payload, err := EncodeNDJSON(envelopes, columns)
 	if err != nil {
@@ -324,21 +316,28 @@ func DropSQL(temp string) string { return "DROP TABLE IF EXISTS " + temp }
 
 func quote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `""`) + `"` }
 
-func fieldsOf(envelopes []core.Envelope) []string {
-	vistos := map[string]bool{}
-	for _, e := range envelopes {
-		obj, err := core.AsObject(e.Payload)
-		if err != nil {
-			continue
-		}
-		for k := range obj {
-			vistos[k] = true
-		}
+// columnsFor is what the COPY will name.
+//
+// The declaration and not the batch: on Redshift the SDK does not read the
+// schema before loading, so the declaration IS the contract -- and CheckRow
+// has already checked it against the whole batch.
+//
+// DeclaredColumns and not Columns. [#42, the audit] A Schema is a declaration,
+// and reading Columns alone sent a Schema-only caller down the no-declaration
+// path, where the batch's own keys name the columns -- including a field that
+// is null in every record and has no column in the table. The COPY then names
+// a column that does not exist.
+//
+// With nothing declared at all, RowFields and not the bare union: a field no
+// record gave a value contributes nothing, so naming it in the COPY asks
+// Redshift for a column that may not be there, over a value that was never
+// going to be written.
+//
+// Its own function so the choice is testable without a cluster. The rest of
+// this path needs one; this does not, and this is the part that was wrong.
+func columnsFor(opt core.WriteOptions, envelopes []core.Envelope) []string {
+	if declared := opt.DeclaredColumns(); len(declared) > 0 {
+		return declared
 	}
-	out := make([]string, 0, len(vistos))
-	for k := range vistos {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
+	return core.RowFields(envelopes, nil)
 }

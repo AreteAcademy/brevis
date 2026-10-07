@@ -186,7 +186,7 @@ func (t Topic) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 	// The declared columns are checked against what the Transform chain
 	// composed, exactly as a table's are: a message missing a field the author
 	// declared is the same bug wherever it lands.
-	if err := core.CheckRow(opt.Columns, opt.Schema, records); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, records, opt.Discovered); err != nil {
 		return nil, err
 	}
 	if len(records) == 0 {

@@ -1,0 +1,53 @@
+# A BINARY YOU WROTE, in a pod you own, driven by Brevis.
+#
+# `vendor` is a Go program in examples/cluster/goapp. It does not import
+# Brevis, it is not in any Brevis image, and the engine cannot build it or
+# update it. All the engine does is send it a command and follow its output --
+# which is the entire contract of `host:`.
+#
+# Run it with `make cluster-watch` open. Four steps run and no pod appears:
+#
+#   where    prints the hostname and how long that container has been up
+#   fetch    streams progress, then publishes its result
+#   report   reads what fetch published, in a different process
+#   history  counts the runs this pod has served, from its own disk
+#
+# The last two are the ones to look at. `report` proves the context contract
+# works over the wire exactly as it does in a pod; `history` proves what a pod
+# per step can never do -- the number grows every time you run this, because
+# the filesystem outlived the run.
+name: goapp_demo
+description: >
+  Brevis running a Go binary inside a pod it did not create. Watch the
+  hostname: it is the same pod every step, and it was up before the run.
+type: dag
+tags: [demo]
+
+steps:
+  # Where am I, and since when. An uptime larger than the run's own age is the
+  # answer to "did something get created for this step".
+  - id: where
+    host: goapp
+    run: vendor info
+
+  - id: fetch
+    host: goapp
+    # Slow on purpose: the engine streams these lines back as they are printed,
+    # and a step that finishes instantly shows nothing worth watching.
+    run: vendor fetch --rows 320 --delay 400ms
+    depends_on: [where]
+
+  # A DIFFERENT PROCESS reading what the one above published. Nothing was
+  # shared in memory: fetch wrote $BREVIS_OUTPUT, the agent turned it into the
+  # step's context, and the engine handed it back as $BREVIS_INPUT.
+  - id: report
+    host: goapp
+    run: vendor report
+    depends_on: [fetch]
+
+  # The pod's own disk, surviving the run. Trigger this workflow twice and the
+  # count goes up -- the thing a pod per step cannot do, in one line.
+  - id: history
+    host: goapp
+    run: sh -c 'date -Iseconds >> /tmp/vendor-runs.log; echo "this pod has served $(wc -l < /tmp/vendor-runs.log) runs"'
+    depends_on: [report]

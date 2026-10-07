@@ -65,4 +65,8 @@ replicas is not allowed" would say what happened and not what it costs.
 {{- fail "\n\nbrevis: alerts.enabled is true with no Slack webhook configured.\n\n  --set slack.webhook=\"https://hooks.slack.com/services/...\"\n\nThe alert pod would start, drain the outbox and deliver nowhere -- and a\ndelivered-nowhere alert is worse than none, because the outbox empties and the\nfailure looks announced.\n" -}}
 {{- end -}}
 
+{{- if and .Values.agent.enabled (not .Values.agent.tokenSecret) (not .Values.agent.insecureNoToken) -}}
+{{- fail "\n\nbrevis: agent.enabled is true and agent.tokenSecret is empty.\n\n  --set agent.tokenSecret=my-agent-token\n\nAn agent without a token runs ANY command for anything that can reach its\nport -- not a weak password, no password. The agent itself refuses to start\nwithout one, so a chart that rendered this would hand you a CrashLoopBackOff\ninstead of this message.\n\nIf an open agent is what you mean -- a laptop, a throwaway cluster -- say so:\n\n  --set agent.insecureNoToken=true\n" -}}
+{{- end -}}
+
 {{- end -}}

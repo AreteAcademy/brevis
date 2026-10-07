@@ -516,6 +516,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `id` | **required** | unique in the workflow; the name shown in the graph and logs |
 | `run` | | the command |
 | `image` | | the step's image; without it, inherits the top-level one |
+| `host` | | send the command to a machine the engine does **not** manage — an alternative to `image`, never a companion. See [`host:` in the Kubernetes guide](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
 | `shell` | `true` | `false` runs without a shell — required on distroless |
 | `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
 | `marker` | `false` | a step with no command, for a `start` or an `end` |
@@ -1179,6 +1180,13 @@ there is a cluster:
 | `on` | a step with `image:` becomes a pod | **boot error** |
 | `off` | everything as local processes | everything as local processes |
 
+**A step with `host:` passes through none of this.** It is checked before the
+pod and before the process, and goes to a machine that is already running —
+`BREVIS_PODS` does not apply to it, and it never falls back to a local process.
+That is deliberate: `image:` degrades to local execution with a warning because
+a container and a process are the same command in two wrappers, and a host is
+not. It is where the licence lives, or the GPU, or the data.
+
 `auto` is the default because the same binary runs in both places: on a laptop
 there is no service account mounted and it falls back to local processes; in a
 cluster there is, and it starts creating pods.
@@ -1544,10 +1552,12 @@ brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 forgetting the value, would run with the default — and the operator would
 believe the value was applied.
 
-:::warning Three limits
+:::warning Four limits
 `run` only operates with `BREVIS_ENV=local`; a step with `image:` runs on the
-instance itself and says so; and there is no Go task registry, so an `action:`
-for an unregistered task fails naming the ones available.
+instance itself and says so; there is no Go task registry, so an `action:` for
+an unregistered task fails naming the ones available; and `run` does not read
+`BREVIS_HOSTS`, so a step with `host:` cannot run here at all — it fails naming
+the host, even with the variable set.
 :::
 
 ---
@@ -2462,6 +2472,380 @@ func main() {
 The environment wins — under the engine it is the value, and a flag left in a
 manifest must not override what the operator typed. With no engine the flag is
 what there is, which beats writing `BREVIS_RUN_PARAMS` as JSON on every run.
+
+## The landing layout
+
+A pipeline can land the **same table a gateway lands** — the same columns and
+the same `brevis_ingestion_id` — so choosing between the two is a deployment
+decision and not a schema decision. A team can read both together, and move
+from one to the other without a migration.
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`sdk.LandingSchema` is nine columns: the eight the layout owns and the one
+the producer does. `sdk.Landing` fills them and puts the record, whole, in
+`data`. Append your own columns to the schema if you want them, or take
+`sdk.LandingControlColumns` and give the record's fields columns of their
+own.
+
+### Two shapes: the record whole, or one column per field
+
+What is above is the **document** shape — the record goes into `data` as JSON,
+and the table is the same one whatever the record holds. Add
+`sdk.LandingColumns()` and each field of the record gets a column of its own:
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+The table is then `sdk.LandingControlColumns` plus your columns — **not**
+`sdk.LandingSchema`, which carries `data`:
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}
+```
+
+**You declare those columns.** The SDK never infers a schema, and this option
+does not change that: it decides how the *row* is built, never what the table
+is. A gateway infers because its producer is a stranger who posts whatever
+they have; here the pipeline's author knows the shape and writes it down, in
+a diff somebody reviews.
+
+It is the same shape a gateway lands as
+[`shape: columns`](/en/docs/ingestion-sinks/#two-shapes-one-contract), through the
+same code — same columns, same values, same `brevis_ingestion_id`.
+
+**A field name has to be able to be a column name**: a letter or underscore,
+then letters, digits and underscores. That is BigQuery's rule, the narrowest
+of the four destinations, so a name that passes here works everywhere. A
+record carrying `my-field` is refused by name, before anything is written. The
+document shape has no such rule — a hyphen is a perfectly good JSON key.
+
+**It does not flatten, by default.** A nested object becomes ONE `JSON` column under the
+key that held it: `customer` holds `{"id": 7, "uf": "SP"}`, not `customer_id`
+and `customer_uf`. An array is `JSON` too. A record that wants one row *per
+array element* wants `sdk.ArrayAt` in the source's `Expand` — it runs before
+`Landing`, and it is a different operation with a different name.
+[`BREVIS_NORMALIZE_DATA`](#one-column-per-nested-field) changes the first half
+of that for a whole deployment; an array stays `JSON` either way:
+
+```go
+Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
+```
+
+**`null` stays `NULL`**, never `""`. A field sent as null and a field sent
+empty are different facts, and a column cannot tell them apart afterwards.
+
+**`data` becomes yours.** In this shape the layout has no column by that name,
+so a producer with a field called `data` — which is exactly what the Bacen
+series sends — gets a column of their own with their own value in it. Under
+`document` theirs is one key inside the layout's JSON.
+
+### The `brevis_` prefix is yours to change
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+and the layout's eight columns become `acme_ingestion_id`, `acme_record_key`
+and the rest. Unset, they are what they have always been.
+
+**Choose it when the table is created, because changing it later is not a
+rename.** Nothing in this SDK ever drops a column, so a stream that switches
+prefix does not rename eight — it adds eight and abandons eight. Every row
+after that has NULLs in the old set, and
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+partitions on a column nothing writes any more. Rows arrive, the dashboard
+goes flat, and nothing logs anything.
+
+So a table that already carries the layout under one prefix **refuses** a load
+declaring another, before the extract, naming both. Point it at a new table,
+or rename the eight columns yourself first.
+
+**Whatever you type is normalised**, so there is one spelling to get wrong
+instead of four:
+
+| you set | you get |
+|---|---|
+| nothing, or blank | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Trim `_` from both ends, lower-case, add exactly one. Two values are refused
+rather than guessed at: underscores and nothing else, because it would leave
+`ingestion_id` — exactly the column `sdk.IngestionID()` writes for every
+ordinary pipeline — and anything that cannot begin a column name. **A process
+with an unusable value does not start**, which is the only honest outcome: the
+alternative is tables named after the prefix you were replacing.
+
+**It is per PROCESS, and that is the point rather than a limitation.** Every
+stream in one gateway shares it, so two sinks cannot disagree — and neither
+can the schema that declares a table and the transformer that fills it.
+
+**The reserved rule moves with it.** Under `acme_`, a producer sending
+`acme_region` is refused, because somebody who can forge a control column
+forges a real-looking one. And `brevis_region` becomes an ordinary field.
+
+`data` never carries the prefix. It is the producer's column, not the
+layout's.
+
+### One column per nested field
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+and a nested object's fields get columns of their own, the way pandas'
+`json_normalize` does — one level:
+
+```python
+data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]
+```
+
+```
+id  name_first  name_last  name_given  name_family  name
+```
+
+**Pick it before the first table, because it does not only ADD columns.** It
+renames them, and nothing in this SDK ever drops one — so the old name stays
+with the rows already in it while everything after lands in the new one, and
+the query somebody wrote against it keeps running and stops seeing new rows.
+Two renames happen:
+
+- `userName` becomes `username`, whether or not anything is nested
+- `name`, which held objects, is replaced by `name_first` and `name_last`
+
+A table already carrying either shape **refuses** a load with this on, before
+the extract, naming both columns. Point it at a new table, or rename the
+columns yourself first.
+
+**`name` can appear both flattened and whole**, and the example above shows
+it: the third record carries `name` as a string, so the table has
+`name_first`, `name_last` AND `name`. A field that is an object in one record
+and a scalar in another produces both.
+
+**One level, and arrays are values.** `{"a": {"b": {"c": 1}}}` is `a_b`
+holding `{"c": 1}` — a `JSON` column, not `a_b_c`. `{"a": [1, 2]}` is `a`,
+also `JSON`. A record that wants one row per array element still wants
+`sdk.ArrayAt`.
+
+**Joined and lower-cased, not split on camelCase.** `userName` becomes
+`username` and not `user_name`, because the other reading has no agreed
+answer for acronyms — `HTTPStatus`, `userID` — and every library disagrees
+about them.
+
+**A collision is refused, never resolved.** `{"name_first": 1, "name":
+{"first": 2}}` would make one column from two fields, and Go's map iteration
+is randomised: letting one win would give the same batch a different table on
+a different run. The refusal names both.
+
+**The reserved prefix is checked on the column, not the field.** A producer
+sending `{"brevis": {"stream": "x"}}` would otherwise make `brevis_stream`
+through a door the field check does not watch. It is refused, naming
+`brevis.stream` so they can find the field.
+
+**It is per PROCESS**, like the prefix, and for the same reason: every stream
+in one gateway shares it, so two sinks cannot disagree about a table they
+might both write to. It applies to the `columns` shape only — under
+`document` the record goes whole into one `JSON` column and there is nothing
+to flatten into.
+
+### Text that is already JSON
+
+A column declared `sdk.TypeJSON` receives a JSON **value** — an object, an
+array, a number. On BigQuery the row is encoded whole, so a Go `string` there
+becomes a JSON string literal and the column ends up holding the TEXT of your
+object rather than the object:
+
+```sql
+SELECT JSON_TYPE(payload) ...;            -- "string", not "object"
+SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
+```
+
+The column is the right type and the data in it is unreachable, which is the
+worst of the three outcomes because nothing fails. **The BigQuery destination
+refuses it** from `v0.74.0`, naming the column.
+
+Pass the object itself where you have one. Where what you hold is already
+JSON text — a column read out of another database, a response body you do not
+want to re-parse — say so:
+
+```go
+row["payload"] = sdk.JSONText(body)
+```
+
+`encoding/json`'s own `json.RawMessage` works too, and for the same reason:
+both write the JSON they hold instead of a quoted string of it.
+
+**Postgres and MySQL are not affected and are not refused.** Their server
+parses a string into a JSON column, and always has.
+
+### When a field the table does not have shows up
+
+A producer adds a field and the load stops, naming it: the row carries a
+column nothing declared, and writing it to a destination that never mentioned
+it would drop it in silence. That refusal is right by default — but on a
+landing table it is the one change that cannot break a reader, and the
+destination can make it:
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+The batch then **completes** your declaration: a field it carries and the
+declaration does not becomes a column, `STRING` unless the field is an object
+or an array, and then `JSON`. It is the same rule and the same code a gateway
+lands `shape: columns` with, so both produce the same table.
+
+Two other values, and the difference between them is where the column comes
+from:
+
+| `Evolve` | adds |
+|---|---|
+| `sdk.EvolveNone` (default) | nothing. Any difference is refused, naming both sides |
+| `sdk.EvolveAdditive` | a column your **declaration** has and the table does not |
+| `sdk.EvolveAdditiveFromPayload` | that, plus a column the **batch** carries |
+
+**Only ever `ADD COLUMN`.** A column that disappears from the source stops
+being written and stays in the table; nothing renames, nothing drops, and no
+type is ever narrowed. That is not a gap — a landing table is history, and the
+one alteration that cannot break somebody reading it is a new nullable column.
+
+**It completes a declaration; it does not replace one.** With nothing declared
+it is refused before the extract, naming the table: creating a whole table
+from a payload is a different decision, and the SDK does not make it. On the
+landing layout the harm would be concrete — `brevis_received_at` would come
+out as text instead of a timestamp, and `brevis_loaded_at` never travels in
+the row at all, so the end-to-end latency measurement would simply be missing.
+
+**The SDK still does not infer.** The type comes from the field's SHAPE, never
+from its value: `21129` and `8.89` both declare `STRING`, so the day the
+series publishes a whole number nothing changes. A type read off the first
+batch is the failure this rule exists to prevent.
+
+**And a `null` decides nothing — but it stays in the row.** Those are two
+different questions, and answering them with one answer cost v0.77.0.
+
+A null has no shape, so the **schema** has nothing to read: a field that
+arrives `null` declares no column, and the column appears from the first record
+that carries a VALUE, with the shape that value has. The other way round, a
+null would become `STRING` for want of an answer, and the first array after it
+would have the destination refuse the whole batch — with no `STRING` to `JSON`
+migration to undo it.
+
+The **row** carries what the producer sent, null included. It has to: a column
+you DECLARED in `Target.Schema` that arrived empty must be in the row, or the
+check that compares the declaration against it reads a chain that has stopped
+producing it — and refuses the load. That is what v0.77.0 did, and what 0.78.0
+undid.
+
+The destination settles the rest: a field null in EVERY record of the batch,
+with no column in the table, is written nowhere and refuses nothing. A null and
+an absent field land the same `NULL`, so nothing is lost.
+
+**A field that changes shape is refused, not absorbed.** If `valor` arrived as
+a scalar and made a text column, an object arriving later is a change of kind
+and the batch stops — with the column's own comment in the message, so you can
+see nobody declared it. Rename the column, or migrate it yourself.
+
+**Every column a batch created says so, in the table.** A comment on Postgres
+and MySQL, a field description on BigQuery, carrying the date:
+
+```
+brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision
+```
+
+Six months later that is the only thing left that answers "when did this
+column appear, and who decided it". A log line has rotated by then.
+
+**It is not a mode.** `Target.Schema` is still you declaring what the table
+is — this hands you a layout that already exists instead of making you type
+it. Nothing in the SDK behaves differently because you used it, and a
+pipeline that declares its own schema is unaffected.
+
+**Write the table name once.** It goes to `Landing`, because it is the second
+slot of the id, and to the destination, because that is where the rows go.
+**Nothing checks that the two agree**: the `Writer` knows its own table but
+exposes it only through `Describe`, which is the name for logs and errors,
+and an id built on that would tie every id already written to a log string.
+Get them out of step and the rows land correctly with ids minted for a table
+nobody wrote to. They will look fine. They will not match the gateway's.
+
+**Three columns are `NULL`, and that is the honest answer.** `brevis_stream`
+and `brevis_gateway` name things a pipeline does not have —
+`brevis_gateway IS NULL` is how you tell a pipeline's row from a gateway's.
+`brevis_received_bytes` is `NULL` too: the gateway's counts what arrived on
+the wire, envelope included, and the record's own JSON is around 30% smaller.
+One column with two meanings would make a sum across rows from both paths
+wrong by whatever share came from which. `length(data)` answers the
+pipeline's version exactly.
+
+**Merging needs `DedupKey`, and without it there is no merge at all.** Every
+driver matches on `ingestion_id` unless told otherwise, and this layout's
+identity column is `brevis_ingestion_id`:
+
+```go
+Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+`UniqueID` is what puts the UNIQUE constraint on the id, and Postgres and
+MySQL both refuse to merge without one — `ON CONFLICT` has nothing to match.
+A `DedupKey` your `Schema` does not declare is refused before anything runs,
+because a merge on a column the table lacks matches nothing, and a merge
+matching nothing looks exactly like one matching everything it should.
+
+**Per destination, and today MySQL cannot.** BigQuery has no unique
+constraints and refuses the declaration outright. MySQL's `string` is
+`LONGTEXT`, and MySQL will not key a `LONGTEXT` without a length — so a
+merging landing table cannot be *created* there at all:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+Postgres works, because its `string` is `TEXT`. On MySQL, land with
+`DedupNone` and resolve the current version downstream, or create the table
+yourself with `CreateSQL` and a sized id column.
+
+**The id is content-addressed.** The same record produces the same id from
+either path, and a changed record produces a new one — which is what lets a
+re-run be a no-op instead of a duplicate.
 
 ## Reference
 
@@ -3426,11 +3810,88 @@ buffer:
     every: 1s         # age
     records: 500      # count
     size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
   max_records: 10000  # events held in memory before the gateway says no
   max_bytes: 256MiB   # the same ceiling in bytes
 ```
+
+### The flush clock belongs to the deployment
+
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**. So the load
+jobs a table receives are a function of replica count, not of traffic:
+
+```
+jobs / day / table  =  replicas × 86400 / every
+```
+
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is already
+192% of a quota that cannot be raised** — before an HPA does anything. And the
+direction is backwards from intuition: the gateway scales out for HTTP
+concurrency while the sink wants concentration.
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+With `claim`, a replica takes a set-if-absent for the stream and the window
+before flushing on the timer — and the timer wakes on the **window boundary**,
+so every replica asks for the same key. One flush per window, whatever the
+replica count. And it self-adjusts: a replica only waits when another is
+actually competing, so scaling in restores the lower latency with nobody
+editing a config.
+
+Measured with two replicas and one Redis, 5s windows: **8 load jobs became 6,
+one per window, alternating 3/3** — no window with two.
+
+**It needs a shared backend.** With `memory` every replica wins its own claim
+and nothing coordinates. And it **requires `max_age`**, which the config
+refuses without: the claim turns `every` into a target, and a target with no
+ceiling is latency with nothing bounding it.
+
+**An unreachable metastore flushes anyway.** Losing coordination costs load
+jobs; refusing to flush holds data. Verified by killing Redis mid-run: 40 of 40
+events landed, nothing held.
+
+**`outcome="unreachable"` is the one worth an alert.** The backend could not be
+asked, so the claim failed open: coordination is off and the load jobs are
+multiplying by replica count again — silently, because every flush still looks
+like a flush.
+
+And the claim gives **exclusivity, not fairness**: whoever asks first wins. A
+real two-replica run measured 4/1, not an even split. `max_age` is what stops
+the unlucky one starving.
+
+With `claim: true` and `metastore: memory` the gateway warns **once at boot**:
+every replica wins its own claim, so everything looks right and nothing
+coordinates.
+
+### `every` is a target; `max_age` is a promise
+
+The three triggers above decide when a batch **tries** to leave. `max_age`
+decides when it leaves **regardless**.
+
+Today the difference is inert, because nothing defers the target. It starts to
+matter once the flush clock stops being per-process: `buffer.flush.every` is a
+`time.AfterFunc` in each replica, so the number of load jobs a table receives is
+a function of **replica count**, not of traffic — `replicas × 86400 / every`. On
+BigQuery, against 1,500 per table per day, **two replicas at 60s is already 192%
+of the quota**.
+
+Once a replica can yield a window to another it keeps filling, and `max_age` is
+what stops anyone holding data indefinitely waiting for a turn.
+
+It also settles the drain: what a buffer can be **holding** at `SIGTERM` becomes
+bounded by it, and the `terminationGracePeriodSeconds` the gateway prints at
+boot is derived from it.
+
+A ceiling **below** the target is refused at load — it would mean the target
+never applies.
 
 ### Why there is a size trigger
 
@@ -3459,6 +3920,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 
 `trigger="size"` climbing on a BigQuery stream is telling you the window is not
 what is batching.
+
+That counter is per stream, and the quota is per **table**: with `auto_table`
+one route becomes many tables, and 94 of them reporting one number says nothing
+about any of them. Behind `BREVIS_INGESTION_METRICS` there is one that names it:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at
+boot, which says what `flush.every` costs per table per day before an event
+arrives.
 
 **It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
 outage into unbounded memory. When the queue and the buffer are both full, the
@@ -3567,13 +4041,24 @@ brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
+
+`process_start_time_seconds` is **not** prefixed with `brevis_`, and that is
+deliberate: collectors look for exactly that name. It says when the process
+started, and without it a collector that does start-time adjustment — the
+OpenTelemetry Prometheus receiver, which Google Managed Prometheus is built on
+— anchors every cumulative series at its **first scrape** and spends that
+scrape's value as the baseline. The result is every counter reading low, with
+the deltas right and the totals wrong.
 
 The last three are the ones nobody asks for until after the first incident.
 `saturated_total` is the only number that says a client was told to back off;
@@ -3890,7 +4375,7 @@ the first one passes:
 console's ingestion page, which has not been written. It is said here because a
 field accepted in silence is a field somebody believes is being stored.
 
-### Seven fixed columns, plus whatever the record carries
+### Eight fixed columns, plus whatever the record carries
 
 | column | | |
 |---|---|---|
@@ -3902,6 +4387,11 @@ field accepted in silence is a field somebody believes is being stored.
 | `brevis_stream` | `STRING` | which route wrote it |
 | `brevis_gateway` | `STRING` | which deployment |
 | `brevis_received_bytes` | `INT64` | how large the event **arrived**, envelope included |
+
+These eight are **the SDK's**, not this sink's: `sdk.LandingSchema` declares
+them and `sdk.LandingID` mints the identity, so a pipeline can land the same
+table with the same ids. One definition, because two would drift. See
+[the SDK's landing layout](/en/docs/sdk/#the-landing-layout).
 
 **`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
 **per event** — otherwise a producer forges a control field, and a forged
@@ -4018,9 +4508,65 @@ fractional tomorrow would change a column's type with nobody writing anything,
 and the row that no longer fits goes to the dead letter. Typing one is the
 **promotion** path — written in the YAML and reviewed in a diff.
 
+**A `null` becomes no column at all.** It has no shape, so there is nothing to
+read: the field appears in the table from the first event that carries a
+VALUE, with that value's shape. The event that sent `null` lands `NULL` just
+the same, which is what it meant — and where the column already exists, because
+you declared it or another event created it, the `null` is written into it
+rather than left out.
+
+**And a `JSON` column receives a JSON VALUE, never a string of one.** It
+sounds like a detail and it is the difference between a queryable table and a
+table that looks right:
+
+```sql
+SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, '$.uf') ...;           -- SP
+```
+
+If `JSON_TYPE` answers `string` and `JSON_VALUE` answers NULL, the object was
+encoded twice — the column holds the TEXT of the object rather than the
+object. Gateway versions up to and including **0.15.0** did that on BigQuery,
+in **both** shapes; see the [gateway changelog](https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md)
+for the one-line check and the repair. Postgres and MySQL were never affected:
+their server parses the text.
+
 A field name has to match BigQuery's rule, the narrowest of the four. Postgres
 would accept almost anything quoted, and that is the trap: the table is created
 there and it breaks the day somebody points a stream at BigQuery.
+
+Both shapes have an SDK equivalent, and it is the same code rather than a
+matching one: `sdk.Landing(table, sdk.LandingKey("id"))` lands `document`, and
+adding [`sdk.LandingColumns()`](/en/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
+lands `columns`. Same columns, same values, same `brevis_ingestion_id` — so a
+stream can move between a gateway and a pipeline without a migration, and the
+two can be read as one table.
+
+The pipeline can grow the same column the same way: set
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/en/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
+on the destination and a field the batch carries becomes a column, by this
+rule, through this code.
+
+
+**The prefix is configurable, and it is one decision for the whole process.**
+`BREVIS_LANDING_PREFIX=acme` makes them `acme_ingestion_id` and the rest —
+every stream in this gateway, so two sinks cannot disagree about a table they
+might both write to. The reserved rule above moves with it: under `acme_`, a
+producer sending `acme_region` is refused and `brevis_region` is an ordinary
+field.
+
+**Pick it before the first table is created.** Changing it later adds eight
+columns and abandons eight — nothing drops a column — so a table already
+carrying the layout under one prefix refuses a load declaring another. See
+[the SDK page](/en/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
+normalisation and the way out.
+
+**A nested object's fields can get columns of their own.**
+`BREVIS_NORMALIZE_DATA=true` on the gateway's process flattens one level —
+`{"name": {"first": "x"}}` lands as `name_first` — and every stream shares it,
+so two sinks cannot disagree about a table they might both write to. See
+[the SDK page](/en/docs/sdk/#one-column-per-nested-field) for what it renames,
+which is the half to read before turning it on.
 
 ### `UPDATE` and `DELETE` are recorded, not applied
 
@@ -4063,20 +4609,25 @@ every level, arrays left in order, everything quoted. Go randomises map
 iteration, so a naive hash would differ between two deliveries of the same
 event, which is the one thing it exists to prevent.
 
-### The table grows a column on its own — on Postgres and MySQL
+### The table grows a column on its own
 
 A `data` carrying a field the table does not have makes the column appear.
 **Additive, and only additive**: nothing is dropped, nothing is narrowed.
 
-> **On BigQuery this does not happen yet.** `auto_table` declares
-> `Evolve: additive` on every destination, and only the Postgres and MySQL
-> drivers read that declaration — nothing in the BigQuery path alters an
-> existing table's schema. There, a new field makes the load **fail**, the
-> batch is retried and then buried with the reason.
+On BigQuery this only became true in **0.13.0**. Before it, `auto_table`
+declared `Evolve: additive` on every destination and only the Postgres and
+MySQL drivers read the declaration — so there the shape was frozen at creation
+and nothing said so.
+
+> **Coming from 0.11.0 or 0.12.0**, tables created before `0.11.0` need a
+> one-off migration, because the eighth fixed column went into the declaration
+> and not into the table:
 >
-> A test pins the gap and will **fail** the day it is closed, which is when
-> this note goes. Until then, with `into: bigquery`, use `shape: document` —
-> there a new field is a new key and there is no DDL after the create.
+> ```sql
+> ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+> ```
+>
+> Postgres and MySQL were never affected.
 
 A batch that loses the race to `ALTER` fails, and the pipe's ordinary retry
 resolves it — a batch waiting for DDL and a batch waiting for a worker are the
@@ -4139,6 +4690,20 @@ it may be **wrong**.
 | `redis` | `addr_from` required. A `SETNX` is the claim, an `INCR` is the counter |
 | `memcached` | `addr_from` required. An `Add` is the claim, and expiry is **second**-granular |
 
+**Redis is the faster one for a stream with a routing key**, and the
+difference is worth a number rather than an adjective. With the trigger per
+table, a window asks for one claim per table: Redis answers 94 of them in one
+pipelined round trip, and every other backend answers them in parallel,
+bounded at 32. Measured against a backend 25 ms away — 94 claims:
+
+| backend | one at a time | as it ships |
+|---|---:|---:|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+Three waves against one round trip. Both are inside the 500 ms a claim is
+given, so memcached is the slower choice and not a refused one.
+
 With several replicas, `memory` gives each its own: the debounce debounces
 nothing and `max_new_per_hour` bounds a process. That is the only reason the
 other two exist.
@@ -4146,6 +4711,31 @@ other two exist.
 **A metastore that is down must not take a write down with it.** A `Get` that
 errors is a miss, a claim that errors behaves as won, a counter that errors
 relaxes the limit. A cache that can stop the ingestion is worse than no cache.
+
+**And "down" includes "slow".** The claim runs while the buffer's lock is held,
+so a backend that takes two seconds to answer is two seconds in which that
+stream accepts nothing. Every call is bounded at **500 ms** and fails open past
+it. Redis obeys that as the caller's context; `gomemcache` takes no context at
+all, so memcached obeys it as a socket deadline — the same bound reached two
+ways, because one of the two clients cannot be told to stop.
+
+**`ttl: 0` means never**, and saying nothing still takes the one-minute default
+— three states, not two.
+
+The clock is **not** what recovers from a wrong entry. A write the destination
+refuses calls `invalidate`, which drops the entry at once and lets the pipe's
+own retry come back against a cold cache: a table dropped by hand costs **one
+failed attempt**, not a minute.
+
+Expiry has a price. `sinkFor` charges `naming.max_new_per_hour` when it does
+not **know** a table — so a miss charges for a table that has existed for
+weeks, and a pod restarting a minute after a table's last event gets nothing
+from the shared backend it is paying for. With long-lived tables, `ttl: 0` is
+the answer.
+
+> On `0.12.0` and `0.13.1` that spelling **does not parse** — YAML reads a bare
+> zero as an int, and `0.13.2` is the first that takes both. On those versions,
+> write `ttl: 0s`.
 
 `addr_from` names the **environment variable** holding the address, never the
 address: it carries a password often enough.

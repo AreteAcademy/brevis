@@ -8,11 +8,7 @@
 package autotable
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -71,101 +67,47 @@ const DefaultUniqueKey = "id"
 // Which is what Debezium, Fivetran and Airbyte all do -- and it means
 // `operation` costs nothing in the write path: no upsert mode, no lock, no
 // delete.
+// The operation vocabulary, from the SDK's landing layout.
 const (
-	OpInsert = "INSERT"
-	OpUpdate = "UPDATE"
-	OpDelete = "DELETE"
+	OpInsert = sdk.LandingInsert
+	OpUpdate = sdk.LandingUpdate
+	OpDelete = sdk.LandingDelete
 )
 
-// Prefix is reserved. A `data` carrying any key with it is refused, because
-// otherwise a producer forges a control field -- and a forged
-// brevis_received_at is worse than none, since it looks real.
-const Prefix = "brevis_"
-
-// The columns every table carries, whatever the record holds.
+// The landing layout, which lives in the SDK.
 //
-// ALL of them prefixed, `brevis_ingestion_id` included. The identity column is
-// this gateway's own here: a producer posting an envelope never writes an
-// `ingestion_id` and never needs one, and a field of theirs called that is
-// theirs to keep.
-//
-// It costs `WriteOptions.DedupKey` in the SDK, added for exactly this: every
-// driver used to match on `ingestion_id` BY NAME, so the first version of this
-// created tables with the right columns into which every merge refused. The
-// integration test caught it -- zero rows.
-const (
-	ColumnID         = Prefix + "ingestion_id"
-	ColumnRecordKey  = Prefix + "record_key"
-	ColumnOperation  = Prefix + "operation"
-	ColumnReceivedAt = Prefix + "received_at"
-	ColumnLoadedAt   = Prefix + "loaded_at"
-	ColumnStream     = Prefix + "stream"
-	ColumnGateway    = Prefix + "gateway"
+// Named here too, because this package's own code and tests read them by
+// these names -- and because a gateway operator reading this file should not
+// have to follow an import to learn what a table gets. They are aliases, not
+// copies: there is one definition, in `sdk`, and a pipeline that lands this
+// layout produces the same table and the same ids as this does.
+var (
+	Prefix = sdk.LandingPrefix
 
-	// ColumnReceivedBytes is how large this event was when it ARRIVED, the
-	// envelope included.
-	//
-	// It is free: the gateway already counts these bytes at decode to drive
-	// `buffer.flush.size`, and until now the number died there. Measuring the
-	// record alone would cost a json.Marshal per event -- 2.0us against the
-	// 3.1us the decode already spends, a 67% increase on the hot path -- to
-	// refine a number whose job is trend and attribution.
-	//
-	// It answers what the metrics structurally cannot. `brevis_gateway_*` is
-	// per STREAM and carries no `table` label, deliberately: with auto_table
-	// one route becomes N tables and that label is producer-controlled. So
-	// "which table is growing, and since when" had no answer anywhere, and
-	// the alternative was scanning the JSON column to add it up -- roughly
-	// fifty times the bytes scanned, every time somebody asks.
-	//
-	// It is INGRESS and not storage. The destination keeps the row typed and
-	// compressed, so 400 bytes of JSON may be 80 on disk: summing this gives
-	// what arrived, never what is billed for keeping it.
-	ColumnReceivedBytes = Prefix + "received_bytes"
+	ColumnID            = sdk.LandingColumnID
+	ColumnRecordKey     = sdk.LandingColumnRecordKey
+	ColumnOperation     = sdk.LandingColumnOperation
+	ColumnReceivedAt    = sdk.LandingColumnReceivedAt
+	ColumnLoadedAt      = sdk.LandingColumnLoadedAt
+	ColumnStream        = sdk.LandingColumnStream
+	ColumnGateway       = sdk.LandingColumnGateway
+	ColumnReceivedBytes = sdk.LandingColumnReceivedBytes
 )
 
 // PartitionBy is the column a created table is partitioned on, by day.
-//
-// OUR clock, never a client's. A producer's can be wrong or absent, and a
-// partition column a client controls is a client that can write into 2035. An
-// unpartitioned landing table is a query bill that grows forever, so this is
-// not optional.
-const PartitionBy = ColumnReceivedAt
+var PartitionBy = sdk.LandingPartitionBy
 
-// ClusterBy is how a table is clustered: by the record, because looking up one
-// record's history is what anybody does with a landing table.
-var ClusterBy = []string{ColumnRecordKey}
+// ClusterBy is how a table is clustered: by the record.
+var ClusterBy = sdk.LandingClusterBy()
 
 // fixed is the part of the schema that never varies, except where the write
-// mode makes it vary -- and both places it does are the same decision seen
-// twice.
+// mode makes it vary. See sdk.LandingOptions for what the two flags mean.
 //
-// `brevis_loaded_at` is a database DEFAULT and not a value we send, and that is
-// deliberate: the gateway knows the DISPATCH time, the destination knows the
-// WRITE time. The difference between the two columns is then the real
-// end-to-end latency, per row, with no instrumentation at all.
-//
-// `unique` is the UNIQUE constraint on the id: required by `merge` on Postgres
-// and MySQL, refused by BigQuery, wrong for `append`.
-//
-// `keyed` is whether `brevis_record_key` is NOT NULL. Under `merge` the key is
-// required of every event, so the column can be. Under `append` a record may
-// name none, and a NOT NULL column would then refuse the row at the database
-// -- at write time, failing the batch, which is the failure this whole file
-// spent a version learning to avoid.
+// The CONTROL columns: this package appends the shape's own, which for
+// `document` is the same one column the SDK would have added and for
+// `columns` is one per field.
 func fixed(unique, keyed bool) sdk.Schema {
-	return sdk.Schema{
-		{Name: ColumnID, Type: sdk.TypeString, Required: true, Unique: unique},
-		{Name: ColumnRecordKey, Type: sdk.TypeString, Required: keyed},
-		{Name: ColumnOperation, Type: sdk.TypeString, Required: true},
-		{Name: ColumnReceivedAt, Type: sdk.TypeTimestamp, Required: true},
-		{Name: ColumnLoadedAt, Type: sdk.TypeTimestamp, Default: sdk.CurrentTimestamp},
-		{Name: ColumnStream, Type: sdk.TypeString},
-		{Name: ColumnGateway, Type: sdk.TypeString},
-		// Nullable: a row written before this column existed has no answer,
-		// and zero would be a lie that sums.
-		{Name: ColumnReceivedBytes, Type: sdk.TypeInt64},
-	}
+	return sdk.LandingControlColumns(sdk.LandingOptions{UniqueID: unique, Keyed: keyed})
 }
 
 // envelope is one request, taken apart.
@@ -321,100 +263,11 @@ func (env envelope) row(now time.Time, stream, name string) (map[string]any, err
 // The caveat is the documented one: two genuinely distinct events with
 // byte-identical `data` collapse. For CDC that is CORRECT -- two identical
 // updates to one record with the same values are the same fact.
+// identify is this record's landing id. The formula lives in the SDK, so a
+// pipeline landing the same record mints the same id.
 func (env envelope) identify() (string, error) {
-	sum, err := fingerprint(env.record)
-	if err != nil {
-		return "", err
-	}
-	// With no record key -- which only `append` allows -- the content IS the
-	// key. The slot cannot be left empty: `Envelope.IngestionID` refuses that,
-	// and rightly, because an id computed over a blank identity is an id every
-	// keyless record in the table would share.
-	//
-	// It cannot collide with a keyed record either. A keyed one puts the
-	// producer's value in this slot and the fingerprint in the next; for the
-	// two to meet, a record key would have to be literally "sha256:<64 hex>"
-	// AND the record's own fingerprint.
-	key := env.key
-	if key == "" {
-		key = "sha256:" + sum
-	}
-	e := sdk.Envelope{
-		Provider:  Provider,
-		Entity:    env.table,
-		SourceKey: key,
-		RecordTS:  "sha256:" + sum,
-	}
-	return e.IngestionID()
+	return sdk.LandingID(env.table, env.key, env.record)
 }
 
-// Provider is the constant stamped into every id, so an id minted here can
-// never collide with one a declared stream minted for the same table and key.
-const Provider = "auto_table"
-
-// fingerprint is a sha256 over the record in CANONICAL form: keys sorted at
-// every level, arrays left in order, everything quoted.
-//
-// Canonical because Go's map iteration is randomised, so a plain json.Marshal
-// of a map produces a different byte string on every call -- and an id built on
-// that would differ between two deliveries of the same event, which is the one
-// thing it exists to prevent.
-func fingerprint(record map[string]any) (string, error) {
-	var b strings.Builder
-	if err := canonical(&b, record); err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256([]byte(b.String()))
-	return hex.EncodeToString(sum[:]), nil
-}
-
-func canonical(b *strings.Builder, v any) error {
-	switch t := v.(type) {
-	case map[string]any:
-		keys := make([]string, 0, len(t))
-		for k := range t {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		b.WriteByte('{')
-		for i, k := range keys {
-			if i > 0 {
-				b.WriteByte(',')
-			}
-			q, err := json.Marshal(k)
-			if err != nil {
-				return err
-			}
-			b.Write(q)
-			b.WriteByte(':')
-			if err := canonical(b, t[k]); err != nil {
-				return err
-			}
-		}
-		b.WriteByte('}')
-		return nil
-
-	case []any:
-		// An array's ORDER is significant and is not sorted: [1,2] and [2,1]
-		// are different documents, and collapsing them would merge two events
-		// that are not the same one.
-		b.WriteByte('[')
-		for i, e := range t {
-			if i > 0 {
-				b.WriteByte(',')
-			}
-			if err := canonical(b, e); err != nil {
-				return err
-			}
-		}
-		b.WriteByte(']')
-		return nil
-	}
-
-	enc, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	b.Write(enc)
-	return nil
-}
+// Provider is the constant stamped into every id minted here.
+const Provider = sdk.LandingProvider

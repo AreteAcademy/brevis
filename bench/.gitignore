@@ -4,3 +4,4 @@
 .gw
 .gwpid
 results/gateway.log
+results/gateway.used.yaml

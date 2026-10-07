@@ -86,7 +86,21 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	if len(envelopes) == 0 {
 		return fail(nil)
 	}
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
+	// Under EvolveAdditiveFromPayload the batch completes the declaration
+	// before anything is checked against it. See postgres.Table.Write: the
+	// reasoning is the same and it is written once, there.
+	//
+	// BEFORE CheckRow and not instead of it. The check has two halves and
+	// only one of them is what this mode is for.
+	if t.Evolve.FromPayload() {
+		found, err := core.Discovered(opt, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		opt = core.WithDiscovered(opt, found)
+	}
+
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}
 
@@ -126,7 +140,12 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		}
 	}
 
-	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
+	// RowFields and not the bare union of the keys: a field that is nil in
+	// EVERY record and that the table does not have contributes nothing --
+	// no column was created for it, and a null and an absent field land the
+	// same NULL. Counting it as a column would have Reconcile refuse the
+	// batch over a value that was never going to be written. [#42]
+	columns, err := core.Reconcile(tableColumns, core.RowFields(envelopes, tableColumns), t.Name)
 	if err != nil {
 		return fail(err)
 	}
@@ -353,6 +372,13 @@ func comParseTime(dsn string) string {
 // checking early costs one information_schema query; checking in Write costs
 // the vendor's whole quota window.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {
+	// EvolveAdditiveFromPayload with nothing to complete, refused BEFORE the
+	// extract: it costs no query to know, and a source quota spent to learn
+	// it is a quota wasted. Discovered refuses it again on the write path,
+	// for the caller that never comes through here.
+	if err := core.CheckDiscoveryHasADeclaration(t.Evolve, columns, t.Name); err != nil {
+		return err
+	}
 	if len(columns) == 0 || (t.DSN == "" && t.DB == nil) || t.Name == "" {
 		return nil
 	}
@@ -364,8 +390,22 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	defer closeDB()
 
 	database, table := splitName(t.Name)
-	inTable, _, err := columnsOf(ctx, db, database, table)
+	inTable, inTypes, err := columnsOf(ctx, db, database, table)
 	if err != nil || len(inTable) == 0 {
+		return err
+	}
+
+	// Columns BREVIS_NORMALIZE_DATA would abandon, refused before the
+	// extract. See core.CheckNormalizeRenames.
+	if err := core.CheckNormalizeRenames(columns, declaredTypes(inTypes), t.Name); err != nil {
+		return err
+	}
+
+	// A table created under a DIFFERENT prefix, refused before the extract.
+	// Nothing drops a column, so this would add eight and abandon eight --
+	// see core.CheckLandingPrefixMatches for why it refuses rather than
+	// warns.
+	if err := core.CheckLandingPrefixMatches(columns, inTable, t.Name); err != nil {
 		return err
 	}
 
@@ -375,9 +415,20 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	}
 	var missing []string
 	for _, c := range columns {
-		if !has[c] {
-			missing = append(missing, c)
+		if has[c] {
+			continue
 		}
+		// A column the table lacks is the one difference EvolveAdditive was
+		// asked to repair, so refusing it here would make the flag
+		// unreachable in its only case. Issue #41.
+		//
+		// Skipped per column rather than by returning early, so a check that
+		// evolving CANNOT repair still runs before the extract when one is
+		// added here.
+		if t.Evolve.MayAdd() {
+			continue
+		}
+		missing = append(missing, c)
 	}
 	if len(missing) == 0 {
 		return nil

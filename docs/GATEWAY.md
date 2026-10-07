@@ -482,9 +482,16 @@ looks like, which is their decision and not the producer's.
 | a poison batch | impossible | possible, and refused per event |
 
 **Types, in `columns`: scalar → `STRING`, object or array → `JSON`. No
-inference, ever.** `null` has no shape and becomes `STRING`; `true`/`false` are
-scalars and become `STRING`, which is the one that most invites an exception and
-does not get one.
+inference, ever.** `true`/`false` are scalars and become `STRING`, which is the
+one that most invites an exception and does not get one.
+
+**`null` becomes no column at all.** It has no shape, so there is nothing for
+the rule to read, and a type would be a guess. The column appears from the
+first event carrying a VALUE, with that value's shape; the event that sent
+`null` lands `NULL` just the same, and where the column already exists the
+`null` is written into it rather than left out. Until gateway 0.19.0 a null
+became `STRING`, and the first array after it had the destination refuse the
+whole batch — with no `STRING` to `JSON` migration to undo it.
 
 What it costs: no partition pruning on a date inside the record, no numeric
 aggregation without a cast, and every query casting. Typing a column is the

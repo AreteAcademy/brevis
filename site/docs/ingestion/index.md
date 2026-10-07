@@ -111,11 +111,86 @@ buffer:
     every: 1s         # idade
     records: 500      # contagem
     size: 8MiB        # bytes — o que for atingido PRIMEIRO manda o lote
+    max_age: 30s      # e este manda DE QUALQUER JEITO
   workers: 4          # lotes entregues ao mesmo tempo
   queue: 64           # lotes cheios esperando um worker
   max_records: 10000  # eventos em memória antes de o gateway dizer não
   max_bytes: 256MiB   # o mesmo teto em bytes
 ```
+
+### O relógio do flush pertence ao deployment
+
+`buffer.flush.every` é um `time.AfterFunc` em **cada réplica**. Então os load
+jobs que uma tabela recebe são função da contagem de réplicas, não do tráfego:
+
+```
+jobs / dia / tabela  =  réplicas × 86400 / every
+```
+
+No BigQuery, contra 1.500 por tabela por dia, **duas réplicas a 60s já são 192%
+de uma cota que não sobe** — antes de um HPA fazer qualquer coisa. E a direção é
+contraintuitiva: o gateway escala para concorrência HTTP enquanto o destino quer
+concentração.
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+Com `claim`, a réplica pega um *set-if-absent* para o stream e a janela antes de
+descarregar no timer — e o timer acorda na **fronteira da janela**, para todas
+pedirem a mesma chave. Um flush por janela, qualquer que seja a contagem de
+réplicas. E ele se auto-ajusta: uma réplica só espera quando outra está de fato
+competindo, então escalar para baixo devolve a latência menor sem ninguém editar
+config.
+
+Medido com duas réplicas e um Redis, janelas de 5s: **8 load jobs viraram 6, uma
+por janela, alternando 3/3** — nenhuma janela com duas.
+
+**Precisa de backend compartilhado.** Com `memory` cada réplica ganha o próprio
+claim e nada coordena. E **exige `max_age`**, que o config recusa sem: o claim
+transforma `every` em alvo, e alvo sem teto é latência sem limite.
+
+**Metastore fora do ar descarrega assim mesmo.** Perder coordenação custa load
+jobs; recusar o flush segura dado. Verificado derrubando o Redis no meio de uma
+corrida: 40 de 40 eventos pousaram, zero segurados.
+
+**`outcome="unreachable"` é o que merece alerta.** O backend não pôde ser
+consultado, então o claim falhou aberto: a coordenação está desligada e os load
+jobs voltaram a multiplicar por contagem de réplica — em silêncio, porque todo
+flush continua parecendo um flush.
+
+E o claim dá **exclusividade, não justiça**: quem pede primeiro vence. Uma
+corrida real com duas réplicas mediu 4/1, não uma divisão par. É o `max_age` que
+impede a azarada de passar fome.
+
+Com `claim: true` e `metastore: memory`, o gateway avisa **uma vez no boot**:
+cada réplica vence o próprio claim, então tudo parece certo e nada coordena.
+
+### `every` é um alvo; `max_age` é uma promessa
+
+Os três gatilhos acima decidem quando um lote **tenta** sair. O `max_age` decide
+quando ele sai **de qualquer jeito**.
+
+Hoje a diferença é inerte, porque nada adia o alvo. Ela passa a valer quando o
+relógio do flush deixar de ser por processo: `buffer.flush.every` é um
+`time.AfterFunc` em cada réplica, então o número de load jobs que uma tabela
+recebe é função da **contagem de réplicas**, não do tráfego —
+`réplicas × 86400 / every`. No BigQuery, com 1.500 por tabela por dia, **duas
+réplicas a 60s já são 192% da cota**.
+
+Quando uma réplica puder ceder a janela para outra, ela continua enchendo — e é
+o `max_age` que garante que ninguém segura dado indefinidamente esperando a vez.
+
+Ele também resolve o dreno: o que um buffer pode estar **segurando** no
+`SIGTERM` passa a ser limitado por ele, e é dele que sai o
+`terminationGracePeriodSeconds` que o gateway imprime no boot.
+
+Um teto **abaixo** do alvo é recusado no carregamento — significaria que o alvo
+nunca se aplica.
 
 ### Por que existe um gatilho de tamanho
 
@@ -145,6 +220,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 
 `trigger="size"` subindo num stream de BigQuery está te dizendo que não é a
 janela que está fazendo o lote.
+
+Esse contador é por stream, e a cota é por **tabela**: com `auto_table` uma
+rota vira muitas tabelas, e 94 delas reportando um número só não diz nada sobre
+nenhuma. Atrás de `BREVIS_INGESTION_METRICS` existe um que nomeia a tabela:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+Um flush de uma tabela é um load job dela, então esta é a série para alertar em
+1.200 dos 1.500 que o BigQuery permite. A metade incondicional é uma linha no
+boot, que diz quanto `flush.every` custa por tabela por dia antes de qualquer
+evento chegar.
 
 **É limitado, não é "atira e esquece".** Uma goroutine por lote transformaria a
 queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios,
@@ -252,13 +340,24 @@ brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
 brevis_gateway_ingested_events_total{stream,table}      contador  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger}  contador  opt-in
+process_start_time_seconds                              gauge     sem prefixo, de propósito
 brevis_gateway_saturated_total{stream}                  contador  os 503
 brevis_gateway_delivery_seconds{stream,sink}            histograma
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
+
+`process_start_time_seconds` **não** leva o prefixo `brevis_`, e isso é
+proposital: coletores procuram exatamente esse nome. Ele diz quando o processo
+começou, e sem ele um coletor que faz ajuste de hora de início — o receptor
+Prometheus do OpenTelemetry, sobre o qual o Google Managed Prometheus é
+construído — ancora cada série cumulativa no **primeiro scrape** e gasta o valor
+dele como linha de base. O resultado é todo contador lendo baixo, com os deltas
+certos e os totais errados.
 
 As três últimas são as que ninguém pede antes do primeiro incidente.
 `saturated_total` é o único número que diz que um cliente foi mandado esperar;

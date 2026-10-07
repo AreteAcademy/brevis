@@ -74,6 +74,13 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 		create := b.Target.Create
 		t.CreateTable = &create
 		t.ClusterBy = b.Target.ClusterBy
+
+		// The field auto_table has been declaring on every destination while
+		// this one ignored it. Without this line the gateway promises that a
+		// table grows a column and BigQuery fails the load at the row --
+		// which made adding a fixed column here a breaking change for every
+		// table an older gateway created. Issue #34.
+		t.Evolve = b.Target.Evolve
 	}
 	return &sink{
 		table:  t,
@@ -100,14 +107,37 @@ type sink struct {
 
 func (b *sink) Describe() string { return b.name }
 
-func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
+// options is what this sink tells the SDK about the table.
+//
+// Its own method so that the one thing three bugs have depended on is
+// assertable: THIS SINK DECLARES WITH Schema AND NEVER WITH Columns. The
+// router discovers the batch's columns itself and hands the result over as a
+// Schema, so there is no list of names here to promise every row carries.
+//
+// It is deliberate, and setting Columns here would not be a tidy-up. Columns
+// means "every row has exactly these", and core.CheckRow enforces it against
+// the FIRST record; the Schema is the UNION of a batch whose records need not
+// agree, so an ordinary batch would be refused for a column only its second
+// record carries.
+//
+// The cost of the choice is that every Columns-keyed check in the SDK is off
+// on this path, and three releases in a row shipped a bug because of it --
+// ClusterBy checked against the rows (#42.3), and the encoder reading
+// "nothing was declared" on a path that creates the table from a declaration
+// (#42, gateway 0.20.0). The SDK answers "what will the table have" with
+// LoadConfig.DeclaredColumns now, which reads both.
+func (b *sink) options() sdk.WriteOptions {
 	opt := sdk.WriteOptions{Dedup: b.dedup}
 	if b.target != nil {
 		opt.Schema = b.target.Schema
 		opt.DedupKey = b.target.DedupKey
 		opt.PartitionBy = b.target.PartitionBy
 	}
-	res, err := b.table.Write(ctx, batch, opt)
+	return opt
+}
+
+func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
+	res, err := b.table.Write(ctx, batch, b.options())
 	if res == nil {
 		return 0, err
 	}

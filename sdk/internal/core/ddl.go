@@ -55,6 +55,20 @@ type Dialect struct {
 	// of defaulting a TEXT column there, so nothing is lost.
 	ParenDefault map[ColumnType]bool
 
+	// InlineComment says the dialect carries a column comment INSIDE the
+	// column definition, rather than in a statement of its own.
+	//
+	// MySQL does, and has no COMMENT ON COLUMN at all -- changing a comment
+	// there afterwards means MODIFY, which restates the whole column. The
+	// other three take `COMMENT ON COLUMN t.c IS '...'` as its own statement.
+	// Either way it travels with the ADD, so a column cannot exist without
+	// the sentence that says where it came from.
+	InlineComment bool
+
+	// NoComment says the dialect has no column comments this SDK renders.
+	// The note is then dropped rather than rendered as something close.
+	NoComment bool
+
 	// Unique says whether this dialect has unique constraints at all. BigQuery
 	// does not, and a schema that declares one for it is refused by name
 	// rather than having the constraint quietly dropped -- a table that was
@@ -92,10 +106,11 @@ var (
 			TypeNumeric: "DECIMAL(38,9)", TypeBool: "TINYINT(1)", TypeTimestamp: "DATETIME(6)",
 			TypeDate: "DATE", TypeJSON: "JSON", TypeBytes: "LONGBLOB",
 		},
-		Quote:       func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" },
-		NowExpr:     "CURRENT_TIMESTAMP(6)",
-		IfNotExists: true,
-		Unique:      true,
+		Quote:         func(s string) string { return "`" + strings.ReplaceAll(s, "`", "``") + "`" },
+		NowExpr:       "CURRENT_TIMESTAMP(6)",
+		IfNotExists:   true,
+		Unique:        true,
+		InlineComment: true,
 		ParenDefault: map[ColumnType]bool{
 			TypeString: true, TypeJSON: true, TypeBytes: true,
 		},

@@ -251,7 +251,7 @@ the first one passes:
 console's ingestion page, which has not been written. It is said here because a
 field accepted in silence is a field somebody believes is being stored.
 
-### Seven fixed columns, plus whatever the record carries
+### Eight fixed columns, plus whatever the record carries
 
 | column | | |
 |---|---|---|
@@ -263,6 +263,11 @@ field accepted in silence is a field somebody believes is being stored.
 | `brevis_stream` | `STRING` | which route wrote it |
 | `brevis_gateway` | `STRING` | which deployment |
 | `brevis_received_bytes` | `INT64` | how large the event **arrived**, envelope included |
+
+These eight are **the SDK's**, not this sink's: `sdk.LandingSchema` declares
+them and `sdk.LandingID` mints the identity, so a pipeline can land the same
+table with the same ids. One definition, because two would drift. See
+[the SDK's landing layout](/en/docs/sdk/#the-landing-layout).
 
 **`brevis_` is reserved.** A `data` carrying any key with that prefix is refused
 **per event** — otherwise a producer forges a control field, and a forged
@@ -379,9 +384,65 @@ fractional tomorrow would change a column's type with nobody writing anything,
 and the row that no longer fits goes to the dead letter. Typing one is the
 **promotion** path — written in the YAML and reviewed in a diff.
 
+**A `null` becomes no column at all.** It has no shape, so there is nothing to
+read: the field appears in the table from the first event that carries a
+VALUE, with that value's shape. The event that sent `null` lands `NULL` just
+the same, which is what it meant — and where the column already exists, because
+you declared it or another event created it, the `null` is written into it
+rather than left out.
+
+**And a `JSON` column receives a JSON VALUE, never a string of one.** It
+sounds like a detail and it is the difference between a queryable table and a
+table that looks right:
+
+```sql
+SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, '$.uf') ...;           -- SP
+```
+
+If `JSON_TYPE` answers `string` and `JSON_VALUE` answers NULL, the object was
+encoded twice — the column holds the TEXT of the object rather than the
+object. Gateway versions up to and including **0.15.0** did that on BigQuery,
+in **both** shapes; see the [gateway changelog](https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md)
+for the one-line check and the repair. Postgres and MySQL were never affected:
+their server parses the text.
+
 A field name has to match BigQuery's rule, the narrowest of the four. Postgres
 would accept almost anything quoted, and that is the trap: the table is created
 there and it breaks the day somebody points a stream at BigQuery.
+
+Both shapes have an SDK equivalent, and it is the same code rather than a
+matching one: `sdk.Landing(table, sdk.LandingKey("id"))` lands `document`, and
+adding [`sdk.LandingColumns()`](/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field)
+lands `columns`. Same columns, same values, same `brevis_ingestion_id` — so a
+stream can move between a gateway and a pipeline without a migration, and the
+two can be read as one table.
+
+The pipeline can grow the same column the same way: set
+[`Evolve: sdk.EvolveAdditiveFromPayload`](/docs/sdk/#when-a-field-the-table-does-not-have-shows-up)
+on the destination and a field the batch carries becomes a column, by this
+rule, through this code.
+
+
+**The prefix is configurable, and it is one decision for the whole process.**
+`BREVIS_LANDING_PREFIX=acme` makes them `acme_ingestion_id` and the rest —
+every stream in this gateway, so two sinks cannot disagree about a table they
+might both write to. The reserved rule above moves with it: under `acme_`, a
+producer sending `acme_region` is refused and `brevis_region` is an ordinary
+field.
+
+**Pick it before the first table is created.** Changing it later adds eight
+columns and abandons eight — nothing drops a column — so a table already
+carrying the layout under one prefix refuses a load declaring another. See
+[the SDK page](/docs/sdk/#the-brevis-prefix-is-yours-to-change) for the
+normalisation and the way out.
+
+**A nested object's fields can get columns of their own.**
+`BREVIS_NORMALIZE_DATA=true` on the gateway's process flattens one level —
+`{"name": {"first": "x"}}` lands as `name_first` — and every stream shares it,
+so two sinks cannot disagree about a table they might both write to. See
+[the SDK page](/docs/sdk/#one-column-per-nested-field) for what it renames,
+which is the half to read before turning it on.
 
 ### `UPDATE` and `DELETE` are recorded, not applied
 
@@ -424,20 +485,25 @@ every level, arrays left in order, everything quoted. Go randomises map
 iteration, so a naive hash would differ between two deliveries of the same
 event, which is the one thing it exists to prevent.
 
-### The table grows a column on its own — on Postgres and MySQL
+### The table grows a column on its own
 
 A `data` carrying a field the table does not have makes the column appear.
 **Additive, and only additive**: nothing is dropped, nothing is narrowed.
 
-> **On BigQuery this does not happen yet.** `auto_table` declares
-> `Evolve: additive` on every destination, and only the Postgres and MySQL
-> drivers read that declaration — nothing in the BigQuery path alters an
-> existing table's schema. There, a new field makes the load **fail**, the
-> batch is retried and then buried with the reason.
+On BigQuery this only became true in **0.13.0**. Before it, `auto_table`
+declared `Evolve: additive` on every destination and only the Postgres and
+MySQL drivers read the declaration — so there the shape was frozen at creation
+and nothing said so.
+
+> **Coming from 0.11.0 or 0.12.0**, tables created before `0.11.0` need a
+> one-off migration, because the eighth fixed column went into the declaration
+> and not into the table:
 >
-> A test pins the gap and will **fail** the day it is closed, which is when
-> this note goes. Until then, with `into: bigquery`, use `shape: document` —
-> there a new field is a new key and there is no DDL after the create.
+> ```sql
+> ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+> ```
+>
+> Postgres and MySQL were never affected.
 
 A batch that loses the race to `ALTER` fails, and the pipe's ordinary retry
 resolves it — a batch waiting for DDL and a batch waiting for a worker are the
@@ -500,6 +566,20 @@ it may be **wrong**.
 | `redis` | `addr_from` required. A `SETNX` is the claim, an `INCR` is the counter |
 | `memcached` | `addr_from` required. An `Add` is the claim, and expiry is **second**-granular |
 
+**Redis is the faster one for a stream with a routing key**, and the
+difference is worth a number rather than an adjective. With the trigger per
+table, a window asks for one claim per table: Redis answers 94 of them in one
+pipelined round trip, and every other backend answers them in parallel,
+bounded at 32. Measured against a backend 25 ms away — 94 claims:
+
+| backend | one at a time | as it ships |
+|---|---:|---:|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+Three waves against one round trip. Both are inside the 500 ms a claim is
+given, so memcached is the slower choice and not a refused one.
+
 With several replicas, `memory` gives each its own: the debounce debounces
 nothing and `max_new_per_hour` bounds a process. That is the only reason the
 other two exist.
@@ -507,6 +587,31 @@ other two exist.
 **A metastore that is down must not take a write down with it.** A `Get` that
 errors is a miss, a claim that errors behaves as won, a counter that errors
 relaxes the limit. A cache that can stop the ingestion is worse than no cache.
+
+**And "down" includes "slow".** The claim runs while the buffer's lock is held,
+so a backend that takes two seconds to answer is two seconds in which that
+stream accepts nothing. Every call is bounded at **500 ms** and fails open past
+it. Redis obeys that as the caller's context; `gomemcache` takes no context at
+all, so memcached obeys it as a socket deadline — the same bound reached two
+ways, because one of the two clients cannot be told to stop.
+
+**`ttl: 0` means never**, and saying nothing still takes the one-minute default
+— three states, not two.
+
+The clock is **not** what recovers from a wrong entry. A write the destination
+refuses calls `invalidate`, which drops the entry at once and lets the pipe's
+own retry come back against a cold cache: a table dropped by hand costs **one
+failed attempt**, not a minute.
+
+Expiry has a price. `sinkFor` charges `naming.max_new_per_hour` when it does
+not **know** a table — so a miss charges for a table that has existed for
+weeks, and a pod restarting a minute after a table's last event gets nothing
+from the shared backend it is paying for. With long-lived tables, `ttl: 0` is
+the answer.
+
+> On `0.12.0` and `0.13.1` that spelling **does not parse** — YAML reads a bare
+> zero as an int, and `0.13.2` is the first that takes both. On those versions,
+> write `ttl: 0s`.
 
 `addr_from` names the **environment variable** holding the address, never the
 address: it carries a password often enough.

@@ -18,6 +18,827 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.80.0] — 2026-10-01
+
+### Fixed: 0.79.0's fix was incomplete on the path it was for
+
+`WithDiscovered` extends the declaration with the columns a batch brought, and
+it extended `Columns` rather than the declaration. With a `Schema` and no
+`Columns` — the gateway's shape, and the one 0.79.0 was about — the result was
+a `Columns` list naming ONLY what the batch brought, and `CheckRow` then
+refused the row for carrying every column the caller had declared:
+
+```
+the row carries brevis_ingestion_id, brevis_operation, brevis_received_at,
+brevis_record_key, which Columns does not declare
+```
+
+**Caught by running the published 0.79.0 against the gateway's config shape**,
+which is the only thing that could have caught it: every test in this
+repository declares `Columns`, because the `sdk.Target` facade fills it from
+the Schema. Only a driver used directly — which is what the gateway does —
+arrives with `Columns` empty.
+
+That shape is now an integration test, end to end through a real driver,
+rather than something a release runs once.
+
+A caller that declares `Columns` is unaffected; for them the two were always
+the same list.
+
+## [0.79.0] — 2026-10-01
+
+### Fixed: `No such field` on every new table the gateway creates
+
+**A regression in 0.78.0.** Reported on
+[#42](https://github.com/AreteAcademy/brevis/issues/42) after a load test:
+4,500 events, 8 batches, every one dead-lettered, the table at 0 rows.
+
+```
+JSON parsing error in row starting at position 0: No such field: inactive_at.
+```
+
+Every record carried `"inactive_at": null`. The table was created without that
+column — right, a null has no shape. The row carried the key — right since
+0.78.0, because a DECLARED column that arrived empty has to be in the row.
+BigQuery does not set `IgnoreUnknownValues`, so it refused the row, and the
+encoder was supposed to have left the key out.
+
+It did not, because it was asked the wrong question. The gateway declares with
+a `Schema` and never with `Columns`, so `EncodeRows` read an empty `Columns`
+as "nothing was declared" — the autodetect branch — on a path that creates the
+table FROM a declaration.
+
+**It happens whenever a field is null in every record of a batch and the table
+has no column for it yet**: on the first batches of a new table, for every
+optional field that is still empty, which is how tables are born.
+
+The two fields answer two questions, and that is now written down where the
+answer is given:
+
+```
+Columns  -- "the consumer promised every row has exactly these"
+Schema   -- "this is what the table is made of"
+```
+
+`LoadConfig.DeclaredColumns` answers the second, with the rule `sdk.Target`
+already uses: Columns when it has any, the Schema's names otherwise, since
+`Target` refuses both at once. The encoder asks it. `CheckRow` must not, and
+the doc says so with the measurement — on a gateway batch the Schema is the
+UNION of records that need not agree, and deriving Columns from it refuses an
+ordinary batch.
+
+### Fixed: a `Schema` is a declaration everywhere it is one
+
+An audit of every reader of `Columns`, because this was the third release in a
+row where the gateway path broke while this SDK's suite stayed green — the
+gateway declares with a `Schema` and never with `Columns`, and every test here
+declares `Columns`.
+
+- **The batch discovery refused a Schema-only caller** for "nothing is
+  declared", naming the one thing they had done. It takes the whole
+  declaration now rather than a list of names, so the three call sites cannot
+  each get it wrong. It also stops rediscovering columns the Schema already
+  declares, which would have added them twice and dated them as a batch's.
+- **Redshift** fell through to the batch's own keys for a Schema-only caller,
+  so the `COPY` named a column the table does not have.
+- **The `DedupMerge` key and the partition options** are pre-flight refusals
+  that exist to stop before the extract, and a Schema-only caller skipped
+  both. They apply now, so a configuration error that used to surface as a
+  destination error after the whole extract is refused at startup instead.
+  Nothing that was correct becomes incorrect; a caller already relying on one
+  of these being silent will see the refusal they should have had.
+- **The table description** omitted how to deduplicate although the table
+  carried the column.
+
+Left deliberately on `Columns`, with the reason written where it is read: the
+declared-against-table check, and `CheckRow` in five drivers.
+
+## [0.78.0] — 2026-10-01
+
+### Fixed: a declared column that arrives `null` no longer refuses the load
+
+**A regression in 0.77.0.** Reported on
+[#42](https://github.com/AreteAcademy/brevis/issues/42#issuecomment-5934850593)
+and reproduced against the published artifact before a line was changed.
+
+A pipeline that lands with a declared schema:
+
+```go
+Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())},
+Target:    sdk.Target{Schema: append(sdk.LandingControlColumns(...), fields...), ...}
+```
+
+got this as soon as a declared field arrived `null` in the first record of a
+batch:
+
+```
+the Columns declaration lists Area_Drenagem, which the row does not have
+```
+
+It hit 5 of one consumer's 23 fetchers. Declaring a vendor field that is often
+null is the documented pattern, so anyone doing that was affected.
+
+**The cause was not the check.** 0.77.0 fixed #42's null-types-a-column bug by
+dropping a null from the LANDING ROW as well as from the schema — which made
+the row's SHAPE depend on the record's VALUES. Every check downstream is built
+on the premise that it does not; it is what lets `CheckRow` read the first
+record and call itself a check. A declared column that had arrived empty then
+looked exactly like a chain that had stopped producing it.
+
+Two questions, answered separately now:
+
+- the **schema** takes no type from a null, because a null has no shape.
+  `LandingSchemaOf` and the batch discovery declare nothing for it, so #42's
+  original bug stays fixed;
+- the **row** carries what the producer sent. A null is in it, as a null.
+
+What a destination does with a nil for a column that does not exist is the
+destination's, and the answer is given in one place so that three checks in
+three packages cannot disagree about one batch: the declaration check lets it
+through, the SQL drivers do not count it as an extra, and the BigQuery
+encoder leaves the key out of the NDJSON — BigQuery does not set
+`IgnoreUnknownValues`, so sending it would fail the job with `no such field`.
+
+Only a null, and only when nothing declares it. A field with a VALUE that
+nothing declares still stops the load, by name: discarding one quietly is the
+single outcome worse than the refusal.
+
+A **declared** column that arrives null is WRITTEN null, not left out. The
+difference is invisible on an empty table and is the whole thing where the
+destination fills a gap — a `DEFAULT`, a generated column, a trigger would
+otherwise overwrite the producer's "this field is now empty".
+
+### Changed: `load.EncodeRows` takes the declaration
+
+```go
+EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error)
+```
+
+It needs it to know which keys the table has. Passing `nil` keeps every key,
+which is what autodetect wants — there the table is created from these rows.
+This is a breaking change to an exported function; nothing outside this
+repository calls it.
+
+## [0.77.0] — 2026-10-01
+
+### Fixed: a `null` no longer decides a column's type
+
+Reported in [#42](https://github.com/AreteAcademy/brevis/issues/42), with the
+measurement that makes it undeniable: over ninety days one field arrived
+`null` 786 times and as an array 62 times.
+
+The table was created from a record where it was `null`. The rule mapped
+"scalar, and null → `STRING`", so the column came out `STRING` — and the next
+batch carried an array:
+
+```
+load job failed: JSON parsing error in row starting at position 1275:
+  Array specified for non-repeated field: vehicle_fuel.
+```
+
+The load refused the whole batch, every batch holding one such record went to
+the dead letter with its neighbours, and the table sat at 0 rows. There is no
+`STRING` → `JSON` migration to undo it with.
+
+**A null has no shape**, so the type was a guess, and the reporter was right
+that "the shape decides, never the value" does not answer this. It does now:
+
+- a field that arrives `null` contributes **neither a column nor a value**;
+- the column appears from the first record carrying a VALUE, with that
+  value's shape, wherever it is in the batch;
+- a dropped null and an absent field land the same `NULL`, so nothing is lost.
+
+The drop happens in the one function behind both the row and the schema, so
+they cannot disagree — no check was loosened to make room for it. `Reconcile`
+still refuses a column the table does not have, and `CheckRow` still refuses a
+declared column the chain does not produce.
+
+On a raw pipeline, which has no landing transformer, the same rule reaches the
+discovery: a null is held rather than kept, and the first record with a value
+decides. A field `null` in every record of such a batch keeps its column as
+text — there the record IS the row, and a schema without the column and a row
+with the nil is what `Reconcile` exists to refuse.
+
+### Fixed: `ClusterBy` is checked against what makes the table
+
+Also [#42](https://github.com/AreteAcademy/brevis/issues/42). With a declared
+`Schema` the table is created by `createFromSchema`, from the Schema — and the
+check read the ROWS, so a first load whose rows omitted the clustering column
+failed twice and logged a misleading warning before succeeding.
+
+The check now asks the SCHEMA when there is one and the rows when there is
+not, and the message says which: *"a clustering column has to be one of the
+columns it is created with, and the declaration has: …"*. With no `Schema` the
+behaviour is unchanged — that path IS autodetect, and the rows are the right
+question there.
+
+## [0.76.0] — 2026-10-01
+
+### Added: `BREVIS_NORMALIZE_DATA`
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+and a nested object's fields get columns of their own, one level, the way
+pandas' `json_normalize` does:
+
+```
+{"id": 1, "name": {"first": "Coleen", "last": "Volk"}}
+→ id, name_first, name_last
+```
+
+**`name` can appear both flattened and whole.** A field that is an object in
+one record and a scalar in another produces both — `name_first`, `name_last`
+AND `name`. That is pandas' answer and it is the one the brief asked for.
+
+**One level, and arrays are values.** `{"a": {"b": {"c": 1}}}` is `a_b`
+holding the object, which becomes a JSON column — not `a_b_c`. A record that
+wants one row per array element still wants `ArrayAt`.
+
+**Joined and lower-cased, not split on camelCase.** `userName` becomes
+`username` and not `user_name`: the other reading has no agreed answer for
+acronyms — `HTTPStatus`, `userID` — and every library disagrees. Decided once,
+because changing it later renames every camelCase column in every table.
+
+**A collision is refused, never resolved.** `{"name_first": 1, "name":
+{"first": 2}}` makes one column from two fields, and Go's map iteration is
+randomised: letting one win would give the same batch a different table on a
+different run. Both sides are named, and the fields are walked in sorted order
+so the pair named is the same every time.
+
+**A field the producer sent never vanishes.** An empty object keeps its own
+column holding `{}`; a null inside a nested one is a column holding NULL.
+
+**Per process, and the `columns` shape only.** Under `document` the record
+goes whole into one JSON column and there is nothing to flatten into.
+
+**`LandingID` does not move.** It is computed over the producer's record,
+before any rendering, so the same record gets the same id with the flag on and
+off. If it moved, a merge would duplicate every row.
+
+### Fixed: flattening could forge a control column
+
+The reserved-prefix check ran on the record's own KEYS, and `brevis` does not
+start with `brevis_`. So with flattening on, a producer sending
+
+```json
+{"brevis": {"stream": "not-a-real-gateway"}}
+```
+
+walked past it and produced `brevis_stream`. A forged control column is worse
+than a missing one, because it looks real.
+
+The check runs on the names a record would PRODUCE, and names the FIELD as
+well as the column: the producer never wrote `brevis_stream`, they wrote
+`brevis.stream`, and a refusal naming only the column leaves them hunting for
+a field that is not in their payload. In the gateway it is refused per event,
+from `Admit`, rather than failing the batch around it at write time.
+
+### Added: a table whose columns flattening would abandon is refused
+
+Turning the flag on does not only ADD columns. Nothing drops one, so a column
+the new naming no longer writes stays where it is, full of the rows that
+landed before, and every row after has a NULL in it — while the query somebody
+wrote against it keeps running and stops seeing new rows.
+
+Two kinds, refused before the extract on all three destinations:
+
+```
+userName → username          a rename by case, nested or not
+name     → name_first, ...   a JSON column whose fields now have their own
+```
+
+Narrow on both. The second needs the column to be JSON, undeclared, and the
+batch to declare `<it>_something` — so the example above, where `name` is
+declared both ways, is **not** refused. Refusing that would break the case the
+feature exists for.
+
+---
+
+## [0.75.0] — 2026-09-30
+
+### Added: `BREVIS_LANDING_PREFIX`
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+and the landing layout's eight columns become `acme_ingestion_id`,
+`acme_record_key` and the rest. Unset, every one of them is the string it has
+always been — which is the only promise every table already created depends
+on.
+
+Whatever is typed is normalised, so there is one spelling to get wrong
+instead of four:
+
+| set | resolved |
+|---|---|
+| nothing, or blank | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Blank is not a request for no prefix: `BREVIS_LANDING_PREFIX=` is a line
+people write in a compose file meaning "not configured".
+
+**An environment variable and not a config field, for the safety rather than
+the convenience.** Two sinks in one gateway cannot disagree, and neither can
+the schema that declares a table and the transformer that fills it — with two
+doors to one decision, a row carrying `acme_ingestion_id` lands in a table
+declaring `brevis_ingestion_id`.
+
+**A process with an unusable value does not start.** That is deliberately not
+this repo's habit — `autoparams.go` and `runcontext.go` both log "ignoring
+malformed…" and carry on, and they are right to, because a bad param or a bad
+date degrades gracefully. Ignoring this one creates tables named after the
+prefix the operator was replacing, and they find out from the column names
+months later. Two values are refused: underscores and nothing else, which
+would leave `ingestion_id` — exactly the column `sdk.IngestionID()` writes for
+every ordinary pipeline — and anything that cannot begin a column name.
+
+**The reserved rule moves with it.** Under `acme_`, a producer sending
+`acme_region` is refused, because somebody who can forge a control column
+forges a real-looking one. And `brevis_region` becomes an ordinary field.
+
+**`LandingColumnData` stays `"data"`, and stays a `const` while the eight
+become `var`.** The difference is the statement: the eight follow the prefix
+and this one cannot. It is the producer's column, not the layout's to rename.
+
+**`LandingID` does not move.** It identifies the RECORD, not the table's
+column naming; if it followed the prefix, the same record under two prefixes
+would get two ids and the next merge would duplicate the table.
+
+### Added: a table created under another prefix is refused
+
+Changing the prefix on a live table is not a rename. Nothing drops a column —
+`Plan` emits `add` and `widen` and nothing else — so it adds eight and
+abandons eight. Every row after that has NULLs in the old set, and
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+partitions on a column nothing writes any more. Rows arrive, the dashboard
+goes flat, nothing logs anything.
+
+Refused before the extract on Postgres, MySQL and BigQuery, naming both
+prefixes and the way out. **Narrow on both sides**: only when the declaration
+is this layout, and only when the table carries the full eight under one
+other prefix — a warehouse where somebody named a column `brevis_stream` by
+hand does not start failing.
+
+### Changed: the column names are variables
+
+`LandingPrefix` and the eight are resolved when the package loads, so they are
+`var` where they were `const`. `DedupKey: sdk.LandingColumnID` and every other
+published use keeps compiling; a `const` declared FROM one of them does not,
+and there was exactly one, in this repo's own tests.
+
+---
+
+## [0.74.0] — 2026-09-30
+
+Reported by a consumer against gateway `v0.15.0`, holding a production
+rollout. They were right, their diagnosis named the exact line, and the half
+they did not report was larger than the half they did.
+
+### Fixed: a column declared JSON received a string of JSON
+
+```sql
+SELECT JSON_TYPE(person) FROM bronze.id_verification;   -- "string", expected "object"
+SELECT JSON_VALUE(event_metadata, '$.provider') ...;    -- NULL, expected "bigdatacorp"
+```
+
+On BigQuery the row is marshalled whole, so a Go `string` becomes a JSON
+string literal and the column holds a JSON value of TYPE `string`. The column
+is the right type and the data in it is unreachable — which is the worst of
+the three outcomes, because it looks correct. 23 columns across 9 tables in
+their dev, found in production rather than by any test.
+
+`shape: columns` was already fixed in 0.73.0, by `JSONText`. **What was left
+is the `document` shape, in BOTH the SDK and the gateway, and that is the
+DEFAULT** — `sdk.Landing` without `LandingColumns()` put a Go string into
+`data`, which `LandingDataColumn` declares `TypeJSON`. Nobody reported it
+because the reporter does not use that shape; it was found by probing for it.
+
+Postgres and MySQL were never affected: their server parses a string into a
+JSON column and always has. A test pins that, because generalising the fix is
+the tempting move and it would break loads that are correct today.
+
+### Added: BigQuery refuses a string of JSON where a JSON value belongs
+
+The silent half. The fix above stops the SDK and the gateway producing it;
+this stops anybody else, including a fetcher nobody has written yet:
+
+```
+column "payload" is declared JSON and the row carries a string. BigQuery would
+store that as a JSON value of TYPE string: JSON_TYPE returns "string" and every
+JSON_VALUE against it returns NULL, without an error. Pass the object or the
+array itself, or sdk.JSONText(s) when the text already IS JSON.
+```
+
+Refused before the load job, over the whole batch rather than the first
+record, and on **BigQuery alone**.
+
+It tests EXACT TYPES and not `reflect.Kind`, which is load-bearing:
+`json.RawMessage` is the standard library's own answer to this problem and
+`sdk.JSONText` is ours, and neither matches `case string` or `case []byte`. A
+check written on `Kind` would refuse both correct answers.
+
+**If you pass JSON text into a `TypeJSON` column today, this is a breaking
+change — and the behaviour it breaks was already wrong.** Wrap it:
+`sdk.JSONText(s)`.
+
+### Added: `load.EncodeRows`
+
+The bytes that land, as a pure exported function. It was a method on a
+`*Loader` it never used — zero references to the receiver — so nothing could
+assert what goes on the wire without a BigQuery client. These bytes are what
+BigQuery reads, and now a test reads them too.
+
+That matters more than it sounds: **floci refuses load jobs with a 405**, so
+"write a row and read `JSON_TYPE` back" cannot run against the emulator at
+all. The wire is where this is decidable without a warehouse.
+
+### Changed: `sdk.Landing` puts `sdk.JSONText` in `data`
+
+The document shape's `data` was a `string` and is now a `JSONText`. If you
+type-assert a landing row's `data` to `string`, assert to `sdk.JSONText`, or
+read it as `string(v)`. Nothing that passes the row straight to a destination
+is affected.
+
+---
+
+## [0.73.0] — 2026-09-29
+
+### Added: `sdk.EvolveAdditiveFromPayload` — the batch completes the declaration
+
+A producer adds a field and the load stops, naming it. Right by default; on a
+landing table it is the one change that cannot break a reader.
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+A field the batch carries and the declaration does not becomes a column —
+`STRING` unless it is an object or an array, and then `JSON`. The same rule
+and the same code a gateway lands `shape: columns` with. Postgres, MySQL and
+BigQuery.
+
+**The SDK still does not infer.** The type comes from the field's SHAPE, never
+from its value, so `21129` and `8.89` both declare `STRING` and the day the
+series publishes a whole number nothing changes.
+
+**Only ever `ADD COLUMN`, and not because anything enforces it.** `Plan` emits
+`add` and `widen` and nothing else, so the guarantee is inherited rather than
+re-argued. A column that disappears from the source stops being written and
+stays.
+
+**It completes a declaration; it does not replace one.** With nothing declared
+it is refused before the extract, naming the table. On the landing layout the
+harm would have been concrete: `brevis_received_at` created as text instead of
+a timestamp, and `brevis_loaded_at` — which never travels in the row, because
+it is a database DEFAULT — not created at all, so the end-to-end latency
+measurement would simply be missing from a table that looks right.
+
+**Every column a batch created says so, in the table**: a comment on Postgres
+and MySQL, a field description on BigQuery, carrying the date. Six months
+later it is the only thing left that answers "when did this column appear, and
+who decided it".
+
+### Fixed: a pipeline declared `STRING` where a gateway declares `JSON`
+
+Same record, both paths, measured:
+
+```
+gateway declares meta json      pipeline sent meta string
+gateway declares tags json      pipeline sent tags string
+```
+
+A gateway types from the RAW record and renders separately. A pipeline renders
+in its TRANSFORMER, so by the time the driver sees the row an object has
+become text and the shape is gone. A landing pipeline created
+`meta:longtext tags:longtext`.
+
+On a SHARED table that was a wall rather than a cosmetic difference: the
+gateway creates the column `JSON`, a pipeline rediscovers it as string, and the
+plan refuses — "meta is json in the table and string in the declaration". A
+pipeline could not write into a gateway's `shape: columns` table, which is the
+one interoperability the landing layout exists for.
+
+### Changed: `LandingSpread` marks the values it rendered as JSON
+
+`sdk.JSONText`, a string that says it is already JSON. `LandingSpread` — and
+so `Landing` with `LandingColumns` — now puts one of these in every column
+that held an object or an array, where it used to put a plain `string`.
+
+It is a MARKER and not inference. The alternative was reading the string back
+to see whether it parses as an object, and a producer sending the literal text
+`[1,2]` would then get a JSON column nobody asked for.
+
+**This is a type change in a published function.** If you type-assert a landing
+row's values to `string`, assert to `sdk.JSONText` for the fields that held an
+object or an array, or read it as `string(v)`. Nothing that passes the row
+straight to a destination is affected.
+
+### Changed: `Evolution` is asked, not compared
+
+`Evolution.MayAdd()` replaces seven equality comparisons. Behaviour is
+identical with the values that existed; what it buys is that a value added
+later is not excluded in silence. Four of the seven would have made this
+release's new mode LESS capable than `EvolveAdditive`, and one returns early
+from BigQuery's evolve — the feature would have shipped inert there. A test
+refuses a new `==` on an `Evolution` outside `evolve.go`.
+
+---
+
+## [0.72.0] — 2026-09-29
+
+### Added: `sdk.LandingColumns()` — one column per field
+
+The landing layout had one shape: the record whole, as JSON, in `data`. The
+gateway has had two since it shipped, and a consumer landing the Bacen series
+through the SDK got a single `data` column holding everything while the same
+record through a gateway got a column each.
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+An option on `Landing` rather than a second transformer: one concept, and
+`LandingKey` and `LandingOperationFrom` compose with it instead of being
+duplicated. The table is `LandingControlColumns` plus your columns — **not**
+`LandingSchema`, which carries `data`.
+
+**The SDK still never infers a schema.** This decides how the ROW is built,
+never what the table is; the fields are declared by the caller and reviewed in
+a diff. That is the difference from the gateway, whose producer is a stranger.
+
+Scalars become text, objects and arrays become `JSON` under the key that held
+them, `null` stays `NULL`. It does not flatten — a record wanting one row per
+array element wants `ArrayAt`, before `Landing`. Field names have to match
+BigQuery's rule, the narrowest of the four, and a record carrying `my-field`
+is refused by name.
+
+One thing worth knowing before choosing it: in this shape `data` is not the
+layout's column any more, so a producer with a field called `data` — exactly
+what the Bacen series sends — gets a column of their own.
+
+### Changed: the columns rendering moved from the gateway into the SDK
+
+`LandingSpread` and `LandingFieldNames` are now the SDK's, and the gateway's
+`autotable` calls them. The two shapes are not a matching pair of
+implementations any more; they are one, and a test lands the same record
+through both paths and compares the row column by column.
+
+The gateway's own `Text` was NOT collapsed into the SDK's renderer, and the
+plan that asked for it was wrong. `gateway/text.go` documents the duplication
+as deliberate: the SDK's `asText` is frozen because ids are computed over its
+output, and `Text` is free to get stricter. What the attempt did settle is
+sharper: column values go into tables, so they are as unchangeable as ids —
+`LandingSpread` renders through the frozen one, and the gateway's columns now
+come from it.
+
+No gateway test was edited. Its suite was the oracle.
+
+### Fixed: `EvolveAdditive` could not reach the driver (#41)
+
+`CheckDestination` runs before the extract and refused every declared column
+the table lacks. The driver's evolve runs inside `Write` and would have added
+it. So the flag was unreachable in the only case it exists for: a declaration
+that adds a column is the only way to ask for one.
+
+A column the table lacks is now skipped when `Evolve` is `EvolveAdditive`, on
+Postgres, MySQL and BigQuery. **Per column, not by returning early** — today
+the two are behaviourally identical, but the per-column shape means a future
+check for a narrowed type still runs before the extract.
+
+BigQuery took a longer road, and it is where the fix could have gone wrong.
+Its `CheckDestination` delegates to `load.Loader.CheckDestination`, which
+calls `checkDeclaredAgainstTable` — and that function has a SECOND caller,
+inside `Load`, which runs AFTER `evolveTable` and is the only thing verifying
+that evolving did what it said. Only the early call is relaxed; the shared
+function and the `Load` call site are untouched.
+
+Tested against real backends rather than mocks: Postgres and MySQL 8 from the
+compose profile, BigQuery through the floci emulator.
+
+---
+
+## [0.71.0] — 2026-09-29
+
+### Added: `Target.DedupKey`
+
+Merging the landing layout was not a slower path — it was no path.
+
+```go
+Target{
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+Every driver matches on `ingestion_id` unless told otherwise, and the
+layout's identity column is `brevis_ingestion_id`, so a merge left to the
+default looked for a column the table does not have. A consumer reported
+"bronze without merge" as a limitation, and it was one.
+
+Everything below `Target` already carried it: `postgres`, `mysql` and
+`redshift` call `core.DedupKeyOf(opt)`, and `bigquery` threads
+`opt.DedupKey` into its `LoadConfig`. `Target.options()` folds seven fields
+into `WriteOptions` and dropped this one — the field existed at both ends of
+a wire with nothing in the middle.
+
+### Fixed: a `DedupKey` nothing declares is refused
+
+`core.DedupKeyOf` validates that the name is a legal identifier, **not** that
+anything has it, so `DedupKey: "brevis_ingestionid"` would have merged on a
+column that is not there. A merge matching nothing looks exactly like a merge
+matching everything it should.
+
+`Target` refuses it now, against `Columns` or `Schema`, naming both sides —
+the shape `PartitionBy` already used one field up. A Target declaring neither
+declares nothing and checks nothing, which is the rule the rest of the struct
+follows. This was true before the landing layout existed and applies to any
+`DedupKey`.
+
+### Known: MySQL cannot create a merging landing table
+
+MySQL's `string` is `LONGTEXT`, which MySQL will not key without a length:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+So `LandingOptions{UniqueID: true}` cannot be created there. It is neither a
+`DedupKey` problem nor a landing one — any `Schema` with `Unique: true` on a
+`TypeString` column fails the same way, and it has been true since the
+dialect was written. Postgres works because its `string` is `TEXT`.
+
+**The gateway has the same hole**: `auto_table` with `into: mysql` and
+`write: merge` builds the same schema. Nothing covered it, because the
+MySQL suite creates its tables by hand with `VARCHAR(36)`.
+
+Not fixed here, deliberately. Sizing the column is the thing `ddl.go` says
+twice that this SDK refuses to do — "a length is a guess about data the SDK
+has not seen" — and the fix belongs to the DDL generator rather than to this
+field. On MySQL today: land with `DedupNone`, or create the table with
+`CreateSQL` and a sized id.
+
+Proven on Postgres end to end: the same record twice through a merging
+pipeline is one row, and a gateway merging the same record into the table the
+SDK created is still one row with the same id.
+
+---
+
+## [0.70.0] — 2026-09-29
+
+A pipeline can land the table a gateway lands — the same columns and the same
+`brevis_ingestion_id` — so choosing between them is a deployment decision and
+not a schema decision.
+
+### Added: the landing layout
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`LandingSchema` is nine columns: the eight the layout owns and the one the
+producer does. `Landing` fills them and puts the record, whole, in `data`.
+`LandingControlColumns` gives the eight alone, for a caller shaping the
+record's fields into columns of their own.
+
+**It is not a mode.** `Target.Schema` is still the caller declaring what the
+table is; this hands them a layout that already exists instead of making them
+type it. `CreationPlan` never learns anything special happened, and
+`TestI2CreationPlanNeverInfers` passes untouched — the proof that this added a
+constant and not a guess. Nothing infers: the `document` layout's schema is
+the same nine columns whatever the record holds.
+
+The code came out of the gateway, where it was first needed, for the reason
+`ComputeIngestionID` lives here: there has to be exactly ONE place that
+decides what a landing row looks like. The gateway imports it now and keeps
+every name as an alias; not one of its tests changed, which is how the move
+was checked.
+
+### The id is the whole point, and it is pinned
+
+```
+uuid5(ns, "auto_table | table | key | sha256(canonical(record))")
+```
+
+Content-addressed through the last slot: the same record gets the same id
+from either path, and a changed record gets a new one. An integration test
+lands one record through a gateway and through a pipeline into one Postgres
+and asserts `count(DISTINCT brevis_ingestion_id) = 1` across the two rows.
+
+`LandingProvider` is `"auto_table"` and **must not be "corrected"** to match
+whatever calls it: it is a format namespace, not a feature name, and every id
+already written is built from that string. A mutation renaming it passed the
+gateway's entire suite, because those tests compare the constant against
+itself. `TestTheLandingIDIsFrozen` pins two literal UUIDs against exactly
+that.
+
+### Three columns are `NULL` from a pipeline, and that is the honest answer
+
+`brevis_stream` and `brevis_gateway` name things a pipeline does not have, so
+`brevis_gateway IS NULL` is how a pipeline's row is told from a gateway's.
+
+`brevis_received_bytes` is `NULL` too, and that one was nearly a lie. It was
+filled with the record's JSON length until it became clear the gateway's
+counts what arrived **on the wire, envelope included** — around 30% larger for
+a typical event. One column with two meanings makes a sum across rows from
+both paths wrong by whatever share came from which. `length(data)` answers the
+pipeline's version exactly.
+
+`brevis_loaded_at` is **absent from the row**, not `NULL` in it: an explicit
+NULL overrides the column's `DEFAULT`, and the difference between
+`received_at` and `loaded_at` is the end-to-end latency only if the
+destination sets the second one. The first version sent `nil` and only the
+integration test caught it — the unit test asserted on the map the
+transformer builds, and a map is not a table.
+
+### The table name is written twice, and nothing checks it
+
+`Landing` takes the table because it is the id's second slot; the destination
+takes it because that is where the rows go. The `Writer` knows its own table
+but exposes it only through `Describe`, which is documented as the name for
+logs and errors — an id built on that would tie every id already written to a
+log string. Write the name once, in a constant, and pass it to both. Get them
+out of step and the rows land correctly with ids minted for a table nobody
+wrote to: they look fine, and they do not match the gateway's.
+
+### Also
+
+- The reserved `brevis_` prefix is **refused** rather than overwritten, which
+  is the opposite of the gateway and for a stated reason: there the producer
+  is a stranger who must not forge a control field, here it is the pipeline's
+  own author, and replacing what they wrote would hide their mistake instead
+  of naming it.
+- `Metastore` now states that implementations must be safe for concurrent use
+  of the same method. It always required safety across methods; this is the
+  rest of that sentence.
+- Weight is unchanged: 222 packages for `postgres`, 197 for `mysql`, 462 for
+  `bigquery`. The code that travelled is standard library only.
+
+---
+
+## [0.69.0] — 2026-09-26
+
+### Added: `Evolve` reaches BigQuery, which had been ignoring it
+
+`LoadConfig.Evolve` existed for Postgres and MySQL. This destination never read
+it, and `auto_table` declared `EvolveAdditive` on all three — so the gateway
+promised a table grows a column and BigQuery failed the load at the row:
+
+```
+JSON parsing error in row starting at position 0:
+No such field: brevis_received_bytes
+```
+
+Found by a consumer upgrading `gateway 0.10.0 → 0.11.0`: 20,250 events
+accepted, **zero rows**, 27 MiB in the dead letter. The eighth fixed column the
+gateway added was in the declaration and not in their tables. [Issue #34].
+
+`EvolveAdditive` now adds the columns the declaration has and the table does
+not, before the load job is submitted. Two things about how:
+
+**Adds only, by name.** It does not widen a type. A widening on BigQuery is a
+different operation with rules per type pair, and a column present under
+another type is what `checkDeclaredAgainstTable` already refuses, naming both
+sides.
+
+**Added columns land NULLABLE whatever the declaration says.** BigQuery refuses
+a REQUIRED column added to a table that has rows, and it is right to — the rows
+already there have no value for it.
+
+The update carries the table's ETag, so N replicas meeting the same new field
+resolve the way everything else in this design does: one wins, the others get a
+412 and are retried by the pipe, by which time there is nothing to do.
+
+`EvolveNone` is still the zero value, so a caller who never set this keeps the
+old behaviour exactly.
+
+Tested against floci, which is what the emulator was added for last week — and
+it earned it on the first real bug.
+
+[Issue #34]: https://github.com/AreteAcademy/brevis/issues/34
+
+---
+
 ## [0.68.0] — 2026-09-26
 
 ### Added: `ThresholdBytesForGCS`, because the inline/GCS decision was a row count

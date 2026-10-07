@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,7 +23,30 @@ import (
 // the dead letter: a send that has been trying for a minute is a sink that is
 // down, and holding the events in memory while it is down is how memory becomes
 // the outage.
-const sendTimeout = 60 * time.Second
+//
+// A var and not a const for one reason: the test that proves the dead letter
+// does NOT inherit this deadline would otherwise have to wait a minute to run.
+// Nothing changes it outside a test.
+var sendTimeout = 60 * time.Second
+
+// deadLetterTimeout bounds the write that parks what a sink refused.
+//
+// ITS OWN, AND NEVER THE SEND'S. Issue #42: `send` narrowed its context to
+// sendTimeout and handed that context to `bury`, so a batch that failed
+// BECAUSE the 60 s ran out reached the dead letter with nothing left and was
+// refused instantly. 41 events were neither loaded nor parked, and the dead
+// letter is the last place an event can survive.
+//
+// Bounded rather than unlimited, and that is the other half: a dead letter
+// that hangs holds the drain open past the pod's grace period, and then
+// SIGKILL takes the write anyway -- the same loss by another road. Thirty
+// seconds is long for an object write and short against any grace period
+// worth setting.
+//
+// A var for the reason sendTimeout is: the test that proves the bound exists
+// would otherwise sit here for thirty seconds. Nothing changes it outside a
+// test.
+var deadLetterTimeout = 30 * time.Second
 
 // startupTimeout bounds building the sinks. Thirty seconds is long for a
 // credential fetch and short against any readiness probe worth having.
@@ -162,12 +186,54 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 			}
 		}
 
-		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics)
-		// Resolved once, at startup: a type assertion per event to discover
-		// something that cannot change is work done 500 times a second for an
-		// answer fixed at build time.
-		p.admit, _ = sink.(Admitter)
-		p.measure, _ = sink.(Measurer)
+		// The stream's metastore, resolved by the same cache the sink used, so
+		// the router and the pipe share one connection rather than opening two
+		// to say the same thing. Nil only if opening it failed, which build
+		// already refused above.
+		meta := o.meta[st.Name]
+
+		p := newPipe(st, hook, sink, dead, int64(cfg.Listen.MaxBody), s.metrics, meta)
+		p.gateway = cfg.Name
+
+		// The quietest possible misconfiguration, said once, where somebody
+		// is watching.
+		//
+		// A claim on `memory` succeeds every time -- each replica wins its own
+		// -- so every flush looks right and the load jobs multiply by replica
+		// count exactly as they did before. The window counter would read
+		// `won` forever and never `yielded`, which looks like no contention
+		// rather than no coordination.
+		//
+		// Once per stream at boot and not per flush: a line per window is a
+		// log nobody reads and a cost per batch.
+		if st.Buffer.Flush.Claim && st.Sink.Metastore.Type == MetastoreMemory {
+			slog.Warn("the flush claim is on and this stream's metastore is "+
+				"`memory`, which coordinates nothing: every replica wins its own "+
+				"claim, so the load jobs still multiply by replica count. Point "+
+				"it at redis or memcached",
+				"stream", st.Name, "metastore", MetastoreMemory)
+		}
+
+		// The load-job budget, said once where somebody is watching.
+		//
+		// `check` already refuses a window too small to hold the quota -- see
+		// BigQueryFlushFloor -- and this is the SAME arithmetic said when the
+		// config passes. They are not the same fact: the smallest window the
+		// gateway permits already spends 1,440 of the 1,500 allowed, so
+		// "it started" is a long way from "it fits".
+		//
+		// Only where a limit is known. A cadence printed for Postgres is a
+		// number with nothing to compare it against, and a boot log full of
+		// those is one nobody reads.
+		//
+		// Once per stream at boot and not per flush, for the reason above it.
+		if every := st.Buffer.Flush.Every; every > 0 && st.Sink.usesBigQuery() {
+			slog.Info("a table with traffic in every window costs one load job per "+
+				"window, and `flush.records` or `flush.size` firing only adds to it",
+				"stream", st.Name, "every", every,
+				"load_jobs_per_table_per_day", int(24*time.Hour/every),
+				"bigquery_allows", BigQueryDailyLoadJobs)
+		}
 		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
@@ -195,7 +261,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		out := make([]gauge, 0, len(pipes)*2)
 		for _, p := range pipes {
 			p.mu.Lock()
-			buffered := len(p.batch)
+			buffered := p.held
 			p.mu.Unlock()
 			out = append(out,
 				gauge{name: MetricBuffer, labels: []string{p.stream.Name}, value: int64(buffered)},
@@ -336,29 +402,213 @@ type pipe struct {
 	// incident.
 	pending atomic.Int64
 	metrics *Metrics
+
+	// meta is the stream's metastore, and the pipe holds it because the flush
+	// claim is taken on the TIMER path -- issue #36. Nil means nothing
+	// coordinates, which is also what `memory` does: every replica wins its
+	// own claim.
+	meta Metastore
+
+	// gateway is cfg.Name, and it is in the claim's key.
+	//
+	// Without it two DIFFERENT deployments with a stream both called `tables`,
+	// sharing one Redis, would coordinate with each other -- each halving the
+	// other's flushes for no reason, or for the wrong one. Replicas of one
+	// deployment share it because they share the file it came from.
+	gateway string
+
 	big     *oversize
 	admit   Admitter
 	measure Measurer
 
-	mu    sync.Mutex
-	batch []sdk.Envelope
-	// sizes is the received byte count of each event in `batch`, parallel to
-	// it, and `bytes` is their sum kept as they arrive.
+	mu sync.Mutex
+
+	// buckets is the buffer, split by the sink's ROUTING KEY -- the table, for
+	// auto_table -- and keyed by "" when the sink has none.
 	//
-	// Two fields rather than a sum recomputed per request: the ceiling is
-	// checked on every enqueue, and walking the buffer each time would make an
-	// O(1) admission O(n) in what is already held.
-	sizes   []int64
-	bytes   int64
+	// The trigger has to measure what the destination carries. A buffer per
+	// stream with a sink that routes per table means a producer filling the
+	// buffer sets the flush frequency, and every quiet table in that stream
+	// gets a load job each time, carrying whatever handful of rows it had:
+	// 34x the load jobs for the same data, measured by the consumer who
+	// reported issue #38. `flush.size: 8MiB` then means 8 MiB of the STREAM,
+	// which is a quantity no destination ever receives.
+	//
+	// The key arrives free. Measurer already returns it once per event, at
+	// admission, and the pipe used to spend it on a metric and drop it.
+	buckets map[string]*bucket
+
+	// held and bytes are the totals ACROSS buckets, because the ceiling is
+	// the process's and not the key's. `max_bytes: 64MiB` times 94 tables is
+	// 6 GB: split the trigger, never the ceiling.
+	//
+	// Kept as they arrive rather than summed per request: the ceiling is
+	// checked on every enqueue, and walking the buckets each time would make
+	// an O(1) admission O(n) in what is already held.
+	held  int
+	bytes int64
+
+	// gen numbers the enqueues, and pairs with bucket.mark.
+	gen uint64
+
+	// now is a field so a test can move the clock. The router has one for the
+	// same reason.
+	now func() time.Time
+
 	timer   *time.Timer
 	closing bool
 }
 
-func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics) *pipe {
+// bucket is one routing key's share of the buffer.
+//
+// `oldest` is when the FIRST event of THIS bucket arrived, and it is what
+// both the target and `flush.max_age` are measured from -- the first and not
+// the newest, because the wait belongs to the event that has waited longest.
+type bucket struct {
+	batch  []sdk.Envelope
+	sizes  []int64
+	bytes  int64
+	oldest time.Time
+
+	// mark is the enqueue that last touched this bucket, so collecting the
+	// keys one request filled costs a comparison per event rather than a
+	// scan of the ones already collected.
+	//
+	// By construction rather than by measurement: the scan was O(tables in
+	// this body), which grows with exactly the thing this feature exists to
+	// support, and the machine this was written on could not resolve the
+	// difference -- its run-to-run spread on the same binary is wider than
+	// the effect.
+	mark uint64
+}
+
+// deadline is how long the timer should wait: the earlier of the target and
+// what the ceiling has left.
+//
+// With no `max_age`, or with nothing held, it is `every` -- today's behaviour
+// exactly. With a ceiling and an aging batch it shrinks, and once the ceiling
+// has passed it is zero, which fires immediately.
+//
+// Until the flush claim lands (issue #36) nothing defers the target, so `every`
+// always wins and this is arithmetic nobody reaches. It is pinned now because
+// slice 3 consults it and a deadline computed wrong there holds data.
+func (p *pipe) deadline(b *bucket) time.Duration {
+	every := p.stream.Buffer.Flush.Every
+	now := p.clock()
+
+	// The target is measured from THIS bucket's oldest event, which is what
+	// the single batch's timer used to mean when there was one batch. A
+	// bucket that started later waits later, which is the whole point: a
+	// quiet table must not leave because a busy one filled up.
+	wait := every
+	if b != nil && !b.oldest.IsZero() {
+		wait = b.oldest.Add(every).Sub(now)
+	}
+
+	// With a claim, wake on the WINDOW BOUNDARY rather than `every` after
+	// arming. The claim's key is wall-clock; without this the alarm is not,
+	// so each replica counts `every` from its own arm and they contest
+	// different windows.
+	//
+	// Measured on two replicas before this existed: 8 load jobs became 6, not
+	// the 4 the window count says -- r1 fired at :40 :45 :50 :00 and r2 at
+	// :45 :55, sharing one window out of four. Aligned, every replica wakes at
+	// the same instant and asks for the same key, which is the only way
+	// exactly one wins.
+	if p.stream.Buffer.Flush.Claim && every > 0 {
+		wait = now.Truncate(every).Add(every).Sub(now)
+	}
+
+	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
+	if ceiling <= 0 || b == nil || b.oldest.IsZero() {
+		if wait < 0 {
+			return 0
+		}
+		return wait
+	}
+	left := b.oldest.Add(ceiling).Sub(now)
+	if left < wait {
+		wait = left
+	}
+	if wait < 0 {
+		return 0
+	}
+	return wait
+}
+
+// next is the earliest deadline across the buckets: ONE timer, not one per
+// key. A bucket created now can only be later than one already waiting --
+// the target is measured from each bucket's oldest event, and a new bucket's
+// is the newest -- so the alarm the earliest bucket set is still the right
+// one, and arm() can keep being a no-op while a timer runs.
+func (p *pipe) next() time.Duration {
+	d := time.Duration(-1)
+	for _, b := range p.buckets {
+		if w := p.deadline(b); d < 0 || w < d {
+			d = w
+		}
+	}
+	if d < 0 {
+		return p.deadline(nil)
+	}
+	return d
+}
+
+// due says this bucket has waited what it was promised.
+//
+// Not `deadline(b) <= 0`: the two answer different questions. deadline says
+// WHEN TO WAKE, and with a claim that is the window boundary -- at which
+// instant it reads as a whole period away, so a dueness built on it would
+// wake every window and flush nothing.
+//
+// With a claim the WINDOW is the unit. The claim buys one flush per window
+// for the stream, and everything held goes in it, which is what it did
+// before buckets existed. Without one, a bucket is due when it has waited
+// `every` since its own oldest event -- the same thing the single batch's
+// timer meant when it was armed once, on going from empty to held.
+func (p *pipe) due(b *bucket) bool {
+	if p.stream.Buffer.Flush.Claim {
+		return true
+	}
+	if b == nil || b.oldest.IsZero() {
+		return true
+	}
+	now := p.clock()
+	every := p.stream.Buffer.Flush.Every
+	if every <= 0 || !b.oldest.Add(every).After(now) {
+		return true
+	}
+	// And the ceiling, which `deadline` also honours: a wake it brought
+	// forward has to find something due, or the timer rings for nothing.
+	ceiling := time.Duration(p.stream.Buffer.Flush.MaxAge)
+	return ceiling > 0 && !b.oldest.Add(ceiling).After(now)
+}
+
+// clock is time.Now unless a test said otherwise.
+func (p *pipe) clock() time.Time {
+	if p.now != nil {
+		return p.now()
+	}
+	return time.Now()
+}
+
+func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
+	meta Metastore,
+) *pipe {
 	p := &pipe{
 		stream: st, hook: hook, sink: sink, dead: dead, maxBody: maxBody,
-		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m,
+		queue: make(chan []sdk.Envelope, st.Buffer.Queue), metrics: m, meta: meta,
+		buckets: map[string]*bucket{},
 	}
+	// Resolved once, here, where the sink arrives: a type assertion per event
+	// to discover something that cannot change is work done 500 times a
+	// second for an answer fixed at build time.
+	//
+	// In the constructor and not after it, because a pipe missing these is a
+	// pipe whose buffer has no routing key -- one bucket where there should
+	// be ninety-four -- and nothing about it looks wrong.
+	p.admit, _ = sink.(Admitter)
+	p.measure, _ = sink.(Measurer)
 	p.wg.Add(st.Buffer.Workers)
 	for range st.Buffer.Workers {
 		go func() {
@@ -398,9 +648,10 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accepted, sizes, rejected, archived := p.prepare(events)
+	got := p.prepare(events)
+	accepted, rejected, archived := got.events, got.rejected, got.archived
 	if len(accepted) > 0 {
-		if err := p.enqueue(accepted, sizes); err != nil {
+		if err := p.enqueue(got); err != nil {
 			p.metrics.count(p.metrics.saturated, 1, p.stream.Name)
 			// 503 and not 202. The buffer is at its ceiling, so accepting
 			// these would mean holding events with nowhere to put them --
@@ -444,9 +695,31 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // The third return is how many were archived whole and dropped from the
 // stream. Separate from `rejected` because it is not a refusal -- the event was
 // kept -- and separate from `accepted` because it did not go into the stream.
-func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int) {
+// prepared is what survived, and where each survivor belongs.
+//
+// A struct and not five returns: `keys` and `rejected` are both []string and
+// adjacent, which is the shape that gets swapped one day and compiles.
+type prepared struct {
+	events   []sdk.Envelope
+	sizes    []int64
+	keys     []string
+	rejected []string
+	archived int
+}
+
+func (p *pipe) prepare(events []arrival) prepared {
 	out := make([]sdk.Envelope, 0, len(events))
 	sizes := make([]int64, 0, len(events))
+
+	// Only where there IS a key. A sink without a Measurer routes everywhere
+	// the same, so a slice of empty strings would be an allocation and a
+	// write per event to say nothing -- and most streams have one
+	// destination. An empty `keys` means one bucket, which is what those
+	// streams had before buckets existed.
+	var keys []string
+	if p.measure != nil {
+		keys = make([]string, 0, len(events))
+	}
 	var rejected []string
 	var archived int
 
@@ -488,8 +761,13 @@ func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int
 		// has reduced it -- so this is where the arrival size is stamped. It
 		// overwrites: a producer who sends this field must not be able to
 		// report their own volume.
+		// The key the volume is attributed to is also the key the buffer
+		// groups by: the sink owns the routing either way, and asking twice
+		// would be two answers to one question.
+		key := ""
 		if p.measure != nil {
-			p.metrics.ingested(p.stream.Name, p.measure.Measure(e, a.bytes), a.bytes)
+			key = p.measure.Measure(e, a.bytes)
+			p.metrics.ingested(p.stream.Name, key, a.bytes)
 		}
 
 		if p.admit != nil {
@@ -508,8 +786,11 @@ func (p *pipe) prepare(events []arrival) ([]sdk.Envelope, []int64, []string, int
 		}
 		out = append(out, env)
 		sizes = append(sizes, int64(a.bytes))
+		if keys != nil {
+			keys = append(keys, key)
+		}
 	}
-	return out, sizes, rejected, archived
+	return prepared{events: out, sizes: sizes, keys: keys, rejected: rejected, archived: archived}
 }
 
 // archiveIfLarge writes an oversized event somewhere whole and returns what
@@ -619,7 +900,8 @@ func (p *pipe) identify(e map[string]any) (sdk.Envelope, string, error) {
 // the pool is busy that send FAILS rather than waiting -- the batch stays
 // buffered and leaves with the next request or the timer. The request goroutine
 // leaves here in constant time either way.
-func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
+func (p *pipe) enqueue(in prepared) error {
+	envs, sizes, keys := in.events, in.sizes, in.keys
 	var bytes int64
 	for _, n := range sizes {
 		bytes += n
@@ -633,7 +915,7 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 		// way out and an event accepted now has no drain left to leave by.
 		return errSaturated
 	}
-	if len(p.batch)+len(envs) > p.stream.Buffer.MaxRecords {
+	if p.held+len(envs) > p.stream.Buffer.MaxRecords {
 		return errSaturated
 	}
 	// The other ceiling, and the one that actually stops an OOM. A count
@@ -642,23 +924,64 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 	if max := int64(p.stream.Buffer.MaxBytes); max > 0 && p.bytes+bytes > max {
 		return errSaturated
 	}
-	p.batch = append(p.batch, envs...)
-	p.sizes = append(p.sizes, sizes...)
+	p.gen++
+	touched := make([]string, 0, 4)
+
+	// last is the bucket the previous event went to. A request carries rows
+	// for one table far more often than not -- and a sink with no routing key
+	// carries "" for all of them -- so the common body costs ONE map lookup
+	// rather than one per event.
+	var last *bucket
+	lastKey := ""
+	haveLast := false
+
+	for i, env := range envs {
+		key := ""
+		if keys != nil {
+			key = keys[i]
+		}
+		b := last
+		if !haveLast || key != lastKey {
+			b = p.buckets[key]
+			if b == nil {
+				b = &bucket{}
+				p.buckets[key] = b
+				// The bucket goes from absent to held, so this is the moment
+				// its wait starts counting from.
+				b.oldest = p.clock()
+			}
+			last, lastKey, haveLast = b, key, true
+		}
+		if b.mark != p.gen {
+			b.mark = p.gen
+			touched = append(touched, key)
+		}
+		b.batch = append(b.batch, env)
+		b.sizes = append(b.sizes, sizes[i])
+		b.bytes += sizes[i]
+	}
+	p.held += len(envs)
 	p.bytes += bytes
 
-	// Whichever ceiling is crossed first. Records before size only because one
-	// of them has to be asked first; they are equals, and `trigger` on the
-	// metric says which one fired so an operator can see it rather than guess.
-	if len(p.batch) >= p.stream.Buffer.Flush.Records {
-		p.handoff(TriggerRecords)
-		return nil
+	// Sorted, so a request that fills two buckets hands them off in the same
+	// order every time. Two runs that differ only in map order are two runs
+	// nobody can compare.
+	sort.Strings(touched)
+	for _, key := range touched {
+		b := p.buckets[key]
+		// Whichever trigger is crossed first. Records before size only because
+		// one of them has to be asked first; they are equals, and `trigger` on
+		// the metric says which one fired so an operator can see it rather
+		// than guess.
+		switch {
+		case len(b.batch) >= p.stream.Buffer.Flush.Records:
+			p.handoff(key, TriggerRecords)
+		case int64(p.stream.Buffer.Flush.Size) > 0 && b.bytes >= int64(p.stream.Buffer.Flush.Size):
+			p.handoff(key, TriggerSize)
+		}
 	}
-	if size := int64(p.stream.Buffer.Flush.Size); size > 0 && p.bytes >= size {
-		p.handoff(TriggerSize)
-		return nil
-	}
-	// A partial batch goes anyway when it gets old, so a stream at one event a
-	// minute is not a stream that never lands.
+	// Whatever is still held goes anyway when it gets old, so a table at one
+	// event a minute is not a table that never lands.
 	p.arm()
 	return nil
 }
@@ -679,26 +1002,42 @@ func (p *pipe) enqueue(envs []sdk.Envelope, sizes []int64) error {
 // routinely means the 60-second floor is being bypassed and the daily load-job
 // quota is going with it. That is a number on a dashboard, not a line in a
 // log.
-func (p *pipe) handoff(why string) {
+func (p *pipe) handoff(key, why string) {
 	if p.closing {
 		return
 	}
-	ready, sizes := p.take()
+	b := p.take(key)
+	if b == nil || len(b.batch) == 0 {
+		return
+	}
 	select {
-	case p.queue <- ready:
-		p.pending.Add(int64(len(ready)))
+	case p.queue <- b.batch:
+		p.pending.Add(int64(len(b.batch)))
 		p.metrics.count(p.metrics.flushes, 1, p.stream.Name, why)
+		// And again against the table, where the quota lives. Here and not
+		// beside the stream counter's declaration, because only the handoff
+		// knows the key actually left.
+		p.metrics.flushed(p.stream.Name, key, why)
 	default:
-		// The pool is busy and the batch goes back, at the FRONT: the order
-		// events arrived in is the order they leave in. Not counted as a
-		// flush -- nothing flushed, and counting here would report one per
-		// attempt on a stream whose sink is behind.
-		p.batch = append(ready, p.batch...)
-		p.sizes = append(sizes, p.sizes...)
-		p.bytes = 0
-		for _, n := range p.sizes {
-			p.bytes += n
+		// The pool is busy and the batch goes back, at the FRONT of ITS OWN
+		// bucket: the order events arrived in is the order they leave in, per
+		// key. Not counted as a flush -- nothing flushed, and counting here
+		// would report one per attempt on a stream whose sink is behind.
+		if cur := p.buckets[key]; cur != nil {
+			cur.batch = append(b.batch, cur.batch...)
+			cur.sizes = append(b.sizes, cur.sizes...)
+			cur.bytes += b.bytes
+			// What came back is older than anything that arrived meanwhile,
+			// so the wait counts from when IT started. Losing this is how a
+			// batch the pool keeps refusing resets its own clock forever.
+			if cur.oldest.IsZero() || b.oldest.Before(cur.oldest) {
+				cur.oldest = b.oldest
+			}
+		} else {
+			p.buckets[key] = b
 		}
+		p.held += len(b.batch)
+		p.bytes += b.bytes
 		p.arm()
 	}
 }
@@ -706,9 +1045,16 @@ func (p *pipe) handoff(why string) {
 // arm starts the flush timer if it is not already running. The caller holds
 // the lock.
 func (p *pipe) arm() {
-	if p.timer == nil && !p.closing {
-		p.timer = time.AfterFunc(p.stream.Buffer.Flush.Every, p.flush)
+	if p.timer != nil || p.closing || len(p.buckets) == 0 {
+		return
 	}
+	d := p.next()
+	// A floor, so a deadline that has already passed by a hair cannot become
+	// a timer that re-arms at zero and spins.
+	if d < time.Millisecond {
+		d = time.Millisecond
+	}
+	p.timer = time.AfterFunc(d, p.flush)
 }
 
 // take empties the batch. The caller holds the lock.
@@ -717,14 +1063,18 @@ func (p *pipe) arm() {
 // The sizes travel so handoff can put BOTH back when the pool is busy. Without
 // them the byte ceiling would silently forget what it is already holding,
 // which is the one ceiling whose job is to stop an OOM.
-func (p *pipe) take() ([]sdk.Envelope, []int64) {
-	ready, sizes := p.batch, p.sizes
-	p.batch, p.sizes, p.bytes = nil, nil, 0
-	if p.timer != nil {
-		p.timer.Stop()
-		p.timer = nil
+func (p *pipe) take(key string) *bucket {
+	b := p.buckets[key]
+	if b == nil {
+		return nil
 	}
-	return ready, sizes
+	delete(p.buckets, key)
+	p.held -= len(b.batch)
+	p.bytes -= b.bytes
+	// The timer is NOT stopped here. Other buckets are still waiting on it,
+	// and the one that set it is the earliest -- taking a later one changes
+	// nothing about when the alarm should ring.
+	return b
 }
 
 // flush is the timer firing: a partial batch that has waited long enough. It
@@ -733,10 +1083,230 @@ func (p *pipe) flush() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.timer = nil
-	if len(p.batch) > 0 {
-		p.handoff(TriggerTime)
+	if len(p.buckets) == 0 {
+		return
 	}
+	// Only the buckets that have actually waited. The alarm was set by the
+	// earliest one; the others are still inside their own target and go on
+	// filling, which is the difference between a table's cadence and its
+	// neighbour's.
+	//
+	// Sorted, so a window that takes several produces the same sequence every
+	// time -- and so the claim asks for them in one order across replicas.
+	due := make([]string, 0, len(p.buckets))
+	for key, b := range p.buckets {
+		if p.due(b) {
+			due = append(due, key)
+		}
+	}
+	sort.Strings(due)
+
+	// Whoever lost keeps filling and comes back: arm() recomputes the
+	// deadline against the ceiling, so a bucket that keeps losing gets a
+	// shorter wait each time until max_age takes it.
+	for _, key := range p.winners(due) {
+		p.handoff(key, TriggerTime)
+	}
+	p.arm()
 }
+
+// winsTheWindow decides whether THIS replica flushes the current window.
+//
+// The window is `now` truncated to `every`, so every replica computes the same
+// one without a shared clock -- a wall-clock boundary rather than "one minute
+// since I started". The claim's TTL is `every` for the same reason: exactly one
+// flush per window, and a winner that dies before delivering costs that window
+// and no more.
+//
+// Three ways to win without asking:
+//
+//   - the claim is off, which is the default and today's behaviour;
+//   - there is no metastore, so there is nobody to ask;
+//   - the CEILING has closed. `max_age` is a promise and a promise that can be
+//     deferred is not one. deadline() returning zero means the oldest event has
+//     waited its full ceiling, and at that point this batch leaves whatever
+//     anybody else is doing.
+//
+// And one way to win by failing: an unreachable metastore behaves as if the
+// claim were ours, which is the direction claimDDL already chose. Losing
+// coordination costs load jobs; refusing to flush holds data, and the buffer
+// exists to not do that.
+func (p *pipe) winners(due []string) []string {
+	if !p.stream.Buffer.Flush.Claim || p.meta == nil || len(due) == 0 {
+		return due
+	}
+
+	every := p.stream.Buffer.Flush.Every
+	window := p.clock().UTC().Truncate(every).Format(time.RFC3339)
+
+	won := make([]string, 0, len(due))
+	ask := make([]string, 0, len(due))
+	keys := make([]string, 0, len(due))
+	for _, key := range due {
+		// The ceiling has closed for this bucket, so it leaves whatever
+		// anybody else is doing. `max_age` is a promise, and a promise that
+		// can be deferred is not one.
+		if p.deadline(p.buckets[key]) <= 0 {
+			p.metrics.count(p.metrics.windows, 1, p.stream.Name, CeilingWindow)
+			won = append(won, key)
+			continue
+		}
+		ask = append(ask, key)
+		keys = append(keys, p.claimKey(key, window))
+	}
+	if len(ask) == 0 {
+		return won
+	}
+
+	// ONE call for all of them where the backend can. Slice 0 measured 94
+	// sequential claims at 2.589s of held mutex against a Redis at 25ms RTT,
+	// and admission's p99 tracked that 1:1 -- `enqueue` takes `p.mu`
+	// unconditionally, so every request arriving in the window pays the whole
+	// of it. Pipelined the same 94 cost 29.8ms, which is what ONE claim costs
+	// today.
+	ctx, cancel := context.WithTimeout(context.Background(), ClaimTimeout)
+	defer cancel()
+	got, err := claimAll(ctx, p.meta, keys, every)
+	if err != nil {
+		// Coordination is off and every flush still looks like a flush, so
+		// this counter is the only thing that says so. Failing OPEN, per key,
+		// for the reason it always did: losing coordination costs load jobs,
+		// and refusing to flush holds events already answered 202.
+		for range ask {
+			p.metrics.count(p.metrics.windows, 1, p.stream.Name, UnreachableWindow)
+		}
+		return append(won, ask...)
+	}
+	for i, key := range ask {
+		outcome := YieldedWindow
+		if got[i] {
+			outcome = WonWindow
+			won = append(won, key)
+		}
+		p.metrics.count(p.metrics.windows, 1, p.stream.Name, outcome)
+	}
+	return won
+}
+
+// claimKey names the window ONE bucket is contesting.
+//
+// The routing key is in it, because without it two tables on one stream
+// contest the same window: whichever reaches the boundary first takes it and
+// the other waits, so one table's cadence is another's -- which is issue #38
+// again, one level below where it was found. Two replicas behind a load
+// balancer do not hold the same tables, and with N replicas a table can wait
+// N windows for a claim it never wanted.
+//
+// A stream with no routing key keeps the key it had, exactly: a deployment
+// upgrading into this must not find its replicas contesting a window that
+// moved.
+func (p *pipe) claimKey(key, window string) string {
+	base := "brevis:gw:" + p.gateway + ":" + p.stream.Name
+	if key != "" {
+		base += ":" + key
+	}
+	return base + ":flush:" + window
+}
+
+// BulkClaimer is a metastore that can claim several keys in ONE round trip.
+//
+// Optional, like Admitter and Measurer, and satisfied by structural typing: a
+// store without it is asked one key at a time, which is what every store did
+// before the trigger had keys.
+//
+// It is not a convenience. The claim runs under `p.mu`, so its duration is
+// admission's tail for every request that arrives during it -- and the loop
+// below is the difference between 29.8ms and 2.589s on a Redis at 25ms RTT.
+type BulkClaimer interface {
+	ClaimMany(ctx context.Context, keys []string, ttl time.Duration) ([]bool, error)
+}
+
+func claimAll(ctx context.Context, m Metastore, keys []string, ttl time.Duration) ([]bool, error) {
+	if bulk, ok := m.(BulkClaimer); ok {
+		got, err := bulk.ClaimMany(ctx, keys, ttl)
+		if err != nil {
+			return nil, err
+		}
+		if len(got) != len(keys) {
+			return nil, fmt.Errorf("the metastore answered %d claims for %d keys",
+				len(got), len(keys))
+		}
+		return got, nil
+	}
+	// One key is the common case -- a stream with one destination, every
+	// window -- and it must not pay for machinery it cannot use.
+	if len(keys) == 1 {
+		got, err := m.Claim(ctx, keys[0], ttl)
+		if err != nil {
+			return nil, err
+		}
+		return []bool{got}, nil
+	}
+
+	// In parallel, because sequential was the whole objection to a per-key
+	// claim: 94 claims one at a time cost 2.589s of held mutex against a
+	// Redis degraded to 25ms RTT, and admission's p99 tracked that exactly.
+	// A backend with no bulk primitive cannot make it one round trip, but it
+	// can stop making it ninety-four.
+	//
+	// Bounded, because a stream at 10,000 tables must not open 10,000
+	// connections to find out who won.
+	out := make([]bool, len(keys))
+	errs := make([]error, len(keys))
+	sem := make(chan struct{}, claimFanout)
+	var wg sync.WaitGroup
+	for i, key := range keys {
+		sem <- struct{}{}
+		wg.Add(1)
+		go func(i int, key string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			// Distinct indices, so the slices need no lock and the answers
+			// stay in the order the keys came in -- which is the property
+			// that keeps a table from being handed a window another table
+			// won.
+			out[i], errs[i] = m.Claim(ctx, key, ttl)
+		}(i, key)
+	}
+	wg.Wait()
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// claimFanout bounds how many claims run at once in the fallback.
+//
+// Thirty-two, measured against a real memcached behind a latency proxy, for
+// the 94 tables the case in issue #38 has:
+//
+//	added RTT   94 sequential   94 at this bound
+//	0            16 ms            5.3 ms
+//	5 ms        634 ms           29.4 ms
+//	25 ms         2.577 s        89.4 ms
+//
+// Three waves, which at 25ms leaves the 500ms budget four fifths unspent and
+// still fits at 100ms. Sixteen would be six waves and would not. It stays
+// under the memcached store's idle-connection ceiling of 64, so the
+// connections one window opens are the ones the next window finds.
+const claimFanout = 32
+
+// ClaimTimeout bounds the call the timer path makes to the metastore.
+//
+// Short, because this runs while the pipe's lock is held: a backend that hangs
+// would stop every request for this stream, which is a far worse outcome than
+// the duplicate load job the claim exists to avoid.
+//
+// Exported because a backend whose client takes no context cannot honour it
+// as a context and has to honour it as a socket deadline instead. Memcached
+// is that backend: `gomemcache.Add` has no ctx parameter, so before this
+// number reached the driver the 500ms was decoration -- measured at a 2s
+// backend, a Claim with a 500ms context returned in 2s, with the pipe's mutex
+// held for all of it. One number, in one place, whichever way a driver has to
+// obey it.
+const ClaimTimeout = 500 * time.Millisecond
 
 // send delivers a batch, retrying, and gives up into the dead letter. It
 // returns what the sink last said, which is nil when the batch landed and the
@@ -746,8 +1316,11 @@ func (p *pipe) flush() {
 // time it is delivered, and a batch cancelled because one client disconnected
 // would lose the events of every OTHER client in it. On shutdown it is the
 // drain's deadline, which is a window the operator set.
-func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
-	ctx, cancel := context.WithTimeout(ctx, sendTimeout)
+func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
+	// `parent` is kept, and that is the whole of issue #42's first finding:
+	// `bury` below runs on it rather than on the narrowed one, which is
+	// exhausted exactly when the dead letter is needed.
+	ctx, cancel := context.WithTimeout(parent, sendTimeout)
 	defer cancel()
 
 	r := p.stream.Retry
@@ -788,7 +1361,7 @@ func (p *pipe) send(ctx context.Context, batch []sdk.Envelope) error {
 giveUp:
 	p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 	p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeBuried)
-	p.bury(ctx, batch, err)
+	p.bury(parent, batch, err)
 	return err
 }
 
@@ -801,7 +1374,12 @@ giveUp:
 // A failure HERE is the end of the line, and it says so at ERROR with the count:
 // there is nowhere further to put them, and a silent loss at the last step would
 // be the exact failure the dead letter exists to prevent.
-func (p *pipe) bury(ctx context.Context, batch []sdk.Envelope, cause error) {
+func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
+	// Its own deadline, derived from the caller's rather than from the send
+	// that just failed. See deadLetterTimeout.
+	ctx, cancel := context.WithTimeout(parent, deadLetterTimeout)
+	defer cancel()
+
 	reason := cause.Error()
 	buried := make([]sdk.Envelope, 0, len(batch))
 	for _, e := range batch {
@@ -867,12 +1445,30 @@ func backoff(r Retry, attempt int) time.Duration {
 func (p *pipe) close(ctx context.Context) error {
 	p.mu.Lock()
 	p.closing = true
-	// take stops the timer, so no flush is armed past this point -- and one
-	// already running is blocked on this lock and will find closing set.
+	// The timer is stopped below, so no flush is armed past this point -- and
+	// one already running is blocked on this lock and will find closing set.
 	//
 	// The sizes go nowhere: the buffer is finished, and nothing will be
 	// admitted against the ceiling again.
-	ready, _ := p.take()
+	// One batch of everything, sorted by key so a drain is reproducible. The
+	// sink re-groups it -- `router.Write` does exactly that -- and shutdown
+	// is about not losing events, not about cadence: splitting it here would
+	// buy nothing and cost a load job per bucket on the way out.
+	keys := make([]string, 0, len(p.buckets))
+	for key := range p.buckets {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var ready []sdk.Envelope
+	for _, key := range keys {
+		if b := p.take(key); b != nil {
+			ready = append(ready, b.batch...)
+		}
+	}
+	if p.timer != nil {
+		p.timer.Stop()
+		p.timer = nil
+	}
 	p.mu.Unlock()
 
 	// Nothing else can send on the queue now: closing is set, and every send

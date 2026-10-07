@@ -14,6 +14,227 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.16.1] — 2026-10-06
+
+Three things that cannot change the behaviour of a workflow you already have.
+
+### Added: the agent answers `GET /health`, and its Pod has a readiness probe
+
+The engine reaches a pool of agents through a **headless Service**, whose DNS
+already filters on Ready — and nothing was deciding Ready. A replica was Ready
+the instant its container ran, before the listener bound, so a start during a
+rolling restart could land on a connection refused.
+
+```yaml
+readinessProbe:
+  httpGet: {path: /health, port: http}
+  periodSeconds: 5
+```
+
+It is in `deployments/kubernetes/agent.yaml` and in the chart's agent template,
+and it needs nothing from you.
+
+The route **checks nothing**, deliberately. The agent has no dependency to be
+ready for, so a probe that could fail for a second reason would take a pod out
+of its Service for something other than "not serving". It is also the only
+route that answers without the token — a kubelet sends no `Authorization`
+header — and the exemption is one exact path, so `/healthz` is still refused
+rather than answered with a 404 that tells an unauthenticated caller which
+paths exist.
+
+**Readiness and not liveness.** A liveness failure sends SIGTERM to a pod that
+may be holding hours of a step's work, and the agent is built the other way
+round: its own shutdown lets running steps finish their streams. Taking a
+replica out of the Service is the strong action here; killing it is not the
+probe's to take.
+
+### Added: a field the decoder does not know is said out loud
+
+```
+$ brevis validate workflows/
+  warn  workflows/etl.yaml: line 5: `hosts` is not a field of a step, and was ignored
+  warn  workflows/etl.yaml: line 9: `depends-on` is not a field of a step, and was ignored
+  ok    etl                          dag  2 steps, 0 dependencies  (manual)
+```
+
+The workflow decoder has never been strict, so a key it does not recognise is
+dropped and nothing is printed. `hosts:` for `host:`, `depends-on` for
+`depends_on` — the file publishes, the line does nothing, and the first symptom
+is a graph with fewer edges than the author wrote. Look at the `ok` line above:
+**0 dependencies**, because `depends_on` was the other typo.
+
+It is the near half of the gap `0.16.0`'s own upgrade note names: an engine that
+does not know a field DROPS it, so a step meant for the machine with the licence
+on it runs in the engine's own container. Nothing here fixes that for an engine
+older than this one — nothing can — and it is why the silence was worth
+breaking.
+
+**A warning and not a refusal.** Every workflow anybody has may carry a stray
+key today; refusing would fail files that have worked for a year in order to
+catch a typo in one of them. `validate`, `publish` and `run` all say it, on
+stderr, and the engine behaves exactly as it did.
+
+One limit, said rather than discovered: a `depends_on` entry decodes through its
+own unmarshaller, which is where the strict pass stops looking, so a stray key
+*inside* one is still dropped in silence.
+
+### Fixed: the site said every step becomes a pod
+
+`llms.txt` — the page written to be quoted — opened with "Every workflow step
+runs as its own Kubernetes pod with its own image". True on 2026-10-05. The
+step-fields table listed fifteen fields and not `host`, and the CLI page's
+"three limits" of `brevis run` were four.
+
+The fourth was measured rather than assumed: **`brevis run` does not read
+`BREVIS_HOSTS`**, so a step with `host:` cannot run there even with the variable
+set. The engine's refusal still says "they come from the installation, in
+BREVIS_HOSTS", which is true of the scheduler and not of `run`. That message is
+a known gap; the page says the truth either way.
+
+---
+
+## [0.16.0] — 2026-10-06
+
+### Added: `host:` — a step runs on a machine the engine does not manage
+
+```yaml
+steps:
+  - id: extract
+    host: vendor-box
+    run: vendor fetch --since {{ .date }}
+```
+
+A step already had three places to run: the engine's own process (`action:`), a
+local one (`run:`), and a pod the engine creates (`image:`). `host:` is the
+fourth and it is the inverse of the third — **the runtime is already up, and
+Brevis did not create it.**
+
+It exists for the two cases a pod per step answers badly. A vendor's extractor
+with a licence pinned to a machine, and a dbt project whose image belongs to the
+team that owns the models, not to the team that owns the engine. In both, the
+version of the tool stops being coupled to the version of Brevis.
+
+The other half is an agent, published for the first time with this release:
+
+```
+areteacademy/brevis:0.16.0-agent
+```
+
+16 MB, alpine rather than distroless — a runtime with no shell cannot run the
+commands a step names. You build YOUR image on top of it:
+
+```dockerfile
+FROM areteacademy/brevis:0.16.0-agent
+USER root
+RUN apk add --no-cache python3 py3-pip && pip install --break-system-packages dbt-bigquery
+USER brevis
+```
+
+The agent is the **floor** of that image and not a sidecar beside it: one
+container, one process tree, your tools on the `PATH`. A step then says
+`dbt build` with no path, no shared volume and no init container.
+
+The engine finds it by name:
+
+```bash
+BREVIS_HOSTS=vendor-box=https://10.0.4.7:9443,dbt=http://dbt.data.svc:9443
+BREVIS_HOST_TOKEN=...
+```
+
+A step naming a host this installation does not know is refused **by name**, and
+the message lists the hosts that are configured — "unknown host" alone sends
+somebody hunting for a typo that may be in the installation rather than in the
+YAML. `host:` together with `image:` or `action:` is refused earlier, at
+publish: those are alternatives, and a step that named both would otherwise sit
+in a schedule and fail at three in the morning on whichever executor won.
+
+**What the agent will not do** is as deliberate as what it does. It is not an
+orchestrator: it knows nothing of workflows, dependencies, schedules or retries,
+and an agent that learned any of it would be a second orchestrator to keep in
+agreement with the first. It is not a secret store either — it RESOLVES a
+coordinate the engine sends into a file in a directory THIS host allows, under
+`--allow-secrets`. The engine never sends a value.
+
+It is stateful per execution — the output ring and the process handle live in
+that process's memory — so a pool behind one address has to say where to come
+back to:
+
+```
+--advertise https://$(POD_NAME).dbt.data.svc:9443
+```
+
+Told rather than discovered: the process can read its hostname and cannot know
+which of its names the engine routes to. Without it, a pool's symptom is a step
+failing on the first network blip with its process still running. With it,
+`replicas: 3` behind a headless Service is the whole of scaling, and the engine
+comes back to the instance that took each step for a resume or a cancel.
+
+**A token is required**, and running without one has to be said out loud:
+`--insecure-no-token`. An agent with no token runs any command for anybody who
+reaches the port, so the dangerous choice is a declaration rather than an
+omission. There is no TLS of its own yet — put it behind something that
+terminates TLS, or on a network where that is somebody else's job.
+
+Ready to deploy, both ways:
+
+```
+deployments/kubernetes/agent.yaml              a StatefulSet and a headless Service
+deployments/helm/brevis   agent.enabled=true   off by default
+```
+
+The chart refuses `agent.enabled` with no `agent.tokenSecret` unless
+`agent.insecureNoToken` is set, for the same reason the flag exists.
+
+#### What it gives up, in the same frame
+
+`resources:` means nothing on a host. A step gets whatever the agent's pod has;
+a pod asks for its own share, and a guest does not. Steps on one host also share
+its CPU and memory with no bound between them. Choose `image:` when a step needs
+its own ceiling, `host:` when it needs a runtime somebody else owns.
+
+### Added: a step on a host publishes context the way the docs teach
+
+`$BREVIS_OUTPUT` works over the wire. The agent gives the step a path, turns
+what it finds there into the step's context, and the engine hands it to the next
+step in `$BREVIS_INPUT` — the same contract a step has inside a pod, so a binary
+written for one runs unchanged on the other.
+
+### Fixed: an agent pool refused the only topology it has
+
+The rule that decides whether an advertised address belongs to the same
+installation compared DOMAINS, and a pod's DNS name has one label MORE than its
+Service's. Every unit test passed; the pool would have rejected every instance's
+advertisement and fallen back to the shared address, which is the bug
+`--advertise` exists to prevent. It compares containment now, and it was the
+cluster that caught it rather than the suite.
+
+### Fixed: the chart deployed an engine two releases behind
+
+`appVersion` said `0.13.0` while `VERSION` said `0.15.2`, so `helm install`
+brought up `0.13.0` with every manifest beside it correct. **Nothing read both.**
+`image-pins-check.sh` now does, and it fails on exactly that drift.
+
+### Fixed: five manifests could not start
+
+Five of ten set `runAsUser: 65532` and five did not, including the chart's
+pre-install migration hook — which means the chart could never install into a
+cluster that enforces `runAsNonRoot`. Found by running it in one.
+
+### Upgrading
+
+**Nothing changes for a workflow that does not say `host:`.** There is no
+migration, no schema change and no new required configuration: `BREVIS_HOSTS`
+unset simply means no host is declared.
+
+⚠️ **Upgrade the engine BEFORE publishing a workflow that names a host.** The
+workflow decoder ignores fields it does not know, so an engine older than this
+does not refuse `host:` — it drops it, and runs the step's `run:` inside its own
+container. A command meant for a machine with the licence on it executes in the
+worker, which is the quiet kind of wrong. The strict decoder that would have
+refused it is an open gap, listed here rather than left to be discovered.
+
+---
+
 ## [0.15.2] — 2026-09-24
 
 ### Fixed: a workflow's description took the page over
@@ -91,58 +312,6 @@ reproduces the production error inside the test, and a guard that returns `'[]'`
 for everything fails on the row it should have kept.
 
 ---
-
-## [0.15.0] — 2026-09-16
-
-### Added: `list|<type>` — a param that carries many values
-
-```yaml
-params:
-  - name: tables
-    type: list|string
-    default: "users,orders"
-  - name: layers
-    type: list|string
-    enum: [bronze, silver, gold]   # the enum restricts each ITEM
-  - name: days
-    type: list|integer
-```
-
-The element can be `string`, `integer` or `boolean`, and each item is validated
-on its own — `list|integer` given `1,x,30` fails naming **item 2** instead of
-the whole value. An empty item and a repeated one are refused: a repeat silently
-doubles whatever the step does per item.
-
-**The value is one comma-separated string everywhere**, and that is the design
-rather than an implementation detail. Params are a `map[string]string` from the
-trigger form through `runs.params` and `BREVIS_RUN_PARAMS` to the step; making
-one of them an array would turn that map into `map[string]any`, and an SDK built
-before this change unmarshals the env var into `map[string]string` — it would
-fail and discard **every** param of that run, warning into a log nobody reads
-while the pipeline ran on the defaults.
-
-The comma is also what keeps the command working with no special case in
-`Render` and no new template function:
-
-```yaml
-run: dbt build --select {{ .tables }}      # dbt build --select users,orders
-```
-
-The price is that a comma cannot appear inside an item, which is checked at
-publish and at trigger time.
-
-In the interface, a list with an `enum` renders as **checkboxes** — no
-JavaScript, one value per box ticked, joined by the handler — and a list without
-one is a text field whose items become removable chips, degrading to a plain
-comma-separated field when JavaScript is off. Each checkbox group carries a
-hidden empty value so that clearing every box is an explicit empty list rather
-than the key going missing and the resolver falling back to the default.
-
-Steps read the array through `ParamList` in the Go SDK and `run.param_list` in
-the Python library.
-
-**An engine older than this refuses `list|string` at publish as an unknown
-type**, so upgrade before publishing a workflow that uses one.
 
 ## [0.15.0] — 2026-09-16
 

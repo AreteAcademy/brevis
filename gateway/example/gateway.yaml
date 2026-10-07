@@ -30,12 +30,17 @@ listen:
 metrics:
   addr: :9090
 
-# Per-table VOLUME series are off unless the environment turns them on:
+# The per-table series are off unless the environment turns them on:
 #
 #   BREVIS_INGESTION_METRICS=true
 #
 #   brevis_gateway_ingested_bytes_total{stream,table}
 #   brevis_gateway_ingested_events_total{stream,table}
+#   brevis_gateway_table_flushes_total{stream,table,trigger}
+#
+# The last one is the quota's own number: one flush of a table is one load job
+# for it, and BigQuery allows 1,500 per table per day. `flushes_total` is per
+# stream, which on a 94-table route says nothing about any of them.
 #
 # Off by default because `table` is a label the PRODUCER chooses -- with
 # auto_table one route becomes as many tables as they name, and every other
@@ -108,6 +113,23 @@ streams:
         every: 1s
         records: 500
         size: 8MiB
+
+        # The age at which a partial batch goes REGARDLESS.
+        #
+        # `every` is a TARGET and this is a PROMISE, and the difference will
+        # matter once the flush claim lands (issue #36): a replica that loses
+        # a window to another keeps filling, so the target can be deferred.
+        # This cannot be -- no event waits longer, whatever the contention,
+        # even with the metastore unreachable.
+        #
+        # The gap between the two is how much contention this deployment
+        # tolerates. It has to be at least `every`; a ceiling under the target
+        # would mean the target never applies, and the config refuses it.
+        #
+        # It also settles the drain: what a buffer can be HOLDING at SIGTERM
+        # is bounded by this, not by `every`, so the grace period the gateway
+        # prints at boot is derived from it.
+        max_age: 30s
 
       # Delivery is asynchronous and bounded. A request appends to the buffer
       # and returns; a full batch is handed to one of these workers, so no
@@ -329,6 +351,55 @@ streams:
         # brevis_gateway_flushes_total{trigger="size"} on this stream: above
         # zero, it is telling you the window is not what is batching.
         size: 256MiB
+        # Five minutes of latency bought for job economy, and bounded.
+        max_age: 300s
+
+        # The flush clock belongs to the DEPLOYMENT, not to each process.
+        #
+        # Without this, `every` is a time.AfterFunc in every replica, so the
+        # load jobs a table receives are `replicas × 86400 / every` -- on
+        # BigQuery, against 1,500 per table per DAY, two replicas at 60s is
+        # already 192% of a quota that cannot be raised. The gateway scales out
+        # for HTTP concurrency while the sink wants concentration.
+        #
+        # With it, a replica takes a set-if-absent claim for the stream and the
+        # window before flushing on the timer, and the timer wakes on the
+        # window BOUNDARY so every replica asks for the same key. One flush per
+        # window, whatever the replica count -- and it self-adjusts, because a
+        # replica only waits when another is actually competing.
+        #
+        # Needs a SHARED metastore. With `memory` every replica wins its own
+        # claim and nothing coordinates. And it needs `max_age`, which the
+        # config refuses without: the claim turns `every` into a target, and a
+        # target with no ceiling is latency with nothing bounding it.
+        #
+        # A metastore that is unreachable flushes anyway. Losing coordination
+        # costs load jobs; refusing to flush holds data.
+        #
+        # Watch brevis_gateway_flush_windows_total{outcome}:
+        #
+        #   won | yielded     the feature working -- one flushes, the rest fill
+        #   ceiling           max_age did it, not the target
+        #   unreachable       ALERT. The backend could not be asked, so the
+        #                     claim failed open and the jobs are multiplying by
+        #                     replica count again -- silently, because every
+        #                     flush still looks like a flush
+        #
+        # The claim gives EXCLUSIVITY, not fairness: whoever asks first wins,
+        # and a real two-replica run measured 4/1 rather than an even split.
+        # `max_age` is what stops the unlucky one starving. Issue #36.
+        #
+        # The claim's key carries the TABLE, because the flush trigger does
+        # (issue #38): two replicas behind a load balancer do not hold the
+        # same tables, and one claim for the stream would make one table's
+        # cadence another's.
+        #
+        # A window therefore asks for one claim per table. Redis answers them
+        # in one round trip; every other backend answers them in parallel,
+        # bounded. Measured at 94 tables against a backend 25ms away: 89ms on
+        # memcached, 30ms on Redis. Both inside the 500ms the claim is given,
+        # and memcached is the slower choice rather than a refused one.
+        claim: true
       max_bytes: 1GiB
 
     sink:
@@ -357,9 +428,15 @@ streams:
         # creations, never writes.
         max_new_per_hour: 20
 
-      # The shared state this stream keeps ABOUT tables: a cache of what
-      # exists, the debounce that keeps N replicas from all running the same
-      # DDL, and the counter behind max_new_per_hour.
+      # The shared state this stream keeps: a cache of what tables exist, the
+      # debounce that keeps N replicas from all running the same DDL, the
+      # counter behind max_new_per_hour -- and, from issue #36, the claim that
+      # makes the flush clock belong to the deployment rather than to each
+      # process.
+      #
+      # It is a STREAM's, not a sink's, even though it is written under one.
+      # Every stream gets it, whatever the sink -- so a `bigquery` stream
+      # without `auto_table` can name one too, and is validated the same way.
       #
       # `memory` is the default and needs nothing. With ONE replica it is the
       # right answer. With several it gives each its own, so the debounce
@@ -371,7 +448,23 @@ streams:
       metastore:
         type: redis
         addr_from: BREVIS_METASTORE_ADDR
-        ttl: 60s       # how long the cache may be WRONG
+
+        # How long the cache may be WRONG. `0` means never, and saying
+        # nothing takes the sixty-second default -- three states, which is
+        # why the field is a pointer in the config.
+        #
+        # The clock is NOT what recovers from a wrong entry. A write the
+        # destination refuses calls `invalidate`, which drops the entry at
+        # once and lets the pipe's own retry come back against a cold cache:
+        # a table dropped by hand costs one failed attempt, not a minute.
+        #
+        # Expiry has a price, though. `sinkFor` charges
+        # `naming.max_new_per_hour` when it does not KNOW a table -- so a miss
+        # charges for a table that has existed for weeks, and a pod restarting
+        # a minute after a table's last event gets nothing from the shared
+        # store it is paying for. `ttl: 0` is the answer when the tables are
+        # long-lived. See issue #35.
+        ttl: 60s
 
       into:
         type: bigquery

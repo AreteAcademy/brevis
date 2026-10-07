@@ -53,6 +53,18 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
       -o /out/brevis ./cmd/brevis
 
+# The agent, which is the other half of `host:`.
+#
+# Built here for the reason the gateway is: it shares this stage's cache and
+# its ldflags, and the artifacts stay apart. It is a different PROGRAM from the
+# engine -- nothing in the engine imports internal/agent -- and it ships as its
+# own image below.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+      -o /out/brevis-agent ./cmd/brevis-agent
+
 # The gateway, which is a DIFFERENT binary from a different module.
 #
 # It is separate for the reason engine-weight.sh states: the engine orchestrates
@@ -126,6 +138,38 @@ RUN adduser -D -u 65532 brevis
 USER brevis
 ENTRYPOINT ["/sbin/tini", "--", "brevis"]
 CMD ["scheduler"]
+
+# The agent: alpine, and the reason is the same one the worker has.
+#
+# ITS WHOLE JOB IS TO RUN A COMMAND. Its default shell is `/bin/sh -c`, so a
+# distroless agent is an agent that can run nothing -- it would start, answer
+# the engine, and fail every step with "no such file or directory". The api and
+# the gateway are distroless because they execute nothing; this one is the
+# opposite case.
+#
+# What a deployment adds on top is the step's own runtime -- dbt, a Python, a
+# licensed binary -- because that is the point of `host:`: the pod is yours and
+# it already has what it needs. This image is the floor, not the ceiling.
+FROM alpine:3.20 AS agent
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis agent" \
+      org.opencontainers.image.description="Runs Brevis steps on a host the engine does not manage" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+RUN apk add --no-cache ca-certificates tini
+COPY --from=build /out/brevis-agent /usr/local/bin/brevis-agent
+RUN adduser -D -u 65532 brevis
+USER brevis
+# tini for the same reason the worker has it: this process spawns a shell which
+# spawns whatever the step is, and PID 1 without a reaper leaves zombies behind
+# on a long-lived pod -- which is exactly what this image is for.
+ENTRYPOINT ["/sbin/tini", "--", "brevis-agent"]
+# No default CMD. Every flag that matters -- the token, the secrets directory,
+# the allowlist, the advertised address -- is a decision for the deployment,
+# and a default here would be one of them made silently.
 
 # `gateway` is its own image: it holds the gateway binary and nothing else.
 #

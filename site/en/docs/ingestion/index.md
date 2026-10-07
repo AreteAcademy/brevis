@@ -110,11 +110,88 @@ buffer:
     every: 1s         # age
     records: 500      # count
     size: 8MiB        # bytes — whichever is crossed FIRST sends the batch
+    max_age: 30s      # and this one sends it REGARDLESS
   workers: 4          # batches delivered at once
   queue: 64           # full batches that may wait for a worker
   max_records: 10000  # events held in memory before the gateway says no
   max_bytes: 256MiB   # the same ceiling in bytes
 ```
+
+### The flush clock belongs to the deployment
+
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**. So the load
+jobs a table receives are a function of replica count, not of traffic:
+
+```
+jobs / day / table  =  replicas × 86400 / every
+```
+
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is already
+192% of a quota that cannot be raised** — before an HPA does anything. And the
+direction is backwards from intuition: the gateway scales out for HTTP
+concurrency while the sink wants concentration.
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+With `claim`, a replica takes a set-if-absent for the stream and the window
+before flushing on the timer — and the timer wakes on the **window boundary**,
+so every replica asks for the same key. One flush per window, whatever the
+replica count. And it self-adjusts: a replica only waits when another is
+actually competing, so scaling in restores the lower latency with nobody
+editing a config.
+
+Measured with two replicas and one Redis, 5s windows: **8 load jobs became 6,
+one per window, alternating 3/3** — no window with two.
+
+**It needs a shared backend.** With `memory` every replica wins its own claim
+and nothing coordinates. And it **requires `max_age`**, which the config
+refuses without: the claim turns `every` into a target, and a target with no
+ceiling is latency with nothing bounding it.
+
+**An unreachable metastore flushes anyway.** Losing coordination costs load
+jobs; refusing to flush holds data. Verified by killing Redis mid-run: 40 of 40
+events landed, nothing held.
+
+**`outcome="unreachable"` is the one worth an alert.** The backend could not be
+asked, so the claim failed open: coordination is off and the load jobs are
+multiplying by replica count again — silently, because every flush still looks
+like a flush.
+
+And the claim gives **exclusivity, not fairness**: whoever asks first wins. A
+real two-replica run measured 4/1, not an even split. `max_age` is what stops
+the unlucky one starving.
+
+With `claim: true` and `metastore: memory` the gateway warns **once at boot**:
+every replica wins its own claim, so everything looks right and nothing
+coordinates.
+
+### `every` is a target; `max_age` is a promise
+
+The three triggers above decide when a batch **tries** to leave. `max_age`
+decides when it leaves **regardless**.
+
+Today the difference is inert, because nothing defers the target. It starts to
+matter once the flush clock stops being per-process: `buffer.flush.every` is a
+`time.AfterFunc` in each replica, so the number of load jobs a table receives is
+a function of **replica count**, not of traffic — `replicas × 86400 / every`. On
+BigQuery, against 1,500 per table per day, **two replicas at 60s is already 192%
+of the quota**.
+
+Once a replica can yield a window to another it keeps filling, and `max_age` is
+what stops anyone holding data indefinitely waiting for a turn.
+
+It also settles the drain: what a buffer can be **holding** at `SIGTERM` becomes
+bounded by it, and the `terminationGracePeriodSeconds` the gateway prints at
+boot is derived from it.
+
+A ceiling **below** the target is refused at load — it would mean the target
+never applies.
 
 ### Why there is a size trigger
 
@@ -143,6 +220,19 @@ brevis_gateway_flushes_total{stream,trigger}   trigger = time | records | size
 
 `trigger="size"` climbing on a BigQuery stream is telling you the window is not
 what is batching.
+
+That counter is per stream, and the quota is per **table**: with `auto_table`
+one route becomes many tables, and 94 of them reporting one number says nothing
+about any of them. Behind `BREVIS_INGESTION_METRICS` there is one that names it:
+
+```
+brevis_gateway_table_flushes_total{stream,table,trigger}
+```
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at
+boot, which says what `flush.every` costs per table per day before an event
+arrives.
 
 **It is bounded, not fire-and-forget.** A goroutine per batch would turn a sink
 outage into unbounded memory. When the queue and the buffer are both full, the
@@ -251,13 +341,24 @@ brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
+brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in
 brevis_gateway_ingested_events_total{stream,table}      counter  opt-in
+brevis_gateway_table_flushes_total{stream,table,trigger} counter  opt-in
+process_start_time_seconds                              gauge    unprefixed, on purpose
 brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge
 ```
+
+`process_start_time_seconds` is **not** prefixed with `brevis_`, and that is
+deliberate: collectors look for exactly that name. It says when the process
+started, and without it a collector that does start-time adjustment — the
+OpenTelemetry Prometheus receiver, which Google Managed Prometheus is built on
+— anchors every cumulative series at its **first scrape** and spends that
+scrape's value as the baseline. The result is every counter reading low, with
+the deltas right and the totals wrong.
 
 The last three are the ones nobody asks for until after the first incident.
 `saturated_total` is the only number that says a client was told to back off;

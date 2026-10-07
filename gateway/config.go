@@ -256,6 +256,56 @@ type Flush struct {
 	// Records is the count that sends one immediately.
 	Records int `yaml:"records"`
 
+	// Claim makes the flush clock belong to the DEPLOYMENT rather than to each
+	// process.
+	//
+	// `flush.every` is a `time.AfterFunc` in every replica, so the load jobs a
+	// table receives are a function of replica count and not of traffic:
+	//
+	//	jobs / day / table  =  replicas × 86400 / every
+	//
+	// On BigQuery, against 1,500 per table per day, two replicas at 60s is
+	// 192% of a quota that cannot be raised -- before an HPA does anything.
+	// The gateway scales out for HTTP concurrency while the sink wants
+	// concentration, which is backwards from intuition and is why no static
+	// `every` fixes it: a value sized for maxReplicas makes a deployment at
+	// minReplicas pay the worst case's latency all day.
+	//
+	// With this on, a replica takes a set-if-absent claim for the stream and
+	// the window before flushing on the timer. One flush per window, whatever
+	// the replica count -- and it self-adjusts, because a replica only waits
+	// when another is actually competing.
+	//
+	// OFF by default, deliberately. It turns `every` from a promise into a
+	// target, and doing that silently to every deployment that happens to have
+	// a shared metastore is how `0.11.0` shipped a breaking change described
+	// as a free addition. It also requires `max_age`: a claim with no ceiling
+	// is latency with nothing bounding it.
+	//
+	// With `metastore: memory` it coordinates nothing, because every replica
+	// wins its own claim -- the same thing the DDL debounce does there. Issue
+	// #36.
+	Claim bool `yaml:"claim"`
+
+	// MaxAge is the age at which a partial batch goes REGARDLESS, and it is
+	// the promise `every` is not.
+	//
+	// `every` is a target: it is the age at which the gateway TRIES to flush.
+	// From the flush claim on (issue #36) a replica can lose that window to
+	// another and keep filling, so the target can be deferred. `max_age`
+	// cannot: no event waits longer than this, whatever the contention,
+	// whatever the backend, even with the metastore unreachable.
+	//
+	// The gap between the two is how much contention the deployment tolerates.
+	// `every` buys job economy -- on BigQuery the budget is 1,500 load jobs per
+	// table per day and a per-process clock spends `replicas ×` that -- and
+	// `max_age` bounds what that economy costs in latency.
+	//
+	// Zero leaves it off, which is what every existing config has. It must be
+	// at least `every`: a ceiling under the target would mean the target never
+	// applies, and the config says so rather than behaving that way.
+	MaxAge Duration `yaml:"max_age"`
+
 	// Size is the BYTE count that sends one immediately. Whichever of the
 	// three is crossed first wins; zero leaves this one off.
 	//
@@ -360,7 +410,15 @@ type Sink struct {
 	Shape string `yaml:"shape"`
 
 	// Metastore caches what is known about a table, so a per-event write does
-	// not become a per-event lookup.
+	// not become a per-event lookup -- and, from issue #36, coordinates the
+	// flush clock across replicas.
+	//
+	// It belongs to the STREAM even though it is written here, and it is
+	// opened for every stream whatever the sink. It used to be VALIDATED only
+	// under `auto_table`, so a direct `bigquery` stream naming redis with no
+	// `addr_from` started happily and coordinated with nobody. `Stream.check`
+	// validates it now, once, for the stream's own sink -- a dead letter and
+	// an oversize archive are Sinks too and neither has one.
 	Metastore MetastoreConfig `yaml:"metastore"`
 
 	// Into is the real destination, one per table. A nested sink, because
@@ -394,12 +452,42 @@ type MetastoreConfig struct {
 	// registry at startup, by name -- a slim build genuinely links neither.
 	Type string `yaml:"type"`
 
-	// TTL is how long the cache may be wrong.
+	// TTL is how long the cache may be wrong, and `0` means never.
 	//
-	// A table dropped by hand outside the gateway makes every entry a lie.
-	// Sixty seconds of wrongness is recoverable -- the next write recreates
-	// it -- and an hour is an incident.
-	TTL time.Duration `yaml:"ttl"`
+	// A POINTER, because the three states are three -- the same reason
+	// `metrics.addr` is one. Absent takes the default; `ttl: 0` means the
+	// entry does not expire; a value is the value. A plain Duration collapses
+	// the first two, and "I did not mention ttl" and "I want this kept
+	// forever" must not be the same sentence.
+	//
+	// What the timer was defending against: a table dropped by hand outside
+	// the gateway makes every entry a lie. But the CLOCK is not what recovers
+	// from that -- `router.Write` is. A write that the destination refuses
+	// calls `invalidate`, which drops the entry immediately and lets the
+	// pipe's own retry come back against a cold cache. A dropped table costs
+	// one failed attempt, not a minute.
+	//
+	// So expiry is not the safety net it reads as, and it has a price: a miss
+	// charges `naming.max_new_per_hour` for a table that has existed for
+	// weeks, because `sinkFor` charges on BELIEF and not on creation. With a
+	// shared backend and a short TTL, a pod restarting a minute after a
+	// table's last event gets no benefit from the shared store at all -- which
+	// is the case the shared store exists for.
+	//
+	// Keeping the default at a minute anyway: an installation that has not
+	// thought about this should get the conservative behaviour, and the
+	// installation that has can say so in one field. Issue #35 is the
+	// argument, made by a consumer with 52 tables and a limit of 20.
+	// The type is `Duration` and not `time.Duration`, and that is the other
+	// half of the three states. `ttl: 0` is the value this comment names, and
+	// a plain time.Duration REFUSES it -- YAML reads a bare zero as an int --
+	// so the documented answer did not start the gateway. See Duration.
+	//
+	// It is the only duration in this file with that type, because it is the
+	// only one whose documented value is a bare number: `60s`, `500ms` and
+	// `2h` all carry their unit naturally, and there a bare number is a
+	// mistake worth refusing rather than a spelling worth accepting.
+	TTL *Duration `yaml:"ttl"`
 
 	// AddrFrom names the ENVIRONMENT VARIABLE holding a shared backend's
 	// address, never the address: it carries a password often enough, and this
@@ -417,7 +505,8 @@ const (
 )
 
 // DefaultMetastoreTTL is how long a cache entry lives when the file names no
-// other. See Metastore.TTL for why it is a minute.
+// other. See MetastoreConfig.TTL for why it is a minute, and why `ttl: 0` --
+// which is a different thing from saying nothing -- means never.
 const DefaultMetastoreTTL = 60 * time.Second
 
 func (m *MetastoreConfig) check() error {
@@ -436,13 +525,24 @@ func (m *MetastoreConfig) check() error {
 		return fmt.Errorf("`metastore.type` is %q (use %s, %s or %s)",
 			m.Type, MetastoreMemory, MetastoreRedis, MetastoreMemcached)
 	}
-	if m.TTL < 0 {
-		return fmt.Errorf("`metastore.ttl` is %s", m.TTL)
-	}
-	if m.TTL == 0 {
-		m.TTL = DefaultMetastoreTTL
+	if m.TTL != nil && *m.TTL < 0 {
+		return fmt.Errorf("`metastore.ttl` is %s", *m.TTL)
 	}
 	return nil
+}
+
+// CacheTTL is how long an entry lives. Zero means it does not expire.
+//
+// Derived from the pointer and not from a field that `check` fills in, so a
+// Config built in code -- a test, a consumer embedding the gateway -- gets the
+// same answer as one that came through Load. A resolved field would have made
+// "check did not run" and "the operator asked for never" the same zero, which
+// is the exact confusion the pointer exists to prevent.
+func (m MetastoreConfig) CacheTTL() time.Duration {
+	if m.TTL == nil {
+		return DefaultMetastoreTTL
+	}
+	return time.Duration(*m.TTL)
 }
 
 // Naming is the boundary a producer writes inside.
@@ -590,6 +690,11 @@ const (
 	// Write API, which is not written yet; until it is, the config refuses a
 	// window it cannot honour rather than letting the first deploy find out.
 	BigQueryFlushFloor = 60 * time.Second
+
+	// BigQueryDailyLoadJobs is the quota BigQueryFlushFloor exists to protect:
+	// load jobs per TABLE per day. Named rather than repeated, now that the
+	// refusal and the boot budget both count against it.
+	BigQueryDailyLoadJobs = 1500
 
 	// drainFloor is the shortest drain budget, whatever the windows say.
 	//
@@ -769,6 +874,27 @@ func (s *Stream) check() error {
 	if s.Buffer.Flush.Size < 0 {
 		return fmt.Errorf("`buffer.flush.size` is %s", s.Buffer.Flush.Size)
 	}
+	if s.Buffer.Flush.MaxAge < 0 {
+		return fmt.Errorf("`buffer.flush.max_age` is %s", s.Buffer.Flush.MaxAge)
+	}
+	if s.Buffer.Flush.Claim && s.Buffer.Flush.MaxAge <= 0 {
+		// A claim with no ceiling is unbounded latency: `every` stops being a
+		// promise the moment another replica can take the window, and nothing
+		// would say how many windows a loser may lose.
+		return fmt.Errorf("`buffer.flush.claim` is on and `buffer.flush.max_age` " +
+			"is not set. The claim lets another replica take a window, so " +
+			"`every` becomes a target and a replica that keeps losing holds " +
+			"data with nothing bounding it. Declare the ceiling")
+	}
+	if a := time.Duration(s.Buffer.Flush.MaxAge); a > 0 && a < s.Buffer.Flush.Every {
+		// A ceiling below the target means the target never applies, and the
+		// operator meant one of the two numbers rather than this.
+		return fmt.Errorf("`buffer.flush.max_age` is %s and `buffer.flush.every` "+
+			"is %s: the ceiling is below the target, so the target would never "+
+			"apply. `every` is the age this TRIES to flush at and `max_age` the "+
+			"age it flushes at regardless, so max_age has to be the larger",
+			s.Buffer.Flush.MaxAge, s.Buffer.Flush.Every)
+	}
 	if s.Buffer.MaxBytes < 0 {
 		return fmt.Errorf("`buffer.max_bytes` is %s", s.Buffer.MaxBytes)
 	}
@@ -814,6 +940,20 @@ func (s *Stream) check() error {
 		return err
 	}
 
+	// The metastore belongs to the STREAM, and this is the one place that says
+	// so. `metastoreFor` opens one per stream from the stream's sink, whatever
+	// that sink is -- and this check used to live inside `Sink.check()` behind
+	// `if s.Type == SinkAutoTable`, so a direct `bigquery` stream naming redis
+	// with no `addr_from` started happily and coordinated with nobody.
+	//
+	// Here and not in `Sink.check()` because a Sink is also a dead letter and
+	// an oversize archive, and neither of those has a metastore: nothing opens
+	// one for them, so validating one would be validating a field that does
+	// nothing. Issue #36 made this load-bearing for every stream.
+	if err := s.Sink.Metastore.check(); err != nil {
+		return err
+	}
+
 	// A window that cannot hold the quota is refused rather than accepted, for
 	// the reason `durability: disk` is: somebody who wrote `1s` believes their
 	// rows land in a second, and letting them find out through
@@ -824,7 +964,7 @@ func (s *Stream) check() error {
 			"is %.0f a day, and the quota is gone in about %.0f minutes. Use %s or "+
 			"more",
 			s.Buffer.Flush.Every, (24*time.Hour).Seconds()/s.Buffer.Flush.Every.Seconds(),
-			(1500 * s.Buffer.Flush.Every).Minutes(), BigQueryFlushFloor)
+			(BigQueryDailyLoadJobs * s.Buffer.Flush.Every).Minutes(), BigQueryFlushFloor)
 	}
 
 	if o := s.Oversize; o != nil {
@@ -898,11 +1038,6 @@ func (s *Sink) check() error {
 	if strings.TrimSpace(s.Type) == "" {
 		return fmt.Errorf("`type` is empty")
 	}
-	if s.Type == SinkAutoTable {
-		if err := s.Metastore.check(); err != nil {
-			return err
-		}
-	}
 	for _, a := range s.Attributes {
 		if strings.TrimSpace(a) == "" {
 			return fmt.Errorf("`sink.attributes` holds an empty name")
@@ -935,9 +1070,21 @@ func (c *Config) DrainBudget() time.Duration {
 	if c.Shutdown.Drain > 0 {
 		return c.Shutdown.Drain
 	}
+	// The CEILING where one is declared, and not the target.
+	//
+	// This is the quantity the comment above is about: what a buffer can be
+	// HOLDING when the signal arrives. `every` bounds that only while every
+	// flush happens on time -- and from the flush claim on, a replica that
+	// loses a window keeps filling, so it can hold up to `max_age` of events.
+	// Reading `every` there would derive a grace period too small and print it
+	// on the boot line as if it were right.
 	longest := time.Duration(0)
 	for i := range c.Streams {
-		if w := c.Streams[i].Buffer.Flush.Every; w > longest {
+		w := c.Streams[i].Buffer.Flush.Every
+		if a := time.Duration(c.Streams[i].Buffer.Flush.MaxAge); a > w {
+			w = a
+		}
+		if w > longest {
 			longest = w
 		}
 	}

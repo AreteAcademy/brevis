@@ -169,7 +169,7 @@ func TestResolveConfigRejectsUnwrittenFormat(t *testing.T) {
 	}
 }
 
-// --- encodeRows ----------------------------------------------------------
+// --- EncodeRows ----------------------------------------------------------
 
 func decodeNDJSON(t *testing.T, data []byte) []map[string]any {
 	t.Helper()
@@ -188,14 +188,13 @@ func decodeNDJSON(t *testing.T, data []byte) []map[string]any {
 }
 
 func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
-	data, err := l.encodeRows([]core.Envelope{
+	data, err := EncodeRows([]core.Envelope{
 		{Payload: map[string]any{"amount": 1}},
 		{Payload: map[string]any{"amount": 2}},
-	})
+	}, nil)
 	if err != nil {
-		t.Fatalf("encodeRows: %v", err)
+		t.Fatalf("EncodeRows: %v", err)
 	}
 
 	rows := decodeNDJSON(t, data)
@@ -208,27 +207,25 @@ func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
 }
 
 func TestEncodeRowsRejectsNonObject(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
 	// BigQuery maps an NDJSON object's keys onto columns. A scalar or array
 	// has nothing to map, and must fail here rather than inside a load job.
 	for _, payload := range []any{42, "text", []int{1, 2}} {
-		if _, err := l.encodeRows([]core.Envelope{{Payload: payload}}); err == nil {
+		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}, nil); err == nil {
 			t.Errorf("Expected %v (%T) to be rejected", payload, payload)
 		}
 	}
 }
 
 func TestEncodeRowsStructPayloadUsesJSONTags(t *testing.T) {
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 	type tx struct {
 		ID     string `json:"id"`
 		Amount int    `json:"amount"`
 	}
 
-	data, err := l.encodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}})
+	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}}, nil)
 	if err != nil {
-		t.Fatalf("encodeRows: %v", err)
+		t.Fatalf("EncodeRows: %v", err)
 	}
 
 	rows := decodeNDJSON(t, data)
@@ -423,13 +420,12 @@ func TestPartitionOptionsNeedTheLoadedAtColumn(t *testing.T) {
 func TestDefaultWritesThePayloadUntouched(t *testing.T) {
 	// The whole point: what a row looks like is the caller's decision, made
 	// in Transform. With Metadata off the SDK adds nothing at all.
-	l := &Loader{cfg: &core.LoadConfig{Format: "ndjson"}}
 
-	data, err := l.encodeRows([]core.Envelope{{
+	data, err := EncodeRows([]core.Envelope{{
 		Provider: "open_meteo", Entity: "hourly", SourceKey: "k1",
 		RecordTS: "2026-01-01T00:00:00Z",
 		Payload:  map[string]any{"temperature_c": 20, "observed_at": "2026-01-01T00:00"},
-	}})
+	}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -608,10 +604,10 @@ func TestTypedTableDeclaresTheMetadataColumnsNotNull(t *testing.T) {
 }
 
 func TestClusterByMustBeInTheRows(t *testing.T) {
-	// The table is created from these rows, so a clustering column has to be
-	// one of them. BigQuery says so too, but only after the job is submitted
-	// and without saying what the rows do have.
-	err := checkClusterFields([]string{"provider", "label"}, []core.Envelope{{
+	// No Schema: this is the AUTODETECT path, where the rows really are the
+	// table. BigQuery says so too, but only after the job is submitted and
+	// without saying what the rows do have.
+	err := checkClusterFields([]string{"provider", "label"}, nil, []core.Envelope{{
 		Payload: map[string]any{"amount": 1, "label": "x"},
 	}})
 	if err == nil {
@@ -630,12 +626,12 @@ func TestClusterByMustBeInTheRows(t *testing.T) {
 		}
 	}
 
-	if err := checkClusterFields([]string{"label"}, []core.Envelope{{
+	if err := checkClusterFields([]string{"label"}, nil, []core.Envelope{{
 		Payload: map[string]any{"label": "x"},
 	}}); err != nil {
 		t.Errorf("a present column must pass: %v", err)
 	}
-	if err := checkClusterFields(nil, nil); err != nil {
+	if err := checkClusterFields(nil, nil, nil); err != nil {
 		t.Errorf("nothing to check must not be an error: %v", err)
 	}
 }
@@ -784,18 +780,18 @@ func TestLayoutDoesNotInventAPartitionColumn(t *testing.T) {
 // warehouse's data into a container -- silently, because those writes succeed.
 func TestTheEmulatorEndpointIsEnvironmentOnly(t *testing.T) {
 	t.Setenv(EnvEmulator, "")
-	if got := emulator(); got != nil {
+	if got := emulator(bigQueryPath); got != nil {
 		t.Errorf("unset produced %d options; the default has to be no override", len(got))
 	}
 
 	t.Setenv(EnvEmulator, "   ")
-	if got := emulator(); got != nil {
+	if got := emulator(bigQueryPath); got != nil {
 		t.Error("whitespace is not an endpoint, and treating it as one would " +
 			"point the client at nothing with authentication already off")
 	}
 
 	t.Setenv(EnvEmulator, "http://localhost:4588")
-	got := emulator()
+	got := emulator(bigQueryPath)
 	if len(got) != 2 {
 		t.Fatalf("set produced %d options, want the endpoint AND "+
 			"WithoutAuthentication -- an endpoint that still authenticates "+
@@ -812,5 +808,143 @@ func TestTheEmulatorEndpointIsEnvironmentOnly(t *testing.T) {
 	}
 	if strings.Contains(fmt.Sprintf("%+v", *cfg), "localhost:4588") {
 		t.Error("the endpoint reached LoadConfig, so a YAML could carry it")
+	}
+}
+
+// With a declared Schema, the clustering column has to be in the SCHEMA — the
+// rows are the wrong question.
+//
+// Issue #42, finding 3. Every table created from a producer that sends no
+// `id` failed its first attempt:
+//
+//	ClusterBy names zarv_metadata_record_key, which the rows do not have.
+//	The table is created from these rows, so a clustering column has to be
+//	one of them: ComputedPrice, ElapsedMilliseconds, …
+//
+// That sentence is only true under AUTODETECT. With a declared Schema the
+// table is built by createFromSchema, from the Schema, and `record_key` is in
+// it — the gateway omits it from a ROW when the key is empty, which is
+// correct and is what makes this fire. Five tables, two wasted retries each
+// and a misleading WARN, recovering on attempt 2 or 3.
+func TestClusterByIsCheckedAgainstTheDeclarationWhenThereIsOne(t *testing.T) {
+	// The landing layout, as the gateway declares it.
+	schema := core.Schema{
+		{Name: "zarv_metadata_ingestion_id", Type: core.TypeString, Required: true},
+		{Name: "zarv_metadata_record_key", Type: core.TypeString},
+		{Name: "zarv_metadata_received_at", Type: core.TypeTimestamp, Required: true},
+		{Name: "ComputedPrice", Type: core.TypeString},
+	}
+	// A row from a producer that sends no `id`: the gateway leaves
+	// record_key out rather than writing an empty string.
+	rows := []core.Envelope{{Payload: map[string]any{
+		"zarv_metadata_ingestion_id": "i-1",
+		"zarv_metadata_received_at":  "2026-10-01T13:00:00Z",
+		"ComputedPrice":              "10",
+	}}}
+
+	if err := checkClusterFields([]string{"zarv_metadata_record_key"}, schema, rows); err != nil {
+		t.Errorf("refused: %v\n\nThe table is created from the SCHEMA, which "+
+			"declares that column. Refusing here costs two retries and a WARN "+
+			"that points at the rows, which are not what the table is made of", err)
+	}
+
+	// And a clustering column that is in NEITHER is still refused, with the
+	// declaration listed rather than the rows.
+	err := checkClusterFields([]string{"nowhere"}, schema, rows)
+	if err == nil {
+		t.Fatal("clustering on a column nothing declares was accepted")
+	}
+	if !strings.Contains(err.Error(), "nowhere") {
+		t.Errorf("the refusal does not name the column: %v", err)
+	}
+	if !strings.Contains(err.Error(), "ComputedPrice") {
+		t.Errorf("the refusal does not list the declaration: %v", err)
+	}
+}
+
+// With no Schema the rows ARE the table, and the check stays exactly as it
+// was: that path is autodetect, and the old message is true there.
+func TestClusterByStillChecksTheRowsUnderAutodetect(t *testing.T) {
+	rows := []core.Envelope{{Payload: map[string]any{"amount": 1}}}
+	err := checkClusterFields([]string{"provider"}, nil, rows)
+	if err == nil {
+		t.Fatal("clustering on an absent column must be refused under autodetect")
+	}
+	if !strings.Contains(err.Error(), "amount") {
+		t.Errorf("the refusal does not list what the rows have: %v", err)
+	}
+}
+
+// A nil for a column nothing declares does not reach the wire. [#42]
+//
+// BigQuery does not set IgnoreUnknownValues, so a key the table has no column
+// for fails the load job by name -- `no such field`. Under the landing layout
+// the ROW keeps a null, because a DECLARED column that arrived empty has to
+// stay in it or CheckRow refuses the load in five drivers. Nothing declares
+// the field, nothing creates a column for it, and nothing should write it.
+//
+// AT THE WIRE and not at a function: the bytes are what BigQuery reads, and
+// the same measurement is what made the JSON-string bug decidable. floci
+// refuses load jobs, so this is the half that can be asserted at all.
+func TestEncodeRowsDropsANullNothingDeclares(t *testing.T) {
+	declared := []string{"id", "declared_empty"}
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id":              "A-1",
+		"declared_empty":  nil,
+		"undeclared_null": nil,
+	}}}, declared)
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	line := string(data)
+
+	if strings.Contains(line, "undeclared_null") {
+		t.Errorf("the wire carries undeclared_null: BigQuery has no column "+
+			"for it and the load job fails with `no such field`, taking the "+
+			"whole batch with it.\n%s", line)
+	}
+	// The DECLARED one stays. The column exists, and NULL is a value for it --
+	// dropping it here would write nothing where the producer said null, and
+	// on a MERGE that is the difference between clearing a field and leaving
+	// yesterday's value in place.
+	if !strings.Contains(line, `"declared_empty":null`) {
+		t.Errorf("the wire dropped declared_empty, which the table HAS:\n%s", line)
+	}
+	if !strings.Contains(line, `"id":"A-1"`) {
+		t.Errorf("the wire lost id:\n%s", line)
+	}
+}
+
+// And a VALUE nothing declares is never silently dropped.
+//
+// That would be data loss, quietly, which is the one outcome worse than the
+// refusal. CheckRow stops it before this is reached; this pins that the wire
+// does not take over the job and start discarding fields on its own.
+func TestEncodeRowsNeverDropsAValue(t *testing.T) {
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id": "A-1", "undeclared_value": "kept",
+	}}}, []string{"id"})
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	if !strings.Contains(string(data), "undeclared_value") {
+		t.Errorf("the wire dropped a field that HAS a value: a field nothing "+
+			"declares is refused by CheckRow, by name, and never discarded "+
+			"here.\n%s", data)
+	}
+}
+
+// With no declaration there is nothing to compare against, and nothing is
+// dropped. Autodetect creates the table FROM these rows.
+func TestEncodeRowsWithNoDeclarationKeepsEverything(t *testing.T) {
+	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
+		"id": "A-1", "empty": nil,
+	}}}, nil)
+	if err != nil {
+		t.Fatalf("EncodeRows: %v", err)
+	}
+	if !strings.Contains(string(data), "empty") {
+		t.Errorf("a null was dropped with no declaration to judge it by: "+
+			"under autodetect the table is created from these rows.\n%s", data)
 	}
 }

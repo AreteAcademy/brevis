@@ -140,6 +140,7 @@ var (
 	WithThresholdBytesForGCS   = core.WithThresholdBytesForGCS
 	WithColumns                = core.WithColumns
 	WithSchema                 = core.WithSchema
+	WithEvolve                 = core.WithEvolve
 	WithPartitionBy            = core.WithPartitionBy
 	WithClusterBy              = core.WithClusterBy
 	WithCreateTable            = core.WithCreateTable
@@ -171,6 +172,17 @@ const (
 // bool, a time.Time. Anything past that is CreateSQL's.
 const CurrentTimestamp = core.CurrentTimestamp
 
+// JSONText is text that is already JSON, and says so.
+//
+// Landing with LandingColumns puts one of these in every column that held an
+// object or an array. It is what lets a destination declare that column JSON
+// rather than text: the transformer renders the value, so by the time the
+// driver sees it the shape would otherwise be gone -- and a pipeline would
+// declare STRING where a gateway declares JSON for the same record.
+//
+// Read it as a string when you need to: `string(v)` is the JSON text.
+type JSONText = core.JSONText
+
 // Expression is the type of CurrentTimestamp. See Column.Default.
 type Expression = core.Expression
 
@@ -190,6 +202,15 @@ const (
 	// a type -- a column that leaves the source stops being written and stays
 	// in the table, because dropping it loses history.
 	EvolveAdditive = core.EvolveAdditive
+
+	// EvolveAdditiveFromPayload is EvolveAdditive plus the columns the BATCH
+	// carries and the declaration does not, typed by shape: STRING unless the
+	// field is an object or an array, and then JSON.
+	//
+	// It is the pipeline's half of what a gateway does with `shape: columns`,
+	// and it is the same code. The declaration is still yours -- this
+	// completes it from the batch, it does not replace it.
+	EvolveAdditiveFromPayload = core.EvolveAdditiveFromPayload
 )
 
 // The failure policies of a composite source. See from.Many.

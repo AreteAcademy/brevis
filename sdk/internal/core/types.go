@@ -295,6 +295,20 @@ type LoadConfig struct {
 	// table takes its types from -- and not from any autodetect.
 	Schema Schema
 
+	// Evolve says what a load may do to a table that EXISTS and no longer
+	// matches the declared Schema.
+	//
+	// EvolveNone -- the zero value -- refuses any difference, which is what
+	// this path did before, silently. The Postgres and MySQL destinations have
+	// honoured this field for a while; BigQuery ignored it, and `auto_table`
+	// declared EvolveAdditive on every destination regardless.
+	//
+	// The result: adding a fixed column to the gateway broke every BigQuery
+	// table an older version had created, and a producer growing a field broke
+	// the load into an existing one -- which is the single thing auto_table
+	// exists to make safe. Issue #34.
+	Evolve Evolution
+
 	// PartitionBy names the partitioning column of a created table. Empty uses
 	// the default: daily on ingestion_loaded_at.
 	PartitionBy string
@@ -621,6 +635,12 @@ func WithSchema(s Schema) LoadOption {
 	}
 }
 
+// WithEvolve says what a load may do to a table that no longer matches the
+// declared Schema. See LoadConfig.Evolve.
+func WithEvolve(mode Evolution) LoadOption {
+	return func(cfg *LoadConfig) { cfg.Evolve = mode }
+}
+
 // WithPartitionBy names the partitioning column of the created table.
 func WithPartitionBy(column string) LoadOption {
 	return func(cfg *LoadConfig) { cfg.PartitionBy = column }
@@ -637,4 +657,48 @@ func WithClusterBy(fields ...string) LoadOption {
 	return func(cfg *LoadConfig) {
 		cfg.ClusterBy = fields
 	}
+}
+
+// DeclaredColumns names what the TABLE will be made of.
+//
+// It is a different question from the one Columns alone answers, and confusing
+// the two cost a consumer every batch of every new table:
+//
+//	Columns  -- "the consumer promised every row has exactly these"
+//	Schema   -- "this is what the table is made of"
+//
+// A caller may declare either; sdk.Target REFUSES both at once, because they
+// are two lists of the same thing and the one that lost would lose silently.
+// So "Columns when it has any, the Schema's names otherwise" is the whole
+// rule, and it is the same one sdk.Target.declaredColumns uses -- one question
+// should not have two answers depending on which side of the facade you ask.
+//
+// WHO SHOULD NOT CALL THIS: CheckRow. It asks whether the ROW carries what the
+// consumer promised, and on the gateway path the Schema is the UNION of a
+// batch whose records need not agree -- measured, and it refuses an ordinary
+// batch:
+//
+//	the Columns declaration lists only_in_record_two, which the row does not have
+//
+// On the SDK's own path that union is covered by `discovered`, which CheckRow
+// treats as may-be-absent. The gateway has no `discovered` because it did its
+// own discovery and handed us the result as a Schema. CheckRow reads Columns
+// directly, on purpose.
+func (c *LoadConfig) DeclaredColumns() []string {
+	return declaredColumnsOf(c.Columns, c.Schema)
+}
+
+// DeclaredColumns is the same question on the other carrier. See
+// LoadConfig.DeclaredColumns for which question it is and who must not ask it.
+func (o WriteOptions) DeclaredColumns() []string {
+	return declaredColumnsOf(o.Columns, o.Schema)
+}
+
+// declaredColumnsOf is the rule, written once. Two carriers ask it and the
+// answer cannot be allowed to depend on which one.
+func declaredColumnsOf(columns []string, s Schema) []string {
+	if len(columns) > 0 {
+		return columns
+	}
+	return s.Names()
 }

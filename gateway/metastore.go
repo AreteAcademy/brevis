@@ -34,11 +34,24 @@ import (
 // long stalls every replica behind one dead process. Losing a Claim costs a
 // retry and nothing else, which is what Delta Lake and Iceberg do with
 // optimistic commits and what Kafka Connect gets free from partition ordering.
+//
+// An implementation must be safe for CONCURRENT use, including several calls
+// to the same method. It always had to be safe across methods -- the router
+// reads the cache from a worker while the timer claims a window -- and the
+// per-key claim adds the rest: with no bulk primitive the fallback claims up
+// to `claimFanout` keys at once, because doing it one at a time holds the
+// buffer's lock for the sum of them.
 type Metastore interface {
 	// Get returns what was stored, and whether anything was.
 	Get(ctx context.Context, key string) (string, bool, error)
 
-	// Put stores a value for ttl.
+	// Put stores a value for ttl. A ttl of ZERO means the entry does not
+	// expire, and every backend has to mean it -- see MetastoreConfig.TTL.
+	//
+	// Only Put takes a zero that way. Claim and Incr are always given a
+	// positive window by their callers and must never be handed zero: a claim
+	// that does not expire is a lock, which this design refuses by name, and a
+	// counter that does not expire is a rolling window that never rolls.
 	Put(ctx context.Context, key, value string, ttl time.Duration) error
 
 	// Claim stores a marker only if the key is absent, and reports whether
@@ -159,7 +172,20 @@ type memoryMetastore struct {
 type memoryEntry struct {
 	value string
 	count int64
+	// until is when the entry stops being true. The ZERO TIME means never,
+	// which is what `ttl: 0` asks for -- and `now.Add(0)` would have meant
+	// "expired a nanosecond ago", so a zero TTL used to make every Get a miss
+	// here while Redis read the same zero as "keep forever".
 	until time.Time
+}
+
+// expiresAt turns a TTL into the instant an entry stops being true. Zero in,
+// zero out, and Get reads the zero time as never.
+func expiresAt(ttl time.Duration) time.Time {
+	if ttl <= 0 {
+		return time.Time{}
+	}
+	return time.Now().Add(ttl)
 }
 
 func (m *memoryMetastore) Describe() string { return MetastoreMemory }
@@ -168,7 +194,7 @@ func (m *memoryMetastore) Get(_ context.Context, key string) (string, bool, erro
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	e, ok := m.by[key]
-	if !ok || time.Now().After(e.until) {
+	if !ok || (!e.until.IsZero() && time.Now().After(e.until)) {
 		return "", false, nil
 	}
 	return e.value, true, nil
@@ -177,7 +203,7 @@ func (m *memoryMetastore) Get(_ context.Context, key string) (string, bool, erro
 func (m *memoryMetastore) Put(_ context.Context, key, value string, ttl time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.by[key] = memoryEntry{value: value, until: time.Now().Add(ttl)}
+	m.by[key] = memoryEntry{value: value, until: expiresAt(ttl)}
 	return nil
 }
 
@@ -189,6 +215,33 @@ func (m *memoryMetastore) Claim(_ context.Context, key string, ttl time.Duration
 	}
 	m.by[key] = memoryEntry{value: "1", until: time.Now().Add(ttl)}
 	return true, nil
+}
+
+// ClaimMany takes the lock ONCE for the whole window.
+//
+// It satisfies BulkClaimer, and the reason is the opposite of Redis'. There
+// the point is one round trip instead of ninety-four; here there is no trip
+// at all, and the point is to stay OUT of the fallback's fan-out: thirty-two
+// goroutines contending for one mutex is machinery for overlapping I/O on a
+// path that has none.
+//
+// The clock is read once, so every key in a window is judged against the
+// same instant. A window IS an instant, and reading it per key would let the
+// first table and the last disagree about which one they are in.
+func (m *memoryMetastore) ClaimMany(_ context.Context, keys []string, ttl time.Duration) ([]bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := time.Now()
+	out := make([]bool, len(keys))
+	for i, key := range keys {
+		if e, ok := m.by[key]; ok && now.Before(e.until) {
+			continue
+		}
+		m.by[key] = memoryEntry{value: "1", until: now.Add(ttl)}
+		out[i] = true
+	}
+	return out, nil
 }
 
 func (m *memoryMetastore) Incr(_ context.Context, key string, ttl time.Duration) (int64, error) {
