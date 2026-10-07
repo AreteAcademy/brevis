@@ -43,6 +43,12 @@ func TestTheRepositorysWorkflowsDetectAsExpected(t *testing.T) {
 		"hello.yaml::validate": "shell",
 		"hello.yaml::publish":  "shell",
 
+		// A list param interpolates as a comma-separated string, so a step that
+		// uses one is still a plain shell step -- which is the point of the
+		// separator.
+		"list-params.yaml::show":      "shell",
+		"list-params.yaml::per_table": "shell",
+
 		// A bare binary path says nothing on its own -- and these two DECLARE
 		// `runtime: go`, which is what the field exists for. The blank rows
 		// above are the ones that keep the detector honest.

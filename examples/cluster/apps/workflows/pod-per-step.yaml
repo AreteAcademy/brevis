@@ -1,0 +1,51 @@
+# Two steps that run AT THE SAME TIME, in two different images.
+#
+# The point is what you see while it runs:
+#
+#   make cluster-shell ARGS="-n dados get pods -w"
+#
+# Two pods appear together, each with the image its step named and the limits
+# its step asked for, and both are gone when the run ends. Nothing waits for a
+# worker to be free, because there is no worker -- the work brings its own
+# runtime.
+name: pod_per_step
+description: >
+  Two parallel steps on two different images, which is the whole of the
+  pod-per-step model in one screen. Watch `kubectl get pods` while it runs.
+type: dag
+tags: [demo]
+
+steps:
+  - id: prepare
+    image: alpine:3.20
+    run: sh -c 'echo preparing; sleep 2'
+    resources:
+      cpu: 50m
+      memory: 32Mi
+
+  # These two depend on the same step, so they run together -- two pods at
+  # once, and deliberately not the same image. A single worker would have had
+  # to carry both.
+  - id: small
+    image: alpine:3.20
+    run: sh -c 'echo "I am alpine, 8 MB"; sleep 5'
+    depends_on: [prepare]
+    resources:
+      cpu: 50m
+      memory: 32Mi
+
+  - id: large
+    image: python:3.12-slim
+    run: python -c "import sys; print('I am python', sys.version); import time; time.sleep(5)"
+    depends_on: [prepare]
+    resources:
+      cpu: 100m
+      memory: 128Mi
+
+  - id: done
+    image: alpine:3.20
+    run: echo both finished
+    depends_on: [small, large]
+    resources:
+      cpu: 50m
+      memory: 32Mi

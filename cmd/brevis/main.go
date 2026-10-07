@@ -212,6 +212,7 @@ func cmdValidate() *cobra.Command {
 					failures1++
 					continue
 				}
+				avisar(a, conteudo)
 				parsed = append(parsed, w)
 				fmt.Printf("  ok    %-28s %s  %d steps, %d dependencies%s\n",
 					w.Slug, w.Kind, len(w.Nodes), len(w.Edges), schedule(w.Schedule))
@@ -240,6 +241,18 @@ func cmdValidate() *cobra.Command {
 }
 
 // readAll parses every file into workflows, as a set.
+// avisar prints what the decoder ignored, to STDERR.
+//
+// stderr and not stdout because `validate`'s stdout is a report somebody
+// greps and redirects, and a warning that disappears into a pipe is a warning
+// nobody reads. It is also why this is not an error: the file is fine, the
+// engine will behave exactly as it did, and one of its lines does nothing.
+func avisar(path string, conteudo []byte) {
+	for _, w := range spec.UnknownFields(path, conteudo) {
+		fmt.Fprintf(os.Stderr, "  warn  %s\n", w)
+	}
+}
+
 func readAll(files []string) ([]wfdom.Workflow, error) {
 	out := make([]wfdom.Workflow, 0, len(files))
 	for _, a := range files {
@@ -251,6 +264,7 @@ func readAll(files []string) ([]wfdom.Workflow, error) {
 		if err != nil {
 			return nil, err
 		}
+		avisar(a, conteudo)
 		out = append(out, w)
 	}
 	return out, nil
@@ -379,6 +393,7 @@ func cmdRun() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			avisar(args[0], conteudo)
 
 			env := os.Getenv("BREVIS_ENV")
 			if env == "" {
@@ -409,6 +424,10 @@ func cmdRun() *cobra.Command {
 			runner := app.Runner{
 				Params:   values,
 				Processo: exec,
+				// `brevis run` has no server and no store unless the operator
+				// points at one. A workflow that declares persist_context is
+				// then refused by name, before the first step.
+				PersistURL: os.Getenv("BREVIS_PERSIST_URL"),
 				// An empty Registry in `run`: Go tasks are registered by
 				// whoever compiles the binary, and the generic CLI knows none.
 				// An `action:` for an unregistered task fails naming the ones
@@ -766,13 +785,14 @@ func cmdScheduler() *cobra.Command {
 					// through the template and into the step's environment, so
 					// a fetcher using the SDK sees them without being passed
 					// anything as an argument.
-					Params:   r.Params,
-					Processo: processo,
-					Pods:     pods,
-					Hosts:    hosts,
-					Go:       local.NewGoExecutor(execution.NewRegistry()),
-					Env:      tasksEnvironment,
-					Report:   consoleReporter{},
+					Params:     r.Params,
+					Processo:   processo,
+					PersistURL: cfg.PersistURL,
+					Pods:       pods,
+					Hosts:      hosts,
+					Go:         local.NewGoExecutor(execution.NewRegistry()),
+					Env:        tasksEnvironment,
+					Report:     consoleReporter{},
 					// Without this the `task_runs` table stays empty and the DAG
 					// on screen has no per-step state — the debt left open in
 					// PHASE 2.

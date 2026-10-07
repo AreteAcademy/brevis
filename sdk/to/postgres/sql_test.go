@@ -14,7 +14,7 @@ import (
 // teste.
 func TestInsertSQLNamesTheColumns(t *testing.T) {
 	got := InsertSQL("landing.pedidos", "brevis_stage",
-		[]string{"ingestion_id", "provider", "valor"})
+		[]string{"ingestion_id", "provider", "valor"}, core.MetadataID)
 
 	expected := `INSERT INTO landing.pedidos ("ingestion_id", "provider", "valor") ` +
 		`SELECT "ingestion_id", "provider", "valor" FROM brevis_stage ` +
@@ -28,7 +28,7 @@ func TestInsertSQLNamesTheColumns(t *testing.T) {
 // legitimate, and unquoted it becomes a syntax error in the middle of a load --
 // on a batch that has already run the whole extract.
 func TestInsertSQLQuotesIdentifiers(t *testing.T) {
-	got := InsertSQL("t", "s", []string{core.MetadataID, "order", "group"})
+	got := InsertSQL("t", "s", []string{core.MetadataID, "order", "group"}, core.MetadataID)
 	for _, palavra := range []string{`"order"`, `"group"`} {
 		if !strings.Contains(got, palavra) {
 			t.Errorf("%s nao esta citado:\n%s", palavra, got)
@@ -39,7 +39,7 @@ func TestInsertSQLQuotesIdentifiers(t *testing.T) {
 // TestInsertSQLEscapesQuotes: a quote inside the name would close the identifier
 // and the rest of the column would become SQL.
 func TestInsertSQLEscapesQuotes(t *testing.T) {
-	got := InsertSQL("t", "s", []string{`a"b`})
+	got := InsertSQL("t", "s", []string{`a"b`}, core.MetadataID)
 	if !strings.Contains(got, `"a""b"`) {
 		t.Errorf("aspa nao escapada:\n%s", got)
 	}
@@ -50,7 +50,7 @@ func TestInsertSQLEscapesQuotes(t *testing.T) {
 // thing in
 // silencio.
 func TestInsertSQLConflictsOnIngestionID(t *testing.T) {
-	got := InsertSQL("t", "s", []string{"a"})
+	got := InsertSQL("t", "s", []string{"a"}, core.MetadataID)
 	if !strings.Contains(got, `ON CONFLICT ("`+core.MetadataID+`")`) {
 		t.Errorf("o ON CONFLICT nao e por %s:\n%s", core.MetadataID, got)
 	}

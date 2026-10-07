@@ -173,32 +173,37 @@ jobs:
           go-version: '1.27'
           cache: true
 
-      # docker run, and not a service container: MinIO's official image needs
-      # "server /data" as its command, and Actions services do not
-      # aceitam command.
+      # What these tests need is an S3 API, not MinIO, and MinIO has now twice
+      # taken its community image away underneath this job:
       #
-      # quay.io, and PINNED. `minio/minio` on Docker Hub is a 404 as of
-      # 2026-09-13 -- MinIO withdrew the images, and every run since then failed
-      # on `pull access denied` with nothing in this repository having changed.
-      # quay.io publishes no `latest`, only dated RELEASE tags, which is the
-      # better arrangement anyway: an unpinned tag in a repository that checks
-      # its image pins was the odd one out.
-      - name: Start MinIO
+      #   2026-09-13  `minio/minio` on Docker Hub became a 404 -- `pull access
+      #               denied`, with nothing in this repository having changed.
+      #               Moved to quay.io, pinned to a dated RELEASE tag.
+      #   2026-09-24  quay.io/minio/minio began answering 401, `access to the
+      #               requested resource is not authorized`. Same job, same
+      #               pin, gated again.
+      #
+      # So this runs adobe/s3mock: built to be an S3 endpoint for tests, on
+      # Docker Hub, no command to pass and no credentials to configure -- it
+      # accepts whatever the caller signs with, which is what the tests already
+      # send. Verified against the real suite before the switch: the four
+      # TestIntegrationS3* cases pass, pagination included.
+      #
+      # The endpoint stays on 9000 so nothing downstream moves; s3mock serves
+      # HTTP on 9090 inside the container.
+      - name: Start an S3 endpoint
         run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=brevis \
-            -e MINIO_ROOT_PASSWORD=brevis-secret \
-            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
+          docker run -d --name s3 -p 9000:9090 adobe/s3mock:5.2.3
 
           for i in $(seq 1 40); do
-            if curl -fs http://localhost:9000/minio/health/live >/dev/null; then
-              echo "MinIO no ar"
+            if curl -fs -o /dev/null http://localhost:9000/; then
+              echo "S3 endpoint up"
               exit 0
             fi
             sleep 2
           done
-          echo "::error::MinIO did not start; the S3 tests would not have run"
-          docker logs minio
+          echo "::error::the S3 endpoint did not start; the S3 tests would not have run"
+          docker logs s3
           exit 1
 
       # Postgres comes up through the same compose that runs on a developer's
@@ -240,6 +245,74 @@ jobs:
         run: |
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
+
+      # floci, for the emulated BigQuery layer. The socket is mounted because
+      # queries run in a sibling container it starts itself, and the tag is a
+      # DATED nightly: floci ships no stable release, and `nightly` floating
+      # means a suite that turns red on a morning nobody changed anything.
+      - name: Start floci
+        run: |
+          docker run -d --name floci -p 4588:4588 \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            floci/floci-gcp:nightly-09252026
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf -o /dev/null "http://localhost:4588/bigquery/v2/projects/floci-local/datasets"
+          echo "floci is up"
+
+      # The emulated BigQuery layer. The value is the emulator's BASE URL:
+      # the SDK appends /bigquery/v2/ and /storage/v1/ itself, and it points
+      # BOTH clients there -- the GCS one is built eagerly, so without it this
+      # step would need Google credentials it does not have.
+      - name: Integration - BigQuery against floci
+        env:
+          BREVIS_BIGQUERY_EMULATOR: http://localhost:4588
+        run: |
+          cd sdk
+          go test -v -timeout 5m -run TestIntegrationBigQuery ./load/
+
+      # The gateway against the same three. Its integration tests skipped in CI
+      # from the day they were written -- the unit step next door runs `go
+      # test` with none of these variables set, so every case that reaches a
+      # real destination was a case that ran on a laptop and nowhere else.
+      # Which is the lesson at the top of this job, learned again.
+      #
+      # localhost and not 127.0.0.1 for the S3 endpoint, deliberately: the AWS
+      # SDK switches to path-style addressing on its own when the endpoint is a
+      # bare IP, so against an IP the path-style test passes without exercising
+      # anything. The test refuses an IP rather than passing quietly.
+      # Redis and memcached, for the metastore. They are what make several
+      # replicas behave like one, and the claim's exclusivity is a property no
+      # unit test can show: `memory` gives every caller a yes, which is the
+      # failure the shared backends exist to prevent.
+      - name: Start Redis and memcached
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+          docker run -d --name memcached -p 11211:11211 memcached:1.6-alpine
+          for i in $(seq 1 30); do
+            if docker exec redis redis-cli ping >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          echo "Redis and memcached are up"
+
+      - name: Integration - the gateway
+        env:
+          BREVIS_GATEWAY_TEST_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
+          BREVIS_GATEWAY_TEST_MYSQL_DSN: root:brevis@tcp(localhost:53306)/brevis_it
+          BREVIS_GATEWAY_TEST_S3_ENDPOINT: http://localhost:9000
+          BREVIS_GATEWAY_TEST_REDIS: 127.0.0.1:6379
+          BREVIS_GATEWAY_TEST_MEMCACHED: 127.0.0.1:11211
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: brevis
+          AWS_SECRET_ACCESS_KEY: brevis-secret
+        run: |
+          cd gateway
+          export GOFLAGS=-mod=mod
+          go test -v -race -timeout 10m ./...
 
       # secrets cannot be used in a step's if:, so it becomes a job-level
       # environment variable and the check is against that.
@@ -420,6 +493,45 @@ jobs:
           go test ./... -count=1
           echo "✅ the OTel meter builds and passes"
 
+      - name: The gateway builds and passes
+        run: |
+          # A module of its own, and it `replace`s the SDK with the tree next
+          # door -- so -mod=mod, for the reason the examples step gives: without
+          # it ANY change to sdk/go.mod fails here with "updates to go.mod
+          # needed", and a routine dependency bump looks like the gateway
+          # breaking.
+          #
+          # Nothing else compiles it. Without this step it rots, which is what
+          # happened to six examples that did not build at all.
+          cd gateway
+          export GOFLAGS=-mod=mod
+          go build ./...
+          go vet ./...
+          # The integration tests reach a Pub/Sub emulator, a Postgres, a
+          # MySQL and an S3 endpoint, and SKIP without them -- they run in the
+          # `integration` job, which has all three up. This step is the unit
+          # ones.
+          go test ./... -count=1
+          echo "✅ the gateway builds and passes"
+
+      # The gateway is a Go MODULE somebody imports, not only an image they
+      # pull -- a hook means a binary of their own. Nothing built it the way
+      # they get it, and gateway/v0.3.1 published unbuildable: its go.mod
+      # required sdk v0.63.0 while its code used sdk.Store, from v0.64.0, and
+      # the local replace hid it from every gate here.
+      - name: A consumer can build the gateway
+        run: .github/scripts/gateway-consumer-check.sh
+
+      - name: The Docker Hub overview fits
+        run: .github/scripts/hub-overview-check.sh
+
+      - name: Lint the gateway
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          working-directory: gateway
+          args: --timeout=5m
+
       - name: Lint the OTel meter
         uses: golangci/golangci-lint-action@v9
         with:
@@ -448,6 +560,17 @@ jobs:
           go build ./...
           go vet ./...
           echo "✅ the full-pipeline example builds"
+
+      - name: Build the cluster demo's Go pod
+        run: |
+          # A module of its own with NO requirements, which is what lets its
+          # Docker build run with the wifi off -- and what takes it out of the
+          # `examples` module's own build below. Nothing else compiles it, so
+          # without this step it rots exactly the way six examples once did.
+          cd examples/cluster/goapp
+          go build ./...
+          go vet ./...
+          echo "✅ the cluster demo's Go pod builds"
 
       - name: The example workflows are valid
         run: |

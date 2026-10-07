@@ -1,0 +1,137 @@
+package gateway
+
+import (
+	"context"
+	"errors"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+// Main runs a gateway from the config named on the command line.
+//
+// It exists so a consumer's main is the registration and nothing else: the
+// listener, the signals and the drain are the same every time, and a binary
+// that has to re-derive them is a binary where one of them is forgotten.
+//
+// The options are where the registration goes:
+//
+//	func main() {
+//	    sinks := gateway.NewSinks()
+//	    sinks.MustRegister(postgres.Sink, postgres.New)
+//	    sinks.MustRegister(files.Sink, files.New)
+//	    gateway.Main(nil, gateway.WithSinks(sinks))
+//	}
+//
+// That binary carries pgx and nothing else -- 10 MB against the 49 of one that
+// registers all six. The import list is the selection, which is how
+// database/sql has always worked.
+func Main(hooks *Hooks, opts ...Option) {
+	if len(os.Args) < 2 {
+		log.Fatal("usage: gateway <config.yaml>")
+	}
+	cfg, err := Load(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	srv, err := New(cfg, hooks, opts...)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http := &http.Server{
+		Addr: cfg.Listen.Addr, Handler: srv.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		log.Printf("listening on %s", cfg.Listen.Addr)
+		if err := http.ListenAndServe(); err != nil {
+			log.Print(err)
+		}
+	}()
+
+	// The number this process needs from its orchestrator, said once, at the
+	// moment somebody is watching.
+	//
+	// It cannot read its own manifest, and Kubernetes defaults
+	// terminationGracePeriodSeconds to thirty -- which was exactly the old
+	// fixed drain budget, so there was no margin and a SIGKILL could arrive
+	// while the drain was still inside its own deadline. Printing the
+	// requirement is the cheapest thing that stops the two drifting apart
+	// silently, in two repositories, with nothing connecting them.
+	log.Printf("drain budget %s; set terminationGracePeriodSeconds >= %.0f",
+		cfg.DrainBudget(), cfg.GracePeriod().Seconds())
+
+	metrics := serveMetrics(cfg, srv)
+
+	// What is in a buffer at shutdown is delivered, not dropped: `memory`
+	// already loses on a crash, and losing on a clean stop as well would make
+	// the tier useless rather than merely limited.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+
+	// THREE budgets, not one shared between three calls in sequence.
+	//
+	// They used to share a single thirty-second context, and http.Shutdown
+	// went first: one slow reader -- a large ndjson body, a client on a bad
+	// connection -- spent the drain's budget before the drain started, and in
+	// the worst case Close received an already-expired context. The last batch
+	// still went out through close's own fallback; everything already queued
+	// was abandoned when this function returned.
+	stopping, cancelHTTP := context.WithTimeout(context.Background(), httpShutdownBudget)
+	_ = http.Shutdown(stopping)
+	cancelHTTP()
+
+	draining, cancelDrain := context.WithTimeout(context.Background(), cfg.DrainBudget())
+	defer cancelDrain()
+	err = srv.Close(draining)
+
+	if metrics != nil {
+		// After the drain, so a scrape that does arrive sees what it did --
+		// though on a terminating pod there usually is no further scrape, and
+		// the log below is what actually survives.
+		last, cancelMetrics := context.WithTimeout(context.Background(), httpShutdownBudget)
+		_ = metrics.Shutdown(last)
+		cancelMetrics()
+	}
+
+	if err != nil {
+		// Non-zero, because a stop that lost accepted events must not look
+		// like a clean one to Kubernetes, to a supervisor or to CI. The error
+		// carries the count; this is the only channel that outlives the pod.
+		log.Printf("drain incomplete: %v", err)
+		os.Exit(1)
+	}
+}
+
+// serveMetrics starts the exposition on its own address, and NEVER on the
+// ingest mux: that port is public by design, and a scrape endpoint on it would
+// publish every stream name, path and destination to whoever finds it.
+//
+// A failure here does not stop the gateway, which is the engine's rule and the
+// right one: a port already in use must not take down an ingestion endpoint.
+// Two Brevis processes on one developer's machine is the common case, and
+// killing the one that came second to protect a scrape endpoint would be the
+// wrong trade every time. The failure is loud in the log and the process
+// carries on.
+func serveMetrics(cfg *Config, srv *Server) *http.Server {
+	addr := cfg.Metrics.Address()
+	if addr == "" {
+		log.Print("metrics are off; set `metrics.addr` to serve them")
+		return nil
+	}
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", srv.Metrics().MetricsHandler())
+	s := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		log.Printf("metrics on %s/metrics", addr)
+		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("metrics are not being served: %v", err)
+		}
+	}()
+	return s
+}

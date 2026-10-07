@@ -379,8 +379,8 @@ func TestANameThatIsAPathIsRefused(t *testing.T) {
 	}
 }
 
-// TestConcurrentWritesDoNotCorrupt: ultimo a escrever vence, e e escolha
-// documented -- but the file has to stay readable, never half-written.
+// TestConcurrentWritesDoNotCorrupt: the last writer wins, and that is the
+// documented choice -- but the file has to stay readable, never half-written.
 func TestConcurrentWritesDoNotCorrupt(t *testing.T) {
 	s, _ := storePronto(t)
 

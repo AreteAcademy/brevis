@@ -1,0 +1,29 @@
+# kustomize, for one reason: the ConfigMap is BUILT FROM THE FILES.
+#
+# A ConfigMap written out by hand with the workflows pasted into it would be
+# the same YAML in two places, and the copy would drift the first time somebody
+# edited only one. `configMapGenerator` reads `workflows/` and produces it,
+# which is what makes "edit a workflow and push" the whole procedure.
+#
+# The generated name carries a content hash, and kustomize rewrites the Job's
+# reference to match. That is also what makes the hash useful here rather than
+# a nuisance: the ConfigMap is a new object when the content changes.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - 00-namespace.yaml
+  - 10-postgres.yaml
+  - 40-ui-nodeport.yaml
+  - 50-publish.yaml
+  - 60-agent.yaml
+  - 70-goapp.yaml
+
+configMapGenerator:
+  - name: brevis-workflows
+    namespace: dados
+    files:
+      - workflows/pod-per-step.yaml
+      - workflows/one-pod.yaml
+      - workflows/tools.yaml
+      - workflows/goapp.yaml

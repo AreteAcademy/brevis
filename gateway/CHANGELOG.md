@@ -1,0 +1,1740 @@
+# Changelog — the gateway
+
+`areteacademy/brevis-gateway`, published from a `gateway/v*` tag.
+
+Its own version, on purpose. The gateway is a separate Go module with a
+separate maturity, and numbering it with the engine would claim one it does not
+have — the engine is at 0.15 and this is at 0.1, which is the true statement.
+The engine's versions are in [`CHANGELOG-motor.md`](../CHANGELOG-motor.md) and
+the Go SDK's in [`CHANGELOG.md`](../CHANGELOG.md).
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+the versions follow [SemVer](https://semver.org/).
+
+---
+
+## [0.21.0] — 2026-10-01
+
+Requires sdk v0.80.0. **Fixes a regression in 0.20.0 that dead-lettered whole
+batches on every new table.**
+
+### `No such field` on a new table with an empty optional field
+
+Reported on [#42](https://github.com/AreteAcademy/brevis/issues/42): a 15
+minute load test, 4,500 events, 8 batches, all parked, the table at 0 rows.
+
+A field that is `null` in every event of a batch creates no column — right —
+and since 0.20.0 the row still carries the key — also right. BigQuery refuses a
+key it has no column for, and the SDK's encoder was meant to leave it out. It
+did not on this path, because this sink declares with a `Schema` and never with
+`Columns`, and the encoder was reading `Columns`.
+
+**It hit every table as it was created**, for every optional field that was
+still empty in the first batches. A table whose fields all had values at least
+once kept loading, which is why only some tables showed it.
+
+Nothing was lost: the events are in the dead letter and can be replayed on
+this version.
+
+### The sink's declaration is now asserted
+
+`sink.options` is its own method with a test on it, because the fact that this
+sink declares with `Schema` and not `Columns` is what three bugs have depended
+on and nothing asserted it. Setting `Columns` here is the tidy-looking change
+that is not: it would reach `CheckRow`, which enforces the declaration against
+the FIRST record, while this Schema is the union of a batch whose records need
+not agree.
+
+## [0.20.0] — 2026-10-01
+
+Requires sdk v0.78.0. **The gateway was not affected by the v0.77.0 regression
+this fixes** — it declares a `Schema` and never `Columns`, so the check that
+refused a declared column absent from the row never ran here. It is released so
+that the two do not drift, and because the landing row it produces changes:
+
+### A `null` stays in the row
+
+A field that arrives `null` now keeps its key in the row, with a null value,
+and still declares no column. Those are two questions and 0.19.0's SDK answered
+them with one answer, which is what refused loads on the pipeline side.
+
+For a `shape: columns` table it means a `null` is WRITTEN into a column that
+already exists rather than left out of the statement. On an empty table the two
+look identical; against a `DEFAULT`, a generated column or a trigger they are
+not — one of them discards the producer's "this field is now empty".
+
+A field null in every event of a batch, with no column in the table, is still
+written nowhere and still creates nothing. #42's original bug — a null typing a
+column `STRING`, so the first array after it refused the batch — stays fixed.
+
+## [0.19.0] — 2026-10-01
+
+Requires sdk v0.77.0. All three findings of
+[#42](https://github.com/AreteAcademy/brevis/issues/42).
+
+### Fixed: the dead letter no longer inherits the deadline that just expired
+
+`send` narrowed its context to `sendTimeout` and handed **that** context to the
+dead-letter write. So a batch that failed *because the 60 s ran out* reached
+the dead letter with nothing left and was refused instantly. 41 events were
+neither loaded nor parked, and the dead letter is the last place an event can
+survive.
+
+The reporter's diagnosis was exact, including the part that looked wrong: they
+measured "gave up after exactly 60 s" against a 380 s grace period, and it was
+never the pod's budget — it was `sendTimeout`.
+
+The dead-letter write now has its own deadline, 30 s, derived from the caller's
+context rather than from the send that just failed. Bounded rather than
+unlimited, because a dead letter that hangs must not hold the drain open past
+the pod's grace period. The log line that says *"they are lost"* is now reached
+only when the dead letter itself refused.
+
+### Fixed: each table gets its own share of the write window
+
+The second half of the same finding, one level up. The router writes N tables
+inside one `Write`, under one deadline: in the window they measured, `id_bdc`
+took 12 s and `id_engine_verification` 16 s out of the same sixty. A table that
+takes all of it leaves the ones behind it nothing, and they are dead-lettered
+for a slowness that was not theirs.
+
+Each table's write is now bounded by what is **left** divided by the tables
+still to go — remaining over remaining, so a fast table's leftover goes to the
+tables behind it rather than being wasted. In the worst case, every table using
+all of its share, that is identical to equal shares, so it is never the
+stricter rule.
+
+**What it buys is not more time, it is whose time.** Under one shared deadline
+the table that runs LAST fails however well behaved it is, and the log blames
+it. Now the table that overran its own share is the one that fails.
+
+And a starved table no longer abandons the ones behind it: the run continues
+and the error names every table that overran and none that did not. A batch is
+still parked whole, so a table that landed is parked as well as written — every
+row carries `brevis_ingestion_id` and every table is created with it as the
+dedup key, so replaying the dead letter writes each row once.
+
+### A `null` becomes no column at all
+
+From sdk v0.77.0, and it changes what `shape: columns` creates. A field that
+arrives `null` contributes neither a column nor a value; the column appears
+from the first event carrying a VALUE, with that value's shape. The event that
+sent `null` lands `NULL` just the same.
+
+Before this, a null became `STRING` and the first array after it had the
+destination refuse the whole batch. Events already dead-lettered for that
+reason can be replayed once this version is running.
+
+## [0.18.0] — 2026-10-01
+
+### A nested object's fields can get columns of their own
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+on the gateway's process, and `shape: columns` flattens one level:
+
+```
+{"table_name": "t", "data": {"id": 1, "name": {"first": "Coleen"}}}
+→ id, name_first
+```
+
+One decision for the whole gateway, beside `BREVIS_LANDING_PREFIX` and for
+the same reason: two sinks cannot disagree about a table they might both
+write to.
+
+**Tell producers before you set it.** A record whose `data` carries
+`{"brevis": {"stream": "x"}}` is now refused — flattening would make
+`brevis_stream`, which is the gateway's own column — and it is refused PER
+EVENT, so one producer's field does not bury the batch around it.
+
+**Pick it before the first table.** It renames columns as well as adding
+them, and nothing drops one: `userName` becomes `username`, and a JSON column
+that held objects is replaced by its fields. A table already carrying either
+shape refuses a load with the flag on, before the extract, naming both
+columns.
+
+Requires `sdk v0.76.0`.
+
+---
+
+## [0.17.0] — 2026-09-30
+
+### The `brevis_` prefix is configurable
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+on the gateway's process, and every table it creates carries
+`acme_ingestion_id` and the rest. Unset, nothing changes.
+
+**One decision for the whole gateway, and that is the point.** It is an
+environment variable rather than a field on the sink precisely so two sinks
+cannot disagree about a table they might both write to — and so a pipeline
+landing the same layout, with the same variable, produces the same columns.
+
+**The reserved rule moves with it.** Under `acme_`, an event whose `data`
+carries `acme_region` is refused per event, as `brevis_region` was before;
+and `brevis_region` becomes an ordinary field. Worth saying to producers
+before the variable is set, because it changes what they may send.
+
+**Pick it before the first table is created.** Changing it later is not a
+rename: nothing drops a column, so the eight under the old prefix stay and
+eight more are added, and `partition by <old>_record_key` reads a column
+nothing writes any more. A table already carrying the layout under one prefix
+now refuses a load declaring another, before the extract.
+
+Requires `sdk v0.75.0`.
+
+---
+
+## [0.16.0] — 2026-09-30
+
+Objects and arrays landed in BigQuery as JSON **strings**, in both shapes.
+Reported against `0.15.0` by a consumer who was holding a production rollout.
+
+### What was happening
+
+```sql
+SELECT JSON_TYPE(person) FROM bronze.id_verification;   -- "string", expected "object"
+SELECT JSON_VALUE(event_metadata, '$.provider') ...;    -- NULL, expected "bigdatacorp"
+```
+
+The column was created `JSON`, as documented. The value in it was a JSON
+string holding the serialized object: encoded twice. Every `JSON_VALUE`
+against it returned NULL, without an error anywhere.
+
+BigQuery marshals the row whole, so a Go `string` becomes a JSON string
+literal. Postgres and MySQL parse a string into their JSON column, so this
+never showed there — which is why it reached production.
+
+### Which versions, and which shapes
+
+| | affected |
+|---|---|
+| `shape: columns` | up to and including **0.15.0** |
+| `shape: document` — the **DEFAULT** | up to and including **0.15.0** |
+| BigQuery | yes |
+| Postgres, MySQL, Redshift | no, ever |
+
+**Check both.** The report covered `columns`; `document` had the same defect
+in the same way, and more streams use it because it is the default. The
+symptom is identical on the `data` column:
+
+```sql
+SELECT JSON_TYPE(data) FROM <table> LIMIT 1;   -- "string" means affected
+```
+
+### Repairing what already landed
+
+Nothing is lost — the object is inside the string. Per table, and per column:
+
+```sql
+UPDATE <table> SET <col> = PARSE_JSON(JSON_VALUE(<col>))
+WHERE JSON_TYPE(<col>) = 'string';
+```
+
+It repairs arrays too, which also land with `JSON_TYPE = 'string'`, and it is
+idempotent: after the repair `JSON_TYPE` is `object` or `array`, so the `WHERE`
+excludes the row.
+
+To find the columns rather than guess them:
+
+```sql
+SELECT table_name, column_name
+FROM <dataset>.INFORMATION_SCHEMA.COLUMNS
+WHERE data_type = 'JSON';
+```
+
+**Run it per table.** DML on a partitioned table rewrites partitions and is
+billed; one script across a dataset is a bill nobody estimated.
+
+**What was verified, and what was not.** The emulator answers `CREATE`,
+`INSERT` and `JSON_TYPE`, and those were run. It has no `PARSE_JSON` at all —
+`Scalar Function with name parse_json does not exist` — so the `UPDATE` above
+is **REVIEWED AND NOT EXECUTED**, and so is the `INFORMATION_SCHEMA` query,
+which the emulator refuses as a cross-project read. Run both against one table
+first. Saying this is better than implying a test that does not exist.
+
+### Why no test caught it
+
+The gateway has no BigQuery integration test, and could not have one for this:
+**floci refuses load jobs with a 405**, so "write a row and read `JSON_TYPE`
+back" does not run against the emulator. The test that catches it now asserts
+the BYTES the SDK puts on the wire, which needs no warehouse — and the SDK
+refuses a string for a JSON column outright from `sdk v0.74.0`, so this cannot
+return through any path.
+
+Requires `sdk v0.74.0`.
+
+---
+
+## [0.15.0] — 2026-09-29
+
+`0.14.0` moved the flush clock from the process to the deployment. This is the
+same correction one level down: from the stream to the **routing key**. From
+[issue #38].
+
+### The problem, measured by the reporter
+
+The buffer was per stream and the sink routes per table, so a producer that
+filled the buffer set the flush frequency, and every quiet table in that
+stream got a load job each time — carrying whatever handful of rows it had.
+Same workload, two arrangements:
+
+| | rows | load jobs | rows per job |
+|---|---|---|---|
+| sharing a stream with a busy producer | 3,387 | **271** | 12 |
+| alone | 4,500 | **8** | 562 |
+
+**34× the jobs for the same data**, against 1,500 per table per day.
+
+It is a unit error rather than a missing feature: `flush.size: 8MiB` meant
+8 MiB *of the stream*, a quantity no destination ever receives. Every mature
+batching producer partitions its batching — Kafka's `linger.ms` is per
+topic-partition — and a per-stream trigger with per-table routing was the
+unusual choice.
+
+### Changed: `flush.records` and `flush.size` count per routing key
+
+The buffer is a bucket per key now. A table fills its own batch and leaves on
+its own clock; nobody inherits a neighbour's cadence.
+
+**A sink with no routing key is unchanged, byte for byte.** One bucket is what
+those streams always had, and they allocate nothing new for it.
+
+**The ceilings stay global.** `max_records` and `max_bytes` count the process,
+because `64MiB × 94 tables` is 6 GB. Split the trigger, never the ceiling — and
+a full buffer still answers `503`, as it always did.
+
+The shutdown drain still leaves as one batch: the sink re-groups it, and
+shutdown is about not losing events rather than about cadence.
+
+### Changed: the claim's key carries the table
+
+Two replicas behind a load balancer do not hold the same tables — whichever
+producer hit which pod decides. With one claim for the stream, a replica
+holding `clicks` takes the window and a replica holding `orders` waits one it
+never wanted; with N replicas it can wait N of them.
+
+A stream with no routing key keeps exactly the key it had, so an upgrade does
+not find its replicas contesting a window that moved.
+
+### Added: the load-job budget, said at boot
+
+```
+INFO a table with traffic in every window costs one load job per window ...
+     stream=tables every=2m0s load_jobs_per_table_per_day=720
+     bigquery_allows=1500
+```
+
+`check` already refused a window too small to hold the quota and did the
+division in the error. It said nothing when the config passed, and those are
+not the same fact: **the smallest window it permits, 60s, already spends 1,440
+of the 1,500.** Only where a limit is known — a cadence printed for Postgres is
+a number with nothing to compare it against.
+
+### Added: `brevis_gateway_table_flushes_total{stream,table,trigger}`
+
+One flush of a table is one load job for it, so this is the series to alert on
+at 1,200. `flushes_total` is per stream, which on a 94-table route says nothing
+about any of them.
+
+Behind `BREVIS_INGESTION_METRICS`, beside the volume pair and for the same
+reason: `table` is a label the producer chooses. The stream counter keeps its
+own shape, so a deployment that never turns the switch on sees the cardinality
+it had.
+
+### Added: `BulkClaimer`, and a fallback that does not queue
+
+A window now asks for one claim per table. Sequential, that is the whole
+objection to the idea: **94 claims cost 2.589s of held mutex** against a Redis
+degraded to 25ms RTT, and admission's p99 tracked it 1:1 — `enqueue` takes that
+mutex unconditionally.
+
+Redis answers them in one pipelined round trip. Every other backend answers
+them in parallel, bounded at 32, in `claimAll` where all of them reach it. 94
+keys at 25ms RTT:
+
+| backend | one at a time | as it ships |
+|---|---|---|
+| `redis` | 2.589 s | **29.8 ms** |
+| `memcached` | 2.577 s | **89.4 ms** |
+
+One key takes no goroutine at all, and the in-process store claims in bulk
+under one lock so it never enters the fan-out.
+
+`Metastore` now states that implementations must be safe for concurrent use of
+the same method. It always required safety across methods; this is the rest of
+that sentence.
+
+### Fixed: the claim's 500ms budget never reached memcached
+
+`claimTimeout` is short because the claim runs while the buffer's lock is held.
+Redis obeys it — `SetNX` takes the context. **`gomemcache.Add` takes none**, so
+every method of that store discarded the one it was handed, and the only bound
+was the client's own 5s default. Measured against a backend delayed by 2s, with
+a 500ms context:
+
+```
+Claim returned : 2s (err=<nil>)
+```
+
+Two seconds of held mutex, reported as success, in **`0.14.0` with a single
+claim per window**.
+
+> **Behaviour change.** The memcached client's socket timeout drops from 5s to
+> 500ms, on every method — a cache lookup that hangs for five seconds is the
+> same failure on a colder path. A deployment whose memcached is slow but
+> working will now see errors where it saw slow answers. The metastore fails
+> open, so those are load jobs and not lost events.
+
+`claimTimeout` is exported as `ClaimTimeout`, because the number lives in two
+places by necessity and must not drift.
+
+### What measuring found that the plan did not say
+
+**A refusal I wrote was wrong.** `0.15.0`'s branch refused `flush.claim` with
+`auto_table` on memcached, because it has no pipelined add. True about
+pipelining, wrong about cost: nothing forced those claims to be sequential —
+the fallback simply was a loop. A backend was refused for a limitation of the
+code in front of it. The refusal never shipped.
+
+**`due` is not `deadline() <= 0`.** They answer different questions: deadline
+says when to WAKE, and with a claim that is the window boundary, which at the
+boundary reads as a whole period away. A dueness built on it wakes every window
+and flushes nothing.
+
+**The throughput comparison is not in this entry**, because the machine it was
+built on returned 108k to 166k events/s for the same binary and config. What is
+deterministic: the keyless admission path allocates nothing new, and a keyed
+request costs one or two allocations and 13–24 bytes per event.
+
+[issue #38]: https://github.com/AreteAcademy/brevis/issues/38
+
+## [0.14.0] — 2026-09-27
+
+The flush clock can belong to the deployment instead of to each process. From
+[issue #36], with fourteen days of production data behind it.
+
+### The problem, in one line of arithmetic
+
+`buffer.flush.every` is a `time.AfterFunc` in **every replica**, so the load
+jobs a table receives are a function of replica count and not of traffic:
+
+```
+jobs / day / table  =  replicas × 86400 / every
+```
+
+On BigQuery, against 1,500 per table per day, **two replicas at 60s is 192% of
+a quota that cannot be raised** — before an HPA does anything. The direction is
+backwards from intuition: the gateway scales out for HTTP concurrency while the
+sink wants concentration, so more replicas means smaller batches means more
+jobs, each with its own fixed cost.
+
+Raising `every` works and is what the reporter is running, but a static value
+has to be sized for `maxReplicas` — so a deployment at `minReplicas` pays the
+worst case's latency all day for contention that is not happening.
+
+### Added: `buffer.flush.claim`
+
+```yaml
+buffer:
+  flush:
+    every: 60s
+    max_age: 300s
+    claim: true
+```
+
+A replica takes a set-if-absent claim for the stream and the window before
+flushing on the timer — the same primitive `claimDDL` uses, with no data moved.
+One flush per window, whatever the replica count, and it **self-adjusts**:
+a replica only waits when another is actually competing, so scaling in restores
+the lower latency with nobody editing a config.
+
+**Off by default.** It turns `every` from a promise into a target, and doing
+that silently to every deployment that happens to have a shared metastore is
+how `0.11.0` shipped a breaking change described as a free addition.
+
+**It requires `max_age`**, refused at load without it.
+
+### Added: `buffer.flush.max_age`
+
+`every` is the target; this is the promise. No event waits longer than this,
+whatever the contention, whatever the backend, even with the metastore
+unreachable. A ceiling below the target is refused: it would mean the target
+never applies.
+
+It also corrects the drain. `DrainBudget()` read `flush.every` as the bound on
+what a buffer holds at `SIGTERM` — and a replica that loses windows holds up to
+`max_age`. It reads the ceiling now, so the
+`terminationGracePeriodSeconds` on the boot line is right again.
+
+### Added: `brevis_gateway_flush_windows_total{stream,outcome}`
+
+`won`, `yielded`, `ceiling`, `unreachable`. Its own series and not a label on
+`flushes_total`, because a yield is not a flush and that counter's sum means
+"batches handed to the pool".
+
+**`unreachable` is the one worth an alert.** The backend could not be asked, so
+the claim failed open: coordination is off and the jobs are multiplying by
+replica count again — silently, because every flush still looks like a flush.
+
+And a claim on `metastore: memory` warns **once at boot**: every replica wins
+its own, so everything looks right and nothing coordinates.
+
+### Fixed: the metastore was validated for one sink and opened for all
+
+`metastoreFor` opens one per stream whatever the sink; the validation lived
+behind `if s.Type == SinkAutoTable`. A direct `bigquery` stream naming redis
+with no `addr_from` started happily and coordinated with nobody. It never bit,
+because the metastore only ever served `auto_table` — the claim is what makes
+it load-bearing for every stream.
+
+### What measuring found that the proposal did not say
+
+The claim's key is wall-clock and the **timer was not**. Each replica counted
+`every` from its own arm, so they contested different windows: 8 load jobs
+became 6 with the split 4/2 — coordination happening, but not one per window.
+
+With the timer aligned to the boundary, every replica wakes at the same instant
+and asks for the same key: **one delivery per window across six windows, no
+window with two.** Verified against two real gateways and one Redis.
+
+And the claim gives **exclusivity, not fairness** — a real run measured 4 wins
+to 1. `max_age` is what stops the unlucky replica starving.
+
+Fail-open verified by killing Redis mid-run: 40 of 40 events landed, nothing
+held, deliveries returning to the uncoordinated rate. The coordination is lost;
+the data is not.
+
+[issue #36]: https://github.com/AreteAcademy/brevis/issues/36
+
+---
+
+## [0.13.2] — 2026-09-26
+
+### Fixed: `ttl: 0` — the value the docs named — did not parse
+
+`0.12.0` made `metastore.ttl: 0` mean never, and wrote `ttl: 0` in its own
+changelog, on the site in two languages, and in the example. YAML reads a bare
+zero as an int and `time.Duration` wants a string, so the value a reader copied
+out was refused:
+
+```
+yaml: unmarshal errors:
+  line 140: cannot unmarshal !!int `0` into time.Duration
+```
+
+A Go type name in front of somebody who wrote a config file, about the one
+value the field's own documentation told them to write. Found by the consumer
+who asked for the feature, upgrading to use it ([issue #35]).
+
+`ttl` is a `Duration` now — the sibling of `Size`, which has had its own
+unmarshaller in this package for a while. It takes `0`, `0s` and `"0"`, and it
+refuses every other bare number **with the unit spelled out**:
+
+```
+60 has no unit. A bare number here would be 60 NANOSECONDS, which is never
+what anybody means -- write 60s, or 60m. Only 0 may go without one, because
+zero seconds and zero hours are the same instant.
+```
+
+That refusal is the other half. Under Go's own conversion `time.Duration(60)`
+is sixty nanoseconds, so accepting a bare number would have been worse than
+refusing it — a value that parses and means something nobody intended.
+
+**Only this field has the type**, and the asymmetry follows from the
+semantics rather than from effort: `ttl` is the only duration in the file whose
+documented value is a bare number. `60s`, `500ms` and `2h` all carry their unit
+naturally, and there a bare number is a mistake worth refusing rather than a
+spelling worth accepting. Say so if the other four should move too.
+
+[issue #35]: https://github.com/AreteAcademy/brevis/issues/35
+
+---
+
+## [0.13.1] — 2026-09-26
+
+### Fixed: no `process_start_time_seconds`, so every counter read low
+
+One gauge, and without it the exposition was quietly lying about every
+cumulative series it published.
+
+A collector that does start-time adjustment — the OpenTelemetry Prometheus
+receiver, which **Google Managed Prometheus** is built on — anchors a
+cumulative series at the moment it believes the series began. Given this gauge
+it uses the process's start and attributes the first scrape's whole value.
+Without it, it has to infer the start from the first scrape it saw, and that
+scrape's value becomes the baseline: everything counted before it is spent.
+
+A consumer measured it on GKE ([issue #33]):
+
+| series | reported | actual |
+|---|---|---|
+| `brevis_gateway_events_received_total` | **650** | 5,000 |
+| `brevis_gateway_flushes_total{trigger="records"}` | **0** | 2 |
+| `brevis_gateway_flushes_total{trigger="time"}` | **0** | 1 |
+
+The flush rows are the tell: the series **exist** and read zero, which a
+counter does not do. Their model — deltas exact, totals wrong — accounted for
+four series across two runs and two pods, and it was right.
+
+It matters past a dashboard, and `0.10.0`'s own entry said why:
+
+> **The one worth an alert is `trigger="size"` on a BigQuery stream.** […]
+> Nothing refuses it at load, because the arrival rate is not knowable there;
+> this makes it visible instead.
+
+That alert is exactly what does not survive a moving baseline. A counter that
+silently starts from one is worse than no counter, because it looks like one.
+
+The name is **not** prefixed with `brevis_`, deliberately: collectors look for
+exactly `process_start_time_seconds`, and a prefixed one would be correct and
+useless. It costs no dependency, which is the property the hand-written
+exposition exists to protect — `client_golang` emits this too, alongside
+forty-two other packages.
+
+Captured at package load rather than per scrape. A value that moved would tell
+the collector the series had restarted, which is the same failure arriving
+through the fix.
+
+Verified on a running gateway: the gauge is on the **first** scrape, before any
+event, and reads the second the process logged `listening`.
+
+[issue #33]: https://github.com/AreteAcademy/brevis/issues/33
+
+---
+
+## [0.13.0] — 2026-09-26
+
+The two halves of [issue #34]. `0.11.0` broke every BigQuery table an older
+gateway had created, and then a row error spent the budget of tables that had
+done nothing wrong.
+
+### Fixed: `auto_table` promised additive evolution and BigQuery ignored it
+
+`sinkFor` has always declared it:
+
+```go
+// Additive, and only additive. A field the record grew becomes a
+// column; nothing is ever dropped or narrowed.
+Evolve: sdk.EvolveAdditive,
+```
+
+The `postgres` and `mysql` sinks read that field. The `bigquery` one never
+looked at it, and `LoadConfig` had no `Evolve` at all — so on the destination
+this design is aimed at, the shape was frozen at creation and nothing said so.
+
+Two consequences, and the second is the one that matters beyond an upgrade:
+
+- adding `brevis_received_bytes` in `0.11.0` broke every table an older
+  gateway had created;
+- **a producer growing a field broke the load into an existing table**, which
+  is the one thing `auto_table` exists to make safe. It went unnoticed because
+  the gateway had never added a field of its own.
+
+Carries `sdk v0.69.0`, where `EvolveAdditive` now adds the missing columns
+before the job is submitted — as NULLABLE, with the table's ETag, so N replicas
+meeting the same field resolve by retry rather than by a lock.
+
+### Fixed: a failing table spent the creation budget once per retry
+
+`admit` increments before it checks, and a build that fails is never cached —
+so every retry went back through it. A consumer measured **four table names
+reaching a count of 31**, and the budget one table's row error had spent then
+refused three genuinely new tables:
+
+```
+17:29:25  attempt=1 ... "already created 20 tables this hour"
+17:29:26  attempt=2 ... "already created 21 tables this hour"
+17:29:28  ERROR a batch went to the dead letter ... "already created 23 tables"
+```
+
+The limit is a circuit breaker against a producer inventing **names**. One name
+retrying is not that, however many times it retries. The router now charges
+once per table per process, and `invalidate` deliberately does not clear it:
+what invalidate drops is a belief about the table's SHAPE, and what this
+records is that the NAME was already paid for.
+
+A name the budget refused stays refused on retry — marking it as charged there
+would have let the next attempt skip the check entirely, and a limit that holds
+for one attempt per name is not a limit. That one was found by a mutation, not
+by a test.
+
+### What a consumer on 0.11.0 or 0.12.0 should do
+
+Upgrade, and for tables created before `0.11.0` run the migration once:
+
+```sql
+ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+```
+
+From `0.13.0` on, the gateway does it.
+
+[issue #34]: https://github.com/AreteAcademy/brevis/issues/34
+
+---
+
+## [0.12.0] — 2026-09-26
+
+`metastore.ttl: 0` means never. From [issue #35], and the argument was ours.
+
+> **On `0.12.0` and `0.13.1`, `ttl: 0` does not parse.** YAML reads a bare zero
+> as an int and `time.Duration` wants a string, so the value this entry names
+> is refused: `cannot unmarshal !!int 0 into time.Duration`. Write `ttl: 0s`
+> on those versions. `0.13.2` takes both.
+
+### Changed: the TTL is a pointer, because the three states are three
+
+**Breaking in shape, not in behaviour.** `MetastoreConfig.TTL` is
+`*time.Duration` now. A file that says nothing still gets sixty seconds; `ttl:
+0` means the entry does not expire.
+
+The pointer is the whole of it. In a plain `Duration`, `ttl:` omitted and `ttl:
+0` are the same zero — so making zero mean "never" would have flipped every
+existing config to never-expire in silence. `metrics.addr` is a pointer for
+exactly this reason and the comment there says so.
+
+### Why the timer was never the safety net it read as
+
+The field's own doc said a table dropped by hand outside the gateway makes
+every entry a lie, and that sixty seconds of wrongness is recoverable. True —
+but the CLOCK is not what recovers. `router.Write` does:
+
+```go
+if err != nil {
+    r.invalidate(ctx, table)
+    return wrote, fmt.Errorf("table %s: %w", table, err)
+}
+```
+
+`invalidate` drops the entry from the process cache **and** the metastore
+immediately, and the pipe's ordinary retry brings the batch back against a cold
+one. A dropped table costs **one failed attempt**, not a minute, and usually
+not even a dead letter — attempt 2 of 4 already re-reads.
+
+### And expiry costs something
+
+`sinkFor` charges `naming.max_new_per_hour` when it does not KNOW a table:
+
+```go
+if exists, known := r.meta.knows(ctx, table); !known || !exists {
+    if err := r.meta.admit(ctx, r.names.max, now); err != nil {
+```
+
+It charges on **belief**, not on creation. So a miss — a restart, or a key
+ageing out — spends the creation budget on a table that has existed for weeks,
+and a pod restarting a minute after a table's last event gets nothing at all
+from the shared backend it is paying for. Which is the case the shared backend
+exists for.
+
+`ttl: 0` mitigates that and does not fix it. Charging on creation would need
+the sink to report whether it created, which it does not today.
+
+### Fixed: two of the three backends did not mean "never"
+
+The change is one line of config and three of behaviour, and the interesting
+part is that the backends disagreed about zero:
+
+| | with `ttl: 0`, before |
+|---|---|
+| `redis` | no expiry — already right |
+| `memory` | `now.Add(0)` is already past, so **every Get missed** |
+| `memcached` | floored to **1 second** — the opposite of never |
+
+`memory` reads a zero `until` as never. `memcached` passes 0 through, which is
+how that protocol spells never.
+
+### Fixed: memcached and the thirty-day rule
+
+While in there: memcached reads an expiry above **30 days** as an absolute Unix
+timestamp, not as a number of seconds. A `ttl: 744h` was sent as 2,678,400 and
+read as a moment in January 1970, so the item expired on arrival — a cache that
+silently never hits. Over thirty days it now sends the timestamp.
+
+Verified against a real Redis and a real memcached: a zero-TTL entry is still
+there after 2.5 seconds, and a one-second entry is gone.
+
+[issue #35]: https://github.com/AreteAcademy/brevis/issues/35
+
+---
+
+## [0.11.0] — 2026-09-26
+
+Volume, without infrastructure to measure volume.
+
+### Added: an eighth fixed column, `brevis_received_bytes`
+
+> **This was BREAKING on BigQuery and this entry did not say so.** The column
+> went into the declaration, the table did not have it, and every load failed
+> at the row: `No such field: brevis_received_bytes`. A consumer upgrading
+> from `0.10.0` lost 20,250 events to the dead letter before they found it
+> ([issue #34]). `0.13.0` fixes the cause — the BigQuery path was ignoring the
+> additive evolution `auto_table` declares. On `0.11.0` or `0.12.0` the
+> migration is one statement per existing table:
+>
+> ```sql
+> ALTER TABLE `<dataset>.<table>` ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64
+> ```
+>
+> Postgres and MySQL were never affected: their drivers had been reading
+> `Evolve` all along.
+
+How large the event arrived, envelope included, on every row of every table.
+
+**It is free.** The gateway has counted these bytes at decode since `0.10.0` to
+drive `buffer.flush.size`, and the number died there. Measuring the record
+alone would cost a `json.Marshal` per event — measured at 2.0µs against the
+3.1µs the parse already spends, a **67% increase on the hot path**, or about
+40% of one core at the rates the buffer sustains — to refine a number whose job
+is trend and attribution.
+
+**It answers what the metrics structurally cannot.** Every `brevis_gateway_*`
+series is per STREAM and carries no `table` label, deliberately: with
+`auto_table` one route becomes N tables and that label is the producer's to
+choose. So "which table is growing, and since when" had no answer anywhere:
+
+```sql
+select date(brevis_received_at) day, count(*), sum(brevis_received_bytes)/1e9 gb
+from app_orders group by 1 order by 1 desc
+```
+
+Without it, the same question means scanning the whole JSON column — roughly
+fifty times the bytes, every time somebody asks. The column pays for itself on
+the first query.
+
+**It is INGRESS and not storage.** The destination keeps the row typed and
+compressed, so 400 bytes of JSON may be 80 on disk. Summing this gives what
+arrived, never what is billed for keeping it.
+
+**A producer cannot write it.** The value is stamped after the hook, through a
+new `Measurer` seam, and it OVERWRITES whatever the envelope carried — the same
+rule the `brevis_` prefix enforces inside `data`, applied to the one control
+field the pipe writes from outside. A forged `brevis_received_bytes: 1` lands
+as the number the gateway measured.
+
+Nullable, and absent rather than `0` when nothing measured it: a zero SUMS, and
+a column whose zeros mean "nobody looked" lies in aggregate — which is the only
+way this one is ever read.
+
+### Added: per-table volume series, behind `BREVIS_INGESTION_METRICS`
+
+```
+brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}
+```
+
+**Off unless `BREVIS_INGESTION_METRICS` is true**, and the default is the
+point. Everything else in this gateway is labelled by what an OPERATOR wrote in
+a YAML file, so the series count is known before the process starts. `table` is
+chosen by the PRODUCER, and `naming` bounds that rather than making it small.
+Nobody should find a metrics bill because they upgraded.
+
+A value nobody can parse reads as off, never as a failure to start: this is
+observability, and a typo must not be the reason an ingestion endpoint does not
+come up.
+
+The two answer different questions and both are the same number. The metric
+buys *now*; the column buys *since when* and *by whom*.
+
+### The `Measurer` seam
+
+Optional and structural, like `Admitter`, and for the same reason: most sinks
+must NOT get this. A stream landing in a topic or in a table somebody declared
+would find a field in its payload nothing asked for — a new key for every
+subscriber, or a column the table does not have and the load refuses. Only a
+sink that owns its table's shape can carry it.
+
+It returns the table the volume is attributed to, so the pipe can own the
+metrics while the sink owns the routing. A name `naming` refuses is attributed
+to nothing rather than becoming a series named by a string a producer chose.
+
+---
+
+## [0.10.0] — 2026-09-26
+
+Every ceiling in the buffer was a count, and a count cannot see bytes.
+
+### Added: `buffer.flush.size`, a third trigger
+
+```yaml
+buffer:
+  flush:
+    every: 1s
+    records: 500
+    size: 8MiB     # whichever is crossed FIRST
+```
+
+`records: 500` is 1 MB of 2 KB events and 1 GB of 2 MB ones — the same number
+in the file. A producer who starts sending the whole document instead of its id
+changes what the gateway holds by three orders of magnitude, and nothing in the
+config could have said otherwise.
+
+Measured on what **arrived**: not what the event weighs in memory — a
+`map[string]any` is several times its JSON — and not after a hook that inflates
+it. An approximation, and the right one. It is free at decode (ndjson knows each
+line's length; the array format goes through `json.RawMessage` so every
+element's extent is known without a second pass), it travels with the payload,
+and the thing it guards against is a record that grew tenfold. Exact would mean
+a `json.Marshal` per event, which today happens only when `oversize` is
+configured.
+
+### Added: `buffer.max_bytes`, the ceiling that stops an OOM
+
+`flush.size` shapes what **leaves**; this bounds what is **held**, and with
+`queue: 64` those are very different numbers. Past it the answer is the same
+`503` the record ceiling gives, and it is safe to retry for the same reason.
+
+It is refused below `listen.max_body` — a buffer that cannot admit one request
+would answer 503 to everything, forever — and below `flush.size`, where a batch
+could never fill.
+
+### Added: `brevis_gateway_flushes_total{stream,trigger}`
+
+`time`, `records` or `size`. Its own counter rather than a label on
+`batches_total`, which already carries `sink` and `outcome`: a third dimension
+there would multiply the series for a question that belongs to the buffer and
+not to the delivery.
+
+**The one worth an alert is `trigger="size"` on a BigQuery stream.** That
+destination allows 1,500 load jobs per table per day, which is why
+`flush.every` has a 60-second floor — and the floor governs the TIMER. A size
+that fires every few seconds walks straight past it and spends the same daily
+quota. Nothing refuses it at load, because the arrival rate is not knowable
+there; this makes it visible instead.
+
+A handoff the pool refuses is not counted: nothing flushed, and counting there
+would report one per attempt on a stream whose sink is behind — turning the
+metric into noise exactly when it matters.
+
+### And what this is not
+
+It is not the answer to BigQuery throughput. With load jobs the ceiling is the
+quota — one per 57 seconds per table — so the best available strategy is to
+FILL each of the 1,500, which argues for bigger batches and longer windows. The
+thing that removes the ceiling is the Storage Write API, which is still
+unwritten. This is memory safety and per-job hygiene.
+
+### Changed: the BigQuery sink stages past 64 MiB, whatever the row count says
+
+Carries `sdk v0.68.0`, where the same blind spot was one layer down:
+`ThresholdForGCS` is a row count, so 5,000 records of 2 MB went down the inline
+path and 10 GB was marshalled into memory. `InlineLimitBytes` is its sibling,
+and the gateway sets it — it always has a staging bucket, which is exactly the
+reason the SDK leaves it off by default for callers who may not.
+
+Not a config field, deliberately. It is not a tuning knob; it is the point past
+which holding a batch in memory stops being reasonable. `buffer.flush.size` is
+where an operator shapes the batch.
+
+---
+
+## [0.9.1] — 2026-09-26
+
+`auto_table` into BigQuery created the table and loaded nothing. The bug was in
+the SDK; this is the version that carries the fix.
+
+A consumer found it and diagnosed it to the line. Every table came out right --
+`PARTITION BY DATE(brevis_received_at)`, `CLUSTER BY brevis_record_key`, every
+column, `brevis_record_key` nullable as `0.9.0` promises for `append` -- and
+every load job was refused with a 400:
+
+```
+Expects   interval(type:day,field:brevis_received_at) clustering(brevis_record_key)
+but input                                             clustering(brevis_record_key)
+```
+
+The job declared clustering and said nothing about partitioning, and BigQuery
+compares the pair. The SDK's `applyLayout` decided "somebody else creates this
+table" by asking whether the caller's columns include one of the SDK's OWN
+metadata names -- and `auto_table` v2 renamed those to `brevis_*` in `0.6.0`.
+So the rename broke a proxy three modules away, and the symptom was a table
+that existed and stayed empty.
+
+There was no config to work around it: neither the YAML nor `Sink` exposes
+partitioning or clustering, which is deliberate -- every `auto_table` table has
+the same layout, so it is a template and not a decision.
+
+**Nothing in the gateway changed.** `sdk v0.67.0` is the fix; this bumps the
+dependency and republishes the image so the tag carries it.
+
+---
+
+## [0.9.0] — 2026-09-25
+
+Two poison batches, and the second one was a rule that did not fit `append`.
+
+**Breaking**: `unique_key` is no longer required under `write: append`, and the
+refusal a `merge` stream gives for a missing one is a different message in a
+different place. Minor and not patch, which is what 0.x does with a break --
+`0.8.0` and `0.6.0` were the same call.
+
+### Fixed: `auto_table` admitted a record whose field cannot be a column
+
+Four events in one request, one of them carrying `meu-campo`:
+
+```
+{"accepted":4,"rejected":null}
+```
+
+Two seconds later the whole batch was in the dead letter, the table was never
+created, and the reason named event 2. The other three were well formed, came
+from other producers, and had all been answered `202`.
+
+`Admit` existed for exactly this and covered only half of it: the envelope and
+the table name went behind it, the FIELD names did not, because they are the
+shape's business and the shape only ran at write time. Under `shape: columns` a
+name that fails BigQuery's rule — a hyphen, a leading digit, a space — reached
+`Write` and failed the group.
+
+The shape now validates per event, before anything is buffered:
+
+```
+{"accepted":3,"rejected":["event 2: the field \"meu-campo\" cannot be a column
+name: it has to match ^[A-Za-z_][A-Za-z0-9_]{0,127}$ …"]}
+```
+
+Three rows land, nothing is buried, and the producer learns it in the response
+at the moment they can still fix it. `shape: document` refuses nothing here, and
+that is not an oversight: the record becomes one JSON column, so a key is a key.
+
+**It scales with the batch.** The load test ran batches of roughly 8,700
+events; one bad field name would have buried eight thousand from every producer
+in the same flush window.
+
+Two tests pin it, and the second is the general form: everything the write path
+refuses about a record, `Admit` has to refuse first.
+
+### Changed: `unique_key` is required by `merge` and optional under `append`
+
+It used to be required of every event, in both modes, and the two modes do not
+want the same thing:
+
+| | |
+|---|---|
+| `merge` | **required.** The mode keeps one row per record, and the `qualify` that resolves the current version partitions by `brevis_record_key`. A merge table full of rows naming no record is a table nobody can resolve. |
+| `append` | **optional.** A log entry need not be *about* a record: an audit line, a webhook, a metric sample. Demanding an `id` there makes producers invent one, which is worse than NULL because it looks real. |
+
+`brevis_record_key` is created nullable under `append` — a NOT NULL column
+would have had the database refuse the row at write time, which is the same
+poison batch through another door. A keyless row carries NULL and not `""`,
+because the resolving query would gather every `""` into one partition.
+
+The id survives without a key: `Envelope.IngestionID` refuses an empty
+SourceKey, so the fingerprint fills the slot. Same document twice, same id.
+
+**Naming a field `data` does not carry is still an error in both modes.** "You
+did not say" and "you said something that is not there" are different mistakes,
+and only the first one passes.
+
+## [0.8.0] — 2026-09-25
+
+The drain had one budget and three owners, and the first could eat it all.
+
+The gateway answers `202` before anything is written: what is in a buffer at
+`SIGTERM` is delivered by the drain, and a drain that runs out of time loses
+events a producer was told had been accepted. With Pub/Sub the flush window is
+a second; with BigQuery the floor is sixty and the recommended window is three
+hundred — so the same drain went from protecting one second of accepted events
+to protecting five minutes of them.
+
+### Fixed: a slow request could spend the drain's entire budget
+
+`http.Shutdown`, `Server.Close` and the metrics shutdown shared one
+thirty-second context, in that order. A single slow reader — a large `ndjson`
+body, a client on a bad connection — spent the drain's budget before the drain
+began, and in the worst case `Close` received an already-expired context: the
+last batch still went out through `close`'s own fallback, and **everything
+already queued was abandoned**.
+
+Three budgets now: five seconds to stop accepting, the whole drain budget for
+the drain, five seconds for the metrics.
+
+### Changed: the drain budget follows the flush windows
+
+It was thirty seconds, fixed, chosen when every window was one second. It is now
+the longest flush window, floored at thirty seconds, and `shutdown.drain`
+overrides it:
+
+```yaml
+shutdown:
+  drain: 90s
+```
+
+One window and not two: the drain waits for nothing — it takes the pending batch
+immediately and the workers deliver in parallel, so draining is strictly faster
+than the filling was. Doubling it would only lengthen how long a genuinely stuck
+pod takes to die, which is a rollout everybody waits on.
+
+It is a heuristic and says so in the code. What actually bounds a drain is the
+queue depth and the cost of one delivery, and neither is knowable there: a load
+job takes seconds, a file takes none. An installation that has measured its own
+should declare `shutdown.drain`.
+
+### Changed: a failed drain exits non-zero, and says how many
+
+**This is the breaking one.** A drain that lost events used to log and return 0,
+which to Kubernetes, to a supervisor and to CI is indistinguishable from a clean
+stop. It exits `1` now, and the message carries the count:
+
+```
+drain incomplete: stream "tables": the drain did not finish and 412 accepted
+event(s) were not delivered: context deadline exceeded
+```
+
+`Server.Close` also joins every stream's failure instead of returning the first:
+reading "stream A lost 12" while stream B silently lost 4,000 is worse than
+reading both. `Server.Pending()` reports the same number programmatically.
+
+### Added: the gateway states the grace period it needs
+
+```
+drain budget 5m0s; set terminationGracePeriodSeconds >= 310
+listening on :8080
+```
+
+It cannot read its own manifest, and Kubernetes defaults
+`terminationGracePeriodSeconds` to thirty — which equalled the old fixed budget
+exactly, so there was no margin and a `SIGKILL` could arrive while the drain was
+still inside its own deadline. Printing the requirement is the cheapest thing
+that stops the two drifting apart in two repositories with nothing connecting
+them.
+
+**Check your manifest against this line.** A gateway whose streams flush at 60s
+asks for 70; at 300s it asks for 310.
+
+## [0.7.1] — 2026-09-25
+
+Three things two replicas found that no unit test could.
+
+### Fixed: the second replica refused to start
+
+```
+stream "tables": another replica is altering this table for this shape; retrying
+```
+
+The startup probe went through the same path a batch does, so it took a claim —
+and the second gateway to start lost it and **would not come up**. Losing a
+debounce is a batch to retry; it can never be a reason a gateway does not
+start. The probe builds the destination directly now, and takes no claim and no
+slot in the creation counter, which it had no business spending either.
+
+### Fixed: the loser of a claim was buried instead of retrying through
+
+The claim window was three seconds and the pipe spends its four attempts in
+roughly two, so a loser never got back in — its batch went to the dead letter.
+**A debounce that can bury a batch is not a debounce.**
+
+One second now, and the number is bounded from both sides: long enough to cover
+one `ALTER` — which is all it has to cover, since a loser proceeding after the
+winner finishes plans no change at all — and short enough that the pipe's
+jittered backoff outlasts it.
+
+### Fixed: the cache was never invalidated
+
+`forget` was written, documented as the rule that keeps the cache safe, and
+called by nothing — the linter said so after a refactor removed its only
+caller. A failed write now drops what was believed about that table, in both
+the local map and the shared store: **if the cache says the column is there and
+the write fails, the write is right.**
+
+### And a flaky test of my own
+
+`TestTheCounterWindowRolls` used a two-second TTL checked at 1.4s, and
+memcached's expiry has **second granularity** — an item stored for 2s can be
+gone at 1.x. It failed about one run in three. Four seconds now, with a second
+of margin on each side, and it still fails against the mutation.
+
+---
+
+## [0.7.0] — 2026-09-25
+
+### The metastore has backends: `redis` and `memcached`
+
+```yaml
+metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+```
+
+`memory` stays the default and needs nothing. It is also **right with one
+replica and wrong with several**, which is the whole reason the other two
+exist: with `memory` each replica has its own, so the debounce debounces
+nothing and `naming.max_new_per_hour` bounds a *process*. Ten replicas meeting
+one new field would issue ten `ALTER`s against BigQuery's five metadata
+operations per table per ten seconds.
+
+Four primitives — `Get`, `Put`, `Claim`, `Incr` — and the set is the
+intersection of what all three do **atomically**. Anything richer would work on
+one and be emulated badly on the others.
+
+### `Claim` is a debounce, not a lock
+
+Nothing is released and no lease is renewed: a replica that dies holding one
+costs three seconds to the batches behind it, and they are batches being
+retried rather than workers blocked. Losing it returns an error and the pipe
+retries; waiting would hold a worker, and there are four.
+
+Three seconds is bounded from both sides — long enough to collapse a burst into
+one attempt, short enough that a loser gets through on its own retries, since
+the pipe backs off 500ms, 1s, 2s.
+
+It is what the market does: Delta Lake and Iceberg commit optimistically and
+retry, Kafka Connect gets serialisation free from partition ordering, Fivetran
+has one writer per table. Nobody takes a lock.
+
+### A metastore that is down cannot fail a write
+
+A `Get` that errors is a miss, a `Claim` that errors behaves as won, an `Incr`
+that errors relaxes the rate limit. A cache that can stop ingestion is worse
+than no cache — and the destination is the source of truth anyway.
+
+### Tested against the real thing, and the three behave the same
+
+One table of behaviour run against `memory`, Redis and memcached, plus a
+20-goroutine race proving exactly one `Claim` wins. Four mutations fail,
+including the quiet one: extending the counter's TTL on every increment makes a
+busy key immortal, so `max_new_per_hour` stops being a rate and becomes a
+lifetime total. The first version of that test **passed** against the bug — its
+sleeps outlasted both behaviours instead of separating them.
+
+### What it costs
+
+The full image goes to 55 MB. The slim one stays at **10.2 MB**: the backends
+are packages, like the sinks, so a binary that never imports one does not carry
+it — and the weight test now watches for them.
+
+---
+
+## [0.6.0] — 2026-09-25
+
+**Breaking**: `auto_table`'s body is an envelope now. The old flat shape is
+refused by name, with what to change in the message.
+
+### The envelope
+
+```json
+{
+  "table_name": "app_orders",
+  "unique_key": "id",
+  "operation":  "INSERT",
+  "data": { "id": "A-3", "total": 150, "customer": {"id": 7, "uf": "SP"} }
+}
+```
+
+Control fields at the top, the record inside `data`. `table_name` sitting beside
+`total` and `customer` was a field of the TRANSPORT pretending to be a field of
+the RECORD, and separating them is how every CDC format is shaped.
+
+`table_from` is gone: the envelope names the table in `table_name`, always.
+
+### Seven `brevis_*` columns
+
+`brevis_ingestion_id`, `brevis_record_key`, `brevis_operation`,
+`brevis_received_at`, `brevis_loaded_at`, `brevis_stream`, `brevis_gateway` —
+plus whatever the record carries.
+
+`brevis_loaded_at` is a database `DEFAULT` and not a value the gateway sends:
+the gateway knows the **dispatch** time and the destination knows the **write**
+time, so the gap between the two columns is the real end-to-end latency, per
+row, with nothing instrumented.
+
+`brevis_received_at` is the partition column and never a client's clock — a
+partition column the client controls is a client that can write into 2035.
+
+**`brevis_` is reserved.** A `data` carrying any key with it is refused per
+event: otherwise a producer forges a control field, and a forged
+`brevis_received_at` is worse than none because it looks real.
+
+Naming the identity column `brevis_ingestion_id` needed `sdk/v0.66.0`
+(`WriteOptions.DedupKey`): every driver matched on `ingestion_id` BY NAME, so
+the first version created tables with the right columns into which every merge
+refused. Zero rows, and the integration test caught it.
+
+### The identity has no clock in it
+
+```
+brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))
+```
+
+`occurred_at` stopped being the client's responsibility, and that removed the
+only clock the old formula could have used — ours is `time.Now()`, different on
+every delivery, so every retry would have been a new event.
+
+Same record, same content, twice → same id. Same record, changed → a different
+id, so an UPDATE is a second row rather than a no-op.
+
+### UPDATE and DELETE are recorded, not applied
+
+`brevis_operation` is a column. A landing table is history; resolving the
+current version is the downstream model's job. Which is what Debezium, Fivetran
+and Airbyte do — and it means CDC costs **nothing** in the write path: no upsert
+mode, no lock, no delete.
+
+### Two shapes, one contract
+
+`shape: document` puts the record whole in one JSON column — no DDL, ever.
+`shape: columns` gives each field a column: **scalar → STRING, object or array
+→ JSON, no inference anywhere**.
+
+A field name must match BigQuery's rule, the narrowest of the four. Postgres
+would accept almost anything quoted, and that is the trap: the table is created
+there and it breaks the day somebody points a stream at BigQuery.
+
+### The table grows a column on its own
+
+Additive, and only additive. A batch that loses the race to `ALTER` fails and
+the pipe's **ordinary retry** resolves it — a batch waiting for DDL and a batch
+waiting for a worker are the same thing, so there is no second buffer.
+
+Not solved yet: the metadata quota with many replicas. Ten detecting one field
+is ten `ALTER`s against BigQuery's five per table per ten seconds. That needs a
+shared debounce, which needs a shared metastore.
+
+---
+
+## [0.5.0] — 2026-09-25
+
+Closes `auto_table` against its plan.
+
+### The metastore is configurable, and only `memory` exists
+
+```yaml
+metastore: {type: memory, ttl: 60s}
+```
+
+The TTL was fixed at a minute; a file can name its own now. `redis` and
+`memcached` are refused **by name** rather than left out of the list, because
+somebody writing `redis` believes their replicas share a cache — and accepting
+the word while caching per process would make `naming.max_new_per_hour` *N*
+times what they set, which is exactly the number they wrote it down to bound.
+
+That memory is the design and not a limitation is the plan's own reasoning: a
+gateway that cannot start without Redis is a gateway with a new hard dependency
+for a cache.
+
+### `max_new_per_hour` is per replica, and the docs now say so
+
+The budget lives in the process. Four replicas admit four times the number.
+Nothing was wrong with it; nothing said it either, and a limit somebody sets to
+bound a deployment while it bounds a process is a surprise worth preventing in
+prose rather than in an incident.
+
+### A table `auto_table` creates says where its rows came from
+
+```
+Written by auto_table/app_orders via the Brevis SDK since 2026-09-25.
+```
+
+Free: the BigQuery driver already writes a description from the envelope's
+provider and entity, and the router now sets them. BigQuery only — Postgres and
+MySQL take a `COMMENT`, which the SDK's DDL generator does not write yet.
+
+**A `description` in the payload does not survive**, and the reason is the one
+that killed a producer-supplied `schema`: the table is created inside a batch
+holding *N* events for it, so "only on creation" means "whichever event happened
+to be first". That is worse than last-write-wins, not better. The plan asked for
+the payload version; this is the same intent with the non-determinism removed.
+
+### Two wires that compiled whether or not they were connected
+
+The config's TTL reaching the cache, and the provider and entity reaching the
+envelope. Both were right, and cutting either left every test passing — the
+package tests exercise the pieces directly, and the integration test reads rows
+out of Postgres, which has no table description to check. Both have a test now,
+and all three mutations fail.
+
+---
+
+## [0.4.2] — 2026-09-25
+
+### Fixed: a table `auto_table` created could not be merged into
+
+0.4.0 shipped `write: merge` as the natural default for an event stream, and it
+could not work. `DedupMerge` needs a unique index on `ingestion_id` and
+Postgres and MySQL refuse without one — so the router created a table with the
+right four columns and every load into it refused. Two tables, zero rows, and
+the reason in the dead letter.
+
+The table now carries the constraint, and it follows the write mode in BOTH
+directions, because getting it wrong breaks the table one way or the other:
+
+| | |
+|---|---|
+| `merge` | **needs** it, or every load refuses |
+| `append` | must **not** have it, or the second delivery is rejected as a duplicate |
+
+BigQuery is left out of both: it has no unique constraints and its `MERGE`
+needs none.
+
+Needs `sdk/v0.65.0`, which added `Column.Unique`. That is not a contradiction
+of the drivers' refusal to create indexes — the objection is about an index
+added to a table people are already using, and this is a constraint on a table
+that is empty and that nobody has yet.
+
+Found by running the published image, and the end-to-end test that now covers
+it checks the row count AND the index count, in both modes.
+
+---
+
+## [0.4.1] — 2026-09-25
+
+### Fixed: the slim image could not run `auto_table`
+
+`cmd/gateway-slim` registered `postgres` and `files` and not the router, so the
+slim image refused the feature 0.4.0 shipped:
+
+```
+sink type "auto_table" is not one this binary carries (it has: files, postgres)
+```
+
+The refusal was right and the build was wrong. `auto_table` is pure Go with no
+client of its own — it routes into the Postgres sink already there — and it
+costs **0.04 MB and one package**. Leaving it out put the cheapest way to land
+arbitrary events behind the 49 MB image.
+
+Found by running the published image, not by reading the code: every test
+passed, because the tests build their own registry.
+
+---
+
+## [0.4.0] — 2026-09-25
+
+### `auto_table`: one route, N tables, nothing declared
+
+A producer POSTs `{"table_name": "app_orders", ...}` and the table is created
+if it is absent. `auto_table` routes; `into` writes.
+
+**Four columns, always** — `ingestion_id`, `ingested_at`, `occurred_at` and
+`data` as JSON. One JSON column and not a column per field, which is the
+decision the rest rests on: a new field is a new key, so there is no DDL, no
+schema-change quota, no write-stream reopen and no race between replicas, and
+it is queryable the day it arrives. One declaration serves every destination,
+because the SDK's DDL generator already turns TypeJSON into JSON on BigQuery,
+JSONB on Postgres, JSON on MySQL and SUPER on Redshift.
+
+Partitioned on `ingested_at` and never on `occurred_at`: a partition column a
+client controls is a client that can write into 2035.
+
+**The identity survives having nothing declared.** A frozen UUID v5 over
+`auto_table|<table>|<idempotency_key or sha256(canonical)>|<occurred_at>`. The
+fingerprint is over the document in canonical form, pinned by a test that hashes
+the same document 200 times — Go randomises map iteration, so a naive hash would
+differ between two deliveries of the same event, which is the one thing it
+exists to prevent. A second test proves two DIFFERENT documents cannot collide,
+and it is the one that matters: `fmt`'s `%v` sorts map keys and looks stable
+enough to use, but `{"a":"b:1"}` and `{"a:b":"1"}` both render `map[a:b:1]`.
+
+**The name is the attack surface**, so `naming` is three refusals: a pattern
+defaulting to the intersection of what all four databases accept unquoted, an
+optional prefix allowlist, and a cap on CREATIONS per rolling hour — never on
+writes, so a settled producer is never slowed by an unsettled one.
+
+**`auto_table` is refused on an endpoint with no auth.** A producer that can
+name a table can create one.
+
+### Admitter: the poison batch, cured where it starts
+
+A sink may now refuse ONE event before it is buffered. Optional, satisfied by
+structural typing, and it is what keeps a bad table name from burying a flush
+window: the producer gets the reason in the response and everybody else's events
+land.
+
+The first version of `auto_table` refused at write time and did bury the batch.
+The integration test caught it — the good table was never created.
+
+### BigQuery has a flush floor
+
+1,500 load jobs per table per day against a default one-second window is 86,400
+— 57x, gone in about twenty-five minutes. A BigQuery stream with a window under
+60s is refused at load, directly or through a router. It caught the example
+shipped in 0.3.x, which used `every: 5s`.
+
+The real answer is the Storage Write API, and it is not written yet.
+
+### Also
+
+- `Build` carries the registry and a `Target`, so a routing driver can build
+  what it routes into — through the same registry, which is what makes a binary
+  that did not compile in BigQuery unable to route into it.
+- The `into` of a router is resolved at STARTUP, not on the first event.
+- The example test grew two more holes it did not have: the sink a router routes
+  into, and a driver whose package name and YAML type differ.
+
+---
+
+## [0.3.2] — 2026-09-25
+
+### Fixed: the module did not compile for anybody outside this repository
+
+`gateway/v0.3.1` published an image that worked and a module that did not
+build. Its `go.mod` required `sdk v0.63.0` while its code used `sdk.Store`,
+which landed in `v0.64.0`:
+
+```
+$ go get github.com/AreteAcademy/brevis/gateway@v0.3.1
+registry.go:126:43: undefined: sdk.Store
+```
+
+A `replace` directive in a dependency's go.mod is **ignored** by the main
+module, so what a consumer compiles against is whatever `require` names. The
+local `replace … => ../sdk` hid it completely, and every gate in this
+repository was green: nothing built the module the way the outside world gets
+it.
+
+The gateway is a module somebody imports and not only an image they pull — a
+hook means a binary of their own — so `gateway-consumer-check.sh` now copies
+the module, drops the replace, and builds. It runs in CI and again in the
+release workflow before the tag becomes an image, because a release is
+immutable and an image that works while its module does not cannot be told
+apart from the outside.
+
+Found while writing a consumer's own binary, not by reading the code.
+
+---
+
+## [0.3.1] — 2026-09-24
+
+### Fixed: the response did not say an event had been archived
+
+An oversized event with no reduction hook is archived whole and dropped from
+the stream, which is right. The answer was `{"accepted":0,"rejected":null}`,
+which is not: a caller cannot tell that from "nothing happened", and the
+difference is the whole point of the claim check.
+
+It now carries `"archived": 1` — and only when there is one, so the field
+appearing means something happened rather than being a zero everybody scrolls
+past.
+
+Found by running the published image against a real oversized payload rather
+than by reading the code. The tests all passed the whole time; none of them
+looked at the response body.
+
+---
+
+## [0.3.0] — 2026-09-24
+
+Everything a service already in production needs before it can be replaced by
+this one.
+
+### Metrics
+
+Prometheus exposition on **its own address**, never on the ingest mux — that
+port is public by design, and a `/metrics` on it would publish every stream
+name, path and destination. Naming one address for both is refused at load.
+
+Eleven instruments. Three of them matter more than the rest and nobody asks for
+them until after the first incident: `saturated_total` is the only number that
+says a client was told to back off, and `buffer_records` against
+`buffer.max_records` is the only one that predicts it.
+
+`reason` is a closed enum and never the error text: an error string carries a
+table name, a column, sometimes a row, and one malformed client would mint a new
+series per request. The text stays in the dead letter, on the record.
+
+Hand-written, zero dependencies — the OTel SDK costs 40 packages here and
+`prometheus/client_golang` 43, for eleven instruments whose format has not
+changed in a decade. The slim build went from 10.0 MB to 10.1. Both mistakes the
+engine's own exposition names have a test: buckets are running totals, and a
+quote inside a label ends the series early and corrupts every line after it.
+
+### The claim check, for events too big
+
+```yaml
+oversize:
+  larger_than: 256KiB
+  archive: {type: files, path: gs://acme-oversize/clicks/}
+  hook: strip_heavy_clicks
+```
+
+The event is archived **whole** and a reduced version continues, carrying
+`_oversize_archive` and `_oversize_bytes` back to it. A flat `413` loses the
+event, and an oversized payload is usually the most interesting one somebody
+has.
+
+Stamped rather than implicit: agreeing out of band that the id is also the
+object's name works until somebody changes the prefix. Without a reduction hook
+the event is archived and dropped — not lost, and counted.
+
+### `stamp_loaded_at`
+
+Writes `ingestion_loaded_at` with the SDK's column name and the SDK's format, so
+a row this gateway lands and a row a pipeline lands are the same shape. Opt-in.
+
+---
+
+## [0.2.0] — 2026-09-24
+
+### The sinks are injectable, and there is a slim image
+
+A gateway that only ever writes to Postgres carried the AWS SDK, the Google
+client stack and Arrow: **48.9 MB against 10.0** for the same gateway with only
+what it uses. Nothing was wrong with the linker — it prunes what nothing
+references — the problem was one `switch` that named every constructor, so
+every driver was referenced in every build.
+
+Each sink is now its own package and the binary registers what it carries:
+
+```go
+func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}
+```
+
+**The import list is the selection.** That is how `database/sql` has always
+worked, and it was already the rule one level down: `sdk/store/s3` says
+*"importing it costs you the AWS SDK"* precisely so a fetcher reading GCS does
+not pay for it. Anyone with a hook is compiling their own binary already, so for
+them this costs nothing at all.
+
+Object stores are a second registry, because a scheme is not a destination:
+`files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
+build that only ever writes locally should not carry the AWS SDK to do it.
+
+### Two images
+
+| | sinks | size |
+|---|---|---|
+| `areteacademy/brevis-gateway:0.2.0` | all six, both stores | 48.6 MB |
+| `areteacademy/brevis-gateway:0.2.0-slim` | postgres, local `files` | **12.4 MB** |
+
+Built from one tree in one job, because two images from two checkouts is how a
+`-slim` tag ends up a commit behind the one it claims to match. No
+`latest-slim`: `latest` is already a tag nobody should deploy, and a second
+floating one would be a second way to be surprised.
+
+### Refusals now report per binary
+
+```
+sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.
+```
+
+A fixed list would have sent that operator looking for a config mistake they did
+not make. Same for an object store: a `s3://` dead letter in a binary with no S3
+backend is refused **at startup**, naming the scheme — rather than on the first
+batch it has to bury, which is the failure the whole split prevents.
+
+The per-driver checks moved into the drivers with them, so `config.go` no longer
+claims to know which sinks exist. Both still run before the listener opens.
+
+### A test that watches the weight
+
+`go list -deps` on both mains, asserting the slim build reaches neither the AWS
+SDK nor the Google stack nor Arrow. It is the one claim here no ordinary test
+can see: everything compiles and every test passes whether or not the linker
+pruned anything, and the cost shows up only as a number in a `docker pull`. An
+import added to the root package that drags one of them back in fails this and
+nothing else.
+
+---
+
+## [0.1.0] — 2026-09-24
+
+The first one. An HTTP endpoint that lands data.
+
+```
+POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
+                                                          ↓
+                                              workers  →  Pub/Sub | Postgres | files
+```
+
+### What it does
+
+**Configured by a file.** Streams, paths, formats, identity, retry, sink and
+dead letter, and every field refused when it cannot be honoured — a gateway
+that starts on a config it half understood drops events for a reason nobody can
+see.
+
+**Six sinks**: `pubsub`, `postgres`, `mysql`, `bigquery`, `redshift` and
+`files`, the last reading a directory, `gs://` and `s3://`. All six are the
+SDK's own drivers, driven directly: `core.Writer` takes a batch, which is
+exactly what a micro-batching sink wants, so they arrive already tested and
+already refusing what they cannot do. An unknown `type:` is refused at load,
+naming the six that exist.
+
+Four are proven end to end against the real thing — Pub/Sub on its emulator,
+Postgres and MySQL on real servers, `files` on the filesystem and on S3.
+**BigQuery and Redshift are not**: neither has a local emulator, so what is
+tested here is the config and the refusals, and the docs say so rather than
+letting "runs" carry a claim nobody checked.
+
+**A `files` sink pointed at `gs://` or `s3://` now works.** It did not: the
+driver takes the object-store backend as a field and the gateway passed none,
+so a bucket path failed at write time, after the pod had gone ready. For the
+DEAD LETTER that meant "the dead letter refused them too, and they are lost" --
+the one outcome it exists to prevent. Credentials are now resolved at startup,
+and `AWS_ENDPOINT_URL_S3` points S3 at MinIO, Ceph or R2.
+
+**Every table sink takes `append` or `merge`, and `write` is required.** One
+word, one meaning, in all four: `merge` is the idempotent insert and the FIRST
+delivery wins -- `ON CONFLICT DO NOTHING` in Postgres, `INSERT IGNORE` in
+MySQL, `MERGE … WHEN NOT MATCHED` in BigQuery and Redshift.
+
+**Postgres in particular.** `append`
+is `COPY FROM STDIN`, Postgres's fast path, and every delivery lands. `merge`
+stages the batch in a `TEMP TABLE … ON COMMIT DROP` and runs
+`INSERT … ON CONFLICT (ingestion_id) DO NOTHING` in **one transaction**, so the
+first delivery of an event wins and a crash mid-way leaves the table as it was.
+It needs a `UNIQUE` index on `ingestion_id` and refuses without one rather than
+silently appending. `upsert` — `DO UPDATE`, last delivery wins — is refused **by
+name**, because accepting the word and behaving like `merge` is the failure the
+field exists to prevent.
+
+**The hook is Go, compiled in**, named by the YAML. 93 ns/op against Starlark's
+959 and yaegi's 1,281, for nothing added to the binary. Returning nil drops the
+event; a panic is recovered per event and never takes the batch down.
+
+**`ingestion_id` on every record**, the frozen UUID v5 the whole product shares.
+A client that retries a `POST` produces the same id, so a sink with dedup
+absorbs the retry — and a row landed here is the same row a batch fetcher would
+land for the same record.
+
+**Delivery is asynchronous and bounded.** A request appends to a buffer and
+returns; a worker pool delivers. No caller waits for a publish, a `COPY`, or a
+sink that is down — before this, whoever happened to fill a batch paid the full
+round trip and, on an outage, the full retry window. The queue has a size and
+the buffer has a ceiling: past them the gateway answers `503` with
+`Retry-After` rather than accepting an event it has nowhere to put. The `503`
+is safe to act on, because the `ingestion_id` makes the same body the same
+record.
+
+**A refused batch is retried and then buried**, with the reason, the sink and
+the time on every record. A stream with no `dead_letter` is refused at load:
+defaulting it to silence would put the decision where nobody makes it.
+
+**Bearer authentication**, required outside `BREVIS_ENV=local`, where the
+process refuses to start without it. An ingestion endpoint is a write endpoint
+on somebody's topic; an unauthenticated one on a routable address is an open
+relay.
+
+### What it answers, and what that means
+
+**`202`, not `200`.** With `durability: memory` — the only tier — that is the
+whole of what it can honestly claim. A crash loses what is in flight. `disk`
+and `synchronous` are refused **by name** rather than accepted and treated as
+memory, because somebody writing `disk` believes their events survive a crash.
+
+### What this image is
+
+**A gateway with no hooks**, which is the honest artifact for a compiled-hook
+design: it serves streams that declare no `hook:`. A hook of your own means a
+binary of your own, which is ten lines around `gateway.Main` — the same
+arrangement the SDK asks for, and `gateway/example` is a working one.
+
+**A clean stop delivers what is buffered**, through the same path a full batch
+takes: retried, and buried with the reason when the sink will not have it.
+Writing straight to the sink at shutdown was a hole — a batch it refused was
+lost, no retry and no dead letter, on the ordinary path of every deploy. A
+drain that outlasts its window is reported rather than waited on.
+
+### Not yet
+
+Counters, a disk buffer, `upsert`, and the sinks the SDK already carries but
+this does not wrap yet — BigQuery, MySQL, Redshift. None of them is in the way
+of using it; all of them are in the plan.

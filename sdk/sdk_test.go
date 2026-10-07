@@ -807,3 +807,84 @@ func records(e Expander) func(Response) ([]any, error) {
 		return e(doc)
 	}
 }
+
+// Merging the landing layout needs DedupKey, and without it there is no
+// merge at all.
+//
+// The driver matches on `ingestion_id` unless told otherwise, and the
+// layout's column is `brevis_ingestion_id`. Everything below Target has
+// carried DedupKey since it was added for exactly this; Target was the one
+// place that dropped it.
+func TestTargetCarriesTheDedupKey(t *testing.T) {
+	d := Target{
+		To:       fakeTarget{},
+		Schema:   LandingSchema(LandingOptions{UniqueID: true, Keyed: true}),
+		Dedup:    DedupMerge,
+		DedupKey: LandingColumnID,
+	}
+	if err := d.validate(); err != nil {
+		t.Fatalf("a declared DedupKey was refused: %v", err)
+	}
+	if got := d.options(RunContext{}).DedupKey; got != LandingColumnID {
+		t.Errorf("WriteOptions.DedupKey is %q, want %q -- the field exists on "+
+			"Target and every driver reads it, and the fold between them is "+
+			"the only place it can be lost", got, LandingColumnID)
+	}
+}
+
+// Empty is today's behaviour, exactly: the drivers default to ingestion_id.
+func TestAnEmptyDedupKeyChangesNothing(t *testing.T) {
+	d := Target{To: fakeTarget{}, Columns: []string{"ingestion_id", "id"}, Dedup: DedupMerge}
+	if err := d.validate(); err != nil {
+		t.Fatalf("a Target with no DedupKey was refused: %v", err)
+	}
+	if got := d.options(RunContext{}).DedupKey; got != "" {
+		t.Errorf("WriteOptions.DedupKey is %q for a Target that named none", got)
+	}
+}
+
+// A DedupKey nothing declares is refused, naming both sides.
+//
+// core.DedupKeyOf validates that the name is a legal identifier, not that it
+// exists -- so a typo would merge on a column that is not there. The check
+// belongs where the declaration is, which is the shape PartitionBy already
+// uses one field up.
+func TestADedupKeyNothingDeclaresIsRefused(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		d    Target
+	}{
+		{"schema", Target{
+			To:       fakeTarget{},
+			Schema:   LandingSchema(LandingOptions{}),
+			DedupKey: "brevis_ingestionid", // the typo
+		}},
+		{"columns", Target{
+			To:       fakeTarget{},
+			Columns:  []string{"ingestion_id", "id"},
+			DedupKey: "ingestionid",
+		}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.d.validate()
+			if err == nil {
+				t.Fatal("a DedupKey the declaration does not carry was accepted: " +
+					"the merge would match on a column that is not there")
+			}
+			for _, want := range []string{"DedupKey", c.d.DedupKey} {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("the refusal does not name %q: %v", want, err)
+				}
+			}
+		})
+	}
+}
+
+// A Target that declares nothing checks nothing, which is the rule the rest
+// of this struct already follows.
+func TestADedupKeyWithNoDeclarationIsLeftAlone(t *testing.T) {
+	d := Target{To: fakeTarget{}, DedupKey: "whatever_the_table_has"}
+	if err := d.validate(); err != nil {
+		t.Errorf("a Target declaring no columns was refused for its DedupKey: %v", err)
+	}
+}
