@@ -103,7 +103,9 @@ func TestADailyWriterStaysOnTimeAcrossDaylightSaving(t *testing.T) {
 }
 
 func TestBestTakesTheHealthiestWriter(t *testing.T) {
-	order := []Status{OnTime, Late, Stale, Paused, Unscheduled}
+	// A gateway writes continuously: healthier than a late writer, though it
+	// has no schedule to be on time against. One with no name ranks last.
+	order := []Status{OnTime, Continuous, Late, Stale, Paused, Unscheduled, Unidentified}
 	for i, a := range order {
 		for j, b := range order {
 			want := a

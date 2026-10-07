@@ -33,8 +33,14 @@ templ Target(v TargetView) {
 						for _, w := range v.Row.Writers {
 							<tr class="align-top">
 								<td class="px-3 py-3 pl-6">
-									<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
-									<span class="text-muted">· { w.Node }</span>
+									if g := w.Gateway; g != nil {
+										<span class="mr-1 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted">gateway</span>
+										<span class="font-medium text-ink">{ g.Name }</span>
+										<span class="font-mono text-xs text-muted">{ g.Stream }</span>
+									} else {
+										<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
+										<span class="text-muted">· { w.Node }</span>
+									}
 									if r := w.Reason(); r != "" {
 										<p class="mt-1 max-w-xl text-xs text-muted">{ r }</p>
 									}
@@ -43,13 +49,21 @@ templ Target(v TargetView) {
 									}
 								</td>
 								<td class="px-3 py-3 font-mono text-xs whitespace-nowrap text-muted">
-									if w.HasSchedule {
+									if w.Gateway != nil {
+										<span class="font-sans">continuous</span>
+									} else if w.HasSchedule {
 										{ w.Cron } <span class="font-sans">{ w.Timezone }</span>
 									} else {
 										<span class="font-sans">by hand</span>
 									}
 								</td>
-								<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">{ components.When(&w.LastLoaded) }</td>
+								<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">
+									if w.Gateway != nil {
+										—
+									} else {
+										{ components.When(&w.LastLoaded) }
+									}
+								</td>
 								<td class="px-3 py-3 pr-6">
 									@components.Freshness(string(w.Verdict.Status))
 								</td>

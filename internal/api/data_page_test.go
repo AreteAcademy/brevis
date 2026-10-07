@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
@@ -222,5 +223,37 @@ func TestTheListLinksEachDestinationToItsPage(t *testing.T) {
 	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
 	if !strings.Contains(body, `href="/data/target?u=`+url.QueryEscape("s3://demo-landing/reports/")+`"`) {
 		t.Error("the list does not link to the destination page")
+	}
+}
+
+func gatewayCatalog() []postgres.CatalogEntry {
+	gw := func(stream, role, note string) postgres.CatalogWriter {
+		return postgres.CatalogWriter{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: stream,
+			Role: role, Kind: "files", Note: note, PublishedAt: time.Now().Add(-time.Hour)}}
+	}
+	return []postgres.CatalogEntry{
+		{Target: "pubsub://brevis-local/clicks", Kind: "pubsub", Writers: []postgres.CatalogWriter{gw("/v1/clicks", "sink", "")}},
+		{Writers: []postgres.CatalogWriter{gw("/v1/clicks", "dead_letter", `"./dead-letter/" is relative to the gateway's working directory`)}},
+	}
+}
+
+func TestTheDataPageShowsGatewayDestinations(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: gatewayCatalog()}), "/data")
+	for _, want := range []string{
+		"pubsub://brevis-local/clicks", "continuous", "edge", "/v1/clicks",
+		"unidentified", "relative to the gateway", "/metrics",
+	} {
+		if !strings.Contains(html.UnescapeString(body), want) {
+			t.Errorf("the page does not show %q", want)
+		}
+	}
+}
+
+func TestADestinationPageNamesTheGatewayThatPublishedIt(t *testing.T) {
+	e := gatewayCatalog()[0]
+	_, body := get(t, dataUI(catalogFake{detail: &postgres.TargetDetail{CatalogEntry: e}}),
+		"/data/target?u="+url.QueryEscape(e.Target))
+	if !strings.Contains(body, "Published from gateway") || !strings.Contains(body, "/metrics") {
+		t.Errorf("the page does not say which gateway published it:\n%s", body)
 	}
 }

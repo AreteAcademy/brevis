@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
@@ -40,7 +41,7 @@ func schedule(t *testing.T, pool *postgres.Pool, slug, cron, tz string, active b
 func catalogDB(t *testing.T) *postgres.Pool {
 	t.Helper()
 	pool := landingsDB(t)
-	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules CASCADE`); err != nil {
+	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules, gateway_destinations CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	return pool
@@ -209,5 +210,68 @@ func TestCatalogTargetReturnsItsWritersAndLastLoads(t *testing.T) {
 	missing, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, "postgres://nowhere/public/x")
 	if err != nil || missing != nil {
 		t.Fatalf("an unknown target = %+v, %v; want nil, nil", missing, err)
+	}
+}
+
+func publish(t *testing.T, pool *postgres.Pool, streams ...catalog.ManifestStream) {
+	t.Helper()
+	m := catalog.Manifest{Kind: "gateway-manifest", Version: 1, Gateway: "edge", Streams: streams}
+	if err := postgres.NewGatewayRepo(pool).Publish(context.Background(), m, time.Date(2026, 10, 7, 18, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A gateway's published destinations join the catalog by target: one table
+// written by a step and by a gateway is one entry with two writers.
+func TestPublishedGatewayDestinationsJoinTheCatalog(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const clicks = "bigquery://acme/landing/clicks"
+	landAt(t, pool, "clicks_backfill", "load", clicks, time.Now().Add(-time.Hour), time.Minute, n(10))
+	publish(t, pool, catalog.ManifestStream{Path: "/v1/clicks", Destinations: []catalog.ManifestDestination{
+		{Role: "sink", Kind: "bigquery", Target: target(clicks)},
+		{Role: "dead_letter", Kind: "files", Note: "relative path"},
+		{Role: "archive", Kind: "files", Target: target("gs://acme-oversize/clicks/")},
+	}})
+
+	entries, err := postgres.NewReadRepo(pool).Catalog(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := entryFor(t, entries, clicks)
+	var gw, step int
+	for _, w := range e.Writers {
+		if w.Gateway != nil {
+			gw++
+			if w.Gateway.Name != "edge" || w.Gateway.Stream != "/v1/clicks" || w.Gateway.Role != "sink" {
+				t.Errorf("gateway writer = %+v", w.Gateway)
+			}
+		} else {
+			step++
+		}
+	}
+	if gw != 1 || step != 1 {
+		t.Fatalf("writers: %d gateway, %d step; want one of each", gw, step)
+	}
+
+	archive := entryFor(t, entries, "gs://acme-oversize/clicks/")
+	if archive.Kind != "gs" || len(archive.Writers) != 1 || archive.Writers[0].Gateway == nil {
+		t.Errorf("a gateway-only destination = %+v", archive)
+	}
+
+	// The unnamed one is listed, with its note, never dropped.
+	var unnamed *postgres.CatalogEntry
+	for i := range entries {
+		if entries[i].Target == "" {
+			unnamed = &entries[i]
+		}
+	}
+	if unnamed == nil || unnamed.Writers[0].Gateway.Note != "relative path" {
+		t.Fatalf("the unnamed destination is missing or lost its note: %+v", unnamed)
+	}
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, clicks)
+	if err != nil || d == nil || len(d.Writers) != 2 {
+		t.Fatalf("the destination page lost the gateway writer: %+v, %v", d, err)
 	}
 }

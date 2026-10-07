@@ -15,6 +15,14 @@ const (
 	Stale       Status = "stale"
 	Paused      Status = "paused"
 	Unscheduled Status = "unscheduled"
+
+	// Continuous is a gateway's: it writes as events arrive, with no schedule
+	// to be late against. Its traffic is on the gateway's /metrics.
+	Continuous Status = "continuous"
+
+	// Unidentified is a published gateway destination its manifest could not
+	// name -- no locator in the gateway's binary, or a relative path.
+	Unidentified Status = "unidentified"
 )
 
 // minGrace is the least a slot is given before it counts as missed. Below
@@ -90,12 +98,17 @@ func Freshness(w Writer, now time.Time) Verdict {
 
 // rank orders statuses from healthiest. A destination takes its best writer's
 // status: data arriving from any writer is data arriving.
-var rank = map[Status]int{OnTime: 0, Late: 1, Stale: 2, Paused: 3, Unscheduled: 4}
+var rank = map[Status]int{
+	OnTime: 0, Continuous: 1, Late: 2, Stale: 3, Paused: 4, Unscheduled: 5, Unidentified: 6,
+}
 
 // Best returns the healthiest of the statuses, or Unscheduled when there are
 // none -- no writer, no verdict.
 func Best(statuses ...Status) Status {
-	best := Unscheduled
+	if len(statuses) == 0 {
+		return Unscheduled
+	}
+	best := Unidentified
 	for _, s := range statuses {
 		if rank[s] < rank[best] {
 			best = s

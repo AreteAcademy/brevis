@@ -48,6 +48,18 @@ type CatalogWriter struct {
 	// RunInFlight is the id of a run of this workflow that is queued, running
 	// or retrying, if there is one.
 	RunInFlight *string
+
+	// Gateway is set when the writer is a published gateway stream rather than
+	// a workflow step; Workflow and Node are then empty, and nothing above is
+	// measured -- a gateway's traffic is on its /metrics.
+	Gateway *GatewayWriter
+}
+
+// GatewayWriter is a gateway stream as its published manifest describes it.
+type GatewayWriter struct {
+	Name, Stream, Role, Kind, Note string
+	Routes                         bool
+	PublishedAt                    time.Time
 }
 
 // Catalog lists every destination the ecosystem has landed on.
@@ -68,10 +80,55 @@ type CatalogWriter struct {
 // the domain's (catalog.Freshness), and the page applies it.
 func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 	entries, index, err := r.catalogWriters(ctx, nil)
-	if err != nil || len(entries) == 0 {
+	if err != nil {
+		return nil, err
+	}
+	if entries, err = r.gatewayWriters(ctx, nil, entries, index); err != nil || len(entries) == 0 {
 		return nil, err
 	}
 	return entries, r.recentLoads(ctx, entries, index)
+}
+
+// gatewayWriters adds what published gateways write, joined by target: a
+// table a step and a gateway both write is one entry with both writers. A
+// destination the manifest could not name becomes an entry of its own with an
+// empty Target -- listed with its note, never dropped.
+func (r *ReadRepo) gatewayWriters(ctx context.Context, target *string,
+	entries []CatalogEntry, index map[string]int) ([]CatalogEntry, error) {
+
+	query := `SELECT gateway, stream_path, role, kind, target, note, routes, published_at
+		FROM gateway_destinations ORDER BY gateway, stream_path, role`
+	args := []any{}
+	if target != nil {
+		query = `SELECT gateway, stream_path, role, kind, target, note, routes, published_at
+			FROM gateway_destinations WHERE target = $1 ORDER BY gateway, stream_path, role`
+		args = append(args, *target)
+	}
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var g GatewayWriter
+		var tgt *string
+		if err := rows.Scan(&g.Name, &g.Stream, &g.Role, &g.Kind, &tgt, &g.Note, &g.Routes, &g.PublishedAt); err != nil {
+			return nil, err
+		}
+		w := CatalogWriter{Gateway: &g}
+		if tgt == nil {
+			entries = append(entries, CatalogEntry{Writers: []CatalogWriter{w}})
+			continue
+		}
+		i, ok := index[*tgt]
+		if !ok {
+			i = len(entries)
+			index[*tgt] = i
+			entries = append(entries, CatalogEntry{Target: *tgt, Kind: kindOf(*tgt)})
+		}
+		entries[i].Writers = append(entries[i].Writers, w)
+	}
+	return entries, rows.Err()
 }
 
 // latestEveryWriter is each writer's latest landing, by SKIPPING through
@@ -187,9 +244,11 @@ func (r *ReadRepo) catalogWriters(ctx context.Context, target *string) ([]Catalo
 
 // recentLoads is the second round trip: the rows of each target's last loads.
 func (r *ReadRepo) recentLoads(ctx context.Context, entries []CatalogEntry, index map[string]int) error {
-	targets := make([]string, len(entries))
-	for i, e := range entries {
-		targets[i] = e.Target
+	targets := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.Target != "" {
+			targets = append(targets, e.Target)
+		}
 	}
 	recent, err := r.pool.Query(ctx, `
 		SELECT t.target, x.rows_written
@@ -237,7 +296,10 @@ type TargetLoad struct {
 // A legacy label is looked up as stored, so its page opens like any other.
 func (r *ReadRepo) CatalogTarget(ctx context.Context, target string) (*TargetDetail, error) {
 	entries, index, err := r.catalogWriters(ctx, &target)
-	if err != nil || len(entries) == 0 {
+	if err != nil {
+		return nil, err
+	}
+	if entries, err = r.gatewayWriters(ctx, &target, entries, index); err != nil || len(entries) == 0 {
 		return nil, err
 	}
 	if err := r.recentLoads(ctx, entries, index); err != nil {
