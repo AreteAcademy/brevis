@@ -28,7 +28,8 @@ jobs:
   image:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # write, because the last step of a release is the Release.
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -127,6 +128,30 @@ jobs:
             exit 1
           fi
 
+      # The release notes come from the changelog, which is written anyway.
+      #
+      # EARLY, before a single image is pushed: a missing section is a mistake
+      # to find before the artifacts exist, not after. It is the same argument
+      # as the VERSION check above, one line further.
+      #
+      # Missing section is an ERROR and not an empty body, for the reason
+      # publish-sdk.yml gives: a release published with no notes is one nobody
+      # goes back to fix.
+      - name: Extract the changelog section
+        run: |
+          NUMBER="${{ steps.v.outputs.version }}"
+          awk -v want="## [$NUMBER]" '
+            index($0, want) == 1 { inside = 1; next }
+            inside && /^## \[/   { exit }
+            inside               { print }
+          ' gateway/CHANGELOG.md | sed -e 's/^---$//' > notes.md
+
+          if [ ! -s notes.md ]; then
+            echo "::error::gateway/CHANGELOG.md has no section for $NUMBER. Add one before tagging."
+            exit 1
+          fi
+          echo "✅ $(wc -l < notes.md) line(s) of notes for $NUMBER"
+
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
@@ -182,6 +207,28 @@ jobs:
       # a repository reference are different documents for different readers.
       - name: The overview fits
         run: .github/scripts/hub-overview-check.sh
+
+
+      # The tag becomes a page somebody can read.
+      #
+      # Until this existed, 84 Releases were published and every one of them was
+      # the SDK: the engine and the gateway were tagged, their images pushed,
+      # and the Releases page showed a third of the story. A consumer running
+      # the gateway -- which is what every open issue is filed against -- had
+      # nowhere to see what changed.
+      #
+      # ONLY ON A TAG. `workflow_dispatch` carries a version and no tag, so
+      # `github.ref_name` would be a branch, and a Release named after a branch
+      # is worse than none.
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Gateway v${{ steps.v.outputs.version }}
+          body_path: notes.md
+          draft: false
+          prerelease: false
 
       - name: The Docker Hub overview
         uses: peter-evans/dockerhub-description@v5
