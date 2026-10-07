@@ -74,16 +74,62 @@ func (r *ReadRepo) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 	return entries, r.recentLoads(ctx, entries, index)
 }
 
-// catalogWriters is the first round trip: every writer, or one target's.
-func (r *ReadRepo) catalogWriters(ctx context.Context, target *string) ([]CatalogEntry, map[string]int, error) {
-	rows, err := r.pool.Query(ctx, `
+// latestEveryWriter is each writer's latest landing, by SKIPPING through
+// landings_writer_idx rather than reading it.
+//
+// The obvious form, DISTINCT ON over (workflow_slug, node_id, target), reads
+// every entry of the index to keep one per writer. Measured on a probe of
+// 1,051,220 landings -- a year of hourly runs across forty workflows, 500
+// destinations, 452 MB -- that was 837 ms of the page's 990 ms (p50), against
+// a target of 150 ms. Postgres 17 has no skip scan, so the recursive CTE does
+// it by hand: one index probe to the next writer, one to its latest landing,
+// 500 of each. The same probe: 29 ms.
+//
+// Measured after the change, 20 calls each on that probe, warm:
+//
+//	Catalog                        p50 45 ms   p95 54 ms
+//	/data, query + build + render  p50 47 ms   p95 57 ms
+//	CatalogTarget                  p50  2 ms   p95  2 ms
+const latestEveryWriter = `
+		WITH RECURSIVE writers AS (
+			(SELECT workflow_slug, node_id, target FROM landings
+			 ORDER BY workflow_slug, node_id, target LIMIT 1)
+			UNION ALL
+			SELECT nx.workflow_slug, nx.node_id, nx.target FROM writers w
+			CROSS JOIN LATERAL (
+				SELECT workflow_slug, node_id, target FROM landings
+				WHERE (workflow_slug, node_id, target) > (w.workflow_slug, w.node_id, w.target)
+				ORDER BY workflow_slug, node_id, target LIMIT 1
+			) nx
+		),
+		latest AS (
+			SELECT x.* FROM writers w
+			CROSS JOIN LATERAL (
+				SELECT workflow_slug, node_id, target, loaded_at, rows_written, legacy FROM landings
+				WHERE workflow_slug = w.workflow_slug AND node_id = w.node_id AND target = w.target
+				ORDER BY loaded_at DESC LIMIT 1
+			) x
+		)`
+
+// latestOneTarget is the same for one destination, through landings_target_idx.
+// Its own text rather than `$1 IS NULL OR target = $1`, which the planner
+// cannot use an index for: on the probe that form cost the target page 195 ms.
+const latestOneTarget = `
 		WITH latest AS (
-			SELECT DISTINCT ON (workflow_slug, node_id, target)
+			SELECT DISTINCT ON (workflow_slug, node_id)
 			       workflow_slug, node_id, target, loaded_at, rows_written, legacy
 			FROM landings
-			WHERE $1::text IS NULL OR target = $1
-			ORDER BY workflow_slug, node_id, target, loaded_at DESC
-		)
+			WHERE target = $1
+			ORDER BY workflow_slug, node_id, loaded_at DESC
+		)`
+
+// catalogWriters is the first round trip: every writer, or one target's.
+func (r *ReadRepo) catalogWriters(ctx context.Context, target *string) ([]CatalogEntry, map[string]int, error) {
+	latest, args := latestEveryWriter, []any{}
+	if target != nil {
+		latest, args = latestOneTarget, []any{*target}
+	}
+	rows, err := r.pool.Query(ctx, latest+`
 		SELECT l.target, l.legacy, l.workflow_slug, l.node_id, l.loaded_at, l.rows_written,
 		       s.cron IS NOT NULL, COALESCE(s.cron, ''), COALESCE(s.timezone, ''), COALESCE(s.ativo, false),
 		       COALESCE(lag.p90, 0),
@@ -108,7 +154,7 @@ func (r *ReadRepo) catalogWriters(ctx context.Context, target *string) ([]Catalo
 			ORDER BY criado_em DESC
 			LIMIT 1
 		) inflight ON true
-		ORDER BY l.target, l.workflow_slug, l.node_id`, target)
+		ORDER BY l.target, l.workflow_slug, l.node_id`, args...)
 	if err != nil {
 		return nil, nil, err
 	}
