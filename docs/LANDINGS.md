@@ -8,7 +8,8 @@ Which destination a step wrote, in any language.
 
 One line on stdout, after writing. The engine keeps it in the `landings` table:
 which run and step, which destination, how many rows and bytes, and when. That
-is the whole contract, and it is the same in every language.
+is the whole contract, and it is the same in every language. The console's
+`/data` is drawn from it — see [`CATALOG.md`](CATALOG.md).
 
 | | |
 |---|---|

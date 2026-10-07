@@ -35,6 +35,7 @@ and [`sdk/README.md`](../sdk/README.md); the version-by-version history is
 | [`RUNTIME.md`](RUNTIME.md) | what a step runs in, on the graph: `runtime:` and `tools:` |
 | [`CONTEXT.md`](CONTEXT.md) | what one step tells the next, in any language |
 | [`LANDINGS.md`](LANDINGS.md) | which destination a step wrote, in any language: the `landed` line and the target it names |
+| [`CATALOG.md`](CATALOG.md) | `/data` in the console: what it lists, and how "late" is read from each writer's schedule |
 | [`COMMANDS.md`](COMMANDS.md) | the command-line reference |
 | [`OBSERVABILITY.md`](OBSERVABILITY.md) | the metrics both processes emit, and what is deliberately absent |
 
