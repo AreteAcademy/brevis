@@ -1760,3 +1760,14 @@ func TestTheGatewaysShapeLoadsEndToEnd(t *testing.T) {
 		t.Errorf("%d rows, want 2", n)
 	}
 }
+
+// A reused connection names the same table its DSN would: the catalog must not
+// see two destinations because one fetcher passes Conn and another passes DSN.
+func TestIntegrationLocateFromConnMatchesLocateFromDSN(t *testing.T) {
+	conn := connect(t)
+	fromConn := topg.Table{Conn: conn, Name: "landing.orders"}.Locate()
+	fromDSN := topg.Table{DSN: dsn(t), Name: "landing.orders"}.Locate()
+	if fromConn == "" || fromConn != fromDSN {
+		t.Fatalf("Conn says %q, DSN says %q", fromConn, fromDSN)
+	}
+}

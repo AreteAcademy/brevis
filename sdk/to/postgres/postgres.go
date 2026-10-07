@@ -70,6 +70,78 @@ type Table struct {
 // Describe satisfies core.Writer. It names the table, never the DSN.
 func (t Table) Describe() string { return "postgres:" + t.Name }
 
+var _ core.Locator = Table{}
+
+// Locate satisfies sdk.Locator: postgres://database/schema/table.
+//
+// The database comes from the DSN, parsed and never dialled, or from Conn's
+// config; host, port and user are read past and dropped. An unqualified Name
+// takes the first schema of the DSN's search_path when it sets one, and
+// `public` otherwise -- the server's default. A search_path set on the role or
+// the database instead cannot be seen without a query, and Locate makes none:
+// qualify Name when that is how the database is set up.
+func (t Table) Locate() string {
+	var cfg *pgx.ConnConfig
+	switch {
+	case t.Conn != nil:
+		cfg = t.Conn.Config()
+	case t.DSN != "":
+		parsed, err := pgx.ParseConfig(t.DSN)
+		if err != nil {
+			return ""
+		}
+		cfg = parsed
+	default:
+		return ""
+	}
+	schema, table, qualified := splitQualified(t.Name)
+	if !qualified {
+		schema = firstSearchPath(cfg.RuntimeParams)
+	}
+	return core.PostgresTarget("postgres", cfg.Database, schema, table)
+}
+
+// splitQualified splits `schema.table` at the first dot outside double quotes,
+// keeping the quotes on each part so the target can fold what the database
+// folds and keep what it keeps.
+func splitQualified(name string) (schema, table string, qualified bool) {
+	quoted := false
+	for i := 0; i < len(name); i++ {
+		switch name[i] {
+		case '"':
+			quoted = !quoted
+		case '.':
+			if !quoted {
+				return name[:i], name[i+1:], true
+			}
+		}
+	}
+	return "", name, false
+}
+
+// firstSearchPath reads the schema an unqualified name resolves to from what
+// the DSN set: `search_path=…`, or `options=-c search_path=…`. `$user` is
+// skipped, because which user that is belongs to the server.
+func firstSearchPath(params map[string]string) string {
+	path := params["search_path"]
+	if path == "" {
+		opts := strings.ReplaceAll(params["options"], "-c ", "-c")
+		for _, opt := range strings.Fields(opts) {
+			if v, ok := strings.CutPrefix(opt, "-csearch_path="); ok {
+				path = v
+				break
+			}
+		}
+	}
+	for _, s := range strings.Split(path, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" && strings.Trim(s, `"`) != "$user" {
+			return s
+		}
+	}
+	return "public"
+}
+
 // Write satisfies core.Writer.
 func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error) {
 	res := &core.LoadResult{Dedup: opt.Dedup, Strategy: "copy"}

@@ -346,6 +346,12 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 	}
 	rep.finished(PhaseTarget, state, loadNumbers(res))
 
+	// Only a load that worked landed anything, and only after its box closed:
+	// the engine reads a landing as a fact about a finished load.
+	if err == nil {
+		rep.landed(res)
+	}
+
 	// After the load and only when it worked: a value derived from a run that
 	// failed describes a run that did not happen.
 	//

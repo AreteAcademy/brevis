@@ -184,6 +184,7 @@ func loadWith(ctx context.Context, data *Data, target Target, run RunContext) (*
 		Records:     int64(len(envelopes)),
 		ExtractTime: time.Since(data.start),
 		Table:       target.To.Describe(),
+		Target:      locate(target.To),
 	}
 	if data.stats != nil {
 		res.Pages = data.stats.Pages
@@ -250,7 +251,7 @@ func collect(data *Data, _ Target) ([]Envelope, error) {
 // earlier batches already wrote -- because hiding that 40,000 rows went in would
 // be worse than saying so.
 func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext, start time.Time) (*Result, error) {
-	res := &Result{Table: target.To.Describe()}
+	res := &Result{Table: target.To.Describe(), Target: locate(target.To)}
 	opts := target.options(run)
 
 	leva := make([]Envelope, 0, target.FlushEvery)
