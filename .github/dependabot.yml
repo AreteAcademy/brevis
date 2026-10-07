@@ -1,42 +1,117 @@
+# Five Go modules, and this file watched one of them.
+#
+# `gateway/go.mod` carried the same old `aws-sdk-go-v2`, `x/mod` and `cpuid`
+# that five open PRs were bumping in `sdk` -- and nothing was ever going to
+# open those PRs, because the gateway was not in this file. The root module,
+# `cmd/brevis-sdk` and `examples` were not either.
+#
+# GROUPED, which is the other half. Five directories at five PRs each is
+# twenty-five open pull requests a week into a repository where the previous
+# five sat for twenty-two days. One PR per module per week is a review
+# somebody actually does, and a group that goes red is one investigation
+# rather than five.
+#
+# NO `reviewers` AND NO `assignees`. Both named `AreteAcademy/maintainers`,
+# which is a 404 -- so they had never assigned anybody, and a setting that
+# names something that does not exist is a setting that lies about what the
+# file does.
+#
+# The four `labels` below had the same problem for a different reason:
+# dependabot cannot CREATE a label, and none of these existed in the
+# repository, so every PR it opened came out unlabelled. They exist now. If
+# one is renamed, dependabot goes back to silently applying nothing.
 version: 2
 updates:
-  # Go dependencies
+  # ---- Go modules -------------------------------------------------------
+  # The engine. Its ceiling is engine-weight.sh, which a bump can move.
   - package-ecosystem: "gomod"
-    directory: "/sdk"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "03:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "AreteAcademy/maintainers"
-    assignees:
-      - "AreteAcademy/maintainers"
-    labels:
-      - "dependencies"
-      - "go"
+    directory: "/"
+    schedule: {interval: "weekly", day: "monday", time: "03:00"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
     allow:
       - dependency-type: "direct"
       - dependency-type: "indirect"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    pull-request-branch-name:
-      separator: "/"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
 
-  # GitHub Actions
+  # The SDK. Its ceiling is pruning-check.sh.
+  - package-ecosystem: "gomod"
+    directory: "/sdk"
+    schedule: {interval: "weekly", day: "monday", time: "03:10"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
+
+  # The gateway: its own module, its own version, its own release.
+  - package-ecosystem: "gomod"
+    directory: "/gateway"
+    schedule: {interval: "weekly", day: "monday", time: "03:20"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
+
+  # The CLI. It requires the PUBLISHED SDK on purpose -- `go install
+  # pkg@version` refuses a module carrying replace directives -- so a bump
+  # here is a bump of what a consumer installs.
+  - package-ecosystem: "gomod"
+    directory: "/cmd/brevis-sdk"
+    schedule: {interval: "weekly", day: "monday", time: "03:30"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
+
+  # The examples are a gate on the working tree: CI builds them against
+  # ../sdk, so a breaking change shows up there first. A bump that breaks one
+  # is a bump that would have broken a consumer.
+  - package-ecosystem: "gomod"
+    directory: "/examples"
+    schedule: {interval: "weekly", day: "monday", time: "03:40"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
+
+  # ---- GitHub Actions ---------------------------------------------------
+  # One entry covers every workflow. Grouped for the same reason: five
+  # separate bumps is what let actions/checkout reach v4 while the runner
+  # warned about Node 20 on every single run.
   - package-ecosystem: "github-actions"
     directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "04:00"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "AreteAcademy/maintainers"
-    labels:
-      - "ci"
-      - "github-actions"
-    commit-message:
-      prefix: "ci"
-      include: "scope"
+    schedule: {interval: "weekly", day: "monday", time: "04:00"}
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    labels: ["ci", "github-actions"]
+    commit-message: {prefix: "ci", include: "scope"}
