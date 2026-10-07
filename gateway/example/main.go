@@ -36,6 +36,13 @@ func main() {
 	sinks.MustRegister(files.Sink, files.New)
 	sinks.MustRegister(autotable.Sink, autotable.New)
 
+	// What describe uses to name each destination without opening it.
+	sinks.MustRegisterLocator(pubsub.Sink, pubsub.Locate)
+	sinks.MustRegisterLocator(postgres.Sink, postgres.Locate)
+	sinks.MustRegisterLocator(bigquery.Sink, bigquery.Locate)
+	sinks.MustRegisterLocator(files.Sink, files.Locate)
+	sinks.MustRegisterLocator(autotable.Sink, autotable.Locate)
+
 	// gateway.yaml's telemetry stream buries into gs://, so this binary needs
 	// the GCS backend. It does NOT need S3, and not registering it is the
 	// difference: an s3:// path here is refused at startup, by name.

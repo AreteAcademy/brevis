@@ -564,3 +564,25 @@ func fingerprintOf(record sdk.Schema) string {
 	}
 	return b.String()
 }
+
+// Locate names where auto_table's tables land: the pattern under `into`'s
+// dataset or schema, because the tables themselves are learned from events.
+// `into` is located through the registry, as New builds it, so a binary that
+// cannot write into BigQuery cannot describe routing into it either.
+func Locate(s gateway.Sink, sinks *gateway.Sinks) (string, error) {
+	if s.Into == nil {
+		return "", fmt.Errorf("auto_table needs `into`")
+	}
+	into := *s.Into
+	// A stand-in table, replaced by the pattern: `into` names no table of its
+	// own, and the writer needs one to name the dataset it sits in.
+	into.Table = "route"
+	target, known, err := sinks.Locate(into)
+	if err != nil {
+		return "", err
+	}
+	if !known {
+		return "", fmt.Errorf("auto_table routes into %q, which this binary cannot describe", into.Type)
+	}
+	return gateway.Pattern(target), nil
+}

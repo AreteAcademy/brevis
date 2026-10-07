@@ -49,6 +49,15 @@ func main() {
 	sinks.MustRegister(files.Sink, files.New)
 	sinks.MustRegister(autotable.Sink, autotable.New)
 
+	// What describe uses to name each destination without opening it.
+	sinks.MustRegisterLocator(pubsub.Sink, pubsub.Locate)
+	sinks.MustRegisterLocator(postgres.Sink, postgres.Locate)
+	sinks.MustRegisterLocator(mysql.Sink, mysql.Locate)
+	sinks.MustRegisterLocator(bigquery.Sink, bigquery.Locate)
+	sinks.MustRegisterLocator(redshift.Sink, redshift.Locate)
+	sinks.MustRegisterLocator(files.Sink, files.Locate)
+	sinks.MustRegisterLocator(autotable.Sink, autotable.Locate)
+
 	metastores := gateway.NewMetastores()
 	metastores.MustRegister(redis.Name, redis.Open)
 	metastores.MustRegister(memcached.Name, memcached.Open)

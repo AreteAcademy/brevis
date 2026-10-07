@@ -39,6 +39,11 @@ func main() {
 	// cheapest way to land arbitrary events in a table needed the 49 MB image.
 	sinks.MustRegister(autotable.Sink, autotable.New)
 
+	// What describe uses to name each destination without opening it.
+	sinks.MustRegisterLocator(postgres.Sink, postgres.Locate)
+	sinks.MustRegisterLocator(files.Sink, files.Locate)
+	sinks.MustRegisterLocator(autotable.Sink, autotable.Locate)
+
 	// No stores: a gs:// or s3:// path is refused at startup, naming the
 	// scheme. A slim build that silently accepted one would fail on the first
 	// batch it had to bury, which is the failure this whole split prevents.
