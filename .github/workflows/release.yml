@@ -100,7 +100,7 @@ jobs:
           echo "✅ $(wc -l < notes.md) line(s) of notes for $NUMBER"
 
       - name: API (distroless)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: api
@@ -114,7 +114,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Worker (with a shell)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: worker
@@ -131,7 +131,7 @@ jobs:
       # alpine rather than distroless: the agent's whole job is running the
       # commands a step names, and a runtime with no shell cannot.
       - name: Agent (the other half of `host:`)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: agent
