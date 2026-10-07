@@ -112,6 +112,33 @@ func (f Files) Write(ctx context.Context, records []core.Envelope, opt core.Writ
 // changed on every load would stop identifying the destination in the log.
 func (f Files) Describe() string { return f.Path }
 
+var _ core.Locator = Files{}
+
+// Locate satisfies sdk.Locator: s3://bucket/prefix/, gs://…, file:///dir/.
+//
+// The DIRECTORY, read the way Write reads it (asDirectory, ParseLocation), and
+// never the object: each load names its file with a timestamp, and naming the
+// file would make every run a new destination in the catalog. A relative local
+// path is made absolute, because `./out` means nothing outside the working
+// directory of the step that wrote it.
+func (f Files) Locate() string {
+	if f.Path == "" {
+		return ""
+	}
+	loc, err := core.ParseLocation(asDirectory(f.Path))
+	if err != nil {
+		return ""
+	}
+	if loc.Scheme != "" {
+		return core.ObjectTarget(loc.Scheme, loc.Bucket, loc.Prefix)
+	}
+	dir, err := filepath.Abs(loc.Prefix)
+	if err != nil {
+		return ""
+	}
+	return core.ObjectTarget("file", "", filepath.ToSlash(dir))
+}
+
 // asDirectory makes sure Path is read as a directory.
 //
 // ParseLocation is written for READING, where the last segment with no slash is

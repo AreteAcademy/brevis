@@ -167,6 +167,12 @@ func (t Topic) Describe() string {
 	return "pubsub://" + t.Project + "/" + t.Name
 }
 
+var _ core.Locator = Topic{}
+
+// Locate satisfies sdk.Locator: pubsub://project/topic. Both are required on a
+// Topic and neither defaults, so a missing one names nothing.
+func (t Topic) Locate() string { return core.PubSubTarget(t.Project, t.Name) }
+
 // Write publishes one message per record.
 //
 // One record, one message -- not a batch in one message. A subscriber's unit of
