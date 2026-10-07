@@ -64,5 +64,61 @@ CREATE INDEX landings_writer_idx ON landings (workflow_slug, node_id, target, lo
 COMMENT ON TABLE landings IS
   'What each step declared it wrote. Read by /data. No FK to runs: outlives retention.';
 
+-- Backfill: the loads that happened before steps could name their target.
+--
+-- What the history holds is the LABEL the load phase carried in
+-- numeros.detail -- `postgres:landing.orders`, `bronze.clicks` -- and never a
+-- target. Turning a label into a URI would mean guessing the project or the
+-- database, which is the inference this catalog refuses, so the label goes in
+-- `target` as it was written and the row is marked legacy. The screen shows it
+-- as such, and the next load from an upgraded SDK lands beside it under its
+-- real name.
+--
+-- The rule for "a finished load" is the one 00012 and LoadNumbersFrom share,
+-- for the same reasons and with the same guard: the phase is found by NAME (two
+-- map stages push `load` to index three), only `done` counts (half of a load
+-- never happened), and a scalar in `etapas` must not abort the migration -- the
+-- CASE is at the source, not in a WHERE the planner may evaluate late.
+--
+-- One difference from 00012: a retried step has a task_run per attempt, and
+-- DISTINCT ON keeps the LAST attempt that finished its load, which is what
+-- RecordLandings does going forward. 00012 lets ON CONFLICT pick, which is any.
+--
+-- `rows` is cast only when it is a JSON number, so a malformed value from some
+-- old fetcher becomes NULL -- "did not say" -- instead of aborting the upgrade.
+--
+-- ON CONFLICT DO NOTHING never overwrites a real landing. There can be none on
+-- a fresh upgrade, and the rule costs nothing if this is ever run again.
+--
+-- WHAT IT COSTS ON THE WAY IN, measured rather than assumed: 350,400
+-- task_runs -- a year of hourly runs across forty workflows, 492 MB with
+-- their phases and logs, wider rows than 00012's probe -- backfill in 10.8 s
+-- cold, 8.1 s and 6.4 s warm, and leave 117 MB of landings. Inside the
+-- migration transaction, so roughly eleven seconds added to that upgrade,
+-- once, on top of 00012's own. Worth knowing before a deploy window; not worth
+-- a background job and a screen that is wrong for the first hour.
+INSERT INTO landings (
+    run_id, node_id, map_index, target, workflow_slug,
+    loaded_at, rows_written, legacy)
+SELECT DISTINCT ON (t.run_id, t.node_id, t.map_index)
+       t.run_id, t.node_id, t.map_index,
+       l.carga->'numeros'->>'detail',
+       r.workflow_slug,
+       r.criado_em,
+       CASE WHEN jsonb_typeof(l.carga->'numeros'->'rows') = 'number'
+            THEN (l.carga->'numeros'->>'rows')::numeric::bigint END,
+       true
+FROM task_runs t
+JOIN runs r ON r.id = t.run_id
+JOIN LATERAL (
+    SELECT e FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(t.etapas) = 'array' THEN t.etapas ELSE '[]'::jsonb END) e
+    WHERE e->>'nome' = 'load' AND e->>'estado' = 'done'
+    ORDER BY (e->>'indice')::int LIMIT 1
+) l(carga) ON true
+WHERE COALESCE(l.carga->'numeros'->>'detail', '') <> ''
+ORDER BY t.run_id, t.node_id, t.map_index, t.attempt DESC
+ON CONFLICT (run_id, node_id, map_index, target) DO NOTHING;
+
 -- +goose Down
 DROP TABLE landings;
