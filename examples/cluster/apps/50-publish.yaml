@@ -1,0 +1,64 @@
+# Publishing the workflows, as a sync.
+#
+# The folder is the artefact -- a ConfigMap with the YAMLs and a Job that
+# applies them -- and `deployments/kubernetes/publish-job.yaml` spells out the
+# three commands somebody runs by hand to do it:
+#
+#   kubectl create configmap brevis-workflows --from-file=... | kubectl apply -f -
+#   kubectl delete job brevis-publish
+#   kubectl apply -f publish-job.yaml
+#
+# That dance is exactly what this replaces. kustomize builds the ConfigMap from
+# the files in `workflows/`, and this Job is a POSTSYNC HOOK: Argo CD runs it
+# after every sync and deletes the previous one first, so editing a workflow in
+# Git and syncing publishes it. A Job with a fixed name and no hook would be
+# created once and never run again, which looks like the change not taking.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: brevis-publish
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    # Deleted before the next one is created, which is what makes a second
+    # sync run it a second time. `HookSucceeded` would delete it on success
+    # and take the log of what was published with it.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  # No retry: publishing is idempotent, but an error here is about CONTENT --
+  # invalid YAML, an impossible cron -- and running it again does not fix it.
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: publish
+          # The SAME version the chart deploys, and it is not pedantry: this
+          # talks to the DATABASE and not to the API, so a job from one release
+          # against a schema migrated by another is a skew with no error to
+          # read. The chart's appVersion is where that number comes from.
+          image: areteacademy/brevis:0.16.1-worker
+          # `--prune` makes the folder the source of truth: a workflow that
+          # leaves Git leaves the database, schedule and all. Without it,
+          # deleting a YAML would leave its schedule creating runs for ever.
+          args: ["publish", "/workflows", "--project", "demo", "--prune"]
+          env:
+            - name: BREVIS_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
+          volumeMounts:
+            - {name: workflows, mountPath: /workflows, readOnly: true}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: workflows
+          configMap: {name: brevis-workflows}

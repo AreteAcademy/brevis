@@ -1,0 +1,115 @@
+# THE POD YOU WROTE, which is the one a vendor actually has.
+#
+# 60-agent.yaml is the agent with python and jq apk-installed on top. This one
+# is a Go program somebody wrote, compiled, and put in an image -- the shape of
+# a licensed extractor, a dbt project, anything whose version is yours and not
+# the engine's.
+#
+# Three things make it visible and reachable:
+#
+#  1. IT IS IN GIT, so Argo CD owns it. It appears in the tree beside Postgres
+#     and the engine, it is reconciled, and deleting the pod brings it back.
+#     The step pods Brevis creates are NOT in that tree and must not be: Argo
+#     owns what you declared, Brevis owns what it ran.
+#
+#  2. IT SERVES THE AGENT, so `host: goapp` in a workflow reaches it. The
+#     engine does not create it, scale it or delete it -- it sends commands to
+#     it. That division is the mode.
+#
+#  3. ONE REPLICA, which is architecture C. The pool next door is the same file
+#     with a bigger number; this one is deliberately single so `vendor info`
+#     prints the same hostname every time and the demo reads cleanly.
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-goapp
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  # Headless, for the per-pod DNS name --advertise is built from -- the same
+  # reason as the pool's, and it costs nothing to be right at one replica.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: brevis
+    app.kubernetes.io/component: goapp
+  ports:
+    - {name: http, port: 9443, targetPort: 9443}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: brevis-goapp
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceName: brevis-goapp
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: brevis
+      app.kubernetes.io/component: goapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: brevis
+        app.kubernetes.io/component: goapp
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agent
+          # Built by `make cluster-dev-image` from examples/cluster/goapp. The
+          # tag is never published, which is what imagePullPolicy: Never says.
+          image: brevis-goapp:dev
+          imagePullPolicy: Never
+          args:
+            - --listen=:9443
+            - --token-file=/etc/brevis/token
+            - --advertise=http://$(POD_NAME).brevis-goapp.$(POD_NAMESPACE).svc:9443
+            - --state-dir=/var/lib/brevis-agent
+            # Where a step runs when it names no directory. /tmp because the
+            # root filesystem below is writable and this keeps the writing in
+            # one place somebody can look at.
+            - --work-dir=/tmp
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+          ports: [{name: http, containerPort: 9443}]
+          # Readiness, not liveness: the headless Service's DNS filters on
+          # Ready, and a liveness failure would SIGTERM a pod holding a running
+          # step. See deployments/kubernetes/agent.yaml for the whole argument.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: token, mountPath: /etc/brevis, readOnly: true}
+            - {name: state, mountPath: /var/lib/brevis-agent}
+            - {name: work, mountPath: /tmp}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            # A step runs here, so this is one of the two pods in the tree that
+            # cannot have a read-only root.
+            readOnlyRootFilesystem: false
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: token
+          # THE SAME SECRET the pool uses. One token for every host is the
+          # engine's current limit, said out loud in the agent's own docs, and
+          # the demo shows the limit rather than papering over it.
+          secret:
+            secretName: brevis-agent-token
+            items: [{key: token, path: token}]
+        - name: state
+          emptyDir: {}
+        - name: work
+          emptyDir: {}

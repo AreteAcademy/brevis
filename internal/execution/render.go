@@ -28,7 +28,7 @@ func Render(command string, params map[string]string) (string, error) {
 
 	var output strings.Builder
 	if err := t.Execute(&output, params); err != nil {
-		return "", fmt.Errorf("%w (params disponiveis: %s)", err, keys(params))
+		return "", fmt.Errorf("%w (available params: %s)", err, keys(params))
 	}
 	return output.String(), nil
 }

@@ -54,6 +54,28 @@ import (
 // exists to make loud.
 const Protocol = 1
 
+// HeaderInstance is how an agent behind a shared address says where to come
+// back to.
+//
+// An agent is STATEFUL PER EXECUTION -- a ring and a process handle in its own
+// memory -- so Resume and Cancel only mean anything at the instance that took
+// the work. One agent behind one address needs none of this; a POOL behind one
+// address, which is what a Deployment with an HPA is, breaks without it: the
+// engine resumes through the address, reaches a different replica, is told
+// "not running here", and fails a step that is still running somewhere else.
+//
+// It rides a RESPONSE HEADER on the start, and the choice matters. A header
+// arrives before any byte of the body, so a connection that dies before the
+// first line still leaves the engine knowing whom to ask. Carrying it on the
+// `started` line instead would leave exactly that window open, and it is the
+// window where an orphan process is created.
+//
+// The value is a base URL -- `https://dbt-runner-2.dbt.svc:9443` -- which the
+// agent is TOLD, not one it discovers: only the deployment knows which of its
+// names is routable from the engine. An agent that advertises nothing is one
+// agent at one address, and the engine keeps using the address it has.
+const HeaderInstance = "Brevis-Instance"
+
 // StartRequest is what the engine asks the agent to run.
 //
 // It is TaskExec's fields, minus everything that means nothing on a host the

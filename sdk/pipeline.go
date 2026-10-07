@@ -8,6 +8,7 @@ import (
 	"iter"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -77,6 +78,34 @@ type Pipeline struct {
 	// whose URL depends on those flags or on Run.
 	Before func(ctx context.Context, p *Pipeline) error
 
+	// After runs when the load has finished and NOTHING failed. It is where a
+	// value derived from the run is published -- a list the run discovered, a
+	// watermark it advanced -- and it exists because doing that around Execute
+	// cannot be done correctly.
+	//
+	//	After: func(ctx context.Context, _ *sdk.Pipeline, res *sdk.Result) error {
+	//	    if len(res.FailedSources) > 0 {
+	//	        return fmt.Errorf("%d source(s) failed; not publishing a partial list",
+	//	            len(res.FailedSources))
+	//	    }
+	//	    return persist.Set(ctx, "ana.station_codes", codes.sorted())
+	//	},
+	//
+	// The Result is the point. With OnError: ContinueOnError a run SUCCEEDS
+	// having skipped sources, so a list assembled from it is short -- and
+	// `Execute` returns an error and not a Result, so a caller publishing from
+	// main cannot even see it. The check above is the caller's to make, and it
+	// is only makeable here.
+	//
+	// Its error fails the step. A value that did not reach the next run is a
+	// reason to retry, not a warning: the run after it reads a stale key and
+	// nothing says the publish was skipped.
+	//
+	// It does NOT run when the load failed. That is not symmetry with Before --
+	// it is that a value derived from a run that broke describes a run that did
+	// not happen.
+	After func(ctx context.Context, p *Pipeline, res *Result) error
+
 	// Meter receives this pipeline's numbers. Nil is the normal case and costs
 	// nothing.
 	//
@@ -122,7 +151,13 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 		sample  = fs.Int("sample", 5, "how many records -dry-run prints")
 		verbose = fs.Bool("v", false, "log at debug level")
 		preview = fs.Int("preview", 0, "print the first N records as a table once the extract finishes")
+		target  = fs.Int("preview-target", 0, "print the first N rows as a table before they are written")
+		params  = paramFlags{}
 	)
+	// Registered here so it shows in -h and is not refused as unknown. The
+	// VALUE is read by sdk.Param, which runs earlier -- while main is still
+	// building the pipeline -- and therefore scans os.Args itself.
+	fs.Var(&params, "param", "a run parameter, as name=value; repeatable")
 	if p.Flags != nil {
 		p.Flags(fs)
 	}
@@ -138,6 +173,20 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 
 	// Read before Before, so a hook can act on it.
 	p.Run = RunContextFromEnv()
+	// A `-param` given on the command line fills in what the engine did not, so
+	// p.Run.Params reads the same inside the pipeline as sdk.Param does outside
+	// it. The environment wins: under the engine it IS the value, and a flag
+	// left in a manifest must not override what the operator typed.
+	if len(params) > 0 {
+		if p.Run.Params == nil {
+			p.Run.Params = map[string]string{}
+		}
+		for name, value := range params {
+			if _, set := p.Run.Params[name]; !set {
+				p.Run.Params[name] = value
+			}
+		}
+	}
 	if p.Run.FromEngine() {
 		slog.InfoContext(ctx, "running under Brevis",
 			append([]any{"pipeline", p.name()}, p.Run.Args()...)...)
@@ -148,6 +197,18 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 	// what the fetcher configured.
 	if *preview > 0 {
 		p.Source.Preview = *preview
+	}
+
+	// -preview and -preview-target are two flags because they answer two
+	// questions, and the answers differ: one shows what came OUT of the source,
+	// the other what is about to go IN to the table, after every transform and
+	// through the declared Columns. A run that reads 11,536 records and writes
+	// 0 is the case that needs the second, and the first says nothing about it.
+	//
+	// It is not -dry-run either: that one prints INSTEAD of writing. This
+	// prints AND writes, which is what an operator watching a real load wants.
+	if *target > 0 {
+		p.Target.Preview = *target
 	}
 
 	if p.Before != nil {
@@ -272,16 +333,42 @@ func runPipeline(ctx context.Context, p *Pipeline) error {
 		}
 	}
 
-	// After the log line and before the return, so a fetcher that panics on the
-	// way out has still reported. It runs on the FAILURE path too: a run that
-	// broke is the one a failure rate exists to count.
-	report(p.Meter, p.name(), res, err)
-
+	// The target's box reports the LOAD, and only the load.
+	//
+	// It is closed here, before the After hook runs, and that is deliberate: a
+	// hook that fails after eleven thousand rows landed did not make the target
+	// fail. Painting it red would be a lie told on the one screen somebody
+	// reads to find out what happened -- and the truthful picture, every phase
+	// green with the step failed, says exactly where to look.
 	state := StateDone
 	if err != nil {
 		state = StateFailed
 	}
 	rep.finished(PhaseTarget, state, loadNumbers(res))
+
+	// After the load and only when it worked: a value derived from a run that
+	// failed describes a run that did not happen.
+	//
+	// It takes the Result, and that is the whole reason it exists rather than
+	// living in the caller's main. With ContinueOnError a run SUCCEEDS having
+	// skipped sources, and a hook that published a list assembled from it would
+	// publish a shorter list, for ever, with nothing saying so. From main that
+	// is not even checkable: Execute returns an error and not a Result.
+	if err == nil && p.After != nil {
+		if hookErr := p.After(ctx, p, res); hookErr != nil {
+			err = fmt.Errorf("after the load: %w", hookErr)
+			slog.Error("the After hook failed", "pipeline", p.name(), "error", hookErr)
+		}
+	}
+
+	// LAST, so the hook's failure is counted. It ran before the hook for one
+	// commit, and the consequence was a failure rate that called a run
+	// successful while the step exited non-zero -- the metric disagreeing with
+	// the exit code is worse than either being wrong alone.
+	//
+	// It runs on the FAILURE path too: a run that broke is the one a failure
+	// rate exists to count.
+	report(p.Meter, p.name(), res, err)
 	return err
 }
 
@@ -426,5 +513,23 @@ func runDryRun(ctx context.Context, p *Pipeline, n int) error {
 	if len(envelopes) == 0 {
 		_, _ = fmt.Fprintln(os.Stdout, "no records -- the source answered, but with no data")
 	}
+	return nil
+}
+
+// paramFlags collects a repeated `-param name=value`.
+//
+// A value with no `=` is an error rather than a parameter named after the whole
+// token: `-param ufs` is somebody forgetting the value, and accepting it would
+// hand the pipeline an empty string under a name nobody declared.
+type paramFlags map[string]string
+
+func (p paramFlags) String() string { return "" }
+
+func (p paramFlags) Set(v string) error {
+	name, value, ok := strings.Cut(v, "=")
+	if !ok || name == "" {
+		return fmt.Errorf("-param takes name=value, got %q", v)
+	}
+	p[name] = value
 	return nil
 }

@@ -133,6 +133,7 @@ This is what makes a Go fetcher cost 12 MB and 32Mi next to a 1.9 GB
 | `id` | **required** | unique in the workflow; the name shown in the graph and logs |
 | `run` | | the command |
 | `image` | | the step's image; without it, inherits the top-level one |
+| `host` | | send the command to a machine the engine does **not** manage — an alternative to `image`, never a companion. See [`host:` in the Kubernetes guide](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
 | `shell` | `true` | `false` runs without a shell — required on distroless |
 | `depends_on` | | list of `id`s that must finish first; an entry may be `{step, label}` |
 | `marker` | `false` | a step with no command, for a `start` or an `end` |

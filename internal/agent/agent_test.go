@@ -324,7 +324,7 @@ func TestAResumeContinuesFromTheRealRing(t *testing.T) {
 	t.Cleanup(srv.Close)
 	client := remote.HTTPAgent{BaseURL: srv.URL}
 
-	stream, err := client.Start(context.Background(), remote.StartRequest{
+	session, err := client.Start(context.Background(), remote.StartRequest{
 		Protocol: remote.Protocol, ExecutionID: "x9", NodeID: "step",
 		Command: `for i in 1 2 3 4 5 6; do echo line-$i; sleep 0.1; done`,
 	})
@@ -333,13 +333,13 @@ func TestAResumeContinuesFromTheRealRing(t *testing.T) {
 	}
 	// Read a little, then hang up in the middle -- a network blip.
 	buf := make([]byte, 120)
-	n, _ := stream.Read(buf)
-	_ = stream.Close()
+	n, _ := session.Stream.Read(buf)
+	_ = session.Stream.Close()
 	if n == 0 {
 		t.Fatal("nothing arrived before the disconnect")
 	}
 
-	resumed, err := client.Resume(context.Background(), "x9", remote.Resume{
+	resumed, err := client.Resume(context.Background(), session.Instance, "x9", remote.Resume{
 		Protocol: remote.Protocol, After: 1, Reason: "a test hung up",
 	})
 	if err != nil {
@@ -374,17 +374,17 @@ func TestAResumePastTheRingIsAnHonestGap(t *testing.T) {
 	t.Cleanup(srv.Close)
 	client := remote.HTTPAgent{BaseURL: srv.URL}
 
-	stream, err := client.Start(context.Background(), remote.StartRequest{
+	session, err := client.Start(context.Background(), remote.StartRequest{
 		Protocol: remote.Protocol, ExecutionID: "x10", NodeID: "step",
 		Command: `for i in $(seq 1 40); do echo line-$i; done; sleep 2`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = stream.Close() })
+	t.Cleanup(func() { _ = session.Stream.Close() })
 	time.Sleep(300 * time.Millisecond)
 
-	_, err = client.Resume(context.Background(), "x10", remote.Resume{
+	_, err = client.Resume(context.Background(), session.Instance, "x10", remote.Resume{
 		Protocol: remote.Protocol, After: 1,
 	})
 	var gap remote.GapError

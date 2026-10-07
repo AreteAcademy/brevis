@@ -96,6 +96,57 @@ scheduler:
   # comes from the installation, never from a workflow's YAML.
   taskEnvFromSecrets: []
 
+# Machines this installation may dispatch a `host:` step to, as name/url pairs:
+#
+#   hosts:
+#     - name: tools
+#       url: http://brevis-agent-0.brevis-agent.dados.svc:9443
+#
+# A step says `host: tools` and the command goes there instead of becoming a
+# pod. Empty means no step may use `host:`, and the refusal names this value.
+#
+# Installation-level on purpose: a workflow that could name an arbitrary
+# address would be dispatching this engine's credentials to it.
+hosts: []
+
+# A Secret with key `token`, holding the one the engine sends to every agent.
+# Empty sends none, which the engine warns about at boot.
+hostTokenSecret: ""
+
+# The agent: a runtime you keep, for steps that use `host:`.
+#
+# OFF, and that is the honest default. This is the engine's chart and the agent
+# is deliberately not part of the engine's lifecycle -- it is the pod YOU keep,
+# very often in another namespace, owned by another team, built FROM our image
+# with your own runtime on top. When it becomes more than a first one to try,
+# it belongs in a release of its own.
+agent:
+  enabled: false
+  # More than one needs nothing else: the StatefulSet gives each pod a stable
+  # name and --advertise is built from it, which is what lets the engine resume
+  # and cancel at the instance that took the work.
+  replicas: 1
+  # Empty takes `<image.repository>:<tag>-agent`. Set it to YOUR image -- one
+  # built FROM that with dbt, a Python, a licensed binary. The shipped one is
+  # a shell and the agent, which runs nothing a real step needs.
+  image: ""
+  # The shared token the engine authenticates with, as a Secret with key
+  # `token`. REQUIRED: an agent without one refuses to start, because it would
+  # run any command for anything that reaches its port. The open mode exists
+  # and has to be asked for by name -- see the agent's --insecure-no-token.
+  tokenSecret: ""
+  # Run with NO authentication. Refused unless you say it here, because an
+  # agent without a token runs any command for anything that reaches its port.
+  insecureNoToken: false
+  # A Secret mounted as the agent's own store, and the names a step may ask
+  # for. Empty denies every one, so a step asking fails naming the coordinate
+  # rather than running with it unset.
+  secretsSecret: ""
+  allowSecrets: []
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {memory: 512Mi}
+
 # Drains the alerts outbox. The scheduler records an alert in the same
 # transaction as the failure that justifies it; this is what delivers, and what
 # survives a Slack outage and its own restart.

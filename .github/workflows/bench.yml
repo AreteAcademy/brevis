@@ -1,0 +1,63 @@
+# The gateway benchmark, on demand and nightly.
+#
+# NOT on every push, deliberately. A benchmark that runs on a shared runner
+# under whatever else GitHub scheduled that minute produces a number with a
+# variance wider than any regression it could catch -- and a gate that fires at
+# random is a gate people learn to ignore.
+#
+# What it is for: the thresholds in bench/gateway.js catch an ORDER OF
+# MAGNITUDE. p95 crossing 500ms means a request is waiting for the sink, which
+# is the defect the async pipe exists against, and that shows up on any
+# hardware.
+name: benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image to benchmark (blank builds from this checkout)"
+        required: false
+      hold:
+        description: "How long to hold at full load"
+        required: false
+        default: "30s"
+  schedule:
+    # 04:00 UTC, when the shared runners are quietest.
+    - cron: "0 4 * * *"
+
+jobs:
+  gateway:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache: true
+
+      - name: Run it
+        env:
+          BREVIS_BENCH_IMAGE: ${{ inputs.image }}
+          BREVIS_BENCH_HOLD: ${{ inputs.hold || '30s' }}
+        run: ./bench/run.sh
+
+      # The report is the artefact. It is NOT committed from CI: a job that
+      # writes to the branch it tests is a job that can turn a red benchmark
+      # into a green commit, and the numbers from a shared runner should not
+      # silently replace the ones somebody measured on known hardware.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-report
+          path: |
+            bench/results/REPORT.md
+            bench/results/k6.json
+            bench/results/metrics.txt
+            bench/results/run.json
+
+      - name: The report, in the job summary
+        if: always()
+        run: cat bench/results/REPORT.md >> "$GITHUB_STEP_SUMMARY" || true

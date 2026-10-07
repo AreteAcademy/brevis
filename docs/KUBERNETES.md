@@ -156,6 +156,48 @@ brevis-agent \
 | `--allow-secrets` | which names a step may ask for. **Empty denies every one** |
 | `--state-dir` | where the execution → pid map lives, so cancel survives the agent restarting |
 | `--ring` | lines kept for a reconnect. Beyond this a dropped connection fails the step rather than resuming with a hole |
+| `--advertise` | the address the engine comes back to for **this instance's** executions. Required behind a shared address, meaningless without one — see below |
+| `--insecure-no-token` | run with **no authentication at all**: anything that reaches the port runs any command. It has to be said, because an empty `--token-file` does not start |
+
+### Behind one address: `--advertise`
+
+An agent is stateful per execution — the output ring and the process handle are
+in **that process's** memory — so a resume or a cancel that reaches a different
+replica is answered "not running here" while the step runs on undisturbed.
+
+```
+--advertise http://$(POD_NAME).brevis-agent.$(POD_NAMESPACE).svc:9443
+```
+
+Told, not discovered: the process can read its hostname and cannot know which of
+its names the engine routes to. `BREVIS_HOSTS` points at the **Service**, so
+starts spread; each replica then says where to come back to. Left empty, the
+engine keeps using the address it was configured with, which is right for one
+agent and wrong for a pool — and the pool's symptom is a step failed on the
+first network blip, with a process still running.
+
+The advertised address has to belong to the same installation as the configured
+one: same scheme, and a host that is the configured one or a name inside it. A
+replica that advertises somewhere else is ignored rather than followed.
+
+### The probe
+
+**`GET /health` is the only route that answers without the token**, and the only
+GET. A kubelet sends no `Authorization` header, so the probe either sits outside
+the guard or the pod it gates never goes Ready.
+
+It checks nothing. The agent has no dependency to be ready for — no database, no
+queue — so the only thing it can honestly report is that the listener is up,
+which answering at all settles.
+
+The manifests gate **readiness** with it, and deliberately not liveness. The
+engine reaches a pool through a headless Service whose DNS already filters on
+Ready; without the probe a replica is Ready the instant the container runs,
+before the listener binds, and a start lands on a connection refused. A liveness
+probe would also SIGTERM a pod that may be holding hours of a step's work, and
+this process is built the other way round — its shutdown lets running steps
+finish their streams. Taking a replica out of the Service is the strong action
+here; killing it is not the probe's to take.
 
 It is **not an orchestrator**. It knows nothing of workflows, dependencies,
 schedules or retries — an agent that learned any of that would be a second

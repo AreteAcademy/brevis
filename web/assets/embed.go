@@ -10,7 +10,14 @@
 // migrations: the binary carries everything it needs.
 package assets
 
-import "embed"
+import (
+	"crypto/sha256"
+	"embed"
+	"encoding/hex"
+	"io/fs"
+	"net/http"
+	"strings"
+)
 
 // FS holds the compiled CSS and the React island's scripts. `app.src.css` is
 // deliberately left out — it is Tailwind's input, not a served artifact.
@@ -41,4 +48,55 @@ var LogoSVG = func() string {
 		return ""
 	}
 	return string(b)
+}()
+
+// Handler serves the embedded files with a validator, which http.FileServerFS
+// alone does not give them.
+//
+// An embedded file's ModTime is the zero time, so the stdlib's file server
+// omits Last-Modified — and it sets no ETag of its own. The response therefore
+// carried NO validator at all: not Cache-Control, not ETag, not Last-Modified.
+// A browser then caches on a heuristic and a proxy may keep the file for as
+// long as it likes, with no way to revalidate.
+//
+// That is how a UI fix ships and does not arrive. `/assets/dag.js` has no
+// version in its path, so the upgraded binary serves new bytes at a URL some
+// client is convinced it already has.
+//
+// The tag is the CONTENT's digest, not the build's version: it needs no ldflags
+// reaching this package, and it changes exactly when the bytes change — a
+// rebuild that alters nothing does not invalidate a single cache.
+//
+// `no-cache` is not "do not store". It stores, and revalidates every time, so
+// the steady state is a 304 with no body. http.ServeContent reads the ETag that
+// is already on the header and answers If-None-Match itself.
+func Handler() http.Handler {
+	files := http.FileServerFS(FS)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tag, ok := etags[strings.TrimPrefix(r.URL.Path, "/")]; ok {
+			w.Header().Set("ETag", tag)
+			w.Header().Set("Cache-Control", "no-cache")
+		}
+		files.ServeHTTP(w, r)
+	})
+}
+
+// etags is every embedded file's digest, computed once at start rather than per
+// request: the set is fixed at compile time and hashing 350 KB of vendor
+// bundles on every page load would be work with a known answer.
+var etags = func() map[string]string {
+	out := map[string]string{}
+	_ = fs.WalkDir(FS, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		b, err := FS.ReadFile(p)
+		if err != nil {
+			return nil
+		}
+		sum := sha256.Sum256(b)
+		out[p] = `"` + hex.EncodeToString(sum[:16]) + `"`
+		return nil
+	})
+	return out
 }()

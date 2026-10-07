@@ -92,9 +92,30 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		return fail(nil)
 	}
 
+	// Under EvolveAdditiveFromPayload the batch completes the declaration
+	// before anything is checked against it.
+	//
+	// BEFORE CheckRow and not instead of it: the check has two halves, and
+	// only one of them is what this mode is for. "A field nothing declared"
+	// stops being an error because the field is now declared; "a declared
+	// column your chain does not produce" still is. Skipping the call would
+	// lose the second, and a check that cannot fail is worse than no check.
+	//
+	// `opt` is a value and WithDiscovered copies both slices, so the
+	// extension lives exactly as long as this batch. It must: the NEXT batch
+	// need not carry the same fields, and a declaration that outlived one
+	// would refuse the batch after the one it helped.
+	if t.Evolve.FromPayload() {
+		found, err := core.Discovered(opt, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		opt = core.WithDiscovered(opt, found)
+	}
+
 	// The record is exactly what the Transform chain composed, and the
 	// declaration is checked against the whole of it -- ingestion_id included.
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes); err != nil {
+	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
 		return fail(err)
 	}
 
@@ -151,16 +172,25 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 	// after the whole extract, and without saying what to do. And the table's
 	// order keeps the column list stable across runs, instead of depending on
 	// the order some map happened to be walked in.
-	columns, err := core.Reconcile(tableColumns, fieldsOf(envelopes), t.Name)
+	// RowFields and not the bare union of the keys: a field that is nil in
+	// EVERY record and that the table does not have contributes nothing --
+	// no column was created for it, and a null and an absent field land the
+	// same NULL. Counting it as a column would have Reconcile refuse the
+	// batch over a value that was never going to be written. [#42]
+	columns, err := core.Reconcile(tableColumns, core.RowFields(envelopes, tableColumns), t.Name)
 	if err != nil {
 		return fail(err)
 	}
 
 	if res.Dedup == core.DedupMerge {
-		if err := checkUniqueIndex(ctx, conn, schema, table); err != nil {
+		key, err := core.DedupKeyOf(opt)
+		if err != nil {
 			return fail(err)
 		}
-		rows, ignored, err := t.loadWithDedup(ctx, conn, columns, types, envelopes)
+		if err := checkUniqueIndex(ctx, conn, schema, table, key); err != nil {
+			return fail(err)
+		}
+		rows, ignored, err := t.loadWithDedup(ctx, conn, columns, types, envelopes, key)
 		res.RowsLoaded, res.RowsIgnored = rows, ignored
 		return fail(err)
 	}
@@ -234,7 +264,7 @@ func (l *rows) Err() error { return l.err }
 //
 // The temporary table belongs to the SESSION and disappears on its own; there
 // is no cleanup to forget.
-func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []string, types map[string]string, envelopes []core.Envelope) (int64, int64, error) {
+func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []string, types map[string]string, envelopes []core.Envelope, key string) (int64, int64, error) {
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return 0, 0, fmt.Errorf("postgres: begin: %w", err)
@@ -255,7 +285,7 @@ func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []stri
 		return 0, 0, fmt.Errorf("postgres: COPY into staging: %w", err)
 	}
 
-	tag, err := tx.Exec(ctx, InsertSQL(t.Name, tmp, columns))
+	tag, err := tx.Exec(ctx, InsertSQL(t.Name, tmp, columns, key))
 	if err != nil {
 		return 0, 0, fmt.Errorf("postgres: insert into %s: %w", t.Name, err)
 	}
@@ -272,7 +302,7 @@ func (t Table) loadWithDedup(ctx context.Context, conn *pgx.Conn, columns []stri
 // Exported and pure because SQL built inside a method that holds a client was
 // never seen by a test -- that is how BigQuery's MERGE shipped with a
 // positional match and cost v0.12.0. The columns are NAMED, always.
-func InsertSQL(target, source string, columns []string) string {
+func InsertSQL(target, source string, columns []string, key string) string {
 	names := make([]string, len(columns))
 	for i, c := range columns {
 		names[i] = quote(c)
@@ -280,7 +310,7 @@ func InsertSQL(target, source string, columns []string) string {
 	list := strings.Join(names, ", ")
 	return fmt.Sprintf(
 		"INSERT INTO %s (%s) SELECT %s FROM %s ON CONFLICT (%s) DO NOTHING",
-		target, list, list, source, quote(core.MetadataID))
+		target, list, list, source, quote(key))
 }
 
 // quote wraps the identifier in quotes. A column called "order" or "select" is
@@ -332,7 +362,7 @@ func columnsOf(ctx context.Context, conn *pgx.Conn, schema, table string) ([]str
 // A loader that can create an index can lock a production table in the middle
 // of the working day. The refusal names the missing index and shows the
 // command.
-func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string) error {
+func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table, key string) error {
 	var exists bool
 	err := conn.QueryRow(ctx,
 		`SELECT EXISTS (
@@ -342,7 +372,7 @@ func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string)
 		   JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
 		   WHERE n.nspname = $1 AND c.relname = $2
 		     AND i.indisunique AND i.indnatts = 1 AND a.attname = $3)`,
-		schema, table, core.MetadataID).Scan(&exists)
+		schema, table, key).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("postgres: checking the unique index: %w", err)
 	}
@@ -351,7 +381,7 @@ func checkUniqueIndex(ctx context.Context, conn *pgx.Conn, schema, table string)
 			"without it ON CONFLICT has nothing to match and every run would insert duplicates. "+
 			"This driver does not create indexes, because a loader that can create one can lock "+
 			"a production table: CREATE UNIQUE INDEX CONCURRENTLY ON %s.%s (%s)",
-			core.MetadataID, schema, table, schema, table, core.MetadataID)
+			key, schema, table, schema, table, key)
 	}
 	return nil
 }
@@ -409,6 +439,13 @@ func hideDSN(err error, dsn string) error {
 // where the message also lists the batch's columns, so the DDL comes out of one
 // reading.
 func (t Table) CheckDestination(ctx context.Context, columns []string) error {
+	// EvolveAdditiveFromPayload with nothing to complete, refused BEFORE the
+	// extract: it costs no query to know, and a source quota spent to learn
+	// it is a quota wasted. Discovered refuses it again on the write path,
+	// for the caller that never comes through here.
+	if err := core.CheckDiscoveryHasADeclaration(t.Evolve, columns, t.Name); err != nil {
+		return err
+	}
 	if len(columns) == 0 || (t.DSN == "" && t.Conn == nil) || t.Name == "" {
 		return nil
 	}
@@ -423,8 +460,24 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	if err != nil {
 		return err
 	}
-	ofTable, _, err := columnsOf(ctx, conn, schema, table)
+	ofTable, ofTypes, err := columnsOf(ctx, conn, schema, table)
 	if err != nil || len(ofTable) == 0 {
+		return err
+	}
+
+	// Columns BREVIS_NORMALIZE_DATA would abandon, refused before the
+	// extract. Nothing drops a column, so the old name stays full of the old
+	// rows while everything after lands in the new one -- see
+	// core.CheckNormalizeRenames for why it refuses rather than warns.
+	if err := core.CheckNormalizeRenames(columns, declaredTypes(ofTypes), t.Name); err != nil {
+		return err
+	}
+
+	// A table created under a DIFFERENT prefix, refused before the extract.
+	// Nothing drops a column, so this would add eight and abandon eight --
+	// see core.CheckLandingPrefixMatches for why it refuses rather than
+	// warns.
+	if err := core.CheckLandingPrefixMatches(columns, ofTable, t.Name); err != nil {
 		return err
 	}
 
@@ -434,9 +487,23 @@ func (t Table) CheckDestination(ctx context.Context, columns []string) error {
 	}
 	var missing []string
 	for _, c := range columns {
-		if !has[c] {
-			missing = append(missing, c)
+		if has[c] {
+			continue
 		}
+		// A column the table lacks is the one difference EvolveAdditive was
+		// asked to repair, so refusing it here would make the flag
+		// unreachable in its only case: a declaration that adds a column is
+		// the only way to ask for one. Issue #41.
+		//
+		// Skipped per column rather than by returning early, so a check that
+		// evolving CANNOT repair -- a narrowed type, a column the table
+		// requires -- still runs before the extract when one is added here.
+		// That is the whole reason this method is early: one
+		// information_schema query against a source quota spent to find out.
+		if t.Evolve.MayAdd() {
+			continue
+		}
+		missing = append(missing, c)
 	}
 	if len(missing) == 0 {
 		return nil

@@ -11,6 +11,23 @@
 //	  --allow-secrets vendor-api,partner-sftp \
 //	  --state-dir /var/lib/brevis-agent
 //
+// # Behind a shared address
+//
+// One agent at one address needs nothing more. A POOL of agents behind one
+// address -- a Deployment with an HPA, a load balancer -- needs each instance
+// to say where to come back to, because an agent is stateful per execution: the
+// ring and the process handle are in THIS process's memory, so a resume or a
+// cancel that reaches a different replica is answered with "not running here"
+// while the step runs on undisturbed.
+//
+//	--advertise https://$(POD_NAME).dbt-runner.data.svc:9443
+//
+// Told, not discovered: this process can read its hostname and cannot know
+// which of its names the engine routes to. Left empty, the engine keeps using
+// the address it was configured with, which is correct for one agent and wrong
+// for a pool -- and the pool's symptom is a step failed on the first network
+// blip, with a process still running.
+//
 // # What it will not do
 //
 // It is not an orchestrator. It knows nothing of workflows, dependencies,
@@ -29,6 +46,9 @@
 //
 //   - ONE TOKEN for every engine. No revoking one without changing them all,
 //     and no per-engine identity in the audit trail.
+//   - NO TOKEN AT ALL is possible and has to be SAID: --insecure-no-token. An
+//     agent without one runs any command for anybody who reaches the port, so
+//     the dangerous choice is a declaration rather than an omission.
 //   - NO TLS of its own. Put it behind something that terminates TLS, or on a
 //     network where that is somebody else's job. A token on a plain socket is a
 //     token anybody on the path can read.
@@ -56,12 +76,14 @@ import (
 func main() {
 	var (
 		listen     = flag.String("listen", ":9443", "address to serve on")
-		tokenFile  = flag.String("token-file", "", "file holding the shared token; empty accepts any caller")
+		tokenFile  = flag.String("token-file", "", "file holding the shared token; required unless --insecure-no-token")
 		secretsDir = flag.String("secrets-dir", "", "root of the secret store: <dir>/<name>/<key>")
 		allowed    = flag.String("allow-secrets", "", "comma-separated secret names a step may ask for; empty denies every one")
 		workDir    = flag.String("work-dir", "", "where a step runs when it names no directory")
 		stateDir   = flag.String("state-dir", "", "where the execution -> pid map is kept, so cancel survives a restart")
 		ring       = flag.Int("ring", 10000, "lines kept for a resumed connection; beyond this a reconnect fails the step")
+		insecure   = flag.Bool("insecure-no-token", false, "run with NO authentication: anything that reaches the port runs any command. Say it out loud or do not do it")
+		advertise  = flag.String("advertise", "", "the address the engine should come back to for this instance's executions; required behind a shared address, meaningless without one")
 		logLevel   = flag.String("log-level", "info", "debug, info, warn or error")
 	)
 	flag.Parse()
@@ -74,10 +96,12 @@ func main() {
 		os.Exit(1)
 	}
 	// Warned ONCE, at startup, and not per request: a line per request would
-	// bury the one that matters. An unauthenticated agent is a development
-	// convenience, and it should never be a surprise in production.
-	if token == "" {
-		log.Warn("no --token-file: this agent accepts any caller that can reach it")
+	// bury the one that matters. It warns on the FLAG rather than on an empty
+	// token, because an empty token no longer starts at all -- warning on it
+	// here would be a line about a state the process cannot be in.
+	if *insecure {
+		log.Warn("--insecure-no-token: this agent accepts ANY caller that can " +
+			"reach it, and runs whatever it is sent")
 	}
 
 	names := split(*allowed)
@@ -90,14 +114,22 @@ func main() {
 		log.Info("no --allow-secrets: no step may ask this host for a secret")
 	}
 
-	a := agent.New(agent.Options{
-		Token:          token,
-		SecretsDir:     *secretsDir,
-		AllowedSecrets: names,
-		WorkDir:        *workDir,
-		StateDir:       *stateDir,
-		RingSize:       *ring,
-	})
+	opt := agent.Options{
+		Token:           token,
+		InsecureNoToken: *insecure,
+		SecretsDir:      *secretsDir,
+		AllowedSecrets:  names,
+		WorkDir:         *workDir,
+		StateDir:        *stateDir,
+		RingSize:        *ring,
+		Advertise:       *advertise,
+	}
+	// BEFORE the socket, so a refused configuration never answers a request.
+	if err := opt.Check(); err != nil {
+		log.Error("this agent will not start", "error", err)
+		os.Exit(1)
+	}
+	a := agent.New(opt)
 
 	srv := &http.Server{
 		Addr:    *listen,

@@ -1,0 +1,38 @@
+# THE SAME WORK, in a runtime that was already there.
+#
+# Compare it with pod-per-step.yaml line by line: the steps are the same, the
+# commands are the same, and `image:` became `host: tools`. Run both with
+# `make cluster-watch` open and the difference is the whole point of the mode:
+#
+#   pod_per_step   four pods appear and die
+#   one_pod        none
+#
+# What it gives up is in the same frame. `resources:` is not here, because on a
+# host it means nothing -- the step gets whatever the agent's pod has. A pod
+# asks for its own share; a guest does not.
+name: one_pod
+description: >
+  The same work as pod_per_step, sent to a runtime that was already up. No pod
+  is created. Watch `kubectl get pods` and see nothing happen.
+type: dag
+tags: [demo]
+
+steps:
+  - id: prepare
+    host: tools
+    run: sh -c 'echo preparing; sleep 2'
+
+  - id: small
+    host: tools
+    run: sh -c 'echo "no pod was created for me"; sleep 5'
+    depends_on: [prepare]
+
+  - id: large
+    host: tools
+    run: sh -c 'echo "nor for me, and we are in the same container"; sleep 5'
+    depends_on: [prepare]
+
+  - id: done
+    host: tools
+    run: echo both finished
+    depends_on: [small, large]

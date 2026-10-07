@@ -3,6 +3,7 @@ package core
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -32,7 +33,7 @@ const (
 // Transform chain, so checking all of them would cost a full scan to say the
 // same thing.
 func CheckColumns(declared []string, records []Envelope) error {
-	return CheckRow(declared, nil, records)
+	return CheckRow(declared, nil, records, nil)
 }
 
 // CheckRow is CheckColumns with the declaration's TYPES, which is what makes a
@@ -46,18 +47,27 @@ func CheckColumns(declared []string, records []Envelope) error {
 // Everything else is unchanged, and the undeclared half especially: a field the
 // destination never heard of still stops the load. A default says a column may
 // be ABSENT, not that anything may be present.
-func CheckRow(declared []string, s Schema, records []Envelope) error {
+func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []string) error {
 	if len(declared) == 0 || len(records) == 0 {
 		return nil
 	}
 
-	optional := make(map[string]bool, len(s))
+	optional := make(map[string]bool, len(s)+len(mayBeAbsent))
 	for _, c := range s {
 		// Required and defaulted at once is not a contradiction: the default is
 		// what fills the NOT NULL when the row omits it.
 		if c.Default != nil {
 			optional[c.Name] = true
 		}
+	}
+	// A column the BATCH contributed, not the consumer. Absent from one record
+	// is not a mistake there: a batch holds N records for one table and they
+	// need not carry the same fields, so the union is what the table has to
+	// have and a record missing one of them writes NULL. The other half of
+	// this check is untouched -- a field nothing declared still stops the
+	// load, which is the half that matters most.
+	for _, c := range mayBeAbsent {
+		optional[c] = true
 	}
 
 	row, err := AsObject(records[0].Payload)
@@ -75,9 +85,21 @@ func CheckRow(declared []string, s Schema, records []Envelope) error {
 		}
 	}
 
+	// A field no record of the batch gave a value is not an undeclared column.
+	// [#42] Nothing declared it because it has no shape to take a type from,
+	// nothing created it, and nothing writes it -- a null and an absent field
+	// land the same NULL. Refusing the batch over it would be refusing a value
+	// that was never going to be written.
+	//
+	// NARROW on purpose: a field with a VALUE that nothing declares still
+	// stops the load, which is the half that matters. The rule is per BATCH,
+	// so one record carrying a value is enough to make it a real column again
+	// -- and then Discovered has already declared it.
+	empty := NilThroughout(records)
+
 	var undeclared []string
 	for f := range row {
-		if !want[f] {
+		if !want[f] && !empty[f] {
 			undeclared = append(undeclared, f)
 		}
 	}
@@ -130,4 +152,26 @@ func truncate(b []byte, max int) string {
 		return string(b)
 	}
 	return string(b[:max]) + "..."
+}
+
+// dedupKeyName is what a column name has to look like to reach a statement.
+//
+// The value comes from a config file and ends up inside `ON CONFLICT (…)` and
+// a catalogue query, so it is validated rather than quoted-and-hoped: quoting
+// makes `"; DROP TABLE x; --` a legal identifier, which is not the failure
+// anybody wants to find out about.
+var dedupKeyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+
+// DedupKeyOf returns the column DedupMerge should match on, defaulting to
+// MetadataID, and refuses one that could not be a column.
+func DedupKeyOf(opt WriteOptions) (string, error) {
+	key := strings.TrimSpace(opt.DedupKey)
+	if key == "" {
+		return MetadataID, nil
+	}
+	if !dedupKeyName.MatchString(key) {
+		return "", fmt.Errorf("DedupKey %q is not a column name: it has to match %s",
+			key, dedupKeyName)
+	}
+	return key, nil
 }

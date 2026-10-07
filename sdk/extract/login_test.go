@@ -26,7 +26,7 @@ func serverWithLogin(t *testing.T, failTimes int32) (*httptest.Server, *atomic.I
 	mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
 		logins.Add(1)
 		if failures.Add(-1) >= 0 {
-			http.Error(w, "indisponível", http.StatusServiceUnavailable)
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
 			return
 		}
 		body, _ := io.ReadAll(r.Body)
