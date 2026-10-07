@@ -189,6 +189,52 @@ reporting a `1` is a number whose meaning depends on knowing that `bool` is an
 Run the script by hand and the line still goes to stdout, where it reads as what
 it is. Nothing collects it and nothing fails.
 
+## Which table a step wrote
+
+```python
+from brevis import landed
+
+landed("bigquery://acme-prod/silver/orders", rows=len(df))
+landed("s3://acme-landing/vendors/")          # rows unknown: leave them out
+```
+
+The destination appears on the console's **/data**, with this step as its
+writer and its freshness read from the workflow's schedule. A Go SDK pipeline
+does this by itself after every load; a Python step says it, because only the
+step knows what it wrote.
+
+A target is a **name, not an address**:
+
+| | |
+|---|---|
+| BigQuery | `bigquery://{project}/{dataset}/{table}` |
+| Postgres, Redshift | `postgres://{database}/{schema}/{table}`, `redshift://…` |
+| MySQL | `mysql://{database}/{table}` |
+| object storage, files | `s3://{bucket}/{prefix}/`, `gs://…`, `file:///{dir}/` — the prefix, not the file |
+| Pub/Sub | `pubsub://{project}/{topic}` |
+
+No host, port, user or password: a host moves with a failover and a DSN is the
+string most likely to carry a credential. A target with `@`, a port or a query
+string raises `LandingError` here, before anything is written.
+
+**Absent is not zero.** Leave `rows` out when the step does not know; a step
+that wrote nothing says `rows=0`. Several calls for one target in the same run
+add up, so a step that writes in batches can land per batch.
+
+**Without this library** the contract is one line on stdout, so dbt and shell
+steps take part too:
+
+```bash
+echo '@brevis:{"type":"landed","target":"postgres://analytics/public/orders","rows":1200}'
+```
+
+```yaml
+# dbt_project.yml -- one line per model built in the run, on BigQuery,
+# Postgres or Redshift: target.type is the adapter's name, which is the scheme
+on-run-end:
+  - "{% for r in results if r.status == 'success' and r.node.resource_type == 'model' %}{{ print('@brevis:{\"type\":\"landed\",\"target\":\"' ~ target.type ~ '://' ~ r.node.database ~ '/' ~ r.node.schema ~ '/' ~ r.node.alias ~ '\"}') }}{% endfor %}"
+```
+
 ## What it refuses
 
 | | because |

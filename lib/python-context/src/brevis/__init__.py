@@ -16,6 +16,12 @@ on a scheduled run it is the slot, so it does not move when the run is late and
 does not move when the run is retried. ``run.map_value()`` is the element a
 step got under ``for_each:``. See brevis.run.
 
+And which table a step wrote, so it appears on /data with its freshness:
+
+    from brevis import landed
+
+    landed("bigquery://acme-prod/silver/orders", rows=len(df))
+
 That is the whole library. It is not a port of the Go SDK -- no drivers, no
 pagination, no ingestion ids. Python already has better tools for those, and
 this package exists so a team can use them and still get the one thing an
@@ -25,7 +31,7 @@ It has no dependencies and never will. It reads one environment variable and
 writes one file.
 """
 
-from . import context, metrics, run
+from . import context, landings, metrics, run
 from .context import (
     ContextError,
     NotVisible,
@@ -36,11 +42,13 @@ from .context import (
     set,  # noqa: A004 -- shadowing the builtin is deliberate; see context.set
 )
 
+from .landings import LandingError, landed
 from .metrics import MetricError
 from .run import AutoParams, RunContext
 
 __all__ = [
     "AutoParams",
+    "LandingError",
     "MetricError",
     "ContextError",
     "NotVisible",
@@ -48,6 +56,8 @@ __all__ = [
     "TooLarge",
     "context",
     "get",
+    "landed",
+    "landings",
     "metrics",
     "of",
     "published",
