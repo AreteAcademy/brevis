@@ -142,3 +142,16 @@ happened before steps could name their target. The history holds only the label
 the `load` phase carried — `postgres:landing.orders`, `bronze.clicks` — so that
 is what is stored, with `legacy = true`. A label is never turned into a target:
 that would mean guessing a project or a database.
+
+## Mixed versions
+
+Either side can be upgraded first. Both directions were run with real binaries,
+a scheduled workflow and the local executor:
+
+| fetcher | engine | what happens |
+|---|---|---|
+| an SDK that emits `landed` | one that predates it | the run succeeds and its phases and load trend are recorded as before; the line is consumed as an unknown marker — it does not reach the step's log, and it costs one of the 60 marked lines a step may spend on phases |
+| an SDK that predates `landed` | one that reads it | the run succeeds and its phases and load trend are recorded; nothing lands, because nothing was said |
+
+So a fleet upgrading its fetchers one at a time loses nothing: each table starts
+landing on the first load of a fetcher that can name it.
