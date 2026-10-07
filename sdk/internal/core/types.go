@@ -215,7 +215,23 @@ type LoadConfig struct {
 	StagingBucket   string // GCS bucket for staging; default: "{projectID}-brevis-staging"
 	StagingPrefix   string // prefix for staged files; default: "extracts/"
 	ThresholdForGCS int    // row count above which to use GCS; default: 5000
-	Format          string // "ndjson", "csv", or "parquet"; default: "ndjson"
+
+	// ThresholdBytesForGCS is the ENCODED SIZE above which to stage through
+	// GCS, whichever ceiling is crossed first.
+	//
+	// A row count cannot see this. Five thousand rows of 2 KB is 10 MB and
+	// belongs inline; five thousand rows of 2 MB is 10 GB, and the inline path
+	// marshals all of it into memory before it sends anything. The row default
+	// was chosen against rows of a few kilobytes and silently means something
+	// else for anybody whose records are documents.
+	//
+	// Zero is OFF, and that is deliberate rather than shy. Staging needs a
+	// bucket, so switching this on by default would turn a memory problem into
+	// a hard failure for every caller who has none -- "that bucket does not
+	// exist", on a load that works today. A fix that breaks loads is not a
+	// fix. Set it where you have a bucket; the gateway does.
+	ThresholdBytesForGCS int64
+	Format               string // "ndjson", "csv", or "parquet"; default: "ndjson"
 	// KeepStagedFile leaves the staged object in the bucket after a
 	// successful load. The default is to delete it: a bucket filling up with
 	// files nobody looks at is a bill nobody reviews.
@@ -229,6 +245,10 @@ type LoadConfig struct {
 	// Dedup selects how repeated records are handled; see Dedup.
 	// Zero value is DedupNone.
 	Dedup Dedup
+
+	// DedupKey is the column DedupMerge matches on. Empty means MetadataID.
+	// It is WriteOptions.DedupKey, carried down to the loader.
+	DedupKey string
 
 	// CreateTable lets the loader create the destination table when it does
 	// not exist. Off by default: nothing runs DDL against your warehouse
@@ -274,6 +294,20 @@ type LoadConfig struct {
 	// Schema is the declaration WITH types. When present, it is where a created
 	// table takes its types from -- and not from any autodetect.
 	Schema Schema
+
+	// Evolve says what a load may do to a table that EXISTS and no longer
+	// matches the declared Schema.
+	//
+	// EvolveNone -- the zero value -- refuses any difference, which is what
+	// this path did before, silently. The Postgres and MySQL destinations have
+	// honoured this field for a while; BigQuery ignored it, and `auto_table`
+	// declared EvolveAdditive on every destination regardless.
+	//
+	// The result: adding a fixed column to the gateway broke every BigQuery
+	// table an older version had created, and a producer growing a field broke
+	// the load into an existing one -- which is the single thing auto_table
+	// exists to make safe. Issue #34.
+	Evolve Evolution
 
 	// PartitionBy names the partitioning column of a created table. Empty uses
 	// the default: daily on ingestion_loaded_at.
@@ -533,6 +567,14 @@ func WithThresholdForGCS(threshold int) LoadOption {
 	}
 }
 
+// WithThresholdBytesForGCS sets the encoded size above which to use GCS
+// staging. Zero leaves it off; see LoadConfig.ThresholdBytesForGCS.
+func WithThresholdBytesForGCS(bytes int64) LoadOption {
+	return func(cfg *LoadConfig) {
+		cfg.ThresholdBytesForGCS = bytes
+	}
+}
+
 // WithDedup selects the deduplication mode.
 func WithDedup(d Dedup) LoadOption {
 	return func(cfg *LoadConfig) {
@@ -593,6 +635,12 @@ func WithSchema(s Schema) LoadOption {
 	}
 }
 
+// WithEvolve says what a load may do to a table that no longer matches the
+// declared Schema. See LoadConfig.Evolve.
+func WithEvolve(mode Evolution) LoadOption {
+	return func(cfg *LoadConfig) { cfg.Evolve = mode }
+}
+
 // WithPartitionBy names the partitioning column of the created table.
 func WithPartitionBy(column string) LoadOption {
 	return func(cfg *LoadConfig) { cfg.PartitionBy = column }
@@ -609,4 +657,48 @@ func WithClusterBy(fields ...string) LoadOption {
 	return func(cfg *LoadConfig) {
 		cfg.ClusterBy = fields
 	}
+}
+
+// DeclaredColumns names what the TABLE will be made of.
+//
+// It is a different question from the one Columns alone answers, and confusing
+// the two cost a consumer every batch of every new table:
+//
+//	Columns  -- "the consumer promised every row has exactly these"
+//	Schema   -- "this is what the table is made of"
+//
+// A caller may declare either; sdk.Target REFUSES both at once, because they
+// are two lists of the same thing and the one that lost would lose silently.
+// So "Columns when it has any, the Schema's names otherwise" is the whole
+// rule, and it is the same one sdk.Target.declaredColumns uses -- one question
+// should not have two answers depending on which side of the facade you ask.
+//
+// WHO SHOULD NOT CALL THIS: CheckRow. It asks whether the ROW carries what the
+// consumer promised, and on the gateway path the Schema is the UNION of a
+// batch whose records need not agree -- measured, and it refuses an ordinary
+// batch:
+//
+//	the Columns declaration lists only_in_record_two, which the row does not have
+//
+// On the SDK's own path that union is covered by `discovered`, which CheckRow
+// treats as may-be-absent. The gateway has no `discovered` because it did its
+// own discovery and handed us the result as a Schema. CheckRow reads Columns
+// directly, on purpose.
+func (c *LoadConfig) DeclaredColumns() []string {
+	return declaredColumnsOf(c.Columns, c.Schema)
+}
+
+// DeclaredColumns is the same question on the other carrier. See
+// LoadConfig.DeclaredColumns for which question it is and who must not ask it.
+func (o WriteOptions) DeclaredColumns() []string {
+	return declaredColumnsOf(o.Columns, o.Schema)
+}
+
+// declaredColumnsOf is the rule, written once. Two carriers ask it and the
+// answer cannot be allowed to depend on which one.
+func declaredColumnsOf(columns []string, s Schema) []string {
+	if len(columns) > 0 {
+		return columns
+	}
+	return s.Names()
 }

@@ -1266,6 +1266,49 @@ A `Discover` that returns **nothing** is an error, not zero rows: a run that rea
 nothing because there was nothing to read is different from one that did not know
 where to read.
 
+### One source per value
+
+An API with no "everything" endpoint is read one federative unit at a time, one
+municipality, one account, one day. `from.Over` turns a list of values into a
+list of sources:
+
+```go
+From: from.Many{
+    Discover: func(ctx context.Context) ([]sdk.Reader, error) {
+        cred, err := credential()
+        if err != nil {
+            return nil, err
+        }
+        return from.Over(brazilUFs, func(uf string) sdk.Reader {
+            return inventorySource(cred, uf)
+        }), nil
+    },
+    Workers: 6,
+    OnError: sdk.ContinueOnError,
+},
+```
+
+It builds the **reader**, not the URL, and that is the whole design:
+
+- **No encoding is ever the SDK's business.** A vendor whose query keys are
+  accented phrases, whose spaces must be `%20` and not the `+` that
+  `url.Values.Encode` writes, works without the SDK knowing — because the SDK
+  never holds the string.
+- **It is not tied to query parameters.** The value can go in a path segment, a
+  header or a body. Of the four fan-outs that asked for this, one varied a path
+  and one had its values discovered at run time; a feature keyed on query
+  parameters would have reached half of them.
+- **It owns no concurrency and no failure policy.** It returns a slice, and
+  `from.Many` owns `Workers`, `OnError` and the laziness. A fan-out carrying its
+  own worker pool would be a second copy of the one that already works.
+
+Inside `Discover`, as above, is where it belongs when building a source can
+fail: a missing credential is then an extract error rather than a panic in a
+`main`.
+
+Nothing is opened until the iteration reaches it, and `Describe()` is whatever
+the built source says — so a failure among 27 names the one that failed.
+
 ### Keeping the rotated credential between runs
 
 Without a store, the renewed value lives for this run only — and somebody
@@ -1439,6 +1482,47 @@ recompiling:
 | `Preview` | `0` (off) | how many records to print |
 | `PreviewBytes` | `4096` | caps the block; rows are dropped from the bottom and the footer says how many |
 | `PreviewWriter` | `os.Stderr` | where the table goes |
+
+### The rows going into the table
+
+`Target` takes the same three fields, and answers the question the source's
+preview cannot: **what is about to land**, after every transform, in the
+columns the destination actually has.
+
+```go
+sdk.Target{
+	To:      topg.Table{DSN: dsn, Name: "landing_orders"},
+	Columns: []string{"ingestion_id", "order_id", "client_id", "total", "status"},
+	Preview: 5,
+}
+```
+
+```
+   ingestion_id                          order_id  client_id    total  status
+0  b70c5149-8f66-5bbe-aa67-288694a107b6  O00001    C0022      1274.26  cancelled
+1  7bf901d3-703b-50b3-8b84-4614cc207724  O00002    C0029       311.02  shipped
+
+[5 of 2000 rows · 5 columns · 10ms]
+```
+
+Three things it does on purpose:
+
+- **The columns are in `Columns`' order**, not alphabetical. That order is the
+  table's, and a preview in any other order is a table that is not the table.
+- **A declared column no record carries still appears**, empty. That is the
+  NULL the destination is about to receive, and it is usually the answer.
+- **It prints before the write**, so a load that is refused still shows what it
+  was holding — which is when somebody most wants to see it.
+
+From the command line, without a rebuild:
+
+```bash
+./my-fetcher -preview-target 5
+```
+
+Not to be confused with two neighbours: `-preview` samples the **source**, and
+`-dry-run` prints **instead of** writing. This one prints *and* writes, which is
+what an operator watching a real load wants.
 
 The table goes to a writer rather than through `slog` because slog's
 `TextHandler` escapes newlines, so a table logged as an attribute arrives as
@@ -1722,6 +1806,7 @@ what is useful:
 |---|---|
 | `Run.First` | no earlier attempt of this step has succeeded |
 | `Run.Params` | the values this execution was dispatched with; never nil |
+| `Run.ParamList(name)` | one of those, declared `list|<type>`, as a slice |
 | `Run.ID`, `Attempt`, `Trigger`, `LogicalDate` | which run this is |
 
 Reading it is optional:
@@ -1734,6 +1819,52 @@ Before: func(ctx context.Context, p *sdk.Pipeline) error {
 	return nil
 },
 ```
+
+### Before the pipeline exists
+
+`p.Run` is readable inside the pipeline, which is too late for a value that
+decides what the pipeline **is** — one source per state, one table per tenant.
+`Pipeline.Flags` is too late for the same reason: it is parsed inside `Run`.
+
+So the two reads are also package functions:
+
+```go
+func main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+```bash
+./fetch-stations -param ufs=SP,RJ      # by hand
+```
+
+`sdk.Param` and `sdk.ParamList` read the engine's environment first and
+`-param name=value` second. The environment wins: under the engine it IS the
+value, and a flag left in a manifest must not quietly override what the operator
+typed in the trigger form. With no engine the flag is what there is, which
+beats composing `BREVIS_RUN_PARAMS` as JSON by hand on every run — what people
+actually do then is hardcode the value "just for now".
+
+`-param` is a real flag too, so `-h` lists it, `Run` does not refuse it as
+unknown, and what it collects reaches `p.Run.Params` — the value reads the same
+inside the pipeline as outside it.
+
+### A list, as a slice
+
+A param the workflow declared as `list|string`, `list|integer` or
+`list|boolean` arrives comma-joined, because every param is a string from the
+trigger form to this process. `ParamList` is what turns it back:
+
+```go
+for _, table := range p.Run.ParamList("tables") {
+	load(table)
+}
+```
+
+It returns nil for a param that is absent or empty — an empty list, not a list
+holding one empty string — and the items come back as strings, `list|integer`
+included: a fetcher that wants numbers knows better than this package which
+width and which error handling it wants.
 
 Run by hand, every field is zero and nothing behaves differently.
 

@@ -65,6 +65,13 @@ there is a cluster:
 | `on` | a step with `image:` becomes a pod | **boot error** |
 | `off` | everything as local processes | everything as local processes |
 
+**A step with `host:` passes through none of this.** It is checked before the
+pod and before the process, and goes to a machine that is already running —
+`BREVIS_PODS` does not apply to it, and it never falls back to a local process.
+That is deliberate: `image:` degrades to local execution with a warning because
+a container and a process are the same command in two wrappers, and a host is
+not. It is where the licence lives, or the GPU, or the data.
+
 `auto` is the default because the same binary runs in both places: on a laptop
 there is no service account mounted and it falls back to local processes; in a
 cluster there is, and it starts creating pods.

@@ -1,0 +1,42 @@
+# A parameter that carries many values.
+#
+#   brevis run examples/list-params.yaml
+#   brevis run examples/list-params.yaml --param tables=events,sessions --param layers=bronze,gold
+#
+# The value is ONE comma-separated string everywhere -- in the database, in
+# BREVIS_RUN_PARAMS and in the command below -- which is why `{{ .tables }}`
+# needs no special case to work in a shell. A step that wants the array reads it
+# with `run.param_list()` in Python or `p.Run.ParamList()` in the Go SDK.
+name: list_params
+type: chain
+tags: [example]
+
+params:
+  - name: tables
+    type: list|string
+    default: "users,orders"
+    description: which tables to load
+
+  # An enum on a list restricts each ITEM, and the interface renders it as
+  # checkboxes rather than a text field.
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]
+    default: "bronze"
+    description: which layers to rebuild
+
+  # Each item is validated on its own: `1,x,30` fails naming item 2.
+  - name: days
+    type: list|integer
+    default: "1,7,30"
+    description: the windows to backfill
+
+steps:
+  # A list interpolates as what a selector wants.
+  - id: show
+    run: sh -c 'echo "tables={{ .tables }} layers={{ .layers }} days={{ .days }}"'
+
+  # And a shell can iterate it, because the separator is the one `for` expects
+  # after IFS -- no JSON to parse in a step that only has sh.
+  - id: per_table
+    run: sh -c 'for t in $(echo "{{ .tables }}" | tr "," " "); do echo "loading $t"; done'

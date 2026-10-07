@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Ingestion sinks — Documentation</title>
+<meta name="description" content="The six destinations, how each database writes a record, and why the image carries only what you use.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/en/docs/ingestion-sinks/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/en/docs/ingestion-sinks/index.md">
+<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/ingestion-sinks/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/ingestion-sinks/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="en">
+<meta property="og:title" content="Ingestion sinks — Documentation">
+<meta property="og:description" content="The six destinations, how each database writes a record, and why the image carries only what you use.">
+<meta property="og:url" content="https://brevis.sh/en/docs/ingestion-sinks/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ingestion sinks — Documentation">
+<meta name="twitter:description" content="The six destinations, how each database writes a record, and why the image carries only what you use.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Ingestion sinks",
+  "description": "The six destinations, how each database writes a record, and why the image carries only what you use.",
+  "inLanguage": "en",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/en/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/en/#produto">Product</a>
+      <a href="/en/#principios">Principles</a>
+      <a href="/en/docs/">Documentation</a>
+      <a href="/en/#open-source">Open source</a>
+      <div class="lang-switch" role="group" aria-label="Language"><a href="/docs/ingestion-sinks/" hreflang="pt-BR">PT</a><a href="/en/docs/ingestion-sinks/" hreflang="en" aria-current="true">EN</a></div>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explore open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Documentation menu
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/en/docs/ingestion/">Ingestion</a></li><li><a href="/en/docs/ingestion-sinks/" aria-current="page">Ingestion sinks</a></li><li><a href="/en/docs/benchmarks/">Benchmarks</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentation</p>
+      <h1>Ingestion sinks</h1>
+      <p class="doc-desc">The six destinations, how each database writes a record, and why the image carries only what you use.</p>
+      <p>Six destinations, and the list is deliberately explicit — a connector that is <em>planned</em> and a connector that <em>runs</em> are different things to somebody choosing this.</p>
+<div class="table-wrap"><table><thead><tr><th>sink</th><th>state</th><th>what a write is</th><th>proven against</th></tr></thead><tbody><tr><td><code>pubsub</code></td><td><strong>runs</strong></td><td>one publish per batch, attributes and ordering key from the event's own fields</td><td>the emulator</td></tr><tr><td><code>postgres</code></td><td><strong>runs</strong></td><td><code>COPY FROM STDIN</code>, or a staged <code>INSERT</code> in one transaction</td><td>a real Postgres</td></tr><tr><td><code>mysql</code></td><td><strong>runs</strong></td><td>multi-row <code>INSERT</code> in a transaction, or <code>INSERT IGNORE</code></td><td>a real MySQL</td></tr><tr><td><code>files</code></td><td><strong>runs</strong></td><td>NDJSON objects in a directory, <code>gs://</code> or <code>s3://</code></td><td>the filesystem, and S3</td></tr><tr><td><code>bigquery</code></td><td><strong>runs</strong></td><td>rows loaded, or staged and <code>MERGE</code>d on <code>ingestion_id</code></td><td><strong>config only — no emulator exists</strong></td></tr><tr><td><code>redshift</code></td><td><strong>runs</strong></td><td>the batch to S3, then <code>COPY</code>, then <code>MERGE</code></td><td><strong>config only — no emulator exists</strong></td></tr></tbody></table></div>
+<p><strong>Two of the six are unproven end to end</strong>, and the table says so rather than letting the word "runs" carry a claim nobody checked. BigQuery and Redshift have no local emulator, so what is tested is the config, the refusals and the driver underneath — which the SDK's own suite already covers. The first production use of either is the real proof, and it should be a low-stakes stream.</p>
+<p>An unknown <code>type:</code> is <strong>refused at startup</strong>, naming what <em>this binary</em> carries. A gateway that starts on a sink it does not have is one that drops events for a reason nobody can see.</p>
+<p><code>gs://</code> and <code>s3://</code> are not separate connectors: <code>files</code> reads all three path shapes, so the dead letter is a folder on a laptop and a bucket in production with no change here.</p>
+<h2 id="how-each-one-writes">How each one writes<a class="anchor" href="#how-each-one-writes" aria-label="link">#</a></h2>
+<p><code>write</code> is <strong>required and never defaulted</strong> on the four destinations that write to a table, because the two modes are genuinely different and only the table's owner knows which it is:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th><code>append</code></th><th><code>merge</code></th></tr></thead><tbody><tr><td><strong>postgres</strong></td><td><code>COPY FROM STDIN</code></td><td><code>INSERT … ON CONFLICT (ingestion_id) DO NOTHING</code></td></tr><tr><td><strong>mysql</strong></td><td>multi-row <code>INSERT</code> per block</td><td><code>INSERT IGNORE</code></td></tr><tr><td><strong>bigquery</strong></td><td>rows loaded (through GCS above the inline limit)</td><td><code>MERGE … WHEN NOT MATCHED THEN INSERT</code></td></tr><tr><td><strong>redshift</strong></td><td><code>COPY</code> from S3</td><td><code>COPY</code> to a staging table, then <code>MERGE</code></td></tr></tbody></table></div>
+<p><code>merge</code> means <strong>the same thing in all four</strong>: the idempotent insert, and the <strong>first delivery wins</strong>. A redelivery is ignored, not applied — which is right for an event, which happened once and does not change, and wrong for a row carrying a mutable state.</p>
+<p>Postgres and MySQL <strong>require a <code>UNIQUE</code> index on <code>ingestion_id</code></strong> for <code>merge</code>, and refuse without one rather than silently appending:</p>
+<div class="code-block" data-code="CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">CREATE</span> UNIQUE INDEX CONCURRENTLY <span class="t-k">ON</span> landing.orders (ingestion_id);</code></pre></div>
+<p>Without the index <code>ON CONFLICT</code> has nothing to match, and every redelivery would duplicate into a table whose owner asked for the opposite. The refusal is not a lost batch: it is retried, then buried in the dead letter with the reason and the <code>CREATE INDEX</code> on the record — nobody loses events while somebody creates the index.</p>
+<p><strong><code>upsert</code> is refused by name.</strong> <code>ON CONFLICT DO UPDATE</code>, where the <em>last</em> delivery wins, is a real mode that is <strong>not implemented</strong>. Accepting the word while behaving like <code>merge</code> is exactly the failure that field exists to prevent, so the config says so instead.</p>
+<h2 id="each-one-with-what-is-true-only-of-it">Each one with what is true only of it<a class="anchor" href="#each-one-with-what-is-true-only-of-it" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# Postgres: schema-qualified name, and the table has to exist.
+sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# MySQL: no COPY, so throughput is an order below Postgres on the same
+# hardware. Flush wider here.
+sink: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# BigQuery: no dsn_from. It authenticates with the pod&#x27;s own credentials, which
+# is what a workload identity is for. The name has no dots — the project and
+# the dataset are their own fields.
+sink: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+# Redshift: two hops, not one. It is columnar, a row-by-row INSERT pays the cost
+# of a block, and the only workable load is COPY from S3. So every batch becomes
+# an object in the staging prefix and then a COPY — a stream flushing every
+# second writes 86,400 objects a day. Flush much wider here.
+sink:
+  type: redshift
+  dsn_from: BREVIS_RS_DSN
+  table: landing.clicks
+  staging: s3://acme-staging/gateway/
+  iam_role: arn:aws:iam::123456789012:role/redshift-copy
+  write: merge"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-c"># Postgres: schema-qualified name, and the table has to exist.</span>
+<span class="t-k">sink</span>: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+<span class="t-c"># MySQL: no COPY, so throughput is an order below Postgres on the same</span>
+<span class="t-c"># hardware. Flush wider here.</span>
+<span class="t-k">sink</span>: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+<span class="t-c"># BigQuery: no dsn_from. It authenticates with the pod's own credentials, which</span>
+<span class="t-c"># is what a workload identity is for. The name has no dots — the project and</span>
+<span class="t-c"># the dataset are their own fields.</span>
+<span class="t-k">sink</span>: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+<span class="t-c"># Redshift: two hops, not one. It is columnar, a row-by-row INSERT pays the cost</span>
+<span class="t-c"># of a block, and the only workable load is COPY from S3. So every batch becomes</span>
+<span class="t-c"># an object in the staging prefix and then a COPY — a stream flushing every</span>
+<span class="t-c"># second writes 86,400 objects a day. Flush much wider here.</span>
+<span class="t-k">sink</span>:
+  <span class="t-k">type</span>: redshift
+  <span class="t-k">dsn_from</span>: BREVIS_RS_DSN
+  <span class="t-k">table</span>: landing.clicks
+  <span class="t-k">staging</span>: s3://acme-staging/gateway/
+  <span class="t-k">iam_role</span>: arn:aws:iam::123456789012:role/redshift-copy
+  <span class="t-k">write</span>: merge</code></pre></div>
+<p><code>dsn_from</code> names the <strong>environment variable</strong> holding the connection string, never the string: a DSN carries a password and that file is in git. It is the same split <code>secrets:</code> makes in a workflow.</p>
+<p><code>iam_role</code> is a role and the driver <strong>will not accept a key</strong>: a key in a <code>COPY</code>'s URL ends up in the cluster's query log, which plenty of people read.</p>
+<h2 id="no-column-declaration">No column declaration<a class="anchor" href="#no-column-declaration" aria-label="link">#</a></h2>
+<p>The gateway sends no column list. A pipeline declares its own because its rows have one shape it controls; a gateway's batch is whatever <em>N</em> clients posted in one flush window, and the shapes are allowed to differ.</p>
+<p>The driver resolves the list from the <strong>table itself</strong>, intersected with what the batch carries, <strong>before</strong> touching the server. A field the table does not have is refused with the message that fixes it, instead of failing mid-<code>COPY</code> with <code>column "x" of relation "y" does not exist</code>; a field one event omits is written as <code>NULL</code>.</p>
+<h2 id="the-import-list-is-the-selection">The import list is the selection<a class="anchor" href="#the-import-list-is-the-selection" aria-label="link">#</a></h2>
+<p>The sinks are <strong>compiled in</strong>, like the hooks, and the binary registers what it has:</p>
+<div class="code-block" data-code="func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">func</span> main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(<span class="t-k">nil</span>, gateway.WithSinks(sinks))
+}</code></pre></div>
+<p>The Go linker prunes what nothing references, so a binary that never imports the BigQuery driver does not carry BigQuery — or Arrow, or the Storage Write API. That is how <code>database/sql</code> has always worked.</p>
+<p>It is worth what it sounds like:</p>
+<div class="table-wrap"><table><thead><tr><th>build</th><th>packages</th><th>binary</th></tr></thead><tbody><tr><td>all six sinks, both object stores, both metastores</td><td>884</td><td>55.0 MB</td></tr><tr><td><code>postgres</code> + local <code>files</code></td><td>233</td><td><strong>10.2 MB</strong></td></tr></tbody></table></div>
+<p>Object stores are a <strong>second</strong> registry, because a scheme is not a destination: <code>files</code> is one sink that writes to a directory, to <code>gs://</code> and to <code>s3://</code>, and a build that only writes locally should not carry the AWS SDK to do it.</p>
+<h3 id="two-published-images">Two published images<a class="anchor" href="#two-published-images" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>image</th><th>carries</th><th>pull (amd64)</th></tr></thead><tbody><tr><td><code>areteacademy/brevis-gateway:0.8.0</code></td><td>six sinks, S3, GCS, Redis, memcached</td><td>17.9 MB</td></tr><tr><td><code>areteacademy/brevis-gateway:0.8.0-slim</code></td><td><code>postgres</code>, local <code>files</code>, <code>auto_table</code></td><td><strong>4.9 MB</strong></td></tr></tbody></table></div>
+<p>Both from one build of one tree, so the two tags are always the same commit. There is no <code>latest-slim</code> — <code>latest</code> is already a tag nobody should deploy.</p>
+<p><strong>Want a different pair?</strong> <code>cmd/gateway-slim</code> is fifteen lines and the import block is the whole of its configuration. Copy it, change the imports, build. Anybody who wants a hook is compiling their own binary already, so choosing the sinks costs them nothing more.</p>
+<h3 id="the-refusal-says-which-build-you-are-holding">The refusal says which build you are holding<a class="anchor" href="#the-refusal-says-which-build-you-are-holding" aria-label="link">#</a></h3>
+<div class="code-block" data-code="sink type &quot;bigquery&quot; is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist."><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.</code></pre></div>
+<p>A fixed list would send that person looking for a config mistake they did not make. The same holds for an object store: an <code>s3://</code> dead letter in a binary with no S3 backend is refused <strong>at startup</strong>, naming the scheme, rather than on the first batch it would have to bury.</p>
+<h2 id="one-route-n-tables-nothing-declared">One route, N tables, nothing declared<a class="anchor" href="#one-route-n-tables-nothing-declared" aria-label="link">#</a></h2>
+<div class="code-block" data-code="sink:
+  type: auto_table
+  shape: columns
+  naming: {pattern: &#x27;^(app|svc)_[a-z0-9_]{2,40}$&#x27;, allow: [app_, svc_], max_new_per_hour: 20}
+  metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+  into: {type: bigquery, project: acme-prod, dataset: landing, write: merge}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">sink</span>:
+  <span class="t-k">type</span>: auto_table
+  <span class="t-k">shape</span>: columns
+  <span class="t-k">naming</span>: {pattern: '^(app|svc)_[a-z0-9_]{2,40}$', allow: [app_, svc_], max_new_per_hour: 20}
+  <span class="t-k">metastore</span>: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+  <span class="t-k">into</span>: {type: bigquery, project: acme-prod, dataset: landing, write: merge}</code></pre></div>
+<p><code>auto_table</code> <strong>routes and does not write</strong>: <code>into</code> is what writes, and it carries no <code>table</code> — the table comes from each event. An <code>into</code> with a <code>table</code> is refused at startup, because a fixed table under a router would win silently and every event would land in it.</p>
+<h3 id="the-envelope">The envelope<a class="anchor" href="#the-envelope" aria-label="link">#</a></h3>
+<p>The body is an <strong>envelope</strong>: control fields at the top, the record inside <code>data</code>.</p>
+<div class="code-block" data-code="{
+  &quot;table_name&quot;: &quot;app_orders&quot;,
+  &quot;description&quot;: &quot;App orders&quot;,
+  &quot;operation&quot;: &quot;INSERT&quot;,
+  &quot;unique_key&quot;: &quot;id&quot;,
+  &quot;data&quot;: {
+    &quot;id&quot;: &quot;A-1&quot;,
+    &quot;total&quot;: 150,
+    &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;},
+    &quot;items&quot;: [{&quot;sku&quot;: &quot;X&quot;, &quot;qty&quot;: 2}]
+  }
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>{
+  "table_name": "app_orders",
+  "description": "App orders",
+  "operation": "INSERT",
+  "unique_key": "id",
+  "data": {
+    "id": "A-<span class="t-n">1</span>",
+    "total": <span class="t-n">150</span>,
+    "customer": {"id": <span class="t-n">7</span>, "uf": "SP"},
+    "items": [{"sku": "X", "qty": <span class="t-n">2</span>}]
+  }
+}</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>field</th><th></th><th>what it is</th></tr></thead><tbody><tr><td><code>table_name</code></td><td><strong>required</strong></td><td>where this lands</td></tr><tr><td><code>data</code></td><td><strong>required</strong></td><td>the record, and only it</td></tr><tr><td><code>unique_key</code></td><td>defaults to <code>id</code></td><td>which field of <code>data</code> identifies the record — <strong>required under <code>merge</code></strong></td></tr><tr><td><code>operation</code></td><td>defaults to <code>INSERT</code></td><td><code>INSERT</code>, <code>UPDATE</code> or <code>DELETE</code></td></tr><tr><td><code>description</code></td><td>optional</td><td><strong>accepted and not yet used</strong> — see below</td></tr></tbody></table></div>
+<p><code>table_name</code> sitting beside <code>total</code> and <code>customer</code> was a field of the <strong>transport</strong> pretending to be a field of the <strong>record</strong>. Separating them is how every CDC format is shaped — and it is what makes reserving a prefix possible, because now there is one place only the producer writes.</p>
+<h3 id="the-key-belongs-to-merge-not-to-the-envelope">The key belongs to <code>merge</code>, not to the envelope<a class="anchor" href="#the-key-belongs-to-merge-not-to-the-envelope" aria-label="link">#</a></h3>
+<p><code>unique_key</code> is optional, and whether it is <strong>required</strong> depends on the write mode — because the two modes want different things:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>write: merge</code></td><td><strong>required.</strong> The mode exists to keep one row per record, and <code>brevis_record_key</code> is what "per record" means: the <code>qualify</code> that resolves the current version partitions by it. A merge table full of rows naming no record is a table nobody can resolve.</td></tr><tr><td><code>write: append</code></td><td><strong>optional.</strong> An append table is a log, and a log entry need not be <em>about</em> a record: an audit line, a webhook, a metric sample. Demanding an <code>id</code> there would make producers invent one, which is worse than <code>NULL</code> because it looks real.</td></tr></tbody></table></div>
+<p>Under <code>append</code> the column is created nullable and a keyless row carries <code>NULL</code> — not <code>""</code>, which is a different fact. And <code>brevis_ingestion_id</code> still exists: with no key, <strong>the content is the key</strong>, so the same document twice is the same id.</p>
+<p><strong>Naming a field that is not in <code>data</code> is an error in both modes.</strong> "You did not say" and "you said something that is not there" are different mistakes, and only the first one passes:</p>
+<div class="code-block" data-code="{&quot;accepted&quot;:0,&quot;rejected&quot;:[&quot;event 0: \&quot;unique_key\&quot; names \&quot;pedido_id\&quot; as this
+ record&#x27;s identity and \&quot;data\&quot;.\&quot;pedido_id\&quot; is missing or empty. Drop
+ \&quot;unique_key\&quot; to fall back to \&quot;id\&quot;, or send the field&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>{"accepted":<span class="t-n">0</span>,"rejected":["event <span class="t-n">0</span>: \"unique_key\" names \"pedido_id\" as this
+ record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
+ \"unique_key\" to fall back to \"id\", or send the field"]}</code></pre></div>
+<p><strong><code>description</code> is read and today goes nowhere.</strong> It is in the contract for the console's ingestion page, which has not been written. It is said here because a field accepted in silence is a field somebody believes is being stored.</p>
+<h3 id="eight-fixed-columns-plus-whatever-the-record-carries">Eight fixed columns, plus whatever the record carries<a class="anchor" href="#eight-fixed-columns-plus-whatever-the-record-carries" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>column</th><th></th><th></th></tr></thead><tbody><tr><td><code>brevis_ingestion_id</code></td><td><code>STRING</code></td><td>the identity, and the merge key</td></tr><tr><td><code>brevis_record_key</code></td><td><code>STRING</code></td><td><code>data[unique_key]</code> — which <strong>record</strong> this is about; <code>NULL</code> under <code>append</code></td></tr><tr><td><code>brevis_operation</code></td><td><code>STRING</code></td><td><code>INSERT</code>, <code>UPDATE</code> or <code>DELETE</code></td></tr><tr><td><code>brevis_received_at</code></td><td><code>TIMESTAMP</code></td><td>arrival, on <strong>our</strong> clock — the partition column</td></tr><tr><td><code>brevis_loaded_at</code></td><td><code>TIMESTAMP</code></td><td>the write, stamped by the <strong>destination</strong></td></tr><tr><td><code>brevis_stream</code></td><td><code>STRING</code></td><td>which route wrote it</td></tr><tr><td><code>brevis_gateway</code></td><td><code>STRING</code></td><td>which deployment</td></tr><tr><td><code>brevis_received_bytes</code></td><td><code>INT64</code></td><td>how large the event <strong>arrived</strong>, envelope included</td></tr></tbody></table></div>
+<p>These eight are <strong>the SDK's</strong>, not this sink's: <code>sdk.LandingSchema</code> declares them and <code>sdk.LandingID</code> mints the identity, so a pipeline can land the same table with the same ids. One definition, because two would drift. See <a href="/en/docs/sdk/#the-landing-layout">the SDK's landing layout</a>.</p>
+<p><strong><code>brevis_</code> is reserved.</strong> A <code>data</code> carrying any key with that prefix is refused <strong>per event</strong> — otherwise a producer forges a control field, and a forged <code>brevis_received_at</code> is worse than none because it looks real.</p>
+<p><strong><code>brevis_loaded_at</code> is a database <code>DEFAULT</code></strong>, not a value the gateway sends. The gateway knows the <strong>dispatch</strong> time, the destination knows the <strong>write</strong> time, and the gap between the two columns is the real end-to-end latency, per row, with nothing instrumented.</p>
+<p><strong><code>brevis_received_at</code> is the partition column, never a client's clock</strong>: a producer's can be wrong or absent, and a partition column the client controls is a client that can write into 2035. An unpartitioned landing table is a query bill that only grows. Clustering is by <code>brevis_record_key</code>, because reading one record's history is what anybody does with a table like this.</p>
+<p>One declaration serves every destination, because the SDK's DDL generator translates each type: <code>STRING</code> becomes <code>TEXT</code> on Postgres, <code>LONGTEXT</code> on MySQL and <code>STRING</code> on BigQuery; <code>JSON</code> becomes <code>JSONB</code>, <code>JSON</code> and <code>JSON</code>.</p>
+<h3 id="volume-without-infrastructure-to-measure-volume">Volume without infrastructure to measure volume<a class="anchor" href="#volume-without-infrastructure-to-measure-volume" aria-label="link">#</a></h3>
+<p><code>brevis_received_bytes</code> is <strong>free</strong>: the gateway already counts these bytes at decode to drive <code>buffer.flush.size</code>, and until now the number died there. Measuring the record alone would cost a <code>json.Marshal</code> per event — 2.0 µs against the 3.1 µs the parse already spends, <strong>67% more on the hot path</strong> — to refine a number whose job is trend and attribution.</p>
+<p>It answers what the metrics <strong>structurally cannot</strong>. Every <code>brevis_gateway_*</code> series is per <em>stream</em> and carries no <code>table</code> label, deliberately: with <code>auto_table</code> one route becomes N tables and that label is the producer's to choose. So "which table is growing, and since when" had no answer anywhere.</p>
+<div class="code-block" data-code="select date(brevis_received_at) day,
+       count(*) events,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>select date(brevis_received_at) day,
+       count(*) events,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc</code></pre></div>
+<p>Without the column the same question means scanning the whole JSON column — <code>sum(length(to_json_string(data)))</code> — roughly <strong>fifty times the bytes scanned</strong>, every time somebody asks. The column pays for itself on the first query.</p>
+<p><strong>It is ingress, not storage.</strong> The destination keeps the row typed and compressed: 400 bytes of JSON may be 80 on disk. Summing this gives what <em>arrived</em>, never what is billed for keeping it.</p>
+<p>And <strong>the producer cannot write it</strong>. The gateway stamps the value after the hook and overwrites whatever the envelope carried — a client who sent the field would be reporting their own volume, and summing it would stop meaning anything.</p>
+<h3 id="the-volume-series-are-opt-in">The volume series are opt-in<a class="anchor" href="#the-volume-series-are-opt-in" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_INGESTION_METRICS=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_INGESTION_METRICS=true</code></pre></div>
+<div class="code-block" data-code="brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}</code></pre></div>
+<p><strong>Off by default</strong>, and the default is the point: <code>table</code> is a label the <em>producer</em> chooses. Everything else in this file is labelled by what an operator wrote in the YAML, so the series count is known before the process starts. Nobody should find a metrics bill because they upgraded.</p>
+<p>A value nobody can parse reads as <strong>off</strong>, never as a failure: this is observability, and a typo here must not be the reason an ingestion endpoint does not start.</p>
+<p>The column is there either way. The metric buys <em>now</em>; the column buys <em>since when</em> and <em>by whom</em>.</p>
+<h3 id="two-shapes-one-contract">Two shapes, one contract<a class="anchor" href="#two-shapes-one-contract" aria-label="link">#</a></h3>
+<p><code>shape</code> decides what the <strong>record</strong> contributes to the row. The producer's contract is the same either way — the envelope never changes. What changes is what the table looks like, which is the operator's decision and not the producer's.</p>
+<div class="code-block" data-code="shape: document   # the default
+shape: columns"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">shape</span>: document   <span class="t-c"># the default</span>
+<span class="t-k">shape</span>: columns</code></pre></div>
+<p>With <strong><code>document</code></strong>, <code>data</code> goes whole into one <code>JSON</code> column:</p>
+<div class="code-block" data-code=" brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {…}}"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code> brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {"id": "A-1", "total": 150, "customer": {…}}</code></pre></div>
+<p>There is never any DDL after the create. A new field is a new key: no schema-change quota, no write-stream reopen, no race between replicas — and it is queryable the day it arrives. It is where the market landed: Fivetran, Airbyte and Snowpipe all land into a raw layer that cannot fail and model it downstream.</p>
+<p>With <strong><code>columns</code></strong>, each field of the record gets a column of its own:</p>
+<div class="code-block" data-code=" id   | total | customer              | items
+ A-1  | 150   | {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;} | [{&quot;qty&quot;: 2, &quot;sku&quot;: &quot;X&quot;}]"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code> id   | total | customer              | items
+ A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qty": 2, "sku": "X"}]</code></pre></div>
+<p><strong>Scalars become <code>STRING</code>, objects and arrays become <code>JSON</code>, and there is no inference anywhere.</strong> <code>150</code> arrived as a number and became the string <code>150</code>. That is a choice rather than a limitation: a field that arrives whole today and fractional tomorrow would change a column's type with nobody writing anything, and the row that no longer fits goes to the dead letter. Typing one is the <strong>promotion</strong> path — written in the YAML and reviewed in a diff.</p>
+<p><strong>A <code>null</code> becomes no column at all.</strong> It has no shape, so there is nothing to read: the field appears in the table from the first event that carries a VALUE, with that value's shape. The event that sent <code>null</code> lands <code>NULL</code> just the same, which is what it meant — and where the column already exists, because you declared it or another event created it, the <code>null</code> is written into it rather than left out.</p>
+<p><strong>And a <code>JSON</code> column receives a JSON VALUE, never a string of one.</strong> It sounds like a detail and it is the difference between a queryable table and a table that looks right:</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(customer) <span class="t-k">FROM</span> bronze.orders;     <span class="t-c">-- object</span>
+<span class="t-k">SELECT</span> JSON_VALUE(customer, '$.uf') ...;           <span class="t-c">-- SP</span></code></pre></div>
+<p>If <code>JSON_TYPE</code> answers <code>string</code> and <code>JSON_VALUE</code> answers NULL, the object was encoded twice — the column holds the TEXT of the object rather than the object. Gateway versions up to and including <strong>0.15.0</strong> did that on BigQuery, in <strong>both</strong> shapes; see the <a href="https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md" target="_blank" rel="noopener">gateway changelog</a> for the one-line check and the repair. Postgres and MySQL were never affected: their server parses the text.</p>
+<p>A field name has to match BigQuery's rule, the narrowest of the four. Postgres would accept almost anything quoted, and that is the trap: the table is created there and it breaks the day somebody points a stream at BigQuery.</p>
+<p>Both shapes have an SDK equivalent, and it is the same code rather than a matching one: <code>sdk.Landing(table, sdk.LandingKey("id"))</code> lands <code>document</code>, and adding <a href="/en/docs/sdk/#two-shapes-the-record-whole-or-one-column-per-field"><code>sdk.LandingColumns()</code></a> lands <code>columns</code>. Same columns, same values, same <code>brevis_ingestion_id</code> — so a stream can move between a gateway and a pipeline without a migration, and the two can be read as one table.</p>
+<p>The pipeline can grow the same column the same way: set <a href="/en/docs/sdk/#when-a-field-the-table-does-not-have-shows-up"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a> on the destination and a field the batch carries becomes a column, by this rule, through this code.</p>
+<p><strong>The prefix is configurable, and it is one decision for the whole process.</strong> <code>BREVIS_LANDING_PREFIX=acme</code> makes them <code>acme_ingestion_id</code> and the rest — every stream in this gateway, so two sinks cannot disagree about a table they might both write to. The reserved rule above moves with it: under <code>acme_</code>, a producer sending <code>acme_region</code> is refused and <code>brevis_region</code> is an ordinary field.</p>
+<p><strong>Pick it before the first table is created.</strong> Changing it later adds eight columns and abandons eight — nothing drops a column — so a table already carrying the layout under one prefix refuses a load declaring another. See <a href="/en/docs/sdk/#the-brevis-prefix-is-yours-to-change">the SDK page</a> for the normalisation and the way out.</p>
+<p><strong>A nested object's fields can get columns of their own.</strong> <code>BREVIS_NORMALIZE_DATA=true</code> on the gateway's process flattens one level — <code>{"name": {"first": "x"}}</code> lands as <code>name_first</code> — and every stream shares it, so two sinks cannot disagree about a table they might both write to. See <a href="/en/docs/sdk/#one-column-per-nested-field">the SDK page</a> for what it renames, which is the half to read before turning it on.</p>
+<h3 id="update-and-delete-are-recorded-not-applied"><code>UPDATE</code> and <code>DELETE</code> are recorded, not applied<a class="anchor" href="#update-and-delete-are-recorded-not-applied" aria-label="link">#</a></h3>
+<p><code>brevis_operation</code> is a column. A landing table is <strong>history</strong>: an <code>UPDATE</code> applied in place loses the previous version, and the day you want that version is the day something broke. Resolving "the current version of each record" is the downstream model's job:</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation &lt;&gt; &#x27;DELETE&#x27;"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation &lt;&gt; 'DELETE'</code></pre></div>
+<p>Which is what Debezium, Fivetran and Airbyte do — and it means CDC costs <strong>nothing</strong> in the write path: no upsert mode, no lock, no delete.</p>
+<h3 id="the-identity-has-no-clock-in-it">The identity has no clock in it<a class="anchor" href="#the-identity-has-no-clock-in-it" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_ingestion_id = uuid5(auto_table | table | data[unique_key] | sha256(canonical(data)))</code></pre></div>
+<p>There is no <code>occurred_at</code> in the formula, and that is deliberate: arrival became <strong>our</strong> responsibility, and our clock is <code>time.Now()</code> — different on every delivery. An identity with it inside would make every redelivery a new event, and <code>merge</code> would stop absorbing anything.</p>
+<div class="code-block" data-code="same record, same content, twice  →  same id, merge absorbs
+same record, content changed      →  a different id, both versions land"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>same record, same content, twice  →  same id, merge absorbs
+same record, content changed      →  a different id, both versions land</code></pre></div>
+<p>The caveat is the documented one: two genuinely distinct events with byte-identical <code>data</code> collapse into one. For CDC that is <strong>correct</strong> — two identical updates to one record with the same values are the same fact.</p>
+<p>The fingerprint is over the document in <strong>canonical</strong> form — keys sorted at every level, arrays left in order, everything quoted. Go randomises map iteration, so a naive hash would differ between two deliveries of the same event, which is the one thing it exists to prevent.</p>
+<h3 id="the-table-grows-a-column-on-its-own">The table grows a column on its own<a class="anchor" href="#the-table-grows-a-column-on-its-own" aria-label="link">#</a></h3>
+<p>A <code>data</code> carrying a field the table does not have makes the column appear. <strong>Additive, and only additive</strong>: nothing is dropped, nothing is narrowed.</p>
+<p>On BigQuery this only became true in <strong>0.13.0</strong>. Before it, <code>auto_table</code> declared <code>Evolve: additive</code> on every destination and only the Postgres and MySQL drivers read the declaration — so there the shape was frozen at creation and nothing said so.</p>
+<blockquote><p><strong>Coming from 0.11.0 or 0.12.0</strong>, tables created before <code>0.11.0</code> need a one-off migration, because the eighth fixed column went into the declaration and not into the table:  ``<code>sql ALTER TABLE </code>&lt;dataset&gt;.&lt;table&gt;<code> ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64 </code>``  Postgres and MySQL were never affected.</p></blockquote>
+<p>A batch that loses the race to <code>ALTER</code> fails, and the pipe's ordinary retry resolves it — a batch waiting for DDL and a batch waiting for a worker are the same thing, so there is no second buffer. Across replicas the metastore holds a one-second <em>debounce</em> per table and per shape, so that ten replicas seeing the same new field do not become ten <code>ALTER</code>s against BigQuery's quota of five metadata operations per table per ten seconds.</p>
+<p><strong>A debounce and not a lock</strong>: nothing is released and no lease is renewed. Whoever loses is being <em>retried</em>, not blocked, and a replica that dies holding one costs the others a second. It is what the market does — Delta Lake and Iceberg commit optimistically and retry, Kafka Connect gets serialisation from partition ordering, Fivetran keeps one writer per table.</p>
+<h3 id="the-name-is-the-attack-surface">The name is the attack surface<a class="anchor" href="#the-name-is-the-attack-surface" aria-label="link">#</a></h3>
+<p><code>auto_table</code> turns a string in a payload into DDL, so every field under <code>naming</code> is a refusal:</p>
+<ul><li><strong><code>pattern</code></strong> defaults to <code>^[a-z][a-z0-9_]{2,48}$</code> — the intersection of what Postgres, MySQL, BigQuery and Redshift accept unquoted. A name that passes needs no quoting anywhere and cannot carry an injection.</li><li><strong><code>allow</code></strong> narrows further, by prefix.</li><li><strong><code>max_new_per_hour</code></strong> (default 20) bounds <strong>creations</strong> in a rolling hour, never writes: a table that already exists is never rate limited. Under <code>metastore: memory</code> the budget lives in the process and four replicas admit four times this; under <code>redis</code> or <code>memcached</code> they share one counter.</li></ul>
+<p>A name outside the rules is refused <strong>per event</strong>, in the response, and every well-formed event in the same request still lands:</p>
+<div class="code-block" data-code="{&quot;accepted&quot;: 0, &quot;rejected&quot;: [&quot;event 0: the table name \&quot;orders\&quot; does not match ^(app|svc)_[a-z0-9_]{2,40}$&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>{"accepted": <span class="t-n">0</span>, "rejected": ["event <span class="t-n">0</span>: the table name \"orders\" does not match ^(app|svc)_[a-z0-9_]{<span class="t-n">2</span>,<span class="t-n">40</span>}$"]}</code></pre></div>
+<p>Per event and not per batch, deliberately. Refusing it at write time would fail the whole batch — one malformed event from one producer burying the events of every other producer in the same flush window, none of them told.</p>
+<p><strong><code>auto_table</code> is refused on an endpoint with no <code>listen.auth</code></strong>, including under <code>BREVIS_ENV=local</code>. A producer that can name a table can create one, so it needs authentication even where an ordinary stream would not. A NetworkPolicy does not cover it: that limits who reaches the port, not which table name they ask for.</p>
+<h3 id="the-metastore-is-a-cache">The metastore is a cache<a class="anchor" href="#the-metastore-is-a-cache" aria-label="link">#</a></h3>
+<p>It exists so a per-event write is not a per-event lookup, and it holds three things: which tables exist, the DDL <em>debounce</em>, and the counter behind <code>max_new_per_hour</code>.</p>
+<p>It is a cache and <strong>not</strong> a source of truth. The destination settles whether a table exists, and <em>N</em> replicas racing to create one is the normal case: <code>AlreadyExists</code> is success, and this only reduces the race. The TTL is how long it may be <strong>wrong</strong>.</p>
+<div class="table-wrap"><table><thead><tr><th>backend</th><th>when</th></tr></thead><tbody><tr><td><code>memory</code></td><td>the default, needs nothing. With <strong>one</strong> replica it is the right answer</td></tr><tr><td><code>redis</code></td><td><code>addr_from</code> required. A <code>SETNX</code> is the claim, an <code>INCR</code> is the counter</td></tr><tr><td><code>memcached</code></td><td><code>addr_from</code> required. An <code>Add</code> is the claim, and expiry is <strong>second</strong>-granular</td></tr></tbody></table></div>
+<p><strong>Redis is the faster one for a stream with a routing key</strong>, and the difference is worth a number rather than an adjective. With the trigger per table, a window asks for one claim per table: Redis answers 94 of them in one pipelined round trip, and every other backend answers them in parallel, bounded at 32. Measured against a backend 25 ms away — 94 claims:</p>
+<div class="table-wrap"><table><thead><tr><th>backend</th><th>one at a time</th><th>as it ships</th></tr></thead><tbody><tr><td><code>redis</code></td><td>2.589 s</td><td><strong>29.8 ms</strong></td></tr><tr><td><code>memcached</code></td><td>2.577 s</td><td><strong>89.4 ms</strong></td></tr></tbody></table></div>
+<p>Three waves against one round trip. Both are inside the 500 ms a claim is given, so memcached is the slower choice and not a refused one.</p>
+<p>With several replicas, <code>memory</code> gives each its own: the debounce debounces nothing and <code>max_new_per_hour</code> bounds a process. That is the only reason the other two exist.</p>
+<p><strong>A metastore that is down must not take a write down with it.</strong> A <code>Get</code> that errors is a miss, a claim that errors behaves as won, a counter that errors relaxes the limit. A cache that can stop the ingestion is worse than no cache.</p>
+<p><strong>And "down" includes "slow".</strong> The claim runs while the buffer's lock is held, so a backend that takes two seconds to answer is two seconds in which that stream accepts nothing. Every call is bounded at <strong>500 ms</strong> and fails open past it. Redis obeys that as the caller's context; <code>gomemcache</code> takes no context at all, so memcached obeys it as a socket deadline — the same bound reached two ways, because one of the two clients cannot be told to stop.</p>
+<p><strong><code>ttl: 0</code> means never</strong>, and saying nothing still takes the one-minute default — three states, not two.</p>
+<p>The clock is <strong>not</strong> what recovers from a wrong entry. A write the destination refuses calls <code>invalidate</code>, which drops the entry at once and lets the pipe's own retry come back against a cold cache: a table dropped by hand costs <strong>one failed attempt</strong>, not a minute.</p>
+<p>Expiry has a price. <code>sinkFor</code> charges <code>naming.max_new_per_hour</code> when it does not <strong>know</strong> a table — so a miss charges for a table that has existed for weeks, and a pod restarting a minute after a table's last event gets nothing from the shared backend it is paying for. With long-lived tables, <code>ttl: 0</code> is the answer.</p>
+<blockquote><p>On <code>0.12.0</code> and <code>0.13.1</code> that spelling <strong>does not parse</strong> — YAML reads a bare zero as an int, and <code>0.13.2</code> is the first that takes both. On those versions, write <code>ttl: 0s</code>.</p></blockquote>
+<p><code>addr_from</code> names the <strong>environment variable</strong> holding the address, never the address: it carries a password often enough.</p>
+<h3 id="bigquery-has-a-flush-floor">BigQuery has a flush floor<a class="anchor" href="#bigquery-has-a-flush-floor" aria-label="link">#</a></h3>
+<p><strong>BigQuery allows 1,500 load jobs per table per day.</strong> The default one-second window is 86,400 — 57× the quota, gone in about twenty-five minutes. It is not a problem for Pub/Sub, and the number would arrive here <em>from</em> a Pub/Sub config.</p>
+<p>So a stream that writes to BigQuery, directly or through a router, is <strong>refused at load</strong> with a window under 60s. The real answer is the Storage Write API, which has not been written; until it is, the config refuses a window it cannot honour rather than letting the first deploy find out.</p>
+<p><code>auto_table</code> cannot route into <strong>Redshift</strong>: that driver creates no tables, so every new name would fail on the load. Refused by name, at startup.</p>
+<h2 id="what-does-not-exist-yet">What does not exist yet<a class="anchor" href="#what-does-not-exist-yet" aria-label="link">#</a></h2>
+<p><code>sqlite</code>, <code>dynamodb</code>, <code>kinesis</code>, <code>sqs</code>, <code>sns</code>, <code>kafka</code> and <code>rabbitmq</code> are planned and nothing has been written. (<code>redis</code> and <code>memcached</code> exist as a <strong>metastore</strong>, which is a different thing: a cache of what is known about the tables, never a destination.) The table at the top of this page says the state of each, and it is updated when the state changes — not before.</p>
+
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/en/docs/ingestion/"><span>Previous</span><strong>Ingestion</strong></a>
+        <a class="pager pager-next" href="/en/docs/benchmarks/"><span>Next</span><strong>Benchmarks</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/ingestion-sinks.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#how-each-one-writes">How each one writes</a></li><li class="toc-2"><a href="#each-one-with-what-is-true-only-of-it">Each one with what is true only of it</a></li><li class="toc-2"><a href="#no-column-declaration">No column declaration</a></li><li class="toc-2"><a href="#the-import-list-is-the-selection">The import list is the selection</a></li><li class="toc-3"><a href="#two-published-images">Two published images</a></li><li class="toc-3"><a href="#the-refusal-says-which-build-you-are-holding">The refusal says which build you are holding</a></li><li class="toc-2"><a href="#one-route-n-tables-nothing-declared">One route, N tables, nothing declared</a></li><li class="toc-3"><a href="#the-envelope">The envelope</a></li><li class="toc-3"><a href="#the-key-belongs-to-merge-not-to-the-envelope">The key belongs to merge, not to the envelope</a></li><li class="toc-3"><a href="#eight-fixed-columns-plus-whatever-the-record-carries">Eight fixed columns, plus whatever the record carries</a></li><li class="toc-3"><a href="#volume-without-infrastructure-to-measure-volume">Volume without infrastructure to measure volume</a></li><li class="toc-3"><a href="#the-volume-series-are-opt-in">The volume series are opt-in</a></li><li class="toc-3"><a href="#two-shapes-one-contract">Two shapes, one contract</a></li><li class="toc-3"><a href="#update-and-delete-are-recorded-not-applied">UPDATE and DELETE are recorded, not applied</a></li><li class="toc-3"><a href="#the-identity-has-no-clock-in-it">The identity has no clock in it</a></li><li class="toc-3"><a href="#the-table-grows-a-column-on-its-own">The table grows a column on its own</a></li><li class="toc-3"><a href="#the-name-is-the-attack-surface">The name is the attack surface</a></li><li class="toc-3"><a href="#the-metastore-is-a-cache">The metastore is a cache</a></li><li class="toc-3"><a href="#bigquery-has-a-flush-floor">BigQuery has a flush floor</a></li><li class="toc-2"><a href="#what-does-not-exist-yet">What does not exist yet</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/en/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophy applied to data infrastructure.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>project</h2>
+        <ul>
+          <li><a href="/en/#produto">Product</a></li>
+          <li><a href="/en/#principios">Principles</a></li>
+          <li><a href="/en/#open-source">Open source</a></li>
+          <li><a href="/en/#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>code</h2>
+        <ul>
+          <li><a href="/en/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+</body>
+</html>

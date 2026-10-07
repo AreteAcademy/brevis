@@ -76,6 +76,24 @@ spec:
             # silence.
             - name: BREVIS_PODS
               value: "on"
+            {{- with .Values.hosts }}
+            # The machines this installation may dispatch a `host:` step to.
+            #
+            # INSTALLATION-LEVEL, which is the point rather than a limitation:
+            # a workflow that could name an arbitrary address would be
+            # dispatching this engine's credentials to it. A step naming a host
+            # that is not here is refused, with this list in the message.
+            - name: BREVIS_HOSTS
+              value: {{ range $i, $pair := . }}{{ if $i }},{{ end }}{{ $pair.name }}={{ $pair.url }}{{ end }}
+            {{- end }}
+            {{- if .Values.hostTokenSecret }}
+            # One token for every host. The gap is stated rather than
+            # discovered: no revoking one without changing them all, and no
+            # per-host identity in the audit trail.
+            - name: BREVIS_HOST_TOKEN
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.hostTokenSecret }}, key: token}
+            {{- end }}
             - name: BREVIS_POD_NAMESPACE
               value: {{ .Release.Namespace | quote }}
             - name: BREVIS_POD_SERVICE_ACCOUNT

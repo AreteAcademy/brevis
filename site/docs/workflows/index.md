@@ -132,6 +132,7 @@ steps:
 | `id` | **obrigatório** | único no workflow; é o nome que aparece no grafo e nos logs |
 | `run` | | o comando |
 | `image` | | a imagem do passo; sem ela, herda a do topo |
+| `host` | | envia o comando para uma máquina que o motor **não** gerencia — alternativa a `image`, nunca companheira. Veja [`host:` no guia de Kubernetes](https://github.com/AreteAcademy/brevis/blob/master/docs/KUBERNETES.md#a-third-place-a-step-can-run-host) |
 | `shell` | `true` | `false` executa sem shell — necessário em distroless |
 | `depends_on` | | lista de `id` que precisam terminar antes; uma entrada pode ser `{step, label}` |
 | `marker` | `false` | um passo sem comando, para um `start` ou um `end` |

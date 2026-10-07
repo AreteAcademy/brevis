@@ -26,6 +26,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -37,20 +38,33 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/runcontext"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 )
 
 // Options configure one agent.
 type Options struct {
-	// Token authenticates the engine. Empty accepts anyone, which is a
-	// development convenience and is warned about at startup rather than
-	// silently allowed.
+	// Token authenticates the engine. Empty is REFUSED unless InsecureNoToken
+	// says so, because an agent with no token runs any command for any caller.
 	//
 	// One token for every engine, and the gap is stated rather than
 	// discovered: no revoking one without changing them all, and no per-engine
 	// identity in the audit trail. See the package's README for what a second
 	// version would need.
 	Token string
+
+	// InsecureNoToken allows an agent with no token at all.
+	//
+	// It exists so the dangerous choice is a DECLARATION and not an omission.
+	// Without a token this process runs any command anybody who reaches the
+	// port sends it, as whatever user it is -- not a weak password, no
+	// password. That used to be allowed with a warning at startup, which is
+	// the shape of a hole nobody sees: the warning scrolls past and the
+	// manifest that caused it says nothing at all.
+	//
+	// Now it has to be written down. It shows up in `ps`, in the manifest, and
+	// in a review, which is the whole of what this field buys.
+	InsecureNoToken bool
 
 	// SecretsDir is the root of the secret store: `<dir>/<name>/<key>` holds
 	// one value, which is how the kubelet mounts a Secret and how Docker mounts
@@ -65,6 +79,23 @@ type Options struct {
 	// which. Empty denies everything -- a host somebody else administers should
 	// not hand over its store because an engine asked nicely.
 	AllowedSecrets []string
+
+	// Advertise is the address the engine should come back to for this
+	// agent's own executions: `https://dbt-runner-2.dbt.svc:9443`.
+	//
+	// It matters only behind a SHARED address. An agent is stateful per
+	// execution -- a ring and a process handle in this process's memory -- so
+	// a resume or a cancel that reaches a different replica is answered with
+	// "not running here", and the engine fails a step that is still running
+	// over here. See remote.HeaderInstance.
+	//
+	// TOLD, not discovered. This process can read its hostname; it cannot know
+	// which of its names the engine can route to, and a guess that resolves
+	// nowhere is worse than no answer -- the engine would address an instance
+	// that does not exist instead of falling back to the address it has.
+	//
+	// Empty is the ordinary case and changes nothing: one agent at one address.
+	Advertise string
 
 	// WorkDir is where a step runs when it names no directory of its own.
 	WorkDir string
@@ -102,6 +133,50 @@ type Agent struct {
 }
 
 // New builds an agent.
+// Check refuses a configuration that should not start.
+//
+// Here rather than in main so a test can reach it: a rule that only exists
+// inside a `func main` is a rule nothing exercises.
+func (o Options) Check() error {
+	if o.Token != "" && o.InsecureNoToken {
+		return fmt.Errorf("this agent was given both a token and " +
+			"--insecure-no-token, and they are opposites. One of the two is a " +
+			"lie and nothing here can say which: drop the flag to use the " +
+			"token, or drop the token to mean it")
+	}
+	if o.Token == "" && !o.InsecureNoToken {
+		return fmt.Errorf("this agent has no token, so anything that can reach " +
+			"its port would run any command it sends -- as this user, on this " +
+			"host. Point --token-file at a file holding one, shared with the " +
+			"engine's BREVIS_HOST_TOKEN.\n\nIf an open agent is what you mean " +
+			"-- a laptop, a throwaway cluster -- say so with " +
+			"--insecure-no-token, so the choice is in the command line and in " +
+			"the manifest rather than in the absence of a flag")
+	}
+	return nil
+}
+
+// Advertise sets where the engine should come back to for this agent's
+// executions, after construction.
+//
+// After, because an address is not always known at construction: a test starts
+// the server to learn its address, and a pod may be told by an init step. It
+// is a plain setter under the same lock the runs map uses, so a handler
+// serving a request while this is called reads one value or the other and
+// never a torn one.
+func (a *Agent) Advertise(addr string) {
+	a.mu.Lock()
+	a.opt.Advertise = addr
+	a.mu.Unlock()
+}
+
+// advertising reads it back.
+func (a *Agent) advertising() string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.opt.Advertise
+}
+
 func New(opt Options) *Agent {
 	if opt.RingSize <= 0 {
 		opt.RingSize = defaultRingSize
@@ -163,8 +238,19 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 	}
 	a.mu.Unlock()
 
-	env, err := a.environment(req)
+	// The file this step publishes through, on THIS host. Created before the
+	// process so the variable can point at it, removed when the execution ends.
+	output, err := os.CreateTemp("", "brevis-output-*.json")
 	if err != nil {
+		return nil, fmt.Errorf("this host could not make a file for the step's "+
+			"published context: %w", err)
+	}
+	outputPath := output.Name()
+	_ = output.Close()
+
+	env, err := a.environment(req, outputPath)
+	if err != nil {
+		_ = os.Remove(outputPath)
 		// Refused before spawning. The engine turns this into a failed step
 		// naming the coordinate, which is the point: a command that starts with
 		// VENDOR_TOKEN unset produces a 401 three layers down and blames the
@@ -236,12 +322,74 @@ func (a *Agent) Start(ctx context.Context, req remote.StartRequest) (io.ReadClos
 		a.mu.Unlock()
 		a.forget(req.ExecutionID)
 
+		// BEFORE the exit line, because the engine stops reading at it: the
+		// protocol says everything after KindExit is ignored, and published
+		// context arriving there would be dropped without a word.
+		a.publish(e, outputPath)
+		_ = os.Remove(outputPath)
+
 		e.emit(remote.Line{Kind: remote.KindExit, Code: exitCode(err)})
 		e.close()
 	}()
 
 	return e.reader(0), nil
 }
+
+// publish turns what the step wrote into the marker the runner already reads.
+//
+// A MARKER AND NOT A NEW LINE KIND, which is the whole reason this is three
+// lines. The `@brevis:` protocol on stdout is how a step publishes to the
+// engine on every executor -- the runner recognises it, and recognising it
+// there rather than in an executor is what the stages collector's own comment
+// says gives the local executor the same for free. An agent that invented a
+// `context` line would be a second road to the same place, for both programs
+// to keep in agreement.
+//
+// Silent when there is nothing, because most steps publish nothing and an
+// absent file is the normal case -- the same reading readPublished makes on
+// the local executor.
+func (a *Agent) publish(e *execution, path string) {
+	raw, err := os.ReadFile(path)
+	if err != nil || len(raw) == 0 {
+		return
+	}
+	// Bounded, because this becomes a line in the log stream and a ring entry.
+	// A step that writes a gigabyte there must not turn into a gigabyte on the
+	// wire; it is told, rather than truncated into something that parses as
+	// different data.
+	if len(raw) > maxPublished {
+		e.emit(remote.Line{Kind: remote.KindLog, Stream: "stderr", Message: fmt.Sprintf(
+			"brevis: this step published %d bytes to BREVIS_OUTPUT and the limit is %d; "+
+				"nothing was published. Publish what the steps below need, not the payload",
+			len(raw), maxPublished)})
+		return
+	}
+	// Validated here rather than sent on: a file that is not JSON cannot be
+	// the `value` of a marker without making the whole line unparseable, and a
+	// malformed line is the engine's problem for no reason.
+	if !json.Valid(raw) {
+		e.emit(remote.Line{Kind: remote.KindLog, Stream: "stderr", Message: fmt.Sprintf(
+			"brevis: this step wrote %d bytes to BREVIS_OUTPUT that are not JSON; "+
+				"nothing was published", len(raw))})
+		return
+	}
+	line, err := json.Marshal(struct {
+		Type  string          `json:"type"`
+		Value json.RawMessage `json:"value"`
+	}{Type: "context", Value: json.RawMessage(raw)})
+	if err != nil {
+		return
+	}
+	e.emit(remote.Line{Kind: remote.KindLog, Stream: "stdout", Message: "@brevis:" + string(line)})
+}
+
+// maxPublished bounds what a step may hand back through the file.
+//
+// One mebibyte, which is the same order as the request limit this agent's own
+// handler imposes. Context is what the steps below need to do their work --
+// a path, a count, a watermark -- and a payload that size is a file in a
+// bucket, not a variable.
+const maxPublished = 1 << 20
 
 // Resume serves the same execution from `after`.
 //
@@ -295,7 +443,7 @@ func (a *Agent) Cancel(execID string) error {
 // first, then the secrets, so a `secrets:` entry can deliberately override an
 // ordinary variable of the same name. That is what "this one, on purpose"
 // means.
-func (a *Agent) environment(req remote.StartRequest) ([]string, error) {
+func (a *Agent) environment(req remote.StartRequest, output string) ([]string, error) {
 	env := map[string]string{}
 	for k, v := range req.Env {
 		env[k] = v
@@ -314,6 +462,23 @@ func (a *Agent) environment(req remote.StartRequest) ([]string, error) {
 		sort.Strings(missing)
 		return nil, fmt.Errorf("this host could not resolve %d secret(s) and the step was "+
 			"NOT started: %s", len(missing), strings.Join(missing, "; "))
+	}
+
+	// BREVIS_OUTPUT IS THIS HOST'S, overriding whatever arrived.
+	//
+	// The runner picks a path meaningful on the ENGINE's filesystem and sends
+	// it with the rest of the environment. On a host the engine does not
+	// manage that path is somebody else's, and a step that honours it writes a
+	// file nobody reads -- silently, which is the failure mode the pod
+	// executor's own override exists to prevent. It makes the same override
+	// there, to the kubelet's termination message; this is that one, for a
+	// filesystem the engine cannot see at all.
+	//
+	// Both halves together, as the pod does: the path the step writes to and
+	// the path this agent reads back. Setting one without the other is the
+	// silent failure spelled out.
+	if output != "" {
+		env[runcontext.EnvOutput] = output
 	}
 
 	out := make([]string, 0, len(env))

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
+	"google.golang.org/api/option"
 )
 
 // Loader writes Envelopes to BigQuery as generic JSON.
@@ -42,12 +44,16 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		return nil, err
 	}
 
-	bq, err := bigquery.NewClient(ctx, cfg.ProjectID)
+	bq, err := bigquery.NewClient(ctx, cfg.ProjectID, emulator(bigQueryPath)...)
 	if err != nil {
 		return nil, fmt.Errorf("create bigquery client: %w", err)
 	}
 
-	gcs, err := storage.NewClient(ctx)
+	// The storage client gets the override too, and that is not tidiness: it
+	// is built here whether or not a load ever stages, so without it New
+	// cannot be constructed at all without Google credentials -- which is the
+	// wall this variable exists to remove.
+	gcs, err := storage.NewClient(ctx, emulator(storagePath)...)
 	if err != nil {
 		return nil, fmt.Errorf("create storage client: %w", err)
 	}
@@ -57,6 +63,63 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		bq:  bq,
 		gcs: gcs,
 	}, nil
+}
+
+// The API paths the two clients need under an emulator's base URL.
+//
+// They exist because option.WithEndpoint replaces the WHOLE base URL, path
+// included -- give it a bare host and the client asks for `/projects/...`,
+// which an emulator has no route for. The 405 that comes back looks exactly
+// like floci's refusal of load jobs, which is a confusing hour.
+//
+// So EnvEmulator takes the BASE and the SDK appends these. One value, two
+// clients, and the caller does not have to know either path.
+const (
+	bigQueryPath = "/bigquery/v2/"
+	storagePath  = "/storage/v1/"
+)
+
+// EnvEmulator points the BigQuery client at something that is not BigQuery.
+//
+// It exists for one reason: an emulator, so the drivers can be exercised
+// without a project and a billing account. Set it and every load in the
+// process goes there instead.
+//
+// THE ENVIRONMENT, AND NEVER A CONFIG FIELD, and that is the whole safety of
+// it. A `bigquery_endpoint:` in a YAML file is a line somebody copies between
+// environments, and what it buys is a production pipeline writing a
+// warehouse's data into a container -- silently, because those writes succeed.
+// A variable has to be set on the process by whoever starts it, it cannot
+// travel in a config repository, and it shows up in `env`.
+// The value is the emulator's BASE URL and not an API endpoint:
+//
+//	BREVIS_BIGQUERY_EMULATOR=http://localhost:4588
+//
+// Both the BigQuery and the GCS client are pointed at it, under their own
+// paths. The GCS one matters even for a load that never stages: it is
+// constructed eagerly, so without the override New needs Google credentials
+// to build at all -- which is the wall this removes.
+const EnvEmulator = "BREVIS_BIGQUERY_EMULATOR"
+
+// emulator returns the client options for EnvEmulator, or none at all.
+//
+// WithoutAuthentication travels WITH the endpoint and is not a separate
+// decision: an emulator has no credentials, and the client would otherwise
+// spend its first call looking for a token that does not exist -- against a
+// metadata server which, on a laptop, hangs rather than refusing.
+//
+// Returned as a pair so a later edit cannot separate them. An endpoint that
+// still authenticates is a confusing failure; authentication turned off
+// without an endpoint is a dangerous one.
+func emulator(path string) []option.ClientOption {
+	base := strings.TrimSpace(os.Getenv(EnvEmulator))
+	if base == "" {
+		return nil
+	}
+	return []option.ClientOption{
+		option.WithEndpoint(strings.TrimSuffix(base, "/") + path),
+		option.WithoutAuthentication(),
+	}
 }
 
 // resolveConfig merges cfg with opts and fills in defaults. It is separate
@@ -115,14 +178,25 @@ func resolveConfig(cfg *core.LoadConfig, opts ...core.LoadOption) (*core.LoadCon
 	//
 	// Only checkable when Columns is declared. Without a declaration the row
 	// itself is checked at load time -- see Load.
-	if c.Dedup == core.DedupMerge && declared(c.Columns) && !declares(c.Columns, core.MetadataID) {
-		return nil, fmt.Errorf("DedupMerge needs the %s column, and Columns does not declare "+
-			"it: the merge matches rows on it. Add sdk.IngestionID() to Transform and the "+
-			"column to Columns", core.MetadataID)
+	// DeclaredColumns and not Columns. [#42, the audit] A Schema is a
+	// declaration, and reading Columns meant every Schema-only caller -- which
+	// is every gateway table -- skipped this and found out from the
+	// destination after the whole extract had run.
+	if c.Dedup == core.DedupMerge && declared(c.DeclaredColumns()) {
+		key, err := core.DedupKeyOf(core.WriteOptions{DedupKey: c.DedupKey})
+		if err != nil {
+			return nil, err
+		}
+		if !declares(c.DeclaredColumns(), key) {
+			return nil, fmt.Errorf("DedupMerge matches rows on %s and Columns does not "+
+				"declare it. Add sdk.IngestionID() to Transform and the column to "+
+				"Columns -- or set DedupKey, if this table's identity column has "+
+				"another name", key)
+		}
 	}
 
-	if (c.PartitionExpiration > 0 || c.RequirePartitionFilter) && declared(c.Columns) &&
-		!declares(c.Columns, core.MetadataLoadedAt) {
+	if (c.PartitionExpiration > 0 || c.RequirePartitionFilter) && declared(c.DeclaredColumns()) &&
+		!declares(c.DeclaredColumns(), core.MetadataLoadedAt) {
 		return nil, fmt.Errorf("the partition options need the %s column, and Columns does "+
 			"not declare it: the table is partitioned on it. Add sdk.IngestionLoadedAt() to "+
 			"Transform and the column to Columns", core.MetadataLoadedAt)
@@ -170,8 +244,20 @@ func sourceFormat(format string) (bigquery.DataFormat, error) {
 
 // strategyFor picks how a batch of n rows reaches BigQuery. Small batches go
 // inline in one request; large ones stage through GCS so memory stays flat.
-func strategyFor(n, threshold int) string {
-	if n > threshold {
+// strategyFor picks inline or GCS, on whichever ceiling is crossed first.
+//
+// `bytes` is zero before the rows are encoded, which is why this is called
+// twice: once to fill the result for a load that fails before encoding, and
+// again once the size is known. Zero never crosses a positive ceiling, so the
+// first answer is the row count's alone.
+func strategyFor(rows, bytes int, cfg *core.LoadConfig) string {
+	if rows > cfg.ThresholdForGCS {
+		return "gcs"
+	}
+	// The half the row count cannot see. Off by default -- see
+	// LoadConfig.ThresholdBytesForGCS for why a default here would break
+	// loads that work.
+	if cfg.ThresholdBytesForGCS > 0 && int64(bytes) > cfg.ThresholdBytesForGCS {
 		return "gcs"
 	}
 	return "inline"
@@ -193,7 +279,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 
 	result := &core.LoadResult{
 		Format:   l.cfg.Format,
-		Strategy: strategyFor(len(envelopes), l.cfg.ThresholdForGCS),
+		Strategy: strategyFor(len(envelopes), 0, l.cfg),
 		Dedup:    dedup,
 	}
 	fail := func(err error) (*core.LoadResult, error) {
@@ -205,10 +291,59 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		return fail(nil)
 	}
 
+	// Under EvolveAdditiveFromPayload the batch completes the declaration,
+	// ON A COPY OF THE CONFIG.
+	//
+	// The copy is the whole of the difficulty here, and it is a difficulty
+	// this destination has alone. The SQL drivers receive WriteOptions by
+	// VALUE, so their extension is per-batch by construction; `l.cfg` is a
+	// pointer that belongs to the LOADER and outlives every batch. Extend it
+	// in place and the first batch's field becomes permanent, so the SECOND
+	// batch -- which need not carry it -- is refused for "a declared column
+	// the row does not have". The feature would break the batch after the one
+	// it helped.
+	//
+	// The receiver is rebound rather than a second config threaded through:
+	// prepareTable, evolveTable, encodeRows and the job's schema all read
+	// l.cfg, and passing it to five call sites is how one of them gets
+	// forgotten.
+	var discovered []string
+	if l.cfg.Evolve.FromPayload() {
+		declaration := core.WriteOptions{Columns: l.cfg.Columns, Schema: l.cfg.Schema}
+		found, err := core.Discovered(declaration, envelopes)
+		if err != nil {
+			return fail(err)
+		}
+		if len(found) > 0 {
+			opt := core.WithDiscovered(declaration, found)
+			cfg := *l.cfg
+			cfg.Columns, cfg.Schema = opt.Columns, opt.Schema
+			discovered = opt.Discovered
+
+			batch := *l
+			batch.cfg = &cfg
+			l = &batch
+		}
+	}
+
 	// The row is exactly what the Transform chain composed, ingestion_id
 	// included -- so the declaration is checked against the whole row and
 	// needs no special case.
-	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes); err != nil {
+	//
+	// AFTER the extension and not instead of it: the check has two halves and
+	// only the undeclared one is what this mode is for. A column the CONSUMER
+	// declared and the chain does not produce is still a bug.
+	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes, discovered); err != nil {
+		return fail(err)
+	}
+
+	// A string of JSON where a JSON value belongs, refused BEFORE the job.
+	//
+	// This destination alone: the row is marshalled whole here, so a Go
+	// string becomes a JSON string literal and the column holds a JSON value
+	// of TYPE string. Postgres and MySQL parse the text and have always been
+	// right, so they do not get this and must not.
+	if err := core.CheckJSONColumns(l.cfg.Schema, envelopes); err != nil {
 		return fail(err)
 	}
 
@@ -222,14 +357,44 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		return fail(err)
 	}
 
+	// Settled again, now that the size is known. Deciding on the row count
+	// alone sent a batch of large records down the inline path, which holds
+	// the whole encoding in memory and sends it in one request.
+	result.Strategy = strategyFor(len(envelopes), len(data), l.cfg)
+
 	existed, err := l.prepareTable(ctx, table, data, provenanceOf(envelopes))
 	if err != nil {
 		return fail(err)
 	}
 
+	// What the declaration has and the table does not, added before anything
+	// is checked against it -- so the check below sees the table as this load
+	// is about to leave it, and the load job does not meet a column that is
+	// one API call away from existing.
+	if existed {
+		if err := l.evolveTable(ctx, table); err != nil {
+			return fail(err)
+		}
+	}
+
 	// And the declaration against the table that is actually there. Only when
 	// it already existed: one the SDK just created was created from these very
 	// rows, so checking it would be checking our own arithmetic.
+	// Columns and NOT DeclaredColumns, and the audit's first reason for that
+	// was WRONG. [#42]
+	//
+	// It said asking the Schema here would refuse, with a worse message, the
+	// batch that evolve was about to fix. It would not: evolveTable runs
+	// twenty lines up, so by the time this reads the catalogue the columns it
+	// would have missed are already there. A mutation switching this to
+	// DeclaredColumns killed no test, which is how the claim was caught.
+	//
+	// The real reason is narrower and it is about SCOPE. For a Schema caller
+	// with evolve ON the check is redundant; with evolve OFF it would be a NEW
+	// refusal -- useful, probably, since the alternative is BigQuery answering
+	// `no such field` after the extract -- and a new refusal is a behaviour
+	// change that belongs in a slice of its own, with its own test, not
+	// smuggled into an audit of readers.
 	if existed && len(l.cfg.Columns) > 0 {
 		meta, err := table.Metadata(ctx)
 		if err != nil {
@@ -246,7 +411,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// says which field is missing and what the rows actually have. BigQuery's
 	// own error arrives after the job and names only the field.
 	if !existed && l.cfg.CreateTable {
-		if err := checkClusterFields(l.cfg.ClusterBy, envelopes); err != nil {
+		if err := checkClusterFields(l.cfg.ClusterBy, l.cfg.Schema, envelopes); err != nil {
 			return fail(err)
 		}
 	}
@@ -389,9 +554,60 @@ func (l *Loader) renamedBucketHint(ctx context.Context) string {
 		previous, previous)
 }
 
-// encodeRows turns the batch into the bytes that land.
+// EncodeRows turns the batch into the bytes that land.
+//
+// A PURE function, and exported, for the reason CreationPlan is: a decision
+// made inside a method that holds a client is never seen by a test. These
+// bytes ARE what BigQuery reads -- a column's type is declared in the job and
+// its VALUE is decided here -- and nothing could assert them while this took a
+// *Loader it never used.
+//
+// What it was hiding: a Go string destined for a JSON column encodes as a
+// JSON string literal, so BigQuery stores a JSON value of type `string` and
+// every JSON_VALUE against it returns NULL. The column is right and the data
+// in it is unreachable, which is the worst of the three outcomes because it
+// looks correct. Reported by a consumer against gateway v0.15.0; see
+// core.JSONText.
+// encodeRows is the load's own encoding step, and it exists so that WHICH
+// question the encoder is asked of the config is testable.
+//
+// EncodeRows takes a list of names; the choice of which list is the config's,
+// and getting that choice wrong is what shipped `No such field` to a consumer
+// whose every batch was dead-lettered. A test that called EncodeRows directly
+// would have had to repeat that choice, and would have proved it against
+// itself.
 func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
+	// DeclaredColumns and not Columns. [#42] The gateway declares with a
+	// Schema and never with Columns, so reading Columns here took the
+	// autodetect branch -- "nothing was declared" -- on a path that creates
+	// the table FROM a declaration, and every key the table had no column for
+	// went to the wire. 4,500 events, 8 batches, all dead-lettered.
+	return EncodeRows(envelopes, l.cfg.DeclaredColumns())
+}
+
+func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
 	var buf bytes.Buffer
+
+	// `declared` is the whole declaration by the time this runs -- the
+	// consumer's columns plus whatever the batch contributed. A key it does
+	// not name has no column in the table, and BigQuery does not set
+	// IgnoreUnknownValues, so sending one fails the load job with `no such
+	// field` and takes the batch with it.
+	//
+	// Only a NULL is dropped, and only then. [#42] A field with a value that
+	// nothing declares is refused by CheckRow, by name, before this -- and if
+	// it ever reached here, discarding it would be silent data loss, which is
+	// the one outcome worse than the refusal. A null is different: nothing
+	// was going to be written for it either way, and under the landing layout
+	// the row CARRIES nulls on purpose, so that a declared column which
+	// arrived empty is still in it.
+	//
+	// Empty `declared` is autodetect, where the table is created FROM these
+	// rows and there is nothing to judge a key against.
+	named := make(map[string]bool, len(declared))
+	for _, c := range declared {
+		named[c] = true
+	}
 
 	for i, env := range envelopes {
 		data, err := json.Marshal(env.Payload)
@@ -404,6 +620,25 @@ func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
 			return nil, fmt.Errorf("row %d must encode to a JSON object, got %s", i, truncate(data, 80))
 		}
 
+		if len(named) > 0 {
+			dropped := false
+			for k, v := range probe {
+				if named[k] || string(v) != "null" {
+					continue
+				}
+				delete(probe, k)
+				dropped = true
+			}
+			if dropped {
+				// Re-marshalled from the probe, which the row already had to
+				// decode into. Key order changes -- encoding/json sorts a
+				// map's -- and NDJSON does not care.
+				if data, err = json.Marshal(probe); err != nil {
+					return nil, fmt.Errorf("marshal row %d: %w", i, err)
+				}
+			}
+		}
+
 		buf.Write(data)
 		buf.WriteByte('\n')
 	}
@@ -411,21 +646,55 @@ func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// checkClusterFields confirms every clustering column is present in the rows
-// about to create the table.
-func checkClusterFields(fields []string, envelopes []core.Envelope) error {
-	if len(fields) == 0 || len(envelopes) == 0 {
+// checkClusterFields confirms every clustering column will exist on the table
+// about to be created.
+//
+// WHAT IT CHECKS AGAINST DEPENDS ON WHAT MAKES THE TABLE, and that is the
+// whole of issue #42's third finding. With a declared Schema the table is
+// built by createFromSchema, FROM the Schema -- so the Schema is the right
+// question, and the rows are not. The old check read the rows either way, and
+// its own message said "the table is created from these rows", which is only
+// true under autodetect.
+//
+// It cost the reporter two retries and a misleading WARN on the first load of
+// every table whose producer sends no `id`: the gateway leaves `record_key`
+// out of a ROW when the key is empty, which is correct, while the Schema
+// declares it like every other control column.
+//
+// Checked here rather than left to BigQuery because BigQuery's own error
+// arrives after the job and names only the field, never what was available.
+func checkClusterFields(fields []string, declared core.Schema, envelopes []core.Envelope) error {
+	if len(fields) == 0 {
 		return nil
 	}
 
-	first, ok := envelopes[0].Payload.(map[string]any)
-	if !ok {
-		return nil // encodeRows already refused anything that is not an object
+	var have map[string]bool
+	var from string
+	if len(declared) > 0 {
+		have = make(map[string]bool, len(declared))
+		for _, c := range declared {
+			have[c.Name] = true
+		}
+		from = "the declaration has"
+	} else {
+		// Autodetect: the rows ARE the table, so they are the right question.
+		if len(envelopes) == 0 {
+			return nil
+		}
+		first, ok := envelopes[0].Payload.(map[string]any)
+		if !ok {
+			return nil // EncodeRows already refused anything that is not an object
+		}
+		have = make(map[string]bool, len(first))
+		for k := range first {
+			have[k] = true
+		}
+		from = "the rows have"
 	}
 
 	var missing []string
 	for _, f := range fields {
-		if _, present := first[f]; !present {
+		if !have[f] {
 			missing = append(missing, f)
 		}
 	}
@@ -433,16 +702,16 @@ func checkClusterFields(fields []string, envelopes []core.Envelope) error {
 		return nil
 	}
 
-	available := make([]string, 0, len(first))
-	for k := range first {
+	available := make([]string, 0, len(have))
+	for k := range have {
 		available = append(available, k)
 	}
 	sort.Strings(available)
 	sort.Strings(missing)
 
-	return fmt.Errorf("ClusterBy names %s, which the rows do not have. The table is created "+
-		"from these rows, so a clustering column has to be one of them: %s",
-		strings.Join(missing, ", "), strings.Join(available, ", "))
+	return fmt.Errorf("ClusterBy names %s, which the table will not have. A "+
+		"clustering column has to be one of the columns it is created with, and %s: %s",
+		strings.Join(missing, ", "), from, strings.Join(available, ", "))
 }
 
 func truncate(b []byte, n int) string {

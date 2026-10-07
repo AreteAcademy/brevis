@@ -29,12 +29,88 @@ steps:
 | campo | | |
 |---|---|---|
 | `name` | **obrigatório** | o nome usado no template e no `--param` |
-| `type` | | `string` ou `boolean` |
+| `type` | | `string`, `boolean`, `integer`, ou `list|<tipo>` para vários valores |
 | `default` | | usado quando o disparo não informa valor |
 | `pattern` | | expressão regular que o valor precisa casar |
 
 Um parâmetro **sem `default`** é obrigatório: o disparo que não o informar
 falha antes de executar qualquer passo.
+
+## Uma lista de valores
+
+`list|<tipo>` declara um parâmetro que carrega vários valores — as tabelas a
+carregar, as camadas a reconstruir, as janelas a reprocessar:
+
+```yaml
+params:
+  - name: tables
+    type: list|string
+    default: "users,orders"
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # o enum restringe cada ITEM
+    default: "bronze"
+
+  - name: days
+    type: list|integer
+    default: "1,7,30"
+```
+
+O elemento pode ser `string`, `integer` ou `boolean`. Cada item é validado por
+si, então `list|integer` recebendo `1,x,30` falha nomeando o **item 2** em vez
+do valor inteiro.
+
+É **uma string separada por vírgula** em todo lugar: no banco, no
+`BREVIS_RUN_PARAMS` e no comando. É isso que a faz funcionar num passo sem caso
+especial nenhum —
+
+```yaml
+run: dbt build --select {{ .tables }}      # dbt build --select users,orders
+```
+
+— e é por isso que uma vírgula não pode aparecer dentro de um item. Item vazio e
+item repetido também são recusados: o repetido dobra em silêncio o que o passo
+faz por item.
+
+### Como array, dentro de um passo
+
+```go
+for _, table := range p.Run.ParamList("tables") {
+    load(table)
+}
+```
+
+```python
+from brevis import run
+
+for table in run.param_list("tables"):
+    load(table)
+```
+
+Os dois devolvem `[]` para um parâmetro que ninguém preencheu, e não uma lista
+com uma string vazia: iterar sobre "nada a fazer" tem que não fazer nada. Os
+itens voltam como string — `list|integer` inclusive — porque o passo sabe
+melhor que a biblioteca o que fazer com um número.
+
+### Na interface
+
+Uma lista com `enum` vira checkboxes, que não precisam de JavaScript e que o
+navegador envia um valor por caixa marcada. Sem `enum` é um campo de texto cujos
+itens viram chips removíveis, e com o JavaScript desligado continua sendo um
+campo com `users,orders` — que é exatamente o que o servidor espera.
+
+### Na linha de comando
+
+```bash
+brevis run wf.yaml --param tables=events,sessions --param days=1,30
+```
+
+:::note Um engine antigo não lê isso
+O tipo é gravado junto com o workflow, e um engine anterior a esta feature
+recusa `list|string` no publish como tipo desconhecido. Atualize o engine antes
+de publicar um workflow que use uma lista.
+:::
 
 ## Usando no comando
 

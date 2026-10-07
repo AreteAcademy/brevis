@@ -29,12 +29,88 @@ steps:
 | field | | |
 |---|---|---|
 | `name` | **required** | the name used in the template and in `--param` |
-| `type` | | `string` or `boolean` |
+| `type` | | `string`, `boolean`, `integer`, or `list|<type>` for many values |
 | `default` | | used when the trigger provides no value |
 | `pattern` | | regular expression the value must match |
 
 A parameter **without a `default`** is required: a trigger that omits it fails
 before executing any step.
+
+## A list of values
+
+`list|<type>` declares a parameter that carries many values — the tables to
+load, the layers to rebuild, the windows to backfill:
+
+```yaml
+params:
+  - name: tables
+    type: list|string
+    default: "users,orders"
+
+  - name: layers
+    type: list|string
+    enum: [bronze, silver, gold]     # an enum restricts each ITEM
+    default: "bronze"
+
+  - name: days
+    type: list|integer
+    default: "1,7,30"
+```
+
+The element can be `string`, `integer` or `boolean`. Each item is validated on
+its own, so `list|integer` given `1,x,30` fails naming **item 2** rather than
+the whole value.
+
+It is **one comma-separated string** everywhere: in the database, in
+`BREVIS_RUN_PARAMS`, and in the command. That is what makes it work in a step
+with no special case at all —
+
+```yaml
+run: dbt build --select {{ .tables }}      # dbt build --select users,orders
+```
+
+— and it is why a comma cannot appear inside an item. An empty item and a
+repeated one are refused too: a repeat silently doubles whatever the step does
+per item.
+
+### As an array, in a step
+
+```go
+for _, table := range p.Run.ParamList("tables") {
+    load(table)
+}
+```
+
+```python
+from brevis import run
+
+for table in run.param_list("tables"):
+    load(table)
+```
+
+Both return `[]` for a parameter nobody filled in, rather than a list holding
+one empty string: iterating over "nothing to do" should do nothing. The items
+come back as strings — `list|integer` included — because the step knows better
+than the library what to do with a number.
+
+### In the interface
+
+A list with an `enum` renders as checkboxes, which need no JavaScript and which
+the browser submits one value per box ticked. Without an `enum` it is a text
+field whose items become removable chips, and with JavaScript off it stays a
+field holding `users,orders` — which is exactly what the server expects.
+
+### On the command line
+
+```bash
+brevis run wf.yaml --param tables=events,sessions --param days=1,30
+```
+
+:::note An older engine will not read it
+The type is stored with the workflow, and an engine from before this feature
+refuses `list|string` at publish time as an unknown type. Upgrade the engine
+before publishing a workflow that uses one.
+:::
 
 ## Using it in the command
 

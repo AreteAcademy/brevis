@@ -42,6 +42,24 @@ type Table struct {
 	// Zero uses the SDK default of 5000.
 	InlineLimit int
 
+	// Evolve says what a load may do to a table that EXISTS and no longer
+	// matches the declared Schema. EvolveAdditive adds the columns the
+	// declaration has and the table does not, as NULLABLE.
+	//
+	// The zero value refuses any difference, which is what this destination
+	// did before -- silently, while auto_table declared additive on it. See
+	// core.LoadConfig.Evolve and issue #34.
+	Evolve core.Evolution
+
+	// InlineLimitBytes is the ENCODED SIZE above which the load stages
+	// through GCS, whichever ceiling is crossed first. Zero leaves it off.
+	//
+	// A row count cannot see this: 5000 rows of 2 KB is 10 MB and belongs
+	// inline, 5000 rows of 2 MB is 10 GB and the inline path holds all of it
+	// in memory. Off by default because staging needs a bucket, and turning
+	// it on for everybody would fail loads that work today.
+	InlineLimitBytes int64
+
 	// CreateTable lets the SDK create the table when it is absent. It never
 	// alters one that already exists.
 	//
@@ -125,11 +143,14 @@ func (b Table) config(opt core.WriteOptions) (*core.LoadConfig, map[string]core.
 		StagingBucket:          bucket.Value,
 		StagingPrefix:          b.StagingPrefix,
 		ThresholdForGCS:        limit,
+		ThresholdBytesForGCS:   b.InlineLimitBytes,
 		Format:                 "ndjson",
 		Columns:                opt.Columns,
 		Schema:                 opt.Schema,
 		PartitionBy:            opt.PartitionBy,
+		Evolve:                 b.Evolve,
 		Dedup:                  opt.Dedup,
+		DedupKey:               opt.DedupKey,
 		ClusterBy:              b.ClusterBy,
 		CreateTable:            create,
 		CreateSQL:              b.CreateSQL,

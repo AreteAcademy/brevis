@@ -39,8 +39,8 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 		// Listing what exists saves a trip to the documentation, and exposes a
 		// mistake
 		// de digitacao de imediato.
-		disponiveis := g.reg.Names()
-		if len(disponiveis) == 0 {
+		available := g.reg.Names()
+		if len(available) == 0 {
 			// An empty registry is the common case today: `docker.run` and
 			// `kubernetes.run` are in the plan but do not exist yet. Saying
 			// "available: []" makes it look like a typo in the name.
@@ -48,7 +48,7 @@ func (g *GoExecutor) Execute(ctx context.Context, t execution.TaskExec) (<-chan 
 				"in this worker — use `run:` with a command, or register the action in "+
 				"the binary", t.Action)
 		}
-		return nil, fmt.Errorf("task %q is not registered (available: %v)", t.Action, disponiveis)
+		return nil, fmt.Errorf("task %q is not registered (available: %v)", t.Action, available)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

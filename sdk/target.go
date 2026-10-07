@@ -2,6 +2,9 @@ package sdk
 
 import (
 	"fmt"
+	"io"
+	"slices"
+	"strings"
 	"time"
 
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -75,6 +78,58 @@ type Target struct {
 	// driver's to say.
 	Dedup core.Dedup
 
+	// DedupKey is the column DedupMerge matches on. Empty means
+	// `ingestion_id`, which is what every driver looked for before this
+	// existed.
+	//
+	// The landing layout needs it, and needs it to merge AT ALL: its identity
+	// column is `brevis_ingestion_id`, and a merge left to the default would
+	// look for a column the table does not have.
+	//
+	//	Target{
+	//		Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+	//		Dedup:    sdk.DedupMerge,
+	//		DedupKey: sdk.LandingColumnID,
+	//	}
+	//
+	// Checked against the declaration: a key that Columns or Schema does not
+	// carry is an error naming both. `core.DedupKeyOf` validates that the
+	// name is a legal identifier, not that anything has it, so a typo would
+	// otherwise merge on a column that is not there -- and a merge matching
+	// nothing looks exactly like a merge matching everything it should.
+	//
+	// Nil declaration declares nothing and checks nothing, the way Columns
+	// does.
+	DedupKey string
+
+	// Preview prints the first N rows AS THEY WILL BE WRITTEN, the way a
+	// dataframe's head() shows the top of a frame. Zero prints nothing.
+	//
+	// Source.Preview answers "what did I pull?"; this answers the question a
+	// pull cannot: "what is about to land, after every transform, in the
+	// columns the table actually has". They are different rows, and the gap
+	// between them is where a load goes wrong -- a run reading 11,536 records
+	// and writing 0 says nothing about WHICH field came out empty.
+	//
+	// Projected through Columns, by the same rule every driver uses: the value
+	// under each declared name, and nothing else. A column the record does not
+	// carry prints as an empty cell, which is the NULL the destination will
+	// receive.
+	//
+	// It prints BEFORE the write, so a load that fails still shows what it was
+	// holding -- which is when somebody most wants to see it.
+	Preview int
+
+	// PreviewBytes caps the printed block. Zero uses 4096. Rows are dropped
+	// from the bottom until it fits, and the footer says how many.
+	PreviewBytes int
+
+	// PreviewWriter is where the table goes. Nil means os.Stderr.
+	//
+	// stderr, and not stdout: stdout carries the @brevis: protocol, and a table
+	// printed there is a parse error rather than a preview.
+	PreviewWriter io.Writer
+
 	// FlushEvery writes every N records read, instead of accumulating the whole
 	// read in memory. Zero accumulates everything, which remains the default.
 	//
@@ -124,6 +179,15 @@ func (d Target) validate() error {
 				"A table cannot be partitioned on a column it does not have", d.PartitionBy)
 		}
 	}
+	if declared := d.declaredColumns(); d.DedupKey != "" && len(declared) > 0 {
+		if !slices.Contains(declared, d.DedupKey) {
+			return fmt.Errorf("Target.DedupKey names %q, which the declaration does "+
+				"not carry (it has: %s). A merge on a column the table does not have "+
+				"matches nothing, and a merge matching nothing looks exactly like one "+
+				"matching everything it should",
+				d.DedupKey, strings.Join(declared, ", "))
+		}
+	}
 	return nil
 }
 
@@ -143,6 +207,7 @@ func (d Target) options(run RunContext) core.WriteOptions {
 		Schema:      d.Schema,
 		PartitionBy: d.PartitionBy,
 		Dedup:       d.Dedup,
+		DedupKey:    d.DedupKey,
 		Run:         run,
 	}
 }

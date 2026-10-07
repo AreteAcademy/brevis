@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img"
+     aria-labelledby="layers-t layers-d" fill="none">
+  <title id="layers-t">The three layers of Brevis</title>
+  <desc id="layers-d">Data reaches a destination in one of two ways. The SDK
+    pulls it from HTTP APIs, Postgres, MySQL and files; the Gateway receives it
+    from anything that can send an HTTP POST. Both land it in one landing
+    layout, the same row whichever way it came, in BigQuery, Postgres, MySQL,
+    Redshift, Pub/Sub or files on S3 and GCS. The Core sits on the other side of
+    the line: it schedules, queues and starts the SDK's pod, and no data passes
+    through it.</desc>
+
+  <!-- The one rule: no data line touches the Core. Data lines are class
+       "data" and drawn with M/H/V only, so a script can check it; the Core
+       only ever sends a control line ("ctl") to the SDK.
+
+       Only drivers that exist are drawn:
+         sources       sdk/from      HTTP, files, postgres, mysql
+         destinations  sdk/to        bigquery, postgres, mysql, redshift, pubsub
+                       sdk/store     s3, gcs
+                       gateway/sink  the same six
+       A new driver adds a word here and in the drawing; nothing is drawn ahead.
+
+       The palette is fixed, as in execution.svg: this is loaded with <img>,
+       which inherits no page CSS. Labels are #869853, not the page olive:
+       #7d8e50 is 4.4:1 on the Core box, under the 4.5 floor. The narrow twin is layers-narrow.svg. -->
+  <style>
+    .box   { fill: #1a1e15; stroke: #38412b; stroke-width: 1; }
+    .core  { fill: #1f2419; stroke: #7d8e50; }
+    .chip  { fill: #141711; stroke: #38412b; stroke-width: 1; }
+    .trig  { fill: #141711; stroke: #38412b; stroke-width: 1; stroke-dasharray: 3 3; }
+    .land  { fill: #1f2419; stroke: #c7d66d; stroke-width: 1; stroke-opacity: .5; }
+    .data  { stroke: #c7d66d; stroke-width: 1.4; opacity: .75; }
+    .ctl   { stroke: #7d8e50; stroke-width: 1.4; stroke-dasharray: 5 4; }
+    .edge  { stroke: #38412b; stroke-width: 1; stroke-dasharray: 2 5; }
+    .t     { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .m     { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .name  { font-size: 17px; font-weight: 600; fill: #ecefe4; }
+    .lbl   { font-size: 11px; fill: #869853; letter-spacing: .08em; }
+    .rt    { font-size: 12.5px; fill: #a3ad97; }
+    .src   { font-size: 12px; fill: #ecefe4; }
+    .lime  { font-size: 13px; fill: #c7d66d; }
+  </style>
+  <defs>
+    <marker id="a-data" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#c7d66d"/>
+    </marker>
+    <marker id="a-ctl" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#7d8e50"/>
+    </marker>
+  </defs>
+
+  <!-- the line between the planes -->
+  <path class="edge" d="M310 20V490"/>
+  <g class="m lbl" text-anchor="middle">
+    <text x="160" y="520">CONTROL PLANE</text>
+    <text x="630" y="520">DATA PLANE</text>
+  </g>
+
+  <!-- column heads -->
+  <g class="m lbl">
+    <text x="40" y="30">WHEN</text>
+    <text x="340" y="30">PULL</text>
+    <text x="660" y="30">PUSH</text>
+  </g>
+
+  <!-- what starts a run: triggers, not data -->
+  <g class="t src" text-anchor="middle">
+    <rect class="trig" x="40" y="44" width="72" height="30" rx="3"/>
+    <rect class="trig" x="124" y="44" width="72" height="30" rx="3"/>
+    <rect class="trig" x="208" y="44" width="72" height="30" rx="3"/>
+    <text x="76" y="63">cron</text>
+    <text x="160" y="63">backfill</text>
+    <text x="244" y="63">run now</text>
+  </g>
+  <path class="ctl" d="M76 74V120H160M244 74V120H160M160 120V166" marker-end="url(#a-ctl)"/>
+
+  <!-- what the SDK pulls from -->
+  <g class="t src" text-anchor="middle">
+    <rect class="chip" x="340" y="44" width="59" height="30" rx="3"/>
+    <rect class="chip" x="407" y="44" width="59" height="30" rx="3"/>
+    <rect class="chip" x="474" y="44" width="59" height="30" rx="3"/>
+    <rect class="chip" x="541" y="44" width="59" height="30" rx="3"/>
+    <text x="369.5" y="63">HTTP</text>
+    <text x="436.5" y="63">Postgres</text>
+    <text x="503.5" y="63">MySQL</text>
+    <text x="570.5" y="63">files</text>
+  </g>
+  <path class="data" d="M369.5 74V120H470"/>
+  <path class="data" d="M436.5 74V120"/>
+  <path class="data" d="M503.5 74V120"/>
+  <path class="data" d="M570.5 74V120H470"/>
+  <path class="data" d="M470 120V166" marker-end="url(#a-data)"/>
+
+  <!-- what POSTs to the Gateway -->
+  <g class="t src" text-anchor="middle">
+    <rect class="chip" x="660" y="44" width="80" height="30" rx="3"/>
+    <rect class="chip" x="750" y="44" width="80" height="30" rx="3"/>
+    <rect class="chip" x="840" y="44" width="80" height="30" rx="3"/>
+    <text x="700" y="63">apps</text>
+    <text x="790" y="63">webhooks</text>
+    <text x="880" y="63">services</text>
+  </g>
+  <path class="data" d="M700 74V120H880"/>
+  <path class="data" d="M790 74V120"/>
+  <path class="data" d="M880 74V120"/>
+  <path class="data" d="M790 120V166" marker-end="url(#a-data)"/>
+  <text class="m lbl" x="800" y="146">HTTP POST</text>
+
+  <!-- the three layers -->
+  <rect id="core" class="box core" x="40" y="170" width="240" height="110" rx="3"/>
+  <text class="t name" x="60" y="202">Core</text>
+  <text class="t rt" x="60" y="226">schedules · queues</text>
+  <text class="t rt" x="60" y="246">one pod per step, any image</text>
+  <text class="m lbl" x="60" y="268">NO DATA DRIVERS</text>
+
+  <rect class="box" x="340" y="170" width="260" height="110" rx="3"/>
+  <text class="t name" x="360" y="202">SDK</text>
+  <text class="t rt" x="360" y="226">extract · shape · load</text>
+  <text class="t rt" x="360" y="246">a Go library</text>
+  <text class="m lbl" x="360" y="268">RUNS IN THE STEP'S POD</text>
+
+  <rect class="box" x="660" y="170" width="260" height="110" rx="3"/>
+  <text class="t name" x="680" y="202">Gateway</text>
+  <text class="t rt" x="680" y="226">receive · batch · deliver</text>
+  <text class="t rt" x="680" y="246">answers 202, never waits</text>
+  <text class="m lbl" x="680" y="268">N STATELESS REPLICAS</text>
+
+  <!-- the Core starts the SDK; it does not carry what the SDK carries -->
+  <path class="ctl" d="M280 225H336" marker-end="url(#a-ctl)"/>
+  <text class="m lbl" x="310" y="215" text-anchor="middle">runs</text>
+
+  <!-- both land the same row -->
+  <path class="data" d="M470 280V326" marker-end="url(#a-data)"/>
+  <path class="data" d="M790 280V326" marker-end="url(#a-data)"/>
+  <rect class="land" x="340" y="330" width="580" height="50" rx="3"/>
+  <text class="m lime" x="630" y="360" text-anchor="middle">one landing layout — the same row, whichever way it came</text>
+
+  <!-- where it lands -->
+  <path class="data" d="M630 380V405H384V426" marker-end="url(#a-data)"/>
+  <path class="data" d="M630 405H874V426" marker-end="url(#a-data)"/>
+  <path class="data" d="M482 405V426" marker-end="url(#a-data)"/>
+  <path class="data" d="M580 405V426" marker-end="url(#a-data)"/>
+  <path class="data" d="M678 405V426" marker-end="url(#a-data)"/>
+  <path class="data" d="M776 405V426" marker-end="url(#a-data)"/>
+  <g class="t src" text-anchor="middle">
+    <rect class="chip" x="340" y="430" width="88" height="30" rx="3"/>
+    <rect class="chip" x="438" y="430" width="88" height="30" rx="3"/>
+    <rect class="chip" x="536" y="430" width="88" height="30" rx="3"/>
+    <rect class="chip" x="634" y="430" width="88" height="30" rx="3"/>
+    <rect class="chip" x="732" y="430" width="88" height="30" rx="3"/>
+    <rect class="chip" x="830" y="430" width="88" height="30" rx="3"/>
+    <text x="384" y="449">BigQuery</text>
+    <text x="482" y="449">Postgres</text>
+    <text x="580" y="449">MySQL</text>
+    <text x="678" y="449">Redshift</text>
+    <text x="776" y="449">Pub/Sub</text>
+    <text x="874" y="449">S3 · GCS</text>
+  </g>
+
+  <!-- what the Core is not -->
+  <text class="t rt" x="40" y="350">The Core never touches your data.</text>
+  <text class="t rt" x="40" y="370">It decides when the SDK runs;</text>
+  <text class="t rt" x="40" y="390">the Gateway needs no Core at all.</text>
+</svg>

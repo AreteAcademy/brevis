@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>Destinos da ingestão — Documentação</title>
+<meta name="description" content="Os seis destinos, como cada banco escreve um registro, e por que a imagem carrega só o que você usa.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/docs/ingestion-sinks/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/docs/ingestion-sinks/index.md">
+<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/ingestion-sinks/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/ingestion-sinks/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="pt-BR">
+<meta property="og:title" content="Destinos da ingestão — Documentação">
+<meta property="og:description" content="Os seis destinos, como cada banco escreve um registro, e por que a imagem carrega só o que você usa.">
+<meta property="og:url" content="https://brevis.sh/docs/ingestion-sinks/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Destinos da ingestão — Documentação">
+<meta name="twitter:description" content="Os seis destinos, como cada banco escreve um registro, e por que a imagem carrega só o que você usa.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Destinos da ingestão",
+  "description": "Os seis destinos, como cada banco escreve um registro, e por que a imagem carrega só o que você usa.",
+  "inLanguage": "pt-BR",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Navegação principal">
+      <a href="/#produto">Produto</a>
+      <a href="/#principios">Princípios</a>
+      <a href="/docs/">Documentação</a>
+      <a href="/#open-source">Open source</a>
+      <div class="lang-switch" role="group" aria-label="Idioma"><a href="/docs/ingestion-sinks/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/docs/ingestion-sinks/" hreflang="en">EN</a></div>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explorar open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Menu da documentação
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Buscar na documentação</label>
+        <input type="search" id="q" placeholder="Buscar…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="Nada encontrado" hidden></div>
+      <nav class="side-nav" aria-label="Documentação">
+        <p class="side-group">Começar</p><ul class="side-list"><li><a href="/docs/introduction/">Introdução</a></li><li><a href="/docs/installation/">Instalação</a></li><li><a href="/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Conceitos</p><ul class="side-list"><li><a href="/docs/workflows/">Workflows</a></li><li><a href="/docs/scheduler-and-queue/">Scheduler e fila</a></li><li><a href="/docs/pod-per-step/">Pod por passo</a></li><li><a href="/docs/context/">Contexto entre passos</a></li></ul><p class="side-group">Referência</p><ul class="side-list"><li><a href="/docs/cli/">CLI</a></li><li><a href="/docs/parameters/">Parâmetros</a></li><li><a href="/docs/configuration/">Configuração</a></li><li><a href="/docs/runtime/">Runtime do passo</a></li></ul><p class="side-group">SDK e bibliotecas</p><ul class="side-list"><li><a href="/docs/sdk/">SDK em Go</a></li><li><a href="/docs/libraries/">Bibliotecas cliente</a></li><li><a href="/docs/python/">Python</a></li></ul><p class="side-group">Operação</p><ul class="side-list"><li><a href="/docs/kubernetes/">Kubernetes</a></li><li><a href="/docs/observability/">Observabilidade</a></li><li><a href="/docs/white-label/">Marca branca</a></li></ul><p class="side-group">Ingestão</p><ul class="side-list"><li><a href="/docs/ingestion/">Ingestão</a></li><li><a href="/docs/ingestion-sinks/" aria-current="page">Destinos da ingestão</a></li><li><a href="/docs/benchmarks/">Benchmarks</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentação</p>
+      <h1>Destinos da ingestão</h1>
+      <p class="doc-desc">Os seis destinos, como cada banco escreve um registro, e por que a imagem carrega só o que você usa.</p>
+      <p>Seis destinos, e a lista é explícita de propósito — um conector <em>planejado</em> e um conector que <em>roda</em> são coisas diferentes para quem está escolhendo.</p>
+<div class="table-wrap"><table><thead><tr><th>destino</th><th>estado</th><th>o que é uma escrita</th><th>provado contra</th></tr></thead><tbody><tr><td><code>pubsub</code></td><td><strong>roda</strong></td><td>uma publicação por lote, atributos e chave de ordenação vindos dos campos do evento</td><td>o emulador</td></tr><tr><td><code>postgres</code></td><td><strong>roda</strong></td><td><code>COPY FROM STDIN</code>, ou um <code>INSERT</code> em transação a partir de uma tabela temporária</td><td>um Postgres real</td></tr><tr><td><code>mysql</code></td><td><strong>roda</strong></td><td><code>INSERT</code> multi-linha em transação, ou <code>INSERT IGNORE</code></td><td>um MySQL real</td></tr><tr><td><code>files</code></td><td><strong>roda</strong></td><td>objetos NDJSON num diretório, <code>gs://</code> ou <code>s3://</code></td><td>o disco, e o S3</td></tr><tr><td><code>bigquery</code></td><td><strong>roda</strong></td><td>linhas carregadas, ou preparadas e feito <code>MERGE</code> no <code>ingestion_id</code></td><td><strong>só a configuração — não existe emulador</strong></td></tr><tr><td><code>redshift</code></td><td><strong>roda</strong></td><td>o lote para o S3, depois <code>COPY</code>, depois <code>MERGE</code></td><td><strong>só a configuração — não existe emulador</strong></td></tr></tbody></table></div>
+<p><strong>Dois dos seis não estão provados ponta a ponta</strong>, e a tabela diz isso em vez de deixar a palavra "roda" carregar uma afirmação que ninguém verificou. BigQuery e Redshift não têm emulador local, então o que está testado é a configuração, as recusas e o driver por baixo — que já é coberto pela suíte do SDK. O primeiro uso em produção de qualquer um dos dois é a prova de verdade, e deveria ser um stream de baixo risco.</p>
+<p>Um <code>type:</code> desconhecido é <strong>recusado na inicialização</strong>, nomeando o que <em>este binário</em> carrega. Um gateway que sobe com um destino que ele não tem é um gateway que descarta eventos por um motivo que ninguém enxerga.</p>
+<p><code>gs://</code> e <code>s3://</code> não são conectores separados: <code>files</code> lê os três formatos de caminho, então a fila de descarte é uma pasta num laptop e um bucket em produção sem mudar nada aqui.</p>
+<h2 id="como-cada-um-escreve">Como cada um escreve<a class="anchor" href="#como-cada-um-escreve" aria-label="link">#</a></h2>
+<p><code>write</code> é <strong>obrigatório e nunca tem padrão</strong> nos quatro destinos que escrevem em tabela, porque os dois modos são genuinamente diferentes e só o dono da tabela sabe qual é:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th><code>append</code></th><th><code>merge</code></th></tr></thead><tbody><tr><td><strong>postgres</strong></td><td><code>COPY FROM STDIN</code></td><td><code>INSERT … ON CONFLICT (ingestion_id) DO NOTHING</code></td></tr><tr><td><strong>mysql</strong></td><td><code>INSERT</code> multi-linha por bloco</td><td><code>INSERT IGNORE</code></td></tr><tr><td><strong>bigquery</strong></td><td>linhas carregadas (via GCS acima do limite inline)</td><td><code>MERGE … WHEN NOT MATCHED THEN INSERT</code></td></tr><tr><td><strong>redshift</strong></td><td><code>COPY</code> do S3</td><td><code>COPY</code> para uma tabela de preparo, depois <code>MERGE</code></td></tr></tbody></table></div>
+<p><code>merge</code> significa <strong>a mesma coisa nos quatro</strong>: a inserção idempotente, e a <strong>primeira entrega vence</strong>. Uma reentrega é ignorada, não aplicada — que é o certo para um evento, que aconteceu uma vez e não muda, e o errado para uma linha que carrega um estado mutável.</p>
+<p>Postgres e MySQL <strong>exigem um índice <code>UNIQUE</code> em <code>ingestion_id</code></strong> para o <code>merge</code>, e recusam sem ele em vez de gravar em append silenciosamente:</p>
+<div class="code-block" data-code="CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id);"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">CREATE</span> UNIQUE INDEX CONCURRENTLY <span class="t-k">ON</span> landing.orders (ingestion_id);</code></pre></div>
+<p>Sem o índice, o <code>ON CONFLICT</code> não tem o que casar, e toda reentrega duplicaria numa tabela cujo dono pediu o oposto. A recusa não é um lote perdido: ele é tentado de novo, e então enterrado na fila de descarte com o motivo e o <code>CREATE INDEX</code> no registro — ninguém perde eventos enquanto alguém cria o índice.</p>
+<p><strong><code>upsert</code> é recusado pelo nome.</strong> <code>ON CONFLICT DO UPDATE</code>, onde a <em>última</em> entrega vence, é um modo real que <strong>não está implementado</strong>. Aceitar a palavra e se comportar como <code>merge</code> é exatamente a falha que esse campo existe para impedir, então a configuração diz isso em vez de fazer aquilo.</p>
+<h2 id="cada-um-com-o-que-so-e-verdade-dele">Cada um com o que só é verdade dele<a class="anchor" href="#cada-um-com-o-que-so-e-verdade-dele" aria-label="link">#</a></h2>
+<div class="code-block" data-code="# Postgres: nome qualificado pelo schema, e a tabela precisa existir.
+sink: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# MySQL: não tem COPY, então a vazão fica uma ordem abaixo do Postgres no
+# mesmo hardware. Agrupe lotes maiores aqui.
+sink: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+# BigQuery: sem dsn_from. Ele autentica com a credencial do próprio pod, que é
+# para isso que existe workload identity. O nome não tem pontos — o projeto e o
+# dataset são campos próprios.
+sink: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+# Redshift: dois saltos, não um. Ele é colunar, um INSERT linha a linha paga o
+# custo de um bloco, e a única carga viável é COPY do S3. Então todo lote vira
+# um objeto no prefixo de preparo e depois um COPY — um stream com flush de um
+# segundo escreve 86.400 objetos por dia. Agrupe muito mais aqui.
+sink:
+  type: redshift
+  dsn_from: BREVIS_RS_DSN
+  table: landing.clicks
+  staging: s3://acme-staging/gateway/
+  iam_role: arn:aws:iam::123456789012:role/redshift-copy
+  write: merge"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-c"># Postgres: nome qualificado pelo schema, e a tabela precisa existir.</span>
+<span class="t-k">sink</span>: {type: postgres, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+<span class="t-c"># MySQL: não tem COPY, então a vazão fica uma ordem abaixo do Postgres no</span>
+<span class="t-c"># mesmo hardware. Agrupe lotes maiores aqui.</span>
+<span class="t-k">sink</span>: {type: mysql, dsn_from: BREVIS_DSN, table: landing.clicks, write: merge}
+
+<span class="t-c"># BigQuery: sem dsn_from. Ele autentica com a credencial do próprio pod, que é</span>
+<span class="t-c"># para isso que existe workload identity. O nome não tem pontos — o projeto e o</span>
+<span class="t-c"># dataset são campos próprios.</span>
+<span class="t-k">sink</span>: {type: bigquery, project: acme-prod, dataset: landing, table: clicks, write: merge}
+
+<span class="t-c"># Redshift: dois saltos, não um. Ele é colunar, um INSERT linha a linha paga o</span>
+<span class="t-c"># custo de um bloco, e a única carga viável é COPY do S3. Então todo lote vira</span>
+<span class="t-c"># um objeto no prefixo de preparo e depois um COPY — um stream com flush de um</span>
+<span class="t-c"># segundo escreve 86.400 objetos por dia. Agrupe muito mais aqui.</span>
+<span class="t-k">sink</span>:
+  <span class="t-k">type</span>: redshift
+  <span class="t-k">dsn_from</span>: BREVIS_RS_DSN
+  <span class="t-k">table</span>: landing.clicks
+  <span class="t-k">staging</span>: s3://acme-staging/gateway/
+  <span class="t-k">iam_role</span>: arn:aws:iam::123456789012:role/redshift-copy
+  <span class="t-k">write</span>: merge</code></pre></div>
+<p><code>dsn_from</code> nomeia a <strong>variável de ambiente</strong> que guarda a string de conexão, nunca a string: um DSN carrega uma senha e esse arquivo está no git. É a mesma separação que <code>secrets:</code> faz num workflow.</p>
+<p><code>iam_role</code> é uma role e o driver <strong>não aceita uma chave</strong>: uma chave na URL de um <code>COPY</code> termina no log de queries do cluster, que muita gente lê.</p>
+<h2 id="nenhuma-declaracao-de-colunas">Nenhuma declaração de colunas<a class="anchor" href="#nenhuma-declaracao-de-colunas" aria-label="link">#</a></h2>
+<p>O gateway não envia lista de colunas. Um pipeline declara as dele porque as linhas têm uma forma que ele controla; o lote de um gateway é o que <em>N</em> clientes postaram numa janela de flush, e as formas podem diferir.</p>
+<p>O driver resolve a lista a partir da <strong>própria tabela</strong>, cruzada com o que o lote carrega, <strong>antes</strong> de tocar no servidor. Um campo que a tabela não tem é recusado com a mensagem que resolve, em vez de falhar no meio de um <code>COPY</code> com <code>column "x" of relation "y" does not exist</code>; um campo que um evento omite é gravado como <code>NULL</code>.</p>
+<h2 id="a-lista-de-imports-e-a-selecao">A lista de imports é a seleção<a class="anchor" href="#a-lista-de-imports-e-a-selecao" aria-label="link">#</a></h2>
+<p>Os destinos são <strong>compilados junto</strong>, como os hooks, e o binário registra o que ele tem:</p>
+<div class="code-block" data-code="func main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(nil, gateway.WithSinks(sinks))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">func</span> main() {
+    sinks := gateway.NewSinks()
+    sinks.MustRegister(postgres.Sink, postgres.New)
+    sinks.MustRegister(files.Sink, files.New)
+    gateway.Main(<span class="t-k">nil</span>, gateway.WithSinks(sinks))
+}</code></pre></div>
+<p>O linker do Go descarta o que nada referencia, então um binário que nunca importa o driver de BigQuery não carrega BigQuery — nem o Arrow, nem a Storage Write API. É como o <code>database/sql</code> sempre funcionou.</p>
+<p>Vale o que parece:</p>
+<div class="table-wrap"><table><thead><tr><th>build</th><th>pacotes</th><th>binário</th></tr></thead><tbody><tr><td>os seis destinos, os dois object stores, os dois metastores</td><td>884</td><td>55,0 MB</td></tr><tr><td><code>postgres</code> + <code>files</code> local</td><td>233</td><td><strong>10,2 MB</strong></td></tr></tbody></table></div>
+<p>Os object stores são um <strong>segundo</strong> registro, porque um scheme não é um destino: <code>files</code> é um destino só que escreve em diretório, em <code>gs://</code> e em <code>s3://</code>, e um build que só escreve local não deveria carregar o SDK da AWS para isso.</p>
+<h3 id="duas-imagens-publicadas">Duas imagens publicadas<a class="anchor" href="#duas-imagens-publicadas" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>imagem</th><th>carrega</th><th>pull (amd64)</th></tr></thead><tbody><tr><td><code>areteacademy/brevis-gateway:0.8.0</code></td><td>os seis destinos, S3, GCS, Redis, memcached</td><td>17,9 MB</td></tr><tr><td><code>areteacademy/brevis-gateway:0.8.0-slim</code></td><td><code>postgres</code>, <code>files</code> local, <code>auto_table</code></td><td><strong>4,9 MB</strong></td></tr></tbody></table></div>
+<p>As duas saem de um build da mesma árvore, então as duas tags são sempre o mesmo commit. Não existe <code>latest-slim</code> — <code>latest</code> já é uma tag que ninguém deveria implantar.</p>
+<p><strong>Quer outro par?</strong> <code>cmd/gateway-slim</code> tem quinze linhas e o bloco de imports é toda a configuração dele. Copie, troque os imports, compile. Quem quer um hook já está compilando o próprio binário, então escolher os destinos não custa nada a mais.</p>
+<h3 id="a-recusa-diz-qual-build-voce-esta-segurando">A recusa diz qual build você está segurando<a class="anchor" href="#a-recusa-diz-qual-build-voce-esta-segurando" aria-label="link">#</a></h3>
+<div class="code-block" data-code="sink type &quot;bigquery&quot; is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist."><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>sink type "bigquery" is not one this binary carries (it has: files, postgres).
+Sinks are compiled in, so this is a build that left it out rather than a
+destination that does not exist.</code></pre></div>
+<p>Uma lista fixa mandaria essa pessoa procurar um erro de configuração que ela não cometeu. Vale igual para um object store: uma fila de descarte em <code>s3://</code> num binário sem o backend de S3 é recusada <strong>na inicialização</strong>, nomeando o scheme, em vez de no primeiro lote que ela precisaria enterrar.</p>
+<h2 id="uma-rota-n-tabelas-nada-declarado">Uma rota, N tabelas, nada declarado<a class="anchor" href="#uma-rota-n-tabelas-nada-declarado" aria-label="link">#</a></h2>
+<div class="code-block" data-code="sink:
+  type: auto_table
+  shape: columns
+  naming: {pattern: &#x27;^(app|svc)_[a-z0-9_]{2,40}$&#x27;, allow: [app_, svc_], max_new_per_hour: 20}
+  metastore: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+  into: {type: bigquery, project: acme-prod, dataset: landing, write: merge}"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">sink</span>:
+  <span class="t-k">type</span>: auto_table
+  <span class="t-k">shape</span>: columns
+  <span class="t-k">naming</span>: {pattern: '^(app|svc)_[a-z0-9_]{2,40}$', allow: [app_, svc_], max_new_per_hour: 20}
+  <span class="t-k">metastore</span>: {type: redis, addr_from: BREVIS_METASTORE_ADDR, ttl: 60s}
+  <span class="t-k">into</span>: {type: bigquery, project: acme-prod, dataset: landing, write: merge}</code></pre></div>
+<p>O <code>auto_table</code> <strong>roteia e não escreve</strong>: <code>into</code> é quem escreve, e não carrega <code>table</code> — a tabela vem de cada evento. Um <code>into</code> com <code>table</code> é recusado na inicialização, porque uma tabela fixa sob um roteador venceria em silêncio e todo evento pousaria nela.</p>
+<h3 id="o-envelope">O envelope<a class="anchor" href="#o-envelope" aria-label="link">#</a></h3>
+<p>O corpo é um <strong>envelope</strong>: campos de controle em cima, o registro dentro de <code>data</code>.</p>
+<div class="code-block" data-code="{
+  &quot;table_name&quot;: &quot;app_orders&quot;,
+  &quot;description&quot;: &quot;Pedidos do app&quot;,
+  &quot;operation&quot;: &quot;INSERT&quot;,
+  &quot;unique_key&quot;: &quot;id&quot;,
+  &quot;data&quot;: {
+    &quot;id&quot;: &quot;A-1&quot;,
+    &quot;total&quot;: 150,
+    &quot;customer&quot;: {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;},
+    &quot;items&quot;: [{&quot;sku&quot;: &quot;X&quot;, &quot;qtd&quot;: 2}]
+  }
+}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>{
+  "table_name": "app_orders",
+  "description": "Pedidos do app",
+  "operation": "INSERT",
+  "unique_key": "id",
+  "data": {
+    "id": "A-<span class="t-n">1</span>",
+    "total": <span class="t-n">150</span>,
+    "customer": {"id": <span class="t-n">7</span>, "uf": "SP"},
+    "items": [{"sku": "X", "qtd": <span class="t-n">2</span>}]
+  }
+}</code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>campo</th><th></th><th>o que é</th></tr></thead><tbody><tr><td><code>table_name</code></td><td><strong>obrigatório</strong></td><td>onde isso pousa</td></tr><tr><td><code>data</code></td><td><strong>obrigatório</strong></td><td>o registro, e só ele</td></tr><tr><td><code>unique_key</code></td><td>padrão <code>id</code></td><td>qual campo de <code>data</code> identifica o registro — <strong>obrigatório sob <code>merge</code></strong></td></tr><tr><td><code>operation</code></td><td>padrão <code>INSERT</code></td><td><code>INSERT</code>, <code>UPDATE</code> ou <code>DELETE</code></td></tr><tr><td><code>description</code></td><td>opcional</td><td><strong>aceito e ainda não usado</strong> — veja abaixo</td></tr></tbody></table></div>
+<p><code>table_name</code> ao lado de <code>total</code> e <code>customer</code> era um campo do <strong>transporte</strong> se passando por campo do <strong>registro</strong>. Separar os dois é a forma de todo formato de CDC — e é o que torna possível reservar um prefixo, porque agora existe um lugar onde só o produtor escreve.</p>
+<h3 id="a-chave-e-do-merge-nao-do-envelope">A chave é do <code>merge</code>, não do envelope<a class="anchor" href="#a-chave-e-do-merge-nao-do-envelope" aria-label="link">#</a></h3>
+<p><code>unique_key</code> é opcional, e se ele é <strong>exigido</strong> depende do modo de escrita — porque os dois modos querem coisas diferentes:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>write: merge</code></td><td><strong>obrigatório.</strong> O modo existe para guardar uma linha por registro, e <code>brevis_record_key</code> é o que "por registro" significa: o <code>qualify</code> que resolve a versão atual particiona por ele. Uma tabela de merge cheia de linhas que não nomeiam registro é uma tabela que ninguém resolve.</td></tr><tr><td><code>write: append</code></td><td><strong>opcional.</strong> Uma tabela de append é um log, e uma linha de log não precisa ser <em>sobre</em> um registro: uma linha de auditoria, um webhook, uma amostra de métrica. Exigir um <code>id</code> ali faria o produtor inventar um, o que é pior que <code>NULL</code> porque parece real.</td></tr></tbody></table></div>
+<p>Sob <code>append</code> a coluna nasce anulável e a linha sem chave fica com <code>NULL</code> — não com <code>""</code>, que é outro fato. E o <code>brevis_ingestion_id</code> continua existindo: sem chave, <strong>o conteúdo é a chave</strong>, e o mesmo documento duas vezes é o mesmo id.</p>
+<p><strong>Nomear um campo que não está em <code>data</code> é erro nos dois modos.</strong> "Você não disse" e "você disse algo que não está lá" são enganos diferentes, e só o primeiro passa:</p>
+<div class="code-block" data-code="{&quot;accepted&quot;:0,&quot;rejected&quot;:[&quot;event 0: \&quot;unique_key\&quot; names \&quot;pedido_id\&quot; as this
+ record&#x27;s identity and \&quot;data\&quot;.\&quot;pedido_id\&quot; is missing or empty. Drop
+ \&quot;unique_key\&quot; to fall back to \&quot;id\&quot;, or send the field&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>{"accepted":<span class="t-n">0</span>,"rejected":["event <span class="t-n">0</span>: \"unique_key\" names \"pedido_id\" as this
+ record's identity and \"data\".\"pedido_id\" is missing or empty. Drop
+ \"unique_key\" to fall back to \"id\", or send the field"]}</code></pre></div>
+<p><strong><code>description</code> é lido e hoje não vai a lugar nenhum.</strong> Ele existe no contrato para a página de ingestão do console, que ainda não foi escrita. Está dito aqui porque um campo aceito em silêncio é um campo que alguém acredita estar gravando.</p>
+<h3 id="oito-colunas-fixas-mais-o-que-o-registro-traz">Oito colunas fixas, mais o que o registro traz<a class="anchor" href="#oito-colunas-fixas-mais-o-que-o-registro-traz" aria-label="link">#</a></h3>
+<div class="table-wrap"><table><thead><tr><th>coluna</th><th></th><th></th></tr></thead><tbody><tr><td><code>brevis_ingestion_id</code></td><td><code>STRING</code></td><td>a identidade, e a chave do merge</td></tr><tr><td><code>brevis_record_key</code></td><td><code>STRING</code></td><td><code>data[unique_key]</code> — de qual <strong>registro</strong> isto fala; <code>NULL</code> sob <code>append</code></td></tr><tr><td><code>brevis_operation</code></td><td><code>STRING</code></td><td><code>INSERT</code>, <code>UPDATE</code> ou <code>DELETE</code></td></tr><tr><td><code>brevis_received_at</code></td><td><code>TIMESTAMP</code></td><td>a chegada, no <strong>nosso</strong> relógio — a coluna de partição</td></tr><tr><td><code>brevis_loaded_at</code></td><td><code>TIMESTAMP</code></td><td>a escrita, carimbada pelo <strong>destino</strong></td></tr><tr><td><code>brevis_stream</code></td><td><code>STRING</code></td><td>qual rota escreveu</td></tr><tr><td><code>brevis_gateway</code></td><td><code>STRING</code></td><td>qual implantação</td></tr><tr><td><code>brevis_received_bytes</code></td><td><code>INT64</code></td><td>o tamanho com que o evento <strong>chegou</strong>, envelope incluído</td></tr></tbody></table></div>
+<p>Estas oito são <strong>do SDK</strong>, não deste sink: <code>sdk.LandingSchema</code> as declara e <code>sdk.LandingID</code> cunha a identidade, então uma pipeline pode aterrissar a mesma tabela com os mesmos ids. Uma definição só, porque duas derivam. Veja <a href="/docs/sdk/#o-layout-de-aterrissagem">o layout de aterrissagem do SDK</a>.</p>
+<p><strong><code>brevis_</code> é reservado.</strong> Um <code>data</code> carregando qualquer chave com esse prefixo é recusado <strong>por evento</strong> — senão um produtor forja um campo de controle, e um <code>brevis_received_at</code> forjado é pior que nenhum, porque parece real.</p>
+<p><strong><code>brevis_loaded_at</code> é um <code>DEFAULT</code> do banco</strong>, não um valor que o gateway manda. O gateway sabe a hora do <strong>despacho</strong>, o destino sabe a da <strong>escrita</strong>, e a diferença entre as duas colunas é a latência ponta a ponta de verdade, por linha, sem instrumentar nada.</p>
+<p><strong><code>brevis_received_at</code> é a coluna de partição, nunca o relógio do cliente</strong>: um relógio de produtor pode estar errado ou ausente, e uma coluna de partição que o cliente controla é um cliente que pode escrever em 2035. Uma tabela de pouso sem partição é uma conta de consulta que só cresce. O agrupamento é por <code>brevis_record_key</code>, porque ler o histórico de um registro é o que se faz com uma tabela dessas.</p>
+<p>Uma declaração serve a todos os destinos, porque o gerador de DDL do SDK traduz cada tipo: <code>STRING</code> vira <code>TEXT</code> no Postgres, <code>LONGTEXT</code> no MySQL e <code>STRING</code> no BigQuery; <code>JSON</code> vira <code>JSONB</code>, <code>JSON</code> e <code>JSON</code>.</p>
+<h3 id="volume-sem-infra-para-medir-volume">Volume sem infra para medir volume<a class="anchor" href="#volume-sem-infra-para-medir-volume" aria-label="link">#</a></h3>
+<p><code>brevis_received_bytes</code> é <strong>grátis</strong>: o gateway já conta esses bytes no decode para alimentar o <code>buffer.flush.size</code>, e até então o número morria ali. Medir só o <code>data</code> custaria um <code>json.Marshal</code> por evento — 2,0 µs contra os 3,1 µs que o parse já gasta, <strong>67% a mais no caminho quente</strong> — para refinar um número cujo trabalho é tendência e atribuição.</p>
+<p>Ele responde o que as métricas <strong>estruturalmente não alcançam</strong>. Toda série <code>brevis_gateway_*</code> é por <em>stream</em> e não carrega label <code>table</code>, de propósito: com <code>auto_table</code> uma rota vira N tabelas e esse label é escolhido pelo produtor. Então "qual tabela está crescendo, e desde quando" não tinha resposta em lugar nenhum.</p>
+<div class="code-block" data-code="select date(brevis_received_at) dia,
+       count(*) eventos,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>select date(brevis_received_at) dia,
+       count(*) eventos,
+       sum(brevis_received_bytes)/1e9 gb
+from app_orders
+group by 1 order by 1 desc</code></pre></div>
+<p>Sem a coluna, a mesma pergunta significa varrer a coluna JSON inteira — <code>sum(length(to_json_string(data)))</code> — o que escaneia cerca de <strong>cinquenta vezes mais bytes</strong>, toda vez que alguém perguntar. A coluna se paga na primeira consulta.</p>
+<p><strong>É entrada, não armazenamento.</strong> O destino guarda a linha tipada e comprimida: 400 bytes de JSON podem virar 80 no disco. Somar essa coluna dá o que <em>chegou</em>, nunca o que é cobrado para manter.</p>
+<p>E <strong>o produtor não consegue escrevê-la</strong>. O gateway carimba o valor depois do hook e sobrescreve o que vier no envelope — um cliente que mandasse o campo reportaria o próprio volume, e somar deixaria de significar alguma coisa.</p>
+<h3 id="as-series-de-volume-sao-opt-in">As séries de volume são opt-in<a class="anchor" href="#as-series-de-volume-sao-opt-in" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_INGESTION_METRICS=true"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_INGESTION_METRICS=true</code></pre></div>
+<div class="code-block" data-code="brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_gateway_ingested_bytes_total{stream,table}
+brevis_gateway_ingested_events_total{stream,table}</code></pre></div>
+<p><strong>Desligadas por padrão</strong>, e o padrão é o ponto: <code>table</code> é um label que o <em>produtor</em> escolhe. Todo o resto deste arquivo é rotulado pelo que um operador escreveu no YAML, então a contagem de séries é conhecida antes do processo subir. Ninguém deveria descobrir uma conta de métricas porque atualizou.</p>
+<p>Um valor que ninguém consegue interpretar lê como <strong>desligado</strong>, nunca como falha: isso é observabilidade, e um erro de digitação aqui não pode ser o motivo de um endpoint de ingestão não subir.</p>
+<p>A coluna existe dos dois jeitos. A métrica compra o <em>agora</em>; a coluna compra o <em>desde quando</em> e o <em>de quem</em>.</p>
+<h3 id="duas-formas-um-contrato">Duas formas, um contrato<a class="anchor" href="#duas-formas-um-contrato" aria-label="link">#</a></h3>
+<p><code>shape</code> decide o que o <strong>registro</strong> contribui para a linha. O contrato do produtor é o mesmo dos dois jeitos — o envelope nunca muda. O que muda é a cara da tabela, que é decisão de quem opera e não de quem produz.</p>
+<div class="code-block" data-code="shape: document   # padrão
+shape: columns"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">shape</span>: document   <span class="t-c"># padrão</span>
+<span class="t-k">shape</span>: columns</code></pre></div>
+<p>Com <strong><code>document</code></strong>, <code>data</code> inteiro vai para uma coluna <code>JSON</code>:</p>
+<div class="code-block" data-code=" brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {&quot;id&quot;: &quot;A-1&quot;, &quot;total&quot;: 150, &quot;customer&quot;: {…}}"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code> brevis_ingestion_id | brevis_record_key | … | data
+ d7179bfe-…          | A-1               |   | {"id": "A-1", "total": 150, "customer": {…}}</code></pre></div>
+<p>Nunca há DDL depois do create. Um campo novo é uma chave nova: sem cota de alteração de schema, sem reabertura de stream de escrita, sem corrida entre réplicas — e consultável no dia em que chega. É onde o mercado pousou: Fivetran, Airbyte e Snowpipe entregam numa camada raw que não pode falhar e modelam depois.</p>
+<p>Com <strong><code>columns</code></strong>, cada campo do registro ganha uma coluna:</p>
+<div class="code-block" data-code=" id   | total | customer              | items
+ A-1  | 150   | {&quot;id&quot;: 7, &quot;uf&quot;: &quot;SP&quot;} | [{&quot;qtd&quot;: 2, &quot;sku&quot;: &quot;X&quot;}]"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code> id   | total | customer              | items
+ A-1  | 150   | {"id": 7, "uf": "SP"} | [{"qtd": 2, "sku": "X"}]</code></pre></div>
+<p><strong>Escalar vira <code>STRING</code>, objeto e array viram <code>JSON</code>, e não há inferência em lugar nenhum.</strong> <code>150</code> chegou como número e virou a string <code>150</code>. Isso é uma escolha e não uma limitação: um campo que chega inteiro hoje e fracionado amanhã mudaria o tipo de uma coluna sem ninguém escrever nada, e a linha que não couber vai para a fila de descarte. Tipar é a <strong>promoção</strong> — escrita no YAML e revisada num diff.</p>
+<p><strong>Um <code>null</code> não vira coluna nenhuma.</strong> Ele não tem forma, então não há o que ler: o campo aparece na tabela no primeiro evento que traz um VALOR, com a forma desse valor. O evento que mandou <code>null</code> grava <code>NULL</code> do mesmo jeito, que é o que ele queria dizer — e se a coluna já existe, por tê-la você declarado ou por outro evento tê-la criado, o <code>null</code> é gravado nela e não omitido.</p>
+<p><strong>E uma coluna <code>JSON</code> recebe um VALOR JSON, nunca uma string de um.</strong> Parece detalhe e é a diferença entre uma tabela consultável e uma tabela que parece certa:</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(customer) FROM bronze.orders;     -- object
+SELECT JSON_VALUE(customer, &#x27;$.uf&#x27;) ...;           -- SP"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(customer) <span class="t-k">FROM</span> bronze.orders;     <span class="t-c">-- object</span>
+<span class="t-k">SELECT</span> JSON_VALUE(customer, '$.uf') ...;           <span class="t-c">-- SP</span></code></pre></div>
+<p>Se o <code>JSON_TYPE</code> responde <code>string</code> e o <code>JSON_VALUE</code> responde NULL, o objeto foi codificado duas vezes — a coluna guarda o TEXTO do objeto em vez do objeto. As versões do gateway até a <strong>0.15.0</strong> inclusive faziam isso no BigQuery, nas <strong>duas</strong> formas; o <a href="https://github.com/AreteAcademy/brevis/blob/master/gateway/CHANGELOG.md" target="_blank" rel="noopener">changelog do gateway</a> traz a checagem de uma linha e o reparo. Postgres e MySQL nunca foram afetados: o servidor deles parseia o texto.</p>
+<p>Um nome de campo precisa casar com a regra do BigQuery, a mais estreita das quatro. O Postgres aceitaria quase tudo entre aspas, e essa é a armadilha: a tabela nasce lá e quebra no dia em que alguém aponta um stream para o BigQuery.</p>
+<p>As duas formas têm equivalente no SDK, e é o mesmo código, não um código parecido: <code>sdk.Landing(table, sdk.LandingKey("id"))</code> aterrissa <code>document</code>, e acrescentar <a href="/docs/sdk/#duas-formas-o-registro-inteiro-ou-uma-coluna-por-campo"><code>sdk.LandingColumns()</code></a> aterrissa <code>columns</code>. Mesmas colunas, mesmos valores, mesmo <code>brevis_ingestion_id</code> — então um stream muda de gateway para pipeline sem migração, e os dois podem ser lidos como uma tabela só.</p>
+<p>A pipeline cresce a mesma coluna do mesmo jeito: ponha <a href="/docs/sdk/#quando-aparece-um-campo-que-a-tabela-nao-tem"><code>Evolve: sdk.EvolveAdditiveFromPayload</code></a> no destino e um campo que o lote traz vira coluna, por esta regra, por este código.</p>
+<p><strong>O prefixo é configurável, e é uma decisão para o processo inteiro.</strong> <code>BREVIS_LANDING_PREFIX=acme</code> faz delas <code>acme_ingestion_id</code> e as demais — todo stream deste gateway, então dois sinks não conseguem divergir sobre uma tabela em que os dois podem escrever. A regra reservada acima vai junto: sob <code>acme_</code>, um produtor mandando <code>acme_region</code> é recusado e <code>brevis_region</code> é campo comum.</p>
+<p><strong>Escolha antes de a primeira tabela nascer.</strong> Trocar depois acrescenta oito colunas e abandona oito — nada remove coluna — então uma tabela que já carrega o layout sob um prefixo recusa uma carga declarando outro. A <a href="/docs/sdk/#o-prefixo-brevis-e-seu-para-trocar">página do SDK</a> tem a normalização e a saída.</p>
+<p><strong>Os campos de um objeto aninhado podem ganhar colunas próprias.</strong> <code>BREVIS_NORMALIZE_DATA=true</code> no processo do gateway achata um nível — <code>{"name": {"first": "x"}}</code> aterrissa como <code>name_first</code> — e todo stream compartilha, então dois sinks não conseguem divergir sobre uma tabela em que os dois podem escrever. A <a href="/docs/sdk/#uma-coluna-por-campo-aninhado">página do SDK</a> diz o que isso renomeia, que é a metade para ler antes de ligar.</p>
+<h3 id="update-e-delete-sao-registrados-nao-aplicados"><code>UPDATE</code> e <code>DELETE</code> são registrados, não aplicados<a class="anchor" href="#update-e-delete-sao-registrados-nao-aplicados" aria-label="link">#</a></h3>
+<p><code>brevis_operation</code> é uma coluna. Uma tabela de pouso é <strong>histórico</strong>: um <code>UPDATE</code> aplicado no lugar perde a versão anterior, e o dia em que você quer essa versão é o dia em que algo quebrou. Resolver "a versão atual de cada registro" é trabalho do modelo lá embaixo:</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation &lt;&gt; &#x27;DELETE&#x27;"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+   and brevis_operation &lt;&gt; 'DELETE'</code></pre></div>
+<p>É o que Debezium, Fivetran e Airbyte fazem — e significa que CDC custa <strong>nada</strong> no caminho de escrita: nenhum modo upsert, nenhum lock, nenhum delete.</p>
+<h3 id="a-identidade-nao-tem-relogio">A identidade não tem relógio<a class="anchor" href="#a-identidade-nao-tem-relogio" aria-label="link">#</a></h3>
+<div class="code-block" data-code="brevis_ingestion_id = uuid5(auto_table | tabela | data[unique_key] | sha256(canônico(data)))"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>brevis_ingestion_id = uuid5(auto_table | tabela | data[unique_key] | sha256(canônico(data)))</code></pre></div>
+<p>Não há <code>occurred_at</code> na fórmula, e isso é deliberado: a chegada virou responsabilidade <strong>nossa</strong>, e o nosso relógio é <code>time.Now()</code> — diferente em cada entrega. Uma identidade com ele dentro faria de cada reentrega um evento novo, e o <code>merge</code> pararia de absorver qualquer coisa.</p>
+<div class="code-block" data-code="mesmo registro, mesmo conteúdo, duas vezes  →  mesmo id, o merge absorve
+mesmo registro, conteúdo mudou              →  id diferente, as duas versões pousam"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>mesmo registro, mesmo conteúdo, duas vezes  →  mesmo id, o merge absorve
+mesmo registro, conteúdo mudou              →  id diferente, as duas versões pousam</code></pre></div>
+<p>A ressalva é a documentada: dois eventos genuinamente distintos com <code>data</code> idêntico byte a byte viram um. Para CDC isso está <strong>certo</strong> — dois updates iguais no mesmo registro com os mesmos valores são o mesmo fato.</p>
+<p>A impressão digital é sobre o documento em forma <strong>canônica</strong> — chaves ordenadas em todo nível, arrays na ordem, tudo entre aspas. O Go randomiza a iteração de map, então um hash ingênuo diferiria entre duas entregas do mesmo evento, que é exatamente o que ele existe para impedir.</p>
+<h3 id="a-tabela-cresce-uma-coluna-sozinha">A tabela cresce uma coluna sozinha<a class="anchor" href="#a-tabela-cresce-uma-coluna-sozinha" aria-label="link">#</a></h3>
+<p>Um <code>data</code> com um campo que a tabela não tem faz a coluna nascer. <strong>Aditivo, e só aditivo</strong>: nada é removido, nada é estreitado.</p>
+<p>No BigQuery isso passou a valer só na <strong>0.13.0</strong>. Antes dela o <code>auto_table</code> declarava <code>Evolve: additive</code> em todo destino e só os drivers de Postgres e MySQL liam a declaração — então lá o formato ficava congelado na criação e nada dizia isso.</p>
+<blockquote><p><strong>Vindo de 0.11.0 ou 0.12.0</strong>, as tabelas criadas antes da <code>0.11.0</code> precisam de uma migração única, porque a oitava coluna fixa entrou na declaração e não na tabela:  ``<code>sql ALTER TABLE </code>&lt;dataset&gt;.&lt;tabela&gt;<code> ADD COLUMN IF NOT EXISTS brevis_received_bytes INT64 </code>``  Postgres e MySQL nunca foram afetados.</p></blockquote>
+<p>Um lote que perde a corrida pelo <code>ALTER</code> falha, e o retry comum da esteira resolve — um lote esperando DDL e um lote esperando worker são a mesma coisa, então não existe um segundo buffer. Entre réplicas, o metastore segura um <em>debounce</em> de um segundo por tabela e por forma, para que dez réplicas vendo o mesmo campo novo não virem dez <code>ALTER</code> contra a cota do BigQuery de cinco operações de metadados por tabela a cada dez segundos.</p>
+<p><strong>Debounce e não lock</strong>: nada é liberado e nenhum lease é renovado. Quem perde está sendo <em>retentado</em>, não bloqueado, e uma réplica que morre segurando custa um segundo às outras. É o que o mercado faz — Delta Lake e Iceberg commitam otimista e retentam, o Kafka Connect ganha serialização da ordem da partição, o Fivetran tem um escritor por tabela.</p>
+<h3 id="o-nome-e-a-superficie-de-ataque">O nome é a superfície de ataque<a class="anchor" href="#o-nome-e-a-superficie-de-ataque" aria-label="link">#</a></h3>
+<p>O <code>auto_table</code> transforma uma string de um payload em DDL, então todo campo de <code>naming</code> é uma recusa:</p>
+<ul><li><strong><code>pattern</code></strong> tem como padrão <code>^[a-z][a-z0-9_]{2,48}$</code> — a interseção do que Postgres, MySQL, BigQuery e Redshift aceitam sem aspas. Um nome que passa não precisa de aspas em lugar nenhum e não consegue carregar uma injeção.</li><li><strong><code>allow</code></strong> estreita mais, por prefixo.</li><li><strong><code>max_new_per_hour</code></strong> (padrão 20) limita <strong>criações</strong> numa hora móvel, nunca escritas: uma tabela que já existe nunca é limitada. Com <code>metastore: memory</code> o orçamento vive no processo e quatro réplicas admitem quatro vezes isso; com <code>redis</code> ou <code>memcached</code> elas dividem um contador só.</li></ul>
+<p>Um nome fora das regras é recusado <strong>por evento</strong>, na resposta, e todo evento bem formado da mesma requisição pousa assim mesmo:</p>
+<div class="code-block" data-code="{&quot;accepted&quot;: 0, &quot;rejected&quot;: [&quot;event 0: the table name \&quot;pedidos\&quot; does not match ^(app|svc)_[a-z0-9_]{2,40}$&quot;]}"><div class="code-head"><span class="code-lang">json</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>{"accepted": <span class="t-n">0</span>, "rejected": ["event <span class="t-n">0</span>: the table name \"pedidos\" does not match ^(app|svc)_[a-z0-9_]{<span class="t-n">2</span>,<span class="t-n">40</span>}$"]}</code></pre></div>
+<p>Por evento e não por lote, de propósito. Recusar na hora da escrita derrubaria o lote inteiro — um evento malformado de um produtor enterrando os eventos de todos os outros da mesma janela, e nenhum deles avisado.</p>
+<p><strong>O <code>auto_table</code> é recusado num endpoint sem <code>listen.auth</code></strong>, inclusive em <code>BREVIS_ENV=local</code>. Um produtor que pode nomear uma tabela pode criar uma, então ele exige autenticação mesmo onde um stream comum não exigiria. Uma NetworkPolicy não cobre isso: ela limita quem alcança a porta, não que nome de tabela a pessoa pede.</p>
+<h3 id="o-metastore-e-um-cache">O metastore é um cache<a class="anchor" href="#o-metastore-e-um-cache" aria-label="link">#</a></h3>
+<p>Ele existe para que uma escrita por evento não vire uma consulta por evento, e guarda três coisas: quais tabelas existem, o <em>debounce</em> do DDL e o contador do <code>max_new_per_hour</code>.</p>
+<p>É um cache e <strong>não</strong> uma fonte de verdade. O destino decide se a tabela existe, e <em>N</em> réplicas correndo para criar uma é o caso normal: <code>AlreadyExists</code> é sucesso, e isto só reduz a corrida. O TTL é quanto tempo ele pode estar <strong>errado</strong>.</p>
+<div class="table-wrap"><table><thead><tr><th>backend</th><th>quando</th></tr></thead><tbody><tr><td><code>memory</code></td><td>o padrão, não precisa de nada. Com <strong>uma</strong> réplica é a resposta certa</td></tr><tr><td><code>redis</code></td><td><code>addr_from</code> obrigatório. Um <code>SETNX</code> é o claim, um <code>INCR</code> é o contador</td></tr><tr><td><code>memcached</code></td><td><code>addr_from</code> obrigatório. Um <code>Add</code> é o claim, e a expiração tem granularidade de <strong>segundo</strong></td></tr></tbody></table></div>
+<p><strong>O Redis é o mais rápido num stream com chave de roteamento</strong>, e a diferença merece um número em vez de um adjetivo. Com o gatilho por tabela, uma janela pede um claim por tabela: o Redis responde 94 deles numa ida-e-volta em pipeline, e os demais backends respondem em paralelo, limitados em 32. Medido contra um backend a 25 ms — 94 claims:</p>
+<div class="table-wrap"><table><thead><tr><th>backend</th><th>um de cada vez</th><th>como sai hoje</th></tr></thead><tbody><tr><td><code>redis</code></td><td>2,589 s</td><td><strong>29,8 ms</strong></td></tr><tr><td><code>memcached</code></td><td>2,577 s</td><td><strong>89,4 ms</strong></td></tr></tbody></table></div>
+<p>Três ondas contra uma ida-e-volta. Os dois cabem nos 500 ms que um claim tem, então o memcached é a escolha mais lenta e não uma recusada.</p>
+<p>Com várias réplicas, <code>memory</code> dá a cada uma a sua: o debounce não debounce nada e o <code>max_new_per_hour</code> limita um <em>processo</em>. É a única razão de os outros dois existirem.</p>
+<p><strong>Um metastore fora do ar não pode derrubar uma escrita.</strong> Um <code>Get</code> que erra é miss, um claim que erra se comporta como ganho, um contador que erra relaxa o limite. Um cache capaz de parar a ingestão é pior que nenhum cache.</p>
+<p><strong>E "fora do ar" inclui "lento".</strong> O claim roda com o lock do buffer na mão, então um backend que leva dois segundos para responder são dois segundos em que aquele stream não aceita nada. Toda chamada é limitada em <strong>500 ms</strong> e falha aberto depois disso. O Redis obedece isso como contexto do chamador; o <code>gomemcache</code> não aceita contexto nenhum, então o memcached obedece como prazo de socket — o mesmo limite por dois caminhos, porque um dos dois clientes não tem como ser mandado parar.</p>
+<p><strong><code>ttl: 0</code> significa nunca</strong>, e dizer nada continua pegando o padrão de um minuto — três estados, não dois.</p>
+<p>O relógio <strong>não</strong> é o que recupera de uma entrada errada. Uma escrita que o destino recusa chama <code>invalidate</code>, que derruba a entrada na hora e deixa o retry da própria esteira voltar contra um cache frio: uma tabela dropada na mão custa <strong>uma tentativa falha</strong>, não um minuto.</p>
+<p>Expirar tem preço. O <code>sinkFor</code> cobra o <code>naming.max_new_per_hour</code> quando <strong>não sabe</strong> de uma tabela — então um miss cobra por uma tabela que existe há semanas, e um pod que reinicia um minuto depois do último evento de uma tabela não aproveita nada do backend compartilhado que está pagando. Com tabelas de vida longa, <code>ttl: 0</code> é a resposta.</p>
+<blockquote><p>Em <code>0.12.0</code> e <code>0.13.1</code> essa grafia <strong>não parseia</strong> — o YAML lê um zero puro como inteiro e a <code>0.13.2</code> é a primeira que aceita as duas. Nessas versões, escreva <code>ttl: 0s</code>.</p></blockquote>
+<p><code>addr_from</code> nomeia a <strong>variável de ambiente</strong> que guarda o endereço, nunca o endereço: ele carrega senha com frequência suficiente.</p>
+<h3 id="o-bigquery-tem-um-piso-de-flush">O BigQuery tem um piso de flush<a class="anchor" href="#o-bigquery-tem-um-piso-de-flush" aria-label="link">#</a></h3>
+<p><strong>O BigQuery permite 1.500 load jobs por tabela por dia.</strong> A janela padrão de um segundo dá 86.400 — 57× a cota, esgotada em cerca de vinte e cinco minutos. Não é problema para o Pub/Sub, e o número chegaria aqui <em>vindo</em> de uma config de Pub/Sub.</p>
+<p>Então um stream que escreve no BigQuery, direto ou por um roteador, é <strong>recusado no carregamento</strong> com janela abaixo de 60s. A resposta de verdade é a Storage Write API, que ainda não foi escrita; até lá, a config recusa uma janela que não consegue honrar em vez de deixar o primeiro deploy descobrir.</p>
+<p>O <code>auto_table</code> não roteia para <strong>Redshift</strong>: aquele driver não cria tabelas, então todo nome novo falharia na carga. Recusado pelo nome, na inicialização.</p>
+<h2 id="o-que-ainda-nao-existe">O que ainda não existe<a class="anchor" href="#o-que-ainda-nao-existe" aria-label="link">#</a></h2>
+<p><code>sqlite</code>, <code>dynamodb</code>, <code>kinesis</code>, <code>sqs</code>, <code>sns</code>, <code>kafka</code> e <code>rabbitmq</code> estão planejados e nada foi escrito. (<code>redis</code> e <code>memcached</code> existem como <strong>metastore</strong>, que é outra coisa: um cache do que se sabe sobre as tabelas, nunca um destino.) A tabela no topo desta página diz o estado de cada um, e ela é atualizada quando o estado muda — não antes.</p>
+
+      <nav class="pagers" aria-label="Páginas">
+        <a class="pager pager-prev" href="/docs/ingestion/"><span>Anterior</span><strong>Ingestão</strong></a>
+        <a class="pager pager-next" href="/docs/benchmarks/"><span>Próximo</span><strong>Benchmarks</strong></a>
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/pt/docs/ingestion-sinks.md" target="_blank" rel="noopener">Editar esta página no GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="Nesta página">
+      <p class="toc-t">Nesta página</p>
+      <ul><li class="toc-2"><a href="#como-cada-um-escreve">Como cada um escreve</a></li><li class="toc-2"><a href="#cada-um-com-o-que-so-e-verdade-dele">Cada um com o que só é verdade dele</a></li><li class="toc-2"><a href="#nenhuma-declaracao-de-colunas">Nenhuma declaração de colunas</a></li><li class="toc-2"><a href="#a-lista-de-imports-e-a-selecao">A lista de imports é a seleção</a></li><li class="toc-3"><a href="#duas-imagens-publicadas">Duas imagens publicadas</a></li><li class="toc-3"><a href="#a-recusa-diz-qual-build-voce-esta-segurando">A recusa diz qual build você está segurando</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas-nada-declarado">Uma rota, N tabelas, nada declarado</a></li><li class="toc-3"><a href="#o-envelope">O envelope</a></li><li class="toc-3"><a href="#a-chave-e-do-merge-nao-do-envelope">A chave é do merge, não do envelope</a></li><li class="toc-3"><a href="#oito-colunas-fixas-mais-o-que-o-registro-traz">Oito colunas fixas, mais o que o registro traz</a></li><li class="toc-3"><a href="#volume-sem-infra-para-medir-volume">Volume sem infra para medir volume</a></li><li class="toc-3"><a href="#as-series-de-volume-sao-opt-in">As séries de volume são opt-in</a></li><li class="toc-3"><a href="#duas-formas-um-contrato">Duas formas, um contrato</a></li><li class="toc-3"><a href="#update-e-delete-sao-registrados-nao-aplicados">UPDATE e DELETE são registrados, não aplicados</a></li><li class="toc-3"><a href="#a-identidade-nao-tem-relogio">A identidade não tem relógio</a></li><li class="toc-3"><a href="#a-tabela-cresce-uma-coluna-sozinha">A tabela cresce uma coluna sozinha</a></li><li class="toc-3"><a href="#o-nome-e-a-superficie-de-ataque">O nome é a superfície de ataque</a></li><li class="toc-3"><a href="#o-metastore-e-um-cache">O metastore é um cache</a></li><li class="toc-3"><a href="#o-bigquery-tem-um-piso-de-flush">O BigQuery tem um piso de flush</a></li><li class="toc-2"><a href="#o-que-ainda-nao-existe">O que ainda não existe</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Filosofia aplicada à infraestrutura de dados.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>projeto</h2>
+        <ul>
+          <li><a href="/#produto">Produto</a></li>
+          <li><a href="/#principios">Princípios</a></li>
+          <li><a href="/#open-source">Open source</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>código</h2>
+        <ul>
+          <li><a href="/docs/">Documentação</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repositório</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/discussions" target="_blank" rel="noopener">Discussões</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · construído em Go</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+</body>
+</html>

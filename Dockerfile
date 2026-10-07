@@ -53,6 +53,52 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
       -o /out/brevis ./cmd/brevis
 
+# The agent, which is the other half of `host:`.
+#
+# Built here for the reason the gateway is: it shares this stage's cache and
+# its ldflags, and the artifacts stay apart. It is a different PROGRAM from the
+# engine -- nothing in the engine imports internal/agent -- and it ships as its
+# own image below.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT} -X main.BuildDate=${BUILD_DATE}" \
+      -o /out/brevis-agent ./cmd/brevis-agent
+
+# The gateway, which is a DIFFERENT binary from a different module.
+#
+# It is separate for the reason engine-weight.sh states: the engine orchestrates
+# and never touches customer data, and the gateway does nothing else. Building
+# it here rather than in a Dockerfile of its own is only so the two share this
+# one's build cache and its ldflags; the artifacts stay apart.
+#
+# `-mod=mod`, because the module `replace`s the SDK with the tree next door and
+# does not pin its graph -- the same reason the examples need it.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-gateway ./cmd/gateway \
+    && mkdir -p /out/dead-letter
+
+# And the slim gateway, which is the SAME package with a different main.
+#
+# Two sinks -- postgres and a local `files` dead letter -- instead of six, and
+# no object stores. That is 10 MB against 49, and the difference is entirely
+# drivers a deployment with those two will never call: the AWS SDK, the Google
+# client stack, Arrow.
+#
+# Built here rather than in an image of its own so both share this cache, and
+# because they must be built from ONE tree: two images from two checkouts is
+# how a `-slim` tag ends up one commit behind the tag it claims to match.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-gateway-slim ./cmd/gateway-slim
+
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
 #
@@ -92,3 +138,102 @@ RUN adduser -D -u 65532 brevis
 USER brevis
 ENTRYPOINT ["/sbin/tini", "--", "brevis"]
 CMD ["scheduler"]
+
+# The agent: alpine, and the reason is the same one the worker has.
+#
+# ITS WHOLE JOB IS TO RUN A COMMAND. Its default shell is `/bin/sh -c`, so a
+# distroless agent is an agent that can run nothing -- it would start, answer
+# the engine, and fail every step with "no such file or directory". The api and
+# the gateway are distroless because they execute nothing; this one is the
+# opposite case.
+#
+# What a deployment adds on top is the step's own runtime -- dbt, a Python, a
+# licensed binary -- because that is the point of `host:`: the pod is yours and
+# it already has what it needs. This image is the floor, not the ceiling.
+FROM alpine:3.20 AS agent
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis agent" \
+      org.opencontainers.image.description="Runs Brevis steps on a host the engine does not manage" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+RUN apk add --no-cache ca-certificates tini
+COPY --from=build /out/brevis-agent /usr/local/bin/brevis-agent
+RUN adduser -D -u 65532 brevis
+USER brevis
+# tini for the same reason the worker has it: this process spawns a shell which
+# spawns whatever the step is, and PID 1 without a reaper leaves zombies behind
+# on a long-lived pod -- which is exactly what this image is for.
+ENTRYPOINT ["/sbin/tini", "--", "brevis-agent"]
+# No default CMD. Every flag that matters -- the token, the secrets directory,
+# the allowlist, the advertised address -- is a decision for the deployment,
+# and a default here would be one of them made silently.
+
+# `gateway` is its own image: it holds the gateway binary and nothing else.
+#
+# Distroless, like the api and for the same reason: it serves HTTP and executes
+# nothing, so it needs no shell. The config is a file the operator mounts --
+# never baked in, because a gateway that has to be rebuilt to change a flush
+# interval is a gateway nobody tunes.
+FROM gcr.io/distroless/static-debian12:nonroot AS gateway
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis gateway" \
+      org.opencontainers.image.description="An HTTP endpoint that lands data" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-gateway /usr/local/bin/brevis-gateway
+
+# The dead letter's directory, owned by the user that writes it.
+#
+# A named volume inherits the ownership of the image path it is first mounted
+# over. Without this the volume arrives owned by root, the process is nonroot,
+# and the dead letter fails with `mkdir: permission denied` -- at the exact
+# moment it is needed, which is after a sink has already refused. Found by
+# pointing a gateway at a topic that does not exist and reading the log.
+COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
+
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-gateway"]
+CMD ["/etc/brevis/gateway.yaml"]
+
+# `gateway-slim` is the gateway with two sinks instead of six.
+#
+# Postgres and a local `files` dead letter, which is the shape most deployments
+# actually have: events arrive over HTTP and land in a table, and what the table
+# will not take goes to a mounted volume.
+#
+# 10 MB against the full image's 49. A config naming `bigquery` here is refused
+# AT STARTUP, naming what this binary carries -- "not one this binary carries
+# (it has: files, postgres)" -- which is the honest message, because it is a
+# build that left it out rather than a destination that does not exist.
+#
+# Want a different pair? cmd/gateway-slim is fifteen lines and the import list
+# is the whole configuration. Anybody with a hook is compiling their own binary
+# already.
+FROM gcr.io/distroless/static-debian12:nonroot AS gateway-slim
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="Brevis gateway (slim)" \
+      org.opencontainers.image.description="An HTTP endpoint that lands data: Postgres and a local dead letter" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-gateway-slim /usr/local/bin/brevis-gateway
+
+# The same volume ownership the full image needs, and for the same reason: a
+# named volume inherits the ownership of the path it is first mounted over, and
+# without this the dead letter fails with `mkdir: permission denied` at the one
+# moment it matters.
+COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
+
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-gateway"]
+CMD ["/etc/brevis/gateway.yaml"]
