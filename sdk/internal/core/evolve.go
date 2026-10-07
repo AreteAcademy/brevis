@@ -25,7 +25,48 @@ const (
 	// and the narrowness is the point: adding a nullable column cannot break a
 	// reader, and every other change can.
 	EvolveAdditive
+
+	// EvolveAdditiveFromPayload is EvolveAdditive plus the columns the BATCH
+	// carries and the declaration does not.
+	//
+	// The type comes from TypeFromShape and never from the value, so this is
+	// not the SDK inferring a schema: `STRING` unless the field is an object
+	// or an array is a RULE, the same one the gateway lands `shape: columns`
+	// with. What it decides is how the ROW's declaration is completed, never
+	// what a column means.
+	//
+	// It still only ADDS. Plan emits `add` and `widen` and nothing else, so a
+	// field that disappears from the source stops being written and its column
+	// stays -- which is not a gap, it is what a landing table is for.
+	EvolveAdditiveFromPayload
 )
+
+// MayAdd reports whether this mode adds a column the table lacks.
+//
+// A PREDICATE and not a comparison, and the difference is the only reason it
+// exists. `mode == EvolveAdditive` answers "no" for every value added to this
+// enum after it -- silently, so the new mode is not refused, it simply does
+// nothing. Four of the places that asked it that way would have made a third
+// mode LESS capable than EvolveAdditive, and one of them returns early from
+// evolveTable, which would have shipped it inert on BigQuery.
+//
+// That is not hypothetical. metadata.go records this SDK paying for it once:
+// "the feature would have been inert the day it shipped. It was found by
+// loading against a real Postgres, not by reading the code."
+//
+// Ordered rather than enumerated: a mode that adds is at least EvolveAdditive,
+// and anything past it adds too. A new value that does NOT add would have to
+// sit before it, which is a decision somebody makes on purpose -- and the
+// zero value is still EvolveNone, so the default is still "refuse".
+func (e Evolution) MayAdd() bool { return e >= EvolveAdditive }
+
+// FromPayload reports whether the BATCH may contribute columns the
+// declaration does not have.
+//
+// Named rather than compared, for the reason MayAdd is: a mode added later
+// that also reads the payload must not have to remember to update a list of
+// equalities spread across four packages.
+func (e Evolution) FromPayload() bool { return e == EvolveAdditiveFromPayload }
 
 // There is deliberately no EvolveAll.
 //
@@ -89,7 +130,7 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 	for _, c := range s {
 		have, present := actual[c.Name]
 		if !present {
-			if mode == EvolveNone {
+			if !mode.MayAdd() {
 				refused = append(refused, fmt.Sprintf(
 					"%s is declared and the table does not have it", c.Name))
 				continue
@@ -100,14 +141,22 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 		if have == c.Type {
 			continue
 		}
-		if mode == EvolveAdditive && widenings[c.Type][have] {
+		if mode.MayAdd() && widenings[c.Type][have] {
 			changes = append(changes, Change{
 				Column: c.Name, Kind: "widen", From: string(have), To: c.Type,
 			})
 			continue
 		}
-		refused = append(refused, fmt.Sprintf(
-			"%s is %s in the table and %s in the declaration", c.Name, have, c.Type))
+		// A column a BATCH created is refused in the same words plus one:
+		// without it the message reads as though somebody declared this and
+		// got it wrong, and nobody did. What the reader should do differs --
+		// there is no declaration of theirs to fix.
+		why := fmt.Sprintf("%s is %s in the table and %s in the declaration",
+			c.Name, have, c.Type)
+		if c.Note != "" {
+			why += fmt.Sprintf(" (%s)", c.Note)
+		}
+		refused = append(refused, why)
 	}
 
 	// A column the table has and the declaration does not is NOT a change. It
@@ -120,7 +169,7 @@ func (s Schema) Plan(actual map[string]ColumnType, mode Evolution, table string)
 		sort.Strings(refused)
 		verb := "does not match"
 		how := "Set Evolve to sdk.EvolveAdditive to add the missing columns"
-		if mode == EvolveAdditive {
+		if mode.MayAdd() {
 			how = "A narrowing or a change of kind is refused: rename the column, " +
 				"or migrate it yourself"
 		}
@@ -162,8 +211,25 @@ func (s Schema) AlterTable(d Dialect, table string, changes []Change) ([]string,
 			// the declaration says. NOT NULL would have to be true of every row
 			// that already exists, and no value this SDK could invent is. The
 			// declaration keeps describing what a NEW table gets.
-			out = append(out, "ALTER TABLE "+qualified(d, table)+
-				" ADD COLUMN "+d.quote(col.Name)+" "+sqlType)
+			add := "ALTER TABLE " + qualified(d, table) +
+				" ADD COLUMN " + d.quote(col.Name) + " " + sqlType
+			// The note travels WITH the ADD, in the same statement group, so
+			// a column cannot come into being without the sentence saying
+			// where it came from. MySQL carries it inside the definition and
+			// has no COMMENT ON COLUMN at all; the others take their own
+			// statement.
+			if col.Note != "" && !d.NoComment {
+				if d.InlineComment {
+					add += " COMMENT " + sqlQuote(col.Note)
+					out = append(out, add)
+				} else {
+					out = append(out, add,
+						"COMMENT ON COLUMN "+qualified(d, table)+"."+d.quote(col.Name)+
+							" IS "+sqlQuote(col.Note))
+				}
+			} else {
+				out = append(out, add)
+			}
 
 			// The DEFAULT is set in a SECOND statement, and that is not
 			// tidiness. `ADD COLUMN ... DEFAULT x` BACKFILLS the rows already
@@ -223,4 +289,14 @@ func (d Dialect) alterType(table, column, sqlType string) string {
 	}
 	return "ALTER TABLE " + qualified(d, table) + " ALTER COLUMN " +
 		d.quote(column) + " TYPE " + sqlType
+}
+
+// sqlQuote renders a string literal.
+//
+// Doubling the quote is the whole of it, and it is here rather than left to
+// a driver's parameters because DDL takes no parameters: an ALTER is text or
+// it is nothing. A note carrying an apostrophe -- "it's from a batch" -- would
+// otherwise end the literal, and everything after it would be SQL.
+func sqlQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }

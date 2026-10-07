@@ -1,0 +1,477 @@
+# What a gateway is, in one file.
+name: events_gateway
+
+listen:
+  addr: :8080
+  max_body: 1MiB
+
+  # Who may write. Required outside BREVIS_ENV=local, where the gateway
+  # refuses to start without it.
+  #
+  # `keys_from` names the ENVIRONMENT VARIABLE holding the accepted keys,
+  # comma separated. The keys are never in this file -- the same split
+  # `secrets:` makes in a workflow, and for the same reason: the file is in git.
+  #
+  # Every key in the list works, which is what makes rotation possible: add the
+  # new one, move the callers, remove the old.
+  auth:
+    type: bearer
+    keys_from: BREVIS_INGEST_KEYS
+
+# The Prometheus exposition, on its OWN address and never on the one above.
+#
+# That port is public by construction -- it is where clients POST -- so a
+# /metrics on it would publish every stream name, path and destination to
+# whoever finds the path. Naming the same address for both is refused at load.
+#
+# Leaving this out serves them on :9090 anyway: an ingestion service nobody can
+# see is the failure this field exists against. `addr: ""` turns them off, and
+# that is a decision somebody made rather than one they forgot.
+metrics:
+  addr: :9090
+
+# The per-table series are off unless the environment turns them on:
+#
+#   BREVIS_INGESTION_METRICS=true
+#
+#   brevis_gateway_ingested_bytes_total{stream,table}
+#   brevis_gateway_ingested_events_total{stream,table}
+#   brevis_gateway_table_flushes_total{stream,table,trigger}
+#
+# The last one is the quota's own number: one flush of a table is one load job
+# for it, and BigQuery allows 1,500 per table per day. `flushes_total` is per
+# stream, which on a 94-table route says nothing about any of them.
+#
+# Off by default because `table` is a label the PRODUCER chooses -- with
+# auto_table one route becomes as many tables as they name, and every other
+# series here is labelled by what an operator wrote in this file. Nobody should
+# find a metrics bill because they upgraded.
+#
+# The same number is on every row as `brevis_received_bytes` either way. This
+# buys `now`; the column buys `since when` and `by whom`.
+
+streams:
+  - name: clicks
+    path: /v1/clicks
+    format: json            # json | array | ndjson -- declared, never sniffed
+
+    # What becomes the ingestion_id. All four, because the formula is frozen
+    # over exactly these: leaving one out produces a DIFFERENT id, not a
+    # weaker one. provider and entity are the stream's; source_key and
+    # record_ts name fields of the event.
+    identity:
+      provider: web
+      entity: click
+      source_key: event_id
+      record_ts: occurred_at
+
+    # A name in this binary's registry, not a path. Hooks are Go, compiled in.
+    hook: enrich_clicks
+
+    # Writes ingestion_loaded_at: when the gateway received it, UTC, RFC3339.
+    # The SDK's column and the SDK's format, so a row this gateway lands and a
+    # row a pipeline lands are the same shape. Opt-in, because it adds a field
+    # and both a topic's subscribers and a table's columns notice.
+    stamp_loaded_at: true
+
+    # The claim check: an event too big is written somewhere WHOLE, and a
+    # reduced version continues carrying a pointer back to it.
+    #
+    # A flat 413 loses the event, and an oversized payload is usually the most
+    # interesting one somebody has -- the request with the whole document
+    # attached, which is the case worth debugging.
+    #
+    # `larger_than` measures one EVENT, after the hook. listen.max_body is a
+    # different thing: it caps a whole REQUEST and refuses with 413 before a
+    # byte is parsed.
+    #
+    # `hook` names a second hook that returns the reduced event. Which fields
+    # are heavy is domain knowledge and a YAML file cannot hold it. WITHOUT
+    # one, the event is archived and dropped from the stream -- not lost,
+    # because the archive has it whole, and counted, because an event that
+    # silently stops arriving is the worst outcome here.
+    oversize:
+      larger_than: 256KiB
+      archive:
+        type: files
+        path: gs://acme-oversize/clicks/
+      hook: strip_heavy_clicks
+
+    buffer:
+      durability: memory    # the only tier implemented; `disk` is refused by name
+
+      # Three triggers, and whichever is crossed FIRST sends the batch.
+      #
+      # `size` is the newest and the reason is memory rather than throughput:
+      # the other two are counts, and a count cannot tell 500 events of 2 KB
+      # from 500 of 2 MB. Every flush is counted by what triggered it --
+      # brevis_gateway_flushes_total{trigger="time|records|size"} -- because
+      # on a BigQuery stream a size flush firing routinely means the
+      # 60-second floor is being walked past and the daily load-job quota
+      # with it.
+      flush:
+        every: 1s
+        records: 500
+        size: 8MiB
+
+        # The age at which a partial batch goes REGARDLESS.
+        #
+        # `every` is a TARGET and this is a PROMISE, and the difference will
+        # matter once the flush claim lands (issue #36): a replica that loses
+        # a window to another keeps filling, so the target can be deferred.
+        # This cannot be -- no event waits longer, whatever the contention,
+        # even with the metastore unreachable.
+        #
+        # The gap between the two is how much contention this deployment
+        # tolerates. It has to be at least `every`; a ceiling under the target
+        # would mean the target never applies, and the config refuses it.
+        #
+        # It also settles the drain: what a buffer can be HOLDING at SIGTERM
+        # is bounded by this, not by `every`, so the grace period the gateway
+        # prints at boot is derived from it.
+        max_age: 30s
+
+      # Delivery is asynchronous and bounded. A request appends to the buffer
+      # and returns; a full batch is handed to one of these workers, so no
+      # caller ever waits for a publish, a COPY, or a sink that is down.
+      #
+      # workers     how many batches are delivered at once
+      # queue       how many full batches may wait for a worker
+      # max_records the ceiling on events held in memory for this stream.
+      #             Past it the gateway answers 503 rather than accepting an
+      #             event it has nowhere to put -- and the 503 is safe to act
+      #             on: send the same body again, the ingestion_id is a frozen
+      #             function of the event, so a retry is the same record.
+      workers: 4
+      queue: 64
+      max_records: 10000
+
+      # And the same ceiling in BYTES, which is the one that stops an OOM.
+      #
+      # A count cannot see it: 10,000 records is 20 MB of 2 KB events and
+      # 20 GB of 2 MB ones, and until this field existed the file had no way
+      # to say which this stream holds. Measured on what ARRIVED -- a
+      # map[string]any weighs several times its JSON, and a hook that inflates
+      # an event is not counted. It has to be at least listen.max_body, or one
+      # request could never be admitted.
+      max_bytes: 256MiB
+
+    sink:
+      type: pubsub
+      project: acme-prod
+      topic: clicks
+      # Fields of the EVENT that travel as message attributes. The topic's
+      # contract belongs to whoever owns the topic, so nothing is invented here.
+      attributes: [tenant, region]
+
+    # How hard the sink is tried before a batch is given up on. Four attempts
+    # over roughly seven seconds: enough to ride out a restart on the other
+    # side, short enough that a sink which is down is known to be down.
+    retry:
+      attempts: 4
+      backoff: 500ms
+      max_backoff: 10s
+
+    # Where a batch the sink will not take goes. Required, not defaulted: a
+    # stream without one loses a refused batch to a log line, and an operator
+    # who never chose that does not know it is happening.
+    #
+    # `files` reads a directory, gs:// and s3://, so this is a folder on a
+    # laptop and a bucket in production with no change to the gateway.
+    #
+    # Each record carries _dead_letter_reason, _dead_letter_sink and
+    # _dead_letter_at: whoever finds this file has the events and not the log,
+    # and "why is this here" is their first question.
+    dead_letter:
+      type: files
+      path: ./dead-letter/clicks/
+
+  # The same events into a table, which is the other half of what a gateway is
+  # for: one stream feeds whoever subscribes, another lands what somebody will
+  # query.
+  - name: orders
+    path: /v1/orders
+    format: ndjson          # one object per line: a batch in one request
+
+    identity:
+      provider: shop
+      entity: order
+      source_key: order_id
+      record_ts: placed_at
+
+    buffer:
+      flush:
+        every: 2s
+        records: 1000
+
+    sink:
+      type: postgres
+
+      # The NAME of the environment variable holding the connection string,
+      # never the string: a DSN carries a password and this file is in git.
+      dsn_from: BREVIS_ORDERS_DSN
+
+      # Schema-qualified. The table must exist -- this does not create one,
+      # because a service that creates tables turns a typo here into a second
+      # table nobody is reading.
+      table: landing.orders
+
+      # Required, never defaulted. The two are genuinely different and only
+      # the table's owner knows which it is:
+      #
+      #   append  COPY FROM STDIN, Postgres's fast path. Every delivery lands,
+      #           including a redelivery. Right for a log, wrong for a table
+      #           somebody counts.
+      #   merge   the batch staged in a TEMP table and inserted with
+      #           ON CONFLICT (ingestion_id) DO NOTHING, all in ONE
+      #           transaction. The FIRST delivery wins and a redelivery is
+      #           ignored. Needs a UNIQUE index on ingestion_id, and the
+      #           driver refuses without one rather than silently appending:
+      #
+      #             CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id)
+      #
+      # `upsert` -- ON CONFLICT DO UPDATE, where the LAST delivery wins -- is
+      # refused by name. It is a real mode nobody has implemented yet, and
+      # accepting the word while behaving like `merge` is the failure this
+      # field exists to prevent.
+      write: merge
+
+    dead_letter:
+      type: files
+      path: ./dead-letter/orders/
+
+  # BigQuery. No dsn_from: it authenticates with the pod's own credentials,
+  # which is what a workload identity is for. A connection string here would be
+  # a second way to do what the platform already does.
+  - name: telemetry
+    path: /v1/telemetry
+    format: array           # a JSON array of objects in one request
+
+    identity:
+      provider: device
+      entity: reading
+      source_key: reading_id
+      record_ts: measured_at
+
+    buffer:
+      flush:
+        every: 60s
+        records: 2000
+
+    sink:
+      type: bigquery
+      project: acme-prod
+      dataset: landing
+      # No dots: for BigQuery the project and the dataset are their own fields,
+      # so "landing.telemetry" here would make a table with that literal name.
+      table: telemetry
+      write: merge
+
+    dead_letter:
+      # The dead letter in a bucket, which is what it should be in production:
+      # written inside the image it would die with the container. Needs the
+      # pod's GCP credentials, resolved at startup rather than on the first
+      # batch it has to bury.
+      type: files
+      path: gs://acme-dead-letter/telemetry/
+
+  # One route, N tables, nothing declared.
+  #
+  # The producer POSTs an ENVELOPE: control fields at the top, the record
+  # inside `data`.
+  #
+  #   {
+  #     "table_name": "app_orders",     <- required
+  #     "unique_key": "id",             <- optional, default "id"; the FIELD
+  #                                        it names must be in `data`, and
+  #                                        `write: merge` requires one at all
+  #     "operation":  "INSERT",         <- optional: INSERT | UPDATE | DELETE
+  #     "description": "Pedidos",       <- optional, and READ BY NOTHING today:
+  #                                        it is in the contract for the
+  #                                        console page that does not exist
+  #     "data": {                       <- required: the record, and only it
+  #       "id": "A-3",
+  #       "total": 150,
+  #       "customer": {"id": 7, "uf": "SP"}
+  #     }
+  #   }
+  #
+  # Every table carries the same seven columns whatever the record holds:
+  #
+  #   brevis_ingestion_id   the identity; the merge key
+  #   brevis_record_key     data[unique_key] -- which ROW this is about.
+  #                         NULL under `append`, where a log line need not be
+  #                         about a record at all; required by `merge`, which
+  #                         keeps one row per record
+  #   brevis_operation      INSERT | UPDATE | DELETE
+  #   brevis_received_at    OUR clock, at the 202 -- the partition column
+  #   brevis_loaded_at      DEFAULT CURRENT_TIMESTAMP -- the destination stamps it
+  #   brevis_stream         which route wrote it
+  #   brevis_gateway        which deployment
+  #   brevis_received_bytes how large the event arrived, envelope included --
+  #                         free, because buffer.flush.size already counts it.
+  #                         INGRESS and not storage: the destination keeps the
+  #                         row typed and compressed, so 400 bytes of JSON may
+  #                         be 80 on disk. Summing it answers "which table is
+  #                         growing, since when, from whom" -- which the
+  #                         metrics cannot, because they carry no `table`
+  #                         label and that label is the producer's to choose.
+  #
+  # `brevis_` is RESERVED: a `data` carrying any key with it is refused per
+  # event, because otherwise a producer forges a control field -- and a forged
+  # brevis_received_at is worse than none, since it looks real.
+  #
+  # UPDATE and DELETE are RECORDED, never applied. A landing table is history,
+  # and resolving "the current version of each record" is the downstream
+  # model's job:
+  #
+  #   qualify row_number() over (partition by brevis_record_key
+  #                              order by brevis_received_at desc) = 1
+  #      and brevis_operation <> 'DELETE'
+  - name: tables
+    path: /v1/tables
+    format: json
+
+    identity:
+      provider: zarv
+      entity: table
+      source_key: table_name
+      record_ts: table_name
+
+    buffer:
+      flush:
+        # 60s, not 1s: BigQuery allows 1,500 load jobs per table per DAY, and
+        # a one-second window is 86,400. The config refuses anything shorter.
+        every: 60s
+        records: 2000
+        # A CEILING here and not a target, and nothing refuses a smaller one
+        # because the arrival rate is not knowable at load. The floor above
+        # governs the TIMER; a size that fires every few seconds walks right
+        # past it and spends the same daily quota. Watch
+        # brevis_gateway_flushes_total{trigger="size"} on this stream: above
+        # zero, it is telling you the window is not what is batching.
+        size: 256MiB
+        # Five minutes of latency bought for job economy, and bounded.
+        max_age: 300s
+
+        # The flush clock belongs to the DEPLOYMENT, not to each process.
+        #
+        # Without this, `every` is a time.AfterFunc in every replica, so the
+        # load jobs a table receives are `replicas × 86400 / every` -- on
+        # BigQuery, against 1,500 per table per DAY, two replicas at 60s is
+        # already 192% of a quota that cannot be raised. The gateway scales out
+        # for HTTP concurrency while the sink wants concentration.
+        #
+        # With it, a replica takes a set-if-absent claim for the stream and the
+        # window before flushing on the timer, and the timer wakes on the
+        # window BOUNDARY so every replica asks for the same key. One flush per
+        # window, whatever the replica count -- and it self-adjusts, because a
+        # replica only waits when another is actually competing.
+        #
+        # Needs a SHARED metastore. With `memory` every replica wins its own
+        # claim and nothing coordinates. And it needs `max_age`, which the
+        # config refuses without: the claim turns `every` into a target, and a
+        # target with no ceiling is latency with nothing bounding it.
+        #
+        # A metastore that is unreachable flushes anyway. Losing coordination
+        # costs load jobs; refusing to flush holds data.
+        #
+        # Watch brevis_gateway_flush_windows_total{outcome}:
+        #
+        #   won | yielded     the feature working -- one flushes, the rest fill
+        #   ceiling           max_age did it, not the target
+        #   unreachable       ALERT. The backend could not be asked, so the
+        #                     claim failed open and the jobs are multiplying by
+        #                     replica count again -- silently, because every
+        #                     flush still looks like a flush
+        #
+        # The claim gives EXCLUSIVITY, not fairness: whoever asks first wins,
+        # and a real two-replica run measured 4/1 rather than an even split.
+        # `max_age` is what stops the unlucky one starving. Issue #36.
+        #
+        # The claim's key carries the TABLE, because the flush trigger does
+        # (issue #38): two replicas behind a load balancer do not hold the
+        # same tables, and one claim for the stream would make one table's
+        # cadence another's.
+        #
+        # A window therefore asks for one claim per table. Redis answers them
+        # in one round trip; every other backend answers them in parallel,
+        # bounded. Measured at 94 tables against a backend 25ms away: 89ms on
+        # memcached, 30ms on Redis. Both inside the 500ms the claim is given,
+        # and memcached is the slower choice rather than a refused one.
+        claim: true
+      max_bytes: 1GiB
+
+    sink:
+      type: auto_table
+
+      # What the RECORD contributes to the row.
+      #
+      #   document  data goes whole into one JSON column. No DDL, ever, after
+      #             the create: a new field is a new key.
+      #   columns   each field gets a column -- scalars STRING, objects and
+      #             arrays JSON. The shape people picture, and the one that
+      #             pays for itself with DDL, quota and a write-stream reopen.
+      #
+      # No type inference either way. A field that arrives whole today and
+      # fractional tomorrow would change a column with nobody writing
+      # anything; typing one is the PROMOTION path, written in this file and
+      # reviewed in a diff.
+      shape: columns
+
+      naming:
+        pattern: '^(app|svc)_[a-z0-9_]{2,40}$'
+        allow: [app_, svc_]
+        # Shared across replicas here, because the metastore below is redis.
+        # Under `memory` it is PER REPLICA and four of them admit four times
+        # this. A circuit breaker either way, not a quota: it bounds
+        # creations, never writes.
+        max_new_per_hour: 20
+
+      # The shared state this stream keeps: a cache of what tables exist, the
+      # debounce that keeps N replicas from all running the same DDL, the
+      # counter behind max_new_per_hour -- and, from issue #36, the claim that
+      # makes the flush clock belong to the deployment rather than to each
+      # process.
+      #
+      # It is a STREAM's, not a sink's, even though it is written under one.
+      # Every stream gets it, whatever the sink -- so a `bigquery` stream
+      # without `auto_table` can name one too, and is validated the same way.
+      #
+      # `memory` is the default and needs nothing. With ONE replica it is the
+      # right answer. With several it gives each its own, so the debounce
+      # debounces nothing and max_new_per_hour bounds a process -- which is
+      # what redis and memcached are for, and the only reason they exist here.
+      #
+      # `addr_from` is the NAME of the environment variable holding the
+      # address, never the address: it carries a password often enough.
+      metastore:
+        type: redis
+        addr_from: BREVIS_METASTORE_ADDR
+
+        # How long the cache may be WRONG. `0` means never, and saying
+        # nothing takes the sixty-second default -- three states, which is
+        # why the field is a pointer in the config.
+        #
+        # The clock is NOT what recovers from a wrong entry. A write the
+        # destination refuses calls `invalidate`, which drops the entry at
+        # once and lets the pipe's own retry come back against a cold cache:
+        # a table dropped by hand costs one failed attempt, not a minute.
+        #
+        # Expiry has a price, though. `sinkFor` charges
+        # `naming.max_new_per_hour` when it does not KNOW a table -- so a miss
+        # charges for a table that has existed for weeks, and a pod restarting
+        # a minute after a table's last event gets nothing from the shared
+        # store it is paying for. `ttl: 0` is the answer when the tables are
+        # long-lived. See issue #35.
+        ttl: 60s
+
+      into:
+        type: bigquery
+        project: acme-prod
+        dataset: landing
+        write: merge
+
+    dead_letter:
+      type: files
+      path: ./dead-letter/tables/

@@ -1,0 +1,98 @@
+# A LOCAL CLUSTER, AND NOTHING ELSE ON IT.
+#
+# This file brings up one thing: a Kubernetes cluster with Argo CD on it. It
+# does not bring up Brevis. That is the point -- Argo CD deploys Brevis from
+# Git, so what you watch here is where Brevis SITS, not Brevis running.
+#
+#   make cluster-up     the cluster, and Argo CD, and nothing deployed
+#   make cluster-ui     the URL and the admin password
+#   make cluster-down   gone, volumes included
+#
+# ARGO CD, NOT ARGO WORKFLOWS, and the next reader will assume the other one.
+# Argo CD is a deployer: you point it at a repository and it makes the cluster
+# match. Argo Workflows is an orchestrator -- it would be a second one
+# competing with Brevis for the same job, and nothing here uses it.
+#
+# k3s AND NOT kind OR k3d. Both of those create their clusters as Docker
+# containers and both are driven by their own CLI, so neither composes. k3s
+# ships an image made to run exactly this way, which is what lets the whole
+# thing be one `docker compose up` with no tool installed but Docker.
+name: brevis-cluster
+
+services:
+  # The cluster.
+  #
+  # `privileged` is not negligence: a container running containerd, managing
+  # cgroups and mounting filesystems needs it, and every local-cluster tool
+  # does the same thing one layer down. It is said here rather than discovered
+  # by somebody reading the file after it is already running.
+  k3s:
+    image: rancher/k3s:v1.31.5-k3s1
+    privileged: true
+    command:
+      - server
+      # Neither is used here and both cost a pull and a pod. Traefik would be
+      # a second ingress beside the NodePort below; metrics-server answers a
+      # question nothing in this stack asks.
+      - --disable=traefik
+      - --disable=metrics-server
+      # So a kubeconfig that says `k3s` is accepted by the API's certificate.
+      # Without it every call from another container fails on the host name,
+      # which reads as a connection problem and is not one.
+      - --tls-san=k3s
+    environment:
+      K3S_KUBECONFIG_OUTPUT: /output/kubeconfig.yaml
+      # World-readable: the bootstrap container runs as another user and this
+      # is a throwaway cluster on a developer's machine.
+      K3S_KUBECONFIG_MODE: "644"
+    volumes:
+      - kubeconfig:/output
+      - k3s-data:/var/lib/rancher/k3s
+    ports:
+      # The API, so `kubectl` on the host can reach it too if you want it.
+      - "${BREVIS_K8S_PORT:-6443}:6443"
+      # Argo CD's UI, through a NodePort. A published port is the only way in
+      # from the host without a port-forward somebody has to keep running.
+      - "${BREVIS_ARGOCD_PORT:-30080}:30080"
+      # Brevis's own UI, through a NodePort the demo tree declares.
+      - "${BREVIS_UI_PORT:-30081}:30081"
+    healthcheck:
+      # The API answering is the gate, not a sleep: k3s takes as long as the
+      # machine takes, and a fixed wait is either too short on a cold start or
+      # wasted on every run after it.
+      test: ["CMD-SHELL", "kubectl get --raw /readyz >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
+
+  # Installs Argo CD and exits. The only imperative step in the whole design:
+  # everything after this is a commit.
+  bootstrap:
+    image: alpine/k8s:1.31.3
+    depends_on:
+      k3s:
+        condition: service_healthy
+    volumes:
+      - kubeconfig:/kube
+      - ./deployments/cluster:/bootstrap:ro
+      # The demo tree, at its own path: /bootstrap is a read-only mount and a
+      # file cannot be mounted inside one.
+      - ./examples/cluster:/demo:ro
+    environment:
+      # Pinned, and that is the whole reason it is a variable: `stable` moves,
+      # and a demo that breaks when upstream releases is a demo nobody trusts
+      # the next time it breaks for a real reason.
+      ARGOCD_VERSION: ${ARGOCD_VERSION:-v2.13.3}
+      # Which revision of THIS repository Argo CD deploys the demo from.
+      #
+      # The demo tree, not the chart: `examples/cluster/apps/30-brevis.yaml`
+      # pins the chart at master on purpose, because the chart is the release
+      # and the demo is the demo. Point this at your branch to try a change to
+      # the stack without editing a tracked file.
+      BREVIS_GIT_REVISION: ${BREVIS_GIT_REVISION:-master}
+    entrypoint: ["/bin/sh", "/bootstrap/install.sh"]
+
+volumes:
+  kubeconfig:
+  k3s-data:

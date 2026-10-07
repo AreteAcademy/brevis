@@ -1,0 +1,145 @@
+// Package bigquery writes a gateway's batches into a BigQuery table.
+//
+// Importing it costs the most of any sink here -- around 6 MB, because it
+// brings the BigQuery client, the Storage Write API and Arrow. A gateway that
+// does not write to BigQuery should not import it, which is the whole reason
+// the drivers were split into packages.
+package bigquery
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/AreteAcademy/brevis/gateway"
+	"github.com/AreteAcademy/brevis/sdk"
+	tobq "github.com/AreteAcademy/brevis/sdk/to/bigquery"
+)
+
+// Sink is what the YAML calls this driver.
+const Sink = "bigquery"
+
+// New builds the driver from a config block.
+//
+// No dsn_from: BigQuery authenticates with the pod's own credentials, which is
+// what a workload identity is for. A connection string here would be a second
+// way to do what the platform already does, and a second place for a secret.
+//
+//	append  rows loaded directly, or staged through GCS above the driver's
+//	        inline limit -- the driver decides by batch size, and a gateway's
+//	        batches are usually small enough to go inline.
+//	merge   the batch staged and MERGEd on ingestion_id,
+//	        WHEN NOT MATCHED THEN INSERT. First delivery wins, same as
+//	        everywhere else.
+func New(b gateway.Build) (gateway.Sinker, error) {
+	s := b.Sink
+	if err := gateway.CheckWrite(s); err != nil {
+		return nil, err
+	}
+	if err := gateway.CheckTable(s); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(s.Project) == "" {
+		return nil, fmt.Errorf("`project` is empty (the GCP project holding the dataset)")
+	}
+	if strings.TrimSpace(s.Dataset) == "" {
+		return nil, fmt.Errorf("`dataset` is empty")
+	}
+	if strings.Contains(s.Table, ".") {
+		// BigQuery's name is three parts and they are three FIELDS here.
+		// Accepting "landing.clicks" would make a table literally called
+		// "landing.clicks" inside the declared dataset.
+		return nil, fmt.Errorf("`table` is %q: for BigQuery the name has no dots -- "+
+			"the project and the dataset are their own fields", s.Table)
+	}
+	t := tobq.Table{
+		Project:       s.Project,
+		Dataset:       s.Dataset,
+		Name:          s.Table,
+		StagingBucket: s.StagingBucket,
+
+		// The SDK's inline/GCS decision is a row count -- 5,000 by default --
+		// and a row count cannot see 5,000 records of 2 MB, which the inline
+		// path would marshal into memory whole. The gateway always has a
+		// staging bucket (the driver defaults it to <project>-brevis-staging),
+		// so it can set the byte ceiling the SDK leaves off for callers who
+		// may not.
+		//
+		// Not configurable, deliberately: it is not a tuning knob, it is the
+		// point past which holding a batch in memory stops being reasonable.
+		// `buffer.flush.size` is where an operator shapes the batch.
+		InlineLimitBytes: inlineLimitBytes,
+	}
+	if b.Target != nil {
+		create := b.Target.Create
+		t.CreateTable = &create
+		t.ClusterBy = b.Target.ClusterBy
+
+		// The field auto_table has been declaring on every destination while
+		// this one ignored it. Without this line the gateway promises that a
+		// table grows a column and BigQuery fails the load at the row --
+		// which made adding a fixed column here a breaking change for every
+		// table an older gateway created. Issue #34.
+		t.Evolve = b.Target.Evolve
+	}
+	return &sink{
+		table:  t,
+		target: b.Target,
+		dedup:  gateway.DedupFor(s.Write),
+		name: fmt.Sprintf("bigquery:%s.%s.%s (%s)",
+			s.Project, s.Dataset, s.Table, s.Write),
+	}, nil
+}
+
+// inlineLimitBytes is where a batch stops going inline and stages through GCS.
+//
+// 64 MiB: comfortably above a well-shaped batch and far below what a pod can
+// hold. Above it the staged path keeps memory flat, which is the whole reason
+// the staged path exists.
+const inlineLimitBytes = 64 << 20
+
+type sink struct {
+	table  tobq.Table
+	dedup  sdk.Dedup
+	target *gateway.Target
+	name   string
+}
+
+func (b *sink) Describe() string { return b.name }
+
+// options is what this sink tells the SDK about the table.
+//
+// Its own method so that the one thing three bugs have depended on is
+// assertable: THIS SINK DECLARES WITH Schema AND NEVER WITH Columns. The
+// router discovers the batch's columns itself and hands the result over as a
+// Schema, so there is no list of names here to promise every row carries.
+//
+// It is deliberate, and setting Columns here would not be a tidy-up. Columns
+// means "every row has exactly these", and core.CheckRow enforces it against
+// the FIRST record; the Schema is the UNION of a batch whose records need not
+// agree, so an ordinary batch would be refused for a column only its second
+// record carries.
+//
+// The cost of the choice is that every Columns-keyed check in the SDK is off
+// on this path, and three releases in a row shipped a bug because of it --
+// ClusterBy checked against the rows (#42.3), and the encoder reading
+// "nothing was declared" on a path that creates the table from a declaration
+// (#42, gateway 0.20.0). The SDK answers "what will the table have" with
+// LoadConfig.DeclaredColumns now, which reads both.
+func (b *sink) options() sdk.WriteOptions {
+	opt := sdk.WriteOptions{Dedup: b.dedup}
+	if b.target != nil {
+		opt.Schema = b.target.Schema
+		opt.DedupKey = b.target.DedupKey
+		opt.PartitionBy = b.target.PartitionBy
+	}
+	return opt
+}
+
+func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
+	res, err := b.table.Write(ctx, batch, b.options())
+	if res == nil {
+		return 0, err
+	}
+	return res.RowsLoaded, err
+}

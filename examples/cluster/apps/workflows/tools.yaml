@@ -1,0 +1,24 @@
+# Steps that need tools the ENGINE does not have.
+#
+# python3 and jq are in `runtime/Dockerfile`, not in any Brevis image. Brevis
+# never installed them and cannot update them: it sends a command to a pod you
+# built, which is why your dbt version is not coupled to its release.
+#
+# Run it with `make cluster-watch` open: no pod appears, and the output comes
+# from a container that was already up.
+name: tools_demo
+description: >
+  Steps calling python and jq -- tools that exist only because the pod was
+  built with them. No pod is created for the run.
+type: dag
+tags: [demo]
+
+steps:
+  - id: python
+    host: tools
+    run: python3 -c "import platform; print('python', platform.python_version())"
+
+  - id: jq
+    host: tools
+    run: sh -c 'echo "{\"rows\":42}" | jq -r ".rows"'
+    depends_on: [python]

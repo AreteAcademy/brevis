@@ -191,10 +191,12 @@ brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 `--param` sem `=` é **erro**, não aviso: `--param load_full` rodaria com o padrão
 e o operador acharia que o valor foi aplicado.
 
-:::warning Três limites
+:::warning Quatro limites
 `run` só opera com `BREVIS_ENV=local`; um passo com `image:` executa na própria
-instância e avisa; e não há registry de tasks Go, então um `action:` de task não
-registrada falha citando as disponíveis.
+instância e avisa; não há registry de tasks Go, então um `action:` de task não
+registrada falha citando as disponíveis; e `run` não lê `BREVIS_HOSTS`, então um
+passo com `host:` não roda aqui de jeito nenhum — falha citando o host, mesmo
+com a variável definida.
 :::
 
 ---

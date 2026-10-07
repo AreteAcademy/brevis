@@ -116,7 +116,7 @@
       </form>
       <div class="search-out" id="search-out" data-none="No results" hidden></div>
       <nav class="side-nav" aria-label="Documentation">
-        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/" aria-current="page">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul>
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/" aria-current="page">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/en/docs/ingestion/">Ingestion</a></li><li><a href="/en/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/en/docs/benchmarks/">Benchmarks</a></li></ul>
       </nav>
     </div>
   </aside>
@@ -309,6 +309,154 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 <p>Run by hand, <code>Auto.Now()</code> <em>is</em> the wall clock and <code>Window()</code> returns <code>false</code>, so local development needs no special case.</p>
 <h2 id="not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries<a class="anchor" href="#not-to-be-confused-with-the-client-libraries" aria-label="link">#</a></h2>
 <p>This SDK is ETL machinery in Go: drivers, pagination, provenance, table creation. The <a href="/en/docs/libraries/">client libraries</a> are a different thing — thin clients that hand a step the run context and clock, in Python today and in Node.js and Rust later. A step using pandas or dbt wants the second, not this.</p>
+<h2 id="parameters-that-build-the-pipeline">Parameters that build the pipeline<a class="anchor" href="#parameters-that-build-the-pipeline" aria-label="link">#</a></h2>
+<p><code>p.Run.Params</code> is readable inside the pipeline, which is too late for a value that decides what the pipeline <strong>is</strong> — one source per state, one table per tenant. <code>Pipeline.Flags</code> is parsed inside <code>Run</code>, so it is too late for the same reason.</p>
+<div class="code-block" data-code="func main() {
+	sdk.Run(pipeline(sdk.ParamList(&quot;ufs&quot;)))
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">func</span> main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}</code></pre></div>
+<p><code>sdk.Param</code> and <code>sdk.ParamList</code> read the engine's environment first and <code>-param name=value</code> second:</p>
+<div class="code-block" data-code="./fetch-stations -param ufs=SP,RJ"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>./fetch-stations <span class="t-n">-param</span> ufs=SP,RJ</code></pre></div>
+<p>The environment wins — under the engine it is the value, and a flag left in a manifest must not override what the operator typed. With no engine the flag is what there is, which beats writing <code>BREVIS_RUN_PARAMS</code> as JSON on every run.</p>
+<h2 id="the-landing-layout">The landing layout<a class="anchor" href="#the-landing-layout" aria-label="link">#</a></h2>
+<p>A pipeline can land the <strong>same table a gateway lands</strong> — the same columns and the same <code>brevis_ingestion_id</code> — so choosing between the two is a deployment decision and not a schema decision. A team can read both together, and move from one to the other without a migration.</p>
+<div class="code-block" data-code="const table = &quot;landing.orders&quot;
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey(&quot;id&quot;))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">const</span> table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})</code></pre></div>
+<p><code>sdk.LandingSchema</code> is nine columns: the eight the layout owns and the one the producer does. <code>sdk.Landing</code> fills them and puts the record, whole, in <code>data</code>. Append your own columns to the schema if you want them, or take <code>sdk.LandingControlColumns</code> and give the record's fields columns of their own.</p>
+<h3 id="two-shapes-the-record-whole-or-one-column-per-field">Two shapes: the record whole, or one column per field<a class="anchor" href="#two-shapes-the-record-whole-or-one-column-per-field" aria-label="link">#</a></h3>
+<p>What is above is the <strong>document</strong> shape — the record goes into <code>data</code> as JSON, and the table is the same one whatever the record holds. Add <code>sdk.LandingColumns()</code> and each field of the record gets a column of its own:</p>
+<div class="code-block" data-code="sdk.Landing(table, sdk.LandingKey(&quot;source_key&quot;), sdk.LandingColumns())"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())</code></pre></div>
+<p>The table is then <code>sdk.LandingControlColumns</code> plus your columns — <strong>not</strong> <code>sdk.LandingSchema</code>, which carries <code>data</code>:</p>
+<div class="code-block" data-code="Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: &quot;source_key&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;series&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;data&quot;, Type: sdk.TypeString},
+        sdk.Column{Name: &quot;valor&quot;, Type: sdk.TypeString},
+    ),
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}</code></pre></div>
+<p><strong>You declare those columns.</strong> The SDK never infers a schema, and this option does not change that: it decides how the <em>row</em> is built, never what the table is. A gateway infers because its producer is a stranger who posts whatever they have; here the pipeline's author knows the shape and writes it down, in a diff somebody reviews.</p>
+<p>It is the same shape a gateway lands as <a href="/en/docs/ingestion-sinks/#two-shapes-one-contract"><code>shape: columns</code></a>, through the same code — same columns, same values, same <code>brevis_ingestion_id</code>.</p>
+<p><strong>A field name has to be able to be a column name</strong>: a letter or underscore, then letters, digits and underscores. That is BigQuery's rule, the narrowest of the four destinations, so a name that passes here works everywhere. A record carrying <code>my-field</code> is refused by name, before anything is written. The document shape has no such rule — a hyphen is a perfectly good JSON key.</p>
+<p><strong>It does not flatten, by default.</strong> A nested object becomes ONE <code>JSON</code> column under the key that held it: <code>customer</code> holds <code>{"id": 7, "uf": "SP"}</code>, not <code>customer_id</code> and <code>customer_uf</code>. An array is <code>JSON</code> too. A record that wants one row <em>per array element</em> wants <code>sdk.ArrayAt</code> in the source's <code>Expand</code> — it runs before <code>Landing</code>, and it is a different operation with a different name. <a href="#one-column-per-nested-field"><code>BREVIS_NORMALIZE_DATA</code></a> changes the first half of that for a whole deployment; an array stays <code>JSON</code> either way:</p>
+<div class="code-block" data-code="Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt(&quot;results&quot;)},"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},</code></pre></div>
+<p><strong><code>null</code> stays <code>NULL</code></strong>, never <code>""</code>. A field sent as null and a field sent empty are different facts, and a column cannot tell them apart afterwards.</p>
+<p><strong><code>data</code> becomes yours.</strong> In this shape the layout has no column by that name, so a producer with a field called <code>data</code> — which is exactly what the Bacen series sends — gets a column of their own with their own value in it. Under <code>document</code> theirs is one key inside the layout's JSON.</p>
+<h3 id="the-brevis-prefix-is-yours-to-change">The <code>brevis_</code> prefix is yours to change<a class="anchor" href="#the-brevis-prefix-is-yours-to-change" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_LANDING_PREFIX=acme"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_LANDING_PREFIX=acme</code></pre></div>
+<p>and the layout's eight columns become <code>acme_ingestion_id</code>, <code>acme_record_key</code> and the rest. Unset, they are what they have always been.</p>
+<p><strong>Choose it when the table is created, because changing it later is not a rename.</strong> Nothing in this SDK ever drops a column, so a stream that switches prefix does not rename eight — it adds eight and abandons eight. Every row after that has NULLs in the old set, and</p>
+<div class="code-block" data-code="qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1</code></pre></div>
+<p>partitions on a column nothing writes any more. Rows arrive, the dashboard goes flat, and nothing logs anything.</p>
+<p>So a table that already carries the layout under one prefix <strong>refuses</strong> a load declaring another, before the extract, naming both. Point it at a new table, or rename the eight columns yourself first.</p>
+<p><strong>Whatever you type is normalised</strong>, so there is one spelling to get wrong instead of four:</p>
+<div class="table-wrap"><table><thead><tr><th>you set</th><th>you get</th></tr></thead><tbody><tr><td>nothing, or blank</td><td><code>brevis_</code></td></tr><tr><td><code>_NAME</code></td><td><code>name_</code></td></tr><tr><td><code>_NAME_</code></td><td><code>name_</code></td></tr><tr><td><code>NAME</code></td><td><code>name_</code></td></tr></tbody></table></div>
+<p>Trim <code>_</code> from both ends, lower-case, add exactly one. Two values are refused rather than guessed at: underscores and nothing else, because it would leave <code>ingestion_id</code> — exactly the column <code>sdk.IngestionID()</code> writes for every ordinary pipeline — and anything that cannot begin a column name. <strong>A process with an unusable value does not start</strong>, which is the only honest outcome: the alternative is tables named after the prefix you were replacing.</p>
+<p><strong>It is per PROCESS, and that is the point rather than a limitation.</strong> Every stream in one gateway shares it, so two sinks cannot disagree — and neither can the schema that declares a table and the transformer that fills it.</p>
+<p><strong>The reserved rule moves with it.</strong> Under <code>acme_</code>, a producer sending <code>acme_region</code> is refused, because somebody who can forge a control column forges a real-looking one. And <code>brevis_region</code> becomes an ordinary field.</p>
+<p><code>data</code> never carries the prefix. It is the producer's column, not the layout's.</p>
+<h3 id="one-column-per-nested-field">One column per nested field<a class="anchor" href="#one-column-per-nested-field" aria-label="link">#</a></h3>
+<div class="code-block" data-code="BREVIS_NORMALIZE_DATA=true"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_NORMALIZE_DATA=true</code></pre></div>
+<p>and a nested object's fields get columns of their own, the way pandas' <code>json_normalize</code> does — one level:</p>
+<div class="code-block" data-code="data = [
+    {&quot;id&quot;: 1, &quot;name&quot;: {&quot;first&quot;: &quot;Coleen&quot;, &quot;last&quot;: &quot;Volk&quot;}},
+    {&quot;name&quot;: {&quot;given&quot;: &quot;Mark&quot;, &quot;family&quot;: &quot;Regner&quot;}},
+    {&quot;id&quot;: 2, &quot;name&quot;: &quot;Faye Raker&quot;},
+]"><div class="code-head"><span class="code-lang">python</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]</code></pre></div>
+<div class="code-block" data-code="id  name_first  name_last  name_given  name_family  name"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>id  name_first  name_last  name_given  name_family  name</code></pre></div>
+<p><strong>Pick it before the first table, because it does not only ADD columns.</strong> It renames them, and nothing in this SDK ever drops one — so the old name stays with the rows already in it while everything after lands in the new one, and the query somebody wrote against it keeps running and stops seeing new rows. Two renames happen:</p>
+<ul><li><code>userName</code> becomes <code>username</code>, whether or not anything is nested</li><li><code>name</code>, which held objects, is replaced by <code>name_first</code> and <code>name_last</code></li></ul>
+<p>A table already carrying either shape <strong>refuses</strong> a load with this on, before the extract, naming both columns. Point it at a new table, or rename the columns yourself first.</p>
+<p><strong><code>name</code> can appear both flattened and whole</strong>, and the example above shows it: the third record carries <code>name</code> as a string, so the table has <code>name_first</code>, <code>name_last</code> AND <code>name</code>. A field that is an object in one record and a scalar in another produces both.</p>
+<p><strong>One level, and arrays are values.</strong> <code>{"a": {"b": {"c": 1}}}</code> is <code>a_b</code> holding <code>{"c": 1}</code> — a <code>JSON</code> column, not <code>a_b_c</code>. <code>{"a": [1, 2]}</code> is <code>a</code>, also <code>JSON</code>. A record that wants one row per array element still wants <code>sdk.ArrayAt</code>.</p>
+<p><strong>Joined and lower-cased, not split on camelCase.</strong> <code>userName</code> becomes <code>username</code> and not <code>user_name</code>, because the other reading has no agreed answer for acronyms — <code>HTTPStatus</code>, <code>userID</code> — and every library disagrees about them.</p>
+<p><strong>A collision is refused, never resolved.</strong> <code>{"name_first": 1, "name": {"first": 2}}</code> would make one column from two fields, and Go's map iteration is randomised: letting one win would give the same batch a different table on a different run. The refusal names both.</p>
+<p><strong>The reserved prefix is checked on the column, not the field.</strong> A producer sending <code>{"brevis": {"stream": "x"}}</code> would otherwise make <code>brevis_stream</code> through a door the field check does not watch. It is refused, naming <code>brevis.stream</code> so they can find the field.</p>
+<p><strong>It is per PROCESS</strong>, like the prefix, and for the same reason: every stream in one gateway shares it, so two sinks cannot disagree about a table they might both write to. It applies to the <code>columns</code> shape only — under <code>document</code> the record goes whole into one <code>JSON</code> column and there is nothing to flatten into.</p>
+<h3 id="text-that-is-already-json">Text that is already JSON<a class="anchor" href="#text-that-is-already-json" aria-label="link">#</a></h3>
+<p>A column declared <code>sdk.TypeJSON</code> receives a JSON <strong>value</strong> — an object, an array, a number. On BigQuery the row is encoded whole, so a Go <code>string</code> there becomes a JSON string literal and the column ends up holding the TEXT of your object rather than the object:</p>
+<div class="code-block" data-code="SELECT JSON_TYPE(payload) ...;            -- &quot;string&quot;, not &quot;object&quot;
+SELECT JSON_VALUE(payload, &#x27;$.a&#x27;) ...;    -- NULL"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">SELECT</span> JSON_TYPE(payload) ...;            <span class="t-c">-- "string", not "object"</span>
+<span class="t-k">SELECT</span> JSON_VALUE(payload, '$.a') ...;    <span class="t-c">-- NULL</span></code></pre></div>
+<p>The column is the right type and the data in it is unreachable, which is the worst of the three outcomes because nothing fails. <strong>The BigQuery destination refuses it</strong> from <code>v0.74.0</code>, naming the column.</p>
+<p>Pass the object itself where you have one. Where what you hold is already JSON text — a column read out of another database, a response body you do not want to re-parse — say so:</p>
+<div class="code-block" data-code="row[&quot;payload&quot;] = sdk.JSONText(body)"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>row["payload"] = sdk.JSONText(body)</code></pre></div>
+<p><code>encoding/json</code>'s own <code>json.RawMessage</code> works too, and for the same reason: both write the JSON they hold instead of a quoted string of it.</p>
+<p><strong>Postgres and MySQL are not affected and are not refused.</strong> Their server parses a string into a JSON column, and always has.</p>
+<h3 id="when-a-field-the-table-does-not-have-shows-up">When a field the table does not have shows up<a class="anchor" href="#when-a-field-the-table-does-not-have-shows-up" aria-label="link">#</a></h3>
+<p>A producer adds a field and the load stops, naming it: the row carries a column nothing declared, and writing it to a destination that never mentioned it would drop it in silence. That refusal is right by default — but on a landing table it is the one change that cannot break a reader, and the destination can make it:</p>
+<div class="code-block" data-code="postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}</code></pre></div>
+<p>The batch then <strong>completes</strong> your declaration: a field it carries and the declaration does not becomes a column, <code>STRING</code> unless the field is an object or an array, and then <code>JSON</code>. It is the same rule and the same code a gateway lands <code>shape: columns</code> with, so both produce the same table.</p>
+<p>Two other values, and the difference between them is where the column comes from:</p>
+<div class="table-wrap"><table><thead><tr><th><code>Evolve</code></th><th>adds</th></tr></thead><tbody><tr><td><code>sdk.EvolveNone</code> (default)</td><td>nothing. Any difference is refused, naming both sides</td></tr><tr><td><code>sdk.EvolveAdditive</code></td><td>a column your <strong>declaration</strong> has and the table does not</td></tr><tr><td><code>sdk.EvolveAdditiveFromPayload</code></td><td>that, plus a column the <strong>batch</strong> carries</td></tr></tbody></table></div>
+<p><strong>Only ever <code>ADD COLUMN</code>.</strong> A column that disappears from the source stops being written and stays in the table; nothing renames, nothing drops, and no type is ever narrowed. That is not a gap — a landing table is history, and the one alteration that cannot break somebody reading it is a new nullable column.</p>
+<p><strong>It completes a declaration; it does not replace one.</strong> With nothing declared it is refused before the extract, naming the table: creating a whole table from a payload is a different decision, and the SDK does not make it. On the landing layout the harm would be concrete — <code>brevis_received_at</code> would come out as text instead of a timestamp, and <code>brevis_loaded_at</code> never travels in the row at all, so the end-to-end latency measurement would simply be missing.</p>
+<p><strong>The SDK still does not infer.</strong> The type comes from the field's SHAPE, never from its value: <code>21129</code> and <code>8.89</code> both declare <code>STRING</code>, so the day the series publishes a whole number nothing changes. A type read off the first batch is the failure this rule exists to prevent.</p>
+<p><strong>And a <code>null</code> decides nothing — but it stays in the row.</strong> Those are two different questions, and answering them with one answer cost v0.77.0.</p>
+<p>A null has no shape, so the <strong>schema</strong> has nothing to read: a field that arrives <code>null</code> declares no column, and the column appears from the first record that carries a VALUE, with the shape that value has. The other way round, a null would become <code>STRING</code> for want of an answer, and the first array after it would have the destination refuse the whole batch — with no <code>STRING</code> to <code>JSON</code> migration to undo it.</p>
+<p>The <strong>row</strong> carries what the producer sent, null included. It has to: a column you DECLARED in <code>Target.Schema</code> that arrived empty must be in the row, or the check that compares the declaration against it reads a chain that has stopped producing it — and refuses the load. That is what v0.77.0 did, and what 0.78.0 undid.</p>
+<p>The destination settles the rest: a field null in EVERY record of the batch, with no column in the table, is written nowhere and refuses nothing. A null and an absent field land the same <code>NULL</code>, so nothing is lost.</p>
+<p><strong>A field that changes shape is refused, not absorbed.</strong> If <code>valor</code> arrived as a scalar and made a text column, an object arriving later is a change of kind and the batch stops — with the column's own comment in the message, so you can see nobody declared it. Rename the column, or migrate it yourself.</p>
+<p><strong>Every column a batch created says so, in the table.</strong> A comment on Postgres and MySQL, a field description on BigQuery, carrying the date:</p>
+<div class="code-block" data-code="brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision</code></pre></div>
+<p>Six months later that is the only thing left that answers "when did this column appear, and who decided it". A log line has rotated by then.</p>
+<p><strong>It is not a mode.</strong> <code>Target.Schema</code> is still you declaring what the table is — this hands you a layout that already exists instead of making you type it. Nothing in the SDK behaves differently because you used it, and a pipeline that declares its own schema is unaffected.</p>
+<p><strong>Write the table name once.</strong> It goes to <code>Landing</code>, because it is the second slot of the id, and to the destination, because that is where the rows go. <strong>Nothing checks that the two agree</strong>: the <code>Writer</code> knows its own table but exposes it only through <code>Describe</code>, which is the name for logs and errors, and an id built on that would tie every id already written to a log string. Get them out of step and the rows land correctly with ids minted for a table nobody wrote to. They will look fine. They will not match the gateway's.</p>
+<p><strong>Three columns are <code>NULL</code>, and that is the honest answer.</strong> <code>brevis_stream</code> and <code>brevis_gateway</code> name things a pipeline does not have — <code>brevis_gateway IS NULL</code> is how you tell a pipeline's row from a gateway's. <code>brevis_received_bytes</code> is <code>NULL</code> too: the gateway's counts what arrived on the wire, envelope included, and the record's own JSON is around 30% smaller. One column with two meanings would make a sum across rows from both paths wrong by whatever share came from which. <code>length(data)</code> answers the pipeline's version exactly.</p>
+<p><strong>Merging needs <code>DedupKey</code>, and without it there is no merge at all.</strong> Every driver matches on <code>ingestion_id</code> unless told otherwise, and this layout's identity column is <code>brevis_ingestion_id</code>:</p>
+<div class="code-block" data-code="Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}"><div class="code-head"><span class="code-lang">go</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}</code></pre></div>
+<p><code>UniqueID</code> is what puts the UNIQUE constraint on the id, and Postgres and MySQL both refuse to merge without one — <code>ON CONFLICT</code> has nothing to match. A <code>DedupKey</code> your <code>Schema</code> does not declare is refused before anything runs, because a merge on a column the table lacks matches nothing, and a merge matching nothing looks exactly like one matching everything it should.</p>
+<p><strong>Per destination, and today MySQL cannot.</strong> BigQuery has no unique constraints and refuses the declaration outright. MySQL's <code>string</code> is <code>LONGTEXT</code>, and MySQL will not key a <code>LONGTEXT</code> without a length — so a merging landing table cannot be <em>created</em> there at all:</p>
+<div class="code-block" data-code="Error 1170 (42000): BLOB/TEXT column &#x27;brevis_ingestion_id&#x27; used in key
+specification without a key length"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length</code></pre></div>
+<p>Postgres works, because its <code>string</code> is <code>TEXT</code>. On MySQL, land with <code>DedupNone</code> and resolve the current version downstream, or create the table yourself with <code>CreateSQL</code> and a sized id column.</p>
+<p><strong>The id is content-addressed.</strong> The same record produces the same id from either path, and a changed record produces a new one — which is what lets a re-run be a no-op instead of a duplicate.</p>
 <h2 id="reference">Reference<a class="anchor" href="#reference" aria-label="link">#</a></h2>
 <ul><li><a href="https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk" target="_blank" rel="noopener">pkg.go.dev</a> — the complete API</li><li><a href="https://github.com/AreteAcademy/brevis/tree/master/examples" target="_blank" rel="noopener"><code>examples/</code></a> — twelve runnable examples</li><li><a href="https://github.com/AreteAcademy/brevis/blob/master/CHANGELOG.md" target="_blank" rel="noopener"><code>CHANGELOG.md</code></a> — version-by-version history</li></ul>
 
@@ -324,7 +472,7 @@ go run ./fetcher"><div class="code-head"><span class="code-lang">bash</span><but
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
+      <ul><li class="toc-2"><a href="#three-steps">Three steps</a></li><li class="toc-2"><a href="#the-driver-is-a-value-not-a-setting">The driver is a value, not a setting</a></li><li class="toc-2"><a href="#sources-and-destinations">Sources and destinations</a></li><li class="toc-3"><a href="#publishing-to-a-topic">Publishing to a topic</a></li><li class="toc-2"><a href="#a-whole-fetcher">A whole fetcher</a></li><li class="toc-2"><a href="#the-run-context">The run context</a></li><li class="toc-3"><a href="#the-clock">The clock</a></li><li class="toc-2"><a href="#not-to-be-confused-with-the-client-libraries">Not to be confused with the client libraries</a></li><li class="toc-2"><a href="#parameters-that-build-the-pipeline">Parameters that build the pipeline</a></li><li class="toc-2"><a href="#the-landing-layout">The landing layout</a></li><li class="toc-3"><a href="#two-shapes-the-record-whole-or-one-column-per-field">Two shapes: the record whole, or one column per field</a></li><li class="toc-3"><a href="#the-brevis-prefix-is-yours-to-change">The brevis_ prefix is yours to change</a></li><li class="toc-3"><a href="#one-column-per-nested-field">One column per nested field</a></li><li class="toc-3"><a href="#text-that-is-already-json">Text that is already JSON</a></li><li class="toc-3"><a href="#when-a-field-the-table-does-not-have-shows-up">When a field the table does not have shows up</a></li><li class="toc-2"><a href="#reference">Reference</a></li></ul>
     </aside>
   </main>
 </div>

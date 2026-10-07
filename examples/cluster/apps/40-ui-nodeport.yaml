@@ -1,0 +1,28 @@
+# The UI, reachable from the host.
+#
+# A Service of the DEMO's, not a value in the chart. The chart's schema refuses
+# `api.service.nodePort`, and it is right to: a NodePort is a decision about
+# one cluster's network, and a chart that grew a field so a demo could reach a
+# UI would be a product bent for a demo's convenience.
+#
+# So the demo brings its own. It selects the same pods the chart's Service
+# does, through the labels the chart sets, and it is deleted with the rest of
+# this directory.
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-ui
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: brevis
+    app.kubernetes.io/instance: brevis
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      nodePort: 30081
