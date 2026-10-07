@@ -1,0 +1,51 @@
+# The shape of a target, as every reader of one must judge it.
+#
+# A target names where a step landed data: an identity, never an address. It
+# is BUILT in exactly one place, the SDK's Locate(); it is CHECKED in three --
+# the SDK, the engine, and the Python library -- and those three keep a copy
+# of this file and fail a test when their copy drifts from this one. Three
+# validators can agree only if they read the same cases.
+#
+# One case per line: a verdict, a space, the target. Everything after " # " is
+# the reason, for whoever reads a failure.
+#
+#   valid    accepted everywhere
+#   pattern  accepted only where a pattern is allowed (a gateway's auto_table)
+#   invalid  refused everywhere
+
+valid bigquery://acme-prod/bronze/clicks
+valid bigquery://example.com:acme/bronze/clicks  # a domain-scoped project carries a colon in its id
+valid postgres://analytics/public/orders
+valid postgres://analytics/public/order%20items  # a quoted identifier with a space, percent-encoded
+valid mysql://shop/customers
+valid redshift://warehouse/public/events
+valid s3://acme-landing/vendors/
+valid s3://acme-landing/
+valid s3://acme-landing/vendors/2026/report.csv  # a step may name an object; Locate() names the prefix
+valid gs://acme-landing/vendors/
+valid file:///var/data/out/
+valid pubsub://acme-prod/clicks-raw
+
+pattern bigquery://acme-prod/bronze/*
+pattern postgres://analytics/raw/*
+
+invalid   # empty
+invalid bigquery  # no scheme separator
+invalid BigQuery://acme-prod/bronze/clicks  # scheme not lower-case
+invalid snowflake://acct/db/schema/t  # unknown scheme
+invalid bigquery://acme-prod/clicks  # too few segments
+invalid bigquery://acme-prod/bronze/clicks/extra  # too many segments
+invalid bigquery://acme-prod//clicks  # empty segment
+invalid bigquery://acme-prod/bronze/  # empty table
+invalid postgres://user:secret@db.internal:5432/analytics/public/orders  # a DSN, not a target
+invalid postgres://db.internal:5432/public/orders  # a port is an address
+invalid postgres://analytics/public/orders?sslmode=disable  # a query string
+invalid mysql://shop/customers#latest  # a fragment
+invalid pubsub://acme-prod/topic/extra  # too many segments
+invalid s3://  # no bucket
+invalid s3:///vendors/  # empty bucket
+invalid gs://acme landing/  # whitespace
+invalid file://relative/path/  # a file target is absolute
+invalid bigquery://acme-prod/bronze/clicks*  # a pattern must be a whole segment
+invalid bigquery://acme-prod/*/clicks  # only the last segment may be a pattern
+invalid s3://acme-landing/*  # object stores take no pattern
