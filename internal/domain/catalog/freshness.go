@@ -103,3 +103,27 @@ func Best(statuses ...Status) Status {
 	}
 	return best
 }
+
+// MissedSlots lists the writer's ticks after its last landing that are past
+// their grace, oldest first, up to limit. A paused or unscheduled writer has
+// none: nothing was expected of it.
+//
+// limit bounds the work as well as the drawing: a minutely writer stopped for
+// a week has ten thousand missed ticks, and the page needs a handful.
+func MissedSlots(w Writer, now time.Time, limit int) []time.Time {
+	if w.Schedule == nil || !w.Schedule.Active || limit <= 0 {
+		return nil
+	}
+	grace := max(minGrace, w.Lag)
+	var out []time.Time
+	tick := w.Last
+	for len(out) < limit {
+		next, err := w.Schedule.Next(tick)
+		if err != nil || now.Before(next.Add(grace)) {
+			break
+		}
+		out = append(out, next)
+		tick = next
+	}
+	return out
+}

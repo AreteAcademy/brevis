@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -18,10 +19,23 @@ import (
 type catalogFake struct {
 	entries []postgres.CatalogEntry
 	err     error
+
+	detail *postgres.TargetDetail
+	asked  *string
 }
 
 func (c catalogFake) Catalog(context.Context) ([]postgres.CatalogEntry, error) {
 	return c.entries, c.err
+}
+
+func (c catalogFake) CatalogTarget(_ context.Context, target string) (*postgres.TargetDetail, error) {
+	if c.asked != nil {
+		*c.asked = target
+	}
+	if c.detail == nil || c.detail.Target != target {
+		return nil, nil
+	}
+	return c.detail, nil
 }
 
 func dataUI(c api.CatalogReader) *api.UI {
@@ -146,5 +160,67 @@ func TestTheDataPageFiltersFromTheQueryString(t *testing.T) {
 	_, body = get(t, ui, "/data?status=bogus")
 	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "showing ") {
 		t.Error("an unknown status should be ignored, showing everything")
+	}
+}
+
+func lateDetail() *postgres.TargetDetail {
+	run := "4b1f0a52-61c3-4f45-8f0e-6d0c2b2f0d11"
+	return &postgres.TargetDetail{
+		CatalogEntry: postgres.CatalogEntry{
+			Target: "postgres://analytics/public/order%20items", Kind: "postgres",
+			Writers: []postgres.CatalogWriter{{Workflow: "orders_sync", Node: "load",
+				LastLoaded: time.Now().Add(-90 * time.Minute), LastRows: i64(30),
+				HasSchedule: true, Cron: "0 * * * *", Timezone: "UTC", Active: true}},
+			Recent: []*int64{i64(10), i64(20), i64(30)},
+		},
+		Loads: []postgres.TargetLoad{
+			{RunID: run, Workflow: "orders_sync", Node: "load", LoadedAt: time.Now().Add(-90 * time.Minute), Rows: i64(30)},
+			{RunID: "older", Workflow: "orders_sync", Node: "load", LoadedAt: time.Now().Add(-150 * time.Minute), Rows: i64(20)},
+		},
+	}
+}
+
+func TestTheDestinationPageShowsItsWritersAndLoads(t *testing.T) {
+	d := lateDetail()
+	var asked string
+	ui := dataUI(catalogFake{detail: d, asked: &asked})
+
+	code, body := get(t, ui, "/data/target?u="+url.QueryEscape(d.Target))
+	if code != http.StatusOK {
+		t.Fatalf("status %d", code)
+	}
+	// The target round-trips untouched: a slash, and a percent-encoded space.
+	if asked != d.Target {
+		t.Fatalf("the reader was asked for %q, want %q", asked, d.Target)
+	}
+	for _, want := range []string{
+		d.Target, "orders_sync", "0 * * * *",
+		`href="/runs/` + d.Loads[0].RunID + `"`,
+		"missed its", // a late writer says which slot and how much grace
+		"Rows per load",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page does not show %q", want)
+		}
+	}
+}
+
+func TestTheDestinationPageRefusesWhatItCannotRead(t *testing.T) {
+	ui := dataUI(catalogFake{detail: lateDetail()})
+	if code, _ := get(t, ui, "/data/target"); code != http.StatusBadRequest {
+		t.Errorf("no target: %d, want 400", code)
+	}
+	if code, _ := get(t, ui, "/data/target?u="+url.QueryEscape(strings.Repeat("x", 513))); code != http.StatusBadRequest {
+		t.Errorf("an oversized target: %d, want 400", code)
+	}
+	if code, _ := get(t, ui, "/data/target?u="+url.QueryEscape("postgres://nowhere/public/x")); code != http.StatusNotFound {
+		t.Errorf("an unknown target: %d, want 404", code)
+	}
+}
+
+func TestTheListLinksEachDestinationToItsPage(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	if !strings.Contains(body, `href="/data/target?u=`+url.QueryEscape("s3://demo-landing/reports/")+`"`) {
+		t.Error("the list does not link to the destination page")
 	}
 }

@@ -1,0 +1,104 @@
+package pages
+
+import (
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+templ Target(v TargetView) {
+	@layouts.Base(layouts.Page{Title: "Destination", Kicker: "Catalog", Active: "data"}) {
+		<a href="/data" class="text-xs text-muted hover:text-gold-strong">&larr; Data</a>
+		<div class="mt-2 mb-6 flex flex-wrap items-center gap-3">
+			<h2 class="font-mono text-base break-all text-ink">{ v.Row.Target }</h2>
+			@components.Freshness(string(v.Row.Status))
+			if v.Row.Legacy {
+				<span class="rounded-card border border-line px-1.5 py-px text-[0.7rem] font-medium text-muted">legacy label</span>
+			} else {
+				<span class="text-xs text-muted">{ v.Row.Kind }</span>
+			}
+		</div>
+		<section class="mb-8">
+			<h3 class="kicker mb-2">Writers</h3>
+			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-line bg-parchment-soft/60 text-left">
+							@th("Step", "pl-6")
+							@th("Schedule", "")
+							@th("Last loaded", "")
+							@th("Status", "pr-6")
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, w := range v.Row.Writers {
+							<tr class="align-top">
+								<td class="px-3 py-3 pl-6">
+									<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
+									<span class="text-muted">· { w.Node }</span>
+									if r := w.Reason(); r != "" {
+										<p class="mt-1 max-w-xl text-xs text-muted">{ r }</p>
+									}
+									if w.RunInFlight != nil {
+										<a href={ templ.SafeURL("/runs/" + *w.RunInFlight) } class="mt-1 inline-block text-xs text-state-running hover:underline">run in progress</a>
+									}
+								</td>
+								<td class="px-3 py-3 font-mono text-xs whitespace-nowrap text-muted">
+									if w.HasSchedule {
+										{ w.Cron } <span class="font-sans">{ w.Timezone }</span>
+									} else {
+										<span class="font-sans">by hand</span>
+									}
+								</td>
+								<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">{ components.When(&w.LastLoaded) }</td>
+								<td class="px-3 py-3 pr-6">
+									@components.Freshness(string(w.Verdict.Status))
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+		<section class="mb-8">
+			<h3 class="kicker mb-2">Rows per load</h3>
+			<div class="rounded-card border border-line bg-surface p-4 shadow-warm-sm">
+				@components.LoadBars(v.Bars, v.Missed)
+				<p class="mt-2 text-xs text-muted">
+					Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote.
+					if v.Missed > 0 {
+						Dashed bars are scheduled loads that did not arrive.
+					}
+				</p>
+			</div>
+		</section>
+		<section>
+			<h3 class="kicker mb-2">Recent loads</h3>
+			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-line bg-parchment-soft/60 text-left">
+							@th("Loaded", "pl-6")
+							@th("Step", "")
+							@th("Rows", "text-right")
+							@th("Bytes", "text-right")
+							@th("Run", "pr-6")
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, l := range v.Loads {
+							<tr>
+								<td class="px-3 py-2 pl-6 text-xs tabular-nums whitespace-nowrap text-muted">{ components.UTCStamp(&l.LoadedAt) }</td>
+								<td class="px-3 py-2 text-xs">{ l.Workflow } <span class="text-muted">· { l.Node }</span></td>
+								<td class="px-3 py-2 text-right text-xs tabular-nums">{ rowsText(l.Rows) }</td>
+								<td class="px-3 py-2 text-right text-xs tabular-nums">{ rowsText(l.Bytes) }</td>
+								<td class="px-3 py-2 pr-6 text-xs">
+									<a href={ templ.SafeURL("/runs/" + l.RunID) } class="font-mono text-gold-strong hover:underline">{ shortID(l.RunID) }</a>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	}
+}

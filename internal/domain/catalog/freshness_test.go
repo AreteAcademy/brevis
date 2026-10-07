@@ -119,3 +119,29 @@ func TestBestTakesTheHealthiestWriter(t *testing.T) {
 		t.Errorf("Best() = %s, want unscheduled: no writer, no verdict", got)
 	}
 }
+
+// The slots that went by without a landing, each past its grace -- what the
+// destination page draws as dashed bars after the last load.
+func TestMissedSlotsListsTheTicksPastTheirGrace(t *testing.T) {
+	w := Writer{sched("0 * * * *", "UTC"), at("2026-10-07T10:05:00Z"), 0}
+	got := MissedSlots(w, at("2026-10-07T13:30:00Z"), 5)
+	want := []string{"2026-10-07T11:00:00Z", "2026-10-07T12:00:00Z", "2026-10-07T13:00:00Z"}
+	if len(got) != len(want) {
+		t.Fatalf("missed = %v, want %v", got, want)
+	}
+	for i := range want {
+		if !got[i].Equal(at(want[i])) {
+			t.Fatalf("missed[%d] = %v, want %s", i, got[i], want[i])
+		}
+	}
+	// 13:00 is past its grace at 13:30; 14:00 has not come.
+	if n := len(MissedSlots(w, at("2026-10-07T13:30:00Z"), 2)); n != 2 {
+		t.Errorf("the cap was not applied: %d", n)
+	}
+	if n := len(MissedSlots(w, at("2026-10-07T10:30:00Z"), 5)); n != 0 {
+		t.Errorf("on time, yet %d missed", n)
+	}
+	if n := len(MissedSlots(Writer{nil, at("2026-10-07T10:05:00Z"), 0}, at("2026-10-09T00:00:00Z"), 5)); n != 0 {
+		t.Errorf("no schedule, yet %d missed", n)
+	}
+}

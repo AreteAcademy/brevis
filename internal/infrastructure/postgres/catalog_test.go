@@ -178,3 +178,36 @@ func TestAWriterWithARunInFlightNamesIt(t *testing.T) {
 		t.Fatalf("run in flight = %v, want %s", w.RunInFlight, running)
 	}
 }
+
+func TestCatalogTargetReturnsItsWritersAndLastLoads(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const orders = "postgres://analytics/public/order%20items"
+	base := time.Date(2026, 10, 7, 10, 0, 0, 0, time.UTC)
+	schedule(t, pool, "orders_sync", "0 * * * *", "UTC", true)
+	var last uuid.UUID
+	for h := 0; h < 3; h++ {
+		last = landAt(t, pool, "orders_sync", "load", orders, base.Add(time.Duration(h)*time.Hour), 5*time.Minute, n(int64(10*(h+1))))
+	}
+	landAt(t, pool, "other", "load", "bigquery://a/b/c", base, 0, n(1))
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, orders)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d == nil || d.Target != orders || len(d.Writers) != 1 || d.Writers[0].Workflow != "orders_sync" {
+		t.Fatalf("detail = %+v", d)
+	}
+	if len(d.Loads) != 3 {
+		t.Fatalf("loads = %+v", d.Loads)
+	}
+	newest := d.Loads[0]
+	if newest.RunID != last.String() || *newest.Rows != 30 || newest.Workflow != "orders_sync" {
+		t.Errorf("newest load = %+v, want run %s with 30 rows", newest, last)
+	}
+
+	missing, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, "postgres://nowhere/public/x")
+	if err != nil || missing != nil {
+		t.Fatalf("an unknown target = %+v, %v; want nil, nil", missing, err)
+	}
+}

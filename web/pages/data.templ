@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/web/components"
@@ -99,7 +100,7 @@ templ dataRow(r DataRow) {
 			@components.Freshness(string(r.Status))
 		</td>
 		<td class="px-3 py-3">
-			<span class="font-mono text-[0.8rem] break-all text-ink">{ r.Target }</span>
+			<a href={ templ.SafeURL("/data/target?u=" + url.QueryEscape(r.Target)) } class="font-mono text-[0.8rem] break-all text-ink hover:text-gold-strong">{ r.Target }</a>
 			<span class="mt-1 block text-[0.7rem] text-muted">
 				if r.Legacy {
 					<span
