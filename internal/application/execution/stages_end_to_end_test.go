@@ -58,6 +58,9 @@ type spyPersister struct {
 	// assert silence look at.
 	loads map[dom.StepKey]app.LoadNumbers
 
+	// landings is what each instance declared it wrote.
+	landings map[dom.StepKey][]app.Landing
+
 	// ctxOut is the context the step published, by whichever road. Empty when
 	// nothing usable arrived, which is what the tests asserting silence read.
 	ctxOut json.RawMessage
@@ -123,6 +126,28 @@ func (p *spyPersister) RecordLoad(_ context.Context, _ uuid.UUID, step dom.StepK
 	}
 	p.loads[step] = n
 	return nil
+}
+
+func (p *spyPersister) RecordLandings(_ context.Context, _ uuid.UUID, step dom.StepKey,
+	_ string, ls []app.Landing) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.landings == nil {
+		p.landings = map[dom.StepKey][]app.Landing{}
+	}
+	p.landings[step] = ls
+	return nil
+}
+
+// landed lists what reached the catalog, for a test to count.
+func (p *spyPersister) landed() map[dom.StepKey][]app.Landing {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make(map[dom.StepKey][]app.Landing, len(p.landings))
+	for k, v := range p.landings {
+		out[k] = v
+	}
+	return out
 }
 
 // loaded lists what reached the trend table, for a test to count.

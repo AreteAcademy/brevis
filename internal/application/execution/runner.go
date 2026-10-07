@@ -89,6 +89,16 @@ type Persister interface {
 	RecordLoad(ctx context.Context, runID uuid.UUID, step run.StepKey,
 		workflow string, n LoadNumbers) error
 
+	// RecordLandings keeps what one attempt declared it wrote: which
+	// destinations, how much, and when. Called once, when the step ends,
+	// whatever its exit code -- a step that wrote a table and then failed did
+	// write the table.
+	//
+	// Required rather than optional, for MarkSkipped's reason: a persister
+	// that silently skipped this would be a catalog with holes nobody can see.
+	RecordLandings(ctx context.Context, runID uuid.UUID, step run.StepKey,
+		workflow string, landings []Landing) error
+
 	// MarkSkipped records a step whose trigger rule was not satisfied, with the
 	// reason. Required rather than optional: a skipped step that leaves no row
 	// is invisible, and "did not run and nobody can tell why" is the state this
@@ -845,6 +855,29 @@ func (r Runner) markLoad(ctx context.Context, workflow string, step run.StepKey,
 	_ = r.Persist.RecordLoad(ctx, r.RunID, step, workflow, n)
 }
 
+// markLandings keeps what the step declared it wrote, and says once what it
+// had to drop.
+//
+// The warning is here and not in the collector because this is the code that
+// knows the step: "a landing was refused" is useless without "in which step".
+// Failing to record does not bring the step down, on markLoad's terms.
+func (r Runner) markLandings(ctx context.Context, workflow string, step run.StepKey, c *stageCollector) {
+	if c.LandingsRefused > 0 || c.LandingsOverCeiling > 0 {
+		slog.Warn("a step declared landings the engine did not keep",
+			"run", r.RunID, "workflow", workflow, "step", step.Node,
+			"refused", c.LandingsRefused, "over_ceiling", c.LandingsOverCeiling,
+			"hint", "a target is an identity like bigquery://project/dataset/table, with no host, port or user; at most 100 per step")
+	}
+	if r.Persist == nil || r.RunID == uuid.Nil {
+		return
+	}
+	landings := c.Landings()
+	if len(landings) == 0 {
+		return
+	}
+	_ = r.Persist.RecordLandings(ctx, r.RunID, step, workflow, landings)
+}
+
 func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -1057,6 +1090,10 @@ func (r Runner) tentar(ctx context.Context, w wf.Workflow, n wf.Node, inst insta
 	// load, and dropping it here would lose it for a reason that has nothing to
 	// do with the load.
 	r.markLoad(ctx, w.Slug, inst.key, &stages)
+
+	// What the step declared it wrote. On the failure path as well: a step
+	// that landed rows and then died did land them.
+	r.markLandings(ctx, w.Slug, inst.key, &stages)
 
 	if failure == nil {
 		return completa.String(), nil

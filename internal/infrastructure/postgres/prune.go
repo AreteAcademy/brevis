@@ -27,15 +27,17 @@ import (
 // where almost all the value is. A policy with only the second would be
 // throwing away runs to reclaim space that was never in the run.
 //
-// load_metrics is untouched by both. It has no foreign key for exactly this
-// reason: the summary outlives the detail, which is the only thing that makes a
-// year-long trend possible on a ninety-day log.
+// load_metrics and landings are untouched by both. Neither has a foreign key,
+// for exactly this reason: the summary outlives the detail, which is the only
+// thing that makes a year-long trend possible on a ninety-day log -- and the
+// only thing that keeps a table on /data after the runs that loaded it are
+// gone.
 type Retention struct {
 	// TrimAfter empties log, etapas and saida on runs older than this.
 	TrimAfter time.Duration
 
 	// PurgeAfter deletes the run outright, and with it its task_runs, its queue
-	// items and its alerts -- but NOT its row in load_metrics.
+	// items and its alerts -- but NOT its rows in load_metrics and landings.
 	//
 	// Zero means never, which is a real answer: a run's status and duration are
 	// small, and an installation may want them forever.
