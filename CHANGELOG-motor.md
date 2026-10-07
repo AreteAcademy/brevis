@@ -14,6 +14,52 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.17.0] — 2026-10-07
+
+The catalog: what every pipeline, step and gateway writes, and which of it is
+late.
+
+### Added: `/data` in the console
+
+Every destination the ecosystem writes, who writes it, when it last received
+data, and whether that is **late against the writer's own schedule**: an
+hourly table three hours old is stale, a daily one is fine. Statuses are on
+time, late, stale, paused, no schedule, and — for gateways — continuous. Problems
+first, filters in the URL, and a page per destination that says which slot a
+writer missed and draws its last loads. See `docs/CATALOG.md`.
+
+### Added: steps say which table they wrote
+
+A step prints one line, and the engine keeps it in a new `landings` table:
+
+```
+@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/orders","rows":48213}
+```
+
+The Go SDK does it by itself from **sdk 0.81.0**; Python from **brevis 0.8.0**
+(`landed()`); dbt and shell steps echo the line. See `docs/LANDINGS.md`. An
+SDK older than 0.81.0 keeps working and lands nothing.
+
+### Added: `brevis gateway publish | unpublish`
+
+A gateway appears on `/data` from a published manifest — the output of
+`gateway describe` (gateway 0.22.0) — never at runtime. See `docs/GATEWAY.md`.
+
+### Upgrading
+
+**Run `brevis migrate up`.** Two migrations:
+
+- **00013** creates `landings` and backfills it from the phases already
+  recorded, as legacy labels. Measured on a year of hourly runs across forty
+  workflows (350,400 task runs, 492 MB): **about 11 seconds**, inside the
+  migration's transaction, once. Plan the deploy window for it.
+- **00014** creates `gateway_destinations`, empty until a gateway is published.
+
+Neither touches an existing table. `landings` has no foreign key to `runs` and
+`brevis prune` leaves it alone, like `load_metrics`.
+
+---
+
 ## [0.16.1] — 2026-10-06
 
 Three things that cannot change the behaviour of a workflow you already have.

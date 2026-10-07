@@ -13,6 +13,34 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.22.0] — 2026-10-07
+
+### Added: `gateway describe` — where each stream lands, for the console
+
+```bash
+gateway describe [--name <gateway>] gateway.yaml > manifest.json
+brevis gateway publish manifest.json      # engine 0.17.0
+```
+
+Prints a manifest: per stream, each destination's role (`sink`, `dead_letter`,
+`archive`), its kind and its target — the identity the SDK gives a table.
+`auto_table` publishes the pattern its tables land under. It **builds no sink
+and opens nothing**, so it runs in a deploy pipeline without the gateway's
+credentials; it does read the variable `dsn_from` names, and fails naming it
+when unset. A sink type the binary cannot describe, and a path relative to the
+gateway's working directory, are listed with no target and a reason.
+
+Each driver gains a `Locate` function, registered beside its constructor with
+`MustRegisterLocator`. A binary of your own registers the ones it needs, as it
+registers sinks; without them, `describe` lists those sinks as unidentified.
+
+### Changed: requires sdk v0.81.0 and Go 1.26
+
+The locators use the SDK's `Locate()`, first published in sdk v0.81.0, and the
+module's `go` directive follows the SDK's to 1.26.
+
+---
+
 ## [0.21.0] — 2026-10-01
 
 Requires sdk v0.80.0. **Fixes a regression in 0.20.0 that dead-lettered whole
