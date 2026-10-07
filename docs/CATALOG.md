@@ -12,7 +12,8 @@ draw it: a destination is on this page because a step said it wrote there.
 | listed | not listed |
 |---|---|
 | every table an SDK pipeline loaded | anything written by a tool outside Brevis |
-| every destination a step declared with `landed` (Python, dbt, shell) | the gateway's sinks |
+| every destination a step declared with `landed` (Python, dbt, shell) | a gateway that was never published |
+| every destination of a published gateway (`brevis gateway publish`) | |
 | loads from before targets existed, as **legacy** labels | |
 
 The page says the same in one sentence under its title, so nobody reads the
@@ -48,10 +49,14 @@ run.
 | **stale** | two or more |
 | **paused** | the workflow's schedule is paused — a choice, never stale |
 | **no schedule** | the workflow runs by hand, or its cron cannot be read |
+| **continuous** | a published gateway stream: it writes as events arrive, with no schedule to be late against — its traffic is on the gateway's `/metrics` |
+| **unidentified** | a gateway destination its manifest could not name — listed with the reason, never dropped |
 
 A destination takes its **best** writer's status: data arriving from any writer
-is data arriving. The list puts stale first, then late, on time, paused and no
-schedule; within a status, the most recently loaded first.
+is data arriving, so a table a gateway feeds is continuous even when the step
+beside it lags. The list puts stale first, then late, on time, continuous,
+paused, no schedule and unidentified; within a status, the most recently loaded
+first.
 
 A late writer whose workflow has a run queued, running or retrying links to it:
 it may be about to fix itself.
