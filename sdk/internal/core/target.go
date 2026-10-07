@@ -268,3 +268,51 @@ func isPlainSegmentByte(c byte) bool {
 	}
 	return strings.IndexByte("-._~!$&'()+,;=", c) >= 0
 }
+
+// SplitQualified splits `schema.table` (or `database.table`) at the first dot
+// outside quotes, keeping the quotes on each part so the target can fold what
+// the database folds and keep what it keeps. quote is '"' for Postgres and
+// Redshift, '`' for MySQL and BigQuery.
+func SplitQualified(name string, quote byte) (qualifier, table string, qualified bool) {
+	quoted := false
+	for i := 0; i < len(name); i++ {
+		switch name[i] {
+		case quote:
+			quoted = !quoted
+		case '.':
+			if !quoted {
+				return name[:i], name[i+1:], true
+			}
+		}
+	}
+	return "", name, false
+}
+
+// SearchPathSchema is the schema an unqualified Postgres-dialect name resolves
+// to, as far as the DSN says: `search_path=…`, or `options=-c search_path=…`,
+// read from the runtime parameters the driver parsed out of it. `$user` is
+// skipped, because which user that is belongs to the server. With nothing set,
+// `public` -- the server's default.
+//
+// A search_path set on the role or on the database is invisible without a
+// query, and a Locator makes none. Qualify the name when that is how the
+// database is set up.
+func SearchPathSchema(params map[string]string) string {
+	path := params["search_path"]
+	if path == "" {
+		opts := strings.ReplaceAll(params["options"], "-c ", "-c")
+		for _, opt := range strings.Fields(opts) {
+			if v, ok := strings.CutPrefix(opt, "-csearch_path="); ok {
+				path = v
+				break
+			}
+		}
+	}
+	for _, s := range strings.Split(path, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" && strings.Trim(s, `"`) != "$user" {
+			return s
+		}
+	}
+	return "public"
+}

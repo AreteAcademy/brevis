@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/AreteAcademy/brevis/sdk/internal/core"
 )
 
@@ -81,6 +83,29 @@ type SQLExecutor interface {
 // Describe satisfies core.Writer. It names the table, never the DSN nor the
 // role.
 func (t Table) Describe() string { return "redshift:" + t.Name }
+
+var _ core.Locator = Table{}
+
+// Locate satisfies sdk.Locator: redshift://database/schema/table.
+//
+// Redshift speaks Postgres's dialect, and the rules are Postgres's: the
+// database from the DSN, parsed and never dialled; an unquoted name folded; an
+// unqualified one in the DSN's search_path, else `public`. With only an
+// Executor and no DSN there is no database to name, and nothing lands.
+func (t Table) Locate() string {
+	if t.DSN == "" {
+		return ""
+	}
+	cfg, err := pgx.ParseConfig(t.DSN)
+	if err != nil {
+		return ""
+	}
+	schema, table, qualified := core.SplitQualified(t.Name, '"')
+	if !qualified {
+		schema = core.SearchPathSchema(cfg.RuntimeParams)
+	}
+	return core.PostgresTarget("redshift", cfg.Database, schema, table)
+}
 
 // Write satisfies core.Writer.
 func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.WriteOptions) (*core.LoadResult, error) {
