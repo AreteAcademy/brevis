@@ -111,7 +111,9 @@ Which is not a new pipe. The engine already reads every line of every step's
 output looking for that prefix — it is how an SDK pipeline's phases appear on
 the graph while it runs, and how `metrics.set()` reaches `/metrics`. This is a
 third kind of line on a channel that every executor already streams, so an
-executor that can only produce logs still gets a return path.
+executor that can only produce logs still gets a return path. (A fourth,
+`landed`, says which destination a step wrote — see
+[`LANDINGS.md`](LANDINGS.md).)
 
 **You do not choose between them.** Both libraries write the file when
 `BREVIS_OUTPUT` names one and print the marker when it does not, and print
