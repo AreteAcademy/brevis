@@ -101,3 +101,28 @@ func TestDataIsInTheNavigation(t *testing.T) {
 		t.Error("the navigation has no link to /data")
 	}
 }
+
+// Every destination carries its status as words, not colour alone, and the
+// summary above the table counts them.
+func TestTheDataPageShowsStatusesInWordsAndCountsThem(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	for _, want := range []string{"on time", "no schedule", "3 destinations"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page does not say %q", want)
+		}
+	}
+}
+
+func TestALateWriterLinksToTheRunThatIsAboutToFixIt(t *testing.T) {
+	run := "7aa2549c-0503-5f93-ab58-0ab78e7eb555"
+	late := []postgres.CatalogEntry{{
+		Target: "postgres://db/public/orders", Kind: "postgres",
+		Writers: []postgres.CatalogWriter{{Workflow: "orders_sync", Node: "load",
+			LastLoaded: time.Now().Add(-90 * time.Minute), HasSchedule: true,
+			Cron: "0 * * * *", Timezone: "UTC", Active: true, RunInFlight: &run}},
+	}}
+	_, body := get(t, dataUI(catalogFake{entries: late}), "/data")
+	if !strings.Contains(body, `href="/runs/`+run+`"`) || !strings.Contains(body, "run in progress") {
+		t.Error("a late writer with a run in flight does not link to it")
+	}
+}

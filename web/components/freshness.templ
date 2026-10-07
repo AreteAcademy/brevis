@@ -1,0 +1,56 @@
+package components
+
+// Freshness is a destination's or a writer's status against its schedule, in
+// words as well as colour: the colour helps whoever sees it, the word works for
+// everyone, screen readers and colour-blind operators included.
+templ Freshness(status string) {
+	<span class={ "inline-flex items-center gap-1.5 whitespace-nowrap rounded-card border px-2.5 py-0.5 text-xs font-medium", freshnessClass(status) }>
+		<span class={ "h-1.5 w-1.5 rounded-full", freshnessDot(status) }></span>
+		{ FreshnessLabel(status) }
+	</span>
+}
+
+// FreshnessLabel is the word for a status, as the page and the summary say it.
+func FreshnessLabel(s string) string {
+	switch s {
+	case "on_time":
+		return "on time"
+	case "late":
+		return "late"
+	case "stale":
+		return "stale"
+	case "paused":
+		return "paused"
+	}
+	return "no schedule"
+}
+
+// The run states' palette, so the console has one meaning per colour: green
+// is fine, amber is waiting on something, red needs a person, grey is a choice.
+func freshnessClass(s string) string {
+	switch s {
+	case "on_time":
+		return "border-state-success/25 bg-state-success/10 text-state-success"
+	case "late":
+		return "border-state-queued/25 bg-state-queued/10 text-state-queued"
+	case "stale":
+		return "border-state-failed/25 bg-state-failed/10 text-state-failed"
+	case "paused":
+		return "border-state-canceled/25 bg-state-canceled/10 text-state-canceled"
+	}
+	return "border-line bg-parchment-soft text-muted"
+}
+
+func freshnessDot(s string) string {
+	switch s {
+	case "on_time":
+		return "bg-state-success"
+	case "late":
+		return "bg-state-queued"
+	case "stale":
+		return "bg-state-failed"
+	case "paused":
+		return "bg-state-canceled"
+	}
+	return "bg-line-strong"
+}
