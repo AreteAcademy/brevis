@@ -37,8 +37,8 @@ func ValidTarget(s string, allowPattern bool) error {
 	if !ok {
 		return refuse("no scheme")
 	}
-	_, table := tableSegments[scheme]
-	if !table && !objectSchemes[scheme] {
+	_, isTable := tableSegments[scheme]
+	if !isTable && !objectSchemes[scheme] {
 		lower := strings.ToLower(scheme)
 		if _, known := tableSegments[lower]; known || objectSchemes[lower] {
 			return refuse("the scheme must be lower-case")
@@ -57,7 +57,7 @@ func ValidTarget(s string, allowPattern bool) error {
 			return refuse("contains a fragment")
 		}
 	}
-	if table {
+	if isTable {
 		return validTable(scheme, rest, allowPattern, refuse)
 	}
 	return validObject(scheme, rest, refuse)
@@ -90,7 +90,7 @@ func validTable(scheme, rest string, allowPattern bool, refuse func(string) erro
 		}
 		// A domain-scoped BigQuery project is `example.com:project`; anywhere
 		// else a colon is a port.
-		if strings.Contains(seg, ":") && !(scheme == "bigquery" && i == 0) {
+		if strings.Contains(seg, ":") && (scheme != "bigquery" || i != 0) {
 			return refuse("contains ':', a port")
 		}
 		if strings.Contains(seg, "*") && (seg != "*" || i != last || !allowPattern || scheme == "pubsub") {
