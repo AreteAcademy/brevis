@@ -36,7 +36,7 @@ func page(t *testing.T, raised api.AlertsReader) (int, string) {
 	id := uuid.New()
 	ui := api.NewUI(nil, nil,
 		execsFake{run: dom.Run{ID: id, WorkflowSlug: "id_verification", Status: dom.StatusFailed}},
-		nil, raised, branding.Default(), slog.New(slog.DiscardHandler))
+		nil, raised, nil, branding.Default(), slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
@@ -160,7 +160,7 @@ func TestTheAutoParamsAreOnTheScreen(t *testing.T) {
 			IntervalStart: &before, IntervalEnd: &slot,
 			PreviousError: true, PreviousSuccessAt: &before,
 		},
-	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	}}, nil, alertsFake{}, nil, branding.Default(), slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
@@ -198,7 +198,7 @@ func TestAManualRunShowsOnlyWhatItHas(t *testing.T) {
 	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 		ID: id, WorkflowSlug: "on_demand", Status: dom.StatusSuccess, TriggerType: "manual",
 		Auto: dom.AutoParams{StartedAt: &started, AdjustedAt: started, Date: "2026-09-08"},
-	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	}}, nil, alertsFake{}, nil, branding.Default(), slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
@@ -251,7 +251,7 @@ func TestTheScreenAndTheStepReadTheSameClock(t *testing.T) {
 	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 		ID: id, WorkflowSlug: "nightly", Status: dom.StatusSuccess,
 		LogicalDate: &slot, Auto: auto,
-	}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+	}}, nil, alertsFake{}, nil, branding.Default(), slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
 	ui.Registrar(mux)
@@ -325,7 +325,7 @@ func TestTheLiveFragmentCarriesBothRegionsAndTheTerminalFlag(t *testing.T) {
 			id := uuid.New()
 			ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 				ID: id, WorkflowSlug: "nightly", Status: c.status,
-			}}, nil, alertsFake{}, branding.Default(), slog.New(slog.DiscardHandler))
+			}}, nil, alertsFake{}, nil, branding.Default(), slog.New(slog.DiscardHandler))
 
 			mux := http.NewServeMux()
 			ui.Registrar(mux)

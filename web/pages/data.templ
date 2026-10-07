@@ -1,0 +1,72 @@
+package pages
+
+import (
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+templ Data(entries []postgres.CatalogEntry) {
+	@layouts.Base(layouts.Page{Title: "Data", Kicker: "Catalog", Active: "data"}) {
+		<p class="mb-4 max-w-3xl text-sm text-muted">
+			Destinations written by Brevis: SDK pipelines, and any step that prints a
+			<code class="font-mono text-xs">landed</code> line. Writes from outside Brevis do not appear here.
+		</p>
+		if len(entries) == 0 {
+			@components.Empty("No destination yet.",
+				"One appears after an SDK pipeline's first load, or a step that prints a landed line. See docs/LANDINGS.md.")
+		} else {
+			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-line bg-parchment-soft/60 text-left">
+							@th("Destination", "pl-6")
+							@th("Writers", "")
+							@th("Last loaded", "")
+							@th("Rows, last load", "text-right")
+							@th("Last loads", "pr-6")
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, e := range entries {
+							@dataRow(e)
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	}
+}
+
+templ dataRow(e postgres.CatalogEntry) {
+	{{ when, rows := lastLoad(e) }}
+	<tr class="align-top transition-colors hover:bg-gold-wash">
+		<td class="px-3 py-3 pl-6">
+			<span class="font-mono text-[0.8rem] break-all text-ink">{ e.Target }</span>
+			<span class="mt-1 block text-[0.7rem] text-muted">
+				if e.Legacy {
+					<span
+						class="rounded-card border border-line px-1.5 py-px font-medium"
+						title="A label recovered from before steps named their target; it is never turned into one."
+					>legacy</span>
+					label
+				} else {
+					{ e.Kind }
+				}
+			</span>
+		</td>
+		<td class="px-3 py-3">
+			for _, w := range e.Writers {
+				<div class="whitespace-nowrap">
+					<a href={ templ.SafeURL("/workflows/" + w.Workflow) } class="font-medium text-ink hover:text-gold-strong">{ w.Workflow }</a>
+					<span class="text-muted">· { w.Node }</span>
+				</div>
+			}
+		</td>
+		<td class="px-3 py-3 text-xs whitespace-nowrap text-muted">{ components.When(when) }</td>
+		<td class="px-3 py-3 text-right text-xs tabular-nums text-ink">{ rowsText(rows) }</td>
+		<td class="px-3 py-3 pr-6">
+			@components.Spark(e.Recent)
+		</td>
+	</tr>
+}
