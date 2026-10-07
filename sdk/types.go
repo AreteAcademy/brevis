@@ -28,6 +28,13 @@ type (
 	// Writer is a destination: bigquery.Table, to.Files, postgres.Table.
 	Writer = core.Writer
 
+	// Locator is a Writer that can name its destination as a target --
+	// `postgres://analytics/public/orders` -- so a successful load tells the
+	// engine which table it wrote. Every writer in sdk/to implements it; a
+	// writer of your own may, and without it the load lands nothing in the
+	// catalog and works exactly as before.
+	Locator = core.Locator
+
 	// Store is an object-store backend: store/s3, store/gcs.
 	//
 	// It is passed to to.Files, from.Files and redshift.Table rather than

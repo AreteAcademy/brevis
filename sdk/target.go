@@ -233,6 +233,7 @@ type Result struct {
 	Dedup        core.Dedup // the deduplication that actually ran
 	TableCreated bool       // whether this run created the destination
 	Table        string     // the destination written to
+	Target       string     // the destination's identity, from Locator; "" when the writer cannot say
 	LoadTime     time.Duration
 
 	// CredentialExpiry is when the source credential stops working, when the
@@ -365,4 +366,12 @@ func (r *Result) Args() []any {
 func (r *Result) String() string {
 	return fmt.Sprintf("%d records -> %d lines (%d ignored) em %s via %s, dedup %s, %s",
 		r.Records, r.Rows, r.Ignored, r.Table, r.Strategy, r.Dedup, r.Duration)
+}
+
+// locate asks a writer for its target, when it can give one.
+func locate(w Writer) string {
+	if l, ok := w.(Locator); ok {
+		return l.Locate()
+	}
+	return ""
 }

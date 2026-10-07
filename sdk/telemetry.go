@@ -267,6 +267,27 @@ func stageNumbers(c StageResult) map[string]any {
 	return n
 }
 
+// landed tells the engine which destination a successful load wrote.
+//
+// Its own line rather than a field on the `load` phase, because it is one
+// contract for every language: a Python step or a dbt run says the same thing
+// with the same line, and the engine keeps one road for it instead of two.
+//
+// `rows` goes out even when it is zero. A source with nothing new today still
+// delivered, and its writer is on time; leaving the field out would read as a
+// step that did not say. `bytes` is left out at zero, the loadNumbers rule: a
+// driver that did not count bytes must not claim it wrote none.
+func (r *reporter) landed(res *Result) {
+	if res == nil || res.Target == "" {
+		return
+	}
+	ev := map[string]any{"type": "landed", "target": res.Target, "rows": res.Rows}
+	if res.Bytes > 0 {
+		ev["bytes"] = res.Bytes
+	}
+	r.emit(ev)
+}
+
 // loadNumbers is what the target phase produced, plus WHICH destination.
 func loadNumbers(res *Result) map[string]any {
 	if res == nil {
