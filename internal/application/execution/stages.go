@@ -89,6 +89,13 @@ type stageCollector struct {
 	// both, and having this type enforce a limit as well would be the same rule
 	// in two places -- which is how the two answers drift apart.
 	Published string
+
+	// What the step declared it wrote, by target. See landings.go.
+	landings     map[string]*Landing
+	landingOrder []string
+
+	// Landing lines dropped, and why. The runner says so once per step.
+	LandingsRefused, LandingsOverCeiling int
 }
 
 // StepMetric is one value a step reported through the @brevis: protocol.
@@ -144,6 +151,13 @@ func (c *stageCollector) line(msg string) bool {
 
 		Kind string `json:"kind"`
 
+		// A landing's. Raw, so a count of the wrong type refuses the landing
+		// instead of making the whole line unreadable -- which would put the
+		// marker in the step's log. See landings.go.
+		Target string          `json:"target"`
+		Rows   json.RawMessage `json:"rows"`
+		Bytes  json.RawMessage `json:"bytes"`
+
 		// `value` carries a metric's number AND a step's published context, and
 		// `type` is what decides how to read it. One key rather than two
 		// because it is one field fewer for every library that speaks this
@@ -175,6 +189,14 @@ func (c *stageCollector) line(msg string) bool {
 	if ev.Type == "" {
 		ev.Type, ev.Version = translateOldType(ev.TypeOld), ev.VersionOld
 		ev.TaskName, ev.State, ev.At = ev.NameOld, ev.StateOld, ev.AtOld
+	}
+
+	// Before the ceiling, on purpose: landings have a budget of their own
+	// (landingCeiling), and a step that lands per table must not spend the
+	// one that keeps its phases on the screen.
+	if ev.Type == "landed" {
+		c.land(ev.Target, ev.Rows, ev.Bytes, ev.At)
+		return true
 	}
 
 	if c.seen >= stageCeiling {
