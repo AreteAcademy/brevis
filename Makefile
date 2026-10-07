@@ -259,8 +259,15 @@ cluster-down: ## Tears the cluster down, volumes included
 logs: ## Follows the API's logs
 	@docker compose logs -f api
 
-smoke: ## Checks /health and /ready against the local environment
-	@printf 'health: '; curl -fsS localhost:8080/health && echo
-	@printf 'ready:  '; curl -fsS localhost:8080/ready  && echo
+smoke: ## Checks the api's /health and /ready, and that the gateway accepts an event
+	@printf 'health: '; curl -fsS localhost:$${BREVIS_API_PORT:-8080}/health && echo
+	@printf 'ready:  '; curl -fsS localhost:$${BREVIS_API_PORT:-8080}/ready  && echo
+	@# A POST and not /health: the gateway's /health answers before its config
+	@# is proven, and a gateway restarting on a hook it does not have (#68)
+	@# answers nothing at all. 202 is the one answer that means it took the event.
+	@printf 'gateway: '; curl -sS -o /dev/null -w '%{http_code}' -X POST \
+	  localhost:$${BREVIS_GATEWAY_PORT:-8090}/v1/clicks -H 'Content-Type: application/json' \
+	  -d '{"event_id":"smoke","occurred_at":"2026-01-01T00:00:00Z","host":"smoke.example.com","region":"local"}' \
+	  | grep -q '^202$$' && echo 202 || { echo "not 202: see 'docker compose logs gateway'"; exit 1; }
 
 .PHONY: help build test test-int test-db check up down logs smoke dev generate tailwind-install image image-push image-smoke

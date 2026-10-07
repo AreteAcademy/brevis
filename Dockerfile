@@ -202,6 +202,40 @@ EXPOSE 8080
 ENTRYPOINT ["brevis-gateway"]
 CMD ["/etc/brevis/gateway.yaml"]
 
+# `gateway-example` is the gateway docker-compose runs: gateway/example, the
+# same package with the example's hooks compiled in.
+#
+# The published image builds ./cmd/gateway, which registers no hooks -- a hook
+# is Go, and a published binary cannot carry somebody else's. The local config
+# docker-compose mounts names `enrich_clicks`, which is what puts `tenant` in
+# the payload docs/GATEWAY.md shows, and only gateway/example registers it. With
+# the published binary the local gateway restarted in a loop on a hook it did
+# not have (issue #68), from the moment the image moved to ./cmd/gateway.
+#
+# A stage of its own, so BuildKit builds it only when this target is asked
+# for: the release images never compile the example.
+FROM build AS build-gateway-example
+# An ARG does not cross a FROM: redeclared, or the ldflags and the target
+# platform would arrive empty.
+ARG VERSION=dev
+ARG COMMIT=""
+ARG TARGETOS
+ARG TARGETARCH
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd gateway && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-gateway-example ./example
+
+FROM gcr.io/distroless/static-debian12:nonroot AS gateway-example
+COPY --from=build-gateway-example /out/brevis-gateway-example /usr/local/bin/brevis-gateway
+COPY --from=build --chown=nonroot:nonroot /out/dead-letter /var/dead-letter
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-gateway"]
+CMD ["/etc/brevis/gateway.yaml"]
+
 # `gateway-slim` is the gateway with two sinks instead of six.
 #
 # Postgres and a local `files` dead letter, which is the shape most deployments
