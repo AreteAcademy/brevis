@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,5 +76,79 @@ func TestALateWriterWithARunInFlightSaysSo(t *testing.T) {
 	d := BuildData([]postgres.CatalogEntry{entry("postgres://db/public/late", w)}, now)
 	if d.Rows[0].Status != catalog.Late || d.Rows[0].Writers[0].RunInFlight == nil {
 		t.Fatalf("row = %+v", d.Rows[0])
+	}
+}
+
+func filterFixture() DataView {
+	paused := hourly("p", now.Add(-72*time.Hour))
+	paused.Active = false
+	legacy := entry("bronze.payments", hourly("pay", now.Add(-10*time.Minute)))
+	legacy.Kind, legacy.Legacy = "", true
+	s3 := entry("s3://landing/vendors/", hourly("v", now.Add(-5*time.Hour)))
+	s3.Kind = "s3"
+	return BuildData([]postgres.CatalogEntry{
+		entry("postgres://db/public/fresh", hourly("a", now.Add(-20*time.Minute))),
+		entry("postgres://db/public/late", hourly("c", now.Add(-85*time.Minute))),
+		entry("postgres://db/public/paused", paused),
+		s3, legacy,
+	}, now)
+}
+
+func targets(rows []DataRow) []string {
+	var out []string
+	for _, r := range rows {
+		out = append(out, r.Target)
+	}
+	return out
+}
+
+func TestFiltersNarrowTheRowsAndLeaveTheSummaryWhole(t *testing.T) {
+	cases := []struct {
+		query string
+		want  []string
+	}{
+		{"", []string{"s3://landing/vendors/", "postgres://db/public/late", "bronze.payments", "postgres://db/public/fresh", "postgres://db/public/paused"}},
+		{"status=attention", []string{"s3://landing/vendors/", "postgres://db/public/late"}},
+		{"status=late", []string{"postgres://db/public/late"}},
+		{"kind=s3", []string{"s3://landing/vendors/"}},
+		{"legacy=1", []string{"bronze.payments"}},
+		{"status=attention&kind=postgres", []string{"postgres://db/public/late"}},
+		// What the page does not know is ignored, not an empty page.
+		{"status=bogus&kind=snowflake&legacy=yes", []string{"s3://landing/vendors/", "postgres://db/public/late", "bronze.payments", "postgres://db/public/fresh", "postgres://db/public/paused"}},
+	}
+	for _, c := range cases {
+		q, _ := url.ParseQuery(c.query)
+		v := filterFixture().Apply(ParseDataFilter(q))
+		if got := targets(v.Rows); strings.Join(got, ",") != strings.Join(c.want, ",") {
+			t.Errorf("?%s = %v, want %v", c.query, got, c.want)
+		}
+		if v.Total != 5 {
+			t.Errorf("?%s: total = %d; the summary counts every destination", c.query, v.Total)
+		}
+	}
+}
+
+// Links are stable and shareable: the same filter always writes the same URL,
+// and setting one field keeps the others.
+func TestFilterLinksAreStableAndKeepTheOtherFields(t *testing.T) {
+	f := DataFilter{Status: "attention", Kind: "s3"}
+	if got := f.With("kind", "postgres"); got != "/data?status=attention&kind=postgres" {
+		t.Errorf("With(kind) = %q", got)
+	}
+	if got := f.With("status", ""); got != "/data?kind=s3" {
+		t.Errorf("clearing status = %q", got)
+	}
+	if got := (DataFilter{}).With("legacy", "1"); got != "/data?legacy=1" {
+		t.Errorf("legacy = %q", got)
+	}
+	if got := (DataFilter{}).With("status", ""); got != "/data" {
+		t.Errorf("no filter = %q", got)
+	}
+}
+
+func TestTheFilterBarOffersOnlyKindsThatExist(t *testing.T) {
+	v := filterFixture()
+	if strings.Join(v.Kinds, ",") != "postgres,s3" || !v.HasLegacy {
+		t.Errorf("kinds = %v, legacy = %v", v.Kinds, v.HasLegacy)
 	}
 }

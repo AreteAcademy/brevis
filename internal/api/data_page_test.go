@@ -126,3 +126,25 @@ func TestALateWriterLinksToTheRunThatIsAboutToFixIt(t *testing.T) {
 		t.Error("a late writer with a run in flight does not link to it")
 	}
 }
+
+func TestTheDataPageFiltersFromTheQueryString(t *testing.T) {
+	ui := dataUI(catalogFake{entries: demoCatalog()})
+
+	_, body := get(t, ui, "/data?kind=s3")
+	if !strings.Contains(body, "s3://demo-landing/reports/") || strings.Contains(body, "landing_orders</span>") {
+		t.Error("?kind=s3 did not narrow the table to the s3 destination")
+	}
+	if !strings.Contains(body, "showing 1 of 3") {
+		t.Error("a filtered page does not say how much it shows")
+	}
+
+	_, body = get(t, ui, "/data?status=attention")
+	if !strings.Contains(body, "Nothing matches this filter") {
+		t.Error("an empty filter result does not say so")
+	}
+
+	_, body = get(t, ui, "/data?status=bogus")
+	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "showing ") {
+		t.Error("an unknown status should be ignored, showing everything")
+	}
+}

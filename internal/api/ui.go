@@ -151,7 +151,7 @@ func (u *UI) data(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now())))
+	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now()).Apply(pages.ParseDataFilter(r.URL.Query()))))
 }
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {

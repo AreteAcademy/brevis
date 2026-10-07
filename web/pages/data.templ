@@ -29,27 +29,68 @@ templ Data(v DataView) {
 					}
 				}
 			</div>
-			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-line bg-parchment-soft/60 text-left">
-							@th("Status", "pl-6")
-							@th("Destination", "")
-							@th("Writers", "")
-							@th("Last loaded", "")
-							@th("Rows, last load", "text-right")
-							@th("Last loads", "pr-6")
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-line-soft">
-						for _, r := range v.Rows {
-							@dataRow(r)
-						}
-					</tbody>
-				</table>
-			</div>
+			@dataFilters(v)
+			if len(v.Rows) == 0 {
+				<div class="rounded-card border border-dashed border-line px-6 py-10 text-center text-sm text-muted">
+					Nothing matches this filter.
+					<a href="/data" class="ml-1 text-gold-strong hover:underline">Show every destination</a>
+				</div>
+			} else {
+				<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="border-b border-line bg-parchment-soft/60 text-left">
+								@th("Status", "pl-6")
+								@th("Destination", "")
+								@th("Writers", "")
+								@th("Last loaded", "")
+								@th("Rows, last load", "text-right")
+								@th("Last loads", "pr-6")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, r := range v.Rows {
+								@dataRow(r)
+							}
+						</tbody>
+					</table>
+				</div>
+			}
 		}
 	}
+}
+
+templ dataFilters(v DataView) {
+	{{ f := v.Filter }}
+	<div class="mb-4 flex flex-wrap items-center gap-2">
+		@chip(f.With("status", ""), "All", f.Status == "", "")
+		if v.Counts[catalog.Late]+v.Counts[catalog.Stale] > 0 {
+			@chip(f.With("status", "attention"), "Needs attention", f.Status == "attention", "bg-state-failed")
+		}
+		for _, s := range statusOrder {
+			if v.Counts[s] > 0 {
+				@chip(f.With("status", string(s)), components.FreshnessLabel(string(s)), f.Status == string(s), "")
+			}
+		}
+		if len(v.Kinds) > 1 {
+			<span class="mx-1 h-4 w-px bg-line"></span>
+			@chip(f.With("kind", ""), "Every kind", f.Kind == "", "")
+			for _, k := range v.Kinds {
+				@chip(f.With("kind", k), k, f.Kind == k, "")
+			}
+		}
+		if v.HasLegacy {
+			<span class="mx-1 h-4 w-px bg-line"></span>
+			if f.Legacy {
+				@chip(f.With("legacy", ""), "Legacy only", true, "")
+			} else {
+				@chip(f.With("legacy", "1"), "Legacy only", false, "")
+			}
+		}
+		if f.Active() {
+			<span class="ml-auto text-xs text-muted">{ fmt.Sprintf("showing %d of %d", len(v.Rows), v.Total) }</span>
+		}
+	</div>
 }
 
 templ dataRow(r DataRow) {
