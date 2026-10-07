@@ -46,3 +46,10 @@ __pycache__/
 # examples/cluster/goapp is one. The image builds it in a container; the file
 # here is a by-product of checking that it compiles.
 /examples/cluster/goapp/goapp
+
+# The CLI's own build output. `cmd/brevis-sdk/bravis-sdk` -- the PRE-RENAME
+# name -- was swept into the rename commit of 2026-09-04 and sat in the tree
+# for a month at 30 MB, against a largest legitimate file of 189 KB.
+# no-binaries-check.sh is what stops the next one.
+/cmd/brevis-sdk/brevis-sdk
+/cmd/brevis-sdk/bravis-sdk

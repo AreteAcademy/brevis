@@ -94,6 +94,9 @@ jobs:
       - name: Engine weight
         run: ./.github/scripts/engine-weight.sh
 
+      - name: Nothing tracked is a binary
+        run: ./.github/scripts/no-binaries-check.sh
+
       - name: The manifests pin this version
         run: ./.github/scripts/image-pins-check.sh
 
