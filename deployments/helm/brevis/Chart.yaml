@@ -5,11 +5,15 @@ type: application
 
 # The chart versions on its own; appVersion tracks the engine image.
 #
-# NOTHING CHECKS THAT THIS MATCHES `VERSION`, and it drifted: the chart said
-# 0.13.0 while VERSION and deployments/kubernetes/ said 0.15.2, so installing
-# the chart deployed an engine two releases behind the manifests beside it.
-# Found by installing it into a cluster, not by reading it. A gate for the
-# drift is its own piece of work; this is the number being right today.
+# It drifted once: the chart said 0.13.0 while VERSION and
+# deployments/kubernetes/ said 0.15.2, so installing the chart deployed an
+# engine two releases behind the manifests beside it. Found by installing it
+# into a cluster, not by reading it, because nothing read both numbers.
+#
+# `.github/scripts/image-pins-check.sh` reads both now and fails naming them,
+# so appVersion cannot drift from VERSION in silence again. `version` above is
+# the CHART's own and is deliberately checked against nothing: it moves when
+# the templates move, which is not when the engine ships.
 version: 0.2.1
 appVersion: "0.16.1"
 

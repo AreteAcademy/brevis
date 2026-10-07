@@ -307,7 +307,8 @@ Two product bugs were found by running this rather than reading it, and both
 are fixed: five manifests lacked the `runAsUser` the other five had, so the
 chart's migration hook could not start; and the chart's `appVersion` said
 `0.13.0` while `VERSION` said `0.15.2`, so it deployed an engine two releases
-behind. **Nothing checks that those two agree** — a gate for it is still open.
+behind. **Nothing read both numbers** — `image-pins-check.sh` does now, and
+fails naming them, which is what closed the second one for good.
 
 **2026-10-06, the pod with your own binary in it.** `make cluster-goapp` on the
 same stack: `brevis-goapp-0` Running on an image built from `goapp/`, both
