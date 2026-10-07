@@ -163,7 +163,10 @@ services:
   gateway:
     build:
       context: .
-      target: gateway
+      # gateway-example and not gateway: the config below names the
+      # `enrich_clicks` hook, which only gateway/example compiles in. The
+      # published image registers no hooks. See the Dockerfile and issue #68.
+      target: gateway-example
     environment:
       PUBSUB_EMULATOR_HOST: pubsub:8085
       PUBSUB_PROJECT_ID: brevis-local
