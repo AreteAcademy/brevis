@@ -194,6 +194,14 @@ func loadWith(ctx context.Context, data *Data, target Target, run RunContext) (*
 		res.FailedSources = data.stats.FailedSources
 	}
 
+	// Before the write, and before the early return on an empty batch: a load
+	// that read 11,536 records and is about to write 0 is exactly the run whose
+	// operator needs to see the rows.
+	if p := newTargetPreview(target); p != nil {
+		p.take(envelopes)
+		p.write(target, time.Since(start))
+	}
+
 	if len(envelopes) == 0 {
 		res.Duration = time.Since(start)
 		return res, nil
@@ -248,11 +256,29 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 	leva := make([]Envelope, 0, target.FlushEvery)
 	var levas int
 
+	// The sample fills across batches and prints ONCE -- when it is full, or
+	// when the stream ends with fewer rows than asked for. Printing per batch
+	// would put the same table on the screen forty times; printing only at the
+	// end would show nothing when the first batch is the one that fails.
+	pv := newTargetPreview(target)
+	shown := false
+	show := func(final bool) {
+		if pv == nil || shown || (!final && len(pv.sample) < pv.want) {
+			return
+		}
+		pv.write(target, time.Since(start))
+		shown = true
+	}
+
 	write := func() error {
 		if len(leva) == 0 {
 			return nil
 		}
 		levas++
+		if pv != nil {
+			pv.take(leva)
+			show(false)
+		}
 		start := time.Now()
 		lr, err := target.To.Write(ctx, leva, opts)
 		res.LoadTime += time.Since(start)
@@ -281,6 +307,7 @@ func loadEmLevas(ctx context.Context, data *Data, target Target, run RunContext,
 	}
 
 	finalErr := write()
+	show(true)
 
 	res.ExtractTime = time.Since(data.start)
 	res.Duration = time.Since(start)

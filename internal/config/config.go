@@ -32,6 +32,16 @@ type Config struct {
 	// interface uses the default identity.
 	BrandFile string
 
+	// PersistURL is where persisted context lives: a directory, or a gs:// or
+	// s3:// prefix. It belongs to the INSTALLATION and not to a workflow --
+	// `persist_context:` names a key, never a bucket the operator never agreed
+	// to.
+	//
+	// Empty is the default and means the feature is off. A workflow that
+	// declares persist_context is then refused by name, which is better than
+	// running with reads that quietly return nothing.
+	PersistURL string
+
 	// MetricsAddr is where /metrics listens, and it is a SEPARATE address from
 	// HTTPAddr on purpose. The API pod is the one behind an Ingress, and a
 	// scrape endpoint on the same port would either sit behind the login --
@@ -135,6 +145,7 @@ func Load() (Config, error) {
 		DatabaseURL:  os.Getenv("BREVIS_DATABASE_URL"),
 		LogLevel:     get("BREVIS_LOG_LEVEL", "info"),
 		BrandFile:    get("BREVIS_BRAND_FILE", "brand.yaml"),
+		PersistURL:   get("BREVIS_PERSIST_URL", ""),
 		MetricsAddr:  optional("BREVIS_METRICS_ADDR", ":9090"),
 		TaskEnv:      list("BREVIS_TASK_ENV"),
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),

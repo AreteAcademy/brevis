@@ -242,6 +242,403 @@ coisa — clientes finos que dão a um passo o contexto e o relógio do run,
 em Python hoje e em Node.js e Rust depois. Um passo que usa pandas ou dbt
 quer a segunda, não este.
 
+## Parâmetros que montam a pipeline
+
+`p.Run.Params` é legível dentro da pipeline, o que é tarde demais para um valor
+que decide o que a pipeline **é** — uma source por estado, uma tabela por
+cliente. `Pipeline.Flags` é parseado dentro do `Run`, então é tarde pelo mesmo
+motivo.
+
+```go
+func main() {
+	sdk.Run(pipeline(sdk.ParamList("ufs")))
+}
+```
+
+`sdk.Param` e `sdk.ParamList` leem primeiro o ambiente do engine e depois
+`-param nome=valor`:
+
+```bash
+./fetch-stations -param ufs=SP,RJ
+```
+
+O ambiente ganha — sob o engine ele é o valor, e uma flag esquecida num
+manifesto não pode sobrepor o que o operador digitou. Sem engine, a flag é o que
+existe, o que é melhor do que escrever `BREVIS_RUN_PARAMS` como JSON a cada
+execução.
+
+## O layout de aterrissagem
+
+Uma pipeline pode aterrissar **a mesma tabela que um gateway aterrissa** — as
+mesmas colunas e o mesmo `brevis_ingestion_id` — de modo que escolher entre os
+dois vira decisão de implantação e não de esquema. Dá para ler os dois juntos,
+e para migrar de um ao outro sem migração de dados.
+
+```go
+const table = "landing.orders"
+
+sdk.Run(sdk.Pipeline{
+    Source:    sdk.Source{From: from.HTTP(/* ... */)},
+    Transform: []sdk.Transformer{sdk.Landing(table, sdk.LandingKey("id"))},
+    Target: sdk.Target{
+        To:     postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+        Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+    },
+})
+```
+
+`sdk.LandingSchema` são nove colunas: as oito do layout e a do produtor.
+`sdk.Landing` preenche essas colunas e põe o registro inteiro em `data`.
+Acrescente colunas suas ao esquema se quiser, ou pegue
+`sdk.LandingControlColumns` e dê colunas próprias aos campos do registro.
+
+### Duas formas: o registro inteiro, ou uma coluna por campo
+
+O que está acima é a forma **document** — o registro vai para `data` como
+JSON, e a tabela é a mesma qualquer que seja o registro. Acrescente
+`sdk.LandingColumns()` e cada campo do registro ganha uma coluna própria:
+
+```go
+sdk.Landing(table, sdk.LandingKey("source_key"), sdk.LandingColumns())
+```
+
+A tabela passa a ser `sdk.LandingControlColumns` mais as suas colunas — **não**
+`sdk.LandingSchema`, que carrega o `data`:
+
+```go
+Target{
+    To: postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema: append(sdk.LandingControlColumns(sdk.LandingOptions{Keyed: true}),
+        sdk.Column{Name: "source_key", Type: sdk.TypeString},
+        sdk.Column{Name: "series", Type: sdk.TypeString},
+        sdk.Column{Name: "data", Type: sdk.TypeString},
+        sdk.Column{Name: "valor", Type: sdk.TypeString},
+    ),
+}
+```
+
+**As colunas são você que declara.** O SDK nunca infere um esquema, e esta
+opção não muda isso: ela decide como a *linha* é montada, nunca o que a tabela
+é. Um gateway infere porque o produtor dele é um estranho que posta o que tem;
+aqui quem escreve a pipeline conhece o formato e o escreve, num diff que
+alguém revisa.
+
+É a mesma forma que um gateway aterrissa como
+[`shape: columns`](/docs/ingestion-sinks/#duas-formas-um-contrato), pelo mesmo
+código — mesmas colunas, mesmos valores, mesmo `brevis_ingestion_id`.
+
+**O nome do campo precisa poder ser nome de coluna**: letra ou sublinhado, e
+depois letras, dígitos e sublinhados. É a regra do BigQuery, a mais estreita
+dos quatro destinos, então um nome que passa aqui funciona em qualquer um. Um
+registro com `meu-campo` é recusado pelo nome, antes de qualquer escrita. A
+forma `document` não tem essa regra — um hífen é uma chave JSON perfeitamente
+válida.
+
+**Não achata, por padrão.** Um objeto aninhado vira UMA coluna `JSON` sob a chave que o
+continha: `customer` guarda `{"id": 7, "uf": "SP"}`, e não `customer_id` e
+`customer_uf`. Um array também é `JSON`. Um registro que quer uma linha *por
+elemento do array* quer o `sdk.ArrayAt` no `Expand` da fonte — ele roda antes
+do `Landing`, e é outra operação com outro nome. O
+[`BREVIS_NORMALIZE_DATA`](#uma-coluna-por-campo-aninhado) muda a primeira
+metade disso para um deployment inteiro; array continua `JSON` dos dois
+jeitos:
+
+```go
+Source: sdk.Source{From: from.HTTP(/* ... */), Expand: sdk.ArrayAt("results")},
+```
+
+**`null` continua `NULL`**, nunca `""`. Um campo enviado como null e um campo
+enviado vazio são fatos diferentes, e depois a coluna não sabe distinguir.
+
+**O `data` passa a ser seu.** Nesta forma o layout não tem coluna com esse
+nome, então um produtor com um campo chamado `data` — que é exatamente o que a
+série do Bacen manda — ganha uma coluna própria com o valor dele. No
+`document`, o dele é uma chave dentro do JSON do layout.
+
+### O prefixo `brevis_` é seu para trocar
+
+```
+BREVIS_LANDING_PREFIX=acme
+```
+
+e as oito colunas do layout viram `acme_ingestion_id`, `acme_record_key` e as
+demais. Sem a variável, elas são o que sempre foram.
+
+**Escolha na criação da tabela, porque trocar depois não é renomear.** Nada
+neste SDK remove coluna, então um stream que troca de prefixo não renomeia
+oito — ele acrescenta oito e abandona oito. Toda linha dali em diante fica com
+NULL no conjunto antigo, e
+
+```sql
+qualify row_number() over (partition by brevis_record_key
+                           order by brevis_received_at desc) = 1
+```
+
+particiona numa coluna que ninguém mais escreve. As linhas chegam, o painel
+fica plano, e nada vai para o log.
+
+Por isso uma tabela que já carrega o layout sob um prefixo **recusa** uma carga
+declarando outro, antes do extract, nomeando os dois. Aponte para uma tabela
+nova, ou renomeie as oito colunas você mesmo antes.
+
+**O que você digitar é normalizado**, então há uma grafia para errar em vez de
+quatro:
+
+| você põe | você recebe |
+|---|---|
+| nada, ou vazio | `brevis_` |
+| `_NAME` | `name_` |
+| `_NAME_` | `name_` |
+| `NAME` | `name_` |
+
+Tira `_` das duas pontas, minúsculo, acrescenta exatamente um. Dois valores são
+recusados em vez de adivinhados: só underscores, porque sobraria
+`ingestion_id` — exatamente a coluna que o `sdk.IngestionID()` escreve em toda
+pipeline comum — e qualquer coisa que não possa começar um nome de coluna. **Um
+processo com valor inutilizável não sobe**, que é o único desfecho honesto: a
+alternativa é tabela batizada com o prefixo que você estava substituindo.
+
+**É por PROCESSO, e isso é o objetivo e não uma limitação.** Todo stream de um
+gateway compartilha, então dois sinks não conseguem divergir — nem o esquema
+que declara a tabela e o transformer que a preenche.
+
+**A regra reservada vai junto.** Sob `acme_`, um produtor mandando
+`acme_region` é recusado, porque quem consegue forjar coluna de controle forja
+uma que parece real. E `brevis_region` vira campo comum.
+
+O `data` nunca leva o prefixo. É a coluna do produtor, não do layout.
+
+### Uma coluna por campo aninhado
+
+```
+BREVIS_NORMALIZE_DATA=true
+```
+
+e os campos de um objeto aninhado ganham colunas próprias, como o
+`json_normalize` do pandas faz — um nível:
+
+```python
+data = [
+    {"id": 1, "name": {"first": "Coleen", "last": "Volk"}},
+    {"name": {"given": "Mark", "family": "Regner"}},
+    {"id": 2, "name": "Faye Raker"},
+]
+```
+
+```
+id  name_first  name_last  name_given  name_family  name
+```
+
+**Escolha antes da primeira tabela, porque isso não só ACRESCENTA coluna.**
+Ele renomeia, e nada neste SDK remove uma — então o nome antigo fica com as
+linhas que já estavam nele enquanto tudo depois cai no novo, e a consulta que
+alguém escreveu continua rodando e para de ver linha nova. São duas
+renomeações:
+
+- `userName` vira `username`, tendo aninhamento ou não
+- `name`, que guardava objetos, é substituído por `name_first` e `name_last`
+
+Uma tabela que já carrega qualquer uma das formas **recusa** uma carga com
+isso ligado, antes do extract, nomeando as duas colunas. Aponte para uma
+tabela nova, ou renomeie as colunas você mesmo antes.
+
+**O `name` pode aparecer achatado E inteiro**, e o exemplo acima mostra: o
+terceiro registro traz `name` como string, então a tabela tem `name_first`,
+`name_last` **e** `name`. Um campo que é objeto num registro e escalar noutro
+produz os dois.
+
+**Um nível, e array é valor.** `{"a": {"b": {"c": 1}}}` vira `a_b` guardando
+`{"c": 1}` — uma coluna `JSON`, não `a_b_c`. `{"a": [1, 2]}` vira `a`, também
+`JSON`. Um registro que quer uma linha por elemento do array continua querendo
+o `sdk.ArrayAt`.
+
+**Juntado e minúsculo, sem quebrar camelCase.** `userName` vira `username` e
+não `user_name`, porque a outra leitura não tem resposta acordada para
+acrônimos — `HTTPStatus`, `userID` — e toda biblioteca discorda.
+
+**Colisão é recusada, nunca resolvida.** `{"name_first": 1, "name": {"first":
+2}}` faria uma coluna de dois campos, e a iteração de map em Go é aleatória:
+deixar um vencer daria a mesma remessa com tabela diferente em dias
+diferentes. A recusa nomeia os dois.
+
+**O prefixo reservado é checado na coluna, não no campo.** Um produtor
+mandando `{"brevis": {"stream": "x"}}` faria `brevis_stream` por uma porta que
+a checagem de campo não vigia. É recusado, nomeando `brevis.stream` para ele
+achar o campo.
+
+**É por PROCESSO**, como o prefixo e pelo mesmo motivo: todo stream de um
+gateway compartilha, então dois sinks não conseguem divergir sobre uma tabela
+em que os dois podem escrever. Vale só para a forma `columns` — no `document`
+o registro vai inteiro para uma coluna `JSON` e não há o que achatar.
+
+### Texto que já é JSON
+
+Uma coluna declarada `sdk.TypeJSON` recebe um **valor** JSON — um objeto, um
+array, um número. No BigQuery a linha é codificada inteira, então uma `string`
+Go ali vira um literal de string JSON e a coluna acaba guardando o TEXTO do
+seu objeto em vez do objeto:
+
+```sql
+SELECT JSON_TYPE(payload) ...;            -- "string", e não "object"
+SELECT JSON_VALUE(payload, '$.a') ...;    -- NULL
+```
+
+A coluna é do tipo certo e o dado dentro dela é inalcançável — o pior dos três
+desfechos, porque nada falha. **O destino BigQuery recusa isso** desde a
+`v0.74.0`, nomeando a coluna.
+
+Passe o objeto quando você tem um. Quando o que você tem já é texto JSON — uma
+coluna lida de outro banco, um corpo de resposta que você não quer reparsear —
+diga isso:
+
+```go
+row["payload"] = sdk.JSONText(body)
+```
+
+O `json.RawMessage` da própria `encoding/json` também serve, e pelo mesmo
+motivo: os dois escrevem o JSON que carregam em vez de uma string com aspas
+dele.
+
+**Postgres e MySQL não são afetados e não são recusados.** O servidor deles
+parseia uma string numa coluna JSON, e sempre parseou.
+
+### Quando aparece um campo que a tabela não tem
+
+O produtor acrescenta um campo e a carga para, nomeando-o: a linha traz uma
+coluna que ninguém declarou, e escrevê-la num destino que nunca ouviu falar
+dela seria descartá-la em silêncio. Essa recusa é o certo por padrão — mas
+numa tabela de landing ela é a única mudança que não quebra quem lê, e o
+destino pode fazê-la:
+
+```go
+postgres.Table{DSN: dsn, Name: table, Evolve: sdk.EvolveAdditiveFromPayload}
+```
+
+O lote passa a **completar** a sua declaração: um campo que ele traz e a
+declaração não tem vira coluna, `STRING` a menos que o campo seja objeto ou
+array, e aí `JSON`. É a mesma regra e o mesmo código com que um gateway
+aterrissa o `shape: columns`, então os dois produzem a mesma tabela.
+
+Os outros dois valores, e a diferença entre eles é de onde a coluna vem:
+
+| `Evolve` | acrescenta |
+|---|---|
+| `sdk.EvolveNone` (padrão) | nada. Qualquer diferença é recusada, nomeando os dois lados |
+| `sdk.EvolveAdditive` | uma coluna que a sua **declaração** tem e a tabela não |
+| `sdk.EvolveAdditiveFromPayload` | isso, mais uma coluna que o **lote** traz |
+
+**Sempre e só `ADD COLUMN`.** Uma coluna que some da origem para de ser
+escrita e continua na tabela; nada é renomeado, nada é removido, e nenhum tipo
+é estreitado. Isso não é uma falta — uma tabela de landing é histórico, e a
+única alteração que não quebra quem a lê é uma coluna nova anulável.
+
+**Ele completa uma declaração; não substitui uma.** Sem nada declarado, é
+recusado antes do extract, nomeando a tabela: criar uma tabela inteira a
+partir de um payload é outra decisão, e o SDK não a toma. No layout de landing
+o dano seria concreto — o `brevis_received_at` sairia como texto em vez de
+timestamp, e o `brevis_loaded_at` nunca viaja na linha, então a medição de
+latência ponta a ponta simplesmente não existiria.
+
+**O SDK continua sem inferir.** O tipo vem da FORMA do campo, nunca do valor:
+`21129` e `8.89` declaram os dois `STRING`, então no dia em que a série
+publicar um número inteiro nada muda. Tipo lido do primeiro lote é justamente
+a falha que essa regra existe para evitar.
+
+**E um `null` não decide nada — mas continua na linha.** São duas perguntas
+diferentes, e confundi-las custou a v0.77.0.
+
+Um nulo não tem forma, então o **schema** não tem o que ler: um campo que chega
+`null` não declara coluna nenhuma, e a coluna aparece no primeiro registro que
+traz um VALOR, com a forma que esse valor tem. Se fosse o contrário, o nulo
+viraria `STRING` por falta de opção e o primeiro array depois dele faria o
+destino recusar o lote inteiro — e não existe migração de `STRING` para `JSON`
+para desfazer.
+
+A **linha** carrega o que o produtor mandou, nulo incluído. Ela tem de carregar:
+uma coluna que você DECLAROU em `Target.Schema` e que chegou vazia precisa estar
+lá, ou a checagem que compara a declaração com a linha a lê como uma cadeia que
+parou de produzi-la — e recusa a carga. Foi o que a v0.77.0 fez, e a v0.78.0
+desfez.
+
+O destino resolve o resto: um campo nulo em TODOS os registros do lote e sem
+coluna na tabela não é escrito em lugar nenhum e não recusa nada. Um nulo e um
+campo ausente gravam o mesmo `NULL`, então nada se perde.
+
+**Um campo que muda de forma é recusado, não absorvido.** Se `valor` chegou
+escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
+tipo e o lote para — com o comentário da própria coluna na mensagem, para você
+ver que ninguém a declarou. Renomeie a coluna, ou migre você mesmo.
+
+**Toda coluna que um lote criou diz isso, na tabela.** Um comentário no
+Postgres e no MySQL, uma descrição de campo no BigQuery, com a data:
+
+```
+brevis: added from a batch on 2026-09-29; the type is the landing rule
+(scalar text, object and array json), not a decision
+```
+
+Seis meses depois é a única coisa que ainda responde "quando essa coluna
+apareceu, e quem decidiu". Uma linha de log já rotacionou.
+
+**Não é um modo.** `Target.Schema` continua sendo você declarando o que a
+tabela é — isso entrega um layout que já existe em vez de fazer você digitá-lo.
+Nada no SDK se comporta de outro jeito por você ter usado, e uma pipeline que
+declara o esquema dela não é afetada.
+
+**Escreva o nome da tabela uma vez.** Ele vai para o `Landing`, porque é o
+segundo campo do id, e para o destino, porque é onde as linhas vão. **Nada
+verifica que os dois concordam**: o `Writer` conhece a própria tabela mas só a
+expõe pelo `Describe`, que é o nome para logs e erros, e um id construído
+sobre isso amarraria todo id já escrito a uma string de log. Deixe os dois
+divergirem e as linhas aterrissam certas com ids cunhados para uma tabela em
+que ninguém escreveu. Vão parecer corretas. Não vão bater com as do gateway.
+
+**Três colunas ficam `NULL`, e é a resposta honesta.** `brevis_stream` e
+`brevis_gateway` nomeiam coisas que uma pipeline não tem —
+`brevis_gateway IS NULL` é como se distingue a linha de uma pipeline da de um
+gateway. `brevis_received_bytes` também fica `NULL`: o número do gateway conta
+o que chegou no fio, envelope incluído, e o JSON do registro é uns 30% menor.
+Uma coluna com dois sentidos faria uma soma entre linhas dos dois caminhos
+errar por quanto veio de onde. `length(data)` responde a versão da pipeline
+exatamente.
+
+**Merge precisa de `DedupKey`, e sem ele não há merge nenhum.** Todo driver
+casa por `ingestion_id` salvo instrução contrária, e a coluna de identidade
+deste layout é `brevis_ingestion_id`:
+
+```go
+Target{
+    To:       postgres.Table{DSN: dsn, Name: table, CreateTable: true},
+    Schema:   sdk.LandingSchema(sdk.LandingOptions{UniqueID: true, Keyed: true}),
+    Dedup:    sdk.DedupMerge,
+    DedupKey: sdk.LandingColumnID,
+}
+```
+
+`UniqueID` é o que põe a constraint UNIQUE no id, e Postgres e MySQL recusam
+fazer merge sem uma — o `ON CONFLICT` não teria com o que casar. Um `DedupKey`
+que seu `Schema` não declara é recusado antes de qualquer coisa rodar: um merge
+numa coluna que a tabela não tem não casa nada, e um merge que não casa nada
+parece exatamente um que casa tudo que deveria.
+
+**Depende do destino, e hoje o MySQL não consegue.** O BigQuery não tem
+constraints UNIQUE e recusa a declaração. No MySQL, `string` é `LONGTEXT`, e o
+MySQL não indexa um `LONGTEXT` sem comprimento — então uma tabela de
+aterrissagem com merge não pode nem ser *criada* lá:
+
+```
+Error 1170 (42000): BLOB/TEXT column 'brevis_ingestion_id' used in key
+specification without a key length
+```
+
+O Postgres funciona porque lá `string` é `TEXT`. No MySQL, aterrisse com
+`DedupNone` e resolva a versão corrente adiante, ou crie a tabela você mesmo
+com `CreateSQL` e um id dimensionado.
+
+**O id é endereçado por conteúdo.** O mesmo registro produz o mesmo id nos dois
+caminhos, e um registro alterado produz um novo — que é o que faz uma
+reexecução ser um no-op em vez de duplicata.
+
 ## Referência
 
 - [pkg.go.dev](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk) — a API completa

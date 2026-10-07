@@ -251,6 +251,16 @@ type Node struct {
 	//	  BREVIS_LOG_LEVEL: info
 	Env map[string]string
 
+	// PersistContext lists the keys this step may read and write through
+	// sdk/persist -- context that outlives the run that made it.
+	//
+	//	persist_context: [ana.station_codes]
+	//
+	// Empty is no access, which is the default: the engine sets neither
+	// BREVIS_PERSIST_URL nor BREVIS_PERSIST_KEYS, and the SDK refuses every
+	// call naming the flag.
+	PersistContext []string
+
 	// Secrets are variables whose VALUE never appears in the file. The key is
 	// the variable's name; the value is where to find it, as `secret/key`.
 	//

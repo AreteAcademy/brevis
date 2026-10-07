@@ -1,0 +1,73 @@
+# The demo's database.
+#
+# IN GIT, like everything else. A Postgres on the compose side would be the one
+# thing Argo CD does not own -- and the seam where "it works on my machine"
+# lives is exactly the piece nobody is watching.
+#
+# Not for production and it says so in its own name: one replica, no backups,
+# a password in plain text in a public repository. It is a throwaway database
+# on a throwaway cluster, and the credentials are worth nothing because the
+# cluster is worth nothing.
+#
+# Wave -1: before the chart, whose FIRST act is a migration Job that connects.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: brevis-db
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+stringData:
+  url: postgres://brevis:demo-only@postgres:5432/brevis?sslmode=disable
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - {name: POSTGRES_USER, value: brevis}
+            - {name: POSTGRES_PASSWORD, value: demo-only}
+            - {name: POSTGRES_DB, value: brevis}
+            # The data directory has to be a SUBDIRECTORY of the mount when the
+            # volume is anything but an empty dir, and emptyDir here means the
+            # database dies with the pod. That is correct for a demo and it is
+            # the line to change first if it ever stops being one.
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports: [{containerPort: 5432}]
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+          readinessProbe:
+            exec: {command: ["pg_isready", "-U", "brevis"]}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432, targetPort: 5432}]

@@ -47,14 +47,14 @@ type fakeAgent struct {
 	conns     int
 }
 
-func (f *fakeAgent) Start(_ context.Context, r remote.StartRequest) (io.ReadCloser, error) {
+func (f *fakeAgent) Start(_ context.Context, r remote.StartRequest) (remote.Session, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.started = append(f.started, r)
-	return f.open(0), nil
+	return remote.Session{Stream: f.open(0)}, nil
 }
 
-func (f *fakeAgent) Resume(_ context.Context, _ string, r remote.Resume) (io.ReadCloser, error) {
+func (f *fakeAgent) Resume(_ context.Context, _, _ string, r remote.Resume) (io.ReadCloser, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.resumes = append(f.resumes, r)
@@ -71,7 +71,7 @@ func (f *fakeAgent) Resume(_ context.Context, _ string, r remote.Resume) (io.Rea
 	return f.open(from), nil
 }
 
-func (f *fakeAgent) Cancel(_ context.Context, execID string) error {
+func (f *fakeAgent) Cancel(_ context.Context, _, execID string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.cancelled = append(f.cancelled, execID)
@@ -466,7 +466,7 @@ type pacedAgent struct {
 	thenSilent bool
 }
 
-func (p *pacedAgent) Start(ctx context.Context, _ remote.StartRequest) (io.ReadCloser, error) {
+func (p *pacedAgent) Start(ctx context.Context, _ remote.StartRequest) (remote.Session, error) {
 	pr, pw := io.Pipe()
 	go func() {
 		for _, l := range p.lines {
@@ -487,14 +487,14 @@ func (p *pacedAgent) Start(ctx context.Context, _ remote.StartRequest) (io.ReadC
 		}
 		_ = pw.Close()
 	}()
-	return pr, nil
+	return remote.Session{Stream: pr}, nil
 }
 
-func (p *pacedAgent) Resume(context.Context, string, remote.Resume) (io.ReadCloser, error) {
+func (p *pacedAgent) Resume(_ context.Context, _, _ string, _ remote.Resume) (io.ReadCloser, error) {
 	return nil, errors.New("the paced agent is not meant to be resumed")
 }
 
-func (p *pacedAgent) Cancel(context.Context, string) error { return nil }
+func (p *pacedAgent) Cancel(_ context.Context, _, _ string) error { return nil }
 
 // DECISION 2. Cancel reaches the agent, and says plainly when it could not.
 func TestCancelReachesTheAgent(t *testing.T) {
@@ -558,15 +558,15 @@ func TestAHostAndAnImageTogetherAreRefused(t *testing.T) {
 // what an agent whose host died looks like from here.
 type quietAgent struct{ cancelled bool }
 
-func (q *quietAgent) Start(ctx context.Context, _ remote.StartRequest) (io.ReadCloser, error) {
+func (q *quietAgent) Start(ctx context.Context, _ remote.StartRequest) (remote.Session, error) {
+	return remote.Session{Stream: silence{ctx: ctx}}, nil
+}
+
+func (q *quietAgent) Resume(ctx context.Context, _, _ string, _ remote.Resume) (io.ReadCloser, error) {
 	return silence{ctx: ctx}, nil
 }
 
-func (q *quietAgent) Resume(ctx context.Context, _ string, _ remote.Resume) (io.ReadCloser, error) {
-	return silence{ctx: ctx}, nil
-}
-
-func (q *quietAgent) Cancel(context.Context, string) error { q.cancelled = true; return nil }
+func (q *quietAgent) Cancel(_ context.Context, _, _ string) error { q.cancelled = true; return nil }
 
 type silence struct{ ctx context.Context }
 

@@ -23,7 +23,23 @@ while IFS= read -r line; do
   fi
 done < <(grep -rn "areteacademy/brevis:[0-9]" deployments/ examples/ || true)
 
+# THE CHART'S appVersion IS THE SAME NUMBER, written somewhere `areteacademy/
+# brevis:` never appears -- the template builds the tag from it.
+#
+# It is here because it already shipped wrong: appVersion said 0.13.0 while
+# VERSION said 0.15.2, so `helm install` deployed an engine two releases behind
+# and every manifest beside it was correct. Nothing read both until this.
+chart="deployments/helm/brevis/Chart.yaml"
+appVersion="$(sed -n 's/^appVersion: *"\{0,1\}\([0-9][0-9.]*\)"\{0,1\} *$/\1/p' "$chart")"
+if [ -z "$appVersion" ]; then
+  echo "❌ $chart has no appVersion this script can read"
+  failed=1
+elif [ "$appVersion" != "$want" ]; then
+  echo "❌ $chart has appVersion $appVersion, and this tree is $want"
+  failed=1
+fi
+
 if [ "$failed" = "0" ]; then
-  echo "✅ every manifest pins $want"
+  echo "✅ every manifest and the chart's appVersion pin $want"
 fi
 exit $failed

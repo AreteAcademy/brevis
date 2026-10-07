@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 660" role="img"
+     aria-labelledby="layers-t layers-d" fill="none">
+  <title id="layers-t">The three layers of Brevis</title>
+  <desc id="layers-d">Data reaches a destination in one of two ways. The SDK
+    pulls it from HTTP APIs, Postgres, MySQL and files; the Gateway receives it
+    from anything that can send an HTTP POST. Both land it in one landing
+    layout, the same row whichever way it came, in BigQuery, Postgres, MySQL,
+    Redshift, Pub/Sub or files on S3 and GCS. The Core schedules, queues and
+    starts the SDK's pod, and no data passes through it.</desc>
+
+  <!-- The narrow twin of layers.svg: the same drawing, the same rule, stacked
+       for a phone. The one rule: no data line touches the Core. Data lines are
+       class "data" and drawn with M/H/V only, so a script can check it.
+
+       Only drivers that exist are drawn:
+         sources       sdk/from      HTTP, files, postgres, mysql
+         destinations  sdk/to        bigquery, postgres, mysql, redshift, pubsub
+                       sdk/store     s3, gcs
+                       gateway/sink  the same six -->
+  <style>
+    .box   { fill: #1a1e15; stroke: #38412b; stroke-width: 1; }
+    .core  { fill: #1f2419; stroke: #7d8e50; }
+    .chip  { fill: #141711; stroke: #38412b; stroke-width: 1; }
+    .land  { fill: #1f2419; stroke: #c7d66d; stroke-width: 1; stroke-opacity: .5; }
+    .data  { stroke: #c7d66d; stroke-width: 1.4; opacity: .75; }
+    .ctl   { stroke: #7d8e50; stroke-width: 1.4; stroke-dasharray: 5 4; }
+    .t     { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+    .m     { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .name  { font-size: 17px; font-weight: 600; fill: #ecefe4; }
+    .lbl   { font-size: 11px; fill: #869853; letter-spacing: .08em; }
+    .rt    { font-size: 12.5px; fill: #a3ad97; }
+    .src   { font-size: 12.5px; fill: #ecefe4; }
+    .lime  { font-size: 13px; fill: #c7d66d; }
+  </style>
+  <defs>
+    <marker id="n-data" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#c7d66d"/>
+    </marker>
+    <marker id="n-ctl" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L8 4L0 8z" fill="#7d8e50"/>
+    </marker>
+  </defs>
+
+  <!-- column heads -->
+  <g class="m lbl">
+    <text x="16" y="22">WHEN</text>
+    <text x="188" y="22">PUSH</text>
+    <text x="16" y="152">PULL</text>
+  </g>
+
+  <!-- the Core: control, over the SDK's column -->
+  <rect id="core" class="box core" x="16" y="30" width="156" height="94" rx="3"/>
+  <text class="t name" x="30" y="56">Core</text>
+  <text class="t rt" x="30" y="80">schedules · queues</text>
+  <text class="t rt" x="30" y="100">one pod per step</text>
+  <path class="ctl" d="M16 77H7V338H12" marker-end="url(#n-ctl)"/>
+
+  <!-- what POSTs to the Gateway -->
+  <rect class="chip" x="188" y="30" width="156" height="94" rx="3"/>
+  <g class="t src">
+    <text x="202" y="56">apps</text>
+    <text x="202" y="80">webhooks</text>
+    <text x="202" y="104">services</text>
+  </g>
+  <path class="data" d="M266 124V286" marker-end="url(#n-data)"/>
+  <text class="m lbl" x="274" y="210">HTTP POST</text>
+
+  <!-- what the SDK pulls from -->
+  <rect class="chip" x="16" y="160" width="156" height="100" rx="3"/>
+  <g class="t src">
+    <text x="30" y="184">HTTP APIs</text>
+    <text x="30" y="205">Postgres</text>
+    <text x="30" y="226">MySQL</text>
+    <text x="30" y="247">files</text>
+  </g>
+  <path class="data" d="M94 260V286" marker-end="url(#n-data)"/>
+
+  <!-- the two layers that carry data -->
+  <rect class="box" x="16" y="290" width="156" height="96" rx="3"/>
+  <text class="t name" x="30" y="316">SDK</text>
+  <text class="t rt" x="30" y="338">extract · shape · load</text>
+  <text class="t rt" x="30" y="356">a Go library</text>
+  <text class="m lbl" x="30" y="375">IN THE STEP'S POD</text>
+
+  <rect class="box" x="188" y="290" width="156" height="96" rx="3"/>
+  <text class="t name" x="202" y="316">Gateway</text>
+  <text class="t rt" x="202" y="338">receive · batch</text>
+  <text class="t rt" x="202" y="356">answers 202</text>
+  <text class="m lbl" x="202" y="375">STATELESS REPLICAS</text>
+
+  <!-- both land the same row -->
+  <path class="data" d="M94 386V416" marker-end="url(#n-data)"/>
+  <path class="data" d="M266 386V416" marker-end="url(#n-data)"/>
+  <rect class="land" x="16" y="420" width="328" height="58" rx="3"/>
+  <text class="m lime" x="180" y="444" text-anchor="middle">one landing layout</text>
+  <text class="t rt" x="180" y="465" text-anchor="middle">the same row, whichever way it came</text>
+
+  <!-- where it lands -->
+  <path class="data" d="M180 478V506" marker-end="url(#n-data)"/>
+  <rect class="chip" x="16" y="510" width="328" height="76" rx="3"/>
+  <g class="t src" text-anchor="middle">
+    <text x="180" y="540">BigQuery · Postgres · MySQL</text>
+    <text x="180" y="564">Redshift · Pub/Sub · S3 · GCS</text>
+  </g>
+
+  <!-- what the Core is not -->
+  <text class="t rt" x="16" y="616">The Core never touches your data.</text>
+  <text class="t rt" x="16" y="636">The Gateway needs no Core at all.</text>
+</svg>

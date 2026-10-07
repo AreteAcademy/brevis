@@ -31,6 +31,15 @@ type Page struct {
 	// Actions occupies the header's right-hand corner. Nil = no buttons.
 	Actions templ.Component
 
+	// Aside sits beside the title, for the one control that belongs to the
+	// NAME rather than to the page -- today, the button that opens a
+	// workflow's description. Nil draws nothing.
+	//
+	// Beside the title and not in Actions: Actions is where a page's verbs go
+	// (run, retry), and a reader scanning for "what can I do here" should not
+	// have to tell a verb from a footnote.
+	Aside templ.Component
+
 	// Island carries the extra assets of the interactive screens.
 	Island Island
 
@@ -78,11 +87,16 @@ templ Base(p Page) {
 				<main class="flex-1 overflow-y-auto">
 					<header class="sticky top-0 z-10 border-b border-line bg-canvas/90 px-6 py-4 backdrop-blur">
 						<div class="flex items-center justify-between gap-6">
-							<div>
+							<div class="min-w-0">
 								if p.Kicker != "" {
 									<p class="kicker mb-1">{ p.Kicker }</p>
 								}
-								<h1 class="display text-xl text-ink">{ p.Title }</h1>
+								<div class="flex items-center gap-2">
+									<h1 class="display truncate text-xl text-ink">{ p.Title }</h1>
+									if p.Aside != nil {
+										@p.Aside
+									}
+								</div>
 							</div>
 							if p.Actions != nil {
 								<div class="flex shrink-0 items-center gap-2">

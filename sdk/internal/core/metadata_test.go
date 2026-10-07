@@ -136,3 +136,30 @@ func TestEnvIntRenamedAcceptsTheOldName(t *testing.T) {
 		}
 	})
 }
+
+// DedupKey defaults to ingestion_id and refuses anything that could not be a
+// column name.
+//
+// It reaches SQL -- `ON CONFLICT (…)` and a catalogue query -- and it comes
+// from a config file, so it is validated rather than quoted and hoped:
+// quoting makes `"; DROP TABLE x; --` a legal identifier, which is not the
+// failure anybody wants to find out about.
+func TestDedupKeyDefaultsAndRefuses(t *testing.T) {
+	got, err := DedupKeyOf(WriteOptions{})
+	if err != nil || got != MetadataID {
+		t.Errorf("an empty DedupKey gave %q, %v", got, err)
+	}
+
+	got, err = DedupKeyOf(WriteOptions{DedupKey: "brevis_ingestion_id"})
+	if err != nil || got != "brevis_ingestion_id" {
+		t.Errorf("a named key gave %q, %v", got, err)
+	}
+
+	for _, bad := range []string{
+		`"; DROP TABLE x; --`, "has space", "1abc", "a-b", "a.b", `a"b`,
+	} {
+		if _, err := DedupKeyOf(WriteOptions{DedupKey: bad}); err == nil {
+			t.Errorf("the key %q was accepted", bad)
+		}
+	}
+}

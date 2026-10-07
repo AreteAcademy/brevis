@@ -43,7 +43,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 __all__ = [
     "AutoParams",
@@ -54,6 +54,7 @@ __all__ = [
     "map_value",
     "now",
     "param",
+    "param_list",
     "params",
     "window",
 ]
@@ -277,6 +278,32 @@ def param(name: str, default: str = "") -> str:
     defaults of its own, and a step that wants one anyway can pass ``default``.
     """
     return params().get(name, default)
+
+
+def param_list(name: str) -> List[str]:
+    """A parameter the workflow declared as ``list|<type>``.
+
+        for table in run.param_list("tables"):
+            load(table)
+
+    The engine sends every parameter as a string, list or not -- one
+    ``map[string]string`` from the trigger form to this process -- so a list
+    arrives as ``"users,orders"`` and this splits it, trimming the space a form
+    leaves after a comma.
+
+    An absent or empty parameter gives ``[]`` and not ``[""]``: iterating over
+    a list nobody filled in should do nothing, and one empty element would run
+    the body once on nothing.
+
+    The items are NOT converted. ``list|integer`` comes back as strings,
+    because the caller knows better than this module what to do with a value
+    that should be a number and is not -- and this library raises nothing that
+    a laptop run would not also raise.
+    """
+    raw = params().get(name, "").strip()
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
 
 
 def map_index() -> Optional[int]:

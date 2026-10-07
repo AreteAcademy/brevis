@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
 	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/migrations"
 )
 
 // The rule "which phases become a trend row" is written TWICE: once in Go, in
@@ -302,39 +304,41 @@ func seedRunWithStages(t *testing.T, pool *postgres.Pool, slug, stages string) u
 // Copied rather than re-derived, because a paraphrase would test a query that
 // no installation ever ran. When the migration changes, this fails, and the
 // failure is the reminder.
+// backfill runs THE MIGRATION'S OWN SQL, read out of the embedded file.
+//
+// It used to hold a copy, pasted from 00012. That is the very duplication this
+// file's header warns about, and it cost exactly what it was warning of: the
+// migration aborted on any database with a scalar in `etapas`
+// (`cannot extract elements from a scalar`) while this test stayed green,
+// because the copy was never the thing that ran.
+//
+// Reading the file means a test that passes is a statement about the migration.
 func backfill(t *testing.T, pool *postgres.Pool) {
 	t.Helper()
-	_, err := pool.Exec(context.Background(), `
-INSERT INTO load_metrics (
-    run_id, node_id, map_index, workflow_slug, em,
-    linhas, registros, ignorados, bytes_saida, load_ms,
-    bytes_entrada, paginas, tentativas, extract_ms)
-SELECT t.run_id, t.node_id, t.map_index, r.workflow_slug, r.criado_em,
-       COALESCE((carga->'numeros'->>'rows')::bigint, 0),
-       COALESCE((carga->'numeros'->>'records')::bigint, 0),
-       COALESCE((carga->'numeros'->>'ignored')::bigint, 0),
-       COALESCE((carga->'numeros'->>'load_bytes')::bigint, 0),
-       COALESCE((carga->>'ms')::bigint, 0),
-       COALESCE((extracao->'numeros'->>'bytes')::bigint, 0),
-       COALESCE((extracao->'numeros'->>'pages')::int, 0),
-       COALESCE((extracao->'numeros'->>'http_attempts')::int, 0),
-       COALESCE((extracao->>'ms')::bigint, 0)
-FROM task_runs t
-JOIN runs r ON r.id = t.run_id
-LEFT JOIN LATERAL (
-    SELECT e FROM jsonb_array_elements(t.etapas) e
-    WHERE e->>'nome' = 'load' AND e->>'estado' = 'done'
-    ORDER BY (e->>'indice')::int LIMIT 1
-) l(carga) ON true
-LEFT JOIN LATERAL (
-    SELECT e FROM jsonb_array_elements(t.etapas) e
-    WHERE e->>'nome' = 'extract' ORDER BY (e->>'indice')::int LIMIT 1
-) x(extracao) ON true
-WHERE carga IS NOT NULL
-ON CONFLICT (run_id, node_id, map_index) DO NOTHING`)
-	if err != nil {
+	if _, err := pool.Exec(context.Background(), backfillSQL(t)); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// backfillSQL cuts the backfill out of the migration: from `INSERT INTO
+// load_metrics` to the semicolon that ends it.
+func backfillSQL(t *testing.T) string {
+	t.Helper()
+	raw, err := migrations.FS.ReadFile("00012_metricas_de_carga.sql")
+	if err != nil {
+		t.Fatalf("reading the migration: %v", err)
+	}
+	body := string(raw)
+
+	i := strings.Index(body, "INSERT INTO load_metrics")
+	if i < 0 {
+		t.Fatal("00012 no longer holds an INSERT INTO load_metrics; this test is reading the wrong thing")
+	}
+	j := strings.Index(body[i:], ";")
+	if j < 0 {
+		t.Fatal("the backfill in 00012 does not end in a semicolon")
+	}
+	return body[i : i+j]
 }
 
 // readLoadRow reads back what either path stored, or nil when it stored nothing.
@@ -368,4 +372,87 @@ func runnerReading(t *testing.T, stages string) *app.LoadNumbers {
 		return nil
 	}
 	return &n
+}
+
+// `etapas` is jsonb, and jsonb accepts a SCALAR. The backfill reads it with
+// jsonb_array_elements, which does not: one row holding 'null'::jsonb aborts
+// the MIGRATION -- not the row, the migration -- with `cannot extract elements
+// from a scalar`, leaving load_metrics created and empty.
+//
+// It reached production. Every database with history has such a row: a task_run
+// from before the stages existed, or one whose step died before writing any.
+// The migration was only ever run against an empty database, where the backfill
+// reads nothing and the column's shape never comes up.
+//
+// So the case is not "a scalar is skipped". It is "a scalar does not take the
+// rows beside it down with it".
+func TestAScalarInEtapasDoesNotAbortTheBackfill(t *testing.T) {
+	pool := loadDB(t)
+	ctx := context.Background()
+
+	if _, err := pool.Exec(ctx, `TRUNCATE load_metrics, task_runs, runs CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+
+	runID := uuid.New()
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO runs (id, workflow_slug, idempotency_key, status, definicao, criado_em)
+		VALUES ($1, 'vendas', $2, 'done', '{}'::jsonb, now())`,
+		runID, runID.String()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Every shape a real column holds, with one good row among them. The good
+	// row is the assertion: a guard that skipped everything would pass a test
+	// that only checked for the absence of an error.
+	//
+	// SQL NULL is absent on purpose -- the column is NOT NULL, so the hazard is
+	// only ever a jsonb scalar, and a case that cannot exist is not a case.
+	for _, row := range []struct{ node, etapas string }{
+		{"scalar_null", `'null'::jsonb`},
+		{"scalar_number", `'7'::jsonb`},
+		{"scalar_string", `'"done"'::jsonb`},
+		{"scalar_object", `'{"nome":"load"}'::jsonb`},
+		{"empty_array", `'[]'::jsonb`},
+		{"good", `'[{"indice":1,"nome":"load","estado":"done","ms":22000,"numeros":{"rows":48213}}]'::jsonb`},
+	} {
+		if _, err := pool.Exec(ctx, `
+			INSERT INTO task_runs (id, run_id, node_id, status, attempt, map_index, etapas)
+			VALUES ($1, $2, $3, 'done', 1, -1, `+row.etapas+`)`,
+			uuid.New(), runID, row.node); err != nil {
+			t.Fatalf("seeding %s: %v", row.node, err)
+		}
+	}
+
+	// The migration's own SQL, read from the file.
+	if _, err := pool.Exec(ctx, backfillSQL(t)); err != nil {
+		t.Fatalf("the backfill aborted on a column it has to tolerate: %v", err)
+	}
+
+	var nodes []string
+	rows, err := pool.Query(ctx, `SELECT node_id FROM load_metrics ORDER BY node_id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		nodes = append(nodes, n)
+	}
+
+	if len(nodes) != 1 || nodes[0] != "good" {
+		t.Errorf("backfilled %v; only the row with a real load stage belongs there", nodes)
+	}
+
+	var linhas int64
+	if err := pool.QueryRow(ctx,
+		`SELECT linhas FROM load_metrics WHERE node_id = 'good'`).Scan(&linhas); err != nil {
+		t.Fatal(err)
+	}
+	if linhas != 48213 {
+		t.Errorf("the surviving row reads %d rows, so the guard ate its numbers", linhas)
+	}
 }

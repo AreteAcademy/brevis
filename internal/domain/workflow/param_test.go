@@ -194,3 +194,112 @@ func TestTheParamKeysAreTheOnDiskFormat(t *testing.T) {
 			"key this test cannot see", len(got), got)
 	}
 }
+
+// A list param carries many values through a map[string]string, because that is
+// what every param is from the form to the step's environment.
+func TestAListParamValidatesEachItem(t *testing.T) {
+	tabelas := wf.Param{Name: "tables", Type: "list|string"}
+	numeros := wf.Param{Name: "days", Type: "list|integer"}
+
+	aceita := []struct {
+		p     wf.Param
+		value string
+		why   string
+	}{
+		{tabelas, "users,orders", "the ordinary case"},
+		{tabelas, "users", "one item is still a list"},
+		{tabelas, "", "nobody filled it in"},
+		{tabelas, "users, orders", "the space after a comma is the form's, not the value's"},
+		{numeros, "1,7,30", "integers"},
+	}
+	for _, c := range aceita {
+		if err := c.p.Accepts(c.value); err != nil {
+			t.Errorf("%s: Accepts(%q) = %v, want nil", c.why, c.value, err)
+		}
+	}
+
+	recusa := []struct {
+		p     wf.Param
+		value string
+		why   string
+	}{
+		{numeros, "1,x,30", "an item that is not an integer"},
+		{tabelas, "users,,orders", "an empty item"},
+		{tabelas, "users,users", "the same item twice"},
+		{tabelas, "users;rm -rf /", "a character the shell interprets"},
+	}
+	for _, c := range recusa {
+		if err := c.p.Accepts(c.value); err == nil {
+			t.Errorf("%s: Accepts(%q) = nil, want an error", c.why, c.value)
+		}
+	}
+}
+
+// The error names WHICH item failed. "1,x,30 is not an integer" would make the
+// author check three values by hand.
+func TestAListErrorNamesTheItem(t *testing.T) {
+	p := wf.Param{Name: "days", Type: "list|integer"}
+	err := p.Accepts("1,x,30")
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !strings.Contains(err.Error(), "item 2") || !strings.Contains(err.Error(), `"x"`) {
+		t.Errorf("the error does not name the item that failed: %v", err)
+	}
+}
+
+// An enum on a list restricts each ITEM, which is what makes it a multi-select.
+func TestAnEnumOnAListRestrictsEachItem(t *testing.T) {
+	p := wf.Param{Name: "layers", Type: "list|string", Enum: []string{"bronze", "silver", "gold"}}
+	if err := p.Accepts("bronze,gold"); err != nil {
+		t.Errorf("two allowed items were refused: %v", err)
+	}
+	if err := p.Accepts("bronze,platinum"); err == nil {
+		t.Error("an item outside the enum was accepted")
+	}
+}
+
+func TestItemsSplitsAndTrims(t *testing.T) {
+	p := wf.Param{Name: "tables", Type: "list|string"}
+	got := p.Items(" users , orders ")
+	if len(got) != 2 || got[0] != "users" || got[1] != "orders" {
+		t.Errorf("Items() = %#v", got)
+	}
+	// Empty is no items, not one empty item: a `for` over one empty element
+	// runs the body once on nothing.
+	if got := p.Items(""); len(got) != 0 {
+		t.Errorf("Items(\"\") = %#v, want nothing", got)
+	}
+	// A scalar is never split, however many commas it holds -- a `--select`
+	// value legitimately has them.
+	escalar := wf.Param{Name: "select", Type: wf.ParamString}
+	if got := escalar.Items("a,b"); got != nil {
+		t.Errorf("a scalar param was split: %#v", got)
+	}
+}
+
+func TestTheListDeclarationIsChecked(t *testing.T) {
+	recusa := []struct {
+		p   wf.Param
+		why string
+	}{
+		{wf.Param{Name: "x", Type: "list|"}, "no element type"},
+		{wf.Param{Name: "x", Type: "list|date"}, "an element type that does not exist"},
+		{wf.Param{Name: "x", Type: "list|list|string"}, "a list of lists"},
+		// The enum's values are compared against ITEMS, so one holding the
+		// separator could never match.
+		{wf.Param{Name: "x", Type: "list|string", Enum: []string{"a,b"}}, "a comma inside an enum value"},
+		// A default is validated by the same rules, because a refused one would
+		// only surface on the first scheduled run.
+		{wf.Param{Name: "x", Type: "list|integer", Default: "1,x"}, "a default that is not valid"},
+	}
+	for _, c := range recusa {
+		if err := c.p.Validate(); err == nil {
+			t.Errorf("%s: Validate() = nil, want an error", c.why)
+		}
+	}
+	ok := wf.Param{Name: "tables", Type: "list|string", Default: "users,orders"}
+	if err := ok.Validate(); err != nil {
+		t.Errorf("a valid list param was refused: %v", err)
+	}
+}

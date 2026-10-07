@@ -1,0 +1,123 @@
+# The runtime you keep: architecture C, and D when you scale it.
+#
+# A StatefulSet and a headless Service, the same shape
+# `deployments/kubernetes/agent.yaml` has, with two things changed for the demo
+# and both of them said out loud:
+#
+#  1. THE IMAGE IS ONE YOU BUILT. `runtime/Dockerfile` is three lines on top of
+#     the shipped agent -- python and jq here, dbt in a real one -- because the
+#     agent alone runs nothing a step needs. `make cluster-dev-image` builds
+#     both and imports them. `areteacademy/brevis:…-agent` does not
+#     exist on a registry yet -- the agent ships for the first time in the next
+#     release -- so `make cluster-dev-image` builds it and imports it into the
+#     cluster's own image store. `imagePullPolicy: Never` is what stops the
+#     kubelet going to look for a tag nobody published.
+#
+#  2. THE TOKEN IS IN THIS FILE, in plain text, in a public repository. That is
+#     correct here and nowhere else: it authenticates one throwaway cluster on
+#     one laptop, and it is worth exactly what that cluster is worth.
+#
+#     It is a token and not `--insecure-no-token` on purpose. The demo should
+#     teach the shape a client copies, and an agent with no token runs any
+#     command for anything that reaches its port.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: brevis-agent-token
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+stringData:
+  # A demo's token, in public, for a cluster that lives on a laptop. On a real
+  # one this comes from a secret manager and never from a repository.
+  token: demo-only-not-a-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-agent
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  # Headless, for the per-pod DNS names --advertise is built from. A ClusterIP
+  # Service does not create them, and the pool breaks in a way that only shows
+  # up on a dropped connection.
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: brevis
+    app.kubernetes.io/component: agent
+  ports:
+    - {name: http, port: 9443, targetPort: 9443}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: brevis-agent
+  namespace: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceName: brevis-agent
+  # THREE, which is architecture D. One is architecture C and the only change
+  # between them is this number: the engine still reaches the instance that
+  # took each step, because --advertise below is built from the pod's own name
+  # and BREVIS_HOSTS points at the Service rather than at a pod.
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: brevis
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: brevis
+        app.kubernetes.io/component: agent
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: agent
+          image: brevis-tools:dev
+          imagePullPolicy: Never
+          args:
+            - --listen=:9443
+            - --token-file=/etc/brevis/token
+            - --advertise=http://$(POD_NAME).brevis-agent.$(POD_NAMESPACE).svc:9443
+            - --state-dir=/var/lib/brevis-agent
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+          ports: [{name: http, containerPort: 9443}]
+          # Readiness, not liveness: the headless Service's DNS filters on
+          # Ready, and a liveness failure would SIGTERM a pod holding a running
+          # step. See deployments/kubernetes/agent.yaml for the whole argument.
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 5
+          volumeMounts:
+            - {name: token, mountPath: /etc/brevis, readOnly: true}
+            - {name: state, mountPath: /var/lib/brevis-agent}
+            - {name: work, mountPath: /tmp}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            # The one Brevis pod where this cannot be true: a step runs here.
+            readOnlyRootFilesystem: false
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: token
+          secret:
+            secretName: brevis-agent-token
+            items: [{key: token, path: token}]
+        - name: state
+          emptyDir: {}
+        - name: work
+          emptyDir: {}

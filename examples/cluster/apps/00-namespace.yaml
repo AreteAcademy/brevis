@@ -1,0 +1,11 @@
+# Where Brevis and its step pods live.
+#
+# Wave -2: everything else in this directory goes into it, and a namespace that
+# arrives with its contents is a race Argo CD retries out of rather than a
+# dependency it understood.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dados
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"

@@ -195,10 +195,12 @@ brevis run wf.yaml --param load_full=true --retries 3 --timeout 5m
 forgetting the value, would run with the default — and the operator would
 believe the value was applied.
 
-:::warning Three limits
+:::warning Four limits
 `run` only operates with `BREVIS_ENV=local`; a step with `image:` runs on the
-instance itself and says so; and there is no Go task registry, so an `action:`
-for an unregistered task fails naming the ones available.
+instance itself and says so; there is no Go task registry, so an `action:` for
+an unregistered task fails naming the ones available; and `run` does not read
+`BREVIS_HOSTS`, so a step with `host:` cannot run here at all — it fails naming
+the host, even with the variable set.
 :::
 
 ---

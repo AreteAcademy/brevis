@@ -64,6 +64,13 @@ cluster:
 | `on` | passo com `image:` vira pod | **erro de boot** |
 | `off` | tudo em processo local | tudo em processo local |
 
+**Um passo com `host:` não passa por nada disso.** Ele é checado antes do pod e
+antes do processo, e vai para uma máquina que já está de pé — `BREVIS_PODS` não
+se aplica a ele, e ele nunca cai para processo local. Isso é deliberado:
+`image:` degrada para execução local com aviso porque container e processo são
+o mesmo comando em dois invólucros, e um host não é. É onde está a licença, ou
+a GPU, ou o dado.
+
 `auto` é o padrão porque o mesmo binário roda nos dois lugares: no laptop não há
 service account montada e ele cai para processo local; no cluster há, e ele
 passa a criar pods.
