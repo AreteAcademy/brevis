@@ -52,36 +52,46 @@ existing.
 | the SLO | did the run finish | p99 of `POST`, nothing lost on a 200 |
 | scaling | one scheduler | N stateless replicas |
 
-## Why there is nothing in the console
+## In the console
 
-**There is nothing to see today.** The console reads the engine's Postgres, and
-the gateway never writes to it.
+A gateway shares nothing with the engine at runtime, so it appears in the
+console's [`/data`](CATALOG.md) the way a workflow does: its configuration is
+**published**, as a deliberate act.
 
-Making it appear there is possible, and the shape matters more than the effort:
+```bash
+# in the gateway's deploy pipeline, where the environment is production's
+gateway describe gateway.yaml > manifest.json
+brevis gateway publish manifest.json
+```
 
-- **The gateway writing to the engine's database.** Cheap to build and the worst
-  of the options: it couples an always-on data plane to the orchestrator's
-  store. The question it forces — *does the gateway stop accepting when that
-  Postgres is down?* — has no good answer.
-- **The console querying the gateways over HTTP.** Which replica? They each hold
-  their own buffer, so the answer is "all of them, and add up", and the console
-  grows a service discovery problem.
-- **Publishing the config, the way a workflow is published.** `brevis publish`
-  already takes a file and stores a definition the console renders. A gateway
-  config is a file of exactly that kind, and publishing is a deliberate act
-  rather than a runtime dependency: the console shows what is *configured* to
-  receive data, and the gateway keeps accepting whether or not that database is
-  reachable.
+`gateway describe` prints a manifest — per stream, each destination's role
+(`sink`, `dead_letter`, or `archive` for oversized bodies), its kind and its
+target, the same identity the SDK gives a table:
 
-The third is the one worth doing, and it is worth being clear about what it
-gives: the **configuration**, not the traffic. Live counters — accepted,
-rejected, delivered, buffered, sink failures — belong in `/metrics`, beside the
-engine's, which is where an operator already watches for trouble. A console
-page that showed a number a minute old would be worse than one that sends you
-to the dashboard that updates.
+```json
+{"role": "sink", "kind": "auto_table", "target": "bigquery://acme-prod/landing/*", "routes": true}
+```
 
-Neither is built. Both are listed in the plan's build order, and neither is in
-the way of using the gateway.
+It **builds no sink and opens nothing**: each driver names its destination
+from its configuration alone, which is why it runs where the gateway's
+credentials do not. It does read the variable `dsn_from` names, so it runs
+where that variable is set, and fails naming it when it is not. `--name`
+overrides the gateway's name, which is otherwise the config's `name:`.
+
+Two kinds of destination are published with no target and a note rather than
+guessed: a sink type the binary has no locator for, and a local path relative
+to the gateway's working directory — which describe, running elsewhere,
+cannot see. auto_table publishes the pattern its tables land under, since the
+tables themselves are learned from the events.
+
+`brevis gateway publish` replaces that gateway's destinations in one
+transaction, so a stream removed from the config disappears on the next
+publish; `brevis gateway unpublish <name>` removes a decommissioned gateway.
+
+What the console shows is the **configuration**, as of the last publish — the
+destination page says when. Traffic — accepted, rejected, delivered,
+buffered — stays on `/metrics` (see [What it counts](#what-it-counts)), which is live; a console number
+a minute old would be worse than the dashboard that updates.
 
 ## Who may write
 

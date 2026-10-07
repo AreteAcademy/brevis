@@ -401,6 +401,24 @@ keeps the FK honest while there is no project management.
 
 ---
 
+## `brevis gateway`
+
+```bash
+brevis gateway publish manifest.json     # the output of `gateway describe`
+brevis gateway unpublish events_gateway
+```
+
+How a gateway appears on `/data`: its configuration, published as a deliberate
+act — never its traffic, and never at runtime. `publish` checks the manifest
+whole before writing anything, naming the stream and role of the first
+problem, and replaces that gateway's destinations in one transaction.
+`unpublish` removes a decommissioned gateway, and is an error when no gateway
+of that name was published.
+
+A command of its own rather than a mode of `brevis publish`: workflows and
+gateways have different set semantics, and `publish --prune` must never reach a
+gateway. See [`GATEWAY.md`](GATEWAY.md#in-the-console).
+
 ## `brevis backfill`
 
 Materializes the past slots of an already-published workflow. It **queues, it
