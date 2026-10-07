@@ -1,0 +1,77 @@
+{
+  "kind": "gateway-manifest",
+  "version": 1,
+  "gateway": "events_gateway",
+  "generated_at": "2026-10-07T18:02:11Z",
+  "streams": [
+    {
+      "path": "/v1/clicks",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "pubsub",
+          "target": "pubsub://acme-prod/clicks"
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": null,
+          "note": "no identity: \"./dead-letter/clicks/\" is relative to the gateway's working directory"
+        },
+        {
+          "role": "archive",
+          "kind": "files",
+          "target": "gs://acme-oversize/clicks/"
+        }
+      ]
+    },
+    {
+      "path": "/v1/orders",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "postgres",
+          "target": "postgres://shop/landing/orders"
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": null,
+          "note": "no identity: \"./dead-letter/orders/\" is relative to the gateway's working directory"
+        }
+      ]
+    },
+    {
+      "path": "/v1/telemetry",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "bigquery",
+          "target": "bigquery://acme-prod/landing/telemetry"
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": "gs://acme-dead-letter/telemetry/"
+        }
+      ]
+    },
+    {
+      "path": "/v1/tables",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "auto_table",
+          "target": "bigquery://acme-prod/landing/*",
+          "routes": true
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": null,
+          "note": "no identity: \"./dead-letter/tables/\" is relative to the gateway's working directory"
+        }
+      ]
+    }
+  ]
+}

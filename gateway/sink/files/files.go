@@ -65,6 +65,13 @@ func (f *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 // Locate names the prefix this sink writes under, from its configuration
 // alone. The store is NOT opened -- New opens it, and that may need
 // credentials a deploy pipeline does not have.
+//
+// A relative local path has no identity here: it is relative to the gateway's
+// working directory, which describe -- running in a deploy pipeline -- cannot
+// see. Making it absolute would publish a path on the CI machine.
 func Locate(s gateway.Sink, _ *gateway.Sinks) (string, error) {
+	if !strings.Contains(s.Path, "://") && !strings.HasPrefix(s.Path, "/") {
+		return "", fmt.Errorf("%w: %q is relative to the gateway's working directory", gateway.ErrNoIdentity, s.Path)
+	}
 	return gateway.Located(to.Files{Path: s.Path}.Locate(), "files:"+s.Path)
 }

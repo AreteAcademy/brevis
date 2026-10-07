@@ -31,7 +31,19 @@ import (
 // database/sql has always worked.
 func Main(hooks *Hooks, opts ...Option) {
 	if len(os.Args) < 2 {
-		log.Fatal("usage: gateway <config.yaml>")
+		log.Fatal("usage: gateway <config.yaml> | gateway describe [--name <gateway>] <config.yaml>")
+	}
+	// describe prints where each stream lands and exits. It serves nothing,
+	// builds no sink and opens nothing; see Describe.
+	if os.Args[1] == "describe" {
+		var o options
+		for _, opt := range opts {
+			opt(&o)
+		}
+		if err := describeMain(os.Args[2:], o.catalog, os.Stdout); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 	cfg, err := Load(os.Args[1])
 	if err != nil {
