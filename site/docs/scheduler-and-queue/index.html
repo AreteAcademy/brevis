@@ -176,6 +176,29 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true"
   rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>  31 run(s) de backfill enfileirados para diario (2026-01-01 a 2026-01-31)
   rode `brevis scheduler` para executa-los</code></pre></div>
 <p><strong>Enfileira, não executa.</strong> Quem executa é o <code>scheduler</code> — de novo, a mesma separação. <code>--to</code> inclui o dia inteiro.</p>
+<h2 id="disparado-por-uma-aterrissagem">Disparado por uma aterrissagem<a class="anchor" href="#disparado-por-uma-aterrissagem" aria-label="link">#</a></h2>
+<p>Um workflow pode rodar porque um dado chegou, em vez de porque o relógio mandou:</p>
+<div class="code-block" data-code="trigger:
+  on_landed:
+    - bigquery://acme-prod/bronze/orders
+    - bigquery://acme-prod/bronze/*
+  debounce: 5m"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">trigger</span>:
+  <span class="t-k">on_landed</span>:
+    - <span class="t-k">bigquery</span>://acme-prod/bronze/orders
+    - <span class="t-k">bigquery</span>://acme-prod/bronze/*
+  <span class="t-k">debounce</span>: 5m</code></pre></div>
+<p>Todo passo já declara o que escreveu, pelo mesmo cano que carrega as fases — é o que preenche o <code>/data</code>. Um workflow assina um desses nomes e começa quando algo aterrissa nele.</p>
+<p>Um <code>/*</code> no fim assina o dataset inteiro. Existe por causa do <code>auto_table</code>, que cria uma tabela por rota: o dataset é a única coisa que dá para nomear quando as tabelas não foram declaradas por ninguém. Ele casa com <code>bronze/orders</code> e não com <code>bronze_raw/orders</code>.</p>
+<h3 id="a-janela-e-por-que-dez-aterrissagens-sao-um-run">A janela, e por que dez aterrissagens são um run<a class="anchor" href="#a-janela-e-por-que-dez-aterrissagens-sao-um-run" aria-label="link">#</a></h3>
+<p>O <code>debounce</code> junta uma rajada. Dez tabelas aterrissando dentro de cinco minutos começam <strong>um</strong> run, não dez, e o run diz quais foram:</p>
+<div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
+<p>A lista exata também está no <code>BREVIS_AUTO_PARAMS</code> em JSON, que é o que ler quando um alvo puder conter uma vírgula.</p>
+<p>A janela é cortada de <strong>quando o motor registrou a aterrissagem</strong>, não de quando o passo disse que ela aconteceu. Um passo que reporta o instante em que sua consulta começou está reportando algo verdadeiro e algo velho, e um relógio torto partiria uma rajada em dois runs.</p>
+<p>Deixe o <code>debounce</code> de fora e cada aterrissagem começa um run.</p>
+<h3 id="o-que-ele-nao-faz">O que ele não faz<a class="anchor" href="#o-que-ele-nao-faz" aria-label="link">#</a></h3>
+<p><strong>Um workflow nunca é iniciado pela própria escrita.</strong> O motor descarta uma aterrissagem cujo autor é o próprio workflow que assina, e registra o porquê — sem isso, um workflow que lê e escreve a mesma tabela se dispararia para sempre.</p>
+<p>A recusa acontece <strong>quando ele dispara</strong>, e não quando o arquivo é conferido, e isso é um limite e não um esquecimento: o <code>brevis validate</code> lê arquivos, e nenhum arquivo declara o que um passo escreve. O alvo num warehouse é decidido pela conexão, não pelo YAML. Então o <code>validate</code> aprova um workflow que será recusado em execução, toda vez, com o motivo no log.</p>
+<p><strong>O primeiro ciclo não começa nada.</strong> Um gatilho passa a contar do momento em que entra no ar, como uma agenda — senão publicar um dispararia um run para cada aterrissagem da história do catálogo.</p>
 <h2 id="alertas">Alertas<a class="anchor" href="#alertas" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.exemplo.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
@@ -197,7 +220,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.exemplo.com'</code
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#por-que-separados">Por que separados</a></li><li class="toc-2"><a href="#o-processo">O processo</a></li><li class="toc-2"><a href="#o-snapshot-da-definicao">O snapshot da definição</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#alertas">Alertas</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
+      <ul><li class="toc-2"><a href="#por-que-separados">Por que separados</a></li><li class="toc-2"><a href="#o-processo">O processo</a></li><li class="toc-2"><a href="#o-snapshot-da-definicao">O snapshot da definição</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#disparado-por-uma-aterrissagem">Disparado por uma aterrissagem</a></li><li class="toc-3"><a href="#a-janela-e-por-que-dez-aterrissagens-sao-um-run">A janela, e por que dez aterrissagens são um run</a></li><li class="toc-3"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#alertas">Alertas</a></li><li class="toc-2"><a href="#proximos-passos">Próximos passos</a></li></ul>
     </aside>
   </main>
 </div>

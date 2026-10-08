@@ -176,6 +176,29 @@ brevis backfill daily --from 2026-01-01 --to 2026-01-31 --param load_full=true">
   rode `brevis scheduler` para executa-los"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  31 run(s) de backfill enfileirados para daily (2026-01-01 a 2026-01-31)
   rode `brevis scheduler` para executa-los</code></pre></div>
 <p>It <strong>enqueues, it does not execute.</strong> Execution is the <code>scheduler</code>'s job — the same separation again. <code>--to</code> includes the whole day.</p>
+<h2 id="started-by-a-landing">Started by a landing<a class="anchor" href="#started-by-a-landing" aria-label="link">#</a></h2>
+<p>A workflow can run because data arrived, instead of because the clock said so:</p>
+<div class="code-block" data-code="trigger:
+  on_landed:
+    - bigquery://acme-prod/bronze/orders
+    - bigquery://acme-prod/bronze/*
+  debounce: 5m"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">trigger</span>:
+  <span class="t-k">on_landed</span>:
+    - <span class="t-k">bigquery</span>://acme-prod/bronze/orders
+    - <span class="t-k">bigquery</span>://acme-prod/bronze/*
+  <span class="t-k">debounce</span>: 5m</code></pre></div>
+<p>Every step already declares what it wrote, on the pipe that carries the phases — that is what fills <code>/data</code>. A workflow subscribes to one of those names and starts when something lands on it.</p>
+<p>A trailing <code>/*</code> subscribes to the whole dataset. It exists for <code>auto_table</code>, which creates a table per route: the dataset is the only thing that can be named for tables nobody declared. It matches <code>bronze/orders</code> and not <code>bronze_raw/orders</code>.</p>
+<h3 id="the-window-and-why-ten-landings-are-one-run">The window, and why ten landings are one run<a class="anchor" href="#the-window-and-why-ten-landings-are-one-run" aria-label="link">#</a></h3>
+<p><code>debounce</code> collapses a burst. Ten tables landing inside five minutes start <strong>one</strong> run, not ten, and the run says which ones:</p>
+<div class="code-block" data-code="BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items</code></pre></div>
+<p>The exact list is also in <code>BREVIS_AUTO_PARAMS</code> as JSON, which is what to read when a target could hold a comma.</p>
+<p>The window is cut from <strong>when the engine recorded the landing</strong>, not from when the step said it happened. A step that reports the instant its query began is reporting something true and something old, and one skewed clock would otherwise split a burst into two runs.</p>
+<p>Leave <code>debounce</code> out and every landing starts a run.</p>
+<h3 id="what-it-will-not-do">What it will not do<a class="anchor" href="#what-it-will-not-do" aria-label="link">#</a></h3>
+<p><strong>A workflow is never started by its own write.</strong> The engine drops a landing whose writer is the subscribing workflow and logs why — without it, a workflow that reads and writes the same table would trigger itself forever.</p>
+<p>It is refused <strong>when it fires</strong> and not when the file is checked, and that is a limit rather than an oversight: <code>brevis validate</code> reads files and no file declares what a step writes. A warehouse target is decided by the connection, not by the YAML. So <code>validate</code> passes a workflow that will be refused at runtime, every time, with the reason in the log.</p>
+<p><strong>The first cycle starts nothing.</strong> A trigger begins counting from the moment it goes live, like a schedule — otherwise publishing one would fire a run for every landing in the catalog's history.</p>
 <h2 id="alerts">Alerts<a class="anchor" href="#alerts" aria-label="link">#</a></h2>
 <div class="code-block" data-code="export BREVIS_SLACK_WEBHOOK=&#x27;https://hooks.slack.com/services/...&#x27;
 export BREVIS_UI_URL=&#x27;https://brevis.example.com&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>export BREVIS_SLACK_WEBHOOK='https://hooks.slack.com/services/...'
@@ -197,7 +220,7 @@ export BREVIS_UI_URL='https://<span class="t-k">brevis</span>.example.com'</code
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#why-separate">Why separate</a></li><li class="toc-2"><a href="#the-process">The process</a></li><li class="toc-2"><a href="#the-definition-snapshot">The definition snapshot</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#alerts">Alerts</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
+      <ul><li class="toc-2"><a href="#why-separate">Why separate</a></li><li class="toc-2"><a href="#the-process">The process</a></li><li class="toc-2"><a href="#the-definition-snapshot">The definition snapshot</a></li><li class="toc-2"><a href="#retries">Retries</a></li><li class="toc-2"><a href="#backfill">Backfill</a></li><li class="toc-2"><a href="#started-by-a-landing">Started by a landing</a></li><li class="toc-3"><a href="#the-window-and-why-ten-landings-are-one-run">The window, and why ten landings are one run</a></li><li class="toc-3"><a href="#what-it-will-not-do">What it will not do</a></li><li class="toc-2"><a href="#alerts">Alerts</a></li><li class="toc-2"><a href="#next-steps">Next steps</a></li></ul>
     </aside>
   </main>
 </div>

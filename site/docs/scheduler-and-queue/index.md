@@ -128,6 +128,64 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
 **Enfileira, não executa.** Quem executa é o `scheduler` — de novo, a mesma
 separação. `--to` inclui o dia inteiro.
 
+## Disparado por uma aterrissagem
+
+Um workflow pode rodar porque um dado chegou, em vez de porque o relógio
+mandou:
+
+```yaml
+trigger:
+  on_landed:
+    - bigquery://acme-prod/bronze/orders
+    - bigquery://acme-prod/bronze/*
+  debounce: 5m
+```
+
+Todo passo já declara o que escreveu, pelo mesmo cano que carrega as fases — é
+o que preenche o `/data`. Um workflow assina um desses nomes e começa quando
+algo aterrissa nele.
+
+Um `/*` no fim assina o dataset inteiro. Existe por causa do `auto_table`, que
+cria uma tabela por rota: o dataset é a única coisa que dá para nomear quando
+as tabelas não foram declaradas por ninguém. Ele casa com `bronze/orders` e não
+com `bronze_raw/orders`.
+
+### A janela, e por que dez aterrissagens são um run
+
+O `debounce` junta uma rajada. Dez tabelas aterrissando dentro de cinco minutos
+começam **um** run, não dez, e o run diz quais foram:
+
+```
+BREVIS_AUTO_LANDED=bigquery://acme-prod/bronze/orders,bigquery://acme-prod/bronze/items
+```
+
+A lista exata também está no `BREVIS_AUTO_PARAMS` em JSON, que é o que ler
+quando um alvo puder conter uma vírgula.
+
+A janela é cortada de **quando o motor registrou a aterrissagem**, não de
+quando o passo disse que ela aconteceu. Um passo que reporta o instante em que
+sua consulta começou está reportando algo verdadeiro e algo velho, e um relógio
+torto partiria uma rajada em dois runs.
+
+Deixe o `debounce` de fora e cada aterrissagem começa um run.
+
+### O que ele não faz
+
+**Um workflow nunca é iniciado pela própria escrita.** O motor descarta uma
+aterrissagem cujo autor é o próprio workflow que assina, e registra o porquê —
+sem isso, um workflow que lê e escreve a mesma tabela se dispararia para
+sempre.
+
+A recusa acontece **quando ele dispara**, e não quando o arquivo é conferido, e
+isso é um limite e não um esquecimento: o `brevis validate` lê arquivos, e
+nenhum arquivo declara o que um passo escreve. O alvo num warehouse é decidido
+pela conexão, não pelo YAML. Então o `validate` aprova um workflow que será
+recusado em execução, toda vez, com o motivo no log.
+
+**O primeiro ciclo não começa nada.** Um gatilho passa a contar do momento em
+que entra no ar, como uma agenda — senão publicar um dispararia um run para
+cada aterrissagem da história do catálogo.
+
 ## Alertas
 
 ```bash
