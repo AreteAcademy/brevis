@@ -64,6 +64,29 @@ type Server struct {
 	pipes   []*pipe
 	keys    []string
 	metrics *Metrics
+
+	// streamAt resolves a request path to the stream configured on it, for
+	// the one refusal that happens before routing. Built here and not derived
+	// per request, and EXACT rather than a prefix: config.go already refuses
+	// two streams on one path, so this map is the same fact in the shape the
+	// guard needs.
+	streamAt map[string]string
+}
+
+// refuseUnauthorized counts a 401 against the stream it was aimed at.
+//
+// UNKNOWN FOR ANYTHING NOT CONFIGURED, and that is the whole care here. This
+// is the only refusal reachable WITHOUT a key, so the label's value is chosen
+// by a caller who has not authenticated: `r.URL.Path` straight in is a series
+// per request, and the cost of somebody's metrics backend is then set by
+// whoever is scanning the gateway. Resolved against the configured paths, or
+// one fixed value.
+func (s *Server) refuseUnauthorized(path string) {
+	name, ok := s.streamAt[path]
+	if !ok {
+		name = "unknown"
+	}
+	s.metrics.count(s.metrics.refused, 1, name, ReasonUnauthorized)
 }
 
 // Metrics is what this gateway has counted, for a caller that wants to serve
@@ -137,7 +160,8 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 	if hooks == nil {
 		hooks = NewHooks()
 	}
-	s := &Server{cfg: cfg, mux: http.NewServeMux(), metrics: NewMetrics()}
+	s := &Server{cfg: cfg, mux: http.NewServeMux(), metrics: NewMetrics(),
+		streamAt: map[string]string{}}
 
 	// Bounded, because building a cloud client resolves credentials and that
 	// can hang: an unreachable metadata server leaves storage.NewClient
@@ -237,6 +261,7 @@ func New(cfg *Config, hooks *Hooks, opts ...Option) (*Server, error) {
 		p.big = big
 		s.pipes = append(s.pipes, p)
 		s.mux.Handle("POST "+st.Path, p)
+		s.streamAt[st.Path] = st.Name
 	}
 
 	// /health is outside the guard: a readiness probe has no credential, and
@@ -325,7 +350,7 @@ func (s *Server) Handler() http.Handler {
 			s.mux.ServeHTTP(w, r)
 			return
 		}
-		guard(s.keys, s.mux).ServeHTTP(w, r)
+		guard(s.keys, s.mux, s.refuseUnauthorized).ServeHTTP(w, r)
 	})
 }
 

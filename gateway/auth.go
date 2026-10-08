@@ -83,13 +83,21 @@ func (a Auth) keys() ([]string, error) {
 }
 
 // guard wraps a handler with the bearer check. A nil key list is open.
-func guard(keys []string, next http.Handler) http.Handler {
+//
+// `refused` is called with the request's path when one is turned away. A
+// callback and not a *Metrics, because this file knows nothing about
+// instruments, and the resolution it would need -- which path is which
+// stream -- belongs to the Server that owns the config.
+func guard(keys []string, next http.Handler, refused func(path string)) http.Handler {
 	if len(keys) == 0 {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if !ok || !accepted(keys, strings.TrimSpace(token)) {
+			if refused != nil {
+				refused(r.URL.Path)
+			}
 			// No detail. "unknown key" and "no key" are the same answer here:
 			// the difference is only useful to somebody guessing.
 			w.Header().Set("WWW-Authenticate", `Bearer realm="brevis-gateway"`)
