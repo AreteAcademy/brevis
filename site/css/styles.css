@@ -1261,6 +1261,17 @@ a.chip:focus-visible .ico {
   text-align: center;
 }
 
+/* O quadriculado da T1, com um veu no centro, onde mora o texto. Medido sem o
+   veu: oliva sobre um filete 4.62:1, secundario 7.1:1. O veu e calma, nao
+   conserto. */
+.final.bg-grid {
+  background-image:
+    radial-gradient(ellipse at center, var(--bg) 30%, transparent 75%),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: auto, var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size);
+}
+
 .final .eyebrow {
   margin-inline: auto;
   width: fit-content;
@@ -1269,6 +1280,17 @@ a.chip:focus-visible .ico {
 .final .lead {
   margin-inline: auto;
   text-align: center;
+}
+
+.final-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
+  margin-top: 1.75rem;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .final .button-row {

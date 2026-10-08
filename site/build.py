@@ -699,7 +699,7 @@ or BigQuery — `brevis-sql compile`, `graph`, `build` and `test`. No templating
 
 ## Optional
 
-- [Repository](%s): source, issues and discussions
+- [Repository](%s): source and issues
 - [Go SDK reference](https://pkg.go.dev/github.com/AreteAcademy/brevis/sdk): the generated API docs
 - [Aretê Academy](https://areteacademy.com.br/): the group the project belongs to
 """ % (BASE_URL, traducao, "\n\n".join(secoes), REPO)
