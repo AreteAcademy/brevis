@@ -628,6 +628,23 @@ func newPipe(st Stream, hook Hook, sink, dead Sinker, maxBody int64, m *Metrics,
 	return p
 }
 
+// refuse turns a request away and counts it, in that order and never one
+// without the other.
+//
+// ONE FUNNEL, because the alternative is what this package had: four
+// `http.Error` calls, one of them counted, and nothing saying the other three
+// should be. A fifth way to refuse written next year reaches for the function
+// beside the other four, and the counting comes with it.
+//
+// The reason is a closed enum and never the message: `err.Error()` on a
+// malformed body carries a table name, a column, sometimes a row, and one
+// broken client would mint a series per request. The text goes to the caller,
+// who can read it; the label says only which KIND of thing happened.
+func (p *pipe) refuse(w http.ResponseWriter, status int, reason, msg string) {
+	p.metrics.count(p.metrics.refused, 1, p.stream.Name, reason)
+	http.Error(w, msg, status)
+}
+
 // ServeHTTP accepts. It does the least work that is still honest and leaves
 // the rest to the drain: a hook that takes two milliseconds must not be two
 // milliseconds of the caller's p99.
@@ -637,14 +654,15 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
-			http.Error(w, "the body is larger than this stream accepts", http.StatusRequestEntityTooLarge)
+			p.refuse(w, http.StatusRequestEntityTooLarge, ReasonBodyTooLarge,
+				"the body is larger than this stream accepts")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		p.refuse(w, http.StatusBadRequest, ReasonMalformed, err.Error())
 		return
 	}
 	if len(events) == 0 {
-		http.Error(w, "the body carries no event", http.StatusBadRequest)
+		p.refuse(w, http.StatusBadRequest, ReasonEmpty, "the body carries no event")
 		return
 	}
 
@@ -662,10 +680,10 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// sending this exact body again produces the same record rather
 			// than a second one.
 			w.Header().Set("Retry-After", "1")
-			http.Error(w, "this stream's buffer is full and the sink is behind; "+
-				"send the same body again -- it carries the same ingestion_id, "+
-				"so a retry is the same record and not a duplicate",
-				http.StatusServiceUnavailable)
+			p.refuse(w, http.StatusServiceUnavailable, ReasonSaturated,
+				"this stream's buffer is full and the sink is behind; "+
+					"send the same body again -- it carries the same ingestion_id, "+
+					"so a retry is the same record and not a duplicate")
 			return
 		}
 	}
