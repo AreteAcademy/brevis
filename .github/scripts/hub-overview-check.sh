@@ -15,7 +15,7 @@ LIMIT=25000
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 status=0
-for f in docs/GATEWAY-hub.md; do
+for f in docs/GATEWAY-hub.md docs/SQL-hub.md; do
   bytes=$(wc -c < "$root/$f" | tr -d ' ')
   if [ "$bytes" -gt "$LIMIT" ]; then
     echo "::error::$f is $bytes bytes and Docker Hub truncates at $LIMIT."

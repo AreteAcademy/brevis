@@ -16,7 +16,7 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [0.1.0] — unreleased
+## [0.1.0] — 2026-10-08
 
 ### Added: plain `.sql` files become tables and views, in dependency order
 

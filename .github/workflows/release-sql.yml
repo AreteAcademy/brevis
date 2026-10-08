@@ -172,6 +172,20 @@ jobs:
             || { echo "::error::the image did not start"; exit 1; }
           echo "✅ ${{ env.IMAGE }}:${{ steps.v.outputs.version }} runs"
 
+      # The page everybody sees first, and it is EMPTY unless something
+      # pushes it. The repository's own gate keeps it under Docker Hub's
+      # 25,000 bytes, because the action that pushes an over-long one logs
+      # a WARNING and the page is cut mid-sentence in a green job -- which
+      # is how the gateway's was truncated for four releases.
+      - name: The Docker Hub overview
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: areteacademy/brevis-sql
+          readme-filepath: ./docs/SQL-hub.md
+          short-description: "Plain .sql files become tables and views, in dependency order."
+
       # ONLY ON A TAG. `workflow_dispatch` carries a version and no tag, so
       # `github.ref_name` would be a branch, and a Release named after a
       # branch is worse than none.
