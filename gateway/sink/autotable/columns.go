@@ -22,7 +22,11 @@ import "github.com/AreteAcademy/brevis/sdk"
 // date inside the record, no numeric aggregation without a cast, and every
 // query casting. Typing a column is the PROMOTION path -- a human writing it in
 // the YAML, reviewed in a diff.
-type columns struct{}
+type columns struct {
+	// folds says the destination stores two spellings of one name as one
+	// column. BigQuery does; Postgres and MySQL do not. [#43]
+	folds bool
+}
 
 func (columns) name() string { return ShapeColumns }
 
@@ -36,7 +40,20 @@ var FieldName = sdk.LandingFieldName
 // buffered. See the shaper interface for the batch this did not exist to
 // protect.
 func (c columns) validate(record map[string]any) error {
-	return sdk.LandingFieldNames(record)
+	if err := sdk.LandingFieldNames(record); err != nil {
+		return err
+	}
+	// ONE EVENT carrying two spellings of one column, where the destination
+	// folds. [#43] It belongs HERE and not at write time for the reason the
+	// shaper interface gives above: the batch it would otherwise fail holds
+	// other producers' events, and all of them were already told 202.
+	//
+	// Two EVENTS each carrying one spelling are not refused -- they are one
+	// column with every row writing to it, and that is ordinary CDC traffic.
+	if c.folds {
+		return sdk.CheckFoldedFields(record)
+	}
+	return nil
 }
 
 // columns renders the record's fields, each into a column of its own.

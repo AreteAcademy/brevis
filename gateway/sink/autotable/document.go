@@ -56,12 +56,18 @@ type shaper interface {
 	name() string
 }
 
-func shaperFor(shape string) (shaper, error) {
+// shaperFor builds the shape, told whether the destination folds column
+// case. [#43]
+//
+// Only `columns` can care: `document` puts the record whole into one JSON
+// column, where two spellings are two KEYS of a JSON value and the warehouse
+// never sees them as column names at all.
+func shaperFor(shape string, folds bool) (shaper, error) {
 	switch shape {
 	case "", ShapeDocument:
 		return document{}, nil
 	case ShapeColumns:
-		return columns{}, nil
+		return columns{folds: folds}, nil
 	default:
 		return nil, fmt.Errorf("`shape` is %q (use %s or %s)",
 			shape, ShapeDocument, ShapeColumns)

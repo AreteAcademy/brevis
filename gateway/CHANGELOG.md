@@ -13,6 +13,40 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.26.0] — 2026-10-08
+
+### Fixed: `auto_table` had its own union, and `0.25.0` did not fold it
+
+`0.25.0` shipped the SDK's fold and **did not fix this**. Verified against the
+published image, against a real BigQuery project, with the reporter's own
+three events — and it answered exactly what it answered before:
+
+```
+Field nationalId already exists in schema
+```
+
+`shape: columns` builds a declaration one event at a time and unions them in
+this package, so the SDK's fold never saw it. There were two unions; one had
+been fixed.
+
+The union now folds where the destination does, and **`into.type` is the only
+thing that decides it** — the same shape as `unique`, which has read the
+destination off that field since `auto_table` was written. A test asserts the
+wire itself, because `merge` takes the fold as an argument and every other
+test in this package passes with it hard-wired either way. That is precisely
+how `0.25.0` shipped.
+
+**An event carrying both spellings is refused at the admitter**, per event,
+naming both fields — not at write time. Failing the batch would send three
+well-formed events from three other producers to the dead letter for a fourth
+producer's mistake, after all four had been told `202`. That is the poison
+batch the admitter exists against.
+
+Requires `sdk v0.84.0`, which exports the rule so the gateway and a pipeline
+landing the same events reach the same table.
+
+---
+
 ## [0.25.0] — 2026-10-08
 
 ### Fixed: two spellings of one column are one column on BigQuery

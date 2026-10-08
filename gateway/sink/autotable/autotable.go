@@ -66,7 +66,17 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	merging := s.Into.Write == gateway.WriteMerge
 	unique := merging && s.Into.Type != gateway.SinkBigQuery
 
-	sh, err := shaperFor(s.Shape)
+	// A third thing that follows the DESTINATION. [#43] BigQuery folds column
+	// case: two spellings of one name are one column there, and a CREATE
+	// listing both is refused with `Field nationalId already exists in
+	// schema`. Postgres and MySQL keep them apart, which is correct for them.
+	//
+	// It is asked here and not inside the SDK because `shape: columns` builds
+	// its declaration one event at a time, in this package -- the SDK's own
+	// fold never sees it.
+	folds := s.Into.Type == gateway.SinkBigQuery
+
+	sh, err := shaperFor(s.Shape, folds)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +90,7 @@ func New(b gateway.Build) (gateway.Sinker, error) {
 	// the file said.
 	ttl := s.Metastore.CacheTTL()
 
-	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh,
+	r := &router{build: b, names: n, unique: unique, merging: merging, shape: sh, folds: folds,
 		stream: b.Stream, gateway: b.Gateway,
 		meta: &coordinator{store: b.Meta, stream: b.Stream, ttl: ttl},
 		made: map[string]gateway.Sinker{}, charged: map[string]bool{}, now: time.Now}
@@ -117,6 +127,10 @@ type router struct {
 	// shape decides what the record contributes to the row: one JSON column,
 	// or a column per field.
 	shape shaper
+
+	// folds says the destination stores two spellings of one name as one
+	// column. See New, where it is read off `into.type`. [#43]
+	folds bool
 
 	// stream and gateway are stamped onto every row, so a table fed by several
 	// routes still says which one wrote each line.
@@ -383,7 +397,7 @@ func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope,
 		if err != nil {
 			return nil, nil, fmt.Errorf("event %d: %w", i, err)
 		}
-		schemas[env.table] = merge(schemas[env.table], declared)
+		schemas[env.table] = merge(schemas[env.table], declared, r.folds)
 
 		// Provider and Entity travel so the BigQuery driver can write them
 		// into the TABLE's description when it creates one. Nothing here reads
@@ -403,7 +417,14 @@ func (r *router) group(batch []gateway.Envelope) (map[string][]gateway.Envelope,
 // A batch holds N records for one table and they need not carry the same
 // fields. The union is what the table has to have; a record missing one of them
 // writes NULL there, which is what a landing table legitimately does.
-func merge(into, add sdk.Schema) sdk.Schema {
+// WHERE THE DESTINATION FOLDS, two spellings of one name are ONE column and
+// the union says so. [#43] The reporter's flush carried `nationalID` in two
+// DELETEs and `nationalId` in an INSERT; the union had both, and BigQuery
+// refused the CREATE with `Field nationalId already exists in schema`. The
+// winner is the first in SORTED order -- sdk.FoldColumns, the SDK's own rule
+// rather than a second copy of it, so a gateway and a pipeline landing the
+// same events reach the same table.
+func merge(into, add sdk.Schema, folds bool) sdk.Schema {
 	seen := make(map[string]bool, len(into))
 	for _, c := range into {
 		seen[c.Name] = true
@@ -413,6 +434,9 @@ func merge(into, add sdk.Schema) sdk.Schema {
 			into = append(into, c)
 			seen[c.Name] = true
 		}
+	}
+	if folds {
+		into = sdk.FoldColumns(into)
 	}
 	return into
 }
