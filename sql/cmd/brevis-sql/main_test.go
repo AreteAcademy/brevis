@@ -109,3 +109,27 @@ func TestTheUnknownDialectErrorListsBoth(t *testing.T) {
 		}
 	}
 }
+
+// `test` needs a connection just as `build` does, and refuses the same way.
+func TestTheTestCommandAlsoTakesAVariableName(t *testing.T) {
+	err := run([]string{"test", "--project", fixture,
+		"--dsn-from", "postgres://user:secret@host/db"}, out())
+	if err == nil {
+		t.Fatal("a DSN was accepted where a variable name belongs")
+	}
+	if strings.Contains(err.Error(), "secret") {
+		t.Errorf("the refusal printed the password back: %v", err)
+	}
+}
+
+// `compile` REPORTS the tests without running one, which is what makes it
+// the thing to run in a pull request: the count is a fact about the files.
+func TestCompileCountsTheTestsWithoutRunningThem(t *testing.T) {
+	b := out()
+	if err := run([]string{"compile", "--project", "../../internal/check/testdata/project"}, b); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "4 test(s)") {
+		t.Errorf("the fixture declares four tests on one model:\n%s", b)
+	}
+}
