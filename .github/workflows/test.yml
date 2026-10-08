@@ -86,13 +86,19 @@ jobs:
 
       # web/'s generated artifacts are versioned, because the image has neither
       # Node nor templ. Checking here catches stale CSS at push time, and not
-      # only at
-      # hora de publicar.
+      # only when it is time to publish.
       - name: Generated artifacts
         run: ./.github/scripts/generated-check.sh
 
       - name: Engine weight
         run: ./.github/scripts/engine-weight.sh
+
+      # The same shape for brevis-sql, and the same reason: its premise is
+      # that it carries no warehouse client. `go get cloud.google.com/go/
+      # bigquery` would make the code simpler, pass every test, and triple
+      # the image -- this is what makes that a conversation.
+      - name: brevis-sql stays light
+        run: ./.github/scripts/sql-weight.sh
 
       - name: Nothing tracked is a binary
         run: ./.github/scripts/no-binaries-check.sh

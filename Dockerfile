@@ -99,6 +99,24 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
       -o /out/brevis-gateway-slim ./cmd/gateway-slim
 
+# brevis-sql: a THIRD module and a third binary, for the rule #66 states --
+# anything holding a warehouse driver is its own module and binary, so the
+# engine's weight gate stays where it is.
+#
+# Built in this stage for the same reason the gateway is: it shares the
+# cache and the ldflags, and two images from two checkouts is how a tag
+# ends up one commit behind the tag it claims to match. The artifacts stay
+# apart.
+#
+# `-mod=mod` for the reason the gateway needs it: the module does not pin
+# its graph.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd sql && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath \
+      -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
+      -o /out/brevis-sql ./cmd/brevis-sql
+
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
 #
@@ -118,6 +136,28 @@ USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["brevis"]
 CMD ["serve"]
+
+# brevis-sql, distroless: it connects to a warehouse and runs SQL. There is
+# no shell to execute and nothing to exec, so distroless is both possible
+# and desirable -- the same argument the `api` target makes above.
+#
+# ITS WEIGHT IS A GATE, not a hope: .github/scripts/sql-weight.sh refuses
+# the official BigQuery client by name and caps the binary, because the
+# module's whole premise is that it does not carry one. The budget for this
+# image is 30 MB and it is about 13.
+FROM gcr.io/distroless/static-debian12:nonroot AS sql
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="brevis-sql" \
+      org.opencontainers.image.description="Plain .sql models become tables and views, in dependency order" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-sql /usr/local/bin/brevis-sql
+USER nonroot:nonroot
+ENTRYPOINT ["brevis-sql"]
+CMD ["compile"]
 
 # `worker` runs the workflows' `run:` steps — and that REQUIRES a shell. Running
 # the scheduler on the distroless image would leave every run failing with "no
