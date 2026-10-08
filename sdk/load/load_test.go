@@ -192,7 +192,7 @@ func TestEncodeRowsWritesOneObjectPerLine(t *testing.T) {
 	data, err := EncodeRows([]core.Envelope{
 		{Payload: map[string]any{"amount": 1}},
 		{Payload: map[string]any{"amount": 2}},
-	}, nil)
+	}, core.WriteOptions{})
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestEncodeRowsRejectsNonObject(t *testing.T) {
 	// BigQuery maps an NDJSON object's keys onto columns. A scalar or array
 	// has nothing to map, and must fail here rather than inside a load job.
 	for _, payload := range []any{42, "text", []int{1, 2}} {
-		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}, nil); err == nil {
+		if _, err := EncodeRows([]core.Envelope{{Payload: payload}}, core.WriteOptions{}); err == nil {
 			t.Errorf("Expected %v (%T) to be rejected", payload, payload)
 		}
 	}
@@ -223,7 +223,7 @@ func TestEncodeRowsStructPayloadUsesJSONTags(t *testing.T) {
 		Amount int    `json:"amount"`
 	}
 
-	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}}, nil)
+	data, err := EncodeRows([]core.Envelope{{Payload: tx{ID: "a", Amount: 7}}}, core.WriteOptions{})
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -425,7 +425,7 @@ func TestDefaultWritesThePayloadUntouched(t *testing.T) {
 		Provider: "open_meteo", Entity: "hourly", SourceKey: "k1",
 		RecordTS: "2026-01-01T00:00:00Z",
 		Payload:  map[string]any{"temperature_c": 20, "observed_at": "2026-01-01T00:00"},
-	}}, nil)
+	}}, core.WriteOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -892,7 +892,7 @@ func TestEncodeRowsDropsANullNothingDeclares(t *testing.T) {
 		"id":              "A-1",
 		"declared_empty":  nil,
 		"undeclared_null": nil,
-	}}}, declared)
+	}}}, core.WriteOptions{Columns: declared})
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -923,7 +923,7 @@ func TestEncodeRowsDropsANullNothingDeclares(t *testing.T) {
 func TestEncodeRowsNeverDropsAValue(t *testing.T) {
 	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
 		"id": "A-1", "undeclared_value": "kept",
-	}}}, []string{"id"})
+	}}}, core.WriteOptions{Columns: []string{"id"}})
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}
@@ -939,7 +939,7 @@ func TestEncodeRowsNeverDropsAValue(t *testing.T) {
 func TestEncodeRowsWithNoDeclarationKeepsEverything(t *testing.T) {
 	data, err := EncodeRows([]core.Envelope{{Payload: map[string]any{
 		"id": "A-1", "empty": nil,
-	}}}, nil)
+	}}}, core.WriteOptions{})
 	if err != nil {
 		t.Fatalf("EncodeRows: %v", err)
 	}

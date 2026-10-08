@@ -1303,3 +1303,94 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 		t.Errorf("o id gravado (%v) não é o da fórmula (%s)", row, id)
 	}
 }
+
+// A null in a JSON column lands as SQL NULL, against real BigQuery. [#42]
+//
+// THE ONE THAT COULD NOT BE PROVEN HERE UNTIL 2026-10-08. The emulator
+// refuses load jobs -- `TestIntegrationBigQueryStillRefusesLoadJobs` exists
+// to fail the day it stops -- so how BigQuery STORES a null was the
+// reporter's measurement and nobody else's.
+//
+// Run against the same project before the fix, it said:
+//
+//	id=2  j IS NULL = false   to_json_string = null
+//
+// A JSON null is a VALUE. `WHERE j IS NULL` did not find that row, and their
+// 4,238 rows holding one are why every consumer of that table was writing
+// `col IS NULL OR JSON_TYPE(col) = 'null'`.
+func TestIntegrationANullInAJSONColumnIsSQLNull(t *testing.T) {
+	env := requireIntegration(t)
+	ctx := context.Background()
+
+	client, err := bigquery.NewClient(ctx, env.project)
+	if err != nil {
+		t.Fatalf("bigquery client: %v", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	name := fmt.Sprintf("it_jsonnull_%d", time.Now().UnixNano())
+	table := client.Dataset(env.dataset).Table(name)
+	t.Cleanup(func() { _ = table.Delete(context.Background()) })
+
+	// The two the SDK stamps and the two the row carries, which is the shape
+	// a landing table actually has -- and the pair is also what the default
+	// partitioning needs.
+	schema := core.Schema{
+		{Name: "ingestion_id", Type: core.TypeString},
+		{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
+		{Name: "id", Type: core.TypeString},
+		{Name: "j", Type: core.TypeJSON},
+	}
+	loader, err := New(ctx, nil,
+		core.WithProjectID(env.project),
+		core.WithDataset(env.dataset),
+		core.WithTable(name),
+		core.WithCreateTable(true),
+		core.WithSchema(schema),
+	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	// Their batch: the key is declared and one row carries a value, which is
+	// what used to keep the other row's null on the wire.
+	if _, err := loader.Load(ctx,
+		core.Envelope{Provider: "p", Entity: "e", SourceKey: "1", RecordTS: "2026-01-01T00:00:00Z",
+			Payload: withIngestionOnRow(map[string]any{"id": "1", "j": map[string]any{"a": 1}})},
+		core.Envelope{Provider: "p", Entity: "e", SourceKey: "2", RecordTS: "2026-01-01T00:00:00Z",
+			Payload: withIngestionOnRow(map[string]any{"id": "2", "j": nil})},
+	); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	q := client.Query(fmt.Sprintf(
+		"select id, j is null as sql_null, to_json_string(j) as text from `%s.%s.%s` order by id",
+		env.project, env.dataset, name))
+	it, err := q.Read(ctx)
+	if err != nil {
+		t.Fatalf("reading back: %v", err)
+	}
+	seen := 0
+	for {
+		var row []bigquery.Value
+		if err := it.Next(&row); err != nil {
+			break
+		}
+		seen++
+		id, sqlNull, text := row[0], row[1], row[2]
+		switch id {
+		case "1":
+			if sqlNull == true {
+				t.Errorf("the row with a value lost it: %v", text)
+			}
+		case "2":
+			if sqlNull != true {
+				t.Errorf("a null in a JSON column is still a JSON null, not SQL NULL: "+
+					"j IS NULL=%v, to_json_string=%v", sqlNull, text)
+			}
+		}
+	}
+	if seen != 2 {
+		t.Errorf("read %d rows, wanted 2", seen)
+	}
+}

@@ -582,10 +582,22 @@ func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
 	// autodetect branch -- "nothing was declared" -- on a path that creates
 	// the table FROM a declaration, and every key the table had no column for
 	// went to the wire. 4,500 events, 8 batches, all dead-lettered.
-	return EncodeRows(envelopes, l.cfg.DeclaredColumns())
+	return EncodeRows(envelopes, core.WriteOptions{
+		Columns: l.cfg.Columns,
+		Schema:  l.cfg.Schema,
+	})
 }
 
-func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
+// EncodeRows turns a batch into the NDJSON a BigQuery load job reads.
+//
+// IT TAKES WriteOptions, which is its third signature in three releases and
+// the last one. 0.79.0 took `declared []string`, and the names alone cannot
+// answer the question below: whether a column's null has one meaning or two.
+// `Discovered` moved to WriteOptions for the same reason, and a function that
+// keeps growing a parameter is a function being asked something its arguments
+// do not carry.
+func EncodeRows(envelopes []core.Envelope, opt core.WriteOptions) ([]byte, error) {
+	declared := opt.DeclaredColumns()
 	var buf bytes.Buffer
 
 	// `declared` is the whole declaration by the time this runs -- the
@@ -609,6 +621,30 @@ func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
 		named[c] = true
 	}
 
+	// The columns whose null has TWO meanings. [#42]
+	//
+	// Everywhere else a null is a null: send `"label":null` into a STRING
+	// column and the row holds SQL NULL. A JSON column is the exception --
+	// `null` is a legal JSON VALUE, so the column holds a JSON null and
+	// `WHERE col IS NULL` does not find it. Omitting the key writes SQL NULL
+	// instead, and the two look identical until somebody queries.
+	//
+	// A consumer measured 4,238 rows holding one and 145 holding the other,
+	// FOR THE SAME PRODUCER VALUE, decided by whether anything else in the
+	// flush window carried that key. Reproduced in real BigQuery on
+	// 2026-10-08: `j IS NULL` is false for a row that arrived as null.
+	//
+	// Safe because the MERGE is `WHEN NOT MATCHED THEN INSERT` and never
+	// UPDATEs, so an omitted key cannot fail to clear a column somebody is
+	// relying on -- which was the objection that kept the null in the row in
+	// 0.78.0, and it does not exist on this path.
+	twoNulls := make(map[string]bool, len(opt.Schema))
+	for _, c := range opt.Schema {
+		if c.Type == core.TypeJSON {
+			twoNulls[c.Name] = true
+		}
+	}
+
 	for i, env := range envelopes {
 		data, err := json.Marshal(env.Payload)
 		if err != nil {
@@ -623,7 +659,14 @@ func EncodeRows(envelopes []core.Envelope, declared []string) ([]byte, error) {
 		if len(named) > 0 {
 			dropped := false
 			for k, v := range probe {
-				if named[k] || string(v) != "null" {
+				if string(v) != "null" {
+					continue
+				}
+				// Dropped when nothing declares the key -- 0.79.0, so an
+				// unknown column cannot fail the load job -- or when what
+				// declares it is a JSON column, whose null is otherwise a
+				// value rather than an absence.
+				if named[k] && !twoNulls[k] {
 					continue
 				}
 				delete(probe, k)

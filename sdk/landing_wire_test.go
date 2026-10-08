@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AreteAcademy/brevis/sdk/internal/core"
 	"github.com/AreteAcademy/brevis/sdk/load"
 )
 
@@ -73,7 +74,7 @@ func TestAJSONColumnReceivesJSONAndNotAStringOfIt(t *testing.T) {
 			}
 			row := out.(map[string]any)
 
-			line, err := load.EncodeRows([]Envelope{{Payload: row}}, nil)
+			line, err := load.EncodeRows([]Envelope{{Payload: row}}, core.WriteOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
