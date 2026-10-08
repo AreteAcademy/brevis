@@ -64,7 +64,7 @@ func built(t *testing.T, d dialect.Dialect, env string) (context.Context, dialec
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := run.Build(ctx, d, conn, p, order); err != nil {
+	if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	return ctx, conn, p, order

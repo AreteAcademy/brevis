@@ -30,6 +30,18 @@ type Built struct {
 	// what puts this model on `/data`.
 	Target string
 
+	// Watermark is the greatest value of the model's watermark column after
+	// the build, as the warehouse printed it. Empty unless the model is
+	// incremental.
+	//
+	// FOR REPORTING AND NOTHING ELSE. It is published to the run context so
+	// a step below reads it without a query, which is what #63 asks for --
+	// and it is NEVER fed back into SQL. BigQuery returns its own TIMESTAMP
+	// as `"1767484800.0"` over REST and then refuses that string as a
+	// literal; the filter is a subquery for exactly that reason, and a
+	// string that is only ever printed cannot bring the problem back.
+	Watermark string
+
 	// Rows is how many the table holds, and it is NIL FOR A VIEW.
 	//
 	// A pointer because ABSENT IS NOT ZERO, which is the engine's own rule
@@ -43,6 +55,18 @@ type Built struct {
 // Result is the build.
 type Result struct{ Built []Built }
 
+// Options is what the CALLER asked for, as opposed to what the project says.
+//
+// A STRUCT FOR ONE FIELD, deliberately. `Build(ctx, d, conn, p, order,
+// true)` at a call site says nothing about what is true, and the next flag
+// after this one would be a second bare bool beside it.
+type Options struct {
+	// FullRefresh rebuilds every incremental model in the order from
+	// scratch, forgetting its watermark. It does nothing to a view or a
+	// table, which are rebuilt every time anyway.
+	FullRefresh bool
+}
+
 // Build runs every model in `order`, which is already a dependency order.
 //
 // ORDER IS NOT COMPUTED HERE, and that is on purpose: `project.Select`
@@ -53,7 +77,7 @@ type Result struct{ Built []Built }
 // stand than one that stopped where the error is -- and continuing would
 // build models on top of a relation that is not what their SQL assumed.
 func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
-	p *project.Project, order []string) (Result, error) {
+	p *project.Project, order []string, opt Options) (Result, error) {
 
 	var res Result
 	// FUNCTIONS FIRST, ALL OF THEM, before any model.
@@ -103,12 +127,18 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 		}
 
 		started := time.Now()
-		was, err := kindOf(ctx, d, conn, ref)
+		// ONE CALL FOR BOTH QUESTIONS, and the same one the conformance
+		// harness makes. A second assembly of the State here would be a
+		// second answer, and the suite that exists to catch a dialect
+		// disagreeing with itself would be testing the harness instead.
+		st, err := dialect.StateOf(ctx, d, conn, ref,
+			m.Materialised == model.Incremental, opt.FullRefresh)
 		if err != nil {
-			return res, fmt.Errorf("%s: asking what is there: %w", ref, err)
+			return res, fmt.Errorf("%s: %w", ref, err)
 		}
+		was := st.Current
 
-		stmts, err := d.Build(m, dialect.State{Current: was})
+		stmts, err := d.Build(m, st)
 		if err != nil {
 			return res, err
 		}
@@ -130,7 +160,7 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 		// asking the same of a view would report the row count of whatever
 		// it selects from today, which is a number about the SOURCE and
 		// changes without this model being rebuilt.
-		if m.Materialised == model.Table {
+		if m.Materialised != model.View {
 			n, err := conn.Scalar(ctx, "SELECT COUNT(*) FROM "+ref)
 			if err != nil {
 				return res, fmt.Errorf("%s: counting what it wrote: %w", ref, err)
@@ -138,18 +168,42 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 			rows := asInt(n)
 			b.Rows = &rows
 		}
+		// THE WATERMARK IS READ AFTER THE BUILD, not before, because the
+		// number worth publishing is where this run got TO. Read before, it
+		// would be where the LAST one stopped -- indistinguishable on a run
+		// that added nothing, and wrong on every run that added something.
+		if m.Materialised == model.Incremental {
+			v, err := conn.Scalar(ctx, "SELECT MAX("+m.Watermark+") FROM "+ref)
+			if err != nil {
+				return res, fmt.Errorf("%s: reading the new watermark: %w", ref, err)
+			}
+			b.Watermark = asText(v)
+		}
 		b.Took = time.Since(started)
 		res.Built = append(res.Built, b)
 	}
 	return res, nil
 }
 
-func kindOf(ctx context.Context, d dialect.Dialect, conn dialect.Conn, ref string) (dialect.Kind, error) {
-	v, err := conn.Scalar(ctx, d.KindOf(ref))
-	if err != nil {
-		return dialect.Absent, err
+// asText is a warehouse value as a string, whatever the driver made of it.
+//
+// It never has to round-trip: this is printed and published, never parsed
+// back into SQL. So "whatever the driver said" is the honest answer, and
+// normalising it here would be this file deciding what a TIMESTAMP looks
+// like on two warehouses that do not agree.
+func asText(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	case []byte:
+		return string(t)
+	case time.Time:
+		return t.UTC().Format(time.RFC3339Nano)
+	default:
+		return fmt.Sprintf("%v", t)
 	}
-	return dialect.KindFrom(v), nil
 }
 
 // asInt reads a COUNT(*) from whichever Go type the driver chose.

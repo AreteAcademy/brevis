@@ -68,7 +68,7 @@ func TestBuildRunsInDependencyOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := run.Build(ctx, d, conn, p, order)
+	res, err := run.Build(ctx, d, conn, p, order, run.Options{})
 	if err != nil {
 		t.Fatalf("building: %v", err)
 	}
@@ -89,7 +89,7 @@ func TestTheSchemaIsEnsuredOncePerSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := run.Build(context.Background(), postgres.Dialect{}, spy, p, order); err != nil {
+	if _, err := run.Build(context.Background(), postgres.Dialect{}, spy, p, order, run.Options{}); err != nil {
 		t.Fatal(err)
 	}
 	n := 0
@@ -110,7 +110,7 @@ func TestBuildingTwiceLeavesTheSameThing(t *testing.T) {
 	order, _ := p.Select("")
 
 	for i := range 2 {
-		if _, err := run.Build(ctx, d, conn, p, order); err != nil {
+		if _, err := run.Build(ctx, d, conn, p, order, run.Options{}); err != nil {
 			t.Fatalf("build %d: %v", i+1, err)
 		}
 	}
@@ -127,7 +127,7 @@ func TestBuildOnlyWhatSelectNames(t *testing.T) {
 	// Everything first, so there is something for the narrow build NOT to
 	// touch and something for `middle` to read.
 	all, _ := p.Select("")
-	if _, err := run.Build(ctx, d, conn, p, all); err != nil {
+	if _, err := run.Build(ctx, d, conn, p, all, run.Options{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,7 +135,7 @@ func TestBuildOnlyWhatSelectNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := run.Build(ctx, d, conn, p, only)
+	res, err := run.Build(ctx, d, conn, p, only, run.Options{})
 	if err != nil {
 		t.Fatalf("a narrow build failed: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestAFailureNamesTheModel(t *testing.T) {
 	p.Models[schema+".middle"] = broken
 
 	order, _ := p.Select("")
-	_, err := run.Build(ctx, d, conn, p, order)
+	_, err := run.Build(ctx, d, conn, p, order, run.Options{})
 	if err == nil {
 		t.Fatal("a model the server refused was reported as built")
 	}
@@ -200,7 +200,7 @@ func TestEveryBuiltModelCarriesItsCatalogTarget(t *testing.T) {
 	p := load(t)
 	order, _ := p.Select("")
 
-	res, err := run.Build(ctx, d, conn, p, order)
+	res, err := run.Build(ctx, d, conn, p, order, run.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestATableReportsItsRowsAndAViewReportsNone(t *testing.T) {
 	p := load(t)
 	order, _ := p.Select("")
 
-	res, err := run.Build(ctx, d, conn, p, order)
+	res, err := run.Build(ctx, d, conn, p, order, run.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestFunctionsRunBeforeAnyModel(t *testing.T) {
 	}
 
 	spy := &spyConn{}
-	res, err := run.Build(t.Context(), postgres.Dialect{}, spy, p, order)
+	res, err := run.Build(t.Context(), postgres.Dialect{}, spy, p, order, run.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

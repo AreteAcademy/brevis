@@ -44,7 +44,7 @@ func TestFiftyModelsBuildUnderTenSeconds(t *testing.T) {
 	}
 
 	started := time.Now()
-	res, err := run.Build(ctx, d, conn, p, order)
+	res, err := run.Build(ctx, d, conn, p, order, run.Options{})
 	took := time.Since(started)
 	if err != nil {
 		t.Fatalf("building: %v", err)
@@ -128,7 +128,7 @@ func TestFiftyModelsCostAtMostThreeRoundTripsEach(t *testing.T) {
 	}
 
 	spy := &spyConn{}
-	if _, err := run.Build(t.Context(), postgres.Dialect{}, spy, p, order); err != nil {
+	if _, err := run.Build(t.Context(), postgres.Dialect{}, spy, p, order, run.Options{}); err != nil {
 		t.Fatal(err)
 	}
 

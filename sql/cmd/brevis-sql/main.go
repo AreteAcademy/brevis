@@ -69,6 +69,7 @@ func run(args []string, out io.Writer) error {
 	dialectName := fs.String("dialect", "postgres", "which warehouse; it decides how references are read AND how models are built")
 	sel := fs.String("select", "", "one model, or `name+` for it and everything downstream")
 	dsnFrom := fs.String("dsn-from", "", "the NAME of the environment variable holding the connection string")
+	full := fs.Bool("full-refresh", false, "rebuild every incremental model from scratch, forgetting its watermark")
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
@@ -119,7 +120,7 @@ func run(args []string, out io.Writer) error {
 		}
 		defer func() { _ = conn.Close(context.Background()) }()
 		if cmd == "build" {
-			return build(out, d, conn, p, order)
+			return build(out, d, conn, p, order, runner.Options{FullRefresh: *full})
 		}
 		return runTests(out, d, conn, p, order)
 	}
@@ -173,9 +174,12 @@ func connect(d dialect.Dialect, dsnFrom string) (dialect.Conn, error) {
 }
 
 // build connects and runs the models.
-func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Project, order []string) error {
+func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Project,
+	order []string, opt runner.Options) error {
+
 	ctx := context.Background()
-	res, err := runner.Build(ctx, d, conn, p, order)
+	marks := map[string]string{}
+	res, err := runner.Build(ctx, d, conn, p, order, opt)
 	// REPORTED EVEN WHEN IT FAILED, and the `landed` lines with it. The
 	// build stops at the first refusal, and the models before it DID land
 	// -- the engine's own runner says the same of a step that landed rows
@@ -188,6 +192,27 @@ func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Proje
 		}
 		_, _ = fmt.Fprintf(out, "  %-34s %-11s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
 		_, _ = fmt.Fprintln(out, landedLine(b.Target, b.Rows))
+		if b.Watermark != "" {
+			marks[b.Ref] = b.Watermark
+		}
+	}
+	// ONE CONTEXT LINE FOR THE WHOLE BUILD, after the landings.
+	//
+	// `type: context` and not a field on `landed`: the engine's landed
+	// reader knows `target`, `rows` and `bytes` and ignores anything else in
+	// silence, so a watermark put there would be written by this and read by
+	// nothing. The context marker is the road that exists -- "what the step
+	// publishes for the steps below it, on the pipe that already exists" --
+	// and the engine stores what arrives on it.
+	//
+	// KEYED BY MODEL, because a project builds many and a step below wants
+	// the one it is about. A single `watermark` key would be whichever model
+	// happened to be last in dependency order.
+	//
+	// Emitted only when there IS one: an empty object would clear what came
+	// before, which the engine reads as a deliberate act.
+	if len(marks) > 0 {
+		_, _ = fmt.Fprintln(out, contextLine(marks))
 	}
 	if err != nil {
 		return err
@@ -228,6 +253,32 @@ func landedLine(target string, rows *int64) string {
 		// comment rather than a half-written marker, because a malformed
 		// `@brevis:` line is the one thing worse than no line.
 		return "# brevis-sql could not encode a landing for " + target
+	}
+	return "@brevis:" + string(encoded)
+}
+
+// contextLine publishes the incremental models' new watermarks:
+//
+//	@brevis:{"type":"context","value":{"silver.orders":"2026-03-11T04:00:00Z"}}
+//
+// So a step below reads where this build got to without querying the
+// warehouse for it -- which is what #63 asks for, and the reason the value
+// is a string the engine stores rather than a number anybody computes with.
+//
+// READ AFTER THE BUILD, so it is where this run got TO and not where the
+// last one stopped. Those are the same number on a run that added nothing
+// and different on every run that added something.
+func contextLine(marks map[string]string) string {
+	msg := struct {
+		Type  string            `json:"type"`
+		Value map[string]string `json:"value"`
+	}{Type: "context", Value: marks}
+
+	encoded, err := json.Marshal(msg)
+	if err != nil {
+		// Unreachable: a map of strings. A comment rather than half a
+		// marker, for landedLine's reason.
+		return "# brevis-sql could not encode the watermarks"
 	}
 	return "@brevis:" + string(encoded)
 }
@@ -284,5 +335,6 @@ brevis-sql — plain .sql models, run as a Brevis step
   --dialect NAME    %-28s (default "postgres")
   --select  EXPR    one model, or `+"`name+`"+` for it and everything downstream
   --dsn-from VAR    the NAME of the variable holding the DSN  (build, test)
+  --full-refresh    rebuild every incremental model from scratch   (build)
 `, "\n"), known())
 }
