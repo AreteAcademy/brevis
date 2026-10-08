@@ -15,6 +15,7 @@ package dialecttest
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,17 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a string literal survives what is in it", h.literalsSurvive)
 	t.Run("a relation has a catalog target", h.targetNamesTheRelation)
 	t.Run("a table names its columns in order", h.columnsAreNamedInOrder)
+
+	// INCREMENTAL, and the order matters: each case builds on the one
+	// before, over one source table, the way a project does over days.
+	t.Run("an incremental model's first build holds every row", h.incrementalFirstBuild)
+	t.Run("a build with nothing new changes nothing", h.incrementalNothingNew)
+	t.Run("an empty target still takes the first rows", h.incrementalFromEmpty)
+	t.Run("a build with a new row adds only that row", h.incrementalAddsTheNewRow)
+	t.Run("a changed row is updated and the count does not grow", h.incrementalUpdatesInPlace)
+	t.Run("a duplicate key in the source does not fail the build", h.incrementalDeduplicates)
+	t.Run("a full refresh rebuilds and forgets the watermark", h.incrementalFullRefresh)
+	t.Run("an incremental model replaces a view of that name", h.incrementalReplacesAView)
 }
 
 type harness struct {
@@ -75,7 +87,12 @@ func (h *harness) build(t *testing.T, name string, mat model.Materialisation, qu
 	t.Helper()
 	m := model.Model{Schema: h.schema, Name: name, Materialised: mat, SQL: query}
 
-	stmts, err := h.d.Build(m, dialect.State{Current: h.kindOf(t, name)})
+	st, err := dialect.StateOf(h.ctx, h.d, h.conn, m.Ref(),
+		m.Materialised == model.Incremental, false)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	stmts, err := h.d.Build(m, st)
 	if err != nil {
 		t.Fatalf("building %s: %v", m.Ref(), err)
 	}
@@ -327,6 +344,27 @@ func (h *harness) columnsAreNamedInOrder(t *testing.T) {
 	}
 }
 
+// asInt reads a COUNT(*) back. Postgres hands an int64, the BigQuery REST
+// path hands the digits as a string -- the same driver split asString and
+// dialect.KindFrom exist for.
+func asInt(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case string:
+		i, _ := strconv.ParseInt(n, 10, 64)
+		return i
+	case []byte:
+		i, _ := strconv.ParseInt(string(n), 10, 64)
+		return i
+	}
+	return 0
+}
+
 // asString reads what a driver handed back for a text column. pgx gives a
 // string, the BigQuery REST path gives whatever the JSON held -- the same
 // split dialect.KindFrom exists for, for the same reason.
@@ -340,5 +378,264 @@ func asString(v any) string {
 		return string(s)
 	default:
 		return fmt.Sprintf("%v", s)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Incremental.
+//
+// SEVEN CASES OVER ONE SOURCE TABLE, in order, each standing on the one
+// before -- which is how a project meets this: the same model, the same
+// table, a different day. A case that reset the world between runs would
+// test the first build seven times.
+//
+// The source is built THROUGH the dialect, as a table model, so this file
+// writes no warehouse-specific DDL of its own. `incSource` replaces it;
+// Postgres drops and recreates, BigQuery replaces in one statement, and
+// neither fact belongs here.
+
+const incModel = "SELECT k, v, w FROM %s.inc_src"
+
+// incSource replaces the source table with exactly these rows.
+func (h *harness) incSource(t *testing.T, rows string) {
+	t.Helper()
+	h.build(t, "inc_src", model.Table, rows)
+}
+
+// runModel builds one model the way the runner does, State and all.
+func (h *harness) runModel(t *testing.T, m model.Model, fullRefresh bool) {
+	t.Helper()
+	st, err := dialect.StateOf(h.ctx, h.d, h.conn, m.Ref(),
+		m.Materialised == model.Incremental, fullRefresh)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	stmts, err := h.d.Build(m, st)
+	if err != nil {
+		t.Fatalf("building %s: %v", m.Ref(), err)
+	}
+	for _, s := range stmts {
+		if err := h.conn.Exec(h.ctx, s); err != nil {
+			t.Fatalf("running against %s:\n%s\n\n%v", h.d.Name(), s, err)
+		}
+	}
+}
+
+// incBuild builds the suite's own incremental model.
+func (h *harness) incBuild(t *testing.T, fullRefresh bool) {
+	t.Helper()
+	h.runModel(t, model.Model{
+		Schema: h.schema, Name: "inc", Materialised: model.Incremental,
+		UniqueKey: []string{"k"}, Watermark: "w",
+		SQL: fmt.Sprintf(incModel, h.schema),
+	}, fullRefresh)
+}
+
+// countOf is how many rows a relation holds.
+func (h *harness) countOf(t *testing.T, name string) int64 {
+	t.Helper()
+	v, err := h.conn.Scalar(h.ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s.%s", h.schema, name))
+	if err != nil {
+		t.Fatalf("counting %s: %v", name, err)
+	}
+	return asInt(v)
+}
+
+func (h *harness) incRows(t *testing.T) int64 { return h.countOf(t, "inc") }
+
+// incValue is one row's v, by key.
+func (h *harness) incValue(t *testing.T, k int) string {
+	t.Helper()
+	v, err := h.conn.Scalar(h.ctx,
+		fmt.Sprintf("SELECT v FROM %s.inc WHERE k = %d", h.schema, k))
+	if err != nil {
+		t.Fatalf("reading k=%d: %v", k, err)
+	}
+	return asString(v)
+}
+
+// The literals are spelled once, here, because both warehouses take this
+// exact form and a case that spelled its own would be a case about spelling.
+func row(k int, v, w string) string {
+	return fmt.Sprintf("SELECT %d AS k, '%s' AS v, TIMESTAMP '%s' AS w", k, v, w)
+}
+
+func rows(parts ...string) string { return strings.Join(parts, "\nUNION ALL\n") }
+
+// A FIRST BUILD IS A FULL BUILD, and it lands a TABLE. Nothing is there to
+// filter against, so the whole model runs -- and if it landed a view there
+// would be nothing to merge into tomorrow.
+func (h *harness) incrementalFirstBuild(t *testing.T) {
+	h.incSource(t, rows(
+		row(1, "a", "2026-01-01 00:00:00"),
+		row(2, "b", "2026-01-02 00:00:00"),
+	))
+	h.incBuild(t, false)
+
+	if got := h.kindOf(t, "inc"); got != dialect.Table {
+		t.Fatalf("an incremental model landed as %q, not a table", got)
+	}
+	if n := h.incRows(t); n != 2 {
+		t.Errorf("%d rows after the first build, wanted 2", n)
+	}
+}
+
+// NOTHING NEW CHANGES NOTHING. The whole point: a second build of an
+// unchanged source is not a rebuild, and a dialect that re-ran the model in
+// full would pass every count here and cost the money this materialisation
+// exists to save.
+func (h *harness) incrementalNothingNew(t *testing.T) {
+	h.incBuild(t, false)
+	if n := h.incRows(t); n != 2 {
+		t.Errorf("%d rows, wanted the same 2", n)
+	}
+	if v := h.incValue(t, 1); v != "a" {
+		t.Errorf("k=1 is %q, wanted a", v)
+	}
+}
+
+// AN EMPTY TARGET STILL FILLS. MAX over no rows is NULL and `w > NULL` is
+// NULL, which admits nothing -- so without the IS NULL arm a model whose
+// first build landed an empty table stays empty forever, while every build
+// reports success and every count is the one the last build left.
+//
+// It happens on an ordinary day: the source had nothing the first time.
+// Nothing else in this suite would ever notice, which is the reason this
+// case is here and not a comment.
+func (h *harness) incrementalFromEmpty(t *testing.T) {
+	// ITS OWN SOURCE, so this case does not disturb the ordered ones above
+	// and can be run alone. `WHERE 1 = 0` over a subquery rather than over
+	// nothing: BigQuery wants a FROM before a WHERE.
+	none := "SELECT k, v, w FROM (" + row(1, "x", "2026-01-01 00:00:00") + ") AS z WHERE 1 = 0"
+	h.build(t, "inc_e_src", model.Table, none)
+	h.build(t, "inc_empty", model.Table, "SELECT k, v, w FROM "+h.schema+".inc_e_src")
+	if n := h.countOf(t, "inc_empty"); n != 0 {
+		t.Fatalf("the fixture holds %d rows and should hold none", n)
+	}
+
+	h.build(t, "inc_e_src", model.Table, rows(
+		row(1, "a", "2026-01-01 00:00:00"),
+		row(2, "b", "2026-01-02 00:00:00"),
+	))
+	h.runModel(t, model.Model{
+		Schema: h.schema, Name: "inc_empty", Materialised: model.Incremental,
+		UniqueKey: []string{"k"}, Watermark: "w",
+		SQL: "SELECT k, v, w FROM " + h.schema + ".inc_e_src",
+	}, false)
+
+	if n := h.countOf(t, "inc_empty"); n != 2 {
+		t.Errorf("%d rows, wanted 2 -- an empty target admitted nothing", n)
+	}
+}
+
+// A NEW ROW, and only it. The source gains a third row with a later
+// watermark; the two already there are unchanged and must not be processed
+// again.
+func (h *harness) incrementalAddsTheNewRow(t *testing.T) {
+	h.incSource(t, rows(
+		row(1, "a", "2026-01-01 00:00:00"),
+		row(2, "b", "2026-01-02 00:00:00"),
+		row(3, "c", "2026-01-03 00:00:00"),
+	))
+	h.incBuild(t, false)
+
+	if n := h.incRows(t); n != 3 {
+		t.Fatalf("%d rows, wanted 3", n)
+	}
+	if v := h.incValue(t, 3); v != "c" {
+		t.Errorf("k=3 is %q, wanted c", v)
+	}
+}
+
+// A CHANGED ROW IS UPDATED IN PLACE. This is what `unique_key` buys, and the
+// count is the assertion: an INSERT would also make k=1 readable as "A" --
+// by putting a second row next to the first and letting the reader pick.
+//
+// The changed row carries a LATER watermark, which is not a detail of the
+// test: a watermark is how the model knows a row is new, so a correction
+// written with yesterday's timestamp is a correction this materialisation
+// cannot see. That is the bargain, and it is why `lookback` exists elsewhere.
+func (h *harness) incrementalUpdatesInPlace(t *testing.T) {
+	h.incSource(t, rows(
+		row(1, "A", "2026-01-04 00:00:00"),
+		row(2, "b", "2026-01-02 00:00:00"),
+		row(3, "c", "2026-01-03 00:00:00"),
+	))
+	h.incBuild(t, false)
+
+	if n := h.incRows(t); n != 3 {
+		t.Fatalf("%d rows after an update, wanted 3 -- it was inserted, not merged", n)
+	}
+	if v := h.incValue(t, 1); v != "A" {
+		t.Errorf("k=1 is %q, wanted A", v)
+	}
+}
+
+// A DUPLICATE KEY IN THE SOURCE MUST NOT FAIL THE BUILD.
+//
+// Both warehouses refuse a MERGE whose source holds two rows for one target
+// row -- BigQuery "must match at most one source row for each target row",
+// Postgres 17 "cannot affect row a second time", measured 2026-10-08. So the
+// dialect deduplicates, latest by watermark, and the proof is that this runs
+// AND that the surviving row is the later one.
+//
+// The two spellings differ and that is the point of asking it here: BigQuery
+// has QUALIFY, Postgres has DISTINCT ON and no QUALIFY at all.
+func (h *harness) incrementalDeduplicates(t *testing.T) {
+	h.incSource(t, rows(
+		row(1, "A", "2026-01-04 00:00:00"),
+		row(2, "b", "2026-01-02 00:00:00"),
+		row(3, "c", "2026-01-03 00:00:00"),
+		row(4, "early", "2026-01-05 00:00:00"),
+		row(4, "late", "2026-01-06 00:00:00"),
+	))
+	h.incBuild(t, false)
+
+	if n := h.incRows(t); n != 4 {
+		t.Fatalf("%d rows, wanted 4 -- the duplicate was not collapsed", n)
+	}
+	if v := h.incValue(t, 4); v != "late" {
+		t.Errorf("k=4 is %q, wanted late -- the surviving row is not the latest", v)
+	}
+}
+
+// A FULL REFRESH FORGETS EVERYTHING, including rows the source no longer
+// has. An incremental build never removes a row; this is the only thing that
+// does, and that difference is the reason the flag exists.
+func (h *harness) incrementalFullRefresh(t *testing.T) {
+	h.incSource(t, row(9, "only", "2026-01-01 00:00:00"))
+	h.incBuild(t, true)
+
+	if n := h.incRows(t); n != 1 {
+		t.Fatalf("%d rows after a full refresh, wanted 1", n)
+	}
+	if v := h.incValue(t, 9); v != "only" {
+		t.Errorf("k=9 is %q, wanted only", v)
+	}
+}
+
+// A VIEW OF THAT NAME IS REPLACED. A model that was a view yesterday has no
+// rows to add to: there is nothing to merge into, and `Rebuild()` says so.
+func (h *harness) incrementalReplacesAView(t *testing.T) {
+	h.build(t, "inc_v", model.View, "SELECT 1 AS k, 'x' AS v, TIMESTAMP '2026-01-01 00:00:00' AS w")
+	if got := h.kindOf(t, "inc_v"); got != dialect.View {
+		t.Fatalf("the fixture is a %q, not a view", got)
+	}
+
+	m := model.Model{
+		Schema: h.schema, Name: "inc_v", Materialised: model.Incremental,
+		UniqueKey: []string{"k"}, Watermark: "w",
+		SQL: fmt.Sprintf(incModel, h.schema),
+	}
+	st, err := dialect.StateOf(h.ctx, h.d, h.conn, m.Ref(), true, false)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+	if !st.Rebuild() {
+		t.Fatal("a view is not a thing to merge into, and Rebuild() said it was")
+	}
+	h.runModel(t, m, false)
+	if got := h.kindOf(t, "inc_v"); got != dialect.Table {
+		t.Errorf("it is still a %q", got)
 	}
 }

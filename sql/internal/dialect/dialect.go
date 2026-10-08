@@ -15,6 +15,8 @@ package dialect
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/AreteAcademy/brevis/sql/internal/model"
 )
@@ -144,6 +146,138 @@ type State struct {
 // exactly how a `--full-refresh` that set the flag and forgot the field would
 // merge into the table it was told to replace.
 func (s State) Rebuild() bool { return s.Current != Table || s.FullRefresh }
+
+// Merge is the parts of a MERGE that are the same in every warehouse.
+//
+// HERE AND NOT IN EACH DIALECT, because none of it is a dialect difference:
+// a join on the key columns, a SET of the ones that are not keys, and an
+// INSERT naming the target's columns. What DOES differ -- how the source is
+// deduplicated -- is not in here, and that is the whole split.
+type Merge struct {
+	// On is `t.k = s.k AND t.j = s.j`.
+	On string
+	// Set is `c = s.c, d = s.d`, the columns that are NOT keys.
+	//
+	// Empty when every column is a key. A MERGE then has nothing to update
+	// and the WHEN MATCHED clause is omitted entirely -- `SET` with no
+	// assignment is a syntax error in both warehouses, and "the row is
+	// already exactly this row" is not a failure.
+	Set string
+	// Columns and Values are the INSERT's two halves, in the target's own
+	// ordinal order.
+	Columns string
+	Values  string
+}
+
+// MergeOf builds those parts from the model's keys and the target's columns.
+func MergeOf(m model.Model, columns []string) Merge {
+	key := map[string]bool{}
+	for _, k := range m.UniqueKey {
+		key[k] = true
+	}
+
+	on := make([]string, 0, len(m.UniqueKey))
+	for _, k := range m.UniqueKey {
+		on = append(on, "t."+k+" = s."+k)
+	}
+
+	set := make([]string, 0, len(columns))
+	vals := make([]string, 0, len(columns))
+	for _, c := range columns {
+		vals = append(vals, "s."+c)
+		if !key[c] {
+			set = append(set, c+" = s."+c)
+		}
+	}
+	return Merge{
+		On:      strings.Join(on, " AND "),
+		Set:     strings.Join(set, ", "),
+		Columns: strings.Join(columns, ", "),
+		Values:  strings.Join(vals, ", "),
+	}
+}
+
+// NewRows wraps a model's SQL in the filter that makes a build incremental.
+//
+// THE WATERMARK IS A SUBQUERY AND NEVER A VALUE, which is the single most
+// load-bearing line in this file. BigQuery hands its own TIMESTAMP back over
+// the REST API as `"1767484800.0"` -- epoch seconds, as a JSON string -- and
+// feeding that back in is refused outright: `Could not cast literal
+// "1767484800.0" to type TIMESTAMP`, measured 2026-10-08. pgx, for the same
+// column type, returns a time.Time. So a design that read MAX(w) in Go and
+// formatted it into the next statement would be two different bugs in two
+// warehouses, and the quiet one is the dangerous one.
+//
+// AN EMPTY TARGET IS THE OTHER TRAP. MAX over no rows is NULL, and `w >
+// NULL` is NULL, which admits nothing -- so a model whose first build landed
+// an empty table would stay empty forever while every build reported
+// success. The IS NULL arm is what stops that, and the conformance suite has
+// a case for it because nothing else would ever notice.
+func NewRows(m model.Model, body string) string {
+	ref, w := m.Ref(), m.Watermark
+	return "SELECT * FROM (\n" + body + "\n) AS brevis_new\n" +
+		" WHERE (SELECT MAX(" + w + ") FROM " + ref + ") IS NULL\n" +
+		"    OR " + w + " > (SELECT MAX(" + w + ") FROM " + ref + ")"
+}
+
+// StateOf asks the warehouse the questions a build needs answered.
+//
+// ONE PLACE, because two would drift and the drift would be invisible: the
+// conformance harness mimics the build loop on purpose -- "every test here
+// also exercises KindOf" -- and a harness that assembled the State its own
+// way would pass a suite about itself. Both call this.
+//
+// THE COLUMNS ARE READ ONLY WHEN THEY WILL BE USED. Three materialisations
+// out of four never look at them, and a query per model for an answer nobody
+// reads is a round trip per model per build.
+func StateOf(ctx context.Context, d Dialect, conn Conn, ref string,
+	incremental, fullRefresh bool) (State, error) {
+
+	v, err := conn.Scalar(ctx, d.KindOf(ref))
+	if err != nil {
+		return State{}, fmt.Errorf("asking what %s is: %w", ref, err)
+	}
+	st := State{Current: KindFrom(v), FullRefresh: fullRefresh}
+
+	if !incremental || st.Rebuild() {
+		return st, nil
+	}
+	cols, err := conn.Scalar(ctx, d.ColumnsOf(ref))
+	if err != nil {
+		return State{}, fmt.Errorf("asking which columns %s has: %w", ref, err)
+	}
+	st.Columns = splitColumns(cols)
+	if len(st.Columns) == 0 {
+		// A TABLE WITH NO COLUMNS CANNOT HAPPEN, and saying so is cheaper
+		// than a MERGE built from an empty list -- which is syntactically
+		// valid right up to `UPDATE SET` and then is not.
+		return State{}, fmt.Errorf("%s is a table and the catalog named no columns for it", ref)
+	}
+	return st, nil
+}
+
+// splitColumns reads the one value ColumnsOf returns.
+//
+// An empty answer is NO columns and not one column called "", which is what
+// strings.Split returns for an empty string and would put an unnamed column
+// into a MERGE.
+func splitColumns(v any) []string {
+	var s string
+	switch t := v.(type) {
+	case nil:
+		return nil
+	case string:
+		s = t
+	case []byte:
+		s = string(t)
+	default:
+		s = fmt.Sprintf("%v", t)
+	}
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
 
 // KindFrom reads what Scalar returned from a KindOf query.
 //

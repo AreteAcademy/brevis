@@ -108,6 +108,20 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 
 	var out []string
 	switch m.Materialised {
+	case model.Incremental:
+		// A REBUILD IS A TABLE BUILD. Nothing is there to add to -- or a
+		// `--full-refresh` said to pretend so -- and from tomorrow the
+		// table that lands here is what the merge adds to.
+		if st.Rebuild() {
+			if st.Current == dialect.View {
+				out = append(out, "DROP VIEW IF EXISTS "+ref)
+			} else {
+				out = append(out, "DROP TABLE IF EXISTS "+ref)
+			}
+			return append(out, "CREATE TABLE "+ref+" AS\n"+m.SQL), nil
+		}
+		return []string{mergeInto(m, st, ref)}, nil
+
 	case model.Table:
 		// ONE drop, chosen by what is actually there. Emitting both would
 		// mean a statement that can never do anything on either branch, and
@@ -125,4 +139,43 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 		out = append(out, "CREATE OR REPLACE VIEW "+ref+" AS\n"+m.SQL)
 	}
 	return out, nil
+}
+
+// mergeInto is the incremental write.
+//
+// `MERGE` AND NOT `INSERT ... ON CONFLICT`, which decides the floor: MERGE
+// arrived in Postgres 15. The spike measured why -- `ON CONFLICT DO UPDATE`
+// REFUSES without a unique index on the key, so supporting the older form
+// means telling a consumer to create an index this tool never asked for and
+// does not maintain. MERGE needs no index at all.
+//
+// `DISTINCT ON` IS THE DEDUPLICATION, and it is here rather than in the
+// shared helper because Postgres has no QUALIFY -- `QUALIFY row_number() ...`
+// is a syntax error here and the idiomatic spelling on BigQuery, both
+// measured 2026-10-08. The two dialects agree on the ANSWER, which is what
+// the conformance suite asserts, and not on the words.
+//
+// It is needed at all because the MERGE will not run otherwise: two source
+// rows for one target row is "MERGE command cannot affect row a second
+// time", and a source that re-emits a corrected row produces exactly that.
+// Latest by watermark wins, which is the same rule the filter uses.
+//
+// WHEN MATCHED IS OMITTED when every column is a key: there is nothing left
+// to set, `SET` with no assignment does not parse, and "the row is already
+// exactly this row" is not a failure.
+func mergeInto(m model.Model, st dialect.State, ref string) string {
+	p := dialect.MergeOf(m, st.Columns)
+	keys := strings.Join(m.UniqueKey, ", ")
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "MERGE INTO %s AS t\nUSING (\n", ref)
+	fmt.Fprintf(&b, "  SELECT DISTINCT ON (%s) * FROM (\n%s\n  ) AS brevis_src\n",
+		keys, dialect.NewRows(m, m.SQL))
+	fmt.Fprintf(&b, "   ORDER BY %s, %s DESC\n) AS s\n", keys, m.Watermark)
+	fmt.Fprintf(&b, "   ON %s\n", p.On)
+	if p.Set != "" {
+		fmt.Fprintf(&b, " WHEN MATCHED THEN UPDATE SET %s\n", p.Set)
+	}
+	fmt.Fprintf(&b, " WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)", p.Columns, p.Values)
+	return b.String()
 }

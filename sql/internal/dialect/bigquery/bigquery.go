@@ -141,6 +141,19 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 	ref := m.Ref()
 
 	var out []string
+	if m.Materialised == model.Incremental {
+		// A REBUILD IS A TABLE BUILD, and the DROP is only for a VIEW:
+		// `CREATE OR REPLACE TABLE` over an existing view is an error here
+		// rather than a replacement, and over an existing table it is the
+		// whole statement.
+		if st.Rebuild() {
+			if st.Current == dialect.View {
+				out = append(out, "DROP VIEW IF EXISTS "+ref)
+			}
+			return append(out, "CREATE OR REPLACE TABLE "+ref+" AS\n"+m.SQL), nil
+		}
+		return []string{mergeInto(m, st, ref)}, nil
+	}
 	if m.Materialised == model.Table {
 		if st.Current == dialect.View {
 			out = append(out, "DROP VIEW IF EXISTS "+ref)
@@ -151,4 +164,43 @@ func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 		out = append(out, "DROP TABLE IF EXISTS "+ref)
 	}
 	return append(out, "CREATE OR REPLACE VIEW "+ref+" AS\n"+m.SQL), nil
+}
+
+// mergeInto is the incremental write.
+//
+// `QUALIFY` IS THE DEDUPLICATION, and it is the one line that differs from
+// the Postgres dialect's version of this function. Postgres has no QUALIFY
+// at all -- `syntax error at or near "QUALIFY"`, measured 2026-10-08 -- and
+// uses DISTINCT ON; BigQuery has no DISTINCT ON. The two agree on the
+// ANSWER, which is what the conformance suite asserts, and on nothing else.
+//
+// It is needed because the statement will not run otherwise. Two source rows
+// for one target row is "UPDATE/MERGE must match at most one source row for
+// each target row" -- the rule the spike could only read in the
+// documentation, executed here against a real warehouse. Latest by watermark
+// wins, the same rule the filter uses.
+//
+// QUALIFY rides on the filter's own SELECT rather than wrapping it again:
+// NewRows already ends in a WHERE, and a second subquery would be a level of
+// nesting that buys nothing and shows up in every query log.
+//
+// The INSERT names the TARGET's columns rather than using `INSERT ROW`.
+// `INSERT ROW` would take whatever the model produced in whatever order, so
+// a model that grew a column would land it silently into a table of a
+// different shape -- or, worse, into the wrong column. Named, BigQuery
+// refuses it and says which name it does not have.
+func mergeInto(m model.Model, st dialect.State, ref string) string {
+	p := dialect.MergeOf(m, st.Columns)
+	keys := strings.Join(m.UniqueKey, ", ")
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "MERGE INTO %s AS t\nUSING (\n%s\n", ref, dialect.NewRows(m, m.SQL))
+	fmt.Fprintf(&b, "QUALIFY ROW_NUMBER() OVER (PARTITION BY %s ORDER BY %s DESC) = 1\n) AS s\n",
+		keys, m.Watermark)
+	fmt.Fprintf(&b, "   ON %s\n", p.On)
+	if p.Set != "" {
+		fmt.Fprintf(&b, " WHEN MATCHED THEN UPDATE SET %s\n", p.Set)
+	}
+	fmt.Fprintf(&b, " WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s)", p.Columns, p.Values)
+	return b.String()
 }
