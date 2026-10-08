@@ -1914,6 +1914,41 @@ html:not(.js) .product-tabs {
   }
 }
 
+/* ------------------------------------------------------- funciona com ---- */
+
+/* Os filetes sao sombras dos grupos, nao o fundo da grade: com sete grupos
+   em quatro colunas sobra uma celula, e ela tem de ser superficie, nao
+   filete. */
+.works-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.works-group {
+  min-width: 0;
+  padding: 1.25rem 1.25rem 1.4rem;
+  box-shadow: 1px 0 0 var(--line-soft), 0 1px 0 var(--line-soft);
+}
+
+.works-label {
+  margin-bottom: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.works-group .chip .ico {
+  width: 20px;
+  height: 20px;
+}
+
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {
