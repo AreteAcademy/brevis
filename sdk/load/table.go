@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 	"time"
@@ -116,6 +117,15 @@ func (l *Loader) createFromSchema(ctx context.Context, table *bigquery.Table, pr
 	if err != nil {
 		return err
 	}
+	// An explicit partition column that the declaration does not carry is a
+	// mistake, and it is refused HERE rather than by BigQuery -- whose own
+	// message, "The field specified for partitioning cannot be found in the
+	// schema", does not say which field or what the schema has.
+	if l.cfg.PartitionBy != "" && !hasColumn(schema, l.cfg.PartitionBy) {
+		return fmt.Errorf("partition_by names %q and the declaration does not have it; "+
+			"the columns are %s", l.cfg.PartitionBy, strings.Join(columnNames(schema), ", "))
+	}
+
 	meta := typedTable(l.cfg, schema, prov)
 	if err := table.Create(ctx, meta); err != nil {
 		return fmt.Errorf("creating %s: %w", nameOf(table), err)
@@ -424,16 +434,35 @@ func typedTable(cfg *core.LoadConfig, inferred bigquery.Schema, prov provenance)
 		Schema:      schema,
 		Description: tableDescription(cfg, prov),
 		Labels:      tableLabels(prov),
-		TimePartitioning: &bigquery.TimePartitioning{
-			Type: bigquery.DayPartitioningType,
-			// Declared when the consumer declares one; otherwise the column
-			// that says when the row was written -- which is how a landing
-			// table is read almost always, and the only one the SDK knows
-			// exists.
-			Field:                  partitionOf(cfg),
+	}
+	// Partitioned on the declared column, or on the one that says when the
+	// row was written -- which is how a landing table is read almost always.
+	//
+	// AND NOT AT ALL when neither is in the schema. The default is the SDK's
+	// own metadata column, and a caller who declares a schema of their own
+	// fields has not got it: BigQuery then refuses the CREATE with "The field
+	// specified for partitioning cannot be found in the schema", which names
+	// a column that caller never asked for and cannot remove -- there is no
+	// way to say "no partitioning", because WithPartitionBy("") is the same
+	// as not calling it.
+	//
+	// So the default stops applying when it cannot, and says so once. An
+	// unpartitioned table is a cost surprise later, and the one thing worse
+	// than this log line is the bill that replaces it.
+	if field := partitionOf(cfg); hasColumn(schema, field) {
+		meta.TimePartitioning = &bigquery.TimePartitioning{
+			Type:                   bigquery.DayPartitioningType,
+			Field:                  field,
 			Expiration:             cfg.PartitionExpiration,
 			RequirePartitionFilter: cfg.RequirePartitionFilter,
-		},
+		}
+	} else {
+		// An EXPLICIT partition_by that is absent is refused by the caller,
+		// before this runs -- see createFromSchema. This branch is the
+		// default not applying, which is not a mistake.
+		slog.Warn("the table is being created WITHOUT partitioning",
+			"table", cfg.Table, "reason",
+			"the schema does not carry "+field+", and no partition_by was declared")
 	}
 	if len(cfg.ClusterBy) > 0 {
 		meta.Clustering = &bigquery.Clustering{Fields: cfg.ClusterBy}
@@ -544,4 +573,22 @@ func noteFor(s core.Schema, name string) string {
 		}
 	}
 	return ""
+}
+
+// hasColumn says whether a schema carries a column by that name.
+func hasColumn(schema bigquery.Schema, name string) bool {
+	for _, f := range schema {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func columnNames(schema bigquery.Schema) []string {
+	out := make([]string, 0, len(schema))
+	for _, f := range schema {
+		out = append(out, f.Name)
+	}
+	return out
 }

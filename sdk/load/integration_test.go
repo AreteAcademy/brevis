@@ -35,6 +35,26 @@ type itEnv struct {
 	bucket  string
 }
 
+// itSchema is the four columns most of these tests load, with their types.
+//
+// IT EXISTS BECAUSE THESE TESTS HAD ROTTED. They set `CreateTable` and no
+// schema, which the SDK refused to accept from the day it stopped inferring
+// types -- and because they skip without BREVIS_IT_PROJECT, nine of them were
+// green by being skipped until somebody ran them against a real project for
+// the first time.
+//
+// The types are declared rather than taken from the batch, which is the rule
+// the SDK refuses on: a type read from the first rows changes the day a field
+// arrives whole instead of fractional, and nobody writes anything.
+func itSchema() core.Schema {
+	return core.Schema{
+		{Name: "ingestion_id", Type: core.TypeString},
+		{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
+		{Name: "amount", Type: core.TypeInt64},
+		{Name: "label", Type: core.TypeString},
+	}
+}
+
 func requireIntegration(t *testing.T) itEnv {
 	t.Helper()
 
@@ -262,6 +282,7 @@ func TestIntegrationMergeDoesNotDouble(t *testing.T) {
 		core.WithTable(name),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
 		core.WithCreateTable(true),
+		core.WithSchema(itSchema()),
 		core.WithDedup(core.DedupMerge),
 	)
 	if err != nil {
@@ -320,6 +341,7 @@ func TestIntegrationCreatesTableFromData(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		core.WithSchema(itSchema()),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
 		// A field the records themselves carry: the SDK has imposed no column at
 		// all since v0.9.0, so "provider" no longer exists here.
@@ -497,6 +519,7 @@ func TestIntegrationFirstMergeLoadStillPartitions(t *testing.T) {
 		core.WithTable(name),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
 		core.WithCreateTable(true),
+		core.WithSchema(itSchema()),
 		core.WithDedup(core.DedupMerge),
 		core.WithClusterBy("label"),
 	)
@@ -549,6 +572,13 @@ func TestIntegrationWritesOnlyTheCallersFields(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		// The caller's two fields and nothing else. Declaring the ingestion
+		// pair here would be declaring columns this row does not carry --
+		// which is the opposite of what this test is about.
+		core.WithSchema(core.Schema{
+			{Name: "sku", Type: core.TypeString},
+			{Name: "quantidade", Type: core.TypeInt64},
+		}),
 	)
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -611,6 +641,12 @@ func TestIntegrationMetadataColumnsAreNotNull(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		core.WithSchema(core.Schema{
+			{Name: "ingestion_id", Type: core.TypeString},
+			{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
+			{Name: "sku", Type: core.TypeString},
+			{Name: "quantidade", Type: core.TypeInt64},
+		}),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "sku", "quantidade"}),
 		core.WithClusterBy("sku"),
 	)
@@ -692,7 +728,17 @@ func TestIntegrationColumnsMatchTheDDL(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
-		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
+		// The six `declared` names, typed. `payload` is a STRING here and
+		// not JSON: the row carries it as one, and a column typed JSON would
+		// be a claim about the value rather than a description of it.
+		core.WithSchema(core.Schema{
+			{Name: "ingestion_id", Type: core.TypeString},
+			{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
+			{Name: "provider", Type: core.TypeString},
+			{Name: "entity", Type: core.TypeString},
+			{Name: "source_key", Type: core.TypeString},
+			{Name: "payload", Type: core.TypeString},
+		}),
 		core.WithColumns(declared),
 	)
 	if err != nil {
@@ -841,6 +887,7 @@ func TestIntegrationPartitionOptionsReachTheTable(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		core.WithSchema(itSchema()),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
 		core.WithPartitionExpiration(expiry),
 		core.WithRequirePartitionFilter(true),
@@ -1026,6 +1073,7 @@ func TestIntegrationProvenanceLabelsTheTable(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		core.WithSchema(itSchema()),
 		core.WithColumns([]string{"ingestion_id", "ingestion_loaded_at", "amount", "label"}),
 	)
 	if err != nil {
@@ -1172,6 +1220,14 @@ func TestIntegrationChainWritesEverything(t *testing.T) {
 		core.WithDataset(env.dataset),
 		core.WithTable(name),
 		core.WithCreateTable(true),
+		core.WithSchema(core.Schema{
+			{Name: "ingestion_id", Type: core.TypeString},
+			{Name: "ingestion_loaded_at", Type: core.TypeTimestamp},
+			{Name: "provider", Type: core.TypeString},
+			{Name: "entity", Type: core.TypeString},
+			{Name: "source_key", Type: core.TypeString},
+			{Name: "payload", Type: core.TypeJSON},
+		}),
 		core.WithColumns(declared),
 		core.WithDedup(core.DedupMerge),
 	)
