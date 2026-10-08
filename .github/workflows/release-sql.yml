@@ -1,0 +1,186 @@
+# Publishes brevis-sql's image on every `sql/v*` tag.
+#
+# Its own repository, its own tag and its own version, for the reason
+# release-gateway.yml states and does not need repeating: a distinct
+# component with a distinct maturity, and a version cannot be un-published.
+name: release brevis-sql
+
+on:
+  push:
+    tags: ["sql/v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0)"
+        required: true
+
+env:
+  IMAGE: docker.io/areteacademy/brevis-sql
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      # write, because the last step of a release is the Release.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: sql/go.mod
+          cache: true
+
+      # A POSTGRES, because without one this gate is green over a suite that
+      # never touched a warehouse.
+      #
+      # The conformance suite is the only thing that proves a dialect builds
+      # what its statements SAY, and it skips without a DSN -- a skip prints
+      # green and `go test` exits 0 either way. gateway/v0.11.0 published
+      # while master was red for exactly that shape.
+      #
+      # THE COMPOSE FILE'S postgres, not a second one written here, so this
+      # and `Test & Lint` cannot drift apart. It waits on the healthcheck
+      # rather than polling: the alpine image runs a temporary server for
+      # initdb and restarts, and pg_isready answers yes against the
+      # temporary one.
+      - name: A Postgres for the conformance suite
+        run: |
+          docker compose -f docker-compose.drivers.yml up -d postgres
+          for i in $(seq 1 60); do
+            state=$(docker compose -f docker-compose.drivers.yml ps postgres --format '{{.Health}}')
+            [ "$state" = "healthy" ] && exit 0
+            sleep 2
+          done
+          echo "::error::Postgres did not start; the conformance suite would have skipped"
+          docker compose -f docker-compose.drivers.yml logs postgres
+          exit 1
+
+      - name: Tests, and the conformance suite among them
+        env:
+          BREVIS_SQL_IT_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
+        run: |
+          cd sql
+          out=$(go test -v -race -timeout 10m ./... 2>&1) || { echo "$out"; exit 1; }
+          echo "$out"
+          # And it RAN. See the step above for why this line exists.
+          if ! echo "$out" | grep -q '^--- PASS: TestPostgresConformance'; then
+            echo "::error::the conformance suite did not run against a real server"
+            exit 1
+          fi
+
+      # The weight, BEFORE any image is pushed. This is the gate that makes
+      # the 30 MB budget a fact rather than a hope, and running it after the
+      # push would make it a report.
+      - name: brevis-sql stays light
+        run: ./.github/scripts/sql-weight.sh
+
+      # `go install .../cmd/brevis-sql@version` REFUSES a module with a
+      # replace directive, and that is how somebody installs this.
+      #
+      # Checked statically rather than by installing: the module proxy lags
+      # the tag by minutes -- measured on 2026-10-08, when a gateway release
+      # failed on a sum.golang.org 404 forty seconds after the SDK's tag --
+      # so an install here would be a flake, and a flake in a release gate
+      # is a gate people re-run until it passes.
+      - name: A `go install` of this module would work
+        run: |
+          if grep -qE '^\s*replace ' sql/go.mod; then
+            echo '::error::sql/go.mod has a replace directive, and go install @version refuses one'
+            grep -nE '^\s*replace ' sql/go.mod
+            exit 1
+          fi
+          echo "✅ no replace directive"
+
+      - name: Resolve the version
+        id: v
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#sql/v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The tag and the file have to agree, or the image reports a version
+      # that is not the tag that published it -- and that is the field an
+      # incident is traced by.
+      - name: Check VERSION
+        run: |
+          file=$(cat sql/VERSION)
+          if [ "$file" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::sql/VERSION=$file differs from the tag ${{ steps.v.outputs.version }}"
+            exit 1
+          fi
+
+      # EARLY, before a single image is pushed: a missing section is a
+      # mistake to find before the artifacts exist. A release published with
+      # no notes is one nobody goes back to fix.
+      - name: Extract the changelog section
+        run: |
+          NUMBER="${{ steps.v.outputs.version }}"
+          awk -v want="## [$NUMBER]" '
+            index($0, want) == 1 { inside = 1; next }
+            inside && /^## \[/   { exit }
+            inside               { print }
+          ' sql/CHANGELOG.md | sed -e 's/^---$//' > notes.md
+
+          if [ ! -s notes.md ]; then
+            echo "::error::sql/CHANGELOG.md has no section for $NUMBER. Add one before tagging."
+            exit 1
+          fi
+          echo "✅ $(wc -l < notes.md) line(s) of notes for $NUMBER"
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: brevis-sql
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: sql
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.v.outputs.version }},${{ env.IMAGE }}:latest
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # THE PUBLISHED IMAGE, not the one that was just built locally. The
+      # two are the same bytes and the pull is what proves the push landed
+      # and the manifest is readable.
+      - name: The published image runs
+        run: |
+          docker pull "${{ env.IMAGE }}:${{ steps.v.outputs.version }}"
+          got=$(docker inspect "${{ env.IMAGE }}:${{ steps.v.outputs.version }}" \
+            --format '{{index .Config.Labels "org.opencontainers.image.version"}}')
+          if [ "$got" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::the published image is labelled $got"
+            exit 1
+          fi
+          # It has no shell, so there is nothing to exec: the binary IS the
+          # entrypoint, and `compile` on a directory that is not there is
+          # the cheapest proof it starts and parses its flags.
+          docker run --rm "${{ env.IMAGE }}:${{ steps.v.outputs.version }}" \
+            compile --project /nope 2>&1 | grep -q "no such file" \
+            || { echo "::error::the image did not start"; exit 1; }
+          echo "✅ ${{ env.IMAGE }}:${{ steps.v.outputs.version }} runs"
+
+      # ONLY ON A TAG. `workflow_dispatch` carries a version and no tag, so
+      # `github.ref_name` would be a branch, and a Release named after a
+      # branch is worse than none.
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: brevis-sql v${{ steps.v.outputs.version }}
+          body_path: notes.md
+          draft: false
+          prerelease: false
