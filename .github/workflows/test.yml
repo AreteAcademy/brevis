@@ -362,6 +362,21 @@ jobs:
           cd sdk
           go test -v -timeout 20m -run Integration ./load/... ./from/...
 
+      # brevis-sql's BigQuery dialect, through the SAME conformance suite the
+      # Postgres one runs. It needs a real warehouse rather than floci: the
+      # emulator answers queries from DuckDB, so a suite passing there would
+      # prove DuckDB builds a table.
+      #
+      # It CREATES AND DROPS A DATASET of its own, `bvs_conf_<nanos>`, and
+      # touches nothing else in the project.
+      - name: Integration - brevis-sql builds on BigQuery
+        if: env.GCP_CREDENTIALS != ''
+        env:
+          BREVIS_SQL_IT_BQ_PROJECT: ${{ vars.BREVIS_IT_PROJECT }}
+        run: |
+          cd sql
+          go test -v -timeout 20m -run Conformance ./internal/dialect/bigquery/
+
       # The engine, with real parts: a binary compiled against the SDK, the
       # process executor, an operating-system pipe and Postgres.
       #
@@ -386,13 +401,24 @@ jobs:
           go test -v -p 1 -timeout 10m -run Integration ./internal/...
           go test -v -p 1 -timeout 10m ./internal/scheduler/ ./internal/queue/
 
+      # The honest half of a gated step. A skip prints green and `go test`
+      # exits 0, so without this the only trace of "the warehouse half of
+      # this repository was not exercised" is an absence nobody reads.
+      #
+      # It NAMES WHAT IS MISSING AND COUNTS NOTHING. An earlier version said
+      # "seventeen tests", written once and never derived again -- the same
+      # failure as the plan index that claimed forty specs while the
+      # directory held eighty-two.
       - name: Say what did not run
         if: env.GCP_CREDENTIALS == ''
         run: |
-          echo "::warning::The BigQuery integration did not run: the secret is missing"
-          echo "::warning::GCP_CREDENTIALS and the BREVIS_IT_PROJECT,"
-          echo "::warning::BREVIS_IT_DATASET e BREVIS_IT_BUCKET. Dezessete"
-          echo "::warning::testes ficaram em SKIP."
+          echo "::warning::The BigQuery integration did not run, and neither"
+          echo "::warning::did brevis-sql's BigQuery conformance suite. Both"
+          echo "::warning::need the GCP_CREDENTIALS secret and the"
+          echo "::warning::BREVIS_IT_PROJECT, BREVIS_IT_DATASET and"
+          echo "::warning::BREVIS_IT_BUCKET variables. They are SKIPPED, which"
+          echo "::warning::is green: nothing below this line was proven against"
+          echo "::warning::a real warehouse."
 
   lint:
     name: Lint
