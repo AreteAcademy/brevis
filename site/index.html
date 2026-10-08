@@ -576,11 +576,12 @@ marts.orders
       <div class="section-head" data-reveal>
         <p class="eyebrow">como executa</p>
         <h2>Um pod por passo. Cada um com a sua imagem.</h2>
-        <p class="lead">O core lê o workflow e sobe um pod por passo. Extrair em Go, preparar em Python, transformar em dbt — cada passo com a imagem, os limites e o runtime que ele declarou. Nenhum passo herda o peso do vizinho.</p>
+        <p class="lead">O Core lê o workflow e sobe um pod por passo. Extrair em Go, preparar em Python, transformar em dbt — cada passo com a imagem, os limites e o runtime que ele declarou. Nenhum passo herda o peso do vizinho.</p>
+        <p class="exec-limit">O Core nunca toca os seus dados: ele agenda e sobe pods, e o dado vai da origem ao destino dentro da etapa. O Gateway não tem banco de dados: o que chega vai direto para o destino que você declarou.</p>
       </div>
 
       <figure class="figure figure-diagram" data-reveal>
-        <img src="/assets/execution.svg" width="880" height="420" alt="Diagrama: o core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto." loading="lazy">
+        <img src="/assets/execution.svg" width="880" height="370" alt="Diagrama: o Core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto." loading="lazy">
       </figure>
 
       <div class="surface-grid" data-reveal>

@@ -2000,6 +2000,17 @@ html:not(.js) .product-tabs {
   line-height: 1.75;
 }
 
+/* --------------------------------------------------------- como executa ---- */
+
+/* A fronteira, dita uma vez e em texto: o desenho mostra, esta linha afirma. */
+.exec-limit {
+  margin-top: 1.25rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--lime-edge);
+  color: var(--text);
+  line-height: 1.7;
+}
+
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {
