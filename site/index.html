@@ -326,6 +326,7 @@
       <div class="products" data-reveal>
         <div class="product-tabs" role="tablist" aria-label="Peças do Brevis">
           <button class="tab" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="true">SDK</button>
+          <button class="tab" type="button" role="tab" id="tab-gateway" aria-controls="p-gateway" aria-selected="false">Gateway</button>
         </div>
 
         <div class="product" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
@@ -358,6 +359,58 @@ res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
           </div>
           <figure class="product-flow">
             <img src="/assets/flow-sdk.svg" width="360" height="514" alt="O fluxo do SDK: sdk.Extract lê de uma API HTTP com from.HTTP, sdk.Transform mantém os campos aceitos e sdk.Load grava as linhas numa tabela do BigQuery. As três chamadas rodam dentro da sua própria etapa." loading="lazy">
+          </figure>
+        </div>
+
+        <div class="product" role="tabpanel" id="p-gateway" aria-labelledby="tab-gateway">
+          <div class="product-text">
+            <h3 class="product-name">Gateway <span class="pill">areteacademy/brevis-gateway</span></h3>
+            <p class="product-title">Um endpoint que pousa o dado que chega.</p>
+            <p class="product-lead">O cliente faz POST e recebe 202 na hora; o lote vai para o destino depois, num worker. Sem banco próprio, e configurado inteiro em YAML.</p>
+            <div class="code-block">
+              <div class="code-head"><span>gateway.yaml</span></div>
+<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">events_gateway</span>
+
+<span class="t-k">listen</span><span class="t-o">:</span>
+  <span class="t-k">addr</span><span class="t-o">:</span> <span class="t-s">:8080</span>
+  <span class="t-k">auth</span><span class="t-o">:</span>
+    <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">bearer</span>
+    <span class="t-k">keys_from</span><span class="t-o">:</span> <span class="t-s">BREVIS_INGEST_KEYS</span>
+
+<span class="t-k">streams</span><span class="t-o">:</span>
+  <span class="t-o">-</span> <span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">clicks</span>
+    <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/v1/clicks</span>
+    <span class="t-k">format</span><span class="t-o">:</span> <span class="t-s">json</span>
+    <span class="t-k">identity</span><span class="t-o">:</span>
+      <span class="t-k">provider</span><span class="t-o">:</span> <span class="t-s">web</span>
+      <span class="t-k">entity</span><span class="t-o">:</span> <span class="t-s">click</span>
+      <span class="t-k">source_key</span><span class="t-o">:</span> <span class="t-s">event_id</span>
+      <span class="t-k">record_ts</span><span class="t-o">:</span> <span class="t-s">occurred_at</span>
+    <span class="t-k">sink</span><span class="t-o">:</span>
+      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
+      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/</span>
+    <span class="t-k">dead_letter</span><span class="t-o">:</span>
+      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
+      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/dead-letter/</span></code></pre>
+            </div>
+            <div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \&#10;  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \&#10;  areteacademy/brevis-gateway:0.26.1-slim&#10;&#10;curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \&#10;  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div>
+<pre><code><span class="t-o">$</span> docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \
+  areteacademy/brevis-gateway:0.26.1-slim
+
+<span class="t-o">$</span> curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
+  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
+<span class="t-c">{"accepted":1,"rejected":null}</span>  <span class="t-k">202</span></code></pre>
+              <p class="code-note">A resposta real, com a imagem publicada. Sem a chave, 401.</p>
+            </div>
+            <a class="text-link" href="/docs/ingestion/">
+              Ler o guia
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+          </div>
+          <figure class="product-flow">
+            <img src="/assets/flow-gateway.svg" width="360" height="514" alt="O fluxo do Gateway: um POST em /v1/clicks é decodificado, recebe seu ingestion_id, é respondido com 202 na hora e entra num lote; um worker entrega o lote ao destino, aqui arquivos. O Gateway não tem banco de dados." loading="lazy">
           </figure>
         </div>
       </div>
