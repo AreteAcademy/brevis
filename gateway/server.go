@@ -679,6 +679,21 @@ func (p *pipe) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
+			// The one refusal that means DATA EXISTED and was turned
+			// away, which is why it earns a line where the other three do
+			// not. An operator choosing a ceiling needs to know it is
+			// being hit, and a counter says how often without saying how
+			// close.
+			//
+			// `limit` and not `size`: the real size is gone by here. The
+			// body was truncated at the ceiling, and MaxBytesError carries
+			// only the ceiling. `content_length` is the client's own
+			// claim, unverified and sometimes absent, and it is named that
+			// way rather than passed off as a measurement.
+			slog.Warn("a body was refused for its size",
+				"stream", p.stream.Name,
+				"limit", tooBig.Limit,
+				"content_length", r.ContentLength)
 			p.refuse(w, http.StatusRequestEntityTooLarge, ReasonBodyTooLarge,
 				"the body is larger than this stream accepts")
 			return
