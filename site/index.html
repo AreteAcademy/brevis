@@ -309,6 +309,61 @@
     </div>
   </section>
 
+  <!-- One tab per piece. The tab pattern is the console gallery's (main.js,
+       ligarAbas). The panels are NOT hidden in the HTML: without the script
+       every piece shows, stacked, and the tablist is hidden by CSS. The code
+       is copied from the docs page each panel links to. -->
+  <section class="section" id="produtos">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">as peças</p>
+          <h2>Cada peça, do jeito que você vai usá-la.</h2>
+        </div>
+        <p class="lead">Quatro peças independentes, cada uma com sua versão. Use uma, ou as quatro.</p>
+      </div>
+
+      <div class="products" data-reveal>
+        <div class="product-tabs" role="tablist" aria-label="Peças do Brevis">
+          <button class="tab" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="true">SDK</button>
+        </div>
+
+        <div class="product" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
+          <div class="product-text">
+            <h3 class="product-name">SDK <span class="pill">brevis/sdk</span></h3>
+            <p class="product-title">Um fetcher inteiro em três chamadas.</p>
+            <p class="product-lead">Extract lê, Transform reformata, Load escreve. Cada um recebe e devolve uma sequência — nada é materializado em memória de uma vez.</p>
+            <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div>
+<pre><code><span class="t-o">$</span> go get github.com/AreteAcademy/brevis/sdk@latest</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>main.go</span></div>
+<pre><code>rows, err := sdk.<span class="t-k">Extract</span>(ctx, sdk.Source{
+	From: from.HTTP{URL: <span class="t-s">"https://api.example.com/v1/events"</span>},
+})
+
+rows = sdk.<span class="t-k">Transform</span>(rows, sdk.Accept(<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>))
+
+res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: <span class="t-s">"bronze"</span>, Name: <span class="t-s">"events"</span>},
+	Columns: []string{<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>},
+})</code></pre>
+              <p class="code-note">Requer Go 1.23 ou mais novo.</p>
+            </div>
+            <a class="text-link" href="/docs/sdk/">
+              Ler o guia
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+          </div>
+          <figure class="product-flow">
+            <img src="/assets/flow-sdk.svg" width="360" height="514" alt="O fluxo do SDK: sdk.Extract lê de uma API HTTP com from.HTTP, sdk.Transform mantém os campos aceitos e sdk.Load grava as linhas numa tabela do BigQuery. As três chamadas rodam dentro da sua própria etapa." loading="lazy">
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section section-soft" id="como-executa">
     <div class="shell">
       <div class="section-head" data-reveal>

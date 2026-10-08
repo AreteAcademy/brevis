@@ -1670,6 +1670,96 @@ a.chip:focus-visible .ico {
   }
 }
 
+/* ----------------------------------------------------------- produtos ---- */
+
+/* Abas de peca. Sem JS nao ha abas: os paineis vem todos, empilhados, cada um
+   com o nome da peca como titulo. */
+.product-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+}
+
+html:not(.js) .product-tabs {
+  display: none;
+}
+
+.product-tabs .tab {
+  padding: 0.45rem 1rem;
+  border-color: var(--line);
+  font-size: var(--fs-sm);
+}
+
+.product {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: var(--gap);
+  align-items: start;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+}
+
+.product + .product {
+  margin-top: 1.5rem;
+}
+
+.product-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.product-text .code-block {
+  align-self: stretch;
+  background: var(--bg);
+}
+
+.product-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  color: var(--lime);
+}
+
+.product-title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-xl);
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.product-lead {
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+
+.product-flow {
+  margin: 0;
+  justify-self: center;
+  width: 100%;
+  max-width: 360px;
+}
+
+.product-flow img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 960px) {
+  .product {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {
@@ -1962,7 +2052,8 @@ a.chip:focus-visible .ico {
   flex-wrap: wrap;
 }
 
-.frame-tabs .tab {
+.frame-tabs .tab,
+.product-tabs .tab {
   padding: 0.25rem 0.6rem;
   border: 1px solid transparent;
   border-radius: var(--r);
@@ -1974,11 +2065,13 @@ a.chip:focus-visible .ico {
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
-.frame-tabs .tab:hover {
+.frame-tabs .tab:hover,
+.product-tabs .tab:hover {
   color: var(--text);
 }
 
-.frame-tabs .tab[aria-selected="true"] {
+.frame-tabs .tab[aria-selected="true"],
+.product-tabs .tab[aria-selected="true"] {
   background: var(--lime-wash);
   border-color: var(--lime-edge);
   color: var(--lime);

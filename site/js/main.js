@@ -57,6 +57,14 @@
       if (foco) abas[i].focus();
     }
 
+    /* Os paineis podem vir sem `hidden` (sem script, todos aparecem): quem
+       esconde e o script, aqui, a partir da aba marcada. */
+    var inicial = 0;
+    abas.forEach(function (aba, i) {
+      if (aba.getAttribute('aria-selected') === 'true') inicial = i;
+    });
+    selecionar(inicial, false);
+
     abas.forEach(function (aba, i) {
       aba.setAttribute('tabindex', aba.getAttribute('aria-selected') === 'true' ? '0' : '-1');
       aba.addEventListener('click', function () { selecionar(i, false); });

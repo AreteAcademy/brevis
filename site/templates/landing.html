@@ -185,6 +185,61 @@
     </div>
   </section>
 
+  <!-- One tab per piece. The tab pattern is the console gallery's (main.js,
+       ligarAbas). The panels are NOT hidden in the HTML: without the script
+       every piece shows, stacked, and the tablist is hidden by CSS. The code
+       is copied from the docs page each panel links to. -->
+  <section class="section" id="produtos">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">{{ l.pr_eyebrow }}</p>
+          <h2>{{ l.pr_titulo }}</h2>
+        </div>
+        <p class="lead">{{ l.pr_lead }}</p>
+      </div>
+
+      <div class="products" data-reveal>
+        <div class="product-tabs" role="tablist" aria-label="{{ l.pr_tabs }}">
+          <button class="tab" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="true">SDK</button>
+        </div>
+
+        <div class="product" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
+          <div class="product-text">
+            <h3 class="product-name">SDK <span class="pill">brevis/sdk</span></h3>
+            <p class="product-title">{{ l.sdk_titulo }}</p>
+            <p class="product-lead">{{ l.sdk_lead }}</p>
+            <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
+<pre><code><span class="t-o">$</span> go get github.com/AreteAcademy/brevis/sdk@latest</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>main.go</span></div>
+<pre><code>rows, err := sdk.<span class="t-k">Extract</span>(ctx, sdk.Source{
+	From: from.HTTP{URL: <span class="t-s">"https://api.example.com/v1/events"</span>},
+})
+
+rows = sdk.<span class="t-k">Transform</span>(rows, sdk.Accept(<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>))
+
+res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: <span class="t-s">"bronze"</span>, Name: <span class="t-s">"events"</span>},
+	Columns: []string{<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>},
+})</code></pre>
+              <p class="code-note">{{ l.sdk_req }}</p>
+            </div>
+            <a class="text-link" href="{{ prefixo }}/docs/sdk/">
+              {{ l.pr_link }}
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+          </div>
+          <figure class="product-flow">
+            <img src="/assets/flow-sdk.svg" width="360" height="514" alt="{{ l.sdk_alt }}" loading="lazy">
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section section-soft" id="como-executa">
     <div class="shell">
       <div class="section-head" data-reveal>
