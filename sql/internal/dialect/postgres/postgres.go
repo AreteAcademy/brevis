@@ -45,6 +45,21 @@ func (Dialect) KindOf(ref string) string {
  WHERE n.nspname = '%s' AND c.relname = '%s'`, schema, name)
 }
 
+// ColumnsOf reads information_schema, and here that is the right catalog.
+//
+// KindOf deliberately uses pg_catalog instead, because a materialised view is
+// invisible in information_schema and "nothing is there" is the worst
+// possible answer to that question. Columns are a different question: this is
+// only ever asked about a table this project built, and information_schema's
+// ordinal_position is the portable spelling of the ordering BigQuery uses for
+// the same list.
+func (Dialect) ColumnsOf(ref string) string {
+	schema, name, _ := strings.Cut(ref, ".")
+	return fmt.Sprintf(`SELECT string_agg(column_name, ',' ORDER BY ordinal_position)
+  FROM information_schema.columns
+ WHERE table_schema = '%s' AND table_name = '%s'`, schema, name)
+}
+
 // Literal doubles the quote and leaves everything else alone.
 //
 // Postgres has treated a backslash as an ordinary character since 9.1, when
@@ -79,7 +94,7 @@ func (Dialect) Literal(s string) string {
 // new rows and Postgres has no `CREATE OR REPLACE TABLE`. The drop carries no
 // CASCADE either, so a view reading this table blocks the rebuild and
 // Postgres says which view -- rather than the build removing it.
-func (d Dialect) Build(m model.Model, current dialect.Kind) ([]string, error) {
+func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 	for _, part := range []string{m.Schema, m.Name} {
 		if !identifier.MatchString(part) {
 			return nil, fmt.Errorf("%s cannot be built on postgres: %q has to match %s. "+
@@ -97,14 +112,14 @@ func (d Dialect) Build(m model.Model, current dialect.Kind) ([]string, error) {
 		// ONE drop, chosen by what is actually there. Emitting both would
 		// mean a statement that can never do anything on either branch, and
 		// a statement that cannot act reads like a rule and is not one.
-		if current == dialect.View {
+		if st.Current == dialect.View {
 			out = append(out, "DROP VIEW IF EXISTS "+ref)
 		} else {
 			out = append(out, "DROP TABLE IF EXISTS "+ref)
 		}
 		out = append(out, "CREATE TABLE "+ref+" AS\n"+m.SQL)
 	default:
-		if current == dialect.Table {
+		if st.Current == dialect.Table {
 			out = append(out, "DROP TABLE IF EXISTS "+ref)
 		}
 		out = append(out, "CREATE OR REPLACE VIEW "+ref+" AS\n"+m.SQL)

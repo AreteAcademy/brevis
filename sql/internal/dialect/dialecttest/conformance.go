@@ -56,6 +56,7 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("nothing of that name is Absent", h.absentIsAbsent)
 	t.Run("a string literal survives what is in it", h.literalsSurvive)
 	t.Run("a relation has a catalog target", h.targetNamesTheRelation)
+	t.Run("a table names its columns in order", h.columnsAreNamedInOrder)
 }
 
 type harness struct {
@@ -74,7 +75,7 @@ func (h *harness) build(t *testing.T, name string, mat model.Materialisation, qu
 	t.Helper()
 	m := model.Model{Schema: h.schema, Name: name, Materialised: mat, SQL: query}
 
-	stmts, err := h.d.Build(m, h.kindOf(t, name))
+	stmts, err := h.d.Build(m, dialect.State{Current: h.kindOf(t, name)})
 	if err != nil {
 		t.Fatalf("building %s: %v", m.Ref(), err)
 	}
@@ -287,4 +288,57 @@ func dropSchema(d dialect.Dialect, conn dialect.Conn, schema string) {
 	// take it, so it buys a DropSchema on the interface that nothing but
 	// this cleanup would ever call.
 	_ = conn.Exec(ctx, "DROP SCHEMA IF EXISTS "+schema+" CASCADE")
+}
+
+// columnsAreNamedInOrder is ColumnsOf against a real catalog.
+//
+// THE ORDER IS THE CLAIM, not the set. The list feeds `MERGE ... WHEN
+// MATCHED THEN UPDATE SET`, and a dialect whose query returns the right
+// names in whatever order the scan produced would write a different
+// statement on two runs of one model -- green here if this only checked
+// membership, and a diff nobody can explain in a warehouse's query log.
+//
+// `one, two, three` is deliberate: alphabetical order and ordinal order
+// disagree on it, so a query that forgot its ORDER BY and happened to get
+// sorted names still fails.
+func (h *harness) columnsAreNamedInOrder(t *testing.T) {
+	h.build(t, "cols", model.Table, "SELECT 1 AS one, 2 AS two, 3 AS three")
+
+	v, err := h.conn.Scalar(h.ctx, h.d.ColumnsOf(h.schema+".cols"))
+	if err != nil {
+		t.Fatalf("asking for the columns: %v", err)
+	}
+	got := asString(v)
+	if got != "one,two,three" {
+		t.Errorf("columns = %q, wanted \"one,two,three\"", got)
+	}
+
+	// AND NOTHING FOR WHAT IS NOT THERE. The caller asks this only about a
+	// relation KindOf just reported, so the answer never has to be guessed
+	// at -- but a dialect returning an empty string instead of nothing would
+	// make `strings.Split` produce a one-element list holding "", and the
+	// MERGE would name a column called the empty string.
+	v, err = h.conn.Scalar(h.ctx, h.d.ColumnsOf(h.schema+".no_such_relation"))
+	if err != nil {
+		t.Fatalf("asking about something absent: %v", err)
+	}
+	if v != nil && asString(v) != "" {
+		t.Errorf("something absent answered %v", v)
+	}
+}
+
+// asString reads what a driver handed back for a text column. pgx gives a
+// string, the BigQuery REST path gives whatever the JSON held -- the same
+// split dialect.KindFrom exists for, for the same reason.
+func asString(v any) string {
+	switch s := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return s
+	case []byte:
+		return string(s)
+	default:
+		return fmt.Sprintf("%v", s)
+	}
 }

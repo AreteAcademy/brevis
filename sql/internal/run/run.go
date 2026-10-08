@@ -108,7 +108,7 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 			return res, fmt.Errorf("%s: asking what is there: %w", ref, err)
 		}
 
-		stmts, err := d.Build(m, was)
+		stmts, err := d.Build(m, dialect.State{Current: was})
 		if err != nil {
 			return res, err
 		}

@@ -97,10 +97,53 @@ type Dialect interface {
 	// check built from it would pass against data it should refuse.
 	Literal(s string) string
 
+	// ColumnsOf is a query whose single value is the relation's column
+	// names, in ordinal order, comma-separated.
+	//
+	// ONE VALUE AND NOT A ROW SET, so Conn keeps its two methods. `MERGE ...
+	// WHEN MATCHED THEN UPDATE SET` has to name every column -- BigQuery has
+	// no `SET *`, measured 2026-10-08 -- so the list has to be asked for, and
+	// `STRING_AGG(column_name, ',' ORDER BY ordinal_position)` is what both
+	// warehouses answer it with. A third Conn method for one caller would
+	// have been the thing this package's own comment argues against.
+	ColumnsOf(ref string) string
+
 	// Build is every statement that turns the model into what its header
 	// says, in order, given what is in the warehouse NOW.
-	Build(m model.Model, current Kind) ([]string, error)
+	Build(m model.Model, st State) ([]string, error)
 }
+
+// State is what the warehouse holds for this model right now, and what the
+// caller asked for.
+//
+// A STRUCT AND NOT A THIRD ARGUMENT, which is the precedent #42 set for
+// CheckRow: the questions a build has to answer grow, and a signature that
+// grows with them is one every implementation and every test has to be
+// edited for, one argument at a time, with the compiler unable to tell a
+// swapped pair apart.
+type State struct {
+	// Current is what the relation IS right now.
+	Current Kind
+
+	// FullRefresh is `--full-refresh`: build it as if nothing were there.
+	FullRefresh bool
+
+	// Columns is the TARGET's column names in ordinal order, from ColumnsOf.
+	//
+	// Read only when it is going to be used -- an incremental model that is
+	// adding to an existing table -- and nil otherwise. A list read on every
+	// build would be a query per model for an answer three materialisations
+	// out of four never look at.
+	Columns []string
+}
+
+// Rebuild says this build creates the relation rather than adding to it.
+//
+// DERIVED AND NEVER STORED. Three inputs decide it, and a fourth field
+// holding the answer would be a second place for it to be wrong -- which is
+// exactly how a `--full-refresh` that set the flag and forgot the field would
+// merge into the table it was told to replace.
+func (s State) Rebuild() bool { return s.Current != Table || s.FullRefresh }
 
 // KindFrom reads what Scalar returned from a KindOf query.
 //

@@ -62,6 +62,25 @@ func (Dialect) KindOf(ref string) string {
 			" WHERE table_name = '%s'", schema, name)
 }
 
+// ColumnsOf reads the dataset's INFORMATION_SCHEMA.
+//
+// ONE VALUE, not a row set, so Conn keeps its two methods -- see the
+// interface's comment. STRING_AGG with ORDER BY inside it: without the
+// ORDER BY the order is whatever the scan produced, and the column list
+// feeds a `MERGE ... UPDATE SET`, where a different order on two runs would
+// be two different statements for one model.
+//
+// A relation that is not there yields NULL, which Scalar returns as nil --
+// the same "nothing is there" KindOf gives, and the caller never asks for
+// the columns of something it has just been told is absent.
+func (Dialect) ColumnsOf(ref string) string {
+	schema, name, _ := strings.Cut(ref, ".")
+	return fmt.Sprintf(
+		"SELECT STRING_AGG(column_name, ',' ORDER BY ordinal_position)\n"+
+			"  FROM %s.INFORMATION_SCHEMA.COLUMNS\n"+
+			" WHERE table_name = '%s'", schema, name)
+}
+
 // Literal escapes with a BACKSLASH, which is the whole difference.
 //
 // Two measurements on 2026-10-08, both against the real warehouse:
@@ -110,7 +129,7 @@ func (Dialect) Literal(s string) string {
 // over an existing table is an error in BigQuery rather than a replacement,
 // and its message is about a name that already exists rather than about a
 // kind, so the drop is here where the reason can be written down.
-func (d Dialect) Build(m model.Model, current dialect.Kind) ([]string, error) {
+func (d Dialect) Build(m model.Model, st dialect.State) ([]string, error) {
 	for _, part := range []string{m.Schema, m.Name} {
 		if !identifier.MatchString(part) || len(part) > maxIdentifier {
 			return nil, fmt.Errorf("%s cannot be built on bigquery: %q has to match %s "+
@@ -123,12 +142,12 @@ func (d Dialect) Build(m model.Model, current dialect.Kind) ([]string, error) {
 
 	var out []string
 	if m.Materialised == model.Table {
-		if current == dialect.View {
+		if st.Current == dialect.View {
 			out = append(out, "DROP VIEW IF EXISTS "+ref)
 		}
 		return append(out, "CREATE OR REPLACE TABLE "+ref+" AS\n"+m.SQL), nil
 	}
-	if current == dialect.Table {
+	if st.Current == dialect.Table {
 		out = append(out, "DROP TABLE IF EXISTS "+ref)
 	}
 	return append(out, "CREATE OR REPLACE VIEW "+ref+" AS\n"+m.SQL), nil

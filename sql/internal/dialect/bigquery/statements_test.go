@@ -24,7 +24,7 @@ func all(ss []string) string { return strings.Join(ss, "\n;;\n") }
 // rebuild is one statement and nothing is ever dropped. The conformance
 // suite does not care which; that is the point of having one.
 func TestATableIsReplacedInOneStatement(t *testing.T) {
-	got, err := Dialect{}.Build(table(), dialect.Table)
+	got, err := Dialect{}.Build(table(), dialect.State{Current: dialect.Table})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestATableIsReplacedInOneStatement(t *testing.T) {
 // And a view likewise -- BigQuery lets a replacement change the column list,
 // which is the limit the Postgres dialect has to name in its own comment.
 func TestAViewIsReplacedInOneStatement(t *testing.T) {
-	got, err := Dialect{}.Build(view(), dialect.View)
+	got, err := Dialect{}.Build(view(), dialect.State{Current: dialect.View})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestAViewIsReplacedInOneStatement(t *testing.T) {
 // over an existing TABLE is an error in BigQuery, not a replacement, and the
 // message is about a name already existing rather than about a kind.
 func TestChangingKindDropsTheOtherFirst(t *testing.T) {
-	got, err := Dialect{}.Build(view(), dialect.Table)
+	got, err := Dialect{}.Build(view(), dialect.State{Current: dialect.Table})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestChangingKindDropsTheOtherFirst(t *testing.T) {
 		t.Fatalf("view over a table:\n%s", all(got))
 	}
 
-	got, err = Dialect{}.Build(table(), dialect.View)
+	got, err = Dialect{}.Build(table(), dialect.State{Current: dialect.View})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestChangingKindDropsTheOtherFirst(t *testing.T) {
 // Nothing there: one statement, no drop of something that is not there.
 func TestAFirstBuildDropsNothing(t *testing.T) {
 	for _, m := range []model.Model{view(), table()} {
-		got, err := Dialect{}.Build(m, dialect.Absent)
+		got, err := Dialect{}.Build(m, dialect.State{Current: dialect.Absent})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +93,7 @@ func TestAFirstBuildDropsNothing(t *testing.T) {
 func TestMixedCaseIsAModelNameHere(t *testing.T) {
 	m := model.Model{Schema: "Staging", Name: "Stg_Orders",
 		Materialised: model.View, SQL: "SELECT 1 AS n"}
-	got, err := Dialect{}.Build(m, dialect.Absent)
+	got, err := Dialect{}.Build(m, dialect.State{Current: dialect.Absent})
 	if err != nil {
 		t.Fatalf("BigQuery keeps the case it was given: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestANameBigQueryCannotHoldIsRefused(t *testing.T) {
 		{Schema: "my dataset", Name: "t", Materialised: model.View, SQL: "SELECT 1"},
 		{Schema: "staging", Name: "1st", Materialised: model.View, SQL: "SELECT 1"},
 	} {
-		if _, err := (Dialect{}).Build(bad, dialect.Absent); err == nil {
+		if _, err := (Dialect{}).Build(bad, dialect.State{Current: dialect.Absent}); err == nil {
 			t.Errorf("%s was accepted", bad.Ref())
 		}
 	}

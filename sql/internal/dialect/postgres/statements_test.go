@@ -31,7 +31,7 @@ func joined(ss []string) string { return strings.Join(ss, "\n;;\n") }
 // hand outside this project, and that is not a thing a build should decide.
 // Its cost is named in Build's own comment.
 func TestAViewIsReplacedInPlace(t *testing.T) {
-	got, err := Dialect{}.Build(viewModel(), dialect.Absent)
+	got, err := Dialect{}.Build(viewModel(), dialect.State{Current: dialect.Absent})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestAViewIsReplacedInPlace(t *testing.T) {
 // A view where a TABLE of that name is: the table goes first, because
 // CREATE OR REPLACE VIEW against a table is an error, not a replacement.
 func TestAViewOverATableDropsTheTableFirst(t *testing.T) {
-	got, err := Dialect{}.Build(viewModel(), dialect.Table)
+	got, err := Dialect{}.Build(viewModel(), dialect.State{Current: dialect.Table})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestAViewOverATableDropsTheTableFirst(t *testing.T) {
 
 // A table is rebuilt from its query every time: dropped, then CREATE TABLE AS.
 func TestATableIsDroppedAndRecreated(t *testing.T) {
-	got, err := Dialect{}.Build(tableModel(), dialect.Table)
+	got, err := Dialect{}.Build(tableModel(), dialect.State{Current: dialect.Table})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestATableIsDroppedAndRecreated(t *testing.T) {
 }
 
 func TestATableOverAViewDropsTheViewFirst(t *testing.T) {
-	got, err := Dialect{}.Build(tableModel(), dialect.View)
+	got, err := Dialect{}.Build(tableModel(), dialect.State{Current: dialect.View})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestAModelNameThatWouldNeedQuotingIsRefused(t *testing.T) {
 		{Schema: "staging", Name: "stg-orders", Materialised: model.View, SQL: "select 1"},
 		{Schema: "staging", Name: "stg orders", Materialised: model.View, SQL: "select 1"},
 	} {
-		_, err := Dialect{}.Build(bad, dialect.Absent)
+		_, err := Dialect{}.Build(bad, dialect.State{Current: dialect.Absent})
 		if err == nil {
 			t.Errorf("%s was accepted; Postgres folds it and the graph would not find it", bad.Ref())
 			continue
