@@ -36,15 +36,15 @@ func (m *Metrics) Render(w io.Writer) error {
 	if m == nil {
 		return nil
 	}
-	for _, c := range []*counters{
-		m.received, m.rejected, m.dropped, m.batches, m.buried, m.saturated, m.oversized,
-		m.flushes, m.windows, m.ingestedBytes, m.ingestedEvents, m.tableFlushes,
-	} {
+	// m.counters and not a list typed out here. The list was the trap: a
+	// counter added to the struct and not added below rendered nothing, for
+	// ever, in silence. See Metrics.newCounters.
+	for _, c := range m.counters {
 		if err := c.render(w); err != nil {
 			return err
 		}
 	}
-	for _, h := range []*histograms{m.delivery, m.batchSize} {
+	for _, h := range m.histograms {
 		if err := h.render(w); err != nil {
 			return err
 		}

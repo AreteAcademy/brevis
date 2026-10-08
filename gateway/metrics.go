@@ -21,6 +21,7 @@ const (
 	MetricBatches   = "brevis_gateway_batches_total"
 	MetricBuried    = "brevis_gateway_dead_letter_records_total"
 	MetricSaturated = "brevis_gateway_saturated_total"
+	MetricRefused   = "brevis_gateway_requests_refused_total"
 	MetricOversized = "brevis_gateway_oversized_total"
 	MetricDelivery  = "brevis_gateway_delivery_seconds"
 	MetricBatchSize = "brevis_gateway_batch_records"
@@ -85,6 +86,26 @@ const (
 	ReasonIdentity  = "identity"
 	ReasonOversize  = "oversize"
 	ReasonAdmit     = "sink_refused"
+)
+
+// Why a request was turned away before any event existed.
+//
+// A SECOND enum and not more values on the one above, because the two count
+// different things and cannot share a denominator. `Reason*` is per EVENT and
+// is attributed after `decode` has returned; these are per REQUEST, and three
+// of the four happen to a body that never decoded at all. There is nothing to
+// divide by.
+//
+// `saturated` is here as well as in its own counter. The counter is a
+// published series with somebody's alert written against it, so folding it in
+// would move that alert in silence; carrying it twice costs one series and
+// lets a single query answer "is anything being turned away".
+const (
+	ReasonUnauthorized = "unauthorized"
+	ReasonBodyTooLarge = "body_too_large"
+	ReasonMalformed    = "malformed"
+	ReasonEmpty        = "empty"
+	ReasonSaturated    = "saturated"
 )
 
 // What became of a flush window, when the claim is on.
@@ -157,6 +178,7 @@ type Metrics struct {
 	batches   *counters
 	buried    *counters
 	saturated *counters
+	refused   *counters
 	oversized *counters
 	flushes   *counters
 	windows   *counters
@@ -170,6 +192,12 @@ type Metrics struct {
 
 	delivery  *histograms
 	batchSize *histograms
+
+	// Every instrument above, in the order it was built, and what Render
+	// walks. Enrolled by newCounters/newHistograms rather than listed by
+	// hand: see those two for the trap this replaced.
+	counters   []*counters
+	histograms []*histograms
 
 	// depth reports what is held right now. A gauge and not a counter, and the
 	// difference from the SDK's Meter -- which has no gauges on purpose -- is
@@ -190,32 +218,34 @@ type gauge struct {
 // an empty scrape, which is what "metrics are off" has to look like: a valid
 // scrape of a process with no metrics, not a 404 that reads as broken.
 func NewMetrics() *Metrics {
-	m := &Metrics{
-		received:  newCounters(MetricReceived, "events accepted into a stream's buffer", "stream", "format"),
-		rejected:  newCounters(MetricRejected, "events refused before they were buffered", "stream", "reason"),
-		dropped:   newCounters(MetricDropped, "events a hook dropped on purpose", "stream"),
-		batches:   newCounters(MetricBatches, "batches by what became of them", "stream", "sink", "outcome"),
-		buried:    newCounters(MetricBuried, "records written to a dead letter", "stream", "sink"),
-		saturated: newCounters(MetricSaturated, "requests refused because the buffer was full", "stream"),
-		oversized: newCounters(MetricOversized, "events archived whole because they were too large", "stream"),
-		flushes:   newCounters(MetricFlushes, "batches handed to the pool by what triggered them", "stream", "trigger"),
-		windows:   newCounters(MetricWindows, "flush windows by what became of them, when the claim is on", "stream", "outcome"),
+	m := &Metrics{}
 
-		// Prometheus' own default spread, which covers a Pub/Sub publish
-		// (milliseconds) and a COPY that is having a bad day (seconds).
-		delivery: newHistograms(MetricDelivery, "how long one batch took to deliver, retries included",
-			[]float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}, "stream", "sink"),
-		// A flush of 500 is the default, so the spread straddles it: a stream
-		// flushing at 1 and a stream flushing at 5,000 are different problems.
-		batchSize: newHistograms(MetricBatchSize, "how many records were in a batch",
-			[]float64{1, 5, 10, 50, 100, 500, 1000, 5000}, "stream"),
-	}
+	m.received = m.newCounters(MetricReceived, "events accepted into a stream's buffer", "stream", "format")
+	m.rejected = m.newCounters(MetricRejected, "events refused before they were buffered", "stream", "reason")
+	m.dropped = m.newCounters(MetricDropped, "events a hook dropped on purpose", "stream")
+	m.batches = m.newCounters(MetricBatches, "batches by what became of them", "stream", "sink", "outcome")
+	m.buried = m.newCounters(MetricBuried, "records written to a dead letter", "stream", "sink")
+	m.saturated = m.newCounters(MetricSaturated, "requests refused because the buffer was full", "stream")
+	m.refused = m.newCounters(MetricRefused, "requests refused before an event existed, by why", "stream", "reason")
+	m.oversized = m.newCounters(MetricOversized, "events archived whole because they were too large", "stream")
+	m.flushes = m.newCounters(MetricFlushes, "batches handed to the pool by what triggered them", "stream", "trigger")
+	m.windows = m.newCounters(MetricWindows, "flush windows by what became of them, when the claim is on", "stream", "outcome")
+
+	// Prometheus' own default spread, which covers a Pub/Sub publish
+	// (milliseconds) and a COPY that is having a bad day (seconds).
+	m.delivery = m.newHistograms(MetricDelivery, "how long one batch took to deliver, retries included",
+		[]float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}, "stream", "sink")
+	// A flush of 500 is the default, so the spread straddles it: a stream
+	// flushing at 1 and a stream flushing at 5,000 are different problems.
+	m.batchSize = m.newHistograms(MetricBatchSize, "how many records were in a batch",
+		[]float64{1, 5, 10, 50, 100, 500, 1000, 5000}, "stream")
+
 	if IngestionMetricsEnabled() {
-		m.ingestedBytes = newCounters(MetricIngestedBytes,
+		m.ingestedBytes = m.newCounters(MetricIngestedBytes,
 			"bytes received, by the table they were routed to", "stream", "table")
-		m.ingestedEvents = newCounters(MetricIngestedEvents,
+		m.ingestedEvents = m.newCounters(MetricIngestedEvents,
 			"events received, by the table they were routed to", "stream", "table")
-		m.tableFlushes = newCounters(MetricTableFlushes,
+		m.tableFlushes = m.newCounters(MetricTableFlushes,
 			"batches handed to the pool, by the table they carry and what triggered them",
 			"stream", "table", "trigger")
 	}
@@ -295,8 +325,22 @@ type counters struct {
 	by map[string]*atomic.Int64
 }
 
-func newCounters(name, help string, labelNames ...string) *counters {
-	return &counters{name: name, help: help, labelNames: labelNames, by: map[string]*atomic.Int64{}}
+// newCounters builds a counter AND enrols it in the scrape.
+//
+// A METHOD, because the free function had a trap and it was almost paid for.
+// `Render` walked a slice of fields typed out by hand, so a counter added to
+// the struct and forgotten there compiled, incremented on every request, and
+// never reached a scrape -- an instrument that exists, an operator who sees
+// nothing, and no test that fails.
+//
+// Enrolling at construction makes the two impossible to disagree: the only way
+// to make a counter is the call that lists it. The alternative was a test that
+// reflects over the struct and checks the slice, which guards the trap instead
+// of removing it.
+func (m *Metrics) newCounters(name, help string, labelNames ...string) *counters {
+	c := &counters{name: name, help: help, labelNames: labelNames, by: map[string]*atomic.Int64{}}
+	m.counters = append(m.counters, c)
+	return c
 }
 
 func (c *counters) add(n int64, labels ...string) {
@@ -337,11 +381,14 @@ type bucketSet struct {
 	total  uint64
 }
 
-func newHistograms(name, help string, bounds []float64, labelNames ...string) *histograms {
-	return &histograms{
+// newHistograms builds a histogram AND enrols it, for newCounters' reason.
+func (m *Metrics) newHistograms(name, help string, bounds []float64, labelNames ...string) *histograms {
+	h := &histograms{
 		name: name, help: help, labelNames: labelNames, bounds: bounds,
 		by: map[string]*bucketSet{},
 	}
+	m.histograms = append(m.histograms, h)
+	return h
 }
 
 func (h *histograms) observe(v float64, labels ...string) {
