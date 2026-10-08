@@ -12,19 +12,21 @@ POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.7.1-slim
+  areteacademy/brevis-gateway:0.27.0-slim
 ```
 
 ## Tags
 
 | tag | carries | pull |
 |---|---|---|
-| `0.7.1` | six sinks, S3 and GCS, Redis and memcached | 18 MB |
-| `0.7.1-slim` | `postgres`, `auto_table`, local `files` | **4.8 MB** |
+| `0.27.0` | six sinks, S3 and GCS, Redis and memcached | 19 MB |
+| `0.27.0-slim` | `postgres`, `auto_table`, local `files` | **5.1 MB** |
+
+Sizes are amd64, as Docker Hub reports them; arm64 is about 10% smaller.
 
 The sinks are compiled in, so the import list is the selection: a binary that
 never imports the BigQuery driver does not carry BigQuery, or Arrow, or the
-Storage Write API. 864 packages against 232. A build with a different pair is
+Storage Write API. 897 packages against 238. A build with a different pair is
 fifteen lines — see `cmd/gateway-slim` in the repository.
 
 There is no `latest-slim`. `latest` is already a tag nobody should deploy.
