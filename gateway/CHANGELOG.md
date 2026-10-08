@@ -13,6 +13,46 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.25.0] — 2026-10-08
+
+### Fixed: two spellings of one column are one column on BigQuery
+
+Requires `sdk v0.83.0`, where the change is. The gateway carries it because
+this arrives through `auto_table` with `shape: columns`: a flush is where two
+spellings meet, and a flush is what the gateway makes.
+
+One flush for a consumer's `id_workspace_blacklist` held three events from one
+producer — two `DELETE`s carrying `nationalID`, an `INSERT` carrying
+`nationalId`. **No single event carried both.** The table derived from the
+batch carried both, and BigQuery refused the `CREATE`:
+
+```
+Field nationalId already exists in schema
+```
+
+BigQuery folds column case. The two are now **one** column, and the spelling
+that wins is the first in sorted order — `nationalID`, because `D` sorts
+before `d`. Sorted and not arrival order, because the same flush replayed must
+not create a differently-spelled column.
+
+**One event carrying both spellings is refused, naming both.** The destination
+has one column and one of the two values would win in silence. Two events each
+carrying one are not refused: that is ordinary CDC traffic — the report counted
+1,340 `INSERT`s one way against 23 `DELETE`/`UPDATE`s the other — and it is
+what this fix exists to land.
+
+**Only on BigQuery.** A sink writing to Postgres or MySQL keeps two columns,
+which is correct there: a quoted identifier is distinct and the fold would
+merge two fields a producer meant to keep apart.
+
+**Nothing you have is migrated.** No column is renamed and none is dropped.
+
+Measured against a real BigQuery project, by a load job and not only by DML.
+
+Reported in [#43](https://github.com/AreteAcademy/brevis/issues/43).
+
+---
+
 ## [0.24.0] — 2026-10-08
 
 ### Fixed: a null in a JSON column lands as SQL NULL
