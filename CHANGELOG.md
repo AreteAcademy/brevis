@@ -18,6 +18,82 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.83.0] — 2026-10-08
+
+### Fixed: two spellings of one column are one column on BigQuery
+
+One flush for a consumer's `id_workspace_blacklist` carried three events from
+one producer: two `DELETE`s with `nationalID` and an `INSERT` with
+`nationalId`. **No single record carried both** — they met in a batch. The
+schema derived from the union carried both, and BigQuery refused the `CREATE`:
+
+```
+Field nationalId already exists in schema
+```
+
+Their second case is the same question on a table that already exists: the
+table has `createdAt`, the batch carries `createdat`, and the load was refused
+for a column that is there —
+
+```
+the Columns declaration lists createdat, which bronze.t does not have
+```
+
+— or, under `EvolveAdditive`, planned an `ADD COLUMN` that BigQuery answers
+with `Field createdat already exists in schema`.
+
+**BigQuery folds column case, and the SDK's exact-name comparisons were the
+only thing refusing.** Measured against a real project on 2026-10-08, through
+a **load job** and not only through DML, because the load is the path the SDK
+uses: a row written with `createdat` into a table whose column is `createdAt`
+lands in `createdAt`.
+
+Every comparison on the BigQuery path now asks the table what **it** calls a
+field: the schema derived from a batch, the check before the extract, the
+check against the real table, the evolve plan, the `MERGE`'s reconcile, the
+JSON-column check and `partition_by`.
+
+**Which spelling wins: the first in sorted order.** `nationalID` before
+`nationalId`, because `D` sorts before `d`. Not the first to arrive — map
+iteration is randomised, and a column name is DDL: the same batch replayed
+must not create a differently-spelled column. It is the rule `FlattenOneLevel`
+already uses.
+
+**Existing tables are not migrated.** Nothing is renamed and no column is
+dropped. A table that already carries two columns differing only in case was
+not created by this SDK, and it keeps both; new loads land in whichever one
+BigQuery folds to.
+
+**One record carrying both spellings is refused, by name.** It cannot be
+written — the destination has one column and one of the two values would
+silently win — so it is refused the way the flattening refusal is, naming both
+fields. **Two records each carrying one spelling are not refused**: that is
+the reporter's actual traffic, 1,340 `INSERT`s one way against 23
+`DELETE`/`UPDATE`s the other, and refusing it would dead-letter what this fix
+exists to land.
+
+**Postgres and MySQL are unchanged, deliberately.** A quoted identifier is
+distinct there and two spellings are two columns on purpose. The fold is a
+fact about the destination, carried on `WriteOptions`, set by the BigQuery
+loader and by nothing else.
+
+**Two checks are deliberately NOT folded**, each now pinned by a test that
+says so: the `BREVIS_NORMALIZE_DATA` rename guard is *about* case — folding it
+is identical to deleting it — and the landing-prefix guard is a heuristic over
+the SDK's own constants.
+
+### Added: a real-BigQuery test layer
+
+`sdk/load/realbigquery_test.go`, gated on `BREVIS_IT_PROJECT` and
+`BREVIS_IT_DATASET`. The emulator refuses load jobs by design, so the premise
+this fix rests on could not be tested where the rest of the suite runs. Three
+tests: the premise itself, written with the BigQuery client rather than
+through the SDK; the reporter's flush end to end; and their scratch case.
+Against the previous version the last two fail with the issue's own two
+errors.
+
+Reported in [#43](https://github.com/AreteAcademy/brevis/issues/43).
+
 ## [0.82.0] — 2026-10-08
 
 ### Fixed: a null in a JSON column lands as SQL NULL

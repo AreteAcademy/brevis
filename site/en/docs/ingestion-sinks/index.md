@@ -444,6 +444,14 @@ so two sinks cannot disagree about a table they might both write to. See
 [the SDK page](/en/docs/sdk/#one-column-per-nested-field) for what it renames,
 which is the half to read before turning it on.
 
+**On BigQuery, `nationalID` and `nationalId` are one column.** BigQuery folds
+column case, so a flush carrying one spelling in a `DELETE` and the other in
+an `INSERT` creates **one** column — the first in sorted order — rather than
+failing the `CREATE`. A single event carrying both is refused, naming both
+fields. Postgres and MySQL keep them as two columns, which is correct for
+them. See [the SDK page](/en/docs/sdk/index.md) for which spelling wins and what is not
+migrated.
+
 ### `UPDATE` and `DELETE` are recorded, not applied
 
 `brevis_operation` is a column. A landing table is **history**: an `UPDATE`

@@ -569,6 +569,28 @@ escalar e fez uma coluna de texto, um objeto chegando depois é mudança de
 tipo e o lote para — com o comentário da própria coluna na mensagem, para você
 ver que ninguém a declarou. Renomeie a coluna, ou migre você mesmo.
 
+**No BigQuery, duas grafias de um nome são uma coluna.** O BigQuery dobra a
+caixa dos nomes de coluna: um lote que traz `nationalID` num registro e
+`nationalId` noutro declara **uma** coluna, não duas, e a grafia que vence é a
+primeira em ordem alfabética — `nationalID`, porque `D` vem antes de `d`. Não
+a primeira a chegar: o mesmo lote reprocessado não pode criar uma coluna
+escrita de outro jeito. Uma declaração que diz `createdat` contra uma tabela
+cuja coluna é `createdAt` também é a mesma coluna, então nada é adicionado e
+nada é recusado.
+
+**Um registro que carrega as duas grafias é recusado, nomeando as duas.** O
+destino tem uma coluna e um dos dois valores venceria em silêncio, então a
+carga para: renomeie uma delas no `Transform`, ou mapeie as duas para um único
+campo. Dois *registros* cada um com uma grafia estão certos — é tráfego de CDC
+comum, e é justamente o que esta regra existe para pousar.
+
+**Nada é migrado.** Uma tabela que já tem duas colunas diferindo só na caixa
+mantém as duas; nenhuma coluna é renomeada e nenhuma é removida.
+
+**Postgres e MySQL não dobram.** Um identificador entre aspas é distinto neles,
+então duas grafias são duas colunas — de propósito, e o mesmo fetcher apontado
+para o BigQuery vai pousar as duas em uma.
+
 **Toda coluna que um lote criou diz isso, na tabela.** Um comentário no
 Postgres e no MySQL, uma descrição de campo no BigQuery, com a data:
 

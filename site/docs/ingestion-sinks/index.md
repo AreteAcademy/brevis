@@ -443,6 +443,14 @@ compartilha, então dois sinks não conseguem divergir sobre uma tabela em que
 os dois podem escrever. A [página do SDK](/docs/sdk/#uma-coluna-por-campo-aninhado)
 diz o que isso renomeia, que é a metade para ler antes de ligar.
 
+**No BigQuery, `nationalID` e `nationalId` são uma coluna.** O BigQuery dobra
+a caixa dos nomes de coluna, então uma descarga que traz uma grafia num
+`DELETE` e a outra num `INSERT` cria **uma** coluna — a primeira em ordem
+alfabética — em vez de falhar o `CREATE`. Um único evento que carrega as duas
+é recusado, nomeando os dois campos. Postgres e MySQL mantêm duas colunas, o
+que está certo para eles. A [página do SDK](/docs/sdk/index.md) diz qual grafia vence
+e o que não é migrado.
+
 ### `UPDATE` e `DELETE` são registrados, não aplicados
 
 `brevis_operation` é uma coluna. Uma tabela de pouso é **histórico**: um `UPDATE`

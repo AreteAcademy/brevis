@@ -2817,6 +2817,28 @@ a scalar and made a text column, an object arriving later is a change of kind
 and the batch stops — with the column's own comment in the message, so you can
 see nobody declared it. Rename the column, or migrate it yourself.
 
+**On BigQuery, two spellings of one name are one column.** BigQuery folds
+column case: a batch carrying `nationalID` in one record and `nationalId` in
+another declares **one** column, not two, and the spelling that wins is the
+first in sorted order — `nationalID`, because `D` sorts before `d`. Not the
+first to arrive: the same batch replayed must not create a differently-spelled
+column. A declaration that says `createdat` against a table whose column is
+`createdAt` is the same column too, so nothing is added and nothing is
+refused.
+
+**One record carrying both spellings is refused, naming both.** The
+destination has one column and one of the two values would silently win, so
+the load stops: rename one of them in `Transform`, or map both onto a single
+field. Two *records* each carrying one spelling are fine — that is ordinary
+CDC traffic, and it is what this rule exists to land.
+
+**Nothing is migrated.** A table that already has two columns differing only
+in case keeps both; no column is renamed and none is dropped.
+
+**Postgres and MySQL are not folded.** A quoted identifier is distinct there,
+so two spellings are two columns — on purpose, and the same fetcher pointed at
+BigQuery will land them in one.
+
 **Every column a batch created says so, in the table.** A comment on Postgres
 and MySQL, a field description on BigQuery, carrying the date:
 
@@ -4608,6 +4630,14 @@ normalisation and the way out.
 so two sinks cannot disagree about a table they might both write to. See
 [the SDK page](/en/docs/sdk/#one-column-per-nested-field) for what it renames,
 which is the half to read before turning it on.
+
+**On BigQuery, `nationalID` and `nationalId` are one column.** BigQuery folds
+column case, so a flush carrying one spelling in a `DELETE` and the other in
+an `INSERT` creates **one** column — the first in sorted order — rather than
+failing the `CREATE`. A single event carrying both is refused, naming both
+fields. Postgres and MySQL keep them as two columns, which is correct for
+them. See [the SDK page](/en/docs/sdk/index.md) for which spelling wins and what is not
+migrated.
 
 ### `UPDATE` and `DELETE` are recorded, not applied
 
