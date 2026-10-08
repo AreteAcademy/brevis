@@ -398,12 +398,12 @@ h3:hover .anchor,
 
 .admon-warning,
 .admon-danger {
-  border-left-color: #d9a05b;
+  border-left-color: var(--amber);
 }
 
 .admon-warning .admon-t,
 .admon-danger .admon-t {
-  color: #d9a05b;
+  color: var(--amber);
 }
 
 /* --------------------------------------------------------------- código ---- */
@@ -411,7 +411,7 @@ h3:hover .anchor,
 /* O realce emite .t-n para número e flag; sem esta regra os dois saíam na cor
    do texto comum, e um `--select` num comando não se distinguia do resto. */
 .t-n {
-  color: #8fb8d6;
+  color: var(--steel);
 }
 
 .doc-body .code-block {
@@ -423,29 +423,6 @@ h3:hover .anchor,
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   color: var(--olive);
-}
-
-.code-copy {
-  margin-left: auto;
-  padding: 0.2rem 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: transparent;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.code-copy:hover {
-  color: var(--lime);
-  border-color: var(--lime-edge);
-}
-
-.code-copy.is-done {
-  color: var(--lime);
-  border-color: var(--lime);
 }
 
 .doc-body :not(pre) > code {

@@ -36,6 +36,11 @@
   --text: #ecefe4;
   --text-dim: #a3ad97;
 
+  /* Da docs: aviso e numero/flag no realce. Medidos no pior fundo (#1f2419):
+     ambar 6.9:1, aco 7.5:1. Nao entram na landing. */
+  --amber: #d9a05b;
+  --steel: #8fb8d6;
+
   --line: #38412b;
   --line-soft: #262d1d;
   --line-strong: #7d8e50;
