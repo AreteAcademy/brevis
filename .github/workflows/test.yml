@@ -165,6 +165,7 @@ jobs:
       BREVIS_IT_S3_SECRET: brevis-secret
       BREVIS_IT_PG_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
       BREVIS_IT_MYSQL_DSN: root:brevis@tcp(localhost:53306)/brevis_it
+      BREVIS_SQL_IT_DSN: postgres://brevis:brevis@localhost:55432/brevis_it
       GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
 
     steps:
@@ -248,6 +249,32 @@ jobs:
         run: |
           cd sdk
           go test -v -timeout 10m -run Integration ./to/postgres/ ./to/mysql/
+
+      # brevis-sql's conformance suite, which is the only thing that proves
+      # the Postgres dialect BUILDS what its statements say -- the unit tests
+      # prove the strings, and a dialect returning the right strings and
+      # building the wrong thing passes those.
+      #
+      # AND IT CHECKS THAT THE SUITE RAN. It skips without the DSN, a skip
+      # prints green, and `go test` exits 0 either way: it would look exactly
+      # like a pass. That is the failure this job's own env comment names --
+      # "a test behind a variable is a test that does not run" -- and nine
+      # SDK integration tests rotted that way while skipped.
+      - name: Integration - brevis-sql builds on Postgres
+        run: |
+          cd sql
+          out=$(go test -v -timeout 5m ./internal/dialect/postgres/ ./internal/run/ 2>&1) || {
+            echo "$out"; exit 1;
+          }
+          echo "$out"
+          if echo "$out" | grep -q '^--- SKIP: TestPostgresConformance'; then
+            echo "::error::the conformance suite SKIPPED; BREVIS_SQL_IT_DSN did not reach it"
+            exit 1
+          fi
+          if ! echo "$out" | grep -q '^--- PASS: TestPostgresConformance'; then
+            echo "::error::the conformance suite did not run"
+            exit 1
+          fi
 
       # floci, for the emulated BigQuery layer. The socket is mounted because
       # queries run in a sibling container it starts itself, and the tag is a
