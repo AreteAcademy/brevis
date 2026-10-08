@@ -57,21 +57,42 @@ services:
       timeout: 3s
       retries: 20
 
+  # An S3 API, which is what these tests need -- not MinIO, which has twice
+  # taken its community image away underneath this file:
+  #
+  #   2026-09-13  `minio/minio` on Docker Hub became `pull access denied`,
+  #               with nothing here having changed.
+  #   2026-09-24  quay.io/minio/minio began answering 401.
+  #
+  # CI moved to adobe/s3mock on 2026-09-24 AND THIS FILE DID NOT, so the
+  # command the workflow's own comment calls "the command that fixes local"
+  # has been broken ever since: `--profile aws up` ends in `pull access
+  # denied for minio/minio`. Found on 2026-10-08 by running the local
+  # warehouse suite, which is the first thing that needed this container
+  # outside CI.
+  #
+  # The service keeps the name `minio` because that is what every comment,
+  # script and habit in this repository calls it, and renaming it would move
+  # a dozen references to fix an image line.
+  #
+  # Port 9000 outside, 9090 inside: s3mock serves HTTP on 9090, and nothing
+  # downstream moves. It needs no command and no credentials -- it accepts
+  # whatever the caller signs with, which is what the tests already send.
   minio:
     profiles: [aws, all]
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: brevis
-      MINIO_ROOT_PASSWORD: brevis-secret
+    image: adobe/s3mock:5.2.3
     ports:
-      - "9000:9000"
-      - "9001:9001"
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 3s
-      timeout: 3s
-      retries: 10
+      - "9000:9090"
+    # NO HEALTHCHECK, and that is a decision rather than an omission. The
+    # image is a JRE with no curl, no wget and a `/bin/sh` that is not bash,
+    # so every in-container probe this file could write is a probe that
+    # always fails -- the first attempt here used bash's /dev/tcp and left
+    # the container `starting` for ever while the endpoint answered 200.
+    # A healthcheck that cannot pass is worse than none.
+    #
+    # It is polled FROM THE HOST instead, by scripts/warehouse-check.sh and
+    # by the workflow, which is also the only place that can tell "the port
+    # is published" from "the process is listening".
 
   # For phases 2 and 3. They come up together because one compose is one less
   # thing to remember.
