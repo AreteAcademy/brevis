@@ -202,7 +202,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 // apart would report ten.
 func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byte,
 	slot time.Time, trigger sch.TriggerType, priority int, params map[string]string,
-	maxActive int) (bool, error) {
+	maxActive int, targets ...string) (bool, error) {
 
 	key := fmt.Sprintf("%s:%s:%s", slug, trigger, slot.UTC().Format(time.RFC3339))
 
@@ -214,6 +214,9 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 		LogicalDate:    &slot,
 		Params:         params,
 		MaxActive:      maxActive,
+		// Variadic and empty for every other trigger: a schedule, a backfill
+		// and a click have no landing behind them, and the column stays NULL.
+		TriggerTargets: targets,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {

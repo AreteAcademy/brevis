@@ -28,6 +28,20 @@ type Run struct {
 	// investigation.
 	Params map[string]string
 
+	// TriggerTargets are the landings that started this run, for a run whose
+	// TriggerType is `landed`. Empty for every other kind.
+	//
+	// THE TARGETS AND NOT THE LANDINGS. A target is an identity and it is what
+	// a step acts on -- "rebuild from bronze.orders". The row counts and the
+	// instants belong to the catalog, which already holds them and which a
+	// step reads on /data; carrying them here would put three values in an
+	// environment variable for a question nobody asked at this point.
+	//
+	// A SNAPSHOT, like MaxActive below: what the window held when the run was
+	// created. A landing that arrives afterwards belongs to the next window
+	// and starts the next run.
+	TriggerTargets []string
+
 	// MaxActive is the workflow's concurrency limit at the instant of the
 	// trigger. A snapshot: lowering the limit later does not change runs that
 	// are already queued.

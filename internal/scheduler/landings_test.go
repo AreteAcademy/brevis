@@ -220,3 +220,60 @@ func mustCycle(t *testing.T, s *scheduler.Scheduler, now time.Time) {
 		t.Fatal(err)
 	}
 }
+
+// THE RUN CARRIES EVERY TARGET OF ITS WINDOW, not the first one.
+//
+// #63: "the run receives the triggering landings as auto params". A run that
+// knew about one landing out of three would start the right workflow and tell
+// it to rebuild one table of the three that moved -- which is worse than not
+// firing, because it looks like it worked.
+//
+// The duplicate is in the fixture on purpose: ten landings on one table is
+// one thing to rebuild, and a list naming it ten times is a list nobody reads.
+func TestTheRunCarriesEveryTargetOfItsWindow(t *testing.T) {
+	s, pool := triggered(t, wf.Trigger{
+		OnLanded: []string{"bigquery://acme-prod/bronze/*"},
+		Debounce: 5 * time.Minute,
+	})
+	t0 := inUTC("2026-03-11T04:00:00Z")
+	mustCycle(t, s, t0)
+
+	land(t, pool, "bronze", "bigquery://acme-prod/bronze/orders", t0.Add(10*time.Second))
+	land(t, pool, "bronze", "bigquery://acme-prod/bronze/items", t0.Add(20*time.Second))
+	land(t, pool, "bronze", "bigquery://acme-prod/bronze/orders", t0.Add(30*time.Second))
+	mustCycle(t, s, t0.Add(time.Minute))
+
+	var targets []string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT trigger_targets FROM runs WHERE trigger_type = 'landed'`).Scan(&targets); err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("trigger_targets = %v, wanted the two distinct tables", targets)
+	}
+	seen := map[string]bool{targets[0]: true, targets[1]: true}
+	for _, want := range []string{
+		"bigquery://acme-prod/bronze/orders", "bigquery://acme-prod/bronze/items"} {
+		if !seen[want] {
+			t.Errorf("%s is missing from %v", want, targets)
+		}
+	}
+}
+
+// AND A SCHEDULED RUN STORES NULL, not an empty array. Absent and empty are
+// the same thing here, and a column that said `{}` would make "no landing
+// started this" indistinguishable from "every landing was refused".
+func TestAScheduledRunStoresNoTargets(t *testing.T) {
+	s, _, _, pool := build(t, "0 2 * * *", false)
+	setLastSlot(t, pool, inUTC("2026-01-01T02:00:00Z"))
+	mustCycle(t, s, inUTC("2026-01-02T03:00:00Z"))
+
+	var targets []string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT trigger_targets FROM runs WHERE trigger_type = 'schedule'`).Scan(&targets); err != nil {
+		t.Fatal(err)
+	}
+	if targets != nil {
+		t.Errorf("trigger_targets = %v on a scheduled run", targets)
+	}
+}

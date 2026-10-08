@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -73,6 +74,14 @@ type AutoParams struct {
 	// timestamp says how far back to catch up.
 	PreviousSuccessAt *time.Time `json:"previous_success_at,omitempty"`
 
+	// Landed is what arrived to start this run, for a run a landing started.
+	//
+	// Absent on every other kind, and `omitempty` rather than an empty list:
+	// the JSON is read by Python and by jq, and `null` versus `[]` versus
+	// absent is three spellings of one thing. Absent is the one that matches
+	// how the optional timestamps above behave.
+	Landed []string `json:"landed,omitempty"`
+
 	// Date is AdjustedAt as YYYY-MM-DD, in UTC. It is here because it is the
 	// single most-used value in the whole of data engineering -- a partition, a
 	// folder, a WHERE clause -- and because formatting it in eight pipelines is
@@ -129,6 +138,8 @@ func Auto(r Run, started time.Time, prev Previous, window Interval) AutoParams {
 		s, e := window.Start.UTC(), window.End.UTC()
 		a.IntervalStart, a.IntervalEnd = &s, &e
 	}
+
+	a.Landed = r.TriggerTargets
 
 	a.Date = a.AdjustedAt.Format("2006-01-02")
 	return a
@@ -195,6 +206,23 @@ func (a AutoParams) Env() map[string]string {
 	if a.IntervalStart != nil && a.IntervalEnd != nil {
 		out["DLT_INTERVAL_START"] = a.IntervalStart.Format(time.RFC3339)
 		out["DLT_INTERVAL_END"] = a.IntervalEnd.Format(time.RFC3339)
+	}
+
+	// WHAT LANDED, comma-separated, for the same reason the timestamps get one
+	// variable each: a `bash` step with no library reads `$BREVIS_AUTO_LANDED`
+	// and splits on a comma.
+	//
+	// THE COMMA IS A CONVENIENCE AND NOT THE CONTRACT. The catalog refuses
+	// whitespace, '@', a query string, a fragment and a port in a target, and
+	// it does NOT refuse a comma -- so an object path could in principle hold
+	// one. BREVIS_AUTO_PARAMS carries the exact list as JSON, and that is what
+	// a reader uses when the targets are not plain table names.
+	//
+	// Omitted when nothing landed, which is the rule the optional timestamps
+	// above follow: a variable that is always there and sometimes blank makes
+	// every reader write the same two-line check.
+	if len(a.Landed) > 0 {
+		out["BREVIS_AUTO_LANDED"] = strings.Join(a.Landed, ",")
 	}
 
 	// And the whole thing, for a step that would rather parse one value.

@@ -69,8 +69,19 @@ func (s *Scheduler) landingCycle(ctx context.Context, now time.Time) (int, error
 		return 0, nil
 	}
 
-	var created int
-	seen := map[string]bool{}
+	// GROUPED BEFORE ANYTHING IS CREATED, because the run has to carry EVERY
+	// target of its window. Creating on the first match and skipping the rest
+	// would start the right run and tell it about one landing out of ten --
+	// and the step would rebuild one table of the three that moved.
+	type bucket struct {
+		slug    string
+		window  time.Time
+		targets []string
+		seen    map[string]bool
+	}
+	buckets := map[string]*bucket{}
+	var order []string
+
 	for _, l := range landings {
 		for _, sub := range subs {
 			if !matches(sub.Trigger.OnLanded, l.Target) {
@@ -93,23 +104,34 @@ func (s *Scheduler) landingCycle(ctx context.Context, now time.Time) (int, error
 			// clock would split a burst into two runs.
 			window := l.Recorded.UTC().Truncate(sub.Trigger.Debounce)
 			key := sub.Slug + "|" + window.Format(time.RFC3339Nano)
-			if seen[key] {
-				// Collapsed in this cycle before the database has to refuse
-				// it. The unique would catch it anyway; this keeps one burst
-				// from being N round trips.
-				continue
-			}
-			seen[key] = true
 
-			made, err := s.enqueueLanded(ctx, sub.Slug, window)
-			if err != nil {
-				s.log.Error("starting a workflow from a landing",
-					"workflow", sub.Slug, "target", l.Target, "error", err)
-				continue
+			b := buckets[key]
+			if b == nil {
+				b = &bucket{slug: sub.Slug, window: window, seen: map[string]bool{}}
+				buckets[key] = b
+				order = append(order, key)
 			}
-			if made {
-				created++
+			// ONE ENTRY PER TARGET, not per landing. Ten landings on one
+			// table is one thing to rebuild, and a list naming it ten times
+			// would be a list nobody can read.
+			if !b.seen[l.Target] {
+				b.seen[l.Target] = true
+				b.targets = append(b.targets, l.Target)
 			}
+		}
+	}
+
+	var created int
+	for _, key := range order {
+		b := buckets[key]
+		made, err := s.enqueueLanded(ctx, b.slug, b.window, b.targets)
+		if err != nil {
+			s.log.Error("starting a workflow from a landing",
+				"workflow", b.slug, "targets", b.targets, "error", err)
+			continue
+		}
+		if made {
+			created++
 		}
 	}
 
@@ -123,7 +145,8 @@ func (s *Scheduler) landingCycle(ctx context.Context, now time.Time) (int, error
 }
 
 // enqueueLanded creates the run for one workflow and one window.
-func (s *Scheduler) enqueueLanded(ctx context.Context, slug string, window time.Time) (bool, error) {
+func (s *Scheduler) enqueueLanded(ctx context.Context, slug string, window time.Time,
+	targets []string) (bool, error) {
 	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
 		return false, err
@@ -144,7 +167,7 @@ func (s *Scheduler) enqueueLanded(ctx context.Context, slug string, window time.
 	// landings in a window become one run -- and asking the database first
 	// would be a second round trip for an answer the insert already gives.
 	return s.createAndEnqueue(ctx, slug, bruto, window,
-		sch.TriggerLanded, 0, defaults, def.MaxActive)
+		sch.TriggerLanded, 0, defaults, def.MaxActive, targets...)
 }
 
 // matches says whether a landing's target is one of the subscribed ones.

@@ -42,11 +42,18 @@ func (r *RunRepo) Create(ctx context.Context, run dom.Run) (dom.Run, error) {
 
 	err := r.pool.QueryRow(ctx, `
 		INSERT INTO runs (id, workflow_slug, idempotency_key, status, attempt, definicao,
-		                  trigger_type, logical_date, params, max_ativos)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		                  trigger_type, logical_date, params, max_ativos, trigger_targets)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING criado_em`,
 		run.ID, run.WorkflowSlug, run.IdempotencyKey, run.Status, run.Attempt, run.Definition,
 		run.TriggerType, run.LogicalDate, paramsOrEmpty(run.Params), run.MaxActive,
+		// pgx writes a nil slice as NULL and an EMPTY one as `{}` -- measured,
+		// because the two are different answers here: NULL is "no landing
+		// started this run" and `{}` would be "every landing was refused".
+		// Nothing constructs an empty one (the scheduler's variadic gives nil
+		// when it has nothing), so this is passed straight through rather
+		// than through a guard that could never fire.
+		run.TriggerTargets,
 	).Scan(&run.CreatedAt)
 
 	if err != nil {
@@ -164,11 +171,12 @@ func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, workflow_slug, idempotency_key, status, attempt, definicao,
 		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em,
-		       auto_params
+		       auto_params, trigger_targets
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
 			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
-			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto)
+			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto,
+			&run.TriggerTargets)
 	return run, err
 }
 
@@ -196,9 +204,10 @@ func (r *RunRepo) RecordAuto(ctx context.Context, id uuid.UUID,
 
 	var run dom.Run
 	if err := tx.QueryRow(ctx, `
-		SELECT workflow_slug, trigger_type, logical_date, iniciado_em
+		SELECT workflow_slug, trigger_type, logical_date, iniciado_em, trigger_targets
 		FROM runs WHERE id = $1`, id).
-		Scan(&run.WorkflowSlug, &run.TriggerType, &run.LogicalDate, &run.StartedAt); err != nil {
+		Scan(&run.WorkflowSlug, &run.TriggerType, &run.LogicalDate, &run.StartedAt,
+			&run.TriggerTargets); err != nil {
 		return dom.AutoParams{}, err
 	}
 
