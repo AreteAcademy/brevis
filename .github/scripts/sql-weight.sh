@@ -55,8 +55,13 @@ done
 # THE PACKAGE CEILING. It does not exist to be exact; it exists so that
 # growing takes a conscious decision instead of just happening.
 #
-# 243 on linux/amd64 today: the three requires (yaml, pgx, oauth2) and what
-# they bring. The headroom is roughly what the engine's gate keeps.
+# The three requires (yaml, pgx, oauth2) and what they bring.
+#
+# THE NUMBER DEPENDS ON THE TOOLCHAIN, and by more than it looks: 243 under
+# go1.27 and 256 under the 1.26 that setup-go reads from sql/go.mod. So the
+# figure to trust is CI's, and the headroom is written against that -- a
+# ceiling set from a laptop's reading would be 13 packages tighter than
+# whoever set it believed.
 CEILING=280
 if [ "$total" -gt "$CEILING" ]; then
   echo "::error::brevis-sql compiles $total packages, over the ceiling of $CEILING"
