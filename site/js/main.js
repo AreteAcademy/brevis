@@ -75,6 +75,26 @@
 
   Array.prototype.forEach.call(document.querySelectorAll('[role="tablist"]'), ligarAbas);
 
+  /* ------------------------------------------------------ copiar codigo ---- */
+
+  /* O mesmo de docs.js: o texto vem de data-code, nao do <pre> realcado. */
+  Array.prototype.forEach.call(document.querySelectorAll('.code-block[data-code]'), function (bloco) {
+    var b = bloco.querySelector('.code-copy');
+    if (!b) return;
+    var original = b.textContent;
+    b.addEventListener('click', function () {
+      if (!navigator.clipboard || !window.isSecureContext) return;
+      navigator.clipboard.writeText(bloco.getAttribute('data-code') || '').then(function () {
+        b.classList.add('is-done');
+        b.textContent = b.getAttribute('data-done') || 'ok';
+        setTimeout(function () {
+          b.classList.remove('is-done');
+          b.textContent = original;
+        }, 1600);
+      }, function () {});
+    });
+  });
+
   /* ------------------------------------------------------------ entrada ---- */
 
   /* Entra uma vez e para de observar. O pulso do .flow-rule usa a mesma

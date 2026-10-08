@@ -1,9 +1,11 @@
 # brevis.sh
 
-> A data orchestration runtime written in Go. One binary holds declarative
-> transformation, workflow orchestration, a persistent queue, a scheduler and an
-> operational interface. A step runs as its own Kubernetes pod with its own
-> image, or on a machine you already run. MIT licensed.
+> Open source data infrastructure in Go, in four pieces: the **Core** orchestrates
+> (workflows, a persistent queue, a scheduler and an operational interface, in
+> one binary that never touches the data); the **SDK** extracts and loads; the
+> **Gateway** receives events over HTTP; and **SQL** models tables. A step runs
+> as its own Kubernetes pod with its own image, or on a machine you already
+> run. MIT licensed.
 
 Every page below is also served as Markdown: append `index.md` to any docs URL.
 `https://brevis.sh/llms-full.txt` is this entire documentation set in one file.
@@ -23,6 +25,11 @@ Pub/Sub, Postgres, MySQL, BigQuery, Redshift or object storage. What joins all
 three is the `ingestion_id`, a frozen UUID v5 over
 `provider|entity|source_key|record_ts`: a row the gateway lands and a row an SDK
 fetcher lands for the same record are the same row.
+
+The fourth piece, also versioned on its own, is **SQL**
+(`areteacademy/brevis-sql`, 0.1.0): plain `.sql` files that stay valid SQL,
+built into tables and views in the order their references imply, on Postgres
+or BigQuery — `brevis-sql compile`, `graph`, `build` and `test`. No templating.
 
 The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md` likewise).
 

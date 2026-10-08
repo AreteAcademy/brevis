@@ -623,6 +623,59 @@ a.chip:focus-visible .ico {
   max-width: 54ch;
 }
 
+/* A linha que sobe tudo: logo abaixo dos botoes, porque e o segundo passo de
+   quem ja decidiu olhar. */
+.hero-cmd {
+  margin-top: 2rem;
+  max-width: 34rem;
+}
+
+.hero-cmd pre {
+  padding: 1rem 1.25rem;
+  line-height: 1.7;
+}
+
+.hero-pills {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A tela do console, recriada em SVG. Sem lazy, mas sem fetchpriority: com
+   ela a imagem disputava banda com as fontes e o LCP (o h1) foi de 1.8 s a
+   3.2 s. O aspect-ratio reserva a altura antes de o SVG chegar. */
+.hero-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1000 / 600;
+}
+
+/* O botao de copiar, o mesmo da docs (docs.css), para a landing que nao a
+   carrega. */
+.code-copy {
+  margin-left: auto;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.code-copy:hover {
+  color: var(--lime);
+  border-color: var(--lime-edge);
+}
+
+.code-copy.is-done {
+  color: var(--lime);
+  border-color: var(--lime);
+}
+
 /* ------------------------------------------- painel de execucao (hero) ---- */
 
 .runtime {

@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#141711">
 
 <title>brevis.sh — infraestrutura de dados open source em Go</title>
-<meta name="description" content="brevis.sh é um runtime Go open source para transformar, orquestrar e operar dados sem inflar a stack. Transformação, fila, scheduler e interface operacional num único binário. Um projeto da Aretê Academy.">
+<meta name="description" content="brevis.sh é infraestrutura de dados open source em Go: o Core orquestra, o SDK extrai e carrega, o Gateway recebe eventos e o SQL modela tabelas — no seu cluster, sem o dado passar pelo orquestrador. Um projeto da Aretê Academy.">
 <meta name="author" content="Aretê Academy">
 <link rel="canonical" href="https://brevis.sh/">
 
@@ -16,11 +16,11 @@
 <meta property="og:site_name" content="brevis.sh">
 <meta property="og:locale" content="pt-BR">
 <meta property="og:title" content="brevis.sh — infraestrutura de dados open source em Go">
-<meta property="og:description" content="brevis.sh é um runtime Go open source para transformar, orquestrar e operar dados sem inflar a stack. Transformação, fila, scheduler e interface operacional num único binário. Um projeto da Aretê Academy.">
+<meta property="og:description" content="brevis.sh é infraestrutura de dados open source em Go: o Core orquestra, o SDK extrai e carrega, o Gateway recebe eventos e o SQL modela tabelas — no seu cluster, sem o dado passar pelo orquestrador. Um projeto da Aretê Academy.">
 <meta property="og:url" content="https://brevis.sh/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="brevis.sh — infraestrutura de dados open source em Go">
-<meta name="twitter:description" content="brevis.sh é um runtime Go open source para transformar, orquestrar e operar dados sem inflar a stack. Transformação, fila, scheduler e interface operacional num único binário. Um projeto da Aretê Academy.">
+<meta name="twitter:description" content="brevis.sh é infraestrutura de dados open source em Go: o Core orquestra, o SDK extrai e carrega, o Gateway recebe eventos e o SQL modela tabelas — no seu cluster, sem o dado passar pelo orquestrador. Um projeto da Aretê Academy.">
 
 <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,7 +40,7 @@
       "url": "https://brevis.sh/",
       "name": "brevis.sh",
       "inLanguage": "pt-BR",
-      "description": "brevis.sh é um runtime Go open source para transformar, orquestrar e operar dados sem inflar a stack. Transformação, fila, scheduler e interface operacional num único binário. Um projeto da Aretê Academy.",
+      "description": "brevis.sh é infraestrutura de dados open source em Go: o Core orquestra, o SDK extrai e carrega, o Gateway recebe eventos e o SQL modela tabelas — no seu cluster, sem o dado passar pelo orquestrador. Um projeto da Aretê Academy.",
       "publisher": {
         "@id": "https://areteacademy.com.br/#org"
       }
@@ -49,7 +49,7 @@
       "@type": "SoftwareSourceCode",
       "@id": "https://brevis.sh/#projeto",
       "name": "brevis.sh",
-      "description": "brevis.sh é um runtime Go open source para transformar, orquestrar e operar dados sem inflar a stack. Transformação, fila, scheduler e interface operacional num único binário. Um projeto da Aretê Academy.",
+      "description": "brevis.sh é infraestrutura de dados open source em Go: o Core orquestra, o SDK extrai e carrega, o Gateway recebe eventos e o SQL modela tabelas — no seu cluster, sem o dado passar pelo orquestrador. Um projeto da Aretê Academy.",
       "url": "https://brevis.sh/",
       "codeRepository": "https://github.com/AreteAcademy/brevis",
       "programmingLanguage": "Go",
@@ -129,50 +129,42 @@
       <div>
         <p class="eyebrow">aretê academy apresenta · software com propósito</p>
         <h1>A vida é breve.<br>Sua arquitetura não precisa ser <em>complexa</em>.</h1>
-        <p class="lead">brevis.sh é infraestrutura de dados open source para quem trata tempo, clareza e responsabilidade como parte da engenharia. Um runtime Go para transformar, orquestrar e operar sem inflar sua stack.</p>
+        <p class="lead">Orquestração, extração, ingestão e modelagem de dados em Go: Core, SDK, Gateway e SQL — open source, no seu cluster, sem o dado passar pelo orquestrador.</p>
         <div class="button-row">
-          <a class="button button-primary" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+          <a class="button button-primary" href="/docs/quickstart/">
+            Começar pelo quickstart
+            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+          <a class="button button-secondary" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
             <svg aria-hidden="true"><use href="#i-github"></use></svg>
             Explorar no GitHub
           </a>
-          <a class="button button-secondary" href="/docs/">
-            Ler a documentação
-            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
-          </a>
         </div>
+
+        <!-- Not a single `docker run`: the Core keeps its state in Postgres,
+             so the shortest honest start is the repository's compose file.
+             Checked on a fresh clone; the console answers on :8080. -->
+        <div class="code-block hero-cmd" data-code="git clone https://github.com/AreteAcademy/brevis&#10;cd brevis &amp;&amp; docker compose up">
+          <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div>
+<pre><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
+<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
+          <p class="code-note">Postgres, Core, console e Gateway na sua máquina. O console abre em localhost:8080.</p>
+        </div>
+
+        <ul class="pill-row hero-pills">
+          <li class="pill">MIT</li>
+          <li class="pill">Go</li>
+          <li class="pill">Kubernetes</li>
+          <li class="pill">Docker Compose</li>
+        </ul>
       </div>
 
-      <div class="runtime" data-reveal>
-        <div class="runtime-bar">
-          <span class="id">workflow</span>
-          <span>ingest</span>
-          <span class="state">running</span>
+      <div class="frame frame-lit hero-frame">
+        <div class="frame-bar">
+          <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
+          <span class="frame-url">localhost:8080</span>
         </div>
-        <div class="runtime-body">
-          <ol class="stages">
-            <li class="stage stage-done">
-              <span class="node" aria-hidden="true"></span>
-              <span class="stage-meta"><span class="name">transform</span><span class="status">concluído</span></span>
-              <span class="track" style="--p:100%"><span></span></span>
-            </li>
-            <li class="stage stage-done">
-              <span class="node" aria-hidden="true"></span>
-              <span class="stage-meta"><span class="name">queue</span><span class="status">concluído</span></span>
-              <span class="track" style="--p:100%"><span></span></span>
-            </li>
-            <li class="stage stage-running">
-              <span class="node" aria-hidden="true"></span>
-              <span class="stage-meta"><span class="name">schedule</span><span class="status">running</span></span>
-              <span class="track" style="--p:64%"><span></span></span>
-            </li>
-            <li class="stage">
-              <span class="node" aria-hidden="true"></span>
-              <span class="stage-meta"><span class="name">pod</span><span class="status">na fila</span></span>
-              <span class="track" style="--p:0%"><span></span></span>
-            </li>
-          </ol>
-        </div>
-        <p class="runtime-foot">cada etapa executa em seu próprio pod, com sua própria imagem</p>
+        <img src="/assets/console.svg" width="1000" height="600" alt="O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas.">
       </div>
     </div>
   </section>
