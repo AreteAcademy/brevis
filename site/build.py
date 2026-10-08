@@ -320,6 +320,17 @@ def carregar_templates():
     return t
 
 
+def fontes(serif=False):
+    """O pedido ao Google Fonts. A Cormorant só vai para a página que a usa
+    (front matter `serif: true`): fonte pedida e não usada é banda e, no h1,
+    troca de fonte que desloca o layout."""
+    familias = ["IBM+Plex+Mono:wght@400;500", "IBM+Plex+Sans:wght@400;500;600;700"]
+    if serif:
+        familias.insert(0, "Cormorant+Garamond:ital,wght@0,500;0,600;1,500")
+    return ("https://fonts.googleapis.com/css2?%s&amp;display=swap"
+            % "&amp;".join("family=" + f for f in familias))
+
+
 def preencher(tpl, valores):
     """Substitui {{ chave }}. Uma chave ausente é erro, não string vazia: um
     placeholder que sobrevive até o HTML é um bug que ninguém vê."""
@@ -359,6 +370,7 @@ def carregar_docs(lang):
             "descricao": meta.get("description", ""),
             "grupo": meta.get("group", ""),
             "ordem": int(meta.get("order", "99")),
+            "serif": meta.get("serif") == "true",
             "corpo": corpo,
         })
     paginas.sort(key=lambda p: p["ordem"])
@@ -405,6 +417,7 @@ def gerar(destino):
             "repo": REPO,
             "ano": "2026",
             "alt_landing": alternativas,
+            "fontes": fontes(),
         }
         comum.update({"i18n." + k: html.escape(v) if isinstance(v, str) else v
                       for k, v in s["ui"].items()})
@@ -528,7 +541,8 @@ def gerar(destino):
                                  'href="%s%s/%sindex.md">' % (BASE_URL, pfx, rel)),
                 "alternativas": alt_pagina,
                 "seletor": seletor(rel),
-                "classe_body": "page-doc",
+                "classe_body": "page-doc serif" if p.get("serif") else "page-doc",
+                "fontes": fontes(p.get("serif")),
                 "conteudo": corpo,
                 "extra_css": '<link rel="stylesheet" href="/css/docs.css">',
                 "extra_js": '<script src="/js/docs.js" defer></script>',
@@ -576,6 +590,7 @@ def gerar(destino):
                html.escape(s["ui"]["erro_home"]), html.escape(s["ui"]["docs"])))
     escrever(destino, "404.html", preencher(tpl["base"], {
         "lang": LOCALE[PADRAO], "prefixo": "", "repo": REPO, "ano": "2026",
+        "fontes": fontes(),
         "titulo": html.escape(s["ui"]["erro_titulo"]),
         "descricao": html.escape(s["ui"]["erro_texto"]),
         "canonical": BASE_URL + "/404.html",

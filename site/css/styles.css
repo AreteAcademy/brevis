@@ -183,16 +183,17 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-family: var(--font-serif);
-  font-weight: 500;
-  line-height: 1.04;
-  letter-spacing: -0.015em;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
   text-wrap: balance;
   color: var(--text);
 }
 
 h1 {
   font-size: clamp(2.75rem, 6.2vw, 5.25rem);
+  font-weight: 700;
 }
 
 h2 {
@@ -676,7 +677,7 @@ a.chip:focus-visible .ico {
 }
 
 .hero h1 em {
-  font-style: italic;
+  font-style: normal;
   color: var(--lime);
 }
 
@@ -781,9 +782,9 @@ a.chip:focus-visible .ico {
 
 .contrast-to .claim {
   margin-top: 0.5rem;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(1.15rem, 2vw, 1.5rem);
-  font-style: italic;
+  font-style: normal;
   color: var(--text);
 }
 
@@ -1000,7 +1001,7 @@ a.chip:focus-visible .ico {
 
 .path-value {
   margin-top: 1.5rem;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(1.9rem, 3vw, 2.4rem);
   line-height: 1.05;
   color: var(--text);
@@ -1078,9 +1079,9 @@ a.chip:focus-visible .ico {
 
 .editorial blockquote {
   margin: 1.75rem 0 0;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(1.35rem, 2.2vw, 1.75rem);
-  font-style: italic;
+  font-style: normal;
   line-height: 1.35;
   color: var(--text);
 }
@@ -1232,9 +1233,9 @@ a.chip:focus-visible .ico {
 .footer-brand p {
   margin-top: 1.25rem;
   max-width: 32ch;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.15rem;
-  font-style: italic;
+  font-style: normal;
   line-height: 1.45;
   color: var(--text-dim);
 }
@@ -1677,7 +1678,7 @@ html:not(.js) .product-tabs {
 }
 
 .product-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: var(--fs-xl);
   line-height: 1.2;
   color: var(--text);
@@ -2080,7 +2081,7 @@ html:not(.js) .product-tabs {
 }
 
 .user-name {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: clamp(1.3rem, 2.2vw, 1.6rem);
   line-height: 1.1;
   color: var(--text);

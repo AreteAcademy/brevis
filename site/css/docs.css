@@ -299,9 +299,7 @@ h3:hover .anchor,
 
 .doc-body blockquote p {
   margin: 0;
-  font-family: var(--font-serif);
   font-size: 1.2rem;
-  font-style: italic;
   color: var(--text);
 }
 
@@ -616,4 +614,18 @@ h3:hover .anchor,
 
 .doc-index .surface:hover h3 {
   color: var(--lime);
+}
+
+/* A página que pede a serifa (front matter `serif: true`, e só ela recebe a
+   Cormorant): títulos e citações voltam ao tom editorial. */
+.serif h1,
+.serif h2,
+.serif .doc-body blockquote p {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+
+.serif .doc-body blockquote p {
+  font-style: italic;
 }
