@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -32,8 +33,28 @@ type Spec struct {
 	Secrets map[string]string `yaml:"secrets"`
 	// Concurrency is Kestra's `concurrency.limit`, under the name most
 	// orchestrators use.
-	Concurrency int        `yaml:"concurrency"`
-	Steps       []StepSpec `yaml:"steps"`
+	Concurrency int `yaml:"concurrency"`
+
+	// Trigger is why this runs other than the clock. See TriggerSpec.
+	Trigger TriggerSpec `yaml:"trigger"`
+
+	Steps []StepSpec `yaml:"steps"`
+}
+
+// TriggerSpec is `trigger:` in the YAML.
+//
+//	trigger:
+//	  on_landed: [bigquery://acme-prod/bronze/orders]
+//	  debounce: 5m
+//
+// A time.Duration straight through, as the gateway's `idle_timeout` and
+// `max_conn_age` are. yaml.v3 reads `5m` as five minutes and REFUSES a bare
+// `5` -- measured, because the opposite would have been quiet and expensive:
+// a window read as five nanoseconds collapses nothing and looks exactly like
+// the feature not working. TestADebounceNeedsItsUnit pins it.
+type TriggerSpec struct {
+	OnLanded []string      `yaml:"on_landed"`
+	Debounce time.Duration `yaml:"debounce"`
 }
 
 // ResourceSpec is the CPU and memory request in Kubernetes' format.
@@ -288,6 +309,8 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 		Env:       aparar(s.Env),
 		Secrets:   aparar(s.Secrets),
 	}
+
+	w.Trigger = s.Trigger.dominio()
 	for _, ps := range s.Params {
 		w.Params = append(w.Params, ps.dominio())
 	}
@@ -320,6 +343,15 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 		return dominio.Workflow{}, fmt.Errorf("%s: %w", path, err)
 	}
 	return w, nil
+}
+
+// dominio turns the YAML's trigger into the domain's.
+//
+// It does NOT check the targets: that is an invariant, it belongs in
+// Validate with the workflow's slug and the catalog's own message, and a
+// second check here would be a second place for the two to drift.
+func (t TriggerSpec) dominio() dominio.Trigger {
+	return dominio.Trigger{OnLanded: trimList(t.OnLanded), Debounce: t.Debounce}
 }
 
 // normalizeTools lowercases and trims, and drops the empties.

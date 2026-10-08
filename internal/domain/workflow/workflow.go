@@ -80,6 +80,10 @@ type Workflow struct {
 	// table.
 	MaxActive int
 
+	// Trigger is why this workflow starts other than the clock -- today, a
+	// landing on a target it subscribes to. See trigger.go.
+	Trigger Trigger
+
 	Nodes []Node
 	Edges []Edge
 }
@@ -587,6 +591,9 @@ func (w Workflow) Validate() error {
 	}
 	if len(w.Nodes) == 0 {
 		return fmt.Errorf("workflow %q has no steps at all", w.Slug)
+	}
+	if err := w.Trigger.validate(w.Slug); err != nil {
+		return err
 	}
 
 	vistos := make(map[string]struct{}, len(w.Nodes))
