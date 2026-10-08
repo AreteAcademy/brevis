@@ -25,6 +25,19 @@ type Built struct {
 	// query that worked yesterday is slow.
 	Was  dialect.Kind
 	Took time.Duration
+
+	// Target is the catalog identity -- what goes on the `landed` line and
+	// what puts this model on `/data`.
+	Target string
+
+	// Rows is how many the table holds, and it is NIL FOR A VIEW.
+	//
+	// A pointer because ABSENT IS NOT ZERO, which is the engine's own rule
+	// for this field: "a step that does not count says nothing, and a nil
+	// summed into a zero would draw a table that emptied overnight". A view
+	// holds no rows at all, and reporting 0 for one is indistinguishable
+	// from a table that really is empty.
+	Rows *int64
 }
 
 // Result is the build.
@@ -83,9 +96,25 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 			}
 		}
 
-		res.Built = append(res.Built, Built{
-			Ref: ref, Kind: m.Materialised, Was: was, Took: time.Since(started),
-		})
+		b := Built{
+			Ref: ref, Kind: m.Materialised, Was: was,
+			Target: conn.Target(ref),
+		}
+		// COUNTED ONLY FOR A TABLE, and with its own query. A table built
+		// by CREATE TABLE AS holds rows somebody will want on `/data`;
+		// asking the same of a view would report the row count of whatever
+		// it selects from today, which is a number about the SOURCE and
+		// changes without this model being rebuilt.
+		if m.Materialised == model.Table {
+			n, err := conn.Scalar(ctx, "SELECT COUNT(*) FROM "+ref)
+			if err != nil {
+				return res, fmt.Errorf("%s: counting what it wrote: %w", ref, err)
+			}
+			rows := asInt(n)
+			b.Rows = &rows
+		}
+		b.Took = time.Since(started)
+		res.Built = append(res.Built, b)
 	}
 	return res, nil
 }
@@ -96,4 +125,29 @@ func kindOf(ctx context.Context, d dialect.Dialect, conn dialect.Conn, ref strin
 		return dialect.Absent, err
 	}
 	return dialect.KindFrom(v), nil
+}
+
+// asInt reads a COUNT(*) from whichever Go type the driver chose.
+//
+// pgx hands back int64 and BigQuery's REST rows are strings, which is a
+// DRIVER difference rather than a warehouse one -- the same reason
+// dialect.KindFrom exists beside the interface instead of in it.
+func asInt(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case string:
+		var out int64
+		_, _ = fmt.Sscan(n, &out)
+		return out
+	case []byte:
+		var out int64
+		_, _ = fmt.Sscan(string(n), &out)
+		return out
+	}
+	return 0
 }

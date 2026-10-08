@@ -120,6 +120,15 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 	return res.Rows[0].F[0].V, nil
 }
 
+// Target is `bigquery://project/dataset/table`.
+//
+// The project is what Open was given, so there is nothing to parse and
+// nothing of a credential to leak -- a BigQuery connection has no DSN.
+func (c *conn) Target(ref string) string {
+	dataset, table, _ := strings.Cut(ref, ".")
+	return "bigquery://" + c.project + "/" + dataset + "/" + table
+}
+
 func (c *conn) Close(context.Context) error { return nil }
 
 // run posts the statement and waits for the job, however long it takes.

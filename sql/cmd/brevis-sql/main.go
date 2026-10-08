@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -171,21 +172,60 @@ func connect(d dialect.Dialect, dsnFrom string) (dialect.Conn, error) {
 func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Project, order []string) error {
 	ctx := context.Background()
 	res, err := runner.Build(ctx, d, conn, p, order)
-	// REPORTED EVEN WHEN IT FAILED. The build stops at the first refusal, and
-	// what ran before it is what somebody needs to know to decide whether to
-	// re-run or to repair.
+	// REPORTED EVEN WHEN IT FAILED, and the `landed` lines with it. The
+	// build stops at the first refusal, and the models before it DID land
+	// -- the engine's own runner says the same of a step that landed rows
+	// and then died. Swallowing them would hide real tables from `/data`
+	// because a later model was broken.
 	for _, b := range res.Built {
 		was := string(b.Was)
 		if was == "" {
 			was = "new"
 		}
 		fmt.Fprintf(out, "  %-34s %-5s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
+		fmt.Fprintln(out, landedLine(b.Target, b.Rows))
 	}
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(out, "%d models built on %s\n", len(res.Built), d.Name())
 	return nil
+}
+
+// landedLine is how a step tells the engine what it wrote:
+//
+//	@brevis:{"type":"landed","target":"bigquery://acme-prod/bronze/clicks","rows":48213}
+//
+// ONE CONTRACT FOR EVERY LANGUAGE, on the pipe that already carries the
+// phases. The Go SDK sends it after a load, a Python step calls `landed()`,
+// and this echoes it -- which is why brevis-sql appears on `/data` beside
+// everything else without the engine importing a line of this module.
+//
+// `rows` IS OMITTED RATHER THAN ZERO when there is no count. The engine's
+// field is a pointer for that reason: "a step that does not count says
+// nothing, and a nil summed into a zero would draw a table that emptied
+// overnight". A view holds no rows at all; a table that really is empty
+// still says 0.
+//
+// Marshalled rather than formatted, so a dataset with a quote in its name
+// cannot produce a line the engine silently drops -- and on ONE line,
+// because the pipe is read line by line and a break would split the message
+// into two that the marker does not start.
+func landedLine(target string, rows *int64) string {
+	msg := struct {
+		Type   string `json:"type"`
+		Target string `json:"target"`
+		Rows   *int64 `json:"rows,omitempty"`
+	}{Type: "landed", Target: target, Rows: rows}
+
+	encoded, err := json.Marshal(msg)
+	if err != nil {
+		// Unreachable: three fields, two strings and an int. Returning a
+		// comment rather than a half-written marker, because a malformed
+		// `@brevis:` line is the one thing worse than no line.
+		return "# brevis-sql could not encode a landing for " + target
+	}
+	return "@brevis:" + string(encoded)
 }
 
 // runTests runs every model's tests and reports the whole thing.

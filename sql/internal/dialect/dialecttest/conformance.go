@@ -15,6 +15,7 @@ package dialecttest
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,6 +55,7 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a table replaces a view of that name", h.tableReplacesAView)
 	t.Run("nothing of that name is Absent", h.absentIsAbsent)
 	t.Run("a string literal survives what is in it", h.literalsSurvive)
+	t.Run("a relation has a catalog target", h.targetNamesTheRelation)
 }
 
 type harness struct {
@@ -227,6 +229,47 @@ func (h *harness) literalsSurvive(t *testing.T) {
 		if fmt.Sprint(got) != want {
 			t.Errorf("sent %q as %s and the warehouse read %q",
 				want, h.d.Literal(want), fmt.Sprint(got))
+		}
+	}
+}
+
+// THE CATALOG IDENTITY, which is what makes a model appear on `/data`
+// rather than only in a log. The engine takes it on a `landed` line and
+// refuses anything that does not match its own rule -- SILENTLY, counting
+// the refusal rather than failing the step, because a target the engine
+// repaired would be a target the engine inferred. So a wrong one here is a
+// model that builds, reports success, and never appears. That is what this
+// asserts, and it is asserted against the SHAPE rather than by importing
+// the engine, which is another module.
+func (h *harness) targetNamesTheRelation(t *testing.T) {
+	const name = "a_view"
+	got := h.conn.Target(h.schema + "." + name)
+
+	scheme, rest, ok := strings.Cut(got, "://")
+	if !ok || scheme == "" {
+		t.Fatalf("%q has no scheme", got)
+	}
+	if strings.ToLower(scheme) != scheme {
+		t.Errorf("%q: the engine refuses a scheme that is not lower-case", got)
+	}
+	segs := strings.Split(rest, "/")
+	if len(segs) != 3 {
+		t.Fatalf("%q has %d path segments; a table target takes 3", got, len(segs))
+	}
+	if segs[0] == "" {
+		t.Errorf("%q: the first segment is the project or database and is empty", got)
+	}
+	if segs[1] != h.schema || segs[2] != name {
+		t.Errorf("%q does not end in %s/%s", got, h.schema, name)
+	}
+
+	// NOTHING OF THE DSN. A connection string carries a password, and this
+	// string goes into a catalog, onto a screen and into a primary key. The
+	// engine refuses '@' for exactly this reason -- "contains '@', which
+	// only a DSN would" -- so getting it wrong is silent again.
+	for _, bad := range []string{"@", "?", "#", " "} {
+		if strings.Contains(got, bad) {
+			t.Errorf("%q contains %q, which the engine refuses", got, bad)
 		}
 	}
 }

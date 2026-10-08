@@ -179,4 +179,54 @@ func (s *spyConn) Exec(_ context.Context, statement string) error {
 	return nil
 }
 func (s *spyConn) Scalar(context.Context, string) (any, error) { return nil, nil }
+func (s *spyConn) Target(ref string) string                    { return "spy://db/" + ref }
 func (s *spyConn) Close(context.Context) error                 { return nil }
+
+// EVERY MODEL SAYS WHERE IT WROTE, which is the half that makes this part
+// of Brevis rather than a SQL runner beside it. The engine takes the target
+// on a `landed` line and `/data` lists it.
+func TestEveryBuiltModelCarriesItsCatalogTarget(t *testing.T) {
+	ctx, d, conn := live(t)
+	p := load(t)
+	order, _ := p.Select("")
+
+	res, err := run.Build(ctx, d, conn, p, order)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range res.Built {
+		want := conn.Target(b.Ref)
+		if b.Target != want {
+			t.Errorf("%s carries %q, wanted %q", b.Ref, b.Target, want)
+		}
+	}
+}
+
+// A TABLE SAYS HOW MANY ROWS; A VIEW SAYS NOTHING.
+//
+// `Rows` is a pointer because ABSENT IS NOT ZERO -- the engine's own words
+// for its `landed` line. A view holds no rows at all, so reporting 0 would
+// put a destination on `/data` that looks like it emptied overnight, and
+// the catalog cannot tell that zero from a table that really is empty.
+func TestATableReportsItsRowsAndAViewReportsNone(t *testing.T) {
+	ctx, d, conn := live(t)
+	p := load(t)
+	order, _ := p.Select("")
+
+	res, err := run.Build(ctx, d, conn, p, order)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]*int64{}
+	for _, b := range res.Built {
+		seen[b.Ref] = b.Rows
+	}
+	if n := seen[schema+".base"]; n != nil {
+		t.Errorf("the view %s.base reported %d rows; a view holds none", schema, *n)
+	}
+	if n := seen[schema+".top"]; n == nil {
+		t.Errorf("the table %s.top reported no row count", schema)
+	} else if *n != 1 {
+		t.Errorf("%s.top holds %d rows, and the fixture makes one", schema, *n)
+	}
+}

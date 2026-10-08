@@ -46,6 +46,21 @@ type Conn interface {
 	// this path and not a failure.
 	Scalar(ctx context.Context, query string) (any, error)
 
+	// Target names a relation the way the CATALOG does:
+	// `bigquery://project/dataset/table`, `postgres://database/schema/table`.
+	//
+	// ON Conn AND NOT ON Dialect, because only a live connection knows the
+	// first segment: the project for BigQuery, the database for Postgres,
+	// and the latter is inside a DSN this package never sees in one piece.
+	//
+	// It is what puts a model on `/data`. The engine takes it on a `landed`
+	// line and refuses anything that does not match its own rule -- counting
+	// the refusal rather than failing the step, deliberately, because a
+	// target the engine repaired would be a target the engine inferred. A
+	// wrong one here is therefore a model that builds, reports success and
+	// never appears, which is why the conformance suite asserts its shape.
+	Target(ref string) string
+
 	Close(ctx context.Context) error
 }
 

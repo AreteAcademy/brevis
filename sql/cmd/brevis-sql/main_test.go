@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -133,3 +134,57 @@ func TestCompileCountsTheTestsWithoutRunningThem(t *testing.T) {
 		t.Errorf("the fixture declares four tests on one model:\n%s", b)
 	}
 }
+
+// The `@brevis:` line, which is how a step tells the engine what it wrote.
+// One contract for every language, on the pipe that already carries the
+// phases -- the Go SDK sends it after a load, a Python step calls
+// `landed()`, and this echoes it.
+func TestTheLandedLineIsWellFormed(t *testing.T) {
+	const marker = "@brevis:"
+	for _, line := range []string{
+		landedLine("postgres://brevis_it/s/t", nil),
+		landedLine("bigquery://p/d/t", ptr(int64(48213))),
+	} {
+		if !strings.HasPrefix(line, marker) {
+			t.Fatalf("no marker: %s", line)
+		}
+		var got map[string]any
+		if err := json.Unmarshal([]byte(strings.TrimPrefix(line, marker)), &got); err != nil {
+			t.Fatalf("%s: %v", line, err)
+		}
+		if got["type"] != "landed" {
+			t.Errorf(`type is %v, and the engine switches on "landed"`, got["type"])
+		}
+		if got["target"] == "" || got["target"] == nil {
+			t.Errorf("no target: %s", line)
+		}
+	}
+}
+
+// A VIEW SENDS NO `rows` KEY AT ALL, rather than zero. The engine's own
+// comment: "Rows and Bytes are pointers because ABSENT IS NOT ZERO. A step
+// that does not count says nothing, and a nil summed into a zero would draw
+// a table that emptied overnight."
+func TestAViewsLandedLineHasNoRowsKey(t *testing.T) {
+	line := landedLine("postgres://brevis_it/s/v", nil)
+	if strings.Contains(line, "rows") {
+		t.Errorf("a view reported a row count: %s", line)
+	}
+
+	withRows := landedLine("postgres://brevis_it/s/t", ptr(int64(0)))
+	if !strings.Contains(withRows, `"rows":0`) {
+		t.Errorf("a table that really is empty must still say 0: %s", withRows)
+	}
+}
+
+// IT IS ONE LINE. The engine reads the pipe line by line, so a newline
+// inside the JSON would split the message into two the marker does not
+// start -- and the landing would be dropped without a word.
+func TestTheLandedLineIsExactlyOneLine(t *testing.T) {
+	line := landedLine("postgres://db/sch/tbl", ptr(int64(7)))
+	if strings.ContainsAny(line, "\n\r") {
+		t.Errorf("the line has a break in it: %q", line)
+	}
+}
+
+func ptr[T any](v T) *T { return &v }

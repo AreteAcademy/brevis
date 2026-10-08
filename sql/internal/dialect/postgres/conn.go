@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 
@@ -62,6 +63,22 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 		return nil, fmt.Errorf("the query returned a row with no columns: %s", query)
 	}
 	return vals[0], rows.Err()
+}
+
+// Target is `postgres://database/schema/table`.
+//
+// THE DATABASE AND NOTHING ELSE OF THE DSN. The connection string carries a
+// user and a password, and this string goes into a catalog, onto a screen
+// and into a primary key -- the engine refuses a target containing '@' for
+// exactly that reason. pgx has already parsed the DSN, so the name is read
+// from the config rather than from the string.
+//
+// A ref with no dot cannot happen -- project.Load builds every one from
+// `models/<schema>/<name>.sql` -- and if it ever did, an empty schema
+// segment is refused by the engine rather than guessed at here.
+func (c *conn) Target(ref string) string {
+	schema, name, _ := strings.Cut(ref, ".")
+	return "postgres://" + c.c.Config().Database + "/" + schema + "/" + name
 }
 
 func (c *conn) Close(ctx context.Context) error { return c.c.Close(ctx) }
