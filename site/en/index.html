@@ -306,6 +306,7 @@
           <button class="tab" type="button" role="tab" id="tab-core" aria-controls="p-core" aria-selected="true">Core</button>
           <button class="tab" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="false">SDK</button>
           <button class="tab" type="button" role="tab" id="tab-gateway" aria-controls="p-gateway" aria-selected="false">Gateway</button>
+          <button class="tab" type="button" role="tab" id="tab-sql" aria-controls="p-sql" aria-selected="false">SQL <span class="badge">new · 0.1</span></button>
         </div>
 
         <div class="product" role="tabpanel" id="p-core" aria-labelledby="tab-core">
@@ -449,6 +450,58 @@ res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
           </div>
           <figure class="product-flow">
             <img src="/assets/flow-gateway.svg" width="360" height="514" alt="The Gateway flow: a POST to /v1/clicks is decoded, given its ingestion_id, answered with 202 straight away and appended to a batch; a worker delivers the batch to the sink, here files. The Gateway has no database." loading="lazy">
+          </figure>
+        </div>
+
+        <div class="product" role="tabpanel" id="p-sql" aria-labelledby="tab-sql">
+          <div class="product-text">
+            <h3 class="product-name">SQL <span class="pill">areteacademy/brevis-sql</span> <span class="badge">new · 0.1</span></h3>
+            <p class="product-title">Plain .sql files, built in the right order.</p>
+            <p class="product-lead">No templating: a model is a file that stays valid SQL, and the order comes from reading the SQL itself. Postgres and BigQuery, under the same conformance suite.</p>
+            <div class="code-block">
+              <div class="code-head"><span>models/staging/stg_orders.sql</span></div>
+<pre><code><span class="t-c">/* brevis
+materialized: view
+*/</span>
+<span class="t-k">select</span> order_id, customer_id, amount, ordered_at
+<span class="t-k">from</span> raw.orders
+<span class="t-k">where</span> amount <span class="t-k">is not null</span></code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>models/marts/orders.sql</span></div>
+<pre><code><span class="t-c">/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/</span>
+<span class="t-k">select</span> customer_id, <span class="t-k">count</span>(*) <span class="t-k">as</span> orders, <span class="t-k">sum</span>(amount) <span class="t-k">as</span> revenue
+<span class="t-k">from</span> staging.stg_orders
+<span class="t-k">group by</span> customer_id</code></pre>
+            </div>
+            <div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  compile --project /project&#10;docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  graph --project /project">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
+<pre><code><span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  compile --project /project
+<span class="t-c">2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)</span>
+
+<span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  graph --project /project
+<span class="t-c">staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders</span></code></pre>
+              <p class="code-note">The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".</p>
+            </div>
+            <a class="text-link" href="https://github.com/AreteAcademy/brevis/blob/master/docs/SQL-hub.md" target="_blank" rel="noopener">
+              Read the guide
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+          </div>
+          <figure class="product-flow">
+            <img src="/assets/flow-sql.svg" width="360" height="410" alt="The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery." loading="lazy">
           </figure>
         </div>
       </div>

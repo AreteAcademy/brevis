@@ -1656,6 +1656,15 @@ a.chip:focus-visible .ico {
 }
 
 @media (max-width: 480px) {
+  .product {
+    padding: 1rem;
+  }
+
+  .product-text .code-block pre {
+    padding: 1rem;
+    font-size: 0.76rem;
+  }
+
   .eco-support {
     flex-direction: column;
     align-items: flex-start;
@@ -1689,6 +1698,26 @@ html:not(.js) .product-tabs {
   padding: 0.45rem 1rem;
   border-color: var(--line);
   font-size: var(--fs-sm);
+}
+
+/* O selo de versao nova: lima sobre lavado lima, 10.6:1 -- e texto, entao
+   passa o mesmo piso de 4.5 que o resto. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--lime-edge);
+  border-radius: 999px;
+  background: var(--lime-wash);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--lime);
+  white-space: nowrap;
+}
+
+.product-tabs .tab .badge {
+  margin-left: 0.4rem;
 }
 
 .product {
