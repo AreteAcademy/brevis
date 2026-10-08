@@ -18,6 +18,32 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.84.0] — 2026-10-08
+
+### Added: the case-fold rule, exported, because the gateway builds its own schema
+
+`0.83.0` folded column case everywhere the SDK derives a BigQuery table, and
+the published gateway image still answered the reporter's flush with `Field
+nationalId already exists in schema`. **Found by running the artefact, not by
+reading the diff.**
+
+`auto_table` with `shape: columns` does not go through `core.Discovered`: it
+builds a declaration one event at a time and unions them itself, in the
+gateway. So there were two unions, and only one of them had been fixed.
+
+Two functions are exported so there is one rule rather than two copies:
+
+```go
+sdk.FoldColumns(s Schema) Schema            // two spellings → one column
+sdk.CheckFoldedFields(record map[string]any) error  // one record carrying both
+```
+
+The **caller** decides whether its destination folds — the SDK's own drivers
+through `WriteOptions.FoldsCase`, the gateway through `into.type`. Neither
+function reads an environment or guesses.
+
+See the gateway's `0.26.0` for the other half.
+
 ## [0.83.0] — 2026-10-08
 
 ### Fixed: two spellings of one column are one column on BigQuery

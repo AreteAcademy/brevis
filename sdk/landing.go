@@ -683,3 +683,28 @@ func landingKeys(record map[string]any) []string {
 	sort.Strings(out)
 	return out
 }
+
+// CheckFoldedFields refuses a record carrying two spellings of one column, on
+// a destination that folds column case. [#43]
+//
+// BigQuery does; Postgres and MySQL do not, so the CALLER decides whether to
+// ask. It is the SDK's own rule rather than a second copy of it, because the
+// gateway builds its declaration one event at a time and the two have to
+// reach the same table.
+//
+// Two RECORDS each carrying one spelling are fine, and are not this
+// function's business: they collapse into one column and every row writes to
+// it. One record carrying BOTH cannot be written -- the destination has one
+// column and one of the two values would silently win.
+func CheckFoldedFields(record map[string]any) error {
+	return core.CheckFoldedFields(record)
+}
+
+// FoldColumns collapses the columns a case-folding destination stores as one,
+// keeping the first spelling in SORTED order. [#43]
+//
+// Sorted and not first-seen: a column name is DDL, and the same batch
+// replayed must not create a differently-spelled column.
+func FoldColumns(s Schema) Schema {
+	return core.FoldSchema(s)
+}

@@ -176,6 +176,21 @@ func checkOneSpellingPerRecord(opt WriteOptions, row map[string]any) error {
 	if !opt.FoldsCase {
 		return nil
 	}
+	return CheckFoldedFields(row)
+}
+
+// CheckFoldedFields refuses a record carrying two spellings of one column.
+//
+// Exported because the GATEWAY asks the same question and cannot reach this
+// package. `auto_table` with `shape: columns` builds its own declaration, one
+// event at a time, so the fold has to be the same rule in both places or the
+// two disagree about what a table has -- which is how a gateway running the
+// fixed SDK still failed the CREATE with `Field nationalId already exists in
+// schema`, measured against the published 0.25.0 image.
+//
+// The CALLER decides whether its destination folds. This says only what the
+// rule is.
+func CheckFoldedFields(row map[string]any) error {
 	// Sorted, so the refusal names the same pair on every run rather than
 	// whichever two the map handed over first.
 	keys := make([]string, 0, len(row))
@@ -186,7 +201,7 @@ func checkOneSpellingPerRecord(opt WriteOptions, row map[string]any) error {
 
 	seen := make(map[string]string, len(keys))
 	for _, k := range keys {
-		key := opt.ColumnKey(k)
+		key := FoldedName(k)
 		if first, clash := seen[key]; clash {
 			return fmt.Errorf("one record carries both %q and %q, and this "+
 				"destination folds column case -- they are ONE column there, "+
@@ -369,4 +384,34 @@ func WithDiscovered(opt WriteOptions, found Schema) WriteOptions {
 	opt.Columns = columns
 	opt.Discovered = names
 	return opt
+}
+
+// FoldSchema collapses the columns a case-folding destination stores as one.
+//
+// The winner is the first in SORTED order, which is the rule Discovered uses
+// and for the reason it gives: a column name is DDL, and map iteration is
+// randomised. The surviving column keeps its own type and note -- the two
+// spellings are one field under two names, not two fields.
+//
+// Order is otherwise preserved: a declaration is written in DDL order and
+// this must not reorder it.
+//
+// Exported for the gateway, which unions a declaration event by event and
+// has to reach the same table the SDK would. [#43]
+func FoldSchema(s Schema) Schema {
+	winner := make(map[string]int, len(s))
+	out := make(Schema, 0, len(s))
+	for _, c := range s {
+		key := FoldedName(c.Name)
+		at, seen := winner[key]
+		if !seen {
+			winner[key] = len(out)
+			out = append(out, c)
+			continue
+		}
+		if c.Name < out[at].Name {
+			out[at].Name = c.Name
+		}
+	}
+	return out
 }
