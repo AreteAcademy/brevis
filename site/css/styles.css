@@ -41,6 +41,31 @@
   --amber: #d9a05b;
   --steel: #8fb8d6;
 
+  /* Cor de marca dos icones (o sprite segue currentColor; a cor e esta
+     camada). Simple Icons 16.34.0, salvo onde dito. Regra: >= 3:1 nos tres
+     fundos (#141711, #1a1e15, #1f2419) -- WCAG 1.4.11, grafico. O pior caso
+     vai ao lado. Texto nunca usa estas cores: o nome ao lado do icone e
+     --text, e a cor nunca e a unica coisa que diz o que e. */
+  --brand-go: #00add8;          /* 6.0 */
+  --brand-postgres: #4169e1;    /* 3.3 */
+  --brand-mysql: #4479a1;       /* 3.4 */
+  --brand-bigquery: #669df6;    /* 5.8 */
+  --brand-pubsub: #aecbfa;      /* 9.6 */
+  --brand-gcs: #aecbfa;         /* 9.6 */
+  --brand-gcp: #4285f4;         /* 4.4 */
+  --brand-docker: #2496ed;      /* 5.0 */
+  --brand-kubernetes: #326ce5;  /* 3.3 */
+  --brand-python: #3776ab;      /* 3.3 */
+  /* Helm: o oficial #0f1689 da 1.1:1 aqui. Mesmo matiz e saturacao, clareado
+     ate passar: 3.07. Nao e o hex da marca, e diz isso. */
+  --brand-helm: #525bec;
+  /* AWS: o Simple Icons nao traz cor para os tres. Paleta dos AWS
+     Architecture Icons: o laranja da marca, Storage (S3), Analytics
+     (Redshift). */
+  --brand-aws: #ff9900;         /* 7.4 */
+  --brand-s3: #7aa116;          /* 5.2 */
+  --brand-redshift: #8c4fff;    /* 3.5 */
+
   --line: #38412b;
   --line-soft: #262d1d;
   --line-strong: #7d8e50;
@@ -442,10 +467,41 @@ a.card:focus-visible,
   transition: color 0.15s ease;
 }
 
+/* Os icones de marca levam a propria cor (tokens --brand-*); os tres
+   desenhados (http, files, sql) ficam em --text-dim. O hover acende, nao
+   troca de cor: trocar uma marca por lima apagaria justamente o que ela e. */
 .chip:hover .ico,
 a.chip:focus-visible .ico {
-  color: var(--lime);
+  filter: brightness(1.2);
 }
+
+.ico.ico-go { color: var(--brand-go); }
+
+.ico.ico-postgres { color: var(--brand-postgres); }
+
+.ico.ico-mysql { color: var(--brand-mysql); }
+
+.ico.ico-bigquery { color: var(--brand-bigquery); }
+
+.ico.ico-pubsub { color: var(--brand-pubsub); }
+
+.ico.ico-gcs { color: var(--brand-gcs); }
+
+.ico.ico-gcp { color: var(--brand-gcp); }
+
+.ico.ico-docker { color: var(--brand-docker); }
+
+.ico.ico-kubernetes { color: var(--brand-kubernetes); }
+
+.ico.ico-python { color: var(--brand-python); }
+
+.ico.ico-helm { color: var(--brand-helm); }
+
+.ico.ico-aws { color: var(--brand-aws); }
+
+.ico.ico-s3 { color: var(--brand-s3); }
+
+.ico.ico-redshift { color: var(--brand-redshift); }
 
 .pill-row {
   display: flex;
