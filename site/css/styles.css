@@ -681,163 +681,6 @@ a.chip:focus-visible .ico {
   border-color: var(--lime);
 }
 
-/* ------------------------------------------- painel de execucao (hero) ---- */
-
-.runtime {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-.runtime-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid var(--line-soft);
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--olive);
-}
-
-.runtime-bar .id {
-  color: var(--text-dim);
-}
-
-.runtime-bar .state {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--lime);
-}
-
-.runtime-bar .state::before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: blink 1.8s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.2;
-  }
-}
-
-.runtime-body {
-  padding: 0.35rem 0;
-}
-
-/* Cada etapa e uma linha do trilho: no a esquerda, id, barra e estado. O
-   trilho e um ::before na lista, atras dos nos. */
-.stages {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  position: relative;
-}
-
-.stages::before {
-  content: "";
-  position: absolute;
-  left: calc(1rem + 4px);
-  top: 1.9rem;
-  bottom: 1.9rem;
-  width: 1px;
-  background: var(--line);
-}
-
-.stage {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.9rem;
-  align-items: center;
-  padding: 0.85rem 1rem;
-  position: relative;
-}
-
-.stage + .stage {
-  border-top: 1px solid var(--line-soft);
-}
-
-.stage .node {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1px solid var(--olive);
-  background: var(--bg);
-  position: relative;
-  z-index: 1;
-}
-
-.stage-done .node {
-  background: var(--olive);
-  border-color: var(--olive);
-}
-
-.stage-running .node {
-  background: var(--lime);
-  border-color: var(--lime);
-  box-shadow: 0 0 0 3px var(--lime-wash);
-}
-
-.stage-meta {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-}
-
-.stage-meta .name {
-  color: var(--text);
-}
-
-.stage-meta .status {
-  margin-left: auto;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  color: var(--olive);
-}
-
-.stage-running .status {
-  color: var(--lime);
-}
-
-.track {
-  grid-column: 2;
-  height: 2px;
-  margin-top: 0.55rem;
-  background: var(--line);
-  overflow: hidden;
-}
-
-.track span {
-  display: block;
-  height: 100%;
-  width: var(--p, 0%);
-  background: var(--olive);
-}
-
-.stage-running .track span {
-  background: var(--lime);
-}
-
-.runtime-foot {
-  padding: 0.7rem 1rem;
-  border-top: 1px solid var(--line-soft);
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--olive);
-}
-
 /* -------------------------------------------------- contraste de visao ---- */
 
 .contrast {
@@ -1014,14 +857,6 @@ a.chip:focus-visible .ico {
   font-size: 0.85rem;
   line-height: 1.6;
   color: var(--text-dim);
-}
-
-.split-code {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
-  gap: var(--gap);
-  align-items: start;
-  margin-top: clamp(2rem, 4vw, 3rem);
 }
 
 /* --------------------------------------------------------- principios ---- */
@@ -2042,7 +1877,6 @@ html:not(.js) .product-tabs {
 
 @media (max-width: 1040px) {
   .hero-grid,
-  .split-code,
   .head-split {
     grid-template-columns: minmax(0, 1fr);
   }
