@@ -66,6 +66,16 @@ type Listen struct {
 	// refused with 413 before a byte is parsed, because the alternative is a
 	// client deciding this process's memory.
 	MaxBody Size `yaml:"max_body"`
+
+	// IdleTimeout closes a connection that sits unused. Zero takes the
+	// default, and there is NO WAY TO TURN IT OFF -- see Config.IdleTimeout
+	// for why that is a correction rather than a missing knob. [#44]
+	IdleTimeout time.Duration `yaml:"idle_timeout"`
+
+	// MaxConnAge is how long a client may keep ONE connection before the
+	// next response asks it to redial. Zero is off, which is the default:
+	// this one is policy. See Config.MaxConnAge and listen.go. [#44]
+	MaxConnAge time.Duration `yaml:"max_conn_age"`
 }
 
 // Stream is one endpoint and where what arrives at it goes.
@@ -735,6 +745,9 @@ func (c *Config) check() error {
 	if c.Listen.MaxBody == 0 {
 		c.Listen.MaxBody = defaultMaxBody
 	}
+	if err := c.checkListenTimeouts(); err != nil {
+		return err
+	}
 	// A file that did not mention metrics gets them, because an ingestion
 	// service nobody can see is the failure mode this field exists against.
 	// A file that said `addr: ""` meant it.
@@ -1103,4 +1116,69 @@ func (c *Config) DrainBudget() time.Duration {
 // whoever deploys it is already reading.
 func (c *Config) GracePeriod() time.Duration {
 	return c.DrainBudget() + httpShutdownBudget + 5*time.Second
+}
+
+// IdleTimeout is how long a connection may sit unused, and it HAS A
+// DEFAULT. [#44]
+//
+// Go falls back to ReadTimeout when IdleTimeout is zero, and both were zero
+// on both of this binary's listeners -- so it was not that idle connections
+// lived a long time, they had no timeout at all. A connection opened on the
+// first request of the day was still eligible at midnight, and the only
+// thing that ever ended one was the client or a restart: a file descriptor
+// per abandoned client, for the life of the process.
+//
+// That is a DEFECT rather than a policy, which is why this one gets a
+// default and why there is no way to turn it off. Somebody who wants
+// effectively none sets a very long one, and it is then a number in their
+// file rather than an absence nobody chose.
+//
+// Ninety seconds is the reporter's own proposal, and it sits above the
+// 30-to-60 most HTTP clients keep an idle connection for -- so it ends the
+// ones nobody came back to without fighting the ones somebody will reuse.
+func (c *Config) IdleTimeout() time.Duration {
+	if c.Listen.IdleTimeout > 0 {
+		return c.Listen.IdleTimeout
+	}
+	return 90 * time.Second
+}
+
+// MaxConnAge is how long a client may keep one connection, and it is OFF
+// unless the file says otherwise. [#44]
+//
+// Unlike the idle timeout this is policy: it trades one in-cluster
+// handshake per connection per age for load that spreads across replicas,
+// and whether that trade is worth making depends on a deployment this
+// binary cannot see. A default would be this process deciding it.
+func (c *Config) MaxConnAge() time.Duration { return c.Listen.MaxConnAge }
+
+// checkListenTimeouts refuses the two configurations that cannot mean what
+// they say.
+func (c *Config) checkListenTimeouts() error {
+	// A NEGATIVE IS NOT "off". Reading -1s as a disable would be a second
+	// way to say something the file has no word for, and whoever typed it
+	// meant a duration.
+	if c.Listen.IdleTimeout < 0 {
+		return fmt.Errorf("`listen.idle_timeout` is %s; it is a duration, and "+
+			"there is no way to turn it off -- serving with none is a file "+
+			"descriptor per abandoned client. Set a long one if that is what "+
+			"you want", c.Listen.IdleTimeout)
+	}
+	if c.Listen.MaxConnAge < 0 {
+		return fmt.Errorf("`listen.max_conn_age` is %s; it is a duration, and "+
+			"zero is already off", c.Listen.MaxConnAge)
+	}
+	// THE TWO ARE NOT ORDERED, and the first version of this refused an age
+	// below the idle timeout. That was wrong, and it refused the example in
+	// the issue that asked for the feature -- `max_conn_age: 60s` with
+	// `idle_timeout: 90s`.
+	//
+	// The reasoning was that an idle close would come first and the age
+	// would never fire. It does not follow: a connection reaches the age
+	// only by being USED, and one used often enough to stay alive is
+	// exactly the long-lived producer this exists to rebalance. Either
+	// order works, and a connection meets whichever bound it meets first.
+	//
+	// Found by running the binary rather than by reading it back.
+	return nil
 }

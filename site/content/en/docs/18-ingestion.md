@@ -39,6 +39,8 @@ name: events_gateway
 listen:
   addr: :8080
   max_body: 1MiB
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
   auth:
     type: bearer
     keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
@@ -243,6 +245,34 @@ service exists to not have.
 And that `503` is **safe to retry**, in a way almost no service can claim: the
 `ingestion_id` is a frozen function of the event itself, so the same body sent
 again is the *same record*.
+
+## A connection decides which replica gets the load
+
+Behind a Kubernetes `ClusterIP` Service, kube-proxy picks a backend **once
+per TCP connection**, not per request. Most clients keep connections alive
+and reuse them, so a producer with a handful of them sends everything to the
+same one or two replicas however many are running — and a replica the HPA
+adds receives nothing, because nobody dials it.
+
+```yaml
+listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial
+```
+
+**`max_conn_age` is off by default**, and that is deliberate: how long a
+client may keep one connection is policy, and it trades one in-cluster
+handshake per connection per age for load that spreads. The request itself is
+always served — the header goes on the response, nothing is retried and no
+batch is lost.
+
+**`idle_timeout` has a default and cannot be turned off.** Serving with none
+is a file descriptor per abandoned client until the process restarts. Set a
+long one if that is what you want; it is then a number somebody chose.
+
+The two are independent: a connection meets whichever bound it meets first,
+and a connection only reaches the age by being used — which is exactly the
+long-lived producer the age exists to rebalance.
 
 ## When the sink refuses
 

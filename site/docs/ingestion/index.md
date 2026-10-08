@@ -39,6 +39,8 @@ name: events_gateway
 listen:
   addr: :8080
   max_body: 1MiB
+  idle_timeout: 90s                  # o padrão; não pode ser desligado
+  max_conn_age: 60s                  # desligado a menos que você ponha
   auth:
     type: bearer
     keys_from: BREVIS_INGEST_KEYS   # o NOME da variável, nunca as chaves
@@ -243,6 +245,36 @@ existe para não ter.
 E esse `503` é **seguro de repetir**, de um jeito que quase nenhum serviço
 consegue afirmar: o `ingestion_id` é função congelada do próprio evento, então
 o mesmo corpo reenviado é o *mesmo registro*.
+
+## Uma conexão decide qual réplica recebe a carga
+
+Atrás de um `ClusterIP` do Kubernetes, o kube-proxy escolhe o backend **uma
+vez por conexão TCP**, não por requisição. A maioria dos clientes mantém
+conexões vivas e as reutiliza, então um produtor com um punhado delas manda
+tudo para as mesmas uma ou duas réplicas, quantas quer que estejam rodando —
+e uma réplica que o HPA adiciona não recebe nada, porque ninguém disca para
+ela.
+
+```yaml
+listen:
+  idle_timeout: 90s     # fecha uma conexão a que ninguém voltou
+  max_conn_age: 60s     # depois disso, a próxima resposta pede que o cliente rediscque
+```
+
+**`max_conn_age` vem desligado**, de propósito: por quanto tempo um cliente
+pode manter uma conexão é política, e troca um handshake dentro do cluster
+por conexão por idade pela carga se espalhando. A requisição é sempre
+servida — o cabeçalho vai na resposta, nada é repetido e nenhum lote se
+perde.
+
+**`idle_timeout` tem padrão e não pode ser desligado.** Servir sem nenhum é
+um descritor de arquivo por cliente abandonado até o processo reiniciar.
+Ponha um valor longo se é isso que você quer; aí é um número que alguém
+escolheu.
+
+Os dois são independentes: uma conexão encontra o limite que vier primeiro,
+e só chega à idade sendo usada — que é exatamente o produtor de conexão longa
+que a idade existe para reequilibrar.
 
 ## Quando o destino recusa
 

@@ -145,6 +145,8 @@
 listen:
   addr: :8080
   max_body: 1MiB
+  idle_timeout: 90s                  # o padrão; não pode ser desligado
+  max_conn_age: 60s                  # desligado a menos que você ponha
   auth:
     type: bearer
     keys_from: BREVIS_INGEST_KEYS   # o NOME da variável, nunca as chaves
@@ -178,6 +180,8 @@ streams:
 <span class="t-k">listen</span>:
   <span class="t-k">addr</span>: :8080
   <span class="t-k">max_body</span>: 1MiB
+  <span class="t-k">idle_timeout</span>: 90s                  <span class="t-c"># o padrão; não pode ser desligado</span>
+  <span class="t-k">max_conn_age</span>: 60s                  <span class="t-c"># desligado a menos que você ponha</span>
   <span class="t-k">auth</span>:
     <span class="t-k">type</span>: bearer
     <span class="t-k">keys_from</span>: BREVIS_INGEST_KEYS   <span class="t-c"># o NOME da variável, nunca as chaves</span>
@@ -274,6 +278,16 @@ streams:
 <p>Um flush de uma tabela é um load job dela, então esta é a série para alertar em 1.200 dos 1.500 que o BigQuery permite. A metade incondicional é uma linha no boot, que diz quanto <code>flush.every</code> custa por tabela por dia antes de qualquer evento chegar.</p>
 <p><strong>É limitado, não é "atira e esquece".</strong> Uma goroutine por lote transformaria a queda de um destino em memória sem teto. Quando a fila e o buffer estão cheios, a resposta é <strong><code>503</code> com <code>Retry-After</code></strong> em vez de um <code>202</code> para um evento sem lugar. Um evento aceito e nunca entregue é o único desfecho que este serviço existe para não ter.</p>
 <p>E esse <code>503</code> é <strong>seguro de repetir</strong>, de um jeito que quase nenhum serviço consegue afirmar: o <code>ingestion_id</code> é função congelada do próprio evento, então o mesmo corpo reenviado é o <em>mesmo registro</em>.</p>
+<h2 id="uma-conexao-decide-qual-replica-recebe-a-carga">Uma conexão decide qual réplica recebe a carga<a class="anchor" href="#uma-conexao-decide-qual-replica-recebe-a-carga" aria-label="link">#</a></h2>
+<p>Atrás de um <code>ClusterIP</code> do Kubernetes, o kube-proxy escolhe o backend <strong>uma vez por conexão TCP</strong>, não por requisição. A maioria dos clientes mantém conexões vivas e as reutiliza, então um produtor com um punhado delas manda tudo para as mesmas uma ou duas réplicas, quantas quer que estejam rodando — e uma réplica que o HPA adiciona não recebe nada, porque ninguém disca para ela.</p>
+<div class="code-block" data-code="listen:
+  idle_timeout: 90s     # fecha uma conexão a que ninguém voltou
+  max_conn_age: 60s     # depois disso, a próxima resposta pede que o cliente rediscque"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">listen</span>:
+  <span class="t-k">idle_timeout</span>: 90s     <span class="t-c"># fecha uma conexão a que ninguém voltou</span>
+  <span class="t-k">max_conn_age</span>: 60s     <span class="t-c"># depois disso, a próxima resposta pede que o cliente rediscque</span></code></pre></div>
+<p><strong><code>max_conn_age</code> vem desligado</strong>, de propósito: por quanto tempo um cliente pode manter uma conexão é política, e troca um handshake dentro do cluster por conexão por idade pela carga se espalhando. A requisição é sempre servida — o cabeçalho vai na resposta, nada é repetido e nenhum lote se perde.</p>
+<p><strong><code>idle_timeout</code> tem padrão e não pode ser desligado.</strong> Servir sem nenhum é um descritor de arquivo por cliente abandonado até o processo reiniciar. Ponha um valor longo se é isso que você quer; aí é um número que alguém escolheu.</p>
+<p>Os dois são independentes: uma conexão encontra o limite que vier primeiro, e só chega à idade sendo usada — que é exatamente o produtor de conexão longa que a idade existe para reequilibrar.</p>
 <h2 id="quando-o-destino-recusa">Quando o destino recusa<a class="anchor" href="#quando-o-destino-recusa" aria-label="link">#</a></h2>
 <p>O lote é tentado de novo — quatro vezes em cerca de sete segundos por padrão, dobrando com jitter — e então vai para a <strong>fila de descarte</strong>, com o motivo em cada registro:</p>
 <div class="code-block" data-code="{
@@ -396,7 +410,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="Nesta página">
       <p class="toc-t">Nesta página</p>
-      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#o-relogio-do-flush-pertence-ao-deployment">O relógio do flush pertence ao deployment</a></li><li class="toc-3"><a href="#every-e-um-alvo-max-age-e-uma-promessa">every é um alvo; max_age é uma promessa</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
+      <ul><li class="toc-2"><a href="#o-arquivo-e-o-contrato">O arquivo é o contrato</a></li><li class="toc-2"><a href="#o-ingestion-id-que-e-o-ponto">O ingestion_id, que é o ponto</a></li><li class="toc-2"><a href="#a-requisicao-nao-espera-o-destino">A requisição não espera o destino</a></li><li class="toc-3"><a href="#o-relogio-do-flush-pertence-ao-deployment">O relógio do flush pertence ao deployment</a></li><li class="toc-3"><a href="#every-e-um-alvo-max-age-e-uma-promessa">every é um alvo; max_age é uma promessa</a></li><li class="toc-3"><a href="#por-que-existe-um-gatilho-de-tamanho">Por que existe um gatilho de tamanho</a></li><li class="toc-2"><a href="#uma-conexao-decide-qual-replica-recebe-a-carga">Uma conexão decide qual réplica recebe a carga</a></li><li class="toc-2"><a href="#quando-o-destino-recusa">Quando o destino recusa</a></li><li class="toc-2"><a href="#o-hook-e-go-compilado-junto">O hook é Go, compilado junto</a></li><li class="toc-2"><a href="#quando-o-evento-e-grande-demais">Quando o evento é grande demais</a></li><li class="toc-2"><a href="#o-que-ele-conta">O que ele conta</a></li><li class="toc-2"><a href="#202-nao-200">202, não 200</a></li><li class="toc-2"><a href="#o-que-ele-nao-faz">O que ele não faz</a></li><li class="toc-2"><a href="#uma-rota-n-tabelas">Uma rota, N tabelas</a></li><li class="toc-2"><a href="#por-onde-seguir">Por onde seguir</a></li></ul>
     </aside>
   </main>
 </div>

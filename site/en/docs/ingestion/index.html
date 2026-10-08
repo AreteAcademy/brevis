@@ -145,6 +145,8 @@
 listen:
   addr: :8080
   max_body: 1MiB
+  idle_timeout: 90s                  # the default; it cannot be turned off
+  max_conn_age: 60s                  # off unless set — see below
   auth:
     type: bearer
     keys_from: BREVIS_INGEST_KEYS   # the NAME of the variable, never the keys
@@ -178,6 +180,8 @@ streams:
 <span class="t-k">listen</span>:
   <span class="t-k">addr</span>: :8080
   <span class="t-k">max_body</span>: 1MiB
+  <span class="t-k">idle_timeout</span>: 90s                  <span class="t-c"># the default; it cannot be turned off</span>
+  <span class="t-k">max_conn_age</span>: 60s                  <span class="t-c"># off unless set — see below</span>
   <span class="t-k">auth</span>:
     <span class="t-k">type</span>: bearer
     <span class="t-k">keys_from</span>: BREVIS_INGEST_KEYS   <span class="t-c"># the NAME of the variable, never the keys</span>
@@ -274,6 +278,16 @@ streams:
 <p>One flush of a table is one load job for it, so this is the series to alert on at 1,200 of the 1,500 BigQuery allows. The unconditional half is a line at boot, which says what <code>flush.every</code> costs per table per day before an event arrives.</p>
 <p><strong>It is bounded, not fire-and-forget.</strong> A goroutine per batch would turn a sink outage into unbounded memory. When the queue and the buffer are both full, the answer is <strong><code>503</code> with <code>Retry-After</code></strong> rather than a <code>202</code> for an event with nowhere to go. An accepted event that is never delivered is the one outcome this service exists to not have.</p>
 <p>And that <code>503</code> is <strong>safe to retry</strong>, in a way almost no service can claim: the <code>ingestion_id</code> is a frozen function of the event itself, so the same body sent again is the <em>same record</em>.</p>
+<h2 id="a-connection-decides-which-replica-gets-the-load">A connection decides which replica gets the load<a class="anchor" href="#a-connection-decides-which-replica-gets-the-load" aria-label="link">#</a></h2>
+<p>Behind a Kubernetes <code>ClusterIP</code> Service, kube-proxy picks a backend <strong>once per TCP connection</strong>, not per request. Most clients keep connections alive and reuse them, so a producer with a handful of them sends everything to the same one or two replicas however many are running — and a replica the HPA adds receives nothing, because nobody dials it.</p>
+<div class="code-block" data-code="listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">listen</span>:
+  <span class="t-k">idle_timeout</span>: 90s     <span class="t-c"># closes a connection nobody came back to</span>
+  <span class="t-k">max_conn_age</span>: 60s     <span class="t-c"># after this, the next response asks the client to redial</span></code></pre></div>
+<p><strong><code>max_conn_age</code> is off by default</strong>, and that is deliberate: how long a client may keep one connection is policy, and it trades one in-cluster handshake per connection per age for load that spreads. The request itself is always served — the header goes on the response, nothing is retried and no batch is lost.</p>
+<p><strong><code>idle_timeout</code> has a default and cannot be turned off.</strong> Serving with none is a file descriptor per abandoned client until the process restarts. Set a long one if that is what you want; it is then a number somebody chose.</p>
+<p>The two are independent: a connection meets whichever bound it meets first, and a connection only reaches the age by being used — which is exactly the long-lived producer the age exists to rebalance.</p>
 <h2 id="when-the-sink-refuses">When the sink refuses<a class="anchor" href="#when-the-sink-refuses" aria-label="link">#</a></h2>
 <p>The batch is retried — four attempts over roughly seven seconds by default, doubling with jitter — and then it goes to the <strong>dead letter</strong>, with the reason on every record:</p>
 <div class="code-block" data-code="{
@@ -396,7 +410,7 @@ brevis_gateway_queue_batches{stream}                    gauge</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">The flush clock belongs to the deployment</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every is a target; max_age is a promise</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Why there is a size trigger</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+      <ul><li class="toc-2"><a href="#the-file-is-the-contract">The file is the contract</a></li><li class="toc-2"><a href="#the-ingestion-id-which-is-the-point">The ingestion_id, which is the point</a></li><li class="toc-2"><a href="#the-request-never-waits-for-the-sink">The request never waits for the sink</a></li><li class="toc-3"><a href="#the-flush-clock-belongs-to-the-deployment">The flush clock belongs to the deployment</a></li><li class="toc-3"><a href="#every-is-a-target-max-age-is-a-promise">every is a target; max_age is a promise</a></li><li class="toc-3"><a href="#why-there-is-a-size-trigger">Why there is a size trigger</a></li><li class="toc-2"><a href="#a-connection-decides-which-replica-gets-the-load">A connection decides which replica gets the load</a></li><li class="toc-2"><a href="#when-the-sink-refuses">When the sink refuses</a></li><li class="toc-2"><a href="#the-hook-is-go-compiled-in">The hook is Go, compiled in</a></li><li class="toc-2"><a href="#when-an-event-is-too-big">When an event is too big</a></li><li class="toc-2"><a href="#what-it-counts">What it counts</a></li><li class="toc-2"><a href="#202-not-200">202, not 200</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#one-route-n-tables">One route, N tables</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
     </aside>
   </main>
 </div>

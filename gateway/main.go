@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 // Main runs a gateway from the config named on the command line.
@@ -54,10 +53,13 @@ func Main(hooks *Hooks, opts ...Option) {
 		log.Fatal(err)
 	}
 
-	http := &http.Server{
-		Addr: cfg.Listen.Addr, Handler: srv.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-	}
+	// The ingest listener, with the age wrapped around its handler. [#44]
+	//
+	// Only this one: recycling a Prometheus scraper's connection buys
+	// nothing -- there is one of it and it is not behind the Service doing
+	// the balancing -- and would cost a handshake per scrape for ever.
+	http := listener(cfg, cfg.Listen.Addr,
+		boundConnections(srv.Handler(), cfg.MaxConnAge()))
 	go func() {
 		log.Printf("listening on %s", cfg.Listen.Addr)
 		if err := http.ListenAndServe(); err != nil {
@@ -76,6 +78,20 @@ func Main(hooks *Hooks, opts ...Option) {
 	// silently, in two repositories, with nothing connecting them.
 	log.Printf("drain budget %s; set terminationGracePeriodSeconds >= %.0f",
 		cfg.DrainBudget(), cfg.GracePeriod().Seconds())
+
+	// SAID AT BOOT, because a connection policy nobody can see is one
+	// nobody tunes. `max_conn_age` is off by default and its absence is
+	// the thing worth printing: behind a ClusterIP Service, load follows
+	// connections and a replica the HPA adds receives none until clients
+	// redial. [#44]
+	if age := cfg.MaxConnAge(); age > 0 {
+		log.Printf("connections idle out after %s and are recycled after %s",
+			cfg.IdleTimeout(), age)
+	} else {
+		log.Printf("connections idle out after %s; `listen.max_conn_age` is "+
+			"off, so a long-lived client keeps the replica it first reached",
+			cfg.IdleTimeout())
+	}
 
 	metrics := serveMetrics(cfg, srv)
 
@@ -138,7 +154,7 @@ func serveMetrics(cfg *Config, srv *Server) *http.Server {
 	}
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", srv.Metrics().MetricsHandler())
-	s := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	s := listener(cfg, addr, mux)
 	go func() {
 		log.Printf("metrics on %s/metrics", addr)
 		if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -13,6 +13,64 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.27.0] — 2026-10-08
+
+### Fixed: connections had no timeout at all, and one replica took the load
+
+Two fields on `listen:`, and they are not the same kind of knob.
+
+```yaml
+listen:
+  idle_timeout: 90s     # closes a connection nobody came back to
+  max_conn_age: 60s     # after this, the next response asks the client to redial
+```
+
+**`idle_timeout` is a CORRECTION, not a feature.** Go falls back to
+`ReadTimeout` when `IdleTimeout` is zero, and **both were zero** on both of
+this binary's listeners — so it was not that idle connections lived a long
+time. They had no timeout at all. A connection opened on the first request of
+the day was still eligible at midnight, and the only thing that ever ended one
+was the client or a restart: a file descriptor per abandoned client, for the
+life of the process.
+
+It therefore has a default — **90 seconds** — and no way to turn it off. Set a
+long one if that is what you want; it is then a number somebody chose rather
+than an absence nobody did.
+
+**`max_conn_age` is off by default**, because that one is policy. Behind a
+Kubernetes `ClusterIP` Service, kube-proxy picks a backend **once per TCP
+connection**, not per request — so a producer with a handful of long-lived
+connections sends everything to the same one or two replicas however many are
+running, and a replica the HPA adds receives nothing because nobody dials it.
+
+A consumer measured one of six replicas taking about half the events with its
+buffer at 99% of `max_records`, while four others took under three events a
+second. The sink kept up the whole time: the pressure came from the imbalance
+alone.
+
+Past the age, the next response carries `Connection: close`. **The request is
+still served** — nothing is retried and no batch is lost — and the client opens
+a fresh connection for its next one, which kube-proxy places again. It costs one
+in-cluster handshake per connection per age.
+
+**Only the ingest listener is wrapped.** Recycling a Prometheus scraper's
+connection buys nothing: there is one of it, it is not behind the Service doing
+the balancing, and it would cost a handshake per scrape for ever.
+
+**The two are independent.** A connection meets whichever bound it meets first,
+and it only reaches the age by being used — which is exactly the long-lived
+producer the age exists to rebalance.
+
+The boot line says which policy is in force, because a connection policy
+nobody can see is one nobody tunes.
+
+Reported in [#44](https://github.com/AreteAcademy/brevis/issues/44), and the
+proposal is what shipped: `ConnContext` to stamp the accept time, a handler
+wrapper that sets the header once past the limit, and `IdleTimeout` straight
+through.
+
+---
+
 ## [0.26.1] — 2026-10-08
 
 ### Fixed: the refusal told a producer to edit a Transform chain they do not have
