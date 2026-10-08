@@ -105,7 +105,7 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#produto">Produto</a>
+      <a href="/#ecossistema">Ecossistema</a>
       <a href="/#principios">Princípios</a>
       <a href="/docs/">Documentação</a>
       <a href="/#open-source">Open source</a>
@@ -192,48 +192,105 @@
     </div>
   </section>
 
-  <section class="section" id="produto">
+  <section class="section" id="ecossistema">
     <div class="shell">
       <div class="section-head head-split" data-reveal>
         <div>
-          <p class="eyebrow">filosofia aplicada ao software</p>
-          <h2>A melhor arquitetura devolve tempo para pensar.</h2>
+          <p class="eyebrow">o ecossistema</p>
+          <h2>Quatro peças. O dado passa por três.</h2>
         </div>
-        <p class="lead">Menos colagem entre ferramentas. Mais contexto, limites claros e tempo recuperado para o trabalho que só a sua equipe pode fazer.</p>
+        <p class="lead">O Core agenda, enfileira e observa — e nunca toca o dado. Quem toca é o SDK, que busca; o Gateway, que recebe; e o SQL, que modela onde o dado já pousou.</p>
       </div>
 
-      <div class="surface-grid" data-reveal>
-        <article class="surface">
-          <p class="surface-index">01</p>
-          <h3>Um runtime, menos dispersão</h3>
-          <p>Transformação, orquestração, fila e scheduler no mesmo binário. Menos peças para coordenar; mais atenção para o domínio que sua equipe realmente conhece.</p>
-          <span class="tag">simplicidade</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">02</p>
-          <h3>Fila que preserva contexto</h3>
-          <p>Eventos, dependências e retries persistem sem virar mais uma camada invisível para você operar.</p>
-          <span class="tag">continuidade</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">03</p>
-          <h3>Ritmo com propósito</h3>
-          <p>Cron, eventos e dependências são resolvidos por um scheduler que entende a jornada inteira do workflow.</p>
-          <span class="tag">disciplina</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">04</p>
-          <h3>Visibilidade é uma virtude</h3>
-          <p>Uma interface direta para observar execuções, logs, estados e decisões — sem decorar o que precisa ser compreendido.</p>
-          <span class="tag">clareza</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">05</p>
-          <h3>O dado que chega, não só o que se busca</h3>
-          <p>Um endpoint HTTP que pousa evento em tópico, tabela ou bucket — configurado por YAML, com identidade congelada. Uma linha que ele grava e uma que um pipeline grava são a mesma linha.</p>
-          <span class="tag">identidade</span>
-        </article>
+      <!-- The map is HTML so it translates and reflows; the names on it are
+           proper nouns and the sentences come from i18n.json.
+
+           The Core row has no .eco-wire, and that is the point, not an
+           omission: the Core schedules and watches, and no data line passes
+           through it. Wires live only on the data rows -- SDK and Gateway in
+           and out, SQL out only, because it models where the data already
+           landed. A connector drawn to the Core would be a false claim. -->
+      <div class="eco bg-grid" role="group" aria-label="Mapa do ecossistema: de onde o dado vem, as quatro peças do Brevis e para onde o dado vai" data-reveal>
+        <div class="eco-core-area">
+          <p class="eco-plane">plano de controle</p>
+          <div class="eco-row eco-core">
+            <h3 class="eco-name">Core</h3>
+            <p>Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado.</p>
+            <span class="pill">areteacademy/brevis</span>
+          </div>
+        </div>
+
+        <div class="eco-src">
+          <p class="eco-col-title">de onde vem</p>
+          <div class="eco-group">
+            <p class="eco-label">o SDK busca</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>HTTP</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>arquivos</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">chega ao Gateway</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>webhooks e apps</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="eco-data">
+          <p class="eco-plane">plano de dados</p>
+          <div class="eco-row eco-sdk">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h3 class="eco-name">SDK</h3>
+            <p>Biblioteca Go que extrai, molda e carrega, dentro da sua etapa.</p>
+            <span class="pill">brevis/sdk</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-gateway">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h3 class="eco-name">Gateway</h3>
+            <p>Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio.</p>
+            <span class="pill">areteacademy/brevis-gateway</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-sql">
+            <h3 class="eco-name">SQL</h3>
+            <p>Arquivos .sql viram tabelas e views, em ordem de dependência.</p>
+            <span class="pill">areteacademy/brevis-sql 0.1.0</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <div class="eco-dst">
+          <p class="eco-col-title">para onde vai</p>
+          <div class="eco-group">
+            <p class="eco-label">tabelas e tópicos</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">arquivos em bucket</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
+            </ul>
+          </div>
+        </div>
       </div>
+
+      <dl class="eco-support" data-reveal>
+        <dt>ao redor</dt>
+        <dd><span class="pill">console</span> a interface web do Core</dd>
+        <dd><span class="pill">brevis-agent</span> roda a etapa num cluster que já é seu</dd>
+        <dd><span class="pill">pip install brevis</span> contexto de execução para etapas em Python</dd>
+      </dl>
 
       <div class="split-code">
         <div class="code-block" data-reveal>
@@ -576,7 +633,7 @@
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/#produto">Produto</a></li>
+          <li><a href="/#ecossistema">Ecossistema</a></li>
           <li><a href="/#principios">Princípios</a></li>
           <li><a href="/#open-source">Open source</a></li>
           <li><a href="/#faq">FAQ</a></li>

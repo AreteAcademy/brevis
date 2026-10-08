@@ -68,48 +68,105 @@
     </div>
   </section>
 
-  <section class="section" id="produto">
+  <section class="section" id="ecossistema">
     <div class="shell">
       <div class="section-head head-split" data-reveal>
         <div>
-          <p class="eyebrow">{{ l.prod_eyebrow }}</p>
-          <h2>{{ l.prod_titulo }}</h2>
+          <p class="eyebrow">{{ l.eco_eyebrow }}</p>
+          <h2>{{ l.eco_titulo }}</h2>
         </div>
-        <p class="lead">{{ l.prod_lead }}</p>
+        <p class="lead">{{ l.eco_lead }}</p>
       </div>
 
-      <div class="surface-grid" data-reveal>
-        <article class="surface">
-          <p class="surface-index">01</p>
-          <h3>{{ l.f1_titulo }}</h3>
-          <p>{{ l.f1_corpo }}</p>
-          <span class="tag">{{ l.f1_tag }}</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">02</p>
-          <h3>{{ l.f2_titulo }}</h3>
-          <p>{{ l.f2_corpo }}</p>
-          <span class="tag">{{ l.f2_tag }}</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">03</p>
-          <h3>{{ l.f3_titulo }}</h3>
-          <p>{{ l.f3_corpo }}</p>
-          <span class="tag">{{ l.f3_tag }}</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">04</p>
-          <h3>{{ l.f4_titulo }}</h3>
-          <p>{{ l.f4_corpo }}</p>
-          <span class="tag">{{ l.f4_tag }}</span>
-        </article>
-        <article class="surface">
-          <p class="surface-index">05</p>
-          <h3>{{ l.f5_titulo }}</h3>
-          <p>{{ l.f5_corpo }}</p>
-          <span class="tag">{{ l.f5_tag }}</span>
-        </article>
+      <!-- The map is HTML so it translates and reflows; the names on it are
+           proper nouns and the sentences come from i18n.json.
+
+           The Core row has no .eco-wire, and that is the point, not an
+           omission: the Core schedules and watches, and no data line passes
+           through it. Wires live only on the data rows -- SDK and Gateway in
+           and out, SQL out only, because it models where the data already
+           landed. A connector drawn to the Core would be a false claim. -->
+      <div class="eco bg-grid" role="group" aria-label="{{ l.eco_rotulo }}" data-reveal>
+        <div class="eco-core-area">
+          <p class="eco-plane">{{ l.eco_controle }}</p>
+          <div class="eco-row eco-core">
+            <h3 class="eco-name">Core</h3>
+            <p>{{ l.eco_core }}</p>
+            <span class="pill">areteacademy/brevis</span>
+          </div>
+        </div>
+
+        <div class="eco-src">
+          <p class="eco-col-title">{{ l.eco_origem }}</p>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_pull }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>HTTP</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>{{ l.eco_arquivos }}</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_push }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>{{ l.eco_push_nome }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="eco-data">
+          <p class="eco-plane">{{ l.eco_dados }}</p>
+          <div class="eco-row eco-sdk">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h3 class="eco-name">SDK</h3>
+            <p>{{ l.eco_sdk }}</p>
+            <span class="pill">brevis/sdk</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-gateway">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h3 class="eco-name">Gateway</h3>
+            <p>{{ l.eco_gateway }}</p>
+            <span class="pill">areteacademy/brevis-gateway</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-sql">
+            <h3 class="eco-name">SQL</h3>
+            <p>{{ l.eco_sql }}</p>
+            <span class="pill">areteacademy/brevis-sql 0.1.0</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <div class="eco-dst">
+          <p class="eco-col-title">{{ l.eco_destino }}</p>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_tabelas }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_buckets }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
+              <li class="chip"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
+            </ul>
+          </div>
+        </div>
       </div>
+
+      <dl class="eco-support" data-reveal>
+        <dt>{{ l.eco_apoio }}</dt>
+        <dd><span class="pill">console</span> {{ l.eco_console }}</dd>
+        <dd><span class="pill">brevis-agent</span> {{ l.eco_agent }}</dd>
+        <dd><span class="pill">pip install brevis</span> {{ l.eco_python }}</dd>
+      </dl>
 
       <div class="split-code">
         <div class="code-block" data-reveal>
