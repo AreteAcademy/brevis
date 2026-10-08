@@ -13,6 +13,19 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.26.1] — 2026-10-08
+
+### Fixed: the refusal told a producer to edit a Transform chain they do not have
+
+`0.26.0`'s 202 body for an event carrying two spellings ended "Rename one of
+them in the Transform chain". That is the SDK's advice to an SDK consumer,
+and a producer POSTing to this gateway has no such thing. It now says "Send
+one of the two, under one spelling".
+
+Requires `sdk v0.84.1`.
+
+---
+
 ## [0.26.0] — 2026-10-08
 
 ### Fixed: `auto_table` had its own union, and `0.25.0` did not fold it
