@@ -62,6 +62,42 @@ func (Dialect) KindOf(ref string) string {
 			" WHERE table_name = '%s'", schema, name)
 }
 
+// Literal escapes with a BACKSLASH, which is the whole difference.
+//
+// Two measurements on 2026-10-08, both against the real warehouse:
+//
+//   - a backslash is an ESCAPE here and a character on Postgres.
+//     `SELECT LENGTH('a\bc')` is 3 here and 4 there, so one left alone
+//     turns `accepted_values: ["a\bc"]` into a test that accepts a value
+//     nobody wrote.
+//   - a doubled quote is NOT an escape here. `'it”s'` is read as two
+//     literals written next to each other, and BigQuery refuses it:
+//     "concatenated string literals must be separated by whitespace".
+//     Postgres takes exactly that form, and it is what the first version
+//     of this function did -- copied from the Postgres one, passing every
+//     unit test of its output, and failing the conformance suite against
+//     the warehouse on the first value with an apostrophe in it.
+//
+// ORDER MATTERS: the backslash goes first, or the one added for the quote
+// is doubled by the line after it.
+//
+// Not a raw string (`r'…'`): a raw string cannot contain the quote that
+// closes it, so the one escape it removes is the one still needed.
+func (Dialect) Literal(s string) string {
+	// The backslash FIRST, or every escape added below is doubled by it.
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `'`, `\'`)
+	// A LITERAL NEWLINE CANNOT SIT IN A QUOTED STRING HERE. Postgres takes
+	// one; BigQuery answers "Unclosed string literal", which reads as a bug
+	// in the SQL this package wrote rather than as a value with a line
+	// break in it. Found by the conformance suite, from a test value that
+	// contained a real newline by accident.
+	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	s = strings.ReplaceAll(s, "\t", `\t`)
+	return "'" + s + "'"
+}
+
 // Build is every statement that turns the model into what its header says.
 //
 // ONE STATEMENT WHEN THE KIND DOES NOT CHANGE. BigQuery has `CREATE OR

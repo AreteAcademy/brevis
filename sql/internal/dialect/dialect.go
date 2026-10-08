@@ -68,6 +68,20 @@ type Dialect interface {
 	// KindOf is a query whose single value is "table", "view" or NULL.
 	KindOf(ref string) string
 
+	// Literal is a Go string as this warehouse's SQL spells it, quotes
+	// included.
+	//
+	// ON THE INTERFACE BECAUSE IT MEASURABLY DIFFERS, and for no other
+	// reason -- with one backslash in the statement, on 2026-10-08:
+	//
+	//	postgres   SELECT LENGTH('a\bc')  ->  4   a backslash is a character
+	//	bigquery   SELECT LENGTH('a\bc')  ->  3   \b is a backspace
+	//
+	// A value a consumer wrote in an `accepted_values` test therefore means
+	// two different things depending on where the project runs, and the
+	// check built from it would pass against data it should refuse.
+	Literal(s string) string
+
 	// Build is every statement that turns the model into what its header
 	// says, in order, given what is in the warehouse NOW.
 	Build(m model.Model, current Kind) ([]string, error)

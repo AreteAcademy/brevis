@@ -53,6 +53,7 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a view replaces a table of that name", h.viewReplacesATable)
 	t.Run("a table replaces a view of that name", h.tableReplacesAView)
 	t.Run("nothing of that name is Absent", h.absentIsAbsent)
+	t.Run("a string literal survives what is in it", h.literalsSurvive)
 }
 
 type harness struct {
@@ -196,6 +197,37 @@ func (h *harness) tableReplacesAView(t *testing.T) {
 func (h *harness) absentIsAbsent(t *testing.T) {
 	if got := h.kindOf(t, "never_made"); got != dialect.Absent {
 		t.Errorf("a relation that was never made is %q", got)
+	}
+}
+
+// A STRING LITERAL IS NOT THE SAME IN BOTH, which is why Literal is on the
+// interface at all. Measured on 2026-10-08, with one backslash in the SQL:
+//
+//	postgres   SELECT LENGTH('a\bc')  ->  4   the backslash is a character
+//	bigquery   SELECT LENGTH('a\bc')  ->  3   \b is a backspace
+//
+// So a value a consumer wrote in `accepted_values` means two different
+// things depending on where it runs, and the test built from it would pass
+// against data it should refuse. These are the characters that do it.
+func (h *harness) literalsSurvive(t *testing.T) {
+	for _, want := range []string{
+		`plain`,
+		`it's quoted`,
+		`back\slash`,
+		`both ' and \ at once`,
+		"a\nb", // a real line break: Postgres takes one inside a literal
+		"a\tb", // and a real tab
+		`%_`,   // nothing here is a LIKE, and they must not become one
+	} {
+		got, err := h.conn.Scalar(h.ctx, "SELECT "+h.d.Literal(want))
+		if err != nil {
+			t.Errorf("%q: %v  (as %s)", want, err, h.d.Literal(want))
+			continue
+		}
+		if fmt.Sprint(got) != want {
+			t.Errorf("sent %q as %s and the warehouse read %q",
+				want, h.d.Literal(want), fmt.Sprint(got))
+		}
 	}
 }
 

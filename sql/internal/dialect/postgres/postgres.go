@@ -45,6 +45,22 @@ func (Dialect) KindOf(ref string) string {
  WHERE n.nspname = '%s' AND c.relname = '%s'`, schema, name)
 }
 
+// Literal doubles the quote and leaves everything else alone.
+//
+// Postgres has treated a backslash as an ordinary character since 9.1, when
+// standard_conforming_strings became the default -- verified against the
+// server this project tests on, not taken from the documentation. So
+// escaping one would produce TWO, and a value with a backslash in it would
+// stop matching the data it was written for.
+//
+// A server with standard_conforming_strings OFF is out of scope and says so
+// rather than being guessed at: that setting is twelve years deprecated,
+// and a dialect quietly producing different SQL per session variable is
+// worse than one that is wrong in a documented way.
+func (Dialect) Literal(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
 // Build is every statement that turns the model into what its header says.
 //
 // A VIEW IS REPLACED IN PLACE, never dropped, and that is conservative on
