@@ -244,6 +244,46 @@ date.
 
 ---
 
+## gateway
+
+How a gateway appears on `/data`: its configuration, published as a deliberate
+act — never its traffic, and never at runtime.
+
+```bash
+gateway describe gateway.yaml > manifest.json   # the gateway's own binary
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway
+```
+
+`publish` checks the manifest whole before writing anything, naming the stream
+and role of the first problem, and replaces that gateway's destinations in one
+transaction. `unpublish` removes a decommissioned gateway, and is an error when
+no gateway of that name was published.
+
+A command of its own rather than a mode of `brevis publish`, because workflows
+and gateways have different set semantics: `publish --prune` must never reach a
+gateway's rows.
+
+---
+
+## prune
+
+Applies the retention policy. It is the **only** thing in Brevis that deletes
+anything, and it never runs on its own — an operator schedules it.
+
+```bash
+brevis prune --dry-run          # what would go, changing nothing
+brevis prune
+brevis prune --purge-after 0    # trim only, never delete a run
+```
+
+| flag | default | |
+|---|---|---|
+| `--trim-after` | `720h` | empties the log, the phases and the published output |
+| `--purge-after` | `8760h` | deletes the run entirely; `0` never deletes |
+
+---
+
 ## brand
 
 Validates a branding file without starting the server.

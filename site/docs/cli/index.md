@@ -238,6 +238,46 @@ brevis backfill diario --from 2026-01-01 --to 2026-01-31 --param load_full=true
 
 ---
 
+## gateway
+
+Como um gateway aparece no `/data`: a configuração dele, publicada como ato
+deliberado — nunca o tráfego, e nunca em tempo de execução.
+
+```bash
+gateway describe gateway.yaml > manifest.json   # o binário do próprio gateway
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway
+```
+
+O `publish` confere o manifesto inteiro antes de escrever qualquer coisa,
+citando o stream e o papel do primeiro problema, e substitui os destinos
+daquele gateway numa transação só. O `unpublish` remove um gateway
+descomissionado, e é erro quando nenhum gateway com aquele nome foi publicado.
+
+Um comando próprio, e não um modo do `brevis publish`, porque workflows e
+gateways têm semânticas de conjunto diferentes: o `publish --prune` não pode
+alcançar as linhas de um gateway.
+
+---
+
+## prune
+
+Aplica a política de retenção. É a **única** coisa no Brevis que apaga alguma
+coisa, e não roda sozinha — quem agenda é o operador.
+
+```bash
+brevis prune --dry-run          # o que sairia, sem mudar nada
+brevis prune
+brevis prune --purge-after 0    # só enxuga, nunca apaga um run
+```
+
+| flag | padrão | |
+|---|---|---|
+| `--trim-after` | `720h` | esvazia o log, as fases e a saída publicada |
+| `--purge-after` | `8760h` | apaga o run inteiro; `0` nunca apaga |
+
+---
+
 ## brand
 
 Valida um arquivo de identidade visual sem subir o servidor.

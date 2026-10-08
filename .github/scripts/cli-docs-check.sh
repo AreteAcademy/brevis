@@ -39,6 +39,17 @@ check() { # <label> <dir> <doc>...
   local cmds; cmds=$(subcommands "$dir")
   [ -n "$cmds" ] || { echo "❌ $label: could not read the subcommands"; fail=1; return; }
 
+  # A MISSING FILE IS A FAILURE, not a skip.
+  #
+  # It was `[ -f "$doc" ] || continue`, and the site's CLI page was renamed
+  # from 07-cli.md to 08-cli.md. Half of this check then passed by doing
+  # nothing, for weeks, and `brevis gateway` reached a release documented
+  # nowhere a user looks. A check that cannot find what it checks has not
+  # passed -- it has not run.
+  for doc in "$@"; do
+    [ -f "$doc" ] || { echo "❌ $label: $doc does not exist; this check was silently skipping it"; fail=1; }
+  done
+
   for cmd in $cmds; do
     for doc in "$@"; do
       [ -f "$doc" ] || continue
@@ -68,7 +79,7 @@ check() { # <label> <dir> <doc>...
   echo "✅ $label: $(echo "$cmds" | tr '\n' ' ')"
 }
 
-check "brevis"     ./cmd/brevis      docs/COMMANDS.md site/content/pt/docs/07-cli.md site/content/en/docs/07-cli.md
+check "brevis"     ./cmd/brevis      docs/COMMANDS.md site/content/pt/docs/08-cli.md site/content/en/docs/08-cli.md
 check "brevis-sdk" ./cmd/brevis-sdk  docs/COMMANDS.md cmd/brevis-sdk/README.md
 
 exit $fail

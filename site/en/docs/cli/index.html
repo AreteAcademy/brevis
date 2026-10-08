@@ -204,6 +204,25 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 <div class="table-wrap"><table><thead><tr><th>flag</th><th></th><th></th></tr></thead><tbody><tr><td><code>--from</code></td><td><strong>required</strong></td><td>start date, <code>YYYY-MM-DD</code></td></tr><tr><td><code>--to</code></td><td><strong>required</strong></td><td>end date, <code>YYYY-MM-DD</code></td></tr><tr><td><code>--param</code></td><td></td><td>applies to <strong>every</strong> slot in the range</td></tr></tbody></table></div>
 <p><code>--to</code> includes the whole day: internally the end becomes <code>23:59:59</code> of that date.</p>
 <hr>
+<h2 id="gateway">gateway<a class="anchor" href="#gateway" aria-label="link">#</a></h2>
+<p>How a gateway appears on <code>/data</code>: its configuration, published as a deliberate act — never its traffic, and never at runtime.</p>
+<div class="code-block" data-code="gateway describe gateway.yaml &gt; manifest.json   # the gateway&#x27;s own binary
+brevis gateway publish manifest.json
+brevis gateway unpublish events_gateway"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>gateway describe gateway.yaml &gt; manifest.json   <span class="t-c"># the gateway's own binary</span>
+<span class="t-k">brevis</span> gateway publish manifest.json
+<span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
+<p><code>publish</code> checks the manifest whole before writing anything, naming the stream and role of the first problem, and replaces that gateway's destinations in one transaction. <code>unpublish</code> removes a decommissioned gateway, and is an error when no gateway of that name was published.</p>
+<p>A command of its own rather than a mode of <code>brevis publish</code>, because workflows and gateways have different set semantics: <code>publish --prune</code> must never reach a gateway's rows.</p>
+<hr>
+<h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>
+<p>Applies the retention policy. It is the <strong>only</strong> thing in Brevis that deletes anything, and it never runs on its own — an operator schedules it.</p>
+<div class="code-block" data-code="brevis prune --dry-run          # what would go, changing nothing
+brevis prune
+brevis prune --purge-after 0    # trim only, never delete a run"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> prune <span class="t-n">--dry-run</span>          <span class="t-c"># what would go, changing nothing</span>
+<span class="t-k">brevis</span> prune
+<span class="t-k">brevis</span> prune <span class="t-n">--purge-after</span> 0    <span class="t-c"># trim only, never delete a run</span></code></pre></div>
+<div class="table-wrap"><table><thead><tr><th>flag</th><th>default</th><th></th></tr></thead><tbody><tr><td><code>--trim-after</code></td><td><code>720h</code></td><td>empties the log, the phases and the published output</td></tr><tr><td><code>--purge-after</code></td><td><code>8760h</code></td><td>deletes the run entirely; <code>0</code> never deletes</td></tr></tbody></table></div>
+<hr>
 <h2 id="brand">brand<a class="anchor" href="#brand" aria-label="link">#</a></h2>
 <p>Validates a branding file without starting the server.</p>
 <div class="code-block" data-code="brevis brand brand.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> brand brand.yaml</code></pre></div>
@@ -245,7 +264,7 @@ brevis publish workflows/ --project acme --prune"><div class="code-head"><span c
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#report">report</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#brand">brand</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
+      <ul><li class="toc-2"><a href="#serve">serve</a></li><li class="toc-2"><a href="#scheduler">scheduler</a></li><li class="toc-2"><a href="#alert">alert</a></li><li class="toc-2"><a href="#report">report</a></li><li class="toc-2"><a href="#migrate">migrate</a></li><li class="toc-2"><a href="#validate">validate</a></li><li class="toc-2"><a href="#run">run</a></li><li class="toc-2"><a href="#publish">publish</a></li><li class="toc-2"><a href="#backfill">backfill</a></li><li class="toc-2"><a href="#gateway">gateway</a></li><li class="toc-2"><a href="#prune">prune</a></li><li class="toc-2"><a href="#brand">brand</a></li><li class="toc-2"><a href="#hash">hash</a></li><li class="toc-2"><a href="#version">version</a></li></ul>
     </aside>
   </main>
 </div>
