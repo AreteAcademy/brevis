@@ -18,6 +18,90 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.82.0] — 2026-10-08
+
+### Fixed: a null in a JSON column lands as SQL NULL
+
+A consumer measured **4,238 rows holding a JSON `null` and 145 holding SQL
+`NULL`** — in one table, for the same producer value. Which one a row got was
+decided by whether anything else in its flush window happened to carry that
+key.
+
+```sql
+-- answered 145 of 4,383
+select count(*) from t where drivers is null;
+```
+
+Everywhere else a null is a null: send `"label": null` into a STRING column
+and the row holds SQL NULL. A **JSON** column is the exception, because `null`
+is a legal JSON value — so the column holds a JSON null, `IS NULL` does not
+find it, and every reader of that table has to write
+`col IS NULL OR JSON_TYPE(col) = 'null'` for ever.
+
+A null for a key declared as JSON is now **omitted from the row**, which is
+what makes BigQuery write SQL NULL.
+
+**A declared `STRING` column's null is still written.** `0.80.0` decided that
+a declared column arriving empty stays in the row, and that decision is scoped
+here rather than reverted: it is right for every type whose null has one
+meaning.
+
+**Measured in real BigQuery**, which was not possible until this release. The
+emulator refuses load jobs on purpose — `TestIntegrationBigQueryStillRefusesLoadJobs`
+exists to fail the day it stops — so how BigQuery STORES a null had only ever
+been the reporter's measurement. Against a real project, before and after:
+
+```
+before   id=2   j IS NULL = false   to_json_string = null
+after    id=2   j IS NULL = true
+```
+
+It is an integration test now rather than a claim.
+
+### ⚠️ The rows already written are NOT migrated
+
+Nothing rewrites history, and 4,238 of theirs stay as they are. One statement
+fixes a table, and it is safe to run more than once:
+
+```sql
+-- BigQuery
+update `project.dataset.table`
+set drivers = null
+where drivers is not null and json_type(drivers) = 'null';
+```
+
+Until it is run, `col IS NULL OR JSON_TYPE(col) = 'null'` keeps working and
+keeps being necessary for the old rows. After it, `IS NULL` is enough.
+
+### Changed: `load.EncodeRows` takes `core.WriteOptions`
+
+Its third signature in three releases, and the last one. The column NAMES
+alone cannot answer whether a column's null has one meaning or two — the fix
+above needs the types — and a function that keeps growing a parameter is a
+function being asked something its arguments do not carry. `Discovered` moved
+to `WriteOptions` in `0.79.0` for the same reason.
+
+`EncodeRows` is exported and this is a breaking change for anybody calling it
+directly. Inside this repository only tests did.
+
+### Fixed: a table of only your own columns could not be created
+
+Partitioning defaults to `ingestion_loaded_at`, a caller who declares a schema
+of their own fields has not got it, and `WithPartitionBy("")` is
+indistinguishable from not calling it — so there was no way to say "no
+partitioning", and BigQuery refused the CREATE naming a column the caller
+never asked for.
+
+The default now stops applying when the schema cannot carry it, and says so
+once: an unpartitioned table is a cost surprise later. An **explicit**
+`partition_by` that the declaration does not have is still refused, by name,
+with the columns it does have.
+
+Found by the integration suite's first run against a real project, where nine
+of fourteen tests failed — eight of them stale, and this one right.
+
+---
+
 ## [0.81.0] — 2026-10-07
 
 ### Added: a successful load says which table it wrote
