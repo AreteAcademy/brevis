@@ -42,7 +42,8 @@ func testDB(t *testing.T) *postgres.Pool {
 	// to workflows: it references the slug as text, so the CASCADE does not
 	// reach it.
 	if _, err := p.Exec(context.Background(),
-		`TRUNCATE queue_items, task_runs, runs, schedules, workflows, projects CASCADE`); err != nil {
+		`TRUNCATE queue_items, task_runs, runs, schedules, workflows, projects,
+		          landings, landing_cursor CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	return p

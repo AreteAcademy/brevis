@@ -98,7 +98,19 @@ func (s *Scheduler) Cycle(ctx context.Context, now time.Time) (int, error) {
 		}
 		created += n
 	}
-	return created, nil
+
+	// AND THEN THE LANDINGS, in the same cycle and on the same `now`. A
+	// second loop with a clock of its own would be a second place for the
+	// same race, and a test could no longer hold both still at once.
+	//
+	// Its failure does not fail the schedules': they are independent reasons
+	// for a run to exist, and a subscription query that errors must not stop
+	// a cron that works.
+	n, err := s.landingCycle(ctx, now)
+	if err != nil {
+		s.log.Error("landing cycle", "error", err)
+	}
+	return created + n, nil
 }
 
 func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Time) (int, error) {
@@ -156,11 +168,14 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 		if err != nil {
 			return created, fmt.Errorf("params padrao de %q: %w", a.WorkflowSlug, err)
 		}
-		if err := s.createAndEnqueue(ctx, a.WorkflowSlug, bruto, slot,
-			sch.TriggerSchedule, 0, defaults, def.MaxActive); err != nil {
+		made, err := s.createAndEnqueue(ctx, a.WorkflowSlug, bruto, slot,
+			sch.TriggerSchedule, 0, defaults, def.MaxActive)
+		if err != nil {
 			return created, err
 		}
-		created++
+		if made {
+			created++
+		}
 
 		// The marker advances at EVERY slot, and not at the end of the loop: if
 		// the process dies midway, the slots already materialised are not
@@ -178,9 +193,16 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 // safe across a restart: if it dies after creating the Run and before advancing
 // the marker, the next attempt collides on the unique instead of duplicating --
 // exactly §29's case.
+//
+// IT REPORTS WHETHER IT CREATED ONE. A collision is not an error and is not a
+// creation either, and counting it as one made `runs criados` over-report
+// every time the scheduler restarted mid-slot. It matters more for a landing
+// trigger, where a collision is the NORMAL outcome -- that is how ten
+// landings in a window become one run -- so a count that could not tell them
+// apart would report ten.
 func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byte,
 	slot time.Time, trigger sch.TriggerType, priority int, params map[string]string,
-	maxActive int) error {
+	maxActive int) (bool, error) {
 
 	key := fmt.Sprintf("%s:%s:%s", slug, trigger, slot.UTC().Format(time.RFC3339))
 
@@ -195,15 +217,15 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
-			return nil // already materialized: nothing to do
+			return false, nil // already materialized: nothing to do
 		}
-		return err
+		return false, err
 	}
 
 	if err := s.runs.Transicionar(ctx, r.ID, dom.StatusQueued); err != nil {
-		return err
+		return false, err
 	}
-	return s.queue.Enqueue(ctx, r.ID, priority, time.Time{})
+	return true, s.queue.Enqueue(ctx, r.ID, priority, time.Time{})
 }
 
 // Disparar creates a manual Run and enqueues it now.
@@ -305,11 +327,14 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		if prox.After(ate) {
 			break
 		}
-		if err := s.createAndEnqueue(ctx, slug, bruto, prox,
-			sch.TriggerBackfill, s.backfillPriority, values, def.MaxActive); err != nil {
+		made, err := s.createAndEnqueue(ctx, slug, bruto, prox,
+			sch.TriggerBackfill, s.backfillPriority, values, def.MaxActive)
+		if err != nil {
 			return created, err
 		}
-		created++
+		if made {
+			created++
+		}
 		cursor = prox
 	}
 

@@ -26,6 +26,14 @@ const (
 	TriggerBackfill TriggerType = "backfill"
 	TriggerAPI      TriggerType = "api"
 	TriggerRetry    TriggerType = "retry"
+
+	// TriggerLanded is a run that exists because data arrived: a landing on a
+	// target the workflow subscribes to. See Workflow.Trigger.
+	//
+	// Its `logical_date` is the DEBOUNCE WINDOW the landing fell in, not the
+	// instant -- which is what makes ten landings in a minute one run: they
+	// compose one idempotency key, and the unique on `runs` refuses the rest.
+	TriggerLanded TriggerType = "landed"
 )
 
 // Schedule is a workflow's schedule.
