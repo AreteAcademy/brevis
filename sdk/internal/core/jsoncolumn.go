@@ -23,18 +23,26 @@ import (
 // the standard library's own answer to this problem and JSONText is ours;
 // neither matches `case string` or `case []byte`, and both marshal to the JSON
 // they hold. A check written on Kind would refuse the two correct answers.
-func CheckJSONColumns(declared Schema, records []Envelope) error {
+// IT TAKES THE WHOLE DECLARATION. [#43] The row is matched to the column
+// under the name the DESTINATION stores it: on BigQuery a row carrying
+// `payload` answers for a declared `Payload`, and asking by exact name let a
+// string into a JSON column without a word -- which is the exact outcome
+// this check exists to stop, reached through the one gap it had.
+func CheckJSONColumns(opt WriteOptions, records []Envelope) error {
+	declared := opt.Schema
 	if len(declared) == 0 || len(records) == 0 {
 		return nil
 	}
 
-	isJSON := make(map[string]bool, len(declared))
+	// Folded name -> the name the DECLARATION uses, which is the one the
+	// refusal has to print: the consumer fixes their Schema, not the fold.
+	jsonColumn := make(map[string]string, len(declared))
 	for _, c := range declared {
 		if c.Type == TypeJSON {
-			isJSON[c.Name] = true
+			jsonColumn[opt.ColumnKey(c.Name)] = c.Name
 		}
 	}
-	if len(isJSON) == 0 {
+	if len(jsonColumn) == 0 {
 		return nil
 	}
 
@@ -48,11 +56,15 @@ func CheckJSONColumns(declared Schema, records []Envelope) error {
 		if err != nil {
 			continue // EncodeRows refuses anything that is not an object
 		}
-		for name := range isJSON {
+		for field, value := range row {
+			name, declaredJSON := jsonColumn[opt.ColumnKey(field)]
+			if !declaredJSON {
+				continue
+			}
 			if _, seen := bad[name]; seen {
 				continue
 			}
-			switch row[name].(type) {
+			switch value.(type) {
 			case string:
 				bad[name] = "a string"
 			case []byte:

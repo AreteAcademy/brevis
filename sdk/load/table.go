@@ -121,7 +121,10 @@ func (l *Loader) createFromSchema(ctx context.Context, table *bigquery.Table, pr
 	// mistake, and it is refused HERE rather than by BigQuery -- whose own
 	// message, "The field specified for partitioning cannot be found in the
 	// schema", does not say which field or what the schema has.
-	if l.cfg.PartitionBy != "" && !hasColumn(schema, l.cfg.PartitionBy) {
+	// hasColumn asks under the name BigQuery would store it: `partition_by:
+	// createdat` against a declared `createdAt` names a column that will
+	// exist. [#43]
+	if l.cfg.PartitionBy != "" && !hasColumn(schema, storedAs(schema)(l.cfg.PartitionBy)) {
 		return fmt.Errorf("partition_by names %q and the declaration does not have it; "+
 			"the columns are %s", l.cfg.PartitionBy, strings.Join(columnNames(schema), ", "))
 	}
@@ -515,20 +518,12 @@ func (l *Loader) evolveTable(ctx context.Context, table *bigquery.Table) error {
 		return fmt.Errorf("reading %s to evolve it: %w", nameOf(table), err)
 	}
 
-	have := make(map[string]bool, len(md.Schema))
-	for _, f := range md.Schema {
-		have[f.Name] = true
-	}
-
 	declared, err := bigquerySchema(l.cfg.Schema)
 	if err != nil {
 		return err
 	}
 	var missing bigquery.Schema
-	for _, f := range declared {
-		if have[f.Name] {
-			continue
-		}
+	for _, f := range missingFrom(md.Schema, declared) {
 		add := *f
 		add.Required = false
 		// The note, where BigQuery keeps one: a field description rather than
@@ -589,6 +584,34 @@ func columnNames(schema bigquery.Schema) []string {
 	out := make([]string, 0, len(schema))
 	for _, f := range schema {
 		out = append(out, f.Name)
+	}
+	return out
+}
+
+// missingFrom is the declaration's columns that the table does not have,
+// UNDER ANY SPELLING. [#43]
+//
+// `createdat` against a column created as `createdAt` used to come out of
+// here as missing, which produced an ADD COLUMN that BigQuery answers with
+// 400 `Field createdat already exists in schema` -- so every load into that
+// table failed, for a column that was already there.
+//
+// Separate from evolveTable so the decision can be tested without a
+// warehouse: what it does with the result -- nullable, with the note -- is
+// not the part that was wrong.
+func missingFrom(table, declared bigquery.Schema) bigquery.Schema {
+	stored := storedAs(table)
+	has := make(map[string]bool, len(table))
+	for _, f := range table {
+		has[f.Name] = true
+	}
+
+	var out bigquery.Schema
+	for _, f := range declared {
+		if has[stored(f.Name)] {
+			continue
+		}
+		out = append(out, f)
 	}
 	return out
 }

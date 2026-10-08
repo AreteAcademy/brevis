@@ -42,7 +42,23 @@ func reconcile(dest, incoming bigquery.Schema) ([]string, error) {
 		return out
 	}
 
-	cols, err := core.Reconcile(names(dest), names(incoming), namesOf(dest))
+	// The staging table is created from the DECLARATION and carries its
+	// spelling; the destination carries whatever its own CREATE used. On
+	// BigQuery those are one column, so the incoming names are asked under
+	// the name the DESTINATION stores them before anything is compared --
+	// otherwise every merge into a table spelled the other way refused with
+	// "the rows carry column(s) createdat, which ... does not have", about a
+	// column that is there. [#43]
+	stored := storedAs(dest)
+	asStored := func(s bigquery.Schema) []string {
+		out := make([]string, len(s))
+		for i, f := range s {
+			out[i] = stored(f.Name)
+		}
+		return out
+	}
+
+	cols, err := core.Reconcile(names(dest), asStored(incoming), namesOf(dest))
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +69,9 @@ func reconcile(dest, incoming bigquery.Schema) ([]string, error) {
 	}
 	var mismatched []string
 	for _, f := range incoming {
-		destType, present := destTypes[f.Name]
+		// Named with the INCOMING spelling, which is the one in the
+		// consumer's declaration and the one they would go and change.
+		destType, present := destTypes[stored(f.Name)]
 		if present && !compatible(destType, f.Type) {
 			mismatched = append(mismatched, fmt.Sprintf("%s (destination %s, incoming %s)",
 				f.Name, destType, f.Type))

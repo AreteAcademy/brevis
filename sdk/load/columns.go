@@ -27,9 +27,16 @@ func checkDeclaredAgainstTable(declared []string, schema bigquery.Schema, table 
 		has[f.Name] = true
 	}
 
+	stored := storedAs(schema)
 	var absent []string
 	for _, c := range declared {
-		if !has[c] {
+		// Asked under the name THE TABLE uses. [#43] `createdat` against a
+		// column created as `createdAt` is the same column on BigQuery: a
+		// load job writing one lands in the other. Compared by exact name,
+		// this refused the load with "the Columns declaration lists
+		// createdat, which ... does not have", naming a column that is
+		// there.
+		if !has[stored(c)] {
 			absent = append(absent, c)
 		}
 	}
@@ -116,20 +123,64 @@ func (l *Loader) CheckDestination(ctx context.Context, columns []string) error {
 	// that evolving did what it said.
 	declared := columns
 	if l.cfg.Evolve.MayAdd() {
-		has := make(map[string]bool, len(meta.Schema))
-		for _, f := range meta.Schema {
-			has[f.Name] = true
-		}
-		declared = make([]string, 0, len(columns))
-		for _, c := range columns {
-			if has[c] {
-				declared = append(declared, c)
-			}
-		}
+		declared = declaredThatTheTableHas(columns, meta.Schema)
 	}
 
 	if err := checkDeclaredAgainstTable(declared, meta.Schema, nameOf(table)); err != nil {
 		return fmt.Errorf("%w. Caught before the extract, so no source quota was spent", err)
 	}
 	return nil
+}
+
+// storedAs answers, for one table, what BigQuery calls a field. [#43]
+//
+// BigQuery folds column case. A CREATE listing both `nationalID` and
+// `nationalId` is refused with `Field nationalId already exists in schema`,
+// and a load job writing `createdat` into a table whose column is `createdAt`
+// lands in `createdAt` -- measured against a real project on 2026-10-08, by a
+// load job and not only by DML, because the load is the path the SDK uses.
+//
+// Every comparison on this path goes through it, so there is ONE answer to
+// "does the table have this column" rather than five spellings of the
+// question. The SQL drivers do not: a quoted identifier is distinct on
+// Postgres and MySQL, and two spellings are two columns there on purpose --
+// which is why this lives in the BigQuery loader and not in core.
+//
+// It returns the name UNCHANGED when the table has no column for it, so the
+// refusals keep naming what the caller actually wrote.
+func storedAs(schema bigquery.Schema) func(string) string {
+	stored := make(map[string]string, len(schema))
+	for _, f := range schema {
+		stored[core.FoldedName(f.Name)] = f.Name
+	}
+	return func(name string) string {
+		if n, ok := stored[core.FoldedName(name)]; ok {
+			return n
+		}
+		return name
+	}
+}
+
+// declaredThatTheTableHas drops the columns EvolveAdditive is about to add,
+// so the check below judges only what is already there.
+//
+// Extracted from CheckDestination to be testable, and because it asks the
+// same question as checkDeclaredAgainstTable and got a different answer:
+// both compared by exact name, so `createdat` was dropped here for the wrong
+// reason and then never checked there. The two bugs cancelled, and a
+// mutation of either alone survived. [#43]
+func declaredThatTheTableHas(columns []string, schema bigquery.Schema) []string {
+	has := make(map[string]bool, len(schema))
+	for _, f := range schema {
+		has[f.Name] = true
+	}
+	stored := storedAs(schema)
+
+	kept := make([]string, 0, len(columns))
+	for _, c := range columns {
+		if has[stored(c)] {
+			kept = append(kept, c)
+		}
+	}
+	return kept
 }

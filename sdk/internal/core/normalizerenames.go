@@ -41,6 +41,12 @@ func checkNormalizeRenames(on bool, declared []string, inTable map[string]Column
 		return nil
 	}
 
+	// NOT FOLDED, and it is the one check on this path that must not be.
+	// [#43] It is ABOUT case: it fires exactly when the table has
+	// `createdAt` and the load declares `createdat`, to say that
+	// BREVIS_NORMALIZE_DATA would leave the old column behind with the rows
+	// already in it. Folding the comparison would make the two names equal
+	// and the check would never fire again -- a check that cannot fail.
 	wanted := make(map[string]bool, len(declared))
 	for _, c := range declared {
 		wanted[c] = true

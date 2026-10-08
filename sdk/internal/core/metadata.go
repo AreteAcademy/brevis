@@ -33,7 +33,7 @@ const (
 // Transform chain, so checking all of them would cost a full scan to say the
 // same thing.
 func CheckColumns(declared []string, records []Envelope) error {
-	return CheckRow(declared, nil, records, nil)
+	return CheckRow(WriteOptions{Columns: declared}, records)
 }
 
 // CheckRow is CheckColumns with the declaration's TYPES, which is what makes a
@@ -47,17 +47,24 @@ func CheckColumns(declared []string, records []Envelope) error {
 // Everything else is unchanged, and the undeclared half especially: a field the
 // destination never heard of still stops the load. A default says a column may
 // be ABSENT, not that anything may be present.
-func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []string) error {
+// IT TAKES THE WHOLE DECLARATION rather than four pieces of it. [#43] Five
+// drivers passed the same `opt.Columns, opt.Schema, records, opt.Discovered`,
+// and the question this check asks turned out to need a fifth field --
+// whether the destination folds column case. `Discovered` was widened for the
+// same reason in #42: a function that keeps growing a parameter is a function
+// being asked something its arguments do not carry.
+func CheckRow(opt WriteOptions, records []Envelope) error {
+	declared := opt.Columns
 	if len(declared) == 0 || len(records) == 0 {
 		return nil
 	}
 
-	optional := make(map[string]bool, len(s)+len(mayBeAbsent))
-	for _, c := range s {
+	optional := make(map[string]bool, len(opt.Schema)+len(opt.Discovered))
+	for _, c := range opt.Schema {
 		// Required and defaulted at once is not a contradiction: the default is
 		// what fills the NOT NULL when the row omits it.
 		if c.Default != nil {
-			optional[c.Name] = true
+			optional[opt.ColumnKey(c.Name)] = true
 		}
 	}
 	// A column the BATCH contributed, not the consumer. Absent from one record
@@ -66,8 +73,8 @@ func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []str
 	// have and a record missing one of them writes NULL. The other half of
 	// this check is untouched -- a field nothing declared still stops the
 	// load, which is the half that matters most.
-	for _, c := range mayBeAbsent {
-		optional[c] = true
+	for _, c := range opt.Discovered {
+		optional[opt.ColumnKey(c)] = true
 	}
 
 	row, err := AsObject(records[0].Payload)
@@ -76,11 +83,30 @@ func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []str
 			"object: %w", err)
 	}
 
+	// One record carrying two spellings of one column, where the destination
+	// folds case. [#43] records[0] is the right place for it by this
+	// function's own reasoning: every record comes out of one Transform
+	// chain, so a chain that produces BOTH produces both in every record.
+	// The reporter's case -- two spellings in two records -- is the batch
+	// UNION, and that is Discovered's question, not this one's.
+	if err := checkOneSpellingPerRecord(opt, row); err != nil {
+		return err
+	}
+
+	// The row under the names the DESTINATION will store them: on BigQuery
+	// `nationalId` answers for a declared `nationalID`, and on Postgres it
+	// does not.
+	present := make(map[string]bool, len(row))
+	for f := range row {
+		present[opt.ColumnKey(f)] = true
+	}
+
 	want := make(map[string]bool, len(declared))
 	var missing []string
 	for _, c := range declared {
-		want[c] = true
-		if _, present := row[c]; !present && !optional[c] {
+		key := opt.ColumnKey(c)
+		want[key] = true
+		if !present[key] && !optional[key] {
 			missing = append(missing, c)
 		}
 	}
@@ -99,7 +125,10 @@ func CheckRow(declared []string, s Schema, records []Envelope, mayBeAbsent []str
 
 	var undeclared []string
 	for f := range row {
-		if !want[f] && !empty[f] {
+		// `empty` is keyed by the exact name and stays that way: folding it
+		// could only make this half MORE permissive, and the half that lets
+		// data through quietly is not the one to loosen on a guess.
+		if !want[opt.ColumnKey(f)] && !empty[f] {
 			undeclared = append(undeclared, f)
 		}
 	}

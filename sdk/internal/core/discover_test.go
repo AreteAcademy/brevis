@@ -169,13 +169,13 @@ func TestCheckRowLetsADiscoveredColumnBeAbsent(t *testing.T) {
 	records := batch(map[string]any{"id": "A"})
 
 	// Declared and absent: still refused, naming the column.
-	err := CheckRow([]string{"id", "declarada"}, nil, records, nil)
+	err := CheckRow(WriteOptions{Columns: []string{"id", "declarada"}}, records)
 	if err == nil || !strings.Contains(err.Error(), "declarada") {
 		t.Fatalf("a declared column the row does not deliver was accepted: %v", err)
 	}
 
 	// Discovered and absent: fine.
-	if err := CheckRow([]string{"id", "achada"}, nil, records, []string{"achada"}); err != nil {
+	if err := CheckRow(WriteOptions{Columns: []string{"id", "achada"}, Discovered: []string{"achada"}}, records); err != nil {
 		t.Errorf("a discovered column absent from this record was refused: %v\n\n"+
 			"A batch holds N records and they need not carry the same fields. "+
 			"The union is what the table has to have; a record missing one of "+
@@ -184,7 +184,7 @@ func TestCheckRowLetsADiscoveredColumnBeAbsent(t *testing.T) {
 	}
 
 	// And the other half still fires: an undeclared field is still refused.
-	err = CheckRow([]string{"id"}, nil, batch(map[string]any{"id": "A", "nova": 1}), []string{"achada"})
+	err = CheckRow(WriteOptions{Columns: []string{"id"}, Discovered: []string{"achada"}}, batch(map[string]any{"id": "A", "nova": 1}))
 	if err == nil || !strings.Contains(err.Error(), "nova") {
 		t.Errorf("an undeclared field was accepted: %v", err)
 	}

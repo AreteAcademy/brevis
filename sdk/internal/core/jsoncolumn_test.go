@@ -29,7 +29,7 @@ func TestAJSONColumnRefusesAStringOfJSON(t *testing.T) {
 		{"[]byte", []byte(`{"a":1}`)},
 	} {
 		t.Run("refuses "+bad.name, func(t *testing.T) {
-			err := CheckJSONColumns(declared, batch(map[string]any{
+			err := CheckJSONColumns(WriteOptions{Schema: declared}, batch(map[string]any{
 				"id": "1", "payload": bad.v,
 			}))
 			if err == nil {
@@ -64,7 +64,7 @@ func TestAJSONColumnRefusesAStringOfJSON(t *testing.T) {
 		{"bool", true},
 	} {
 		t.Run("allows "+ok.name, func(t *testing.T) {
-			if err := CheckJSONColumns(declared, batch(map[string]any{
+			if err := CheckJSONColumns(WriteOptions{Schema: declared}, batch(map[string]any{
 				"id": "1", "payload": ok.v,
 			})); err != nil {
 				t.Errorf("refused: %v", err)
@@ -73,7 +73,7 @@ func TestAJSONColumnRefusesAStringOfJSON(t *testing.T) {
 	}
 
 	// And a string in a column that is a STRING is exactly right.
-	if err := CheckJSONColumns(declared, batch(map[string]any{
+	if err := CheckJSONColumns(WriteOptions{Schema: declared}, batch(map[string]any{
 		"id": "1", "payload": JSONText("{}"),
 	})); err != nil {
 		t.Errorf("a string in a string column was refused: %v", err)
@@ -81,7 +81,7 @@ func TestAJSONColumnRefusesAStringOfJSON(t *testing.T) {
 
 	// Nothing declared, nothing checked — the rule the rest of the struct
 	// follows.
-	if err := CheckJSONColumns(nil, batch(map[string]any{"payload": `{"a":1}`})); err != nil {
+	if err := CheckJSONColumns(WriteOptions{}, batch(map[string]any{"payload": `{"a":1}`})); err != nil {
 		t.Errorf("with no declaration there is nothing to check: %v", err)
 	}
 
@@ -92,7 +92,7 @@ func TestAJSONColumnRefusesAStringOfJSON(t *testing.T) {
 		records[i] = map[string]any{"id": "x", "payload": JSONText("{}")}
 	}
 	records[49]["payload"] = `{"late":true}`
-	if err := CheckJSONColumns(declared, batch(records...)); err == nil {
+	if err := CheckJSONColumns(WriteOptions{Schema: declared}, batch(records...)); err == nil {
 		t.Error("a string carried only by the last record was accepted")
 	}
 }

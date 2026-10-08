@@ -309,7 +309,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// forgotten.
 	var discovered []string
 	if l.cfg.Evolve.FromPayload() {
-		declaration := core.WriteOptions{Columns: l.cfg.Columns, Schema: l.cfg.Schema}
+		declaration := l.writeOptions(nil)
 		found, err := core.Discovered(declaration, envelopes)
 		if err != nil {
 			return fail(err)
@@ -333,7 +333,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// AFTER the extension and not instead of it: the check has two halves and
 	// only the undeclared one is what this mode is for. A column the CONSUMER
 	// declared and the chain does not produce is still a bug.
-	if err := core.CheckRow(l.cfg.Columns, l.cfg.Schema, envelopes, discovered); err != nil {
+	if err := core.CheckRow(l.writeOptions(discovered), envelopes); err != nil {
 		return fail(err)
 	}
 
@@ -343,7 +343,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 	// string becomes a JSON string literal and the column holds a JSON value
 	// of TYPE string. Postgres and MySQL parse the text and have always been
 	// right, so they do not get this and must not.
-	if err := core.CheckJSONColumns(l.cfg.Schema, envelopes); err != nil {
+	if err := core.CheckJSONColumns(l.writeOptions(nil), envelopes); err != nil {
 		return fail(err)
 	}
 
@@ -582,10 +582,26 @@ func (l *Loader) encodeRows(envelopes []core.Envelope) ([]byte, error) {
 	// autodetect branch -- "nothing was declared" -- on a path that creates
 	// the table FROM a declaration, and every key the table had no column for
 	// went to the wire. 4,500 events, 8 batches, all dead-lettered.
-	return EncodeRows(envelopes, core.WriteOptions{
-		Columns: l.cfg.Columns,
-		Schema:  l.cfg.Schema,
-	})
+	return EncodeRows(envelopes, l.writeOptions(nil))
+}
+
+// writeOptions is this load's declaration as every core check reads it.
+//
+// FoldsCase is set HERE and nowhere else. [#43] It is a fact about BigQuery,
+// not a mode the consumer picks: a load job writing `createdat` into a table
+// whose column is `createdAt` lands in `createdAt` -- measured against a real
+// project on 2026-10-08 -- and a CREATE listing both spellings is refused
+// with `Field nationalId already exists in schema`. core.Discovered and
+// core.CheckRow are shared with the Postgres and MySQL drivers, where two
+// spellings are two columns on purpose, so the fact has to travel with the
+// write rather than live in core.
+func (l *Loader) writeOptions(discovered []string) core.WriteOptions {
+	return core.WriteOptions{
+		Columns:    l.cfg.Columns,
+		Schema:     l.cfg.Schema,
+		Discovered: discovered,
+		FoldsCase:  true,
+	}
 }
 
 // EncodeRows turns a batch into the NDJSON a BigQuery load job reads.
@@ -618,7 +634,7 @@ func EncodeRows(envelopes []core.Envelope, opt core.WriteOptions) ([]byte, error
 	// rows and there is nothing to judge a key against.
 	named := make(map[string]bool, len(declared))
 	for _, c := range declared {
-		named[c] = true
+		named[opt.ColumnKey(c)] = true
 	}
 
 	// The columns whose null has TWO meanings. [#42]
@@ -641,7 +657,7 @@ func EncodeRows(envelopes []core.Envelope, opt core.WriteOptions) ([]byte, error
 	twoNulls := make(map[string]bool, len(opt.Schema))
 	for _, c := range opt.Schema {
 		if c.Type == core.TypeJSON {
-			twoNulls[c.Name] = true
+			twoNulls[opt.ColumnKey(c.Name)] = true
 		}
 	}
 
@@ -666,7 +682,12 @@ func EncodeRows(envelopes []core.Envelope, opt core.WriteOptions) ([]byte, error
 				// unknown column cannot fail the load job -- or when what
 				// declares it is a JSON column, whose null is otherwise a
 				// value rather than an absence.
-				if named[k] && !twoNulls[k] {
+				// Asked under the name the DESTINATION stores it: a row
+				// carrying `nationalId` against a declared `nationalID` has a
+				// column on BigQuery, and dropping its null would be
+				// dropping a declared column's null. [#43]
+				key := opt.ColumnKey(k)
+				if named[key] && !twoNulls[key] {
 					continue
 				}
 				delete(probe, k)

@@ -146,7 +146,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 
 	// The record is exactly what the Transform chain composed, and the
 	// declaration is checked against the whole of it -- ingestion_id included.
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
+	if err := core.CheckRow(opt, envelopes); err != nil {
 		return fail(err)
 	}
 

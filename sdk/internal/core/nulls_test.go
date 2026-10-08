@@ -22,7 +22,7 @@ func TestANilInTheFirstRecordIsNotAnEmptyField(t *testing.T) {
 		{Payload: map[string]any{"id": "B", "valor": "8.89"}},
 	}
 
-	err := CheckRow([]string{"id"}, Schema{{Name: "id", Type: TypeString}}, records, nil)
+	err := CheckRow(WriteOptions{Columns: []string{"id"}, Schema: Schema{{Name: "id", Type: TypeString}}}, records)
 	if err == nil {
 		t.Fatal("a field with a VALUE that nothing declares was let through: " +
 			"no column exists for it, so it is written nowhere -- and the " +
@@ -41,8 +41,8 @@ func TestAFieldNilInEveryRecordIsNotAnExtra(t *testing.T) {
 		{Payload: map[string]any{"id": "A", "valor": nil}},
 		{Payload: map[string]any{"id": "B", "valor": nil}},
 	}
-	if err := CheckRow([]string{"id"},
-		Schema{{Name: "id", Type: TypeString}}, records, nil); err != nil {
+	if err := CheckRow(WriteOptions{Columns: []string{"id"},
+		Schema: Schema{{Name: "id", Type: TypeString}}}, records); err != nil {
 		t.Errorf("a field null in every record stopped the load: nothing "+
 			"declares it, nothing creates it, and nothing writes it -- a null "+
 			"and an absent field land the same NULL: %v", err)

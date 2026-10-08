@@ -158,6 +158,13 @@ func CheckLandingPrefixMatches(declared, inTable []string, table string) error {
 		return nil
 	}
 
+	// NOT FOLDED. [#43] This is a heuristic, not a comparison the load
+	// depends on: it fires only when a table carries the FULL EIGHT suffixes
+	// under one other prefix. Folding it would widen a heuristic -- a table
+	// with `BREVIS_stream` would start being refused -- and it would fix no
+	// load, because the prefix and the suffixes are the SDK's own constants
+	// and neither side of this is a name a consumer chose.
+	//
 	// Group the table's columns by the prefix they would have, if they were
 	// ours. Eight hits on one prefix is a landing table; fewer is a
 	// coincidence.

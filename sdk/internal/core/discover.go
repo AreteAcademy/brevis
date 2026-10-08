@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -128,6 +129,76 @@ func CheckDiscoveryHasADeclaration(mode Evolution, declared []string, table stri
 		table)
 }
 
+// discovery is one column a batch argued for: the spelling it will be
+// created under, and the value whose shape decides its type. They are
+// separate because they are decided by different rules -- see Discovered.
+type discovery struct {
+	name  string
+	value any
+}
+
+// ColumnKey is the name under which this destination will store a field.
+//
+// On a destination that folds case it is the folded name, so two spellings
+// ask the same question of the declaration and of each other. Everywhere
+// else it is the name itself, unchanged. [#43]
+func (o WriteOptions) ColumnKey(name string) string {
+	if !o.FoldsCase {
+		return name
+	}
+	return FoldedName(name)
+}
+
+// FoldedName is what a case-folding destination calls a field.
+//
+// ONE IMPLEMENTATION, exported, because the BigQuery loader asks the same
+// question of a real table's metadata -- which is a bigquery.Schema and has
+// no WriteOptions anywhere near it. Two lower-casings would be two rules the
+// day one of them learns about Unicode, and a column name that two parts of
+// one load disagree about is the bug this whole issue is. [#43]
+func FoldedName(name string) string {
+	return strings.ToLower(name)
+}
+
+// checkOneSpellingPerRecord refuses a record carrying two spellings of one
+// column, where the destination folds case. [#43]
+//
+// Two RECORDS each carrying one spelling is their actual traffic -- 1,340
+// INSERTs one way against 23 DELETE/UPDATEs the other -- and it is fine: the
+// two collapse into one column and every row writes to it. One record
+// carrying BOTH cannot be written: the destination has one column and one of
+// the two values would silently win.
+//
+// Refused by name, which is what the flattening refusal does and for the
+// same reason -- the consumer has to rename one of them, and they cannot do
+// that without being told which two.
+func checkOneSpellingPerRecord(opt WriteOptions, row map[string]any) error {
+	if !opt.FoldsCase {
+		return nil
+	}
+	// Sorted, so the refusal names the same pair on every run rather than
+	// whichever two the map handed over first.
+	keys := make([]string, 0, len(row))
+	for k := range row {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	seen := make(map[string]string, len(keys))
+	for _, k := range keys {
+		key := opt.ColumnKey(k)
+		if first, clash := seen[key]; clash {
+			return fmt.Errorf("one record carries both %q and %q, and this "+
+				"destination folds column case -- they are ONE column there, "+
+				"and writing the record would keep one of the two values and "+
+				"drop the other without saying so. Rename one of them in the "+
+				"Transform chain, or map both onto a single field", first, k)
+		}
+		seen[key] = k
+	}
+	return nil
+}
+
 // Discovered is what the batch carries and the declaration does not.
 //
 // Over the UNION of the batch, never the first record. CheckRow looks at
@@ -159,10 +230,10 @@ func Discovered(opt WriteOptions, records []Envelope) (Schema, error) {
 	}
 	have := make(map[string]bool, len(declared))
 	for _, c := range declared {
-		have[c] = true
+		have[opt.ColumnKey(c)] = true
 	}
 
-	found := map[string]any{}
+	found := map[string]*discovery{}
 	for _, e := range records {
 		row, err := AsObject(e.Payload)
 		if err != nil {
@@ -170,8 +241,14 @@ func Discovered(opt WriteOptions, records []Envelope) (Schema, error) {
 			// says it, with the message it has always said it with.
 			continue
 		}
+		// ONE RECORD CARRYING BOTH SPELLINGS is the only real conflict, and
+		// it is refused before anything is decided from it. [#43]
+		if err := checkOneSpellingPerRecord(opt, row); err != nil {
+			return nil, err
+		}
 		for k, v := range row {
-			if have[k] {
+			key := opt.ColumnKey(k)
+			if have[key] {
 				continue
 			}
 			// The first record that carries the field decides its type, and
@@ -196,20 +273,36 @@ func Discovered(opt WriteOptions, records []Envelope) (Schema, error) {
 			// reasoning that dropping it would leave a row carrying a column
 			// the table lacks -- which is true, and is the destination's
 			// question, not this one's.
-			if cur, seen := found[k]; !seen || cur == nil {
-				found[k] = v
+			cur, seen := found[key]
+			if !seen {
+				found[key] = &discovery{name: k, value: v}
+				continue
+			}
+			// THE SPELLING IS DECIDED SEPARATELY FROM THE VALUE, and by
+			// sorted order rather than arrival. [#43] Map iteration is
+			// randomised, so letting the first record seen win would give
+			// one batch a different column on a different run -- and a
+			// column name is DDL. It is the rule FlattenOneLevel already
+			// uses, for the reason it gives there.
+			if k < cur.name {
+				cur.name = k
+			}
+			if cur.value == nil {
+				cur.value = v
 			}
 		}
 	}
 
 	names := make([]string, 0, len(found))
-	for k, v := range found {
+	value := make(map[string]any, len(found))
+	for _, d := range found {
 		// No record gave it a value, so there is no shape to read and the
 		// type would be a guess. [#42]
-		if v == nil {
+		if d.value == nil {
 			continue
 		}
-		names = append(names, k)
+		names = append(names, d.name)
+		value[d.name] = d.value
 	}
 	sort.Strings(names)
 
@@ -227,7 +320,7 @@ func Discovered(opt WriteOptions, records []Envelope) (Schema, error) {
 			return nil, err
 		}
 		out = append(out, Column{
-			Name: k, Type: TypeFromShape(found[k]),
+			Name: k, Type: TypeFromShape(value[k]),
 			// Dated here, where the column is decided on. It answers the one
 			// question a reader has six months later, and it separates "a
 			// batch brought this" from "somebody declared this", which

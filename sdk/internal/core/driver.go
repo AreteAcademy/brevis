@@ -89,6 +89,25 @@ type WriteOptions struct {
 	// Empty lets the destination use its own default.
 	PartitionBy string
 
+	// FoldsCase says the destination treats two spellings of one name as one
+	// column. [#43]
+	//
+	// BigQuery does: a load job writing `createdat` into a table whose column
+	// is `createdAt` lands in `createdAt`, and a CREATE listing both refuses
+	// with "Field nationalId already exists in schema". Postgres and MySQL do
+	// not -- a quoted identifier is distinct there, and two spellings are two
+	// columns on purpose.
+	//
+	// It is a FACT ABOUT THE DESTINATION and it travels with the write, not a
+	// mode the consumer chooses: Discovered is shared by the BigQuery loader
+	// and the SQL drivers, and the fold has to reach one without reaching the
+	// others. Only the destination sets it.
+	//
+	// It does NOT normalise anything. `BREVIS_NORMALIZE_DATA` lower-cases
+	// every column and flattens nested objects, which is a one-way door on a
+	// live table; this only decides whether two names are one column.
+	FoldsCase bool
+
 	// Dedup selects deduplication. What it costs, and whether it is supported
 	// at all, is the driver's to say -- a directory of files has no key to
 	// match on, and saying so is better than ignoring the option.

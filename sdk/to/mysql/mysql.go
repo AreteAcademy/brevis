@@ -123,7 +123,7 @@ func (t Table) Write(ctx context.Context, envelopes []core.Envelope, opt core.Wr
 		opt = core.WithDiscovered(opt, found)
 	}
 
-	if err := core.CheckRow(opt.Columns, opt.Schema, envelopes, opt.Discovered); err != nil {
+	if err := core.CheckRow(opt, envelopes); err != nil {
 		return fail(err)
 	}
 
