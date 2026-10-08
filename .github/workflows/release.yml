@@ -84,6 +84,15 @@ jobs:
       # Missing section is an ERROR and not an empty body, for the reason
       # publish-sdk.yml gives: a release published with no notes is one nobody
       # goes back to fix.
+      # The gate that refused `ded9bed` and could not stop it.
+      #
+      # `VERSION` said 0.17.0, every manifest in the tag said 0.16.1, this
+      # check went red on the release commit, and the tag was cut anyway. A
+      # gate that only runs where somebody can ignore it is a gate with a
+      # door beside it. Here it runs before the first image is pushed.
+      - name: The manifests pin this version
+        run: ./.github/scripts/image-pins-check.sh
+
       - name: Extract the changelog section
         run: |
           NUMBER="${{ steps.v.outputs.version }}"

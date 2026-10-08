@@ -14,6 +14,36 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.17.1] — 2026-10-08
+
+### Fixed: the `v0.17.0` tag deploys 0.16.1
+
+`VERSION` said `0.17.0` and every manifest in the tag said `0.16.1`:
+
+```
+v0.17.0:deployments/kubernetes/api.yaml    image: areteacademy/brevis:0.16.1
+v0.17.0:deployments/helm/brevis/Chart.yaml appVersion: "0.16.1"
+```
+
+A `kubectl apply` or a `helm install` from that tag brings up the previous
+engine — without migrations 00013 and 00014, without `/data`, and without
+`brevis gateway`, which is the entire release. **The published images were
+always correct**: the Dockerfile builds from source and `VERSION` was right, so
+`areteacademy/brevis:0.17.0` is the engine it claims to be. Only the files in
+the tag are wrong.
+
+`image-pins-check.sh` caught it. `Test & Lint` went red on the release commit,
+the tag was cut anyway, and the fix landed thirty minutes later outside it.
+
+**So `release.yml` runs that check itself now**, beside the one comparing
+`VERSION` with the tag and before the first image is pushed. The gate existed
+and the release did not have to pass it; it does now.
+
+Nothing else changed. If you deploy from `master` or from images, you already
+have `0.17.0` and this changes nothing for you.
+
+---
+
 ## [0.17.0] — 2026-10-07
 
 The catalog: what every pipeline, step and gateway writes, and which of it is
