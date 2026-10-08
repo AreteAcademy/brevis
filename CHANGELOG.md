@@ -18,6 +18,16 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.84.1] — 2026-10-08
+
+### Fixed: the refusal told half its readers to look for something they do not have
+
+The message for a record carrying two spellings ended "Rename one of them in
+the Transform chain". A gateway producer has no Transform chain — they POST
+an event — and half the callers of this check are exactly that. Seen in the
+202 body of the published `0.26.0` image. It now says "Send one of the two,
+under one spelling".
+
 ## [0.84.0] — 2026-10-08
 
 ### Added: the case-fold rule, exported, because the gateway builds its own schema

@@ -203,11 +203,14 @@ func CheckFoldedFields(row map[string]any) error {
 	for _, k := range keys {
 		key := FoldedName(k)
 		if first, clash := seen[key]; clash {
+			// The fix is NOT named as "rename it in Transform": half the
+			// callers of this are gateway producers posting an event, who
+			// have no Transform chain and would be sent looking for one.
 			return fmt.Errorf("one record carries both %q and %q, and this "+
 				"destination folds column case -- they are ONE column there, "+
 				"and writing the record would keep one of the two values and "+
-				"drop the other without saying so. Rename one of them in the "+
-				"Transform chain, or map both onto a single field", first, k)
+				"drop the other without saying so. Send one of the two, under "+
+				"one spelling", first, k)
 		}
 		seen[key] = k
 	}
