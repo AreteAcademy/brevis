@@ -48,7 +48,7 @@ jobs:
       # writes to the branch it tests is a job that can turn a red benchmark
       # into a green commit, and the numbers from a shared runner should not
       # silently replace the ones somebody measured on known hardware.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: benchmark-report
