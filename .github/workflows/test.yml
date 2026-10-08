@@ -496,6 +496,25 @@ jobs:
           go test ./... -count=1
           echo "✅ the OTel meter builds and passes"
 
+      - name: Build and test brevis-sql
+        run: |
+          # Its own module, and it reached master with no CI at all: every job
+          # in this file names a directory, and a new module is invisible to
+          # all of them until somebody adds it here. `sql/` sat on a branch
+          # for a day and was merged still invisible -- caught on the merge,
+          # not by anything that runs.
+          #
+          # ONE REQUIRE, and that is a property to keep: the reference
+          # extractor it is built on was chosen for reading real BigQuery
+          # with zero non-stdlib packages, against candidates needing 4, 70
+          # and 642. A bump that quietly pulls in a graph is exactly what
+          # this step is here to show.
+          cd sql
+          go build ./...
+          go vet ./...
+          go test ./... -count=1
+          echo "✅ brevis-sql builds and passes"
+
       - name: The gateway builds and passes
         run: |
           # A module of its own, and it `replace`s the SDK with the tree next

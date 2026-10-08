@@ -1,4 +1,4 @@
-# Five Go modules, and this file watched one of them.
+# Six Go modules, and this file watched one of them.
 #
 # `gateway/go.mod` carried the same old `aws-sdk-go-v2`, `x/mod` and `cpuid`
 # that five open PRs were bumping in `sdk` -- and nothing was ever going to
@@ -91,6 +91,23 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/examples"
     schedule: {interval: "weekly", day: "monday", time: "03:40"}
+    open-pull-requests-limit: 3
+    groups:
+      go:
+        patterns: ["*"]
+    labels: ["dependencies", "go"]
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    commit-message: {prefix: "chore", include: "scope"}
+    pull-request-branch-name: {separator: "/"}
+
+  # brevis-sql. ONE REQUIRE, and that is the point of it: the reference
+  # extractor was chosen over candidates needing 4, 70 and 642 non-stdlib
+  # packages. A bump that pulls in a graph is the thing to see in a diff.
+  - package-ecosystem: "gomod"
+    directory: "/sql"
+    schedule: {interval: "weekly", day: "monday", time: "03:50"}
     open-pull-requests-limit: 3
     groups:
       go:
