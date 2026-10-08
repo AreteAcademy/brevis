@@ -25,6 +25,7 @@
     .m    { font-family: "IBM Plex Mono", ui-monospace, monospace; }
     .name { font-size: 15px; font-weight: 600; fill: #ecefe4; }
     .code { font-size: 12px; fill: #a3ad97; }
+    .pod  { font-size: 10.5px; }
     .lbl  { font-size: 11px; fill: #869853; letter-spacing: .06em; }
     @keyframes flow { to { stroke-dashoffset: -18; } }
     @media (prefers-reduced-motion: reduce) { .data { animation: none; } }

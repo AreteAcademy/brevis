@@ -1741,7 +1741,11 @@ html:not(.js) .product-tabs {
   line-height: 1.7;
 }
 
+/* Sticky: o painel do Core e alto, e a figura acompanha o codigo que ela
+   desenha. Abaixo de 960 a coluna e uma so e ela volta ao fluxo. */
 .product-flow {
+  position: sticky;
+  top: 6rem;
   margin: 0;
   justify-self: center;
   width: 100%;
@@ -1757,6 +1761,10 @@ html:not(.js) .product-tabs {
 @media (max-width: 960px) {
   .product {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .product-flow {
+    position: static;
   }
 }
 
