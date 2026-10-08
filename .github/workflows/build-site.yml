@@ -24,21 +24,28 @@ jobs:
           cd site
           python3 build.py --check
 
-      - name: Validate HTML
-        run: |
-          cd site
-          # A third-party apt repo on the runner image (Chrome) can serve a
-          # Packages.gz whose hash does not match, `update` exits 100, and under
-          # `bash -e` that killed this job -- which only needs `tidy`, from
-          # Ubuntu's own repo. The install below fails on its own if the package
-          # does not arrive, so failing to refresh somebody else's index is not
-          # this job's problem. It happened on e19be96.
-          sudo apt-get update -qq || true
-          sudo apt-get install -y -qq tidy
-          for f in index.html 404.html docs/*/index.html en/index.html en/docs/*/index.html; do
-            tidy -q -e -utf8 "$f" || true
-          done
-          echo "✅ HTML validation passed"
+      # THE HTML VALIDATION STEP WAS REMOVED, and that is an improvement.
+      #
+      # It ran `tidy ... || true` in a loop and then printed "✅ HTML
+      # validation passed" unconditionally -- a tick whether every page parsed
+      # or none did. Trying to make it fail is what found the reason it was
+      # silenced: `tidy` is an HTML4-era tool and does not know HTML5. On this
+      # site it reports `<svg>`, `<symbol>`, `<path>`, `<use>`, `<circle>` AND
+      # `<header>` and `<nav>` as unrecognised, so all 43 pages "fail" and
+      # none of it is about the pages.
+      #
+      # Teaching it the tags is a whitelist that grows every time a page uses
+      # an element from this decade. So the step is gone rather than silenced,
+      # because a check that cannot fail is worse than no check: it reads as
+      # coverage somebody is relying on.
+      #
+      # What would replace it is the Nu Html Checker (`html5validator`), which
+      # understands HTML5 and SVG. It needs a JVM on the runner. Not done here
+      # rather than half-done: writing an untested validation step into CI is
+      # the same mistake in a newer tool.
+      #
+      # What still runs: `build.py --check` proves the committed output matches
+      # the sources, and the link check below fails on a real class of bug.
 
       - name: Check CSS
         run: |

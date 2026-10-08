@@ -37,14 +37,32 @@ jobs:
           go vet ./...
           echo "✅ go vet: OK"
 
-      - name: Check test coverage
+      # A RATCHET, not an aspiration.
+      #
+      # This step was called "Check test coverage" and checked nothing: the
+      # number was measured, echoed, and turned into the colour of an emoji in
+      # a PR comment. It has read 67% against a comment that goes green at 80
+      # since it was written, and nobody acted, which is what a number printed
+      # and never asserted buys.
+      #
+      # The floor is just under today's, so a DROP fails and nobody is asked
+      # to write tests they did not plan. It is the same shape as the ceilings
+      # this repository already trusts -- engine-weight at 345 against 380,
+      # pruning-check at 393 against 460: measured, with headroom, and able to
+      # fail. Raise it when the number rises; that is the ratchet.
+      - name: Coverage has not dropped
         id: coverage
         run: |
           cd sdk
-          go test -v -coverprofile=coverage.out ./...
+          FLOOR=65
+          go test -coverprofile=coverage.out ./...
           coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "coverage=$coverage" >> $GITHUB_OUTPUT
-          echo "✅ Coverage: ${coverage}%"
+          if [ "$(echo "$coverage < $FLOOR" | bc -l)" = "1" ]; then
+            echo "::error::sdk coverage is ${coverage}% and the floor is ${FLOOR}%"
+            exit 1
+          fi
+          echo "✅ sdk coverage ${coverage}%, floor ${FLOOR}%"
 
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
@@ -65,7 +83,10 @@ jobs:
   coverage-badge:
     name: Update Coverage Badge
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # `master`. It said `main`, which is not this repository's default branch,
+    # so this job has never run on any push -- and the badge it generates has
+    # never been regenerated.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: quality
 
     steps:
