@@ -1797,6 +1797,123 @@ html:not(.js) .product-tabs {
   }
 }
 
+/* -------------------------------------------------------- mesma linha ---- */
+
+.row-paths {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.row-paths .code-block {
+  background: var(--bg);
+}
+
+.row-paths pre {
+  font-size: 0.78rem;
+}
+
+.row-file {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+.row-title {
+  margin: clamp(2rem, 4vw, 3rem) 0 1rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* As duas linhas como cartoes, nao como tabela: uma tabela de seis colunas
+   com um UUID nao cabe em 375, e aqui cada valor tem que ser lido. */
+.row-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.row-card {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 1.1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.row-card dt {
+  color: var(--text-dim);
+}
+
+.row-card dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.row-who {
+  margin-bottom: 0.5rem;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.row-card .row-id {
+  color: var(--lime);
+}
+
+.row-null {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.row-eq {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--lime);
+}
+
+.row-eq span {
+  margin-top: 0.35rem;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+
+.row-note {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .row-paths,
+  .row-result {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .row-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.15rem;
+  }
+
+  .row-card dd + dt {
+    margin-top: 0.5rem;
+  }
+}
+
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {

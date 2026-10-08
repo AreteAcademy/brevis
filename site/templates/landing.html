@@ -384,6 +384,69 @@ marts.orders
     </div>
   </section>
 
+  <!-- The same row. Every value below is output, not illustration: the
+       published gateway (0.26.1-slim, auto_table into Postgres) and the
+       published SDK (v0.84.1, sdk.Landing) wrote this record into one table
+       and minted the same id. The commands are in the commit that added it. -->
+  <section class="section section-soft" id="mesma-linha">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">{{ l.row_eyebrow }}</p>
+          <h2>{{ l.row_titulo }}</h2>
+        </div>
+        <p class="lead">{{ l.row_lead }}</p>
+      </div>
+
+      <div class="row-paths" data-reveal>
+        <div class="code-block">
+          <div class="code-head"><span>{{ l.row_sdk }}</span><span class="row-file">main.go</span></div>
+<pre><code>sdk.<span class="t-k">Execute</span>(ctx, &amp;sdk.Pipeline{
+	Source:    sdk.Source{From: from.Files{Path: <span class="t-s">"order.json"</span>}},
+	Transform: []sdk.Transformer{sdk.<span class="t-k">Landing</span>(<span class="t-s">"app_orders"</span>, sdk.LandingKey(<span class="t-s">"id"</span>))},
+	Target: sdk.Target{
+		To:     postgres.Table{DSN: dsn, Name: <span class="t-s">"app_orders"</span>},
+		Schema: sdk.LandingSchema(sdk.LandingOptions{}),
+	},
+}, nil)</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span>{{ l.row_gw }}</span><span class="row-file">shell</span></div>
+<pre><code><span class="t-o">$</span> curl -X POST localhost:8080/v1/tables -H <span class="t-s">'Authorization: Bearer dev-key'</span> \
+    -d <span class="t-s">'{"table_name":"app_orders","unique_key":"id",
+         "data":{"id":"A-1","customer":"acme.example.com","total":150}}'</span>
+<span class="t-c">{"accepted":1,"rejected":null}</span>  <span class="t-k">202</span></code></pre>
+        </div>
+      </div>
+
+      <p class="row-title" data-reveal>{{ l.row_resultado }}</p>
+      <div class="row-result" data-reveal>
+          <div class="row-side">
+          <p class="row-who">{{ l.row_sdk }}</p>
+          <dl class="row-card">
+            <dt>brevis_ingestion_id</dt><dd class="row-id">af5e2a31-fa3c-576c-a0c8-a91517e51149</dd>
+            <dt>brevis_record_key</dt><dd>A-1</dd>
+            <dt>brevis_operation</dt><dd>INSERT</dd>
+            <dt>brevis_gateway</dt><dd><span class="row-null">NULL</span></dd>
+            <dt>data</dt><dd>{"id": "A-1", "total": 150, "customer": "acme.example.com"}</dd>
+          </dl>
+          </div>
+        <p class="row-eq" aria-hidden="true">= <span>{{ l.row_igual }}</span></p>
+          <div class="row-side">
+          <p class="row-who">{{ l.row_gw }}</p>
+          <dl class="row-card">
+            <dt>brevis_ingestion_id</dt><dd class="row-id">af5e2a31-fa3c-576c-a0c8-a91517e51149</dd>
+            <dt>brevis_record_key</dt><dd>A-1</dd>
+            <dt>brevis_operation</dt><dd>INSERT</dd>
+            <dt>brevis_gateway</dt><dd>acme_gateway</dd>
+            <dt>data</dt><dd>{"id": "A-1", "total": 150, "customer": "acme.example.com"}</dd>
+          </dl>
+          </div>
+      </div>
+      <p class="code-note row-note">{{ l.row_nota }}</p>
+    </div>
+  </section>
+
   <section class="section section-soft" id="como-executa">
     <div class="shell">
       <div class="section-head" data-reveal>
