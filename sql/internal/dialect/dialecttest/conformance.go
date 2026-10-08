@@ -1,0 +1,215 @@
+// Package dialecttest is the suite every dialect has to pass.
+//
+// IT EXISTS BEFORE THE SECOND DIALECT DOES, and that is the reason it exists
+// at all. An interface with one implementation is a description of that
+// implementation; the second one added later agrees with it wherever the
+// author happened to look and differs everywhere else, and the difference is
+// found by whoever pointed a project at the other warehouse. Here it is
+// found by `go test`.
+//
+// It runs against a REAL warehouse and nothing else. Every claim it makes is
+// about what the server did -- a dialect that returns the right strings and
+// builds the wrong thing passes a test of its strings and fails this one.
+package dialecttest
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+
+	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/model"
+)
+
+// Run is the whole suite. A dialect's own test calls it with a live DSN.
+func Run(t *testing.T, d dialect.Dialect, dsn string) {
+	t.Helper()
+
+	ctx := context.Background()
+	conn, err := d.Open(ctx, dsn)
+	if err != nil {
+		t.Fatalf("%s: connecting: %v", d.Name(), err)
+	}
+	t.Cleanup(func() { _ = conn.Close(context.Background()) })
+
+	// A schema per run, so two runs never meet and a failure leaves
+	// something to look at without blocking the next one.
+	schema := fmt.Sprintf("bvs_conf_%d", time.Now().UnixNano())
+	for _, s := range d.EnsureSchema(schema) {
+		if err := conn.Exec(ctx, s); err != nil {
+			t.Fatalf("%s: making the schema: %v", d.Name(), err)
+		}
+	}
+	t.Cleanup(func() { dropSchema(d, conn, schema) })
+
+	h := &harness{t: t, d: d, conn: conn, schema: schema, ctx: ctx}
+
+	t.Run("a schema that was not there is made", h.schemaIsMade)
+	t.Run("a view is built and can be read", h.viewIsBuilt)
+	t.Run("building the same view again is fine", h.viewIsIdempotent)
+	t.Run("a table is built and can be read", h.tableIsBuilt)
+	t.Run("a table holds its rows and a view does not", h.tableHoldsRowsAViewDoesNot)
+	t.Run("a view replaces a table of that name", h.viewReplacesATable)
+	t.Run("a table replaces a view of that name", h.tableReplacesAView)
+	t.Run("nothing of that name is Absent", h.absentIsAbsent)
+}
+
+type harness struct {
+	t      *testing.T
+	d      dialect.Dialect
+	conn   dialect.Conn
+	schema string
+	ctx    context.Context
+}
+
+// build runs one model the way the build loop does: ask what is there, then
+// run what the dialect says. Going through kindOf rather than passing a Kind
+// is deliberate -- it means every test here also exercises KindOf, which is
+// the one method a dialect can get wrong without any statement being wrong.
+func (h *harness) build(t *testing.T, name string, mat model.Materialisation, query string) {
+	t.Helper()
+	m := model.Model{Schema: h.schema, Name: name, Materialised: mat, SQL: query}
+
+	stmts, err := h.d.Build(m, h.kindOf(t, name))
+	if err != nil {
+		t.Fatalf("building %s: %v", m.Ref(), err)
+	}
+	for _, s := range stmts {
+		if err := h.conn.Exec(h.ctx, s); err != nil {
+			t.Fatalf("running against %s:\n%s\n\n%v", h.d.Name(), s, err)
+		}
+	}
+}
+
+func (h *harness) kindOf(t *testing.T, name string) dialect.Kind {
+	t.Helper()
+	v, err := h.conn.Scalar(h.ctx, h.d.KindOf(h.schema+"."+name))
+	if err != nil {
+		t.Fatalf("asking what %s.%s is: %v", h.schema, name, err)
+	}
+	return dialect.KindFrom(v)
+}
+
+func (h *harness) readOne(t *testing.T, name string) any {
+	t.Helper()
+	v, err := h.conn.Scalar(h.ctx, fmt.Sprintf("SELECT n FROM %s.%s", h.schema, name))
+	if err != nil {
+		t.Fatalf("reading %s.%s: %v", h.schema, name, err)
+	}
+	return v
+}
+
+func (h *harness) schemaIsMade(t *testing.T) {
+	// EnsureSchema already ran, and it has to be safe to run again: a build
+	// runs it before every model of that schema.
+	for _, s := range h.d.EnsureSchema(h.schema) {
+		if err := h.conn.Exec(h.ctx, s); err != nil {
+			t.Fatalf("running EnsureSchema a second time: %v", err)
+		}
+	}
+}
+
+func (h *harness) viewIsBuilt(t *testing.T) {
+	h.build(t, "a_view", model.View, "SELECT 1 AS n")
+	if got := h.kindOf(t, "a_view"); got != dialect.View {
+		t.Fatalf("it is %q and the header said view", got)
+	}
+	if n := fmt.Sprint(h.readOne(t, "a_view")); n != "1" {
+		t.Errorf("it reads %s, want 1", n)
+	}
+}
+
+func (h *harness) viewIsIdempotent(t *testing.T) {
+	h.build(t, "again", model.View, "SELECT 7 AS n")
+	h.build(t, "again", model.View, "SELECT 7 AS n")
+	if n := fmt.Sprint(h.readOne(t, "again")); n != "7" {
+		t.Errorf("it reads %s, want 7", n)
+	}
+}
+
+func (h *harness) tableIsBuilt(t *testing.T) {
+	h.build(t, "a_table", model.Table, "SELECT 2 AS n")
+	if got := h.kindOf(t, "a_table"); got != dialect.Table {
+		t.Fatalf("it is %q and the header said table", got)
+	}
+	if n := fmt.Sprint(h.readOne(t, "a_table")); n != "2" {
+		t.Errorf("it reads %s, want 2", n)
+	}
+}
+
+// THE ONE THAT SAYS THE TWO WORDS MEAN ANYTHING.
+//
+// `view` and `table` both answer a SELECT, so every test above passes on a
+// dialect that builds views for both. The difference is what happens when
+// the thing underneath changes: a table holds the rows it was built from,
+// and a view goes and looks again.
+//
+// Built out of this package's own primitives rather than a seeded source
+// table, so it needs no warehouse-specific DDL and runs identically on the
+// next dialect.
+func (h *harness) tableHoldsRowsAViewDoesNot(t *testing.T) {
+	src := fmt.Sprintf("%s.src", h.schema)
+
+	h.build(t, "src", model.View, "SELECT 10 AS n")
+	h.build(t, "held", model.Table, "SELECT n FROM "+src)
+	h.build(t, "looked", model.View, "SELECT n FROM "+src)
+
+	// The ground moves.
+	h.build(t, "src", model.View, "SELECT 20 AS n")
+
+	if n := fmt.Sprint(h.readOne(t, "held")); n != "10" {
+		t.Errorf("the table reads %s: it did not HOLD the rows it was built "+
+			"from, so `table` built something a SELECT cannot tell from a view", n)
+	}
+	if n := fmt.Sprint(h.readOne(t, "looked")); n != "20" {
+		t.Errorf("the view reads %s: it did not look again, so `view` built "+
+			"something that is not one", n)
+	}
+}
+
+func (h *harness) viewReplacesATable(t *testing.T) {
+	h.build(t, "swap_to_view", model.Table, "SELECT 3 AS n")
+	h.build(t, "swap_to_view", model.View, "SELECT 4 AS n")
+	if got := h.kindOf(t, "swap_to_view"); got != dialect.View {
+		t.Fatalf("it is still %q", got)
+	}
+	if n := fmt.Sprint(h.readOne(t, "swap_to_view")); n != "4" {
+		t.Errorf("it reads %s, want 4", n)
+	}
+}
+
+func (h *harness) tableReplacesAView(t *testing.T) {
+	h.build(t, "swap_to_table", model.View, "SELECT 5 AS n")
+	h.build(t, "swap_to_table", model.Table, "SELECT 6 AS n")
+	if got := h.kindOf(t, "swap_to_table"); got != dialect.Table {
+		t.Fatalf("it is still %q", got)
+	}
+	if n := fmt.Sprint(h.readOne(t, "swap_to_table")); n != "6" {
+		t.Errorf("it reads %s, want 6", n)
+	}
+}
+
+// Absent is an ANSWER, not a failure. Build is given it on every first
+// build, so a dialect returning an error here would make a fresh project
+// unbuildable.
+func (h *harness) absentIsAbsent(t *testing.T) {
+	if got := h.kindOf(t, "never_made"); got != dialect.Absent {
+		t.Errorf("a relation that was never made is %q", got)
+	}
+}
+
+// dropSchema is best effort: a left-over schema costs a name, and failing
+// the test over the cleanup would hide whatever the test actually found.
+func dropSchema(d dialect.Dialect, conn dialect.Conn, schema string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	// CASCADE is right HERE and nowhere else in this package: the schema was
+	// made by this run, under a name nothing else can be using.
+	//
+	// The one SQL literal in a dialect-agnostic file. `DROP SCHEMA ...
+	// CASCADE` is standard and both warehouses this suite is written for
+	// take it, so it buys a DropSchema on the interface that nothing but
+	// this cleanup would ever call.
+	_ = conn.Exec(ctx, "DROP SCHEMA IF EXISTS "+schema+" CASCADE")
+}
