@@ -13,7 +13,7 @@ models/marts/orders.sql        →  marts.orders         (table)
 docker run --rm \
   -v ./my-project:/project:ro \
   -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db \
-  areteacademy/brevis-sql:0.1.0 \
+  areteacademy/brevis-sql:0.2.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -49,6 +49,32 @@ select * from staging.stg_orders
 dependencies come from reading the SQL rather than from a function call you
 have to write. `brevis-sql graph` prints what was inferred; `depends_on:` in
 the header is the explicit override for the rare miss.
+
+## A model can process only what is new
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+*/
+select * from bronze.orders
+```
+
+The first build creates the table. Every build after it reads only the rows
+past the greatest watermark already there, deduplicates them by key keeping
+the latest, and MERGEs. `--full-refresh` rebuilds from scratch.
+
+Both fields are required and neither has a default: no watermark would mean
+rebuilding in full every night while reporting that it had not, and no unique
+key would mean a source that re-emits a row grows a duplicate per run.
+
+The new watermark is published for the steps below, on the pipe that already
+carries the landings:
+
+```
+@brevis:{"type":"context","value":{"silver.orders":"2026-03-11T04:00:00Z"}}
+```
 
 ## Two warehouses, one conformance suite
 
@@ -101,8 +127,9 @@ third of a real dbt project's models use nothing beyond `ref`, `source` and
 `config`; the rest use macros, and packages are templating by design. Half a
 compatibility nobody can predict is worse than none.
 
-**No incremental models yet** — every build is a full rebuild. That is the
-next milestone.
+**No lookback window yet.** A row corrected with yesterday's timestamp is
+behind the watermark and this will not see it. Rebuild with
+`--full-refresh` when that happens.
 
 ## Verified against dbt
 

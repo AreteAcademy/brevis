@@ -16,6 +16,76 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.2.0] — 2026-10-08
+
+### Added: a model can process only what is new
+
+```sql
+/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+*/
+select * from bronze.orders
+```
+
+The first build creates the table. Every build after it takes only the rows
+past the greatest watermark already there, deduplicates them by key keeping
+the latest, and MERGEs. `--full-refresh` rebuilds from scratch and forgets
+the watermark.
+
+**Both fields are required and neither has a default**, because every default
+here is wrong in a way nobody sees. No watermark would mean "take everything",
+which rebuilds in full every night while reporting an incremental build: it
+costs money and looks like it works. No unique key would mean a plain INSERT,
+so a source that re-emits a corrected row grows a duplicate per run.
+
+There is also nothing to fall back TO. Neither warehouse will run a MERGE
+whose source holds two rows for one target row, which is exactly what a source
+re-emitting a correction produces:
+
+```
+bigquery      UPDATE/MERGE must match at most one source row for each target row
+postgres 17   MERGE command cannot affect row a second time
+```
+
+Both measured against real warehouses, which answers the one question the
+spike behind #62 had to leave open.
+
+**PostgreSQL 15 is the floor** for an incremental model, because `MERGE`
+arrived there. `INSERT … ON CONFLICT DO UPDATE` reaches further back and
+refuses without a unique index on the key — so supporting it would mean asking
+for an index this tool never creates and does not maintain. Views and tables
+are unaffected.
+
+### Added: the new watermark reaches the steps below
+
+```
+@brevis:{"type":"context","value":{"silver.orders":"2026-03-11T04:00:00Z"}}
+```
+
+On the pipe that already carries the landings, keyed by model, and read after
+the build rather than before — the number worth publishing is where this run
+got to, not where the last one stopped.
+
+### Added: `--full-refresh`
+
+On `build`, and it works with `--select` so one model can be rebuilt without
+the project. It does nothing to a view or a table, which are rebuilt anyway.
+
+### Known limits
+
+**No lookback window.** A row corrected with a watermark behind the one
+already in the target is invisible to an incremental build. `--full-refresh`
+is the way through; a declared lookback is not in this version.
+
+**A model that changes shape** — a new column in the SELECT list — is not
+migrated. The MERGE names the target's columns, so the warehouse refuses it
+and says which name it does not have, rather than landing data in the wrong
+place. `--full-refresh` rebuilds it with the new shape.
+
+---
+
 ## [0.1.0] — 2026-10-08
 
 ### Added: plain `.sql` files become tables and views, in dependency order
