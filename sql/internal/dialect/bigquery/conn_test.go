@@ -34,11 +34,11 @@ func (f *fake) serve() *httptest.Server {
 		f.posts = append(f.posts, body)
 		status, reply := f.reply(len(f.posts))
 		w.WriteHeader(status)
-		fmt.Fprint(w, reply)
+		_, _ = fmt.Fprint(w, reply)
 	})
 	mux.HandleFunc("/projects/p/queries/", func(w http.ResponseWriter, r *http.Request) {
 		f.gets = append(f.gets, r.URL.String())
-		fmt.Fprint(w, `{"jobComplete":true,"rows":[{"f":[{"v":"done"}]}]}`)
+		_, _ = fmt.Fprint(w, `{"jobComplete":true,"rows":[{"f":[{"v":"done"}]}]}`)
 	})
 	s := httptest.NewServer(mux)
 	f.t.Cleanup(s.Close)

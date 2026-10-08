@@ -139,3 +139,62 @@ func normalise(in []string) string {
 	}
 	return strings.Join(out, " ")
 }
+
+// CHAINED CTEs, which nothing covered. The suite had one `with a as (...)`
+// and stopped there, so the whole second-and-later-CTE path -- readCTEs
+// calling itself at the comma -- was carried by a single corpus case nobody
+// had looked at.
+//
+// Written because a linter asked a question the tests could not answer. The
+// `for` in readCTEs returns on every path, which staticcheck reported as a
+// loop that never loops; whether that was a dead shape or a real defect
+// depended on the recursion working, and the only honest way to find out was
+// to ask it. It works, and the `for` became an `if` -- but the four cases
+// below are the reason that is known rather than assumed.
+//
+// `not materialized` is here because it is the one place a CTE's keyword run
+// is longer than a word: a reader that skips one token lands on `(` and
+// gives up, silently turning the rest of the query into nothing.
+func TestChainedCTEsAreAllDefinitions(t *testing.T) {
+	for _, c := range []struct{ name, sql, want string }{
+		{
+			name: "two CTEs, and neither is a reference",
+			sql:  "with a as (select * from raw.x), b as (select * from raw.y) select * from a join b on 1=1",
+			want: "raw.x raw.y",
+		},
+		{
+			name: "a CTE reading an earlier CTE is still not a reference",
+			sql:  "with a as (select * from raw.x), b as (select * from a), c as (select * from raw.z) select * from c",
+			want: "raw.x raw.z",
+		},
+		{
+			name: "a later CTE whose body reads nothing",
+			sql:  "with a as (select 1), b as (select * from raw.y) select * from a join b on 1=1",
+			want: "raw.y",
+		},
+		{
+			// A CTE AFTER the `not materialized` one, which is the only
+			// place that keyword pair changes an answer. Without it the
+			// reader stops at `not`, never reaches the comma, and `c` is
+			// never recorded as a definition -- so it comes back as a
+			// table that does not exist and the model waits on an edge to
+			// nothing. With only two CTEs the bug is invisible: the last
+			// name is already recorded before the keywords are read.
+			name: "a CTE follows a not materialized one",
+			sql: "with a as materialized (select * from raw.x), " +
+				"b as not materialized (select * from raw.y), " +
+				"c as (select * from raw.z) select * from a, b, c",
+			want: "raw.x raw.y raw.z",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := Of("postgres", c.sql)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if g := normalise(got); g != c.want {
+				t.Errorf("got %q, wanted %q", g, c.want)
+			}
+		})
+	}
+}

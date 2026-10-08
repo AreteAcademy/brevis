@@ -631,6 +631,19 @@ jobs:
           working-directory: cmd/brevis-sdk
           args: --timeout=5m
 
+      # THE SAME OMISSION, A SECOND TIME. brevis-sql shipped 0.1.0 as a public
+      # image with no linter ever having read it, and the first run found
+      # eleven: fifteen unchecked writes to stdout, and a loop in the reference
+      # extractor that returns on every path. None of it was a live defect --
+      # but the comment above says what a module outside the lint's reach
+      # becomes, and this one proved it within a day of being created.
+      - name: Lint brevis-sql
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          working-directory: sql
+          args: --timeout=5m
+
       - name: Build the full-pipeline example
         run: |
           # A module of its own, pinning a PUBLISHED SDK -- it is what somebody

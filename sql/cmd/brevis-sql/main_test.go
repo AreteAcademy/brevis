@@ -55,7 +55,9 @@ func TestBuildWithoutADSNSaysSo(t *testing.T) {
 // and the message says which.
 func TestAnUnsetVariableNamesItself(t *testing.T) {
 	const name = "BREVIS_SQL_DSN_THAT_IS_NOT_SET"
-	os.Unsetenv(name)
+	if err := os.Unsetenv(name); err != nil {
+		t.Fatal(err)
+	}
 	err := run([]string{"build", "--project", fixture, "--dsn-from", name}, out())
 	if err == nil || !strings.Contains(err.Error(), name) {
 		t.Errorf("the refusal does not name the variable: %v", err)

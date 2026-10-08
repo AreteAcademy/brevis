@@ -65,7 +65,9 @@ func TestEverythingAModelReadsComesFirst(t *testing.T) {
 	for i, r := range order {
 		at[r] = i
 	}
-	if !(at["bronze.orders"] < at["silver.totals"] && at["silver.totals"] < at["gold.report"]) {
+	inOrder := at["bronze.orders"] < at["silver.totals"] &&
+		at["silver.totals"] < at["gold.report"]
+	if !inOrder {
 		t.Errorf("order is %v", order)
 	}
 }

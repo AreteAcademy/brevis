@@ -68,7 +68,7 @@ func Of(dialect, sql string) ([]string, error) {
 					j++
 				}
 				if j < len(toks) && !toks[j].lowerIs("select") && !toks[j].lowerIs("with") && !toks[j].lowerIs("values") {
-					if name, next, ok := readName(toks, j); ok && !(next < len(toks) && toks[next].is("(")) {
+					if name, next, ok := readName(toks, j); ok && !isCall(toks, next) {
 						refs = append(refs, name)
 						fromList[len(opener)] = true
 						i = next - 1
@@ -165,7 +165,11 @@ func readCTEs(toks []tok, i int, ctes map[string]bool) int {
 	if i < len(toks) && toks[i].lowerIs("recursive") {
 		i++
 	}
-	for i < len(toks) {
+	// ONE CTE, and the rest by recursion below -- not a loop. Every path out
+	// of this block returns, so a `for` here reads as iteration that never
+	// happens: the second CTE is reached through readCTEs calling itself at
+	// the comma, and the body of the first is scanned by the caller.
+	if i < len(toks) {
 		if toks[i].kind != word && toks[i].kind != quoted {
 			return i - 1
 		}
@@ -212,8 +216,8 @@ func readFromItems(toks []tok, i int, list bool, refs *[]string, aliases map[str
 		if !ok {
 			return i - 1
 		}
-		if next < len(toks) && toks[next].is("(") {
-			return i - 1 // a function: unnest(), generate_series(), a TVF
+		if isCall(toks, next) {
+			return i - 1
 		}
 		*refs = append(*refs, name)
 		i = next
@@ -230,6 +234,18 @@ func readFromItems(toks []tok, i int, list bool, refs *[]string, aliases map[str
 		i++
 	}
 	return i - 1
+}
+
+// isCall says whether the name ending at i is followed by an open paren --
+// `unnest()`, `generate_series()`, a table function. A call is not a relation
+// and must not become an edge, which is the one thing this answer decides.
+//
+// Named because it is asked in two places and was spelt out in both: once as
+// the negated half of a condition in readWith's VALUES/SELECT branch, once
+// with a comment in readFromItems explaining what it meant. Two spellings of
+// one rule is two places for it to drift.
+func isCall(toks []tok, i int) bool {
+	return i < len(toks) && toks[i].is("(")
 }
 
 // readName reads a dotted name. A backticked BigQuery name may hold dots of

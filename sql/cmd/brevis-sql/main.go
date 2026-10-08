@@ -52,7 +52,7 @@ func known() string {
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "brevis-sql:", err)
+		_, _ = fmt.Fprintln(os.Stderr, "brevis-sql:", err)
 		os.Exit(1)
 	}
 }
@@ -103,11 +103,11 @@ func run(args []string, out io.Writer) error {
 		// The functions are counted too: a project whose `functions/`
 		// directory is misspelt compiles to the same model list, and the
 		// only way to see it is a count that says zero.
-		fmt.Fprintf(out, "%d models, %d to build, %d function(s)\n",
+		_, _ = fmt.Fprintf(out, "%d models, %d to build, %d function(s)\n",
 			len(p.Models), len(order), len(p.Functions))
 		for _, ref := range order {
 			m := p.Models[ref]
-			fmt.Fprintf(out, "  %-34s %-5s %d test(s)\n", ref, m.Materialised, len(m.Tests))
+			_, _ = fmt.Fprintf(out, "  %-34s %-5s %d test(s)\n", ref, m.Materialised, len(m.Tests))
 		}
 		return nil
 	}
@@ -128,12 +128,12 @@ func run(args []string, out io.Writer) error {
 	// and this is how somebody finds the other 0.7% -- by looking, before a
 	// build, rather than by a model running in the wrong order at night.
 	for _, ref := range order {
-		fmt.Fprintln(out, ref)
+		_, _ = fmt.Fprintln(out, ref)
 		for _, d := range p.Edges[ref] {
-			fmt.Fprintf(out, "  ├─ %s\n", d)
+			_, _ = fmt.Fprintf(out, "  ├─ %s\n", d)
 		}
 		for _, s := range p.Sources[ref] {
-			fmt.Fprintf(out, "  └─ %s (source)\n", s)
+			_, _ = fmt.Fprintf(out, "  └─ %s (source)\n", s)
 		}
 	}
 	return nil
@@ -186,13 +186,13 @@ func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Proje
 		if was == "" {
 			was = "new"
 		}
-		fmt.Fprintf(out, "  %-34s %-5s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
-		fmt.Fprintln(out, landedLine(b.Target, b.Rows))
+		_, _ = fmt.Fprintf(out, "  %-34s %-5s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
+		_, _ = fmt.Fprintln(out, landedLine(b.Target, b.Rows))
 	}
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "%d models built on %s\n", len(res.Built), d.Name())
+	_, _ = fmt.Fprintf(out, "%d models built on %s\n", len(res.Built), d.Name())
 	return nil
 }
 
@@ -253,9 +253,9 @@ func runTests(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Pr
 		if f.Value != "" {
 			example = fmt.Sprintf("  e.g. %q", f.Value)
 		}
-		fmt.Fprintf(out, "FAIL  %-30s %-16s %-20s %d row(s)%s\n",
+		_, _ = fmt.Fprintf(out, "FAIL  %-30s %-16s %-20s %d row(s)%s\n",
 			f.Model, f.Kind, f.Column, f.Rows, example)
-		fmt.Fprintf(out, "      %s\n", f.Count)
+		_, _ = fmt.Fprintf(out, "      %s\n", f.Count)
 	}
 
 	if len(res.Failed) > 0 {
@@ -264,7 +264,7 @@ func runTests(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Pr
 		// workflow carries on past.
 		return fmt.Errorf("%d of %d tests failed", len(res.Failed), res.Ran)
 	}
-	fmt.Fprintf(out, "%d tests passed on %s\n", res.Ran, d.Name())
+	_, _ = fmt.Fprintf(out, "%d tests passed on %s\n", res.Ran, d.Name())
 	return nil
 }
 
@@ -272,7 +272,7 @@ func runTests(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Pr
 // the binary built one of them, which is a help text that lies -- and the
 // --dialect error below would have contradicted it.
 func usage() {
-	fmt.Fprintf(os.Stderr, strings.TrimLeft(`
+	_, _ = fmt.Fprintf(os.Stderr, strings.TrimLeft(`
 brevis-sql — plain .sql models, run as a Brevis step
 
   compile   parse every model, resolve every edge, connect to nothing
