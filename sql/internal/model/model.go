@@ -21,6 +21,15 @@ type Materialisation string
 const (
 	View  Materialisation = "view"
 	Table Materialisation = "table"
+
+	// Incremental is a TABLE that is added to rather than rebuilt.
+	//
+	// It is a third value and not a flag on Table, because the three differ
+	// in what Build emits, in whether the row count means anything, and in
+	// whether the warehouse is asked a question before the statement is
+	// written. A boolean beside `table` would make every switch read
+	// `Table && !incremental`.
+	Incremental Materialisation = "incremental"
 )
 
 // Model is one file, read.
@@ -32,7 +41,14 @@ type Model struct {
 	Name   string
 
 	Materialised Materialisation
-	Tests        []Test
+
+	// UniqueKey and Watermark belong to an INCREMENTAL model and to nothing
+	// else. Both are required there and both are refused elsewhere -- see
+	// Parse, which says why neither has a default.
+	UniqueKey []string
+	Watermark string
+
+	Tests []Test
 	// DependsOn is the explicit override for an edge the extractor cannot
 	// see -- SQL built at runtime, or one of the forms refs names as its
 	// limits. Added to what was inferred, never instead of it.
@@ -60,6 +76,8 @@ func (m Model) Ref() string { return m.Schema + "." + m.Name }
 // and the program's can differ without one dragging the other.
 type header struct {
 	Materialized string           `yaml:"materialized"`
+	UniqueKey    []string         `yaml:"unique_key"`
+	Watermark    string           `yaml:"watermark"`
 	Tests        []map[string]any `yaml:"tests"`
 	DependsOn    []string         `yaml:"depends_on"`
 }
@@ -99,11 +117,15 @@ func Parse(path string, content []byte) (Model, error) {
 
 	switch h.Materialized {
 	case "":
-	case string(View), string(Table):
+	case string(View), string(Table), string(Incremental):
 		m.Materialised = Materialisation(h.Materialized)
 	default:
 		return Model{}, fmt.Errorf("%s: `materialized: %s` is not one this understands; "+
-			"it is `view` or `table`", path, h.Materialized)
+			"it is `view`, `table` or `incremental`", path, h.Materialized)
+	}
+
+	if err := readIncremental(path, &m, h); err != nil {
+		return Model{}, err
 	}
 
 	m.DependsOn = h.DependsOn
@@ -115,6 +137,49 @@ func Parse(path string, content []byte) (Model, error) {
 		m.Tests = append(m.Tests, parsed)
 	}
 	return m, nil
+}
+
+// readIncremental takes the two fields that only an incremental model has.
+//
+// BOTH ARE REQUIRED AND NEITHER HAS A DEFAULT, because every default here is
+// wrong in a way nobody sees:
+//
+//   - No watermark would mean "take everything", which rebuilds in full every
+//     night while reporting an incremental build. It costs money and looks
+//     like it works.
+//   - No unique key would mean a plain INSERT, and a model whose source
+//     re-emits a row would grow a duplicate per run. There is also nothing to
+//     fall back TO: both warehouses refuse a MERGE whose source holds a
+//     duplicate key -- BigQuery "must match at most one source row for each
+//     target row", Postgres 17 "cannot affect row a second time", both
+//     measured against real warehouses on 2026-10-08.
+//
+// And both are refused on a view or a table. `KnownFields(true)` already
+// refuses a field this format does not have; this is the same argument for a
+// field it HAS and that means nothing where it was written. A `unique_key` on
+// a table is somebody expecting a merge and getting a rebuild.
+func readIncremental(path string, m *Model, h header) error {
+	if m.Materialised != Incremental {
+		if len(h.UniqueKey) > 0 || h.Watermark != "" {
+			return fmt.Errorf("%s: `unique_key` and `watermark` belong to "+
+				"`materialized: incremental`, and this model is a %s -- they would be "+
+				"read here and then ignored", path, m.Materialised)
+		}
+		return nil
+	}
+	if h.Watermark == "" {
+		return fmt.Errorf("%s: `materialized: incremental` needs a `watermark`: the "+
+			"column whose greatest value in the target says where the last run stopped. "+
+			"Without one every run would rebuild the whole model and report that it "+
+			"had not", path)
+	}
+	if len(h.UniqueKey) == 0 {
+		return fmt.Errorf("%s: `materialized: incremental` needs a `unique_key`: the "+
+			"column or columns that say whether a row is the same row. Without one a "+
+			"source that re-emits a row grows a duplicate per run", path)
+	}
+	m.UniqueKey, m.Watermark = h.UniqueKey, h.Watermark
+	return nil
 }
 
 // identify turns `models/<schema>/<name>.sql` into the two halves.

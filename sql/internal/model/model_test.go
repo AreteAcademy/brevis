@@ -75,7 +75,7 @@ func TestEveryRefusalSaysWhereToLook(t *testing.T) {
 			name: "a materialisation that does not exist",
 			path: "models/silver/b.sql",
 			sql:  "/* brevis\nmaterialized: ephemeral\n*/\nselect 1",
-			want: "`view` or `table`",
+			want: "`view`, `table` or `incremental`",
 		},
 		{
 			name: "a test nobody implements",
@@ -121,5 +121,88 @@ func TestDependsOnIsCarried(t *testing.T) {
 	}
 	if len(m.DependsOn) != 1 || m.DependsOn[0] != "bronze.weird" {
 		t.Errorf("depends_on = %v", m.DependsOn)
+	}
+}
+
+const incremental = `/* brevis
+materialized: incremental
+unique_key: [order_id]
+watermark: updated_at
+*/
+select * from bronze.orders`
+
+func TestAnIncrementalModelCarriesItsKeyAndItsWatermark(t *testing.T) {
+	m, err := Parse("models/silver/orders.sql", []byte(incremental))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Materialised != Incremental {
+		t.Errorf("materialised = %q, wanted incremental", m.Materialised)
+	}
+	if len(m.UniqueKey) != 1 || m.UniqueKey[0] != "order_id" {
+		t.Errorf("unique_key = %v", m.UniqueKey)
+	}
+	if m.Watermark != "updated_at" {
+		t.Errorf("watermark = %q", m.Watermark)
+	}
+}
+
+// BOTH FIELDS ARE REQUIRED, and each refusal names the one that is missing.
+//
+// Not a default, because every default here is wrong in a way nobody sees. A
+// model with no watermark would rebuild in full every night and look exactly
+// like one that worked; a model with no unique key cannot be MERGEd at all --
+// both warehouses refuse a duplicate source row, measured 2026-10-08, so
+// there is no strategy to fall back TO.
+func TestAnIncrementalModelWithoutItsFieldsIsRefused(t *testing.T) {
+	for _, c := range []struct{ name, header, names string }{
+		{
+			name:   "no watermark",
+			header: "materialized: incremental\nunique_key: [order_id]\n",
+			names:  "watermark",
+		},
+		{
+			name:   "no unique_key",
+			header: "materialized: incremental\nwatermark: updated_at\n",
+			names:  "unique_key",
+		},
+		{
+			name:   "neither",
+			header: "materialized: incremental\n",
+			names:  "watermark",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := Parse("models/silver/orders.sql", []byte("/* brevis\n"+c.header+"*/\nselect 1"))
+			if err == nil {
+				t.Fatalf("accepted a header with no %s", c.names)
+			}
+			if !strings.Contains(err.Error(), c.names) {
+				t.Errorf("the refusal does not name %s: %v", c.names, err)
+			}
+		})
+	}
+}
+
+// AND THEY ARE REFUSED ON A VIEW OR A TABLE, where they would be read,
+// accepted and then ignored.
+//
+// `KnownFields(true)` already refuses a field this format does not have; this
+// is the same argument one level up, for a field it HAS and that means
+// nothing here. A `unique_key` on a table is somebody expecting a merge.
+func TestTheIncrementalFieldsAreRefusedOnSomethingElse(t *testing.T) {
+	for _, header := range []string{
+		"materialized: table\nunique_key: [order_id]\n",
+		"materialized: view\nwatermark: updated_at\n",
+		"unique_key: [order_id]\n", // no materialized at all: a view
+	} {
+		_, err := Parse("models/silver/orders.sql", []byte("/* brevis\n"+header+"*/\nselect 1"))
+		if err == nil {
+			t.Errorf("accepted:\n%s", header)
+			continue
+		}
+		if !strings.Contains(err.Error(), "incremental") {
+			t.Errorf("the refusal does not say what they are for: %v", err)
+		}
 	}
 }

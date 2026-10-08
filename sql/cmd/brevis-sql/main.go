@@ -107,7 +107,7 @@ func run(args []string, out io.Writer) error {
 			len(p.Models), len(order), len(p.Functions))
 		for _, ref := range order {
 			m := p.Models[ref]
-			_, _ = fmt.Fprintf(out, "  %-34s %-5s %d test(s)\n", ref, m.Materialised, len(m.Tests))
+			_, _ = fmt.Fprintf(out, "  %-34s %-11s %d test(s)\n", ref, m.Materialised, len(m.Tests))
 		}
 		return nil
 	}
@@ -186,7 +186,7 @@ func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Proje
 		if was == "" {
 			was = "new"
 		}
-		_, _ = fmt.Fprintf(out, "  %-34s %-5s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
+		_, _ = fmt.Fprintf(out, "  %-34s %-11s %-5s %s\n", b.Ref, b.Kind, was, b.Took.Round(time.Millisecond))
 		_, _ = fmt.Fprintln(out, landedLine(b.Target, b.Rows))
 	}
 	if err != nil {
