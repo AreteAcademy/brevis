@@ -669,11 +669,40 @@ a.chip:focus-visible .ico {
   padding: clamp(3.5rem, 8vw, 7rem) 0 clamp(3rem, 6vw, 5rem);
 }
 
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  gap: clamp(2.5rem, 5vw, 4.5rem);
+/* Uma coluna centralizada em toda largura, como a do Databend: selo com o
+   gopher, título de produto, a linha em Go, os botões e a linha que sobe tudo. */
+.hero-head {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
+}
+
+.hero h1 {
+  max-width: 22ch;
+}
+
+.hero-badge {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1.75rem;
+}
+
+.hero-badge .pill {
+  white-space: nowrap;
+}
+
+.hero-badge img {
+  display: block;
+  width: 35px;
+  height: 48px;
+}
+
+.hero .button-row {
+  justify-content: center;
 }
 
 .hero h1 em {
@@ -683,34 +712,26 @@ a.chip:focus-visible .ico {
 
 .hero .lead {
   max-width: 54ch;
+  margin-inline: auto;
+}
+
+.hero .lead strong {
+  color: var(--lime);
+  font-weight: 600;
 }
 
 /* A linha que sobe tudo: logo abaixo dos botoes, porque e o segundo passo de
    quem ja decidiu olhar. */
 .hero-cmd {
+  width: 100%;
   margin-top: 2rem;
   max-width: 34rem;
+  text-align: left;
 }
 
 .hero-cmd pre {
   padding: 1rem 1.25rem;
   line-height: 1.7;
-}
-
-.hero-pills {
-  margin: 1.5rem 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* A tela do console, recriada em SVG. Sem lazy, mas sem fetchpriority: com
-   ela a imagem disputava banda com as fontes e o LCP (o h1) foi de 1.8 s a
-   3.2 s. O aspect-ratio reserva a altura antes de o SVG chegar. */
-.hero-frame img {
-  display: block;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1000 / 600;
 }
 
 /* O botao de copiar, o mesmo da docs (docs.css), para a landing que nao a
@@ -1933,7 +1954,6 @@ html:not(.js) .product-tabs {
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {
-  .hero-grid,
   .head-split {
     grid-template-columns: minmax(0, 1fr);
   }

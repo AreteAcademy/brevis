@@ -125,46 +125,35 @@
 <main id="conteudo">
 
   <section class="hero" id="topo">
-    <div class="shell hero-grid">
-      <div>
-        <p class="eyebrow">aretê academy apresenta · software com propósito</p>
-        <h1>A vida é breve.<br>Sua arquitetura não precisa ser <em>complexa</em>.</h1>
-        <p class="lead">Orquestração, extração, ingestão e modelagem de dados em Go: Core, SDK, Gateway e SQL — open source, no seu cluster, sem o dado passar pelo orquestrador.</p>
-        <div class="button-row">
-          <a class="button button-primary" href="/docs/quickstart/">
-            Começar pelo quickstart
-            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
-          </a>
-          <a class="button button-secondary" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
-            <svg aria-hidden="true"><use href="#i-github"></use></svg>
-            Explorar no GitHub
-          </a>
-        </div>
-
-        <!-- Not a single `docker run`: the Core keeps its state in Postgres,
-             so the shortest honest start is the repository's compose file.
-             Checked on a fresh clone; the console answers on :8080. -->
-        <div class="code-block hero-cmd" data-code="git clone https://github.com/AreteAcademy/brevis&#10;cd brevis &amp;&amp; docker compose up">
-          <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div>
-<pre><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
-<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
-          <p class="code-note">Postgres, Core, console e Gateway na sua máquina. O console abre em localhost:8080.</p>
-        </div>
-
-        <ul class="pill-row hero-pills">
-          <li class="pill">MIT</li>
-          <li class="pill">Go</li>
-          <li class="pill">Kubernetes</li>
-          <li class="pill">Docker Compose</li>
-        </ul>
+    <div class="shell hero-head">
+      <p class="eyebrow">aretê academy · a vida é breve</p>
+      <!-- The gopher is go.dev's blue.svg byte for byte (assets/gopher.txt):
+           sized, eager, never the LCP element, and credited in every footer. -->
+      <p class="hero-badge">
+        <img src="/assets/gopher.svg" width="35" height="48" alt="" title="Go gopher por Renée French, CC BY 4.0">
+        <span class="pill">Open source · Feito em Go · Self-hosted</span>
+      </p>
+      <h1>Do dado bruto à tabela modelada. <em>Em Go.</em></h1>
+      <p class="lead">Orquestração, extração, ingestão e modelagem de dados — Core, SDK, Gateway e SQL — unificadas em <strong>Go</strong>. Open source, no seu cluster, sem o dado passar pelo orquestrador.</p>
+      <div class="button-row">
+        <a class="button button-primary" href="/docs/quickstart/">
+          Começar pelo quickstart
+          <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+        </a>
+        <a class="button button-secondary" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-github"></use></svg>
+          Explorar no GitHub
+        </a>
       </div>
 
-      <div class="frame frame-lit hero-frame">
-        <div class="frame-bar">
-          <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
-          <span class="frame-url">localhost:8080</span>
-        </div>
-        <img src="/assets/console.svg" width="1000" height="600" alt="O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas.">
+      <!-- Not a single `docker run`: the Core keeps its state in Postgres,
+           so the shortest honest start is the repository's compose file.
+           Checked on a fresh clone; the console answers on :8080. -->
+      <div class="code-block hero-cmd" data-code="git clone https://github.com/AreteAcademy/brevis&#10;cd brevis &amp;&amp; docker compose up">
+        <div class="code-head"><span>rodar local:</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div>
+<pre><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
+<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
+        <p class="code-note">Postgres, Core, console e Gateway na sua máquina. O console abre em localhost:8080.</p>
       </div>
     </div>
   </section>
@@ -1053,7 +1042,7 @@ marts.orders
 
     <div class="footer-bottom">
       <p>Um projeto open source da <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
-      <p>MIT · construído em Go</p>
+      <p>MIT · construído em Go · Go gopher por Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
     </div>
   </div>
 </footer>

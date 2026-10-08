@@ -1,46 +1,35 @@
 <main id="conteudo">
 
   <section class="hero" id="topo">
-    <div class="shell hero-grid">
-      <div>
-        <p class="eyebrow">{{ l.hero_eyebrow }}</p>
-        <h1>{{ l.hero_titulo }}</h1>
-        <p class="lead">{{ l.hero_lead }}</p>
-        <div class="button-row">
-          <a class="button button-primary" href="{{ prefixo }}/docs/quickstart/">
-            {{ l.hero_cta1 }}
-            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
-          </a>
-          <a class="button button-secondary" href="{{ repo }}" target="_blank" rel="noopener">
-            <svg aria-hidden="true"><use href="#i-github"></use></svg>
-            {{ l.hero_cta2 }}
-          </a>
-        </div>
-
-        <!-- Not a single `docker run`: the Core keeps its state in Postgres,
-             so the shortest honest start is the repository's compose file.
-             Checked on a fresh clone; the console answers on :8080. -->
-        <div class="code-block hero-cmd" data-code="git clone https://github.com/AreteAcademy/brevis&#10;cd brevis &amp;&amp; docker compose up">
-          <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
-<pre><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
-<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
-          <p class="code-note">{{ l.hero_cmd_rotulo }}</p>
-        </div>
-
-        <ul class="pill-row hero-pills">
-          <li class="pill">MIT</li>
-          <li class="pill">Go</li>
-          <li class="pill">Kubernetes</li>
-          <li class="pill">Docker Compose</li>
-        </ul>
+    <div class="shell hero-head">
+      <p class="eyebrow">{{ l.hero_eyebrow }}</p>
+      <!-- The gopher is go.dev's blue.svg byte for byte (assets/gopher.txt):
+           sized, eager, never the LCP element, and credited in every footer. -->
+      <p class="hero-badge">
+        <img src="/assets/gopher.svg" width="35" height="48" alt="" title="{{ i18n.gopher_credito }}, CC BY 4.0">
+        <span class="pill">{{ l.hero_selo }}</span>
+      </p>
+      <h1>{{ l.hero_titulo }}</h1>
+      <p class="lead">{{ l.hero_lead }}</p>
+      <div class="button-row">
+        <a class="button button-primary" href="{{ prefixo }}/docs/quickstart/">
+          {{ l.hero_cta1 }}
+          <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+        </a>
+        <a class="button button-secondary" href="{{ repo }}" target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-github"></use></svg>
+          {{ l.hero_cta2 }}
+        </a>
       </div>
 
-      <div class="frame frame-lit hero-frame">
-        <div class="frame-bar">
-          <span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span><span class="dot" aria-hidden="true"></span>
-          <span class="frame-url">localhost:8080</span>
-        </div>
-        <img src="/assets/console.svg" width="1000" height="600" alt="{{ l.ui_alt }}">
+      <!-- Not a single `docker run`: the Core keeps its state in Postgres,
+           so the shortest honest start is the repository's compose file.
+           Checked on a fresh clone; the console answers on :8080. -->
+      <div class="code-block hero-cmd" data-code="git clone https://github.com/AreteAcademy/brevis&#10;cd brevis &amp;&amp; docker compose up">
+        <div class="code-head"><span>{{ l.hero_rodar }}:</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
+<pre><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
+<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
+        <p class="code-note">{{ l.hero_cmd_rotulo }}</p>
       </div>
     </div>
   </section>

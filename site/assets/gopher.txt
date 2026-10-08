@@ -1,0 +1,11 @@
+gopher.svg — the Go gopher
+
+Source:   https://go.dev/images/gophers/blue.svg (fetched 2026-10-08)
+SHA-256:  c328cbcb80b48bef454015a9e091d5543de8dad939fdd2600942ae985da8f2be
+Author:   Renée French
+Licence:  Creative Commons Attribution 4.0 (CC BY 4.0)
+          https://creativecommons.org/licenses/by/4.0/
+
+Copied byte for byte: not recoloured, redrawn or cropped. Self-hosted because
+the site's CSP allows images from 'self' only. The credit line is in the
+footer of every page and in the image's title.
