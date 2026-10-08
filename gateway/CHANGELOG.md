@@ -13,6 +13,32 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.24.0] — 2026-10-08
+
+### Fixed: a null in a JSON column lands as SQL NULL
+
+Requires `sdk v0.82.0`, where the change is. The gateway carries it because
+`auto_table` with `shape: columns` is how a producer's null reaches a JSON
+column in the first place.
+
+A consumer measured **4,238 rows holding a JSON `null` and 145 holding SQL
+`NULL`** in one table, for the same producer value — decided by whether
+anything else in the flush window carried that key. `WHERE col IS NULL`
+answered 145 of 4,383.
+
+A JSON column is the one place where a null has two meanings: `null` is a
+legal JSON value, so `"col": null` on the wire is a value and omitting the key
+is an absence. The key is omitted now.
+
+**Nothing you have is migrated**, and the SDK's entry carries the one-line
+`UPDATE` that fixes a table. Until it runs, `col IS NULL OR JSON_TYPE(col) =
+'null'` keeps working and keeps being needed for the rows already written.
+
+Measured against real BigQuery rather than reasoned about — the first release
+where that was possible.
+
+---
+
 ## [0.23.0] — 2026-10-07
 
 ### Added: a refused request is counted
