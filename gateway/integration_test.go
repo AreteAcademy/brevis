@@ -169,6 +169,19 @@ streams:
         records: 500
         every: 1h` + tail + "\n"
 
+	// A DEAD LETTER, because the config refuses a stream without one -- a
+	// batch the sink turns away would otherwise go to a log line, which is
+	// losing data quietly.
+	//
+	// It was added on 2026-10-08, and these two tests had been FAILING on it
+	// for however long the rule has existed: they skip without
+	// PUBSUB_EMULATOR_HOST, CI never sets it, and a skip prints green. The
+	// same rot as the nine SDK integration tests found that morning, and
+	// found here the same way -- by a run that refuses a skip.
+	//
+	// Under t.TempDir(), so the run leaves nothing behind.
+	yaml += "    dead_letter:\n      type: files\n      path: " + t.TempDir() + "/\n"
+
 	path := t.TempDir() + "/g.yaml"
 	if err := os.WriteFile(path, []byte(yaml), 0o600); err != nil {
 		t.Fatal(err)
