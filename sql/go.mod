@@ -5,7 +5,7 @@
 // `./cmd/brevis` imports neither the SDK nor a driver. engine-weight.sh stays
 // where it is because nothing here can reach it.
 //
-// TWO REQUIRES, and each one argued for itself. This comment says what they
+// THREE REQUIRES, and each one argued for itself. This comment says what they
 // bought, because the next one has to argue too.
 //
 // The reference extractor is stdlib only -- 1.9 MB against a real parser's 14
@@ -23,16 +23,31 @@
 // dialect package exists to avoid. It is the driver the SDK already uses, so
 // the repository has one Postgres driver rather than two opinions about
 // escaping. The budget it spends against is S8's: the image at 30 MB.
+//
+// `golang.org/x/oauth2` [#62 S5]: the credentials half of BigQuery, and the
+// ONLY half taken from a library. The measurement that decided it, both in
+// an empty main:
+//
+//	cloud.google.com/go/bigquery   31 MB   526 packages   236 modules
+//	golang.org/x/oauth2            8.5 MB  201 packages     3 modules
+//
+// The official client does not fit under S8's 30 MB before a line of
+// brevis-sql is written, and what this tool asks of BigQuery is two
+// operations -- run a statement, read one value. The REST endpoint is in
+// internal/dialect/bigquery/conn.go, with a test for each of the three ways
+// it could be quietly wrong. Both dialects together: 15 MB, 241 packages.
 module github.com/AreteAcademy/brevis/sql
 
 go 1.26.0
 
 require (
 	github.com/jackc/pgx/v5 v5.11.0
+	golang.org/x/oauth2 v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/kr/text v0.2.0 // indirect

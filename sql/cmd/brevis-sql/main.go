@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect/bigquery"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 	"github.com/AreteAcademy/brevis/sql/internal/project"
 	runner "github.com/AreteAcademy/brevis/sql/internal/run"
@@ -34,6 +35,7 @@ import (
 // wanted.
 var dialects = map[string]dialect.Dialect{
 	postgres.Dialect{}.Name(): postgres.Dialect{},
+	bigquery.Dialect{}.Name(): bigquery.Dialect{},
 }
 
 func known() string {

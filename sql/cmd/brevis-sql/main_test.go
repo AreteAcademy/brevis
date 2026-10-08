@@ -74,3 +74,38 @@ func TestAnUnknownDialectIsRefusedByName(t *testing.T) {
 		t.Errorf("the refusal does not name it and what there is: %v", err)
 	}
 }
+
+// BOTH DIALECTS ARE REACHABLE FROM THE COMMAND LINE. The registry is the
+// wire between `--dialect` and the code that builds, and a dialect that
+// passes its conformance suite and is not in the map is a dialect nobody
+// can use. A mutation removing either entry fails here.
+func TestEveryDialectTheBinaryHasIsReachable(t *testing.T) {
+	for _, name := range []string{"postgres", "bigquery"} {
+		if _, ok := dialects[name]; !ok {
+			t.Errorf("--dialect %s is not in the registry", name)
+		}
+	}
+	// And the registry's keys ARE the dialects' own names, because `refs`
+	// switches on the same string: a key that disagrees would read a
+	// project's SQL as one dialect and build it as another.
+	for key, d := range dialects {
+		if d.Name() != key {
+			t.Errorf("registered under %q and calls itself %q", key, d.Name())
+		}
+	}
+}
+
+// And the help lists what there is, derived. It said "postgres | bigquery"
+// while the binary built one of them.
+func TestTheUnknownDialectErrorListsBoth(t *testing.T) {
+	err := run([]string{"build", "--project", fixture,
+		"--dialect", "duckdb", "--dsn-from", "NOPE"}, out())
+	if err == nil {
+		t.Fatal("an unimplemented dialect was accepted")
+	}
+	for _, want := range []string{"duckdb", "bigquery", "postgres"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not mention %q: %v", want, err)
+		}
+	}
+}
