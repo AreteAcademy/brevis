@@ -610,6 +610,65 @@ marts.orders
     </div>
   </section>
 
+  <!-- Deploy: three ways, all self-hosted; no managed-cloud card, because
+       there is no managed cloud. Each first command was checked in T11:
+       compose run on a fresh clone, the chart rendered by `helm template`
+       with its four required values, agent.yaml and the render validated
+       by kubeconform. -->
+  <section class="section" id="implantar">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">{{ l.dp_eyebrow }}</p>
+          <h2>{{ l.dp_titulo }}</h2>
+        </div>
+        <p class="lead">{{ l.dp_lead }}</p>
+      </div>
+
+      <div class="deploy-grid" data-reveal>
+        <article class="card deploy-card" data-deploy="compose">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-docker"></use></svg></p>
+          <h3>{{ l.dp_compose_t }}</h3>
+          <p>{{ l.dp_compose_d }}</p>
+          <pre class="deploy-cmd"><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
+<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
+          <a class="text-link" href="{{ prefixo }}/docs/installation/#{{ l.dp_a_compose }}">
+            {{ l.dp_link }}
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+        <article class="card deploy-card" data-deploy="helm">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-kubernetes"></use></svg><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-helm"></use></svg></p>
+          <h3>{{ l.dp_helm_t }}</h3>
+          <p>{{ l.dp_helm_d }}</p>
+          <pre class="deploy-cmd"><code><span class="t-o">$</span> helm install brevis ./deployments/helm/brevis \
+    --namespace data --create-namespace \
+    --set database.url=<span class="t-s">"postgres://…"</span> \
+    --set auth.user=admin \
+    --set auth.passwordHash=<span class="t-s">"$(brevis hash)"</span> \
+    --set auth.secret=<span class="t-s">"$(openssl rand -base64 48)"</span></code></pre>
+          <a class="text-link" href="{{ prefixo }}/docs/kubernetes/#{{ l.dp_a_helm }}">
+            {{ l.dp_link }}
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+        <article class="card deploy-card" data-deploy="agent">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-kubernetes"></use></svg></p>
+          <h3>{{ l.dp_agent_t }}</h3>
+          <p>{{ l.dp_agent_d }}</p>
+          <pre class="deploy-cmd"><code><span class="t-c"># {{ l.dp_agent_passo }}</span>
+<span class="t-k">host</span><span class="t-o">:</span> tools
+
+<span class="t-o">$</span> kubectl apply -f deployments/kubernetes/agent.yaml</code></pre>
+          <a class="text-link" href="{{ prefixo }}/docs/pod-per-step/#{{ l.dp_a_agent }}">
+            {{ l.dp_link }}
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
   <section class="section section-users" id="quem-usa">
     <div class="shell">
       <div class="section-head head-split" data-reveal>

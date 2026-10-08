@@ -1949,6 +1949,57 @@ html:not(.js) .product-tabs {
   height: 20px;
 }
 
+/* ------------------------------------------------------------ implantar ---- */
+
+.deploy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 1.25rem;
+}
+
+.deploy-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.deploy-icons {
+  display: flex;
+  gap: 0.6rem;
+  color: var(--text-dim);
+}
+
+.deploy-icons .ico {
+  width: 24px;
+  height: 24px;
+}
+
+.deploy-card h3 {
+  font-family: var(--font-sans);
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.deploy-card > p:not(.deploy-icons) {
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  color: var(--text-dim);
+}
+
+.deploy-cmd {
+  margin: auto 0 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r);
+  background: var(--bg);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  line-height: 1.75;
+}
+
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {

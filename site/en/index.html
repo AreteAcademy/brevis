@@ -734,6 +734,65 @@ marts.orders
     </div>
   </section>
 
+  <!-- Deploy: three ways, all self-hosted; no managed-cloud card, because
+       there is no managed cloud. Each first command was checked in T11:
+       compose run on a fresh clone, the chart rendered by `helm template`
+       with its four required values, agent.yaml and the render validated
+       by kubeconform. -->
+  <section class="section" id="implantar">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">deploy it your way</p>
+          <h2>On your machine, in your cluster, or on a runtime you already keep.</h2>
+        </div>
+        <p class="lead">Open source and self-hosted: the same binary in all three places. No service of ours in between.</p>
+      </div>
+
+      <div class="deploy-grid" data-reveal>
+        <article class="card deploy-card" data-deploy="compose">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-docker"></use></svg></p>
+          <h3>Docker Compose</h3>
+          <p>Postgres, Core, console and Gateway on one machine, to try it or to develop.</p>
+          <pre class="deploy-cmd"><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
+<span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
+          <a class="text-link" href="/en/docs/installation/#a-full-local-environment">
+            How to
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+        <article class="card deploy-card" data-deploy="helm">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-kubernetes"></use></svg><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-helm"></use></svg></p>
+          <h3>Kubernetes + Helm</h3>
+          <p>The chart in the repository: migrations as a hook, one image per role, and minimal RBAC for the step pods.</p>
+          <pre class="deploy-cmd"><code><span class="t-o">$</span> helm install brevis ./deployments/helm/brevis \
+    --namespace data --create-namespace \
+    --set database.url=<span class="t-s">"postgres://…"</span> \
+    --set auth.user=admin \
+    --set auth.passwordHash=<span class="t-s">"$(brevis hash)"</span> \
+    --set auth.secret=<span class="t-s">"$(openssl rand -base64 48)"</span></code></pre>
+          <a class="text-link" href="/en/docs/kubernetes/#install-it-with-helm">
+            How to
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+        <article class="card deploy-card" data-deploy="agent">
+          <p class="deploy-icons"><svg class="ico" aria-hidden="true"><use href="/assets/icons.svg#i-kubernetes"></use></svg></p>
+          <h3>Your own runtime</h3>
+          <p>A step with host: goes to an agent you keep — where the licence, the GPU or the allowlisted IP lives.</p>
+          <pre class="deploy-cmd"><code><span class="t-c"># in the workflow step</span>
+<span class="t-k">host</span><span class="t-o">:</span> tools
+
+<span class="t-o">$</span> kubectl apply -f deployments/kubernetes/agent.yaml</code></pre>
+          <a class="text-link" href="/en/docs/pod-per-step/#where-each-step-runs">
+            How to
+            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
   <section class="section section-users" id="quem-usa">
     <div class="shell">
       <div class="section-head head-split" data-reveal>
