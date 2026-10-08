@@ -130,6 +130,9 @@ func TestCompileCountsTheTestsWithoutRunningThem(t *testing.T) {
 	if err := run([]string{"compile", "--project", "../../internal/check/testdata/project"}, b); err != nil {
 		t.Fatal(err)
 	}
+	if !strings.Contains(b.String(), "0 function(s)") {
+		t.Errorf("compile does not count the functions:\n%s", b)
+	}
 	if !strings.Contains(b.String(), "4 test(s)") {
 		t.Errorf("the fixture declares four tests on one model:\n%s", b)
 	}

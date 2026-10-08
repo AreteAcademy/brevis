@@ -240,3 +240,64 @@ func TestATableReportsItsRowsAndAViewReportsNone(t *testing.T) {
 		t.Errorf("%s.top holds %d rows, and the fixture makes one", schema, *n)
 	}
 }
+
+// FUNCTIONS RUN BEFORE EVERY MODEL, not before the ones that call them.
+//
+// Ordering them against the models would mean reading the SQL for function
+// CALLS, which the extractor deliberately does not do -- a call in a
+// SELECT list is not a relation. So all of them go first: they are cheap,
+// `create or replace` is idempotent in both dialects, and a model that
+// calls one cannot be built before it exists.
+func TestFunctionsRunBeforeAnyModel(t *testing.T) {
+	p, err := project.Load("../project/testdata/withfunctions", "postgres")
+	if err != nil {
+		t.Fatal(err)
+	}
+	order, err := p.Select("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &spyConn{}
+	res, err := run.Build(t.Context(), postgres.Dialect{}, spy, p, order)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fn, model := -1, -1
+	for i, s := range spy.ran {
+		if fn < 0 && strings.Contains(s, "create or replace function") {
+			fn = i
+		}
+		if model < 0 && strings.Contains(s, "VIEW staging.prices") {
+			model = i
+		}
+	}
+	if fn < 0 {
+		t.Fatalf("the function was never run:\n%s", strings.Join(spy.ran, "\n"))
+	}
+	if model < 0 || fn > model {
+		t.Errorf("the function ran at %d and the model at %d", fn, model)
+	}
+
+	// ITS SCHEMA IS MADE TOO. `util` is not a model's schema, so nothing
+	// else would create it, and the function's own statement does not.
+	made := false
+	for _, s := range spy.ran[:fn] {
+		if strings.Contains(s, "CREATE SCHEMA IF NOT EXISTS util") {
+			made = true
+		}
+	}
+	if !made {
+		t.Error("the function's schema was not made before it")
+	}
+
+	// A FUNCTION IS NOT A DESTINATION. It holds no rows and nothing
+	// queries it, so it emits no `landed` line and is not in Built --
+	// putting one on /data would be a row nobody can read.
+	for _, b := range res.Built {
+		if strings.Contains(b.Ref, "cents_to_dollars") {
+			t.Errorf("a function was reported as something that landed: %+v", b)
+		}
+	}
+}

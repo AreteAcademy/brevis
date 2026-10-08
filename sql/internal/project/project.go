@@ -25,7 +25,35 @@ type Project struct {
 	// because nothing here builds them.
 	Edges   map[string][]string
 	Sources map[string][]string // by model, the references that are not models
+
+	// Functions are `functions/<schema>/<name>.sql`, in path order. They
+	// are run BEFORE the models and they are not models: no header, no
+	// materialisation, no tests, no place in the graph.
+	Functions []Function
 }
+
+// Function is one SQL function the project owns.
+//
+// THE SPIKE'S VERDICT PUT THESE IN M2 BY NAME. The most used macros in a
+// real 625-model dbt project are expressions --
+// `trim_make_empty_string_null` at 1,674 uses, `generate_surrogate_key` at
+// 268 -- and with those as SQL functions, 53% of its models need no
+// template at all. That is the premise of this tool holding for half of a
+// project nobody wrote for it.
+//
+// The body is run VERBATIM and nothing here parses it. A function's text
+// is `create or replace function …`, which is already idempotent in both
+// dialects, and a tool that rewrote it would be guessing at a language it
+// has no reason to read.
+type Function struct {
+	Schema, Name string
+	// Path is as the project sees it, so an error names what somebody typed.
+	Path string
+	SQL  string
+}
+
+// Ref is `<schema>.<name>`, the same shape a model's is.
+func (f Function) Ref() string { return f.Schema + "." + f.Name }
 
 // Load reads every `.sql` under root/models.
 func Load(root, dialect string) (*Project, error) {
@@ -71,6 +99,10 @@ func Load(root, dialect string) (*Project, error) {
 				was.Schema+"/"+was.Name+".sql", rel, m.Ref())
 		}
 		p.Models[m.Ref()] = m
+	}
+
+	if err := p.loadFunctions(root); err != nil {
+		return nil, err
 	}
 
 	for ref, m := range p.Models {
@@ -202,4 +234,55 @@ func (p *Project) Select(expr string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// loadFunctions reads `functions/<schema>/<name>.sql`.
+//
+// A MISSING DIRECTORY IS NOT AN ERROR -- it is the common case, and most
+// projects have none.
+func (p *Project) loadFunctions(root string) error {
+	dir := filepath.Join(root, "functions")
+	var paths []string
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(path, ".sql") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", dir, err)
+	}
+	// Sorted, so two runs create them in the same order. One function may
+	// call another, and a project where that matters is one where the
+	// order has to be the same every time rather than the filesystem's.
+	sort.Strings(paths)
+
+	for _, path := range paths {
+		raw, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, path)
+		// `functions/<schema>/<name>.sql`, the same rule the models have
+		// and for the same reason: two places to say where something lands
+		// is one place for them to disagree.
+		parts := strings.Split(filepath.ToSlash(rel), "/")
+		if len(parts) != 3 {
+			return fmt.Errorf("%s: a function is `functions/<schema>/<name>.sql`, "+
+				"and this is %d level(s) deep", rel, len(parts)-1)
+		}
+		p.Functions = append(p.Functions, Function{
+			Schema: parts[1],
+			Name:   strings.TrimSuffix(parts[2], ".sql"),
+			Path:   rel,
+			SQL:    string(raw),
+		})
+	}
+	return nil
 }

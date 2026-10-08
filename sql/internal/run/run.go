@@ -56,12 +56,37 @@ func Build(ctx context.Context, d dialect.Dialect, conn dialect.Conn,
 	p *project.Project, order []string) (Result, error) {
 
 	var res Result
+	// FUNCTIONS FIRST, ALL OF THEM, before any model.
+	//
+	// Ordering them against the models would mean reading the SQL for
+	// function CALLS, and the extractor deliberately does not -- a call in
+	// a SELECT list is not a relation, and teaching it otherwise would give
+	// every model that uses one a dependency on something that is not a
+	// model. They are cheap and `create or replace` is idempotent in both
+	// dialects, so all of them go first and the question does not arise.
+	//
+	// They are NOT in Built: a function holds no rows and nothing queries
+	// it, so it is not a destination and emits no `landed` line.
+	made := map[string]bool{}
+	for _, f := range p.Functions {
+		if !made[f.Schema] {
+			for _, s := range d.EnsureSchema(f.Schema) {
+				if err := conn.Exec(ctx, s); err != nil {
+					return res, fmt.Errorf("making the schema for %s: %w", f.Path, err)
+				}
+			}
+			made[f.Schema] = true
+		}
+		if err := conn.Exec(ctx, f.SQL); err != nil {
+			return res, fmt.Errorf("%s: the warehouse refused this function:\n%s\n\n%w",
+				f.Path, f.SQL, err)
+		}
+	}
+
 	// The schema is made ONCE, before the first model that lands in it, and
 	// not once per model: EnsureSchema is safe to repeat -- the conformance
 	// suite insists on it -- but repeating it would put N statements in the
 	// log for one fact.
-	made := map[string]bool{}
-
 	for _, ref := range order {
 		m, ok := p.Models[ref]
 		if !ok {
