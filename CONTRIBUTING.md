@@ -72,6 +72,45 @@ golangci-lint run ./...                     # in both modules
 ./.github/scripts/helm-check.sh             # the chart renders correctly
 ```
 
+## The warehouse is local, and CI says so
+
+**BigQuery is not in CI and will not be**, decided 2026-10-08. Three reasons,
+not one: this repository is public, so a long-lived GCP key in its secrets is
+a standing target through every third-party action the workflows pull; the
+project on hand holds a client's real data; and the emulator already covers
+the protocol.
+
+What the emulator does **not** cover is the write path — `floci` refuses load
+jobs by design, and a load job is how the SDK writes to BigQuery. So CI runs
+the emulated layer and then says, in a step of its own, that it did not run
+the other:
+
+> SKIPPED, which is green: nothing below this line was proven against a real
+> warehouse.
+
+**The other half of that decision is a command**, because otherwise "we run it
+locally" is a sentence rather than something that happens:
+
+```bash
+make warehouse-up                 # postgres, mysql, an S3 API, floci, redis, memcached
+
+export BREVIS_IT_PROJECT=my-dev-project
+export BREVIS_IT_DATASET=brevis_it      # must exist, with a table expiry
+export BREVIS_IT_BUCKET=my-bucket       # for the GCS load strategy
+gcloud auth application-default login
+
+make warehouse                    # every test, and A SKIP IS A FAILURE
+```
+
+**A skip is a failure there, which is the opposite of CI and the point.** CI
+tolerates a skip because it has no credentials; that run exists to prove
+everything ran, so a test that did not run is the one outcome it must refuse —
+`go test` exits 0 on a skip and prints green, which is how nine integration
+tests once rotted unnoticed.
+
+Run it before any release that touches BigQuery. It creates and drops tables,
+datasets and objects: point it at a project you are willing to lose.
+
 ## Things this project refuses
 
 **A public field that does nothing.** If it is not read, it is not there.

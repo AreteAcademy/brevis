@@ -64,6 +64,44 @@ test-db: ## Creates and migrates the test database (idempotent)
 	  || docker compose exec -T postgres createdb -U brevis brevis_test
 	@BREVIS_DATABASE_URL="$(TEST_DB_URL)" go run ./cmd/brevis migrate up >/dev/null
 
+# --- The real warehouse ----------------------------------------------------
+# BIGQUERY IS LOCAL AND NEVER IN CI, decided 2026-10-08. The repository is
+# public, the only project on hand holds a client's real datasets, and CI
+# already says in `Say what did not run` that nothing below that line was
+# proven against a real warehouse.
+#
+# These two targets are the other half of that decision. The script refuses a
+# SKIP, which is the opposite of CI and the whole point: a run that exists to
+# prove everything ran cannot pass with a test that did not.
+warehouse-up: ## Brings up every container the warehouse run needs (floci included)
+	@# FIVE PROFILES, not `all`. `queue` and `docstore` have no driver yet --
+	@# their own comments in the compose say so -- and starting them would be
+	@# four containers nobody looks at. `gcp-native` IS here: two gateway
+	@# tests want PUBSUB_EMULATOR_HOST, and leaving it out made them skip,
+	@# which the warehouse run refuses.
+	@docker compose -f docker-compose.drivers.yml --profile sql --profile aws \
+	  --profile gcp --profile metastore up -d
+	@# Pub/Sub LAST and tolerated, because `make up`'s stack publishes an
+	@# emulator on the same 8085 and whichever came first owns the port.
+	@# The tests want PUBSUB_EMULATOR_HOST to answer; they do not care which
+	@# compose project is answering. This is the cost the drivers compose's
+	@# own header warns about -- two project names, one port -- showing up.
+	@if nc -z 127.0.0.1 8085 2>/dev/null; then \
+	  echo "pubsub: 8085 is already served (make up's stack); leaving it"; \
+	else \
+	  docker compose -f docker-compose.drivers.yml --profile gcp-native up -d; \
+	fi
+	@for s in postgres mysql; do \
+	  for i in $$(seq 1 60); do \
+	    [ "$$(docker compose -f docker-compose.drivers.yml ps $$s --format '{{.Health}}')" = healthy ] && break; \
+	    sleep 2; \
+	  done; \
+	done
+	@echo "up. Now: export BREVIS_IT_PROJECT / BREVIS_IT_DATASET / BREVIS_IT_BUCKET"
+
+warehouse: ## Every test against the REAL BigQuery, and a skip is a failure (local only)
+	@./scripts/warehouse-check.sh
+
 check: ## gofmt + vet + tests (the gate before committing)
 	@test -z "$$(gofmt -l cmd internal migrations)" || { echo "gofmt pending:"; gofmt -l cmd internal migrations; exit 1; }
 	@go vet ./...
