@@ -170,17 +170,27 @@ func TestAFailureNamesTheModel(t *testing.T) {
 	}
 }
 
-// spyConn records statements and answers every question with "nothing is
+// spyConn records every round trip and answers each one with "nothing is
 // there", which is what a first build sees.
-type spyConn struct{ ran []string }
+type spyConn struct {
+	ran   []string
+	asked []string
+	trips int
+}
 
 func (s *spyConn) Exec(_ context.Context, statement string) error {
 	s.ran = append(s.ran, statement)
+	s.trips++
 	return nil
 }
-func (s *spyConn) Scalar(context.Context, string) (any, error) { return nil, nil }
-func (s *spyConn) Target(ref string) string                    { return "spy://db/" + ref }
-func (s *spyConn) Close(context.Context) error                 { return nil }
+
+func (s *spyConn) Scalar(_ context.Context, query string) (any, error) {
+	s.asked = append(s.asked, query)
+	s.trips++
+	return nil, nil
+}
+func (s *spyConn) Target(ref string) string    { return "spy://db/" + ref }
+func (s *spyConn) Close(context.Context) error { return nil }
 
 // EVERY MODEL SAYS WHERE IT WROTE, which is the half that makes this part
 // of Brevis rather than a SQL runner beside it. The engine takes the target
