@@ -695,7 +695,8 @@ that is a decision somebody made rather than one they forgot.
 
 ```
 brevis_gateway_events_received_total{stream,format}       counter
-brevis_gateway_events_rejected_total{stream,reason}       counter
+brevis_gateway_events_rejected_total{stream,reason}       counter   per EVENT, after decode
+brevis_gateway_requests_refused_total{stream,reason}      counter   per REQUEST, before one existed
 brevis_gateway_events_dropped_total{stream}               counter   a hook returned nil
 brevis_gateway_oversized_total{stream}                    counter
 brevis_gateway_batches_total{stream,sink,outcome}         counter   delivered|retried|buried

@@ -13,6 +13,67 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.23.0] — 2026-10-07
+
+### Added: a refused request is counted
+
+```
+brevis_gateway_requests_refused_total{stream, reason}
+  reason: unauthorized | body_too_large | malformed | empty | saturated
+```
+
+There were four ways to refuse a request and one of them was instrumented. A
+401 from a key that was rotated badly, a 413 against a ceiling somebody had
+just raised, a 400 from a client sending the wrong shape — all three left this
+process without a trace of any kind, and "is anything being turned away" had
+no answer inside it. Reported in issue #39, measured against `0.15.0`, and
+still exact six releases later.
+
+**Requests and not events**, which is the shape rather than a convenience.
+`brevis_gateway_events_rejected_total` is counted per event, after `decode` has
+returned — and three of these four happen to a body that never decoded, so
+there is nothing to divide by. It is why `saturated` already counted requests,
+and these belong beside it.
+
+**`brevis_gateway_saturated_total` is unchanged and still counted.** The 503
+now also appears on the new series as `reason: saturated`, so one query answers
+"is anything being turned away", and the old series keeps working for whatever
+alert is written against it. Two series, one a strict subset, is a smaller cost
+than a rename nobody noticed.
+
+**The `stream` label on a 401 is resolved, never the request's path.** That
+refusal is the only one reachable without a key, so its label is chosen by a
+caller who has not authenticated: the raw path would be a new series per
+request, and the cost of your metrics backend would be set by whoever is
+scanning the gateway. The path resolves against the configured streams, and
+everything else is one fixed `unknown`.
+
+### Added: a 413 says so in the log
+
+It is the only refusal that means data existed and was turned away, and a
+counter says how often without saying how close. The line carries the stream
+and the `limit`. **Not the size** — the body was truncated at the ceiling and
+nothing downstream knows how big it really was. `content_length` goes too,
+named as what it is: the client's claim.
+
+### Changed: refusing goes through one function
+
+`(*pipe).refuse` counts and then refuses, in that order and never one without
+the other, and a test refuses an `http.Error` written anywhere else in the
+package. The old shape — four refusals, one counted — is how the next one
+would have been the fifth uncounted.
+
+Nothing about this is configurable and nothing changes for a request that is
+accepted. The new series simply starts appearing on the scrape.
+
+### Thanks
+
+The diagnosis in #39 was exact, including which instrument structurally could
+not cover these and why. It was offered with a PR and this was built before
+that arrived, which is on us rather than on them.
+
+---
+
 ## [0.22.0] — 2026-10-07
 
 ### Added: `gateway describe` — where each stream lands, for the console

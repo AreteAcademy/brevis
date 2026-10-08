@@ -339,7 +339,8 @@ gateway.Main(hooks, gateway.WithSinks(sinks))
 <h2 id="what-it-counts">What it counts<a class="anchor" href="#what-it-counts" aria-label="link">#</a></h2>
 <p>Eleven Prometheus series, on <strong>its own port</strong> — never the ingest one, and that rule matters more here than it does in the engine: the ingest port is public by construction, it is where clients <code>POST</code>, so a <code>/metrics</code> on it would publish every stream name, path and destination to whoever found the path. Naming the same address for both is refused at load.</p>
 <div class="code-block" data-code="brevis_gateway_events_received_total{stream,format}     counter
-brevis_gateway_events_rejected_total{stream,reason}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
@@ -351,7 +352,8 @@ brevis_gateway_saturated_total{stream}                  counter  the 503s
 brevis_gateway_delivery_seconds{stream,sink}            histogram
 brevis_gateway_buffer_records{stream}                   gauge
 brevis_gateway_queue_batches{stream}                    gauge"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>brevis_gateway_events_received_total{stream,format}     counter
-brevis_gateway_events_rejected_total{stream,reason}     counter
+brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
+brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
