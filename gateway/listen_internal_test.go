@@ -30,7 +30,7 @@ func TestAConnectionPastItsAgeIsClosed(t *testing.T) {
 	ts.Config.Handler = boundConnections(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			served++
-			fmt.Fprint(w, "ok")
+			_, _ = fmt.Fprint(w, "ok")
 		}), 40*time.Millisecond)
 	ts.Config.ConnContext = stampAccept
 	ts.Start()
@@ -63,7 +63,7 @@ func TestWithNoAgeNothingIsClosed(t *testing.T) {
 	ts := httptest.NewUnstartedServer(nil)
 	ts.Config.Handler = boundConnections(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprint(w, "ok")
+			_, _ = fmt.Fprint(w, "ok")
 		}), 0)
 	ts.Config.ConnContext = stampAccept
 	ts.Start()
@@ -84,7 +84,7 @@ func TestWithNoAgeNothingIsClosed(t *testing.T) {
 func TestWithoutTheStampNothingIsClosed(t *testing.T) {
 	ts := httptest.NewUnstartedServer(boundConnections(
 		http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			fmt.Fprint(w, "ok")
+			_, _ = fmt.Fprint(w, "ok")
 		}), time.Nanosecond))
 	// No ConnContext on purpose.
 	ts.Start()
@@ -305,6 +305,6 @@ func TestTheAgeDoesNotWrapTheScrapeEndpoint(t *testing.T) {
 
 func okHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 }
