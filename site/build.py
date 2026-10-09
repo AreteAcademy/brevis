@@ -395,7 +395,8 @@ def carregar_docs(lang):
             "titulo": meta.get("title", f.stem),
             "descricao": meta.get("description", ""),
             "grupo": meta.get("group", ""),
-            "ordem": int(meta.get("order", "99")),
+            # float: uma página nova entra entre duas (3.5) sem renumerar as outras
+            "ordem": float(meta.get("order", "99")),
             "serif": meta.get("serif") == "true",
             "corpo": corpo,
         })
@@ -670,7 +671,7 @@ def pagina_markdown(pg, lang, pfx):
 LLMS_GRUPOS = [
     ("Start here", ["ecosystem", "introduction", "installation", "quickstart"]),
     ("Building a workflow", ["workflows", "parameters", "runtime", "context"]),
-    ("How it executes", ["scheduler-and-queue", "pod-per-step"]),
+    ("How it executes", ["core", "scheduler-and-queue", "pod-per-step"]),
     ("Command line and configuration", ["cli", "configuration"]),
     ("Writing a step in code", ["sdk", "libraries", "python"]),
     ("Receiving data over HTTP", ["ingestion", "ingestion-sinks", "benchmarks"]),

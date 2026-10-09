@@ -1,0 +1,84 @@
+# Core
+
+> O orquestrador: agenda os runs, guarda a fila no Postgres e sobe um pod por etapa — sem nunca tocar o dado.
+
+*https://brevis.sh/docs/core/ · brevis.sh docs (pt-BR)*
+
+---
+
+O workflow inteiro é um arquivo versionável: revisar um pipeline vira revisar um diff. O Core agenda, enfileira e sobe cada etapa com a própria imagem — e nunca toca o dado.
+
+![O fluxo do Core: um scheduler e uma fila, guardados no Postgres, sobem um pod por etapa do workflow — prepare, extract, validate e publish. Do Core só saem linhas de controle. O dado vai de uma origem HTTP para o pod extract, que roda o SDK, e de lá para o BigQuery; nenhum dado passa pelo Core.](/assets/flow-core.svg)
+
+## O que ele faz
+
+- **Agenda.** O scheduler lê a agenda de cada workflow e cria os runs. Ele e a fila são dois laços independentes: um travado não para o outro — [Scheduler e fila](/docs/scheduler-and-queue/index.md).
+- **Enfileira.** A fila fica no Postgres: quem executa reivindica um run pendente, percorre o grafo e registra o estado de cada etapa.
+- **Sobe um pod por etapa**, cada um com a própria imagem — [Pod por passo](/docs/pod-per-step/index.md).
+- **Nunca toca o dado.** Do Core só saem linhas de controle: quem lê e escreve dado é a etapa, com o [SDK](/docs/sdk/index.md) ou o código que for seu.
+
+## Um workflow, de ponta a ponta
+
+O workflow é um arquivo YAML. Duas etapas que dependem da mesma rodam em paralelo:
+
+```yaml
+name: hello
+type: dag
+tags: [example]
+
+steps:
+  - id: prepare
+    run: sh -c 'echo preparing; sleep 1'
+
+  # The next two depend on the same step, so they run IN PARALLEL.
+  - id: extract
+    run: sh -c 'sleep 2; echo 42 extracted'
+    depends_on: [prepare]
+
+  - id: validate
+    run: sh -c 'sleep 1; echo validated'
+    depends_on: [prepare]
+
+  - id: publish
+    run: echo published
+    depends_on: [extract, validate]
+```
+
+Para rodar local, sem fila nem cluster:
+
+```bash
+docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
+  areteacademy/brevis:0.17.1-worker run hello.yaml
+```
+
+A saída:
+
+```text
+workflow hello (dag, 4 steps) in .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ validate
+  ▶ extract
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello finished
+```
+
+A saída real, com a imagem publicada. brevis run executa local, sem fila; quem sobe pods é o scheduler.
+
+## Por onde seguir
+
+| se você quer | vá para |
+|---|---|
+| o formato YAML inteiro | [Workflows](/docs/workflows/index.md) |
+| quem cria e quem executa os runs | [Scheduler e fila](/docs/scheduler-and-queue/index.md) |
+| por que um pod por etapa | [Pod por passo](/docs/pod-per-step/index.md) |
+| o que uma etapa passa à seguinte | [Contexto entre passos](/docs/context/index.md) |
+| subir tudo e ver o grafo na interface | [Quickstart](/docs/quickstart/index.md) |

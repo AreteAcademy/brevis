@@ -6,6 +6,7 @@
   <url><loc>https://brevis.sh/docs/introduction/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/installation/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/quickstart/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/docs/core/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/workflows/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/scheduler-and-queue/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/pod-per-step/</loc><priority>0.8</priority></url>
@@ -29,6 +30,7 @@
   <url><loc>https://brevis.sh/en/docs/introduction/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/installation/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/quickstart/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/en/docs/core/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/workflows/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/scheduler-and-queue/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/pod-per-step/</loc><priority>0.8</priority></url>

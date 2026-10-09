@@ -49,6 +49,7 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 
 ## How it executes
 
+- [Core](https://brevis.sh/en/docs/core/index.md): The orchestrator: schedules runs, keeps the queue in Postgres and starts one pod per step — and never touches the data.
 - [Scheduler and queue](https://brevis.sh/en/docs/scheduler-and-queue/index.md): Two independent loops — who creates runs, who executes them, and why they are separate.
 - [Pod per step](https://brevis.sh/en/docs/pod-per-step/index.md): Why each step runs in its own pod, and what that changes in cost and isolation.
 

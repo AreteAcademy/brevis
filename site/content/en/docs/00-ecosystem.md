@@ -12,7 +12,7 @@ The Core schedules, queues and watches — and never touches the data. What touc
 
 | piece | what it does | how you get it | guide |
 |---|---|---|---|
-| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Workflows](/docs/workflows/) |
+| **Core** | Schedules, queues and starts one pod per step. Never touches the data. | `areteacademy/brevis` | [Core](/docs/core/) |
 | **SDK** | A Go library that extracts, shapes and loads, inside your step. | `go get github.com/AreteAcademy/brevis/sdk` | [Go SDK](/docs/sdk/) |
 | **Gateway** | Takes HTTP POST, answers 202 and writes in batches. No database of its own. | `areteacademy/brevis-gateway` | [Ingestion](/docs/ingestion/) |
 | **SQL** | Plain .sql files become tables and views, in dependency order. | `areteacademy/brevis-sql` | [SQL-hub.md](https://github.com/AreteAcademy/brevis/blob/master/docs/SQL-hub.md) |
