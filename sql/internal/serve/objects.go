@@ -18,8 +18,29 @@ type objectsRequest struct {
 	Target string `json:"target"`
 }
 
+// relation is one name on the WIRE.
+//
+// A SEPARATE TYPE FROM `dialect.Relation`, which is the rule `/v1/query`
+// already follows with `dialect.Result`: a domain type has no tags, so
+// marshalling one directly published `{"Schema":…,"Name":…}` from this
+// endpoint while every other response here is lowercase. The console's
+// decoder is case-insensitive and hid it; curling the running service did
+// not.
+type relation struct {
+	Schema string `json:"schema"`
+	Name   string `json:"name"`
+}
+
+func wire(rels []dialect.Relation) []relation {
+	out := make([]relation, 0, len(rels))
+	for _, r := range rels {
+		out = append(out, relation{Schema: r.Schema, Name: r.Name})
+	}
+	return out
+}
+
 type objectsResponse struct {
-	Relations []dialect.Relation `json:"relations"`
+	Relations []relation `json:"relations"`
 
 	// Truncated says the ceiling cut the answer, which a tree has to draw:
 	// a browser silently missing half a warehouse is worse than one that
@@ -97,7 +118,7 @@ func (s *Service) objects(w http.ResponseWriter, r *http.Request) {
 	if held, ok := s.listed.get(table.Connection); ok {
 		line.Outcome = "cached"
 		line.Returned = len(held.rels)
-		write(w, http.StatusOK, objectsResponse{Relations: held.rels, Truncated: held.cut})
+		write(w, http.StatusOK, objectsResponse{Relations: wire(held.rels), Truncated: held.cut})
 		return
 	}
 
@@ -158,7 +179,7 @@ func (s *Service) objects(w http.ResponseWriter, r *http.Request) {
 
 	line.Outcome = "ok"
 	line.Returned = len(rels)
-	write(w, http.StatusOK, objectsResponse{Relations: rels, Truncated: cut})
+	write(w, http.StatusOK, objectsResponse{Relations: wire(rels), Truncated: cut})
 }
 
 func (c *listings) get(connection string) (listing, bool) {

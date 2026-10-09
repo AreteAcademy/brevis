@@ -151,3 +151,32 @@ func TestObjectsRefusesABadTargetBeforeConnecting(t *testing.T) {
 		t.Error("it opened a connection for a target it had already refused")
 	}
 }
+
+// THE WIRE IS LOWERCASE, like every other response this service writes.
+//
+// This endpoint marshalled `dialect.Relation` -- a DOMAIN type with no tags
+// -- straight onto the wire, so it answered `{"Schema":…,"Name":…}` while
+// `/v1/query` beside it answers `{"columns":…,"rows":…}`. Nothing here saw
+// it: the test above unmarshals into the same Go struct it marshalled from,
+// which round-trips whatever the keys are, and the console's decoder is
+// case-insensitive, so the one consumer worked by luck.
+//
+// It was found by curling the running service. The fix is the rule the other
+// endpoints already follow -- a wire type with explicit tags, built from the
+// domain type -- and this test reads the BYTES, because that is the only
+// place the difference exists.
+func TestAListingIsWrittenInThisServicesOwnCasing(t *testing.T) {
+	l := &lister{rels: []dialect.Relation{{Schema: "bronze", Name: "orders"}}}
+	body := objects(t, listed(t, l, &bytes.Buffer{}), `{"target":"bigquery://acme-prod/bronze/orders"}`).Body.String()
+
+	for _, want := range []string{`"schema":"bronze"`, `"name":"orders"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the listing does not carry %s: %s", want, body)
+		}
+	}
+	for _, gone := range []string{`"Schema"`, `"Name"`} {
+		if strings.Contains(body, gone) {
+			t.Errorf("the listing leaks the domain type's %s: %s", gone, body)
+		}
+	}
+}
