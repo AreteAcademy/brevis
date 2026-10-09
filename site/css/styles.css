@@ -990,75 +990,7 @@ a.chip:focus-visible .ico {
   transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* -------------------------------------------------------- ecossistema ---- */
-
-/* O mapa: origens | as quatro pecas | destinos. O Core fica acima, no plano
-   de controle, e nenhum fio chega nele -- os fios (.eco-wire) so existem nas
-   linhas de dados, e o template e quem garante isso, nao o CSS. Os rotulos
-   sao --text-dim, nao oliva: o quadriculado passa por tras deles. */
-.eco {
-  --eco-gap: clamp(2rem, 4vw, 3.5rem);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr) minmax(0, 1fr);
-  grid-template-areas:
-    ".   core ."
-    "src data dst";
-  column-gap: var(--eco-gap);
-  row-gap: 1.75rem;
-  padding: clamp(1.25rem, 3vw, 2.5rem);
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background-color: var(--bg);
-}
-
-.eco-core-area { grid-area: core; }
-.eco-src { grid-area: src; }
-.eco-data { grid-area: data; }
-.eco-dst { grid-area: dst; }
-
-.eco-plane,
-.eco-col-title,
-.eco-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.eco-plane {
-  margin-bottom: 0.6rem;
-}
-
-.eco-col-title {
-  margin-bottom: 1.25rem;
-  color: var(--text);
-}
-
-/* O barramento: a borda das colunas de fora, de onde saem e onde chegam os
-   fios. Ocupa a altura do plano de dados e nada acima dele. */
-.eco-src,
-.eco-dst {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.eco-src {
-  padding-right: 1.25rem;
-  border-right: 1px solid var(--olive);
-}
-
-.eco-dst {
-  padding-left: 1.25rem;
-  border-left: 1px solid var(--olive);
-}
-
-.eco-label {
-  margin-bottom: 0.6rem;
-  text-transform: none;
-  letter-spacing: 0;
-}
+/* ------------------------------------------------- chips e apoio ---- */
 
 .eco-chips {
   display: flex;
@@ -1077,108 +1009,6 @@ a.chip:focus-visible .ico {
 .eco-chips .chip .ico {
   width: 20px;
   height: 20px;
-}
-
-.eco-data {
-  display: flex;
-  flex-direction: column;
-}
-
-.eco-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
-  column-gap: 1rem;
-  row-gap: 0.6rem;
-  align-items: baseline;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.eco-data .eco-row + .eco-row {
-  border-top: 0;
-}
-
-.eco-data .eco-row:first-of-type {
-  border-radius: var(--r-lg) var(--r-lg) 0 0;
-}
-
-.eco-data .eco-row:last-child {
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
-}
-
-.eco-data .eco-row:hover {
-  background: var(--surface-2);
-}
-
-/* O Core e o unico tracejado: ele coordena, nao carrega. */
-.eco-core {
-  border-style: dashed;
-  border-radius: var(--r-lg);
-  background: transparent;
-}
-
-.eco-name {
-  font-family: var(--font-mono);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  letter-spacing: 0;
-  color: var(--lime);
-}
-
-.eco-row p {
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-  color: var(--text-dim);
-}
-
-.eco-row .pill {
-  grid-column: 2;
-  justify-self: start;
-  overflow-wrap: anywhere;
-}
-
-/* Um fio atravessa o vao entre a coluna e o barramento; a ponta de seta fica
-   do lado de quem recebe. */
-.eco-wire {
-  position: absolute;
-  top: 1.75rem;
-  width: var(--eco-gap);
-  height: 1px;
-  background: var(--olive);
-}
-
-.eco-wire::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  border: 3.5px solid transparent;
-  border-left: 5px solid var(--olive);
-  border-right: 0;
-}
-
-.eco-wire-in {
-  right: calc(100% + 1px);
-}
-
-.eco-wire-out {
-  left: calc(100% + 1px);
-}
-
-.eco-wire-in::after,
-.eco-wire-out::after {
-  right: 0;
-}
-
-.eco-row:hover .eco-wire,
-.eco-row:hover .eco-wire::after {
-  background-color: var(--lime);
-  border-left-color: var(--lime);
-}
-
-.eco-row:hover .eco-wire::after {
-  background-color: transparent;
 }
 
 .eco-support {
@@ -1206,71 +1036,137 @@ a.chip:focus-visible .ico {
   margin: 0;
 }
 
-/* Abaixo de 960 o mapa vira uma coluna e se le de cima para baixo: o Core,
-   depois origem -> pecas -> destino. Os fios por linha somem; uma seta
-   vertical liga os blocos, e nenhuma delas sai do Core. */
-@media (max-width: 960px) {
-  .eco {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "core" "src" "data" "dst";
-    row-gap: 2.75rem;
-  }
-
-  .eco-src,
-  .eco-dst {
-    padding: 0;
-    border: 0;
-  }
-
-  .eco-wire {
-    display: none;
-  }
-
-  .eco-data,
-  .eco-dst {
-    position: relative;
-  }
-
-  .eco-data::before,
-  .eco-dst::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: -2.25rem;
-    height: 1.75rem;
-    width: 1px;
-    background: var(--olive);
-  }
-
-  .eco-data::after,
-  .eco-dst::after {
-    content: "";
-    position: absolute;
-    left: calc(50% - 3px);
-    top: -0.75rem;
-    border: 3.5px solid transparent;
-    border-top: 5px solid var(--olive);
-    border-bottom: 0;
-  }
-
-  .eco-core-area {
-    padding-bottom: 1.5rem;
-    border-bottom: 1px dashed var(--line);
-  }
-}
-
 @media (max-width: 480px) {
   .eco-support {
     flex-direction: column;
     align-items: flex-start;
   }
+}
 
-  .eco-row {
-    grid-template-columns: minmax(0, 1fr);
+/* -------------------------------------------------------- arquitetura ---- */
+
+/* As camadas do Databend: um rótulo à esquerda, o que mora ali à direita.
+   A linha do Core é o plano de controle -- tracejada, sem fundo, sem chip de
+   dado e sem movimento. */
+.arch {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.arch-row {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--surface);
+}
+
+.arch-control {
+  border-style: dashed;
+  background: transparent;
+}
+
+.arch-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--olive);
+}
+
+.arch-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.arch-card {
+  display: flex;
+  flex: 1 1 16rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+}
+
+.arch-control .arch-card {
+  border-style: dashed;
+  background: transparent;
+}
+
+.arch-piece {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--lime);
+}
+
+.arch-verb {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--olive);
+}
+
+.arch-card p:not(.arch-verb) {
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.arch-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Ícones vivos: os chips das camadas de dados acendem na ordem em que o dado
+   chega a eles -- origens, ingestão, destinos, e a modelagem feita lá. */
+@keyframes arch-pulse {
+  0%, 70%, 100% {
+    border-color: var(--line);
+    box-shadow: none;
   }
 
-  .eco-row .pill {
-    grid-column: 1;
+  20% {
+    border-color: var(--lime-edge);
+    box-shadow: 0 0 0 3px var(--lime-wash);
+  }
+}
+
+.arch-data .chip,
+.arch-data .arch-card {
+  animation: arch-pulse 6s ease-in-out infinite;
+  animation-delay: var(--d, 0s);
+}
+
+.arch-data[data-row="ingestao"] {
+  --d: 1.2s;
+}
+
+.arch-data[data-row="destinos"] {
+  --d: 2.4s;
+}
+
+.arch-data[data-row="modelagem"] {
+  --d: 3.6s;
+}
+
+@media (max-width: 720px) {
+  .arch-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.9rem;
+    padding: 1.1rem;
   }
 }
 
@@ -1597,6 +1493,11 @@ html:not(.js) .pieces {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .arch-data .chip,
+  .arch-data .arch-card {
+    animation: none;
   }
 
   *,

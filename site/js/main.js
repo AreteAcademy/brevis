@@ -9,7 +9,7 @@
   /* As secoes que sairam da home estao na docs: um link antigo com o hash
      delas segue para a pagina certa, no idioma da pagina. */
   var antigas = {
-    'mesma-linha': 'ecosystem/', 'produtos': 'ecosystem/', 'como-executa': 'pod-per-step/',
+    'ecossistema': 'ecosystem/', 'mesma-linha': 'ecosystem/', 'produtos': 'ecosystem/', 'como-executa': 'pod-per-step/',
     'funciona-com': 'integrations/', 'console': 'console/', 'faq': 'faq/',
     'contraste': 'philosophy/', 'principios': 'philosophy/', 'editorial': 'philosophy/',
     'open-source': 'introduction/'

@@ -105,10 +105,9 @@
     </a>
 
     <nav class="main-nav" id="nav" aria-label="Navegação principal">
-      <a href="/#ecossistema">Ecossistema</a>
-      <a href="/docs/philosophy/">Princípios</a>
+      <a href="/#pecas">Peças</a>
+      <a href="/#arquitetura">Arquitetura</a>
       <a href="/docs/">Documentação</a>
-      <a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a>
       <div class="lang-switch" role="group" aria-label="Idioma"><a href="/" hreflang="pt-BR" aria-current="true">PT</a><a href="/en/" hreflang="en">EN</a></div>
       <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
         <svg aria-hidden="true"><use href="#i-github"></use></svg>
@@ -149,7 +148,7 @@
       <!-- The four pieces, one code window: each snippet is the one that ran
            in T5-T8 (published images), byte for byte. Without JS the tabs
            hide and the four panels show, stacked, each under its name. -->
-      <div class="pieces" role="tablist" aria-label="Peças do Brevis">
+      <div class="pieces" id="pecas" role="tablist" aria-label="Peças do Brevis">
         <button class="piece" type="button" role="tab" id="tab-core" aria-controls="p-core" aria-selected="true">
           <svg class="piece-ico" aria-hidden="true"><use href="#i-mark"></use></svg>
           <span class="piece-name">Core</span>
@@ -371,97 +370,87 @@ marts.orders
     </div>
   </section>
 
-  <section class="section" id="ecossistema">
+  <section class="section" id="arquitetura">
     <div class="shell">
       <div class="section-head head-split" data-reveal>
         <div>
-          <p class="eyebrow">o ecossistema</p>
+          <p class="eyebrow">arquitetura</p>
           <h2>Quatro peças. O dado passa por três.</h2>
         </div>
         <p class="lead">O Core agenda, enfileira e observa — e nunca toca o dado. Quem toca é o SDK, que busca; o Gateway, que recebe; e o SQL, que modela onde o dado já pousou.</p>
       </div>
 
-      <!-- The map is HTML so it translates and reflows; the names on it are
-           proper nouns and the sentences come from i18n.json.
-
-           The Core row has no .eco-wire, and that is the point, not an
-           omission: the Core schedules and watches, and no data line passes
-           through it. Wires live only on the data rows -- SDK and Gateway in
-           and out, SQL out only, because it models where the data already
-           landed. A connector drawn to the Core would be a false claim. -->
-      <div class="eco bg-grid" role="group" aria-label="Mapa do ecossistema: de onde o dado vem, as quatro peças do Brevis e para onde o dado vai" data-reveal>
-        <div class="eco-core-area">
-          <p class="eco-plane">plano de controle</p>
-          <div class="eco-row eco-core">
-            <h3 class="eco-name">Core</h3>
-            <p>Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado.</p>
-            <span class="pill">areteacademy/brevis</span>
+      <!-- Databend's stacked rows, in the order data meets them. The Core row
+           is the control plane: dashed, labelled, and it holds no data chip
+           and nothing that moves -- the motion is data, and data never goes
+           there (check_arch.py and arch.sh hold it). The chips light up row
+           by row on the data rows only, in the order the data travels:
+           sources, ingestion, destinations, then the modelling done there. -->
+      <div class="arch" role="group" aria-label="Mapa do ecossistema: de onde o dado vem, as quatro peças do Brevis e para onde o dado vai" data-reveal>
+        <div class="arch-row arch-data" data-row="origens"><h3 class="arch-label">Origens</h3>
+          <ul class="eco-chips">
+            <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>HTTP</li>
+            <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+            <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+            <li class="chip"><svg class="ico ico-files" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>arquivos</li>
+            <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>webhooks e apps</li>
+          </ul>
+        </div><!-- /row -->
+        <div class="arch-row arch-data" data-row="ingestao"><h3 class="arch-label">Ingestão</h3>
+          <div class="arch-cards">
+            <div class="arch-card">
+              <h4 class="arch-piece">SDK</h4>
+              <p class="arch-verb">o SDK busca</p>
+              <p>Biblioteca Go que extrai, molda e carrega, dentro da sua etapa.</p>
+              <span class="pill">brevis/sdk</span>
+            </div>
+            <div class="arch-card">
+              <h4 class="arch-piece">Gateway</h4>
+              <p class="arch-verb">chega ao Gateway</p>
+              <p>Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio.</p>
+              <span class="pill">areteacademy/brevis-gateway</span>
+            </div>
           </div>
-        </div>
-
-        <div class="eco-src">
-          <p class="eco-col-title">de onde vem</p>
-          <div class="eco-group">
-            <p class="eco-label">o SDK busca</p>
+        </div><!-- /row -->
+        <div class="arch-row arch-control" data-row="orquestracao"><h3 class="arch-label">Orquestração</h3>
+          <div class="arch-cards">
+            <div class="arch-card">
+              <p class="arch-verb">plano de controle</p>
+              <h4 class="arch-piece">Core</h4>
+              <p>Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado.</p>
+              <ul class="arch-tags">
+                <li class="pill">scheduler</li>
+                <li class="pill">fila</li>
+                <li class="pill">um pod por etapa</li>
+                <li class="pill">areteacademy/brevis</li>
+              </ul>
+            </div>
+          </div>
+        </div><!-- /row -->
+        <div class="arch-row arch-data" data-row="modelagem"><h3 class="arch-label">Modelagem</h3>
+          <div class="arch-cards">
+            <div class="arch-card">
+              <h4 class="arch-piece">SQL</h4>
+              <p>Arquivos .sql viram tabelas e views, em ordem de dependência.</p>
+              <span class="pill">areteacademy/brevis-sql 0.1.0</span>
+            </div>
             <ul class="eco-chips">
-              <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>HTTP</li>
               <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
-              <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
-              <li class="chip"><svg class="ico ico-files" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>arquivos</li>
-            </ul>
-          </div>
-          <div class="eco-group">
-            <p class="eco-label">chega ao Gateway</p>
-            <ul class="eco-chips">
-              <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>webhooks e apps</li>
-            </ul>
-          </div>
-        </div>
-
-        <div class="eco-data">
-          <p class="eco-plane">plano de dados</p>
-          <div class="eco-row eco-sdk">
-            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
-            <h3 class="eco-name">SDK</h3>
-            <p>Biblioteca Go que extrai, molda e carrega, dentro da sua etapa.</p>
-            <span class="pill">brevis/sdk</span>
-            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
-          </div>
-          <div class="eco-row eco-gateway">
-            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
-            <h3 class="eco-name">Gateway</h3>
-            <p>Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio.</p>
-            <span class="pill">areteacademy/brevis-gateway</span>
-            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
-          </div>
-          <div class="eco-row eco-sql">
-            <h3 class="eco-name">SQL</h3>
-            <p>Arquivos .sql viram tabelas e views, em ordem de dependência.</p>
-            <span class="pill">areteacademy/brevis-sql 0.1.0</span>
-            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
-          </div>
-        </div>
-
-        <div class="eco-dst">
-          <p class="eco-col-title">para onde vai</p>
-          <div class="eco-group">
-            <p class="eco-label">tabelas e tópicos</p>
-            <ul class="eco-chips">
               <li class="chip"><svg class="ico ico-bigquery" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
-              <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
-              <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
-              <li class="chip"><svg class="ico ico-redshift" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
-              <li class="chip"><svg class="ico ico-pubsub" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
             </ul>
           </div>
-          <div class="eco-group">
-            <p class="eco-label">arquivos em bucket</p>
-            <ul class="eco-chips">
-              <li class="chip"><svg class="ico ico-s3" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
-              <li class="chip"><svg class="ico ico-gcs" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
-            </ul>
-          </div>
-        </div>
+        </div><!-- /row -->
+        <div class="arch-row arch-data" data-row="destinos"><h3 class="arch-label">Destinos</h3>
+          <ul class="eco-chips">
+            <li class="chip"><svg class="ico ico-bigquery" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
+            <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+            <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+            <li class="chip"><svg class="ico ico-redshift" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
+            <li class="chip"><svg class="ico ico-pubsub" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+            <li class="chip"><svg class="ico ico-s3" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
+            <li class="chip"><svg class="ico ico-gcs" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
+          </ul>
+        </div><!-- /row -->
       </div>
 
       <dl class="eco-support" data-reveal>
@@ -470,7 +459,6 @@ marts.orders
         <dd><span class="pill">brevis-agent</span> roda a etapa num cluster que já é seu</dd>
         <dd><span class="pill">pip install brevis</span> contexto de execução para etapas em Python</dd>
       </dl>
-
     </div>
   </section>
 
@@ -576,7 +564,7 @@ marts.orders
       <div class="footer-col">
         <h2>projeto</h2>
         <ul>
-          <li><a href="/#ecossistema">Ecossistema</a></li>
+          <li><a href="/#arquitetura">Arquitetura</a></li>
           <li><a href="/docs/philosophy/">Princípios</a></li>
           <li><a href="/docs/introduction/#codigo-aberto-escolha-como-participar">Open source</a></li>
           <li><a href="/docs/faq/">FAQ</a></li>
