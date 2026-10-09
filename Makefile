@@ -200,7 +200,7 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally
 #     make up-data BREVIS_WORKFLOWS=./my/workflows \
 #                  BREVIS_PIPELINE=./my/pipeline \
 #                  BREVIS_DATA=./my/data
-up-data: $(LOCAL_ENV) serve-up ## The whole stack, with a login, the data tools and a project in it
+up-data: $(LOCAL_ENV) warehouse-local serve-up ## The whole stack, with a login, the data tools and a project in it
 	@$(MAKE) --no-print-directory demo-data
 	@set -a; . ./$(LOCAL_ENV); set +a; docker compose up --build -d
 	@echo "compiling the project's steps..."
@@ -219,6 +219,25 @@ up-data: $(LOCAL_ENV) serve-up ## The whole stack, with a login, the data tools 
 	  echo ""; \
 	  echo "next:  make up-run      -- queue a run and watch the graph"; \
 	  echo "       then /data for what it wrote, and its Preview and Query tabs"
+
+# THE WAREHOUSE, UP AND MIGRATED. Its own database and its own container:
+# the engine's Postgres is the control plane, and customer data landing in it
+# would blur the line this product sells.
+#
+# The DDL is applied HERE and not only by Postgres's init hook, which runs
+# once on an empty volume: editing the schema with a warehouse already created
+# would otherwise do nothing, and the first sign would be a failed load.
+warehouse-local:
+	@docker compose --profile demo up -d warehouse >/dev/null
+	@printf "waiting for the warehouse"
+	@until docker compose exec -T warehouse pg_isready -U brevis -d warehouse >/dev/null 2>&1; \
+	  do printf .; sleep 1; done; echo
+	@docker compose exec -T warehouse psql -q -U brevis -d warehouse \
+	  < examples/full-pipeline/warehouse/001-sales.sql
+	@# NO BACKTICKS inside a recipe's double quotes: make hands the line to
+	@# sh and a backtick there is command substitution. The example's own
+	@# Makefile carries this warning and this walked into it anyway.
+	@echo "warehouse ready on localhost:$${BREVIS_WAREHOUSE_PORT:-55434}, database 'warehouse'"
 
 # The demo project's partitions, rebuilt. `data/partitions` is the source of
 # truth and never moves; `data/incoming` is what the pipeline reads.

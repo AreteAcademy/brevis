@@ -164,6 +164,39 @@ services:
       migrate: {condition: service_completed_successfully}
     restart: unless-stopped
 
+  # THE WAREHOUSE, AND IT IS NOT THE ENGINE'S DATABASE.
+  #
+  # `postgres` above holds runs, landings and schedules -- the control plane.
+  # Customer data landing in it would blur the one line this product sells:
+  # the engine orchestrates and never touches what the pipelines move. A
+  # service of its own makes that visible in `docker compose ps`, gives it its
+  # own DSN and its own volume, and lets `docker compose stop warehouse` leave
+  # the console standing.
+  #
+  # It is reached by TWO ADDRESSES, which is what a host-side service and a
+  # container both needing it means: `warehouse:5432` from the steps and the
+  # gateway, `localhost:${BREVIS_WAREHOUSE_PORT}` from `brevis-sql serve`,
+  # which runs on the host because it holds a warehouse credential.
+  warehouse:
+    profiles: ["demo"]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: brevis
+      POSTGRES_PASSWORD: brevis
+      POSTGRES_DB: warehouse
+    ports: ["${BREVIS_WAREHOUSE_PORT:-55434}:5432"]
+    volumes:
+      - warehousedata:/var/lib/postgresql/data
+      # Runs ONCE, on an empty volume. `make up-data` applies the same file
+      # again every time, because editing DDL on an existing warehouse would
+      # otherwise do nothing at all.
+      - ./examples/full-pipeline/warehouse:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brevis -d warehouse"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   # A LOCAL PROJECT TO LOOK AT, and the two one-shots that put it there.
   #
   # The stack above is the PLATFORM and ships with nothing in it: an empty
@@ -294,6 +327,10 @@ services:
     restart: unless-stopped
 
 volumes:
+  # The warehouse's data, apart from the engine's: two volumes because they
+  # are two databases with two jobs, and `docker compose down -v` on one
+  # should not be a decision about the other.
+  warehousedata:
   # The demo project's compiled binaries and the Go caches that build them.
   # Named rather than bind-mounted: nothing here is meant to be read by hand,
   # and a bind mount of /root/.cache into a repository is a mess nobody asked
