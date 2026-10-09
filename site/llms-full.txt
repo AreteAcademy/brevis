@@ -192,6 +192,34 @@ does:
 - **Your team does not use Kubernetes and does not intend to.** Local mode
   works, but the design assumes pods.
 
+## Open code. Choose how to take part.
+
+brevis.sh is 100% open source. No proprietary licences, no limited edition, no locks on what you build.
+
+### 100% open
+
+*code · open source licence*
+
+Read, use, adapt and improve the runtime in your own operation. Complete runtime · Auditable code · Open contributions.
+
+[View repository](https://github.com/AreteAcademy/brevis)
+
+### Build together
+
+*community · open issues* · **Main path**
+
+Take part in the conversations that decide what the project becomes. Issues and proposals · Peer exchange · Public roadmap.
+
+[Follow the project](https://github.com/AreteAcademy/brevis/issues)
+
+### Learn deeply
+
+*aretê · technology with purpose*
+
+Meet the school that connects philosophical thinking and software engineering. Original content · Continuous learning · Open channel.
+
+[Visit Aretê](https://areteacademy.com.br/)
+
 ## Where to go next
 
 | if you want | go to |
@@ -5467,3 +5495,66 @@ compatibility nobody can predict is worse than none.
 | see where SQL sits among the four pieces | [Ecosystem](/en/docs/ecosystem/index.md) |
 | run brevis-sql as a scheduled step | [Core](/en/docs/core/index.md) |
 | land the data it will model | [Go SDK](/en/docs/sdk/index.md) or [Ingestion](/en/docs/ingestion/index.md) |
+
+---
+
+# Philosophy
+
+> Where brevis.sh comes from: Seneca, Aretê Academy, and what that decides in the code.
+
+brevis.sh is born inside Aretê Academy: discipline, purpose and excellence applied to building software.
+
+## De brevitate vitae
+
+> It is not that we have little time, but that we lose much of it.
+
+Seneca's maxim guides the question behind brevis.sh: which complexities truly deserve a team's time? Every workflow runs in isolated pods so that failures, versions and dependencies have clear boundaries.
+
+Four choices in the runtime come out of that question:
+
+- **image per step** — Each step declares the runtime it needs. Bumping one version doesn't force you to touch the others.
+- **logs per run** — Output belongs to the run that produced it. Investigating a failure isn't rebuilding a lost context.
+- **persistent retries** — The attempt outlives the process. A restart doesn't erase what was already known about the work.
+- **dependency isolation** — What one step carries doesn't leak into its neighbours. A clear boundary is what makes a failure legible.
+
+## What the project proposes
+
+Between *philosophy without practice* and *technology without direction*, **clarity to do what matters.**
+
+## Tools shape the way we think.
+
+> “Sustainable code is not merely code that keeps running. It is code that leaves room for people to reason.” — Philosophy applied to software
+
+> “Clarity is not the opposite of sophistication. It is the criterion that keeps sophistication from becoming noise.” — Open source by principle
+
+---
+
+# FAQ
+
+> The questions that come first, with short answers and where to go next.
+
+## Is brevis.sh really 100% open source?
+
+Yes. The complete runtime is open to read, use, adapt and contribute to.
+
+## What does the reference to Seneca mean for the project?
+
+De Brevitate Vitae inspires more intentional engineering: reduce the complexity that consumes time, and preserve room for work with purpose.
+
+More in [Philosophy](/en/docs/philosophy/index.md).
+
+## How does pod isolation work?
+
+Each workflow step runs as its own pod with its own image, keeping dependencies and execution context separate.
+
+More in [Pod per step](/en/docs/pod-per-step/index.md).
+
+## What is the relationship with Aretê Academy?
+
+brevis.sh is a project of Aretê Academy, which brings great ideas from philosophy closer to the real challenges of building software.
+
+## Can I use only one of the pieces?
+
+Yes. Each piece has its own module, version and image: the SDK is a Go library that runs in any program, the Gateway starts on its own with a YAML file and no database, and brevis-sql runs as a container. The Core orchestrates the others when you want it to — it is a prerequisite for none of them.
+
+More in [Ecosystem](/en/docs/ecosystem/index.md).

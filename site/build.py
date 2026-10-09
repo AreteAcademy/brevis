@@ -680,6 +680,7 @@ LLMS_GRUPOS = [
     ("Receiving data over HTTP", ["ingestion", "ingestion-sinks", "benchmarks"]),
     ("Modelling in SQL", ["sql"]),
     ("Running it in production", ["console", "kubernetes", "observability", "white-label"]),
+    ("The project", ["philosophy", "faq"]),
 ]
 
 

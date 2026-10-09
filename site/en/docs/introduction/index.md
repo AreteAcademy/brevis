@@ -99,6 +99,34 @@ does:
 - **Your team does not use Kubernetes and does not intend to.** Local mode
   works, but the design assumes pods.
 
+## Open code. Choose how to take part.
+
+brevis.sh is 100% open source. No proprietary licences, no limited edition, no locks on what you build.
+
+### 100% open
+
+*code · open source licence*
+
+Read, use, adapt and improve the runtime in your own operation. Complete runtime · Auditable code · Open contributions.
+
+[View repository](https://github.com/AreteAcademy/brevis)
+
+### Build together
+
+*community · open issues* · **Main path**
+
+Take part in the conversations that decide what the project becomes. Issues and proposals · Peer exchange · Public roadmap.
+
+[Follow the project](https://github.com/AreteAcademy/brevis/issues)
+
+### Learn deeply
+
+*aretê · technology with purpose*
+
+Meet the school that connects philosophical thinking and software engineering. Original content · Continuous learning · Open channel.
+
+[Visit Aretê](https://areteacademy.com.br/)
+
 ## Where to go next
 
 | if you want | go to |

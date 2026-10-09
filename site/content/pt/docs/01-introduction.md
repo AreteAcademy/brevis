@@ -99,6 +99,34 @@ que ela faz:
 - **Sua equipe não usa Kubernetes nem pretende usar.** O modo local funciona,
   mas o desenho supõe pods.
 
+## Código aberto. Escolha como participar.
+
+O brevis.sh é 100% open source. Sem licenças proprietárias, sem edição limitada, sem bloqueios para usar o que você constrói.
+
+### 100% aberto
+
+*código · licença open source*
+
+Leia, use, adapte e melhore o runtime na sua própria operação. Runtime completo · Código auditável · Contribuições abertas.
+
+[Ver repositório](https://github.com/AreteAcademy/brevis)
+
+### Construa junto
+
+*comunidade · issues abertas* · **Caminho principal**
+
+Participe das conversas que definem o que o projeto se torna. Issues e propostas · Troca entre pares · Roadmap público.
+
+[Acompanhar projeto](https://github.com/AreteAcademy/brevis/issues)
+
+### Aprenda fundo
+
+*aretê · tecnologia com propósito*
+
+Conheça a escola que conecta pensamento filosófico e engenharia de software. Conteúdo autoral · Formação contínua · Canal aberto.
+
+[Conhecer a Aretê](https://areteacademy.com.br/)
+
 ## Por onde seguir
 
 | se você quer | vá para |

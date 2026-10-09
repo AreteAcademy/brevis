@@ -81,6 +81,11 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 - [Observability](https://brevis.sh/en/docs/observability/index.md): Prometheus metrics from both processes, what to watch, and what is deliberately absent.
 - [White label](https://brevis.sh/en/docs/white-label/index.md): Changing the interface's title, motto, logo and palette through one YAML file.
 
+## The project
+
+- [Philosophy](https://brevis.sh/en/docs/philosophy/index.md): Where brevis.sh comes from: Seneca, Aretê Academy, and what that decides in the code.
+- [FAQ](https://brevis.sh/en/docs/faq/index.md): The questions that come first, with short answers and where to go next.
+
 ## Optional
 
 - [Repository](https://github.com/AreteAcademy/brevis): source and issues

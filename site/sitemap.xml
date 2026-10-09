@@ -26,6 +26,8 @@
   <url><loc>https://brevis.sh/docs/ingestion-sinks/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/benchmarks/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/sql/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/docs/philosophy/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/docs/faq/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/</loc><priority>1.0</priority></url>
   <url><loc>https://brevis.sh/en/docs/</loc><priority>0.9</priority></url>
   <url><loc>https://brevis.sh/en/docs/ecosystem/</loc><priority>0.8</priority></url>
@@ -52,4 +54,6 @@
   <url><loc>https://brevis.sh/en/docs/ingestion-sinks/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/benchmarks/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/sql/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/en/docs/philosophy/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/en/docs/faq/</loc><priority>0.8</priority></url>
 </urlset>
