@@ -59,6 +59,10 @@ func (m *Metrics) Serve(ctx context.Context, addr string, log *slog.Logger) {
 		WriteTimeout:      30 * time.Second,
 	}
 
+	// Background is the POINT: this goroutine runs BECAUSE ctx was cancelled,
+	// so a deadline derived from it would already be expired and Shutdown
+	// would abort every in-flight scrape instead of draining it.
+	// #nosec G118
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)

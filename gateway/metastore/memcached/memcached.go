@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -136,6 +137,9 @@ func (s *store) Incr(_ context.Context, key string, ttl time.Duration) (int64, e
 	if err != nil {
 		return 0, err
 	}
+	// A message counter, and memcached's own counters are uint64: reaching
+	// 2^63 would take longer than the protocol has existed.
+	// #nosec G115
 	return int64(n), nil
 }
 
@@ -186,7 +190,23 @@ func seconds(ttl time.Duration) int32 {
 		return 0
 	}
 	if ttl > memcachedRelativeMax {
-		return int32(time.Now().Add(ttl).Unix())
+		// SATURATED, NOT WRAPPED. The protocol spells an absolute expiry as
+		// an int32, so this sum stops being expressible on 19 January 2038 --
+		// or sooner, with a long enough TTL. Wrapped it is NEGATIVE, and
+		// memcached reads that as a moment long past: the item is discarded
+		// the instant it arrives, which is the 1970 failure above reached
+		// from the other end of the number, with the same symptom of a cache
+		// that silently never hits.
+		//
+		// An entry that lives until 2038 instead of 2046 is wrong in a way
+		// nobody notices. One that expires on arrival is wrong in a way
+		// nobody can explain.
+		at := time.Now().Add(ttl).Unix()
+		if at > math.MaxInt32 {
+			return math.MaxInt32
+		}
+		// #nosec G115 -- saturated two lines up, which is the whole point.
+		return int32(at)
 	}
 	s := int32(ttl.Seconds())
 	if s < 1 {

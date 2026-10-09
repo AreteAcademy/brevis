@@ -541,6 +541,38 @@ jobs:
           done
           wc -l gosec-results/*.sarif
 
+      # AND A HIGH IS A STOP, which is the one thing `-no-fail` gives away.
+      #
+      # The scan above reports; this gates, and only on the severity worth
+      # interrupting somebody for. The thirteen HIGH findings that existed
+      # when the scan was first pointed at every module were triaged one by
+      # one: twelve were false positives and now carry `#nosec` with the
+      # reason written beside them, and the thirteenth was real -- an absolute
+      # memcached expiry that wrapped past 2038 and came back negative, which
+      # memcached reads as 1970 and discards on arrival.
+      #
+      # So the floor is ZERO rather than a ratchet: there is nothing left to
+      # ratchet down from. A new HIGH means somebody has to look, and `#nosec`
+      # with a reason is a legitimate answer to having looked.
+      #
+      # MEDIUM and LOW are NOT gated. There are 24, they are in the Security
+      # tab, and a gate nobody can clear is a gate people route around.
+      #
+      # `gosec` exits 1 on a finding when `-no-fail` is absent -- measured,
+      # both directions: zero today, and 1 the moment a `#nosec` is removed.
+      - name: A HIGH finding stops this
+        run: |
+          status=0
+          for pair in "engine:." "sdk:sdk" "gateway:gateway" "sql:sql"; do
+            name="${pair%%:*}"; dir="${pair##*:}"
+            if ! ( cd "$dir" && gosec -quiet -severity high ./... ); then
+              echo "::error::$name has a HIGH finding: triage it, fix it, or"
+              echo "::error::  annotate it with '#nosec <rule>' and the reason."
+              status=1
+            fi
+          done
+          exit $status
+
       # A DIRECTORY, because there are four files now. `upload-sarif` takes
       # either, and one file per module keeps a finding's module visible in
       # the Security tab instead of merging four trees into one list.

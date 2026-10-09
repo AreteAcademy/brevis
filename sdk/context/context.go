@@ -354,6 +354,10 @@ func write(encoded []byte) error {
 	// Written directly, never renamed into place: /dev/termination-log is
 	// provided by the platform, and a rename over it would fail. Atomicity is
 	// not needed because the engine reads it once, after this process is gone.
+	// The path comes from an environment variable this process was started
+	// with, typically /dev/termination-log: whoever can set it already
+	// controls the process.
+	// #nosec G703
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
 		return fmt.Errorf("publishing the context to %s: %w. The steps depending on this "+
 			"one will not see it", path, err)

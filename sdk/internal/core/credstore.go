@@ -41,8 +41,11 @@ type CredentialStoreChecker interface {
 
 // Names of the variables the platform injects.
 const (
-	EnvCredentialDir = "BREVIS_CREDENTIAL_DIR"
-	EnvCredentialKey = "BREVIS_CREDENTIAL_KEY"
+	// #nosec G101 -- the NAMES of two environment variables, which is what
+	// this block says it holds. The secret is whatever the platform puts in
+	// them, and it is never in this file.
+	EnvCredentialDir = "BREVIS_CREDENTIAL_DIR" // #nosec G101 -- a variable NAME
+	EnvCredentialKey = "BREVIS_CREDENTIAL_KEY" // #nosec G101 -- a variable NAME
 )
 
 // FileStore keeps the credential in an encrypted file inside a directory
@@ -166,9 +169,14 @@ func (f FileStore) resolve() (*credentialFile, error) {
 // already exists with looser permissions: a shared volume at 0777 is a public
 // directory, and keeping a credential in it is no better than not keeping it.
 func prepareDirectory(dir string) error {
+	// The directory is the consumer's own FileStore.Dir or the platform's
+	// BREVIS_CREDENTIAL_DIR; the NAME inside it is what could come from
+	// anywhere, and resolve() refuses any that is a path.
+	// #nosec G703
 	info, err := os.Stat(dir)
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
+		// #nosec G703 -- see the note above os.Stat.
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return fmt.Errorf("credential store: create %s: %w", dir, err)
 		}

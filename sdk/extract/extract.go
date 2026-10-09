@@ -889,6 +889,9 @@ func calculateBackoff(attempt int, cfg *core.RetryConfig) time.Duration {
 	if span <= 0 {
 		return backoff
 	}
+	// Jitter, not a secret: a weak source is exactly right for spreading
+	// retries, which the gateway's own backoff says too.
+	// #nosec G404
 	return backoff + time.Duration(rand.Int63n(span))
 }
 

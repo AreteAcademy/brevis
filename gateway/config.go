@@ -583,6 +583,8 @@ type Naming struct {
 // accepted: a gateway that starts on a file it half understood is one that
 // drops events for a reason nobody can see.
 func Load(path string) (*Config, error) {
+	// The operator's own file, named on their own command line.
+	// #nosec G703
 	raw, err := os.ReadFile(path) //nolint:gosec // the operator's own file
 	if err != nil {
 		return nil, err

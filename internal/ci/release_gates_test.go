@@ -165,4 +165,11 @@ func TestTheSecurityScanCoversEveryModule(t *testing.T) {
 	if strings.Contains(scan, "securego/gosec@master") {
 		t.Error("the security scanner is pinned to @master, so its findings change on their own")
 	}
+	// AND A HIGH FINDING STOPS THE BUILD. The scan itself carries `-no-fail`
+	// on purpose -- it reports 24 MEDIUM and LOW findings that are not worth
+	// a red build -- so the gate is a second pass at one severity. Without
+	// it, `Security Scan ✅` would mean "the scan ran" forever.
+	if !strings.Contains(scan, "-severity high") {
+		t.Error("nothing gates on a HIGH finding, so the scan only ever reports")
+	}
 }

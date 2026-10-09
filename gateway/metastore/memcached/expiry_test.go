@@ -1,6 +1,7 @@
 package memcached
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -45,5 +46,44 @@ func TestSecondsRendersTheThreeCases(t *testing.T) {
 	// The boundary itself is still relative.
 	if got := seconds(memcachedRelativeMax); got != int32(memcachedRelativeMax.Seconds()) {
 		t.Errorf("exactly 30 days = %d, want it still relative", got)
+	}
+}
+
+// AND THE FOURTH CASE, WHICH IS 2038.
+//
+// An absolute expiry is an int32 because the protocol says so, and
+// `int32(time.Now().Add(ttl).Unix())` SILENTLY WRAPS once that sum passes
+// 2147483647 — 19 January 2038, or sooner with a long enough TTL. Wrapped,
+// it is negative, and memcached reads a negative expiry as a moment long
+// past: the item is discarded the instant it arrives.
+//
+// That is the same failure the 1970 case above exists for, reached by the
+// other end of the number, and with the same symptom: a cache that silently
+// never hits. Found by gosec (G115) the first time this repository pointed a
+// scanner at the gateway.
+//
+// The answer is the furthest this protocol can say, not a wrapped number. A
+// cache entry that lives until 2038 instead of 2046 is wrong in a way nobody
+// notices; one that expires on arrival is wrong in a way nobody can explain.
+func TestAnExpiryBeyondWhatTheProtocolCanSayIsNotWrapped(t *testing.T) {
+	for _, ttl := range []time.Duration{
+		20 * 365 * 24 * time.Hour,  // past 2038 from any plausible "now"
+		100 * 365 * 24 * time.Hour, // and far past it
+		1<<62 - 1,                  // and the largest Duration there is
+	} {
+		got := seconds(ttl)
+		if got < 0 {
+			t.Errorf("seconds(%v) = %d, which memcached reads as 1970: the "+
+				"item would expire on arrival", ttl, got)
+			continue
+		}
+		if got < int32(time.Now().Unix()) {
+			t.Errorf("seconds(%v) = %d, which is already in the past", ttl, got)
+		}
+	}
+	// AND IT SATURATES RATHER THAN APPROXIMATES: the furthest this protocol
+	// can express is the honest answer to "keep this for a century".
+	if got := seconds(100 * 365 * 24 * time.Hour); got != math.MaxInt32 {
+		t.Errorf("seconds(a century) = %d, want %d", got, int32(math.MaxInt32))
 	}
 }

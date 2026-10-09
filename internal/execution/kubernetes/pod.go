@@ -294,12 +294,14 @@ type Options struct {
 }
 
 const (
-	credentialVolumeName = "brevis-credentials"
+	// A volume NAME, not a credential: the scanner matches the word, and what
+	// is here is the label Kubernetes mounts by.
+	credentialVolumeName = "brevis-credentials" // #nosec G101
 
 	// The same variable the SDK reads. Written here rather than imported from
 	// the SDK module on purpose: the engine does not depend on the SDK, and the
 	// coupling between them is this name -- documented on both sides.
-	credentialDirEnv = "BREVIS_CREDENTIAL_DIR"
+	credentialDirEnv = "BREVIS_CREDENTIAL_DIR" // #nosec G101 -- a variable NAME
 )
 
 // permiteSecret decides whether a YAML may name this Secret.

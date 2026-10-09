@@ -1485,7 +1485,9 @@ func backoff(r Retry, attempt int) time.Duration {
 	if wait > r.MaxBackoff || wait <= 0 {
 		wait = r.MaxBackoff
 	}
-	//nolint:gosec // jitter, not a secret
+	//nolint:gosec // jitter, not a secret -- and `nolint` is golangci-lint's
+	// word, which gosec itself does not read, so it needs its own.
+	// #nosec G404
 	return wait/2 + time.Duration(rand.Int64N(int64(wait/2)+1))
 }
 
