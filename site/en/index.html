@@ -146,6 +146,201 @@
         </a>
       </div>
 
+      <!-- The four pieces, one code window: each snippet is the one that ran
+           in T5-T8 (published images), byte for byte. Without JS the tabs
+           hide and the four panels show, stacked, each under its name. -->
+      <div class="pieces" role="tablist" aria-label="Brevis pieces">
+        <button class="piece" type="button" role="tab" id="tab-core" aria-controls="p-core" aria-selected="true">
+          <svg class="piece-ico" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span class="piece-name">Core</span>
+          <span class="piece-line">One YAML file, one pod per step.</span>
+        </button>
+        <button class="piece" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="false">
+          <svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>
+          <span class="piece-name">SDK</span>
+          <span class="piece-line">A whole fetcher in three calls.</span>
+        </button>
+        <button class="piece" type="button" role="tab" id="tab-gateway" aria-controls="p-gateway" aria-selected="false">
+          <svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>
+          <span class="piece-name">Gateway</span>
+          <span class="piece-line">An endpoint that lands the data that arrives.</span>
+        </button>
+        <button class="piece" type="button" role="tab" id="tab-sql" aria-controls="p-sql" aria-selected="false">
+          <svg class="ico ico-sql" aria-hidden="true"><use href="/assets/icons.svg#i-sql"></use></svg>
+          <span class="piece-name">SQL <span class="badge">new · 0.1</span></span>
+          <span class="piece-line">Plain .sql files, built in the right order.</span>
+        </button>
+      </div>
+      <div class="piece-window">
+        <div class="piece-panel" role="tabpanel" id="p-core" aria-labelledby="tab-core">
+          <p class="piece-panel-name">Core</p>
+            <div class="code-block">
+              <div class="code-head"><span>hello.yaml</span></div>
+<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">hello</span>
+<span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">dag</span>
+<span class="t-k">tags</span><span class="t-o">:</span> <span class="t-s">[example]</span>
+
+<span class="t-k">steps</span><span class="t-o">:</span>
+  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">prepare</span>
+    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;echo preparing; sleep 1&#x27;</span>
+
+<span class="t-c">  # The next two depend on the same step, so they run IN PARALLEL.</span>
+  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">extract</span>
+    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 2; echo 42 extracted&#x27;</span>
+    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
+
+  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">validate</span>
+    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 1; echo validated&#x27;</span>
+    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
+
+  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">publish</span>
+    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">echo published</span>
+    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[extract, validate]</span></code></pre>
+            </div>
+            <div class="code-block" data-code="docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \&#10;  areteacademy/brevis:0.17.1-worker run hello.yaml">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
+<pre><code><span class="t-o">$</span> docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
+  areteacademy/brevis:0.17.1-worker run hello.yaml
+<span class="t-c">workflow hello (dag, 4 steps) in .
+  ▶ prepare
+    prepare | preparing
+  ✓ prepare
+  ▶ validate
+  ▶ extract
+    validate | validated
+  ✓ validate
+    extract | 42 extracted
+  ✓ extract
+  ▶ publish
+    publish | published
+  ✓ publish
+
+workflow hello finished</span></code></pre>
+              <p class="code-note">The real output, from the published image. brevis run executes locally, with no queue; pods are started by the scheduler.</p>
+            </div>
+            <a class="text-link" href="/en/docs/quickstart/">
+              Read the guide
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+        </div>
+
+        <div class="piece-panel" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
+          <p class="piece-panel-name">SDK</p>
+            <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
+<pre><code><span class="t-o">$</span> go get github.com/AreteAcademy/brevis/sdk@latest</code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>main.go</span></div>
+<pre><code>rows, err := sdk.<span class="t-k">Extract</span>(ctx, sdk.Source{
+	From: from.HTTP{URL: <span class="t-s">"https://api.example.com/v1/events"</span>},
+})
+
+rows = sdk.<span class="t-k">Transform</span>(rows, sdk.Accept(<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>))
+
+res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
+	To:      bigquery.Table{Dataset: <span class="t-s">"bronze"</span>, Name: <span class="t-s">"events"</span>},
+	Columns: []string{<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>},
+})</code></pre>
+              <p class="code-note">Requires Go 1.23 or newer.</p>
+            </div>
+            <a class="text-link" href="/en/docs/sdk/">
+              Read the guide
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+        </div>
+
+        <div class="piece-panel" role="tabpanel" id="p-gateway" aria-labelledby="tab-gateway">
+          <p class="piece-panel-name">Gateway</p>
+            <div class="code-block">
+              <div class="code-head"><span>gateway.yaml</span></div>
+<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">events_gateway</span>
+
+<span class="t-k">listen</span><span class="t-o">:</span>
+  <span class="t-k">addr</span><span class="t-o">:</span> <span class="t-s">:8080</span>
+  <span class="t-k">auth</span><span class="t-o">:</span>
+    <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">bearer</span>
+    <span class="t-k">keys_from</span><span class="t-o">:</span> <span class="t-s">BREVIS_INGEST_KEYS</span>
+
+<span class="t-k">streams</span><span class="t-o">:</span>
+  <span class="t-o">-</span> <span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">clicks</span>
+    <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/v1/clicks</span>
+    <span class="t-k">format</span><span class="t-o">:</span> <span class="t-s">json</span>
+    <span class="t-k">identity</span><span class="t-o">:</span>
+      <span class="t-k">provider</span><span class="t-o">:</span> <span class="t-s">web</span>
+      <span class="t-k">entity</span><span class="t-o">:</span> <span class="t-s">click</span>
+      <span class="t-k">source_key</span><span class="t-o">:</span> <span class="t-s">event_id</span>
+      <span class="t-k">record_ts</span><span class="t-o">:</span> <span class="t-s">occurred_at</span>
+    <span class="t-k">sink</span><span class="t-o">:</span>
+      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
+      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/</span>
+    <span class="t-k">dead_letter</span><span class="t-o">:</span>
+      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
+      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/dead-letter/</span></code></pre>
+            </div>
+            <div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \&#10;  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \&#10;  areteacademy/brevis-gateway:0.26.1-slim&#10;&#10;curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \&#10;  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
+<pre><code><span class="t-o">$</span> docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
+  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \
+  areteacademy/brevis-gateway:0.26.1-slim
+
+<span class="t-o">$</span> curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
+  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
+<span class="t-c">{"accepted":1,"rejected":null}</span>  <span class="t-k">202</span></code></pre>
+              <p class="code-note">The real answer, from the published image. Without the key, 401.</p>
+            </div>
+            <a class="text-link" href="/en/docs/ingestion/">
+              Read the guide
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+        </div>
+
+        <div class="piece-panel" role="tabpanel" id="p-sql" aria-labelledby="tab-sql">
+          <p class="piece-panel-name">SQL</p>
+            <div class="code-block">
+              <div class="code-head"><span>models/staging/stg_orders.sql</span></div>
+<pre><code><span class="t-c">/* brevis
+materialized: view
+*/</span>
+<span class="t-k">select</span> order_id, customer_id, amount, ordered_at
+<span class="t-k">from</span> raw.orders
+<span class="t-k">where</span> amount <span class="t-k">is not null</span></code></pre>
+            </div>
+            <div class="code-block">
+              <div class="code-head"><span>models/marts/orders.sql</span></div>
+<pre><code><span class="t-c">/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/</span>
+<span class="t-k">select</span> customer_id, <span class="t-k">count</span>(*) <span class="t-k">as</span> orders, <span class="t-k">sum</span>(amount) <span class="t-k">as</span> revenue
+<span class="t-k">from</span> staging.stg_orders
+<span class="t-k">group by</span> customer_id</code></pre>
+            </div>
+            <div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  compile --project /project&#10;docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  graph --project /project">
+              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
+<pre><code><span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  compile --project /project
+<span class="t-c">2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)</span>
+
+<span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  graph --project /project
+<span class="t-c">staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders</span></code></pre>
+              <p class="code-note">The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".</p>
+            </div>
+            <a class="text-link" href="https://github.com/AreteAcademy/brevis/blob/master/docs/SQL-hub.md" target="_blank" rel="noopener">
+              Read the guide
+              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+            </a>
+        </div>
+      </div>
+
       <!-- Not a single `docker run`: the Core keeps its state in Postgres,
            so the shortest honest start is the repository's compose file.
            Checked on a fresh clone; the console answers on :8080. -->
@@ -315,222 +510,6 @@
        ligarAbas). The panels are NOT hidden in the HTML: without the script
        every piece shows, stacked, and the tablist is hidden by CSS. The code
        is copied from the docs page each panel links to. -->
-  <section class="section section-soft" id="produtos">
-    <div class="shell">
-      <div class="section-head head-split" data-reveal>
-        <div>
-          <p class="eyebrow">the pieces</p>
-          <h2>Each piece, the way you will use it.</h2>
-        </div>
-        <p class="lead">Four independent pieces, each with its own version. Use one, or all four.</p>
-      </div>
-
-      <div class="products" data-reveal>
-        <div class="product-tabs" role="tablist" aria-label="Brevis pieces">
-          <button class="tab" type="button" role="tab" id="tab-core" aria-controls="p-core" aria-selected="true">Core</button>
-          <button class="tab" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="false">SDK</button>
-          <button class="tab" type="button" role="tab" id="tab-gateway" aria-controls="p-gateway" aria-selected="false">Gateway</button>
-          <button class="tab" type="button" role="tab" id="tab-sql" aria-controls="p-sql" aria-selected="false">SQL <span class="badge">new · 0.1</span></button>
-        </div>
-
-        <div class="product" role="tabpanel" id="p-core" aria-labelledby="tab-core">
-          <div class="product-text">
-            <h3 class="product-name">Core <span class="pill">areteacademy/brevis</span></h3>
-            <p class="product-title">One YAML file, one pod per step.</p>
-            <p class="product-lead">The whole workflow is one versioned file: reviewing a pipeline becomes reviewing a diff. The Core schedules, queues and starts each step with its own image — and never touches the data.</p>
-            <div class="code-block">
-              <div class="code-head"><span>hello.yaml</span></div>
-<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">hello</span>
-<span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">dag</span>
-<span class="t-k">tags</span><span class="t-o">:</span> <span class="t-s">[example]</span>
-
-<span class="t-k">steps</span><span class="t-o">:</span>
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">prepare</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;echo preparing; sleep 1&#x27;</span>
-
-<span class="t-c">  # The next two depend on the same step, so they run IN PARALLEL.</span>
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">extract</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 2; echo 42 extracted&#x27;</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
-
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">validate</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 1; echo validated&#x27;</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
-
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">publish</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">echo published</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[extract, validate]</span></code></pre>
-            </div>
-            <div class="code-block" data-code="docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \&#10;  areteacademy/brevis:0.17.1-worker run hello.yaml">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
-<pre><code><span class="t-o">$</span> docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.17.1-worker run hello.yaml
-<span class="t-c">workflow hello (dag, 4 steps) in .
-  ▶ prepare
-    prepare | preparing
-  ✓ prepare
-  ▶ validate
-  ▶ extract
-    validate | validated
-  ✓ validate
-    extract | 42 extracted
-  ✓ extract
-  ▶ publish
-    publish | published
-  ✓ publish
-
-workflow hello finished</span></code></pre>
-              <p class="code-note">The real output, from the published image. brevis run executes locally, with no queue; pods are started by the scheduler.</p>
-            </div>
-            <a class="text-link" href="/en/docs/quickstart/">
-              Read the guide
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
-          </div>
-          <figure class="product-flow">
-            <img src="/assets/flow-core.svg" width="360" height="436" alt="The Core flow: a scheduler and a queue, kept in Postgres, start one pod per step of the workflow — prepare, extract, validate and publish. Only control lines leave the Core. The data goes from an HTTP source into the extract pod, which runs the SDK, and from there to BigQuery; no data passes through the Core." loading="lazy">
-          </figure>
-        </div>
-
-        <div class="product" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
-          <div class="product-text">
-            <h3 class="product-name">SDK <span class="pill">brevis/sdk</span></h3>
-            <p class="product-title">A whole fetcher in three calls.</p>
-            <p class="product-lead">Extract reads, Transform reshapes, Load writes. Each takes and returns a sequence — nothing is materialised in memory all at once.</p>
-            <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
-<pre><code><span class="t-o">$</span> go get github.com/AreteAcademy/brevis/sdk@latest</code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-head"><span>main.go</span></div>
-<pre><code>rows, err := sdk.<span class="t-k">Extract</span>(ctx, sdk.Source{
-	From: from.HTTP{URL: <span class="t-s">"https://api.example.com/v1/events"</span>},
-})
-
-rows = sdk.<span class="t-k">Transform</span>(rows, sdk.Accept(<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>))
-
-res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
-	To:      bigquery.Table{Dataset: <span class="t-s">"bronze"</span>, Name: <span class="t-s">"events"</span>},
-	Columns: []string{<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>},
-})</code></pre>
-              <p class="code-note">Requires Go 1.23 or newer.</p>
-            </div>
-            <a class="text-link" href="/en/docs/sdk/">
-              Read the guide
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
-          </div>
-          <figure class="product-flow">
-            <img src="/assets/flow-sdk.svg" width="360" height="514" alt="The SDK flow: sdk.Extract reads from an HTTP API with from.HTTP, sdk.Transform keeps the accepted fields and sdk.Load writes the rows to a BigQuery table. The three calls run inside your own step." loading="lazy">
-          </figure>
-        </div>
-
-        <div class="product" role="tabpanel" id="p-gateway" aria-labelledby="tab-gateway">
-          <div class="product-text">
-            <h3 class="product-name">Gateway <span class="pill">areteacademy/brevis-gateway</span></h3>
-            <p class="product-title">An endpoint that lands the data that arrives.</p>
-            <p class="product-lead">The client POSTs and gets a 202 straight away; the batch goes to the destination later, on a worker. No database of its own, and configured entirely in YAML.</p>
-            <div class="code-block">
-              <div class="code-head"><span>gateway.yaml</span></div>
-<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">events_gateway</span>
-
-<span class="t-k">listen</span><span class="t-o">:</span>
-  <span class="t-k">addr</span><span class="t-o">:</span> <span class="t-s">:8080</span>
-  <span class="t-k">auth</span><span class="t-o">:</span>
-    <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">bearer</span>
-    <span class="t-k">keys_from</span><span class="t-o">:</span> <span class="t-s">BREVIS_INGEST_KEYS</span>
-
-<span class="t-k">streams</span><span class="t-o">:</span>
-  <span class="t-o">-</span> <span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">clicks</span>
-    <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/v1/clicks</span>
-    <span class="t-k">format</span><span class="t-o">:</span> <span class="t-s">json</span>
-    <span class="t-k">identity</span><span class="t-o">:</span>
-      <span class="t-k">provider</span><span class="t-o">:</span> <span class="t-s">web</span>
-      <span class="t-k">entity</span><span class="t-o">:</span> <span class="t-s">click</span>
-      <span class="t-k">source_key</span><span class="t-o">:</span> <span class="t-s">event_id</span>
-      <span class="t-k">record_ts</span><span class="t-o">:</span> <span class="t-s">occurred_at</span>
-    <span class="t-k">sink</span><span class="t-o">:</span>
-      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
-      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/</span>
-    <span class="t-k">dead_letter</span><span class="t-o">:</span>
-      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
-      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/dead-letter/</span></code></pre>
-            </div>
-            <div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \&#10;  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \&#10;  areteacademy/brevis-gateway:0.26.1-slim&#10;&#10;curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \&#10;  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
-<pre><code><span class="t-o">$</span> docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
-  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \
-  areteacademy/brevis-gateway:0.26.1-slim
-
-<span class="t-o">$</span> curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
-  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
-<span class="t-c">{"accepted":1,"rejected":null}</span>  <span class="t-k">202</span></code></pre>
-              <p class="code-note">The real answer, from the published image. Without the key, 401.</p>
-            </div>
-            <a class="text-link" href="/en/docs/ingestion/">
-              Read the guide
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
-          </div>
-          <figure class="product-flow">
-            <img src="/assets/flow-gateway.svg" width="360" height="514" alt="The Gateway flow: a POST to /v1/clicks is decoded, given its ingestion_id, answered with 202 straight away and appended to a batch; a worker delivers the batch to the sink, here files. The Gateway has no database." loading="lazy">
-          </figure>
-        </div>
-
-        <div class="product" role="tabpanel" id="p-sql" aria-labelledby="tab-sql">
-          <div class="product-text">
-            <h3 class="product-name">SQL <span class="pill">areteacademy/brevis-sql</span> <span class="badge">new · 0.1</span></h3>
-            <p class="product-title">Plain .sql files, built in the right order.</p>
-            <p class="product-lead">No templating: a model is a file that stays valid SQL, and the order comes from reading the SQL itself. Postgres and BigQuery, under the same conformance suite.</p>
-            <div class="code-block">
-              <div class="code-head"><span>models/staging/stg_orders.sql</span></div>
-<pre><code><span class="t-c">/* brevis
-materialized: view
-*/</span>
-<span class="t-k">select</span> order_id, customer_id, amount, ordered_at
-<span class="t-k">from</span> raw.orders
-<span class="t-k">where</span> amount <span class="t-k">is not null</span></code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-head"><span>models/marts/orders.sql</span></div>
-<pre><code><span class="t-c">/* brevis
-materialized: table
-tests:
-  - not_null: [customer_id]
-  - unique: [customer_id]
-*/</span>
-<span class="t-k">select</span> customer_id, <span class="t-k">count</span>(*) <span class="t-k">as</span> orders, <span class="t-k">sum</span>(amount) <span class="t-k">as</span> revenue
-<span class="t-k">from</span> staging.stg_orders
-<span class="t-k">group by</span> customer_id</code></pre>
-            </div>
-            <div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  compile --project /project&#10;docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  graph --project /project">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div>
-<pre><code><span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  compile --project /project
-<span class="t-c">2 models, 2 to build, 0 function(s)
-  staging.stg_orders                 view  0 test(s)
-  marts.orders                       table 2 test(s)</span>
-
-<span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  graph --project /project
-<span class="t-c">staging.stg_orders
-  └─ raw.orders (source)
-marts.orders
-  ├─ staging.stg_orders</span></code></pre>
-              <p class="code-note">The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".</p>
-            </div>
-            <a class="text-link" href="https://github.com/AreteAcademy/brevis/blob/master/docs/SQL-hub.md" target="_blank" rel="noopener">
-              Read the guide
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
-          </div>
-          <figure class="product-flow">
-            <img src="/assets/flow-sql.svg" width="360" height="410" alt="The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery." loading="lazy">
-          </figure>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <!-- The same row. Every value below is output, not illustration: the
        published gateway (0.26.1-slim, auto_table into Postgres) and the

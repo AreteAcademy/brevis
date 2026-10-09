@@ -1596,15 +1596,6 @@ a.chip:focus-visible .ico {
 }
 
 @media (max-width: 480px) {
-  .product {
-    padding: 1rem;
-  }
-
-  .product-text .code-block pre {
-    padding: 1rem;
-    font-size: 0.76rem;
-  }
-
   .eco-support {
     flex-direction: column;
     align-items: flex-start;
@@ -1619,26 +1610,7 @@ a.chip:focus-visible .ico {
   }
 }
 
-/* ----------------------------------------------------------- produtos ---- */
-
-/* Abas de peca. Sem JS nao ha abas: os paineis vem todos, empilhados, cada um
-   com o nome da peca como titulo. */
-.product-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 1.5rem;
-}
-
-html:not(.js) .product-tabs {
-  display: none;
-}
-
-.product-tabs .tab {
-  padding: 0.45rem 1rem;
-  border-color: var(--line);
-  font-size: var(--fs-sm);
-}
+/* ------------------------------------------------------------- pecas ---- */
 
 /* O selo de versao nova: lima sobre lavado lima, 10.6:1 -- e texto, entao
    passa o mesmo piso de 4.5 que o resto. */
@@ -1656,84 +1628,184 @@ html:not(.js) .product-tabs {
   white-space: nowrap;
 }
 
-.product-tabs .tab .badge {
-  margin-left: 0.4rem;
+/* As quatro pecas como abas, uma janela de codigo embaixo (o padrao do
+   Databend). Cada cartao: icone, nome, uma linha. Sem JS nao ha abas: os
+   quatro paineis aparecem empilhados, cada um com o nome por titulo. */
+.pieces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 60rem;
+  margin-top: clamp(2.25rem, 4vw, 3rem);
 }
 
-.product {
+html:not(.js) .pieces {
+  display: none;
+}
+
+.piece {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: var(--gap);
-  align-items: start;
-  padding: clamp(1.25rem, 3vw, 2.5rem);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  align-content: start;
+  gap: 0.45rem 0.6rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.piece:hover {
+  border-color: var(--olive);
+}
+
+.piece[aria-selected="true"] {
+  border-color: var(--lime-edge);
+  background: var(--lime-wash);
+}
+
+.piece svg {
+  width: 20px;
+  height: 20px;
+}
+
+.piece-ico {
+  color: var(--lime);
+}
+
+.piece-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.piece[aria-selected="true"] .piece-name {
+  color: var(--lime);
+}
+
+.piece-line {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.piece-window {
+  width: 100%;
+  max-width: 60rem;
+  margin-top: 0.75rem;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
   background: var(--surface);
+  text-align: left;
 }
 
-.product + .product {
-  margin-top: 1.5rem;
-}
-
-.product-text {
+.piece-panel {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1rem;
   align-items: flex-start;
-  min-width: 0;
 }
 
-.product-text .code-block {
+.piece-panel[hidden] {
+  display: none;
+}
+
+.piece-panel + .piece-panel {
+  margin-top: 2rem;
+}
+
+.js .piece-panel + .piece-panel {
+  margin-top: 0;
+}
+
+.piece-panel .code-block {
   align-self: stretch;
   background: var(--bg);
 }
 
-.product-name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
+.piece-panel-name {
   font-family: var(--font-mono);
   font-size: var(--fs-lg);
   color: var(--lime);
 }
 
-.product-title {
-  font-family: var(--font-sans);
-  font-size: var(--fs-xl);
-  line-height: 1.2;
-  color: var(--text);
+.js .piece-panel-name {
+  display: none;
 }
 
-.product-lead {
-  color: var(--text-dim);
-  line-height: 1.7;
-}
-
-/* Sticky: o painel do Core e alto, e a figura acompanha o codigo que ela
-   desenha. Abaixo de 960 a coluna e uma so e ela volta ao fluxo. */
-.product-flow {
-  position: sticky;
-  top: 6rem;
-  margin: 0;
-  justify-self: center;
-  width: 100%;
-  max-width: 360px;
-}
-
-.product-flow img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-@media (max-width: 960px) {
-  .product {
-    grid-template-columns: minmax(0, 1fr);
+/* No celular os quatro cabem numa linha so: icone e nome, a frase sai. E a
+   hero aperta o respiro para que titulo, gopher e as quatro pecas fiquem na
+   primeira tela (375x812, medido em fv.sh). */
+@media (max-width: 640px) {
+  .hero {
+    padding-top: 1.75rem;
   }
 
-  .product-flow {
-    position: static;
+  .hero .eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  .hero-badge {
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero-badge .pill {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.66rem;
+  }
+
+  .hero .lead {
+    margin-top: 1.1rem;
+    font-size: 0.98rem;
+    line-height: 1.6;
+  }
+
+  .hero .button-row {
+    margin-top: 1.5rem;
+  }
+
+  .pieces {
+    gap: 0.4rem;
+    margin-top: 1.75rem;
+  }
+
+  .piece {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 0.35rem;
+    padding: 0.7rem 0.25rem;
+    text-align: center;
+  }
+
+  .piece-name {
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+  }
+
+  .piece-name .badge {
+    font-size: 0.6rem;
+  }
+
+  .piece-line {
+    display: none;
+  }
+
+  .piece-panel .code-block pre {
+    padding: 1rem;
+    font-size: 0.76rem;
   }
 }
 
@@ -2241,8 +2313,7 @@ html:not(.js) .product-tabs {
   flex-wrap: wrap;
 }
 
-.frame-tabs .tab,
-.product-tabs .tab {
+.frame-tabs .tab {
   padding: 0.25rem 0.6rem;
   border: 1px solid transparent;
   border-radius: var(--r);
@@ -2254,13 +2325,11 @@ html:not(.js) .product-tabs {
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
-.frame-tabs .tab:hover,
-.product-tabs .tab:hover {
+.frame-tabs .tab:hover {
   color: var(--text);
 }
 
-.frame-tabs .tab[aria-selected="true"],
-.product-tabs .tab[aria-selected="true"] {
+.frame-tabs .tab[aria-selected="true"] {
   background: var(--lime-wash);
   border-color: var(--lime-edge);
   color: var(--lime);
