@@ -57,6 +57,14 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a relation has a catalog target", h.targetNamesTheRelation)
 	t.Run("a table names its columns in order", h.columnsAreNamedInOrder)
 
+	// READING A RESULT SET, which `serve` needs and the build loop never
+	// does. In the suite rather than beside one dialect, for the reason the
+	// package exists: a second dialect reads rows the way its author
+	// happened to think of, and the difference is found by whoever points
+	// /data at the other warehouse.
+	t.Run("a result set comes back with its columns", h.resultSetIsRead)
+	t.Run("the limit cuts the answer", h.theLimitCuts)
+
 	// INCREMENTAL, and the order matters: each case builds on the one
 	// before, over one source table, the way a project does over days.
 	t.Run("an incremental model's first build holds every row", h.incrementalFirstBuild)
@@ -108,6 +116,84 @@ func (h *harness) kindOf(t *testing.T, name string) dialect.Kind {
 		t.Fatalf("asking what %s.%s is: %v", h.schema, name, err)
 	}
 	return dialect.KindFrom(v)
+}
+
+// reader is the connection as `serve` uses it, and a dialect that is not one
+// fails the suite. Optional on the INTERFACE -- the build loop must not reach
+// it -- and not optional in fact: a warehouse nothing can read is a
+// destination with no Preview and no Query, which is half of /data missing
+// for whoever chose that warehouse.
+func (h *harness) reader(t *testing.T) dialect.Reader {
+	t.Helper()
+	r, can := h.conn.(dialect.Reader)
+	if !can {
+		t.Fatalf("%s cannot return a result set", h.d.Name())
+	}
+	return r
+}
+
+// THREE ROWS, THEIR NAMES, AND A NULL AMONG THEM.
+//
+// The NULL is the case worth the trouble: it has to arrive as nil and not as
+// an empty string, because one is "nothing was recorded" and the other is a
+// value somebody wrote, and the grid draws them differently all the way to
+// the template.
+func (h *harness) resultSetIsRead(t *testing.T) {
+	h.build(t, "readable", model.Table,
+		"SELECT 1 AS k, 'first' AS v UNION ALL SELECT 2, NULL UNION ALL SELECT 3, 'third'")
+
+	got, err := h.reader(t).Read(h.ctx, dialect.Request{
+		Query: fmt.Sprintf("SELECT k, v FROM %s.readable ORDER BY k", h.schema),
+		Limit: 10,
+	})
+	if err != nil {
+		t.Fatalf("reading: %v", err)
+	}
+	if want := []string{"k", "v"}; !sameStrings(got.Columns, want) {
+		t.Errorf("columns are %v, wanted %v", got.Columns, want)
+	}
+	if len(got.Rows) != 3 {
+		t.Fatalf("%d rows, wanted 3: %v", len(got.Rows), got.Rows)
+	}
+	if got.Rows[1][1] != nil {
+		t.Errorf("a NULL came back as %#v; it has to be nil", got.Rows[1][1])
+	}
+	if fmt.Sprint(got.Rows[2][1]) != "third" {
+		t.Errorf("the third row holds %#v", got.Rows[2][1])
+	}
+}
+
+// THE LIMIT CUTS, and it is the reader's own and not the statement's.
+//
+// A query somebody typed may have no LIMIT at all, and the row ceiling is
+// what stops a million rows crossing the wire. Asking for fewer than there
+// are has to return exactly that many.
+func (h *harness) theLimitCuts(t *testing.T) {
+	h.build(t, "plenty", model.Table,
+		"SELECT 1 AS k UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4")
+
+	got, err := h.reader(t).Read(h.ctx, dialect.Request{
+		Query: fmt.Sprintf("SELECT k FROM %s.plenty", h.schema),
+		Limit: 2,
+	})
+	if err != nil {
+		t.Fatalf("reading: %v", err)
+	}
+	if len(got.Rows) != 2 {
+		t.Errorf("%d rows came back for a limit of 2", len(got.Rows))
+	}
+}
+
+func sameStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *harness) readOne(t *testing.T, name string) any {

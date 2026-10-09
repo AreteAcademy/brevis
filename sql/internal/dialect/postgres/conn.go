@@ -65,6 +65,54 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 	return vals[0], rows.Err()
 }
 
+// Read runs a query and returns at most req.Limit rows. See dialect.Reader.
+//
+// THE STATEMENT IS RUN EXACTLY AS WRITTEN. Nothing wraps it in a subquery
+// with a LIMIT: a wrapper changes what the planner does, and it would be this
+// package quietly editing SQL somebody typed. The cap is applied HERE, on the
+// rows as they stream back, which is the one place it can be applied without
+// touching the query.
+//
+// That matters more than it does on BigQuery. A preview composes its own
+// statement and carries a LIMIT; a query somebody typed may carry none at
+// all, and this is then the only thing between a `SELECT * FROM events` and
+// a million rows crossing the wire.
+//
+// req.MaxBytes IS IGNORED, and the interface says a dialect may: Postgres
+// charges for a machine by the hour and has nothing to bill for a scan, so
+// there is no bound here to set. Its limits are the row ceiling and the
+// clock.
+func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, error) {
+	rows, err := c.c.Query(ctx, req.Query)
+	if err != nil {
+		return dialect.Result{}, err
+	}
+	defer rows.Close()
+
+	out := dialect.Result{Rows: [][]any{}}
+	for _, f := range rows.FieldDescriptions() {
+		out.Columns = append(out.Columns, f.Name)
+	}
+	for len(out.Rows) < req.Limit && rows.Next() {
+		// Values() rather than Scan(&any): pgx decides the Go type from the
+		// column's OID, which is what keeps a NULL arriving as nil instead
+		// of as an empty string -- the one distinction the grid cannot
+		// recover later.
+		vals, err := rows.Values()
+		if err != nil {
+			return dialect.Result{}, err
+		}
+		out.Rows = append(out.Rows, vals)
+	}
+	// STOPPING EARLY IS NOT AN ERROR. The cursor is closed by the defer and
+	// the server drops the rest; rows.Err() is still asked, because a
+	// connection that died mid-read must not look like a short answer.
+	if err := rows.Err(); err != nil {
+		return dialect.Result{}, err
+	}
+	return out, nil
+}
+
 // Target is `postgres://database/schema/table`.
 //
 // THE DATABASE AND NOTHING ELSE OF THE DSN. The connection string carries a
