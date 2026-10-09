@@ -1,6 +1,6 @@
 /* brevis.sh — landing page.
-   Sem dependencia, sem build: as ancoras antigas, o menu, o botao
-   de copiar e a entrada dos blocos. */
+   Sem dependencia, sem build: as ancoras antigas, o menu e a entrada
+   dos blocos. */
 (function () {
   'use strict';
 
@@ -50,26 +50,6 @@
       }
     });
   }
-
-  /* ------------------------------------------------------ copiar codigo ---- */
-
-  /* O mesmo de docs.js: o texto vem de data-code, nao do <pre> realcado. */
-  Array.prototype.forEach.call(document.querySelectorAll('.code-block[data-code]'), function (bloco) {
-    var b = bloco.querySelector('.code-copy');
-    if (!b) return;
-    var original = b.textContent;
-    b.addEventListener('click', function () {
-      if (!navigator.clipboard || !window.isSecureContext) return;
-      navigator.clipboard.writeText(bloco.getAttribute('data-code') || '').then(function () {
-        b.classList.add('is-done');
-        b.textContent = b.getAttribute('data-done') || 'ok';
-        setTimeout(function () {
-          b.classList.remove('is-done');
-          b.textContent = original;
-        }, 1600);
-      }, function () {});
-    });
-  });
 
   /* ------------------------------------------------------------ entrada ---- */
 

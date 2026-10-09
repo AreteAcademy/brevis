@@ -297,20 +297,6 @@ dd code {
   margin-bottom: clamp(2.5rem, 5vw, 4rem);
 }
 
-/* Grade assimetrica: o titulo pesa mais que o apoio, e as duas colunas
-   fecham pela base. */
-.head-split {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
-  gap: var(--gap);
-  align-items: end;
-  max-width: none;
-}
-
-.head-split .lead {
-  margin-top: 0;
-}
-
 /* O cabeçalho centrado do Databend, para a seção que fecha a home. */
 .section-head-center {
   margin-inline: auto;
@@ -720,20 +706,6 @@ a.chip:focus-visible .ico {
   font-weight: 600;
 }
 
-/* A linha que sobe tudo: logo abaixo dos botoes, porque e o segundo passo de
-   quem ja decidiu olhar. */
-.hero-cmd {
-  width: 100%;
-  margin-top: 2rem;
-  max-width: 34rem;
-  text-align: left;
-}
-
-.hero-cmd pre {
-  padding: 1rem 1.25rem;
-  line-height: 1.7;
-}
-
 /* No celular a hero aperta o respiro: o selo cabe ao lado do gopher, e o
    título e os botões ficam na primeira tela (375x812, medido em fv.sh). */
 @media (max-width: 640px) {
@@ -766,8 +738,8 @@ a.chip:focus-visible .ico {
   }
 }
 
-/* O botao de copiar, o mesmo da docs (docs.css), para a landing que nao a
-   carrega. */
+/* O botao de copiar dos blocos de codigo da docs. Mora aqui, e nao em
+   docs.css: e o estilo de codigo compartilhado (check_docs). */
 .code-copy {
   margin-left: auto;
   padding: 0.2rem 0.55rem;
@@ -879,14 +851,6 @@ a.chip:focus-visible .ico {
 }
 
 .t-o {
-  color: var(--text-dim);
-}
-
-.code-note {
-  padding: 0.85rem 1.25rem;
-  border-top: 1px solid var(--line-soft);
-  font-size: 0.85rem;
-  line-height: 1.6;
   color: var(--text-dim);
 }
 
@@ -1262,31 +1226,6 @@ a.chip:focus-visible .ico {
   --flow: calc(var(--flow-row, 0s) + 1.6s);
 }
 
-.eco-support {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1.75rem;
-  margin-top: 1.5rem;
-  font-size: var(--fs-sm);
-  color: var(--text-dim);
-}
-
-.eco-support dt {
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.eco-support dd {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-}
-
 /* Abaixo de 960 o mapa vira uma coluna e se le de cima para baixo: o Core,
    depois origem -> pecas -> destino. Os fios por linha somem; uma seta
    vertical liga os blocos, e nenhuma delas sai do Core. */
@@ -1341,10 +1280,7 @@ a.chip:focus-visible .ico {
 }
 
 @media (max-width: 480px) {
-  .eco-support {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  
 
   .eco-row {
     grid-template-columns: minmax(0, 1fr);
@@ -1364,11 +1300,6 @@ a.chip:focus-visible .ico {
   text-align: left;
 }
 
-.hero .eco-support {
-  width: 100%;
-  text-align: left;
-}
-
 .eco-name {
   display: inline-flex;
   align-items: center;
@@ -1378,70 +1309,6 @@ a.chip:focus-visible .ico {
 .eco-name .ico {
   width: 18px;
   height: 18px;
-}
-
-/* ------------------------------------------------------------ numeros ---- */
-
-/* Três números grandes, cada um com a sua fonte embaixo, em mono e menor:
-   o número chama, a linha de baixo é o que o sustenta. */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-xl);
-  background: var(--line);
-  overflow: hidden;
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  padding: clamp(1.5rem, 3vw, 2.25rem);
-  background: var(--surface);
-}
-
-.stat-value {
-  font-size: clamp(2.6rem, 5vw, 3.75rem);
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--lime);
-}
-
-.stat-unit {
-  margin-left: 0.35rem;
-  font-size: 0.4em;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: var(--text-dim);
-}
-
-.stat-label {
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--text);
-}
-
-.stat-src {
-  margin-top: auto;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  line-height: 1.6;
-  color: var(--olive);
-}
-
-.stat-src a {
-  color: var(--lime);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
-@media (max-width: 820px) {
-  .stats {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 /* -------------------------------------------------------------- selos ---- */
@@ -1537,13 +1404,9 @@ a.chip:focus-visible .ico {
 /* --------------------------------------------------------- responsivo ---- */
 
 @media (max-width: 1040px) {
-  .head-split {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  
 
-  .head-split {
-    align-items: start;
-  }
+  
 
   .footer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
