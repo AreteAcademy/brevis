@@ -338,7 +338,8 @@ func (s *Service) audit(line record, started time.Time) {
 	line.Millis = time.Since(started).Milliseconds()
 	// THE SAME RECORD THE AUDIT LINE CARRIES, so the two cannot disagree
 	// about what happened -- minus the hash, which a label must never hold.
-	if line.Event == "query" || line.Event == "preview" {
+	switch line.Event {
+	case "query", "preview", "objects":
 		s.met.observe(line.Event, line)
 	}
 	b, err := json.Marshal(line)

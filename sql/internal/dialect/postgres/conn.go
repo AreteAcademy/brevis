@@ -149,3 +149,39 @@ func (c *conn) Target(ref string) string {
 }
 
 func (c *conn) Close(ctx context.Context) error { return c.c.Close(ctx) }
+
+// Relations lists everything a SELECT could name. See dialect.Lister.
+//
+// ONE QUERY AND NO COST TO SPEAK OF: Postgres answers this out of its own
+// catalog, which is already in memory. The 10 MiB floor that shapes the
+// interface is BigQuery's, and a dialect pays what its warehouse charges.
+//
+// `pg_catalog` and not `information_schema`: the latter hides relations the
+// current role cannot access, which would silently answer a different
+// question from "what is there" -- and the roles that run this are read-only
+// by design, so the filtering would be exactly wrong.
+func (c *conn) Relations(ctx context.Context) ([]dialect.Relation, error) {
+	rows, err := c.c.Query(ctx, `
+		SELECT n.nspname, c.relname
+		  FROM pg_class c
+		  JOIN pg_namespace n ON n.oid = c.relnamespace
+		 WHERE c.relkind IN ('r', 'v', 'm', 'p', 'f')
+		   AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+		   AND n.nspname NOT LIKE 'pg_toast%'
+		   AND n.nspname NOT LIKE 'pg_temp%'
+		 ORDER BY 1, 2`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []dialect.Relation
+	for rows.Next() {
+		var r dialect.Relation
+		if err := rows.Scan(&r.Schema, &r.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

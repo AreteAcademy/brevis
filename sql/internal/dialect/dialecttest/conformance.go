@@ -65,6 +65,12 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a result set comes back with its columns", h.resultSetIsRead)
 	t.Run("the limit cuts the answer", h.theLimitCuts)
 
+	// LISTING, which a browser needs and nothing else does. In the suite for
+	// the suite's reason: two dialects answer this out of two completely
+	// different catalogs -- one region-qualified, one out of pg_class -- and
+	// the shape they agree on is the only thing a caller can rely on.
+	t.Run("a built relation is listed", h.builtRelationIsListed)
+
 	// INCREMENTAL, and the order matters: each case builds on the one
 	// before, over one source table, the way a project does over days.
 	t.Run("an incremental model's first build holds every row", h.incrementalFirstBuild)
@@ -194,6 +200,30 @@ func sameStrings(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+// WHAT WAS BUILT IS WHAT IS LISTED. The suite's own schema is the only thing
+// it can assert about a warehouse it does not own -- somebody else's project
+// holds whatever it holds -- and a listing that cannot find a table created a
+// moment ago is not a listing.
+func (h *harness) builtRelationIsListed(t *testing.T) {
+	h.build(t, "listed", model.Table, "SELECT 1 AS n")
+
+	l, can := h.conn.(dialect.Lister)
+	if !can {
+		t.Fatalf("%s cannot say what it holds", h.d.Name())
+	}
+	rels, err := l.Relations(h.ctx)
+	if err != nil {
+		t.Fatalf("listing: %v", err)
+	}
+	for _, r := range rels {
+		if r.Schema == h.schema && r.Name == "listed" {
+			return
+		}
+	}
+	t.Errorf("%s.listed was built and is not in the %d relations listed",
+		h.schema, len(rels))
 }
 
 func (h *harness) readOne(t *testing.T, name string) any {

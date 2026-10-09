@@ -346,6 +346,34 @@ type WriteProbe interface {
 	CanWrite(ctx context.Context, schema string) (bool, error)
 }
 
+// Relation is one thing a SELECT could name.
+type Relation struct {
+	Schema string
+	Name   string
+}
+
+// Lister is implemented by a connection that can say what a SELECT could
+// name, WITHOUT being told.
+//
+// Separate from Reader for Reader's reason one level up: it is a different
+// capability and a dialect may have one and not the other. It is also a
+// different KIND of question -- everything else here is asked ABOUT a
+// relation somebody already named.
+//
+// ONE CALL FOR THE WHOLE CONNECTION, and that is the interface rather than an
+// implementation detail. Measured against BigQuery on 2026-10-09: every
+// INFORMATION_SCHEMA query is billed at a 10 MiB floor, whatever comes back.
+// A tree that asked per node would spend 10 MB on every click -- fifty
+// schemas is half a gigabyte, and the screen would look like it was doing
+// nothing. The whole project costs the same as one dataset, so the whole
+// project is what this returns.
+type Lister interface {
+	// Relations lists everything in this connection a SELECT could name.
+	//
+	// It costs money. The caller holds the answer; this does not cache.
+	Relations(ctx context.Context) ([]Relation, error)
+}
+
 // Disposable is implemented by a dialect whose warehouse can be told to throw
 // away what a TEST leaves behind.
 //

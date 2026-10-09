@@ -101,6 +101,9 @@ type Service struct {
 	mu     sync.Mutex
 	probed map[string]bool
 
+	// listed holds one answer per connection. See objects.
+	listed *listings
+
 	// met counts what the audit line records. Served on a listener of its
 	// own -- see Metrics.
 	met *metrics
@@ -175,6 +178,7 @@ func New(opt Options) (*Service, error) {
 		opt:    opt,
 		slots:  make(chan struct{}, opt.Concurrent),
 		probed: map[string]bool{},
+		listed: newListings(),
 		met:    newMetrics(),
 	}, nil
 }
@@ -221,6 +225,11 @@ func (s *Service) Handler() http.Handler {
 	// flag on a shared endpoint would make that property a matter of
 	// reading the handler correctly.
 	mux.HandleFunc("POST /v1/query", s.query)
+	// A THIRD ENDPOINT AND NOT A FLAG ON ONE OF THE OTHERS, for the reason
+	// preview and query are two: this asks a different question of a
+	// different scope, and CHECKPOINT D is the review that says what it may
+	// answer.
+	mux.HandleFunc("POST /v1/objects", s.objects)
 	return s.authenticated(mux)
 }
 
