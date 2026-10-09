@@ -94,6 +94,16 @@ type Config struct {
 	// failed but makes the reader hunt for the run by hand.
 	UIURL string
 
+	// SQLServeURL is where `brevis-sql serve` answers previews, and
+	// SQLServeToken is what it demands.
+	//
+	// EMPTY IS A DECISION AND NOT A GAP: a console with no SQL service shows
+	// no Preview tab at all, which is better than a tab that always says it
+	// is not configured. The engine never holds a warehouse credential --
+	// this token reaches `serve` and nothing else.
+	SQLServeURL   string
+	SQLServeToken string
+
 	// Pods parameterises execution in Kubernetes. These are the INSTALLATION's
 	// decisions -- which identity and credentials the pods start with -- which
 	// is why they come from the environment and not the workflow's YAML: a
@@ -150,6 +160,9 @@ func Load() (Config, error) {
 		TaskEnv:      list("BREVIS_TASK_ENV"),
 		SlackWebhook: os.Getenv("BREVIS_SLACK_WEBHOOK"),
 		UIURL:        os.Getenv("BREVIS_UI_URL"),
+
+		SQLServeURL:   os.Getenv("BREVIS_SQL_SERVE_URL"),
+		SQLServeToken: os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
 		Auth: auth.Credential{
 			User:   renamed("BREVIS_AUTH_USER", "BREVIS_AUTH_USUARIO"),
 			Hash:   renamed("BREVIS_AUTH_PASSWORD_HASH", "BREVIS_AUTH_SENHA_HASH"),
