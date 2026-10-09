@@ -1,7 +1,7 @@
 # Commands
 
 > **This file is the contributor's reference.** The user-facing one is the
-> website (`site/content/{pt,en}/docs/07-cli.md`), which is translated.
+> website (`site/content/{pt,en}/docs/08-cli.md`), which is translated.
 >
 > Both documented every subcommand and every flag, and they agreed only because
 > both were written from the same `--help`. Nothing kept them agreeing, so
@@ -15,15 +15,16 @@
 The command-line reference. The outputs below were captured from the binary
 built at this commit, not written by hand.
 
-## Two binaries, similar names
+## Three binaries, similar names
 
-|  | `brevis` | `brevis-sdk` |
-|---|---|---|
-| **what it is** | the engine: it orchestrates, schedules, executes and serves the UI | the SDK's CLI: it extracts from HTTP and loads into BigQuery |
-| **source** | [`cmd/brevis/`](../cmd/brevis/) | [`cmd/brevis-sdk/`](../cmd/brevis-sdk/) |
-| **module** | the repository's | its own (a separate `go.mod`, with the SDK pinned by version) |
-| **install** | `make build` → `bin/brevis` | `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest` |
-| **needs Postgres** | for most subcommands | never |
+|  | `brevis` | `brevis-sdk` | `brevis-sql` |
+|---|---|---|---|
+| **what it is** | the engine: it orchestrates, schedules, executes and serves the UI | the SDK's CLI: it extracts from HTTP and loads into BigQuery | plain `.sql` models, built and served as an ordinary step |
+| **source** | [`cmd/brevis/`](../cmd/brevis/) | [`cmd/brevis-sdk/`](../cmd/brevis-sdk/) | [`sql/cmd/brevis-sql/`](../sql/cmd/brevis-sql/) |
+| **module** | the repository's | its own (a separate `go.mod`, with the SDK pinned by version) | its own (`sql/go.mod`) |
+| **install** | `make build` → `bin/brevis` | `go install github.com/AreteAcademy/brevis/cmd/brevis-sdk@latest` | `go install github.com/AreteAcademy/brevis/sql/cmd/brevis-sql@latest` |
+| **needs Postgres** | for most subcommands | never | only to BUILD into one |
+| **holds a warehouse credential** | never | to load | to build and to serve |
 
 ## Installing
 
@@ -668,6 +669,66 @@ For anything beyond that, the Go SDK is the path — a whole fetcher fits in
 twenty lines, with flags, retry, pagination, provenance and the exit code all
 coming from `sdk.Run`. See
 [`examples/08-minimal-fetcher`](../examples/08-minimal-fetcher/).
+
+---
+
+# `brevis-sql` — plain `.sql` models
+
+A model is a file that stays valid SQL: the configuration is a leading block
+comment, so it opens in an editor and runs in a warehouse console unchanged.
+References between models are inferred from the SQL itself, so the dependency
+graph is not a second thing to maintain.
+
+```bash
+go install github.com/AreteAcademy/brevis/sql/cmd/brevis-sql@latest
+```
+
+| command | |
+|---|---|
+| `brevis-sql compile` | parses every model and resolves every edge, **connecting to nothing** — the one to run in a pull request |
+| `brevis-sql graph` | prints the inferred edges, so a wrong one is seen and not discovered |
+| `brevis-sql build` | creates or replaces every model, in dependency order |
+| `brevis-sql test` | runs every model's tests; each is a SELECT that must find nothing |
+| `brevis-sql serve` | answers read-only previews and queries over HTTP, so a console needs no warehouse credential |
+
+| flag | default | |
+|---|---|---|
+| `--project DIR` | `.` | the directory holding `models/` |
+| `--dialect NAME` | `postgres` | `bigquery` or `postgres`; it decides how references are read AND how models are built |
+| `--select EXPR` | — | one model, or `name+` for it and everything downstream |
+| `--dsn-from VAR` | — | the NAME of the variable holding the DSN, never the DSN itself (`build`, `test`) |
+| `--full-refresh` | `false` | rebuild every incremental model from scratch, forgetting its watermark |
+
+`--dsn-from` takes a variable NAME on purpose: a connection string on a
+command line is in the process table, in the shell history and in any log that
+records the invocation.
+
+## `brevis-sql serve`
+
+A read-only HTTP surface over the warehouses a file declares. The console's
+`/data` and `/sql` screens are its only caller today, and the engine gains no
+warehouse driver because of it — that separation is the reason this exists as
+a service rather than as a package.
+
+| flag | default | |
+|---|---|---|
+| `--addr HOST:PORT` | `127.0.0.1:8088` | where it listens |
+| `--connections FILE` | `brevis.yaml` | the file declaring which warehouses may be read. **Nothing outside it is reachable** |
+| `--rows N` | `100` | the most rows one answer returns; a caller may ask for fewer, never more |
+| `--max-bytes N` | `10 GiB` | the most bytes one query may scan. It is PRICED FIRST and refused above this, so a bill is prevented rather than reported |
+| `--metrics-addr ADDR` | `127.0.0.1:9095` | where the Prometheus exposition listens, on a port of its own; empty turns it off |
+| `--dry-run` | `false` | build the service and report, without listening |
+
+| variable | |
+|---|---|
+| `BREVIS_SQL_SERVE_TOKEN` | the bearer token callers must present |
+| `BREVIS_ENV` | outside `local` a token is **required**, and it will not start without one |
+
+**It never writes.** Every statement is classified before it runs and anything
+that is not a read is refused by name; the credential itself is asserted to be
+read-only at first use, so a connection that could write is refused outside
+`local` rather than trusted. The audit line it prints carries a HASH of the
+statement and never the statement.
 
 ---
 

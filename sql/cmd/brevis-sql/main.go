@@ -57,25 +57,61 @@ func main() {
 	}
 }
 
+// commands is what this binary has, in the order the usage lists them.
+//
+// ONE LIST, read by the dispatch, by the usage and by the tests. It was
+// three places -- a switch, a block of text and nothing else -- and a
+// command could be added to any two of them.
+var commands = []string{"compile", "graph", "build", "test", "serve"}
+
+// opts is every flag, bound in one place so the usage and the tests can walk
+// the same set the dispatch parses.
+type opts struct {
+	root, dialectName, sel, dsnFrom *string
+	addr, registry, metricsAddr     *string
+	full, dryRun                    *bool
+	rows                            *int
+	maxBytes                        *int64
+}
+
+func bind(fs *flag.FlagSet) *opts {
+	return &opts{
+		root:        fs.String("project", ".", "the directory holding models/"),
+		dialectName: fs.String("dialect", "postgres", "which warehouse; it decides how references are read AND how models are built"),
+		sel:         fs.String("select", "", "one model, or `name+` for it and everything downstream"),
+		dsnFrom:     fs.String("dsn-from", "", "the NAME of the environment variable holding the connection string"),
+		full:        fs.Bool("full-refresh", false, "rebuild every incremental model from scratch, forgetting its watermark"),
+		addr:        fs.String("addr", "127.0.0.1:8088", "where `serve` listens"),
+		rows:        fs.Int("rows", 100, "the most rows a preview may return; a caller may ask for fewer"),
+		maxBytes:    fs.Int64("max-bytes", 10<<30, "the most bytes one query may scan; it is priced first and refused above this"),
+		dryRun:      fs.Bool("dry-run", false, "build the service and report, without listening"),
+		registry:    fs.String("connections", "brevis.yaml", "the file declaring which warehouses may be read"),
+		metricsAddr: fs.String("metrics-addr", "127.0.0.1:9095", "where the Prometheus exposition listens; empty turns it off"),
+	}
+}
+
 func run(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		usage()
+		usage(os.Stderr)
 		return fmt.Errorf("say which command")
 	}
 	cmd, rest := args[0], args[1:]
 
+	// ASKING FOR HELP IS NOT A MISTAKE. It fell through to the default
+	// branch, which printed the usage and then exited 1 saying `"--help" is
+	// not a command` -- so every wrapper that asks this binary what it does
+	// read an answer as a failure. On the writer it was handed, because help
+	// asked for is an answer and only a diagnostic belongs on stderr.
+	if cmd == "--help" || cmd == "-h" || cmd == "help" {
+		usage(out)
+		return nil
+	}
+
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
-	root := fs.String("project", ".", "the directory holding models/")
-	dialectName := fs.String("dialect", "postgres", "which warehouse; it decides how references are read AND how models are built")
-	sel := fs.String("select", "", "one model, or `name+` for it and everything downstream")
-	dsnFrom := fs.String("dsn-from", "", "the NAME of the environment variable holding the connection string")
-	full := fs.Bool("full-refresh", false, "rebuild every incremental model from scratch, forgetting its watermark")
-	addr := fs.String("addr", "127.0.0.1:8088", "where `serve` listens")
-	rows := fs.Int("rows", 100, "the most rows a preview may return; a caller may ask for fewer")
-	maxBytes := fs.Int64("max-bytes", 10<<30, "the most bytes one query may scan; it is priced first and refused above this")
-	dryRun := fs.Bool("dry-run", false, "build the service and report, without listening")
-	registry := fs.String("connections", "brevis.yaml", "the file declaring which warehouses may be read")
-	metricsAddr := fs.String("metrics-addr", "127.0.0.1:9095", "where the Prometheus exposition listens; empty turns it off")
+	o := bind(fs)
+	root, dialectName, sel := o.root, o.dialectName, o.sel
+	dsnFrom, full, addr, rows := o.dsnFrom, o.full, o.addr, o.rows
+	maxBytes, dryRun, registry, metricsAddr := o.maxBytes, o.dryRun, o.registry, o.metricsAddr
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
@@ -89,7 +125,7 @@ func run(args []string, out io.Writer) error {
 		// would otherwise die with a message about a thing it does not use.
 		return serve(out, *addr, *rows, *maxBytes, *registry, *metricsAddr, *dryRun)
 	default:
-		usage()
+		usage(os.Stderr)
 		return fmt.Errorf("%q is not a command", cmd)
 	}
 
@@ -334,8 +370,16 @@ func runTests(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Pr
 // usage DERIVES the dialect list. It used to say "postgres | bigquery" while
 // the binary built one of them, which is a help text that lies -- and the
 // --dialect error below would have contradicted it.
-func usage() {
-	_, _ = fmt.Fprintf(os.Stderr, strings.TrimLeft(`
+// usage says what this binary has, on the writer it is handed: stdout when
+// help was asked for, stderr when it sits beside a refusal.
+//
+// EVERY FLAG, and a test walks the FlagSet to say so. It listed seven of
+// eleven, and the four it left out included `--max-bytes` and
+// `--connections` -- what `serve` may spend and which warehouses it may read
+// at all, which is to say the help was silent about exactly the flags
+// somebody running this in front of a warehouse needs.
+func usage(w io.Writer) {
+	_, _ = fmt.Fprintf(w, strings.TrimLeft(`
 brevis-sql — plain .sql models, run as a Brevis step
 
   compile   parse every model, resolve every edge, connect to nothing
@@ -351,6 +395,10 @@ brevis-sql — plain .sql models, run as a Brevis step
   --full-refresh    rebuild every incremental model from scratch   (build)
   --addr HOST:PORT  where to listen                            (serve)
   --rows N          the most rows a preview returns            (serve)
+  --max-bytes N     the most bytes one query may scan          (serve)
+  --connections F   the file declaring which warehouses may be read  (serve)
+  --metrics-addr A  where the Prometheus exposition listens    (serve)
+  --dry-run         build the service and report, without listening  (serve)
 
   serve reads BREVIS_SQL_SERVE_TOKEN and BREVIS_ENV from the environment.
   Outside BREVIS_ENV=local a token is required and it will not start without

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"os"
 	"strings"
 	"testing"
@@ -193,3 +194,85 @@ func TestTheLandedLineIsExactlyOneLine(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// ASKING FOR HELP IS NOT A MISTAKE.
+//
+// `--help` printed the usage and then exited 1 with `"--help" is not a
+// command`, because it fell through to the default branch. Every shell
+// wrapper, CI step and `make` recipe that asks a binary what it does would
+// read that as a failure -- and the gate this commit adds is one of them.
+func TestAskingForHelpIsNotAnError(t *testing.T) {
+	for _, ask := range []string{"--help", "-h", "help"} {
+		b := out()
+		if err := run([]string{ask}, b); err != nil {
+			t.Errorf("%s: %v", ask, err)
+		}
+		if !strings.Contains(b.String(), "compile") {
+			t.Errorf("%s printed no usage", ask)
+		}
+	}
+	// AND ON STDOUT. Help asked for is an answer; the usage printed beside a
+	// refusal is a diagnostic, and only the second belongs on stderr.
+	b := out()
+	_ = run([]string{"--help"}, b)
+	if b.Len() == 0 {
+		t.Error("the usage did not reach the writer it was handed")
+	}
+}
+
+// NO COMMAND IS STILL A MISTAKE, and so is a wrong one.
+func TestSayingNothingOrSomethingElseIsStillAnError(t *testing.T) {
+	for _, args := range [][]string{{}, {"explain"}} {
+		if err := run(args, out()); err == nil {
+			t.Errorf("%v was accepted", args)
+		}
+	}
+}
+
+// THE USAGE NAMES EVERY FLAG THE BINARY HAS.
+//
+// It named seven of eleven. The four it left out were `--max-bytes`,
+// `--dry-run`, `--connections` and `--metrics-addr` -- and the first and
+// third are the two that bound what `serve` may spend and which warehouses
+// it may read at all, which is to say the help was silent about exactly the
+// flags somebody running this in front of a warehouse needs.
+//
+// DERIVED AND NOT LISTED: it walks the FlagSet, so a flag added tomorrow is
+// covered the moment it is registered. A list written by hand here would be
+// a third place to forget.
+func TestTheUsageNamesEveryFlagAndEveryCommand(t *testing.T) {
+	b := out()
+	usage(b)
+	help := b.String()
+
+	fs := flag.NewFlagSet("brevis-sql", flag.ContinueOnError)
+	bind(fs)
+	fs.VisitAll(func(f *flag.Flag) {
+		if !strings.Contains(help, "--"+f.Name) {
+			t.Errorf("the usage never mentions --%s", f.Name)
+		}
+	})
+	for _, cmd := range commands {
+		if !strings.Contains(help, cmd) {
+			t.Errorf("the usage never mentions %q", cmd)
+		}
+	}
+}
+
+// AND EVERY COMMAND THE USAGE NAMES IS ONE THE BINARY HAS, which is the
+// other direction and the one that catches a command removed.
+func TestEveryCommandTheUsageNamesIsReachable(t *testing.T) {
+	for _, cmd := range commands {
+		// A wrong dialect is the cheapest proof the command was DISPATCHED:
+		// it is checked after the switch and before anything is read, so a
+		// command that is not a command fails with a different sentence.
+		err := run([]string{cmd, "--dialect", "nope"}, out())
+		if err == nil {
+			t.Errorf("%s --dialect nope was accepted", cmd)
+			continue
+		}
+		if strings.Contains(err.Error(), "is not a command") {
+			t.Errorf("%s is in the usage and is not a command", cmd)
+		}
+	}
+}

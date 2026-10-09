@@ -82,4 +82,58 @@ check() { # <label> <dir> <doc>...
 check "brevis"     ./cmd/brevis      docs/COMMANDS.md site/content/pt/docs/08-cli.md site/content/en/docs/08-cli.md
 check "brevis-sdk" ./cmd/brevis-sdk  docs/COMMANDS.md cmd/brevis-sdk/README.md
 
+# THE THIRD BINARY, which this never knew about.
+#
+# `brevis-sql` was a module nobody taught the gates: `image-pins-check.sh` had
+# the same hole and was extended the same way. The cost was measurable here
+# too -- `serve` shipped in the binary and was documented NOWHERE, which is
+# precisely the failure the check above was repaired to catch for `brevis
+# gateway`. A gate that covers two of three binaries is not a gate for the
+# third.
+#
+# It parses a DIFFERENT HELP, because this binary is not cobra: its usage is
+# a plain block, two spaces and a name. Reading it at all depends on `--help`
+# exiting 0, which it did not until the commit that added this.
+# THE FIRST BLOCK ONLY. The usage ends with a paragraph that is also indented
+# two spaces, so matching the indent alone read `serve reads BREVIS_...` and
+# `one.` as commands -- and a check that invents commands fails for reasons
+# nobody can fix, which is its own way of being useless.
+sql_subcommands() {
+  ( cd sql/cmd/brevis-sql && go run . --help 2>/dev/null ) \
+    | awk '/^$/ {b++; next} b==1 && /^  [a-z]/ {print $1}'
+}
+
+sql_flags() {
+  ( cd sql/cmd/brevis-sql && go run . --help 2>/dev/null ) \
+    | grep -oE '^\s+--[a-z0-9-]+' | tr -d ' ' | sort -u
+}
+
+check_sql() {
+  local label="brevis-sql" docs=("$@")
+  local cmds; cmds=$(sql_subcommands)
+  [ -n "$cmds" ] || { echo "❌ $label: could not read the subcommands"; fail=1; return; }
+
+  for doc in "${docs[@]}"; do
+    [ -f "$doc" ] || { echo "❌ $label: $doc does not exist"; fail=1; continue; }
+    for cmd in $cmds; do
+      if ! grep -qF "$label $cmd" "$doc"; then
+        echo "❌ $doc never mentions \`$label $cmd\`"
+        fail=1
+      fi
+    done
+  done
+
+  # The flags, against the contributor reference only -- the site's page is a
+  # tour, as it is for `brevis`.
+  for flag in $(sql_flags); do
+    if ! grep -qF -- "$flag" docs/COMMANDS.md; then
+      echo "❌ docs/COMMANDS.md never mentions \`$flag\` of \`$label\`"
+      fail=1
+    fi
+  done
+  echo "✅ $label: $(echo "$cmds" | tr '\n' ' ')"
+}
+
+check_sql docs/COMMANDS.md site/content/en/docs/21-sql.md site/content/pt/docs/21-sql.md
+
 exit $fail

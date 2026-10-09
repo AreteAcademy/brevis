@@ -10,16 +10,30 @@ Sem template: um modelo é um arquivo que continua SQL válido, e a ordem vem da
 
 ![O fluxo do SQL: o brevis-sql lê raw.orders, uma tabela que o SDK ou o Gateway pousou. O modelo staging.stg_orders vira uma view sobre ela, e marts.orders uma tabela sobre essa view; a ordem vem da leitura do SQL. Os mesmos modelos rodam no Postgres ou no BigQuery.](/assets/flow-sql.svg)
 
-## Quatro comandos
+## Cinco comandos
 
 | comando | o que faz |
 |---|---|
-| `compile` | lê todos os modelos e resolve todas as arestas, **sem se conectar a nada** |
-| `graph` | imprime as arestas inferidas, para que uma errada seja vista e não descoberta |
-| `build` | cria ou substitui cada modelo, na ordem de dependência |
-| `test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
+| `brevis-sql compile` | lê todos os modelos e resolve todas as arestas, **sem se conectar a nada** |
+| `brevis-sql graph` | imprime as arestas inferidas, para que uma errada seja vista e não descoberta |
+| `brevis-sql build` | cria ou substitui cada modelo, na ordem de dependência |
+| `brevis-sql test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
+| `brevis-sql serve` | responde previews e consultas somente-leitura por HTTP, para que um console não precise de credencial de warehouse |
 
 `--select orders+` restringe qualquer um deles a um modelo e a tudo que vem depois dele.
+
+
+## `brevis-sql serve` — ler um warehouse sem credencial
+
+As telas Data e SQL do console mostram o que aterrissou e o que há dentro. Nenhuma das duas alcança um warehouse: elas perguntam a este serviço, que roda ao lado delas e guarda a credencial que o motor deliberadamente não tem.
+
+```bash
+brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
+```
+
+**Só o que o arquivo declara é alcançável**, e nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e a própria credencial é verificada como somente-leitura no primeiro uso. A linha de auditoria carrega um hash do statement e nunca o statement.
+
+Fora de `BREVIS_ENV=local` um `BREVIS_SQL_SERVE_TOKEN` é obrigatório e o serviço não sobe sem ele.
 
 ## Um modelo é um arquivo que continua SQL válido
 
