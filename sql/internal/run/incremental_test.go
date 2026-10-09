@@ -10,6 +10,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/bigquery"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect/dialecttest"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 	"github.com/AreteAcademy/brevis/sql/internal/model"
 	"github.com/AreteAcademy/brevis/sql/internal/project"
@@ -63,10 +64,10 @@ func open(t *testing.T, name string) *warehouse {
 	w := &warehouse{ctx: ctx, d: d, conn: conn,
 		schema: fmt.Sprintf("bvs_inc_%d", time.Now().UnixNano())}
 
-	for _, s := range d.EnsureSchema(w.schema) {
-		if err := conn.Exec(ctx, s); err != nil {
-			t.Fatalf("%s: making the schema: %v", name, err)
-		}
+	// THROUGH THE SHARED HELPER, so this harness cannot be the one that
+	// forgets to make its dataset disposable. See dialecttest.
+	if err := dialecttest.MakeThrowawaySchema(ctx, d, conn, w.schema); err != nil {
+		t.Fatalf("%s: %v", name, err)
 	}
 	t.Cleanup(func() {
 		bg := context.Background()

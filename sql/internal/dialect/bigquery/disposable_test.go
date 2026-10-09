@@ -10,6 +10,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/bigquery"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect/dialecttest"
 )
 
 // BigQuery CAN be told to throw away what a test leaves behind, and Postgres
@@ -90,4 +91,44 @@ func expiry(t *testing.T, ctx context.Context, conn dialect.Conn, schema string)
 		return ""
 	}
 	return strings.TrimSpace(fmt.Sprint(v))
+}
+
+// AND THE HELPER THE HARNESSES ACTUALLY CALL DOES IT, against the real
+// warehouse and read back from the CATALOG rather than from the statement.
+//
+// The test above proves the dialect's string works; this proves the wiring.
+// They are different failures: a correct ExpireSchema that no harness calls
+// leaves exactly the leak this was built to stop, and it would pass every
+// test of the string.
+func TestTheHarnessesHelperLeavesADisposableDataset(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipped under -short")
+	}
+	project := os.Getenv("BREVIS_SQL_IT_BQ_PROJECT")
+	if project == "" {
+		t.Skip("BREVIS_SQL_IT_BQ_PROJECT not set")
+	}
+
+	ctx := context.Background()
+	d := bigquery.Dialect{}
+	conn, err := d.Open(ctx, project)
+	if err != nil {
+		t.Fatalf("connecting: %v", err)
+	}
+	t.Cleanup(func() { _ = conn.Close(context.Background()) })
+
+	schema := fmt.Sprintf("bvs_helper_%d", time.Now().UnixNano())
+	if err := dialecttest.MakeThrowawaySchema(ctx, d, conn, schema); err != nil {
+		t.Fatalf("%v", err)
+	}
+	t.Cleanup(func() {
+		bg, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = conn.Exec(bg, "DROP SCHEMA IF EXISTS "+schema+" CASCADE")
+	})
+
+	if got := expiry(t, ctx, conn, schema); got != "1.0" {
+		t.Errorf("the helper left a dataset with expiry %q, wanted 1.0 -- "+
+			"a harness killed now would leak this forever", got)
+	}
 }

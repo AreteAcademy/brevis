@@ -38,10 +38,8 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	// A schema per run, so two runs never meet and a failure leaves
 	// something to look at without blocking the next one.
 	schema := fmt.Sprintf("bvs_conf_%d", time.Now().UnixNano())
-	for _, s := range d.EnsureSchema(schema) {
-		if err := conn.Exec(ctx, s); err != nil {
-			t.Fatalf("%s: making the schema: %v", d.Name(), err)
-		}
+	if err := MakeThrowawaySchema(ctx, d, conn, schema); err != nil {
+		t.Fatalf("%s: %v", d.Name(), err)
 	}
 	t.Cleanup(func() { dropSchema(d, conn, schema) })
 
