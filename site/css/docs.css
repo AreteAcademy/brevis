@@ -291,6 +291,19 @@ h3:hover .anchor,
   color: var(--olive);
 }
 
+/* Figura vinda do Markdown (`![alt](/assets/x.svg)`): o SVG desenha o que o
+   texto ao lado explica, então fica estreito, centrado, sem legenda. */
+.doc-figure {
+  margin: 2rem auto;
+  max-width: 360px;
+}
+
+.doc-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .doc-body blockquote {
   margin: 1.75rem 0;
   padding: 0.25rem 0 0.25rem 1.25rem;

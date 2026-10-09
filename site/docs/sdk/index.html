@@ -163,6 +163,7 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, dados, sdk.Target{
 	Columns: []string{"id", "criado_em", "valor"},
 })</code></pre></div>
 <p><code>Extract</code> lê, <code>Transform</code> reformata, <code>Load</code> escreve. Cada um recebe e devolve uma sequência — nada é materializado em memória de uma vez.</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="O fluxo do SDK: sdk.Extract lê de uma API HTTP com from.HTTP, sdk.Transform mantém os campos aceitos e sdk.Load grava as linhas numa tabela do BigQuery. As três chamadas rodam dentro da sua própria etapa." loading="lazy"></figure>
 <h2 id="o-driver-e-um-valor-nao-uma-configuracao">O driver é um valor, não uma configuração<a class="anchor" href="#o-driver-e-um-valor-nao-uma-configuracao" aria-label="link">#</a></h2>
 <p><code>from.HTTP</code> carrega tudo que uma origem HTTP precisa: URL, cabeçalhos, retry, paginação e o que uma resposta significa. <code>from.Files</code> carrega um caminho e um formato. Nenhum precisa abrir espaço para os campos do outro, então não existe uma struct de origem com quarenta opções das quais cada driver lê seis.</p>
 <p>Isso também decide <strong>o que você compila</strong>. Go poda dependências por pacote importado, nunca por campo usado:</p>

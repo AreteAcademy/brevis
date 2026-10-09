@@ -158,6 +158,25 @@ def inline(txt):
     return txt
 
 
+def figura(alt, src):
+    """`![alt](/assets/x.svg)` sozinho numa linha. O tamanho vem do viewBox, para
+    o navegador reservar a altura antes do SVG chegar. Arquivo ausente ou alt
+    vazio é erro de build: uma figura quebrada ou muda não chega ao leitor."""
+    if not alt.strip():
+        raise SystemExit("build.py: figura sem alt: %s" % src)
+    arq = RAIZ / src.lstrip("/")
+    if not src.startswith("/assets/") or not arq.is_file():
+        raise SystemExit("build.py: figura aponta para um arquivo que não existe: %s" % src)
+    vb = re.search(r'viewBox="\s*[\d.]+[\s,]+[\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)',
+                   arq.read_text(encoding="utf-8"))
+    if not vb:
+        raise SystemExit("build.py: figura sem viewBox, não há como dar o tamanho: %s" % src)
+    return ('<figure class="doc-figure"><img src="%s" width="%d" height="%d" alt="%s" '
+            'loading="lazy"></figure>'
+            % (html.escape(src), round(float(vb.group(1))), round(float(vb.group(2))),
+               html.escape(alt.strip())))
+
+
 ADMON = {"note": "nota", "warning": "atenção", "tip": "dica", "danger": "cuidado"}
 
 
@@ -257,6 +276,13 @@ def markdown(texto, rotulos):
             saida.append("<%s>%s</%s>" % (tag, "".join("<li>%s</li>" % inline(x) for x in itens), tag))
             continue
 
+        # figura
+        m = re.match(r"^!\[([^\]]*)\]\(([^)\s]+)\)\s*$", ln)
+        if m:
+            saida.append(figura(m.group(1), m.group(2)))
+            i += 1
+            continue
+
         # regra
         if re.match(r"^---+$", ln):
             saida.append("<hr>")
@@ -267,7 +293,7 @@ def markdown(texto, rotulos):
         if ln.strip():
             corpo = []
             while i < len(linhas) and linhas[i].strip() and not re.match(
-                    r"^(#{1,4}\s|```|\||>|---+$|:::)", linhas[i]) and not re.match(
+                    r"^(#{1,4}\s|```|\||>|---+$|:::|!\[)", linhas[i]) and not re.match(
                     r"^\s*(?:[-*]|\d+\.)\s+", linhas[i]):
                 corpo.append(linhas[i].strip())
                 i += 1

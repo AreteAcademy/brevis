@@ -45,6 +45,8 @@ res, err := sdk.Load(ctx, dados, sdk.Target{
 `Extract` lê, `Transform` reformata, `Load` escreve. Cada um recebe e devolve
 uma sequência — nada é materializado em memória de uma vez.
 
+![O fluxo do SDK: sdk.Extract lê de uma API HTTP com from.HTTP, sdk.Transform mantém os campos aceitos e sdk.Load grava as linhas numa tabela do BigQuery. As três chamadas rodam dentro da sua própria etapa.](/assets/flow-sdk.svg)
+
 ## O driver é um valor, não uma configuração
 
 `from.HTTP` carrega tudo que uma origem HTTP precisa: URL, cabeçalhos, retry,

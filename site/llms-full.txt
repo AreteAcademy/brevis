@@ -2344,6 +2344,8 @@ res, err := sdk.Load(ctx, rows, sdk.Target{
 `Extract` reads, `Transform` reshapes, `Load` writes. Each takes and returns a
 sequence — nothing is materialised in memory all at once.
 
+![The SDK flow: sdk.Extract reads from an HTTP API with from.HTTP, sdk.Transform keeps the accepted fields and sdk.Load writes the rows to a BigQuery table. The three calls run inside your own step.](/assets/flow-sdk.svg)
+
 ## The driver is a value, not a setting
 
 `from.HTTP` carries everything an HTTP source needs: URL, headers, retry,

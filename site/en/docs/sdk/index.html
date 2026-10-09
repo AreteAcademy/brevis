@@ -163,6 +163,7 @@ res, <span class="t-k">err</span> := sdk.Load(ctx, rows, sdk.Target{
 	Columns: []string{"id", "created_at", "amount"},
 })</code></pre></div>
 <p><code>Extract</code> reads, <code>Transform</code> reshapes, <code>Load</code> writes. Each takes and returns a sequence — nothing is materialised in memory all at once.</p>
+<figure class="doc-figure"><img src="/assets/flow-sdk.svg" width="360" height="514" alt="The SDK flow: sdk.Extract reads from an HTTP API with from.HTTP, sdk.Transform keeps the accepted fields and sdk.Load writes the rows to a BigQuery table. The three calls run inside your own step." loading="lazy"></figure>
 <h2 id="the-driver-is-a-value-not-a-setting">The driver is a value, not a setting<a class="anchor" href="#the-driver-is-a-value-not-a-setting" aria-label="link">#</a></h2>
 <p><code>from.HTTP</code> carries everything an HTTP source needs: URL, headers, retry, pagination, and what a response means. <code>from.Files</code> carries a path and a format. Neither has to make room for the other's fields, so there is no source struct collecting forty options of which each driver reads six.</p>
 <p>It also decides <strong>what you compile</strong>. Go prunes dependencies by package imported, never by field used:</p>
