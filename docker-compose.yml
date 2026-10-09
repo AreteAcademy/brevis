@@ -17,7 +17,12 @@ services:
     # this repository, and the message names a container the reader has never
     # heard of.
     #
-    #     BREVIS_PG_PORT=55433 make up
+    #     export BREVIS_PG_PORT=55433
+    #
+    # EXPORTED rather than prefixing one command: the Makefile derives DB_URL
+    # and TEST_DB_URL from the same variable, and a stack moved here with
+    # `make test-int` still on 5432 would point at whatever else answers --
+    # which is a stranger's database rather than a conflict that fails.
     #
     # docker-compose.drivers.yml solved the same problem by moving to 55432 and
     # writing down why; this keeps 5432 for everybody whose tooling points at

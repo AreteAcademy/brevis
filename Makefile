@@ -23,12 +23,23 @@ BUILD_DATE      ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 # amd64/arm64 in the cluster. An amd64-only image runs on a Mac through
 # emulation, slowly and hiding architecture problems until the deploy.
 PLATAFORMAS ?= linux/amd64,linux/arm64
-DB_URL := postgres://brevis:brevis@localhost:5432/brevis?sslmode=disable
+# WHERE THE LOCAL POSTGRES IS PUBLISHED, and every URL below derives from it.
+#
+# The compose already lets this move -- a developer machine very often has
+# something on 5432 -- and these two lines did not follow, which made the
+# escape hatch WORSE THAN THE CONFLICT it avoids. `BREVIS_PG_PORT=55433 make
+# up` moved the stack and left `make test-int` and `make dev` pointing at
+# whatever else answers on 5432: another project's database, migrated by
+# `migrate up` if its credentials happened to match.
+#
+# A port conflict fails loudly. Pointing at a stranger's database does not.
+BREVIS_PG_PORT ?= 5432
+DB_URL := postgres://brevis:brevis@localhost:$(BREVIS_PG_PORT)/brevis?sslmode=disable
 # A SEPARATE database for the integration tests. Since the local stack started
 # bringing up a real scheduler, running the tests against `brevis` was a race:
 # the compose's scheduler claimed the items the test had just queued and the
 # acceptance criterion failed with nothing being wrong.
-TEST_DB_URL := postgres://brevis:brevis@localhost:5432/brevis_test?sslmode=disable
+TEST_DB_URL := postgres://brevis:brevis@localhost:$(BREVIS_PG_PORT)/brevis_test?sslmode=disable
 
 help: ## Lists the targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -164,7 +175,11 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally
 	@echo "A port already taken -- very often 5432, by another project's"
 	@echo "Postgres or one that is merely PAUSED -- fails this with a message"
 	@echo "naming a container you have never heard of. Move it instead:"
-	@echo "  BREVIS_PG_PORT=55433 make up"
+	@echo "  export BREVIS_PG_PORT=55433   # then make up"
+	@echo ""
+	@echo "EXPORT it rather than prefixing one command: every other target"
+	@echo "derives its database URL from it, and a stack on one port with"
+	@echo "\`make test-int\` on another points at whatever else answers."
 
 down: ## Tears the local environment down
 	@docker compose down
