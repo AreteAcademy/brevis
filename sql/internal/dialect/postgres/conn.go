@@ -8,6 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	sdkpg "github.com/AreteAcademy/brevis/sdk/from/postgres"
+
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
 
@@ -89,8 +91,9 @@ func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, e
 	}
 	defer rows.Close()
 
+	fields := rows.FieldDescriptions()
 	out := dialect.Result{Rows: [][]any{}}
-	for _, f := range rows.FieldDescriptions() {
+	for _, f := range fields {
 		out.Columns = append(out.Columns, f.Name)
 	}
 	for len(out.Rows) < req.Limit && rows.Next() {
@@ -101,6 +104,22 @@ func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, e
 		vals, err := rows.Values()
 		if err != nil {
 			return dialect.Result{}, err
+		}
+		// THE SDK'S CONVERSION AND NOT A SECOND ONE. pgx hands a UUID over
+		// as [16]byte, a DATE and a TIMESTAMPTZ as the same time.Time, and
+		// a NUMERIC as a struct -- measured against a real server, where
+		// this reader drew a UUID as a list of sixteen integers.
+		//
+		// `sdk/from/postgres` had already learned every one of those, with
+		// a comment per case, because it has been reading Postgres for
+		// longer than this has. Two readers on pgx in one repository is one
+		// too many, and the one that knows is the one to ask.
+		//
+		// It is the ONLY thing taken from the SDK, and the weight gate says
+		// so by name: a leaf under `from/` is a reader, `to/` is a write
+		// path and stays forbidden.
+		for i := range vals {
+			vals[i] = sdkpg.ToJSONWithOID(vals[i], fields[i].DataTypeOID)
 		}
 		out.Rows = append(out.Rows, vals)
 	}

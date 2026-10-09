@@ -33,7 +33,8 @@ failed=0
 #   cloud.google.com/go/bigquery   31 MB, 526 packages, 236 modules, alone
 #   google.golang.org/grpc         what that client is mostly made of
 #   .../storage, google.golang.org/api  the same stack by another door
-#   .../brevis/sdk/to/bigquery     brings all three of the above
+#   .../brevis/sdk/to/bigquery     brings all three of the above, and is a
+#                                  WRITE path, which nothing here has
 #
 # THE SDK LINE WAS SPELT WITHOUT ITS HOST and could never match. `go list
 # -deps` prints `github.com/AreteAcademy/...`, the grep was anchored at
@@ -48,12 +49,17 @@ failed=0
 #   + sdk/from/postgres     245 -> 251 packages, and nothing forbidden
 #   + sdk/to/bigquery       brings cloud.google.com/go/bigquery, /storage
 #                           and google.golang.org/api -- the whole list
+#
+# TAKEN, in `internal/dialect/postgres`: pgx hands a UUID over as [16]byte
+# and a NUMERIC as a struct, `sdk/from/postgres` had already learned every
+# one of those, and this reader was drawing a UUID as sixteen integers. Two
+# readers on pgx in one repository is one too many.
 for forbidden in \
   "cloud.google.com/go/bigquery" \
   "cloud.google.com/go/storage" \
   "google.golang.org/api" \
   "google.golang.org/grpc" \
-  "github.com/AreteAcademy/brevis/sdk"
+  "github.com/AreteAcademy/brevis/sdk/to"
 do
   n="$(echo "$deps" | grep -c "^$forbidden" || true)"
   if [ "$n" != "0" ]; then
@@ -65,6 +71,17 @@ do
     failed=1
   fi
 done
+
+# The SDK's ROOT package is the pipeline runner, and it pulls everything the
+# four lines above forbid. A leaf under `sdk/from/` is a reader and is
+# allowed; `sdk/to/` is a WRITE PATH and is refused twice over -- by weight
+# and by the rule that nothing here writes.
+if echo "$deps" | grep -qx "github.com/AreteAcademy/brevis/sdk"; then
+  echo "::error::brevis-sql compiles the SDK's root package, which is the"
+  echo "    pipeline runner and brings every client this file forbids."
+  echo "    A reader under sdk/from/<driver> is what this module may share."
+  failed=1
+fi
 
 # THE PACKAGE CEILING. It does not exist to be exact; it exists so that
 # growing takes a conscious decision instead of just happening.
