@@ -242,10 +242,6 @@ p {
   color: var(--text-dim);
 }
 
-.muted {
-  color: var(--text-dim);
-}
-
 a {
   color: inherit;
   text-decoration: none;
@@ -267,8 +263,7 @@ a {
   gap: 0.65rem;
 }
 
-code,
-.mono {
+code {
   font-family: var(--font-mono);
 }
 
@@ -288,10 +283,6 @@ dd code {
 .section {
   padding: clamp(4rem, 8vw, 7rem) 0;
   border-top: 1px solid var(--line-soft);
-}
-
-.section-soft {
-  background: var(--surface-2);
 }
 
 .section-head {
@@ -438,8 +429,7 @@ dd code {
 }
 
 a.card:hover,
-a.card:focus-visible,
-.card-lit {
+a.card:focus-visible {
   border-color: var(--lime-edge);
   box-shadow: 0 0 0 1px var(--lime-wash), 0 18px 48px -24px var(--lime-glow);
 }
@@ -504,12 +494,6 @@ a.chip:focus-visible .ico {
 
 .ico.ico-redshift { color: var(--brand-redshift); }
 
-.pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .pill {
   display: inline-flex;
   align-items: center;
@@ -519,13 +503,6 @@ a.chip:focus-visible .ico {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--text-dim);
-}
-
-/* A moldura acesa: uma tela que e o assunto da secao, nao ilustracao. */
-.frame-lit {
-  border-color: var(--lime-edge);
-  border-radius: var(--r-xl);
-  box-shadow: 0 40px 90px -50px var(--lime-glow), 0 0 0 1px var(--lime-wash);
 }
 
 /* ------------------------------------------------------------ header ---- */
@@ -759,56 +736,6 @@ a.chip:focus-visible .ico {
   border-color: var(--lime);
 }
 
-/* -------------------------------------------------- contraste de visao ---- */
-
-.contrast {
-  padding: clamp(3rem, 6vw, 4.5rem) 0;
-  border-top: 1px solid var(--line-soft);
-  border-bottom: 1px solid var(--line-soft);
-  background: var(--surface);
-}
-
-.contrast-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: clamp(1.25rem, 3vw, 2.5rem);
-  align-items: center;
-}
-
-.contrast-from {
-  font-family: var(--font-mono);
-  font-size: clamp(0.82rem, 1.2vw, 0.95rem);
-  line-height: 1.9;
-  color: var(--text-dim);
-  text-align: right;
-}
-
-.contrast-arrow {
-  color: var(--olive);
-  display: flex;
-  align-items: center;
-}
-
-.contrast-arrow svg {
-  width: 34px;
-  height: 14px;
-}
-
-.contrast-to .name {
-  font-family: var(--font-mono);
-  font-size: clamp(1.35rem, 2.6vw, 1.9rem);
-  color: var(--lime);
-  letter-spacing: -0.02em;
-}
-
-.contrast-to .claim {
-  margin-top: 0.5rem;
-  font-family: var(--font-sans);
-  font-size: clamp(1.15rem, 2vw, 1.5rem);
-  font-style: normal;
-  color: var(--text);
-}
-
 /* -------------------------------------------------------------- cards ---- */
 
 /* Grade de superficies: filete de 1px entre elas, como um painel dividido,
@@ -836,13 +763,6 @@ a.chip:focus-visible .ico {
   background: var(--surface-2);
 }
 
-.surface-index {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--olive);
-  margin-bottom: 1.5rem;
-}
-
 .surface h3 {
   font-family: var(--font-sans);
   font-size: 1.06rem;
@@ -857,28 +777,6 @@ a.chip:focus-visible .ico {
   font-size: 0.94rem;
   line-height: 1.7;
   color: var(--text-dim);
-}
-
-.tag {
-  /* align-self impede o inline-block de esticar na largura do card;
-     margin-top:auto encosta a tag na base, para que os quatro cards tenham
-     as tags alinhadas mesmo com textos de tamanhos diferentes. */
-  display: inline-block;
-  align-self: start;
-  margin-top: auto;
-  padding: 0.2rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  color: var(--olive);
-  transition: border-color 0.25s ease, color 0.25s ease;
-}
-
-.surface:hover .tag {
-  border-color: var(--lime-edge);
-  color: var(--lime);
 }
 
 /* --------------------------------------------------------------- code ---- */
@@ -934,240 +832,6 @@ a.chip:focus-visible .ico {
   border-top: 1px solid var(--line-soft);
   font-size: 0.85rem;
   line-height: 1.6;
-  color: var(--text-dim);
-}
-
-/* --------------------------------------------------------- principios ---- */
-
-.principles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
-  gap: 1px;
-  background: var(--line-soft);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-}
-
-.principle {
-  min-width: 0;
-  padding: clamp(1.5rem, 2.6vw, 2rem);
-  background: var(--surface);
-}
-
-.principle .num {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--olive);
-}
-
-.principle .label {
-  margin-top: 1.25rem;
-  font-family: var(--font-mono);
-  font-size: 0.92rem;
-  color: var(--text);
-}
-
-.principle .desc {
-  margin-top: 0.5rem;
-  font-size: 0.88rem;
-  line-height: 1.6;
-  color: var(--text-dim);
-}
-
-/* -------------------------------------------------------- open source ---- */
-
-.paths {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-  gap: 1px;
-  background: var(--line-soft);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-}
-
-.path {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  padding: clamp(1.75rem, 3vw, 2.5rem);
-  background: var(--surface);
-  position: relative;
-}
-
-.path-main {
-  background: var(--surface-2);
-}
-
-.path-flag {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 0.25rem 0.7rem;
-  background: var(--lime);
-  color: var(--bg);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-}
-
-.path-name {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  color: var(--olive);
-}
-
-.path-value {
-  margin-top: 1.5rem;
-  font-family: var(--font-sans);
-  font-size: clamp(1.9rem, 3vw, 2.4rem);
-  line-height: 1.05;
-  color: var(--text);
-}
-
-.path-sub {
-  margin-top: 0.35rem;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--olive);
-}
-
-.path-desc {
-  margin-top: 1.5rem;
-  font-size: 0.93rem;
-  line-height: 1.7;
-  color: var(--text-dim);
-}
-
-.path-items {
-  list-style: none;
-  margin: 1.75rem 0 0;
-  padding: 1.5rem 0 0;
-  border-top: 1px solid var(--line-soft);
-  display: grid;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--text-dim);
-}
-
-.path-items li {
-  display: grid;
-  grid-template-columns: 1rem 1fr;
-  gap: 0.6rem;
-  align-items: start;
-}
-
-.path-items svg {
-  width: 1rem;
-  height: 1rem;
-  margin-top: 0.3rem;
-  color: var(--olive);
-  flex: none;
-}
-
-.path-cta {
-  margin-top: auto;
-  padding-top: 2rem;
-}
-
-/* ------------------------------------------------------- editorial ---- */
-
-.editorials {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  gap: 1px;
-  background: var(--line-soft);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-}
-
-.editorial {
-  min-width: 0;
-  padding: clamp(2rem, 3.5vw, 3rem);
-  background: var(--surface);
-}
-
-.editorial-src {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.05em;
-  color: var(--lime);
-}
-
-.editorial blockquote {
-  margin: 1.75rem 0 0;
-  font-family: var(--font-sans);
-  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
-  font-style: normal;
-  line-height: 1.35;
-  color: var(--text);
-}
-
-.editorial figcaption {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line-soft);
-  font-family: var(--font-mono);
-  font-size: 0.76rem;
-  color: var(--text-dim);
-}
-
-/* ---------------------------------------------------------------- faq ---- */
-
-.faq {
-  border-top: 1px solid var(--line-soft);
-}
-
-.faq details {
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.faq summary {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.5rem 0;
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-sans);
-  font-size: clamp(1rem, 1.5vw, 1.12rem);
-  font-weight: 500;
-  color: var(--text);
-  transition: color 0.2s ease;
-}
-
-.faq summary::-webkit-details-marker {
-  display: none;
-}
-
-.faq summary:hover {
-  color: var(--lime);
-}
-
-.faq summary::after {
-  content: "+";
-  margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  font-weight: 400;
-  color: var(--olive);
-  transition: color 0.2s ease;
-}
-
-.faq details[open] summary::after {
-  content: "\2212";
-  color: var(--lime);
-}
-
-.faq .answer {
-  padding: 0 0 1.75rem;
-  max-width: 68ch;
-  font-size: 0.98rem;
-  line-height: 1.75;
   color: var(--text-dim);
 }
 
@@ -1809,158 +1473,6 @@ html:not(.js) .pieces {
   }
 }
 
-/* -------------------------------------------------------- mesma linha ---- */
-
-.row-paths {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-}
-
-.row-paths .code-block {
-  background: var(--bg);
-}
-
-.row-paths pre {
-  font-size: 0.78rem;
-}
-
-.row-file {
-  margin-left: auto;
-  color: var(--text-dim);
-}
-
-.row-title {
-  margin: clamp(2rem, 4vw, 3rem) 0 1rem;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-/* As duas linhas como cartoes, nao como tabela: uma tabela de seis colunas
-   com um UUID nao cabe em 375, e aqui cada valor tem que ser lido. */
-.row-result {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 1.25rem;
-  align-items: center;
-}
-
-.row-card {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: 0.45rem 1rem;
-  margin: 0;
-  padding: 1.1rem 1.25rem;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  background: var(--bg);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-}
-
-.row-card dt {
-  color: var(--text-dim);
-}
-
-.row-card dd {
-  margin: 0;
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-
-.row-who {
-  margin-bottom: 0.5rem;
-  font-size: var(--fs-sm);
-  color: var(--text-dim);
-}
-
-.row-card .row-id {
-  color: var(--lime);
-}
-
-.row-null {
-  color: var(--text-dim);
-  font-style: italic;
-}
-
-.row-eq {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--lime);
-}
-
-.row-eq span {
-  margin-top: 0.35rem;
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-}
-
-.row-note {
-  margin-top: 1rem;
-  padding: 0;
-  border: 0;
-}
-
-@media (max-width: 960px) {
-  .row-paths,
-  .row-result {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .row-card {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.15rem;
-  }
-
-  .row-card dd + dt {
-    margin-top: 0.5rem;
-  }
-}
-
-/* ------------------------------------------------------- funciona com ---- */
-
-/* Os filetes sao sombras dos grupos, nao o fundo da grade: com sete grupos
-   em quatro colunas sobra uma celula, e ela tem de ser superficie, nao
-   filete. */
-.works-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.works-group {
-  min-width: 0;
-  padding: 1.25rem 1.25rem 1.4rem;
-  box-shadow: 1px 0 0 var(--line-soft), 0 1px 0 var(--line-soft);
-}
-
-.works-label {
-  margin-bottom: 0.85rem;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 400;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.works-group .chip .ico {
-  width: 20px;
-  height: 20px;
-}
-
 /* ------------------------------------------------------------ implantar ---- */
 
 .deploy-grid {
@@ -2010,17 +1522,6 @@ html:not(.js) .pieces {
   font-family: var(--font-mono);
   font-size: 0.74rem;
   line-height: 1.75;
-}
-
-/* --------------------------------------------------------- como executa ---- */
-
-/* A fronteira, dita uma vez e em texto: o desenho mostra, esta linha afirma. */
-.exec-limit {
-  margin-top: 1.25rem;
-  padding-left: 1rem;
-  border-left: 2px solid var(--lime-edge);
-  color: var(--text);
-  line-height: 1.7;
 }
 
 /* --------------------------------------------------------- responsivo ---- */
@@ -2078,18 +1579,11 @@ html:not(.js) .pieces {
     display: inline-flex;
   }
 
-  .contrast-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-  }
+  
 
-  .contrast-from {
-    text-align: left;
-  }
+  
 
-  .contrast-arrow svg {
-    transform: rotate(90deg);
-  }
+  
 
   .button-row .button {
     flex: 1 1 100%;
@@ -2206,43 +1700,6 @@ html:not(.js) .pieces {
   text-align: center;
 }
 
-/* --------------------------------------------------------------- listas ---- */
-
-.ticks {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
-}
-
-.ticks li {
-  display: grid;
-  grid-template-columns: 1.05rem 1fr;
-  gap: 0.7rem;
-  align-items: start;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-dim);
-}
-
-.ticks li strong {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.ticks svg {
-  width: 1.05rem;
-  height: 1.05rem;
-  margin-top: 0.22rem;
-  flex: none;
-}
-
-.tick-plus svg {
-  color: var(--lime);
-}
-
-
 /* ------------------------------------------------------------- figuras ---- */
 
 .figure {
@@ -2252,102 +1709,4 @@ html:not(.js) .pieces {
 .figure img {
   width: 100%;
   height: auto;
-}
-
-/* O diagrama é desenho, não captura: respira num painel discreto em vez de
-   uma moldura de navegador, que sugeriria tela. */
-.figure-diagram {
-  padding: clamp(1.25rem, 3vw, 2.5rem);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-}
-
-/* A moldura existe para dizer "isto é uma tela" sem escrever a frase. */
-.frame {
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  background: var(--surface);
-}
-
-.frame-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.6rem 0.85rem;
-  border-bottom: 1px solid var(--line-soft);
-}
-
-.frame-bar .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--line);
-  flex: none;
-}
-
-.frame-url {
-  margin-left: 0.6rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--olive);
-}
-
-/* A lista do console é longa; em duas ou três colunas ela é varrida em vez de
-   lida linha a linha. */
-.ticks-wide {
-  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
-  gap: 0.85rem 2rem;
-}
-
-
-/* ------------------------------------------------------------- galeria ---- */
-
-/* As abas moram na barra da moldura: é onde um navegador as põe, então não há
-   o que explicar. */
-.frame-tabs {
-  display: flex;
-  gap: 0.15rem;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-
-.frame-tabs .tab {
-  padding: 0.25rem 0.6rem;
-  border: 1px solid transparent;
-  border-radius: var(--r);
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-}
-
-.frame-tabs .tab:hover {
-  color: var(--text);
-}
-
-.frame-tabs .tab[aria-selected="true"] {
-  background: var(--lime-wash);
-  border-color: var(--lime-edge);
-  color: var(--lime);
-}
-
-.gallery {
-  margin-bottom: clamp(2rem, 4vw, 3rem);
-}
-
-.shot img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-@media (max-width: 640px) {
-  /* A URL cede o lugar: com quatro abas, ela e elas não cabem na mesma linha. */
-  .frame-url {
-    display: none;
-  }
 }

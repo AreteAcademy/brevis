@@ -1,9 +1,24 @@
 /* brevis.sh — landing page.
-   Sem dependencia, sem build. O FAQ nao aparece aqui de proposito: <details>
-   e um accordion nativo, acessivel e operavel por teclado sem uma linha de
-   script. O que sobra e o menu e a entrada dos blocos. */
+   Sem dependencia, sem build: as ancoras antigas, o menu, as abas, o botao
+   de copiar e a entrada dos blocos. */
 (function () {
   'use strict';
+
+  /* ------------------------------------------------ ancoras antigas ---- */
+
+  /* As secoes que sairam da home estao na docs: um link antigo com o hash
+     delas segue para a pagina certa, no idioma da pagina. */
+  var antigas = {
+    'mesma-linha': 'ecosystem/', 'produtos': 'ecosystem/', 'como-executa': 'pod-per-step/',
+    'funciona-com': 'integrations/', 'console': 'console/', 'faq': 'faq/',
+    'contraste': 'philosophy/', 'principios': 'philosophy/', 'editorial': 'philosophy/',
+    'open-source': 'introduction/'
+  };
+  var destino = antigas[location.hash.slice(1)];
+  if (destino && document.body.classList.contains('page-landing')) {
+    location.replace((document.documentElement.lang === 'en' ? '/en' : '') + '/docs/' + destino);
+    return;
+  }
 
   /* -------------------------------------------------------- menu mobile ---- */
 
