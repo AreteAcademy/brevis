@@ -672,7 +672,7 @@ def pagina_markdown(pg, lang, pfx):
 # agente traz. As chaves são os slugs, e um slug ausente aqui vira erro no
 # build em vez de sumir do índice em silêncio.
 LLMS_GRUPOS = [
-    ("Start here", ["ecosystem", "introduction", "installation", "quickstart"]),
+    ("Start here", ["ecosystem", "integrations", "introduction", "installation", "quickstart"]),
     ("Building a workflow", ["workflows", "parameters", "runtime", "context"]),
     ("How it executes", ["core", "scheduler-and-queue", "pod-per-step"]),
     ("Command line and configuration", ["cli", "configuration"]),

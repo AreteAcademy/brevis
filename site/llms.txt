@@ -36,6 +36,7 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 ## Start here
 
 - [Ecosystem](https://brevis.sh/en/docs/ecosystem/index.md): The four brevis.sh pieces, what each one does, and where the data goes through.
+- [Integrations](https://brevis.sh/en/docs/integrations/index.md): What connects to what: where data comes from, where it lands, where it is modelled and where it all runs.
 - [Introduction](https://brevis.sh/en/docs/introduction/index.md): What brevis.sh is, the problem it solves, and when it is not the right choice.
 - [Installation](https://brevis.sh/en/docs/installation/index.md): How to get the binary, what it requires, and how to confirm the install is correct.
 - [Quickstart](https://brevis.sh/en/docs/quickstart/index.md): From nothing to a live DAG in the interface, in four steps.
