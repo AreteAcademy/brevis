@@ -47,6 +47,19 @@ jobs:
       - name: Check the generated artifacts
         run: ./.github/scripts/generated-check.sh
 
+      # THE COMMANDS ARE DOCUMENTED, asked at the moment one reaches somebody.
+      #
+      # This gate reads the subcommands out of the binaries and fails when a
+      # document has stopped naming one. It was repaired twice -- once because
+      # a renamed file made half of it skip in silence, and `brevis gateway`
+      # shipped undocumented; once because it searched for a bare word that
+      # every document already contained. And no release ever ran it: it was
+      # green on the push and nobody asked it at the moment a command actually
+      # went out. That is the shape of `v0.17.0`, where the gate that would
+      # have objected was simply not consulted.
+      - name: Every command is documented
+        run: ./.github/scripts/cli-docs-check.sh
+
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v3
 
