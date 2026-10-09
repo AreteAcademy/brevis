@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
 
 // A fake BigQuery, so every rule below is pinned without a credential.
@@ -160,5 +162,63 @@ func TestPollingStopsWhenTheContextIsDone(t *testing.T) {
 	cancel()
 	if _, err := c.Scalar(ctx, "SELECT 1"); err == nil {
 		t.Error("a cancelled context did not stop the wait")
+	}
+}
+
+// A NAME THIS WILL NOT QUOTE IS REFUSED BEFORE THE ROUND TRIP.
+//
+// A dataset is part of a table path and cannot be a query parameter, so this
+// interpolates -- which is only safe because anything outside BigQuery's own
+// identifier rule is refused instead. Relations makes the same choice about
+// a region, for the same reason: the alternative is putting a string from
+// somewhere else into SQL.
+//
+// The refusal has to come FIRST. A request that reached the warehouse and
+// was rejected there would be a bill, and worse, a different answer
+// depending on what the exotic name happened to mean.
+func TestColumnsRefusesANameItWillNotQuote(t *testing.T) {
+	for _, r := range []dialect.Relation{
+		{Schema: "bronze", Name: "orders'; DROP TABLE x --"},
+		{Schema: "bronze-prod", Name: "orders"},
+		{Schema: "bronze", Name: "ordens`"},
+		{Schema: "", Name: "orders"},
+		{Schema: "bronze", Name: strings.Repeat("c", maxIdentifier+1)},
+	} {
+		f := &fake{t: t, reply: ok(`{"jobComplete":true}`)}
+		c := dial(t, f)
+		if _, err := c.Columns(context.Background(), r); err == nil {
+			t.Errorf("%+v was put in a query", r)
+		}
+		if len(f.posts) != 0 {
+			t.Errorf("%+v reached the warehouse: %v", r, f.posts)
+		}
+	}
+}
+
+// AND A NAME IT WILL QUOTE IS ASKED FOR, per dataset and in ordinal order.
+func TestColumnsAsksTheDatasetsOwnInformationSchema(t *testing.T) {
+	f := &fake{t: t, reply: ok(`{"jobComplete":true,"rows":[
+		{"f":[{"v":"id"},{"v":"INT64"}]},
+		{"f":[{"v":"at"},{"v":"TIMESTAMP"}]}]}`)}
+	c := dial(t, f)
+
+	cols, err := c.Columns(context.Background(), dialect.Relation{Schema: "bronze", Name: "orders"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cols) != 2 || cols[0] != (dialect.Column{Name: "id", Type: "INT64"}) {
+		t.Fatalf("read %+v", cols)
+	}
+	q, _ := f.posts[0]["query"].(string)
+	for _, want := range []string{"bronze.INFORMATION_SCHEMA.COLUMNS", "table_name = 'orders'", "ORDER BY ordinal_position"} {
+		if !strings.Contains(q, want) {
+			t.Errorf("the query does not carry %q: %s", want, q)
+		}
+	}
+	// NOT THE REGION-WIDE VIEW, which returns every field of every table in
+	// a region -- the one metadata answer that is genuinely large, and the
+	// reason CHECKPOINT D made this lazy.
+	if strings.Contains(q, "region-") {
+		t.Errorf("the whole region was asked for: %s", q)
 	}
 }

@@ -289,6 +289,50 @@ func (c *conn) Relations(ctx context.Context) ([]dialect.Relation, error) {
 	return out, nil
 }
 
+// Columns says what one relation holds. See dialect.Describer.
+//
+// PER DATASET, which is where BigQuery keeps this view: the project-wide
+// shape would be `region-X`.INFORMATION_SCHEMA.COLUMNS, and that returns
+// every field of every table in a region -- the one metadata answer that is
+// genuinely large, and the reason CHECKPOINT D made columns lazy.
+//
+// THE NAMES ARE REFUSED, NOT QUOTED, which is the rule Relations already
+// follows for a region. There is no parameter here: a dataset is part of the
+// table path and cannot be bound, so a name outside this shape is refused
+// rather than interpolated. Both names come from a listing -- the
+// warehouse's own answer -- but the REQUEST comes from a console, and a
+// console is not a warehouse.
+func (c *conn) Columns(ctx context.Context, r dialect.Relation) ([]dialect.Column, error) {
+	if !named(r.Schema) || !named(r.Name) {
+		return nil, fmt.Errorf("this will not put that relation's name in a query")
+	}
+	res, err := c.runWith(ctx, fmt.Sprintf(
+		"SELECT column_name, data_type\n"+
+			"  FROM %s.INFORMATION_SCHEMA.COLUMNS\n"+
+			" WHERE table_name = '%s'\n"+
+			" ORDER BY ordinal_position", r.Schema, r.Name), nil)
+	if err != nil {
+		return nil, err
+	}
+	var out []dialect.Column
+	for _, row := range res.Rows {
+		if len(row.F) < 2 {
+			continue
+		}
+		name, _ := row.F[0].V.(string)
+		typ, _ := row.F[1].V.(string)
+		out = append(out, dialect.Column{Name: name, Type: typ})
+	}
+	return out, nil
+}
+
+// named is the rule the DDL already applies to every identifier it writes,
+// reused here rather than restated: the pattern and the length limit are
+// checked apart for the reason maxIdentifier gives.
+func named(s string) bool {
+	return identifier.MatchString(s) && len(s) <= maxIdentifier
+}
+
 // region is what a dataset location may look like: `US`, `EU`,
 // `europe-west4`. See Relations for why this is a refusal and not a quote.
 var region = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]{0,30}[A-Za-z0-9]$`)

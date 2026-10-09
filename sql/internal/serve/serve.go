@@ -104,6 +104,10 @@ type Service struct {
 	// listed holds one answer per connection. See objects.
 	listed *listings
 
+	// described is one answer per RELATION, which is the level columns are
+	// asked at. See columns.go.
+	described *descriptions
+
 	// met counts what the audit line records. Served on a listener of its
 	// own -- see Metrics.
 	met *metrics
@@ -175,11 +179,12 @@ func New(opt Options) (*Service, error) {
 		opt.Timeout = defaultTimeout
 	}
 	return &Service{
-		opt:    opt,
-		slots:  make(chan struct{}, opt.Concurrent),
-		probed: map[string]bool{},
-		listed: newListings(),
-		met:    newMetrics(),
+		opt:       opt,
+		slots:     make(chan struct{}, opt.Concurrent),
+		probed:    map[string]bool{},
+		listed:    newListings(),
+		described: newDescriptions(),
+		met:       newMetrics(),
 	}, nil
 }
 
@@ -230,6 +235,11 @@ func (s *Service) Handler() http.Handler {
 	// different scope, and CHECKPOINT D is the review that says what it may
 	// answer.
 	mux.HandleFunc("POST /v1/objects", s.objects)
+
+	// WHAT ONE RELATION HOLDS, lazily. CHECKPOINT D put columns at the
+	// relation and not at the connection: a project-wide COLUMNS query is
+	// the one metadata answer that is genuinely large.
+	mux.HandleFunc("POST /v1/columns", s.columns)
 	return s.authenticated(mux)
 }
 

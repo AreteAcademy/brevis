@@ -374,6 +374,33 @@ type Lister interface {
 	Relations(ctx context.Context) ([]Relation, error)
 }
 
+// Column is one field of a relation, as the warehouse names it.
+type Column struct {
+	Name string
+	Type string
+}
+
+// Describer is implemented by a connection that can say what ONE relation
+// holds.
+//
+// SEPARATE FROM LISTER, AND LAZY ON PURPOSE. Lister answers for the whole
+// connection in one call because that is what BigQuery's 10 MiB floor makes
+// cheapest; columns cannot work that way -- a project-wide COLUMNS query
+// returns every field of every table, which is the one metadata query that
+// is genuinely large. CHECKPOINT D put this at the relation: "columns stay
+// lazy, per relation, because that is the level a preview already discloses
+// and the one nobody expands by accident".
+//
+// NAMES AND TYPES AND NEVER VALUES. Sampling is what Preview is for, and
+// Preview is bounded.
+type Describer interface {
+	// Columns names what a SELECT could ask for from this relation, in the
+	// order the warehouse holds them.
+	//
+	// It costs money. The caller holds the answer; this does not cache.
+	Columns(ctx context.Context, r Relation) ([]Column, error)
+}
+
 // Disposable is implemented by a dialect whose warehouse can be told to throw
 // away what a TEST leaves behind.
 //

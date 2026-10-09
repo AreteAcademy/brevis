@@ -339,7 +339,7 @@ func (s *Service) audit(line record, started time.Time) {
 	// THE SAME RECORD THE AUDIT LINE CARRIES, so the two cannot disagree
 	// about what happened -- minus the hash, which a label must never hold.
 	switch line.Event {
-	case "query", "preview", "objects":
+	case "query", "preview", "objects", "columns":
 		s.met.observe(line.Event, line)
 	}
 	b, err := json.Marshal(line)

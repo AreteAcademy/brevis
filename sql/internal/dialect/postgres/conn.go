@@ -185,3 +185,46 @@ func (c *conn) Relations(ctx context.Context) ([]dialect.Relation, error) {
 	}
 	return out, rows.Err()
 }
+
+// Columns says what one relation holds. See dialect.Describer.
+//
+// `pg_catalog` AND NOT `information_schema`, for the second of the two
+// reasons the dialect's own ColumnsOf gives for choosing the other one. That
+// query is asked about a table THIS PROJECT BUILT; this one is asked about
+// anything a listing returned, and a listing comes from pg_class -- which
+// includes materialised views, invisible in information_schema. Answering
+// "no columns" for a relation the tree just drew would be the worst possible
+// answer, which is exactly the argument KindOf already makes.
+//
+// It also hides nothing the role cannot see, for Relations' reason: the
+// roles that run this are read-only by design, so information_schema's
+// privilege filtering would answer a different question from "what is
+// there".
+//
+// THE NAMES ARE PARAMETERS. A dialect pays what its warehouse charges and
+// uses what its driver gives: here that is `$1`/`$2`, so nothing is
+// interpolated and no name has to be refused for being exotic.
+func (c *conn) Columns(ctx context.Context, r dialect.Relation) ([]dialect.Column, error) {
+	rows, err := c.c.Query(ctx, `
+		SELECT a.attname, format_type(a.atttypid, a.atttypmod)
+		  FROM pg_attribute a
+		  JOIN pg_class c ON c.oid = a.attrelid
+		  JOIN pg_namespace n ON n.oid = c.relnamespace
+		 WHERE n.nspname = $1 AND c.relname = $2
+		   AND a.attnum > 0 AND NOT a.attisdropped
+		 ORDER BY a.attnum`, r.Schema, r.Name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []dialect.Column
+	for rows.Next() {
+		var col dialect.Column
+		if err := rows.Scan(&col.Name, &col.Type); err != nil {
+			return nil, err
+		}
+		out = append(out, col)
+	}
+	return out, rows.Err()
+}

@@ -70,6 +70,7 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	// different catalogs -- one region-qualified, one out of pg_class -- and
 	// the shape they agree on is the only thing a caller can rely on.
 	t.Run("a built relation is listed", h.builtRelationIsListed)
+	t.Run("a built relation's columns are named with types", h.builtRelationIsDescribed)
 
 	// INCREMENTAL, and the order matters: each case builds on the one
 	// before, over one source table, the way a project does over days.
@@ -224,6 +225,49 @@ func (h *harness) builtRelationIsListed(t *testing.T) {
 	}
 	t.Errorf("%s.listed was built and is not in the %d relations listed",
 		h.schema, len(rels))
+}
+
+// WHAT ONE RELATION HOLDS, which is the other half a browser needs.
+//
+// In the suite for the listing's reason, one level sharper: these two
+// dialects answer out of catalogs that disagree about what a column even is
+// -- `pg_attribute` with `format_type`, and a per-dataset
+// INFORMATION_SCHEMA. The names and their ORDER are the only things a caller
+// can rely on; the type SPELLINGS are each warehouse's own, so this asserts
+// that one arrived and never which one.
+func (h *harness) builtRelationIsDescribed(t *testing.T) {
+	// PORTABLE ON PURPOSE: two integer columns, no CAST. A type name here
+	// would be one warehouse's spelling, and this case exists to assert the
+	// shape the two agree on.
+	h.build(t, "described", model.Table, "SELECT 1 AS n, 2 AS m")
+
+	d, can := h.conn.(dialect.Describer)
+	if !can {
+		t.Fatalf("%s cannot say what a relation holds", h.d.Name())
+	}
+	cols, err := d.Columns(h.ctx, dialect.Relation{Schema: h.schema, Name: "described"})
+	if err != nil {
+		t.Fatalf("describing: %v", err)
+	}
+	if len(cols) != 2 || cols[0].Name != "n" || cols[1].Name != "m" {
+		t.Fatalf("the columns of %s.described are %+v", h.schema, cols)
+	}
+	for _, c := range cols {
+		if c.Type == "" {
+			t.Errorf("column %s arrived with no type", c.Name)
+		}
+	}
+
+	// A RELATION THAT IS NOT THERE IS AN EMPTY ANSWER AND NOT AN ERROR,
+	// which is what KindOf already promises about the same question: a tree
+	// asking about something dropped a moment ago must not break the screen.
+	gone, err := d.Columns(h.ctx, dialect.Relation{Schema: h.schema, Name: "no_such_relation"})
+	if err != nil {
+		t.Errorf("describing something absent: %v", err)
+	}
+	if len(gone) != 0 {
+		t.Errorf("something absent has %d columns", len(gone))
+	}
 }
 
 func (h *harness) readOne(t *testing.T, name string) any {
