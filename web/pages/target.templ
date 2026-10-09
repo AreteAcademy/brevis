@@ -128,15 +128,23 @@ templ Target(v TargetView) {
 templ panels(v TargetView) {
 	if v.Tabs {
 		<section class="mt-8">
-			<nav class="mb-4 flex gap-1 border-b border-line-soft text-sm" aria-label="Destination tools">
+			<nav class="mb-4 flex items-center gap-1 border-b border-line-soft text-sm" aria-label="Destination tools">
 				@tab(v, "preview", "Preview")
-				@tab(v, "query", "Query")
+				// THE WORKBENCH, AND NOT A SECOND TAB. A preview is "show me
+				// this table" -- asked about the thing already on the screen,
+				// which is what a destination page is for. A query joins,
+				// groups and reaches across, and pretending it belongs to one
+				// table is what made both screens worse.
+				//
+				// It carries the destination, so nobody has to find the
+				// connection again in a picker.
+				<a
+					href={ templ.SafeURL(v.WorkbenchHref()) }
+					class="-mb-px ml-auto border-b-2 border-transparent px-3 py-2 text-muted hover:text-ink"
+				>Query in SQL &rarr;</a>
 			</nav>
-			switch v.Tab {
-				case "preview":
-					@preview(v)
-				case "query":
-					@query(v)
+			if v.Tab == "preview" {
+				@preview(v)
 			}
 		</section>
 	}
@@ -168,44 +176,6 @@ templ preview(v TargetView) {
 			@grid(v.Preview.Columns, v.Preview.Rows)
 			<p class="mt-2 text-xs text-muted">{ v.PreviewNote() }</p>
 		}
-	}
-}
-
-// query is a box, a button and whatever came back.
-//
-// A FORM AND NOT AN APPLICATION. It submits, the server asks the service, and
-// the page comes back with the answer in it -- which is why it works without
-// a line of script, keeps its state in the browser's history and is reachable
-// by keyboard without anybody arranging for that.
-//
-// A POST, because the statement must not reach a URL: a query in a link is a
-// query in a proxy log, in a browser's history and in a Referer header.
-templ query(v TargetView) {
-	<form method="post" action={ templ.SafeURL(v.TabHref("query")) }>
-		<label for="q" class="sr-only">SQL to run on this warehouse</label>
-		<textarea
-			id="q"
-			name="q"
-			rows="5"
-			spellcheck="false"
-			placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
-			class="w-full rounded-card border border-line bg-surface px-3 py-2 font-mono text-xs text-ink"
-		>{ v.Statement }</textarea>
-		<div class="mt-2 flex items-center gap-3">
-			<button
-				type="submit"
-				class="rounded-card border border-line bg-parchment-soft px-3 py-1.5 text-sm font-medium text-ink hover:bg-parchment"
-			>Run</button>
-			<span class="text-xs text-muted">Reads only. The service refuses anything else, and stops a query that would scan too much.</span>
-		</div>
-	</form>
-	if v.QueryErr != "" {
-		<p class="mt-4 rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.QueryErr }</p>
-	} else if v.Query != nil {
-		<div class="mt-4">
-			@grid(v.Query.Columns, v.Query.Rows)
-			<p class="mt-2 text-xs text-muted">{ v.QueryNote() }</p>
-		</div>
 	}
 }
 

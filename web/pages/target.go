@@ -42,18 +42,6 @@ type TargetView struct {
 	// so the link is shareable the way /data's filters already are.
 	Tab string
 
-	// Statement is what is in the Query box -- ECHOED BACK after a run,
-	// because a query refused for a typo with the box emptied is a query
-	// somebody has to type again to fix.
-	Statement string
-
-	// Query is what the statement returned, and QueryErr the reason there is
-	// nothing. Both nil and empty until somebody runs one: opening the tab
-	// asks nothing, which is the difference between a Query tab and a
-	// preview with a text box.
-	Query    *sqlserve.Result
-	QueryErr string
-
 	// PreviewErr is why there are no rows, in words somebody can act on.
 	//
 	// A STRING AND NOT AN error, because this is a view: whatever decides
@@ -88,34 +76,21 @@ func NoConnectionFor(target string) string {
 		"beside the SQL service and restart it.", first)
 }
 
+// WorkbenchHref opens `/sql` on this destination.
+//
+// A TARGET IN A URL IS FINE AND A STATEMENT IS NOT, which is the distinction
+// the workbench's POST keeps: this console already puts a target in
+// `/data/target?u=`, and a query in a link would be a query in a proxy log.
+func (v TargetView) WorkbenchHref() string {
+	return "/sql?target=" + url.QueryEscape(v.Row.Target)
+}
+
 // TabHref is the link to one tab, which is also the link somebody pastes
 // into a message. The statement is NEVER in it: a query in a URL is a query
 // in a proxy log, in a browser's history and in a Referer header, and a WHERE
 // clause carries customer data. That is why the Query box is a POST.
 func (v TargetView) TabHref(tab string) string {
 	return "/data/target?u=" + url.QueryEscape(v.Row.Target) + "&tab=" + tab
-}
-
-// QueryNote is the line under the grid: what came back, what it cost, how
-// long it took.
-//
-// THE COST IS ON SCREEN. A query tab that hides what a query scanned teaches
-// nobody the difference between the query they wrote and the one that was
-// cheap -- and the bill arrives either way.
-func (v TargetView) QueryNote() string {
-	if v.Query == nil {
-		return ""
-	}
-	n := len(v.Query.Rows)
-	rows := "rows"
-	if n == 1 {
-		rows = "row"
-	}
-	note := fmt.Sprintf("%d %s · %s scanned · %d ms", n, rows, bytesText(v.Query.Bytes), v.Query.Millis)
-	if v.Query.Truncated {
-		note += " — there are more"
-	}
-	return note
 }
 
 // bytesText is a byte count somebody can judge at a glance.

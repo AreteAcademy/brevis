@@ -184,12 +184,6 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
-	// THE SAME PAGE, SUBMITTED. A statement goes in a BODY and never in a
-	// URL: a query in a link is a query in a proxy log, in a browser's
-	// history and in a Referer header, and a WHERE clause carries customer
-	// data. The session cookie is SameSite=Lax, which is what makes a POST
-	// the form a cross-site page cannot submit.
-	mux.HandleFunc("POST /data/target", u.dataTarget)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -256,6 +250,8 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 		v.Tab = r.URL.Query().Get("tab")
 	}
 
+	// ONE TAB NOW. The destination previews; the workbench queries. See
+	// TargetView.WorkbenchHref for why that is not a second tab.
 	switch v.Tab {
 	// ASKED ONLY WHEN ASKED FOR. A preview costs a warehouse query, and
 	// drawing one on every visit to a destination page would mean a query per
@@ -274,36 +270,6 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 			v.Preview = &res
 		}
 
-	// A QUERY RUNS WHEN SOMEBODY RUNS IT. Opening the tab asks nothing,
-	// which is the difference between a Query tab and a preview with a text
-	// box beside it.
-	case "query":
-		// A POST, AND THE STATEMENT ONLY EVER FROM THE BODY. The method
-		// check is the readable statement of the intent; `PostFormValue` is
-		// what makes it true, by reading the body and never the query
-		// string. A `?q=…` link is therefore not a query -- not from the
-		// form, and not from a page on another site either.
-		if r.Method == http.MethodPost {
-			// Bounded before it is parsed, matching `serve`'s own body
-			// limit: a statement longer than this is not one anybody typed.
-			r.Body = http.MaxBytesReader(w, r.Body, statementCeiling)
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, "that statement is too long to run", http.StatusBadRequest)
-				return
-			}
-			v.Statement = strings.TrimSpace(r.PostFormValue("q"))
-			if v.Statement != "" {
-				res, err := u.preview.Query(r.Context(), target, v.Statement, queryRows)
-				switch {
-				case errors.Is(err, sqlserve.ErrNoConnection):
-					v.QueryErr = pages.NoConnectionFor(target)
-				case err != nil:
-					v.QueryErr = err.Error()
-				default:
-					v.Query = &res
-				}
-			}
-		}
 	}
 	u.render(w, r, pages.Target(v))
 }
@@ -351,6 +317,22 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	v := pages.BuildSQL(entries)
+
+	// A TARGET IN A URL IS FINE AND A STATEMENT IS NOT. A destination page
+	// links here carrying itself, so nobody has to find the connection again
+	// in a picker -- and `/data/target?u=` already puts a target in a link.
+	//
+	// Only one the CATALOG knows is honoured: a parameter naming anything
+	// else is ignored rather than trusted, which is the rule `/data/target`
+	// follows by answering 404 to the same thing.
+	if want := r.URL.Query().Get("target"); want != "" {
+		for _, t := range v.Targets {
+			if t == want {
+				v.Target = want
+				break
+			}
+		}
+	}
 
 	if r.Method == http.MethodPost {
 		// Bounded before it is parsed, matching `serve`'s own body limit.

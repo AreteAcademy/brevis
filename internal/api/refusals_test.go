@@ -37,7 +37,7 @@ func TestABucketOrATopicGetsNoTabs(t *testing.T) {
 			ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, target, "file")
 
 			body := render(t, ui, "/data/target?u="+url.QueryEscape(target))
-			for _, gone := range []string{"tab=preview", "tab=query"} {
+			for _, gone := range []string{"tab=preview", "/sql?target="} {
 				if strings.Contains(body, gone) {
 					t.Errorf("a destination that is not a relation offers %q", gone)
 				}
@@ -61,7 +61,7 @@ func TestARelationWithNoReaderKeepsItsTabs(t *testing.T) {
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, "mysql://app/orders", "mysql")
 
 	body := render(t, ui, "/data/target?u="+url.QueryEscape("mysql://app/orders"))
-	for _, want := range []string{"tab=preview", "tab=query"} {
+	for _, want := range []string{"tab=preview", "/sql?target="} {
 		if !strings.Contains(body, want) {
 			t.Errorf("a relation lost its %q", want)
 		}
