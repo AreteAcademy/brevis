@@ -737,6 +737,14 @@ reports none, so a budget bounds BigQuery and bounds nothing on Postgres —
 which is fine, and dangerous only if somebody believes otherwise. The boot
 banner states whichever posture is in force, including the absence of one.
 
+**An open service says less.** A failed dry run normally carries the
+warehouse's own message back, because a syntax error is the one thing whoever
+typed the SQL needs. Without a token it does not: `SELECT * FROM payroll.x`
+would otherwise come back as "Dataset acme-prod:payroll was not found", which
+answers "does payroll exist" to somebody holding nothing at all. With a token
+the message is carried, because a caller who authenticated could read the same
+fact out of `INFORMATION_SCHEMA`.
+
 **It never writes.** Every statement is classified before it runs and anything
 that is not a read is refused by name; the credential itself is asserted to be
 read-only at first use, so a connection that could write is refused outside

@@ -259,12 +259,23 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	if priced, can := conn.(dialect.Estimator); can {
 		scan, err := priced.Estimate(ctx, statement)
 		if err != nil {
-			// THE WAREHOUSE'S OWN WORDS, and only here. A dry run fails on a
-			// syntax error or a missing table, which is the one thing the
-			// person who typed the SQL needs back; everything else this
-			// service says about a warehouse is deliberately vague.
+			// THE WAREHOUSE'S OWN WORDS, and only here, and only to a caller
+			// that held a token. A dry run fails on a syntax error or a
+			// missing table, which is the one thing the person who typed the
+			// SQL needs back; everything else this service says about a
+			// warehouse is deliberately vague.
+			//
+			// WITHOUT A TOKEN IT IS AN EXISTENCE ORACLE -- CHECKPOINT B's
+			// F8. `BREVIS_ENV=local` starts with no token, and the banner
+			// says what that means: anybody who reaches the port can read
+			// the warehouse. On that service, `SELECT * FROM payroll.x`
+			// comes back as "Dataset acme-prod:payroll was not found", which
+			// answers "does payroll exist" to somebody holding nothing at
+			// all. To a caller who DID authenticate it tells them nothing
+			// they could not read out of INFORMATION_SCHEMA themselves, and
+			// withholding it would cost them the one message they need.
 			return dialect.Result{}, refusal{http.StatusBadRequest, "unpriced",
-				"the warehouse would not run this: " + trim(err.Error())}
+				s.saying("the warehouse would not run this", err)}
 		}
 		if scan > s.opt.Bytes {
 			return dialect.Result{}, refusal{http.StatusBadRequest, "too-expensive", fmt.Sprintf(
@@ -305,6 +316,20 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 		res.Columns = []string{}
 	}
 	return res, nil
+}
+
+// saying is a refusal with the warehouse's own message, or without it.
+//
+// THE LINE IS THE TOKEN AND NOT THE ENVIRONMENT. `BREVIS_ENV` decides
+// whether a service MAY run open; what decides whether this caller proved
+// anything is whether a token was required at all. A deployment that sets
+// one in local gets the full message, and an open service in production --
+// which New refuses, but which a future flag might allow -- would not.
+func (s *Service) saying(what string, err error) string {
+	if s.opt.Token == "" {
+		return what + ". Run this service with a token to see what it said."
+	}
+	return what + ": " + trim(err.Error())
 }
 
 // trim bounds a warehouse's message. A driver can return a page.
