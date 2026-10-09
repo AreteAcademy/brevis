@@ -30,6 +30,10 @@ var project = regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`)
 type Table struct {
 	// Connection is which warehouse: the BigQuery project.
 	Connection string
+	// Dialect is whose SQL this is, which the classifier needs: `#` opens a
+	// comment in one of them and is an operator in the other, and reading
+	// the wrong one wrong is how `# SELECT\nDROP TABLE t` gets through.
+	Dialect string
 	// Relation is `dataset.table`, ready to be written into SQL -- which is
 	// safe only because both halves matched `identifier`.
 	Relation string
@@ -77,5 +81,5 @@ func ParseTarget(target string) (Table, error) {
 			return refuse("the dataset or the table is not a name BigQuery can hold unquoted")
 		}
 	}
-	return Table{Connection: segs[0], Relation: segs[1] + "." + segs[2]}, nil
+	return Table{Connection: segs[0], Dialect: "bigquery", Relation: segs[1] + "." + segs[2]}, nil
 }

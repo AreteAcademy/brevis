@@ -233,6 +233,15 @@ type Result struct {
 	// Rows are the values, one slice per row, aligned with Columns.
 	Rows [][]any
 
+	// Scanned is what the warehouse says it processed, in bytes. Zero when
+	// it does not say, which is every warehouse that does not charge for a
+	// scan -- so it is reported and never assumed.
+	//
+	// IT IS THE MEASURED FIGURE AND NOT THE ESTIMATE. A gap between the two
+	// is how somebody finds out that the price a refusal was built on was
+	// not the price that was paid.
+	Scanned int64
+
 	// Truncated says the limit cut the answer.
 	//
 	// IT HAS TO BE SAID. A grid showing a thousand rows of a million, in

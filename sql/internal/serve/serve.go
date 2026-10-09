@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
@@ -41,6 +43,19 @@ type Options struct {
 	// bounds nothing else.
 	Bytes int64
 
+	// Audit is where one line per query goes. Nil writes none, which is what
+	// a test wants and never what a deployment does.
+	Audit io.Writer
+
+	// Concurrent is how many queries may run at once. Over that, a caller is
+	// REFUSED rather than queued: a queue behind a browser is a browser that
+	// waits with no way to know why, and every waiting request still holds a
+	// connection to the warehouse.
+	Concurrent int
+
+	// Timeout bounds one query, the dry run and the read together.
+	Timeout time.Duration
+
 	// Open connects to one warehouse. A field so a test can hand over a fake
 	// without a warehouse, and so this package holds no driver of its own.
 	Open func(ctx context.Context, connection string) (dialect.Conn, error)
@@ -49,7 +64,18 @@ type Options struct {
 // Service answers read-only questions about a warehouse.
 type Service struct {
 	opt Options
+	// slots is the concurrency limit, held for the length of a query.
+	slots chan struct{}
 }
+
+// Defaults for the two limits that are a shape rather than a decision. The
+// other two -- rows and bytes -- have none on purpose: a service that picked
+// its own row ceiling and its own budget would be a service nobody chose
+// either for.
+const (
+	defaultConcurrent = 4
+	defaultTimeout    = 30 * time.Second
+)
 
 // New builds the service, or refuses to.
 //
@@ -79,7 +105,13 @@ func New(opt Options) (*Service, error) {
 			"allows that, and this is not local", env)
 	}
 	opt.Env = env
-	return &Service{opt: opt}, nil
+	if opt.Concurrent <= 0 {
+		opt.Concurrent = defaultConcurrent
+	}
+	if opt.Timeout <= 0 {
+		opt.Timeout = defaultTimeout
+	}
+	return &Service{opt: opt, slots: make(chan struct{}, opt.Concurrent)}, nil
 }
 
 // Handler is the service's routes.
@@ -90,6 +122,11 @@ func (s *Service) Handler() http.Handler {
 	// three. `POST /v1/preview` also 405s a GET for free, which is what the
 	// method pattern buys over checking r.Method by hand.
 	mux.HandleFunc("POST /v1/preview", s.preview)
+	// TWO ENDPOINTS AND NOT ONE WITH A FLAG. `/v1/preview` takes a target
+	// and composes its own statement, so it cannot be handed SQL at all; a
+	// flag on a shared endpoint would make that property a matter of
+	// reading the handler correctly.
+	mux.HandleFunc("POST /v1/query", s.query)
 	return s.authenticated(mux)
 }
 
@@ -162,12 +199,6 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close(context.Background()) }()
 
-	reader, can := conn.(dialect.Reader)
-	if !can {
-		refuse(w, http.StatusNotImplemented, "this warehouse cannot return a result set")
-		return
-	}
-
 	// Composed HERE, from a target that has already been proven to be two
 	// names BigQuery could hold. Nothing a caller sent reaches this string.
 	//
@@ -181,29 +212,20 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	// One extra row costs nothing and is the whole mechanism: more than the
 	// ceiling came back means there is more, and the extra is dropped rather
 	// than drawn.
-	probe := limit + 1
-	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(probe)
+	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(limit+1)
 
-	res, err := reader.Read(ctx, dialect.Request{Query: stmt, Limit: probe, MaxBytes: s.opt.Bytes})
+	res, err := s.read(ctx, conn, stmt, limit)
 	if err != nil {
+		var no refusal
+		if errors.As(err, &no) {
+			refuse(w, no.code, no.why)
+			return
+		}
 		refuse(w, http.StatusBadGateway, "the warehouse refused the preview")
 		return
 	}
-	truncated := len(res.Rows) > limit
-	if truncated {
-		res.Rows = res.Rows[:limit]
-	}
-
-	// An empty result is `[]` and never `null`: a grid iterating over null is
-	// a grid that throws, and "no rows" is an answer.
-	if res.Rows == nil {
-		res.Rows = [][]any{}
-	}
-	if res.Columns == nil {
-		res.Columns = []string{}
-	}
 	write(w, http.StatusOK, previewResponse{
-		Columns: res.Columns, Rows: res.Rows, Truncated: truncated, Limit: limit,
+		Columns: res.Columns, Rows: res.Rows, Truncated: res.Truncated, Limit: limit,
 	})
 }
 

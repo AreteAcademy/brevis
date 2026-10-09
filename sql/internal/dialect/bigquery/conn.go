@@ -173,6 +173,11 @@ func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, e
 		out.Rows = append(out.Rows, row)
 	}
 
+	// What it ACTUALLY cost, beside what the dry run said it would. An
+	// unreadable figure is left at zero: "the warehouse did not say" is an
+	// answer, and inventing one would hide the gap worth seeing.
+	out.Scanned, _ = strconv.ParseInt(res.TotalBytesProcessed, 10, 64)
+
 	// A total the response did not carry is not truncation. Parsing it as
 	// zero and comparing would report "not truncated" for a query that was,
 	// which is the silence Truncated exists to break -- so an unreadable

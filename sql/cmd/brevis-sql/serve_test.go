@@ -75,3 +75,13 @@ func TestTheTokenComesFromTheEnvironmentAndNotAFlag(t *testing.T) {
 		t.Errorf("the refusal repeated the secret: %v", err)
 	}
 }
+
+// THE AUDIT IS CONNECTED, asserted rather than assumed. An audit nobody wired
+// is silent exactly when somebody reads it, and this repository has already
+// paid once for a check that could not fail.
+func TestTheAuditWriterIsWired(t *testing.T) {
+	var out bytes.Buffer
+	if got := serveOptions(&out, 100, 1<<30); got.Audit == nil {
+		t.Error("the service was built with nowhere to write an audit line")
+	}
+}
