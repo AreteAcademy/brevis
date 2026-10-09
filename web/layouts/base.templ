@@ -82,8 +82,8 @@ templ Base(p Page) {
 			}
 		</head>
 		<body class="h-full font-sans text-ink antialiased">
-			<div class="flex h-full">
-				@sidebar(p.Active, brand)
+			<div class="flex h-full flex-col">
+				@topbar(p.Active, brand)
 				<main class="flex-1 overflow-y-auto">
 					<header class="sticky top-0 z-10 border-b border-line bg-canvas/90 px-6 py-4 backdrop-blur">
 						<div class="flex items-center justify-between gap-6">
@@ -129,9 +129,9 @@ templ Base(p Page) {
 	</html>
 }
 
-// accountMenu is the sidebar's bottom button and its dropdown.
+// accountMenu is the bar's right-hand button and its dropdown.
 templ accountMenu(operator string, brand branding.Brand) {
-	<details class="account-menu relative border-t border-line px-2 py-2">
+	<details class="account-menu relative">
 		<summary
 			class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
 		>
@@ -152,9 +152,11 @@ templ accountMenu(operator string, brand branding.Brand) {
 				<path d="M4 10l4-4 4 4"></path>
 			</svg>
 		</summary>
-		// It opens UPWARDS: the button is at the bottom of the sidebar, and a
-		// menu that dropped down would be drawn past the edge of the window.
-		<div class="absolute right-2 bottom-full left-2 mb-1 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
+		// It drops DOWN now. It opened upwards while the button sat at the
+		// bottom of a sidebar, where a dropdown would have been drawn past
+		// the edge of the window; at the top of the screen the same choice
+		// would draw it off the other edge.
+		<div class="absolute top-full right-0 z-20 mt-1 w-60 overflow-hidden rounded-card border border-line bg-surface shadow-warm">
 			// The installation's phrase, INSIDE the menu.
 			//
 			// It used to sit in the sidebar's footer, where it was a paragraph
@@ -222,67 +224,61 @@ type item struct {
 	Key string
 }
 
-templ sidebar(active1 string, brand branding.Brand) {
-	<aside class="flex w-56 shrink-0 flex-col border-r border-line bg-surface">
-		<div class="px-4 pt-5 pb-6">
-			<a href="/" class="flex items-center gap-3">
-				// h-7 sits with the wordmark rather than competing with it. It
-				// was h-9 beside a 2rem serif title; both shrank together, and
-				// a logo that did not would now be the loudest thing on a
-				// screen whose job is a table.
+templ topbar(active1 string, brand branding.Brand) {
+	// THE BAR, AND IT IS THE PRODUCT'S OWN IDENTITY RATHER THAN A THEME.
+	//
+	// The site and this console had inverted palettes sharing one colour --
+	// the site's background IS the console's ink -- so somebody who followed
+	// a link from the page that sells this arrived at what looked like
+	// another product. One palette, two surfaces.
+	//
+	// ACROSS THE TOP AND NOT DOWN THE SIDE, because these five are a FLAT
+	// set: nothing here nests, and a column of five items spends 14rem of
+	// width on screens whose job is a wide table.
+	<header class="shrink-0 border-b border-line bg-surface">
+		<div class="flex items-center gap-6 px-5 py-2.5">
+			<a href="/" class="flex shrink-0 items-center gap-2.5">
 				if brand.Logo == branding.DefaultLogo {
 					// Inline, so the symbol inherits the theme's colour.
-					<span class="block h-7 w-7 shrink-0 text-accent">
+					<span class="block h-6 w-6 shrink-0 text-accent">
 						@templ.Raw(assets.LogoSVG)
 					</span>
 				} else if brand.Logo != "" {
-					<img src={ brand.Logo } alt={ brand.Title } class="h-7 w-7 shrink-0 rounded-card object-contain"/>
+					<img src={ brand.Logo } alt={ brand.Title } class="h-6 w-6 shrink-0 rounded-card object-contain"/>
 				}
-				<span class="display block text-[1.15rem] leading-none text-ink">{ brand.Title }</span>
+				<span class="display block text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 			</a>
-			if brand.Subtitle != "" {
-				<p class="kicker mt-1.5">{ brand.Subtitle }</p>
-			}
-		</div>
-		<nav class="flex-1 px-2">
-			for _, i := range []item{
-				{"/", "Overview", "overview"},
-				{"/workflows", "Workflows", "workflows"},
-				{"/runs", "Runs", "runs"},
-				{"/projects", "Projects", "projects"},
-				{"/data", "Data", "data"},
-			} {
-				if i.Key == active1 {
-					<a
-						href={ templ.SafeURL(i.Rota) }
-						class="mb-0.5 flex items-center gap-2.5 rounded-card bg-accent-wash px-3 py-2 text-[0.82rem] font-medium text-ink"
-					>
-						<span class="h-4 w-[2px] bg-accent"></span>
-						{ i.Name }
-					</a>
-				} else {
-					<a
-						href={ templ.SafeURL(i.Rota) }
-						class="mb-0.5 flex items-center gap-2.5 rounded-card px-3 py-2 text-[0.82rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-					>
-						<span class="h-4 w-[2px] bg-transparent"></span>
-						{ i.Name }
-					</a>
+			<nav class="flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Sections">
+				for _, i := range []item{
+					{"/", "Overview", "overview"},
+					{"/workflows", "Workflows", "workflows"},
+					{"/runs", "Runs", "runs"},
+					{"/projects", "Projects", "projects"},
+					{"/data", "Data", "data"},
+				} {
+					if i.Key == active1 {
+						// `aria-current` and not only the box: the shape says
+						// which section to somebody looking at it, and this
+						// says it to everybody else.
+						<a
+							href={ templ.SafeURL(i.Rota) }
+							aria-current="page"
+							class="rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
+						>{ i.Name }</a>
+					} else {
+						<a
+							href={ templ.SafeURL(i.Rota) }
+							class="rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+						>{ i.Name }</a>
+					}
 				}
-			}
-		</nav>
-		// The account menu: one button at the bottom of the sidebar, and what
-		// it opens.
-		//
-		// A <details> and not a script. The browser gives the open/closed
-		// state, the keyboard, the focus order and the ARIA for free, and
-		// three lines in ui.js add the two things it does not have -- Escape,
-		// and closing when the click lands somewhere else. That is the same
-		// order the error dialog took: native first, script enriches.
-		//
-		// It appears even with no session, because Documentation is always
-		// there; only Sign out depends on there being something to sign out
-		// of.
-		@accountMenu(auth.De(ctx), brand)
-	</aside>
+			</nav>
+			// The account menu moved with the bar. It lived at the bottom of
+			// a sidebar that no longer exists, and a console nobody can sign
+			// out of is one nobody can leave.
+			<div class="ml-auto flex shrink-0 items-center gap-2">
+				@accountMenu(auth.De(ctx), brand)
+			</div>
+		</div>
+	</header>
 }

@@ -97,34 +97,51 @@
      The old names survive for the same reason they are the branding surface:
      sixty call sites use them, and renaming every template in the same commit
      as a repaint makes both impossible to review. */
-  --color-parchment: #f2f4ed;
-  --color-parchment-soft: #f7f8f4;
-  --color-surface: #ffffff;
-  --color-ink: #141711;
-  --color-muted: #5c6355;
-  --color-line: #e0e4d9;
-  --color-line-soft: #eef0e9;
-  --color-gold: #5f7038;
-  --color-gold-strong: #43521f;
-  --color-gold-wash: #5f703814;
+  /* THE SITE'S PALETTE, AND THE NAMES ARE NOT THE IDENTITY.
+     `parchment` is now near-black, which reads as a lie until you know what
+     the name is FOR: these are the branding surface, written by
+     branding.go and used in sixty templates, so the names are an API and
+     the values are the identity. Renaming them in the same commit as a
+     repaint would make both impossible to review.
+
+     The values come from site/css/styles.css. The two were inversions of
+     each other sharing one colour -- the site's background WAS the
+     console's ink -- so somebody arriving from the page that sells this
+     found what looked like another product. */
+  --color-parchment: #141711;
+  --color-parchment-soft: #1f2419;
+  --color-surface: #1a1e15;
+  --color-ink: #ecefe4;
+  --color-muted: #a3ad97;
+  --color-line: #38412b;
+  --color-line-soft: #262b1e;
+  --color-gold: #7d8e50;
+  --color-gold-strong: #c7d66d;
+  --color-gold-wash: #c7d66d1f;
 
   --color-canvas: var(--color-parchment);
   --color-surface-2: var(--color-parchment-soft);
   --color-accent: var(--color-gold);
   --color-accent-strong: var(--color-gold-strong);
   --color-accent-wash: var(--color-gold-wash);
-  --color-line-strong: #c4cbb6;
+  --color-line-strong: #4a553a;
 
   /* States. Each one passes AA as TEXT on both grounds, because they are used
-     as text on a pill and not only as a dot. */
-  --color-state-success: #3a7448;
-  --color-state-failed: #b3382c;
-  --color-state-running: #2b6ca3;
-  --color-state-queued: #8a5f0b;
-  --color-state-retrying: #a2551b;
-  --color-state-canceled: #6b7166;
-  --color-state-pending: #656b61;
-  --color-state-skipped: #7a5490;
+     as text on a pill and not only as a dot.
+
+     THAT SENTENCE WAS TRUE ON PARCHMENT AND FALSE THE MOMENT THE GROUND
+     TURNED. The old eight measured between 2.82:1 and 3.60:1 on #1a1e15 --
+     the large-text and graphic threshold, not the body-text one -- and
+     nothing said so, because nothing had ever measured one. The test beside
+     this file does now, and it is what chose these. */
+  --color-state-success: #8fd49e;
+  --color-state-failed: #ff9c92;
+  --color-state-running: #93c5f0;
+  --color-state-queued: #e8c56b;
+  --color-state-retrying: #f0ab73;
+  --color-state-canceled: #a8b0a2;
+  --color-state-pending: #a3aa9c;
+  --color-state-skipped: #d0b0e4;
 
   /* What a step runs in. Each is the language's own convention, because the
      colour is what makes the chip readable before anybody reads the label.
@@ -179,6 +196,20 @@
 /* A flat ground. The parchment gradient, the golden halo and the grid went with
    the serif: they were atmosphere, and atmosphere behind a table of run ids is
    something the eye has to subtract before it can read. */
+/* DECLARED HERE AND NOT IN @theme. Tailwind v4 reads that block for custom
+   PROPERTIES and emits them as utilities; a plain declaration inside it is
+   dropped, silently -- the build was green and `color-scheme` never reached
+   app.css. Found by grepping the compiled sheet rather than trusting the
+   source.
+
+   It matters because it paints what this stylesheet does not: scrollbars,
+   native form controls, the <details> marker and the caret. Without it they
+   stay light on a dark ground, which reads as "unfinished" before anybody
+   can say why. */
+:root {
+  color-scheme: dark;
+}
+
 body {
   background: var(--color-canvas);
 }
@@ -238,12 +269,17 @@ body {
 
 /* Elevation, flattened. The old shadows were 60px of warm ink, which is a
    brochure's depth; a console separates surfaces with a line and keeps the
-   shadow for what actually floats. */
+   shadow for what actually floats.
+
+   DEEPER SINCE THE GROUND TURNED. Five per cent of near-black on parchment
+   is a soft edge; the same value on #141711 is nothing at all, and the one
+   thing that actually floats -- the account menu -- would have had no edge
+   but its border. */
 .shadow-warm {
-  box-shadow: 0 1px 2px rgba(20, 23, 17, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 .shadow-warm-sm {
-  box-shadow: 0 1px 1px rgba(20, 23, 17, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 /* The charts' tooltip. Out of the flow and with no position transition:

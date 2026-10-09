@@ -62,9 +62,12 @@ func TestTheServiceIsNotAskedUnlessTheTabIsOpen(t *testing.T) {
 	// THE STRIP IS THERE AND NOTHING IS OPEN. The word "Preview" is on the
 	// page now because the tab is a LINK -- V1 had no strip at all and this
 	// line used to stand in for "the panel did not draw". `aria-current` is
-	// what actually says which tab is open, so it is what is asserted.
-	if strings.Contains(body, "aria-current") {
-		t.Error("a tab drew itself with no result and no reason")
+	// what actually says which one is open, so it is what is asserted.
+	//
+	// COUNTED AND NOT LOOKED FOR, since the top bar marks the open SECTION
+	// the same way: one is the nav saying Data, and a second would be a tab.
+	if n := strings.Count(body, `aria-current="page"`); n != 1 {
+		t.Errorf("%d things claim to be open; only the Data section should", n)
 	}
 }
 
