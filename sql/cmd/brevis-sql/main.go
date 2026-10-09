@@ -70,12 +70,21 @@ func run(args []string, out io.Writer) error {
 	sel := fs.String("select", "", "one model, or `name+` for it and everything downstream")
 	dsnFrom := fs.String("dsn-from", "", "the NAME of the environment variable holding the connection string")
 	full := fs.Bool("full-refresh", false, "rebuild every incremental model from scratch, forgetting its watermark")
+	addr := fs.String("addr", "127.0.0.1:8088", "where `serve` listens")
+	rows := fs.Int("rows", 100, "the most rows a preview may return; a caller may ask for fewer")
+	dryRun := fs.Bool("dry-run", false, "build the service and report, without listening")
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
 
 	switch cmd {
 	case "compile", "graph", "build", "test":
+	case "serve":
+		// BEFORE THE PROJECT IS READ, and that is the whole reason it returns
+		// here. Every other command loads `models/` first; this one has no
+		// project, and a `brevis-sql serve` in a directory without models
+		// would otherwise die with a message about a thing it does not use.
+		return serve(out, *addr, *rows, *dryRun)
 	default:
 		usage()
 		return fmt.Errorf("%q is not a command", cmd)
@@ -330,11 +339,18 @@ brevis-sql — plain .sql models, run as a Brevis step
   graph     print the inferred edges, so a wrong one is seen
   build     create or replace every model, in dependency order
   test      run every model's tests; each one is a SELECT that must find nothing
+  serve     answer read-only previews over HTTP, so a console needs no credential
 
   --project DIR     the directory holding models/   (default ".")
   --dialect NAME    %-28s (default "postgres")
   --select  EXPR    one model, or `+"`name+`"+` for it and everything downstream
   --dsn-from VAR    the NAME of the variable holding the DSN  (build, test)
   --full-refresh    rebuild every incremental model from scratch   (build)
+  --addr HOST:PORT  where to listen                            (serve)
+  --rows N          the most rows a preview returns            (serve)
+
+  serve reads BREVIS_SQL_SERVE_TOKEN and BREVIS_ENV from the environment.
+  Outside BREVIS_ENV=local a token is required and it will not start without
+  one.
 `, "\n"), known())
 }

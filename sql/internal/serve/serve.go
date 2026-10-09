@@ -155,12 +155,28 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 
 	// Composed HERE, from a target that has already been proven to be two
 	// names BigQuery could hold. Nothing a caller sent reaches this string.
-	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(limit)
+	//
+	// IT ASKS FOR ONE MORE ROW THAN IT WILL SHOW, and that is not a detail.
+	// The LIMIT is in the statement, so the query MATCHES exactly what it
+	// returns and the warehouse's own `totalRows` can never report a cut --
+	// a five-row table under a ceiling of three came back with three rows
+	// and `truncated: false`, found by running it. The warehouse was telling
+	// the truth; the question was wrong.
+	//
+	// One extra row costs nothing and is the whole mechanism: more than the
+	// ceiling came back means there is more, and the extra is dropped rather
+	// than drawn.
+	probe := limit + 1
+	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(probe)
 
-	res, err := reader.Read(ctx, stmt, limit)
+	res, err := reader.Read(ctx, stmt, probe)
 	if err != nil {
 		refuse(w, http.StatusBadGateway, "the warehouse refused the preview")
 		return
+	}
+	truncated := len(res.Rows) > limit
+	if truncated {
+		res.Rows = res.Rows[:limit]
 	}
 
 	// An empty result is `[]` and never `null`: a grid iterating over null is
@@ -172,7 +188,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		res.Columns = []string{}
 	}
 	write(w, http.StatusOK, previewResponse{
-		Columns: res.Columns, Rows: res.Rows, Truncated: res.Truncated, Limit: limit,
+		Columns: res.Columns, Rows: res.Rows, Truncated: truncated, Limit: limit,
 	})
 }
 

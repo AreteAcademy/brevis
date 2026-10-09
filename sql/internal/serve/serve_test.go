@@ -64,7 +64,9 @@ func TestAPreviewComposesItsOwnStatement(t *testing.T) {
 	if len(f.asked) != 1 {
 		t.Fatalf("asked %v", f.asked)
 	}
-	if f.asked[0] != "SELECT * FROM bronze.orders LIMIT 10" {
+	// ELEVEN FOR TEN. It asks for one more than it will show, so that more
+	// coming back is how it knows there is more -- see TestAPreviewThatCutSaysSo.
+	if f.asked[0] != "SELECT * FROM bronze.orders LIMIT 11" {
 		t.Errorf("statement = %q", f.asked[0])
 	}
 
@@ -105,14 +107,25 @@ func TestTheRowCeilingClampsAndIsNotTheCallers(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			f := &fake{}
-			if w := post(t, testService(t, f), c.body); w.Code != http.StatusOK {
+			w := post(t, testService(t, f), c.body)
+			if w.Code != http.StatusOK {
 				t.Fatalf("%d: %s", w.Code, w.Body)
 			}
-			if f.limit != c.want {
-				t.Errorf("read with limit %d, wanted %d", f.limit, c.want)
+			// The warehouse is asked for one more than the ceiling; what
+			// the caller is TOLD the limit was is the ceiling itself, and
+			// that is the number a screen prints.
+			if f.limit != c.want+1 {
+				t.Errorf("read with limit %d, wanted %d", f.limit, c.want+1)
 			}
-			if !strings.HasSuffix(f.asked[0], " LIMIT "+itoa(c.want)) {
+			if !strings.HasSuffix(f.asked[0], " LIMIT "+itoa(c.want+1)) {
 				t.Errorf("statement = %q", f.asked[0])
+			}
+			var got previewResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Limit != c.want {
+				t.Errorf("it reported a limit of %d, wanted %d", got.Limit, c.want)
 			}
 		})
 	}
@@ -238,5 +251,83 @@ func TestAnEmptyResultIsAnEmptyListOnTheWire(t *testing.T) {
 	}
 	if strings.Contains(body, "null") {
 		t.Errorf("something came back null:\n%s", body)
+	}
+}
+
+// counting answers exactly as many rows as the statement's LIMIT allows,
+// which is what a warehouse does.
+type counting struct {
+	fake
+	have int // rows the table actually holds
+}
+
+func (c *counting) Read(_ context.Context, q string, limit int) (dialect.Result, error) {
+	c.asked = append(c.asked, q)
+	c.limit = limit
+	n := c.have
+	if limit < n {
+		n = limit
+	}
+	rows := make([][]any, 0, n)
+	for i := 0; i < n; i++ {
+		rows = append(rows, []any{int64(i)})
+	}
+	// `Truncated` from the warehouse is FALSE here, and that is the point:
+	// with a LIMIT in the statement the query matched exactly what it
+	// returned, so the warehouse has nothing to report.
+	return dialect.Result{Columns: []string{"k"}, Rows: rows}, nil
+}
+
+// A PREVIEW THAT CUT HAS TO SAY SO, and its own LIMIT is what hides it.
+//
+// Found by running the service: a five-row table under a ceiling of three
+// came back with three rows and `truncated: false`. The reason is the
+// composition -- `SELECT * FROM t LIMIT 3` makes the query MATCH three, so
+// `totalRows` is three and the warehouse is telling the truth. Nothing was
+// wrong except the question.
+//
+// So it asks for one more than it will show. More came back than the ceiling
+// means there is more, and the extra row is dropped rather than drawn.
+func TestAPreviewThatCutSaysSo(t *testing.T) {
+	for _, c := range []struct {
+		name      string
+		have      int
+		ceiling   int
+		wantRows  int
+		truncated bool
+	}{
+		{"more than the ceiling", 5, 3, 3, true},
+		{"exactly the ceiling", 3, 3, 3, false},
+		{"one less", 2, 3, 2, false},
+		{"empty", 0, 3, 0, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := &counting{have: c.have}
+			s, err := New(Options{Env: EnvLocal, Rows: c.ceiling,
+				Open: func(context.Context, string) (dialect.Conn, error) { return f, nil }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w := post(t, s, `{"target":"bigquery://acme-prod/bronze/orders"}`)
+			if w.Code != http.StatusOK {
+				t.Fatalf("%d: %s", w.Code, w.Body)
+			}
+			var got previewResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if len(got.Rows) != c.wantRows {
+				t.Errorf("%d rows, wanted %d", len(got.Rows), c.wantRows)
+			}
+			if got.Truncated != c.truncated {
+				t.Errorf("truncated = %v, wanted %v", got.Truncated, c.truncated)
+			}
+			// AND THE EXTRA ROW IS ASKED FOR, which is the mechanism. A
+			// statement that asked for exactly the ceiling could never tell
+			// a full page from a cut one.
+			if !strings.HasSuffix(f.asked[0], " LIMIT "+itoa(c.ceiling+1)) {
+				t.Errorf("statement = %q, wanted it to ask for one more", f.asked[0])
+			}
+		})
 	}
 }
