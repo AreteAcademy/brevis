@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
@@ -66,6 +67,16 @@ type Service struct {
 	opt Options
 	// slots is the concurrency limit, held for the length of a query.
 	slots chan struct{}
+
+	// probed remembers, per connection, whether its credential can write.
+	//
+	// ONCE PER CONNECTION AND NOT ONCE PER QUERY: the answer cannot change
+	// while an IAM policy does not, and a round trip per query buys nothing.
+	// Two first queries at once may both probe -- the probe is free and
+	// idempotent, and serialising them behind the lock would put a network
+	// call inside it.
+	mu     sync.Mutex
+	probed map[string]bool
 }
 
 // Defaults for the two limits that are a shape rather than a decision. The
@@ -111,7 +122,7 @@ func New(opt Options) (*Service, error) {
 	if opt.Timeout <= 0 {
 		opt.Timeout = defaultTimeout
 	}
-	return &Service{opt: opt, slots: make(chan struct{}, opt.Concurrent)}, nil
+	return &Service{opt: opt, slots: make(chan struct{}, opt.Concurrent), probed: map[string]bool{}}, nil
 }
 
 // Handler is the service's routes.
@@ -214,7 +225,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	// than drawn.
 	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(limit+1)
 
-	res, err := s.read(ctx, conn, stmt, limit)
+	res, err := s.read(ctx, conn, table, stmt, limit)
 	if err != nil {
 		var no refusal
 		if errors.As(err, &no) {

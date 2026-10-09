@@ -35,6 +35,8 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, dryRun bool) er
 	_, _ = fmt.Fprintf(out, "brevis-sql serve on %s, at most %d row(s) and %s per query\n",
 		addr, rows, svc.BytesText(maxBytes))
 	_, _ = fmt.Fprintln(out, "  one audit line per query, on this stream, holding no SQL")
+	_, _ = fmt.Fprintln(out, "  each warehouse is asked once whether its credential can write,",
+		"and outside BREVIS_ENV=local one that can is refused")
 	if os.Getenv("BREVIS_SQL_SERVE_TOKEN") == "" {
 		// SAID OUT LOUD, every time. New() already refused this outside
 		// local, so reaching here means somebody meant it -- and a line on

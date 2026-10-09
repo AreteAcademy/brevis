@@ -316,6 +316,36 @@ type Estimator interface {
 	Estimate(ctx context.Context, query string) (int64, error)
 }
 
+// WriteProbe is implemented by a connection that can answer, WITHOUT WRITING,
+// whether its own credential is allowed to.
+//
+// WHY IT EXISTS AT ALL. A classifier is the only thing between a browser and
+// a write on the read-only surface, and the classifier says in its own
+// comment what it cannot do: a function call writes whatever the function
+// writes, and `SELECT nextval('s')` is beyond anything that is not a planner.
+// The read-only ROLE is the defence there -- and a role nobody checked is a
+// role nobody has. This is what turns "we gave it a read-only service
+// account" from a claim into a measurement.
+//
+// It costs one round trip per connection, and nothing in money: on BigQuery
+// it is a dry run, which creates nothing and bills nothing. Measured against
+// the real API on 2026-10-09, both directions:
+//
+//	CREATE TABLE on a dataset the credential cannot write
+//	  -> Access Denied: Permission bigquery.tables.create denied
+//	CREATE TABLE on one it can
+//	  -> validated, 0 bytes, and `bq ls` shows nothing was created
+type WriteProbe interface {
+	// CanWrite reports whether this credential could create a table in the
+	// given schema. IT MUST NOT CREATE ONE.
+	//
+	// TRUE IS THE ONLY ANSWER A CALLER MAY TRUST. "Permission denied" is a
+	// no, and so is "that dataset does not exist" -- the two arrive the same
+	// way, so a caller refuses on true rather than allowing on false, and a
+	// probe that could not run refuses nothing.
+	CanWrite(ctx context.Context, schema string) (bool, error)
+}
+
 // Disposable is implemented by a dialect whose warehouse can be told to throw
 // away what a TEST leaves behind.
 //

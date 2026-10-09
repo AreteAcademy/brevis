@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
@@ -47,7 +48,7 @@ type queryResponse struct {
 // The order below is the design: refuse for free first, then spend.
 func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
-	line := record{Event: "query", At: started.UTC().Format(time.RFC3339), Outcome: "refused"}
+	line := record{Event: "query", Outcome: "refused"}
 	defer func() { s.audit(line, started) }()
 
 	var req queryRequest
@@ -111,7 +112,7 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close(context.Background()) }()
 
-	res, err := s.read(ctx, conn, req.Statement, limit)
+	res, err := s.read(ctx, conn, table, req.Statement, limit)
 	if err != nil {
 		var no refusal
 		if errors.As(err, &no) {
@@ -131,6 +132,66 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 		Columns: res.Columns, Rows: res.Rows, Truncated: res.Truncated,
 		Limit: limit, Bytes: res.Scanned, Millis: time.Since(started).Milliseconds(),
 	})
+}
+
+// outcomeWritable is what an audit line says when the credential can write.
+const outcomeWritable = "writable-credential"
+
+// assertReadOnly refuses a connection whose credential is allowed to write.
+//
+// IT IS THE ANSWER TO THE ONE QUESTION THE CLASSIFIER CANNOT ANSWER. A
+// function call writes whatever the function writes -- `SELECT nextval('s')`
+// advances a sequence, and no classifier short of a planner sees inside one.
+// What actually holds that line is the role, and this is what stops the role
+// from being an assumption.
+//
+// LOCALLY IT IS SAID AND NOT REFUSED. On a laptop the credential is the
+// developer's own account, which can write everything; refusing there would
+// make the tool unusable and teach somebody to turn the check off, which is
+// the same reasoning BREVIS_ENV already carries for the token. It is still
+// said out loud, once, on the audit stream.
+func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table Table) error {
+	probe, can := conn.(dialect.WriteProbe)
+	if !can {
+		// A warehouse that cannot be asked is not refused for a question it
+		// was never asked. Postgres has no dry run and implements none of
+		// this.
+		return nil
+	}
+	s.mu.Lock()
+	writes, asked := s.probed[table.Connection]
+	s.mu.Unlock()
+
+	if !asked {
+		schema, _, _ := strings.Cut(table.Relation, ".")
+		var err error
+		writes, err = probe.CanWrite(ctx, schema)
+		if err != nil {
+			// AN ERROR IS NOT A YES. See dialect.WriteProbe.
+			writes = false
+		}
+		s.mu.Lock()
+		s.probed[table.Connection] = writes
+		s.mu.Unlock()
+		// SAID EITHER WAY, once per connection. A check that only speaks
+		// when it is unhappy is a check nobody can tell apart from one that
+		// never ran -- and "we thought it was on" is the sentence this
+		// repository has already paid for.
+		outcome := "read-only"
+		if writes {
+			outcome = outcomeWritable
+		}
+		s.audit(record{Event: "credential", Connection: table.Connection,
+			Outcome: outcome}, time.Now())
+	}
+	if !writes || s.opt.Env == EnvLocal {
+		return nil
+	}
+	return refusal{http.StatusInternalServerError, outcomeWritable,
+		"this service holds a warehouse credential that can CREATE TABLES, so it is " +
+			"not read-only and nothing here is. Give it a role that cannot write -- on " +
+			"BigQuery, roles/bigquery.dataViewer with roles/bigquery.jobUser -- or run " +
+			"with BREVIS_ENV=local if this is a laptop"}
 }
 
 // refusal is an answer this service decided on, carrying the status and the
@@ -154,11 +215,18 @@ func (r refusal) Error() string { return r.why }
 // and a query is the caller's own, but what happens to them from here is the
 // same thing and must stay the same thing: the preview was already costing
 // what it cost before anybody priced it.
-func (s *Service) read(ctx context.Context, conn dialect.Conn, statement string, limit int) (dialect.Result, error) {
+func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, statement string, limit int) (dialect.Result, error) {
 	reader, can := conn.(dialect.Reader)
 	if !can {
 		return dialect.Result{}, refusal{http.StatusNotImplemented, "unsupported",
 			"this warehouse cannot return a result set"}
+	}
+	// BEFORE ANYTHING IS PRICED OR RUN, and on BOTH endpoints -- which is
+	// half of why `read` is one function. A credential that can write makes
+	// every other limit on this surface decorative, so it is checked before
+	// any of them are applied.
+	if err := s.assertReadOnly(ctx, conn, table); err != nil {
+		return dialect.Result{}, err
 	}
 
 	// THE DRY RUN, where there is one. A warehouse that charges for a
@@ -240,6 +308,9 @@ func (s *Service) audit(line record, started time.Time) {
 	if s.opt.Audit == nil {
 		return
 	}
+	// STAMPED HERE AND NOWHERE ELSE, so every line carries one: the
+	// credential line forgot its own when each caller set its own stamp.
+	line.At = started.UTC().Format(time.RFC3339)
 	line.Millis = time.Since(started).Milliseconds()
 	b, err := json.Marshal(line)
 	if err != nil {

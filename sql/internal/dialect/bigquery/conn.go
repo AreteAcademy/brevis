@@ -211,6 +211,23 @@ func (c *conn) Estimate(ctx context.Context, query string) (int64, error) {
 	return scanned, nil
 }
 
+// CanWrite asks whether this credential may create a table, by dry-running
+// one. See dialect.WriteProbe.
+//
+// A DRY RUN OF A WRITE CREATES NOTHING AND COSTS NOTHING, which is what makes
+// this affordable as a boot check rather than a thing somebody audits twice a
+// year. The name carries a nonce so it can never collide with a real table
+// and turn "already exists" into the answer.
+func (c *conn) CanWrite(ctx context.Context, schema string) (bool, error) {
+	stmt := fmt.Sprintf("CREATE TABLE %s.brevis_write_probe_%d (probe INT64)",
+		schema, time.Now().UnixNano())
+	if _, err := c.runWith(ctx, stmt, map[string]any{"dryRun": true}); err != nil {
+		// NOT A NO, just not a yes. See WriteProbe.CanWrite.
+		return false, err
+	}
+	return true, nil
+}
+
 // Target is `bigquery://project/dataset/table`.
 //
 // The project is what Open was given, so there is nothing to parse and

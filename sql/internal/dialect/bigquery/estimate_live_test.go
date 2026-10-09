@@ -2,6 +2,7 @@ package bigquery_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
@@ -88,5 +89,43 @@ func TestTheByteCeilingIsEnforcedByTheServer(t *testing.T) {
 		Query: "SELECT * FROM " + schema + ".t", Limit: 10,
 	}); err != nil {
 		t.Fatalf("the same query with no ceiling was refused: %v", err)
+	}
+}
+
+// THE CREDENTIAL PROBE, BOTH DIRECTIONS, AGAINST REAL BIGQUERY. A probe that
+// only ever answered one way would be a probe nobody could tell from a
+// constant, and this one decides whether `serve` starts.
+func TestTheCredentialProbeAnswersBothWays(t *testing.T) {
+	ctx, conn, schema := liveSchema(t, "bvs_role")
+
+	p, is := conn.(dialect.WriteProbe)
+	if !is {
+		t.Fatal("a BigQuery connection cannot be asked whether it may write")
+	}
+
+	// THIS credential made the schema a moment ago, so it can write in it.
+	can, err := p.CanWrite(ctx, schema)
+	if err != nil {
+		t.Fatalf("probing a schema this credential owns: %v", err)
+	}
+	if !can {
+		t.Error("the credential that just created a dataset was reported as read-only")
+	}
+
+	// A PUBLIC DATASET: everybody reads it and nobody writes it, which is the
+	// only read-only corner of BigQuery available to a test without a second
+	// service account.
+	can, err = p.CanWrite(ctx, "`bigquery-public-data`.samples")
+	if can {
+		t.Error("this credential was reported able to write to bigquery-public-data")
+	}
+	if err == nil {
+		t.Fatal("a denial arrived with no reason")
+	}
+	// AND IT WAS DENIED RATHER THAN MISSING. If that dataset is ever gone the
+	// probe would answer "no" for the wrong reason and prove nothing, so the
+	// permission has to be named in the refusal.
+	if !strings.Contains(err.Error(), "bigquery.tables.create") {
+		t.Errorf("the refusal is not a permission denial, so this proves nothing: %v", err)
 	}
 }
