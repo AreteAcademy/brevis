@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/AreteAcademy/brevis/internal/api"
+	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
@@ -108,9 +109,20 @@ func TestWithNoServiceThePageIsUnchanged(t *testing.T) {
 // probeTarget is the destination every test here asks about.
 const probeTarget = "bigquery://acme-prod/bronze/orders"
 
-// withPreview builds a console holding one destination and, optionally, a
-// SQL service.
+// withPreview builds a PROTECTED console holding one destination and,
+// optionally, a SQL service. openConsole is the same thing with no login,
+// which is a console that may not offer the warehouse at all.
 func withPreview(t *testing.T, c *sqlserve.Client) *api.UI {
+	t.Helper()
+	return console(t, c, auth.Credential{User: "ana", Hash: "$2a$10$notarealhash"})
+}
+
+func openConsole(t *testing.T, c *sqlserve.Client) *api.UI {
+	t.Helper()
+	return console(t, c, auth.Credential{})
+}
+
+func console(t *testing.T, c *sqlserve.Client, cred auth.Credential) *api.UI {
 	t.Helper()
 	detail := &postgres.TargetDetail{
 		CatalogEntry: postgres.CatalogEntry{
@@ -124,7 +136,7 @@ func withPreview(t *testing.T, c *sqlserve.Client) *api.UI {
 			LoadedAt: time.Now().Add(-10 * time.Minute),
 		}},
 	}
-	return dataUI(catalogFake{detail: detail}).WithPreview(c)
+	return dataUI(catalogFake{detail: detail}).WithPreview(c, cred)
 }
 
 func render(t *testing.T, ui *api.UI, path string) string {

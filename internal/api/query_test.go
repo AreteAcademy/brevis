@@ -217,3 +217,39 @@ func TestAStatementInTheURLIsIgnored(t *testing.T) {
 		t.Error("a POST took its statement from the URL")
 	}
 }
+
+// A CONSOLE WITH NO LOGIN DOES NOT OFFER THE WAREHOUSE.
+//
+// CHECKPOINT B's F4. The console can run with no credential at all, and
+// already says so at boot: "interface is OPEN: anyone can trigger a
+// workflow". With the Query tab that sentence became incomplete -- it is now
+// also anyone can READ EVERY TABLE IN THE PROJECT, because a query is not
+// confined to the destination it was opened from, by design.
+//
+// The tab does not create the hole. It changes what falls through it, and a
+// data tool must not outlive the authentication of the screen it sits on.
+func TestAnUnprotectedConsoleOffersNoTabs(t *testing.T) {
+	asked := false
+	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		asked = true
+		_, _ = w.Write([]byte(`{"columns":["k"],"rows":[["1"]]}`))
+	}))
+	defer svc.Close()
+	open := openConsole(t, sqlserve.New(svc.URL, ""))
+
+	body := render(t, open, "/data/target?u="+probeTarget)
+	for _, gone := range []string{"tab=preview", "tab=query"} {
+		if strings.Contains(body, gone) {
+			t.Errorf("a console with no login offers %q", gone)
+		}
+	}
+
+	// AND NOT BY HIDING A LINK. Somebody typing the parameter, or following
+	// one from a message, must not reach a warehouse either.
+	render(t, open, "/data/target?u="+probeTarget+"&tab=preview")
+	render(t, open, "/data/target?u="+probeTarget+"&tab=query")
+	run(t, open, "SELECT 1")
+	if asked {
+		t.Error("an unprotected console reached the warehouse")
+	}
+}

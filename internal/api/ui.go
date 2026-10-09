@@ -114,16 +114,43 @@ type UI struct {
 	// preview asks `brevis-sql serve` for a destination's first rows. Nil
 	// when no service is configured, and then the tab does not exist.
 	preview *sqlserve.Client
+
+	// protected says this console asks for a login. See dataTools.
+	protected bool
 }
 
-// WithPreview points the console at a SQL service.
+// WithPreview points the console at a SQL service, and says whether this
+// console has a login.
 //
 // A SETTER AND NOT AN ARGUMENT, because NewUI already takes eight: this one
 // is optional in a way the others are not -- a console with no SQL service is
 // a console that works, and every caller would otherwise pass nil.
-func (u *UI) WithPreview(c *sqlserve.Client) *UI {
+//
+// THE CREDENTIAL ITSELF AND NOT A BOOLEAN, so that nobody can answer this
+// question wrongly by writing `true`. The only way to get the tabs is to hand
+// over the console's real credential and have it be one; a bool would make
+// "we are protected" something a caller could simply assert.
+//
+// An ARGUMENT and not a second setter, so forgetting it is a compile error
+// rather than an open console with a warehouse on it.
+func (u *UI) WithPreview(c *sqlserve.Client, console auth.Credential) *UI {
 	u.preview = c
+	u.protected = console.Enabled()
 	return u
+}
+
+// dataTools says whether a destination may offer its Preview and Query tabs.
+//
+// TWO CONDITIONS, AND THE SECOND IS NOT ABOUT SQL AT ALL. A console can run
+// with no credential -- it warns at boot, "interface is OPEN: anyone can
+// trigger a workflow" -- and the Query tab made that sentence incomplete: it
+// is now also anyone can read every table in the project, because a query is
+// not confined to the destination it was opened from.
+//
+// The tab does not create that hole, it changes what falls through it. So a
+// data tool does not outlive the authentication of the screen it sits on.
+func (u *UI) dataTools() bool {
+	return u.protected && u.preview.Configured()
 }
 
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
@@ -209,7 +236,7 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 
 	// NO SERVICE, NO TABS. A tab that always answers "not configured" is a
 	// question nobody can act on.
-	v.Tabs = u.preview.Configured()
+	v.Tabs = u.dataTools()
 	if v.Tabs {
 		v.Tab = r.URL.Query().Get("tab")
 	}

@@ -1314,7 +1314,10 @@ func serve(ctx context.Context) error {
 		// and no Preview tab is drawn at all. The engine holds no warehouse
 		// credential either way -- this token reaches `brevis-sql serve` and
 		// nothing else.
-		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken))
+		// AND ONLY ON A CONSOLE THAT ASKS WHO YOU ARE. An open console
+		// already warns that anyone can trigger a workflow; it must not also
+		// hand out every table in the warehouse.
+		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken), cfg.Auth)
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
@@ -1325,6 +1328,15 @@ func serve(ctx context.Context) error {
 	} else {
 		log.Warn("interface is OPEN: anyone can trigger a workflow",
 			"hint", "set BREVIS_AUTH_USER and BREVIS_AUTH_PASSWORD_HASH")
+		if cfg.SQLServeURL != "" {
+			// SAID, BECAUSE IT IS A SILENCE OTHERWISE. Somebody who
+			// configured a SQL service and finds no tabs would go looking
+			// for a defect in the wiring, and the wiring is right: the tabs
+			// are off because this console does not ask who you are.
+			log.Warn("the data tools are OFF although a SQL service is configured",
+				"why", "an unauthenticated console must not hand out every table in the warehouse",
+				"hint", "set BREVIS_AUTH_USER and BREVIS_AUTH_PASSWORD_HASH")
+		}
 	}
 
 	failures := make(chan error, 1)
