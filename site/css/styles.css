@@ -1170,6 +1170,70 @@ a.chip:focus-visible .ico {
   }
 }
 
+/* ------------------------------------------------------------ numeros ---- */
+
+/* Três números grandes, cada um com a sua fonte embaixo, em mono e menor:
+   o número chama, a linha de baixo é o que o sustenta. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  background: var(--line);
+  overflow: hidden;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  background: var(--surface);
+}
+
+.stat-value {
+  font-size: clamp(2.6rem, 5vw, 3.75rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--lime);
+}
+
+.stat-unit {
+  margin-left: 0.35rem;
+  font-size: 0.4em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+
+.stat-label {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.stat-src {
+  margin-top: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  color: var(--olive);
+}
+
+.stat-src a {
+  color: var(--lime);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+@media (max-width: 820px) {
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* ------------------------------------------------------------- pecas ---- */
 
 /* O selo de versao nova: lima sobre lavado lima, 10.6:1 -- e texto, entao

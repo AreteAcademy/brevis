@@ -462,6 +462,39 @@ marts.orders
     </div>
   </section>
 
+  <!-- Three numbers, each from a run in the repository and each linking to
+       the docs page that tells it. check_numbers.py reads them back from
+       there (and the benchmark from bench/results), so none is typed once
+       here and once elsewhere without a check holding the two together. -->
+  <section class="section" id="numeros">
+    <div class="shell">
+      <div class="section-head head-split" data-reveal>
+        <div>
+          <p class="eyebrow">números</p>
+          <h2>Medido, não prometido.</h2>
+        </div>
+        <p class="lead">Cada número abaixo saiu de uma execução que está no repositório, e cada um leva à página onde ela é contada.</p>
+      </div>
+      <div class="stats" data-reveal>
+        <div class="stat" data-stat="vazao">
+          <p class="stat-value">135<span class="stat-unit">mil/s</span></p>
+          <p class="stat-label">eventos aceitos por um Gateway</p>
+          <p class="stat-src">brevis-gateway 0.11.0 · k6 · Postgres 17 · Darwin arm64, 11 CPUs · <a href="/docs/benchmarks/#a-corrida-acima">Benchmarks</a></p>
+        </div>
+        <div class="stat" data-stat="perdidos">
+          <p class="stat-value">0</p>
+          <p class="stat-label">eventos perdidos</p>
+          <p class="stat-src">5.431.000 aceitos = 5.431.000 linhas no Postgres; 0 no descarte · <a href="/docs/benchmarks/#tres-testemunhas-e-a-terceira-e-a-que-importa">Benchmarks</a></p>
+        </div>
+        <div class="stat" data-stat="dbt">
+          <p class="stat-value">13/13</p>
+          <p class="stat-label">modelos do jaffle-shop idênticos aos do dbt, linha a linha</p>
+          <p class="stat-src">brevis-sql 0.1.0 · linhas, md5, colunas e tipos · <a href="/docs/sql/#verificado-contra-o-dbt">SQL</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Deploy: three ways, all self-hosted; no managed-cloud card, because
        there is no managed cloud. Each first command was checked in T11:
        compose run on a fresh clone, the chart rendered by `helm template`

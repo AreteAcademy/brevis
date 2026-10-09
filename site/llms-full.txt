@@ -5288,9 +5288,9 @@ So the report puts the two side by side — and counts the rows in Postgres:
 
 | witness | events |
 |---|---:|
-| k6 was told `accepted` | 4,593,000 |
-| the gateway counted received | 4,593,000 |
-| rows in Postgres | 4,593,000 |
+| k6 was told `accepted` | 5,431,000 |
+| the gateway counted received | 5,431,000 |
+| rows in Postgres | 5,431,000 |
 | records in the dead letter | 0 |
 
 The first two are both the gateway's own arithmetic — one from the response it
@@ -5302,16 +5302,17 @@ not take our word for it.
 
 ## The run above
 
+The 2026-09-26 run in `bench/results/REPORT.md`:
 `areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 in a
 container on the same kernel, `auto_table[columns]` with `write: append`:
 
 | | |
 |---|---:|
-| events accepted | **4,593,000** (102,064/s) |
-| body sent | 978 MiB in 45s |
+| events accepted | **5,431,000** (135,768/s) |
+| body sent | 1,156.7 MiB in 40s |
 | `503` (backpressure) | 0 |
-| p50 / p95 / p99 | 9.2 ms / 29.0 ms / 46.9 ms |
-| batches delivered | 766, none buried |
+| p50 / p95 / p99 | 5.9 ms / 16.0 ms / 22.7 ms |
+| batches delivered | 1,087, none buried |
 
 ## The thresholds are the point
 

@@ -26,9 +26,9 @@ Então o relatório põe os dois lado a lado — e conta as linhas no Postgres:
 
 | testemunha | eventos |
 |---|---:|
-| o k6 foi informado `accepted` | 4.593.000 |
-| o gateway contou recebidos | 4.593.000 |
-| linhas no Postgres | 4.593.000 |
+| o k6 foi informado `accepted` | 5.431.000 |
+| o gateway contou recebidos | 5.431.000 |
+| linhas no Postgres | 5.431.000 |
 | registros na fila de descarte | 0 |
 
 As duas primeiras são aritmética do próprio gateway — uma da resposta que ele
@@ -41,16 +41,17 @@ percentis.
 
 ## A corrida acima
 
+A corrida de 2026-09-26 em `bench/results/REPORT.md`:
 `areteacademy/brevis-gateway:0.11.0`, Darwin arm64, 11 CPUs, Postgres 17 em
 container no mesmo kernel, `auto_table[columns]` com `write: append`:
 
 | | |
 |---|---:|
-| eventos aceitos | **4.593.000** (102.064/s) |
-| corpo enviado | 978 MiB em 45s |
+| eventos aceitos | **5.431.000** (135.768/s) |
+| corpo enviado | 1.156,7 MiB em 40s |
 | `503` (contrapressão) | 0 |
-| p50 / p95 / p99 | 9,2 ms / 29,0 ms / 46,9 ms |
-| lotes entregues | 766, nenhum enterrado |
+| p50 / p95 / p99 | 5,9 ms / 16,0 ms / 22,7 ms |
+| lotes entregues | 1.087, nenhum enterrado |
 
 ## Os thresholds são o ponto
 
