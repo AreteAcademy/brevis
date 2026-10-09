@@ -10,6 +10,8 @@ On Kubernetes, **each workflow step becomes a pod** with the image declared in
 that step. There is no generic worker waiting for work: the work brings its own
 runtime.
 
+![Diagram: the Core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it.](/assets/execution.svg)
+
 ```
 scheduler                          cluster
 ─────────                          ───────

@@ -10,6 +10,8 @@ Em Kubernetes, **cada passo de um workflow vira um pod** com a imagem declarada
 naquele passo. Não há worker genérico esperando trabalho: é o trabalho que traz
 o seu runtime.
 
+![Diagrama: o Core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto.](/assets/execution.svg)
+
 ```
 scheduler                          cluster
 ─────────                          ───────

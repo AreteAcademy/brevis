@@ -127,17 +127,28 @@
       <h1>Ingestion</h1>
       <p class="doc-desc">An HTTP endpoint that lands data — validate, identify, batch, deliver. Its own image, its own version.</p>
       <p>The ingestion gateway is an <strong>HTTP endpoint that lands data</strong>. A client <code>POST</code>s, gets a <code>202</code>, and what arrived becomes a record on a topic, in a table, or in a bucket.</p>
-<div class="code-block" data-code="POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
-                                                          ↓
-                                            workers  →  Pub/Sub | Postgres | …"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
-                                                          ↓
-                                            workers  →  Pub/Sub | Postgres | …</code></pre></div>
-<p>It is <strong>a different binary, a different Go module, a different version and a different image</strong>. The engine orchestrates and never touches customer data; the gateway does nothing else. The numbering is independent on purpose: the engine is at 0.15 and the gateway at 0.8, which is the true statement.</p>
-<div class="code-block" data-code="docker run -p 8080:8080 \
+<figure class="doc-figure"><img src="/assets/flow-gateway.svg" width="360" height="514" alt="The Gateway flow: a POST to /v1/clicks is decoded, given its ingestion_id, answered with 202 straight away and appended to a batch; a worker delivers the batch to the sink, here files. The Gateway has no database." loading="lazy"></figure>
+<p>It is <strong>a different binary, a different Go module, a different version and a different image</strong>. The engine orchestrates and never touches customer data; the gateway does nothing else. The numbering is independent on purpose: the engine is at 0.17 and the gateway at 0.27, which is the true statement.</p>
+<p>With the <code>gateway.yaml</code> from the section below, and the key it asks for in <code>keys_from</code>:</p>
+<div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.8.0-slim"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 \
+  areteacademy/brevis-gateway:0.27.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
   <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
-  areteacademy/<span class="t-k">brevis</span>-gateway:0.8.0-slim</code></pre></div>
+  areteacademy/<span class="t-k">brevis</span>-gateway:0.27.0</code></pre></div>
+<div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics</code></pre></div>
+<p>A <code>POST</code> comes back <code>202</code> straight away:</p>
+<div class="code-block" data-code="curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \
+  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
+  <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
+<div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
+<p>With no Google Cloud credentials, the batch is retried and goes to the dead letter — see <a href="#when-the-sink-refuses">When the sink refuses</a>.</p>
+<p>The <code>-slim</code> image carries only the <code>auto_table</code>, <code>files</code> and <code>postgres</code> sinks; this example's <code>pubsub</code> and the others are in the full image. A slim one with a sink it does not carry is refused at start, with the reason.</p>
 <h2 id="the-file-is-the-contract">The file is the contract<a class="anchor" href="#the-file-is-the-contract" aria-label="link">#</a></h2>
 <p>There is no code to write except the hooks. Streams, paths, formats, identity, retry, destination and dead letter — all in the YAML, and every field refused when it cannot be honoured.</p>
 <div class="code-block" data-code="name: events_gateway

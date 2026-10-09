@@ -127,6 +127,7 @@
       <h1>Pod por passo</h1>
       <p class="doc-desc">Por que cada etapa executa em seu próprio pod, e o que isso muda em custo e isolamento.</p>
       <p>Em Kubernetes, <strong>cada passo de um workflow vira um pod</strong> com a imagem declarada naquele passo. Não há worker genérico esperando trabalho: é o trabalho que traz o seu runtime.</p>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/execution.svg" width="880" height="370" alt="Diagrama: o Core do brevis.sh sobe um pod por passo — extract em Go, prepare em Python, load em Go e transform em dbt. Os passos trocam contexto entre si, e o SDK é quem lê e escreve esse contexto." loading="lazy"></figure>
 <div class="code-block" data-code="scheduler                          cluster
 ─────────                          ───────
 percorre o grafo

@@ -127,17 +127,28 @@
       <h1>Ingestão</h1>
       <p class="doc-desc">Um endpoint HTTP que pousa dados: valida, dá identidade, agrupa e entrega. Sua própria imagem, sua própria versão.</p>
       <p>O gateway de ingestão é um <strong>endpoint HTTP que pousa dados</strong>. Um cliente faz <code>POST</code>, recebe <code>202</code>, e o que chegou vira registro num tópico, numa tabela ou num bucket.</p>
-<div class="code-block" data-code="POST /v1/clicks  →  decodifica  →  hook  →  ingestion_id  →  lote  →  202
-                                                             ↓
-                                              workers  →  Pub/Sub | Postgres | …"><div class="code-head"><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>POST /v1/clicks  →  decodifica  →  hook  →  ingestion_id  →  lote  →  202
-                                                             ↓
-                                              workers  →  Pub/Sub | Postgres | …</code></pre></div>
-<p>Ele é <strong>outro binário, outro módulo Go, outra versão e outra imagem</strong>. O motor orquestra e nunca toca no dado do cliente; o gateway não faz outra coisa. A numeração é independente de propósito: o motor está em 0.15 e o gateway em 0.8, que é a afirmação verdadeira.</p>
-<div class="code-block" data-code="docker run -p 8080:8080 \
+<figure class="doc-figure"><img src="/assets/flow-gateway.svg" width="360" height="514" alt="O fluxo do Gateway: um POST em /v1/clicks é decodificado, recebe seu ingestion_id, é respondido com 202 na hora e entra num lote; um worker entrega o lote ao destino, aqui arquivos. O Gateway não tem banco de dados." loading="lazy"></figure>
+<p>Ele é <strong>outro binário, outro módulo Go, outra versão e outra imagem</strong>. O motor orquestra e nunca toca no dado do cliente; o gateway não faz outra coisa. A numeração é independente de propósito: o motor está em 0.17 e o gateway em 0.27, que é a afirmação verdadeira.</p>
+<p>Com o <code>gateway.yaml</code> da seção abaixo, e a chave que ele pede em <code>keys_from</code>:</p>
+<div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.8.0-slim"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 \
+  areteacademy/brevis-gateway:0.27.0"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">-p</span> 8080:8080 <span class="t-n">-e</span> BREVIS_INGEST_KEYS=dev-key \
   <span class="t-n">-v</span> ./gateway.yaml:/etc/<span class="t-k">brevis</span>/gateway.yaml:ro \
-  areteacademy/<span class="t-k">brevis</span>-gateway:0.8.0-slim</code></pre></div>
+  areteacademy/<span class="t-k">brevis</span>-gateway:0.27.0</code></pre></div>
+<div class="code-block" data-code="2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds &gt;= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics</code></pre></div>
+<p>Um <code>POST</code> volta <code>202</code> na hora:</p>
+<div class="code-block" data-code="curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \
+  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">curl</span> <span class="t-n">-X</span> POST localhost:8080/v1/clicks <span class="t-n">-H</span> 'Authorization: Bearer dev-key' \
+  <span class="t-n">-d</span> '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'</code></pre></div>
+<div class="code-block" data-code="{&quot;accepted&quot;:1,&quot;rejected&quot;:null}"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code>{"accepted":1,"rejected":null}</code></pre></div>
+<p>Sem credenciais do Google Cloud, o lote é tentado de novo e vai para a fila de descarte — veja <a href="#quando-o-destino-recusa">Quando o destino recusa</a>.</p>
+<p>A imagem <code>-slim</code> carrega só os destinos <code>auto_table</code>, <code>files</code> e <code>postgres</code>; o <code>pubsub</code> deste exemplo e os outros estão na imagem completa. Uma slim com um destino que ela não tem é recusada na subida, com o motivo.</p>
 <h2 id="o-arquivo-e-o-contrato">O arquivo é o contrato<a class="anchor" href="#o-arquivo-e-o-contrato" aria-label="link">#</a></h2>
 <p>Não há código para escrever, exceto os <em>hooks</em>. Streams, caminhos, formatos, identidade, retry, destino e fila de descarte — tudo no YAML, e todo campo é recusado quando não pode ser honrado.</p>
 <div class="code-block" data-code="name: events_gateway

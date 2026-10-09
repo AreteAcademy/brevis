@@ -149,8 +149,8 @@ build que só escreve local não deveria carregar o SDK da AWS para isso.
 
 | imagem | carrega | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.8.0` | os seis destinos, S3, GCS, Redis, memcached | 17,9 MB |
-| `areteacademy/brevis-gateway:0.8.0-slim` | `postgres`, `files` local, `auto_table` | **4,9 MB** |
+| `areteacademy/brevis-gateway:0.27.0` | os seis destinos, S3, GCS, Redis, memcached | 18,1 MB |
+| `areteacademy/brevis-gateway:0.27.0-slim` | `postgres`, `files` local, `auto_table` | **4,9 MB** |
 
 As duas saem de um build da mesma árvore, então as duas tags são sempre o mesmo
 commit. Não existe `latest-slim` — `latest` já é uma tag que ninguém deveria

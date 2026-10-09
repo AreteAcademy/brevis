@@ -1349,6 +1349,8 @@ On Kubernetes, **each workflow step becomes a pod** with the image declared in
 that step. There is no generic worker waiting for work: the work brings its own
 runtime.
 
+![Diagram: the Core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it.](/assets/execution.svg)
+
 ```
 scheduler                          cluster
 ─────────                          ───────
@@ -3998,22 +4000,45 @@ The ingestion gateway is an **HTTP endpoint that lands data**. A client `POST`s,
 gets a `202`, and what arrived becomes a record on a topic, in a table, or in a
 bucket.
 
-```
-POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
-                                                          ↓
-                                            workers  →  Pub/Sub | Postgres | …
-```
+![The Gateway flow: a POST to /v1/clicks is decoded, given its ingestion_id, answered with 202 straight away and appended to a batch; a worker delivers the batch to the sink, here files. The Gateway has no database.](/assets/flow-gateway.svg)
 
 It is **a different binary, a different Go module, a different version and a
 different image**. The engine orchestrates and never touches customer data; the
 gateway does nothing else. The numbering is independent on purpose: the engine
-is at 0.15 and the gateway at 0.8, which is the true statement.
+is at 0.17 and the gateway at 0.27, which is the true statement.
+
+With the `gateway.yaml` from the section below, and the key it asks for in `keys_from`:
 
 ```bash
-docker run -p 8080:8080 \
+docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.8.0-slim
+  areteacademy/brevis-gateway:0.27.0
 ```
+
+```text
+2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds >= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics
+```
+
+A `POST` comes back `202` straight away:
+
+```bash
+curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
+  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
+```
+
+```text
+{"accepted":1,"rejected":null}
+```
+
+With no Google Cloud credentials, the batch is retried and goes to the dead
+letter — see [When the sink refuses](#when-the-sink-refuses).
+
+The `-slim` image carries only the `auto_table`, `files` and `postgres` sinks;
+this example's `pubsub` and the others are in the full image. A slim one with a
+sink it does not carry is refused at start, with the reason.
 
 ## The file is the contract
 
@@ -4592,8 +4617,8 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.8.0` | six sinks, S3, GCS, Redis, memcached | 17.9 MB |
-| `areteacademy/brevis-gateway:0.8.0-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
+| `areteacademy/brevis-gateway:0.27.0` | six sinks, S3, GCS, Redis, memcached | 18.1 MB |
+| `areteacademy/brevis-gateway:0.27.0-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.

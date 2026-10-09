@@ -10,22 +10,45 @@ O gateway de ingestão é um **endpoint HTTP que pousa dados**. Um cliente faz
 `POST`, recebe `202`, e o que chegou vira registro num tópico, numa tabela ou
 num bucket.
 
-```
-POST /v1/clicks  →  decodifica  →  hook  →  ingestion_id  →  lote  →  202
-                                                             ↓
-                                              workers  →  Pub/Sub | Postgres | …
-```
+![O fluxo do Gateway: um POST em /v1/clicks é decodificado, recebe seu ingestion_id, é respondido com 202 na hora e entra num lote; um worker entrega o lote ao destino, aqui arquivos. O Gateway não tem banco de dados.](/assets/flow-gateway.svg)
 
 Ele é **outro binário, outro módulo Go, outra versão e outra imagem**. O motor
 orquestra e nunca toca no dado do cliente; o gateway não faz outra coisa. A
-numeração é independente de propósito: o motor está em 0.15 e o gateway em 0.8,
+numeração é independente de propósito: o motor está em 0.17 e o gateway em 0.27,
 que é a afirmação verdadeira.
 
+Com o `gateway.yaml` da seção abaixo, e a chave que ele pede em `keys_from`:
+
 ```bash
-docker run -p 8080:8080 \
+docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.8.0-slim
+  areteacademy/brevis-gateway:0.27.0
 ```
+
+```text
+2026/10/09 01:03:01 drain budget 30s; set terminationGracePeriodSeconds >= 40
+2026/10/09 01:03:01 connections idle out after 1m30s and are recycled after 1m0s
+2026/10/09 01:03:01 listening on :8080
+2026/10/09 01:03:01 metrics on :9090/metrics
+```
+
+Um `POST` volta `202` na hora:
+
+```bash
+curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
+  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
+```
+
+```text
+{"accepted":1,"rejected":null}
+```
+
+Sem credenciais do Google Cloud, o lote é tentado de novo e vai para a fila de
+descarte — veja [Quando o destino recusa](#quando-o-destino-recusa).
+
+A imagem `-slim` carrega só os destinos `auto_table`, `files` e `postgres`; o
+`pubsub` deste exemplo e os outros estão na imagem completa. Uma slim com um
+destino que ela não tem é recusada na subida, com o motivo.
 
 ## O arquivo é o contrato
 

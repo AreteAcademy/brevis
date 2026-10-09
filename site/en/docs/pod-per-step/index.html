@@ -127,6 +127,7 @@
       <h1>Pod per step</h1>
       <p class="doc-desc">Why each step runs in its own pod, and what that changes in cost and isolation.</p>
       <p>On Kubernetes, <strong>each workflow step becomes a pod</strong> with the image declared in that step. There is no generic worker waiting for work: the work brings its own runtime.</p>
+<figure class="doc-figure doc-figure-wide"><img src="/assets/execution.svg" width="880" height="370" alt="Diagram: the Core starts one pod per step — extract on Go, prepare on Python, load on Go and transform on dbt. Steps pass context to one another, and the SDK is what reads and writes it." loading="lazy"></figure>
 <div class="code-block" data-code="scheduler                          cluster
 ─────────                          ───────
 walks the graph

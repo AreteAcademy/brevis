@@ -171,10 +171,13 @@ def figura(alt, src):
                    arq.read_text(encoding="utf-8"))
     if not vb:
         raise SystemExit("build.py: figura sem viewBox, não há como dar o tamanho: %s" % src)
-    return ('<figure class="doc-figure"><img src="%s" width="%d" height="%d" alt="%s" '
+    largura, altura = round(float(vb.group(1))), round(float(vb.group(2)))
+    # Um fluxo tem 360 de largura e fica estreito; um diagrama largo (o de
+    # execução tem 880) ganha a coluna inteira, ou o texto dele some.
+    classe = "doc-figure doc-figure-wide" if largura >= 600 else "doc-figure"
+    return ('<figure class="%s"><img src="%s" width="%d" height="%d" alt="%s" '
             'loading="lazy"></figure>'
-            % (html.escape(src), round(float(vb.group(1))), round(float(vb.group(2))),
-               html.escape(alt.strip())))
+            % (classe, html.escape(src), largura, altura, html.escape(alt.strip())))
 
 
 ADMON = {"note": "nota", "warning": "atenção", "tip": "dica", "danger": "cuidado"}

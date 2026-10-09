@@ -298,6 +298,10 @@ h3:hover .anchor,
   max-width: 360px;
 }
 
+.doc-figure-wide {
+  max-width: 100%;
+}
+
 .doc-figure img {
   display: block;
   width: 100%;
