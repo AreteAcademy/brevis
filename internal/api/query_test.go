@@ -2,14 +2,11 @@ package api_test
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
-	"github.com/AreteAcademy/brevis/internal/api"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 )
 
@@ -34,23 +31,9 @@ func (f *sqlFake) start(t *testing.T) *httptest.Server {
 	return s
 }
 
-// run submits the Query form, the way a browser does.
-func run(t *testing.T, ui *api.UI, statement string) string {
-	t.Helper()
-	mux := http.NewServeMux()
-	ui.Registrar(mux)
-	form := url.Values{"q": {statement}}
-	r := httptest.NewRequest(http.MethodPost,
-		"/data/target?u="+probeTarget+"&tab=query", strings.NewReader(form.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, r)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("the form answered %d: %s", rec.Code, rec.Body)
-	}
-	body, _ := io.ReadAll(rec.Result().Body)
-	return string(body)
-}
+// The Query form's helper lived here and went with the form: a destination
+// page posts nothing now, and `runSQL` in sql_test.go submits the workbench's
+// own. Dead test code is still code, and the linter is what noticed.
 
 // THE TAB, AND ONLY WHERE THERE IS A SERVICE TO ASK. One tab now: a preview
 // belongs to a destination and a query belongs to the workbench, which the
