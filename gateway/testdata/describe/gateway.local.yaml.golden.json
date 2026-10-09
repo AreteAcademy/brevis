@@ -18,6 +18,21 @@
           "target": "file:///var/dead-letter/clicks/"
         }
       ]
+    },
+    {
+      "path": "/v1/orders",
+      "destinations": [
+        {
+          "role": "sink",
+          "kind": "postgres",
+          "target": "postgres://warehouse/sales/events"
+        },
+        {
+          "role": "dead_letter",
+          "kind": "files",
+          "target": "file:///var/dead-letter/orders/"
+        }
+      ]
     }
   ]
 }

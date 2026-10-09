@@ -215,6 +215,7 @@ up-data: $(LOCAL_ENV) warehouse-local serve-up ## The whole stack, with a login,
 	@docker compose run --rm --build demo-build >/dev/null
 	@echo "publishing its workflows..."
 	@docker compose run --rm demo-publish
+	@$(MAKE) --no-print-directory gateway-publish
 	@printf "waiting for the API"
 	@until curl -sf http://localhost:$${BREVIS_API_PORT:-8080}/health >/dev/null 2>&1; \
 	  do printf .; sleep 1; done; echo
@@ -246,6 +247,22 @@ warehouse-local:
 	@# sh and a backtick there is command substitution. The example's own
 	@# Makefile carries this warning and this walked into it anyway.
 	@echo "warehouse ready on localhost:$${BREVIS_WAREHOUSE_PORT:-55434}, database 'warehouse'"
+
+# WHAT THE GATEWAY WRITES, on /data beside what the workflows write.
+#
+# A DELIBERATE ACT AND NEVER ITS TRAFFIC. The gateway describes its
+# CONFIGURATION -- which streams, which destinations -- and that manifest is
+# published; nothing here watches events go by. A destination appears because
+# somebody declared it, which is the same rule `publish` follows for a
+# workflow.
+#
+# Through /dev/stdin rather than a shared file: the two containers have no
+# directory in common, and inventing one to pass a manifest between them
+# would be a mount that outlives the reason for it.
+gateway-publish:
+	@docker compose run --rm --no-deps -T --entrypoint brevis-gateway \
+	  gateway describe /etc/brevis/gateway.yaml 2>/dev/null \
+	  | docker compose run --rm --no-deps -T api gateway publish /dev/stdin
 
 # The demo project's partitions, rebuilt. `data/partitions` is the source of
 # truth and never moves; `data/incoming` is what the pipeline reads.

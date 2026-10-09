@@ -28,3 +28,39 @@ CREATE TABLE IF NOT EXISTS sales.daily (
     price     NUMERIC     NOT NULL,
     loaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- What the gateway's `orders` stream lands, one row per event.
+--
+-- THE SHAPE WAS ASKED FOR, NOT DEDUCED. The sink resolves the column list
+-- from this table intersected with what the batch carries, and refuses a
+-- mismatch before touching the server:
+--
+--   the rows carry column(s) order_id, placed_at, quantity, sku, total,
+--   which sales.events does not have. They would be silently dropped, so the
+--   load stops here: add the column to the table, or remove the field in
+--   Transform
+--
+-- That message is the specification. Reading it beat deducing the shape from
+-- four files, and the event that produced it went to the dead letter rather
+-- than being lost.
+--
+-- `ingestion_id` IS UNIQUE because the stream declares `write: merge`. The
+-- gateway refuses to guess between append and merge -- "appending a
+-- redelivery into a table somebody counts and merging into a log that wanted
+-- every arrival are both wrong, and only the table's owner knows which it
+-- is" -- and orders are counted, so a redelivery must not become a second
+-- row. The UNIQUE is what makes that true in the database rather than in a
+-- hope.
+--
+-- NULLABLE except where an event cannot be without it: a field one event
+-- omits is written as NULL, and a NOT NULL here would turn one odd event
+-- into a batch nobody lands.
+CREATE TABLE IF NOT EXISTS sales.events (
+    ingestion_id TEXT        NOT NULL UNIQUE,
+    order_id     TEXT        NOT NULL,
+    placed_at    TIMESTAMPTZ,
+    sku          TEXT,
+    quantity     INTEGER,
+    total        NUMERIC,
+    loaded_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);

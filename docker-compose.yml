@@ -316,6 +316,10 @@ services:
       # teaches a team to turn authentication off. Outside local the gateway
       # refuses to start without `listen.auth`.
       BREVIS_ENV: local
+      # The warehouse by its CONTAINER address, the same one the steps use.
+      # The `orders` stream names this variable; the file never holds the
+      # string.
+      WAREHOUSE_DSN: postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable
     ports:
       - "${BREVIS_GATEWAY_PORT:-8090}:8080"
       # The exposition, on its own port because it is on its own listener: the

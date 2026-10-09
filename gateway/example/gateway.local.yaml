@@ -75,3 +75,54 @@ streams:
       # letter written to a container's own filesystem dies with the container,
       # which makes it a slower way of losing the events.
       path: /var/dead-letter/clicks/
+
+  # A SECOND STREAM, INTO A TABLE. `clicks` above lands in a topic and this
+  # lands in Postgres, side by side on purpose: both are destinations, and
+  # only one of them has columns a SELECT can name. /data shows that
+  # difference -- the table offers Preview and Query, the topic offers no
+  # tabs at all.
+  #
+  # And its WRITER is a different kind. `sales.daily` is filled by a
+  # scheduled workflow and this by continuous ingestion, which is what the
+  # freshness column on /data exists to tell apart.
+  - name: orders
+    path: /v1/orders
+    format: json
+
+    identity:
+      provider: shop
+      entity: order
+      source_key: order_id
+      record_ts: placed_at
+
+    buffer:
+      durability: memory
+      flush:
+        every: 1s
+        records: 100
+
+    sink:
+      type: postgres
+      # The NAME of the variable holding the connection string, never the
+      # string: a DSN carries a password and this file is in git.
+      dsn_from: WAREHOUSE_DSN
+      # Schema-qualified, and the table must EXIST. This does not create one,
+      # because a service that creates tables turns a typo here into a second
+      # table nobody is reading. The DDL is in
+      # examples/full-pipeline/warehouse/001-sales.sql.
+      table: sales.events
+      # MERGE AND NOT APPEND, and the gateway refuses to guess: "appending a
+      # redelivery into a table somebody counts and merging into a log that
+      # wanted every arrival are both wrong, and only the table's owner knows
+      # which it is". Orders are counted, so a redelivery must not become a
+      # second row -- which is what `ingestion_id UNIQUE` in the DDL is for.
+      write: merge
+
+    retry:
+      attempts: 4
+      backoff: 500ms
+      max_backoff: 10s
+
+    dead_letter:
+      type: files
+      path: /var/dead-letter/orders/

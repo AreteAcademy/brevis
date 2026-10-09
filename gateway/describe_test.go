@@ -19,6 +19,11 @@ var update = flag.Bool("update", false, "rewrite the describe golden files")
 // diff somebody has to look at.
 func TestDescribeMatchesTheGoldenManifestForEveryExample(t *testing.T) {
 	t.Setenv("BREVIS_ORDERS_DSN", "postgres://loader:s3cret@db.internal:5432/shop")
+	// The local example's `orders` stream, which lands in the warehouse
+	// `make up-data` brings up. A DSN here and not a real one: `describe`
+	// parses it and never dials, and the golden file below is where anybody
+	// can check that no password reached the manifest.
+	t.Setenv("WAREHOUSE_DSN", "postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable")
 	at := time.Date(2026, 10, 7, 18, 2, 11, 0, time.UTC)
 
 	for _, name := range []string{"gateway.yaml", "gateway.local.yaml"} {
