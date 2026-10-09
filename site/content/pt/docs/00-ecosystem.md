@@ -34,7 +34,7 @@ banco onde ele pousou.
 
 Três peças de apoio:
 
-- **Console** — a interface web do Core
+- **[Console](/docs/console/)** — a interface web do Core
 - **[agent](/docs/pod-per-step/#onde-cada-passo-roda)** — roda a etapa num cluster que já é seu
 - **[`brevis` para Python](/docs/python/)** — contexto de execução para etapas em Python
 

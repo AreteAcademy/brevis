@@ -18,6 +18,7 @@
   <url><loc>https://brevis.sh/docs/sdk/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/libraries/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/python/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/docs/console/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/kubernetes/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/observability/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/docs/white-label/</loc><priority>0.8</priority></url>
@@ -43,6 +44,7 @@
   <url><loc>https://brevis.sh/en/docs/sdk/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/libraries/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/python/</loc><priority>0.8</priority></url>
+  <url><loc>https://brevis.sh/en/docs/console/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/kubernetes/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/observability/</loc><priority>0.8</priority></url>
   <url><loc>https://brevis.sh/en/docs/white-label/</loc><priority>0.8</priority></url>

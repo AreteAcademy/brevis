@@ -42,7 +42,7 @@ the database it landed in.
 
 Three supporting pieces:
 
-- **Console** — the web interface over the Core
+- **[Console](/en/docs/console/index.md)** — the web interface over the Core
 - **[agent](/en/docs/pod-per-step/#where-each-step-runs)** — runs a step in a cluster you already have
 - **[`brevis` for Python](/en/docs/python/index.md)** — run context for Python steps
 
@@ -3527,6 +3527,60 @@ same thing it does outside the engine.
 - [Client libraries](/en/docs/libraries/index.md) — the contract and the other languages
 - [Context between steps](/en/docs/context/index.md) — the concept
 - [Parameters](/en/docs/parameters/index.md) — the declared ones
+
+---
+
+# Console
+
+> The Core's web interface: what is running, what will run, and what happened to each run.
+
+The interface ships in the binary — not a separate service to install and keep alive. Success rate, average duration, the queue, the attempt history and the schedule of what comes next.
+
+The console comes up with `brevis serve`, on the same port as the HTTP API
+(`BREVIS_HTTP_ADDR`, `:8080` by default). In the [Quickstart](/en/docs/quickstart/index.md) it opens at `localhost:8080`.
+
+The screens below are recreated in SVG from the console, with sample data —
+never screenshots: the real console operates customer data in production.
+
+## Overview
+
+![The Brevis console on the overview screen: a 94.2 per cent success rate over 344 runs, a bar chart of runs per hour with average duration, a distribution ring, what is in progress, and the next scheduled runs.](/assets/console.svg)
+
+An overview with metrics and charts. Success rate, average duration, what is in progress and the next scheduled runs, on one screen.
+
+## Workflows
+
+![The workflow list: search, filters by state and by tag, and twelve workflows with a pause toggle, the cron expression, the next and last run, tags, and a button to run each one now.](/assets/console-workflows.svg)
+
+A workflow list with search, filters, pause and run. Each row carries the cron, the next and the last run, and the tags.
+
+## One workflow
+
+![One workflow's page: its four steps, three dependencies, cron and tags; a form to run it with parameters; a 96.1 per cent success rate over 176 runs; the DAG with each step's state; and a calendar of a year where each square is a day, coloured by that day's worst outcome.](/assets/console-workflow.svg)
+
+The steps and dependencies, a form to run with parameters, the DAG with each step's state, and a year calendar where each day takes the colour of its worst result.
+
+## Runs
+
+![The run history: 1,284 runs with their state, workflow, trigger, the slot they belong to, how long each took and when it was created. Some show which attempt succeeded.](/assets/console-runs.svg)
+
+Run history, with each one's attempt. State, workflow, trigger, the slot the run belongs to, duration and when it was created.
+
+## One run
+
+![A finished run: its state, trigger and slot; the graph with each step's command, image and duration; the nine auto params the engine works out for every run — the clock to read instead of now(), the partition date, how late the attempt started and the window it covers; and each step's output.](/assets/console-run.svg)
+
+A run's DAG live, and the auto params the engine worked out for it. The graph with each step's command, image and duration, and each step's output.
+
+## Projects
+
+![Two projects, analytics and platform, each namespacing its own workflows — both can have a daily_ingest without colliding.](/assets/console-projects.svg)
+
+Projects, so two teams do not collide on one name. Each project namespaces its workflows: two can each have a `daily_ingest`.
+
+## It ships in the binary
+
+Fonts and bundles served from the binary — works with no internet.
 
 ---
 

@@ -1,0 +1,56 @@
+# Console
+
+> A interface web do Core: o que está rodando, o que vai rodar, e o que aconteceu com cada execução.
+
+*https://brevis.sh/docs/console/ · brevis.sh docs (pt-BR)*
+
+---
+
+A interface vem no binário — não é um serviço à parte para instalar e manter. Taxa de sucesso, duração média, a fila, o histórico de tentativas e a agenda das próximas execuções.
+
+O console sobe com `brevis serve`, na mesma porta da API HTTP
+(`BREVIS_HTTP_ADDR`, `:8080` por padrão). No
+[Quickstart](/docs/quickstart/index.md) ele abre em `localhost:8080`.
+
+As telas abaixo são recriadas em SVG a partir do console, com dados de
+exemplo — nunca capturas: o console de verdade opera dados de clientes em produção.
+
+## Visão geral
+
+![O painel do Brevis na tela de visão geral: taxa de sucesso de 94,2% em 344 execuções, gráfico de execuções por hora com a duração média, anel de distribuição, o que está em progresso e as próximas execuções agendadas.](/assets/console.svg)
+
+Visão geral com métricas e gráficos. Taxa de sucesso, duração média, o que está em progresso e as próximas execuções agendadas, numa tela.
+
+## Workflows
+
+![A lista de workflows: busca, filtros por estado e por tag, e doze workflows com o botão de pausa, a expressão cron, a próxima e a última execução, tags e um botão para disparar cada um.](/assets/console-workflows.svg)
+
+Lista de workflows com busca, filtros, pausa e disparo. Cada linha traz o cron, a próxima e a última execução e as tags.
+
+## Um workflow
+
+![A página de um workflow: os quatro passos, as três dependências, o cron e as tags; um formulário para executar com parâmetros; 96,1% de sucesso em 176 execuções; o DAG com o estado de cada passo; e um calendário de um ano em que cada quadrado é um dia, com a cor do pior resultado daquele dia.](/assets/console-workflow.svg)
+
+Os passos e as dependências, um formulário para executar com parâmetros, o DAG com o estado de cada passo e um calendário de um ano, em que cada dia tem a cor do pior resultado dele.
+
+## Execuções
+
+![O histórico de execuções: 1.284 runs com o estado, o workflow, o disparo, o slot a que pertencem, a duração e quando foram criados. Alguns mostram em que tentativa tiveram sucesso.](/assets/console-runs.svg)
+
+Histórico de execuções, com a tentativa de cada uma. Estado, workflow, disparo, o slot a que a execução pertence, duração e quando foi criada.
+
+## Uma execução
+
+![Uma execução concluída: o estado, o disparo e o slot; o grafo com o comando, a imagem e a duração de cada passo; os nove auto params que o engine calcula para toda execução — o relógio a ler em vez de now(), a data da partição, o atraso da tentativa e a janela que ela cobre; e a saída de cada passo.](/assets/console-run.svg)
+
+A DAG de um run ao vivo, e os auto params que o engine calculou para ele. O grafo com o comando, a imagem e a duração de cada passo, e a saída de cada um.
+
+## Projetos
+
+![Dois projetos, analytics e platform, cada um dando namespace aos seus workflows — os dois podem ter um daily_ingest sem colidir.](/assets/console-projects.svg)
+
+Projetos, para dois times não colidirem no mesmo nome. Cada projeto dá namespace aos seus workflows: dois podem ter um `daily_ingest`.
+
+## Vem no binário
+
+Fontes e bundles servidos do binário — funciona sem internet.

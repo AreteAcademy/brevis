@@ -76,6 +76,7 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 
 ## Running it in production
 
+- [Console](https://brevis.sh/en/docs/console/index.md): The Core's web interface: what is running, what will run, and what happened to each run.
 - [Kubernetes](https://brevis.sh/en/docs/kubernetes/index.md): How to deploy the engine, with what permissions, and what to check afterwards.
 - [Observability](https://brevis.sh/en/docs/observability/index.md): Prometheus metrics from both processes, what to watch, and what is deliberately absent.
 - [White label](https://brevis.sh/en/docs/white-label/index.md): Changing the interface's title, motto, logo and palette through one YAML file.

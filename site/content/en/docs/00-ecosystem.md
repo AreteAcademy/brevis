@@ -34,7 +34,7 @@ the database it landed in.
 
 Three supporting pieces:
 
-- **Console** — the web interface over the Core
+- **[Console](/docs/console/)** — the web interface over the Core
 - **[agent](/docs/pod-per-step/#where-each-step-runs)** — runs a step in a cluster you already have
 - **[`brevis` for Python](/docs/python/)** — run context for Python steps
 
