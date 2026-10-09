@@ -397,3 +397,66 @@ func TestAConnectorThatReturnsNothingIsRefusedRatherThanFatal(t *testing.T) {
 		t.Errorf("answered %d, wanted a 502", w.Code)
 	}
 }
+
+// AN UNSET BREVIS_ENV ON A ROUTABLE ADDRESS REFUSES TO START.
+//
+// CHECKPOINT B's F3. The repository's convention is that an unset BREVIS_ENV
+// means `local`, which means no token -- the engine and the gateway both do
+// it. On this service that convention means an open endpoint onto a
+// customer's warehouse, reached by anybody who can reach the port, because a
+// deployment that forgot one variable gets exactly that.
+//
+// The manifest was the planned fix and a manifest is a comment somebody can
+// not write. THE BIND ADDRESS IS THE EVIDENCE INSTEAD: a laptop listens on
+// loopback and a pod listens on every interface, so "unset, and reachable
+// from outside this machine" is the case that cannot be meant.
+//
+// Saying `BREVIS_ENV=local` out loud still works anywhere. The refusal is for
+// the variable nobody set.
+func TestAnUnsetEnvOnARoutableAddressRefusesToStart(t *testing.T) {
+	open := func(context.Context, Table) (dialect.Conn, error) { return &fake{}, nil }
+
+	for _, c := range []struct {
+		name, env, addr string
+		starts          bool
+	}{
+		{"a laptop", "", "127.0.0.1:8088", true},
+		{"a laptop, IPv6", "", "[::1]:8088", true},
+		{"a laptop, localhost", "", "localhost:8088", true},
+		{"every interface, and nobody said so", "", "0.0.0.0:8088", false},
+		{"every interface, the short way", "", ":8088", false},
+		{"one routable interface", "", "10.1.2.3:8088", false},
+		{"said out loud", EnvLocal, "0.0.0.0:8088", true},
+		{"a real environment with a token", "production", ":8088", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			opt := Options{Env: c.env, Addr: c.addr, Rows: 10, Bytes: 1 << 20, Open: open}
+			if c.env != "" && c.env != EnvLocal {
+				opt.Token = "s3cret"
+			}
+			_, err := New(opt)
+			if c.starts && err != nil {
+				t.Fatalf("refused: %v", err)
+			}
+			if !c.starts {
+				if err == nil {
+					t.Fatal("started with BREVIS_ENV unset on a routable address")
+				}
+				if !strings.Contains(err.Error(), "BREVIS_ENV") {
+					t.Errorf("the refusal does not name the variable: %v", err)
+				}
+			}
+		})
+	}
+}
+
+// AND AN ADDRESS NOBODY GAVE IS NOT A REASON TO REFUSE. `New` is called by
+// tests and by anything embedding this; the rule is about a DEPLOYMENT, and
+// an empty address is not one.
+func TestNoAddressIsNotARefusal(t *testing.T) {
+	_, err := New(Options{Rows: 10, Bytes: 1 << 20,
+		Open: func(context.Context, Table) (dialect.Conn, error) { return &fake{}, nil }})
+	if err != nil {
+		t.Fatalf("refused a service with no address at all: %v", err)
+	}
+}

@@ -83,7 +83,7 @@ func TestTheTokenComesFromTheEnvironmentAndNotAFlag(t *testing.T) {
 // paid once for a check that could not fail.
 func TestTheAuditWriterIsWired(t *testing.T) {
 	var out bytes.Buffer
-	if got := serveOptions(&out, 100, 1<<30, &connections.Registry{}); got.Audit == nil {
+	if got := serveOptions(&out, "127.0.0.1:8088", 100, 1<<30, &connections.Registry{}); got.Audit == nil {
 		t.Error("the service was built with nowhere to write an audit line")
 	}
 }

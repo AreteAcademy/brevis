@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -42,6 +43,11 @@ type Options struct {
 
 	// Token is the bearer every request must carry. Required outside local.
 	Token string
+
+	// Addr is where this will listen, and it is EVIDENCE rather than
+	// configuration: see New. Empty means nobody is deploying anything --
+	// a test, or something embedding this -- and no rule is drawn from it.
+	Addr string
 
 	// Rows is the ceiling. A caller may ask for fewer and cannot ask for more.
 	Rows int
@@ -128,6 +134,28 @@ func New(opt Options) (*Service, error) {
 	}
 	env := strings.TrimSpace(opt.Env)
 	if env == "" {
+		// AN UNSET BREVIS_ENV ON A ROUTABLE ADDRESS IS REFUSED, and the bind
+		// address is why this can be refused at all.
+		//
+		// The convention across this repository is that an unset BREVIS_ENV
+		// means `local`, which means no token; the engine and the gateway
+		// both do it, and on a laptop it is right. HERE it means an open
+		// endpoint onto a customer's warehouse, reachable by anybody who
+		// reaches the port -- and a deployment that forgot one variable gets
+		// exactly that, silently.
+		//
+		// A manifest was the planned fix, and a manifest is a comment
+		// somebody can fail to write. A laptop listens on loopback and a pod
+		// listens on every interface, so "nobody said, and it is reachable
+		// from outside this machine" is the one case that cannot have been
+		// meant. Saying `BREVIS_ENV=local` out loud still works anywhere.
+		if routable(opt.Addr) {
+			return nil, fmt.Errorf("serve: BREVIS_ENV is not set and this would listen on %s, "+
+				"which is reachable from outside this machine. An endpoint that reads a "+
+				"warehouse without authentication is one anybody who reaches the port can "+
+				"read it with. Set BREVIS_ENV and a token, or BREVIS_ENV=%s if you meant "+
+				"an open one", opt.Addr, EnvLocal)
+		}
 		env = EnvLocal
 	}
 	if env != EnvLocal && opt.Token == "" {
@@ -149,6 +177,35 @@ func New(opt Options) (*Service, error) {
 		probed: map[string]bool{},
 		met:    newMetrics(),
 	}, nil
+}
+
+// routable says whether this address is reachable from another machine.
+//
+// EMPTY IS NOT ROUTABLE, because an address nobody gave is not a deployment:
+// a test and an embedding caller both pass none, and the rule above is about
+// what a pod does.
+//
+// An empty HOST is, though -- `:8088` is every interface, which is what a
+// container almost always binds and what a laptop almost never does.
+func routable(addr string) bool {
+	if addr == "" {
+		return false
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		// Not a shape this understands. Refusing is the safe half of a
+		// guess: a service that would not have started is better than one
+		// that started open.
+		return true
+	}
+	switch strings.ToLower(host) {
+	case "", "0.0.0.0", "::", "[::]":
+		return true
+	case "localhost":
+		return false
+	}
+	ip := net.ParseIP(strings.Trim(host, "[]"))
+	return ip == nil || !ip.IsLoopback()
 }
 
 // Handler is the service's routes.

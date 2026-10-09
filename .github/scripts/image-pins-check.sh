@@ -23,6 +23,23 @@ while IFS= read -r line; do
   fi
 done < <(grep -rn "areteacademy/brevis:[0-9]" deployments/ examples/ || true)
 
+# AND THE OTHER IMAGE. `areteacademy/brevis-sql` is a second published image
+# with a VERSION of its own, and the loop above never saw it: it greps
+# `areteacademy/brevis:[0-9]`, and `brevis-sql:` does not match that.
+#
+# It was added the day the first manifest pinning it was written, which is
+# exactly one commit before it could have gone wrong -- alert.yaml and
+# report.yaml are what happens when a pin has nobody reading it.
+sqlwant="$(cat sql/VERSION)"
+while IFS= read -r line; do
+  file="${line%%:*}"
+  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-sql:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  if [ "$pinned" != "$sqlwant" ]; then
+    echo "❌ $file pins brevis-sql $pinned, and sql/VERSION is $sqlwant"
+    failed=1
+  fi
+done < <(grep -rn "areteacademy/brevis-sql:[0-9]" deployments/ examples/ docs/ || true)
+
 # THE CHART'S appVersion IS THE SAME NUMBER, written somewhere `areteacademy/
 # brevis:` never appears -- the template builds the tag from it.
 #
@@ -40,6 +57,6 @@ elif [ "$appVersion" != "$want" ]; then
 fi
 
 if [ "$failed" = "0" ]; then
-  echo "✅ every manifest and the chart's appVersion pin $want"
+  echo "✅ every manifest pins brevis $want and brevis-sql $sqlwant, and the chart agrees"
 fi
 exit $failed

@@ -33,7 +33,7 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metri
 	if err != nil {
 		return err
 	}
-	s, err := svc.New(serveOptions(out, rows, maxBytes, reg))
+	s, err := svc.New(serveOptions(out, addr, rows, maxBytes, reg))
 	if err != nil {
 		return err
 	}
@@ -113,13 +113,17 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metri
 // A FUNCTION SO THE WIRING CAN BE ASSERTED. An audit nobody connected is an
 // audit that is silent exactly when it is read, and "we thought it was on"
 // is the sentence this repository has already paid for once.
-func serveOptions(out io.Writer, rows int, maxBytes int64, reg *connections.Registry) svc.Options {
+func serveOptions(out io.Writer, addr string, rows int, maxBytes int64, reg *connections.Registry) svc.Options {
 	return svc.Options{
 		// Read from the environment, never from an argument: something that
 		// could declare itself local would be something that turns off
 		// authentication. The gateway states the rule; this obeys it.
 		Env:   os.Getenv("BREVIS_ENV"),
 		Token: os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
+		// WHERE IT WILL LISTEN, handed over as evidence: an unset BREVIS_ENV
+		// on an address other machines can reach is a deployment that forgot
+		// a variable, and New refuses it.
+		Addr:  addr,
 		Rows:  rows,
 		Bytes: maxBytes,
 		// ONE STREAM. A container gives you one anyway, and an audit line

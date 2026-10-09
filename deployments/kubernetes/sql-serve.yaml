@@ -1,0 +1,107 @@
+# `brevis-sql serve`: the read-only surface behind /data's Preview and Query.
+#
+# A DEPLOYMENT OF ITS OWN, AND THE ONLY POD THAT HOLDS A WAREHOUSE CREDENTIAL.
+# The engine holds none and gains none -- `engine-weight.sh` asserts it carries
+# no data driver at all -- so the console forwards a question here and never
+# learns how to answer it. That separation is the whole reason this exists.
+#
+# Everything it refuses, it refuses HERE: the statement classifier, the row
+# ceiling, the byte ceiling and its dry run, the concurrency limit and the
+# clock. A limit the caller could change is not a limit, and the caller is a
+# browser.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brevis-sql-serve
+  namespace: dados
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: sql-serve}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: sql-serve}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9095"
+        prometheus.io/path: "/metrics"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: serve
+          image: areteacademy/brevis-sql:0.2.0
+          args:
+            - serve
+            # EVERY INTERFACE, which is what makes BREVIS_ENV below not
+            # optional: the service refuses to start on a routable address
+            # with that variable unset, because a deployment that forgot it
+            # would be an open endpoint onto a customer's warehouse.
+            - --addr=:8088
+            - --metrics-addr=:9095
+            - --connections=/etc/brevis/brevis.yaml
+            # The ceilings, written here rather than defaulted, because they
+            # are a budget and a budget belongs to whoever pays it.
+            - --rows=100
+            - --max-bytes=10737418240   # 10 GiB
+          ports:
+            - {containerPort: 8088, name: http}
+            # Separate, and NOT in the Service below. The rule the API and the
+            # gateway both follow: a scrape endpoint on the port that answers
+            # requests would publish every connection name to whoever reaches
+            # it. The scrape reaches the POD, through the annotations above.
+            - {containerPort: 9095, name: metrics}
+          env:
+            # NOT OPTIONAL, and the binary enforces that rather than trusting
+            # this line. An unset BREVIS_ENV means `local` everywhere in this
+            # repository, which means no token -- right on a laptop and an
+            # open warehouse here.
+            - name: BREVIS_ENV
+              value: prod
+            # Required outside local: the process refuses to start without
+            # it. The console sends the same value.
+            - name: BREVIS_SQL_SERVE_TOKEN
+              valueFrom: {secretKeyRef: {name: brevis-sql-serve, key: token}}
+            # One per declared connection, named by `dsn_from` in brevis.yaml.
+            # The file names the VARIABLE; the variable holds the string.
+            - name: ANALYTICS_RO_DSN
+              valueFrom: {secretKeyRef: {name: brevis-sql-serve, key: analytics-dsn}}
+          volumeMounts:
+            - {name: connections, mountPath: /etc/brevis, readOnly: true}
+          # NO /health ON THIS SERVICE. Both of its routes are POST and behind
+          # the bearer, deliberately -- a GET is a 405 and an unauthenticated
+          # request is a 401 whatever the path, which is the property a probe
+          # would have to be given an exception from. A TCP probe says the
+          # process is listening, which is what a probe here can honestly
+          # claim.
+          livenessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: connections
+          configMap: {name: brevis-sql-connections}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: brevis-sql-serve
+  namespace: dados
+spec:
+  selector: {app.kubernetes.io/name: brevis, app.kubernetes.io/component: sql-serve}
+  # `http` only. THIS SERVICE IS NOT FOR AN INGRESS: it is what the console
+  # reaches, inside the cluster, and nothing outside should resolve it. The
+  # metrics port is left out for the reason given above.
+  ports: [{port: 8088, targetPort: http, name: http}]
