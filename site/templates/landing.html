@@ -379,18 +379,16 @@ marts.orders
        by kubeconform. -->
   <section class="section" id="implantar">
     <div class="shell">
-      <div class="section-head head-split" data-reveal>
-        <div>
-          <p class="eyebrow">{{ l.dp_eyebrow }}</p>
-          <h2>{{ l.dp_titulo }}</h2>
-        </div>
+      <div class="section-head section-head-center" data-reveal>
+        <p class="eyebrow">{{ l.dp_eyebrow }}</p>
+        <h2>{{ l.dp_titulo }}</h2>
         <p class="lead">{{ l.dp_lead }}</p>
       </div>
 
       <div class="deploy-grid" data-reveal>
         <article class="card deploy-card" data-deploy="compose">
           <p class="deploy-icons"><svg class="ico ico-docker" aria-hidden="true"><use href="/assets/icons.svg#i-docker"></use></svg></p>
-          <h3>{{ l.dp_compose_t }}</h3>
+          <h3>{{ l.dp_compose_t }} <span class="badge">{{ l.dp_recomendado }}</span></h3>
           <p>{{ l.dp_compose_d }}</p>
           <pre class="deploy-cmd"><code><span class="t-o">$</span> git clone https://github.com/AreteAcademy/brevis
 <span class="t-o">$</span> cd brevis &amp;&amp; docker compose up</code></pre>
@@ -428,33 +426,13 @@ marts.orders
           </a>
         </article>
       </div>
+
+      <p class="run-contact" data-reveal>
+        {{ l.final_contato }}
+        <a class="text-link" href="{{ repo }}/issues" target="_blank" rel="noopener">{{ l.final_contato_link }}
+          <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
+        </a>
+      </p>
     </div>
   </section>
-
-  <section class="final bg-grid" id="final">
-    <div class="shell">
-      <div data-reveal>
-        <p class="eyebrow">{{ l.final_eyebrow }}</p>
-        <h2>{{ l.final_titulo }}</h2>
-        <p class="lead">{{ l.final_lead }}</p>
-        <div class="button-row">
-          <a class="button button-primary" href="{{ repo }}" target="_blank" rel="noopener">
-            <svg aria-hidden="true"><use href="#i-github"></use></svg>
-            {{ l.final_cta }}
-          </a>
-          <a class="button button-secondary" href="{{ prefixo }}/docs/">
-            {{ l.final_cta2 }}
-            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
-          </a>
-        </div>
-        <p class="final-contact">
-          {{ l.final_contato }}
-          <a class="text-link" href="{{ repo }}/issues" target="_blank" rel="noopener">{{ l.final_contato_link }}
-            <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-          </a>
-        </p>
-      </div>
-    </div>
-  </section>
-
 </main>

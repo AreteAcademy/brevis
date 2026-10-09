@@ -304,6 +304,16 @@ dd code {
   margin-top: 0;
 }
 
+/* O cabeçalho centrado do Databend, para a seção que fecha a home. */
+.section-head-center {
+  margin-inline: auto;
+  text-align: center;
+}
+
+.section-head-center .lead {
+  margin-inline: auto;
+}
+
 /* Separador com ritmo de fluxo de dados: filete continuo, marcas regulares e
    um pulso que percorre o trilho uma vez, quando a secao entra. */
 .flow-rule {
@@ -833,50 +843,6 @@ a.chip:focus-visible .ico {
   font-size: 0.85rem;
   line-height: 1.6;
   color: var(--text-dim);
-}
-
-/* ---------------------------------------------------------------- cta ---- */
-
-.final {
-  padding: clamp(4.5rem, 9vw, 8rem) 0;
-  border-top: 1px solid var(--line-soft);
-  text-align: center;
-}
-
-/* O quadriculado da T1, com um veu no centro, onde mora o texto. Medido sem o
-   veu: oliva sobre um filete 4.62:1, secundario 7.1:1. O veu e calma, nao
-   conserto. */
-.final.bg-grid {
-  background-image:
-    radial-gradient(ellipse at center, var(--bg) 30%, transparent 75%),
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: auto, var(--grid-size) var(--grid-size), var(--grid-size) var(--grid-size);
-}
-
-.final .eyebrow {
-  margin-inline: auto;
-  width: fit-content;
-}
-
-.final .lead {
-  margin-inline: auto;
-  text-align: center;
-}
-
-.final-contact {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem 0.75rem;
-  margin-top: 1.75rem;
-  font-size: var(--fs-sm);
-  color: var(--text-dim);
-}
-
-.final .button-row {
-  justify-content: center;
 }
 
 /* ------------------------------------------------------------- footer ---- */
@@ -1457,6 +1423,27 @@ html:not(.js) .pieces {
 .deploy-icons .ico {
   width: 24px;
   height: 24px;
+}
+
+/* O caminho recomendado acende: é o primeiro, e o único com selo. */
+.deploy-card[data-deploy="compose"] {
+  border-color: var(--lime-edge);
+}
+
+.deploy-card h3 .badge {
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.run-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.75rem;
+  margin-top: clamp(2rem, 4vw, 2.75rem);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
 }
 
 .deploy-card h3 {
