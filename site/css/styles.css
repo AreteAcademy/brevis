@@ -1084,6 +1084,24 @@ a.chip:focus-visible .ico {
   white-space: normal;
 }
 
+/* "Em breve": o tracejado e o selo dizem que ainda não existe; o texto e o
+   ícone seguem nas cores de sempre (nada de opacidade para dizer "ainda não").
+   "Mais": um chip sem ícone, tracejado, que fecha uma lista aberta. */
+.chip-soon,
+.chip-more {
+  border-style: dashed;
+}
+
+.chip-soon .badge {
+  margin-left: 0.15rem;
+  padding: 0 0.35rem;
+  font-size: 0.62rem;
+}
+
+.chip-more {
+  color: var(--text-dim);
+}
+
 /* 20 e nao 18: MySQL e Helm sao logotipos com letra e somem a 18. */
 .eco-chips .chip .ico {
   width: 20px;

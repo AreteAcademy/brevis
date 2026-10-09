@@ -124,7 +124,10 @@
       "eco_origem": "de onde vem",
       "eco_destino": "para onde vai",
       "eco_dados": "plano de dados",
-      "eco_tabelas": "tabelas e tópicos",
+      "eco_tabelas": "tabelas",
+      "eco_topicos": "tópicos",
+      "eco_em_breve": "em breve",
+      "eco_mais_http": "+ qualquer API HTTP",
       "eco_buckets": "arquivos em bucket"
     }
   },
@@ -253,7 +256,10 @@
       "eco_origem": "where it comes from",
       "eco_destino": "where it lands",
       "eco_dados": "data plane",
-      "eco_tabelas": "tables and topics",
+      "eco_tabelas": "tables",
+      "eco_topicos": "topics",
+      "eco_em_breve": "soon",
+      "eco_mais_http": "+ any HTTP API",
       "eco_buckets": "files in a bucket"
     }
   }

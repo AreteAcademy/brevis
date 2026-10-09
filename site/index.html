@@ -176,6 +176,7 @@
               <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
               <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
               <li class="chip"><svg class="ico ico-files" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>arquivos</li>
+              <li class="chip chip-more">+ qualquer API HTTP</li>
             </ul>
           </div>
           <div class="eco-group">
@@ -212,21 +213,32 @@
 
         <div class="eco-dst">
           <p class="eco-col-title">para onde vai</p>
+          <!-- data-driver names the package behind each chip; check_map.py
+               finds it in sdk/to or gateway/sink, and a chip marked "em breve"
+               must NOT find it -- the badge comes off the day the code lands. -->
           <div class="eco-group">
-            <p class="eco-label">tabelas e tópicos</p>
+            <p class="eco-label">tabelas</p>
             <ul class="eco-chips">
-              <li class="chip"><svg class="ico ico-bigquery" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
-              <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
-              <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
-              <li class="chip"><svg class="ico ico-redshift" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
-              <li class="chip"><svg class="ico ico-pubsub" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+              <li class="chip" data-driver="bigquery"><svg class="ico ico-bigquery" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
+              <li class="chip" data-driver="postgres"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip" data-driver="mysql"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip" data-driver="redshift"><svg class="ico ico-redshift" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">tópicos</p>
+            <ul class="eco-chips">
+              <li class="chip" data-driver="pubsub"><svg class="ico ico-pubsub" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+              <li class="chip chip-soon" data-driver="kafka"><svg class="ico ico-kafka" aria-hidden="true"><use href="/assets/icons.svg#i-kafka"></use></svg>Kafka <span class="badge">em breve</span></li>
+              <li class="chip chip-soon" data-driver="rabbitmq"><svg class="ico ico-rabbitmq" aria-hidden="true"><use href="/assets/icons.svg#i-rabbitmq"></use></svg>RabbitMQ <span class="badge">em breve</span></li>
+              <li class="chip chip-soon" data-driver="sqs"><svg class="ico ico-sqs" aria-hidden="true"><use href="/assets/icons.svg#i-sqs"></use></svg>SQS <span class="badge">em breve</span></li>
             </ul>
           </div>
           <div class="eco-group">
             <p class="eco-label">arquivos em bucket</p>
             <ul class="eco-chips">
-              <li class="chip"><svg class="ico ico-s3" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
-              <li class="chip"><svg class="ico ico-gcs" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
+              <li class="chip" data-driver="s3"><svg class="ico ico-s3" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
+              <li class="chip" data-driver="gcs"><svg class="ico ico-gcs" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
             </ul>
           </div>
         </div>
