@@ -433,10 +433,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # THE PATCH IS PINNED HERE AND NOWHERE ELSE, and the reason is narrow:
+      # golangci-lint is a BINARY built against some Go, and it cannot read
+      # export data newer than the one it was built with. Everything else in
+      # this file floats on purpose -- a new patch release is exactly what
+      # tests should meet first.
+      #
+      # 2026-10-09: the runner moved from 1.27.1 to 1.27.2 and master went
+      # red on a commit that touched none of it:
+      #
+      #   cannot decode "cmp", export data version 5 is greater than
+      #   maximum supported version 4
+      #
+      # v2.13.2 predates 1.27.2 and so does v2.14.0, so bumping the linter
+      # was not a fix either. THIS LINE IS THE ONE TO REVISIT when a
+      # golangci-lint release is built against 1.27.2 or newer: move both
+      # together, deliberately, rather than discovering it again on a
+      # morning when something else is broken.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.27'
+          go-version: '1.27.1'
           cache: true
 
       - name: Run go fmt
