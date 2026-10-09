@@ -41,6 +41,13 @@ DB_URL := postgres://brevis:brevis@localhost:$(BREVIS_PG_PORT)/brevis?sslmode=di
 # acceptance criterion failed with nothing being wrong.
 TEST_DB_URL := postgres://brevis:brevis@localhost:$(BREVIS_PG_PORT)/brevis_test?sslmode=disable
 
+# WHAT `make up-data` NEEDS AND NEVER COMMITS: this machine's own console
+# login and session secret. Generated once, 0600, gitignored -- it holds a
+# password in the clear, which is the whole reason it is not in the compose.
+LOCAL_ENV := .env.local
+SERVE_PID := .brevis-sql-serve.pid
+SERVE_LOG := .brevis-sql-serve.log
+
 help: ## Lists the targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-12s %s\n", $$1, $$2}'
 
@@ -181,8 +188,97 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally
 	@echo "derives its database URL from it, and a stack on one port with"
 	@echo "\`make test-int\` on another points at whatever else answers."
 
+# THE WHOLE PRODUCT ON ONE MACHINE, with something in it.
+#
+# `make up` is the PLATFORM and comes up empty, which is correct for a product
+# whose workflows belong to whoever installs it -- and useless for watching it
+# work. This adds the three things that were missing: a login, the SQL service
+# behind the Preview and Query tabs, and a real project published into it.
+#
+# The project is `examples/full-pipeline` unless you say otherwise:
+#
+#     make up-data BREVIS_WORKFLOWS=./my/workflows \
+#                  BREVIS_PIPELINE=./my/pipeline \
+#                  BREVIS_DATA=./my/data
+up-data: $(LOCAL_ENV) serve-up ## The whole stack, with a login, the data tools and a project in it
+	@$(MAKE) --no-print-directory demo-data
+	@set -a; . ./$(LOCAL_ENV); set +a; docker compose up --build -d
+	@echo "compiling the project's steps..."
+	@docker compose run --rm --build demo-build >/dev/null
+	@echo "publishing its workflows..."
+	@docker compose run --rm demo-publish
+	@printf "waiting for the API"
+	@until curl -sf http://localhost:$${BREVIS_API_PORT:-8080}/health >/dev/null 2>&1; \
+	  do printf .; sleep 1; done; echo
+	@set -a; . ./$(LOCAL_ENV); set +a; \
+	  echo ""; \
+	  echo "console  http://localhost:$${BREVIS_API_PORT:-8080}/"; \
+	  echo "login    $$BREVIS_AUTH_USER / $$BREVIS_LOCAL_PASSWORD"; \
+	  echo "gateway  http://localhost:$${BREVIS_GATEWAY_PORT:-8090}/health"; \
+	  echo "serve    127.0.0.1:8088   (its log: $(SERVE_LOG))"; \
+	  echo ""; \
+	  echo "next:  make up-run      -- queue a run and watch the graph"; \
+	  echo "       then /data for what it wrote, and its Preview and Query tabs"
+
+# The demo project's partitions, rebuilt. `data/partitions` is the source of
+# truth and never moves; `data/incoming` is what the pipeline reads.
+#
+# Skipped when BREVIS_DATA points somewhere else: that is somebody's own
+# project, and a Makefile that copies files into it is a Makefile nobody
+# trusts twice.
+demo-data:
+	@if [ -z "$$BREVIS_DATA" ]; then \
+	  mkdir -p examples/full-pipeline/data/incoming; \
+	  cp examples/full-pipeline/data/partitions/*.csv examples/full-pipeline/data/incoming/ 2>/dev/null || true; \
+	fi
+
+up-run: ## Queues a run of the local project (the console's button does the same)
+	@docker compose run --rm --no-deps api backfill $${WORKFLOW:-daily_sales} \
+	  --from "$$(date -u +%F)" --to "$$(date -u +%F)"
+	@echo "  queued. watch it at http://localhost:$${BREVIS_API_PORT:-8080}"
+
+# THE CREDENTIAL IS MADE, NOT ASKED FOR. `brevis hash` reads a password from
+# standard input when there is no terminal -- its own comment calls that case
+# a provisioning script -- so this needs nobody to type anything.
+#
+# Single quotes around every value: a pbkdf2 hash is full of `$`, and `.` on
+# an unquoted assignment would expand them into nothing. That is the same
+# class of bug as compose's `$$`, one layer down.
+$(LOCAL_ENV):
+	@pw=$$(openssl rand -base64 18); \
+	 hash=$$(printf '%s\n' "$$pw" | go run ./cmd/brevis hash 2>/dev/null); \
+	 test -n "$$hash" || { echo "could not generate a password hash"; exit 1; }; \
+	 { \
+	   echo "# Made by \`make up-data\`. Never committed: it holds a password."; \
+	   echo "BREVIS_AUTH_USER='operador'"; \
+	   echo "BREVIS_AUTH_PASSWORD_HASH='$$hash'"; \
+	   echo "BREVIS_AUTH_SECRET='$$(openssl rand -base64 48 | tr -d '\n')'"; \
+	   echo "BREVIS_LOCAL_PASSWORD='$$pw'"; \
+	   echo "BREVIS_SQL_SERVE_URL='http://host.docker.internal:8088'"; \
+	 } > $(LOCAL_ENV)
+	@chmod 600 $(LOCAL_ENV)
+	@echo "made $(LOCAL_ENV) -- this machine's console login"
+
+# `brevis-sql serve` runs on the HOST and not in the stack, because it holds a
+# warehouse credential and nothing in docker-compose.yml should. Built first
+# rather than `go run`: `go run` is a parent whose child survives the kill, so
+# `make down` would leave a warehouse reader listening.
+serve-up:
+	@if lsof -nP -iTCP:8088 -sTCP:LISTEN >/dev/null 2>&1; then \
+	  echo "serve: something already answers on 8088, left alone"; \
+	else \
+	  (cd sql && go build -o ../bin/brevis-sql ./cmd/brevis-sql) && \
+	  nohup ./bin/brevis-sql serve --addr 127.0.0.1:8088 > $(SERVE_LOG) 2>&1 & \
+	  echo $$! > $(SERVE_PID); \
+	  echo "serve: started on 127.0.0.1:8088"; \
+	fi
+
 down: ## Tears the local environment down
 	@docker compose down
+	@if [ -f $(SERVE_PID) ]; then \
+	  kill $$(cat $(SERVE_PID)) 2>/dev/null && echo "serve: stopped"; \
+	  rm -f $(SERVE_PID); \
+	fi
 
 # --- the local cluster -------------------------------------------------------
 #

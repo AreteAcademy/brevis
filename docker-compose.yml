@@ -84,6 +84,19 @@ services:
       # BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$...$$..."
       # BREVIS_AUTH_SECRET: "a local development secret of 32 bytes"
       #
+      # OR LET `make up-data` FILL THESE FROM THE ENVIRONMENT. Empty is the
+      # same as absent -- `Credential.Enabled()` wants both a user and a hash
+      # -- so the default below is exactly the open console described above,
+      # and nothing here changes until something exports them.
+      #
+      # A value arriving through the environment needs NO `$$` escaping: that
+      # rule is about what compose substitutes inside this file, and a hash
+      # full of `$` passes through untouched. It is the opposite trap from
+      # the one four paragraphs up, and both have cost somebody an afternoon.
+      BREVIS_AUTH_USER: ${BREVIS_AUTH_USER:-}
+      BREVIS_AUTH_PASSWORD_HASH: ${BREVIS_AUTH_PASSWORD_HASH:-}
+      BREVIS_AUTH_SECRET: ${BREVIS_AUTH_SECRET:-}
+      #
       # THE DATA TOOLS: the Preview and Query tabs on a destination.
       #
       # Commented for a different reason than the three lines above, and it
@@ -98,8 +111,11 @@ services:
       #
       #     cd sql && go run ./cmd/brevis-sql serve
       #
-      # BREVIS_SQL_SERVE_URL: http://host.docker.internal:8088
-      # BREVIS_SQL_SERVE_TOKEN: "only outside BREVIS_ENV=local, where serve demands one"
+      # `make up-data` sets it; by hand it is the line below.
+      #
+      #     BREVIS_SQL_SERVE_URL: http://host.docker.internal:8088
+      BREVIS_SQL_SERVE_URL: ${BREVIS_SQL_SERVE_URL:-}
+      BREVIS_SQL_SERVE_TOKEN: ${BREVIS_SQL_SERVE_TOKEN:-}
     ports: ["${BREVIS_API_PORT:-8080}:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying
@@ -128,10 +144,75 @@ services:
       BREVIS_ENV: local
       BREVIS_DATABASE_URL: postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
       BREVIS_LOG_LEVEL: debug
+      # WHAT A STEP IS ALLOWED TO SEE. Without a list here a step gets PATH
+      # and HOME and nothing else -- inheriting the environment would hand
+      # the database's credential to every step of every pipeline.
+      BREVIS_TASK_ENV: DATA_DIR
+      DATA_DIR: /data
+    volumes:
+      # Where `demo-build` put the project's binaries, and the data its steps
+      # read and write. Both are EMPTY until the demo profile has run, and an
+      # empty mount costs a plain `make up` nothing.
+      #
+      # The data is bind-mounted and not a named volume: the point of the
+      # example is that you open the files afterwards and see what each step
+      # wrote.
+      - demobin:/opt/brevis/bin:ro
+      - ${BREVIS_DATA:-./examples/full-pipeline/data}:/data
     depends_on:
       postgres: {condition: service_healthy}
       migrate: {condition: service_completed_successfully}
     restart: unless-stopped
+
+  # A LOCAL PROJECT TO LOOK AT, and the two one-shots that put it there.
+  #
+  # The stack above is the PLATFORM and ships with nothing in it: an empty
+  # console is correct for a product whose workflows belong to whoever
+  # installs it. It is useless for `make up-data`, which exists so somebody
+  # can SEE the thing working, so these publish a real project into it.
+  #
+  # `examples/full-pipeline` by default, because it is the one that already
+  # exercises every shape the engine has -- for_each, unless_empty, markers,
+  # retries -- and it carries its own data. Point the three variables
+  # somewhere else and it is YOUR project instead.
+  #
+  # BOTH BEHIND A PROFILE, so `make up` is exactly what it was: a platform
+  # with nothing in it. `docker compose run` reaches a profiled service
+  # without turning the profile on, which is how the Makefile orders them.
+  demo-build:
+    profiles: ["demo"]
+    image: golang:1.27
+    working_dir: /src
+    environment:
+      CGO_ENABLED: "0"
+    # Alpine: a dynamically linked binary lands in the runtime image and
+    # fails with "not found", which reads as a missing file and is a missing
+    # ELF interpreter.
+    command: ["go", "build", "-o", "/out/", "./cmd/..."]
+    volumes:
+      - ${BREVIS_PIPELINE:-./examples/full-pipeline/pipeline}:/src:ro
+      - demobin:/out
+      - gocache:/root/.cache/go-build
+      - gomod:/go/pkg/mod
+    restart: "no"
+
+  # `uses:` is expanded HERE, at publish: a child has to be in the same
+  # publish, and expansion that read the database would make `brevis validate`
+  # answer a different question from this one.
+  demo-publish:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: api
+    command: ["publish", "/workflows"]
+    environment:
+      BREVIS_DATABASE_URL: postgres://brevis:brevis@postgres:5432/brevis?sslmode=disable
+    volumes:
+      - ${BREVIS_WORKFLOWS:-./examples/full-pipeline/workflows}:/workflows:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
 
   # The ingestion gateway, and the Pub/Sub emulator it lands into.
   #
@@ -213,5 +294,12 @@ services:
     restart: unless-stopped
 
 volumes:
+  # The demo project's compiled binaries and the Go caches that build them.
+  # Named rather than bind-mounted: nothing here is meant to be read by hand,
+  # and a bind mount of /root/.cache into a repository is a mess nobody asked
+  # for.
+  demobin:
+  gocache:
+  gomod:
   pgdata:
   deadletter:

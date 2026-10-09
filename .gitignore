@@ -2,6 +2,12 @@
 /tmp/
 *.test
 .env
+# This machine's own console login, made by `make up-data`. It holds a
+# password in the clear, which is what makes it a local file and never a
+# committed one.
+.env.local
+.brevis-sql-serve.pid
+.brevis-sql-serve.log
 .DS_Store
 .NOTES.md
 # Raw notes from the owner: a scratchpad, in Portuguese, and not a record the
@@ -61,3 +67,8 @@ __pycache__/
 # no-binaries-check.sh is what stops the next one.
 /cmd/brevis-sdk/brevis-sdk
 /cmd/brevis-sdk/bravis-sdk
+
+# The example pipeline builds its binary beside its source. Untracked, like
+# the sql and gateway ones: the no-binaries gate reads what is TRACKED, so
+# this is one `git add -A` away from the mistake that shipped in v0.4.1.
+/examples/full-pipeline/pipeline/pipeline
