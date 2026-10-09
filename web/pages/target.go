@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"net/url"
 	"slices"
 	"time"
 
@@ -31,6 +32,27 @@ type TargetView struct {
 	// answered. Nil when there is none to ask, or when asking failed.
 	Preview *sqlserve.Result
 
+	// Tabs says there is a SQL service to ask at all. Without one there are
+	// no tabs: a tab that always answers "not configured" is a question
+	// nobody can act on.
+	Tabs bool
+
+	// Tab is which one is open: "", "preview" or "query". A query parameter,
+	// so the link is shareable the way /data's filters already are.
+	Tab string
+
+	// Statement is what is in the Query box -- ECHOED BACK after a run,
+	// because a query refused for a typo with the box emptied is a query
+	// somebody has to type again to fix.
+	Statement string
+
+	// Query is what the statement returned, and QueryErr the reason there is
+	// nothing. Both nil and empty until somebody runs one: opening the tab
+	// asks nothing, which is the difference between a Query tab and a
+	// preview with a text box.
+	Query    *sqlserve.Result
+	QueryErr string
+
 	// PreviewErr is why there are no rows, in words somebody can act on.
 	//
 	// A STRING AND NOT AN error, because this is a view: whatever decides
@@ -39,15 +61,63 @@ type TargetView struct {
 	PreviewErr string
 }
 
-// HasPreview says whether the tab exists at all.
+// HasPreview says whether there is anything to draw in the Preview panel.
 //
 // A REASON COUNTS. A destination the service refuses -- not a table, no
-// connection for it -- still gets the tab, with the sentence where the grid
-// would be; the alternative is a tab that opens onto nothing. What does NOT
-// get one is a console that was never told where `serve` lives: a tab that
-// always says "not configured" is a question nobody can act on.
+// connection for it -- still gets the panel, with the sentence where the grid
+// would be; the alternative is a tab that opens onto nothing.
 func (v TargetView) HasPreview() bool {
 	return v.Preview != nil || v.PreviewErr != ""
+}
+
+// TabHref is the link to one tab, which is also the link somebody pastes
+// into a message. The statement is NEVER in it: a query in a URL is a query
+// in a proxy log, in a browser's history and in a Referer header, and a WHERE
+// clause carries customer data. That is why the Query box is a POST.
+func (v TargetView) TabHref(tab string) string {
+	return "/data/target?u=" + url.QueryEscape(v.Row.Target) + "&tab=" + tab
+}
+
+// QueryNote is the line under the grid: what came back, what it cost, how
+// long it took.
+//
+// THE COST IS ON SCREEN. A query tab that hides what a query scanned teaches
+// nobody the difference between the query they wrote and the one that was
+// cheap -- and the bill arrives either way.
+func (v TargetView) QueryNote() string {
+	if v.Query == nil {
+		return ""
+	}
+	n := len(v.Query.Rows)
+	rows := "rows"
+	if n == 1 {
+		rows = "row"
+	}
+	note := fmt.Sprintf("%d %s · %s scanned · %d ms", n, rows, bytesText(v.Query.Bytes), v.Query.Millis)
+	if v.Query.Truncated {
+		note += " — there are more"
+	}
+	return note
+}
+
+// bytesText is a byte count somebody can judge at a glance.
+//
+// A SECOND COPY OF `serve`'s, and deliberately: the engine does not import
+// the sql module and never will -- that is what engine-weight.sh asserts --
+// so the alternative to eight lines here is the number in full, which
+// somebody would have to count the digits of.
+func bytesText(n int64) string {
+	switch {
+	case n >= 1<<40:
+		return fmt.Sprintf("%.1f TB", float64(n)/(1<<40))
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.1f kB", float64(n)/(1<<10))
+	}
+	return fmt.Sprintf("%d B", n)
 }
 
 // PreviewNote is the line under the grid.

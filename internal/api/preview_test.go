@@ -58,8 +58,12 @@ func TestTheServiceIsNotAskedUnlessTheTabIsOpen(t *testing.T) {
 	if asked {
 		t.Error("it queried a warehouse for a page nobody asked a preview of")
 	}
-	if strings.Contains(body, "Preview") {
-		t.Error("the tab drew itself with no result and no reason")
+	// THE STRIP IS THERE AND NOTHING IS OPEN. The word "Preview" is on the
+	// page now because the tab is a LINK -- V1 had no strip at all and this
+	// line used to stand in for "the panel did not draw". `aria-current` is
+	// what actually says which tab is open, so it is what is asserted.
+	if strings.Contains(body, "aria-current") {
+		t.Error("a tab drew itself with no result and no reason")
 	}
 }
 

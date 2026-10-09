@@ -1,4 +1,4 @@
-// Package sqlserve asks `brevis-sql serve` for a preview.
+// Package sqlserve asks `brevis-sql serve` for a preview or for a query.
 //
 // THE ENGINE'S FIRST OUTBOUND CALL, and the reason it is a package rather
 // than six lines in a handler: a thing that reaches out has a timeout, a set
@@ -29,7 +29,7 @@ import (
 // preview worth drawing and shorter than anybody's patience.
 const timeout = 10 * time.Second
 
-// Result is a preview, as a page needs it.
+// Result is what came back, as a page needs it.
 type Result struct {
 	Columns []string `json:"columns"`
 	// Rows holds `any` because NULL IS NOT THE EMPTY STRING: one is "nothing
@@ -38,6 +38,14 @@ type Result struct {
 	Rows      [][]any `json:"rows"`
 	Truncated bool    `json:"truncated"`
 	Limit     int     `json:"limit"`
+
+	// Bytes is what the warehouse says it scanned, Millis how long it took.
+	// Both are zero for a preview, which does not report them: a preview is
+	// a glance and nobody chose its cost. For a query they go UNDER THE GRID,
+	// because the difference between the query somebody wrote and the one
+	// that was cheap is the thing a query tab can actually teach.
+	Bytes  int64 `json:"bytes"`
+	Millis int64 `json:"ms"`
 }
 
 // Client reaches one `brevis-sql serve`.
@@ -67,7 +75,11 @@ var ErrNotConfigured = errors.New("no SQL service is configured for this console
 
 type request struct {
 	Target string `json:"target"`
-	Limit  int    `json:"limit"`
+	// Statement is empty for a preview, which composes its own: the preview
+	// endpoint cannot be handed SQL at all, and this is the console's half
+	// of that -- there is nothing to leave out by mistake.
+	Statement string `json:"statement,omitempty"`
+	Limit     int    `json:"limit"`
 }
 
 // Preview asks for the first rows of a destination.
@@ -80,16 +92,40 @@ type request struct {
 // host, a role or a project from a driver. Repeating either tells a browser
 // about a service it cannot reach and should not learn about.
 func (c *Client) Preview(ctx context.Context, target string, limit int) (Result, error) {
+	return c.ask(ctx, "/v1/preview", request{Target: target, Limit: limit}, "preview")
+}
+
+// Query runs a statement somebody typed.
+//
+// THE CONSOLE DOES NOT READ THE SQL. It does not classify it, does not count
+// its statements and does not price it: every one of those is a limit, a
+// limit the caller can change is not a limit, and the caller here is a
+// browser. `serve` decides, and what comes back is either rows or a sentence.
+func (c *Client) Query(ctx context.Context, target, statement string, limit int) (Result, error) {
+	return c.ask(ctx, "/v1/query",
+		request{Target: target, Statement: statement, Limit: limit}, "query")
+}
+
+// ask is one call.
+//
+// WHAT IT REPEATS AND WHAT IT SWALLOWS is the decision here. A 400 from
+// `serve` is a sentence written to be read by a person -- "that target is not
+// a table", "this would scan 4 TB" -- and it already refuses to echo its
+// input, so it is carried through. Everything else is not: a 401 means this
+// console's token is wrong, which is an operator's problem and not a
+// reader's, and a 502 carries a host, a role or a project from a driver.
+// Repeating either tells a browser about a service it cannot reach and should
+// not learn about.
+func (c *Client) ask(ctx context.Context, path string, body request, what string) (Result, error) {
 	if !c.Configured() {
 		return Result{}, ErrNotConfigured
 	}
 
-	body, err := json.Marshal(request{Target: target, Limit: limit})
+	raw, err := json.Marshal(body)
 	if err != nil {
 		return Result{}, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.base+"/v1/preview", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+path, bytes.NewReader(raw))
 	if err != nil {
 		return Result{}, err
 	}
@@ -108,12 +144,12 @@ func (c *Client) Preview(ctx context.Context, target string, limit int) (Result,
 	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
-		return Result{}, refusal(res)
+		return Result{}, refusal(res, what)
 	}
 
 	var out Result
-	// Bounded: a preview is a hundred rows, and a service answering something
-	// else is not one this console should try to hold.
+	// Bounded: a hundred rows, and a service answering something else is not
+	// one this console should try to hold.
 	if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<20)).Decode(&out); err != nil {
 		return Result{}, errors.New("the SQL service answered something this console cannot read")
 	}
@@ -121,7 +157,7 @@ func (c *Client) Preview(ctx context.Context, target string, limit int) (Result,
 }
 
 // refusal turns a non-200 into what a page may say.
-func refusal(res *http.Response) error {
+func refusal(res *http.Response, what string) error {
 	if res.StatusCode == http.StatusBadRequest {
 		var body struct {
 			Error string `json:"error"`
@@ -134,5 +170,5 @@ func refusal(res *http.Response) error {
 	// NOT THE SERVICE'S WORDS, and not its status text either -- just the
 	// number, which is enough for an operator reading a screenshot and says
 	// nothing to anybody else.
-	return fmt.Errorf("the SQL service refused this preview (%d)", res.StatusCode)
+	return fmt.Errorf("the SQL service refused this %s (%d)", what, res.StatusCode)
 }

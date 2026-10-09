@@ -142,6 +142,12 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
+	// THE SAME PAGE, SUBMITTED. A statement goes in a BODY and never in a
+	// URL: a query in a link is a query in a proxy log, in a browser's
+	// history and in a Referer header, and a WHERE clause carries customer
+	// data. The session cookie is SameSite=Lax, which is what makes a POST
+	// the form a cross-site page cannot submit.
+	mux.HandleFunc("POST /data/target", u.dataTarget)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -201,11 +207,19 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 	}
 	v := pages.BuildTarget(*d, time.Now())
 
+	// NO SERVICE, NO TABS. A tab that always answers "not configured" is a
+	// question nobody can act on.
+	v.Tabs = u.preview.Configured()
+	if v.Tabs {
+		v.Tab = r.URL.Query().Get("tab")
+	}
+
+	switch v.Tab {
 	// ASKED ONLY WHEN ASKED FOR. A preview costs a warehouse query, and
 	// drawing one on every visit to a destination page would mean a query per
 	// page view, charged to somebody, for rows nobody looked at. `?tab=preview`
 	// is a link, which also makes it shareable the way /data's filters are.
-	if r.URL.Query().Get("tab") == "preview" && u.preview.Configured() {
+	case "preview":
 		res, err := u.preview.Preview(r.Context(), target, previewRows)
 		if err != nil {
 			// The client already decided which of the service's words may be
@@ -213,6 +227,34 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 			v.PreviewErr = err.Error()
 		} else {
 			v.Preview = &res
+		}
+
+	// A QUERY RUNS WHEN SOMEBODY RUNS IT. Opening the tab asks nothing,
+	// which is the difference between a Query tab and a preview with a text
+	// box beside it.
+	case "query":
+		// A POST, AND THE STATEMENT ONLY EVER FROM THE BODY. The method
+		// check is the readable statement of the intent; `PostFormValue` is
+		// what makes it true, by reading the body and never the query
+		// string. A `?q=…` link is therefore not a query -- not from the
+		// form, and not from a page on another site either.
+		if r.Method == http.MethodPost {
+			// Bounded before it is parsed, matching `serve`'s own body
+			// limit: a statement longer than this is not one anybody typed.
+			r.Body = http.MaxBytesReader(w, r.Body, statementCeiling)
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "that statement is too long to run", http.StatusBadRequest)
+				return
+			}
+			v.Statement = strings.TrimSpace(r.PostFormValue("q"))
+			if v.Statement != "" {
+				res, err := u.preview.Query(r.Context(), target, v.Statement, queryRows)
+				if err != nil {
+					v.QueryErr = err.Error()
+				} else {
+					v.Query = &res
+				}
+			}
 		}
 	}
 	u.render(w, r, pages.Target(v))
@@ -224,6 +266,22 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 // fewer, and the number is here because it is a question about a SCREEN --
 // twenty rows is what somebody glances at to see the shape of a table.
 const previewRows = 20
+
+// queryRows is how many a query draws, and statementCeiling how long a
+// statement may be.
+//
+// MORE THAN A PREVIEW, because they are different questions: a preview is a
+// glance at the shape of a table and a query is somebody's own report. The
+// SERVICE has the real ceiling and this cannot raise it; this asks for fewer.
+//
+// The ceiling matches `serve`'s body limit rather than undercutting it, so a
+// statement refused here is refused for the same reason it would be there --
+// two different limits would mean a statement that one accepts and the other
+// does not, and a refusal nobody can explain.
+const (
+	queryRows        = 100
+	statementCeiling = 64 << 10
+)
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
