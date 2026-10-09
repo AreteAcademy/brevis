@@ -29,7 +29,20 @@ import (
 // WHEN IT CANNOT FOLLOW THE STATEMENT, IT REFUSES. A parser that gives up
 // and allows is a parser that can be made to give up on purpose.
 func ReadOnly(dialect, statement string) error {
-	toks := sqltok.Tokenize(dialect, statement)
+	toks, whole := sqltok.Tokenize(dialect, statement)
+	// WHAT IT CANNOT READ TO THE END, IT DOES NOT JUDGE. An unterminated
+	// quote, backtick or block comment leaves the lexer with no way to know
+	// where code resumes, and everything after it is unread -- so a verdict
+	// here would be a verdict about a PREFIX.
+	//
+	// CHECKPOINT B found six of these accepted, `SELECT 1 /* ; DROP TABLE t`
+	// among them. None was exploitable, because the warehouse refuses the
+	// same statements -- but that is two lexers agreeing, and this is the
+	// rule three paragraphs up made true.
+	if !whole {
+		return errors.New("this statement does not close something it opened -- a quote, " +
+			"a backtick or a comment -- so this service cannot read it to the end")
+	}
 
 	// A trailing `;` is punctuation. One anywhere else is a second
 	// statement, whatever follows it -- `SELECT 1; SELECT 2` is refused too,

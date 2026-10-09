@@ -155,3 +155,53 @@ func TestARefusalNeverEchoesTheStatement(t *testing.T) {
 		}
 	}
 }
+
+// A STATEMENT THE LEXER CANNOT READ TO THE END IS REFUSED.
+//
+// CHECKPOINT B found all six of these ACCEPTED. An unterminated backtick,
+// quote or block comment made the lexer stop where it was, and the classifier
+// then judged a PREFIX -- so `SELECT 1 /* ; DROP TABLE t` was read as
+// `SELECT 1`.
+//
+// None of them was exploitable, and the reason is worth writing down because
+// it was not this function: a statement that truncates the lexer also fails
+// to parse at the warehouse, so the tail never ran. The safety rested on TWO
+// LEXERS AGREEING, which is exactly the coupling that breaks without anybody
+// noticing -- and it contradicted the rule stated at the top of this file.
+func TestAStatementTheLexerCannotFinishIsRefused(t *testing.T) {
+	for _, c := range []struct{ dialect, sql string }{
+		{"bigquery", "SELECT 1 FROM `x"},
+		{"bigquery", "SELECT 1 FROM `x`` ; DROP TABLE t"},
+		{"bigquery", "SELECT 1 /* ; DROP TABLE t"},
+		{"postgres", "SELECT 'x"},
+		{"postgres", "SELECT 'x ; DROP TABLE t"},
+		{"postgres", `SELECT "x`},
+		{"postgres", "SELECT 1 /* unterminated"},
+		{"bigquery", `SELECT "x`},
+	} {
+		if err := ReadOnly(c.dialect, c.sql); err == nil {
+			t.Errorf("accepted a statement the lexer stopped partway through: %q", c.sql)
+		}
+	}
+}
+
+// AND THE ONES THAT CLOSE ARE STILL READ. This is the test that stops the
+// rule above from becoming "refuse anything with a quote in it" -- every one
+// of these terminates, and three of them were cases CHECKPOINT B probed and
+// found CORRECTLY accepted.
+func TestEverythingThatClosesIsStillRead(t *testing.T) {
+	for _, c := range []struct{ dialect, sql string }{
+		{"bigquery", "SELECT '''; DROP TABLE t; '''"},
+		{"bigquery", "SELECT 1 FROM `p.d.t`"},
+		{"bigquery", `SELECT "closed" FROM t`},
+		{"bigquery", `SELECT 'it\'s closed' FROM t`},
+		{"postgres", "SELECT 'it''s closed' FROM t"},
+		{"postgres", `SELECT "quoted" FROM t`},
+		{"postgres", "SELECT 1 /* closed */ FROM t"},
+		{"postgres", "SELECT 1 -- a line comment needs no closing"},
+	} {
+		if err := ReadOnly(c.dialect, c.sql); err != nil {
+			t.Errorf("refused a query that closes everything it opens: %q -- %v", c.sql, err)
+		}
+	}
+}

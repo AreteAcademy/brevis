@@ -46,7 +46,18 @@ func (t Token) LowerIs(w string) bool { return t.Kind == Word && t.Lower == w }
 
 // Tokenize drops comments and the contents of string literals and splits the
 // rest. `#` starts a comment in BigQuery only; in Postgres it is an operator.
-func Tokenize(dialect, s string) []Token {
+//
+// THE SECOND RETURN SAYS WHETHER IT REACHED THE END, and no caller may ignore
+// it by accident. An unterminated quote, backtick or block comment leaves
+// this with no way to know where code resumes, so it stops -- and a caller
+// that took the tokens alone would be judging a PREFIX. CHECKPOINT B found
+// exactly that: `SELECT 1 /* ; DROP TABLE t` read as `SELECT 1`.
+//
+// It was not exploitable, because a statement that truncates this also fails
+// to parse at the warehouse. But that is two lexers agreeing rather than a
+// decision anybody made, and the classifier's own rule is that what it cannot
+// follow, it refuses.
+func Tokenize(dialect, s string) (toks []Token, whole bool) {
 	var out []Token
 	for i := 0; i < len(s); {
 		c := s[i]
@@ -60,12 +71,12 @@ func Tokenize(dialect, s string) []Token {
 		case c == '/' && i+1 < len(s) && s[i+1] == '*':
 			end := strings.Index(s[i+2:], "*/")
 			if end < 0 {
-				return out
+				return out, false
 			}
 			i += end + 4
 		case c == '\'' || (c == '"' && dialect == "bigquery"):
 			// A string. In BigQuery "..." is a string too.
-			j := i + 1
+			j, closed := i+1, false
 			for j < len(s) {
 				if s[j] == '\\' && dialect == "bigquery" {
 					j += 2
@@ -76,16 +87,23 @@ func Tokenize(dialect, s string) []Token {
 						j += 2
 						continue
 					}
+					closed = true
 					break
 				}
 				j++
 			}
 			out = append(out, Token{Kind: Literal})
+			// A string that never closes is the one case that used to pass
+			// silently: the loop simply ran out and this looked like a
+			// complete literal.
+			if !closed {
+				return out, false
+			}
 			i = j + 1
 		case c == '"' || c == '`':
 			j := strings.IndexByte(s[i+1:], c)
 			if j < 0 {
-				return out
+				return out, false
 			}
 			text := s[i+1 : i+1+j]
 			out = append(out, Token{Kind: Quoted, Text: text, Lower: strings.ToLower(text)})
@@ -103,7 +121,7 @@ func Tokenize(dialect, s string) []Token {
 			i++
 		}
 	}
-	return out
+	return out, true
 }
 
 func isWordByte(c byte) bool {

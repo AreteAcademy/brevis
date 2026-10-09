@@ -29,7 +29,13 @@ import (
 
 // Of lists the relations a query reads, in the order they appear.
 func Of(dialect, sql string) ([]string, error) {
-	toks := sqltok.Tokenize(dialect, sql)
+	// THE TRUNCATION FLAG IS DROPPED HERE ON PURPOSE, and this is the one
+	// caller that may. This package infers EDGES from a model somebody wrote
+	// and committed; a model whose SQL does not close a quote is one the
+	// warehouse refuses on the next build, and a missing edge in a graph is
+	// not a security boundary. `serve` is where it matters, because there
+	// the statement arrives from a browser.
+	toks, _ := sqltok.Tokenize(dialect, sql)
 	if dialect == "postgres" {
 		// Postgres folds an unquoted identifier to lower case: POINT_TBL and
 		// point_tbl are one table. Added AFTER the held-out run showed 754 of
