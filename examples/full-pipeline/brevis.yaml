@@ -1,0 +1,26 @@
+# The warehouses Brevis may READ, declared once.
+#
+# THE ECOSYSTEM'S REGISTRY AND NOT ONE SERVICE'S. `brevis-sql serve` reads it
+# today, so /data can preview and query a destination; the SDK and the gateway
+# read it afterwards, so a DSN is written here instead of in a workflow step
+# and a gateway stream as well. A client who said where a warehouse is has
+# said it once.
+#
+# IT NAMES A VARIABLE AND NEVER A CONNECTION STRING. `dsn_from` takes the NAME
+# of an environment variable holding one -- the rule `--dsn-from` already
+# follows and the gateway's own `dsn_from` before it -- because this file is
+# in git and a connection string carries a password. `serve` refuses at boot,
+# by name, a `dsn_from` that was given a DSN instead.
+
+connections:
+  # The local warehouse: its own container, its own database, and NOT the
+  # engine's. `postgres` in docker-compose.yml holds runs, landings and
+  # schedules; this holds what the pipelines moved.
+  #
+  # `make up-data` sets WAREHOUSE_DSN to the HOST address, because
+  # `brevis-sql serve` runs on the host -- it holds a warehouse credential and
+  # nothing in the compose should. The steps and the gateway reach the same
+  # database at `warehouse:5432`, from inside the network.
+  - name: warehouse
+    dialect: postgres
+    dsn_from: WAREHOUSE_DSN

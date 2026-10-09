@@ -45,6 +45,14 @@ TEST_DB_URL := postgres://brevis:brevis@localhost:$(BREVIS_PG_PORT)/brevis_test?
 # login and session secret. Generated once, 0600, gitignored -- it holds a
 # password in the clear, which is the whole reason it is not in the compose.
 LOCAL_ENV := .env.local
+
+# THE WAREHOUSE AS THE HOST SEES IT. `brevis-sql serve` runs here and not in
+# the compose -- it holds a warehouse credential and nothing in that file
+# should -- so it reaches the same database the steps reach, by the other
+# address. The registry NAMES this variable; it never holds the string.
+BREVIS_WAREHOUSE_PORT ?= 55434
+WAREHOUSE_DSN ?= postgres://brevis:brevis@localhost:$(BREVIS_WAREHOUSE_PORT)/warehouse?sslmode=disable
+BREVIS_CONNECTIONS ?= ./examples/full-pipeline/brevis.yaml
 SERVE_PID := .brevis-sql-serve.pid
 SERVE_LOG := .brevis-sql-serve.log
 
@@ -287,7 +295,9 @@ serve-up:
 	  echo "serve: something already answers on 8088, left alone"; \
 	else \
 	  (cd sql && go build -o ../bin/brevis-sql ./cmd/brevis-sql) && \
-	  nohup ./bin/brevis-sql serve --addr 127.0.0.1:8088 > $(SERVE_LOG) 2>&1 & \
+	  WAREHOUSE_DSN="$(WAREHOUSE_DSN)" \
+	  nohup ./bin/brevis-sql serve --addr 127.0.0.1:8088 \
+	    --connections $(BREVIS_CONNECTIONS) > $(SERVE_LOG) 2>&1 & \
 	  echo $$! > $(SERVE_PID); \
 	  echo "serve: started on 127.0.0.1:8088"; \
 	fi
