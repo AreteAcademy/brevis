@@ -1210,6 +1210,58 @@ a.chip:focus-visible .ico {
   background-color: transparent;
 }
 
+/* Ícones vivos, a metade do movimento: um pulso percorre cada fio de dados,
+   primeiro os que entram, depois os que saem, peça por peça. O Core não tem
+   fio, então nada se move nele -- o movimento é dado, e dado não passa lá.
+   Só transform e opacity: o layout não se mexe. */
+@keyframes eco-flow {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+
+  15%,
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(var(--eco-gap));
+    opacity: 0;
+  }
+}
+
+.eco-wire::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 6px var(--lime-glow);
+  opacity: 0;
+  animation: eco-flow 3.2s ease-in-out infinite;
+  animation-delay: var(--flow, 0s);
+}
+
+.eco-gateway {
+  --flow-row: 0.4s;
+}
+
+.eco-sql {
+  --flow-row: 0.8s;
+}
+
+.eco-wire-in {
+  --flow: var(--flow-row, 0s);
+}
+
+.eco-wire-out {
+  --flow: calc(var(--flow-row, 0s) + 1.6s);
+}
+
 .eco-support {
   display: flex;
   flex-wrap: wrap;
@@ -1555,6 +1607,10 @@ a.chip:focus-visible .ico {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .eco-wire::before {
+    animation: none;
   }
 
   *,
