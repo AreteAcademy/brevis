@@ -46,7 +46,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.27'
+          # PINNED: this job runs golangci-lint, which is a binary built
+          # against some Go and cannot read export data newer than that. The
+          # runner moved 1.27.1 -> 1.27.2 on 2026-10-09 and every lint step in
+          # the repository went red at once. See the Lint job for the whole
+          # diagnosis and for which line to revisit.
+          go-version: '1.27.1'
           cache: true
 
       - name: Run SDK tests
