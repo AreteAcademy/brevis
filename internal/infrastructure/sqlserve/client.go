@@ -119,6 +119,13 @@ const codeNoConnection = "no-connection"
 
 type request struct {
 	Target string `json:"target"`
+
+	// Schema and Name name a RELATION, for the one endpoint that asks about
+	// one: a tree's nodes come from a listing and a listing answers in these
+	// two fields, so a relation nothing landed on still has a name here.
+	Schema string `json:"schema,omitempty"`
+	Name   string `json:"name,omitempty"`
+
 	// Statement is empty for a preview, which composes its own: the preview
 	// endpoint cannot be handed SQL at all, and this is the console's half
 	// of that -- there is nothing to leave out by mistake.
@@ -186,6 +193,53 @@ func (c *Client) Objects(ctx context.Context, target string) (Objects, error) {
 		return out, errors.New("the SQL service answered something this console cannot read")
 	}
 	return out, nil
+}
+
+// Column is one field of a relation.
+type Column struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// Columns asks what ONE relation holds, for the tree's open node.
+//
+// LAZY, AND THAT IS THE POINT. `Objects` answers for a whole connection in
+// one call because BigQuery bills a flat floor per metadata query; columns
+// invert it -- a project-wide COLUMNS query is the one metadata answer that
+// is genuinely large. So this console asks only about what somebody opened,
+// and the service holds the answer per relation.
+func (c *Client) Columns(ctx context.Context, target, schema, name string) ([]Column, error) {
+	if !c.Configured() {
+		return nil, ErrNotConfigured
+	}
+	raw, err := json.Marshal(request{Target: target, Schema: schema, Name: name})
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/columns", bytes.NewReader(raw))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, errors.New("the SQL service could not be reached")
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		return nil, refusal(res, "listing")
+	}
+	var out struct {
+		Columns []Column `json:"columns"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<20)).Decode(&out); err != nil {
+		return nil, errors.New("the SQL service answered something this console cannot read")
+	}
+	return out.Columns, nil
 }
 
 // ask is one call.

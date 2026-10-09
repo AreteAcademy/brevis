@@ -345,7 +345,27 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// statement out of a link. `PostFormValue` is what makes that true.
 		v.Target = r.PostFormValue("target")
 		v.Statement = strings.TrimSpace(r.PostFormValue("q"))
-		if v.Statement != "" && v.Target != "" {
+
+		// WHAT IS OPEN IN THE TREE, and what was just clicked.
+		//
+		// `open` rides with every submit so running a query does not close
+		// the relation somebody opened; `expand` is the tree's own button,
+		// and clicking the one already open CLOSES it, which is what a
+		// disclosure does.
+		v.Open = r.PostFormValue("open")
+		if want := r.PostFormValue("expand"); want != "" {
+			if want == v.Open {
+				v.Open = ""
+			} else {
+				v.Open = want
+			}
+		}
+
+		// EXPANDING IS NOT RUNNING. The tree's button submits the editor's
+		// own form -- which is how the half-written statement survives the
+		// click -- so without this, opening a table would also spend a
+		// query nobody asked for.
+		if r.PostFormValue("expand") == "" && v.Statement != "" && v.Target != "" {
 			res, err := u.preview.Query(r.Context(), v.Target, v.Statement, queryRows)
 			switch {
 			case errors.Is(err, sqlserve.ErrNoConnection):
@@ -373,6 +393,17 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 	if v.Target != "" {
 		if objs, err := u.preview.Objects(r.Context(), v.Target); err == nil {
 			v.Tree, v.TreeCut = pages.BuildTree(objs.Relations), objs.Truncated
+		}
+	}
+
+	// AND THE OPEN RELATION'S COLUMNS, which is one more round trip and only
+	// for the node somebody opened -- CHECKPOINT D made columns lazy because
+	// a project-wide COLUMNS query is the one metadata answer that is
+	// genuinely large. A warehouse that cannot describe is not an error page
+	// either: the button says so where the columns would be.
+	if schema, name, ok := strings.Cut(v.Open, "."); ok && v.Target != "" {
+		if cols, err := u.preview.Columns(r.Context(), v.Target, schema, name); err == nil {
+			v.Cols = cols
 		}
 	}
 	u.render(w, r, pages.SQL(v))

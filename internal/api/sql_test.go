@@ -448,3 +448,212 @@ func TestTheTreeAndTheIslandAgreeOnTheAttribute(t *testing.T) {
 		t.Error("the island never reads data-insert, so the tree inserts nothing")
 	}
 }
+
+// warehouse is a `serve` that answers each endpoint differently and
+// remembers what each was asked. The single-body fake above cannot tell a
+// listing from a query, which stopped being enough the moment one page view
+// called two endpoints.
+type warehouse struct {
+	objects string
+	columns string
+	query   string
+
+	status map[string]int
+	asked  map[string]map[string]any
+	calls  []string
+}
+
+func (w *warehouse) start(t *testing.T) *httptest.Server {
+	t.Helper()
+	w.asked = map[string]map[string]any{}
+	s := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.asked[r.URL.Path] = body
+		w.calls = append(w.calls, r.URL.Path)
+		if code := w.status[r.URL.Path]; code != 0 {
+			rw.WriteHeader(code)
+		}
+		switch r.URL.Path {
+		case "/v1/objects":
+			_, _ = rw.Write([]byte(w.objects))
+		case "/v1/columns":
+			_, _ = rw.Write([]byte(w.columns))
+		default:
+			_, _ = rw.Write([]byte(w.query))
+		}
+	}))
+	t.Cleanup(s.Close)
+	return s
+}
+
+// expand submits the tree's own button: the form the editor is in, carrying
+// the statement in its body.
+func expand(t *testing.T, ui *api.UI, target, statement, open, want string) string {
+	t.Helper()
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	form := url.Values{"target": {target}, "q": {statement}, "open": {open}, "expand": {want}}
+	r := httptest.NewRequest(http.MethodPost, "/sql", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/sql answered %d: %s", rec.Code, rec.Body)
+	}
+	return rec.Body.String()
+}
+
+func browsing(t *testing.T) (*warehouse, *api.UI) {
+	t.Helper()
+	w := &warehouse{
+		objects: `{"relations":[{"schema":"sales","name":"daily"},{"schema":"sales","name":"events"}]}`,
+		columns: `{"columns":[{"name":"sku","type":"text"},{"name":"quantity","type":"integer"}]}`,
+		query:   `{"columns":["n"],"rows":[["1"]]}`,
+		status:  map[string]int{},
+	}
+	svc := w.start(t)
+	return w, consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+}
+
+// THE OTHER HALF OF THE TREE: what a relation holds.
+//
+// CHECKPOINT D made this lazy -- one relation at a time, because a
+// project-wide COLUMNS query is the one metadata answer that is genuinely
+// large. So the screen asks only for what somebody opened.
+func TestExpandingARelationDrawsItsColumns(t *testing.T) {
+	w, ui := browsing(t)
+	body := expand(t, ui, probeTarget, "", "", "sales.daily")
+
+	for _, want := range []string{"sku", "quantity", "text", "integer"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the expanded relation does not show %q", want)
+		}
+	}
+	asked := w.asked["/v1/columns"]
+	if asked["schema"] != "sales" || asked["name"] != "daily" {
+		t.Errorf("the columns were asked for %+v", asked)
+	}
+	if asked["target"] != probeTarget {
+		t.Errorf("the columns were asked on %q", asked["target"])
+	}
+}
+
+// EXPANDING IS NOT RUNNING, and the statement survives it.
+//
+// This is why the tree's buttons submit the FORM rather than following a
+// link: a GET would discard the textarea, so somebody with a half-written
+// query who clicked a table to remember a column name would lose it. The
+// statement travels in the body, which is also the only place a statement is
+// allowed to travel.
+func TestExpandingKeepsTheStatementAndRunsNothing(t *testing.T) {
+	w, ui := browsing(t)
+	const half = "SELECT sku, sum(quantity) FROM sales.daily WHERE"
+	body := expand(t, ui, probeTarget, half, "", "sales.daily")
+
+	if slices.Contains(w.calls, "/v1/query") {
+		t.Error("opening a relation ran the query in the box")
+	}
+	if !strings.Contains(body, "sum(quantity)") {
+		t.Error("the half-written statement was lost")
+	}
+}
+
+// ONLY THE ONE THAT IS OPEN. A tree that drew every relation's columns
+// would be the project-wide COLUMNS query CHECKPOINT D refused, assembled
+// one request at a time.
+func TestOnlyTheOpenRelationShowsItsColumns(t *testing.T) {
+	_, ui := browsing(t)
+	body := expand(t, ui, probeTarget, "", "", "sales.daily")
+
+	daily, events := strings.Index(body, ">daily<"), strings.Index(body, ">events<")
+	if daily < 0 || events < 0 {
+		t.Fatalf("the tree no longer draws both relations (%d, %d)", daily, events)
+	}
+	// COUNT FIRST, THEN POSITION. The position assertion alone could not
+	// fail: `v.Cols` holds one relation's columns, so drawing them under
+	// EVERY relation still puts the first `sku` under `daily`, and
+	// `strings.Index` finds that one. Measured -- the mutation that removed
+	// the condition passed. Counting is what sees it.
+	if n := strings.Count(body, ">sku<"); n != 1 {
+		t.Errorf("sku is drawn %d times, so columns are under more than the open relation", n)
+	}
+	sku := strings.Index(body, ">sku<")
+	if sku < daily || sku > events {
+		t.Errorf("sku is drawn at %d, outside daily (%d) and events (%d)", sku, daily, events)
+	}
+}
+
+// THE PAGE SENDS WHAT THE HANDLER READS.
+//
+// `TestRunningAQueryKeepsTheTreeOpen` builds the form by hand, so it proves
+// the HANDLER honours `open` and says nothing about whether the PAGE ever
+// sends it -- measured: deleting the hidden field left that test green. Same
+// shape as the asset walk, one field down: a name read and a name sent are
+// different facts.
+func TestTheFormCarriesWhatIsOpenAndTheTreeSubmitsIt(t *testing.T) {
+	_, ui := browsing(t)
+	body := expand(t, ui, probeTarget, "", "", "sales.daily")
+
+	if !strings.Contains(body, `name="open" value="sales.daily"`) {
+		t.Error("the form does not carry the relation that is open")
+	}
+	// AND THE TREE'S BUTTONS REACH THAT FORM. They sit outside it, in the
+	// aside, so `form=` by id is the only thing that makes them submit the
+	// statement rather than nothing.
+	id := regexp.MustCompile(`<form id="([^"]+)"`).FindStringSubmatch(body)
+	if id == nil {
+		t.Fatal("the editor's form has no id for the tree to point at")
+	}
+	if !strings.Contains(body, `form="`+id[1]+`" name="expand"`) {
+		t.Errorf("the tree's buttons do not submit the form %q", id[1])
+	}
+}
+
+// CLICKING THE OPEN ONE CLOSES IT, which is what a disclosure does.
+func TestOpeningTheSameRelationTwiceClosesIt(t *testing.T) {
+	w, ui := browsing(t)
+	body := expand(t, ui, probeTarget, "", "sales.daily", "sales.daily")
+
+	if strings.Contains(body, ">sku<") {
+		t.Error("the relation stayed open")
+	}
+	if slices.Contains(w.calls, "/v1/columns") {
+		t.Error("closing a relation asked the warehouse")
+	}
+}
+
+// AND RUNNING A QUERY DOES NOT CLOSE THE TREE. The open relation rides in a
+// hidden field, so the screen somebody arranged survives the thing the
+// screen is for.
+func TestRunningAQueryKeepsTheTreeOpen(t *testing.T) {
+	_, ui := browsing(t)
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	form := url.Values{"target": {probeTarget}, "q": {"SELECT 1"}, "open": {"sales.daily"}}
+	r := httptest.NewRequest(http.MethodPost, "/sql", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, r)
+
+	if !strings.Contains(rec.Body.String(), ">sku<") {
+		t.Error("running a query closed the relation that was open")
+	}
+}
+
+// A RELATION THAT CANNOT BE DESCRIBED IS NOT AN ERROR PAGE, for the reason
+// the tree itself is not one: `Describer` is optional, `serve` answers 501
+// where a dialect lacks it, and the box must keep working either way.
+func TestARelationThatCannotBeDescribedStillDrawsTheTree(t *testing.T) {
+	w, ui := browsing(t)
+	w.status["/v1/columns"] = http.StatusNotImplemented
+	w.columns = `{"error":"this warehouse cannot say what a relation holds"}`
+
+	body := expand(t, ui, probeTarget, "SELECT 1", "", "sales.daily")
+	if !strings.Contains(body, ">daily<") {
+		t.Error("the tree is gone")
+	}
+	if !strings.Contains(body, `name="q"`) {
+		t.Error("the box is gone")
+	}
+}

@@ -38,7 +38,10 @@ templ SQL(v SQLView) {
 			<div class="flex gap-5">
 				@tree(v)
 				<div class="min-w-0 flex-1">
-			<form method="post" action="/sql" class="flex flex-col gap-3">
+			<form id="workbench" method="post" action="/sql" class="flex flex-col gap-3">
+				// WHAT IS OPEN RIDES WITH EVERY SUBMIT, so running a query
+				// does not close the tree somebody just arranged.
+				<input type="hidden" name="open" value={ v.Open }/>
 				<div class="flex flex-wrap items-center gap-3">
 					<label for="target" class="kicker">Connection</label>
 					<select
@@ -116,6 +119,42 @@ templ tree(v SQLView) {
 							data-insert={ s.Name + "." + t }
 							class="block w-full truncate rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
 						>{ t }</button>
+						// AND A SECOND BUTTON, which SUBMITS THE FORM.
+						//
+						// Not a link: a GET would discard the textarea, so
+						// somebody with a half-written query who opened a
+						// table to remember a column name would lose it.
+						// `form` points at the editor's form by id, so this
+						// button can sit here in the tree and still carry
+						// the statement in that form's body -- which is also
+						// the only place a statement is allowed to travel.
+						<button
+							type="submit"
+							form="workbench"
+							name="expand"
+							value={ s.Name + "." + t }
+							aria-expanded={ open(v, s.Name, t) }
+							class="block w-full rounded-card px-2 py-0.5 pl-5 text-left text-[0.7rem] text-muted hover:text-ink"
+						>
+							if v.Open == s.Name+"."+t {
+								&#8722; columns
+							} else {
+								+ columns
+							}
+						</button>
+						if v.Open == s.Name+"."+t {
+							<ul class="mb-1 pl-5">
+								for _, c := range v.Cols {
+									<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]">
+										<span class="truncate text-ink">{ c.Name }</span>
+										<span class="shrink-0 text-muted">{ c.Type }</span>
+									</li>
+								}
+								if len(v.Cols) == 0 {
+									<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
+								}
+							</ul>
+						}
 					}
 				</details>
 			}

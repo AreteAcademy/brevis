@@ -39,6 +39,16 @@ type SQLView struct {
 	// browser silently showing half a warehouse would have somebody conclude
 	// a table does not exist.
 	TreeCut bool
+
+	// Open is the one relation whose columns are drawn, as `schema.name`,
+	// and empty when none is. ONE, because CHECKPOINT D made columns lazy:
+	// a tree that drew every relation's would be the project-wide COLUMNS
+	// query it refused, assembled one request at a time.
+	Open string
+
+	// Cols is what Open holds. Empty when the warehouse cannot say, which
+	// is not an error -- Describer is optional.
+	Cols []sqlserve.Column
 }
 
 // Schema is one group in the tree.
@@ -124,3 +134,12 @@ func Short(target string) string {
 // No Go test can watch a browser evaluate these. What a test CAN do is refuse
 // a reordering, which is the mistake the prose is about.
 func EditorAssets() []string { return editorAssets.JS }
+
+// open is the ARIA state of a relation's disclosure button, as a string
+// because that is what the attribute takes.
+func open(v SQLView, schema, table string) string {
+	if v.Open == schema+"."+table {
+		return "true"
+	}
+	return "false"
+}
