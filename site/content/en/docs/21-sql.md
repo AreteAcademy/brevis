@@ -31,6 +31,8 @@ The console's Data and SQL screens show what landed and what is in it. Neither r
 brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
 ```
 
+A ceiling is not a budget: `--max-bytes` bounds one query, and `--budget` bounds the sum per connection per hour — checked against the quote, so a refusal comes before the money is spent. It bounds only warehouses that report bytes, which is BigQuery and not Postgres; the boot banner says which posture is in force, including having none.
+
 **Only what the file declares is reachable**, and nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the credential itself is asserted to be read-only at first use. The audit line carries a hash of the statement and never the statement.
 
 Outside `BREVIS_ENV=local` a `BREVIS_SQL_SERVE_TOKEN` is required and the service will not start without one.

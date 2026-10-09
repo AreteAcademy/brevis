@@ -716,6 +716,7 @@ a service rather than as a package.
 | `--connections FILE` | `brevis.yaml` | the file declaring which warehouses may be read. **Nothing outside it is reachable** |
 | `--rows N` | `100` | the most rows one answer returns; a caller may ask for fewer, never more |
 | `--max-bytes N` | `10 GiB` | the most bytes one query may scan. It is PRICED FIRST and refused above this, so a bill is prevented rather than reported |
+| `--budget N` | `0` | the most bytes one CONNECTION may scan per hour, across every query. `0` is no budget |
 | `--metrics-addr ADDR` | `127.0.0.1:9095` | where the Prometheus exposition listens, on a port of its own; empty turns it off |
 | `--dry-run` | `false` | build the service and report, without listening |
 
@@ -723,6 +724,18 @@ a service rather than as a package.
 |---|---|
 | `BREVIS_SQL_SERVE_TOKEN` | the bearer token callers must present |
 | `BREVIS_ENV` | outside `local` a token is **required**, and it will not start without one |
+
+**A ceiling is not a budget.** `--max-bytes` bounds ONE query; four queries
+under it, repeated, are unbounded. `--budget` bounds the sum, per connection
+per hour — checked against the QUOTE, so a refusal happens before the money is
+spent, and recorded against the BILL, because the quote is not what gets paid.
+An exhausted budget answers `429`: the request is not wrong and will run when
+the hour turns.
+
+It bounds only warehouses that REPORT BYTES. A warehouse billed by the hour
+reports none, so a budget bounds BigQuery and bounds nothing on Postgres —
+which is fine, and dangerous only if somebody believes otherwise. The boot
+banner states whichever posture is in force, including the absence of one.
 
 **It never writes.** Every statement is classified before it runs and anything
 that is not a read is refused by name; the credential itself is asserted to be

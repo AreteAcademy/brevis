@@ -271,6 +271,14 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 				"this query would scan %s, and this service stops at %s. Narrow the columns, "+
 					"or add a filter on a partitioned one.", BytesText(scan), BytesText(s.opt.Bytes))}
 		}
+		// AND THE SUM, which the per-query ceiling above cannot see.
+		// CHECKPOINT B's F6: four queries at a time, each under the ceiling,
+		// repeated forever, is unbounded. Checked on the QUOTE because a
+		// refusal has to happen before the money is spent, and recorded
+		// below on the BILL because the quote is not what gets paid.
+		if ok, used := s.spent.allows(table.Connection, scan, s.opt.Budget); !ok {
+			return dialect.Result{}, overBudget(scan, used, s.opt.Budget)
+		}
 	}
 
 	// ONE MORE ROW THAN WILL BE SHOWN. See the preview: a LIMIT inside the
@@ -282,6 +290,10 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	if err != nil {
 		return dialect.Result{}, err
 	}
+	// WHAT WAS BILLED, not what was quoted. `Result.Scanned` says why in its
+	// own comment: a gap between the two is how somebody finds out that the
+	// price a refusal was built on was not the price that was paid.
+	s.spent.record(table.Connection, res.Scanned)
 	res.Truncated = len(res.Rows) > limit
 	if res.Truncated {
 		res.Rows = res.Rows[:limit]

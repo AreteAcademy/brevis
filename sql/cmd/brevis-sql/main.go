@@ -70,6 +70,7 @@ type opts struct {
 	root, dialectName, sel, dsnFrom *string
 	addr, registry, metricsAddr     *string
 	full, dryRun                    *bool
+	budget                          *int64
 	rows                            *int
 	maxBytes                        *int64
 }
@@ -84,6 +85,7 @@ func bind(fs *flag.FlagSet) *opts {
 		addr:        fs.String("addr", "127.0.0.1:8088", "where `serve` listens"),
 		rows:        fs.Int("rows", 100, "the most rows a preview may return; a caller may ask for fewer"),
 		maxBytes:    fs.Int64("max-bytes", 10<<30, "the most bytes one query may scan; it is priced first and refused above this"),
+		budget:      fs.Int64("budget", 0, "the most bytes one CONNECTION may scan per hour, across every query; 0 is no budget"),
 		dryRun:      fs.Bool("dry-run", false, "build the service and report, without listening"),
 		registry:    fs.String("connections", "brevis.yaml", "the file declaring which warehouses may be read"),
 		metricsAddr: fs.String("metrics-addr", "127.0.0.1:9095", "where the Prometheus exposition listens; empty turns it off"),
@@ -112,6 +114,7 @@ func run(args []string, out io.Writer) error {
 	root, dialectName, sel := o.root, o.dialectName, o.sel
 	dsnFrom, full, addr, rows := o.dsnFrom, o.full, o.addr, o.rows
 	maxBytes, dryRun, registry, metricsAddr := o.maxBytes, o.dryRun, o.registry, o.metricsAddr
+	budget := o.budget
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
@@ -123,7 +126,7 @@ func run(args []string, out io.Writer) error {
 		// here. Every other command loads `models/` first; this one has no
 		// project, and a `brevis-sql serve` in a directory without models
 		// would otherwise die with a message about a thing it does not use.
-		return serve(out, *addr, *rows, *maxBytes, *registry, *metricsAddr, *dryRun)
+		return serve(out, *addr, *rows, *maxBytes, *budget, *registry, *metricsAddr, *dryRun)
 	default:
 		usage(os.Stderr)
 		return fmt.Errorf("%q is not a command", cmd)
@@ -396,6 +399,7 @@ brevis-sql — plain .sql models, run as a Brevis step
   --addr HOST:PORT  where to listen                            (serve)
   --rows N          the most rows a preview returns            (serve)
   --max-bytes N     the most bytes one query may scan          (serve)
+  --budget N        the most bytes one connection may scan per hour  (serve)
   --connections F   the file declaring which warehouses may be read  (serve)
   --metrics-addr A  where the Prometheus exposition listens    (serve)
   --dry-run         build the service and report, without listening  (serve)

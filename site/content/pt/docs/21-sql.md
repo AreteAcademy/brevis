@@ -31,6 +31,8 @@ As telas Data e SQL do console mostram o que aterrissou e o que há dentro. Nenh
 brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
 ```
 
+Um teto não é um orçamento: `--max-bytes` limita uma query, e `--budget` limita a soma por conexão por hora — verificado contra a cotação, para que a recusa venha antes do dinheiro. Ele só limita warehouses que reportam bytes, ou seja BigQuery e não Postgres; o banner de boot diz qual postura está em vigor, inclusive a de não ter nenhuma.
+
 **Só o que o arquivo declara é alcançável**, e nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e a própria credencial é verificada como somente-leitura no primeiro uso. A linha de auditoria carrega um hash do statement e nunca o statement.
 
 Fora de `BREVIS_ENV=local` um `BREVIS_SQL_SERVE_TOKEN` é obrigatório e o serviço não sobe sem ele.

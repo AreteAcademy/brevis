@@ -63,6 +63,28 @@ type Options struct {
 	// bounds nothing else.
 	Bytes int64
 
+	// Budget is the most one CONNECTION may scan in an hour, across every
+	// query. Zero is no budget, which is the default.
+	//
+	// A CONCURRENCY LIMIT IS NOT A BUDGET -- CHECKPOINT B's F6. Four queries
+	// at a time, each under the per-query ceiling, repeated forever, is
+	// unbounded: the ceiling bounds one query and nothing bounds the sum.
+	// For a single authenticated operator no budget may well be the right
+	// answer, but it has to be a CHOICE, and an absence is not one. The boot
+	// banner states whichever it is.
+	//
+	// PER CONNECTION, because a connection is what pays the bill: two
+	// warehouses are two accounts, and exhausting one must not close the
+	// other.
+	//
+	// IT BOUNDS WHAT IS METERED, which is not everything. A warehouse that
+	// charges for a machine by the hour reports no bytes, so a budget bounds
+	// BigQuery and bounds nothing on Postgres. That is fine -- Postgres is
+	// not billed by the byte -- and dangerous only if somebody believes
+	// otherwise, which is why the banner says which connections it can
+	// actually bound.
+	Budget int64
+
 	// Audit is where one line per query goes. Nil writes none, which is what
 	// a test wants and never what a deployment does.
 	Audit io.Writer
@@ -107,6 +129,9 @@ type Service struct {
 	// described is one answer per RELATION, which is the level columns are
 	// asked at. See columns.go.
 	described *descriptions
+
+	// spent is what each connection has scanned in this window. See budget.go.
+	spent *spending
 
 	// met counts what the audit line records. Served on a listener of its
 	// own -- see Metrics.
@@ -184,6 +209,7 @@ func New(opt Options) (*Service, error) {
 		probed:    map[string]bool{},
 		listed:    newListings(),
 		described: newDescriptions(),
+		spent:     newSpending(),
 		met:       newMetrics(),
 	}, nil
 }

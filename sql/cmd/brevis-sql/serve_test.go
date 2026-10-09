@@ -83,7 +83,41 @@ func TestTheTokenComesFromTheEnvironmentAndNotAFlag(t *testing.T) {
 // paid once for a check that could not fail.
 func TestTheAuditWriterIsWired(t *testing.T) {
 	var out bytes.Buffer
-	if got := serveOptions(&out, "127.0.0.1:8088", 100, 1<<30, &connections.Registry{}); got.Audit == nil {
+	if got := serveOptions(&out, "127.0.0.1:8088", 100, 1<<30, 0, &connections.Registry{}); got.Audit == nil {
 		t.Error("the service was built with nowhere to write an audit line")
+	}
+}
+
+// THE BUDGET IS STATED AT BOOT, WHICHEVER IT IS.
+//
+// CHECKPOINT B's F6 does not say a budget is required. It says: "for one
+// authenticated operator that may well be the right choice -- but it should
+// be a STATED choice, and today it is an absence." So an absence has to be
+// said out loud, the way "no token" already is, and a number has to be said
+// too, or nobody knows which they have.
+func TestTheBudgetIsSaidAtBootWhicheverItIs(t *testing.T) {
+	var without bytes.Buffer
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &without); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(without.String(), "no budget") {
+		t.Errorf("an unbounded service does not say so:\n%s", without.String())
+	}
+
+	var with bytes.Buffer
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run",
+		"--budget", "107374182400"}, &with); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"100 GB", "per connection", "hour"} {
+		if !strings.Contains(with.String(), want) {
+			t.Errorf("the banner does not carry %q:\n%s", want, with.String())
+		}
+	}
+	// AND WHAT IT CANNOT BOUND. A budget counts bytes a warehouse reports,
+	// and a warehouse billed by the hour reports none -- so somebody must
+	// not read this number as a limit on their Postgres.
+	if !strings.Contains(with.String(), "report") {
+		t.Errorf("the banner does not say what a budget cannot bound:\n%s", with.String())
 	}
 }

@@ -28,12 +28,12 @@ import (
 // THE TOKEN IS NAMED BY THE ENVIRONMENT AND NEVER BY A FLAG -- the rule
 // `--dsn-from` already applies to a DSN, for the same reason: a command line
 // is in a shell history, in a CI log and in anybody's `ps`.
-func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metricsAddr string, dryRun bool) error {
+func serve(out io.Writer, addr string, rows int, maxBytes, budget int64, registry, metricsAddr string, dryRun bool) error {
 	reg, err := connections.Load(registry)
 	if err != nil {
 		return err
 	}
-	s, err := svc.New(serveOptions(out, addr, rows, maxBytes, reg))
+	s, err := svc.New(serveOptions(out, addr, rows, maxBytes, budget, reg))
 	if err != nil {
 		return err
 	}
@@ -49,6 +49,17 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metri
 		// there rather than anything about the warehouse.
 		_, _ = fmt.Fprintf(out, "  no connections declared (%s): BigQuery destinations still work, "+
 			"every other dialect answers that nothing is declared\n", registry)
+	}
+	// THE BUDGET, WHICHEVER IT IS. CHECKPOINT B's F6 asked for a stated
+	// choice and not a number: "for one authenticated operator [no budget]
+	// may well be the right choice -- but it should be a STATED choice, and
+	// today it is an absence." So the absence is said out loud, the way "no
+	// token" is, and the presence carries what it cannot bound.
+	if budget > 0 {
+		_, _ = fmt.Fprintf(out, "  budget %s per connection per hour, over every query; "+
+			"it bounds only warehouses that report bytes\n", svc.BytesText(budget))
+	} else {
+		_, _ = fmt.Fprintf(out, "  no budget: %s per query and nothing bounds the sum\n", svc.BytesText(maxBytes))
 	}
 	_, _ = fmt.Fprintln(out, "  one audit line per query, on this stream, holding no SQL")
 	if metricsAddr != "" {
@@ -113,7 +124,7 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metri
 // A FUNCTION SO THE WIRING CAN BE ASSERTED. An audit nobody connected is an
 // audit that is silent exactly when it is read, and "we thought it was on"
 // is the sentence this repository has already paid for once.
-func serveOptions(out io.Writer, addr string, rows int, maxBytes int64, reg *connections.Registry) svc.Options {
+func serveOptions(out io.Writer, addr string, rows int, maxBytes, budget int64, reg *connections.Registry) svc.Options {
 	return svc.Options{
 		// Read from the environment, never from an argument: something that
 		// could declare itself local would be something that turns off
@@ -123,9 +134,10 @@ func serveOptions(out io.Writer, addr string, rows int, maxBytes int64, reg *con
 		// WHERE IT WILL LISTEN, handed over as evidence: an unset BREVIS_ENV
 		// on an address other machines can reach is a deployment that forgot
 		// a variable, and New refuses it.
-		Addr:  addr,
-		Rows:  rows,
-		Bytes: maxBytes,
+		Addr:   addr,
+		Rows:   rows,
+		Bytes:  maxBytes,
+		Budget: budget,
 		// ONE STREAM. A container gives you one anyway, and an audit line
 		// somewhere else is an audit line nobody collects.
 		Audit: out,
