@@ -45,7 +45,7 @@ func credentialService(t *testing.T, env string, c dialect.Conn, audit *bytes.Bu
 	}
 	s, err := New(Options{
 		Env: env, Token: token, Rows: 100, Bytes: 10 << 30, Audit: audit,
-		Open: func(context.Context, string) (dialect.Conn, error) { return c, nil },
+		Open: func(context.Context, Table) (dialect.Conn, error) { return c, nil },
 	})
 	if err != nil {
 		t.Fatal(err)

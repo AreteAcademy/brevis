@@ -20,6 +20,15 @@ import (
 // a reason. See where it is raised.
 var errNoConnection = errors.New("the connector returned no connection and no error")
 
+// ErrNoConnection is what an opener returns when nothing is DECLARED for a
+// destination, as opposed to declared and unreachable.
+//
+// THE DIFFERENCE IS THE WHOLE POINT. "Unreachable" is an incident and says
+// nothing a reader can act on; "nobody has declared where that database is"
+// is a sentence with an action in it, and V4 puts it on the screen. A 502
+// would bury the second inside the first.
+var ErrNoConnection = errors.New("no connection is declared for that destination")
+
 // EnvLocal is the one environment where an open endpoint is allowed.
 const EnvLocal = "local"
 
@@ -63,7 +72,11 @@ type Options struct {
 
 	// Open connects to one warehouse. A field so a test can hand over a fake
 	// without a warehouse, and so this package holds no driver of its own.
-	Open func(ctx context.Context, connection string) (dialect.Conn, error)
+	//
+	// IT TAKES THE WHOLE TARGET and not just a name, because a name is not
+	// unique on its own: `app` can be a BigQuery project and a Postgres
+	// database at once, and the registry matches on both halves.
+	Open func(ctx context.Context, t Table) (dialect.Conn, error)
 }
 
 // Service answers read-only questions about a warehouse.
@@ -204,7 +217,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	conn, err := s.opt.Open(ctx, table.Connection)
+	conn, err := s.opt.Open(ctx, table)
 	if err == nil && conn == nil {
 		// NOTHING AND NO ERROR EITHER. No dialect does this; a registry of
 		// connections is exactly the kind of code that returns a zero value
@@ -213,9 +226,13 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		err = errNoConnection
 	}
 	if err != nil {
-		// The reason is not forwarded: it is a connection error from a driver
-		// and may carry a host, a role or a project somebody is not meant to
-		// learn from a 502.
+		if errors.Is(err, ErrNoConnection) {
+			refuse(w, http.StatusBadRequest, ErrNoConnection.Error())
+			return
+		}
+		// Everything else is not forwarded: it is a connection error from a
+		// driver and may carry a host, a role or a project somebody is not
+		// meant to learn from a 502.
 		refuse(w, http.StatusBadGateway, "the warehouse could not be reached")
 		return
 	}

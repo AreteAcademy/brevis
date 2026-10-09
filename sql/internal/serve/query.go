@@ -104,7 +104,7 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.opt.Timeout)
 	defer cancel()
 
-	conn, err := s.opt.Open(ctx, table.Connection)
+	conn, err := s.opt.Open(ctx, table)
 	if err == nil && conn == nil {
 		// NOTHING AND NO ERROR EITHER. No dialect does this; a registry of
 		// connections is exactly the kind of code that returns a zero value
@@ -113,6 +113,11 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 		err = errNoConnection
 	}
 	if err != nil {
+		if errors.Is(err, ErrNoConnection) {
+			line.Outcome = "undeclared"
+			refuse(w, http.StatusBadRequest, ErrNoConnection.Error())
+			return
+		}
 		line.Outcome = "unreachable"
 		refuse(w, http.StatusBadGateway, "the warehouse could not be reached")
 		return

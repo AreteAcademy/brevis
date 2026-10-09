@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/AreteAcademy/brevis/sql/internal/connections"
 )
 
 // `serve` IS A COMMAND, and the help says so. A command the usage does not
@@ -81,7 +83,7 @@ func TestTheTokenComesFromTheEnvironmentAndNotAFlag(t *testing.T) {
 // paid once for a check that could not fail.
 func TestTheAuditWriterIsWired(t *testing.T) {
 	var out bytes.Buffer
-	if got := serveOptions(&out, 100, 1<<30); got.Audit == nil {
+	if got := serveOptions(&out, 100, 1<<30, &connections.Registry{}); got.Audit == nil {
 		t.Error("the service was built with nowhere to write an audit line")
 	}
 }

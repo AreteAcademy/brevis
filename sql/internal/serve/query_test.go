@@ -60,7 +60,7 @@ func queryService(t *testing.T, c dialect.Conn, audit *bytes.Buffer, maxBytes in
 		Rows:  100,
 		Bytes: maxBytes,
 		Audit: audit,
-		Open:  func(context.Context, string) (dialect.Conn, error) { return c, nil },
+		Open:  func(context.Context, Table) (dialect.Conn, error) { return c, nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -290,7 +290,7 @@ func TestTooManyAtOnceIsRefusedRatherThanQueued(t *testing.T) {
 	p := &priced{estimate: 1, block: make(chan struct{})}
 	s, err := New(Options{
 		Env: EnvLocal, Rows: 100, Bytes: 1 << 30, Concurrent: 1, Audit: &bytes.Buffer{},
-		Open: func(context.Context, string) (dialect.Conn, error) { return p, nil },
+		Open: func(context.Context, Table) (dialect.Conn, error) { return p, nil },
 	})
 	if err != nil {
 		t.Fatal(err)

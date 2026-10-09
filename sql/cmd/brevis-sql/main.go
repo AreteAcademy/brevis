@@ -74,6 +74,7 @@ func run(args []string, out io.Writer) error {
 	rows := fs.Int("rows", 100, "the most rows a preview may return; a caller may ask for fewer")
 	maxBytes := fs.Int64("max-bytes", 10<<30, "the most bytes one query may scan; it is priced first and refused above this")
 	dryRun := fs.Bool("dry-run", false, "build the service and report, without listening")
+	registry := fs.String("connections", "brevis.yaml", "the file declaring which warehouses may be read")
 	if err := fs.Parse(rest); err != nil {
 		return err
 	}
@@ -85,7 +86,7 @@ func run(args []string, out io.Writer) error {
 		// here. Every other command loads `models/` first; this one has no
 		// project, and a `brevis-sql serve` in a directory without models
 		// would otherwise die with a message about a thing it does not use.
-		return serve(out, *addr, *rows, *maxBytes, *dryRun)
+		return serve(out, *addr, *rows, *maxBytes, *registry, *dryRun)
 	default:
 		usage()
 		return fmt.Errorf("%q is not a command", cmd)

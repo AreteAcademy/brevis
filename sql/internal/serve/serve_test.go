@@ -42,7 +42,7 @@ func testService(t *testing.T, f *fake) *Service {
 		Env:   EnvLocal,
 		Rows:  100,
 		Bytes: testBytes,
-		Open:  func(context.Context, string) (dialect.Conn, error) { return f, nil },
+		Open:  func(context.Context, Table) (dialect.Conn, error) { return f, nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestABadTargetIsRefusedBeforeConnecting(t *testing.T) {
 	opened := false
 	s, err := New(Options{
 		Env: EnvLocal, Rows: 100, Bytes: testBytes,
-		Open: func(context.Context, string) (dialect.Conn, error) {
+		Open: func(context.Context, Table) (dialect.Conn, error) {
 			opened = true
 			return nil, nil
 		},
@@ -182,7 +182,7 @@ func TestABadTargetIsRefusedBeforeConnecting(t *testing.T) {
 // turns off authentication."
 func TestItRefusesToExistWithoutAuthOutsideLocal(t *testing.T) {
 	_, err := New(Options{Env: "production", Rows: 100, Bytes: testBytes,
-		Open: func(context.Context, string) (dialect.Conn, error) { return nil, nil }})
+		Open: func(context.Context, Table) (dialect.Conn, error) { return nil, nil }})
 	if err == nil {
 		t.Fatal("a production service with no token was built")
 	}
@@ -192,7 +192,7 @@ func TestItRefusesToExistWithoutAuthOutsideLocal(t *testing.T) {
 
 	// And with one, it exists and demands it.
 	s, err := New(Options{Env: "production", Rows: 100, Bytes: testBytes, Token: "s3cret",
-		Open: func(context.Context, string) (dialect.Conn, error) { return &fake{}, nil }})
+		Open: func(context.Context, Table) (dialect.Conn, error) { return &fake{}, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func (e *empty) Read(context.Context, dialect.Request) (dialect.Result, error) {
 // a nil slice and would hide exactly the difference being tested.
 func TestAnEmptyResultIsAnEmptyListOnTheWire(t *testing.T) {
 	s, err := New(Options{Env: EnvLocal, Rows: 100, Bytes: testBytes,
-		Open: func(context.Context, string) (dialect.Conn, error) { return &empty{}, nil }})
+		Open: func(context.Context, Table) (dialect.Conn, error) { return &empty{}, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestAPreviewThatCutSaysSo(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			f := &counting{have: c.have}
 			s, err := New(Options{Env: EnvLocal, Rows: c.ceiling, Bytes: testBytes,
-				Open: func(context.Context, string) (dialect.Conn, error) { return f, nil }})
+				Open: func(context.Context, Table) (dialect.Conn, error) { return f, nil }})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -368,7 +368,7 @@ func TestAPreviewIsBoundedByTheByteCeilingToo(t *testing.T) {
 // one nobody meant to run, and by then it has been billed.
 func TestAServiceWithoutAByteCeilingDoesNotStart(t *testing.T) {
 	_, err := New(Options{Env: EnvLocal, Rows: 100,
-		Open: func(context.Context, string) (dialect.Conn, error) { return &fake{}, nil }})
+		Open: func(context.Context, Table) (dialect.Conn, error) { return &fake{}, nil }})
 	if err == nil {
 		t.Fatal("a service with no byte ceiling started")
 	}
@@ -388,7 +388,7 @@ func TestAServiceWithoutAByteCeilingDoesNotStart(t *testing.T) {
 // the kind of code that returns a zero value on a path nobody walked yet.
 func TestAConnectorThatReturnsNothingIsRefusedRatherThanFatal(t *testing.T) {
 	s, err := New(Options{Env: EnvLocal, Rows: 10, Bytes: testBytes,
-		Open: func(context.Context, string) (dialect.Conn, error) { return nil, nil }})
+		Open: func(context.Context, Table) (dialect.Conn, error) { return nil, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
