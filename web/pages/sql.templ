@@ -2,6 +2,20 @@ package pages
 
 import "github.com/AreteAcademy/brevis/web/layouts"
 
+// editorAssets is the island's load order, and the order is not style: the
+// SQL mode registers itself with `CodeMirror`, which the first file defines.
+//
+// Only this screen pays for it -- the rule base.templ states and the DAG's
+// React already follows.
+var editorAssets = layouts.Island{
+	CSS: []string{"/assets/vendor/codemirror.css"},
+	JS: []string{
+		"/assets/vendor/codemirror.js",
+		"/assets/vendor/codemirror-sql.js",
+		"/assets/sql.js",
+	},
+}
+
 // SQL is the workbench.
 //
 // SERVER-RENDERED, like every other screen here: `base.templ` states the rule
@@ -14,7 +28,7 @@ import "github.com/AreteAcademy/brevis/web/layouts"
 // and in a Referer header. Tab state in a query parameter would be exactly
 // that, so tabs wait for the island that can hold state in the browser.
 templ SQL(v SQLView) {
-	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Wide: true}) {
+	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Wide: true, Island: editorAssets}) {
 		if v.Empty() {
 			<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
 				Nothing here can be queried yet. A destination shows up once a pipeline

@@ -31,7 +31,16 @@ import (
 // bundles: a UI that depends on Google Fonts changes typeface halfway down the
 // screen when the network does not answer.
 //
-//go:embed app.css ui.js dag.js jsx-shim.js logo.svg vendor fonts
+// AN EXPLICIT LIST, and that is a trap worth naming: a new file under this
+// directory is NOT served until its name is added here, and the only sign is
+// a 404 at runtime. `/assets/sql.js` shipped that way for a few minutes while
+// four tests agreed the page referenced it.
+//
+// The list stays explicit anyway -- `embed *` would sweep up `app.src.css`,
+// every `_test.go` beside it and whatever somebody drops here next. What
+// catches the omission now is a test that walks a rendered page and GETs
+// everything it asks for.
+//go:embed app.css ui.js dag.js jsx-shim.js sql.js logo.svg vendor fonts
 var FS embed.FS
 
 // LogoSVG is the default mark, already read out of the embedded FS.

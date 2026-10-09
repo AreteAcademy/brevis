@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -248,5 +249,86 @@ func TestAStatementInTheWorkbenchURLIsIgnored(t *testing.T) {
 	mux.ServeHTTP(rec, r)
 	if asked {
 		t.Error("a POST took its statement from the URL")
+	}
+}
+
+// THE EDITOR IS AN ISLAND, AND ONLY THIS SCREEN PAYS FOR IT.
+//
+// `base.templ` states the rule -- "interactive islands only where the
+// interaction justifies one" -- and the DAG's 350 KB of React already follows
+// it. A SQL editor is the same rule applied, not a new one.
+func TestTheEditorLoadsOnlyOnTheWorkbench(t *testing.T) {
+	svc := (&sqlFake{body: `{}`}).start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	workbench := render(t, ui, "/sql")
+	for _, want := range []string{
+		"/assets/vendor/codemirror.js",
+		"/assets/vendor/codemirror-sql.js",
+		"/assets/vendor/codemirror.css",
+		"/assets/sql.js",
+	} {
+		if !strings.Contains(workbench, want) {
+			t.Errorf("the workbench does not load %q", want)
+		}
+	}
+
+	for _, path := range []string{"/data", "/data/target?u=" + probeTarget} {
+		body := render(t, ui, path)
+		if strings.Contains(body, "codemirror") {
+			t.Errorf("%s pays for the editor and never uses it", path)
+		}
+	}
+}
+
+// AND THE PAGE WORKS WITHOUT IT. The island MOUNTS ON the textarea rather
+// than replacing it: a console where the form only submits with JavaScript is
+// not this console, and it is also how the whole suite tests the workbench
+// without a browser.
+func TestTheWorkbenchIsAFormBeforeItIsAnEditor(t *testing.T) {
+	svc := (&sqlFake{body: `{}`}).start(t)
+	body := render(t, consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery"), "/sql")
+
+	textarea := strings.Index(body, `<textarea`)
+	if textarea < 0 {
+		t.Fatal("there is no textarea; the form cannot work without the island")
+	}
+	if !strings.Contains(body, `name="q"`) {
+		t.Error("the textarea does not carry the field name the handler reads")
+	}
+	// The island's script comes AFTER the form, so the element it mounts on
+	// exists by the time it runs.
+	if js := strings.Index(body, "/assets/sql.js"); js < textarea {
+		t.Error("the editor's script runs before the textarea it mounts on")
+	}
+}
+
+// EVERY ASSET A PAGE ASKS FOR IS ACTUALLY SERVED.
+//
+// `/assets/sql.js` 404'd on the running console while four tests agreed the
+// page referenced it: the embed directive is an explicit list and a new file
+// is not in it. Referencing a path and serving one are different facts, and
+// every test here had been checking the first.
+//
+// It walks the HTML rather than naming the files, so the next asset somebody
+// adds is covered the moment the page asks for it.
+func TestEveryAssetTheWorkbenchAsksForIsServed(t *testing.T) {
+	svc := (&sqlFake{body: `{}`}).start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	body := render(t, ui, "/sql")
+
+	refs := regexp.MustCompile(`(?:src|href)="(/assets/[^"]+)"`).FindAllStringSubmatch(body, -1)
+	if len(refs) < 4 {
+		t.Fatalf("the page asks for %d assets, which is fewer than this screen needs", len(refs))
+	}
+	for _, m := range refs {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, m[1], nil))
+		if rec.Code != http.StatusOK {
+			t.Errorf("the page asks for %s and it answers %d", m[1], rec.Code)
+		}
 	}
 }

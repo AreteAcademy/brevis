@@ -76,3 +76,15 @@ func Short(target string) string {
 	}
 	return rest
 }
+
+// EditorAssets is the island's load order, exported so it can be pinned.
+//
+// THE ORDER IS NOT STYLE. The SQL mode calls `CodeMirror.defineMode` the
+// instant it runs, and `CodeMirror` is what the first file defines; swapping
+// the two leaves a plain textarea and a console error. The DAG island carries
+// the same warning in prose -- "swapping two lines here leaves the screen
+// blank" -- and nothing has ever checked it.
+//
+// No Go test can watch a browser evaluate these. What a test CAN do is refuse
+// a reordering, which is the mistake the prose is about.
+func EditorAssets() []string { return editorAssets.JS }
