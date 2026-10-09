@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#141711">
+
+<title>SQL — Documentation</title>
+<meta name="description" content="Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.">
+<meta name="author" content="Aretê Academy">
+<link rel="canonical" href="https://brevis.sh/en/docs/sql/">
+<link rel="alternate" type="text/markdown" href="https://brevis.sh/en/docs/sql/index.md">
+<link rel="alternate" hreflang="pt-BR" href="https://brevis.sh/docs/sql/"><link rel="alternate" hreflang="en" href="https://brevis.sh/en/docs/sql/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="brevis.sh">
+<meta property="og:locale" content="en">
+<meta property="og:title" content="SQL — Documentation">
+<meta property="og:description" content="Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.">
+<meta property="og:url" content="https://brevis.sh/en/docs/sql/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SQL — Documentation">
+<meta name="twitter:description" content="Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.">
+
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/docs.css">
+
+<script>document.documentElement.classList.add('js');</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "SQL",
+  "description": "Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.",
+  "inLanguage": "en",
+  "isPartOf": {
+    "@type": "WebSite",
+    "@id": "https://brevis.sh/#site"
+  },
+  "author": {
+    "@type": "Organization",
+    "name": "Aretê Academy"
+  }
+}
+</script>
+</head>
+<body class="page-doc">
+
+<a class="skip-link" href="#conteudo">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-mark" viewBox="0 0 24 24" fill="none">
+    <!-- The breve: the Latin sign for a short syllable. brevis is scanned
+         brĕvis, so the mark is the word written as the sign that names it.
+         Kept in sync with assets/mark.svg. -->
+    <path d="M4 10.4C4 15.2 20 15.2 20 10.4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h15M13 6l6 6-6 6"/>
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12.5 9.5 18 20 6.5"/>
+  </symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+    <circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>
+  </symbol>
+  <symbol id="i-github" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.23.72-.5v-1.8c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.62 1.09 1.62 1.09.94 1.6 2.45 1.14 3.05.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.2 0-1.15.41-2.09 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.08a10.1 10.1 0 0 1 5.24 0c2-1.36 2.87-1.08 2.87-1.08.58 1.46.22 2.53.11 2.8a4.05 4.05 0 0 1 1.08 2.82c0 4.04-2.46 4.93-4.8 5.19.38.33.72.97.72 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="shell header-bar">
+    <a class="brand" href="/en/">
+      <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+      <span>brevis<span class="tld">.sh</span></span>
+    </a>
+
+    <nav class="main-nav" id="nav" aria-label="Main navigation">
+      <a href="/en/#ecossistema">Ecosystem</a>
+      <a href="/en/#principios">Principles</a>
+      <a href="/en/docs/">Documentation</a>
+      <a href="/en/#open-source">Open source</a>
+      <div class="lang-switch" role="group" aria-label="Language"><a href="/docs/sql/" hreflang="pt-BR">PT</a><a href="/en/docs/sql/" hreflang="en" aria-current="true">EN</a></div>
+      <a class="button button-secondary button-sm header-cta" href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">
+        <svg aria-hidden="true"><use href="#i-github"></use></svg>
+        Explore open source
+      </a>
+    </nav>
+
+    <button class="nav-toggle" type="button" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav">
+      <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    </button>
+  </div>
+</header>
+
+<div class="doc-shell">
+  <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side">
+    <svg aria-hidden="true"><use href="#i-menu"></use></svg>
+    Documentation menu
+  </button>
+
+  <aside class="side" id="side">
+    <div class="side-inner">
+      <form class="search" role="search" onsubmit="return false">
+        <svg aria-hidden="true"><use href="#i-search"></use></svg>
+        <label class="sr-only" for="q">Search the documentation</label>
+        <input type="search" id="q" placeholder="Search…" autocomplete="off" spellcheck="false">
+      </form>
+      <div class="search-out" id="search-out" data-none="No results" hidden></div>
+      <nav class="side-nav" aria-label="Documentation">
+        <p class="side-group">Getting started</p><ul class="side-list"><li><a href="/en/docs/ecosystem/">Ecosystem</a></li><li><a href="/en/docs/introduction/">Introduction</a></li><li><a href="/en/docs/installation/">Installation</a></li><li><a href="/en/docs/quickstart/">Quickstart</a></li></ul><p class="side-group">Concepts</p><ul class="side-list"><li><a href="/en/docs/core/">Core</a></li><li><a href="/en/docs/workflows/">Workflows</a></li><li><a href="/en/docs/scheduler-and-queue/">Scheduler and queue</a></li><li><a href="/en/docs/pod-per-step/">Pod per step</a></li><li><a href="/en/docs/context/">Context between steps</a></li></ul><p class="side-group">Reference</p><ul class="side-list"><li><a href="/en/docs/cli/">CLI</a></li><li><a href="/en/docs/parameters/">Parameters</a></li><li><a href="/en/docs/configuration/">Configuration</a></li><li><a href="/en/docs/runtime/">Step runtime</a></li></ul><p class="side-group">SDK and libraries</p><ul class="side-list"><li><a href="/en/docs/sdk/">Go SDK</a></li><li><a href="/en/docs/libraries/">Client libraries</a></li><li><a href="/en/docs/python/">Python</a></li></ul><p class="side-group">Operations</p><ul class="side-list"><li><a href="/en/docs/kubernetes/">Kubernetes</a></li><li><a href="/en/docs/observability/">Observability</a></li><li><a href="/en/docs/white-label/">White label</a></li></ul><p class="side-group">Ingestion</p><ul class="side-list"><li><a href="/en/docs/ingestion/">Ingestion</a></li><li><a href="/en/docs/ingestion-sinks/">Ingestion sinks</a></li><li><a href="/en/docs/benchmarks/">Benchmarks</a></li></ul><p class="side-group">Modelling in SQL</p><ul class="side-list"><li><a href="/en/docs/sql/" aria-current="page">SQL</a></li></ul>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="doc" id="conteudo">
+    <article class="doc-body">
+      <p class="doc-kicker">Documentation</p>
+      <h1>SQL</h1>
+      <p class="doc-desc">Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.</p>
+      <p>No templating: a model is a file that stays valid SQL, and the order comes from reading the SQL itself. Postgres and BigQuery, under the same conformance suite.</p>
+<figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery." loading="lazy"></figure>
+<h2 id="four-commands">Four commands<a class="anchor" href="#four-commands" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>command</th><th>what it does</th></tr></thead><tbody><tr><td><code>compile</code></td><td>parses every model and resolves every edge, <strong>connecting to nothing</strong></td></tr><tr><td><code>graph</code></td><td>prints the inferred edges, so a wrong one is seen and not discovered</td></tr><tr><td><code>build</code></td><td>creates or replaces every model, in dependency order</td></tr><tr><td><code>test</code></td><td>runs every model's tests; each is a SELECT that must find nothing</td></tr></tbody></table></div>
+<p><code>--select orders+</code> narrows any of them to one model and everything downstream of it.</p>
+<h2 id="a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL<a class="anchor" href="#a-model-is-a-file-that-stays-valid-sql" aria-label="link">#</a></h2>
+<p>The configuration is a leading block comment, so the file opens in an editor with highlighting, runs in a console by hand, and <code>psql -f</code> executes it.</p>
+<div class="code-block" data-code="/* brevis
+materialized: table
+tests:
+  - not_null: [order_id]
+  - unique: [order_id]
+  - relationships: {column: customer_id, to: staging.stg_customers, field: customer_id}
+*/
+select * from staging.stg_orders"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>/* brevis
+materialized: table
+tests:
+  - not_null: [order_id]
+  - unique: [order_id]
+  - relationships: {column: customer_id, to: staging.stg_customers, field: customer_id}
+*/
+select * from staging.stg_orders</code></pre></div>
+<p><strong>No templating.</strong> <code>models/&lt;schema&gt;/&lt;name&gt;.sql</code> is <code>&lt;schema&gt;.&lt;name&gt;</code>, and dependencies come from reading the SQL rather than from a function call you have to write. <code>brevis-sql graph</code> prints what was inferred; <code>depends_on:</code> in the header is the explicit override for the rare miss.</p>
+<h2 id="from-compile-to-test">From compile to test<a class="anchor" href="#from-compile-to-test" aria-label="link">#</a></h2>
+<p>Two models: a view that cleans <code>raw.orders</code>, and a table that depends on it.</p>
+<p><code>models/staging/stg_orders.sql</code>:</p>
+<div class="code-block" data-code="/* brevis
+materialized: view
+*/
+select order_id, customer_id, amount, ordered_at
+from raw.orders
+where amount is not null"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>/* brevis
+materialized: view
+*/
+select order_id, customer_id, amount, ordered_at
+from raw.orders
+where amount is not null</code></pre></div>
+<p><code>models/marts/orders.sql</code>:</p>
+<div class="code-block" data-code="/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/
+select customer_id, count(*) as orders, sum(amount) as revenue
+from staging.stg_orders
+group by customer_id"><div class="code-head"><span class="code-lang">sql</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>/* brevis
+materialized: table
+tests:
+  - not_null: [customer_id]
+  - unique: [customer_id]
+*/
+select customer_id, count(*) as orders, sum(amount) as revenue
+from staging.stg_orders
+group by customer_id</code></pre></div>
+<p><code>compile</code> and <code>graph</code> connect to nothing:</p>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  compile <span class="t-n">--project</span> /project</code></pre></div>
+<div class="code-block" data-code="2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>2 models, 2 to build, 0 function(s)
+  staging.stg_orders                 view  0 test(s)
+  marts.orders                       table 2 test(s)</code></pre></div>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  graph <span class="t-n">--project</span> /project</code></pre></div>
+<div class="code-block" data-code="staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>staging.stg_orders
+  └─ raw.orders (source)
+marts.orders
+  ├─ staging.stg_orders</code></pre></div>
+<p><code>build</code> and <code>test</code>, against a Postgres:</p>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  build --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  build <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
+<div class="code-block" data-code="  staging.stg_orders                 view  new   4ms
+@brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/staging/stg_orders&quot;}
+  marts.orders                       table new   4ms
+@brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/marts/orders&quot;,&quot;rows&quot;:2}
+2 models built on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  staging.stg_orders                 view  new   4ms
+@brevis:{"type":"landed","target":"postgres://postgres/staging/stg_orders"}
+  marts.orders                       table new   4ms
+@brevis:{"type":"landed","target":"postgres://postgres/marts/orders","rows":2}
+2 models built on postgres</code></pre></div>
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  test --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
+<div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>2 tests passed on postgres</code></pre></div>
+<p>The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".</p>
+<h3 id="when-a-test-fails">When a test fails<a class="anchor" href="#when-a-test-fails" aria-label="link">#</a></h3>
+<p>With an order that has no customer in <code>raw.orders</code>, <code>build</code> passes and the <code>not_null</code> test does not. The failure names the model, the column, how many rows and <strong>the query</strong> — which is the thing you paste into a console and keep narrowing:</p>
+<div class="code-block" data-code="FAIL  marts.orders                   not_null         customer_id          1 row(s)
+      SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
+brevis-sql: 1 of 2 tests failed"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>FAIL  marts.orders                   not_null         customer_id          1 row(s)
+      SELECT COUNT(*) FROM (SELECT customer_id FROM marts.orders WHERE customer_id IS NULL) AS v
+brevis-sql: 1 of 2 tests failed</code></pre></div>
+<p>The process exits with code 1, and the workflow step fails with it.</p>
+<h2 id="tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows<a class="anchor" href="#tests-are-selects-that-return-violating-rows" aria-label="link">#</a></h2>
+<p><code>not_null</code>, <code>unique</code>, <code>accepted_values</code>, <code>relationships</code>. Zero rows is a pass, and there is nothing else to interpret.</p>
+<h2 id="it-says-what-it-wrote">It says what it wrote<a class="anchor" href="#it-says-what-it-wrote" aria-label="link">#</a></h2>
+<p>Every materialized model prints the <code>@brevis:</code> line the Brevis engine already reads, so it appears on <code>/data</code> beside everything else (see <code>build</code>'s output above). A view reports no row count rather than zero: it holds none, and a zero there is indistinguishable from a table that really is empty.</p>
+<h2 id="two-warehouses-one-suite">Two warehouses, one suite<a class="anchor" href="#two-warehouses-one-suite" aria-label="link">#</a></h2>
+<p>PostgreSQL and BigQuery (<code>--dialect bigquery</code>), and both run the same suite of tests — written while there was a single implementation, so the second could not quietly diverge.</p>
+<p>BigQuery authenticates with Application Default Credentials: on a workload identity, that is the pod's own identity, and <code>--dsn-from</code> names the variable holding the project id.</p>
+<h2 id="13-mb">13 MB<a class="anchor" href="#13-mb" aria-label="link">#</a></h2>
+<p>Distroless, nonroot, no shell. The official BigQuery client is 31 MB and 526 packages in an empty binary, so this talks to BigQuery over its REST endpoint instead — about 200 lines, with a test for each way it could be quietly wrong. A gate in the repository refuses that client by name, so the decision survives a routine dependency bump.</p>
+<h2 id="verified-against-dbt">Verified against dbt<a class="anchor" href="#verified-against-dbt" aria-label="link">#</a></h2>
+<p>jaffle-shop, built by this image on the same seed data dbt used:</p>
+<div class="table-wrap"><table><thead><tr><th></th><th>result</th></tr></thead><tbody><tr><td>rows and md5 of every row, per model</td><td><strong>identical, 13 of 13</strong></td></tr><tr><td>columns and types, per model</td><td><strong>identical, 13 of 13</strong></td></tr><tr><td>13 models, first build</td><td>1.56 s</td></tr></tbody></table></div>
+<h2 id="what-it-does-not-do">What it does not do<a class="anchor" href="#what-it-does-not-do" aria-label="link">#</a></h2>
+<p><strong>No dbt compatibility</strong>, and that is a decision rather than a gap. About a third of a real dbt project's models use nothing beyond <code>ref</code>, <code>source</code> and <code>config</code>; the rest use macros, and packages are templating by design. Half a compatibility nobody can predict is worse than none.</p>
+<h2 id="where-to-go-next">Where to go next<a class="anchor" href="#where-to-go-next" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>if you want</th><th>go to</th></tr></thead><tbody><tr><td>see where SQL sits among the four pieces</td><td><a href="/en/docs/ecosystem/">Ecosystem</a></td></tr><tr><td>run brevis-sql as a scheduled step</td><td><a href="/en/docs/core/">Core</a></td></tr><tr><td>land the data it will model</td><td><a href="/en/docs/sdk/">Go SDK</a> or <a href="/en/docs/ingestion/">Ingestion</a></td></tr></tbody></table></div>
+
+      <nav class="pagers" aria-label="Pages">
+        <a class="pager pager-prev" href="/en/docs/benchmarks/"><span>Previous</span><strong>Benchmarks</strong></a>
+        
+      </nav>
+
+      <p class="doc-edit">
+        <a href="https://github.com/AreteAcademy/brevis/blob/master/site/content/en/docs/sql.md" target="_blank" rel="noopener">Edit this page on GitHub</a>
+      </p>
+    </article>
+
+    <aside class="toc" aria-label="On this page">
+      <p class="toc-t">On this page</p>
+      <ul><li class="toc-2"><a href="#four-commands">Four commands</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">From compile to test</a></li><li class="toc-3"><a href="#when-a-test-fails">When a test fails</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">It says what it wrote</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Two warehouses, one suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verified against dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+    </aside>
+  </main>
+</div>
+
+
+<footer class="site-footer bg-grid">
+  <div class="shell">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="/en/">
+          <svg class="mark" aria-hidden="true"><use href="#i-mark"></use></svg>
+          <span>brevis<span class="tld">.sh</span></span>
+        </a>
+        <p>Philosophy applied to data infrastructure.</p>
+      </div>
+
+      <div class="footer-col">
+        <h2>project</h2>
+        <ul>
+          <li><a href="/en/#ecossistema">Ecosystem</a></li>
+          <li><a href="/en/#principios">Principles</a></li>
+          <li><a href="/en/#open-source">Open source</a></li>
+          <li><a href="/en/#faq">FAQ</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h2>code</h2>
+        <ul>
+          <li><a href="/en/docs/">Documentation</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis" target="_blank" rel="noopener">Repository</a></li>
+          <li><a href="https://github.com/AreteAcademy/brevis/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>An open source project by <a href="https://areteacademy.com.br/" target="_blank" rel="noopener">Aretê Academy</a></p>
+      <p>MIT · built in Go · Go gopher by Renée French, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener license">CC BY 4.0</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/docs.js" defer></script>
+</body>
+</html>

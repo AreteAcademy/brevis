@@ -70,6 +70,10 @@ The same documentation in Portuguese: https://brevis.sh/docs/ (append `index.md`
 - [Ingestion sinks](https://brevis.sh/en/docs/ingestion-sinks/index.md): The six destinations, how each database writes a record, and why the image carries only what you use.
 - [Benchmarks](https://brevis.sh/en/docs/benchmarks/index.md): How we measure the gateway, what the numbers say, and the three witnesses that have to agree.
 
+## Modelling in SQL
+
+- [SQL](https://brevis.sh/en/docs/sql/index.md): Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.
+
 ## Running it in production
 
 - [Kubernetes](https://brevis.sh/en/docs/kubernetes/index.md): How to deploy the engine, with what permissions, and what to check afterwards.

@@ -15,7 +15,7 @@ O Core agenda, enfileira e observa — e nunca toca o dado. Quem toca é o SDK, 
 | **Core** | Agenda, enfileira e sobe um pod por etapa. Nunca toca o dado. | `areteacademy/brevis` | [Core](/docs/core/index.md) |
 | **SDK** | Biblioteca Go que extrai, molda e carrega, dentro da sua etapa. | `go get github.com/AreteAcademy/brevis/sdk` | [SDK em Go](/docs/sdk/index.md) |
 | **Gateway** | Recebe HTTP POST, responde 202 e grava em lote. Sem banco próprio. | `areteacademy/brevis-gateway` | [Ingestão](/docs/ingestion/index.md) |
-| **SQL** | Arquivos .sql viram tabelas e views, em ordem de dependência. | `areteacademy/brevis-sql` | [SQL-hub.md](https://github.com/AreteAcademy/brevis/blob/master/docs/SQL-hub.md) |
+| **SQL** | Arquivos .sql viram tabelas e views, em ordem de dependência. | `areteacademy/brevis-sql` | [SQL](/docs/sql/index.md) |
 
 ## Plano de controle, plano de dados
 

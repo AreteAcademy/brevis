@@ -675,6 +675,7 @@ LLMS_GRUPOS = [
     ("Command line and configuration", ["cli", "configuration"]),
     ("Writing a step in code", ["sdk", "libraries", "python"]),
     ("Receiving data over HTTP", ["ingestion", "ingestion-sinks", "benchmarks"]),
+    ("Modelling in SQL", ["sql"]),
     ("Running it in production", ["kubernetes", "observability", "white-label"]),
 ]
 
