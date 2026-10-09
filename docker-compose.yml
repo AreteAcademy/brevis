@@ -78,6 +78,23 @@ services:
       # BREVIS_AUTH_USER: operador
       # BREVIS_AUTH_PASSWORD_HASH: "pbkdf2-sha256$$600000$$...$$..."
       # BREVIS_AUTH_SECRET: "a local development secret of 32 bytes"
+      #
+      # THE DATA TOOLS: the Preview and Query tabs on a destination.
+      #
+      # Commented for a different reason than the three lines above, and it
+      # needs them: the tabs are drawn only on a console that asks who you
+      # are. An unauthenticated console must not hand out every table in the
+      # warehouse, so uncommenting this line alone does nothing, and the API
+      # says so at boot rather than leaving you to wonder.
+      #
+      # `host.docker.internal` because `brevis-sql serve` runs on YOUR
+      # machine and not in this stack: it holds a warehouse credential, and
+      # nothing in this file should.
+      #
+      #     cd sql && go run ./cmd/brevis-sql serve
+      #
+      # BREVIS_SQL_SERVE_URL: http://host.docker.internal:8088
+      # BREVIS_SQL_SERVE_TOKEN: "only outside BREVIS_ENV=local, where serve demands one"
     ports: ["${BREVIS_API_PORT:-8080}:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying

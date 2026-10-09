@@ -187,3 +187,40 @@ func TestThePreviewIsBehindTheSameCheck(t *testing.T) {
 		t.Errorf("a preview on a writable credential answered %d", rec.Code)
 	}
 }
+
+// "COULD NOT CHECK" IS NOT "CHECKED AND FINE", and writing one when the other
+// happened is worse than saying nothing at all.
+//
+// Found by RUNNING it: the first real `serve` against the seeded catalog
+// probed `demo-project`, which has BigQuery disabled, and the audit line said
+// `"outcome":"read-only"`. An operator reading that would believe the
+// credential had been examined and cleared. It had not been examined at all.
+func TestAProbeThatFailedSaysSoRatherThanSayingItIsFine(t *testing.T) {
+	var audit bytes.Buffer
+	w := &writable{priced: priced{estimate: 1}, fail: errors.New("bigquery: not enabled")}
+	res := askAs(t, credentialService(t, "production", w, &audit), "/v1/query", queryBody("SELECT 1"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a query on an unprobed credential answered %d", res.Code)
+	}
+	if strings.Contains(audit.String(), `"outcome":"read-only"`) {
+		t.Errorf("a probe that failed reported a clean bill of health:\n%s", audit.String())
+	}
+	if !strings.Contains(audit.String(), `"outcome":"unprobed"`) {
+		t.Errorf("the audit line does not say the check could not run:\n%s", audit.String())
+	}
+}
+
+// A PROBE THAT FAILED IS TRIED AGAIN. Caching it would mean one transient
+// failure turns the check off for the life of the process -- and the whole
+// point of the check is that nobody notices when it is off.
+func TestAFailedProbeIsNotRemembered(t *testing.T) {
+	w := &writable{priced: priced{estimate: 1}, fail: errors.New("bigquery: not enabled")}
+	s := credentialService(t, "production", w, &bytes.Buffer{})
+	for range 3 {
+		askAs(t, s, "/v1/query", queryBody("SELECT 1"))
+	}
+	if w.asked != 3 {
+		t.Errorf("a probe that failed was retried %d times out of 3", w.asked)
+	}
+}

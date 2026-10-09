@@ -164,25 +164,37 @@ func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table T
 
 	if !asked {
 		schema, _, _ := strings.Cut(table.Relation, ".")
-		var err error
-		writes, err = probe.CanWrite(ctx, schema)
-		if err != nil {
-			// AN ERROR IS NOT A YES. See dialect.WriteProbe.
+		answer, err := probe.CanWrite(ctx, schema)
+
+		// THREE OUTCOMES AND NOT TWO. "Could not check" is not "checked and
+		// fine", and recording the second when the first happened is worse
+		// than recording nothing: an operator reading `read-only` believes
+		// the credential was examined and cleared.
+		//
+		// Found by RUNNING it, against a seeded catalog whose project has
+		// BigQuery disabled -- the probe could not even reach a warehouse
+		// and the line said the credential was read-only.
+		switch {
+		case err != nil:
+			// AN ERROR IS NOT A YES, whatever came back beside it, and it is
+			// not remembered either: caching a failure would let one
+			// transient error turn this check off for the life of the
+			// process, and nobody notices when it is off.
 			writes = false
+			s.audit(record{Event: "credential", Connection: table.Connection,
+				Outcome: "unprobed"}, time.Now())
+		default:
+			writes = answer
+			outcome := "read-only"
+			if writes {
+				outcome = outcomeWritable
+			}
+			s.mu.Lock()
+			s.probed[table.Connection] = writes
+			s.mu.Unlock()
+			s.audit(record{Event: "credential", Connection: table.Connection,
+				Outcome: outcome}, time.Now())
 		}
-		s.mu.Lock()
-		s.probed[table.Connection] = writes
-		s.mu.Unlock()
-		// SAID EITHER WAY, once per connection. A check that only speaks
-		// when it is unhappy is a check nobody can tell apart from one that
-		// never ran -- and "we thought it was on" is the sentence this
-		// repository has already paid for.
-		outcome := "read-only"
-		if writes {
-			outcome = outcomeWritable
-		}
-		s.audit(record{Event: "credential", Connection: table.Connection,
-			Outcome: outcome}, time.Now())
 	}
 	if !writes || s.opt.Env == EnvLocal {
 		return nil
