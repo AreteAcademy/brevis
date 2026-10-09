@@ -35,6 +35,9 @@ templ SQL(v SQLView) {
 				lands in a table — a bucket and a topic have no columns to read.
 			</p>
 		} else {
+			<div class="flex gap-5">
+				@tree(v)
+				<div class="min-w-0 flex-1">
 			<form method="post" action="/sql" class="flex flex-col gap-3">
 				<div class="flex flex-wrap items-center gap-3">
 					<label for="target" class="kicker">Connection</label>
@@ -79,6 +82,46 @@ templ SQL(v SQLView) {
 					<p class="mt-2 text-xs text-muted">{ v.Note() }</p>
 				</div>
 			}
+				</div>
+			</div>
 		}
+	}
+}
+
+// tree is what the chosen connection holds.
+//
+// THE HALF A PICKER CANNOT GIVE: a picker says which warehouse, and this
+// says what is IN it -- including the relations nothing landed on, which is
+// the whole reason somebody opens a workbench instead of a destination page.
+//
+// A <details> per schema and not a script: the browser gives the open state,
+// the keyboard and the ARIA for free, which is the same choice the account
+// menu made.
+templ tree(v SQLView) {
+	if len(v.Tree) > 0 {
+		<aside class="w-60 shrink-0 overflow-y-auto border-r border-line-soft pr-3 text-xs">
+			<p class="kicker mb-2">Objects</p>
+			for _, s := range v.Tree {
+				<details class="mb-0.5">
+					<summary class="cursor-pointer list-none rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
+						{ s.Name }
+					</summary>
+					for _, t := range s.Tables {
+						// `data-insert` is what the island reads to put the
+						// name in the editor. Without the island it is still
+						// a readable list, which is the point of putting the
+						// name in the text rather than only in an attribute.
+						<button
+							type="button"
+							data-insert={ s.Name + "." + t }
+							class="block w-full truncate rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
+						>{ t }</button>
+					}
+				</details>
+			}
+			if v.TreeCut {
+				<p class="mt-2 px-2 text-[0.7rem] text-muted">Showing part of this warehouse — there are more.</p>
+			}
+		</aside>
 	}
 }

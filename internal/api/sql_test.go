@@ -1,10 +1,12 @@
 package api_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -192,15 +194,29 @@ func TestTheWorkbenchIgnoresATargetTheCatalogDoesNotKnow(t *testing.T) {
 	}
 }
 
-// AN EMPTY BOX ASKS NOTHING, and opening the screen asks nothing either.
+// AN EMPTY BOX RUNS NOTHING, and opening the screen runs nothing either.
 //
 // Both moved here from the destination page's Query tab when that tab went
 // away: the property is about a workbench and a warehouse query for a page
 // view is a bill for a mistake, wherever the box lives.
+//
+// IT IS NO LONGER "ASKS NOTHING". The tree costs one metadata call per
+// render, which the service answers from its own memory after the first --
+// so the line this draws is between a SCAN, which is what a statement buys
+// and what a page view must never buy, and a listing, which is bounded and
+// cached. Both paths are named here so that moving a page view onto the
+// expensive one has to come through this test.
 func TestTheWorkbenchAsksNothingUntilItIsAsked(t *testing.T) {
-	asked := false
-	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		asked = true
+	asked, paths := false, []string{}
+	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Query != "" {
+			asked = true
+		}
+		paths = append(paths, r.URL.Path)
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer svc.Close()
@@ -209,6 +225,9 @@ func TestTheWorkbenchAsksNothingUntilItIsAsked(t *testing.T) {
 	render(t, ui, "/sql")
 	if asked {
 		t.Error("opening the workbench ran a query")
+	}
+	if want := []string{"/v1/objects"}; !slices.Equal(paths, want) {
+		t.Errorf("opening the workbench called %v, not %v", paths, want)
 	}
 	runSQL(t, ui, probeTarget, "   \n\t ")
 	if asked {
@@ -225,9 +244,19 @@ func TestTheWorkbenchAsksNothingUntilItIsAsked(t *testing.T) {
 // here. `PostFormValue` is what does it, by reading the body and never the
 // query string.
 func TestAStatementInTheWorkbenchURLIsIgnored(t *testing.T) {
+	// RAN, not CONTACTED. The page asks this same service what the
+	// connection holds on every render, so "the service was called" stopped
+	// being the question the moment the tree arrived -- the question is
+	// whether a STATEMENT crossed, and that is a field in the body.
 	asked := false
-	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		asked = true
+	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Query string `json:"query"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body.Query != "" {
+			asked = true
+		}
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer svc.Close()
@@ -330,5 +359,92 @@ func TestEveryAssetTheWorkbenchAsksForIsServed(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Errorf("the page asks for %s and it answers %d", m[1], rec.Code)
 		}
+	}
+}
+
+// THE TREE, GROUPED BY SCHEMA, for the connection the picker is on.
+//
+// It is the half of the references this console did not have: a picker says
+// which warehouse, and a tree says what is IN it -- including the relations
+// nothing landed on, which is the whole reason somebody opens a workbench
+// rather than a destination page.
+func TestTheWorkbenchDrawsWhatTheConnectionHolds(t *testing.T) {
+	f := &sqlFake{body: `{"relations":[
+		{"schema":"bronze","name":"orders"},
+		{"schema":"bronze","name":"clicks"},
+		{"schema":"gold","name":"daily"}],"truncated":false}`}
+	svc := f.start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	body := render(t, ui, "/sql")
+	for _, want := range []string{"bronze", "orders", "clicks", "gold", "daily"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the tree does not show %q", want)
+		}
+	}
+	// GROUPED: a schema appears once, not once per table.
+	if n := strings.Count(body, ">bronze<"); n != 1 {
+		t.Errorf("the schema bronze is drawn %d times", n)
+	}
+	if got, _ := f.asked["target"].(string); got != probeTarget {
+		t.Errorf("the listing was asked for %q", got)
+	}
+}
+
+// A WAREHOUSE THAT CANNOT SAY IS NOT AN ERROR PAGE. The tree is absent and
+// the box still runs queries -- the capability is optional and a console
+// that broke without it would be a console that needs it.
+func TestAWorkbenchWithoutATreeStillQueries(t *testing.T) {
+	f := &sqlFake{status: http.StatusNotImplemented,
+		body: `{"error":"this warehouse cannot say what it holds"}`}
+	svc := f.start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	body := render(t, ui, "/sql")
+	if !strings.Contains(body, `name="q"`) {
+		t.Error("the box is gone")
+	}
+	if !strings.Contains(body, "Run") {
+		t.Error("there is no way to run anything")
+	}
+}
+
+// A CUT LISTING SAYS SO. A browser silently showing half a warehouse is
+// worse than one that says it is showing part: somebody would conclude a
+// table does not exist.
+func TestATruncatedListingIsSaidOnScreen(t *testing.T) {
+	f := &sqlFake{body: `{"relations":[{"schema":"bronze","name":"orders"}],"truncated":true}`}
+	svc := f.start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	if body := render(t, ui, "/sql"); !strings.Contains(body, "there are more") {
+		t.Error("a cut listing is drawn as if it were the whole warehouse")
+	}
+}
+
+// THE TREE AND THE SCRIPT AGREE ON THE ATTRIBUTE.
+//
+// The page marks each table with `data-insert` and the island reads it. They
+// are two files and nothing but a string joins them: rename one and the tree
+// becomes a column of dead buttons that still LOOK right, which no markup
+// assertion here would notice.
+//
+// Same lesson as the asset walk above, one level down: a name referenced and
+// a name honoured are different facts.
+func TestTheTreeAndTheIslandAgreeOnTheAttribute(t *testing.T) {
+	f := &sqlFake{body: `{"relations":[{"schema":"bronze","name":"orders"}]}`}
+	svc := f.start(t)
+	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
+
+	if body := render(t, ui, "/sql"); !strings.Contains(body, `data-insert="bronze.orders"`) {
+		t.Error("the tree marks nothing for the editor to insert")
+	}
+
+	mux := http.NewServeMux()
+	ui.Registrar(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/sql.js", nil))
+	if !strings.Contains(rec.Body.String(), "data-insert") {
+		t.Error("the island never reads data-insert, so the tree inserts nothing")
 	}
 }

@@ -15,7 +15,12 @@
 (function () {
   "use strict";
   var area = document.getElementById("q");
-  if (!area || typeof CodeMirror === "undefined") return;
+  if (!area) return;
+
+  // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
+  // costs the highlighting and not the screen.
+  wireTree();
+  if (typeof CodeMirror === "undefined") return;
 
   var editor = CodeMirror.fromTextArea(area, {
     mode: "text/x-sql",
@@ -51,6 +56,33 @@
   if (area.form) {
     area.form.addEventListener("submit", function () {
       editor.save();
+    });
+  }
+
+  // A NAME FROM THE TREE GOES WHERE THE CURSOR IS, which is what every
+  // workbench this is modelled on does. It types for you; it does not write
+  // the query for you, because a guessed `SELECT *` over a warehouse table
+  // is a bill somebody did not ask for.
+  //
+  // One listener on the document rather than one per button: the tree can be
+  // long, and delegation also survives a tree that is redrawn.
+  function wireTree() {
+    document.addEventListener("click", function (ev) {
+      var el = ev.target.closest ? ev.target.closest("[data-insert]") : null;
+      if (!el) return;
+      ev.preventDefault();
+      var name = el.getAttribute("data-insert");
+      if (editor) {
+        editor.replaceSelection(name);
+        editor.focus();
+        return;
+      }
+      // No editor: the textarea itself, at its own cursor.
+      var at = area.selectionStart === null ? area.value.length : area.selectionStart;
+      var to = area.selectionEnd === null ? at : area.selectionEnd;
+      area.value = area.value.slice(0, at) + name + area.value.slice(to);
+      area.selectionStart = area.selectionEnd = at + name.length;
+      area.focus();
     });
   }
 })();

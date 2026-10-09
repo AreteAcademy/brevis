@@ -29,6 +29,42 @@ type SQLView struct {
 
 	Result *sqlserve.Result
 	Err    string
+
+	// Tree is what the chosen connection holds, grouped by schema. Empty
+	// when the warehouse cannot say -- the capability is optional and a
+	// workbench without a tree still runs queries.
+	Tree []Schema
+
+	// TreeCut says the service cut the listing, which has to be drawn: a
+	// browser silently showing half a warehouse would have somebody conclude
+	// a table does not exist.
+	TreeCut bool
+}
+
+// Schema is one group in the tree.
+type Schema struct {
+	Name   string
+	Tables []string
+}
+
+// BuildTree groups a listing by schema, in the order the service gave it.
+//
+// THE SERVICE ORDERS, NOT THIS. Both dialects sort in SQL, where the
+// warehouse's own collation decides -- re-sorting here would be a second
+// opinion about which of `Orders` and `orders` comes first.
+func BuildTree(rels []sqlserve.Relation) []Schema {
+	var out []Schema
+	at := map[string]int{}
+	for _, r := range rels {
+		i, seen := at[r.Schema]
+		if !seen {
+			at[r.Schema] = len(out)
+			out = append(out, Schema{Name: r.Schema})
+			i = len(out) - 1
+		}
+		out[i].Tables = append(out[i].Tables, r.Name)
+	}
+	return out
 }
 
 // BuildSQL keeps only what can be queried.

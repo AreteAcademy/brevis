@@ -360,6 +360,21 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 	if v.Target == "" && len(v.Targets) > 0 {
 		v.Target = v.Targets[0]
 	}
+
+	// THE TREE IS ASKED FOR LAST, once the target is settled -- including
+	// the default -- because the listing belongs to a connection and the
+	// default is a connection like any other.
+	//
+	// A WAREHOUSE THAT CANNOT SAY IS NOT AN ERROR PAGE. `Relations` is an
+	// optional capability, the service answers 501 where a dialect lacks it,
+	// and an unreachable service is the same shape of absence. Either way
+	// the tree is not drawn and the box still runs queries: a console that
+	// broke without the tree would be a console that needs it.
+	if v.Target != "" {
+		if objs, err := u.preview.Objects(r.Context(), v.Target); err == nil {
+			v.Tree, v.TreeCut = pages.BuildTree(objs.Relations), objs.Truncated
+		}
+	}
 	u.render(w, r, pages.SQL(v))
 }
 

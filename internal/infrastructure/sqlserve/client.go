@@ -61,6 +61,21 @@ type Result struct {
 	Millis int64 `json:"ms"`
 }
 
+// Relation is one thing a SELECT could name, as the tree draws it.
+type Relation struct {
+	Schema string `json:"schema"`
+	Name   string `json:"name"`
+}
+
+// Objects is what a connection holds.
+type Objects struct {
+	Relations []Relation `json:"relations"`
+	// Truncated says the service cut the answer, which the tree has to draw:
+	// a browser silently missing half a warehouse is worse than one that
+	// says it is showing part.
+	Truncated bool `json:"truncated"`
+}
+
 // Client reaches one `brevis-sql serve`.
 type Client struct {
 	base  string
@@ -133,6 +148,44 @@ func (c *Client) Preview(ctx context.Context, target string, limit int) (Result,
 func (c *Client) Query(ctx context.Context, target, statement string, limit int) (Result, error) {
 	return c.ask(ctx, "/v1/query",
 		request{Target: target, Statement: statement, Limit: limit}, "query")
+}
+
+// Objects asks what a connection holds, for the workbench's tree.
+//
+// IT COSTS MONEY THE FIRST TIME and nothing afterwards: the service holds
+// one answer per connection, because every metadata query on BigQuery is
+// billed at a 10 MiB floor whatever comes back. This console asks on each
+// render and the service decides whether that is a round trip.
+func (c *Client) Objects(ctx context.Context, target string) (Objects, error) {
+	var out Objects
+	if !c.Configured() {
+		return out, ErrNotConfigured
+	}
+	raw, err := json.Marshal(request{Target: target})
+	if err != nil {
+		return out, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/objects", bytes.NewReader(raw))
+	if err != nil {
+		return out, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	res, err := c.http.Do(req)
+	if err != nil {
+		return out, errors.New("the SQL service could not be reached")
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	if res.StatusCode != http.StatusOK {
+		return out, refusal(res, "listing")
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<20)).Decode(&out); err != nil {
+		return out, errors.New("the SQL service answered something this console cannot read")
+	}
+	return out, nil
 }
 
 // ask is one call.
