@@ -175,11 +175,11 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Check it before publishing — this does not touch the database:</p>
 <div class="code-block" data-code="brevis validate hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> validate hello.yaml</code></pre></div>
-<div class="code-block" data-code="  ok    hello                        dag  4 steps, 4 dependencias  (manual)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  ok    hello                        dag  4 steps, 4 dependencias  (manual)</code></pre></div>
+<div class="code-block" data-code="  ok    hello                        dag  4 steps, 4 dependencies  (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  ok    hello                        dag  4 steps, 4 dependencies  (manual)</code></pre></div>
 <h2 id="3-run-it-now-without-the-queue">3. Run it now, without the queue<a class="anchor" href="#3-run-it-now-without-the-queue" aria-label="link">#</a></h2>
 <p>The shortest path to seeing the graph work:</p>
 <div class="code-block" data-code="brevis run hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> run hello.yaml</code></pre></div>
-<div class="code-block" data-code="workflow hello (dag, 4 steps) em .
+<div class="code-block" data-code="workflow hello (dag, 4 steps) in .
   ▶ prepare
     prepare | preparing
   ✓ prepare
@@ -193,7 +193,7 @@ steps:
     publish | published
   ✓ publish
 
-workflow hello concluido"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>workflow hello (dag, 4 steps) em .
+workflow hello finished"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>workflow hello (dag, 4 steps) in .
   ▶ prepare
     prepare | preparing
   ✓ prepare
@@ -207,13 +207,13 @@ workflow hello concluido"><div class="code-head"><button class="code-copy" type=
     publish | published
   ✓ publish
 
-workflow hello concluido</code></pre></div>
+workflow hello finished</code></pre></div>
 <p><code>extract</code> and <code>validate</code> start together because they depend on the same step. The runner walks the graph <strong>by levels</strong>: everything within a level runs in parallel, and the next level starts only when the previous one closes entirely.</p>
 <aside class="admon admon-note"><p class="admon-t">`run` is local by nature</p><p><code>brevis run</code> only operates with <code>BREVIS_ENV=local</code> (empty counts as local) and executes steps as processes on the instance itself — even those that declare <code>image:</code>. Pods are created by the <code>scheduler</code>.</p></aside>
 <h2 id="4-publish-and-operate">4. Publish and operate<a class="anchor" href="#4-publish-and-operate" aria-label="link">#</a></h2>
 <p>So the workflow exists in the database, appears in the interface and follows its schedule:</p>
 <div class="code-block" data-code="brevis publish hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> publish hello.yaml</code></pre></div>
-<div class="code-block" data-code="  publicado  hello                    (manual)"><div class="code-head"><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  publicado  hello                    (manual)</code></pre></div>
+<div class="code-block" data-code="  published  hello                      (manual)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>  published  hello                      (manual)</code></pre></div>
 <p>Bring up the interface and the scheduler in two terminals:</p>
 <div class="code-block" data-code="brevis serve"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> serve</code></pre></div>
 <div class="code-block" data-code="brevis scheduler --interval 5s --concurrency 4"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span> scheduler <span class="t-n">--interval</span> 5s <span class="t-n">--concurrency</span> 4</code></pre></div>

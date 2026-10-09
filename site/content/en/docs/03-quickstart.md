@@ -51,8 +51,8 @@ Check it before publishing — this does not touch the database:
 brevis validate hello.yaml
 ```
 
-```
-  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+```text
+  ok    hello                        dag  4 steps, 4 dependencies  (manual)
 ```
 
 ## 3. Run it now, without the queue
@@ -63,8 +63,8 @@ The shortest path to seeing the graph work:
 brevis run hello.yaml
 ```
 
-```
-workflow hello (dag, 4 steps) em .
+```text
+workflow hello (dag, 4 steps) in .
   ▶ prepare
     prepare | preparing
   ✓ prepare
@@ -78,7 +78,7 @@ workflow hello (dag, 4 steps) em .
     publish | published
   ✓ publish
 
-workflow hello concluido
+workflow hello finished
 ```
 
 `extract` and `validate` start together because they depend on the same step.
@@ -100,8 +100,8 @@ schedule:
 brevis publish hello.yaml
 ```
 
-```
-  publicado  hello                    (manual)
+```text
+  published  hello                      (manual)
 ```
 
 Bring up the interface and the scheduler in two terminals:

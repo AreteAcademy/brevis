@@ -51,8 +51,10 @@ Confira antes de publicar — isto não toca no banco:
 brevis validate hello.yaml
 ```
 
-```
-  ok    hello                        dag  4 steps, 4 dependencias  (manual)
+A saída é a do binário, que imprime em inglês:
+
+```text
+  ok    hello                        dag  4 steps, 4 dependencies  (manual)
 ```
 
 ## 3. Executar agora, sem fila
@@ -63,8 +65,8 @@ O caminho mais curto para ver o grafo funcionando:
 brevis run hello.yaml
 ```
 
-```
-workflow hello (dag, 4 steps) em .
+```text
+workflow hello (dag, 4 steps) in .
   ▶ preparar
     preparar | preparando
   ✓ preparar
@@ -78,7 +80,7 @@ workflow hello (dag, 4 steps) em .
     publicar | publicado
   ✓ publicar
 
-workflow hello concluido
+workflow hello finished
 ```
 
 `extrair` e `validar` começam juntos porque dependem do mesmo passo. O runner
@@ -99,8 +101,8 @@ Para que o workflow exista no banco, apareça na interface e siga a agenda:
 brevis publish hello.yaml
 ```
 
-```
-  publicado  hello                    (manual)
+```text
+  published  hello                      (manual)
 ```
 
 Suba a interface e o scheduler em dois terminais:
