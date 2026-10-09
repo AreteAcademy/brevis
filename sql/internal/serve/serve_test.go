@@ -11,15 +11,21 @@ import (
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
 
+// testBytes is a byte ceiling every test can be under, since none of them
+// reach a warehouse that counts.
+const testBytes = 1 << 30
+
 // fake is a warehouse that remembers what it was asked and answers two rows.
 type fake struct {
-	asked []string
-	limit int
+	asked    []string
+	limit    int
+	maxBytes int64
 }
 
-func (f *fake) Read(_ context.Context, q string, limit int) (dialect.Result, error) {
-	f.asked = append(f.asked, q)
-	f.limit = limit
+func (f *fake) Read(_ context.Context, req dialect.Request) (dialect.Result, error) {
+	f.asked = append(f.asked, req.Query)
+	f.limit = req.Limit
+	f.maxBytes = req.MaxBytes
 	return dialect.Result{
 		Columns: []string{"k", "v"},
 		Rows:    [][]any{{int64(1), "a"}, {int64(2), nil}},
@@ -33,9 +39,10 @@ func (f *fake) Close(context.Context) error                 { return nil }
 func testService(t *testing.T, f *fake) *Service {
 	t.Helper()
 	s, err := New(Options{
-		Env:  EnvLocal,
-		Rows: 100,
-		Open: func(context.Context, string) (dialect.Conn, error) { return f, nil },
+		Env:   EnvLocal,
+		Rows:  100,
+		Bytes: testBytes,
+		Open:  func(context.Context, string) (dialect.Conn, error) { return f, nil },
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +144,7 @@ func TestTheRowCeilingClampsAndIsNotTheCallers(t *testing.T) {
 func TestABadTargetIsRefusedBeforeConnecting(t *testing.T) {
 	opened := false
 	s, err := New(Options{
-		Env: EnvLocal, Rows: 100,
+		Env: EnvLocal, Rows: 100, Bytes: testBytes,
 		Open: func(context.Context, string) (dialect.Conn, error) {
 			opened = true
 			return nil, nil
@@ -170,7 +177,7 @@ func TestABadTargetIsRefusedBeforeConnecting(t *testing.T) {
 // field: "a config file that could declare itself local would be a file that
 // turns off authentication."
 func TestItRefusesToExistWithoutAuthOutsideLocal(t *testing.T) {
-	_, err := New(Options{Env: "production", Rows: 100,
+	_, err := New(Options{Env: "production", Rows: 100, Bytes: testBytes,
 		Open: func(context.Context, string) (dialect.Conn, error) { return nil, nil }})
 	if err == nil {
 		t.Fatal("a production service with no token was built")
@@ -180,7 +187,7 @@ func TestItRefusesToExistWithoutAuthOutsideLocal(t *testing.T) {
 	}
 
 	// And with one, it exists and demands it.
-	s, err := New(Options{Env: "production", Rows: 100, Token: "s3cret",
+	s, err := New(Options{Env: "production", Rows: 100, Bytes: testBytes, Token: "s3cret",
 		Open: func(context.Context, string) (dialect.Conn, error) { return &fake{}, nil }})
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +228,7 @@ func itoa(n int) string { b, _ := json.Marshal(n); return string(b) }
 // empty answers a result set with no rows at all.
 type empty struct{ fake }
 
-func (e *empty) Read(context.Context, string, int) (dialect.Result, error) {
+func (e *empty) Read(context.Context, dialect.Request) (dialect.Result, error) {
 	return dialect.Result{}, nil
 }
 
@@ -233,7 +240,7 @@ func (e *empty) Read(context.Context, string, int) (dialect.Result, error) {
 // on the BYTES and not on the decoded struct: unmarshalling turns both into
 // a nil slice and would hide exactly the difference being tested.
 func TestAnEmptyResultIsAnEmptyListOnTheWire(t *testing.T) {
-	s, err := New(Options{Env: EnvLocal, Rows: 100,
+	s, err := New(Options{Env: EnvLocal, Rows: 100, Bytes: testBytes,
 		Open: func(context.Context, string) (dialect.Conn, error) { return &empty{}, nil }})
 	if err != nil {
 		t.Fatal(err)
@@ -261,12 +268,12 @@ type counting struct {
 	have int // rows the table actually holds
 }
 
-func (c *counting) Read(_ context.Context, q string, limit int) (dialect.Result, error) {
-	c.asked = append(c.asked, q)
-	c.limit = limit
+func (c *counting) Read(_ context.Context, req dialect.Request) (dialect.Result, error) {
+	c.asked = append(c.asked, req.Query)
+	c.limit = req.Limit
 	n := c.have
-	if limit < n {
-		n = limit
+	if req.Limit < n {
+		n = req.Limit
 	}
 	rows := make([][]any, 0, n)
 	for i := 0; i < n; i++ {
@@ -303,7 +310,7 @@ func TestAPreviewThatCutSaysSo(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			f := &counting{have: c.have}
-			s, err := New(Options{Env: EnvLocal, Rows: c.ceiling,
+			s, err := New(Options{Env: EnvLocal, Rows: c.ceiling, Bytes: testBytes,
 				Open: func(context.Context, string) (dialect.Conn, error) { return f, nil }})
 			if err != nil {
 				t.Fatal(err)
@@ -329,5 +336,39 @@ func TestAPreviewThatCutSaysSo(t *testing.T) {
 				t.Errorf("statement = %q, wanted it to ask for one more", f.asked[0])
 			}
 		})
+	}
+}
+
+// A PREVIEW IS NOT FREE, and this was a hole rather than a decision.
+//
+// `SELECT * FROM t LIMIT 20` reads the whole table on BigQuery -- a LIMIT
+// does not reduce bytes scanned -- so the row ceiling bounds the screen and
+// bounds the bill not at all. Twenty rows off a petabyte table is a petabyte
+// somebody pays for, from a tab opened by accident.
+func TestAPreviewIsBoundedByTheByteCeilingToo(t *testing.T) {
+	f := &fake{}
+	s := testService(t, f)
+
+	w := post(t, s, `{"target":"bigquery://acme-prod/bronze/orders"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("%d: %s", w.Code, w.Body)
+	}
+	if f.maxBytes != testBytes {
+		t.Errorf("the preview was run with a ceiling of %d bytes, and the service's is %d",
+			f.maxBytes, testBytes)
+	}
+}
+
+// A SERVICE WITH NO BYTE CEILING REFUSES TO EXIST, for the reason it refuses
+// to exist without a token: the query that discovers the missing limit is the
+// one nobody meant to run, and by then it has been billed.
+func TestAServiceWithoutAByteCeilingDoesNotStart(t *testing.T) {
+	_, err := New(Options{Env: EnvLocal, Rows: 100,
+		Open: func(context.Context, string) (dialect.Conn, error) { return &fake{}, nil }})
+	if err == nil {
+		t.Fatal("a service with no byte ceiling started")
+	}
+	if !strings.Contains(err.Error(), "byte") {
+		t.Errorf("the refusal does not say what is missing: %v", err)
 	}
 }

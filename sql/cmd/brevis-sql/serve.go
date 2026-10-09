@@ -26,7 +26,7 @@ import (
 // THE TOKEN IS NAMED BY THE ENVIRONMENT AND NEVER BY A FLAG -- the rule
 // `--dsn-from` already applies to a DSN, for the same reason: a command line
 // is in a shell history, in a CI log and in anybody's `ps`.
-func serve(out io.Writer, addr string, rows int, dryRun bool) error {
+func serve(out io.Writer, addr string, rows int, maxBytes int64, dryRun bool) error {
 	s, err := svc.New(svc.Options{
 		// Read from the environment, never from an argument: something that
 		// could declare itself local would be something that turns off
@@ -34,13 +34,15 @@ func serve(out io.Writer, addr string, rows int, dryRun bool) error {
 		Env:   os.Getenv("BREVIS_ENV"),
 		Token: os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
 		Rows:  rows,
+		Bytes: maxBytes,
 		Open:  openBigQuery,
 	})
 	if err != nil {
 		return err
 	}
 
-	_, _ = fmt.Fprintf(out, "brevis-sql serve on %s, at most %d row(s) per preview\n", addr, rows)
+	_, _ = fmt.Fprintf(out, "brevis-sql serve on %s, at most %d row(s) and %s per query\n",
+		addr, rows, svc.BytesText(maxBytes))
 	if os.Getenv("BREVIS_SQL_SERVE_TOKEN") == "" {
 		// SAID OUT LOUD, every time. New() already refused this outside
 		// local, so reaching here means somebody meant it -- and a line on

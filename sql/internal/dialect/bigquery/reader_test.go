@@ -32,7 +32,7 @@ func TestABigQueryConnectionCanReadAResultSet(t *testing.T) {
 	if !is {
 		t.Fatal("a BigQuery connection cannot read a result set")
 	}
-	got, err := r.Read(ctx, "SELECT k, v, w, n FROM "+schema+".t ORDER BY k", 10)
+	got, err := r.Read(ctx, dialect.Request{Query: "SELECT k, v, w, n FROM " + schema + ".t ORDER BY k", Limit: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestTheLimitCutsAndSaysSo(t *testing.T) {
 	}
 
 	r := conn.(dialect.Reader)
-	got, err := r.Read(ctx, "SELECT n FROM "+schema+".many", 5)
+	got, err := r.Read(ctx, dialect.Request{Query: "SELECT n FROM " + schema + ".many", Limit: 5})
 	if err != nil {
 		t.Fatal(err)
 	}

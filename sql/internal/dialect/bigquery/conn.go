@@ -103,6 +103,9 @@ type queryResponse struct {
 	// 64-bit counts as JSON strings. It is how `Read` knows the limit cut
 	// something, without a second query.
 	TotalRows string `json:"totalRows"`
+	// TotalBytesProcessed is what the query WOULD scan, as a string for the
+	// same reason. On a dry run it is the whole answer.
+	TotalBytesProcessed string `json:"totalBytesProcessed"`
 	// Errors is a job that RAN AND FAILED, and it arrives inside an HTTP
 	// 200. A client reading only the status code reports every failed
 	// CREATE as a success.
@@ -133,18 +136,27 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 	return res.Rows[0].F[0].V, nil
 }
 
-// Read runs a query and returns at most `limit` rows. See dialect.Reader.
+// Read runs a query and returns at most `req.Limit` rows. See dialect.Reader.
 //
 // `maxResults` ON THE REQUEST, not a LIMIT wrapped around the query. The
 // caller's SQL is run exactly as written -- a wrapper would change what the
 // warehouse plans, and it would be this package quietly editing a statement
 // somebody is about to be charged for. The API caps what comes BACK.
 //
-// It does not bound what the query SCANS. That is a different limit, it is
-// money rather than bytes on a screen, and it belongs to whoever is about to
-// spend it.
-func (c *conn) Read(ctx context.Context, query string, limit int) (dialect.Result, error) {
-	res, err := c.runWith(ctx, query, map[string]any{"maxResults": limit})
+// `maximumBytesBilled` is the OTHER limit, and it bounds what the query
+// scans. It is the belt behind Estimate's brake: a query priced a moment ago
+// can grow before it runs -- a table loaded in between, a view over
+// something that changed -- and this is what makes the refusal hold anyway.
+// BigQuery takes it as a string, because its int64 fields travel as strings
+// in JSON, and sending a number is sending a parameter the server ignores.
+func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, error) {
+	extra := map[string]any{"maxResults": req.Limit}
+	// NO CEILING MEANS NO FIELD. BigQuery reads `maximumBytesBilled: 0` as
+	// "bill nothing", which refuses every query there is.
+	if req.MaxBytes > 0 {
+		extra["maximumBytesBilled"] = strconv.FormatInt(req.MaxBytes, 10)
+	}
+	res, err := c.runWith(ctx, req.Query, extra)
 	if err != nil {
 		return dialect.Result{}, err
 	}
@@ -169,6 +181,29 @@ func (c *conn) Read(ctx context.Context, query string, limit int) (dialect.Resul
 		out.Truncated = total > int64(len(out.Rows))
 	}
 	return out, nil
+}
+
+// Estimate prices a query without running it. See dialect.Estimator.
+//
+// A DRY RUN COSTS NOTHING AND IS THE ONLY LIMIT THAT WORKS BEFORE THE MONEY
+// IS SPENT. `totalBytesProcessed` comes back with nothing billed -- measured
+// against real BigQuery on 2026-10-09, rather than read in a document.
+//
+// It is not polled, and does not need to be: a dry run creates no job, so
+// the answer is in the first response or there is no answer.
+func (c *conn) Estimate(ctx context.Context, query string) (int64, error) {
+	res, err := c.runWith(ctx, query, map[string]any{"dryRun": true})
+	if err != nil {
+		return 0, err
+	}
+	// AN ERROR AND NEVER A ZERO. Zero is under every ceiling, so a total
+	// this could not read would wave through the one query nobody measured.
+	scanned, err := strconv.ParseInt(res.TotalBytesProcessed, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("bigquery priced the query with something that is not a number of bytes (%q)",
+			truncateTo(res.TotalBytesProcessed, 40))
+	}
+	return scanned, nil
 }
 
 // Target is `bigquery://project/dataset/table`.
@@ -294,10 +329,11 @@ func (c *conn) call(ctx context.Context, method, u string, body []byte, statemen
 	return &out, nil
 }
 
-func truncate(b []byte) string {
-	const max = 200
-	if len(b) <= max {
-		return string(b)
+func truncate(b []byte) string { return truncateTo(string(b), 200) }
+
+func truncateTo(s string, max int) string {
+	if len(s) <= max {
+		return s
 	}
-	return string(b[:max]) + "…"
+	return s[:max] + "…"
 }

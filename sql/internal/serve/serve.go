@@ -30,6 +30,17 @@ type Options struct {
 	// Rows is the ceiling. A caller may ask for fewer and cannot ask for more.
 	Rows int
 
+	// Bytes is the most a single query may SCAN. A caller cannot raise it
+	// and cannot name one at all: it is money, and the browser is not the
+	// place that decides how much of it to spend.
+	//
+	// IT BOUNDS THE PREVIEW TOO, and that was a hole rather than a choice.
+	// A preview is `SELECT * FROM t LIMIT 20`, and a LIMIT does not reduce
+	// what BigQuery scans -- twenty rows off a petabyte table reads the
+	// petabyte and bills for it. The row ceiling bounds the screen and
+	// bounds nothing else.
+	Bytes int64
+
 	// Open connects to one warehouse. A field so a test can hand over a fake
 	// without a warehouse, and so this package holds no driver of its own.
 	Open func(ctx context.Context, connection string) (dialect.Conn, error)
@@ -52,6 +63,10 @@ func New(opt Options) (*Service, error) {
 	}
 	if opt.Rows <= 0 {
 		return nil, errors.New("serve: a row ceiling of zero would answer every preview with nothing")
+	}
+	if opt.Bytes <= 0 {
+		return nil, errors.New("serve: a byte ceiling of zero is no ceiling, and the query that " +
+			"finds that out is the one nobody meant to run")
 	}
 	env := strings.TrimSpace(opt.Env)
 	if env == "" {
@@ -169,7 +184,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	probe := limit + 1
 	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(probe)
 
-	res, err := reader.Read(ctx, stmt, probe)
+	res, err := reader.Read(ctx, dialect.Request{Query: stmt, Limit: probe, MaxBytes: s.opt.Bytes})
 	if err != nil {
 		refuse(w, http.StatusBadGateway, "the warehouse refused the preview")
 		return
@@ -190,6 +205,25 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	write(w, http.StatusOK, previewResponse{
 		Columns: res.Columns, Rows: res.Rows, Truncated: truncated, Limit: limit,
 	})
+}
+
+// BytesText is a byte count somebody can judge at a glance.
+//
+// A refusal saying "10737418240 bytes" is one somebody has to count the
+// digits of, and the number IS the content of that message: it is the
+// difference between a typo and a query worth waiting for.
+func BytesText(n int64) string {
+	switch {
+	case n >= 1<<40:
+		return fmt.Sprintf("%.3g TB", float64(n)/(1<<40))
+	case n >= 1<<30:
+		return fmt.Sprintf("%.3g GB", float64(n)/(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.3g MB", float64(n)/(1<<20))
+	case n >= 1<<10:
+		return fmt.Sprintf("%.3g kB", float64(n)/(1<<10))
+	}
+	return fmt.Sprintf("%d bytes", n)
 }
 
 func refuse(w http.ResponseWriter, code int, why string) {

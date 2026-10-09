@@ -252,13 +252,59 @@ type Result struct {
 // ON Conn's CONCRETE TYPE and not on Dialect: reading needs the connection,
 // where ExpireSchema only needed a statement.
 type Reader interface {
-	// Read runs a query and returns at most `limit` rows.
+	// Read runs a query and returns at most Request.Limit rows.
+	Read(ctx context.Context, req Request) (Result, error)
+}
+
+// Request is one read, and everything that bounds it.
+//
+// A STRUCT AND NOT THREE ARGUMENTS, because the two bounds are different
+// KINDS of bound and the call site has to say which it means. Rows are a
+// screen and bytes are money; a reader passing them positionally would
+// eventually pass them the wrong way round, and one of those mistakes is
+// expensive.
+type Request struct {
+	// Query is run exactly as written. Nothing wraps it: a wrapper changes
+	// what the warehouse plans, and it would be this package quietly editing
+	// a statement somebody is about to be charged for.
+	Query string
+
+	// Limit is the most rows to return.
 	//
 	// THE LIMIT CUTS, it does not refuse. A preview that errored because a
 	// table is large would be a preview that never works on the tables
 	// somebody actually has. What it must not do is cut in silence, which is
 	// what Result.Truncated is for.
-	Read(ctx context.Context, query string, limit int) (Result, error)
+	Limit int
+
+	// MaxBytes is the most the warehouse may BILL for this query. Zero is no
+	// bound, and a dialect that cannot enforce one ignores it.
+	//
+	// IT IS NOT THE SAME LIMIT AS Limit, and the difference is the whole
+	// reason it exists: BigQuery bills for bytes SCANNED, and a LIMIT does
+	// not reduce them -- `SELECT * FROM t LIMIT 10` over a petabyte reads
+	// the petabyte. A row ceiling bounds the screen and bounds nothing else.
+	MaxBytes int64
+}
+
+// Estimator is implemented by a connection that can price a query WITHOUT
+// RUNNING IT.
+//
+// Separate from Reader, and not a method on it, for the reason Reader is
+// separate from Conn: Postgres has no such thing to offer. A warehouse that
+// charges for a scan can answer this, one that charges for a machine by the
+// hour cannot, and an interface that pretended otherwise would make every
+// Postgres caller handle an answer that is always a guess.
+//
+// A refusal built on this runs BEFORE the money is spent, which is the only
+// moment at which refusing is worth anything.
+type Estimator interface {
+	// Estimate returns the bytes the query would process.
+	//
+	// AN ERROR AND NEVER A ZERO when the price cannot be read. Zero is under
+	// every ceiling, so a silent fallback would wave through exactly the
+	// queries nobody could measure.
+	Estimate(ctx context.Context, query string) (int64, error)
 }
 
 // Disposable is implemented by a dialect whose warehouse can be told to throw
