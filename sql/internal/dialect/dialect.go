@@ -220,6 +220,33 @@ func NewRows(m model.Model, body string) string {
 		"    OR " + w + " > (SELECT MAX(" + w + ") FROM " + ref + ")"
 }
 
+// Disposable is implemented by a dialect whose warehouse can be told to throw
+// away what a TEST leaves behind.
+//
+// NOT ON Dialect, and that separation is the whole point. EnsureSchema is
+// production -- run.go calls it for every schema a consumer's models land in
+// -- so an expiry reachable from there would be a build that quietly deletes
+// a customer's tables in a day. There is no sentence that makes that
+// acceptable, so the capability lives where the production path cannot reach
+// it by accident.
+//
+// It exists because a test CAN leak. The conformance suite and the runner's
+// incremental test each create a dataset of their own, beside the client's
+// real ones, and drop it in t.Cleanup -- which does not run after a panic, a
+// SIGKILL or a laptop that sleeps. BigQuery has no dataset expiry at all,
+// only `defaultTableExpirationMs` for the tables inside, so what this buys is
+// a leak that EMPTIES rather than a leak that disappears. That residual is
+// real and is the reason this is one small interface and not a cleanup
+// framework.
+//
+// Postgres does not implement it: its test warehouse is a container, and
+// `docker compose down` is the expiry.
+type Disposable interface {
+	// ExpireSchema is the statement that makes everything in this schema
+	// expire. Run by a test right after EnsureSchema, and by nothing else.
+	ExpireSchema(schema string) string
+}
+
 // StateOf asks the warehouse the questions a build needs answered.
 //
 // ONE PLACE, because two would drift and the drift would be invisible: the

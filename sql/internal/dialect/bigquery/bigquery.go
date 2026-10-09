@@ -43,6 +43,27 @@ func (Dialect) EnsureSchema(schema string) []string {
 	return []string{"CREATE SCHEMA IF NOT EXISTS " + schema}
 }
 
+// ExpireSchema tells the dataset to throw its tables away after a day.
+//
+// ONE DAY AND NOT AN HOUR: a conformance run against BigQuery takes ninety
+// seconds, and an expiry a test could outlive would delete the table it is
+// halfway through asserting on. A day is long enough that nothing legitimate
+// meets it and short enough that a leak is gone by tomorrow.
+//
+// ALTER and not an OPTIONS clause on the CREATE, so EnsureSchema stays the
+// one statement production runs -- see dialect.Disposable for why that
+// separation is not negotiable.
+//
+// It applies to tables created AFTER it, which is why the caller runs it
+// immediately after making the dataset and before building anything.
+//
+// The dataset itself does not expire. BigQuery has no such option: a leak
+// becomes an empty dataset rather than no dataset, and that is the residual
+// this cannot remove.
+func (Dialect) ExpireSchema(schema string) string {
+	return "ALTER SCHEMA " + schema + " SET OPTIONS(default_table_expiration_days=1)"
+}
+
 // KindOf reads the dataset's INFORMATION_SCHEMA.
 //
 // TRANSLATED IN SQL, not in Go. BigQuery says `BASE TABLE` and `VIEW`;
