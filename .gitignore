@@ -24,6 +24,14 @@ go.work.sum
 # sendo recommitado. Artefato de build não é fonte.
 /cmd/brevis-sdk/brevis-sdk
 /brevis
+# `go build ./...` inside sql/ leaves this one. The module was created after
+# this list and nothing added it: found as an untracked 11 MB binary sitting
+# in the tree, one `git add -A` from the mistake the comment above describes.
+# no-binaries-check.sh does not catch it -- that gate reads what is TRACKED,
+# and the whole point is that this is not, yet.
+/sql/brevis-sql
+/gateway/gateway
+/gateway/gateway-slim
 
 # Python build and test artefacts. `python -m build` leaves a wheel and an
 # sdist in lib/python-context/dist/, `uv run` leaves a .venv and a lock, and
