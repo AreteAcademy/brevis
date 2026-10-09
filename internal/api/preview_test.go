@@ -146,7 +146,13 @@ func consoleOf(t *testing.T, c *sqlserve.Client, cred auth.Credential, target, k
 			LoadedAt: time.Now().Add(-10 * time.Minute),
 		}},
 	}
-	return dataUI(catalogFake{detail: detail}).WithPreview(c, cred)
+	// The LIST as well as the detail: the workbench reads the catalog to
+	// offer its connections, and a fake that answered only one destination
+	// made it draw "nothing here can be queried yet".
+	return dataUI(catalogFake{
+		detail:  detail,
+		entries: []postgres.CatalogEntry{detail.CatalogEntry, {Target: "file:///data/landing/", Kind: "file"}},
+	}).WithPreview(c, cred)
 }
 
 func render(t *testing.T, ui *api.UI, path string) string {

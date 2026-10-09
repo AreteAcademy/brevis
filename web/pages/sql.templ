@@ -1,0 +1,70 @@
+package pages
+
+import "github.com/AreteAcademy/brevis/web/layouts"
+
+// SQL is the workbench.
+//
+// SERVER-RENDERED, like every other screen here: `base.templ` states the rule
+// -- "the HTML already arrives complete, the script only enriches it" -- and
+// an editor island will mount ON this textarea rather than replace it, so the
+// form keeps working with no script at all.
+//
+// NO TABS YET, and the reason is V2's: a statement must not reach a URL,
+// because a query in a link is a query in a proxy log, in a browser's history
+// and in a Referer header. Tab state in a query parameter would be exactly
+// that, so tabs wait for the island that can hold state in the browser.
+templ SQL(v SQLView) {
+	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Wide: true}) {
+		if v.Empty() {
+			<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
+				Nothing here can be queried yet. A destination shows up once a pipeline
+				lands in a table — a bucket and a topic have no columns to read.
+			</p>
+		} else {
+			<form method="post" action="/sql" class="flex flex-col gap-3">
+				<div class="flex flex-wrap items-center gap-3">
+					<label for="target" class="kicker">Connection</label>
+					<select
+						id="target"
+						name="target"
+						class="rounded-card border border-line bg-surface px-3 py-1.5 font-mono text-xs text-ink"
+					>
+						for _, t := range v.Targets {
+							if t == v.Target {
+								<option value={ t } selected>{ Short(t) }</option>
+							} else {
+								<option value={ t }>{ Short(t) }</option>
+							}
+						}
+					</select>
+				</div>
+				<label for="q" class="sr-only">SQL to run on this warehouse</label>
+				<textarea
+					id="q"
+					name="q"
+					rows="10"
+					spellcheck="false"
+					placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
+					class="w-full rounded-card border border-line bg-surface px-3 py-2 font-mono text-xs text-ink"
+				>{ v.Statement }</textarea>
+				<div class="flex items-center gap-3">
+					<button
+						type="submit"
+						class="rounded-card border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface"
+					>Run</button>
+					<span class="text-xs text-muted">
+						Reads only. The service refuses anything else, and stops a query that would scan too much.
+					</span>
+				</div>
+			</form>
+			if v.Err != "" {
+				<p class="mt-5 rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
+			} else if v.Result != nil {
+				<div class="mt-5">
+					@grid(v.Result.Columns, v.Result.Rows)
+					<p class="mt-2 text-xs text-muted">{ v.Note() }</p>
+				</div>
+			}
+		}
+	}
+}

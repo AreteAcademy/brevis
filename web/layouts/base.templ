@@ -272,6 +272,24 @@ templ topbar(active1 string, brand branding.Brand) {
 						>{ i.Name }</a>
 					}
 				}
+				// SQL IS CONDITIONAL, which is why it is not in the list
+				// above: a section that answers "no SQL service is
+				// configured" is a section that leads nowhere, and the bar
+				// is the one place a reader trusts to say what exists.
+				if HasSQL(ctx) {
+					if active1 == "sql" {
+						<a
+							href="/sql"
+							aria-current="page"
+							class="rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
+						>SQL</a>
+					} else {
+						<a
+							href="/sql"
+							class="rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+						>SQL</a>
+					}
+				}
 			</nav>
 			// The account menu moved with the bar. It lived at the bottom of
 			// a sidebar that no longer exists, and a console nobody can sign

@@ -26,6 +26,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
 	"github.com/AreteAcademy/brevis/web/pages"
 )
 
@@ -175,6 +176,11 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	mux.HandleFunc("GET /workflows", u.workflows)
 	mux.HandleFunc("GET /projects", u.projetos)
 	mux.HandleFunc("GET /data", u.data)
+	// THE WORKBENCH, and both verbs on one path: a GET draws the box and a
+	// POST runs what is in it. The statement travels in the BODY, which is
+	// why there is no second route carrying it.
+	mux.HandleFunc("GET /sql", u.sql)
+	mux.HandleFunc("POST /sql", u.sql)
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
@@ -324,6 +330,56 @@ const (
 	queryRows        = 100
 	statementCeiling = 64 << 10
 )
+
+// sql is the workbench: one path, two verbs.
+//
+// IT RUNS NOTHING ON A GET. A warehouse query for opening a screen would be a
+// bill for a page view, which is the rule the Preview tab already follows.
+func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
+	if !u.preview.Configured() {
+		// The bar does not offer this section without a service; somebody
+		// typing the path gets the same answer rather than a dead box.
+		http.NotFound(w, r)
+		return
+	}
+	var entries []postgres.CatalogEntry
+	if u.catalog != nil {
+		var err error
+		if entries, err = u.catalog.Catalog(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	v := pages.BuildSQL(entries)
+
+	if r.Method == http.MethodPost {
+		// Bounded before it is parsed, matching `serve`'s own body limit.
+		r.Body = http.MaxBytesReader(w, r.Body, statementCeiling)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "that statement is too long to run", http.StatusBadRequest)
+			return
+		}
+		// FROM THE BODY AND NEVER THE QUERY STRING, which is what keeps a
+		// statement out of a link. `PostFormValue` is what makes that true.
+		v.Target = r.PostFormValue("target")
+		v.Statement = strings.TrimSpace(r.PostFormValue("q"))
+		if v.Statement != "" && v.Target != "" {
+			res, err := u.preview.Query(r.Context(), v.Target, v.Statement, queryRows)
+			switch {
+			case errors.Is(err, sqlserve.ErrNoConnection):
+				v.Err = pages.NoConnectionFor(v.Target)
+			case err != nil:
+				v.Err = err.Error()
+			default:
+				v.Result = &res
+			}
+		}
+	}
+	if v.Target == "" && len(v.Targets) > 0 {
+		v.Target = v.Targets[0]
+	}
+	u.render(w, r, pages.SQL(v))
+}
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -932,7 +988,11 @@ func (u *UI) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// The brand travels in the context: every template reaches it without it
 	// having to enter each page's signature.
-	if err := c.Render(branding.IntoContext(r.Context(), u.brand), w); err != nil {
+	// The brand and whether there is a SQL service both travel in the
+	// context: every template reaches them without entering each page's
+	// signature.
+	ctx := layouts.WithSQL(branding.IntoContext(r.Context(), u.brand), u.preview.Configured())
+	if err := c.Render(ctx, w); err != nil {
 		u.log.Error("rendering the page", "path", r.URL.Path, "error", err)
 	}
 }
