@@ -94,6 +94,10 @@ type Service struct {
 	// call inside it.
 	mu     sync.Mutex
 	probed map[string]bool
+
+	// met counts what the audit line records. Served on a listener of its
+	// own -- see Metrics.
+	met *metrics
 }
 
 // Defaults for the two limits that are a shape rather than a decision. The
@@ -139,7 +143,12 @@ func New(opt Options) (*Service, error) {
 	if opt.Timeout <= 0 {
 		opt.Timeout = defaultTimeout
 	}
-	return &Service{opt: opt, slots: make(chan struct{}, opt.Concurrent), probed: map[string]bool{}}, nil
+	return &Service{
+		opt:    opt,
+		slots:  make(chan struct{}, opt.Concurrent),
+		probed: map[string]bool{},
+		met:    newMetrics(),
+	}, nil
 }
 
 // Handler is the service's routes.
@@ -156,6 +165,23 @@ func (s *Service) Handler() http.Handler {
 	// reading the handler correctly.
 	mux.HandleFunc("POST /v1/query", s.query)
 	return s.authenticated(mux)
+}
+
+// Metrics is the exposition, and it is a SEPARATE HANDLER on purpose.
+//
+// The rule this repository states twice, in the engine and in the gateway: a
+// scrape endpoint on the port that answers requests would either need a
+// session no scraper has, or publish every connection name to whoever can
+// reach that port. `Handler` does not route /metrics at all, and a test says
+// so.
+//
+// It carries no authentication of its own, for the same reason the gateway's
+// does not: it is bound to an address an operator chooses, and a scraper
+// cannot hold a token.
+func (s *Service) Metrics() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", s.met.handler())
+	return mux
 }
 
 // authenticated refuses anything without the bearer, where one is required.
@@ -190,10 +216,20 @@ type previewResponse struct {
 }
 
 func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
+	// AUDITED LIKE A QUERY, because it IS one. A preview reads a customer's
+	// table, is billed the same bytes and can be refused for the same
+	// reasons -- and left no trace at all until the counters were wired and
+	// `endpoint="preview"` could never move. #65's criterion is "every query
+	// produces exactly one audit line"; this is the half that was missing.
+	started := time.Now()
+	line := record{Event: "preview", Outcome: "refused"}
+	defer func() { s.audit(line, started) }()
+
 	var req previewRequest
 	// A bounded body: a preview request is two fields, and anything larger is
 	// not one.
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&req); err != nil {
+		line.Outcome = "malformed"
 		refuse(w, http.StatusBadRequest, "the body is not a preview request")
 		return
 	}
@@ -206,6 +242,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 		refuse(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	line.Connection = table.Connection
 
 	// THE CEILING CLAMPS, IT DOES NOT REFUSE. A preview is not where somebody
 	// learns a limit: asking for a million rows is a request that gets the
@@ -215,6 +252,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 || limit > s.opt.Rows {
 		limit = s.opt.Rows
 	}
+	line.Rows = limit
 
 	ctx := r.Context()
 	conn, err := s.opt.Open(ctx, table)
@@ -257,12 +295,17 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var no refusal
 		if errors.As(err, &no) {
+			line.Outcome = no.outcome
 			refuse(w, no.code, no.why)
 			return
 		}
+		line.Outcome = "failed"
 		refuse(w, http.StatusBadGateway, "the warehouse refused the preview")
 		return
 	}
+	line.Outcome = "ok"
+	line.Bytes = res.Scanned
+	line.Returned = len(res.Rows)
 	write(w, http.StatusOK, previewResponse{
 		Columns: res.Columns, Rows: res.Rows, Truncated: res.Truncated, Limit: limit,
 	})

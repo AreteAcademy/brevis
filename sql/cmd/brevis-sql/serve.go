@@ -28,7 +28,7 @@ import (
 // THE TOKEN IS NAMED BY THE ENVIRONMENT AND NEVER BY A FLAG -- the rule
 // `--dsn-from` already applies to a DSN, for the same reason: a command line
 // is in a shell history, in a CI log and in anybody's `ps`.
-func serve(out io.Writer, addr string, rows int, maxBytes int64, registry string, dryRun bool) error {
+func serve(out io.Writer, addr string, rows int, maxBytes int64, registry, metricsAddr string, dryRun bool) error {
 	reg, err := connections.Load(registry)
 	if err != nil {
 		return err
@@ -51,6 +51,9 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry string
 			"every other dialect answers that nothing is declared\n", registry)
 	}
 	_, _ = fmt.Fprintln(out, "  one audit line per query, on this stream, holding no SQL")
+	if metricsAddr != "" {
+		_, _ = fmt.Fprintf(out, "  metrics on %s/metrics, holding no SQL and no statement hash\n", metricsAddr)
+	}
 	_, _ = fmt.Fprintln(out, "  each warehouse is asked once whether its credential can write,",
 		"and outside BREVIS_ENV=local one that can is refused")
 	if os.Getenv("BREVIS_SQL_SERVE_TOKEN") == "" {
@@ -76,6 +79,28 @@ func serve(out io.Writer, addr string, rows int, maxBytes int64, registry string
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       90 * time.Second,
 	}
+	// THE EXPOSITION ON A LISTENER OF ITS OWN, which is the rule the engine
+	// and the gateway both state: a scrape endpoint on the port that answers
+	// requests would either need a session no scraper has, or publish every
+	// connection name to whoever can reach that port.
+	//
+	// A failure to listen there does NOT stop the service. Metrics are how
+	// somebody watches a warehouse being read; losing them is worse than not
+	// having them, and refusing to serve queries over it would be worse
+	// still.
+	if metricsAddr != "" {
+		go func() {
+			ms := &http.Server{
+				Addr:              metricsAddr,
+				Handler:           s.Metrics(),
+				ReadHeaderTimeout: 5 * time.Second,
+			}
+			if err := ms.ListenAndServe(); err != nil {
+				_, _ = fmt.Fprintf(out, "  metrics are NOT being served on %s: %v\n", metricsAddr, err)
+			}
+		}()
+	}
+
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("listening on %s: %w", addr, err)

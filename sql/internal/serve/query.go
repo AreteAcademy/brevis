@@ -336,6 +336,11 @@ func (s *Service) audit(line record, started time.Time) {
 	// credential line forgot its own when each caller set its own stamp.
 	line.At = started.UTC().Format(time.RFC3339)
 	line.Millis = time.Since(started).Milliseconds()
+	// THE SAME RECORD THE AUDIT LINE CARRIES, so the two cannot disagree
+	// about what happened -- minus the hash, which a label must never hold.
+	if line.Event == "query" || line.Event == "preview" {
+		s.met.observe(line.Event, line)
+	}
 	b, err := json.Marshal(line)
 	if err != nil {
 		return
