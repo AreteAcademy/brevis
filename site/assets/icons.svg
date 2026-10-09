@@ -6,7 +6,7 @@
 
      The one rule: only what exists in the tree is drawn. Each line is an icon,
      the path that proves it exists, and where its drawing came from. A driver
-     removed takes its icon with it; nothing is drawn ahead of the code --
+     removed takes its icon with it; nothing is drawn ahead of the code —
      except what the page marks "em breve" (proof column: em-breve), and the
      map's check fails the day its driver lands without the badge coming off.
      Not here on purpose: Azure, Snowflake, DuckDB, Node.
