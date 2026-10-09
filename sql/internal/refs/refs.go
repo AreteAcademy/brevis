@@ -23,19 +23,21 @@ package refs
 import (
 	"sort"
 	"strings"
+
+	"github.com/AreteAcademy/brevis/sql/internal/sqltok"
 )
 
 // Of lists the relations a query reads, in the order they appear.
 func Of(dialect, sql string) ([]string, error) {
-	toks := tokenize(dialect, sql)
+	toks := sqltok.Tokenize(dialect, sql)
 	if dialect == "postgres" {
 		// Postgres folds an unquoted identifier to lower case: POINT_TBL and
 		// point_tbl are one table. Added AFTER the held-out run showed 754 of
 		// 824 disagreements were exactly this -- a rule of the language, not a
 		// fit to the data, and reported beside the number it changed.
 		for i := range toks {
-			if toks[i].kind == word {
-				toks[i].text = toks[i].lower
+			if toks[i].Kind == sqltok.Word {
+				toks[i].Text = toks[i].Lower
 			}
 		}
 	}
@@ -54,20 +56,20 @@ func Of(dialect, sql string) ([]string, error) {
 	for i := 0; i < len(toks); i++ {
 		t := toks[i]
 		switch {
-		case t.is("("):
+		case t.Is("("):
 			prev := ""
-			if i > 0 && toks[i-1].kind == word {
-				prev = toks[i-1].lower
+			if i > 0 && toks[i-1].Kind == sqltok.Word {
+				prev = toks[i-1].Lower
 			}
 			opener = append(opener, prev)
 			// A parenthesised join -- FROM (a JOIN b) or JOIN (TABLE x) --
 			// opens with a relation and no FROM before it.
 			if prev == "from" || prev == "join" {
 				j := i + 1
-				if j < len(toks) && toks[j].lowerIs("table") {
+				if j < len(toks) && toks[j].LowerIs("table") {
 					j++
 				}
-				if j < len(toks) && !toks[j].lowerIs("select") && !toks[j].lowerIs("with") && !toks[j].lowerIs("values") {
+				if j < len(toks) && !toks[j].LowerIs("select") && !toks[j].LowerIs("with") && !toks[j].LowerIs("values") {
 					if name, next, ok := readName(toks, j); ok && !isCall(toks, next) {
 						refs = append(refs, name)
 						fromList[len(opener)] = true
@@ -76,13 +78,13 @@ func Of(dialect, sql string) ([]string, error) {
 				}
 			}
 			continue
-		case t.is(")"):
+		case t.Is(")"):
 			delete(fromList, len(opener))
 			if len(opener) > 0 {
 				opener = opener[:len(opener)-1]
 			}
 			continue
-		case t.is(","):
+		case t.Is(","):
 			// A comma at the depth of an open FROM list starts its next item,
 			// whatever came before it: a table, a subquery, a JOIN ... ON (...).
 			if fromList[len(opener)] {
@@ -90,16 +92,16 @@ func Of(dialect, sql string) ([]string, error) {
 			}
 			continue
 		}
-		if t.kind != word {
+		if t.Kind != sqltok.Word {
 			continue
 		}
-		switch t.lower {
+		switch t.Lower {
 		case "with":
 			i = readCTEs(toks, i+1, ctes)
 		case "merge", "update":
 			// MERGE [INTO] target / UPDATE target: written, not read.
 			j := i + 1
-			if j < len(toks) && toks[j].lowerIs("into") {
+			if j < len(toks) && toks[j].LowerIs("into") {
 				j++
 			}
 			if name, next, ok := readName(toks, j); ok {
@@ -108,25 +110,25 @@ func Of(dialect, sql string) ([]string, error) {
 			}
 		case "insert":
 			j := i + 1
-			if j < len(toks) && toks[j].lowerIs("into") {
+			if j < len(toks) && toks[j].LowerIs("into") {
 				if name, next, ok := readName(toks, j+1); ok {
 					exclude[name] = true
 					i = next - 1
 				}
 			}
 		case "from", "join", "using":
-			if t.lower == "from" && insideFunctionFrom(opener) {
+			if t.Lower == "from" && insideFunctionFrom(opener) {
 				continue
 			}
-			if t.lower == "from" && i >= 2 && toks[i-1].lowerIs("distinct") &&
-				(toks[i-2].lowerIs("is") || toks[i-2].lowerIs("not")) {
+			if t.Lower == "from" && i >= 2 && toks[i-1].LowerIs("distinct") &&
+				(toks[i-2].LowerIs("is") || toks[i-2].LowerIs("not")) {
 				continue
 			}
 			// CYCLE col SET mark [TO v DEFAULT d] USING path: a column.
-			if t.lower == "using" && cycleBefore(toks, i) {
+			if t.Lower == "using" && cycleBefore(toks, i) {
 				continue
 			}
-			if t.lower == "from" {
+			if t.Lower == "from" {
 				fromList[len(opener)] = true
 			}
 			i = readFromItems(toks, i+1, false, &refs, aliases)
@@ -161,8 +163,8 @@ func insideFunctionFrom(opener []string) bool {
 }
 
 // readCTEs reads `[RECURSIVE] name [(cols)] AS [NOT] [MATERIALIZED] ( ... ) [, ...]`.
-func readCTEs(toks []tok, i int, ctes map[string]bool) int {
-	if i < len(toks) && toks[i].lowerIs("recursive") {
+func readCTEs(toks []sqltok.Token, i int, ctes map[string]bool) int {
+	if i < len(toks) && toks[i].LowerIs("recursive") {
 		i++
 	}
 	// ONE CTE, and the rest by recursion below -- not a loop. Every path out
@@ -170,29 +172,29 @@ func readCTEs(toks []tok, i int, ctes map[string]bool) int {
 	// happens: the second CTE is reached through readCTEs calling itself at
 	// the comma, and the body of the first is scanned by the caller.
 	if i < len(toks) {
-		if toks[i].kind != word && toks[i].kind != quoted {
+		if toks[i].Kind != sqltok.Word && toks[i].Kind != sqltok.Quoted {
 			return i - 1
 		}
-		name := toks[i].text
+		name := toks[i].Text
 		j := i + 1
-		if j < len(toks) && toks[j].is("(") {
+		if j < len(toks) && toks[j].Is("(") {
 			j = skipParens(toks, j)
 		}
-		if j >= len(toks) || !toks[j].lowerIs("as") {
+		if j >= len(toks) || !toks[j].LowerIs("as") {
 			return i - 1
 		}
 		ctes[strings.ToLower(name)] = true
 		j++
-		for j < len(toks) && (toks[j].lowerIs("not") || toks[j].lowerIs("materialized")) {
+		for j < len(toks) && (toks[j].LowerIs("not") || toks[j].LowerIs("materialized")) {
 			j++
 		}
-		if j >= len(toks) || !toks[j].is("(") {
+		if j >= len(toks) || !toks[j].Is("(") {
 			return j - 1
 		}
 		// The body is scanned by the caller like any other tokens: return
 		// to just inside it, after noting where the next CTE could begin.
 		end := skipParens(toks, j)
-		if end < len(toks) && toks[end].is(",") {
+		if end < len(toks) && toks[end].Is(",") {
 			// Record the later names now; their bodies are scanned in order.
 			readCTEs(toks, end+1, ctes)
 		}
@@ -204,12 +206,12 @@ func readCTEs(toks []tok, i int, ctes map[string]bool) int {
 // readFromItems reads one FROM/JOIN/USING item -- or, after FROM, a comma
 // list of them -- recording table names and their aliases. Subqueries,
 // table functions and parenthesised column lists are left to the main scan.
-func readFromItems(toks []tok, i int, list bool, refs *[]string, aliases map[string]bool) int {
+func readFromItems(toks []sqltok.Token, i int, list bool, refs *[]string, aliases map[string]bool) int {
 	for i < len(toks) {
-		for i < len(toks) && (toks[i].lowerIs("lateral") || toks[i].lowerIs("only")) {
+		for i < len(toks) && (toks[i].LowerIs("lateral") || toks[i].LowerIs("only")) {
 			i++
 		}
-		if i >= len(toks) || toks[i].is("(") {
+		if i >= len(toks) || toks[i].Is("(") {
 			return i - 1 // a subquery or a USING (cols) list
 		}
 		name, next, ok := readName(toks, i)
@@ -221,14 +223,14 @@ func readFromItems(toks []tok, i int, list bool, refs *[]string, aliases map[str
 		}
 		*refs = append(*refs, name)
 		i = next
-		if i < len(toks) && toks[i].lowerIs("as") {
+		if i < len(toks) && toks[i].LowerIs("as") {
 			i++
 		}
-		if i < len(toks) && (toks[i].kind == word || toks[i].kind == quoted) && !keywords[toks[i].lower] {
-			aliases[strings.ToLower(toks[i].text)] = true
+		if i < len(toks) && (toks[i].Kind == sqltok.Word || toks[i].Kind == sqltok.Quoted) && !keywords[toks[i].Lower] {
+			aliases[strings.ToLower(toks[i].Text)] = true
 			i++
 		}
-		if !list || i >= len(toks) || !toks[i].is(",") {
+		if !list || i >= len(toks) || !toks[i].Is(",") {
 			return i - 1
 		}
 		i++
@@ -244,37 +246,37 @@ func readFromItems(toks []tok, i int, list bool, refs *[]string, aliases map[str
 // the negated half of a condition in readWith's VALUES/SELECT branch, once
 // with a comment in readFromItems explaining what it meant. Two spellings of
 // one rule is two places for it to drift.
-func isCall(toks []tok, i int) bool {
-	return i < len(toks) && toks[i].is("(")
+func isCall(toks []sqltok.Token, i int) bool {
+	return i < len(toks) && toks[i].Is("(")
 }
 
 // readName reads a dotted name. A backticked BigQuery name may hold dots of
 // its own; it is kept as written.
-func readName(toks []tok, i int) (string, int, bool) {
-	if i >= len(toks) || (toks[i].kind != word && toks[i].kind != quoted) || (toks[i].kind == word && keywords[toks[i].lower]) {
+func readName(toks []sqltok.Token, i int) (string, int, bool) {
+	if i >= len(toks) || (toks[i].Kind != sqltok.Word && toks[i].Kind != sqltok.Quoted) || (toks[i].Kind == sqltok.Word && keywords[toks[i].Lower]) {
 		return "", i, false
 	}
-	parts := []string{toks[i].text}
+	parts := []string{toks[i].Text}
 	i++
-	for i+1 < len(toks) && toks[i].is(".") && (toks[i+1].kind == word || toks[i+1].kind == quoted) {
-		parts = append(parts, toks[i+1].text)
+	for i+1 < len(toks) && toks[i].Is(".") && (toks[i+1].Kind == sqltok.Word || toks[i+1].Kind == sqltok.Quoted) {
+		parts = append(parts, toks[i+1].Text)
 		i += 2
 	}
 	// BigQuery wildcard: `events_*` unquoted is `events_` then `*`.
-	if i < len(toks) && toks[i].is("*") && len(parts) > 1 {
+	if i < len(toks) && toks[i].Is("*") && len(parts) > 1 {
 		parts[len(parts)-1] += "*"
 		i++
 	}
 	return strings.Join(parts, "."), i, true
 }
 
-func skipParens(toks []tok, i int) int {
+func skipParens(toks []sqltok.Token, i int) int {
 	depth := 0
 	for ; i < len(toks); i++ {
 		switch {
-		case toks[i].is("("):
+		case toks[i].Is("("):
 			depth++
-		case toks[i].is(")"):
+		case toks[i].Is(")"):
 			depth--
 			if depth == 0 {
 				return i + 1
@@ -297,97 +299,11 @@ func init() {
 	}
 }
 
-type kind int
-
-const (
-	word kind = iota
-	quoted
-	punct
-	literal
-)
-
-type tok struct {
-	kind  kind
-	text  string // as written; a quoted identifier without its quotes
-	lower string
-}
-
-func (t tok) is(p string) bool      { return t.kind == punct && t.text == p }
-func (t tok) lowerIs(w string) bool { return t.kind == word && t.lower == w }
-
-// tokenize drops comments and string literals and splits the rest. `#` starts
-// a comment in BigQuery only; in Postgres it is an operator.
-func tokenize(dialect, s string) []tok {
-	var out []tok
-	for i := 0; i < len(s); {
-		c := s[i]
-		switch {
-		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
-			i++
-		case c == '-' && i+1 < len(s) && s[i+1] == '-', c == '#' && dialect == "bigquery":
-			for i < len(s) && s[i] != '\n' {
-				i++
-			}
-		case c == '/' && i+1 < len(s) && s[i+1] == '*':
-			end := strings.Index(s[i+2:], "*/")
-			if end < 0 {
-				return out
-			}
-			i += end + 4
-		case c == '\'' || (c == '"' && dialect == "bigquery"):
-			// A string. In BigQuery "..." is a string too.
-			j := i + 1
-			for j < len(s) {
-				if s[j] == '\\' && dialect == "bigquery" {
-					j += 2
-					continue
-				}
-				if s[j] == c {
-					if j+1 < len(s) && s[j+1] == c {
-						j += 2
-						continue
-					}
-					break
-				}
-				j++
-			}
-			out = append(out, tok{kind: literal})
-			i = j + 1
-		case c == '"' || c == '`':
-			j := strings.IndexByte(s[i+1:], c)
-			if j < 0 {
-				return out
-			}
-			text := s[i+1 : i+1+j]
-			out = append(out, tok{kind: quoted, text: text, lower: strings.ToLower(text)})
-			i += j + 2
-		case isWordByte(c):
-			j := i
-			for j < len(s) && (isWordByte(s[j]) || (s[j] == '-' && dialect == "bigquery" && j > i && j+1 < len(s) && isWordByte(s[j+1]) && !isDigit(s[i]))) {
-				j++
-			}
-			text := s[i:j]
-			out = append(out, tok{kind: word, text: text, lower: strings.ToLower(text)})
-			i = j
-		default:
-			out = append(out, tok{kind: punct, text: string(c)})
-			i++
-		}
-	}
-	return out
-}
-
-func isWordByte(c byte) bool {
-	return c == '_' || c == '$' || c == '@' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || isDigit(c)
-}
-
-func isDigit(c byte) bool { return '0' <= c && c <= '9' }
-
 // cycleBefore reports whether a CYCLE clause opened within the last few
 // tokens: its USING names a path column, not a relation.
-func cycleBefore(toks []tok, i int) bool {
+func cycleBefore(toks []sqltok.Token, i int) bool {
 	for j := i - 1; j >= 0 && j >= i-12; j-- {
-		if toks[j].lowerIs("cycle") {
+		if toks[j].LowerIs("cycle") {
 			return true
 		}
 	}
