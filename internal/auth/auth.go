@@ -303,10 +303,43 @@ const NextParam = "next"
 //
 // Without this, `/login?next=https://malicious` would make our own login screen
 // hand the authenticated operator away -- the classic open redirect.
+//
+// IT CHECKED TWO SPELLINGS AND THERE ARE MORE. `//evil.com` was refused and
+// `/\evil.com` was not: it looks like a path and a browser does not read it
+// as one, because a BACKSLASH IS A SLASH in a URL. Normalised, that is
+// `//evil.com`, and the host is evil.com -- measured with `url.Parse`, not
+// reasoned about. Found by gosec, which this repository ran against the SDK
+// only, so the console it was pointed away from is where it was true.
+//
+// A target is internal when it begins with a single slash, carries no
+// backslash and holds no control character. Each of those three is exercised
+// by a vector in the test, and a fourth rule -- `url.Parse` must find no
+// scheme and no host -- was written, measured and removed: with these three
+// in force it can never fire.
 func escapeTarget(target string) string {
 	if !strings.HasPrefix(target, "/") || strings.HasPrefix(target, "//") {
 		return "/"
 	}
+	// A BACKSLASH IS A SLASH TO A BROWSER, and a path here never needs one:
+	// anything that wants a literal backslash spells it `%5C`, which arrives
+	// decoded and is refused here on purpose rather than forwarded.
+	if strings.ContainsRune(target, '\\') {
+		return "/"
+	}
+	// CONTROL CHARACTERS, including the two that would split a header. Go's
+	// own writer already refuses those, and a target that cannot be parsed
+	// is not a target this should carry either way.
+	for _, r := range target {
+		if r < 0x20 || r == 0x7f {
+			return "/"
+		}
+	}
+	// AND NOTHING ELSE. A `url.Parse` sat here, refusing anything with a
+	// scheme or a host, and it was removed after being MEASURED: with the
+	// three rules above in force it cannot fire, because a string beginning
+	// with a single slash and holding no backslash names neither. A guard no
+	// test can make fail is the thing this repository keeps finding in its
+	// own CI, and it does not get a pass for being defensive.
 	return target
 }
 

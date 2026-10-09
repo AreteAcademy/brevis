@@ -132,3 +132,37 @@ func TestEveryWorkflowThatFiresOnATagIsAccountedFor(t *testing.T) {
 		}
 	}
 }
+
+// THE SECURITY SCAN LOOKS AT EVERY MODULE, AND AT A PINNED VERSION.
+//
+// It ran `./sdk/...` and nothing else: the engine, the gateway and
+// `brevis-sql` were never scanned. That is not an abstract gap -- pointed at
+// the engine for the first time, it found an open redirect in `?next=`,
+// which `internal/auth` now refuses and has a test for.
+//
+// `@master` is the other half. This repository pins templ and Tailwind
+// because `releases/latest` made two developers generate different CSS; a
+// scanner that changes on its own is the same problem with a worse failure
+// mode, because its findings are what somebody decides to act on.
+func TestTheSecurityScanCoversEveryModule(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join(workflows, "test.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	scan := string(body)
+	for _, module := range []string{"engine:.", "sdk:sdk", "gateway:gateway", "sql:sql"} {
+		if !strings.Contains(scan, module) {
+			t.Errorf("the security scan never enters %s", module)
+		}
+	}
+	// AND NOT BY NAMING THEM IN ONE ARGUMENT LIST, which was measured and
+	// does not work: from the root, `gosec ./... ./sdk/...` reports the
+	// engine's findings and skips the other modules in silence. It has to
+	// `cd` into each one.
+	if strings.Contains(scan, "gosec -quiet -no-fail -fmt sarif ./sdk/...") {
+		t.Error("the scan names other modules as paths, which reads none of them")
+	}
+	if strings.Contains(scan, "securego/gosec@master") {
+		t.Error("the security scanner is pinned to @master, so its findings change on their own")
+	}
+}

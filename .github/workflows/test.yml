@@ -501,15 +501,53 @@ jobs:
         with:
           go-version: '1.27'
 
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec@master
-        with:
-          args: '-no-fail -fmt sarif -out gosec-results.sarif ./sdk/...'
+      # ONE SCAN PER MODULE, AND PINNED.
+      #
+      # It read `./sdk/...` and nothing else, so the engine, the gateway and
+      # `brevis-sql` were never scanned -- and `brevis-sql` is the module that
+      # holds a warehouse credential and writes identifiers into SQL, which is
+      # what a scanner is for. Pointed at the engine for the first time it
+      # found an open redirect in `?next=`, now refused in `internal/auth`
+      # with a test for each spelling.
+      #
+      # A LOOP AND NOT A LONGER ARGUMENT LIST, because that was measured and
+      # does not work: `gosec ./... ./sdk/... ./gateway/... ./sql/...` from
+      # the root reports 20 findings, all of them the engine's. The other
+      # three are separate modules and are skipped IN SILENCE -- a scan that
+      # names four and reads one, which is the exact shape this repository
+      # keeps finding in its own gates. Run per module it is 20 + 11 + 10 + 1.
+      #
+      # `@master` was the other half: this repository pins templ and Tailwind
+      # because `releases/latest` made two developers generate different CSS,
+      # and a scanner that changes on its own is the same problem with a worse
+      # failure mode, because its findings are what somebody acts on.
+      #
+      # IT REPORTS AND DOES NOT GATE, which `-no-fail` means and the step's
+      # name now says. The findings land in the Security tab; a green tick
+      # here is "the scan ran", never "there is nothing to look at". Measured
+      # on 2026-10-09 against v2.29.0: 42 findings across the four modules,
+      # one of them the redirect above.
+      - name: Install the scanner
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
 
-      - name: Upload Gosec results to GitHub Security tab
+      - name: Security scan (reports to the Security tab; does not gate)
+        run: |
+          mkdir -p gosec-results
+          for pair in "engine:." "sdk:sdk" "gateway:gateway" "sql:sql"; do
+            name="${pair%%:*}"; dir="${pair##*:}"
+            echo "→ $name"
+            ( cd "$dir" && gosec -quiet -no-fail -fmt sarif \
+                -out "$GITHUB_WORKSPACE/gosec-results/$name.sarif" ./... )
+          done
+          wc -l gosec-results/*.sarif
+
+      # A DIRECTORY, because there are four files now. `upload-sarif` takes
+      # either, and one file per module keeps a finding's module visible in
+      # the Security tab instead of merging four trees into one list.
+      - name: Upload the results to the GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: gosec-results.sarif
+          sarif_file: gosec-results
           wait-for-processing: true
 
   build:

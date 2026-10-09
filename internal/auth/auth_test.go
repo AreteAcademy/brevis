@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/internal/auth"
@@ -242,5 +243,69 @@ func TestAHalfCredentialIsRefused(t *testing.T) {
 	curto := auth.Credential{User: "o", Hash: "pbkdf2-sha256$1$a$b", Secret: []byte("curto")}
 	if err := curto.Validate(); err == nil {
 		t.Error("a secret that is too short was accepted")
+	}
+}
+
+// `?next=` CANNOT LEAVE THIS SITE, including by the spelling a browser
+// normalises on the way out.
+//
+// `escapeTarget` refused `//evil.com` and `https://evil.com` and let
+// `/\evil.com` through. It looks like a path and it is not one: a backslash
+// is a SLASH in a URL, so the browser reads `//evil.com` and the host is
+// evil.com. Measured, not reasoned about -- `url.Parse` on the normalised
+// string reports `Host: evil.com`.
+//
+// What that buys an attacker is the thing this function's own comment says
+// it exists to stop: our own login screen, at our own domain, handing the
+// operator who just authenticated to somebody else's page.
+//
+// Found by gosec (G710), which the CI ran against `./sdk/...` only — so the
+// console it was pointed away from is where it was true.
+func TestTheNextParameterCannotLeaveThisSite(t *testing.T) {
+	for _, away := range []string{
+		`/\evil.com`,
+		`/\\evil.com`,
+		`/\/evil.com`,
+		`//evil.com`,
+		`///evil.com`,
+		`https://evil.com`,
+		`http:/evil.com`,
+		`/%0d%0aX-Injected:+1`,
+		"/\tevil.com",
+		"/\nevil.com",
+		"\\\\evil.com",
+		`javascript:alert(1)`,
+	} {
+		if got := auth.Target(away); strings.ContainsAny(got, `\`) || got != "/" && !strings.HasPrefix(got, "/") {
+			t.Errorf("Target(%q) = %q, which can leave this site", away, got)
+		}
+		// AND A BROWSER'S READING OF IT, which is the only reading that
+		// matters: normalise the backslashes the way a URL parser does and
+		// ask whether a host appeared.
+		u, err := url.Parse(strings.ReplaceAll(auth.Target(away), `\`, "/"))
+		if err != nil {
+			t.Errorf("Target(%q) = %q, which does not parse: %v", away, auth.Target(away), err)
+			continue
+		}
+		if u.Host != "" || u.Scheme != "" {
+			t.Errorf("Target(%q) = %q, which a browser reads as host %q scheme %q",
+				away, auth.Target(away), u.Host, u.Scheme)
+		}
+	}
+}
+
+// AND A REAL DESTINATION STILL SURVIVES, which is the whole point of
+// carrying `?next=` at all: somebody who was deep-linked to a filtered list
+// and had to sign in lands back on it.
+func TestTheNextParameterKeepsAnOrdinaryPath(t *testing.T) {
+	for _, keep := range []string{
+		"/runs",
+		"/runs?status=failed&workflow=daily_sales",
+		"/data/target?u=postgres%3A%2F%2Fwarehouse%2Fsales%2Fdaily",
+		"/sql",
+	} {
+		if got := auth.Target(keep); got != keep {
+			t.Errorf("Target(%q) = %q, and the operator loses where they were going", keep, got)
+		}
 	}
 }
