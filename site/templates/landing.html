@@ -22,200 +22,99 @@
         </a>
       </div>
 
-      <!-- The four pieces, one code window: each snippet is the one that ran
-           in T5-T8 (published images), byte for byte. Without JS the tabs
-           hide and the four panels show, stacked, each under its name. -->
-      <div class="pieces" id="pecas" role="tablist" aria-label="{{ l.pr_tabs }}">
-        <button class="piece" type="button" role="tab" id="tab-core" aria-controls="p-core" aria-selected="true">
-          <svg class="piece-ico" aria-hidden="true"><use href="#i-mark"></use></svg>
-          <span class="piece-name">Core</span>
-          <span class="piece-line">{{ l.core_titulo }}</span>
-        </button>
-        <button class="piece" type="button" role="tab" id="tab-sdk" aria-controls="p-sdk" aria-selected="false">
-          <svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>
-          <span class="piece-name">SDK</span>
-          <span class="piece-line">{{ l.sdk_titulo }}</span>
-        </button>
-        <button class="piece" type="button" role="tab" id="tab-gateway" aria-controls="p-gateway" aria-selected="false">
-          <svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>
-          <span class="piece-name">Gateway</span>
-          <span class="piece-line">{{ l.gw_titulo }}</span>
-        </button>
-        <button class="piece" type="button" role="tab" id="tab-sql" aria-controls="p-sql" aria-selected="false">
-          <svg class="ico ico-sql" aria-hidden="true"><use href="/assets/icons.svg#i-sql"></use></svg>
-          <span class="piece-name">SQL <span class="badge">{{ l.sql_badge }}</span></span>
-          <span class="piece-line">{{ l.sql_titulo }}</span>
-        </button>
-      </div>
-      <div class="piece-window">
-        <div class="piece-panel" role="tabpanel" id="p-core" aria-labelledby="tab-core">
-          <p class="piece-panel-name">Core</p>
-            <div class="code-block">
-              <div class="code-head"><span>hello.yaml</span></div>
-<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">hello</span>
-<span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">dag</span>
-<span class="t-k">tags</span><span class="t-o">:</span> <span class="t-s">[example]</span>
+      <!-- The ecosystem map, in the hero right under the CTAs (site-hero-map):
+           where data comes from, the four pieces -- the Core apart, in the
+           control plane -- and where it lands. Each piece is a Go module, so
+           each carries the Go icon (check_map.py holds both claims). -->
+      <!-- The map is HTML so it translates and reflows; the names on it are
+           proper nouns and the sentences come from i18n.json.
 
-<span class="t-k">steps</span><span class="t-o">:</span>
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">prepare</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;echo preparing; sleep 1&#x27;</span>
-
-<span class="t-c">  # The next two depend on the same step, so they run IN PARALLEL.</span>
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">extract</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 2; echo 42 extracted&#x27;</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
-
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">validate</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">sh -c &#x27;sleep 1; echo validated&#x27;</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[prepare]</span>
-
-  <span class="t-o">-</span> <span class="t-k">id</span><span class="t-o">:</span> <span class="t-s">publish</span>
-    <span class="t-k">run</span><span class="t-o">:</span> <span class="t-s">echo published</span>
-    <span class="t-k">depends_on</span><span class="t-o">:</span> <span class="t-s">[extract, validate]</span></code></pre>
-            </div>
-            <div class="code-block" data-code="docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \&#10;  areteacademy/brevis:0.17.1-worker run hello.yaml">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
-<pre><code><span class="t-o">$</span> docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.17.1-worker run hello.yaml
-<span class="t-c">workflow hello (dag, 4 steps) in .
-  ▶ prepare
-    prepare | preparing
-  ✓ prepare
-  ▶ validate
-  ▶ extract
-    validate | validated
-  ✓ validate
-    extract | 42 extracted
-  ✓ extract
-  ▶ publish
-    publish | published
-  ✓ publish
-
-workflow hello finished</span></code></pre>
-              <p class="code-note">{{ l.core_note }}</p>
-            </div>
-            <a class="text-link" href="{{ prefixo }}/docs/quickstart/">
-              {{ l.pr_link }}
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
+           The Core row has no .eco-wire, and that is the point, not an
+           omission: the Core schedules and watches, and no data line passes
+           through it. Wires live only on the data rows -- SDK and Gateway in
+           and out, SQL out only, because it models where the data already
+           landed. A connector drawn to the Core would be a false claim. -->
+      <div class="eco bg-grid" id="ecossistema" role="group" aria-label="{{ l.eco_rotulo }}">
+        <div class="eco-core-area">
+          <p class="eco-plane">{{ l.eco_controle }}</p>
+          <div class="eco-row eco-core">
+            <h2 class="eco-name"><svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>Core</h2>
+            <p>{{ l.eco_core }}</p>
+            <span class="pill">areteacademy/brevis</span>
+          </div>
         </div>
 
-        <div class="piece-panel" role="tabpanel" id="p-sdk" aria-labelledby="tab-sdk">
-          <p class="piece-panel-name">SDK</p>
-            <div class="code-block" data-code="go get github.com/AreteAcademy/brevis/sdk@latest">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
-<pre><code><span class="t-o">$</span> go get github.com/AreteAcademy/brevis/sdk@latest</code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-head"><span>main.go</span></div>
-<pre><code>rows, err := sdk.<span class="t-k">Extract</span>(ctx, sdk.Source{
-	From: from.HTTP{URL: <span class="t-s">"https://api.example.com/v1/events"</span>},
-})
-
-rows = sdk.<span class="t-k">Transform</span>(rows, sdk.Accept(<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>))
-
-res, err := sdk.<span class="t-k">Load</span>(ctx, rows, sdk.Target{
-	To:      bigquery.Table{Dataset: <span class="t-s">"bronze"</span>, Name: <span class="t-s">"events"</span>},
-	Columns: []string{<span class="t-s">"id"</span>, <span class="t-s">"created_at"</span>, <span class="t-s">"amount"</span>},
-})</code></pre>
-              <p class="code-note">{{ l.sdk_req }}</p>
-            </div>
-            <a class="text-link" href="{{ prefixo }}/docs/sdk/">
-              {{ l.pr_link }}
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
+        <div class="eco-src">
+          <p class="eco-col-title">{{ l.eco_origem }}</p>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_pull }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>HTTP</li>
+              <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico ico-files" aria-hidden="true"><use href="/assets/icons.svg#i-files"></use></svg>{{ l.eco_arquivos }}</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_push }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico ico-http" aria-hidden="true"><use href="/assets/icons.svg#i-http"></use></svg>{{ l.eco_push_nome }}</li>
+            </ul>
+          </div>
         </div>
 
-        <div class="piece-panel" role="tabpanel" id="p-gateway" aria-labelledby="tab-gateway">
-          <p class="piece-panel-name">Gateway</p>
-            <div class="code-block">
-              <div class="code-head"><span>gateway.yaml</span></div>
-<pre><code><span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">events_gateway</span>
-
-<span class="t-k">listen</span><span class="t-o">:</span>
-  <span class="t-k">addr</span><span class="t-o">:</span> <span class="t-s">:8080</span>
-  <span class="t-k">auth</span><span class="t-o">:</span>
-    <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">bearer</span>
-    <span class="t-k">keys_from</span><span class="t-o">:</span> <span class="t-s">BREVIS_INGEST_KEYS</span>
-
-<span class="t-k">streams</span><span class="t-o">:</span>
-  <span class="t-o">-</span> <span class="t-k">name</span><span class="t-o">:</span> <span class="t-s">clicks</span>
-    <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/v1/clicks</span>
-    <span class="t-k">format</span><span class="t-o">:</span> <span class="t-s">json</span>
-    <span class="t-k">identity</span><span class="t-o">:</span>
-      <span class="t-k">provider</span><span class="t-o">:</span> <span class="t-s">web</span>
-      <span class="t-k">entity</span><span class="t-o">:</span> <span class="t-s">click</span>
-      <span class="t-k">source_key</span><span class="t-o">:</span> <span class="t-s">event_id</span>
-      <span class="t-k">record_ts</span><span class="t-o">:</span> <span class="t-s">occurred_at</span>
-    <span class="t-k">sink</span><span class="t-o">:</span>
-      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
-      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/</span>
-    <span class="t-k">dead_letter</span><span class="t-o">:</span>
-      <span class="t-k">type</span><span class="t-o">:</span> <span class="t-s">files</span>
-      <span class="t-k">path</span><span class="t-o">:</span> <span class="t-s">/var/landed/dead-letter/</span></code></pre>
-            </div>
-            <div class="code-block" data-code="docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \&#10;  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \&#10;  areteacademy/brevis-gateway:0.26.1-slim&#10;&#10;curl -X POST localhost:8080/v1/clicks -H &#x27;Authorization: Bearer dev-key&#x27; \&#10;  -d &#x27;{&quot;event_id&quot;:&quot;e-1&quot;,&quot;occurred_at&quot;:&quot;2026-10-08T12:00:00Z&quot;,&quot;page&quot;:&quot;/pricing&quot;}&#x27;">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
-<pre><code><span class="t-o">$</span> docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
-  -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro -v ./landed:/var/landed \
-  areteacademy/brevis-gateway:0.26.1-slim
-
-<span class="t-o">$</span> curl -X POST localhost:8080/v1/clicks -H 'Authorization: Bearer dev-key' \
-  -d '{"event_id":"e-1","occurred_at":"2026-10-08T12:00:00Z","page":"/pricing"}'
-<span class="t-c">{"accepted":1,"rejected":null}</span>  <span class="t-k">202</span></code></pre>
-              <p class="code-note">{{ l.gw_note }}</p>
-            </div>
-            <a class="text-link" href="{{ prefixo }}/docs/ingestion/">
-              {{ l.pr_link }}
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
+        <div class="eco-data">
+          <p class="eco-plane">{{ l.eco_dados }}</p>
+          <div class="eco-row eco-sdk">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h2 class="eco-name"><svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>SDK</h2>
+            <p>{{ l.eco_sdk }}</p>
+            <span class="pill">brevis/sdk</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-gateway">
+            <span class="eco-wire eco-wire-in" aria-hidden="true"></span>
+            <h2 class="eco-name"><svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>Gateway</h2>
+            <p>{{ l.eco_gateway }}</p>
+            <span class="pill">areteacademy/brevis-gateway</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
+          <div class="eco-row eco-sql">
+            <h2 class="eco-name"><svg class="ico ico-go" aria-hidden="true"><use href="/assets/icons.svg#i-go"></use></svg>SQL</h2>
+            <p>{{ l.eco_sql }}</p>
+            <span class="pill">areteacademy/brevis-sql 0.1.0</span>
+            <span class="eco-wire eco-wire-out" aria-hidden="true"></span>
+          </div>
         </div>
 
-        <div class="piece-panel" role="tabpanel" id="p-sql" aria-labelledby="tab-sql">
-          <p class="piece-panel-name">SQL</p>
-            <div class="code-block">
-              <div class="code-head"><span>models/staging/stg_orders.sql</span></div>
-<pre><code><span class="t-c">/* brevis
-materialized: view
-*/</span>
-<span class="t-k">select</span> order_id, customer_id, amount, ordered_at
-<span class="t-k">from</span> raw.orders
-<span class="t-k">where</span> amount <span class="t-k">is not null</span></code></pre>
-            </div>
-            <div class="code-block">
-              <div class="code-head"><span>models/marts/orders.sql</span></div>
-<pre><code><span class="t-c">/* brevis
-materialized: table
-tests:
-  - not_null: [customer_id]
-  - unique: [customer_id]
-*/</span>
-<span class="t-k">select</span> customer_id, <span class="t-k">count</span>(*) <span class="t-k">as</span> orders, <span class="t-k">sum</span>(amount) <span class="t-k">as</span> revenue
-<span class="t-k">from</span> staging.stg_orders
-<span class="t-k">group by</span> customer_id</code></pre>
-            </div>
-            <div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  compile --project /project&#10;docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \&#10;  graph --project /project">
-              <div class="code-head"><span>shell</span><button class="code-copy" type="button" aria-label="{{ i18n.copiar }}" data-done="{{ i18n.copiado }}">{{ i18n.copiar }}</button></div>
-<pre><code><span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  compile --project /project
-<span class="t-c">2 models, 2 to build, 0 function(s)
-  staging.stg_orders                 view  0 test(s)
-  marts.orders                       table 2 test(s)</span>
-
-<span class="t-o">$</span> docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  graph --project /project
-<span class="t-c">staging.stg_orders
-  └─ raw.orders (source)
-marts.orders
-  ├─ staging.stg_orders</span></code></pre>
-              <p class="code-note">{{ l.sql_note }}</p>
-            </div>
-            <a class="text-link" href="{{ prefixo }}/docs/sql/">
-              {{ l.pr_link }}
-              <svg width="15" height="15" aria-hidden="true"><use href="#i-arrow"></use></svg>
-            </a>
+        <div class="eco-dst">
+          <p class="eco-col-title">{{ l.eco_destino }}</p>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_tabelas }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico ico-bigquery" aria-hidden="true"><use href="/assets/icons.svg#i-bigquery"></use></svg>BigQuery</li>
+              <li class="chip"><svg class="ico ico-postgres" aria-hidden="true"><use href="/assets/icons.svg#i-postgres"></use></svg>Postgres</li>
+              <li class="chip"><svg class="ico ico-mysql" aria-hidden="true"><use href="/assets/icons.svg#i-mysql"></use></svg>MySQL</li>
+              <li class="chip"><svg class="ico ico-redshift" aria-hidden="true"><use href="/assets/icons.svg#i-redshift"></use></svg>Redshift</li>
+              <li class="chip"><svg class="ico ico-pubsub" aria-hidden="true"><use href="/assets/icons.svg#i-pubsub"></use></svg>Pub/Sub</li>
+            </ul>
+          </div>
+          <div class="eco-group">
+            <p class="eco-label">{{ l.eco_buckets }}</p>
+            <ul class="eco-chips">
+              <li class="chip"><svg class="ico ico-s3" aria-hidden="true"><use href="/assets/icons.svg#i-s3"></use></svg>S3</li>
+              <li class="chip"><svg class="ico ico-gcs" aria-hidden="true"><use href="/assets/icons.svg#i-gcs"></use></svg>GCS</li>
+            </ul>
+          </div>
         </div>
       </div>
+
+      <dl class="eco-support">
+        <dt>{{ l.eco_apoio }}</dt>
+        <dd><span class="pill">console</span> {{ l.eco_console }}</dd>
+        <dd><span class="pill">brevis-agent</span> {{ l.eco_agent }}</dd>
+        <dd><span class="pill">pip install brevis</span> {{ l.eco_python }}</dd>
+      </dl>
 
       <!-- Not a single `docker run`: the Core keeps its state in Postgres,
            so the shortest honest start is the repository's compose file.

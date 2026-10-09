@@ -3,7 +3,7 @@
     "ui": {
       "pular": "Pular para o conteúdo",
       "nav_rotulo": "Navegação principal",
-      "nav_pecas": "Peças",
+      "nav_ecossistema": "Ecossistema",
       "nav_arquitetura": "Arquitetura",
       "nav_principios": "Princípios",
       "nav_open_source": "Open source",
@@ -79,17 +79,6 @@
       "eco_console": "a interface web do Core",
       "eco_agent": "roda a etapa num cluster que já é seu",
       "eco_python": "contexto de execução para etapas em Python",
-      "pr_tabs": "Peças do Brevis",
-      "pr_link": "Ler o guia",
-      "core_titulo": "Um arquivo YAML, um pod por etapa.",
-      "core_note": "A saída real, com a imagem publicada. brevis run executa local, sem fila; quem sobe pods é o scheduler.",
-      "sdk_titulo": "Um fetcher inteiro em três chamadas.",
-      "sdk_req": "Requer Go 1.23 ou mais novo.",
-      "gw_titulo": "Um endpoint que pousa o dado que chega.",
-      "gw_note": "A resposta real, com a imagem publicada. Sem a chave, 401.",
-      "sql_badge": "novo · 0.1",
-      "sql_titulo": "Arquivos .sql comuns, construídos na ordem certa.",
-      "sql_note": "A saída real, com a imagem publicada — compile e graph não se conectam a nada. Contra um Postgres, build e test fecham com \"2 models built\" e \"2 tests passed\".",
       "num_eyebrow": "números",
       "num_titulo": "Medido, não prometido.",
       "num_lead": "Cada número abaixo saiu de uma execução que está no repositório, e cada um leva à página onde ela é contada.",
@@ -131,14 +120,19 @@
       "u3_url": "https://pulsarcode.com.br",
       "u4_nome": "Encantos Amazônicos",
       "u4_url": "https://encantosamazonicos.com.br",
-      "users_nota": "Usa o brevis.sh e quer aparecer aqui? Abra uma issue no repositório."
+      "users_nota": "Usa o brevis.sh e quer aparecer aqui? Abra uma issue no repositório.",
+      "eco_origem": "de onde vem",
+      "eco_destino": "para onde vai",
+      "eco_dados": "plano de dados",
+      "eco_tabelas": "tabelas e tópicos",
+      "eco_buckets": "arquivos em bucket"
     }
   },
   "en": {
     "ui": {
       "pular": "Skip to content",
       "nav_rotulo": "Main navigation",
-      "nav_pecas": "Pieces",
+      "nav_ecossistema": "Ecosystem",
       "nav_arquitetura": "Architecture",
       "nav_principios": "Principles",
       "nav_open_source": "Open source",
@@ -214,17 +208,6 @@
       "eco_console": "the web interface over the Core",
       "eco_agent": "runs a step in a cluster you already have",
       "eco_python": "run context for Python steps",
-      "pr_tabs": "Brevis pieces",
-      "pr_link": "Read the guide",
-      "core_titulo": "One YAML file, one pod per step.",
-      "core_note": "The real output, from the published image. brevis run executes locally, with no queue; pods are started by the scheduler.",
-      "sdk_titulo": "A whole fetcher in three calls.",
-      "sdk_req": "Requires Go 1.23 or newer.",
-      "gw_titulo": "An endpoint that lands the data that arrives.",
-      "gw_note": "The real answer, from the published image. Without the key, 401.",
-      "sql_badge": "new · 0.1",
-      "sql_titulo": "Plain .sql files, built in the right order.",
-      "sql_note": "The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with \"2 models built\" and \"2 tests passed\".",
       "num_eyebrow": "numbers",
       "num_titulo": "Measured, not promised.",
       "num_lead": "Every number below came from a run that is in the repository, and each one leads to the page where it is told.",
@@ -266,7 +249,12 @@
       "u3_url": "https://pulsarcode.com.br",
       "u4_nome": "Encantos Amazônicos",
       "u4_url": "https://encantosamazonicos.com.br",
-      "users_nota": "Running brevis.sh and want to be listed? Open an issue on the repository."
+      "users_nota": "Running brevis.sh and want to be listed? Open an issue on the repository.",
+      "eco_origem": "where it comes from",
+      "eco_destino": "where it lands",
+      "eco_dados": "data plane",
+      "eco_tabelas": "tables and topics",
+      "eco_buckets": "files in a bucket"
     }
   }
 }
