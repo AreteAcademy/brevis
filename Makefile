@@ -307,11 +307,20 @@ $(LOCAL_ENV):
 # warehouse credential and nothing in docker-compose.yml should. Built first
 # rather than `go run`: `go run` is a parent whose child survives the kill, so
 # `make down` would leave a warehouse reader listening.
+#
+# AND THE BUILD IS ITS OWN LINE, which is the whole reason this comment is
+# longer than it was. `(cd sql && go build …) && VAR=… nohup ./bin/brevis-sql
+# … &` backgrounds the WHOLE compound, so `$$!` was the subshell's PID and not
+# the reader's -- measured on a running machine: the pidfile said 14688 while
+# the listener was 22168. `make down` then killed a PID that had already
+# exited, removed the pidfile, and left exactly the warehouse reader the
+# paragraph above says it exists to stop. The kill was silent about it
+# because `kill … 2>/dev/null && echo` says nothing when the kill fails.
 serve-up:
 	@if lsof -nP -iTCP:8088 -sTCP:LISTEN >/dev/null 2>&1; then \
 	  echo "serve: something already answers on 8088, left alone"; \
 	else \
-	  (cd sql && go build -o ../bin/brevis-sql ./cmd/brevis-sql) && \
+	  (cd sql && go build -o ../bin/brevis-sql ./cmd/brevis-sql); \
 	  WAREHOUSE_DSN="$(WAREHOUSE_DSN)" \
 	  nohup ./bin/brevis-sql serve --addr 127.0.0.1:8088 \
 	    --connections $(BREVIS_CONNECTIONS) > $(SERVE_LOG) 2>&1 & \
@@ -319,12 +328,31 @@ serve-up:
 	  echo "serve: started on 127.0.0.1:8088"; \
 	fi
 
+# STOPS WHATEVER HOLDS THE PORT, and not whatever a file remembers.
+#
+# The pidfile is a hint; the port is the fact. A reader that outlives the
+# command meant to stop it is the failure worth preventing here, so this asks
+# the machine rather than a file written by an earlier shell.
+serve-down:
+	@pids="$$(lsof -nP -tiTCP:8088 -sTCP:LISTEN 2>/dev/null)"; \
+	if [ -n "$$pids" ]; then \
+	  kill $$pids 2>/dev/null; sleep 1; \
+	  if lsof -nP -iTCP:8088 -sTCP:LISTEN >/dev/null 2>&1; then \
+	    echo "serve: 8088 is STILL served after the kill"; exit 1; \
+	  fi; \
+	  echo "serve: stopped"; \
+	else \
+	  echo "serve: nothing on 8088"; \
+	fi; \
+	rm -f $(SERVE_PID)
+
+# Rebuild and reload the reader without touching the stack, which is what
+# changing anything under sql/ needs.
+serve-restart: serve-down serve-up ## Rebuilds `brevis-sql serve` and reloads it
+
 down: ## Tears the local environment down
 	@docker compose down
-	@if [ -f $(SERVE_PID) ]; then \
-	  kill $$(cat $(SERVE_PID)) 2>/dev/null && echo "serve: stopped"; \
-	  rm -f $(SERVE_PID); \
-	fi
+	@$(MAKE) --no-print-directory serve-down
 
 # --- the local cluster -------------------------------------------------------
 #
@@ -465,4 +493,4 @@ smoke: ## Checks the api's /health and /ready, and that the gateway accepts an e
 	  -d '{"event_id":"smoke","occurred_at":"2026-01-01T00:00:00Z","host":"smoke.example.com","region":"local"}' \
 	  | grep -q '^202$$' && echo 202 || { echo "not 202: see 'docker compose logs gateway'"; exit 1; }
 
-.PHONY: help build test test-int test-db check up down logs smoke dev generate tailwind-install image image-push image-smoke
+.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart logs smoke dev generate tailwind-install image image-push image-smoke
