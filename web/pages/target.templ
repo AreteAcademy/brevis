@@ -115,4 +115,45 @@ templ Target(v TargetView) {
 			</div>
 		</section>
 	}
+	@preview(v)
+}
+
+// preview is the destination's first rows, when a SQL service answered.
+//
+// SERVER-RENDERED, like everything else here: `base.templ` states the rule --
+// "the HTML already arrives complete, the script only enriches it" -- and a
+// grid is exactly the thing somebody would reach for a framework to draw.
+// The tab is a LINK with a query parameter, which also makes it shareable,
+// the way /data's filters already are.
+templ preview(v TargetView) {
+	if v.HasPreview() {
+		<section class="mt-8">
+			<h2 class="mb-3 text-sm font-semibold">Preview</h2>
+			if v.PreviewErr != "" {
+				<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.PreviewErr }</p>
+			} else if v.Preview != nil {
+				<div class="overflow-x-auto rounded-card border border-line-soft">
+					<table class="w-full text-sm">
+						<thead class="border-b border-line-soft text-left text-xs text-muted">
+							<tr>
+								for _, c := range v.Preview.Columns {
+									<th class="px-3 py-2 font-medium whitespace-nowrap">{ c }</th>
+								}
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, row := range v.Preview.Rows {
+								<tr>
+									for _, cell := range row {
+										<td class="px-3 py-2 text-xs whitespace-nowrap">{ Cell(cell) }</td>
+									}
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<p class="mt-2 text-xs text-muted">{ v.PreviewNote() }</p>
+			}
+		</section>
+	}
 }

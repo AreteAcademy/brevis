@@ -7,6 +7,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/components"
 )
 
@@ -25,6 +26,63 @@ type TargetView struct {
 
 	// Loads are the same loads, newest first, for the table.
 	Loads []postgres.TargetLoad
+
+	// Preview is the first rows of the destination, when a SQL service
+	// answered. Nil when there is none to ask, or when asking failed.
+	Preview *sqlserve.Result
+
+	// PreviewErr is why there are no rows, in words somebody can act on.
+	//
+	// A STRING AND NOT AN error, because this is a view: whatever decides
+	// which of a service's words may be repeated has already decided, and a
+	// template is the wrong place to be making that judgement again.
+	PreviewErr string
+}
+
+// HasPreview says whether the tab exists at all.
+//
+// A REASON COUNTS. A destination the service refuses -- not a table, no
+// connection for it -- still gets the tab, with the sentence where the grid
+// would be; the alternative is a tab that opens onto nothing. What does NOT
+// get one is a console that was never told where `serve` lives: a tab that
+// always says "not configured" is a question nobody can act on.
+func (v TargetView) HasPreview() bool {
+	return v.Preview != nil || v.PreviewErr != ""
+}
+
+// PreviewNote is the line under the grid.
+//
+// IT SAYS WHEN IT CUT. The service goes to the trouble of asking for one row
+// more than it shows so it can know; a page that dropped the fact would make
+// that pointless, and somebody would read a MAX off the grid and be wrong.
+func (v TargetView) PreviewNote() string {
+	if v.Preview == nil {
+		return ""
+	}
+	n := len(v.Preview.Rows)
+	rows := "rows"
+	if n == 1 {
+		rows = "row"
+	}
+	if v.Preview.Truncated {
+		return fmt.Sprintf("first %d %s — there are more", n, rows)
+	}
+	return fmt.Sprintf("%d %s", n, rows)
+}
+
+// Cell is one value, as a grid shows it.
+//
+// NULL IS NOT THE EMPTY STRING, and this is the last place that can still
+// tell them apart: one is "nothing was recorded" and the other is a value
+// somebody wrote. An em dash for the first, nothing for the second.
+func Cell(v any) string {
+	if v == nil {
+		return "—"
+	}
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return fmt.Sprint(v)
 }
 
 // BuildTarget judges the destination as the list does, and lays out its loads.

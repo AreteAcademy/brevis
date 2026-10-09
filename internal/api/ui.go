@@ -21,6 +21,7 @@ import (
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/assets"
 	"github.com/AreteAcademy/brevis/web/components"
 	"github.com/AreteAcademy/brevis/web/pages"
@@ -109,6 +110,20 @@ type UI struct {
 	catalog CatalogReader
 	brand   branding.Brand
 	log     *slog.Logger
+
+	// preview asks `brevis-sql serve` for a destination's first rows. Nil
+	// when no service is configured, and then the tab does not exist.
+	preview *sqlserve.Client
+}
+
+// WithPreview points the console at a SQL service.
+//
+// A SETTER AND NOT AN ARGUMENT, because NewUI already takes eight: this one
+// is optional in a way the others are not -- a console with no SQL service is
+// a console that works, and every caller would otherwise pass nil.
+func (u *UI) WithPreview(c *sqlserve.Client) *UI {
+	u.preview = c
+	return u
 }
 
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
@@ -184,8 +199,31 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "nothing has landed on "+target, http.StatusNotFound)
 		return
 	}
-	u.render(w, r, pages.Target(pages.BuildTarget(*d, time.Now())))
+	v := pages.BuildTarget(*d, time.Now())
+
+	// ASKED ONLY WHEN ASKED FOR. A preview costs a warehouse query, and
+	// drawing one on every visit to a destination page would mean a query per
+	// page view, charged to somebody, for rows nobody looked at. `?tab=preview`
+	// is a link, which also makes it shareable the way /data's filters are.
+	if r.URL.Query().Get("tab") == "preview" && u.preview.Configured() {
+		res, err := u.preview.Preview(r.Context(), target, previewRows)
+		if err != nil {
+			// The client already decided which of the service's words may be
+			// repeated; this is a view and does not decide it again.
+			v.PreviewErr = err.Error()
+		} else {
+			v.Preview = &res
+		}
+	}
+	u.render(w, r, pages.Target(v))
 }
+
+// previewRows is how many a destination page draws.
+//
+// The SERVICE has the ceiling and this cannot raise it; this is a request for
+// fewer, and the number is here because it is a question about a SCREEN --
+// twenty rows is what somebody glances at to see the shape of a table.
+const previewRows = 20
 
 func (u *UI) overview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()

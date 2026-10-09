@@ -38,6 +38,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/execution/local"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/internal/notify"
 	"github.com/AreteAcademy/brevis/internal/observability"
 	"github.com/AreteAcademy/brevis/internal/observability/metrics"
@@ -1308,7 +1309,12 @@ func serve(ctx context.Context) error {
 
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
 		runsRepo, uiActions{schedules: schedules, sched: sched},
-		alerts.New(pool.Pool), postgres.NewReadRepo(pool), brand, log)
+		alerts.New(pool.Pool), postgres.NewReadRepo(pool), brand, log).
+		// Nil-safe when BREVIS_SQL_SERVE_URL is unset: Configured() is false
+		// and no Preview tab is drawn at all. The engine holds no warehouse
+		// credential either way -- this token reaches `brevis-sql serve` and
+		// nothing else.
+		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken))
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
