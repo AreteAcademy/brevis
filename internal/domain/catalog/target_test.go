@@ -73,3 +73,37 @@ func TestEveryFixtureTargetIsJudgedAsTheFixtureSays(t *testing.T) {
 		t.Fatal("the fixture has no cases")
 	}
 }
+
+// A RELATION IS SOMETHING A SELECT CAN NAME, and most destinations are not.
+//
+// It decides whether a destination page offers Preview and Query at all. A
+// bucket and a topic have no columns and no rows to read; a tab on one is a
+// box that can only ever say no, which is worse than no tab.
+func TestWhatIsARelationAndWhatIsNot(t *testing.T) {
+	for _, c := range []struct {
+		target string
+		is     bool
+	}{
+		{"bigquery://acme-prod/bronze/orders", true},
+		{"postgres://app/public/orders", true},
+		{"mysql://app/orders", true},
+		{"redshift://cluster/public/orders", true},
+
+		// PUBSUB IS THE ONE THAT LOOKS LIKE A TABLE AND IS NOT. It sits in
+		// the same segment table as the others -- two segments, like
+		// MySQL -- because that is about SHAPE. A topic has no rows.
+		{"pubsub://acme/clicks", false},
+
+		{"s3://bucket/prefix", false},
+		{"gs://bucket/prefix", false},
+		{"file:///data/landing/", false},
+
+		{"", false},
+		{"not a target", false},
+		{"snowflake://a/b/c", false},
+	} {
+		if got := IsRelation(c.target); got != c.is {
+			t.Errorf("IsRelation(%q) = %v, wanted %v", c.target, got, c.is)
+		}
+	}
+}

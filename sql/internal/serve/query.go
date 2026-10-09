@@ -115,7 +115,7 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, ErrNoConnection) {
 			line.Outcome = "undeclared"
-			refuse(w, http.StatusBadRequest, ErrNoConnection.Error())
+			refuseWith(w, http.StatusBadRequest, CodeNoConnection, ErrNoConnection.Error())
 			return
 		}
 		line.Outcome = "unreachable"

@@ -124,9 +124,16 @@ func openConsole(t *testing.T, c *sqlserve.Client) *api.UI {
 
 func console(t *testing.T, c *sqlserve.Client, cred auth.Credential) *api.UI {
 	t.Helper()
+	return consoleOf(t, c, cred, probeTarget, "bigquery")
+}
+
+// consoleOf is the same console holding a destination of any shape, which is
+// what the refusals need: a bucket and a topic are destinations too.
+func consoleOf(t *testing.T, c *sqlserve.Client, cred auth.Credential, target, kind string) *api.UI {
+	t.Helper()
 	detail := &postgres.TargetDetail{
 		CatalogEntry: postgres.CatalogEntry{
-			Target: probeTarget, Kind: "bigquery",
+			Target: target, Kind: kind,
 			Writers: []postgres.CatalogWriter{{
 				Workflow: "bronze", Node: "load", LastLoaded: time.Now().Add(-10 * time.Minute),
 			}},

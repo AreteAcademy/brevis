@@ -22,12 +22,25 @@ import (
 	"time"
 )
 
-// timeout bounds one preview.
+// serveTimeout is the SERVICE's own bound on one query, mirrored here
+// because the engine does not import the sql module and never will.
 //
-// A console request blocked on a warehouse is a browser tab that hangs, and
-// a preview is a glance rather than a report: ten seconds is longer than any
-// preview worth drawing and shorter than anybody's patience.
-const timeout = 10 * time.Second
+// A NUMBER THIS CANNOT IMPORT, SO IT SAYS WHERE IT CAME FROM:
+// `sql/internal/serve.defaultTimeout`. If that moves, this moves.
+const serveTimeout = 30 * time.Second
+
+// timeout bounds one call, and it is LONGER than the service's.
+//
+// It was ten seconds, and the service runs for thirty. CHECKPOINT B's F5: a
+// query taking eleven told the reader "the SQL service could not be reached"
+// while the warehouse ran it to completion and billed for it. The reader was
+// told the opposite of what happened and paid for it.
+//
+// Whoever refuses has to be the one who knows why. The service bounds the
+// query, says so in a sentence and writes an audit line; this waits long
+// enough for that sentence to arrive. The slack is for the round trip, not
+// for more query.
+const timeout = serveTimeout + 5*time.Second
 
 // Result is what came back, as a page needs it.
 type Result struct {
@@ -72,6 +85,22 @@ func (c *Client) Configured() bool { return c != nil && c.base != "" }
 
 // ErrNotConfigured is "nobody told this console where serve is".
 var ErrNotConfigured = errors.New("no SQL service is configured for this console")
+
+// ErrNoConnection is `serve` saying nothing is DECLARED for that destination,
+// as opposed to declared and unreachable.
+//
+// MATCHED ON A CODE AND NEVER ON THE SENTENCE. The service's wording is not
+// its contract -- the next person to improve a message would otherwise break
+// a screen -- and the sentence it sends names nothing, deliberately, because
+// its refusals never echo their input. The page says which database, because
+// the page holds the target.
+var ErrNoConnection = errors.New("no connection is declared for that destination")
+
+// codeNoConnection is `serve`'s own constant, copied rather than imported:
+// the engine does not depend on the sql module and never will, which is what
+// engine-weight.sh asserts. A wire protocol is the one thing two modules may
+// agree on without sharing code, and this is the whole of the agreement.
+const codeNoConnection = "no-connection"
 
 type request struct {
 	Target string `json:"target"`
@@ -161,10 +190,15 @@ func refusal(res *http.Response, what string) error {
 	if res.StatusCode == http.StatusBadRequest {
 		var body struct {
 			Error string `json:"error"`
+			Code  string `json:"code"`
 		}
-		if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<10)).Decode(&body); err == nil &&
-			strings.TrimSpace(body.Error) != "" {
-			return errors.New(body.Error)
+		if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<10)).Decode(&body); err == nil {
+			if body.Code == codeNoConnection {
+				return ErrNoConnection
+			}
+			if strings.TrimSpace(body.Error) != "" {
+				return errors.New(body.Error)
+			}
 		}
 	}
 	// NOT THE SERVICE'S WORDS, and not its status text either -- just the

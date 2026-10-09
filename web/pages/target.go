@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
@@ -68,6 +69,23 @@ type TargetView struct {
 // would be; the alternative is a tab that opens onto nothing.
 func (v TargetView) HasPreview() bool {
 	return v.Preview != nil || v.PreviewErr != ""
+}
+
+// NoConnectionFor is the sentence a destination gets when nothing is
+// declared for it.
+//
+// IT NAMES THE DATABASE AND THE FILE. `serve` answers "no connection is
+// declared for that destination" and names nothing on purpose -- its
+// refusals never echo their input. This page already draws the target at the
+// top, so it can say which, and a reader who is told only "no connection"
+// has to go and work out which one.
+func NoConnectionFor(target string) string {
+	first := target
+	if _, rest, ok := strings.Cut(target, "://"); ok {
+		first, _, _ = strings.Cut(rest, "/")
+	}
+	return fmt.Sprintf("No connection is declared for %q. Add it to brevis.yaml "+
+		"beside the SQL service and restart it.", first)
 }
 
 // TabHref is the link to one tab, which is also the link somebody pastes

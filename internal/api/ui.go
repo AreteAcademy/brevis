@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/alerts"
 	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/branding"
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
@@ -141,16 +143,23 @@ func (u *UI) WithPreview(c *sqlserve.Client, console auth.Credential) *UI {
 
 // dataTools says whether a destination may offer its Preview and Query tabs.
 //
-// TWO CONDITIONS, AND THE SECOND IS NOT ABOUT SQL AT ALL. A console can run
-// with no credential -- it warns at boot, "interface is OPEN: anyone can
-// trigger a workflow" -- and the Query tab made that sentence incomplete: it
-// is now also anyone can read every table in the project, because a query is
-// not confined to the destination it was opened from.
+// THREE CONDITIONS, AND ONLY ONE IS ABOUT SQL.
 //
-// The tab does not create that hole, it changes what falls through it. So a
-// data tool does not outlive the authentication of the screen it sits on.
-func (u *UI) dataTools() bool {
-	return u.protected && u.preview.Configured()
+// A console can run with no credential -- it warns at boot, "interface is
+// OPEN: anyone can trigger a workflow" -- and the Query tab made that
+// sentence incomplete: it is now also anyone can read every table in the
+// project, because a query is not confined to the destination it was opened
+// from. The tab does not create that hole, it changes what falls through it,
+// so a data tool does not outlive the authentication of the screen it sits
+// on.
+//
+// And a destination has to be a RELATION. A bucket and a topic have no
+// columns and no rows; a tab on one is a box that can only ever say no,
+// which is worse than no tab because it invites somebody to try. A relation
+// nobody has written a reader for -- `mysql://` today -- keeps its tabs,
+// because there the refusal is a sentence worth reading.
+func (u *UI) dataTools(target string) bool {
+	return u.protected && u.preview.Configured() && catalog.IsRelation(target)
 }
 
 func NewUI(l Leitura, d Definitions, e RunsChart, a Actions, al AlertsReader,
@@ -236,7 +245,7 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 
 	// NO SERVICE, NO TABS. A tab that always answers "not configured" is a
 	// question nobody can act on.
-	v.Tabs = u.dataTools()
+	v.Tabs = u.dataTools(target)
 	if v.Tabs {
 		v.Tab = r.URL.Query().Get("tab")
 	}
@@ -248,11 +257,14 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 	// is a link, which also makes it shareable the way /data's filters are.
 	case "preview":
 		res, err := u.preview.Preview(r.Context(), target, previewRows)
-		if err != nil {
+		switch {
+		case errors.Is(err, sqlserve.ErrNoConnection):
+			v.PreviewErr = pages.NoConnectionFor(target)
+		case err != nil:
 			// The client already decided which of the service's words may be
 			// repeated; this is a view and does not decide it again.
 			v.PreviewErr = err.Error()
-		} else {
+		default:
 			v.Preview = &res
 		}
 
@@ -276,9 +288,12 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 			v.Statement = strings.TrimSpace(r.PostFormValue("q"))
 			if v.Statement != "" {
 				res, err := u.preview.Query(r.Context(), target, v.Statement, queryRows)
-				if err != nil {
+				switch {
+				case errors.Is(err, sqlserve.ErrNoConnection):
+					v.QueryErr = pages.NoConnectionFor(target)
+				case err != nil:
 					v.QueryErr = err.Error()
-				} else {
+				default:
 					v.Query = &res
 				}
 			}

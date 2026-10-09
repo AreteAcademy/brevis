@@ -227,7 +227,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		if errors.Is(err, ErrNoConnection) {
-			refuse(w, http.StatusBadRequest, ErrNoConnection.Error())
+			refuseWith(w, http.StatusBadRequest, CodeNoConnection, ErrNoConnection.Error())
 			return
 		}
 		// Everything else is not forwarded: it is a connection error from a
@@ -290,6 +290,22 @@ func BytesText(n int64) string {
 func refuse(w http.ResponseWriter, code int, why string) {
 	write(w, code, map[string]string{"error": why})
 }
+
+// refuseWith is a refusal the CALLER has to act on differently, and so
+// carries a machine-readable code beside the sentence.
+//
+// A CODE AND NOT A STRING MATCH. The console turns "nothing is declared for
+// that destination" into a sentence naming the database and the file to put
+// it in -- it can, because it holds the target, and this service must not:
+// its refusals never echo their input. Matching on the sentence would make
+// this service's WORDING part of its contract, and the next person to
+// improve a message would break a screen.
+func refuseWith(w http.ResponseWriter, status int, code, why string) {
+	write(w, status, map[string]string{"error": why, "code": code})
+}
+
+// CodeNoConnection is what the console matches on. See ErrNoConnection.
+const CodeNoConnection = "no-connection"
 
 func write(w http.ResponseWriter, code int, body any) {
 	w.Header().Set("Content-Type", "application/json")

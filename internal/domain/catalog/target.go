@@ -74,6 +74,34 @@ var tableSegments = map[string]int{
 
 var objectSchemes = map[string]bool{"s3": true, "gs": true, "file": true}
 
+// relationSchemes are the destinations a SELECT can name.
+//
+// NOT THE SAME SET AS tableSegments, and `pubsub` is the difference. That map
+// is about SHAPE -- how many path segments a target of each scheme has -- and
+// a topic has two of them exactly like a MySQL table does. It still has no
+// columns and no rows.
+//
+// The distinction is what decides whether a destination page offers Preview
+// and Query at all. A tab on a bucket or a topic is a box that can only ever
+// say no, which is worse than no tab: it invites somebody to try.
+var relationSchemes = map[string]bool{
+	"bigquery": true,
+	"postgres": true,
+	"redshift": true,
+	"mysql":    true,
+}
+
+// IsRelation says whether a SELECT could name this destination.
+//
+// It does NOT say the service can read it today -- `mysql://` is a relation
+// and `brevis-sql serve` has no MySQL dialect. That is a reason to show a
+// tab with a sentence in it; this is about the destinations where no sentence
+// would help.
+func IsRelation(target string) bool {
+	scheme, _, ok := strings.Cut(target, "://")
+	return ok && relationSchemes[scheme]
+}
+
 // targetCeiling bounds a target: it is a primary-key column and a cell on a
 // screen, and nothing that names a table needs more.
 const targetCeiling = 512
