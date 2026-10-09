@@ -12,6 +12,7 @@ import (
 	bctx "github.com/AreteAcademy/brevis/sdk/context"
 	"github.com/AreteAcademy/brevis/sdk/from"
 	"github.com/AreteAcademy/brevis/sdk/to"
+	topg "github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
 // discover lists what there is to load and publishes it.
@@ -77,6 +78,56 @@ func load() error {
 			// collide, and the `partition` column above keeps the provenance
 			// that the directory would have carried.
 			To:      to.Files{Path: landing + "/"},
+			Columns: []string{"partition", "sku", "quantity", "price"},
+		},
+	})
+	return nil // sdk.Run exits on failure; reaching here means it worked
+}
+
+// loadWarehouse lands the same partition in a REAL TABLE.
+//
+// It exists beside `load` rather than instead of it, and the pair is the
+// point: a file destination and a table destination from one workflow, so
+// `/data` shows both answers on one screen -- the table offers Preview and
+// Query, and the directory correctly offers no tabs at all, because a bucket
+// has no columns to draw.
+//
+// THE DSN COMES FROM THE ENVIRONMENT AND THE ENGINE CHOSE TO PASS IT.
+// `BREVIS_TASK_ENV` is the only list a step's environment comes from -- a
+// step gets PATH, HOME and what that names, and nothing else -- so a database
+// credential reaching here is a deliberate act and never an inheritance.
+func loadWarehouse() error {
+	partition := os.Getenv("BREVIS_MAP_VALUE")
+	if partition == "" {
+		return fmt.Errorf("BREVIS_MAP_VALUE is empty: this step is meant to run " +
+			"under `for_each:`, one instance per partition")
+	}
+	dsn := os.Getenv("WAREHOUSE_DSN")
+	if dsn == "" {
+		return fmt.Errorf("WAREHOUSE_DSN is not set. The scheduler passes it through " +
+			"BREVIS_TASK_ENV, which is the only list a step's environment comes from")
+	}
+
+	sdk.Run(sdk.Pipeline{
+		Name: "load_warehouse " + partition,
+		Source: sdk.Source{From: from.Files{
+			Path:   filepath.Join(incoming, partition+".csv"),
+			Format: sdk.FormatCSV,
+		}},
+		Transform: []sdk.Transformer{
+			sdk.Compute("partition", func(map[string]any) (any, error) { return partition, nil }),
+		},
+		Target: sdk.Target{
+			// THE TABLE IS NOT CREATED HERE. `CreateTable` stays off, which
+			// is the SDK's default: the schema is DDL in
+			// `warehouse/001-sales.sql`, beside this file, where a column can
+			// be read before it is relied on.
+			To: topg.Table{DSN: dsn, Name: "sales.daily"},
+			// Exactly what the table holds, in its order. The SDK refuses a
+			// declared column the transform did not deliver AND a field the
+			// declaration does not list -- "dropping data in silence is the
+			// worst way to fail" -- so this list and that DDL have to agree,
+			// and when they do not the run says which column.
 			Columns: []string{"partition", "sku", "quantity", "price"},
 		},
 	})

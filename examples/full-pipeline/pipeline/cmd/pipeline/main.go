@@ -6,6 +6,7 @@
 //
 //	pipeline discover           lists the partitions and publishes them
 //	pipeline load               one instance per partition (for_each)
+//	pipeline load-warehouse     the same partition, into a real table
 //	pipeline check              counts what landed and publishes a boolean
 //	pipeline report             the summary, skipped when there is nothing
 //	pipeline quality-count      the reusable workflow's first step
@@ -34,7 +35,7 @@ var (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: pipeline <discover|load|check|report|"+
+		fmt.Fprintln(os.Stderr, "usage: pipeline <discover|load|load-warehouse|check|report|"+
 			"quality-count|quality-freshness|notify|cleanup>")
 		os.Exit(2)
 	}
@@ -42,6 +43,7 @@ func main() {
 	commands := map[string]func() error{
 		"discover":          discover,
 		"load":              load,
+		"load-warehouse":    loadWarehouse,
 		"check":             check,
 		"report":            report,
 		"quality-count":     qualityCount,

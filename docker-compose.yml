@@ -147,8 +147,13 @@ services:
       # WHAT A STEP IS ALLOWED TO SEE. Without a list here a step gets PATH
       # and HOME and nothing else -- inheriting the environment would hand
       # the database's credential to every step of every pipeline.
-      BREVIS_TASK_ENV: DATA_DIR
+      BREVIS_TASK_ENV: DATA_DIR,WAREHOUSE_DSN
       DATA_DIR: /data
+      # The warehouse by its CONTAINER address: a step runs in this network,
+      # and `brevis-sql serve` on the host reaches the same database by
+      # localhost. One database, two addresses, which is what a host-side
+      # service and a container both needing it means.
+      WAREHOUSE_DSN: postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable
     volumes:
       # Where `demo-build` put the project's binaries, and the data its steps
       # read and write. Both are EMPTY until the demo profile has run, and an

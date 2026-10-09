@@ -44,6 +44,20 @@ steps:
   # A mapped step publishes nothing downstream -- four instances cannot share
   # one key -- so counting what landed is a step of its own. That is the reason
   # this exists, and it is worth seeing.
+  # THE SAME PARTITION, INTO A REAL TABLE. Beside `load` and not instead of
+  # it, because the pair is what /data then shows on one screen: a table with
+  # Preview and Query, and a directory with no tabs at all.
+  #
+  # `for_each:` again, over the same list. Two destinations from one
+  # discovery, which is what a medallion layer looks like before anybody
+  # calls it that.
+  - id: load_warehouse
+    run: /opt/brevis/bin/pipeline load-warehouse
+    runtime: go
+    depends_on: [discover]
+    for_each: discover.partitions
+    group: ingestion
+
   - id: check
     run: /opt/brevis/bin/pipeline check
     runtime: go
