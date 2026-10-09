@@ -33,13 +33,27 @@ failed=0
 #   cloud.google.com/go/bigquery   31 MB, 526 packages, 236 modules, alone
 #   google.golang.org/grpc         what that client is mostly made of
 #   .../storage, google.golang.org/api  the same stack by another door
-#   AreteAcademy/brevis/sdk        the SDK brings all of the above
+#   .../brevis/sdk/to/bigquery     brings all three of the above
+#
+# THE SDK LINE WAS SPELT WITHOUT ITS HOST and could never match. `go list
+# -deps` prints `github.com/AreteAcademy/...`, the grep was anchored at
+# `^AreteAcademy/...`, and the count was 0 whatever brevis-sql imported. The
+# one entry guarding the biggest thing on the list was the one that had never
+# run -- measured 2026-10-09 by importing the SDK and watching the gate stay
+# green.
+#
+# It is per-DRIVER and not all-or-nothing, which is what makes it a
+# conversation rather than a wall. Measured the same day, from this module:
+#
+#   + sdk/from/postgres     245 -> 251 packages, and nothing forbidden
+#   + sdk/to/bigquery       brings cloud.google.com/go/bigquery, /storage
+#                           and google.golang.org/api -- the whole list
 for forbidden in \
   "cloud.google.com/go/bigquery" \
   "cloud.google.com/go/storage" \
   "google.golang.org/api" \
   "google.golang.org/grpc" \
-  "AreteAcademy/brevis/sdk"
+  "github.com/AreteAcademy/brevis/sdk"
 do
   n="$(echo "$deps" | grep -c "^$forbidden" || true)"
   if [ "$n" != "0" ]; then
