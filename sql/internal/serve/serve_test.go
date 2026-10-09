@@ -155,7 +155,11 @@ func TestABadTargetIsRefusedBeforeConnecting(t *testing.T) {
 	}
 	for _, body := range []string{
 		`{"target":"bigquery://acme-prod/bronze/orders; DROP TABLE x"}`,
-		`{"target":"postgres://db/public/orders"}`,
+		// `postgres://` stood here while BigQuery was the only readable
+		// scheme. V3 made it readable, so the case moved to one that still
+		// names no connection this service could ever match.
+		`{"target":"mysql://db/orders"}`,
+		`{"target":"redshift://cluster/public/orders"}`,
 		`{"target":""}`,
 		`not json at all`,
 	} {
@@ -370,5 +374,26 @@ func TestAServiceWithoutAByteCeilingDoesNotStart(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "byte") {
 		t.Errorf("the refusal does not say what is missing: %v", err)
+	}
+}
+
+// A CONNECTOR THAT HANDS BACK NOTHING, AND NO ERROR EITHER.
+//
+// Found by a test whose premise V3 moved: with a Postgres target suddenly
+// valid, its fake `Open` returned `(nil, nil)` and the service PANICKED on
+// `defer conn.Close(...)` -- a nil interface, called.
+//
+// No dialect does that today. One that did would take a handler down with a
+// stack trace instead of answering, and a registry of connections is exactly
+// the kind of code that returns a zero value on a path nobody walked yet.
+func TestAConnectorThatReturnsNothingIsRefusedRatherThanFatal(t *testing.T) {
+	s, err := New(Options{Env: EnvLocal, Rows: 10, Bytes: testBytes,
+		Open: func(context.Context, string) (dialect.Conn, error) { return nil, nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := post(t, s, `{"target":"bigquery://acme-prod/bronze/orders"}`)
+	if w.Code != http.StatusBadGateway {
+		t.Errorf("answered %d, wanted a 502", w.Code)
 	}
 }

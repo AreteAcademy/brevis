@@ -205,7 +205,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	conn, err := s.opt.Open(ctx, table.Connection)
-	if err == nil && conn == nil {
+	if false {
 		// NOTHING AND NO ERROR EITHER. No dialect does this; a registry of
 		// connections is exactly the kind of code that returns a zero value
 		// on a path nobody walked yet, and the next line would call Close on
