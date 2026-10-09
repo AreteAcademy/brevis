@@ -65,6 +65,13 @@
   --brand-aws: #ff9900;         /* 7.4 */
   --brand-s3: #7aa116;          /* 5.2 */
   --brand-redshift: #8c4fff;    /* 3.5 */
+  /* Ahead of the code, shown "em breve" on the map. Kafka's #231f20 is 1.03:1
+     here: same hue and saturation, lightness .13 -> .44, 3.08:1. RabbitMQ is
+     Simple Icons' #ff6600 (5.4:1). SQS has no mark here (drawn glyph); the
+     colour is AWS's App Integration pink, #e7157b (3.62:1). */
+  --brand-kafka: #786a6e;
+  --brand-rabbitmq: #ff6600;
+  --brand-sqs: #e7157b;
 
   --line: #38412b;
   --line-soft: #262d1d;
@@ -503,6 +510,12 @@ a.chip:focus-visible .ico {
 .ico.ico-s3 { color: var(--brand-s3); }
 
 .ico.ico-redshift { color: var(--brand-redshift); }
+
+.ico.ico-kafka { color: var(--brand-kafka); }
+
+.ico.ico-rabbitmq { color: var(--brand-rabbitmq); }
+
+.ico.ico-sqs { color: var(--brand-sqs); }
 
 .pill {
   display: inline-flex;
