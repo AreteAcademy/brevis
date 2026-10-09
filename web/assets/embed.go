@@ -40,6 +40,7 @@ import (
 // every `_test.go` beside it and whatever somebody drops here next. What
 // catches the omission now is a test that walks a rendered page and GETs
 // everything it asks for.
+//
 //go:embed app.css ui.js dag.js jsx-shim.js sql.js logo.svg vendor fonts
 var FS embed.FS
 
