@@ -220,6 +220,47 @@ func NewRows(m model.Model, body string) string {
 		"    OR " + w + " > (SELECT MAX(" + w + ") FROM " + ref + ")"
 }
 
+// Result is a result set, as a screen needs it.
+//
+// `[][]any` AND NOT `[][]string`, because NULL is not the empty string. One
+// is "nothing was recorded" and the other is a value somebody wrote; they
+// render differently and are read differently, so they have to arrive
+// differently. A nil cell is NULL.
+type Result struct {
+	// Columns are the names, in the order the query returned them.
+	Columns []string
+
+	// Rows are the values, one slice per row, aligned with Columns.
+	Rows [][]any
+
+	// Truncated says the limit cut the answer.
+	//
+	// IT HAS TO BE SAID. A grid showing a thousand rows of a million, in
+	// silence, is a grid that lies: somebody reads a MAX off it and is wrong,
+	// and nothing on the screen told them not to.
+	Truncated bool
+}
+
+// Reader is implemented by a connection that can return a result set.
+//
+// NOT ON Conn, for Disposable's reason one level over. `Conn` has Exec and
+// Scalar -- "the two the build loop needs" -- and a build never reads a
+// result set. Keeping this off the production interface means the build loop
+// cannot reach it, and a dialect that cannot read is refused by the one
+// caller that wants to rather than discovered at runtime.
+//
+// ON Conn's CONCRETE TYPE and not on Dialect: reading needs the connection,
+// where ExpireSchema only needed a statement.
+type Reader interface {
+	// Read runs a query and returns at most `limit` rows.
+	//
+	// THE LIMIT CUTS, it does not refuse. A preview that errored because a
+	// table is large would be a preview that never works on the tables
+	// somebody actually has. What it must not do is cut in silence, which is
+	// what Result.Truncated is for.
+	Read(ctx context.Context, query string, limit int) (Result, error)
+}
+
 // Disposable is implemented by a dialect whose warehouse can be told to throw
 // away what a TEST leaves behind.
 //

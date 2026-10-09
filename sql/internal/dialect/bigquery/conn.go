@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,6 +91,18 @@ type queryResponse struct {
 			V any `json:"v"`
 		} `json:"f"`
 	} `json:"rows"`
+	// Schema carries the COLUMN NAMES, which nothing needed until a result
+	// set had to be drawn: a grid with the right rows under the wrong
+	// headings is worse than no grid.
+	Schema struct {
+		Fields []struct {
+			Name string `json:"name"`
+		} `json:"fields"`
+	} `json:"schema"`
+	// TotalRows is what the query MATCHED, as a string -- BigQuery sends its
+	// 64-bit counts as JSON strings. It is how `Read` knows the limit cut
+	// something, without a second query.
+	TotalRows string `json:"totalRows"`
 	// Errors is a job that RAN AND FAILED, and it arrives inside an HTTP
 	// 200. A client reading only the status code reports every failed
 	// CREATE as a success.
@@ -120,6 +133,44 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 	return res.Rows[0].F[0].V, nil
 }
 
+// Read runs a query and returns at most `limit` rows. See dialect.Reader.
+//
+// `maxResults` ON THE REQUEST, not a LIMIT wrapped around the query. The
+// caller's SQL is run exactly as written -- a wrapper would change what the
+// warehouse plans, and it would be this package quietly editing a statement
+// somebody is about to be charged for. The API caps what comes BACK.
+//
+// It does not bound what the query SCANS. That is a different limit, it is
+// money rather than bytes on a screen, and it belongs to whoever is about to
+// spend it.
+func (c *conn) Read(ctx context.Context, query string, limit int) (dialect.Result, error) {
+	res, err := c.runWith(ctx, query, map[string]any{"maxResults": limit})
+	if err != nil {
+		return dialect.Result{}, err
+	}
+
+	out := dialect.Result{Columns: make([]string, 0, len(res.Schema.Fields))}
+	for _, f := range res.Schema.Fields {
+		out.Columns = append(out.Columns, f.Name)
+	}
+	for _, r := range res.Rows {
+		row := make([]any, 0, len(r.F))
+		for _, cell := range r.F {
+			row = append(row, cell.V)
+		}
+		out.Rows = append(out.Rows, row)
+	}
+
+	// A total the response did not carry is not truncation. Parsing it as
+	// zero and comparing would report "not truncated" for a query that was,
+	// which is the silence Truncated exists to break -- so an unreadable
+	// total falls back to what is visible instead.
+	if total, err := strconv.ParseInt(res.TotalRows, 10, 64); err == nil {
+		out.Truncated = total > int64(len(out.Rows))
+	}
+	return out, nil
+}
+
 // Target is `bigquery://project/dataset/table`.
 //
 // The project is what Open was given, so there is nothing to parse and
@@ -133,14 +184,30 @@ func (c *conn) Close(context.Context) error { return nil }
 
 // run posts the statement and waits for the job, however long it takes.
 func (c *conn) run(ctx context.Context, statement string) (*queryResponse, error) {
-	body, err := json.Marshal(map[string]any{
+	return c.runWith(ctx, statement, nil)
+}
+
+// runWith is run, plus whatever the caller needs on the request body.
+//
+// EXTRA AND NEVER OVERRIDE: the three fields below are the contract every
+// statement this package sends depends on, and a caller that could replace
+// `useLegacySql` would get a parse error about SQL it did not write. The
+// merge happens after them and a key they already hold is kept.
+func (c *conn) runWith(ctx context.Context, statement string, extra map[string]any) (*queryResponse, error) {
+	req := map[string]any{
 		"query": statement,
 		// STANDARD SQL. The default on this endpoint is legacy, which has no
 		// CREATE OR REPLACE at all, so every statement this tool writes
 		// would be rejected for a reason that reads like a syntax error.
 		"useLegacySql": false,
 		"timeoutMs":    jobTimeout.Milliseconds(),
-	})
+	}
+	for k, v := range extra {
+		if _, taken := req[k]; !taken {
+			req[k] = v
+		}
+	}
+	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
