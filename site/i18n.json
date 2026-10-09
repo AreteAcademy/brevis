@@ -117,6 +117,8 @@
       "eco_topicos": "tópicos",
       "eco_em_breve": "em breve",
       "eco_mais_http": "+ qualquer API HTTP",
+      "eco_mais_cliente": "+ qualquer cliente HTTP",
+      "eco_mais_s3": "+ qualquer compatível com S3",
       "eco_buckets": "arquivos em bucket"
     }
   },
@@ -238,6 +240,8 @@
       "eco_topicos": "topics",
       "eco_em_breve": "soon",
       "eco_mais_http": "+ any HTTP API",
+      "eco_mais_cliente": "+ any HTTP client",
+      "eco_mais_s3": "+ any S3-compatible",
       "eco_buckets": "files in a bucket"
     }
   }
