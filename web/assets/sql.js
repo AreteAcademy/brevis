@@ -20,6 +20,7 @@
   // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
   // costs the highlighting and not the screen.
   wireTree();
+  wireChrome();
   if (typeof CodeMirror === "undefined") return;
 
   var editor = CodeMirror.fromTextArea(area, {
@@ -201,6 +202,125 @@
     note.hidden = false;
     note.textContent = "Not searched, because nothing has been loaded from " +
       (unsearched.length === 1 ? "it" : "them") + ": " + unsearched.join(", ") + ".";
+  }
+
+  // THE CHROME: two grips, one collapse, and a memory.
+  //
+  // A DRAG IS A NUMBER, NOT A GESTURE. Each drag writes one custom property
+  // on the workbench and one entry in localStorage; a reload restores the
+  // number. Nothing replays anything, and nothing here adds or removes a
+  // class to resize a pane.
+  //
+  // THE FLOOR COMES FROM THE MARKUP. `data-min` is on the grip, where
+  // somebody reading the page can see it -- a minimum that lived only in
+  // this file is one the next person deletes without noticing, and what
+  // breaks is a pane dragged to nothing with no handle left to drag back.
+  var store = "brevis.workbench.";
+
+  function remember(key, value) {
+    try {
+      localStorage.setItem(store + key, value);
+    } catch (e) {
+      // Private browsing, blocked storage, a full quota. The chrome works;
+      // it just forgets. That is not worth an error on somebody's screen.
+    }
+  }
+
+  function recall(key) {
+    try {
+      return localStorage.getItem(store + key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function wireChrome() {
+    var bench = document.querySelector("[data-workbench]");
+    if (!bench) return;
+
+    var rail = recall("rail");
+    if (rail) bench.style.setProperty("--rail", rail);
+    var editor = recall("editor");
+    if (editor) bench.style.setProperty("--editor", editor);
+    if (recall("rail-collapsed") === "true") collapse(bench, true);
+
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest ? ev.target.closest("[data-rail-toggle]") : null;
+      if (!btn) return;
+      ev.preventDefault();
+      collapse(bench, bench.getAttribute("data-rail-collapsed") !== "true");
+    });
+
+    bench.querySelectorAll("[data-grip]").forEach(function (grip) {
+      grip.addEventListener("pointerdown", function (ev) { drag(bench, grip, ev); });
+      // A SEPARATOR IS FOCUSABLE, so it has to answer the arrow keys. A
+      // control only a mouse can reach is a control half the people cannot
+      // use, and `role="separator"` with `tabindex` promises this.
+      grip.addEventListener("keydown", function (ev) {
+        var step = ev.key === "ArrowLeft" || ev.key === "ArrowUp" ? -16
+          : ev.key === "ArrowRight" || ev.key === "ArrowDown" ? 16 : 0;
+        if (!step) return;
+        ev.preventDefault();
+        nudge(bench, grip, step);
+      });
+    });
+  }
+
+  function collapse(bench, shut) {
+    bench.setAttribute("data-rail-collapsed", shut ? "true" : "false");
+    bench.querySelectorAll("[data-rail-toggle]").forEach(function (b) {
+      b.setAttribute("aria-expanded", shut ? "false" : "true");
+    });
+    remember("rail-collapsed", shut ? "true" : "false");
+  }
+
+  function drag(bench, grip, ev) {
+    ev.preventDefault();
+    grip.setAttribute("data-dragging", "true");
+    grip.setPointerCapture(ev.pointerId);
+    var move = function (e) { place(bench, grip, e.clientX, e.clientY); };
+    var stop = function () {
+      grip.removeAttribute("data-dragging");
+      grip.removeEventListener("pointermove", move);
+      grip.removeEventListener("pointerup", stop);
+      grip.removeEventListener("pointercancel", stop);
+    };
+    grip.addEventListener("pointermove", move);
+    grip.addEventListener("pointerup", stop);
+    grip.addEventListener("pointercancel", stop);
+  }
+
+  function place(bench, grip, x, y) {
+    var box = bench.getBoundingClientRect();
+    var floor = parseInt(grip.getAttribute("data-min"), 10) || 0;
+    if (grip.getAttribute("data-grip") === "rail") {
+      // THE CEILING IS THE OTHER SIDE'S FLOOR. Without it the rail can eat
+      // the editor, which is the same failure as dragging to zero, mirrored.
+      var width = clamp(x - box.left, floor, box.width - floor * 2);
+      bench.style.setProperty("--rail", width + "px");
+      remember("rail", width + "px");
+      return;
+    }
+    var main = bench.querySelector(".workbench-main");
+    if (!main) return;
+    var top = main.getBoundingClientRect().top;
+    var height = clamp(y - top, floor, main.getBoundingClientRect().height - floor);
+    bench.style.setProperty("--editor", height + "px");
+    remember("editor", height + "px");
+  }
+
+  function nudge(bench, grip, step) {
+    var rail = grip.getAttribute("data-grip") === "rail";
+    var pane = bench.querySelector(rail ? ".workbench-rail" : ".workbench-editor");
+    if (!pane) return;
+    var box = pane.getBoundingClientRect();
+    if (rail) place(bench, grip, bench.getBoundingClientRect().left + box.width + step, 0);
+    else place(bench, grip, 0, box.top + box.height + step);
+  }
+
+  function clamp(v, lo, hi) {
+    if (hi < lo) return lo;
+    return v < lo ? lo : v > hi ? hi : v;
   }
 
   // An attribute value goes into a selector, and a target holds `/` and `:`.

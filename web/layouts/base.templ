@@ -42,6 +42,23 @@ type Page struct {
 
 	// Island carries the extra assets of the interactive screens.
 	Island Island
+
+	// Fill gives the screen the whole viewport and stops the page itself
+	// from scrolling, so each zone scrolls instead. The workbench asks; it
+	// is an explorer, an editor and an answer, and a workbench whose panes
+	// scroll off the bottom is three screens stacked.
+	//
+	// THIS IS NOT `Wide` COMING BACK. `Wide` was a default that won five
+	// times by accident: nine screens could set it, five forgot, and nothing
+	// on the screen said which was intended. This has ONE caller and the
+	// opposite failure mode -- forgetting it gives a page that scrolls like
+	// every other page, which is visible in a second, and a test refuses any
+	// other screen asking for it.
+	//
+	// It is an ATTRIBUTE rather than a class because the rules behind it are
+	// in app.src.css: a layout that depends on three utilities landing in the
+	// right order is a layout nobody can read.
+	Fill bool
 }
 
 // Island lists an interactive page's extra assets. It exists because only the DAG
@@ -80,7 +97,7 @@ templ Base(p Page) {
 		<body class="h-full font-sans text-ink antialiased">
 			<div class="flex h-full flex-col">
 				@topbar(p.Active, brand)
-				<main class="flex-1 overflow-y-auto">
+				<main class="flex-1 overflow-y-auto" data-fill?={ p.Fill }>
 					<header class="sticky top-0 z-10 border-b border-line bg-canvas/90 px-6 py-4 backdrop-blur">
 						<div class="flex items-center justify-between gap-6">
 							<div class="min-w-0">

@@ -166,11 +166,19 @@ func TestTheTreeSaysWhichConnectionsAreNotLoadedYet(t *testing.T) {
 // agreement, between two files that have to name the same thing.
 func TestTheIslandInterceptsTheButtonsTheTreeWrites(t *testing.T) {
 	_, ui := browsing(t)
-	_, js := get(t, ui, "/assets/sql.js")
+	_, raw := get(t, ui, "/assets/sql.js")
 
-	for _, want := range []string{"expand", "connect", "/api/sql/columns", "/api/sql/objects"} {
+	// STRIPPED OF ITS COMMENTS, because this test could not fail. Four of
+	// the five strings below are also in the paragraphs that explain the
+	// code, so an island that stopped intercepting anything at all still
+	// passed -- it was reading the prose about the code instead of the code.
+	js := strip(raw)
+
+	for _, want := range []string{
+		`"expand"`, `"connect"`, "/api/sql/columns", "/api/sql/objects", "preventDefault",
+	} {
 		if !strings.Contains(js, want) {
-			t.Errorf("the island never mentions %q, so that click still reloads the page", want)
+			t.Errorf("the island's CODE never uses %q, so that click still reloads the page", want)
 		}
 	}
 }

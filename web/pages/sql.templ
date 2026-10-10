@@ -31,62 +31,119 @@ var editorAssets = layouts.Island{
 // and in a Referer header. Tab state in a query parameter would be exactly
 // that, so tabs wait for the island that can hold state in the browser.
 templ SQL(v SQLView) {
-	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets}) {
+	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets, Fill: true}) {
 		if v.Empty() {
-			<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
+			<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
 				Nothing here can be queried yet. A destination shows up once a pipeline
 				lands in a table — a bucket and a topic have no columns to read.
 			</p>
 		} else {
-			<div class="flex gap-5">
+			// THREE ZONES, AND THE TWO THINGS BETWEEN THEM CAN BE DRAGGED.
+			//
+			// The sizes are custom properties on this element, which is what
+			// the island writes: one assignment per drag, and a reload
+			// restores a number rather than replaying a gesture.
+			<div class="workbench" data-workbench>
 				@tree(v)
-				<div class="min-w-0 flex-1">
-			<form id="workbench" method="post" action="/sql" class="flex flex-col gap-3">
-				// WHAT IS OPEN RIDES WITH EVERY SUBMIT, so running a query
-				// does not close the tree somebody just arranged.
-				<input type="hidden" name="open" value={ v.Open }/>
-				// THE CONNECTION IS THE TREE'S ROOT NOW, not a picker.
+				// AND THE WAY BACK, WHICH LIVES OUTSIDE THE RAIL.
 				//
-				// A <select> said which warehouse and nothing about what is
-				// in it, so comparing two meant choosing one, losing the
-				// tree, and choosing the other. This field is what the chosen
-				// root writes, and it is hidden because the tree is the
-				// control.
-				<input type="hidden" name="target" value={ v.Target }/>
-				<label for="q" class="sr-only">SQL to run on this warehouse</label>
-				<textarea
-					id="q"
-					name="q"
-					rows="10"
-					spellcheck="false"
-					placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
-					class="w-full rounded-card border border-line bg-surface px-3 py-2 font-mono text-xs text-ink"
-				>{ v.Statement }</textarea>
-				<div class="flex items-center gap-3">
-					<button
-						type="submit"
-						class="rounded-card border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface"
-					>Run</button>
-					// AND IT SAYS WHERE IT WILL RUN. The picker used to be
-					// the answer to "against what"; with the picker gone,
-					// the button has to carry it, or choosing a connection
-					// in the tree becomes an invisible change.
-					if on := v.Running(); on != "" {
-						<span class="font-mono text-xs text-muted" data-running-on>{ on }</span>
-					}
-					<span class="text-xs text-muted">
-						Reads only. The service refuses anything else, and stops a query that would scan too much.
-					</span>
-				</div>
-			</form>
-			if v.Err != "" {
-				<p class="mt-5 rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
-			} else if v.Result != nil {
-				<div class="mt-5">
-					@grid(v.Result.Columns, v.Result.Rows)
-					<p class="mt-2 text-xs text-muted">{ v.Note() }</p>
-				</div>
-			}
+				// The collapse control sits in the rail's own header, and a
+				// collapsed rail is `display: none` -- so the only button that
+				// could undo it would have gone with it. This one is drawn
+				// only when the rail is away.
+				<button
+					type="button"
+					data-rail-toggle
+					aria-expanded="true"
+					aria-controls="objects"
+					aria-label="Show the object tree"
+					class="workbench-rail-show self-start rounded-card px-1 py-1 text-muted hover:bg-surface-2 hover:text-ink"
+				>&#8677;</button>
+				<div
+					class="workbench-grip"
+					data-grip="rail"
+					data-min="180"
+					role="separator"
+					aria-orientation="vertical"
+					aria-label="Resize the object tree"
+					tabindex="0"
+				></div>
+				<div class="workbench-main">
+					<section class="workbench-editor" data-pane="editor">
+						<form id="workbench" method="post" action="/sql" class="flex min-h-0 flex-1 flex-col gap-2">
+							// WHAT IS OPEN RIDES WITH EVERY SUBMIT, so running a query
+							// does not close the tree somebody just arranged.
+							<input type="hidden" name="open" value={ v.Open }/>
+							// THE CONNECTION IS THE TREE'S ROOT NOW, not a picker.
+							//
+							// A <select> said which warehouse and nothing about what is
+							// in it, so comparing two meant choosing one, losing the
+							// tree, and choosing the other. This field is what the chosen
+							// root writes, and it is hidden because the tree is the
+							// control.
+							<input type="hidden" name="target" value={ v.Target }/>
+							<div class="flex shrink-0 items-center gap-3 pb-1">
+								// RUN LOOKS LIKE THE THING YOU PRESS. It was a grey
+								// button beside a grey sentence, which is the shape of
+								// a secondary action.
+								<button
+									type="submit"
+									data-run
+									class="inline-flex items-center gap-1.5 rounded-card bg-accent px-3 py-1.5 text-sm font-medium text-canvas hover:bg-accent-strong"
+								>
+									<svg class="h-3 w-3" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+										<path d="M3 1.5v9l7-4.5z"></path>
+									</svg>
+									Run
+								</button>
+								// AND THE KEY THAT DOES IT. Ctrl-Enter and Cmd-Enter
+								// have run the query since the editor island landed,
+								// and the screen has never said so.
+								<kbd class="rounded border border-line px-1.5 py-0.5 font-mono text-[0.7rem] text-muted">⌘↵</kbd>
+								// AND IT SAYS WHERE IT WILL RUN. The picker used to be
+								// the answer to "against what"; with the picker gone,
+								// the button has to carry it, or choosing a connection
+								// in the tree becomes an invisible change.
+								if on := v.Running(); on != "" {
+									<span class="truncate font-mono text-xs text-muted" data-running-on>{ on }</span>
+								}
+							</div>
+							<label for="q" class="sr-only">SQL to run on this warehouse</label>
+							<textarea
+								id="q"
+								name="q"
+								rows="10"
+								spellcheck="false"
+								placeholder="SELECT * FROM dataset.table WHERE day = CURRENT_DATE()"
+								class="min-h-0 w-full flex-1 resize-none rounded-card border border-line bg-surface px-3 py-2 font-mono text-xs text-ink"
+							>{ v.Statement }</textarea>
+							// THE FOOTER, where the cost line joins it in W6. It left
+							// the button row because a verb and a caveat read as two
+							// controls when they sit on one line.
+							<p class="shrink-0 text-[0.7rem] text-muted">
+								Reads only. The service refuses anything else, and stops a query that would scan too much.
+							</p>
+						</form>
+					</section>
+					<div
+						class="workbench-grip"
+						data-grip="split"
+						data-min="120"
+						role="separator"
+						aria-orientation="horizontal"
+						aria-label="Resize the editor"
+						tabindex="0"
+					></div>
+					<section class="workbench-results" data-pane="results">
+						if v.Err != "" {
+							<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
+						} else if v.Result != nil {
+							@grid(v.Result.Columns, v.Result.Rows)
+							<p class="mt-2 text-xs text-muted">{ v.Note() }</p>
+						} else {
+							<p class="text-xs text-muted">Nothing has run yet.</p>
+						}
+					</section>
 				</div>
 			</div>
 		}
@@ -104,8 +161,20 @@ templ SQL(v SQLView) {
 // menu made.
 templ tree(v SQLView) {
 	if len(v.Targets) > 0 {
-		<aside class="w-64 shrink-0 overflow-y-auto border-r border-line-soft pr-3 text-xs">
-			<p class="kicker mb-2">Objects</p>
+		<aside id="objects" class="workbench-rail border-r border-line-soft pr-3 text-xs" data-rail>
+			<div class="mb-2 flex items-center justify-between gap-2">
+				<p class="kicker">Objects</p>
+				// COLLAPSING IS A CONTROL, not a drag to zero. A rail dragged
+				// to nothing is a rail with no handle left to drag back.
+				<button
+					type="button"
+					data-rail-toggle
+					aria-expanded="true"
+					aria-controls="objects"
+					aria-label="Collapse the object tree"
+					class="rounded-card px-1 py-0.5 text-muted hover:bg-surface-2 hover:text-ink"
+				>&#8676;</button>
+			</div>
 			// THE SEARCH FILTERS WHAT IS LOADED, and the island says so when
 			// that is less than everything. Without the island it is an
 			// ordinary field that does nothing, so it is marked rather than

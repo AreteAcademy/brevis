@@ -94,3 +94,24 @@ func draw(t *testing.T, c templ.Component) string {
 	}
 	return b.String()
 }
+
+// ONE SCREEN FILLS THE SHELL, AND IT IS THE WORKBENCH.
+//
+// `Fill` is a flag, which is the shape W0 deleted -- so it is worth saying
+// exactly how it differs. `Wide` could be set by nine screens and five forgot;
+// its wrong value was INVISIBLE, because a capped page looks deliberate.
+// `Fill` has one caller, and forgetting it gives a page that scrolls like
+// every other page -- visible in a second. This refuses the other failure:
+// a second screen quietly acquiring it.
+func TestOnlyTheWorkbenchFillsTheShell(t *testing.T) {
+	for _, s := range screens() {
+		page := draw(t, s.c)
+		fills := strings.Contains(page, "data-fill")
+		if s.name == "sql" && !fills {
+			t.Error("the workbench does not ask the shell for the whole viewport")
+		}
+		if s.name != "sql" && fills {
+			t.Errorf("%s asks to fill the shell", s.name)
+		}
+	}
+}

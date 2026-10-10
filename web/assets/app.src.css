@@ -410,3 +410,137 @@ dialog:focus {
   color: var(--color-muted);
   opacity: 0.7;
 }
+
+/* THE WORKBENCH FILLS THE SHELL.
+   
+   `main` scrolls on every other screen, which is right: a long table is
+   read by scrolling. The workbench is three panes that each scroll on
+   their own, and a page that ALSO scrolls puts the answer below the fold
+   of a screen the person is already looking at.
+   
+   An attribute and not a utility: this is four declarations that only make
+   sense together, and `main[data-fill]` beats a Tailwind utility because
+   these rules are not in a layer. */
+main[data-fill] {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+main[data-fill] > :last-child {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+/* The three zones, and the two things a person can drag.
+   
+   THE SIZES ARE CUSTOM PROPERTIES because that is what the island writes:
+   one assignment per drag, no classes to add and remove, and a reload
+   restores a number rather than replaying a gesture. */
+.workbench {
+  --rail: 16rem;
+  --editor: 45%;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+.workbench-rail {
+  width: var(--rail);
+  min-width: 0;
+  flex-shrink: 0;
+  overflow: auto;
+}
+.workbench[data-rail-collapsed="true"] .workbench-rail {
+  display: none;
+}
+.workbench-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.workbench-editor {
+  height: var(--editor);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.workbench-results {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+/* A grip is a hit area, not a line: a 1px target is a target nobody hits.
+   The line is drawn inside it. */
+.workbench-grip {
+  flex-shrink: 0;
+  position: relative;
+  background: transparent;
+}
+.workbench-grip[aria-orientation="vertical"] {
+  width: 9px;
+  cursor: col-resize;
+}
+.workbench-grip[aria-orientation="horizontal"] {
+  height: 9px;
+  cursor: row-resize;
+}
+.workbench-grip::after {
+  content: "";
+  position: absolute;
+  background: var(--color-line-soft);
+  transition: background 120ms;
+}
+.workbench-grip[aria-orientation="vertical"]::after {
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 1px;
+}
+.workbench-grip[aria-orientation="horizontal"]::after {
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 1px;
+}
+.workbench-grip:hover::after,
+.workbench-grip[data-dragging="true"]::after {
+  background: var(--color-accent);
+}
+.workbench-grip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* The rail's two controls are never both useful.
+   
+   The one that COLLAPSES lives in the rail's header, where the thing it
+   acts on is. A collapsed rail is `display: none`, so that button goes
+   with it -- and the one that brings it back has to be outside, which is
+   this one. Drawn only when there is something to bring back. */
+.workbench-rail-show {
+  display: none;
+}
+.workbench[data-rail-collapsed="true"] .workbench-rail-show {
+  display: block;
+}
+.workbench[data-rail-collapsed="true"] .workbench-grip[data-grip="rail"] {
+  display: none;
+}
+
+/* INSIDE THE WORKBENCH THE EDITOR FILLS ITS PANE.
+   
+   `fromTextArea` REPLACES the textarea with CodeMirror's own element, which
+   does not inherit the `flex-1 min-h-0` the textarea carried -- so the rule
+   above (`height: auto; min-height: 14rem`) would leave a short query with
+   an empty pane under it and a long one overflowing past the grip. Its own
+   scroller is already `height: 100%`, so filling the pane is all it needs. */
+.workbench-editor .CodeMirror {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}

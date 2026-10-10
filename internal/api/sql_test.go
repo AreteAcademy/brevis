@@ -447,8 +447,11 @@ func TestTheTreeAndTheIslandAgreeOnTheAttribute(t *testing.T) {
 	ui.Registrar(mux)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/sql.js", nil))
-	if !strings.Contains(rec.Body.String(), "data-insert") {
-		t.Error("the island never reads data-insert, so the tree inserts nothing")
+	// WITHOUT THE COMMENTS. `data-insert` is named in the paragraph that
+	// explains why the tree carries it, so this passed with the island no
+	// longer reading the attribute at all.
+	if !strings.Contains(strip(rec.Body.String()), `"data-insert"`) {
+		t.Error("the island's CODE never reads data-insert, so the tree inserts nothing")
 	}
 }
 
