@@ -599,13 +599,50 @@ jobs:
           done
           exit $status
 
-      # A DIRECTORY, because there are four files now. `upload-sarif` takes
-      # either, and one file per module keeps a finding's module visible in
-      # the Security tab instead of merging four trees into one list.
-      - name: Upload the results to the GitHub Security tab
+      # ONE UPLOAD PER MODULE, EACH WITH ITS OWN CATEGORY.
+      #
+      # This was a directory and one step: `upload-sarif` accepts either, and
+      # four files keep a finding's module visible in the Security tab instead
+      # of merging four trees into one list. GitHub stopped accepting that on
+      # its own -- "the CodeQL Action does not support uploading multiple
+      # SARIF runs with the same category" -- and the step went red on a push
+      # that changed no Go code and no workflow.
+      #
+      # The category is what names a run, and a directory gives four runs one
+      # name. So each module names itself. The intent is unchanged and the
+      # Security tab now keeps the four apart deliberately rather than by the
+      # action's leniency: a finding in `sql` stays a finding in `sql`, and
+      # fixing one module no longer looks like the others resolved too.
+      #
+      # Four steps and not a loop, because a workflow cannot loop a step, and
+      # not a matrix either: a matrix would install the scanner four times to
+      # avoid writing the module name four times.
+      - name: Upload the engine's results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: gosec-results
+          sarif_file: gosec-results/engine.sarif
+          category: gosec-engine
+          wait-for-processing: true
+
+      - name: Upload the SDK's results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results/sdk.sarif
+          category: gosec-sdk
+          wait-for-processing: true
+
+      - name: Upload the gateway's results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results/gateway.sarif
+          category: gosec-gateway
+          wait-for-processing: true
+
+      - name: Upload brevis-sql's results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results/sql.sarif
+          category: gosec-sql
           wait-for-processing: true
 
   build:
