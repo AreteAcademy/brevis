@@ -206,3 +206,117 @@ func TestASelectIsNotMarkedOnAWarehouseThatCannotClassify(t *testing.T) {
 		t.Errorf("a SELECT was recorded as a write:\n%s", audit.String())
 	}
 }
+
+// writing is a warehouse that runs a write and says how much it changed.
+type writing struct {
+	planned
+	changed int64
+	counted bool
+	wrote   []string
+}
+
+func (w *writing) Write(_ context.Context, statement string) (dialect.Result, error) {
+	w.wrote = append(w.wrote, statement)
+	return dialect.Result{Columns: []string{}, Rows: [][]any{},
+		Changed: w.changed, Counted: w.counted}, nil
+}
+
+// A WRITE ANSWERS WITH WHAT IT CHANGED, NOT WITH AN EMPTY GRID.
+//
+// "Did my UPDATE hit zero rows or ten thousand" is the only question anybody
+// asks afterwards, and a table with no columns answers neither.
+func TestAWriteAnswersWithTheCountTheWarehouseGave(t *testing.T) {
+	var audit bytes.Buffer
+	w := &writing{planned: planned{writable: writable{priced: priced{estimate: 1}},
+		kind: "UPDATE", bytes: 1}, changed: 12, counted: true}
+	res := askAs(t, writesTo(t, w, &audit, "acme-prod"), "/v1/query",
+		queryBody("UPDATE t SET n = 1"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a write answered %d: %s", res.Code, res.Body.String())
+	}
+	body := res.Body.String()
+	for _, want := range []string{`"wrote":true`, `"changed":12`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the answer has no %s: %s", want, body)
+		}
+	}
+	// AND IT WAS RUN AS A WRITE. The reader is still there and would have
+	// returned an empty grid without complaint, which is the shape this
+	// replaces.
+	if len(w.wrote) != 1 {
+		t.Errorf("the statement went somewhere other than Write: %v", w.wrote)
+	}
+	if w.ran != 0 {
+		t.Error("a write was sent to the reader")
+	}
+	if !strings.Contains(audit.String(), `"changed":12`) {
+		t.Errorf("the audit line does not carry the count:\n%s", audit.String())
+	}
+}
+
+// AND A STATEMENT THAT CHANGES NO ROWS SAYS NOTHING ABOUT ROWS.
+//
+// `CREATE TABLE` and `UPDATE ... WHERE false` both changed nothing and are
+// not the same answer. Printing "0 rows" for the first reads as a failure to
+// whoever ran it, so the key is absent rather than zero.
+func TestADDLAnswersWithoutARowCount(t *testing.T) {
+	var audit bytes.Buffer
+	w := &writing{planned: planned{writable: writable{priced: priced{estimate: 1}},
+		kind: "CREATE_TABLE", bytes: 1}, counted: false}
+	res := askAs(t, writesTo(t, w, &audit, "acme-prod"), "/v1/query",
+		queryBody("CREATE TABLE t (n int)"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a DDL answered %d", res.Code)
+	}
+	body := res.Body.String()
+	if !strings.Contains(body, `"wrote":true`) {
+		t.Errorf("the answer does not say it wrote: %s", body)
+	}
+	if strings.Contains(body, `"changed"`) {
+		t.Errorf("a DDL claimed a row count: %s", body)
+	}
+}
+
+// AND ZERO IS A COUNT, which is the half an `omitempty` would quietly lose.
+func TestAWriteThatMatchedNothingStillSaysZero(t *testing.T) {
+	var audit bytes.Buffer
+	w := &writing{planned: planned{writable: writable{priced: priced{estimate: 1}},
+		kind: "UPDATE", bytes: 1}, changed: 0, counted: true}
+	res := askAs(t, writesTo(t, w, &audit, "acme-prod"), "/v1/query",
+		queryBody("UPDATE t SET n = 1 WHERE FALSE"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("answered %d", res.Code)
+	}
+	if !strings.Contains(res.Body.String(), `"changed":0`) {
+		t.Errorf("an update that matched nothing did not say zero: %s", res.Body.String())
+	}
+}
+
+// A WAREHOUSE WITH NO Writer STILL RUNS THE STATEMENT.
+//
+// The interface is optional, and a dialect that has not got it must not lose
+// the feature -- it loses the COUNT. Measured on real Postgres before Writer
+// existed: a DDL and a DML travel the read path, change the data, and come
+// back with no columns and no rows.
+func TestAWarehouseWithNoWriterStillRunsTheWrite(t *testing.T) {
+	var audit bytes.Buffer
+	p := &planned{writable: writable{priced: priced{estimate: 1}}, kind: "INSERT", bytes: 1}
+	if _, w := any(p).(dialect.Writer); w {
+		t.Fatal("this fake writes, so it cannot test the warehouse that does not")
+	}
+	res := askAs(t, writesTo(t, p, &audit, "acme-prod"), "/v1/query",
+		queryBody("INSERT INTO t (n) VALUES (1)"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("answered %d", res.Code)
+	}
+	if p.ran == 0 {
+		t.Error("the statement never ran")
+	}
+	if strings.Contains(res.Body.String(), `"changed"`) {
+		t.Errorf("a warehouse that counts nothing reported a count: %s", res.Body.String())
+	}
+}

@@ -536,7 +536,18 @@ templ results(v SQLView) {
 			<p data-note class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
 		</div>
 		<div class="min-h-0 flex-1 overflow-auto" data-panel="results">
-			@resultGrid(v.Result.Columns, v.Result.Rows)
+			if v.Result.Wrote {
+				// A WRITE GETS A SENTENCE AND NOT A GRID.
+				//
+				// The service answers a write with no columns and no rows,
+				// and the grid draws that as a table with no headings and
+				// "No rows." under them -- which reads as "it found nothing"
+				// for a statement that was never looking. An absent table is
+				// nothing to interpret; an empty one is.
+				<p data-changed class="px-3 py-4 text-sm text-ink">{ v.Changed() }</p>
+			} else {
+				@resultGrid(v.Result.Columns, v.Result.Rows)
+			}
 		</div>
 		<div class="min-h-0 flex-1 overflow-auto" data-panel="json" hidden>
 			<pre class="p-2 font-mono text-[0.7rem] whitespace-pre text-ink">{ v.JSON() }</pre>

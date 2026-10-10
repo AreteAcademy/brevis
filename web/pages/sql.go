@@ -211,6 +211,9 @@ func (v SQLView) Note() string {
 	if v.Result == nil {
 		return ""
 	}
+	if v.Result.Wrote {
+		return v.Changed() + " · " + v.Cost()
+	}
 	n := len(v.Result.Rows)
 	rows := "rows"
 	if n == 1 {
@@ -221,6 +224,29 @@ func (v SQLView) Note() string {
 		note += " — there are more"
 	}
 	return note
+}
+
+// Changed is what a statement that wrote did, in one sentence.
+//
+// THREE ANSWERS AND NOT TWO. "12 rows changed" and "0 rows changed" are the
+// same sentence with a different number, and both are a COUNT. "no rows to
+// count" is not a count at all -- a CREATE TABLE changed nothing and did not
+// fail, and printing zero for it reads as a failure to whoever ran it.
+//
+// The plural is spelled out because every count gets it wrong once, and a
+// screen that says "1 rows" is a screen somebody stops reading carefully.
+func (v SQLView) Changed() string {
+	if v.Result == nil || !v.Result.Wrote {
+		return ""
+	}
+	if v.Result.Changed == nil {
+		return "ran — no rows to count"
+	}
+	n := *v.Result.Changed
+	if n == 1 {
+		return "1 row changed"
+	}
+	return fmt.Sprintf("%d rows changed", n)
 }
 
 // Cost is what the statement spent, in the words the screen already uses.

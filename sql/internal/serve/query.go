@@ -39,6 +39,13 @@ type queryResponse struct {
 	// difference between the query they wrote and the one that was cheap.
 	Bytes  int64 `json:"bytes"`
 	Millis int64 `json:"ms"`
+
+	// Wrote says this statement changed data, and Changed how many rows --
+	// A POINTER, because zero is an answer. An UPDATE whose WHERE matched
+	// nothing changed zero rows and a CREATE TABLE changes no rows at all,
+	// and `omitempty` on an int would collapse the two into the second.
+	Wrote   bool   `json:"wrote,omitempty"`
+	Changed *int64 `json:"changed,omitempty"`
 }
 
 // query runs one statement the caller wrote.
@@ -160,10 +167,16 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	line.Outcome = "ok"
 	line.Bytes = res.Scanned
 	line.Returned = len(res.Rows)
-	write(w, http.StatusOK, queryResponse{
+	answer := queryResponse{
 		Columns: res.Columns, Rows: res.Rows, Truncated: res.Truncated,
 		Limit: limit, Bytes: res.Scanned, Millis: time.Since(started).Milliseconds(),
-	})
+		Wrote: line.Wrote,
+	}
+	if line.Wrote && res.Counted {
+		changed := res.Changed
+		answer.Changed, line.Changed = &changed, &changed
+	}
+	write(w, http.StatusOK, answer)
 }
 
 // outcomeWritable is what an audit line says when the credential can write.
@@ -402,6 +415,31 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 		}
 	}
 
+	// A STATEMENT THAT CHANGES DATA IS RUN, NOT READ.
+	//
+	// The reader would take it and come back with no columns and no rows --
+	// measured on real Postgres, where a CREATE and an INSERT travel that
+	// path and change the data. It works and it answers nothing, and "did my
+	// UPDATE hit zero rows or ten thousand" is the only question anybody
+	// asks afterwards.
+	//
+	// A WAREHOUSE WITHOUT dialect.Writer KEEPS THE OLD PATH. The interface is
+	// optional, so what such a dialect loses is the count and never the
+	// statement.
+	if line.Wrote {
+		if writer, can := conn.(dialect.Writer); can {
+			res, err := writer.Write(ctx, statement)
+			if err != nil {
+				return dialect.Result{}, err
+			}
+			// THE QUOTE, because a write reports no scan of its own and a
+			// budget that only saw reads would stop bounding the moment a
+			// connection was unlocked.
+			s.spent.record(table.Connection, scan)
+			return res, nil
+		}
+	}
+
 	// ONE MORE ROW THAN WILL BE SHOWN. See the preview: a LIMIT inside the
 	// statement makes the warehouse's own count agree with what came back,
 	// so the extra row is the only thing that can tell a cut from a table
@@ -518,6 +556,10 @@ type record struct {
 	// on the day somebody greps it, which is the day they are asking what
 	// changed.
 	Wrote bool `json:"wrote,omitempty"`
+
+	// Changed is how many rows a write changed, and a POINTER for the reason
+	// queryResponse gives: zero rows matched is not no rows countable.
+	Changed *int64 `json:"changed,omitempty"`
 
 	// Estimated is what a DRY RUN quoted, and it is deliberately not Bytes:
 	// `observe` adds Bytes to the `scanned` metric per connection, and a dry

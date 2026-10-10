@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -34,6 +35,38 @@ type conn struct{ c *pgx.Conn }
 func (c *conn) Exec(ctx context.Context, statement string) error {
 	_, err := c.c.Exec(ctx, statement)
 	return err
+}
+
+// Write runs a statement that changes data and says how much it changed.
+// See dialect.Writer.
+//
+// THE COMMAND TAG IS WHAT KNOWS. `pgx` hands back what the server said --
+// `INSERT 0 3`, `UPDATE 2`, `DELETE 5`, and for DDL just `CREATE TABLE` --
+// and `RowsAffected()` reads zero from the last two alike. So the TAG is
+// read: a trailing number means the server counted rows, and its absence
+// means this statement does not change rows at all. Without that, a CREATE
+// TABLE and an UPDATE that matched nothing would answer identically.
+func (c *conn) Write(ctx context.Context, statement string) (dialect.Result, error) {
+	tag, err := c.c.Exec(ctx, statement)
+	if err != nil {
+		return dialect.Result{}, err
+	}
+	return dialect.Result{
+		Columns: []string{},
+		Rows:    [][]any{},
+		Changed: tag.RowsAffected(),
+		Counted: counts(tag.String()),
+	}, nil
+}
+
+// counts says whether a Postgres command tag carries a row count.
+func counts(tag string) bool {
+	at := strings.LastIndex(tag, " ")
+	if at < 0 {
+		return false
+	}
+	_, err := strconv.ParseInt(tag[at+1:], 10, 64)
+	return err == nil
 }
 
 // ReadOnly runs fn inside a transaction Postgres itself opened READ ONLY.

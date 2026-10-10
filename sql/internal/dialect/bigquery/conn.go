@@ -141,6 +141,10 @@ type queryResponse struct {
 	// StatementType is what BIGQUERY calls this statement, and it arrives on
 	// a dry run -- before anything has run. See Plan, and dialect.Planner.
 	StatementType string `json:"statementType"`
+	// NumDmlAffectedRows is how many rows a DML changed, as a string for the
+	// reason above. ABSENT on a DDL rather than zero, which is the
+	// distinction Write turns into an answer. See dialect.Result.Counted.
+	NumDmlAffectedRows string `json:"numDmlAffectedRows"`
 	// Errors is a job that RAN AND FAILED, and it arrives inside an HTTP
 	// 200. A client reading only the status code reports every failed
 	// CREATE as a success.
@@ -286,6 +290,32 @@ func (c *conn) Plan(ctx context.Context, query string) (dialect.Plan, error) {
 		Kind:  truncateTo(res.StatementType, 40),
 		Reads: res.StatementType == readsOnly,
 	}, nil
+}
+
+// Write runs a statement that changes data and says how much it changed.
+// See dialect.Writer.
+//
+// BIGQUERY SAYS IT BY OMISSION. `numDmlAffectedRows` arrives on a DML and is
+// absent on a DDL -- not zero, absent -- which is exactly the difference
+// between "this matched nothing" and "this does not change rows". An absent
+// field read as zero would print "0 rows" for a table that was just created.
+func (c *conn) Write(ctx context.Context, statement string) (dialect.Result, error) {
+	res, err := c.run(ctx, statement)
+	if err != nil {
+		return dialect.Result{}, err
+	}
+	out := dialect.Result{Columns: []string{}, Rows: [][]any{}}
+	if res.NumDmlAffectedRows == "" {
+		return out, nil
+	}
+	changed, err := strconv.ParseInt(res.NumDmlAffectedRows, 10, 64)
+	if err != nil {
+		// NOT A ZERO. A count this could not read is not a count of none,
+		// and printing one would be inventing the answer.
+		return out, nil
+	}
+	out.Changed, out.Counted = changed, true
+	return out, nil
 }
 
 // CanWrite asks whether this credential may create a table, by dry-running

@@ -59,6 +59,18 @@ type Result struct {
 	// that was cheap is the thing a query tab can actually teach.
 	Bytes  int64 `json:"bytes"`
 	Millis int64 `json:"ms"`
+
+	// Wrote says the statement CHANGED data, and Changed how many rows.
+	//
+	// A POINTER, because zero is an answer and absence is a different one.
+	// An UPDATE whose WHERE matched nothing changed zero rows; a CREATE
+	// TABLE changes no rows at all. A screen that said "0 rows" for the
+	// second would read as a failure, and whoever ran it would run it again.
+	//
+	// The console still does not read the SQL. It is told what happened by
+	// the only thing that can know -- the service that ran it.
+	Wrote   bool   `json:"wrote"`
+	Changed *int64 `json:"changed"`
 }
 
 // Relation is one thing a SELECT could name, as the tree draws it.

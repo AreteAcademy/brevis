@@ -88,3 +88,51 @@ func TestADryRunSaysWhatTheStatementIs(t *testing.T) {
 		}
 	})
 }
+
+// WHAT A WRITE ANSWERS, ASKED OF BIGQUERY.
+//
+// It says it by OMISSION: `numDmlAffectedRows` arrives on a DML and is absent
+// on a DDL. Absent, not zero -- which is the same distinction Postgres makes
+// through its command tag, reached from the other side. A field read as zero
+// would print "0 rows" for a table that had just been created.
+func TestWhatBigQuerySaysAWriteChanged(t *testing.T) {
+	ctx, conn, schema := liveSchema(t, "bvs_write")
+
+	w, can := conn.(dialect.Writer)
+	if !can {
+		t.Fatal("this dialect cannot run a statement that changes data")
+	}
+
+	for _, c := range []struct {
+		why       string
+		statement string
+		counted   bool
+		changed   int64
+	}{
+		{"DDL counts no rows", "CREATE TABLE " + schema + ".w (n INT64)", false, 0},
+		{"an insert counts what it inserted",
+			"INSERT INTO " + schema + ".w (n) VALUES (1),(2),(3)", true, 3},
+		{"an update counts what it matched",
+			"UPDATE " + schema + ".w SET n = 9 WHERE n > 1", true, 2},
+		{"an update that matched nothing counts ZERO",
+			"UPDATE " + schema + ".w SET n = 0 WHERE n = 4242", true, 0},
+		{"a delete counts what it removed", "DELETE FROM " + schema + ".w WHERE n = 9", true, 2},
+	} {
+		t.Run(c.why, func(t *testing.T) {
+			got, err := w.Write(ctx, c.statement)
+			if err != nil {
+				t.Fatalf("running it: %v", err)
+			}
+			if got.Counted != c.counted {
+				t.Errorf("Counted is %v, want %v", got.Counted, c.counted)
+			}
+			if got.Counted && got.Changed != c.changed {
+				t.Errorf("it changed %d row(s), want %d", got.Changed, c.changed)
+			}
+			if len(got.Columns) != 0 || len(got.Rows) != 0 {
+				t.Errorf("a write came back with %d column(s) and %d row(s)",
+					len(got.Columns), len(got.Rows))
+			}
+		})
+	}
+}

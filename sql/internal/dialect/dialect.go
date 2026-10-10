@@ -242,6 +242,20 @@ type Result struct {
 	// not the price that was paid.
 	Scanned int64
 
+	// Changed is how many rows a statement that WRITES changed, and Counted
+	// says whether the warehouse reported a count at all.
+	//
+	// TWO FIELDS AND NOT ONE, because "0 rows changed" and "this changes no
+	// rows" are different answers. An UPDATE whose WHERE matched nothing is
+	// the first; a CREATE TABLE is the second. A screen that said "0 rows"
+	// for a table that was just created would read as a failure, and the
+	// person who ran it would run it again.
+	//
+	// Both are zero on a read, which is every statement this service ran
+	// before a connection could be unlocked for writes.
+	Changed int64
+	Counted bool
+
 	// Truncated says the limit cut the answer.
 	//
 	// IT HAS TO BE SAID. A grid showing a thousand rows of a million, in
@@ -263,6 +277,29 @@ type Result struct {
 type Reader interface {
 	// Read runs a query and returns at most Request.Limit rows.
 	Read(ctx context.Context, req Request) (Result, error)
+}
+
+// Writer is implemented by a connection that can run a statement that CHANGES
+// data and say how much it changed.
+//
+// SEPARATE FROM Reader, for Reader's own reason: it is a different capability
+// and a dialect may have one and not the other. It is also a different
+// QUESTION -- a reader asks for rows and gets a grid; this one asks for an
+// effect and gets a number, and a grid with no columns is not an answer to it.
+//
+// AND SEPARATE FROM Conn.Exec, WHICH ALREADY RUNS A STATEMENT. `Exec` returns
+// an error and nothing else -- "DDL, so nothing is returned" -- and the build
+// loop wants exactly that. Changing its signature would touch ten call sites
+// and the conformance suite to carry a count the build never reads. This is
+// the eighth optional interface for the same reason there are seven others.
+//
+// IT IS REACHED ONLY ON A CONNECTION SOMEBODY UNLOCKED. `serve` refuses a
+// write everywhere else, so a dialect implementing this does not open a path;
+// it answers one that was already open with something better than silence.
+type Writer interface {
+	// Write runs a statement that changes data. The Result carries no rows
+	// and no columns: Changed and Counted are the answer.
+	Write(ctx context.Context, statement string) (Result, error)
 }
 
 // Request is one read, and everything that bounds it.
