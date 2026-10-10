@@ -86,6 +86,18 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 			refuse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+	} else {
+		// UNLOCKED, SO IT DESCRIBES INSTEAD OF REFUSING.
+		//
+		// The same classifier, asked the same question, used for the audit
+		// line rather than for a decision. It is a TENTATIVE answer: where
+		// the warehouse has a verdict, `read` overwrites this with it, and
+		// the warehouse is right about statements this cannot see inside.
+		//
+		// Without it, a warehouse that offers no verdict -- Postgres, which
+		// offers enforcement instead -- marked nothing, and `wrote` was a
+		// field that was always false exactly where somebody would grep it.
+		line.Wrote = ReadOnly(table.Dialect, req.Statement) != nil
 	}
 
 	limit := req.Limit
@@ -340,15 +352,14 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 		// THE WAREHOUSE OVERRULES THE CLASSIFIER, and this is the only place
 		// it can: the tokeniser upstream already passed this statement, and
 		// its own comment says what it cannot see inside a function call.
-		if !p.Reads {
-			if !s.mayWrite(table.Connection) {
-				return dialect.Result{}, notAQuery(p.Kind)
-			}
-			// THE LINE IS STAMPED HERE because this is where it is KNOWN.
-			// The handler knows the connection was unlocked, which is a
-			// permission; only the warehouse knows the statement used it.
-			line.Wrote = true
+		if !p.Reads && !s.mayWrite(table.Connection) {
+			return dialect.Result{}, notAQuery(p.Kind)
 		}
+		// THE WAREHOUSE'S ANSWER, IN BOTH DIRECTIONS, and it OVERWRITES the
+		// tokeniser's guess upstream rather than only adding to it. The
+		// handler labels from the text because some warehouses say nothing;
+		// where one does speak, it is the one that knows.
+		line.Wrote = !p.Reads
 		scan, quoted = p.Bytes, true
 	} else if priced, can := conn.(dialect.Estimator); can {
 		var err error

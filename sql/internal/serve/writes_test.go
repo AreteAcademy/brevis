@@ -160,3 +160,49 @@ func TestWritesCannotBeUnlockedWithoutAToken(t *testing.T) {
 		}
 	}
 }
+
+// A WAREHOUSE WITH NO VERDICT STILL GETS ITS WRITES MARKED.
+//
+// FOUND BY RUNNING IT. Every test above drives a fake that implements
+// Planner, and `line.Wrote` was set only in that branch -- so on Postgres,
+// which offers a read-only guard and no verdict, a CREATE TABLE and an INSERT
+// went through and the audit called them queries. Measured against the real
+// service: three statements, three lines, `wrote` false on all of them.
+//
+// The tokeniser is what labels where the warehouse says nothing. It is the
+// same classifier that would have REFUSED the statement had the connection
+// been locked, used here only to describe it -- and it carries its own known
+// hole: `SELECT nextval('s')` is a write it reads as a query, so on a
+// guardless warehouse that one line would say query. It is better than a
+// field that is always false, and worse than a verdict; both halves are true
+// and the warehouse's answer wins wherever there is one.
+func TestAWriteIsMarkedOnAWarehouseThatCannotClassify(t *testing.T) {
+	var audit bytes.Buffer
+	g := &guarded{writable: writable{priced: priced{estimate: 1}, can: true}}
+	if _, plans := any(g).(dialect.Planner); plans {
+		t.Fatal("this fake classifies, so it cannot test the warehouse that does not")
+	}
+	res := askAs(t, writesTo(t, g, &audit, "acme-prod"), "/v1/query",
+		queryBody("CREATE TABLE t (n int)"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a write on an unlocked guardless connection answered %d", res.Code)
+	}
+	if !strings.Contains(audit.String(), `"wrote":true`) {
+		t.Errorf("the write is not marked:\n%s", audit.String())
+	}
+}
+
+// AND A QUERY THERE IS STILL A QUERY.
+func TestASelectIsNotMarkedOnAWarehouseThatCannotClassify(t *testing.T) {
+	var audit bytes.Buffer
+	g := &guarded{writable: writable{priced: priced{estimate: 1}, can: true}}
+	res := askAs(t, writesTo(t, g, &audit, "acme-prod"), "/v1/query", queryBody("SELECT 1"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a query on an unlocked connection answered %d", res.Code)
+	}
+	if strings.Contains(audit.String(), `"wrote":true`) {
+		t.Errorf("a SELECT was recorded as a write:\n%s", audit.String())
+	}
+}
