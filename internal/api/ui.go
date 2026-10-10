@@ -325,13 +325,8 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 	// Only one the CATALOG knows is honoured: a parameter naming anything
 	// else is ignored rather than trusted, which is the rule `/data/target`
 	// follows by answering 404 to the same thing.
-	if want := r.URL.Query().Get("target"); want != "" {
-		for _, t := range v.Targets {
-			if t == want {
-				v.Target = want
-				break
-			}
-		}
+	if want := r.URL.Query().Get("target"); want != "" && v.Knows(want) {
+		v.Target = want
 	}
 
 	if r.Method == http.MethodPost {
@@ -345,6 +340,22 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// statement out of a link. `PostFormValue` is what makes that true.
 		v.Target = r.PostFormValue("target")
 		v.Statement = strings.TrimSpace(r.PostFormValue("q"))
+
+		// AND THE BODY IS CHECKED AGAINST THE CATALOG, which it was not.
+		//
+		// The paragraph above says a target in a URL is honoured "only [if]
+		// one the CATALOG knows". That was true of the query string and
+		// false of the body: this line read `target` straight out of a POST
+		// and handed it to the service, which then answered a query AND a
+		// listing for it.
+		//
+		// What it was worth to somebody signed in: the service answers
+		// differently for a connection it holds and one it does not, so the
+		// body was a way to ask `serve` what it has been configured with,
+		// one guess at a time, with the catalog never consulted.
+		if v.Target != "" && !v.Knows(v.Target) {
+			v.Err, v.Target = pages.Unknown, ""
+		}
 
 		// WHAT IS OPEN IN THE TREE, and what was just clicked.
 		//

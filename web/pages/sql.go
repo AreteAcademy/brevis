@@ -109,6 +109,32 @@ func (v SQLView) Note() string {
 	return note
 }
 
+// Knows says the catalog lists this destination.
+//
+// ONE FUNCTION, TWO CALLERS, AND THAT IS THE POINT. `/sql`'s GET path had
+// this loop written out and its POST path had nothing, so a destination the
+// catalog did not list was refused in a link and accepted in a body. Two
+// copies of a rule are two rules; the second one was missing for as long as
+// the first one existed.
+func (v SQLView) Knows(target string) bool {
+	for _, t := range v.Targets {
+		if t == target {
+			return true
+		}
+	}
+	return false
+}
+
+// Unknown is what the screen says when a body named something the catalog
+// does not list.
+//
+// IT DOES NOT REPEAT WHAT WAS SENT. The string came from the request, and a
+// page that echoes a request back is a page that has to be right about
+// escaping forever. templ escapes it today; this does not need templ to be
+// right.
+const Unknown = "That is not a destination this console knows. " +
+	"The catalog lists what Brevis has written, and nothing else can be queried here."
+
 // Empty says there is nothing to query, which is a sentence and not a blank
 // screen: a console with no relational destination has nothing to point this
 // at, and the reason is the pipelines rather than the service.
