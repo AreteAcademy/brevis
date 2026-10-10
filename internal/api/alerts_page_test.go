@@ -151,7 +151,19 @@ func TestTheAutoParamsAreOnTheScreen(t *testing.T) {
 	started := slot.Add(37 * time.Minute)
 	before := slot.AddDate(0, 0, -1)
 
-	id := uuid.New()
+	// A FIXED ID, AND THAT IS THE WHOLE BUG BELOW.
+	//
+	// This was `uuid.New()`. The last assertion in this test searches the
+	// WHOLE DOCUMENT for "2220", and the run's id is printed on that
+	// document -- so a random id whose hex happened to contain those four
+	// characters failed a test about a duration. Measured, not guessed:
+	// planting 22200000-0000-4000-8000-000000000000 here reproduces it every
+	// time, and roughly one id in 2200 does it by accident.
+	//
+	// The residue is still there -- a substring search over a page is a
+	// coarse instrument -- but the only thing on this page that was ever
+	// random is now not.
+	id := uuid.MustParse("3f9b7c2e-5a41-4d88-9e13-7c6a0b5d4e21")
 	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 		ID: id, WorkflowSlug: "nightly", Status: dom.StatusSuccess,
 		Auto: dom.AutoParams{
@@ -194,7 +206,19 @@ func TestTheAutoParamsAreOnTheScreen(t *testing.T) {
 // everybody learns to skip.
 func TestAManualRunShowsOnlyWhatItHas(t *testing.T) {
 	started := time.Date(2026, 9, 8, 11, 3, 0, 0, time.UTC)
-	id := uuid.New()
+	// A FIXED ID, AND THAT IS THE WHOLE BUG BELOW.
+	//
+	// This was `uuid.New()`. The last assertion in this test searches the
+	// WHOLE DOCUMENT for "2220", and the run's id is printed on that
+	// document -- so a random id whose hex happened to contain those four
+	// characters failed a test about a duration. Measured, not guessed:
+	// planting 22200000-0000-4000-8000-000000000000 here reproduces it every
+	// time, and roughly one id in 2200 does it by accident.
+	//
+	// The residue is still there -- a substring search over a page is a
+	// coarse instrument -- but the only thing on this page that was ever
+	// random is now not.
+	id := uuid.MustParse("3f9b7c2e-5a41-4d88-9e13-7c6a0b5d4e21")
 	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 		ID: id, WorkflowSlug: "on_demand", Status: dom.StatusSuccess, TriggerType: "manual",
 		Auto: dom.AutoParams{StartedAt: &started, AdjustedAt: started, Date: "2026-09-08"},
@@ -247,7 +271,19 @@ func TestTheScreenAndTheStepReadTheSameClock(t *testing.T) {
 		Date: "2026-03-11",
 	}
 
-	id := uuid.New()
+	// A FIXED ID, AND THAT IS THE WHOLE BUG BELOW.
+	//
+	// This was `uuid.New()`. The last assertion in this test searches the
+	// WHOLE DOCUMENT for "2220", and the run's id is printed on that
+	// document -- so a random id whose hex happened to contain those four
+	// characters failed a test about a duration. Measured, not guessed:
+	// planting 22200000-0000-4000-8000-000000000000 here reproduces it every
+	// time, and roughly one id in 2200 does it by accident.
+	//
+	// The residue is still there -- a substring search over a page is a
+	// coarse instrument -- but the only thing on this page that was ever
+	// random is now not.
+	id := uuid.MustParse("3f9b7c2e-5a41-4d88-9e13-7c6a0b5d4e21")
 	ui := api.NewUI(nil, nil, execsFake{run: dom.Run{
 		ID: id, WorkflowSlug: "nightly", Status: dom.StatusSuccess,
 		LogicalDate: &slot, Auto: auto,
