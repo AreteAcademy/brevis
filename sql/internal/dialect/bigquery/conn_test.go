@@ -222,3 +222,36 @@ func TestColumnsAsksTheDatasetsOwnInformationSchema(t *testing.T) {
 		t.Errorf("the whole region was asked for: %s", q)
 	}
 }
+
+// THE SCOPE IS NOT NARROWED TO ONE THAT WOULD STOP THIS TOOL.
+//
+// CHECKPOINT B's F1 ends with an invitation: narrow the OAuth scope to
+// `bigquery.readonly`. Measured against the API's own discovery document on
+// 2026-10-09, that scope is listed on NO method of BigQuery v2 -- not
+// jobs.query, not jobs.getQueryResults, not tables.list. Narrowing to it
+// would not restrict this tool, it would stop it, and the failure would
+// arrive as an opaque 403 on the first query somebody ran.
+//
+// This test is the note that reaches whoever acts on that invitation. It
+// cannot fail today; it exists so that the change the checkpoint suggests is
+// made by somebody who has read why it does not work.
+func TestTheScopeIsNotOneThisAPIDoesNotAccept(t *testing.T) {
+	// Each of these is listed on no BigQuery v2 method, or on none this
+	// tool calls. The discovery document is the source; the comment above
+	// `scope` carries the measurement.
+	for _, dead := range []string{
+		"https://www.googleapis.com/auth/bigquery.readonly",
+		"https://www.googleapis.com/auth/bigquery.insertdata",
+		"https://www.googleapis.com/auth/devstorage.read_only",
+	} {
+		if scope == dead {
+			t.Errorf("scope is %q, which this API does not accept for the methods "+
+				"this tool calls: every query would fail with a 403 that does not "+
+				"say why. See the measurement above the constant.", dead)
+		}
+	}
+	// AND IT IS STILL A BIGQUERY SCOPE, so a paste accident is caught too.
+	if !strings.HasPrefix(scope, "https://www.googleapis.com/auth/") {
+		t.Errorf("scope is %q, which is not a Google OAuth scope at all", scope)
+	}
+}

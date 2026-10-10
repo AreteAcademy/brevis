@@ -37,7 +37,37 @@ import (
 // has a test because each one is a way this could be quietly wrong.
 const (
 	endpoint = "https://bigquery.googleapis.com/bigquery/v2"
-	scope    = "https://www.googleapis.com/auth/bigquery"
+
+	// scope is read AND write, and it stays that way. MEASURED 2026-10-09
+	// against the API's own discovery document, which is the only thing that
+	// can answer this:
+	//
+	//	curl .../discovery/v1/apis/bigquery/v2/rest
+	//
+	// CHECKPOINT B's F1 left one question open -- "narrowing the OAuth scope
+	// to bigquery.readonly; that scope may not grant bigquery.jobs.create,
+	// and a query is a job". The answer is stronger than "may not":
+	// `https://www.googleapis.com/auth/bigquery.readonly` is listed on NO
+	// method of this API at all. Not jobs.query, not jobs.getQueryResults,
+	// not tables.list. Narrowing to it would not restrict this tool; it
+	// would stop it.
+	//
+	// `cloud-platform.read-only` IS listed on jobs.query, jobs.getQueryResults
+	// and tables.list, and is NOT listed on jobs.insert or tables.insert --
+	// so it is the shape somebody would reach for. It is not used here for a
+	// reason this file cannot fix: ONE PACKAGE SERVES TWO VERBS. `build`
+	// creates tables and views through this same conn; `serve` only reads.
+	// A single constant cannot be narrow for one and wide for the other, and
+	// whether that scope actually refuses DDL submitted through jobs.query
+	// is NOT measured -- it needs a credential restricted to it, which is a
+	// thing to issue deliberately rather than to assume.
+	//
+	// WHAT ACTUALLY DEFENDS THIS IS NOT THE SCOPE. `dialect.WriteProbe`
+	// asks the warehouse, once per connection, whether this credential could
+	// create a table, and `serve` refuses to answer anything on one that
+	// can. That is a measurement of what the credential may do, whatever
+	// scope it was issued under.
+	scope = "https://www.googleapis.com/auth/bigquery"
 
 	// jobTimeout is how long the server may hold a request before answering
 	// "not finished". It is not a limit on the QUERY -- a CREATE TABLE AS
