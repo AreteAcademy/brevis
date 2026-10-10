@@ -280,20 +280,34 @@
   // somebody reading the page can see it -- a minimum that lived only in
   // this file is one the next person deletes without noticing, and what
   // breaks is a pane dragged to nothing with no handle left to drag back.
-  var store = "brevis.workbench.";
+  // THE KEY IS A FUNCTION, NOT A VARIABLE, AND THAT IS A BUG THIS FILE
+  // SHIPPED WITH.
+  //
+  // It was `var store = "brevis.workbench."`, declared HERE -- below the
+  // three `recall` calls that wireChrome makes at startup. A `var` is
+  // hoisted without its value, so those three read `undefinedrail`,
+  // `undefinededitor` and `undefinedrail-collapsed`, while every write
+  // during a drag ran later and used `brevis.workbench.rail`. The keys
+  // never met: the workbench restored nothing, ever.
+  //
+  // A function declaration is hoisted WITH its body, so where it sits in
+  // this file stops being able to matter.
+  function key(name) {
+    return "brevis.workbench." + name;
+  }
 
-  function remember(key, value) {
+  function remember(name, value) {
     try {
-      localStorage.setItem(store + key, value);
+      localStorage.setItem(key(name), value);
     } catch (e) {
       // Private browsing, blocked storage, a full quota. The chrome works;
       // it just forgets. That is not worth an error on somebody's screen.
     }
   }
 
-  function recall(key) {
+  function recall(name) {
     try {
-      return localStorage.getItem(store + key);
+      return localStorage.getItem(key(name));
     } catch (e) {
       return null;
     }

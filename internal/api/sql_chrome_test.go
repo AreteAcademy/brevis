@@ -195,3 +195,35 @@ func TestTheWorkbenchFillsTheShell(t *testing.T) {
 	// That no OTHER screen asks for it is asserted where every screen can be
 	// rendered at once: web/pages/width_test.go.
 }
+
+// A VALUE READ AT STARTUP CANNOT BE A `var` DECLARED FURTHER DOWN.
+//
+// The island's storage prefix was `var store = "brevis.workbench."`, written
+// below the three `recall` calls `wireChrome` makes while the page loads. A
+// `var` is hoisted without its value, so those three read `undefinedrail`,
+// `undefinededitor` and `undefinedrail-collapsed`, while every write during a
+// drag ran later and used `brevis.workbench.rail`. The keys never met: W2
+// promised "a reload restores a number rather than replaying a gesture", and
+// the workbench restored nothing at all.
+//
+// Measured by loading this file into a bare context with a recording
+// `localStorage`, which is what printed those three names. What CI can hold
+// is the shape that made it possible: a function declaration is hoisted WITH
+// its body, so where it sits stops being able to matter.
+func TestTheIslandsStorageKeysCannotBeUndefined(t *testing.T) {
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/sql.js")
+	js := strip(raw)
+
+	if strings.Contains(js, "var store") {
+		t.Error("the storage prefix is a `var` again; read before its line runs, it is `undefined`, and every key written later stops matching")
+	}
+	if !strings.Contains(js, `"brevis.workbench."`) {
+		t.Error("the island no longer namespaces what it keeps in the browser")
+	}
+	// AND NOTHING ELSE BUILDS A KEY BY HAND. One function or the prefix is
+	// back to being in two places, which is how the halves drift again.
+	if n := strings.Count(js, `"brevis.workbench."`); n != 1 {
+		t.Errorf("the prefix is written %d times; one of them will be the one that is wrong", n)
+	}
+}
