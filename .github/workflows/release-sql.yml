@@ -170,7 +170,7 @@ jobs:
           echo "✅ $(wc -l < notes.md) line(s) of notes for $NUMBER"
 
       - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: brevis-sql
         uses: docker/build-push-action@v7
@@ -225,7 +225,7 @@ jobs:
       # branch is worse than none.
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: brevis-sql v${{ steps.v.outputs.version }}
