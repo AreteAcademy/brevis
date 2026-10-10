@@ -81,6 +81,18 @@ templ Base(p Page) {
 			// layout jump on the serif title, which is the first thing the eye
 			// goes to.
 			<link rel="preload" href="/assets/fonts/plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin/>
+			// A VENDORED SHEET IS A DEFAULT, SO IT LOADS FIRST.
+			//
+			// It used to load last, and that is not an ordering preference:
+			// `codemirror.css` writes `.CodeMirror { background:#fff; color:#000 }`
+			// and this console writes the same selector with its own tokens.
+			// Same specificity, same origin, both unlayered — the later file
+			// wins. Every rule the editor's palette block contained was dead,
+			// and the editor was drawn light on a console whose canvas is
+			// #141711.
+			for _, href := range p.Island.CSS {
+				<link rel="stylesheet" href={ href }/>
+			}
 			<link rel="stylesheet" href="/assets/app.css"/>
 			// The client's theme AFTER the compiled sheet: they are the same
 			// variables Tailwind emits, and every utility resolves its colour
@@ -89,9 +101,6 @@ templ Base(p Page) {
 			// is the default.
 			if css := brand.CSS(); css != "" {
 				@templ.Raw("<style>" + css + "</style>")
-			}
-			for _, href := range p.Island.CSS {
-				<link rel="stylesheet" href={ href }/>
 			}
 		</head>
 		<body class="h-full font-sans text-ink antialiased">
