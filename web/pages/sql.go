@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -248,6 +249,28 @@ func (v SQLView) Knows(target string) bool {
 // right.
 const Unknown = "That is not a destination this console knows. " +
 	"The catalog lists what Brevis has written, and nothing else can be queried here."
+
+// JSON is the result as the service sent it, for the tab of that name.
+//
+// THE ROWS AND THE COLUMNS, AND NOT THE STATEMENT. A JSON view is for
+// pasting into something else; the query that produced it is the one thing
+// on this screen that must not travel, and a reader who wants it has it in
+// the box above.
+func (v SQLView) JSON() string {
+	if v.Result == nil {
+		return ""
+	}
+	out, err := json.MarshalIndent(struct {
+		Columns []string `json:"columns"`
+		Rows    [][]any  `json:"rows"`
+	}{v.Result.Columns, v.Result.Rows}, "", "  ")
+	if err != nil {
+		// Unreachable with these types, and an error here is not worth a
+		// screen: the tab beside this one holds the same answer.
+		return ""
+	}
+	return string(out)
+}
 
 // Empty says there is nothing to query, which is a sentence and not a blank
 // screen: a console with no relational destination has nothing to point this

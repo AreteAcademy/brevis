@@ -544,3 +544,43 @@ main[data-fill] > :last-child {
   min-height: 0;
   height: auto;
 }
+
+/* THE RESULT PANEL.
+   
+   The heading stays while the body scrolls, which is the difference between
+   a grid you can read at row 400 and a grid you scroll back up to decode.
+   `position: sticky` on the cells and not the row: a <thead> cannot be
+   sticky on its own in every browser, a <th> can. */
+.results-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-muted);
+}
+
+/* THE ROW NUMBER IS NAVIGATION, NOT A VALUE.
+   
+   Somebody who selects the grid and pastes it into a sheet must get the
+   warehouse's columns and not an extra one this console invented. It also
+   stays put while the grid scrolls sideways, because a row number that
+   scrolls away is a row number that stops numbering anything. */
+.results-rownum {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-canvas);
+  color: var(--color-muted);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.results-head.results-rownum {
+  z-index: 3;
+  background: var(--color-surface-2);
+}
+
+.results-tab[aria-selected="true"] {
+  color: var(--color-ink);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}

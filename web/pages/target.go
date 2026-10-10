@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -140,12 +141,60 @@ func (v TargetView) PreviewNote() string {
 // somebody wrote. An em dash for the first, nothing for the second.
 func Cell(v any) string {
 	if v == nil {
-		return "—"
+		// THE WORD, AND NOT A DASH. Both distinguish a NULL from an empty
+		// string, which is what this has always been for; a dash makes the
+		// reader guess which of the two it is, and in a column of text it
+		// could be a value somebody wrote. `null` is what the warehouse
+		// calls it and what every console reading one prints.
+		return "null"
 	}
 	if s, ok := v.(string); ok {
 		return s
 	}
 	return fmt.Sprint(v)
+}
+
+// Numeric says a cell should line up as a number, read FROM WHAT IT WILL
+// SAY and not from its Go type.
+//
+// MEASURED AGAINST BOTH WAREHOUSES. BigQuery's REST API returns every scalar
+// as a JSON string -- `SELECT 1, 1.5, true, NULL, "txt"` comes back
+// `["1", "1.5", "true", null, "txt"]`, asked of the live API -- while
+// Postgres hands over typed values that cross the wire as JSON numbers. A
+// rule reading the Go type would line up one warehouse's integers and leave
+// the other's ragged, for the same query against the same data.
+//
+// So a string of digits lines up, which is also what a spreadsheet does with
+// one. The cost is an identifier made of digits lining up too, and that is
+// the right answer in a grid anyway.
+func Numeric(v any) bool {
+	s := Cell(v)
+	if s == "" || v == nil {
+		return false
+	}
+	// `ParseFloat` accepts "Inf", "NaN" and "1e9"; the first two are words
+	// in a text column far more often than they are numbers.
+	switch s[0] {
+	case '-', '+', '.', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+	default:
+		return false
+	}
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
+// Total is what the pager may claim, which is not always a count.
+//
+// A LIMIT MAKES THE ROWS IN HAND A FLOOR. "1-50 of 500" is a sentence
+// somebody reads a MAX off and is wrong about; the `+` is the same fact
+// without the lie, and it is the same reason the note under the grid has
+// always ended "— there are more".
+func Total(rows int, truncated bool) string {
+	n := strconv.Itoa(rows)
+	if truncated {
+		return n + "+"
+	}
+	return n
 }
 
 // BuildTarget judges the destination as the list does, and lays out its loads.

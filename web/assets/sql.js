@@ -21,6 +21,7 @@
   // costs the highlighting and not the screen.
   wireTree();
   wireChrome();
+  wireResults();
   if (typeof CodeMirror === "undefined") return;
 
   var editor = CodeMirror.fromTextArea(area, {
@@ -321,6 +322,72 @@
   function clamp(v, lo, hi) {
     if (hi < lo) return lo;
     return v < lo ? lo : v > hi ? hi : v;
+  }
+
+  // THE ANSWER: two tabs and a pager over rows that already arrived.
+  //
+  // NO SECOND QUERY, EVER. Paging here is `hidden` on rows the server
+  // already drew -- a warehouse is not asked again because somebody wanted
+  // rows 51 to 100, which is the whole reason the limit exists.
+  function wireResults() {
+    var panel = document.querySelector("[data-pager]");
+
+    document.addEventListener("click", function (ev) {
+      var tab = ev.target.closest ? ev.target.closest("[data-tab]") : null;
+      if (!tab) return;
+      ev.preventDefault();
+      var want = tab.getAttribute("data-tab");
+      document.querySelectorAll("[data-tab]").forEach(function (t) {
+        t.setAttribute("aria-selected", t.getAttribute("data-tab") === want ? "true" : "false");
+      });
+      document.querySelectorAll("[data-panel]").forEach(function (p) {
+        p.hidden = p.getAttribute("data-panel") !== want;
+      });
+      // THE PAGER BELONGS TO THE GRID. On the JSON tab there is one block
+      // of text and nothing to page through, so offering the control would
+      // be offering a control that does nothing.
+      if (panel) panel.hidden = want !== "results" || rows().length <= perPage();
+    });
+
+    if (!panel) return;
+    var at = 0;
+
+    function perPage() {
+      var pick = panel.querySelector("[data-per-page-pick]");
+      return parseInt(pick ? pick.value : panel.getAttribute("data-per-page"), 10) || 50;
+    }
+    function rows() {
+      return Array.prototype.slice.call(document.querySelectorAll("[data-panel='results'] [data-row]"));
+    }
+    function draw() {
+      var all = rows();
+      var size = perPage();
+      var last = Math.max(0, Math.ceil(all.length / size) - 1);
+      if (at > last) at = last;
+      all.forEach(function (row, i) {
+        row.hidden = i < at * size || i >= (at + 1) * size;
+      });
+      var from = all.length === 0 ? 0 : at * size + 1;
+      var to = Math.min((at + 1) * size, all.length);
+      var range = panel.querySelector("[data-pager-range]");
+      // THE TOTAL COMES FROM THE SERVER, carrying its own `+` when a limit
+      // cut the answer. The rule for that lives in Go, where a test can read
+      // it; this only prints what it was handed.
+      if (range) range.textContent = from + "\u2013" + to + " of " + panel.getAttribute("data-total");
+      var prev = panel.querySelector("[data-pager-prev]");
+      var next = panel.querySelector("[data-pager-next]");
+      if (prev) prev.disabled = at === 0;
+      if (next) next.disabled = at >= last;
+      panel.hidden = all.length <= size;
+    }
+
+    panel.addEventListener("click", function (ev) {
+      if (ev.target.closest("[data-pager-prev]")) { at = Math.max(0, at - 1); draw(); }
+      if (ev.target.closest("[data-pager-next]")) { at += 1; draw(); }
+    });
+    var pick = panel.querySelector("[data-per-page-pick]");
+    if (pick) pick.addEventListener("change", function () { at = 0; draw(); });
+    draw();
   }
 
   // An attribute value goes into a selector, and a target holds `/` and `:`.

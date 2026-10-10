@@ -26,7 +26,11 @@ func TestACellSaysWhichKindOfNothingItIs(t *testing.T) {
 		in   any
 		want string
 	}{
-		{nil, "—"},
+		// THE WORD AND NOT A DASH, changed with the result panel: both
+		// distinguish a NULL from an empty string, and only one of them
+		// tells the reader WHICH. In a text column a dash can be a value
+		// somebody wrote.
+		{nil, "null"},
 		{"", ""},
 		{"a", "a"},
 		{"1767484800.0", "1767484800.0"},

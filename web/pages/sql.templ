@@ -1,6 +1,8 @@
 package pages
 
 import (
+	"fmt"
+
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
@@ -138,8 +140,7 @@ templ SQL(v SQLView) {
 						if v.Err != "" {
 							<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
 						} else if v.Result != nil {
-							@grid(v.Result.Columns, v.Result.Rows)
-							<p class="mt-2 text-xs text-muted">{ v.Note() }</p>
+							@results(v)
 						} else {
 							<p class="text-xs text-muted">Nothing has run yet.</p>
 						}
@@ -299,4 +300,117 @@ templ Columns(cols []sqlserve.Column) {
 			<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
 		}
 	</ul>
+}
+
+// results is the answer: two tabs, a grid and a pager.
+//
+// TWO TABS, AND THE REFERENCE'S OTHER FOUR ARE NOT DRAWN. BigQuery's panel
+// offers Job information, Visualization, Execution details and Execution
+// graph. Those are its JOB MODEL, which `serve` does not have -- drawing
+// them would be four promises this console cannot keep, and an empty tab is
+// worse than an absent one because somebody clicks it.
+templ results(v SQLView) {
+	<div class="flex h-full min-h-0 flex-col">
+		<div class="flex shrink-0 items-center gap-1 border-b border-line-soft" role="tablist" aria-label="How to read the answer">
+			<button
+				type="button"
+				role="tab"
+				data-tab="results"
+				aria-selected="true"
+				class="results-tab px-3 py-1.5 text-xs text-muted"
+			>Results</button>
+			<button
+				type="button"
+				role="tab"
+				data-tab="json"
+				aria-selected="false"
+				class="results-tab px-3 py-1.5 text-xs text-muted"
+			>JSON</button>
+			<p class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
+		</div>
+		<div class="min-h-0 flex-1 overflow-auto" data-panel="results">
+			@resultGrid(v.Result.Columns, v.Result.Rows)
+		</div>
+		<div class="min-h-0 flex-1 overflow-auto" data-panel="json" hidden>
+			<pre class="p-2 font-mono text-[0.7rem] whitespace-pre text-ink">{ v.JSON() }</pre>
+		</div>
+		// THE PAGER IS AN ENHANCEMENT, AND IT IS HIDDEN UNTIL SOMETHING CAN
+		// DRIVE IT.
+		//
+		// It pages over rows that have already arrived: no second query, no
+		// link, no form. Without the island every row is on the page, which
+		// is what this screen did before -- rather than a row of buttons
+		// that do nothing, which is the shape this console refuses.
+		<div
+			class="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-2 py-1 text-[0.7rem] text-muted"
+			data-pager
+			data-total={ Total(len(v.Result.Rows), v.Result.Truncated) }
+			data-per-page="50"
+			hidden
+		>
+			<label class="flex items-center gap-1">
+				Rows per page
+				<select data-per-page-pick class="rounded border border-line bg-surface px-1 py-0.5 text-[0.7rem] text-ink">
+					<option value="50">50</option>
+					<option value="100">100</option>
+					<option value="500">500</option>
+				</select>
+			</label>
+			<span data-pager-range class="tabular-nums"></span>
+			<button type="button" data-pager-prev aria-label="Previous page" class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8249;</button>
+			<button type="button" data-pager-next aria-label="Next page" class="rounded px-1.5 py-0.5 hover:bg-surface-2 hover:text-ink">&#8250;</button>
+		</div>
+	</div>
+}
+
+// resultGrid is the workbench's own grid.
+//
+// NOT `grid`, which the destination page uses for a ten-row glance: this one
+// numbers its rows, keeps its heading while the body scrolls and is paged.
+// What the two DO share is the cell, because a NULL has to look the same
+// wherever it is drawn.
+templ resultGrid(columns []string, rows [][]any) {
+	<table class="w-full border-collapse text-xs">
+		<thead>
+			<tr class="text-left">
+				// THE ROW NUMBER'S OWN HEADING IS EMPTY AND SAYS SO. A blank
+				// <th> is a column a screen reader announces as nothing.
+				<th class="results-rownum results-head w-px px-2 py-1 font-medium">
+					<span class="sr-only">Row</span>
+				</th>
+				for _, c := range columns {
+					// NO TYPE HERE, AND THAT IS MEASURED: `dialect.Result`
+					// carries names and values and no types at all, so a
+					// heading that showed one would be inventing it.
+					<th class="results-head px-3 py-1 font-medium whitespace-nowrap">{ c }</th>
+				}
+			</tr>
+		</thead>
+		<tbody>
+			for i, row := range rows {
+				<tr class="border-t border-line-soft" data-row>
+					<td class="results-rownum px-2 py-1 text-right tabular-nums" data-rownum>{ fmt.Sprint(i + 1) }</td>
+					for _, c := range row {
+						@resultCell(c)
+					}
+				</tr>
+			}
+			if len(rows) == 0 {
+				<tr>
+					<td class="px-3 py-2 text-muted" colspan={ fmt.Sprint(len(columns) + 1) }>No rows.</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+// resultCell draws one value, and says which kind of nothing it is.
+templ resultCell(v any) {
+	if v == nil {
+		<td class="px-3 py-1 whitespace-nowrap"><span class="text-muted italic">null</span></td>
+	} else if Numeric(v) {
+		<td class="px-3 py-1 text-right font-mono tabular-nums whitespace-nowrap text-ink">{ Cell(v) }</td>
+	} else {
+		<td class="px-3 py-1 font-mono whitespace-nowrap text-ink">{ Cell(v) }</td>
+	}
 }
