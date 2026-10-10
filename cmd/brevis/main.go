@@ -1116,13 +1116,11 @@ func cmdBackfill() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			n, err := s.Backfill(ctx, args[0], start, end, given)
+			did, err := s.Backfill(ctx, args[0], start, end, given)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("  %d backfill run(s) queued for %s (%s to %s)\n",
-				n, args[0], de, until)
-			fmt.Println("  run `brevis scheduler` to execute them")
+			fmt.Print(backfillReport(did, args[0], cronOf(ctx, pool, args[0]), de, until))
 			return nil
 		},
 	}

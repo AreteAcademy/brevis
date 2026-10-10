@@ -153,7 +153,7 @@ func TestABackfillEntersTheQueueWithLowerPriority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 5 {
+	if n.Created != 5 {
 		t.Fatalf("the backfill created %d runs, wanted 5", n)
 	}
 
@@ -270,8 +270,8 @@ func TestABackfillIncludesTheEdgeSlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if n != 24 {
-		t.Errorf("the backfill created %d slots, wanted 24 (00:00 to 23:00)", n)
+	if n.Created != 24 {
+		t.Errorf("the backfill created %d slots, wanted 24 (00:00 to 23:00)", n.Created)
 	}
 }
 
@@ -433,5 +433,69 @@ func TestTheFirstRunMarkerIsPlantedOnlyOnce(t *testing.T) {
 	}
 	if !after.Equal(first) {
 		t.Errorf("the marker moved from %s to %s -- the schedule would never catch up to a time", first, after)
+	}
+}
+
+// A BACKFILL SAYS WHAT IT SKIPPED, not only what it made.
+//
+// `brevis backfill` printed `N backfill run(s) queued`, and N is correct: a
+// slot that already has a run is not created twice, which is the right
+// behaviour and the reason the number can be small. What it did not say is
+// how small out of WHAT.
+//
+// Run the same January twice and the second prints `0 backfill run(s)
+// queued`. So does a backfill whose dates are wrong, one whose cron never
+// fires in the interval, and one aimed at the wrong workflow. Four different
+// situations, one sentence, and only one of them means "this is already
+// done" -- so the operator either re-reads the command for a mistake that is
+// not there, or stops trusting the number.
+//
+// The interval's slot count is the context that separates them, and the
+// scheduler is the only thing that knows it.
+func TestABackfillReportsWhatWasAlreadyThere(t *testing.T) {
+	s, _, _, pool := build(t, "0 * * * *", false)
+	ctx := context.Background()
+	setLastSlot(t, pool, inUTC("2026-06-01T00:00:00Z"))
+
+	from, to := inUTC("2026-01-01T00:00:00Z"), inUTC("2026-01-01T23:59:59Z")
+	first, err := s.Backfill(ctx, "diario", from, to, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Slots != 24 || first.Created != 24 || first.Existing() != 0 {
+		t.Fatalf("the first backfill reported %+v, want 24 slots all created", first)
+	}
+
+	// THE SAME INTERVAL AGAIN. Nothing is created, and that is right --
+	// what matters is that the answer can say so.
+	again, err := s.Backfill(ctx, "diario", from, to, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Created != 0 {
+		t.Errorf("the second backfill created %d run(s)", again.Created)
+	}
+	if again.Slots != 24 || again.Existing() != 24 {
+		t.Errorf("the second backfill reported %+v, want 24 slots all already there", again)
+	}
+}
+
+// AND AN INTERVAL WITH NO SLOT IS A DIFFERENT ANSWER FROM ONE ALREADY DONE.
+//
+// This is the pair the sentence above could not tell apart: zero created
+// because the work exists, and zero created because the dates name nothing.
+// A daily cron at 02:00, asked for 03:00 to 04:00, fires never.
+func TestABackfillOverNoSlotsSaysThereWereNone(t *testing.T) {
+	s, _, _, pool := build(t, "0 2 * * *", false)
+	ctx := context.Background()
+	setLastSlot(t, pool, inUTC("2026-06-01T00:00:00Z"))
+
+	empty, err := s.Backfill(ctx, "diario",
+		inUTC("2026-01-01T03:00:00Z"), inUTC("2026-01-01T04:00:00Z"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if empty.Slots != 0 || empty.Created != 0 {
+		t.Errorf("an interval the cron never fires in reported %+v", empty)
 	}
 }

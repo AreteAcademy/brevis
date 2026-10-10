@@ -282,11 +282,32 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 // It enters the queue like any other run, honouring concurrency and priority --
 // §12 is explicit about that. The negative priority makes a backfill give way to
 // current work instead of competing with it.
+// Backfilled is what a backfill did, and it carries two numbers because one
+// cannot be read.
+//
+// `N run(s) queued` is correct and ambiguous: zero is what an interval that
+// is already done reports, and also what wrong dates report, and also what a
+// cron that never fires in the range reports. Only one of those means "this
+// is finished", and the operator cannot tell which they got. The slot count
+// is the context that separates them, and the scheduler is the only thing
+// that knows it.
+type Backfilled struct {
+	// Slots is how many times the cron fires inside the interval.
+	Slots int
+
+	// Created is how many of those became runs. It is smaller than Slots
+	// whenever a slot already had one, which is the deduplication working.
+	Created int
+}
+
+// Existing is how many slots already had a run.
+func (b Backfilled) Existing() int { return b.Slots - b.Created }
+
 func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time,
-	params map[string]string) (int, error) {
+	params map[string]string) (Backfilled, error) {
 	schedules, err := s.schedules.Active(ctx)
 	if err != nil {
-		return 0, err
+		return Backfilled{}, err
 	}
 
 	var target *sch.Schedule
@@ -297,46 +318,50 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		}
 	}
 	if target == nil {
-		return 0, fmt.Errorf("workflow %q has no active schedule", slug)
+		return Backfilled{}, fmt.Errorf("workflow %q has no active schedule", slug)
 	}
 
 	cronSched, loc, err := target.Parse()
 	if err != nil {
-		return 0, err
+		return Backfilled{}, err
 	}
 
 	def, err := s.workflows.Definition(ctx, slug)
 	if err != nil {
-		return 0, err
+		return Backfilled{}, err
 	}
 	bruto, err := json.Marshal(def)
 	if err != nil {
-		return 0, err
+		return Backfilled{}, err
 	}
 
 	// The params apply to EVERY slot in the interval. That is backfill's use
 	// case: "reprocess the whole of January with load_full=true".
 	values, err := def.Resolver(params)
 	if err != nil {
-		return 0, err
+		return Backfilled{}, err
 	}
 
 	// An instant BEFORE `de`, so a slot exactly at `de` is included: `Next(t)`
 	// returns the next one strictly after `t`, so starting at `de` would exclude
 	// the 00:00 slot in a full-day backfill.
-	var created int
+	var out Backfilled
 	for cursor := de.In(loc).Add(-time.Nanosecond); ; {
 		prox := cronSched.Next(cursor)
 		if prox.After(ate) {
 			break
 		}
+		// COUNTED BEFORE IT IS CREATED. A slot the cron fired is a slot
+		// whether or not it became a run, which is the whole point of
+		// carrying both numbers.
+		out.Slots++
 		made, err := s.createAndEnqueue(ctx, slug, bruto, prox,
 			sch.TriggerBackfill, s.backfillPriority, values, def.MaxActive)
 		if err != nil {
-			return created, err
+			return out, err
 		}
 		if made {
-			created++
+			out.Created++
 		}
 		cursor = prox
 	}
@@ -344,5 +369,5 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 	// A backfill does NOT touch ultimo_slot: it fills the past, and advancing
 	// the marker would make the scheduler skip future slots that have not
 	// happened yet.
-	return created, nil
+	return out, nil
 }
