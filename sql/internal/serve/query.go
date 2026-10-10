@@ -279,9 +279,7 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 				s.saying("the warehouse would not run this", err)}
 		}
 		if scan > s.opt.Bytes {
-			return dialect.Result{}, refusal{http.StatusBadRequest, "too-expensive", fmt.Sprintf(
-				"this query would scan %s, and this service stops at %s. Narrow the columns, "+
-					"or add a filter on a partitioned one.", BytesText(scan), BytesText(s.opt.Bytes))}
+			return dialect.Result{}, tooExpensive(scan, s.opt.Bytes)
 		}
 		// AND THE SUM, which the per-query ceiling above cannot see.
 		// CHECKPOINT B's F6: four queries at a time, each under the ceiling,
@@ -348,6 +346,16 @@ func trim(s string) string {
 // and an audit file outlives the question it was written for. The hash is
 // what an audit actually needs -- "this ran forty times today" is an answer,
 // and it is the one that survives dropping the text.
+// tooExpensive is the ceiling's refusal, and it has ONE definition because
+// `/v1/estimate` says the same sentence BEFORE the query is pressed. Two
+// copies would be two sentences, and the one the person read in advance
+// would stop being the one they get at Run.
+func tooExpensive(scan, ceiling int64) refusal {
+	return refusal{http.StatusBadRequest, "too-expensive", fmt.Sprintf(
+		"this query would scan %s, and this service stops at %s. Narrow the columns, "+
+			"or add a filter on a partitioned one.", BytesText(scan), BytesText(ceiling))}
+}
+
 type record struct {
 	At         string `json:"at"`
 	Event      string `json:"event"`
@@ -366,6 +374,13 @@ type record struct {
 	Returned int   `json:"returned"`
 	Bytes    int64 `json:"bytes"`
 	Millis   int64 `json:"ms"`
+
+	// Estimated is what a DRY RUN quoted, and it is deliberately not Bytes:
+	// `observe` adds Bytes to the `scanned` metric per connection, and a dry
+	// run scanned nothing. One field for "what we were billed for" and
+	// another for "what we were told it would cost" is the difference an
+	// operator needs when they read either number.
+	Estimated int64 `json:"estimated,omitempty"`
 }
 
 // audit puts one line out. ONE PER QUERY, whatever happened to it: an audit

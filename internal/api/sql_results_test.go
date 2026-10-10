@@ -197,11 +197,35 @@ func TestTheIslandDrivesTheTabsAndThePager(t *testing.T) {
 	}
 	// AND IT NEVER ASKS AGAIN. A pager that fetched would be a warehouse
 	// billed because somebody wanted rows 51 to 100.
-	at := strings.Index(js, "function wireResults")
-	if at < 0 {
+	//
+	// SCOPED TO THE FUNCTION, which it was not: this read from
+	// `function wireResults` to the END OF THE FILE, so it was asserting
+	// that nothing BELOW the pager ever fetches. It passed for as long as
+	// the pager happened to be last, and failed the day an unrelated
+	// function was added after it.
+	wired := islandFunc(js, "wireResults")
+	if wired == "" {
 		t.Fatal("the results are not wired at all")
 	}
-	if strings.Contains(js[at:], "fetch(") {
+	if strings.Contains(wired, "fetch(") {
 		t.Error("paging the answer asks the service again")
 	}
+}
+
+// islandFunc is one top-level function of the island, by name.
+//
+// The island is one IIFE whose own functions are indented two spaces and
+// whose nested ones are indented more, so the next `\n  function ` is where
+// this one ends. A crude boundary, and a real one: without it an assertion
+// about a function is an assertion about the rest of the file.
+func islandFunc(js, name string) string {
+	at := strings.Index(js, "function "+name)
+	if at < 0 {
+		return ""
+	}
+	rest := js[at:]
+	if end := strings.Index(rest[1:], "\n  function "); end >= 0 {
+		return rest[:end+1]
+	}
+	return rest
 }

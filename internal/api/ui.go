@@ -201,6 +201,10 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// these answer HTML.
 	mux.HandleFunc("GET /api/sql/objects", u.sqlObjects)
 	mux.HandleFunc("GET /api/sql/columns", u.sqlColumns)
+	// POST, BECAUSE THIS ONE CARRIES SQL. The two above take a target and a
+	// relation; a statement must never travel in a URL. Registering the
+	// method also 405s a GET for free, which is the assertion a test makes.
+	mux.HandleFunc("POST /api/sql/estimate", u.sqlEstimate)
 
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.

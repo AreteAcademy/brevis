@@ -190,6 +190,24 @@ templ SQL(v SQLView) {
 								<kbd class="rounded border border-line px-1 py-0.5 font-mono">Ctrl+Space</kbd>
 								completes names. Columns complete for relations you have opened in the tree.
 							</p>
+							// THE COST LINE, EMPTY UNTIL SOMETHING FILLS IT.
+							//
+							// A dry run is an API call against the client's own
+							// project quota, so the pause before asking is a number
+							// and the number is HERE -- the same rule the grips'
+							// floor and the Recent rail's cap follow. A debounce
+							// that lived only in the island is a number nobody
+							// reading this page can find.
+							//
+							// `aria-live` polite and not assertive: it changes while
+							// somebody is typing, and a screen reader that
+							// interrupted every pause would be unusable.
+							<p
+								data-cost
+								data-estimate-after="600"
+								aria-live="polite"
+								class="min-h-[0.9rem] shrink-0 text-[0.7rem] text-muted"
+							></p>
 						</form>
 					</section>
 					<div
@@ -461,6 +479,30 @@ templ Columns(cols []sqlserve.Column) {
 			<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
 		}
 	</ul>
+}
+
+// Cost is the line under the editor: what a statement would process, before
+// anybody presses Run.
+//
+// THREE STATES AND NOT TWO. A figure is a figure; a refusal is a problem
+// with the SQL and is drawn as one; and a warehouse that does not price a
+// query before it runs is NEITHER -- nothing is wrong, there is simply no
+// number. Drawing the third like the second would teach somebody on Postgres
+// to ignore this line, which is where the ceiling's refusal also appears.
+//
+// THE SENTENCE IS THE SERVICE'S OWN, carried through unchanged. The ceiling
+// refuses with the same words at Run, and a console that reworded them would
+// drift from what actually happens.
+templ Cost(p sqlserve.Price) {
+	if p.State == "priced" {
+		<span data-cost-state="priced">
+			This query will process <strong class="font-medium text-ink">{ bytesText(p.Bytes) }</strong> when run.
+		</span>
+	} else if p.State == "unpriced" {
+		<span data-cost-state="unpriced">{ p.Why }</span>
+	} else {
+		<span data-cost-state="refused" class="text-state-failed">{ p.Why }</span>
+	}
 }
 
 // results is the answer: two tabs, a grid and a pager.

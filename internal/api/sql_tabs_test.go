@@ -172,14 +172,16 @@ func TestTabsAndRecentAreKeptInTheBrowser(t *testing.T) {
 			t.Errorf("the island's CODE never uses %q", want)
 		}
 	}
-	// AND NOTHING SENDS THEM ANYWHERE. The island fetches two fragments and
-	// the form posts one statement; a third destination would be a list of
-	// everything somebody typed leaving the machine.
+	// AND NOTHING SENDS THEM ANYWHERE. Three destinations and no more: two
+	// fragments that carry a target and a relation, and the pricing one
+	// that carries THE statement in the box -- one, the one about to run,
+	// never the list. A fourth would be everything somebody typed leaving
+	// the machine.
 	for _, path := range endpoints(js) {
 		switch path {
-		case "/api/sql/objects", "/api/sql/columns":
+		case "/api/sql/objects", "/api/sql/columns", "/api/sql/estimate":
 		default:
-			t.Errorf("the island talks to %q, which is not one of the two fragment endpoints", path)
+			t.Errorf("the island talks to %q, which is not one of its three endpoints", path)
 		}
 	}
 }

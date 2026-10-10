@@ -48,6 +48,12 @@
   var at = "";
   var pending = null;
 
+  // The cost line, and the statement it last asked a price for.
+  var costLine = null;
+  var costAfter = 0;
+  var costWait = null;
+  var priced = "";
+
   // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
   // costs the highlighting and not the screen. Tabs and Recent are the same:
   // both work on the plain textarea.
@@ -56,6 +62,7 @@
   wireResults();
   wireRecent();
   wireTabs();
+  wireCost();
   if (typeof CodeMirror === "undefined") {
     area.addEventListener("input", keep);
     return;
@@ -568,6 +575,7 @@
   function keep() {
     if (pending) clearTimeout(pending);
     pending = setTimeout(store, 400);
+    estimate();
   }
 
   function store() {
@@ -647,6 +655,8 @@
     put(here().text);
     drawTabs();
     store();
+    // A different tab is a different statement, so it has a different price.
+    estimate();
   }
 
   function openTab(value) {
@@ -762,6 +772,66 @@
       ol.appendChild(node);
     });
     if (empty) empty.hidden = list.length > 0;
+  }
+
+  // THE COST LINE: WHAT THIS WOULD PROCESS, BEFORE ANYBODY PRESSES RUN.
+  //
+  // A POST, AND THE STATEMENT IS IN THE BODY. It is the only call this file
+  // makes that carries SQL, and a statement in a URL is a statement in a
+  // proxy log, in a browser history and in a Referer header. The body is
+  // built with encodeURIComponent rather than URLSearchParams -- the tool a
+  // reader would reach for, and the one this island refuses to name,
+  // because the next use of it is the one that writes the address bar.
+  //
+  // THE PAUSE COMES FROM THE MARKUP. A dry run costs no money on BigQuery
+  // and still counts against the client's own API quota, so the number sits
+  // on the page where somebody can find it, beside the grips' floor and the
+  // Recent rail's cap.
+  //
+  // AND THE SAME TEXT IS NEVER PRICED TWICE. Moving the cursor, switching
+  // to a tab and back, a reload -- none of them changed the statement, and
+  // none of them should spend a call.
+  function wireCost() {
+    costLine = document.querySelector("[data-cost]");
+    if (!costLine) return;
+    costAfter = parseInt(costLine.getAttribute("data-estimate-after"), 10) || 600;
+    // NOT PRICED ON LOAD, deliberately. What ran has its REAL cost under the
+    // grid already, and what did not is a statement nobody has touched yet:
+    // an API call on every page view to quote somebody the thing they are
+    // about to edit is the console paying for nothing.
+    priced = echoed;
+  }
+
+  function estimate() {
+    if (!costLine) return;
+    if (costWait) clearTimeout(costWait);
+    costWait = setTimeout(ask, costAfter);
+  }
+
+  function ask() {
+    var hidden = document.querySelector('#workbench input[name="target"]');
+    var target = hidden ? hidden.value : "";
+    var statement = text().trim();
+    if (statement === "" || target === "") {
+      costLine.innerHTML = "";
+      priced = "";
+      return;
+    }
+    if (statement === priced) return;
+    priced = statement;
+
+    fetch("/api/sql/estimate", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" },
+      body: "target=" + encodeURIComponent(target) + "&q=" + encodeURIComponent(statement),
+    })
+      .then(function (r) { return r.ok ? r.text() : ""; })
+      .then(function (html) { costLine.innerHTML = html; })
+      // A SERVICE THAT COULD NOT BE REACHED SAYS NOTHING ABOUT THE SQL. The
+      // line goes quiet rather than red: it sits under somebody's
+      // half-written statement, and a warning there that is really about a
+      // token is a warning they learn to ignore.
+      .catch(function () { costLine.innerHTML = ""; });
   }
 
   // An attribute value goes into a selector, and a target holds `/` and `:`.

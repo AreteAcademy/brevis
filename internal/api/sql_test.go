@@ -460,9 +460,10 @@ func TestTheTreeAndTheIslandAgreeOnTheAttribute(t *testing.T) {
 // listing from a query, which stopped being enough the moment one page view
 // called two endpoints.
 type warehouse struct {
-	objects string
-	columns string
-	query   string
+	objects  string
+	columns  string
+	query    string
+	estimate string
 
 	status map[string]int
 	asked  map[string]map[string]any
@@ -485,6 +486,8 @@ func (w *warehouse) start(t *testing.T) *httptest.Server {
 			_, _ = rw.Write([]byte(w.objects))
 		case "/v1/columns":
 			_, _ = rw.Write([]byte(w.columns))
+		case "/v1/estimate":
+			_, _ = rw.Write([]byte(w.estimate))
 		default:
 			_, _ = rw.Write([]byte(w.query))
 		}

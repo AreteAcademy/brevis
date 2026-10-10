@@ -142,6 +142,11 @@ type Service struct {
 	// spent is what each connection has scanned in this window. See budget.go.
 	spent *spending
 
+	// quoted is how many prices each CALLER has asked for in this window.
+	// It exists because a dry run spends nothing, so the budget beside it
+	// cannot see one. See estimate.go.
+	quoted *quotes
+
 	// callers is every bearer this service accepts, Token folded in with no
 	// name. Empty means the service is OPEN.
 	callers []Caller
@@ -228,6 +233,7 @@ func New(opt Options) (*Service, error) {
 		listed:    newListings(),
 		described: newDescriptions(),
 		spent:     newSpending(),
+		quoted:    newQuotes(),
 		met:       newMetrics(),
 	}, nil
 }
@@ -284,6 +290,13 @@ func (s *Service) Handler() http.Handler {
 	// relation and not at the connection: a project-wide COLUMNS query is
 	// the one metadata answer that is genuinely large.
 	mux.HandleFunc("POST /v1/columns", s.columns)
+
+	// WHAT A STATEMENT WOULD COST, before it is run. The first endpoint
+	// here that spends NOTHING, which is why it is the first one with a
+	// rate limit of its own: the budget bounds every other loop on this
+	// service by bounding what a loop spends. See CHECKPOINT E and
+	// estimate.go.
+	mux.HandleFunc("POST /v1/estimate", s.estimate)
 	return s.authenticated(mux)
 }
 

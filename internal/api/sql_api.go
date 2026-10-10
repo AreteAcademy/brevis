@@ -26,7 +26,7 @@ import (
 
 // sqlObjects draws one connection's listing.
 func (u *UI) sqlObjects(w http.ResponseWriter, r *http.Request) {
-	_, target, ok := u.queryableTarget(w, r)
+	_, target, ok := u.queryableTarget(w, r, r.URL.Query().Get("target"))
 	if !ok {
 		return
 	}
@@ -43,7 +43,7 @@ func (u *UI) sqlObjects(w http.ResponseWriter, r *http.Request) {
 
 // sqlColumns draws one relation's columns.
 func (u *UI) sqlColumns(w http.ResponseWriter, r *http.Request) {
-	_, target, ok := u.queryableTarget(w, r)
+	_, target, ok := u.queryableTarget(w, r, r.URL.Query().Get("target"))
 	if !ok {
 		return
 	}
@@ -66,7 +66,10 @@ func (u *UI) sqlColumns(w http.ResponseWriter, r *http.Request) {
 // A SECOND DOOR INTO THE SAME SERVICE. A rule enforced at one door is not a
 // rule, and this repository has already paid for exactly that: `/sql`'s GET
 // path checked the catalog and its POST path did not.
-func (u *UI) queryableTarget(w http.ResponseWriter, r *http.Request) (pages.SQLView, string, bool) {
+// THE TARGET IS AN ARGUMENT, because the third door carries it in a BODY:
+// a statement must not reach a URL, so the endpoint that prices one is a
+// POST and its target travels beside the SQL.
+func (u *UI) queryableTarget(w http.ResponseWriter, r *http.Request, target string) (pages.SQLView, string, bool) {
 	if !u.preview.Configured() {
 		http.NotFound(w, r)
 		return pages.SQLView{}, "", false
@@ -80,7 +83,7 @@ func (u *UI) queryableTarget(w http.ResponseWriter, r *http.Request) (pages.SQLV
 		}
 	}
 	v := pages.BuildSQL(entries)
-	target := strings.TrimSpace(r.URL.Query().Get("target"))
+	target = strings.TrimSpace(target)
 	if target == "" || !v.Knows(target) {
 		// THE SAME ANSWER `/data/target` GIVES, and it does not say which of
 		// the two it was: "no such destination" and "not one you may ask
@@ -90,4 +93,37 @@ func (u *UI) queryableTarget(w http.ResponseWriter, r *http.Request) (pages.SQLV
 		return pages.SQLView{}, "", false
 	}
 	return v, target, true
+}
+
+// sqlEstimate prices what is in the box, before anybody presses Run.
+//
+// A POST, AND THE ONLY ONE OF THE THREE. The other two fragments take a
+// target and a relation, which a URL may carry; this one takes SQL, and a
+// statement in a URL is a statement in a proxy log, in a browser's history
+// and in a Referer header.
+//
+// SILENCE IS AN ANSWER. A service that is busy, rate-limited or unreachable
+// says nothing about the statement in the box, and a line that went red
+// under somebody's half-written SQL because of a token would be a line they
+// learn to ignore. 204 is what the island draws nothing for.
+func (u *UI) sqlEstimate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	_, target, ok := u.queryableTarget(w, r, r.PostFormValue("target"))
+	if !ok {
+		return
+	}
+	statement := strings.TrimSpace(r.PostFormValue("q"))
+	if statement == "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	price, err := u.preview.Estimate(r.Context(), target, statement)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	u.render(w, r, pages.Cost(price))
 }

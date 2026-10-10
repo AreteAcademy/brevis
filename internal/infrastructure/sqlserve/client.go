@@ -157,6 +157,96 @@ func (c *Client) Query(ctx context.Context, target, statement string, limit int)
 		request{Target: target, Statement: statement, Limit: limit}, "query")
 }
 
+// Price is what the service said about a statement before it ran: either a
+// number of bytes or a sentence.
+//
+// ONE TYPE AND NOT AN ERROR PER CASE. A ceiling's refusal, a syntax error in
+// the warehouse's own words and "this warehouse does not price a query" are
+// three different things to a person and the same thing to this console: a
+// sentence to put under the editor instead of a figure. What is NOT in here
+// is the fourth case -- a service that is busy, rate-limited or unreachable
+// -- because that says nothing about the statement and the line stays quiet.
+type Price struct {
+	// State is "priced", "refused" or "unpriced", and the screen draws the
+	// three differently: a figure, a warning, and a plain sentence. A
+	// warehouse with nothing to say is not a problem with somebody's SQL,
+	// and drawing it like one would teach them to ignore the line.
+	State string
+
+	// Bytes is what the statement would process, when State is "priced".
+	Bytes int64
+
+	// Why is the service's own sentence, when there is no number. It is
+	// carried through unchanged: a console that reworded the ceiling's
+	// refusal would drift from what actually happens at Run.
+	Why string
+}
+
+// Estimate prices a statement without running it.
+//
+// WHAT THIS COSTS AND WHO PAYS. A dry run is free of charge on BigQuery and
+// still counts against the project's API quota, which is the client's. The
+// service holds the rate limit -- `/v1/estimate` is the one endpoint there
+// that spends nothing and so needs one -- and this console holds the pause
+// before asking.
+func (c *Client) Estimate(ctx context.Context, target, statement string) (Price, error) {
+	var out Price
+	if !c.Configured() {
+		return out, ErrNotConfigured
+	}
+	raw, err := json.Marshal(request{Target: target, Statement: statement})
+	if err != nil {
+		return out, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+"/v1/estimate", bytes.NewReader(raw))
+	if err != nil {
+		return out, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	res, err := c.http.Do(req)
+	if err != nil {
+		return out, errors.New("the SQL service could not be reached")
+	}
+	defer func() { _ = res.Body.Close() }()
+
+	// A SENTENCE ABOUT THE STATEMENT, for the two statuses that are about
+	// one. 400 is the ceiling or the warehouse's own complaint; 501 is a
+	// warehouse with nothing to say. Everything else -- 429, 503, 401, a
+	// gateway error -- is about the SERVICE, and the caller gets an error so
+	// the line can stay quiet.
+	switch res.StatusCode {
+	case http.StatusOK:
+		var body struct {
+			Bytes int64 `json:"bytes"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 4<<10)).Decode(&body); err != nil {
+			return out, errors.New("the SQL service answered a price this console could not read")
+		}
+		out.State, out.Bytes = "priced", body.Bytes
+		return out, nil
+	case http.StatusBadRequest, http.StatusNotImplemented:
+		var body struct {
+			Error string `json:"error"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<10)).Decode(&body); err == nil &&
+			strings.TrimSpace(body.Error) != "" {
+			out.State, out.Why = "refused", body.Error
+			if res.StatusCode == http.StatusNotImplemented {
+				out.State = "unpriced"
+			}
+			return out, nil
+		}
+		return out, errors.New("the SQL service refused to price this statement")
+	default:
+		return out, fmt.Errorf("the SQL service refused to price this statement (%d)", res.StatusCode)
+	}
+}
+
+// Objects asks what a connection holds, for the workbench's tree.
+
 // Objects asks what a connection holds, for the workbench's tree.
 //
 // IT COSTS MONEY THE FIRST TIME and nothing afterwards: the service holds
