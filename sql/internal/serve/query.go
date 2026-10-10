@@ -159,8 +159,27 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 			refuse(w, no.code, no.why)
 			return
 		}
+		// THE WAREHOUSE'S OWN WORDS, to a caller that held a token.
+		//
+		// It said "the warehouse refused this query" and nothing else, which
+		// is indistinguishable from the warehouse being down. That was
+		// tolerable while the only statements that reached here were reads
+		// the classifier had already passed and a credential that could
+		// write was refused at boot -- so a refusal here really was an
+		// incident.
+		//
+		// It is not any more. A writable credential is accepted where the
+		// warehouse can be made to refuse writes, so `SELECT nextval('s')`
+		// now reaches Postgres and comes back `cannot execute nextval() in a
+		// read-only transaction` -- the one sentence that tells the person
+		// who typed it that it is a write. Found by walking the stack with
+		// one service account, which is what S7 is for.
+		//
+		// `saying` is the same rule `/v1/estimate` follows and the reason is
+		// unchanged: without a token this stays vague, because an open port
+		// plus the warehouse's errors is an existence oracle.
 		line.Outcome = "failed"
-		refuse(w, http.StatusBadGateway, "the warehouse refused this query")
+		refuse(w, http.StatusBadGateway, s.saying("the warehouse refused this query", err))
 		return
 	}
 

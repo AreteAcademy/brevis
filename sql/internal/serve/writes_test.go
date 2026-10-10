@@ -3,6 +3,7 @@ package serve
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -375,5 +376,65 @@ func TestTheMetricsAreSilentWhenNothingMayWrite(t *testing.T) {
 	s.Metrics().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 	if strings.Contains(rec.Body.String(), "brevis_sql_writable_connection") {
 		t.Errorf("a read-only service published a writable gauge:\n%s", rec.Body.String())
+	}
+}
+
+// failing is a warehouse that refuses a read in its own words.
+type failing struct {
+	guarded
+	why error
+}
+
+func (f *failing) Read(context.Context, dialect.Request) (dialect.Result, error) {
+	return dialect.Result{}, f.why
+}
+
+// WHEN THE WAREHOUSE REFUSES, THE CALLER IS TOLD WHAT IT SAID.
+//
+// FOUND BY WALKING IT. With a writable credential accepted on a locked
+// connection -- which is the whole point of S1 -- `SELECT nextval('s')` now
+// reaches Postgres and comes back `cannot execute nextval() in a read-only
+// transaction`. The console said "the warehouse refused this query", which is
+// indistinguishable from the warehouse being broken, and the person who typed
+// it has no way to learn that it is a write.
+//
+// That path was NOT reachable before: a credential that could write was
+// refused at boot, so nothing could ever be refused this way.
+//
+// The rule is the one `/v1/estimate` already follows -- the warehouse's own
+// words, and only to a caller that held a token. Without one it stays vague,
+// because an open port plus the warehouse's errors is an existence oracle.
+func TestWhenTheWarehouseRefusesAQueryTheCallerIsToldWhy(t *testing.T) {
+	var audit bytes.Buffer
+	f := &failing{
+		guarded: guarded{writable: writable{priced: priced{estimate: 1}, can: true}},
+		why:     errors.New("cannot execute nextval() in a read-only transaction"),
+	}
+	res := askAs(t, credentialService(t, "production", f, &audit), "/v1/query",
+		queryBody("SELECT nextval('s')"))
+
+	if res.Code != http.StatusBadGateway {
+		t.Fatalf("a refused query answered %d", res.Code)
+	}
+	if !strings.Contains(res.Body.String(), "read-only transaction") {
+		t.Errorf("the caller is not told what the warehouse said: %s", res.Body.String())
+	}
+}
+
+// AND AN OPEN SERVICE STAYS VAGUE ON THIS PATH TOO.  draws
+// the same line around the DRY RUN; this is the READ, which only became
+// reachable when a writable credential stopped being refused. CHECKPOINT B's F8: a port anybody
+// can reach plus the warehouse's own errors is an existence oracle.
+func TestAnOpenServiceDoesNotRepeatARefusedReadsWords(t *testing.T) {
+	var audit bytes.Buffer
+	f := &failing{
+		guarded: guarded{writable: writable{priced: priced{estimate: 1}}},
+		why:     errors.New("relation payroll.salaries does not exist"),
+	}
+	res := askAs(t, credentialService(t, EnvLocal, f, &audit), "/v1/query",
+		queryBody("SELECT * FROM payroll.salaries"))
+
+	if strings.Contains(res.Body.String(), "payroll") {
+		t.Errorf("an open service repeated the warehouse's words: %s", res.Body.String())
 	}
 }
