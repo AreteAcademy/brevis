@@ -140,7 +140,7 @@ Key-based pagination, `DedupMerge` on `ingestion_id`, and the DDL written by han
 
 ```bash
 docker compose -f ../docker-compose.drivers.yml up -d pubsub
-export PUBSUB_EMULATOR_HOST=localhost:8085
+export PUBSUB_EMULATOR_HOST=localhost:55085
 go run ./13-pubsub -create-topic   # the INFRASTRUCTURE, once
 go run ./13-pubsub                 # the pipeline
 go run ./13-pubsub -read           # what a subscriber actually sees

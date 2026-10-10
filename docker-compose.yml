@@ -266,7 +266,16 @@ services:
     command: >-
       gcloud beta emulators pubsub start
       --project=brevis-local --host-port=0.0.0.0:8085
-    ports: ["${BREVIS_PUBSUB_PORT:-8085}:8085"]
+    # PUBLISHED ON 55085 AND NOT 8085, which stays the emulator's own port
+    # inside the network -- the mapping's right-hand side never changes.
+    #
+    # `gcloud auth login` sends the browser to `http://localhost:8085/` and
+    # waits there for the authorization code. With this stack up the callback
+    # reached the emulator instead, and the login hung and then failed with
+    # `(missing_code) Missing code parameter in response`: a developer locked
+    # out of their own cloud by a container they had forgotten was running.
+    # The high range is what BREVIS_WAREHOUSE_PORT already uses, for this.
+    ports: ["${BREVIS_PUBSUB_PORT:-55085}:8085"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost:8085/v1/projects/brevis-local/topics || exit 1"]
       interval: 2s

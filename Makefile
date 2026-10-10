@@ -51,6 +51,12 @@ LOCAL_ENV := .env.local
 # should -- so it reaches the same database the steps reach, by the other
 # address. The registry NAMES this variable; it never holds the string.
 BREVIS_WAREHOUSE_PORT ?= 55434
+
+# NOT 8085, which `gcloud auth login` sends the browser to and waits on. A
+# container holding that port receives Google's callback instead, and the
+# login hangs and then fails with `(missing_code)`. Measured the day it locked
+# somebody out of their own project.
+BREVIS_PUBSUB_PORT ?= 55085
 WAREHOUSE_DSN ?= postgres://brevis:brevis@localhost:$(BREVIS_WAREHOUSE_PORT)/warehouse?sslmode=disable
 BREVIS_CONNECTIONS ?= ./examples/full-pipeline/brevis.yaml
 SERVE_PID := .brevis-sql-serve.pid
@@ -108,12 +114,12 @@ warehouse-up: ## Brings up every container the warehouse run needs (floci includ
 	@docker compose -f docker-compose.drivers.yml --profile sql --profile aws \
 	  --profile gcp --profile metastore up -d
 	@# Pub/Sub LAST and tolerated, because `make up`'s stack publishes an
-	@# emulator on the same 8085 and whichever came first owns the port.
-	@# The tests want PUBSUB_EMULATOR_HOST to answer; they do not care which
-	@# compose project is answering. This is the cost the drivers compose's
-	@# own header warns about -- two project names, one port -- showing up.
-	@if nc -z 127.0.0.1 8085 2>/dev/null; then \
-	  echo "pubsub: 8085 is already served (make up's stack); leaving it"; \
+	@# emulator on the same port and whichever came first owns it. The tests
+	@# want PUBSUB_EMULATOR_HOST to answer; they do not care which compose
+	@# project is answering. This is the cost the drivers compose's own
+	@# header warns about -- two project names, one port -- showing up.
+	@if nc -z 127.0.0.1 $(BREVIS_PUBSUB_PORT) 2>/dev/null; then \
+	  echo "pubsub: $(BREVIS_PUBSUB_PORT) is already served (make up's stack); leaving it"; \
 	else \
 	  docker compose -f docker-compose.drivers.yml --profile gcp-native up -d; \
 	fi
