@@ -14,6 +14,68 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.19.0] — 2026-10-10
+
+### Added: a write answers with what it changed, instead of an empty grid
+
+`brevis-sql serve` can now be told that a connection accepts statements which
+change data. Drawn through the grid that answers a `SELECT`, a write came back
+as a table with no headings and *"No rows."* under them — which reads as *"it
+found nothing"* for a statement that was never looking.
+
+The workbench says what happened instead:
+
+```
+12 rows changed · 0 B
+0 rows changed · 0 B
+ran — no rows to count · 0 B
+```
+
+**Three answers and not two.** "12 rows changed" and "0 rows changed" are one
+sentence with a different number and both are a count; a `CREATE TABLE`
+changed nothing and did not fail. Printing "0 rows" for it reads as a failure
+to whoever ran it, and they run it again.
+
+**The console still does not read the SQL.** It does not classify it, count
+its statements or price it. It is told what happened by the only thing that
+can know, and draws a sentence where the grid would be.
+
+### Added: the workbench says when it may change the warehouse
+
+A connection on which writes have been unlocked carries a banner above the
+editor, naming nothing a script has to read it to see: *"Statements here can
+change data on this connection — it was unlocked deliberately."*
+
+It is drawn only where the service said so, per connection — one `serve`
+reaches several warehouses and may have been unlocked for one of them. With
+no unlocked connection nothing on any screen changes.
+
+The reader this is for is not the one who types `DROP` on purpose. It is the
+one who does not know this console can, because the last console they used
+could not.
+
+### Changed: the SQL deployment no longer needs a second service account
+
+`deployments/kubernetes/sql-serve.yaml` says why: the pod that holds the
+warehouse credential used to refuse any role that could write, which meant a
+second account to create, keep and rotate beside the one `brevis-sql build`
+already needs. The warehouse is asked to refuse now, so a read-only role is
+still welcome and no longer required.
+
+### Upgrading
+
+**Both screens need `brevis-sql` 0.4.0 beside them.** The sentence and the
+banner are drawn from fields an older service does not send, and an engine
+pointed at one simply draws neither — no error, no empty promise. Nothing
+else in this release depends on it.
+
+**Nothing changes for a console with no SQL service.** `BREVIS_SQL_SERVE_URL`
+unset is still no menu entry and no tabs.
+
+**No migration.** The schema is unchanged since 00015.
+
+---
+
 ## [0.18.0] — 2026-10-10
 
 ### Added: a workflow can start when something lands

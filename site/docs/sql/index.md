@@ -104,7 +104,7 @@ group by customer_id
 `compile` e `graph` não se conectam a nada:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.4.0 \
   compile --project /project
 ```
 
@@ -115,7 +115,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.4.0 \
   graph --project /project
 ```
 
@@ -130,7 +130,7 @@ marts.orders
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.4.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -144,7 +144,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.4.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
