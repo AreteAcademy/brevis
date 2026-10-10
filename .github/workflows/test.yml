@@ -183,6 +183,32 @@ jobs:
           go-version: '1.27'
           cache: true
 
+      # EVERY IMAGE BELOW COMES FROM DOCKER HUB, AND ANONYMOUS IS NOT ENOUGH.
+      #
+      # This job pulls six: adobe/s3mock, postgres and mysql through the
+      # drivers compose, floci/floci-gcp, redis and memcached. Docker Hub's
+      # unauthenticated limit is counted per source IP, and a GitHub runner
+      # shares its IP with everybody else's runner, so the quota is spent by
+      # strangers. Three pushes in a row on 2026-10-09 died on
+      # `toomanyrequests` at the FIRST pull -- before a single test ran.
+      #
+      # That is the worst shape a gate can take: not a check that cannot fail,
+      # but one that cannot run, reported as a failure nobody reads twice. The
+      # release workflows have authenticated since they were written; this one
+      # pulls more images than any of them and did not.
+      #
+      # Guarded on the username being present, because a pull request from a
+      # fork gets no secrets. There the job still runs anonymously and may
+      # still hit the wall -- it just will not fail on a missing credential.
+      - name: Authenticate to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       # What these tests need is an S3 API, not MinIO, and MinIO has now twice
       # taken its community image away underneath this job:
       #
