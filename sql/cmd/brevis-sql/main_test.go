@@ -266,13 +266,36 @@ func TestEveryCommandTheUsageNamesIsReachable(t *testing.T) {
 		// A wrong dialect is the cheapest proof the command was DISPATCHED:
 		// it is checked after the switch and before anything is read, so a
 		// command that is not a command fails with a different sentence.
-		err := run([]string{cmd, "--dialect", "nope"}, out())
-		if err == nil {
-			t.Errorf("%s --dialect nope was accepted", cmd)
+		//
+		// EXCEPT `serve`, WHICH RETURNS FROM THE SWITCH BEFORE THAT CHECK.
+		// It has no project and no dialect, so `--dialect nope` does not
+		// stop it -- it goes on to LISTEN, and this loop waits for a server
+		// that is never asked anything until the package's ten minutes are
+		// up. `--dry-run` is the flag written for this and every other test
+		// in serve_test.go already uses it: build the service, report, and
+		// return without a listener.
+		//
+		// IT PASSED ANYWAY FOR A WHILE, on a machine where something was
+		// already bound to the default address: `net.Listen` failed, `serve`
+		// returned that error, and the assertion below was satisfied by a
+		// busy port. CI, where nothing was listening, hung for 600 seconds.
+		// A test that passes because of what else is running is a test about
+		// something other than what it names.
+		args := []string{cmd, "--dialect", "nope"}
+		if cmd == "serve" {
+			args = []string{cmd, "--addr", "127.0.0.1:0", "--dry-run"}
+		}
+
+		err := run(args, out())
+		if err != nil && strings.Contains(err.Error(), "is not a command") {
+			t.Errorf("%s is in the usage and is not a command", cmd)
 			continue
 		}
-		if strings.Contains(err.Error(), "is not a command") {
-			t.Errorf("%s is in the usage and is not a command", cmd)
+		// Every command but `serve` is reached THROUGH the dialect check, so
+		// a nil error there means a dialect this binary does not build was
+		// accepted. `serve` never reaches it and returns nil when it works.
+		if cmd != "serve" && err == nil {
+			t.Errorf("%s --dialect nope was accepted", cmd)
 		}
 	}
 }
