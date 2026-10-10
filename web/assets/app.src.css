@@ -663,3 +663,20 @@ li.CodeMirror-hint-active {
   color: var(--color-ink);
   box-shadow: inset 0 -2px 0 var(--color-accent);
 }
+
+/* THE ONE BANNER THAT HAS TO BE SEEN.
+ *
+ * `brevis-sql serve` can be told that a connection accepts statements which
+ * CHANGE data, and when it has been, the workbench says so above the box.
+ * Styled against the `queued` state's amber rather than a colour of its own:
+ * this console already means "attention, not failure" with that hue, and a
+ * second amber would be a second thing to keep in step.
+ *
+ * It is not red. Red is for something that went wrong, and nothing here has:
+ * somebody chose this deliberately and the screen is repeating the choice
+ * back to whoever is reading it now. */
+.workbench-writable {
+  border: 1px solid color-mix(in oklab, var(--color-state-queued) 45%, transparent);
+  background: color-mix(in oklab, var(--color-state-queued) 12%, transparent);
+  color: var(--color-state-queued);
+}

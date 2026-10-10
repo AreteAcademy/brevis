@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -183,6 +184,17 @@ type Service struct {
 	met *metrics
 }
 
+// sortedWritable is the unlocked connections, in a stable order so the
+// exposition reads the same on every scrape and a test can say what it holds.
+func sortedWritable(may map[string]bool) []string {
+	out := make([]string, 0, len(may))
+	for name := range may {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // mayWrite says whether a statement on this connection may change anything.
 //
 // ONE FUNCTION BECAUSE FOUR PLACES ASK IT -- the classifier, the warehouse's
@@ -292,7 +304,7 @@ func New(opt Options) (*Service, error) {
 		described: newDescriptions(),
 		spent:     newSpending(),
 		quoted:    newQuotes(),
-		met:       newMetrics(),
+		met:       newMetrics(sortedWritable(may)),
 	}, nil
 }
 

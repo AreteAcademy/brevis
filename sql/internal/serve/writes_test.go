@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -318,5 +319,61 @@ func TestAWarehouseWithNoWriterStillRunsTheWrite(t *testing.T) {
 	}
 	if strings.Contains(res.Body.String(), `"changed"`) {
 		t.Errorf("a warehouse that counts nothing reported a count: %s", res.Body.String())
+	}
+}
+
+// THE SERVICE SAYS WHICH CONNECTIONS MAY BE WRITTEN TO, ON AN ANSWER THE
+// CONSOLE ALREADY ASKS FOR.
+//
+// Not a new endpoint: the tree fetches `/v1/objects` for the connection
+// somebody is looking at, which is exactly the scope the answer belongs to.
+// A service-wide flag would be wrong -- one service reaches several
+// warehouses and unlocks some of them.
+func TestObjectsSaysWhetherThisConnectionMayBeWrittenTo(t *testing.T) {
+	var audit bytes.Buffer
+	l := &lister{}
+	body := askAs(t, writesTo(t, l, &audit, "acme-prod"), "/v1/objects",
+		`{"target":"bigquery://acme-prod/bronze/orders"}`).Body.String()
+	if !strings.Contains(body, `"writable":true`) {
+		t.Errorf("the listing does not say the connection may be written to: %s", body)
+	}
+
+	body = askAs(t, writesTo(t, l, &audit, "somewhere-else"), "/v1/objects",
+		`{"target":"bigquery://acme-prod/bronze/orders"}`).Body.String()
+	if strings.Contains(body, `"writable":true`) {
+		t.Errorf("a locked connection was listed as writable: %s", body)
+	}
+}
+
+// AND THE EXPOSITION CARRIES IT, so the mode is visible on a dashboard and
+// not only in a log somebody did not keep. A gauge and not a counter: it is
+// a state, and it is the state an alert would be written against.
+func TestTheMetricsExposeWhichConnectionsMayWrite(t *testing.T) {
+	var audit bytes.Buffer
+	s := writesTo(t, &lister{}, &audit, "acme-prod", "scratch")
+	rec := httptest.NewRecorder()
+	s.Metrics().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+
+	got := rec.Body.String()
+	for _, want := range []string{
+		`brevis_sql_writable_connection{connection="acme-prod"} 1`,
+		`brevis_sql_writable_connection{connection="scratch"} 1`,
+		"# TYPE brevis_sql_writable_connection gauge",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the exposition has no %q:\n%s", want, got)
+		}
+	}
+}
+
+// AND A SERVICE THAT UNLOCKS NOTHING PUBLISHES NOTHING, so the series only
+// exists where there is something to see.
+func TestTheMetricsAreSilentWhenNothingMayWrite(t *testing.T) {
+	var audit bytes.Buffer
+	s := writesTo(t, &lister{}, &audit)
+	rec := httptest.NewRecorder()
+	s.Metrics().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if strings.Contains(rec.Body.String(), "brevis_sql_writable_connection") {
+		t.Errorf("a read-only service published a writable gauge:\n%s", rec.Body.String())
 	}
 }

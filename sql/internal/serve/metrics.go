@@ -30,6 +30,11 @@ import (
 type metrics struct {
 	mu sync.Mutex
 
+	// writable is the connections a statement may change data on, sorted at
+	// boot and never touched again. Not behind the mutex because it does not
+	// move: it is configuration, and the one thing in here that is.
+	writable []string
+
 	// queries is endpoint+outcome -> count. Bounded by two endpoints and the
 	// handful of outcomes an audit line can carry.
 	queries map[[2]string]int64
@@ -46,8 +51,9 @@ type metrics struct {
 	calls    map[string]int64
 }
 
-func newMetrics() *metrics {
+func newMetrics(writable []string) *metrics {
 	return &metrics{
+		writable: writable,
 		queries:  map[[2]string]int64{},
 		scanned:  map[string]int64{},
 		returned: map[string]int64{},
@@ -104,6 +110,24 @@ func (m *metrics) handler() http.Handler {
 			fmt.Fprintf(&b, "brevis_sql_duration_seconds_sum{endpoint=%q} %.3f\n",
 				e, float64(m.millis[e])/1000)
 			fmt.Fprintf(&b, "brevis_sql_duration_seconds_count{endpoint=%q} %d\n", e, m.calls[e])
+		}
+
+		// WHICH CONNECTIONS MAY BE WRITTEN TO, AS A GAUGE.
+		//
+		// A state and not a count, which is what an alert would be written
+		// against: "a production service has this series at all" is the
+		// question somebody wants answered at three in the morning, and a
+		// counter cannot answer it.
+		//
+		// PUBLISHED ONLY WHERE THERE IS SOMETHING TO SEE. A service that
+		// unlocks nothing emits no series, so the metric's presence is the
+		// signal rather than its value.
+		if len(m.writable) > 0 {
+			b.WriteString("# HELP brevis_sql_writable_connection Connections a statement may write to.\n")
+			b.WriteString("# TYPE brevis_sql_writable_connection gauge\n")
+			for _, c := range m.writable {
+				fmt.Fprintf(&b, "brevis_sql_writable_connection{connection=%q} 1\n", c)
+			}
 		}
 
 		_, _ = w.Write([]byte(b.String()))

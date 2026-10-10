@@ -422,6 +422,7 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 	if v.Target != "" {
 		if objs, err := u.preview.Objects(r.Context(), v.Target); err == nil {
 			v.Tree, v.TreeCut = pages.BuildTree(objs.Relations), objs.Truncated
+			v.Writable = objs.Writable
 		}
 	}
 

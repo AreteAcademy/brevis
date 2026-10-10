@@ -86,6 +86,12 @@ type Objects struct {
 	// a browser silently missing half a warehouse is worse than one that
 	// says it is showing part.
 	Truncated bool `json:"truncated"`
+
+	// Writable says a statement on THIS connection may change data, which
+	// the console draws and never decides. It arrives here rather than on an
+	// endpoint of its own because the tree already asks this question about
+	// this connection.
+	Writable bool `json:"writable"`
 }
 
 // Client reaches one `brevis-sql serve`.

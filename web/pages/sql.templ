@@ -94,6 +94,30 @@ templ SQL(v SQLView) {
 						// forward: the island clones this, it does not write tags,
 						// so the classes and the ARIA have one definition that the
 						// Go suite can read.
+						// THIS CONNECTION MAY BE CHANGED, AND THE SCREEN SAYS SO.
+						//
+						// Everything that unlocks a write is twenty lines in
+						// `serve`; this is the part that matters. The dangerous
+						// reader is not the one who types DROP on purpose -- it
+						// is the one who does not know this console can, because
+						// the last console they used could not.
+						//
+						// IN WORDS AND NOT ONLY IN AN ATTRIBUTE. A marker only an
+						// island reads is a marker nobody sees without
+						// JavaScript, and this screen's own rule is that what it
+						// draws without a script is what it promises.
+						//
+						// Drawn only where the service said so, which is the
+						// default everywhere else: a warning on every screen is a
+						// warning nobody reads.
+						if v.Writable {
+							<p
+								data-writable
+								class="workbench-writable shrink-0 rounded px-2 py-1 text-[0.7rem]"
+							>
+								Statements here can <strong>change data</strong> on this connection — it was unlocked deliberately.
+							</p>
+						}
 						<div
 							class="workbench-tabs flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-soft pb-1"
 							data-tabs

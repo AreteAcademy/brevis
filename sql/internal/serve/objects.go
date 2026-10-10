@@ -46,6 +46,16 @@ type objectsResponse struct {
 	// a browser silently missing half a warehouse is worse than one that
 	// says it is showing part.
 	Truncated bool `json:"truncated"`
+
+	// Writable says a statement on THIS connection may change data.
+	//
+	// HERE RATHER THAN ON AN ENDPOINT OF ITS OWN, because the tree already
+	// asks this question about this connection and a second round trip would
+	// buy a second thing to forget. PER CONNECTION and never service-wide:
+	// one service reaches several warehouses and unlocks some of them, and a
+	// console told "this service may write" would warn over a warehouse
+	// nobody unlocked.
+	Writable bool `json:"writable,omitempty"`
 }
 
 // relationCeiling bounds one listing.
@@ -119,7 +129,8 @@ func (s *Service) objects(w http.ResponseWriter, r *http.Request) {
 	if held, ok := s.listed.get(table.Connection); ok {
 		line.Outcome = "cached"
 		line.Returned = len(held.rels)
-		write(w, http.StatusOK, objectsResponse{Relations: wire(held.rels), Truncated: held.cut})
+		write(w, http.StatusOK, objectsResponse{Relations: wire(held.rels), Truncated: held.cut,
+			Writable: s.mayWrite(table.Connection)})
 		return
 	}
 
@@ -180,7 +191,8 @@ func (s *Service) objects(w http.ResponseWriter, r *http.Request) {
 
 	line.Outcome = "ok"
 	line.Returned = len(rels)
-	write(w, http.StatusOK, objectsResponse{Relations: wire(rels), Truncated: cut})
+	write(w, http.StatusOK, objectsResponse{Relations: wire(rels), Truncated: cut,
+		Writable: s.mayWrite(table.Connection)})
 }
 
 func (c *listings) get(connection string) (listing, bool) {

@@ -36,6 +36,11 @@ type SQLView struct {
 	// workbench without a tree still runs queries.
 	Tree []Schema
 
+	// Writable says this connection accepts statements that CHANGE data,
+	// as the service reported it. The console never decides this and never
+	// reads the SQL to guess at it.
+	Writable bool
+
 	// TreeCut says the service cut the listing, which has to be drawn: a
 	// browser silently showing half a warehouse would have somebody conclude
 	// a table does not exist.
