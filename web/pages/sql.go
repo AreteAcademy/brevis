@@ -57,6 +57,120 @@ type Schema struct {
 	Tables []string
 }
 
+// Warehouse is one connection, and one destination that reaches it.
+type Warehouse struct {
+	// Name is `scheme://connection`, which is what identifies a connection.
+	Name string
+
+	// Target is one whole destination on it, because that is what every
+	// request carries.
+	Target string
+}
+
+// Warehouses groups the catalog's destinations by the connection they live on.
+//
+// A TARGET IS NOT A CONNECTION, and the tree is about connections. The
+// catalog lists `bigquery://acme/bronze/orders` and
+// `bigquery://acme/silver/daily` as two destinations, and `serve` resolves
+// BOTH to one connection: `sql/internal/serve/target.go` reads a target as
+// `scheme://connection/schema/table` and opens on the scheme and the FIRST
+// segment -- `/v1/query` never looks at the rest. A tree with one root per
+// target would draw the same warehouse twice, with identical contents under
+// each.
+//
+// THE SPLIT IS REPEATED HERE AND THAT IS A COST, stated rather than hidden.
+// The engine cannot import that parser: it holds no warehouse code, and
+// `engine-weight.sh` is what enforces it. What keeps the repetition honest is
+// that this grouping is only a LABEL -- every request still carries a whole
+// target, which `serve` parses itself -- so a grouping that got it wrong
+// would draw a wrong heading and never wrong data.
+func Warehouses(targets []string) []Warehouse {
+	var out []Warehouse
+	at := map[string]bool{}
+	for _, t := range targets {
+		scheme, rest, ok := strings.Cut(t, "://")
+		if !ok {
+			continue
+		}
+		name := scheme + "://" + rest
+		if first, _, ok := strings.Cut(rest, "/"); ok {
+			name = scheme + "://" + first
+		}
+		if at[name] {
+			continue
+		}
+		at[name] = true
+		out = append(out, Warehouse{Name: name, Target: t})
+	}
+	return out
+}
+
+// Branch is one connection's listing, which the page and the fragment
+// endpoint both draw.
+//
+// ONE DEFINITION, TWO DOORS. The island asks for a connection's objects over
+// `/api/sql/objects` and the first page view gets the same markup from the
+// template; two pieces of markup for one tree is how the classes, the ARIA
+// and the "this warehouse does not say" drift apart.
+type Branch struct {
+	Target string
+	Tree   []Schema
+	Cut    bool
+
+	// Open is the relation whose columns are drawn on the server path, and
+	// empty on the fragment -- the island opens its own.
+	Open string
+	Cols []sqlserve.Column
+}
+
+// Branch is what the active connection holds, for the page.
+func (v SQLView) Branch() Branch {
+	return Branch{Target: v.Target, Tree: v.Tree, Cut: v.TreeCut, Open: v.Open, Cols: v.Cols}
+}
+
+// Warehouses is the tree's roots.
+func (v SQLView) Warehouses() []Warehouse { return Warehouses(v.Targets) }
+
+// Active says this warehouse is the one whose listing is drawn.
+func (v SQLView) Active(w Warehouse) bool {
+	return v.Target != "" && (v.Target == w.Target || strings.HasPrefix(v.Target, w.Name+"/"))
+}
+
+// Running is the connection a query would run on, as the tree names it.
+//
+// THE CONNECTION AND NOT THE DESTINATION. `/v1/query` opens on the scheme
+// and the first segment and never looks at the rest of a target, so
+// `bigquery://acme` is the whole truth and `bigquery://acme/bronze/orders`
+// would name a table the statement may not even mention. It is also the
+// string the tree's root carries, so the label and the node agree -- which
+// is what lets the island set one from the other.
+func (v SQLView) Running() string {
+	for _, w := range v.Warehouses() {
+		if v.Active(w) {
+			return w.Name
+		}
+	}
+	return ""
+}
+
+// loaded is `data-loaded`, which the search box reads: a connection nobody
+// opened holds names no filter can see, and a search that quietly skips one
+// is how somebody concludes a table does not exist.
+func loaded(v SQLView, w Warehouse) string {
+	if v.Active(w) && len(v.Tree) > 0 {
+		return "true"
+	}
+	return "false"
+}
+
+// expanded is a connection node's ARIA state.
+func expanded(v SQLView, w Warehouse) string {
+	if v.Active(w) {
+		return "true"
+	}
+	return "false"
+}
+
 // BuildTree groups a listing by schema, in the order the service gave it.
 //
 // THE SERVICE ORDERS, NOT THIS. Both dialects sort in SQL, where the
@@ -140,15 +254,6 @@ const Unknown = "That is not a destination this console knows. " +
 // at, and the reason is the pipelines rather than the service.
 func (v SQLView) Empty() bool { return len(v.Targets) == 0 }
 
-// Short is a destination without its scheme, for a picker that has to fit.
-func Short(target string) string {
-	_, rest, ok := strings.Cut(target, "://")
-	if !ok {
-		return target
-	}
-	return rest
-}
-
 // EditorAssets is the island's load order, exported so it can be pinned.
 //
 // THE ORDER IS NOT STYLE. The SQL mode calls `CodeMirror.defineMode` the
@@ -161,10 +266,14 @@ func Short(target string) string {
 // a reordering, which is the mistake the prose is about.
 func EditorAssets() []string { return editorAssets.JS }
 
-// open is the ARIA state of a relation's disclosure button, as a string
+// openOf is the ARIA state of a relation's disclosure button, as a string
 // because that is what the attribute takes.
-func open(v SQLView, schema, table string) string {
-	if v.Open == schema+"."+table {
+//
+// ON Branch AND NOT SQLView: the fragment endpoint draws the same tree with
+// no page around it, and a helper that needed the whole view would have made
+// one of the two callers build a view it does not have.
+func openOf(b Branch, schema, table string) string {
+	if b.Open == schema+"."+table {
 		return "true"
 	}
 	return "false"

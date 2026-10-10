@@ -172,9 +172,12 @@ func TestTheWorkbenchOpensOnTheTargetItWasGiven(t *testing.T) {
 	svc := (&sqlFake{body: `{}`}).start(t)
 	ui := consoleOf(t, sqlserve.New(svc.URL, ""), signedIn, probeTarget, "bigquery")
 
+	// THE FIELD AND NOT A PICKER. The <select> became the tree's root
+	// nodes; what the form carries is a hidden field, and that is what
+	// decides which warehouse a Run reaches.
 	body := render(t, ui, "/sql?target="+url.QueryEscape(probeTarget))
-	if !strings.Contains(body, `value="`+probeTarget+`" selected`) {
-		t.Errorf("the picker did not open on %q", probeTarget)
+	if !strings.Contains(body, `name="target" value="`+probeTarget+`"`) {
+		t.Errorf("the workbench did not open on %q", probeTarget)
 	}
 }
 
@@ -189,7 +192,7 @@ func TestTheWorkbenchIgnoresATargetTheCatalogDoesNotKnow(t *testing.T) {
 	if strings.Contains(body, "somewhere/else/entirely") {
 		t.Error("the workbench opened on a destination nothing landed on")
 	}
-	if !strings.Contains(body, `value="`+probeTarget+`" selected`) {
+	if !strings.Contains(body, `name="target" value="`+probeTarget+`"`) {
 		t.Error("it did not fall back to the first destination it knows")
 	}
 }

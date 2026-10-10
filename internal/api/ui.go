@@ -197,6 +197,10 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// clear what is a page and what is data -- the same path serves both.
 	mux.HandleFunc("GET /api/workflows/{slug}/graph", u.workflowGraph)
 	mux.HandleFunc("GET /api/runs/{id}/graph", u.runGraph)
+	// The workbench's tree, drawn a branch at a time. See sql_api.go for why
+	// these answer HTML.
+	mux.HandleFunc("GET /api/sql/objects", u.sqlObjects)
+	mux.HandleFunc("GET /api/sql/columns", u.sqlColumns)
 
 	// Served from the embed, not from disk: the container is distroless and has
 	// no web/assets, and the binary has to work from any directory.
@@ -363,6 +367,15 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// the relation somebody opened; `expand` is the tree's own button,
 		// and clicking the one already open CLOSES it, which is what a
 		// disclosure does.
+		// AND WHICH CONNECTION, which the tree's root node submits now that
+		// the picker is gone. Switching clears what is open: `Open` is a
+		// `schema.name` with no connection in it, so carrying it across
+		// would ask the new warehouse for the old one's relation.
+		if want := r.PostFormValue("connect"); want != "" && v.Knows(want) {
+			v.Target, v.Err = want, ""
+			r.PostForm.Set("open", "")
+		}
+
 		v.Open = r.PostFormValue("open")
 		if want := r.PostFormValue("expand"); want != "" {
 			if want == v.Open {
@@ -376,7 +389,8 @@ func (u *UI) sql(w http.ResponseWriter, r *http.Request) {
 		// own form -- which is how the half-written statement survives the
 		// click -- so without this, opening a table would also spend a
 		// query nobody asked for.
-		if r.PostFormValue("expand") == "" && v.Statement != "" && v.Target != "" {
+		if r.PostFormValue("expand") == "" && r.PostFormValue("connect") == "" &&
+			v.Statement != "" && v.Target != "" {
 			res, err := u.preview.Query(r.Context(), v.Target, v.Statement, queryRows)
 			switch {
 			case errors.Is(err, sqlserve.ErrNoConnection):

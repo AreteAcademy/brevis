@@ -1,6 +1,9 @@
 package pages
 
-import "github.com/AreteAcademy/brevis/web/layouts"
+import (
+	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
 
 // editorAssets is the island's load order, and the order is not style: the
 // SQL mode registers itself with `CodeMirror`, which the first file defines.
@@ -42,22 +45,14 @@ templ SQL(v SQLView) {
 				// WHAT IS OPEN RIDES WITH EVERY SUBMIT, so running a query
 				// does not close the tree somebody just arranged.
 				<input type="hidden" name="open" value={ v.Open }/>
-				<div class="flex flex-wrap items-center gap-3">
-					<label for="target" class="kicker">Connection</label>
-					<select
-						id="target"
-						name="target"
-						class="rounded-card border border-line bg-surface px-3 py-1.5 font-mono text-xs text-ink"
-					>
-						for _, t := range v.Targets {
-							if t == v.Target {
-								<option value={ t } selected>{ Short(t) }</option>
-							} else {
-								<option value={ t }>{ Short(t) }</option>
-							}
-						}
-					</select>
-				</div>
+				// THE CONNECTION IS THE TREE'S ROOT NOW, not a picker.
+				//
+				// A <select> said which warehouse and nothing about what is
+				// in it, so comparing two meant choosing one, losing the
+				// tree, and choosing the other. This field is what the chosen
+				// root writes, and it is hidden because the tree is the
+				// control.
+				<input type="hidden" name="target" value={ v.Target }/>
 				<label for="q" class="sr-only">SQL to run on this warehouse</label>
 				<textarea
 					id="q"
@@ -72,6 +67,13 @@ templ SQL(v SQLView) {
 						type="submit"
 						class="rounded-card border border-line bg-surface-2 px-3 py-1.5 text-sm font-medium text-ink hover:bg-surface"
 					>Run</button>
+					// AND IT SAYS WHERE IT WILL RUN. The picker used to be
+					// the answer to "against what"; with the picker gone,
+					// the button has to carry it, or choosing a connection
+					// in the tree becomes an invisible change.
+					if on := v.Running(); on != "" {
+						<span class="font-mono text-xs text-muted" data-running-on>{ on }</span>
+					}
 					<span class="text-xs text-muted">
 						Reads only. The service refuses anything else, and stops a query that would scan too much.
 					</span>
@@ -91,7 +93,7 @@ templ SQL(v SQLView) {
 	}
 }
 
-// tree is what the chosen connection holds.
+// tree is every connection the catalog knows, and what the open one holds.
 //
 // THE HALF A PICKER CANNOT GIVE: a picker says which warehouse, and this
 // says what is IN it -- including the relations nothing landed on, which is
@@ -101,66 +103,131 @@ templ SQL(v SQLView) {
 // the keyboard and the ARIA for free, which is the same choice the account
 // menu made.
 templ tree(v SQLView) {
-	if len(v.Tree) > 0 {
-		<aside class="w-60 shrink-0 overflow-y-auto border-r border-line-soft pr-3 text-xs">
+	if len(v.Targets) > 0 {
+		<aside class="w-64 shrink-0 overflow-y-auto border-r border-line-soft pr-3 text-xs">
 			<p class="kicker mb-2">Objects</p>
-			for _, s := range v.Tree {
-				<details class="mb-0.5">
-					<summary class="cursor-pointer list-none rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
-						{ s.Name }
-					</summary>
-					for _, t := range s.Tables {
-						// `data-insert` is what the island reads to put the
-						// name in the editor. Without the island it is still
-						// a readable list, which is the point of putting the
-						// name in the text rather than only in an attribute.
-						<button
-							type="button"
-							data-insert={ s.Name + "." + t }
-							class="block w-full truncate rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
-						>{ t }</button>
-						// AND A SECOND BUTTON, which SUBMITS THE FORM.
-						//
-						// Not a link: a GET would discard the textarea, so
-						// somebody with a half-written query who opened a
-						// table to remember a column name would lose it.
-						// `form` points at the editor's form by id, so this
-						// button can sit here in the tree and still carry
-						// the statement in that form's body -- which is also
-						// the only place a statement is allowed to travel.
-						<button
-							type="submit"
-							form="workbench"
-							name="expand"
-							value={ s.Name + "." + t }
-							aria-expanded={ open(v, s.Name, t) }
-							class="block w-full rounded-card px-2 py-0.5 pl-5 text-left text-[0.7rem] text-muted hover:text-ink"
-						>
-							if v.Open == s.Name+"."+t {
-								&#8722; columns
+			// THE SEARCH FILTERS WHAT IS LOADED, and the island says so when
+			// that is less than everything. Without the island it is an
+			// ordinary field that does nothing, so it is marked rather than
+			// drawn eagerly: `data-tree-search` is what the script looks for.
+			<input
+				type="search"
+				data-tree-search
+				placeholder="Search this tree"
+				aria-label="Search the objects in this tree"
+				class="mb-2 w-full rounded-card border border-line bg-surface px-2 py-1 text-xs text-ink placeholder:text-muted"
+			/>
+			<p data-tree-unsearched hidden class="mb-2 px-2 text-[0.7rem] text-muted"></p>
+			for _, w := range v.Warehouses() {
+				<div class="mb-1" data-connection={ w.Name } data-loaded={ loaded(v, w) }>
+					// A SUBMIT, like the relation's own button: without a
+					// script, opening a connection is a round trip, because
+					// the listing is not on the page yet. With one, the
+					// island answers the click and nothing reloads.
+					<button
+						type="submit"
+						form="workbench"
+						name="connect"
+						value={ w.Target }
+						aria-expanded={ expanded(v, w) }
+						class="flex w-full items-center gap-1 rounded-card px-2 py-1 text-left font-mono text-ink hover:bg-surface-2"
+					>
+						<span class="shrink-0 text-muted" data-arrow>
+							if v.Active(w) {
+								&#9662;
 							} else {
-								+ columns
+								&#9656;
 							}
-						</button>
-						if v.Open == s.Name+"."+t {
-							<ul class="mb-1 pl-5">
-								for _, c := range v.Cols {
-									<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]">
-										<span class="truncate text-ink">{ c.Name }</span>
-										<span class="shrink-0 text-muted">{ c.Type }</span>
-									</li>
-								}
-								if len(v.Cols) == 0 {
-									<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
-								}
-							</ul>
+						</span>
+						<span class="truncate">{ w.Name }</span>
+					</button>
+					<div data-objects={ w.Target } class="pl-2">
+						if v.Active(w) {
+							@Objects(v.Branch())
 						}
-					}
-				</details>
-			}
-			if v.TreeCut {
-				<p class="mt-2 px-2 text-[0.7rem] text-muted">Showing part of this warehouse — there are more.</p>
+					</div>
+				</div>
 			}
 		</aside>
 	}
+}
+
+// Objects is one connection's listing: its schemas, their relations, and the
+// columns of whichever relation the SERVER was told to open.
+//
+// EXPORTED, because `/api/sql/objects` draws exactly this when the island
+// opens a connection. Two pieces of markup for one tree is how the classes,
+// the ARIA and the sentence about a warehouse that cannot say drift apart.
+templ Objects(b Branch) {
+	for _, s := range b.Tree {
+		<details class="mb-0.5" open>
+			<summary class="cursor-pointer list-none rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
+				{ s.Name }
+			</summary>
+			for _, t := range s.Tables {
+				<div data-relation={ s.Name + "." + t }>
+					// `data-insert` is what the island reads to put the
+					// name in the editor. Without the island it is still
+					// a readable list, which is the point of putting the
+					// name in the text rather than only in an attribute.
+					<button
+						type="button"
+						data-insert={ s.Name + "." + t }
+						class="block w-full truncate rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
+					>{ t }</button>
+					// AND A SECOND BUTTON, which SUBMITS THE FORM.
+					//
+					// Not a link: a GET would discard the textarea, so
+					// somebody with a half-written query who opened a
+					// table to remember a column name would lose it.
+					// `form` points at the editor's form by id, so this
+					// button can sit here in the tree and still carry
+					// the statement in that form's body -- which is also
+					// the only place a statement is allowed to travel.
+					//
+					// The island answers this click instead, and then
+					// nothing reloads and nothing closes.
+					<button
+						type="submit"
+						form="workbench"
+						name="expand"
+						value={ s.Name + "." + t }
+						data-connection={ b.Target }
+						aria-expanded={ openOf(b, s.Name, t) }
+						class="block w-full rounded-card px-2 py-0.5 pl-5 text-left text-[0.7rem] text-muted hover:text-ink"
+					>
+						if b.Open == s.Name+"."+t {
+							&#8722; columns
+						} else {
+							+ columns
+						}
+					</button>
+					<div data-columns={ s.Name + "." + t }>
+						if b.Open == s.Name+"."+t {
+							@Columns(b.Cols)
+						}
+					</div>
+				</div>
+			}
+		</details>
+	}
+	if b.Cut {
+		<p class="mt-2 px-2 text-[0.7rem] text-muted">Showing part of this warehouse — there are more.</p>
+	}
+}
+
+// Columns is what one relation holds, drawn by the page and by
+// `/api/sql/columns` from the same definition.
+templ Columns(cols []sqlserve.Column) {
+	<ul class="mb-1 pl-5">
+		for _, c := range cols {
+			<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]">
+				<span class="truncate text-ink">{ c.Name }</span>
+				<span class="shrink-0 text-muted">{ c.Type }</span>
+			</li>
+		}
+		if len(cols) == 0 {
+			<li class="px-2 py-0.5 text-[0.7rem] text-muted">This warehouse does not say.</li>
+		}
+	</ul>
 }
