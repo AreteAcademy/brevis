@@ -40,7 +40,18 @@
       // Run, which is what every workbench this is modelled on binds.
       "Ctrl-Enter": run,
       "Cmd-Enter": run,
+      // And completion, which is what every one of them binds for this.
+      "Ctrl-Space": complete,
     },
+  });
+
+  // A `.` OPENS IT WITHOUT THE KEY, because that is the moment somebody is
+  // asking what is in a table. `inputRead` fires for typing and not for a
+  // paste of a hundred lines that happens to contain dots.
+  editor.on("inputRead", function (cm, change) {
+    if (change.origin !== "+input") return;
+    if (change.text.length !== 1 || change.text[0] !== ".") return;
+    complete(cm);
   });
 
   function run() {
@@ -51,6 +62,59 @@
     // happen, which `form.submit()` skips.
     if (form.requestSubmit) form.requestSubmit();
     else form.submit();
+  }
+
+  // COMPLETION, AND THE HALF OF THE WAREHOUSE IT KNOWS.
+  //
+  // THE LIST IS THE TREE, READ AT THE MOMENT IT OPENS. The tree loads
+  // lazily, so a table built once at mount would know whatever had been
+  // opened before this file ran, which is nothing.
+  //
+  // AND IT KNOWS THE COLUMNS OF WHAT IS OPEN, AND ONLY THOSE. Filling the
+  // rest would be one `COLUMNS` query per relation across the whole
+  // warehouse -- the project-wide scan CHECKPOINT D refused. The screen
+  // says so under the editor, because a list that silently knows half a
+  // warehouse is how somebody concludes a column does not exist.
+  function complete(cm) {
+    if (!cm.showHint || !CodeMirror.hint || !CodeMirror.hint.sql) return;
+    // completeSingle off: typing a `.` must not insert a name because there
+    // happened to be exactly one.
+    cm.showHint({ hint: hints, completeSingle: false });
+  }
+
+  function hints(cm) {
+    return CodeMirror.hint.sql(cm, { tables: schema() });
+  }
+
+  // SCOPED TO THE CONNECTION THE QUERY WILL RUN ON. Two warehouses can be
+  // open in the tree at once, and offering one's relations while the other
+  // is the target is offering a name that does not exist there.
+  //
+  // The node is found through the `connect` button rather than through
+  // `data-connection`: the rail groups by warehouse NAME, and the hidden
+  // field holds the catalog TARGET. They are not the same string.
+  function schema() {
+    var hidden = document.querySelector('#workbench input[name="target"]');
+    var on = hidden ? hidden.value : "";
+    var scope = document;
+    if (on !== "") {
+      var btn = document.querySelector('button[name="connect"][value="' + css(on) + '"]');
+      var node = btn && btn.closest ? btn.closest("[data-connection]") : null;
+      // No node for the target is no honest list: every relation on the
+      // screen then belongs to some other warehouse. Keywords still
+      // complete, which is what the editor did before this slice.
+      if (!node) return {};
+      scope = node;
+    }
+    var tables = {};
+    scope.querySelectorAll("[data-relation]").forEach(function (row) {
+      var cols = [];
+      row.querySelectorAll("[data-column]").forEach(function (c) {
+        cols.push(c.getAttribute("data-column"));
+      });
+      tables[row.getAttribute("data-relation")] = cols;
+    });
+    return tables;
   }
 
   // The textarea is what the handler reads, so it has to hold the text at

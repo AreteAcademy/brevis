@@ -7,16 +7,26 @@ import (
 	"github.com/AreteAcademy/brevis/web/layouts"
 )
 
-// editorAssets is the island's load order, and the order is not style: the
-// SQL mode registers itself with `CodeMirror`, which the first file defines.
+// editorAssets is the island's load order, and the order is not style: each
+// file here extends the one above it. The SQL mode registers itself with
+// `CodeMirror`; `show-hint` hangs `showHint` off the same object; `sql-hint`
+// fills the list that `show-hint` opens, and reads its keywords out of the
+// mode. Swap any pair and what is left is a plain textarea and a console
+// error.
 //
 // Only this screen pays for it -- the rule base.templ states and the DAG's
-// React already follows.
+// React already follows. The two addons add 13 KiB to the 212 KiB the editor
+// already cost, on the one screen that asks for it.
 var editorAssets = layouts.Island{
-	CSS: []string{"/assets/vendor/codemirror.css"},
+	CSS: []string{
+		"/assets/vendor/codemirror.css",
+		"/assets/vendor/show-hint.css",
+	},
 	JS: []string{
 		"/assets/vendor/codemirror.js",
 		"/assets/vendor/codemirror-sql.js",
+		"/assets/vendor/show-hint.js",
+		"/assets/vendor/sql-hint.js",
 		"/assets/sql.js",
 	},
 }
@@ -124,6 +134,18 @@ templ SQL(v SQLView) {
 							// controls when they sit on one line.
 							<p class="shrink-0 text-[0.7rem] text-muted">
 								Reads only. The service refuses anything else, and stops a query that would scan too much.
+							</p>
+							// AND WHAT THE COMPLETION KNOWS, SAID ONCE.
+							//
+							// Columns are fetched one relation at a time --
+							// CHECKPOINT D refused the project-wide COLUMNS query
+							// that would fill this list -- so the editor completes
+							// the columns of what somebody opened and nothing else.
+							// A list that silently knows half a warehouse is how
+							// somebody concludes a column does not exist.
+							<p class="shrink-0 text-[0.7rem] text-muted">
+								<kbd class="rounded border border-line px-1 py-0.5 font-mono">Ctrl+Space</kbd>
+								completes names. Columns complete for relations you have opened in the tree.
 							</p>
 						</form>
 					</section>
@@ -288,10 +310,15 @@ templ Objects(b Branch) {
 
 // Columns is what one relation holds, drawn by the page and by
 // `/api/sql/columns` from the same definition.
+//
+// `data-column` IS FOR THE COMPLETION, and it is an attribute rather than
+// the text of a span because the island would otherwise read a column name
+// by picking which of two spans holds it. The tree already names its
+// relations the same way, for the filter.
 templ Columns(cols []sqlserve.Column) {
 	<ul class="mb-1 pl-5">
 		for _, c := range cols {
-			<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]">
+			<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]" data-column={ c.Name }>
 				<span class="truncate text-ink">{ c.Name }</span>
 				<span class="shrink-0 text-muted">{ c.Type }</span>
 			</li>
