@@ -22,7 +22,7 @@ With the `gateway.yaml` from the section below, and the key it asks for in `keys
 ```bash
 docker run -p 8080:8080 -e BREVIS_INGEST_KEYS=dev-key \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.27.0
+  areteacademy/brevis-gateway:0.27.1
 ```
 
 ```text

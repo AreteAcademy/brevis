@@ -10,16 +10,34 @@ Sem template: um modelo é um arquivo que continua SQL válido, e a ordem vem da
 
 ![O fluxo do SQL: o brevis-sql lê raw.orders, uma tabela que o SDK ou o Gateway pousou. O modelo staging.stg_orders vira uma view sobre ela, e marts.orders uma tabela sobre essa view; a ordem vem da leitura do SQL. Os mesmos modelos rodam no Postgres ou no BigQuery.](/assets/flow-sql.svg)
 
-## Quatro comandos
+## Cinco comandos
 
 | comando | o que faz |
 |---|---|
-| `compile` | lê todos os modelos e resolve todas as arestas, **sem se conectar a nada** |
-| `graph` | imprime as arestas inferidas, para que uma errada seja vista e não descoberta |
-| `build` | cria ou substitui cada modelo, na ordem de dependência |
-| `test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
+| `brevis-sql compile` | lê todos os modelos e resolve todas as arestas, **sem se conectar a nada** |
+| `brevis-sql graph` | imprime as arestas inferidas, para que uma errada seja vista e não descoberta |
+| `brevis-sql build` | cria ou substitui cada modelo, na ordem de dependência |
+| `brevis-sql test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
+| `brevis-sql serve` | responde previews e consultas somente-leitura por HTTP, para que um console não precise de credencial de warehouse |
 
 `--select orders+` restringe qualquer um deles a um modelo e a tudo que vem depois dele.
+
+
+## `brevis-sql serve` — ler um warehouse sem credencial
+
+As telas Data e SQL do console mostram o que aterrissou e o que há dentro. Nenhuma das duas alcança um warehouse: elas perguntam a este serviço, que roda ao lado delas e guarda a credencial que o motor deliberadamente não tem.
+
+```bash
+brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
+```
+
+Um teto não é um orçamento: `--max-bytes` limita uma query, e `--budget` limita a soma por conexão por hora — verificado contra a cotação, para que a recusa venha antes do dinheiro. Ele só limita warehouses que reportam bytes, ou seja BigQuery e não Postgres; o banner de boot diz qual postura está em vigor, inclusive a de não ter nenhuma.
+
+**Só o que o arquivo declara é alcançável**, e nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e a própria credencial é verificada como somente-leitura no primeiro uso. A linha de auditoria carrega um hash do statement e nunca o statement.
+
+Fora de `BREVIS_ENV=local` um token é obrigatório e o serviço não sobe sem ele.
+
+Os tokens podem ser **nomeados**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declara um chamador chamado `console`, e cada linha de auditoria daquele portador carrega `"caller":"console"`. A identidade é a credencial, e não um cabeçalho que o chamador preenche, então o log não pode dizer nada que o portador daquele token não tenha portado. Um token recusado também deixa uma linha, e nunca registra o que foi apresentado.
 
 ## Um modelo é um arquivo que continua SQL válido
 
@@ -74,7 +92,7 @@ group by customer_id
 `compile` e `graph` não se conectam a nada:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   compile --project /project
 ```
 
@@ -85,7 +103,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   graph --project /project
 ```
 
@@ -100,7 +118,7 @@ marts.orders
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -114,7 +132,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

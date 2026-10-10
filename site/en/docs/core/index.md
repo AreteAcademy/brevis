@@ -48,7 +48,7 @@ To run it locally, with no queue and no cluster:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.17.1-worker run hello.yaml
+  areteacademy/brevis:0.18.0-worker run hello.yaml
 ```
 
 The output:

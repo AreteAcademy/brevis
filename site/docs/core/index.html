@@ -171,8 +171,8 @@ steps:
     <span class="t-k">depends_on</span>: [extract, validate]</code></pre></div>
 <p>Para rodar local, sem fila nem cluster:</p>
 <div class="code-block" data-code="docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.17.1-worker run hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./hello.yaml:/w/hello.yaml <span class="t-n">-w</span> /w \
-  areteacademy/<span class="t-k">brevis</span>:0.17.1-worker run hello.yaml</code></pre></div>
+  areteacademy/brevis:0.18.0-worker run hello.yaml"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./hello.yaml:/w/hello.yaml <span class="t-n">-w</span> /w \
+  areteacademy/<span class="t-k">brevis</span>:0.18.0-worker run hello.yaml</code></pre></div>
 <p>A saída:</p>
 <div class="code-block" data-code="workflow hello (dag, 4 steps) in .
   ▶ prepare

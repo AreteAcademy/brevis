@@ -92,7 +92,7 @@ group by customer_id
 `compile` and `graph` connect to nothing:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   compile --project /project
 ```
 
@@ -103,7 +103,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   graph --project /project
 ```
 
@@ -118,7 +118,7 @@ marts.orders
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -132,7 +132,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

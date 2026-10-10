@@ -48,7 +48,7 @@ Para rodar local, sem fila nem cluster:
 
 ```bash
 docker run --rm -v ./hello.yaml:/w/hello.yaml -w /w \
-  areteacademy/brevis:0.17.1-worker run hello.yaml
+  areteacademy/brevis:0.18.0-worker run hello.yaml
 ```
 
 A saída:

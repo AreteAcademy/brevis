@@ -149,8 +149,8 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.27.0` | six sinks, S3, GCS, Redis, memcached | 18.1 MB |
-| `areteacademy/brevis-gateway:0.27.0-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
+| `areteacademy/brevis-gateway:0.27.1` | six sinks, S3, GCS, Redis, memcached | 18.1 MB |
+| `areteacademy/brevis-gateway:0.27.1-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.

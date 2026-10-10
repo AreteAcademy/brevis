@@ -10,16 +10,34 @@ No templating: a model is a file that stays valid SQL, and the order comes from 
 
 ![The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery.](/assets/flow-sql.svg)
 
-## Four commands
+## Five commands
 
 | command | what it does |
 |---|---|
-| `compile` | parses every model and resolves every edge, **connecting to nothing** |
-| `graph` | prints the inferred edges, so a wrong one is seen and not discovered |
-| `build` | creates or replaces every model, in dependency order |
-| `test` | runs every model's tests; each is a SELECT that must find nothing |
+| `brevis-sql compile` | parses every model and resolves every edge, **connecting to nothing** |
+| `brevis-sql graph` | prints the inferred edges, so a wrong one is seen and not discovered |
+| `brevis-sql build` | creates or replaces every model, in dependency order |
+| `brevis-sql test` | runs every model's tests; each is a SELECT that must find nothing |
+| `brevis-sql serve` | answers read-only previews and queries over HTTP, so a console needs no warehouse credential |
 
 `--select orders+` narrows any of them to one model and everything downstream of it.
+
+
+## `brevis-sql serve` — reading a warehouse without a credential
+
+The console's Data and SQL screens show what landed and what is in it. Neither reaches a warehouse: they ask this service, which runs beside them and holds the credential the engine deliberately does not.
+
+```bash
+brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
+```
+
+A ceiling is not a budget: `--max-bytes` bounds one query, and `--budget` bounds the sum per connection per hour — checked against the quote, so a refusal comes before the money is spent. It bounds only warehouses that report bytes, which is BigQuery and not Postgres; the boot banner says which posture is in force, including having none.
+
+**Only what the file declares is reachable**, and nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the credential itself is asserted to be read-only at first use. The audit line carries a hash of the statement and never the statement.
+
+Outside `BREVIS_ENV=local` a token is required and the service will not start without one.
+
+Tokens can be **named**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declares a caller called `console`, and every audit line that bearer produces carries `"caller":"console"`. Identity is the credential rather than a header a caller fills in, so the log cannot say anything the holder of that token did not hold. A refused token leaves a line too, and never records what was presented.
 
 ## A model is a file that stays valid SQL
 
@@ -74,7 +92,7 @@ group by customer_id
 `compile` and `graph` connect to nothing:
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   compile --project /project
 ```
 
@@ -85,7 +103,7 @@ docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
 ```
 
 ```bash
-docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
+docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
   graph --project /project
 ```
 
@@ -100,7 +118,7 @@ marts.orders
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 
@@ -114,7 +132,7 @@ docker run --rm -v ./project:/project:ro \
 
 ```bash
 docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

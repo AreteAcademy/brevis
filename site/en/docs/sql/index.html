@@ -126,9 +126,16 @@
       <p class="doc-desc">Plain .sql files become tables and views, in dependency order — as a workflow step or on their own.</p>
       <p>No templating: a model is a file that stays valid SQL, and the order comes from reading the SQL itself. Postgres and BigQuery, under the same conformance suite.</p>
 <figure class="doc-figure"><img src="/assets/flow-sql.svg" width="360" height="410" alt="The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery." loading="lazy"></figure>
-<h2 id="four-commands">Four commands<a class="anchor" href="#four-commands" aria-label="link">#</a></h2>
-<div class="table-wrap"><table><thead><tr><th>command</th><th>what it does</th></tr></thead><tbody><tr><td><code>compile</code></td><td>parses every model and resolves every edge, <strong>connecting to nothing</strong></td></tr><tr><td><code>graph</code></td><td>prints the inferred edges, so a wrong one is seen and not discovered</td></tr><tr><td><code>build</code></td><td>creates or replaces every model, in dependency order</td></tr><tr><td><code>test</code></td><td>runs every model's tests; each is a SELECT that must find nothing</td></tr></tbody></table></div>
+<h2 id="five-commands">Five commands<a class="anchor" href="#five-commands" aria-label="link">#</a></h2>
+<div class="table-wrap"><table><thead><tr><th>command</th><th>what it does</th></tr></thead><tbody><tr><td><code>brevis-sql compile</code></td><td>parses every model and resolves every edge, <strong>connecting to nothing</strong></td></tr><tr><td><code>brevis-sql graph</code></td><td>prints the inferred edges, so a wrong one is seen and not discovered</td></tr><tr><td><code>brevis-sql build</code></td><td>creates or replaces every model, in dependency order</td></tr><tr><td><code>brevis-sql test</code></td><td>runs every model's tests; each is a SELECT that must find nothing</td></tr><tr><td><code>brevis-sql serve</code></td><td>answers read-only previews and queries over HTTP, so a console needs no warehouse credential</td></tr></tbody></table></div>
 <p><code>--select orders+</code> narrows any of them to one model and everything downstream of it.</p>
+<h2 id="brevis-sql-serve-reading-a-warehouse-without-a-credential"><code>brevis-sql serve</code> — reading a warehouse without a credential<a class="anchor" href="#brevis-sql-serve-reading-a-warehouse-without-a-credential" aria-label="link">#</a></h2>
+<p>The console's Data and SQL screens show what landed and what is in it. Neither reaches a warehouse: they ask this service, which runs beside them and holds the credential the engine deliberately does not.</p>
+<div class="code-block" data-code="brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span>-sql serve <span class="t-n">--connections</span> <span class="t-k">brevis</span>.yaml <span class="t-n">--addr</span> 127.0.0.1:8088</code></pre></div>
+<p>A ceiling is not a budget: <code>--max-bytes</code> bounds one query, and <code>--budget</code> bounds the sum per connection per hour — checked against the quote, so a refusal comes before the money is spent. It bounds only warehouses that report bytes, which is BigQuery and not Postgres; the boot banner says which posture is in force, including having none.</p>
+<p><strong>Only what the file declares is reachable</strong>, and nothing it does is a write: every statement is classified before it runs, a read that would scan more than <code>--max-bytes</code> is priced and refused before it costs anything, and the credential itself is asserted to be read-only at first use. The audit line carries a hash of the statement and never the statement.</p>
+<p>Outside <code>BREVIS_ENV=local</code> a token is required and the service will not start without one.</p>
+<p>Tokens can be <strong>named</strong>: <code>BREVIS_SQL_SERVE_TOKEN_CONSOLE=…</code> declares a caller called <code>console</code>, and every audit line that bearer produces carries <code>"caller":"console"</code>. Identity is the credential rather than a header a caller fills in, so the log cannot say anything the holder of that token did not hold. A refused token leaves a line too, and never records what was presented.</p>
 <h2 id="a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL<a class="anchor" href="#a-model-is-a-file-that-stays-valid-sql" aria-label="link">#</a></h2>
 <p>The configuration is a leading block comment, so the file opens in an editor with highlighting, runs in a console by hand, and <code>psql -f</code> executes it.</p>
 <div class="code-block" data-code="/* brevis
@@ -180,16 +187,16 @@ select customer_id, count(*) as orders, sum(amount) as revenue
 from staging.stg_orders
 group by customer_id</code></pre></div>
 <p><code>compile</code> and <code>graph</code> connect to nothing:</p>
-<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
+  compile --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.3.0 \
   compile <span class="t-n">--project</span> /project</code></pre></div>
 <div class="code-block" data-code="2 models, 2 to build, 0 function(s)
   staging.stg_orders                 view  0 test(s)
   marts.orders                       table 2 test(s)"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>2 models, 2 to build, 0 function(s)
   staging.stg_orders                 view  0 test(s)
   marts.orders                       table 2 test(s)</code></pre></div>
-<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.1.0 \
-  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+<div class="code-block" data-code="docker run --rm -v ./project:/project:ro areteacademy/brevis-sql:0.3.0 \
+  graph --project /project"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro areteacademy/<span class="t-k">brevis</span>-sql:0.3.0 \
   graph <span class="t-n">--project</span> /project</code></pre></div>
 <div class="code-block" data-code="staging.stg_orders
   └─ raw.orders (source)
@@ -200,9 +207,9 @@ marts.orders
   ├─ staging.stg_orders</code></pre></div>
 <p><code>build</code> and <code>test</code>, against a Postgres:</p>
 <div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
-  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.3.0 \
   build <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="  staging.stg_orders                 view  new   4ms
 @brevis:{&quot;type&quot;:&quot;landed&quot;,&quot;target&quot;:&quot;postgres://postgres/staging/stg_orders&quot;}
@@ -214,9 +221,9 @@ marts.orders
 @brevis:{"type":"landed","target":"postgres://postgres/marts/orders","rows":2}
 2 models built on postgres</code></pre></div>
 <div class="code-block" data-code="docker run --rm -v ./project:/project:ro \
-  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.1.0 \
+  -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/brevis-sql:0.3.0 \
   test --project /project --dsn-from BREVIS_SQL_DSN"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">docker</span> run <span class="t-n">--rm</span> <span class="t-n">-v</span> ./project:/project:ro \
-  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.1.0 \
+  <span class="t-n">-e</span> BREVIS_SQL_DSN=postgres://user:pass@host:5432/db areteacademy/<span class="t-k">brevis</span>-sql:0.3.0 \
   test <span class="t-n">--project</span> /project <span class="t-n">--dsn-from</span> BREVIS_SQL_DSN</code></pre></div>
 <div class="code-block" data-code="2 tests passed on postgres"><div class="code-head"><span class="code-lang">text</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code>2 tests passed on postgres</code></pre></div>
 <p>The real output, from the published image — compile and graph connect to nothing. Against a Postgres, build and test end with "2 models built" and "2 tests passed".</p>
@@ -257,7 +264,7 @@ brevis-sql: 1 of 2 tests failed</code></pre></div>
 
     <aside class="toc" aria-label="On this page">
       <p class="toc-t">On this page</p>
-      <ul><li class="toc-2"><a href="#four-commands">Four commands</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">From compile to test</a></li><li class="toc-3"><a href="#when-a-test-fails">When a test fails</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">It says what it wrote</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Two warehouses, one suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verified against dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
+      <ul><li class="toc-2"><a href="#five-commands">Five commands</a></li><li class="toc-2"><a href="#brevis-sql-serve-reading-a-warehouse-without-a-credential">brevis-sql serve — reading a warehouse without a credential</a></li><li class="toc-2"><a href="#a-model-is-a-file-that-stays-valid-sql">A model is a file that stays valid SQL</a></li><li class="toc-2"><a href="#from-compile-to-test">From compile to test</a></li><li class="toc-3"><a href="#when-a-test-fails">When a test fails</a></li><li class="toc-2"><a href="#tests-are-selects-that-return-violating-rows">Tests are SELECTs that return violating rows</a></li><li class="toc-2"><a href="#it-says-what-it-wrote">It says what it wrote</a></li><li class="toc-2"><a href="#two-warehouses-one-suite">Two warehouses, one suite</a></li><li class="toc-2"><a href="#13-mb">13 MB</a></li><li class="toc-2"><a href="#verified-against-dbt">Verified against dbt</a></li><li class="toc-2"><a href="#what-it-does-not-do">What it does not do</a></li><li class="toc-2"><a href="#where-to-go-next">Where to go next</a></li></ul>
     </aside>
   </main>
 </div>
