@@ -215,9 +215,6 @@ func TestTheIslandsStorageKeysCannotBeUndefined(t *testing.T) {
 	_, raw := get(t, ui, "/assets/sql.js")
 	js := strip(raw)
 
-	if strings.Contains(js, "var store") {
-		t.Error("the storage prefix is a `var` again; read before its line runs, it is `undefined`, and every key written later stops matching")
-	}
 	if !strings.Contains(js, `"brevis.workbench."`) {
 		t.Error("the island no longer namespaces what it keeps in the browser")
 	}
@@ -225,5 +222,41 @@ func TestTheIslandsStorageKeysCannotBeUndefined(t *testing.T) {
 	// back to being in two places, which is how the halves drift again.
 	if n := strings.Count(js, `"brevis.workbench."`); n != 1 {
 		t.Errorf("the prefix is written %d times; one of them will be the one that is wrong", n)
+	}
+}
+
+// AND NO STATE IS DECLARED BELOW THE CALLS THAT FILL IT.
+//
+// THE GENERAL FORM OF THE BUG ABOVE, and the file has now shipped it twice.
+// A `var` is hoisted WITHOUT its value: the declaration moves to the top of
+// the function and the assignment stays where it is written. `var store` was
+// the first -- every key read at startup came out `undefined`. `var tabs =
+// []` was the second: `wireTabs()` read three tabs out of storage, and then
+// that line ran and threw them away. The strip had already been drawn, so
+// the screen looked right and the first click on a tab threw a TypeError.
+//
+// IT HID BOTH TIMES FOR THE SAME REASON. The island RETURNS EARLY when
+// CodeMirror is missing, above those lines -- so the only path that can be
+// exercised without a browser is the only path on which neither bug
+// happens. Nothing in Go can drive the other one; what Go can do is refuse
+// the shape.
+func TestTheIslandDeclaresItsStateBeforeFillingIt(t *testing.T) {
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/sql.js")
+	js := strip(raw)
+
+	// The island's own statements are indented two spaces; everything inside
+	// a function is indented more, so this sees only the top level.
+	first := strings.Index(js, "\n  wire")
+	if first < 0 {
+		t.Fatal("the island no longer wires anything at startup")
+	}
+	if at := strings.Index(js[first:], "\n  var "); at >= 0 {
+		line := js[first+at+1:]
+		if end := strings.Index(line, "\n"); end >= 0 {
+			line = line[:end]
+		}
+		t.Errorf("the island declares state below its startup calls:%s\n"+
+			"that line runs AFTER the wiring and overwrites what the wiring put there", line)
 	}
 }

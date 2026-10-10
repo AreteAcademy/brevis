@@ -25,6 +25,29 @@
   // mistake the storage prefix already made in this file.
   var echoed = area.value;
 
+  // EVERY PIECE OF STATE IS DECLARED HERE, ABOVE THE CALLS THAT FILL IT, AND
+  // THAT IS NOT TIDINESS.
+  //
+  // A `var` is hoisted WITHOUT its value: the declaration moves to the top
+  // of this function and the ASSIGNMENT stays where it is written. These
+  // lived below, beside the functions that use them -- so `wireTabs()` read
+  // three tabs out of storage and put them here, and then `var tabs = [];`
+  // ran and threw them away. The strip had already been drawn, so the screen
+  // looked right, and the first click on a tab threw.
+  //
+  // It hid for a second reason worth writing down: this file RETURNS EARLY
+  // when CodeMirror is missing, above those lines -- so the only path that
+  // could be exercised without a browser was the only path on which the bug
+  // could not happen.
+  //
+  // This file has shipped that mistake twice. `var store` was the first, and
+  // every key it read at startup came out `undefined`. Twice is a shape
+  // rather than an accident, so the shape is what changed.
+  var editor = null;
+  var tabs = [];
+  var at = "";
+  var pending = null;
+
   // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
   // costs the highlighting and not the screen. Tabs and Recent are the same:
   // both work on the plain textarea.
@@ -38,7 +61,7 @@
     return;
   }
 
-  var editor = CodeMirror.fromTextArea(area, {
+  editor = CodeMirror.fromTextArea(area, {
     mode: "text/x-sql",
     lineNumbers: true,
     lineWrapping: true,
@@ -514,9 +537,8 @@
   // machine: a second browser starts empty, and clearing site data empties
   // both. A server store would need a user model, and without one it is a
   // shared mutable list with no owner.
-  var tabs = [];
-  var at = "";
-  var pending = null;
+  //
+  // Their declarations are at the top of this file, with the reason.
 
   function text() {
     return editor ? editor.getValue() : area.value;
