@@ -19,7 +19,39 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# THREE MODULES, THREE `go` DIRECTIVES, AND THE JOB IS PINNED TO ONE.
+#
+# This script runs `go run .` in the engine (go 1.27.0), the SDK CLI (1.24)
+# and brevis-sql (1.26.0). `actions/setup-go` installs the version a job's
+# `go-version-file` names and sets GOTOOLCHAIN=local, which forbids switching
+# -- so in brevis-sql's release and the gateway's, where Go is 1.26.0, the
+# ENGINE does not build and this reported "could not read the subcommands"
+# about a Go version.
+#
+# It cost both of them on 2026-10-10. brevis-sql stopped before publishing
+# anything; the gateway stopped after its images were pushed and before its
+# Release existed.
+#
+# `auto` is Go's own default and reads each module's own directive, which is
+# the only answer for a script that drives three of them.
+export GOTOOLCHAIN=auto
+
 fail=0
+
+# AND WHEN IT CANNOT READ ONE, IT SAYS WHY.
+#
+# Both callers printed "could not read the subcommands" and stopped, so a Go
+# version nobody could switch to read as a binary with no commands. A check
+# that cannot RUN has to name what stopped it, or the next person reads the
+# wrong file.
+#
+# One function because there are two callers: a diagnostic written twice is a
+# diagnostic that gets improved once.
+unreadable() { # <label> <dir>
+  echo "❌ $1: could not read the subcommands, and this is what it said:"
+  ( cd "$2" && go run . --help 2>&1 >/dev/null ) | head -5 | sed 's/^/    /'
+  fail=1
+}
 
 flags() { # <dir> <subcommand> -> one --name per line
   ( cd "$1" && go run . "$2" --help 2>/dev/null ) \
@@ -37,7 +69,7 @@ subcommands() { # <dir> -> one name per line
 check() { # <label> <dir> <doc>...
   local label=$1 dir=$2; shift 2
   local cmds; cmds=$(subcommands "$dir")
-  [ -n "$cmds" ] || { echo "❌ $label: could not read the subcommands"; fail=1; return; }
+  [ -n "$cmds" ] || { unreadable "$label" "$dir"; return; }
 
   # A MISSING FILE IS A FAILURE, not a skip.
   #
@@ -111,7 +143,7 @@ sql_flags() {
 check_sql() {
   local label="brevis-sql" docs=("$@")
   local cmds; cmds=$(sql_subcommands)
-  [ -n "$cmds" ] || { echo "❌ $label: could not read the subcommands"; fail=1; return; }
+  [ -n "$cmds" ] || { unreadable "$label" sql/cmd/brevis-sql; return; }
 
   for doc in "${docs[@]}"; do
     [ -f "$doc" ] || { echo "❌ $label: $doc does not exist"; fail=1; continue; }
