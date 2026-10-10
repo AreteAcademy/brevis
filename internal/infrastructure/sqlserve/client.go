@@ -286,7 +286,27 @@ func (c *Client) ask(ctx context.Context, path string, body request, what string
 	var out Result
 	// Bounded: a hundred rows, and a service answering something else is not
 	// one this console should try to hold.
-	if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<20)).Decode(&out); err != nil {
+	dec := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 8<<20))
+
+	// AND THE NUMBERS ARRIVE AS THEY WERE WRITTEN.
+	//
+	// `Rows [][]any` is the one field here with no type to decode into, and
+	// without this every JSON number becomes a float64 -- 53 bits of
+	// mantissa. Measured: `9007199254740993` came back as
+	// `9.007199254740992e+15`, a DIFFERENT id, drawn in a notation no
+	// warehouse holds.
+	//
+	// Postgres is where it bit. pgx hands a bigint over as an int64 and the
+	// service marshals it as a JSON number; BigQuery's REST API returns
+	// every scalar as a JSON STRING -- measured against the live API -- so
+	// the grid was wrong on one warehouse and right on the other, which is
+	// the hardest kind of wrong to notice.
+	//
+	// `UseNumber` keeps the digits as text. The typed fields beside Rows --
+	// Bytes, Millis, Limit -- are unaffected: a decoder is only told this
+	// about values landing in an `any`.
+	dec.UseNumber()
+	if err := dec.Decode(&out); err != nil {
 		return Result{}, errors.New("the SQL service answered something this console cannot read")
 	}
 	return out, nil
