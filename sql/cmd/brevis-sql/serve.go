@@ -66,8 +66,26 @@ func serve(out io.Writer, addr string, rows int, maxBytes, budget int64, registr
 	if metricsAddr != "" {
 		_, _ = fmt.Fprintf(out, "  metrics on %s/metrics, holding no SQL and no statement hash\n", metricsAddr)
 	}
-	_, _ = fmt.Fprintln(out, "  each warehouse is asked once whether its credential can write,",
-		"and outside BREVIS_ENV=local one that can is refused")
+	// THE SENTENCE CHANGED WHEN THE RULE DID. It used to read "outside
+	// BREVIS_ENV=local one that can is refused", and that stopped being true
+	// the day a warehouse could be made to refuse writes itself: Postgres in
+	// a READ ONLY transaction, BigQuery through the verdict on its dry run.
+	// A banner describing the previous rule is worse than none, because it
+	// is read as the current one.
+	_, _ = fmt.Fprintln(out, "  each warehouse is asked once whether its credential can write;",
+		"one that can is refused unless the warehouse itself can be made to refuse writes")
+	// AND THE ONE LINE NOBODY MAY SCROLL PAST.
+	//
+	// Everything else about this mode is twenty lines of code. The dangerous
+	// event is not somebody typing DROP into a development console -- it is
+	// this variable surviving into a production manifest, or a development
+	// service that is also pointed at a production DSN. This is where an
+	// operator finds out without being told to look.
+	if may := writableConnections(); len(may) > 0 {
+		_, _ = fmt.Fprintf(out, "  WRITES ARE UNLOCKED on %d connection(s): %s — on those, every "+
+			"limit is the credential's and nothing here bounds what a statement changes\n",
+			len(may), strings.Join(may, ", "))
+	}
 	// WHO MAY ASK, BY NAME. The names are not secrets -- every audit line
 	// carries one -- and the tokens never leave the environment.
 	if named := namedCallers(); len(named) > 0 {
@@ -143,6 +161,9 @@ func serveOptions(out io.Writer, addr string, rows int, maxBytes, budget int64, 
 		Env:     os.Getenv("BREVIS_ENV"),
 		Token:   os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
 		Callers: namedCallers(),
+		// THE SAME RULE, AND A SECOND REASON. A flag would put "this service
+		// may write" beside `--rows 50`, where it reads as a tuning knob.
+		Writable: writableConnections(),
 		// WHERE IT WILL LISTEN, handed over as evidence: an unset BREVIS_ENV
 		// on an address other machines can reach is a deployment that forgot
 		// a variable, and New refuses it.
@@ -155,6 +176,33 @@ func serveOptions(out io.Writer, addr string, rows int, maxBytes, budget int64, 
 		Audit: out,
 		Open:  opener(reg),
 	}
+}
+
+// writableConnections reads BREVIS_SQL_SERVE_WRITES out of the environment.
+//
+// A LIST IN ONE VARIABLE, which is the opposite of what the named tokens do
+// one function down -- and for the opposite reason. A token may contain any
+// character, so a separator would eventually split one; a CONNECTION NAME is
+// an identifier somebody wrote in brevis.yaml, and a comma is not one.
+//
+// AN UNKNOWN NAME IS NOT REFUSED HERE. A connection is declared in a file
+// this does not read, and the registry may legitimately gain one later; a
+// name that matches nothing unlocks nothing, which is the safe direction.
+func writableConnections() []string {
+	raw := strings.TrimSpace(os.Getenv("BREVIS_SQL_SERVE_WRITES"))
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for _, name := range strings.Split(raw, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			out = append(out, name)
+		}
+	}
+	// SORTED, so the banner reads the same on every boot and a test can say
+	// what it will contain.
+	sort.Strings(out)
+	return out
 }
 
 // callerPrefix is how a named token is spelled in the environment.

@@ -94,6 +94,29 @@ type Options struct {
 	// actually bound.
 	Budget int64
 
+	// Writable NAMES THE CONNECTIONS on which a statement may write. Empty
+	// is the default and is every deployment that has not asked otherwise.
+	//
+	// IT COMES FROM BREVIS_SQL_SERVE_WRITES AND NEVER FROM A FILE, which is
+	// the rule Token already follows one field up and for the same reason: a
+	// config file that could declare itself local would be a file that turns
+	// off authentication, and one that could declare itself writable would
+	// be a file that turns off every limit on this surface at once.
+	//
+	// NAMES AND NOT A BOOLEAN. One service reaches several warehouses, and
+	// unlocking the one somebody develops against must not unlock the one
+	// beside it. The accident this exists to prevent is a development
+	// service that is also pointed at a production DSN, and a switch cannot
+	// tell those apart.
+	//
+	// A NAME HERE STANDS DOWN EVERY LAYER AT ONCE -- the tokeniser, the
+	// warehouse's verdict and the warehouse's enforcement -- so on a named
+	// connection this service is exactly as powerful as its credential. The
+	// row ceiling bounds a screen and the byte ceiling bounds MONEY; neither
+	// bounds damage, because an UPDATE scans almost nothing and changes
+	// everything.
+	Writable []string
+
 	// Audit is where one line per query goes. Nil writes none, which is what
 	// a test wants and never what a deployment does.
 	Audit io.Writer
@@ -151,10 +174,23 @@ type Service struct {
 	// name. Empty means the service is OPEN.
 	callers []Caller
 
+	// writable is Options.Writable as a set. Empty on every deployment that
+	// did not ask, which is the default and the recommendation.
+	writable map[string]bool
+
 	// met counts what the audit line records. Served on a listener of its
 	// own -- see Metrics.
 	met *metrics
 }
+
+// mayWrite says whether a statement on this connection may change anything.
+//
+// ONE FUNCTION BECAUSE FOUR PLACES ASK IT -- the classifier, the warehouse's
+// verdict, the warehouse's enforcement and the audit line. Four copies of a
+// lookup is four places to forget a name, and the one that forgets is the one
+// that leaves a layer standing on a connection somebody unlocked, or stands a
+// layer down on one nobody did.
+func (s *Service) mayWrite(connection string) bool { return s.writable[connection] }
 
 // Defaults for the two limits that are a shape rather than a decision. The
 // other two -- rows and bytes -- have none on purpose: a service that picked
@@ -181,6 +217,21 @@ func New(opt Options) (*Service, error) {
 	if opt.Bytes <= 0 {
 		return nil, errors.New("serve: a byte ceiling of zero is no ceiling, and the query that " +
 			"finds that out is the one nobody meant to run")
+	}
+	// A PORT THAT CAN WRITE NEEDS A TOKEN, AND `local` IS NOT AN EXCEPTION.
+	//
+	// BEFORE the BREVIS_ENV rule below and not after it, so this is the
+	// sentence an operator reads in both environments. That rule lets an
+	// unauthenticated service exist in local and says so on the banner:
+	// anybody who reaches the port can READ the warehouse. A port that can
+	// also DROP TABLE is a different object, and the line BREVIS_ENV draws
+	// for reading is not the line to draw for writing -- so this one is
+	// drawn separately, drawn everywhere, and drawn first.
+	if len(opt.Writable) > 0 && opt.Token == "" && len(opt.Callers) == 0 {
+		return nil, fmt.Errorf("serve: BREVIS_SQL_SERVE_WRITES names %d connection(s) and no "+
+			"token is set. A port that can write to a warehouse with no authentication is "+
+			"one anybody who reaches it can write to, and BREVIS_ENV=%s does not excuse that "+
+			"the way it excuses reading", len(opt.Writable), EnvLocal)
 	}
 	env := strings.TrimSpace(opt.Env)
 	if env == "" {
@@ -225,9 +276,16 @@ func New(opt Options) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	may := map[string]bool{}
+	for _, name := range opt.Writable {
+		if name = strings.TrimSpace(name); name != "" {
+			may[name] = true
+		}
+	}
 	return &Service{
 		opt:       opt,
 		callers:   who,
+		writable:  may,
 		slots:     make(chan struct{}, opt.Concurrent),
 		probed:    map[string]bool{},
 		listed:    newListings(),
@@ -409,7 +467,10 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	// than drawn.
 	stmt := "SELECT * FROM " + table.Relation + " LIMIT " + strconv.Itoa(limit+1)
 
-	res, err := s.read(ctx, conn, table, stmt, limit)
+	// A PREVIEW CANNOT BE A WRITE, whatever the connection allows: the
+	// statement three lines up was composed here and nothing a caller sent
+	// reaches it. It carries the line anyway, so `read` has one shape.
+	res, err := s.read(ctx, conn, table, stmt, limit, &line)
 	if err != nil {
 		var no refusal
 		if errors.As(err, &no) {

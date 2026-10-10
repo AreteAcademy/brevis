@@ -76,9 +76,16 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	// THE CLASSIFIER, BEFORE A CONNECTION EXISTS. A refusal that happened
 	// after connecting is a refusal that spent a connection, and a warehouse
 	// that saw a statement this service had already decided against.
-	if err := ReadOnly(table.Dialect, req.Statement); err != nil {
-		refuse(w, http.StatusBadRequest, err.Error())
-		return
+	//
+	// UNLESS SOMEBODY NAMED THIS CONNECTION. The tokeniser is the first of
+	// three layers and they stand down together: leaving this one up would
+	// refuse `CREATE TABLE` on a connection whose whole point is that it may
+	// create one, and the refusal would read as a bug rather than a rule.
+	if !s.mayWrite(table.Connection) {
+		if err := ReadOnly(table.Dialect, req.Statement); err != nil {
+			refuse(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 
 	limit := req.Limit
@@ -125,7 +132,7 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.Close(context.Background()) }()
 
-	res, err := s.read(ctx, conn, table, req.Statement, limit)
+	res, err := s.read(ctx, conn, table, req.Statement, limit, &line)
 	if err != nil {
 		var no refusal
 		if errors.As(err, &no) {
@@ -293,7 +300,7 @@ func (r refusal) Error() string { return r.why }
 // and a query is the caller's own, but what happens to them from here is the
 // same thing and must stay the same thing: the preview was already costing
 // what it cost before anybody priced it.
-func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, statement string, limit int) (dialect.Result, error) {
+func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, statement string, limit int, line *record) (dialect.Result, error) {
 	reader, can := conn.(dialect.Reader)
 	if !can {
 		return dialect.Result{}, refusal{http.StatusNotImplemented, "unsupported",
@@ -303,8 +310,15 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	// half of why `read` is one function. A credential that can write makes
 	// every other limit on this surface decorative, so it is checked before
 	// any of them are applied.
-	if err := s.assertReadOnly(ctx, conn, table); err != nil {
-		return dialect.Result{}, err
+	//
+	// NOT ON A CONNECTION SOMEBODY UNLOCKED. The question this answers is
+	// whether a credential that may write is the only thing holding the
+	// line; where writes are allowed there is no line to hold, and refusing
+	// would be refusing the feature.
+	if !s.mayWrite(table.Connection) {
+		if err := s.assertReadOnly(ctx, conn, table); err != nil {
+			return dialect.Result{}, err
+		}
 	}
 
 	// THE DRY RUN, where there is one. A warehouse that charges for a
@@ -327,7 +341,13 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 		// it can: the tokeniser upstream already passed this statement, and
 		// its own comment says what it cannot see inside a function call.
 		if !p.Reads {
-			return dialect.Result{}, notAQuery(p.Kind)
+			if !s.mayWrite(table.Connection) {
+				return dialect.Result{}, notAQuery(p.Kind)
+			}
+			// THE LINE IS STAMPED HERE because this is where it is KNOWN.
+			// The handler knows the connection was unlocked, which is a
+			// permission; only the warehouse knows the statement used it.
+			line.Wrote = true
 		}
 		scan, quoted = p.Bytes, true
 	} else if priced, can := conn.(dialect.Estimator); can {
@@ -392,7 +412,7 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	// cost worth a condition.
 	var res dialect.Result
 	var err error
-	if guard, guarded := conn.(dialect.ReadOnlyGuard); guarded {
+	if guard, guarded := conn.(dialect.ReadOnlyGuard); guarded && !s.mayWrite(table.Connection) {
 		err = guard.ReadOnly(ctx, func(ctx context.Context) error {
 			var e error
 			res, e = reader.Read(ctx, req)
@@ -478,6 +498,15 @@ type record struct {
 	Returned int   `json:"returned"`
 	Bytes    int64 `json:"bytes"`
 	Millis   int64 `json:"ms"`
+
+	// Wrote says the WAREHOUSE read this statement as something that changes
+	// data, on a connection where that was allowed.
+	//
+	// THE VERDICT AND NOT THE PERMISSION. Marking every line from an
+	// unlocked connection would be cheaper and would make the field useless
+	// on the day somebody greps it, which is the day they are asking what
+	// changed.
+	Wrote bool `json:"wrote,omitempty"`
 
 	// Estimated is what a DRY RUN quoted, and it is deliberately not Bytes:
 	// `observe` adds Bytes to the `scanned` metric per connection, and a dry

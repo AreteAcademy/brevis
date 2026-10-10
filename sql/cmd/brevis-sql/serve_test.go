@@ -180,3 +180,69 @@ func TestAnEmptySuffixIsRefused(t *testing.T) {
 		t.Fatal("BREVIS_SQL_SERVE_TOKEN_ with no name was accepted")
 	}
 }
+
+// A SERVICE THAT MAY WRITE SAYS SO IN A LINE NOBODY CAN SCROLL PAST.
+//
+// Everything else in this plan is twenty lines; this is the part that matters.
+// The dangerous event is not somebody typing DROP in a development console --
+// it is this variable surviving into a production manifest, or a development
+// service that is also pointed at a production DSN. A banner is the one place
+// an operator sees it without being told to look.
+func TestABootSaysWhichConnectionsMayBeWrittenTo(t *testing.T) {
+	t.Setenv("BREVIS_SQL_SERVE_WRITES", "warehouse_dev,scratch")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN", "s3cret")
+	var out bytes.Buffer
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	said := out.String()
+	for _, want := range []string{"warehouse_dev", "scratch", "WRITE"} {
+		if !strings.Contains(said, want) {
+			t.Errorf("the banner never says %q:\n%s", want, said)
+		}
+	}
+}
+
+// AND A SERVICE THAT MAY NOT SAYS NOTHING ABOUT IT.
+//
+// A banner that warned on every boot would be a banner nobody reads, and this
+// is the default: every deployment that has not asked.
+func TestABootThatCannotWriteIsSilentAboutIt(t *testing.T) {
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN", "s3cret")
+	var out bytes.Buffer
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &out); err != nil {
+		t.Fatalf("serve: %v", err)
+	}
+	if strings.Contains(out.String(), "WRITE") {
+		t.Errorf("a read-only service warned about writes:\n%s", out.String())
+	}
+}
+
+// THE VARIABLE IS READ FROM THE ENVIRONMENT AND NOT FROM A FLAG, which is the
+// rule the token already follows: a command line is in a shell history, in a
+// CI log and in anybody's `ps`. For this one there is a second reason -- a
+// flag would put "this service may write" in the same place as "--rows 50",
+// where it reads as a tuning knob.
+func TestWritesCannotBeUnlockedWithAFlag(t *testing.T) {
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN", "s3cret")
+	var out bytes.Buffer
+	err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run", "--writes", "warehouse_dev"}, &out)
+	if err == nil {
+		t.Fatal("--writes was accepted as a flag")
+	}
+	if !strings.Contains(err.Error(), "flag provided but not defined") {
+		t.Errorf("it failed for some other reason: %v", err)
+	}
+}
+
+// AND THE USAGE NAMES IT, because a variable nobody can find is a variable
+// somebody sets by copying a manifest.
+func TestTheUsageNamesTheWritesVariable(t *testing.T) {
+	var out bytes.Buffer
+	if err := run([]string{"--help"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "BREVIS_SQL_SERVE_WRITES") {
+		t.Errorf("the usage never names BREVIS_SQL_SERVE_WRITES:\n%s", out.String())
+	}
+}

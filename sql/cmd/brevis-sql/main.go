@@ -404,10 +404,14 @@ brevis-sql — plain .sql models, run as a Brevis step
   --metrics-addr A  where the Prometheus exposition listens    (serve)
   --dry-run         build the service and report, without listening  (serve)
 
-  serve reads BREVIS_SQL_SERVE_TOKEN, BREVIS_SQL_SERVE_TOKEN_<NAME> and
-  BREVIS_ENV from the environment. A named token puts that name on every
-  audit line its holder produces.
+  serve reads BREVIS_SQL_SERVE_TOKEN, BREVIS_SQL_SERVE_TOKEN_<NAME>,
+  BREVIS_SQL_SERVE_WRITES and BREVIS_ENV from the environment. A named token
+  puts that name on every audit line its holder produces.
   Outside BREVIS_ENV=local a token is required and it will not start without
   one.
+  BREVIS_SQL_SERVE_WRITES names the connections a statement may WRITE to, and
+  nothing is writable by default. On a named connection every limit here
+  stands down and the credential is the only one left, so it is for a
+  development warehouse; a token is required wherever it is set.
 `, "\n"), known())
 }
