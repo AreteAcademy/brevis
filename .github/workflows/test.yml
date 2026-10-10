@@ -100,6 +100,16 @@ jobs:
       - name: brevis-sql stays light
         run: ./.github/scripts/sql-weight.sh
 
+      # AND NO MANIFEST UNLOCKS WRITES ON A WAREHOUSE.
+      #
+      # `BREVIS_SQL_SERVE_WRITES` stands every limit on `serve` down for the
+      # connections it names, so the credential is the only one left. It is a
+      # development switch, and the dangerous event is not somebody using it
+      # -- it is the variable surviving into a production manifest, copied out
+      # of an example that had it.
+      - name: No manifest unlocks writes
+        run: ./.github/scripts/writes-check.sh
+
       - name: Nothing tracked is a binary
         run: ./.github/scripts/no-binaries-check.sh
 

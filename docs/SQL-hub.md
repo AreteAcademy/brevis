@@ -29,6 +29,23 @@ docker run --rm \
 `--select orders+` narrows any of them to one model and everything
 downstream of it.
 
+## `serve` — a read-only window, and no second service account
+
+`brevis-sql serve` answers the console's Data and SQL screens, holding the
+warehouse credential the engine deliberately does not.
+
+It used to refuse any credential that could write, which meant a **second**
+service account beside the one `build` needs to create tables. It no longer
+does: the warehouse itself is asked to refuse. Postgres runs each statement
+inside a transaction opened `READ ONLY`, where `SELECT nextval('s')` comes
+back refused by Postgres; BigQuery reports what kind of statement it is on the
+dry run that prices it. A warehouse that can offer neither still refuses a
+credential that can write.
+
+`BREVIS_SQL_SERVE_WRITES=<connection>` unlocks writes on the connections it
+names, for a **development** warehouse. There every layer stands down and the
+credential is the only limit left. A token is required wherever it is set.
+
 ## A model is a file that stays valid SQL
 
 The configuration is a leading block comment, so the file opens in an editor

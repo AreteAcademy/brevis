@@ -33,9 +33,21 @@ brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
 
 Um teto não é um orçamento: `--max-bytes` limita uma query, e `--budget` limita a soma por conexão por hora — verificado contra a cotação, para que a recusa venha antes do dinheiro. Ele só limita warehouses que reportam bytes, ou seja BigQuery e não Postgres; o banner de boot diz qual postura está em vigor, inclusive a de não ter nenhuma.
 
-**Só o que o arquivo declara é alcançável**, e nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e a própria credencial é verificada como somente-leitura no primeiro uso. A linha de auditoria carrega um hash do statement e nunca o statement.
+**Só o que o arquivo declara é alcançável**, e por padrão nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e é pedido ao próprio warehouse que recuse escritas. A linha de auditoria carrega um hash do statement e nunca o statement.
+
+**Ele não precisa mais de uma service account própria.** O `brevis-sql build` cria tabelas, então o papel dele escreve — e um serviço que recusasse qualquer papel assim significava uma segunda conta para criar, guardar e rotacionar. O papel deixou de ser a única coisa segurando a linha: o Postgres roda cada statement dentro de uma transação aberta `READ ONLY` — onde `SELECT nextval('s')`, uma escrita que nenhum classificador enxerga por dentro, volta recusada pelo próprio Postgres — e o BigQuery informa que tipo de statement é no mesmo dry run que o precifica, então um `CREATE TABLE` ou um `EXPORT DATA` é recusado pelo veredito do warehouse. Um warehouse que não ofereça nenhum dos dois continua recusando uma credencial que escreve.
 
 Fora de `BREVIS_ENV=local` um token é obrigatório e o serviço não sobe sem ele.
+
+### Um warehouse de desenvolvimento que alguém pode alterar
+
+```bash
+BREVIS_SQL_SERVE_WRITES=warehouse_dev
+```
+
+Ela **nomeia conexões**. Um serviço alcança vários warehouses, e liberar aquele contra o qual você desenvolve não pode liberar o que está ao lado. Numa conexão nomeada toda camada desce e este serviço fica exatamente tão poderoso quanto a credencial dele — o teto de linhas limita uma tela e o teto de bytes limita dinheiro, e nenhum dos dois limita o que um statement muda.
+
+Um token é obrigatório onde quer que ela esteja definida, e `BREVIS_ENV=local` não é exceção. O banner de boot nomeia cada conexão liberada, o console desenha um aviso acima do editor, e `brevis_sql_writable_connection` aparece nas métricas. **Deixe-a indefinida em produção**; nenhum manifest deste repositório a define.
 
 Os tokens podem ser **nomeados**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declara um chamador chamado `console`, e cada linha de auditoria daquele portador carrega `"caller":"console"`. A identidade é a credencial, e não um cabeçalho que o chamador preenche, então o log não pode dizer nada que o portador daquele token não tenha portado. Um token recusado também deixa uma linha, e nunca registra o que foi apresentado.
 

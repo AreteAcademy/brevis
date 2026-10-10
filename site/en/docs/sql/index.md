@@ -33,9 +33,21 @@ brevis-sql serve --connections brevis.yaml --addr 127.0.0.1:8088
 
 A ceiling is not a budget: `--max-bytes` bounds one query, and `--budget` bounds the sum per connection per hour — checked against the quote, so a refusal comes before the money is spent. It bounds only warehouses that report bytes, which is BigQuery and not Postgres; the boot banner says which posture is in force, including having none.
 
-**Only what the file declares is reachable**, and nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the credential itself is asserted to be read-only at first use. The audit line carries a hash of the statement and never the statement.
+**Only what the file declares is reachable**, and by default nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the warehouse itself is asked to refuse writes. The audit line carries a hash of the statement and never the statement.
+
+**It no longer needs a service account of its own.** `brevis-sql build` creates tables, so its role can write, and a service that refused any such role meant a second account to create, keep and rotate. The role is no longer the only thing holding the line: Postgres runs each statement inside a transaction opened `READ ONLY` — where `SELECT nextval('s')`, a write no classifier can see inside, comes back refused by Postgres itself — and BigQuery reports what kind of statement it is on the dry run that prices it, so a `CREATE TABLE` or an `EXPORT DATA` is refused on the warehouse's own verdict. A warehouse that can offer neither still refuses a credential that can write.
 
 Outside `BREVIS_ENV=local` a token is required and the service will not start without one.
+
+### A development warehouse somebody may change
+
+```bash
+BREVIS_SQL_SERVE_WRITES=warehouse_dev
+```
+
+It **names connections**. One service reaches several warehouses, and unlocking the one you develop against must not unlock the one beside it. On a named connection every layer stands down and this service is exactly as powerful as its credential — the row ceiling bounds a screen and the byte ceiling bounds money, and neither bounds what a statement changes.
+
+A token is required wherever it is set, and `BREVIS_ENV=local` is not an exception. The boot banner names every unlocked connection, the console draws a banner above the editor, and `brevis_sql_writable_connection` appears on the metrics. **Leave it unset in production**; no manifest in this repository sets it.
 
 Tokens can be **named**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declares a caller called `console`, and every audit line that bearer produces carries `"caller":"console"`. Identity is the credential rather than a header a caller fills in, so the log cannot say anything the holder of that token did not hold. A refused token leaves a line too, and never records what was presented.
 

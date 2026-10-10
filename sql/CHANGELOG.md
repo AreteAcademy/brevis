@@ -16,6 +16,94 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.4.0] — 2026-10-10
+
+### Added: the warehouse refuses the write, so a read-only role no longer has to
+
+Deploying `serve` used to mean creating a **second service account**. `build`
+creates tables, so its role writes; `serve` refused any role that could, and
+one credential cannot be both.
+
+The refusal was right. The classifier reads a statement over a tokeniser and
+its own comment names what it cannot see: *"a function call writes whatever
+the function writes. `SELECT nextval('s')` advances a sequence … the
+read-only role is the defence there, not this."* So the defence is
+**replaced**, not removed — by the warehouse itself.
+
+- **Postgres** runs the statement inside a transaction opened `READ ONLY`.
+  `SELECT nextval('s')` comes back refused by Postgres, in its own words.
+- **BigQuery** reports what kind of statement it is on the dry run this code
+  already makes. Measured against the real API: a query answers `SELECT`; DDL,
+  DML, a `TRUNCATE` and an `EXPORT DATA` that writes to a bucket each answer
+  something else, and a procedure `CALL` or anything multi-statement answers
+  `SCRIPT`.
+
+**A dialect that cannot offer either keeps the old refusal.** A guarantee one
+warehouse can make is not one another inherits.
+
+The audit says which: a credential that can write and is guarded records
+`writable-guarded`, never `read-only`. "This role cannot write" and "this
+role can, and something else is stopping it" are different facts, and only
+the second one changes if that something is removed.
+
+### Added: `BREVIS_SQL_SERVE_WRITES` — a development warehouse somebody may change
+
+```bash
+BREVIS_SQL_SERVE_WRITES=warehouse_dev,scratch
+```
+
+It **names connections**, not a boolean. One service reaches several
+warehouses, and unlocking the one somebody develops against must not unlock
+the one beside it — the accident this guards is a development service that is
+also pointed at a production DSN, and a switch cannot tell those apart.
+
+On a named connection **all three layers stand down**: the tokeniser, the
+warehouse's verdict and the warehouse's enforcement. There, this service is
+exactly as powerful as its credential. The row ceiling bounds a screen and the
+byte ceiling bounds **money**; neither bounds damage, because an `UPDATE`
+scans almost nothing and changes everything.
+
+**A token is required wherever it is set, and `BREVIS_ENV=local` is not an
+exception.** Local starts with no token and the banner says what that means:
+anybody who reaches the port can *read* the warehouse. A port that can also
+`DROP TABLE` is a different object.
+
+The boot banner names every unlocked connection in a line nobody scrolls past,
+and `brevis_sql_writable_connection{connection="…"}` is on the exposition so
+the mode is visible on a dashboard. A service that unlocks nothing publishes
+no series.
+
+### Added: a write answers with what it changed
+
+`UPDATE` and `DELETE` come back with a row count; `CREATE TABLE` comes back
+saying it changes no rows. **Those are different answers.** An `UPDATE` whose
+`WHERE` matched nothing changed zero rows; a DDL changes none at all, and
+"0 rows" printed for a table that was just created reads as a failure to
+whoever ran it.
+
+Postgres says it in the command tag — `INSERT 0 3` and `UPDATE 2` end in a
+number, `CREATE TABLE` does not. BigQuery says it by omission:
+`numDmlAffectedRows` arrives on a DML and is absent on a DDL.
+
+### Upgrading
+
+**Nothing changes for a deployment that sets nothing.** With
+`BREVIS_SQL_SERVE_WRITES` unset, this service still runs one read statement
+and nothing else.
+
+**One default did change, and it is the point.** A credential that can write
+used to be refused outside `BREVIS_ENV=local`. It is now **accepted on a
+warehouse that can be made to refuse writes** — Postgres and BigQuery — and
+still refused everywhere else. A deployment already using a read-only role
+keeps working and keeps that role; one that was blocked by the refusal can now
+use the account `build` already has.
+
+**`BREVIS_SQL_SERVE_WRITES` is for a development warehouse.** The
+recommendation in production is to leave it unset, and no manifest in this
+repository sets it — a CI gate refuses one that does.
+
+---
+
 ## [0.3.0] — 2026-10-10
 
 ### Added: `brevis-sql serve` — a read-only window on a warehouse
