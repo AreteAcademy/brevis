@@ -9,6 +9,26 @@
 # ceiling, the byte ceiling and its dry run, the concurrency limit and the
 # clock. A limit the caller could change is not a limit, and the caller is a
 # browser.
+#
+# THE CREDENTIAL DOES NOT HAVE TO BE A SECOND SERVICE ACCOUNT. `brevis-sql
+# build` creates tables, so its role writes, and this used to refuse any role
+# that could -- which meant a second account to create, keep and rotate for a
+# console. It no longer does: the WAREHOUSE is asked to refuse. Postgres runs
+# each statement inside a transaction opened READ ONLY, where a write spelled
+# as a read -- `SELECT nextval('s')` -- comes back refused by Postgres itself;
+# BigQuery reports what kind of statement it is on the dry run that prices it.
+# A warehouse that can offer neither still refuses a credential that can write.
+#
+# A read-only role is still a fine thing to give it, and a deployment already
+# using one keeps working unchanged.
+#
+# AND THERE IS NO BREVIS_SQL_SERVE_WRITES HERE, ON PURPOSE. That variable
+# names connections on which a statement may CHANGE data, and on a named one
+# every limit above stands down -- the row ceiling bounds a screen and the
+# byte ceiling bounds money, and neither bounds what an UPDATE changes. It is
+# for a development warehouse. `.github/scripts/writes-check.sh` fails if any
+# manifest in this repository sets it, because a manifest here is a thing
+# somebody copies.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
