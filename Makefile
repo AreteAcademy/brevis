@@ -305,6 +305,7 @@ $(LOCAL_ENV):
 	   echo "BREVIS_AUTH_SECRET='$$(openssl rand -base64 48 | tr -d '\n')'"; \
 	   echo "BREVIS_LOCAL_PASSWORD='$$pw'"; \
 	   echo "BREVIS_SQL_SERVE_URL='http://host.docker.internal:8088'"; \
+	   echo "BREVIS_SQL_SERVE_TOKEN='$$(openssl rand -base64 24 | tr -d '\n=')'"; \
 	 } > $(LOCAL_ENV)
 	@chmod 600 $(LOCAL_ENV)
 	@echo "made $(LOCAL_ENV) -- this machine's console login"
@@ -313,6 +314,15 @@ $(LOCAL_ENV):
 # warehouse credential and nothing in docker-compose.yml should. Built first
 # rather than `go run`: `go run` is a parent whose child survives the kill, so
 # `make down` would leave a warehouse reader listening.
+#
+# AND IT READS `.env.local`, WHICH NOTHING ELSE ON THE HOST DOES. That file is
+# consumed by `docker compose`, which hands it to CONTAINERS -- and this
+# process is not one. So `BREVIS_SQL_SERVE_WRITES` set there reached the
+# console and never reached the service that acts on it: the variable was set,
+# nothing happened, and the only way to see the feature was to start this by
+# hand. The token is the same shape of problem and worse, because write mode
+# REQUIRES one and the service refuses to start without it -- so the two are
+# sourced together or neither works.
 #
 # AND THE BUILD IS ITS OWN LINE, which is the whole reason this comment is
 # longer than it was. `(cd sql && go build …) && VAR=… nohup ./bin/brevis-sql
@@ -327,7 +337,10 @@ serve-up:
 	  echo "serve: something already answers on 8088, left alone"; \
 	else \
 	  (cd sql && go build -o ../bin/brevis-sql ./cmd/brevis-sql); \
+	  if [ -f $(LOCAL_ENV) ]; then set -a; . ./$(LOCAL_ENV); set +a; fi; \
 	  WAREHOUSE_DSN="$(WAREHOUSE_DSN)" \
+	  BREVIS_SQL_SERVE_TOKEN="$$BREVIS_SQL_SERVE_TOKEN" \
+	  BREVIS_SQL_SERVE_WRITES="$$BREVIS_SQL_SERVE_WRITES" \
 	  nohup ./bin/brevis-sql serve --addr 127.0.0.1:8088 \
 	    --connections $(BREVIS_CONNECTIONS) > $(SERVE_LOG) 2>&1 & \
 	  echo $$! > $(SERVE_PID); \
