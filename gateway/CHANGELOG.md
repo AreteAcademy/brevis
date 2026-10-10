@@ -13,6 +13,40 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.27.1] — 2026-10-10
+
+### Fixed: a memcached expiry past 2038 wrapped, and the item expired on arrival
+
+An absolute memcached expiry is an `int32` because the protocol says so, and
+`int32(time.Now().Add(ttl).Unix())` wraps once that sum passes 2147483647 —
+19 January 2038, or sooner with a long enough TTL. Measured: `seconds(20
+years)` returned `-1872658598`. Memcached reads a negative expiry as a moment
+long past, so **the item is discarded the instant it is stored** and the cache
+silently never hits.
+
+That is the same failure the expiry test was already written for, reached from
+the other end of the number. It saturates now, at the furthest this protocol
+can express: an entry that lives until 2038 instead of 2046 is wrong in a way
+nobody notices, and one that expires on arrival is wrong in a way nobody can
+explain.
+
+It was the one real finding out of thirteen the first time a scanner was
+pointed at every module. The other twelve are annotated with the reason beside
+them — environment variable *names* read as credentials, paths that come from
+the operator's own flag, retry jitter where a weak source is exactly right.
+`//nolint:gosec` never silenced the scanner at all: that is golangci-lint's
+word, and two of those sites had been carrying one while going on being
+reported.
+
+### Upgrading
+
+Nothing to do. No configuration changed, no schema, no dependency floor. If
+you run the memcached metastore with a TTL long enough to have been wrapping,
+the cache starts hitting after the rolling restart — which will show up as a
+drop in reads against whatever sits behind it.
+
+---
+
 ## [0.27.0] — 2026-10-08
 
 ### Fixed: connections had no timeout at all, and one replica took the load

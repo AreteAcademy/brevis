@@ -14,6 +14,183 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.18.0] — 2026-10-10
+
+### Added: a workflow can start when something lands
+
+```yaml
+trigger:
+  on_landed: [bigquery://acme-prod/bronze/orders]
+  debounce: 5m
+```
+
+A workflow runs when a step declares it wrote one of the targets it names. A
+dataset pattern is admitted — `bigquery://acme-prod/bronze/*` — because
+`auto_table` creates a table per route, so a dataset is the only thing a
+subscription can name for them.
+
+**The debounce is the idempotency key, not a timer.** `runs.idempotency_key`
+has been `TEXT NOT NULL UNIQUE` since 00002 and the scheduler composes it as
+`slug:trigger:slot`. Make the slot the window a landing falls in, and ten
+landings compose one key: the database refuses the other nine. No new state,
+nothing to expire, and nothing to get wrong across a restart.
+
+**The debounce needs its unit** — `5m`, not `5`. A bare number is refused at
+`brevis validate`, which is the same code path `brevis publish` runs, so a
+folder that validates is a folder that publishes.
+
+A run started this way records the targets that started it, and the console
+says which they were.
+
+### Added: `/sql` — a workbench, not a text box
+
+The console gets a three-zone screen: an explorer, an editor, and the answer.
+
+- **One tree, with the connection as its root.** Every queryable destination
+  the catalog knows is a node. Opening one fetches its schemas, opening a
+  relation fetches its columns — and leaves them open. Three relations in
+  three schemas stay open at once.
+- **Nothing reloads.** Two fragment endpoints answer HTML rather than JSON, so
+  the tree's classes, its ARIA and its "this warehouse does not say" have one
+  definition instead of two. Without JavaScript the same buttons still submit
+  the form, as they always did.
+- **The editor completes names** from what the tree has loaded, with
+  `Ctrl+Space` and on `.`. The screen says which half it knows: columns
+  complete for relations you have opened, because fetching every relation's
+  columns is the project-wide `COLUMNS` query this engine refuses.
+- **The answer is a grid**, with a sticky heading, a row-number column that is
+  not selectable with the data, `null` drawn as the word, numbers aligned by
+  reading the cell rather than its Go type — BigQuery returns every scalar as
+  a string — and a pager that costs no second query and prints `500+` rather
+  than `500` when a limit cut the answer.
+- **Several statements open at once**, with a Recent rail of the last twenty
+  and what each cost. Both live in `localStorage`: the statements are on that
+  machine, in that browser, and clearing site data empties them. No tab state
+  reaches a URL, because a statement in a link is a statement in a proxy log,
+  a browser history and a `Referer`.
+- **The cost line says what a statement will process before Run is pressed**,
+  and a statement over the service's ceiling is refused there with the
+  sentence it would get at Run. It needs `brevis-sql serve` 0.3.0; without
+  one, the line is silent.
+
+**Every signed-in screen now uses the window.** `Wide` was a flag four screens
+remembered and five forgot; full is the shape, and a narrow measure is
+something a screen asks for around its own prose.
+
+### Added: a destination shows its first rows, and the engine still has no driver
+
+`/data`'s destination page gains **Preview** and **Query** tabs. The engine
+holds no warehouse credential and gained no driver: it asks `brevis-sql serve`
+and draws what comes back. A destination that is not a relation — a bucket, a
+topic — is offered neither, because a tab that can only ever say no invites
+somebody to try.
+
+Both are opt-in: with `BREVIS_SQL_SERVE_URL` unset there is no SQL entry in
+the menu and no tabs on a destination.
+
+### Fixed: `?next=/\evil.com` was an open redirect
+
+`escapeTarget` refused `//evil.com` and `https://evil.com` and let
+`/\evil.com` through. It looks like a path and is not one: a backslash is a
+slash in a URL, so a browser normalises that to `//evil.com` and the host is
+evil.com. Measured with `url.Parse`, not reasoned about. What it buys is the
+thing that function exists to stop — our own login screen handing the operator
+who just authenticated to somebody else's page.
+
+### Fixed: the data tools outlived the console's own login
+
+The console can run with no credential and warns at boot: *"interface is OPEN:
+anyone can trigger a workflow"*. A Query tab made that sentence incomplete —
+it is now also *anyone can read every table in the project*, because a query
+is deliberately not confined to the destination it was opened from. The tab
+does not create that hole; it changes what falls through it. Preview and Query
+are offered only on a console that asks who you are.
+
+### Fixed: the workbench's POST never checked the catalog
+
+`/sql`'s GET path consulted the catalog and its POST path did not, so a
+crafted body reached the warehouse: measured, `[/v1/query /v1/objects]`. Two
+copies of a rule are two rules, and the second one was missing for as long as
+the first one existed. One function answers it for both doors and for the two
+fragment endpoints.
+
+### Fixed: the result grid was changing large numbers
+
+`encoding/json` turns every JSON number into a `float64`, which has 53 bits of
+mantissa, so `9007199254740993` was drawn as `9.007199254740992e+15` — a
+different id, and in a notation no warehouse stores. Right on BigQuery, which
+returns scalars as strings, and wrong on Postgres, which does not. The decoder
+keeps the digits as text now.
+
+### Fixed: `0 backfill run(s) queued` was four different answers
+
+The number was always correct; the sentence never said how small out of what.
+Zero answers "the interval is already backfilled", "the dates are wrong", "the
+cron never fires in that range" and "the workflow is the wrong one"
+identically. It now says which.
+
+### Fixed: four defects in the workbench's own island
+
+Each found by driving the script rather than reading it, and each invisible
+on the screen:
+
+- **The editor was drawn in CodeMirror's light default.** `app.css` paints it
+  from this interface's tokens and the vendored sheet loaded *after*, with the
+  same selectors and the same specificity — so every one of those rules was
+  dead, on a console whose canvas is `#141711`. A vendored sheet is a default
+  and loads first now.
+- **The workbench never restored a drag or a collapsed rail.** The storage
+  prefix was a `var` declared below the startup calls that read it; a `var` is
+  hoisted without its value, so every key read at startup was `undefinedrail`
+  while every key written during a drag was `brevis.workbench.rail`.
+- **The query tabs threw on the first click** in every browser that loaded
+  CodeMirror — the same hoisting mistake, one release later. All of the
+  island's state is declared above the calls that fill it now, and a test
+  refuses the shape.
+- **A test that could not fail**, three times over: assertions about the
+  island's code were being satisfied by the comments that explain it.
+
+### Upgrading
+
+**Run `brevis migrate up`.** Three migrations, all additive, all with a down
+path, and none touching a table another one does not:
+
+- **00015** adds `landings.recorded_at` and backfills it from `loaded_at`.
+  Measured on the shape 00013 used — 350,400 landings, a year of hourly loads
+  across forty workflows, 165 MB:
+
+      ADD COLUMN NOT NULL DEFAULT now()       7.5 ms
+      UPDATE ... SET recorded_at = loaded_at  7.4 s
+      CREATE INDEX                            231 ms
+
+  The `ADD COLUMN` does not rewrite the table; the `UPDATE` does, and leaves
+  it at 269 MB until it is vacuumed. The index is built **last** because
+  building it first made the same `UPDATE` take 10.8 s.
+- **00016** creates `landing_cursor`, one row, and an index on the workflows
+  that subscribe. **00017** adds `runs.trigger_targets`, nullable. Both
+  instant.
+
+Migrations run inside a transaction and `migrate up` gates the rest of the
+stack, so the window is the sum above.
+
+**Nothing fires on the first cycle.** The landing cursor is planted at `now()`
+and never at the epoch, and only once something subscribes — otherwise the
+first scheduler tick after the upgrade would start one run per debounce window
+for the whole history of the `landings` table.
+
+**Nothing changes for a console with no SQL service.** `BREVIS_SQL_SERVE_URL`
+and `BREVIS_SQL_SERVE_TOKEN` are both optional and both unset by default; with
+no URL there is no `/sql` entry, no Preview tab and no Query tab. The service
+that answers them, `brevis-sql serve`, is a separate binary holding a
+warehouse credential and is a decision of its own — see
+[`sql/CHANGELOG.md`](sql/CHANGELOG.md) 0.3.0.
+
+**Rolling back is an image, not a schema.** The new columns are additive and
+every query in the Postgres layer names its columns, so `0.17.1` runs against
+this schema. Do not run the down migrations to roll back.
+
+---
+
 ## [0.17.1] — 2026-10-08
 
 ### Fixed: the `v0.17.0` tag deploys 0.16.1

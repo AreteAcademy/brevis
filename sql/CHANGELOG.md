@@ -16,6 +16,126 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.3.0] — 2026-10-10
+
+### Added: `brevis-sql serve` — a read-only window on a warehouse
+
+```bash
+brevis-sql serve --addr 127.0.0.1:8088 --connections connections.yaml
+```
+
+A second subcommand beside `compile`. It holds the warehouse credential that
+the engine deliberately does not, and answers five endpoints:
+
+    POST /v1/preview     the first rows of a destination
+    POST /v1/query       a statement the caller wrote
+    POST /v1/objects     what a connection holds
+    POST /v1/columns     what one relation holds
+    POST /v1/estimate    what a statement would scan, before it runs
+
+**POST and never GET**, every one of them. A target in a URL is a target in a
+proxy log, in a browser's history and in a `Referer` header; a statement is
+worse. The method pattern also answers a GET with 405 for free.
+
+**Preview and query are two endpoints and not one with a flag.** `/v1/preview`
+takes a target and composes its own statement, so it cannot be handed SQL at
+all — a property you can read off the route, rather than one you have to trust
+a handler to preserve.
+
+### Added: every limit is on this side
+
+The console is a convenience; this is the line, and the tests send what
+somebody with the token and `curl` would send.
+
+- **Reads only.** A classifier refuses anything that is not a single read, and
+  what its lexer cannot read to the end it refuses rather than passes.
+- **The read-only role is asserted, not assumed.** Before any other limit
+  applies, the connection is asked — without writing — whether its own
+  credential could. A credential that can write makes every other limit on
+  this surface decorative, and a role nobody checked is a role nobody has.
+- **A row ceiling** bounds the screen. **A byte ceiling** bounds the money: a
+  `LIMIT` does not reduce what BigQuery scans, so twenty rows off a petabyte
+  table reads the petabyte. The preview is bounded by both.
+- **An hourly budget per connection**, because four queries at a time, each
+  under the ceiling, repeated forever, is unbounded. It is checked on the
+  quote, so a refusal happens before the money is spent, and recorded on the
+  bill, because the quote is not what gets paid.
+- **A token, or the service refuses to exist** outside `BREVIS_ENV=local`,
+  where it starts with a banner saying what that means.
+
+### Added: the audit line says who asked
+
+One line per request, whatever happened to it, carrying the caller, the
+connection, the outcome, the rows and the bytes. **The statement is a
+SHA-256 prefix and never the text** — it is what ties a price to the query
+that followed it without putting anybody's SQL on disk. Counters sit beside
+the audit line on a listener of its own, because a scrape endpoint on the port
+that answers requests would publish every connection name to whoever can reach
+it.
+
+### Added: BigQuery and Postgres
+
+A target may name either, and each scheme keeps its own name rules: a quoted
+identifier is distinct on Postgres and two spellings of a column are two
+columns on purpose, while BigQuery folds case. The Postgres reader asks the
+SDK what `pgx` handed it rather than deciding for itself.
+
+A warehouse that cannot do something optional is not an error. Postgres has no
+`Estimator`, so it is not priced; a dialect that cannot list is not refused for
+staying quiet. The caller is told which, in a sentence.
+
+### Added: `/v1/estimate` — what a statement would scan, before it runs
+
+A dry run creates no job and bills nothing. It returns strictly less than
+`/v1/query` returns for the same statement, and a statement over the ceiling
+is refused here with the same sentence it would get at Run — which is the only
+moment at which refusing is worth anything.
+
+**It is the one endpoint here that spends nothing, so it is the one with a
+rate limit of its own.** The budget bounds every other loop on this service by
+bounding what a loop costs; a free call is free to make forever, and on
+BigQuery a dry run still counts against the project's API quota. 120 a minute
+per caller, in a fixed window.
+
+**A warehouse that cannot price says so, and is not guessed at.** `EXPLAIN`
+was considered and refused: it returns a cost in planner units nobody is
+billed in, and a number in the wrong unit under a line that says what a query
+will process is worse than no number.
+
+The figure is audited as `estimated` and not as `bytes`, because `bytes` is
+what the `scanned` counter adds up and a dry run scanned nothing.
+
+### Fixed: an open service stopped answering "does this dataset exist"
+
+A dry run fails on a syntax error or a missing table, and that message is the
+one thing the person who typed the SQL needs back. Without a token it is an
+existence oracle: `SELECT * FROM payroll.x` comes back as *"Dataset
+acme-prod:payroll was not found"* to anybody who can reach the port. The
+warehouse's own words now reach a caller who authenticated, and nobody else.
+
+### Fixed: "could not check" is not "checked and fine"
+
+A capability probe that failed was being read as a pass. A check that cannot
+fail is worse than no check, because it is counted as one.
+
+### Upgrading
+
+**Nothing changes for `brevis-sql compile`.** No flag was removed or renamed,
+and the model syntax is unchanged.
+
+**`serve` starts nothing by itself.** It is a subcommand somebody deploys
+deliberately, and the decision is not a version bump: it holds a warehouse
+credential, it is the only thing in this repository that does, and it should
+be bound to a loopback address or sit behind something that authenticates.
+`BREVIS_ENV` is required where it matters, and a service with no token outside
+local refuses to start rather than opening quietly.
+
+The engine reaches it through `BREVIS_SQL_SERVE_URL`; an engine older than
+0.18.0 will not ask for `/v1/estimate`, and a console pointed at a `serve`
+older than this one draws no cost line rather than an error.
+
+---
+
 ## [0.2.0] — 2026-10-08
 
 ### Added: a model can process only what is new
