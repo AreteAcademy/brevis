@@ -33,7 +33,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: serve
-          image: areteacademy/brevis-sql:0.2.0
+          image: areteacademy/brevis-sql:0.3.0
           args:
             - serve
             # EVERY INTERFACE, which is what makes BREVIS_ENV below not

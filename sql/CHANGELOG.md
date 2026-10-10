@@ -118,6 +118,18 @@ warehouse's own words now reach a caller who authenticated, and nobody else.
 A capability probe that failed was being read as a pass. A check that cannot
 fail is worse than no check, because it is counted as one.
 
+### Fixed: this module would not have installed
+
+`go install github.com/AreteAcademy/brevis/sql/cmd/brevis-sql@v0.3.0` is how
+somebody gets the binary without Docker, and that command refuses a module
+whose `go.mod` carries a `replace`. One was added the day
+`sdk/from/postgres` became a dependency — mechanically, the way the engine
+and the gateway both carry one, neither of which is installed that way.
+
+It never shipped: the release reads for it before the first image is pushed.
+The module requires the published SDK now, so its tests compile against what
+a consumer compiles against, and `go.mod` says why.
+
 ### Upgrading
 
 **Nothing changes for `brevis-sql compile`.** No flag was removed or renamed,

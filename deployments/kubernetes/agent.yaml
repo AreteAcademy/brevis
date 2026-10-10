@@ -9,7 +9,7 @@
 # WHAT TO CHANGE FIRST: the image. This one is the FLOOR -- a shell and the
 # agent. Build your own FROM it with dbt, a Python, whatever the steps need:
 #
-#   FROM areteacademy/brevis:0.17.1-agent
+#   FROM areteacademy/brevis:0.18.0-agent
 #   USER root
 #   RUN apk add --no-cache python3 py3-pip && pip install dbt-bigquery
 #   USER brevis
@@ -63,7 +63,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: agent
-          image: areteacademy/brevis:0.17.1-agent
+          image: areteacademy/brevis:0.18.0-agent
           args:
             - --listen=:9443
             # REQUIRED. An agent without one runs any command for anything

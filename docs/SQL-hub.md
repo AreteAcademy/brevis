@@ -13,7 +13,7 @@ models/marts/orders.sql        →  marts.orders         (table)
 docker run --rm \
   -v ./my-project:/project:ro \
   -e BREVIS_SQL_DSN=postgres://user:pass@host:5432/db \
-  areteacademy/brevis-sql:0.2.0 \
+  areteacademy/brevis-sql:0.3.0 \
   build --project /project --dsn-from BREVIS_SQL_DSN
 ```
 

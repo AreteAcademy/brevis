@@ -1,5 +1,7 @@
 cloud.google.com/go/compute/metadata v0.3.0 h1:Tz+eQXMEqDIKRsmY3cHTL6FVaynIjX2QxYC4trgAKZc=
 cloud.google.com/go/compute/metadata v0.3.0/go.mod h1:zFmK7XCadkQkj6TtorcaGlCW1hT1fIilQDwofLpJ20k=
+github.com/AreteAcademy/brevis/sdk v0.84.1 h1:Za3M0Ng6ECWUDPYLuPE+3izKwCN1Nqk3e8yBdd32sTc=
+github.com/AreteAcademy/brevis/sdk v0.84.1/go.mod h1:QXMopAbyr/S2nbsLFWtgzMplgRCVOogfcmNtkqncwEY=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

@@ -58,4 +58,15 @@ require (
 	golang.org/x/text v0.41.0 // indirect
 )
 
-replace github.com/AreteAcademy/brevis/sdk => ../sdk
+// AND NO `replace`, which the engine and the gateway both carry.
+//
+// This module is installed, not only pulled as an image: `go install
+// github.com/AreteAcademy/brevis/sql/cmd/brevis-sql@v0.3.0` is the documented
+// way to get the binary, and that command REFUSES a module whose go.mod has a
+// replace directive. One was added here the day `sdk/from/postgres` became a
+// dependency, mechanically, and the release gate is what noticed.
+//
+// So the sdk above is the PUBLISHED one, and the tests run against what a
+// consumer compiles against rather than against the sibling directory. The
+// price is real: a change in `sdk/` is not exercised here until the sdk is
+// released. That is the same deal everybody outside this repository gets.
