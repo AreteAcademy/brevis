@@ -302,3 +302,85 @@ func TestAWarehouseWithNoGuardStillRefusesAWritableCredential(t *testing.T) {
 		t.Error("the query ran on a credential nothing could stop from writing")
 	}
 }
+
+// planned is a warehouse that says what a statement IS before it runs.
+type planned struct {
+	writable
+	kind  string
+	reads bool
+	bytes int64
+}
+
+func (p *planned) Plan(context.Context, string) (dialect.Plan, error) {
+	return dialect.Plan{Bytes: p.bytes, Kind: p.kind, Reads: p.reads}, nil
+}
+
+// THE WAREHOUSE OVERRULES THE TOKENISER, which is the only way this surface
+// gets stronger rather than merely different.
+//
+// The statement here passes `ReadOnly` -- it is one SELECT and the classifier
+// has nothing to object to. The warehouse says it is a write anyway, and that
+// is exactly the case the classifier's own comment describes and cannot see.
+// BigQuery answers EXPORT_DATA for a statement that ends in a SELECT and
+// writes to a bucket; this asserts the service refuses on the warehouse's
+// verdict and not on its own reading.
+func TestTheWarehousesOwnVerdictRefusesAWriteTheClassifierPassed(t *testing.T) {
+	var audit bytes.Buffer
+	p := &planned{writable: writable{priced: priced{estimate: 1}}, kind: "EXPORT_DATA"}
+	res := askAs(t, credentialService(t, "production", p, &audit), "/v1/query", queryBody("SELECT 1"))
+
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("a statement the warehouse calls EXPORT_DATA answered %d", res.Code)
+	}
+	if p.ran != 0 {
+		t.Error("it ran anyway")
+	}
+	// THE WAREHOUSE'S OWN WORD IS IN THE REFUSAL. A reader has to be able to
+	// tell this apart from the classifier's refusal, because the two mean
+	// different things about what they typed.
+	if !strings.Contains(res.Body.String(), "EXPORT_DATA") {
+		t.Errorf("the refusal does not say what the warehouse called it: %s", res.Body.String())
+	}
+}
+
+// AND A WAREHOUSE THAT CAN SAY SO ACCEPTS A WRITABLE CREDENTIAL.
+//
+// It is the same bargain Postgres makes one interface over: the credential is
+// no longer the only thing holding the line, so it no longer has to be a
+// second service account.
+func TestAWarehouseThatClassifiesAcceptsAWritableCredential(t *testing.T) {
+	var audit bytes.Buffer
+	p := &planned{writable: writable{priced: priced{estimate: 1}, can: true}, reads: true, kind: "SELECT"}
+	res := askAs(t, credentialService(t, "production", p, &audit), "/v1/query", queryBody("SELECT 1"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a classifying warehouse answered %d: %s", res.Code, res.Body.String())
+	}
+	if !strings.Contains(audit.String(), `"outcome":"writable-guarded"`) {
+		t.Errorf("the audit never says the credential was guarded:\n%s", audit.String())
+	}
+}
+
+// AND THE PRICE STILL BOUNDS IT. A Planner replaces the Estimator on this
+// path, so a service that forgot to read Plan.Bytes would lose the cost
+// ceiling and the budget at the same time -- silently, because every other
+// assertion about a planning warehouse would still pass.
+func TestAPlanningWarehouseIsStillBoundedByTheCostCeiling(t *testing.T) {
+	var audit bytes.Buffer
+	p := &planned{writable: writable{priced: priced{estimate: 1}},
+		reads: true, kind: "SELECT", bytes: 1 << 20}
+	s, err := New(Options{
+		Env: "production", Token: "s3cret", Rows: 100, Bytes: 1024, Audit: &audit,
+		Open: func(context.Context, Table) (dialect.Conn, error) { return p, nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := askAs(t, s, "/v1/query", queryBody("SELECT 1"))
+	if res.Code != http.StatusBadRequest {
+		t.Fatalf("a query over the ceiling answered %d", res.Code)
+	}
+	if p.ran != 0 {
+		t.Error("it ran over the ceiling")
+	}
+}

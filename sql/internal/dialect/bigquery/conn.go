@@ -138,6 +138,9 @@ type queryResponse struct {
 	// TotalBytesProcessed is what the query WOULD scan, as a string for the
 	// same reason. On a dry run it is the whole answer.
 	TotalBytesProcessed string `json:"totalBytesProcessed"`
+	// StatementType is what BIGQUERY calls this statement, and it arrives on
+	// a dry run -- before anything has run. See Plan, and dialect.Planner.
+	StatementType string `json:"statementType"`
 	// Errors is a job that RAN AND FAILED, and it arrives inside an HTTP
 	// 200. A client reading only the status code reports every failed
 	// CREATE as a success.
@@ -226,21 +229,63 @@ func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, e
 // IS SPENT. `totalBytesProcessed` comes back with nothing billed -- measured
 // against real BigQuery on 2026-10-09, rather than read in a document.
 //
-// It is not polled, and does not need to be: a dry run creates no job, so
-// the answer is in the first response or there is no answer.
+// THROUGH Plan, because the two come out of one response. Two functions each
+// posting their own dry run would be two round trips for one answer, and the
+// day one of them learned something the other did not would be the day they
+// disagreed about the same statement.
 func (c *conn) Estimate(ctx context.Context, query string) (int64, error) {
-	res, err := c.runWith(ctx, query, map[string]any{"dryRun": true})
+	p, err := c.Plan(ctx, query)
 	if err != nil {
 		return 0, err
+	}
+	return p.Bytes, nil
+}
+
+// readsOnly is the one statement type BigQuery reports for something that
+// only reads.
+//
+// AN ALLOWLIST OF ONE, and it fails CLOSED. Measured on 2026-10-10 against
+// the real API: a query answers SELECT, and DDL, DML, a TRUNCATE, an
+// EXPORT DATA that writes to a bucket, a procedure CALL and anything
+// multi-statement each answer something else. A rule written the other way --
+// a list of kinds to refuse -- would classify the kind BigQuery adds next by
+// failing to recognise it, and would allow it.
+const readsOnly = "SELECT"
+
+// Plan asks BigQuery what a statement would cost AND what it is, without
+// running it. See dialect.Planner.
+//
+// It is not polled, and does not need to be: a dry run creates no job, so
+// the answer is in the first response or there is no answer.
+func (c *conn) Plan(ctx context.Context, query string) (dialect.Plan, error) {
+	res, err := c.runWith(ctx, query, map[string]any{"dryRun": true})
+	if err != nil {
+		return dialect.Plan{}, err
 	}
 	// AN ERROR AND NEVER A ZERO. Zero is under every ceiling, so a total
 	// this could not read would wave through the one query nobody measured.
 	scanned, err := strconv.ParseInt(res.TotalBytesProcessed, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("bigquery priced the query with something that is not a number of bytes (%q)",
+		return dialect.Plan{}, fmt.Errorf(
+			"bigquery priced the query with something that is not a number of bytes (%q)",
 			truncateTo(res.TotalBytesProcessed, 40))
 	}
-	return scanned, nil
+	// AN ABSENT statementType IS NOT AN ERROR HERE AND IS NEVER A READ.
+	//
+	// It is not an error because `Estimate` comes through this function and
+	// wants only the bytes: a price is a complete answer on its own, and
+	// failing it over a field it does not read would break the cost ceiling
+	// to protect a verdict nobody asked for.
+	//
+	// It is not a read because the caller that DOES ask is deciding whether
+	// a write may run. Reads stays false, the caller refuses, and the day
+	// this field moves is a day of refusals rather than a day of silent
+	// writes. `plan_live_test.go` is what would say so before a release.
+	return dialect.Plan{
+		Bytes: scanned,
+		Kind:  truncateTo(res.StatementType, 40),
+		Reads: res.StatementType == readsOnly,
+	}, nil
 }
 
 // CanWrite asks whether this credential may create a table, by dry-running

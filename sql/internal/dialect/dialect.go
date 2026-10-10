@@ -316,6 +316,56 @@ type Estimator interface {
 	Estimate(ctx context.Context, query string) (int64, error)
 }
 
+// Plan is what a warehouse says about a statement BEFORE it runs.
+type Plan struct {
+	// Bytes is what the statement would scan. Zero when this warehouse does
+	// not price a scan, which is every warehouse billed by the hour.
+	Bytes int64
+
+	// Kind is the warehouse's OWN name for the statement. Measured against
+	// real BigQuery on 2026-10-10: SELECT, CREATE_TABLE, CREATE_VIEW,
+	// INSERT, UPDATE, DELETE, MERGE, TRUNCATE_TABLE, EXPORT_DATA, SCRIPT.
+	//
+	// CARRIED SO A REFUSAL CAN QUOTE AND NEVER PARAPHRASE, and never parsed
+	// by a caller: the day a warehouse adds a kind, a service reading this
+	// as a list would classify it by not recognising it.
+	Kind string
+
+	// Reads is the WAREHOUSE's verdict that this statement only reads. It is
+	// the whole reason this type exists beside Estimator.
+	Reads bool
+}
+
+// Planner is implemented by a connection whose warehouse can say, before a
+// statement runs, both what it would cost AND WHAT IT IS.
+//
+// IT IS THE SECOND ANSWER TO WHAT THE CLASSIFIER CANNOT DO. `ReadOnlyGuard`
+// is the first: Postgres can be told to refuse writes and then refuses them
+// itself. BigQuery has no read-only session, and it has something else -- it
+// classifies every statement server-side before running it, and says so on
+// the dry run this code already makes.
+//
+// ONE CALL AND NOT TWO. The price and the verdict come out of the same dry
+// run, because asking twice would double the round trips on every query to
+// learn two halves of one answer. That is also why this is not a second
+// method on Estimator: a warehouse either answers both or answers neither.
+//
+// MEASURED, AGAINST THE REAL API. `statementType` is on the dry run's
+// response to `/queries` -- a SELECT answers SELECT, a CREATE TABLE answers
+// CREATE_TABLE, a procedure CALL and anything multi-statement answer SCRIPT,
+// and an EXPORT DATA that writes to a bucket answers EXPORT_DATA rather than
+// hiding behind the SELECT it ends with.
+type Planner interface {
+	// Plan asks the warehouse what the statement would cost and what it is,
+	// WITHOUT RUNNING IT.
+	//
+	// AN ERROR AND NEVER A FALSE. A verdict this could not obtain is not
+	// "it reads": a caller refusing on `!Reads` would be waved through by a
+	// transport failure, which is the one way this check can be worse than
+	// no check.
+	Plan(ctx context.Context, statement string) (Plan, error)
+}
+
 // WriteProbe is implemented by a connection that can answer, WITHOUT WRITING,
 // whether its own credential is allowed to.
 //

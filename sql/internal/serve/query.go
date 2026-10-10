@@ -160,6 +160,31 @@ const outcomeWritable = "writable-credential"
 // changes if that something is ever removed.
 const outcomeGuarded = "writable-guarded"
 
+// outcomeWrites is what it says when the WAREHOUSE read the statement as
+// something that writes.
+const outcomeWrites = "writes"
+
+// notAQuery refuses on the warehouse's own verdict.
+//
+// IT QUOTES THE WAREHOUSE AND NEVER THE CALLER. `kind` is the warehouse's own
+// vocabulary -- `CREATE_TABLE`, `MERGE`, `EXPORT_DATA`, `SCRIPT` -- and not a
+// word anybody typed, which is the rule every refusal on this surface keeps.
+// The dialect bounds its length before it gets here.
+//
+// A SEPARATE SENTENCE FROM THE CLASSIFIER'S, because the two mean different
+// things to the person who typed it: one says this service would not read the
+// statement, the other says the warehouse read it and it writes.
+func notAQuery(kind string) refusal {
+	if kind == "" {
+		return refusal{http.StatusBadRequest, outcomeWrites,
+			"the warehouse did not say what kind of statement this is, and this service " +
+				"will not run one it cannot have confirmed is a query"}
+	}
+	return refusal{http.StatusBadRequest, outcomeWrites, fmt.Sprintf(
+		"the warehouse reads this as %s, and this service runs a query. "+
+			"Nothing here writes to a warehouse.", kind)}
+}
+
 // assertReadOnly refuses a connection whose credential is allowed to write.
 //
 // IT IS THE ANSWER TO THE ONE QUESTION THE CLASSIFIER CANNOT ANSWER. A
@@ -178,7 +203,13 @@ func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table T
 	// question from whether the credential may write and the one that
 	// decides whether a second service account buys anything. See
 	// dialect.ReadOnlyGuard, and `read` below, which is where it is applied.
-	_, guarded := conn.(dialect.ReadOnlyGuard)
+	// TWO MECHANISMS AND ONE QUESTION. Postgres can be told to refuse writes
+	// and then refuses them itself; BigQuery has no read-only session and
+	// classifies every statement server-side before running it. Either is
+	// the warehouse holding the line, which is what this is asking.
+	_, held := conn.(dialect.ReadOnlyGuard)
+	_, told := conn.(dialect.Planner)
+	guarded := held || told
 
 	probe, can := conn.(dialect.WriteProbe)
 	if !can {
@@ -279,8 +310,30 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	// THE DRY RUN, where there is one. A warehouse that charges for a
 	// machine by the hour has nothing to say here and is not refused for
 	// staying quiet -- its limits are the row ceiling and the clock.
-	if priced, can := conn.(dialect.Estimator); can {
-		scan, err := priced.Estimate(ctx, statement)
+	//
+	// A Planner IS PREFERRED, and it is the same dry run: it carries the
+	// price and the warehouse's own verdict on what the statement is, out of
+	// one response. Asking an Estimator beside it would be a second round
+	// trip for the half this already has.
+	var scan int64
+	quoted := false
+	if told, can := conn.(dialect.Planner); can {
+		p, err := told.Plan(ctx, statement)
+		if err != nil {
+			return dialect.Result{}, refusal{http.StatusBadRequest, "unpriced",
+				s.saying("the warehouse would not run this", err)}
+		}
+		// THE WAREHOUSE OVERRULES THE CLASSIFIER, and this is the only place
+		// it can: the tokeniser upstream already passed this statement, and
+		// its own comment says what it cannot see inside a function call.
+		if !p.Reads {
+			return dialect.Result{}, notAQuery(p.Kind)
+		}
+		scan, quoted = p.Bytes, true
+	} else if priced, can := conn.(dialect.Estimator); can {
+		var err error
+		scan, err = priced.Estimate(ctx, statement)
+		quoted = true
 		if err != nil {
 			// THE WAREHOUSE'S OWN WORDS, and only here, and only to a caller
 			// that held a token. A dry run fails on a syntax error or a
@@ -300,6 +353,11 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 			return dialect.Result{}, refusal{http.StatusBadRequest, "unpriced",
 				s.saying("the warehouse would not run this", err)}
 		}
+	}
+	// THE MONEY, ONCE, WHICHEVER ANSWERED. Written below both rather than
+	// inside each: a ceiling that lived in one branch would be a ceiling the
+	// other warehouse does not have, and nothing would say so.
+	if quoted {
 		if scan > s.opt.Bytes {
 			return dialect.Result{}, tooExpensive(scan, s.opt.Bytes)
 		}
