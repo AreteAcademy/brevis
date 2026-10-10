@@ -42,10 +42,6 @@ type Page struct {
 
 	// Island carries the extra assets of the interactive screens.
 	Island Island
-
-	// Wide removes the width limit. The DAG uses the whole screen; text does
-	// not.
-	Wide bool
 }
 
 // Island lists an interactive page's extra assets. It exists because only the DAG
@@ -105,15 +101,23 @@ templ Base(p Page) {
 							}
 						</div>
 					</header>
-					if p.Wide {
-						<div class="px-6 py-5">
-							{ children... }
-						</div>
-					} else {
-						<div class="mx-auto max-w-[1400px] px-6 py-5">
-							{ children... }
-						</div>
-					}
+					// THE SCREEN GETS THE WINDOW, and a measure is a
+					// BLOCK's decision from here on.
+					//
+					// This used to be `if p.Wide`, a flag four screens
+					// remembered and five forgot: Overview, Runs, Projects,
+					// Data and Destination were capped at 1400px while
+					// Workflows, the two DAG screens and /sql used the glass.
+					// Nothing in the code said which was intended -- the
+					// default simply won five times, which is how a default
+					// becomes a decision nobody made.
+					//
+					// So a narrow measure now sits on the block it is about,
+					// beside the prose it exists for, where the next person
+					// can see what it is protecting.
+					<div class="px-6 py-5">
+						{ children... }
+					</div>
 				</main>
 			</div>
 			// The basic interactions (dialogs, chart tooltips) on every page. It

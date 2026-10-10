@@ -383,7 +383,7 @@ func (p Pagination) Window() []int {
 }
 
 templ Workflows(ws []postgres.WorkflowSummary, tags []string, f Filter, total, filtered int) {
-	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows", Wide: true}) {
+	@layouts.Base(layouts.Page{Title: "Workflows", Kicker: "Orchestration", Active: "workflows"}) {
 		<form method="get" action="/workflows" class="mb-5">
 			<div class="flex items-center gap-3 rounded-card border border-line bg-surface px-5 py-3 shadow-warm-sm">
 				<svg class="h-4 w-4 shrink-0 text-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -717,12 +717,17 @@ templ Projects(ps []postgres.ProjectSummary) {
 		if len(ps) == 0 {
 			@components.Empty("No project yet.", "brevis publish --project my-project")
 		} else {
-			<p class="mb-4 text-sm text-muted">
+			// A MEASURE ON THE BLOCK, which is where it belongs now that the
+			// page has the window. Three lines of prose set across 2500px is
+			// a line the eye loses on the way back.
+			<p class="mb-4 max-w-3xl text-sm text-muted">
 				A project namespaces its workflows: two projects can each have a
 				<code class="font-mono text-xs">daily_ingest</code> without colliding.
 				A workflow joins one with <code class="font-mono text-xs">brevis publish --project</code>.
 			</p>
-			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+			// A FOURTH COLUMN WHERE THERE IS ROOM. Three cards across a wide
+			// screen is three cards of 800px holding two numbers each.
+			<div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
 				for _, p := range ps {
 					<a
 						href={ templ.SafeURL("/workflows?project=" + p.Slug) }
@@ -858,7 +863,7 @@ func about(w wf.Workflow) templ.Component {
 templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows",
-		Island: dagAssets, Wide: true, Actions: disparar(w.Slug),
+		Island: dagAssets, Actions: disparar(w.Slug),
 		// The question mark only exists when there is something behind it: a
 		// control that opens an empty dialog is a promise the page does not
 		// keep.
@@ -937,7 +942,7 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
-		Island: dagAssets, Wide: true,
+		Island: dagAssets,
 	}) {
 		// Two regions the server refreshes, and the graph between them.
 		//

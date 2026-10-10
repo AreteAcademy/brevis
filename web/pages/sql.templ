@@ -28,7 +28,7 @@ var editorAssets = layouts.Island{
 // and in a Referer header. Tab state in a query parameter would be exactly
 // that, so tabs wait for the island that can hold state in the browser.
 templ SQL(v SQLView) {
-	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Wide: true, Island: editorAssets}) {
+	@layouts.Base(layouts.Page{Title: "SQL", Kicker: "Workbench", Active: "sql", Island: editorAssets}) {
 		if v.Empty() {
 			<p class="rounded-card border border-line-soft px-4 py-3 text-sm text-muted">
 				Nothing here can be queried yet. A destination shows up once a pipeline

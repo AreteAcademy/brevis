@@ -77,7 +77,7 @@ templ Target(v TargetView) {
 			<h3 class="kicker mb-2">Rows per load</h3>
 			<div class="rounded-card border border-line bg-surface p-4 shadow-warm-sm">
 				@components.LoadBars(v.Bars, v.Missed)
-				<p class="mt-2 text-xs text-muted">
+				<p class="mt-2 max-w-3xl text-xs text-muted">
 					Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote.
 					if v.Missed > 0 {
 						Dashed bars are scheduled loads that did not arrive.

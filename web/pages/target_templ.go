@@ -317,7 +317,7 @@ func Target(v TargetView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"mt-2 text-xs text-muted\">Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote. ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p class=\"mt-2 max-w-3xl text-xs text-muted\">Oldest on the left; each bar opens its run. A hollow bar is a load that did not say how many rows it wrote. ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
