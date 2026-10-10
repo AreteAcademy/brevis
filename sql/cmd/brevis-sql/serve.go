@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -67,7 +68,17 @@ func serve(out io.Writer, addr string, rows int, maxBytes, budget int64, registr
 	}
 	_, _ = fmt.Fprintln(out, "  each warehouse is asked once whether its credential can write,",
 		"and outside BREVIS_ENV=local one that can is refused")
-	if os.Getenv("BREVIS_SQL_SERVE_TOKEN") == "" {
+	// WHO MAY ASK, BY NAME. The names are not secrets -- every audit line
+	// carries one -- and the tokens never leave the environment.
+	if named := namedCallers(); len(named) > 0 {
+		names := make([]string, 0, len(named))
+		for _, c := range named {
+			names = append(names, c.Name)
+		}
+		_, _ = fmt.Fprintf(out, "  %d named caller(s): %s — each one's audit lines carry its name\n",
+			len(names), strings.Join(names, ", "))
+	}
+	if os.Getenv("BREVIS_SQL_SERVE_TOKEN") == "" && len(namedCallers()) == 0 {
 		// SAID OUT LOUD, every time. New() already refused this outside
 		// local, so reaching here means somebody meant it -- and a line on
 		// the screen is what stops `BREVIS_ENV=local` reaching a machine
@@ -129,8 +140,9 @@ func serveOptions(out io.Writer, addr string, rows int, maxBytes, budget int64, 
 		// Read from the environment, never from an argument: something that
 		// could declare itself local would be something that turns off
 		// authentication. The gateway states the rule; this obeys it.
-		Env:   os.Getenv("BREVIS_ENV"),
-		Token: os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
+		Env:     os.Getenv("BREVIS_ENV"),
+		Token:   os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
+		Callers: namedCallers(),
 		// WHERE IT WILL LISTEN, handed over as evidence: an unset BREVIS_ENV
 		// on an address other machines can reach is a deployment that forgot
 		// a variable, and New refuses it.
@@ -143,6 +155,40 @@ func serveOptions(out io.Writer, addr string, rows int, maxBytes, budget int64, 
 		Audit: out,
 		Open:  opener(reg),
 	}
+}
+
+// callerPrefix is how a named token is spelled in the environment.
+//
+// ONE VARIABLE PER SECRET, and not one variable holding a list: a list needs
+// a separator, and a separator is a character a token may not contain. It is
+// also how every secret manager hands them over.
+const callerPrefix = "BREVIS_SQL_SERVE_TOKEN_"
+
+// namedCallers reads `BREVIS_SQL_SERVE_TOKEN_<NAME>` out of the environment.
+//
+// The NAME is the suffix, lowercased, and it is not a secret: it is printed
+// at boot and written into every audit line. The VALUE never leaves here.
+//
+// FROM THE ENVIRONMENT AND NEVER A FLAG, which is the rule `--dsn-from`
+// already applies to a DSN, for its reason: a command line is in a shell
+// history, in a CI log and in anybody's `ps`.
+func namedCallers() []svc.Caller {
+	var out []svc.Caller
+	for _, kv := range os.Environ() {
+		k, v, _ := strings.Cut(kv, "=")
+		name, ok := strings.CutPrefix(k, callerPrefix)
+		if !ok {
+			continue
+		}
+		// An empty suffix is `BREVIS_SQL_SERVE_TOKEN_` itself, which is a
+		// typo rather than a caller. It is passed through with no name so
+		// the service refuses it by name at boot, where the message is.
+		out = append(out, svc.Caller{Name: strings.ToLower(name), Token: v})
+	}
+	// SORTED, so the banner reads the same on every boot and a test can say
+	// what it will contain. `os.Environ` has no promised order.
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
 // opener turns a target into a connection.

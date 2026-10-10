@@ -74,6 +74,7 @@ func newDescriptions() *descriptions { return &descriptions{has: map[string]desc
 func (s *Service) columns(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
 	line := record{Event: "columns", Outcome: "refused"}
+	line.Caller = whoAsked(r.Context())
 	defer func() { s.audit(line, started) }()
 
 	var req columnsRequest

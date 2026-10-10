@@ -722,8 +722,41 @@ a service rather than as a package.
 
 | variable | |
 |---|---|
-| `BREVIS_SQL_SERVE_TOKEN` | the bearer token callers must present |
-| `BREVIS_ENV` | outside `local` a token is **required**, and it will not start without one |
+| `BREVIS_SQL_SERVE_TOKEN` | a bearer with **no name attached**. Its audit lines carry no caller |
+| `BREVIS_SQL_SERVE_TOKEN_<NAME>` | a **named** bearer. The name is the suffix, lowercased, and every line that bearer produces carries it |
+| `BREVIS_ENV` | outside `local` at least one of the two is **required**, and it will not start without one |
+
+### Who asked
+
+The audit line carried connection, hash, rows, bytes, duration and outcome —
+and nothing about who. With one operator that is a note; with two, the log
+cannot answer the only question it is read for.
+
+**Identity is the credential, not a header.** A caller that announced its own
+name would be making a claim, and an audit of claims is an audit of whatever
+somebody typed. A token the operator issued is a fact, so the line cannot say
+anything the holder of that token did not hold.
+
+```bash
+export BREVIS_SQL_SERVE_TOKEN_CONSOLE=$(openssl rand -hex 32)
+export BREVIS_SQL_SERVE_TOKEN_NIGHTLY_CI=$(openssl rand -hex 32)
+brevis-sql serve
+#   2 named caller(s): console, nightly_ci — each one's audit lines carry its name
+```
+
+The console then gets `BREVIS_SQL_SERVE_TOKEN` set to the **console** one, and
+its queries log as `"caller":"console"`. One variable per secret rather than
+one holding a list: a list needs a separator, and a separator is a character a
+token may not contain.
+
+Two names sharing one token is a **boot error**: that is one credential and a
+log that lies about which of them used it. A refused token leaves a line too —
+`{"event":"request","outcome":"unauthenticated"}` — and never records what was
+presented, because a near miss in a log is the token itself one line later.
+
+The name reaches the audit stream and **not** `/metrics`: that endpoint has no
+authentication, and who is using this service is not a fact for whoever can
+reach the scrape port.
 
 **A ceiling is not a budget.** `--max-bytes` bounds ONE query; four queries
 under it, repeated, are unbounded. `--budget` bounds the sum, per connection

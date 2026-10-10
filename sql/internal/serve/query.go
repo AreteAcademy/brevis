@@ -49,6 +49,7 @@ type queryResponse struct {
 func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
 	line := record{Event: "query", Outcome: "refused"}
+	line.Caller = whoAsked(r.Context())
 	defer func() { s.audit(line, started) }()
 
 	var req queryRequest
@@ -351,8 +352,12 @@ type record struct {
 	At         string `json:"at"`
 	Event      string `json:"event"`
 	Connection string `json:"connection,omitempty"`
-	Statement  string `json:"statement,omitempty"`
-	Outcome    string `json:"outcome"`
+
+	// Caller is which named bearer asked, empty when the token carries no
+	// name or when the request never authenticated. See caller.go.
+	Caller    string `json:"caller,omitempty"`
+	Statement string `json:"statement,omitempty"`
+	Outcome   string `json:"outcome"`
 
 	// Rows is the ceiling this ran under, Returned how many came back, Bytes
 	// what it scanned. All three are zero on a query that never ran, which

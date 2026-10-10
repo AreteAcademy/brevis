@@ -2,7 +2,6 @@ package serve
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -41,8 +40,18 @@ type Options struct {
 	// a file that turns off authentication."
 	Env string
 
-	// Token is the bearer every request must carry. Required outside local.
+	// Token is the bearer every request must carry, with NO NAME attached.
+	// Required outside local unless Callers names one.
+	//
+	// It is what every deployment has today and it keeps working. Its audit
+	// lines carry no caller, which is itself the finding: a shared secret
+	// with nobody's name on it.
 	Token string
+
+	// Callers are named bearers, and the audit line carries whichever one
+	// asked. See caller.go for why identity is the credential rather than a
+	// header. Folded together with Token into one list at boot.
+	Callers []Caller
 
 	// Addr is where this will listen, and it is EVIDENCE rather than
 	// configuration: see New. Empty means nobody is deploying anything --
@@ -133,6 +142,10 @@ type Service struct {
 	// spent is what each connection has scanned in this window. See budget.go.
 	spent *spending
 
+	// callers is every bearer this service accepts, Token folded in with no
+	// name. Empty means the service is OPEN.
+	callers []Caller
+
 	// met counts what the audit line records. Served on a listener of its
 	// own -- see Metrics.
 	met *metrics
@@ -190,7 +203,7 @@ func New(opt Options) (*Service, error) {
 		}
 		env = EnvLocal
 	}
-	if env != EnvLocal && opt.Token == "" {
+	if env != EnvLocal && opt.Token == "" && len(opt.Callers) == 0 {
 		return nil, fmt.Errorf("serve: BREVIS_ENV is %q and no token is set. "+
 			"An endpoint that reads a warehouse without authentication is one "+
 			"anybody who reaches the port can read it with; only BREVIS_ENV=local "+
@@ -203,8 +216,13 @@ func New(opt Options) (*Service, error) {
 	if opt.Timeout <= 0 {
 		opt.Timeout = defaultTimeout
 	}
+	who, err := callers(opt)
+	if err != nil {
+		return nil, err
+	}
 	return &Service{
 		opt:       opt,
+		callers:   who,
 		slots:     make(chan struct{}, opt.Concurrent),
 		probed:    map[string]bool{},
 		listed:    newListings(),
@@ -286,22 +304,6 @@ func (s *Service) Metrics() http.Handler {
 	return mux
 }
 
-// authenticated refuses anything without the bearer, where one is required.
-func (s *Service) authenticated(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if s.opt.Token != "" {
-			given, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-			// CONSTANT TIME, because the comparison's duration is otherwise a
-			// measurement of how much of the token is right.
-			if subtle.ConstantTimeCompare([]byte(given), []byte(s.opt.Token)) != 1 {
-				refuse(w, http.StatusUnauthorized, "a valid bearer token is required")
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 type previewRequest struct {
 	// Target, NOT a statement. An endpoint that cannot be handed SQL cannot
 	// be tricked into running any -- which is why preview and query are two
@@ -325,6 +327,7 @@ func (s *Service) preview(w http.ResponseWriter, r *http.Request) {
 	// produces exactly one audit line"; this is the half that was missing.
 	started := time.Now()
 	line := record{Event: "preview", Outcome: "refused"}
+	line.Caller = whoAsked(r.Context())
 	defer func() { s.audit(line, started) }()
 
 	var req previewRequest

@@ -35,7 +35,9 @@ A ceiling is not a budget: `--max-bytes` bounds one query, and `--budget` bounds
 
 **Only what the file declares is reachable**, and nothing it does is a write: every statement is classified before it runs, a read that would scan more than `--max-bytes` is priced and refused before it costs anything, and the credential itself is asserted to be read-only at first use. The audit line carries a hash of the statement and never the statement.
 
-Outside `BREVIS_ENV=local` a `BREVIS_SQL_SERVE_TOKEN` is required and the service will not start without one.
+Outside `BREVIS_ENV=local` a token is required and the service will not start without one.
+
+Tokens can be **named**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declares a caller called `console`, and every audit line that bearer produces carries `"caller":"console"`. Identity is the credential rather than a header a caller fills in, so the log cannot say anything the holder of that token did not hold. A refused token leaves a line too, and never records what was presented.
 
 ## A model is a file that stays valid SQL
 

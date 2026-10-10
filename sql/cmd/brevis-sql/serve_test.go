@@ -121,3 +121,62 @@ func TestTheBudgetIsSaidAtBootWhicheverItIs(t *testing.T) {
 		t.Errorf("the banner does not say what a budget cannot bound:\n%s", with.String())
 	}
 }
+
+// NAMED TOKENS COME FROM THE ENVIRONMENT, ONE VARIABLE EACH.
+//
+// `BREVIS_SQL_SERVE_TOKEN_<NAME>` rather than one variable holding a list:
+// a list needs a separator, and a separator is a character a token may not
+// contain. One variable per secret is also how every secret manager hands
+// them over.
+//
+// The name is the suffix, lowercased. It is not a secret -- it reaches every
+// audit line -- and the VALUE never leaves the environment.
+func TestNamedTokensAreReadFromTheEnvironment(t *testing.T) {
+	t.Setenv("BREVIS_ENV", "production")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN_CONSOLE", "tok-console")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN_NIGHTLY_CI", "tok-ci")
+
+	var out bytes.Buffer
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	said := out.String()
+	for _, want := range []string{"console", "nightly_ci", "2 named caller"} {
+		if !strings.Contains(said, want) {
+			t.Errorf("the banner does not carry %q:\n%s", want, said)
+		}
+	}
+	// AND NEVER THE VALUES. The banner is the first thing anybody pastes
+	// into a ticket.
+	for _, secret := range []string{"tok-console", "tok-ci"} {
+		if strings.Contains(said, secret) {
+			t.Errorf("the banner printed a token:\n%s", said)
+		}
+	}
+	// NOR THE "no token" LINE, which would be a lie here.
+	if strings.Contains(said, "no token") {
+		t.Errorf("a service with named callers says it has no token:\n%s", said)
+	}
+}
+
+// AND NAMED TOKENS ARE AUTHENTICATION: a service with one and no
+// BREVIS_SQL_SERVE_TOKEN still starts outside local.
+func TestANamedTokenAloneStartsOutsideLocal(t *testing.T) {
+	t.Setenv("BREVIS_ENV", "production")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN", "")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN_CONSOLE", "tok-console")
+
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &bytes.Buffer{}); err != nil {
+		t.Fatalf("a named caller was not accepted as authentication: %v", err)
+	}
+}
+
+// A VARIABLE WITH NO NAME AFTER THE PREFIX IS A MISTAKE, not a caller.
+func TestAnEmptySuffixIsRefused(t *testing.T) {
+	t.Setenv("BREVIS_ENV", "production")
+	t.Setenv("BREVIS_SQL_SERVE_TOKEN_", "orphan")
+
+	if err := run([]string{"serve", "--addr", "127.0.0.1:0", "--dry-run"}, &bytes.Buffer{}); err == nil {
+		t.Fatal("BREVIS_SQL_SERVE_TOKEN_ with no name was accepted")
+	}
+}

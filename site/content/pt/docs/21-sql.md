@@ -35,7 +35,9 @@ Um teto não é um orçamento: `--max-bytes` limita uma query, e `--budget` limi
 
 **Só o que o arquivo declara é alcançável**, e nada do que ele faz é escrita: cada statement é classificado antes de rodar, uma leitura que varreria mais que `--max-bytes` é precificada e recusada antes de custar qualquer coisa, e a própria credencial é verificada como somente-leitura no primeiro uso. A linha de auditoria carrega um hash do statement e nunca o statement.
 
-Fora de `BREVIS_ENV=local` um `BREVIS_SQL_SERVE_TOKEN` é obrigatório e o serviço não sobe sem ele.
+Fora de `BREVIS_ENV=local` um token é obrigatório e o serviço não sobe sem ele.
+
+Os tokens podem ser **nomeados**: `BREVIS_SQL_SERVE_TOKEN_CONSOLE=…` declara um chamador chamado `console`, e cada linha de auditoria daquele portador carrega `"caller":"console"`. A identidade é a credencial, e não um cabeçalho que o chamador preenche, então o log não pode dizer nada que o portador daquele token não tenha portado. Um token recusado também deixa uma linha, e nunca registra o que foi apresentado.
 
 ## Um modelo é um arquivo que continua SQL válido
 

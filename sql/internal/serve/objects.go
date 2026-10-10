@@ -100,6 +100,7 @@ func newListings() *listings { return &listings{has: map[string]listing{}} }
 func (s *Service) objects(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
 	line := record{Event: "objects", Outcome: "refused"}
+	line.Caller = whoAsked(r.Context())
 	defer func() { s.audit(line, started) }()
 
 	var req objectsRequest

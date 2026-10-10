@@ -404,7 +404,9 @@ brevis-sql — plain .sql models, run as a Brevis step
   --metrics-addr A  where the Prometheus exposition listens    (serve)
   --dry-run         build the service and report, without listening  (serve)
 
-  serve reads BREVIS_SQL_SERVE_TOKEN and BREVIS_ENV from the environment.
+  serve reads BREVIS_SQL_SERVE_TOKEN, BREVIS_SQL_SERVE_TOKEN_<NAME> and
+  BREVIS_ENV from the environment. A named token puts that name on every
+  audit line its holder produces.
   Outside BREVIS_ENV=local a token is required and it will not start without
   one.
 `, "\n"), known())
