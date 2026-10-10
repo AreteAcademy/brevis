@@ -150,6 +150,16 @@ func (s *Service) query(w http.ResponseWriter, r *http.Request) {
 // outcomeWritable is what an audit line says when the credential can write.
 const outcomeWritable = "writable-credential"
 
+// outcomeGuarded is what it says when the credential can write and the
+// WAREHOUSE has been told to refuse writes anyway.
+//
+// A THIRD WORD AND NOT SILENCE. "read-only" would be a lie -- the credential
+// is not -- and `writable-credential` would read as the refusal it no longer
+// is. An operator has to be able to tell "this role cannot write" from "this
+// role can, and something else is stopping it", because only the second one
+// changes if that something is ever removed.
+const outcomeGuarded = "writable-guarded"
+
 // assertReadOnly refuses a connection whose credential is allowed to write.
 //
 // IT IS THE ANSWER TO THE ONE QUESTION THE CLASSIFIER CANNOT ANSWER. A
@@ -164,6 +174,12 @@ const outcomeWritable = "writable-credential"
 // the same reasoning BREVIS_ENV already carries for the token. It is still
 // said out loud, once, on the audit stream.
 func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table Table) error {
+	// WHETHER THE WAREHOUSE CAN BE TOLD TO REFUSE, which is a different
+	// question from whether the credential may write and the one that
+	// decides whether a second service account buys anything. See
+	// dialect.ReadOnlyGuard, and `read` below, which is where it is applied.
+	_, guarded := conn.(dialect.ReadOnlyGuard)
+
 	probe, can := conn.(dialect.WriteProbe)
 	if !can {
 		// A warehouse that cannot be asked is not refused for a question it
@@ -201,6 +217,9 @@ func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table T
 			outcome := "read-only"
 			if writes {
 				outcome = outcomeWritable
+				if guarded {
+					outcome = outcomeGuarded
+				}
 			}
 			s.mu.Lock()
 			s.probed[table.Connection] = writes
@@ -209,7 +228,10 @@ func (s *Service) assertReadOnly(ctx context.Context, conn dialect.Conn, table T
 				Outcome: outcome}, time.Now())
 		}
 	}
-	if !writes || s.opt.Env == EnvLocal {
+	// A WAREHOUSE THAT CANNOT BE GUARDED GETS NO RELAXATION. The guarantee
+	// one dialect can make is not one another inherits: where nothing but the
+	// role holds the line, the role is still what this refuses on.
+	if !writes || s.opt.Env == EnvLocal || guarded {
 		return nil
 	}
 	return refusal{http.StatusInternalServerError, outcomeWritable,
@@ -296,7 +318,31 @@ func (s *Service) read(ctx context.Context, conn dialect.Conn, table Table, stat
 	// so the extra row is the only thing that can tell a cut from a table
 	// that ends there.
 	probe := limit + 1
-	res, err := reader.Read(ctx, dialect.Request{Query: statement, Limit: probe, MaxBytes: s.opt.Bytes})
+	req := dialect.Request{Query: statement, Limit: probe, MaxBytes: s.opt.Bytes}
+
+	// INSIDE THE WAREHOUSE'S OWN REFUSAL, where there is one.
+	//
+	// THIS IS THE ONE PLACE CALLER SQL RUNS, which is the other half of why
+	// `read` is a single function: the preview builds its statement and the
+	// query is typed, and both arrive here. Guarding anywhere else would be
+	// guarding a statement this service wrote.
+	//
+	// ALWAYS AND NOT ONLY FOR A WRITABLE CREDENTIAL. A branch on the probe
+	// would be a branch that is wrong in the one case nobody tested -- the
+	// probe that could not run, recorded as `unprobed` and treated as a no.
+	// Two round trips on a warehouse already being asked a question is not a
+	// cost worth a condition.
+	var res dialect.Result
+	var err error
+	if guard, guarded := conn.(dialect.ReadOnlyGuard); guarded {
+		err = guard.ReadOnly(ctx, func(ctx context.Context) error {
+			var e error
+			res, e = reader.Read(ctx, req)
+			return e
+		})
+	} else {
+		res, err = reader.Read(ctx, req)
+	}
 	if err != nil {
 		return dialect.Result{}, err
 	}

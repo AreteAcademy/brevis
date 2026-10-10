@@ -224,3 +224,81 @@ func TestAFailedProbeIsNotRemembered(t *testing.T) {
 		t.Errorf("a probe that failed was retried %d times out of 3", w.asked)
 	}
 }
+
+// guarded is a warehouse whose SERVER can be made to refuse a write, and
+// which records whether the read really happened inside that promise.
+//
+// `ranInside` is the field that matters. A fake that only counted the
+// wrapping would pass for an implementation that opened the guard and then
+// read outside it, which is the one way this feature can be wrong while
+// looking right.
+type guarded struct {
+	writable
+	wrapped   int
+	inside    bool
+	ranInside bool
+}
+
+func (g *guarded) ReadOnly(ctx context.Context, fn func(context.Context) error) error {
+	g.wrapped++
+	g.inside = true
+	defer func() { g.inside = false }()
+	return fn(ctx)
+}
+
+func (g *guarded) Read(ctx context.Context, req dialect.Request) (dialect.Result, error) {
+	g.ranInside = g.inside
+	return g.writable.Read(ctx, req)
+}
+
+// A CREDENTIAL THAT CAN WRITE IS NOT THE QUESTION. WHETHER A WRITE CAN HAPPEN
+// IS.
+//
+// Refusing the credential is how this service answered that until now, and it
+// costs the client a second service account: one role for `build`, which
+// creates tables, and another for `serve`, which must not. On a warehouse that
+// can be told to refuse writes itself, the role is no longer the only thing
+// holding the line, so the second account buys nothing.
+//
+// THE READ MUST HAPPEN INSIDE THE GUARD. Opening one and reading outside it is
+// the same as not having one, and it is the failure that leaves every other
+// assertion here green.
+func TestAWritableCredentialRunsWhenTheWarehouseItselfRefusesWrites(t *testing.T) {
+	var audit bytes.Buffer
+	g := &guarded{writable: writable{priced: priced{estimate: 1}, can: true}}
+	res := askAs(t, credentialService(t, "production", g, &audit), "/v1/query", queryBody("SELECT 1"))
+
+	if res.Code != http.StatusOK {
+		t.Fatalf("a guarded warehouse answered %d: %s", res.Code, res.Body.String())
+	}
+	if g.wrapped == 0 {
+		t.Fatal("the read was never wrapped in the warehouse's own refusal")
+	}
+	if !g.ranInside {
+		t.Error("the read ran OUTSIDE the guard, so the guard guards nothing")
+	}
+	if !strings.Contains(audit.String(), `"outcome":"writable-guarded"`) {
+		t.Errorf("the audit never says the credential was guarded:\n%s", audit.String())
+	}
+}
+
+// AND A WAREHOUSE THAT CANNOT BE GUARDED GETS NO RELAXATION.
+//
+// This is the rule that stops one warehouse's guarantee from being spent on
+// another's behalf. It is asserted beside the test above rather than left to
+// `TestAWritableCredentialIsRefusedOutsideLocal`, because that one would also
+// pass if the guard were simply never consulted.
+func TestAWarehouseWithNoGuardStillRefusesAWritableCredential(t *testing.T) {
+	var audit bytes.Buffer
+	w := &writable{priced: priced{estimate: 1}, can: true}
+	if _, guards := any(w).(dialect.ReadOnlyGuard); guards {
+		t.Fatal("this fake guards, so it cannot test the warehouse that does not")
+	}
+	res := askAs(t, credentialService(t, "production", w, &audit), "/v1/query", queryBody("SELECT 1"))
+	if res.Code != http.StatusInternalServerError {
+		t.Fatalf("an unguarded writable credential answered %d", res.Code)
+	}
+	if w.ran != 0 {
+		t.Error("the query ran on a credential nothing could stop from writing")
+	}
+}

@@ -72,6 +72,19 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a built relation is listed", h.builtRelationIsListed)
 	t.Run("a built relation's columns are named with types", h.builtRelationIsDescribed)
 
+	// THE READ-ONLY GUARD, and ONLY IF THE DIALECT CLAIMS ONE.
+	//
+	// It is optional on purpose -- `dialect.ReadOnlyGuard` says a warehouse
+	// that cannot offer it gets no relaxation anywhere -- so this does not
+	// demand it. What it refuses to allow is a CLAIM nobody checked: the
+	// whole point of that interface is that `serve` stops refusing a
+	// writable credential on the strength of it, and a guard that guards
+	// nothing would turn a second service account into no defence at all
+	// rather than into one the warehouse holds.
+	if _, guards := conn.(dialect.ReadOnlyGuard); guards {
+		t.Run("a claimed read-only guard really refuses a write", h.guardRefusesAWrite)
+	}
+
 	// INCREMENTAL, and the order matters: each case builds on the one
 	// before, over one source table, the way a project does over days.
 	t.Run("an incremental model's first build holds every row", h.incrementalFirstBuild)
@@ -590,6 +603,47 @@ func (h *harness) incBuild(t *testing.T, fullRefresh bool) {
 }
 
 // countOf is how many rows a relation holds.
+// guardRefusesAWrite asks the SERVER to refuse, and then proves it was the
+// server that refused.
+//
+// AN ORDINARY WRITE AND NOT A CLEVER ONE. The write this guard exists for is
+// the one a classifier cannot see -- `nextval()` inside a SELECT -- and that
+// is spelled differently in every warehouse, so it is asserted beside the
+// dialect that has it. What belongs HERE is the portable half: whatever the
+// statement, the server is what says no while the guard is open.
+//
+// THE CONTROL IS THE TEST. An INSERT that fails proves nothing on its own --
+// a missing table, a permission and a typo all fail the same way. The same
+// statement is run again outside the guard and must SUCCEED, and only the
+// difference between the two is evidence.
+func (h *harness) guardRefusesAWrite(t *testing.T) {
+	guard, guards := h.conn.(dialect.ReadOnlyGuard)
+	if !guards {
+		t.Skip("this dialect claims no guard")
+	}
+	h.build(t, "guard_probe", model.Table, "SELECT 1 AS n")
+	insert := fmt.Sprintf("INSERT INTO %s.guard_probe (n) VALUES (2)", h.schema)
+
+	before := h.countOf(t, "guard_probe")
+	err := guard.ReadOnly(h.ctx, func(ctx context.Context) error {
+		return h.conn.Exec(ctx, insert)
+	})
+	if err == nil {
+		t.Fatal("a write succeeded inside a guard this dialect claims to have")
+	}
+	if n := h.countOf(t, "guard_probe"); n != before {
+		t.Fatalf("the guard refused and the row landed anyway: %d -> %d", before, n)
+	}
+
+	// The control: outside the guard the very same statement goes through.
+	if err := h.conn.Exec(h.ctx, insert); err != nil {
+		t.Fatalf("outside the guard the same write failed, so the refusal above proved nothing: %v", err)
+	}
+	if n := h.countOf(t, "guard_probe"); n != before+1 {
+		t.Fatalf("the control write did not land: %d -> %d", before, n)
+	}
+}
+
 func (h *harness) countOf(t *testing.T, name string) int64 {
 	t.Helper()
 	v, err := h.conn.Scalar(h.ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s.%s", h.schema, name))

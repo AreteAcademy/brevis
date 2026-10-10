@@ -346,6 +346,33 @@ type WriteProbe interface {
 	CanWrite(ctx context.Context, schema string) (bool, error)
 }
 
+// ReadOnlyGuard is implemented by a connection that can make the WAREHOUSE
+// refuse a write, instead of this service guessing from the text.
+//
+// IT IS THE ANSWER TO WHAT THE CLASSIFIER SAYS IT CANNOT DO. `serve`'s
+// ReadOnly reads a statement over a tokeniser and its own comment names the
+// hole: "a function call writes whatever the function writes. `SELECT
+// nextval('s')` advances a sequence and `SELECT dblink_exec(...)` runs
+// anything at all, and no classifier that is not a planner can see inside
+// them. THE READ-ONLY ROLE IS THE DEFENCE THERE, not this."
+//
+// A read-only role is a SECOND service account, which is a thing a client has
+// to create, keep and rotate for a console. This is the same defence held by
+// the warehouse and not by an IAM policy: on Postgres a transaction opened
+// READ ONLY, where `nextval()` comes back refused by the server itself.
+//
+// WHAT IT DOES NOT CLAIM: it is not a sandbox. It stops the writes the
+// warehouse knows how to stop, which on Postgres is every ordinary one and
+// anything a plain function reaches. A dialect that cannot offer this gets
+// NO relaxation anywhere -- a writable credential stays refused there exactly
+// as before, because a guarantee one warehouse can make is not a guarantee
+// another one inherits.
+type ReadOnlyGuard interface {
+	// ReadOnly runs fn with the warehouse refusing any write for its
+	// duration. Reads issued on this connection inside fn are covered.
+	ReadOnly(ctx context.Context, fn func(context.Context) error) error
+}
+
 // Relation is one thing a SELECT could name.
 type Relation struct {
 	Schema string

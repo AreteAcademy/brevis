@@ -36,6 +36,29 @@ func (c *conn) Exec(ctx context.Context, statement string) error {
 	return err
 }
 
+// ReadOnly runs fn inside a transaction Postgres itself opened READ ONLY.
+// See dialect.ReadOnlyGuard.
+//
+// THE READS INSIDE fn TRAVEL ON THIS CONNECTION, and that is what puts them
+// inside the transaction: `conn` holds ONE *pgx.Conn and not a pool, so BEGIN
+// opens a transaction on the very session every later statement uses. A pool
+// here would hand fn a different session and the guard would silently guard
+// nothing -- which is why the live test advances a SEQUENCE and then advances
+// the same one outside the guard: a refusal with no control beside it proves
+// nothing about what refused.
+//
+// ROLLBACK AND NEVER COMMIT. Nothing inside was allowed to change anything,
+// so there is nothing to commit and the end of the guard cannot become a
+// write.
+func (c *conn) ReadOnly(ctx context.Context, fn func(context.Context) error) error {
+	tx, err := c.c.BeginTx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	return fn(ctx)
+}
+
 // Scalar reads one value, and NO ROW IS AN ANSWER.
 //
 // "nothing of that name is there" is what KindOf returns for every model's
