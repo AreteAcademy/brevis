@@ -82,6 +82,49 @@ templ SQL(v SQLView) {
 				></div>
 				<div class="workbench-main">
 					<section class="workbench-editor" data-pane="editor">
+						// THE TAB STRIP ARRIVES HIDDEN, like the pager.
+						//
+						// Several statements open at once is an island's job --
+						// they live in `localStorage` and never reach the server,
+						// which keeps seeing exactly ONE statement per submit. A
+						// browser with no script gets the screen that was always
+						// here: one box, one query.
+						//
+						// AND THE MARKUP OF A TAB IS IN A <template>. W1's rule read
+						// forward: the island clones this, it does not write tags,
+						// so the classes and the ARIA have one definition that the
+						// Go suite can read.
+						<div
+							class="workbench-tabs flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line-soft pb-1"
+							data-tabs
+							role="tablist"
+							aria-label="Open statements"
+							hidden
+						>
+							<button
+								type="button"
+								data-tab-new
+								aria-label="New statement"
+								class="shrink-0 rounded-card px-2 py-1 text-sm text-muted hover:bg-surface-2 hover:text-ink"
+							>+</button>
+						</div>
+						<template data-tab-template>
+							<span class="workbench-tab inline-flex shrink-0 items-center gap-1 rounded-card px-2 py-1">
+								<button
+									type="button"
+									role="tab"
+									aria-selected="false"
+									data-tab-pick
+									class="max-w-[9rem] truncate text-xs text-muted hover:text-ink"
+								></button>
+								<button
+									type="button"
+									data-tab-close
+									aria-label="Close this statement"
+									class="shrink-0 text-xs text-muted hover:text-ink"
+								>&#215;</button>
+							</span>
+						</template>
 						<form id="workbench" method="post" action="/sql" class="flex min-h-0 flex-1 flex-col gap-2">
 							// WHAT IS OPEN RIDES WITH EVERY SUBMIT, so running a query
 							// does not close the tree somebody just arranged.
@@ -159,18 +202,109 @@ templ SQL(v SQLView) {
 						tabindex="0"
 					></div>
 					<section class="workbench-results" data-pane="results">
-						if v.Err != "" {
-							<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
-						} else if v.Result != nil {
-							@results(v)
-						} else {
-							<p class="text-xs text-muted">Nothing has run yet.</p>
-						}
+						@recent()
+						<div class="workbench-answer">
+							// WHAT JUST HAPPENED, AS DATA. The rail is built in the
+							// browser and needs the outcome and the cost; the
+							// sentence under the grid is for a person. Parsing that
+							// sentence back out in JavaScript would break the day
+							// somebody rewords it.
+							//
+							// NOT `data-run`: that is already the Run button.
+							if v.Ran() {
+								<p data-outcome={ v.Outcome() } data-cost={ v.Cost() } hidden></p>
+							}
+							if v.Err != "" {
+								<p class="max-w-3xl rounded-card border border-line-soft px-4 py-3 text-sm text-muted">{ v.Err }</p>
+							} else if v.Result != nil {
+								@results(v)
+							} else {
+								<p class="text-xs text-muted">Nothing has run yet.</p>
+							}
+						</div>
 					</section>
 				</div>
 			</div>
 		}
 	}
+}
+
+// recent is the rail of what has been run, and all of it lives in the
+// browser.
+//
+// THE BOUNDARY IS CONSOLE 2.0'S, RESTATED WITH ITS COST: saved queries live
+// in the BROWSER until there is a user model. The statements are on that
+// machine, in that browser; a second browser starts empty and clearing site
+// data empties this. A server store would need a user model, and without one
+// it is a shared mutable list with no owner -- every operator reading every
+// other operator's drafts.
+//
+// WHAT IS STORED IS SQL TEXT. That is said out loud because it is a decision
+// and not an accident: nothing writes a statement to the server's disk, to a
+// metric or to a URL. The browser already keeps what somebody typed into a
+// form; this keeps it on purpose.
+//
+// HIDDEN UNTIL THE ISLAND RUNS, and emptier than the tab strip without it:
+// what it lists has no server to come from.
+templ recent() {
+	<aside
+		id="recent"
+		class="workbench-recent text-xs"
+		data-recent
+		data-recent-keep="20"
+		aria-label="Recent statements"
+		hidden
+	>
+		<div class="mb-2 flex items-center justify-between gap-2">
+			<p class="kicker">Recent</p>
+			<button
+				type="button"
+				data-recent-toggle
+				aria-expanded="true"
+				aria-controls="recent"
+				aria-label="Collapse the recent statements"
+				class="rounded-card px-1 py-0.5 text-muted hover:bg-surface-2 hover:text-ink"
+			>&#8676;</button>
+		</div>
+		<ol data-recent-list class="space-y-0.5"></ol>
+		<p data-recent-empty class="px-2 text-[0.7rem] text-muted">
+			Nothing yet. What you run shows up here — in this browser, on this machine.
+		</p>
+	</aside>
+	// AND THE WAY BACK, OUTSIDE WHAT IT HIDES. W2 learned this on the object
+	// tree: a collapsed rail is `display: none`, so the only control that
+	// could undo it would have gone with it.
+	<button
+		type="button"
+		data-recent-toggle
+		aria-expanded="true"
+		aria-controls="recent"
+		aria-label="Show the recent statements"
+		class="workbench-recent-show self-start rounded-card px-1 py-1 text-muted hover:bg-surface-2 hover:text-ink"
+	>&#8677;</button>
+	<template data-recent-template>
+		<li>
+			<button
+				type="button"
+				data-recent-open
+				class="block w-full rounded-card px-2 py-1 text-left hover:bg-surface-2"
+			>
+				<span class="flex items-center gap-1.5">
+					// BOTH OUTCOMES ARE DRAWN HERE AND ONE IS HIDDEN, rather
+					// than a class the island assembles. A class name built by
+					// concatenating strings in JavaScript is a class Tailwind
+					// never sees in a source file and never emits -- the colour
+					// would simply not exist.
+					<span data-recent-outcome class="shrink-0 text-[0.7rem]">
+						<span data-recent-ok class="text-state-success" hidden>ok</span>
+						<span data-recent-failed class="text-state-failed" hidden>failed</span>
+					</span>
+					<span data-recent-cost class="truncate text-[0.7rem] text-muted"></span>
+				</span>
+				<span data-recent-text class="mt-0.5 block truncate font-mono text-[0.7rem] text-ink"></span>
+			</button>
+		</li>
+	</template>
 }
 
 // tree is every connection the catalog knows, and what the open one holds.
@@ -353,7 +487,11 @@ templ results(v SQLView) {
 				aria-selected="false"
 				class="results-tab px-3 py-1.5 text-xs text-muted"
 			>JSON</button>
-			<p class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
+			// MARKED, because a test comparing the rail's figures with this
+			// sentence has to find THIS sentence. Searching the document for
+			// the figures finds the attribute the rail reads, which is the
+			// same string and proves nothing.
+			<p data-note class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
 		</div>
 		<div class="min-h-0 flex-1 overflow-auto" data-panel="results">
 			@resultGrid(v.Result.Columns, v.Result.Rows)

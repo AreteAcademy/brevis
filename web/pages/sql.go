@@ -216,12 +216,44 @@ func (v SQLView) Note() string {
 	if n == 1 {
 		rows = "row"
 	}
-	note := fmt.Sprintf("%d %s · %s scanned · %d ms", n, rows,
-		bytesText(v.Result.Bytes), v.Result.Millis)
+	note := fmt.Sprintf("%d %s · %s", n, rows, v.Cost())
 	if v.Result.Truncated {
 		note += " — there are more"
 	}
 	return note
+}
+
+// Cost is what the statement spent, in the words the screen already uses.
+//
+// ONE FORMATTER, TWO READERS. The Recent rail lists the same figures, and
+// it is built in the browser -- so the alternative was a second `bytesText`
+// in JavaScript. Two rounders disagree eventually, and the day they do, the
+// rail says "2 KB" under a grid that says "2.0 KB" and somebody stops
+// trusting both.
+func (v SQLView) Cost() string {
+	if v.Result == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s scanned · %d ms", bytesText(v.Result.Bytes), v.Result.Millis)
+}
+
+// Ran says something happened, which is the difference between a screen
+// waiting for a first query and one showing the second.
+func (v SQLView) Ran() bool { return v.Result != nil || v.Err != "" }
+
+// Outcome is what the Recent rail records.
+//
+// A REFUSAL IS AN OUTCOME. A rail that only listed what succeeded would be a
+// rail somebody reads to conclude a query was never run -- and the refused
+// ones are the ones worth finding again.
+func (v SQLView) Outcome() string {
+	if v.Result != nil {
+		return "ok"
+	}
+	if v.Err != "" {
+		return "failed"
+	}
+	return ""
 }
 
 // Knows says the catalog lists this destination.
