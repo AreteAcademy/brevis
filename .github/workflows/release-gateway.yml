@@ -195,7 +195,7 @@ jobs:
         run: .github/scripts/cli-docs-check.sh
 
       - uses: docker/setup-qemu-action@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Gateway
         uses: docker/build-push-action@v7
@@ -255,7 +255,7 @@ jobs:
       # is worse than none.
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: Gateway v${{ steps.v.outputs.version }}
