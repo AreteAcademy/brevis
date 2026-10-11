@@ -20,10 +20,16 @@ import (
 // rest of a description nobody can now trust. Everybody with a console login
 // reads /data; a secret stored here is a secret published.
 var (
-	// A setting NAMED like a credential. `source_key`, `ordering_key` and
-	// `dsn_from` are not: the first two are field names, the third is the
-	// convention this exists to protect.
-	secretName = regexp.MustCompile(`(^|_)(dsn|password|passwd|pwd|secret|token|credentials?|api_?key|access_key|private_key)($|_)`)
+	// A setting NAMED like a credential: the credential word is the LAST part
+	// of its normalised name (see credentialName). `api_key`, `db_password`,
+	// `apiKey`, `x-api-key`, `Password` are; `token_ttl`, `secret_name`,
+	// `password_policy`, `source_key` and `dsn_from` -- the convention this
+	// exists to protect -- are not: they name something about a credential,
+	// or a variable holding one.
+	secretName = regexp.MustCompile(`(^|_)(dsn|passwords?|passwd|pwd|secrets?|tokens?|credentials?|api_?key|access_key|private_key|auth_token|authorization|bearer)$`)
+
+	camelBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	indexSuffix   = regexp.MustCompile(`(\[\d+\])+$`)
 
 	// What a credential looks like in TEXT -- a value, a note -- each with
 	// the words the refusal uses.
@@ -56,12 +62,15 @@ var (
 
 // FindSecret walks a value -- a string, a number, a list, an object -- and
 // names the first place a credential shows, by path. Nil when there is none.
+//
+// The NAME is checked before the value's type: a password written as a
+// number, or as a list of one, is a password.
 func FindSecret(path string, v any) error {
+	if name := credentialName(path); secretName.MatchString(name) && hasValue(v) {
+		return fmt.Errorf("%s: a setting named like a credential has a value; name the variable that holds it (`%s_from`)", path, lastSegment(path))
+	}
 	switch v := v.(type) {
 	case string:
-		if v != "" && secretName.MatchString(lastSegment(path)) && !strings.HasSuffix(path, "_from") {
-			return fmt.Errorf("%s: a setting named like a credential has a value; name the variable that holds it (`%s_from`)", path, lastSegment(path))
-		}
 		return FindSecretInText(path, v)
 	case []any:
 		for i, e := range v {
@@ -77,6 +86,31 @@ func FindSecret(path string, v any) error {
 		}
 	}
 	return nil
+}
+
+// credentialName is a path's last segment as the name rule reads it: list
+// indexes dropped, camelCase and kebab-case to snake_case, lower case --
+// `x-api-key`, `apiKey` and `API_KEY` are one name.
+func credentialName(path string) string {
+	name := indexSuffix.ReplaceAllString(lastSegment(path), "")
+	name = camelBoundary.ReplaceAllString(name, "${1}_${2}")
+	return strings.ToLower(strings.ReplaceAll(name, "-", "_"))
+}
+
+// hasValue says a setting holds something: a bool says nothing secret, and an
+// empty string or list holds nothing.
+func hasValue(v any) bool {
+	switch v := v.(type) {
+	case nil, bool:
+		return false
+	case string:
+		return v != ""
+	case []any:
+		return len(v) > 0
+	case map[string]any:
+		return len(v) > 0
+	}
+	return true
 }
 
 // FindSecretInText is FindSecret for prose -- a comment, a note -- where only
