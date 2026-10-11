@@ -188,8 +188,14 @@ image-smoke: ## Checks the local images start and report their version
 	@# would become a brevis subcommand. The shell exists for the WORKFLOW.
 	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok in the worker"'
 
-up: ## Brings up Postgres + API + scheduler + the gateway locally
+up: ## Brings up Postgres + API + scheduler + the gateway locally, and publishes the gateway
 	@docker compose up --build -d
+	@# The gateway's configuration on /data, as up-data has always done. The
+	@# database is migrated by now: the api waits on the migrate service, and
+	@# `up -d` returns once the api is up. A refused manifest does not fail
+	@# the stack, which is already running -- it says so and how to retry.
+	@$(MAKE) --no-print-directory gateway-publish \
+	  || echo "the gateway's configuration was NOT published to /data; fix it and run: make gateway-publish"
 	@echo "api     at http://localhost:$${BREVIS_API_PORT:-8080}/health"
 	@echo "gateway at http://localhost:$${BREVIS_GATEWAY_PORT:-8090}/health"
 	@echo ""
@@ -254,7 +260,9 @@ warehouse-local:
 	@# Makefile carries this warning and this walked into it anyway.
 	@echo "warehouse ready on localhost:$${BREVIS_WAREHOUSE_PORT:-55434}, database 'warehouse'"
 
-# WHAT THE GATEWAY WRITES, on /data beside what the workflows write.
+# WHAT THE GATEWAY WRITES, on /data beside what the workflows write. `make up`
+# and `make up-data` both run it; run it alone after editing the gateway's
+# config -- a publish with nothing changed adds no version.
 #
 # A DELIBERATE ACT AND NEVER ITS TRAFFIC. The gateway describes its
 # CONFIGURATION -- which streams, which destinations -- and that manifest is
