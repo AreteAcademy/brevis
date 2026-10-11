@@ -2,8 +2,10 @@ package core
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 	"unicode"
@@ -97,47 +99,81 @@ func SetByFunction(isSet bool) string {
 }
 
 // SafeURL is an address as a description may show it: scheme, host and path,
-// with every place a credential lives taken out.
+// where every part is one KNOWN to be safe to show and anything else is `…`.
 //
-//   - userinfo, the query and the fragment are dropped whole;
+// AN ALLOWLIST, like the rest of a description. The first version listed what
+// looked like a token instead -- a `:`, 16 characters mixing letters and
+// digits -- and a review got Slack webhooks with no digit, 31-letter tokens,
+// tokens in a host label and percent-encoded slashes past it. Nothing has to
+// look like a secret to be hidden now; a part is shown only when it looks
+// like what addresses are made of (see safePart).
+//
+//   - userinfo, the query and the fragment are never shown;
 //   - a matrix parameter (`;jsessionid=…`) is cut from its segment;
-//   - a path segment that looks like a token is shown as `…`.
+//   - a host label or a path segment that is not plainly safe is `…`;
+//   - an `@` in the authority that the parser did not read as userinfo --
+//     an unescaped `#` in a password does that -- gives "", and so does an
+//     `@` in an address with no scheme: an authority nobody parsed.
 //
-// "Looks like a token" is what bot APIs and webhooks put in a path --
-// `/bot123456789:AAH…/`, `/services/T0…/B0…/Xx8kLmN3…` -- and not what a
-// resource path is made of: it holds a `:`, or it is 16 characters or more
-// mixing letters and digits, or 32 or more of anything. A long resource id
-// is masked too, which costs a reader one id and never a secret.
-//
-// A raw address carrying an `@` that the parser did not read as userinfo
-// gives "": an unescaped `#` in a password makes the parser take the user
-// for the host, and what it would show is the credential.
-//
-// A location with no scheme -- a local path -- has its segments scrubbed the
-// same way and is otherwise kept.
+// Segments are judged ESCAPED, so `%2F` inside a token is part of the token
+// and not a separator that would show its first half.
 func SafeURL(raw string) string {
 	if raw == "" {
 		return ""
 	}
-	if !strings.Contains(raw, "://") {
-		return scrubPath(raw)
+	scheme, rest, ok := strings.Cut(raw, "://")
+	if !ok {
+		if strings.Contains(raw, "@") {
+			return ""
+		}
+		return safeSegments(raw)
 	}
 	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" {
+	if err != nil || scheme == "" {
 		return ""
 	}
-	if strings.Contains(raw, "@") && u.User == nil {
+	authority := rest
+	if i := strings.IndexAny(rest, "/?"); i >= 0 {
+		authority = rest[:i]
+	}
+	if strings.Contains(authority, "@") && u.User == nil {
 		return ""
 	}
-	return u.Scheme + "://" + u.Host + scrubPath(u.Path)
+	host := safeHost(u.Hostname())
+	if host == "" && u.Scheme != "file" {
+		return ""
+	}
+	if port := u.Port(); port != "" {
+		host += ":" + port
+	}
+	return u.Scheme + "://" + host + safeSegments(u.EscapedPath())
 }
 
-// scrubPath masks the segments of a path that look like credentials.
-func scrubPath(p string) string {
+// safeHost is a host with each label that is not plainly safe shown as `…`.
+// An IP address is shown as it is.
+func safeHost(h string) string {
+	if ip := net.ParseIP(h); ip != nil {
+		if strings.Contains(h, ":") {
+			return "[" + h + "]"
+		}
+		return h
+	}
+	labels := strings.Split(h, ".")
+	for i, l := range labels {
+		if !safeSegment(l) {
+			labels[i] = "…"
+		}
+	}
+	return strings.Join(labels, ".")
+}
+
+// safeSegments is a path with each segment that is not plainly safe shown as
+// `…`, and its matrix parameters cut.
+func safeSegments(p string) string {
 	segments := strings.Split(p, "/")
 	for i, s := range segments {
 		s, _, _ = strings.Cut(s, ";")
-		if looksLikeToken(s) {
+		if !safeSegment(s) {
 			s = "…"
 		}
 		segments[i] = s
@@ -145,21 +181,80 @@ func scrubPath(p string) string {
 	return strings.Join(segments, "/")
 }
 
-func looksLikeToken(s string) bool {
-	if strings.Contains(s, ":") || len(s) >= 32 {
+var (
+	uuidShape    = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	dateShape    = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	versionShape = regexp.MustCompile(`^v\d+(\.\d+)*$`)
+	partSplit    = regexp.MustCompile(`[-_.~]`)
+)
+
+// safeSegment says whether a host label or a path segment is plainly safe to
+// show: empty, `.` or `..`, a UUID, a date, a version, or made of parts
+// (split on `-`, `_`, `.`, `~`) that are each plainly a word or a number --
+// and with no more than two capitals across them all, which is a camelCase
+// word and not a base64 run cut by separators.
+func safeSegment(s string) bool {
+	switch {
+	case s == "", s == ".", s == "..":
+		return true
+	case len(s) > 40:
+		return false
+	case uuidShape.MatchString(s), dateShape.MatchString(s), versionShape.MatchString(s):
 		return true
 	}
-	if len(s) < 16 {
-		return false
-	}
-	var letter, digit bool
-	for _, r := range s {
-		switch {
-		case unicode.IsLetter(r):
-			letter = true
-		case unicode.IsDigit(r):
-			digit = true
+	capitals := 0
+	for _, part := range partSplit.Split(s, -1) {
+		kind, ok := safePart(part)
+		if !ok {
+			return false
+		}
+		if kind == partWord {
+			for _, r := range part {
+				if unicode.IsUpper(r) {
+					capitals++
+				}
+			}
 		}
 	}
-	return letter && digit
+	return capitals <= 2
+}
+
+type partKind int
+
+const (
+	partWord partKind = iota
+	partOther
+)
+
+// safePart is one part of a segment that is plainly not a credential: a word
+// of up to 20 letters, a number of up to 12 digits, an acronym of up to six
+// capitals, or up to six letters and digits mixed (`v1`, `s3`, `94b6`).
+// Anything else -- longer, other characters -- is not shown.
+func safePart(p string) (partKind, bool) {
+	if p == "" {
+		return partOther, true
+	}
+	var letters, digits, upper int
+	for _, r := range p {
+		switch {
+		case r >= 'a' && r <= 'z':
+			letters++
+		case r >= 'A' && r <= 'Z':
+			letters++
+			upper++
+		case r >= '0' && r <= '9':
+			digits++
+		default:
+			return partOther, false
+		}
+	}
+	switch {
+	case digits == 0 && upper == letters:
+		return partOther, len(p) <= 6
+	case digits == 0:
+		return partWord, len(p) <= 20
+	case letters == 0:
+		return partOther, len(p) <= 12
+	}
+	return partOther, len(p) <= 6
 }

@@ -188,7 +188,8 @@ func TestNoReaderDescribesACredentialInItsPath(t *testing.T) {
 // ordinary segments.
 func TestAScrubbedURLKeepsItsOrdinarySegments(t *testing.T) {
 	got := settings(t, from.HTTP{URL: "https://hooks.slack" + ".com/services/T0ABCDEF1/B0ABCDEF2/Xx8kLmN3pQ7rS2tV5wY9zA1b"})
-	if got["url"] != "https://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/…" {
+	// The workspace and channel ids go too: shown only what is plainly safe.
+	if got["url"] != "https://hooks.slack.com/services/…/…/…" {
 		t.Fatalf("url = %v", got["url"])
 	}
 	got = settings(t, from.HTTP{URL: "https://api.example.com/v1;jsessionid=A1B2C3D4E5F6A7B8C9D0E1F2/items"})
