@@ -140,9 +140,16 @@ func TestTheTreeMarksEachTableWithAnIcon(t *testing.T) {
 			t.Errorf("a screen reader would announce the icon: %s", tag)
 		}
 	}
-	button, _, _ := strings.Cut(body[strings.Index(body, `data-insert="sales.daily"`):], "</button>")
+	at := strings.Index(body, `data-insert="sales.daily"`)
+	if at < 0 {
+		t.Fatalf("no button inserts sales.daily:\n%s", body)
+	}
+	button, _, _ := strings.Cut(body[at:], "</button>")
 	if len(iconTags(button, "table")) != 1 {
 		t.Errorf("the icon is not inside the button that inserts the table:\n%s", button)
+	}
+	if !strings.Contains(button, ">daily</span>") {
+		t.Errorf("the button no longer shows the table's name on its own:\n%s", button)
 	}
 }
 

@@ -431,7 +431,7 @@ templ Objects(b Branch) {
 		<details class="mb-0.5" open>
 			<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
 				@schemaIcon()
-				<span class="truncate">{ s.Name }</span>
+				<span class="min-w-0 truncate">{ s.Name }</span>
 			</summary>
 			for _, t := range s.Tables {
 				<div data-relation={ s.Name + "." + t }>
