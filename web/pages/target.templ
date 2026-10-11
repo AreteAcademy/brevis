@@ -137,6 +137,7 @@ templ configurations(v TargetView) {
 				</span>
 			</div>
 			<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
+				<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.Summary }</p>
 				if c.Config.Note != "" {
 					<div class="px-4 py-3 sm:px-6">
 						@configNote(c.Config.Note)

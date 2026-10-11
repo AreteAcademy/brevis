@@ -117,6 +117,8 @@ func TestTheDestinationPageShowsTheGatewaysConfiguration(t *testing.T) {
 		"Deduplication happens on read.",
 		"One route, N tables, nothing declared.",
 		"Configuration",
+		// The sentence, above everything else in the section.
+		"JSON events become app_* or svc_* tables, appended so a redelivery is a second row, in batches every 1 minute.",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the page lacks %q", want)
