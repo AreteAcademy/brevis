@@ -18,9 +18,10 @@ var (
 // Configuration satisfies sdk.Configured: where the source asks, how, and how
 // it pages -- with every value that could carry a credential left out.
 //
-// The URL is its scheme, host and path, scrubbed by core.SafeURL: its user and
-// password, its query string, its fragment and any path segment shaped like a
-// token are not shown; the query's parameter NAMES and the
+// The URL is its scheme, host and path through core.SafeURL: its user and
+// password, its query string and its fragment are never shown, and a host
+// label or path segment is shown only when it is plainly safe; the query's
+// parameter NAMES and the
 // headers' names are, because "which key does this send" is a question worth
 // answering and "what is the key" is the one this must never answer. Stricter
 // than the log's redaction (sdk/redact.go), which hides the values of the

@@ -113,7 +113,8 @@ comments are outside the hash and replace the old words.
 
 **No credential reaches it.** The writer keeps them out by construction — a
 gateway's file names variables (`dsn_from`), never values, and only the
-comments marked `#:` leave it; each SDK driver
+comments marked `#:` leave it — published as written, so they are the one
+place a word-shaped password could still be put by hand; each SDK driver
 lists by hand what may be shown, and a DSN gives its host, port and database
 and nothing else; an HTTP source shows the names of its query parameters and
 headers, never their values. The engine looks again, and refuses a whole

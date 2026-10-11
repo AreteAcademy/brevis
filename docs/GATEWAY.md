@@ -120,11 +120,18 @@ the destination's page on `/data`:
   pattern recognises — a commented-out setting, a password on the line after
   "the password is". An ordinary `#` comment stays in the file.
 
-Nothing secret reaches it, by construction: a credential in this file is
+The **settings** carry no secret by construction: a credential in this file is
 always a variable's **name** under a `_from` key, never its value, and a test
 fails the build if a field named like a password, a DSN or a token is added
-without that suffix. The engine checks again, and refuses a manifest carrying
-one whole (see [`CATALOG.md`](CATALOG.md)).
+without that suffix.
+
+The **notes** carry what their author wrote. A `#:` line is published as
+written, to everybody with a console login, so mark prose and never a value.
+The engine checks every note and every setting again and refuses the whole
+manifest when it finds something **shaped** like a credential — a URL with a
+password in it, a token, a key (see [`CATALOG.md`](CATALOG.md)) — but a
+password written as a plain word (`#: the password is hunter2`) has no shape,
+and nothing can tell it from prose.
 
 `--out <file>` writes the manifest to a file instead of stdout, once it is
 whole — what the publish Job needs, in an image with no shell.
