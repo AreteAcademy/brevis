@@ -24,6 +24,15 @@ func TestSafeURLHidesWhatIsNotKnownToBeSafe(t *testing.T) {
 		"https://loader:pw@api.example.com/v1":              "https://api.example.com/v1",
 		"https://loader:12345#x@api.example.com/v1":         "",
 		"s3://AKIAIOSFODNN7EXAMPLE:secret@acme-raw/orders/": "s3://acme-raw/orders/",
+		// Keys written in groups, which no single part gives away.
+		"https://host/k/ABCD1-EFGH2-IJKL3-MNOP4-QRST5/x": "https://host/k/…/x",
+		"https://host/k/aB3dE9-xY7kQ2-pL5mN8-zR4tW1/x":   "https://host/k/…/x",
+		"https://host/k/AKIA-ABCD-EFGH-IJKL/x":           "https://host/k/…/x",
+		"https://host/k/abcd-efgh-ijkl-mnop/x":           "https://host/k/…/x",
+		// Capability URLs: the last segment IS the secret.
+		"https://hooks.zapier.com/hooks/catch/1234567/abc1x9/":               "https://hooks.zapier.com/hooks/catch/1234567/…/",
+		"https://hc-ping.com/0f2a8c4e-1b2c-4d5e-8f90-123456789abc":           "https://hc-ping.com/…",
+		"https://api.example.com/items/550e8400-e29b-41d4-a716-446655440000": "https://api.example.com/items/…",
 		// No scheme: a `@` is an authority nobody parsed.
 		"u:p/w@host/x":      "",
 		"loader:pw@host/x":  "",
@@ -39,19 +48,21 @@ func TestSafeURLHidesWhatIsNotKnownToBeSafe(t *testing.T) {
 // And what an address is made of, every day, stays readable.
 func TestSafeURLKeepsWhatIsKnownToBeSafe(t *testing.T) {
 	for in, want := range map[string]string{
-		"https://api.example.com/v1/items":                                   "https://api.example.com/v1/items",
-		"https://api.example.com/v2.1/orders/123456/lines":                   "https://api.example.com/v2.1/orders/123456/lines",
-		"https://api.example.com/items/550e8400-e29b-41d4-a716-446655440000": "https://api.example.com/items/550e8400-e29b-41d4-a716-446655440000",
-		"https://api.example.com/reports/2024-01-01":                         "https://api.example.com/reports/2024-01-01",
-		"https://api.example.com/x?email=a@b.com":                            "https://api.example.com/x",
-		"https://api.telegram.org/getUpdates":                                "https://api.telegram.org/getUpdates",
-		"gs://acme-landing/orders/":                                          "gs://acme-landing/orders/",
-		"s3://zarv-development-94b6-brevis-staging/extracts/":                "s3://zarv-development-94b6-brevis-staging/extracts/",
-		"file:///tmp/x.csv":                                                  "file:///tmp/x.csv",
-		"./dead-letter/clicks/":                                              "./dead-letter/clicks/",
-		"entrada.ndjson":                                                     "entrada.ndjson",
-		"http://[::1]:8080/v1/items":                                         "http://[::1]:8080/v1/items",
-		"https://my-repository-name/x":                                       "https://my-repository-name/x",
+		"https://api.example.com/v1/items":                                         "https://api.example.com/v1/items",
+		"https://api.example.com/v2.1/orders/123456/lines":                         "https://api.example.com/v2.1/orders/123456/lines",
+		"https://api.example.com/items/550e8400-e29b-41d4-a716-446655440000/lines": "https://api.example.com/items/550e8400-e29b-41d4-a716-446655440000/lines",
+		"s3://acme/raw/part-00000.parquet":                                         "s3://acme/raw/part-00000.parquet",
+		"https://api.example.com/API/v1/README.md":                                 "https://api.example.com/API/v1/README.md",
+		"https://api.example.com/reports/2024-01-01":                               "https://api.example.com/reports/2024-01-01",
+		"https://api.example.com/x?email=a@b.com":                                  "https://api.example.com/x",
+		"https://api.telegram.org/getUpdates":                                      "https://api.telegram.org/getUpdates",
+		"gs://acme-landing/orders/":                                                "gs://acme-landing/orders/",
+		"s3://zarv-development-94b6-brevis-staging/extracts/":                      "s3://zarv-development-94b6-brevis-staging/extracts/",
+		"file:///tmp/x.csv":                                                        "file:///tmp/x.csv",
+		"./dead-letter/clicks/":                                                    "./dead-letter/clicks/",
+		"entrada.ndjson":                                                           "entrada.ndjson",
+		"http://[::1]:8080/v1/items":                                               "http://[::1]:8080/v1/items",
+		"https://my-repository-name/x":                                             "https://my-repository-name/x",
 	} {
 		if got := SafeURL(in); got != want {
 			t.Errorf("SafeURL(%q)\n  got  %q\n  want %q", in, got, want)

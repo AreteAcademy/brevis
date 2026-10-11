@@ -160,7 +160,7 @@ func safeHost(h string) string {
 	}
 	labels := strings.Split(h, ".")
 	for i, l := range labels {
-		if !safeSegment(l) {
+		if !safeSegment(l, false) {
 			labels[i] = "…"
 		}
 	}
@@ -168,12 +168,21 @@ func safeHost(h string) string {
 }
 
 // safeSegments is a path with each segment that is not plainly safe shown as
-// `…`, and its matrix parameters cut.
+// `…`, and its matrix parameters cut. The LAST segment is held to more: it is
+// where a capability URL keeps its secret (`/hooks/catch/1234567/abc1x9/`,
+// `hc-ping.com/<uuid>`), so it may not be a UUID and its letters-and-digits
+// part is shorter.
 func safeSegments(p string) string {
 	segments := strings.Split(p, "/")
+	last := -1
+	for i, s := range segments {
+		if s != "" {
+			last = i
+		}
+	}
 	for i, s := range segments {
 		s, _, _ = strings.Cut(s, ";")
-		if !safeSegment(s) {
+		if !safeSegment(s, i == last) {
 			s = "…"
 		}
 		segments[i] = s
@@ -189,48 +198,68 @@ var (
 )
 
 // safeSegment says whether a host label or a path segment is plainly safe to
-// show: empty, `.` or `..`, a UUID, a date, a version, or made of parts
-// (split on `-`, `_`, `.`, `~`) that are each plainly a word or a number --
-// and with no more than two capitals across them all, which is a camelCase
-// word and not a base64 run cut by separators.
-func safeSegment(s string) bool {
+// show: empty, `.` or `..`, a date, a version, a UUID when it is not the last
+// segment, or made of parts (split on `-`, `_`, `.`, `~`) that are each
+// plainly a word or a number -- and that, together, do not look like a key
+// written in groups:
+//
+//   - no more than one part mixing letters and digits (`ABCD1-EFGH2-…`);
+//   - no three parts of one length (`abcd-efgh-ijkl-mnop`);
+//   - no more than two capitals across the word parts (a camelCase word, not
+//     a base64 run cut by separators) and no more than six in all.
+func safeSegment(s string, last bool) bool {
 	switch {
 	case s == "", s == ".", s == "..":
 		return true
 	case len(s) > 40:
 		return false
-	case uuidShape.MatchString(s), dateShape.MatchString(s), versionShape.MatchString(s):
+	case dateShape.MatchString(s), versionShape.MatchString(s):
 		return true
+	case uuidShape.MatchString(s):
+		return !last
 	}
-	capitals := 0
+	var wordCapitals, capitals, mixed int
+	lengths := map[int]int{}
 	for _, part := range partSplit.Split(s, -1) {
-		kind, ok := safePart(part)
+		kind, ok := safePart(part, last)
 		if !ok {
 			return false
 		}
-		if kind == partWord {
-			for _, r := range part {
-				if unicode.IsUpper(r) {
-					capitals++
+		for _, r := range part {
+			if unicode.IsUpper(r) {
+				capitals++
+				if kind == partWord {
+					wordCapitals++
 				}
 			}
 		}
+		if kind == partMixed {
+			mixed++
+		}
+		if len(part) >= 3 {
+			lengths[len(part)]++
+			if lengths[len(part)] >= 3 {
+				return false
+			}
+		}
 	}
-	return capitals <= 2
+	return mixed <= 1 && wordCapitals <= 2 && capitals <= 6
 }
 
 type partKind int
 
 const (
 	partWord partKind = iota
+	partMixed
 	partOther
 )
 
 // safePart is one part of a segment that is plainly not a credential: a word
 // of up to 20 letters, a number of up to 12 digits, an acronym of up to six
-// capitals, or up to six letters and digits mixed (`v1`, `s3`, `94b6`).
-// Anything else -- longer, other characters -- is not shown.
-func safePart(p string) (partKind, bool) {
+// capitals, or up to six letters and digits mixed (`v1`, `s3`, `94b6`) -- four
+// in a last segment. Anything else -- longer, other characters -- is not
+// shown.
+func safePart(p string, last bool) (partKind, bool) {
 	if p == "" {
 		return partOther, true
 	}
@@ -256,5 +285,8 @@ func safePart(p string) (partKind, bool) {
 	case letters == 0:
 		return partOther, len(p) <= 12
 	}
-	return partOther, len(p) <= 6
+	if last {
+		return partMixed, len(p) <= 4
+	}
+	return partMixed, len(p) <= 6
 }
