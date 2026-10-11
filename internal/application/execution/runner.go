@@ -860,7 +860,11 @@ func (r Runner) markLoad(ctx context.Context, workflow string, step run.StepKey,
 //
 // The warning is here and not in the collector because this is the code that
 // knows the step: "a landing was refused" is useless without "in which step".
-// Failing to record does not bring the step down, on markLoad's terms.
+// Failing to record does not bring the step down, on markLoad's terms -- but
+// it is SAID: a landing not recorded is a destination missing from /data
+// while the step that wrote it shows green, and nothing else would tell. A
+// bug in this path once failed every landing that carried a configuration,
+// and the error was discarded here.
 func (r Runner) markLandings(ctx context.Context, workflow string, step run.StepKey, c *stageCollector) {
 	if c.LandingsRefused > 0 || c.LandingsOverCeiling > 0 {
 		slog.Warn("a step declared landings the engine did not keep",
@@ -884,7 +888,11 @@ func (r Runner) markLandings(ctx context.Context, workflow string, step run.Step
 			landings[i].Config = cfg
 		}
 	}
-	_ = r.Persist.RecordLandings(ctx, r.RunID, step, workflow, landings)
+	if err := r.Persist.RecordLandings(ctx, r.RunID, step, workflow, landings); err != nil {
+		slog.Warn("the engine could not record what a step landed; /data will not show it",
+			"run", r.RunID, "workflow", workflow, "step", step.Node,
+			"targets", len(landings), "error", err)
+	}
 }
 
 func (r Runner) markEnd(ctx context.Context, step run.StepKey, attempt int, cause error, log string) {
