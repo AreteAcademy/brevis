@@ -1,0 +1,18 @@
+name: g
+listen:
+  auth: {type: bearer, keys_from: BREVIS_INGEST_KEYS}
+streams:
+  # Clicks from the web app, one event per click.
+  # password: hunter2
+  - name: clicks
+    path: /v1/clicks
+    format: json
+    identity: {provider: web, entity: click, source_key: id, record_ts: at}
+    sink:
+      type: postgres
+      dsn_from: BREVIS_CLICKS_DSN
+      # The table must exist: this does not create one.
+      # dsn: postgres://loader:hunter2@db.internal/shop
+      table: landing.clicks   # old: app:hunter2@tcp(mysql:3306)/events
+      write: append
+    dead_letter: {type: files, path: ./dead-letter/}
