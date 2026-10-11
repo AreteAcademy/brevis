@@ -29,6 +29,15 @@ import (
 
 // CSV fetches and decodes CSV data from the given source.
 // It returns an iterator of Envelopes, one per CSV row.
+// The defaults a source gets for what it does not set. Named so that what
+// describes a source (from.HTTP.Configuration) shows the values this applies,
+// rather than a copy of them that could drift.
+const (
+	DefaultMethod       = "GET"
+	DefaultTimeout      = 30 * time.Second
+	DefaultTotalTimeout = 5 * time.Minute
+)
+
 func CSV(ctx context.Context, source core.Source, records core.Reading) (iter.Seq2[core.Envelope, error], error) {
 	if source.Format == "" {
 		source.Format = "csv"
@@ -79,15 +88,15 @@ func fetch(ctx context.Context, source core.Source, records core.Reading) (iter.
 	}
 
 	if source.Method == "" {
-		source.Method = "GET"
+		source.Method = DefaultMethod
 	}
 
 	if source.Timeout == 0 {
-		source.Timeout = 30 * time.Second
+		source.Timeout = DefaultTimeout
 	}
 
 	if source.TotalTimeout == 0 {
-		source.TotalTimeout = 5 * time.Minute
+		source.TotalTimeout = DefaultTotalTimeout
 	}
 
 	if source.RetryConfig == nil {
