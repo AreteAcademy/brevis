@@ -2,7 +2,9 @@ package postgres_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -231,5 +233,57 @@ func TestAStepsConfigurationHistoryGainsALineOnlyWhenItChanges(t *testing.T) {
 	// a → b → a: three changes, and going back is a change too.
 	if strings.Join(hashes, " ") != "sha256:a sha256:b sha256:a" {
 		t.Fatalf("history = %v, want one line per change", hashes)
+	}
+}
+
+// Mapped instances of one step land the same table in parallel, each in its
+// own transaction, and each saw the step's "last line" from before the others
+// committed -- so a new configuration was recorded once per instance. One
+// line per change means one line, whoever lands first.
+func TestParallelInstancesRecordAChangeOnce(t *testing.T) {
+	pool := landingsDB(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE writer_configs, step_config_history CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	repo := postgres.NewRunRepo(pool)
+	runID := aged(t, pool, "vendas", time.Hour, dom.StatusSuccess)
+	const instances, rounds = 8, 5
+
+	for round := range rounds {
+		hash := fmt.Sprintf("sha256:round%d", round)
+		cfg := &app.WriterConfig{Hash: hash, Body: []byte(`[]`)}
+		// A configuration the engine has seen before -- a step going back to
+		// it. A new one is first inserted into writer_configs, and that
+		// unique key makes the instances wait for each other by accident;
+		// a known one does not, and that is where they raced.
+		if _, err := pool.Exec(ctx, `INSERT INTO writer_configs VALUES ($1, '[]', now())`, hash); err != nil {
+			t.Fatal(err)
+		}
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for i := range instances {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				err := repo.RecordLandings(ctx, runID, dom.StepKey{Node: "carga", MapIndex: i}, "vendas", []app.Landing{
+					{Target: "bigquery://acme/silver/orders", Rows: n(1), At: time.Now(), Config: cfg},
+				})
+				if err != nil {
+					t.Error(err)
+				}
+			}()
+		}
+		close(start)
+		wg.Wait()
+
+		var lines int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM step_config_history WHERE config_hash = $1`, hash).Scan(&lines); err != nil {
+			t.Fatal(err)
+		}
+		if lines != 1 {
+			t.Fatalf("round %d: %d lines for one change of configuration, want 1", round, lines)
+		}
 	}
 }
