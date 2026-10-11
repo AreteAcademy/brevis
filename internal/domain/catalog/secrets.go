@@ -25,13 +25,32 @@ var (
 	// convention this exists to protect.
 	secretName = regexp.MustCompile(`(^|_)(dsn|password|passwd|pwd|secret|token|credentials?|api_?key|access_key|private_key)($|_)`)
 
-	// A URL with a password in it: scheme://user:password@host.
-	secretUserinfo = regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:]+:[^/\s@]*@`)
-
-	// A credential as a key=value pair: in a query string, in a libpq DSN, in a
-	// sentence. The names are the SDK's querySecrets (sdk/redact.go) and the
-	// DSN keywords that carry one.
-	secretPair = regexp.MustCompile(`(?i)(^|[?&;\s])(key|api_?key|token|access_token|auth|password|passwd|pwd|secret|signature|sig)=[^&\s;]+`)
+	// What a credential looks like in TEXT -- a value, a note -- each with
+	// the words the refusal uses. A comment is free prose written by people,
+	// and a commented-out old setting is the most common way a secret ends
+	// up in a config file, so prose is held to the same wall as values.
+	//
+	// A placeholder is not a credential: a value starting with `<`, `$`,
+	// `*` or `{` -- `<your password>`, `$PG_PASSWORD`, `***`, `${X}` -- is
+	// let through, or every example in a comment would fail a deploy.
+	secretInText = []struct {
+		re   *regexp.Regexp
+		what string
+	}{
+		{regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@`), "a URL with a user or password in it"},
+		{regexp.MustCompile(`[^\s:/@]+:[^\s@]+@(tcp|unix)\(`), "a MySQL DSN with a password in it"},
+		{regexp.MustCompile(`(?i)(^|[?&;\s])(key|api_?key|token|access_token|auth|password|passwd|pwd|secret|signature|sig)=[^&\s;]+`), "a credential written as key=value"},
+		{regexp.MustCompile(`(?i)[?&][A-Za-z0-9_-]*(signature|token|secret|password|credential|api[-_]?key)=[^&\s]+`), "a credential in a query string"},
+		{regexp.MustCompile(`(?i)(password|passwd|pwd|secret|token|api[-_]?key|apikey|access[-_]?key|private[-_]?key)\s*[:=]\s*[^\s<$*{]`), "a credential written as a setting"},
+		// An Authorization header is matched by its scheme and not by its
+		// name, so `Authorization: Bearer <key>` stays a readable example.
+		{regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/-]{12,}`), "a bearer token"},
+		{regexp.MustCompile(`(?i)\bbasic\s+[A-Za-z0-9+/]{12,}=*`), "a basic-auth credential"},
+		{regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}`), "a JSON web token"},
+		{regexp.MustCompile(`\b(AKIA|ASIA)[0-9A-Z]{16}\b`), "an AWS access key"},
+		{regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`), "a private key"},
+		{regexp.MustCompile(`\b(ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{10,}|AIza[A-Za-z0-9_-]{30,})`), "a provider's API token"},
+	}
 )
 
 // FindSecret walks a value -- a string, a number, a list, an object -- and
@@ -63,11 +82,10 @@ func FindSecret(path string, v any) error {
 // what the text SAYS can be a credential: a sentence that mentions dsn_from
 // is not a setting named like one.
 func FindSecretInText(path, text string) error {
-	if secretUserinfo.MatchString(text) {
-		return fmt.Errorf("%s: a URL with a password in it", path)
-	}
-	if secretPair.MatchString(text) {
-		return fmt.Errorf("%s: a credential written as key=value", path)
+	for _, p := range secretInText {
+		if p.re.MatchString(text) {
+			return fmt.Errorf("%s: %s", path, p.what)
+		}
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"reflect"
+	"regexp"
 	"strings"
 	"time"
 
@@ -197,16 +198,46 @@ func collectNotes(n *yaml.Node, prefix string, out map[string]string) {
 }
 
 // commentText strips the markers YAML keeps on a comment, and the one space
-// after them, leaving the text as its author laid it out.
+// after them, leaving the text as its author laid it out -- without the lines
+// that are settings rather than prose.
+//
+// A commented-out setting is the most common way a secret ends up in a config
+// file (`# dsn: postgres://user:pw@host/db`, `# password: hunter2`), and a
+// comment is free text no `_from` convention reaches. So a line shaped like a
+// setting -- `key: value`, `key=value`, `- key: value` -- is not a note. The
+// prose around it, which is why comments are kept at all, stays. The engine
+// still checks what is left (catalog.FindSecretInText) and refuses a
+// manifest carrying one.
 func commentText(c string) string {
 	if c == "" {
 		return ""
 	}
-	lines := strings.Split(c, "\n")
-	for i, l := range lines {
+	var kept []string
+	for _, l := range strings.Split(c, "\n") {
 		l = strings.TrimSpace(l)
 		l = strings.TrimPrefix(l, "#")
-		lines[i] = strings.TrimPrefix(l, " ")
+		l = strings.TrimPrefix(l, " ")
+		if commentedSetting.MatchString(l) {
+			continue
+		}
+		// One blank line between paragraphs, never two: a dropped setting
+		// must not leave a hole where it was.
+		if l == "" && (len(kept) == 0 || kept[len(kept)-1] == "") {
+			continue
+		}
+		kept = append(kept, l)
 	}
-	return strings.TrimSpace(strings.Join(lines, "\n"))
+	return strings.TrimSpace(strings.Join(kept, "\n"))
 }
+
+// commentedSetting is a comment line that is a setting, told from prose by
+// its VALUE, not its key -- "for: one stream feeds whoever subscribes" starts
+// like a key and is a sentence:
+//
+//   - `key: value` with a lower-case key and ONE token after the colon, or a
+//     value opening `{`, `[` or a quote -- optionally a commented list item,
+//     optionally followed by its own `# comment`;
+//   - `KEY=value` in any case, with one token after the `=`.
+var commentedSetting = regexp.MustCompile(
+	`^\s*(-\s*)?[a-z_][a-z0-9_.-]*\s*:\s*(\S+|[{\["'].*)(\s+#.*)?$` +
+		`|^\s*[A-Za-z_][A-Za-z0-9_.-]*=\S+\s*$`)
