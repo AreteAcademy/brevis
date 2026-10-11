@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/base64"
 	"fmt"
 	"regexp"
 	"strings"
@@ -26,10 +27,13 @@ var (
 	// `password_policy`, `source_key` and `dsn_from` -- the convention this
 	// exists to protect -- are not: they name something about a credential,
 	// or a variable holding one.
-	secretName = regexp.MustCompile(`(^|_)(dsn|passwords?|passwd|pwd|secrets?|tokens?|credentials?|api_?key|access_key|private_key|auth_token|authorization|bearer)$`)
+	secretName = regexp.MustCompile(`(^|_)(dsn|passwords?|passwd|pwd|pass|pw|passphrase|secrets?|secret_key|signing_key|client_key|tokens?|credentials?|creds|api_?keys?|access_key|private_key(_[a-z0-9]+)?|auth_token|authorization|bearer|cookies?|session_(id|key|token))$`)
 
-	camelBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
-	indexSuffix   = regexp.MustCompile(`(\[\d+\])+$`)
+	// An acronym before a word (`DBPassword`, `JWTSecret`) first, then a
+	// lower-case letter or digit before a capital (`apiKey`).
+	acronymBoundary = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
+	camelBoundary   = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	indexSuffix     = regexp.MustCompile(`(\[\d+\])+$`)
 
 	// What a credential looks like in TEXT -- a value, a note -- each with
 	// the words the refusal uses.
@@ -48,15 +52,22 @@ var (
 		// "Bearer" is prose, a token after it has digits or punctuation.
 		shaped func(match string) bool
 	}{
-		{re: regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:?#]*:[^/\s@?#]+@`), what: "a URL with a password in it"},
+		// The password runs to the `@` before the host, whatever it holds:
+		// a generated one often has `/`, `#` or `?` in it.
+		{re: regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^\s/@:]*:[^\s@]*@[A-Za-z0-9.\[-]`), what: "a URL with a password in it"},
+		// A token as the user, with no password: GitHub's classic tokens,
+		// Sentry's DSN. A plain user (`git@`) has no digit and is short.
+		{re: regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://([^\s/@:?#]*[0-9][^\s/@:?#]*|[^\s/@:?#]{16,})@`), what: "a URL with a token as its user"},
 		{re: regexp.MustCompile(`(^|[\s"'(=])[A-Za-z0-9._%+-]+:[^\s@/:]+@[A-Za-z0-9.-]+`), what: "a user and password before a host"},
-		{re: regexp.MustCompile(`(?i)(^|[?&;\s])(password|passwd|pwd|secret|token|api_?key|access_token|client_secret|signature)=[^&\s;]+`), what: "a credential written as key=value"},
+		// The name may carry a prefix (`refresh_token`, `X-Amz-Signature`);
+		// a pagination token (`next_page_token`, `cursor`) is not a secret.
+		{re: regexp.MustCompile(`(?i)(^|[?&;\s])[A-Za-z0-9_-]*(password|passwd|pwd|secret|token|api_?key|signature|sig|security[-_]token|secret_access_key)=[^&\s;]+`), what: "a credential written as key=value", shaped: notPagination},
 		{re: regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}`), what: "a bearer token", shaped: tokenShaped},
-		{re: regexp.MustCompile(`(?i)\bbasic\s+[A-Za-z0-9+/]{8,}={0,2}`), what: "a basic-auth credential", shaped: tokenShaped},
+		{re: regexp.MustCompile(`(?i)\bbasic\s+[A-Za-z0-9+/]{8,}={0,2}`), what: "a basic-auth credential", shaped: basicShaped},
 		{re: regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}`), what: "a JSON web token"},
 		{re: regexp.MustCompile(`\b(AKIA|ASIA)[0-9A-Z]{16}\b`), what: "an AWS access key"},
-		{re: regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`), what: "a private key"},
-		{re: regexp.MustCompile(`\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|xapp-[A-Za-z0-9-]{10,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|sk-(ant|proj)-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})`), what: "a provider's API token"},
+		{re: regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY( BLOCK)?-----`), what: "a private key"},
+		{re: regexp.MustCompile(`\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|xapp-[A-Za-z0-9-]{10,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|sk-(ant|proj)-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}|shp(at|ss)_[A-Fa-f0-9]{30,}|dop_v1_[a-f0-9]{60,})`), what: "a provider's API token"},
 	}
 )
 
@@ -93,8 +104,9 @@ func FindSecret(path string, v any) error {
 // `x-api-key`, `apiKey` and `API_KEY` are one name.
 func credentialName(path string) string {
 	name := indexSuffix.ReplaceAllString(lastSegment(path), "")
+	name = acronymBoundary.ReplaceAllString(name, "${1}_${2}")
 	name = camelBoundary.ReplaceAllString(name, "${1}_${2}")
-	return strings.ToLower(strings.ReplaceAll(name, "-", "_"))
+	return strings.Trim(strings.ToLower(strings.ReplaceAll(name, "-", "_")), "_")
 }
 
 // hasValue says a setting holds something: a bool says nothing secret, and an
@@ -125,6 +137,32 @@ func FindSecretInText(path, text string) error {
 		}
 	}
 	return nil
+}
+
+// notPagination says a key=value match is not a pagination token: a page or a
+// cursor is where a listing resumes, and every paginated API sends one.
+func notPagination(match string) bool {
+	name, _, _ := strings.Cut(strings.ToLower(match), "=")
+	for _, w := range []string{"page", "cursor", "continuation", "sync"} {
+		if strings.Contains(name, w) {
+			return false
+		}
+	}
+	return true
+}
+
+// basicShaped says whether what follows "Basic" is a credential: base64 that
+// decodes to `user:password`, or anything token-shaped. "configuration" is
+// neither.
+func basicShaped(match string) bool {
+	fields := strings.Fields(match)
+	token := fields[len(fields)-1]
+	for _, enc := range []*base64.Encoding{base64.StdEncoding, base64.RawStdEncoding} {
+		if raw, err := enc.DecodeString(token); err == nil && strings.Contains(string(raw), ":") {
+			return true
+		}
+	}
+	return tokenShaped(match)
 }
 
 // tokenShaped says whether the credential after "Bearer" or "Basic" looks

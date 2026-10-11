@@ -121,3 +121,66 @@ func TestASettingThatOnlyMentionsACredentialIsAccepted(t *testing.T) {
 		}
 	}
 }
+
+// Third review: names and shapes found getting past the second wall.
+func TestTheThirdReviewsNamesAreRefused(t *testing.T) {
+	for path, value := range map[string]any{
+		"s.DBPassword":      "x",
+		"s.JWTSecret":       "x",
+		"s.secret_key":      "x",
+		"s.secretKey":       "x",
+		"s.signing_key":     "x",
+		"s.api_keys":        []any{"x"},
+		"s.pass":            "x",
+		"s.pw":              "x",
+		"s.passphrase":      "x",
+		"s.private_key_pem": "x",
+		"s.cookie":          "x",
+		"s.session_id":      "x",
+		"s.password_":       "x",
+		"s.creds":           map[string]any{"user": "a", "pass": "b"},
+	} {
+		if FindSecret(path, value) == nil {
+			t.Errorf("accepted %s = %#v", path, value)
+		}
+	}
+}
+
+func TestTheThirdReviewsShapesAreRefused(t *testing.T) {
+	for _, text := range []string{
+		"postgres://u:pa/ss@host/db",
+		"postgres://u:pa#ss@host/db",
+		"postgres://u:pa?ss@host/db",
+		"https://0123456789abcdef0123456789abcdef01234567@github.com/org/repo.git",
+		"https://TOKEN123@host/x",
+		"https://abcdef0123456789abcdef0123456789@o1.ingest.sentry.io/1",
+		"Authorization: Basic dXNlcjpwYXNz",
+		"https://api.example.com/x?refresh_token=abc123",
+		"id_token=abc123",
+		"aws_secret_access_key=abc123",
+		"https://acct.blob.core.windows.net/c?sv=2021&sig=abc123",
+		"https://b.s3.amazonaws.com/k?X-Amz-Signature=abc123",
+		"https://b.s3.amazonaws.com/k?X-Amz-Security-Token=abc123",
+	} {
+		if FindSecretInText("note", text) == nil {
+			t.Errorf("accepted: %q", text)
+		}
+	}
+}
+
+// What must still read, after the third review's rules.
+func TestTheThirdReviewsRulesKeepProse(t *testing.T) {
+	for _, text := range []string{
+		"https://git@github.com/acme/repo",
+		"https://example.com/x?email=a1@b.com",
+		"http://[::1]:8080/v1/items",
+		"https://api.example.com/v1/items?next_page_token=abc123",
+		"page_token=abc123",
+		"Basic configuration follows",
+		"partition key=user_id",
+	} {
+		if err := FindSecretInText("note", text); err != nil {
+			t.Errorf("refused %q: %v", text, err)
+		}
+	}
+}
