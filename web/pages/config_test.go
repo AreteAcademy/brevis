@@ -144,3 +144,64 @@ func TestAWriterWithNoConfigurationHasNoSection(t *testing.T) {
 		t.Fatal("a writer with no configuration drew settings")
 	}
 }
+
+// Each version says what changed from the one before it, newest first; the
+// oldest says it is where the record begins.
+func TestTheConfigurationsChangesAreListedNewestFirst(t *testing.T) {
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	c := tablesConfig()
+	c.History = []postgres.ConfigVersion{
+		{Hash: "c", At: at.Add(2 * time.Hour), Fields: []catalog.ManifestField{
+			{Path: "buffer.flush.every", Value: "2m"}, {Path: "sink.into.write", Value: "append"}}},
+		{Hash: "b", At: at.Add(time.Hour), Fields: []catalog.ManifestField{
+			{Path: "buffer.flush.every", Value: "1m"}, {Path: "sink.into.write", Value: "append"},
+			{Path: "retry.attempts", Value: float64(2)}}},
+		{Hash: "a", At: at, Fields: []catalog.ManifestField{
+			{Path: "buffer.flush.every", Value: "1m"}, {Path: "sink.into.write", Value: "merge"}}},
+	}
+	v := BuildConfig(c)
+	if len(v.Changes) != 3 {
+		t.Fatalf("changes = %+v", v.Changes)
+	}
+	newest := v.Changes[0]
+	if !newest.At.Equal(at.Add(2*time.Hour)) || len(newest.Lines) != 2 {
+		t.Fatalf("newest = %+v", newest)
+	}
+	if l := newest.Lines[0]; l.Path != "buffer.flush.every" || l.Text != "1m → 2m" {
+		t.Fatalf("a changed value = %+v", l)
+	}
+	if l := newest.Lines[1]; l.Path != "retry.attempts" || l.Text != "removed (was 2)" {
+		t.Fatalf("a removed value = %+v", l)
+	}
+	if l := v.Changes[1].Lines; len(l) != 2 || l[0].Text != "merge → append" || l[1].Text != "added: 2" {
+		t.Fatalf("the middle version = %+v", l)
+	}
+	if oldest := v.Changes[2]; !oldest.First || len(oldest.Lines) != 0 {
+		t.Fatalf("oldest = %+v", oldest)
+	}
+
+	var b bytes.Buffer
+	d := postgres.TargetDetail{CatalogEntry: postgres.CatalogEntry{Target: "bigquery://acme/landing/*",
+		Writers: []postgres.CatalogWriter{{Gateway: &postgres.GatewayWriter{Name: "edge", Stream: "/v1/tables", Config: c}}}}}
+	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Changes", "1m → 2m", "removed (was 2)", "First published"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("the page lacks %q", want)
+		}
+	}
+}
+
+// A history cut at the page's limit does not claim its oldest line is the first.
+func TestATruncatedHistoryDoesNotClaimAFirstPublish(t *testing.T) {
+	c := tablesConfig()
+	for i := range postgres.HistoryShown {
+		c.History = append(c.History, postgres.ConfigVersion{
+			At: time.Unix(int64(1000-i), 0), Fields: []catalog.ManifestField{{Path: "x", Value: float64(i)}}})
+	}
+	last := BuildConfig(c).Changes[postgres.HistoryShown-1]
+	if last.First {
+		t.Fatal("the oldest of a cut history claims to be the first publish")
+	}
+}

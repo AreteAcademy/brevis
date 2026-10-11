@@ -343,3 +343,41 @@ func TestAVersionOneGatewayHasNoConfigurationOnItsPage(t *testing.T) {
 		t.Fatalf("config = %+v, want none", d.Writers[0].Gateway.Config)
 	}
 }
+
+// The page reads a stream's configurations over time, newest first, one per
+// change: a publish that changed nothing is not a version.
+func TestTheDestinationPageReadsTheConfigurationsHistory(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const clicks = "pubsub://acme/clicks"
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	stream := func(every string) catalog.Manifest {
+		return catalog.Manifest{Kind: "gateway-manifest", Version: 2, Gateway: "edge", Streams: []catalog.ManifestStream{{
+			Name: "clicks", Path: "/v1/clicks",
+			Fields: []catalog.ManifestField{{Path: "buffer.flush.every", Value: every}},
+			Destinations: []catalog.ManifestDestination{
+				{Role: "sink", Kind: "pubsub", Target: target(clicks)}},
+		}}}
+	}
+	repo := postgres.NewGatewayRepo(pool)
+	for i, every := range []string{"1m", "1m", "2m"} {
+		if err := repo.Publish(ctx, stream(every), at.Add(time.Duration(i)*time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, clicks)
+	if err != nil || d == nil {
+		t.Fatalf("detail = %+v, %v", d, err)
+	}
+	h := d.Writers[0].Gateway.Config.History
+	if len(h) != 2 {
+		t.Fatalf("history = %+v, want two versions", h)
+	}
+	if h[0].Fields[0].Value != "2m" || !h[0].At.Equal(at.Add(2*time.Hour)) {
+		t.Fatalf("newest = %+v", h[0])
+	}
+	if h[1].Fields[0].Value != "1m" || !h[1].At.Equal(at) {
+		t.Fatalf("oldest = %+v, want the FIRST publish of 1m", h[1])
+	}
+}

@@ -78,7 +78,22 @@ type WriterConfig struct {
 	// Notes are the config file's comments, by setting path; "" is the
 	// stream's own.
 	Notes map[string]string
+
+	// History is every configuration the writer has had, newest first and
+	// the current one included, one per CHANGE -- at most HistoryShown.
+	History []ConfigVersion
 }
+
+// ConfigVersion is a configuration as it was from At on.
+type ConfigVersion struct {
+	Hash   string
+	At     time.Time
+	Fields []catalog.ManifestField
+}
+
+// HistoryShown bounds the versions a page reads per writer: enough to see a
+// configuration being tuned, not every change since the gateway existed.
+const HistoryShown = 20
 
 // Catalog lists every destination the ecosystem has landed on.
 //
@@ -381,6 +396,48 @@ func (r *ReadRepo) gatewayConfigs(ctx context.Context, target string, writers []
 			if g := writers[i].Gateway; g != nil && g.Name == gateway && g.Stream == stream {
 				cfg := c
 				g.Config = &cfg
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	return r.gatewayHistories(ctx, target, writers)
+}
+
+// gatewayHistories reads the configurations each gateway writer on one
+// destination has had, in one round trip.
+func (r *ReadRepo) gatewayHistories(ctx context.Context, target string, writers []CatalogWriter) error {
+	rows, err := r.pool.Query(ctx, `
+		SELECT gateway, stream_path, config_hash, published_at, body
+		FROM (
+			SELECT h.gateway, h.stream_path, h.config_hash, h.published_at, c.body,
+			       row_number() OVER (PARTITION BY h.gateway, h.stream_path
+			                          ORDER BY h.published_at DESC) AS n
+			FROM gateway_config_history h
+			JOIN writer_configs c ON c.hash = h.config_hash
+			WHERE (h.gateway, h.stream_path) IN (
+				SELECT gateway, stream_path FROM gateway_destinations WHERE target = $1)
+		) versions
+		WHERE n <= $2
+		ORDER BY published_at DESC`, target, HistoryShown)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var gateway, stream string
+		var v ConfigVersion
+		var body []byte
+		if err := rows.Scan(&gateway, &stream, &v.Hash, &v.At, &body); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(body, &v.Fields); err != nil {
+			return err
+		}
+		for i := range writers {
+			if g := writers[i].Gateway; g != nil && g.Config != nil && g.Name == gateway && g.Stream == stream {
+				g.Config.History = append(g.Config.History, v)
 			}
 		}
 	}
