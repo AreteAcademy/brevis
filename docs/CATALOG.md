@@ -91,8 +91,8 @@ stream, or a workflow step that runs the Go SDK — in three layers:
 2. **Every setting**, grouped by its first segment — Stream, Identity, Buffer,
    Sink, Retry, Dead letter for a gateway; Source, Transform, Target for a
    pipeline. A default the gateway filled in is marked `default`; a comment
-   from the config file sits beside the setting it was written on, and a
-   long one folds to its first line.
+   its author marked for it (`#:`) sits beside the setting it was written
+   on, and a long one folds to its first line.
 3. **Changes**, newest first: what each configuration changed from the one
    before, setting by setting — `buffer.flush.every 1m → 2m`, `added: merge`.
    A gateway's versions are its publishes; a step's are read off its landings,
@@ -111,7 +111,8 @@ publishes or runs point at it. A comment reworded is not a new version — the
 comments are outside the hash and replace the old words.
 
 **No credential reaches it.** The writer keeps them out by construction — a
-gateway's file names variables (`dsn_from`), never values; each SDK driver
+gateway's file names variables (`dsn_from`), never values, and only the
+comments marked `#:` leave it; each SDK driver
 lists by hand what may be shown, and a DSN gives its host, port and database
 and nothing else; an HTTP source shows the names of its query parameters and
 headers, never their values. The engine looks again, and refuses a whole

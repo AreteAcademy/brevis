@@ -186,11 +186,11 @@ func TestNoStreamFieldLooksLikeASecret(t *testing.T) {
 	walk(reflect.TypeOf(gateway.Stream{}), "")
 }
 
-// A commented-out setting is the most common way a secret ends up in a config
-// file, and a comment is free text no `_from` convention reaches. So a comment
-// line shaped like a setting -- `key: value`, `key=value` -- is not a note:
-// the prose around it stays, the setting does not.
-func TestACommentedOutSettingIsNotANote(t *testing.T) {
+// A comment is a note only when its author MARKS it one, with `#:`. Every
+// other comment stays in the file: a secret left in an ordinary comment --
+// a commented-out setting, or a password on the line after "the password
+// is" -- never leaves the gateway, and no pattern has to recognise it.
+func TestOnlyAMarkedCommentIsANote(t *testing.T) {
 	t.Setenv("BREVIS_CLICKS_DSN", "postgres://loader:s3cret@db.internal:5432/shop")
 	cfg, err := gateway.Load(filepath.Join("testdata", "describe", "commented-out.yaml"))
 	if err != nil {
@@ -202,15 +202,18 @@ func TestACommentedOutSettingIsNotANote(t *testing.T) {
 	}
 	st := m.Streams[0]
 	raw, _ := json.Marshal(st.Notes)
-	for _, leak := range []string{"hunter2", "password", "dsn:", "old:"} {
+	for _, leak := range []string{"hunter2", "password", "dsn:", "old:", "pass:"} {
 		if strings.Contains(string(raw), leak) {
-			t.Errorf("a commented-out setting reached the notes (%q): %s", leak, raw)
+			t.Errorf("an unmarked comment reached the notes (%q): %s", leak, raw)
 		}
 	}
-	if !strings.Contains(st.Notes[""], "Clicks from the web app") {
-		t.Errorf("the stream's prose was lost: %q", st.Notes[""])
+	if st.Notes[""] != "Clicks from the web app, one event per click." {
+		t.Errorf("the stream's marked note = %q", st.Notes[""])
 	}
-	if !strings.Contains(st.Notes["sink.table"], "The table must exist") {
-		t.Errorf("the table's prose was lost: %q", st.Notes["sink.table"])
+	if st.Notes["sink.table"] != "The table must exist: this does not create one.\n\nIt is created by the warehouse's own migrations." {
+		t.Errorf("the table's marked note = %q", st.Notes["sink.table"])
+	}
+	if st.Notes["sink.write"] != "append: a redelivery is a second row" {
+		t.Errorf("a marked line comment = %q", st.Notes["sink.write"])
 	}
 }

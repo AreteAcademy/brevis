@@ -2,8 +2,10 @@ name: g
 listen:
   auth: {type: bearer, keys_from: BREVIS_INGEST_KEYS}
 streams:
-  # Clicks from the web app, one event per click.
+  #: Clicks from the web app, one event per click.
   # password: hunter2
+  # the password is
+  # hunter2
   - name: clicks
     path: /v1/clicks
     format: json
@@ -11,8 +13,11 @@ streams:
     sink:
       type: postgres
       dsn_from: BREVIS_CLICKS_DSN
-      # The table must exist: this does not create one.
+      #: The table must exist: this does not create one.
+      #:
+      #: It is created by the warehouse's own migrations.
       # dsn: postgres://loader:hunter2@db.internal/shop
+      ## pass: hunter2
       table: landing.clicks   # old: app:hunter2@tcp(mysql:3306)/events
-      write: append
+      write: append           #: append: a redelivery is a second row
     dead_letter: {type: files, path: ./dead-letter/}
