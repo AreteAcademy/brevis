@@ -30,6 +30,10 @@ type TargetView struct {
 	// Loads are the same loads, newest first, for the table.
 	Loads []postgres.TargetLoad
 
+	// Configs are how this destination's writers are configured, one per
+	// writer that described itself.
+	Configs []WriterConfigView
+
 	// Preview is the first rows of the destination, when a SQL service
 	// answered. Nil when there is none to ask, or when asking failed.
 	Preview *sqlserve.Result
@@ -200,6 +204,12 @@ func Total(rows int, truncated bool) string {
 // BuildTarget judges the destination as the list does, and lays out its loads.
 func BuildTarget(d postgres.TargetDetail, now time.Time) TargetView {
 	v := TargetView{Row: BuildData([]postgres.CatalogEntry{d.CatalogEntry}, now).Rows[0], Loads: d.Loads}
+	for _, w := range d.Writers {
+		if g := w.Gateway; g != nil && g.Config != nil {
+			v.Configs = append(v.Configs, WriterConfigView{Gateway: g.Name, Stream: g.Stream,
+				Role: g.Role, PublishedAt: g.PublishedAt, Config: BuildConfig(g.Config)})
+		}
+	}
 	for _, l := range slices.Backward(d.Loads) {
 		v.Bars = append(v.Bars, components.LoadBar{
 			Href:  "/runs/" + l.RunID,
