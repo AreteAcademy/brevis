@@ -31,10 +31,19 @@ type describedField struct {
 // without them, and the run's own check is what refuses it.
 func (p *Pipeline) describe() map[string]any {
 	var fields []describedField
+	seen := map[string]bool{}
 	add := func(path string, v any) {
 		if v == nil || reflect.ValueOf(v).IsZero() {
 			return
 		}
+		// One value per path, which the engine requires and refuses the
+		// whole description without. A writer of somebody else's listing a
+		// key twice loses its second value, not the pipeline its page.
+		if seen[path] {
+			slog.Warn("the pipeline's description named a setting twice; the first value is kept", "path", path)
+			return
+		}
+		seen[path] = true
 		fields = append(fields, describedField{Path: path, Value: v})
 	}
 
@@ -61,15 +70,19 @@ func (p *Pipeline) describe() map[string]any {
 	if l, ok := p.Target.To.(Locator); ok {
 		add("target.target", l.Locate())
 	}
-	add("target.columns", p.Target.Columns)
+	// What the Target DECLARES is under its own prefix: a writer's settings
+	// are under target. too, and Postgres's `schema` (where the table is)
+	// and a declared `schema` (its columns) are different things that
+	// shared a path -- and the engine refused the whole description.
+	add("target.declared.columns", p.Target.Columns)
 	if len(p.Target.Schema) > 0 {
 		cols := make([]string, len(p.Target.Schema))
 		for i, c := range p.Target.Schema {
 			cols[i] = strings.TrimSpace(c.Name + " " + string(c.Type))
 		}
-		add("target.schema", cols)
+		add("target.declared.schema", cols)
 	}
-	add("target.partition_by", p.Target.PartitionBy)
+	add("target.declared.partition_by", p.Target.PartitionBy)
 	add("target.dedup", string(p.Target.Dedup))
 	settingsOf(p.Target.To, "target.", add)
 
