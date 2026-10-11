@@ -76,8 +76,8 @@ func TestPhasesFollowThePipelineShape(t *testing.T) {
 
 	var trail []string
 	for _, ev := range eventos {
-		if ev["type"] == "sdk" {
-			trail = append(trail, "sdk")
+		if ev["type"] == "sdk" || ev["type"] == "pipeline" {
+			trail = append(trail, ev["type"].(string))
 			continue
 		}
 		trail = append(trail, ev["name"].(string)+":"+ev["state"].(string))
@@ -86,7 +86,7 @@ func TestPhasesFollowThePipelineShape(t *testing.T) {
 	// order, the destination. A single `transform` box could not tell "216
 	// became 9" from "216 became 216 and then 9".
 	querido := []string{
-		"sdk",
+		"sdk", "pipeline",
 		"check:running", "check:done",
 		"extract:running",
 		"map:running",

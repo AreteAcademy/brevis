@@ -234,6 +234,7 @@ func Execute(ctx context.Context, p *Pipeline, args []string) error {
 func runPipeline(ctx context.Context, p *Pipeline) error {
 	rep := newReporter(p.Run)
 	rep.announce(p.name())
+	rep.describe(p)
 
 	// The declaration is checked against the target BEFORE the extraction.
 	//
