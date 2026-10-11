@@ -48,10 +48,12 @@ without it. Blanking the password would hide the bug in the writer.
 
 ### Upgrading
 
-**Two migrations, both quick.** `00018` creates three tables. `00019` adds a
+**Three migrations, all quick.** `00018` creates three tables. `00019` adds a
 nullable `config_hash` to `landings`, with a foreign key: on a million landings
 (391 MB) it took **20.6 ms** — Postgres validates a key on a column that is all
-NULL without reading the table.
+NULL without reading the table. `00020` creates `step_config_history`, filled
+from the landings `00019` began describing — none, on an engine upgrading from
+`0.20.0`.
 
 **Upgrade the engine before the gateway.** An engine on `0.20.0` refuses a
 version-2 manifest by its number, and the publish fails saying so. This one

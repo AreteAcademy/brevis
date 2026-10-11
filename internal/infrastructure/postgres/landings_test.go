@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -188,5 +189,47 @@ func TestALandingWithoutAConfigurationPointsAtNothing(t *testing.T) {
 	}
 	if hash != nil {
 		t.Fatalf("config_hash = %q, want NULL", *hash)
+	}
+}
+
+// A step's configuration history is written as it CHANGES, beside the
+// landings: one line per change, not one per landing -- so the destination's
+// page reads twenty lines, not every landing since the step began.
+func TestAStepsConfigurationHistoryGainsALineOnlyWhenItChanges(t *testing.T) {
+	pool := landingsDB(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE writer_configs, step_config_history CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	repo := postgres.NewRunRepo(pool)
+	a := &app.WriterConfig{Hash: "sha256:a", Body: []byte(`[{"path":"target.dedup","value":"none","default":false}]`)}
+	b := &app.WriterConfig{Hash: "sha256:b", Body: []byte(`[{"path":"target.dedup","value":"merge","default":false}]`)}
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+
+	for i, cfg := range []*app.WriterConfig{a, a, a, b, b, a} {
+		runID := aged(t, pool, "vendas", time.Hour, dom.StatusSuccess)
+		if err := repo.RecordLandings(ctx, runID, dom.Step("carga"), "vendas", []app.Landing{
+			{Target: "bigquery://acme/silver/orders", Rows: n(1), At: at.Add(time.Duration(i) * time.Hour), Config: cfg},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var hashes []string
+	rows, err := pool.Query(ctx, `SELECT config_hash FROM step_config_history
+		WHERE target = 'bigquery://acme/silver/orders' ORDER BY first_at`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var h string
+		if err := rows.Scan(&h); err != nil {
+			t.Fatal(err)
+		}
+		hashes = append(hashes, h)
+	}
+	// a → b → a: three changes, and going back is a change too.
+	if strings.Join(hashes, " ") != "sha256:a sha256:b sha256:a" {
+		t.Fatalf("history = %v, want one line per change", hashes)
 	}
 }

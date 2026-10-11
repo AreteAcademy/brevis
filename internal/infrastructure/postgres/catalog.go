@@ -458,31 +458,26 @@ func (r *ReadRepo) gatewayHistories(ctx context.Context, target string, writers 
 }
 
 // stepConfigs fills in each step's configuration on one destination, in one
-// round trip: across the step's landings there, the configurations in the
-// order they were written with, keeping one line per CHANGE -- with the run
-// that first wrote with it -- newest first, at most HistoryShown.
+// round trip: its configurations in the order it wrote with them, one line
+// per CHANGE with the run that first wrote with it, newest first, at most
+// HistoryShown -- read off step_config_history's key, never off the landings
+// (migration 00020 says why).
 //
-// The current configuration is the newest version. A landing whose
-// description was refused carries none and is skipped, so a step whose last
-// run failed to describe itself shows the configuration it last described.
+// The current configuration is the newest line. A landing whose description
+// was refused carries none and writes no line, so a step whose last run failed
+// to describe itself shows the configuration it last described.
 func (r *ReadRepo) stepConfigs(ctx context.Context, target string, writers []CatalogWriter) error {
 	rows, err := r.pool.Query(ctx, `
-		SELECT v.workflow_slug, v.node_id, v.config_hash, v.loaded_at, v.run_id::text, c.body
+		SELECT v.workflow_slug, v.node_id, v.config_hash, v.first_at, v.run_id::text, c.body
 		FROM (
-			SELECT x.*, row_number() OVER (PARTITION BY workflow_slug, node_id
-			                               ORDER BY loaded_at DESC) AS n
-			FROM (
-				SELECT workflow_slug, node_id, config_hash, loaded_at, run_id,
-				       lag(config_hash) OVER (PARTITION BY workflow_slug, node_id
-				                              ORDER BY loaded_at) AS previous
-				FROM landings
-				WHERE target = $1 AND config_hash IS NOT NULL
-			) x
-			WHERE x.previous IS DISTINCT FROM x.config_hash
+			SELECT h.*, row_number() OVER (PARTITION BY workflow_slug, node_id
+			                               ORDER BY first_at DESC) AS n
+			FROM step_config_history h
+			WHERE h.target = $1
 		) v
 		JOIN writer_configs c ON c.hash = v.config_hash
 		WHERE v.n <= $2
-		ORDER BY v.loaded_at DESC`, target, HistoryShown)
+		ORDER BY v.first_at DESC`, target, HistoryShown)
 	if err != nil {
 		return err
 	}
