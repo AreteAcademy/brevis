@@ -40,6 +40,20 @@ while IFS= read -r line; do
   fi
 done < <(grep -rn "areteacademy/brevis-sql:[0-9]" deployments/ examples/ docs/ || true)
 
+# AND THE THIRD. `areteacademy/brevis-gateway` is released on its own tag
+# with gateway/VERSION, and the gateway's publish Job pins it -- added with
+# that Job, for the reason brevis-sql's was added with its first manifest.
+# `-slim` is the same release, so the version is read before it.
+gatewaywant="$(cat gateway/VERSION)"
+while IFS= read -r line; do
+  file="${line%%:*}"
+  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-gateway:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  if [ "$pinned" != "$gatewaywant" ]; then
+    echo "❌ $file pins brevis-gateway $pinned, and gateway/VERSION is $gatewaywant"
+    failed=1
+  fi
+done < <(grep -rn "areteacademy/brevis-gateway:[0-9]" deployments/ examples/ docs/ || true)
+
 # THE CHART'S appVersion IS THE SAME NUMBER, written somewhere `areteacademy/
 # brevis:` never appears -- the template builds the tag from it.
 #
@@ -57,6 +71,6 @@ elif [ "$appVersion" != "$want" ]; then
 fi
 
 if [ "$failed" = "0" ]; then
-  echo "✅ every manifest pins brevis $want and brevis-sql $sqlwant, and the chart agrees"
+  echo "✅ every manifest pins brevis $want, brevis-sql $sqlwant and brevis-gateway $gatewaywant, and the chart agrees"
 fi
 exit $failed

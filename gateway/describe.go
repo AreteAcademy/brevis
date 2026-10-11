@@ -1,11 +1,13 @@
 package gateway
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"time"
 )
 
@@ -126,15 +128,20 @@ func describeOne(sinks *Sinks, role string, s Sink) (ManifestDestination, error)
 	return d, nil
 }
 
-// describeMain is `gateway describe [--name n] <config.yaml>`.
+// describeMain is `gateway describe [--name n] [--out file] <config.yaml>`.
+//
+// --out exists for the deploy Job: the gateway's image has no shell, so the
+// container that describes cannot redirect stdout into the file the container
+// that publishes reads.
 func describeMain(args []string, sinks *Sinks, out io.Writer) error {
 	fs := flag.NewFlagSet("describe", flag.ContinueOnError)
 	name := fs.String("name", "", "the gateway's name in the manifest (default: the config's `name:`)")
+	file := fs.String("out", "", "write the manifest to this file instead of stdout")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return fmt.Errorf("usage: gateway describe [--name <gateway>] <config.yaml>")
+		return fmt.Errorf("usage: gateway describe [--name <gateway>] [--out <file>] <config.yaml>")
 	}
 	cfg, err := Load(fs.Arg(0))
 	if err != nil {
@@ -143,6 +150,17 @@ func describeMain(args []string, sinks *Sinks, out io.Writer) error {
 	m, err := Describe(cfg, sinks, *name, time.Now())
 	if err != nil {
 		return err
+	}
+	if *file != "" {
+		// Written only once the manifest is whole: a describe that failed
+		// leaves no file for the publish to store half of.
+		var buf bytes.Buffer
+		enc := json.NewEncoder(&buf)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(m); err != nil {
+			return err
+		}
+		return os.WriteFile(*file, buf.Bytes(), 0o644) //nolint:gosec // a manifest names destinations, never credentials
 	}
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "  ")

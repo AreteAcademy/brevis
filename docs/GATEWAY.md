@@ -64,6 +64,17 @@ gateway describe gateway.yaml > manifest.json
 brevis gateway publish manifest.json
 ```
 
+On Kubernetes the act is a Job, so it happens with every deploy instead of
+whenever somebody remembers:
+[`deployments/kubernetes/gateway-publish-job.yaml`](../deployments/kubernetes/gateway-publish-job.yaml).
+Its init container runs `gateway describe --out` in the gateway's image, which
+has no shell to redirect into a file; its container runs `brevis gateway
+publish` in the engine's. Under Argo CD, two annotations make it a PostSync
+hook, as `examples/cluster/apps/50-publish.yaml` is for workflows. The gateway
+process still holds no credential and no route to the engine -- the Job does,
+for the seconds it runs. What it cannot see is a config edited in the cluster
+by hand: it publishes what the ConfigMap says.
+
 `gateway describe` prints a manifest — per stream, each destination's role
 (`sink`, `dead_letter`, or `archive` for oversized bodies), its kind and its
 target, the same identity the SDK gives a table:
