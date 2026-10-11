@@ -89,3 +89,41 @@ func TestAStepThatLandsAndThenFailsStillRecordsItsLandings(t *testing.T) {
 func runnerSpeaking(spy *spyPersister, ex execution.Executor) app.Runner {
 	return app.Runner{RunID: uuid.New(), Persist: spy, Report: &spyReporter{}, Processo: ex}
 }
+
+// Every landing of an attempt carries the configuration the pipeline
+// described: what wrote this table, and how.
+func TestLandingsCarryThePipelinesConfiguration(t *testing.T) {
+	spy := &spyPersister{}
+	r := runnerSpeaking(spy, sdkSpeaker{lines: []string{
+		`@brevis:{"type":"pipeline","v":1,"fields":[{"path":"target.dedup","value":"merge"}]}`,
+		`@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/orders","rows":10}`,
+		`@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/items","rows":4}`,
+	}})
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	for _, ls := range spy.landed() {
+		for _, l := range ls {
+			if l.Config == nil || l.Config.Hash == "" {
+				t.Fatalf("landing %s has no configuration", l.Target)
+			}
+		}
+	}
+}
+
+// A step that did not describe itself -- Python, dbt, a shell -- lands as it
+// always did.
+func TestLandingsWithoutADescriptionHaveNoConfiguration(t *testing.T) {
+	spy := &spyPersister{}
+	r := runnerSpeaking(spy, sdkSpeaker{lines: []string{
+		`@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/orders","rows":10}`,
+	}})
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	for _, ls := range spy.landed() {
+		if ls[0].Config != nil {
+			t.Fatalf("config = %+v, want none", ls[0].Config)
+		}
+	}
+}

@@ -23,6 +23,11 @@ type Landing struct {
 	Target      string
 	Rows, Bytes *int64
 	At          time.Time
+
+	// Config is how the step's pipeline was configured when it wrote this,
+	// when it said (see describe.go). Nil for a step that did not -- Python,
+	// dbt, a shell -- which lands exactly as before.
+	Config *WriterConfig
 }
 
 // landingCeiling bounds how many DISTINCT destinations one attempt may declare.

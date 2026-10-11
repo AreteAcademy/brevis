@@ -868,12 +868,21 @@ func (r Runner) markLandings(ctx context.Context, workflow string, step run.Step
 			"refused", c.LandingsRefused, "over_ceiling", c.LandingsOverCeiling,
 			"hint", "a target is an identity like bigquery://project/dataset/table, with no host, port or user; at most 100 per step")
 	}
+	if c.ConfigRefused != "" {
+		slog.Warn("a step described its configuration and the engine did not keep it",
+			"run", r.RunID, "workflow", workflow, "step", step.Node, "reason", c.ConfigRefused)
+	}
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
 	}
 	landings := c.Landings()
 	if len(landings) == 0 {
 		return
+	}
+	if cfg := c.Config(); cfg != nil {
+		for i := range landings {
+			landings[i].Config = cfg
+		}
 	}
 	_ = r.Persist.RecordLandings(ctx, r.RunID, step, workflow, landings)
 }

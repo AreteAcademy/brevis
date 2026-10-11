@@ -124,6 +124,20 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		t.Errorf("a map stage reported a duration: %v", *byName["map"].Ms)
 	}
 
+	// The pipeline described itself through the same pipe, and its landing
+	// points at the description: the real SDK's marker, the engine's hash.
+	var body string
+	if err := pool.QueryRow(ctx, `
+		SELECT c.body::text FROM landings l JOIN writer_configs c ON c.hash = l.config_hash
+		WHERE l.run_id = $1`, runID).Scan(&body); err != nil {
+		t.Fatalf("the landing points at no configuration: %v", err)
+	}
+	for _, want := range []string{`"source.driver"`, `"from.Files"`, `"transform.1.map"`, `"sdk.Compute"`, `"target.driver"`, `"to.Files"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the stored configuration lacks %s: %s", want, body)
+		}
+	}
+
 	// The marker must NOT have become the step's log.
 	logs, err := repo.LogsDaRun(ctx, runID)
 	if err != nil {
