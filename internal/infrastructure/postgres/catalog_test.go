@@ -41,7 +41,7 @@ func schedule(t *testing.T, pool *postgres.Pool, slug, cron, tz string, active b
 func catalogDB(t *testing.T) *postgres.Pool {
 	t.Helper()
 	pool := landingsDB(t)
-	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules, gateway_destinations CASCADE`); err != nil {
+	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules, gateway_destinations, gateway_streams, gateway_config_history, writer_configs CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	return pool
@@ -273,5 +273,73 @@ func TestPublishedGatewayDestinationsJoinTheCatalog(t *testing.T) {
 	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, clicks)
 	if err != nil || d == nil || len(d.Writers) != 2 {
 		t.Fatalf("the destination page lost the gateway writer: %+v, %v", d, err)
+	}
+}
+
+// The destination page reads each gateway writer's configuration -- the
+// settings its stream runs with and the file's comments -- and only the page:
+// the list does not need it and does not pay for it.
+func TestTheDestinationPageCarriesTheGatewaysConfiguration(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const tables = "bigquery://acme/landing/*"
+	m := catalog.Manifest{Kind: "gateway-manifest", Version: 2, Gateway: "edge", Streams: []catalog.ManifestStream{{
+		Name: "tables", Path: "/v1/tables",
+		Fields: []catalog.ManifestField{
+			{Path: "buffer.flush.every", Value: "1m"},
+			{Path: "buffer.workers", Value: float64(4), Default: true},
+			{Path: "sink.into.write", Value: "append"},
+		},
+		Notes: map[string]string{"sink.into.write": "APPEND: the landing table is history."},
+		Destinations: []catalog.ManifestDestination{
+			{Role: "sink", Kind: "auto_table", Target: target(tables), Routes: true},
+		},
+	}}}
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	if err := postgres.NewGatewayRepo(pool).Publish(ctx, m, at); err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, tables)
+	if err != nil || d == nil || len(d.Writers) != 1 {
+		t.Fatalf("detail = %+v, %v", d, err)
+	}
+	c := d.Writers[0].Gateway.Config
+	if c == nil {
+		t.Fatal("the gateway writer has no configuration")
+	}
+	if len(c.Fields) != 3 || c.Fields[2].Path != "sink.into.write" || c.Fields[2].Value != "append" {
+		t.Fatalf("fields = %+v", c.Fields)
+	}
+	if !c.Fields[1].Default || c.Fields[1].Value != float64(4) {
+		t.Fatalf("the default was lost: %+v", c.Fields[1])
+	}
+	if c.Notes["sink.into.write"] != "APPEND: the landing table is history." {
+		t.Fatalf("notes = %v", c.Notes)
+	}
+
+	entries, err := postgres.NewReadRepo(pool).Catalog(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entryFor(t, entries, tables).Writers[0].Gateway.Config != nil {
+		t.Fatal("the list read the configuration it never shows")
+	}
+}
+
+// A stream published before version 2 has no configuration to show, and its
+// page opens as it always did.
+func TestAVersionOneGatewayHasNoConfigurationOnItsPage(t *testing.T) {
+	pool := catalogDB(t)
+	const clicks = "pubsub://acme/clicks"
+	publish(t, pool, catalog.ManifestStream{Path: "/v1/clicks", Destinations: []catalog.ManifestDestination{
+		{Role: "sink", Kind: "pubsub", Target: target(clicks)}}})
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(context.Background(), clicks)
+	if err != nil || d == nil {
+		t.Fatalf("detail = %+v, %v", d, err)
+	}
+	if d.Writers[0].Gateway.Config != nil {
+		t.Fatalf("config = %+v, want none", d.Writers[0].Gateway.Config)
 	}
 }

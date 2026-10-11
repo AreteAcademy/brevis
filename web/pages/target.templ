@@ -73,6 +73,7 @@ templ Target(v TargetView) {
 				</table>
 			</div>
 		</section>
+		@configurations(v)
 		<section class="mb-8">
 			<h3 class="kicker mb-2">Rows per load</h3>
 			<div class="rounded-card border border-line bg-surface p-4 shadow-warm-sm">
@@ -115,6 +116,85 @@ templ Target(v TargetView) {
 			</div>
 		</section>
 		@panels(v)
+	}
+}
+
+// configurations is how each writer of this destination is configured: its
+// settings by section, the default ones marked, and the config file's comments
+// beside the setting they were written on.
+//
+// OPEN, NOT FOLDED. This is what somebody came to the page to read; what folds
+// is a long comment, down to its first line.
+templ configurations(v TargetView) {
+	for _, c := range v.Configs {
+		<section class="mb-8" data-config={ c.Gateway + " " + c.Stream }>
+			<div class="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+				<h3 class="kicker">Configuration</h3>
+				<span class="text-xs text-muted">
+					gateway <span class="font-medium text-ink">{ c.Gateway }</span>
+					· <span class="font-mono">{ c.Stream }</span>
+					· { c.Role } · published { c.PublishedAt.UTC().Format("Jan 2 15:04 UTC") }
+				</span>
+			</div>
+			<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
+				if c.Config.Note != "" {
+					<div class="px-4 py-3 sm:px-6">
+						@configNote(c.Config.Note)
+					</div>
+				}
+				for _, s := range c.Config.Sections {
+					<div class="px-4 py-3 sm:px-6">
+						<h4 class="text-xs font-semibold text-ink">{ s.Title }</h4>
+						if s.Note != "" {
+							<div class="mt-1">
+								@configNote(s.Note)
+							</div>
+						}
+						<div class="mt-2">
+							for _, r := range s.Rows {
+								for _, b := range r.Before {
+									<div class="mt-3 mb-1">
+										<span class="font-mono text-xs text-ink">{ b.Label }</span>
+										@configNote(b.Text)
+									</div>
+								}
+								<div class="grid grid-cols-1 gap-x-6 py-1 sm:grid-cols-[16rem_1fr]" data-path={ r.Path } data-defaulted={ boolText(r.Default) }>
+									<div class="font-mono text-xs break-all text-muted">{ r.Label }</div>
+									<div class="text-xs">
+										if r.Value == "" {
+											<span class="text-muted">empty</span>
+										} else {
+											<span class="font-mono break-all text-ink">{ r.Value }</span>
+										}
+										if r.Default {
+											<span class="ml-2 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted" title="Not written in the file: the value the gateway filled in">default</span>
+										}
+										if r.Note != "" {
+											<div class="mt-1">
+												@configNote(r.Note)
+											</div>
+										}
+									</div>
+								</div>
+							}
+						</div>
+					</div>
+				}
+			</div>
+		</section>
+	}
+}
+
+// configNote is a comment from the config file, in its author's line breaks.
+// One line is shown whole; a longer one folds to its first line.
+templ configNote(text string) {
+	if NoteRest(text) == "" {
+		<p class="text-xs whitespace-pre-wrap text-muted">{ text }</p>
+	} else {
+		<details class="text-xs text-muted">
+			<summary class="cursor-pointer hover:text-ink">{ NoteHead(text) }</summary>
+			<p class="mt-1 whitespace-pre-wrap">{ NoteRest(text) }</p>
+		</details>
 	}
 }
 

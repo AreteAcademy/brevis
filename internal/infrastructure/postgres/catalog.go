@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 )
 
 // CatalogEntry is one destination on /data: what wrote it and what it received.
@@ -60,6 +63,21 @@ type GatewayWriter struct {
 	Name, Stream, Role, Kind, Note string
 	Routes                         bool
 	PublishedAt                    time.Time
+
+	// Config is how the stream is configured, read for the destination's own
+	// page and never for the list. Nil when the stream was published by a
+	// version-1 manifest, which described nothing but where it lands.
+	Config *WriterConfig
+}
+
+// WriterConfig is one writer's configuration as last published.
+type WriterConfig struct {
+	Hash   string
+	Fields []catalog.ManifestField
+
+	// Notes are the config file's comments, by setting path; "" is the
+	// stream's own.
+	Notes map[string]string
 }
 
 // Catalog lists every destination the ecosystem has landed on.
@@ -306,6 +324,9 @@ func (r *ReadRepo) CatalogTarget(ctx context.Context, target string) (*TargetDet
 		return nil, err
 	}
 	d := &TargetDetail{CatalogEntry: entries[0]}
+	if err := r.gatewayConfigs(ctx, target, d.Writers); err != nil {
+		return nil, err
+	}
 
 	rows, err := r.pool.Query(ctx, `
 		SELECT run_id::text, workflow_slug, node_id, loaded_at, rows_written, bytes_written
@@ -325,6 +346,45 @@ func (r *ReadRepo) CatalogTarget(ctx context.Context, target string) (*TargetDet
 		d.Loads = append(d.Loads, l)
 	}
 	return d, rows.Err()
+}
+
+// gatewayConfigs fills in the configuration of every gateway writer on one
+// destination, in one round trip: the streams that land there, joined to the
+// configuration each points at.
+func (r *ReadRepo) gatewayConfigs(ctx context.Context, target string, writers []CatalogWriter) error {
+	rows, err := r.pool.Query(ctx, `
+		SELECT s.gateway, s.stream_path, s.config_hash, c.body, s.notes
+		FROM gateway_streams s
+		JOIN writer_configs c ON c.hash = s.config_hash
+		WHERE (s.gateway, s.stream_path) IN (
+			SELECT gateway, stream_path FROM gateway_destinations WHERE target = $1)`, target)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var gateway, stream string
+		var c WriterConfig
+		var body, notes []byte
+		if err := rows.Scan(&gateway, &stream, &c.Hash, &body, &notes); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(body, &c.Fields); err != nil {
+			return err
+		}
+		if notes != nil {
+			if err := json.Unmarshal(notes, &c.Notes); err != nil {
+				return err
+			}
+		}
+		for i := range writers {
+			if g := writers[i].Gateway; g != nil && g.Name == gateway && g.Stream == stream {
+				cfg := c
+				g.Config = &cfg
+			}
+		}
+	}
+	return rows.Err()
 }
 
 // kindOf is a target's scheme, or "" for a legacy label, which has none.
