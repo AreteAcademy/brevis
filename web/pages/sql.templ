@@ -429,8 +429,9 @@ templ tree(v SQLView) {
 templ Objects(b Branch) {
 	for _, s := range b.Tree {
 		<details class="mb-0.5" open>
-			<summary class="cursor-pointer list-none rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
-				{ s.Name }
+			<summary class="flex cursor-pointer list-none items-center gap-1.5 rounded-card px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink">
+				@schemaIcon()
+				<span class="truncate">{ s.Name }</span>
 			</summary>
 			for _, t := range s.Tables {
 				<div data-relation={ s.Name + "." + t }>
@@ -441,8 +442,13 @@ templ Objects(b Branch) {
 					<button
 						type="button"
 						data-insert={ s.Name + "." + t }
-						class="block w-full truncate rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
-					>{ t }</button>
+						class="flex w-full items-center gap-1.5 rounded-card px-2 py-1 pl-5 text-left font-mono text-muted hover:bg-surface-2 hover:text-ink"
+					>
+						// The span truncates, not the button: a flex row
+						// that truncates cuts the icon before the name.
+						@tableIcon()
+						<span class="min-w-0 truncate">{ t }</span>
+					</button>
 					// AND A SECOND BUTTON, which SUBMITS THE FORM.
 					//
 					// Not a link: a GET would discard the textarea, so
@@ -455,6 +461,9 @@ templ Objects(b Branch) {
 					//
 					// The island answers this click instead, and then
 					// nothing reloads and nothing closes.
+					//
+					// Indented to the table's NAME, past its icon:
+					// pl-5 + the icon's 0.75rem + the 0.375rem gap.
 					<button
 						type="submit"
 						form="workbench"
@@ -462,7 +471,7 @@ templ Objects(b Branch) {
 						value={ s.Name + "." + t }
 						data-connection={ b.Target }
 						aria-expanded={ openOf(b, s.Name, t) }
-						class="block w-full rounded-card px-2 py-0.5 pl-5 text-left text-[0.7rem] text-muted hover:text-ink"
+						class="block w-full rounded-card px-2 py-0.5 pl-[2.375rem] text-left text-[0.7rem] text-muted hover:text-ink"
 					>
 						if b.Open == s.Name+"."+t {
 							&#8722; columns
@@ -484,6 +493,30 @@ templ Objects(b Branch) {
 	}
 }
 
+// schemaIcon is a cylinder in front of a schema's name. In text a schema and
+// a table look alike -- the same colour, the same size -- and in a schema of
+// forty tables the eye cannot find where one ends; the shape tells them apart
+// without a second colour to keep readable on every installation's ground.
+//
+// `currentColor`, so it follows the row's own colour and its hover.
+// `aria-hidden`, because the <summary> already says what it is.
+templ schemaIcon() {
+	<svg data-icon="schema" class="h-3 w-3 shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+		<ellipse cx="6" cy="3" rx="4" ry="1.5"></ellipse>
+		<path d="M2 3v6c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5V3"></path>
+	</svg>
+}
+
+// tableIcon is a grid in front of a table's name, for the same reason and on
+// the same terms as schemaIcon. One shape for a table and a view: the
+// catalog hands the tree a name and not a kind.
+templ tableIcon() {
+	<svg data-icon="table" class="h-3 w-3 shrink-0" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true">
+		<rect x="1.5" y="2" width="9" height="8" rx="1"></rect>
+		<path d="M1.5 5h9M5 5v5"></path>
+	</svg>
+}
+
 // Columns is what one relation holds, drawn by the page and by
 // `/api/sql/columns` from the same definition.
 //
@@ -492,7 +525,8 @@ templ Objects(b Branch) {
 // by picking which of two spans holds it. The tree already names its
 // relations the same way, for the filter.
 templ Columns(cols []sqlserve.Column) {
-	<ul class="mb-1 pl-5">
+	// Under the table's name, like `+ columns`: 2.375rem less each row's own px-2.
+	<ul class="mb-1 pl-[1.875rem]">
 		for _, c := range cols {
 			<li class="flex justify-between gap-2 px-2 py-0.5 font-mono text-[0.7rem]" data-column={ c.Name }>
 				<span class="truncate text-ink">{ c.Name }</span>

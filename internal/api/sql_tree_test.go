@@ -105,6 +105,59 @@ func TestObjectsComeBackAsAFragment(t *testing.T) {
 	}
 }
 
+// A SCHEMA AND A TABLE LOOK ALIKE IN TEXT: the same colour, the same size,
+// and in a schema with forty tables the eye cannot find where one schema
+// ends. An icon in front of each name is what tells them apart -- and it is
+// hidden from a screen reader, which already hears the <summary> and the
+// button for what they are, and would otherwise announce a picture first.
+func TestTheTreeMarksEachSchemaWithAnIcon(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/api/sql/objects?target="+url.QueryEscape(probeTarget))
+
+	icons := iconTags(body, "schema")
+	if len(icons) != 1 {
+		t.Fatalf("the probe has one schema and the tree draws %d schema icons:\n%s", len(icons), body)
+	}
+	for _, tag := range icons {
+		if !strings.Contains(tag, `aria-hidden="true"`) {
+			t.Errorf("a screen reader would announce the icon: %s", tag)
+		}
+	}
+}
+
+// AND EACH TABLE WITH ANOTHER, inside the button that inserts its name --
+// which must still insert exactly the name, icon or not.
+func TestTheTreeMarksEachTableWithAnIcon(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/api/sql/objects?target="+url.QueryEscape(probeTarget))
+
+	icons := iconTags(body, "table")
+	if len(icons) != 2 {
+		t.Fatalf("the probe has two tables and the tree draws %d table icons:\n%s", len(icons), body)
+	}
+	for _, tag := range icons {
+		if !strings.Contains(tag, `aria-hidden="true"`) {
+			t.Errorf("a screen reader would announce the icon: %s", tag)
+		}
+	}
+	button, _, _ := strings.Cut(body[strings.Index(body, `data-insert="sales.daily"`):], "</button>")
+	if len(iconTags(button, "table")) != 1 {
+		t.Errorf("the icon is not inside the button that inserts the table:\n%s", button)
+	}
+}
+
+// iconTags is every opening <svg> tag carrying `data-icon="kind"`.
+func iconTags(body, kind string) []string {
+	var out []string
+	for _, chunk := range strings.Split(body, "<svg")[1:] {
+		tag, _, _ := strings.Cut(chunk, ">")
+		if strings.Contains(tag, `data-icon="`+kind+`"`) {
+			out = append(out, tag)
+		}
+	}
+	return out
+}
+
 // THE FRAGMENTS OBEY THE CATALOG TOO. They are a second door into the same
 // service, and a rule enforced at one door is not a rule.
 func TestTheFragmentsRefuseATargetTheCatalogDoesNotKnow(t *testing.T) {
