@@ -17,6 +17,11 @@ type Config struct {
 	Metrics  Metering `yaml:"metrics"`
 	Shutdown Shutdown `yaml:"shutdown"`
 	Streams  []Stream `yaml:"streams"`
+
+	// doc is the file as YAML read it, comments included: what describe needs
+	// to tell a setting somebody wrote from a default, and to keep the comment
+	// that says why. Nil for a Config built in code.
+	doc *yaml.Node
 }
 
 // Shutdown is how long a clean stop may take.
@@ -601,6 +606,12 @@ func Load(path string) (*Config, error) {
 	}
 	if err := c.check(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	// The same bytes, a second time, as a tree. The decode above already
+	// accepted them, so this cannot fail on anything that one did not.
+	var doc yaml.Node
+	if err := yaml.Unmarshal(raw, &doc); err == nil {
+		c.doc = &doc
 	}
 	return &c, nil
 }

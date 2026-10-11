@@ -1,11 +1,127 @@
 {
   "kind": "gateway-manifest",
-  "version": 1,
+  "version": 2,
   "gateway": "events_gateway",
   "generated_at": "2026-10-07T18:02:11Z",
   "streams": [
     {
+      "name": "clicks",
       "path": "/v1/clicks",
+      "fields": [
+        {
+          "path": "name",
+          "value": "clicks"
+        },
+        {
+          "path": "path",
+          "value": "/v1/clicks"
+        },
+        {
+          "path": "format",
+          "value": "json"
+        },
+        {
+          "path": "identity.provider",
+          "value": "web"
+        },
+        {
+          "path": "identity.entity",
+          "value": "click"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "event_id"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "occurred_at"
+        },
+        {
+          "path": "hook",
+          "value": "enrich_clicks"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory"
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "1s"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 500
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64,
+          "default": true
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 10000,
+          "default": true
+        },
+        {
+          "path": "sink.type",
+          "value": "pubsub"
+        },
+        {
+          "path": "sink.project",
+          "value": "brevis-local"
+        },
+        {
+          "path": "sink.topic",
+          "value": "clicks"
+        },
+        {
+          "path": "sink.attributes",
+          "value": [
+            "tenant",
+            "region"
+          ]
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms"
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s"
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "/var/dead-letter/clicks/"
+        }
+      ],
+      "notes": {
+        "buffer.durability": "the only tier implemented; `disk` is refused by name",
+        "dead_letter": "Where a batch the sink will not take goes. Required, not defaulted: a\nstream without one loses a refused batch to a log line, and an operator\nwho never chose that does not know it is happening.\n\n`files` reads a directory, gs:// and s3://, so this is a folder on a\nlaptop and a bucket in production with no change to the gateway.\n\nEach record carries _dead_letter_reason, _dead_letter_sink and\n_dead_letter_at: whoever finds this file has the events and not the log,\nand \"why is this here\" is their first question.",
+        "dead_letter.path": "/var/dead-letter is a VOLUME, not a path inside the image. A dead\nletter written to a container's own filesystem dies with the container,\nwhich makes it a slower way of losing the events.",
+        "format": "json | array | ndjson -- declared, never sniffed",
+        "hook": "A name in this binary's registry, not a path. Hooks are Go, compiled in.",
+        "identity": "What becomes the ingestion_id. All four, because the formula is frozen\nover exactly these: leaving one out produces a DIFFERENT id, not a\nweaker one. provider and entity are the stream's; source_key and\nrecord_ts name fields of the event.",
+        "retry": "How hard the sink is tried before a batch is given up on. Four attempts\nover roughly seven seconds: enough to ride out a restart on the other\nside, short enough that a sink which is down is known to be down.",
+        "sink.attributes": "Fields of the EVENT that travel as message attributes. The topic's\ncontract belongs to whoever owns the topic, so nothing is invented here."
+      },
       "destinations": [
         {
           "role": "sink",
@@ -20,7 +136,112 @@
       ]
     },
     {
+      "name": "orders",
       "path": "/v1/orders",
+      "fields": [
+        {
+          "path": "name",
+          "value": "orders"
+        },
+        {
+          "path": "path",
+          "value": "/v1/orders"
+        },
+        {
+          "path": "format",
+          "value": "json"
+        },
+        {
+          "path": "identity.provider",
+          "value": "shop"
+        },
+        {
+          "path": "identity.entity",
+          "value": "order"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "order_id"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "placed_at"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory"
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "1s"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 100
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64,
+          "default": true
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 2000,
+          "default": true
+        },
+        {
+          "path": "sink.type",
+          "value": "postgres"
+        },
+        {
+          "path": "sink.dsn_from",
+          "value": "WAREHOUSE_DSN"
+        },
+        {
+          "path": "sink.table",
+          "value": "sales.events"
+        },
+        {
+          "path": "sink.write",
+          "value": "merge"
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms"
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s"
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "/var/dead-letter/orders/"
+        }
+      ],
+      "notes": {
+        "": "A SECOND STREAM, INTO A TABLE. `clicks` above lands in a topic and this\nlands in Postgres, side by side on purpose: both are destinations, and\nonly one of them has columns a SELECT can name. /data shows that\ndifference -- the table offers Preview and Query, the topic offers no\ntabs at all.\n\nAnd its WRITER is a different kind. `sales.daily` is filled by a\nscheduled workflow and this by continuous ingestion, which is what the\nfreshness column on /data exists to tell apart.",
+        "sink.dsn_from": "The NAME of the variable holding the connection string, never the\nstring: a DSN carries a password and this file is in git.",
+        "sink.table": "Schema-qualified, and the table must EXIST. This does not create one,\nbecause a service that creates tables turns a typo here into a second\ntable nobody is reading. The DDL is in\nexamples/full-pipeline/warehouse/001-sales.sql.",
+        "sink.write": "MERGE AND NOT APPEND, and the gateway refuses to guess: \"appending a\nredelivery into a table somebody counts and merging into a log that\nwanted every arrival are both wrong, and only the table's owner knows\nwhich it is\". Orders are counted, so a redelivery must not become a\nsecond row -- which is what `ingestion_id UNIQUE` in the DDL is for."
+      },
       "destinations": [
         {
           "role": "sink",

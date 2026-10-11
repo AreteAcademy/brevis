@@ -15,7 +15,8 @@ import (
 var ErrNoIdentity = errors.New("no identity")
 
 // Manifest is what `gateway describe` prints and `brevis gateway publish`
-// stores: where each stream of this gateway lands, by name, never by address.
+// stores: where each stream of this gateway lands, by name, never by address,
+// and -- from version 2 -- how each stream is configured.
 type Manifest struct {
 	Kind        string           `json:"kind"`
 	Version     int              `json:"version"`
@@ -24,9 +25,19 @@ type Manifest struct {
 	Streams     []ManifestStream `json:"streams"`
 }
 
-// ManifestStream is one stream's destinations.
+// ManifestStream is one stream: its destinations, and its configuration.
 type ManifestStream struct {
-	Path         string                `json:"path"`
+	Name string `json:"name,omitempty"`
+	Path string `json:"path"`
+
+	// Fields is the stream as it RUNS, defaults filled in, in the order the
+	// config declares them. See describeFields.
+	Fields []ManifestField `json:"fields,omitempty"`
+
+	// Notes are the file's comments, by the path of the setting they sit on.
+	// The comments are where a config says WHY, and a parser drops them.
+	Notes map[string]string `json:"notes,omitempty"`
+
 	Destinations []ManifestDestination `json:"destinations"`
 }
 
@@ -64,11 +75,13 @@ func Describe(cfg *Config, sinks *Sinks, name string, now time.Time) (*Manifest,
 	if sinks == nil {
 		sinks = NewSinks()
 	}
-	m := &Manifest{Kind: "gateway-manifest", Version: 1, Gateway: name,
+	m := &Manifest{Kind: "gateway-manifest", Version: 2, Gateway: name,
 		GeneratedAt: now.UTC().Format(time.RFC3339)}
 
-	for _, st := range cfg.Streams {
-		ms := ManifestStream{Path: st.Path}
+	for i, st := range cfg.Streams {
+		node := streamNode(cfg.doc, i)
+		ms := ManifestStream{Name: st.Name, Path: st.Path,
+			Fields: describeFields(st, node), Notes: describeNotes(node)}
 		roles := []struct {
 			role string
 			sink Sink
