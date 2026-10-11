@@ -13,6 +13,9 @@ import (
 // writer's own note, then its settings in sections, in the order the
 // writer declared them.
 type ConfigView struct {
+	// Summary is the configuration in one sentence. See Summary.
+	Summary string
+
 	// Note is the comment on the writer as a whole -- for a gateway, the one
 	// above `- name:`, which is usually the contract its producers follow.
 	Note     string
@@ -64,7 +67,7 @@ type WriterConfigView struct {
 // BuildConfig lays a configuration out by its paths alone, so a setting a
 // writer adds tomorrow has a place on the page with no change here.
 func BuildConfig(c *postgres.WriterConfig) ConfigView {
-	v := ConfigView{Note: c.Notes[""]}
+	v := ConfigView{Summary: Summary(c), Note: c.Notes[""]}
 	index := map[string]int{}
 	before := map[string]bool{}
 
