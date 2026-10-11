@@ -18,17 +18,17 @@ var (
 // Configuration satisfies sdk.Configured: where the source asks, how, and how
 // it pages -- with every value that could carry a credential left out.
 //
-// The URL is its scheme, host and path. Its user and password, its query
-// string and its fragment are not shown; the query's parameter NAMES and the
+// The URL is its scheme, host and path, scrubbed by core.SafeURL: its user and
+// password, its query string, its fragment and any path segment shaped like a
+// token are not shown; the query's parameter NAMES and the
 // headers' names are, because "which key does this send" is a question worth
 // answering and "what is the key" is the one this must never answer. Stricter
 // than the log's redaction (sdk/redact.go), which hides the values of the
 // names it knows and shows the rest: a page is read by more people than a log.
 func (h HTTP) Configuration() []core.Setting {
-	var where string
+	where := core.SafeURL(h.URL)
 	var params []string
-	if u, err := url.Parse(h.URL); err == nil && u.Host != "" {
-		where = u.Scheme + "://" + u.Host + u.EscapedPath()
+	if u, err := url.Parse(h.URL); err == nil && where != "" {
 		for name := range u.Query() {
 			params = append(params, name)
 		}
@@ -107,22 +107,22 @@ func authSettings(c *Credential) []core.Setting {
 	return s
 }
 
-// endpoint is `POST https://host/path`, with the query and userinfo dropped.
+// endpoint is `POST https://host/path`, scrubbed as any URL here is.
 func endpoint(method, raw string) string {
-	u, err := url.Parse(raw)
-	if err != nil || u.Host == "" {
+	where := core.SafeURL(raw)
+	if where == "" {
 		return ""
 	}
 	if method == "" {
 		method = "POST"
 	}
-	return method + " " + u.Scheme + "://" + u.Host + u.EscapedPath()
+	return method + " " + where
 }
 
 // Configuration satisfies sdk.Configured: where the files are read from.
 func (f Files) Configuration() []core.Setting {
 	return core.Keep(
-		core.Setting{Key: "path", Value: f.Path},
+		core.Setting{Key: "path", Value: core.SafeURL(f.Path)},
 		core.Setting{Key: "format", Value: string(f.Format)},
 		core.Setting{Key: "delimiter", Value: runeText(f.Delimiter)},
 		core.Setting{Key: "no_header", Value: f.NoHeader},
