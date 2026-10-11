@@ -26,30 +26,31 @@ var (
 	secretName = regexp.MustCompile(`(^|_)(dsn|password|passwd|pwd|secret|token|credentials?|api_?key|access_key|private_key)($|_)`)
 
 	// What a credential looks like in TEXT -- a value, a note -- each with
-	// the words the refusal uses. A comment is free prose written by people,
-	// and a commented-out old setting is the most common way a secret ends
-	// up in a config file, so prose is held to the same wall as values.
+	// the words the refusal uses.
 	//
-	// A placeholder is not a credential: a value starting with `<`, `$`,
-	// `*` or `{` -- `<your password>`, `$PG_PASSWORD`, `***`, `${X}` -- is
-	// let through, or every example in a comment would fail a deploy.
+	// BY ITS SHAPE, NEVER BY THE WORD NEXT TO IT. A rule made of words --
+	// "password:", "token=" -- both missed the next spelling (`pass:`,
+	// `credentials:`, JSON) and refused prose ("secret: none", "Bearer
+	// authentication is used") and failed a deploy on it. The words were
+	// never the wall: a description shows only an allowlist (SDK drivers) and
+	// the comments an author marked `#:` (a gateway). What this catches is the
+	// credential that got into those anyway, by what it looks like.
 	secretInText = []struct {
 		re   *regexp.Regexp
 		what string
+		// shaped, when set, must also hold for the match: a word after
+		// "Bearer" is prose, a token after it has digits or punctuation.
+		shaped func(match string) bool
 	}{
-		{regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@`), "a URL with a user or password in it"},
-		{regexp.MustCompile(`[^\s:/@]+:[^\s@]+@(tcp|unix)\(`), "a MySQL DSN with a password in it"},
-		{regexp.MustCompile(`(?i)(^|[?&;\s])(key|api_?key|token|access_token|auth|password|passwd|pwd|secret|signature|sig)=[^&\s;]+`), "a credential written as key=value"},
-		{regexp.MustCompile(`(?i)[?&][A-Za-z0-9_-]*(signature|token|secret|password|credential|api[-_]?key)=[^&\s]+`), "a credential in a query string"},
-		{regexp.MustCompile(`(?i)(password|passwd|pwd|secret|token|api[-_]?key|apikey|access[-_]?key|private[-_]?key)\s*[:=]\s*[^\s<$*{]`), "a credential written as a setting"},
-		// An Authorization header is matched by its scheme and not by its
-		// name, so `Authorization: Bearer <key>` stays a readable example.
-		{regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/-]{12,}`), "a bearer token"},
-		{regexp.MustCompile(`(?i)\bbasic\s+[A-Za-z0-9+/]{12,}=*`), "a basic-auth credential"},
-		{regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}`), "a JSON web token"},
-		{regexp.MustCompile(`\b(AKIA|ASIA)[0-9A-Z]{16}\b`), "an AWS access key"},
-		{regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`), "a private key"},
-		{regexp.MustCompile(`\b(ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|sk_live_[A-Za-z0-9]{10,}|AIza[A-Za-z0-9_-]{30,})`), "a provider's API token"},
+		{re: regexp.MustCompile(`[A-Za-z][A-Za-z0-9+.-]*://[^/\s@:?#]*:[^/\s@?#]+@`), what: "a URL with a password in it"},
+		{re: regexp.MustCompile(`(^|[\s"'(=])[A-Za-z0-9._%+-]+:[^\s@/:]+@[A-Za-z0-9.-]+`), what: "a user and password before a host"},
+		{re: regexp.MustCompile(`(?i)(^|[?&;\s])(password|passwd|pwd|secret|token|api_?key|access_token|client_secret|signature)=[^&\s;]+`), what: "a credential written as key=value"},
+		{re: regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{12,}`), what: "a bearer token", shaped: tokenShaped},
+		{re: regexp.MustCompile(`(?i)\bbasic\s+[A-Za-z0-9+/]{8,}={0,2}`), what: "a basic-auth credential", shaped: tokenShaped},
+		{re: regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}`), what: "a JSON web token"},
+		{re: regexp.MustCompile(`\b(AKIA|ASIA)[0-9A-Z]{16}\b`), what: "an AWS access key"},
+		{re: regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`), what: "a private key"},
+		{re: regexp.MustCompile(`\b(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|xapp-[A-Za-z0-9-]{10,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|sk-(ant|proj)-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})`), what: "a provider's API token"},
 	}
 )
 
@@ -83,11 +84,22 @@ func FindSecret(path string, v any) error {
 // is not a setting named like one.
 func FindSecretInText(path, text string) error {
 	for _, p := range secretInText {
-		if p.re.MatchString(text) {
-			return fmt.Errorf("%s: %s", path, p.what)
+		for _, m := range p.re.FindAllString(text, -1) {
+			if p.shaped == nil || p.shaped(m) {
+				return fmt.Errorf("%s: %s", path, p.what)
+			}
 		}
 	}
 	return nil
+}
+
+// tokenShaped says whether the credential after "Bearer" or "Basic" looks
+// like one: a digit, or the punctuation tokens and base64 carry. A word --
+// "authentication", "configuration" -- has neither.
+func tokenShaped(match string) bool {
+	fields := strings.Fields(match)
+	token := fields[len(fields)-1]
+	return strings.ContainsAny(token, "0123456789._~+/=-")
 }
 
 func lastSegment(path string) string {

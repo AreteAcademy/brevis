@@ -116,9 +116,12 @@ comments marked `#:` leave it; each SDK driver
 lists by hand what may be shown, and a DSN gives its host, port and database
 and nothing else; an HTTP source shows the names of its query parameters and
 headers, never their values. The engine looks again, and refuses a whole
-description carrying a URL with a password, a key written as `key=value`, or
-a setting named like a credential that has a value: a description with a
-password blanked would hide the bug in the writer that sent it. What is shown
+description carrying something SHAPED like a credential — a URL or an address
+with a password in it, `password=…` in a query or a DSN, a bearer or basic
+token, a JSON web token, an AWS key, a private key, a provider's API token —
+or a setting named like a credential that has a value. By shape and never by
+the word next to it: "secret: none" is prose. A description with a password
+blanked would hide the bug in the writer that sent it. What is shown
 is everything else — host names, project ids, paths, and a database source's
 SQL whole — to everybody with a console login.
 
