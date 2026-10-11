@@ -108,7 +108,10 @@ the destination's page on `/data`:
 - `notes` are the config file's **comments**, by the path of the setting they
   sit on — the lines above a key and the one at the end of its line. The
   comment above `- name:` is the stream's own, under `""`. The comments are
-  where a config says why, and a parser drops them.
+  where a config says why, and a parser drops them. A comment line shaped
+  like a setting — `# password: hunter2`, `# dsn: postgres://…`, `KEY=value`
+  — is not a note and is left out: a commented-out setting is how a secret
+  usually ends up in a config file. The prose around it stays.
 
 Nothing secret reaches it, by construction: a credential in this file is
 always a variable's **name** under a `_from` key, never its value, and a test
