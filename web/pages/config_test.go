@@ -205,3 +205,50 @@ func TestATruncatedHistoryDoesNotClaimAFirstPublish(t *testing.T) {
 		t.Fatal("the oldest of a cut history claims to be the first publish")
 	}
 }
+
+// A step's configuration: Source, Transform, Target, and each version linked
+// to the run that first wrote with it.
+func TestTheDestinationPageShowsAStepsConfiguration(t *testing.T) {
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	fieldsNow := []catalog.ManifestField{
+		{Path: "source.driver", Value: "from.HTTP"}, {Path: "source.url", Value: "https://api.example.com/v1/items"},
+		{Path: "transform.1.map", Value: []any{"compute(provider)", "ingestion_id"}},
+		{Path: "target.driver", Value: "bigquery.Table"}, {Path: "target.dedup", Value: "merge"},
+	}
+	before := []catalog.ManifestField{
+		{Path: "source.driver", Value: "from.HTTP"}, {Path: "source.url", Value: "https://api.example.com/v1/items"},
+		{Path: "transform.1.map", Value: []any{"compute(provider)", "ingestion_id"}},
+		{Path: "target.driver", Value: "bigquery.Table"},
+	}
+	d := postgres.TargetDetail{CatalogEntry: postgres.CatalogEntry{
+		Target: "bigquery://acme/landing/items", Kind: "bigquery",
+		Writers: []postgres.CatalogWriter{
+			{Workflow: "items_sync", Node: "load", LastLoaded: at,
+				Config: &postgres.WriterConfig{Fields: fieldsNow, History: []postgres.ConfigVersion{
+					{At: at, Fields: fieldsNow, RunID: "11111111-2222-3333-4444-555555555555"},
+					{At: at.Add(-time.Hour), Fields: before, RunID: "99999999-2222-3333-4444-555555555555"},
+				}}},
+			{Workflow: "python_job", Node: "build", LastLoaded: at},
+		},
+	}}
+	var b bytes.Buffer
+	if err := Target(BuildTarget(d, time.Now())).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	html := b.String()
+	for _, want := range []string{
+		`data-config="items_sync load"`,
+		">Source<", ">Transform<", ">Target<",
+		`data-path="source.url"`,
+		"compute(provider), ingestion_id",
+		"added: merge",
+		`href="/runs/11111111-2222-3333-4444-555555555555"`,
+		"Reads https://api.example.com/v1/items",
+		`data-config="python_job build"`,
+		"This step did not describe itself",
+	} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the page lacks %q", want)
+		}
+	}
+}

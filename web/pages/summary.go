@@ -5,10 +5,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
-// Summary is a writer's configuration in one sentence, for somebody who does
+// Summary is a writer's configuration in one sentence -- a gateway stream's or
+// an SDK pipeline's, for somebody who does
 // not read YAML: what comes in, where it goes, how it is written, how often,
 // and where what is refused goes.
 //
@@ -26,6 +28,10 @@ func Summary(c *postgres.WriterConfig) string {
 			return valueText(v)
 		}
 		return ""
+	}
+
+	if text("source.driver") != "" {
+		return pipelineSummary(c.Fields, text)
 	}
 
 	sink := text("sink.type")
@@ -202,5 +208,97 @@ func countWords(s string) string {
 		}
 		b.WriteRune(r)
 	}
+	return b.String()
+}
+
+// pipelineSummary is an SDK pipeline in one sentence: what it reads, what it
+// does to the records, where it writes, and how.
+func pipelineSummary(fields []catalog.ManifestField, text func(string) string) string {
+	join := func(sep string, parts ...string) string {
+		var kept []string
+		for _, p := range parts {
+			if p != "" {
+				kept = append(kept, p)
+			}
+		}
+		return strings.Join(kept, sep)
+	}
+
+	var b strings.Builder
+	switch driver := text("source.driver"); driver {
+	case "from.HTTP":
+		b.WriteString("Reads " + join(" ", text("source.method"), text("source.url")))
+	case "from.Files":
+		b.WriteString(join(" ", "Reads files at", text("source.path")))
+	case "postgres.Query", "mysql.Query":
+		engine := map[string]string{"postgres.Query": "Postgres", "mysql.Query": "MySQL"}[driver]
+		b.WriteString("Runs a query on " + engine)
+		if db := text("source.database"); db != "" {
+			b.WriteString(" database " + db)
+		}
+		if host := text("source.host"); host != "" {
+			b.WriteString(" at " + host)
+		}
+	case "from.Many":
+		n := 0
+		for _, f := range fields {
+			if strings.HasPrefix(f.Path, "source.sources.") && strings.HasSuffix(f.Path, ".driver") {
+				n++
+			}
+		}
+		b.WriteString("Reads " + strconv.Itoa(n) + " sources")
+	default:
+		b.WriteString("Reads from " + driver)
+	}
+
+	transformers := 0
+	for _, f := range fields {
+		if strings.HasPrefix(f.Path, "transform.") && strings.HasSuffix(f.Path, ".map") {
+			if list, ok := f.Value.([]any); ok {
+				transformers += len(list)
+			}
+		}
+	}
+	if transformers == 1 {
+		b.WriteString(", applies 1 transformation")
+	} else if transformers > 1 {
+		b.WriteString(", applies " + strconv.Itoa(transformers) + " transformations")
+	}
+	for _, f := range fields {
+		if strings.HasPrefix(f.Path, "transform.") && strings.HasSuffix(f.Path, ".aggregate.by") {
+			b.WriteString(", groups by " + valueText(f.Value))
+		}
+	}
+
+	target := text("target.driver")
+	b.WriteString(" and writes to ")
+	switch target {
+	case "bigquery.Table":
+		b.WriteString("BigQuery table " + join(".", text("target.project"), text("target.dataset"), text("target.table")))
+	case "postgres.Table", "redshift.Table":
+		engine := map[string]string{"postgres.Table": "Postgres", "redshift.Table": "Redshift"}[target]
+		b.WriteString(engine + " table " + join(".", text("target.schema"), text("target.table")))
+	case "mysql.Table":
+		b.WriteString("MySQL table " + join(".", text("target.database"), text("target.table")))
+	case "pubsub.Topic":
+		b.WriteString("Pub/Sub topic " + join("/", text("target.project"), text("target.topic")))
+	case "to.Files":
+		b.WriteString(join(" ", "files at", text("target.path")))
+	default:
+		b.WriteString(target)
+		if t := text("target.target"); t != "" {
+			b.WriteString(" (" + t + ")")
+		}
+	}
+
+	switch {
+	case target == "pubsub.Topic":
+		// A message is published, not written into a table: neither word fits.
+	case text("target.dedup") == "merge":
+		b.WriteString(", merged by ingestion id so a re-run changes nothing")
+	default:
+		b.WriteString(", appended")
+	}
+	b.WriteString(".")
 	return b.String()
 }

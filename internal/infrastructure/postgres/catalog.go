@@ -52,6 +52,12 @@ type CatalogWriter struct {
 	// or retrying, if there is one.
 	RunInFlight *string
 
+	// Config is how the step's pipeline was configured, read for the
+	// destination's own page and never for the list. Nil for a step that never
+	// described itself -- Python, dbt, a shell -- and for a gateway writer,
+	// whose configuration is on Gateway.
+	Config *WriterConfig
+
 	// Gateway is set when the writer is a published gateway stream rather than
 	// a workflow step; Workflow and Node are then empty, and nothing above is
 	// measured -- a gateway's traffic is on its /metrics.
@@ -89,6 +95,10 @@ type ConfigVersion struct {
 	Hash   string
 	At     time.Time
 	Fields []catalog.ManifestField
+
+	// RunID is the run that first wrote with it -- a step's versions only;
+	// a gateway's come from a publish, which is no run.
+	RunID string
 }
 
 // HistoryShown bounds the versions a page reads per writer: enough to see a
@@ -342,6 +352,9 @@ func (r *ReadRepo) CatalogTarget(ctx context.Context, target string) (*TargetDet
 	if err := r.gatewayConfigs(ctx, target, d.Writers); err != nil {
 		return nil, err
 	}
+	if err := r.stepConfigs(ctx, target, d.Writers); err != nil {
+		return nil, err
+	}
 
 	rows, err := r.pool.Query(ctx, `
 		SELECT run_id::text, workflow_slug, node_id, loaded_at, rows_written, bytes_written
@@ -439,6 +452,61 @@ func (r *ReadRepo) gatewayHistories(ctx context.Context, target string, writers 
 			if g := writers[i].Gateway; g != nil && g.Config != nil && g.Name == gateway && g.Stream == stream {
 				g.Config.History = append(g.Config.History, v)
 			}
+		}
+	}
+	return rows.Err()
+}
+
+// stepConfigs fills in each step's configuration on one destination, in one
+// round trip: across the step's landings there, the configurations in the
+// order they were written with, keeping one line per CHANGE -- with the run
+// that first wrote with it -- newest first, at most HistoryShown.
+//
+// The current configuration is the newest version. A landing whose
+// description was refused carries none and is skipped, so a step whose last
+// run failed to describe itself shows the configuration it last described.
+func (r *ReadRepo) stepConfigs(ctx context.Context, target string, writers []CatalogWriter) error {
+	rows, err := r.pool.Query(ctx, `
+		SELECT v.workflow_slug, v.node_id, v.config_hash, v.loaded_at, v.run_id::text, c.body
+		FROM (
+			SELECT x.*, row_number() OVER (PARTITION BY workflow_slug, node_id
+			                               ORDER BY loaded_at DESC) AS n
+			FROM (
+				SELECT workflow_slug, node_id, config_hash, loaded_at, run_id,
+				       lag(config_hash) OVER (PARTITION BY workflow_slug, node_id
+				                              ORDER BY loaded_at) AS previous
+				FROM landings
+				WHERE target = $1 AND config_hash IS NOT NULL
+			) x
+			WHERE x.previous IS DISTINCT FROM x.config_hash
+		) v
+		JOIN writer_configs c ON c.hash = v.config_hash
+		WHERE v.n <= $2
+		ORDER BY v.loaded_at DESC`, target, HistoryShown)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var workflow, node string
+		var v ConfigVersion
+		var body []byte
+		if err := rows.Scan(&workflow, &node, &v.Hash, &v.At, &v.RunID, &body); err != nil {
+			return err
+		}
+		if err := json.Unmarshal(body, &v.Fields); err != nil {
+			return err
+		}
+		for i := range writers {
+			w := &writers[i]
+			if w.Gateway != nil || w.Workflow != workflow || w.Node != node {
+				continue
+			}
+			if w.Config == nil {
+				// Newest first: the first version read is the current one.
+				w.Config = &WriterConfig{Hash: v.Hash, Fields: v.Fields}
+			}
+			w.Config.History = append(w.Config.History, v)
 		}
 	}
 	return rows.Err()

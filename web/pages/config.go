@@ -32,6 +32,9 @@ type ConfigChange struct {
 	At    time.Time
 	Lines []ChangeLine
 
+	// RunID is the run that first wrote with it, for a step's.
+	RunID string
+
 	// First marks the oldest version on record -- where the record begins,
 	// with nothing before it to compare. False on the oldest of a history cut
 	// at HistoryShown, which is not the first.
@@ -78,11 +81,28 @@ type ConfigNote struct {
 }
 
 // WriterConfigView is a configuration on a destination's page, with whose
-// it is.
+// it is: a gateway stream's (Gateway set) or a workflow step's.
 type WriterConfigView struct {
 	Gateway, Stream, Role string
 	PublishedAt           time.Time
-	Config                ConfigView
+
+	Workflow, Node string
+
+	// Described is false for a step that never sent its configuration --
+	// Python, dbt, a shell. Its section says so instead of being left out:
+	// a writer missing from the list reads as nothing to see.
+	Described bool
+
+	Config ConfigView
+}
+
+// Key is what the page tags the section with: "gateway stream" or
+// "workflow node".
+func (w WriterConfigView) Key() string {
+	if w.Gateway != "" {
+		return w.Gateway + " " + w.Stream
+	}
+	return w.Workflow + " " + w.Node
 }
 
 // BuildConfig lays a configuration out by its paths alone, so a setting a
@@ -135,7 +155,7 @@ func BuildConfig(c *postgres.WriterConfig) ConfigView {
 func buildChanges(h []postgres.ConfigVersion) []ConfigChange {
 	out := make([]ConfigChange, len(h))
 	for i, version := range h {
-		out[i].At = version.At
+		out[i].At, out[i].RunID = version.At, version.RunID
 		if i+1 == len(h) {
 			out[i].First = len(h) < postgres.HistoryShown
 			continue
