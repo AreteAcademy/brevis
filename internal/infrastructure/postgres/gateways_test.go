@@ -13,7 +13,7 @@ func gatewaysDB(t *testing.T) *postgres.Pool {
 	t.Helper()
 	pool := loadDB(t)
 	if _, err := pool.Exec(context.Background(),
-		`TRUNCATE gateway_destinations, gateway_streams, gateway_config_history, writer_configs`); err != nil {
+		`TRUNCATE gateway_destinations, gateway_streams, gateway_config_history, writer_configs CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	return pool

@@ -139,3 +139,54 @@ func TestPurgingARunKeepsItsLandings(t *testing.T) {
 		t.Fatalf("landings after the purge = %d, want 1", len(got))
 	}
 }
+
+// A landing carries the configuration its pipeline described: stored once by
+// its hash, however many landings and runs point at it.
+func TestALandingKeepsTheConfigurationItWasWrittenWith(t *testing.T) {
+	pool := landingsDB(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE writer_configs CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	repo := postgres.NewRunRepo(pool)
+	cfg := &app.WriterConfig{Hash: "sha256:abc", Body: []byte(`[{"path":"target.dedup","value":"merge","default":false}]`)}
+
+	for range 2 {
+		runID := aged(t, pool, "vendas", time.Hour, dom.StatusSuccess)
+		if err := repo.RecordLandings(ctx, runID, dom.Step("carga"), "vendas", []app.Landing{
+			{Target: "bigquery://acme/silver/orders", Rows: n(1), At: time.Now(), Config: cfg},
+			{Target: "bigquery://acme/silver/items", Rows: n(2), At: time.Now(), Config: cfg},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var configs, pointing int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM writer_configs`).Scan(&configs); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM landings WHERE config_hash = 'sha256:abc'`).Scan(&pointing); err != nil {
+		t.Fatal(err)
+	}
+	if configs != 1 || pointing != 4 {
+		t.Fatalf("configs = %d, landings pointing at it = %d; want 1 and 4", configs, pointing)
+	}
+}
+
+// A step that did not describe itself lands with no configuration.
+func TestALandingWithoutAConfigurationPointsAtNothing(t *testing.T) {
+	pool := landingsDB(t)
+	ctx := context.Background()
+	runID := aged(t, pool, "vendas", time.Hour, dom.StatusSuccess)
+	if err := postgres.NewRunRepo(pool).RecordLandings(ctx, runID, dom.Step("carga"), "vendas", []app.Landing{
+		{Target: "bigquery://acme/silver/orders", Rows: n(1), At: time.Now()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var hash *string
+	if err := pool.QueryRow(ctx, `SELECT config_hash FROM landings WHERE run_id = $1`, runID).Scan(&hash); err != nil {
+		t.Fatal(err)
+	}
+	if hash != nil {
+		t.Fatalf("config_hash = %q, want NULL", *hash)
+	}
+}

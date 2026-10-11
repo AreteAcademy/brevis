@@ -56,13 +56,18 @@ type ManifestField struct {
 //
 // Computed HERE and not taken from the gateway: the hash is a key in this
 // engine's database, and a key a client chooses is a key a client can collide.
-func (s ManifestStream) ConfigHash() (string, []byte) {
-	if len(s.Fields) == 0 {
+func (s ManifestStream) ConfigHash() (string, []byte) { return FieldsHash(s.Fields) }
+
+// FieldsHash is a configuration's identity and the body it was computed over,
+// whoever described it -- a gateway's stream or an SDK pipeline. Empty for no
+// fields.
+func FieldsHash(fields []ManifestField) (string, []byte) {
+	if len(fields) == 0 {
 		return "", nil
 	}
 	// A slice of structs whose values are JSON scalars or lists of them:
 	// encoding/json writes that the same way every time.
-	body, err := json.Marshal(s.Fields)
+	body, err := json.Marshal(fields)
 	if err != nil {
 		return "", nil
 	}
@@ -129,10 +134,24 @@ func ParseManifest(data []byte) (Manifest, error) {
 
 // checkConfiguration holds a stream's settings and notes to what the console
 // can show: one value per path, each a scalar or a list of scalars, and no
-// credential anywhere (FindSecret).
+// credential anywhere (FindSecret, FindSecretInText).
 func checkConfiguration(st ManifestStream) error {
+	if err := CheckFields(st.Fields); err != nil {
+		return err
+	}
+	for path, note := range st.Notes {
+		if err := FindSecretInText(joinPath("notes", path), note); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CheckFields holds a configuration's settings to what the console can show,
+// whoever described them.
+func CheckFields(fields []ManifestField) error {
 	seen := map[string]bool{}
-	for _, f := range st.Fields {
+	for _, f := range fields {
 		if strings.TrimSpace(f.Path) == "" {
 			return fmt.Errorf("a setting has no path")
 		}
@@ -144,11 +163,6 @@ func checkConfiguration(st ManifestStream) error {
 			return fmt.Errorf("%s: a value is a string, a number, a bool or a list of them", f.Path)
 		}
 		if err := FindSecret(f.Path, f.Value); err != nil {
-			return err
-		}
-	}
-	for path, note := range st.Notes {
-		if err := FindSecretInText(joinPath("notes", path), note); err != nil {
 			return err
 		}
 	}

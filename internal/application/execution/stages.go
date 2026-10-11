@@ -96,6 +96,11 @@ type stageCollector struct {
 
 	// Landing lines dropped, and why. The runner says so once per step.
 	LandingsRefused, LandingsOverCeiling int
+
+	// The pipeline's description of itself, and why one was dropped. See
+	// describe.go.
+	config        *WriterConfig
+	ConfigRefused string
 }
 
 // StepMetric is one value a step reported through the @brevis: protocol.
@@ -158,6 +163,9 @@ func (c *stageCollector) line(msg string) bool {
 		Rows   json.RawMessage `json:"rows"`
 		Bytes  json.RawMessage `json:"bytes"`
 
+		// A pipeline's description of itself. See describe.go.
+		Fields json.RawMessage `json:"fields"`
+
 		// `value` carries a metric's number AND a step's published context, and
 		// `type` is what decides how to read it. One key rather than two
 		// because it is one field fewer for every library that speaks this
@@ -196,6 +204,12 @@ func (c *stageCollector) line(msg string) bool {
 	// one that keeps its phases on the screen.
 	if ev.Type == "landed" {
 		c.land(ev.Target, ev.Rows, ev.Bytes, ev.At)
+		return true
+	}
+	// Before the ceiling too, for the same reason: one line per attempt, and
+	// it must not cost the pipeline a box on the screen.
+	if ev.Type == "pipeline" {
+		c.describe(ev.Fields, len(body))
 		return true
 	}
 
