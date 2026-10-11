@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -20,6 +21,26 @@ type ConfigView struct {
 	// above `- name:`, which is usually the contract its producers follow.
 	Note     string
 	Sections []ConfigSection
+
+	// Changes are the writer's configurations over time, newest first, each
+	// with what it changed from the one before.
+	Changes []ConfigChange
+}
+
+// ConfigChange is one version: from when, and what it changed.
+type ConfigChange struct {
+	At    time.Time
+	Lines []ChangeLine
+
+	// First marks the oldest version on record -- where the record begins,
+	// with nothing before it to compare. False on the oldest of a history cut
+	// at HistoryShown, which is not the first.
+	First bool
+}
+
+// ChangeLine is one setting's change, in words: "1m → 2m".
+type ChangeLine struct {
+	Path, Text string
 }
 
 // ConfigSection is one block of settings: `buffer`, `sink`. Settings with no
@@ -106,7 +127,39 @@ func BuildConfig(c *postgres.WriterConfig) ConfigView {
 		}
 		v.Sections[i].Rows = append(v.Sections[i].Rows, row)
 	}
+	v.Changes = buildChanges(c.History)
 	return v
+}
+
+// buildChanges compares each version with the one before it.
+func buildChanges(h []postgres.ConfigVersion) []ConfigChange {
+	out := make([]ConfigChange, len(h))
+	for i, version := range h {
+		out[i].At = version.At
+		if i+1 == len(h) {
+			out[i].First = len(h) < postgres.HistoryShown
+			continue
+		}
+		for _, c := range catalog.Diff(h[i+1].Fields, version.Fields) {
+			out[i].Lines = append(out[i].Lines, ChangeLine{Path: c.Path, Text: changeText(c)})
+		}
+	}
+	return out
+}
+
+// changeText is one change as a person reads it.
+func changeText(c catalog.Change) string {
+	switch c.Kind {
+	case catalog.Added:
+		return "added: " + valueText(c.After)
+	case catalog.Removed:
+		return "removed (was " + valueText(c.Before) + ")"
+	case catalog.NowWritten:
+		return valueText(c.After) + ", now written in the file"
+	case catalog.NowDefault:
+		return valueText(c.After) + ", now the default"
+	}
+	return valueText(c.Before) + " → " + valueText(c.After)
 }
 
 // sectionTitle is a block's key as a heading: `dead_letter` is "Dead letter".
