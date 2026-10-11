@@ -381,3 +381,71 @@ func TestTheDestinationPageReadsTheConfigurationsHistory(t *testing.T) {
 		t.Fatalf("oldest = %+v, want the FIRST publish of 1m", h[1])
 	}
 }
+
+// landWith records one landing for a fresh run, written with cfg.
+func landWith(t *testing.T, pool *postgres.Pool, slug, target string, at time.Time, cfg *app.WriterConfig) uuid.UUID {
+	t.Helper()
+	id := aged(t, pool, slug, time.Hour, dom.StatusSuccess)
+	if err := postgres.NewRunRepo(pool).RecordLandings(context.Background(), id, dom.Step("load"), slug,
+		[]app.Landing{{Target: target, Rows: n(1), At: at, Config: cfg}}); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func sdkConfig(dedup string) *app.WriterConfig {
+	fields := []catalog.ManifestField{
+		{Path: "source.driver", Value: "from.HTTP"},
+		{Path: "target.dedup", Value: dedup},
+	}
+	hash, body := catalog.FieldsHash(fields)
+	return &app.WriterConfig{Hash: hash, Body: body}
+}
+
+// A step's configuration on its destination's page: the one it last wrote
+// with, and every change before it, each with the run where it first ran.
+func TestTheDestinationPageCarriesAStepsConfigurationAndItsRuns(t *testing.T) {
+	pool := catalogDB(t)
+	ctx := context.Background()
+	const orders = "bigquery://acme/silver/orders"
+	at := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+
+	first := landWith(t, pool, "orders_sync", orders, at, sdkConfig("none"))
+	landWith(t, pool, "orders_sync", orders, at.Add(time.Hour), sdkConfig("none"))
+	changed := landWith(t, pool, "orders_sync", orders, at.Add(2*time.Hour), sdkConfig("merge"))
+	landWith(t, pool, "orders_sync", orders, at.Add(3*time.Hour), sdkConfig("merge"))
+	landWith(t, pool, "python_job", orders, at, nil)
+
+	d, err := postgres.NewReadRepo(pool).CatalogTarget(ctx, orders)
+	if err != nil || d == nil {
+		t.Fatalf("detail = %+v, %v", d, err)
+	}
+	var step, python *postgres.CatalogWriter
+	for i := range d.Writers {
+		switch d.Writers[i].Workflow {
+		case "orders_sync":
+			step = &d.Writers[i]
+		case "python_job":
+			python = &d.Writers[i]
+		}
+	}
+	if step == nil || python == nil {
+		t.Fatalf("writers = %+v", d.Writers)
+	}
+	if python.Config != nil {
+		t.Fatalf("a step that never described itself has a configuration: %+v", python.Config)
+	}
+	c := step.Config
+	if c == nil || c.Fields[1].Value != "merge" {
+		t.Fatalf("config = %+v, want the latest", c)
+	}
+	if len(c.History) != 2 {
+		t.Fatalf("history = %+v, want two versions", c.History)
+	}
+	if c.History[0].RunID != changed.String() || !c.History[0].At.Equal(at.Add(2*time.Hour)) {
+		t.Fatalf("newest = %+v, want the run where merge FIRST ran", c.History[0])
+	}
+	if c.History[1].RunID != first.String() {
+		t.Fatalf("oldest = %+v, want the first run", c.History[1])
+	}
+}

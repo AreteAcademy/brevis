@@ -205,9 +205,16 @@ func Total(rows int, truncated bool) string {
 func BuildTarget(d postgres.TargetDetail, now time.Time) TargetView {
 	v := TargetView{Row: BuildData([]postgres.CatalogEntry{d.CatalogEntry}, now).Rows[0], Loads: d.Loads}
 	for _, w := range d.Writers {
-		if g := w.Gateway; g != nil && g.Config != nil {
+		switch g := w.Gateway; {
+		case g != nil && g.Config != nil:
 			v.Configs = append(v.Configs, WriterConfigView{Gateway: g.Name, Stream: g.Stream,
-				Role: g.Role, PublishedAt: g.PublishedAt, Config: BuildConfig(g.Config)})
+				Role: g.Role, PublishedAt: g.PublishedAt, Described: true, Config: BuildConfig(g.Config)})
+		case g == nil:
+			c := WriterConfigView{Workflow: w.Workflow, Node: w.Node, Described: w.Config != nil}
+			if w.Config != nil {
+				c.Config = BuildConfig(w.Config)
+			}
+			v.Configs = append(v.Configs, c)
 		}
 	}
 	for _, l := range slices.Backward(d.Loads) {

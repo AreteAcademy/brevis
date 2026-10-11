@@ -94,3 +94,51 @@ func TestDurationsAreWrittenInWords(t *testing.T) {
 		}
 	}
 }
+
+// An SDK pipeline in one sentence: what it reads, what it does to it, where it
+// writes, and how.
+func TestTheSummarySaysWhatAPipelineDoes(t *testing.T) {
+	cases := []struct {
+		name string
+		c    *postgres.WriterConfig
+		want string
+	}{
+		{"http into bigquery, merged", fields(
+			"source.driver", "from.HTTP", "source.url", "https://api.example.com/v1/items", "source.method", "GET",
+			"transform.1.map", []any{"compute(provider)", "ingestion_id"},
+			"target.driver", "bigquery.Table", "target.project", "acme-prod", "target.dataset", "landing",
+			"target.table", "items", "target.dedup", "merge"),
+			"Reads GET https://api.example.com/v1/items, applies 2 transformations " +
+				"and writes to BigQuery table acme-prod.landing.items, merged by ingestion id so a re-run changes nothing."},
+
+		{"files to files, with an aggregation", fields(
+			"source.driver", "from.Files", "source.path", "gs://acme-raw/orders/",
+			"transform.1.map", []any{"compute(area)"},
+			"transform.2.aggregate.by", []any{"area", "year"}, "transform.2.aggregate.total", "sum(valor)",
+			"target.driver", "to.Files", "target.path", "gs://acme-silver/orders/"),
+			"Reads files at gs://acme-raw/orders/, applies 1 transformation, groups by area, year " +
+				"and writes to files at gs://acme-silver/orders/, appended."},
+
+		{"a query into postgres", fields(
+			"source.driver", "postgres.Query", "source.host", "db.internal", "source.database", "shop",
+			"target.driver", "postgres.Table", "target.schema", "landing", "target.table", "orders"),
+			"Runs a query on Postgres database shop at db.internal " +
+				"and writes to Postgres table landing.orders, appended."},
+
+		{"many sources into pubsub", fields(
+			"source.driver", "from.Many", "source.sources.1.driver", "from.HTTP", "source.sources.2.driver", "from.HTTP",
+			"target.driver", "pubsub.Topic", "target.project", "acme-prod", "target.topic", "orders"),
+			"Reads 2 sources and writes to Pub/Sub topic acme-prod/orders."},
+
+		{"drivers this page has no words for", fields(
+			"source.driver", "main.MySource", "target.driver", "main.MyWriter", "target.target", "postgres://dw/x/y"),
+			"Reads from main.MySource and writes to main.MyWriter (postgres://dw/x/y), appended."},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := Summary(c.c); got != c.want {
+				t.Fatalf("\n got: %s\nwant: %s", got, c.want)
+			}
+		})
+	}
+}
