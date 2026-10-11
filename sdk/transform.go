@@ -168,7 +168,8 @@ func applyAll(fns []Transformer, payload any) (any, bool, error) {
 //
 // A record that is not a JSON object is passed through untouched: there are
 // no fields to name.
-func Accept(fields ...string) Transformer {
+func Accept(fields ...string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("accept", fields...)) }()
 	keep := make(map[string]bool, len(fields))
 	for _, f := range fields {
 		keep[f] = true
@@ -208,7 +209,8 @@ func Accept(fields ...string) Transformer {
 // or two you do not want.
 //
 //	sdk.Without("generationtime_ms", "timezone_abbreviation")
-func Without(fields ...string) Transformer {
+func Without(fields ...string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("without", fields...)) }()
 	drop := make(map[string]bool, len(fields))
 	for _, f := range fields {
 		drop[f] = true
@@ -232,7 +234,8 @@ func Without(fields ...string) Transformer {
 //
 // Renaming onto a name the record already has is an error: one of the two
 // values would be lost, and which one would depend on map iteration order.
-func Rename(names map[string]string) Transformer {
+func Rename(names map[string]string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("rename", renames(names)...)) }()
 	return func(payload any) (any, error) {
 		obj, ok := payload.(map[string]any)
 		if !ok {
@@ -290,7 +293,8 @@ func Rename(names map[string]string) Transformer {
 // Overwriting an existing field is an error. Silently replacing a value the
 // source gave you is the kind of thing nobody notices until the numbers are
 // wrong; to replace deliberately, Without it first.
-func Compute(name string, fn func(record map[string]any) (any, error)) Transformer {
+func Compute(name string, fn func(record map[string]any) (any, error)) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("compute", name)) }()
 	return func(payload any) (any, error) {
 		obj, ok := payload.(map[string]any)
 		if !ok {
@@ -339,7 +343,8 @@ func Compute(name string, fn func(record map[string]any) (any, error)) Transform
 // Everything Compute promises holds here: overwriting an existing field is an
 // error, and a selector that refuses a value reports the FIELD it refused,
 // because without the name nobody knows which of the six it was.
-func ComputeText(name string, sel FieldSelector) Transformer {
+func ComputeText(name string, sel FieldSelector) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("compute_text", name)) }()
 	if sel == nil {
 		return func(any) (any, error) {
 			return nil, fmt.Errorf("ComputeText(%q) got a nil selector; "+
@@ -374,7 +379,8 @@ var _ func(func(Envelope, error) bool) = iter.Seq2[Envelope, error](nil)
 // Missing and null are the same thing here, and that is deliberate: a key
 // composed with a null in the middle produces an id that looks valid and
 // collides with another record carrying the same null in the same position.
-func SkipWithout(fields ...string) Transformer {
+func SkipWithout(fields ...string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("skip_without", fields...)) }()
 	return func(payload any) (any, error) {
 		if len(fields) == 0 {
 			return nil, fmt.Errorf("SkipWithout needs at least one field")

@@ -44,7 +44,8 @@ var defaultIDFields = []string{"provider", "entity", "source_key", "record_ts"}
 // A named field the record does not have is an error naming the field, the way
 // Accept is. It usually means the chain is out of order, or that Without ran
 // first.
-func IngestionID(fields ...string) Transformer {
+func IngestionID(fields ...string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("ingestion_id", fields...)) }()
 	return ingestionIDIn(core.DefaultNamespace,
 		func(v any) (string, error) { return asText(v), nil }, fields...)
 }
@@ -60,7 +61,8 @@ func IngestionID(fields ...string) Transformer {
 // fetcher in production would start writing new ids for the same readings, and
 // the result is the whole table duplicated on the next merge. The choice is per
 // fetcher.
-func IngestionIDWith(render Renderer, fields ...string) Transformer {
+func IngestionIDWith(render Renderer, fields ...string) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("ingestion_id_with", fields...)) }()
 	return ingestionIDIn(core.DefaultNamespace, render, fields...)
 }
 
@@ -165,7 +167,8 @@ func ingestionIDIn(ns uuid.UUID, render Renderer, fields ...string) Transformer 
 // from outside would turn "when this row was written" into something else with
 // the same name -- and the partitioning the destination sets up assumes the
 // first meaning.
-func IngestionLoadedAt() Transformer {
+func IngestionLoadedAt() (tr Transformer) {
+	defer func() { tr = labeled(tr, call("ingestion_loaded_at")) }()
 	return func(payload any) (any, error) {
 		obj, ok := payload.(map[string]any)
 		if !ok {

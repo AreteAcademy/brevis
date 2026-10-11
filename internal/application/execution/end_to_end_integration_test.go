@@ -132,7 +132,7 @@ func TestIntegrationStagesReachTheDatabaseThroughARealBinary(t *testing.T) {
 		WHERE l.run_id = $1`, runID).Scan(&body); err != nil {
 		t.Fatalf("the landing points at no configuration: %v", err)
 	}
-	for _, want := range []string{`"source.driver"`, `"from.Files"`, `"transform.1.map"`, `"sdk.Compute"`, `"target.driver"`, `"to.Files"`} {
+	for _, want := range []string{`"source.driver"`, `"from.Files"`, `"transform.1.map"`, `"compute(provider)"`, `"compute_text(source_key)"`, `"ingestion_id"`, `"target.driver"`, `"to.Files"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the stored configuration lacks %s: %s", want, body)
 		}
