@@ -101,6 +101,10 @@ type stageCollector struct {
 	// describe.go.
 	config        *WriterConfig
 	ConfigRefused string
+
+	// stagesUnrecorded is set once the runner has said the phases could not
+	// be recorded, so it says it once per attempt and not once per line.
+	stagesUnrecorded bool
 }
 
 // StepMetric is one value a step reported through the @brevis: protocol.
