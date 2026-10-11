@@ -1,0 +1,94 @@
+# Publishing a gateway's configuration, so /data shows how it is set up.
+#
+# The gateway shares nothing with the engine at runtime (docs/GATEWAY.md): it
+# appears on the console through a deliberate act, and this Job is that act,
+# made part of the gateway's deploy so nobody has to remember it. The gateway
+# PROCESS still holds no credential and no route to the engine; this Job does,
+# for the seconds it runs.
+#
+# Two containers, because the two halves live in two images:
+#
+#   describe  the GATEWAY's image -- the binary that knows the sinks this
+#             gateway was built with. Reads the config, opens nothing, writes
+#             the manifest. Use YOUR gateway's image if you built one with
+#             hooks or sinks of your own.
+#   publish   the ENGINE's image, which talks to its database.
+#
+# By hand, after the gateway's deploy:
+#
+#   kubectl -n dados delete job brevis-gateway-publish --ignore-not-found
+#   kubectl apply -f deployments/kubernetes/gateway-publish-job.yaml
+#
+# Under Argo CD, put it beside the gateway's Deployment with the two
+# annotations below uncommented: it then runs after every sync, as
+# examples/cluster/apps/50-publish.yaml does for workflows. A Job with a fixed
+# name and no hook is created once and never runs again, which looks like the
+# change not taking.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: brevis-gateway-publish
+  namespace: dados
+  # annotations:
+  #   argocd.argoproj.io/hook: PostSync
+  #   argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  # No retry: publishing is idempotent, but an error here is about CONTENT --
+  # a config the gateway refuses, a manifest the engine refuses for carrying a
+  # credential -- and running it again does not fix it.
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        - name: describe
+          # The gateway release this tree is (gateway/VERSION). Describing
+          # needs no credential, but it does read the variables `dsn_from`
+          # names -- a DSN is parsed for its database, never dialled -- so the
+          # gateway's own environment goes in, and the engine's does not.
+          image: areteacademy/brevis-gateway:0.27.1
+          args: ["describe", "--out", "/manifest/manifest.json", "/etc/brevis/gateway.yaml"]
+          envFrom:
+            - secretRef: {name: brevis-gateway-env}
+          volumeMounts:
+            - {name: config, mountPath: /etc/brevis, readOnly: true}
+            - {name: manifest, mountPath: /manifest}
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      containers:
+        - name: publish
+          # The SAME version the engine runs: this talks to its DATABASE, and
+          # a publish from one release against a schema migrated by another is
+          # a skew with no error to read.
+          image: areteacademy/brevis:0.20.0-worker
+          args: ["gateway", "publish", "/manifest/manifest.json"]
+          env:
+            - name: BREVIS_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
+          volumeMounts:
+            - {name: manifest, mountPath: /manifest, readOnly: true}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        # The same ConfigMap the gateway's Deployment mounts, so what is
+        # described is what is running.
+        - name: config
+          configMap: {name: brevis-gateway-config}
+        - name: manifest
+          emptyDir: {sizeLimit: 1Mi}
