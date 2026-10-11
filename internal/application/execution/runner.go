@@ -826,6 +826,9 @@ func (r Runner) markStart(ctx context.Context, step run.StepKey, attempt int) {
 // the step down: the screen is informative, and the truth about a step remains
 // its exit code. Trading a run for a screen update would be the wrong bargain.
 //
+// It is SAID, though, once per attempt: this runs on every marked line, and a
+// warning per line would bury the log it means to be read in.
+//
 // It is only called after a marker has been recognised, which is what keeps an
 // ordinary step from paying a database round trip per log line. Checking again
 // here would be a verification that cannot fail.
@@ -837,13 +840,18 @@ func (r Runner) markStages(ctx context.Context, step run.StepKey, attempt int, c
 	if err != nil {
 		return
 	}
-	_ = r.Persist.RecordStages(ctx, r.RunID, step, attempt, c.Version, data)
+	if err := r.Persist.RecordStages(ctx, r.RunID, step, attempt, c.Version, data); err != nil && !c.stagesUnrecorded {
+		c.stagesUnrecorded = true
+		slog.Warn("the engine could not record a step's phases; its graph will lag behind it",
+			"run", r.RunID, "step", step.Node, "attempt", attempt, "error", err)
+	}
 }
 
 // markLoad keeps what the pipeline measured. Failing here does not bring the
 // step down, on the same terms as markStages: the truth about a step is its
 // exit code, and trading a run for a row in a trend table would be the wrong
-// bargain.
+// bargain. It is said, once: a load missing from the trend is otherwise a gap
+// nobody can explain.
 func (r Runner) markLoad(ctx context.Context, workflow string, step run.StepKey, c *stageCollector) {
 	if r.Persist == nil || r.RunID == uuid.Nil {
 		return
@@ -852,7 +860,10 @@ func (r Runner) markLoad(ctx context.Context, workflow string, step run.StepKey,
 	if !ok {
 		return
 	}
-	_ = r.Persist.RecordLoad(ctx, r.RunID, step, workflow, n)
+	if err := r.Persist.RecordLoad(ctx, r.RunID, step, workflow, n); err != nil {
+		slog.Warn("the engine could not record a step's load; its trend will miss this run",
+			"run", r.RunID, "workflow", workflow, "step", step.Node, "error", err)
+	}
 }
 
 // markLandings keeps what the step declared it wrote, and says once what it

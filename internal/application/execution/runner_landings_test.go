@@ -3,6 +3,7 @@ package execution_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -166,6 +167,51 @@ func TestALandingThatCouldNotBeRecordedIsLogged(t *testing.T) {
 	for _, want := range []string{"level=WARN", r.RunID.String(), "workflow=clima", "step=collectOutput", "targets=2", "SQLSTATE 54000"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the warning lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+// persistFails is a persister whose phases and load numbers never reach the
+// database.
+type persistFails struct{ *spyPersister }
+
+func (persistFails) RecordStages(context.Context, uuid.UUID, dom.StepKey, int, string, json.RawMessage) error {
+	return errors.New("stages: connection refused")
+}
+
+func (persistFails) RecordLoad(context.Context, uuid.UUID, dom.StepKey, string, app.LoadNumbers) error {
+	return errors.New("load: connection refused")
+}
+
+// The phases and the load trend fail as quietly as landings did. Each says
+// so -- and the phases, recorded on EVERY marked line, say it once per step:
+// a warning per line would bury the log it is trying to be read in.
+func TestPhasesAndLoadNumbersThatCouldNotBeRecordedAreLoggedOnce(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	r := app.Runner{RunID: uuid.New(), Persist: persistFails{&spyPersister{}}, Report: &spyReporter{}, Processo: sdkSpeaker{lines: []string{
+		`@brevis:{"type":"stage","index":0,"name":"extract","state":"running"}`,
+		`@brevis:{"type":"stage","index":0,"name":"extract","state":"done","ms":10}`,
+		`@brevis:{"type":"stage","index":1,"name":"load","state":"running"}`,
+		`@brevis:{"type":"stage","index":1,"name":"load","state":"done","ms":20,"rows":99,"records":99}`,
+	}}}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("the run failed because its phases were not recorded: %v", err)
+	}
+
+	out := logs.String()
+	if n := strings.Count(out, "could not record a step's phases"); n != 1 {
+		t.Errorf("%d warnings for the phases over four marked lines, want one:\n%s", n, out)
+	}
+	if n := strings.Count(out, "could not record a step's load"); n != 1 {
+		t.Errorf("%d warnings for the load, want one:\n%s", n, out)
+	}
+	for _, want := range []string{r.RunID.String(), "step=collectOutput", "stages: connection refused", "load: connection refused"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the warnings lack %q:\n%s", want, out)
 		}
 	}
 }
