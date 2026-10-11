@@ -2,7 +2,7 @@ package sdk_test
 
 import (
 	"encoding/json"
-	"strings"
+	"reflect"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/sdk"
@@ -11,24 +11,27 @@ import (
 	"github.com/AreteAcademy/brevis/sdk/to/postgres"
 )
 
-// describedPaths runs a pipeline under the engine and returns the paths its
-// description carried, in order.
-func describedPaths(t *testing.T, p sdk.Pipeline) []string {
+// describedValues is a pipeline's description, by path, as the engine reads
+// it.
+func describedValues(t *testing.T, p sdk.Pipeline) map[string]any {
 	t.Helper()
 	ev := sdk.DescribeForTest(&p)
 	raw, err := json.Marshal(ev["fields"])
 	if err != nil {
 		t.Fatal(err)
 	}
-	var fields []struct{ Path string }
+	var fields []struct {
+		Path  string
+		Value any
+	}
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		t.Fatal(err)
 	}
-	var paths []string
+	out := map[string]any{}
 	for _, f := range fields {
-		paths = append(paths, f.Path)
+		out[f.Path] = f.Value
 	}
-	return paths
+	return out
 }
 
 // The Target's own declaration and the writer's settings live under one
@@ -53,24 +56,25 @@ func TestTheDeclarationAndTheWriterNeverShareAPath(t *testing.T) {
 			},
 		},
 	}
+	// The VALUES, on both sides: describe() keeps the first of a repeated
+	// path, so "no path appears twice" holds whatever the paths are. What
+	// shows the collision is a value that went missing.
+	want := map[string]map[string]any{
+		"postgres with a declared schema": {
+			"target.schema":          "landing",
+			"target.declared.schema": []any{"id string"},
+		},
+		"files with a partition": {
+			"target.partition_by":          "dt",
+			"target.declared.partition_by": "loaded_at",
+		},
+	}
 	for name, p := range cases {
-		seen := map[string]bool{}
-		for _, path := range describedPaths(t, p) {
-			if seen[path] {
-				t.Errorf("%s: %q is described twice", name, path)
+		got := describedValues(t, p)
+		for path, v := range want[name] {
+			if !reflect.DeepEqual(got[path], v) {
+				t.Errorf("%s: %s = %#v, want %#v", name, path, got[path], v)
 			}
-			seen[path] = true
-		}
-		if name == "postgres with a declared schema" && !seen["target.declared.schema"] {
-			t.Errorf("%s: the declared columns are not under target.declared: %v", name, keys(seen))
 		}
 	}
-}
-
-func keys(m map[string]bool) string {
-	var out []string
-	for k := range m {
-		out = append(out, k)
-	}
-	return strings.Join(out, ", ")
 }
