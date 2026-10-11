@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"hash/fnv"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -79,6 +81,24 @@ func (r *RunRepo) RecordLandings(ctx context.Context, runID uuid.UUID, step dom.
 	// The step's configuration history: a line only where the hash differs
 	// from the step's last one for that target (see migration 00020).
 	if len(configs) > 0 {
+		// Check-then-insert, so it is serialised per writer and target:
+		// mapped instances land one table in parallel, and under READ
+		// COMMITTED each saw the last line from before the others committed
+		// and recorded the same change once per instance. Transaction-scoped,
+		// taken in target order so two attempts never wait on each other in
+		// a cycle.
+		locked := make([]string, 0, len(targets))
+		for i, t := range targets {
+			if hashes[i] != nil {
+				locked = append(locked, t)
+			}
+		}
+		sort.Strings(locked)
+		for _, t := range locked {
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, historyLock(t, workflow, step.Node)); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO step_config_history (target, workflow_slug, node_id, config_hash, first_at, run_id)
 			SELECT u.target, $1, $2, u.config_hash, u.loaded_at, $3
@@ -88,10 +108,23 @@ func (r *RunRepo) RecordLandings(ctx context.Context, runID uuid.UUID, step dom.
 				SELECT h.config_hash FROM step_config_history h
 				WHERE h.target = u.target AND h.workflow_slug = $1 AND h.node_id = $2
 				ORDER BY h.first_at DESC LIMIT 1)
-			ON CONFLICT DO NOTHING`,
+			ON CONFLICT (target, workflow_slug, node_id, first_at) DO NOTHING`,
 			workflow, step.Node, runID, targets, at, hashes); err != nil {
 			return err
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// historyLock is the advisory lock key of one writer's history on one target.
+// Computed here and not in SQL: Postgres text cannot hold the NUL that keeps
+// ("a", "bc") and ("ab", "c") apart, and a key built without one would let two
+// writers share a lock.
+func historyLock(target, workflow, node string) int64 {
+	h := fnv.New64a()
+	for _, part := range []string{target, workflow, node} {
+		_, _ = h.Write([]byte(part))
+		_, _ = h.Write([]byte{0})
+	}
+	return int64(h.Sum64())
 }
