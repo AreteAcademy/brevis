@@ -71,7 +71,7 @@ Its init container runs `gateway describe --out` in the gateway's image, which
 has no shell to redirect into a file; its container runs `brevis gateway
 publish` in the engine's. Under Argo CD, two annotations make it a PostSync
 hook, as `examples/cluster/apps/50-publish.yaml` is for workflows. The gateway
-process still holds no credential and no route to the engine -- the Job does,
+process still holds no credential and no route to the engine — the Job does,
 for the seconds it runs. What it cannot see is a config edited in the cluster
 by hand: it publishes what the ConfigMap says.
 
@@ -88,6 +88,41 @@ from its configuration alone, which is why it runs where the gateway's
 credentials do not. It does read the variable `dsn_from` names, so it runs
 where that variable is set, and fails naming it when it is not. `--name`
 overrides the gateway's name, which is otherwise the config's `name:`.
+
+From manifest version 2, each stream also carries **how it is configured**, for
+the destination's page on `/data`:
+
+```json
+{"name": "tables", "path": "/v1/tables",
+ "fields": [{"path": "buffer.flush.every", "value": "1m"},
+            {"path": "buffer.workers", "value": 4, "default": true},
+            {"path": "sink.into.write", "value": "merge"}],
+ "notes": {"sink.into.write": "MERGE: a redelivery must not become a second row."},
+ "destinations": [...]}
+```
+
+- `fields` is the stream **as it runs**: every setting, in the order the config
+  declares it, with the defaults the gateway filled in marked `default`. A
+  setting that is off and was never written is left out; one somebody wrote
+  off stays.
+- `notes` are the config file's **comments**, by the path of the setting they
+  sit on — the lines above a key and the one at the end of its line. The
+  comment above `- name:` is the stream's own, under `""`. The comments are
+  where a config says why, and a parser drops them.
+
+Nothing secret reaches it, by construction: a credential in this file is
+always a variable's **name** under a `_from` key, never its value, and a test
+fails the build if a field named like a password, a DSN or a token is added
+without that suffix. The engine checks again, and refuses a manifest carrying
+one whole (see [`CATALOG.md`](CATALOG.md)).
+
+`--out <file>` writes the manifest to a file instead of stdout, once it is
+whole — what the publish Job needs, in an image with no shell.
+
+**Upgrade the engine first.** An engine that predates version 2 refuses a
+version-2 manifest by its number ("this engine reads version 1"), and the
+publish fails with that sentence. A newer engine reads both: a gateway still on
+version 1 publishes as it always did, with no configuration on its page.
 
 Two kinds of destination are published with no target and a note rather than
 guessed: a sink type the binary has no locator for, and a local path relative

@@ -18,6 +18,57 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [0.85.0] — 2026-10-11
+
+### Added: a pipeline describes how it is configured
+
+Under the engine, every pipeline now prints one more marked line, once, right
+after announcing itself and before its first phase:
+
+```
+@brevis:{"type":"pipeline","v":1,"fields":[{"path":"source.driver","value":"from.HTTP"}, ...]}
+```
+
+Source, each stage, Target — what the console's `/data` shows as the step's
+configuration, with its history across runs. Over 64 KiB it is not sent, with a
+warning; by hand nothing is printed, like every marker.
+
+### Added: `sdk.Configured` — a driver says how it is set up
+
+```go
+type Configured interface{ Configuration() []Setting }
+type Setting struct{ Key string; Value any }
+```
+
+Every driver in `sdk/from` and `sdk/to` implements it, as **an allowlist written
+by hand** — never a reflected dump, because the same structs hold a DSN:
+
+- a DSN gives its host, port and database, and never its user, password or
+  parameters;
+- `from.HTTP` gives its URL as scheme, host and path, and only the **names** of
+  its query parameters and headers;
+- `postgres.Query` and `mysql.Query` give their SQL whole and only the **count**
+  of their arguments;
+- a function-valued setting (Pub/Sub attributes, a rate limiter) says it is
+  set, since what it computes cannot be shown.
+
+A driver of your own may implement it; without it, it is shown by its type.
+
+### Added: the SDK's transformers say what they do
+
+`Compute("provider", fn)` is described as `compute(provider)`, not as
+`sdk.Compute` — the only thing a closure's runtime name can say, and the same
+for every column. The same for `ComputeText`, `IngestionID`,
+`IngestionIDWith`, `IngestionLoadedAt`, `Landing`, `Accept`, `Without`,
+`Rename` and `SkipWithout`. The `Transformer` type is unchanged.
+
+### Added: `extract.DefaultMethod`, `DefaultTimeout`, `DefaultTotalTimeout`
+
+The defaults a source gets for what it does not set, named rather than inline,
+so a source's description shows the value that runs.
+
+---
+
 ## [0.84.1] — 2026-10-08
 
 ### Fixed: the refusal told half its readers to look for something they do not have

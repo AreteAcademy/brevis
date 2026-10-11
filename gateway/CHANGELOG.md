@@ -13,6 +13,32 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.28.0] — 2026-10-11
+
+### Added: describe carries each stream's whole configuration
+
+`gateway describe` prints manifest **version 2**. Each stream now carries, besides
+where it lands, its settings **as it runs** — every field in the config's order,
+the defaults `check()` filled in marked as such, a zero nobody wrote left out —
+and the config file's **comments**, by the path of the setting they sit on. The
+console's `/data` shows both on the destination's page.
+
+The fields are walked by their yaml names, so a setting added later is described
+with no change to describe. That is safe only while the file holds no secret,
+and a test now fails the build if a field named like a password, a DSN or a
+token is added without the `_from` suffix that names a variable instead.
+
+**Needs engine `0.21.0`** to publish: an older one refuses version 2 by its
+number.
+
+### Added: `gateway describe --out <file>`
+
+The manifest written to a file instead of stdout, once it is whole. The
+gateway's image has no shell to redirect into one, and the publish Job
+(`deployments/kubernetes/gateway-publish-job.yaml`) needs it.
+
+---
+
 ## [0.27.1] — 2026-10-10
 
 ### Fixed: a memcached expiry past 2038 wrapped, and the item expired on arrival

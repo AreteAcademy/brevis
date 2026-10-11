@@ -14,6 +14,59 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.21.0] — 2026-10-11
+
+### Added: a destination's page says how each writer is configured
+
+`/data/target` showed where a writer lands and how much. It now shows **how**:
+a Configuration section per writer, in three layers.
+
+- **A sentence**, for somebody who does not read YAML — *"JSON events posted to
+  /v1/ingestion become asset_\* tables in BigQuery acme.bronze, appended so a
+  redelivery is a second row, in batches every 1 minute or 1 event; batches
+  the destination refuses go to files at ./dead-letter/."* Written from the
+  settings by templates, never generated.
+- **Every setting**, by section — Stream, Identity, Buffer, Sink, Retry, Dead
+  letter for a gateway; Source, Transform, Target for an SDK step — with the
+  defaults a gateway filled in marked, and the config file's comments beside
+  the setting they were written on.
+- **Changes**, newest first, setting by setting: a gateway's publishes; a
+  step's runs, each version linked to the run that first wrote with it.
+
+A gateway sends it in manifest version 2 (`brevis gateway publish` reads 1 and
+2); a Go SDK step in a new `pipeline` marker. A step that sends none — Python,
+dbt, a shell — gets a section saying so. See `docs/CATALOG.md`.
+
+### Added: a configuration carrying a credential is refused, whole
+
+Both writers keep credentials out by construction. The engine looks again: a
+URL with a password, a key written as `key=value`, or a setting named like a
+credential with a value refuses the whole description — a manifest fails to
+publish naming the stream and the setting; a step's description is dropped
+with one warning naming the run and the step, and its landings are recorded
+without it. Blanking the password would hide the bug in the writer.
+
+### Upgrading
+
+**Two migrations, both quick.** `00018` creates three tables. `00019` adds a
+nullable `config_hash` to `landings`, with a foreign key: on a million landings
+(391 MB) it took **20.6 ms** — Postgres validates a key on a column that is all
+NULL without reading the table.
+
+**Upgrade the engine before the gateway.** An engine on `0.20.0` refuses a
+version-2 manifest by its number, and the publish fails saying so. This one
+reads both.
+
+**SDK steps need no order.** A newer SDK's `pipeline` line reaching this engine
+before its upgrade is consumed as an unknown marker, and its landings carry no
+configuration until it is.
+
+**`deployments/kubernetes/gateway-publish-job.yaml`** is new: the gateway's
+publish as part of its deploy. It pins this engine and the gateway release that
+carries manifest version 2.
+
+---
+
 ## [0.20.0] — 2026-10-10
 
 ### Added: the workbench's tree tells a schema from a table at a glance

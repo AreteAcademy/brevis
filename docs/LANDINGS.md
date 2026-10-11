@@ -136,6 +136,53 @@ graph. What was dropped is logged once per step, naming the step.
 leaves it alone: a table loaded every day for a year is still that, after the
 runs that loaded it are purged.
 
+## The pipeline's description
+
+A Go SDK pipeline also says **how it is configured**, once per run, right after
+announcing itself and before its first phase — so a run that fails at the
+source still says what it tried:
+
+```
+@brevis:{"type":"pipeline","v":1,"fields":[
+  {"path":"source.driver","value":"from.HTTP"},
+  {"path":"source.url","value":"https://api.example.com/v1/items"},
+  {"path":"source.query_params","value":["api_key","page"]},
+  {"path":"transform.1.map","value":["compute(provider)","ingestion_id"]},
+  {"path":"transform.2.aggregate.by","value":["area"]},
+  {"path":"transform.2.aggregate.total","value":"sum(valor)"},
+  {"path":"target.driver","value":"bigquery.Table"},
+  {"path":"target.dataset","value":"landing"},
+  {"path":"target.dedup","value":"merge"}]}
+```
+
+The fields are a gateway manifest's shape (`{path, value}`), so the engine
+stores, compares and shows both the same way. Every landing of the attempt
+points at it; the page on [`/data`](CATALOG.md) reads a step's history off
+those landings.
+
+- **Source and Target** are each driver's own account of itself, through
+  `sdk.Configured` — an allowlist written by hand in every driver in
+  `sdk/from` and `sdk/to`, never a reflected dump: the same structs hold a DSN.
+  A DSN gives its host, port and database; an HTTP source its scheme, host and
+  path, and only the **names** of its query parameters and headers; a database
+  query its SQL whole and only the **count** of its arguments. A driver of
+  your own may implement `sdk.Configured`; without it, it is shown by its type.
+- **Transform** names each transformer: the SDK's own by what they do —
+  `compute(provider)`, `skip_without(id)`, `ingestion_id` — and yours by the
+  function's name; one written inline in `main` is `anonymous function`. An
+  aggregation is declarative and shown whole.
+
+The engine holds it to what a manifest is held to — one value per path, each a
+scalar or a list of them, no credential — and over 64 KiB it is not kept.
+Either way it is refused **whole**, logged once naming the step, and the
+landings are recorded without it. Like every marker it is emitted only under
+the engine, and it does not spend the budget of marked lines a step has for its
+phases.
+
+Python, dbt and the shell do not send one, and their landings carry no
+configuration — the line above is the whole contract, should one of them want
+to.
+
 ## Rows from before targets existed
 
 Migration 00013 recovers, from each run's phases, the finished loads that
@@ -156,3 +203,8 @@ a scheduled workflow and the local executor:
 
 So a fleet upgrading its fetchers one at a time loses nothing: each table starts
 landing on the first load of a fetcher that can name it.
+
+The `pipeline` description follows the same rule. An SDK that sends it to an
+engine that predates it: the line is consumed as an unknown marker and costs
+one of the 60 marked lines, and the step's landings carry no configuration. An
+SDK that predates it: the page says the step did not describe itself.
