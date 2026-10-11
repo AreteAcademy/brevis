@@ -1,11 +1,161 @@
 {
   "kind": "gateway-manifest",
-  "version": 1,
+  "version": 2,
   "gateway": "events_gateway",
   "generated_at": "2026-10-07T18:02:11Z",
   "streams": [
     {
+      "name": "clicks",
       "path": "/v1/clicks",
+      "fields": [
+        {
+          "path": "name",
+          "value": "clicks"
+        },
+        {
+          "path": "path",
+          "value": "/v1/clicks"
+        },
+        {
+          "path": "format",
+          "value": "json"
+        },
+        {
+          "path": "identity.provider",
+          "value": "web"
+        },
+        {
+          "path": "identity.entity",
+          "value": "click"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "event_id"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "occurred_at"
+        },
+        {
+          "path": "hook",
+          "value": "enrich_clicks"
+        },
+        {
+          "path": "stamp_loaded_at",
+          "value": true
+        },
+        {
+          "path": "oversize.larger_than",
+          "value": "256KiB"
+        },
+        {
+          "path": "oversize.archive.type",
+          "value": "files"
+        },
+        {
+          "path": "oversize.archive.path",
+          "value": "gs://acme-oversize/clicks/"
+        },
+        {
+          "path": "oversize.hook",
+          "value": "strip_heavy_clicks"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory"
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "1s"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 500
+        },
+        {
+          "path": "buffer.flush.max_age",
+          "value": "30s"
+        },
+        {
+          "path": "buffer.flush.size",
+          "value": "8MiB"
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 10000
+        },
+        {
+          "path": "buffer.max_bytes",
+          "value": "256MiB"
+        },
+        {
+          "path": "sink.type",
+          "value": "pubsub"
+        },
+        {
+          "path": "sink.project",
+          "value": "acme-prod"
+        },
+        {
+          "path": "sink.topic",
+          "value": "clicks"
+        },
+        {
+          "path": "sink.attributes",
+          "value": [
+            "tenant",
+            "region"
+          ]
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms"
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s"
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "./dead-letter/clicks/"
+        }
+      ],
+      "notes": {
+        "buffer.durability": "the only tier implemented; `disk` is refused by name",
+        "buffer.flush": "Three triggers, and whichever is crossed FIRST sends the batch.\n\n`size` is the newest and the reason is memory rather than throughput:\nthe other two are counts, and a count cannot tell 500 events of 2 KB\nfrom 500 of 2 MB. Every flush is counted by what triggered it --\nbrevis_gateway_flushes_total{trigger=\"time|records|size\"} -- because\non a BigQuery stream a size flush firing routinely means the\n60-second floor is being walked past and the daily load-job quota\nwith it.",
+        "buffer.flush.max_age": "The age at which a partial batch goes REGARDLESS.\n\n`every` is a TARGET and this is a PROMISE, and the difference will\nmatter once the flush claim lands (issue #36): a replica that loses\na window to another keeps filling, so the target can be deferred.\nThis cannot be -- no event waits longer, whatever the contention,\neven with the metastore unreachable.\n\nThe gap between the two is how much contention this deployment\ntolerates. It has to be at least `every`; a ceiling under the target\nwould mean the target never applies, and the config refuses it.\n\nIt also settles the drain: what a buffer can be HOLDING at SIGTERM\nis bounded by this, not by `every`, so the grace period the gateway\nprints at boot is derived from it.",
+        "buffer.max_bytes": "And the same ceiling in BYTES, which is the one that stops an OOM.\n\nA count cannot see it: 10,000 records is 20 MB of 2 KB events and\n20 GB of 2 MB ones, and until this field existed the file had no way\nto say which this stream holds. Measured on what ARRIVED -- a\nmap[string]any weighs several times its JSON, and a hook that inflates\nan event is not counted. It has to be at least listen.max_body, or one\nrequest could never be admitted.",
+        "buffer.workers": "Delivery is asynchronous and bounded. A request appends to the buffer\nand returns; a full batch is handed to one of these workers, so no\ncaller ever waits for a publish, a COPY, or a sink that is down.\n\nworkers     how many batches are delivered at once\nqueue       how many full batches may wait for a worker\nmax_records the ceiling on events held in memory for this stream.\n            Past it the gateway answers 503 rather than accepting an\n            event it has nowhere to put -- and the 503 is safe to act\n            on: send the same body again, the ingestion_id is a frozen\n            function of the event, so a retry is the same record.",
+        "dead_letter": "Where a batch the sink will not take goes. Required, not defaulted: a\nstream without one loses a refused batch to a log line, and an operator\nwho never chose that does not know it is happening.\n\n`files` reads a directory, gs:// and s3://, so this is a folder on a\nlaptop and a bucket in production with no change to the gateway.\n\nEach record carries _dead_letter_reason, _dead_letter_sink and\n_dead_letter_at: whoever finds this file has the events and not the log,\nand \"why is this here\" is their first question.",
+        "format": "json | array | ndjson -- declared, never sniffed",
+        "hook": "A name in this binary's registry, not a path. Hooks are Go, compiled in.",
+        "identity": "What becomes the ingestion_id. All four, because the formula is frozen\nover exactly these: leaving one out produces a DIFFERENT id, not a\nweaker one. provider and entity are the stream's; source_key and\nrecord_ts name fields of the event.",
+        "oversize": "The claim check: an event too big is written somewhere WHOLE, and a\nreduced version continues carrying a pointer back to it.\n\nA flat 413 loses the event, and an oversized payload is usually the most\ninteresting one somebody has -- the request with the whole document\nattached, which is the case worth debugging.\n\n`larger_than` measures one EVENT, after the hook. listen.max_body is a\ndifferent thing: it caps a whole REQUEST and refuses with 413 before a\nbyte is parsed.\n\n`hook` names a second hook that returns the reduced event. Which fields\nare heavy is domain knowledge and a YAML file cannot hold it. WITHOUT\none, the event is archived and dropped from the stream -- not lost,\nbecause the archive has it whole, and counted, because an event that\nsilently stops arriving is the worst outcome here.",
+        "retry": "How hard the sink is tried before a batch is given up on. Four attempts\nover roughly seven seconds: enough to ride out a restart on the other\nside, short enough that a sink which is down is known to be down.",
+        "sink.attributes": "Fields of the EVENT that travel as message attributes. The topic's\ncontract belongs to whoever owns the topic, so nothing is invented here.",
+        "stamp_loaded_at": "Writes ingestion_loaded_at: when the gateway received it, UTC, RFC3339.\nThe SDK's column and the SDK's format, so a row this gateway lands and a\nrow a pipeline lands are the same shape. Opt-in, because it adds a field\nand both a topic's subscribers and a table's columns notice."
+      },
       "destinations": [
         {
           "role": "sink",
@@ -26,7 +176,117 @@
       ]
     },
     {
+      "name": "orders",
       "path": "/v1/orders",
+      "fields": [
+        {
+          "path": "name",
+          "value": "orders"
+        },
+        {
+          "path": "path",
+          "value": "/v1/orders"
+        },
+        {
+          "path": "format",
+          "value": "ndjson"
+        },
+        {
+          "path": "identity.provider",
+          "value": "shop"
+        },
+        {
+          "path": "identity.entity",
+          "value": "order"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "order_id"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "placed_at"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "2s"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 1000
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64,
+          "default": true
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 20000,
+          "default": true
+        },
+        {
+          "path": "sink.type",
+          "value": "postgres"
+        },
+        {
+          "path": "sink.dsn_from",
+          "value": "BREVIS_ORDERS_DSN"
+        },
+        {
+          "path": "sink.table",
+          "value": "landing.orders"
+        },
+        {
+          "path": "sink.write",
+          "value": "merge"
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms",
+          "default": true
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s",
+          "default": true
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "./dead-letter/orders/"
+        }
+      ],
+      "notes": {
+        "": "The same events into a table, which is the other half of what a gateway is\nfor: one stream feeds whoever subscribes, another lands what somebody will\nquery.",
+        "format": "one object per line: a batch in one request",
+        "sink.dsn_from": "The NAME of the environment variable holding the connection string,\nnever the string: a DSN carries a password and this file is in git.",
+        "sink.table": "Schema-qualified. The table must exist -- this does not create one,\nbecause a service that creates tables turns a typo here into a second\ntable nobody is reading.",
+        "sink.write": "Required, never defaulted. The two are genuinely different and only\nthe table's owner knows which it is:\n\n  append  COPY FROM STDIN, Postgres's fast path. Every delivery lands,\n          including a redelivery. Right for a log, wrong for a table\n          somebody counts.\n  merge   the batch staged in a TEMP table and inserted with\n          ON CONFLICT (ingestion_id) DO NOTHING, all in ONE\n          transaction. The FIRST delivery wins and a redelivery is\n          ignored. Needs a UNIQUE index on ingestion_id, and the\n          driver refuses without one rather than silently appending:\n\n            CREATE UNIQUE INDEX CONCURRENTLY ON landing.orders (ingestion_id)\n\n`upsert` -- ON CONFLICT DO UPDATE, where the LAST delivery wins -- is\nrefused by name. It is a real mode nobody has implemented yet, and\naccepting the word while behaving like `merge` is the failure this\nfield exists to prevent."
+      },
       "destinations": [
         {
           "role": "sink",
@@ -42,7 +302,120 @@
       ]
     },
     {
+      "name": "telemetry",
       "path": "/v1/telemetry",
+      "fields": [
+        {
+          "path": "name",
+          "value": "telemetry"
+        },
+        {
+          "path": "path",
+          "value": "/v1/telemetry"
+        },
+        {
+          "path": "format",
+          "value": "array"
+        },
+        {
+          "path": "identity.provider",
+          "value": "device"
+        },
+        {
+          "path": "identity.entity",
+          "value": "reading"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "reading_id"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "measured_at"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "1m"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 2000
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64,
+          "default": true
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 40000,
+          "default": true
+        },
+        {
+          "path": "sink.type",
+          "value": "bigquery"
+        },
+        {
+          "path": "sink.project",
+          "value": "acme-prod"
+        },
+        {
+          "path": "sink.dataset",
+          "value": "landing"
+        },
+        {
+          "path": "sink.table",
+          "value": "telemetry"
+        },
+        {
+          "path": "sink.write",
+          "value": "merge"
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms",
+          "default": true
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s",
+          "default": true
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "gs://acme-dead-letter/telemetry/"
+        }
+      ],
+      "notes": {
+        "": "BigQuery. No dsn_from: it authenticates with the pod's own credentials,\nwhich is what a workload identity is for. A connection string here would be\na second way to do what the platform already does.",
+        "dead_letter.type": "The dead letter in a bucket, which is what it should be in production:\nwritten inside the image it would die with the container. Needs the\npod's GCP credentials, resolved at startup rather than on the first\nbatch it has to bury.",
+        "format": "a JSON array of objects in one request",
+        "sink.table": "No dots: for BigQuery the project and the dataset are their own fields,\nso \"landing.telemetry\" here would make a table with that literal name."
+      },
       "destinations": [
         {
           "role": "sink",
@@ -57,7 +430,167 @@
       ]
     },
     {
+      "name": "tables",
       "path": "/v1/tables",
+      "fields": [
+        {
+          "path": "name",
+          "value": "tables"
+        },
+        {
+          "path": "path",
+          "value": "/v1/tables"
+        },
+        {
+          "path": "format",
+          "value": "json"
+        },
+        {
+          "path": "identity.provider",
+          "value": "zarv"
+        },
+        {
+          "path": "identity.entity",
+          "value": "table"
+        },
+        {
+          "path": "identity.source_key",
+          "value": "table_name"
+        },
+        {
+          "path": "identity.record_ts",
+          "value": "table_name"
+        },
+        {
+          "path": "buffer.durability",
+          "value": "memory",
+          "default": true
+        },
+        {
+          "path": "buffer.flush.every",
+          "value": "1m"
+        },
+        {
+          "path": "buffer.flush.records",
+          "value": 2000
+        },
+        {
+          "path": "buffer.flush.claim",
+          "value": true
+        },
+        {
+          "path": "buffer.flush.max_age",
+          "value": "5m"
+        },
+        {
+          "path": "buffer.flush.size",
+          "value": "256MiB"
+        },
+        {
+          "path": "buffer.workers",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "buffer.queue",
+          "value": 64,
+          "default": true
+        },
+        {
+          "path": "buffer.max_records",
+          "value": 40000,
+          "default": true
+        },
+        {
+          "path": "buffer.max_bytes",
+          "value": "1GiB"
+        },
+        {
+          "path": "sink.type",
+          "value": "auto_table"
+        },
+        {
+          "path": "sink.naming.pattern",
+          "value": "^(app|svc)_[a-z0-9_]{2,40}$"
+        },
+        {
+          "path": "sink.naming.allow",
+          "value": [
+            "app_",
+            "svc_"
+          ]
+        },
+        {
+          "path": "sink.naming.max_new_per_hour",
+          "value": 20
+        },
+        {
+          "path": "sink.shape",
+          "value": "columns"
+        },
+        {
+          "path": "sink.metastore.type",
+          "value": "redis"
+        },
+        {
+          "path": "sink.metastore.ttl",
+          "value": "1m"
+        },
+        {
+          "path": "sink.metastore.addr_from",
+          "value": "BREVIS_METASTORE_ADDR"
+        },
+        {
+          "path": "sink.into.type",
+          "value": "bigquery"
+        },
+        {
+          "path": "sink.into.project",
+          "value": "acme-prod"
+        },
+        {
+          "path": "sink.into.dataset",
+          "value": "landing"
+        },
+        {
+          "path": "sink.into.write",
+          "value": "merge"
+        },
+        {
+          "path": "retry.attempts",
+          "value": 4,
+          "default": true
+        },
+        {
+          "path": "retry.backoff",
+          "value": "500ms",
+          "default": true
+        },
+        {
+          "path": "retry.max_backoff",
+          "value": "10s",
+          "default": true
+        },
+        {
+          "path": "dead_letter.type",
+          "value": "files"
+        },
+        {
+          "path": "dead_letter.path",
+          "value": "./dead-letter/tables/"
+        }
+      ],
+      "notes": {
+        "": "One route, N tables, nothing declared.\n\nThe producer POSTs an ENVELOPE: control fields at the top, the record\ninside `data`.\n\n  {\n    \"table_name\": \"app_orders\",     \u003c- required\n    \"unique_key\": \"id\",             \u003c- optional, default \"id\"; the FIELD\n                                       it names must be in `data`, and\n                                       `write: merge` requires one at all\n    \"operation\":  \"INSERT\",         \u003c- optional: INSERT | UPDATE | DELETE\n    \"description\": \"Pedidos\",       \u003c- optional, and READ BY NOTHING today:\n                                       it is in the contract for the\n                                       console page that does not exist\n    \"data\": {                       \u003c- required: the record, and only it\n      \"id\": \"A-3\",\n      \"total\": 150,\n      \"customer\": {\"id\": 7, \"uf\": \"SP\"}\n    }\n  }\n\nEvery table carries the same seven columns whatever the record holds:\n\n  brevis_ingestion_id   the identity; the merge key\n  brevis_record_key     data[unique_key] -- which ROW this is about.\n                        NULL under `append`, where a log line need not be\n                        about a record at all; required by `merge`, which\n                        keeps one row per record\n  brevis_operation      INSERT | UPDATE | DELETE\n  brevis_received_at    OUR clock, at the 202 -- the partition column\n  brevis_loaded_at      DEFAULT CURRENT_TIMESTAMP -- the destination stamps it\n  brevis_stream         which route wrote it\n  brevis_gateway        which deployment\n  brevis_received_bytes how large the event arrived, envelope included --\n                        free, because buffer.flush.size already counts it.\n                        INGRESS and not storage: the destination keeps the\n                        row typed and compressed, so 400 bytes of JSON may\n                        be 80 on disk. Summing it answers \"which table is\n                        growing, since when, from whom\" -- which the\n                        metrics cannot, because they carry no `table`\n                        label and that label is the producer's to choose.\n\n`brevis_` is RESERVED: a `data` carrying any key with it is refused per\nevent, because otherwise a producer forges a control field -- and a forged\nbrevis_received_at is worse than none, since it looks real.\n\nUPDATE and DELETE are RECORDED, never applied. A landing table is history,\nand resolving \"the current version of each record\" is the downstream\nmodel's job:\n\n  qualify row_number() over (partition by brevis_record_key\n                             order by brevis_received_at desc) = 1\n     and brevis_operation \u003c\u003e 'DELETE'",
+        "buffer.flush.claim": "The flush clock belongs to the DEPLOYMENT, not to each process.\n\nWithout this, `every` is a time.AfterFunc in every replica, so the\nload jobs a table receives are `replicas × 86400 / every` -- on\nBigQuery, against 1,500 per table per DAY, two replicas at 60s is\nalready 192% of a quota that cannot be raised. The gateway scales out\nfor HTTP concurrency while the sink wants concentration.\n\nWith it, a replica takes a set-if-absent claim for the stream and the\nwindow before flushing on the timer, and the timer wakes on the\nwindow BOUNDARY so every replica asks for the same key. One flush per\nwindow, whatever the replica count -- and it self-adjusts, because a\nreplica only waits when another is actually competing.\n\nNeeds a SHARED metastore. With `memory` every replica wins its own\nclaim and nothing coordinates. And it needs `max_age`, which the\nconfig refuses without: the claim turns `every` into a target, and a\ntarget with no ceiling is latency with nothing bounding it.\n\nA metastore that is unreachable flushes anyway. Losing coordination\ncosts load jobs; refusing to flush holds data.\n\nWatch brevis_gateway_flush_windows_total{outcome}:\n\n  won | yielded     the feature working -- one flushes, the rest fill\n  ceiling           max_age did it, not the target\n  unreachable       ALERT. The backend could not be asked, so the\n                    claim failed open and the jobs are multiplying by\n                    replica count again -- silently, because every\n                    flush still looks like a flush\n\nThe claim gives EXCLUSIVITY, not fairness: whoever asks first wins,\nand a real two-replica run measured 4/1 rather than an even split.\n`max_age` is what stops the unlucky one starving. Issue #36.\n\nThe claim's key carries the TABLE, because the flush trigger does\n(issue #38): two replicas behind a load balancer do not hold the\nsame tables, and one claim for the stream would make one table's\ncadence another's.\n\nA window therefore asks for one claim per table. Redis answers them\nin one round trip; every other backend answers them in parallel,\nbounded. Measured at 94 tables against a backend 25ms away: 89ms on\nmemcached, 30ms on Redis. Both inside the 500ms the claim is given,\nand memcached is the slower choice rather than a refused one.",
+        "buffer.flush.every": "60s, not 1s: BigQuery allows 1,500 load jobs per table per DAY, and\na one-second window is 86,400. The config refuses anything shorter.",
+        "buffer.flush.max_age": "Five minutes of latency bought for job economy, and bounded.",
+        "buffer.flush.size": "A CEILING here and not a target, and nothing refuses a smaller one\nbecause the arrival rate is not knowable at load. The floor above\ngoverns the TIMER; a size that fires every few seconds walks right\npast it and spends the same daily quota. Watch\nbrevis_gateway_flushes_total{trigger=\"size\"} on this stream: above\nzero, it is telling you the window is not what is batching.",
+        "sink.metastore": "The shared state this stream keeps: a cache of what tables exist, the\ndebounce that keeps N replicas from all running the same DDL, the\ncounter behind max_new_per_hour -- and, from issue #36, the claim that\nmakes the flush clock belong to the deployment rather than to each\nprocess.\n\nIt is a STREAM's, not a sink's, even though it is written under one.\nEvery stream gets it, whatever the sink -- so a `bigquery` stream\nwithout `auto_table` can name one too, and is validated the same way.\n\n`memory` is the default and needs nothing. With ONE replica it is the\nright answer. With several it gives each its own, so the debounce\ndebounces nothing and max_new_per_hour bounds a process -- which is\nwhat redis and memcached are for, and the only reason they exist here.\n\n`addr_from` is the NAME of the environment variable holding the\naddress, never the address: it carries a password often enough.",
+        "sink.metastore.ttl": "How long the cache may be WRONG. `0` means never, and saying\nnothing takes the sixty-second default -- three states, which is\nwhy the field is a pointer in the config.\n\nThe clock is NOT what recovers from a wrong entry. A write the\ndestination refuses calls `invalidate`, which drops the entry at\nonce and lets the pipe's own retry come back against a cold cache:\na table dropped by hand costs one failed attempt, not a minute.\n\nExpiry has a price, though. `sinkFor` charges\n`naming.max_new_per_hour` when it does not KNOW a table -- so a miss\ncharges for a table that has existed for weeks, and a pod restarting\na minute after a table's last event gets nothing from the shared\nstore it is paying for. `ttl: 0` is the answer when the tables are\nlong-lived. See issue #35.",
+        "sink.naming.max_new_per_hour": "Shared across replicas here, because the metastore below is redis.\nUnder `memory` it is PER REPLICA and four of them admit four times\nthis. A circuit breaker either way, not a quota: it bounds\ncreations, never writes.",
+        "sink.shape": "What the RECORD contributes to the row.\n\n  document  data goes whole into one JSON column. No DDL, ever, after\n            the create: a new field is a new key.\n  columns   each field gets a column -- scalars STRING, objects and\n            arrays JSON. The shape people picture, and the one that\n            pays for itself with DDL, quota and a write-stream reopen.\n\nNo type inference either way. A field that arrives whole today and\nfractional tomorrow would change a column with nobody writing\nanything; typing one is the PROMOTION path, written in this file and\nreviewed in a diff."
+      },
       "destinations": [
         {
           "role": "sink",
