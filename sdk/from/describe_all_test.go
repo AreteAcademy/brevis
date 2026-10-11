@@ -151,3 +151,48 @@ func TestFilesShowsWhereAndHow(t *testing.T) {
 		}
 	}
 }
+
+// Credentials that live in the PATH, not the query: bot APIs, webhooks, a
+// session in a matrix parameter, a login endpoint with its token in it, and
+// userinfo hidden by a `#` in the password. Realistic shapes -- a six-letter
+// SEKRET in a path segment looks like any word, and real tokens do not.
+func TestNoReaderDescribesACredentialInItsPath(t *testing.T) {
+	const (
+		telegram = "123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw"
+		slack    = "Xx8kLmN3pQ7rS2tV5wY9zA1b"
+		session  = "A1B2C3D4E5F6A7B8C9D0E1F2"
+	)
+	readers := map[string]sdk.Reader{
+		"telegram":    from.HTTP{URL: "https://api.telegram.org/bot" + telegram + "/getUpdates"},
+		"slack":       from.HTTP{URL: "https://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/" + slack},
+		"matrix":      from.HTTP{URL: "https://api.example.com/v1;jsessionid=" + session + "/items"},
+		"hash in pwd": from.HTTP{URL: "https://loader:12345#x@api.example.com/v1/items"},
+		"login":       from.HTTP{URL: "https://api.example.com/v1/items", Auth: &from.Credential{Login: &from.Login{URL: "https://auth.example.com/token/" + slack}}},
+		"files":       from.Files{Path: "s3://AKIAIOSFODNN7EXAMPLE:" + slack + "@acme-raw/orders/"},
+		"many":        from.Many{Sources: []sdk.Reader{from.HTTP{URL: "https://api.telegram.org/bot" + telegram + "/getMe"}}},
+	}
+	for name, r := range readers {
+		raw, err := json.Marshal(r.(sdk.Configured).Configuration())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, leak := range []string{telegram, "AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw", slack, session, "loader", "12345", "AKIAIOSFODNN7EXAMPLE"} {
+			if strings.Contains(string(raw), leak) {
+				t.Errorf("%s described %q: %s", name, leak, raw)
+			}
+		}
+	}
+}
+
+// What is left of a URL is still worth reading: the host, and the path's
+// ordinary segments.
+func TestAScrubbedURLKeepsItsOrdinarySegments(t *testing.T) {
+	got := settings(t, from.HTTP{URL: "https://hooks.slack" + ".com/services/T0ABCDEF1/B0ABCDEF2/Xx8kLmN3pQ7rS2tV5wY9zA1b"})
+	if got["url"] != "https://hooks.slack.com/services/T0ABCDEF1/B0ABCDEF2/…" {
+		t.Fatalf("url = %v", got["url"])
+	}
+	got = settings(t, from.HTTP{URL: "https://api.example.com/v1;jsessionid=A1B2C3D4E5F6A7B8C9D0E1F2/items"})
+	if got["url"] != "https://api.example.com/v1/items" {
+		t.Fatalf("url = %v", got["url"])
+	}
+}

@@ -158,3 +158,24 @@ func TestFilesSaysWhereAndHow(t *testing.T) {
 		}
 	}
 }
+
+// A location written with a key in it -- the run would fail on it, but the
+// description goes out before the run checks anything.
+func TestNoWriterDescribesACredentialInALocation(t *testing.T) {
+	const key, secret = "AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY"
+	writers := map[string]sdk.Writer{
+		"to.Files":       to.Files{Path: "s3://" + key + ":" + secret + "@acme-landing/orders/"},
+		"redshift.Table": redshift.Table{Name: "orders", Staging: "s3://" + key + ":" + secret + "@acme-staging/rs/"},
+	}
+	for name, w := range writers {
+		raw, _ := json.Marshal(w.(sdk.Configured).Configuration())
+		for _, leak := range []string{key, secret} {
+			if strings.Contains(string(raw), leak) {
+				t.Errorf("%s described %q: %s", name, leak, raw)
+			}
+		}
+		if !strings.Contains(string(raw), "s3://acme-") {
+			t.Errorf("%s lost the bucket itself: %s", name, raw)
+		}
+	}
+}

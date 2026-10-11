@@ -382,7 +382,7 @@ var _ core.Configured = Files{}
 // and through which store.
 func (f Files) Configuration() []core.Setting {
 	return core.Keep(
-		core.Setting{Key: "path", Value: f.Path},
+		core.Setting{Key: "path", Value: core.SafeURL(f.Path)},
 		core.Setting{Key: "format", Value: string(f.Format)},
 		core.Setting{Key: "partition_by", Value: f.PartitionBy},
 		core.Setting{Key: "compress", Value: f.Compress},

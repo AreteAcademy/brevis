@@ -30,7 +30,7 @@ func (t Table) Configuration() []core.Setting {
 		core.Setting{Key: "database", Value: database},
 		core.Setting{Key: "schema", Value: schema},
 		core.Setting{Key: "table", Value: table},
-		core.Setting{Key: "staging", Value: t.Staging},
+		core.Setting{Key: "staging", Value: core.SafeURL(t.Staging)},
 		core.Setting{Key: "iam_role", Value: t.IAMRole},
 		core.Setting{Key: "store", Value: core.TypeName(t.Store)},
 		core.Setting{Key: "keep_staged_file", Value: t.KeepStagedFile},
