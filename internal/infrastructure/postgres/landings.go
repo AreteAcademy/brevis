@@ -75,5 +75,23 @@ func (r *RunRepo) RecordLandings(ctx context.Context, runID uuid.UUID, step dom.
 		runID, step.Node, step.MapIndex, workflow, targets, at, rows, bytes, hashes); err != nil {
 		return err
 	}
+
+	// The step's configuration history: a line only where the hash differs
+	// from the step's last one for that target (see migration 00020).
+	if len(configs) > 0 {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO step_config_history (target, workflow_slug, node_id, config_hash, first_at, run_id)
+			SELECT u.target, $1, $2, u.config_hash, u.loaded_at, $3
+			FROM unnest($4::text[], $5::timestamptz[], $6::text[]) AS u(target, loaded_at, config_hash)
+			WHERE u.config_hash IS NOT NULL
+			  AND u.config_hash IS DISTINCT FROM (
+				SELECT h.config_hash FROM step_config_history h
+				WHERE h.target = u.target AND h.workflow_slug = $1 AND h.node_id = $2
+				ORDER BY h.first_at DESC LIMIT 1)
+			ON CONFLICT DO NOTHING`,
+			workflow, step.Node, runID, targets, at, hashes); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
 }

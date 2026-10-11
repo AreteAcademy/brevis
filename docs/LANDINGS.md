@@ -157,8 +157,8 @@ source still says what it tried:
 
 The fields are a gateway manifest's shape (`{path, value}`), so the engine
 stores, compares and shows both the same way. Every landing of the attempt
-points at it; the page on [`/data`](CATALOG.md) reads a step's history off
-those landings.
+points at it, and a step's history gains a line whenever the configuration
+it lands with changes — what the page on [`/data`](CATALOG.md) reads.
 
 - **Source and Target** are each driver's own account of itself, through
   `sdk.Configured` — an allowlist written by hand in every driver in

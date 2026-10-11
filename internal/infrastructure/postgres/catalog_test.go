@@ -41,7 +41,7 @@ func schedule(t *testing.T, pool *postgres.Pool, slug, cron, tz string, active b
 func catalogDB(t *testing.T) *postgres.Pool {
 	t.Helper()
 	pool := landingsDB(t)
-	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules, gateway_destinations, gateway_streams, gateway_config_history, writer_configs CASCADE`); err != nil {
+	if _, err := pool.Exec(context.Background(), `TRUNCATE runs, task_runs, schedules, gateway_destinations, gateway_streams, gateway_config_history, step_config_history, writer_configs CASCADE`); err != nil {
 		t.Fatal(err)
 	}
 	return pool

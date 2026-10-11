@@ -95,8 +95,9 @@ stream, or a workflow step that runs the Go SDK — in three layers:
    on, and a long one folds to its first line.
 3. **Changes**, newest first: what each configuration changed from the one
    before, setting by setting — `buffer.flush.every 1m → 2m`, `added: merge`.
-   A gateway's versions are its publishes; a step's are read off its landings,
-   one per change, each linked to the run that first wrote with it.
+   A gateway's versions are its publishes; a step's are recorded as its
+   landings are, one line per change, each linked to the run that first
+   wrote with it — so the page reads twenty lines, never every landing.
 
 Where it comes from:
 
