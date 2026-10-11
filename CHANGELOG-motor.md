@@ -14,6 +14,42 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.20.0] — 2026-10-10
+
+### Added: the workbench's tree tells a schema from a table at a glance
+
+In `/sql`'s object tree a schema and a table were the same colour, the same
+size and nearly the same indent. In a schema of forty tables the eye could not
+find where one ended and the next began.
+
+Each name now has a shape in front of it — a cylinder for a schema, a grid for
+a table:
+
+```
+▾ bigquery://project
+  ⛁ staging
+     ▦ agents_model_prices
+       + columns
+  ⛁ silver
+     ▦ billing_contract
+       + columns
+```
+
+**A shape and not a colour.** A second colour would have to stay readable on
+every installation's ground, and `brand.yaml` rewrites those tokens. The icon
+is drawn in the row's own colour, so it follows a theme and a hover with
+nothing new to keep in contrast. A screen reader still hears only the name.
+
+A long name truncates and keeps its icon, and `+ columns` and the column list
+start under the table's name, so they read as belonging to the row above.
+
+### Upgrading
+
+**Nothing to do.** No configuration, no change to `brevis-sql`, and no
+migration — the schema is unchanged since 00017.
+
+---
+
 ## [0.19.0] — 2026-10-10
 
 ### Added: a write answers with what it changed, instead of an empty grid
