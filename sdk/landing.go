@@ -372,7 +372,8 @@ func LandingColumns() LandingArg { return func(l *landing) { l.columns = true } 
 //
 // Get it wrong and the rows land correctly and the ids are minted for a table
 // nobody wrote to. They will look fine. They will not match the gateway's.
-func Landing(table string, opts ...LandingArg) Transformer {
+func Landing(table string, opts ...LandingArg) (tr Transformer) {
+	defer func() { tr = labeled(tr, call("landing", table)) }()
 	l := &landing{table: table}
 	for _, o := range opts {
 		o(l)

@@ -129,10 +129,14 @@ func driverName(driver any) string {
 	return strings.TrimPrefix(fmt.Sprintf("%T", driver), "*")
 }
 
-// transformerName is a transformer's function, by its package's short name.
+// transformerName is what a transformer does, when one of the SDK's factories
+// made it (label.go), and its function's name otherwise.
 func transformerName(fn Transformer) string {
 	if fn == nil {
 		return ""
+	}
+	if l, ok := labelOf(fn); ok {
+		return l
 	}
 	return funcName(reflect.ValueOf(fn).Pointer())
 }

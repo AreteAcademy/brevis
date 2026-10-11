@@ -77,7 +77,7 @@ func TestThePipelineDescribesItselfBeforeItsFirstPhase(t *testing.T) {
 	if f["source.driver"] != "sdk.countedSource" || f["target.driver"] != "sdk.keepingTarget" {
 		t.Fatalf("drivers = %v", f)
 	}
-	if !reflect.DeepEqual(f["transform.1.map"], []any{"sdk.SkipWithout"}) {
+	if !reflect.DeepEqual(f["transform.1.map"], []any{"skip_without(id)"}) {
 		t.Fatalf("transform.1.map = %#v", f["transform.1.map"])
 	}
 	// Source, then the stages, then the target: the order it runs in.
@@ -86,12 +86,11 @@ func TestThePipelineDescribesItselfBeforeItsFirstPhase(t *testing.T) {
 	}
 }
 
-// A transformer is named by its function. One made by a factory is named by
-// the factory; one written inline in place has no name worth showing.
+// A transformer is named by its function. One written inline in place has no
+// name worth showing.
 func TestATransformerIsNamedByItsFunction(t *testing.T) {
 	cases := map[string]Transformer{
 		"sdk.upperName":      upperName,
-		"sdk.SkipWithout":    SkipWithout("id"),
 		"anonymous function": inlineTransformer,
 	}
 	for want, fn := range cases {
@@ -185,4 +184,38 @@ func TestByHandThePipelineDoesNotDescribeItself(t *testing.T) {
 		t.Fatal("described outside the engine")
 	}
 	_ = context.Background
+}
+
+// The SDK's own transformers say what they do, with what -- each instance its
+// own: four Compute calls are four different columns, and read that way.
+func TestTheSDKsTransformersSayWhatTheyDo(t *testing.T) {
+	cases := map[string]Transformer{
+		"compute(provider)":        Compute("provider", func(map[string]any) (any, error) { return "x", nil }),
+		"compute(entity)":          Compute("entity", func(map[string]any) (any, error) { return "y", nil }),
+		"compute_text(source_key)": ComputeText("source_key", Key("id")),
+		"ingestion_id":             IngestionID(),
+		"ingestion_id(a, b)":       IngestionID("a", "b"),
+		"ingestion_loaded_at":      IngestionLoadedAt(),
+		"skip_without(id, ts)":     SkipWithout("id", "ts"),
+		"accept(id)":               Accept("id"),
+		"without(secret_field)":    Without("secret_field"),
+		"rename(a → b, c → d)":     Rename(map[string]string{"c": "d", "a": "b"}),
+	}
+	for want, fn := range cases {
+		if got := transformerName(fn); got != want {
+			t.Errorf("transformerName = %q, want %q", got, want)
+		}
+	}
+}
+
+// Labelling is bounded: past the ceiling a transformer is named by its
+// function, the way one the SDK did not make always is.
+func TestLabelsStopAtTheirCeiling(t *testing.T) {
+	saved := labelCeiling
+	t.Cleanup(func() { labelCeiling = saved })
+	labelCeiling = transformerLabels()
+	fn := Compute("late", func(map[string]any) (any, error) { return nil, nil })
+	if got := transformerName(fn); got != "sdk.Compute" {
+		t.Fatalf("past the ceiling = %q, want the function's name", got)
+	}
 }
