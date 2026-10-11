@@ -1,13 +1,18 @@
 package execution_test
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	app "github.com/AreteAcademy/brevis/internal/application/execution"
+	dom "github.com/AreteAcademy/brevis/internal/domain/run"
 	"github.com/AreteAcademy/brevis/internal/execution"
 )
 
@@ -124,6 +129,43 @@ func TestLandingsWithoutADescriptionHaveNoConfiguration(t *testing.T) {
 	for _, ls := range spy.landed() {
 		if ls[0].Config != nil {
 			t.Fatalf("config = %+v, want none", ls[0].Config)
+		}
+	}
+}
+
+// landingsFail is a persister whose landings never reach the database.
+type landingsFail struct{ *spyPersister }
+
+func (landingsFail) RecordLandings(context.Context, uuid.UUID, dom.StepKey, string, []app.Landing) error {
+	return errors.New(`ERROR: null character not permitted (SQLSTATE 54000)`)
+}
+
+// A landing that could not be recorded is a destination missing from /data,
+// and the step that wrote it still succeeded -- nothing else would say so. A
+// bug in this very path once made every landing carrying a configuration
+// fail, and the runner discarded the error. It now says it, once, naming
+// the run, the step, how many destinations were lost, and why.
+func TestALandingThatCouldNotBeRecordedIsLogged(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	r := app.Runner{RunID: uuid.New(), Persist: landingsFail{&spyPersister{}}, Report: &spyReporter{}, Processo: sdkSpeaker{lines: []string{
+		`@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/orders","rows":10}`,
+		`@brevis:{"type":"landed","target":"bigquery://acme-prod/silver/items","rows":4}`,
+	}}}
+	if err := r.Run(context.Background(), oneStepWorkflow()); err != nil {
+		t.Fatalf("the run failed because a landing was not recorded: %v", err)
+	}
+
+	out := logs.String()
+	if n := strings.Count(out, "could not record"); n != 1 {
+		t.Fatalf("%d warnings, want one:\n%s", n, out)
+	}
+	for _, want := range []string{"level=WARN", r.RunID.String(), "workflow=clima", "step=collectOutput", "targets=2", "SQLSTATE 54000"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the warning lacks %q:\n%s", want, out)
 		}
 	}
 }
