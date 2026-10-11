@@ -97,6 +97,17 @@ type Aggregator struct {
 	// fields are the record fields this aggregator reads, so that a
 	// misspelled name is refused by name instead of producing a zero total.
 	fields []string
+
+	// kind is which constructor made it -- "sum", "max_by" -- for the
+	// pipeline's description of itself. See describe.go.
+	kind string
+}
+
+// named records which aggregator this is. Every constructor in this file
+// calls it last, so a wrapper (withFields, refuse) never loses the name.
+func (a Aggregator) named(kind string) Aggregator {
+	a.kind = kind
+	return a
 }
 
 // Custom wraps an Accumulator.
@@ -104,7 +115,7 @@ type Aggregator struct {
 // Memory is YOURS from here on: a state that grows with the rows undoes
 // Reduce's guarantee, and the SDK has no way to check that for you.
 func Custom(a Accumulator) Aggregator {
-	return Aggregator{acc: a}
+	return Aggregator{acc: a}.named("custom")
 }
 
 // --- The aggregators ------------------------------------------------------
@@ -115,7 +126,7 @@ func Count() Aggregator {
 		Init:  func() any { return new(int64) },
 		Add:   func(acc any, _ map[string]any) error { *acc.(*int64)++; return nil },
 		Value: func(acc any) (any, error) { return *acc.(*int64), nil },
-	})
+	}).named("count")
 }
 
 // CountOf counts the rows where the field is not null.
@@ -130,7 +141,7 @@ func CountOf(field string) Aggregator {
 		},
 		Value: func(acc any) (any, error) { return *acc.(*int64), nil },
 	})
-	return withFields(a, field)
+	return withFields(a, field).named("count_of")
 }
 
 // Sum adds the field up. Null and missing are ignored, as in SQL.
@@ -158,7 +169,7 @@ func Sum(field string) Aggregator {
 			return e.total, nil
 		},
 	})
-	return withFields(a, field)
+	return withFields(a, field).named("sum")
 }
 
 // Mean is the arithmetic mean of the field, ignoring nulls.
@@ -186,14 +197,14 @@ func Mean(field string) Aggregator {
 			return e.sum / float64(e.n), nil
 		},
 	})
-	return withFields(a, field)
+	return withFields(a, field).named("mean")
 }
 
 // Min is the smallest value of the field. Max is the largest.
-func Min(field string) Aggregator { return extremo(field, -1) }
+func Min(field string) Aggregator { return extremo(field, -1).named("min") }
 
 // Max is the largest value of the field.
-func Max(field string) Aggregator { return extremo(field, +1) }
+func Max(field string) Aggregator { return extremo(field, +1).named("max") }
 
 func extremo(field string, sinal int) Aggregator {
 	type state struct {
@@ -231,10 +242,10 @@ func extremo(field string, sinal int) Aggregator {
 // "First" means in the order the source delivered: for a source with no
 // defined order it is not deterministic, and that is the source's doing, not
 // this package's.
-func First(field string) Aggregator { return endOf(field, true) }
+func First(field string) Aggregator { return endOf(field, true).named("first") }
 
 // Last is the last non-null value seen in the group.
-func Last(field string) Aggregator { return endOf(field, false) }
+func Last(field string) Aggregator { return endOf(field, false).named("last") }
 
 func endOf(field string, first bool) Aggregator {
 	type state struct {
@@ -268,10 +279,10 @@ func endOf(field string, first bool) Aggregator {
 // It is the one that is usually missing, and its absence is what makes people
 // keep the rows so they can pick later -- which is exactly what the
 // constant-memory rule forbids.
-func MinBy(value, key string) Aggregator { return porExtremo(value, key, -1) }
+func MinBy(value, key string) Aggregator { return porExtremo(value, key, -1).named("min_by") }
 
 // MaxBy returns the `value` of the row where `key` is largest.
-func MaxBy(value, key string) Aggregator { return porExtremo(value, key, +1) }
+func MaxBy(value, key string) Aggregator { return porExtremo(value, key, +1).named("max_by") }
 
 func porExtremo(valueField, keyField string, sinal int) Aggregator {
 	type state struct {
@@ -310,10 +321,10 @@ func porExtremo(valueField, keyField string, sinal int) Aggregator {
 // By Welford, in one pass: the naive formula (sum of squares minus the square
 // of the sum) loses every significant digit when the values are large and
 // close together, and the result comes out negative.
-func Variance(field string) Aggregator { return welford(field, false) }
+func Variance(field string) Aggregator { return welford(field, false).named("variance") }
 
 // StdDev is the sample standard deviation of the field.
-func StdDev(field string) Aggregator { return welford(field, true) }
+func StdDev(field string) Aggregator { return welford(field, true).named("std_dev") }
 
 func welford(field string, raiz bool) Aggregator {
 	type state struct {
@@ -351,10 +362,10 @@ func welford(field string, raiz bool) Aggregator {
 }
 
 // Any is true when some row has the field true. All, when every row does.
-func Any(field string) Aggregator { return boolAgg(field, false) }
+func Any(field string) Aggregator { return boolAgg(field, false).named("any") }
 
 // All is true when every row has the field true.
-func All(field string) Aggregator { return boolAgg(field, true) }
+func All(field string) Aggregator { return boolAgg(field, true).named("all") }
 
 func boolAgg(field string, all bool) Aggregator {
 	type state struct {
@@ -422,7 +433,7 @@ func Range(field string) Aggregator {
 			return e.max - e.min, nil
 		},
 	})
-	return withFields(a, field)
+	return withFields(a, field).named("range")
 }
 
 func withFields(a Aggregator, fields ...string) Aggregator {
@@ -770,23 +781,29 @@ func quoted(s []string) []string {
 //
 // Compute it at the destination, with SQL, or use Custom and take on the
 // memory cost explicitly.
-func Median(field string) Aggregator { return refuse("Median", "every row in the group") }
+func Median(field string) Aggregator {
+	return refuse("Median", "every row in the group").named("median")
+}
 
 // Quantile does not exist, for the same reason as Median.
 func Quantile(field string, q float64) Aggregator {
-	return refuse("Quantile", "every row in the group")
+	return refuse("Quantile", "every row in the group").named("quantile")
 }
 
 // Distinct does not exist: an exact count needs a set per group, which grows
 // with the cardinality of the input.
-func Distinct(field string) Aggregator { return refuse("Distinct", "a set per group") }
+func Distinct(field string) Aggregator {
+	return refuse("Distinct", "a set per group").named("distinct")
+}
 
 // Mode does not exist: it needs a frequency map per group.
-func Mode(field string) Aggregator { return refuse("Mode", "a frequency map per group") }
+func Mode(field string) Aggregator { return refuse("Mode", "a frequency map per group").named("mode") }
 
 // Collect does not exist: gathering the group's rows is literally what the
 // rule forbids.
-func Collect(field string) Aggregator { return refuse("Collect", "every row in the group") }
+func Collect(field string) Aggregator {
+	return refuse("Collect", "every row in the group").named("collect")
+}
 
 func refuse(name, cost string) Aggregator {
 	return Aggregator{refusal: fmt.Errorf(

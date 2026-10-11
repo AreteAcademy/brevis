@@ -35,6 +35,14 @@ type (
 	// catalog and works exactly as before.
 	Locator = core.Locator
 
+	// Configured is a Reader or Writer that says how it is set up, so /data
+	// can show it. Every driver in sdk/from and sdk/to implements it; a
+	// driver of your own may, and without it the console shows its type.
+	Configured = core.Configured
+
+	// Setting is one entry of Configured.
+	Setting = core.Setting
+
 	// Store is an object-store backend: store/s3, store/gcs.
 	//
 	// It is passed to to.Files, from.Files and redshift.Table rather than
