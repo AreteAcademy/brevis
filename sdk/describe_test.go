@@ -141,12 +141,12 @@ func TestTheTargetCarriesItsDeclarationAndTheWritersSettings(t *testing.T) {
 	}
 	f, _ := fieldsOf(t, p.describe())
 	want := map[string]any{
-		"target.driver":       "sdk.configuredTarget",
-		"target.table":        "landing.orders",
-		"target.create_table": true,
-		"target.columns":      []any{"id", "total"},
-		"target.partition_by": "loaded_at",
-		"target.dedup":        "merge",
+		"target.driver":                "sdk.configuredTarget",
+		"target.table":                 "landing.orders",
+		"target.create_table":          true,
+		"target.declared.columns":      []any{"id", "total"},
+		"target.declared.partition_by": "loaded_at",
+		"target.dedup":                 "merge",
 	}
 	for path, v := range want {
 		if !reflect.DeepEqual(f[path], v) {
