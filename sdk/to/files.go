@@ -375,3 +375,17 @@ func cell(v any) string {
 		return strings.Trim(string(data), `"`)
 	}
 }
+
+var _ core.Configured = Files{}
+
+// Configuration satisfies sdk.Configured: where the files go, in what format,
+// and through which store.
+func (f Files) Configuration() []core.Setting {
+	return core.Keep(
+		core.Setting{Key: "path", Value: f.Path},
+		core.Setting{Key: "format", Value: string(f.Format)},
+		core.Setting{Key: "partition_by", Value: f.PartitionBy},
+		core.Setting{Key: "compress", Value: f.Compress},
+		core.Setting{Key: "store", Value: core.TypeName(f.Store)},
+	)
+}

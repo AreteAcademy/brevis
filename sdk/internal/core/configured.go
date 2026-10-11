@@ -1,5 +1,12 @@
 package core
 
+import (
+	"fmt"
+	"reflect"
+	"strings"
+	"time"
+)
+
 // Configured is a driver that says how it is set up, for the console's /data:
 // the settings that decide what it reads or writes, in the order somebody
 // would read them.
@@ -22,4 +29,67 @@ type Configured interface {
 type Setting struct {
 	Key   string
 	Value any
+}
+
+// Keep is the settings that say something: a zero value -- an empty string, a
+// false, a nil -- is a setting nobody chose, and listing it would bury the
+// ones somebody did.
+func Keep(settings ...Setting) []Setting {
+	out := settings[:0]
+	for _, s := range settings {
+		if s.Value == nil {
+			continue
+		}
+		if v := reflect.ValueOf(s.Value); v.IsZero() || (v.Kind() == reflect.Slice && v.Len() == 0) {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// DurationText is a duration as somebody writes one: `1m`, `2160h`, `500ms`
+// -- Go's spelling without the trailing zeroes.
+func DurationText(d time.Duration) string {
+	if d == 0 {
+		return ""
+	}
+	s := d.String()
+	if strings.HasSuffix(s, "m0s") {
+		s = strings.TrimSuffix(s, "0s")
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
+}
+
+// EvolutionText is an Evolution as a setting: "" for EvolveNone, which is the
+// zero value and what every load did before evolution existed.
+func EvolutionText(e Evolution) string {
+	switch e {
+	case EvolveAdditive:
+		return "additive"
+	case EvolveAdditiveFromPayload:
+		return "additive_from_payload"
+	}
+	return ""
+}
+
+// TypeName is a value's type as its package spells it -- `s3.Store` -- for a
+// setting that is an implementation rather than a value. "" for nil.
+func TypeName(v any) string {
+	if v == nil {
+		return ""
+	}
+	return strings.TrimPrefix(fmt.Sprintf("%T", v), "*")
+}
+
+// SetByFunction is what a function-valued setting says: that it is set, since
+// what it does cannot be shown.
+func SetByFunction(isSet bool) string {
+	if isSet {
+		return "set by a function"
+	}
+	return ""
 }
