@@ -159,7 +159,7 @@ func TestDescribeOfAConfigWithNoFile(t *testing.T) {
 // console. The convention that keeps a secret out of this file is the `_from`
 // suffix -- the variable's NAME -- and this holds every field to it.
 func TestNoStreamFieldLooksLikeASecret(t *testing.T) {
-	secret := regexp.MustCompile(`(^|_)(dsn|password|passwd|secret|token|credentials?|api_?key|access_key|private_key)($|_)`)
+	secret := regexp.MustCompile(`(^|_)(dsn|passwords?|passwd|pwd|secrets?|tokens?|credentials?|api_?key|access_key|private_key|auth_token|authorization|bearer)($|_)`)
 	// Sink holds a *Sink (`into`), so a type is walked once and not forever.
 	seen := map[reflect.Type]bool{}
 	var walk func(t reflect.Type, prefix string)

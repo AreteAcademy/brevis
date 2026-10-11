@@ -71,3 +71,53 @@ func TestOrdinaryProseIsAccepted(t *testing.T) {
 		}
 	}
 }
+
+// A setting NAMED like a credential with a value is refused however the name
+// is spelled, and whatever the value's type.
+func TestASettingNamedLikeACredentialIsRefusedInAnySpelling(t *testing.T) {
+	cases := []struct {
+		path  string
+		value any
+	}{
+		{"sink.password", "hunter2"},
+		{"sink.Password", "hunter2"},
+		{"sink.PASSWORD", "hunter2"},
+		{"sink.DSN", "postgres://h/db"},
+		{"sink.apiKey", "abc"},
+		{"sink.x-api-key", "abc"},
+		{"sink.db_password", "hunter2"},
+		{"sink.passwords", "hunter2"},
+		{"sink.authorization", "Bearer abc"},
+		{"sink.password", float64(123456)},
+		{"sink.api_key", []any{"abc"}},
+		{"source.headers.Authorization", "x"},
+	}
+	for _, c := range cases {
+		if FindSecret(c.path, c.value) == nil {
+			t.Errorf("accepted %s = %#v", c.path, c.value)
+		}
+	}
+}
+
+// And a name that only CONTAINS one of those words names something else.
+func TestASettingThatOnlyMentionsACredentialIsAccepted(t *testing.T) {
+	for path, value := range map[string]any{
+		"sink.dsn_from":         "BREVIS_ORDERS_DSN",
+		"listen.auth.keys_from": "BREVIS_INGEST_KEYS",
+		"auth.token_ttl":        "30s",
+		"sink.secret_name":      "projects/x/secrets/y",
+		"sink.password_policy":  "strict",
+		"sink.credentials_file": "/etc/x.json",
+		"source.query_params":   []any{"api_key", "page"},
+		"source.headers":        []any{"Authorization", "X-Tenant"},
+		"identity.source_key":   "table_name",
+		"sink.ordering_key":     "tenant",
+		"sink.topic":            "orders",
+		"target.dedup":          "merge",
+		"source.auth":           "login",
+	} {
+		if err := FindSecret(path, value); err != nil {
+			t.Errorf("refused %s = %#v: %v", path, value, err)
+		}
+	}
+}
