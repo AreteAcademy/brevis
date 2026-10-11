@@ -76,7 +76,50 @@ always counts every destination.
 sentence on why, in its schedule's timezone; the last 30 loads as bars, each
 opening its run; the slots missed since the last load drawn dashed, at most
 six. A load that did not say how many rows it wrote is drawn hollow — never as
-zero.
+zero. Below the writers, how each one is configured — see the next section.
+
+## How each writer is configured
+
+The destination's page has a **Configuration** section per writer — a gateway
+stream, or a workflow step that runs the Go SDK — in three layers:
+
+1. **One sentence**, for somebody who does not read YAML: *JSON events posted
+   to /v1/tables become app_\* or svc_\* tables in BigQuery acme-prod.landing,
+   merged by ingestion id so a redelivery is ignored, in batches every 1
+   minute or 2,000 events.* Written from the settings by templates, never
+   generated: a driver it has no words for is named, not guessed at.
+2. **Every setting**, grouped by its first segment — Stream, Identity, Buffer,
+   Sink, Retry, Dead letter for a gateway; Source, Transform, Target for a
+   pipeline. A default the gateway filled in is marked `default`; a comment
+   from the config file sits beside the setting it was written on, and a
+   long one folds to its first line.
+3. **Changes**, newest first: what each configuration changed from the one
+   before, setting by setting — `buffer.flush.every 1m → 2m`, `added: merge`.
+   A gateway's versions are its publishes; a step's are read off its landings,
+   one per change, each linked to the run that first wrote with it.
+
+Where it comes from:
+
+| writer | how it says | when |
+|---|---|---|
+| gateway | `gateway describe`, manifest version 2 ([`GATEWAY.md`](GATEWAY.md)) | at publish |
+| Go SDK step | the `pipeline` marker ([`LANDINGS.md`](LANDINGS.md#the-pipelines-description)) | every run, before its first phase |
+| Python, dbt, shell | does not | — the page says the step did not describe itself |
+
+A configuration is stored once, by a hash the engine computes, however many
+publishes or runs point at it. A comment reworded is not a new version — the
+comments are outside the hash and replace the old words.
+
+**No credential reaches it.** The writer keeps them out by construction — a
+gateway's file names variables (`dsn_from`), never values; each SDK driver
+lists by hand what may be shown, and a DSN gives its host, port and database
+and nothing else; an HTTP source shows the names of its query parameters and
+headers, never their values. The engine looks again, and refuses a whole
+description carrying a URL with a password, a key written as `key=value`, or
+a setting named like a credential that has a value: a description with a
+password blanked would hide the bug in the writer that sent it. What is shown
+is everything else — host names, project ids, paths, and a database source's
+SQL whole — to everybody with a console login.
 
 ## Legacy rows
 
