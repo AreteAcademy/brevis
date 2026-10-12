@@ -4,6 +4,7 @@ package postgres
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
@@ -15,6 +16,9 @@ type Dialect struct{}
 
 // Name is also what the reference extractor is given for this project.
 func (Dialect) Name() string { return "postgres" }
+
+// Placeholder is `$n`: Postgres binds by position. See dialect.Binder.
+func (Dialect) Placeholder(position int, _ string) string { return "$" + strconv.Itoa(position) }
 
 // identifier is a name this dialect will write UNQUOTED.
 //

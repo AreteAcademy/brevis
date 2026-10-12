@@ -15,8 +15,10 @@ package dialect
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/model"
 )
@@ -331,6 +333,58 @@ type Request struct {
 	// not reduce them -- `SELECT * FROM t LIMIT 10` over a petabyte reads
 	// the petabyte. A row ceiling bounds the screen and bounds nothing else.
 	MaxBytes int64
+
+	// Args are the values the query's placeholders stand for, in the order
+	// their placeholders were numbered. See Binder.
+	//
+	// THE ONLY WAY A CALLER'S VALUE REACHES THE WAREHOUSE, and the reason is
+	// the whole of `brevis-sql-api`'s safety: a value sent as an argument is
+	// data whatever it contains, and one spliced into Query is SQL. Empty for
+	// every statement somebody typed, which is every caller before the API.
+	Args []Arg
+}
+
+// Arg is one bound value: its NAME for a dialect that binds by name
+// (BigQuery's `@x`), its POSITION in Request.Args for one that binds by
+// number (Postgres's `$n`). Both are carried so neither dialect has to guess
+// the other's.
+//
+// Value is one of string, int64, bool or Date -- the four a parameter can be
+// typed as, and nothing a dialect has to learn to send beyond them.
+type Arg struct {
+	Name  string
+	Value any
+}
+
+// Date is a calendar day, with no time and no zone.
+//
+// NOT A time.Time, which is an INSTANT: sent as one, Postgres compares a
+// timestamptz in the session's zone and BigQuery refuses a TIMESTAMP against
+// a DATE column. A day somebody asked for in a query string is a day.
+type Date struct {
+	Year  int
+	Month time.Month
+	Day   int
+}
+
+func (d Date) String() string { return fmt.Sprintf("%04d-%02d-%02d", d.Year, int(d.Month), d.Day) }
+
+// Value makes a Date an argument database/sql-shaped drivers understand: pgx
+// sends the text, and Postgres reads it as the type the placeholder's
+// context says -- a DATE beside a DATE column.
+func (d Date) Value() (driver.Value, error) { return d.String(), nil }
+
+// Binder is implemented by a dialect that can say how a query names an
+// argument.
+//
+// ON THE DIALECT AND NOT THE CONNECTION: a placeholder is a fact about the
+// SQL, and whoever writes the SQL -- the API's renderer -- has a dialect
+// before it has a connection.
+type Binder interface {
+	// Placeholder is what stands for the argument at `position` (1-based in
+	// Request.Args) named `name`. A dialect uses whichever of the two it
+	// binds by and ignores the other.
+	Placeholder(position int, name string) string
 }
 
 // Estimator is implemented by a connection that can price a query WITHOUT
