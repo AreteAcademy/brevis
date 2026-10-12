@@ -65,6 +65,14 @@ func Run(t *testing.T, d dialect.Dialect, dsn string) {
 	t.Run("a result set comes back with its columns", h.resultSetIsRead)
 	t.Run("the limit cuts the answer", h.theLimitCuts)
 
+	// BINDING, which `brevis-sql-api` needs and nothing before it did: every
+	// value a caller sends reaches the warehouse as an argument and never as
+	// SQL text. In the suite because the two dialects bind in two completely
+	// different ways -- positional `$n` through pgx, NAMED `@x` through
+	// BigQuery's queryParameters -- and the only shape a caller can rely on
+	// is the one both pass.
+	t.Run("arguments are bound and never spliced", h.argumentsAreBound)
+
 	// LISTING, which a browser needs and nothing else does. In the suite for
 	// the suite's reason: two dialects answer this out of two completely
 	// different catalogs -- one region-qualified, one out of pg_class -- and
@@ -180,6 +188,55 @@ func (h *harness) resultSetIsRead(t *testing.T) {
 	}
 	if fmt.Sprint(got.Rows[2][1]) != "third" {
 		t.Errorf("the third row holds %#v", got.Rows[2][1])
+	}
+}
+
+// ARGUMENTS ARE BOUND: four types match, and three values shaped like SQL do
+// not.
+//
+// The matching half proves each type reaches the warehouse as the type the
+// column is -- a DATE sent as a STRING is an error on BigQuery and a silent
+// text comparison elsewhere. The other half is the reason binding exists: a
+// value that would CHANGE THE QUERY if it were spliced into it must come
+// back with no rows and no error. `s` is the column's own name, so spliced
+// unquoted it compares the column with itself and matches every row.
+func (h *harness) argumentsAreBound(t *testing.T) {
+	b, can := h.d.(dialect.Binder)
+	if !can {
+		t.Fatalf("%s cannot bind arguments", h.d.Name())
+	}
+	h.build(t, "bound", model.Table,
+		"SELECT 1 AS k, 'acme' AS s, 42 AS n, DATE '2026-10-05' AS d, true AS b "+
+			"UNION ALL SELECT 2, 'globex', 7, DATE '2026-10-06', false")
+
+	query := fmt.Sprintf("SELECT k FROM %s.bound WHERE s = %s AND n = %s AND d = %s AND b = %s",
+		h.schema, b.Placeholder(1, "s"), b.Placeholder(2, "n"),
+		b.Placeholder(3, "d"), b.Placeholder(4, "b"))
+	read := func(s string) dialect.Result {
+		t.Helper()
+		got, err := h.reader(t).Read(h.ctx, dialect.Request{
+			Query: query,
+			Limit: 10,
+			Args: []dialect.Arg{
+				{Name: "s", Value: s},
+				{Name: "n", Value: int64(42)},
+				{Name: "d", Value: dialect.Date{Year: 2026, Month: time.October, Day: 5}},
+				{Name: "b", Value: true},
+			},
+		})
+		if err != nil {
+			t.Fatalf("reading with s=%q: %v", s, err)
+		}
+		return got
+	}
+
+	if got := read("acme"); len(got.Rows) != 1 || fmt.Sprint(got.Rows[0][0]) != "1" {
+		t.Errorf("the matching arguments found %v, wanted the one row k=1", got.Rows)
+	}
+	for _, spliced := range []string{"x' OR '1'='1", `it's`, "s"} {
+		if got := read(spliced); len(got.Rows) != 0 {
+			t.Errorf("s=%q found %v: the value changed the query", spliced, got.Rows)
+		}
 	}
 }
 

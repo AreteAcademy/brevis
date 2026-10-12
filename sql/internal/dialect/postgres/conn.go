@@ -141,7 +141,13 @@ func (c *conn) Scalar(ctx context.Context, query string) (any, error) {
 // there is no bound here to set. Its limits are the row ceiling and the
 // clock.
 func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, error) {
-	rows, err := c.c.Query(ctx, req.Query)
+	// THE ARGUMENTS IN ORDER, which is what `$n` means. Their names are
+	// BigQuery's business; here position is the whole binding.
+	args := make([]any, len(req.Args))
+	for i, a := range req.Args {
+		args[i] = a.Value
+	}
+	rows, err := c.c.Query(ctx, req.Query, args...)
 	if err != nil {
 		return dialect.Result{}, err
 	}
