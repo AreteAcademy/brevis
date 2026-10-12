@@ -43,6 +43,10 @@ type TargetView struct {
 	// nobody can act on.
 	Tabs bool
 
+	// ReadBy are the published endpoints whose SQL reads this target: its
+	// consumers, beside its writers.
+	ReadBy []EndpointRef
+
 	// Tab is which one is open: "", "preview" or "query". A query parameter,
 	// so the link is shareable the way /data's filters already are.
 	Tab string

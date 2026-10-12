@@ -1,0 +1,152 @@
+package pages
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/AreteAcademy/brevis/web/components"
+	"github.com/AreteAcademy/brevis/web/layouts"
+)
+
+templ Endpoints(v EndpointsView) {
+	@layouts.Base(layouts.Page{Title: "Endpoints", Kicker: "Data", Active: "data"}) {
+		<p class="mb-4 max-w-3xl text-sm text-muted">
+			What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.
+		</p>
+		if len(v.Rows) == 0 {
+			@components.Empty("No endpoint published yet.",
+				"Run brevis-sql-api describe --out manifest.json, then brevis endpoints publish manifest.json. See docs/ENDPOINTS.md.")
+		} else {
+			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+				<table class="w-full text-sm">
+					<thead>
+						<tr class="border-b border-line bg-parchment-soft/60 text-left">
+							@th("Path", "pl-6")
+							@th("API", "")
+							@th("Parameters", "")
+							@th("Reads", "")
+							@th("Published", "pr-6")
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-line-soft">
+						for _, r := range v.Rows {
+							<tr class="align-top transition-colors hover:bg-gold-wash">
+								<td class="px-3 py-3 pl-6">
+									<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.8rem] text-ink hover:text-gold-strong">GET { r.Path }</a>
+									if !r.Keyed {
+										<span class="mt-1 block text-[0.7rem] text-muted">the same rows for every key</span>
+									}
+								</td>
+								<td class="px-3 py-3 text-xs text-ink">{ r.API }</td>
+								<td class="px-3 py-3 font-mono text-xs text-muted">{ strings.Join(r.Params, ", ") }</td>
+								<td class="px-3 py-3">
+									for _, t := range r.Reads {
+										<a href={ templ.SafeURL(TargetHref(t)) } class="block font-mono text-[0.75rem] break-all text-ink hover:text-gold-strong">{ t }</a>
+									}
+								</td>
+								<td class="px-3 py-3 pr-6 text-xs whitespace-nowrap text-muted">{ components.When(&r.PublishedAt) }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	}
+}
+
+templ Endpoint(v EndpointView) {
+	@layouts.Base(layouts.Page{Title: "Endpoint", Kicker: "Data", Active: "data"}) {
+		<a href="/data/endpoints" class="text-xs text-muted hover:text-gold-strong">&larr; Endpoints</a>
+		<div class="mt-2 mb-2 flex flex-wrap items-center gap-3">
+			<h2 class="font-mono text-base break-all text-ink">GET { v.Row.Path }</h2>
+			<span class="text-xs text-muted">{ v.Row.API } · published { components.When(&v.Row.PublishedAt) }</span>
+		</div>
+		<p class="mb-6 max-w-3xl text-sm text-muted">
+			if v.Row.Keyed {
+				Each request reads as each key's tenant; a caller cannot send one.
+			} else {
+				The same rows for every key: its file says the data is not per tenant.
+			}
+			if v.About != "" {
+				<span class="mt-2 block whitespace-pre-line text-ink">{ v.About }</span>
+			}
+		</p>
+		<section class="mb-8">
+			<h3 class="kicker mb-2">Parameters</h3>
+			if len(v.Params) == 0 {
+				<p class="text-sm text-muted">None.</p>
+			} else {
+				<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
+					<table class="w-full text-sm">
+						<thead>
+							<tr class="border-b border-line bg-parchment-soft/60 text-left">
+								@th("Name", "pl-6")
+								@th("Type", "")
+								@th("Accepts", "")
+								@th("Default", "pr-6")
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-line-soft">
+							for _, p := range v.Params {
+								<tr class="align-top">
+									<td class="px-3 py-3 pl-6 font-mono text-xs text-ink">
+										{ p.Name }
+										if p.Required {
+											<span class="ml-1 font-sans text-[0.7rem] text-muted">required</span>
+										}
+										if p.Note != "" {
+											<p class="mt-1 max-w-md font-sans whitespace-pre-line text-muted">{ p.Note }</p>
+										}
+									</td>
+									<td class="px-3 py-3 font-mono text-xs text-muted">{ p.Type }</td>
+									<td class="px-3 py-3 text-xs text-muted">{ p.Accepts }</td>
+									<td class="px-3 py-3 pr-6 font-mono text-xs text-ink">{ p.Default }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			}
+		</section>
+		<section class="mb-8 grid gap-6 md:grid-cols-2">
+			<div>
+				<h3 class="kicker mb-2">Limits</h3>
+				<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+					<dt class="text-muted">timeout</dt>
+					<dd class="font-mono text-xs text-ink">{ v.Limits.Timeout }</dd>
+					<dt class="text-muted">rows</dt>
+					<dd class="font-mono text-xs text-ink">{ fmt.Sprint(v.Limits.MaxRows) }</dd>
+					<dt class="text-muted">bytes billed</dt>
+					<dd class="font-mono text-xs text-ink">{ v.BytesBilled() }</dd>
+				</dl>
+			</div>
+			<div>
+				<h3 class="kicker mb-2">Reads</h3>
+				for _, t := range v.Row.Reads {
+					<a href={ templ.SafeURL(TargetHref(t)) } class="block font-mono text-[0.8rem] break-all text-ink hover:text-gold-strong">{ t }</a>
+				}
+			</div>
+		</section>
+		<section>
+			<h3 class="kicker mb-2">Call it</h3>
+			<pre class="overflow-x-auto rounded-card border border-line bg-parchment-soft/60 px-4 py-3 font-mono text-xs text-ink">{ v.Curl() }</pre>
+		</section>
+	}
+}
+
+templ readBy(refs []EndpointRef) {
+	if len(refs) > 0 {
+		<section class="mb-8">
+			<h3 class="kicker mb-2">Read by</h3>
+			<ul class="space-y-1 text-sm">
+				for _, e := range refs {
+					<li>
+						<span class="mr-1 rounded-card border border-line px-1 py-px text-[0.65rem] text-muted">endpoint</span>
+						<a href={ templ.SafeURL(e.Href) } class="font-mono text-xs text-ink hover:text-gold-strong">GET { e.Path }</a>
+						<span class="text-xs text-muted">· { e.API }</span>
+					</li>
+				}
+			</ul>
+		</section>
+	}
+}
