@@ -116,7 +116,7 @@ type UI struct {
 	// endpoints is what brevis-sql-api files were published with. Nil turns
 	// the pages off.
 	endpoints EndpointsReader
-	log     *slog.Logger
+	log       *slog.Logger
 
 	// preview asks `brevis-sql serve` for a destination's first rows. Nil
 	// when no service is configured, and then the tab does not exist.
