@@ -60,7 +60,7 @@ func raiz() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(), cmdGateway(),
+	c.AddCommand(cmdServe(), cmdMigrate(), cmdValidate(), cmdBrand(), cmdHash(), cmdRun(), cmdPublish(), cmdGateway(), cmdEndpoints(),
 		cmdScheduler(), cmdAlert(), cmdReport(), cmdBackfill(), cmdPrune(), cmdVersion())
 	return c
 }
