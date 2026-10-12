@@ -104,7 +104,7 @@ func BuildEndpoint(e postgres.PublishedEndpoint) EndpointView {
 		case p.Type == "bool":
 			pv.Accepts = "true or false"
 		case p.Type == "period":
-			pv.Accepts = "today, yesterday, last_7_days, last_30_days, last_week, last_month, month_to_date"
+			pv.Accepts = strings.Join(periods, ", ")
 		}
 		v.Params = append(v.Params, pv)
 	}
@@ -162,6 +162,10 @@ type FormField struct {
 }
 
 // periods are what a period parameter accepts, in brevis-sql-api's order.
+//
+// A LIST THIS CANNOT IMPORT, SO IT SAYS WHERE IT CAME FROM:
+// `sql/internal/api/period.go`, `periods` -- the engine imports nothing of
+// the sql module. If that one moves, this one moves.
 var periods = []string{"today", "yesterday", "last_7_days", "last_30_days", "last_week", "last_month", "month_to_date"}
 
 // TryForm is the endpoint's parameters as a form, holding what was last sent
