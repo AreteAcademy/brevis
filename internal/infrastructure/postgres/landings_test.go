@@ -287,3 +287,48 @@ func TestParallelInstancesRecordAChangeOnce(t *testing.T) {
 		}
 	}
 }
+
+// A mapped step whose instances are configured apart -- one source file per
+// partition, landing one table -- has nothing new to record on its next run.
+// The history used to compare each instance with the step's LAST line, which
+// was another instance's, and wrote a, b, c again every run.
+func TestInstancesConfiguredApartRecordNothingOnAnUnchangedRun(t *testing.T) {
+	pool := landingsDB(t)
+	ctx := context.Background()
+	if _, err := pool.Exec(ctx, `TRUNCATE writer_configs, step_config_history CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	repo := postgres.NewRunRepo(pool)
+	const target = "files://landing/"
+	land := func(runID uuid.UUID, configs ...string) {
+		t.Helper()
+		for i, h := range configs {
+			cfg := &app.WriterConfig{Hash: "sha256:" + h, Body: []byte(`[{"path":"source.path","value":"` + h + `"}]`)}
+			if err := repo.RecordLandings(ctx, runID, dom.StepKey{Node: "load", MapIndex: i}, "daily_sales", []app.Landing{
+				{Target: target, Rows: n(1), At: time.Now(), Config: cfg},
+			}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	lines := func() int {
+		t.Helper()
+		var c int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM step_config_history WHERE target = $1`, target).Scan(&c); err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+
+	land(aged(t, pool, "daily_sales", 3*time.Hour, dom.StatusSuccess), "north", "south", "east")
+	first := lines()
+	land(aged(t, pool, "daily_sales", 2*time.Hour, dom.StatusSuccess), "north", "south", "east")
+	if got := lines(); got != first {
+		t.Fatalf("an unchanged run took the history from %d lines to %d", first, got)
+	}
+	// One instance really changing is one line.
+	land(aged(t, pool, "daily_sales", time.Hour, dom.StatusSuccess), "north", "west", "east")
+	if got := lines(); got != first+1 {
+		t.Fatalf("one instance changing took the history from %d lines to %d, want %d", first, got, first+1)
+	}
+}

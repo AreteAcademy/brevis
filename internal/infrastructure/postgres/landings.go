@@ -78,8 +78,15 @@ func (r *RunRepo) RecordLandings(ctx context.Context, runID uuid.UUID, step dom.
 		return err
 	}
 
-	// The step's configuration history: a line only where the hash differs
-	// from the step's last one for that target (see migration 00020).
+	// The step's configuration history: a line only where THIS INSTANCE's
+	// configuration changed since its own previous landing, and the change
+	// is not the step's last line already (see migration 00020).
+	//
+	// Both halves. Against the step's last line alone, a mapped step whose
+	// instances are configured apart -- one source file per partition --
+	// wrote a, b, c again on every run, each instance differing from the one
+	// before it. Against the instance alone, eight instances moving to one
+	// new configuration would be eight lines for one change.
 	if len(configs) > 0 {
 		// Check-then-insert, so it is serialised per writer and target:
 		// mapped instances land one table in parallel, and under READ
@@ -105,11 +112,16 @@ func (r *RunRepo) RecordLandings(ctx context.Context, runID uuid.UUID, step dom.
 			FROM unnest($4::text[], $5::timestamptz[], $6::text[]) AS u(target, loaded_at, config_hash)
 			WHERE u.config_hash IS NOT NULL
 			  AND u.config_hash IS DISTINCT FROM (
+				SELECT l.config_hash FROM landings l
+				WHERE l.workflow_slug = $1 AND l.node_id = $2 AND l.target = u.target
+				  AND l.map_index = $7 AND l.run_id <> $3
+				ORDER BY l.loaded_at DESC LIMIT 1)
+			  AND u.config_hash IS DISTINCT FROM (
 				SELECT h.config_hash FROM step_config_history h
 				WHERE h.target = u.target AND h.workflow_slug = $1 AND h.node_id = $2
 				ORDER BY h.first_at DESC LIMIT 1)
 			ON CONFLICT (target, workflow_slug, node_id, first_at) DO NOTHING`,
-			workflow, step.Node, runID, targets, at, hashes); err != nil {
+			workflow, step.Node, runID, targets, at, hashes, step.MapIndex); err != nil {
 			return err
 		}
 	}
