@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/api/render"
@@ -20,6 +21,7 @@ type Server struct {
 	mux    *http.ServeMux
 	keys   *keyring
 	slots  slots
+	met    *metrics
 }
 
 // New builds the handler, or refuses a configuration it cannot serve.
@@ -43,7 +45,7 @@ func New(cfg *Config) (*Server, error) {
 			return nil, err
 		}
 	}
-	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys}
+	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys, met: newMetrics()}
 	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
@@ -53,6 +55,8 @@ func New(cfg *Config) (*Server, error) {
 	}
 	s.mux.Handle("/", guard(keys, func(w http.ResponseWriter, r *http.Request, tenant string) {
 		endpoints.ServeHTTP(w, r.WithContext(withTenant(r.Context(), tenant)))
+	}, func(started time.Time) {
+		s.finish(&record{Endpoint: noEndpoint, Status: http.StatusUnauthorized}, started, 0)
 	}))
 	return s, nil
 }
@@ -98,7 +102,17 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 	if maxBytes == 0 {
 		maxBytes = s.cfg.Limits.MaxBytesBilled
 	}
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// ONE LINE AND ONE COUNT PER REQUEST, whatever it ended as: the
+		// status is read off the writer, so a refusal added next year is
+		// counted without anybody remembering to.
+		started, line, warehouse := time.Now(), &record{Endpoint: e.Name}, time.Duration(0)
+		w := &statusWriter{ResponseWriter: rw}
+		defer func() {
+			line.Status = w.status
+			s.finish(line, started, warehouse)
+		}()
+
 		// READ ONLY, and the method says so: a body is never read, so a POST
 		// is not a different way to ask but a request this does not take.
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -111,6 +125,8 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			refuse(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		line.Tenant = tenant
+		line.Params = e.sent(r)
 		vals, err := e.values(r)
 		if err != nil {
 			refuse(w, http.StatusBadRequest, err.Error())
@@ -122,6 +138,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			refuse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		line.ArgsHash = argsHash(query, args)
 
 		release, free := s.slots.take(tenant)
 		if !free {
@@ -134,7 +151,9 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 
 		ctx, cancel := context.WithTimeout(r.Context(), timeout)
 		defer cancel()
+		asked := time.Now()
 		res, status, why := s.read(ctx, query, args, ceiling, maxBytes)
+		warehouse = time.Since(asked)
 		if status != 0 {
 			if ctx.Err() == context.DeadlineExceeded {
 				status, why = http.StatusGatewayTimeout,
@@ -147,6 +166,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		if len(res.Rows) > ceiling {
 			res.Rows, truncated = res.Rows[:ceiling], true
 		}
+		line.Rows, line.Bytes = len(res.Rows), res.Scanned
 		body, err := encode(e.Name, res, truncated)
 		if err != nil {
 			refuse(w, http.StatusInternalServerError, "the answer could not be written as JSON")
@@ -223,6 +243,26 @@ func (s *Server) read(ctx context.Context, query string, args []dialect.Arg, cei
 	}
 	return res, 0, ""
 }
+
+// sent is the declared parameters a request named, sorted -- the audit
+// line's `params`. Undeclared ones are left out: the request is refused for
+// them, and their names are the caller's to choose.
+func (e *Endpoint) sent(r *http.Request) []string {
+	q, _ := url.ParseQuery(r.URL.RawQuery)
+	var out []string
+	for name := range q {
+		if _, declared := e.Params[name]; declared {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Metrics is the Prometheus exposition, for its own port: never the API's,
+// which is public by design, and a /metrics on it would publish every
+// endpoint's traffic.
+func (s *Server) Metrics() http.Handler { return s.met.handler() }
 
 // values turns a query string into what the template is rendered with.
 //
