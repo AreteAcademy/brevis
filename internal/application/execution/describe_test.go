@@ -70,3 +70,17 @@ func TestADescriptionWithNoFieldsIsRefused(t *testing.T) {
 		t.Fatalf("config = %+v, refused = %q", c.Config(), c.ConfigRefused)
 	}
 }
+
+// A setting's NAME is checked as its value is -- an SDK user's own
+// Configuration picks its keys -- and the refusal, which the page shows,
+// does not repeat what it refused.
+func TestACredentialInASettingsNameIsRefusedWithoutRepeatingIt(t *testing.T) {
+	var c stageCollector
+	c.line(strings.Replace(describedLine, `"source.host"`, `"postgres://loader:hunter2@db/shop"`, 1))
+	if c.Config() != nil {
+		t.Fatal("a description with a password in a name was kept")
+	}
+	if c.ConfigRefused == "" || strings.Contains(c.ConfigRefused, "hunter2") {
+		t.Fatalf("refused = %q, want a reason that does not repeat the credential", c.ConfigRefused)
+	}
+}
