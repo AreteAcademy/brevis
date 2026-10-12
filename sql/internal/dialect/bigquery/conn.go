@@ -195,6 +195,14 @@ func (c *conn) Read(ctx context.Context, req dialect.Request) (dialect.Result, e
 	if req.MaxBytes > 0 {
 		extra["maximumBytesBilled"] = strconv.FormatInt(req.MaxBytes, 10)
 	}
+	if len(req.Args) > 0 {
+		params, err := queryParameters(req.Args)
+		if err != nil {
+			return dialect.Result{}, err
+		}
+		extra["parameterMode"] = "NAMED"
+		extra["queryParameters"] = params
+	}
 	res, err := c.runWith(ctx, req.Query, extra)
 	if err != nil {
 		return dialect.Result{}, err
@@ -581,4 +589,38 @@ func truncateTo(s string, max int) string {
 		return s
 	}
 	return s[:max] + "…"
+}
+
+// queryParameters is Request.Args as the REST API takes them: NAMED, each
+// with its type, each value a string -- int64 and bool included, because the
+// API carries every scalar that way.
+//
+// THE TYPE IS SENT, NEVER LEFT TO BIGQUERY. An untyped parameter is a STRING,
+// and a STRING beside a DATE column is an error at best. Four Go types map to
+// four BigQuery types, and anything else is refused here rather than sent as
+// its fmt.Sprint: a float bound as text is a value nobody chose.
+func queryParameters(args []dialect.Arg) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(args))
+	for _, a := range args {
+		var typ, val string
+		switch v := a.Value.(type) {
+		case string:
+			typ, val = "STRING", v
+		case int64:
+			typ, val = "INT64", strconv.FormatInt(v, 10)
+		case bool:
+			typ, val = "BOOL", strconv.FormatBool(v)
+		case dialect.Date:
+			typ, val = "DATE", v.String()
+		default:
+			return nil, fmt.Errorf("argument %q is a %T, and BigQuery is sent only "+
+				"string, int64, bool or dialect.Date", a.Name, a.Value)
+		}
+		out = append(out, map[string]any{
+			"name":           a.Name,
+			"parameterType":  map[string]any{"type": typ},
+			"parameterValue": map[string]any{"value": val},
+		})
+	}
+	return out, nil
 }

@@ -17,6 +17,9 @@ type Dialect struct{}
 // string `refs` switches on.
 func (Dialect) Name() string { return "bigquery" }
 
+// Placeholder is `@name`: BigQuery binds by name. See dialect.Binder.
+func (Dialect) Placeholder(_ int, name string) string { return "@" + name }
+
 // identifier is a dataset or table name BigQuery can hold.
 //
 // MIXED CASE IS ALLOWED HERE AND REFUSED ON POSTGRES, and both are right.
