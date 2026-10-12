@@ -224,18 +224,22 @@ func report() error {
 // Standalone it publishes `count_rows.rows`; expanded into daily_sales it
 // publishes `quality.count_rows.rows`, and the `unless_empty:` in the next step
 // moves with it. The same file works both ways without being written twice.
+//
+// It counts the NEWEST report, the one this run wrote. Summing every report
+// on disk made the number grow run after run, since `report` never
+// overwrites and `cleanup` never removes one.
 func qualityCount() error {
-	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
+	newest, _, err := newestReport()
 	if err != nil {
 		return err
 	}
-	var rows int
-	for _, f := range found {
-		n, err := lines(f)
-		if err != nil {
+	// No report is zero rows, not a failure: that zero is what the next
+	// step's `unless_empty:` reads to skip itself.
+	rows := 0
+	if newest != "" {
+		if rows, err = lines(newest); err != nil {
 			return err
 		}
-		rows += n
 	}
 	fmt.Printf("the report has %d row(s)\n", rows)
 	return bctx.Set("rows", rows)
@@ -247,36 +251,48 @@ func qualityCount() error {
 // running standalone or inlined: `unless_empty:` in the YAML resolves the
 // prefix, and this code names nothing.
 //
-// The NEWEST report is what it judges, not every one on disk. The data
-// directory keeps every report a run ever wrote, and `cleanup` never touches
-// them, so judging them all failed every run once the directory was a day
-// old -- on the one report nobody was asking about. The question is whether
-// the report is current, and the newest one answers it.
+// It judges the NEWEST report, the same one qualityCount counted. Judging
+// every report on disk failed every run once the directory was a day old --
+// on a report nobody was asking about.
 func qualityFreshness() error {
-	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
+	newest, at, err := newestReport()
 	if err != nil {
 		return err
 	}
-	if len(found) == 0 {
+	if newest == "" {
 		return fmt.Errorf("no report to check in %s", reports)
+	}
+	day := filepath.Base(filepath.Dir(newest))
+	if age := time.Since(at); age > 24*time.Hour {
+		return fmt.Errorf("the newest report, for %s, is %s old", day, age.Round(time.Hour))
+	}
+	fmt.Printf("the newest report, for %s, is fresh\n", day)
+	return nil
+}
+
+// newestReport is the report the last run of `report` wrote, and when; ""
+// when there is none.
+//
+// The data directory keeps every report a run ever wrote: `report` names each
+// file itself so a second load never overwrites the first, and `cleanup` only
+// tidies staging. So "the report" is the newest file, never all of them.
+func newestReport() (string, time.Time, error) {
+	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
+	if err != nil {
+		return "", time.Time{}, err
 	}
 	var newest string
 	var newestAt time.Time
 	for _, f := range found {
 		info, err := os.Stat(f)
 		if err != nil {
-			return err
+			return "", time.Time{}, err
 		}
 		if info.ModTime().After(newestAt) {
 			newest, newestAt = f, info.ModTime()
 		}
 	}
-	if age := time.Since(newestAt); age > 24*time.Hour {
-		return fmt.Errorf("the newest report, for %s, is %s old",
-			filepath.Base(filepath.Dir(newest)), age.Round(time.Hour))
-	}
-	fmt.Printf("the newest report, for %s, is fresh\n", filepath.Base(filepath.Dir(newest)))
-	return nil
+	return newest, newestAt, nil
 }
 
 // notify runs precisely when something above it failed.
