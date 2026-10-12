@@ -149,6 +149,10 @@ func serve(cfg *api.Config, out io.Writer) error {
 		// A HEADER THAT NEVER FINISHES holds a connection forever; a public
 		// port is where somebody tries.
 		ReadHeaderTimeout: 5 * time.Second,
+		// AND A READER THAT NEVER FINISHES holds an answer in memory forever
+		// -- found in review. A minute is past every request's own timeout.
+		WriteTimeout: time.Minute,
+		IdleTimeout:  2 * time.Minute,
 	}
 	_, _ = fmt.Fprintf(out, "brevis-sql-api %s on %s, %d endpoint(s) on connection %s\n",
 		cfg.Name, cfg.Listen.Addr, len(cfg.Endpoints), cfg.Connection)
