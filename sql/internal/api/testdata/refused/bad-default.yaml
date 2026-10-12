@@ -1,0 +1,10 @@
+# refused: `default` is not a valid int
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - name: e
+    path: /v1/e
+    tenant: none
+    params: {n: {type: int, default: ten}}
+    sql: select {{ n }}

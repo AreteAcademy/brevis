@@ -1,0 +1,6 @@
+# refused: never uses `{{ tenant }}`
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - {name: e, path: /v1/e, sql: select 1}

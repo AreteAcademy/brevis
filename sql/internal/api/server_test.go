@@ -160,3 +160,18 @@ func TestHealthIsAnswered(t *testing.T) {
 		t.Errorf("/health answered %d", rec.Code)
 	}
 }
+
+// A PAIR THAT DOES NOT PARSE IS A 400, not a pair that was not sent: Go's
+// r.URL.Query() drops `a;b` silently, and the filter it held would vanish
+// from a request that is then answered in full.
+func TestAQueryStringThatDoesNotParseIsA400(t *testing.T) {
+	w := &warehouse{cols: []string{"k"}}
+	for _, target := range []string{"/v1/clicks?campaign=a;b", "/v1/clicks?campaign=%zz"} {
+		if rec := get(serverWith(t, w, clicks(t)), target); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s answered %d", target, rec.Code)
+		}
+	}
+	if len(w.asked) != 0 {
+		t.Error("the warehouse was asked")
+	}
+}

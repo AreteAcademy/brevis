@@ -1,0 +1,4 @@
+connections:
+  - name: warehouse
+    dialect: postgres
+    dsn_from: REFUSED_FIXTURE_DSN

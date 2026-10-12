@@ -1,0 +1,7 @@
+# refused: /v1/e is declared twice
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - {name: e, path: /v1/e, tenant: none, sql: select 1}
+  - {name: f, path: /v1/e, tenant: none, sql: select 1}

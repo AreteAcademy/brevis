@@ -1,0 +1,6 @@
+# refused: a path is versioned
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - {name: e, path: /e, tenant: none, sql: select 1}

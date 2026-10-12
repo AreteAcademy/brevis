@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -59,5 +60,35 @@ func TestKeyHashReadsTheKeyFromStdinAndPrintsItsLine(t *testing.T) {
 	}
 	if strings.Contains(out.String(), "a-key-long") {
 		t.Error("the key was printed")
+	}
+}
+
+// EVERY FIXTURE IN testdata/refused EXITS 1 WITH ITS MESSAGE. Each file's
+// first line says what the refusal must mention, so a new refusal is a new
+// file and not a new test.
+func TestEveryRefusedFixtureExitsOneWithItsMessage(t *testing.T) {
+	t.Setenv("REFUSED_FIXTURE_DSN", "postgres://u:p@localhost:5432/w?sslmode=disable")
+	_, here, _, _ := runtime.Caller(0)
+	dir := filepath.Join(filepath.Dir(here), "..", "..", "internal", "api", "testdata")
+	files, err := filepath.Glob(filepath.Join(dir, "refused", "*.yaml"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no fixtures: %v", err)
+	}
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		first, _, _ := strings.Cut(string(raw), "\n")
+		says, marked := strings.CutPrefix(first, "# refused: ")
+		if !marked {
+			t.Errorf("%s: the first line is not `# refused: <what the error says>`", filepath.Base(f))
+			continue
+		}
+		var out, errOut bytes.Buffer
+		code := run([]string{"validate", "--config", f, "--connections", filepath.Join(dir, "brevis.yaml")}, &out, &errOut)
+		if code != 1 || !strings.Contains(errOut.String(), says) {
+			t.Errorf("%s: exit %d, said %q; wanted 1 and %q", filepath.Base(f), code, errOut.String(), says)
+		}
 	}
 }

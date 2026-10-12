@@ -33,6 +33,9 @@ type Config struct {
 	Listen     Listen      `yaml:"listen"`
 	Endpoints  []*Endpoint `yaml:"endpoints"`
 
+	// Params are definitions an endpoint's parameter can name with `ref`.
+	Params map[string]Param `yaml:"params"`
+
 	// Dialect and Open are the connection's, resolved from the registry at
 	// load: a file naming a connection nobody declared is refused there,
 	// not at the first request.
@@ -70,12 +73,6 @@ type Endpoint struct {
 	MaxRows int `yaml:"-"`
 
 	Template *render.Template `yaml:"-"`
-}
-
-// Param is one query-string parameter an endpoint takes.
-type Param struct {
-	Type   string `yaml:"type"`
-	MaxLen int    `yaml:"max_len"`
 }
 
 // maxStringLen bounds `max_len` itself. A parameter is a filter, not a
@@ -120,6 +117,15 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			return nil, err
 		}
 	}
+	for _, name := range sortedNames(cfg.Params) {
+		p := cfg.Params[name]
+		if p.Ref != "" {
+			return nil, fmt.Errorf("`params.%s` is a ref; a definition in `params:` is written out", name)
+		}
+		if err := p.check(); err != nil {
+			return nil, fmt.Errorf("`params.%s`: %v", name, err)
+		}
+	}
 	if len(cfg.Endpoints) == 0 {
 		return nil, fmt.Errorf("the file declares no `endpoints`")
 	}
@@ -156,6 +162,9 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			}
 			e.SQL = string(body)
 		}
+		if err := e.resolve(cfg.Params); err != nil {
+			return nil, err
+		}
 		if err := e.check(); err != nil {
 			return nil, err
 		}
@@ -176,16 +185,32 @@ func (e *Endpoint) check() error {
 		if !nameShape.MatchString(name) {
 			return fmt.Errorf("endpoint %s: the parameter %q is not a name: lowercase letters, digits and _", e.Name, name)
 		}
-		switch p.Type {
-		case "string":
-			if p.MaxLen < 1 || p.MaxLen > maxStringLen {
-				return fmt.Errorf("endpoint %s: the parameter %s is a string and needs a `max_len` "+
-					"from 1 to %d", e.Name, name, maxStringLen)
-			}
-		default:
-			return fmt.Errorf("endpoint %s: the parameter %s has type %q; the types are: string",
-				e.Name, name, p.Type)
+		if err := p.check(); err != nil {
+			return fmt.Errorf("endpoint %s, parameter %s: %v", e.Name, name, err)
 		}
+	}
+	return nil
+}
+
+// resolve replaces each `{ref: name}` with the file's definition of it.
+//
+// COPIED, not shared: a map value is a copy in Go anyway, and the point is
+// that no endpoint can reach into another's parameter.
+func (e *Endpoint) resolve(defs map[string]Param) error {
+	for name, p := range e.Params {
+		if p.Ref == "" {
+			continue
+		}
+		if !p.onlyRef() {
+			return fmt.Errorf("endpoint %s, parameter %s: a `ref` takes nothing else -- "+
+				"write the whole definition instead", e.Name, name)
+		}
+		def, found := defs[p.Ref]
+		if !found {
+			return fmt.Errorf("endpoint %s, parameter %s: `ref` is %q, which the file's `params:` "+
+				"does not define (defined: %s)", e.Name, name, p.Ref, orNone(sortedNames(defs)))
+		}
+		e.Params[name] = def
 	}
 	return nil
 }

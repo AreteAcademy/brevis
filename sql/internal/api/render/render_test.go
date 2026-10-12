@@ -274,3 +274,17 @@ func TestNamesAreEveryNameUsed(t *testing.T) {
 		t.Errorf("names are %v", got)
 	}
 }
+
+// CONDITIONS SIDE BY SIDE ARE NOT A GLUED WORD: each branch is checked as
+// the text it is, and a placeholder that ends one branch does not touch the
+// one that starts the next.
+func TestPlaceholdersInNeighbouringConditionsParse(t *testing.T) {
+	src := "select 1 {% if a %}{{ a }}{% endif %}{% if b %}{{ b }}{% else %}{{ c }}{% endif %}"
+	if _, err := Parse("postgres", src); err != nil {
+		t.Errorf("refused: %v", err)
+	}
+	// and a branch inside a literal is still inside it
+	if _, err := Parse("postgres", "select '{% if a %}{{ a }}{% endif %}'"); err == nil {
+		t.Error("a placeholder inside a literal parsed once it was in a branch")
+	}
+}

@@ -6,9 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
+	"net/url"
 	"time"
-	"unicode/utf8"
 
 	"github.com/AreteAcademy/brevis/sql/internal/api/render"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
@@ -155,7 +154,13 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 // filtered it. A REPEATED one is a 400 too, because which of the two was
 // meant is not a question this can answer.
 func (e *Endpoint) values(r *http.Request) (render.Values, error) {
-	q := r.URL.Query()
+	// ParseQuery AND NOT r.URL.Query(), which drops a pair it cannot parse
+	// -- a `;` since Go 1.17 -- and hands back the rest: `?sku=a;b` would
+	// become a request with no filter at all, answered with a 200.
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("the query string does not parse: %v", err)
+	}
 	if _, sent := q[tenantName]; sent {
 		return nil, fmt.Errorf("`tenant` cannot be sent: it is the key's")
 	}
@@ -169,22 +174,25 @@ func (e *Endpoint) values(r *http.Request) (render.Values, error) {
 		}
 	}
 	vals := render.Values{}
-	for name, p := range e.Params {
-		given, there := q[name]
-		if !there {
+	for _, name := range sortedNames(e.Params) {
+		p := e.Params[name]
+		raw, sent := "", false
+		if given, there := q[name]; there {
+			raw, sent = given[0], true
+		} else if p.Default != nil {
+			raw, sent = *p.Default, true
+		}
+		if !sent {
+			if p.Required {
+				return nil, fmt.Errorf("the parameter %s is required", name)
+			}
 			continue
 		}
-		v := given[0]
-		switch p.Type {
-		case "string":
-			if !utf8.ValidString(v) || strings.ContainsRune(v, 0) {
-				return nil, fmt.Errorf("the parameter %s is not valid UTF-8 text", name)
-			}
-			if n := utf8.RuneCountInString(v); n > p.MaxLen {
-				return nil, fmt.Errorf("the parameter %s is %d characters long; at most %d", name, n, p.MaxLen)
-			}
-			vals[name] = render.Bind(v)
+		v, err := p.parse(name, raw)
+		if err != nil {
+			return nil, err
 		}
+		vals[name] = v
 	}
 	return vals, nil
 }

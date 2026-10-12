@@ -1,0 +1,10 @@
+# refused: does not define
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - name: e
+    path: /v1/e
+    tenant: none
+    params: {order: {ref: order}}
+    sql: select 1 order by 1 {{ order }}

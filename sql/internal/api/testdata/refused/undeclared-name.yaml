@@ -1,0 +1,9 @@
+# refused: `campain`, which is not a declared parameter
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - name: e
+    path: /v1/e
+    params: {campaign: {type: string, max_len: 8}}
+    sql: select 1 where t = {{ tenant }} and c = {{ campain }}
