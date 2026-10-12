@@ -206,3 +206,34 @@ connections:
 		t.Error("an undeclared name was found")
 	}
 }
+
+// A MODEL'S TARGET FROM THE DECLARATION ALONE, in the form the dialect's
+// own Target writes into the catalog -- so an endpoint's manifest names the
+// same relation /data does, without opening a connection.
+func TestATargetIsNamedWithoutConnecting(t *testing.T) {
+	t.Setenv("APP_DSN", "postgres://reader:pw@db:5432/app?sslmode=disable")
+	r, err := Load(write(t, `
+connections:
+  - name: analytics
+    dialect: bigquery
+    project: acme-prod
+  - name: app
+    dialect: postgres
+    dsn_from: APP_DSN
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for conn, want := range map[string]string{
+		"app":       "postgres://app/marts/orders_daily",
+		"analytics": "bigquery://acme-prod/marts/orders_daily",
+	} {
+		got, ok := r.TargetOf(conn, "marts.orders_daily")
+		if !ok || got != want {
+			t.Errorf("%s: %q %v", conn, got, ok)
+		}
+		if strings.Contains(got, "pw") || strings.Contains(got, "reader") {
+			t.Errorf("the target carries the credential: %s", got)
+		}
+	}
+}
