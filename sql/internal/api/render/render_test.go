@@ -298,3 +298,42 @@ func TestUnconditionalIsAHoleOutsideEveryCondition(t *testing.T) {
 		t.Error("IsCondition is wrong")
 	}
 }
+
+// WHAT THE TOKENIZER CANNOT FOLLOW IS REFUSED, because where it and the
+// warehouse disagree a placeholder can hide. Found in review: each of these
+// parsed, and in each the warehouse reads `{{ tenant }}` as text.
+func TestSQLTheTokenizerCannotFollowIsRefused(t *testing.T) {
+	for dia, srcs := range map[string][]string{
+		"postgres": {
+			"select 1 /* /* */ where t = {{ tenant }} */",
+			"select $$ {{ tenant }} $$",
+			"select $tag$ {{ tenant }} $tag$",
+			`select E'it\' {{ tenant }} '`,
+			"select 1 /* a comment */ where t = {{ tenant }}",
+		},
+		"bigquery": {
+			"select ''' ' {{ tenant }} ' '''",
+			`select """ " {{ tenant }} " """`,
+		},
+	} {
+		for _, src := range srcs {
+			if _, err := Parse(dia, src); err == nil {
+				t.Errorf("%s: %q parsed", dia, src)
+			}
+		}
+	}
+}
+
+// AND EVERY RENDER IS CHECKED AS IT IS RENDERED. Branches laid end to end at
+// parse can balance quotes that one choice of branches leaves open; here
+// all-taken reads `' ' $1 ' '`, and a=false renders `' $1 '` -- a
+// placeholder inside a string, and a filter that is no filter.
+func TestARenderThatPutsAPlaceholderInsideALiteralIsRefused(t *testing.T) {
+	tmpl := mustParse(t, "postgres", "select '{% if a %}'{% endif %} {{ x }} {% if a %}'{% endif %}'")
+	if _, _, err := tmpl.Render(Values{"a": Bind(true), "x": Bind("v")}, postgres.Dialect{}); err != nil {
+		t.Errorf("a=true: %v", err)
+	}
+	if _, _, err := tmpl.Render(Values{"a": Bind(false), "x": Bind("v")}, postgres.Dialect{}); err == nil {
+		t.Error("a=false rendered a placeholder inside a literal")
+	}
+}

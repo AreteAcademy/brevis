@@ -57,8 +57,9 @@ type Values map[string]Value
 
 // Template is a parsed endpoint SQL.
 type Template struct {
-	nodes []node
-	names []string
+	dialect string
+	nodes   []node
+	names   []string
 
 	// top is every name written as `{{ }}` outside every condition, and
 	// conds every name a condition tests.
@@ -138,7 +139,7 @@ func Parse(dialectName, src string) (*Template, error) {
 	if end != "" {
 		return nil, fmt.Errorf("`{%% %s %%}` with no `{%% if %%}` open", end)
 	}
-	t := &Template{nodes: nodes, names: p.names, top: map[string]bool{}, conds: p.conds}
+	t := &Template{dialect: dialectName, nodes: nodes, names: p.names, top: map[string]bool{}, conds: p.conds}
 	for _, n := range nodes {
 		if h, is := n.(hole); is {
 			t.top[string(h)] = true
@@ -394,11 +395,50 @@ func checkPlacement(dialectName string, t *Template) error {
 		}
 	}
 	walk(t.nodes)
+	if err := followable(dialectName, b.String()); err != nil {
+		return err
+	}
+	return placed(dialectName, b.String(), holes)
+}
+
+// The constructs where the tokenizer and the warehouse read a statement
+// differently. Found in review: in each, sqltok sees `{{ x }}` as code and
+// the warehouse sees it as text -- a nested Postgres comment, a dollar-quoted
+// or E” string, a BigQuery triple-quoted one. Refused rather than taught,
+// because teaching the tokenizer one of them leaves the next one, and an
+// endpoint's SQL has `--` and `{# #}` for comments and ” for strings.
+var (
+	dollarQuote = regexp.MustCompile(`\$[A-Za-z_0-9]*\$`)
+	escapeQuote = regexp.MustCompile(`(^|[^A-Za-z0-9_])[eE]'`)
+)
+
+func followable(dialectName, sql string) error {
+	if strings.Contains(sql, "/*") {
+		return fmt.Errorf("a /* block comment */ is not allowed in an endpoint's SQL: " +
+			"write -- or {# #}, which no reader can disagree about")
+	}
+	switch dialectName {
+	case "postgres":
+		if dollarQuote.MatchString(sql) {
+			return fmt.Errorf("a dollar-quoted string ($$ or $tag$) is not allowed in an endpoint's SQL: write ''")
+		}
+		if escapeQuote.MatchString(sql) {
+			return fmt.Errorf("an E'' string is not allowed in an endpoint's SQL: write ''")
+		}
+	case "bigquery":
+		if strings.Contains(sql, "'''") || strings.Contains(sql, `"""`) {
+			return fmt.Errorf("a triple-quoted string is not allowed in an endpoint's SQL: write '' or \"\"")
+		}
+	}
+	return nil
+}
+
+// placed reports whether every sentinel stands alone as a word in sql.
+func placed(dialectName, sql string, holes []string) error {
 	if len(holes) == 0 {
 		return nil
 	}
-
-	toks, whole := sqltok.Tokenize(dialectName, b.String())
+	toks, whole := sqltok.Tokenize(dialectName, sql)
 	if !whole {
 		return fmt.Errorf("the SQL has a quote or a comment that never closes, so where " +
 			"its placeholders sit cannot be told")
@@ -433,7 +473,12 @@ func sentinel(i int) string { return "zzbrevisrenderhole" + strconv.Itoa(i) + "z
 // are numbered in the order their placeholders are written, and a name
 // written twice is bound once.
 func (t *Template) Render(vals Values, b dialect.Binder) (string, []dialect.Arg, error) {
-	var out strings.Builder
+	// THE PROBE IS RENDERED BESIDE THE STATEMENT, the same branches with a
+	// sentinel where each placeholder goes, and checked as parse checked
+	// the whole template: branches laid end to end can balance quotes that
+	// one particular choice of branches leaves open. Found in review.
+	var out, probe strings.Builder
+	var holes []string
 	var args []dialect.Arg
 	bound := map[string]string{}
 	var walk func([]node) error
@@ -442,6 +487,7 @@ func (t *Template) Render(vals Values, b dialect.Binder) (string, []dialect.Arg,
 			switch n := n.(type) {
 			case text:
 				out.WriteString(string(n))
+				probe.WriteString(string(n))
 			case hole:
 				name := string(n)
 				v, there := vals[name]
@@ -456,8 +502,11 @@ func (t *Template) Render(vals Values, b dialect.Binder) (string, []dialect.Arg,
 							"identifier, and %q is not", name, s)
 					}
 					out.WriteString(s)
+					probe.WriteString(s)
 					continue
 				}
+				probe.WriteString(sentinel(len(holes)))
+				holes = append(holes, name)
 				ph, done := bound[name]
 				if !done {
 					args = append(args, dialect.Arg{Name: name, Value: v.v})
@@ -486,6 +535,9 @@ func (t *Template) Render(vals Values, b dialect.Binder) (string, []dialect.Arg,
 		return nil
 	}
 	if err := walk(t.nodes); err != nil {
+		return "", nil, err
+	}
+	if err := placed(t.dialect, probe.String(), holes); err != nil {
 		return "", nil, err
 	}
 	return out.String(), args, nil
