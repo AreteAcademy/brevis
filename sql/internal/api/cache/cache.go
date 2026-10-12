@@ -79,7 +79,7 @@ const quality = 5
 // can be flushed alone; the connection's identity is in the hash.
 func Key(api, connection, endpoint, tenant, sql string, args []dialect.Arg, generations []string) string {
 	h := sha256.New()
-	part := func(s string) { fmt.Fprintf(h, "%d:%s", len(s), s) }
+	part := func(s string) { _, _ = fmt.Fprintf(h, "%d:%s", len(s), s) }
 	part(api)
 	part(connection)
 	part(endpoint)

@@ -49,7 +49,7 @@ func startFake(t *testing.T, password string) *fakeRedis {
 }
 
 func (f *fakeRedis) serve(c net.Conn) {
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	r := bufio.NewReader(c)
 	for {
 		rep, err := readReply(r, 0)
@@ -100,7 +100,7 @@ func (f *fakeRedis) answer(c net.Conn, args []string) []byte {
 		delete(f.expiry, args[1])
 		if len(args) == 5 && strings.ToUpper(args[3]) == "PX" {
 			var ms int64
-			fmt.Sscan(args[4], &ms)
+			_, _ = fmt.Sscan(args[4], &ms)
 			f.expiry[args[1]] = time.Now().Add(time.Duration(ms) * time.Millisecond)
 		}
 		return []byte("+OK\r\n")
@@ -124,7 +124,7 @@ func TestSetGetAndMGetRoundTripBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx := context.Background()
 
 	// BYTES, not text: a cached answer is Brotli, and a client that read a
@@ -149,7 +149,7 @@ func TestSetGetAndMGetRoundTripBytes(t *testing.T) {
 func TestATTLExpires(t *testing.T) {
 	f := startFake(t, "")
 	c, _ := Open(f.addr)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx := context.Background()
 	if err := c.Set(ctx, "k", []byte("v"), 20*time.Millisecond); err != nil {
 		t.Fatal(err)
@@ -168,7 +168,7 @@ func TestAPasswordInTheURLAuthenticates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	if err := c.Set(context.Background(), "k", []byte("v"), 0); err != nil {
 		t.Fatalf("an authenticated SET failed: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestAPasswordInTheURLAuthenticates(t *testing.T) {
 	}
 
 	wrong, _ := Open("redis://:nope@" + f.addr)
-	defer wrong.Close()
+	defer func() { _ = wrong.Close() }()
 	err = wrong.Set(context.Background(), "k", []byte("v"), 0)
 	if err == nil || strings.Contains(err.Error(), "nope") {
 		t.Errorf("a wrong password: %v (and it must never be quoted)", err)
@@ -199,7 +199,7 @@ func TestAnUnreachableRedisSaysSoWithoutTheURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	_, _, err = c.Get(ctx, "k")
@@ -239,7 +239,7 @@ func TestIntegrationAgainstARealRedis(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx := context.Background()
 	key := fmt.Sprintf("brevis:it:{brevis}:%d", time.Now().UnixNano())
 	value := []byte("bin\r\n\x00ary")

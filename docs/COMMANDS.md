@@ -420,6 +420,24 @@ A command of its own rather than a mode of `brevis publish`: workflows and
 gateways have different set semantics, and `publish --prune` must never reach a
 gateway. See [`GATEWAY.md`](GATEWAY.md#in-the-console).
 
+## `brevis endpoints`
+
+```bash
+brevis endpoints publish manifest.json     # the output of `brevis-sql-api describe`
+brevis endpoints unpublish metrics-api
+```
+
+How a `brevis-sql-api` appears on Data → Endpoints: what each endpoint takes
+and reads, published as a deliberate act — never its traffic, and never at
+runtime. `publish` checks the manifest whole before writing anything, naming
+the first problem by position and never quoting a value, and replaces that
+API's endpoints in one transaction. `unpublish` removes a decommissioned API,
+and is an error when no API of that name was published.
+
+A command of its own rather than a mode of `brevis gateway`: an API reads and
+a gateway writes, and `gateway unpublish` must never remove one. See
+[`ENDPOINTS.md`](ENDPOINTS.md#in-the-console).
+
 ## `brevis backfill`
 
 Materializes the past slots of an already-published workflow. It **queues, it
@@ -698,10 +716,23 @@ go install github.com/AreteAcademy/brevis/sql/cmd/brevis-sql@latest
 | `--select EXPR` | — | one model, or `name+` for it and everything downstream |
 | `--dsn-from VAR` | — | the NAME of the variable holding the DSN, never the DSN itself (`build`, `test`) |
 | `--full-refresh` | `false` | rebuild every incremental model from scratch, forgetting its watermark |
+| `--generations-from VAR` | — | the NAME of the variable holding a Redis address; each model built gets a new **generation** there, and `brevis-sql-api`'s cached answers over it go stale. A write that fails is a warning, never a failed build |
 
 `--dsn-from` takes a variable NAME on purpose: a connection string on a
 command line is in the process table, in the shell history and in any log that
 records the invocation.
+
+## `brevis-sql generation`
+
+```bash
+brevis-sql generation bump --generations-from BREVIS_CACHE_ADDR --dialect postgres marts.orders_daily
+```
+
+What `build --generations-from` does for a model, for a table something else
+rebuilt — a Go step, dbt, the gateway. Names are keyed as a build writes them:
+lowered on Postgres, without a leading project on BigQuery. Here a write that
+fails IS an error: it is the whole job. See
+[`ENDPOINTS.md`](ENDPOINTS.md#the-cache-invalidated-by-the-data-not-the-clock).
 
 ## `brevis-sql serve`
 

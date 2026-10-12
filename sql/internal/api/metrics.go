@@ -204,7 +204,7 @@ func argsHash(query string, args []dialect.Arg) string {
 	mac := hmac.New(sha256.New, auditKey)
 	mac.Write([]byte(query))
 	for _, a := range args {
-		fmt.Fprintf(mac, "\x00%s\x00%T\x00%v", a.Name, a.Value, a.Value)
+		_, _ = fmt.Fprintf(mac, "\x00%s\x00%T\x00%v", a.Name, a.Value, a.Value)
 	}
 	return hex.EncodeToString(mac.Sum(nil))
 }

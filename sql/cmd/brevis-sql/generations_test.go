@@ -54,7 +54,7 @@ func TestIntegrationGenerationBumpWritesANewGeneration(t *testing.T) {
 	model := strings.ToLower("it_" + strings.ReplaceAll(t.Name(), "/", "_") + ".m")
 	read := func() string {
 		c, _ := generation.Open(addr)
-		defer c.Close()
+		defer func() { _ = c.Close() }()
 		got, err := generation.Read(context.Background(), c, []string{model})
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +85,7 @@ func TestIntegrationABumpIsKeyedAsTheAPIReadsIt(t *testing.T) {
 		t.Fatal(err)
 	}
 	c, _ := generation.Open(addr)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	got, err := generation.Read(context.Background(), c, []string{"it_case.bumped_model"})
 	if err != nil || got[0] == "" {
 		t.Errorf("the lowered name has no generation: %q %v", got, err)

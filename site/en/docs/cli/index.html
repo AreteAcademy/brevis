@@ -210,6 +210,13 @@ brevis gateway unpublish events_gateway"><div class="code-head"><span class="cod
 <span class="t-k">brevis</span> gateway publish manifest.json
 <span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
 <p><code>publish</code> checks the manifest whole before writing anything, naming the stream and role of the first problem, and replaces that gateway's destinations in one transaction. <code>unpublish</code> removes a decommissioned gateway, and is an error when no gateway of that name was published.</p>
+<p>How a <code>brevis-sql-api</code> appears on Data → Endpoints: what each endpoint takes and reads, published as a deliberate act — never its traffic.</p>
+<div class="code-block" data-code="brevis-sql-api describe --config api.yaml --out manifest.json   # the API&#x27;s own binary
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copy" data-done="Copied">Copy</button></div><pre><code><span class="t-k">brevis</span>-sql-api describe <span class="t-n">--config</span> api.yaml <span class="t-n">--out</span> manifest.json   <span class="t-c"># the API's own binary</span>
+<span class="t-k">brevis</span> endpoints publish manifest.json
+<span class="t-k">brevis</span> endpoints unpublish metrics-api</code></pre></div>
+<p><code>publish</code> checks the manifest whole before writing anything and replaces that API's endpoints in one transaction; a name, default or note shaped like a credential refuses all of it.</p>
 <p>A command of its own rather than a mode of <code>brevis publish</code>, because workflows and gateways have different set semantics: <code>publish --prune</code> must never reach a gateway's rows.</p>
 <hr>
 <h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>

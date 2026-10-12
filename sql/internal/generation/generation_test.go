@@ -31,7 +31,7 @@ func TestTwoTokensAreNeverTheSame(t *testing.T) {
 func TestGenerationsAreWrittenAndReadBack(t *testing.T) {
 	f := startFake(t, "")
 	c, _ := Open(f.addr)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx := context.Background()
 	if err := Write(ctx, c, []string{"marts.a", "marts.b"}, "tok-1"); err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestGenerationsAreWrittenAndReadBack(t *testing.T) {
 func TestReadingNothingAsksNothing(t *testing.T) {
 	f := startFake(t, "")
 	c, _ := Open(f.addr)
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	got, err := Read(context.Background(), c, nil)
 	if err != nil || len(got) != 0 || len(f.seen) != 0 {
 		t.Errorf("%v %v %v", got, err, f.seen)

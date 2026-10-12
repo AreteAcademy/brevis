@@ -38,7 +38,7 @@ func writeGenerations(out io.Writer, variable string, refs []string) {
 		warn(err.Error())
 		return
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := generation.Write(ctx, c, refs, generation.NewToken()); err != nil {
@@ -60,7 +60,7 @@ var modelRef = regexp.MustCompile(`^([a-z][a-z0-9-]*[a-z0-9]\.)?[A-Za-z_][A-Za-z
 // not happen and exited 0 is a step that lied.
 func bumpGenerations(args []string, out io.Writer) error {
 	if len(args) == 0 || args[0] != "bump" {
-		return fmt.Errorf("generation takes one subcommand: bump --generations-from VAR <schema.name>...")
+		return fmt.Errorf("generation takes one subcommand: bump --generations-from VAR <schema.name> [<schema.name> ...]")
 	}
 	fs := flag.NewFlagSet("generation bump", flag.ContinueOnError)
 	from := fs.String("generations-from", "", "the NAME of the variable holding the Redis address")
@@ -86,7 +86,7 @@ func bumpGenerations(args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	defer c.Close()
+	defer func() { _ = c.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := generation.Write(ctx, c, refs, generation.NewToken()); err != nil {

@@ -210,6 +210,13 @@ brevis gateway unpublish events_gateway"><div class="code-head"><span class="cod
 <span class="t-k">brevis</span> gateway publish manifest.json
 <span class="t-k">brevis</span> gateway unpublish events_gateway</code></pre></div>
 <p>O <code>publish</code> confere o manifesto inteiro antes de escrever qualquer coisa, citando o stream e o papel do primeiro problema, e substitui os destinos daquele gateway numa transação só. O <code>unpublish</code> remove um gateway descomissionado, e é erro quando nenhum gateway com aquele nome foi publicado.</p>
+<p>Como um <code>brevis-sql-api</code> aparece em Data → Endpoints: o que cada endpoint recebe e lê, publicado como ato deliberado — nunca o tráfego.</p>
+<div class="code-block" data-code="brevis-sql-api describe --config api.yaml --out manifest.json   # o binário da própria API
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api"><div class="code-head"><span class="code-lang">bash</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">brevis</span>-sql-api describe <span class="t-n">--config</span> api.yaml <span class="t-n">--out</span> manifest.json   <span class="t-c"># o binário da própria API</span>
+<span class="t-k">brevis</span> endpoints publish manifest.json
+<span class="t-k">brevis</span> endpoints unpublish metrics-api</code></pre></div>
+<p>O <code>publish</code> confere o manifesto inteiro antes de escrever qualquer coisa e substitui os endpoints daquela API numa transação só; um nome, default ou nota com cara de credencial recusa tudo.</p>
 <p>Um comando próprio, e não um modo do <code>brevis publish</code>, porque workflows e gateways têm semânticas de conjunto diferentes: o <code>publish --prune</code> não pode alcançar as linhas de um gateway.</p>
 <hr>
 <h2 id="prune">prune<a class="anchor" href="#prune" aria-label="link">#</a></h2>

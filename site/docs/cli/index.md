@@ -254,6 +254,19 @@ citando o stream e o papel do primeiro problema, e substitui os destinos
 daquele gateway numa transação só. O `unpublish` remove um gateway
 descomissionado, e é erro quando nenhum gateway com aquele nome foi publicado.
 
+Como um `brevis-sql-api` aparece em Data → Endpoints: o que cada endpoint
+recebe e lê, publicado como ato deliberado — nunca o tráfego.
+
+```bash
+brevis-sql-api describe --config api.yaml --out manifest.json   # o binário da própria API
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api
+```
+
+O `publish` confere o manifesto inteiro antes de escrever qualquer coisa e
+substitui os endpoints daquela API numa transação só; um nome, default ou nota
+com cara de credencial recusa tudo.
+
 Um comando próprio, e não um modo do `brevis publish`, porque workflows e
 gateways têm semânticas de conjunto diferentes: o `publish --prune` não pode
 alcançar as linhas de um gateway.
