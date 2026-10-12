@@ -186,6 +186,9 @@ type record struct {
 	Bytes    int64    `json:"bytes,omitempty"`
 	Millis   int64    `json:"millis"`
 	Cache    string   `json:"cache,omitempty"`
+	// Reason is why an endpoint failed in a way that is its author's to
+	// fix. Names of parameters and template shapes, never values.
+	Reason string `json:"reason,omitempty"`
 }
 
 // auditKey is this process's secret for args_hash.

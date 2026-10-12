@@ -139,7 +139,6 @@ func TestWhatARequestCannotMeanIsRefused(t *testing.T) {
 		"a repeated parameter":  {"/v1/clicks?campaign=x&campaign=y", 400, "campaign"},
 		"a string over max_len": {"/v1/clicks?campaign=123456789", 400, "8"},
 		"a NUL":                 {"/v1/clicks?campaign=a%00b", 400, "campaign"},
-		"a missing value":       {"/v1/clicks", 400, "campaign"},
 		"an undeclared path":    {"/v1/nothing", 404, ""},
 	}
 	for name, c := range cases {

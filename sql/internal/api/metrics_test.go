@@ -133,3 +133,35 @@ func TestEachRequestWritesOneAuditLineWithNamesAndNoValues(t *testing.T) {
 		t.Errorf("audit line %+v", line)
 	}
 }
+
+// A TEMPLATE THAT CANNOT RENDER IS ITS AUTHOR'S 500, not the caller's 400.
+// Found in the ship review: "`{{ campaign }}` has no value: wrap it in
+// {% if %}" told a caller to edit a template they cannot see. The caller is
+// told the endpoint is broken; the audit line says why, for whoever owns it.
+func TestATemplateThatCannotRenderIsTheAuthorsError(t *testing.T) {
+	var audit bytes.Buffer
+	e := &Endpoint{Name: "clicks", Path: "/v1/clicks", Tenant: "none",
+		Params: map[string]Param{"campaign": {Type: "string", MaxLen: 8}},
+		SQL:    "select k from t where c = {{ campaign }}"}
+	if err := e.parse(postgres.Dialect{}); err != nil {
+		t.Fatal(err)
+	}
+	w := &warehouse{cols: []string{"k"}}
+	s, err := New(&Config{Name: "x", Env: "local", Dialect: postgres.Dialect{}, MaxRows: 10, Audit: &audit,
+		Open:      func(context.Context) (dialect.Conn, error) { return w, nil },
+		Endpoints: []*Endpoint{e}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec := get(s, "/v1/clicks")
+	if rec.Code != http.StatusInternalServerError || strings.Contains(rec.Body.String(), "{%") ||
+		strings.Contains(rec.Body.String(), "campaign") {
+		t.Errorf("answered %d %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(audit.String(), `"reason":"`) || !strings.Contains(audit.String(), "campaign") {
+		t.Errorf("the audit line does not say why: %s", audit.String())
+	}
+	if len(w.asked) != 0 {
+		t.Error("the warehouse was asked")
+	}
+}

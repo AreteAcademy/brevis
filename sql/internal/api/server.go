@@ -176,7 +176,15 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		vals[tenantName] = render.Bind(tenant)
 		query, args, err := e.Template.Render(vals, s.binder)
 		if err != nil {
-			refuse(w, http.StatusBadRequest, err.Error())
+			// THE AUTHOR'S, NOT THE CALLER'S. Every value was valid by now; a
+			// template that still cannot render -- a name used outside an
+			// `{% if %}` with no default, a branch that leaves a placeholder
+			// in a string -- is a broken endpoint, and telling the caller to
+			// edit a template they cannot see helps nobody. The reason goes to
+			// the audit line, for whoever owns the file.
+			line.Reason = err.Error()
+			refuse(w, http.StatusInternalServerError, "this endpoint's SQL cannot be rendered for this request; "+
+				"its author has the reason in the API's log")
 			return
 		}
 		line.ArgsHash = argsHash(query, args)
