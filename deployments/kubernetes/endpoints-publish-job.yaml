@@ -1,0 +1,91 @@
+# Publishing what a brevis-sql-api serves, so Data → Endpoints shows it.
+#
+# The API shares nothing with the engine at runtime: it appears on the console
+# through a deliberate act, and this Job is that act, made part of the API's
+# deploy -- the gateway's shape (gateway-publish-job.yaml), for its reasons.
+# The API PROCESS holds no route to the engine; this Job does, for the
+# seconds it runs.
+#
+# Two containers, because the two halves live in two images:
+#
+#   describe  the API's image. Reads the endpoint file and the registry,
+#             opens nothing, writes the manifest -- no SQL text, no value of
+#             any variable, only the #: notes its author marked.
+#   publish   the ENGINE's image, which talks to its database.
+#
+# THE brevis-sql-api IMAGE IS PUBLISHED FROM THE sql/v* RELEASE THAT ADDS IT
+# (see docs/ENDPOINTS.md). Until that release, build it locally.
+#
+# By hand, after the API's deploy:
+#
+#   kubectl -n dados delete job brevis-endpoints-publish --ignore-not-found
+#   kubectl apply -f deployments/kubernetes/endpoints-publish-job.yaml
+#
+# Under Argo CD, uncomment the two annotations: it then runs after every sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: brevis-endpoints-publish
+  namespace: dados
+  # annotations:
+  #   argocd.argoproj.io/hook: PostSync
+  #   argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  # No retry: publishing is idempotent, and an error here is about CONTENT --
+  # a file the API refuses, a manifest the engine refuses for carrying a
+  # credential -- which running it again does not fix.
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        - name: describe
+          # The sql release this tree is (sql/VERSION). Describing needs no
+          # credential, but it reads the variables `dsn_from` names -- a DSN
+          # is parsed for its database, never dialled -- so the API's own
+          # environment goes in, and the engine's does not.
+          image: areteacademy/brevis-sql-api:0.4.0
+          args: ["describe", "--config", "/etc/brevis/api.yaml",
+                 "--connections", "/etc/brevis/brevis.yaml", "--out", "/manifest/manifest.json"]
+          envFrom:
+            - secretRef: {name: brevis-sql-api-env}
+          volumeMounts:
+            - {name: config, mountPath: /etc/brevis, readOnly: true}
+            - {name: manifest, mountPath: /manifest}
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {memory: 64Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      containers:
+        - name: publish
+          # The SAME version the engine runs: this talks to its DATABASE.
+          image: areteacademy/brevis:0.20.0-worker
+          args: ["endpoints", "publish", "/manifest/manifest.json"]
+          env:
+            - name: BREVIS_DATABASE_URL
+              valueFrom: {secretKeyRef: {name: brevis-db, key: url}}
+          volumeMounts:
+            - {name: manifest, mountPath: /manifest, readOnly: true}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        # The same ConfigMap the API's Deployment mounts -- api.yaml, its
+        # SQL files and brevis.yaml -- so what is described is what runs.
+        - name: config
+          configMap: {name: brevis-sql-api-config}
+        - name: manifest
+          emptyDir: {sizeLimit: 1Mi}
