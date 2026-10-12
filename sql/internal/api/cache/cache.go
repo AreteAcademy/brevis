@@ -182,6 +182,9 @@ type call[T any] struct {
 	wg  sync.WaitGroup
 	val T
 	err error
+	// dups is how many callers are waiting on this run -- x/sync's own
+	// field, and what lets a test know every waiter has arrived.
+	dups int
 }
 
 // Do runs fn for key, or waits for the run already going.
@@ -191,6 +194,7 @@ func (g *Group[T]) Do(key string, fn func() (T, error)) (T, error) {
 		g.calls = map[string]*call[T]{}
 	}
 	if c, running := g.calls[key]; running {
+		c.dups++
 		g.mu.Unlock()
 		c.wg.Wait()
 		return c.val, c.err
