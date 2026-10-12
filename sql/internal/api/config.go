@@ -20,9 +20,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/AreteAcademy/brevis/sql/internal/api/cache"
 	"github.com/AreteAcademy/brevis/sql/internal/api/render"
 	"github.com/AreteAcademy/brevis/sql/internal/connections"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/refs"
 )
 
 // DefaultMaxRows is the row ceiling when the file names none.
@@ -43,6 +45,13 @@ type Config struct {
 
 	// Limits bound every request; see Limits.
 	Limits Limits `yaml:"limits"`
+
+	// Cache keeps answers until a model they read is rebuilt. Absent, every
+	// request reads the warehouse.
+	Cache *CacheConfig `yaml:"cache"`
+
+	// CacheKV is where the cache is kept; nil opens Cache.AddrFrom.
+	CacheKV cache.KV `yaml:"-"`
 
 	// Dialect and Open are the connection's, resolved from the registry at
 	// load: a file naming a connection nobody declared is refused there,
@@ -99,6 +108,10 @@ type Endpoint struct {
 	loc *time.Location
 	now func() time.Time
 
+	// reads are the models the SQL can read, in any branch: what the cache
+	// key takes a generation of.
+	reads []string
+
 	// timeout and maxBytes are the effective limits; zero takes the file's.
 	timeout  time.Duration
 	maxBytes ByteSize
@@ -145,6 +158,11 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 	cfg.Limits = cfg.Limits.withDefaults()
 	cfg.MaxRows = cfg.Limits.MaxRows
 
+	if cfg.Cache != nil {
+		if err := cfg.Cache.check(); err != nil {
+			return nil, err
+		}
+	}
 	if cfg.Listen.Auth != nil {
 		if err := cfg.Listen.Auth.check(); err != nil {
 			return nil, err
@@ -312,7 +330,58 @@ func (e *Endpoint) parse(d dialect.Dialect) error {
 		return fmt.Errorf("endpoint %s says `tenant: none` and its SQL uses `{{ tenant }}`; "+
 			"one of them is wrong", e.Name)
 	}
-	e.Template = tmpl
+	reads, err := refs.Of(d.Name(), tmpl.AllText())
+	if err != nil {
+		return fmt.Errorf("endpoint %s: the relations its SQL reads cannot be told: %v", e.Name, err)
+	}
+	e.Template, e.reads = tmpl, reads
+	return nil
+}
+
+// CacheConfig is where answers are kept, and for how long at most.
+type CacheConfig struct {
+	Type     string        `yaml:"type"`
+	AddrFrom string        `yaml:"addr_from"`
+	TTL      time.Duration `yaml:"ttl"`
+	MaxEntry ByteSize      `yaml:"max_entry"`
+}
+
+const (
+	defaultMaxEntry = ByteSize(4 << 20)
+	maxMaxEntry     = ByteSize(64 << 20)
+)
+
+// check refuses a cache this API cannot keep.
+//
+// REDIS ONLY: memcached has no MGET over the generations that is atomic
+// with anything, and the gateway's memory type is per replica -- a cache
+// that N replicas each hold is N answers to one question.
+func (c *CacheConfig) check() error {
+	if c.Type != "redis" {
+		return fmt.Errorf("`cache.type` is %q; the cache is redis", c.Type)
+	}
+	if c.AddrFrom == "" {
+		return fmt.Errorf("`cache.addr_from` is required: the NAME of the variable holding the Redis address")
+	}
+	// ttl is the CEILING on a cached answer, not the mechanism that
+	// refreshes it.
+	//
+	// ZERO IS REFUSED, and the gateway's metastore is why it has to be said:
+	// there `ttl: 0` means "never expires", which is right for what is known
+	// about a table and wrong for a result. A result that never expires is a
+	// stale answer nobody sees -- the generation is what refreshes it, and
+	// the ceiling is what bounds the damage on the day a build forgets to
+	// write one.
+	if c.TTL <= 0 {
+		return fmt.Errorf("`cache.ttl` is %s: a cached answer needs a ceiling. Write one "+
+			"(`6h` is a good start), or remove `cache:` to always read the warehouse", c.TTL)
+	}
+	if c.MaxEntry == 0 {
+		c.MaxEntry = defaultMaxEntry
+	}
+	if c.MaxEntry < 0 || c.MaxEntry > maxMaxEntry {
+		return fmt.Errorf("`cache.max_entry` is %s; at most %s", c.MaxEntry, maxMaxEntry)
+	}
 	return nil
 }
 

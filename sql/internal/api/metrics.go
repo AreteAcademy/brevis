@@ -33,6 +33,7 @@ type metrics struct {
 	billed    map[string]int64
 	request   map[string]*histogram
 	warehouse map[string]*histogram
+	cache     map[[2]string]int64 // endpoint, result
 }
 
 // buckets are seconds, from a cache hit to the default timeout.
@@ -61,6 +62,7 @@ func newMetrics() *metrics {
 	return &metrics{
 		requests: map[[2]string]int64{}, rows: map[string]int64{}, billed: map[string]int64{},
 		request: map[string]*histogram{}, warehouse: map[string]*histogram{},
+		cache: map[[2]string]int64{},
 	}
 }
 
@@ -73,6 +75,9 @@ func (m *metrics) observe(line *record, took, warehouse time.Duration) {
 	m.requests[[2]string{line.Endpoint, strconv.Itoa(line.Status)}]++
 	if line.Endpoint == noEndpoint {
 		return
+	}
+	if line.Cache != "" {
+		m.cache[[2]string{line.Endpoint, line.Cache}]++
 	}
 	m.rows[line.Endpoint] += int64(line.Rows)
 	m.billed[line.Endpoint] += line.Bytes
@@ -105,6 +110,18 @@ func (m *metrics) handler() http.Handler {
 		})
 		for _, k := range pairs {
 			fmt.Fprintf(&b, "brevis_sql_api_requests_total{endpoint=%q,status=%q} %d\n", k[0], k[1], m.requests[k])
+		}
+		b.WriteString("# HELP brevis_sql_api_cache_requests_total Requests with a cache, by endpoint and result.\n")
+		b.WriteString("# TYPE brevis_sql_api_cache_requests_total counter\n")
+		cpairs := make([][2]string, 0, len(m.cache))
+		for k := range m.cache {
+			cpairs = append(cpairs, k)
+		}
+		sort.Slice(cpairs, func(i, j int) bool {
+			return cpairs[i][0]+"\x00"+cpairs[i][1] < cpairs[j][0]+"\x00"+cpairs[j][1]
+		})
+		for _, k := range cpairs {
+			fmt.Fprintf(&b, "brevis_sql_api_cache_requests_total{endpoint=%q,result=%q} %d\n", k[0], k[1], m.cache[k])
 		}
 		counter(&b, "rows_total", "Rows returned, by endpoint.", m.rows)
 		counter(&b, "bytes_billed_total", "Bytes the warehouse reported scanning, by endpoint.", m.billed)
@@ -168,6 +185,7 @@ type record struct {
 	Rows     int      `json:"rows"`
 	Bytes    int64    `json:"bytes,omitempty"`
 	Millis   int64    `json:"millis"`
+	Cache    string   `json:"cache,omitempty"`
 }
 
 // auditKey is this process's secret for args_hash.

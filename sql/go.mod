@@ -41,6 +41,7 @@ module github.com/AreteAcademy/brevis/sql
 go 1.26.0
 
 require (
+	github.com/andybalholm/brotli v1.0.4
 	github.com/jackc/pgx/v5 v5.11.0
 	golang.org/x/oauth2 v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
