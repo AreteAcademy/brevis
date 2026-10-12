@@ -59,6 +59,7 @@ limits:                            # file-wide; an endpoint may only lower them
   timeout: 10s
   max_rows: 10000                  # at most 100000
   max_bytes_billed: 1GiB           # BigQuery; Postgres has nothing to bill
+  max_response_bytes: 8MiB         # one answer's JSON, 1KiB to 64MiB
   max_in_flight: 32                # requests waiting on the warehouse, whole API
 
 params:                            # definitions an endpoint names with `ref`
@@ -219,7 +220,9 @@ request ── MGET the generations of every model the SQL reads ── one roun
 ```
 
 Columns in the order the query named them; NUMERIC as a string, so no float
-rounds a sum. `max_rows` cuts and says `truncated: true`. There is no
+rounds a sum. `max_rows` cuts and says `truncated: true`, and so does
+`max_response_bytes`: the answer stops at the last row that fits, and
+`meta.rows` counts what it kept. There is no
 pagination: an endpoint serves an aggregate, and wrapping its SQL to page it
 would change what the warehouse plans.
 
@@ -277,4 +280,3 @@ key as a placeholder. A model's page lists the endpoints over it under
 - **No pagination, no streaming, no response hooks.**
 - **No connection pool yet.** Each request opens its own warehouse
   connection; `max_in_flight` keeps that under the database's limit.
-- **No byte ceiling on an answer** beyond `max_rows` × the width of a row.
