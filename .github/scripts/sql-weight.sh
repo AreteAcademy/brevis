@@ -115,7 +115,56 @@ if [ "$mb" -gt "$BINARY_CEILING_MB" ]; then
   failed=1
 fi
 
+# THE BUILD BINARY CARRIES NOTHING OF THE API. `brevis-sql-api` is a binary
+# of its own for exactly this reason: `brevis-sql` runs as a step in every
+# pipeline that builds a model, and an HTTP server, a cache and a compressor
+# are weight a build never uses. One import from cmd/brevis-sql would undo
+# the split and every number above would still look fine for a while.
+if echo "$deps" | grep -q "^github.com/AreteAcademy/brevis/sql/internal/api"; then
+  echo "::error::brevis-sql imports the API's packages (sql/internal/api);"
+  echo "    they belong to ./cmd/brevis-sql-api alone."
+  failed=1
+fi
+
+# AND brevis-sql-api, against the same forbidden list and its own ceilings.
+#
+# Measured 2026-10-12 at the walking skeleton, go1.26, linux/amd64: 250
+# packages and 11 MB. The headroom is for what the plan still adds -- Brotli
+# and a stdlib RESP client -- and nothing else; a Redis client library or a
+# template engine is the conversation this is here to start (the template
+# spike measured gonja at +88 packages and +6.8 MB).
+api_deps="$(go list -deps ./cmd/brevis-sql-api)"
+api_total="$(echo "$api_deps" | wc -l | tr -d ' ')"
+for forbidden in \
+  "cloud.google.com/go/bigquery" \
+  "cloud.google.com/go/storage" \
+  "google.golang.org/api" \
+  "google.golang.org/grpc" \
+  "github.com/AreteAcademy/brevis/sdk/to"
+do
+  n="$(echo "$api_deps" | grep -c "^$forbidden" || true)"
+  if [ "$n" != "0" ]; then
+    echo "::error::brevis-sql-api compiles $n package(s) from $forbidden"
+    failed=1
+  fi
+done
+API_CEILING=300
+if [ "$api_total" -gt "$API_CEILING" ]; then
+  echo "::error::brevis-sql-api compiles $api_total packages, over the ceiling of $API_CEILING"
+  failed=1
+fi
+API_BINARY_CEILING_MB=16
+api_out="$(mktemp -d)/brevis-sql-api"
+go build -trimpath -ldflags="-s -w" -o "$api_out" ./cmd/brevis-sql-api
+api_bytes="$(wc -c < "$api_out" | tr -d ' ')"
+api_mb=$(( api_bytes / 1048576 ))
+if [ "$api_mb" -gt "$API_BINARY_CEILING_MB" ]; then
+  echo "::error::the brevis-sql-api binary is ${api_mb} MB, over the ceiling of ${API_BINARY_CEILING_MB} MB"
+  failed=1
+fi
+
 if [ "$failed" != "0" ]; then
   exit 1
 fi
 echo "✅ brevis-sql: $total packages (ceiling $CEILING), ${mb} MB binary (ceiling ${BINARY_CEILING_MB} MB)"
+echo "✅ brevis-sql-api: $api_total packages (ceiling $API_CEILING), ${api_mb} MB binary (ceiling ${API_BINARY_CEILING_MB} MB)"
