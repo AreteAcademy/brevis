@@ -125,7 +125,19 @@ func ParseManifest(data []byte) (Manifest, error) {
 		if err := checkConfiguration(st); err != nil {
 			return Manifest{}, fmt.Errorf("%s: %w", st.Path, err)
 		}
-		for _, d := range st.Destinations {
+		for j, d := range st.Destinations {
+			// The role, kind and note reach the page beside the target, and
+			// the errors below quote the role.
+			dest := fmt.Sprintf("%s's destination %d", stream, j+1)
+			if err := nameIsClean(dest+"'s role", d.Role); err != nil {
+				return Manifest{}, err
+			}
+			if err := nameIsClean(dest+"'s kind", d.Kind); err != nil {
+				return Manifest{}, err
+			}
+			if err := nameIsClean(dest+"'s note", d.Note); err != nil {
+				return Manifest{}, err
+			}
 			where := st.Path + ", " + d.Role
 			if !manifestRoles[d.Role] {
 				return Manifest{}, fmt.Errorf("%s: unknown role %q (sink, dead_letter, archive)", st.Path, d.Role)
