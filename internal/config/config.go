@@ -104,6 +104,14 @@ type Config struct {
 	SQLServeURL   string
 	SQLServeToken string
 
+	// EndpointsURLs is where each published brevis-sql-api answers, as
+	// `api=url` pairs, and EndpointsKey the one key the console runs them
+	// with. Empty is no Try it. The key is ONE TENANT'S, for every console
+	// login -- which is why Try it exists only on a console that asks who
+	// you are.
+	EndpointsURLs string
+	EndpointsKey  string
+
 	// Pods parameterises execution in Kubernetes. These are the INSTALLATION's
 	// decisions -- which identity and credentials the pods start with -- which
 	// is why they come from the environment and not the workflow's YAML: a
@@ -163,6 +171,8 @@ func Load() (Config, error) {
 
 		SQLServeURL:   os.Getenv("BREVIS_SQL_SERVE_URL"),
 		SQLServeToken: os.Getenv("BREVIS_SQL_SERVE_TOKEN"),
+		EndpointsURLs: os.Getenv("BREVIS_ENDPOINTS_URLS"),
+		EndpointsKey:  os.Getenv("BREVIS_ENDPOINTS_KEY"),
 		Auth: auth.Credential{
 			User:   renamed("BREVIS_AUTH_USER", "BREVIS_AUTH_USUARIO"),
 			Hash:   renamed("BREVIS_AUTH_PASSWORD_HASH", "BREVIS_AUTH_SENHA_HASH"),

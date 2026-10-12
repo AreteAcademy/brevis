@@ -37,6 +37,7 @@ import (
 	k8s "github.com/AreteAcademy/brevis/internal/execution/kubernetes"
 	"github.com/AreteAcademy/brevis/internal/execution/local"
 	"github.com/AreteAcademy/brevis/internal/execution/remote"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/internal/notify"
@@ -1305,6 +1306,12 @@ func serve(ctx context.Context) error {
 	}
 	met.Serve(ctx, cfg.MetricsAddr, log)
 
+	// REFUSED AT START, never at the first Run: a list nobody can use is a
+	// console that says "not configured" to whoever presses the button.
+	calls, err := endpointcall.New(cfg.EndpointsURLs, cfg.EndpointsKey)
+	if err != nil {
+		return err
+	}
 	ui := api.NewUI(postgres.NewReadRepo(pool), postgres.NewWorkflowRepo(pool),
 		runsRepo, uiActions{schedules: schedules, sched: sched},
 		alerts.New(pool.Pool), postgres.NewReadRepo(pool), brand, log).
@@ -1318,7 +1325,8 @@ func serve(ctx context.Context) error {
 		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken), cfg.Auth).
 		// What each brevis-sql-api was published with, from this database:
 		// the engine reads no API and no API reaches it.
-		WithEndpoints(postgres.NewEndpointRepo(pool))
+		WithEndpoints(postgres.NewEndpointRepo(pool)).
+		WithEndpointCalls(calls, cfg.Auth)
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.

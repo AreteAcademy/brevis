@@ -3,11 +3,15 @@ package api_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/internal/api"
+	"github.com/AreteAcademy/brevis/internal/auth"
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -104,5 +108,95 @@ func TestWithNothingPublishedThePageSaysHow(t *testing.T) {
 	code, body := get(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/data/endpoints")
 	if code != http.StatusOK || !strings.Contains(body, "brevis endpoints publish") {
 		t.Errorf("%d %s", code, body)
+	}
+}
+
+func tryUI(t *testing.T, apiURL string, cred auth.Credential) *api.UI {
+	t.Helper()
+	calls, err := endpointcall.New("metrics-api="+apiURL, "console-key")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dataUI(catalogFake{}).WithEndpoints(published()).WithEndpointCalls(calls, cred)
+}
+
+var loggedIn = auth.Credential{User: "ana", Hash: "$2a$10$notarealhash"}
+
+// TRY IT: a form with one field per parameter, typed as the parameter is,
+// and nothing asked of the API until Run is pressed -- a call is a warehouse
+// query, and one per page view is a bill for rows nobody looked at.
+func TestAnEndpointsPageOffersAFormAndAsksNothingUntilRun(t *testing.T) {
+	asked := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { asked = true }))
+	defer srv.Close()
+	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks")
+	for _, want := range []string{"Try it", `name="run"`, `name="period"`, `<select`, `<option value="desc"`, "console's key"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the form lacks %q", want)
+		}
+	}
+	if asked {
+		t.Error("the API was called for a page nobody pressed Run on")
+	}
+}
+
+// RUN: the declared parameters go to the API as given, the console's key
+// with them, and the rows come back as a grid with the status, the cache
+// and the time beside it.
+func TestRunCallsTheAPIAndDrawsWhatItAnswered(t *testing.T) {
+	var got *http.Request
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r
+		w.Header().Set("X-Brevis-Cache", "miss")
+		_, _ = w.Write([]byte(`{"data":[{"day":"2026-10-12","clicks":412}],"truncated":false,"meta":{"rows":1}}`))
+	}))
+	defer srv.Close()
+	code, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks?run=1&period=today&order=&nope=x")
+	if code != http.StatusOK {
+		t.Fatalf("%d", code)
+	}
+	if got == nil || got.URL.Path != "/v1/clicks" || got.URL.Query().Get("period") != "today" ||
+		got.URL.Query().Has("order") || got.URL.Query().Has("nope") || got.URL.Query().Has("run") ||
+		got.Header.Get("Authorization") != "Bearer console-key" {
+		t.Fatalf("the API was asked %v", got)
+	}
+	for _, want := range []string{">day<", ">clicks<", ">412<", "200", "miss"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the answer lacks %q", want)
+		}
+	}
+	// the form keeps what was sent, so the next run starts from it
+	if !strings.Contains(body, `<option value="today" selected`) {
+		t.Error("the form forgot the period that was run")
+	}
+}
+
+func TestARefusalIsShownInTheAPIsWords(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"the parameter period is one of: today, yesterday"}`))
+	}))
+	defer srv.Close()
+	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks?run=1&period=nope")
+	if !strings.Contains(body, "400") || !strings.Contains(body, "the parameter period is one of: today, yesterday") {
+		t.Error("the refusal is not on the page")
+	}
+}
+
+// ONLY ON A CONSOLE THAT ASKS WHO YOU ARE, and only for an API it has an
+// address for. The key is one tenant's for every login: an open console
+// would hand that tenant's rows to whoever found the address.
+func TestTryItNeedsALoginAndAnAddress(t *testing.T) {
+	asked := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { asked = true }))
+	defer srv.Close()
+	_, body := get(t, tryUI(t, srv.URL, auth.Credential{}), "/data/endpoints/metrics-api/clicks?run=1&period=today")
+	if strings.Contains(body, "Try it") || asked {
+		t.Error("an open console offered Try it, or called the API")
+	}
+	other, _ := endpointcall.New("another-api="+srv.URL, "")
+	_, body = get(t, dataUI(catalogFake{}).WithEndpoints(published()).WithEndpointCalls(other, loggedIn), "/data/endpoints/metrics-api/clicks")
+	if strings.Contains(body, "Try it") {
+		t.Error("Try it was offered for an API with no address")
 	}
 }

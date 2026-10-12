@@ -22,6 +22,7 @@ import (
 	"github.com/AreteAcademy/brevis/internal/domain/run"
 	sch "github.com/AreteAcademy/brevis/internal/domain/schedule"
 	wf "github.com/AreteAcademy/brevis/internal/domain/workflow"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/sqlserve"
 	"github.com/AreteAcademy/brevis/web/assets"
@@ -116,7 +117,12 @@ type UI struct {
 	// endpoints is what brevis-sql-api files were published with. Nil turns
 	// the pages off.
 	endpoints EndpointsReader
-	log       *slog.Logger
+
+	// calls runs an endpoint for Try it; callsProtected says the console
+	// asks for a login. Both, or no Try it.
+	calls          EndpointCaller
+	callsProtected bool
+	log            *slog.Logger
 
 	// preview asks `brevis-sql serve` for a destination's first rows. Nil
 	// when no service is configured, and then the tab does not exist.
@@ -146,6 +152,22 @@ type EndpointsReader interface {
 	List(ctx context.Context) ([]postgres.PublishedEndpoint, error)
 	Get(ctx context.Context, api, name string) (postgres.PublishedEndpoint, bool, error)
 	Reading(ctx context.Context, target string) ([]postgres.PublishedEndpoint, error)
+}
+
+// EndpointCaller runs a published endpoint for Try it.
+type EndpointCaller interface {
+	Configured(api string) bool
+	Call(ctx context.Context, api, path string, params url.Values) (endpointcall.Answer, error)
+}
+
+// WithEndpointCalls turns on Try it, for the APIs the caller has an address
+// for, AND ONLY ON A CONSOLE THAT ASKS WHO YOU ARE: the console's key is one
+// tenant's for every login, and an open console would hand that tenant's
+// rows to whoever found the address -- the SQL tabs' rule, for their reason.
+func (u *UI) WithEndpointCalls(c EndpointCaller, console auth.Credential) *UI {
+	u.calls = c
+	u.callsProtected = console.Enabled()
+	return u
 }
 
 // WithEndpoints turns on Data → Endpoints and the "Read by" of a model's
@@ -273,7 +295,25 @@ func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	u.render(w, r, pages.Endpoint(pages.BuildEndpoint(e)))
+	v := pages.BuildEndpoint(e)
+	v.CanRun = u.callsProtected && u.calls != nil && u.calls.Configured(e.API)
+	if v.CanRun {
+		q := r.URL.Query()
+		// RUN ONLY WHEN ASKED. A call is a warehouse query, and one per page
+		// view is a bill for rows nobody looked at -- the preview tab's rule.
+		if q.Get("run") == "1" {
+			v.Form = pages.TryForm(e.Endpoint.Params, q)
+			a, err := u.calls.Call(r.Context(), e.API, e.Path, pages.TryValues(e.Endpoint.Params, q))
+			if err != nil {
+				v.RunErr = err.Error()
+			} else {
+				v.Answer = &a
+			}
+		} else {
+			v.Form = pages.TryForm(e.Endpoint.Params, nil)
+		}
+	}
+	u.render(w, r, pages.Endpoint(v))
 }
 
 // targetCeiling matches the engine's own bound on a target. A legacy label

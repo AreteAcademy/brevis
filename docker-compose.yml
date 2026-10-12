@@ -116,6 +116,12 @@ services:
       #     BREVIS_SQL_SERVE_URL: http://host.docker.internal:8088
       BREVIS_SQL_SERVE_URL: ${BREVIS_SQL_SERVE_URL:-}
       BREVIS_SQL_SERVE_TOKEN: ${BREVIS_SQL_SERVE_TOKEN:-}
+      # Try it on Data → Endpoints: where each API answers, by its name, and
+      # the one key the console runs them with -- one tenant's, for every
+      # login, which is why Try it needs the console's own login too. The
+      # example API is local and open, so no key.
+      BREVIS_ENDPOINTS_URLS: ${BREVIS_ENDPOINTS_URLS:-example-api=http://endpoints:8080}
+      BREVIS_ENDPOINTS_KEY: ${BREVIS_ENDPOINTS_KEY:-}
     ports: ["${BREVIS_API_PORT:-8080}:8080"]
     # The customer's visual identity. Commented out because the default
     # installation has no file at all — uncomment after copying
