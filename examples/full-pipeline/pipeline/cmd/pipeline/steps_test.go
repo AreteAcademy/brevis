@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -8,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AreteAcademy/brevis/sdk"
 )
 
 // writeReport puts a report for date in dir, written `age` ago.
@@ -121,5 +124,55 @@ func TestNoReportIsNotFresh(t *testing.T) {
 	useReports(t)
 	if err := qualityFreshness(); err == nil {
 		t.Fatal("accepted an empty report directory")
+	}
+}
+
+// useLanding points the staging directory at a fresh one for the test.
+func useLanding(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	old := landing
+	landing = dir
+	t.Cleanup(func() { landing = old })
+	return dir
+}
+
+// stage writes a staged file holding n rows landed by run.
+func stage(t *testing.T, dir, name, run string, n int) {
+	t.Helper()
+	row := `{"partition":"2026-09-05","sku":"a","quantity":1,"price":2,"run_id":"` + run + `"}` + "\n"
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(strings.Repeat(row, n)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Staging keeps a day of files on purpose -- a retry of this run needs what
+// its earlier attempt landed -- so an earlier run's rows are still there on
+// the second run of the day. They are not this run's, and `check` used to
+// count them anyway: 24 rows on the first run of a day, 64 a few runs later.
+func TestCheckCountsOnlyThisRunsRows(t *testing.T) {
+	dir := useLanding(t)
+	t.Setenv("BREVIS_RUN_ID", "this-run")
+	stage(t, dir, "earlier.ndjson", "earlier-run", 24)
+	stage(t, dir, "mine.ndjson", "this-run", 8)
+	// Written before rows carried their run: never this run's.
+	if err := os.WriteFile(filepath.Join(dir, "old.ndjson"), []byte("{\"sku\":\"a\"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out := stdout(t, check); !strings.Contains(out, "8 row(s) of this run") {
+		t.Errorf("printed %q, want this run's 8 rows", out)
+	}
+}
+
+// The report's filter is the same rule, record by record.
+func TestTheReportReadsOnlyThisRunsRows(t *testing.T) {
+	keep := ofRun("this-run")
+	if _, err := keep(map[string]any{"run_id": "this-run"}); err != nil {
+		t.Errorf("dropped this run's row: %v", err)
+	}
+	for _, row := range []map[string]any{{"run_id": "earlier-run"}, {"sku": "a"}} {
+		if _, err := keep(row); !errors.Is(err, sdk.SkipRecord) {
+			t.Errorf("kept %v", row)
+		}
 	}
 }

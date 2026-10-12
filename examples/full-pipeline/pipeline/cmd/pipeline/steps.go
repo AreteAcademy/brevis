@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,6 +62,7 @@ func load() error {
 	if err := os.MkdirAll(landing, 0o750); err != nil {
 		return err
 	}
+	run := thisRun()
 
 	sdk.Run(sdk.Pipeline{
 		Name: "load " + partition,
@@ -70,6 +72,9 @@ func load() error {
 		}},
 		Transform: []sdk.Transformer{
 			sdk.Compute("partition", func(map[string]any) (any, error) { return partition, nil }),
+			// The run that landed the row. Staging is shared across runs,
+			// and `check` and `report` read only their own run's rows.
+			sdk.Compute(runColumn, func(map[string]any) (any, error) { return run, nil }),
 		},
 		Target: sdk.Target{
 			// FLAT, not one directory per partition. The driver picks the file
@@ -77,8 +82,12 @@ func load() error {
 			// overwrite the first -- so three instances writing here do not
 			// collide, and the `partition` column above keeps the provenance
 			// that the directory would have carried.
+			//
+			// And not one directory per RUN either, though a run reads only
+			// its own rows: the directory is the target /data lists, and a
+			// directory per run would be a new target every run.
 			To:      to.Files{Path: landing + "/"},
-			Columns: []string{"partition", "sku", "quantity", "price"},
+			Columns: []string{"partition", "sku", "quantity", "price", runColumn},
 		},
 	})
 	return nil // sdk.Run exits on failure; reaching here means it worked
@@ -144,21 +153,42 @@ func check() error {
 	if err != nil {
 		return err
 	}
+	keep := ofRun(thisRun())
 	var rows int
 	for _, f := range found {
-		n, err := lines(f)
+		n, err := rowsKept(f, keep)
 		if err != nil {
 			return err
 		}
 		rows += n
 	}
 
-	fmt.Printf("%d row(s) across %d file(s)\n", rows, len(found))
+	fmt.Printf("%d row(s) of this run, in %d staged file(s)\n", rows, len(found))
 
 	// A boolean, decided HERE. The workflow reads one key and asks whether it
 	// is empty -- no expression language, and the decision is testable with
 	// this package's own test framework.
 	return bctx.SetAll(map[string]any{"has_rows": rows > 0, "rows": rows})
+}
+
+// rowsKept counts the rows of a staged file that keep lets through. A line
+// that is not a JSON object is no run's row.
+func rowsKept(path string, keep sdk.Transformer) (int, error) {
+	raw, err := os.ReadFile(path) //nolint:gosec // a path this program wrote
+	if err != nil {
+		return 0, err
+	}
+	var n int
+	for _, line := range strings.Split(string(raw), "\n") {
+		var row map[string]any
+		if json.Unmarshal([]byte(line), &row) != nil {
+			continue
+		}
+		if _, err := keep(row); err == nil {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // report folds everything that landed into one row per SKU.
@@ -201,6 +231,9 @@ func report() error {
 	sdk.Run(sdk.Pipeline{
 		Name:   "daily report",
 		Source: sdk.Source{From: from.Files{Path: filepath.Join(landing, "*.ndjson")}},
+		// Only this run's rows: staging also holds the day's earlier runs,
+		// and summing them would count the same orders once per run.
+		Transform: []sdk.Transformer{ofRun(thisRun())},
 		Reduce: &sdk.Reduce{
 			By: sdk.GroupBy("sku"),
 			Agg: map[string]sdk.Aggregator{
@@ -364,3 +397,33 @@ func removeAll(dir string) (int, error) {
 	}
 	return len(found), os.RemoveAll(dir)
 }
+
+// thisRun is the run the rows of this execution belong to. By hand, with no
+// engine, every execution is one run called "by-hand": the steps still agree
+// with each other, which is all staging needs from the name.
+func thisRun() string {
+	if id := sdk.RunContextFromEnv().ID; id != "" {
+		return id
+	}
+	return "by-hand"
+}
+
+// ofRun keeps the staged rows landed by run and drops the rest.
+//
+// Staging is shared and keeps a day of files ON PURPOSE -- a retry of this
+// run needs what its earlier attempt landed -- so the second run of a day
+// finds the first one's rows beside its own. A row written before rows
+// carried their run belongs to no run and is dropped too.
+func ofRun(run string) sdk.Transformer {
+	return func(payload any) (any, error) {
+		row, ok := payload.(map[string]any)
+		if !ok || row[runColumn] != run {
+			return nil, sdk.SkipRecord
+		}
+		return row, nil
+	}
+}
+
+// runColumn is the column `load` stamps on every staged row: the run that
+// landed it, as `partition` says which partition did.
+const runColumn = "run_id"
