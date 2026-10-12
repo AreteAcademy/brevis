@@ -102,3 +102,25 @@ func TestADryRunCarriesTheArgumentsAndAnswersKindAndBytes(t *testing.T) {
 		t.Errorf("the dry run sent %v", sent)
 	}
 }
+
+// A JOB WHOSE CALLER GAVE UP IS CANCELLED, not abandoned. Found in review:
+// cancelling the context stopped the polling and left the job running and
+// billing, so an API answering 504 and freeing its slot let one tenant keep
+// any number of jobs going.
+func TestAJobIsCancelledWhenItsContextEnds(t *testing.T) {
+	f := &fake{t: t, reply: ok(`{"jobComplete":false,"jobReference":{"jobId":"j-1","location":"EU"}}`)}
+	c := dial(t, f)
+	c.poll = time.Hour
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	if _, err := c.Read(ctx, dialect.Request{Query: "SELECT 1", Limit: 1}); err == nil {
+		t.Fatal("the read outlived its context")
+	}
+	if len(f.cancels) != 1 || f.cancels[0] != "POST /projects/p/jobs/j-1/cancel?location=EU" {
+		t.Errorf("cancels: %v", f.cancels)
+	}
+	// and the job was told its own deadline, as a second line
+	if ms, _ := f.posts[0]["jobTimeoutMs"].(string); ms == "" {
+		t.Errorf("no jobTimeoutMs on a request with a deadline: %v", f.posts[0])
+	}
+}

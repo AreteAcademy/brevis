@@ -511,6 +511,14 @@ func (c *conn) runWith(ctx context.Context, statement string, extra map[string]a
 			req[k] = v
 		}
 	}
+	// THE CALLER'S DEADLINE IS THE JOB'S TOO, as a second line behind the
+	// cancel below: a job that outlives whoever asked is a bill for an
+	// answer nobody reads. A string, like every int64 this API carries.
+	if deadline, set := ctx.Deadline(); set {
+		if left := time.Until(deadline).Milliseconds(); left > 0 {
+			req["jobTimeoutMs"] = strconv.FormatInt(left, 10)
+		}
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
@@ -537,15 +545,20 @@ func (c *conn) runWith(ctx context.Context, statement string, extra map[string]a
 		}
 		select {
 		case <-ctx.Done():
+			c.cancelJob(ctx, res.JobReference.JobID, res.JobReference.Location)
 			return nil, fmt.Errorf("waiting for the job: %w", ctx.Err())
 		case <-time.After(c.poll):
 		}
+		job := res.JobReference
 		res, err = c.call(ctx, http.MethodGet,
 			fmt.Sprintf("%s/projects/%s/queries/%s?%s",
 				c.base, url.PathEscape(c.project),
-				url.PathEscape(res.JobReference.JobID), q.Encode()),
+				url.PathEscape(job.JobID), q.Encode()),
 			nil, statement)
 		if err != nil {
+			if ctx.Err() != nil {
+				c.cancelJob(ctx, job.JobID, job.Location)
+			}
 			return nil, err
 		}
 	}
@@ -639,4 +652,30 @@ func queryParameters(args []dialect.Arg) ([]map[string]any, error) {
 		})
 	}
 	return out, nil
+}
+
+// cancelJob asks BigQuery to stop a job whose caller gave up.
+//
+// FOUND IN REVIEW: a cancelled context stopped the polling and left the job
+// running and billing, so an API that answered 504 and freed its slot let
+// one tenant keep any number of jobs going. Best effort, on a context of its
+// own -- the caller's is already done -- and an error is dropped: the job
+// timeout sent with the query is the line behind this one.
+func (c *conn) cancelJob(ctx context.Context, jobID, location string) {
+	if jobID == "" {
+		return
+	}
+	cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	q := url.Values{"location": {location}}
+	req, err := http.NewRequestWithContext(cctx, http.MethodPost,
+		fmt.Sprintf("%s/projects/%s/jobs/%s/cancel?%s", c.base, url.PathEscape(c.project),
+			url.PathEscape(jobID), q.Encode()), nil)
+	if err != nil {
+		return
+	}
+	if resp, err := c.http.Do(req); err == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}
 }
