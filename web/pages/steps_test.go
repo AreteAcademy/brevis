@@ -120,3 +120,47 @@ func TestOnlyAllSuccessIsSuccess(t *testing.T) {
 		t.Errorf("all success shows %s", got)
 	}
 }
+
+// An instance that failed and then succeeded on a retry counts as the retry
+// says: the node's count and colour are its LAST attempts, and both attempts
+// stay on the screen.
+func TestAnInstanceIsItsLastAttempt(t *testing.T) {
+	r, logs := reportedRun(t)
+	logs = append(logs, postgres.StepLog{NodeID: "load", MapIndex: 1, Attempt: 1, Status: "success"})
+	load := StepOutputs(r, logs)[2]
+	if load.Ok != 3 || load.Total != 3 || load.Status != "success" {
+		t.Errorf("load = %s, %d of %d ok; want success, 3 of 3", load.Status, load.Ok, load.Total)
+	}
+	if len(load.Rows) != 4 || load.Rows[1].Attempt != 0 || load.Rows[2].Attempt != 1 {
+		t.Errorf("rows = %+v, want both attempts of instance 1, in order", load.Rows)
+	}
+}
+
+// A step the definition does not know -- a run older than its workflow's
+// last edit -- keeps a place, after the ones the graph orders.
+func TestAStepTheDefinitionDoesNotKnowComesLast(t *testing.T) {
+	r, logs := reportedRun(t)
+	logs = append([]postgres.StepLog{{NodeID: "renamed", MapIndex: run.Unmapped, Status: "success"}}, logs...)
+	got := StepOutputs(r, logs)
+	if last := got[len(got)-1].Node; last != "renamed" {
+		t.Errorf("last = %s, want the unknown step", last)
+	}
+}
+
+// When the list a step mapped over cannot be read back, each instance is
+// named by its position, never left blank.
+func TestAnUnresolvedInstanceIsNamedByPosition(t *testing.T) {
+	r, logs := reportedRun(t)
+	for i := range logs {
+		if logs[i].NodeID == "discover" {
+			logs[i].Output = nil
+		}
+	}
+	var items []string
+	for _, row := range StepOutputs(r, logs)[2].Rows {
+		items = append(items, row.Item)
+	}
+	if want := []string{"#0", "#1", "#2"}; !reflect.DeepEqual(items, want) {
+		t.Errorf("items = %v, want %v", items, want)
+	}
+}
