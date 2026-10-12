@@ -197,18 +197,29 @@ func compact(raw json.RawMessage) json.RawMessage {
 
 // worst is the status a node shows for its instances' last attempts: one
 // failure makes the node failed, as it does in the flow.
+//
+// Success ranks below everything, a status this list does not know included:
+// a node is green only when every instance is, never because a new status
+// happened to sort after "success".
 func worst(last map[int]string) string {
 	rank := map[string]int{
-		string(run.StatusFailed):   6,
-		string(run.StatusRunning):  5,
-		string(run.StatusRetrying): 4,
-		string(run.StatusQueued):   3,
-		string(run.StatusCanceled): 2,
-		string(run.StatusSkipped):  1,
+		string(run.StatusSuccess):  0,
+		string(run.StatusSkipped):  2,
+		string(run.StatusCanceled): 3,
+		string(run.StatusCreated):  4,
+		string(run.StatusPending):  5,
+		string(run.StatusQueued):   6,
+		string(run.StatusRetrying): 7,
+		string(run.StatusRunning):  8,
+		string(run.StatusFailed):   9,
 	}
 	status, best := "", -1
 	for _, s := range last {
-		if r := rank[s]; r > best || (r == best && s < status) {
+		r, known := rank[s]
+		if !known {
+			r = 1
+		}
+		if r > best || (r == best && s < status) {
 			status, best = s, r
 		}
 	}

@@ -104,3 +104,19 @@ func TestAnUnreadableDefinitionStillShowsEveryLog(t *testing.T) {
 		t.Errorf("%d rows shown, want %d", n, len(logs))
 	}
 }
+
+// A mapped step is green only when every instance is: any other status beside
+// a success is what the node shows -- one the ranking already knows, or one
+// added after it.
+func TestOnlyAllSuccessIsSuccess(t *testing.T) {
+	for _, other := range []string{"pending", "created", "queued", "running",
+		"retrying", "failed", "canceled", "skipped", "waiting"} {
+		got := worst(map[int]string{0: string(run.StatusSuccess), 1: other})
+		if got != other {
+			t.Errorf("success beside %s shows %s", other, got)
+		}
+	}
+	if got := worst(map[int]string{0: "success", 1: "success"}); got != "success" {
+		t.Errorf("all success shows %s", got)
+	}
+}
