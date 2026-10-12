@@ -250,6 +250,7 @@ would change what the warehouse plans.
 | `429` | four requests from this tenant are already waiting (`Retry-After`) |
 | `503` | the API is at `max_in_flight` (`Retry-After`) |
 | `504` | `timeout` reached; the query was cancelled |
+| `500` | the endpoint's SQL cannot render for this request — its author's to fix; the reason is on the audit line |
 | `502` | the warehouse refused — never quoting the SQL or the values |
 
 ## What it counts
