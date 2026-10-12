@@ -134,7 +134,7 @@ func (c *Client) Call(ctx context.Context, api, path string, params url.Values) 
 		// NOT err.Error(): it carries the URL.
 		return Answer{}, errors.New("the API could not be reached")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
 	if err != nil {
 		return Answer{}, errors.New("the API's answer could not be read")

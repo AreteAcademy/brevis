@@ -10,7 +10,7 @@ No templating: a model is a file that stays valid SQL, and the order comes from 
 
 ![The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery.](/assets/flow-sql.svg)
 
-## Five commands
+## Six commands
 
 | command | what it does |
 |---|---|
@@ -19,6 +19,7 @@ No templating: a model is a file that stays valid SQL, and the order comes from 
 | `brevis-sql build` | creates or replaces every model, in dependency order |
 | `brevis-sql test` | runs every model's tests; each is a SELECT that must find nothing |
 | `brevis-sql serve` | answers read-only previews and queries over HTTP, so a console needs no warehouse credential |
+| `brevis-sql generation bump` | records that a table was rebuilt, so `brevis-sql-api`'s cached answers over it go stale — `build --generations-from` does it for every model it builds |
 
 `--select orders+` narrows any of them to one model and everything downstream of it.
 

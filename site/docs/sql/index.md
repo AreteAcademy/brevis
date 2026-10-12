@@ -10,7 +10,7 @@ Sem template: um modelo é um arquivo que continua SQL válido, e a ordem vem da
 
 ![O fluxo do SQL: o brevis-sql lê raw.orders, uma tabela que o SDK ou o Gateway pousou. O modelo staging.stg_orders vira uma view sobre ela, e marts.orders uma tabela sobre essa view; a ordem vem da leitura do SQL. Os mesmos modelos rodam no Postgres ou no BigQuery.](/assets/flow-sql.svg)
 
-## Cinco comandos
+## Seis comandos
 
 | comando | o que faz |
 |---|---|
@@ -19,6 +19,7 @@ Sem template: um modelo é um arquivo que continua SQL válido, e a ordem vem da
 | `brevis-sql build` | cria ou substitui cada modelo, na ordem de dependência |
 | `brevis-sql test` | roda os testes de cada modelo; cada um é um SELECT que não pode encontrar nada |
 | `brevis-sql serve` | responde previews e consultas somente-leitura por HTTP, para que um console não precise de credencial de warehouse |
+| `brevis-sql generation bump` | registra que uma tabela foi reconstruída, para que as respostas em cache do `brevis-sql-api` sobre ela fiquem velhas — o `build --generations-from` faz isso para cada modelo que constrói |
 
 `--select orders+` restringe qualquer um deles a um modelo e a tudo que vem depois dele.
 

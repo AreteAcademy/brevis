@@ -1937,6 +1937,19 @@ and role of the first problem, and replaces that gateway's destinations in one
 transaction. `unpublish` removes a decommissioned gateway, and is an error when
 no gateway of that name was published.
 
+How a `brevis-sql-api` appears on Data → Endpoints: what each endpoint takes
+and reads, published as a deliberate act — never its traffic.
+
+```bash
+brevis-sql-api describe --config api.yaml --out manifest.json   # the API's own binary
+brevis endpoints publish manifest.json
+brevis endpoints unpublish metrics-api
+```
+
+`publish` checks the manifest whole before writing anything and replaces that
+API's endpoints in one transaction; a name, default or note shaped like a
+credential refuses all of it.
+
 A command of its own rather than a mode of `brevis publish`, because workflows
 and gateways have different set semantics: `publish --prune` must never reach a
 gateway's rows.
@@ -5383,7 +5396,7 @@ No templating: a model is a file that stays valid SQL, and the order comes from 
 
 ![The SQL flow: brevis-sql reads raw.orders, a table the SDK or the Gateway landed. The model staging.stg_orders becomes a view over it, and marts.orders a table over that view; the order comes from reading the SQL. The same models build on Postgres or BigQuery.](/assets/flow-sql.svg)
 
-## Five commands
+## Six commands
 
 | command | what it does |
 |---|---|
@@ -5392,6 +5405,7 @@ No templating: a model is a file that stays valid SQL, and the order comes from 
 | `brevis-sql build` | creates or replaces every model, in dependency order |
 | `brevis-sql test` | runs every model's tests; each is a SELECT that must find nothing |
 | `brevis-sql serve` | answers read-only previews and queries over HTTP, so a console needs no warehouse credential |
+| `brevis-sql generation bump` | records that a table was rebuilt, so `brevis-sql-api`'s cached answers over it go stale — `build --generations-from` does it for every model it builds |
 
 `--select orders+` narrows any of them to one model and everything downstream of it.
 

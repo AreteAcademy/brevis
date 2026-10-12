@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -149,7 +148,6 @@ func TestACorruptEntryIsAMissAndIsReplaced(t *testing.T) {
 type pricedOnly struct {
 	w    *warehouse
 	plan dialect.Plan
-	mu   sync.Mutex
 }
 
 func (p *pricedOnly) Exec(ctx context.Context, s string) error          { return nil }
