@@ -14,7 +14,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [0.21.0] — 2026-10-11
+## [0.21.0] — 2026-10-12
 
 ### Added: a destination's page says how each writer is configured
 
@@ -46,14 +46,46 @@ publish naming the stream and the setting; a step's description is dropped
 with one warning naming the run and the step, and its landings are recorded
 without it. Blanking the password would hide the bug in the writer.
 
+### Added: Data → Endpoints, and Try it
+
+`brevis-sql-api` (brevis-sql `0.5.0`) serves declared, read-only SQL over
+HTTP. Like a gateway it shares nothing with the engine at runtime, and appears
+in the console through a deliberate act:
+
+```bash
+brevis-sql-api describe --out manifest.json api.yaml
+brevis endpoints publish manifest.json     # and `unpublish <api>`
+```
+
+**Data → Endpoints** lists every published path; an endpoint's page is its
+contract — parameters with what they accept and their defaults, limits, the
+author's `#:` notes, the models it reads, a `curl` with the key as a
+placeholder. A model's page gains **Read by**. No traffic anywhere: that is
+the API's `/metrics`.
+
+**Try it** runs an endpoint from its page and draws the answer — status, cache
+result, time, the first 500 rows — calling the API from the server, so the
+browser never holds a key. It runs with one key, `BREVIS_ENDPOINTS_KEY`, so
+**one tenant for every login**: it exists only on a console that asks who you
+are, and only for an API in `BREVIS_ENDPOINTS_URLS`.
+
+The manifest is refused whole, by position, when any target is not one or any
+name, default or note carries a credential's shape. See `docs/ENDPOINTS.md`.
+
+### Changed: the bar follows the data's path
+
+Overview · **Pipelines** (Workflows, Runs) · **Data** (Catalog, Endpoints, SQL)
+· Projects. Each group is announced as one to a screen reader. Every URL is
+unchanged.
+
 ### Upgrading
 
-**Three migrations, all quick.** `00018` creates three tables. `00019` adds a
+**Four migrations, all quick.** `00018` creates three tables. `00019` adds a
 nullable `config_hash` to `landings`, with a foreign key: on a million landings
 (391 MB) it took **20.6 ms** — Postgres validates a key on a column that is all
 NULL without reading the table. `00020` creates `step_config_history`, filled
 from the landings `00019` began describing — none, on an engine upgrading from
-`0.20.0`.
+`0.20.0`. `00021` creates `api_endpoints`, empty until an API is published.
 
 **Upgrade the engine before the gateway.** An engine on `0.20.0` refuses a
 version-2 manifest by its number, and the publish fails saying so. This one
@@ -66,6 +98,13 @@ configuration until it is.
 **`deployments/kubernetes/gateway-publish-job.yaml`** is new: the gateway's
 publish as part of its deploy. It pins this engine and the gateway release that
 carries manifest version 2.
+
+**Try it is off until configured.** Two optional variables:
+`BREVIS_ENDPOINTS_URLS` (`api=url` pairs) and `BREVIS_ENDPOINTS_KEY`. A list
+that cannot be read stops the engine at start, naming the entry.
+
+**`deployments/kubernetes/endpoints-publish-job.yaml`** is new: an API's
+publish as part of its deploy, pinning this engine and brevis-sql-api `0.5.0`.
 
 ---
 

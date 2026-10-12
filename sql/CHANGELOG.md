@@ -16,6 +16,57 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [0.5.0] — 2026-10-12
+
+### Added: `brevis-sql-api` — declared, read-only SQL over HTTP
+
+The module's second binary and image (`areteacademy/brevis-sql-api`, same tag,
+same version). One YAML file names a connection from `brevis.yaml`, each
+endpoint's versioned path, its typed parameters and its SQL.
+
+- **Values are bound, never written into the SQL.** The template is a Jinja
+  *subset* — text, `{{ name }}`, `{# #}`, `if/elif/else` over names — and
+  `{{ x }}` renders as `$n` / `@x` with the value as a typed argument. Only an
+  `enum` is inlined, after an exact match. A placeholder in a string, a
+  comment or a quoted name is refused at load and checked again per render.
+- **Each key is one tenant** (`sha256(key)=tenant` lines in the variable
+  `keys_from` names). `{{ tenant }}` must filter outside every condition; a
+  caller cannot send it. Outside `BREVIS_ENV=local`, no auth is no start.
+- **Read-only by the warehouse**: a `READ ONLY` transaction on Postgres; a
+  dry run on BigQuery that refuses anything but `SELECT` and anything over
+  `max_bytes_billed`, and cancels a job whose caller gave up.
+- **Limits**: timeout, `max_rows`, `max_response_bytes`, `max_bytes_billed`,
+  four requests in flight per tenant and `max_in_flight` for the whole API.
+- **A cache invalidated by the data**: answers kept in Redis, Brotli-compressed,
+  keyed by API, connection, tenant, statement, arguments and the generation of
+  every model the SQL reads. Concurrent misses are one query; a `br` caller is
+  sent the stored bytes; `ETag`/`304`.
+- Prometheus on its own port with no tenant label; one audit line per request
+  with parameter names and an HMAC of the arguments, never values.
+- `validate`, `describe --out` (the manifest `brevis endpoints publish` takes,
+  engine `0.21.0`), `key hash`, and `serve --addr/--metrics-addr`.
+
+### Added: generations
+
+`brevis-sql build --generations-from VAR` writes a fresh generation for each
+model built — a warning, never a failed build, when Redis is away.
+`brevis-sql generation bump --generations-from VAR [--dialect] schema.name…`
+does the same for a table another step rebuilt. Redis is spoken through a
+RESP2 subset in this module; `brevis-sql`'s weight is unchanged.
+
+### Changed: the dialects bind arguments
+
+`dialect.Request.Args`, `dialect.Binder` and `dialect.ArgPlanner`, in the
+conformance suite for both dialects. Statements typed by a person carry none,
+so `serve` is unchanged.
+
+### Upgrading
+
+Nothing to do for `brevis-sql` or `serve`. For the API, see
+`docs/ENDPOINTS.md`; its publish needs engine `0.21.0`.
+
+---
+
 ## [0.4.0] — 2026-10-10
 
 ### Added: the warehouse refuses the write, so a read-only role no longer has to
