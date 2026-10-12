@@ -102,8 +102,11 @@ func TestAnAnswerPastTheConsolesCeilingIsRefused(t *testing.T) {
 	}))
 	defer api.Close()
 	c, _ := New("a="+api.URL, "")
-	if _, err := c.Call(context.Background(), "a", "/v1/x", nil); err == nil {
-		t.Error("an answer past the ceiling was read")
+	// THE CEILING'S OWN WORDS: the body cut at the ceiling is broken JSON
+	// and would fail to parse anyway, which is a different refusal that
+	// would pass a test asking only for an error.
+	if _, err := c.Call(context.Background(), "a", "/v1/x", nil); err == nil || !strings.Contains(err.Error(), "MiB") {
+		t.Errorf("an answer past the ceiling: %v", err)
 	}
 }
 
