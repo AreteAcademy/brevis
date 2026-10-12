@@ -1,0 +1,19 @@
+# brevis-sql-api: declared, read-only SQL over HTTP.
+#
+#   cd sql && go build -o ../bin/brevis-sql-api ./cmd/brevis-sql-api && cd ..
+#   WAREHOUSE_DSN=postgres://brevis:brevis@localhost:55434/warehouse?sslmode=disable \
+#   BREVIS_ENV=local ./bin/brevis-sql-api serve \
+#     --config examples/endpoints/api.yaml --connections examples/endpoints/brevis.yaml
+#   curl -s 'localhost:8095/v1/sales?sku=W-100'
+name: example-api
+connection: warehouse
+
+listen:
+  addr: 127.0.0.1:8095
+
+endpoints:
+  - name: sales
+    path: /v1/sales
+    params:
+      sku: {type: string, max_len: 32}
+    sql_file: endpoints/sales.sql

@@ -1,0 +1,7 @@
+# The warehouse the example's endpoints read: the same declaration
+# examples/full-pipeline uses, because an endpoint reads what a pipeline
+# landed. `dsn_from` names a variable; the file is in git.
+connections:
+  - name: warehouse
+    dialect: postgres
+    dsn_from: WAREHOUSE_DSN
