@@ -80,23 +80,33 @@ func writeRows(t *testing.T, dir, date string, n int, age time.Duration) {
 	}
 }
 
-// stdout runs f and returns what it printed.
+// stdout runs f and returns what it printed. The pipe is drained while f
+// runs, so a long output cannot fill it and hang the test, and os.Stdout is
+// back even when f panics.
 func stdout(t *testing.T, f func() error) string {
 	t.Helper()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
+	read := make(chan string)
+	go func() {
+		out, _ := io.ReadAll(r)
+		read <- string(out)
+	}()
+
 	old := os.Stdout
 	os.Stdout = w
-	runErr := f()
-	os.Stdout = old
+	runErr := func() error {
+		defer func() { os.Stdout = old }()
+		return f()
+	}()
 	w.Close()
-	out, _ := io.ReadAll(r)
+	out := <-read
 	if runErr != nil {
 		t.Fatalf("failed: %v", runErr)
 	}
-	return string(out)
+	return out
 }
 
 // The count is the report's, not the directory's: every earlier run's report
