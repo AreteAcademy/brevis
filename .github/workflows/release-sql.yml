@@ -1,4 +1,5 @@
-# Publishes brevis-sql's image on every `sql/v*` tag.
+# Publishes brevis-sql's image on every `sql/v*` tag -- and brevis-sql-api's,
+# the same module's second binary, from the same tag and the same version.
 #
 # Its own repository, its own tag and its own version, for the reason
 # release-gateway.yml states and does not need repeating: a distinct
@@ -16,6 +17,7 @@ on:
 
 env:
   IMAGE: docker.io/areteacademy/brevis-sql
+  API_IMAGE: docker.io/areteacademy/brevis-sql-api
 
 jobs:
   image:
@@ -215,6 +217,50 @@ jobs:
             compile --project /nope 2>&1 | grep -q "no such file" \
             || { echo "::error::the image did not start"; exit 1; }
           echo "✅ ${{ env.IMAGE }}:${{ steps.v.outputs.version }} runs"
+
+      # brevis-sql-api: ONE TAG, TWO IMAGES. The same module, the same
+      # sql/VERSION and the same commit -- two tags for one module would be
+      # two versions of the same connections and dialects, and the day they
+      # disagreed nobody could say which was right.
+      - name: brevis-sql-api
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: sql-api
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.API_IMAGE }}:${{ steps.v.outputs.version }},${{ env.API_IMAGE }}:latest
+          build-args: |
+            VERSION=${{ steps.v.outputs.version }}
+            COMMIT=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # THE PUBLISHED IMAGE, pulled, as above. `validate` on a file that is
+      # not there is the cheapest proof the binary starts and reads its
+      # flags; there is no shell to exec into.
+      - name: The published API image runs
+        run: |
+          docker pull "${{ env.API_IMAGE }}:${{ steps.v.outputs.version }}"
+          got=$(docker inspect "${{ env.API_IMAGE }}:${{ steps.v.outputs.version }}" \
+            --format '{{index .Config.Labels "org.opencontainers.image.version"}}')
+          if [ "$got" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::the published API image is labelled $got"
+            exit 1
+          fi
+          docker run --rm "${{ env.API_IMAGE }}:${{ steps.v.outputs.version }}" \
+            validate --config /nope.yaml 2>&1 | grep -q "could not be read" \
+            || { echo "::error::the API image did not start"; exit 1; }
+          echo "✅ ${{ env.API_IMAGE }}:${{ steps.v.outputs.version }} runs"
+
+      - name: The API's Docker Hub overview
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: areteacademy/brevis-sql-api
+          readme-filepath: ./docs/ENDPOINTS-hub.md
+          short-description: "Declared, read-only SQL over HTTP, one tenant per key, cached until the data changes."
 
       # The page everybody sees first, and it is EMPTY unless something
       # pushes it. The repository's own gate keeps it under Docker Hub's
