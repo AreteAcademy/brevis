@@ -107,9 +107,20 @@ func ParseManifest(data []byte) (Manifest, error) {
 	if strings.TrimSpace(m.Gateway) == "" {
 		return Manifest{}, fmt.Errorf("the manifest names no gateway")
 	}
-	for _, st := range m.Streams {
+	if err := nameIsClean("the gateway's name", m.Gateway); err != nil {
+		return Manifest{}, err
+	}
+	for i, st := range m.Streams {
 		if strings.TrimSpace(st.Path) == "" {
 			return Manifest{}, fmt.Errorf("a stream has no path")
+		}
+		// Before anything below quotes the path in an error.
+		stream := fmt.Sprintf("stream %d", i+1)
+		if err := nameIsClean(stream+"'s path", st.Path); err != nil {
+			return Manifest{}, err
+		}
+		if err := nameIsClean(stream+"'s name", st.Name); err != nil {
+			return Manifest{}, err
 		}
 		if err := checkConfiguration(st); err != nil {
 			return Manifest{}, fmt.Errorf("%s: %w", st.Path, err)
@@ -140,6 +151,9 @@ func checkConfiguration(st ManifestStream) error {
 		return err
 	}
 	for path, note := range st.Notes {
+		if err := nameIsClean("a note's setting", path); err != nil {
+			return err
+		}
 		if err := FindSecretInText(joinPath("notes", path), note); err != nil {
 			return err
 		}
@@ -151,9 +165,12 @@ func checkConfiguration(st ManifestStream) error {
 // whoever described them.
 func CheckFields(fields []ManifestField) error {
 	seen := map[string]bool{}
-	for _, f := range fields {
+	for i, f := range fields {
 		if strings.TrimSpace(f.Path) == "" {
 			return fmt.Errorf("a setting has no path")
+		}
+		if err := nameIsClean(fmt.Sprintf("setting %d's path", i+1), f.Path); err != nil {
+			return err
 		}
 		if seen[f.Path] {
 			return fmt.Errorf("%s: described twice", f.Path)
@@ -184,4 +201,17 @@ func scalarOrList(v any) bool {
 		return true
 	}
 	return false
+}
+
+// nameIsClean refuses a name -- a setting's path, a stream's name, a note's
+// key -- carrying a credential's shape. A name is on the page as much as a
+// value is.
+//
+// The refusal says WHERE by position and never quotes the name: an error that
+// repeated it would hand the credential on to whoever reads the log.
+func nameIsClean(where, name string) error {
+	if FindSecretInText("", name) != nil {
+		return fmt.Errorf("%s carries a credential", where)
+	}
+	return nil
 }

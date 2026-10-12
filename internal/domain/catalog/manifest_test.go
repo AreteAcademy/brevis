@@ -175,3 +175,36 @@ func TestTheConfigHashIsTheSettingsAndNotTheNotes(t *testing.T) {
 		t.Fatalf("a version-1 stream has no configuration, got %q", h4)
 	}
 }
+
+// A name is on the page as much as a value is: a setting's path, a stream's
+// name and path, a note's key and the gateway's own name all reach /data. A
+// credential in any of them is refused -- and the refusal names WHERE by
+// position, never by the text that carried it, or the error would hand the
+// credential on to whoever reads the log.
+func TestACredentialInANameIsRefusedWithoutRepeatingIt(t *testing.T) {
+	const dsn = "postgres://loader:hunter2@db/shop"
+	cases := []struct{ name, from, to string }{
+		{"a setting's path", `{"path": "format", "value": "json"}`,
+			`{"path": "` + dsn + `", "value": "json"}`},
+		{"a stream's name", `"name": "tables"`, `"name": "` + dsn + `"`},
+		{"a stream's path", `"path": "/v1/tables"`, `"path": "/v1/` + dsn + `"`},
+		{"a note's key", `"sink.into.write": "APPEND would land twice."`,
+			`"` + dsn + `": "APPEND would land twice."`},
+		{"the gateway's name", `"gateway": "events_gateway"`, `"gateway": "` + dsn + `"`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m := strings.Replace(v2Manifest, c.from, c.to, 1)
+			if m == v2Manifest {
+				t.Fatal("the case changed nothing")
+			}
+			_, err := ParseManifest([]byte(m))
+			if err == nil {
+				t.Fatal("accepted a credential in a name")
+			}
+			if strings.Contains(err.Error(), "hunter2") {
+				t.Fatalf("the refusal repeats the credential: %v", err)
+			}
+		})
+	}
+}
