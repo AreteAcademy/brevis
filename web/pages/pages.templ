@@ -1012,7 +1012,7 @@ templ runHead(r run.Run) {
 templ runBody(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 	@autoParams(r)
 	@alertsRaised(raised)
-	@stepsOutput(logs)
+	@stepsOutput(r, logs)
 }
 
 // autoParams shows what the engine worked out for this run.
@@ -1172,43 +1172,79 @@ func durationMs(ms int64) string {
 // nothing else. Rendered on the server inside a <details>, with no JavaScript
 // and no second call — the graph above is already polled second by second, and
 // attaching the log to that JSON would make every poll more expensive.
-templ stepsOutput(logs []postgres.StepLog) {
+//
+// One entry per NODE, in the graph's order, so it reads like the flow above
+// it: a mapped step is one entry with its "2/3" and an instance per item.
+templ stepsOutput(r run.Run, logs []postgres.StepLog) {
 	if len(logs) > 0 {
 		<section class="mt-8">
 			<h2 class="display mb-4 text-xl text-ink">Step output</h2>
 			<div class="space-y-2">
-				for _, p := range logs {
-					<details class="group rounded-2xl border border-line bg-surface">
-						<summary class="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 text-sm">
-							@components.State(p.Status)
-							<span class="font-medium text-ink">{ p.NodeID }</span>
-							if p.Attempt > 0 {
-								<span class="text-xs text-state-retrying">attempt { fmt.Sprint(p.Attempt+1) }</span>
-							}
-							if p.ExitCode != nil {
-								<span class="font-mono text-xs text-muted">exit { fmt.Sprint(*p.ExitCode) }</span>
-							}
-							if p.DurationMs > 0 {
-								<span class="text-xs text-muted">{ durationMs(p.DurationMs) }</span>
-							}
-							if p.Log == "" {
-								<span class="text-xs text-muted/70 italic">no output recorded</span>
-							}
-						</summary>
-						if p.Err != "" {
-							<p class="mx-5 mb-3 rounded-xl bg-state-failed/5 px-4 py-2.5 text-xs text-state-failed">{ p.Err }</p>
+				for _, g := range StepOutputs(r, logs) {
+					if g.Mapped {
+						<details class="group rounded-2xl border border-line bg-surface">
+							<summary class="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 text-sm">
+								@components.State(g.Status)
+								<span class="font-medium text-ink">{ g.Node }</span>
+								<span class="font-mono text-xs text-muted">{ fmt.Sprint(g.Ok) }/{ fmt.Sprint(g.Total) } ok</span>
+							</summary>
+							<div class="space-y-2 px-4 pb-4">
+								for _, row := range g.Rows {
+									@stepRow(row)
+								}
+							</div>
+						</details>
+					} else {
+						for _, row := range g.Rows {
+							@stepRow(row)
 						}
-						if p.Log != "" {
-							// `overflow-auto` with a maximum height: a dbt output
-							// with hundreds of lines must not push the rest of the
-							// page off the screen.
-							<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
-						}
-					</details>
+					}
 				}
 			</div>
 		</section>
 	}
+}
+
+// stepRow is one attempt of one step, or of one instance of a mapped step,
+// named by the item it ran for.
+templ stepRow(p StepRow) {
+	<details class="group rounded-2xl border border-line bg-surface">
+		<summary class="flex cursor-pointer flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 text-sm">
+			@components.State(p.Status)
+			if p.Item != "" {
+				<span class="font-mono text-xs text-ink">{ p.Item }</span>
+			} else {
+				<span class="font-medium text-ink">{ p.NodeID }</span>
+			}
+			if p.Attempt > 0 {
+				<span class="text-xs text-state-retrying">attempt { fmt.Sprint(p.Attempt+1) }</span>
+			}
+			if p.ExitCode != nil {
+				<span class="font-mono text-xs text-muted">exit { fmt.Sprint(*p.ExitCode) }</span>
+			}
+			if p.DurationMs > 0 {
+				<span class="text-xs text-muted">{ durationMs(p.DurationMs) }</span>
+			}
+			// What the step published, as its node in the flow shows it.
+			for _, o := range p.Output {
+				<span class="max-w-[24rem] truncate font-mono text-xs text-muted" title={ o.Value }>
+					<span class="text-muted/70">{ o.Key }</span> { o.Value }
+				</span>
+			}
+			if p.Log == "" {
+				<span class="text-xs text-muted/70 italic">no output recorded</span>
+			}
+		</summary>
+		if p.Err != "" {
+			<p class="mx-5 mb-3 rounded-xl bg-state-failed/5 px-4 py-2.5 text-xs text-state-failed">{ p.Err }</p>
+		}
+		if p.Log != "" {
+			// `overflow-auto` with a maximum height: a dbt output
+			// with hundreds of lines must not push the rest of the
+			// page off the screen.
+			<pre class="mx-5 mb-5 max-h-[28rem] overflow-auto rounded-card bg-surface-2 px-4 py-3 font-mono text-[0.7rem] leading-relaxed whitespace-pre text-ink">{ p.Log }</pre>
+		}
+	</details>
 }
 
 // dag is the island's mount point. The height is fixed on purpose: with `h-full`
