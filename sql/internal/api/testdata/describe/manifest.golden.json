@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "kind": "endpoints",
+  "name": "metrics-api",
+  "connection": "warehouse",
+  "dialect": "postgres",
+  "cache": {
+    "type": "redis",
+    "addr_from": "CACHE_ADDR",
+    "ttl": "6h0m0s",
+    "max_entry": 4194304
+  },
+  "endpoints": [
+    {
+      "name": "clicks",
+      "path": "/v1/clicks",
+      "tenant": "key",
+      "params": [
+        {
+          "name": "campaign",
+          "type": "string",
+          "max_len": 64
+        },
+        {
+          "name": "end_date",
+          "type": "date"
+        },
+        {
+          "name": "period",
+          "type": "period",
+          "default": "last_7_days"
+        },
+        {
+          "name": "start_date",
+          "type": "date"
+        }
+      ],
+      "limits": {
+        "timeout": "10s",
+        "max_rows": 500,
+        "max_bytes_billed": 1073741824
+      },
+      "reads": [
+        "postgres://analytics/marts/clicks_daily"
+      ],
+      "notes": {
+        "": "Clicks per day, for the customer's dashboard.",
+        "params.campaign": "A campaign id, as the ad platform spells it."
+      }
+    }
+  ],
+  "notes": {
+    "cache": "Kept until the model is rebuilt."
+  }
+}

@@ -31,14 +31,17 @@ const usage = `brevis-sql-api: declared, read-only SQL over HTTP
 
   brevis-sql-api validate --config api.yaml [--connections brevis.yaml]
   brevis-sql-api serve    --config api.yaml [--connections brevis.yaml]
+  brevis-sql-api describe --config api.yaml [--connections brevis.yaml] [--out FILE]
   brevis-sql-api key hash --tenant <tenant>   < the key on stdin
 
   validate  loads the file and its SQL, connecting to nothing
   serve     answers the file's endpoints
+  describe  prints the manifest 'brevis endpoints publish' takes, opening nothing
   key hash  prints the line a key list holds for one key
 
   --config FILE       the endpoint file
   --connections FILE  the connection registry   (default brevis.yaml)
+  --out FILE          describe: the manifest, written once it is whole
 `
 
 func run(args []string, out, errOut io.Writer) int {
@@ -50,7 +53,7 @@ func run(args []string, out, errOut io.Writer) int {
 	if cmd == "key" {
 		return keyHash(args[1:], out, errOut)
 	}
-	if cmd != "validate" && cmd != "serve" {
+	if cmd != "validate" && cmd != "serve" && cmd != "describe" {
 		_, _ = fmt.Fprintf(errOut, "unknown command %q\n\n%s", cmd, usage)
 		return 2
 	}
@@ -58,6 +61,7 @@ func run(args []string, out, errOut io.Writer) int {
 	fs.SetOutput(errOut)
 	config := fs.String("config", "", "the endpoint file")
 	registry := fs.String("connections", "brevis.yaml", "the connection registry")
+	outFile := fs.String("out", "", "describe: write the manifest here, once it is whole, instead of stdout")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
@@ -66,10 +70,38 @@ func run(args []string, out, errOut io.Writer) int {
 		return 2
 	}
 
-	cfg, err := load(*config, *registry)
+	reg, err := connections.Load(*registry)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
+	}
+	cfg, err := api.Load(*config, reg)
+	if err != nil {
+		_, _ = fmt.Fprintln(errOut, err)
+		return 1
+	}
+	if cmd == "describe" {
+		manifest, err := api.Describe(*config, cfg, reg)
+		if err != nil {
+			_, _ = fmt.Fprintln(errOut, err)
+			return 1
+		}
+		if *outFile == "" {
+			_, _ = out.Write(manifest)
+			return 0
+		}
+		// WHOLE OR NOT AT ALL: written beside and renamed, so a publish that
+		// reads the file never reads half of one.
+		tmp := *outFile + ".partial"
+		if err := os.WriteFile(tmp, manifest, 0o644); err != nil {
+			_, _ = fmt.Fprintln(errOut, err)
+			return 1
+		}
+		if err := os.Rename(tmp, *outFile); err != nil {
+			_, _ = fmt.Fprintln(errOut, err)
+			return 1
+		}
+		return 0
 	}
 	// FROM THE ENVIRONMENT, never from a flag or the file: something that
 	// could declare itself local would be something that turns off
@@ -125,14 +157,6 @@ func keyHash(args []string, out, errOut io.Writer) int {
 	}
 	_, _ = fmt.Fprintln(out, line)
 	return 0
-}
-
-func load(config, registry string) (*api.Config, error) {
-	reg, err := connections.Load(registry)
-	if err != nil {
-		return nil, err
-	}
-	return api.Load(config, reg)
 }
 
 func serve(cfg *api.Config, out io.Writer) error {

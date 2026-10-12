@@ -1,0 +1,28 @@
+name: metrics-api
+connection: warehouse
+
+#: Kept until the model is rebuilt.
+cache:
+  type: redis
+  addr_from: CACHE_ADDR
+  ttl: 6h
+
+params:
+  period: {type: period, default: last_7_days}
+
+endpoints:
+  #: Clicks per day, for the customer's dashboard.
+  - name: clicks
+    path: /v1/clicks
+    params:
+      period: {ref: period}
+      start_date: {type: date}
+      end_date: {type: date}
+      campaign: {type: string, max_len: 64} #: A campaign id, as the ad platform spells it.
+    limits: {max_rows: 500}
+    # an ordinary comment, which never leaves this file
+    sql: |
+      select day, sum(clicks) as clicks from marts.clicks_daily
+      where w = {{ tenant }} and day between {{ start_date }} and {{ end_date }}
+      {% if campaign %}and c = {{ campaign }}{% endif %}
+      group by 1

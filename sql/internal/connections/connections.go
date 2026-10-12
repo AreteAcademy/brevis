@@ -218,6 +218,21 @@ func (r *Registry) Named(name string) (dialect.Dialect, func(context.Context) (d
 	return nil, nil, false
 }
 
+// TargetOf is the catalog target of a relation on a declared connection,
+// from the declaration alone -- the form each dialect's own Target writes,
+// so a manifest names the same relation /data does without connecting. The
+// database or project and nothing else: no host, no user, no password.
+func (r *Registry) TargetOf(name, ref string) (string, bool) {
+	for _, c := range r.conns {
+		if c.Name != name {
+			continue
+		}
+		schema, rel, _ := strings.Cut(ref, ".")
+		return c.Dialect + "://" + c.key + "/" + schema + "/" + rel, true
+	}
+	return "", false
+}
+
 // Names lists the declared connections, for a refusal to name what there is.
 func (r *Registry) Names() []string {
 	out := make([]string, 0, len(r.conns))

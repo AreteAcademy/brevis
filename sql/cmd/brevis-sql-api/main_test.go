@@ -92,3 +92,23 @@ func TestEveryRefusedFixtureExitsOneWithItsMessage(t *testing.T) {
 		}
 	}
 }
+
+// --out WRITES THE MANIFEST ONCE IT IS WHOLE, for a publish Job whose image
+// has no shell to redirect into a file -- the gateway's flag, for its reason.
+func TestDescribeWritesTheManifestToOut(t *testing.T) {
+	t.Setenv("WAREHOUSE_DSN", "postgres://u:p@localhost:5432/w?sslmode=disable")
+	out := filepath.Join(t.TempDir(), "manifest.json")
+	var stdout, errOut bytes.Buffer
+	code := run([]string{"describe", "--config", example(t, "api.yaml"),
+		"--connections", example(t, "brevis.yaml"), "--out", out}, &stdout, &errOut)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	raw, err := os.ReadFile(out)
+	if err != nil || !strings.Contains(string(raw), `"postgres://w/marts/orders_daily"`) {
+		t.Errorf("manifest %s, %v", raw, err)
+	}
+	if stdout.Len() != 0 {
+		t.Errorf("stdout got %q with --out", stdout.String())
+	}
+}
