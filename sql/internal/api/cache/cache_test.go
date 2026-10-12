@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -159,7 +160,20 @@ func TestConcurrentMissesOnOneKeyRunOnce(t *testing.T) {
 			results[i] = v
 		}(i)
 	}
-	time.Sleep(20 * time.Millisecond)
+	// EVERY WAITER IS INSIDE Do BEFORE THE RUN ENDS. A sleep here was a
+	// guess: on a slow runner a goroutine still on its way would arrive
+	// after the run and start a second one, failing a test of a property
+	// that holds.
+	for {
+		g.mu.Lock()
+		c := g.calls["k"]
+		arrived := c != nil && c.dups == 99
+		g.mu.Unlock()
+		if arrived {
+			break
+		}
+		runtime.Gosched()
+	}
 	close(release)
 	wg.Wait()
 	if n := runs.Load(); n != 1 {
