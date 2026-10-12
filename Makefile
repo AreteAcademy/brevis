@@ -234,6 +234,10 @@ up-data: $(LOCAL_ENV) warehouse-local serve-up ## The whole stack, with a login,
 	@echo "publishing its workflows..."
 	@docker compose run --rm demo-publish
 	@$(MAKE) --no-print-directory gateway-publish
+	@echo "building the endpoints' model and serving it..."
+	@docker compose --profile demo up --build -d endpoints >/dev/null
+	@$(MAKE) --no-print-directory endpoints-publish \
+	  || echo "the endpoints were NOT published to Data → Endpoints; fix it and run: make endpoints-publish"
 	@printf "waiting for the API"
 	@until curl -sf http://localhost:$${BREVIS_API_PORT:-8080}/health >/dev/null 2>&1; \
 	  do printf .; sleep 1; done; echo
@@ -243,6 +247,7 @@ up-data: $(LOCAL_ENV) warehouse-local serve-up ## The whole stack, with a login,
 	  echo "login    $$BREVIS_AUTH_USER / $$BREVIS_LOCAL_PASSWORD"; \
 	  echo "gateway  http://localhost:$${BREVIS_GATEWAY_PORT:-8090}/health"; \
 	  echo "serve    127.0.0.1:8088   (its log: $(SERVE_LOG))"; \
+	  echo "endpoints http://localhost:$${BREVIS_ENDPOINTS_PORT:-8095}/v1/orders?period=today"; \
 	  echo ""; \
 	  echo "next:  make up-run      -- queue a run and watch the graph"; \
 	  echo "       then /data for what it wrote, and its Preview and Query tabs"
@@ -283,6 +288,16 @@ gateway-publish:
 	@docker compose run --rm --no-deps -T --entrypoint brevis-gateway \
 	  gateway describe /etc/brevis/gateway.yaml 2>/dev/null \
 	  | docker compose run --rm --no-deps -T api gateway publish /dev/stdin
+
+# The endpoints on Data → Endpoints: described in the API's image, which opens
+# nothing, and published by the engine's -- the gateway's two halves above.
+endpoints-publish:
+	@docker compose --profile demo run --rm --no-deps -T endpoints \
+	  describe --config /etc/brevis/api.yaml --connections /etc/brevis/brevis.yaml 2>/dev/null \
+	  | docker compose run --rm --no-deps -T api endpoints publish /dev/stdin
+
+endpoints-build: ## Rebuilds the endpoints' model; its cached answers go stale with it
+	@docker compose --profile demo run --rm endpoints-build
 
 # The demo project's partitions, rebuilt. `data/partitions` is the source of
 # truth and never moves; `data/incoming` is what the pipeline reads.
@@ -532,4 +547,4 @@ smoke: ## Checks the api's /health and /ready, and that the gateway accepts an e
 	  -d '{"event_id":"smoke","occurred_at":"2026-01-01T00:00:00Z","host":"smoke.example.com","region":"local"}' \
 	  | grep -q '^202$$' && echo 202 || { echo "not 202: see 'docker compose logs gateway'"; exit 1; }
 
-.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart endpoints-demo logs smoke dev generate tailwind-install image image-push image-smoke
+.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart endpoints-demo endpoints-publish endpoints-build logs smoke dev generate tailwind-install image image-push image-smoke

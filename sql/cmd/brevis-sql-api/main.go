@@ -42,6 +42,8 @@ const usage = `brevis-sql-api: declared, read-only SQL over HTTP
   --config FILE       the endpoint file
   --connections FILE  the connection registry   (default brevis.yaml)
   --out FILE          describe: the manifest, written once it is whole
+  --addr HOST:PORT    serve: listen here instead of the file's listen.addr
+  --metrics-addr A    serve: the exposition here instead of metrics.addr
 `
 
 func run(args []string, out, errOut io.Writer) int {
@@ -62,6 +64,8 @@ func run(args []string, out, errOut io.Writer) int {
 	config := fs.String("config", "", "the endpoint file")
 	registry := fs.String("connections", "brevis.yaml", "the connection registry")
 	outFile := fs.String("out", "", "describe: write the manifest here, once it is whole, instead of stdout")
+	addr := fs.String("addr", "", "serve: listen here instead of the file's listen.addr")
+	metricsAddr := fs.String("metrics-addr", "", "serve: the exposition here instead of the file's metrics.addr")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
@@ -112,6 +116,7 @@ func run(args []string, out, errOut io.Writer) int {
 			cfg.Name, len(cfg.Endpoints), cfg.Connection)
 		return 0
 	}
+	overrideListen(cfg, *addr, *metricsAddr)
 	if err := serve(cfg, out); err != nil {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
@@ -123,6 +128,21 @@ func metricsMux(h *api.Server) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", h.Metrics())
 	return mux
+}
+
+// overrideListen puts the flags' addresses over the file's, when given.
+//
+// FOR A CONTAINER: the file says 127.0.0.1 for a laptop, and inside a
+// container that is an address nothing outside it can reach. One file for
+// both, rather than a second copy that differs in one line and drifts in
+// the others.
+func overrideListen(cfg *api.Config, addr, metricsAddr string) {
+	if addr != "" {
+		cfg.Listen.Addr = addr
+	}
+	if metricsAddr != "" {
+		cfg.Metrics.Addr = metricsAddr
+	}
 }
 
 // stdin is where `key hash` reads the key; a test replaces it.

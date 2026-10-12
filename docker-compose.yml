@@ -344,6 +344,74 @@ services:
       topic: {condition: service_completed_successfully}
     restart: unless-stopped
 
+  # THE ENDPOINTS: the third leg of the cycle the gateway and the steps
+  # begin -- what they landed, served over HTTP. docs/ENDPOINTS.md.
+  #
+  # `examples/endpoints` as it is in the repository: its api.yaml, its SQL,
+  # its brevis.yaml and the brevis-sql project whose model the endpoints read.
+  # The same files `make endpoints-demo` runs on the host, so the two cannot
+  # disagree about what the example is.
+
+  # The cache's Redis. Its own, and on its own port: the drivers compose's
+  # Redis (56379) is the gateway's metastore, and an API's answers kept in
+  # it would be evicted by, and evict, what the gateway knows about tables.
+  cache:
+    profiles: ["demo"]
+    image: redis:7-alpine
+    ports: ["${BREVIS_CACHE_PORT:-56380}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Builds marts.orders_daily and writes its GENERATION, which is what tells
+  # the API its cached answers over it are stale. Once at `make up-data`, and
+  # again whenever `make endpoints-build` is run -- after new orders land
+  # through the gateway, the next request is a miss with them in it.
+  endpoints-build:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: sql
+    command: ["build", "--project", "/project", "--dialect", "postgres",
+              "--dsn-from", "WAREHOUSE_DSN", "--generations-from", "BREVIS_CACHE_ADDR"]
+    environment:
+      WAREHOUSE_DSN: postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable
+      BREVIS_CACHE_ADDR: cache:6379
+    volumes:
+      - ./examples/endpoints/project:/project:ro
+    depends_on:
+      warehouse: {condition: service_healthy}
+      cache: {condition: service_healthy}
+
+  # brevis-sql-api, open because this is local -- the gateway's rule and the
+  # api's: outside BREVIS_ENV=local it refuses to start without keys. The
+  # file listens on 127.0.0.1 for a laptop; --addr is the container's.
+  endpoints:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: sql-api
+    command: ["serve", "--config", "/etc/brevis/api.yaml", "--connections", "/etc/brevis/brevis.yaml",
+              "--addr", ":8080", "--metrics-addr", ":9090"]
+    environment:
+      BREVIS_ENV: local
+      # By their CONTAINER addresses. The files name these variables and
+      # never hold the strings.
+      WAREHOUSE_DSN: postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable
+      BREVIS_CACHE_ADDR: cache:6379
+    ports:
+      - "${BREVIS_ENDPOINTS_PORT:-8095}:8080"
+      # Its own port, never the API's: the API is public by design.
+      - "${BREVIS_ENDPOINTS_METRICS_PORT:-9097}:9090"
+    volumes:
+      - ./examples/endpoints:/etc/brevis:ro
+    depends_on:
+      endpoints-build: {condition: service_completed_successfully}
+    restart: unless-stopped
+
 volumes:
   # The warehouse's data, apart from the engine's: two volumes because they
   # are two databases with two jobs, and `docker compose down -v` on one

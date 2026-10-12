@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/AreteAcademy/brevis/sql/internal/api"
 )
 
 func example(t *testing.T, name string) string {
@@ -110,5 +112,22 @@ func TestDescribeWritesTheManifestToOut(t *testing.T) {
 	}
 	if stdout.Len() != 0 {
 		t.Errorf("stdout got %q with --out", stdout.String())
+	}
+}
+
+// --addr AND --metrics-addr OVERRIDE THE FILE, for a container: the file
+// says 127.0.0.1 for a laptop, and inside a container that is an address
+// nothing outside it can reach. One file for both, rather than a second copy
+// that differs in one line and drifts in the others.
+func TestTheListenFlagsOverrideTheFile(t *testing.T) {
+	cfg := &api.Config{Listen: api.Listen{Addr: "127.0.0.1:8095"}}
+	cfg.Metrics.Addr = "127.0.0.1:9197"
+	overrideListen(cfg, ":8080", ":9090")
+	if cfg.Listen.Addr != ":8080" || cfg.Metrics.Addr != ":9090" {
+		t.Errorf("listen %q metrics %q", cfg.Listen.Addr, cfg.Metrics.Addr)
+	}
+	overrideListen(cfg, "", "")
+	if cfg.Listen.Addr != ":8080" || cfg.Metrics.Addr != ":9090" {
+		t.Error("empty flags changed the addresses")
 	}
 }
