@@ -55,7 +55,14 @@ type Client struct {
 // AN ERROR NEVER QUOTES A URL: one with a password in it is refused, and the
 // refusal must not hand the password on.
 func New(list, key string) (*Client, error) {
-	c := &Client{urls: map[string]*url.URL{}, key: key, http: &http.Client{Timeout: timeout}}
+	c := &Client{urls: map[string]*url.URL{}, key: key, http: &http.Client{
+		Timeout: timeout,
+		// NO REDIRECT IS FOLLOWED. brevis-sql-api never redirects, so one is
+		// something in front of it -- and Go re-sends Authorization to a
+		// redirect on the same host, handing the console's key to a path
+		// nobody chose. The redirect is the answer, shown as a refusal.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}}
 	for i, part := range strings.FieldsFunc(list, func(r rune) bool { return r == ',' || r == '\n' }) {
 		part = strings.TrimSpace(part)
 		api, raw, found := strings.Cut(part, "=")
