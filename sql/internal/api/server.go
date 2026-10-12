@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"time"
 
+	"github.com/AreteAcademy/brevis/sql/internal/api/cache"
 	"github.com/AreteAcademy/brevis/sql/internal/api/render"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/generation"
 )
 
 // Server answers the endpoints of one file.
@@ -22,6 +25,11 @@ type Server struct {
 	keys   *keyring
 	slots  slots
 	met    *metrics
+	// cache and flight are the answers kept, and the misses collapsed; nil
+	// cache is none declared.
+	cache  *cache.Store
+	flight cache.Group[outcome]
+
 	// inFlight is the whole API's ceiling, one token per request waiting on
 	// the warehouse.
 	inFlight chan struct{}
@@ -54,6 +62,25 @@ func New(cfg *Config) (*Server, error) {
 	}
 	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys, met: newMetrics(),
 		inFlight: make(chan struct{}, ceiling)}
+	if cfg.Cache != nil {
+		kv := cfg.CacheKV
+		if kv == nil {
+			addr := os.Getenv(cfg.Cache.AddrFrom)
+			if addr == "" {
+				return nil, fmt.Errorf("`cache.addr_from` names %s and it is empty", cfg.Cache.AddrFrom)
+			}
+			c, err := generation.Open(addr)
+			if err != nil {
+				return nil, fmt.Errorf("cache: %v", err)
+			}
+			kv = c
+		}
+		maxEntry := cfg.Cache.MaxEntry
+		if maxEntry == 0 {
+			maxEntry = defaultMaxEntry
+		}
+		s.cache = cache.New(kv, cfg.Cache.TTL, int(maxEntry))
+	}
 	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
@@ -148,51 +175,146 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		}
 		line.ArgsHash = argsHash(query, args)
 
-		// THE WHOLE API FIRST, then the tenant: a 503 says the service is
-		// full, a 429 says this tenant is, and the caller is owed the right one.
-		select {
-		case s.inFlight <- struct{}{}:
-			defer func() { <-s.inFlight }()
-		default:
-			w.Header().Set("Retry-After", "1")
-			refuse(w, http.StatusServiceUnavailable, "the API is at its ceiling of requests waiting on the warehouse")
-			return
+		ask := func(parent context.Context) outcome {
+			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes)
 		}
-		release, free := s.slots.take(tenant)
-		if !free {
-			w.Header().Set("Retry-After", "1")
-			refuse(w, http.StatusTooManyRequests, fmt.Sprintf(
-				"%d requests from this key's tenant are already waiting on the warehouse", perTenantInFlight))
-			return
-		}
-		defer release()
-
-		ctx, cancel := context.WithTimeout(r.Context(), timeout)
-		defer cancel()
-		asked := time.Now()
-		res, status, why := s.read(ctx, query, args, ceiling, maxBytes)
-		warehouse = time.Since(asked)
-		if status != 0 {
-			if ctx.Err() == context.DeadlineExceeded {
-				status, why = http.StatusGatewayTimeout,
-					fmt.Sprintf("the query took longer than %s and was cancelled", timeout)
+		var o outcome
+		if s.cache == nil {
+			o = ask(r.Context())
+		} else {
+			o = s.cached(r.Context(), w, line, e, tenant, query, args, ask)
+			if o.served {
+				return
 			}
-			refuse(w, status, why)
-			return
 		}
-		truncated := res.Truncated
-		if len(res.Rows) > ceiling {
-			res.Rows, truncated = res.Rows[:ceiling], true
-		}
-		line.Rows, line.Bytes = len(res.Rows), res.Scanned
-		body, err := encode(e.Name, res, truncated)
-		if err != nil {
-			refuse(w, http.StatusInternalServerError, "the answer could not be written as JSON")
+		warehouse = o.warehouse
+		line.Rows, line.Bytes = o.rows, o.scanned
+		if o.status != 0 {
+			if o.retry {
+				w.Header().Set("Retry-After", "1")
+			}
+			refuse(w, o.status, o.why)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(body)
+		_, _ = w.Write(o.body)
 	})
+}
+
+// outcome is one answer from the warehouse, or why there is none.
+type outcome struct {
+	body      []byte
+	rows      int
+	scanned   int64
+	truncated bool
+	warehouse time.Duration
+
+	status int
+	why    string
+	retry  bool
+
+	// served says the cache already wrote the response.
+	served bool
+}
+
+// answer asks the warehouse, within every ceiling -- the whole API's, the
+// tenant's, the clock's, the rows' and the bytes'.
+func (s *Server) answer(parent context.Context, endpoint, tenant, query string, args []dialect.Arg,
+	ceiling int, timeout time.Duration, maxBytes ByteSize) outcome {
+	// THE WHOLE API FIRST, then the tenant: a 503 says the service is full,
+	// a 429 says this tenant is, and the caller is owed the right one.
+	select {
+	case s.inFlight <- struct{}{}:
+		defer func() { <-s.inFlight }()
+	default:
+		return outcome{status: http.StatusServiceUnavailable, retry: true,
+			why: "the API is at its ceiling of requests waiting on the warehouse"}
+	}
+	release, free := s.slots.take(tenant)
+	if !free {
+		return outcome{status: http.StatusTooManyRequests, retry: true, why: fmt.Sprintf(
+			"%d requests from this key's tenant are already waiting on the warehouse", perTenantInFlight)}
+	}
+	defer release()
+
+	ctx, cancel := context.WithTimeout(parent, timeout)
+	defer cancel()
+	asked := time.Now()
+	res, status, why := s.read(ctx, query, args, ceiling, maxBytes)
+	took := time.Since(asked)
+	if status != 0 {
+		if ctx.Err() == context.DeadlineExceeded {
+			status, why = http.StatusGatewayTimeout,
+				fmt.Sprintf("the query took longer than %s and was cancelled", timeout)
+		}
+		return outcome{status: status, why: why, warehouse: took}
+	}
+	truncated := res.Truncated
+	if len(res.Rows) > ceiling {
+		res.Rows, truncated = res.Rows[:ceiling], true
+	}
+	body, err := encode(endpoint, res, truncated)
+	if err != nil {
+		return outcome{status: http.StatusInternalServerError, why: "the answer could not be written as JSON", warehouse: took}
+	}
+	return outcome{body: body, rows: len(res.Rows), scanned: res.Scanned, truncated: truncated, warehouse: took}
+}
+
+// cacheTimeout bounds every round trip to the cache. A cache slower than
+// this is one the request is better off without.
+const cacheTimeout = 500 * time.Millisecond
+
+// cached answers from the cache when it can, and otherwise asks once per key
+// however many requests are asking -- the misses after a rebuild, collapsed.
+//
+// A CACHE NEVER FAILS A REQUEST: an error anywhere here is a request answered
+// from the warehouse, marked `bypass` and counted as an error.
+func (s *Server) cached(rctx context.Context, w http.ResponseWriter, line *record, e *Endpoint,
+	tenant, query string, args []dialect.Arg, ask func(context.Context) outcome) outcome {
+	cctx, cancel := context.WithTimeout(rctx, cacheTimeout)
+	defer cancel()
+	gens, err := s.cache.Generations(cctx, e.reads)
+	var key string
+	if err == nil {
+		key = cache.Key(e.Name, tenant, query, args, gens)
+		var stored []byte
+		var found bool
+		if stored, found, err = s.cache.Get(cctx, key); err == nil && found {
+			if body, derr := cache.Decompress(stored); derr == nil {
+				line.Cache = "hit"
+				w.Header().Set("X-Brevis-Cache", "hit")
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write(body)
+				return outcome{served: true}
+			}
+			// AN ENTRY THAT DOES NOT DECOMPRESS IS A MISS, and is about to
+			// be overwritten by a good one.
+		}
+	}
+	if err != nil {
+		line.Cache = "error"
+		w.Header().Set("X-Brevis-Cache", "bypass")
+		return ask(rctx)
+	}
+
+	line.Cache = "miss"
+	w.Header().Set("X-Brevis-Cache", "miss")
+	// THE LEADER'S CONTEXT IS NOT THE FOLLOWERS'. A caller that hangs up
+	// must not fail everybody waiting on the same key, so the shared query
+	// runs on a context that keeps the request's values and drops its
+	// cancellation -- the timeout inside `answer` still bounds it.
+	o, _ := s.flight.Do(key, func() (outcome, error) {
+		o := ask(context.WithoutCancel(rctx))
+		if o.status == 0 && !o.truncated {
+			pctx, cancel := context.WithTimeout(context.WithoutCancel(rctx), cacheTimeout)
+			defer cancel()
+			if _, err := s.cache.Put(pctx, key, o.body); err != nil {
+				line.Cache = "error"
+			}
+		}
+		return o, nil
+	})
+	return o
 }
 
 // read runs one rendered statement, read-only, within its ceilings. A

@@ -72,6 +72,36 @@ type Template struct {
 // some branch is a filter the caller can choose to leave out.
 func (t *Template) Unconditional(name string) bool { return t.top[name] }
 
+// AllText is every branch's text laid end to end, each `{{ }}` as NULL: what
+// a caller reads to know which relations the template can read -- in any
+// branch, because a model read only when a parameter is sent is still one
+// whose rebuild changes the answer.
+func (t *Template) AllText() string {
+	var b strings.Builder
+	var walk func([]node)
+	walk = func(ns []node) {
+		for _, n := range ns {
+			switch n := n.(type) {
+			case text:
+				b.WriteString(string(n))
+			case hole:
+				b.WriteString(" NULL ")
+			case *cond:
+				for _, br := range n.branches {
+					b.WriteByte(' ')
+					walk(br.body)
+					b.WriteByte(' ')
+				}
+				b.WriteByte(' ')
+				walk(n.orElse)
+				b.WriteByte(' ')
+			}
+		}
+	}
+	walk(t.nodes)
+	return b.String()
+}
+
 // IsCondition reports whether a condition tests the name.
 func (t *Template) IsCondition(name string) bool { return t.conds[name] }
 
