@@ -21,6 +21,10 @@ type Limits struct {
 	MaxRows        int           `yaml:"max_rows"`
 	MaxBytesBilled ByteSize      `yaml:"max_bytes_billed"`
 
+	// MaxResponseBytes bounds one answer's JSON. max_rows bounds how many
+	// rows; this bounds how wide they are, which nothing did.
+	MaxResponseBytes ByteSize `yaml:"max_response_bytes"`
+
 	// MaxInFlight is how many requests the whole API may have waiting on
 	// the warehouse at once -- each holds a connection. File-wide only.
 	MaxInFlight int `yaml:"max_in_flight"`
@@ -47,6 +51,13 @@ const (
 	// flight is a warehouse connection, and Postgres's default
 	// max_connections is 100 for everything that uses the database.
 	defaultMaxInFlight = 32
+
+	// An answer is held in memory, compressed and cached whole: 8 MiB of
+	// JSON by default, 64 MiB at most, and at least 1 KiB -- under that no
+	// row and its ending fit, and every answer would be an empty cut.
+	defaultMaxResponseBytes = ByteSize(8 << 20)
+	maxMaxResponseBytes     = ByteSize(64 << 20)
+	minMaxResponseBytes     = ByteSize(1 << 10)
 )
 
 func (l *Limits) check(where string) error {
@@ -58,6 +69,10 @@ func (l *Limits) check(where string) error {
 	}
 	if l.MaxBytesBilled < 0 {
 		return fmt.Errorf("%s `max_bytes_billed` cannot be negative", where)
+	}
+	if l.MaxResponseBytes != 0 && (l.MaxResponseBytes < minMaxResponseBytes || l.MaxResponseBytes > maxMaxResponseBytes) {
+		return fmt.Errorf("%s `max_response_bytes` is %s; from %s to %s", where,
+			l.MaxResponseBytes, minMaxResponseBytes, maxMaxResponseBytes)
 	}
 	if l.MaxInFlight < 0 {
 		return fmt.Errorf("%s `max_in_flight` cannot be negative", where)
@@ -78,6 +93,9 @@ func (l Limits) withDefaults() Limits {
 	}
 	if l.MaxInFlight == 0 {
 		l.MaxInFlight = defaultMaxInFlight
+	}
+	if l.MaxResponseBytes == 0 {
+		l.MaxResponseBytes = defaultMaxResponseBytes
 	}
 	return l
 }
@@ -107,6 +125,12 @@ func (l Limits) lowered(endpoint string, own *Limits) (Limits, error) {
 			return l, raise("max_rows")
 		}
 		l.MaxRows = own.MaxRows
+	}
+	if own.MaxResponseBytes != 0 {
+		if own.MaxResponseBytes > l.MaxResponseBytes {
+			return l, raise("max_response_bytes")
+		}
+		l.MaxResponseBytes = own.MaxResponseBytes
 	}
 	if own.MaxBytesBilled != 0 {
 		if own.MaxBytesBilled > l.MaxBytesBilled {

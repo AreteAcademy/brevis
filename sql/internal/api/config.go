@@ -113,8 +113,9 @@ type Endpoint struct {
 	reads []string
 
 	// timeout and maxBytes are the effective limits; zero takes the file's.
-	timeout  time.Duration
-	maxBytes ByteSize
+	timeout     time.Duration
+	maxBytes    ByteSize
+	maxResponse ByteSize
 }
 
 // maxStringLen bounds `max_len` itself. A parameter is a filter, not a
@@ -234,6 +235,7 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			return nil, err
 		}
 		e.MaxRows, e.timeout, e.maxBytes = own.MaxRows, own.Timeout, own.MaxBytesBilled
+		e.maxResponse = own.MaxResponseBytes
 	}
 	return cfg, nil
 }

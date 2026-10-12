@@ -139,6 +139,10 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 	if maxBytes == 0 {
 		maxBytes = s.cfg.Limits.MaxBytesBilled
 	}
+	maxResponse := e.maxResponse
+	if maxResponse == 0 {
+		maxResponse = s.cfg.Limits.MaxResponseBytes
+	}
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// ONE LINE AND ONE COUNT PER REQUEST, whatever it ended as: the
 		// status is read off the writer, so a refusal added next year is
@@ -181,7 +185,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		w.Header().Set("Cache-Control", "private, max-age=0")
 
 		ask := func(parent context.Context) outcome {
-			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes)
+			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes, maxResponse)
 		}
 		var o outcome
 		if s.cache == nil {
@@ -255,7 +259,7 @@ type outcome struct {
 // answer asks the warehouse, within every ceiling -- the whole API's, the
 // tenant's, the clock's, the rows' and the bytes'.
 func (s *Server) answer(parent context.Context, endpoint, tenant, query string, args []dialect.Arg,
-	ceiling int, timeout time.Duration, maxBytes ByteSize) outcome {
+	ceiling int, timeout time.Duration, maxBytes, maxResponse ByteSize) outcome {
 	// THE WHOLE API FIRST, then the tenant: a 503 says the service is full,
 	// a 429 says this tenant is, and the caller is owed the right one.
 	select {
@@ -288,11 +292,11 @@ func (s *Server) answer(parent context.Context, endpoint, tenant, query string, 
 	if len(res.Rows) > ceiling {
 		res.Rows, truncated = res.Rows[:ceiling], true
 	}
-	body, err := encode(endpoint, res, truncated)
+	body, kept, err := encode(endpoint, res, truncated, maxResponse)
 	if err != nil {
 		return outcome{status: http.StatusInternalServerError, why: "the answer could not be written as JSON", warehouse: took}
 	}
-	return outcome{body: body, rows: len(res.Rows), scanned: res.Scanned, truncated: truncated, warehouse: took}
+	return outcome{body: body, rows: kept, scanned: res.Scanned, truncated: truncated || kept < len(res.Rows), warehouse: took}
 }
 
 // cacheTimeout bounds every round trip to the cache. A cache slower than
@@ -558,45 +562,82 @@ func (e *Endpoint) datesFrom(q url.Values, period string, vals render.Values) er
 // encode writes the answer with each row's columns IN THE ORDER THE QUERY
 // NAMED THEM. A Go map marshals sorted, and `day, clicks` arriving as
 // `clicks, day` is a different report to whoever reads it.
-func encode(endpoint string, res dialect.Result, truncated bool) ([]byte, error) {
+//
+// AND AT MOST maxBytes OF IT, when there is a ceiling. max_rows bounds how
+// many rows and nothing bounded how wide -- found in review -- so the
+// answer stops at the last row that fits, says it was cut, and counts what
+// it kept. The ending is measured at its longest before any row is chosen,
+// so the ceiling holds exactly and not roughly. It returns how many rows it
+// kept.
+func encode(endpoint string, res dialect.Result, truncated bool, maxBytes ByteSize) ([]byte, int, error) {
+	at := time.Now().UTC().Format(time.RFC3339)
+	ending := func(rows int, cut bool) ([]byte, error) {
+		meta, err := json.Marshal(map[string]any{"endpoint": endpoint, "rows": rows, "generated_at": at})
+		if err != nil {
+			return nil, err
+		}
+		return []byte(fmt.Sprintf(`],"truncated":%t,"meta":%s}`, cut, meta)), nil
+	}
+	const opening = `{"data":[`
+	longest, err := ending(len(res.Rows), false) // "false" is the longer word
+	if err != nil {
+		return nil, 0, err
+	}
+
 	var b bytes.Buffer
-	b.WriteString(`{"data":[`)
-	for i, row := range res.Rows {
-		if i > 0 {
+	b.WriteString(opening)
+	kept := 0
+	for _, row := range res.Rows {
+		r, err := encodeRow(res.Columns, row)
+		if err != nil {
+			return nil, 0, err
+		}
+		size := b.Len() + len(r) + len(longest)
+		if kept > 0 {
+			size++ // the comma
+		}
+		if maxBytes > 0 && ByteSize(size) > maxBytes {
+			truncated = true
+			break
+		}
+		if kept > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteByte('{')
-		for j, col := range res.Columns {
-			if j > 0 {
-				b.WriteByte(',')
-			}
-			k, err := json.Marshal(col)
-			if err != nil {
-				return nil, err
-			}
-			var cell any
-			if j < len(row) {
-				cell = row[j]
-			}
-			v, err := json.Marshal(cell)
-			if err != nil {
-				return nil, err
-			}
-			b.Write(k)
-			b.WriteByte(':')
-			b.Write(v)
-		}
-		b.WriteByte('}')
+		b.Write(r)
+		kept++
 	}
-	meta, err := json.Marshal(map[string]any{
-		"endpoint":     endpoint,
-		"rows":         len(res.Rows),
-		"generated_at": time.Now().UTC().Format(time.RFC3339),
-	})
+	end, err := ending(kept, truncated)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	fmt.Fprintf(&b, `],"truncated":%t,"meta":%s}`, truncated, meta)
+	b.Write(end)
+	return b.Bytes(), kept, nil
+}
+
+func encodeRow(columns []string, row []any) ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for j, col := range columns {
+		if j > 0 {
+			b.WriteByte(',')
+		}
+		k, err := json.Marshal(col)
+		if err != nil {
+			return nil, err
+		}
+		var cell any
+		if j < len(row) {
+			cell = row[j]
+		}
+		v, err := json.Marshal(cell)
+		if err != nil {
+			return nil, err
+		}
+		b.Write(k)
+		b.WriteByte(':')
+		b.Write(v)
+	}
+	b.WriteByte('}')
 	return b.Bytes(), nil
 }
 
