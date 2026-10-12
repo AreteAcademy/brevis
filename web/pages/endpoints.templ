@@ -201,7 +201,12 @@ templ tryIt(v EndpointView) {
 				}
 				<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
 				if a.Status == 200 {
-					<span class="tabular-nums">{ Total(len(a.Rows), a.Truncated) }</span>
+					<span class="tabular-nums">{ Total(a.Received, a.Truncated) }</span>
+				}
+				if a.Received > len(a.Rows) {
+					<span>
+						showing the first { fmt.Sprint(len(a.Rows)) } of { fmt.Sprint(a.Received) } rows; call the API for the rest
+					</span>
 				}
 			</div>
 			if a.Error != "" {

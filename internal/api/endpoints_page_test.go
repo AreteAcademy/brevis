@@ -200,3 +200,18 @@ func TestTryItNeedsALoginAndAnAddress(t *testing.T) {
 		t.Error("Try it was offered for an API with no address")
 	}
 }
+
+func TestAnAnswerLongerThanThePageSaysHowManyThereWere(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rows := make([]string, 600)
+		for i := range rows {
+			rows[i] = `{"k":1}`
+		}
+		_, _ = w.Write([]byte(`{"data":[` + strings.Join(rows, ",") + `]}`))
+	}))
+	defer srv.Close()
+	_, body := get(t, tryUI(t, srv.URL, loggedIn), "/data/endpoints/metrics-api/clicks?run=1")
+	if !strings.Contains(body, "the first 500 of 600 rows") {
+		t.Error("the page does not say it drew a part of the answer")
+	}
+}
