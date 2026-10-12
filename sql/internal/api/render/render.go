@@ -59,7 +59,20 @@ type Values map[string]Value
 type Template struct {
 	nodes []node
 	names []string
+
+	// top is every name written as `{{ }}` outside every condition, and
+	// conds every name a condition tests.
+	top, conds map[string]bool
 }
+
+// Unconditional reports whether `{{ name }}` is written outside every
+// condition -- in every statement this template can render, whatever the
+// caller sends. What the API asks of `tenant`: a filter that only exists in
+// some branch is a filter the caller can choose to leave out.
+func (t *Template) Unconditional(name string) bool { return t.top[name] }
+
+// IsCondition reports whether a condition tests the name.
+func (t *Template) IsCondition(name string) bool { return t.conds[name] }
 
 // Names is every name the template uses, in the order it is first used --
 // what the config checks a template against.
@@ -117,7 +130,7 @@ func IsIdentifier(s string) bool { return identifier.MatchString(s) }
 // about that dialect's SQL: `#` is a comment in BigQuery and an operator in
 // Postgres.
 func Parse(dialectName, src string) (*Template, error) {
-	p := &parser{src: src, seen: map[string]bool{}}
+	p := &parser{src: src, seen: map[string]bool{}, conds: map[string]bool{}}
 	nodes, end, err := p.block(true)
 	if err != nil {
 		return nil, err
@@ -125,7 +138,12 @@ func Parse(dialectName, src string) (*Template, error) {
 	if end != "" {
 		return nil, fmt.Errorf("`{%% %s %%}` with no `{%% if %%}` open", end)
 	}
-	t := &Template{nodes: nodes, names: p.names}
+	t := &Template{nodes: nodes, names: p.names, top: map[string]bool{}, conds: p.conds}
+	for _, n := range nodes {
+		if h, is := n.(hole); is {
+			t.top[string(h)] = true
+		}
+	}
 	if err := checkPlacement(dialectName, t); err != nil {
 		return nil, err
 	}
@@ -137,6 +155,7 @@ type parser struct {
 	pos   int
 	names []string
 	seen  map[string]bool
+	conds map[string]bool
 }
 
 func (p *parser) use(name string) {
@@ -279,6 +298,7 @@ func (p *parser) expr(words []string, inner string) (expr, error) {
 				"joined by not, and, or", w, strings.Join(words, " "))
 		}
 		p.use(w)
+		p.conds[w] = true
 		return nameExpr(w), nil
 	}
 	and = func() (expr, error) {
