@@ -41,22 +41,25 @@ module github.com/AreteAcademy/brevis/sql
 go 1.26.0
 
 require (
-	github.com/andybalholm/brotli v1.0.4
+	github.com/andybalholm/brotli v1.2.6
 	github.com/jackc/pgx/v5 v5.11.0
 	golang.org/x/oauth2 v0.37.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-require github.com/google/uuid v1.6.0 // indirect
+require (
+	github.com/google/uuid v1.6.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+)
 
 require (
-	cloud.google.com/go/compute/metadata v0.3.0 // indirect
+	cloud.google.com/go/compute/metadata v0.10.0 // indirect
 	github.com/AreteAcademy/brevis/sdk v0.84.1
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )
 
 // AND NO `replace`, which the engine and the gateway both carry.
