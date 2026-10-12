@@ -386,6 +386,32 @@ jobs:
           export GOFLAGS=-mod=mod
           go test -v -race -timeout 10m ./...
 
+      # brevis-sql-api AGAINST A REAL POSTGRES AND A REAL REDIS: the only
+      # tests that prove a template cannot write and that no parameter reaches
+      # another tenant's rows, and that a build's generation is the one the
+      # API reads. Here and not beside the conformance suite because Redis
+      # starts just above. And, as there, IT CHECKS THAT THEY RAN: each one
+      # skips without its variable, and a skip prints green.
+      - name: Integration - brevis-sql-api on Postgres and Redis
+        env:
+          BREVIS_SQL_IT_REDIS: 127.0.0.1:6379
+        run: |
+          cd sql
+          out=$(go test -v -timeout 5m ./internal/api/ ./internal/generation/ ./cmd/brevis-sql/ 2>&1) || {
+            echo "$out"; exit 1;
+          }
+          echo "$out"
+          for t in TestIntegrationAWriteInATemplateIsRefusedByPostgres \
+                   TestIntegrationNoParameterReachesAnotherTenantsRows \
+                   TestIntegrationAgainstARealRedis \
+                   TestIntegrationGenerationBumpWritesANewGeneration \
+                   TestIntegrationABumpIsKeyedAsTheAPIReadsIt; do
+            if ! echo "$out" | grep -q "^--- PASS: $t "; then
+              echo "::error::$t did not run; its variable did not reach it"
+              exit 1
+            fi
+          done
+
       # secrets cannot be used in a step's if:, so it becomes a job-level
       # environment variable and the check is against that.
       - name: Authenticate to Google Cloud
