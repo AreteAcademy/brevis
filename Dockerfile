@@ -117,6 +117,16 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
       -o /out/brevis-sql ./cmd/brevis-sql
 
+# brevis-sql-api: the sql module's second binary, from the same stage and the
+# same tag. A binary of its own so `brevis-sql`, which runs in every pipeline
+# that builds a model, carries no HTTP server, cache or compressor --
+# sql-weight.sh holds both to their own ceilings.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd sql && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath -ldflags="-s -w" \
+      -o /out/brevis-sql-api ./cmd/brevis-sql-api
+
 # Two images from the SAME binary, because the two roles have opposite
 # requirements.
 #
@@ -158,6 +168,24 @@ COPY --from=build /out/brevis-sql /usr/local/bin/brevis-sql
 USER nonroot:nonroot
 ENTRYPOINT ["brevis-sql"]
 CMD ["compile"]
+
+# brevis-sql-api, distroless: declared, read-only SQL over HTTP. Public by
+# design, so the smallest surface there is -- no shell, nothing to exec, a
+# non-root user. Two ports: the API's and the metrics', never the same one.
+FROM gcr.io/distroless/static-debian12:nonroot AS sql-api
+ARG VERSION=dev
+ARG COMMIT=""
+LABEL org.opencontainers.image.title="brevis-sql-api" \
+      org.opencontainers.image.description="Declared, read-only SQL served over HTTP, cached until the data changes" \
+      org.opencontainers.image.source="https://github.com/AreteAcademy/brevis" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}" \
+      org.opencontainers.image.licenses="MIT"
+COPY --from=build /out/brevis-sql-api /usr/local/bin/brevis-sql-api
+USER nonroot:nonroot
+EXPOSE 8080 9090
+ENTRYPOINT ["brevis-sql-api"]
+CMD ["serve", "--config", "/etc/brevis/api.yaml", "--connections", "/etc/brevis/brevis.yaml"]
 
 # `worker` runs the workflows' `run:` steps — and that REQUIRES a shell. Running
 # the scheduler on the distroless image would leave every run failing with "no
