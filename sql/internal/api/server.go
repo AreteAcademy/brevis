@@ -317,7 +317,7 @@ func (s *Server) cached(r *http.Request, w http.ResponseWriter, line *record, e 
 	gens, err := s.cache.Generations(cctx, e.reads)
 	var key string
 	if err == nil {
-		key = cache.Key(e.Name, tenant, query, args, gens)
+		key = cache.Key(s.cfg.Name, s.cfg.ConnectionID, e.Name, tenant, query, args, gens)
 		// THE ETAG IS THE KEY'S HASH, so it changes exactly when the answer
 		// can: the same request over the same generations.
 		tag := `"` + key[strings.LastIndexByte(key, ':')+1:][:32] + `"`

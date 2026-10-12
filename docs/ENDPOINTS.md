@@ -193,11 +193,16 @@ brevis-sql build --generations-from BREVIS_CACHE_ADDR
     └─ for each model built: SET brevis:gen:{brevis}:marts.clicks_daily <token>
 
 request ── MGET the generations of every model the SQL reads ── one round trip
-        ── key = sha256(endpoint, tenant, statement, typed args, generations)
+        ── key = brevis:api:{brevis}:<api>:<endpoint>:sha256(api, connection,
+               endpoint, tenant, statement, typed args, generations)
         ── hit  → the stored Brotli bytes
         ── miss → one warehouse query however many ask → stored, ttl as ceiling
 ```
 
+- APIs share the GENERATION keys on purpose -- one build, many readers --
+  and never an ANSWER: the API's name and where its connection reaches
+  (host, port and database, or the project; never a credential) are in
+  every answer's key.
 - The models an endpoint reads are read from its SQL at load, **in every
   branch**: a model read only when a parameter is sent still invalidates.
 - A table built by something else — a Go step, dbt — gets a generation with

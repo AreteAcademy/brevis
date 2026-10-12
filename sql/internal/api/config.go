@@ -35,6 +35,10 @@ type Config struct {
 	Name       string `yaml:"name"`
 	Connection string `yaml:"connection"`
 
+	// ConnectionID is where the connection reaches, from the registry: part
+	// of every cache key, so two deployments' answers never meet.
+	ConnectionID string `yaml:"-"`
+
 	// Timezone is the IANA zone `period` resolves in. UTC when absent.
 	Timezone  string      `yaml:"timezone"`
 	Listen    Listen      `yaml:"listen"`
@@ -153,6 +157,7 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 		return nil, fmt.Errorf("`connection` is %q, and the registry declares: %s", cfg.Connection, declared(reg))
 	}
 	cfg.Dialect, cfg.Open = d, open
+	cfg.ConnectionID, _ = reg.Identity(cfg.Connection)
 	if err := cfg.Limits.check("the file's"); err != nil {
 		return nil, err
 	}

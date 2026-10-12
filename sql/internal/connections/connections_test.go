@@ -237,3 +237,31 @@ connections:
 		}
 	}
 }
+
+// A CONNECTION'S IDENTITY: where it is, never how to get in. Two APIs whose
+// connections both say `warehouse` but reach two servers are two sources,
+// and a cache keyed on the name alone would serve one's rows as the other's.
+func TestAConnectionsIdentityIsWhereItIsAndNotItsCredential(t *testing.T) {
+	t.Setenv("PROD_DSN", "postgres://reader:secret@prod.db:5432/warehouse?sslmode=require")
+	t.Setenv("STAGING_DSN", "postgres://reader:secret@staging.db:5432/warehouse?sslmode=require")
+	r, err := Load(write(t, `
+connections:
+  - {name: prod, dialect: postgres, dsn_from: PROD_DSN}
+  - {name: staging, dialect: postgres, dsn_from: STAGING_DSN}
+  - {name: analytics, dialect: bigquery, project: acme-prod}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prod, _ := r.Identity("prod")
+	staging, _ := r.Identity("staging")
+	bq, _ := r.Identity("analytics")
+	if prod == staging || prod != "postgres://prod.db:5432/warehouse" || bq != "bigquery://acme-prod" {
+		t.Errorf("prod %q staging %q bigquery %q", prod, staging, bq)
+	}
+	for _, id := range []string{prod, staging} {
+		if strings.Contains(id, "secret") || strings.Contains(id, "reader") {
+			t.Errorf("%q carries the credential", id)
+		}
+	}
+}
