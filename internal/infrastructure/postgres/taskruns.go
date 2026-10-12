@@ -374,13 +374,18 @@ func terminal(status string) bool { return dom.Status(status).TerminalStep() }
 
 // StepLog is one attempt's output, for the run's screen.
 type StepLog struct {
-	NodeID     string
+	NodeID string
+	// MapIndex is the instance of a mapped step, run.Unmapped for the rest.
+	MapIndex   int
 	Attempt    int
 	Status     string
 	ExitCode   *int
 	Err        string
 	Log        string
 	DurationMs int64
+	// Output is what the step published for the steps below it, the same
+	// value the graph shows on its node; nil when it published nothing.
+	Output json.RawMessage
 }
 
 // LogsDaRun returns the output of every attempt of every step, in execution
@@ -391,11 +396,12 @@ type StepLog struct {
 // discard.
 func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT node_id, attempt, status, exit_code, erro, log,
-		       COALESCE(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000, 0)::bigint
+		SELECT node_id, map_index, attempt, status, exit_code, erro, log,
+		       COALESCE(EXTRACT(EPOCH FROM (terminado_em - iniciado_em)) * 1000, 0)::bigint,
+		       saida
 		FROM task_runs
 		WHERE run_id = $1
-		ORDER BY iniciado_em NULLS LAST, node_id, attempt`, runID)
+		ORDER BY iniciado_em NULLS LAST, node_id, map_index, attempt`, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -404,8 +410,8 @@ func (r *RunRepo) LogsDaRun(ctx context.Context, runID uuid.UUID) ([]StepLog, er
 	var out []StepLog
 	for rows.Next() {
 		var p StepLog
-		if err := rows.Scan(&p.NodeID, &p.Attempt, &p.Status, &p.ExitCode,
-			&p.Err, &p.Log, &p.DurationMs); err != nil {
+		if err := rows.Scan(&p.NodeID, &p.MapIndex, &p.Attempt, &p.Status, &p.ExitCode,
+			&p.Err, &p.Log, &p.DurationMs, &p.Output); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
