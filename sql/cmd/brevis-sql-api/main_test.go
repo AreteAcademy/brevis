@@ -25,7 +25,7 @@ func TestTheExampleValidates(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
-	if !strings.Contains(out.String(), "1 endpoint") {
+	if !strings.Contains(out.String(), "2 endpoint") {
 		t.Errorf("validate said %q", out.String())
 	}
 }
