@@ -214,7 +214,7 @@ func report() error {
 	// run has them. Run this program by hand and Auto.Now() is simply the wall
 	// clock, which is why there is no branch here for local development.
 	rc := sdk.RunContextFromEnv()
-	day := rc.Auto.Now().Format("2006-01-02")
+	day := reportDay(rc)
 	if start, end, ok := rc.Auto.Window(); ok {
 		fmt.Printf("reporting on the window [%s, %s)\n",
 			start.Format(time.RFC3339), end.Format(time.RFC3339))
@@ -258,9 +258,9 @@ func report() error {
 // publishes `quality.count_rows.rows`, and the `unless_empty:` in the next step
 // moves with it. The same file works both ways without being written twice.
 //
-// It counts the NEWEST report, the one this run wrote. Summing every report
-// on disk made the number grow run after run, since `report` never
-// overwrites and `cleanup` never removes one.
+// It counts the newest report of this run's day, the one this run wrote.
+// Summing every report on disk made the number grow run after run, since
+// `report` never overwrites and `cleanup` never removes one.
 func qualityCount() error {
 	newest, _, err := newestReport()
 	if err != nil {
@@ -284,16 +284,17 @@ func qualityCount() error {
 // running standalone or inlined: `unless_empty:` in the YAML resolves the
 // prefix, and this code names nothing.
 //
-// It judges the NEWEST report, the same one qualityCount counted. Judging
-// every report on disk failed every run once the directory was a day old --
-// on a report nobody was asking about.
+// It judges the same report qualityCount counted. Judging every report on
+// disk failed every run once the directory was a day old -- on a report
+// nobody was asking about.
 func qualityFreshness() error {
 	newest, at, err := newestReport()
 	if err != nil {
 		return err
 	}
 	if newest == "" {
-		return fmt.Errorf("no report to check in %s", reports)
+		return fmt.Errorf("no report to check in %s",
+			filepath.Join(reports, reportDay(sdk.RunContextFromEnv())))
 	}
 	day := filepath.Base(filepath.Dir(newest))
 	if age := time.Since(at); age > 24*time.Hour {
@@ -303,14 +304,17 @@ func qualityFreshness() error {
 	return nil
 }
 
-// newestReport is the report the last run of `report` wrote, and when; ""
-// when there is none.
+// newestReport is the report this run's `report` wrote, and when; "" when
+// there is none.
 //
 // The data directory keeps every report a run ever wrote: `report` names each
 // file itself so a second load never overwrites the first, and `cleanup` only
-// tidies staging. So "the report" is the newest file, never all of them.
+// tidies staging. So "the report" is the newest file in this run's day --
+// never all of them, and never another day's, which a backfill running its
+// days side by side may have written a minute later.
 func newestReport() (string, time.Time, error) {
-	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
+	day := reportDay(sdk.RunContextFromEnv())
+	found, err := filepath.Glob(filepath.Join(reports, day, "*.ndjson"))
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -397,6 +401,10 @@ func removeAll(dir string) (int, error) {
 	}
 	return len(found), os.RemoveAll(dir)
 }
+
+// reportDay is the directory a run's report goes in: its slot's day, which
+// does not move when the run is late or retried.
+func reportDay(rc sdk.RunContext) string { return rc.Auto.Now().Format("2006-01-02") }
 
 // thisRun is the run the rows of this execution belong to. By hand, with no
 // engine, every execution is one run called "by-hand": the steps still agree
