@@ -106,3 +106,22 @@ func TestAnAnswerPastTheConsolesCeilingIsRefused(t *testing.T) {
 		t.Error("an answer past the ceiling was read")
 	}
 }
+
+// A NESTED VALUE IS JSON, not Go's own syntax. A jsonb or STRUCT column
+// arrives as an object, and decoded into `any` it is a map -- which, drawn
+// with fmt.Sprint, is `map[clicks:3]`: a format nobody who called the API
+// would recognise as what it sent.
+func TestANestedCellIsKeptAsJSON(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[{"k":1,"o":{"clicks":3,"tags":["a","b"]},"l":[1,{"x":null}]}]}`))
+	}))
+	defer api.Close()
+	c, _ := New("a="+api.URL, "")
+	a, err := c.Call(context.Background(), "a", "/v1/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Rows[0][1] != `{"clicks":3,"tags":["a","b"]}` || a.Rows[0][2] != `[1,{"x":null}]` || a.Rows[0][0] != "1" {
+		t.Errorf("row %#v", a.Rows[0])
+	}
+}
