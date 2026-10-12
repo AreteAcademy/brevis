@@ -189,6 +189,14 @@ func TestHashingAKeyPrintsItsLine(t *testing.T) {
 	if _, err := KeyLine("short", "acme"); err == nil {
 		t.Error("a 5-character key was accepted")
 	}
+	// WHITESPACE IS REFUSED, found in review: the guard trims a presented
+	// key, so a key with a space at either end hashed as written could
+	// never authenticate.
+	for _, k := range []string{" a-key-long-enough-0123456789abcdef", "a-key-long-enough-0123456789abcdef\t", "a-key long-enough-0123456789abcdef"} {
+		if _, err := KeyLine(k, "acme"); err == nil {
+			t.Errorf("%q was hashed", k)
+		}
+	}
 	if _, err := KeyLine("a-key-long-enough-0123456789abcdef", "ac me"); err == nil {
 		t.Error("a tenant with a space was accepted")
 	}

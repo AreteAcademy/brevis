@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -132,14 +133,17 @@ func (b *ByteSize) UnmarshalYAML(node *yaml.Node) error {
 	for _, u := range byteUnits {
 		if num, found := strings.CutSuffix(raw, u.suffix); found {
 			n, err := strconv.ParseInt(strings.TrimSpace(num), 10, 64)
-			if err != nil {
+			// NOT NEGATIVE AND NOT PAST int64, checked before multiplying:
+			// found in review, `16777216TiB` wrapped to zero and then read
+			// as "take the default".
+			if err != nil || n < 0 || n > math.MaxInt64/u.n {
 				break
 			}
 			*b = ByteSize(n * u.n)
 			return nil
 		}
 	}
-	if n, err := strconv.ParseInt(raw, 10, 64); err == nil {
+	if n, err := strconv.ParseInt(raw, 10, 64); err == nil && n >= 0 {
 		*b = ByteSize(n)
 		return nil
 	}

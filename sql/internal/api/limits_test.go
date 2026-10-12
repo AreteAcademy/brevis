@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 )
@@ -229,5 +231,16 @@ func TestAMaxInFlightBelowOnePerTenantIsRefused(t *testing.T) {
 		map[string]string{"endpoints/clicks.sql": "select {{ tenant }} {{ campaign }}"})
 	if err == nil || !strings.Contains(err.Error(), "max_in_flight") {
 		t.Errorf("got %v", err)
+	}
+}
+
+// A SIZE THAT WOULD OVERFLOW IS REFUSED, not wrapped. Found in review:
+// `16777216TiB` wrapped to zero, which then read as "take the default".
+func TestASizeThatOverflowsIsRefused(t *testing.T) {
+	var b ByteSize
+	for _, raw := range []string{"16777216TiB", "9223372036854775807KiB", "-1GiB"} {
+		if err := b.UnmarshalYAML(&yaml.Node{Kind: yaml.ScalarNode, Value: raw}); err == nil {
+			t.Errorf("%s read as %d", raw, b)
+		}
 	}
 }

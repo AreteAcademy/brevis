@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Auth is who may read, and as which tenant.
@@ -180,6 +181,12 @@ func guard(k *keyring, next func(http.ResponseWriter, *http.Request, string), re
 // KeyLine is the line a key list holds for one key: what `brevis-sql-api key
 // hash` prints, so nobody hand-rolls the hash and gets the encoding wrong.
 func KeyLine(key, tenant string) (string, error) {
+	// NO WHITESPACE ANYWHERE: the guard trims what it is presented, so a
+	// key with a space at either end, hashed as written, could never
+	// authenticate -- found in review -- and one inside is a paste error.
+	if strings.ContainsFunc(key, unicode.IsSpace) {
+		return "", fmt.Errorf("the key holds whitespace; a key is one unbroken string")
+	}
 	if len(key) < minKeyLen {
 		return "", fmt.Errorf("the key is %d characters; at least %d (`openssl rand -hex 16` gives 32)",
 			len(key), minKeyLen)
