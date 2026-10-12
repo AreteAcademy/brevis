@@ -44,6 +44,17 @@ done < <(grep -rn "areteacademy/brevis-sql:[0-9]" deployments/ examples/ docs/ |
 # with gateway/VERSION, and the gateway's publish Job pins it -- added with
 # that Job, for the reason brevis-sql's was added with its first manifest.
 # `-slim` is the same release, so the version is read before it.
+# brevis-sql-api is the sql module's second binary, released on the same
+# sql/v* tag, so it pins sql/VERSION too. Its own pattern, because the one
+# above stops at `brevis-sql:` and never sees `brevis-sql-api:`.
+while IFS= read -r line; do
+  file="${line%%:*}"
+  pinned="$(echo "$line" | sed -E 's/.*areteacademy\/brevis-sql-api:([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+  if [ "$pinned" != "$sqlwant" ]; then
+    echo "❌ $file pins brevis-sql-api $pinned, and sql/VERSION is $sqlwant"
+    failed=1
+  fi
+done < <(grep -rn "areteacademy/brevis-sql-api:[0-9]" deployments/ examples/ docs/ || true)
 gatewaywant="$(cat gateway/VERSION)"
 while IFS= read -r line; do
   file="${line%%:*}"
