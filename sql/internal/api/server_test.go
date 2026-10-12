@@ -36,6 +36,7 @@ func serverWith(t *testing.T, w *warehouse, endpoints ...*Endpoint) http.Handler
 	t.Helper()
 	cfg := &Config{
 		Name:      "metrics-api",
+		Env:       "local",
 		Dialect:   postgres.Dialect{},
 		Open:      func(context.Context) (dialect.Conn, error) { return w, nil },
 		MaxRows:   10000,
@@ -53,7 +54,7 @@ func clicks(t *testing.T) *Endpoint {
 	e := &Endpoint{
 		Name: "clicks", Path: "/v1/clicks",
 		Params: map[string]Param{"campaign": {Type: "string", MaxLen: 8}},
-		SQL:    "select day, clicks from marts.clicks where c = {{ campaign }}",
+		SQL:    "select day, clicks from marts.clicks where w = {{ tenant }} and c = {{ campaign }}",
 	}
 	if err := e.parse(postgres.Dialect{}); err != nil {
 		t.Fatal(err)
@@ -78,8 +79,8 @@ func TestARequestBecomesAQueryAndItsRowsComeBack(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body)
 	}
-	if got := w.asked[0]; got.Query != "select day, clicks from marts.clicks where c = $1" ||
-		len(got.Args) != 1 || got.Args[0].Value != "c-9" {
+	if got := w.asked[0]; got.Query != "select day, clicks from marts.clicks where w = $1 and c = $2" ||
+		len(got.Args) != 2 || got.Args[1].Value != "c-9" {
 		t.Errorf("the warehouse was asked %+v", got)
 	}
 	body := rec.Body.String()

@@ -16,4 +16,8 @@ endpoints:
     path: /v1/sales
     params:
       sku: {type: string, max_len: 32}
+    # sales.daily holds one shop's sales, so every key reads the same rows --
+    # said here, because an endpoint that ignores the tenant is refused
+    # unless its file says so.
+    tenant: none
     sql_file: endpoints/sales.sql

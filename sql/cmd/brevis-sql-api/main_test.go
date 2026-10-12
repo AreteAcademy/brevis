@@ -43,3 +43,21 @@ func TestAnUnknownCommandIsRefused(t *testing.T) {
 		t.Errorf("exit %d", code)
 	}
 }
+
+// THE KEY ARRIVES ON STDIN, never as an argument: an argument is in the
+// shell's history and in every `ps` while it runs.
+func TestKeyHashReadsTheKeyFromStdinAndPrintsItsLine(t *testing.T) {
+	var out, errOut bytes.Buffer
+	stdin = strings.NewReader("a-key-long-enough-0123456789abcdef\n")
+	defer func() { stdin = nil }()
+	code := run([]string{"key", "hash", "--tenant", "acme"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errOut.String())
+	}
+	if line := strings.TrimSpace(out.String()); !strings.HasSuffix(line, "=acme") || len(line) != 64+len("=acme") {
+		t.Errorf("printed %q, wanted 64 hex characters and =acme", line)
+	}
+	if strings.Contains(out.String(), "a-key-long") {
+		t.Error("the key was printed")
+	}
+}

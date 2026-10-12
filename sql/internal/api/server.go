@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,6 +19,7 @@ type Server struct {
 	cfg    *Config
 	binder dialect.Binder
 	mux    *http.ServeMux
+	keys   *keyring
 }
 
 // New builds the handler, or refuses a configuration it cannot serve.
@@ -27,14 +29,55 @@ func New(cfg *Config) (*Server, error) {
 		return nil, fmt.Errorf("the %s dialect cannot bind arguments, and this API sends no value any other way",
 			cfg.Dialect.Name())
 	}
-	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux()}
+	var keys *keyring
+	if cfg.Listen.Auth == nil {
+		if cfg.Env != EnvLocal {
+			return nil, fmt.Errorf("BREVIS_ENV=%s requires `listen.auth`: an API with no "+
+				"authentication hands every tenant's rows to whoever finds the address. "+
+				"Declare `{type: bearer, keys_from: <env var>}`, or run with BREVIS_ENV=%s "+
+				"if this is a laptop", cfg.Env, EnvLocal)
+		}
+	} else {
+		var err error
+		if keys, err = loadKeys(cfg.Listen.Auth.KeysFrom); err != nil {
+			return nil, err
+		}
+	}
+	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys}
 	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
+	endpoints := http.NewServeMux()
 	for _, e := range cfg.Endpoints {
-		s.mux.Handle(e.Path, s.endpoint(e))
+		endpoints.Handle(e.Path, s.endpoint(e))
 	}
+	s.mux.Handle("/", guard(keys, func(w http.ResponseWriter, r *http.Request, tenant string) {
+		endpoints.ServeHTTP(w, r.WithContext(withTenant(r.Context(), tenant)))
+	}))
 	return s, nil
+}
+
+// Keys is how many keys and tenants the API accepts; zero and zero means it
+// is open, which only BREVIS_ENV=local allows.
+func (s *Server) Keys() (keys, tenants int) {
+	if s.keys == nil {
+		return 0, 0
+	}
+	return s.keys.count()
+}
+
+type tenantKey struct{}
+
+func withTenant(ctx context.Context, tenant string) context.Context {
+	return context.WithValue(ctx, tenantKey{}, tenant)
+}
+
+// tenantOf is the tenant guard put on the request. A request that reached
+// an endpoint without passing guard has none, and is refused rather than
+// served as nobody in particular.
+func tenantOf(ctx context.Context) (string, bool) {
+	t, ok := ctx.Value(tenantKey{}).(string)
+	return t, ok && t != ""
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
@@ -52,11 +95,17 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			refuse(w, http.StatusMethodNotAllowed, "this endpoint answers GET and HEAD")
 			return
 		}
+		tenant, known := tenantOf(r.Context())
+		if !known {
+			refuse(w, http.StatusUnauthorized, "unauthorized")
+			return
+		}
 		vals, err := e.values(r)
 		if err != nil {
 			refuse(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		vals[tenantName] = render.Bind(tenant)
 		query, args, err := e.Template.Render(vals, s.binder)
 		if err != nil {
 			refuse(w, http.StatusBadRequest, err.Error())
@@ -107,6 +156,9 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 // meant is not a question this can answer.
 func (e *Endpoint) values(r *http.Request) (render.Values, error) {
 	q := r.URL.Query()
+	if _, sent := q[tenantName]; sent {
+		return nil, fmt.Errorf("`tenant` cannot be sent: it is the key's")
+	}
 	for name, given := range q {
 		if _, declared := e.Params[name]; !declared {
 			return nil, fmt.Errorf("unknown parameter %q; this endpoint takes: %s",

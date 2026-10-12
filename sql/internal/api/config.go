@@ -41,11 +41,17 @@ type Config struct {
 
 	// MaxRows is the file-wide row ceiling.
 	MaxRows int `yaml:"-"`
+
+	// Env is BREVIS_ENV, read by the binary and never from the file: a file
+	// that could declare itself local would be a file that turns off
+	// authentication.
+	Env string `yaml:"-"`
 }
 
 // Listen is where the API answers.
 type Listen struct {
 	Addr string `yaml:"addr"`
+	Auth *Auth  `yaml:"auth"`
 }
 
 // Endpoint is one declared GET path.
@@ -55,6 +61,10 @@ type Endpoint struct {
 	Params  map[string]Param `yaml:"params"`
 	SQL     string           `yaml:"sql"`
 	SQLFile string           `yaml:"sql_file"`
+
+	// Tenant is `none` for an endpoint whose data is the same for every
+	// tenant. Absent, the SQL must use `{{ tenant }}`.
+	Tenant string `yaml:"tenant"`
 
 	// MaxRows is this endpoint's ceiling; zero takes the file's.
 	MaxRows int `yaml:"-"`
@@ -105,6 +115,11 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 	cfg.Dialect, cfg.Open = d, open
 	cfg.MaxRows = DefaultMaxRows
 
+	if cfg.Listen.Auth != nil {
+		if err := cfg.Listen.Auth.check(); err != nil {
+			return nil, err
+		}
+	}
 	if len(cfg.Endpoints) == 0 {
 		return nil, fmt.Errorf("the file declares no `endpoints`")
 	}
@@ -154,6 +169,10 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 func (e *Endpoint) check() error {
 	for _, name := range sortedNames(e.Params) {
 		p := e.Params[name]
+		if name == tenantName {
+			return fmt.Errorf("endpoint %s: `tenant` is reserved -- it is the key's, bound into "+
+				"every query, and never a parameter a caller sends", e.Name)
+		}
 		if !nameShape.MatchString(name) {
 			return fmt.Errorf("endpoint %s: the parameter %q is not a name: lowercase letters, digits and _", e.Name, name)
 		}
@@ -179,15 +198,39 @@ func (e *Endpoint) parse(d dialect.Dialect) error {
 	if err != nil {
 		return fmt.Errorf("endpoint %s: %v", e.Name, err)
 	}
+	usesTenant := false
 	for _, name := range tmpl.Names() {
+		if name == tenantName {
+			usesTenant = true
+			continue
+		}
 		if _, declared := e.Params[name]; !declared {
 			return fmt.Errorf("endpoint %s: the SQL uses `%s`, which is not a declared parameter (declared: %s)",
 				e.Name, name, orNone(sortedNames(e.Params)))
 		}
 	}
+	// AN ENDPOINT THAT IGNORES THE TENANT IS A LEAK WAITING FOR A SECOND
+	// CUSTOMER. It reads correctly with one tenant in the table, passes every
+	// test written that day, and starts returning somebody else's rows the
+	// day the second one lands. So it is refused unless the author says, in
+	// the file, that the data is the same for everybody.
+	switch {
+	case e.Tenant != "" && e.Tenant != "none":
+		return fmt.Errorf("endpoint %s: `tenant` is %q; the only value it takes is `none`", e.Name, e.Tenant)
+	case !usesTenant && e.Tenant != "none":
+		return fmt.Errorf("endpoint %s: the SQL never uses `{{ tenant }}`, so every key would read "+
+			"every tenant's rows. Filter by it, or write `tenant: none` if the data is the same "+
+			"for everybody", e.Name)
+	case usesTenant && e.Tenant == "none":
+		return fmt.Errorf("endpoint %s says `tenant: none` and its SQL uses `{{ tenant }}`; "+
+			"one of them is wrong", e.Name)
+	}
 	e.Template = tmpl
 	return nil
 }
+
+// tenantName is the name the key's tenant is bound under.
+const tenantName = "tenant"
 
 func sortedNames(params map[string]Param) []string {
 	out := make([]string, 0, len(params))

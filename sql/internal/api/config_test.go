@@ -56,12 +56,13 @@ endpoints:
     sql_file: endpoints/clicks.sql
   - name: orders
     path: /v1/orders
+    tenant: none
     sql: select 1 as k
 `
 
 func TestAGoodFileLoads(t *testing.T) {
 	cfg, err := fixture(t, good, map[string]string{
-		"endpoints/clicks.sql": "select day from marts.clicks where c = {{ campaign }}",
+		"endpoints/clicks.sql": "select day from marts.clicks where w = {{ tenant }} and c = {{ campaign }}",
 	})
 	if err != nil {
 		t.Fatalf("a good file was refused: %v", err)
@@ -71,7 +72,7 @@ func TestAGoodFileLoads(t *testing.T) {
 	}
 	// sql_file IS RELATIVE TO THE FILE, not to wherever the binary was
 	// started: the two travel together in a ConfigMap or a repository.
-	if got := cfg.Endpoints[0].Template.Names(); len(got) != 1 || got[0] != "campaign" {
+	if got := cfg.Endpoints[0].Template.Names(); len(got) != 2 || got[1] != "campaign" {
 		t.Errorf("clicks.sql was read as using %v", got)
 	}
 	if cfg.Dialect.Name() != "postgres" {
@@ -99,7 +100,7 @@ func TestWhatCannotBeHonouredIsRefusedByName(t *testing.T) {
 	}
 	for name, c := range cases {
 		_, err := fixture(t, c.file, map[string]string{
-			"endpoints/clicks.sql": "select day from marts.clicks where c = {{ campaign }}",
+			"endpoints/clicks.sql": "select day from marts.clicks where w = {{ tenant }} and c = {{ campaign }}",
 		})
 		if err == nil {
 			t.Errorf("%s: loaded", name)
