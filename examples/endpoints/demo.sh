@@ -9,7 +9,7 @@ cd "$(dirname "$0")/../.."
 : "${WAREHOUSE_DSN:=postgres://brevis:brevis@localhost:${BREVIS_WAREHOUSE_PORT:-55434}/warehouse?sslmode=disable}"
 : "${BREVIS_CACHE_ADDR:=127.0.0.1:56379}"
 GATEWAY="http://localhost:${BREVIS_GATEWAY_PORT:-8090}"
-API="http://127.0.0.1:8095"
+API="http://127.0.0.1:8096"
 export WAREHOUSE_DSN BREVIS_CACHE_ADDR BREVIS_ENV=local
 
 curl -sf "$GATEWAY/health" >/dev/null || { echo "the gateway is not up at $GATEWAY: run make up-data" >&2; exit 1; }
@@ -40,6 +40,7 @@ echo "2. build marts.orders_daily, writing its generation"
 build
 
 ./bin/brevis-sql-api serve --config examples/endpoints/api.yaml --connections examples/endpoints/brevis.yaml \
+  --addr 127.0.0.1:8096 --metrics-addr 127.0.0.1:9196 \
   > /tmp/brevis-endpoints-demo.log 2>&1 &
 pid=$!
 trap 'kill $pid 2>/dev/null || true' EXIT

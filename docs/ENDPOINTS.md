@@ -6,7 +6,10 @@ request reads as its key's tenant; an answer is cached until a model it reads
 is rebuilt.
 
 ```bash
-make up-data && make endpoints-demo   # ingest → build → miss → hit → rebuild → miss
+make up-data                          # serves examples/endpoints on :8095, published to the console
+curl -si 'localhost:8095/v1/orders?period=today'
+make endpoints-build                  # rebuild the model: the next request is a miss
+make endpoints-demo                   # the same cycle on the host, end to end, with the gateway
 ```
 
 ```
