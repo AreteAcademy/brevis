@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -231,5 +232,46 @@ func TestUnpublishingKeepsTheHistory(t *testing.T) {
 	}
 	if n := count(t, pool, `SELECT count(*) FROM gateway_config_history`); n != 1 {
 		t.Fatalf("history after unpublish = %d, want 1", n)
+	}
+}
+
+// A gateway is published on every deploy, by a Job per cluster, and two
+// rollouts can overlap. Publish deletes and re-inserts the gateway's rows, and
+// two of those interleaved failed on the destinations' key: the second insert
+// of a row the other had just put back. Every publish succeeds, and the
+// history still records the change once.
+func TestConcurrentPublishesOfOneGatewayAllSucceed(t *testing.T) {
+	pool := gatewaysDB(t)
+	ctx := context.Background()
+	repo := postgres.NewGatewayRepo(pool)
+	at := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
+
+	for round := range 20 {
+		every := []string{"1m", "2m"}[round%2]
+		start := make(chan struct{})
+		var wg sync.WaitGroup
+		for i := range 4 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				stamp := at.Add(time.Duration(round*4+i) * time.Second)
+				if err := repo.Publish(ctx, v2(configured(every, nil)), stamp); err != nil {
+					t.Errorf("round %d: %v", round, err)
+				}
+			}()
+		}
+		close(start)
+		wg.Wait()
+	}
+	if n := count(t, pool, `SELECT count(*) FROM gateway_streams WHERE gateway = 'edge'`); n != 1 {
+		t.Errorf("streams = %d, want 1", n)
+	}
+	// One line per change, never the same configuration twice in a row.
+	if n := count(t, pool, `SELECT count(*) FROM (
+		SELECT config_hash, lag(config_hash) OVER (ORDER BY published_at) AS previous
+		FROM gateway_config_history WHERE gateway = 'edge') h
+		WHERE config_hash = previous`); n != 0 {
+		t.Errorf("%d line(s) repeat the one before them", n)
 	}
 }
