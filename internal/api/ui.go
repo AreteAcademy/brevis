@@ -112,6 +112,10 @@ type UI struct {
 	alerts  AlertsReader
 	catalog CatalogReader
 	brand   branding.Brand
+
+	// endpoints is what brevis-sql-api files were published with. Nil turns
+	// the pages off.
+	endpoints EndpointsReader
 	log     *slog.Logger
 
 	// preview asks `brevis-sql serve` for a destination's first rows. Nil
@@ -136,6 +140,21 @@ type UI struct {
 //
 // An ARGUMENT and not a second setter, so forgetting it is a compile error
 // rather than an open console with a warehouse on it.
+// EndpointsReader is what Data → Endpoints reads: what each brevis-sql-api
+// was published with. Never its traffic, which is on the API's /metrics.
+type EndpointsReader interface {
+	List(ctx context.Context) ([]postgres.PublishedEndpoint, error)
+	Get(ctx context.Context, api, name string) (postgres.PublishedEndpoint, bool, error)
+	Reading(ctx context.Context, target string) ([]postgres.PublishedEndpoint, error)
+}
+
+// WithEndpoints turns on Data → Endpoints and the "Read by" of a model's
+// page.
+func (u *UI) WithEndpoints(r EndpointsReader) *UI {
+	u.endpoints = r
+	return u
+}
+
 func (u *UI) WithPreview(c *sqlserve.Client, console auth.Credential) *UI {
 	u.preview = c
 	u.protected = console.Enabled()
@@ -184,6 +203,8 @@ func (u *UI) Registrar(mux *http.ServeMux) {
 	// A query parameter and not a path wildcard: ServeMux cleans `//` out of a
 	// path, and would redirect /data/bigquery://… to /data/bigquery:/….
 	mux.HandleFunc("GET /data/target", u.dataTarget)
+	mux.HandleFunc("GET /data/endpoints", u.dataEndpoints)
+	mux.HandleFunc("GET /data/endpoints/{api}/{name}", u.dataEndpoint)
 	mux.HandleFunc("GET /runs/{id}/live", u.runLive)
 	mux.HandleFunc("GET /workflows/{slug}", u.workflow)
 	mux.HandleFunc("GET /runs/{id}", u.run)
@@ -224,6 +245,37 @@ func (u *UI) data(w http.ResponseWriter, r *http.Request) {
 	u.render(w, r, pages.Data(pages.BuildData(entries, time.Now()).Apply(pages.ParseDataFilter(r.URL.Query()))))
 }
 
+// dataEndpoints is Data → Endpoints.
+func (u *UI) dataEndpoints(w http.ResponseWriter, r *http.Request) {
+	var all []postgres.PublishedEndpoint
+	if u.endpoints != nil {
+		var err error
+		if all, err = u.endpoints.List(r.Context()); err != nil {
+			u.failure(w, r, err)
+			return
+		}
+	}
+	u.render(w, r, pages.Endpoints(pages.BuildEndpoints(all)))
+}
+
+// dataEndpoint is one endpoint's page.
+func (u *UI) dataEndpoint(w http.ResponseWriter, r *http.Request) {
+	if u.endpoints == nil {
+		http.NotFound(w, r)
+		return
+	}
+	e, found, err := u.endpoints.Get(r.Context(), r.PathValue("api"), r.PathValue("name"))
+	if err != nil {
+		u.failure(w, r, err)
+		return
+	}
+	if !found {
+		http.NotFound(w, r)
+		return
+	}
+	u.render(w, r, pages.Endpoint(pages.BuildEndpoint(e)))
+}
+
 // targetCeiling matches the engine's own bound on a target. A legacy label
 // is looked up as stored, so `u` is not shape-checked beyond this: an unknown
 // value is a 404, not a 400.
@@ -250,6 +302,14 @@ func (u *UI) dataTarget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := pages.BuildTarget(*d, time.Now())
+	if u.endpoints != nil {
+		readers, err := u.endpoints.Reading(r.Context(), target)
+		if err != nil {
+			u.failure(w, r, err)
+			return
+		}
+		v.ReadBy = pages.ReadersOf(readers)
+	}
 
 	// NO SERVICE, NO TABS. A tab that always answers "not configured" is a
 	// question nobody can act on.

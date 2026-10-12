@@ -1315,7 +1315,10 @@ func serve(ctx context.Context) error {
 		// AND ONLY ON A CONSOLE THAT ASKS WHO YOU ARE. An open console
 		// already warns that anyone can trigger a workflow; it must not also
 		// hand out every table in the warehouse.
-		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken), cfg.Auth)
+		WithPreview(sqlserve.New(cfg.SQLServeURL, cfg.SQLServeToken), cfg.Auth).
+		// What each brevis-sql-api was published with, from this database:
+		// the engine reads no API and no API reaches it.
+		WithEndpoints(postgres.NewEndpointRepo(pool))
 	// `inseguro` follows the environment: locally the server listens on plain
 	// http, and a Secure cookie would never come back — the login would look
 	// broken.
