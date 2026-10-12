@@ -189,7 +189,13 @@ image-smoke: ## Checks the local images start and report their version
 	@docker run --rm --entrypoint sh $(IMAGE):$(VERSION)-worker -c 'echo "  shell ok in the worker"'
 
 up: ## Brings up Postgres + API + scheduler + the gateway locally, and publishes the gateway
-	@docker compose up --build -d
+	@# THE LOGIN AND THE SQL TABS SURVIVE IT. Once `make up-data` has made
+	@# $(LOCAL_ENV), a plain `make up` recreating the api without it brought
+	@# the console back OPEN and without its SQL tabs -- silently, on a stack
+	@# whose warehouse and `brevis-sql serve` were still running. Without the
+	@# file this is the empty platform, as before.
+	@if [ -f $(LOCAL_ENV) ]; then set -a; . ./$(LOCAL_ENV); set +a; fi; \
+	  docker compose up --build -d
 	@# The gateway's configuration on /data, as up-data has always done. The
 	@# database is migrated by now: the api waits on the migrate service, and
 	@# `up -d` returns once the api is up. A refused manifest does not fail
