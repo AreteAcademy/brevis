@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -10,9 +11,21 @@ import (
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
+// endpointsDB truncates api_endpoints AND NOTHING ELSE. loadDB empties runs,
+// the queue and the schedules, and the test database is shared by every
+// package `go test ./...` runs at once: a scheduler test watching a run was
+// failing when these tests emptied the table under it.
 func endpointsDB(t *testing.T) *postgres.Pool {
 	t.Helper()
-	pool := loadDB(t)
+	url := os.Getenv("BREVIS_TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("set BREVIS_TEST_DATABASE_URL to run the endpoint repository tests (make up)")
+	}
+	pool, err := postgres.New(context.Background(), url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
 	if _, err := pool.Exec(context.Background(), `TRUNCATE api_endpoints`); err != nil {
 		t.Fatal(err)
 	}
