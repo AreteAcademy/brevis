@@ -22,6 +22,9 @@ type Server struct {
 	keys   *keyring
 	slots  slots
 	met    *metrics
+	// inFlight is the whole API's ceiling, one token per request waiting on
+	// the warehouse.
+	inFlight chan struct{}
 }
 
 // New builds the handler, or refuses a configuration it cannot serve.
@@ -45,7 +48,12 @@ func New(cfg *Config) (*Server, error) {
 			return nil, err
 		}
 	}
-	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys, met: newMetrics()}
+	ceiling := cfg.Limits.MaxInFlight
+	if ceiling == 0 {
+		ceiling = defaultMaxInFlight
+	}
+	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux(), keys: keys, met: newMetrics(),
+		inFlight: make(chan struct{}, ceiling)}
 	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok\n"))
 	})
@@ -140,6 +148,16 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		}
 		line.ArgsHash = argsHash(query, args)
 
+		// THE WHOLE API FIRST, then the tenant: a 503 says the service is
+		// full, a 429 says this tenant is, and the caller is owed the right one.
+		select {
+		case s.inFlight <- struct{}{}:
+			defer func() { <-s.inFlight }()
+		default:
+			w.Header().Set("Retry-After", "1")
+			refuse(w, http.StatusServiceUnavailable, "the API is at its ceiling of requests waiting on the warehouse")
+			return
+		}
 		release, free := s.slots.take(tenant)
 		if !free {
 			w.Header().Set("Retry-After", "1")

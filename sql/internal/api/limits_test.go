@@ -201,3 +201,33 @@ func TestLimitsInTheFile(t *testing.T) {
 		}
 	}
 }
+
+// A CEILING FOR THE WHOLE API, not only per tenant. Found in review: each
+// request opens its own warehouse connection, so twenty-five tenants at four
+// each is a hundred connections -- Postgres's default max_connections -- and
+// every tenant, and whatever else uses that database, is refused.
+func TestTheWholeAPIHasACeilingInFlight(t *testing.T) {
+	s := &slow{release: make(chan struct{}), entered: make(chan struct{}, 8)}
+	h := limitedServer(t, s, Limits{Timeout: 5 * time.Second, MaxInFlight: 2})
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); get(h, "/v1/e") }()
+	}
+	<-s.entered
+	<-s.entered
+	rec := get(h, "/v1/e")
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+		t.Errorf("the third answered %d, Retry-After %q", rec.Code, rec.Header().Get("Retry-After"))
+	}
+	close(s.release)
+	wg.Wait()
+}
+
+func TestAMaxInFlightBelowOnePerTenantIsRefused(t *testing.T) {
+	_, err := fixture(t, strings.Replace(good, "listen:", "limits: {max_in_flight: -1}\nlisten:", 1),
+		map[string]string{"endpoints/clicks.sql": "select {{ tenant }} {{ campaign }}"})
+	if err == nil || !strings.Contains(err.Error(), "max_in_flight") {
+		t.Errorf("got %v", err)
+	}
+}

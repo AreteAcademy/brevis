@@ -19,6 +19,10 @@ type Limits struct {
 	Timeout        time.Duration `yaml:"timeout"`
 	MaxRows        int           `yaml:"max_rows"`
 	MaxBytesBilled ByteSize      `yaml:"max_bytes_billed"`
+
+	// MaxInFlight is how many requests the whole API may have waiting on
+	// the warehouse at once -- each holds a connection. File-wide only.
+	MaxInFlight int `yaml:"max_in_flight"`
 }
 
 const (
@@ -37,6 +41,11 @@ const (
 	// perTenantInFlight is how many requests one tenant may have waiting on
 	// the warehouse at once. Fixed, for now -- see the plan.
 	perTenantInFlight = 4
+
+	// defaultMaxInFlight is the whole API's, across tenants. Each request in
+	// flight is a warehouse connection, and Postgres's default
+	// max_connections is 100 for everything that uses the database.
+	defaultMaxInFlight = 32
 )
 
 func (l *Limits) check(where string) error {
@@ -48,6 +57,9 @@ func (l *Limits) check(where string) error {
 	}
 	if l.MaxBytesBilled < 0 {
 		return fmt.Errorf("%s `max_bytes_billed` cannot be negative", where)
+	}
+	if l.MaxInFlight < 0 {
+		return fmt.Errorf("%s `max_in_flight` cannot be negative", where)
 	}
 	return nil
 }
@@ -63,6 +75,9 @@ func (l Limits) withDefaults() Limits {
 	if l.MaxBytesBilled == 0 {
 		l.MaxBytesBilled = defaultMaxBytesBilled
 	}
+	if l.MaxInFlight == 0 {
+		l.MaxInFlight = defaultMaxInFlight
+	}
 	return l
 }
 
@@ -73,6 +88,9 @@ func (l Limits) lowered(endpoint string, own *Limits) (Limits, error) {
 	}
 	if err := own.check("endpoint " + endpoint + ":"); err != nil {
 		return l, err
+	}
+	if own.MaxInFlight != 0 {
+		return l, fmt.Errorf("endpoint %s sets `max_in_flight`, which bounds the whole API and is the file's", endpoint)
 	}
 	raise := func(what string) error {
 		return fmt.Errorf("endpoint %s raises `%s` over the file's; an endpoint may only lower a limit", endpoint, what)
