@@ -67,7 +67,14 @@ type counting struct {
 
 func (c *counting) Read(ctx context.Context, r dialect.Request) (dialect.Result, error) {
 	c.reads.Add(1)
-	time.Sleep(c.delay)
+	// THE CONTEXT ENDS THE WAIT, as it ends a real query: pgx cancels on
+	// it. A fake that slept through cancellation could not tell a query on
+	// the leader's context from one on its own.
+	select {
+	case <-time.After(c.delay):
+	case <-ctx.Done():
+		return dialect.Result{}, ctx.Err()
+	}
 	return c.warehouse.Read(ctx, r)
 }
 

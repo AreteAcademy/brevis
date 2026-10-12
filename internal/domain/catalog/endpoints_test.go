@@ -1,6 +1,8 @@
 package catalog
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -55,5 +57,23 @@ func TestABadEndpointsManifestIsRefusedWhole(t *testing.T) {
 		if strings.Contains(err.Error(), "ghp_") || strings.Contains(err.Error(), ":pw@") {
 			t.Errorf("%s: the error repeats the credential: %v", name, err)
 		}
+	}
+}
+
+// THE REAL MANIFEST PARSES. The engine reads `brevis-sql-api describe`'s
+// output without importing the sql module, so the two can drift apart in
+// silence -- a field renamed on one side is a publish refused in
+// production. This reads the golden file the sql module's own test writes.
+func TestTheManifestDescribeWritesIsOneTheEngineAccepts(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "sql", "internal", "api", "testdata", "describe", "manifest.golden.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := ParseEndpoints(raw)
+	if err != nil {
+		t.Fatalf("the engine refuses describe's own manifest: %v", err)
+	}
+	if len(m.Endpoints) == 0 || len(m.Endpoints[0].Reads) == 0 || len(m.Endpoints[0].Params) == 0 {
+		t.Errorf("parsed, but read nothing: %+v", m)
 	}
 }
