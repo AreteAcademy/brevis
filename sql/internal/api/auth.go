@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Auth is who may read, and as which tenant.
@@ -147,8 +148,12 @@ func (k *keyring) count() (keys, tenants int) {
 // codes for whoever has no key. /health stays outside, because a readiness
 // probe that needed a token would report the API down whenever the token
 // was wrong -- a different outage from the one it exists to see.
-func guard(k *keyring, next func(http.ResponseWriter, *http.Request, string)) http.Handler {
+//
+// `refused` is told about each request turned away, so it is counted and
+// audited without this file knowing about either.
+func guard(k *keyring, next func(http.ResponseWriter, *http.Request, string), refused func(time.Time)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
 		if k == nil {
 			next(w, r, LocalTenant)
 			return
@@ -163,6 +168,9 @@ func guard(k *keyring, next func(http.ResponseWriter, *http.Request, string)) ht
 			// difference is only useful to somebody guessing.
 			w.Header().Set("WWW-Authenticate", `Bearer realm="brevis-sql-api"`)
 			refuse(w, http.StatusUnauthorized, "unauthorized")
+			if refused != nil {
+				refused(started)
+			}
 			return
 		}
 		next(w, r, tenant)

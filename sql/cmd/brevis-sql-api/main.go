@@ -87,6 +87,12 @@ func run(args []string, out, errOut io.Writer) int {
 	return 0
 }
 
+func metricsMux(h *api.Server) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", h.Metrics())
+	return mux
+}
+
 // stdin is where `key hash` reads the key; a test replaces it.
 var stdin io.Reader
 
@@ -130,6 +136,9 @@ func load(config, registry string) (*api.Config, error) {
 }
 
 func serve(cfg *api.Config, out io.Writer) error {
+	// ONE STREAM, `serve`'s reason: a container gives you one anyway, and an
+	// audit line somewhere else is an audit line nobody collects.
+	cfg.Audit = out
 	h, err := api.New(cfg)
 	if err != nil {
 		return err
@@ -163,10 +172,20 @@ func serve(cfg *api.Config, out io.Writer) error {
 		_, _ = fmt.Fprintf(out, "  GET %s\n", e.Path)
 	}
 
+	_, _ = fmt.Fprintln(out, "  one audit line per request, on this stream: parameter names, never values")
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	failed := make(chan error, 1)
+	failed := make(chan error, 2)
 	go func() { failed <- srv.ListenAndServe() }()
+	if cfg.Metrics.Addr != "" {
+		// ITS OWN PORT. The API's is public by design; a /metrics there
+		// would publish every endpoint's traffic to whoever holds a key.
+		m := &http.Server{Addr: cfg.Metrics.Addr, Handler: metricsMux(h), ReadHeaderTimeout: 5 * time.Second}
+		_, _ = fmt.Fprintf(out, "  metrics on %s/metrics, holding no tenant and no value\n", cfg.Metrics.Addr)
+		go func() { failed <- m.ListenAndServe() }()
+		defer func() { _ = m.Close() }()
+	}
 	select {
 	case err := <-failed:
 		return err

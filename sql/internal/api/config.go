@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,6 +52,14 @@ type Config struct {
 
 	// MaxRows is the file-wide row ceiling.
 	MaxRows int `yaml:"-"`
+
+	// Metrics is where the Prometheus exposition listens.
+	Metrics struct {
+		Addr string `yaml:"addr"`
+	} `yaml:"metrics"`
+
+	// Audit receives one JSON line per request. Nil writes none.
+	Audit io.Writer `yaml:"-"`
 
 	// Env is BREVIS_ENV, read by the binary and never from the file: a file
 	// that could declare itself local would be a file that turns off
