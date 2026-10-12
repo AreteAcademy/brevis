@@ -1,15 +1,18 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/AreteAcademy/brevis/sql/internal/api/cache"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 	"github.com/AreteAcademy/brevis/sql/internal/generation"
@@ -236,5 +239,92 @@ func TestAnEndpointReadsTheModelsInEveryBranch(t *testing.T) {
 	}
 	if strings.Join(e.reads, ",") != "marts.a,marts.b" {
 		t.Errorf("reads %v", e.reads)
+	}
+}
+
+func getWith(h http.Handler, target string, headers map[string]string) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// A CALLER THAT ACCEPTS BROTLI IS SENT THE STORED BYTES AS THEY ARE: the
+// answer was compressed once, when it was kept, and a hit costs a copy.
+func TestAHitIsSentCompressedToACallerThatAcceptsBrotli(t *testing.T) {
+	w := &counting{warehouse: warehouse{cols: []string{"day", "n"}, rows: [][]any{{"2026-10-05", 1}}}}
+	kv := &memoryKV{data: map[string][]byte{}}
+	s := cachedServer(t, w, kv, 10)
+	plain := get(s, "/v1/clicks").Body.Bytes()
+
+	rec := getWith(s, "/v1/clicks", map[string]string{"Accept-Encoding": "gzip, br;q=0.9"})
+	if rec.Header().Get("Content-Encoding") != "br" || rec.Header().Get("Vary") != "Accept-Encoding" {
+		t.Fatalf("headers %v", rec.Header())
+	}
+	var stored []byte
+	for k, v := range kv.data {
+		if strings.HasPrefix(k, "brevis:api:") {
+			stored = v
+		}
+	}
+	if !bytes.Equal(rec.Body.Bytes(), stored) {
+		t.Error("the body is not the stored bytes")
+	}
+	if got, err := cache.Decompress(rec.Body.Bytes()); err != nil || !bytes.Equal(got, plain) {
+		t.Errorf("it decompresses to something else: %v", err)
+	}
+	// br;q=0 is a refusal of br, not an acceptance
+	if rec := getWith(s, "/v1/clicks", map[string]string{"Accept-Encoding": "br;q=0, gzip"}); rec.Header().Get("Content-Encoding") != "" {
+		t.Error("br;q=0 was sent br")
+	}
+}
+
+// AN ETAG IS THE KEY, so it changes exactly when the answer can: a caller
+// revalidating gets a 304 until the model is rebuilt.
+func TestAnETagRevalidatesUntilTheModelIsRebuilt(t *testing.T) {
+	w := &counting{warehouse: warehouse{cols: []string{"k"}, rows: [][]any{{1}}}}
+	kv := &memoryKV{data: map[string][]byte{}}
+	s := cachedServer(t, w, kv, 10)
+	first := get(s, "/v1/clicks")
+	tag := first.Header().Get("ETag")
+	if tag == "" || first.Header().Get("Cache-Control") != "private, max-age=0" {
+		t.Fatalf("headers %v", first.Header())
+	}
+	rec := getWith(s, "/v1/clicks", map[string]string{"If-None-Match": tag})
+	if rec.Code != http.StatusNotModified || rec.Body.Len() != 0 {
+		t.Errorf("revalidation answered %d with %d bytes", rec.Code, rec.Body.Len())
+	}
+	kv.data[generation.Key("marts.clicks_daily")] = []byte("g-2")
+	rec = getWith(s, "/v1/clicks", map[string]string{"If-None-Match": tag})
+	if rec.Code != http.StatusOK || rec.Header().Get("ETag") == tag {
+		t.Errorf("after the rebuild: %d, tag %q", rec.Code, rec.Header().Get("ETag"))
+	}
+}
+
+// A SHARED PROXY MUST NOT HOLD A TENANT'S ANSWER, with or without a cache.
+func TestEveryAnswerIsPrivate(t *testing.T) {
+	rec := get(serverWith(t, &warehouse{cols: []string{"k"}}, clicks(t)), "/v1/clicks?campaign=x")
+	if rec.Header().Get("Cache-Control") != "private, max-age=0" {
+		t.Errorf("Cache-Control %q", rec.Header().Get("Cache-Control"))
+	}
+}
+
+// A BROTLI HIT ALLOCATES NO COMPRESSOR. The decoder's window is hundreds of
+// KiB; a hit that built one per request would be the cache's cost back.
+func TestABrotliHitAllocatesNoCodec(t *testing.T) {
+	w := &counting{warehouse: warehouse{cols: []string{"k"}, rows: [][]any{{1}}}}
+	s := cachedServer(t, w, &memoryKV{data: map[string][]byte{}}, 10)
+	get(s, "/v1/clicks")
+	res := testing.Benchmark(func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			getWith(s, "/v1/clicks", map[string]string{"Accept-Encoding": "br"})
+		}
+	})
+	if per := res.AllocedBytesPerOp(); per > 32<<10 {
+		t.Errorf("a brotli hit allocates %d bytes", per)
 	}
 }
