@@ -148,3 +148,27 @@ func TestAtMostMaxRowsAreKeptAndTheRestCounted(t *testing.T) {
 		t.Errorf("kept %d, received %d", len(a.Rows), a.Received)
 	}
 }
+
+// NO REDIRECT IS FOLLOWED. brevis-sql-api never redirects, so one is
+// something in front of it -- and Go re-sends the Authorization header to
+// a redirect on the same host, handing the console's key to a path nobody
+// chose. The redirect is the answer, as a refusal.
+func TestARedirectIsNotFollowed(t *testing.T) {
+	followed := false
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/elsewhere" {
+			followed = true
+			return
+		}
+		http.Redirect(w, r, "/elsewhere", http.StatusFound)
+	}))
+	defer api.Close()
+	c, _ := New("a="+api.URL, "console-key")
+	a, err := c.Call(context.Background(), "a", "/v1/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if followed || a.Status != http.StatusFound {
+		t.Errorf("followed=%v status=%d", followed, a.Status)
+	}
+}
