@@ -19,6 +19,7 @@ type Server struct {
 	binder dialect.Binder
 	mux    *http.ServeMux
 	keys   *keyring
+	slots  slots
 }
 
 // New builds the handler, or refuses a configuration it cannot serve.
@@ -86,6 +87,17 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 	if ceiling == 0 {
 		ceiling = s.cfg.MaxRows
 	}
+	timeout := e.timeout
+	if timeout == 0 {
+		timeout = s.cfg.Limits.Timeout
+	}
+	if timeout == 0 {
+		timeout = defaultTimeout
+	}
+	maxBytes := e.maxBytes
+	if maxBytes == 0 {
+		maxBytes = s.cfg.Limits.MaxBytesBilled
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// READ ONLY, and the method says so: a body is never read, so a POST
 		// is not a different way to ask but a request this does not take.
@@ -111,26 +123,24 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			return
 		}
 
-		conn, err := s.cfg.Open(r.Context())
-		if err != nil {
-			refuse(w, http.StatusBadGateway, "the warehouse could not be reached")
+		release, free := s.slots.take(tenant)
+		if !free {
+			w.Header().Set("Retry-After", "1")
+			refuse(w, http.StatusTooManyRequests, fmt.Sprintf(
+				"%d requests from this key's tenant are already waiting on the warehouse", perTenantInFlight))
 			return
 		}
-		defer func() { _ = conn.Close(r.Context()) }()
-		reader, reads := conn.(dialect.Reader)
-		if !reads {
-			refuse(w, http.StatusBadGateway, "the warehouse connection cannot return rows")
-			return
-		}
-		// ONE MORE ROW THAN THE CEILING, because a reader cannot otherwise
-		// tell "exactly the ceiling" from "more than it", and the answer has
-		// to say which.
-		res, err := reader.Read(r.Context(), dialect.Request{Query: query, Args: args, Limit: ceiling + 1})
-		if err != nil {
-			// NOTHING OF THE QUERY OR ITS VALUES IN THE ANSWER. The caller
-			// sent the values and the author wrote the SQL; neither needs a
-			// warehouse's error message quoting them back over the wire.
-			refuse(w, http.StatusBadGateway, "the warehouse refused the query")
+		defer release()
+
+		ctx, cancel := context.WithTimeout(r.Context(), timeout)
+		defer cancel()
+		res, status, why := s.read(ctx, query, args, ceiling, maxBytes)
+		if status != 0 {
+			if ctx.Err() == context.DeadlineExceeded {
+				status, why = http.StatusGatewayTimeout,
+					fmt.Sprintf("the query took longer than %s and was cancelled", timeout)
+			}
+			refuse(w, status, why)
 			return
 		}
 		truncated := res.Truncated
@@ -145,6 +155,73 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(body)
 	})
+}
+
+// read runs one rendered statement, read-only, within its ceilings. A
+// non-zero status is a refusal, with what to tell the caller.
+//
+// READ-ONLY BY THE WAREHOUSE, EACH IN ITS OWN WAY, and fail closed. A
+// warehouse that prices (BigQuery) is asked first: its verdict on the kind
+// of statement is what makes it read-only there, and its estimate refuses an
+// expensive query before the money is spent. One with a read-only guard
+// (Postgres) reads inside it. One that offers neither is refused, because
+// the only thing left between a template and a write would be the author.
+func (s *Server) read(ctx context.Context, query string, args []dialect.Arg, ceiling int, maxBytes ByteSize) (dialect.Result, int, string) {
+	conn, err := s.cfg.Open(ctx)
+	if err != nil {
+		return dialect.Result{}, http.StatusBadGateway, "the warehouse could not be reached"
+	}
+	defer func() { _ = conn.Close(context.WithoutCancel(ctx)) }()
+	reader, reads := conn.(dialect.Reader)
+	if !reads {
+		return dialect.Result{}, http.StatusBadGateway, "the warehouse connection cannot return rows"
+	}
+	planner, prices := conn.(dialect.ArgPlanner)
+	guard, guards := conn.(dialect.ReadOnlyGuard)
+	if !prices && !guards {
+		return dialect.Result{}, http.StatusInternalServerError,
+			"the warehouse can be made neither read-only nor priced, and this API reads only from one that can"
+	}
+	if prices {
+		plan, err := planner.PlanArgs(ctx, query, args)
+		if err != nil {
+			return dialect.Result{}, http.StatusBadGateway, "the warehouse refused to price the query"
+		}
+		if !plan.Reads {
+			// THE KIND IS THE WAREHOUSE'S OWN WORD and safe to quote; the
+			// statement is not.
+			return dialect.Result{}, http.StatusInternalServerError,
+				fmt.Sprintf("the endpoint's SQL is not a read: the warehouse calls it %s", plan.Kind)
+		}
+		if maxBytes > 0 && ByteSize(plan.Bytes) > maxBytes {
+			return dialect.Result{}, http.StatusUnprocessableEntity,
+				fmt.Sprintf("the query would scan %s; this endpoint's ceiling is %s", ByteSize(plan.Bytes), maxBytes)
+		}
+	}
+
+	// ONE MORE ROW THAN THE CEILING, because a reader cannot otherwise tell
+	// "exactly the ceiling" from "more than it", and the answer has to say
+	// which. MaxBytes travels too: a query priced a moment ago can grow
+	// before it runs, and this is what makes the refusal hold anyway.
+	req := dialect.Request{Query: query, Args: args, Limit: ceiling + 1, MaxBytes: int64(maxBytes)}
+	var res dialect.Result
+	run := func(ctx context.Context) error {
+		var err error
+		res, err = reader.Read(ctx, req)
+		return err
+	}
+	if guards {
+		err = guard.ReadOnly(ctx, run)
+	} else {
+		err = run(ctx)
+	}
+	if err != nil {
+		// NOTHING OF THE QUERY OR ITS VALUES IN THE ANSWER. The caller sent
+		// the values and the author wrote the SQL; neither needs a
+		// warehouse's error message quoting them back over the wire.
+		return dialect.Result{}, http.StatusBadGateway, "the warehouse refused the query"
+	}
+	return res, 0, ""
 }
 
 // values turns a query string into what the template is rendered with.

@@ -457,6 +457,17 @@ type Planner interface {
 	Plan(ctx context.Context, statement string) (Plan, error)
 }
 
+// ArgPlanner is a Planner for a statement with bound arguments.
+//
+// SEPARATE FROM Planner and not a parameter on it: Planner's callers --
+// `serve`, the build -- price statements somebody typed, which have no
+// arguments, and widening its signature would touch each of them to pass
+// nothing. A statement naming `@x` cannot be priced without `x`, so the one
+// caller that binds is the one that asks for this.
+type ArgPlanner interface {
+	PlanArgs(ctx context.Context, statement string, args []Arg) (Plan, error)
+}
+
 // WriteProbe is implemented by a connection that can answer, WITHOUT WRITING,
 // whether its own credential is allowed to.
 //

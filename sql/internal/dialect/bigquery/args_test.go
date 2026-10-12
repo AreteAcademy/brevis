@@ -82,3 +82,23 @@ func TestPlaceholderIsNamed(t *testing.T) {
 		t.Errorf("placeholder is %q", got)
 	}
 }
+
+// THE DRY RUN CARRIES THE ARGUMENTS TOO. A statement naming `@campaign`
+// priced without it is refused by BigQuery ("query parameter not found"),
+// which would make every endpoint with a parameter unpriceable -- and an
+// API that cannot price a query cannot refuse an expensive one.
+func TestADryRunCarriesTheArgumentsAndAnswersKindAndBytes(t *testing.T) {
+	f := &fake{t: t, reply: ok(`{"jobComplete":true,"totalBytesProcessed":"2048","statementType":"SELECT"}`)}
+	p, err := dial(t, f).PlanArgs(context.Background(), "SELECT @s",
+		[]dialect.Arg{{Name: "s", Value: "x"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Bytes != 2048 || !p.Reads {
+		t.Errorf("plan %+v", p)
+	}
+	sent := f.posts[0]
+	if sent["dryRun"] != true || sent["parameterMode"] != "NAMED" || sent["queryParameters"] == nil {
+		t.Errorf("the dry run sent %v", sent)
+	}
+}
