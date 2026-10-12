@@ -809,7 +809,7 @@ jobs:
           working-directory: sql
           args: --timeout=5m
 
-      - name: Build the full-pipeline example
+      - name: Build and test the full-pipeline example
         run: |
           # A module of its own, pinning a PUBLISHED SDK -- it is what somebody
           # gets from `go get`, not a gate on the working tree like the other
@@ -818,7 +818,8 @@ jobs:
           cd examples/full-pipeline/pipeline
           go build ./...
           go vet ./...
-          echo "✅ the full-pipeline example builds"
+          go test ./...
+          echo "✅ the full-pipeline example builds and its tests pass"
 
       - name: Build the cluster demo's Go pod
         run: |
