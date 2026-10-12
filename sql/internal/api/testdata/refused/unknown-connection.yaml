@@ -1,0 +1,6 @@
+# refused: `connection` is "nope"
+name: x
+connection: nope
+listen: {addr: ":1"}
+endpoints:
+  - {name: e, path: /v1/e, tenant: none, sql: select 1}

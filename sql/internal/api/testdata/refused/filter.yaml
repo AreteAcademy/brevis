@@ -1,0 +1,6 @@
+# refused: only a parameter's name
+name: x
+connection: warehouse
+listen: {addr: ":1"}
+endpoints:
+  - {name: e, path: /v1/e, tenant: none, sql: "select {{ x | safe }}"}

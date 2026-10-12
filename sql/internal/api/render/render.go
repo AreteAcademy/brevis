@@ -100,6 +100,10 @@ func (o orExpr) eval(v Values) bool  { return o.l.eval(v) || o.r.eval(v) }
 // checked is the gap an inlined value must not have.
 var identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
+// IsIdentifier reports whether s may be written into the SQL as an Inline
+// value -- the rule Render applies, for a caller to apply at load.
+func IsIdentifier(s string) bool { return identifier.MatchString(s) }
+
 // Parse reads a template written for one dialect. The dialect is needed
 // because whether `{{ x }}` sits inside a string or a comment is a question
 // about that dialect's SQL: `#` is a comment in BigQuery and an operator in
@@ -346,10 +350,18 @@ func checkPlacement(dialectName string, t *Template) error {
 				b.WriteString(sentinel(len(holes)))
 				holes = append(holes, string(n))
 			case *cond:
+				// A SPACE AT EVERY BRANCH'S EDGES, or two conditions side by
+				// side lay their placeholders end to end and read as one
+				// glued word. It cannot hide a placeholder that is inside a
+				// string: a space inside a literal is still inside it.
 				for _, br := range n.branches {
+					b.WriteByte(' ')
 					walk(br.body)
+					b.WriteByte(' ')
 				}
+				b.WriteByte(' ')
 				walk(n.orElse)
+				b.WriteByte(' ')
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package api
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -110,4 +111,36 @@ func TestWhatCannotBeHonouredIsRefusedByName(t *testing.T) {
 			t.Errorf("%s: refused with %q, which does not say %q", name, err, c.says)
 		}
 	}
+}
+
+// A CREDENTIAL IS NEVER A SETTING. Every field this file can hold that is
+// named like a key, a DSN, a password, a token or a secret must end in
+// `_from` and hold a variable's name -- the gateway's rule, enforced the
+// gateway's way: by walking the struct, so a field added next year is
+// checked the day it is added.
+func TestNoSettingIsNamedLikeACredentialWithoutFrom(t *testing.T) {
+	var walk func(reflect.Type, string)
+	walk = func(typ reflect.Type, path string) {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Map {
+			typ = typ.Elem()
+		}
+		if typ.Kind() != reflect.Struct {
+			return
+		}
+		for i := 0; i < typ.NumField(); i++ {
+			f := typ.Field(i)
+			tag, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
+			if tag == "" || tag == "-" {
+				continue
+			}
+			lower := strings.ToLower(tag)
+			for _, word := range []string{"key", "dsn", "password", "token", "secret"} {
+				if strings.Contains(lower, word) && !strings.HasSuffix(lower, "_from") {
+					t.Errorf("%s%s holds something named like a credential and does not end in _from", path, tag)
+				}
+			}
+			walk(f.Type, path+tag+".")
+		}
+	}
+	walk(reflect.TypeOf(Config{}), "")
 }
