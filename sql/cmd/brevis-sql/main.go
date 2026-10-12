@@ -62,13 +62,14 @@ func main() {
 // ONE LIST, read by the dispatch, by the usage and by the tests. It was
 // three places -- a switch, a block of text and nothing else -- and a
 // command could be added to any two of them.
-var commands = []string{"compile", "graph", "build", "test", "serve"}
+var commands = []string{"compile", "graph", "build", "test", "serve", "generation"}
 
 // opts is every flag, bound in one place so the usage and the tests can walk
 // the same set the dispatch parses.
 type opts struct {
 	root, dialectName, sel, dsnFrom *string
 	addr, registry, metricsAddr     *string
+	generationsFrom                 *string
 	full, dryRun                    *bool
 	budget                          *int64
 	rows                            *int
@@ -89,6 +90,8 @@ func bind(fs *flag.FlagSet) *opts {
 		dryRun:      fs.Bool("dry-run", false, "build the service and report, without listening"),
 		registry:    fs.String("connections", "brevis.yaml", "the file declaring which warehouses may be read"),
 		metricsAddr: fs.String("metrics-addr", "127.0.0.1:9095", "where the Prometheus exposition listens; empty turns it off"),
+		generationsFrom: fs.String("generations-from", "", "the NAME of the variable holding a Redis address; "+
+			"each model built gets a new generation there, and brevis-sql-api's cached answers over it go stale"),
 	}
 }
 
@@ -98,6 +101,11 @@ func run(args []string, out io.Writer) error {
 		return fmt.Errorf("say which command")
 	}
 	cmd, rest := args[0], args[1:]
+	if cmd == "generation" {
+		// ITS OWN FLAGS AND NO PROJECT, like serve: a bump names models a
+		// step outside this tool rebuilt.
+		return bumpGenerations(rest, out)
+	}
 
 	// ASKING FOR HELP IS NOT A MISTAKE. It fell through to the default
 	// branch, which printed the usage and then exited 1 saying `"--help" is
@@ -171,7 +179,7 @@ func run(args []string, out io.Writer) error {
 		}
 		defer func() { _ = conn.Close(context.Background()) }()
 		if cmd == "build" {
-			return build(out, d, conn, p, order, runner.Options{FullRefresh: *full})
+			return build(out, d, conn, p, order, runner.Options{FullRefresh: *full}, *o.generationsFrom)
 		}
 		return runTests(out, d, conn, p, order)
 	}
@@ -226,7 +234,7 @@ func connect(d dialect.Dialect, dsnFrom string) (dialect.Conn, error) {
 
 // build connects and runs the models.
 func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Project,
-	order []string, opt runner.Options) error {
+	order []string, opt runner.Options, generationsFrom string) error {
 
 	ctx := context.Background()
 	marks := map[string]string{}
@@ -264,6 +272,16 @@ func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Proje
 	// before, which the engine reads as a deliberate act.
 	if len(marks) > 0 {
 		_, _ = fmt.Fprintln(out, contextLine(marks))
+	}
+	// THE MODELS THAT WERE BUILT, EVEN WHEN A LATER ONE FAILED, for the
+	// landed lines' reason: they changed, and an answer cached over them is
+	// stale whatever happened after.
+	if generationsFrom != "" {
+		refs := make([]string, 0, len(res.Built))
+		for _, b := range res.Built {
+			refs = append(refs, b.Ref)
+		}
+		writeGenerations(out, generationsFrom, refs)
 	}
 	if err != nil {
 		return err
@@ -390,12 +408,16 @@ brevis-sql — plain .sql models, run as a Brevis step
   build     create or replace every model, in dependency order
   test      run every model's tests; each one is a SELECT that must find nothing
   serve     answer read-only previews over HTTP, so a console needs no credential
+  generation bump --generations-from VAR schema.name...
+            record that a table was rebuilt by something other than build
 
   --project DIR     the directory holding models/   (default ".")
   --dialect NAME    %-28s (default "postgres")
   --select  EXPR    one model, or `+"`name+`"+` for it and everything downstream
   --dsn-from VAR    the NAME of the variable holding the DSN  (build, test)
   --full-refresh    rebuild every incremental model from scratch   (build)
+  --generations-from VAR  the NAME of the variable holding a Redis address;
+                    each model built gets a new generation  (build, generation)
   --addr HOST:PORT  where to listen                            (serve)
   --rows N          the most rows a preview returns            (serve)
   --max-bytes N     the most bytes one query may scan          (serve)
