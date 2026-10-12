@@ -125,3 +125,26 @@ func TestANestedCellIsKeptAsJSON(t *testing.T) {
 		t.Errorf("row %#v", a.Rows[0])
 	}
 }
+
+// THE CONSOLE DRAWS AT MOST maxRows, and counts the rest. Found in review:
+// 4 MiB of narrow rows is over 400 000 of them, a page of tens of megabytes
+// rendered in the engine and held by a browser tab. The preview tab draws
+// twenty for the same reason.
+func TestAtMostMaxRowsAreKeptAndTheRestCounted(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rows := make([]string, maxRows+100)
+		for i := range rows {
+			rows[i] = `{"k":1}`
+		}
+		_, _ = w.Write([]byte(`{"data":[` + strings.Join(rows, ",") + `]}`))
+	}))
+	defer api.Close()
+	c, _ := New("a="+api.URL, "")
+	a, err := c.Call(context.Background(), "a", "/v1/x", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(a.Rows) != maxRows || a.Received != maxRows+100 {
+		t.Errorf("kept %d, received %d", len(a.Rows), a.Received)
+	}
+}

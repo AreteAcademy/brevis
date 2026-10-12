@@ -33,6 +33,12 @@ const timeout = 30 * time.Second
 // MiB by default and 64 at most; a page is not where either belongs whole.
 const maxBody = 4 << 20
 
+// maxRows is the most a console page draws. Found in review: 4 MiB of
+// narrow rows is over 400 000 of them, a page of tens of megabytes rendered
+// in the engine and held by a browser tab. Try it is for seeing what an
+// endpoint answers; the whole answer is the API's to give its callers.
+const maxRows = 500
+
 // ErrNotConfigured is an API the engine was given no address for.
 var ErrNotConfigured = errors.New("no address is configured for that API")
 
@@ -90,6 +96,9 @@ type Answer struct {
 	Columns   []string
 	Rows      [][]any
 	Truncated bool
+	// Received is how many rows the API sent; Rows holds at most maxRows of
+	// them.
+	Received int
 	// Error is the API's own words for a refusal -- chosen there to name a
 	// parameter and never quote SQL or values -- which the page repeats.
 	Error string
@@ -158,6 +167,10 @@ func (a *Answer) read(body []byte) error {
 	}
 	a.Truncated = top.Truncated
 	index := map[string]int{}
+	a.Received = len(top.Data)
+	if len(top.Data) > maxRows {
+		top.Data = top.Data[:maxRows]
+	}
 	for _, raw := range top.Data {
 		dec := json.NewDecoder(bytes.NewReader(raw))
 		dec.UseNumber()
