@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/AreteAcademy/brevis/sql/internal/connections"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 )
 
 // fixture writes an endpoint file and a registry beside it, and loads both.
@@ -144,3 +145,30 @@ func TestNoSettingIsNamedLikeACredentialWithoutFrom(t *testing.T) {
 	}
 	walk(reflect.TypeOf(Config{}), "")
 }
+
+// THE TENANT FILTER IS UNCONDITIONAL. Found in review: a template that used
+// `{{ tenant }}` only inside `{% if campaign %}` loaded, and a caller who
+// left `campaign` out read every tenant's rows -- the caller decided whether
+// the filter existed. So `{{ tenant }}` must appear outside every condition,
+// and `tenant` may not be a condition at all.
+func TestTheTenantFilterCannotBeConditional(t *testing.T) {
+	for name, sql := range map[string]string{
+		"only inside an if":   "select * from t {% if campaign %}where w = {{ tenant }} and c = {{ campaign }}{% endif %}",
+		"only inside an else": "select * from t {% if campaign %}where c = {{ campaign }}{% else %}where w = {{ tenant }}{% endif %}",
+		"as a condition":      "select * from t where w = {{ tenant }} {% if tenant %}{% endif %}",
+		"only a condition":    "select * from t {% if tenant %}{% endif %}{% if campaign %}{{ campaign }}{% endif %}",
+	} {
+		e := &Endpoint{Name: "e", Path: "/v1/e", SQL: sql,
+			Params: map[string]Param{"campaign": {Type: "string", MaxLen: 8}}}
+		if err := e.parse(postgresDialect); err == nil || !strings.Contains(err.Error(), "tenant") {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	e := &Endpoint{Name: "e", Path: "/v1/e", Params: map[string]Param{"campaign": {Type: "string", MaxLen: 8}},
+		SQL: "select * from t where w = {{ tenant }} {% if campaign %}and c = {{ campaign }} and w = {{ tenant }}{% endif %}"}
+	if err := e.parse(postgresDialect); err != nil {
+		t.Errorf("an unconditional filter plus a conditional use was refused: %v", err)
+	}
+}
+
+var postgresDialect = postgres.Dialect{}

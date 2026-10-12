@@ -288,3 +288,13 @@ func TestPlaceholdersInNeighbouringConditionsParse(t *testing.T) {
 		t.Error("a placeholder inside a literal parsed once it was in a branch")
 	}
 }
+
+func TestUnconditionalIsAHoleOutsideEveryCondition(t *testing.T) {
+	tmpl := mustParse(t, "postgres", "select {{ a }} {% if c %}{{ b }} {{ a }}{% endif %}")
+	if !tmpl.Unconditional("a") || tmpl.Unconditional("b") || tmpl.Unconditional("c") {
+		t.Error("Unconditional is wrong")
+	}
+	if !tmpl.IsCondition("c") || tmpl.IsCondition("a") {
+		t.Error("IsCondition is wrong")
+	}
+}

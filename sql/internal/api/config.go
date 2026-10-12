@@ -268,10 +268,23 @@ func (e *Endpoint) parse(d dialect.Dialect) error {
 	if err != nil {
 		return fmt.Errorf("endpoint %s: %v", e.Name, err)
 	}
-	usesTenant := false
+	// THE TENANT FILTER IS UNCONDITIONAL. A `{{ tenant }}` only inside a
+	// branch is a filter the caller decides about -- by leaving out the
+	// parameter that opens the branch -- and `tenant` as a condition is a
+	// test that is always true. Found in review, and the reason this asks
+	// the template where the name sits rather than whether it is there.
+	if tmpl.IsCondition(tenantName) {
+		return fmt.Errorf("endpoint %s: `tenant` is tested by a condition; it is always there, "+
+			"and the filter on it must not depend on anything", e.Name)
+	}
+	usesTenant := tmpl.Unconditional(tenantName)
 	for _, name := range tmpl.Names() {
 		if name == tenantName {
-			usesTenant = true
+			if !usesTenant {
+				return fmt.Errorf("endpoint %s: `{{ tenant }}` is written only inside a condition, so "+
+					"a caller who leaves that condition's parameter out reads every tenant's rows. "+
+					"Write the tenant filter outside every `{%% if %%}`", e.Name)
+			}
 			continue
 		}
 		if e.Params[name].Type == typePeriod {
