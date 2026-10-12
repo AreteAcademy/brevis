@@ -15,10 +15,11 @@ import (
 
 // A fake BigQuery, so every rule below is pinned without a credential.
 type fake struct {
-	t     *testing.T
-	posts []map[string]any
-	gets  []string
-	reply func(n int) (int, string) // status, body -- n is the POST count
+	t       *testing.T
+	posts   []map[string]any
+	gets    []string
+	cancels []string
+	reply   func(n int) (int, string) // status, body -- n is the POST count
 }
 
 func (f *fake) serve() *httptest.Server {
@@ -41,6 +42,10 @@ func (f *fake) serve() *httptest.Server {
 	mux.HandleFunc("/projects/p/queries/", func(w http.ResponseWriter, r *http.Request) {
 		f.gets = append(f.gets, r.URL.String())
 		_, _ = fmt.Fprint(w, `{"jobComplete":true,"rows":[{"f":[{"v":"done"}]}]}`)
+	})
+	mux.HandleFunc("/projects/p/jobs/", func(w http.ResponseWriter, r *http.Request) {
+		f.cancels = append(f.cancels, r.Method+" "+r.URL.String())
+		_, _ = fmt.Fprint(w, `{}`)
 	})
 	s := httptest.NewServer(mux)
 	f.t.Cleanup(s.Close)
