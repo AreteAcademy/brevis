@@ -171,8 +171,8 @@ func (a *Answer) read(body []byte) error {
 				return err
 			}
 			key, _ := t.(string)
-			var v any
-			if err := dec.Decode(&v); err != nil {
+			v, err := cell(dec)
+			if err != nil {
 				return err
 			}
 			i, seen := index[key]
@@ -181,9 +181,6 @@ func (a *Answer) read(body []byte) error {
 				index[key] = i
 				a.Columns = append(a.Columns, key)
 				row = append(row, nil)
-			}
-			if n, isNum := v.(json.Number); isNum {
-				v = n.String()
 			}
 			row[i] = v
 		}
@@ -196,4 +193,34 @@ func (a *Answer) read(body []byte) error {
 		}
 	}
 	return nil
+}
+
+// cell reads one value: a scalar as itself -- a number as its digits, so
+// nothing is rounded on the way to a screen -- and an object or an array AS
+// THE JSON IT IS, compacted and in the order the API wrote it. Decoded into
+// `any` it would be a Go map, drawn as `map[clicks:3]`, which nobody who
+// called the API would recognise as what it sent.
+func cell(dec *json.Decoder) (any, error) {
+	var raw json.RawMessage
+	if err := dec.Decode(&raw); err != nil {
+		return nil, err
+	}
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[') {
+		var b bytes.Buffer
+		if err := json.Compact(&b, trimmed); err != nil {
+			return nil, err
+		}
+		return b.String(), nil
+	}
+	sc := json.NewDecoder(bytes.NewReader(trimmed))
+	sc.UseNumber()
+	var v any
+	if err := sc.Decode(&v); err != nil {
+		return nil, err
+	}
+	if n, isNum := v.(json.Number); isNum {
+		return n.String(), nil
+	}
+	return v, nil
 }
