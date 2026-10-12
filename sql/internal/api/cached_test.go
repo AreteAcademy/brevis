@@ -14,6 +14,7 @@ import (
 
 	"github.com/AreteAcademy/brevis/sql/internal/api/cache"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect/bigquery"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
 	"github.com/AreteAcademy/brevis/sql/internal/generation"
 )
@@ -361,5 +362,19 @@ func TestTwoAPIsOnOneRedisNeverShareAnAnswer(t *testing.T) {
 		if rec.Header().Get("X-Brevis-Cache") == "hit" || strings.Contains(rec.Body.String(), "staging") {
 			t.Errorf("%s was served staging's answer: %s", name, rec.Body)
 		}
+	}
+}
+
+func TestTheModelsAnEndpointReadsAreNamedAsABuildWritesThem(t *testing.T) {
+	pg := &Endpoint{Name: "e", Path: "/v1/e", Tenant: "none", SQL: "select * from Marts.Clicks_Daily"}
+	if err := pg.parse(postgres.Dialect{}); err != nil {
+		t.Fatal(err)
+	}
+	bq := &Endpoint{Name: "e", Path: "/v1/e", Tenant: "none", SQL: "select * from `acme-prod.marts.clicks_daily`"}
+	if err := bq.parse(bigquery.Dialect{}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(pg.reads, ",") != "marts.clicks_daily" || strings.Join(bq.reads, ",") != "marts.clicks_daily" {
+		t.Errorf("postgres %v, bigquery %v", pg.reads, bq.reads)
 	}
 }

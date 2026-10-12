@@ -48,8 +48,10 @@ func writeGenerations(out io.Writer, variable string, refs []string) {
 	_, _ = fmt.Fprintf(out, "%d generation(s) written\n", len(refs))
 }
 
-// modelRef is `schema.name`, what every model's ref is.
-var modelRef = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$`)
+// modelRef is `schema.name`, or `project.schema.name` on BigQuery -- whose
+// project may hold hyphens. generation.Model reduces either to the name a
+// build writes.
+var modelRef = regexp.MustCompile(`^([a-z][a-z0-9-]*[a-z0-9]\.)?[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$`)
 
 // bumpGenerations is `brevis-sql generation bump`: the same write, for a
 // table something other than `brevis-sql build` rebuilt -- a Go step, dbt.
@@ -62,6 +64,7 @@ func bumpGenerations(args []string, out io.Writer) error {
 	}
 	fs := flag.NewFlagSet("generation bump", flag.ContinueOnError)
 	from := fs.String("generations-from", "", "the NAME of the variable holding the Redis address")
+	dialectName := fs.String("dialect", "postgres", "how the names are read: postgres lowers them, bigquery drops a leading project")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -69,10 +72,11 @@ func bumpGenerations(args []string, out io.Writer) error {
 	if *from == "" || len(refs) == 0 {
 		return fmt.Errorf("generation bump needs --generations-from VAR and at least one schema.name")
 	}
-	for _, r := range refs {
+	for i, r := range refs {
 		if !modelRef.MatchString(r) {
 			return fmt.Errorf("%q is not schema.name", r)
 		}
+		refs[i] = generation.Model(*dialectName, r)
 	}
 	addr := os.Getenv(*from)
 	if addr == "" {

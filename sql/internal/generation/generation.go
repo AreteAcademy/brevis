@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -12,6 +13,27 @@ import (
 // only what is between the braces is hashed, so every key this module
 // writes is on one slot and an MGET across models is allowed.
 const prefix = "brevis:gen:{brevis}:"
+
+// Model is a relation's name as a generation is keyed: the same for the
+// build that writes it, the step that bumps it and the API that reads it.
+//
+// FOUND IN THE SHIP REVIEW: those three named a model three ways and
+// nothing made them agree, so a generation was written under one name and
+// read under another, and an answer stayed until its ttl. Postgres folds an
+// unquoted identifier to lower case, so the name is lowered there; BigQuery
+// names are case-sensitive and may lead with the project, which is dropped
+// -- a build writes `schema.name` whatever project it ran in.
+func Model(dialect, ref string) string {
+	switch dialect {
+	case "postgres":
+		return strings.ToLower(ref)
+	case "bigquery":
+		if parts := strings.Split(ref, "."); len(parts) == 3 {
+			return parts[1] + "." + parts[2]
+		}
+	}
+	return ref
+}
 
 // Key is where a model's generation lives.
 func Key(model string) string { return prefix + model }
