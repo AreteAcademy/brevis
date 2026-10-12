@@ -1,0 +1,189 @@
+package api
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+	"unicode/utf8"
+
+	"github.com/AreteAcademy/brevis/sql/internal/api/render"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+)
+
+// Server answers the endpoints of one file.
+type Server struct {
+	cfg    *Config
+	binder dialect.Binder
+	mux    *http.ServeMux
+}
+
+// New builds the handler, or refuses a configuration it cannot serve.
+func New(cfg *Config) (*Server, error) {
+	b, binds := cfg.Dialect.(dialect.Binder)
+	if !binds {
+		return nil, fmt.Errorf("the %s dialect cannot bind arguments, and this API sends no value any other way",
+			cfg.Dialect.Name())
+	}
+	s := &Server{cfg: cfg, binder: b, mux: http.NewServeMux()}
+	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok\n"))
+	})
+	for _, e := range cfg.Endpoints {
+		s.mux.Handle(e.Path, s.endpoint(e))
+	}
+	return s, nil
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) { s.mux.ServeHTTP(w, r) }
+
+func (s *Server) endpoint(e *Endpoint) http.Handler {
+	ceiling := e.MaxRows
+	if ceiling == 0 {
+		ceiling = s.cfg.MaxRows
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// READ ONLY, and the method says so: a body is never read, so a POST
+		// is not a different way to ask but a request this does not take.
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			w.Header().Set("Allow", "GET, HEAD")
+			refuse(w, http.StatusMethodNotAllowed, "this endpoint answers GET and HEAD")
+			return
+		}
+		vals, err := e.values(r)
+		if err != nil {
+			refuse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		query, args, err := e.Template.Render(vals, s.binder)
+		if err != nil {
+			refuse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		conn, err := s.cfg.Open(r.Context())
+		if err != nil {
+			refuse(w, http.StatusBadGateway, "the warehouse could not be reached")
+			return
+		}
+		defer func() { _ = conn.Close(r.Context()) }()
+		reader, reads := conn.(dialect.Reader)
+		if !reads {
+			refuse(w, http.StatusBadGateway, "the warehouse connection cannot return rows")
+			return
+		}
+		// ONE MORE ROW THAN THE CEILING, because a reader cannot otherwise
+		// tell "exactly the ceiling" from "more than it", and the answer has
+		// to say which.
+		res, err := reader.Read(r.Context(), dialect.Request{Query: query, Args: args, Limit: ceiling + 1})
+		if err != nil {
+			// NOTHING OF THE QUERY OR ITS VALUES IN THE ANSWER. The caller
+			// sent the values and the author wrote the SQL; neither needs a
+			// warehouse's error message quoting them back over the wire.
+			refuse(w, http.StatusBadGateway, "the warehouse refused the query")
+			return
+		}
+		truncated := res.Truncated
+		if len(res.Rows) > ceiling {
+			res.Rows, truncated = res.Rows[:ceiling], true
+		}
+		body, err := encode(e.Name, res, truncated)
+		if err != nil {
+			refuse(w, http.StatusInternalServerError, "the answer could not be written as JSON")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(body)
+	})
+}
+
+// values turns a query string into what the template is rendered with.
+//
+// AN UNKNOWN PARAMETER IS A 400 and not ignored: `?campain=x` ignored is a
+// report with no filter, returned with a 200 to somebody who believes they
+// filtered it. A REPEATED one is a 400 too, because which of the two was
+// meant is not a question this can answer.
+func (e *Endpoint) values(r *http.Request) (render.Values, error) {
+	q := r.URL.Query()
+	for name, given := range q {
+		if _, declared := e.Params[name]; !declared {
+			return nil, fmt.Errorf("unknown parameter %q; this endpoint takes: %s",
+				name, orNone(sortedNames(e.Params)))
+		}
+		if len(given) > 1 {
+			return nil, fmt.Errorf("the parameter %s is given %d times", name, len(given))
+		}
+	}
+	vals := render.Values{}
+	for name, p := range e.Params {
+		given, there := q[name]
+		if !there {
+			continue
+		}
+		v := given[0]
+		switch p.Type {
+		case "string":
+			if !utf8.ValidString(v) || strings.ContainsRune(v, 0) {
+				return nil, fmt.Errorf("the parameter %s is not valid UTF-8 text", name)
+			}
+			if n := utf8.RuneCountInString(v); n > p.MaxLen {
+				return nil, fmt.Errorf("the parameter %s is %d characters long; at most %d", name, n, p.MaxLen)
+			}
+			vals[name] = render.Bind(v)
+		}
+	}
+	return vals, nil
+}
+
+// encode writes the answer with each row's columns IN THE ORDER THE QUERY
+// NAMED THEM. A Go map marshals sorted, and `day, clicks` arriving as
+// `clicks, day` is a different report to whoever reads it.
+func encode(endpoint string, res dialect.Result, truncated bool) ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteString(`{"data":[`)
+	for i, row := range res.Rows {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteByte('{')
+		for j, col := range res.Columns {
+			if j > 0 {
+				b.WriteByte(',')
+			}
+			k, err := json.Marshal(col)
+			if err != nil {
+				return nil, err
+			}
+			var cell any
+			if j < len(row) {
+				cell = row[j]
+			}
+			v, err := json.Marshal(cell)
+			if err != nil {
+				return nil, err
+			}
+			b.Write(k)
+			b.WriteByte(':')
+			b.Write(v)
+		}
+		b.WriteByte('}')
+	}
+	meta, err := json.Marshal(map[string]any{
+		"endpoint":     endpoint,
+		"rows":         len(res.Rows),
+		"generated_at": time.Now().UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(&b, `],"truncated":%t,"meta":%s}`, truncated, meta)
+	return b.Bytes(), nil
+}
+
+func refuse(w http.ResponseWriter, status int, why string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": why})
+}

@@ -176,3 +176,33 @@ func TestNoFileIsAnEmptyRegistry(t *testing.T) {
 		t.Error("an empty registry matched something")
 	}
 }
+
+// BY NAME, which is how an endpoint file says where it reads: `connection:
+// warehouse`. A target is matched by what it points at; a file someone wrote
+// names the declaration, and the name is the one thing it can spell.
+func TestAConnectionIsFoundByItsName(t *testing.T) {
+	t.Setenv("APP_DSN", "postgres://reader:pw@db:5432/app?sslmode=disable")
+	r, err := Load(write(t, `
+connections:
+  - name: analytics
+    dialect: bigquery
+    project: acme-prod
+  - name: app
+    dialect: postgres
+    dsn_from: APP_DSN
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, open, found := r.Named("app")
+	if !found || d.Name() != "postgres" || open == nil {
+		t.Errorf("app: found=%v dialect=%v", found, d)
+	}
+	d, _, found = r.Named("analytics")
+	if !found || d.Name() != "bigquery" {
+		t.Errorf("analytics: found=%v dialect=%v", found, d)
+	}
+	if _, _, found := r.Named("nope"); found {
+		t.Error("an undeclared name was found")
+	}
+}

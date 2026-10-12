@@ -197,6 +197,27 @@ func (r *Registry) Open(ctx context.Context, d, first string) (dialect.Conn, err
 	return dialects[c.Dialect].Open(ctx, where)
 }
 
+// Named finds a connection by the name it was declared with, and how to open
+// it. An endpoint file says `connection: warehouse`; a target is matched by
+// what it points at, and a file somebody wrote names the declaration.
+//
+// THE OPENER AND NOT A CONNECTION: the caller opens when it has a request,
+// and closes when the request is answered.
+func (r *Registry) Named(name string) (dialect.Dialect, func(context.Context) (dialect.Conn, error), bool) {
+	for _, c := range r.conns {
+		if c.Name != name {
+			continue
+		}
+		where := c.dsn
+		if where == "" {
+			where = c.Project
+		}
+		d := dialects[c.Dialect]
+		return d, func(ctx context.Context) (dialect.Conn, error) { return d.Open(ctx, where) }, true
+	}
+	return nil, nil, false
+}
+
 // Names lists the declared connections, for a refusal to name what there is.
 func (r *Registry) Names() []string {
 	out := make([]string, 0, len(r.conns))
