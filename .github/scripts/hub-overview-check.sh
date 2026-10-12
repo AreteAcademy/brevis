@@ -25,7 +25,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # table: the version is in the pull command too, and a reader copies that line
 # before reading anything else.
 status=0
-for pair in "docs/GATEWAY-hub.md:gateway/VERSION" "docs/SQL-hub.md:sql/VERSION"; do
+for pair in "docs/GATEWAY-hub.md:gateway/VERSION" "docs/SQL-hub.md:sql/VERSION" "docs/ENDPOINTS-hub.md:sql/VERSION"; do
   f="${pair%%:*}"
   v="${pair##*:}"
 
