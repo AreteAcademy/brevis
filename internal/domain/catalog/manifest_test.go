@@ -177,7 +177,8 @@ func TestTheConfigHashIsTheSettingsAndNotTheNotes(t *testing.T) {
 }
 
 // A name is on the page as much as a value is: a setting's path, a stream's
-// name and path, a note's key and the gateway's own name all reach /data. A
+// name and path, a note's key, a destination's kind and note, and the
+// gateway's own name all reach /data. A
 // credential in any of them is refused -- and the refusal names WHERE by
 // position, never by the text that carried it, or the error would hand the
 // credential on to whoever reads the log.
@@ -191,6 +192,9 @@ func TestACredentialInANameIsRefusedWithoutRepeatingIt(t *testing.T) {
 		{"a note's key", `"sink.into.write": "APPEND would land twice."`,
 			`"` + dsn + `": "APPEND would land twice."`},
 		{"the gateway's name", `"gateway": "events_gateway"`, `"gateway": "` + dsn + `"`},
+		{"a destination's role", `"role": "sink"`, `"role": "` + dsn + `"`},
+		{"a destination's kind", `"kind": "auto_table"`, `"kind": "` + dsn + `"`},
+		{"a destination's note", `"routes": true}`, `"routes": true, "note": "` + dsn + `"}`},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
