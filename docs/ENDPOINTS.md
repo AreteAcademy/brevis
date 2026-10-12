@@ -275,6 +275,22 @@ contract — parameters, limits, notes, the models it reads, a `curl` with the
 key as a placeholder. A model's page lists the endpoints over it under
 **Read by**. Traffic stays on `/metrics`, live.
 
+**Try it** runs an endpoint from its page: one field per parameter, typed as
+the parameter is, and the answer as a grid with its status, cache result and
+time. The console calls the API from the server -- the browser never holds a
+key -- with what the engine is given:
+
+```bash
+BREVIS_ENDPOINTS_URLS="metrics-api=https://api.internal:8080, other=http://other:8080"
+BREVIS_ENDPOINTS_KEY=<a key from the API's key list>
+```
+
+**One key, so one tenant, for every console login.** That is why Try it
+exists only on a console that asks who you are, as the SQL tabs do, and only
+for an API it has an address for. Nothing is called until Run is pressed: a
+call is a warehouse query. `make up-data` points the console at the example
+API, which is local and open, so no key.
+
 ## What it does not do
 
 - **No browser access.** A static key in a browser is public.

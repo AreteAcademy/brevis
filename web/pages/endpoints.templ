@@ -127,6 +127,9 @@ templ Endpoint(v EndpointView) {
 				}
 			</div>
 		</section>
+		if v.CanRun {
+			@tryIt(v)
+		}
 		<section>
 			<h3 class="kicker mb-2">Call it</h3>
 			<pre class="overflow-x-auto rounded-card border border-line bg-parchment-soft/60 px-4 py-3 font-mono text-xs text-ink">{ v.Curl() }</pre>
@@ -149,4 +152,65 @@ templ readBy(refs []EndpointRef) {
 			</ul>
 		</section>
 	}
+}
+
+templ tryIt(v EndpointView) {
+	<section class="mb-8">
+		<h3 class="kicker mb-2">Try it</h3>
+		<p class="mb-3 max-w-3xl text-xs text-muted">
+			Runs through this console's key, as that key's tenant, for every login. An empty field is the parameter's default.
+		</p>
+		<form method="get" action={ templ.SafeURL(v.Row.Href()) } class="mb-4 flex flex-wrap items-end gap-3">
+			<input type="hidden" name="run" value="1"/>
+			for _, f := range v.Form {
+				<label class="flex flex-col gap-1 text-xs text-muted">
+					<span class="font-mono">
+						{ f.Name }
+						if f.Required {
+							<span class="font-sans">*</span>
+						}
+					</span>
+					if f.Kind == "select" {
+						<select name={ f.Name } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink">
+							<option value="">default</option>
+							for _, o := range f.Options {
+								if o == f.Value {
+									<option value={ o } selected>{ o }</option>
+								} else {
+									<option value={ o }>{ o }</option>
+								}
+							}
+						</select>
+					} else if f.MaxLen > 0 {
+						<input type={ f.Kind } name={ f.Name } value={ f.Value } maxlength={ fmt.Sprint(f.MaxLen) } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink"/>
+					} else {
+						<input type={ f.Kind } name={ f.Name } value={ f.Value } class="rounded-card border border-line bg-surface px-2 py-1 text-sm text-ink"/>
+					}
+				</label>
+			}
+			<button type="submit" class="rounded-card bg-accent px-4 py-1.5 text-sm font-medium text-surface hover:opacity-90">Run</button>
+		</form>
+		if v.RunErr != "" {
+			<p class="rounded-card border border-line bg-parchment-soft/60 px-4 py-3 text-sm text-ink">{ v.RunErr }</p>
+		}
+		if a := v.Answer; a != nil {
+			<div class="mb-2 flex flex-wrap items-center gap-3 text-xs text-muted">
+				<span class="rounded-card border border-line px-1.5 py-px font-mono text-ink">{ fmt.Sprint(a.Status) }</span>
+				if a.Cache != "" {
+					<span>cache <span class="font-mono text-ink">{ a.Cache }</span></span>
+				}
+				<span class="tabular-nums">{ fmt.Sprint(a.Millis) } ms</span>
+				if a.Status == 200 {
+					<span class="tabular-nums">{ Total(len(a.Rows), a.Truncated) }</span>
+				}
+			</div>
+			if a.Error != "" {
+				<p class="rounded-card border border-line bg-parchment-soft/60 px-4 py-3 text-sm text-ink">{ a.Error }</p>
+			} else if len(a.Rows) == 0 {
+				<p class="text-sm text-muted">No rows.</p>
+			} else {
+				@grid(a.Columns, a.Rows)
+			}
+		}
+	</section>
 }

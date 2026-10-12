@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/endpointcall"
 	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
 )
 
@@ -66,6 +67,15 @@ type EndpointView struct {
 	// About is the note above the endpoint in its file, if its author marked
 	// one.
 	About string
+
+	// CanRun says this console may run the endpoint: it asks who you are,
+	// and it has an address for the API. Without both there is no Try it.
+	CanRun bool
+	// Form is Try it's fields; Answer what the last Run brought back, or
+	// RunErr why there is none.
+	Form   []FormField
+	Answer *endpointcall.Answer
+	RunErr string
 }
 
 // ParamView is one parameter as a caller reads it.
@@ -137,6 +147,62 @@ func ReadersOf(all []postgres.PublishedEndpoint) []EndpointRef {
 	for _, e := range all {
 		r := rowOf(e)
 		out = append(out, EndpointRef{API: r.API, Name: r.Name, Path: r.Path, Href: r.Href()})
+	}
+	return out
+}
+
+// FormField is one input of Try it, typed as its parameter is.
+type FormField struct {
+	Name, Kind, Value string
+	// Options are a select's: an enum's values, a bool's, a period's. Empty
+	// for an input.
+	Options  []string
+	Required bool
+	MaxLen   int
+}
+
+// periods are what a period parameter accepts, in brevis-sql-api's order.
+var periods = []string{"today", "yesterday", "last_7_days", "last_30_days", "last_week", "last_month", "month_to_date"}
+
+// TryForm is the endpoint's parameters as a form, holding what was last sent
+// -- or, before anything was, each parameter's default.
+func TryForm(params []catalog.EndpointParam, sent url.Values) []FormField {
+	var out []FormField
+	for _, p := range params {
+		f := FormField{Name: p.Name, Required: p.Required, MaxLen: p.MaxLen}
+		switch p.Type {
+		case "enum":
+			f.Kind, f.Options = "select", p.Values
+		case "bool":
+			f.Kind, f.Options = "select", []string{"true", "false"}
+		case "period":
+			f.Kind, f.Options = "select", periods
+		case "date":
+			f.Kind = "date"
+		case "int":
+			f.Kind = "number"
+		default:
+			f.Kind = "text"
+		}
+		if v, there := sent[p.Name]; there {
+			f.Value = v[0]
+		} else if p.Default != nil && sent == nil {
+			f.Value = *p.Default
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
+// TryValues are the declared parameters a submitted form carries, the empty
+// ones left out: an empty select is "use the default", which is the API's
+// to apply, and an undeclared name is not forwarded at all.
+func TryValues(params []catalog.EndpointParam, q url.Values) url.Values {
+	out := url.Values{}
+	for _, p := range params {
+		if v := strings.TrimSpace(q.Get(p.Name)); v != "" {
+			out.Set(p.Name, v)
+		}
 	}
 	return out
 }
