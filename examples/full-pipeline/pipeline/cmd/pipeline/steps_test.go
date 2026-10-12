@@ -30,8 +30,11 @@ func writeReport(t *testing.T, dir, date string, age time.Duration) {
 	}
 }
 
+// useReports points the report directory at a fresh one, for a run whose
+// slot is 2026-10-12: the day `report` names its directory after.
 func useReports(t *testing.T) string {
 	t.Helper()
+	t.Setenv("BREVIS_AUTO_PARAMS", `{"adjusted_at": "2026-10-12T06:00:00Z", "date": "2026-10-12"}`)
 	dir := t.TempDir()
 	old := reports
 	reports = dir
@@ -105,6 +108,29 @@ func TestTheCountIsTheNewestReportsOnly(t *testing.T) {
 	writeRows(t, dir, "2026-10-12", 5, time.Minute)
 	if out := stdout(t, qualityCount); !strings.Contains(out, "the report has 5 row(s)") {
 		t.Errorf("printed %q, want the newest report's 5 rows", out)
+	}
+}
+
+// Another run's report is not this run's, however new: a backfill runs its
+// days side by side, and the day after this one may finish its report a
+// minute before this run counts.
+func TestTheCountIsThisRunsDaysReport(t *testing.T) {
+	dir := useReports(t)
+	writeRows(t, dir, "2026-10-12", 5, time.Hour)
+	writeRows(t, dir, "2026-10-13", 9, time.Minute)
+	if out := stdout(t, qualityCount); !strings.Contains(out, "the report has 5 row(s)") {
+		t.Errorf("printed %q, want this run's day's 5 rows", out)
+	}
+}
+
+// And the freshness check judges that same report, not a newer one of
+// another day standing in for it.
+func TestAnotherDaysFreshReportDoesNotVouchForThisOne(t *testing.T) {
+	dir := useReports(t)
+	writeReport(t, dir, "2026-10-12", 30*time.Hour)
+	writeReport(t, dir, "2026-10-13", time.Minute)
+	if err := qualityFreshness(); err == nil {
+		t.Fatal("accepted this day's thirty-hour-old report on another day's word")
 	}
 }
 
