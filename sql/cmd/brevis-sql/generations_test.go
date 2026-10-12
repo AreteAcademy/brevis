@@ -49,7 +49,9 @@ func TestIntegrationGenerationBumpWritesANewGeneration(t *testing.T) {
 		t.Skip("BREVIS_SQL_IT_REDIS not set")
 	}
 	t.Setenv("TEST_GENERATIONS", addr)
-	model := "it_" + strings.ReplaceAll(t.Name(), "/", "_") + ".m"
+	// Lowercase: a Postgres bump lowers the name, and this test is about a
+	// second bump being a new generation, not about case.
+	model := strings.ToLower("it_" + strings.ReplaceAll(t.Name(), "/", "_") + ".m")
 	read := func() string {
 		c, _ := generation.Open(addr)
 		defer c.Close()
@@ -68,5 +70,24 @@ func TestIntegrationGenerationBumpWritesANewGeneration(t *testing.T) {
 	}
 	if second := read(); first == "" || second == first {
 		t.Errorf("generations %q then %q", first, second)
+	}
+}
+
+// A BUMP OF `Marts.Clicks` ON POSTGRES IS THE GENERATION OF marts.clicks,
+// the name the API reads -- not a key nobody will ever look at.
+func TestIntegrationABumpIsKeyedAsTheAPIReadsIt(t *testing.T) {
+	addr := os.Getenv("BREVIS_SQL_IT_REDIS")
+	if addr == "" {
+		t.Skip("BREVIS_SQL_IT_REDIS not set")
+	}
+	t.Setenv("TEST_GENERATIONS", addr)
+	if err := run([]string{"generation", "bump", "--generations-from", "TEST_GENERATIONS", "It_Case.Bumped_Model"}, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := generation.Open(addr)
+	defer c.Close()
+	got, err := generation.Read(context.Background(), c, []string{"it_case.bumped_model"})
+	if err != nil || got[0] == "" {
+		t.Errorf("the lowered name has no generation: %q %v", got, err)
 	}
 }

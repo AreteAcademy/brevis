@@ -205,8 +205,14 @@ request ── MGET the generations of every model the SQL reads ── one roun
   every answer's key.
 - The models an endpoint reads are read from its SQL at load, **in every
   branch**: a model read only when a parameter is sent still invalidates.
-- A table built by something else — a Go step, dbt — gets a generation with
-  `brevis-sql generation bump --generations-from VAR schema.name`.
+- A table built by something else — a Go step, dbt, **the gateway** — gets
+  a generation with `brevis-sql generation bump --generations-from VAR
+  --dialect postgres schema.name`. Nothing bumps a table the gateway lands:
+  an endpoint reading one straight is fresh only to its ttl. Read a model
+  built over it instead, or bump it on a schedule. `serve` prints, per
+  endpoint, which models it waits on.
+- Names are keyed as a build writes them: lowered on Postgres, and on
+  BigQuery without a leading project.
 - A generation that could not be written is a warning and the build stands;
   answers over that model stay until their ttl.
 - A caller sending `Accept-Encoding: br` gets the stored bytes as they are,

@@ -219,6 +219,14 @@ func serve(cfg *api.Config, out io.Writer) error {
 		}
 		_, _ = fmt.Fprintf(out, "  GET %s\n", e.Path)
 	}
+	// WHICH GENERATIONS EACH ENDPOINT WAITS ON, said where an operator looks
+	// first: an answer over a table nothing bumps -- one the gateway lands,
+	// say -- stays until its ttl, and this is how somebody sees which.
+	if cfg.Cache != nil {
+		for _, e := range cfg.Endpoints {
+			_, _ = fmt.Fprintf(out, "  %s is fresh while %s keep their generation\n", e.Path, strings.Join(e.Reads(), ", "))
+		}
+	}
 
 	_, _ = fmt.Fprintln(out, "  one audit line per request, on this stream: parameter names, never values")
 

@@ -27,6 +27,7 @@ import (
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/bigquery"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect/postgres"
+	"github.com/AreteAcademy/brevis/sql/internal/generation"
 	"github.com/AreteAcademy/brevis/sql/internal/project"
 	runner "github.com/AreteAcademy/brevis/sql/internal/run"
 )
@@ -279,7 +280,7 @@ func build(out io.Writer, d dialect.Dialect, conn dialect.Conn, p *project.Proje
 	if generationsFrom != "" {
 		refs := make([]string, 0, len(res.Built))
 		for _, b := range res.Built {
-			refs = append(refs, b.Ref)
+			refs = append(refs, generation.Model(d.Name(), b.Ref))
 		}
 		writeGenerations(out, generationsFrom, refs)
 	}

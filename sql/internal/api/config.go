@@ -24,6 +24,7 @@ import (
 	"github.com/AreteAcademy/brevis/sql/internal/api/render"
 	"github.com/AreteAcademy/brevis/sql/internal/connections"
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
+	"github.com/AreteAcademy/brevis/sql/internal/generation"
 	"github.com/AreteAcademy/brevis/sql/internal/refs"
 )
 
@@ -341,9 +342,16 @@ func (e *Endpoint) parse(d dialect.Dialect) error {
 	if err != nil {
 		return fmt.Errorf("endpoint %s: the relations its SQL reads cannot be told: %v", e.Name, err)
 	}
+	for i, r := range reads {
+		reads[i] = generation.Model(d.Name(), r)
+	}
 	e.Template, e.reads = tmpl, reads
 	return nil
 }
+
+// Reads are the models the endpoint's SQL can read, named as their
+// generations are keyed.
+func (e *Endpoint) Reads() []string { return append([]string(nil), e.reads...) }
 
 // CacheConfig is where answers are kept, and for how long at most.
 type CacheConfig struct {

@@ -58,3 +58,22 @@ func TestReadingNothingAsksNothing(t *testing.T) {
 		t.Errorf("%v %v %v", got, err, f.seen)
 	}
 }
+
+// ONE NAME PER MODEL, whoever writes it and whoever reads it. Found in the
+// ship review: the API keyed generations by what it read off the SQL, the
+// build wrote the model's file name, and nothing made them agree -- a
+// BigQuery `proj.marts.clicks` or a Postgres `Marts.Clicks` read a
+// generation nobody ever wrote, and the answer stayed until its ttl.
+func TestAModelHasOneNameWhoeverWritesOrReadsIt(t *testing.T) {
+	for _, c := range []struct{ dialect, in, want string }{
+		{"postgres", "marts.clicks", "marts.clicks"},
+		{"postgres", "Marts.Clicks", "marts.clicks"},
+		{"bigquery", "marts.clicks", "marts.clicks"},
+		{"bigquery", "acme-prod.marts.clicks", "marts.clicks"},
+		{"bigquery", "Marts.Clicks", "Marts.Clicks"}, // BigQuery names are case-sensitive
+	} {
+		if got := Model(c.dialect, c.in); got != c.want {
+			t.Errorf("%s %q became %q, wanted %q", c.dialect, c.in, got, c.want)
+		}
+	}
+}
