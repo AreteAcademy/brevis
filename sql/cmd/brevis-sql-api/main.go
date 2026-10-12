@@ -8,6 +8,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
@@ -16,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,9 +31,11 @@ const usage = `brevis-sql-api: declared, read-only SQL over HTTP
 
   brevis-sql-api validate --config api.yaml [--connections brevis.yaml]
   brevis-sql-api serve    --config api.yaml [--connections brevis.yaml]
+  brevis-sql-api key hash --tenant <tenant>   < the key on stdin
 
   validate  loads the file and its SQL, connecting to nothing
   serve     answers the file's endpoints
+  key hash  prints the line a key list holds for one key
 
   --config FILE       the endpoint file
   --connections FILE  the connection registry   (default brevis.yaml)
@@ -43,6 +47,9 @@ func run(args []string, out, errOut io.Writer) int {
 		return 2
 	}
 	cmd := args[0]
+	if cmd == "key" {
+		return keyHash(args[1:], out, errOut)
+	}
 	if cmd != "validate" && cmd != "serve" {
 		_, _ = fmt.Fprintf(errOut, "unknown command %q\n\n%s", cmd, usage)
 		return 2
@@ -64,6 +71,10 @@ func run(args []string, out, errOut io.Writer) int {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
 	}
+	// FROM THE ENVIRONMENT, never from a flag or the file: something that
+	// could declare itself local would be something that turns off
+	// authentication. The gateway states the rule; this obeys it.
+	cfg.Env = os.Getenv("BREVIS_ENV")
 	if cmd == "validate" {
 		_, _ = fmt.Fprintf(out, "%s: %d endpoint(s) on connection %s, each one loaded and parsed\n",
 			cfg.Name, len(cfg.Endpoints), cfg.Connection)
@@ -73,6 +84,40 @@ func run(args []string, out, errOut io.Writer) int {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
 	}
+	return 0
+}
+
+// stdin is where `key hash` reads the key; a test replaces it.
+var stdin io.Reader
+
+func keyHash(args []string, out, errOut io.Writer) int {
+	if len(args) == 0 || args[0] != "hash" {
+		_, _ = fmt.Fprint(errOut, usage)
+		return 2
+	}
+	fs := flag.NewFlagSet("key hash", flag.ContinueOnError)
+	fs.SetOutput(errOut)
+	tenant := fs.String("tenant", "", "the tenant the key belongs to")
+	if err := fs.Parse(args[1:]); err != nil {
+		return 2
+	}
+	in := stdin
+	if in == nil {
+		in = os.Stdin
+	}
+	// THE KEY ON STDIN and never as an argument: an argument is in the
+	// shell's history and in every `ps` while this runs.
+	key, err := bufio.NewReader(in).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		_, _ = fmt.Fprintln(errOut, "the key could not be read from stdin:", err)
+		return 1
+	}
+	line, err := api.KeyLine(strings.TrimRight(key, "\r\n"), *tenant)
+	if err != nil {
+		_, _ = fmt.Fprintln(errOut, err)
+		return 1
+	}
+	_, _ = fmt.Fprintln(out, line)
 	return 0
 }
 
@@ -98,7 +143,23 @@ func serve(cfg *api.Config, out io.Writer) error {
 	}
 	_, _ = fmt.Fprintf(out, "brevis-sql-api %s on %s, %d endpoint(s) on connection %s\n",
 		cfg.Name, cfg.Listen.Addr, len(cfg.Endpoints), cfg.Connection)
+	if keys, tenants := h.Keys(); keys > 0 {
+		_, _ = fmt.Fprintf(out, "  %d key(s) for %d tenant(s); each request reads as its key's tenant\n",
+			keys, tenants)
+	} else {
+		// SAID OUT LOUD, the way `serve` says "no token": open is a state
+		// somebody should be able to see without reading the file.
+		_, _ = fmt.Fprintf(out, "  NO AUTHENTICATION (BREVIS_ENV=%s): every request reads as tenant %q\n",
+			api.EnvLocal, api.LocalTenant)
+	}
 	for _, e := range cfg.Endpoints {
+		if e.Tenant == "none" {
+			// AND EVERY ENDPOINT THAT IGNORES THE TENANT, BY NAME. It was a
+			// deliberate choice in the file; this is where an operator sees
+			// it was made.
+			_, _ = fmt.Fprintf(out, "  GET %s  (tenant: none -- the same rows for every key)\n", e.Path)
+			continue
+		}
 		_, _ = fmt.Fprintf(out, "  GET %s\n", e.Path)
 	}
 
