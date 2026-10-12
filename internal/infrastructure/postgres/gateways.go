@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"hash/fnv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -31,6 +32,13 @@ func (r *GatewayRepo) Publish(ctx context.Context, m catalog.Manifest, at time.T
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// One publish of a gateway at a time. A deploy publishes it from a Job,
+	// and two rollouts can overlap: interleaved, the delete-then-insert below
+	// put a row back that the other had just put back, and failed on its
+	// key. Transaction-scoped, so a failed publish never leaves it held.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, gatewayLock(m.Gateway)); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(ctx, `DELETE FROM gateway_destinations WHERE gateway = $1`, m.Gateway); err != nil {
 		return err
 	}
@@ -52,6 +60,15 @@ func (r *GatewayRepo) Publish(ctx context.Context, m catalog.Manifest, at time.T
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// gatewayLock is the advisory lock key of one gateway's publish. Its own
+// namespace, so it cannot share a key with a step's history (historyLock).
+func gatewayLock(gateway string) int64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte("gateway-publish\x00"))
+	_, _ = h.Write([]byte(gateway))
+	return int64(h.Sum64())
 }
 
 // publishStream stores one stream's configuration and its current row.
