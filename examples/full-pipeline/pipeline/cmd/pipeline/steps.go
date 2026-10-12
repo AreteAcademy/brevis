@@ -246,6 +246,12 @@ func qualityCount() error {
 // It reads its own workflow's key, which is why it does not care whether it is
 // running standalone or inlined: `unless_empty:` in the YAML resolves the
 // prefix, and this code names nothing.
+//
+// The NEWEST report is what it judges, not every one on disk. The data
+// directory keeps every report a run ever wrote, and `cleanup` never touches
+// them, so judging them all failed every run once the directory was a day
+// old -- on the one report nobody was asking about. The question is whether
+// the report is current, and the newest one answers it.
 func qualityFreshness() error {
 	found, err := filepath.Glob(filepath.Join(reports, "*", "*.ndjson"))
 	if err != nil {
@@ -254,17 +260,22 @@ func qualityFreshness() error {
 	if len(found) == 0 {
 		return fmt.Errorf("no report to check in %s", reports)
 	}
+	var newest string
+	var newestAt time.Time
 	for _, f := range found {
 		info, err := os.Stat(f)
 		if err != nil {
 			return err
 		}
-		if age := time.Since(info.ModTime()); age > 24*time.Hour {
-			return fmt.Errorf("the report for %s is %s old",
-				filepath.Base(filepath.Dir(f)), age.Round(time.Hour))
+		if info.ModTime().After(newestAt) {
+			newest, newestAt = f, info.ModTime()
 		}
 	}
-	fmt.Printf("%d report file(s), all fresh\n", len(found))
+	if age := time.Since(newestAt); age > 24*time.Hour {
+		return fmt.Errorf("the newest report, for %s, is %s old",
+			filepath.Base(filepath.Dir(newest)), age.Round(time.Hour))
+	}
+	fmt.Printf("the newest report, for %s, is fresh\n", filepath.Base(filepath.Dir(newest)))
 	return nil
 }
 
