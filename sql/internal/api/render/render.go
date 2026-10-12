@@ -39,6 +39,14 @@ type Value struct {
 // dialect.Arg allows: string, int64, bool or dialect.Date.
 func Bind(v any) Value { return Value{v: v} }
 
+// Bound is what the value binds as, or nil for none or an inline one.
+func (v Value) Bound() any {
+	if v.inline {
+		return nil
+	}
+	return v.v
+}
+
 // Inline is a value written into the SQL text. Only an identifier is
 // accepted, at render time, whatever the caller validated before.
 func Inline(identifier string) Value { return Value{v: identifier, inline: true} }

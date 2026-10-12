@@ -174,6 +174,7 @@ func (e *Endpoint) values(r *http.Request) (render.Values, error) {
 		}
 	}
 	vals := render.Values{}
+	period := ""
 	for _, name := range sortedNames(e.Params) {
 		p := e.Params[name]
 		raw, sent := "", false
@@ -192,9 +193,55 @@ func (e *Endpoint) values(r *http.Request) (render.Values, error) {
 		if err != nil {
 			return nil, err
 		}
+		if p.Type == typePeriod {
+			period = raw
+			continue
+		}
 		vals[name] = v
 	}
+	if e.period != "" {
+		if err := e.datesFrom(q, period, vals); err != nil {
+			return nil, err
+		}
+	}
+	// COMMA-OK: start_date may be declared as something other than a date
+	// on an endpoint with no period, and then there is no order to check.
+	from, isDate := vals[startDate].Bound().(dialect.Date)
+	to, alsoDate := vals[endDate].Bound().(dialect.Date)
+	if isDate && alsoDate && from.String() > to.String() {
+		return nil, fmt.Errorf("start_date is after end_date")
+	}
 	return vals, nil
+}
+
+// datesFrom sets start_date and end_date from the period, unless the caller
+// sent both -- explicit dates win. One without the other is a 400: half a
+// range is not a range, and filling the other half from the period would be
+// a guess about which half the caller meant.
+func (e *Endpoint) datesFrom(q url.Values, period string, vals render.Values) error {
+	_, sentStart := q[startDate]
+	_, sentEnd := q[endDate]
+	switch {
+	case sentStart && !sentEnd:
+		return fmt.Errorf("start_date is sent without end_date; send both, or neither and a period")
+	case sentEnd && !sentStart:
+		return fmt.Errorf("end_date is sent without start_date; send both, or neither and a period")
+	case sentStart && sentEnd, period == "":
+		return nil
+	}
+	loc, now := e.loc, e.now
+	if loc == nil {
+		loc = time.UTC
+	}
+	if now == nil {
+		now = time.Now
+	}
+	from, to, err := resolvePeriod(period, now(), loc)
+	if err != nil {
+		return fmt.Errorf("the parameter %s is %v", e.period, err)
+	}
+	vals[startDate], vals[endDate] = render.Bind(from), render.Bind(to)
+	return nil
 }
 
 // encode writes the answer with each row's columns IN THE ORDER THE QUERY

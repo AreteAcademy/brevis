@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 
@@ -28,10 +29,13 @@ const DefaultMaxRows = 10000
 
 // Config is one endpoint file, loaded and checked.
 type Config struct {
-	Name       string      `yaml:"name"`
-	Connection string      `yaml:"connection"`
-	Listen     Listen      `yaml:"listen"`
-	Endpoints  []*Endpoint `yaml:"endpoints"`
+	Name       string `yaml:"name"`
+	Connection string `yaml:"connection"`
+
+	// Timezone is the IANA zone `period` resolves in. UTC when absent.
+	Timezone  string      `yaml:"timezone"`
+	Listen    Listen      `yaml:"listen"`
+	Endpoints []*Endpoint `yaml:"endpoints"`
 
 	// Params are definitions an endpoint's parameter can name with `ref`.
 	Params map[string]Param `yaml:"params"`
@@ -73,6 +77,12 @@ type Endpoint struct {
 	MaxRows int `yaml:"-"`
 
 	Template *render.Template `yaml:"-"`
+
+	// period is the name of the endpoint's period parameter, if it has one.
+	period string
+	// loc and now are when "today" is. Nil means UTC and time.Now.
+	loc *time.Location
+	now func() time.Time
 }
 
 // maxStringLen bounds `max_len` itself. A parameter is a filter, not a
@@ -126,6 +136,12 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			return nil, fmt.Errorf("`params.%s`: %v", name, err)
 		}
 	}
+	loc := time.UTC
+	if cfg.Timezone != "" {
+		if loc, err = time.LoadLocation(cfg.Timezone); err != nil {
+			return nil, fmt.Errorf("`timezone` is %q, which is not an IANA zone (like America/Sao_Paulo)", cfg.Timezone)
+		}
+	}
 	if len(cfg.Endpoints) == 0 {
 		return nil, fmt.Errorf("the file declares no `endpoints`")
 	}
@@ -171,6 +187,7 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 		if err := e.parse(cfg.Dialect); err != nil {
 			return nil, err
 		}
+		e.loc = loc
 	}
 	return cfg, nil
 }
@@ -189,7 +206,7 @@ func (e *Endpoint) check() error {
 			return fmt.Errorf("endpoint %s, parameter %s: %v", e.Name, name, err)
 		}
 	}
-	return nil
+	return e.checkPeriod()
 }
 
 // resolve replaces each `{ref: name}` with the file's definition of it.
@@ -228,6 +245,10 @@ func (e *Endpoint) parse(d dialect.Dialect) error {
 		if name == tenantName {
 			usesTenant = true
 			continue
+		}
+		if e.Params[name].Type == typePeriod {
+			return fmt.Errorf("endpoint %s: `{{ %s }}` is a period, which is not a value -- it sets "+
+				"start_date and end_date, and the SQL uses those", e.Name, name)
 		}
 		if _, declared := e.Params[name]; !declared {
 			return fmt.Errorf("endpoint %s: the SQL uses `%s`, which is not a declared parameter (declared: %s)",

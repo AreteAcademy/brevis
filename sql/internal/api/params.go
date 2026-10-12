@@ -55,7 +55,7 @@ const (
 	typeEnum   = "enum"
 )
 
-var types = []string{typeString, typeInt, typeDate, typeBool, typeEnum}
+var types = []string{typeString, typeInt, typeDate, typeBool, typeEnum, typePeriod}
 
 // check refuses a declaration on its own terms. A field that does not apply
 // to the type is refused rather than ignored: `max_len` on an int is a bound
@@ -86,7 +86,7 @@ func (p Param) check() error {
 		if p.Min != nil && p.Max != nil && *p.Min > *p.Max {
 			return fmt.Errorf("`min` is above `max`")
 		}
-	case typeDate, typeBool:
+	case typeDate, typeBool, typePeriod:
 	case typeEnum:
 		if len(p.Values) == 0 {
 			return fmt.Errorf("an enum needs `values`")
@@ -164,6 +164,16 @@ func (p Param) parse(name, raw string) (render.Value, error) {
 			}
 		}
 		return render.Value{}, fmt.Errorf("the parameter %s is one of: %s", name, strings.Join(p.Values, ", "))
+	case typePeriod:
+		// CHECKED HERE, RESOLVED BY THE ENDPOINT: a period is not a value
+		// the SQL binds but two dates it sets, and only the endpoint knows
+		// the clock and the timezone.
+		for _, v := range periods {
+			if raw == v {
+				return render.Value{}, nil
+			}
+		}
+		return render.Value{}, fmt.Errorf("the parameter %s is one of: %s", name, strings.Join(periods, ", "))
 	}
 	return render.Value{}, fmt.Errorf("the parameter %s has no type this API reads", name)
 }
