@@ -270,7 +270,23 @@ const readsOnly = "SELECT"
 // It is not polled, and does not need to be: a dry run creates no job, so
 // the answer is in the first response or there is no answer.
 func (c *conn) Plan(ctx context.Context, query string) (dialect.Plan, error) {
-	res, err := c.runWith(ctx, query, map[string]any{"dryRun": true})
+	return c.PlanArgs(ctx, query, nil)
+}
+
+// PlanArgs is Plan with the statement's arguments, which the dry run has to
+// carry: BigQuery refuses to price `@x` it was not given. See
+// dialect.ArgPlanner.
+func (c *conn) PlanArgs(ctx context.Context, query string, args []dialect.Arg) (dialect.Plan, error) {
+	extra := map[string]any{"dryRun": true}
+	if len(args) > 0 {
+		params, err := queryParameters(args)
+		if err != nil {
+			return dialect.Plan{}, err
+		}
+		extra["parameterMode"] = "NAMED"
+		extra["queryParameters"] = params
+	}
+	res, err := c.runWith(ctx, query, extra)
 	if err != nil {
 		return dialect.Plan{}, err
 	}

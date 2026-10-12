@@ -40,6 +40,9 @@ type Config struct {
 	// Params are definitions an endpoint's parameter can name with `ref`.
 	Params map[string]Param `yaml:"params"`
 
+	// Limits bound every request; see Limits.
+	Limits Limits `yaml:"limits"`
+
 	// Dialect and Open are the connection's, resolved from the registry at
 	// load: a file naming a connection nobody declared is refused there,
 	// not at the first request.
@@ -69,6 +72,9 @@ type Endpoint struct {
 	SQL     string           `yaml:"sql"`
 	SQLFile string           `yaml:"sql_file"`
 
+	// Limits are this endpoint's, each at most the file's.
+	Limits *Limits `yaml:"limits"`
+
 	// Tenant is `none` for an endpoint whose data is the same for every
 	// tenant. Absent, the SQL must use `{{ tenant }}`.
 	Tenant string `yaml:"tenant"`
@@ -83,6 +89,10 @@ type Endpoint struct {
 	// loc and now are when "today" is. Nil means UTC and time.Now.
 	loc *time.Location
 	now func() time.Time
+
+	// timeout and maxBytes are the effective limits; zero takes the file's.
+	timeout  time.Duration
+	maxBytes ByteSize
 }
 
 // maxStringLen bounds `max_len` itself. A parameter is a filter, not a
@@ -120,7 +130,11 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 		return nil, fmt.Errorf("`connection` is %q, and the registry declares: %s", cfg.Connection, declared(reg))
 	}
 	cfg.Dialect, cfg.Open = d, open
-	cfg.MaxRows = DefaultMaxRows
+	if err := cfg.Limits.check("the file's"); err != nil {
+		return nil, err
+	}
+	cfg.Limits = cfg.Limits.withDefaults()
+	cfg.MaxRows = cfg.Limits.MaxRows
 
 	if cfg.Listen.Auth != nil {
 		if err := cfg.Listen.Auth.check(); err != nil {
@@ -188,6 +202,11 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			return nil, err
 		}
 		e.loc = loc
+		own, err := cfg.Limits.lowered(e.Name, e.Limits)
+		if err != nil {
+			return nil, err
+		}
+		e.MaxRows, e.timeout, e.maxBytes = own.MaxRows, own.Timeout, own.MaxBytesBilled
 	}
 	return cfg, nil
 }

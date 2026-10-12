@@ -23,6 +23,13 @@ func (w *warehouse) Exec(context.Context, string) error          { return nil }
 func (w *warehouse) Scalar(context.Context, string) (any, error) { return nil, nil }
 func (w *warehouse) Target(string) string                        { return "" }
 func (w *warehouse) Close(context.Context) error                 { return nil }
+
+// ReadOnly makes the fake a warehouse that can be made read-only, as
+// Postgres can; a request to one that can be made neither read-only nor
+// priced is refused before it reads.
+func (w *warehouse) ReadOnly(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
+}
 func (w *warehouse) Read(_ context.Context, r dialect.Request) (dialect.Result, error) {
 	w.asked = append(w.asked, r)
 	rows := w.rows
