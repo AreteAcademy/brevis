@@ -381,6 +381,12 @@ serve-down:
 
 # Rebuild and reload the reader without touching the stack, which is what
 # changing anything under sql/ needs.
+# THE ENDPOINTS' WHOLE CYCLE, against `make up-data`: orders through the
+# gateway, marts.orders_daily built with its generation, and one answer
+# going miss, hit, and miss again once the model is rebuilt.
+endpoints-demo: ## Ingests, builds and serves through brevis-sql-api, showing the cache follow the data
+	@./examples/endpoints/demo.sh
+
 serve-restart: serve-down serve-up ## Rebuilds `brevis-sql serve` and reloads it
 
 down: ## Tears the local environment down
@@ -526,4 +532,4 @@ smoke: ## Checks the api's /health and /ready, and that the gateway accepts an e
 	  -d '{"event_id":"smoke","occurred_at":"2026-01-01T00:00:00Z","host":"smoke.example.com","region":"local"}' \
 	  | grep -q '^202$$' && echo 202 || { echo "not 202: see 'docker compose logs gateway'"; exit 1; }
 
-.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart logs smoke dev generate tailwind-install image image-push image-smoke
+.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart endpoints-demo logs smoke dev generate tailwind-install image image-push image-smoke

@@ -1,23 +1,52 @@
 # brevis-sql-api: declared, read-only SQL over HTTP.
 #
+# The whole cycle, with `make up-data` running: `make endpoints-demo` lands
+# orders through the gateway, builds marts.orders_daily, and shows an answer
+# going from miss to hit and back to miss when the model is rebuilt.
+#
+# By hand:
 #   cd sql && go build -o ../bin/brevis-sql-api ./cmd/brevis-sql-api && cd ..
 #   WAREHOUSE_DSN=postgres://brevis:brevis@localhost:55434/warehouse?sslmode=disable \
-#   BREVIS_ENV=local ./bin/brevis-sql-api serve \
+#   BREVIS_CACHE_ADDR=127.0.0.1:56379 BREVIS_ENV=local ./bin/brevis-sql-api serve \
 #     --config examples/endpoints/api.yaml --connections examples/endpoints/brevis.yaml
-#   curl -s 'localhost:8095/v1/sales?sku=W-100'
+#   curl -si 'localhost:8095/v1/orders?period=today'
 name: example-api
 connection: warehouse
 
 listen:
   addr: 127.0.0.1:8095
 
+metrics:
+  addr: 127.0.0.1:9197
+
+#: Kept until marts.orders_daily is rebuilt; six hours at most, for the day
+#: a build forgets to write its generation.
+cache:
+  type: redis
+  addr_from: BREVIS_CACHE_ADDR
+  ttl: 6h
+
+params:
+  period: {type: period, default: last_30_days}
+  sku: {type: string, max_len: 32}
+
 endpoints:
+  - name: orders
+    path: /v1/orders
+    # sales.events holds one shop's orders, so every key reads the same
+    # rows -- said here, because an endpoint that ignores the tenant is
+    # refused unless its file says so.
+    tenant: none
+    params:
+      period: {ref: period}
+      start_date: {type: date}
+      end_date: {type: date}
+      sku: {ref: sku}
+    sql_file: endpoints/orders.sql
+
   - name: sales
     path: /v1/sales
-    params:
-      sku: {type: string, max_len: 32}
-    # sales.daily holds one shop's sales, so every key reads the same rows --
-    # said here, because an endpoint that ignores the tenant is refused
-    # unless its file says so.
     tenant: none
+    params:
+      sku: {ref: sku}
     sql_file: endpoints/sales.sql
