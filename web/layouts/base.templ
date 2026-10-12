@@ -262,9 +262,10 @@ templ topbar(active1 string, brand branding.Brand) {
 	// a link from the page that sells this arrived at what looked like
 	// another product. One palette, two surfaces.
 	//
-	// ACROSS THE TOP AND NOT DOWN THE SIDE, because these five are a FLAT
-	// set: nothing here nests, and a column of five items spends 14rem of
-	// width on screens whose job is a wide table.
+	// ACROSS THE TOP AND NOT DOWN THE SIDE. The sections are grouped now --
+	// Pipelines, Data -- but each group is two or three items, one level
+	// deep, and a column of them would still spend 14rem of width on screens
+	// whose job is a wide table.
 	<header class="shrink-0 border-b border-line bg-surface">
 		<div class="flex items-center gap-6 px-5 py-2.5">
 			<a href="/" class="flex shrink-0 items-center gap-2.5">
@@ -279,47 +280,32 @@ templ topbar(active1 string, brand branding.Brand) {
 				<span class="display block text-[1.05rem] leading-none text-ink">{ brand.Title }</span>
 			</a>
 			<nav class="flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Sections">
-				for _, i := range []item{
-					{"/", "Overview", "overview"},
-					{"/workflows", "Workflows", "workflows"},
-					{"/runs", "Runs", "runs"},
-					{"/projects", "Projects", "projects"},
-					{"/data", "Data", "data"},
-				} {
-					if i.Key == active1 {
-						// `aria-current` and not only the box: the shape says
-						// which section to somebody looking at it, and this
-						// says it to everybody else.
-						<a
-							href={ templ.SafeURL(i.Rota) }
-							aria-current="page"
-							class="rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
-						>{ i.Name }</a>
-					} else {
-						<a
-							href={ templ.SafeURL(i.Rota) }
-							class="rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-						>{ i.Name }</a>
+				@navLink(item{"/", "Overview", "overview"}, active1)
+				// GROUPED BY THE DATA'S PATH: how it is built, then where it
+				// lives and where it goes. A group is announced as one --
+				// `role="group"` with its name -- so the label a sighted reader
+				// sees in small caps is heard too, and the visible copy is
+				// hidden from a screen reader rather than read twice.
+				<div role="group" aria-label="Pipelines" class="ml-1 flex shrink-0 items-center gap-1 border-l border-line pl-2">
+					<span aria-hidden="true" class="kicker px-1 text-[0.65rem] text-muted">Pipelines</span>
+					@navLink(item{"/workflows", "Workflows", "workflows"}, active1)
+					@navLink(item{"/runs", "Runs", "runs"}, active1)
+				</div>
+				<div role="group" aria-label="Data" class="ml-1 flex shrink-0 items-center gap-1 border-l border-line pl-2">
+					<span aria-hidden="true" class="kicker px-1 text-[0.65rem] text-muted">Data</span>
+					@navLink(item{"/data", "Catalog", "data"}, active1)
+					@navLink(item{"/data/endpoints", "Endpoints", "endpoints"}, active1)
+					// SQL IS CONDITIONAL: a section that answers "no SQL
+					// service is configured" is a section that leads nowhere,
+					// and the bar is the one place a reader trusts to say what
+					// exists.
+					if HasSQL(ctx) {
+						@navLink(item{"/sql", "SQL", "sql"}, active1)
 					}
-				}
-				// SQL IS CONDITIONAL, which is why it is not in the list
-				// above: a section that answers "no SQL service is
-				// configured" is a section that leads nowhere, and the bar
-				// is the one place a reader trusts to say what exists.
-				if HasSQL(ctx) {
-					if active1 == "sql" {
-						<a
-							href="/sql"
-							aria-current="page"
-							class="rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
-						>SQL</a>
-					} else {
-						<a
-							href="/sql"
-							class="rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
-						>SQL</a>
-					}
-				}
+				</div>
+				<div class="ml-1 flex shrink-0 items-center border-l border-line pl-2">
+					@navLink(item{"/projects", "Projects", "projects"}, active1)
+				</div>
 			</nav>
 			// The account menu moved with the bar. It lived at the bottom of
 			// a sidebar that no longer exists, and a console nobody can sign
@@ -329,4 +315,21 @@ templ topbar(active1 string, brand branding.Brand) {
 			</div>
 		</div>
 	</header>
+}
+
+templ navLink(i item, active1 string) {
+	if i.Key == active1 {
+		// `aria-current` and not only the box: the shape says which section
+		// to somebody looking at it, and this says it to everybody else.
+		<a
+			href={ templ.SafeURL(i.Rota) }
+			aria-current="page"
+			class="shrink-0 rounded-card bg-accent-wash px-3 py-1.5 text-[0.85rem] font-medium text-ink"
+		>{ i.Name }</a>
+	} else {
+		<a
+			href={ templ.SafeURL(i.Rota) }
+			class="shrink-0 rounded-card px-3 py-1.5 text-[0.85rem] text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+		>{ i.Name }</a>
+	}
 }

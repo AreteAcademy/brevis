@@ -78,3 +78,50 @@ func TestTheAccountMenuIsInTheBar(t *testing.T) {
 		t.Error("the account menu is inside <main>, which is where the page's own content goes")
 	}
 }
+
+// THE BAR FOLLOWS THE DATA'S PATH: what happened (Overview), how it is built
+// (Pipelines: Workflows, Runs), where it lives and goes (Data: Catalog,
+// Endpoints, SQL), and Projects. Groups are announced as groups, so a screen
+// reader hears "Data, group" before "Endpoints" -- the label is not decoration.
+func TestTheBarGroupsSectionsByTheDatasPath(t *testing.T) {
+	body := render(t, dataUI(catalogFake{}).WithEndpoints(endpointsFake{}), "/data")
+	for _, group := range []string{`role="group" aria-label="Pipelines"`, `role="group" aria-label="Data"`} {
+		if !strings.Contains(body, group) {
+			t.Errorf("the bar has no %s", group)
+		}
+	}
+	order := []string{`href="/"`, `aria-label="Pipelines"`, `href="/workflows"`, `href="/runs"`,
+		`aria-label="Data"`, `href="/data"`, `href="/data/endpoints"`, `href="/projects"`}
+	last := -1
+	for _, want := range order {
+		i := strings.Index(body, want)
+		if i < 0 {
+			t.Fatalf("the bar lacks %s", want)
+		}
+		if i < last {
+			t.Errorf("%s is out of order", want)
+		}
+		last = i
+	}
+}
+
+// EACH PAGE MARKS ITS OWN ITEM, and only one: Endpoints is not Catalog
+// although both live under Data.
+func TestEachPageMarksItsOwnItem(t *testing.T) {
+	ui := dataUI(catalogFake{}).WithEndpoints(endpointsFake{})
+	for path, href := range map[string]string{
+		"/data":           `href="/data"`,
+		"/data/endpoints": `href="/data/endpoints"`,
+	} {
+		body := render(t, ui, path)
+		if n := strings.Count(body, `aria-current="page"`); n != 1 {
+			t.Errorf("%s: %d items are current", path, n)
+			continue
+		}
+		i := strings.Index(body, `aria-current="page"`)
+		tag := body[strings.LastIndex(body[:i], "<a"):i]
+		if !strings.Contains(tag, href) {
+			t.Errorf("%s marks %q", path, tag)
+		}
+	}
+}
