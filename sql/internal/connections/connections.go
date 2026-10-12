@@ -51,6 +51,10 @@ type Connection struct {
 
 	// dsn is resolved at boot and never leaves this package.
 	dsn string
+
+	// identity is WHERE the connection reaches, never how it gets in: host,
+	// port and database for Postgres, the project for BigQuery.
+	identity string
 }
 
 // Registry is every connection, in the order they were declared.
@@ -150,6 +154,7 @@ func (c Connection) check() error {
 func (c *Connection) resolve() error {
 	if c.Project != "" {
 		c.key = c.Project
+		c.identity = "bigquery://" + c.Project
 		return nil
 	}
 	dsn := os.Getenv(c.DSNFrom)
@@ -169,6 +174,7 @@ func (c *Connection) resolve() error {
 	}
 	c.key = cfg.Database
 	c.dsn = dsn
+	c.identity = fmt.Sprintf("postgres://%s:%d/%s", cfg.Host, cfg.Port, cfg.Database)
 	return nil
 }
 
@@ -216,6 +222,19 @@ func (r *Registry) Named(name string) (dialect.Dialect, func(context.Context) (d
 		return d, func(ctx context.Context) (dialect.Conn, error) { return d.Open(ctx, where) }, true
 	}
 	return nil, nil, false
+}
+
+// Identity is where a declared connection reaches -- host, port and
+// database, or the project -- and never its credential. Two connections
+// named alike in two deployments are told apart by it: a cache keyed on the
+// name alone would serve one's rows as the other's.
+func (r *Registry) Identity(name string) (string, bool) {
+	for _, c := range r.conns {
+		if c.Name == name {
+			return c.identity, true
+		}
+	}
+	return "", false
 }
 
 // TargetOf is the catalog target of a relation on a declared connection,

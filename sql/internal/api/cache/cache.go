@@ -71,9 +71,17 @@ const quality = 5
 // different pair, not the same string. The argument's Go type is in it, so
 // the int 1 and the string "1" are two answers. The `{brevis}` hash tag
 // keeps every key on one Redis Cluster slot, beside the generations.
-func Key(endpoint, tenant, sql string, args []dialect.Arg, generations []string) string {
+//
+// THE API AND ITS CONNECTION ARE IN IT. Found in the ship review: two APIs
+// share one Redis by design -- the generations live there -- and staging
+// and production serving an `orders` endpoint with the same SQL answered
+// each other's rows. The API's name is in the prefix, so one API's entries
+// can be flushed alone; the connection's identity is in the hash.
+func Key(api, connection, endpoint, tenant, sql string, args []dialect.Arg, generations []string) string {
 	h := sha256.New()
 	part := func(s string) { fmt.Fprintf(h, "%d:%s", len(s), s) }
+	part(api)
+	part(connection)
 	part(endpoint)
 	part(tenant)
 	part(sql)
@@ -85,7 +93,7 @@ func Key(endpoint, tenant, sql string, args []dialect.Arg, generations []string)
 	for _, g := range generations {
 		part(g)
 	}
-	return "brevis:api:{brevis}:" + endpoint + ":" + hex.EncodeToString(h.Sum(nil))
+	return "brevis:api:{brevis}:" + api + ":" + endpoint + ":" + hex.EncodeToString(h.Sum(nil))
 }
 
 // Generations is each model's current generation, in one round trip.

@@ -61,18 +61,20 @@ func (m *memory) MGet(_ context.Context, keys ...string) ([][]byte, error) {
 // and it is a different key; change none and it is the same, every time.
 func TestTheKeyChangesWithEverythingTheAnswerDependsOn(t *testing.T) {
 	args := []dialect.Arg{{Name: "c", Value: "x"}}
-	base := Key("clicks", "acme", "select $1", args, []string{"g1"})
-	if base != Key("clicks", "acme", "select $1", args, []string{"g1"}) {
+	base := Key("api", "conn", "clicks", "acme", "select $1", args, []string{"g1"})
+	if base != Key("api", "conn", "clicks", "acme", "select $1", args, []string{"g1"}) {
 		t.Error("the same inputs gave two keys")
 	}
 	for name, other := range map[string]string{
-		"endpoint":      Key("orders", "acme", "select $1", args, []string{"g1"}),
-		"tenant":        Key("clicks", "globex", "select $1", args, []string{"g1"}),
-		"sql":           Key("clicks", "acme", "select $2", args, []string{"g1"}),
-		"args":          Key("clicks", "acme", "select $1", []dialect.Arg{{Name: "c", Value: "y"}}, []string{"g1"}),
-		"arg type":      Key("clicks", "acme", "select $1", []dialect.Arg{{Name: "c", Value: int64(1)}}, []string{"g1"}),
-		"generation":    Key("clicks", "acme", "select $1", args, []string{"g2"}),
-		"no generation": Key("clicks", "acme", "select $1", args, []string{""}),
+		"endpoint":      Key("api", "conn", "orders", "acme", "select $1", args, []string{"g1"}),
+		"tenant":        Key("api", "conn", "clicks", "globex", "select $1", args, []string{"g1"}),
+		"sql":           Key("api", "conn", "clicks", "acme", "select $2", args, []string{"g1"}),
+		"args":          Key("api", "conn", "clicks", "acme", "select $1", []dialect.Arg{{Name: "c", Value: "y"}}, []string{"g1"}),
+		"arg type":      Key("api", "conn", "clicks", "acme", "select $1", []dialect.Arg{{Name: "c", Value: int64(1)}}, []string{"g1"}),
+		"generation":    Key("api", "conn", "clicks", "acme", "select $1", args, []string{"g2"}),
+		"no generation": Key("api", "conn", "clicks", "acme", "select $1", args, []string{""}),
+		"api":           Key("other", "conn", "clicks", "acme", "select $1", args, []string{"g1"}),
+		"connection":    Key("api", "other", "clicks", "acme", "select $1", args, []string{"g1"}),
 	} {
 		if other == base {
 			t.Errorf("a different %s gave the same key", name)
@@ -80,10 +82,10 @@ func TestTheKeyChangesWithEverythingTheAnswerDependsOn(t *testing.T) {
 	}
 	// SEPARATORS CANNOT BE FORGED: a tenant ending in what the endpoint
 	// starts with is not the same pair.
-	if Key("ab", "c", "q", nil, nil) == Key("a", "bc", "q", nil, nil) {
+	if Key("api", "conn", "ab", "c", "q", nil, nil) == Key("api", "conn", "a", "bc", "q", nil, nil) {
 		t.Error("two pairs that concatenate alike share a key")
 	}
-	if !strings.HasPrefix(base, "brevis:api:{brevis}:clicks:") {
+	if !strings.HasPrefix(base, "brevis:api:{brevis}:api:clicks:") {
 		t.Errorf("key %q", base)
 	}
 }

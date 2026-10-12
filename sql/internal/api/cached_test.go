@@ -328,3 +328,38 @@ func TestABrotliHitAllocatesNoCodec(t *testing.T) {
 		t.Errorf("a brotli hit allocates %d bytes", per)
 	}
 }
+
+// TWO APIS ON ONE REDIS NEVER SHARE AN ANSWER. Found in the ship review:
+// the key held the endpoint and the tenant and not the API, so staging and
+// production -- one Redis, because the generations live there -- serving an
+// `orders` endpoint with the same SQL answered each other's rows.
+func TestTwoAPIsOnOneRedisNeverShareAnAnswer(t *testing.T) {
+	kv := &memoryKV{data: map[string][]byte{}}
+	serve := func(api, connection string, rows [][]any) *Server {
+		t.Helper()
+		e := &Endpoint{Name: "orders", Path: "/v1/orders", Tenant: "none", SQL: "select k from orders"}
+		if err := e.parse(postgres.Dialect{}); err != nil {
+			t.Fatal(err)
+		}
+		w := &counting{warehouse: warehouse{cols: []string{"k"}, rows: rows}}
+		s, err := New(&Config{Name: api, ConnectionID: connection, Env: "local", Dialect: postgres.Dialect{}, MaxRows: 10,
+			Open:      func(context.Context) (dialect.Conn, error) { return w, nil },
+			Cache:     &CacheConfig{Type: "redis", AddrFrom: "UNUSED", TTL: time.Hour},
+			CacheKV:   kv,
+			Endpoints: []*Endpoint{e}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	get(serve("orders-api", "postgres://staging.db:5432/w", [][]any{{"staging"}}), "/v1/orders")
+	for name, s := range map[string]*Server{
+		"another API":        serve("other-api", "postgres://staging.db:5432/w", [][]any{{"other"}}),
+		"another connection": serve("orders-api", "postgres://prod.db:5432/w", [][]any{{"prod"}}),
+	} {
+		rec := get(s, "/v1/orders")
+		if rec.Header().Get("X-Brevis-Cache") == "hit" || strings.Contains(rec.Body.String(), "staging") {
+			t.Errorf("%s was served staging's answer: %s", name, rec.Body)
+		}
+	}
+}
