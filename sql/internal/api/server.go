@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/AreteAcademy/brevis/sql/internal/api/cache"
@@ -174,6 +176,9 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			return
 		}
 		line.ArgsHash = argsHash(query, args)
+		// A SHARED PROXY MUST NOT HOLD A TENANT'S ANSWER: private, and
+		// revalidated every time -- against the ETag, when there is one.
+		w.Header().Set("Cache-Control", "private, max-age=0")
 
 		ask := func(parent context.Context) outcome {
 			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes)
@@ -182,7 +187,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		if s.cache == nil {
 			o = ask(r.Context())
 		} else {
-			o = s.cached(r.Context(), w, line, e, tenant, query, args, ask)
+			o = s.cached(r, w, line, e, tenant, query, args, ask)
 			if o.served {
 				return
 			}
@@ -199,6 +204,36 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write(o.body)
 	})
+}
+
+// acceptsBrotli reads Accept-Encoding for `br` with a weight above zero --
+// `br;q=0` is a refusal, not an acceptance.
+func acceptsBrotli(header string) bool {
+	for _, part := range strings.Split(header, ",") {
+		coding, params, _ := strings.Cut(strings.TrimSpace(part), ";")
+		if !strings.EqualFold(strings.TrimSpace(coding), "br") {
+			continue
+		}
+		q := strings.TrimSpace(params)
+		if v, found := strings.CutPrefix(q, "q="); found {
+			if f, err := strconv.ParseFloat(v, 64); err == nil && f == 0 {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// matches reads If-None-Match: a list of tags, weak or strong, or `*`.
+func matches(header, tag string) bool {
+	for _, t := range strings.Split(header, ",") {
+		t = strings.TrimPrefix(strings.TrimSpace(t), "W/")
+		if t == tag || t == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 // outcome is one answer from the warehouse, or why there is none.
@@ -269,30 +304,49 @@ const cacheTimeout = 500 * time.Millisecond
 //
 // A CACHE NEVER FAILS A REQUEST: an error anywhere here is a request answered
 // from the warehouse, marked `bypass` and counted as an error.
-func (s *Server) cached(rctx context.Context, w http.ResponseWriter, line *record, e *Endpoint,
+func (s *Server) cached(r *http.Request, w http.ResponseWriter, line *record, e *Endpoint,
 	tenant, query string, args []dialect.Arg, ask func(context.Context) outcome) outcome {
+	rctx := r.Context()
+	w.Header().Set("Vary", "Accept-Encoding")
 	cctx, cancel := context.WithTimeout(rctx, cacheTimeout)
 	defer cancel()
 	gens, err := s.cache.Generations(cctx, e.reads)
 	var key string
 	if err == nil {
 		key = cache.Key(e.Name, tenant, query, args, gens)
+		// THE ETAG IS THE KEY'S HASH, so it changes exactly when the answer
+		// can: the same request over the same generations.
+		tag := `"` + key[strings.LastIndexByte(key, ':')+1:][:32] + `"`
+		w.Header().Set("ETag", tag)
 		var stored []byte
 		var found bool
 		if stored, found, err = s.cache.Get(cctx, key); err == nil && found {
+			line.Cache = "hit"
+			w.Header().Set("X-Brevis-Cache", "hit")
+			if matches(r.Header.Get("If-None-Match"), tag) {
+				w.WriteHeader(http.StatusNotModified)
+				return outcome{served: true}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			// THE STORED BYTES, AS THEY ARE, to a caller that takes Brotli:
+			// the answer was compressed once, when it was kept.
+			if acceptsBrotli(r.Header.Get("Accept-Encoding")) {
+				w.Header().Set("Content-Encoding", "br")
+				_, _ = w.Write(stored)
+				return outcome{served: true}
+			}
 			if body, derr := cache.Decompress(stored); derr == nil {
-				line.Cache = "hit"
-				w.Header().Set("X-Brevis-Cache", "hit")
-				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write(body)
 				return outcome{served: true}
 			}
+			line.Cache = "miss"
 			// AN ENTRY THAT DOES NOT DECOMPRESS IS A MISS, and is about to
 			// be overwritten by a good one.
 		}
 	}
 	if err != nil {
 		line.Cache = "error"
+		w.Header().Del("ETag")
 		w.Header().Set("X-Brevis-Cache", "bypass")
 		return ask(rctx)
 	}
