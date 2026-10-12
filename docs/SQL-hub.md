@@ -67,6 +67,10 @@ dependencies come from reading the SQL rather than from a function call you
 have to write. `brevis-sql graph` prints what was inferred; `depends_on:` in
 the header is the explicit override for the rare miss.
 
+Models never take a template. An endpoint of `brevis-sql-api`, which exists
+to take parameters, gets a Jinja subset for its shape only -- every value is
+a bound argument. See [ENDPOINTS.md](https://github.com/AreteAcademy/brevis/blob/master/docs/ENDPOINTS.md).
+
 ## A model can process only what is new
 
 ```sql
