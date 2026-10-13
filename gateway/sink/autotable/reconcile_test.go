@@ -19,11 +19,14 @@ type jobSink struct {
 	slow   bool          // gives up when its context ends
 	ignore time.Duration // or overstays it by this much, past the caller's window too
 	landed bool          // what its job became
+	refuse error         // or the destination disagrees outright
 }
 
 func (j jobSink) Describe() string { return "job:" + j.table }
 func (j jobSink) Write(ctx context.Context, b []sdk.Envelope) (int64, error) {
 	switch {
+	case j.refuse != nil:
+		return 0, j.refuse
 	case j.ignore > 0:
 		time.Sleep(j.ignore)
 	case j.slow:
@@ -208,5 +211,24 @@ func TestARowOfATableThatLandedSaysSo(t *testing.T) {
 	}
 	if b == nil || b.State != sdk.JobRunning {
 		t.Errorf("tbl_b is still loading and its row says %+v", b)
+	}
+}
+
+// A table that starved and a later table the destination refused: the batch is
+// buried, and the starved table's job -- which may still land -- must stay on
+// its rows. The refusal used to return a plain error and drop it.
+func TestARefusalAfterAStarvedTableKeepsTheStarvedJob(t *testing.T) {
+	r := routerOverJobs(t, map[string]jobSink{
+		"tbl_a": {table: "tbl_a", slow: true},
+		"tbl_b": {table: "tbl_b", refuse: errors.New("the destination disagreed")},
+	})
+	err := writeWithin(t, r, 100*time.Millisecond, "tbl_a", "tbl_b")
+
+	je, ok := r.JobOf(err, batchFor("tbl_a", "tbl_b")[0].Payload.(map[string]any))
+	if !ok || je.JobID != "job_tbl_a" {
+		t.Errorf("tbl_a's row lost its job: %+v, %v (err: %v)", je, ok, err)
+	}
+	if rec, _ := r.Reconcile(context.Background(), err); rec.Landed {
+		t.Error("a batch with a refused table was reported as landed")
 	}
 }
