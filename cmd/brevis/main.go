@@ -549,7 +549,22 @@ func cmdPublish() *cobra.Command {
 				return err
 			}
 
+			// The groups again, now against what is already published:
+			// Resolve saw only these files, and the rest of a group may be in
+			// the database. Asked before anything is written.
 			repo := postgres.NewWorkflowRepo(pool)
+			slugs := make([]string, 0, len(resolved))
+			for _, w := range resolved {
+				slugs = append(slugs, w.Slug)
+			}
+			others, err := repo.PublishedGroupMembers(ctx, idProjeto, slugs, podar)
+			if err != nil {
+				return err
+			}
+			if err := wfdom.CheckGroups(append(append([]wfdom.Workflow{}, resolved...), others...)); err != nil {
+				return fmt.Errorf("against the workflows already published: %w", err)
+			}
+
 			published := make([]string, 0, len(resolved))
 			for _, w := range resolved {
 				if err := repo.Publicar(ctx, w, idProjeto); err != nil {

@@ -81,6 +81,39 @@ func (r *WorkflowRepo) Definition(ctx context.Context, slug string) (wf.Workflow
 	return w, json.Unmarshal(bruto, &w)
 }
 
+// PublishedGroupMembers returns the published workflows in a concurrency group
+// that a publish of `publishing` into `projeto` leaves in place: their slug,
+// group and limit, and nothing else.
+//
+// What `publish` sees is the files on its command line. The other members of
+// their groups are here, and CheckGroups has to hold against them too, or
+// publishing a folder one file at a time is a way around it (#32). Left out:
+// the workflows this publish replaces, and with `prune` every other workflow
+// of the project, which the prune removes. Other projects' stay members.
+func (r *WorkflowRepo) PublishedGroupMembers(ctx context.Context, projeto uuid.UUID,
+	publishing []string, prune bool) ([]wf.Workflow, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT slug, definicao->>'Group', COALESCE((definicao->>'MaxActive')::int, 0)
+		FROM workflows
+		WHERE COALESCE(definicao->>'Group', '') <> ''
+		  AND NOT (project_id = $1 AND ($3 OR slug = ANY($2)))
+		ORDER BY slug`, projeto, publishing, prune)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []wf.Workflow
+	for rows.Next() {
+		var w wf.Workflow
+		if err := rows.Scan(&w.Slug, &w.Group, &w.MaxActive); err != nil {
+			return nil, err
+		}
+		out = append(out, w)
+	}
+	return out, rows.Err()
+}
+
 // Podar removes from the project the workflows that are NOT in the list, along
 // with their
 // agendas. Devolve os slugs removidos.
