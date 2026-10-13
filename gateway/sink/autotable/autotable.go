@@ -340,6 +340,26 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 	return wrote, nil
 }
 
+// JobOf satisfies gateway.JobNamer: a row names the load job of its own
+// table, and a row of a table that landed names none.
+func (r *router) JobOf(cause error, event map[string]any) (*sdk.LoadJobError, bool) {
+	var be *batchError
+	if !errors.As(cause, &be) {
+		return nil, false
+	}
+	env, err := open(event)
+	if err != nil {
+		return nil, false
+	}
+	f, ok := be.failed[env.table]
+	if !ok {
+		return nil, false
+	}
+	var je *sdk.LoadJobError
+	ok = errors.As(f.err, &je)
+	return je, ok
+}
+
 // tableFailure is one table that did not land in time: the sink that wrote
 // it, and what that sink said.
 type tableFailure struct {

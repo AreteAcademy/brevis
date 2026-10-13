@@ -181,6 +181,20 @@ const (
 	ColumnOversizeBytes   = "_oversize_bytes"
 )
 
+// The load job a buried row may already have been written by.
+//
+// A sink that gives up waiting can be wrong about the outcome: a BigQuery
+// load job keeps running, and can land. Issue #85 buried 88 rows that were
+// already in the table. The job travels on the record so that whoever replays
+// it -- by hand, or the console's resend -- can ask the warehouse first. The
+// location is what BigQuery needs to find a regional job by name; the state is
+// what was known when the row was buried.
+const (
+	ColumnDeadLetterJobID       = "_dead_letter_job_id"
+	ColumnDeadLetterJobLocation = "_dead_letter_job_location"
+	ColumnDeadLetterJobState    = "_dead_letter_job_state"
+)
+
 // Retry is the sink's second, third and fourth chance.
 type Retry struct {
 	// Attempts counts the FIRST try. 1 means no retry at all.

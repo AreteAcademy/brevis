@@ -55,6 +55,15 @@ type Reconciler interface {
 	Reconcile(ctx context.Context, err error) (landed bool, _ error)
 }
 
+// JobNamer is a sink whose failed write can name, per event, the load job
+// that may still be writing it. See ColumnDeadLetterJobID.
+//
+// Per event and not per batch, because one batch can be many jobs: auto_table
+// writes each table with its own.
+type JobNamer interface {
+	JobOf(cause error, event map[string]any) (*sdk.LoadJobError, bool)
+}
+
 // Measurer is a sink that wants to know how many bytes each event arrived as.
 //
 // Optional, like Admitter, and for the same reason: most sinks must not get

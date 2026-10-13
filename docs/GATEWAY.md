@@ -220,6 +220,24 @@ is safe, because the destination matches on `brevis_ingestion_id` and skips
 what is already there. Under `write: append` nothing matches, and replaying a
 batch that also landed writes its rows twice.
 
+So before burying a BigQuery batch, the gateway asks the load job it stopped
+waiting for what it became: done without an error means delivered, and nothing
+is buried. When the job is still running, the rows are buried with it:
+
+```json
+{
+  "_dead_letter_reason": "table events: wait for load job: context deadline exceeded",
+  "_dead_letter_job_id": "brevis_3f0c…_g1",
+  "_dead_letter_job_location": "southamerica-east1",
+  "_dead_letter_job_state": "running"
+}
+```
+
+Ask BigQuery before replaying such a row:
+`bq show -j --location=<_dead_letter_job_location> <_dead_letter_job_id>`. A job
+that ended `DONE` with no error already wrote it. Under `auto_table` each row
+names the job of its own table, and a row of a table that landed names none.
+
 **A stream with no `dead_letter` is refused at load.** Defaulting it to silence
 would put the decision where nobody makes it — and a refused batch that is only
 a log line is losing data quietly, which is the one failure this exists not to

@@ -1490,6 +1490,7 @@ func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
 	defer cancel()
 
 	reason := cause.Error()
+	namer, _ := p.sink.(JobNamer)
 	buried := make([]sdk.Envelope, 0, len(batch))
 	for _, e := range batch {
 		row, ok := e.Payload.(map[string]any)
@@ -1506,6 +1507,15 @@ func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
 		out["_dead_letter_reason"] = reason
 		out["_dead_letter_sink"] = p.sink.Describe()
 		out["_dead_letter_at"] = time.Now().UTC().Format(time.RFC3339)
+		if namer != nil {
+			if job, ok := namer.JobOf(cause, row); ok {
+				out[ColumnDeadLetterJobID] = job.JobID
+				out[ColumnDeadLetterJobState] = string(job.State)
+				if job.Location != "" {
+					out[ColumnDeadLetterJobLocation] = job.Location
+				}
+			}
+		}
 		e.Payload = out
 		buried = append(buried, e)
 	}
