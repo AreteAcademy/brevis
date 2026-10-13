@@ -88,25 +88,34 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	// because the count does not change mid-query. With the per-workflow
 	// numbering, an item only passes if `em_voo + its position` fits the
 	// limit.
+	//
+	// What is counted is the run's CONCURRENCY KEY, not its workflow (#32). A
+	// workflow that names a group contends with every other member of it -- the
+	// daily and the */15 that build the same dbt models -- and one that names
+	// none contends with itself, under its slug, as it always did. The two
+	// prefixes keep them apart: without them a group called `daily` and the
+	// workflow `daily` would share one limit by accident of spelling.
 	rows, err := q.pool.Query(ctx, `
 		WITH em_voo AS (
-			SELECT r.workflow_slug, count(*) AS n
+			SELECT COALESCE('g:' || r.grupo_concorrencia, 'w:' || r.workflow_slug) AS chave,
+			       count(*) AS n
 			FROM queue_items q
 			JOIN runs r ON r.id = q.run_id
 			WHERE q.reivindicado_em IS NOT NULL
-			GROUP BY r.workflow_slug
+			GROUP BY 1
 		),
 		elegiveis AS (
 			SELECT q.id,
 			       r.max_ativos,
 			       COALESCE(v.n, 0) AS ja_em_voo,
 			       row_number() OVER (
-			           PARTITION BY r.workflow_slug
+			           PARTITION BY COALESCE('g:' || r.grupo_concorrencia, 'w:' || r.workflow_slug)
 			           ORDER BY q.prioridade DESC, q.disponivel_em, q.id
 			       ) AS posicao
 			FROM queue_items q
 			JOIN runs r ON r.id = q.run_id
-			LEFT JOIN em_voo v ON v.workflow_slug = r.workflow_slug
+			LEFT JOIN em_voo v
+			       ON v.chave = COALESCE('g:' || r.grupo_concorrencia, 'w:' || r.workflow_slug)
 			WHERE q.reivindicado_em IS NULL
 			  AND q.disponivel_em <= now()
 		)
