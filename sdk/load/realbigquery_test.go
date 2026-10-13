@@ -292,7 +292,18 @@ func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 		return row.N
 	}
 
-	keyed := &core.LoadConfig{CreateTable: true, BatchKey: fmt.Sprintf("it-%d", time.Now().UnixNano())}
+	// The SDK refuses to create a table it was not told the types of.
+	declared := func(key string) *core.LoadConfig {
+		cfg := &core.LoadConfig{
+			CreateTable: true,
+			BatchKey:    key,
+			Schema:      core.Schema{{Name: "id", Type: core.TypeString}},
+		}
+		cfg.Columns = cfg.Schema.Names()
+		return cfg
+	}
+
+	keyed := declared(fmt.Sprintf("it-%d", time.Now().UnixNano()))
 	l, _ := realLoader(t, env, keyed)
 	var jobs []string
 	for attempt := 1; attempt <= 2; attempt++ {
@@ -310,7 +321,7 @@ func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 			"a job of its own instead of adopting the first", n)
 	}
 
-	anonymous := &core.LoadConfig{CreateTable: true}
+	anonymous := declared("")
 	l, _ = realLoader(t, env, anonymous)
 	for i := 0; i < 2; i++ {
 		if _, err := l.Load(ctx, batch...); err != nil {
