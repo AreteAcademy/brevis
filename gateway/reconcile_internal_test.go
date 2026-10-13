@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,4 +170,72 @@ func TestABuriedRowWithoutAJobIsUnchanged(t *testing.T) {
 			t.Errorf("a row with no job carries %s", k)
 		}
 	}
+}
+
+// A reconciled batch is a delivered batch in the numbers too. Counted as
+// buried, the dashboard would report the #85 incident that did not happen.
+func TestAReconciledBatchCountsAsDelivered(t *testing.T) {
+	restore := sendTimeout
+	sendTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { sendTimeout = restore })
+
+	m := NewMetrics()
+	p := &pipe{
+		stream:  Stream{Name: "ingestion", Retry: Retry{Attempts: 1}},
+		sink:    &slowJobSink{landed: true},
+		dead:    &recordingDead{},
+		metrics: m,
+	}
+	_ = p.send(context.Background(), []sdk.Envelope{{Payload: map[string]any{"id": "e-1"}}})
+
+	var b strings.Builder
+	if err := m.Render(&b); err != nil {
+		t.Fatal(err)
+	}
+	out := b.String()
+	if !strings.Contains(out, `brevis_gateway_batches_total{stream="ingestion",sink="slow-job",outcome="delivered"} 1`) {
+		t.Errorf("the reconciled batch is not counted as delivered:\n%s", out)
+	}
+	if strings.Contains(out, `outcome="buried"`) {
+		t.Errorf("the reconciled batch is counted as buried:\n%s", out)
+	}
+}
+
+// BigQuery answers 404 for a regional job asked for without its location, so
+// a row that names its job and not where it runs names a job nobody can find.
+func TestABuriedRowCarriesWhereItsJobRuns(t *testing.T) {
+	restore := sendTimeout
+	sendTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { sendTimeout = restore })
+
+	dead := &recordingDead{}
+	p := &pipe{
+		stream:  Stream{Name: "ingestion", Retry: Retry{Attempts: 1}},
+		sink:    locatedJobSink{},
+		dead:    dead,
+		metrics: NewMetrics(),
+	}
+	_ = p.send(context.Background(), []sdk.Envelope{{Payload: map[string]any{"id": "e-1"}}})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	row := dead.got[0].Payload.(map[string]any)
+	if row[ColumnDeadLetterJobLocation] != "southamerica-east1" {
+		t.Errorf("%s = %v, want southamerica-east1", ColumnDeadLetterJobLocation, row[ColumnDeadLetterJobLocation])
+	}
+}
+
+// locatedJobSink gives up with a job that names its location, and cannot be
+// reconciled.
+type locatedJobSink struct{}
+
+func (locatedJobSink) Describe() string { return "located-job" }
+func (locatedJobSink) Write(ctx context.Context, _ []sdk.Envelope) (int64, error) {
+	<-ctx.Done()
+	return 0, &sdk.LoadJobError{JobID: "j", Location: "southamerica-east1", State: sdk.JobRunning, Err: ctx.Err()}
+}
+func (locatedJobSink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, bool) {
+	var je *sdk.LoadJobError
+	ok := errors.As(cause, &je)
+	return je, ok
 }
