@@ -18,7 +18,7 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
-## [Unreleased]
+## [0.86.0] — 2026-10-13
 
 ### Fixed: a retried BigQuery load adopts the job it already started
 
