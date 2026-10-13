@@ -3,6 +3,7 @@ package load
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -219,5 +220,52 @@ func TestAJobReportsWhatItBecame(t *testing.T) {
 		if r.State != c.state || (r.Failed != nil) != c.failed {
 			t.Errorf("%s: report %+v", c.name, r)
 		}
+	}
+}
+
+// An insert whose answer was lost may still have created the job. The error
+// says so and names the job, so the next attempt -- or the gateway -- can ask.
+func TestALostInsertNamesTheJobItMayHaveCreated(t *testing.T) {
+	submit := func(context.Context, string) (job, error) { return nil, errors.New("EOF") }
+	_, _, err := awaitLoad(context.Background(), "t", "brevis_x", submit, newFakeService().find)
+
+	var je *core.LoadJobError
+	if !errors.As(err, &je) || je.JobID != "brevis_x_g1" || je.State != core.JobUnknown {
+		t.Fatalf("err = %v (%+v)", err, je)
+	}
+	if !strings.Contains(err.Error(), "start load job") {
+		t.Errorf("the message changed: %q", err)
+	}
+}
+
+// The job exists and cannot be fetched: its outcome is unknown, and the error
+// must not claim otherwise.
+func TestAJobThatCannotBeFetchedIsUnknown(t *testing.T) {
+	svc := newFakeService()
+	svc.jobs["brevis_x_g1"] = &fakeJob{id: "brevis_x_g1"}
+	find := func(context.Context, string) (job, error) { return nil, errors.New("permission denied") }
+
+	_, _, err := awaitLoad(context.Background(), "t", "brevis_x", svc.submit, find)
+
+	var je *core.LoadJobError
+	if !errors.As(err, &je) || je.State != core.JobUnknown {
+		t.Fatalf("err = %v (%+v)", err, je)
+	}
+}
+
+// Generations are a guard against a loop, not a policy: a batch whose every
+// job failed stops, and does not walk the ID space.
+func TestFailedGenerationsAreBounded(t *testing.T) {
+	svc := newFakeService()
+	for gen := 1; gen <= maxGenerations; gen++ {
+		id := fmt.Sprintf("brevis_x_g%d", gen)
+		svc.jobs[id] = &fakeJob{id: id, done: true, failed: errors.New("bad")}
+	}
+	_, _, err := awaitLoad(context.Background(), "t", "brevis_x", svc.submit, svc.find)
+	if err == nil {
+		t.Fatal("every generation failed and the load reported success")
+	}
+	if len(svc.submitted) != 0 {
+		t.Errorf("a job past the bound was submitted: %v", svc.submitted)
 	}
 }
