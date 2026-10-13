@@ -233,10 +233,21 @@ is buried. When the job is still running, the rows are buried with it:
 }
 ```
 
-Ask BigQuery before replaying such a row:
+`_dead_letter_job_state` is what was known when the row was buried: `running`,
+`unknown` (the insert's answer was lost, so the job may or may not exist), or
+`done`. A `done` row is either one whose job failed — the reason says why — or,
+under `auto_table`, a row of a table that landed while another table of the same
+batch did not; each row names the job of its own table. A row with no job
+columns was never in a load job.
+
+Ask BigQuery before replaying a row that names a job:
 `bq show -j --location=<_dead_letter_job_location> <_dead_letter_job_id>`. A job
-that ended `DONE` with no error already wrote it. Under `auto_table` each row
-names the job of its own table, and a row of a table that landed names none.
+that ended `DONE` with no error already wrote it.
+
+Every attempt of one batch names the same jobs: the gateway makes a key per
+batch before the first attempt, and BigQuery names the load job after it. So a
+retry adopts the job an earlier attempt left running instead of starting
+another.
 
 **A stream with no `dead_letter` is refused at load.** Defaulting it to silence
 would put the decision where nobody makes it — and a refused batch that is only

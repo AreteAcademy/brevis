@@ -51,7 +51,10 @@ reconcile.
 A BigQuery batch buried while its load job was still running carries
 `_dead_letter_job_id`, `_dead_letter_job_location` and `_dead_letter_job_state`
 on every row: `bq show -j --location=… <id>` says whether the rows landed before
-anyone replays them. Under `auto_table` each row names the job of its own table.
+anyone replays them. The state is what the gateway learned when it asked —
+`running`, `unknown`, or `done` for a job that failed (the reason says why) —
+and under `auto_table` each row names the job of its own table, with a table
+that landed marked `done`. A job BigQuery never had is not named.
 Telling a written-and-buried batch from a buried-only one used to mean matching
 each file to the warehouse's job history by table and time (#85); this is also
 what the console's resend (#86) checks.
