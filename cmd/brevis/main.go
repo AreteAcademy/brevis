@@ -230,7 +230,9 @@ func cmdValidate() *cobra.Command {
 			resolved, err := spec.Resolve(parsed)
 			if err != nil {
 				fmt.Printf("  ERROR %v\n", err)
-				return fmt.Errorf("`uses` could not be expanded")
+				// Not "`uses` could not be expanded": the set is also where a
+				// concurrency group's members are checked against each other.
+				return fmt.Errorf("the files do not hold together as a set")
 			}
 			for _, w := range resolved {
 				if grown := len(w.Nodes); grown > stepsOf(parsed, w.Slug) {
