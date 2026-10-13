@@ -444,12 +444,12 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		var bytesStaged int64
 		if result.Strategy == "gcs" {
 			var objeto string
-			bytesStaged, objeto, rowErrs, err = l.loadViaGCS(ctx, table, data, len(envelopes))
+			bytesStaged, objeto, result.JobID, rowErrs, err = l.loadViaGCS(ctx, table, data, len(envelopes))
 			if objeto != "" {
 				result.Objects = []string{objeto}
 			}
 		} else {
-			bytesStaged, rowErrs, err = l.loadInline(ctx, table, data)
+			bytesStaged, result.JobID, rowErrs, err = l.loadInline(ctx, table, data)
 		}
 
 		result.BytesStaged = bytesStaged
@@ -477,6 +477,7 @@ func (l *Loader) Load(ctx context.Context, envelopes ...core.Envelope) (*core.Lo
 		"strategy", result.Strategy,
 		"dedup", result.Dedup,
 		"created", result.TableCreated,
+		"job", result.JobID,
 		"duration", result.Duration)
 
 	return result, nil
@@ -846,10 +847,10 @@ func rowErrors(status *bigquery.JobStatus) []string {
 // but the consistency model was neither. It is a batch load job now, matching
 // what the rest of the SDK promises; the Storage Write API stays out of v1 for
 // the same reason.
-func (l *Loader) loadInline(ctx context.Context, table *bigquery.Table, data []byte) (int64, []string, error) {
+func (l *Loader) loadInline(ctx context.Context, table *bigquery.Table, data []byte) (int64, string, []string, error) {
 	format, err := sourceFormat(l.cfg.Format)
 	if err != nil {
-		return 0, nil, err
+		return 0, "", nil, err
 	}
 
 	source := bigquery.NewReaderSource(bytes.NewReader(data))
@@ -858,17 +859,18 @@ func (l *Loader) loadInline(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(source)
 	l.applyLayout(loader, &source.FileConfig)
 
-	if rows, _, err := l.runNamedLoadJob(ctx, loader, table, data); err != nil {
-		return 0, rows, err
+	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, data)
+	if err != nil {
+		return 0, jobID, rows, err
 	}
 
-	return int64(len(data)), nil, nil
+	return int64(len(data)), jobID, nil, nil
 }
 
-func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []byte, rowCount int) (bytesStaged int64, objeto string, rowErrs []string, err error) {
+func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []byte, rowCount int) (bytesStaged int64, objeto, jobID string, rowErrs []string, err error) {
 	format, err := sourceFormat(l.cfg.Format)
 	if err != nil {
-		return 0, "", nil, err
+		return 0, "", "", nil, err
 	}
 
 	today := time.Now().UTC().Format("2006-01-02")
@@ -880,13 +882,13 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	if _, err := wc.Write(data); err != nil {
 		_ = wc.Close()
 		_ = obj.Delete(ctx)
-		return 0, "", nil, l.stagingError(ctx, err, rowCount)
+		return 0, "", "", nil, l.stagingError(ctx, err, rowCount)
 	}
 	// GCS reports a missing bucket on Close, not on Write: the object is only
 	// created when the writer flushes.
 	if err := wc.Close(); err != nil {
 		_ = obj.Delete(ctx)
-		return 0, "", nil, l.stagingError(ctx, err, rowCount)
+		return 0, "", "", nil, l.stagingError(ctx, err, rowCount)
 	}
 
 	gcsRef := bigquery.NewGCSReference(fmt.Sprintf("gs://%s/%s", l.cfg.StagingBucket, objName))
@@ -898,7 +900,7 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(gcsRef)
 	l.applyLayout(loader, &gcsRef.FileConfig)
 
-	rows, _, err := l.runNamedLoadJob(ctx, loader, table, data)
+	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, data)
 	if err != nil {
 		if keepStaged(err) {
 			slog.WarnContext(ctx, "staged object kept: its load job may still be reading it",
@@ -906,7 +908,7 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 		} else {
 			_ = obj.Delete(ctx)
 		}
-		return 0, "", rows, err
+		return 0, "", jobID, rows, err
 	}
 
 	if !l.cfg.KeepStagedFile {
@@ -915,8 +917,8 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 		}
 		// Deleted: a path that no longer exists is not reported, or somebody
 		// tries to read it.
-		return int64(len(data)), "", nil, nil
+		return int64(len(data)), "", jobID, nil, nil
 	}
 
-	return int64(len(data)), fmt.Sprintf("gs://%s/%s", l.cfg.StagingBucket, objName), nil, nil
+	return int64(len(data)), fmt.Sprintf("gs://%s/%s", l.cfg.StagingBucket, objName), jobID, nil, nil
 }

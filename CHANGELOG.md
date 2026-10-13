@@ -18,6 +18,37 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [Unreleased]
+
+### Fixed: a retried BigQuery load adopts the job it already started
+
+An inline or staged load created an anonymous load job. A caller that
+stopped waiting — the gateway's 60 s send window, in issue #85 — left that job
+running with no way to find it, and its retry started a second job with the
+same rows. Both could land: the job the gateway gave up on succeeded three
+seconds later, and the batch was buried as well as written.
+
+The job is now named after what it loads: `brevis_<hash of table and
+NDJSON>_g<n>`. Loading the same batch again meets BigQuery's 409, fetches the
+job by name in the dataset's location, and takes its outcome — done means
+landed, running means wait on it, failed means the name is spent and generation
+`n+1` runs. `write: merge` keeps anonymous jobs: its staging table is per
+attempt, and the dedup key already makes its replay safe.
+
+A staged (GCS) load whose job may still be running no longer deletes the object
+the job reads. The bucket's lifecycle rule collects what stays behind.
+
+### Added: the load job, on the result and on the error
+
+- `LoadResult.JobID` names the job that wrote the rows, and `load complete`
+  logs it as `job`.
+- `sdk.LoadJobError` is what a load returns when it ended before its job did:
+  `Table`, `JobID`, `Location` and `State` (`running`, or `unknown` when the
+  insert's answer was lost). It wraps the cause, so the message is the same and
+  `errors.Is(err, context.DeadlineExceeded)` still holds.
+- `bigquery.Table.Job(ctx, id, location)` returns a `sdk.JobReport`: what the
+  job became, asked for by name.
+
 ## [0.85.0] — 2026-10-11
 
 ### Added: a pipeline describes how it is configured

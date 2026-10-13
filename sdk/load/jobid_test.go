@@ -201,3 +201,23 @@ func TestTheStagedObjectStaysWhileItsJobMayRun(t *testing.T) {
 		t.Error("the object of a job that ended was kept")
 	}
 }
+
+// What the gateway asks after it stopped waiting: did the job land?
+func TestAJobReportsWhatItBecame(t *testing.T) {
+	cases := []struct {
+		name   string
+		job    *fakeJob
+		state  core.JobState
+		failed bool
+	}{
+		{"still going", &fakeJob{id: "j"}, core.JobRunning, false},
+		{"landed", &fakeJob{id: "j", done: true}, core.JobDone, false},
+		{"failed", &fakeJob{id: "j", done: true, failed: errors.New("bad row")}, core.JobDone, true},
+	}
+	for _, c := range cases {
+		r := reportOf(c.job)
+		if r.State != c.state || (r.Failed != nil) != c.failed {
+			t.Errorf("%s: report %+v", c.name, r)
+		}
+	}
+}

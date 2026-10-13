@@ -109,7 +109,7 @@ func TestLoadViaGCSUsesStagingError(t *testing.T) {
 		gcs: client,
 	}
 
-	_, _, _, err = l.loadViaGCS(ctx, nil, []byte(`{"a":1}`+"\n"), 12000)
+	_, _, _, _, err = l.loadViaGCS(ctx, nil, []byte(`{"a":1}`+"\n"), 12000)
 	if err == nil {
 		t.Fatal("bucket ausente precisa falhar")
 	}

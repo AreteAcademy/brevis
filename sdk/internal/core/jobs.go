@@ -11,7 +11,17 @@ const (
 	// JobUnknown: creating or finding the job failed in a way that does not
 	// say whether it exists. Asking for it by ID is the only way to know.
 	JobUnknown JobState = "unknown"
+	// JobDone: the job finished, landed or failed. JobReport.Failed says
+	// which.
+	JobDone JobState = "done"
 )
+
+// JobReport is what a load job became, asked for by name after the write
+// that created it stopped waiting.
+type JobReport struct {
+	State  JobState
+	Failed error // the job's own failure; nil unless State is JobDone
+}
 
 // LoadJobError is a write that ended before its load job did.
 //
