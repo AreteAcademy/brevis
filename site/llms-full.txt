@@ -741,6 +741,26 @@ interface, by `brevis run`, or by `backfill`.
 `concurrency: 1` limits simultaneous runs of the same workflow — it is what
 keeps a `*/15` from overlapping itself when one run goes past fifteen minutes.
 
+Two **different** workflows that write the same tables need a **group**. A
+daily and a `*/15` that both build the same dbt models each declare:
+
+```yaml
+concurrency:
+  group: jaffle_models   # the shared resource, named the same in both files
+  limit: 1               # optional; a group without one means 1
+```
+
+Runs of every workflow in the group count against one limit, whatever started
+them — the schedule, a landing, a backfill or a click. A run that finds the
+group full **waits in the queue**; it is not skipped and does not fail. A third
+workflow that writes the same tables joins by naming the group.
+
+- Every member declares the **same limit**. `validate` and `publish` refuse a
+  group declared with 1 in one file and 3 in another, including against members
+  that are already published.
+- A group serializes **Brevis runs**. A `dbt run` somebody starts on their own
+  machine is not in this queue, and fails the same way.
+
 ## Image and resources
 
 ```yaml

@@ -447,7 +447,7 @@ allowed, which step gets what.
 |---|---|---|
 | `--concurrency` | simultaneous RUNS in the dispatcher | the process |
 | `--max-pods` | simultaneous STEPS = live pods | the **cluster** |
-| `concurrency:` in the YAML | simultaneous runs **of the same workflow** | the **data** |
+| `concurrency:` in the YAML | simultaneous runs **of the same workflow**, or of every workflow in a **group** | the **data** |
 
 The third is what stops a `*/15` that takes 20 minutes from overlapping itself —
 two `dbt build`s on the same model fighting over the same table. Thirty-six of
@@ -475,6 +475,38 @@ Two details the implementation pins down:
 
 A workflow at its limit **does not block the others**: the queue is shared, and
 stalling everything because of one would be worse than having no limit.
+
+### Groups: two workflows, one limit
+
+A per-workflow limit cannot say that two workflows must not overlap. That was
+#32: a daily and a `*/15` building the same dbt models, each with
+`concurrency: 1`; a manual run of the daily landed on a slot of the other, one
+dropped the `__dbt_tmp` table the other was reading, and dbt failed. Both
+declare a group instead:
+
+```yaml
+concurrency:
+  group: jaffle_models
+  limit: 1        # a group without a limit means 1
+```
+
+The claim counts by the run's **concurrency key** rather than its workflow:
+`COALESCE('g:' || group, 'w:' || workflow_slug)`. A workflow with no group keeps
+contending with itself, as before; the prefixes stop a group called `daily`
+from sharing a limit with the workflow `daily`. The group is a snapshot on the
+run (`runs.grupo_concorrencia`), like the limit, so editing a file does not
+change what is already queued.
+
+- **Manual runs join the group.** A click outranks scheduled work in the
+  group's queue, but waits for what is in flight. #32 was a manual run.
+- **Every member declares the same limit**, refused at `validate` and
+  `publish` otherwise — `publish` also checks the members already in the
+  database. The limit is read per run, so members disagreeing would let
+  whichever run the claim numbered first decide.
+- **A full group accumulates runs**, as `concurrency: 1` always did for one
+  workflow. It changes the scale, not the behaviour.
+- **It serializes Brevis runs only.** A `dbt run` started outside Brevis is
+  not in this queue, and the symptom is identical.
 
 The first alone is not enough: five runs with three parallel steps each would
 mean **fifteen** pods. `--max-pods` is a semaphore shared by every run in the

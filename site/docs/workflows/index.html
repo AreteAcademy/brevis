@@ -199,6 +199,14 @@ concurrency: 1"><div class="code-head"><span class="code-lang">yaml</span><butto
 <span class="t-k">concurrency</span>: 1</code></pre></div>
 <p>Sem <code>schedule</code>, o workflow é manual: só roda por disparo na interface, por <code>brevis run</code> ou por <code>backfill</code>.</p>
 <p><code>concurrency: 1</code> limita execuções simultâneas do mesmo workflow — é o que impede um <code>*/15</code> de se sobrepor a si mesmo quando uma execução passa dos quinze minutos.</p>
+<p>Dois workflows <strong>diferentes</strong> que escrevem as mesmas tabelas precisam de um <strong>grupo</strong>. Um diário e um <code>*/15</code> que constroem os mesmos modelos dbt declaram, cada um:</p>
+<div class="code-block" data-code="concurrency:
+  group: jaffle_models   # o recurso compartilhado, com o mesmo nome nos dois arquivos
+  limit: 1               # opcional; um grupo sem limite vale 1"><div class="code-head"><span class="code-lang">yaml</span><button class="code-copy" type="button" aria-label="Copiar" data-done="Copiado">Copiar</button></div><pre><code><span class="t-k">concurrency</span>:
+  <span class="t-k">group</span>: jaffle_models   <span class="t-c"># o recurso compartilhado, com o mesmo nome nos dois arquivos</span>
+  <span class="t-k">limit</span>: 1               <span class="t-c"># opcional; um grupo sem limite vale 1</span></code></pre></div>
+<p>As execuções de todos os workflows do grupo contam contra um limite só, seja quem as tenha disparado — o agendamento, um landing, um backfill ou um clique. Uma execução que encontra o grupo cheio <strong>espera na fila</strong>: não é pulada e não falha. Um terceiro workflow que escreve as mesmas tabelas entra nomeando o grupo.</p>
+<ul><li>Todo membro declara o <strong>mesmo limite</strong>. <code>validate</code> e <code>publish</code> recusam um grupo declarado com 1 num arquivo e 3 em outro, inclusive contra membros já publicados.</li><li>Um grupo serializa <strong>execuções do Brevis</strong>. Um <code>dbt run</code> que alguém dispara na própria máquina não está nessa fila, e falha do mesmo jeito.</li></ul>
 <h2 id="imagem-e-recursos">Imagem e recursos<a class="anchor" href="#imagem-e-recursos" aria-label="link">#</a></h2>
 <div class="code-block" data-code="image: us-central1-docker.pkg.dev/exemplo/apps/dbt:1.10.3
 resources:
