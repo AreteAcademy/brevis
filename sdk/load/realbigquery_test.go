@@ -257,3 +257,43 @@ func TestAgainstRealBigQueryADeclarationInAnotherCaseLoads(t *testing.T) {
 		t.Error("a second column was added for the other spelling")
 	}
 }
+
+// THE PREMISE OF #85's FIX, measured. The SDK names a load job by its table and
+// its bytes, so loading the same batch twice must meet BigQuery's 409 on the
+// second insert, find the first job by name in the dataset's location, and
+// take its outcome. If BigQuery ever accepted the second insert, or the
+// lookup missed the job, this table would hold every row twice -- the
+// duplicate a retry under `write: append` exists to avoid.
+//
+// No emulator can say this: floci refuses load jobs altogether (see
+// docker-compose.drivers.yml).
+func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
+	ctx, client, env := realBigQuery(t)
+
+	cfg := &core.LoadConfig{CreateTable: true}
+	l, _ := realLoader(t, env, cfg)
+
+	batch := []core.Envelope{
+		{Provider: "p", Entity: "e", SourceKey: "1", RecordTS: "t", Payload: map[string]any{"id": "1"}},
+		{Provider: "p", Entity: "e", SourceKey: "2", RecordTS: "t", Payload: map[string]any{"id": "2"}},
+	}
+	for attempt := 1; attempt <= 2; attempt++ {
+		if _, err := l.Load(ctx, batch...); err != nil {
+			t.Fatalf("attempt %d: %v", attempt, err)
+		}
+	}
+
+	it, err := client.Query(fmt.Sprintf("SELECT COUNT(*) AS n FROM `%s.%s.%s`",
+		env.project, env.dataset, cfg.Table)).Read(ctx)
+	if err != nil {
+		t.Fatalf("counting: %v", err)
+	}
+	var row struct{ N int64 }
+	if err := it.Next(&row); err != nil {
+		t.Fatalf("counting: %v", err)
+	}
+	if row.N != int64(len(batch)) {
+		t.Errorf("%d rows for a batch of %d loaded twice: the second load "+
+			"started a job of its own instead of adopting the first", row.N, len(batch))
+	}
+}
