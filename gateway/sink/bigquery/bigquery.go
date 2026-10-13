@@ -161,7 +161,12 @@ func (b *sink) Reconcile(ctx context.Context, cause error) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("load job %s: %w", je.JobID, err)
 	}
-	return report.State == sdk.JobDone && report.Failed == nil, nil
+	return landed(report), nil
+}
+
+// landed: finished AND without an error. A failed job is done too.
+func landed(r sdk.JobReport) bool {
+	return r.State == sdk.JobDone && r.Failed == nil
 }
 
 // JobOf satisfies gateway.JobNamer: every row of a batch was in its one load

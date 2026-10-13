@@ -37,3 +37,23 @@ func TestEveryRowNamesTheBatchJob(t *testing.T) {
 }
 
 var _ gateway.JobNamer = (*sink)(nil)
+
+// Landed means finished AND without an error. A job that failed is done too,
+// and counting it as landed would drop the batch on the floor: not written,
+// not buried.
+func TestOnlyADoneJobWithoutAnErrorLanded(t *testing.T) {
+	cases := []struct {
+		name   string
+		report sdk.JobReport
+		want   bool
+	}{
+		{"running", sdk.JobReport{State: sdk.JobRunning}, false},
+		{"failed", sdk.JobReport{State: sdk.JobDone, Failed: errors.New("bad row")}, false},
+		{"landed", sdk.JobReport{State: sdk.JobDone}, true},
+	}
+	for _, c := range cases {
+		if got := landed(c.report); got != c.want {
+			t.Errorf("%s: landed = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
