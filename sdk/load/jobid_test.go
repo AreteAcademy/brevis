@@ -267,3 +267,38 @@ func TestFailedGenerationsAreBounded(t *testing.T) {
 		t.Errorf("a job past the bound was submitted: %v", svc.submitted)
 	}
 }
+
+// A refusal is not a maybe. A 400 says no job was made: wrapping it as
+// "unknown" kept staged objects that should go, cost a lookup before every
+// bury, and stamped dead-letter rows with a job that never existed.
+func TestARefusedInsertIsAPlainFailure(t *testing.T) {
+	for _, code := range []int{400, 403, 404} {
+		submit := func(context.Context, string) (job, error) {
+			return nil, &googleapi.Error{Code: code, Message: "refused"}
+		}
+		_, _, err := awaitLoad(context.Background(), "t", "brevis_x", submit, newFakeService().find)
+
+		var je *core.LoadJobError
+		if errors.As(err, &je) {
+			t.Errorf("%d: a definite refusal carries a job: %+v", code, je)
+		}
+		if keepStaged(err) {
+			t.Errorf("%d: the staged object of a refused job was kept", code)
+		}
+	}
+}
+
+// What may have reached the server stays a maybe.
+func TestATransientInsertFailureMayHaveMadeTheJob(t *testing.T) {
+	for _, code := range []int{408, 429, 500, 503} {
+		submit := func(context.Context, string) (job, error) {
+			return nil, &googleapi.Error{Code: code, Message: "try again"}
+		}
+		_, _, err := awaitLoad(context.Background(), "t", "brevis_x", submit, newFakeService().find)
+
+		var je *core.LoadJobError
+		if !errors.As(err, &je) || je.State != core.JobUnknown {
+			t.Errorf("%d: err = %v", code, err)
+		}
+	}
+}

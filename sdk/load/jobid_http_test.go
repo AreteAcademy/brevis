@@ -53,6 +53,11 @@ func (f *fakeBigQuery) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `{"jobReference":{"projectId":"p","jobId":"`+id+`","location":"US"},"status":`+status+`}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/jobs/"):
 		id := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+		if _, ok := f.jobs[id]; !ok {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"error":{"code":404,"message":"Not found: Job `+id+`"}}`)
+			return
+		}
 		_, _ = io.WriteString(w, `{"jobReference":{"projectId":"p","jobId":"`+id+`","location":"US"},"status":`+f.jobs[id]+`}`)
 	case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/datasets/d"):
 		_, _ = io.WriteString(w, `{"datasetReference":{"projectId":"p","datasetId":"d"},"location":"US"}`)
@@ -172,4 +177,17 @@ func keys(m map[string]string) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// A job that does not exist is an answer, not a failure to get one: the write
+// it belonged to never landed.
+func TestAJobThatDoesNotExistIsAbsent(t *testing.T) {
+	l, _ := loaderAgainst(t, newFakeBigQuery(), &core.LoadConfig{})
+	report, err := l.Job(context.Background(), "brevis_never_g1", "US")
+	if err != nil {
+		t.Fatalf("a missing job is an error: %v", err)
+	}
+	if report.State != core.JobAbsent {
+		t.Errorf("report = %+v, want absent", report)
+	}
 }

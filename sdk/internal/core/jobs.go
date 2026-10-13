@@ -14,6 +14,9 @@ const (
 	// JobDone: the job finished, landed or failed. JobReport.Failed says
 	// which.
 	JobDone JobState = "done"
+	// JobAbsent: BigQuery has no job by that name, so the write it belonged
+	// to never landed.
+	JobAbsent JobState = "absent"
 )
 
 // JobReport is what a load job became, asked for by name after the write
