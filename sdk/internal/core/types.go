@@ -243,6 +243,10 @@ type LoadConfig struct {
 	// objects left behind, one per run.
 	KeepStagedFile bool
 
+	// BatchKey names the write; see WriteOptions.BatchKey. Empty: an
+	// anonymous load job, as before.
+	BatchKey string
+
 	// Dedup selects how repeated records are handled; see Dedup.
 	// Zero value is DedupNone.
 	Dedup Dedup

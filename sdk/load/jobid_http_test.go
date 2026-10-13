@@ -2,12 +2,14 @@ package load
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	core "github.com/AreteAcademy/brevis/sdk/internal/core"
@@ -21,6 +23,11 @@ type fakeBigQuery struct {
 	mu      sync.Mutex
 	jobs    map[string]string // job id -> the JSON status a lookup returns
 	uploads map[string]string // job id -> the body its insert carried
+	fresh   string            // the status a new job starts in; DONE when empty
+}
+
+func newFakeBigQuery() *fakeBigQuery {
+	return &fakeBigQuery{jobs: map[string]string{}, uploads: map[string]string{}}
 }
 
 func (f *fakeBigQuery) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -37,9 +44,13 @@ func (f *fakeBigQuery) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			_, _ = io.WriteString(w, `{"error":{"code":409,"message":"Already Exists: Job `+id+`","errors":[{"reason":"duplicate"}]}}`)
 			return
 		}
+		status := f.fresh
+		if status == "" {
+			status = `{"state":"DONE"}`
+		}
 		f.uploads[id] = string(body)
-		f.jobs[id] = `{"state":"DONE"}`
-		_, _ = io.WriteString(w, `{"jobReference":{"projectId":"p","jobId":"`+id+`","location":"US"},"status":{"state":"DONE"}}`)
+		f.jobs[id] = status
+		_, _ = io.WriteString(w, `{"jobReference":{"projectId":"p","jobId":"`+id+`","location":"US"},"status":`+status+`}`)
 	case r.Method == http.MethodGet && strings.Contains(r.URL.Path, "/jobs/"):
 		id := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
 		_, _ = io.WriteString(w, `{"jobReference":{"projectId":"p","jobId":"`+id+`","location":"US"},"status":`+f.jobs[id]+`}`)
@@ -78,12 +89,12 @@ func loaderAgainst(t *testing.T, f *fakeBigQuery, cfg *core.LoadConfig) (*Loader
 // moving to the next generation inserted an EMPTY load -- which BigQuery can
 // take as a success with nothing written, and nothing buried either.
 func TestTheNextGenerationUploadsTheRows(t *testing.T) {
-	f := &fakeBigQuery{jobs: map[string]string{}, uploads: map[string]string{}}
-	l, table := loaderAgainst(t, f, &core.LoadConfig{})
+	f := newFakeBigQuery()
+	l, table := loaderAgainst(t, f, &core.LoadConfig{BatchKey: "batch-1"})
 	data := []byte(`{"id":"row-1"}` + "\n" + `{"id":"row-2"}` + "\n")
 
 	// An earlier attempt's job exists and failed: this load must take g2.
-	base := l.jobBaseFor(table, data)
+	base := l.jobBaseFor(table)
 	f.jobs[base+"_g1"] = `{"state":"DONE","errorResult":{"reason":"backendError","message":"try again"}}`
 
 	if _, _, _, err := l.loadInline(context.Background(), table, data); err != nil {
@@ -96,4 +107,69 @@ func TestTheNextGenerationUploadsTheRows(t *testing.T) {
 	if !strings.Contains(body, "row-1") || !strings.Contains(body, "row-2") {
 		t.Errorf("g2 was inserted without the rows -- an empty load:\n%s", body)
 	}
+}
+
+// The job is named by the BATCH, not by its bytes. auto_table stamps
+// brevis_received_at when it writes, so a retry a minute later carries other
+// bytes -- and under a name made of the bytes it started a second job, which
+// is #85 on the very path it was reported on.
+func TestARetryWithOtherBytesAdoptsTheBatchJob(t *testing.T) {
+	f := newFakeBigQuery()
+	l, table := loaderAgainst(t, f, &core.LoadConfig{BatchKey: "batch-1"})
+
+	for _, at := range []string{"00:06:24", "00:07:23"} {
+		data := []byte(`{"id":"row-1","brevis_received_at":"2026-10-13T` + at + `Z"}` + "\n")
+		if _, _, _, err := l.loadInline(context.Background(), table, data); err != nil {
+			t.Fatalf("load at %s: %v", at, err)
+		}
+	}
+	if len(f.uploads) != 1 {
+		t.Errorf("one batch, %d jobs started: %v", len(f.uploads), keys(f.uploads))
+	}
+}
+
+// Without a key there is no batch to name, and two loads are two writes --
+// even of identical bytes. Naming jobs by content made a reload of the same
+// data into a recreated table a "success" that wrote nothing.
+func TestWithoutAKeyIdenticalLoadsAreTwoWrites(t *testing.T) {
+	f := newFakeBigQuery()
+	l, table := loaderAgainst(t, f, &core.LoadConfig{})
+	data := []byte(`{"id":"row-1"}` + "\n")
+
+	for i := 0; i < 2; i++ {
+		if _, _, _, err := l.loadInline(context.Background(), table, data); err != nil {
+			t.Fatalf("load %d: %v", i+1, err)
+		}
+	}
+	if len(f.uploads) != 2 {
+		t.Errorf("two loads, %d jobs: %v", len(f.uploads), keys(f.uploads))
+	}
+}
+
+// An anonymous job can outlive the wait as well, and the caller still needs
+// its name to ask what became of it.
+func TestAnAnonymousJobIsNamedWhenTheWaitEnds(t *testing.T) {
+	f := newFakeBigQuery()
+	f.fresh = `{"state":"RUNNING"}`
+	l, table := loaderAgainst(t, f, &core.LoadConfig{})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	_, _, _, err := l.loadInline(ctx, table, []byte(`{"id":"row-1"}`+"\n"))
+
+	var je *core.LoadJobError
+	if !errors.As(err, &je) || je.JobID == "" || je.State != core.JobRunning {
+		t.Fatalf("err = %v (%+v)", err, je)
+	}
+	if _, ok := f.uploads[je.JobID]; !ok {
+		t.Errorf("the error names %s, which is not the job that was started (%v)", je.JobID, keys(f.uploads))
+	}
+}
+
+func keys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }

@@ -258,25 +258,42 @@ func TestAgainstRealBigQueryADeclarationInAnotherCaseLoads(t *testing.T) {
 	}
 }
 
-// THE PREMISE OF #85's FIX, measured. The SDK names a load job by its table and
-// its bytes, so loading the same batch twice must meet BigQuery's 409 on the
+// THE PREMISE OF #85's FIX, measured. The SDK names a load job after the
+// write's BatchKey, so loading one batch twice must meet BigQuery's 409 on the
 // second insert, find the first job by name in the dataset's location, and
 // take its outcome. If BigQuery ever accepted the second insert, or the
 // lookup missed the job, this table would hold every row twice -- the
 // duplicate a retry under `write: append` exists to avoid.
+//
+// And the other half: WITHOUT a key, the same rows loaded twice are two
+// writes. Naming jobs by their content would make a reload into a recreated
+// table a "success" that wrote nothing.
 //
 // No emulator can say this: floci refuses load jobs altogether (see
 // docker-compose.drivers.yml).
 func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 	ctx, client, env := realBigQuery(t)
 
-	cfg := &core.LoadConfig{CreateTable: true}
-	l, _ := realLoader(t, env, cfg)
-
 	batch := []core.Envelope{
 		{Provider: "p", Entity: "e", SourceKey: "1", RecordTS: "t", Payload: map[string]any{"id": "1"}},
 		{Provider: "p", Entity: "e", SourceKey: "2", RecordTS: "t", Payload: map[string]any{"id": "2"}},
 	}
+	count := func(table string) int64 {
+		t.Helper()
+		it, err := client.Query(fmt.Sprintf("SELECT COUNT(*) AS n FROM `%s.%s.%s`",
+			env.project, env.dataset, table)).Read(ctx)
+		if err != nil {
+			t.Fatalf("counting: %v", err)
+		}
+		var row struct{ N int64 }
+		if err := it.Next(&row); err != nil {
+			t.Fatalf("counting: %v", err)
+		}
+		return row.N
+	}
+
+	keyed := &core.LoadConfig{CreateTable: true, BatchKey: fmt.Sprintf("it-%d", time.Now().UnixNano())}
+	l, _ := realLoader(t, env, keyed)
 	var jobs []string
 	for attempt := 1; attempt <= 2; attempt++ {
 		res, err := l.Load(ctx, batch...)
@@ -288,18 +305,20 @@ func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 	if jobs[0] == "" || jobs[0] != jobs[1] {
 		t.Errorf("the two loads report jobs %q: one batch, one job", jobs)
 	}
+	if n := count(keyed.Table); n != int64(len(batch)) {
+		t.Errorf("%d rows for one batch loaded twice: the second load started "+
+			"a job of its own instead of adopting the first", n)
+	}
 
-	it, err := client.Query(fmt.Sprintf("SELECT COUNT(*) AS n FROM `%s.%s.%s`",
-		env.project, env.dataset, cfg.Table)).Read(ctx)
-	if err != nil {
-		t.Fatalf("counting: %v", err)
+	anonymous := &core.LoadConfig{CreateTable: true}
+	l, _ = realLoader(t, env, anonymous)
+	for i := 0; i < 2; i++ {
+		if _, err := l.Load(ctx, batch...); err != nil {
+			t.Fatalf("load %d: %v", i+1, err)
+		}
 	}
-	var row struct{ N int64 }
-	if err := it.Next(&row); err != nil {
-		t.Fatalf("counting: %v", err)
-	}
-	if row.N != int64(len(batch)) {
-		t.Errorf("%d rows for a batch of %d loaded twice: the second load "+
-			"started a job of its own instead of adopting the first", row.N, len(batch))
+	if n := count(anonymous.Table); n != int64(2*len(batch)) {
+		t.Errorf("%d rows for two keyless loads of %d: identical rows were "+
+			"taken for one write", n, len(batch))
 	}
 }

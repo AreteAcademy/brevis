@@ -173,6 +173,7 @@ func (b Table) config(opt core.WriteOptions) (*core.LoadConfig, map[string]core.
 		PartitionExpiration:    b.PartitionExpiration,
 		RequirePartitionFilter: b.RequirePartitionFilter,
 		KeepStagedFile:         b.KeepStagedFile,
+		BatchKey:               opt.BatchKey,
 	}
 
 	return cfg, map[string]core.Origin{
