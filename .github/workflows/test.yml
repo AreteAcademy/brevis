@@ -797,6 +797,11 @@ jobs:
       - name: The Docker Hub overview fits
         run: .github/scripts/hub-overview-check.sh
 
+      # Here and not in release-gateway.yml: the release checks its documents
+      # before the image exists. The script says why.
+      - name: The documented image sizes are Docker Hub's
+        run: .github/scripts/image-sizes-check.sh
+
       - name: Lint the gateway
         uses: golangci/golangci-lint-action@v9
         with:
