@@ -18,9 +18,10 @@ var _ gateway.Reconciler = (*sink)(nil)
 // refused schema, a staging bucket that does not exist -- did not land, and
 // asking BigQuery about it would be a call with no question.
 func TestAFailureWithNoJobIsNotReconciled(t *testing.T) {
-	landed, err := (&sink{}).Reconcile(context.Background(), errors.New("staging bucket missing"))
-	if landed || err != nil {
-		t.Errorf("Reconcile = %v, %v; want false, nil", landed, err)
+	cause := errors.New("staging bucket missing")
+	rec, err := (&sink{}).Reconcile(context.Background(), cause)
+	if rec.Landed || err != nil || rec.Cause != cause {
+		t.Errorf("Reconcile = %+v, %v; want not landed, the same cause", rec, err)
 	}
 }
 
@@ -40,21 +41,35 @@ var _ gateway.JobNamer = (*sink)(nil)
 
 // Landed means finished AND without an error. A job that failed is done too,
 // and counting it as landed would drop the batch on the floor: not written,
-// not buried.
-func TestOnlyADoneJobWithoutAnErrorLanded(t *testing.T) {
+// not buried. What comes back is what the dead-letter row will say.
+func TestWhatTheJobBecameIsWhatThePipeDoes(t *testing.T) {
+	asked := &sdk.LoadJobError{JobID: "j", Location: "US", State: sdk.JobRunning, Err: errors.New("wait for load job: deadline")}
+	stateOf := func(rec gateway.Reconciliation) sdk.JobState {
+		var je *sdk.LoadJobError
+		if !errors.As(rec.Cause, &je) {
+			return ""
+		}
+		return je.State
+	}
 	cases := []struct {
-		name   string
-		report sdk.JobReport
-		want   bool
+		name    string
+		report  sdk.JobReport
+		landed  bool
+		stamped sdk.JobState // "" when the row names no job
 	}{
-		{"running", sdk.JobReport{State: sdk.JobRunning}, false},
-		{"failed", sdk.JobReport{State: sdk.JobDone, Failed: errors.New("bad row")}, false},
-		{"landed", sdk.JobReport{State: sdk.JobDone}, true},
+		{"running", sdk.JobReport{State: sdk.JobRunning}, false, sdk.JobRunning},
+		{"failed", sdk.JobReport{State: sdk.JobDone, Failed: errors.New("bad row")}, false, sdk.JobDone},
+		{"landed", sdk.JobReport{State: sdk.JobDone}, true, sdk.JobDone},
+		{"absent", sdk.JobReport{State: sdk.JobAbsent}, false, ""},
 	}
 	for _, c := range cases {
-		if got := landed(c.report); got != c.want {
-			t.Errorf("%s: landed = %v, want %v", c.name, got, c.want)
+		rec := reconciliationOf(asked, c.report)
+		if rec.Landed != c.landed || stateOf(rec) != c.stamped {
+			t.Errorf("%s: landed=%v stamped=%q, want %v %q", c.name, rec.Landed, stateOf(rec), c.landed, c.stamped)
 		}
+	}
+	if asked.State != sdk.JobRunning {
+		t.Error("the error that was asked about was changed in place")
 	}
 }
 

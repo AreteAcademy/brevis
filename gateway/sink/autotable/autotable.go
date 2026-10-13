@@ -386,26 +386,33 @@ func (e *batchError) Unwrap() error { return e.err }
 // Issue #85 was a batch of one table whose job finished three seconds after
 // the window closed. With many tables it is the same question asked once per
 // table, of the sink that wrote it; one table not known to have landed and the
-// batch is buried whole, as before.
-func (r *router) Reconcile(ctx context.Context, cause error) (bool, error) {
+// batch is buried whole, as before -- but with what each table's sink learned,
+// so a row of a table that DID land says so, and a replay can skip it.
+func (r *router) Reconcile(ctx context.Context, cause error) (gateway.Reconciliation, error) {
 	var be *batchError
-	if !errors.As(cause, &be) || be.skipped {
-		return false, nil
+	if !errors.As(cause, &be) {
+		return gateway.Reconciliation{Cause: cause}, nil
 	}
+	learned := &batchError{err: be.err, failed: make(map[string]tableFailure, len(be.failed)), skipped: be.skipped}
+	landed := !be.skipped
 	for table, f := range be.failed {
 		rc, ok := f.sink.(gateway.Reconciler)
 		if !ok {
-			return false, nil
+			learned.failed[table] = f
+			landed = false
+			continue
 		}
-		landed, err := rc.Reconcile(ctx, f.err)
+		rec, err := rc.Reconcile(ctx, f.err)
 		if err != nil {
-			return false, fmt.Errorf("table %s: %w", table, err)
+			return gateway.Reconciliation{Cause: cause}, fmt.Errorf("table %s: %w", table, err)
 		}
-		if !landed {
-			return false, nil
+		if rec.Cause == nil {
+			rec.Cause = f.err
 		}
+		learned.failed[table] = tableFailure{sink: f.sink, err: rec.Cause}
+		landed = landed && rec.Landed
 	}
-	return true, nil
+	return gateway.Reconciliation{Landed: landed, Cause: learned}, nil
 }
 
 // shareOf bounds one table's write to its slice of what is left.

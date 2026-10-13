@@ -150,25 +150,40 @@ func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 // Reconcile asks BigQuery whether the load job a failed Write named landed
 // after all. See gateway.Reconciler: the job keeps running after the send
 // window closes, and in issue #85 it succeeded three seconds later.
-//
-// Only a done job without an error counts. Still running is NOT landed -- the
-// batch is buried with the job on the record, and whoever replays it asks
-// again.
-func (b *sink) Reconcile(ctx context.Context, cause error) (bool, error) {
+func (b *sink) Reconcile(ctx context.Context, cause error) (gateway.Reconciliation, error) {
 	var je *sdk.LoadJobError
 	if !errors.As(cause, &je) {
-		return false, nil
+		return gateway.Reconciliation{Cause: cause}, nil
 	}
 	report, err := b.table.Job(ctx, je.JobID, je.Location)
 	if err != nil {
-		return false, fmt.Errorf("load job %s: %w", je.JobID, err)
+		return gateway.Reconciliation{Cause: cause}, fmt.Errorf("load job %s: %w", je.JobID, err)
 	}
-	return landed(report), nil
+	return reconciliationOf(je, report), nil
 }
 
-// landed: finished AND without an error. A failed job is done too.
-func landed(r sdk.JobReport) bool {
-	return r.State == sdk.JobDone && r.Failed == nil
+// reconciliationOf turns what BigQuery said about the job into what the pipe
+// does: only DONE without an error is landed -- a failed job is done too, and
+// counting it would drop the batch, neither written nor buried. Still running
+// is NOT landed: the batch is buried with the job on the record, and whoever
+// replays it asks again.
+//
+// The cause comes back refined, because the dead-letter row is stamped from
+// it: a job found failed says so, and a job BigQuery never had is not named.
+func reconciliationOf(je *sdk.LoadJobError, r sdk.JobReport) gateway.Reconciliation {
+	now := *je
+	now.State = r.State
+	switch {
+	case r.State == sdk.JobDone && r.Failed == nil:
+		return gateway.Reconciliation{Landed: true, Cause: &now}
+	case r.State == sdk.JobDone:
+		now.Err = fmt.Errorf("load job failed: %w", r.Failed)
+		return gateway.Reconciliation{Cause: &now}
+	case r.State == sdk.JobAbsent:
+		return gateway.Reconciliation{Cause: je.Err}
+	default:
+		return gateway.Reconciliation{Cause: &now}
+	}
 }
 
 // JobOf satisfies gateway.JobNamer: every row of a batch was in its one load

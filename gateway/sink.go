@@ -48,11 +48,22 @@ type Admitter interface {
 // the table. A sink whose write cannot outlive the call -- a topic publish, a
 // SQL statement -- has nothing to reconcile and does not implement this.
 //
-// err is what Write returned. landed is true only when the sink KNOWS the
-// batch is in the destination; anything less, including an error asking, and
-// the batch goes to the dead letter as before.
+// cause is what Write returned, or an earlier attempt's error when that one
+// named a job and the last did not. Landed is true only when the sink KNOWS
+// the batch is in the destination; anything less, including an error asking,
+// and the batch goes to the dead letter as before.
 type Reconciler interface {
-	Reconcile(ctx context.Context, err error) (landed bool, _ error)
+	Reconcile(ctx context.Context, cause error) (Reconciliation, error)
+}
+
+// Reconciliation is what a Reconciler learned.
+type Reconciliation struct {
+	Landed bool
+	// Cause is what to bury the batch with when it did not land: the cause it
+	// was asked about, refined by what the sink found out -- a job that ended
+	// with an error, a table that did land. The dead-letter row is stamped
+	// from it, so it says what is true now rather than when the wait ended.
+	Cause error
 }
 
 // JobNamer is a sink whose failed write can name, per event, the load job

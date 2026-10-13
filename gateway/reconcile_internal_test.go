@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,14 +29,14 @@ func (*slowJobSink) Write(ctx context.Context, _ []sdk.Envelope) (int64, error) 
 	return 0, &sdk.LoadJobError{Table: "events", JobID: "brevis_x_g1", State: sdk.JobRunning,
 		Err: fmt.Errorf("wait for load job: %w", ctx.Err())}
 }
-func (s *slowJobSink) Reconcile(ctx context.Context, _ error) (bool, error) {
+func (s *slowJobSink) Reconcile(ctx context.Context, cause error) (Reconciliation, error) {
 	s.asked = true
 	s.deadline, _ = ctx.Deadline()
 	if s.hold {
 		<-ctx.Done()
-		return false, ctx.Err()
+		return Reconciliation{Cause: cause}, ctx.Err()
 	}
-	return s.landed, s.err
+	return Reconciliation{Landed: s.landed, Cause: cause}, s.err
 }
 
 func sendThroughSlowJob(t *testing.T, sink *slowJobSink) (*recordingDead, error) {
@@ -238,4 +239,103 @@ func (locatedJobSink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, b
 	var je *sdk.LoadJobError
 	ok := errors.As(cause, &je)
 	return je, ok
+}
+
+// flakySink is #85's double outcome by another road: attempt 1 leaves a load
+// job behind, and the LAST attempt fails before it reaches the load -- a
+// metadata call, say -- with an error that names no job.
+type flakySink struct {
+	mu       sync.Mutex
+	calls    int
+	asked    error // the cause Reconcile was handed
+	landed   bool
+	learned  error // what Reconcile reports it learned; the cause when nil
+	attempts int
+}
+
+func (*flakySink) Describe() string { return "flaky" }
+func (f *flakySink) Write(context.Context, []sdk.Envelope) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.calls == 1 {
+		return 0, &sdk.LoadJobError{Table: "events", JobID: "brevis_x_g1", Location: "US",
+			State: sdk.JobUnknown, Err: errors.New("start load job: 503")}
+	}
+	return 0, errors.New("table metadata: 503")
+}
+func (f *flakySink) Reconcile(_ context.Context, cause error) (Reconciliation, error) {
+	f.asked = cause
+	if f.learned != nil {
+		return Reconciliation{Landed: f.landed, Cause: f.learned}, nil
+	}
+	return Reconciliation{Landed: f.landed, Cause: cause}, nil
+}
+func (*flakySink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, bool) {
+	var je *sdk.LoadJobError
+	ok := errors.As(cause, &je)
+	return je, ok
+}
+
+func sendThroughFlaky(t *testing.T, sink *flakySink) (*recordingDead, error) {
+	t.Helper()
+	dead := &recordingDead{}
+	p := &pipe{
+		stream:  Stream{Name: "ingestion", Retry: Retry{Attempts: 2, Backoff: time.Millisecond, MaxBackoff: time.Millisecond}},
+		sink:    sink,
+		dead:    dead,
+		metrics: NewMetrics(),
+	}
+	err := p.send(context.Background(), []sdk.Envelope{{Payload: map[string]any{"id": "e-1"}}})
+	return dead, err
+}
+
+// The job is a function of the batch, so asking about attempt 1's job is
+// asking about this batch.
+func TestAnEarlierAttemptsJobIsStillAskedAbout(t *testing.T) {
+	sink := &flakySink{landed: true}
+	dead, err := sendThroughFlaky(t, sink)
+
+	var je *sdk.LoadJobError
+	if !errors.As(sink.asked, &je) || je.JobID != "brevis_x_g1" {
+		t.Fatalf("Reconcile was asked about %v, not attempt 1's job", sink.asked)
+	}
+	if err != nil {
+		t.Errorf("attempt 1's job landed, and the batch was reported failed: %v", err)
+	}
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	if len(dead.got) != 0 {
+		t.Errorf("%d events buried that attempt 1 wrote", len(dead.got))
+	}
+}
+
+func TestAnEarlierAttemptsJobIsStampedWhenItDidNotLand(t *testing.T) {
+	dead, _ := sendThroughFlaky(t, &flakySink{landed: false})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	row := dead.got[0].Payload.(map[string]any)
+	if row[ColumnDeadLetterJobID] != "brevis_x_g1" {
+		t.Errorf("%s = %v: the job that may still land is not on the row",
+			ColumnDeadLetterJobID, row[ColumnDeadLetterJobID])
+	}
+	if !strings.Contains(row["_dead_letter_reason"].(string), "table metadata: 503") {
+		t.Errorf("the reason lost the last attempt's failure: %v", row["_dead_letter_reason"])
+	}
+}
+
+// What the question learned is what the row says. The job was found failed:
+// "running" would send whoever replays it to ask again, for nothing.
+func TestTheRowSaysWhatReconcileLearned(t *testing.T) {
+	failed := &sdk.LoadJobError{Table: "events", JobID: "brevis_x_g1", Location: "US",
+		State: sdk.JobDone, Err: errors.New("load job failed: invalid row")}
+	dead, _ := sendThroughFlaky(t, &flakySink{learned: failed})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	row := dead.got[0].Payload.(map[string]any)
+	if row[ColumnDeadLetterJobState] != string(sdk.JobDone) {
+		t.Errorf("%s = %v, want done", ColumnDeadLetterJobState, row[ColumnDeadLetterJobState])
+	}
 }
