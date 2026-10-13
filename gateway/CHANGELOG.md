@@ -13,6 +13,17 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Fixed: replaying the dead letter under `write: append` can duplicate
+
+The 0.25.x entry says "every table is created with it as the dedup key, so
+replaying the dead letter writes each row once". That holds for `write: merge`
+only. Under `write: append` (`dedup=none` in the `load complete` line) nothing
+matches on `brevis_ingestion_id`, so replaying a batch that was both written and
+buried writes its rows twice — and issue #85 shows that a buried batch can also
+be a written one. The comment in `auto_table` and `docs/GATEWAY.md` now say so.
+
 ## [0.28.0] — 2026-10-11
 
 ### Added: describe carries each stream's whole configuration

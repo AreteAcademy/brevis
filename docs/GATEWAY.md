@@ -213,6 +213,13 @@ finds this file later has the events and not the log, and *why is this here* is
 their first question. The `ingestion_id` travels too, so a replay lands where
 the original would have.
 
+**A buried batch is not always an unwritten one.** A sink that gives up
+waiting can be wrong about the outcome: a BigQuery load job keeps running after
+the gateway stops waiting for it, and can succeed. Under `write: merge` a replay
+is safe, because the destination matches on `brevis_ingestion_id` and skips
+what is already there. Under `write: append` nothing matches, and replaying a
+batch that also landed writes its rows twice.
+
 **A stream with no `dead_letter` is refused at load.** Defaulting it to silence
 would put the decision where nobody makes it — and a refused batch that is only
 a log line is losing data quietly, which is the one failure this exists not to
