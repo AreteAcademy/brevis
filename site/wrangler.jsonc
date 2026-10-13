@@ -1,0 +1,18 @@
+// Cloudflare Workers Builds reads this file from the root directory (site/).
+// Without it, `wrangler deploy` guesses a static site and uploads all of
+// site/ -- build.py, templates and content/*.md included -- and
+// `wrangler versions upload`, which non-production branches run, guesses
+// nothing and fails.
+{
+  // The existing Worker; another name would create a second one.
+  "name": "brevis",
+  "compatibility_date": "2026-10-06",
+  // Wrangler runs this before both deploy and versions upload, so the
+  // dashboard build command is not what decides what ships.
+  "build": { "command": "python3 build.py --dist" },
+  "assets": {
+    // Only what build.py --dist copies is served.
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  }
+}
