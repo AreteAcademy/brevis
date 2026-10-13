@@ -18,7 +18,8 @@ import (
 type slowJobSink struct {
 	landed   bool
 	err      error
-	hold     bool // Reconcile blocks until its context ends
+	hold     bool  // Reconcile blocks until its context ends
+	learned  error // what Reconcile found out; the cause when nil
 	asked    bool
 	deadline time.Time
 }
@@ -35,6 +36,9 @@ func (s *slowJobSink) Reconcile(ctx context.Context, cause error) (Reconciliatio
 	if s.hold {
 		<-ctx.Done()
 		return Reconciliation{Cause: cause}, ctx.Err()
+	}
+	if s.learned != nil {
+		return Reconciliation{Landed: s.landed, Cause: s.learned}, s.err
 	}
 	return Reconciliation{Landed: s.landed, Cause: cause}, s.err
 }
@@ -337,5 +341,21 @@ func TestTheRowSaysWhatReconcileLearned(t *testing.T) {
 	row := dead.got[0].Payload.(map[string]any)
 	if row[ColumnDeadLetterJobState] != string(sdk.JobDone) {
 		t.Errorf("%s = %v, want done", ColumnDeadLetterJobState, row[ColumnDeadLetterJobState])
+	}
+}
+
+// "Why is this here" is the first question about a buried row. When the job
+// turned out to have FAILED, that failure is the answer -- not the timeout
+// that made the gateway stop waiting for it.
+func TestTheReasonIsTheJobsFailureWhenThatIsWhatWasLearned(t *testing.T) {
+	failed := &sdk.LoadJobError{Table: "events", JobID: "brevis_x_g1", State: sdk.JobDone,
+		Err: errors.New("load job failed: invalid row 7")}
+	dead, _ := sendThroughSlowJob(t, &slowJobSink{learned: failed})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	reason, _ := dead.got[0].Payload.(map[string]any)["_dead_letter_reason"].(string)
+	if !strings.Contains(reason, "invalid row 7") {
+		t.Errorf("the reason does not say why the job failed: %q", reason)
 	}
 }
