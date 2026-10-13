@@ -314,8 +314,17 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// And it STOPS. A disagreement is about us, not about this table, so
 		// asking the next table is asking a destination that has just said we
 		// are wrong, once more per table.
+		//
+		// Still a batchError: a table that starved before this one may yet
+		// land, and its rows must keep its job. This table's failure names
+		// none, so the batch cannot reconcile as landed.
 		r.invalidate(ctx, table)
-		return wrote, fmt.Errorf("table %s: %w", table, err)
+		failed[table] = tableFailure{sink: sink, err: err}
+		return wrote, &batchError{
+			err:     fmt.Errorf("table %s: %w", table, err),
+			failed:  failed,
+			skipped: i < len(tables)-1,
+		}
 	}
 
 	if len(starved) > 0 {
