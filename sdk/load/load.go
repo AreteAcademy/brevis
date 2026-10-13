@@ -858,7 +858,7 @@ func (l *Loader) loadInline(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(source)
 	l.applyLayout(loader, &source.FileConfig)
 
-	if rows, err := runLoadJob(ctx, loader); err != nil {
+	if rows, _, err := l.runNamedLoadJob(ctx, loader, table, data); err != nil {
 		return 0, rows, err
 	}
 
