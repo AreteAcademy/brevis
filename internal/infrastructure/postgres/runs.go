@@ -42,8 +42,9 @@ func (r *RunRepo) Create(ctx context.Context, run dom.Run) (dom.Run, error) {
 
 	err := r.pool.QueryRow(ctx, `
 		INSERT INTO runs (id, workflow_slug, idempotency_key, status, attempt, definicao,
-		                  trigger_type, logical_date, params, max_ativos, trigger_targets)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		                  trigger_type, logical_date, params, max_ativos, trigger_targets,
+		                  grupo_concorrencia)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULLIF($12, ''))
 		RETURNING criado_em`,
 		run.ID, run.WorkflowSlug, run.IdempotencyKey, run.Status, run.Attempt, run.Definition,
 		run.TriggerType, run.LogicalDate, paramsOrEmpty(run.Params), run.MaxActive,
@@ -54,6 +55,8 @@ func (r *RunRepo) Create(ctx context.Context, run dom.Run) (dom.Run, error) {
 		// when it has nothing), so this is passed straight through rather
 		// than through a guard that could never fire.
 		run.TriggerTargets,
+		// NULL for no group: the claim's COALESCE falls back to the slug.
+		run.Group,
 	).Scan(&run.CreatedAt)
 
 	if err != nil {
@@ -171,12 +174,12 @@ func (r *RunRepo) Get(ctx context.Context, id uuid.UUID) (dom.Run, error) {
 	err := r.pool.QueryRow(ctx, `
 		SELECT id, workflow_slug, idempotency_key, status, attempt, definicao,
 		       trigger_type, logical_date, params, max_ativos, erro, criado_em, iniciado_em, terminado_em,
-		       auto_params, trigger_targets
+		       auto_params, trigger_targets, COALESCE(grupo_concorrencia, '')
 		FROM runs WHERE id = $1`, id).
 		Scan(&run.ID, &run.WorkflowSlug, &run.IdempotencyKey, &run.Status, &run.Attempt,
 			&run.Definition, &run.TriggerType, &run.LogicalDate, &run.Params, &run.MaxActive,
 			&run.Err, &run.CreatedAt, &run.StartedAt, &run.FinishedAt, &run.Auto,
-			&run.TriggerTargets)
+			&run.TriggerTargets, &run.Group)
 	return run, err
 }
 

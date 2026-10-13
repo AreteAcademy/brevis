@@ -80,6 +80,13 @@ type Workflow struct {
 	// table.
 	MaxActive int
 
+	// Group is the RESOURCE this workflow contends for with others: runs of
+	// every workflow that names the same group count against one limit, so
+	// the daily and the */15 that build the same dbt models never overlap
+	// (#32). Empty, the workflow contends only with itself, under its slug,
+	// which is what `concurrency: N` always meant.
+	Group string
+
 	// Trigger is why this workflow starts other than the clock -- today, a
 	// landing on a target it subscribes to. See trigger.go.
 	Trigger Trigger
@@ -658,6 +665,18 @@ func (w Workflow) Validate() error {
 	if w.MaxActive < 0 {
 		return fmt.Errorf("workflow %q: negative concurrency (%d); use 0 for no limit", w.Slug, w.MaxActive)
 	}
+	if w.Group != "" {
+		if !groupName.MatchString(w.Group) {
+			return fmt.Errorf("workflow %q: concurrency group %q is not a name; use lower case, "+
+				"digits, `_` and `-`, up to 63 characters", w.Slug, w.Group)
+		}
+		// A group with no limit holds nothing back: the runs would overlap
+		// exactly as they did in #32, with a line in the file saying otherwise.
+		if w.MaxActive == 0 {
+			return fmt.Errorf("workflow %q: concurrency group %q needs a limit of at least 1; "+
+				"a group without one changes nothing", w.Slug, w.Group)
+		}
+	}
 	if err := validateResources(w.Slug, "workflow", w.Resources); err != nil {
 		return err
 	}
@@ -853,6 +872,10 @@ func formatCycle(ids []string) string {
 	}
 	return s
 }
+
+// groupName is what a concurrency group may be called: a name somebody types
+// in two files and greps for, so nothing a shell or a URL would mangle.
+var groupName = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 
 // quantidade is Kubernetes's format: an integer or a decimal with an optional
 // suffix (m for CPU; Ki/Mi/Gi/K/M/G for memory).

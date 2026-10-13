@@ -167,7 +167,7 @@ func (s *Scheduler) enqueueLanded(ctx context.Context, slug string, window time.
 	// landings in a window become one run -- and asking the database first
 	// would be a second round trip for an answer the insert already gives.
 	return s.createAndEnqueue(ctx, slug, bruto, window,
-		sch.TriggerLanded, 0, defaults, def.MaxActive, targets...)
+		sch.TriggerLanded, 0, defaults, def.MaxActive, def.Group, targets...)
 }
 
 // matches says whether a landing's target is one of the subscribed ones.

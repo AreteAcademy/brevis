@@ -32,8 +32,8 @@ type Spec struct {
 	Env     map[string]string `yaml:"env"`
 	Secrets map[string]string `yaml:"secrets"`
 	// Concurrency is Kestra's `concurrency.limit`, under the name most
-	// orchestrators use.
-	Concurrency int `yaml:"concurrency"`
+	// orchestrators use. See ConcurrencySpec for the two shapes.
+	Concurrency ConcurrencySpec `yaml:"concurrency"`
 
 	// Trigger is why this runs other than the clock. See TriggerSpec.
 	Trigger TriggerSpec `yaml:"trigger"`
@@ -208,6 +208,65 @@ type StepSpec struct {
 	OnError *OnErrorSpec `yaml:"on_error"`
 }
 
+// ConcurrencySpec is `concurrency:`, in either shape:
+//
+//	concurrency: 1
+//	concurrency:
+//	  group: jaffle_models
+//	  limit: 1
+//
+// The bare number limits runs of THIS workflow, as it always has. The mapping
+// names a group: every workflow that names it counts against one limit, which
+// is how a daily and a */15 that build the same models stop overlapping (#32).
+type ConcurrencySpec struct {
+	Limit int    `yaml:"limit"`
+	Group string `yaml:"group"`
+}
+
+// UnmarshalYAML accepts a scalar or a mapping, and refuses a key it does not
+// know.
+//
+// Refuses, where the rest of the file only warns: KnownFields does not reach
+// inside a custom unmarshaler (TestACustomUnmarshalerStillHidesItsFields), and
+// a `grop:` dropped here would leave a workflow with no group, overlapping its
+// partner in silence -- the bug this field exists to fix, back with no sign.
+func (c *ConcurrencySpec) UnmarshalYAML(value *yaml.Node) error {
+	if value.Kind == yaml.ScalarNode {
+		*c = ConcurrencySpec{}
+		return value.Decode(&c.Limit)
+	}
+	if value.Kind == yaml.MappingNode {
+		for i := 0; i < len(value.Content); i += 2 {
+			if k := value.Content[i].Value; k != "limit" && k != "group" {
+				return fmt.Errorf("line %d: `concurrency` has no `%s`; it takes `limit` and `group`",
+					value.Content[i].Line, k)
+			}
+		}
+	}
+	// A named type without the method, or this recurses forever.
+	type plain ConcurrencySpec
+	var p plain
+	if err := value.Decode(&p); err != nil {
+		return err
+	}
+	*c = ConcurrencySpec(p)
+	c.Group = strings.TrimSpace(c.Group)
+	// A group is for mutual exclusion first; saying nothing means one at a time.
+	if c.Group != "" && !hasKey(value, "limit") {
+		c.Limit = 1
+	}
+	return nil
+}
+
+func hasKey(m *yaml.Node, key string) bool {
+	for i := 0; i < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return true
+		}
+	}
+	return false
+}
+
 // Dependency is one entry of `depends_on`. It accepts both shapes:
 //
 //	depends_on: [extract]
@@ -305,7 +364,8 @@ func Parse(path string, conteudo []byte) (dominio.Workflow, error) {
 		// knows how to do.
 		Image:     strings.TrimSpace(s.Image),
 		Resources: s.Resources.dominio(),
-		MaxActive: s.Concurrency,
+		MaxActive: s.Concurrency.Limit,
+		Group:     s.Concurrency.Group,
 		Env:       aparar(s.Env),
 		Secrets:   aparar(s.Secrets),
 	}

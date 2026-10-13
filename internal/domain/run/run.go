@@ -47,6 +47,11 @@ type Run struct {
 	// are already queued.
 	MaxActive int
 
+	// Group is the workflow's concurrency group at the instant of the trigger,
+	// a snapshot like MaxActive. Empty: the run contends only with runs of its
+	// own workflow.
+	Group string
+
 	// LogicalDate is the slot this Run represents. Nil for a manual trigger,
 	// which belongs to no slot at all.
 	LogicalDate *time.Time

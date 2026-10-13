@@ -169,7 +169,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 			return created, fmt.Errorf("params padrao de %q: %w", a.WorkflowSlug, err)
 		}
 		made, err := s.createAndEnqueue(ctx, a.WorkflowSlug, bruto, slot,
-			sch.TriggerSchedule, 0, defaults, def.MaxActive)
+			sch.TriggerSchedule, 0, defaults, def.MaxActive, def.Group)
 		if err != nil {
 			return created, err
 		}
@@ -202,7 +202,7 @@ func (s *Scheduler) materialize(ctx context.Context, a sch.Schedule, now time.Ti
 // apart would report ten.
 func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byte,
 	slot time.Time, trigger sch.TriggerType, priority int, params map[string]string,
-	maxActive int, targets ...string) (bool, error) {
+	maxActive int, group string, targets ...string) (bool, error) {
 
 	key := fmt.Sprintf("%s:%s:%s", slug, trigger, slot.UTC().Format(time.RFC3339))
 
@@ -214,6 +214,7 @@ func (s *Scheduler) createAndEnqueue(ctx context.Context, slug string, def []byt
 		LogicalDate:    &slot,
 		Params:         params,
 		MaxActive:      maxActive,
+		Group:          group,
 		// Variadic and empty for every other trigger: a schedule, a backfill
 		// and a click have no landing behind them, and the column stays NULL.
 		TriggerTargets: targets,
@@ -264,6 +265,9 @@ func (s *Scheduler) Disparar(ctx context.Context, slug string, now time.Time,
 		TriggerType:    string(sch.TriggerManual),
 		Params:         values,
 		MaxActive:      def.MaxActive,
+		// The manual run joins the group like any other. #32 WAS a manual run:
+		// the daily, clicked during a slot of the */15 it shares models with.
+		Group: def.Group,
 	})
 	if err != nil {
 		if errors.Is(err, postgres.ErrJaExiste) {
@@ -356,7 +360,7 @@ func (s *Scheduler) Backfill(ctx context.Context, slug string, de, ate time.Time
 		// carrying both numbers.
 		out.Slots++
 		made, err := s.createAndEnqueue(ctx, slug, bruto, prox,
-			sch.TriggerBackfill, s.backfillPriority, values, def.MaxActive)
+			sch.TriggerBackfill, s.backfillPriority, values, def.MaxActive, def.Group)
 		if err != nil {
 			return out, err
 		}
