@@ -78,6 +78,16 @@ type (
 	// LoadResult is the low-level load outcome. Prefer Result.
 	LoadResult = core.LoadResult
 
+	// LoadJobError is a BigQuery write that ended before its load job did.
+	// The job may still land; it names the job so the caller can ask.
+	LoadJobError = core.LoadJobError
+
+	// JobState is what was last known about a load job.
+	JobState = core.JobState
+
+	// JobReport is what a load job became, asked for by name.
+	JobReport = core.JobReport
+
 	// SourceFailure says which source failed, and why, in a composite source.
 	SourceFailure = core.SourceFailure
 
@@ -105,6 +115,13 @@ type (
 
 	// Dedup names how a load avoids writing a record twice.
 	Dedup = core.Dedup
+)
+
+// The states a LoadJobError or a JobReport can carry.
+const (
+	JobRunning = core.JobRunning
+	JobUnknown = core.JobUnknown
+	JobDone    = core.JobDone
 )
 
 // Bool returns a pointer to b, for the tri-state options where nil means

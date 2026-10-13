@@ -180,3 +180,23 @@ func keepStaged(err error) bool {
 	var je *core.LoadJobError
 	return errors.As(err, &je)
 }
+
+// reportOf reads what a fetched job had become.
+func reportOf(j job) core.JobReport {
+	done, failed := j.Seen()
+	if !done {
+		return core.JobReport{State: core.JobRunning}
+	}
+	return core.JobReport{State: core.JobDone, Failed: failed}
+}
+
+// Job asks BigQuery what the load job named id became. It is how a caller that
+// stopped waiting finds out whether the rows landed; location may be empty,
+// and is then the dataset's.
+func (l *Loader) Job(ctx context.Context, id, location string) (core.JobReport, error) {
+	j, err := l.findJob(ctx, id, location)
+	if err != nil {
+		return core.JobReport{}, err
+	}
+	return reportOf(j), nil
+}

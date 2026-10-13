@@ -277,10 +277,16 @@ func TestAgainstRealBigQueryTheSameBatchLoadsOnce(t *testing.T) {
 		{Provider: "p", Entity: "e", SourceKey: "1", RecordTS: "t", Payload: map[string]any{"id": "1"}},
 		{Provider: "p", Entity: "e", SourceKey: "2", RecordTS: "t", Payload: map[string]any{"id": "2"}},
 	}
+	var jobs []string
 	for attempt := 1; attempt <= 2; attempt++ {
-		if _, err := l.Load(ctx, batch...); err != nil {
+		res, err := l.Load(ctx, batch...)
+		if err != nil {
 			t.Fatalf("attempt %d: %v", attempt, err)
 		}
+		jobs = append(jobs, res.JobID)
+	}
+	if jobs[0] == "" || jobs[0] != jobs[1] {
+		t.Errorf("the two loads report jobs %q: one batch, one job", jobs)
 	}
 
 	it, err := client.Query(fmt.Sprintf("SELECT COUNT(*) AS n FROM `%s.%s.%s`",

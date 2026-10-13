@@ -199,3 +199,18 @@ func (b Table) resolveCreate(run core.RunContext) (bool, core.Origin) {
 	}
 	return false, core.Origin{Value: "false", Where: "default"}
 }
+
+// Job asks BigQuery what the load job named id became -- how a writer that
+// stopped waiting learns whether the rows landed. The id is the one a
+// LoadJobError carries; location may be empty, and is then the dataset's.
+func (b Table) Job(ctx context.Context, id, location string) (core.JobReport, error) {
+	cfg, _, err := b.config(core.WriteOptions{})
+	if err != nil {
+		return core.JobReport{}, err
+	}
+	loader, err := load.New(ctx, cfg)
+	if err != nil {
+		return core.JobReport{}, err
+	}
+	return loader.Job(ctx, id, location)
+}

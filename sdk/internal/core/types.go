@@ -184,6 +184,7 @@ type LoadResult struct {
 	RowsIgnored  int64         // rows MERGE matched as already present; 0 unless DedupMerge
 	TableCreated bool          // whether this load created the destination table
 	ErrorRows    []string      // error descriptions from BigQuery per row (truncated)
+	JobID        string        // the BigQuery load job that wrote the rows; empty elsewhere
 
 	// Objects are the objects this load wrote AND THAT ARE STILL THERE.
 	//
