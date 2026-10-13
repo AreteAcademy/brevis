@@ -11,31 +11,34 @@ import (
 	"google.golang.org/api/googleapi"
 )
 
-// A load job is named by what it loads, so that a retry of the same batch
-// finds the job an earlier attempt left running instead of starting a second
-// one.
+// A load job is named after the write it belongs to, so that a retry of the
+// same batch finds the job an earlier attempt left running instead of starting
+// a second one.
 //
 // Issue #85: the gateway stopped waiting on a job after 60 s, the job
 // succeeded three seconds later, and the batch was buried as well as written.
 // With anonymous jobs every retry was a fresh job -- each one could land, and
 // under `write: append` each landing was another copy of the rows.
 //
-// The name is the hash of the table and the bytes, plus a generation. The
-// bytes are the NDJSON, which encoding/json makes deterministic for the same
-// envelopes. A job that FAILED has used its name for good, so the next
-// attempt takes the next generation.
+// The name is the hash of the table and the caller's BatchKey, plus a
+// generation; a job that FAILED has used its name for good, so the next
+// attempt takes the next generation. It is NOT a hash of the rows: the
+// gateway's auto_table stamps the time it writes, so a retry carries other
+// bytes, and two separate writes of identical rows must stay two writes.
+// Without a key the job is anonymous, as it always was.
 
 // maxGenerations bounds how many failed jobs one batch may leave behind
 // before the load gives up. A retry policy is a handful of attempts; this is
 // a guard against a loop, not a policy.
 const maxGenerations = 16
 
-// jobBase is the generation-less name of the job that loads data into table.
-func jobBase(table string, data []byte) string {
+// jobBase is the generation-less name of the job that writes batch key into
+// table.
+func jobBase(table string, key []byte) string {
 	h := sha256.New()
 	h.Write([]byte(table))
 	h.Write([]byte{0})
-	h.Write(data)
+	h.Write(key)
 	return fmt.Sprintf("brevis_%x", h.Sum(nil)[:16])
 }
 
@@ -133,14 +136,14 @@ func (j bqJob) Wait(ctx context.Context) (jobOutcome, error) {
 	return jobOutcome{}, nil
 }
 
-// runNamedLoadJob is runLoadJob with a name: the job that loads data into
-// table is the same job however many times it is asked for.
+// runNamedLoadJob runs the load job of this write: named after the batch key
+// when there is one, anonymous when there is not.
 //
 // rewind, when not nil, puts the loader's source back at its start. An
 // inline source is a reader, and the client drains it into its upload buffer
 // on the first insert: without this, the next generation inserted an EMPTY
 // load -- one BigQuery can take as a success with nothing written.
-func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, table *bigquery.Table, data []byte, rewind func()) ([]string, string, error) {
+func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, table *bigquery.Table, rewind func()) ([]string, string, error) {
 	loader.WriteDisposition = bigquery.WriteAppend
 
 	submit := func(ctx context.Context, id string) (job, error) {
@@ -155,15 +158,37 @@ func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, t
 		}
 		return bqJob{j}, nil
 	}
+	if l.cfg.BatchKey == "" {
+		return awaitAnonymous(ctx, table.TableID, submit)
+	}
 	find := func(ctx context.Context, id string) (job, error) {
 		return l.findJob(ctx, id, "")
 	}
-	return awaitLoad(ctx, table.TableID, l.jobBaseFor(table, data), submit, find)
+	return awaitLoad(ctx, table.TableID, l.jobBaseFor(table), submit, find)
 }
 
-// jobBaseFor names the job that loads data into table.
-func (l *Loader) jobBaseFor(table *bigquery.Table, data []byte) string {
-	return jobBase(fmt.Sprintf("%s.%s.%s", table.ProjectID, table.DatasetID, table.TableID), data)
+// awaitAnonymous runs a job the client names, once. There is no batch to
+// adopt, but a wait that ends early still names the job: the caller may ask
+// what became of it.
+func awaitAnonymous(ctx context.Context, table string, submit submitFunc) ([]string, string, error) {
+	j, err := submit(ctx, "")
+	if err != nil {
+		return nil, "", fmt.Errorf("start load job: %w", err)
+	}
+	out, err := j.Wait(ctx)
+	if err != nil {
+		return nil, j.ID(), &core.LoadJobError{Table: table, JobID: j.ID(), Location: j.Location(),
+			State: core.JobRunning, Err: fmt.Errorf("wait for load job: %w", err)}
+	}
+	if out.failed != nil {
+		return out.rows, j.ID(), fmt.Errorf("load job failed: %w", out.failed)
+	}
+	return nil, j.ID(), nil
+}
+
+// jobBaseFor names the job of this write into table.
+func (l *Loader) jobBaseFor(table *bigquery.Table) string {
+	return jobBase(fmt.Sprintf("%s.%s.%s", table.ProjectID, table.DatasetID, table.TableID), []byte(l.cfg.BatchKey))
 }
 
 // findJob fetches a job by name. A job lives in its dataset's location, and

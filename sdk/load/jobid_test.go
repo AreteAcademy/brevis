@@ -63,20 +63,18 @@ func (s *fakeService) find(_ context.Context, id string) (job, error) {
 	return j, nil
 }
 
-func TestTheSameBatchGetsTheSameJobID(t *testing.T) {
-	a := jobBase("p.d.t", []byte(`{"id":1}`+"\n"))
-	b := jobBase("p.d.t", []byte(`{"id":1}`+"\n"))
-	if a != b {
-		t.Fatalf("one batch, two job IDs: %s and %s; a retry would start a second job", a, b)
+func TestTheSameBatchKeyGetsTheSameJobID(t *testing.T) {
+	if jobBase("p.d.t", []byte("batch-1")) != jobBase("p.d.t", []byte("batch-1")) {
+		t.Fatal("one batch, two job IDs: a retry would start a second job")
 	}
 }
 
 func TestADifferentBatchOrTableGetsAnotherJobID(t *testing.T) {
-	base := jobBase("p.d.t", []byte(`{"id":1}`))
-	if base == jobBase("p.d.t", []byte(`{"id":2}`)) {
+	base := jobBase("p.d.t", []byte("batch-1"))
+	if base == jobBase("p.d.t", []byte("batch-2")) {
 		t.Error("two batches share a job ID: the second would be taken for the first")
 	}
-	if base == jobBase("p.d.other", []byte(`{"id":1}`)) {
+	if base == jobBase("p.d.other", []byte("batch-1")) {
 		t.Error("two tables share a job ID: the second table would never be written")
 	}
 }

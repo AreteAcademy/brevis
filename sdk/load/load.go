@@ -860,7 +860,7 @@ func (l *Loader) loadInline(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(source)
 	l.applyLayout(loader, &source.FileConfig)
 
-	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, data, func() { rd.Reset(data) })
+	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, func() { rd.Reset(data) })
 	if err != nil {
 		return 0, jobID, rows, err
 	}
@@ -901,7 +901,7 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(gcsRef)
 	l.applyLayout(loader, &gcsRef.FileConfig)
 
-	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, data, nil)
+	rows, jobID, err := l.runNamedLoadJob(ctx, loader, table, nil)
 	if err != nil {
 		if keepStaged(err) {
 			slog.WarnContext(ctx, "staged object kept: its load job may still be reading it",

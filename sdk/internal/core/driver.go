@@ -128,6 +128,20 @@ type WriteOptions struct {
 	// quoted and hoped: see DedupKeyOf.
 	DedupKey string
 
+	// BatchKey names ONE logical write, and a destination that can make a
+	// write idempotent uses it to: BigQuery names the load job after it, so a
+	// retry of the same batch finds the job an earlier attempt left running
+	// instead of starting a second one. Issue #85.
+	//
+	// The caller makes it once per batch, BEFORE retrying, and passes the same
+	// key to every attempt. It is a key and not a hash of the rows on purpose:
+	// a caller that stamps a timestamp when it writes sends other bytes on
+	// every attempt, and two genuinely separate writes of identical rows --
+	// a reload into a recreated table -- must not be taken for one.
+	//
+	// Empty means no identity: every write is its own, as before.
+	BatchKey string
+
 	// Run is what the engine knows about this execution. A destination that
 	// creates its table on the first run reads that from here.
 	Run RunContext

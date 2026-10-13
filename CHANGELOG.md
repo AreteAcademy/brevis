@@ -28,21 +28,31 @@ running with no way to find it, and its retry started a second job with the
 same rows. Both could land: the job the gateway gave up on succeeded three
 seconds later, and the batch was buried as well as written.
 
-The job is now named after what it loads: `brevis_<hash of table and
-NDJSON>_g<n>`. Loading the same batch again meets BigQuery's 409, fetches the
-job by name in the dataset's location, and takes its outcome — done means
-landed, running means wait on it, failed means the name is spent and generation
-`n+1` runs. `write: merge` keeps anonymous jobs: its staging table is per
-attempt, and the dedup key already makes its replay safe.
+With `WriteOptions.BatchKey` set, the job is named after the write:
+`brevis_<hash of table and key>_g<n>`. The caller makes the key once per batch
+and passes it to every attempt, and loading that batch again meets BigQuery's
+409, fetches the job by name in the dataset's location, and takes its outcome —
+done means landed, running means wait on it, failed means the name is spent and
+generation `n+1` runs, with the rows uploaded again. Without a key the job is
+anonymous, as before, and two loads of identical rows are two writes.
+
+A key and not a hash of the rows, on purpose: the gateway's `auto_table` stamps
+the time it writes, so a retry carries other bytes; and a reload of unchanged
+data into a recreated table is a second write, which a content-named job would
+have reported as done without writing anything. `write: merge` keeps anonymous
+jobs: its staging table is per attempt, and the dedup key already makes its
+replay safe.
 
 A staged (GCS) load whose job may still be running no longer deletes the object
 the job reads. The bucket's lifecycle rule collects what stays behind.
 
 ### Added: the load job, on the result and on the error
 
+- `WriteOptions.BatchKey` names one logical write; see above.
 - `LoadResult.JobID` names the job that wrote the rows, and `load complete`
   logs it as `job`.
-- `sdk.LoadJobError` is what a load returns when it ended before its job did:
+- `sdk.LoadJobError` is what a load returns when it ended before its job did,
+  named or anonymous:
   `Table`, `JobID`, `Location` and `State` (`running`, or `unknown` when the
   insert's answer was lost). It wraps the cause, so the message is the same and
   `errors.Is(err, context.DeadlineExceeded)` still holds.
