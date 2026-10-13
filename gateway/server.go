@@ -1437,7 +1437,7 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 			goto giveUp
 		}
 		slog.Warn("the sink refused a batch; retrying",
-			"stream", p.stream.Name, "sink", p.sink.Describe(),
+			"stream", name, "sink", sink,
 			"attempt", attempt, "of", r.Attempts, "in", wait, "error", err)
 		select {
 		case <-time.After(wait):
