@@ -898,9 +898,14 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	loader := table.LoaderFrom(gcsRef)
 	l.applyLayout(loader, &gcsRef.FileConfig)
 
-	rows, err := runLoadJob(ctx, loader)
+	rows, _, err := l.runNamedLoadJob(ctx, loader, table, data)
 	if err != nil {
-		_ = obj.Delete(ctx)
+		if keepStaged(err) {
+			slog.WarnContext(ctx, "staged object kept: its load job may still be reading it",
+				"object", objName, "error", err)
+		} else {
+			_ = obj.Delete(ctx)
+		}
 		return 0, "", rows, err
 	}
 
