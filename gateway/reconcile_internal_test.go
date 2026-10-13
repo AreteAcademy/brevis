@@ -249,12 +249,11 @@ func (locatedJobSink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, b
 // job behind, and the LAST attempt fails before it reaches the load -- a
 // metadata call, say -- with an error that names no job.
 type flakySink struct {
-	mu       sync.Mutex
-	calls    int
-	asked    error // the cause Reconcile was handed
-	landed   bool
-	learned  error // what Reconcile reports it learned; the cause when nil
-	attempts int
+	mu      sync.Mutex
+	calls   int
+	asked   error // the cause Reconcile was handed
+	landed  bool
+	learned error // what Reconcile reports it learned; the cause when nil
 }
 
 func (*flakySink) Describe() string { return "flaky" }
