@@ -315,10 +315,12 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// Reported, because the events of a table that did not land have to
 		// reach the dead letter. What the caller then does with the batch is
 		// the caller's: `pipe.send` buries it WHOLE, so the tables that did
-		// land are parked as well as written. That is survivable and it is
-		// written here rather than discovered -- every row carries
-		// `brevis_ingestion_id` and every table is created with it as the
-		// dedup key, so replaying the dead letter writes each row once.
+		// land are parked as well as written. Under `write: merge` that is
+		// survivable: every row carries `brevis_ingestion_id` and every table
+		// is created with it as the dedup key, so replaying the dead letter
+		// writes each row once. Under `write: append` it is NOT -- nothing
+		// matches on the key, and a replay writes those tables' rows a second
+		// time. Issue #85.
 		//
 		// The alternative was the old behaviour: none of them landed at all.
 		return wrote, fmt.Errorf("table(s) %s ran out of their share of the "+
