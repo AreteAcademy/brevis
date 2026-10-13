@@ -42,6 +42,11 @@ func Resolve(all []dominio.Workflow) ([]dominio.Workflow, error) {
 		}
 		out = append(out, flat)
 	}
+	// A rule about the set, like `uses:`, so it is asked here: the one call
+	// `validate` and `publish` share.
+	if err := dominio.CheckGroups(out); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
