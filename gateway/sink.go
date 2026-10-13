@@ -39,6 +39,22 @@ type Admitter interface {
 	Admit(event map[string]any) error
 }
 
+// Reconciler is a sink that can say, after giving up on a write, whether it
+// landed after all.
+//
+// Optional, like Admitter. It exists because giving up is not the same as
+// failing: a BigQuery load job keeps running after the gateway stops waiting
+// for it, and it can succeed. Issue #85 buried 88 events that were already in
+// the table. A sink whose write cannot outlive the call -- a topic publish, a
+// SQL statement -- has nothing to reconcile and does not implement this.
+//
+// err is what Write returned. landed is true only when the sink KNOWS the
+// batch is in the destination; anything less, including an error asking, and
+// the batch goes to the dead letter as before.
+type Reconciler interface {
+	Reconcile(ctx context.Context, err error) (landed bool, _ error)
+}
+
 // Measurer is a sink that wants to know how many bytes each event arrived as.
 //
 // Optional, like Admitter, and for the same reason: most sinks must not get

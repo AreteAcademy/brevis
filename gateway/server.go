@@ -48,6 +48,19 @@ var sendTimeout = 60 * time.Second
 // test.
 var deadLetterTimeout = 30 * time.Second
 
+// reconcileTimeout bounds the one question asked after the send window
+// closed: did the write we stopped waiting for land after all? See
+// Reconciler.
+//
+// Its own, from the caller's context, for the reason deadLetterTimeout is:
+// the send's is spent by definition. Short, because it runs before the dead
+// letter and inside the drain's grace period; a warehouse that does not
+// answer in five seconds gets the batch buried, which is what happened before
+// the question existed.
+//
+// A var for the reason sendTimeout is. Nothing changes it outside a test.
+var reconcileTimeout = 5 * time.Second
+
 // startupTimeout bounds building the sinks. Thirty seconds is long for a
 // credential fetch and short against any readiness probe worth having.
 const startupTimeout = 30 * time.Second
@@ -1428,10 +1441,37 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	}
 
 giveUp:
+	if p.landedAnyway(parent, err) {
+		p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
+		p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeDelivered)
+		slog.Info("delivered after the send window closed", "stream", name,
+			"sink", sink, "events", len(batch), "cause", err)
+		return nil
+	}
 	p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 	p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeBuried)
 	p.bury(parent, batch, err)
 	return err
+}
+
+// landedAnyway asks a Reconciler whether the write it gave up on landed.
+//
+// On `parent`, with its own budget: see reconcileTimeout. Not knowing is not
+// landing -- an error asking is logged and the batch is buried.
+func (p *pipe) landedAnyway(parent context.Context, cause error) bool {
+	rc, ok := p.sink.(Reconciler)
+	if !ok {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(parent, reconcileTimeout)
+	defer cancel()
+	landed, err := rc.Reconcile(ctx, cause)
+	if err != nil {
+		slog.Warn("could not learn whether the batch landed; burying it",
+			"stream", p.stream.Name, "sink", p.sink.Describe(), "error", err)
+		return false
+	}
+	return landed
 }
 
 // bury writes what the sink would not take, with the reason attached.
