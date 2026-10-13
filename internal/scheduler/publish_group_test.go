@@ -1,4 +1,4 @@
-package postgres_test
+package scheduler_test
 
 import (
 	"context"
@@ -15,7 +15,7 @@ func groupedWorkflow(slug, group string, limit int) wf.Workflow {
 		Nodes: []wf.Node{{ID: "a", Run: "echo ok"}}}
 }
 
-func project(t *testing.T, pool *postgres.Pool, slug string) uuid.UUID {
+func projectNamed(t *testing.T, pool *postgres.Pool, slug string) uuid.UUID {
 	t.Helper()
 	id := uuid.New()
 	if _, err := pool.Exec(context.Background(),
@@ -25,14 +25,18 @@ func project(t *testing.T, pool *postgres.Pool, slug string) uuid.UUID {
 	return id
 }
 
+// HERE, beside the other publish tests, and not in the postgres package: CI
+// runs every database test of the scheduler and the queue, and elsewhere only
+// the ones named `Integration`.
+
 // `publish one-file.yaml` sees one file. The other members of its group are in
 // the database, and the limit rule has to hold against them too, or publishing
 // the files one at a time is a way around it.
 func TestAPartialPublishMeetsTheGroupsPublishedMembers(t *testing.T) {
-	pool := insightsDB(t)
+	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
-	p := project(t, pool, "p")
+	p := projectNamed(t, pool, "p")
 	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
 		t.Fatal(err)
 	}
@@ -56,10 +60,10 @@ func TestAPartialPublishMeetsTheGroupsPublishedMembers(t *testing.T) {
 // What this publish replaces is not "already published": republishing daily
 // with a new limit is how the limit changes.
 func TestAWorkflowBeingRepublishedIsNotItsOwnRival(t *testing.T) {
-	pool := insightsDB(t)
+	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
-	p := project(t, pool, "p")
+	p := projectNamed(t, pool, "p")
 	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
 		t.Fatal(err)
 	}
@@ -75,10 +79,10 @@ func TestAWorkflowBeingRepublishedIsNotItsOwnRival(t *testing.T) {
 // --prune removes the project's workflows that are not in the files, so they
 // are not members any more. Another project's are, prune or not.
 func TestPruneLeavesOnlyOtherProjectsMembers(t *testing.T) {
-	pool := insightsDB(t)
+	pool := testDB(t)
 	ctx := context.Background()
 	repo := postgres.NewWorkflowRepo(pool)
-	p, q := project(t, pool, "p"), project(t, pool, "q")
+	p, q := projectNamed(t, pool, "p"), projectNamed(t, pool, "q")
 	if err := repo.Publicar(ctx, groupedWorkflow("daily", "jaffle_models", 1), p); err != nil {
 		t.Fatal(err)
 	}
