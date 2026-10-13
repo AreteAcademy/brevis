@@ -164,6 +164,14 @@ func (b *sink) Reconcile(ctx context.Context, cause error) (bool, error) {
 	return report.State == sdk.JobDone && report.Failed == nil, nil
 }
 
+// JobOf satisfies gateway.JobNamer: every row of a batch was in its one load
+// job.
+func (b *sink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, bool) {
+	var je *sdk.LoadJobError
+	ok := errors.As(cause, &je)
+	return je, ok
+}
+
 // Locate names the table this sink writes, from its configuration alone: the
 // project, dataset and table New hands tobq.Table.
 //

@@ -111,3 +111,20 @@ func TestTablesNeverWrittenKeepTheBatchUnlanded(t *testing.T) {
 
 // The pipe finds the question by type assertion; the router must answer it.
 var _ gateway.Reconciler = (*router)(nil)
+
+// In a batch of many tables, each row names the job of ITS table, and a row of
+// a table that landed names none.
+func TestEachBuriedRowNamesTheJobOfItsTable(t *testing.T) {
+	r := routerOverJobs(t, map[string]jobSink{"tbl_b": {table: "tbl_b", slow: true}})
+	err := writeWithin(t, r, 150*time.Millisecond, "tbl_a", "tbl_b")
+	batch := batchFor("tbl_a", "tbl_b")
+
+	if je, ok := r.JobOf(err, batch[1].Payload.(map[string]any)); !ok || je.JobID != "job_tbl_b" {
+		t.Errorf("tbl_b's row: JobOf = %+v, %v", je, ok)
+	}
+	if je, ok := r.JobOf(err, batch[0].Payload.(map[string]any)); ok {
+		t.Errorf("tbl_a landed, and its row names job %s", je.JobID)
+	}
+}
+
+var _ gateway.JobNamer = (*router)(nil)

@@ -43,6 +43,16 @@ of time: the batch counts as delivered only when every such table landed and
 none was left untried. A sink whose write cannot outlive the call has nothing to
 reconcile.
 
+### Added: a buried row names the load job that may have written it
+
+A BigQuery batch buried while its load job was still running carries
+`_dead_letter_job_id`, `_dead_letter_job_location` and `_dead_letter_job_state`
+on every row: `bq show -j --location=… <id>` says whether the rows landed before
+anyone replays them. Under `auto_table` each row names the job of its own table.
+Telling a written-and-buried batch from a buried-only one used to mean matching
+each file to the warehouse's job history by table and time (#85); this is also
+what the console's resend (#86) checks.
+
 ### Fixed: no "retrying" when the send window has no room for a retry
 
 `retry.attempts` shares one send window (60 s). When an attempt spends it, the

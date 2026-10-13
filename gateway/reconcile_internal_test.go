@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -116,5 +117,56 @@ func TestTheReconcileBudgetIsShort(t *testing.T) {
 	if reconcileTimeout > 15*time.Second {
 		t.Errorf("reconcileTimeout is %s: it runs before the dead letter, "+
 			"inside the drain's grace period", reconcileTimeout)
+	}
+}
+
+func (*slowJobSink) JobOf(cause error, _ map[string]any) (*sdk.LoadJobError, bool) {
+	var je *sdk.LoadJobError
+	ok := errors.As(cause, &je)
+	return je, ok
+}
+
+// A batch buried with its job still running carries the job on every row, so
+// a replay -- or the console's resend, #86 -- can ask BigQuery whether the
+// rows landed instead of writing them a second time.
+func TestABuriedRowCarriesItsLoadJob(t *testing.T) {
+	dead, _ := sendThroughSlowJob(t, &slowJobSink{landed: false})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	if len(dead.got) != 1 {
+		t.Fatalf("the dead letter received %d events, want 1", len(dead.got))
+	}
+	row := dead.got[0].Payload.(map[string]any)
+	if row[ColumnDeadLetterJobID] != "brevis_x_g1" {
+		t.Errorf("%s = %v, want brevis_x_g1", ColumnDeadLetterJobID, row[ColumnDeadLetterJobID])
+	}
+	if row[ColumnDeadLetterJobState] != string(sdk.JobRunning) {
+		t.Errorf("%s = %v, want running", ColumnDeadLetterJobState, row[ColumnDeadLetterJobState])
+	}
+}
+
+// A failure with no job leaves the record as it always was.
+func TestABuriedRowWithoutAJobIsUnchanged(t *testing.T) {
+	restore := sendTimeout
+	sendTimeout = 50 * time.Millisecond
+	t.Cleanup(func() { sendTimeout = restore })
+
+	dead := &recordingDead{}
+	p := &pipe{
+		stream:  Stream{Name: "ingestion", Retry: Retry{Attempts: 1}},
+		sink:    blockingSink{},
+		dead:    dead,
+		metrics: NewMetrics(),
+	}
+	_ = p.send(context.Background(), []sdk.Envelope{{Payload: map[string]any{"id": "e-1"}}})
+
+	dead.mu.Lock()
+	defer dead.mu.Unlock()
+	row := dead.got[0].Payload.(map[string]any)
+	for _, k := range []string{ColumnDeadLetterJobID, ColumnDeadLetterJobLocation, ColumnDeadLetterJobState} {
+		if _, ok := row[k]; ok {
+			t.Errorf("a row with no job carries %s", k)
+		}
 	}
 }
