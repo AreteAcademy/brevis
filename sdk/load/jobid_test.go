@@ -64,8 +64,9 @@ func (s *fakeService) find(_ context.Context, id string) (job, error) {
 }
 
 func TestTheSameBatchKeyGetsTheSameJobID(t *testing.T) {
-	if jobBase("p.d.t", []byte("batch-1")) != jobBase("p.d.t", []byte("batch-1")) {
-		t.Fatal("one batch, two job IDs: a retry would start a second job")
+	first, retry := jobBase("p.d.t", []byte("batch-1")), jobBase("p.d.t", []byte("batch-"+"1"))
+	if first != retry {
+		t.Fatalf("one batch, two job IDs (%s, %s): a retry would start a second job", first, retry)
 	}
 }
 

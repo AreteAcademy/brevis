@@ -96,7 +96,7 @@ func loaderAgainst(t *testing.T, f *fakeBigQuery, cfg *core.LoadConfig) (*Loader
 func TestTheNextGenerationUploadsTheRows(t *testing.T) {
 	f := newFakeBigQuery()
 	l, table := loaderAgainst(t, f, &core.LoadConfig{BatchKey: "batch-1"})
-	data := []byte(`{"id":"row-1"}` + "\n" + `{"id":"row-2"}` + "\n")
+	data := []byte(`{"id":"first"}` + "\n" + `{"id":"second"}` + "\n")
 
 	// An earlier attempt's job exists and failed: this load must take g2.
 	base := l.jobBaseFor(table)
@@ -109,7 +109,7 @@ func TestTheNextGenerationUploadsTheRows(t *testing.T) {
 	if !ok {
 		t.Fatalf("g2 was never inserted; inserted: %v", f.uploads)
 	}
-	if !strings.Contains(body, "row-1") || !strings.Contains(body, "row-2") {
+	if !strings.Contains(body, "first") || !strings.Contains(body, "second") {
 		t.Errorf("g2 was inserted without the rows -- an empty load:\n%s", body)
 	}
 }
@@ -123,7 +123,7 @@ func TestARetryWithOtherBytesAdoptsTheBatchJob(t *testing.T) {
 	l, table := loaderAgainst(t, f, &core.LoadConfig{BatchKey: "batch-1"})
 
 	for _, at := range []string{"00:06:24", "00:07:23"} {
-		data := []byte(`{"id":"row-1","brevis_received_at":"2026-10-13T` + at + `Z"}` + "\n")
+		data := []byte(`{"id":"first","brevis_received_at":"2026-10-13T` + at + `Z"}` + "\n")
 		if _, _, _, err := l.loadInline(context.Background(), table, data); err != nil {
 			t.Fatalf("load at %s: %v", at, err)
 		}
@@ -139,7 +139,7 @@ func TestARetryWithOtherBytesAdoptsTheBatchJob(t *testing.T) {
 func TestWithoutAKeyIdenticalLoadsAreTwoWrites(t *testing.T) {
 	f := newFakeBigQuery()
 	l, table := loaderAgainst(t, f, &core.LoadConfig{})
-	data := []byte(`{"id":"row-1"}` + "\n")
+	data := []byte(`{"id":"first"}` + "\n")
 
 	for i := 0; i < 2; i++ {
 		if _, _, _, err := l.loadInline(context.Background(), table, data); err != nil {
@@ -160,7 +160,7 @@ func TestAnAnonymousJobIsNamedWhenTheWaitEnds(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
-	_, _, _, err := l.loadInline(ctx, table, []byte(`{"id":"row-1"}`+"\n"))
+	_, _, _, err := l.loadInline(ctx, table, []byte(`{"id":"first"}`+"\n"))
 
 	var je *core.LoadJobError
 	if !errors.As(err, &je) || je.JobID == "" || je.State != core.JobRunning {
