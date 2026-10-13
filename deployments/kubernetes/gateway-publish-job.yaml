@@ -52,7 +52,7 @@ spec:
           # needs no credential, but it does read the variables `dsn_from`
           # names -- a DSN is parsed for its database, never dialled -- so the
           # gateway's own environment goes in, and the engine's does not.
-          image: areteacademy/brevis-gateway:0.28.0
+          image: areteacademy/brevis-gateway:0.29.0
           args: ["describe", "--out", "/manifest/manifest.json", "/etc/brevis/gateway.yaml"]
           envFrom:
             - secretRef: {name: brevis-gateway-env}

@@ -13,7 +13,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.29.0] — 2026-10-13
 
 ### Fixed: replaying the dead letter under `write: append` can duplicate
 
@@ -66,6 +66,20 @@ backoff cannot run, but the log still said `retrying attempt=1 of=4` and the
 batch was buried a moment later (issue #85). Now the WARN says
 `the send window is exhausted, no retry`, and "retrying" appears only before a
 retry that will run.
+
+### Upgrading: the dead letter carries three more columns
+
+A buried BigQuery row can now carry `_dead_letter_job_id`,
+`_dead_letter_job_location` and `_dead_letter_job_state`. A `files:` dead
+letter takes them as it takes any field. A dead letter that is a table which
+does not evolve — a BigQuery or Postgres table created before this version —
+refuses a row with columns it does not have, and that is the line "the dead
+letter refused them too, and they are lost". Add the three columns, or let the
+table evolve, before upgrading.
+
+Requires `sdk v0.86.0`.
+
+---
 
 ## [0.28.0] — 2026-10-11
 
