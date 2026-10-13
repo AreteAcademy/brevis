@@ -32,9 +32,12 @@ with every row written. Those 88 events were in the table and in the dead
 letter at once, and under `write: append` a replay would have written them
 twice.
 
-From sdk v0.86.0 the load job is named after its batch, so a retry adopts the
-job an earlier attempt started instead of starting another; and the error a
-timed-out load returns names the job. Before burying a batch, the gateway now
+The pipe now makes a key once per batch, before the first attempt, and every
+attempt hands it to the sink. From sdk v0.86.0 BigQuery names the load job
+after it, so a retry adopts the job an earlier attempt started instead of
+starting another — under `auto_table` too, whose rows carry the time they were
+written and so differ from attempt to attempt. The error a timed-out load
+returns names the job. Before burying a batch, the gateway now
 asks BigQuery what that job became, with its own 5 s budget: done without an
 error means delivered (`delivered after the send window closed`, counted as
 `delivered`); running, failed, or no answer means the dead letter, as before.

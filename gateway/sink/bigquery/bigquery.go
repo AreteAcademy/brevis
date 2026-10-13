@@ -127,8 +127,10 @@ func (b *sink) Describe() string { return b.name }
 // "nothing was declared" on a path that creates the table from a declaration
 // (#42, gateway 0.20.0). The SDK answers "what will the table have" with
 // LoadConfig.DeclaredColumns now, which reads both.
-func (b *sink) options() sdk.WriteOptions {
-	opt := sdk.WriteOptions{Dedup: b.dedup}
+//
+// The batch key comes from the pipe, in ctx: see gateway.WithBatchKey.
+func (b *sink) options(ctx context.Context) sdk.WriteOptions {
+	opt := sdk.WriteOptions{Dedup: b.dedup, BatchKey: gateway.BatchKeyOf(ctx)}
 	if b.target != nil {
 		opt.Schema = b.target.Schema
 		opt.DedupKey = b.target.DedupKey
@@ -138,7 +140,7 @@ func (b *sink) options() sdk.WriteOptions {
 }
 
 func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, error) {
-	res, err := b.table.Write(ctx, batch, b.options())
+	res, err := b.table.Write(ctx, batch, b.options(ctx))
 	if res == nil {
 		return 0, err
 	}

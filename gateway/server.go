@@ -1391,7 +1391,7 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	// `parent` is kept, and that is the whole of issue #42's first finding:
 	// `bury` below runs on it rather than on the narrowed one, which is
 	// exhausted exactly when the dead letter is needed.
-	ctx, cancel := context.WithTimeout(parent, sendTimeout)
+	ctx, cancel := context.WithTimeout(WithBatchKey(parent, newBatchKey()), sendTimeout)
 	defer cancel()
 
 	r := p.stream.Retry

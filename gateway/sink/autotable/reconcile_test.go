@@ -128,3 +128,50 @@ func TestEachBuriedRowNamesTheJobOfItsTable(t *testing.T) {
 }
 
 var _ gateway.JobNamer = (*router)(nil)
+
+// keyRecorder notes the batch key each table's write was handed.
+type keyRecorder struct {
+	table string
+	seen  *[]string
+}
+
+func (k keyRecorder) Describe() string { return "keys:" + k.table }
+func (k keyRecorder) Write(ctx context.Context, b []sdk.Envelope) (int64, error) {
+	*k.seen = append(*k.seen, gateway.BatchKeyOf(ctx))
+	return int64(len(b)), nil
+}
+
+// #85 on its own path: the router stamps brevis_received_at when it writes,
+// so a retry a minute later has other bytes. What names the load job must not
+// change with them -- every attempt reaches the table with the pipe's key.
+func TestARetryReachesEachTableWithTheBatchKey(t *testing.T) {
+	var seen []string
+	sinks := gateway.NewSinks()
+	sinks.MustRegister(Sink, New)
+	sinks.MustRegister("keys", func(b gateway.Build) (gateway.Sinker, error) {
+		return keyRecorder{table: b.Sink.Table, seen: &seen}, nil
+	})
+	built, err := gateway.BuildSink(gateway.Build{
+		Ctx:   context.Background(),
+		Sink:  gateway.Sink{Type: gateway.SinkAutoTable, Into: &gateway.Sink{Type: "keys"}},
+		Sinks: sinks,
+		Meta:  gateway.NewMemoryMetastore(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := built.(*router)
+	clock := time.Date(2026, 10, 13, 0, 6, 24, 0, time.UTC)
+	r.now = func() time.Time { return clock }
+
+	ctx := gateway.WithBatchKey(context.Background(), "batch-1")
+	for range 2 {
+		if _, err := r.Write(ctx, batchFor("tbl_a")); err != nil {
+			t.Fatal(err)
+		}
+		clock = clock.Add(time.Minute)
+	}
+	if len(seen) != 2 || seen[0] != "batch-1" || seen[1] != "batch-1" {
+		t.Errorf("the table's writes carried keys %q, want batch-1 twice", seen)
+	}
+}

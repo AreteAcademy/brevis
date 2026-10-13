@@ -57,3 +57,11 @@ func TestOnlyADoneJobWithoutAnErrorLanded(t *testing.T) {
 		}
 	}
 }
+
+// The pipe's key reaches the SDK, which names the load job after it.
+func TestTheBatchKeyReachesTheLoad(t *testing.T) {
+	ctx := gateway.WithBatchKey(context.Background(), "batch-1")
+	if got := (&sink{}).options(ctx).BatchKey; got != "batch-1" {
+		t.Errorf("BatchKey = %q, want batch-1", got)
+	}
+}
