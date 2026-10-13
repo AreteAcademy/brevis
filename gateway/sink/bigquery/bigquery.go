@@ -8,6 +8,7 @@ package bigquery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -142,6 +143,25 @@ func (b *sink) Write(ctx context.Context, batch []gateway.Envelope) (int64, erro
 		return 0, err
 	}
 	return res.RowsLoaded, err
+}
+
+// Reconcile asks BigQuery whether the load job a failed Write named landed
+// after all. See gateway.Reconciler: the job keeps running after the send
+// window closes, and in issue #85 it succeeded three seconds later.
+//
+// Only a done job without an error counts. Still running is NOT landed -- the
+// batch is buried with the job on the record, and whoever replays it asks
+// again.
+func (b *sink) Reconcile(ctx context.Context, cause error) (bool, error) {
+	var je *sdk.LoadJobError
+	if !errors.As(cause, &je) {
+		return false, nil
+	}
+	report, err := b.table.Job(ctx, je.JobID, je.Location)
+	if err != nil {
+		return false, fmt.Errorf("load job %s: %w", je.JobID, err)
+	}
+	return report.State == sdk.JobDone && report.Failed == nil, nil
 }
 
 // Locate names the table this sink writes, from its configuration alone: the

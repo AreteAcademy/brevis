@@ -24,6 +24,23 @@ matches on `brevis_ingestion_id`, so replaying a batch that was both written and
 buried writes its rows twice — and issue #85 shows that a buried batch can also
 be a written one. The comment in `auto_table` and `docs/GATEWAY.md` now say so.
 
+### Fixed: a batch whose load job landed after the send window is not buried
+
+Issue #85: attempt 1 waited out the 60 s window on a slow BigQuery load job,
+the batch went to the dead letter, and the job finished three seconds later
+with every row written. Those 88 events were in the table and in the dead
+letter at once, and under `write: append` a replay would have written them
+twice.
+
+From sdk v0.86.0 the load job is named after its batch, so a retry adopts the
+job an earlier attempt started instead of starting another; and the error a
+timed-out load returns names the job. Before burying a batch, the gateway now
+asks BigQuery what that job became, with its own 5 s budget: done without an
+error means delivered (`delivered after the send window closed`, counted as
+`delivered`); running, failed, or no answer means the dead letter, as before.
+Only the BigQuery sink is asked: a sink whose write cannot outlive the call has
+nothing to reconcile.
+
 ### Fixed: no "retrying" when the send window has no room for a retry
 
 `retry.attempts` shares one send window (60 s). When an attempt spends it, the
