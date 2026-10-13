@@ -14,6 +14,40 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: a concurrency group, so two workflows stop overlapping (#32)
+
+`concurrency: 1` limits runs of ONE workflow, and nothing could say that two
+must not run together. A daily and a `*/15` building the same dbt models did,
+when a manual run of the daily landed on a slot of the other: one dropped the
+`__dbt_tmp` table the other was reading. Both now name the shared resource:
+
+```yaml
+concurrency:
+  group: jaffle_models
+  limit: 1
+```
+
+- Runs of every workflow in the group count against one limit — scheduled,
+  landed, backfilled and manual. A run that finds the group full waits in the
+  queue. The claim counts by `COALESCE('g:' || group, 'w:' || slug)`, inside the
+  same query as before; a workflow with no group behaves exactly as it did.
+- `concurrency: N` is unchanged. A group without a limit means 1; `limit: 0`
+  with a group, a group name that is not lower case, digits, `_` and `-`, and an
+  unknown key inside `concurrency:` are refused.
+- `validate` and `publish` refuse a group whose members declare different
+  limits; `publish` also checks the members already published, except the ones
+  it replaces or `--prune` removes.
+- `validate` no longer ends every error of the set with "`uses` could not be
+  expanded".
+
+**Upgrading:** migration `00022` adds `runs.grupo_concorrencia` (nullable, no
+backfill). Runs queued before it have no group and keep their per-workflow
+limit.
+
+---
+
 ## [0.21.0] — 2026-10-12
 
 ### Added: a destination's page says how each writer is configured

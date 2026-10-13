@@ -95,6 +95,27 @@ Sem `schedule`, o workflow é manual: só roda por disparo na interface, por
 impede um `*/15` de se sobrepor a si mesmo quando uma execução passa dos quinze
 minutos.
 
+Dois workflows **diferentes** que escrevem as mesmas tabelas precisam de um
+**grupo**. Um diário e um `*/15` que constroem os mesmos modelos dbt declaram,
+cada um:
+
+```yaml
+concurrency:
+  group: jaffle_models   # o recurso compartilhado, com o mesmo nome nos dois arquivos
+  limit: 1               # opcional; um grupo sem limite vale 1
+```
+
+As execuções de todos os workflows do grupo contam contra um limite só, seja
+quem as tenha disparado — o agendamento, um landing, um backfill ou um clique.
+Uma execução que encontra o grupo cheio **espera na fila**: não é pulada e não
+falha. Um terceiro workflow que escreve as mesmas tabelas entra nomeando o grupo.
+
+- Todo membro declara o **mesmo limite**. `validate` e `publish` recusam um
+  grupo declarado com 1 num arquivo e 3 em outro, inclusive contra membros já
+  publicados.
+- Um grupo serializa **execuções do Brevis**. Um `dbt run` que alguém dispara na
+  própria máquina não está nessa fila, e falha do mesmo jeito.
+
 ## Imagem e recursos
 
 ```yaml
