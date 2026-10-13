@@ -182,3 +182,22 @@ func TestAnInterruptedWaitNamesTheJob(t *testing.T) {
 		t.Errorf("the message changed: %q", err)
 	}
 }
+
+// The staged object is what the job reads. Deleting it while the job may
+// still be reading turns a load that would have landed into one that fails
+// halfway -- or, worse, into a race nobody can reproduce. Before #85 the
+// delete ran on the expired context and failed quietly, which is the only
+// reason it never bit.
+func TestTheStagedObjectStaysWhileItsJobMayRun(t *testing.T) {
+	running := &core.LoadJobError{JobID: "j", State: core.JobRunning, Err: context.DeadlineExceeded}
+	unknown := &core.LoadJobError{JobID: "j", State: core.JobUnknown, Err: errors.New("start load job: EOF")}
+	if !keepStaged(running) {
+		t.Error("the object of a running job was deleted")
+	}
+	if !keepStaged(unknown) {
+		t.Error("the object of a job that may exist was deleted")
+	}
+	if keepStaged(errors.New("load job failed: invalid row")) {
+		t.Error("the object of a job that ended was kept")
+	}
+}

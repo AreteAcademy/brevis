@@ -171,3 +171,12 @@ func (l *Loader) findJob(ctx context.Context, id, location string) (job, error) 
 	}
 	return bqJob{j}, nil
 }
+
+// keepStaged says whether a failed GCS load must leave its staged object in
+// place: when the job may still be running, or may exist at all, the object is
+// what it reads. What stays behind is collected by the bucket's lifecycle rule,
+// which the staging bucket should have anyway.
+func keepStaged(err error) bool {
+	var je *core.LoadJobError
+	return errors.As(err, &je)
+}
