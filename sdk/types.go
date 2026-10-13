@@ -122,6 +122,7 @@ const (
 	JobRunning = core.JobRunning
 	JobUnknown = core.JobUnknown
 	JobDone    = core.JobDone
+	JobAbsent  = core.JobAbsent
 )
 
 // Bool returns a pointer to b, for the tri-state options where nil means

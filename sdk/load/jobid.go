@@ -89,6 +89,8 @@ func awaitLoad(ctx context.Context, table, base string, submit submitFunc, find 
 			if done {
 				return nil, id, nil
 			}
+		case err != nil && !mayHaveReachedServer(err):
+			return nil, "", fmt.Errorf("start load job: %w", err)
 		case err != nil:
 			// Not necessarily absent: the insert can reach the server and
 			// its answer not reach us. The next attempt finds out, by name.
@@ -107,6 +109,17 @@ func awaitLoad(ctx context.Context, table, base string, submit submitFunc, find 
 		return nil, id, nil
 	}
 	return nil, "", fmt.Errorf("load job: %d generations of %s failed; giving up", maxGenerations, base)
+}
+
+// mayHaveReachedServer tells a refusal from a maybe. BigQuery answering 4xx
+// is a definite no: no job was made. A 5xx, a timeout, a throttle or a broken
+// connection says nothing about whether the insert landed.
+func mayHaveReachedServer(err error) bool {
+	var apiErr *googleapi.Error
+	if !errors.As(err, &apiErr) {
+		return true
+	}
+	return apiErr.Code >= 500 || apiErr.Code == 408 || apiErr.Code == 429
 }
 
 func isAlreadyExists(err error) bool {
@@ -232,6 +245,9 @@ func reportOf(j job) core.JobReport {
 // and is then the dataset's.
 func (l *Loader) Job(ctx context.Context, id, location string) (core.JobReport, error) {
 	j, err := l.findJob(ctx, id, location)
+	if isNotFound(err) {
+		return core.JobReport{State: core.JobAbsent}, nil
+	}
 	if err != nil {
 		return core.JobReport{}, err
 	}

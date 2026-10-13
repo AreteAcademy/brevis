@@ -54,10 +54,12 @@ the job reads. The bucket's lifecycle rule collects what stays behind.
 - `sdk.LoadJobError` is what a load returns when it ended before its job did,
   named or anonymous:
   `Table`, `JobID`, `Location` and `State` (`running`, or `unknown` when the
-  insert's answer was lost). It wraps the cause, so the message is the same and
+  insert's answer was lost — a 5xx, 408, 429 or broken connection; a 4xx
+  refusal is a plain error, since no job was made). It wraps the cause, so the message is the same and
   `errors.Is(err, context.DeadlineExceeded)` still holds.
 - `bigquery.Table.Job(ctx, id, location)` returns a `sdk.JobReport`: what the
-  job became, asked for by name.
+  job became, asked for by name — `running`, `done` (with `Failed` when it
+  failed), or `absent` when BigQuery has no such job.
 
 ## [0.85.0] — 2026-10-11
 
