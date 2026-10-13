@@ -38,8 +38,10 @@ timed-out load returns names the job. Before burying a batch, the gateway now
 asks BigQuery what that job became, with its own 5 s budget: done without an
 error means delivered (`delivered after the send window closed`, counted as
 `delivered`); running, failed, or no answer means the dead letter, as before.
-Only the BigQuery sink is asked: a sink whose write cannot outlive the call has
-nothing to reconcile.
+The BigQuery sink is asked, and `auto_table` asks it once per table that ran out
+of time: the batch counts as delivered only when every such table landed and
+none was left untried. A sink whose write cannot outlive the call has nothing to
+reconcile.
 
 ### Fixed: no "retrying" when the send window has no room for a retry
 

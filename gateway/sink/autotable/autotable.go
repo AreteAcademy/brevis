@@ -249,6 +249,7 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 	var wrote int64
 	var starved []string
 	var ranOut error
+	failed := map[string]tableFailure{}
 	for i, table := range tables {
 		// On the CALLER's context, not the share. What sinkFor does is build a
 		// sink and then CACHE it -- `r.made[key] = s` -- and a built sink
@@ -277,7 +278,12 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// nothing left to write the remaining tables with, and no belief to
 		// drop: we learned nothing about this table.
 		if ctx.Err() != nil {
-			return wrote, fmt.Errorf("table %s: %w", table, err)
+			failed[table] = tableFailure{sink: sink, err: err}
+			return wrote, &batchError{
+				err:     fmt.Errorf("table %s: %w", table, err),
+				failed:  failed,
+				skipped: i < len(tables)-1,
+			}
 		}
 
 		// A table that ran out of ITS OWN share does not abandon the ones
@@ -293,6 +299,7 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// buys a catalogue read and no correctness.
 		if errors.Is(err, context.DeadlineExceeded) {
 			starved = append(starved, table)
+			failed[table] = tableFailure{sink: sink, err: err}
 			if ranOut == nil {
 				ranOut = err
 			}
@@ -323,11 +330,62 @@ func (r *router) Write(ctx context.Context, batch []gateway.Envelope) (int64, er
 		// time. Issue #85.
 		//
 		// The alternative was the old behaviour: none of them landed at all.
-		return wrote, fmt.Errorf("table(s) %s ran out of their share of the "+
-			"write window; the other tables in this batch were written: %w",
-			strings.Join(starved, ", "), ranOut)
+		return wrote, &batchError{
+			err: fmt.Errorf("table(s) %s ran out of their share of the "+
+				"write window; the other tables in this batch were written: %w",
+				strings.Join(starved, ", "), ranOut),
+			failed: failed,
+		}
 	}
 	return wrote, nil
+}
+
+// tableFailure is one table that did not land in time: the sink that wrote
+// it, and what that sink said.
+type tableFailure struct {
+	sink gateway.Sinker
+	err  error
+}
+
+// batchError is a batch that ran out of time on one or more tables. The
+// message is the one the caller always had; what it adds is each table's own
+// failure, so that Reconcile can ask each table's sink whether its write
+// landed after all.
+type batchError struct {
+	err     error
+	failed  map[string]tableFailure
+	skipped bool // the caller's window closed before every table was tried
+}
+
+func (e *batchError) Error() string { return e.err.Error() }
+func (e *batchError) Unwrap() error { return e.err }
+
+// Reconcile satisfies gateway.Reconciler: the batch landed when every table
+// that ran out of time landed after all, and no table was left untried.
+//
+// Issue #85 was a batch of one table whose job finished three seconds after
+// the window closed. With many tables it is the same question asked once per
+// table, of the sink that wrote it; one table not known to have landed and the
+// batch is buried whole, as before.
+func (r *router) Reconcile(ctx context.Context, cause error) (bool, error) {
+	var be *batchError
+	if !errors.As(cause, &be) || be.skipped {
+		return false, nil
+	}
+	for table, f := range be.failed {
+		rc, ok := f.sink.(gateway.Reconciler)
+		if !ok {
+			return false, nil
+		}
+		landed, err := rc.Reconcile(ctx, f.err)
+		if err != nil {
+			return false, fmt.Errorf("table %s: %w", table, err)
+		}
+		if !landed {
+			return false, nil
+		}
+	}
+	return true, nil
 }
 
 // shareOf bounds one table's write to its slice of what is left.
