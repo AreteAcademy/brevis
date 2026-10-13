@@ -101,3 +101,49 @@ func TestARetryWithRoomIsAnnounced(t *testing.T) {
 		t.Errorf("a retry ran without being announced:\n%s", logs.String())
 	}
 }
+
+// keySink records the batch key each attempt was handed, and refuses until the
+// last attempt.
+type keySink struct {
+	mu   sync.Mutex
+	keys []string
+	fail int
+}
+
+func (*keySink) Describe() string { return "keys" }
+func (k *keySink) Write(ctx context.Context, b []sdk.Envelope) (int64, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.keys = append(k.keys, BatchKeyOf(ctx))
+	if len(k.keys) <= k.fail {
+		return 0, errors.New("transient")
+	}
+	return int64(len(b)), nil
+}
+
+// Issue #85: the retry must be recognisable as the SAME write, or BigQuery
+// starts a second job for it. One key per batch, the same on every attempt.
+func TestEveryAttemptOfABatchCarriesOneKey(t *testing.T) {
+	sink := &keySink{fail: 2}
+	p := &pipe{
+		stream:  Stream{Name: "ingestion", Retry: Retry{Attempts: 3, Backoff: time.Millisecond, MaxBackoff: time.Millisecond}},
+		sink:    sink,
+		dead:    &recordingDead{},
+		metrics: NewMetrics(),
+	}
+	batch := []sdk.Envelope{{Payload: map[string]any{"id": "e-1"}}}
+	if err := p.send(context.Background(), batch); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.keys) != 3 || sink.keys[0] == "" || sink.keys[0] != sink.keys[1] || sink.keys[1] != sink.keys[2] {
+		t.Fatalf("attempts carried keys %q: one batch, one non-empty key", sink.keys)
+	}
+
+	// And two batches are two writes, however alike.
+	if err := p.send(context.Background(), batch); err != nil {
+		t.Fatal(err)
+	}
+	if sink.keys[3] == sink.keys[0] {
+		t.Errorf("two batches share the key %q: the second would be taken for the first", sink.keys[0])
+	}
+}

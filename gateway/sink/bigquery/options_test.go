@@ -1,6 +1,7 @@
 package bigquery
 
 import (
+	"context"
 	"testing"
 
 	"github.com/AreteAcademy/brevis/gateway"
@@ -30,7 +31,7 @@ func TestTheSinkDeclaresWithSchemaAndNotColumns(t *testing.T) {
 		PartitionBy: "zarv_metadata_received_at",
 	}}
 
-	opt := s.options()
+	opt := s.options(context.Background())
 	if len(opt.Columns) != 0 {
 		t.Errorf("Columns is %v. It means `every row has exactly these`, and "+
 			"CheckRow enforces it against the FIRST record -- but this Schema "+
@@ -51,7 +52,7 @@ func TestTheSinkDeclaresWithSchemaAndNotColumns(t *testing.T) {
 // travels, because it is the sink's own and not the table's.
 func TestWithNoTargetOnlyTheDedupTravels(t *testing.T) {
 	s := &sink{dedup: sdk.DedupMerge}
-	opt := s.options()
+	opt := s.options(context.Background())
 	if opt.Dedup != sdk.DedupMerge {
 		t.Errorf("Dedup is %v, want merge", opt.Dedup)
 	}
