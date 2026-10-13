@@ -24,6 +24,14 @@ matches on `brevis_ingestion_id`, so replaying a batch that was both written and
 buried writes its rows twice — and issue #85 shows that a buried batch can also
 be a written one. The comment in `auto_table` and `docs/GATEWAY.md` now say so.
 
+### Fixed: no "retrying" when the send window has no room for a retry
+
+`retry.attempts` shares one send window (60 s). When an attempt spends it, the
+backoff cannot run, but the log still said `retrying attempt=1 of=4` and the
+batch was buried a moment later (issue #85). Now the WARN says
+`the send window is exhausted, no retry`, and "retrying" appears only before a
+retry that will run.
+
 ## [0.28.0] — 2026-10-11
 
 ### Added: describe carries each stream's whole configuration
