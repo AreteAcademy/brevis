@@ -1399,10 +1399,17 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	p.metrics.observe(p.metrics.batchSize, float64(len(batch)), name)
 	start := time.Now()
 
-	var err error
+	// jobs is the last error that named a load job. Every attempt names the
+	// same jobs -- they are a function of the batch key -- so when the last
+	// attempt fails before it reaches the load, an earlier attempt's job is
+	// still the one to ask about.
+	var err, jobs error
 	for attempt := 1; attempt <= r.Attempts; attempt++ {
 		var n int64
 		n, err = p.sink.Write(ctx, batch)
+		if namesAJob(err) {
+			jobs = err
+		}
 		if err == nil {
 			// The duration covers the retries, because that is what the batch
 			// actually cost: a p99 that reported only the successful attempt
@@ -1441,7 +1448,12 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	}
 
 giveUp:
-	if p.landedAnyway(parent, err) {
+	cause := err
+	if !namesAJob(err) && jobs != nil {
+		cause = jobs
+	}
+	rec := p.reconcile(parent, cause)
+	if rec.Landed {
 		p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 		p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeDelivered)
 		slog.Info("delivered after the send window closed", "stream", name,
@@ -1450,28 +1462,42 @@ giveUp:
 	}
 	p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 	p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeBuried)
-	p.bury(parent, batch, err)
+	reason := err
+	if cause == err {
+		reason = rec.Cause
+	}
+	p.bury(parent, batch, reason, rec.Cause)
 	return err
 }
 
-// landedAnyway asks a Reconciler whether the write it gave up on landed.
+// namesAJob says whether err carries a load job the batch may have written.
+func namesAJob(err error) bool {
+	var je *sdk.LoadJobError
+	return errors.As(err, &je)
+}
+
+// reconcile asks a Reconciler whether the write it gave up on landed.
 //
 // On `parent`, with its own budget: see reconcileTimeout. Not knowing is not
-// landing -- an error asking is logged and the batch is buried.
-func (p *pipe) landedAnyway(parent context.Context, cause error) bool {
+// landing -- an error asking is logged, and the batch is buried with the cause
+// it was asked about.
+func (p *pipe) reconcile(parent context.Context, cause error) Reconciliation {
 	rc, ok := p.sink.(Reconciler)
 	if !ok {
-		return false
+		return Reconciliation{Cause: cause}
 	}
 	ctx, cancel := context.WithTimeout(parent, reconcileTimeout)
 	defer cancel()
-	landed, err := rc.Reconcile(ctx, cause)
+	rec, err := rc.Reconcile(ctx, cause)
 	if err != nil {
 		slog.Warn("could not learn whether the batch landed; burying it",
 			"stream", p.stream.Name, "sink", p.sink.Describe(), "error", err)
-		return false
+		return Reconciliation{Cause: cause}
 	}
-	return landed
+	if rec.Cause == nil {
+		rec.Cause = cause
+	}
+	return rec
 }
 
 // bury writes what the sink would not take, with the reason attached.
@@ -1483,7 +1509,10 @@ func (p *pipe) landedAnyway(parent context.Context, cause error) bool {
 // A failure HERE is the end of the line, and it says so at ERROR with the count:
 // there is nowhere further to put them, and a silent loss at the last step would
 // be the exact failure the dead letter exists to prevent.
-func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
+//
+// jobs is what names the load jobs the rows may already be in -- the reason
+// itself, unless an earlier attempt named them; see send.
+func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause, jobs error) {
 	// Its own deadline, derived from the caller's rather than from the send
 	// that just failed. See deadLetterTimeout.
 	ctx, cancel := context.WithTimeout(parent, deadLetterTimeout)
@@ -1508,7 +1537,7 @@ func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause error) {
 		out["_dead_letter_sink"] = p.sink.Describe()
 		out["_dead_letter_at"] = time.Now().UTC().Format(time.RFC3339)
 		if namer != nil {
-			if job, ok := namer.JobOf(cause, row); ok {
+			if job, ok := namer.JobOf(jobs, row); ok {
 				out[ColumnDeadLetterJobID] = job.JobID
 				out[ColumnDeadLetterJobState] = string(job.State)
 				if job.Location != "" {

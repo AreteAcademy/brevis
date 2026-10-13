@@ -2,6 +2,7 @@ package autotable
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -33,7 +34,17 @@ func (j jobSink) Write(ctx context.Context, b []sdk.Envelope) (int64, error) {
 	return 0, &sdk.LoadJobError{Table: j.table, JobID: "job_" + j.table, State: sdk.JobRunning,
 		Err: fmt.Errorf("wait for load job: %w", context.DeadlineExceeded)}
 }
-func (j jobSink) Reconcile(context.Context, error) (bool, error) { return j.landed, nil }
+func (j jobSink) Reconcile(_ context.Context, cause error) (gateway.Reconciliation, error) {
+	var je *sdk.LoadJobError
+	if !errors.As(cause, &je) {
+		return gateway.Reconciliation{Cause: cause}, nil
+	}
+	now := *je
+	if j.landed {
+		now.State = sdk.JobDone
+	}
+	return gateway.Reconciliation{Landed: j.landed, Cause: &now}, nil
+}
 
 func routerOverJobs(t *testing.T, tables map[string]jobSink) *router {
 	t.Helper()
@@ -74,9 +85,9 @@ func TestALoneTableWhoseJobLandedReconciles(t *testing.T) {
 	r := routerOverJobs(t, map[string]jobSink{"tbl_a": {table: "tbl_a", slow: true, landed: true}})
 	err := writeWithin(t, r, 50*time.Millisecond, "tbl_a")
 
-	landed, rerr := r.Reconcile(context.Background(), err)
-	if rerr != nil || !landed {
-		t.Errorf("Reconcile = %v, %v; the only table landed", landed, rerr)
+	rec, rerr := r.Reconcile(context.Background(), err)
+	if rerr != nil || !rec.Landed {
+		t.Errorf("Reconcile = %+v, %v; the only table landed", rec, rerr)
 	}
 }
 
@@ -84,8 +95,8 @@ func TestAStarvedTableWhoseJobLandedCompletesTheBatch(t *testing.T) {
 	r := routerOverJobs(t, map[string]jobSink{"tbl_b": {table: "tbl_b", slow: true, landed: true}})
 	err := writeWithin(t, r, 150*time.Millisecond, "tbl_a", "tbl_b", "tbl_c")
 
-	if landed, rerr := r.Reconcile(context.Background(), err); rerr != nil || !landed {
-		t.Errorf("Reconcile = %v, %v; every table landed", landed, rerr)
+	if rec, rerr := r.Reconcile(context.Background(), err); rerr != nil || !rec.Landed {
+		t.Errorf("Reconcile = %+v, %v; every table landed", rec, rerr)
 	}
 }
 
@@ -93,7 +104,7 @@ func TestAStarvedTableStillRunningKeepsTheBatchUnlanded(t *testing.T) {
 	r := routerOverJobs(t, map[string]jobSink{"tbl_b": {table: "tbl_b", slow: true, landed: false}})
 	err := writeWithin(t, r, 150*time.Millisecond, "tbl_a", "tbl_b", "tbl_c")
 
-	if landed, _ := r.Reconcile(context.Background(), err); landed {
+	if rec, _ := r.Reconcile(context.Background(), err); rec.Landed {
 		t.Error("a batch with a table still loading was reported as landed")
 	}
 }
@@ -104,7 +115,7 @@ func TestTablesNeverWrittenKeepTheBatchUnlanded(t *testing.T) {
 	r := routerOverJobs(t, map[string]jobSink{"tbl_a": {table: "tbl_a", ignore: 120 * time.Millisecond, landed: true}})
 	err := writeWithin(t, r, 60*time.Millisecond, "tbl_a", "tbl_b")
 
-	if landed, _ := r.Reconcile(context.Background(), err); landed {
+	if rec, _ := r.Reconcile(context.Background(), err); rec.Landed {
 		t.Error("tbl_b was never written, and the batch was reported as landed")
 	}
 }
@@ -173,5 +184,29 @@ func TestARetryReachesEachTableWithTheBatchKey(t *testing.T) {
 	}
 	if len(seen) != 2 || seen[0] != "batch-1" || seen[1] != "batch-1" {
 		t.Errorf("the table's writes carried keys %q, want batch-1 twice", seen)
+	}
+}
+
+// A batch buried whole still says which of its tables landed: a row of a table
+// whose job finished names it as done, so a replay skips it instead of writing
+// it twice.
+func TestARowOfATableThatLandedSaysSo(t *testing.T) {
+	r := routerOverJobs(t, map[string]jobSink{
+		"tbl_a": {table: "tbl_a", slow: true, landed: true},
+		"tbl_b": {table: "tbl_b", slow: true, landed: false},
+	})
+	err := writeWithin(t, r, 100*time.Millisecond, "tbl_a", "tbl_b")
+	rec, rerr := r.Reconcile(context.Background(), err)
+	if rerr != nil || rec.Landed {
+		t.Fatalf("Reconcile = %+v, %v", rec, rerr)
+	}
+	batch := batchFor("tbl_a", "tbl_b")
+	a, _ := r.JobOf(rec.Cause, batch[0].Payload.(map[string]any))
+	b, _ := r.JobOf(rec.Cause, batch[1].Payload.(map[string]any))
+	if a == nil || a.State != sdk.JobDone {
+		t.Errorf("tbl_a landed and its row says %+v", a)
+	}
+	if b == nil || b.State != sdk.JobRunning {
+		t.Errorf("tbl_b is still loading and its row says %+v", b)
 	}
 }
