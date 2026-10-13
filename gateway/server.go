@@ -1405,6 +1405,17 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 			break
 		}
 		wait := backoff(r, attempt)
+		// Only announce a retry the window has room for. Issue #85: one
+		// attempt spent the whole window, the log said "retrying attempt=1
+		// of=4", and the batch was buried 330 ms later with attempts 2-4
+		// never run.
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= wait {
+			slog.Warn("the sink refused a batch; the send window is exhausted, no retry",
+				"stream", name, "sink", sink,
+				"attempt", attempt, "of", r.Attempts, "error", err)
+			err = fmt.Errorf("%w (and the send window closed)", err)
+			goto giveUp
+		}
 		slog.Warn("the sink refused a batch; retrying",
 			"stream", p.stream.Name, "sink", p.sink.Describe(),
 			"attempt", attempt, "of", r.Attempts, "in", wait, "error", err)
