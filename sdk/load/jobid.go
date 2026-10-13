@@ -135,11 +135,18 @@ func (j bqJob) Wait(ctx context.Context) (jobOutcome, error) {
 
 // runNamedLoadJob is runLoadJob with a name: the job that loads data into
 // table is the same job however many times it is asked for.
-func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, table *bigquery.Table, data []byte) ([]string, string, error) {
+//
+// rewind, when not nil, puts the loader's source back at its start. An
+// inline source is a reader, and the client drains it into its upload buffer
+// on the first insert: without this, the next generation inserted an EMPTY
+// load -- one BigQuery can take as a success with nothing written.
+func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, table *bigquery.Table, data []byte, rewind func()) ([]string, string, error) {
 	loader.WriteDisposition = bigquery.WriteAppend
-	name := fmt.Sprintf("%s.%s.%s", table.ProjectID, table.DatasetID, table.TableID)
 
 	submit := func(ctx context.Context, id string) (job, error) {
+		if rewind != nil {
+			rewind()
+		}
 		loader.JobID = id
 		loader.AddJobIDSuffix = false
 		j, err := loader.Run(ctx)
@@ -151,7 +158,12 @@ func (l *Loader) runNamedLoadJob(ctx context.Context, loader *bigquery.Loader, t
 	find := func(ctx context.Context, id string) (job, error) {
 		return l.findJob(ctx, id, "")
 	}
-	return awaitLoad(ctx, table.TableID, jobBase(name, data), submit, find)
+	return awaitLoad(ctx, table.TableID, l.jobBaseFor(table, data), submit, find)
+}
+
+// jobBaseFor names the job that loads data into table.
+func (l *Loader) jobBaseFor(table *bigquery.Table, data []byte) string {
+	return jobBase(fmt.Sprintf("%s.%s.%s", table.ProjectID, table.DatasetID, table.TableID), data)
 }
 
 // findJob fetches a job by name. A job lives in its dataset's location, and
