@@ -138,8 +138,8 @@ It is worth what it sounds like:
 
 | build | packages | binary |
 |---|---|---|
-| all six sinks, both object stores, both metastores | 884 | 55.0 MB |
-| `postgres` + local `files` | 233 | **10.2 MB** |
+| all six sinks, both object stores, both metastores | about 900 | 55.0 MB |
+| `postgres` + local `files` | about 240 | **10.2 MB** |
 
 Object stores are a **second** registry, because a scheme is not a destination:
 `files` is one sink that writes to a directory, to `gs://` and to `s3://`, and a
@@ -149,8 +149,8 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.29.0` | six sinks, S3, GCS, Redis, memcached | 18.1 MB |
-| `areteacademy/brevis-gateway:0.29.0-slim` | `postgres`, local `files`, `auto_table` | **4.9 MB** |
+| `areteacademy/brevis-gateway:0.29.0` | six sinks, S3, GCS, Redis, memcached | 19.0 MB |
+| `areteacademy/brevis-gateway:0.29.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.
 There is no `latest-slim` — `latest` is already a tag nobody should deploy.

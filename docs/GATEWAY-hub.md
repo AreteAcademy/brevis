@@ -19,14 +19,15 @@ docker run -p 8080:8080 \
 
 | tag | carries | pull |
 |---|---|---|
-| `0.29.0` | six sinks, S3 and GCS, Redis and memcached | 19 MB |
-| `0.29.0-slim` | `postgres`, `auto_table`, local `files` | **5.1 MB** |
+| `0.29.0` | six sinks, S3 and GCS, Redis and memcached | 19.0 MB |
+| `0.29.0-slim` | `postgres`, `auto_table`, local `files` | **5.2 MB** |
 
-Sizes are amd64, as Docker Hub reports them; arm64 is about 10% smaller.
+Sizes are the compressed amd64 image in MB, as `docker pull` counts them;
+arm64 is about 10% smaller.
 
 The sinks are compiled in, so the import list is the selection: a binary that
 never imports the BigQuery driver does not carry BigQuery, or Arrow, or the
-Storage Write API. 897 packages against 238. A build with a different pair is
+Storage Write API. About 900 packages against 240. A build with a different pair is
 fifteen lines — see `cmd/gateway-slim` in the repository.
 
 There is no `latest-slim`. `latest` is already a tag nobody should deploy.

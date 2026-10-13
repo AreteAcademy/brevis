@@ -138,8 +138,8 @@ Vale o que parece:
 
 | build | pacotes | binário |
 |---|---|---|
-| os seis destinos, os dois object stores, os dois metastores | 884 | 55,0 MB |
-| `postgres` + `files` local | 233 | **10,2 MB** |
+| os seis destinos, os dois object stores, os dois metastores | cerca de 900 | 55,0 MB |
+| `postgres` + `files` local | cerca de 240 | **10,2 MB** |
 
 Os object stores são um **segundo** registro, porque um scheme não é um destino:
 `files` é um destino só que escreve em diretório, em `gs://` e em `s3://`, e um
@@ -149,8 +149,8 @@ build que só escreve local não deveria carregar o SDK da AWS para isso.
 
 | imagem | carrega | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.29.0` | os seis destinos, S3, GCS, Redis, memcached | 18,1 MB |
-| `areteacademy/brevis-gateway:0.29.0-slim` | `postgres`, `files` local, `auto_table` | **4,9 MB** |
+| `areteacademy/brevis-gateway:0.29.0` | os seis destinos, S3, GCS, Redis, memcached | 19,0 MB |
+| `areteacademy/brevis-gateway:0.29.0-slim` | `postgres`, `files` local, `auto_table` | **5,2 MB** |
 
 As duas saem de um build da mesma árvore, então as duas tags são sempre o mesmo
 commit. Não existe `latest-slim` — `latest` já é uma tag que ninguém deveria
