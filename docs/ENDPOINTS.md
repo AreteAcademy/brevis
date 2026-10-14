@@ -249,7 +249,7 @@ would change what the warehouse plans.
 | `422` | BigQuery priced the query over `max_bytes_billed` |
 | `429` | four requests from this tenant are already waiting (`Retry-After`) |
 | `503` | the API is at `max_in_flight` (`Retry-After`) |
-| `504` | `timeout` reached; the query was cancelled |
+| `504` | `timeout` reached; the query was cancelled, or a hook was abandoned |
 | `500` | the endpoint's SQL cannot render for this request, or one of its [hooks](#hooks-go-compiled-in) failed — its author's to fix; the reason is on the audit line |
 | `502` | the warehouse refused — never quoting the SQL or the values |
 
@@ -312,6 +312,13 @@ What it returns becomes `data`; `truncated` and `meta` stay the API's, and
  "truncated": false,
  "meta": {"endpoint": "revenue", "rows": 1, "generated_at": "2026-10-14T14:03:11Z"}}
 ```
+
+**A hook is bounded by the endpoint's `timeout` whether it reads its context
+or not**: past it the request answers `504` and the hook is abandoned. An
+abandoned hook keeps one of its tenant's four slots until it really returns,
+so one that hangs leaves at most four goroutines per tenant behind it, and
+that tenant is told `429` — the other tenants are not. A before runs in one
+of those slots too.
 
 `max_response_bytes` holds over the whole body and **refuses rather than
 cuts**: the hook's output has no rows to stop at. An error, a panic, a value

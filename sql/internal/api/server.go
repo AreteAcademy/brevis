@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -172,12 +173,28 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			// THE CALLER'S QUERY, AS THE HOOK LEAVES IT, is what is read
 			// from here on -- through every check a caller's query meets.
 			// The audit line above already holds what the caller sent.
+			//
+			// IN ONE OF THE TENANT'S SLOTS, which the hook keeps until it
+			// returns: a before runs ahead of the warehouse's ceilings, and
+			// without this a key could pile up hooks without limit.
+			release, free := s.slots.take(tenant)
+			if !free {
+				w.Header().Set("Retry-After", "1")
+				refuse(w, http.StatusTooManyRequests, fmt.Sprintf(
+					"%d requests from this key's tenant are already in flight", perTenantInFlight))
+				return
+			}
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
-			rewritten, status, why := runBefore(ctx, s.met, e, tenant, r)
+			rewritten, status, why := runBefore(ctx, s.met, e, tenant, r, release)
 			cancel()
 			if status != 0 {
 				line.Hook = "before"
-				if status != http.StatusBadRequest {
+				switch status {
+				case http.StatusBadRequest:
+				case http.StatusGatewayTimeout:
+					line.Reason = why
+					why = fmt.Sprintf("this endpoint's before hook did not answer within %s", timeout)
+				default:
 					line.Reason = why
 					why = "this endpoint's before hook failed; its author has the reason in the API's log"
 				}
@@ -311,7 +328,14 @@ func (s *Server) answer(parent context.Context, endpoint, tenant, query string, 
 		return outcome{status: http.StatusTooManyRequests, retry: true, why: fmt.Sprintf(
 			"%d requests from this key's tenant are already waiting on the warehouse", perTenantInFlight)}
 	}
-	defer release()
+	// THE SLOT IS HANDED TO THE AFTER when there is one, which gives it back
+	// when it returns -- after this has, if it hangs.
+	held := release
+	defer func() {
+		if held != nil {
+			held()
+		}
+	}()
 
 	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
@@ -330,16 +354,24 @@ func (s *Server) answer(parent context.Context, endpoint, tenant, query string, 
 		res.Rows, truncated = res.Rows[:ceiling], true
 	}
 	if shape != nil {
-		// INSIDE THE TIMEOUT, ON THE SAME CONTEXT: a hook that hangs is a
-		// request that hangs, and the ceiling that bounds the query bounds it.
+		// INSIDE THE TIMEOUT, ON THE SAME CONTEXT, and bounded by it whether
+		// the hook reads it or not.
 		r := &Result{Endpoint: endpoint, Tenant: tenant, Params: shape.params,
 			Columns: res.Columns, Rows: res.Rows, Truncated: truncated}
 		shaped := time.Now()
-		body, err := shapeWith(ctx, shape.after, r, maxResponse)
+		slot := held
+		held = nil
+		body, err := shapeWith(ctx, shape.after, r, maxResponse, slot)
 		s.met.hook(endpoint, "after", outcomeOf(err), time.Since(shaped))
 		if err != nil {
-			return outcome{status: http.StatusInternalServerError, warehouse: took, hook: "after", reason: err.Error(),
+			o := outcome{status: http.StatusInternalServerError, warehouse: took, hook: "after", reason: err.Error(),
 				why: "this endpoint's after hook failed; its author has the reason in the API's log"}
+			var late hookTimeout
+			if errors.As(err, &late) {
+				o.status, o.why = http.StatusGatewayTimeout,
+					fmt.Sprintf("this endpoint's after hook did not answer within %s", timeout)
+			}
+			return o
 		}
 		return outcome{body: body, rows: len(res.Rows), scanned: res.Scanned, truncated: truncated, warehouse: took}
 	}

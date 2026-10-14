@@ -191,25 +191,32 @@ func lookup[F any](by map[string]F, endpoint, kind, name string) (F, error) {
 // runBefore applies the endpoint's before to a copy of what the caller sent,
 // and returns the request to read from here on -- or a status, with what to
 // tell the caller on a 400 and what to tell the audit line otherwise.
+// release is the tenant's slot the hook holds, given back when it returns.
 //
 // THE KEY NEVER REACHES IT. Authorization is dropped from the copy: a hook
 // is the customer's code, and nothing it does needs the bearer it was called
 // with.
-func runBefore(ctx context.Context, m *metrics, e *Endpoint, tenant string, r *http.Request) (*http.Request, int, string) {
+func runBefore(ctx context.Context, m *metrics, e *Endpoint, tenant string, r *http.Request,
+	release func()) (*http.Request, int, string) {
 	q, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
+		release()
 		return nil, http.StatusBadRequest, fmt.Sprintf("the query string does not parse: %v", err)
 	}
 	header := r.Header.Clone()
 	header.Del("Authorization")
 	req := &Request{Endpoint: e.Name, Tenant: tenant, Query: q, Header: header}
 	started := time.Now()
-	err = callBefore(ctx, e.before, req)
+	_, err = bounded(ctx, "before", func() (struct{}, error) { return struct{}{}, e.before(ctx, req) }, release)
 	m.hook(e.Name, "before", outcomeOf(err), time.Since(started))
 	if err != nil {
 		var said refusal
-		if errors.As(err, &said) {
+		var late hookTimeout
+		switch {
+		case errors.As(err, &said):
 			return nil, http.StatusBadRequest, said.msg
+		case errors.As(err, &late):
+			return nil, http.StatusGatewayTimeout, err.Error()
 		}
 		return nil, http.StatusInternalServerError, err.Error()
 	}
@@ -218,16 +225,47 @@ func runBefore(ctx context.Context, m *metrics, e *Endpoint, tenant string, r *h
 	return out, 0, ""
 }
 
-// callBefore runs a before, turning a panic into this request's error. A
-// hook is ordinary Go, so its failures are ordinary too -- a nil map, a bad
-// assertion -- and none is a reason to stop serving every other caller.
-func callBefore(ctx context.Context, fn Before, req *Request) (err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			err = hookPanic{fmt.Errorf("the before hook panicked: %v", p)}
-		}
+// bounded runs a hook on a goroutine of its own and waits for it no longer
+// than ctx. release is the slot the hook holds, and the goroutine gives it
+// back when the hook returns -- in time or not.
+//
+// THE CONTEXT IS A REQUEST, NOT A GUARANTEE. A hook that never reads it --
+// a tight loop, a call with no deadline -- would otherwise hold the request,
+// and every request collapsed behind it, for as long as it likes. So the
+// request gives up at the timeout and the hook is abandoned; and because an
+// abandoned hook keeps its tenant's slot until it really returns, a hook
+// that hangs leaves at most four goroutines per tenant behind it, after
+// which that tenant is told 429. Not every tenant a 503, and not a process
+// that grows until it is killed.
+//
+// A PANIC IS ONE REQUEST'S ERROR: a hook is ordinary Go, so its failures are
+// ordinary too -- a nil map, a bad assertion -- and none is a reason to stop
+// serving every other caller.
+func bounded[T any](ctx context.Context, kind string, fn func() (T, error), release func()) (T, error) {
+	type result struct {
+		v   T
+		err error
+	}
+	done := make(chan result, 1)
+	go func() {
+		var r result
+		defer func() {
+			if p := recover(); p != nil {
+				r = result{err: hookPanic{fmt.Errorf("the %s hook panicked: %v", kind, p)}}
+			}
+			release()
+			done <- r
+		}()
+		r.v, r.err = fn()
 	}()
-	return fn(ctx, req)
+	select {
+	case r := <-done:
+		return r.v, r.err
+	case <-ctx.Done():
+		var none T
+		return none, hookTimeout{fmt.Errorf("the %s hook did not return within the endpoint's timeout, "+
+			"and was abandoned", kind)}
+	}
 }
 
 // shaping is one request's after and the parameters it is shown.
@@ -265,8 +303,8 @@ func plainParams(vals render.Values) map[string]any {
 // max_response_bytes IS CHECKED OVER THE WHOLE BODY and refuses rather than
 // cuts: the hook's output has no rows to stop at, and half of a shape its
 // author chose is not a shape anybody can read.
-func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize) ([]byte, error) {
-	data, err := callAfter(ctx, fn, r)
+func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize, release func()) ([]byte, error) {
+	data, err := bounded(ctx, "after", func() (any, error) { return fn(ctx, r) }, release)
 	if err != nil {
 		return nil, err
 	}
@@ -285,17 +323,6 @@ func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize) ([]b
 			ByteSize(len(body)), maxBytes)}
 	}
 	return body, nil
-}
-
-// callAfter runs an after, turning a panic into this request's error, for
-// callBefore's reason.
-func callAfter(ctx context.Context, fn After, r *Result) (data any, err error) {
-	defer func() {
-		if p := recover(); p != nil {
-			data, err = nil, hookPanic{fmt.Errorf("the after hook panicked: %v", p)}
-		}
-	}()
-	return fn(ctx, r)
 }
 
 // buildID is this binary: the main module's version and, when it was built
@@ -327,10 +354,11 @@ func shapeOf(after, build string) string {
 	return after + "@" + build
 }
 
-// hookPanic and oversize are a hook's failures that the metrics tell apart
-// from an error it returned.
+// hookPanic, oversize and hookTimeout are a hook's failures that the
+// metrics and the status tell apart from an error it returned.
 type hookPanic struct{ error }
 type oversize struct{ error }
+type hookTimeout struct{ error }
 
 // outcomeOf is a hook's result as a label: a CLOSED SET, never the error's
 // text, which is the hook author's and could be anything -- a label is a
@@ -339,6 +367,7 @@ func outcomeOf(err error) string {
 	var said refusal
 	var panicked hookPanic
 	var over oversize
+	var late hookTimeout
 	switch {
 	case err == nil:
 		return "ok"
@@ -348,6 +377,8 @@ func outcomeOf(err error) string {
 		return "panic"
 	case errors.As(err, &over):
 		return "oversize"
+	case errors.As(err, &late):
+		return "timeout"
 	}
 	return "error"
 }
