@@ -109,6 +109,8 @@ As execuções de todos os workflows do grupo contam contra um limite só, seja
 quem as tenha disparado — o agendamento, um landing, um backfill ou um clique.
 Uma execução que encontra o grupo cheio **espera na fila**: não é pulada e não
 falha. Um terceiro workflow que escreve as mesmas tabelas entra nomeando o grupo.
+Enquanto espera, a página da execução diz isso: qual grupo, o limite e quais
+execuções ocupam as vagas.
 
 - Todo membro declara o **mesmo limite**. `validate` e `publish` recusam um
   grupo declarado com 1 num arquivo e 3 em outro, inclusive contra membros já

@@ -753,7 +753,9 @@ concurrency:
 Runs of every workflow in the group count against one limit, whatever started
 them — the schedule, a landing, a backfill or a click. A run that finds the
 group full **waits in the queue**; it is not skipped and does not fail. A third
-workflow that writes the same tables joins by naming the group.
+workflow that writes the same tables joins by naming the group. While it
+waits, the run's page says so: which group, its limit, and which runs hold the
+slots.
 
 - Every member declares the **same limit**. `validate` and `publish` refuse a
   group declared with 1 in one file and 3 in another, including against members
