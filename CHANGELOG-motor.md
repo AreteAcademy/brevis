@@ -14,7 +14,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [Unreleased]
+## [0.24.0] — 2026-10-14
 
 ### Added: a destination's page says how to get its dead letter back (#86)
 
