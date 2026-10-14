@@ -102,10 +102,17 @@ type Endpoint struct {
 	// tenant. Absent, the SQL must use `{{ tenant }}`.
 	Tenant string `yaml:"tenant"`
 
+	// Hook names this endpoint's before and after, registered in the binary.
+	Hook *HookNames `yaml:"hook"`
+
 	// MaxRows is this endpoint's ceiling; zero takes the file's.
 	MaxRows int `yaml:"-"`
 
 	Template *render.Template `yaml:"-"`
+
+	// before and after are Hook, resolved; nil is none.
+	before Before
+	after  After
 
 	// period is the name of the endpoint's period parameter, if it has one.
 	period string
@@ -134,8 +141,9 @@ var (
 	nameShape = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
 )
 
-// Load reads an endpoint file and resolves its connection in the registry.
-func Load(path string, reg *connections.Registry) (*Config, error) {
+// Load reads an endpoint file and resolves its connection in the registry,
+// and its hooks in hooks -- nil is a binary with none.
+func Load(path string, reg *connections.Registry, hooks *Hooks) (*Config, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("the endpoint file could not be read: %w", err)
@@ -233,6 +241,9 @@ func Load(path string, reg *connections.Registry) (*Config, error) {
 			return nil, err
 		}
 		if err := e.parse(cfg.Dialect); err != nil {
+			return nil, err
+		}
+		if err := e.resolveHooks(hooks); err != nil {
 			return nil, err
 		}
 		e.loc = loc

@@ -79,7 +79,7 @@ func run(args []string, out, errOut io.Writer) int {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1
 	}
-	cfg, err := api.Load(*config, reg)
+	cfg, err := api.Load(*config, reg, api.NewHooks())
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, err)
 		return 1

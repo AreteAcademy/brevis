@@ -42,7 +42,7 @@ connections:
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Load(p, r)
+	return Load(p, r, nil)
 }
 
 const good = `

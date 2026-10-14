@@ -25,7 +25,7 @@ func describeFixture(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	path := filepath.Join("testdata", "describe", "api.yaml")
-	cfg, err := Load(path, r)
+	cfg, err := Load(path, r, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
