@@ -189,6 +189,10 @@ type record struct {
 	// Reason is why an endpoint failed in a way that is its author's to
 	// fix. Names of parameters and template shapes, never values.
 	Reason string `json:"reason,omitempty"`
+	// Hook is which hook decided the status, when one did: `before` or
+	// `after`. Reason then holds the hook's error, which is its author's
+	// text.
+	Hook string `json:"hook,omitempty"`
 }
 
 // auditKey is this process's secret for args_hash.

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -178,4 +179,43 @@ func lookup[F any](by map[string]F, endpoint, kind, name string) (F, error) {
 	sort.Strings(names)
 	return none, fmt.Errorf("endpoint %s: `hook.%s` is %q, which this binary does not register "+
 		"(its %s hooks: %s)", endpoint, kind, name, kind, strings.Join(names, ", "))
+}
+
+// runBefore applies the endpoint's before to a copy of what the caller sent,
+// and returns the request to read from here on -- or a status, with what to
+// tell the caller on a 400 and what to tell the audit line otherwise.
+//
+// THE KEY NEVER REACHES IT. Authorization is dropped from the copy: a hook
+// is the customer's code, and nothing it does needs the bearer it was called
+// with.
+func runBefore(ctx context.Context, e *Endpoint, tenant string, r *http.Request) (*http.Request, int, string) {
+	q, err := url.ParseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, http.StatusBadRequest, fmt.Sprintf("the query string does not parse: %v", err)
+	}
+	header := r.Header.Clone()
+	header.Del("Authorization")
+	req := &Request{Endpoint: e.Name, Tenant: tenant, Query: q, Header: header}
+	if err := callBefore(ctx, e.before, req); err != nil {
+		var said refusal
+		if errors.As(err, &said) {
+			return nil, http.StatusBadRequest, said.msg
+		}
+		return nil, http.StatusInternalServerError, err.Error()
+	}
+	out := r.Clone(r.Context())
+	out.URL.RawQuery = req.Query.Encode()
+	return out, 0, ""
+}
+
+// callBefore runs a before, turning a panic into this request's error. A
+// hook is ordinary Go, so its failures are ordinary too -- a nil map, a bad
+// assertion -- and none is a reason to stop serving every other caller.
+func callBefore(ctx context.Context, fn Before, req *Request) (err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("the before hook panicked: %v", p)
+		}
+	}()
+	return fn(ctx, req)
 }

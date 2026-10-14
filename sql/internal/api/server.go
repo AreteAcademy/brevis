@@ -168,6 +168,24 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		}
 		line.Tenant = tenant
 		line.Params = e.sent(r)
+		if e.before != nil {
+			// THE CALLER'S QUERY, AS THE HOOK LEAVES IT, is what is read
+			// from here on -- through every check a caller's query meets.
+			// The audit line above already holds what the caller sent.
+			ctx, cancel := context.WithTimeout(r.Context(), timeout)
+			rewritten, status, why := runBefore(ctx, e, tenant, r)
+			cancel()
+			if status != 0 {
+				line.Hook = "before"
+				if status != http.StatusBadRequest {
+					line.Reason = why
+					why = "this endpoint's before hook failed; its author has the reason in the API's log"
+				}
+				refuse(w, status, why)
+				return
+			}
+			r = rewritten
+		}
 		vals, err := e.values(r)
 		if err != nil {
 			refuse(w, http.StatusBadRequest, err.Error())
