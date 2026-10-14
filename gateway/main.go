@@ -30,7 +30,20 @@ import (
 // database/sql has always worked.
 func Main(hooks *Hooks, opts ...Option) {
 	if len(os.Args) < 2 {
-		log.Fatal("usage: gateway <config.yaml> | gateway describe [--name <gateway>] [--out <file>] <config.yaml>")
+		log.Fatal("usage: gateway <config.yaml> | gateway describe [--name <gateway>] [--out <file>] <config.yaml>" +
+			" | gateway deadletter ls|resend ...")
+	}
+	// deadletter reads the dead letter back and resends from it, where the
+	// destination's credentials already are (#86). See deadletter_cli.go.
+	if os.Args[1] == "deadletter" {
+		var o options
+		for _, opt := range opts {
+			opt(&o)
+		}
+		if err := deadletterMain(context.Background(), os.Args[2:], o, os.Stdout); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 	// describe prints where each stream lands and exits. It serves nothing,
 	// builds no sink and opens nothing; see Describe.
