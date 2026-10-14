@@ -18,7 +18,7 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
-## [Unreleased]
+## [0.86.1] — 2026-10-14
 
 ### Fixed: one Google client per process, not two per write (#87)
 
