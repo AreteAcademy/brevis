@@ -141,8 +141,7 @@ func TestAPanicIsA500AndTheNextRequestIsServed(t *testing.T) {
 	var audit bytes.Buffer
 	panicky := func(_ context.Context, r *Request) error {
 		if r.Query.Get("campaign") == "boom" {
-			var m map[string]int
-			m["x"] = 1
+			panic("an ordinary bug in a hook")
 		}
 		return nil
 	}
