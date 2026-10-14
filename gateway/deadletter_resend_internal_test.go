@@ -185,8 +185,11 @@ func TestResendDryRunWritesNothing(t *testing.T) {
 	}
 }
 
-// Refused again: buried again, under the same key, and the resend fails.
-func TestAResendTheSinkRefusesIsBuriedAgain(t *testing.T) {
+// Refused again: the resend fails, the receipt says so, and the batch is still
+// ONE object. Burying it a second time made a second object with the same key
+// and rows, and resending both would write them twice (found on the local
+// stack).
+func TestAResendTheSinkRefusesStaysOneBatch(t *testing.T) {
 	dir := t.TempDir()
 	buryInto(t, dir, "clicks", &keyedRefusal{}, row("first"))
 	cfg := resendConfig(dir, "clicks", WriteMerge)
@@ -197,8 +200,13 @@ func TestAResendTheSinkRefusesIsBuriedAgain(t *testing.T) {
 		t.Error("a refused resend reported success")
 	}
 	all, _ := listBuried(context.Background(), cfg, nil, "")
-	if len(all) != 2 || all[0].Batch != b.Batch {
-		t.Errorf("after a refused resend: %+v; the batch is buried again under %s", all, b.Batch)
+	if len(all) != 1 || all[0].Object != b.Object || all[0].Resent != "failed" {
+		t.Errorf("after a refused resend: %+v; wanted the one batch, marked failed", all)
+	}
+	// And it can be tried again without --again: nothing was delivered.
+	sink.refuse = nil
+	if _, err := resendWith(t, cfg, sink, resendRequest{ID: b.Batch}); err != nil || len(sink.got) != 1 {
+		t.Errorf("the retry after a failure: err %v, %d rows", err, len(sink.got))
 	}
 }
 

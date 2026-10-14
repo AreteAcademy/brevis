@@ -14,7 +14,6 @@ import (
 	"time"
 
 	sdk "github.com/AreteAcademy/brevis/sdk"
-	"github.com/AreteAcademy/brevis/sdk/to"
 )
 
 // resendRequest is `gateway deadletter resend`'s arguments.
@@ -232,11 +231,16 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 		fmt.Fprintf(out, "nothing sent\n")
 		return rc, refusedErr(rc)
 	}
-	// The stream's own send: the same retry, the same reconcile, and the same
-	// dead letter if it is refused again. Under the batch's own key, so a job
-	// that landed meanwhile is adopted, not written twice.
-	deadW := filesWriter{f: to.Files{Path: h.dl.path, Store: h.dl.store}}
-	p := &pipe{stream: h.stream, sink: sink, dead: deadW, metrics: NewMetrics()}
+	// The stream's own send: the same retry and the same reconcile, under the
+	// batch's own key, so a job that landed meanwhile is adopted, not written
+	// twice.
+	//
+	// NOT the same dead letter. Refused again, the rows are still in the
+	// object they came from; burying them a second time made a second object
+	// with the same key and the same rows -- two batches in ls, and an
+	// operator who resent both wrote them twice. Found running it against the
+	// local stack. The receipt says it failed; the object stays the one batch.
+	p := &pipe{stream: h.stream, sink: sink, dead: keptIn{object: h.object}, metrics: NewMetrics()}
 	sendCtx := ctx
 	if h.batch.Batch != "" {
 		sendCtx = WithBatchKey(ctx, h.batch.Batch)
@@ -244,7 +248,7 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 	sendErr := p.send(sendCtx, send)
 	if sendErr != nil {
 		rc.Outcome = resendFailed
-		fmt.Fprintf(out, "failed  the destination refused the resend too; buried again: %v\n", sendErr)
+		fmt.Fprintf(out, "failed  the destination refused the resend too; the rows stay in %s: %v\n", h.object, sendErr)
 	} else {
 		rc.Outcome = resendDelivered
 		fmt.Fprintf(out, "sent    %d row(s) to %s\n", len(send), sink.Describe())
@@ -292,17 +296,14 @@ func stripped(rows []map[string]any) []sdk.Envelope {
 	return out
 }
 
-// filesWriter is the dead letter a resend buries into again: the same to.Files
-// the files sink writes with, on the same path and store.
-type filesWriter struct{ f to.Files }
+// keptIn is a resend's dead letter: the rows a resend could not deliver are
+// already buried, in the object they were read from, so there is nothing to
+// write -- only something to say.
+type keptIn struct{ object string }
 
-func (w filesWriter) Describe() string { return "files:" + w.f.Path }
-func (w filesWriter) Write(ctx context.Context, b []sdk.Envelope) (int64, error) {
-	res, err := w.f.Write(ctx, b, sdk.WriteOptions{})
-	if res == nil {
-		return 0, err
-	}
-	return res.RowsLoaded, err
+func (k keptIn) Describe() string { return "kept in " + k.object }
+func (k keptIn) Write(_ context.Context, b []sdk.Envelope) (int64, error) {
+	return int64(len(b)), nil
 }
 
 // writeReceipt writes <id>.<nanos>.json under resent/, whole.
