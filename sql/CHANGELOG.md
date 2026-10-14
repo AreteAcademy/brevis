@@ -16,6 +16,36 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added: hooks — a before and an after per endpoint
+
+`hook: {before: <name>, after: <name>}` names Go functions registered in the
+binary, the gateway's idiom. A **before** sees a copy of the query string and
+the headers (without `Authorization`) and rewrites it or answers
+`api.Refuse(msg)` → `400`; what it leaves is validated like any caller's
+query, so it cannot set the tenant or add a parameter. An **after** turns
+the rows into the answer's `data`, inside the envelope; its output is what
+the cache keeps. A hook's error or panic is a `500` with the reason on the
+audit line (`hook: before|after`); `hook_total{endpoint,hook,outcome}` and
+`hook_seconds` count each run. See `docs/ENDPOINTS.md`.
+
+### Added: `sql/api` and `sql/example`
+
+`sql/api` is the command as a library: `api.Main(hooks)`, `NewHooks`,
+`Refuse` and the hook types. The published `brevis-sql-api` is
+`api.Main(api.NewHooks())` — it registers no hook and refuses a file with
+`hook:`, naming `sql/example`, a working binary with one of each.
+
+### Changed: every cache key, once
+
+The key now holds the answer's shape — the after's name and the build, empty
+without one — so the first deploy of this version reads each answer from the
+warehouse again, endpoints without a hook included. Nothing to do; the
+generations repopulate it.
+
+---
+
 ## [0.5.0] — 2026-10-12
 
 ### Added: `brevis-sql-api` — declared, read-only SQL over HTTP

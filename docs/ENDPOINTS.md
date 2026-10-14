@@ -242,7 +242,7 @@ would change what the warehouse plans.
 
 | status | when |
 |---|---|
-| `400` | a parameter unknown, repeated, unparseable or invalid — the body names it |
+| `400` | a parameter unknown, repeated, unparseable or invalid — the body names it; or the endpoint's before hook refused, in its own words |
 | `401` | no key, or a key not on the list |
 | `404` | authenticated, and the path is not declared |
 | `405` | anything but `GET` and `HEAD` |
@@ -250,8 +250,81 @@ would change what the warehouse plans.
 | `429` | four requests from this tenant are already waiting (`Retry-After`) |
 | `503` | the API is at `max_in_flight` (`Retry-After`) |
 | `504` | `timeout` reached; the query was cancelled |
-| `500` | the endpoint's SQL cannot render for this request — its author's to fix; the reason is on the audit line |
+| `500` | the endpoint's SQL cannot render for this request, or one of its [hooks](#hooks-go-compiled-in) failed — its author's to fix; the reason is on the audit line |
 | `502` | the warehouse refused — never quoting the SQL or the values |
+
+## Hooks: Go, compiled in
+
+An endpoint can name a **before**, which sees the request before its
+parameters are read, and an **after**, which turns its rows into the
+answer's `data`:
+
+```yaml
+  - name: revenue
+    path: /v1/chart/revenue
+    tenant: none
+    params:
+      start_date: {type: date, required: true}
+      end_date: {type: date, required: true}
+    sql_file: endpoints/revenue.sql
+    hook: {before: day_first_window, after: revenue_series}
+```
+
+The file **names** a hook; it does not carry one. A hook is a Go function
+registered in the binary, the gateway's idiom and for the gateway's
+measurements: 93 ns/op against Starlark's 959, nothing added to the module,
+and `plugin.Open` is not implemented under the `CGO_ENABLED=0` every image is
+built with. **The published image has none** and refuses a file with
+`hook:`, naming `sql/example` — a binary of your own, ten lines:
+
+```go
+func main() {
+	hooks := api.NewHooks() // github.com/AreteAcademy/brevis/sql/api
+	hooks.MustRegisterBefore("day_first_window", dayFirstWindow)
+	hooks.MustRegisterAfter("revenue_series", revenueSeries)
+	api.Main(hooks) // validate, serve, describe, key hash -- the same commands
+}
+```
+
+A name nobody registered, an empty one, or a before named as an after is
+refused at load, by `validate` as by `serve`. What it costs: **a new hook is
+a rebuild and a deploy, not a config change.**
+
+**before** — `func(ctx, *api.Request) error`. It runs behind the key and
+ahead of the parameters, on a copy of the query string and the headers
+**without `Authorization`**: the hook is the customer's code and has no use
+for the bearer. What it leaves in `Query` is read through every check a
+caller's query meets, so it can turn `14/10/2026` into a date, but a
+`tenant` or a parameter nobody declared is a `400` exactly as if the caller
+had sent it. `api.Refuse(msg)` answers `400` with `msg` — the one way a hook
+speaks to the caller. Any other error, or a panic, is a `500` with the
+reason on the audit line. The line's `params` stay what the caller sent.
+
+**after** — `func(ctx, *api.Result) (any, error)`. It runs inside the
+query's timeout, on the rows already cut by `max_rows` (`Truncated` says
+so), with the parameters typed in types a binary outside the module can
+name — a date as the `YYYY-MM-DD` it was sent as, an enum as its string.
+What it returns becomes `data`; `truncated` and `meta` stay the API's, and
+`meta.rows` is what the hook was given:
+
+```json
+{"data": {"series": [{"sku": "a", "points": [{"day": "2026-10-14", "revenue": 21}]}]},
+ "truncated": false,
+ "meta": {"endpoint": "revenue", "rows": 1, "generated_at": "2026-10-14T14:03:11Z"}}
+```
+
+`max_response_bytes` holds over the whole body and **refuses rather than
+cuts**: the hook's output has no rows to stop at. An error, a panic, a value
+that is not JSON or an answer over the ceiling is a `500`, and nothing is
+cached.
+
+**The cache keeps what the after made.** It runs on a miss, once per key
+however many are asking, and a hit serves its answer without asking the
+warehouse or the hook. So **an after must be a function of its `Result`**:
+one that reads the clock or the network answers every later caller with what
+was true for the first. The key holds the after's name and the binary's
+build (version and VCS revision), so a deploy that changes what a hook does
+under the same name is a miss, not the old binary's answer.
 
 ## What it counts
 
@@ -260,12 +333,18 @@ On `metrics.addr` only: `brevis_sql_api_requests_total{endpoint,status}`,
 and `request_seconds` / `warehouse_seconds` histograms — written by hand, as
 `brevis-sql serve`'s are, because the client library is over both of this
 module's ceilings. **No tenant in any label**, and unauthorised requests are
-counted under `endpoint="-"`, never by the path they guessed.
+counted under `endpoint="-"`, never by the path they guessed. Hooks add
+`hook_total{endpoint,hook,outcome}` — `ok`, `refused`, `error`, `panic`,
+`oversize`, a closed set and never an error's text — and `hook_seconds`,
+counted where a hook runs: an after collapsed into one miss counts once, and
+a hit runs none.
 
 One JSON audit line per request on stdout: endpoint, tenant, the parameter
 **names** sent, an `args_hash` (an HMAC under a per-process key — a plain hash
-of a date is a dictionary away from it), status, rows, bytes, cache result.
-Never a value.
+of a date is a dictionary away from it), status, rows, bytes, cache result,
+and `hook` when one decided the status. Never a value of the API's making —
+but a hook's error is on the line as its author wrote it, so a hook that puts
+a value in its error puts it in the log.
 
 ## In the console
 
@@ -308,6 +387,6 @@ API, which is local and open, so no key.
 - **No browser access.** A static key in a browser is public.
 - **No writes, no ad-hoc SQL.** Arbitrary queries are `/sql`, behind a
   console login.
-- **No pagination, no streaming, no response hooks.**
+- **No pagination, no streaming.**
 - **No connection pool yet.** Each request opens its own warehouse
   connection; `max_in_flight` keeps that under the database's limit.
