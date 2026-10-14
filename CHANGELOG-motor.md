@@ -14,7 +14,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [Unreleased]
+## [0.22.0] — 2026-10-13
 
 ### Added: a concurrency group, so two workflows stop overlapping (#32)
 
