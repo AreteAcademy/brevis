@@ -43,9 +43,11 @@ type DeadLetterView struct {
 	Stream string
 	// Readable is a `files` dead letter, the only kind the commands read.
 	Readable bool
-	// Appending is a stream whose destination appends, where a resend of rows
-	// that name no load job can write them twice.
-	Appending bool
+	// Write is the destination's write mode: append, merge, or empty for a
+	// sink with no such notion -- Pub/Sub publishes again whatever it is
+	// given. Read on the clicks stream of the local stack, which a merge
+	// sentence described wrongly.
+	Write string
 }
 
 // Commands are the two lines to copy, one per line. A string and not markup
@@ -83,7 +85,7 @@ func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 		Where:     destination(text, "dead_letter", true),
 		Stream:    text("name"),
 		Readable:  kind == "files",
-		Appending: write == "append",
+		Write:    write,
 	}
 }
 

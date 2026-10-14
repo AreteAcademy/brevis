@@ -349,10 +349,13 @@ templ deadLetterPanel(dl *DeadLetterView) {
 			</p>
 			<pre class="mt-2 overflow-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-xs text-ink">{ dl.Commands() }</pre>
 			<p class="mt-2 text-xs text-muted">
-				if dl.Appending {
-					This stream appends. A resend skips rows whose BigQuery load job already landed, refuses jobs still running, and refuses rows with no job unless given --allow-duplicates — those could be written twice.
-				} else {
-					This stream merges: the dedup key makes a resent row that already landed a no-op. A resend still skips jobs that landed and refuses jobs still running.
+				switch dl.Write {
+					case "append":
+						This stream appends. A resend skips rows whose BigQuery load job already landed, refuses jobs still running, and refuses rows with no job unless given --allow-duplicates — those could be written twice.
+					case "merge":
+						This stream merges: the dedup key makes a resent row that already landed a no-op. A resend still skips jobs that landed and refuses jobs still running.
+					default:
+						This destination has no merge: a resend delivers the rows again, so whoever consumes them has to be idempotent on ingestion_id, which the rows keep.
 				}
 			</p>
 		} else {

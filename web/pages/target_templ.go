@@ -1423,28 +1423,34 @@ func deadLetterPanel(dl *DeadLetterView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if dl.Appending {
+			switch dl.Write {
+			case "append":
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 130, "This stream appends. A resend skips rows whose BigQuery load job already landed, refuses jobs still running, and refuses rows with no job unless given --allow-duplicates — those could be written twice.")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			} else {
+			case "merge":
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 131, "This stream merges: the dedup key makes a resent row that already landed a no-op. A resend still skips jobs that landed and refuses jobs still running.")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
+			default:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "This destination has no merge: a resend delivers the rows again, so whoever consumes them has to be idempotent on ingestion_id, which the rows keep.")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 132, "</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 133, "<p class=\"mt-2 text-xs text-muted\">gateway deadletter reads back only a files dead letter (a directory, gs:// or s3://); this one is read with the destination's own tools.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "<p class=\"mt-2 text-xs text-muted\">gateway deadletter reads back only a files dead letter (a directory, gs:// or s3://); this one is read with the destination's own tools.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 134, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 135, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
