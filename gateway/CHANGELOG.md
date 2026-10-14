@@ -13,6 +13,20 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Changed: `auto_table` asks about its starved tables together (#87)
+
+When a batch's send window closes with tables still loading, the gateway asks
+each table's sink what its load job became before burying anything (#85). It
+asked one table after another inside a single 5 s budget: eight tables at
+300 ms spent 2.4 s of it, and enough of them buried a batch whose jobs had all
+landed. They are now asked together, at most 16 at a time -- each question is a
+`jobs.get` against the project's API quota. What each table answers, and how
+the batch is decided, does not change.
+
+---
+
 ## [0.30.0] — 2026-10-13
 
 ### Added: the batches that landed after the send window, counted apart
