@@ -25,6 +25,66 @@ type ConfigView struct {
 	// Changes are the writer's configurations over time, newest first, each
 	// with what it changed from the one before.
 	Changes []ConfigChange
+
+	// DeadLetter is where a gateway stream's refused batches go and how to get
+	// them back; nil for a writer that published none.
+	DeadLetter *DeadLetterView
+}
+
+// DeadLetterView is the dead-letter panel of a gateway stream (#86): where the
+// buried batches are, and the commands that read them back and resend them --
+// run where the destination's credentials are. The console reads nothing of
+// the dead letter itself and calls nothing: it only knows what was published.
+type DeadLetterView struct {
+	// Where is the dead letter in the summary's words: "files at gs://…".
+	Where string
+	// Stream is the stream's NAME, which --stream takes; the page's own key
+	// is the stream's path.
+	Stream string
+	// Readable is a `files` dead letter, the only kind the commands read.
+	Readable bool
+	// Appending is a stream whose destination appends, where a resend of rows
+	// that name no load job can write them twice.
+	Appending bool
+}
+
+// Commands are the two lines to copy, one per line. A string and not markup
+// inside the <pre>: templ joins the lines of a template's text, and two
+// commands pasted as one is a command that fails.
+//
+// <gateway.yaml> is a placeholder because the manifest does not carry where
+// the config sits inside the gateway's pod.
+func (d DeadLetterView) Commands() string {
+	return "gateway deadletter ls <gateway.yaml> --stream " + d.Stream + "\n" +
+		"gateway deadletter resend <gateway.yaml> <batch> --dry-run"
+}
+
+// deadLetterOf builds the panel from the published fields, or nil.
+func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
+	f := map[string]any{}
+	for _, fl := range c.Fields {
+		f[fl.Path] = fl.Value
+	}
+	text := func(path string) string {
+		if v, ok := f[path]; ok && v != nil {
+			return valueText(v)
+		}
+		return ""
+	}
+	kind := text("dead_letter.type")
+	if kind == "" {
+		return nil
+	}
+	write := text("sink.write")
+	if text("sink.type") == "auto_table" {
+		write = text("sink.into.write")
+	}
+	return &DeadLetterView{
+		Where:     destination(text, "dead_letter", true),
+		Stream:    text("name"),
+		Readable:  kind == "files",
+		Appending: write == "append",
+	}
 }
 
 // ConfigChange is one version: from when, and what it changed.
@@ -108,7 +168,7 @@ func (w WriterConfigView) Key() string {
 // BuildConfig lays a configuration out by its paths alone, so a setting a
 // writer adds tomorrow has a place on the page with no change here.
 func BuildConfig(c *postgres.WriterConfig) ConfigView {
-	v := ConfigView{Summary: Summary(c), Note: c.Notes[""]}
+	v := ConfigView{Summary: Summary(c), Note: c.Notes[""], DeadLetter: deadLetterOf(c)}
 	index := map[string]int{}
 	before := map[string]bool{}
 

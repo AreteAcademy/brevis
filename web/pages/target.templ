@@ -149,6 +149,9 @@ templ configurations(v TargetView) {
 			} else {
 				<div class="divide-y divide-line-soft rounded-card border border-line bg-surface shadow-warm-sm">
 					<p class="px-4 py-3 text-sm text-ink sm:px-6" data-summary>{ c.Config.Summary }</p>
+					if dl := c.Config.DeadLetter; c.Gateway != "" && dl != nil {
+						@deadLetterPanel(dl)
+					}
 					if c.Config.Note != "" {
 						<div class="px-4 py-3 sm:px-6">
 							@configNote(c.Config.Note)
@@ -327,5 +330,35 @@ templ grid(columns []string, rows [][]any) {
 				}
 			</tbody>
 		</table>
+	</div>
+}
+
+// deadLetterPanel is where a stream's refused batches go and how to get them
+// back (#86). The commands run where the destination's credentials are -- the
+// gateway, a Job with its image, a laptop -- and the console runs nothing: it
+// cannot read the dead letter and holds no credential for it.
+templ deadLetterPanel(dl *DeadLetterView) {
+	<div class="px-4 py-3 sm:px-6" data-deadletter>
+		<h4 class="text-xs font-semibold text-ink">Dead letter</h4>
+		<p class="mt-1 text-xs text-muted">
+			Batches the destination refuses go to { dl.Where }.
+		</p>
+		if dl.Readable {
+			<p class="mt-2 text-xs text-muted">
+				To list them and send one back, run these where the gateway's credentials are — the gateway itself, a Job with its image, or a laptop with access:
+			</p>
+			<pre class="mt-2 overflow-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-xs text-ink">{ dl.Commands() }</pre>
+			<p class="mt-2 text-xs text-muted">
+				if dl.Appending {
+					This stream appends. A resend skips rows whose BigQuery load job already landed, refuses jobs still running, and refuses rows with no job unless given --allow-duplicates — those could be written twice.
+				} else {
+					This stream merges: the dedup key makes a resent row that already landed a no-op. A resend still skips jobs that landed and refuses jobs still running.
+				}
+			</p>
+		} else {
+			<p class="mt-2 text-xs text-muted">
+				gateway deadletter reads back only a files dead letter (a directory, gs:// or s3://); this one is read with the destination's own tools.
+			</p>
+		}
 	</div>
 }

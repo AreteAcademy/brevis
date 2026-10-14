@@ -14,6 +14,25 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: a destination's page says how to get its dead letter back (#86)
+
+A gateway stream's configuration on `/data/target` gains a **Dead letter**
+section: where the refused batches go, and the two commands that list them and
+send one back -- `gateway deadletter ls` and `resend`, from gateway 0.31.0 --
+with the stream's name filled in, and what a resend does under `write: append`
+or `merge`.
+
+The console runs neither and reads nothing of the dead letter: it holds no
+credential for it and no driver, and the gateway still shares nothing with the
+engine at runtime. The commands run where the destination's credentials are.
+`<gateway.yaml>` is a placeholder, since the manifest does not carry where the
+config sits in the gateway's pod. A dead letter that is not `files` gets the
+reason instead of a command.
+
+---
+
 ## [0.23.0] — 2026-10-14
 
 ### Added: a queued run says what concurrency limit holds it (#95)
