@@ -47,9 +47,15 @@ type defsFake struct {
 func (d defsFake) Definition(context.Context, string) (wf.Workflow, error) { return d.w, d.err }
 
 type execsFake struct {
-	run    dom.Run
-	states map[string]postgres.NodeState
-	err    error
+	run     dom.Run
+	states  map[string]postgres.NodeState
+	err     error
+	wait    *postgres.Wait
+	waitErr error
+}
+
+func (e execsFake) WaitingOn(context.Context, uuid.UUID) (*postgres.Wait, error) {
+	return e.wait, e.waitErr
 }
 
 func (e execsFake) Get(context.Context, uuid.UUID) (dom.Run, error) { return e.run, e.err }

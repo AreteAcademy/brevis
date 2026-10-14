@@ -82,7 +82,7 @@ func screens() []screen {
 		{"destination", Target(TargetView{})},
 		{"sql", SQL(SQLView{Targets: []string{"postgres://warehouse/db"}})},
 		{"workflow", Workflow(wf.Workflow{Slug: "x"}, nil, WorkflowStats{})},
-		{"run", Run(run.Run{}, nil, nil)},
+		{"run", Run(run.Run{}, nil, nil, nil)},
 	}
 }
 
