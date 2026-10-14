@@ -392,6 +392,11 @@ func (e *batchError) Unwrap() error { return e.err }
 // Reconcile satisfies gateway.Reconciler: the batch landed when every table
 // that ran out of time landed after all, and no table was left untried.
 //
+// reconcileFanout bounds how many tables Reconcile asks about at once. Each
+// question is a jobs.get against the project's API quota, so half of the
+// claim's fanout, which is for questions that cost almost nothing.
+const reconcileFanout = 16
+
 // Issue #85 was a batch of one table whose job finished three seconds after
 // the window closed. With many tables it is the same question asked once per
 // table, of the sink that wrote it; one table not known to have landed and the
@@ -404,6 +409,17 @@ func (r *router) Reconcile(ctx context.Context, cause error) (gateway.Reconcilia
 	}
 	learned := &batchError{err: be.err, failed: make(map[string]tableFailure, len(be.failed)), skipped: be.skipped}
 	landed := !be.skipped
+
+	// TOGETHER, up to reconcileFanout at a time (#87). One after another, eight
+	// tables at 300 ms spent 2.4 s of the 5 s budget, and enough of them buried
+	// a batch whose jobs had all landed. The answers are kept by table, so the
+	// order they arrive in changes nothing.
+	var (
+		mu       sync.Mutex
+		wg       sync.WaitGroup
+		firstErr error
+		sem      = make(chan struct{}, reconcileFanout)
+	)
 	for table, f := range be.failed {
 		rc, ok := f.sink.(gateway.Reconciler)
 		if !ok {
@@ -411,15 +427,33 @@ func (r *router) Reconcile(ctx context.Context, cause error) (gateway.Reconcilia
 			landed = false
 			continue
 		}
-		rec, err := rc.Reconcile(ctx, f.err)
-		if err != nil {
-			return gateway.Reconciliation{Cause: cause}, fmt.Errorf("table %s: %w", table, err)
-		}
-		if rec.Cause == nil {
-			rec.Cause = f.err
-		}
-		learned.failed[table] = tableFailure{sink: f.sink, err: rec.Cause}
-		landed = landed && rec.Landed
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			rec, err := rc.Reconcile(ctx, f.err)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				// The first failure is the answer, as it was; the other
+				// questions finish or end with ctx rather than being cut off.
+				if firstErr == nil {
+					firstErr = fmt.Errorf("table %s: %w", table, err)
+				}
+				return
+			}
+			if rec.Cause == nil {
+				rec.Cause = f.err
+			}
+			learned.failed[table] = tableFailure{sink: f.sink, err: rec.Cause}
+			landed = landed && rec.Landed
+		}()
+	}
+	wg.Wait()
+	if firstErr != nil {
+		return gateway.Reconciliation{Cause: cause}, firstErr
 	}
 	return gateway.Reconciliation{Landed: landed, Cause: learned}, nil
 }
