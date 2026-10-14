@@ -226,7 +226,12 @@ up: ## Brings up Postgres + API + scheduler + the gateway locally, and publishes
 #     make up-data BREVIS_WORKFLOWS=./my/workflows \
 #                  BREVIS_PIPELINE=./my/pipeline \
 #                  BREVIS_DATA=./my/data
-up-data: $(LOCAL_ENV) warehouse-local serve-up ## The whole stack, with a login, the data tools and a project in it
+#
+# The login is drawn the first time and kept in $(LOCAL_ENV); to choose it
+# instead, before that file exists:
+#
+#     make up-data BREVIS_LOCAL_PASSWORD='at least twelve characters'
+up-data: $(LOCAL_ENV) local-password-check warehouse-local serve-up ## The whole stack, with a login, the data tools and a project in it
 	@$(MAKE) --no-print-directory demo-data
 	@set -a; . ./$(LOCAL_ENV); set +a; docker compose up --build -d
 	@echo "compiling the project's steps..."
@@ -320,13 +325,23 @@ up-run: ## Queues a run of the local project (the console's button does the same
 # standard input when there is no terminal -- its own comment calls that case
 # a provisioning script -- so this needs nobody to type anything.
 #
+# OR CHOSEN, ONCE, AND STILL NEVER COMMITTED: `make up-data
+# BREVIS_LOCAL_PASSWORD='...'` makes the file with that password instead of a
+# drawn one. The value lives where the drawn one would -- in this file, on
+# this machine -- because the repository is public, and a password written
+# in it is the password of every copy of the example somebody exposes.
+#
 # Single quotes around every value: a pbkdf2 hash is full of `$`, and `.` on
 # an unquoted assignment would expand them into nothing. That is the same
 # class of bug as compose's `$$`, one layer down.
 $(LOCAL_ENV):
-	@pw=$$(openssl rand -base64 18); \
-	 hash=$$(printf '%s\n' "$$pw" | go run ./cmd/brevis hash 2>/dev/null); \
-	 test -n "$$hash" || { echo "could not generate a password hash"; exit 1; }; \
+	@pw="$${BREVIS_LOCAL_PASSWORD:-}"; \
+	 case "$$pw" in *"'"*) echo "BREVIS_LOCAL_PASSWORD cannot hold a single quote: the file quotes with them"; exit 1;; esac; \
+	 test -n "$$pw" || pw=$$(openssl rand -base64 18); \
+	 err=$$(mktemp); \
+	 hash=$$(printf '%s\n' "$$pw" | go run ./cmd/brevis hash 2>$$err); \
+	 test -n "$$hash" || { echo "could not generate a password hash: $$(sed -n 's/^password: //p' $$err)"; rm -f $$err; exit 1; }; \
+	 rm -f $$err; \
 	 { \
 	   echo "# Made by \`make up-data\`. Never committed: it holds a password."; \
 	   echo "BREVIS_AUTH_USER='operador'"; \
@@ -338,6 +353,17 @@ $(LOCAL_ENV):
 	 } > $(LOCAL_ENV)
 	@chmod 600 $(LOCAL_ENV)
 	@echo "made $(LOCAL_ENV) -- this machine's console login"
+
+# A PASSWORD ASKED FOR AND NOT USED IS REFUSED, not ignored: $(LOCAL_ENV) is
+# made once, so on a machine that has one, BREVIS_LOCAL_PASSWORD would be
+# dropped silently and the login would fail for a reason nobody printed.
+local-password-check:
+	@if [ -n "$${BREVIS_LOCAL_PASSWORD:-}" ] && \
+	  ! grep -qxF "BREVIS_LOCAL_PASSWORD='$${BREVIS_LOCAL_PASSWORD}'" $(LOCAL_ENV); then \
+	  echo "$(LOCAL_ENV) already holds another password, and is made only once."; \
+	  echo "To use this one: rm $(LOCAL_ENV), and run the same command again."; \
+	  exit 1; \
+	fi
 
 # `brevis-sql serve` runs on the HOST and not in the stack, because it holds a
 # warehouse credential and nothing in docker-compose.yml should. Built first
@@ -547,4 +573,4 @@ smoke: ## Checks the api's /health and /ready, and that the gateway accepts an e
 	  -d '{"event_id":"smoke","occurred_at":"2026-01-01T00:00:00Z","host":"smoke.example.com","region":"local"}' \
 	  | grep -q '^202$$' && echo 202 || { echo "not 202: see 'docker compose logs gateway'"; exit 1; }
 
-.PHONY: help build test test-int test-db check up down serve-up serve-down serve-restart endpoints-demo endpoints-publish endpoints-build logs smoke dev generate tailwind-install image image-push image-smoke
+.PHONY: help local-password-check build test test-int test-db check up down serve-up serve-down serve-restart endpoints-demo endpoints-publish endpoints-build logs smoke dev generate tailwind-install image image-push image-smoke
