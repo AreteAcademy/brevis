@@ -13,7 +13,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.31.0] — 2026-10-14
 
 ### Added: `gateway deadletter ls` and `resend` (#86)
 
