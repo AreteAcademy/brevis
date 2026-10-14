@@ -1456,6 +1456,7 @@ giveUp:
 	if rec.Landed {
 		p.metrics.observe(p.metrics.delivery, time.Since(start).Seconds(), name, sink)
 		p.metrics.count(p.metrics.batches, 1, name, sink, OutcomeDelivered)
+		p.metrics.count(p.metrics.reconciled, 1, name, sink)
 		slog.Info("delivered after the send window closed", "stream", name,
 			"sink", sink, "events", len(batch), "cause", err)
 		return nil

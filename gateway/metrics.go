@@ -29,6 +29,14 @@ const (
 	MetricQueue     = "brevis_gateway_queue_batches"
 	MetricFlushes   = "brevis_gateway_flushes_total"
 
+	// MetricReconciled is batches that landed AFTER the send window closed:
+	// the load job finished, the gateway had stopped waiting, and reconcile
+	// found it done (#85). A subset of batches_total{outcome="delivered"},
+	// which counts them too -- a counter of its own and not an outcome, so a
+	// dashboard summing delivered does not change. How often it moves is how
+	// often the window is shorter than the destination's queue.
+	MetricReconciled = "brevis_gateway_reconciled_total"
+
 	// MetricWindows is what became of each flush WINDOW when the claim is on.
 	//
 	// Its own series and not a label on MetricFlushes, because a yield is not
@@ -183,6 +191,9 @@ type Metrics struct {
 	flushes   *counters
 	windows   *counters
 
+	// A subset of the delivered batches; see MetricReconciled.
+	reconciled *counters
+
 	// The volume pair, nil unless BREVIS_INGESTION_METRICS turned them on.
 	// Nil rather than a bool, so the check is the same nil-guard every other
 	// instrument already has and there is no second way to be off.
@@ -224,6 +235,8 @@ func NewMetrics() *Metrics {
 	m.rejected = m.newCounters(MetricRejected, "events refused before they were buffered", "stream", "reason")
 	m.dropped = m.newCounters(MetricDropped, "events a hook dropped on purpose", "stream")
 	m.batches = m.newCounters(MetricBatches, "batches by what became of them", "stream", "sink", "outcome")
+	m.reconciled = m.newCounters(MetricReconciled,
+		"batches that landed after the send window closed; also counted as delivered", "stream", "sink")
 	m.buried = m.newCounters(MetricBuried, "records written to a dead letter", "stream", "sink")
 	m.saturated = m.newCounters(MetricSaturated, "requests refused because the buffer was full", "stream")
 	m.refused = m.newCounters(MetricRefused, "requests refused before an event existed, by why", "stream", "reason")
