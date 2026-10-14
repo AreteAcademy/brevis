@@ -97,3 +97,31 @@ func TestAnOpaquePayloadIsBuriedUnstamped(t *testing.T) {
 		t.Errorf("payload = %v", dead.got[0].Payload)
 	}
 }
+
+// A resend sends under the batch's original key, so a BigQuery job that landed
+// is adopted, not written twice. send keeps a key it is handed.
+func TestSendKeepsTheKeyItIsHanded(t *testing.T) {
+	sink, dead := &keyedRefusal{}, &recordingDead{}
+	p := &pipe{stream: Stream{Name: "clicks", Retry: Retry{Attempts: 1}}, sink: sink, dead: dead, metrics: NewMetrics()}
+	_ = p.send(WithBatchKey(context.Background(), "the-original-key"), []sdk.Envelope{{Payload: row("first")}})
+
+	if len(sink.keys) != 1 || sink.keys[0] != "the-original-key" {
+		t.Errorf("the sink wrote under %v; the resend handed it the-original-key", sink.keys)
+	}
+	if got := dead.got[0].Payload.(map[string]any)[ColumnDeadLetterBatch]; got != "the-original-key" {
+		t.Errorf("re-buried under %v", got)
+	}
+}
+
+// And live traffic, which hands it nothing, still gets a key per batch: two
+// batches under one key would adopt each other's BigQuery job and drop rows.
+func TestLiveBatchesStillGetAKeyEach(t *testing.T) {
+	sink := &keyedRefusal{}
+	p := &pipe{stream: Stream{Name: "clicks", Retry: Retry{Attempts: 1}}, sink: sink, dead: &recordingDead{}, metrics: NewMetrics()}
+	_ = p.send(context.Background(), []sdk.Envelope{{Payload: row("first")}})
+	_ = p.send(context.Background(), []sdk.Envelope{{Payload: row("second")}})
+
+	if len(sink.keys) != 2 || sink.keys[0] == "" || sink.keys[0] == sink.keys[1] {
+		t.Errorf("two live batches wrote under %v", sink.keys)
+	}
+}

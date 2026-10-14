@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/AreteAcademy/brevis/sdk"
 )
@@ -54,6 +55,30 @@ type Admitter interface {
 // and the batch goes to the dead letter as before.
 type Reconciler interface {
 	Reconcile(ctx context.Context, cause error) (Reconciliation, error)
+}
+
+// JobAsker asks what one buried row's load job became, for a resend (#86).
+//
+// A Reconciler is asked about the failure a send just had. A resend has only
+// the dead-letter row: the job on it and the row itself. A sink that can
+// answer from the job alone needs nothing more than Reconcile -- AskJob falls
+// back to it -- and a sink that writes many tables, like auto_table, reads
+// which one off the row and asks that table's sink.
+type JobAsker interface {
+	AskJob(ctx context.Context, job *sdk.LoadJobError, row map[string]any) (Reconciliation, error)
+}
+
+// AskJob asks a sink what a buried row's job became: through JobAsker when
+// the sink is one, through Reconcile otherwise. A sink that is neither cannot
+// say, and that is an error rather than a guess.
+func AskJob(ctx context.Context, s Sinker, job *sdk.LoadJobError, row map[string]any) (Reconciliation, error) {
+	if a, ok := s.(JobAsker); ok {
+		return a.AskJob(ctx, job, row)
+	}
+	if rc, ok := s.(Reconciler); ok {
+		return rc.Reconcile(ctx, job)
+	}
+	return Reconciliation{Cause: job}, fmt.Errorf("%s cannot say what load job %s became", s.Describe(), job.JobID)
 }
 
 // Reconciliation is what a Reconciler learned.
