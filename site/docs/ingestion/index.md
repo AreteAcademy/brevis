@@ -395,6 +395,7 @@ brevis_gateway_events_received_total{stream,format}     contador
 brevis_gateway_events_rejected_total{stream,reason}     contador  por EVENTO, depois do decode
 brevis_gateway_requests_refused_total{stream,reason}    contador  por REQUISIÇÃO: unauthorized|body_too_large|malformed|empty|saturated
 brevis_gateway_batches_total{stream,sink,outcome}       contador  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            contador  chegou depois da janela de envio; conta também em delivered
 brevis_gateway_flushes_total{stream,trigger}            contador  time|records|size
 brevis_gateway_flush_windows_total{stream,outcome}      contador  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        contador  opt-in
