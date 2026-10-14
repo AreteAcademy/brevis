@@ -1391,7 +1391,11 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	// `parent` is kept, and that is the whole of issue #42's first finding:
 	// `bury` below runs on it rather than on the narrowed one, which is
 	// exhausted exactly when the dead letter is needed.
-	ctx, cancel := context.WithTimeout(WithBatchKey(parent, newBatchKey()), sendTimeout)
+	// The key is kept, not only put in ctx: bury runs on `parent`, which never
+	// had it, and the buried rows have to name the batch the jobs were named
+	// after (#86).
+	key := newBatchKey()
+	ctx, cancel := context.WithTimeout(WithBatchKey(parent, key), sendTimeout)
 	defer cancel()
 
 	r := p.stream.Retry
@@ -1467,7 +1471,7 @@ giveUp:
 	if cause == err {
 		reason = rec.Cause
 	}
-	p.bury(parent, batch, reason, rec.Cause)
+	p.bury(parent, batch, key, reason, rec.Cause)
 	return err
 }
 
@@ -1512,8 +1516,9 @@ func (p *pipe) reconcile(parent context.Context, cause error) Reconciliation {
 // be the exact failure the dead letter exists to prevent.
 //
 // jobs is what names the load jobs the rows may already be in -- the reason
-// itself, unless an earlier attempt named them; see send.
-func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause, jobs error) {
+// itself, unless an earlier attempt named them; see send. key is the batch key
+// send wrote under, stamped on every row as ColumnDeadLetterBatch.
+func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, key string, cause, jobs error) {
 	// Its own deadline, derived from the caller's rather than from the send
 	// that just failed. See deadLetterTimeout.
 	ctx, cancel := context.WithTimeout(parent, deadLetterTimeout)
@@ -1530,13 +1535,15 @@ func (p *pipe) bury(parent context.Context, batch []sdk.Envelope, cause, jobs er
 		}
 		// A copy: the batch may still be referenced, and stamping the original
 		// would put the failure of one sink into a record another one holds.
-		out := make(map[string]any, len(row)+3)
+		out := make(map[string]any, len(row)+8)
 		for k, v := range row {
 			out[k] = v
 		}
 		out["_dead_letter_reason"] = reason
 		out["_dead_letter_sink"] = p.sink.Describe()
 		out["_dead_letter_at"] = time.Now().UTC().Format(time.RFC3339)
+		out[ColumnDeadLetterBatch] = key
+		out[ColumnDeadLetterStream] = p.stream.Name
 		if namer != nil {
 			if job, ok := namer.JobOf(jobs, row); ok {
 				out[ColumnDeadLetterJobID] = job.JobID

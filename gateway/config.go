@@ -193,6 +193,15 @@ const (
 	ColumnDeadLetterJobID       = "_dead_letter_job_id"
 	ColumnDeadLetterJobLocation = "_dead_letter_job_location"
 	ColumnDeadLetterJobState    = "_dead_letter_job_state"
+
+	// ColumnDeadLetterBatch is the batch a buried row belonged to: the key the
+	// send wrote under, which is also what a BigQuery load job was named after.
+	// `gateway deadletter resend` sends under it again, so a job that landed is
+	// adopted rather than written twice (#86).
+	ColumnDeadLetterBatch = "_dead_letter_batch"
+	// ColumnDeadLetterStream is the stream it came in on: a dead letter can
+	// be shared, and the row is all whoever finds it has.
+	ColumnDeadLetterStream = "_dead_letter_stream"
 )
 
 // Retry is the sink's second, third and fourth chance.
