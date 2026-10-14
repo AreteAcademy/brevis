@@ -141,3 +141,65 @@ func TestTheBuildIsInTheShape(t *testing.T) {
 		t.Error("an endpoint with no after has a shape")
 	}
 }
+
+// EVERY OUTCOME IS A LABEL FROM A CLOSED SET, never the error's text: a
+// label is a series for as long as the database keeps it.
+func TestHookOutcomesAreCountedAndTimed(t *testing.T) {
+	w := &warehouse{cols: []string{"day", "n"}, rows: [][]any{{"2026-10-14", 9}}}
+	before := func(_ context.Context, r *Request) error {
+		switch r.Query.Get("campaign") {
+		case "no":
+			return Refuse("no")
+		case "err":
+			return errors.New("lookup at 10.0.0.7 failed")
+		case "boom":
+			panic("boom")
+		}
+		return nil
+	}
+	s := beforeServer(t, w, daily(t, before), nil)
+	for _, c := range []string{"ok", "no", "err", "boom"} {
+		get(s, "/v1/daily?campaign="+c)
+	}
+	big := volume(t, func(_ context.Context, r *Result) (any, error) {
+		if len(r.Rows) == 0 {
+			return nil, errors.New("empty")
+		}
+		return strings.Repeat("x", 500), nil
+	})
+	big.maxResponse = 200
+	s2 := beforeServer(t, w, big, nil)
+	get(s2, "/v1/volume")
+
+	body := scrape(t, s) + scrape(t, s2)
+	for _, want := range []string{
+		`brevis_sql_api_hook_total{endpoint="daily",hook="before",outcome="ok"} 1`,
+		`brevis_sql_api_hook_total{endpoint="daily",hook="before",outcome="refused"} 1`,
+		`brevis_sql_api_hook_total{endpoint="daily",hook="before",outcome="error"} 1`,
+		`brevis_sql_api_hook_total{endpoint="daily",hook="before",outcome="panic"} 1`,
+		`brevis_sql_api_hook_total{endpoint="volume",hook="after",outcome="oversize"} 1`,
+		`brevis_sql_api_hook_seconds_count{endpoint="daily",hook="before"} 4`,
+		`brevis_sql_api_hook_seconds_bucket{endpoint="volume",hook="after",le="+Inf"} 1`,
+		"# TYPE brevis_sql_api_hook_total counter",
+		"# TYPE brevis_sql_api_hook_seconds histogram",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	if strings.Contains(body, "10.0.0.7") || strings.Contains(body, "boom") {
+		t.Errorf("an error's text reached the exposition:\n%s", body)
+	}
+}
+
+// THE AFTER IS COUNTED WHEN IT RUNS, and a hit does not run it.
+func TestAHitDoesNotCountTheAfter(t *testing.T) {
+	w := &counting{warehouse: warehouse{cols: []string{"day", "n"}, rows: [][]any{{"2026-10-05", 1}}}}
+	var calls atomic.Int32
+	s := cachedWithAfter(t, w, &memoryKV{data: map[string][]byte{}}, "points", countingAfter(&calls))
+	get(s, "/v1/clicks?c=x")
+	get(s, "/v1/clicks?c=x")
+	if body := scrape(t, s); !strings.Contains(body, `brevis_sql_api_hook_total{endpoint="clicks",hook="after",outcome="ok"} 1`) {
+		t.Errorf("after counted wrong:\n%s", body)
+	}
+}

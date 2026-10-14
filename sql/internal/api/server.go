@@ -173,7 +173,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 			// from here on -- through every check a caller's query meets.
 			// The audit line above already holds what the caller sent.
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
-			rewritten, status, why := runBefore(ctx, e, tenant, r)
+			rewritten, status, why := runBefore(ctx, s.met, e, tenant, r)
 			cancel()
 			if status != 0 {
 				line.Hook = "before"
@@ -334,7 +334,9 @@ func (s *Server) answer(parent context.Context, endpoint, tenant, query string, 
 		// request that hangs, and the ceiling that bounds the query bounds it.
 		r := &Result{Endpoint: endpoint, Tenant: tenant, Params: shape.params,
 			Columns: res.Columns, Rows: res.Rows, Truncated: truncated}
+		shaped := time.Now()
 		body, err := shapeWith(ctx, shape.after, r, maxResponse)
+		s.met.hook(endpoint, "after", outcomeOf(err), time.Since(shaped))
 		if err != nil {
 			return outcome{status: http.StatusInternalServerError, warehouse: took, hook: "after", reason: err.Error(),
 				why: "this endpoint's after hook failed; its author has the reason in the API's log"}

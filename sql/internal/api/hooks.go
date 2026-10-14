@@ -195,7 +195,7 @@ func lookup[F any](by map[string]F, endpoint, kind, name string) (F, error) {
 // THE KEY NEVER REACHES IT. Authorization is dropped from the copy: a hook
 // is the customer's code, and nothing it does needs the bearer it was called
 // with.
-func runBefore(ctx context.Context, e *Endpoint, tenant string, r *http.Request) (*http.Request, int, string) {
+func runBefore(ctx context.Context, m *metrics, e *Endpoint, tenant string, r *http.Request) (*http.Request, int, string) {
 	q, err := url.ParseQuery(r.URL.RawQuery)
 	if err != nil {
 		return nil, http.StatusBadRequest, fmt.Sprintf("the query string does not parse: %v", err)
@@ -203,7 +203,10 @@ func runBefore(ctx context.Context, e *Endpoint, tenant string, r *http.Request)
 	header := r.Header.Clone()
 	header.Del("Authorization")
 	req := &Request{Endpoint: e.Name, Tenant: tenant, Query: q, Header: header}
-	if err := callBefore(ctx, e.before, req); err != nil {
+	started := time.Now()
+	err = callBefore(ctx, e.before, req)
+	m.hook(e.Name, "before", outcomeOf(err), time.Since(started))
+	if err != nil {
 		var said refusal
 		if errors.As(err, &said) {
 			return nil, http.StatusBadRequest, said.msg
@@ -221,7 +224,7 @@ func runBefore(ctx context.Context, e *Endpoint, tenant string, r *http.Request)
 func callBefore(ctx context.Context, fn Before, req *Request) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("the before hook panicked: %v", p)
+			err = hookPanic{fmt.Errorf("the before hook panicked: %v", p)}
 		}
 	}()
 	return fn(ctx, req)
@@ -278,8 +281,8 @@ func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize) ([]b
 	}
 	body := fmt.Appendf(nil, `{"data":%s,"truncated":%t,"meta":%s}`, encoded, r.Truncated, meta)
 	if maxBytes > 0 && ByteSize(len(body)) > maxBytes {
-		return nil, fmt.Errorf("the after hook's answer is %s, over this endpoint's max_response_bytes of %s",
-			ByteSize(len(body)), maxBytes)
+		return nil, oversize{fmt.Errorf("the after hook's answer is %s, over this endpoint's max_response_bytes of %s",
+			ByteSize(len(body)), maxBytes)}
 	}
 	return body, nil
 }
@@ -289,7 +292,7 @@ func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize) ([]b
 func callAfter(ctx context.Context, fn After, r *Result) (data any, err error) {
 	defer func() {
 		if p := recover(); p != nil {
-			data, err = nil, fmt.Errorf("the after hook panicked: %v", p)
+			data, err = nil, hookPanic{fmt.Errorf("the after hook panicked: %v", p)}
 		}
 	}()
 	return fn(ctx, r)
@@ -322,4 +325,29 @@ func shapeOf(after, build string) string {
 		return ""
 	}
 	return after + "@" + build
+}
+
+// hookPanic and oversize are a hook's failures that the metrics tell apart
+// from an error it returned.
+type hookPanic struct{ error }
+type oversize struct{ error }
+
+// outcomeOf is a hook's result as a label: a CLOSED SET, never the error's
+// text, which is the hook author's and could be anything -- a label is a
+// series for as long as the database keeps it.
+func outcomeOf(err error) string {
+	var said refusal
+	var panicked hookPanic
+	var over oversize
+	switch {
+	case err == nil:
+		return "ok"
+	case errors.As(err, &said):
+		return "refused"
+	case errors.As(err, &panicked):
+		return "panic"
+	case errors.As(err, &over):
+		return "oversize"
+	}
+	return "error"
 }

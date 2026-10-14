@@ -34,6 +34,8 @@ type metrics struct {
 	request   map[string]*histogram
 	warehouse map[string]*histogram
 	cache     map[[2]string]int64 // endpoint, result
+	hooks     map[[3]string]int64 // endpoint, hook, outcome
+	hookTime  map[[2]string]*histogram
 }
 
 // buckets are seconds, from a cache hit to the default timeout.
@@ -62,7 +64,7 @@ func newMetrics() *metrics {
 	return &metrics{
 		requests: map[[2]string]int64{}, rows: map[string]int64{}, billed: map[string]int64{},
 		request: map[string]*histogram{}, warehouse: map[string]*histogram{},
-		cache: map[[2]string]int64{},
+		cache: map[[2]string]int64{}, hooks: map[[3]string]int64{}, hookTime: map[[2]string]*histogram{},
 	}
 }
 
@@ -85,6 +87,20 @@ func (m *metrics) observe(line *record, took, warehouse time.Duration) {
 	if warehouse > 0 {
 		hist(m.warehouse, line.Endpoint).observe(warehouse.Seconds())
 	}
+}
+
+// hook counts one run of a hook and how long it took. Called where the hook
+// runs, not from the audit line: an after runs once per collapsed miss, and
+// the requests that shared its answer did not run it.
+func (m *metrics) hook(endpoint, hook, outcome string, took time.Duration) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.hooks[[3]string{endpoint, hook, outcome}]++
+	k := [2]string{endpoint, hook}
+	if m.hookTime[k] == nil {
+		m.hookTime[k] = &histogram{}
+	}
+	m.hookTime[k].observe(took.Seconds())
 }
 
 func hist(m map[string]*histogram, k string) *histogram {
@@ -127,6 +143,35 @@ func (m *metrics) handler() http.Handler {
 		counter(&b, "bytes_billed_total", "Bytes the warehouse reported scanning, by endpoint.", m.billed)
 		histograms(&b, "request_seconds", "Time to answer a request, by endpoint.", m.request)
 		histograms(&b, "warehouse_seconds", "Time the warehouse took, by endpoint.", m.warehouse)
+		b.WriteString("# HELP brevis_sql_api_hook_total Hook runs, by endpoint, hook and outcome.\n")
+		b.WriteString("# TYPE brevis_sql_api_hook_total counter\n")
+		hkeys := make([][3]string, 0, len(m.hooks))
+		for k := range m.hooks {
+			hkeys = append(hkeys, k)
+		}
+		sort.Slice(hkeys, func(i, j int) bool {
+			return strings.Join(hkeys[i][:], "\x00") < strings.Join(hkeys[j][:], "\x00")
+		})
+		for _, k := range hkeys {
+			fmt.Fprintf(&b, "brevis_sql_api_hook_total{endpoint=%q,hook=%q,outcome=%q} %d\n", k[0], k[1], k[2], m.hooks[k])
+		}
+		b.WriteString("# HELP brevis_sql_api_hook_seconds Time a hook took, by endpoint and hook.\n")
+		b.WriteString("# TYPE brevis_sql_api_hook_seconds histogram\n")
+		tkeys := make([][2]string, 0, len(m.hookTime))
+		for k := range m.hookTime {
+			tkeys = append(tkeys, k)
+		}
+		sort.Slice(tkeys, func(i, j int) bool { return tkeys[i][0]+"\x00"+tkeys[i][1] < tkeys[j][0]+"\x00"+tkeys[j][1] })
+		for _, k := range tkeys {
+			h, labels := m.hookTime[k], fmt.Sprintf("endpoint=%q,hook=%q", k[0], k[1])
+			for i, le := range buckets {
+				fmt.Fprintf(&b, "brevis_sql_api_hook_seconds_bucket{%s,le=%q} %d\n", labels,
+					strconv.FormatFloat(le, 'g', -1, 64), h.counts[i])
+			}
+			fmt.Fprintf(&b, "brevis_sql_api_hook_seconds_bucket{%s,le=\"+Inf\"} %d\n", labels, h.n)
+			fmt.Fprintf(&b, "brevis_sql_api_hook_seconds_sum{%s} %g\n", labels, h.sum)
+			fmt.Fprintf(&b, "brevis_sql_api_hook_seconds_count{%s} %d\n", labels, h.n)
+		}
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		_, _ = w.Write([]byte(b.String()))
 	})
