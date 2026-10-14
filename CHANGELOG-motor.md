@@ -21,8 +21,8 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 A gateway stream's configuration on `/data/target` gains a **Dead letter**
 section: where the refused batches go, and the two commands that list them and
 send one back -- `gateway deadletter ls` and `resend`, from gateway 0.31.0 --
-with the stream's name filled in, and what a resend does under `write: append`
-or `merge`.
+with the stream's name filled in, and what a resend does under `write: append`,
+`merge`, or a destination with no merge at all (Pub/Sub).
 
 The console runs neither and reads nothing of the dead letter: it holds no
 credential for it and no driver, and the gateway still shares nothing with the

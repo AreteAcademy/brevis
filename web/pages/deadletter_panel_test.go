@@ -98,3 +98,17 @@ func TestNoDeadLetterNoPanel(t *testing.T) {
 		t.Error("a panel for a dead letter nobody published")
 	}
 }
+
+// A sink with no write mode -- Pub/Sub -- neither appends nor merges, and the
+// panel must not claim the dedup key protects it. Found on the local stack.
+func TestTheDeadLetterPanelForADestinationWithNoMerge(t *testing.T) {
+	html := gatewayPage(t,
+		f("name", "clicks"), f("sink.type", "pubsub"),
+		f("dead_letter.type", "files"), f("dead_letter.path", "/var/dead-letter/clicks/"))
+	if strings.Contains(html, "dedup key") || strings.Contains(html, "This stream merges") {
+		t.Error("a Pub/Sub stream is told the dedup key protects a resend")
+	}
+	if !strings.Contains(html, "idempotent") {
+		t.Error("the panel does not say the consumer has to be idempotent")
+	}
+}
