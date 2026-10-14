@@ -329,9 +329,11 @@ cached.
 however many are asking, and a hit serves its answer without asking the
 warehouse or the hook. So **an after must be a function of its `Result`**:
 one that reads the clock or the network answers every later caller with what
-was true for the first. The key holds the after's name and the binary's
-build (version and VCS revision), so a deploy that changes what a hook does
-under the same name is a miss, not the old binary's answer.
+was true for the first. The key holds the after's name, the binary's
+build (version and VCS revision) and every parameter the hook is shown — a
+`format` declared for the hook alone never reaches the SQL, and is still a
+different answer — so a deploy that changes what a hook does under the same
+name is a miss, not the old binary's answer.
 
 ## What it counts
 

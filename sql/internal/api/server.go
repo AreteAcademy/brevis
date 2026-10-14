@@ -238,7 +238,7 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		if s.cache == nil {
 			o = ask(r.Context())
 		} else {
-			o = s.cached(r, w, line, e, tenant, query, args, ask)
+			o = s.cached(r, w, line, e, tenant, query, args, shape, ask)
 			if o.served {
 				return
 			}
@@ -392,7 +392,7 @@ const cacheTimeout = 500 * time.Millisecond
 // A CACHE NEVER FAILS A REQUEST: an error anywhere here is a request answered
 // from the warehouse, marked `bypass` and counted as an error.
 func (s *Server) cached(r *http.Request, w http.ResponseWriter, line *record, e *Endpoint,
-	tenant, query string, args []dialect.Arg, ask func(context.Context) outcome) outcome {
+	tenant, query string, args []dialect.Arg, shape *shaping, ask func(context.Context) outcome) outcome {
 	rctx := r.Context()
 	w.Header().Set("Vary", "Accept-Encoding")
 	cctx, cancel := context.WithTimeout(rctx, cacheTimeout)
@@ -400,7 +400,7 @@ func (s *Server) cached(r *http.Request, w http.ResponseWriter, line *record, e 
 	gens, err := s.cache.Generations(cctx, e.reads)
 	var key string
 	if err == nil {
-		key = cache.Key(s.cfg.Name, s.cfg.ConnectionID, e.Name, tenant, query, args, gens, shapeOf(e.afterName, buildID))
+		key = cache.Key(s.cfg.Name, s.cfg.ConnectionID, e.Name, tenant, query, args, gens, keyShape(e, shape))
 		// THE ETAG IS THE KEY'S HASH, so it changes exactly when the answer
 		// can: the same request over the same generations.
 		tag := `"` + key[strings.LastIndexByte(key, ':')+1:][:32] + `"`
@@ -728,4 +728,12 @@ func refuse(w http.ResponseWriter, status int, why string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": why})
+}
+
+// keyShape is what the cache key holds of an endpoint's after, if any.
+func keyShape(e *Endpoint, shape *shaping) string {
+	if shape == nil {
+		return ""
+	}
+	return shapeKey(e.afterName, buildID, shape.params)
 }

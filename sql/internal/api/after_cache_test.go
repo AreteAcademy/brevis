@@ -203,3 +203,58 @@ func TestAHitDoesNotCountTheAfter(t *testing.T) {
 		t.Errorf("after counted wrong:\n%s", body)
 	}
 }
+
+// A PARAMETER ONLY THE AFTER READS IS PART OF THE ANSWER. `format` never
+// reaches the SQL, so the statement and its arguments are the same for
+// both requests -- and without the parameters in the key, the second caller
+// was served the first one's shape, with a 200 and a matching ETag.
+func TestAParameterOnlyTheAfterReadsIsInTheKey(t *testing.T) {
+	w := &counting{warehouse: warehouse{cols: []string{"day", "n"}, rows: [][]any{{"2026-10-05", 1}}}}
+	e := &Endpoint{Name: "clicks", Path: "/v1/clicks",
+		Params: map[string]Param{"format": {Type: "enum", Values: []string{"series", "table"}}},
+		SQL:    "select day, n from marts.clicks_daily where w = {{ tenant }}"}
+	if err := e.parse(postgres.Dialect{}); err != nil {
+		t.Fatal(err)
+	}
+	e.afterName = "formatted"
+	e.after = func(_ context.Context, r *Result) (any, error) { return r.Params["format"], nil }
+	s, err := New(&Config{Name: "x", Env: "local", Dialect: postgres.Dialect{}, MaxRows: 10,
+		Open:      func(context.Context) (dialect.Conn, error) { return w, nil },
+		Cache:     &CacheConfig{Type: "redis", AddrFrom: "UNUSED", TTL: time.Hour},
+		CacheKV:   &memoryKV{data: map[string][]byte{}},
+		Endpoints: []*Endpoint{e}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	series := get(s, "/v1/clicks?format=series")
+	table := get(s, "/v1/clicks?format=table")
+	if table.Header().Get("X-Brevis-Cache") != "miss" || !strings.HasPrefix(table.Body.String(), `{"data":"table"`) {
+		t.Errorf("format=table was a %q of %s", table.Header().Get("X-Brevis-Cache"), table.Body)
+	}
+	if series.Header().Get("ETag") == table.Header().Get("ETag") {
+		t.Error("two shapes share an ETag")
+	}
+	if again := get(s, "/v1/clicks?format=series"); again.Header().Get("X-Brevis-Cache") != "hit" {
+		t.Errorf("the same format again was a %q", again.Header().Get("X-Brevis-Cache"))
+	}
+}
+
+func TestTheShapeHoldsTheParametersCanonically(t *testing.T) {
+	a := shapeKey("points", "v1", map[string]any{"format": "series", "top": int64(5)})
+	if a != shapeKey("points", "v1", map[string]any{"top": int64(5), "format": "series"}) {
+		t.Error("the same parameters in another order are another shape")
+	}
+	for name, other := range map[string]string{
+		"value":  shapeKey("points", "v1", map[string]any{"format": "table", "top": int64(5)}),
+		"type":   shapeKey("points", "v1", map[string]any{"format": "series", "top": "5"}),
+		"absent": shapeKey("points", "v1", map[string]any{"format": "series"}),
+		"forged": shapeKey("points", "v1", map[string]any{"format": "series", "top": int64(5), "": ""}),
+	} {
+		if other == a {
+			t.Errorf("a different %s gave the same shape", name)
+		}
+	}
+	if shapeKey("", "v1", map[string]any{"format": "x"}) != "" {
+		t.Error("an endpoint with no after has a shape")
+	}
+}

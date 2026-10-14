@@ -382,3 +382,33 @@ func outcomeOf(err error) string {
 	}
 	return "error"
 }
+
+// shapeKey is the shape the cache key holds: the after and its build, and
+// every parameter it is shown -- or nothing, without an after.
+//
+// THE PARAMETERS, because an after reads them and the SQL may not: a
+// `format` declared for the hook alone never reaches the statement, so the
+// statement and its arguments cannot tell `series` from `table`, and the
+// second caller would be served the first one's shape. Sorted by name, and
+// each part length-prefixed with its Go type, as the arguments are: the int
+// 5 and the string "5" are two answers, and no two sets concatenate alike.
+func shapeKey(after, build string, params map[string]any) string {
+	shape := shapeOf(after, build)
+	if shape == "" {
+		return ""
+	}
+	names := make([]string, 0, len(params))
+	for n := range params {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	var b strings.Builder
+	b.WriteString(shape)
+	part := func(s string) { fmt.Fprintf(&b, "%d:%s", len(s), s) }
+	for _, n := range names {
+		part(n)
+		part(fmt.Sprintf("%T", params[n]))
+		part(fmt.Sprint(params[n]))
+	}
+	return b.String()
+}
