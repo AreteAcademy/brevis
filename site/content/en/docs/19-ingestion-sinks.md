@@ -149,7 +149,7 @@ build that only writes locally should not carry the AWS SDK to do it.
 
 | image | carries | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.31.0` | six sinks, S3, GCS, Redis, memcached | 19.0 MB |
+| `areteacademy/brevis-gateway:0.31.0` | six sinks, S3, GCS, Redis, memcached | 19.1 MB |
 | `areteacademy/brevis-gateway:0.31.0-slim` | `postgres`, local `files`, `auto_table` | **5.2 MB** |
 
 Both from one build of one tree, so the two tags are always the same commit.

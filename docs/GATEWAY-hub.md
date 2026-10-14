@@ -19,7 +19,7 @@ docker run -p 8080:8080 \
 
 | tag | carries | pull |
 |---|---|---|
-| `0.31.0` | six sinks, S3 and GCS, Redis and memcached | 19.0 MB |
+| `0.31.0` | six sinks, S3 and GCS, Redis and memcached | 19.1 MB |
 | `0.31.0-slim` | `postgres`, `auto_table`, local `files` | **5.2 MB** |
 
 Sizes are the compressed amd64 image in MB, as `docker pull` counts them;

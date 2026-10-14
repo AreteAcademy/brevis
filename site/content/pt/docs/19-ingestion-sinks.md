@@ -149,7 +149,7 @@ build que só escreve local não deveria carregar o SDK da AWS para isso.
 
 | imagem | carrega | pull (amd64) |
 |---|---|---|
-| `areteacademy/brevis-gateway:0.31.0` | os seis destinos, S3, GCS, Redis, memcached | 19,0 MB |
+| `areteacademy/brevis-gateway:0.31.0` | os seis destinos, S3, GCS, Redis, memcached | 19,1 MB |
 | `areteacademy/brevis-gateway:0.31.0-slim` | `postgres`, `files` local, `auto_table` | **5,2 MB** |
 
 As duas saem de um build da mesma árvore, então as duas tags são sempre o mesmo
