@@ -13,7 +13,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.30.0] — 2026-10-13
 
 ### Added: the batches that landed after the send window, counted apart
 

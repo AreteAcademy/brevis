@@ -12,15 +12,15 @@ POST /v1/clicks  →  decode  →  hook  →  ingestion_id  →  batch  →  202
 ```bash
 docker run -p 8080:8080 \
   -v ./gateway.yaml:/etc/brevis/gateway.yaml:ro \
-  areteacademy/brevis-gateway:0.29.0-slim
+  areteacademy/brevis-gateway:0.30.0-slim
 ```
 
 ## Tags
 
 | tag | carries | pull |
 |---|---|---|
-| `0.29.0` | six sinks, S3 and GCS, Redis and memcached | 19.0 MB |
-| `0.29.0-slim` | `postgres`, `auto_table`, local `files` | **5.2 MB** |
+| `0.30.0` | six sinks, S3 and GCS, Redis and memcached | 19.0 MB |
+| `0.30.0-slim` | `postgres`, `auto_table`, local `files` | **5.2 MB** |
 
 Sizes are the compressed amd64 image in MB, as `docker pull` counts them;
 arm64 is about 10% smaller.
