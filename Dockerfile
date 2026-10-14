@@ -304,6 +304,24 @@ EXPOSE 8080
 ENTRYPOINT ["brevis-gateway"]
 CMD ["/etc/brevis/gateway.yaml"]
 
+# sql/example, for gateway-example's reason: the published brevis-sql-api
+# registers no hooks and refuses a file that names one, and `make up-data`
+# serves sql/example's api.yaml, which names a before and an after. Only
+# this target compiles it; the release images never do.
+FROM build AS build-sql-api-example
+ARG TARGETOS
+ARG TARGETARCH
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd sql && GOFLAGS=-mod=mod CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
+      go build -trimpath -ldflags="-s -w" -o /out/brevis-sql-api-example ./example
+
+FROM gcr.io/distroless/static-debian12:nonroot AS sql-api-example
+COPY --from=build-sql-api-example /out/brevis-sql-api-example /usr/local/bin/brevis-sql-api
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["brevis-sql-api"]
+
 # `gateway-slim` is the gateway with two sinks instead of six.
 #
 # Postgres and a local `files` dead letter, which is the shape most deployments

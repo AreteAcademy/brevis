@@ -8,6 +8,7 @@ is rebuilt.
 ```bash
 make up-data                          # serves examples/endpoints on :8095, published to the console
 curl -si 'localhost:8095/v1/orders?period=today'
+curl -s 'localhost:8096/v1/chart/revenue?start_date=01/10/2026&end_date=14/10/2026'  # sql/example, with hooks
 make endpoints-build                  # rebuild the model: the next request is a miss
 make endpoints-demo                   # the same cycle on the host, end to end, with the gateway
 ```

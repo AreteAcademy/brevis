@@ -418,6 +418,28 @@ services:
       endpoints-build: {condition: service_completed_successfully}
     restart: unless-stopped
 
+  # sql/example: the same API with a before and an after hook, compiled in
+  # -- the published image has none and refuses a file that names one. It
+  # reads the model endpoints-build makes. NOT published to the console:
+  # Try it draws rows, and an after's `data` is whatever shape it chose.
+  endpoints-hooks:
+    profiles: ["demo"]
+    build:
+      context: .
+      target: sql-api-example
+    command: ["serve", "--config", "/etc/brevis/api.yaml", "--connections", "/etc/brevis/brevis.yaml",
+              "--addr", ":8080"]
+    environment:
+      BREVIS_ENV: local
+      WAREHOUSE_DSN: postgres://brevis:brevis@warehouse:5432/warehouse?sslmode=disable
+    ports:
+      - "${BREVIS_ENDPOINTS_HOOKS_PORT:-8096}:8080"
+    volumes:
+      - ./sql/example:/etc/brevis:ro
+    depends_on:
+      endpoints-build: {condition: service_completed_successfully}
+    restart: unless-stopped
+
 volumes:
   # The warehouse's data, apart from the engine's: two volumes because they
   # are two databases with two jobs, and `docker compose down -v` on one

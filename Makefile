@@ -240,7 +240,7 @@ up-data: $(LOCAL_ENV) local-password-check warehouse-local serve-up ## The whole
 	@docker compose run --rm demo-publish
 	@$(MAKE) --no-print-directory gateway-publish
 	@echo "building the endpoints' model and serving it..."
-	@docker compose --profile demo up --build -d endpoints >/dev/null
+	@docker compose --profile demo up --build -d endpoints endpoints-hooks >/dev/null
 	@$(MAKE) --no-print-directory endpoints-publish \
 	  || echo "the endpoints were NOT published to Data → Endpoints; fix it and run: make endpoints-publish"
 	@printf "waiting for the API"
@@ -253,6 +253,7 @@ up-data: $(LOCAL_ENV) local-password-check warehouse-local serve-up ## The whole
 	  echo "gateway  http://localhost:$${BREVIS_GATEWAY_PORT:-8090}/health"; \
 	  echo "serve    127.0.0.1:8088   (its log: $(SERVE_LOG))"; \
 	  echo "endpoints http://localhost:$${BREVIS_ENDPOINTS_PORT:-8095}/v1/orders?period=today"; \
+	  echo "  hooks   http://localhost:$${BREVIS_ENDPOINTS_HOOKS_PORT:-8096}/v1/chart/revenue?start_date=01/10/2026&end_date=14/10/2026"; \
 	  echo ""; \
 	  echo "next:  make up-run      -- queue a run and watch the graph"; \
 	  echo "       then /data for what it wrote, and its Preview and Query tabs"
