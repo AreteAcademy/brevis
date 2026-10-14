@@ -119,7 +119,7 @@ func TestLsMarksAResentBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	receipt := filepath.Join(dir, resentDir, got[0].Batch+".1.json")
-	if err := os.WriteFile(receipt, []byte(`{}`), 0o644); err != nil {
+	if err := os.WriteFile(receipt, []byte(`{"outcome":"delivered"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,7 +127,7 @@ func TestLsMarksAResentBatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !got[0].Resent {
+	if len(got) != 1 || got[0].Resent != "delivered" {
 		t.Errorf("after a receipt: %+v", got)
 	}
 }

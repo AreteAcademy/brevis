@@ -45,8 +45,10 @@ type buriedBatch struct {
 	Reason string    `json:"reason,omitempty"`
 	// Jobs counts the load jobs the rows name, by the state they were buried
 	// in: one per table under auto_table, one for a BigQuery sink.
-	Jobs   map[string]int `json:"jobs,omitempty"`
-	Resent bool           `json:"resent"`
+	Jobs map[string]int `json:"jobs,omitempty"`
+	// Resent is what the latest resend of this batch came to: delivered or
+	// failed. Empty when it was never resent.
+	Resent string `json:"resent,omitempty"`
 }
 
 // ID is what a person types to name this batch: the batch key, or the object
@@ -126,9 +128,9 @@ func (d *deadLetter) objects(ctx context.Context) ([]string, error) {
 	return keys, nil
 }
 
-// receipts lists the batch keys a resend has a receipt for. A receipt is
-// named <batch>.<nanos>.json, so the listing alone answers.
-func (d *deadLetter) receipts(ctx context.Context) (map[string]bool, error) {
+// receipts says, by batch, what its latest resend came to. A receipt is named
+// <batch>.<nanos>.json and carries the outcome.
+func (d *deadLetter) receipts(ctx context.Context) (map[string]string, error) {
 	var names []string
 	if d.store == nil {
 		entries, err := os.ReadDir(filepath.Join(d.path, resentDir))
@@ -148,13 +150,42 @@ func (d *deadLetter) receipts(ctx context.Context) (map[string]bool, error) {
 			names = append(names, path.Base(k))
 		}
 	}
-	out := map[string]bool{}
+	// <id>.<nanos>.json, and an id can have dots of its own -- an object name
+	// for a batch buried before rows named one -- so it is cut from the right.
+	// Sorted, so the newest receipt of a batch is read last and wins.
+	sort.Strings(names)
+	out := map[string]string{}
 	for _, n := range names {
-		if batch, _, ok := strings.Cut(n, "."); ok && strings.HasSuffix(n, ".json") {
-			out[batch] = true
+		base, ok := strings.CutSuffix(n, ".json")
+		if !ok || strings.HasPrefix(n, ".") {
+			continue
 		}
+		i := strings.LastIndex(base, ".")
+		if i <= 0 {
+			continue
+		}
+		outcome, err := d.receiptOutcome(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		out[base[:i]] = outcome
 	}
 	return out, nil
+}
+
+func (d *deadLetter) receiptOutcome(ctx context.Context, name string) (string, error) {
+	r, err := d.open(ctx, resentDir+"/"+name)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+	var rc struct {
+		Outcome string `json:"outcome"`
+	}
+	if err := json.NewDecoder(r).Decode(&rc); err != nil {
+		return "", fmt.Errorf("%s/%s: %w", resentDir, name, err)
+	}
+	return rc.Outcome, nil
 }
 
 func (d *deadLetter) open(ctx context.Context, object string) (io.ReadCloser, error) {
@@ -294,10 +325,7 @@ func printBuried(w io.Writer, batches []buriedBatch) error {
 		if !b.At.IsZero() {
 			at = b.At.UTC().Format("2006-01-02 15:04 UTC")
 		}
-		resent := "-"
-		if b.Resent {
-			resent = "yes"
-		}
+		resent := dash(b.Resent)
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\n",
 			short(b.ID()), dash(b.Stream), at, b.Rows, jobsLine(b.Jobs), resent, truncate(b.Reason, 60))
 	}
@@ -344,7 +372,8 @@ func jobsLine(jobs map[string]int) string {
 
 // deadletterMain is `gateway deadletter ...`.
 func deadletterMain(ctx context.Context, args []string, o options, out io.Writer) error {
-	usage := "usage: gateway deadletter ls [--stream <name>] [--json] <config.yaml>"
+	usage := "usage: gateway deadletter ls [--stream <name>] [--json] <config.yaml>\n" +
+		"       gateway deadletter resend [--stream <name>] [--dry-run] [--allow-duplicates] [--again] [--by <name>] <config.yaml> <batch|object>"
 	if len(args) == 0 {
 		return errors.New(usage)
 	}
@@ -379,6 +408,28 @@ func deadletterMain(ctx context.Context, args []string, o options, out io.Writer
 			return err
 		}
 		return listErr
+	case "resend":
+		fs := flag.NewFlagSet("deadletter resend", flag.ContinueOnError)
+		var req resendRequest
+		fs.StringVar(&req.Stream, "stream", "", "the stream, when the batch's rows do not say")
+		fs.BoolVar(&req.DryRun, "dry-run", false, "say what would be sent, and send nothing")
+		fs.BoolVar(&req.AllowDuplicates, "allow-duplicates", false,
+			"resend rows with no load job under write: append, knowing they may land twice")
+		fs.BoolVar(&req.Again, "again", false, "resend a batch a previous resend delivered")
+		fs.StringVar(&req.By, "by", os.Getenv("USER"), "who is resending, for the receipt")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if fs.NArg() != 2 || strings.TrimSpace(fs.Arg(1)) == "" {
+			return errors.New(usage)
+		}
+		req.ID = fs.Arg(1)
+		cfg, err := Load(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		_, err = resendBatch(ctx, cfg, o, req, out)
+		return err
 	default:
 		return errors.New(usage)
 	}
