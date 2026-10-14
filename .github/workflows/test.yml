@@ -467,7 +467,29 @@ jobs:
           # These two invocations happen not to overlap today, and relying on
           # that is one new package away from being wrong.
           go test -v -p 1 -timeout 10m -run Integration ./internal/...
-          go test -v -p 1 -timeout 10m ./internal/scheduler/ ./internal/queue/
+
+          # EVERY PACKAGE WHOSE TESTS READ BREVIS_TEST_DATABASE_URL, found and
+          # not listed (#97). The list said scheduler and queue, so the tests
+          # of internal/infrastructure/postgres and internal/alerts skipped
+          # here -- all of them, green -- and ran only under `make test-int`.
+          # A package added tomorrow is in the list by having such a test.
+          pkgs=$(grep -rl BREVIS_TEST_DATABASE_URL --include='*_test.go' ./internal \
+            | xargs -n1 dirname | sort -u)
+          if [ -z "$pkgs" ]; then
+            echo "::error::found no package with database tests; the search is broken"
+            exit 1
+          fi
+          echo "database tests in:" $pkgs
+          go test -v -p 1 -timeout 10m $pkgs 2>&1 | tee db-tests.log
+          test "${PIPESTATUS[0]}" -eq 0
+
+          # With the database there, a skip here is a test that did not run
+          # for some other reason, and it would print green like all of these
+          # did. Named, and fatal.
+          if grep -- '--- SKIP' db-tests.log; then
+            echo "::error::database tests skipped with a database available (above)"
+            exit 1
+          fi
 
       # The honest half of a gated step. A skip prints green and `go test`
       # exits 0, so without this the only trace of "the warehouse half of
