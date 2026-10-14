@@ -95,6 +95,10 @@ func (q *Queue) Claim(ctx context.Context, worker string, limite int) ([]Item, e
 	// none contends with itself, under its slug, as it always did. The two
 	// prefixes keep them apart: without them a group called `daily` and the
 	// workflow `daily` would share one limit by accident of spelling.
+	//
+	// postgres.RunRepo.WaitingOn repeats this arithmetic to tell a queued run
+	// what holds it (#95). A change to the key, the order or what counts as in
+	// flight is a change there too.
 	rows, err := q.pool.Query(ctx, `
 		WITH em_voo AS (
 			SELECT COALESCE('g:' || r.grupo_concorrencia, 'w:' || r.workflow_slug) AS chave,
