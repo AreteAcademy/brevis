@@ -14,7 +14,7 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
-## [Unreleased]
+## [0.23.0] — 2026-10-14
 
 ### Added: a queued run says what concurrency limit holds it (#95)
 
