@@ -505,6 +505,11 @@ change what is already queued.
   whichever run the claim numbered first decide.
 - **A full group accumulates runs**, as `concurrency: 1` always did for one
   workflow. It changes the scale, not the behaviour.
+- **A waiting run says what holds it.** Its page names the group (or the
+  workflow's own limit), the runs in the slots and how many are ahead of it.
+  The page repeats the claim's arithmetic (`RunRepo.WaitingOn`), and shows
+  nothing when the limit is not what holds the run -- a dispatcher slot,
+  `--max-pods`, a retry's backoff.
 - **It serializes Brevis runs only.** A `dbt run` started outside Brevis is
   not in this queue, and the symptom is identical.
 

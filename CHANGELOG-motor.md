@@ -14,6 +14,27 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [Unreleased]
+
+### Added: a queued run says what concurrency limit holds it (#95)
+
+A run waiting on its concurrency group, or on `concurrency: N`, looked like any
+other queued run -- including the manual run that #32's group now makes wait
+behind the workflow it shares models with. Its page now says, while it waits:
+
+> Waiting for concurrency group `jaffle_models` (limit 1) — held by `every_15`
+> since 2026-10-13 10:15:00 UTC
+
+with a link to each run in a slot (three, then a count), and how many runs of
+the same group are ahead of it when the slot is free but others come first. The
+line arrives and leaves with the page's live refresh.
+
+It repeats the claim's arithmetic, and draws nothing when the limit is not what
+holds the run: a run waiting on a dispatcher slot, `--max-pods` or a retry's
+backoff gets no reason rather than a wrong one.
+
+---
+
 ## [0.22.0] — 2026-10-13
 
 ### Added: a concurrency group, so two workflows stop overlapping (#32)
