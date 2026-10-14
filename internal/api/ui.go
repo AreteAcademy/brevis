@@ -75,6 +75,8 @@ type RunsChart interface {
 	Get(ctx context.Context, id uuid.UUID) (run.Run, error)
 	NodeStates(ctx context.Context, id uuid.UUID) (map[string]postgres.NodeState, error)
 	LogsDaRun(ctx context.Context, id uuid.UUID) ([]postgres.StepLog, error)
+	// WaitingOn says what concurrency limit holds a queued run, if one does.
+	WaitingOn(ctx context.Context, id uuid.UUID) (*postgres.Wait, error)
 }
 
 // AlertsReader lists a run's alerts. It is a CONSTRUCTOR argument and not a
@@ -985,7 +987,7 @@ func (u *UI) run(w http.ResponseWriter, r *http.Request) {
 			u.log.Warn("the run's alerts are unavailable", "run", id, "error", err)
 		}
 	}
-	u.render(w, r, pages.Run(run, logs, raised))
+	u.render(w, r, pages.Run(run, logs, raised, u.waitOf(r.Context(), run)))
 }
 
 // runLive returns the run's two changing regions, already rendered.
@@ -1028,9 +1030,24 @@ func (u *UI) runLive(w http.ResponseWriter, r *http.Request) {
 	// the first is not.
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := pages.RunLive(current, logs, raised).Render(r.Context(), w); err != nil {
+	if err := pages.RunLive(current, logs, raised, u.waitOf(r.Context(), current)).Render(r.Context(), w); err != nil {
 		u.log.Warn("rendering the live fragment", "run", id, "error", err)
 	}
+}
+
+// waitOf asks what holds a queued run, on the terms of the logs and alerts: a
+// failed question is a page without the line, not a page that refuses (#95).
+// Only a queued run is asked -- nothing else is in the queue to be held.
+func (u *UI) waitOf(ctx context.Context, current run.Run) *postgres.Wait {
+	if current.Status != run.StatusQueued {
+		return nil
+	}
+	wait, err := u.execs.WaitingOn(ctx, current.ID)
+	if err != nil {
+		u.log.Warn("could not learn what holds the run", "run", current.ID, "error", err)
+		return nil
+	}
+	return wait
 }
 
 func (u *UI) toggle(w http.ResponseWriter, r *http.Request) {

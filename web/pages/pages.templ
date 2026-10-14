@@ -939,7 +939,7 @@ templ Workflow(w wf.Workflow, latest []postgres.RunSummary, st WorkflowStats) {
 
 // Run shows one run. The header comes from the server already rendered; only the
 // DAG with each step's state depends on JavaScript.
-templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
+templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait) {
 	@layouts.Base(layouts.Page{
 		Title: r.WorkflowSlug, Kicker: "Run", Active: "runs",
 		Island: dagAssets,
@@ -953,7 +953,7 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 		// returns BOTH of these already rendered, on the cadence the graph
 		// already uses. See RunLive.
 		<div id="run-head" data-live={ "/runs/" + r.ID.String() + "/live" }>
-			@runHead(r)
+			@runHead(r, wait)
 		</div>
 		// The indicator sits OUTSIDE the swapped region, because a region that
 		// replaces its own contents would replace this too and lose whatever
@@ -979,19 +979,19 @@ templ Run(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
 // every one of these in JavaScript, and two renderings of a step's state is two
 // places for "what colour is retrying" -- the class of bug this repository has
 // hit five times. The server already knows how to draw them.
-templ RunLive(r run.Run, logs []postgres.StepLog, raised []alerts.Record) {
+templ RunLive(r run.Run, logs []postgres.StepLog, raised []alerts.Record, wait *postgres.Wait) {
 	// `terminal` is what stops the polling, and it is the RUN's answer rather
 	// than the step's: a failed run is a retry away from running again, and
 	// stopping there would freeze the screen in the middle of one.
 	<div data-live-target="run-head" data-terminal={ fmt.Sprint(r.Status.Terminal()) }>
-		@runHead(r)
+		@runHead(r, wait)
 	</div>
 	<div data-live-target="run-body">
 		@runBody(r, logs, raised)
 	</div>
 }
 
-templ runHead(r run.Run) {
+templ runHead(r run.Run, wait *postgres.Wait) {
 	<div class="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
 		@components.State(string(r.Status))
 		<span class="text-muted">{ r.TriggerType }</span>
@@ -1004,6 +1004,9 @@ templ runHead(r run.Run) {
 		<a href={ templ.SafeURL("/workflows/" + r.WorkflowSlug) } class="text-xs text-gold-strong hover:underline">see definition</a>
 		<span class="font-mono text-[0.7rem] text-muted/70">{ r.ID.String() }</span>
 	</div>
+	if wait != nil {
+		@waitLine(wait)
+	}
 	if r.Err != "" {
 		<pre class="mb-5 overflow-auto rounded-card border border-state-failed/20 bg-state-failed/5 px-5 py-4 font-mono text-xs text-state-failed">{ r.Err }</pre>
 	}
@@ -1461,4 +1464,51 @@ func openNote(i postgres.Indicators) string {
 		return "nothing in flight"
 	}
 	return fmt.Sprintf("%d running, %d queued", i.Running, i.Pending)
+}
+
+// waitLine says what concurrency limit holds a queued run (#95): the group or
+// the workflow's own limit, the runs in the slots, and how many of the same
+// key are ahead of it. Drawn only when WaitingOn proved it -- a run waiting on
+// a dispatcher slot, --max-pods or a retry's backoff gets no line at all.
+templ waitLine(w *postgres.Wait) {
+	<p class="mb-5 -mt-2 text-xs text-muted" data-wait>
+		<span class="text-state-queued">Waiting for</span>
+		if w.Group != "" {
+			concurrency group <code class="font-mono text-ink">{ w.Group }</code>
+		} else {
+			this workflow's own concurrency
+		}
+		(limit { fmt.Sprint(w.Limit) })
+		if len(w.Holders) > 0 {
+			— held by
+			for i, h := range firstHolders(w.Holders) {
+				if i > 0 {
+					,
+				}
+				<a href={ templ.SafeURL("/runs/" + h.RunID.String()) } class="text-gold-strong hover:underline">{ h.Workflow }</a>
+				<span class="font-mono">since { components.UTCStamp(&h.Since) }</span>
+			}
+			if more := len(w.Holders) - len(firstHolders(w.Holders)); more > 0 {
+				and { fmt.Sprint(more) } more
+			}
+		}
+		if w.Ahead > 0 {
+			<span>· { aheadOf(w.Ahead) } ahead of it in the queue</span>
+		}
+	</p>
+}
+
+// firstHolders is the three a line has room for, oldest first.
+func firstHolders(hs []postgres.Holder) []postgres.Holder {
+	if len(hs) > 3 {
+		return hs[:3]
+	}
+	return hs
+}
+
+func aheadOf(n int) string {
+	if n == 1 {
+		return "1 run"
+	}
+	return fmt.Sprintf("%d runs", n)
 }
