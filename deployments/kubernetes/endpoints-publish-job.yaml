@@ -50,7 +50,7 @@ spec:
           # credential, but it reads the variables `dsn_from` names -- a DSN
           # is parsed for its database, never dialled -- so the API's own
           # environment goes in, and the engine's does not.
-          image: areteacademy/brevis-sql-api:0.5.0
+          image: areteacademy/brevis-sql-api:0.6.0
           args: ["describe", "--config", "/etc/brevis/api.yaml",
                  "--connections", "/etc/brevis/brevis.yaml", "--out", "/manifest/manifest.json"]
           envFrom:

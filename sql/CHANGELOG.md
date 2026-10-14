@@ -16,7 +16,7 @@ and the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.6.0] — 2026-10-14
 
 ### Added: hooks — a before and an after per endpoint
 
