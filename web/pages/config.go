@@ -82,9 +82,9 @@ func deadLetterOf(c *postgres.WriterConfig) *DeadLetterView {
 		write = text("sink.into.write")
 	}
 	return &DeadLetterView{
-		Where:     destination(text, "dead_letter", true),
-		Stream:    text("name"),
-		Readable:  kind == "files",
+		Where:    destination(text, "dead_letter", true),
+		Stream:   text("name"),
+		Readable: kind == "files",
 		Write:    write,
 	}
 }
