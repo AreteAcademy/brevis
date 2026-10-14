@@ -18,6 +18,34 @@ and stay as written: a changelog records what was decided on a date.
 
 ---
 
+## [Unreleased]
+
+### Fixed: one Google client per process, not two per write (#87)
+
+`load.New` built a BigQuery client and a storage client on every call, and
+every caller made one call per write: `Table.Write` per batch, `Table.Job` per
+reconcile, `Table.Check` per run. Each brought an HTTP transport of its own --
+a TLS handshake inside the caller's deadline, and idle connections that
+`Close` does not end. Measured: 50 loads left 150 goroutines behind, whether
+the clients were closed or not. A gateway writing 94 tables a minute minted
+188 transports a minute.
+
+- One BigQuery client per project, made on first use and kept for the life of
+  the process, the way a `*sql.DB` is. The Google clients are safe for
+  concurrent use.
+- The storage client is built only when a load stages through GCS. A job
+  lookup or an inline load no longer builds one.
+- A client is built on a context detached from the caller's end, because the
+  token source keeps it for every refresh: built on a 60-second send window, a
+  cached client would stop authenticating a minute later.
+- A client that fails to build is not remembered; the next call tries again.
+- `BREVIS_BIGQUERY_EMULATOR` is part of the key, so a client pointed at an
+  emulator is never handed to code pointed at Google.
+
+`load.New`'s signature and behaviour are unchanged.
+
+---
+
 ## [0.86.0] — 2026-10-13
 
 ### Fixed: a retried BigQuery load adopts the job it already started

@@ -44,25 +44,14 @@ func New(ctx context.Context, cfg *core.LoadConfig, opts ...core.LoadOption) (*L
 		return nil, err
 	}
 
-	bq, err := bigquery.NewClient(ctx, cfg.ProjectID, emulator(bigQueryPath)...)
+	// The process's client, not a new one: see clients.go. The storage client
+	// is not built here at all -- only a load that stages through GCS asks for
+	// it, in loadViaGCS.
+	bq, err := sharedBigQuery(ctx, cfg.ProjectID)
 	if err != nil {
-		return nil, fmt.Errorf("create bigquery client: %w", err)
+		return nil, err
 	}
-
-	// The storage client gets the override too, and that is not tidiness: it
-	// is built here whether or not a load ever stages, so without it New
-	// cannot be constructed at all without Google credentials -- which is the
-	// wall this variable exists to remove.
-	gcs, err := storage.NewClient(ctx, emulator(storagePath)...)
-	if err != nil {
-		return nil, fmt.Errorf("create storage client: %w", err)
-	}
-
-	return &Loader{
-		cfg: cfg,
-		bq:  bq,
-		gcs: gcs,
-	}, nil
+	return &Loader{cfg: cfg, bq: bq}, nil
 }
 
 // The API paths the two clients need under an emulator's base URL.
@@ -96,9 +85,8 @@ const (
 //	BREVIS_BIGQUERY_EMULATOR=http://localhost:4588
 //
 // Both the BigQuery and the GCS client are pointed at it, under their own
-// paths. The GCS one matters even for a load that never stages: it is
-// constructed eagerly, so without the override New needs Google credentials
-// to build at all -- which is the wall this removes.
+// paths. The GCS client is built only when a load stages (clients.go), so a
+// load that never stages needs nothing from GCS, emulated or not.
 const EnvEmulator = "BREVIS_BIGQUERY_EMULATOR"
 
 // emulator returns the client options for EnvEmulator, or none at all.
@@ -877,6 +865,11 @@ func (l *Loader) loadViaGCS(ctx context.Context, table *bigquery.Table, data []b
 	today := time.Now().UTC().Format("2006-01-02")
 	objName := fmt.Sprintf("%s%s/%d.ndjson", l.cfg.StagingPrefix, today, time.Now().UnixNano())
 
+	if l.gcs == nil {
+		if l.gcs, err = sharedStorage(ctx); err != nil {
+			return 0, "", "", nil, err
+		}
+	}
 	obj := l.gcs.Bucket(l.cfg.StagingBucket).Object(objName)
 
 	wc := obj.NewWriter(ctx)
