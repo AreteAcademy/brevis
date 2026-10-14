@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
@@ -267,6 +268,7 @@ func (s *Server) finish(line *record, started time.Time, warehouse time.Duration
 	if s.cfg.Audit == nil {
 		return
 	}
+	line.Reason = capReason(line.Reason)
 	b, err := json.Marshal(line)
 	if err != nil {
 		return
@@ -292,4 +294,23 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 		w.status = http.StatusOK
 	}
 	return w.ResponseWriter.Write(b)
+}
+
+// maxReason bounds an audit line's reason, in bytes.
+//
+// A HOOK'S ERROR IS ITS AUTHOR'S TEXT, and one that wraps a whole row would
+// otherwise be a whole row in every line it fails on. Cut at a character,
+// never inside one, and marked as cut.
+const maxReason = 512
+
+func capReason(reason string) string {
+	if len(reason) <= maxReason {
+		return reason
+	}
+	const mark = "…"
+	cut := maxReason - len(mark)
+	for cut > 0 && !utf8.RuneStart(reason[cut]) {
+		cut--
+	}
+	return reason[:cut] + mark
 }

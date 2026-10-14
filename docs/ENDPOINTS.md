@@ -352,8 +352,9 @@ One JSON audit line per request on stdout: endpoint, tenant, the parameter
 **names** sent, an `args_hash` (an HMAC under a per-process key — a plain hash
 of a date is a dictionary away from it), status, rows, bytes, cache result,
 and `hook` when one decided the status. Never a value of the API's making —
-but a hook's error is on the line as its author wrote it, so a hook that puts
-a value in its error puts it in the log.
+but a hook's error is on the line as its author wrote it, cut at 512 bytes,
+so a hook that puts a value in its error puts it in the log. A panic is
+logged by its type and where it happened, never by the value it carried.
 
 ## In the console
 

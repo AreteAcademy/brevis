@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -251,7 +253,7 @@ func bounded[T any](ctx context.Context, kind string, fn func() (T, error), rele
 		var r result
 		defer func() {
 			if p := recover(); p != nil {
-				r = result{err: hookPanic{fmt.Errorf("the %s hook panicked: %v", kind, p)}}
+				r = result{err: hookPanic{fmt.Errorf("the %s hook panicked with a %T at %s", kind, p, panicSite())}}
 			}
 			release()
 			done <- r
@@ -411,4 +413,29 @@ func shapeKey(after, build string, params map[string]any) string {
 		part(fmt.Sprint(params[n]))
 	}
 	return b.String()
+}
+
+// panicSite is where a hook panicked: its innermost frames that are not the
+// runtime's, as `function (file:line)`.
+//
+// FRAMES AND NOT A STACK TRACE, and the panic's type and not its value. A
+// trace prints each call's arguments, a value a `panic(row)` carries is the
+// row, and either one is the caller's data in a log line that holds names
+// and never values. Where the hook was is what its author needs anyway.
+func panicSite() string {
+	pcs := make([]uintptr, 32)
+	n := runtime.Callers(2, pcs)
+	frames := runtime.CallersFrames(pcs[:n])
+	var out []string
+	for f, more := frames.Next(); more && len(out) < 3; f, more = frames.Next() {
+		if strings.HasPrefix(f.Function, "runtime.") || strings.HasSuffix(f.Function, "api.bounded[...].func1.1") ||
+			strings.Contains(f.Function, "api.panicSite") {
+			continue
+		}
+		out = append(out, fmt.Sprintf("%s (%s:%d)", f.Function, filepath.Base(f.File), f.Line))
+	}
+	if len(out) == 0 {
+		return "an unknown place"
+	}
+	return strings.Join(out, " < ")
 }
