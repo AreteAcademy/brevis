@@ -1,0 +1,28 @@
+# brevis-sql-api with hooks: the endpoint file main.go serves.
+#
+# `hook:` names functions registered in the binary; it does not carry them.
+# The published brevis-sql-api registers none and refuses this file, naming
+# this directory -- a hook is Go, compiled in, and a binary of your own is
+# how it gets there.
+name: example-hooks-api
+connection: warehouse
+
+listen:
+  addr: 127.0.0.1:8096
+
+params:
+  sku: {type: string, max_len: 32}
+
+endpoints:
+  - name: revenue
+    path: /v1/chart/revenue
+    # sales.events holds one shop's orders, so every key reads the same rows.
+    tenant: none
+    params:
+      start_date: {type: date, required: true}
+      end_date: {type: date, required: true}
+      sku: {ref: sku}
+    sql_file: endpoints/revenue.sql
+    # day_first_window accepts 14/10/2026 and refuses more than 90 days;
+    # revenue_series turns the rows into one series per sku.
+    hook: {before: day_first_window, after: revenue_series}

@@ -1,0 +1,6 @@
+# The warehouse the example reads: examples/endpoints's, which a pipeline
+# lands. `dsn_from` names a variable; the file is in git.
+connections:
+  - name: warehouse
+    dialect: postgres
+    dsn_from: WAREHOUSE_DSN
