@@ -13,6 +13,39 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added: `gateway deadletter ls` and `resend` (#86)
+
+A buried batch was an ERROR line and a file, and getting it back meant a
+script written for the occasion -- which is where duplicates come from (#85).
+
+- **`gateway deadletter ls <config.yaml> [--stream] [--json]`** lists every
+  batch in a `files` dead letter (a directory, `gs://`, `s3://`): its key,
+  stream, when it was buried, rows, the load jobs it names by state, whether it
+  was resent, and the reason.
+- **`gateway deadletter resend <config.yaml> <batch|object>`** decides by load
+  job first: a job BigQuery says landed is skipped, one still running is
+  refused, one that failed or never existed is sent. Rows with no job under
+  `write: append` are refused without `--allow-duplicates`. What goes, goes
+  through the stream's own send **under the batch's original key**, so a job
+  that landed meanwhile is adopted rather than written twice. A receipt goes
+  under `resent/`; `--dry-run`, `--again`, `--by`.
+- Both run where the destination's credentials are. The engine has no part in
+  them.
+
+### Added: a buried row names its batch and its stream
+
+Every row in the dead letter now carries `_dead_letter_batch` (the batch key,
+the one its load jobs were named after) and `_dead_letter_stream`.
+
+**Upgrading:** a dead letter that is a fixed-schema table rather than `files`
+(BigQuery or Postgres declared as the dead letter) gets two more columns on
+every row, as with the job columns in 0.29.0. The documented dead letter is
+`files`, which takes them as they come.
+
+---
+
 ## [0.30.1] — 2026-10-14
 
 ### Changed: `auto_table` asks about its starved tables together (#87)
