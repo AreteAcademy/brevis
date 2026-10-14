@@ -13,7 +13,7 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [0.30.1] — 2026-10-14
 
 ### Changed: `auto_table` asks about its starved tables together (#87)
 
