@@ -2,11 +2,15 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
@@ -327,21 +331,62 @@ func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize, rele
 	return body, nil
 }
 
-// buildID is this binary: the main module's version and, when it was built
-// from a repository, the commit and whether the tree was clean.
-var buildID = func() string {
+// buildID is this binary, as the cache key's shape names it. ON FIRST USE,
+// not at start: reading the executable is milliseconds, and a binary whose
+// endpoints have no after never needs it.
+var buildID = sync.OnceValue(func() string {
 	info, ok := debug.ReadBuildInfo()
-	if !ok {
-		return "unknown"
-	}
-	id := info.Main.Version
-	for _, s := range info.Settings {
-		if s.Key == "vcs.revision" || s.Key == "vcs.modified" {
-			id += " " + s.Value
+	return identify(info, ok, hashExecutable, time.Now())
+})
+
+// identify names the code an after was compiled from.
+//
+// A CLEAN REVISION, OR THE EXECUTABLE ITSELF. Found in the security review:
+// a build without .git -- a .dockerignore away -- or with -buildvcs=false,
+// or from a dirty tree, says the same thing of two different binaries, and
+// the cache would answer the new one's callers with the old one's output
+// until the ttl. Only `vcs.modified=false` vouches for a revision; anything
+// else is the hash of the file running. And when not even that can be read,
+// this process: every restart a cold cache, which is slower, and never a
+// stale one.
+func identify(info *debug.BuildInfo, ok bool, executable func() (string, error), started time.Time) string {
+	if ok {
+		rev, clean := "", false
+		for _, s := range info.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				rev = s.Value
+			case "vcs.modified":
+				clean = s.Value == "false"
+			}
+		}
+		if rev != "" && clean {
+			return info.Main.Version + " " + rev
 		}
 	}
-	return id
-}()
+	if h, err := executable(); err == nil {
+		return "sha256:" + h
+	}
+	return fmt.Sprintf("process:%d", started.UnixNano())
+}
+
+// hashExecutable is the sha256 of the running binary's file.
+func hashExecutable() (string, error) {
+	path, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
 
 // shapeOf is what the cache key holds of an endpoint's after: its name and
 // the build it was compiled in, or nothing when there is no after.

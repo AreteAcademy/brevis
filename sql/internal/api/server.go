@@ -735,5 +735,5 @@ func keyShape(e *Endpoint, shape *shaping) string {
 	if shape == nil {
 		return ""
 	}
-	return shapeKey(e.afterName, buildID, shape.params)
+	return shapeKey(e.afterName, buildID(), shape.params)
 }
