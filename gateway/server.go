@@ -1394,7 +1394,15 @@ func (p *pipe) send(parent context.Context, batch []sdk.Envelope) error {
 	// The key is kept, not only put in ctx: bury runs on `parent`, which never
 	// had it, and the buried rows have to name the batch the jobs were named
 	// after (#86).
-	key := newBatchKey()
+	//
+	// A key already on `parent` is a resend's -- `gateway deadletter resend`
+	// hands the batch's original one, so a job that landed is adopted rather
+	// than written twice. Live traffic hands none and gets a fresh key per
+	// batch: two batches under one key would adopt each other's job.
+	key := BatchKeyOf(parent)
+	if key == "" {
+		key = newBatchKey()
+	}
 	ctx, cancel := context.WithTimeout(WithBatchKey(parent, key), sendTimeout)
 	defer cancel()
 

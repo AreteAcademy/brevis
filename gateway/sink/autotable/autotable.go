@@ -392,6 +392,26 @@ func (e *batchError) Unwrap() error { return e.err }
 // Reconcile satisfies gateway.Reconciler: the batch landed when every table
 // that ran out of time landed after all, and no table was left untried.
 //
+// AskJob satisfies gateway.JobAsker: the job of a buried row, asked of the
+// sink of the table the row routes to (#86). A job is found by its name and
+// location, so the table's sink is built to ask -- nothing is written and no
+// table is created.
+func (r *router) AskJob(ctx context.Context, job *sdk.LoadJobError, row map[string]any) (gateway.Reconciliation, error) {
+	env, err := open(row)
+	if err != nil {
+		return gateway.Reconciliation{Cause: job}, err
+	}
+	into := *r.build.Sink.Into
+	into.Table = env.table
+	b := r.build
+	b.Sink = into
+	s, err := gateway.BuildSink(b)
+	if err != nil {
+		return gateway.Reconciliation{Cause: job}, fmt.Errorf("table %s: %w", env.table, err)
+	}
+	return gateway.AskJob(ctx, s, job, row)
+}
+
 // reconcileFanout bounds how many tables Reconcile asks about at once. Each
 // question is a jobs.get against the project's API quota, so half of the
 // claim's fanout, which is for questions that cost almost nothing.
