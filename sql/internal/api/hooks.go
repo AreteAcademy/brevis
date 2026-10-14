@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -156,6 +157,7 @@ func (e *Endpoint) resolveHooks(h *Hooks) error {
 		if e.after, err = lookup(h.after, e.Name, "after", *e.Hook.After); err != nil {
 			return err
 		}
+		e.afterName = *e.Hook.After
 	}
 	return nil
 }
@@ -291,4 +293,33 @@ func callAfter(ctx context.Context, fn After, r *Result) (data any, err error) {
 		}
 	}()
 	return fn(ctx, r)
+}
+
+// buildID is this binary: the main module's version and, when it was built
+// from a repository, the commit and whether the tree was clean.
+var buildID = func() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "unknown"
+	}
+	id := info.Main.Version
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" || s.Key == "vcs.modified" {
+			id += " " + s.Value
+		}
+	}
+	return id
+}()
+
+// shapeOf is what the cache key holds of an endpoint's after: its name and
+// the build it was compiled in, or nothing when there is no after.
+//
+// THE BUILD AND NOT ONLY THE NAME. An after's output is cached, and a deploy
+// that changes what `to_series` does under the same name would otherwise be
+// answered, until the ttl, by what the previous binary made.
+func shapeOf(after, build string) string {
+	if after == "" {
+		return ""
+	}
+	return after + "@" + build
 }

@@ -110,9 +110,11 @@ type Endpoint struct {
 
 	Template *render.Template `yaml:"-"`
 
-	// before and after are Hook, resolved; nil is none.
-	before Before
-	after  After
+	// before and after are Hook, resolved; nil is none. afterName is the
+	// after's registered name, which the cache key holds.
+	before    Before
+	after     After
+	afterName string
 
 	// period is the name of the endpoint's period parameter, if it has one.
 	period string

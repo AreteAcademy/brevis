@@ -77,7 +77,11 @@ const quality = 5
 // and production serving an `orders` endpoint with the same SQL answered
 // each other's rows. The API's name is in the prefix, so one API's entries
 // can be flushed alone; the connection's identity is in the hash.
-func Key(api, connection, endpoint, tenant, sql string, args []dialect.Arg, generations []string) string {
+//
+// AND SO IS THE SHAPE: which after hook made the answer, and in which build
+// -- empty when none did. The same rows are a different answer through a
+// different hook, or through the same name after a deploy changed it.
+func Key(api, connection, endpoint, tenant, sql string, args []dialect.Arg, generations []string, shape string) string {
 	h := sha256.New()
 	part := func(s string) { _, _ = fmt.Fprintf(h, "%d:%s", len(s), s) }
 	part(api)
@@ -90,6 +94,7 @@ func Key(api, connection, endpoint, tenant, sql string, args []dialect.Arg, gene
 		part(fmt.Sprintf("%T", a.Value))
 		part(fmt.Sprint(a.Value))
 	}
+	part(shape)
 	for _, g := range generations {
 		part(g)
 	}
