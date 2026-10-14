@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -8,13 +8,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AreteAcademy/brevis/sql/internal/api"
+	api "github.com/AreteAcademy/brevis/sql/internal/api"
 )
 
 func example(t *testing.T, name string) string {
 	t.Helper()
 	_, here, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(here), "..", "..", "..", "examples", "endpoints", name)
+	return filepath.Join(filepath.Dir(here), "..", "..", "examples", "endpoints", name)
 }
 
 // THE EXAMPLE IS A TEST. A file in examples/ that no longer loads is a
@@ -23,7 +23,7 @@ func TestTheExampleValidates(t *testing.T) {
 	t.Setenv("WAREHOUSE_DSN", "postgres://u:p@localhost:5432/w?sslmode=disable")
 	var out, errOut bytes.Buffer
 	code := run([]string{"validate", "--config", example(t, "api.yaml"),
-		"--connections", example(t, "brevis.yaml")}, &out, &errOut)
+		"--connections", example(t, "brevis.yaml")}, nil, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
@@ -34,7 +34,7 @@ func TestTheExampleValidates(t *testing.T) {
 
 func TestAFileThatCannotBeHonouredExitsOne(t *testing.T) {
 	var out, errOut bytes.Buffer
-	code := run([]string{"validate", "--config", filepath.Join(t.TempDir(), "absent.yaml")}, &out, &errOut)
+	code := run([]string{"validate", "--config", filepath.Join(t.TempDir(), "absent.yaml")}, nil, &out, &errOut)
 	if code != 1 || errOut.Len() == 0 {
 		t.Errorf("exit %d, stderr %q", code, errOut.String())
 	}
@@ -42,7 +42,7 @@ func TestAFileThatCannotBeHonouredExitsOne(t *testing.T) {
 
 func TestAnUnknownCommandIsRefused(t *testing.T) {
 	var out, errOut bytes.Buffer
-	if code := run([]string{"frobnicate"}, &out, &errOut); code != 2 {
+	if code := run([]string{"frobnicate"}, nil, &out, &errOut); code != 2 {
 		t.Errorf("exit %d", code)
 	}
 }
@@ -53,7 +53,7 @@ func TestKeyHashReadsTheKeyFromStdinAndPrintsItsLine(t *testing.T) {
 	var out, errOut bytes.Buffer
 	stdin = strings.NewReader("a-key-long-enough-0123456789abcdef\n")
 	defer func() { stdin = nil }()
-	code := run([]string{"key", "hash", "--tenant", "acme"}, &out, &errOut)
+	code := run([]string{"key", "hash", "--tenant", "acme"}, nil, &out, &errOut)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
@@ -71,7 +71,7 @@ func TestKeyHashReadsTheKeyFromStdinAndPrintsItsLine(t *testing.T) {
 func TestEveryRefusedFixtureExitsOneWithItsMessage(t *testing.T) {
 	t.Setenv("REFUSED_FIXTURE_DSN", "postgres://u:p@localhost:5432/w?sslmode=disable")
 	_, here, _, _ := runtime.Caller(0)
-	dir := filepath.Join(filepath.Dir(here), "..", "..", "internal", "api", "testdata")
+	dir := filepath.Join(filepath.Dir(here), "..", "internal", "api", "testdata")
 	files, err := filepath.Glob(filepath.Join(dir, "refused", "*.yaml"))
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no fixtures: %v", err)
@@ -88,7 +88,7 @@ func TestEveryRefusedFixtureExitsOneWithItsMessage(t *testing.T) {
 			continue
 		}
 		var out, errOut bytes.Buffer
-		code := run([]string{"validate", "--config", f, "--connections", filepath.Join(dir, "brevis.yaml")}, &out, &errOut)
+		code := run([]string{"validate", "--config", f, "--connections", filepath.Join(dir, "brevis.yaml")}, nil, &out, &errOut)
 		if code != 1 || !strings.Contains(errOut.String(), says) {
 			t.Errorf("%s: exit %d, said %q; wanted 1 and %q", filepath.Base(f), code, errOut.String(), says)
 		}
@@ -102,7 +102,7 @@ func TestDescribeWritesTheManifestToOut(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "manifest.json")
 	var stdout, errOut bytes.Buffer
 	code := run([]string{"describe", "--config", example(t, "api.yaml"),
-		"--connections", example(t, "brevis.yaml"), "--out", out}, &stdout, &errOut)
+		"--connections", example(t, "brevis.yaml"), "--out", out}, nil, &stdout, &errOut)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, errOut.String())
 	}
