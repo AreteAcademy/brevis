@@ -13,6 +13,24 @@ the versions follow [SemVer](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added: the batches that landed after the send window, counted apart
+
+Since 0.29.0 a batch whose BigQuery load job finished after the send window is
+delivered rather than buried: the gateway asks the job before burying (#85).
+In the numbers it was the same `batches_total{outcome="delivered"}` as a batch
+the sink took in time, so the one signal that incident left -- the window is
+shorter than the destination's queue -- was only in a log line.
+
+`brevis_gateway_reconciled_total{stream,sink}` counts those batches. It is a
+subset of `delivered`, which still counts them: a counter of its own rather
+than a new outcome, so a dashboard that sums `delivered` does not change.
+Under `auto_table` it counts once per batch, when every table landed, in the
+same unit as `batches_total`.
+
+---
+
 ## [0.29.0] — 2026-10-13
 
 ### Fixed: replaying the dead letter under `write: append` can duplicate

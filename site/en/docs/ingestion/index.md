@@ -394,6 +394,7 @@ brevis_gateway_events_received_total{stream,format}     counter
 brevis_gateway_events_rejected_total{stream,reason}     counter  per event, after decode
 brevis_gateway_requests_refused_total{stream,reason}    counter  per request: unauthorized|body_too_large|malformed|empty|saturated
 brevis_gateway_batches_total{stream,sink,outcome}       counter  delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}            counter  landed after the send window; also delivered
 brevis_gateway_flushes_total{stream,trigger}            counter  time|records|size
 brevis_gateway_flush_windows_total{stream,outcome}      counter  won|yielded|ceiling|unreachable
 brevis_gateway_ingested_bytes_total{stream,table}        counter  opt-in

@@ -799,6 +799,7 @@ brevis_gateway_requests_refused_total{stream,reason}      counter   per REQUEST,
 brevis_gateway_events_dropped_total{stream}               counter   a hook returned nil
 brevis_gateway_oversized_total{stream}                    counter
 brevis_gateway_batches_total{stream,sink,outcome}         counter   delivered|retried|buried
+brevis_gateway_reconciled_total{stream,sink}              counter   landed after the send window; also delivered
 brevis_gateway_dead_letter_records_total{stream,sink}     counter
 brevis_gateway_saturated_total{stream}                    counter   the 503s
 brevis_gateway_delivery_seconds{stream,sink}              histogram retries included
@@ -819,7 +820,7 @@ new series per request. The text belongs in the dead letter, on the record,
 where whoever has the events can read it.
 
 Written by hand, with no dependency: the OpenTelemetry SDK costs 40 packages
-here and `prometheus/client_golang` 43, to report eleven instruments whose
+here and `prometheus/client_golang` 43, to report the instruments above, whose
 format is `name{label="value"} 42` and has not changed in a decade. The slim
 build exists to not pay for what it does not use.
 
