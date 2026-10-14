@@ -188,11 +188,11 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 		if job == "" {
 			if appending && !req.AllowDuplicates {
 				rc.Refused["(no job)"] = "write: append and no load job to ask"
-				fmt.Fprintf(out, "refuse  %d row(s) with no load job: under write: append a resend can write "+
+				_, _ = fmt.Fprintf(out, "refuse  %d row(s) with no load job: under write: append a resend can write "+
 					"them twice. Pass --allow-duplicates if they are known not to be in the destination\n", len(rows))
 				continue
 			}
-			fmt.Fprintf(out, "resend  %d row(s) with no load job\n", len(rows))
+			_, _ = fmt.Fprintf(out, "resend  %d row(s) with no load job\n", len(rows))
 			send = append(send, stripped(rows)...)
 			continue
 		}
@@ -204,22 +204,22 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 		switch now := stateOf(rec.Cause); {
 		case err != nil:
 			rc.Refused[job] = "could not ask: " + err.Error()
-			fmt.Fprintf(out, "refuse  job %s: could not learn what it became: %v\n", job, err)
+			_, _ = fmt.Fprintf(out, "refuse  job %s: could not learn what it became: %v\n", job, err)
 		case rec.Landed:
 			rc.Skipped = append(rc.Skipped, job)
-			fmt.Fprintf(out, "skip    job %s: it landed, %d row(s) already in the destination\n", job, len(rows))
+			_, _ = fmt.Fprintf(out, "skip    job %s: it landed, %d row(s) already in the destination\n", job, len(rows))
 		case now == sdk.JobRunning:
 			rc.Refused[job] = "still running"
-			fmt.Fprintf(out, "refuse  job %s: still running, and it may still write its %d row(s). Wait, "+
+			_, _ = fmt.Fprintf(out, "refuse  job %s: still running, and it may still write its %d row(s). Wait, "+
 				"then check: bq show -j --location=%s %s\n", job, len(rows), location, job)
 		default:
-			fmt.Fprintf(out, "resend  job %s (%s): %d row(s)\n", job, now, len(rows))
+			_, _ = fmt.Fprintf(out, "resend  job %s (%s): %d row(s)\n", job, now, len(rows))
 			send = append(send, stripped(rows)...)
 		}
 	}
 
 	if req.DryRun {
-		fmt.Fprintf(out, "dry run: would send %d row(s) of batch %s to %s; nothing written\n",
+		_, _ = fmt.Fprintf(out, "dry run: would send %d row(s) of batch %s to %s; nothing written\n",
 			len(send), short(h.batch.ID()), sink.Describe())
 		return rc, refusedErr(rc)
 	}
@@ -228,7 +228,7 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 	if len(send) == 0 {
 		// Nothing left the dead letter, so there is nothing to record: a
 		// receipt here would only make the next attempt ask for --again.
-		fmt.Fprintf(out, "nothing sent\n")
+		_, _ = fmt.Fprintf(out, "nothing sent\n")
 		return rc, refusedErr(rc)
 	}
 	// The stream's own send: the same retry and the same reconcile, under the
@@ -248,10 +248,10 @@ func resendBatch(ctx context.Context, cfg *Config, o options, req resendRequest,
 	sendErr := p.send(sendCtx, send)
 	if sendErr != nil {
 		rc.Outcome = resendFailed
-		fmt.Fprintf(out, "failed  the destination refused the resend too; the rows stay in %s: %v\n", h.object, sendErr)
+		_, _ = fmt.Fprintf(out, "failed  the destination refused the resend too; the rows stay in %s: %v\n", h.object, sendErr)
 	} else {
 		rc.Outcome = resendDelivered
-		fmt.Fprintf(out, "sent    %d row(s) to %s\n", len(send), sink.Describe())
+		_, _ = fmt.Fprintf(out, "sent    %d row(s) to %s\n", len(send), sink.Describe())
 	}
 	if err := h.dl.writeReceipt(ctx, rc); err != nil {
 		return rc, errors.Join(sendErr, fmt.Errorf("the receipt was not written: %w", err))

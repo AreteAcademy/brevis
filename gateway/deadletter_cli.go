@@ -178,7 +178,7 @@ func (d *deadLetter) receiptOutcome(ctx context.Context, name string) (string, e
 	if err != nil {
 		return "", err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	var rc struct {
 		Outcome string `json:"outcome"`
 	}
@@ -201,7 +201,7 @@ func (d *deadLetter) rows(ctx context.Context, object string) ([]map[string]any,
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	var out []map[string]any
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 64*1024*1024)
@@ -319,14 +319,14 @@ func printBuried(w io.Writer, batches []buriedBatch) error {
 		return err
 	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "BATCH\tSTREAM\tBURIED\tROWS\tJOBS\tRESENT\tREASON")
+	_, _ = fmt.Fprintln(tw, "BATCH\tSTREAM\tBURIED\tROWS\tJOBS\tRESENT\tREASON")
 	for _, b := range batches {
 		at := "-"
 		if !b.At.IsZero() {
 			at = b.At.UTC().Format("2006-01-02 15:04 UTC")
 		}
 		resent := dash(b.Resent)
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\t%s\n",
 			short(b.ID()), dash(b.Stream), at, b.Rows, jobsLine(b.Jobs), resent, truncate(b.Reason, 60))
 	}
 	return tw.Flush()
