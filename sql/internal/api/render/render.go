@@ -51,6 +51,10 @@ func (v Value) Bound() any {
 // accepted, at render time, whatever the caller validated before.
 func Inline(identifier string) Value { return Value{v: identifier, inline: true} }
 
+// Plain is the value as the caller meant it, bound or inline alike: what a
+// hook is shown, never what reaches the SQL.
+func (v Value) Plain() any { return v.v }
+
 // Values is one request's names and what they stand for. A name that is
 // absent is false in a condition and an error in `{{ }}`.
 type Values map[string]Value

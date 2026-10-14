@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,10 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/AreteAcademy/brevis/sql/internal/api/render"
+	"github.com/AreteAcademy/brevis/sql/internal/dialect"
 )
 
 // Request is what a before hook sees of one call. Query is the caller's query
@@ -218,4 +223,72 @@ func callBefore(ctx context.Context, fn Before, req *Request) (err error) {
 		}
 	}()
 	return fn(ctx, req)
+}
+
+// shaping is one request's after and the parameters it is shown.
+type shaping struct {
+	after  After
+	params map[string]any
+}
+
+// plainParams is what an after is shown of the values the SQL was rendered
+// with: every declared one that was sent or defaulted, the tenant excepted --
+// that is Result.Tenant.
+//
+// IN TYPES A BINARY OUTSIDE THIS MODULE CAN NAME. A date arrives as the
+// YYYY-MM-DD the caller sent, not as dialect.Date, which is internal and so
+// a type the hook's author could not even assert.
+func plainParams(vals render.Values) map[string]any {
+	out := make(map[string]any, len(vals))
+	for name, v := range vals {
+		if name == tenantName {
+			continue
+		}
+		p := v.Plain()
+		if d, isDate := p.(dialect.Date); isDate {
+			p = d.String()
+		}
+		out[name] = p
+	}
+	return out
+}
+
+// shapeWith runs an after and writes the whole answer around what it
+// returns: `data` is the hook's, `truncated` and `meta` stay the API's, so
+// every endpoint answers in one envelope.
+//
+// max_response_bytes IS CHECKED OVER THE WHOLE BODY and refuses rather than
+// cuts: the hook's output has no rows to stop at, and half of a shape its
+// author chose is not a shape anybody can read.
+func shapeWith(ctx context.Context, fn After, r *Result, maxBytes ByteSize) ([]byte, error) {
+	data, err := callAfter(ctx, fn, r)
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("the after hook returned a value that is not JSON: %v", err)
+	}
+	meta, err := json.Marshal(map[string]any{"endpoint": r.Endpoint, "rows": len(r.Rows),
+		"generated_at": time.Now().UTC().Format(time.RFC3339)})
+	if err != nil {
+		return nil, err
+	}
+	body := fmt.Appendf(nil, `{"data":%s,"truncated":%t,"meta":%s}`, encoded, r.Truncated, meta)
+	if maxBytes > 0 && ByteSize(len(body)) > maxBytes {
+		return nil, fmt.Errorf("the after hook's answer is %s, over this endpoint's max_response_bytes of %s",
+			ByteSize(len(body)), maxBytes)
+	}
+	return body, nil
+}
+
+// callAfter runs an after, turning a panic into this request's error, for
+// callBefore's reason.
+func callAfter(ctx context.Context, fn After, r *Result) (data any, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			data, err = nil, fmt.Errorf("the after hook panicked: %v", p)
+		}
+	}()
+	return fn(ctx, r)
 }

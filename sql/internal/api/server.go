@@ -210,8 +210,12 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		// revalidated every time -- against the ETag, when there is one.
 		w.Header().Set("Cache-Control", "private, max-age=0")
 
+		var shape *shaping
+		if e.after != nil {
+			shape = &shaping{after: e.after, params: plainParams(vals)}
+		}
 		ask := func(parent context.Context) outcome {
-			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes, maxResponse)
+			return s.answer(parent, e.Name, tenant, query, args, ceiling, timeout, maxBytes, maxResponse, shape)
 		}
 		var o outcome
 		if s.cache == nil {
@@ -224,6 +228,9 @@ func (s *Server) endpoint(e *Endpoint) http.Handler {
 		}
 		warehouse = o.warehouse
 		line.Rows, line.Bytes = o.rows, o.scanned
+		if o.hook != "" {
+			line.Hook, line.Reason = o.hook, o.reason
+		}
 		if o.status != 0 {
 			if o.retry {
 				w.Header().Set("Retry-After", "1")
@@ -278,6 +285,10 @@ type outcome struct {
 	why    string
 	retry  bool
 
+	// hook and reason are the audit line's, when a hook decided the status.
+	hook   string
+	reason string
+
 	// served says the cache already wrote the response.
 	served bool
 }
@@ -285,7 +296,7 @@ type outcome struct {
 // answer asks the warehouse, within every ceiling -- the whole API's, the
 // tenant's, the clock's, the rows' and the bytes'.
 func (s *Server) answer(parent context.Context, endpoint, tenant, query string, args []dialect.Arg,
-	ceiling int, timeout time.Duration, maxBytes, maxResponse ByteSize) outcome {
+	ceiling int, timeout time.Duration, maxBytes, maxResponse ByteSize, shape *shaping) outcome {
 	// THE WHOLE API FIRST, then the tenant: a 503 says the service is full,
 	// a 429 says this tenant is, and the caller is owed the right one.
 	select {
@@ -317,6 +328,18 @@ func (s *Server) answer(parent context.Context, endpoint, tenant, query string, 
 	truncated := res.Truncated
 	if len(res.Rows) > ceiling {
 		res.Rows, truncated = res.Rows[:ceiling], true
+	}
+	if shape != nil {
+		// INSIDE THE TIMEOUT, ON THE SAME CONTEXT: a hook that hangs is a
+		// request that hangs, and the ceiling that bounds the query bounds it.
+		r := &Result{Endpoint: endpoint, Tenant: tenant, Params: shape.params,
+			Columns: res.Columns, Rows: res.Rows, Truncated: truncated}
+		body, err := shapeWith(ctx, shape.after, r, maxResponse)
+		if err != nil {
+			return outcome{status: http.StatusInternalServerError, warehouse: took, hook: "after", reason: err.Error(),
+				why: "this endpoint's after hook failed; its author has the reason in the API's log"}
+		}
+		return outcome{body: body, rows: len(res.Rows), scanned: res.Scanned, truncated: truncated, warehouse: took}
 	}
 	body, kept, err := encode(endpoint, res, truncated, maxResponse)
 	if err != nil {
