@@ -204,14 +204,19 @@ attached to every record:
   "ingestion_id": "84aaee4b-66af-5cc0-b97b-6856dec95b25",
   "_dead_letter_reason": "… rpc error: code = NotFound desc = Topic not found",
   "_dead_letter_sink": "pubsub:brevis-local/nao-existe",
-  "_dead_letter_at": "2026-09-24T22:02:32Z"
+  "_dead_letter_at": "2026-09-24T22:02:32Z",
+  "_dead_letter_batch": "e7ff3a12136fb913514e0efd57eaa9c6",
+  "_dead_letter_stream": "clicks"
 }
 ```
 
 The reason travels **on the record** and not only in a log, because whoever
 finds this file later has the events and not the log, and *why is this here* is
 their first question. The `ingestion_id` travels too, so a replay lands where
-the original would have.
+the original would have. `_dead_letter_batch` is the batch the row belonged to
+— the key its load jobs were named after — and `_dead_letter_stream` the stream
+it came in on, since a dead letter can be shared. One buried batch is one
+object.
 
 **A buried batch is not always an unwritten one.** A sink that gives up
 waiting can be wrong about the outcome: a BigQuery load job keeps running after
@@ -242,7 +247,8 @@ columns was never in a load job.
 
 Ask BigQuery before replaying a row that names a job:
 `bq show -j --location=<_dead_letter_job_location> <_dead_letter_job_id>`. A job
-that ended `DONE` with no error already wrote it.
+that ended `DONE` with no error already wrote it. `gateway deadletter resend`,
+below, asks for you.
 
 Every attempt of one batch names the same jobs: the gateway makes a key per
 batch before the first attempt, and BigQuery names the load job after it. So a
@@ -258,6 +264,51 @@ have.
 on a laptop and a bucket in production with no change to the gateway. In compose
 it is a **volume**: written inside the image it would die with the container,
 which is a slower way of losing the events it exists to keep.
+
+### Reading it back and resending
+
+Two commands, run where the destination's credentials already are — the gateway
+itself, a Job with its image, a laptop with ADC. The engine has no part in it;
+the console shows them, ready to copy, on the destination's page.
+
+```bash
+gateway deadletter ls     /etc/brevis/gateway.yaml --stream clicks
+gateway deadletter resend /etc/brevis/gateway.yaml e7ff3a12136f --dry-run
+gateway deadletter resend /etc/brevis/gateway.yaml e7ff3a12136f --by oncall
+```
+
+```
+BATCH         STREAM  BURIED                ROWS  JOBS       RESENT     REASON
+e7ff3a12136f  clicks  2026-10-14 06:09 UTC  1     -          delivered  published 0 of 1 messages to pubsub://…
+3f0c91a2b7de  orders  2026-10-14 05:40 UTC  412   running:2  -          table events: wait for load job: …
+```
+
+`ls` reads a `files` dead letter — the full image carries `gs://` and `s3://`,
+the slim one local directories — and one unreadable dead letter does not hide
+the others. A batch buried before 0.31.0 has no `_dead_letter_batch` and is
+named by its object.
+
+`resend` takes a batch key, a unique prefix of one, or an object, and decides
+by load job before sending anything:
+
+| the row says | resend |
+|---|---|
+| a job BigQuery says landed | skips it: already in the destination |
+| a job still running | refuses it, with the `bq show` to check — the job may still write |
+| a job that failed, or that BigQuery never had | sends it |
+| no job, `write: merge` (or a sink with no such notion) | sends it: the dedup key protects |
+| no job, `write: append` | refuses without `--allow-duplicates`: it can write twice |
+
+What it sends goes through the stream's own send — the same retry and
+reconcile — **under the batch's original key**, so a BigQuery job that landed
+meanwhile is adopted instead of written again. The `_dead_letter_*` columns come
+off; `ingestion_id` stays. A resend the destination refuses again leaves the
+rows where they were: the batch stays one object.
+
+Each resend that sent something leaves a receipt under `resent/` beside the
+dead letter — who (`--by`, default `$USER`), when, what was sent, skipped and
+refused — and `ls` shows its outcome. Resending a batch that was delivered needs
+`--again`. `--dry-run` writes nothing. Anything refused or failed exits non-zero.
 
 ## Where it writes
 
