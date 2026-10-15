@@ -366,4 +366,25 @@
       setDrawer(false);
     }
   });
+
+  // ------------------------------------------------------------------
+  // `/` focuses the page's search box
+  //
+  // What every list tool binds. NEVER WHILE SOMEBODY IS TYPING: a slash
+  // typed into a filter, a form field or the SQL editor is a character, not
+  // a shortcut. CodeMirror edits in a hidden textarea inside `.CodeMirror`,
+  // which is why that is checked by ancestry rather than by tag.
+  // ------------------------------------------------------------------
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) ||
+        (typeof t.closest === "function" && t.closest(".CodeMirror")))) return;
+    var box = document.querySelector('[data-hotkey="/"]');
+    if (!box) return;
+    e.preventDefault();
+    box.focus();
+    if (typeof box.select === "function") box.select();
+  });
 })();
