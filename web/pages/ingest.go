@@ -472,3 +472,183 @@ func loadKind(v LoadView) string {
 	}
 	return v.Row.Kind
 }
+
+// AttachStreamConfigs gives each gateway writer its stream's configuration,
+// from the one read of every stream's (the catalog read leaves them out).
+func AttachStreamConfigs(entries []postgres.CatalogEntry, configs map[postgres.StreamKey]*postgres.WriterConfig) {
+	for _, e := range entries {
+		for _, w := range e.Writers {
+			if g := w.Gateway; g != nil && g.Config == nil {
+				g.Config = configs[postgres.StreamKey{Gateway: g.Name, Path: g.Stream}]
+			}
+		}
+	}
+}
+
+// StreamFilter narrows /ingest/streams: a search over the path, the sink, the
+// dead letter and the gateway, and the sink's kind. In the URL, like every
+// list's.
+type StreamFilter struct {
+	Q, Kind string
+}
+
+// ParseStreamFilter reads the filter from a query string; a kind it does not
+// know is ignored rather than turned into an empty page.
+func ParseStreamFilter(q url.Values) StreamFilter {
+	f := StreamFilter{Q: strings.TrimSpace(q.Get("q"))}
+	if r := []rune(f.Q); len(r) > searchCeiling {
+		f.Q = string(r[:searchCeiling])
+	}
+	if k := q.Get("kind"); filterKinds[k] {
+		f.Kind = k
+	}
+	return f
+}
+
+// With is the link to this filter with one field changed, the fields always
+// in the same order.
+func (f StreamFilter) With(field, value string) string {
+	switch field {
+	case "kind":
+		f.Kind = value
+	case "q":
+		f.Q = value
+	}
+	var parts []string
+	if f.Kind != "" {
+		parts = append(parts, "kind="+url.QueryEscape(f.Kind))
+	}
+	if f.Q != "" {
+		parts = append(parts, "q="+url.QueryEscape(f.Q))
+	}
+	if len(parts) == 0 {
+		return "/ingest/streams"
+	}
+	return "/ingest/streams?" + strings.Join(parts, "&")
+}
+
+// StreamsView is /ingest/streams as drawn: the gateways and their streams
+// under the filter, and the counts of every stream whatever is shown.
+type StreamsView struct {
+	Groups                          []StreamGroupView
+	Total, Gateways, WithDeadLetter int
+	Kinds                           []string
+	Filter                          StreamFilter
+}
+
+// StreamGroupView is one gateway under the filter; Count is all its streams.
+type StreamGroupView struct {
+	Name   string
+	Cards  []StreamCard
+	Count  int
+	Hidden bool
+}
+
+// StreamCard is one stream under the filter.
+type StreamCard struct {
+	Stream
+	Hidden bool
+}
+
+// SearchText is what a search looks in, lower-cased: the gateway, the path,
+// where it lands and where its refusals go.
+func (s Stream) SearchText() string {
+	parts := []string{s.Gateway, s.Path, s.Sink.URI}
+	if s.DeadLetter != nil {
+		parts = append(parts, s.DeadLetter.URI)
+	}
+	return strings.ToLower(strings.Join(parts, "\n"))
+}
+
+// Key is the stream's identity as one string, for the page's markup.
+func (s Stream) Key() string { return s.Gateway + " " + s.Path }
+
+// BuildStreams is every stream, counted.
+func BuildStreams(entries []postgres.CatalogEntry) StreamsView {
+	v := StreamsView{}
+	for _, g := range StreamsOf(entries) {
+		gv := StreamGroupView{Name: g.Name, Count: len(g.Streams)}
+		for _, s := range g.Streams {
+			gv.Cards = append(gv.Cards, StreamCard{Stream: s})
+			v.Total++
+			if s.DeadLetter != nil {
+				v.WithDeadLetter++
+			}
+			if s.Sink.Kind != "" && !containsString(v.Kinds, s.Sink.Kind) {
+				v.Kinds = append(v.Kinds, s.Sink.Kind)
+			}
+		}
+		v.Groups = append(v.Groups, gv)
+	}
+	v.Gateways = len(v.Groups)
+	sort.Strings(v.Kinds)
+	return v
+}
+
+// Apply narrows the streams to the filter: the kind drops, the search hides.
+func (v StreamsView) Apply(f StreamFilter) StreamsView {
+	v.Filter = f
+	groups := make([]StreamGroupView, 0, len(v.Groups))
+	for _, g := range v.Groups {
+		var cards []StreamCard
+		visible := 0
+		for _, c := range g.Cards {
+			if f.Kind != "" && c.Sink.Kind != f.Kind {
+				continue
+			}
+			c.Hidden = f.Q != "" && !strings.Contains(c.SearchText(), strings.ToLower(f.Q))
+			if !c.Hidden {
+				visible++
+			}
+			cards = append(cards, c)
+		}
+		if len(cards) == 0 {
+			continue
+		}
+		g.Cards, g.Hidden = cards, visible == 0
+		groups = append(groups, g)
+	}
+	v.Groups = groups
+	return v
+}
+
+// Shown is how many streams are drawn visible.
+func (v StreamsView) Shown() int {
+	n := 0
+	for _, g := range v.Groups {
+		for _, c := range g.Cards {
+			if !c.Hidden {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// streamKindOptions is the destination-kind filter.
+func streamKindOptions(v StreamsView) []components.SegOption {
+	f := v.Filter
+	out := []components.SegOption{{Label: "Any destination", Href: f.With("kind", ""), Current: f.Kind == ""}}
+	for _, k := range v.Kinds {
+		out = append(out, components.SegOption{Label: k, Href: f.With("kind", k), Current: f.Kind == k})
+	}
+	return out
+}
+
+// streamFlow is the stream drawn as its compact flow: the configuration's,
+// when it described itself (#108), else where events are posted and where
+// they land. Either way the dead letter is the one the catalog knows, hanging
+// off the destination.
+func streamFlow(s Stream) *Flow {
+	f := FlowOf(s.Config, s.Sink.URI)
+	if f == nil {
+		f = &Flow{Nodes: []FlowNode{
+			{Kind: "source", Title: "Source", Main: "POST " + s.Path},
+			{Kind: "destination", Title: "Destination", Main: s.Sink.URI, Detail: s.Sink.Kind},
+		}}
+	}
+	if s.DeadLetter != nil {
+		f.DeadLetter = &FlowNode{Kind: "dead_letter", Title: "Dead letter", Main: s.DeadLetter.URI, Detail: "refused batches"}
+	}
+	return f
+}

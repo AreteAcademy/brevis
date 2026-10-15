@@ -418,6 +418,44 @@ func (r *ReadRepo) gatewayConfigs(ctx context.Context, target string, writers []
 	return r.gatewayHistories(ctx, target, writers)
 }
 
+// StreamKey names a gateway stream: the gateway and the stream's path.
+type StreamKey struct{ Gateway, Path string }
+
+// StreamConfigs is every published stream's current configuration and notes,
+// in one query, for the streams list -- the catalog read leaves them out,
+// and one CatalogTarget per card would be a query per stream. No history:
+// that is the stream's own page. A version-1 stream, which described
+// nothing, is absent.
+func (r *ReadRepo) StreamConfigs(ctx context.Context) (map[StreamKey]*WriterConfig, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT s.gateway, s.stream_path, s.config_hash, c.body, s.notes
+		FROM gateway_streams s
+		JOIN writer_configs c ON c.hash = s.config_hash`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[StreamKey]*WriterConfig{}
+	for rows.Next() {
+		var k StreamKey
+		var c WriterConfig
+		var body, notes []byte
+		if err := rows.Scan(&k.Gateway, &k.Path, &c.Hash, &body, &notes); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(body, &c.Fields); err != nil {
+			return nil, err
+		}
+		if notes != nil {
+			if err := json.Unmarshal(notes, &c.Notes); err != nil {
+				return nil, err
+			}
+		}
+		out[k] = &c
+	}
+	return out, rows.Err()
+}
+
 // gatewayHistories reads the configurations each gateway writer on one
 // destination has had, in one round trip.
 func (r *ReadRepo) gatewayHistories(ctx context.Context, target string, writers []CatalogWriter) error {
