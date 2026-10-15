@@ -86,6 +86,29 @@
      pending     5.0   skipped 5.4
      line        1.1  -- a rule, never text and never a control's outline
 --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   EVERY NAVIGATION CROSSFADES.
+
+   Each click here is a full document load -- SSR, no client router -- and a
+   browser paints a new document from nothing, so the bar and the header
+   blinked on every section change. This holds the old frame until the new
+   one can paint and crossfades the two. The server was never the delay: the
+   pages answer in a few milliseconds, and what showed was the repaint.
+
+   A RULE AND NOT A SCRIPT, so it costs nothing where it is unsupported: a
+   browser without cross-document transitions (Firefox, today) navigates the
+   way it always has.
+
+   WHAT IT DOES NOT COVER is a page whose first paint is not its final one.
+   /sql paints a bare <textarea> and CodeMirror replaces it after that paint,
+   so a run that reloads the workbench still flickers -- the transition
+   faithfully captures the textarea. That is fixed by not reloading the
+   workbench, not here.
+--------------------------------------------------------------------------- */
+@view-transition {
+  navigation: auto;
+}
+
 @theme {
   /* The VALUES live on the names internal/branding writes, and the readable
      names alias them. That direction is not cosmetic: brand.yaml overrides
