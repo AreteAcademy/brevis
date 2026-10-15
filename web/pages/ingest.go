@@ -1,0 +1,239 @@
+package pages
+
+import (
+	"net/url"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/AreteAcademy/brevis/internal/domain/catalog"
+	"github.com/AreteAcademy/brevis/internal/infrastructure/postgres"
+)
+
+// Ingest is what Catalog was, read as the two mechanisms it mixed: gateway
+// STREAMS, which ingest continuously, and SDK LOADS, which a workflow step
+// lands on its schedule. Both come from the same catalog read; this file only
+// regroups it.
+
+// GatewayGroup is one gateway and its streams.
+type GatewayGroup struct {
+	Name    string
+	Streams []Stream
+}
+
+// Stream is a gateway stream, the unit of continuous ingest: where events are
+// posted, the one destination they land on, and the dead letter that destination's
+// refusals go to. THE DEAD LETTER BELONGS TO THE STREAM -- it is never an item
+// of its own, which is what Catalog got wrong.
+type Stream struct {
+	Gateway, Path string
+	Sink          Place
+	DeadLetter    *Place
+	PublishedAt   time.Time
+
+	// Config is the stream as last published; nil for a version-1 manifest,
+	// which described nothing but where it lands.
+	Config *postgres.WriterConfig
+}
+
+// Place is a destination: its URI and its kind (the scheme).
+type Place struct {
+	URI, Kind string
+}
+
+// Field is a declared configuration value, as text; "" when the stream does
+// not declare it, which the screens show as "—".
+func (s Stream) Field(path string) string {
+	if s.Config == nil {
+		return ""
+	}
+	for _, f := range s.Config.Fields {
+		if f.Path == path && f.Value != nil {
+			return valueText(f.Value)
+		}
+	}
+	return ""
+}
+
+// Mode is how the sink writes, as declared: `sink.write`, or the write of an
+// auto_table's tables.
+func (s Stream) Mode() string {
+	if s.Field("sink.type") == "auto_table" {
+		return s.Field("sink.into.write")
+	}
+	return s.Field("sink.write")
+}
+
+// Merge says whether the sink merges, which there is no field for: it is a
+// write mode. Nil when the stream does not declare a mode -- "no" would be a
+// guess.
+func (s Stream) Merge() *bool {
+	m := s.Mode()
+	if m == "" {
+		return nil
+	}
+	merge := m == "merge"
+	return &merge
+}
+
+// Href is the stream's page: the gateway, then the stream's path as the tail.
+func (s Stream) Href() string {
+	return "/ingest/streams/" + url.PathEscape(s.Gateway) + "/" + strings.TrimPrefix(s.Path, "/")
+}
+
+// StreamsOf regroups the catalog's gateway writers into gateways and their
+// streams, both by name. A stream is keyed by (gateway, path); its sink and
+// dead letter are the entries its writer lands on in each role.
+func StreamsOf(entries []postgres.CatalogEntry) []GatewayGroup {
+	type key struct{ gateway, path string }
+	streams := map[key]*Stream{}
+	var order []key
+	for _, e := range entries {
+		for _, w := range e.Writers {
+			g := w.Gateway
+			if g == nil {
+				continue
+			}
+			k := key{g.Name, g.Stream}
+			s := streams[k]
+			if s == nil {
+				s = &Stream{Gateway: g.Name, Path: g.Stream}
+				streams[k] = s
+				order = append(order, k)
+			}
+			if g.PublishedAt.After(s.PublishedAt) {
+				s.PublishedAt = g.PublishedAt
+			}
+			place := Place{URI: e.Target, Kind: e.Kind}
+			switch g.Role {
+			case "dead_letter":
+				s.DeadLetter = &place
+				if s.Config == nil {
+					s.Config = g.Config
+				}
+			default:
+				s.Sink = place
+				if g.Config != nil {
+					s.Config = g.Config
+				}
+			}
+		}
+	}
+
+	byGateway := map[string]*GatewayGroup{}
+	var names []string
+	for _, k := range order {
+		g := byGateway[k.gateway]
+		if g == nil {
+			g = &GatewayGroup{Name: k.gateway}
+			byGateway[k.gateway] = g
+			names = append(names, k.gateway)
+		}
+		g.Streams = append(g.Streams, *streams[k])
+	}
+	sort.Strings(names)
+	out := make([]GatewayGroup, 0, len(names))
+	for _, n := range names {
+		g := byGateway[n]
+		sort.SliceStable(g.Streams, func(i, j int) bool { return g.Streams[i].Path < g.Streams[j].Path })
+		out = append(out, *g)
+	}
+	return out
+}
+
+// LoadGroup is one workflow and what its steps land.
+type LoadGroup struct {
+	Workflow       string
+	Cron, Timezone string // empty for a workflow that only runs by hand
+	Targets        []LoadTarget
+}
+
+// LoadTarget is one step landing on one destination, judged against that
+// step's own schedule.
+type LoadTarget struct {
+	Workflow, Step string
+	Place
+	Legacy     bool
+	Status     catalog.Status
+	LastLoaded time.Time
+	Rows       *int64
+
+	// Recent is the rows of the destination's last loads, oldest first --
+	// only when this step is its only writer: an entry's history is shared,
+	// and another step's loads in this step's sparkline would be a lie.
+	Recent []*int64
+
+	// Many is set when the step writes more than one destination, so its
+	// link has to say which.
+	Many bool
+}
+
+// Href is the load's page; the destination goes in the query only when the
+// step writes more than one.
+func (t LoadTarget) Href() string {
+	h := "/ingest/loads/" + url.PathEscape(t.Workflow) + "/" + url.PathEscape(t.Step)
+	if t.Many {
+		h += "?target=" + url.QueryEscape(t.URI)
+	}
+	return h
+}
+
+// LoadsOf regroups the catalog's step writers by the workflow that runs them,
+// each workflow's targets by step and destination. `now` judges freshness.
+func LoadsOf(entries []postgres.CatalogEntry, now time.Time) []LoadGroup {
+	groups := map[string]*LoadGroup{}
+	written := map[[2]string]int{}
+	for _, e := range entries {
+		steps := 0
+		for _, w := range e.Writers {
+			if w.Gateway == nil {
+				steps++
+			}
+		}
+		for _, w := range e.Writers {
+			if w.Gateway != nil {
+				continue
+			}
+			g := groups[w.Workflow]
+			if g == nil {
+				g = &LoadGroup{Workflow: w.Workflow}
+				groups[w.Workflow] = g
+			}
+			if w.HasSchedule && g.Cron == "" {
+				g.Cron, g.Timezone = w.Cron, w.Timezone
+			}
+			t := LoadTarget{
+				Workflow: w.Workflow, Step: w.Node, Place: Place{URI: e.Target, Kind: e.Kind},
+				Legacy: e.Legacy, Status: verdictOf(e, w, now).Status,
+				LastLoaded: w.LastLoaded, Rows: w.LastRows,
+			}
+			if steps == 1 {
+				t.Recent = e.Recent
+			}
+			g.Targets = append(g.Targets, t)
+			written[[2]string{w.Workflow, w.Node}]++
+		}
+	}
+
+	names := make([]string, 0, len(groups))
+	for n := range groups {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := make([]LoadGroup, 0, len(names))
+	for _, n := range names {
+		g := groups[n]
+		for i := range g.Targets {
+			g.Targets[i].Many = written[[2]string{g.Workflow, g.Targets[i].Step}] > 1
+		}
+		sort.SliceStable(g.Targets, func(i, j int) bool {
+			a, b := g.Targets[i], g.Targets[j]
+			if a.Step != b.Step {
+				return a.Step < b.Step
+			}
+			return a.URI < b.URI
+		})
+		out = append(out, *g)
+	}
+	return out
+}
