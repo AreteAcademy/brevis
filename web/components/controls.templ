@@ -36,10 +36,13 @@ templ Kbd(keys string) {
 // the GET form whose URL carries the filter, so a search is a link and works
 // with no script. `/` focuses it (ui.js).
 //
+// filters names the element whose rows it filters while somebody types
+// (`data-filter-for`, driven by ui.js); empty for a box that only submits.
+//
 // THE LABEL IS SPOKEN AND SHOWN. A placeholder is not a label -- it vanishes
 // on the first keystroke and some readers skip it -- so the same words are
 // the aria-label too.
-templ SearchInput(name, value, label string) {
+templ SearchInput(name, value, label, filters string) {
 	<label class="relative flex min-w-0 items-center">
 		<span class="pointer-events-none absolute left-2.5 text-faint">
 			@Icon("search", "h-4 w-4")
@@ -51,6 +54,9 @@ templ SearchInput(name, value, label string) {
 			aria-label={ label }
 			placeholder={ label }
 			data-hotkey="/"
+			if filters != "" {
+				data-filter-for={ filters }
+			}
 			autocomplete="off"
 			class="h-8 w-full rounded-card border border-line bg-surface pr-9 pl-8 text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
 		/>

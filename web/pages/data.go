@@ -63,7 +63,15 @@ type DataRow struct {
 	Writers  []WriterView
 	LastWhen *time.Time
 	LastRows *int64
+	// Hidden is a row the search does not match. It is drawn, hidden: with
+	// no script it is invisible, and the list filter can bring it back as
+	// somebody deletes a letter.
+	Hidden bool
 }
+
+// SearchText is what a search looks in, lower-cased -- the same text on the
+// server and in the row's data-filter-text, so the two cannot disagree.
+func (r DataRow) SearchText() string { return searchText(r) }
 
 // WriterView is one writer and its verdict.
 type WriterView struct {
@@ -238,10 +246,13 @@ func (f DataFilter) keeps(r DataRow) bool {
 		return false
 	case f.Legacy && !r.Legacy:
 		return false
-	case f.Q != "" && !strings.Contains(searchText(r), strings.ToLower(f.Q)):
-		return false
 	}
 	return true
+}
+
+// matches is the search alone: it hides a row rather than dropping it.
+func (f DataFilter) matches(r DataRow) bool {
+	return f.Q == "" || strings.Contains(searchText(r), strings.ToLower(f.Q))
 }
 
 // searchText is everything a search looks in, lower-cased: where the data
@@ -333,9 +344,21 @@ func (v DataView) Apply(f DataFilter) DataView {
 	rows := make([]DataRow, 0, len(v.Rows))
 	for _, r := range v.Rows {
 		if f.keeps(r) {
+			r.Hidden = !f.matches(r)
 			rows = append(rows, r)
 		}
 	}
 	v.Rows = rows
 	return v
+}
+
+// Shown is how many rows are drawn visible.
+func (v DataView) Shown() int {
+	n := 0
+	for _, r := range v.Rows {
+		if !r.Hidden {
+			n++
+		}
+	}
+	return n
 }

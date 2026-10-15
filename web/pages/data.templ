@@ -33,13 +33,14 @@ templ Data(v DataView) {
 				}
 			</div>
 			@dataFilters(v)
-			<div class="overflow-hidden rounded-card border border-line bg-surface">
-				if len(v.Rows) == 0 {
-					<div class="px-6 py-10 text-center text-sm text-muted">
-						Nothing matches this filter.
-						<a href="/data" class="ml-1 text-accent-strong hover:underline">Show every destination</a>
-					</div>
-				} else {
+			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
+				// ALWAYS DRAWN, hidden while a row shows: the list filter
+				// reveals it when typing hides the last one.
+				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
+					Nothing matches this filter.
+					<a href="/data" class="ml-1 text-accent-strong hover:underline">Show every destination</a>
+				</div>
+				if len(v.Rows) > 0 {
 					<div class="overflow-x-auto">
 						<table class="w-full text-[0.82rem]">
 							<thead>
@@ -52,7 +53,7 @@ templ Data(v DataView) {
 									@th("Last loads", "pr-4")
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-line-soft">
+							<tbody id="catalog-rows" class="divide-y divide-line-soft">
 								for _, r := range v.Rows {
 									@dataRow(r)
 								}
@@ -60,7 +61,7 @@ templ Data(v DataView) {
 						</table>
 					</div>
 				}
-				@components.TableFoot(len(v.Rows), v.Total, "destinations")
+				@components.TableFoot(v.Shown(), v.Total, "destinations")
 			</div>
 		}
 	}
@@ -71,7 +72,9 @@ templ Data(v DataView) {
 // that carries the other filters along, so searching never drops them.
 templ dataFilters(v DataView) {
 	{{ f := v.Filter }}
-	<div class="mb-3 flex flex-wrap items-center gap-2">
+	// `data-filter-keep`: the list filter rewrites these links' `q` as
+	// somebody types, so a status clicked after typing keeps the search.
+	<div data-filter-keep class="mb-3 flex flex-wrap items-center gap-2">
 		<form method="get" action="/data" role="search" class="w-full sm:w-80">
 			if f.Status != "" {
 				<input type="hidden" name="status" value={ f.Status }/>
@@ -82,7 +85,7 @@ templ dataFilters(v DataView) {
 			if f.Legacy {
 				<input type="hidden" name="legacy" value="1"/>
 			}
-			@components.SearchInput("q", f.Q, "Search destinations or writers")
+			@components.SearchInput("q", f.Q, "Search destinations or writers", "catalog-rows")
 		</form>
 		<div class="flex flex-wrap items-center gap-2">
 			@components.Segmented("Status", statusOptions(v))
@@ -101,6 +104,9 @@ templ dataFilters(v DataView) {
 // too, for the keyboard and for no script.
 templ dataRow(r DataRow) {
 	<tr
+		data-filter-row
+		data-filter-text={ r.SearchText() }
+		hidden?={ r.Hidden }
 		if r.Target != "" {
 			data-href={ "/data/target?u=" + url.QueryEscape(r.Target) }
 			class="cursor-pointer align-top transition-colors hover:bg-surface-2"

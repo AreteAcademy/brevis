@@ -276,7 +276,7 @@ func TestTheCatalogSearchesByWhereAndByWho(t *testing.T) {
 	ui := dataUI(catalogFake{entries: demoCatalog()})
 
 	_, body := get(t, ui, "/data?q=REPORTS")
-	if !strings.Contains(body, "demo-landing") || strings.Contains(body, "landing_orders") || strings.Contains(body, "payments") {
+	if rowHidden(t, body, "demo-landing") || !rowHidden(t, body, "landing_orders") || !rowHidden(t, body, "payments") {
 		t.Error("?q=REPORTS did not narrow to the destination whose URI says reports")
 	}
 	if !strings.Contains(body, "Showing 1 of 3 destinations") {
@@ -287,12 +287,13 @@ func TestTheCatalogSearchesByWhereAndByWho(t *testing.T) {
 	}
 
 	_, body = get(t, ui, "/data?q=sdk_orders")
-	if !strings.Contains(body, "landing_orders") || strings.Contains(body, "demo-landing") {
+	if rowHidden(t, body, "landing_orders") || !rowHidden(t, body, "demo-landing") {
 		t.Error("?q=sdk_orders did not find the destination that workflow writes")
 	}
 
 	_, body = get(t, ui, "/data?q=nothing-is-called-this")
-	if !strings.Contains(body, "Nothing matches this filter") || !strings.Contains(body, `href="/data"`) {
+	empty := body[strings.LastIndex(body[:strings.Index(body, "Nothing matches this filter")], "<div"):]
+	if strings.Contains(empty[:strings.Index(empty, ">")], "hidden") || !strings.Contains(body, `href="/data"`) {
 		t.Error("a search that finds nothing does not say so and offer the way back")
 	}
 }
@@ -337,6 +338,59 @@ func TestTheWholeRowGoesToTheDestination(t *testing.T) {
 	for _, want := range []string{`closest("tr[data-href]")`, `closest("a, button, input, label")`} {
 		if !strings.Contains(js, want) {
 			t.Errorf("ui.js never uses %s, so a row is not a link", want)
+		}
+	}
+}
+
+// rowHidden finds the row whose search text holds needle and says whether it
+// is drawn hidden. A search on the server HIDES rows rather than dropping
+// them: hidden, they are invisible with no script, and the filter in ui.js can
+// bring them back as somebody deletes a letter.
+func rowHidden(t *testing.T, body, needle string) bool {
+	t.Helper()
+	at := strings.Index(body, `data-filter-text="`)
+	for at >= 0 {
+		start := strings.LastIndex(body[:at], "<tr")
+		tag := body[start : at+strings.Index(body[at:], ">")]
+		if strings.Contains(tag, strings.ToLower(needle)) {
+			return strings.Contains(tag, " hidden")
+		}
+		next := strings.Index(body[at+1:], `data-filter-text="`)
+		if next < 0 {
+			break
+		}
+		at += 1 + next
+	}
+	t.Fatalf("no row's search text holds %q", needle)
+	return false
+}
+
+// THE LIST FILTERS WHILE SOMEBODY TYPES, AND THE URL FOLLOWS.
+//
+// The search box names the rows it filters; each row carries the text a
+// search looks in, lower-cased by the same function the server uses, so the
+// two cannot disagree about what matches. The foot says how many are shown,
+// and the URL keeps the search with replaceState -- a catalog URL carries no
+// statement, so the SQL screen's rule against touching history is not this
+// one's -- which is what makes a reload or a sent link show the same rows.
+func TestTheCatalogFiltersWhileYouType(t *testing.T) {
+	_, body := get(t, dataUI(catalogFake{entries: demoCatalog()}), "/data")
+	for _, want := range []string{`data-filter-for="catalog-rows"`, `id="catalog-rows"`,
+		`data-filter-row`, `data-foot-total="3"`, `data-foot-noun="destinations"`, "data-filter-empty"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the catalog lacks %s", want)
+		}
+	}
+	if !strings.Contains(body, `data-filter-text="s3://demo-landing/reports/`) || !strings.Contains(body, "shell_report") {
+		t.Error("a row's search text is not where and who")
+	}
+
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/ui.js")
+	js := strip(raw)
+	for _, want := range []string{"[data-filter-for]", "data-filter-text", "replaceState", "data-foot-total", "data-filter-keep"} {
+		if !strings.Contains(js, want) {
+			t.Errorf("ui.js's list filter never uses %s", want)
 		}
 	}
 }

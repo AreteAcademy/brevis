@@ -44,7 +44,7 @@ templ Gallery() {
 			@gallerySection("Filters") {
 				<div class="flex flex-wrap items-center gap-2">
 					<div class="w-72">
-						@components.SearchInput("q", "", "Search destinations")
+						@components.SearchInput("q", "", "Search destinations", "")
 					</div>
 					@components.Segmented("Status", []components.SegOption{
 						{Label: "All", Href: "#", Current: true},

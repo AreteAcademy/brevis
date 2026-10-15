@@ -76,7 +76,7 @@ func TestAKeyIsAKbd(t *testing.T) {
 // filter it carries is in the URL; `/` focuses it, which is what every list
 // tool binds.
 func TestTheSearchBoxIsNamedAndFocusedBySlash(t *testing.T) {
-	got := markup(t, SearchInput("q", "orders", "Search destinations"))
+	got := markup(t, SearchInput("q", "orders", "Search destinations", ""))
 	for _, want := range []string{`type="search"`, `name="q"`, `value="orders"`,
 		`aria-label="Search destinations"`, `placeholder="Search destinations"`, `data-hotkey="/"`, "<kbd"} {
 		if !strings.Contains(got, want) {
