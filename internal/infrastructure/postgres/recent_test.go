@@ -49,3 +49,22 @@ func TestRecentStatesAreEachWorkflowsLastRunsOldestFirst(t *testing.T) {
 		t.Error("a workflow that never ran has runs")
 	}
 }
+
+// THE COUNTS PER STATE ARE THE LIST'S FILTER WITHOUT ITS STATE: one GROUP BY
+// over the same predicate, so each choice says what its link would show.
+func TestCountRunsByStateKeepsTheRestOfTheFilter(t *testing.T) {
+	pool := insightsDB(t)
+	finished(t, pool, "daily", dom.StatusSuccess, time.Hour)
+	finished(t, pool, "daily", dom.StatusSuccess, 2*time.Hour)
+	finished(t, pool, "daily", dom.StatusFailed, 3*time.Hour)
+	finished(t, pool, "other", dom.StatusFailed, time.Hour)
+
+	got, err := postgres.NewReadRepo(pool).CountRunsByState(context.Background(),
+		postgres.RunFilter{Workflow: "daily", State: "failed"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["success"] != 2 || got["failed"] != 1 || len(got) != 2 {
+		t.Errorf("counts = %v, want success 2 and failed 1", got)
+	}
+}

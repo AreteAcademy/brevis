@@ -545,6 +545,31 @@ func (r *ReadRepo) CountRuns(ctx context.Context, f RunFilter) (int, error) {
 	return n, err
 }
 
+// CountRunsByState counts the filter's runs per state, IGNORING its own state:
+// the Runs list's state filter says, beside each choice, what its link would
+// show with the rest of the filter as it is. One GROUP BY over the same
+// predicate the list uses.
+func (r *ReadRepo) CountRunsByState(ctx context.Context, f RunFilter) (map[string]int, error) {
+	f.State = ""
+	predicado, args := f.where()
+	rows, err := r.pool.Query(ctx,
+		fmt.Sprintf(`SELECT status, count(*) FROM runs WHERE %s GROUP BY status`, predicado), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var status string
+		var n int
+		if err := rows.Scan(&status, &n); err != nil {
+			return nil, err
+		}
+		out[status] = n
+	}
+	return out, rows.Err()
+}
+
 // LoadDay is one day of what a workflow's pipelines loaded.
 //
 // Sums for the volumes and a MEAN for the durations, because the two answer

@@ -756,14 +756,12 @@ func (f RunFilter) Active() bool {
 	return f.State != "" || f.Workflow != "" || f.De != "" || f.Ate != ""
 }
 
-templ Runs(runs []postgres.RunSummary, f RunFilter, total int) {
+templ Runs(runs []postgres.RunSummary, f RunFilter, counts map[string]int, total int) {
 	@layouts.Base(layouts.Page{Title: "Runs", Kicker: "History", Active: "runs"}) {
 		<div class="mb-5 flex flex-wrap items-center gap-2">
-			@chip(f.With("state", ""), "All", f.State == "", "")
-			@chip(f.With("state", "success"), "Success", f.State == "success", "bg-state-success")
-			@chip(f.With("state", "failed"), "Failure", f.State == "failed", "bg-state-failed")
-			@chip(f.With("state", "running"), "Running", f.State == "running", "bg-state-running")
-			@chip(f.With("state", "queued"), "Queued", f.State == "queued", "bg-state-queued")
+			<div class="max-w-full overflow-x-auto whitespace-nowrap">
+				@components.Segmented("State", runStateOptions(f, counts))
+			</div>
 			if f.Workflow != "" {
 				<span class="mx-2 h-5 w-px bg-line"></span>
 				@filterApplied("workflow", f.Workflow, f.With("workflow", ""))
@@ -870,6 +868,7 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-line-soft">
+					{{ longest := longestDuration(runs) }}
 					for _, r := range runs {
 						<tr class="transition-colors hover:bg-gold-wash">
 							<td class="px-3 py-3 pl-6">
@@ -885,7 +884,14 @@ templ runsTable(runs []postgres.RunSummary, p Pagination) {
 							</td>
 							<td class="px-3 py-3 text-xs text-muted">{ r.TriggerType }</td>
 							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.UTCStamp(r.LogicalDate) }</td>
-							<td class="px-3 py-3 text-xs tabular-nums text-muted">{ components.Duration(r.Duration) }</td>
+							<td class="px-3 py-3 text-xs tabular-nums text-muted">
+								{ components.Duration(r.Duration) }
+								if w := durationShare(r.Duration, longest); w != "" {
+									<span class="mt-1 block h-1 w-24 rounded-full bg-surface-2">
+										<span data-duration-bar style={ "width:" + w } class="block h-1 rounded-full bg-accent/70"></span>
+									</span>
+								}
+							</td>
 							<td class="px-3 py-3 text-right text-xs text-muted">
 								{ components.When(&r.CreatedAt) }
 							</td>
