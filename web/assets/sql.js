@@ -59,6 +59,10 @@
   // adds to the same list the page loaded with.
   var recent = { rail: null, tpl: null, cap: 20, list: [] };
 
+  // Whether a Run is in flight: a second Run waits for the first rather than
+  // racing it into the same pane.
+  var running = false;
+
   // The tree is wired whether or not CodeMirror loaded, so a blocked CDN
   // costs the highlighting and not the screen. Tabs and Recent are the same:
   // both work on the plain textarea.
@@ -174,11 +178,23 @@
   // The textarea is what the handler reads, so it has to hold the text at
   // the moment of submit and not at the moment somebody stopped typing.
   if (area.form) {
-    area.form.addEventListener("submit", function () {
+    area.form.addEventListener("submit", function (ev) {
       editor.save();
       // AND THE TAB KEEPS WHAT IS ABOUT TO BE RUN, so a refusal comes back
       // to a tab holding the statement that was refused.
       store();
+
+      // A RUN REPLACES THE ANSWER AND NOTHING ELSE. The tree's own buttons
+      // (expand, connect) submit this form too, carrying a name; they are
+      // not Runs, and they still post the page. A Run is the button with no
+      // name, or no button at all (Ctrl/Cmd-Enter).
+      var by = ev.submitter;
+      if (by && by.name) return;
+      var pane = document.querySelector("[data-answer]");
+      if (!pane || !window.fetch || !window.FormData) return;
+      ev.preventDefault();
+      if (running) return;
+      runInPlace(area.form, pane);
     });
   }
 
@@ -548,6 +564,52 @@
     var pick = panel.querySelector("[data-per-page-pick]");
     if (pick) pick.addEventListener("change", function () { at = 0; draw(); });
     draw();
+  }
+
+  // A RUN, WITHOUT THROWING THE WORKBENCH AWAY.
+  //
+  // The same POST the form makes, with X-Brevis-Fragment: answer, so the
+  // server draws the answer pane alone -- and asks the warehouse only the
+  // statement. The pane is swapped and wired again (its pager, its Recent
+  // entry); the editor, the tabs, the tree and the scroll are never touched.
+  //
+  // THE FORM IS STILL THE MECHANISM. Anything this cannot handle -- no
+  // network, a non-2xx, a redirect (an expired session lands on /login, and
+  // its page must not be drawn inside the pane) -- submits the form for
+  // real, which is what a Run was before this existed. `form.submit()` does
+  // not fire the submit event, so it cannot come back here.
+  //
+  // The body is built with encodeURIComponent, as the cost line's is: it
+  // carries SQL, and SQL does not go near the address bar.
+  function runInPlace(form, pane) {
+    var parts = [];
+    new FormData(form).forEach(function (value, name) {
+      if (typeof value === "string") {
+        parts.push(encodeURIComponent(name) + "=" + encodeURIComponent(value));
+      }
+    });
+    var statement = text().trim();
+    running = true;
+    pane.setAttribute("aria-busy", "true");
+    fetch(form.action, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Brevis-Fragment": "answer" },
+      body: parts.join("&"),
+    })
+      .then(function (r) {
+        if (r.redirected || !r.ok) throw new Error("not an answer");
+        return r.text();
+      })
+      .then(function (html) {
+        pane.innerHTML = html;
+        wirePager(pane);
+        addRecent(pane, statement);
+      })
+      .catch(function () { form.submit(); })
+      .then(function () {
+        running = false;
+        pane.removeAttribute("aria-busy");
+      });
   }
 
   // TABS AND RECENT: SEVERAL STATEMENTS OPEN, AND WHAT WAS RUN.

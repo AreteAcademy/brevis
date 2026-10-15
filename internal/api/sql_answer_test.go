@@ -163,3 +163,47 @@ func TestAGetIgnoresTheFragmentHeader(t *testing.T) {
 		}
 	}
 }
+
+// A RUN REPLACES THE ANSWER AND NOTHING ELSE, AND FALLS BACK TO THE FORM.
+//
+// The workbench posted itself on every Run: the page was thrown away, the
+// server drew a bare <textarea>, and CodeMirror replaced it after the first
+// paint -- the one flash View Transitions could not hide. Now a Run fetches
+// the answer alone and swaps it into the pane, then wires the new pane (its
+// pager, its Recent entry), and the editor, the tabs and the tree are never
+// touched.
+//
+// THE FORM IS STILL THE MECHANISM. Anything the fetch cannot handle -- no
+// network, a non-2xx, a session that expired and was redirected to the login
+// page -- submits the form for real, which is what a Run was before. And the
+// tree's own buttons (expand, connect) still submit: they are not Runs.
+//
+// NOTHING REACHES THE ADDRESS BAR. The body is built with encodeURIComponent,
+// as the cost line's is, and the island never touches `history` or
+// `location`.
+func TestARunReplacesOnlyTheAnswer(t *testing.T) {
+	_, ui := browsing(t)
+	_, raw := get(t, ui, "/assets/sql.js")
+	js := strip(raw)
+
+	run := islandFunc(js, "runInPlace")
+	if run == "" {
+		t.Fatal("the island has no runInPlace: a Run still reloads the workbench")
+	}
+	for _, want := range []string{
+		`"X-Brevis-Fragment": "answer"`, "fetch(", "encodeURIComponent",
+		".redirected", "form.submit()", "wirePager(pane)", "addRecent(pane,",
+	} {
+		if !strings.Contains(run, want) {
+			t.Errorf("runInPlace never uses %s", want)
+		}
+	}
+	if !strings.Contains(js, "ev.submitter") {
+		t.Error("the submit handler cannot tell a Run from the tree's own buttons")
+	}
+	for _, gone := range []string{"URLSearchParams", "history.", "location."} {
+		if strings.Contains(js, gone) {
+			t.Errorf("the island uses %s, which is how a statement reaches the address bar", gone)
+		}
+	}
+}
