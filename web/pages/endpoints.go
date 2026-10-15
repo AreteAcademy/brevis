@@ -2,6 +2,7 @@ package pages
 
 import (
 	"fmt"
+	"github.com/a-h/templ"
 	"net/url"
 	"sort"
 	"strings"
@@ -183,7 +184,29 @@ func (v EndpointView) BytesBilled() string {
 // Curl is how to call it, with the key as a placeholder: the console never
 // holds one, and a page that printed a real key would be a page to guard.
 func (v EndpointView) Curl() string {
-	return fmt.Sprintf("curl -H 'Authorization: Bearer <key>' '<api address>%s'", v.Row.Path)
+	q := []string{}
+	for _, f := range v.Form {
+		if f.Value != "" {
+			q = append(q, url.QueryEscape(f.Name)+"="+url.QueryEscape(f.Value))
+		}
+	}
+	u := v.CurlBase()
+	if len(q) > 0 {
+		u += "?" + strings.Join(q, "&")
+	}
+	return CurlHead + "'" + u + "'"
+}
+
+// CurlHead is the curl's fixed start. The key is a placeholder, always: the
+// console's own is never written into a page.
+const CurlHead = "curl -H 'Authorization: Bearer <key>' "
+
+// CurlBase is the address the curl calls, before its query string. ui.js
+// rebuilds the rest from the form as somebody types, with the same escaping
+// url.QueryEscape uses here, so a quote typed into a field cannot end the
+// shell's quoted string.
+func (v EndpointView) CurlBase() string {
+	return "<api address>" + v.Row.Path
 }
 
 // EndpointRef is an endpoint on a model's page, as one of its readers.
@@ -291,3 +314,11 @@ func thousands(n int) string {
 
 // fieldClass is a Try it field: the shell's input, the height of a button.
 const fieldClass = "h-8 w-full min-w-0 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink focus:border-accent-strong focus:outline-none"
+
+// curlAttrs tie the curl to Try it's form, when there is one to follow.
+func curlAttrs(v EndpointView) templ.Attributes {
+	if !v.CanRun {
+		return nil
+	}
+	return templ.Attributes{"data-curl-from": "try-it", "data-curl-base": v.CurlBase(), "data-curl-head": CurlHead}
+}

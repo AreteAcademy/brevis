@@ -208,7 +208,7 @@ templ Endpoint(v EndpointView) {
 				}
 				@card("Call it", "") {
 					<div class="p-4">
-						@components.CodeBlock("endpoint-curl", v.Curl())
+						@components.CodeBlock("endpoint-curl", v.Curl(), curlAttrs(v))
 					</div>
 				}
 			</div>
@@ -257,7 +257,7 @@ templ tryIt(v EndpointView) {
 	// parameters, not SQL. `data-swap` names the pane the answer goes into:
 	// ui.js fetches the answer alone and swaps it, and with no script the
 	// form draws the whole page with the answer in it.
-	<form method="get" action={ templ.SafeURL(v.Row.Href()) } data-swap="endpoint-answer" class="flex flex-col gap-3">
+	<form id="try-it" method="get" action={ templ.SafeURL(v.Row.Href()) } data-swap="endpoint-answer" class="flex flex-col gap-3">
 		<input type="hidden" name="run" value="1"/>
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 			for _, f := range v.Form {

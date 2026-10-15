@@ -79,7 +79,7 @@ func TestADefinitionListIsADlAndMachineValuesAreMono(t *testing.T) {
 // script it would be a button that does nothing, which is the shape this
 // console refuses. The text stays selectable either way.
 func TestACodeBlockIsEscapedAndItsCopyNeedsAScript(t *testing.T) {
-	got := markup(t, CodeBlock("curl-orders", `curl "https://api/v1/orders?a=1&b=<2>"`))
+	got := markup(t, CodeBlock("curl-orders", `curl "https://api/v1/orders?a=1&b=<2>"`, nil))
 	for _, want := range []string{`id="curl-orders"`, "&lt;2&gt;", `data-copy="#curl-orders"`, `aria-label="Copy"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the block lacks %s: %s", want, got)
