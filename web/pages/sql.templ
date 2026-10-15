@@ -646,6 +646,18 @@ templ results(v SQLView) {
 			// the figures finds the attribute the rail reads, which is the
 			// same string and proves nothing.
 			<p data-note class="ml-auto pr-1 text-[0.7rem] text-muted">{ v.Note() }</p>
+			// THE ANSWER, TAKEN AWAY: CSV built in the browser from the JSON
+			// panel below, so no second query and no route. Hidden until the
+			// island can drive it, and absent for a write, whose answer is a
+			// sentence and not a table.
+			if !v.Result.Wrote {
+				<span hidden>
+					@components.Button(components.ButtonSecondary, components.SizeSmall, templ.Attributes{"data-export-csv": true}) {
+						@components.Icon("download", "h-3.5 w-3.5")
+						CSV
+					}
+				</span>
+			}
 		</div>
 		<div class="min-h-0 flex-1 overflow-auto" data-panel="results">
 			if v.Result.Wrote {

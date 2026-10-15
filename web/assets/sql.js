@@ -74,6 +74,8 @@
   wireTabs();
   wireCost();
   wireCopy();
+  wireCSV();
+  wireExport(answer());
   if (typeof CodeMirror === "undefined") {
     area.addEventListener("input", keep);
     return;
@@ -586,6 +588,49 @@
     });
   }
 
+  // THE ANSWER AS CSV, BUILT FROM WHAT ARRIVED.
+  //
+  // No second query and no route: the JSON panel the server drew holds the
+  // columns in order and the rows as arrays, which is everything a CSV is.
+  // RFC 4180: a field is quoted when it carries a comma, a quote or a line
+  // break, quotes are doubled, records end in CRLF, and NULL is an empty
+  // field. A byte-order mark leads, because the spreadsheet most people
+  // will open this in reads UTF-8 only when told to.
+  //
+  // wireExport reveals the button of the answer it is handed; the click is
+  // one delegated listener that finds its own answer, like the tabs.
+  function wireExport(root) {
+    var btn = root.querySelector("[data-export-csv]");
+    if (btn && btn.parentElement && window.Blob && window.URL) btn.parentElement.removeAttribute("hidden");
+  }
+
+  function csvField(v) {
+    if (v === null || v === undefined) return "";
+    var s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function wireCSV() {
+    document.addEventListener("click", function (ev) {
+      var btn = ev.target.closest ? ev.target.closest("[data-export-csv]") : null;
+      if (!btn) return;
+      var root = btn.closest("[data-answer]") || document;
+      var panel = root.querySelector("[data-panel='json']");
+      var data;
+      try { data = JSON.parse(panel ? panel.textContent : ""); } catch (e) { return; }
+      var lines = [data.columns.map(csvField).join(",")];
+      data.rows.forEach(function (row) { lines.push(row.map(csvField).join(",")); });
+      var blob = new Blob(["\ufeff" + lines.join("\r\n") + "\r\n"], { type: "text/csv;charset=utf-8" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "query-" + new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19) + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+  }
+
   // A RUN, WITHOUT THROWING THE WORKBENCH AWAY.
   //
   // The same POST the form makes, with X-Brevis-Fragment: answer, so the
@@ -649,6 +694,7 @@
       .then(function (html) {
         pane.innerHTML = html;
         wirePager(pane);
+        wireExport(pane);
         addRecent(pane, statement);
       })
       .catch(function (err) {

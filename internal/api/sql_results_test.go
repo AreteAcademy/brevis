@@ -235,3 +235,46 @@ func islandFunc(js, name string) string {
 	}
 	return rest
 }
+
+// AN ANSWER CAN BE TAKEN AWAY AS CSV, BUILT FROM WHAT ARRIVED.
+//
+// No second query and no route: the island reads the JSON panel the server
+// already drew -- columns in order, rows as arrays -- and writes RFC 4180
+// (quoted where a value needs it, CRLF between records, NULL as an empty
+// field). The button is hidden until the island can drive it, and a write
+// gets none: a sentence about changed rows is not a table.
+func TestAnAnswerCanBeExportedAsCSV(t *testing.T) {
+	w, ui := browsing(t)
+	w.query = `{"columns":["n"],"rows":[["1"]]}`
+	body := ran(t, ui, "SELECT 1")
+	at := strings.Index(body, "data-export-csv")
+	if at < 0 {
+		t.Fatal("the answer offers no CSV")
+	}
+	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "hidden") {
+		t.Errorf("Export CSV is visible before the island can drive it: %s", wrap)
+	}
+
+	_, raw := get(t, ui, "/assets/sql.js")
+	js := strip(raw)
+	for _, want := range []string{"[data-export-csv]", `"text/csv`, `"\r\n"`, "URL.createObjectURL", `"[data-panel='json']"`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("the island's CSV never uses %s", want)
+		}
+	}
+	if run := islandFunc(js, "runInPlace"); !strings.Contains(run, "wireExport(pane)") {
+		t.Error("an answer swapped in by a run gets no CSV")
+	}
+}
+
+func TestAWriteHasNoCSV(t *testing.T) {
+	w, ui := browsing(t)
+	w.query = `{"columns":[],"rows":[],"wrote":true,"changed":3}`
+	body := ran(t, ui, "UPDATE t SET a = 1")
+	if !strings.Contains(body, "data-changed") {
+		t.Fatal("the fixture is not a write, so this test proves nothing")
+	}
+	if strings.Contains(body, "data-export-csv") {
+		t.Error("a write offers its sentence as CSV")
+	}
+}
