@@ -14,6 +14,25 @@ The engine's tag is `vX.Y.Z`, with no prefix; the SDK's carries `sdk/`.
 
 ---
 
+## [0.26.0] — 2026-10-15
+
+### Added: ⌘K goes anywhere in the console (#107)
+
+Press ⌘K (Ctrl+K) on any signed-in page, or the sidebar's "Search or jump
+to…", to search the sections and everything the console lists: workflows,
+projects, destinations and endpoints. Pasting a run's id offers that run.
+↑↓ choose, ↵ goes, ⌘↵ opens a new tab, and Esc closes the palette and
+gives the focus back. It works from inside the SQL editor too.
+
+It only navigates; nothing in it changes the system. Matching is a plain
+substring, ranked by the label's start, then a word's start, then anywhere.
+The index is `GET /api/palette` -- behind the session like every page,
+`no-store` -- fetched once per page and filtered in the browser.
+
+No migration. No configuration changes.
+
+---
+
 ## [0.25.0] — 2026-10-15
 
 ### Changed: the console is redrawn, and stops blanking on every click (#105)
