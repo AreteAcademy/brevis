@@ -13,7 +13,12 @@
     var trigger = e.target.closest("[data-dialogo]");
     if (trigger) {
       var d = document.getElementById(trigger.dataset.dialogo);
-      if (d && typeof d.showModal === "function") d.showModal();
+      if (d && typeof d.showModal === "function") {
+        // A link opener (`href="#run"`) is the no-script path; with the
+        // script the dialog opens and the URL keeps no hash.
+        if (trigger.tagName === "A") e.preventDefault();
+        if (!d.open) d.showModal();
+      }
       return;
     }
     // A click on the backdrop closes it. A <dialog> does not tell the backdrop
@@ -262,6 +267,8 @@
     function grava(lista) {
       input.value = lista.join(",");
       desenha();
+      // A value set by code fires nothing; the Run… preview listens for this.
+      input.dispatchEvent(new Event("change", { bubbles: true }));
     }
 
     function desenha() {
@@ -563,6 +570,31 @@
     if (!box || box.type !== "checkbox" || typeof box.closest !== "function") return;
     var form = box.closest("form[data-submit-on-change]");
     if (form && typeof form.requestSubmit === "function") form.requestSubmit();
+  });
+
+  // The Run… drawer's payload (`form[data-run-form]`): the params as the
+  // trigger will read them -- each `param.` field, a list's values joined with
+  // commas and blanks dropped, as paramsFromForm does on the server. Hidden in
+  // the markup, so with no script there is no preview rather than a stale one.
+  function runPreview(form) {
+    var box = form.querySelector("[data-run-preview]");
+    if (!box || !window.FormData) return;
+    var params = {};
+    var data = new FormData(form);
+    data.forEach(function (_, name) {
+      if (name.indexOf("param.") !== 0 || params.hasOwnProperty(name.slice(6))) return;
+      params[name.slice(6)] = data.getAll(name).map(function (v) { return String(v).trim(); })
+        .filter(function (v) { return v !== ""; }).join(",");
+    });
+    box.querySelector("code").textContent = JSON.stringify({ params: params }, null, 2);
+    box.hidden = false;
+  }
+  document.querySelectorAll("form[data-run-form]").forEach(runPreview);
+  ["input", "change"].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      var form = e.target && typeof e.target.closest === "function" ? e.target.closest("form[data-run-form]") : null;
+      if (form) runPreview(form);
+    });
   });
 
   // A form that answers while somebody types (`form[data-swap-typing]`):

@@ -28,6 +28,10 @@ const (
 
 const buttonBase = "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-card font-medium whitespace-nowrap transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong disabled:pointer-events-none disabled:opacity-50"
 
+// ButtonClass is a button's look, for a control that is not a Button -- a
+// link that opens a dialog and has to carry its own attributes.
+func ButtonClass(k ButtonKind, s ButtonSize) string { return buttonClass(k, s) }
+
 func buttonClass(k ButtonKind, s ButtonSize) string {
 	size := "h-8 px-3 text-[0.82rem]"
 	if s == SizeSmall {

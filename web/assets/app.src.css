@@ -931,3 +931,18 @@ li.CodeMirror-hint-active {
   height: 0.75rem;
   border-left: 1px dashed var(--color-state-failed);
 }
+
+/* THE RUN… DRAWER WITH NO SCRIPT. A closed <dialog> is not drawn, so with no
+   ui.js to open it the "Run…" link (#run) would lead nowhere: `:target` draws
+   it in place instead, as a section of the page. Only while it is not open --
+   opened by ui.js it is the modal drawer its classes describe. */
+dialog.run-drawer:not([open]):target {
+  display: block;
+  position: static;
+  inset: auto;
+  height: auto;
+  width: 100%;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+}

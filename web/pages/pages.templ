@@ -984,7 +984,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 	@layouts.Base(layouts.Page{
 		Title: w.Slug, Kicker: "Workflow", Active: "workflows", Mono: true,
 		Eyebrow: workflowEyebrow(w, sum),
-		Island: dagAssets, Actions: disparar(w.Slug),
+		Island: dagAssets, Actions: runAction(w),
 		// The question mark only exists when there is something behind it: a
 		// control that opens an empty dialog is a promise the page does not
 		// keep.
@@ -1006,7 +1006,7 @@ templ Workflow(w wf.Workflow, sum *postgres.WorkflowSummary, latest []postgres.R
 			}
 		</div>
 		if len(w.Params) > 0 {
-			@paramsForm(w)
+			@runDrawer(w)
 		}
 		// The same four numbers the dashboard opens with, scoped to this
 		// workflow -- and over thirty days rather than one, because a daily job
@@ -1436,59 +1436,106 @@ func startOrCreated(r postgres.RunSummary) *time.Time {
 var _ = strings.TrimSpace
 
 
-// paramsForm is the trigger WITH values — the difference between running
-// the workflow and reprocessing a window.
+// runAction is the page's verb. With parameters it is "Run…", a link to the
+// drawer: ui.js opens it as a dialog, and with no script `#run` shows the
+// form in place. With none it is the one-click ▶, since there is nothing to
+// ask.
+func runAction(w wf.Workflow) templ.Component {
+	if len(w.Params) == 0 {
+		return disparar(w.Slug)
+	}
+	return runLink()
+}
+
+templ runLink() {
+	<a href="#run" data-dialogo="run" aria-haspopup="dialog" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+		@components.Icon("play", "h-3.5 w-3.5")
+		Run…
+	</a>
+}
+
+// runDrawer asks for a run's parameters: the fields the params declare, the
+// payload they make (filled by ui.js, so it is hidden with no script rather
+// than wrong), and Run, posting to the same trigger the ▶ does. A native
+// <dialog>: Esc closes it and the focus goes back to Run….
+templ runDrawer(w wf.Workflow) {
+	<dialog
+		id="run"
+		aria-labelledby="run-title"
+		class="run-drawer fixed inset-y-0 right-0 left-auto m-0 h-full max-h-none w-[min(440px,100vw)] border-l border-line bg-surface p-0 text-ink backdrop:bg-ink/40"
+	>
+		<form
+			method="post"
+			action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
+			data-run-form
+			class="flex h-full flex-col"
+		>
+			<div class="flex items-center justify-between gap-4 border-b border-line px-5 py-4">
+				<div class="min-w-0">
+					<p id="run-title" class="text-[0.95rem] font-medium text-ink">Run with parameters</p>
+					<p class="truncate font-mono text-[0.75rem] text-muted">{ w.Slug }</p>
+				</div>
+				<button type="submit" formmethod="dialog" formnovalidate aria-label="Close" class="flex h-8 w-8 items-center justify-center rounded-card text-muted transition-colors hover:bg-surface-2 hover:text-ink">
+					@components.Icon("x", "h-4 w-4")
+				</button>
+			</div>
+			<div class="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+				for _, p := range w.Params {
+					@paramField(p)
+				}
+				<div data-run-preview hidden>
+					<p class="mb-1.5 text-[0.75rem] text-muted">Payload</p>
+					<pre class="overflow-x-auto rounded-card border border-line-soft bg-canvas px-3 py-2 font-mono text-[0.75rem] text-ink-2"><code></code></pre>
+				</div>
+			</div>
+			<div class="flex justify-end gap-2 border-t border-line px-5 py-3">
+				<button type="submit" class={ components.ButtonClass(components.ButtonPrimary, components.SizeRegular) }>
+					@components.Icon("play", "h-3.5 w-3.5")
+					Run
+				</button>
+			</div>
+		</form>
+	</dialog>
+}
+
+// paramField is one parameter's field. The drawer is the trigger WITH values
+// — the difference between running the workflow and reprocessing a window.
 //
 // The fields come from the YAML's declaration, and the `name` carries a `param.`
 // prefix so it does not collide with the form's own future fields. Types become
 // controls: a boolean is a select, an integer is a number, an enum is a select —
 // each refusing in the browser what the server would refuse again afterwards.
-templ paramsForm(w wf.Workflow) {
-	<form
-		method="post"
-		action={ templ.SafeURL("/workflows/" + w.Slug + "/trigger") }
-		class="mb-5 rounded-card border border-line bg-surface p-6 shadow-warm-sm"
-	>
-		<p class="kicker mb-4">Run with parameters</p>
-		<div class="flex flex-wrap items-end gap-4">
-			for _, p := range w.Params {
-				<label class="flex min-w-[180px] flex-col gap-1">
-					<span class="text-xs font-medium text-ink">{ p.Name }</span>
-					if p.Description != "" {
-						<span class="text-[0.7rem] text-muted">{ p.Description }</span>
-					}
-					if p.Type == wf.ParamBool {
-						<select name={ "param." + p.Name } class="rounded-xl border border-line bg-parchment-soft px-3 py-2 text-sm text-ink">
-							@option("false", p.Default)
-							@option("true", p.Default)
-						</select>
-					} else if p.Type.IsList() && len(p.Enum) > 0 {
-						@listaComEnum(p)
-					} else if p.Type.IsList() {
-						@listaLivre(p)
-					} else if len(p.Enum) > 0 {
-						<select name={ "param." + p.Name } class="rounded-xl border border-line bg-parchment-soft px-3 py-2 text-sm text-ink">
-							for _, v := range p.Enum {
-								@option(v, p.Default)
-							}
-						</select>
-					} else {
-						<input
-							type={ fieldType(p) }
-							name={ "param." + p.Name }
-							value={ p.Default }
-							placeholder={ p.Pattern }
-							class="rounded-xl border border-line bg-parchment-soft px-3 py-2 font-mono text-sm text-ink placeholder:text-muted/60"
-						/>
-					}
-				</label>
-			}
-			<button
-				type="submit"
-				class="rounded-card bg-ink px-4 py-2 text-xs font-medium text-surface transition-colors hover:bg-accent-strong"
-			>Run</button>
-		</div>
-	</form>
+templ paramField(p wf.Param) {
+	<label class="flex flex-col gap-1">
+		<span class="font-mono text-[0.8rem] text-ink">{ p.Name }</span>
+		if p.Description != "" {
+			<span class="text-[0.72rem] text-muted">{ p.Description }</span>
+		}
+		if p.Type == wf.ParamBool {
+			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+				@option("false", p.Default)
+				@option("true", p.Default)
+			</select>
+		} else if p.Type.IsList() && len(p.Enum) > 0 {
+			@listaComEnum(p)
+		} else if p.Type.IsList() {
+			@listaLivre(p)
+		} else if len(p.Enum) > 0 {
+			<select name={ "param." + p.Name } class="h-8 rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink">
+				for _, v := range p.Enum {
+					@option(v, p.Default)
+				}
+			</select>
+		} else {
+			<input
+				type={ fieldType(p) }
+				name={ "param." + p.Name }
+				value={ p.Default }
+				placeholder={ p.Pattern }
+				class="h-8 rounded-card border border-line bg-surface px-2.5 font-mono text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
+			/>
+		}
+	</label>
 }
 
 // A list with an enum is a multi-select, and checkboxes are what a browser
