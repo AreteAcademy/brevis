@@ -1,6 +1,7 @@
 package pages
 
 import (
+	"fmt"
 	"net/url"
 	"sort"
 	"strings"
@@ -385,4 +386,89 @@ func containsString(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// LoadView is one load's page: the destination's view (TargetView) narrowed
+// to the one step, plus who that step is.
+type LoadView struct {
+	TargetView
+	Workflow, Step string
+}
+
+// BuildLoad narrows a destination to the loads and the writer of one step:
+// another workflow writing the same destination is a different load, and
+// its rows in this step's bars would be a lie.
+func BuildLoad(d postgres.TargetDetail, workflow, step string, now time.Time) LoadView {
+	var writers []postgres.CatalogWriter
+	for _, w := range d.Writers {
+		if w.Gateway == nil && w.Workflow == workflow && w.Node == step {
+			writers = append(writers, w)
+		}
+	}
+	var loads []postgres.TargetLoad
+	for _, l := range d.Loads {
+		if l.Workflow == workflow && l.Node == step {
+			loads = append(loads, l)
+		}
+	}
+	d.Writers, d.Loads = writers, loads
+	if len(d.Writers) > 1 || len(d.Writers) == 0 {
+		d.Recent = nil
+	}
+	return LoadView{TargetView: BuildTarget(d, now), Workflow: workflow, Step: step}
+}
+
+// Writer is the step's own writer row, with its verdict.
+func (v LoadView) Writer() *WriterView {
+	if len(v.Row.Writers) == 0 {
+		return nil
+	}
+	return &v.Row.Writers[0]
+}
+
+// loadStats are the four numbers at the top of a load's page. "Recent loads"
+// and not "recorded": the page reads the last loadsShown, and above that a
+// count would be a floor presented as a total.
+func loadStats(v LoadView) []components.Stat {
+	bytes := "—"
+	if len(v.Loads) > 0 && v.Loads[0].Bytes != nil {
+		bytes = bytesText(*v.Loads[0].Bytes)
+	}
+	recent := components.Stat{Label: "Recent loads", Value: fmt.Sprint(len(v.Loads))}
+	if len(v.Loads) >= loadsShown {
+		recent.Note = fmt.Sprintf("the last %d", loadsShown)
+	}
+	return []components.Stat{
+		{Label: "Last load", Value: components.When(v.Row.LastWhen), Note: components.UTCStamp(v.Row.LastWhen)},
+		{Label: "Rows, last load", Value: rowsText(v.Row.LastRows)},
+		{Label: "Bytes, last load", Value: bytes},
+		recent,
+	}
+}
+
+// loadsShown is how many loads the destination read returns (its LIMIT).
+const loadsShown = 30
+
+// writerSchedule is a step writer's schedule as a sentence.
+func writerSchedule(w *WriterView) string {
+	if w == nil || !w.HasSchedule {
+		return "runs by hand"
+	}
+	if words := CronText(w.Cron); words != "" {
+		return words + zoneSuffix(w.Timezone)
+	}
+	return w.Cron + " " + w.Timezone
+}
+
+// LoadChoice is one destination a step writes, on the page that asks which.
+type LoadChoice struct {
+	URI, Href string
+}
+
+// loadKind is the destination's kind as the eyebrow says it.
+func loadKind(v LoadView) string {
+	if v.Row.Kind == "" {
+		return "label"
+	}
+	return v.Row.Kind
 }

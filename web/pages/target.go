@@ -51,6 +51,11 @@ type TargetView struct {
 	// so the link is shareable the way /data's filters already are.
 	Tab string
 
+	// Self is the page's own link, which the tabs extend; "" is the
+	// destination's /data/target page. A load's page is the same view, under
+	// its own URL.
+	Self string
+
 	// PreviewErr is why there are no rows, in words somebody can act on.
 	//
 	// A STRING AND NOT AN error, because this is a view: whatever decides
@@ -99,6 +104,13 @@ func (v TargetView) WorkbenchHref() string {
 // in a proxy log, in a browser's history and in a Referer header, and a WHERE
 // clause carries customer data. That is why the Query box is a POST.
 func (v TargetView) TabHref(tab string) string {
+	if v.Self != "" {
+		sep := "?"
+		if strings.Contains(v.Self, "?") {
+			sep = "&"
+		}
+		return v.Self + sep + "tab=" + tab
+	}
 	return "/data/target?u=" + url.QueryEscape(v.Row.Target) + "&tab=" + tab
 }
 

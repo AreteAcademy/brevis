@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"os"
 	"regexp"
 	"strings"
@@ -112,5 +113,21 @@ func TestABadgeSaysItsStateInWords(t *testing.T) {
 		if got := markup(t, State(status)); !strings.Contains(got, word) {
 			t.Errorf("%q is drawn without the word %q: %s", status, word, got)
 		}
+	}
+}
+
+// A LOAD THAT WROTE ZERO ROWS IS RED: present, counted, and empty -- the one a
+// reader is looking for. A load that did not count stays hollow.
+func TestALoadBarOfZeroIsRed(t *testing.T) {
+	var b strings.Builder
+	zero, four := int64(0), int64(4)
+	if err := LoadBars([]LoadBar{{Href: "/runs/a", Rows: &four}, {Href: "/runs/b", Rows: &zero}, {Href: "/runs/c"}}, 0).Render(context.Background(), &b); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(b.String(), "fill-state-failed") != 1 {
+		t.Error("the zero load is not the one red bar")
+	}
+	if !strings.Contains(b.String(), `fill="none"`) {
+		t.Error("the uncounted load is not hollow")
 	}
 }
