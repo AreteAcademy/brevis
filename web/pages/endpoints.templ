@@ -10,48 +10,92 @@ import (
 
 templ Endpoints(v EndpointsView) {
 	@layouts.Base(layouts.Page{Title: "Endpoints", Kicker: "Data", Active: "endpoints"}) {
-		<p class="mb-4 max-w-3xl text-sm text-muted">
+		<p class="mb-5 max-w-3xl text-sm text-ink-2">
 			What each published brevis-sql-api serves: declared, read-only SQL over HTTP, cached until a model it reads is rebuilt. Traffic is on each API's /metrics.
 		</p>
 		if len(v.Rows) == 0 {
 			@components.Empty("No endpoint published yet.",
 				"Run brevis-sql-api describe --out manifest.json, then brevis endpoints publish manifest.json. See docs/ENDPOINTS.md.")
 		} else {
-			<div class="overflow-x-auto rounded-card border border-line bg-surface shadow-warm-sm">
-				<table class="w-full text-sm">
-					<thead>
-						<tr class="border-b border-line bg-parchment-soft/60 text-left">
-							@th("Path", "pl-6")
-							@th("API", "")
-							@th("Parameters", "")
-							@th("Reads", "")
-							@th("Published", "pr-6")
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-line-soft">
-						for _, r := range v.Rows {
-							<tr class="align-top transition-colors hover:bg-gold-wash">
-								<td class="px-3 py-3 pl-6">
-									<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.8rem] text-ink hover:text-gold-strong">GET { r.Path }</a>
-									if !r.Keyed {
-										<span class="mt-1 block text-[0.7rem] text-muted">the same rows for every key</span>
-									}
-								</td>
-								<td class="px-3 py-3 text-xs text-ink">{ r.API }</td>
-								<td class="px-3 py-3 font-mono text-xs text-muted">{ strings.Join(r.Params, ", ") }</td>
-								<td class="px-3 py-3">
-									for _, t := range r.Reads {
-										<a href={ templ.SafeURL(TargetHref(t)) } class="block font-mono text-[0.75rem] break-all text-ink hover:text-gold-strong">{ t }</a>
-									}
-								</td>
-								<td class="px-3 py-3 pr-6 text-xs whitespace-nowrap text-muted">{ components.When(&r.PublishedAt) }</td>
+			<form method="get" action="/data/endpoints" role="search" class="mb-3 w-full sm:w-80">
+				@components.SearchInput("q", v.Q, "Search paths, APIs or models", "endpoint-rows")
+			</form>
+			<div data-filter-scope class="overflow-hidden rounded-card border border-line bg-surface">
+				<div data-filter-empty class="px-6 py-10 text-center text-sm text-muted" hidden?={ v.Shown() > 0 }>
+					Nothing matches this search.
+					<a href="/data/endpoints" class="ml-1 text-accent-strong hover:underline">Show every endpoint</a>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full text-[0.82rem]">
+						<thead>
+							<tr class="border-b border-line bg-canvas-subtle text-left">
+								@th("Endpoint", "pl-4")
+								@th("API", "")
+								@th("Parameters", "")
+								@th("Reads", "")
+								@th("Published", "pr-4")
 							</tr>
-						}
-					</tbody>
-				</table>
+						</thead>
+						<tbody id="endpoint-rows" class="divide-y divide-line-soft">
+							for _, r := range v.Rows {
+								@endpointRow(r)
+							}
+						</tbody>
+					</table>
+				</div>
+				@components.TableFoot(v.Shown(), len(v.Rows), "endpoints")
 			</div>
 		}
 	}
+}
+
+// endpointRow is one endpoint in the index. The whole row goes to its page;
+// the path is a real link too, for the keyboard and for no script. A
+// required parameter is drawn in ink and an optional one muted, which is the
+// difference a caller needs before opening the page.
+templ endpointRow(r EndpointRow) {
+	<tr
+		data-filter-row
+		data-filter-text={ r.SearchText() }
+		data-href={ r.Href() }
+		hidden?={ r.Hidden }
+		class="cursor-pointer align-top transition-colors hover:bg-surface-2"
+	>
+		<td class="min-w-[14rem] px-3 py-2.5 pl-4">
+			<div class="flex items-center gap-2">
+				@components.MethodPill("GET")
+				<a href={ templ.SafeURL(r.Href()) } class="font-mono text-[0.8rem] text-ink hover:underline">{ r.Path }</a>
+			</div>
+			if !r.Keyed {
+				<span class="mt-1 block text-[0.72rem] text-muted">the same rows for every key</span>
+			}
+		</td>
+		<td class="px-3 py-2.5 font-mono text-[0.78rem] whitespace-nowrap text-ink-2">{ r.API }</td>
+		<td class="px-3 py-2.5 font-mono text-[0.75rem]">
+			if len(r.Params) == 0 {
+				<span class="text-faint">none</span>
+			}
+			for i, p := range r.Params {
+				if i > 0 {
+					<span class="text-faint">, </span>
+				}
+				if r.Required[p] {
+					<span class="text-ink" title="required">{ p }</span>
+				} else {
+					<span class="text-muted">{ p }</span>
+				}
+			}
+		</td>
+		<td class="px-3 py-2.5">
+			if len(r.Reads) > 0 {
+				<a href={ templ.SafeURL(TargetHref(r.Reads[0])) } class="font-mono text-[0.75rem] break-all text-ink hover:underline">{ r.Reads[0] }</a>
+				if len(r.Reads) > 1 {
+					<span class="ml-1 text-[0.72rem] text-muted" title={ strings.Join(r.Reads[1:], "\n") }>{ fmt.Sprintf("+%d", len(r.Reads)-1) }</span>
+				}
+			}
+		</td>
+		<td class="px-3 py-2.5 pr-4 text-[0.78rem] whitespace-nowrap text-muted">{ components.When(&r.PublishedAt) }</td>
+	</tr>
 }
 
 templ Endpoint(v EndpointView) {

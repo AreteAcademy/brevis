@@ -15,6 +15,8 @@ import (
 // EndpointsView is Data → Endpoints: every published brevis-sql-api path.
 type EndpointsView struct {
 	Rows []EndpointRow
+	// Q is the search, as typed; empty is none.
+	Q string
 }
 
 // EndpointRow is one published endpoint.
@@ -25,6 +27,20 @@ type EndpointRow struct {
 	Params      []string
 	Reads       []string
 	PublishedAt time.Time
+	// Required names the parameters a request must carry.
+	Required map[string]bool
+	// Hidden is a row the search does not match: drawn, hidden, so the list
+	// filter can bring it back as somebody deletes a letter.
+	Hidden bool
+}
+
+// SearchText is what a search looks in, lower-cased: the path, the API, the
+// parameters and the models it reads -- the same text on the server and in
+// the row's data-filter-text.
+func (r EndpointRow) SearchText() string {
+	parts := append([]string{r.Path, r.API, r.Name}, r.Params...)
+	parts = append(parts, r.Reads...)
+	return strings.ToLower(strings.Join(parts, "\n"))
 }
 
 // Href is the endpoint's own page.
@@ -40,8 +56,42 @@ func rowOf(e postgres.PublishedEndpoint) EndpointRow {
 		Reads: e.Reads, PublishedAt: e.PublishedAt}
 	for _, p := range e.Endpoint.Params {
 		r.Params = append(r.Params, p.Name)
+		if p.Required {
+			if r.Required == nil {
+				r.Required = map[string]bool{}
+			}
+			r.Required[p.Name] = true
+		}
 	}
 	return r
+}
+
+// Search hides the rows q does not match, case-insensitively. Bounded like the
+// catalog's: nobody's path is longer than searchCeiling.
+func (v EndpointsView) Search(q string) EndpointsView {
+	q = strings.TrimSpace(q)
+	if r := []rune(q); len(r) > searchCeiling {
+		q = string(r[:searchCeiling])
+	}
+	v.Q = q
+	rows := make([]EndpointRow, len(v.Rows))
+	for i, r := range v.Rows {
+		r.Hidden = q != "" && !strings.Contains(r.SearchText(), strings.ToLower(q))
+		rows[i] = r
+	}
+	v.Rows = rows
+	return v
+}
+
+// Shown is how many rows are drawn visible.
+func (v EndpointsView) Shown() int {
+	n := 0
+	for _, r := range v.Rows {
+		if !r.Hidden {
+			n++
+		}
+	}
+	return n
 }
 
 // BuildEndpoints is the list, by API and path.
