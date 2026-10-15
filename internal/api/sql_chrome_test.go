@@ -87,7 +87,9 @@ func TestRunIsThePrimaryActionAndSaysItsShortcut(t *testing.T) {
 	if at < 0 {
 		t.Fatal("the Run button is not marked as the primary action")
 	}
-	el := body[at:]
+	// THE WHOLE TAG, not what follows the marker: a component writes its
+	// class before the caller's attributes, and the order says nothing.
+	el := body[strings.LastIndex(body[:at], "<"):]
 	if end := strings.Index(el, ">"); end > 0 {
 		el = el[:end]
 	}
@@ -258,5 +260,46 @@ func TestTheIslandDeclaresItsStateBeforeFillingIt(t *testing.T) {
 		}
 		t.Errorf("the island declares state below its startup calls:%s\n"+
 			"that line runs AFTER the wiring and overwrites what the wiring put there", line)
+	}
+}
+
+// THE WORKBENCH TAKES THE WHOLE HEIGHT. It is a Fill page: the breadcrumb
+// already says where it is, and a 26px title over three panes is a band of
+// screen the editor needed.
+func TestTheWorkbenchSpendsNoHeightOnATitle(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/sql")
+	if strings.Contains(body, "data-page-header") {
+		t.Error("the workbench draws a page header above its panes")
+	}
+}
+
+// THE TOOLBAR: Run, its key, where it runs, and Copy -- which copies what is
+// in the editor, so it is the island's to drive and hidden until the island
+// can.
+func TestTheToolbarCopiesTheStatement(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/sql")
+	at := strings.Index(body, "data-copy-statement")
+	if at < 0 {
+		t.Fatal("the toolbar offers no Copy")
+	}
+	if wrap := body[strings.LastIndex(body[:at], "<span"):at]; !strings.Contains(wrap, "hidden") {
+		t.Errorf("Copy is visible before the island can drive it: %s", wrap)
+	}
+	_, raw := get(t, ui, "/assets/sql.js")
+	if js := strip(raw); !strings.Contains(js, "[data-copy-statement]") || !strings.Contains(js, "navigator.clipboard") {
+		t.Error("the island never drives Copy")
+	}
+}
+
+// BEFORE ANYTHING RUNS, THE ANSWER SAYS HOW: run a query, and the key.
+func TestTheEmptyAnswerSaysHowToRun(t *testing.T) {
+	_, ui := browsing(t)
+	_, body := get(t, ui, "/sql")
+	pane := body[strings.Index(body, "data-answer"):]
+	pane = pane[:strings.Index(pane, "data-running-template")]
+	if !strings.Contains(pane, "Run a query") || !strings.Contains(pane, "⌘↵") {
+		t.Errorf("the empty answer does not say how to run: %.300s", pane)
 	}
 }

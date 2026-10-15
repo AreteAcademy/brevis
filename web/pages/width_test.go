@@ -50,6 +50,12 @@ func TestNoScreenIsCappedAtFourteenHundred(t *testing.T) {
 func TestTheContentWrapperFollowsTheHeader(t *testing.T) {
 	for _, s := range screens() {
 		t.Run(s.name, func(t *testing.T) {
+			// THE WORKBENCH HAS NO PAGE HEADER: it is the one Fill page, and
+			// its panes take the height a title would. Its own test holds
+			// that (TestTheWorkbenchSpendsNoHeightOnATitle).
+			if s.name == "sql" {
+				t.Skip("the Fill page draws no page header")
+			}
 			page := draw(t, s.c)
 			// The PAGE header, not the bar: there are two <header>s in
 			// this document and the first one is the top bar. Found by its

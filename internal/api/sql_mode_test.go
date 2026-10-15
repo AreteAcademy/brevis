@@ -57,3 +57,44 @@ func TestAReadOnlyWorkbenchDrawsNoBanner(t *testing.T) {
 		t.Error("a read-only workbench says it may change data")
 	}
 }
+
+// topBar is the first <header>: the shell's bar, not the page's.
+func topBar(body string) string {
+	at := strings.Index(body, "<header")
+	if at < 0 {
+		return ""
+	}
+	return body[at : at+strings.Index(body[at:], "</header>")]
+}
+
+// A WRITABLE WORKBENCH SAYS SO IN THE TOP BAR TOO, which stays on screen
+// however the panes are arranged. A read-only one puts nothing there -- the
+// same rule as the banner: read-only is the default, and a badge on every
+// visit is one nobody reads.
+func TestAWritableWorkbenchSaysSoInTheTopBar(t *testing.T) {
+	w, ui := browsing(t)
+	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}],"writable":true}`
+	if bar := topBar(screen(t, ui, probeTarget)); !strings.Contains(bar, "Writes allowed") {
+		t.Errorf("the top bar of a writable workbench does not say so: %s", bar)
+	}
+
+	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}]}`
+	if bar := topBar(screen(t, ui, probeTarget)); strings.Contains(bar, "Writes allowed") || strings.Contains(bar, "data-mode") {
+		t.Error("a read-only workbench put a mode in the top bar")
+	}
+}
+
+// AND IT DOES NOT ALSO SAY "READS ONLY". The sentence under the editor was
+// drawn on every connection, so a writable one said both that statements may
+// change data and that the service refuses anything but a read.
+func TestAWritableWorkbenchDoesNotClaimToReadOnly(t *testing.T) {
+	w, ui := browsing(t)
+	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}],"writable":true}`
+	if strings.Contains(screen(t, ui, probeTarget), "Reads only.") {
+		t.Error("a writable workbench claims to read only")
+	}
+	w.objects = `{"relations":[{"schema":"bronze","name":"orders"}]}`
+	if !strings.Contains(screen(t, ui, probeTarget), "Reads only.") {
+		t.Error("a read-only workbench no longer says what it refuses")
+	}
+}
