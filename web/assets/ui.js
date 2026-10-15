@@ -521,7 +521,12 @@
     var pane = document.getElementById(form.getAttribute("data-swap"));
     if (!pane || !window.fetch || !window.FormData) return;
     e.preventDefault();
-    if (pane.getAttribute("aria-busy") === "true") return;
+    // One answer in flight: a submit that arrives meanwhile (a keystroke) is
+    // remembered and sent when it lands, so the last thing typed always wins.
+    if (pane.getAttribute("aria-busy") === "true") {
+      form.setAttribute("data-swap-again", "");
+      return;
+    }
 
     var url = form.getAttribute("action").split("?")[0] + "?" + new URLSearchParams(new FormData(form)).toString();
     var button = form.querySelector('[type="submit"]');
@@ -540,7 +545,25 @@
       .then(function () {
         pane.removeAttribute("aria-busy");
         if (button) button.disabled = false;
+        if (form.hasAttribute("data-swap-again")) {
+          form.removeAttribute("data-swap-again");
+          form.requestSubmit();
+        }
       });
+  });
+
+  // A form that answers while somebody types (`form[data-swap-typing]`):
+  // a pause of 200 ms in its search box submits it, so a word is one request
+  // and not one per letter. The server answers, so a paginated list is
+  // searched whole and not one page of it.
+  var typing;
+  document.addEventListener("input", function (e) {
+    var box = e.target;
+    if (!box || box.type !== "search" || typeof box.closest !== "function") return;
+    var form = box.closest("form[data-swap-typing]");
+    if (!form || typeof form.requestSubmit !== "function") return;
+    clearTimeout(typing);
+    typing = setTimeout(function () { form.requestSubmit(); }, 200);
   });
 
   document.addEventListener("keydown", function (e) {

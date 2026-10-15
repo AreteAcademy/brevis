@@ -867,8 +867,30 @@ func (u *UI) workflows(w http.ResponseWriter, r *http.Request) {
 
 	filtered := filtrar(all, f)
 	sortBy(filtered, f)
-	u.render(w, r, pages.Workflows(recortar(filtered, f), tagsDe(all), f,
-		len(all), len(filtered)))
+	ws, tags, counts := recortar(filtered, f), tagsDe(all), contar(all, f)
+	if fragment(r) == "answer" {
+		u.render(w, r, pages.WorkflowsList(ws, tags, f, counts, len(all), len(filtered)))
+		return
+	}
+	u.render(w, r, pages.Workflows(ws, tags, f, counts, len(all), len(filtered)))
+}
+
+// contar is how many workflows each state and schedule choice would show:
+// the same filter with that one field swapped, run through filtrar, so a
+// count cannot disagree with the list its link opens.
+func contar(all []postgres.WorkflowSummary, f pages.Filter) pages.WorkflowCounts {
+	c := pages.WorkflowCounts{State: map[string]int{}, Active: map[string]int{}}
+	for _, s := range []string{"", "success", "failed", "running", "queued"} {
+		g := f
+		g.State = s
+		c.State[s] = len(filtrar(all, g))
+	}
+	for _, a := range []string{"", "active", "paused"} {
+		g := f
+		g.Active = a
+		c.Active[a] = len(filtrar(all, g))
+	}
+	return c
 }
 
 // validOrder limits sorting to the columns that exist -- without it, `?ordem=;`
