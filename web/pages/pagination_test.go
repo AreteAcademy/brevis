@@ -47,7 +47,7 @@ func TestThePageWindow(t *testing.T) {
 // Changing the filter goes back to page 1: staying on page 7 of a result that now
 // has two would be an empty screen with no explanation.
 func TestChangingTheFilterResetsThePage(t *testing.T) {
-	f := Filter{Tag: "acme", Page: 7, PerPage: DefaultPerPage}
+	f := Filter{Tags: []string{"acme"}, Page: 7, PerPage: DefaultPerPage}
 	if u := f.With("state", "failed"); containsText(u, "page=") {
 		t.Errorf("URL %q manteve a pagina ao trocar o filtro", u)
 	}
@@ -103,4 +103,23 @@ func containsText(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// THE TAG FILTER IS A SET, ONE `tag=` PER TAG. Every other link keeps all of
+// them; a tag's own link toggles it in or out, and a chosen tag's chip takes
+// out that one and no other.
+func TestTheTagFilterIsASetInTheURL(t *testing.T) {
+	f := Filter{Tags: []string{"acme", "id"}, PerPage: DefaultPerPage}
+	if u := f.With("state", "failed"); !containsText(u, "tag=acme&tag=id") {
+		t.Errorf("a state link dropped a tag: %q", u)
+	}
+	if u := f.WithTag("platform"); u != "/workflows?tag=acme&tag=id&tag=platform" {
+		t.Errorf("adding a tag = %q", u)
+	}
+	if u := f.WithTag("acme"); u != "/workflows?tag=id" {
+		t.Errorf("a chosen tag's link does not take it out: %q", u)
+	}
+	if u := f.With("tag", ""); containsText(u, "tag=") {
+		t.Errorf("clearing the tags kept one: %q", u)
+	}
 }

@@ -226,7 +226,10 @@ type Filter struct {
 	Search  string
 	State string // ultimo estado: failed, queued, running, success
 	Active  string // active | paused
-	Tag    string
+
+	// Tags is a set: a workflow must carry ALL of them. One `tag=` each in the
+	// URL, in the order they were chosen.
+	Tags []string
 
 	// Project scopes the list to one project's workflows. It is what makes a
 	// project more than a row on a screen: the slug is unique WITHIN a project,
@@ -251,6 +254,35 @@ type Filter struct {
 // result that now has two would be an empty screen with no explanation.
 func (f Filter) With(field, value string) string {
 	return f.url(field, value, true)
+}
+
+// WithTag toggles one tag in the set: a tag not chosen joins it, a chosen one
+// leaves it and the others stay.
+func (f Filter) WithTag(tag string) string {
+	g := f
+	g.Tags = nil
+	found := false
+	for _, t := range f.Tags {
+		if t == tag {
+			found = true
+			continue
+		}
+		g.Tags = append(g.Tags, t)
+	}
+	if !found {
+		g.Tags = append(g.Tags, tag)
+	}
+	return g.url("page", "", true)
+}
+
+// HasTag says whether the tag is chosen.
+func (f Filter) HasTag(tag string) bool {
+	for _, t := range f.Tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
 }
 
 // WithPage navigates without touching anything else.
@@ -296,7 +328,9 @@ func (f Filter) url(field, value string, resetsPage bool) string {
 	put("q", f.Search)
 	put("state", f.State)
 	put("active", f.Active)
-	put("tag", f.Tag)
+	for _, t := range f.Tags {
+		q.Add("tag", t)
+	}
 	put("project", f.Project)
 	put("sort", f.Sort)
 	if f.Desc {
@@ -417,9 +451,16 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 			@components.Segmented("Schedule", scheduleOptions(f, counts))
 		</div>
 		if len(tags) > 0 {
-			<span class="mx-2 h-5 w-px bg-line"></span>
-			for _, t := range tags {
-				@chip(f.With("tag", alterna(f.Tag, t)), t, f.Tag == t, "")
+			@tagPopover(tags, f)
+			for _, t := range f.Tags {
+				<a
+					href={ templ.SafeURL(f.WithTag(t)) }
+					aria-label={ "Remove the tag " + t }
+					class="inline-flex h-8 items-center gap-1.5 rounded-card border border-accent bg-accent-wash px-2.5 text-[0.8rem] text-ink"
+				>
+					{ t }
+					<span class="text-muted">&times;</span>
+				</a>
 			}
 		}
 		// The project chip appears only when one is selected. There is no
@@ -517,7 +558,7 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 							<td class="py-3 pr-3">
 								<div class="flex flex-wrap gap-1">
 									for _, t := range w.Tags {
-										@components.Tag(t, f.With("tag", alterna(f.Tag, t)))
+										@components.Tag(t, f.WithTag(t))
 									}
 								</div>
 							</td>
@@ -534,6 +575,50 @@ templ WorkflowsList(ws []postgres.WorkflowSummary, tags []string, f Filter, coun
 			})
 		</div>
 	}
+}
+
+// tagPopover chooses the tags. It is a <details> holding a GET form -- the
+// rest of the filter as hidden fields, a box that filters the tag list, one
+// checkbox per tag, Apply -- so with no script it opens, is checked and is
+// submitted like any form. With ui.js a checked box submits at once
+// (`data-submit-on-change`), and the box filters the list as you type.
+templ tagPopover(tags []string, f Filter) {
+	<details data-popover class="relative">
+		<summary class="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-card border border-line bg-surface px-2.5 text-[0.8rem] text-muted transition-colors duration-150 hover:text-ink [&::-webkit-details-marker]:hidden">
+			@components.Icon("tag", "h-3.5 w-3.5")
+			Tags
+			if len(f.Tags) > 0 {
+				<span class="text-[0.72rem] text-ink tabular-nums">{ fmt.Sprint(len(f.Tags)) }</span>
+			}
+		</summary>
+		<div class="absolute left-0 z-20 mt-1 w-64 rounded-card border border-line bg-surface p-2 shadow-warm-sm">
+			<form method="get" action="/workflows" data-submit-on-change>
+				for _, h := range f.tagFormHidden() {
+					<input type="hidden" name={ h[0] } value={ h[1] }/>
+				}
+				<input
+					type="search"
+					aria-label="Filter tags"
+					placeholder="Filter tags"
+					data-filter-for="workflow-tags"
+					autocomplete="off"
+					class="mb-2 h-8 w-full rounded-card border border-line bg-surface px-2.5 text-[0.82rem] text-ink placeholder:text-faint focus:border-accent-strong focus:outline-none"
+				/>
+				<ul id="workflow-tags" class="max-h-60 overflow-y-auto">
+					for _, t := range tags {
+						<li data-filter-row data-filter-text={ strings.ToLower(t) }>
+							<label class="flex cursor-pointer items-center gap-2 rounded-[2px] px-1.5 py-1 text-[0.82rem] text-ink hover:bg-surface-2">
+								<input type="checkbox" name="tag" value={ t } checked?={ f.HasTag(t) } class="accent-accent-strong"/>
+								{ t }
+							</label>
+						</li>
+					}
+				</ul>
+				<p data-filter-empty hidden class="px-1.5 py-1 text-[0.8rem] text-muted">No tag matches.</p>
+				<button type="submit" class="mt-2 h-7 w-full rounded-card bg-ink text-xs font-medium text-surface">Apply</button>
+			</form>
+		</div>
+	</details>
 }
 
 // interruptor pauses and resumes the schedule. It is a form, and not a checkbox
@@ -600,14 +685,6 @@ templ chip(rota, text string, active1 bool, ponto string) {
 	}
 }
 
-// alterna makes the tag chip work as a toggle: clicking an already-active tag
-// removes the filter instead of reapplying the same value.
-func alterna(current, value string) string {
-	if current == value {
-		return ""
-	}
-	return value
-}
 
 // ---------------------------------------------------------------------------
 // Runs, projects and detail

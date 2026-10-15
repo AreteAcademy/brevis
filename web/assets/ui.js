@@ -99,14 +99,14 @@
   // ------------------------------------------------------------------
 
   document.addEventListener("click", function (e) {
-    document.querySelectorAll("details.account-menu[open]").forEach(function (d) {
+    document.querySelectorAll("details.account-menu[open], details[data-popover][open]").forEach(function (d) {
       if (!d.contains(e.target)) d.removeAttribute("open");
     });
   });
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
-    document.querySelectorAll("details.account-menu[open]").forEach(function (d) {
+    document.querySelectorAll("details.account-menu[open], details[data-popover][open]").forEach(function (d) {
       d.removeAttribute("open");
       // The focus goes back to the button that opened it, which is what a
       // keyboard user expects and what the browser does not do on its own.
@@ -492,6 +492,9 @@
       var empty = scope.querySelector("[data-filter-empty]");
       if (empty) empty.hidden = shown > 0;
 
+      // A box with no name filters a list that is not the page's (a
+      // popover's), and says nothing in the URL.
+      if (!box.name) return;
       history.replaceState(history.state, "", withQuery(window.location.href, box.name, raw));
       document.querySelectorAll("[data-filter-keep] a[href]").forEach(function (a) {
         a.setAttribute("href", withQuery(a.getAttribute("href"), box.name, raw));
@@ -550,6 +553,16 @@
           form.requestSubmit();
         }
       });
+  });
+
+  // A form whose checkboxes are its submit (`form[data-submit-on-change]`):
+  // checking one navigates at once, as its Apply button would. Only a box --
+  // a text field changes on blur, and leaving one is not a choice.
+  document.addEventListener("change", function (e) {
+    var box = e.target;
+    if (!box || box.type !== "checkbox" || typeof box.closest !== "function") return;
+    var form = box.closest("form[data-submit-on-change]");
+    if (form && typeof form.requestSubmit === "function") form.requestSubmit();
   });
 
   // A form that answers while somebody types (`form[data-swap-typing]`):

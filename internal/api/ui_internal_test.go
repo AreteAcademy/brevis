@@ -58,8 +58,12 @@ func TestFiltrar(t *testing.T) {
 		// not the absence of one. Merging the two would hide the workflow somebody
 		// paused.
 		{"paused does not include those that never had a schedule", pages.Filter{Active: "paused"}, []string{"vendors_inmet"}},
-		{"tag", pages.Filter{Tag: "acme"}, []string{"id_verification", "platform_workspace"}},
-		{"combinado", pages.Filter{Tag: "acme", State: "success"}, []string{"id_verification"}},
+		{"tag", pages.Filter{Tags: []string{"acme"}}, []string{"id_verification", "platform_workspace"}},
+		// Two tags narrow: a workflow must carry both. OR would widen the list
+		// with every tag clicked, which is not what choosing more says.
+		{"two tags are AND", pages.Filter{Tags: []string{"acme", "platform"}}, []string{"platform_workspace"}},
+		{"two tags nobody carries together", pages.Filter{Tags: []string{"acme", "vendors"}}, nil},
+		{"combinado", pages.Filter{Tags: []string{"acme"}, State: "success"}, []string{"id_verification"}},
 		{"nada casa", pages.Filter{Search: "inexistente"}, nil},
 	}
 	for _, c := range casos {
@@ -76,7 +80,7 @@ func TestTheTagsDoNotShrinkWithTheFilter(t *testing.T) {
 	all := list()
 	equal(t, tagsDe(all), []string{"acme", "id", "platform", "vendors"})
 
-	so := filtrar(all, pages.Filter{Tag: "vendors"})
+	so := filtrar(all, pages.Filter{Tags: []string{"vendors"}})
 	if len(so) != 1 {
 		t.Fatalf("expected 1 filtered row, got %d", len(so))
 	}
